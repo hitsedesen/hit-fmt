@@ -14,11 +14,17 @@ namespace tokenizer {
 
 bool IsPunctuation(unicode::CodePoint cp)
 {
+    if (cp > 255) {
+        return false;
+    }
     return std::ispunct(cp);
 }
 
 bool IsWhitespace(unicode::CodePoint cp)
 {
+    if (cp > 255) {
+        return false;
+    }
     return std::isspace(cp);
 }
 
@@ -684,7 +690,7 @@ Token Tokenizer::ParseRawStringLiteral()
 
     delimiter.push_back('"');
 
-    ssize_t delimiterPos = -1;
+    long long delimiterPos = -1;
 
     InsideRawString_ = true;
 

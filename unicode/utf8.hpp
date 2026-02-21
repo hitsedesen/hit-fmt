@@ -5,6 +5,9 @@
 #include <util/input.hpp>
 
 #include <string_view>
+#include <format>
+#include <cstddef>
+#include <optional>
 
 namespace unicode::utf8 {
 
@@ -74,7 +77,7 @@ struct std::formatter<unicode::utf8::InvalidUtf8Sequence>
         const auto& value = sequence.Value_;
         auto size = value.size();
         it = std::format_to(it, "[");
-        for (ssize_t i = 0; i < size; ++i) {
+        for (size_t i = 0; i < size; ++i) {
             it = std::format_to(it, "{:#02x}", value[i]);
             if ((i + 1) < size) {
                 it = std::format_to(it, " ");

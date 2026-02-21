@@ -121,5 +121,5 @@ SpacesInLineCommentPrefix:
   Maximum: 1
 SpacesInParentheses: false
 SpacesInSquareBrackets: false
-Standard: c++23
+Standard: c++20
 UseTab: Never
