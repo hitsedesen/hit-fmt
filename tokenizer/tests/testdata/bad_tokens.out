@@ -1,0 +1,20 @@
+Ln 1, Col 1: int int
+Ln 1, Col 5: identifier a
+Ln 1, Col 7: op= =
+Ln 1, Col 9: int 1
+Ln 1, Col 13: invalid \
+Ln 1, Col 13: int 3
+Ln 1, Col 14: op; ;
+Ln 2, Col 1: int int
+Ln 2, Col 5: identifier b
+Ln 2, Col 7: op= =
+Ln 2, Col 9: int 3
+Ln 2, Col 11: invalid #
+Ln 2, Col 13: int 4
+Ln 2, Col 14: op; ;
+Ln 3, Col 1: auto auto
+Ln 3, Col 6: identifier unterminatedString
+Ln 3, Col 25: op= =
+Ln 3, Col 27: invalid "foobar
+Ln 4, Col 1: invalid /*
+

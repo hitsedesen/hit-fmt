@@ -1,0 +1,14 @@
+add_executable(fmt_tests tests.cpp)
+target_link_libraries(fmt_tests PRIVATE
+    lib-tokenizer
+    GTest::gtest_main
+    GTest::gmock)
+
+gtest_discover_tests(fmt_tests)
+
+add_custom_command(
+    TARGET fmt_tests POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E create_symlink
+            ${CMAKE_CURRENT_SOURCE_DIR}/testdata
+            ${CMAKE_CURRENT_BINARY_DIR}/testdata
+)

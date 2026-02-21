@@ -1,0 +1,13 @@
+R"_())_"
+R"(FOO)"
+R"delimiter(woo ) and ( inside the raw string)delimiter"
+R"(
+    multi
+    line
+    literal
+    hehe
+)"
+u8R"(pref"ixed)"
+R"(\
+)"
+R"([\(\)\.\,\;\[\]\{\}\$\*\s\:\'\"\`\>\<\=\+\/\|\\\%\-]+)"

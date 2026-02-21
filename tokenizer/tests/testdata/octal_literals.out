@@ -1,0 +1,6 @@
+Ln 1, Col 1: oct_int 0
+Ln 2, Col 1: oct_int 01
+Ln 3, Col 1: oct_int 077'321
+Ln 4, Col 1: oct_int 077321
+Ln 5, Col 1: oct_int 077321uLL
+Ln 6, Col 1: oct_int 077321lU

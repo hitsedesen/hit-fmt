@@ -1,0 +1,22 @@
+#include <iostream>
+#include <format>
+#include <filesystem>
+
+// A comment.
+/*
+    A multiline comment
+    or something
+*/
+int main(int argc, char* argv[]) // A comment after some code.
+{
+    if (/*comment inside code*/argc < 2) {
+        std::cerr << std::format("Usage: {} <path>\n", argv[0]);
+        return -1;
+    }
+    auto path = argv[1];
+    if (std::filesystem::exists(path)) {
+        std::cout << "File exists";
+    } else {
+        std::cout << "File does not exist";
+    }
+}

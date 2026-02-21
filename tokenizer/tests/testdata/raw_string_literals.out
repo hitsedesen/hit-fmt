@@ -1,0 +1,20 @@
+Ln 1, Col 1: str R"_())_"
+
+Ln 2, Col 1: str R"(FOO)"
+
+Ln 3, Col 1: str R"delimiter(woo ) and ( inside the raw string)delimiter"
+
+Ln 4, Col 1: str R"(
+    multi
+    line
+    literal
+    hehe
+)"
+
+Ln 10, Col 1: str u8R"(pref"ixed)"
+
+Ln 11, Col 1: str R"(\
+)"
+
+Ln 13, Col 1: str R"([\(\)\.\,\;\[\]\{\}\$\*\s\:\'\"\`\>\<\=\+\/\|\\\%\-]+)"
+

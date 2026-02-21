@@ -1,0 +1,6 @@
+#define FOO(bar) \
+    if ((bar)) { \
+        std::cout << "bar"; \
+    } else { \
+        std::cout << "baz"; \
+    }
