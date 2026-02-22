@@ -32,7 +32,7 @@ std::vector<std::string> TokenizeNoPosition(const std::string& input)
     auto contens = util::ReadEntireFile(input, 1024 * 1024);
     auto stream = util::StringInputStreamAdapter(contens);
     unicode::utf8::Stream utf8Stream(&stream);
-    Tokenizer tokenizer(&utf8Stream);
+    Tokenizer tokenizer(utf8Stream);
     std::vector<std::string> tokens;
     auto token = tokenizer.Get();
     while (token.Kind != TokenKind::EndOfFile) {
@@ -97,7 +97,7 @@ TokenizeAndSerialize(const std::string& input)
     auto stream = util::StdInputStreamAdapter(std::istringstream{input});
     unicode::utf8::Stream utf8Stream(&stream);
     std::vector<std::string> errors;
-    Tokenizer tokenizer(&utf8Stream, [&](TokenizationError error) {
+    Tokenizer tokenizer(utf8Stream, [&](TokenizationError error) {
         errors.push_back(
             std::format(
                 "{} error: {}", error.ErrorPosition, std::move(error.Message)));

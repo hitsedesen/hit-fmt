@@ -5,6 +5,7 @@
 #include <unicode/code_point.hpp>
 #include <unicode/utf8.hpp>
 #include <util/input.hpp>
+#include <util/non_null_ptr.hpp>
 
 #include <functional>
 #include <utility>
@@ -23,7 +24,7 @@ class Tokenizer
 {
 public:
     explicit inline Tokenizer(
-        unicode::utf8::Stream* stream,
+        util::NonNullPtr<unicode::utf8::Stream> stream,
         std::move_only_function<void(TokenizationError)> errorHandler = {})
         : Stream_(stream)
         , ErrorHandler_(std::move(errorHandler))
@@ -55,7 +56,7 @@ private:
     void OnError(TokenizationError error);
     void OnError(std::string error);
 
-    unicode::utf8::Stream* Stream_;
+    util::NonNullPtr<unicode::utf8::Stream> Stream_;
     std::move_only_function<void(TokenizationError)> ErrorHandler_;
 
     bool IsFileStart_ = true;
