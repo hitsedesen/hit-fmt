@@ -1,19 +1,19 @@
 #include <tokenizer/tokenizer.hpp>
 #include <unicode/code_point.hpp>
 #include <unicode/utf8.hpp>
+#include <util/file.hpp>
 #include <util/input.hpp>
+#include <util/string_stream.hpp>
 #include <util/timer.hpp>
 
 #include <algorithm>
 #include <array>
 #include <chrono>
+#include <cstdio>
 #include <exception>
 #include <filesystem>
-#include <fstream>
 #include <iostream>
 #include <string>
-#include <string_view>
-#include <vector>
 
 auto ToMillis(auto duration)
 {
@@ -22,14 +22,16 @@ auto ToMillis(auto duration)
 
 constexpr auto Extensions = std::to_array({".cpp", ".h", ".hpp", ".cxx"});
 
-std::pair<long long, long long> DoTokenizeFile(std::string_view filePath)
+constexpr size_t MaxSourceFileSize = 4 * 1024 * 1024; // 4 MB.
+
+std::pair<long long, long long> DoTokenizeFile(const std::string& filePath)
 {
-    auto input =
-        util::StdInputStreamAdapter{std::ifstream(std::string(filePath))};
-    auto utf8Stream = unicode::utf8::Stream(&input);
+    auto fileContents = util::ReadEntireFile(filePath, MaxSourceFileSize);
+    auto fileStream = util::StringInputStreamAdapter(fileContents);
+    auto utf8Stream = unicode::utf8::Stream(&fileStream);
     tokenizer::Tokenizer tokenizer(&utf8Stream);
-    int validTokens = 0;
     int invalidTokens = 0;
+    int validTokens = 0;
     while (true) {
         auto token = tokenizer.Get();
         if (token.Kind == tokenizer::TokenKind::EndOfFile) {
@@ -47,19 +49,19 @@ std::pair<long long, long long> DoTokenizeFile(std::string_view filePath)
     return {validTokens, invalidTokens};
 }
 
-std::pair<long long, long long> TokenizeFile(std::string_view filePath)
+std::pair<long long, long long> TokenizeFile(const std::string& filePath)
 {
     try {
         return DoTokenizeFile(filePath);
     } catch (std::exception& e) {
         std::cerr << std::format("Failed to tokenize file {}\n\t", filePath)
-                  << e.what()
-                  << "\n";;
+                  << e.what() << "\n";
+        ;
         return {0, 0};
     }
 }
 
-void Run(std::string_view inputPath)
+void Run(const std::string& inputPath)
 {
     long long validTokens = 0;
     long long invalidTokens = 0;

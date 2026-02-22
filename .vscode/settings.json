@@ -1,0 +1,3 @@
+{
+    "cmake.configureArgs": ["-DHIT_FMT_TEST=1"]
+}
