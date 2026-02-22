@@ -1,9 +1,9 @@
 #include "tokenizer.hpp"
 
 #include "token.hpp"
-#include "unicode/utf8.hpp"
 
 #include <unicode/code_point.hpp>
+#include <unicode/utf8.hpp>
 
 #include <algorithm>
 #include <array>
@@ -11,14 +11,6 @@
 #include <utility>
 
 namespace tokenizer {
-
-bool IsPunctuation(unicode::CodePoint cp)
-{
-    if (cp > 255) {
-        return false;
-    }
-    return std::ispunct(cp);
-}
 
 bool IsWhitespace(unicode::CodePoint cp)
 {
@@ -64,28 +56,40 @@ bool IsIdContinuation(unicode::CodePoint cp)
     return unicode::IsXIDContinue(cp);
 }
 
+Tokenizer::Tokenizer(
+    std::string_view input,
+    std::move_only_function<void(TokenizationError)> errorHandler)
+    : Input_(input)
+    , ErrorHandler_(std::move(errorHandler))
+{ }
+
 unicode::CodePoint Tokenizer::CurrentCodePoint()
 {
-    if (CurrentCodePointOffset_ >= Input_.size()) {
-        return '\0';
-    }
-    auto first = unicode::utf8::GetFirstCodePoint(
-        Input_.substr(CurrentCodePointOffset_));
+    if (!Current_) {
+        if (CurrentCodePointOffset_ >= Input_.size()) {
+            Current_ =
+                unicode::utf8::CodePointWithSize{.Value = '\0', .Size = 0};
+        } else {
+            auto first = unicode::utf8::GetFirstCodePoint(
+                Input_.substr(CurrentCodePointOffset_));
 
-    if (!first) {
-        OnError("Invalid UTF8 code point");
-        return '\0';
+            if (!first) {
+                OnError("Invalid UTF8 code point");
+                Current_ =
+                    unicode::utf8::CodePointWithSize{.Value = '\0', .Size = 0};
+            } else {
+                Current_ = first;
+            }
+        }
     }
 
-    return first->Value;
+    return Current_->Value;
 }
 
 void Tokenizer::ConsumeCodePoint(bool skippingNewLine)
 {
-    auto first =
-        unicode::utf8::GetFirstCodePoint(Input_.substr(CurrentCodePointOffset_))
-            .value_or(
-                unicode::utf8::CodePointWithSize{.Value = '\0', .Size = 0});
+    CurrentCodePoint();
+    auto first = *std::exchange(Current_, std::nullopt);
 
     CurrentTokenSize_ += first.Size;
     CurrentCodePointOffset_ += first.Size;
@@ -480,41 +484,6 @@ start_skip_whitespace:
         }
     }
 }
-
-// unicode::utf8::CodePointWithSize Tokenizer::GetCodePoint()
-// {
-//     CurrentCodePoint();
-//     auto peeked = std::exchange(Current_, std::nullopt);
-//     ASSERT(peeked);
-//     auto current = *peeked;
-
-// auto next = [&] {
-//     CurrentCodePoint();
-//     auto peeked = std::exchange(Current_, std::nullopt);
-//     ASSERT(peeked);
-//     current = *peeked;
-// };
-
-// if (!InsideRawString_) {
-//     if (current.Value == '\\') {
-//         next();
-//         while (IsWhitespace(current.Value) && current.Value != '\n') {
-//             next();
-//         }
-//         if (current.Value == '\n') {
-//             next();
-//         }
-//     }
-// }
-
-// if (current.Value == '\n' || current.Value == '\r') {
-//     IsNewLine_ = true;
-//     InsidePreprocessingDirective_ = false;
-// } else if (!IsWhitespace(current.Value)) {
-//     IsNewLine_ = false;
-// }
-// return current;
-// }
 
 namespace {
 

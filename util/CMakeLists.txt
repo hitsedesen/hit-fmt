@@ -1,6 +1,5 @@
 add_library(lib-util STATIC
-    "file.cpp"
-    "string_stream.cpp")
+    "file.cpp")
 target_include_directories(lib-util
     PUBLIC ${CMAKE_SOURCE_DIR})
 target_include_directories(lib-util

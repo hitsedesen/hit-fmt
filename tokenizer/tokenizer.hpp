@@ -5,7 +5,6 @@
 #include <unicode/code_point.hpp>
 #include <unicode/utf8.hpp>
 #include <util/input.hpp>
-#include <util/non_null_ptr.hpp>
 
 #include <functional>
 #include <utility>
@@ -23,12 +22,9 @@ struct TokenizationError
 class Tokenizer
 {
 public:
-    explicit inline Tokenizer(
-        const std::string& input,
-        std::move_only_function<void(TokenizationError)> errorHandler = {})
-        : Input_(input)
-        , ErrorHandler_(std::move(errorHandler))
-    { }
+    Tokenizer(
+        std::string_view input,
+        std::move_only_function<void(TokenizationError)> errorHandler = {});
 
     Token Get();
 
@@ -45,8 +41,6 @@ private:
     size_t CurrentTokenOffset_ = 0;
     size_t CurrentTokenSize_ = 0;
     Token FinishToken(TokenKind kind);
-
-    // unicode::utf8::CodePointWithSize GetCodePoint();
 
     void SkipWhitespace();
     Token ParseIdentifier();

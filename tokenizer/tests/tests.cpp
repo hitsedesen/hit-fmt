@@ -2,7 +2,6 @@
 #include <unicode/utf8.hpp>
 #include <util/file.hpp>
 #include <util/input.hpp>
-#include <util/string_stream.hpp>
 
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
