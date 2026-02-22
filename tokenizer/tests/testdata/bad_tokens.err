@@ -1,4 +1,3 @@
-Ln 1, Col 13 error: Unexpected character \
 Ln 2, Col 12 error: Operator # can only appear inside a preprocessing directive
 Ln 3, Col 34 error: Unterminated string literal
 Ln 5, Col 1 error: Unterminated multiline comment

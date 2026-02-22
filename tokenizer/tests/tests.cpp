@@ -27,21 +27,6 @@ bool operator==(const Token lhs, const Token rhs)
         && lhs.Text == rhs.Text;
 }
 
-std::vector<std::string> TokenizeNoPosition(const std::string& input)
-{
-    auto contens = util::ReadEntireFile(input, 1024 * 1024);
-    auto stream = util::StringInputStreamAdapter(contens);
-    unicode::utf8::Stream utf8Stream(&stream);
-    Tokenizer tokenizer(utf8Stream);
-    std::vector<std::string> tokens;
-    auto token = tokenizer.Get();
-    while (token.Kind != TokenKind::EndOfFile) {
-        tokens.push_back(std::format("{} {}", token.Kind, token.Text));
-        token = tokenizer.Get();
-    }
-    return tokens;
-}
-
 struct TestCase
 {
     std::string_view Input;
@@ -94,10 +79,8 @@ std::optional<std::string> ReadGoldenFile(const std::string& path)
 std::pair<std::string, std::vector<std::string>>
 TokenizeAndSerialize(const std::string& input)
 {
-    auto stream = util::StdInputStreamAdapter(std::istringstream{input});
-    unicode::utf8::Stream utf8Stream(&stream);
     std::vector<std::string> errors;
-    Tokenizer tokenizer(utf8Stream, [&](TokenizationError error) {
+    Tokenizer tokenizer(input, [&](TokenizationError error) {
         errors.push_back(
             std::format(
                 "{} error: {}", error.ErrorPosition, std::move(error.Message)));

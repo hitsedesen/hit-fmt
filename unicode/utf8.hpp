@@ -4,10 +4,10 @@
 
 #include <util/input.hpp>
 
-#include <string_view>
-#include <format>
 #include <cstddef>
+#include <format>
 #include <optional>
+#include <string_view>
 
 namespace unicode::utf8 {
 
@@ -17,6 +17,27 @@ constexpr char32_t ValueFromUtf8(std::string_view cp);
 [[nodiscard]] constexpr CodePoint ToCodePoint(std::string_view cp)
 {
     return ValueFromUtf8(cp);
+}
+
+constexpr std::optional<short> GetFirstCodePointSize(std::string_view str);
+
+struct CodePointWithSize
+{
+    CodePoint Value;
+    short Size;
+};
+
+[[nodiscard]] constexpr std::optional<CodePointWithSize>
+GetFirstCodePoint(std::string_view str)
+{
+    auto bytes = GetFirstCodePointSize(str);
+    if (!bytes) {
+        return std::nullopt;
+    }
+    return CodePointWithSize{
+        .Value = ValueFromUtf8(str.substr(0, *bytes)),
+        .Size = *bytes,
+    };
 }
 
 // Make a UTF8 byte sequence from code point.
@@ -208,9 +229,30 @@ private:
     std::optional<unicode::CodePoint> Peeked_;
 };
 
+constexpr std::optional<short> GetFirstCodePointSize(std::string_view str)
+{
+    if (str.size() == 0) {
+        return 0;
+    }
+    unsigned char byte = str[0];
+    if ((byte >> 7) == 0) {
+        return 1;
+    } else if ((byte >> 5) == 0b110) {
+        return 2;
+    } else if ((byte >> 4) == 0b1110) {
+        return 3;
+    } else if ((byte >> 3) == 0b11110) {
+        return 4;
+    } else {
+        return std::nullopt;
+    }
+}
+
 constexpr char32_t ValueFromUtf8(std::string_view cp)
 {
     switch (cp.size()) {
+    case 0:
+        return '\0';
     case 1:
         return cp[0] & 0x7f;
     case 2:

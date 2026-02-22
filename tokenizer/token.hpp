@@ -13,7 +13,7 @@ namespace tokenizer {
 #define TOKEN_KINDS                                                            \
     TOKEN_KIND(Invalid, "invalid")                                             \
     TOKEN_KIND(EndOfFile, "eof")                                               \
-    TOKEN_KIND(Hash, "op#")                                                      \
+    TOKEN_KIND(Hash, "op#")                                                    \
     TOKEN_KIND(HashHash, "op##")                                               \
     TOKEN_KIND(Comment, "comment")                                             \
     TOKEN_KIND(Identifier, "identifier")                                       \
@@ -178,7 +178,7 @@ struct Token
 {
     util::Position Position;
     TokenKind Kind;
-    std::string Text;
+    std::string_view Text;
 };
 
 } // namespace tokenizer

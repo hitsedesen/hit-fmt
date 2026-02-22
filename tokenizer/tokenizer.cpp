@@ -64,25 +64,52 @@ bool IsIdContinuation(unicode::CodePoint cp)
     return unicode::IsXIDContinue(cp);
 }
 
-unicode::CodePoint Tokenizer::PeekCodePoint()
+unicode::CodePoint Tokenizer::CurrentCodePoint()
 {
-    if (Next_ != '\0') {
-        return Next_;
+    if (CurrentCodePointOffset_ >= Input_.size()) {
+        return '\0';
     }
-    return Stream_->Peek();
+    auto first = unicode::utf8::GetFirstCodePoint(
+        Input_.substr(CurrentCodePointOffset_));
+
+    if (!first) {
+        OnError("Invalid UTF8 code point");
+        return '\0';
+    }
+
+    return first->Value;
 }
 
-void Tokenizer::ConsumeCodePoint()
+void Tokenizer::ConsumeCodePoint(bool skippingNewLine)
 {
-    Consumed_ += unicode::utf8::FromCodePoint(GetCodePoint());
+    auto first =
+        unicode::utf8::GetFirstCodePoint(Input_.substr(CurrentCodePointOffset_))
+            .value_or(
+                unicode::utf8::CodePointWithSize{.Value = '\0', .Size = 0});
+
+    CurrentTokenSize_ += first.Size;
+    CurrentCodePointOffset_ += first.Size;
+    if (first.Value == '\n') {
+        CurrentCodePointPosition_.Line++;
+        CurrentCodePointPosition_.Column = 1;
+        if (!skippingNewLine) {
+            IsNewLine_ = true;
+            InsidePreprocessingDirective_ = false;
+        }
+    } else {
+        CurrentCodePointPosition_.Column++;
+        if (!IsWhitespace(first.Value)) {
+            IsNewLine_ = false;
+        }
+    }
 }
 
-Token Tokenizer::MakeToken(TokenKind kind)
+Token Tokenizer::FinishToken(TokenKind kind)
 {
     return Token{
-        .Position = TokenStart_,
+        .Position = CurrentTokenPosition_,
         .Kind = kind,
-        .Text = std::exchange(Consumed_, ""),
+        .Text = Input_.substr(CurrentTokenOffset_, CurrentTokenSize_),
     };
 }
 
@@ -90,11 +117,13 @@ Token Tokenizer::Get()
 {
     SkipWhitespace();
 
-    TokenStart_ = Stream_->GetPosition();
+    CurrentTokenPosition_ = CurrentCodePointPosition_;
+    CurrentTokenOffset_ = CurrentCodePointOffset_;
+    CurrentTokenSize_ = 0;
 
-    auto cur = PeekCodePoint();
+    auto cur = CurrentCodePoint();
     if (cur == '\0') [[unlikely]] {
-        return MakeToken(TokenKind::EndOfFile);
+        return FinishToken(TokenKind::EndOfFile);
     }
 
     bool preprocessing = IsNewLine_ || InsidePreprocessingDirective_;
@@ -103,165 +132,161 @@ Token Tokenizer::Get()
     case '#':
         {
             ConsumeCodePoint();
-            cur = PeekCodePoint();
+            cur = CurrentCodePoint();
             if (cur == '#') {
                 ConsumeCodePoint();
                 if (!preprocessing) {
                     OnError(
                         "Operator ## can only appear inside a preprocessing "
                         "directive");
-                    return MakeToken(TokenKind::Invalid);
+                    return FinishToken(TokenKind::Invalid);
                 }
                 InsidePreprocessingDirective_ = true;
-                return MakeToken(TokenKind::HashHash);
+                return FinishToken(TokenKind::HashHash);
             }
             if (!preprocessing) {
                 OnError(
                     "Operator # can only appear inside a preprocessing "
                     "directive");
-                return MakeToken(TokenKind::Invalid);
+                return FinishToken(TokenKind::Invalid);
             }
             InsidePreprocessingDirective_ = true;
-            return MakeToken(TokenKind::Hash);
+            return FinishToken(TokenKind::Hash);
         }
     case '{':
         ConsumeCodePoint();
-        return MakeToken(TokenKind::Operator_OpenBrace);
+        return FinishToken(TokenKind::Operator_OpenBrace);
     case '}':
         ConsumeCodePoint();
-        return MakeToken(TokenKind::Operator_CloseBrace);
+        return FinishToken(TokenKind::Operator_CloseBrace);
     case '[':
         ConsumeCodePoint();
-        return MakeToken(TokenKind::Operator_OpenBracket);
+        return FinishToken(TokenKind::Operator_OpenBracket);
     case ']':
         ConsumeCodePoint();
-        return MakeToken(TokenKind::Operator_CloseBracket);
+        return FinishToken(TokenKind::Operator_CloseBracket);
     case '(':
         ConsumeCodePoint();
-        return MakeToken(TokenKind::Operator_OpenParenthesis);
+        return FinishToken(TokenKind::Operator_OpenParenthesis);
     case ')':
         ConsumeCodePoint();
-        return MakeToken(TokenKind::Operator_CloseParenthesis);
+        return FinishToken(TokenKind::Operator_CloseParenthesis);
     case ';':
         ConsumeCodePoint();
-        return MakeToken(TokenKind::Operator_Semicolon);
+        return FinishToken(TokenKind::Operator_Semicolon);
     case ':':
         {
             ConsumeCodePoint();
-            cur = PeekCodePoint();
+            cur = CurrentCodePoint();
             switch (cur) {
             case ':':
                 ConsumeCodePoint();
-                return MakeToken(TokenKind::Operator_ScopeResolution);
+                return FinishToken(TokenKind::Operator_ScopeResolution);
             case '>':
                 ConsumeCodePoint();
-                return MakeToken(TokenKind::Operator_CloseBracket);
+                return FinishToken(TokenKind::Operator_CloseBracket);
             default:
-                return MakeToken(TokenKind::Operator_Colon);
+                return FinishToken(TokenKind::Operator_Colon);
             }
         }
     case '.':
         {
             ConsumeCodePoint();
-            cur = PeekCodePoint();
+            cur = CurrentCodePoint();
             switch (cur) {
             case '.':
                 {
                     ConsumeCodePoint();
-                    cur = PeekCodePoint();
+                    cur = CurrentCodePoint();
                     if (cur == '.') {
                         ConsumeCodePoint();
-                        return MakeToken(TokenKind::Operator_Ellipsis);
+                        return FinishToken(TokenKind::Operator_Ellipsis);
                     }
-                    OnError({
-                        .Message = "Unfinished ellipsis",
-                        .TokenStart = TokenStart_,
-                        .ErrorPosition = Stream_->GetPosition(),
-                        .TokenEnd = Stream_->GetPosition(),
-                    });
-                    return MakeToken(TokenKind::Invalid);
+                    OnError("Unfinished ellipsis");
+                    return FinishToken(TokenKind::Invalid);
                 }
             case '*':
                 ConsumeCodePoint();
-                return MakeToken(
+                return FinishToken(
                     TokenKind::Operator_PointerToMemberDereference);
             default:
-                return MakeToken(TokenKind::Operator_ClassMemberAccess);
+                return FinishToken(TokenKind::Operator_ClassMemberAccess);
             }
         }
     case '-':
         {
             ConsumeCodePoint();
-            cur = PeekCodePoint();
+            cur = CurrentCodePoint();
             switch (cur) {
             case '>':
                 ConsumeCodePoint();
-                cur = PeekCodePoint();
+                cur = CurrentCodePoint();
                 if (cur == '*') {
                     ConsumeCodePoint();
-                    return MakeToken(
+                    return FinishToken(
                         TokenKind::Operator_IndirectPointerToMemberDereference);
                 }
-                return MakeToken(TokenKind::Operator_IndirectClassMemberAccess);
+                return FinishToken(
+                    TokenKind::Operator_IndirectClassMemberAccess);
             case '=':
                 ConsumeCodePoint();
-                return MakeToken(TokenKind::Operator_MinusAssign);
+                return FinishToken(TokenKind::Operator_MinusAssign);
             case '-':
-                return MakeToken(TokenKind::Operator_Decrement);
+                return FinishToken(TokenKind::Operator_Decrement);
             default:
-                return MakeToken(TokenKind::Operator_Minus);
+                return FinishToken(TokenKind::Operator_Minus);
             }
         }
     case '?':
         ConsumeCodePoint();
-        return MakeToken(TokenKind::Operator_Conditional);
+        return FinishToken(TokenKind::Operator_Conditional);
     case '~':
         ConsumeCodePoint();
-        return MakeToken(TokenKind::Operator_Complement);
+        return FinishToken(TokenKind::Operator_Complement);
     case '!':
         {
             ConsumeCodePoint();
-            cur = PeekCodePoint();
+            cur = CurrentCodePoint();
             if (cur == '=') {
                 ConsumeCodePoint();
-                return MakeToken(TokenKind::Operator_NotEquals);
+                return FinishToken(TokenKind::Operator_NotEquals);
             }
-            return MakeToken(TokenKind::Operator_Not);
+            return FinishToken(TokenKind::Operator_Not);
         }
     case '+':
         {
             ConsumeCodePoint();
-            cur = PeekCodePoint();
+            cur = CurrentCodePoint();
             if (cur == '=') {
                 ConsumeCodePoint();
-                return MakeToken(TokenKind::Operator_PlusAssign);
+                return FinishToken(TokenKind::Operator_PlusAssign);
             }
-            return MakeToken(TokenKind::Operator_Plus);
+            return FinishToken(TokenKind::Operator_Plus);
         }
     case '*':
         {
             ConsumeCodePoint();
-            cur = PeekCodePoint();
+            cur = CurrentCodePoint();
             if (cur == '=') {
                 ConsumeCodePoint();
-                return MakeToken(TokenKind::Operator_MultiplyAssign);
+                return FinishToken(TokenKind::Operator_MultiplyAssign);
             }
-            return MakeToken(TokenKind::Operator_Star);
+            return FinishToken(TokenKind::Operator_Star);
         }
     case '/':
         {
             ConsumeCodePoint();
-            cur = PeekCodePoint();
+            cur = CurrentCodePoint();
             switch (cur) {
             case '=':
                 ConsumeCodePoint();
-                return MakeToken(TokenKind::Operator_DivideAssign);
+                return FinishToken(TokenKind::Operator_DivideAssign);
             case '/':
                 return ParseInlineComment();
             case '*':
                 return ParseMultilineComment();
             default:
-                return MakeToken(TokenKind::Operator_Divide);
+                return FinishToken(TokenKind::Operator_Divide);
             }
             if (cur == '=') {
             }
@@ -269,142 +294,143 @@ Token Tokenizer::Get()
     case '%':
         {
             ConsumeCodePoint();
-            cur = PeekCodePoint();
+            cur = CurrentCodePoint();
             if (cur == '=') {
                 ConsumeCodePoint();
-                return MakeToken(TokenKind::Operator_RemainderAssign);
+                return FinishToken(TokenKind::Operator_RemainderAssign);
             }
             if (preprocessing) {
                 if (cur == ':') {
                     ConsumeCodePoint();
-                    cur = PeekCodePoint();
+                    cur = CurrentCodePoint();
                     if (cur == '%') {
                         ConsumeCodePoint();
-                        cur = PeekCodePoint();
+                        cur = CurrentCodePoint();
                         if (cur == ':') {
                             ConsumeCodePoint();
-                            return MakeToken(TokenKind::HashHash);
+                            return FinishToken(TokenKind::HashHash);
                         } else {
                             OnError("Unfinished %:%: operator");
-                            return MakeToken(TokenKind::Invalid);
+                            return FinishToken(TokenKind::Invalid);
                         }
                     }
-                    return MakeToken(TokenKind::Hash);
+                    return FinishToken(TokenKind::Hash);
                 }
             }
-            return MakeToken(TokenKind::Operator_Remainder);
+            return FinishToken(TokenKind::Operator_Remainder);
         }
     case '^':
         {
             ConsumeCodePoint();
-            cur = PeekCodePoint();
+            cur = CurrentCodePoint();
             if (cur == '=') {
                 ConsumeCodePoint();
-                return MakeToken(TokenKind::Operator_XorAssign);
+                return FinishToken(TokenKind::Operator_XorAssign);
             }
-            return MakeToken(TokenKind::Operator_Xor);
+            return FinishToken(TokenKind::Operator_Xor);
         }
     case '&':
         {
             ConsumeCodePoint();
-            cur = PeekCodePoint();
+            cur = CurrentCodePoint();
             switch (cur) {
             case '=':
                 ConsumeCodePoint();
-                return MakeToken(TokenKind::Operator_BitAndAssign);
+                return FinishToken(TokenKind::Operator_BitAndAssign);
             case '&':
                 ConsumeCodePoint();
-                return MakeToken(TokenKind::Operator_And);
+                return FinishToken(TokenKind::Operator_And);
             default:
-                return MakeToken(TokenKind::Operator_Ampersand);
+                return FinishToken(TokenKind::Operator_Ampersand);
             }
         }
     case '|':
         {
             ConsumeCodePoint();
-            cur = PeekCodePoint();
+            cur = CurrentCodePoint();
             switch (cur) {
             case '=':
                 ConsumeCodePoint();
-                return MakeToken(TokenKind::Operator_BitOrAssign);
+                return FinishToken(TokenKind::Operator_BitOrAssign);
             case '|':
                 ConsumeCodePoint();
-                return MakeToken(TokenKind::Operator_Or);
+                return FinishToken(TokenKind::Operator_Or);
             default:
-                return MakeToken(TokenKind::Operator_BitOr);
+                return FinishToken(TokenKind::Operator_BitOr);
             }
         }
     case '=':
         {
             ConsumeCodePoint();
-            cur = PeekCodePoint();
+            cur = CurrentCodePoint();
             if (cur == '=') {
                 ConsumeCodePoint();
-                return MakeToken(TokenKind::Operator_Equals);
+                return FinishToken(TokenKind::Operator_Equals);
             }
-            return MakeToken(TokenKind::Operator_Assign);
+            return FinishToken(TokenKind::Operator_Assign);
         }
     case '<':
         {
             ConsumeCodePoint();
-            cur = PeekCodePoint();
+            cur = CurrentCodePoint();
             switch (cur) {
             case ':':
                 ConsumeCodePoint();
-                return MakeToken(TokenKind::Operator_OpenBracket);
+                return FinishToken(TokenKind::Operator_OpenBracket);
             case '%':
                 ConsumeCodePoint();
-                return MakeToken(TokenKind::Operator_OpenBrace);
+                return FinishToken(TokenKind::Operator_OpenBrace);
             case '=':
                 {
                     ConsumeCodePoint();
-                    cur = PeekCodePoint();
+                    cur = CurrentCodePoint();
                     if (cur == '>') {
                         ConsumeCodePoint();
-                        return MakeToken(TokenKind::Operator_Spaceship);
+                        return FinishToken(TokenKind::Operator_Spaceship);
                     }
-                    return MakeToken(TokenKind::Operator_LessEquals);
+                    return FinishToken(TokenKind::Operator_LessEquals);
                 }
             case '<':
                 {
                     ConsumeCodePoint();
-                    cur = PeekCodePoint();
+                    cur = CurrentCodePoint();
                     if (cur == '=') {
                         ConsumeCodePoint();
-                        return MakeToken(TokenKind::Operator_LeftShiftAssign);
+                        return FinishToken(TokenKind::Operator_LeftShiftAssign);
                     }
-                    return MakeToken(TokenKind::Operator_LeftShift);
+                    return FinishToken(TokenKind::Operator_LeftShift);
                 }
             default:
-                return MakeToken(TokenKind::Operator_Less);
+                return FinishToken(TokenKind::Operator_Less);
             }
             break;
         }
     case '>':
         {
             ConsumeCodePoint();
-            cur = PeekCodePoint();
+            cur = CurrentCodePoint();
             switch (cur) {
             case '=':
                 ConsumeCodePoint();
-                return MakeToken(TokenKind::Operator_GreaterEquals);
+                return FinishToken(TokenKind::Operator_GreaterEquals);
             case '>':
                 {
                     ConsumeCodePoint();
-                    cur = PeekCodePoint();
+                    cur = CurrentCodePoint();
                     if (cur == '=') {
                         ConsumeCodePoint();
-                        return MakeToken(TokenKind::Operator_RightShiftAssign);
+                        return FinishToken(
+                            TokenKind::Operator_RightShiftAssign);
                     }
-                    return MakeToken(TokenKind::Operator_RightShift);
+                    return FinishToken(TokenKind::Operator_RightShift);
                 }
             default:
-                return MakeToken(TokenKind::Operator_Greater);
+                return FinishToken(TokenKind::Operator_Greater);
             }
         }
     case ',':
         ConsumeCodePoint();
-        return MakeToken(TokenKind::Operator_Comma);
+        return FinishToken(TokenKind::Operator_Comma);
     case '\'':
         return ParseCharacterLiteral();
     case '"':
@@ -423,61 +449,72 @@ Token Tokenizer::Get()
                     std::format(
                         "Unexpected character {}",
                         unicode::utf8::FromCodePoint(cur)));
-                return MakeToken(TokenKind::Invalid);
+                return FinishToken(TokenKind::Invalid);
             }
         }
     }
+}
+
+bool Tokenizer::IsFileStart() const
+{
+    return CurrentCodePointOffset_ == 0;
 }
 
 void Tokenizer::SkipWhitespace()
 {
 start_skip_whitespace:
-    while (IsWhitespace(Stream_->Peek())
-           || (IsFileStart_ && Stream_->Peek() == unicode::utf8::ByteOrderMark))
+    while (IsWhitespace(CurrentCodePoint())
+           || (IsFileStart()
+               && CurrentCodePoint() == unicode::utf8::ByteOrderMark))
     {
-        GetCodePoint();
+        ConsumeCodePoint();
     }
-    if (!InsideRawString_ && Stream_->Peek() == '\\') {
-        Next_ = Stream_->Get();
-        while (IsWhitespace(Stream_->Peek()) && Stream_->Peek() != '\n') {
-            Stream_->Get();
+    if (!InsideRawString_ && CurrentCodePoint() == '\\') {
+        ConsumeCodePoint();
+        while (IsWhitespace(CurrentCodePoint()) && CurrentCodePoint() != '\n') {
+            ConsumeCodePoint();
         }
-        if (Stream_->Peek() == '\n') {
-            Stream_->Get();
-            Next_ = '\0';
+        if (CurrentCodePoint() == '\n') {
+            ConsumeCodePoint(/*skippingNewLine*/ true);
             goto start_skip_whitespace;
         }
     }
 }
 
-unicode::CodePoint Tokenizer::GetCodePoint()
-{
-    IsFileStart_ = false;
-    auto res = Next_ == '\0' ? Stream_->Get() : Next_;
-    Next_ = '\0';
+// unicode::utf8::CodePointWithSize Tokenizer::GetCodePoint()
+// {
+//     CurrentCodePoint();
+//     auto peeked = std::exchange(Current_, std::nullopt);
+//     ASSERT(peeked);
+//     auto current = *peeked;
 
-    if (!InsideRawString_) {
-        if (res == '\\') {
-            auto next = Stream_->Peek();
-            while (IsWhitespace(next) && next != '\n') {
-                Stream_->Get();
-                next = Stream_->Peek();
-            }
-            if (next == '\n') {
-                Stream_->Get();
-                res = Stream_->Get();
-            }
-        }
-    }
+// auto next = [&] {
+//     CurrentCodePoint();
+//     auto peeked = std::exchange(Current_, std::nullopt);
+//     ASSERT(peeked);
+//     current = *peeked;
+// };
 
-    if (res == '\n' || res == '\r') {
-        IsNewLine_ = true;
-        InsidePreprocessingDirective_ = false;
-    } else if (!IsWhitespace(res)) {
-        IsNewLine_ = false;
-    }
-    return res;
-}
+// if (!InsideRawString_) {
+//     if (current.Value == '\\') {
+//         next();
+//         while (IsWhitespace(current.Value) && current.Value != '\n') {
+//             next();
+//         }
+//         if (current.Value == '\n') {
+//             next();
+//         }
+//     }
+// }
+
+// if (current.Value == '\n' || current.Value == '\r') {
+//     IsNewLine_ = true;
+//     InsidePreprocessingDirective_ = false;
+// } else if (!IsWhitespace(current.Value)) {
+//     IsNewLine_ = false;
+// }
+// return current;
+// }
 
 namespace {
 
@@ -581,13 +618,18 @@ const std::unordered_map<std::string_view, TokenKind> IdentifierMapping{
 
 }
 
+std::string_view Tokenizer::CurrentTokenText() const
+{
+    return Input_.substr(CurrentTokenOffset_, CurrentTokenSize_);
+}
+
 Token Tokenizer::ParseIdentifier()
 {
-    auto cur = PeekCodePoint();
+    auto cur = CurrentCodePoint();
     ASSERT(IsIdStart(cur))
     auto next = [&] {
         ConsumeCodePoint();
-        cur = PeekCodePoint();
+        cur = CurrentCodePoint();
     };
     next();
     while (IsIdContinuation(cur)) {
@@ -599,32 +641,32 @@ Token Tokenizer::ParseIdentifier()
         std::to_array({"R", "u8R", "uR", "UR", "LR"});
 
     if (cur == '\'') {
-        if (std::ranges::contains(encodingPrefixes, Consumed_)) {
+        if (std::ranges::contains(encodingPrefixes, CurrentTokenText())) {
             return ParseCharacterLiteral();
         }
     } else if (cur == '"') {
-        if (std::ranges::contains(encodingPrefixes, Consumed_)) {
+        if (std::ranges::contains(encodingPrefixes, CurrentTokenText())) {
             return ParseStringLiteral();
         }
-        if (std::ranges::contains(rawEncodingPrefixes, Consumed_)) {
+        if (std::ranges::contains(rawEncodingPrefixes, CurrentTokenText())) {
             return ParseRawStringLiteral();
         }
     }
 
-    auto mappingIt = IdentifierMapping.find(Consumed_);
+    auto mappingIt = IdentifierMapping.find(CurrentTokenText());
     if (mappingIt != IdentifierMapping.end()) {
-        return MakeToken(mappingIt->second);
+        return FinishToken(mappingIt->second);
     }
-    return MakeToken(TokenKind::Identifier);
+    return FinishToken(TokenKind::Identifier);
 }
 
 Token Tokenizer::ParseCharacterLiteral()
 {
-    auto cur = PeekCodePoint();
+    auto cur = CurrentCodePoint();
     ASSERT(cur == '\'');
     auto next = [&] {
         ConsumeCodePoint();
-        cur = PeekCodePoint();
+        cur = CurrentCodePoint();
     };
     next();
     while (cur != '\'' && cur != '\n' && cur != '\0') {
@@ -636,19 +678,19 @@ Token Tokenizer::ParseCharacterLiteral()
     }
     if (cur != '\'') {
         OnError("Unterminated character literal");
-        return MakeToken(TokenKind::Invalid);
+        return FinishToken(TokenKind::Invalid);
     }
     next();
-    return MakeToken(TokenKind::Literal_Character);
+    return FinishToken(TokenKind::Literal_Character);
 }
 
 Token Tokenizer::ParseStringLiteral()
 {
-    auto cur = PeekCodePoint();
+    auto cur = CurrentCodePoint();
     ASSERT(cur == '"');
     auto next = [&] {
         ConsumeCodePoint();
-        cur = PeekCodePoint();
+        cur = CurrentCodePoint();
     };
     next();
     while (cur != '"' && cur != '\n' && cur != '\0') {
@@ -660,19 +702,19 @@ Token Tokenizer::ParseStringLiteral()
     }
     if (cur != '"') {
         OnError("Unterminated string literal");
-        return MakeToken(TokenKind::Invalid);
+        return FinishToken(TokenKind::Invalid);
     }
     next();
-    return MakeToken(TokenKind::Literal_String);
+    return FinishToken(TokenKind::Literal_String);
 }
 
 Token Tokenizer::ParseRawStringLiteral()
 {
-    auto cur = PeekCodePoint();
+    auto cur = CurrentCodePoint();
     ASSERT(cur == '"');
     auto next = [&] {
         ConsumeCodePoint();
-        cur = PeekCodePoint();
+        cur = CurrentCodePoint();
     };
     next();
 
@@ -685,7 +727,7 @@ Token Tokenizer::ParseRawStringLiteral()
 
     if (cur != '(') {
         OnError("Unterminated raw string literal");
-        return MakeToken(TokenKind::Invalid);
+        return FinishToken(TokenKind::Invalid);
     }
 
     delimiter.push_back('"');
@@ -720,25 +762,25 @@ Token Tokenizer::ParseRawStringLiteral()
 
     if (cur == '\0') {
         OnError("Unterminated raw string literal");
-        return MakeToken(TokenKind::Invalid);
+        return FinishToken(TokenKind::Invalid);
     }
     next();
-    return MakeToken(TokenKind::Literal_String);
+    return FinishToken(TokenKind::Literal_String);
 }
 
 Token Tokenizer::ParseNumber()
 {
     TokenKind kind = TokenKind::Invalid;
-    auto cur = PeekCodePoint();
+    auto cur = CurrentCodePoint();
     ASSERT(IsDigit(cur));
     ConsumeCodePoint();
     int parsedDigits = 1;
     auto prev = cur;
-    cur = PeekCodePoint();
+    cur = CurrentCodePoint();
     auto next = [&] {
         ConsumeCodePoint();
         prev = cur;
-        cur = PeekCodePoint();
+        cur = CurrentCodePoint();
     };
     if (prev == '0') {
         switch (cur) {
@@ -839,20 +881,20 @@ Token Tokenizer::ParseNumber()
             }
             ConsumeCodePoint();
             prev = cur;
-            cur = PeekCodePoint();
+            cur = CurrentCodePoint();
         }
         if (prev == '\'') {
             OnError(
                 "Digit separator cannot appear at the end of "
                 "decimal integer literal");
-            return MakeToken(TokenKind::Invalid);
+            return FinishToken(TokenKind::Invalid);
         }
     }
 
     constexpr static auto validSuffixes = std::to_array(
         {"", "u", "ul", "ull", "uz", "l", "lu", "ll", "llu", "z", "zu"});
 
-    auto suffixStart = Consumed_.size();
+    size_t suffixStart = CurrentTokenText().size();
 
     if (IsIdStart(cur)) {
         next();
@@ -862,58 +904,58 @@ Token Tokenizer::ParseNumber()
     }
 
     if (kind == TokenKind::Invalid) {
-        return MakeToken(kind);
+        return FinishToken(kind);
     }
 
-    auto suffix = std::string(Consumed_.begin() + suffixStart, Consumed_.end());
+    auto suffix = std::string(CurrentTokenText().substr(suffixStart));
     for (char& c : suffix) {
         c = std::tolower(c);
     }
 
     if (!std::ranges::contains(validSuffixes, suffix)) {
-        return MakeToken(TokenKind::Literal_UserDefinedInteger);
+        return FinishToken(TokenKind::Literal_UserDefinedInteger);
     }
-    return MakeToken(kind);
+    return FinishToken(kind);
 }
 
 Token Tokenizer::ParseInlineComment()
 {
-    auto cur = PeekCodePoint();
+    auto cur = CurrentCodePoint();
     ASSERT(cur == '/');
     ConsumeCodePoint();
-    cur = PeekCodePoint();
+    cur = CurrentCodePoint();
     while (cur != '\n' && cur != '\0') {
         ConsumeCodePoint();
-        cur = PeekCodePoint();
+        cur = CurrentCodePoint();
     }
-    return MakeToken(TokenKind::Comment);
+    return FinishToken(TokenKind::Comment);
 }
 
 Token Tokenizer::ParseMultilineComment()
 {
-    auto cur = PeekCodePoint();
+    auto cur = CurrentCodePoint();
     ASSERT(cur == '*');
     ConsumeCodePoint();
-    cur = PeekCodePoint();
+    cur = CurrentCodePoint();
     while (cur != '\0') {
         if (cur == '*') {
             ConsumeCodePoint();
-            cur = PeekCodePoint();
+            cur = CurrentCodePoint();
             if (cur == '/') {
                 ConsumeCodePoint();
                 break;
             }
         } else {
             ConsumeCodePoint();
-            cur = PeekCodePoint();
+            cur = CurrentCodePoint();
         }
     }
 
     if (cur == '\0') {
         OnError("Unterminated multiline comment");
-        return MakeToken(TokenKind::Invalid);
+        return FinishToken(TokenKind::Invalid);
     }
-    return MakeToken(TokenKind::Comment);
+    return FinishToken(TokenKind::Comment);
 }
 
 void Tokenizer::OnError(TokenizationError error)
@@ -932,9 +974,9 @@ void Tokenizer::OnError(std::string error)
 {
     OnError({
         .Message = std::move(error),
-        .TokenStart = TokenStart_,
-        .ErrorPosition = Stream_->GetPosition(),
-        .TokenEnd = Stream_->GetPosition(),
+        .TokenStart = CurrentTokenPosition_,
+        .ErrorPosition = CurrentCodePointPosition_,
+        .TokenEnd = CurrentCodePointPosition_,
     });
 }
 

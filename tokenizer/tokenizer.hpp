@@ -24,27 +24,31 @@ class Tokenizer
 {
 public:
     explicit inline Tokenizer(
-        util::NonNullPtr<unicode::utf8::Stream> stream,
+        const std::string& input,
         std::move_only_function<void(TokenizationError)> errorHandler = {})
-        : Stream_(stream)
+        : Input_(input)
         , ErrorHandler_(std::move(errorHandler))
     { }
 
     Token Get();
 
 private:
-    unicode::CodePoint PeekCodePoint();
-    unicode::CodePoint Next_ = '\0';
+    unicode::CodePoint CurrentCodePoint();
+    size_t CurrentCodePointOffset_ = 0;
+    util::Position CurrentCodePointPosition_ = {.Line = 1, .Column = 1};
+    std::optional<unicode::utf8::CodePointWithSize> Current_;
 
-    unicode::CodePoint LastConsumed();
-    void ConsumeCodePoint();
-    Token MakeToken(TokenKind kind);
+    void ConsumeCodePoint(bool skippingNewLine = false);
 
-    util::Position TokenStart_;
-    std::string Consumed_;
+    std::string_view CurrentTokenText() const;
+    util::Position CurrentTokenPosition_;
+    size_t CurrentTokenOffset_ = 0;
+    size_t CurrentTokenSize_ = 0;
+    Token FinishToken(TokenKind kind);
+
+    // unicode::utf8::CodePointWithSize GetCodePoint();
 
     void SkipWhitespace();
-    unicode::CodePoint GetCodePoint();
     Token ParseIdentifier();
     Token ParseCharacterLiteral();
     Token ParseStringLiteral();
@@ -56,10 +60,11 @@ private:
     void OnError(TokenizationError error);
     void OnError(std::string error);
 
-    util::NonNullPtr<unicode::utf8::Stream> Stream_;
+    std::string_view Input_;
+
     std::move_only_function<void(TokenizationError)> ErrorHandler_;
 
-    bool IsFileStart_ = true;
+    bool IsFileStart() const;
     bool IsNewLine_ = true;
     bool InsidePreprocessingDirective_ = false;
     bool InsideRawString_ = false;

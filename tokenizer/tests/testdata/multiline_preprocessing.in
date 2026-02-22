@@ -1,5 +1,6 @@
 #define FOO(bar) \
     if ((bar)) { \
+        int a##bar = 3; \
         std::cout << "bar"; \
     } else { \
         std::cout << "baz"; \

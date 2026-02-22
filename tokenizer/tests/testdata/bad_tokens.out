@@ -2,7 +2,6 @@ Ln 1, Col 1: int int
 Ln 1, Col 5: identifier a
 Ln 1, Col 7: op= =
 Ln 1, Col 9: int 1
-Ln 1, Col 13: invalid \
 Ln 1, Col 13: int 3
 Ln 1, Col 14: op; ;
 Ln 2, Col 1: int int
