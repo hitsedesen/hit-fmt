@@ -13,8 +13,7 @@ namespace tokenizer {
 #define TOKEN_KINDS                                                            \
     TOKEN_KIND(Invalid, "invalid")                                             \
     TOKEN_KIND(EndOfFile, "eof")                                               \
-    TOKEN_KIND(Hash, "op#")                                                    \
-    TOKEN_KIND(HashHash, "op##")                                               \
+    TOKEN_KIND(PreprocessingDirective, "pp")                                   \
     TOKEN_KIND(Comment, "comment")                                             \
     TOKEN_KIND(Identifier, "identifier")                                       \
     TOKEN_KIND(Literal_UserDefinedInteger, "user_integer")                     \

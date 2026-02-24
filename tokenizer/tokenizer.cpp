@@ -98,7 +98,6 @@ void Tokenizer::ConsumeCodePoint(bool skippingNewLine)
         CurrentCodePointPosition_.Column = 1;
         if (!skippingNewLine) {
             IsNewLine_ = true;
-            InsidePreprocessingDirective_ = false;
         }
     } else {
         CurrentCodePointPosition_.Column++;
@@ -130,32 +129,18 @@ Token Tokenizer::Get()
         return FinishToken(TokenKind::EndOfFile);
     }
 
-    bool preprocessing = IsNewLine_ || InsidePreprocessingDirective_;
-
     switch (cur) {
     case '#':
         {
-            ConsumeCodePoint();
-            cur = CurrentCodePoint();
-            if (cur == '#') {
+            if (!IsNewLine_) {
                 ConsumeCodePoint();
-                if (!preprocessing) {
-                    OnError(
-                        "Operator ## can only appear inside a preprocessing "
-                        "directive");
-                    return FinishToken(TokenKind::Invalid);
-                }
-                InsidePreprocessingDirective_ = true;
-                return FinishToken(TokenKind::HashHash);
-            }
-            if (!preprocessing) {
                 OnError(
-                    "Operator # can only appear inside a preprocessing "
-                    "directive");
+                    std::format(
+                        "Unexpected token {}",
+                        unicode::utf8::FromCodePoint(cur)));
                 return FinishToken(TokenKind::Invalid);
             }
-            InsidePreprocessingDirective_ = true;
-            return FinishToken(TokenKind::Hash);
+            return ParsePreprocessingDirective();
         }
     case '{':
         ConsumeCodePoint();
@@ -303,22 +288,10 @@ Token Tokenizer::Get()
                 ConsumeCodePoint();
                 return FinishToken(TokenKind::Operator_RemainderAssign);
             }
-            if (preprocessing) {
+            if (IsNewLine_) {
                 if (cur == ':') {
                     ConsumeCodePoint();
-                    cur = CurrentCodePoint();
-                    if (cur == '%') {
-                        ConsumeCodePoint();
-                        cur = CurrentCodePoint();
-                        if (cur == ':') {
-                            ConsumeCodePoint();
-                            return FinishToken(TokenKind::HashHash);
-                        } else {
-                            OnError("Unfinished %:%: operator");
-                            return FinishToken(TokenKind::Invalid);
-                        }
-                    }
-                    return FinishToken(TokenKind::Hash);
+                    return ParsePreprocessingDirective();
                 }
             }
             return FinishToken(TokenKind::Operator_Remainder);
@@ -451,7 +424,7 @@ Token Tokenizer::Get()
                 ConsumeCodePoint();
                 OnError(
                     std::format(
-                        "Unexpected character {}",
+                        "Unexpected token {}",
                         unicode::utf8::FromCodePoint(cur)));
                 return FinishToken(TokenKind::Invalid);
             }
@@ -464,25 +437,34 @@ bool Tokenizer::IsFileStart() const
     return CurrentCodePointOffset_ == 0;
 }
 
+bool Tokenizer::TrySkipNewline()
+{
+    while (IsWhitespace(CurrentCodePoint()) && CurrentCodePoint() != '\n') {
+        ConsumeCodePoint();
+    }
+    if (CurrentCodePoint() == '\n') {
+        ConsumeCodePoint(/*skippingNewLine*/ true);
+        return true;
+    }
+    return false;
+}
+
 void Tokenizer::SkipWhitespace()
 {
-start_skip_whitespace:
-    while (IsWhitespace(CurrentCodePoint())
-           || (IsFileStart()
-               && CurrentCodePoint() == unicode::utf8::ByteOrderMark))
-    {
-        ConsumeCodePoint();
-    }
-    if (!InsideRawString_ && CurrentCodePoint() == '\\') {
-        ConsumeCodePoint();
-        while (IsWhitespace(CurrentCodePoint()) && CurrentCodePoint() != '\n') {
+    bool skippedNewline = false;
+    do {
+        while (IsWhitespace(CurrentCodePoint())
+               || (IsFileStart()
+                   && CurrentCodePoint() == unicode::utf8::ByteOrderMark))
+        {
             ConsumeCodePoint();
         }
-        if (CurrentCodePoint() == '\n') {
-            ConsumeCodePoint(/*skippingNewLine*/ true);
-            goto start_skip_whitespace;
+        if (CurrentCodePoint() == '\\') {
+            ConsumeCodePoint();
+            skippedNewline = TrySkipNewline();
         }
     }
+    while (skippedNewline);
 }
 
 namespace {
@@ -703,8 +685,6 @@ Token Tokenizer::ParseRawStringLiteral()
 
     long long delimiterPos = -1;
 
-    InsideRawString_ = true;
-
     next();
 
     while (cur != '\0') {
@@ -726,8 +706,6 @@ Token Tokenizer::ParseRawStringLiteral()
         }
         next();
     }
-
-    InsideRawString_ = false;
 
     if (cur == '\0') {
         OnError("Unterminated raw string literal");
@@ -925,6 +903,21 @@ Token Tokenizer::ParseMultilineComment()
         return FinishToken(TokenKind::Invalid);
     }
     return FinishToken(TokenKind::Comment);
+}
+
+Token Tokenizer::ParsePreprocessingDirective()
+{
+    auto cur = CurrentCodePoint();
+    ASSERT(cur == '#' || CurrentTokenText() == "%:");
+    while (cur != '\0' && cur != '\n') {
+        ConsumeCodePoint();
+        cur = CurrentCodePoint();
+        if (cur == '\\') {
+            ConsumeCodePoint();
+            TrySkipNewline();
+        }
+    }
+    return FinishToken(TokenKind::PreprocessingDirective);
 }
 
 void Tokenizer::OnError(TokenizationError error)

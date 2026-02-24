@@ -1,36 +1,7 @@
-Ln 1, Col 1: op# #
-Ln 1, Col 2: identifier define
-Ln 1, Col 9: identifier FOO
-Ln 1, Col 12: op( (
-Ln 1, Col 13: identifier bar
-Ln 1, Col 16: op) )
-Ln 2, Col 5: if if
-Ln 2, Col 8: op( (
-Ln 2, Col 9: op( (
-Ln 2, Col 10: identifier bar
-Ln 2, Col 13: op) )
-Ln 2, Col 14: op) )
-Ln 2, Col 16: op{ {
-Ln 3, Col 9: int int
-Ln 3, Col 13: identifier a
-Ln 3, Col 14: op## ##
-Ln 3, Col 16: identifier bar
-Ln 3, Col 20: op= =
-Ln 3, Col 22: int 3
-Ln 3, Col 23: op; ;
-Ln 4, Col 9: identifier std
-Ln 4, Col 12: op:: ::
-Ln 4, Col 14: identifier cout
-Ln 4, Col 19: op<< <<
-Ln 4, Col 22: str "bar"
-Ln 4, Col 27: op; ;
-Ln 5, Col 5: op} }
-Ln 5, Col 7: else else
-Ln 5, Col 12: op{ {
-Ln 6, Col 9: identifier std
-Ln 6, Col 12: op:: ::
-Ln 6, Col 14: identifier cout
-Ln 6, Col 19: op<< <<
-Ln 6, Col 22: str "baz"
-Ln 6, Col 27: op; ;
-Ln 7, Col 5: op} }
+Ln 1, Col 1: pp #define FOO(bar) \
+    if ((bar)) { \
+        int a##bar = 3; \
+        std::cout << "bar"; \
+    } else { \
+        std::cout << "baz"; \
+    }

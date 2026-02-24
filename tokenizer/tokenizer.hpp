@@ -43,6 +43,7 @@ private:
     Token FinishToken(TokenKind kind);
 
     void SkipWhitespace();
+    bool TrySkipNewline();
     Token ParseIdentifier();
     Token ParseCharacterLiteral();
     Token ParseStringLiteral();
@@ -50,6 +51,7 @@ private:
     Token ParseNumber();
     Token ParseInlineComment();
     Token ParseMultilineComment();
+    Token ParsePreprocessingDirective();
 
     void OnError(TokenizationError error);
     void OnError(std::string error);
@@ -60,8 +62,6 @@ private:
 
     bool IsFileStart() const;
     bool IsNewLine_ = true;
-    bool InsidePreprocessingDirective_ = false;
-    bool InsideRawString_ = false;
 };
 
 } // namespace tokenizer

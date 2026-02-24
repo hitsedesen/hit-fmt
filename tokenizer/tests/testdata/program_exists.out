@@ -1,18 +1,6 @@
-Ln 1, Col 1: op# #
-Ln 1, Col 2: identifier include
-Ln 1, Col 10: op< <
-Ln 1, Col 11: identifier iostream
-Ln 1, Col 19: op> >
-Ln 2, Col 1: op# #
-Ln 2, Col 2: identifier include
-Ln 2, Col 10: op< <
-Ln 2, Col 11: identifier format
-Ln 2, Col 17: op> >
-Ln 3, Col 1: op# #
-Ln 3, Col 2: identifier include
-Ln 3, Col 10: op< <
-Ln 3, Col 11: identifier filesystem
-Ln 3, Col 21: op> >
+Ln 1, Col 1: pp #include <iostream>
+Ln 2, Col 1: pp #include <format>
+Ln 3, Col 1: pp #include <filesystem>
 Ln 5, Col 1: comment // A comment.
 Ln 6, Col 1: comment /*
     A multiline comment
