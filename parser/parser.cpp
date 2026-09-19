@@ -306,13 +306,13 @@ bool IsTypeKeyword(TK kind)
 
 } // namespace
 
-Ast::Ast(std::string_view input)
+SyntaxTree::SyntaxTree(std::string_view input)
     : Input_(input)
     , Tokens_(Memory_)
     , Trivia_(Memory_)
 { }
 
-Ast::Ast(Ast&& other) noexcept
+SyntaxTree::SyntaxTree(SyntaxTree&& other) noexcept
     : Memory_(std::move(other.Memory_))
     , Input_(other.Input_)
     , Tokens_(std::move(other.Tokens_), Memory_)
@@ -320,7 +320,7 @@ Ast::Ast(Ast&& other) noexcept
     , Root_(std::exchange(other.Root_, nullptr))
 { }
 
-Ast& Ast::operator=(Ast&& other) noexcept
+SyntaxTree& SyntaxTree::operator=(SyntaxTree&& other) noexcept
 {
     if (this != &other) {
         Memory_ = std::move(other.Memory_);
@@ -332,25 +332,25 @@ Ast& Ast::operator=(Ast&& other) noexcept
     return *this;
 }
 
-Ast::~Ast() = default;
+SyntaxTree::~SyntaxTree() = default;
 
-const Node& Ast::Root() const
+const Node& SyntaxTree::Root() const
 {
     ASSERT(Root_)
     return *Root_;
 }
 
-std::string_view Ast::Source() const
+std::string_view SyntaxTree::Source() const
 {
     return Input_;
 }
 
-TokenIndex Ast::TokenCount() const
+TokenIndex SyntaxTree::TokenCount() const
 {
     return Tokens_.Size();
 }
 
-tokenizer::Token Ast::Token(TokenIndex index) const
+tokenizer::Token SyntaxTree::Token(TokenIndex index) const
 {
     return {
         .Kind = Kind(index),
@@ -359,12 +359,12 @@ tokenizer::Token Ast::Token(TokenIndex index) const
     };
 }
 
-tokenizer::TokenKind Ast::Kind(TokenIndex index) const
+tokenizer::TokenKind SyntaxTree::Kind(TokenIndex index) const
 {
     return Tokens_.Kind(index);
 }
 
-util::Position Ast::TokenPosition(TokenIndex index) const
+util::Position SyntaxTree::TokenPosition(TokenIndex index) const
 {
     const auto& token = Tokens_[index];
     auto tokenBegin = static_cast<size_t>(token.Text.Begin);
@@ -391,17 +391,17 @@ util::Position Ast::TokenPosition(TokenIndex index) const
     return {.Line = token.Line, .Column = column};
 }
 
-std::string_view Ast::TokenText(TokenIndex index) const
+std::string_view SyntaxTree::TokenText(TokenIndex index) const
 {
     return Tokens_[index].Text.View(Input_);
 }
 
-PunctuationRole Ast::Role(TokenIndex index) const
+PunctuationRole SyntaxTree::Role(TokenIndex index) const
 {
     return Tokens_.Role(index);
 }
 
-const TriviaAttachments* Ast::AssociatedTrivia(const Node& node) const
+const TriviaAttachments* SyntaxTree::AssociatedTrivia(const Node& node) const
 {
     if (node.TriviaIndex_ == std::numeric_limits<uint32_t>::max()) {
         return nullptr;
@@ -409,7 +409,7 @@ const TriviaAttachments* Ast::AssociatedTrivia(const Node& node) const
     return &Trivia_[node.TriviaIndex_];
 }
 
-std::string_view Ast::SourceText(TokenRange range) const
+std::string_view SyntaxTree::SourceText(TokenRange range) const
 {
     ASSERT(range.Begin <= range.End && range.End <= TokenCount())
     if (range.Empty()) {
@@ -420,13 +420,13 @@ std::string_view Ast::SourceText(TokenRange range) const
     return Input_.substr(first.Begin, last.End - first.Begin);
 }
 
-std::string_view Ast::SourceText(SourceRange range) const
+std::string_view SyntaxTree::SourceText(SourceRange range) const
 {
     ASSERT(range.Begin <= range.End && range.End <= Input_.size())
     return Input_.substr(range.Begin, range.End - range.Begin);
 }
 
-std::string_view Ast::WhitespaceBefore(TokenIndex token) const
+std::string_view SyntaxTree::WhitespaceBefore(TokenIndex token) const
 {
     ASSERT(token < TokenCount())
     auto* begin = token == 0 ? Input_.data()
@@ -435,7 +435,7 @@ std::string_view Ast::WhitespaceBefore(TokenIndex token) const
     return {begin, static_cast<size_t>(end - begin)};
 }
 
-std::string_view Ast::WhitespaceAfter(TokenIndex token) const
+std::string_view SyntaxTree::WhitespaceAfter(TokenIndex token) const
 {
     ASSERT(token < TokenCount())
     auto* begin = Input_.data() + Tokens_[token].Text.End;
@@ -512,11 +512,11 @@ class ParseContext
     };
 
 public:
-    [[nodiscard]] static Ast
+    [[nodiscard]] static SyntaxTree
     Run(std::string_view input, ErrorHandler errorHandler);
 
-    ParseContext(Ast& ast, ErrorHandler& errorHandler)
-        : Ast_(ast)
+    ParseContext(SyntaxTree& tree, ErrorHandler& errorHandler)
+        : Tree_(tree)
         , ErrorHandler_(errorHandler)
         , DelimiterEnds_(ScratchMemory_)
     { }
@@ -524,18 +524,18 @@ public:
     void Build()
     {
         Tokenize();
-        Ast_.Tokens_.Seal();
+        Tree_.Tokens_.Seal();
         DelimiterEnds_.Seal();
-        ParseLimit_ = Ast_.Tokens_.Size();
+        ParseLimit_ = Tree_.Tokens_.Size();
         CurrentScope_ = ScratchMemory_.Make<NameScope>();
 
         auto* root = MakeNode(NodeKind::TranslationUnit, 0);
-        Ast_.Root_ = root;
+        Tree_.Root_ = root;
         ParseDeclarationSequence(*root, TK::EndOfFile);
         root->Tokens.End = Cursor_;
         AssociateComments(*root);
         AssociateBlankLines(*root);
-        Ast_.Trivia_.Seal();
+        Tree_.Trivia_.Seal();
     }
 
 private:
@@ -609,7 +609,7 @@ private:
     void Tokenize()
     {
         tokenizer::Tokenizer tokenizer(
-            Ast_.Input_, [this](tokenizer::TokenizationError error) {
+            Tree_.Input_, [this](tokenizer::TokenizationError error) {
                 OnError(
                     ParseError{
                         .Message = std::move(error.Message),
@@ -631,13 +631,13 @@ private:
             if (token.Kind == TK::EndOfFile) {
                 break;
             }
-            Ast_.Tokens_.Add(token);
+            Tree_.Tokens_.Add(token);
             auto* delimiterEnd = DelimiterEnds_.Add();
             if (!HasDelimiterMap_) {
                 continue;
             }
 
-            auto index = Ast_.Tokens_.Size() - 1;
+            auto index = Tree_.Tokens_.Size() - 1;
             if (index >= std::numeric_limits<uint32_t>::max()) {
                 HasDelimiterMap_ = false;
             } else if (IsOpenDelimiter(token.Kind)) {
@@ -668,7 +668,7 @@ private:
     {
         constexpr size_t NodesPerBlock = 256;
         if (RemainingNodes_ == 0) {
-            NextNode_ = static_cast<Node*>(Ast_.Memory_.Allocate(
+            NextNode_ = static_cast<Node*>(Tree_.Memory_.Allocate(
                 sizeof(Node) * NodesPerBlock, alignof(Node)));
             RemainingNodes_ = NodesPerBlock;
         }
@@ -754,18 +754,18 @@ private:
 
     [[nodiscard]] TK Kind(TokenIndex index) const
     {
-        if (index >= ParseLimit_ || index >= Ast_.Tokens_.Size()) {
+        if (index >= ParseLimit_ || index >= Tree_.Tokens_.Size()) {
             return TK::EndOfFile;
         }
-        return Ast_.Tokens_.Kind(index);
+        return Tree_.Tokens_.Kind(index);
     }
 
     [[nodiscard]] std::string_view Text(TokenIndex index) const
     {
-        if (index >= Ast_.Tokens_.Size()) {
+        if (index >= Tree_.Tokens_.Size()) {
             return {};
         }
-        return Ast_.Tokens_[index].Text.View(Ast_.Input_);
+        return Tree_.Tokens_[index].Text.View(Tree_.Input_);
     }
 
     [[nodiscard]] TK CurrentKind() const
@@ -802,9 +802,9 @@ private:
             return;
         }
         util::Position position{.Line = 1, .Column = 1};
-        if (Ast_.Tokens_.Size() != 0) {
+        if (Tree_.Tokens_.Size() != 0) {
             position =
-                Ast_.TokenPosition(std::min(index, Ast_.Tokens_.Size() - 1));
+                Tree_.TokenPosition(std::min(index, Tree_.Tokens_.Size() - 1));
         }
         OnError({.Message = std::move(message), .Position = position});
     }
@@ -829,9 +829,9 @@ private:
 
     void AddDirectiveChildren(Node& parent, TokenIndex begin, TokenIndex end)
     {
-        for (auto i = Ast_.Tokens_.FindPreprocessingDirective(begin, end);
+        for (auto i = Tree_.Tokens_.FindPreprocessingDirective(begin, end);
              i < end;
-             i = Ast_.Tokens_.FindPreprocessingDirective(i + 1, end))
+             i = Tree_.Tokens_.FindPreprocessingDirective(i + 1, end))
         {
             auto* directive = MakeNode(NodeKind::PreprocessingDirective, i);
             directive->Tokens.End = i + 1;
@@ -1228,7 +1228,7 @@ private:
 
     [[nodiscard]] TokenIndex FindBalancedEnd(TokenIndex opening) const
     {
-        if (HasDelimiterMap_ && opening < Ast_.Tokens_.Size()) {
+        if (HasDelimiterMap_ && opening < Tree_.Tokens_.Size()) {
             auto end = DelimiterEnds_[opening];
             if (end != 0) {
                 return end;
@@ -1238,7 +1238,7 @@ private:
         constexpr size_t MaximumDepth = 256;
         std::array<TK, MaximumDepth> closings;
         size_t depth = 0;
-        for (auto i = opening; i < Ast_.Tokens_.Size(); ++i) {
+        for (auto i = opening; i < Tree_.Tokens_.Size(); ++i) {
             auto kind = Kind(i);
             if (IsOpenDelimiter(kind)) {
                 if (depth == MaximumDepth) {
@@ -1323,7 +1323,7 @@ private:
                 return MacroConstruct::Block;
             }
             if (macroStyle
-                && (opening >= Ast_.Tokens_.Size()
+                && (opening >= Tree_.Tokens_.Size()
                     || SourceLine(opening) > SourceLine(first)))
             {
                 return MacroConstruct::Invocation;
@@ -1343,7 +1343,7 @@ private:
                 ? MacroConstruct::Block
                 : MacroConstruct::None;
         }
-        if (IsMacroStyleIdentifier(first) && next < Ast_.Tokens_.Size()
+        if (IsMacroStyleIdentifier(first) && next < Tree_.Tokens_.Size()
             && SourceLine(next) > SourceLine(end - 1))
         {
             return MacroConstruct::Invocation;
@@ -1356,7 +1356,7 @@ private:
         {
             return MacroConstruct::None;
         }
-        if (next < Ast_.Tokens_.Size()
+        if (next < Tree_.Tokens_.Size()
             && SourceLine(next) <= SourceLine(end - 1))
         {
             return MacroConstruct::None;
@@ -1836,7 +1836,7 @@ private:
             auto name = FindDeclaredTypeName(
                 declaration->Tokens.Begin,
                 declaration->Kind == NodeKind::EnumDeclaration);
-            if (name < Ast_.Tokens_.Size()) {
+            if (name < Tree_.Tokens_.Size()) {
                 AddName(Text(name), NameKind::Type);
             }
         } else if (
@@ -1920,7 +1920,7 @@ private:
         {
             index = NextSignificant(index + 1);
         }
-        while (index < Ast_.Tokens_.Size()) {
+        while (index < Tree_.Tokens_.Size()) {
             if (Kind(index) == TK::Identifier) {
                 if (Text(index) == "__attribute__"
                     || Text(index) == "__declspec")
@@ -1939,7 +1939,7 @@ private:
             if (Kind(index) == TK::Operator_OpenBracket) {
                 auto end = FindBalancedEnd(index);
                 if (end == std::numeric_limits<TokenIndex>::max()) {
-                    return Ast_.Tokens_.Size();
+                    return Tree_.Tokens_.Size();
                 }
                 index = NextSignificant(end);
                 continue;
@@ -1951,7 +1951,7 @@ private:
             }
             index = NextSignificant(index + 1);
         }
-        return Ast_.Tokens_.Size();
+        return Tree_.Tokens_.Size();
     }
 
     Node* ParseNamespaceDeclaration()
@@ -1988,7 +1988,7 @@ private:
         auto typeName = FindDeclaredTypeName(start);
         auto* node = MakeNode(NodeKind::RecordDeclaration, start);
         bool sawBaseClause = false;
-        size_t baseClauseBegin = Ast_.Tokens_.Size();
+        size_t baseClauseBegin = Tree_.Tokens_.Size();
         int angleDepth = 0;
         while (!AtEnd() && CurrentKind() != TK::Operator_Semicolon
                && CurrentKind() != TK::Operator_CloseBrace)
@@ -2034,7 +2034,7 @@ private:
                 ++Cursor_;
             }
         }
-        if (baseClauseBegin < Ast_.Tokens_.Size()) {
+        if (baseClauseBegin < Tree_.Tokens_.Size()) {
             auto* bases = MakeNode(NodeKind::BaseClause, baseClauseBegin);
             bases->Tokens.End = Cursor_;
             AddSeparatedElements(
@@ -2042,12 +2042,12 @@ private:
             Append(*node, *bases);
         }
         if (CurrentKind() == TK::Operator_OpenBrace) {
-            if (typeName < Ast_.Tokens_.Size()) {
+            if (typeName < Tree_.Tokens_.Size()) {
                 AddName(Text(typeName), NameKind::Type);
             }
             ++Cursor_;
             PushScope();
-            if (typeName < Ast_.Tokens_.Size()) {
+            if (typeName < Tree_.Tokens_.Size()) {
                 AddName(Text(typeName), NameKind::Type);
             }
             ParseDeclarationSequence(*node, TK::Operator_CloseBrace);
@@ -2067,7 +2067,7 @@ private:
         }
         if (CurrentKind() == TK::Operator_Semicolon) {
             ++Cursor_;
-            if (!node->FirstChild && typeName < Ast_.Tokens_.Size()) {
+            if (!node->FirstChild && typeName < Tree_.Tokens_.Size()) {
                 AddName(Text(typeName), NameKind::Type);
             }
         } else {
@@ -2083,7 +2083,7 @@ private:
     {
         auto start = Cursor_;
         auto typeName = FindDeclaredTypeName(start, true);
-        if (typeName < Ast_.Tokens_.Size()) {
+        if (typeName < Tree_.Tokens_.Size()) {
             AddName(Text(typeName), NameKind::Type);
         }
         auto* node = MakeNode(NodeKind::EnumDeclaration, start);
@@ -3560,7 +3560,7 @@ private:
         AddDirectiveChildrenInGap(*node, start, Cursor_);
         Node* bodyParent = node;
         Node* tryBlock = nullptr;
-        if (functionTry < Ast_.Tokens_.Size()) {
+        if (functionTry < Tree_.Tokens_.Size()) {
             tryBlock = MakeNode(NodeKind::FunctionTryBlock, functionTry);
             bodyParent = tryBlock;
         }
@@ -3777,11 +3777,11 @@ private:
     void AddForHeaderSyntax(Node& header, size_t begin, size_t end)
     {
         std::array<size_t, 2> semicolons{
-            Ast_.Tokens_.Size(),
-            Ast_.Tokens_.Size(),
+            Tree_.Tokens_.Size(),
+            Tree_.Tokens_.Size(),
         };
         size_t semicolonCount = 0;
-        size_t rangeColon = Ast_.Tokens_.Size();
+        size_t rangeColon = Tree_.Tokens_.Size();
         int delimiterDepth = 0;
         int conditionalDepth = 0;
         for (auto i = begin; i < end; ++i) {
@@ -5017,9 +5017,9 @@ private:
     {
         Node* previous = nullptr;
         auto* child = parent.FirstChild;
-        for (auto i = Ast_.Tokens_.FindPreprocessingDirective(begin, end);
+        for (auto i = Tree_.Tokens_.FindPreprocessingDirective(begin, end);
              i < end;
-             i = Ast_.Tokens_.FindPreprocessingDirective(i + 1, end))
+             i = Tree_.Tokens_.FindPreprocessingDirective(i + 1, end))
         {
             while (child && child->Tokens.End <= i) {
                 previous = child;
@@ -5047,9 +5047,9 @@ private:
     TriviaAttachments& EnsureTriviaAttachments(Node& node)
     {
         if (node.TriviaIndex_ == std::numeric_limits<uint32_t>::max()) {
-            node.TriviaIndex_ = Ast_.Trivia_.Add();
+            node.TriviaIndex_ = Tree_.Trivia_.Add();
         }
-        return Ast_.Trivia_[node.TriviaIndex_];
+        return Tree_.Trivia_[node.TriviaIndex_];
     }
 
     enum class TriviaPlacement
@@ -5091,10 +5091,10 @@ private:
             list = &attachments.Dangling;
             break;
         }
-        auto text = Ast_.Tokens_[token].Text.View(Ast_.Input_);
+        auto text = Tree_.Tokens_[token].Text.View(Tree_.Input_);
         auto sourceBegin =
-            static_cast<SourceOffset>(text.data() - Ast_.Input_.data());
-        auto* trivia = Ast_.Memory_.Make<Trivia>(Trivia{
+            static_cast<SourceOffset>(text.data() - Tree_.Input_.data());
+        auto* trivia = Tree_.Memory_.Make<Trivia>(Trivia{
             .Kind = TriviaKind::Comment,
             .Tokens = {.Begin = token, .End = token + 1},
             .Source =
@@ -5129,8 +5129,8 @@ private:
             break;
         }
         auto sourceBegin =
-            static_cast<SourceOffset>(whitespace.data() - Ast_.Input_.data());
-        auto* trivia = Ast_.Memory_.Make<Trivia>(Trivia{
+            static_cast<SourceOffset>(whitespace.data() - Tree_.Input_.data());
+        auto* trivia = Tree_.Memory_.Make<Trivia>(Trivia{
             .Kind = TriviaKind::Whitespace,
             .Tokens = {.Begin = token, .End = token},
             .Source =
@@ -5155,7 +5155,7 @@ private:
 
     [[nodiscard]] uint32_t SourceLine(TokenIndex token) const
     {
-        return Ast_.Tokens_[token].Line;
+        return Tree_.Tokens_[token].Line;
     }
 
     void AssociateCommentRange(
@@ -5165,8 +5165,8 @@ private:
         Node* previous,
         Node* next)
     {
-        for (auto i = Ast_.Tokens_.FindComment(begin, end); i < end;
-             i = Ast_.Tokens_.FindComment(i + 1, end))
+        for (auto i = Tree_.Tokens_.FindComment(begin, end); i < end;
+             i = Tree_.Tokens_.FindComment(i + 1, end))
         {
             if (previous && !previous->Tokens.Empty()
                 && SourceLine(previous->Tokens.End - 1) == SourceLine(i))
@@ -5182,7 +5182,7 @@ private:
 
     void AssociateComments(Node& node)
     {
-        if (Ast_.Tokens_.FindComment(node.Tokens.Begin, node.Tokens.End)
+        if (Tree_.Tokens_.FindComment(node.Tokens.Begin, node.Tokens.End)
             == node.Tokens.End)
         {
             return;
@@ -5243,10 +5243,10 @@ private:
 
     void MarkRangeRole(TokenIndex begin, TokenIndex end, PunctuationRole role)
     {
-        end = std::min(end, Ast_.Tokens_.Size());
+        end = std::min(end, Tree_.Tokens_.Size());
         for (auto i = begin; i < end; ++i) {
-            if (Ast_.Tokens_.Role(i) != PunctuationRole::None) {
-                Ast_.Tokens_.SetRole(i, role);
+            if (Tree_.Tokens_.Role(i) != PunctuationRole::None) {
+                Tree_.Tokens_.SetRole(i, role);
             }
         }
     }
@@ -5257,8 +5257,8 @@ private:
         if (!node.Tokens.Empty() && Kind(node.Tokens.Begin) == openingKind
             && Kind(node.Tokens.End - 1) == closingKind)
         {
-            Ast_.Tokens_.SetRole(node.Tokens.Begin, role);
-            Ast_.Tokens_.SetRole(node.Tokens.End - 1, role);
+            Tree_.Tokens_.SetRole(node.Tokens.Begin, role);
+            Tree_.Tokens_.SetRole(node.Tokens.End - 1, role);
             return;
         }
         for (auto i = node.Tokens.Begin; i < node.Tokens.End; ++i) {
@@ -5269,8 +5269,8 @@ private:
             if (closingEnd <= node.Tokens.End && closingEnd > i
                 && Kind(closingEnd - 1) == closingKind)
             {
-                Ast_.Tokens_.SetRole(i, role);
-                Ast_.Tokens_.SetRole(closingEnd - 1, role);
+                Tree_.Tokens_.SetRole(i, role);
+                Tree_.Tokens_.SetRole(closingEnd - 1, role);
                 return;
             }
         }
@@ -5283,12 +5283,13 @@ private:
         case NodeKind::MemberPointerOperator:
             for (auto i = node.Tokens.Begin; i < node.Tokens.End; ++i) {
                 if (Kind(i) == TK::Operator_Star) {
-                    Ast_.Tokens_.SetRole(i, PunctuationRole::PointerDeclarator);
+                    Tree_.Tokens_.SetRole(
+                        i, PunctuationRole::PointerDeclarator);
                 } else if (
                     Kind(i) == TK::Operator_Ampersand
                     || Kind(i) == TK::Operator_And)
                 {
-                    Ast_.Tokens_.SetRole(
+                    Tree_.Tokens_.SetRole(
                         i, PunctuationRole::ReferenceDeclarator);
                 }
             }
@@ -5330,7 +5331,7 @@ private:
                         role = PunctuationRole::ShiftOperator;
                     }
                     if (GetBinaryOperatorInfo(kind).Precedence != 0) {
-                        Ast_.Tokens_.SetRole(i, role);
+                        Tree_.Tokens_.SetRole(i, role);
                     }
                 }
             }
@@ -5340,7 +5341,7 @@ private:
                 if (Kind(i) == TK::Operator_Conditional
                     || Kind(i) == TK::Operator_Colon)
                 {
-                    Ast_.Tokens_.SetRole(
+                    Tree_.Tokens_.SetRole(
                         i, PunctuationRole::ConditionalDelimiter);
                 }
             }
@@ -5352,7 +5353,7 @@ private:
                 std::min(node.Tokens.Begin + 1, node.Tokens.End),
                 PunctuationRole::TemplateDelimiter);
             if (!node.Tokens.Empty()) {
-                Ast_.Tokens_.SetRole(
+                Tree_.Tokens_.SetRole(
                     node.Tokens.End - 1, PunctuationRole::TemplateDelimiter);
             }
             break;
@@ -5364,19 +5365,19 @@ private:
             break;
         case NodeKind::BaseClause:
             if (!node.Tokens.Empty()) {
-                Ast_.Tokens_.SetRole(
+                Tree_.Tokens_.SetRole(
                     node.Tokens.Begin, PunctuationRole::BaseDelimiter);
             }
             break;
         case NodeKind::BitField:
             if (!node.Tokens.Empty()) {
-                Ast_.Tokens_.SetRole(
+                Tree_.Tokens_.SetRole(
                     node.Tokens.Begin, PunctuationRole::BitFieldDelimiter);
             }
             break;
         case NodeKind::ConstructorInitializerList:
             if (!node.Tokens.Empty()) {
-                Ast_.Tokens_.SetRole(
+                Tree_.Tokens_.SetRole(
                     node.Tokens.Begin,
                     PunctuationRole::ConstructorInitializerDelimiter);
             }
@@ -5392,7 +5393,7 @@ private:
         case NodeKind::AccessSpecifier:
             for (auto i = node.Tokens.Begin; i < node.Tokens.End; ++i) {
                 if (Kind(i) == TK::Operator_Colon) {
-                    Ast_.Tokens_.SetRole(i, PunctuationRole::LabelDelimiter);
+                    Tree_.Tokens_.SetRole(i, PunctuationRole::LabelDelimiter);
                 }
             }
             break;
@@ -5536,7 +5537,7 @@ private:
             {
                 if (!child->Tokens.Empty()) {
                     auto whitespace =
-                        Ast_.WhitespaceBefore(child->Tokens.Begin);
+                        Tree_.WhitespaceBefore(child->Tokens.Begin);
                     if (ContainsBlankLine(whitespace)) {
                         auto* target = child->Kind == NodeKind::Comment
                             ? NextSyntaxSibling(child->NextSibling)
@@ -5563,7 +5564,7 @@ private:
                 if (closingKind == TK::Operator_CloseBrace
                     || closingKind == TK::Operator_CloseBracket)
                 {
-                    auto whitespace = Ast_.WhitespaceBefore(closing);
+                    auto whitespace = Tree_.WhitespaceBefore(closing);
                     if (ContainsBlankLine(whitespace)) {
                         AttachWhitespace(
                             node,
@@ -5573,9 +5574,9 @@ private:
                     }
                 } else if (
                     node.Kind == NodeKind::TranslationUnit
-                    && node.Tokens.End == Ast_.Tokens_.Size())
+                    && node.Tokens.End == Tree_.Tokens_.Size())
                 {
-                    auto whitespace = Ast_.WhitespaceAfter(closing);
+                    auto whitespace = Tree_.WhitespaceAfter(closing);
                     if (ContainsBlankLine(whitespace)) {
                         AttachWhitespace(
                             node,
@@ -5595,7 +5596,7 @@ private:
         }
     }
 
-    Ast& Ast_;
+    SyntaxTree& Tree_;
     ErrorHandler& ErrorHandler_;
     detail::Arena ScratchMemory_;
     DelimiterMap DelimiterEnds_;
@@ -5612,15 +5613,15 @@ private:
     bool HasDelimiterMap_ = true;
 };
 
-Ast ParseContext::Run(std::string_view input, ErrorHandler errorHandler)
+SyntaxTree ParseContext::Run(std::string_view input, ErrorHandler errorHandler)
 {
-    Ast ast(input);
-    ParseContext context(ast, errorHandler);
+    SyntaxTree tree(input);
+    ParseContext context(tree, errorHandler);
     context.Build();
-    return ast;
+    return tree;
 }
 
-Ast Parse(std::string_view input, ErrorHandler errorHandler)
+SyntaxTree Parse(std::string_view input, ErrorHandler errorHandler)
 {
     return ParseContext::Run(input, std::move(errorHandler));
 }

@@ -29,11 +29,11 @@ const Node* FindChild(const Node& parent, NodeKind kind)
     return nullptr;
 }
 
-size_t CountRoles(const parser::Ast& ast, parser::PunctuationRole role)
+size_t CountRoles(const parser::SyntaxTree& tree, parser::PunctuationRole role)
 {
     size_t count = 0;
-    for (size_t i = 0; i < ast.TokenCount(); ++i) {
-        count += ast.Role(i) == role;
+    for (size_t i = 0; i < tree.TokenCount(); ++i) {
+        count += tree.Role(i) == role;
     }
     return count;
 }
@@ -105,7 +105,7 @@ void AppendQuoted(std::string& output, std::string_view text)
 
 void AppendTokens(
     std::string& output,
-    const parser::Ast& ast,
+    const parser::SyntaxTree& tree,
     size_t begin,
     size_t end,
     size_t depth)
@@ -118,13 +118,16 @@ void AppendTokens(
         if (index != begin) {
             output.push_back(' ');
         }
-        AppendQuoted(output, ast.TokenText(index));
+        AppendQuoted(output, tree.TokenText(index));
     }
     output.push_back('\n');
 }
 
 void AppendSExpression(
-    std::string& output, const parser::Ast& ast, const Node& node, size_t depth)
+    std::string& output,
+    const parser::SyntaxTree& tree,
+    const Node& node,
+    size_t depth)
 {
     AppendIndent(output, depth);
     output.push_back('(');
@@ -133,7 +136,7 @@ void AppendSExpression(
     if (!node.FirstChild) {
         for (auto index = node.Tokens.Begin; index < node.Tokens.End; ++index) {
             output.push_back(' ');
-            AppendQuoted(output, ast.TokenText(index));
+            AppendQuoted(output, tree.TokenText(index));
         }
         output += ")\n";
         return;
@@ -144,19 +147,19 @@ void AppendSExpression(
     for (auto* child = node.FirstChild; child; child = child->NextSibling) {
         auto childBegin =
             std::clamp(child->Tokens.Begin, node.Tokens.Begin, node.Tokens.End);
-        AppendTokens(output, ast, cursor, childBegin, depth + 1);
-        AppendSExpression(output, ast, *child, depth + 1);
+        AppendTokens(output, tree, cursor, childBegin, depth + 1);
+        AppendSExpression(output, tree, *child, depth + 1);
         cursor = std::max(cursor, std::min(child->Tokens.End, node.Tokens.End));
     }
-    AppendTokens(output, ast, cursor, node.Tokens.End, depth + 1);
+    AppendTokens(output, tree, cursor, node.Tokens.End, depth + 1);
     AppendIndent(output, depth);
     output += ")\n";
 }
 
-std::string Serialize(const parser::Ast& ast)
+std::string Serialize(const parser::SyntaxTree& tree)
 {
     std::string output;
-    AppendSExpression(output, ast, ast.Root(), 0);
+    AppendSExpression(output, tree, tree.Root(), 0);
     return output;
 }
 
@@ -179,10 +182,10 @@ TEST_P(ParserGoldenTest, MatchesSExpression)
     const auto input =
         ReadFile(std::format("./testdata/{}.in", GetParam().Name));
     std::vector<parser::ParseError> errors;
-    auto ast = parser::Parse(input, [&](parser::ParseError error) {
+    auto tree = parser::Parse(input, [&](parser::ParseError error) {
         errors.push_back(std::move(error));
     });
-    auto actual = Serialize(ast);
+    auto actual = Serialize(tree);
     auto outputPath = std::format("./testdata/{}.out", GetParam().Name);
     auto expected = ReadGoldenFile(outputPath);
 
@@ -231,52 +234,52 @@ void empty()
 }
 )cpp";
 
-    auto ast = parser::Parse(Source);
-    const auto* declaration = FindChild(ast.Root(), NodeKind::Declaration);
+    auto tree = parser::Parse(Source);
+    const auto* declaration = FindChild(tree.Root(), NodeKind::Declaration);
     ASSERT_NE(declaration, nullptr);
-    auto* declarationTrivia = ast.AssociatedTrivia(*declaration);
+    auto* declarationTrivia = tree.AssociatedTrivia(*declaration);
     ASSERT_NE(declarationTrivia, nullptr);
     ASSERT_NE(declarationTrivia->Leading.First, nullptr);
     ASSERT_NE(declarationTrivia->Trailing.First, nullptr);
     auto* leadingWhitespace = declarationTrivia->Leading.First;
     ASSERT_EQ(leadingWhitespace->Kind, parser::TriviaKind::Whitespace);
-    EXPECT_EQ(ast.SourceText(leadingWhitespace->Source), "\n\n");
+    EXPECT_EQ(tree.SourceText(leadingWhitespace->Source), "\n\n");
     ASSERT_NE(leadingWhitespace->Next, nullptr);
     EXPECT_EQ(
-        ast.TokenText(leadingWhitespace->Next->Tokens.Begin),
+        tree.TokenText(leadingWhitespace->Next->Tokens.Begin),
         "// leading declaration");
     EXPECT_EQ(
-        ast.TokenText(declarationTrivia->Trailing.First->Tokens.Begin),
+        tree.TokenText(declarationTrivia->Trailing.First->Tokens.Begin),
         "// trailing declaration");
 
-    const auto* function = FindChild(ast.Root(), NodeKind::FunctionDefinition);
+    const auto* function = FindChild(tree.Root(), NodeKind::FunctionDefinition);
     ASSERT_NE(function, nullptr);
     const auto* body = FindChild(*function, NodeKind::CompoundStatement);
     ASSERT_NE(body, nullptr);
-    auto* bodyTrivia = ast.AssociatedTrivia(*body);
+    auto* bodyTrivia = tree.AssociatedTrivia(*body);
     ASSERT_NE(bodyTrivia, nullptr);
     ASSERT_NE(bodyTrivia->Dangling.First, nullptr);
     auto* danglingWhitespace = bodyTrivia->Dangling.First;
     ASSERT_EQ(danglingWhitespace->Kind, parser::TriviaKind::Whitespace);
-    EXPECT_EQ(ast.SourceText(danglingWhitespace->Source), "\n\n    ");
+    EXPECT_EQ(tree.SourceText(danglingWhitespace->Source), "\n\n    ");
     ASSERT_NE(danglingWhitespace->Next, nullptr);
     EXPECT_EQ(
-        ast.TokenText(danglingWhitespace->Next->Tokens.Begin),
+        tree.TokenText(danglingWhitespace->Next->Tokens.Begin),
         "// dangling in empty body");
 
     size_t intToken = 0;
     size_t semicolonToken = 0;
-    for (size_t i = 0; i < ast.TokenCount(); ++i) {
-        if (ast.TokenText(i) == "int") {
+    for (size_t i = 0; i < tree.TokenCount(); ++i) {
+        if (tree.TokenText(i) == "int") {
             intToken = i;
-        } else if (ast.TokenText(i) == ";") {
+        } else if (tree.TokenText(i) == ";") {
             semicolonToken = i;
         }
     }
-    EXPECT_EQ(ast.WhitespaceBefore(intToken), "\n");
-    EXPECT_EQ(ast.WhitespaceAfter(semicolonToken), " ");
+    EXPECT_EQ(tree.WhitespaceBefore(intToken), "\n");
+    EXPECT_EQ(tree.WhitespaceAfter(semicolonToken), " ");
 
-    auto moved = std::move(ast);
+    auto moved = std::move(tree);
     auto* movedTrivia = moved.AssociatedTrivia(*declaration);
     ASSERT_NE(movedTrivia, nullptr);
     EXPECT_EQ(
@@ -295,24 +298,24 @@ struct Derived : Base<T> {
 };
 )cpp";
 
-    auto ast = parser::Parse(Source);
-    for (size_t i = 0; i < ast.TokenCount(); ++i) {
-        auto kind = ast.Kind(i);
+    auto tree = parser::Parse(Source);
+    for (size_t i = 0; i < tree.TokenCount(); ++i) {
+        auto kind = tree.Kind(i);
         if (kind >= tokenizer::TokenKind::Operator_OpenBrace
             && kind <= tokenizer::TokenKind::Operator_Comma)
         {
-            EXPECT_NE(ast.Role(i), parser::PunctuationRole::None);
+            EXPECT_NE(tree.Role(i), parser::PunctuationRole::None);
         }
     }
-    EXPECT_GE(CountRoles(ast, parser::PunctuationRole::TemplateDelimiter), 2);
-    EXPECT_GE(CountRoles(ast, parser::PunctuationRole::BaseDelimiter), 1);
-    EXPECT_GE(CountRoles(ast, parser::PunctuationRole::PointerDeclarator), 1);
-    EXPECT_GE(CountRoles(ast, parser::PunctuationRole::ComparisonOperator), 1);
-    EXPECT_GE(CountRoles(ast, parser::PunctuationRole::UnaryOperator), 1);
-    EXPECT_GE(CountRoles(ast, parser::PunctuationRole::ShiftOperator), 1);
+    EXPECT_GE(CountRoles(tree, parser::PunctuationRole::TemplateDelimiter), 2);
+    EXPECT_GE(CountRoles(tree, parser::PunctuationRole::BaseDelimiter), 1);
+    EXPECT_GE(CountRoles(tree, parser::PunctuationRole::PointerDeclarator), 1);
+    EXPECT_GE(CountRoles(tree, parser::PunctuationRole::ComparisonOperator), 1);
+    EXPECT_GE(CountRoles(tree, parser::PunctuationRole::UnaryOperator), 1);
+    EXPECT_GE(CountRoles(tree, parser::PunctuationRole::ShiftOperator), 1);
     EXPECT_GE(
-        CountRoles(ast, parser::PunctuationRole::ConditionalDelimiter), 2);
-    EXPECT_GE(CountRoles(ast, parser::PunctuationRole::BlockDelimiter), 2);
+        CountRoles(tree, parser::PunctuationRole::ConditionalDelimiter), 2);
+    EXPECT_GE(CountRoles(tree, parser::PunctuationRole::BlockDelimiter), 2);
 }
 
 TEST(Parser, HandlesDeepCompoundNesting)
@@ -324,12 +327,12 @@ TEST(Parser, HandlesDeepCompoundNesting)
     source.append(Depth + 1, '}');
 
     size_t errors = 0;
-    auto ast = parser::Parse(source, [&](parser::ParseError) {
+    auto tree = parser::Parse(source, [&](parser::ParseError) {
         ++errors;
     });
 
     EXPECT_EQ(errors, 0);
-    EXPECT_GT(ast.TokenCount(), Depth * 2);
+    EXPECT_GT(tree.TokenCount(), Depth * 2);
 }
 
 } // namespace

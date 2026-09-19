@@ -14,10 +14,10 @@ bool HasParseErrors(std::span<const std::string_view> sources)
 {
     bool hasErrors = false;
     for (auto source : sources) {
-        auto ast = parser::Parse(source, [&](parser::ParseError) {
+        auto tree = parser::Parse(source, [&](parser::ParseError) {
             hasErrors = true;
         });
-        auto rootKind = ast.Root().Kind;
+        auto rootKind = tree.Root().Kind;
         benchmark::DoNotOptimize(rootKind);
     }
     return hasErrors;
@@ -39,10 +39,10 @@ void RunParser(
     int64_t processedTokens = 0;
     for (auto _ : state) {
         for (auto source : sources) {
-            auto ast = parser::Parse(source);
-            auto* firstChild = ast.Root().FirstChild;
+            auto tree = parser::Parse(source);
+            auto* firstChild = tree.Root().FirstChild;
             benchmark::DoNotOptimize(firstChild);
-            processedTokens += static_cast<int64_t>(ast.TokenCount());
+            processedTokens += static_cast<int64_t>(tree.TokenCount());
         }
     }
 
