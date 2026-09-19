@@ -11,6 +11,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED TRUE)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
 option(HIT_FMT_TEST NO)
+option(HIT_FMT_BENCHMARK "Build benchmarks" OFF)
 
 if(HIT_FMT_TEST)
     enable_testing()
