@@ -3,9 +3,12 @@
 #include <gtest/gtest.h>
 
 #include <algorithm>
+#include <array>
+#include <cstdint>
 #include <cstdlib>
 #include <format>
 #include <fstream>
+#include <memory_resource>
 #include <optional>
 #include <sstream>
 #include <stdexcept>
@@ -293,6 +296,39 @@ void empty()
     EXPECT_EQ(
         assigned.TokenText(assignedTrivia->Trailing.First->Tokens.Begin),
         "// trailing declaration");
+}
+
+TEST(SegmentedStorage, IndexesChunksBeforeAndAfterSealing)
+{
+    constexpr uint16_t ItemsPerChunk = 3;
+
+    struct Chunk
+    {
+        Chunk* Next = nullptr;
+        uint16_t Size = 0;
+        std::array<int, ItemsPerChunk> Items;
+    };
+
+    std::pmr::monotonic_buffer_resource memory;
+    parser::detail::SegmentedStorage<Chunk, ItemsPerChunk> storage(memory);
+    for (uint32_t i = 0; i < 8; ++i) {
+        auto slot = storage.Append();
+        EXPECT_EQ(slot.Index, i);
+        EXPECT_EQ(slot.Offset, i % ItemsPerChunk);
+        slot.ChunkPtr->Items[slot.Offset] = static_cast<int>(i);
+    }
+
+    for (uint32_t i = 0; i < storage.Size(); ++i) {
+        auto* chunk = storage.ChunkAtDuringBuild(i / ItemsPerChunk);
+        EXPECT_EQ(chunk->Items[i % ItemsPerChunk], static_cast<int>(i));
+    }
+
+    storage.Seal();
+    auto moved = std::move(storage);
+    for (uint32_t i = 0; i < moved.Size(); ++i) {
+        auto* chunk = moved.ChunkAt(i / ItemsPerChunk);
+        EXPECT_EQ(chunk->Items[i % ItemsPerChunk], static_cast<int>(i));
+    }
 }
 
 TEST(Parser, ClassifiesContextualPunctuation)

@@ -15,98 +15,15 @@
 
 namespace parser {
 
-detail::TriviaPool::TriviaPool(std::pmr::memory_resource& memory)
-    : Memory_(&memory)
-{ }
-
-detail::TriviaPool::TriviaPool(TriviaPool&& other) noexcept
-{
-    MoveFrom(std::move(other));
-}
-
-void detail::TriviaPool::MoveFrom(TriviaPool&& other) noexcept
-{
-    Memory_ = std::exchange(other.Memory_, nullptr);
-    First_ = std::exchange(other.First_, nullptr);
-    Last_ = std::exchange(other.Last_, nullptr);
-    Chunks_ = std::exchange(other.Chunks_, nullptr);
-    ChunkCount_ = std::exchange(other.ChunkCount_, 0);
-    Size_ = std::exchange(other.Size_, 0);
-}
-
-uint32_t detail::TriviaPool::Add()
-{
-    if (!Last_ || Last_->Size == AttachmentsPerChunk) {
-        auto* chunk = detail::Make<Chunk>(*Memory_);
-        if (Last_) {
-            Last_->Next = chunk;
-        } else {
-            First_ = chunk;
-        }
-        Last_ = chunk;
-        ++ChunkCount_;
-    }
-    auto index = Size_++;
-    ++Last_->Size;
-    return index;
-}
-
-void detail::TriviaPool::Seal()
-{
-    if (ChunkCount_ == 0) {
-        return;
-    }
-    Chunks_ = static_cast<Chunk**>(
-        Memory_->allocate(sizeof(Chunk*) * ChunkCount_, alignof(Chunk*)));
-    auto* chunk = First_;
-    for (size_t i = 0; i < ChunkCount_; ++i) {
-        Chunks_[i] = chunk;
-        chunk = chunk->Next;
-    }
-}
-
-detail::TokenPool::TokenPool(std::pmr::memory_resource& memory)
-    : Memory_(&memory)
-{ }
-
-detail::TokenPool::TokenPool(TokenPool&& other) noexcept
-{
-    MoveFrom(std::move(other));
-}
-
-void detail::TokenPool::MoveFrom(TokenPool&& other) noexcept
-{
-    Memory_ = std::exchange(other.Memory_, nullptr);
-    First_ = std::exchange(other.First_, nullptr);
-    Last_ = std::exchange(other.Last_, nullptr);
-    Chunks_ = std::exchange(other.Chunks_, nullptr);
-    ChunkCount_ = std::exchange(other.ChunkCount_, 0);
-    Size_ = std::exchange(other.Size_, 0);
-}
-
-void detail::TokenPool::Seal()
-{
-    if (ChunkCount_ == 0) {
-        return;
-    }
-    Chunks_ = static_cast<Chunk**>(
-        Memory_->allocate(sizeof(Chunk*) * ChunkCount_, alignof(Chunk*)));
-    auto* chunk = First_;
-    for (size_t i = 0; i < ChunkCount_; ++i) {
-        Chunks_[i] = chunk;
-        chunk = chunk->Next;
-    }
-}
-
 TokenIndex detail::TokenPool::FindPreprocessingDirective(
     TokenIndex begin, TokenIndex end) const
 {
-    ASSERT(begin <= end && end <= Size_)
+    ASSERT(begin <= end && end <= Storage_.Size())
     while (begin < end) {
         auto chunkIndex = begin / TokensPerChunk;
         auto offset = begin % TokensPerChunk;
         auto count = std::min(end - begin, TokensPerChunk - offset);
-        auto* chunk = Chunks_[chunkIndex];
+        auto* chunk = Storage_.ChunkAt(chunkIndex);
         if (chunk->HasPreprocessingDirective) {
             for (TokenIndex i = offset; i < offset + count; ++i) {
                 if (chunk->Kinds[i]
@@ -124,12 +41,12 @@ TokenIndex detail::TokenPool::FindPreprocessingDirective(
 TokenIndex
 detail::TokenPool::FindComment(TokenIndex begin, TokenIndex end) const
 {
-    ASSERT(begin <= end && end <= Size_)
+    ASSERT(begin <= end && end <= Storage_.Size())
     while (begin < end) {
         auto chunkIndex = begin / TokensPerChunk;
         auto offset = begin % TokensPerChunk;
         auto count = std::min(end - begin, TokensPerChunk - offset);
-        auto* chunk = Chunks_[chunkIndex];
+        auto* chunk = Storage_.ChunkAt(chunkIndex);
         if (chunk->HasComment) {
             for (TokenIndex i = offset; i < offset + count; ++i) {
                 if (chunk->Kinds[i] == tokenizer::TokenKind::Comment) {
@@ -380,52 +297,7 @@ class ParseContext
 {
     class DelimiterMap
     {
-    public:
-        explicit DelimiterMap(std::pmr::memory_resource& memory)
-            : Memory_(&memory)
-        { }
-
-        uint32_t* Add()
-        {
-            if (!Last_ || Last_->Size == EntriesPerChunk) {
-                auto* chunk = detail::MakeDefaultInitialized<Chunk>(*Memory_);
-                if (Last_) {
-                    Last_->Next = chunk;
-                } else {
-                    First_ = chunk;
-                }
-                Last_ = chunk;
-                ++ChunkCount_;
-            }
-            auto offset = Last_->Size++;
-            Last_->Entries[offset] = 0;
-            ++Size_;
-            return &Last_->Entries[offset];
-        }
-
-        void Seal()
-        {
-            if (ChunkCount_ == 0) {
-                return;
-            }
-            Chunks_ = static_cast<Chunk**>(Memory_->allocate(
-                sizeof(Chunk*) * ChunkCount_, alignof(Chunk*)));
-            auto* chunk = First_;
-            for (size_t i = 0; i < ChunkCount_; ++i) {
-                Chunks_[i] = chunk;
-                chunk = chunk->Next;
-            }
-        }
-
-        [[nodiscard]] uint32_t operator[](TokenIndex index) const
-        {
-            ASSERT(index < Size_)
-            return Chunks_[index / EntriesPerChunk]
-                ->Entries[index % EntriesPerChunk];
-        }
-
-    private:
-        static constexpr TokenIndex EntriesPerChunk = 512;
+        static constexpr uint16_t EntriesPerChunk = 512;
 
         struct Chunk
         {
@@ -434,12 +306,32 @@ class ParseContext
             std::array<uint32_t, EntriesPerChunk> Entries;
         };
 
-        std::pmr::memory_resource* Memory_;
-        Chunk* First_ = nullptr;
-        Chunk* Last_ = nullptr;
-        Chunk** Chunks_ = nullptr;
-        uint32_t ChunkCount_ = 0;
-        TokenIndex Size_ = 0;
+    public:
+        explicit DelimiterMap(std::pmr::memory_resource& memory)
+            : Storage_(memory)
+        { }
+
+        uint32_t* Add()
+        {
+            auto slot = Storage_.Append();
+            slot.ChunkPtr->Entries[slot.Offset] = 0;
+            return &slot.ChunkPtr->Entries[slot.Offset];
+        }
+
+        void Seal()
+        {
+            Storage_.Seal();
+        }
+
+        [[nodiscard]] uint32_t operator[](TokenIndex index) const
+        {
+            ASSERT(index < Storage_.Size())
+            return Storage_.ChunkAt(index / EntriesPerChunk)
+                ->Entries[index % EntriesPerChunk];
+        }
+
+    private:
+        detail::SegmentedStorage<Chunk, EntriesPerChunk> Storage_;
     };
 
 public:
