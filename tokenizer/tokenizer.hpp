@@ -32,33 +32,13 @@ public:
 private:
     unicode::CodePoint CurrentCodePoint()
     {
-        if (CurrentCodePointSize_ == UnloadedCodePoint) {
-            if (CurrentCodePointOffset_ >= Input_.size()) {
-                CurrentCodePointValue_ = '\0';
-                CurrentCodePointSize_ = 0;
-            } else {
-                auto firstByte =
-                    static_cast<unsigned char>(Input_[CurrentCodePointOffset_]);
-                if (firstByte < 0x80) [[likely]] {
-                    CurrentCodePointValue_ = static_cast<char32_t>(firstByte);
-                    CurrentCodePointSize_ = 1;
-                } else {
-                    auto first = unicode::utf8::GetFirstCodePoint(
-                        Input_.substr(CurrentCodePointOffset_));
-                    if (!first) {
-                        OnError("Invalid UTF8 code point");
-                        CurrentCodePointValue_ =
-                            static_cast<char32_t>(firstByte);
-                        CurrentCodePointSize_ = 1;
-                    } else {
-                        CurrentCodePointValue_ = first->Value;
-                        CurrentCodePointSize_ = first->Size;
-                    }
-                }
-            }
+        if (CurrentCodePointSize_ != UnloadedCodePoint) [[likely]] {
+            return CurrentCodePointValue_;
         }
-        return CurrentCodePointValue_;
+        return LoadCurrentCodePoint();
     }
+
+    unicode::CodePoint LoadCurrentCodePoint();
 
     static constexpr size_t UnloadedCodePoint =
         std::numeric_limits<size_t>::max();

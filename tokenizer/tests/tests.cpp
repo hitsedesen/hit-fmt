@@ -88,8 +88,8 @@ TokenizeAndSerialize(const std::string& input)
     std::vector<std::string> tokens;
     auto token = tokenizer.Get();
     while (token.Kind != TokenKind::EndOfFile) {
-        result +=
-            std::format("{}: {} {}\n", token.Position, token.Kind, token.Text);
+        result += std::format(
+            "{}: {} {}\n", token.Position, token.Kind, token.Text.View(input));
         token = tokenizer.Get();
     }
     return {std::move(result), std::move(errors)};
@@ -211,7 +211,8 @@ TEST(Tokenizer, KeepsMultilineMacroWithBlockCommentTogether)
     ASSERT_GT(tokens.size(), 1);
     EXPECT_EQ(tokens[0].Kind, TokenKind::PreprocessingDirective);
     EXPECT_EQ(
-        tokens[0].Text, "#define VALUE(x) x /* comment\ncontinued */\\\n + 1");
+        tokens[0].Text.View(Source),
+        "#define VALUE(x) x /* comment\ncontinued */\\\n + 1");
 }
 
 TEST(Tokenizer, KeepsRawStringsInsidePreprocessingDirectives)
@@ -223,7 +224,8 @@ TEST(Tokenizer, KeepsRawStringsInsidePreprocessingDirectives)
     ASSERT_GT(tokens.size(), 1);
     EXPECT_EQ(tokens[0].Kind, TokenKind::PreprocessingDirective);
     EXPECT_EQ(
-        tokens[0].Text, "#define DOCUMENT R\"(first line\nsecond line)\"");
+        tokens[0].Text.View(Source),
+        "#define DOCUMENT R\"(first line\nsecond line)\"");
 }
 
 TEST(Tokenizer, AppliesLessColonColonLexingException)
@@ -242,4 +244,21 @@ TEST(Tokenizer, ConsumesIncrementAndDecrementOperators)
     ASSERT_GE(tokens.size(), 4);
     EXPECT_EQ(tokens[0].Kind, TokenKind::Operator_Increment);
     EXPECT_EQ(tokens[3].Kind, TokenKind::Operator_Decrement);
+}
+
+TEST(Tokenizer, CalculatesTokenPositionsFromSource)
+{
+    constexpr std::string_view Source = "\xCE\xB1 beta\n  gamma";
+    auto tokens = Tokenize(Source);
+
+    ASSERT_EQ(tokens.size(), 3);
+    auto first = tokens[0].Position;
+    auto second = tokens[1].Position;
+    auto third = tokens[2].Position;
+    EXPECT_EQ(first.Line, 1);
+    EXPECT_EQ(first.Column, 1);
+    EXPECT_EQ(second.Line, 1);
+    EXPECT_EQ(second.Column, 3);
+    EXPECT_EQ(third.Line, 2);
+    EXPECT_EQ(third.Column, 3);
 }
