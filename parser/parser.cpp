@@ -85,6 +85,57 @@ void* detail::Arena::Allocate(size_t size, size_t alignment)
     return reinterpret_cast<void*>(aligned);
 }
 
+detail::TriviaPool::TriviaPool(Arena& arena)
+    : Arena_(&arena)
+{ }
+
+detail::TriviaPool::TriviaPool(TriviaPool&& other, Arena& arena) noexcept
+    : Arena_(&arena)
+{
+    MoveFrom(std::move(other), arena);
+}
+
+void detail::TriviaPool::MoveFrom(TriviaPool&& other, Arena& arena) noexcept
+{
+    Arena_ = &arena;
+    First_ = std::exchange(other.First_, nullptr);
+    Last_ = std::exchange(other.Last_, nullptr);
+    Chunks_ = std::exchange(other.Chunks_, nullptr);
+    ChunkCount_ = std::exchange(other.ChunkCount_, 0);
+    Size_ = std::exchange(other.Size_, 0);
+}
+
+uint32_t detail::TriviaPool::Add()
+{
+    if (!Last_ || Last_->Size == AttachmentsPerChunk) {
+        auto* chunk = Arena_->Make<Chunk>();
+        if (Last_) {
+            Last_->Next = chunk;
+        } else {
+            First_ = chunk;
+        }
+        Last_ = chunk;
+        ++ChunkCount_;
+    }
+    auto index = Size_++;
+    ++Last_->Size;
+    return index;
+}
+
+void detail::TriviaPool::Seal()
+{
+    if (ChunkCount_ == 0) {
+        return;
+    }
+    Chunks_ = static_cast<Chunk**>(
+        Arena_->Allocate(sizeof(Chunk*) * ChunkCount_, alignof(Chunk*)));
+    auto* chunk = First_;
+    for (size_t i = 0; i < ChunkCount_; ++i) {
+        Chunks_[i] = chunk;
+        chunk = chunk->Next;
+    }
+}
+
 detail::TokenPool::TokenPool(Arena& arena)
     : Arena_(&arena)
 { }
@@ -258,12 +309,14 @@ bool IsTypeKeyword(TK kind)
 Ast::Ast(std::string_view input)
     : Input_(input)
     , Tokens_(Memory_)
+    , Trivia_(Memory_)
 { }
 
 Ast::Ast(Ast&& other) noexcept
     : Memory_(std::move(other.Memory_))
     , Input_(other.Input_)
     , Tokens_(std::move(other.Tokens_), Memory_)
+    , Trivia_(std::move(other.Trivia_), Memory_)
     , Root_(std::exchange(other.Root_, nullptr))
 { }
 
@@ -273,6 +326,7 @@ Ast& Ast::operator=(Ast&& other) noexcept
         Memory_ = std::move(other.Memory_);
         Input_ = other.Input_;
         Tokens_.MoveFrom(std::move(other.Tokens_), Memory_);
+        Trivia_.MoveFrom(std::move(other.Trivia_), Memory_);
         Root_ = std::exchange(other.Root_, nullptr);
     }
     return *this;
@@ -347,6 +401,14 @@ PunctuationRole Ast::Role(TokenIndex index) const
     return Tokens_.Role(index);
 }
 
+const TriviaAttachments* Ast::AssociatedTrivia(const Node& node) const
+{
+    if (node.TriviaIndex_ == std::numeric_limits<uint32_t>::max()) {
+        return nullptr;
+    }
+    return &Trivia_[node.TriviaIndex_];
+}
+
 std::string_view Ast::SourceText(TokenRange range) const
 {
     ASSERT(range.Begin <= range.End && range.End <= TokenCount())
@@ -385,6 +447,70 @@ std::string_view Ast::WhitespaceAfter(TokenIndex token) const
 
 class ParseContext
 {
+    class DelimiterMap
+    {
+    public:
+        explicit DelimiterMap(detail::Arena& arena)
+            : Arena_(&arena)
+        { }
+
+        uint32_t* Add()
+        {
+            if (!Last_ || Last_->Size == EntriesPerChunk) {
+                auto* chunk = Arena_->MakeDefaultInitialized<Chunk>();
+                if (Last_) {
+                    Last_->Next = chunk;
+                } else {
+                    First_ = chunk;
+                }
+                Last_ = chunk;
+                ++ChunkCount_;
+            }
+            auto offset = Last_->Size++;
+            Last_->Entries[offset] = 0;
+            ++Size_;
+            return &Last_->Entries[offset];
+        }
+
+        void Seal()
+        {
+            if (ChunkCount_ == 0) {
+                return;
+            }
+            Chunks_ = static_cast<Chunk**>(Arena_->Allocate(
+                sizeof(Chunk*) * ChunkCount_, alignof(Chunk*)));
+            auto* chunk = First_;
+            for (size_t i = 0; i < ChunkCount_; ++i) {
+                Chunks_[i] = chunk;
+                chunk = chunk->Next;
+            }
+        }
+
+        [[nodiscard]] uint32_t operator[](TokenIndex index) const
+        {
+            ASSERT(index < Size_)
+            return Chunks_[index / EntriesPerChunk]
+                ->Entries[index % EntriesPerChunk];
+        }
+
+    private:
+        static constexpr TokenIndex EntriesPerChunk = 512;
+
+        struct Chunk
+        {
+            Chunk* Next = nullptr;
+            uint16_t Size = 0;
+            std::array<uint32_t, EntriesPerChunk> Entries;
+        };
+
+        detail::Arena* Arena_;
+        Chunk* First_ = nullptr;
+        Chunk* Last_ = nullptr;
+        Chunk** Chunks_ = nullptr;
+        uint32_t ChunkCount_ = 0;
+        TokenIndex Size_ = 0;
+    };
+
 public:
     [[nodiscard]] static Ast
     Run(std::string_view input, ErrorHandler errorHandler);
@@ -392,14 +518,16 @@ public:
     ParseContext(Ast& ast, ErrorHandler& errorHandler)
         : Ast_(ast)
         , ErrorHandler_(errorHandler)
+        , DelimiterEnds_(ScratchMemory_)
     { }
 
     void Build()
     {
         Tokenize();
         Ast_.Tokens_.Seal();
+        DelimiterEnds_.Seal();
         ParseLimit_ = Ast_.Tokens_.Size();
-        CurrentScope_ = Ast_.Memory_.Make<NameScope>();
+        CurrentScope_ = ScratchMemory_.Make<NameScope>();
 
         auto* root = MakeNode(NodeKind::TranslationUnit, 0);
         Ast_.Root_ = root;
@@ -407,6 +535,7 @@ public:
         root->Tokens.End = Cursor_;
         AssociateComments(*root);
         AssociateBlankLines(*root);
+        Ast_.Trivia_.Seal();
     }
 
 private:
@@ -431,7 +560,7 @@ private:
 
     void PushScope()
     {
-        CurrentScope_ = Ast_.Memory_.Make<NameScope>(NameScope{
+        CurrentScope_ = ScratchMemory_.Make<NameScope>(NameScope{
             .Parent = CurrentScope_,
         });
     }
@@ -445,7 +574,7 @@ private:
     void AddName(std::string_view name, NameKind kind)
     {
         ASSERT(CurrentScope_)
-        auto* binding = Ast_.Memory_.Make<NameBinding>(NameBinding{
+        auto* binding = ScratchMemory_.Make<NameBinding>(NameBinding{
             .Name = name,
             .Kind = kind,
             .Next = CurrentScope_->Bindings,
@@ -502,7 +631,8 @@ private:
             if (token.Kind == TK::EndOfFile) {
                 break;
             }
-            auto* delimiterEnd = Ast_.Tokens_.Add(token);
+            Ast_.Tokens_.Add(token);
+            auto* delimiterEnd = DelimiterEnds_.Add();
             if (!HasDelimiterMap_) {
                 continue;
             }
@@ -542,10 +672,9 @@ private:
                 sizeof(Node) * NodesPerBlock, alignof(Node)));
             RemainingNodes_ = NodesPerBlock;
         }
-        auto* node = ::new (NextNode_++) Node{
-            .Kind = kind,
-            .Tokens = {.Begin = begin, .End = begin},
-        };
+        auto* node = ::new (NextNode_++) Node;
+        node->Kind = kind;
+        node->Tokens = {.Begin = begin, .End = begin};
         --RemainingNodes_;
         return node;
     }
@@ -610,7 +739,6 @@ private:
         if (NeedsPunctuationRole(child.Kind)) {
             MarkPunctuationRoles(child);
         }
-        child.Parent = &parent;
         if (parent.LastChild) {
             parent.LastChild->NextSibling = &child;
         } else {
@@ -715,7 +843,7 @@ private:
     {
         ASSERT(IsOpenDelimiter(CurrentKind()))
         if (HasDelimiterMap_) {
-            auto end = Ast_.Tokens_.DelimiterEnd(Cursor_);
+            auto end = DelimiterEnds_[Cursor_];
             if (end != 0 && end <= ParseLimit_) {
                 Cursor_ = end;
                 return Cursor_;
@@ -1101,7 +1229,7 @@ private:
     [[nodiscard]] TokenIndex FindBalancedEnd(TokenIndex opening) const
     {
         if (HasDelimiterMap_ && opening < Ast_.Tokens_.Size()) {
-            auto end = Ast_.Tokens_.DelimiterEnd(opening);
+            auto end = DelimiterEnds_[opening];
             if (end != 0) {
                 return end;
             }
@@ -1196,7 +1324,7 @@ private:
             }
             if (macroStyle
                 && (opening >= Ast_.Tokens_.Size()
-                    || Ast_.Tokens_[opening].Line > Ast_.Tokens_[first].Line))
+                    || SourceLine(opening) > SourceLine(first)))
             {
                 return MacroConstruct::Invocation;
             }
@@ -1216,7 +1344,7 @@ private:
                 : MacroConstruct::None;
         }
         if (IsMacroStyleIdentifier(first) && next < Ast_.Tokens_.Size()
-            && Ast_.Tokens_[next].Line > Ast_.Tokens_[end - 1].Line)
+            && SourceLine(next) > SourceLine(end - 1))
         {
             return MacroConstruct::Invocation;
         }
@@ -1229,7 +1357,7 @@ private:
             return MacroConstruct::None;
         }
         if (next < Ast_.Tokens_.Size()
-            && Ast_.Tokens_[next].Line <= Ast_.Tokens_[end - 1].Line)
+            && SourceLine(next) <= SourceLine(end - 1))
         {
             return MacroConstruct::None;
         }
@@ -4903,7 +5031,6 @@ private:
 
             auto* directive = MakeNode(NodeKind::PreprocessingDirective, i);
             directive->Tokens.End = i + 1;
-            directive->Parent = &parent;
             directive->NextSibling = child;
             if (previous) {
                 previous->NextSibling = directive;
@@ -4915,6 +5042,14 @@ private:
             }
             previous = directive;
         }
+    }
+
+    TriviaAttachments& EnsureTriviaAttachments(Node& node)
+    {
+        if (node.TriviaIndex_ == std::numeric_limits<uint32_t>::max()) {
+            node.TriviaIndex_ = Ast_.Trivia_.Add();
+        }
+        return Ast_.Trivia_[node.TriviaIndex_];
     }
 
     enum class TriviaPlacement
@@ -4929,9 +5064,6 @@ private:
         if (!list.First || trivia.Source.Begin < list.First->Source.Begin) {
             trivia.Next = list.First;
             list.First = &trivia;
-            if (!list.Last) {
-                list.Last = &trivia;
-            }
             return;
         }
         auto* previous = list.First;
@@ -4942,26 +5074,21 @@ private:
         }
         trivia.Next = previous->Next;
         previous->Next = &trivia;
-        if (!trivia.Next) {
-            list.Last = &trivia;
-        }
     }
 
     void AttachComment(Node& node, TokenIndex token, TriviaPlacement placement)
     {
-        if (!node.AssociatedTrivia) {
-            node.AssociatedTrivia = Ast_.Memory_.Make<TriviaAttachments>();
-        }
+        auto& attachments = EnsureTriviaAttachments(node);
         TriviaList* list = nullptr;
         switch (placement) {
         case TriviaPlacement::Leading:
-            list = &node.AssociatedTrivia->Leading;
+            list = &attachments.Leading;
             break;
         case TriviaPlacement::Trailing:
-            list = &node.AssociatedTrivia->Trailing;
+            list = &attachments.Trailing;
             break;
         case TriviaPlacement::Dangling:
-            list = &node.AssociatedTrivia->Dangling;
+            list = &attachments.Dangling;
             break;
         }
         auto text = Ast_.Tokens_[token].Text.View(Ast_.Input_);
@@ -4988,19 +5115,17 @@ private:
         if (whitespace.empty()) {
             return;
         }
-        if (!node.AssociatedTrivia) {
-            node.AssociatedTrivia = Ast_.Memory_.Make<TriviaAttachments>();
-        }
+        auto& attachments = EnsureTriviaAttachments(node);
         TriviaList* list = nullptr;
         switch (placement) {
         case TriviaPlacement::Leading:
-            list = &node.AssociatedTrivia->Leading;
+            list = &attachments.Leading;
             break;
         case TriviaPlacement::Trailing:
-            list = &node.AssociatedTrivia->Trailing;
+            list = &attachments.Trailing;
             break;
         case TriviaPlacement::Dangling:
-            list = &node.AssociatedTrivia->Dangling;
+            list = &attachments.Dangling;
             break;
         }
         auto sourceBegin =
@@ -5028,6 +5153,11 @@ private:
         return nullptr;
     }
 
+    [[nodiscard]] uint32_t SourceLine(TokenIndex token) const
+    {
+        return Ast_.Tokens_[token].Line;
+    }
+
     void AssociateCommentRange(
         Node& owner,
         TokenIndex begin,
@@ -5039,8 +5169,7 @@ private:
              i = Ast_.Tokens_.FindComment(i + 1, end))
         {
             if (previous && !previous->Tokens.Empty()
-                && Ast_.Tokens_[previous->Tokens.End - 1].Line
-                    == Ast_.Tokens_[i].Line)
+                && SourceLine(previous->Tokens.End - 1) == SourceLine(i))
             {
                 AttachComment(*previous, i, TriviaPlacement::Trailing);
             } else if (next) {
@@ -5468,6 +5597,8 @@ private:
 
     Ast& Ast_;
     ErrorHandler& ErrorHandler_;
+    detail::Arena ScratchMemory_;
+    DelimiterMap DelimiterEnds_;
     NameScope* CurrentScope_ = nullptr;
     Node* NextNode_ = nullptr;
     size_t RemainingNodes_ = 0;

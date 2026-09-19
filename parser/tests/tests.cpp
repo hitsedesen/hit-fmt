@@ -11,6 +11,7 @@
 #include <stdexcept>
 #include <string>
 #include <string_view>
+#include <utility>
 #include <vector>
 
 namespace {
@@ -233,10 +234,11 @@ void empty()
     auto ast = parser::Parse(Source);
     const auto* declaration = FindChild(ast.Root(), NodeKind::Declaration);
     ASSERT_NE(declaration, nullptr);
-    ASSERT_NE(declaration->AssociatedTrivia, nullptr);
-    ASSERT_NE(declaration->AssociatedTrivia->Leading.First, nullptr);
-    ASSERT_NE(declaration->AssociatedTrivia->Trailing.First, nullptr);
-    auto* leadingWhitespace = declaration->AssociatedTrivia->Leading.First;
+    auto* declarationTrivia = ast.AssociatedTrivia(*declaration);
+    ASSERT_NE(declarationTrivia, nullptr);
+    ASSERT_NE(declarationTrivia->Leading.First, nullptr);
+    ASSERT_NE(declarationTrivia->Trailing.First, nullptr);
+    auto* leadingWhitespace = declarationTrivia->Leading.First;
     ASSERT_EQ(leadingWhitespace->Kind, parser::TriviaKind::Whitespace);
     EXPECT_EQ(ast.SourceText(leadingWhitespace->Source), "\n\n");
     ASSERT_NE(leadingWhitespace->Next, nullptr);
@@ -244,17 +246,17 @@ void empty()
         ast.TokenText(leadingWhitespace->Next->Tokens.Begin),
         "// leading declaration");
     EXPECT_EQ(
-        ast.TokenText(
-            declaration->AssociatedTrivia->Trailing.First->Tokens.Begin),
+        ast.TokenText(declarationTrivia->Trailing.First->Tokens.Begin),
         "// trailing declaration");
 
     const auto* function = FindChild(ast.Root(), NodeKind::FunctionDefinition);
     ASSERT_NE(function, nullptr);
     const auto* body = FindChild(*function, NodeKind::CompoundStatement);
     ASSERT_NE(body, nullptr);
-    ASSERT_NE(body->AssociatedTrivia, nullptr);
-    ASSERT_NE(body->AssociatedTrivia->Dangling.First, nullptr);
-    auto* danglingWhitespace = body->AssociatedTrivia->Dangling.First;
+    auto* bodyTrivia = ast.AssociatedTrivia(*body);
+    ASSERT_NE(bodyTrivia, nullptr);
+    ASSERT_NE(bodyTrivia->Dangling.First, nullptr);
+    auto* danglingWhitespace = bodyTrivia->Dangling.First;
     ASSERT_EQ(danglingWhitespace->Kind, parser::TriviaKind::Whitespace);
     EXPECT_EQ(ast.SourceText(danglingWhitespace->Source), "\n\n    ");
     ASSERT_NE(danglingWhitespace->Next, nullptr);
@@ -273,6 +275,13 @@ void empty()
     }
     EXPECT_EQ(ast.WhitespaceBefore(intToken), "\n");
     EXPECT_EQ(ast.WhitespaceAfter(semicolonToken), " ");
+
+    auto moved = std::move(ast);
+    auto* movedTrivia = moved.AssociatedTrivia(*declaration);
+    ASSERT_NE(movedTrivia, nullptr);
+    EXPECT_EQ(
+        moved.TokenText(movedTrivia->Trailing.First->Tokens.Begin),
+        "// trailing declaration");
 }
 
 TEST(Parser, ClassifiesContextualPunctuation)

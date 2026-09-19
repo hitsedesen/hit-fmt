@@ -6,6 +6,7 @@
 #include <cassert>
 #include <cstddef>
 #include <cstdint>
+#include <limits>
 #include <new>
 #include <string_view>
 #include <utility>
@@ -180,12 +181,14 @@ struct TokenRange
     AST_NODE_KIND(RangeForSeparator, "range-for-separator")                    \
     AST_NODE_KIND(Error, "error")
 
-enum class NodeKind
+enum class NodeKind : uint8_t
 {
 #define AST_NODE_KIND(value, name) value,
     AST_NODE_KINDS
 #undef AST_NODE_KIND
 };
+
+static_assert(static_cast<size_t>(NodeKind::Error) < 256);
 
 [[nodiscard]] constexpr std::string_view GetNodeKindName(NodeKind kind)
 {
@@ -254,7 +257,6 @@ struct Trivia
 struct TriviaList
 {
     Trivia* First = nullptr;
-    Trivia* Last = nullptr;
 };
 
 struct TriviaAttachments
@@ -264,24 +266,33 @@ struct TriviaAttachments
     TriviaList Dangling;
 };
 
+static_assert(sizeof(TriviaAttachments) == 24);
+
 // Nodes and sibling links are allocated in the AST arena and remain stable for
 // the lifetime of Ast.  They must not be deleted individually.
 struct Node
 {
-    NodeKind Kind = NodeKind::Error;
-    TokenRange Tokens;
-
-    Node* Parent = nullptr;
     Node* FirstChild = nullptr;
     Node* LastChild = nullptr;
     Node* NextSibling = nullptr;
-    TriviaAttachments* AssociatedTrivia = nullptr;
+    TokenRange Tokens;
+    NodeKind Kind = NodeKind::Error;
 
     [[nodiscard]] const Node* Child() const
     {
         return FirstChild;
     }
+
+private:
+    // Sparse trivia metadata is resolved through Ast so nodes do not each
+    // carry another pointer.
+    uint32_t TriviaIndex_ = std::numeric_limits<uint32_t>::max();
+
+    friend class Ast;
+    friend class ParseContext;
 };
+
+static_assert(sizeof(Node) == 40);
 
 namespace detail {
 
@@ -339,6 +350,63 @@ struct StoredToken
 
 static_assert(sizeof(StoredToken) == 12);
 
+class TriviaPool
+{
+public:
+    explicit TriviaPool(Arena& arena);
+    TriviaPool(TriviaPool&& other, Arena& arena) noexcept;
+
+    TriviaPool(const TriviaPool&) = delete;
+    TriviaPool& operator=(const TriviaPool&) = delete;
+
+    void MoveFrom(TriviaPool&& other, Arena& arena) noexcept;
+    [[nodiscard]] uint32_t Add();
+    void Seal();
+
+    [[nodiscard]] TriviaAttachments& operator[](uint32_t index)
+    {
+        assert(index < Size_);
+        return ChunkAt(index / AttachmentsPerChunk)
+            ->Items[index % AttachmentsPerChunk];
+    }
+
+    [[nodiscard]] const TriviaAttachments& operator[](uint32_t index) const
+    {
+        assert(index < Size_);
+        return ChunkAt(index / AttachmentsPerChunk)
+            ->Items[index % AttachmentsPerChunk];
+    }
+
+private:
+    static constexpr uint32_t AttachmentsPerChunk = 128;
+
+    struct Chunk
+    {
+        Chunk* Next = nullptr;
+        uint16_t Size = 0;
+        std::array<TriviaAttachments, AttachmentsPerChunk> Items;
+    };
+
+    [[nodiscard]] Chunk* ChunkAt(uint32_t index) const
+    {
+        if (Chunks_) {
+            return Chunks_[index];
+        }
+        auto* chunk = First_;
+        while (index-- != 0) {
+            chunk = chunk->Next;
+        }
+        return chunk;
+    }
+
+    Arena* Arena_;
+    Chunk* First_ = nullptr;
+    Chunk* Last_ = nullptr;
+    Chunk** Chunks_ = nullptr;
+    uint32_t ChunkCount_ = 0;
+    uint32_t Size_ = 0;
+};
+
 class TokenPool
 {
 public:
@@ -350,7 +418,7 @@ public:
 
     void MoveFrom(TokenPool&& other, Arena& arena) noexcept;
 
-    [[nodiscard]] uint32_t* Add(tokenizer::Token token)
+    void Add(tokenizer::Token token)
     {
         if (!Last_ || Last_->Size == TokensPerChunk) {
             auto* chunk = Arena_->MakeDefaultInitialized<Chunk>();
@@ -376,9 +444,7 @@ public:
                 && token.Kind <= tokenizer::TokenKind::Operator_Comma
             ? PunctuationRole::Generic
             : PunctuationRole::None;
-        Last_->DelimiterEnds[offset] = 0;
         ++Size_;
-        return &Last_->DelimiterEnds[offset];
     }
 
     void Seal();
@@ -412,13 +478,6 @@ public:
         Chunks_[index / TokensPerChunk]->Roles[index % TokensPerChunk] = role;
     }
 
-    [[nodiscard]] uint32_t DelimiterEnd(TokenIndex index) const
-    {
-        assert(index < Size_);
-        return Chunks_[index / TokensPerChunk]
-            ->DelimiterEnds[index % TokensPerChunk];
-    }
-
     [[nodiscard]] TokenIndex
     FindPreprocessingDirective(TokenIndex begin, TokenIndex end) const;
     [[nodiscard]] TokenIndex
@@ -436,7 +495,6 @@ private:
         std::array<StoredToken, TokensPerChunk> Tokens;
         std::array<tokenizer::TokenKind, TokensPerChunk> Kinds;
         std::array<PunctuationRole, TokensPerChunk> Roles;
-        std::array<uint32_t, TokensPerChunk> DelimiterEnds;
     };
 
     Arena* Arena_;
@@ -472,6 +530,8 @@ public:
     [[nodiscard]] util::Position TokenPosition(TokenIndex index) const;
     [[nodiscard]] std::string_view TokenText(TokenIndex index) const;
     [[nodiscard]] PunctuationRole Role(TokenIndex index) const;
+    [[nodiscard]] const TriviaAttachments*
+    AssociatedTrivia(const Node& node) const;
     [[nodiscard]] std::string_view SourceText(TokenRange range) const;
     [[nodiscard]] std::string_view SourceText(SourceRange range) const;
     [[nodiscard]] std::string_view WhitespaceBefore(TokenIndex token) const;
@@ -483,6 +543,7 @@ private:
     detail::Arena Memory_;
     std::string_view Input_;
     detail::TokenPool Tokens_;
+    detail::TriviaPool Trivia_;
     Node* Root_ = nullptr;
 
     friend class ParseContext;
