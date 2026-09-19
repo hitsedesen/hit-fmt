@@ -355,6 +355,97 @@
           )
           ";"
         )
+        (declaration-statement
+          (declaration-specifiers "auto")
+          (init-declarator-list
+            (init-declarator
+              (declarator
+                (declarator-name "dependent")
+              )
+              (initializer
+                "="
+                (call-expression
+                  (member-expression
+                    (identifier-expression "object")
+                    "." "template"
+                    (template-id-expression
+                      (identifier-expression "get")
+                      (template-argument-list
+                        "<"
+                        (template-argument "Type")
+                        ">"
+                      )
+                    )
+                  )
+                  (argument-list "(" ")")
+                )
+              )
+            )
+          )
+          ";"
+        )
+        (declaration-statement
+          (declaration-specifiers "auto")
+          (init-declarator-list
+            (init-declarator
+              (declarator
+                (declarator-name "indirect")
+              )
+              (initializer
+                "="
+                (call-expression
+                  (member-expression
+                    (identifier-expression "this")
+                    "->" "template"
+                    (template-id-expression
+                      (identifier-expression "find")
+                      (template-argument-list
+                        "<"
+                        (template-argument "Item")
+                        ">"
+                      )
+                    )
+                  )
+                  (argument-list "(" ")")
+                )
+              )
+            )
+          )
+          ";"
+        )
+        (expression-statement
+          (call-expression
+            (member-expression
+              (identifier-expression "object")
+              "."
+              (identifier-expression "~" "Type")
+            )
+            (argument-list "(" ")")
+          )
+          ";"
+        )
+        (expression-statement
+          (call-expression
+            (member-expression
+              (identifier-expression "object")
+              "."
+              (identifier-expression "operator" "bool")
+            )
+            (argument-list "(" ")")
+          )
+          ";"
+        )
+        (expression-statement
+          (call-expression
+            (member-expression
+              (identifier-expression "object")
+              "."
+              (identifier-expression "operator" "(" ")")
+            )
+            (argument-list "(" ")")
+          )
+          ";"
+        )
         (expression-statement
           (delete-expression
             "delete"

@@ -5,6 +5,16 @@ void nested_parameter(int (*Type)(int)) {
     Type* expression;
 }
 
+void typedef_names() {
+    int x;
+    typedef int (*F)(int parameter);
+    typedef int A, B;
+    parameter * x;
+    F * function_pointer;
+    A * first_alias;
+    B * second_alias;
+}
+
 void classify() {
     Type* first;
     Record& second;

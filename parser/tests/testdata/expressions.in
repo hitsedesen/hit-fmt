@@ -22,6 +22,11 @@ auto evaluate(Values... values) {
     auto binary_fold = (0 + ... + values);
     auto placed = new (arena) Item[count]{1, 2};
     auto direct = new Item(1, 2);
+    auto dependent = object.template get<Type>();
+    auto indirect = this->template find<Item>();
+    object.~Type();
+    object.operator bool();
+    object.operator()();
     delete[] placed;
     delete direct;
     int initialized = source + scale * 2;

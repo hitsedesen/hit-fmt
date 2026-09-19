@@ -306,4 +306,21 @@ struct Derived : Base<T> {
     EXPECT_GE(CountRoles(ast, parser::PunctuationRole::BlockDelimiter), 2);
 }
 
+TEST(Parser, HandlesDeepCompoundNesting)
+{
+    std::string source = "void deeply_nested() {";
+    constexpr size_t Depth = 300;
+    source.append(Depth, '{');
+    source += "int value;";
+    source.append(Depth + 1, '}');
+
+    size_t errors = 0;
+    auto ast = parser::Parse(source, [&](parser::ParseError) {
+        ++errors;
+    });
+
+    EXPECT_EQ(errors, 0);
+    EXPECT_GT(ast.TokenCount(), Depth * 2);
+}
+
 } // namespace

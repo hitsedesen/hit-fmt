@@ -58,6 +58,125 @@
     (init-declarator-list
       (init-declarator
         (declarator
+          (declarator-name "typedef_names")
+          (function-declarator
+            (parameter-list "(" ")")
+          )
+        )
+      )
+    )
+    (compound-statement
+      "{"
+      (declaration-statement
+        (declaration-specifiers "int")
+        (init-declarator-list
+          (init-declarator
+            (declarator
+              (declarator-name "x")
+            )
+          )
+        )
+        ";"
+      )
+      (typedef-declaration
+        "typedef"
+        (declaration-specifiers "int")
+        (init-declarator-list
+          (init-declarator
+            (declarator
+              (nested-declarator
+                "("
+                (pointer-operator "*")
+                (declarator-name "F")
+                ")"
+              )
+              (function-declarator
+                (parameter-list
+                  "("
+                  (parameter-declaration
+                    (declaration-specifiers "int")
+                    (init-declarator-list
+                      (init-declarator
+                        (declarator
+                          (declarator-name "parameter")
+                        )
+                      )
+                    )
+                  )
+                  ")"
+                )
+              )
+            )
+          )
+        )
+        ";"
+      )
+      (typedef-declaration
+        "typedef"
+        (declaration-specifiers "int")
+        (init-declarator-list
+          (init-declarator
+            (declarator
+              (declarator-name "A")
+            )
+          )
+          (list-separator ",")
+          (init-declarator
+            (declarator
+              (declarator-name "B")
+            )
+          )
+        )
+        ";"
+      )
+      (ambiguous-statement
+        (unknown-type-name "parameter")
+        "*" "x" ";"
+      )
+      (declaration-statement
+        (declaration-specifiers "F")
+        (init-declarator-list
+          (init-declarator
+            (declarator
+              (pointer-operator "*")
+              (declarator-name "function_pointer")
+            )
+          )
+        )
+        ";"
+      )
+      (declaration-statement
+        (declaration-specifiers "A")
+        (init-declarator-list
+          (init-declarator
+            (declarator
+              (pointer-operator "*")
+              (declarator-name "first_alias")
+            )
+          )
+        )
+        ";"
+      )
+      (declaration-statement
+        (declaration-specifiers "B")
+        (init-declarator-list
+          (init-declarator
+            (declarator
+              (pointer-operator "*")
+              (declarator-name "second_alias")
+            )
+          )
+        )
+        ";"
+      )
+      "}"
+    )
+  )
+  (function-definition
+    (declaration-specifiers "void")
+    (init-declarator-list
+      (init-declarator
+        (declarator
           (declarator-name "classify")
           (function-declarator
             (parameter-list "(" ")")
