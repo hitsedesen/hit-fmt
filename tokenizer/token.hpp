@@ -175,10 +175,12 @@ constexpr std::string_view GetTokenKindName(TokenKind kind)
 
 struct Token
 {
-    util::Position Position;
     TokenKind Kind;
-    std::string_view Text;
+    util::Position Position;
+    util::SourceView Text;
 };
+
+static_assert(sizeof(Token) == 20);
 
 } // namespace tokenizer
 

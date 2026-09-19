@@ -65,14 +65,59 @@ Tokenizer::Tokenizer(
     std::move_only_function<void(TokenizationError)> errorHandler)
     : Input_(input)
     , ErrorHandler_(std::move(errorHandler))
-{ }
+{
+    if (Input_.size() > util::MaxSourceSize) {
+        Input_ = {};
+        OnError(
+            TokenizationError{
+                .Message = "input exceeds the maximum supported size",
+                .TokenStart = {.Line = 1, .Column = 1},
+                .ErrorPosition = {.Line = 1, .Column = 1},
+                .TokenEnd = {.Line = 1, .Column = 1},
+            });
+    }
+}
+
+unicode::CodePoint Tokenizer::LoadCurrentCodePoint()
+{
+    if (CurrentCodePointOffset_ >= Input_.size()) {
+        CurrentCodePointValue_ = '\0';
+        CurrentCodePointSize_ = 0;
+        return CurrentCodePointValue_;
+    }
+
+    auto firstByte =
+        static_cast<unsigned char>(Input_[CurrentCodePointOffset_]);
+    if (firstByte < 0x80) [[likely]] {
+        CurrentCodePointValue_ = static_cast<char32_t>(firstByte);
+        CurrentCodePointSize_ = 1;
+        return CurrentCodePointValue_;
+    }
+
+    auto first = unicode::utf8::GetFirstCodePoint(
+        Input_.substr(CurrentCodePointOffset_));
+    if (!first) {
+        OnError("Invalid UTF8 code point");
+        CurrentCodePointValue_ = static_cast<char32_t>(firstByte);
+        CurrentCodePointSize_ = 1;
+    } else {
+        CurrentCodePointValue_ = first->Value;
+        CurrentCodePointSize_ = first->Size;
+    }
+    return CurrentCodePointValue_;
+}
 
 Token Tokenizer::FinishToken(TokenKind kind)
 {
     return Token{
-        .Position = CurrentTokenPosition_,
         .Kind = kind,
-        .Text = Input_.substr(CurrentTokenOffset_, CurrentTokenSize_),
+        .Position = CurrentTokenPosition_,
+        .Text =
+            {
+                .Begin = static_cast<util::SourceOffset>(CurrentTokenOffset_),
+                .End = static_cast<util::SourceOffset>(
+                    CurrentTokenOffset_ + CurrentTokenSize_),
+            },
     };
 }
 

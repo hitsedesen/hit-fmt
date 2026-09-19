@@ -1,14 +1,48 @@
 #pragma once
 
+#include <cassert>
 #include <cstddef>
+#include <cstdint>
 #include <format>
+#include <limits>
+#include <string_view>
 
 namespace util {
 
+using SourceOffset = uint32_t;
+
+inline constexpr size_t MaxSourceSize =
+    static_cast<size_t>(std::numeric_limits<SourceOffset>::max()) - 1;
+
+struct SourceView
+{
+    SourceOffset Begin = 0;
+    SourceOffset End = 0;
+
+    constexpr bool operator==(const SourceView&) const = default;
+
+    [[nodiscard]] constexpr bool Empty() const
+    {
+        return Begin == End;
+    }
+
+    [[nodiscard]] constexpr SourceOffset Size() const
+    {
+        return End - Begin;
+    }
+
+    [[nodiscard]] std::string_view View(std::string_view source) const
+    {
+        assert(Begin <= End);
+        assert(End <= source.size());
+        return {source.data() + Begin, Size()};
+    }
+};
+
 struct Position
 {
-    size_t Line;
-    size_t Column;
+    uint32_t Line;
+    uint32_t Column;
 };
 
 } // namespace util
