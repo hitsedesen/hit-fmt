@@ -95,6 +95,18 @@ TokenizeAndSerialize(const std::string& input)
     return {std::move(result), std::move(errors)};
 }
 
+std::vector<Token> Tokenize(std::string_view input)
+{
+    Tokenizer tokenizer(input);
+    std::vector<Token> tokens;
+    for (auto token = tokenizer.Get(); token.Kind != TokenKind::EndOfFile;
+         token = tokenizer.Get())
+    {
+        tokens.push_back(token);
+    }
+    return tokens;
+}
+
 void SaveToFile(const std::string& path, const std::string& content)
 {
     std::ofstream out(path);
@@ -189,3 +201,45 @@ INSTANTIATE_TEST_SUITE_P(
     [](const auto& info) {
         return info.param.Name;
     });
+
+TEST(Tokenizer, KeepsMultilineMacroWithBlockCommentTogether)
+{
+    constexpr std::string_view Source =
+        "#define VALUE(x) x /* comment\ncontinued */\\\n + 1\nint value;";
+    auto tokens = Tokenize(Source);
+
+    ASSERT_GT(tokens.size(), 1);
+    EXPECT_EQ(tokens[0].Kind, TokenKind::PreprocessingDirective);
+    EXPECT_EQ(
+        tokens[0].Text, "#define VALUE(x) x /* comment\ncontinued */\\\n + 1");
+}
+
+TEST(Tokenizer, KeepsRawStringsInsidePreprocessingDirectives)
+{
+    constexpr std::string_view Source =
+        "#define DOCUMENT R\"(first line\nsecond line)\"\nint value;";
+    auto tokens = Tokenize(Source);
+
+    ASSERT_GT(tokens.size(), 1);
+    EXPECT_EQ(tokens[0].Kind, TokenKind::PreprocessingDirective);
+    EXPECT_EQ(
+        tokens[0].Text, "#define DOCUMENT R\"(first line\nsecond line)\"");
+}
+
+TEST(Tokenizer, AppliesLessColonColonLexingException)
+{
+    auto tokens = Tokenize("value<::type>();");
+
+    ASSERT_GE(tokens.size(), 7);
+    EXPECT_EQ(tokens[1].Kind, TokenKind::Operator_Less);
+    EXPECT_EQ(tokens[2].Kind, TokenKind::Operator_ScopeResolution);
+}
+
+TEST(Tokenizer, ConsumesIncrementAndDecrementOperators)
+{
+    auto tokens = Tokenize("++value; \\\n--value;");
+
+    ASSERT_GE(tokens.size(), 4);
+    EXPECT_EQ(tokens[0].Kind, TokenKind::Operator_Increment);
+    EXPECT_EQ(tokens[3].Kind, TokenKind::Operator_Decrement);
+}

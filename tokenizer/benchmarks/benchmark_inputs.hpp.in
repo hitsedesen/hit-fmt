@@ -1,0 +1,18 @@
+#pragma once
+
+#include <array>
+#include <string_view>
+
+namespace tokenizer::benchmarks {
+
+inline constexpr std::string_view Service = R"HITFMTINPUT(@TOKENIZER_BENCHMARK_SERVICE@)HITFMTINPUT";
+inline constexpr std::string_view TemplateLibrary = R"HITFMTINPUT(@TOKENIZER_BENCHMARK_TEMPLATE_LIBRARY@)HITFMTINPUT";
+inline constexpr std::string_view Platform = R"HITFMTINPUT(@TOKENIZER_BENCHMARK_PLATFORM@)HITFMTINPUT";
+
+inline constexpr std::array Corpus{
+    Service,
+    TemplateLibrary,
+    Platform,
+};
+
+} // namespace tokenizer::benchmarks

@@ -12,3 +12,7 @@ target_link_libraries(lib-tokenizer
 if(HIT_FMT_TEST)
 add_subdirectory(tests)
 endif(HIT_FMT_TEST)
+
+if(HIT_FMT_BENCHMARK)
+    add_subdirectory(benchmarks)
+endif(HIT_FMT_BENCHMARK)

@@ -1,5 +1,6 @@
 #include "tokenizer.hpp"
 
+#include "identifier_kind.hpp"
 #include "token.hpp"
 
 #include <unicode/code_point.hpp>
@@ -7,17 +8,14 @@
 
 #include <algorithm>
 #include <array>
-#include <unordered_map>
 #include <utility>
 
 namespace tokenizer {
 
 bool IsWhitespace(unicode::CodePoint cp)
 {
-    if (cp > 255) {
-        return false;
-    }
-    return std::isspace(cp);
+    return cp == ' ' || cp == '\t' || cp == '\n' || cp == '\r' || cp == '\f'
+        || cp == '\v';
 }
 
 bool IsOctalDigit(unicode::CodePoint cp)
@@ -45,6 +43,9 @@ bool IsIdStart(unicode::CodePoint cp)
     if (IsNonDigit(cp)) {
         return true;
     }
+    if (cp < 128) {
+        return false;
+    }
     return unicode::IsXIDStart(cp);
 }
 
@@ -52,6 +53,9 @@ bool IsIdContinuation(unicode::CodePoint cp)
 {
     if (IsNonDigit(cp) || IsDigit(cp)) {
         return true;
+    }
+    if (cp < 128) {
+        return false;
     }
     return unicode::IsXIDContinue(cp);
 }
@@ -62,50 +66,6 @@ Tokenizer::Tokenizer(
     : Input_(input)
     , ErrorHandler_(std::move(errorHandler))
 { }
-
-unicode::CodePoint Tokenizer::CurrentCodePoint()
-{
-    if (!Current_) {
-        if (CurrentCodePointOffset_ >= Input_.size()) {
-            Current_ =
-                unicode::utf8::CodePointWithSize{.Value = '\0', .Size = 0};
-        } else {
-            auto first = unicode::utf8::GetFirstCodePoint(
-                Input_.substr(CurrentCodePointOffset_));
-
-            if (!first) {
-                OnError("Invalid UTF8 code point");
-                Current_ =
-                    unicode::utf8::CodePointWithSize{.Value = '\0', .Size = 0};
-            } else {
-                Current_ = first;
-            }
-        }
-    }
-
-    return Current_->Value;
-}
-
-void Tokenizer::ConsumeCodePoint(bool skippingNewLine)
-{
-    CurrentCodePoint();
-    auto first = *std::exchange(Current_, std::nullopt);
-
-    CurrentTokenSize_ += first.Size;
-    CurrentCodePointOffset_ += first.Size;
-    if (first.Value == '\n') {
-        CurrentCodePointPosition_.Line++;
-        CurrentCodePointPosition_.Column = 1;
-        if (!skippingNewLine) {
-            IsNewLine_ = true;
-        }
-    } else {
-        CurrentCodePointPosition_.Column++;
-        if (!IsWhitespace(first.Value)) {
-            IsNewLine_ = false;
-        }
-    }
-}
 
 Token Tokenizer::FinishToken(TokenKind kind)
 {
@@ -221,6 +181,7 @@ Token Tokenizer::Get()
                 ConsumeCodePoint();
                 return FinishToken(TokenKind::Operator_MinusAssign);
             case '-':
+                ConsumeCodePoint();
                 return FinishToken(TokenKind::Operator_Decrement);
             default:
                 return FinishToken(TokenKind::Operator_Minus);
@@ -249,6 +210,10 @@ Token Tokenizer::Get()
             if (cur == '=') {
                 ConsumeCodePoint();
                 return FinishToken(TokenKind::Operator_PlusAssign);
+            }
+            if (cur == '+') {
+                ConsumeCodePoint();
+                return FinishToken(TokenKind::Operator_Increment);
             }
             return FinishToken(TokenKind::Operator_Plus);
         }
@@ -282,13 +247,14 @@ Token Tokenizer::Get()
         }
     case '%':
         {
+            const bool startsLine = IsNewLine_;
             ConsumeCodePoint();
             cur = CurrentCodePoint();
             if (cur == '=') {
                 ConsumeCodePoint();
                 return FinishToken(TokenKind::Operator_RemainderAssign);
             }
-            if (IsNewLine_) {
+            if (startsLine) {
                 if (cur == ':') {
                     ConsumeCodePoint();
                     return ParsePreprocessingDirective();
@@ -352,6 +318,17 @@ Token Tokenizer::Get()
             cur = CurrentCodePoint();
             switch (cur) {
             case ':':
+                // [lex.pptoken] has a special maximal-munch exception for
+                // <:: when the following character is neither ':' nor '>'.
+                // In that case this is '<' followed by '::', not the '<:'
+                // digraph followed by ':'.
+                if (Input_.substr(CurrentCodePointOffset_).starts_with("::")
+                    && (CurrentCodePointOffset_ + 2 >= Input_.size()
+                        || (Input_[CurrentCodePointOffset_ + 2] != ':'
+                            && Input_[CurrentCodePointOffset_ + 2] != '>')))
+                {
+                    return FinishToken(TokenKind::Operator_Less);
+                }
                 ConsumeCodePoint();
                 return FinishToken(TokenKind::Operator_OpenBracket);
             case '%':
@@ -451,13 +428,34 @@ bool Tokenizer::TrySkipNewline()
 
 void Tokenizer::SkipWhitespace()
 {
-    bool skippedNewline = false;
+    bool skippedNewline;
     do {
-        while (IsWhitespace(CurrentCodePoint())
-               || (IsFileStart()
-                   && CurrentCodePoint() == unicode::utf8::ByteOrderMark))
+        skippedNewline = false;
+        while (CurrentCodePointOffset_ < Input_.size()) {
+            auto byte =
+                static_cast<unsigned char>(Input_[CurrentCodePointOffset_]);
+            if (byte == '\n') {
+                ++CurrentCodePointOffset_;
+                ++CurrentCodePointPosition_.Line;
+                CurrentCodePointPosition_.Column = 1;
+                CurrentCodePointSize_ = UnloadedCodePoint;
+                IsNewLine_ = true;
+            } else if (
+                byte == ' ' || byte == '\t' || byte == '\r' || byte == '\f'
+                || byte == '\v')
+            {
+                ++CurrentCodePointOffset_;
+                ++CurrentCodePointPosition_.Column;
+                CurrentCodePointSize_ = UnloadedCodePoint;
+            } else {
+                break;
+            }
+        }
+        if (IsFileStart() && CurrentCodePoint() == unicode::utf8::ByteOrderMark)
         {
             ConsumeCodePoint();
+            skippedNewline = true;
+            continue;
         }
         if (CurrentCodePoint() == '\\') {
             ConsumeCodePoint();
@@ -467,108 +465,6 @@ void Tokenizer::SkipWhitespace()
     while (skippedNewline);
 }
 
-namespace {
-
-const std::unordered_map<std::string_view, TokenKind> IdentifierMapping{
-    // Alternative representations.
-    {"and", TokenKind::Operator_And},
-    {"bitor", TokenKind::Operator_BitOr},
-    {"or", TokenKind::Operator_Or},
-    {"xor", TokenKind::Operator_Xor},
-    {"compl", TokenKind::Operator_Complement},
-    {"bitand", TokenKind::Operator_Ampersand},
-    {"and_eq", TokenKind::Operator_BitAndAssign},
-    {"or_eq", TokenKind::Operator_BitOrAssign},
-    {"xor_eq", TokenKind::Operator_XorAssign},
-    {"not", TokenKind::Operator_Not},
-    {"not_eq", TokenKind::Operator_NotEquals},
-
-    // Keywords.
-    {"alignas", TokenKind::Keyword_alignas},
-    {"alignof", TokenKind::Keyword_alignof},
-    {"asm", TokenKind::Keyword_asm},
-    {"auto", TokenKind::Keyword_auto},
-    {"bool", TokenKind::Keyword_bool},
-    {"break", TokenKind::Keyword_break},
-    {"case", TokenKind::Keyword_case},
-    {"catch", TokenKind::Keyword_catch},
-    {"char", TokenKind::Keyword_char},
-    {"char8_t", TokenKind::Keyword_char8_t},
-    {"char16_t", TokenKind::Keyword_char16_t},
-    {"char32_t", TokenKind::Keyword_char32_t},
-    {"class", TokenKind::Keyword_class},
-    {"concept", TokenKind::Keyword_concept},
-    {"const", TokenKind::Keyword_const},
-    {"consteval", TokenKind::Keyword_consteval},
-    {"constexpr", TokenKind::Keyword_constexpr},
-    {"constinit", TokenKind::Keyword_constinit},
-    {"const_cast", TokenKind::Keyword_const_cast},
-    {"continue", TokenKind::Keyword_continue},
-    {"co_await", TokenKind::Keyword_co_await},
-    {"co_return", TokenKind::Keyword_co_return},
-    {"co_yield", TokenKind::Keyword_co_yield},
-    {"decltype", TokenKind::Keyword_decltype},
-    {"default", TokenKind::Keyword_default},
-    {"delete", TokenKind::Keyword_delete},
-    {"do", TokenKind::Keyword_do},
-    {"double", TokenKind::Keyword_double},
-    {"dynamic_cast", TokenKind::Keyword_dynamic_cast},
-    {"else", TokenKind::Keyword_else},
-    {"enum", TokenKind::Keyword_enum},
-    {"explicit", TokenKind::Keyword_explicit},
-    {"export", TokenKind::Keyword_export},
-    {"extern", TokenKind::Keyword_extern},
-    {"false", TokenKind::Keyword_false},
-    {"float", TokenKind::Keyword_float},
-    {"for", TokenKind::Keyword_for},
-    {"friend", TokenKind::Keyword_friend},
-    {"goto", TokenKind::Keyword_goto},
-    {"if", TokenKind::Keyword_if},
-    {"inline", TokenKind::Keyword_inline},
-    {"int", TokenKind::Keyword_int},
-    {"long", TokenKind::Keyword_long},
-    {"mutable", TokenKind::Keyword_mutable},
-    {"namespace", TokenKind::Keyword_namespace},
-    {"new", TokenKind::Keyword_new},
-    {"noexcept", TokenKind::Keyword_noexcept},
-    {"nullptr", TokenKind::Keyword_nullptr},
-    {"operator", TokenKind::Keyword_operator},
-    {"private", TokenKind::Keyword_private},
-    {"protected", TokenKind::Keyword_protected},
-    {"public", TokenKind::Keyword_public},
-    {"register", TokenKind::Keyword_register},
-    {"reinterpret_cast", TokenKind::Keyword_reinterpret_cast},
-    {"requires", TokenKind::Keyword_requires},
-    {"return", TokenKind::Keyword_return},
-    {"short", TokenKind::Keyword_short},
-    {"signed", TokenKind::Keyword_signed},
-    {"sizeof", TokenKind::Keyword_sizeof},
-    {"static", TokenKind::Keyword_static},
-    {"static_assert", TokenKind::Keyword_static_assert},
-    {"static_cast", TokenKind::Keyword_static_cast},
-    {"struct", TokenKind::Keyword_struct},
-    {"switch", TokenKind::Keyword_switch},
-    {"template", TokenKind::Keyword_template},
-    {"this", TokenKind::Keyword_this},
-    {"thread_local", TokenKind::Keyword_thread_local},
-    {"throw", TokenKind::Keyword_throw},
-    {"true", TokenKind::Keyword_true},
-    {"try", TokenKind::Keyword_try},
-    {"typedef", TokenKind::Keyword_typedef},
-    {"typeid", TokenKind::Keyword_typeid},
-    {"typename", TokenKind::Keyword_typename},
-    {"union", TokenKind::Keyword_union},
-    {"unsigned", TokenKind::Keyword_unsigned},
-    {"using", TokenKind::Keyword_using},
-    {"virtual", TokenKind::Keyword_virtual},
-    {"void", TokenKind::Keyword_void},
-    {"volatile", TokenKind::Keyword_volatile},
-    {"wchar_t", TokenKind::Keyword_wchar_t},
-    {"while", TokenKind::Keyword_while},
-};
-
-}
-
 std::string_view Tokenizer::CurrentTokenText() const
 {
     return Input_.substr(CurrentTokenOffset_, CurrentTokenSize_);
@@ -576,16 +472,28 @@ std::string_view Tokenizer::CurrentTokenText() const
 
 Token Tokenizer::ParseIdentifier()
 {
-    auto cur = CurrentCodePoint();
-    ASSERT(IsIdStart(cur))
-    auto next = [&] {
+    ASSERT(IsIdStart(CurrentCodePoint()))
+    while (CurrentCodePointOffset_ < Input_.size()) {
+        auto byte = static_cast<unsigned char>(Input_[CurrentCodePointOffset_]);
+        if (byte < 0x80) [[likely]] {
+            if (!((byte >= 'a' && byte <= 'z') || (byte >= 'A' && byte <= 'Z')
+                  || byte == '_' || (byte >= '0' && byte <= '9')))
+            {
+                break;
+            }
+            ++CurrentCodePointOffset_;
+            ++CurrentTokenSize_;
+            ++CurrentCodePointPosition_.Column;
+            CurrentCodePointSize_ = UnloadedCodePoint;
+            IsNewLine_ = false;
+            continue;
+        }
+        if (!IsIdContinuation(CurrentCodePoint())) {
+            break;
+        }
         ConsumeCodePoint();
-        cur = CurrentCodePoint();
-    };
-    next();
-    while (IsIdContinuation(cur)) {
-        next();
     }
+    auto cur = CurrentCodePoint();
 
     constexpr auto encodingPrefixes = std::to_array({"u8", "u", "U", "L"});
     constexpr auto rawEncodingPrefixes =
@@ -604,11 +512,7 @@ Token Tokenizer::ParseIdentifier()
         }
     }
 
-    auto mappingIt = IdentifierMapping.find(CurrentTokenText());
-    if (mappingIt != IdentifierMapping.end()) {
-        return FinishToken(mappingIt->second);
-    }
-    return FinishToken(TokenKind::Identifier);
+    return FinishToken(detail::ClassifyIdentifier(CurrentTokenText()));
 }
 
 Token Tokenizer::ParseCharacterLiteral()
@@ -711,7 +615,6 @@ Token Tokenizer::ParseRawStringLiteral()
         OnError("Unterminated raw string literal");
         return FinishToken(TokenKind::Invalid);
     }
-    next();
     return FinishToken(TokenKind::Literal_String);
 }
 
@@ -909,13 +812,122 @@ Token Tokenizer::ParsePreprocessingDirective()
 {
     auto cur = CurrentCodePoint();
     ASSERT(cur == '#' || CurrentTokenText() == "%:");
-    while (cur != '\0' && cur != '\n') {
-        ConsumeCodePoint();
-        cur = CurrentCodePoint();
+
+    bool inBlockComment = false;
+    while (cur != '\0') {
+        if (inBlockComment) {
+            if (cur == '*') {
+                ConsumeCodePoint();
+                cur = CurrentCodePoint();
+                if (cur == '/') {
+                    ConsumeCodePoint();
+                    cur = CurrentCodePoint();
+                    inBlockComment = false;
+                }
+            } else {
+                ConsumeCodePoint();
+                cur = CurrentCodePoint();
+            }
+            continue;
+        }
+
+        if (cur == '\n') {
+            break;
+        }
         if (cur == '\\') {
             ConsumeCodePoint();
             TrySkipNewline();
+            cur = CurrentCodePoint();
+            continue;
         }
+        if (cur == '/') {
+            ConsumeCodePoint();
+            cur = CurrentCodePoint();
+            if (cur == '*') {
+                ConsumeCodePoint();
+                cur = CurrentCodePoint();
+                inBlockComment = true;
+            } else if (cur == '/') {
+                while (cur != '\n' && cur != '\0') {
+                    ConsumeCodePoint();
+                    cur = CurrentCodePoint();
+                    if (cur == '\\') {
+                        ConsumeCodePoint();
+                        TrySkipNewline();
+                        cur = CurrentCodePoint();
+                    }
+                }
+            }
+            continue;
+        }
+        if (cur == 'R'
+            && Input_.substr(CurrentCodePointOffset_).starts_with("R\""))
+        {
+            ConsumeCodePoint(); // R
+            ConsumeCodePoint(); // "
+            auto delimiterStart = CurrentCodePointOffset_;
+            cur = CurrentCodePoint();
+            while (cur != '(' && cur != '\n' && cur != '\0') {
+                ConsumeCodePoint();
+                cur = CurrentCodePoint();
+            }
+            if (cur != '(') {
+                continue;
+            }
+            auto delimiter = Input_.substr(
+                delimiterStart, CurrentCodePointOffset_ - delimiterStart);
+            ConsumeCodePoint();
+            cur = CurrentCodePoint();
+            while (cur != '\0') {
+                if (cur == ')') {
+                    auto suffix = Input_.substr(CurrentCodePointOffset_ + 1);
+                    if (suffix.starts_with(delimiter)
+                        && suffix.size() > delimiter.size()
+                        && suffix[delimiter.size()] == '"')
+                    {
+                        ConsumeCodePoint();
+                        for (size_t i = 0; i <= delimiter.size(); ++i) {
+                            ConsumeCodePoint();
+                        }
+                        cur = CurrentCodePoint();
+                        break;
+                    }
+                }
+                ConsumeCodePoint();
+                cur = CurrentCodePoint();
+            }
+            continue;
+        }
+        bool digitSeparator = cur == '\'' && CurrentCodePointOffset_ != 0
+            && CurrentCodePointOffset_ + 1 < Input_.size()
+            && std::isalnum(static_cast<unsigned char>(
+                Input_[CurrentCodePointOffset_ - 1]))
+            && std::isalnum(static_cast<unsigned char>(
+                Input_[CurrentCodePointOffset_ + 1]));
+        if ((cur == '\'' && !digitSeparator) || cur == '"') {
+            auto quote = cur;
+            do {
+                ConsumeCodePoint();
+                cur = CurrentCodePoint();
+                if (cur == '\\') {
+                    ConsumeCodePoint();
+                    cur = CurrentCodePoint();
+                    if (cur != '\0') {
+                        ConsumeCodePoint();
+                        cur = CurrentCodePoint();
+                    }
+                }
+            }
+            while (cur != quote && cur != '\n' && cur != '\0');
+            if (cur == quote) {
+                ConsumeCodePoint();
+                cur = CurrentCodePoint();
+            }
+            continue;
+        }
+
+        ConsumeCodePoint();
+        cur = CurrentCodePoint();
     }
     return FinishToken(TokenKind::PreprocessingDirective);
 }
