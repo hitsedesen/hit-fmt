@@ -7,8 +7,11 @@
 #include <cstddef>
 #include <cstdint>
 #include <limits>
+#include <memory>
+#include <memory_resource>
 #include <new>
 #include <string_view>
+#include <type_traits>
 #include <utility>
 
 namespace parser {
@@ -295,54 +298,26 @@ private:
 };
 
 static_assert(sizeof(Node) == 40);
+static_assert(std::is_trivially_destructible_v<Node>);
 
 namespace detail {
 
-class Arena
+inline constexpr size_t InitialMemoryResourceSize = 64 * 1024;
+
+template<class T, class... Args>
+[[nodiscard]] T* Make(std::pmr::memory_resource& memory, Args&&... args)
 {
-public:
-    Arena() = default;
-    Arena(Arena&& other) noexcept;
-    Arena& operator=(Arena&& other) noexcept;
-    ~Arena();
+    static_assert(std::is_trivially_destructible_v<T>);
+    return ::new (memory.allocate(sizeof(T), alignof(T)))
+        T(std::forward<Args>(args)...);
+}
 
-    Arena(const Arena&) = delete;
-    Arena& operator=(const Arena&) = delete;
-
-    void* Allocate(size_t size, size_t alignment);
-
-    template<class T, class... Args>
-    T* Make(Args&&... args)
-    {
-        return new (Allocate(sizeof(T), alignof(T)))
-            T(std::forward<Args>(args)...);
-    }
-
-    template<class T>
-    T* MakeDefaultInitialized()
-    {
-        return ::new (Allocate(sizeof(T), alignof(T))) T;
-    }
-
-private:
-    struct Block
-    {
-        Block* Next;
-        size_t Used;
-        size_t Capacity;
-
-        [[nodiscard]] std::byte* Data();
-    };
-
-    [[nodiscard]] static bool
-    Fits(const Block& block, size_t size, size_t alignment);
-
-    void AddBlock(size_t minimumCapacity);
-    void Reset();
-
-    Block* Head_ = nullptr;
-    size_t NextBlockSize_ = 64 * 1024;
-};
+template<class T>
+[[nodiscard]] T* MakeDefaultInitialized(std::pmr::memory_resource& memory)
+{
+    static_assert(std::is_trivially_destructible_v<T>);
+    return ::new (memory.allocate(sizeof(T), alignof(T))) T;
+}
 
 struct StoredToken
 {
@@ -355,13 +330,13 @@ static_assert(sizeof(StoredToken) == 12);
 class TriviaPool
 {
 public:
-    explicit TriviaPool(Arena& arena);
-    TriviaPool(TriviaPool&& other, Arena& arena) noexcept;
+    explicit TriviaPool(std::pmr::memory_resource& memory);
+    TriviaPool(TriviaPool&& other) noexcept;
 
     TriviaPool(const TriviaPool&) = delete;
     TriviaPool& operator=(const TriviaPool&) = delete;
 
-    void MoveFrom(TriviaPool&& other, Arena& arena) noexcept;
+    void MoveFrom(TriviaPool&& other) noexcept;
     [[nodiscard]] uint32_t Add();
     void Seal();
 
@@ -401,7 +376,7 @@ private:
         return chunk;
     }
 
-    Arena* Arena_;
+    std::pmr::memory_resource* Memory_;
     Chunk* First_ = nullptr;
     Chunk* Last_ = nullptr;
     Chunk** Chunks_ = nullptr;
@@ -412,18 +387,18 @@ private:
 class TokenPool
 {
 public:
-    explicit TokenPool(Arena& arena);
-    TokenPool(TokenPool&& other, Arena& arena) noexcept;
+    explicit TokenPool(std::pmr::memory_resource& memory);
+    TokenPool(TokenPool&& other) noexcept;
 
     TokenPool(const TokenPool&) = delete;
     TokenPool& operator=(const TokenPool&) = delete;
 
-    void MoveFrom(TokenPool&& other, Arena& arena) noexcept;
+    void MoveFrom(TokenPool&& other) noexcept;
 
     void Add(tokenizer::Token token)
     {
         if (!Last_ || Last_->Size == TokensPerChunk) {
-            auto* chunk = Arena_->MakeDefaultInitialized<Chunk>();
+            auto* chunk = detail::MakeDefaultInitialized<Chunk>(*Memory_);
             if (Last_) {
                 Last_->Next = chunk;
             } else {
@@ -499,7 +474,7 @@ private:
         std::array<PunctuationRole, TokensPerChunk> Roles;
     };
 
-    Arena* Arena_;
+    std::pmr::memory_resource* Memory_;
     Chunk* First_ = nullptr;
     Chunk* Last_ = nullptr;
     Chunk** Chunks_ = nullptr;
@@ -511,9 +486,9 @@ private:
 
 class ParseContext;
 
-// SyntaxTree directly owns its arena and segmented token pool. Token spelling
-// is a view into the input passed to Parse(), so that input must outlive this
-// object.
+// SyntaxTree owns its monotonic memory resource and segmented token pool.
+// Token spelling is a view into the input passed to Parse(), so that input must
+// outlive this object.
 class SyntaxTree
 {
 public:
@@ -542,7 +517,7 @@ public:
 private:
     explicit SyntaxTree(std::string_view input);
 
-    detail::Arena Memory_;
+    std::unique_ptr<std::pmr::monotonic_buffer_resource> Memory_;
     std::string_view Input_;
     detail::TokenPool Tokens_;
     detail::TriviaPool Trivia_;

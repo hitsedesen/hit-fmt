@@ -15,89 +15,18 @@
 
 namespace parser {
 
-std::byte* detail::Arena::Block::Data()
-{
-    return reinterpret_cast<std::byte*>(this + 1);
-}
-
-detail::Arena::Arena(Arena&& other) noexcept
-    : Head_(std::exchange(other.Head_, nullptr))
-    , NextBlockSize_(std::exchange(other.NextBlockSize_, 64 * 1024))
+detail::TriviaPool::TriviaPool(std::pmr::memory_resource& memory)
+    : Memory_(&memory)
 { }
 
-detail::Arena& detail::Arena::operator=(Arena&& other) noexcept
+detail::TriviaPool::TriviaPool(TriviaPool&& other) noexcept
 {
-    if (this != &other) {
-        Reset();
-        Head_ = std::exchange(other.Head_, nullptr);
-        NextBlockSize_ = std::exchange(other.NextBlockSize_, 64 * 1024);
-    }
-    return *this;
+    MoveFrom(std::move(other));
 }
 
-detail::Arena::~Arena()
+void detail::TriviaPool::MoveFrom(TriviaPool&& other) noexcept
 {
-    Reset();
-}
-
-void detail::Arena::Reset()
-{
-    while (Head_) {
-        auto* next = Head_->Next;
-        ::operator delete(Head_);
-        Head_ = next;
-    }
-}
-
-bool detail::Arena::Fits(const Block& block, size_t size, size_t alignment)
-{
-    auto address = reinterpret_cast<uintptr_t>(const_cast<Block&>(block).Data())
-        + block.Used;
-    auto padding = (-address) & (alignment - 1);
-    return padding <= block.Capacity - block.Used
-        && size <= block.Capacity - block.Used - padding;
-}
-
-void detail::Arena::AddBlock(size_t minimumCapacity)
-{
-    constexpr size_t MaximumBlockSize = 1024 * 1024;
-
-    auto capacity = std::max(NextBlockSize_, minimumCapacity);
-    auto* memory = ::operator new(sizeof(Block) + capacity);
-    Head_ = new (memory) Block{
-        .Next = Head_,
-        .Used = 0,
-        .Capacity = capacity,
-    };
-    NextBlockSize_ = std::min(capacity * 2, MaximumBlockSize);
-}
-
-void* detail::Arena::Allocate(size_t size, size_t alignment)
-{
-    ASSERT(alignment != 0 && (alignment & (alignment - 1)) == 0)
-    if (!Head_ || !Fits(*Head_, size, alignment)) {
-        AddBlock(size + alignment);
-    }
-
-    auto address = reinterpret_cast<uintptr_t>(Head_->Data()) + Head_->Used;
-    auto aligned = (address + alignment - 1) & ~(alignment - 1);
-    Head_->Used = aligned - reinterpret_cast<uintptr_t>(Head_->Data()) + size;
-    return reinterpret_cast<void*>(aligned);
-}
-
-detail::TriviaPool::TriviaPool(Arena& arena)
-    : Arena_(&arena)
-{ }
-
-detail::TriviaPool::TriviaPool(TriviaPool&& other, Arena& arena) noexcept
-    : Arena_(&arena)
-{
-    MoveFrom(std::move(other), arena);
-}
-
-void detail::TriviaPool::MoveFrom(TriviaPool&& other, Arena& arena) noexcept
-{
-    Arena_ = &arena;
+    Memory_ = std::exchange(other.Memory_, nullptr);
     First_ = std::exchange(other.First_, nullptr);
     Last_ = std::exchange(other.Last_, nullptr);
     Chunks_ = std::exchange(other.Chunks_, nullptr);
@@ -108,7 +37,7 @@ void detail::TriviaPool::MoveFrom(TriviaPool&& other, Arena& arena) noexcept
 uint32_t detail::TriviaPool::Add()
 {
     if (!Last_ || Last_->Size == AttachmentsPerChunk) {
-        auto* chunk = Arena_->Make<Chunk>();
+        auto* chunk = detail::Make<Chunk>(*Memory_);
         if (Last_) {
             Last_->Next = chunk;
         } else {
@@ -128,7 +57,7 @@ void detail::TriviaPool::Seal()
         return;
     }
     Chunks_ = static_cast<Chunk**>(
-        Arena_->Allocate(sizeof(Chunk*) * ChunkCount_, alignof(Chunk*)));
+        Memory_->allocate(sizeof(Chunk*) * ChunkCount_, alignof(Chunk*)));
     auto* chunk = First_;
     for (size_t i = 0; i < ChunkCount_; ++i) {
         Chunks_[i] = chunk;
@@ -136,19 +65,18 @@ void detail::TriviaPool::Seal()
     }
 }
 
-detail::TokenPool::TokenPool(Arena& arena)
-    : Arena_(&arena)
+detail::TokenPool::TokenPool(std::pmr::memory_resource& memory)
+    : Memory_(&memory)
 { }
 
-detail::TokenPool::TokenPool(TokenPool&& other, Arena& arena) noexcept
-    : Arena_(&arena)
+detail::TokenPool::TokenPool(TokenPool&& other) noexcept
 {
-    MoveFrom(std::move(other), arena);
+    MoveFrom(std::move(other));
 }
 
-void detail::TokenPool::MoveFrom(TokenPool&& other, Arena& arena) noexcept
+void detail::TokenPool::MoveFrom(TokenPool&& other) noexcept
 {
-    Arena_ = &arena;
+    Memory_ = std::exchange(other.Memory_, nullptr);
     First_ = std::exchange(other.First_, nullptr);
     Last_ = std::exchange(other.Last_, nullptr);
     Chunks_ = std::exchange(other.Chunks_, nullptr);
@@ -162,7 +90,7 @@ void detail::TokenPool::Seal()
         return;
     }
     Chunks_ = static_cast<Chunk**>(
-        Arena_->Allocate(sizeof(Chunk*) * ChunkCount_, alignof(Chunk*)));
+        Memory_->allocate(sizeof(Chunk*) * ChunkCount_, alignof(Chunk*)));
     auto* chunk = First_;
     for (size_t i = 0; i < ChunkCount_; ++i) {
         Chunks_[i] = chunk;
@@ -307,16 +235,19 @@ bool IsTypeKeyword(TK kind)
 } // namespace
 
 SyntaxTree::SyntaxTree(std::string_view input)
-    : Input_(input)
-    , Tokens_(Memory_)
-    , Trivia_(Memory_)
+    : Memory_(
+          std::make_unique<std::pmr::monotonic_buffer_resource>(
+              detail::InitialMemoryResourceSize))
+    , Input_(input)
+    , Tokens_(*Memory_)
+    , Trivia_(*Memory_)
 { }
 
 SyntaxTree::SyntaxTree(SyntaxTree&& other) noexcept
     : Memory_(std::move(other.Memory_))
     , Input_(other.Input_)
-    , Tokens_(std::move(other.Tokens_), Memory_)
-    , Trivia_(std::move(other.Trivia_), Memory_)
+    , Tokens_(std::move(other.Tokens_))
+    , Trivia_(std::move(other.Trivia_))
     , Root_(std::exchange(other.Root_, nullptr))
 { }
 
@@ -325,8 +256,8 @@ SyntaxTree& SyntaxTree::operator=(SyntaxTree&& other) noexcept
     if (this != &other) {
         Memory_ = std::move(other.Memory_);
         Input_ = other.Input_;
-        Tokens_.MoveFrom(std::move(other.Tokens_), Memory_);
-        Trivia_.MoveFrom(std::move(other.Trivia_), Memory_);
+        Tokens_.MoveFrom(std::move(other.Tokens_));
+        Trivia_.MoveFrom(std::move(other.Trivia_));
         Root_ = std::exchange(other.Root_, nullptr);
     }
     return *this;
@@ -450,14 +381,14 @@ class ParseContext
     class DelimiterMap
     {
     public:
-        explicit DelimiterMap(detail::Arena& arena)
-            : Arena_(&arena)
+        explicit DelimiterMap(std::pmr::memory_resource& memory)
+            : Memory_(&memory)
         { }
 
         uint32_t* Add()
         {
             if (!Last_ || Last_->Size == EntriesPerChunk) {
-                auto* chunk = Arena_->MakeDefaultInitialized<Chunk>();
+                auto* chunk = detail::MakeDefaultInitialized<Chunk>(*Memory_);
                 if (Last_) {
                     Last_->Next = chunk;
                 } else {
@@ -477,7 +408,7 @@ class ParseContext
             if (ChunkCount_ == 0) {
                 return;
             }
-            Chunks_ = static_cast<Chunk**>(Arena_->Allocate(
+            Chunks_ = static_cast<Chunk**>(Memory_->allocate(
                 sizeof(Chunk*) * ChunkCount_, alignof(Chunk*)));
             auto* chunk = First_;
             for (size_t i = 0; i < ChunkCount_; ++i) {
@@ -503,7 +434,7 @@ class ParseContext
             std::array<uint32_t, EntriesPerChunk> Entries;
         };
 
-        detail::Arena* Arena_;
+        std::pmr::memory_resource* Memory_;
         Chunk* First_ = nullptr;
         Chunk* Last_ = nullptr;
         Chunk** Chunks_ = nullptr;
@@ -527,7 +458,7 @@ public:
         Tree_.Tokens_.Seal();
         DelimiterEnds_.Seal();
         ParseLimit_ = Tree_.Tokens_.Size();
-        CurrentScope_ = ScratchMemory_.Make<NameScope>();
+        CurrentScope_ = detail::Make<NameScope>(ScratchMemory_);
 
         auto* root = MakeNode(NodeKind::TranslationUnit, 0);
         Tree_.Root_ = root;
@@ -560,9 +491,11 @@ private:
 
     void PushScope()
     {
-        CurrentScope_ = ScratchMemory_.Make<NameScope>(NameScope{
-            .Parent = CurrentScope_,
-        });
+        CurrentScope_ = detail::Make<NameScope>(
+            ScratchMemory_,
+            NameScope{
+                .Parent = CurrentScope_,
+            });
     }
 
     void PopScope()
@@ -574,11 +507,13 @@ private:
     void AddName(std::string_view name, NameKind kind)
     {
         ASSERT(CurrentScope_)
-        auto* binding = ScratchMemory_.Make<NameBinding>(NameBinding{
-            .Name = name,
-            .Kind = kind,
-            .Next = CurrentScope_->Bindings,
-        });
+        auto* binding = detail::Make<NameBinding>(
+            ScratchMemory_,
+            NameBinding{
+                .Name = name,
+                .Kind = kind,
+                .Next = CurrentScope_->Bindings,
+            });
         CurrentScope_->Bindings = binding;
     }
 
@@ -668,7 +603,7 @@ private:
     {
         constexpr size_t NodesPerBlock = 256;
         if (RemainingNodes_ == 0) {
-            NextNode_ = static_cast<Node*>(Tree_.Memory_.Allocate(
+            NextNode_ = static_cast<Node*>(Tree_.Memory_->allocate(
                 sizeof(Node) * NodesPerBlock, alignof(Node)));
             RemainingNodes_ = NodesPerBlock;
         }
@@ -5094,15 +5029,18 @@ private:
         auto text = Tree_.Tokens_[token].Text.View(Tree_.Input_);
         auto sourceBegin =
             static_cast<SourceOffset>(text.data() - Tree_.Input_.data());
-        auto* trivia = Tree_.Memory_.Make<Trivia>(Trivia{
-            .Kind = TriviaKind::Comment,
-            .Tokens = {.Begin = token, .End = token + 1},
-            .Source =
-                {
-                    .Begin = sourceBegin,
-                    .End = sourceBegin + static_cast<SourceOffset>(text.size()),
-                },
-        });
+        auto* trivia = detail::Make<Trivia>(
+            *Tree_.Memory_,
+            Trivia{
+                .Kind = TriviaKind::Comment,
+                .Tokens = {.Begin = token, .End = token + 1},
+                .Source =
+                    {
+                        .Begin = sourceBegin,
+                        .End = sourceBegin
+                            + static_cast<SourceOffset>(text.size()),
+                    },
+            });
         InsertTrivia(*list, *trivia);
     }
 
@@ -5130,16 +5068,18 @@ private:
         }
         auto sourceBegin =
             static_cast<SourceOffset>(whitespace.data() - Tree_.Input_.data());
-        auto* trivia = Tree_.Memory_.Make<Trivia>(Trivia{
-            .Kind = TriviaKind::Whitespace,
-            .Tokens = {.Begin = token, .End = token},
-            .Source =
-                {
-                    .Begin = sourceBegin,
-                    .End = sourceBegin
-                        + static_cast<SourceOffset>(whitespace.size()),
-                },
-        });
+        auto* trivia = detail::Make<Trivia>(
+            *Tree_.Memory_,
+            Trivia{
+                .Kind = TriviaKind::Whitespace,
+                .Tokens = {.Begin = token, .End = token},
+                .Source =
+                    {
+                        .Begin = sourceBegin,
+                        .End = sourceBegin
+                            + static_cast<SourceOffset>(whitespace.size()),
+                    },
+            });
         InsertTrivia(*list, *trivia);
     }
 
@@ -5598,7 +5538,8 @@ private:
 
     SyntaxTree& Tree_;
     ErrorHandler& ErrorHandler_;
-    detail::Arena ScratchMemory_;
+    std::pmr::monotonic_buffer_resource ScratchMemory_{
+        detail::InitialMemoryResourceSize};
     DelimiterMap DelimiterEnds_;
     NameScope* CurrentScope_ = nullptr;
     Node* NextNode_ = nullptr;

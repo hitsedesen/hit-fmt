@@ -285,6 +285,14 @@ void empty()
     EXPECT_EQ(
         moved.TokenText(movedTrivia->Trailing.First->Tokens.Begin),
         "// trailing declaration");
+
+    auto assigned = parser::Parse("int old;");
+    assigned = std::move(moved);
+    auto* assignedTrivia = assigned.AssociatedTrivia(*declaration);
+    ASSERT_NE(assignedTrivia, nullptr);
+    EXPECT_EQ(
+        assigned.TokenText(assignedTrivia->Trailing.First->Tokens.Begin),
+        "// trailing declaration");
 }
 
 TEST(Parser, ClassifiesContextualPunctuation)
