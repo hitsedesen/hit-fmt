@@ -1,0 +1,18 @@
+using Type = int;
+struct Record {};
+
+void nested_parameter(int (*Type)(int)) {
+    Type* expression;
+}
+
+void classify() {
+    Type* first;
+    Record& second;
+    unknown * ambiguous;
+    int Type;
+    Type * multiplication;
+    {
+        using Local = long;
+        Local* nested;
+    }
+}

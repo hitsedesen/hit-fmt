@@ -1,0 +1,19 @@
+__declspec(dllexport) int __cdecl exported(int value);
+int* __attribute__((aligned(16))) pointer;
+void (__stdcall *callback)(int);
+void function() __attribute__((cold));
+
+struct __attribute__((packed)) Item {
+    Item() try : value(1) {} catch (...) {}
+    int value;
+};
+
+int result = ({
+    int temporary = 1;
+    temporary + 1;
+});
+
+[[gnu::always_inline]] inline int annotated(int value)
+{
+    return __builtin_expect(value, 1);
+}

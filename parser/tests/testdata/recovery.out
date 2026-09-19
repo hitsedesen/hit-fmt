@@ -1,0 +1,55 @@
+(translation-unit
+  (function-definition
+    (declaration-specifiers "void")
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (declarator-name "function")
+          (function-declarator
+            (parameter-list "(" ")")
+          )
+        )
+      )
+    )
+    (compound-statement
+      "{"
+      (expression-statement
+        (identifier-expression "unknown")
+        (unparsed-syntax "@" "tokens")
+        ";"
+      )
+      "}"
+    )
+  )
+  (unexpected-token "}")
+  (function-definition
+    (declaration-specifiers "int")
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (declarator-name "unfinished")
+          (function-declarator
+            (parameter-list "(" ")")
+          )
+        )
+      )
+    )
+    (compound-statement
+      "{"
+      (if-statement
+        "if"
+        (condition
+          "("
+          (identifier-expression "ready")
+          ")"
+        )
+        (return-statement
+          "return"
+          (literal-expression "1")
+          ";"
+        )
+      )
+      (missing-token)
+    )
+  )
+)

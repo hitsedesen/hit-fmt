@@ -1,0 +1,281 @@
+(translation-unit
+  (module-declaration "module" ";")
+  (export-declaration
+    "export"
+    (module-declaration
+      "module"
+      (module-name "example" "." "core")
+      (module-partition ":" "api")
+      ";"
+    )
+  )
+  (import-declaration
+    "import"
+    (import-name "example" "." "utility")
+    ";"
+  )
+  (import-declaration
+    "import"
+    (module-partition ":" "implementation")
+    ";"
+  )
+  (import-declaration
+    "import"
+    (header-name "<" "vector" ">")
+    ";"
+  )
+  (import-declaration
+    "import"
+    (header-name "\"header.h\"")
+    ";"
+  )
+  (template-declaration
+    "template"
+    (function-declaration
+      (declaration-specifiers "std" "::" "string")
+      (init-declarator-list
+        (init-declarator
+          (declarator
+            (declarator-name "instantiate")
+            "<" "int" ">"
+            (function-declarator
+              (parameter-list "(" ")")
+            )
+          )
+        )
+      )
+      ";"
+    )
+  )
+  (template-declaration
+    "template"
+    (template-parameter-list
+      "<"
+      (template-parameter "typename" "T")
+      ">"
+    )
+    (requires-clause
+      "requires"
+      (constraint-expression
+        (parenthesized-expression
+          "("
+          (unary-expression
+            "sizeof"
+            (cast-expression
+              "("
+              (type-id "T")
+              ")"
+              (expression ">")
+            )
+          )
+          "0" ")"
+        )
+      )
+    )
+    (record-declaration
+      "struct" "Box" "{"
+      (declaration
+        (declaration-specifiers "T")
+        (init-declarator-list
+          (init-declarator
+            (declarator
+              (declarator-name "value")
+            )
+          )
+        )
+        ";"
+      )
+      "}" ";"
+    )
+  )
+  (template-declaration
+    "template"
+    (template-parameter-list
+      "<"
+      (template-parameter "typename" "T")
+      ">"
+    )
+    (concept-declaration
+      "concept"
+      (concept-name "HasValue")
+      "="
+      (constraint-expression
+        (requires-expression
+          "requires"
+          (parameter-list
+            "("
+            (parameter-declaration
+              (declaration-specifiers "T")
+              (init-declarator-list
+                (init-declarator
+                  (declarator
+                    (declarator-name "value")
+                  )
+                )
+              )
+            )
+            ")"
+          )
+          (requirement-body
+            "{"
+            (requirement "value" "." "get" "(" ")")
+            (list-separator ";")
+            "}"
+          )
+        )
+      )
+      ";"
+    )
+  )
+  (template-declaration
+    "template"
+    (template-parameter-list
+      "<"
+      (template-parameter "typename" "F")
+      ">"
+    )
+    (function-definition
+      (declaration-specifiers "void")
+      (init-declarator-list
+        (init-declarator
+          (declarator
+            (declarator-name "constrained")
+            (function-declarator
+              (parameter-list
+                "("
+                (parameter-declaration
+                  (declaration-specifiers "F")
+                  (init-declarator-list
+                    (init-declarator
+                      (declarator
+                        (declarator-name "function")
+                      )
+                    )
+                  )
+                )
+                ")"
+              )
+              (requires-clause
+                "requires"
+                (constraint-expression
+                  (requires-expression
+                    "requires"
+                    (parameter-list
+                      "("
+                      (parameter-declaration
+                        (declaration-specifiers "int")
+                        (init-declarator-list
+                          (init-declarator
+                            (declarator
+                              (declarator-name "value")
+                            )
+                          )
+                        )
+                      )
+                      ")"
+                    )
+                    (requirement-body
+                      "{"
+                      (requirement "{" "function" "(" "value" ")" "}" "->" "std" "::" "same_as" "<" "int" ">")
+                      (list-separator ";")
+                      "}"
+                    )
+                  )
+                )
+              )
+            )
+          )
+        )
+      )
+      (compound-statement
+        "{"
+        (expression-statement
+          (call-expression
+            (identifier-expression "function")
+            (argument-list
+              "("
+              (argument
+                (literal-expression "1")
+              )
+              ")"
+            )
+          )
+          ";"
+        )
+        "}"
+      )
+    )
+  )
+  (template-declaration
+    "template"
+    (template-parameter-list
+      "<"
+      (template-parameter "typename" "T")
+      ">"
+    )
+    (function-definition
+      (declaration-specifiers "void")
+      (init-declarator-list
+        (init-declarator
+          (declarator
+            (declarator-name "parenthesized_constraint")
+            (function-declarator
+              (parameter-list "(" ")")
+              (requires-clause
+                "requires"
+                (constraint-expression
+                  (parenthesized-expression
+                    "("
+                    (unary-expression
+                      "sizeof"
+                      (cast-expression
+                        "("
+                        (type-id "T")
+                        ")"
+                        (expression ">")
+                      )
+                    )
+                    "0" ")"
+                  )
+                )
+              )
+            )
+          )
+        )
+      )
+      (compound-statement "{" "}")
+    )
+  )
+  (macro-invocation "DECLARE_REGISTRATION" "(" "example" ")")
+  (macro-invocation "OBJECT_ANNOTATION")
+  (function-definition
+    (declaration-specifiers "auto")
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (declarator-name "coroutine")
+          (function-declarator
+            (parameter-list "(" ")")
+          )
+        )
+      )
+    )
+    (compound-statement
+      "{"
+      (if-statement
+        "if" "likely"
+        (condition
+          "("
+          (literal-expression "true")
+          ")"
+        )
+        (co-yield-statement
+          "co_yield"
+          (literal-expression "1")
+          ";"
+        )
+      )
+      "}"
+    )
+  )
+)

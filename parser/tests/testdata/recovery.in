@@ -1,0 +1,8 @@
+void function() {
+    unknown @ tokens;
+}
+}
+
+int unfinished() {
+    if (ready)
+        return 1;

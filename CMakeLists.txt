@@ -19,7 +19,13 @@ if(HIT_FMT_TEST)
     include(GoogleTest)
 endif(HIT_FMT_TEST)
 
+if(HIT_FMT_BENCHMARK)
+    find_package(benchmark CONFIG REQUIRED)
+    add_subdirectory(benchmarks)
+endif(HIT_FMT_BENCHMARK)
+
 add_subdirectory(util)
 add_subdirectory(unicode)
 add_subdirectory(tokenizer)
+add_subdirectory(parser)
 add_subdirectory(hit-fmt)

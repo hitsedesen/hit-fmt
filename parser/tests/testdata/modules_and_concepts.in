@@ -1,0 +1,38 @@
+module;
+export module example.core:api;
+import example.utility;
+import :implementation;
+import <vector>;
+import "header.h";
+
+template std::string instantiate<int>();
+
+template<typename T>
+requires(sizeof(T) > 0)
+struct Box {
+    T value;
+};
+
+template<typename T>
+concept HasValue = requires(T value) { value.get(); };
+
+template<typename F>
+void constrained(F function)
+    requires requires(int value) {
+        { function(value) } -> std::same_as<int>;
+    }
+{
+    function(1);
+}
+
+template<typename T>
+void parenthesized_constraint() requires (sizeof(T) > 0)
+{}
+
+DECLARE_REGISTRATION(example)
+OBJECT_ANNOTATION
+
+auto coroutine() {
+    if likely(true)
+        co_yield 1;
+}

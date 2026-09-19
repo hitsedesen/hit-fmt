@@ -1,0 +1,703 @@
+(translation-unit
+  (namespace-declaration
+    "namespace" "example" "{"
+    (template-declaration
+      "template"
+      (template-parameter-list
+        "<"
+        (template-parameter "class" "T")
+        ">"
+      )
+      (record-declaration
+        "struct" "Record" "{"
+        (declaration
+          (declaration-specifiers "int")
+          (init-declarator-list
+            (init-declarator
+              (declarator
+                (declarator-name "bits")
+                (bit-field ":" "3")
+              )
+            )
+          )
+          ";"
+        )
+        (declaration
+          (declaration-specifiers "int")
+          (init-declarator-list
+            (init-declarator
+              (declarator
+                (member-pointer-operator "Record" "::" "*")
+                (declarator-name "member")
+              )
+            )
+          )
+          ";"
+        )
+        (function-declaration
+          (init-declarator-list
+            (init-declarator
+              (declarator
+                (declarator-name "Record")
+                (function-declarator
+                  (parameter-list "(" ")")
+                )
+              )
+            )
+          )
+          ";"
+        )
+        (function-definition
+          (init-declarator-list
+            (init-declarator
+              (declarator
+                (declarator-name "Record")
+                (function-declarator
+                  (parameter-list
+                    "("
+                    (parameter-declaration
+                      (declaration-specifiers "int")
+                      (init-declarator-list
+                        (init-declarator
+                          (declarator
+                            (declarator-name "value")
+                          )
+                        )
+                      )
+                    )
+                    ")"
+                  )
+                  (constructor-initializer-list
+                    ":"
+                    (constructor-initializer "bits" "{" "value" "}")
+                    (list-separator ",")
+                    (constructor-initializer "member" "(" "nullptr" ")")
+                  )
+                )
+              )
+            )
+          )
+          (compound-statement "{" "}")
+        )
+        (function-declaration
+          (init-declarator-list
+            (init-declarator
+              (declarator
+                (destructor-name "~" "Record")
+                (function-declarator
+                  (parameter-list "(" ")")
+                )
+              )
+            )
+          )
+          ";"
+        )
+        (function-declaration
+          (declaration-specifiers "explicit")
+          (init-declarator-list
+            (init-declarator
+              (declarator
+                (operator-function-name "operator" "bool")
+                (function-declarator
+                  (parameter-list "(" ")")
+                  (function-qualifier "const")
+                )
+              )
+            )
+          )
+          ";"
+        )
+        (function-declaration
+          (declaration-specifiers "Record")
+          (init-declarator-list
+            (init-declarator
+              (declarator
+                (pointer-operator "&")
+                (operator-function-name "operator" "=")
+                (function-declarator
+                  (parameter-list
+                    "("
+                    (parameter-declaration
+                      (declaration-specifiers "const" "Record")
+                      (init-declarator-list
+                        (init-declarator
+                          (declarator
+                            (pointer-operator "&")
+                            (declarator-name "other")
+                          )
+                        )
+                      )
+                    )
+                    ")"
+                  )
+                )
+              )
+            )
+          )
+          ";"
+        )
+        (function-declaration
+          (declaration-specifiers "int")
+          (init-declarator-list
+            (init-declarator
+              (declarator
+                (operator-function-name "operator" "(" ")")
+                (function-declarator
+                  (parameter-list
+                    "("
+                    (parameter-declaration
+                      (declaration-specifiers "int")
+                      (init-declarator-list
+                        (init-declarator
+                          (declarator
+                            (declarator-name "value")
+                          )
+                        )
+                      )
+                    )
+                    ")"
+                  )
+                  (function-qualifier "const")
+                )
+              )
+            )
+          )
+          ";"
+        )
+        (function-definition
+          (declaration-specifiers "T")
+          (init-declarator-list
+            (init-declarator
+              (declarator
+                (declarator-name "get")
+                (function-declarator
+                  (parameter-list "(" ")")
+                  (function-qualifier "const")
+                )
+              )
+            )
+          )
+          (compound-statement
+            "{"
+            (if-statement
+              "if"
+              (condition
+                "("
+                (identifier-expression "member")
+                ")"
+              )
+              (return-statement
+                "return"
+                (braced-initializer
+                  (initializer-list "{" "}")
+                )
+                ";"
+              )
+              "else"
+              (return-statement
+                "return"
+                (identifier-expression "T")
+                "{" "}" ";"
+              )
+            )
+            "}"
+          )
+        )
+        "}" ";"
+      )
+    )
+    "}"
+  )
+  (using-declaration "using" "Type" "=" "int" ";")
+  (declaration
+    (declaration-specifiers "Type")
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (pointer-operator "*")
+          (declarator-name "first")
+        )
+        (initializer
+          "="
+          (literal-expression "nullptr")
+        )
+      )
+      (list-separator ",")
+      (init-declarator
+        (declarator
+          (declarator-name "second")
+          (array-declarator "[" "3" "]")
+        )
+        (initializer
+          (braced-initializer
+            (initializer-list "{" "}")
+          )
+        )
+      )
+    )
+    ";"
+  )
+  (function-declaration
+    (declaration-specifiers "auto")
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (declarator-name "function")
+          (function-declarator
+            (parameter-list
+              "("
+              (parameter-declaration
+                (declaration-specifiers "Type")
+                (init-declarator-list
+                  (init-declarator
+                    (declarator
+                      (pointer-operator "*")
+                      (declarator-name "value")
+                    )
+                  )
+                )
+              )
+              (list-separator ",")
+              (parameter-declaration
+                (declaration-specifiers "int")
+                (init-declarator-list
+                  (init-declarator
+                    (declarator
+                      (declarator-name "count")
+                    )
+                    (initializer
+                      "="
+                      (literal-expression "1")
+                    )
+                  )
+                )
+              )
+              ")"
+            )
+            (trailing-return-type "->" "Type" "*")
+          )
+        )
+      )
+    )
+    ";"
+  )
+  (declaration
+    (declaration-specifiers "void")
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (nested-declarator
+            "("
+            (pointer-operator "*")
+            (declarator-name "callback")
+            ")"
+          )
+          (function-declarator
+            (parameter-list
+              "("
+              (parameter-declaration
+                (declaration-specifiers "int")
+              )
+              ")"
+            )
+          )
+        )
+      )
+    )
+    ";"
+  )
+  (declaration
+    (declaration-specifiers "int")
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (nested-declarator
+            "("
+            (pointer-operator "*")
+            (declarator-name "table")
+            (array-declarator "[" "4" "]")
+            ")"
+          )
+          (function-declarator
+            (parameter-list
+              "("
+              (parameter-declaration
+                (declaration-specifiers "double")
+              )
+              ")"
+            )
+          )
+        )
+      )
+    )
+    ";"
+  )
+  (function-declaration
+    (declaration-specifiers "void")
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (declarator-name "consume")
+          (function-declarator
+            (parameter-list
+              "("
+              (parameter-declaration
+                (declaration-specifiers "int")
+                (init-declarator-list
+                  (init-declarator
+                    (abstract-declarator
+                      (pointer-operator "*")
+                    )
+                  )
+                )
+              )
+              (list-separator ",")
+              (parameter-declaration
+                (declaration-specifiers "void")
+                (init-declarator-list
+                  (init-declarator
+                    (abstract-declarator
+                      (nested-declarator
+                        "("
+                        (pointer-operator "*")
+                        ")"
+                      )
+                      (function-declarator
+                        (parameter-list
+                          "("
+                          (parameter-declaration
+                            (declaration-specifiers "int")
+                          )
+                          ")"
+                        )
+                      )
+                    )
+                  )
+                )
+              )
+              (list-separator ",")
+              (parameter-declaration
+                (declaration-specifiers "int")
+                (init-declarator-list
+                  (init-declarator
+                    (abstract-declarator
+                      (nested-declarator
+                        "("
+                        (pointer-operator "&")
+                        ")"
+                      )
+                      (array-declarator "[" "4" "]")
+                    )
+                  )
+                )
+              )
+              (list-separator ",")
+              (parameter-declaration
+                (declaration-specifiers "int")
+                (init-declarator-list
+                  (init-declarator
+                    (abstract-declarator
+                      (member-pointer-operator "example" "::" "Record" "<" "int" ">" "::" "*")
+                    )
+                  )
+                )
+              )
+              ")"
+            )
+          )
+        )
+      )
+    )
+    ";"
+  )
+  (declaration
+    (declaration-specifiers "auto")
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (structured-binding
+            "["
+            (declarator-name "first_value")
+            (list-separator ",")
+            (declarator-name "second_value")
+            "]"
+          )
+        )
+        (initializer
+          "="
+          (identifier-expression "pair")
+        )
+      )
+    )
+    ";"
+  )
+  (declaration
+    (declaration-specifiers "auto")
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (pointer-operator "&&")
+          (structured-binding
+            "["
+            (declarator-name "left")
+            (list-separator ",")
+            (declarator-name "right")
+            "]"
+          )
+        )
+        (initializer
+          "="
+          (call-expression
+            (identifier-expression "get_pair")
+            (argument-list "(" ")")
+          )
+        )
+      )
+    )
+    ";"
+  )
+  (declaration
+    (declaration-specifiers
+      "int"
+      (attribute-specifier "[" "[" "maybe_unused" "]" "]")
+    )
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (declarator-name "tagged")
+        )
+      )
+    )
+    ";"
+  )
+  (function-declaration
+    (declaration-specifiers
+      (macro-specifier "API_EXPORT")
+      "void"
+    )
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (declarator-name "exported_by_macro")
+          (function-declarator
+            (parameter-list "(" ")")
+          )
+        )
+      )
+    )
+    ";"
+  )
+  (function-declaration
+    (declaration-specifiers
+      (macro-specifier "API_WITH_ARGUMENTS" "(" "dllexport" ")")
+      "int"
+    )
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (declarator-name "another_export")
+        )
+        (initializer
+          (parenthesized-expression "(" ")")
+        )
+      )
+    )
+    ";"
+  )
+  (record-declaration
+    "struct" "URL" "{"
+    (function-definition
+      (init-declarator-list
+        (init-declarator
+          (declarator
+            (declarator-name "URL")
+            (function-declarator
+              (parameter-list "(" ")")
+            )
+          )
+        )
+      )
+      (compound-statement "{" "}")
+    )
+    "}" ";"
+  )
+  (macro-invocation "REGISTER_TYPE" "(" "URL" ")")
+  (declaration
+    (declaration-specifiers "const" "int")
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (declarator-name "registered_value")
+        )
+        (initializer
+          "="
+          (literal-expression "1")
+        )
+      )
+    )
+    ";"
+  )
+  (declaration
+    (declaration-specifiers "const" "Items")
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (declarator-name "expected_items")
+        )
+        (initializer
+          "="
+          (braced-initializer
+            (initializer-list
+              "{"
+              (initializer-element
+                (call-expression
+                  (call-expression
+                    (call-expression
+                      (identifier-expression "Item")
+                      (argument-list "(" ")")
+                    )
+                    (argument-list
+                      "("
+                      (argument
+                        (literal-expression "\"key\"")
+                      )
+                      (list-separator ",")
+                      (argument
+                        (literal-expression "\"one\"")
+                      )
+                      ")"
+                    )
+                  )
+                  (argument-list
+                    "("
+                    (argument
+                      (literal-expression "\"value\"")
+                    )
+                    (list-separator ",")
+                    (argument
+                      (literal-expression "\"1\"")
+                    )
+                    ")"
+                  )
+                )
+              )
+              (list-separator ",")
+              "}"
+            )
+          )
+        )
+      )
+    )
+    ";"
+  )
+  (record-declaration
+    "struct" "Version" "{"
+    (declaration
+      (declaration-specifiers "int")
+      (init-declarator-list
+        (init-declarator
+          (declarator
+            (declarator-name "major")
+          )
+        )
+      )
+      ";"
+    )
+    (declaration
+      (declaration-specifiers "int")
+      (init-declarator-list
+        (init-declarator
+          (declarator
+            (declarator-name "minor")
+          )
+        )
+      )
+      ";"
+    )
+    "}" ";"
+  )
+  (template-declaration
+    "template"
+    (template-parameter-list
+      "<"
+      (template-parameter "Version" "version")
+      ">"
+    )
+    (record-declaration "struct" "Versioned" ";")
+  )
+  (template-declaration
+    "template"
+    (template-parameter-list "<" ">")
+    (record-declaration "struct" "Versioned" "<" "Version" "{" "1" "," "0" "}" ">" "{" "}" ";")
+  )
+  (template-declaration
+    "template"
+    (template-parameter-list
+      "<"
+      (template-parameter "size_t" "Bits")
+      (list-separator ",")
+      (template-parameter "typename" "Signed")
+      ">"
+    )
+    (template-declaration
+      "template"
+      (template-parameter-list
+        "<"
+        (template-parameter "class" "T")
+        ">"
+      )
+      (requires-clause
+        "requires"
+        (constraint-expression
+          (parenthesized-expression
+            "("
+            (binary-expression
+              (member-expression
+                (identifier-expression "std")
+                "::"
+                (identifier-expression "is_arithmetic_v")
+              )
+              "<"
+              (identifier-expression "T")
+            )
+            ">" ")"
+          )
+        )
+      )
+      (function-definition
+        (declaration-specifiers
+          "constexpr" "integer"
+          (template-argument-list
+            "<"
+            (template-argument "Bits")
+            (list-separator ",")
+            (template-argument "Signed")
+            ">"
+          )
+        )
+        (init-declarator-list
+          (init-declarator
+            (declarator
+              "::"
+              (operator-function-name "operator")
+              "T"
+            )
+            (initializer
+              (parenthesized-expression "(" ")")
+              (unparsed-syntax "const" "noexcept" "{" "using" "UnsignedT" "=" "std" "::" "make_unsigned_t" "<" "T" ">" ";" "return" "{" "}" ";" "}" "template" "<" "size_t" "Bits" "," "typename" "Signed" ">" "constexpr" "integer" "<" "Bits" "," "Signed" ">" "::" "operator" "long" "double" "(" ")" "const" "noexcept")
+            )
+          )
+        )
+        (compound-statement
+          "{"
+          (return-statement
+            "return"
+            (literal-expression "0")
+            ";"
+          )
+          "}"
+        )
+      )
+    )
+  )
+)

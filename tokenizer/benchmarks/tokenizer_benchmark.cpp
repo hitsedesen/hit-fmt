@@ -39,25 +39,25 @@ void RunTokenizer(
 
 void BM_TokenizeService(benchmark::State& state)
 {
-    constexpr std::array Sources{tokenizer::benchmarks::Service};
+    constexpr std::array Sources{benchmarks::Service};
     RunTokenizer(state, Sources);
 }
 
 void BM_TokenizeTemplateLibrary(benchmark::State& state)
 {
-    constexpr std::array Sources{tokenizer::benchmarks::TemplateLibrary};
+    constexpr std::array Sources{benchmarks::TemplateLibrary};
     RunTokenizer(state, Sources);
 }
 
 void BM_TokenizePlatformHeader(benchmark::State& state)
 {
-    constexpr std::array Sources{tokenizer::benchmarks::Platform};
+    constexpr std::array Sources{benchmarks::Platform};
     RunTokenizer(state, Sources);
 }
 
 void BM_TokenizeMixedCorpus(benchmark::State& state)
 {
-    RunTokenizer(state, tokenizer::benchmarks::Corpus);
+    RunTokenizer(state, benchmarks::Corpus);
 }
 
 BENCHMARK(BM_TokenizeService)->Unit(benchmark::kMicrosecond);

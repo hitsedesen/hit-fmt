@@ -1,0 +1,13 @@
+template<class First, class Second = int>
+struct Derived : public Base<First, Second>, virtual Other {
+    enum class Kind { One, Two = 2, Three, };
+
+    Derived() : Base<First, Second>{}, Other() {}
+
+    void function(int first, int second = 2) {
+        target<First, Second>(first, second + third);
+        int values[]{1, 2, 3};
+        auto [left, right] = pair;
+        auto capture = [left, &right](int value) { return value; };
+    }
+};

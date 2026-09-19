@@ -1,0 +1,169 @@
+(translation-unit
+  (preprocessing-directive "#include <something>")
+  (preprocessing-directive "%:define DIGRAPH 1")
+  (preprocessing-directive "#define APPLY(x) \\\n    ((x) + 1)")
+  (preprocessing-conditional
+    (preprocessing-branch
+      (preprocessing-directive "#if FIRST")
+      (using-declaration "using" "Selected" "=" "int" ";")
+      (preprocessing-conditional
+        (preprocessing-branch
+          (preprocessing-directive "#  if NESTED")
+          (function-declaration
+            (declaration-specifiers "int")
+            (init-declarator-list
+              (init-declarator
+                (declarator
+                  (declarator-name "nested")
+                  (function-declarator
+                    (parameter-list "(" ")")
+                  )
+                )
+              )
+            )
+            ";"
+          )
+        )
+        (preprocessing-directive "#  endif")
+      )
+    )
+    (preprocessing-branch
+      (preprocessing-directive "#elif SECOND")
+      (using-declaration "using" "Selected" "=" "long" ";")
+    )
+    (preprocessing-branch
+      (preprocessing-directive "#else")
+      (using-declaration "using" "Selected" "=" "short" ";")
+    )
+    (preprocessing-directive "#endif")
+  )
+  (function-definition
+    (declaration-specifiers "void")
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (declarator-name "function")
+          (function-declarator
+            (parameter-list "(" ")")
+          )
+        )
+      )
+    )
+    (compound-statement
+      "{"
+      (preprocessing-conditional
+        (preprocessing-branch
+          (preprocessing-directive "#if ENABLED")
+          (declaration-statement
+            (declaration-specifiers "int")
+            (init-declarator-list
+              (init-declarator
+                (declarator
+                  (declarator-name "value")
+                )
+                (initializer
+                  "="
+                  (call-expression
+                    (identifier-expression "APPLY")
+                    (argument-list
+                      "("
+                      (argument
+                        (literal-expression "1")
+                      )
+                      ")"
+                    )
+                  )
+                )
+              )
+            )
+            ";"
+          )
+          (expression-statement
+            (call-expression
+              (identifier-expression "use")
+              (argument-list
+                "("
+                (argument
+                  (identifier-expression "value")
+                )
+                ")"
+              )
+            )
+            ";"
+          )
+        )
+        (preprocessing-branch
+          (preprocessing-directive "#else")
+          (return-statement "return" ";")
+        )
+        (preprocessing-directive "#endif")
+      )
+      "}"
+    )
+  )
+  (function-definition
+    (declaration-specifiers "void")
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (declarator-name "split_conditional_block")
+          (function-declarator
+            (parameter-list "(" ")")
+          )
+        )
+      )
+    )
+    (compound-statement
+      "{"
+      (preprocessing-conditional
+        (preprocessing-branch
+          (preprocessing-directive "#if FIRST")
+          (if-statement
+            "if"
+            (condition
+              "("
+              (identifier-expression "first")
+              ")"
+            )
+            (compound-statement
+              "{"
+              (missing-token)
+            )
+          )
+        )
+        (preprocessing-branch
+          (preprocessing-directive "#else")
+          (if-statement
+            "if"
+            (condition
+              "("
+              (identifier-expression "second")
+              ")"
+            )
+            (compound-statement
+              "{"
+              (missing-token)
+            )
+          )
+        )
+        (preprocessing-directive "#endif")
+      )
+      (expression-statement
+        (call-expression
+          (identifier-expression "use")
+          (argument-list "(" ")")
+        )
+        ";"
+      )
+      (unparsed-syntax "}")
+      (expression-statement
+        (call-expression
+          (identifier-expression "finish")
+          (argument-list "(" ")")
+        )
+        ";"
+      )
+      "}"
+    )
+  )
+)
