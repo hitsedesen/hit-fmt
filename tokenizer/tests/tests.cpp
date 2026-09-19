@@ -228,6 +228,55 @@ TEST(Tokenizer, KeepsRawStringsInsidePreprocessingDirectives)
         "#define DOCUMENT R\"(first line\nsecond line)\"");
 }
 
+TEST(Tokenizer, KeepsLineSplicedStringsInsidePreprocessingDirectives)
+{
+    constexpr std::string_view Source =
+        "#define DOCUMENT \\\n"
+        "\"first line\\n\\\n"
+        "second line\\n\"\n"
+        "int value;";
+    auto [serialized, errors] = TokenizeAndSerialize(std::string(Source));
+    auto tokens = Tokenize(Source);
+
+    EXPECT_THAT(errors, testing::IsEmpty());
+    ASSERT_GT(tokens.size(), 1);
+    EXPECT_EQ(tokens[0].Kind, TokenKind::PreprocessingDirective);
+    EXPECT_EQ(
+        tokens[0].Text.View(Source),
+        "#define DOCUMENT \\\n"
+        "\"first line\\n\\\n"
+        "second line\\n\"");
+}
+
+TEST(Tokenizer, KeepsDigitSeparatorsInExponentDigits)
+{
+    constexpr std::string_view Source = "auto value = int(1'2e0'1);";
+    auto [serialized, errors] = TokenizeAndSerialize(std::string(Source));
+    auto tokens = Tokenize(Source);
+
+    EXPECT_THAT(errors, testing::IsEmpty());
+    auto literal = std::ranges::find_if(tokens, [&](Token token) {
+        return token.Text.View(Source) == "1'2e0'1";
+    });
+    ASSERT_NE(literal, tokens.end());
+    EXPECT_EQ(literal->Kind, TokenKind::Literal_UserDefinedInteger);
+}
+
+TEST(Tokenizer, KeepsEmbeddedNullInRawStringLiteral)
+{
+    std::string source = "R\"(before";
+    source.push_back('\0');
+    source += "after)\" identifier";
+    auto [serialized, errors] = TokenizeAndSerialize(source);
+    auto tokens = Tokenize(source);
+
+    EXPECT_THAT(errors, testing::IsEmpty());
+    ASSERT_EQ(tokens.size(), 2);
+    EXPECT_EQ(tokens[0].Kind, TokenKind::Literal_String);
+    EXPECT_EQ(tokens[0].Text.View(source).size(), 17);
+    EXPECT_EQ(tokens[1].Text.View(source), "identifier");
+}
+
 TEST(Tokenizer, AppliesLessColonColonLexingException)
 {
     auto tokens = Tokenize("value<::type>();");

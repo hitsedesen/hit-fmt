@@ -40,6 +40,11 @@ private:
 
     unicode::CodePoint LoadCurrentCodePoint();
 
+    [[nodiscard]] bool AtEnd() const
+    {
+        return CurrentCodePointOffset_ >= Input_.size();
+    }
+
     static constexpr size_t UnloadedCodePoint =
         std::numeric_limits<size_t>::max();
     size_t CurrentCodePointOffset_ = 0;

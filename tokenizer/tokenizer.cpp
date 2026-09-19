@@ -130,7 +130,7 @@ Token Tokenizer::Get()
     CurrentTokenSize_ = 0;
 
     auto cur = CurrentCodePoint();
-    if (cur == '\0') [[unlikely]] {
+    if (AtEnd()) [[unlikely]] {
         return FinishToken(TokenKind::EndOfFile);
     }
 
@@ -620,47 +620,43 @@ Token Tokenizer::ParseRawStringLiteral()
 
     std::vector<unicode::CodePoint> delimiter;
 
-    while (cur != '(' && cur != '\n' && cur != '\0') {
+    while (!AtEnd() && cur != '(' && cur != '\n') {
         delimiter.push_back(cur);
         next();
     }
 
-    if (cur != '(') {
+    if (AtEnd() || cur != '(') {
         OnError("Unterminated raw string literal");
         return FinishToken(TokenKind::Invalid);
     }
 
     delimiter.push_back('"');
 
-    long long delimiterPos = -1;
+    size_t delimiterPos = 0;
+    bool matchingDelimiter = false;
 
     next();
 
-    while (cur != '\0') {
-        if (delimiterPos != -1) {
+    while (!AtEnd()) {
+        if (matchingDelimiter) {
             if (cur == delimiter[delimiterPos]) {
-                delimiterPos++;
-                if (delimiterPos == delimiter.size()) {
+                if (++delimiterPos == delimiter.size()) {
                     next();
-                    break;
+                    return FinishToken(TokenKind::Literal_String);
                 }
             } else {
-                delimiterPos = -1;
+                matchingDelimiter = false;
             }
         }
-        if (delimiterPos == -1) {
-            if (cur == ')') {
-                delimiterPos = 0;
-            }
+        if (!matchingDelimiter && cur == ')') {
+            matchingDelimiter = true;
+            delimiterPos = 0;
         }
         next();
     }
 
-    if (cur == '\0') {
-        OnError("Unterminated raw string literal");
-        return FinishToken(TokenKind::Invalid);
-    }
-    return FinishToken(TokenKind::Literal_String);
+    OnError("Unterminated raw string literal");
+    return FinishToken(TokenKind::Invalid);
 }
 
 Token Tokenizer::ParseNumber()
@@ -792,10 +788,20 @@ Token Tokenizer::ParseNumber()
     size_t suffixStart = CurrentTokenText().size();
 
     if (IsIdStart(cur)) {
-        next();
-        while (IsIdContinuation(cur)) {
+        auto isDigitSeparator = [&] {
+            return cur == '\'' && CurrentCodePointOffset_ != 0
+                && CurrentCodePointOffset_ + 1 < Input_.size()
+                && std::isdigit(
+                       static_cast<unsigned char>(
+                           Input_[CurrentCodePointOffset_ - 1]))
+                && std::isdigit(
+                       static_cast<unsigned char>(
+                           Input_[CurrentCodePointOffset_ + 1]));
+        };
+        do {
             next();
         }
+        while (IsIdContinuation(cur) || isDigitSeparator());
     }
 
     if (kind == TokenKind::Invalid) {
@@ -951,19 +957,19 @@ Token Tokenizer::ParsePreprocessingDirective()
                 Input_[CurrentCodePointOffset_ + 1]));
         if ((cur == '\'' && !digitSeparator) || cur == '"') {
             auto quote = cur;
-            do {
-                ConsumeCodePoint();
-                cur = CurrentCodePoint();
+            ConsumeCodePoint();
+            cur = CurrentCodePoint();
+            while (!AtEnd() && cur != quote && cur != '\n') {
                 if (cur == '\\') {
                     ConsumeCodePoint();
                     cur = CurrentCodePoint();
-                    if (cur != '\0') {
-                        ConsumeCodePoint();
-                        cur = CurrentCodePoint();
+                    if (AtEnd()) {
+                        break;
                     }
                 }
+                ConsumeCodePoint();
+                cur = CurrentCodePoint();
             }
-            while (cur != quote && cur != '\n' && cur != '\0');
             if (cur == quote) {
                 ConsumeCodePoint();
                 cur = CurrentCodePoint();
