@@ -103,7 +103,104 @@ struct TokenizationError
     util::Position TokenEnd;
 };
 
-class Tokenizer
+namespace detail {
+
+template<typename Owner>
+class TokenizerCursor
+{
+protected:
+    enum class NewlineHandling : uint8_t
+    {
+        Track,
+        Ignore,
+    };
+
+    [[nodiscard]] unicode::CodePoint CurrentCodePoint()
+    {
+        if (CurrentCodePointSize_ != UnloadedCodePoint) [[likely]] {
+            return CurrentCodePointValue_;
+        }
+        return LoadCurrentCodePoint();
+    }
+
+    [[nodiscard]] bool AtEnd() const noexcept
+    {
+        return CurrentCodePointSize_ == 0;
+    }
+
+    [[nodiscard]] bool CurrentCodePointValid() const noexcept
+    {
+        return CurrentCodePointValue_ != InvalidCodePoint;
+    }
+
+    [[nodiscard]] char ByteAt(size_t offset) const noexcept
+    {
+        return GetOwner().Input_.data()[offset];
+    }
+
+    [[nodiscard]] char PeekByte(size_t lookahead = 0) const noexcept
+    {
+        return ByteAt(CurrentCodePointOffset_ + lookahead);
+    }
+
+    [[nodiscard]] const char* CurrentByteAddress() const noexcept
+    {
+        return GetOwner().Input_.data() + CurrentCodePointOffset_;
+    }
+
+    void
+    ConsumeCodePoint(NewlineHandling newlineHandling = NewlineHandling::Track)
+    {
+        auto value = CurrentCodePoint();
+        auto size = std::exchange(CurrentCodePointSize_, UnloadedCodePoint);
+        auto& owner = GetOwner();
+
+        owner.CurrentTokenSize_ += size;
+        CurrentCodePointOffset_ += size;
+        if (value == '\n') {
+            ++CurrentCodePointPosition_.Line;
+            CurrentCodePointPosition_.Column = 1;
+            if (newlineHandling == NewlineHandling::Track) {
+                owner.IsNewLine_ = true;
+            }
+        } else {
+            ++CurrentCodePointPosition_.Column;
+            if (value != ' ' && value != '\t' && value != '\r' && value != '\f'
+                && value != '\v')
+            {
+                owner.IsNewLine_ = false;
+            }
+        }
+    }
+
+    static constexpr size_t UnloadedCodePoint =
+        std::numeric_limits<size_t>::max();
+    static constexpr unicode::CodePoint InvalidCodePoint =
+        static_cast<char32_t>(std::numeric_limits<uint32_t>::max());
+
+    size_t CurrentCodePointOffset_ = 0;
+    size_t CurrentCodePointSize_ = UnloadedCodePoint;
+    unicode::CodePoint CurrentCodePointValue_ = '\0';
+    size_t EncodingErrorCount_ = 0;
+    util::Position CurrentCodePointPosition_ = {.Line = 1, .Column = 1};
+
+private:
+    [[nodiscard]] Owner& GetOwner() noexcept
+    {
+        return static_cast<Owner&>(*this);
+    }
+
+    [[nodiscard]] const Owner& GetOwner() const noexcept
+    {
+        return static_cast<const Owner&>(*this);
+    }
+
+    [[nodiscard]] unicode::CodePoint LoadCurrentCodePoint();
+};
+
+} // namespace detail
+
+class Tokenizer : private detail::TokenizerCursor<Tokenizer>
 {
 public:
     Tokenizer(
@@ -173,81 +270,7 @@ public:
     }
 
 private:
-    unicode::CodePoint CurrentCodePoint()
-    {
-        if (CurrentCodePointSize_ != UnloadedCodePoint) [[likely]] {
-            return CurrentCodePointValue_;
-        }
-        return LoadCurrentCodePoint();
-    }
-
-    unicode::CodePoint LoadCurrentCodePoint();
-
-    [[nodiscard]] bool AtEnd() const noexcept
-    {
-        return CurrentCodePointSize_ == 0;
-    }
-
-    static constexpr size_t UnloadedCodePoint =
-        std::numeric_limits<size_t>::max();
-    static constexpr unicode::CodePoint InvalidCodePoint =
-        static_cast<char32_t>(std::numeric_limits<uint32_t>::max());
-
-    [[nodiscard]] bool CurrentCodePointValid() const noexcept
-    {
-        return CurrentCodePointValue_ != InvalidCodePoint;
-    }
-
-    size_t CurrentCodePointOffset_ = 0;
-    size_t CurrentCodePointSize_ = UnloadedCodePoint;
-    unicode::CodePoint CurrentCodePointValue_ = '\0';
-    size_t EncodingErrorCount_ = 0;
-    util::Position CurrentCodePointPosition_ = {.Line = 1, .Column = 1};
-
-    enum class NewlineHandling : uint8_t
-    {
-        Track,
-        Ignore,
-    };
-
-    [[nodiscard]] char ByteAt(size_t offset) const noexcept
-    {
-        return Input_.data()[offset];
-    }
-
-    [[nodiscard]] char PeekByte(size_t lookahead = 0) const noexcept
-    {
-        return ByteAt(CurrentCodePointOffset_ + lookahead);
-    }
-
-    [[nodiscard]] const char* CurrentByteAddress() const noexcept
-    {
-        return Input_.data() + CurrentCodePointOffset_;
-    }
-
-    void
-    ConsumeCodePoint(NewlineHandling newlineHandling = NewlineHandling::Track)
-    {
-        auto value = CurrentCodePoint();
-        auto size = std::exchange(CurrentCodePointSize_, UnloadedCodePoint);
-
-        CurrentTokenSize_ += size;
-        CurrentCodePointOffset_ += size;
-        if (value == '\n') {
-            ++CurrentCodePointPosition_.Line;
-            CurrentCodePointPosition_.Column = 1;
-            if (newlineHandling == NewlineHandling::Track) {
-                IsNewLine_ = true;
-            }
-        } else {
-            ++CurrentCodePointPosition_.Column;
-            if (value != ' ' && value != '\t' && value != '\r' && value != '\f'
-                && value != '\v')
-            {
-                IsNewLine_ = false;
-            }
-        }
-    }
+    friend class detail::TokenizerCursor<Tokenizer>;
 
     [[nodiscard]] std::string_view CurrentTokenText() const noexcept;
     util::Position CurrentTokenPosition_;
