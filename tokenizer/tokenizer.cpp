@@ -60,6 +60,26 @@ bool IsIdContinuation(unicode::CodePoint cp)
     return unicode::IsXIDContinue(cp);
 }
 
+bool EqualsIgnoringAsciiCase(std::string_view lhs, std::string_view rhs)
+{
+    if (lhs.size() != rhs.size()) {
+        return false;
+    }
+
+    auto lower = [](char value) {
+        if (value >= 'A' && value <= 'Z') {
+            return static_cast<char>(value + ('a' - 'A'));
+        }
+        return value;
+    };
+    for (size_t i = 0; i < lhs.size(); ++i) {
+        if (lower(lhs[i]) != lower(rhs[i])) {
+            return false;
+        }
+    }
+    return true;
+}
+
 Tokenizer::Tokenizer(
     std::string_view input,
     std::move_only_function<void(TokenizationError)> errorHandler)
@@ -618,10 +638,8 @@ Token Tokenizer::ParseRawStringLiteral()
     };
     next();
 
-    std::vector<unicode::CodePoint> delimiter;
-
+    auto delimiterStart = CurrentCodePointOffset_;
     while (!AtEnd() && cur != '(' && cur != '\n') {
-        delimiter.push_back(cur);
         next();
     }
 
@@ -630,27 +648,25 @@ Token Tokenizer::ParseRawStringLiteral()
         return FinishToken(TokenKind::Invalid);
     }
 
-    delimiter.push_back('"');
-
-    size_t delimiterPos = 0;
-    bool matchingDelimiter = false;
-
+    auto delimiter =
+        Input_.substr(delimiterStart, CurrentCodePointOffset_ - delimiterStart);
     next();
 
     while (!AtEnd()) {
-        if (matchingDelimiter) {
-            if (cur == delimiter[delimiterPos]) {
-                if (++delimiterPos == delimiter.size()) {
-                    next();
-                    return FinishToken(TokenKind::Literal_String);
+        if (cur == ')') {
+            auto suffix = Input_.substr(CurrentCodePointOffset_ + 1);
+            if (suffix.starts_with(delimiter)
+                && suffix.size() > delimiter.size()
+                && suffix[delimiter.size()] == '"')
+            {
+                auto closingDelimiterEnd =
+                    CurrentCodePointOffset_ + 2 + delimiter.size();
+                do {
+                    ConsumeCodePoint();
                 }
-            } else {
-                matchingDelimiter = false;
+                while (CurrentCodePointOffset_ < closingDelimiterEnd);
+                return FinishToken(TokenKind::Literal_String);
             }
-        }
-        if (!matchingDelimiter && cur == ')') {
-            matchingDelimiter = true;
-            delimiterPos = 0;
         }
         next();
     }
@@ -808,12 +824,11 @@ Token Tokenizer::ParseNumber()
         return FinishToken(kind);
     }
 
-    auto suffix = std::string(CurrentTokenText().substr(suffixStart));
-    for (char& c : suffix) {
-        c = std::tolower(c);
-    }
-
-    if (!std::ranges::contains(validSuffixes, suffix)) {
+    auto suffix = CurrentTokenText().substr(suffixStart);
+    auto validSuffix = std::ranges::find_if(validSuffixes, [&](auto candidate) {
+        return EqualsIgnoringAsciiCase(suffix, candidate);
+    });
+    if (validSuffix == validSuffixes.end()) {
         return FinishToken(TokenKind::Literal_UserDefinedInteger);
     }
     return FinishToken(kind);
