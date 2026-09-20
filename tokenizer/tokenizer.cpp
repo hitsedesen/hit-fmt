@@ -121,10 +121,12 @@ Tokenizer::Tokenizer(
     }
 }
 
-unicode::CodePoint Tokenizer::LoadCurrentCodePoint()
+template<>
+unicode::CodePoint detail::TokenizerCursor<Tokenizer>::LoadCurrentCodePoint()
 {
     auto firstByte = static_cast<unsigned char>(PeekByte());
-    if (firstByte == 0 && CurrentCodePointOffset_ == Input_.size()) [[unlikely]]
+    const auto& input = GetOwner().Input_;
+    if (firstByte == 0 && CurrentCodePointOffset_ == input.size()) [[unlikely]]
     {
         CurrentCodePointValue_ = '\0';
         CurrentCodePointSize_ = 0;
@@ -140,7 +142,7 @@ unicode::CodePoint Tokenizer::LoadCurrentCodePoint()
     auto first =
         unicode::utf8::GetFirstCodePointFromPaddedInput(CurrentByteAddress());
     if (!first) {
-        OnError(TokenizationErrorKind::InvalidUtf8CodePoint);
+        GetOwner().OnError(TokenizationErrorKind::InvalidUtf8CodePoint);
         ++EncodingErrorCount_;
         CurrentCodePointValue_ = InvalidCodePoint;
         CurrentCodePointSize_ = 1;
