@@ -2,15 +2,15 @@
 
 #include <benchmark/benchmark.h>
 #include <parser/parser.hpp>
+#include <util/input.hpp>
 
 #include <array>
 #include <cstdint>
 #include <span>
-#include <string_view>
 
 namespace {
 
-bool HasParseErrors(std::span<const std::string_view> sources)
+bool HasParseErrors(std::span<const util::PaddedSourceView> sources)
 {
     bool hasErrors = false;
     for (auto source : sources) {
@@ -24,7 +24,7 @@ bool HasParseErrors(std::span<const std::string_view> sources)
 }
 
 void RunParser(
-    benchmark::State& state, std::span<const std::string_view> sources)
+    benchmark::State& state, std::span<const util::PaddedSourceView> sources)
 {
     if (HasParseErrors(sources)) {
         state.SkipWithError("benchmark input produced parser errors");
@@ -33,7 +33,7 @@ void RunParser(
 
     int64_t bytesPerIteration = 0;
     for (auto source : sources) {
-        bytesPerIteration += static_cast<int64_t>(source.size());
+        bytesPerIteration += static_cast<int64_t>(source.Size);
     }
 
     int64_t processedTokens = 0;

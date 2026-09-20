@@ -166,6 +166,26 @@ std::string Serialize(const parser::SyntaxTree& tree)
     return output;
 }
 
+class PaddedInput
+{
+public:
+    explicit PaddedInput(std::string_view input)
+        : Size_(input.size())
+        , Storage_(input)
+    {
+        Storage_.append(util::SourcePaddingSize, '\0');
+    }
+
+    [[nodiscard]] util::PaddedSourceView View() const
+    {
+        return {.Data = Storage_.data(), .Size = Size_};
+    }
+
+private:
+    size_t Size_;
+    std::string Storage_;
+};
+
 struct GoldenCase
 {
     std::string Name;
@@ -185,9 +205,11 @@ TEST_P(ParserGoldenTest, MatchesSExpression)
     const auto input =
         ReadFile(std::format("./testdata/{}.in", GetParam().Name));
     std::vector<parser::ParseError> errors;
-    auto tree = parser::Parse(input, [&](parser::ParseError error) {
-        errors.push_back(std::move(error));
-    });
+    PaddedInput paddedInput(input);
+    auto tree =
+        parser::Parse(paddedInput.View(), [&](parser::ParseError error) {
+            errors.push_back(std::move(error));
+        });
     auto actual = Serialize(tree);
     auto outputPath = std::format("./testdata/{}.out", GetParam().Name);
     auto expected = ReadGoldenFile(outputPath);
@@ -237,7 +259,8 @@ void empty()
 }
 )cpp";
 
-    auto tree = parser::Parse(Source);
+    PaddedInput paddedSource(Source);
+    auto tree = parser::Parse(paddedSource.View());
     const auto* declaration = FindChild(tree.Root(), NodeKind::Declaration);
     ASSERT_NE(declaration, nullptr);
     auto* declarationTrivia = tree.AssociatedTrivia(*declaration);
@@ -289,7 +312,8 @@ void empty()
         moved.TokenText(movedTrivia->Trailing.First->Tokens.Begin),
         "// trailing declaration");
 
-    auto assigned = parser::Parse("int old;");
+    PaddedInput paddedAssigned("int old;");
+    auto assigned = parser::Parse(paddedAssigned.View());
     assigned = std::move(moved);
     auto* assignedTrivia = assigned.AssociatedTrivia(*declaration);
     ASSERT_NE(assignedTrivia, nullptr);
@@ -342,7 +366,8 @@ struct Derived : Base<T> {
 };
 )cpp";
 
-    auto tree = parser::Parse(Source);
+    PaddedInput paddedSource(Source);
+    auto tree = parser::Parse(paddedSource.View());
     for (size_t i = 0; i < tree.TokenCount(); ++i) {
         auto kind = tree.Kind(i);
         if (kind >= tokenizer::TokenKind::Operator_OpenBrace
@@ -371,7 +396,8 @@ TEST(Parser, HandlesDeepCompoundNesting)
     source.append(Depth + 1, '}');
 
     size_t errors = 0;
-    auto tree = parser::Parse(source, [&](parser::ParseError) {
+    PaddedInput paddedSource(source);
+    auto tree = parser::Parse(paddedSource.View(), [&](parser::ParseError) {
         ++errors;
     });
 

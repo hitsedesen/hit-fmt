@@ -25,8 +25,13 @@ constexpr size_t MaxSourceFileSize = 4 * 1024 * 1024; // 4 MB.
 
 std::pair<long long, long long> DoTokenizeFile(const std::string& filePath)
 {
-    auto fileContents = util::ReadEntireFile(filePath, MaxSourceFileSize);
-    tokenizer::Tokenizer tokenizer(fileContents);
+    auto fileContents = util::ReadEntireFile(
+        filePath, MaxSourceFileSize, util::SourcePaddingSize);
+    auto sourceSize = fileContents.size() - util::SourcePaddingSize;
+    tokenizer::Tokenizer tokenizer({
+        .Data = fileContents.data(),
+        .Size = sourceSize,
+    });
     int invalidTokens = 0;
     int validTokens = 0;
     while (true) {

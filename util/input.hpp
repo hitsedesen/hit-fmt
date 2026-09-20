@@ -11,8 +11,23 @@ namespace util {
 
 using SourceOffset = uint32_t;
 
+inline constexpr size_t SourcePaddingSize = 4;
 inline constexpr size_t MaxSourceSize =
-    static_cast<size_t>(std::numeric_limits<SourceOffset>::max()) - 1;
+    static_cast<size_t>(std::numeric_limits<SourceOffset>::max())
+    - SourcePaddingSize;
+
+// Data must point to Size source bytes followed by SourcePaddingSize zero
+// bytes.
+struct PaddedSourceView
+{
+    const char* Data;
+    size_t Size;
+
+    [[nodiscard]] constexpr std::string_view View() const
+    {
+        return {Data, Size};
+    }
+};
 
 struct SourceView
 {

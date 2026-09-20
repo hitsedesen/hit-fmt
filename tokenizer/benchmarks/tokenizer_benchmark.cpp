@@ -2,20 +2,20 @@
 
 #include <benchmark/benchmark.h>
 #include <tokenizer/tokenizer.hpp>
+#include <util/input.hpp>
 
 #include <array>
 #include <cstdint>
 #include <span>
-#include <string_view>
 
 namespace {
 
 void RunTokenizer(
-    benchmark::State& state, std::span<const std::string_view> sources)
+    benchmark::State& state, std::span<const util::PaddedSourceView> sources)
 {
     int64_t bytesPerIteration = 0;
     for (auto source : sources) {
-        bytesPerIteration += static_cast<int64_t>(source.size());
+        bytesPerIteration += static_cast<int64_t>(source.Size);
     }
 
     int64_t processedTokens = 0;

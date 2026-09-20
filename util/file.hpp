@@ -5,6 +5,7 @@
 
 namespace util {
 
-std::string ReadEntireFile(const std::string& filePath, size_t maxSize);
+std::string
+ReadEntireFile(const std::string& filePath, size_t maxSize, size_t padding = 0);
 
 } // namespace util

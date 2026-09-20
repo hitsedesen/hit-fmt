@@ -336,7 +336,7 @@ class ParseContext
 
 public:
     [[nodiscard]] static SyntaxTree
-    Run(std::string_view input, ErrorHandler errorHandler);
+    Run(util::PaddedSourceView input, ErrorHandler errorHandler);
 
     ParseContext(SyntaxTree& tree, ErrorHandler& errorHandler)
         : Tree_(tree)
@@ -436,10 +436,13 @@ private:
     void Tokenize()
     {
         tokenizer::Tokenizer tokenizer(
-            Tree_.Input_, [this](tokenizer::TokenizationError error) {
+            {.Data = Tree_.Input_.data(), .Size = Tree_.Input_.size()},
+            [this](tokenizer::TokenizationError error) {
                 OnError(
                     ParseError{
-                        .Message = std::move(error.Message),
+                        .Message = std::string(
+                            tokenizer::GetTokenizationErrorDescription(
+                                error.Kind)),
                         .Position = error.ErrorPosition,
                     });
             });
@@ -5446,15 +5449,16 @@ private:
     bool HasDelimiterMap_ = true;
 };
 
-SyntaxTree ParseContext::Run(std::string_view input, ErrorHandler errorHandler)
+SyntaxTree
+ParseContext::Run(util::PaddedSourceView input, ErrorHandler errorHandler)
 {
-    SyntaxTree tree(input);
+    SyntaxTree tree(input.View());
     ParseContext context(tree, errorHandler);
     context.Build();
     return tree;
 }
 
-SyntaxTree Parse(std::string_view input, ErrorHandler errorHandler)
+SyntaxTree Parse(util::PaddedSourceView input, ErrorHandler errorHandler)
 {
     return ParseContext::Run(input, std::move(errorHandler));
 }
