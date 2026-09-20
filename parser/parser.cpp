@@ -1,7 +1,6 @@
 #include "parser.hpp"
 
 #include <tokenizer/tokenizer.hpp>
-#include <unicode/utf8.hpp>
 #include <util/assert.hpp>
 
 #include <algorithm>
@@ -10,8 +9,10 @@
 #include <cstdint>
 #include <iostream>
 #include <limits>
+#include <memory_resource>
 #include <new>
 #include <utility>
+#include <vector>
 
 namespace parser {
 
@@ -188,16 +189,6 @@ const Node& SyntaxTree::Root() const
     return *Root_;
 }
 
-std::string_view SyntaxTree::Source() const
-{
-    return Input_;
-}
-
-TokenIndex SyntaxTree::TokenCount() const
-{
-    return Tokens_.Size();
-}
-
 tokenizer::Token SyntaxTree::Token(TokenIndex index) const
 {
     return {
@@ -205,48 +196,6 @@ tokenizer::Token SyntaxTree::Token(TokenIndex index) const
         .Position = TokenPosition(index),
         .Text = Tokens_[index].Text,
     };
-}
-
-tokenizer::TokenKind SyntaxTree::Kind(TokenIndex index) const
-{
-    return Tokens_.Kind(index);
-}
-
-util::Position SyntaxTree::TokenPosition(TokenIndex index) const
-{
-    const auto& token = Tokens_[index];
-    auto tokenBegin = static_cast<size_t>(token.Text.Begin);
-    auto lineBegin = tokenBegin;
-    while (lineBegin != 0 && Input_[lineBegin - 1] != '\n') {
-        --lineBegin;
-    }
-
-    uint32_t column = 1;
-    while (lineBegin < tokenBegin) {
-        auto byte = static_cast<unsigned char>(Input_[lineBegin]);
-        if (byte < 0x80) {
-            ++lineBegin;
-        } else if (
-            auto codePoint =
-                unicode::utf8::GetFirstCodePoint(Input_.substr(lineBegin)))
-        {
-            lineBegin += codePoint->Size;
-        } else {
-            ++lineBegin;
-        }
-        ++column;
-    }
-    return {.Line = token.Line, .Column = column};
-}
-
-std::string_view SyntaxTree::TokenText(TokenIndex index) const
-{
-    return Tokens_[index].Text.View(Input_);
-}
-
-PunctuationRole SyntaxTree::Role(TokenIndex index) const
-{
-    return Tokens_.Role(index);
 }
 
 const TriviaAttachments* SyntaxTree::AssociatedTrivia(const Node& node) const
@@ -274,66 +223,8 @@ std::string_view SyntaxTree::SourceText(SourceRange range) const
     return Input_.substr(range.Begin, range.End - range.Begin);
 }
 
-std::string_view SyntaxTree::WhitespaceBefore(TokenIndex token) const
-{
-    ASSERT(token < TokenCount())
-    auto* begin = token == 0 ? Input_.data()
-                             : Input_.data() + Tokens_[token - 1].Text.End;
-    auto* end = Input_.data() + Tokens_[token].Text.Begin;
-    return {begin, static_cast<size_t>(end - begin)};
-}
-
-std::string_view SyntaxTree::WhitespaceAfter(TokenIndex token) const
-{
-    ASSERT(token < TokenCount())
-    auto* begin = Input_.data() + Tokens_[token].Text.End;
-    auto* end = token + 1 == TokenCount()
-        ? Input_.data() + Input_.size()
-        : Input_.data() + Tokens_[token + 1].Text.Begin;
-    return {begin, static_cast<size_t>(end - begin)};
-}
-
 class ParseContext
 {
-    class DelimiterMap
-    {
-        static constexpr uint16_t EntriesPerChunk = 512;
-
-        struct Chunk
-        {
-            Chunk* Next = nullptr;
-            uint16_t Size = 0;
-            std::array<uint32_t, EntriesPerChunk> Entries;
-        };
-
-    public:
-        explicit DelimiterMap(std::pmr::memory_resource& memory)
-            : Storage_(memory)
-        { }
-
-        uint32_t* Add()
-        {
-            auto slot = Storage_.Append();
-            slot.ChunkPtr->Entries[slot.Offset] = 0;
-            return &slot.ChunkPtr->Entries[slot.Offset];
-        }
-
-        void Seal()
-        {
-            Storage_.Seal();
-        }
-
-        [[nodiscard]] uint32_t operator[](TokenIndex index) const
-        {
-            ASSERT(index < Storage_.Size())
-            return Storage_.ChunkAt(index / EntriesPerChunk)
-                ->Entries[index % EntriesPerChunk];
-        }
-
-    private:
-        detail::SegmentedStorage<Chunk, EntriesPerChunk> Storage_;
-    };
-
 public:
     [[nodiscard]] static SyntaxTree
     Run(util::PaddedSourceView input, ErrorHandler errorHandler);
@@ -341,14 +232,12 @@ public:
     ParseContext(SyntaxTree& tree, ErrorHandler& errorHandler)
         : Tree_(tree)
         , ErrorHandler_(errorHandler)
-        , DelimiterEnds_(ScratchMemory_)
     { }
 
     void Build()
     {
         Tokenize();
         Tree_.Tokens_.Seal();
-        DelimiterEnds_.Seal();
         ParseLimit_ = Tree_.Tokens_.Size();
         CurrentScope_ = detail::Make<NameScope>(ScratchMemory_);
 
@@ -449,45 +338,38 @@ private:
 
         struct Delimiter
         {
+            TokenIndex Index;
             TK Closing;
-            uint32_t* End;
         };
 
-        constexpr size_t MaximumDepth = 256;
-        std::array<Delimiter, MaximumDepth> openings;
-        size_t depth = 0;
+        std::pmr::vector<Delimiter> openings(&ScratchMemory_);
+        openings.reserve(256);
         for (const auto& token : tokenizer) {
             Tree_.Tokens_.Add(token);
-            auto* delimiterEnd = DelimiterEnds_.Add();
-            if (!HasDelimiterMap_) {
-                continue;
-            }
-
             auto index = Tree_.Tokens_.Size() - 1;
             if (index >= std::numeric_limits<uint32_t>::max()) {
                 HasDelimiterMap_ = false;
             } else if (IsOpenDelimiter(token.Kind)) {
-                if (depth == MaximumDepth) {
-                    HasDelimiterMap_ = false;
-                } else {
-                    openings[depth++] = {
-                        .Closing = ClosingDelimiter(token.Kind),
-                        .End = delimiterEnd,
-                    };
-                }
+                openings.push_back({
+                    .Index = index,
+                    .Closing = ClosingDelimiter(token.Kind),
+                });
             } else if (
                 token.Kind == TK::Operator_CloseParenthesis
                 || token.Kind == TK::Operator_CloseBracket
                 || token.Kind == TK::Operator_CloseBrace)
             {
-                if (depth == 0 || openings[depth - 1].Closing != token.Kind) {
+                if (openings.empty() || openings.back().Closing != token.Kind) {
                     HasDelimiterMap_ = false;
                 } else {
-                    *openings[--depth].End = static_cast<uint32_t>(index + 1);
+                    auto opening = openings.back();
+                    openings.pop_back();
+                    Tree_.Tokens_.SetMatchingDelimiter(opening.Index, index);
+                    Tree_.Tokens_.SetMatchingDelimiter(index, opening.Index);
                 }
             }
         }
-        HasDelimiterMap_ &= depth == 0;
+        HasDelimiterMap_ &= openings.empty();
     }
 
     [[nodiscard]] Node* MakeNode(NodeKind kind, TokenIndex begin)
@@ -669,9 +551,11 @@ private:
     {
         ASSERT(IsOpenDelimiter(CurrentKind()))
         if (HasDelimiterMap_) {
-            auto end = DelimiterEnds_[Cursor_];
-            if (end != 0 && end <= ParseLimit_) {
-                Cursor_ = end;
+            auto matching = Tree_.Tokens_.MatchingDelimiter(Cursor_);
+            if (matching != std::numeric_limits<TokenIndex>::max()
+                && matching < ParseLimit_)
+            {
+                Cursor_ = matching + 1;
                 return Cursor_;
             }
         }
@@ -1055,9 +939,9 @@ private:
     [[nodiscard]] TokenIndex FindBalancedEnd(TokenIndex opening) const
     {
         if (HasDelimiterMap_ && opening < Tree_.Tokens_.Size()) {
-            auto end = DelimiterEnds_[opening];
-            if (end != 0) {
-                return end;
+            auto matching = Tree_.Tokens_.MatchingDelimiter(opening);
+            if (matching != std::numeric_limits<TokenIndex>::max()) {
+                return matching + 1;
             }
         }
 
@@ -5431,7 +5315,6 @@ private:
     ErrorHandler& ErrorHandler_;
     std::pmr::monotonic_buffer_resource ScratchMemory_{
         detail::InitialMemoryResourceSize};
-    DelimiterMap DelimiterEnds_;
     NameScope* CurrentScope_ = nullptr;
     Node* NextNode_ = nullptr;
     size_t RemainingNodes_ = 0;

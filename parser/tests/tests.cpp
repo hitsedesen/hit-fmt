@@ -8,6 +8,7 @@
 #include <cstdlib>
 #include <format>
 #include <fstream>
+#include <limits>
 #include <memory_resource>
 #include <optional>
 #include <sstream>
@@ -403,6 +404,38 @@ TEST(Parser, HandlesDeepCompoundNesting)
 
     EXPECT_EQ(errors, 0);
     EXPECT_GT(tree.TokenCount(), Depth * 2);
+}
+
+TEST(Parser, HandlesDeepExpressionNesting)
+{
+    std::string source = "void deeply_nested() { auto value = ";
+    constexpr size_t Depth = 300;
+    for (size_t index = 0; index < Depth; ++index) {
+        source += "Call(";
+    }
+    source += "argument";
+    source.append(Depth, ')');
+    source += "; }";
+
+    size_t errors = 0;
+    PaddedInput paddedSource(source);
+    auto tree = parser::Parse(paddedSource.View(), [&](parser::ParseError) {
+        ++errors;
+    });
+
+    EXPECT_EQ(errors, 0);
+    EXPECT_GT(tree.TokenCount(), Depth * 2);
+
+    parser::TokenIndex widestPair = 0;
+    for (parser::TokenIndex index = 0; index < tree.TokenCount(); ++index) {
+        auto matching = tree.MatchingDelimiter(index);
+        if (matching != std::numeric_limits<parser::TokenIndex>::max()
+            && matching > index)
+        {
+            widestPair = std::max(widestPair, matching - index);
+        }
+    }
+    EXPECT_GT(widestPair, Depth * 2);
 }
 
 } // namespace

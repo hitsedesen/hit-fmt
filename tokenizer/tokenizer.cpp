@@ -330,8 +330,6 @@ Token Tokenizer::Get()
             default:
                 return FinishToken(TokenKind::Operator_Divide);
             }
-            if (cur == '=') {
-            }
         }
     case '%':
         {
