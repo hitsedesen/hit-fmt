@@ -34,11 +34,7 @@ std::pair<long long, long long> DoTokenizeFile(const std::string& filePath)
     });
     int invalidTokens = 0;
     int validTokens = 0;
-    while (true) {
-        auto token = tokenizer.Get();
-        if (token.Kind == tokenizer::TokenKind::EndOfFile) {
-            break;
-        }
+    for (const auto& token : tokenizer) {
         if (token.Kind == tokenizer::TokenKind::Invalid) {
             invalidTokens++;
         } else {

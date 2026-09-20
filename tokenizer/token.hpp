@@ -165,7 +165,7 @@ enum class TokenKind : uint8_t
 #undef TOKEN_KIND
 };
 
-constexpr std::string_view GetTokenKindName(TokenKind kind)
+[[nodiscard]] constexpr std::string_view GetTokenKindName(TokenKind kind)
 {
     constexpr auto Names = std::to_array<std::string_view>({
 #define TOKEN_KIND(value, name) {name},

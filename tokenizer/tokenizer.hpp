@@ -7,6 +7,7 @@
 #include <util/input.hpp>
 
 #include <functional>
+#include <iterator>
 #include <limits>
 #include <utility>
 
@@ -82,7 +83,7 @@ enum class TokenizationErrorKind : uint8_t
 #undef TOKENIZATION_ERROR_KIND
 };
 
-constexpr std::string_view
+[[nodiscard]] constexpr std::string_view
 GetTokenizationErrorDescription(TokenizationErrorKind kind)
 {
     constexpr auto Descriptions = std::to_array<std::string_view>({
@@ -109,7 +110,67 @@ public:
         util::PaddedSourceView input,
         std::move_only_function<void(TokenizationError)> errorHandler = {});
 
-    Token Get();
+    [[nodiscard]] Token Get();
+
+    class Iterator
+    {
+    public:
+        using value_type = Token;
+        using difference_type = std::ptrdiff_t;
+        using iterator_concept = std::input_iterator_tag;
+        using iterator_category = std::input_iterator_tag;
+
+        Iterator() = default;
+
+        [[nodiscard]] const Token& operator*() const noexcept
+        {
+            return Current_;
+        }
+
+        [[nodiscard]] const Token* operator->() const noexcept
+        {
+            return &Current_;
+        }
+
+        Iterator& operator++()
+        {
+            Current_ = Tokenizer_->Get();
+            return *this;
+        }
+
+        Iterator operator++(int)
+        {
+            auto previous = *this;
+            ++*this;
+            return previous;
+        }
+
+        [[nodiscard]] bool operator==(std::default_sentinel_t) const noexcept
+        {
+            return Current_.Kind == TokenKind::EndOfFile;
+        }
+
+    private:
+        friend class Tokenizer;
+
+        explicit Iterator(Tokenizer& tokenizer)
+            : Tokenizer_(&tokenizer)
+            , Current_(tokenizer.Get())
+        { }
+
+        Tokenizer* Tokenizer_ = nullptr;
+        Token Current_{};
+    };
+
+    [[nodiscard]] Iterator begin()
+    {
+        return Iterator(*this);
+    }
+
+    [[nodiscard]] static constexpr std::default_sentinel_t end() noexcept
+    {
+        return {};
+    }
 
 private:
     unicode::CodePoint CurrentCodePoint()
@@ -122,7 +183,7 @@ private:
 
     unicode::CodePoint LoadCurrentCodePoint();
 
-    [[nodiscard]] bool AtEnd() const
+    [[nodiscard]] bool AtEnd() const noexcept
     {
         return CurrentCodePointSize_ == 0;
     }
@@ -132,7 +193,7 @@ private:
     static constexpr unicode::CodePoint InvalidCodePoint =
         static_cast<char32_t>(std::numeric_limits<uint32_t>::max());
 
-    [[nodiscard]] bool CurrentCodePointValid() const
+    [[nodiscard]] bool CurrentCodePointValid() const noexcept
     {
         return CurrentCodePointValue_ != InvalidCodePoint;
     }
@@ -143,7 +204,29 @@ private:
     size_t EncodingErrorCount_ = 0;
     util::Position CurrentCodePointPosition_ = {.Line = 1, .Column = 1};
 
-    void ConsumeCodePoint(bool skippingNewLine = false)
+    enum class NewlineHandling : uint8_t
+    {
+        Track,
+        Ignore,
+    };
+
+    [[nodiscard]] char ByteAt(size_t offset) const noexcept
+    {
+        return Input_.data()[offset];
+    }
+
+    [[nodiscard]] char PeekByte(size_t lookahead = 0) const noexcept
+    {
+        return ByteAt(CurrentCodePointOffset_ + lookahead);
+    }
+
+    [[nodiscard]] const char* CurrentByteAddress() const noexcept
+    {
+        return Input_.data() + CurrentCodePointOffset_;
+    }
+
+    void
+    ConsumeCodePoint(NewlineHandling newlineHandling = NewlineHandling::Track)
     {
         auto value = CurrentCodePoint();
         auto size = std::exchange(CurrentCodePointSize_, UnloadedCodePoint);
@@ -153,7 +236,7 @@ private:
         if (value == '\n') {
             ++CurrentCodePointPosition_.Line;
             CurrentCodePointPosition_.Column = 1;
-            if (!skippingNewLine) {
+            if (newlineHandling == NewlineHandling::Track) {
                 IsNewLine_ = true;
             }
         } else {
@@ -166,11 +249,11 @@ private:
         }
     }
 
-    std::string_view CurrentTokenText() const;
+    [[nodiscard]] std::string_view CurrentTokenText() const noexcept;
     util::Position CurrentTokenPosition_;
     size_t CurrentTokenOffset_ = 0;
     size_t CurrentTokenSize_ = 0;
-    Token FinishToken(TokenKind kind);
+    [[nodiscard]] Token FinishToken(TokenKind kind) const noexcept;
 
     void SkipWhitespace();
     bool TrySkipNewline();
@@ -193,7 +276,7 @@ private:
 
     std::move_only_function<void(TokenizationError)> ErrorHandler_;
 
-    bool IsFileStart() const;
+    [[nodiscard]] bool IsFileStart() const noexcept;
     bool IsNewLine_ = true;
 };
 

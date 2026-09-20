@@ -11,34 +11,46 @@
 #include <utility>
 
 namespace tokenizer {
+namespace {
 
-bool IsWhitespace(unicode::CodePoint cp)
+[[nodiscard]] constexpr bool IsWhitespace(unicode::CodePoint cp) noexcept
 {
     return cp == ' ' || cp == '\t' || cp == '\n' || cp == '\r' || cp == '\f'
         || cp == '\v';
 }
 
-bool IsOctalDigit(unicode::CodePoint cp)
+[[nodiscard]] constexpr bool IsOctalDigit(unicode::CodePoint cp) noexcept
 {
     return cp >= '0' && cp <= '7';
 }
 
-bool IsDigit(unicode::CodePoint cp)
+[[nodiscard]] constexpr bool IsDigit(unicode::CodePoint cp) noexcept
 {
     return cp >= '0' && cp <= '9';
 }
 
-bool IsHexDigit(unicode::CodePoint cp)
+[[nodiscard]] constexpr bool IsHexDigit(unicode::CodePoint cp) noexcept
 {
     return IsDigit(cp) || (cp >= 'a' && cp <= 'f') || (cp >= 'A' && cp <= 'F');
 }
 
-bool IsNonDigit(unicode::CodePoint cp)
+[[nodiscard]] constexpr bool IsNonDigit(unicode::CodePoint cp) noexcept
 {
     return (cp >= 'a' && cp <= 'z') || (cp >= 'A' && cp <= 'Z') || cp == '_';
 }
 
-bool IsIdStart(unicode::CodePoint cp)
+[[nodiscard]] constexpr bool IsAsciiDigit(unsigned char value) noexcept
+{
+    return value >= '0' && value <= '9';
+}
+
+[[nodiscard]] constexpr bool IsAsciiAlphaNumeric(unsigned char value) noexcept
+{
+    return IsAsciiDigit(value) || (value >= 'a' && value <= 'z')
+        || (value >= 'A' && value <= 'Z') || value == '_';
+}
+
+[[nodiscard]] bool IsIdStart(unicode::CodePoint cp)
 {
     if (IsNonDigit(cp)) {
         return true;
@@ -49,7 +61,7 @@ bool IsIdStart(unicode::CodePoint cp)
     return unicode::IsXIDStart(cp);
 }
 
-bool IsIdContinuation(unicode::CodePoint cp)
+[[nodiscard]] bool IsIdContinuation(unicode::CodePoint cp)
 {
     if (IsNonDigit(cp) || IsDigit(cp)) {
         return true;
@@ -60,7 +72,16 @@ bool IsIdContinuation(unicode::CodePoint cp)
     return unicode::IsXIDContinue(cp);
 }
 
-bool EqualsIgnoringAsciiCase(std::string_view lhs, std::string_view rhs)
+constexpr std::array<std::string_view, 4> EncodingPrefixes{"u8", "u", "U", "L"};
+constexpr std::array<std::string_view, 5> RawEncodingPrefixes{
+    "R", "u8R", "uR", "UR", "LR"};
+constexpr std::array<std::string_view, 8> FloatingPointSuffixes{
+    "", "f", "l", "f16", "f32", "f64", "f128", "bf16"};
+constexpr std::array<std::string_view, 11> IntegerSuffixes{
+    "", "u", "ul", "ull", "uz", "l", "lu", "ll", "llu", "z", "zu"};
+
+[[nodiscard]] constexpr bool
+EqualsIgnoringAsciiCase(std::string_view lhs, std::string_view rhs) noexcept
 {
     if (lhs.size() != rhs.size()) {
         return false;
@@ -79,6 +100,8 @@ bool EqualsIgnoringAsciiCase(std::string_view lhs, std::string_view rhs)
     }
     return true;
 }
+
+} // namespace
 
 Tokenizer::Tokenizer(
     util::PaddedSourceView input,
@@ -100,8 +123,7 @@ Tokenizer::Tokenizer(
 
 unicode::CodePoint Tokenizer::LoadCurrentCodePoint()
 {
-    auto firstByte =
-        static_cast<unsigned char>(Input_.data()[CurrentCodePointOffset_]);
+    auto firstByte = static_cast<unsigned char>(PeekByte());
     if (firstByte == 0 && CurrentCodePointOffset_ == Input_.size()) [[unlikely]]
     {
         CurrentCodePointValue_ = '\0';
@@ -115,8 +137,8 @@ unicode::CodePoint Tokenizer::LoadCurrentCodePoint()
         return CurrentCodePointValue_;
     }
 
-    auto first = unicode::utf8::GetFirstCodePointFromPaddedInput(
-        Input_.data() + CurrentCodePointOffset_);
+    auto first =
+        unicode::utf8::GetFirstCodePointFromPaddedInput(CurrentByteAddress());
     if (!first) {
         OnError(TokenizationErrorKind::InvalidUtf8CodePoint);
         ++EncodingErrorCount_;
@@ -129,7 +151,7 @@ unicode::CodePoint Tokenizer::LoadCurrentCodePoint()
     return CurrentCodePointValue_;
 }
 
-Token Tokenizer::FinishToken(TokenKind kind)
+Token Tokenizer::FinishToken(TokenKind kind) const noexcept
 {
     return Token{
         .Kind = kind,
@@ -203,9 +225,7 @@ Token Tokenizer::Get()
         }
     case '.':
         {
-            if (IsDigit(Input_.data()[CurrentCodePointOffset_ + 1]))
-                [[unlikely]]
-            {
+            if (IsDigit(PeekByte(1))) [[unlikely]] {
                 return ParseNumber();
             }
             ConsumeCodePoint();
@@ -390,10 +410,8 @@ Token Tokenizer::Get()
                 // <:: when the following character is neither ':' nor '>'.
                 // In that case this is '<' followed by '::', not the '<:'
                 // digraph followed by ':'.
-                if (Input_.data()[CurrentCodePointOffset_] == ':'
-                    && Input_.data()[CurrentCodePointOffset_ + 1] == ':'
-                    && Input_.data()[CurrentCodePointOffset_ + 2] != ':'
-                    && Input_.data()[CurrentCodePointOffset_ + 2] != '>')
+                if (PeekByte() == ':' && PeekByte(1) == ':'
+                    && PeekByte(2) != ':' && PeekByte(2) != '>')
                 {
                     return FinishToken(TokenKind::Operator_Less);
                 }
@@ -476,7 +494,7 @@ Token Tokenizer::Get()
     }
 }
 
-bool Tokenizer::IsFileStart() const
+bool Tokenizer::IsFileStart() const noexcept
 {
     return CurrentCodePointOffset_ == 0;
 }
@@ -487,7 +505,7 @@ bool Tokenizer::TrySkipNewline()
         ConsumeCodePoint();
     }
     if (CurrentCodePoint() == '\n') {
-        ConsumeCodePoint(/*skippingNewLine*/ true);
+        ConsumeCodePoint(NewlineHandling::Ignore);
         return true;
     }
     return false;
@@ -499,8 +517,7 @@ void Tokenizer::SkipWhitespace()
     do {
         skippedNewline = false;
         while (true) {
-            auto byte = static_cast<unsigned char>(
-                Input_.data()[CurrentCodePointOffset_]);
+            auto byte = static_cast<unsigned char>(PeekByte());
             if (byte == '\n') {
                 ++CurrentCodePointOffset_;
                 ++CurrentCodePointPosition_.Line;
@@ -532,7 +549,7 @@ void Tokenizer::SkipWhitespace()
     while (skippedNewline);
 }
 
-std::string_view Tokenizer::CurrentTokenText() const
+std::string_view Tokenizer::CurrentTokenText() const noexcept
 {
     return Input_.substr(CurrentTokenOffset_, CurrentTokenSize_);
 }
@@ -541,8 +558,7 @@ Token Tokenizer::ParseIdentifier()
 {
     ASSERT(IsIdStart(CurrentCodePoint()))
     while (true) {
-        auto byte =
-            static_cast<unsigned char>(Input_.data()[CurrentCodePointOffset_]);
+        auto byte = static_cast<unsigned char>(PeekByte());
         if (byte < 0x80) [[likely]] {
             if (!((byte >= 'a' && byte <= 'z') || (byte >= 'A' && byte <= 'Z')
                   || byte == '_' || (byte >= '0' && byte <= '9')))
@@ -563,19 +579,15 @@ Token Tokenizer::ParseIdentifier()
     }
     auto cur = CurrentCodePoint();
 
-    constexpr auto encodingPrefixes = std::to_array({"u8", "u", "U", "L"});
-    constexpr auto rawEncodingPrefixes =
-        std::to_array({"R", "u8R", "uR", "UR", "LR"});
-
     if (cur == '\'') {
-        if (std::ranges::contains(encodingPrefixes, CurrentTokenText())) {
+        if (std::ranges::contains(EncodingPrefixes, CurrentTokenText())) {
             return ParseCharacterLiteral();
         }
     } else if (cur == '"') {
-        if (std::ranges::contains(encodingPrefixes, CurrentTokenText())) {
+        if (std::ranges::contains(EncodingPrefixes, CurrentTokenText())) {
             return ParseStringLiteral();
         }
-        if (std::ranges::contains(rawEncodingPrefixes, CurrentTokenText())) {
+        if (std::ranges::contains(RawEncodingPrefixes, CurrentTokenText())) {
             return ParseRawStringLiteral();
         }
     }
@@ -604,14 +616,12 @@ bool Tokenizer::ConsumeEscapeSequence()
         ConsumeCodePoint();
         return true;
     case '\n':
-        ConsumeCodePoint(/*skippingNewLine*/ true);
+        ConsumeCodePoint(NewlineHandling::Ignore);
         return true;
     case '\r':
-        if (Input_.data()[CurrentCodePointOffset_] == '\r'
-            && Input_.data()[CurrentCodePointOffset_ + 1] == '\n')
-        {
+        if (PeekByte() == '\r' && PeekByte(1) == '\n') {
             ConsumeCodePoint();
-            ConsumeCodePoint(/*skippingNewLine*/ true);
+            ConsumeCodePoint(NewlineHandling::Ignore);
             return true;
         }
         break;
@@ -753,9 +763,8 @@ Token Tokenizer::ParseCharacterLiteral()
            && CurrentCodePoint() != '\0')
     {
         if (CurrentCodePoint() == '\\') {
-            bool lineSplice = Input_.data()[CurrentCodePointOffset_ + 1] == '\n'
-                || (Input_.data()[CurrentCodePointOffset_ + 1] == '\r'
-                    && Input_.data()[CurrentCodePointOffset_ + 2] == '\n');
+            bool lineSplice = PeekByte(1) == '\n'
+                || (PeekByte(1) == '\r' && PeekByte(2) == '\n');
             valid &= ConsumeEscapeSequence();
             characterCount += !lineSplice;
         } else {
@@ -879,7 +888,7 @@ Token Tokenizer::ParseNumber()
 {
     size_t offset = CurrentCodePointOffset_;
     auto byte = [&](size_t position) {
-        return Input_.data()[position];
+        return ByteAt(position);
     };
 
     if (byte(offset) == '.') {
@@ -957,10 +966,7 @@ Token Tokenizer::ParseFloatingPoint()
     };
 
     TokenKind kind;
-    if (cur == '0'
-        && (Input_.data()[CurrentCodePointOffset_ + 1] == 'x'
-            || Input_.data()[CurrentCodePointOffset_ + 1] == 'X'))
-    {
+    if (cur == '0' && (PeekByte(1) == 'x' || PeekByte(1) == 'X')) {
         kind = TokenKind::Literal_HexadecimalFloatingPoint;
         next();
         next();
@@ -1009,13 +1015,13 @@ Token Tokenizer::ParseFloatingPoint()
         return FinishToken(TokenKind::Invalid);
     }
 
-    constexpr static auto validSuffixes =
-        std::to_array({"", "f", "l", "f16", "f32", "f64", "f128", "bf16"});
     auto suffix = CurrentTokenText().substr(suffixStart);
-    auto validSuffix = std::ranges::find_if(validSuffixes, [&](auto candidate) {
-        return EqualsIgnoringAsciiCase(suffix, candidate);
-    });
-    if (validSuffix == validSuffixes.end()) {
+    if (!std::ranges::any_of(
+            FloatingPointSuffixes,
+            [&](auto candidate) {
+                return EqualsIgnoringAsciiCase(suffix, candidate);
+            }))
+    {
         return FinishToken(TokenKind::Literal_UserDefinedFloatingPoint);
     }
     return FinishToken(kind);
@@ -1169,20 +1175,15 @@ Token Tokenizer::ParseInteger()
         }
     }
 
-    constexpr static auto validSuffixes = std::to_array(
-        {"", "u", "ul", "ull", "uz", "l", "lu", "ll", "llu", "z", "zu"});
-
     size_t suffixStart = CurrentTokenText().size();
 
     if (IsIdStart(cur)) {
         auto isDigitSeparator = [&] {
             return cur == '\'' && CurrentCodePointOffset_ != 0
-                && std::isdigit(
+                && IsAsciiDigit(
                        static_cast<unsigned char>(
-                           Input_.data()[CurrentCodePointOffset_ - 1]))
-                && std::isdigit(
-                       static_cast<unsigned char>(
-                           Input_.data()[CurrentCodePointOffset_ + 1]));
+                           ByteAt(CurrentCodePointOffset_ - 1)))
+                && IsAsciiDigit(static_cast<unsigned char>(PeekByte(1)));
         };
         do {
             next();
@@ -1195,10 +1196,12 @@ Token Tokenizer::ParseInteger()
     }
 
     auto suffix = CurrentTokenText().substr(suffixStart);
-    auto validSuffix = std::ranges::find_if(validSuffixes, [&](auto candidate) {
-        return EqualsIgnoringAsciiCase(suffix, candidate);
-    });
-    if (validSuffix == validSuffixes.end()) {
+    if (!std::ranges::any_of(
+            IntegerSuffixes,
+            [&](auto candidate) {
+                return EqualsIgnoringAsciiCase(suffix, candidate);
+            }))
+    {
         return FinishToken(TokenKind::Literal_UserDefinedInteger);
     }
     return FinishToken(kind);
@@ -1296,7 +1299,7 @@ Token Tokenizer::ParsePreprocessingDirective()
             }
             continue;
         }
-        if (cur == 'R' && Input_.data()[CurrentCodePointOffset_ + 1] == '"') {
+        if (cur == 'R' && PeekByte(1) == '"') {
             ConsumeCodePoint(); // R
             ConsumeCodePoint(); // "
             auto delimiterStart = CurrentCodePointOffset_;
@@ -1332,11 +1335,11 @@ Token Tokenizer::ParsePreprocessingDirective()
             }
             continue;
         }
-        bool digitSeparator = cur == '\'' && CurrentCodePointOffset_ != 0
-            && std::isalnum(static_cast<unsigned char>(
-                Input_.data()[CurrentCodePointOffset_ - 1]))
-            && std::isalnum(static_cast<unsigned char>(
-                Input_.data()[CurrentCodePointOffset_ + 1]));
+        bool digitSeparator =
+            cur == '\'' && CurrentCodePointOffset_ != 0
+            && IsAsciiAlphaNumeric(
+                static_cast<unsigned char>(ByteAt(CurrentCodePointOffset_ - 1)))
+            && IsAsciiAlphaNumeric(static_cast<unsigned char>(PeekByte(1)));
         if ((cur == '\'' && !digitSeparator) || cur == '"') {
             auto quote = cur;
             ConsumeCodePoint();
