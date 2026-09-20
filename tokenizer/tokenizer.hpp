@@ -81,7 +81,6 @@ enum class TokenizationErrorKind : uint8_t
 #define TOKENIZATION_ERROR_KIND(value, description) value,
     TOKENIZATION_ERROR_KINDS
 #undef TOKENIZATION_ERROR_KIND
-        Count,
 };
 
 [[nodiscard]] constexpr std::string_view
@@ -92,9 +91,6 @@ GetTokenizationErrorDescription(TokenizationErrorKind kind)
         TOKENIZATION_ERROR_KINDS
 #undef TOKENIZATION_ERROR_KIND
     });
-    static_assert(
-        Descriptions.size()
-        == std::to_underlying(TokenizationErrorKind::Count));
 
     return Descriptions[std::to_underlying(kind)];
 }
