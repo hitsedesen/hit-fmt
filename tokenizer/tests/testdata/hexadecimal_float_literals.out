@@ -1,9 +1,3 @@
-Ln 1, Col 1: hex_int 0x1
-Ln 1, Col 4: op. .
-Ln 1, Col 5: user_integer 8p1
-Ln 2, Col 1: hex_int 0xA
-Ln 2, Col 4: op. .
-Ln 2, Col 5: identifier Bp
-Ln 2, Col 7: op- -
-Ln 2, Col 8: int 2
-Ln 3, Col 1: user_integer 0xFp3f
+Ln 1, Col 1: hex_float 0x1.8p1
+Ln 2, Col 1: hex_float 0xA.Bp-2
+Ln 3, Col 1: hex_float 0xFp3f

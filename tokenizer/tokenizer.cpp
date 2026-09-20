@@ -60,6 +60,26 @@ bool IsIdContinuation(unicode::CodePoint cp)
     return unicode::IsXIDContinue(cp);
 }
 
+bool EqualsIgnoringAsciiCase(std::string_view lhs, std::string_view rhs)
+{
+    if (lhs.size() != rhs.size()) {
+        return false;
+    }
+
+    auto lower = [](char value) {
+        if (value >= 'A' && value <= 'Z') {
+            return static_cast<char>(value + ('a' - 'A'));
+        }
+        return value;
+    };
+    for (size_t i = 0; i < lhs.size(); ++i) {
+        if (lower(lhs[i]) != lower(rhs[i])) {
+            return false;
+        }
+    }
+    return true;
+}
+
 Tokenizer::Tokenizer(
     std::string_view input,
     std::move_only_function<void(TokenizationError)> errorHandler)
@@ -70,7 +90,7 @@ Tokenizer::Tokenizer(
         Input_ = {};
         OnError(
             TokenizationError{
-                .Message = "input exceeds the maximum supported size",
+                .Kind = TokenizationErrorKind::InputTooLarge,
                 .TokenStart = {.Line = 1, .Column = 1},
                 .ErrorPosition = {.Line = 1, .Column = 1},
                 .TokenEnd = {.Line = 1, .Column = 1},
@@ -97,8 +117,9 @@ unicode::CodePoint Tokenizer::LoadCurrentCodePoint()
     auto first = unicode::utf8::GetFirstCodePoint(
         Input_.substr(CurrentCodePointOffset_));
     if (!first) {
-        OnError("Invalid UTF8 code point");
-        CurrentCodePointValue_ = static_cast<char32_t>(firstByte);
+        OnError(TokenizationErrorKind::InvalidUtf8CodePoint);
+        ++EncodingErrorCount_;
+        CurrentCodePointValue_ = InvalidCodePoint;
         CurrentCodePointSize_ = 1;
     } else {
         CurrentCodePointValue_ = first->Value;
@@ -133,16 +154,12 @@ Token Tokenizer::Get()
     if (AtEnd()) [[unlikely]] {
         return FinishToken(TokenKind::EndOfFile);
     }
-
     switch (cur) {
     case '#':
         {
             if (!IsNewLine_) {
                 ConsumeCodePoint();
-                OnError(
-                    std::format(
-                        "Unexpected token {}",
-                        unicode::utf8::FromCodePoint(cur)));
+                OnError(TokenizationErrorKind::UnexpectedToken);
                 return FinishToken(TokenKind::Invalid);
             }
             return ParsePreprocessingDirective();
@@ -185,6 +202,11 @@ Token Tokenizer::Get()
         }
     case '.':
         {
+            if (CurrentCodePointOffset_ + 1 < Input_.size()
+                && IsDigit(Input_[CurrentCodePointOffset_ + 1])) [[unlikely]]
+            {
+                return ParseNumber();
+            }
             ConsumeCodePoint();
             cur = CurrentCodePoint();
             switch (cur) {
@@ -196,7 +218,7 @@ Token Tokenizer::Get()
                         ConsumeCodePoint();
                         return FinishToken(TokenKind::Operator_Ellipsis);
                     }
-                    OnError("Unfinished ellipsis");
+                    OnError(TokenizationErrorKind::UnfinishedEllipsis);
                     return FinishToken(TokenKind::Invalid);
                 }
             case '*':
@@ -444,10 +466,9 @@ Token Tokenizer::Get()
             }
             {
                 ConsumeCodePoint();
-                OnError(
-                    std::format(
-                        "Unexpected token {}",
-                        unicode::utf8::FromCodePoint(cur)));
+                if (CurrentCodePointValid()) {
+                    OnError(TokenizationErrorKind::UnexpectedToken);
+                }
                 return FinishToken(TokenKind::Invalid);
             }
         }
@@ -560,52 +581,227 @@ Token Tokenizer::ParseIdentifier()
     return FinishToken(detail::ClassifyIdentifier(CurrentTokenText()));
 }
 
+bool Tokenizer::ConsumeEscapeSequence()
+{
+    ASSERT(CurrentCodePoint() == '\\');
+    ConsumeCodePoint();
+    auto cur = CurrentCodePoint();
+
+    switch (cur) {
+    case '\'':
+    case '"':
+    case '?':
+    case '\\':
+    case 'a':
+    case 'b':
+    case 'f':
+    case 'n':
+    case 'r':
+    case 't':
+    case 'v':
+        ConsumeCodePoint();
+        return true;
+    case '\n':
+        ConsumeCodePoint(/*skippingNewLine*/ true);
+        return true;
+    case '\r':
+        if (Input_.substr(CurrentCodePointOffset_).starts_with("\r\n")) {
+            ConsumeCodePoint();
+            ConsumeCodePoint(/*skippingNewLine*/ true);
+            return true;
+        }
+        break;
+    default:
+        break;
+    }
+
+    if (IsOctalDigit(cur)) {
+        for (int count = 0; count < 3 && IsOctalDigit(CurrentCodePoint());
+             ++count)
+        {
+            ConsumeCodePoint();
+        }
+        return true;
+    }
+
+    auto consumeBracedDigits = [&](auto isDigit) {
+        ASSERT(CurrentCodePoint() == '{');
+        ConsumeCodePoint();
+        bool hasDigits = false;
+        while (isDigit(CurrentCodePoint())) {
+            ConsumeCodePoint();
+            hasDigits = true;
+        }
+        if (CurrentCodePoint() != '}') {
+            return false;
+        }
+        ConsumeCodePoint();
+        return hasDigits;
+    };
+
+    if (cur == 'x') {
+        ConsumeCodePoint();
+        if (CurrentCodePoint() == '{') {
+            if (consumeBracedDigits(IsHexDigit)) {
+                return true;
+            }
+        } else if (IsHexDigit(CurrentCodePoint())) {
+            while (IsHexDigit(CurrentCodePoint())) {
+                ConsumeCodePoint();
+            }
+            return true;
+        }
+        OnError(TokenizationErrorKind::InvalidEscapeSequence);
+        return false;
+    }
+
+    if (cur == 'o') {
+        ConsumeCodePoint();
+        if (CurrentCodePoint() == '{' && consumeBracedDigits(IsOctalDigit)) {
+            return true;
+        }
+        OnError(TokenizationErrorKind::InvalidEscapeSequence);
+        return false;
+    }
+
+    if (cur == 'u' || cur == 'U') {
+        auto marker = cur;
+        ConsumeCodePoint();
+        uint32_t value = 0;
+        bool valid = true;
+        if (marker == 'u' && CurrentCodePoint() == '{') {
+            ConsumeCodePoint();
+            int digits = 0;
+            while (IsHexDigit(CurrentCodePoint())) {
+                auto digit = CurrentCodePoint();
+                value = value > 0x10ffff / 16 ? 0x110000
+                                              : value * 16
+                        + (IsDigit(digit)
+                               ? static_cast<uint32_t>(digit) - '0'
+                               : (static_cast<uint32_t>(digit) | 0x20) - 'a'
+                                   + 10);
+                ConsumeCodePoint();
+                ++digits;
+            }
+            valid = digits != 0 && CurrentCodePoint() == '}';
+            if (CurrentCodePoint() == '}') {
+                ConsumeCodePoint();
+            }
+        } else {
+            int expectedDigits = marker == 'u' ? 4 : 8;
+            for (int i = 0; i < expectedDigits; ++i) {
+                auto digit = CurrentCodePoint();
+                if (!IsHexDigit(digit)) {
+                    valid = false;
+                    break;
+                }
+                value = value * 16
+                    + (IsDigit(digit)
+                           ? static_cast<uint32_t>(digit) - '0'
+                           : (static_cast<uint32_t>(digit) | 0x20) - 'a' + 10);
+                ConsumeCodePoint();
+            }
+        }
+        if (!valid || value > 0x10ffff || (value >= 0xd800 && value <= 0xdfff))
+        {
+            OnError(TokenizationErrorKind::InvalidUniversalCharacter);
+            return false;
+        }
+        return true;
+    }
+
+    if (cur == 'N') {
+        ConsumeCodePoint();
+        if (CurrentCodePoint() == '{') {
+            ConsumeCodePoint();
+            bool hasName = false;
+            while (!AtEnd() && CurrentCodePoint() != '}'
+                   && CurrentCodePoint() != '\n')
+            {
+                ConsumeCodePoint();
+                hasName = true;
+            }
+            if (hasName && CurrentCodePoint() == '}') {
+                ConsumeCodePoint();
+                return true;
+            }
+        }
+        OnError(TokenizationErrorKind::InvalidUniversalCharacter);
+        return false;
+    }
+
+    if (!AtEnd() && cur != '\n') {
+        ConsumeCodePoint();
+    }
+    OnError(TokenizationErrorKind::InvalidEscapeSequence);
+    return false;
+}
+
 Token Tokenizer::ParseCharacterLiteral()
 {
-    auto cur = CurrentCodePoint();
-    ASSERT(cur == '\'');
-    auto next = [&] {
-        ConsumeCodePoint();
-        cur = CurrentCodePoint();
-    };
-    next();
-    while (cur != '\'' && cur != '\n' && cur != '\0') {
-        // TODO(hitsedesen): Tokenizer should validate escape sequences.
-        if (cur == '\\') {
-            next();
+    ASSERT(CurrentCodePoint() == '\'');
+    auto prefix = CurrentTokenText();
+    auto encodingErrorCount = EncodingErrorCount_;
+    ConsumeCodePoint();
+    bool valid = true;
+    size_t characterCount = 0;
+    while (CurrentCodePoint() != '\'' && CurrentCodePoint() != '\n'
+           && CurrentCodePoint() != '\0')
+    {
+        if (CurrentCodePoint() == '\\') {
+            bool lineSplice = CurrentCodePointOffset_ + 1 < Input_.size()
+                && (Input_[CurrentCodePointOffset_ + 1] == '\n'
+                    || Input_.substr(CurrentCodePointOffset_ + 1)
+                           .starts_with("\r\n"));
+            valid &= ConsumeEscapeSequence();
+            characterCount += !lineSplice;
+        } else {
+            ConsumeCodePoint();
+            ++characterCount;
         }
-        next();
     }
-    if (cur != '\'') {
-        OnError("Unterminated character literal");
+    valid &= encodingErrorCount == EncodingErrorCount_;
+    if (CurrentCodePoint() != '\'') {
+        OnError(TokenizationErrorKind::UnterminatedCharacterLiteral);
         return FinishToken(TokenKind::Invalid);
     }
-    next();
-    return FinishToken(TokenKind::Literal_Character);
+    ConsumeCodePoint();
+    if (characterCount == 0) {
+        OnError(TokenizationErrorKind::EmptyCharacterLiteral);
+        valid = false;
+    }
+    if ((prefix == "u8" || prefix == "u" || prefix == "U")
+        && characterCount > 1)
+    {
+        OnError(TokenizationErrorKind::TooManyCharactersInCharacterLiteral);
+        valid = false;
+    }
+    return FinishToken(
+        valid ? TokenKind::Literal_Character : TokenKind::Invalid);
 }
 
 Token Tokenizer::ParseStringLiteral()
 {
-    auto cur = CurrentCodePoint();
-    ASSERT(cur == '"');
-    auto next = [&] {
-        ConsumeCodePoint();
-        cur = CurrentCodePoint();
-    };
-    next();
-    while (cur != '"' && cur != '\n' && cur != '\0') {
-        // TODO(hitsedesen): Tokenizer should validate escape sequences.
-        if (cur == '\\') {
-            next();
+    ASSERT(CurrentCodePoint() == '"');
+    auto encodingErrorCount = EncodingErrorCount_;
+    ConsumeCodePoint();
+    bool valid = true;
+    while (CurrentCodePoint() != '"' && CurrentCodePoint() != '\n'
+           && CurrentCodePoint() != '\0')
+    {
+        if (CurrentCodePoint() == '\\') {
+            valid &= ConsumeEscapeSequence();
+        } else {
+            ConsumeCodePoint();
         }
-        next();
     }
-    if (cur != '"') {
-        OnError("Unterminated string literal");
+    valid &= encodingErrorCount == EncodingErrorCount_;
+    if (CurrentCodePoint() != '"') {
+        OnError(TokenizationErrorKind::UnterminatedStringLiteral);
         return FinishToken(TokenKind::Invalid);
     }
-    next();
-    return FinishToken(TokenKind::Literal_String);
+    ConsumeCodePoint();
+    return FinishToken(valid ? TokenKind::Literal_String : TokenKind::Invalid);
 }
 
 Token Tokenizer::ParseRawStringLiteral()
@@ -618,48 +814,211 @@ Token Tokenizer::ParseRawStringLiteral()
     };
     next();
 
-    std::vector<unicode::CodePoint> delimiter;
-
+    auto delimiterStart = CurrentCodePointOffset_;
+    auto encodingErrorCount = EncodingErrorCount_;
+    size_t delimiterLength = 0;
+    bool valid = true;
+    bool reportedInvalidDelimiter = false;
+    bool reportedLongDelimiter = false;
     while (!AtEnd() && cur != '(' && cur != '\n') {
-        delimiter.push_back(cur);
+        auto value = static_cast<uint32_t>(cur);
+        if ((value < 0x21 || value > 0x7e || cur == ')' || cur == '\\')
+            && !reportedInvalidDelimiter)
+        {
+            OnError(TokenizationErrorKind::InvalidRawStringDelimiter);
+            reportedInvalidDelimiter = true;
+            valid = false;
+        }
+        ++delimiterLength;
+        if (delimiterLength > 16 && !reportedLongDelimiter) {
+            OnError(TokenizationErrorKind::RawStringDelimiterTooLong);
+            reportedLongDelimiter = true;
+            valid = false;
+        }
         next();
     }
 
     if (AtEnd() || cur != '(') {
-        OnError("Unterminated raw string literal");
+        OnError(TokenizationErrorKind::UnterminatedRawStringLiteral);
         return FinishToken(TokenKind::Invalid);
     }
 
-    delimiter.push_back('"');
-
-    size_t delimiterPos = 0;
-    bool matchingDelimiter = false;
-
+    auto delimiter =
+        Input_.substr(delimiterStart, CurrentCodePointOffset_ - delimiterStart);
     next();
 
     while (!AtEnd()) {
-        if (matchingDelimiter) {
-            if (cur == delimiter[delimiterPos]) {
-                if (++delimiterPos == delimiter.size()) {
-                    next();
-                    return FinishToken(TokenKind::Literal_String);
+        if (cur == ')') {
+            auto suffix = Input_.substr(CurrentCodePointOffset_ + 1);
+            if (suffix.starts_with(delimiter)
+                && suffix.size() > delimiter.size()
+                && suffix[delimiter.size()] == '"')
+            {
+                auto closingDelimiterEnd =
+                    CurrentCodePointOffset_ + 2 + delimiter.size();
+                do {
+                    ConsumeCodePoint();
                 }
-            } else {
-                matchingDelimiter = false;
+                while (CurrentCodePointOffset_ < closingDelimiterEnd);
+                valid &= encodingErrorCount == EncodingErrorCount_;
+                return FinishToken(
+                    valid ? TokenKind::Literal_String : TokenKind::Invalid);
             }
-        }
-        if (!matchingDelimiter && cur == ')') {
-            matchingDelimiter = true;
-            delimiterPos = 0;
         }
         next();
     }
 
-    OnError("Unterminated raw string literal");
+    OnError(TokenizationErrorKind::UnterminatedRawStringLiteral);
     return FinishToken(TokenKind::Invalid);
 }
 
 Token Tokenizer::ParseNumber()
+{
+    size_t offset = CurrentCodePointOffset_;
+    auto byte = [&](size_t position) {
+        return position < Input_.size() ? Input_[position] : '\0';
+    };
+
+    if (byte(offset) == '.') {
+        return ParseFloatingPoint();
+    }
+    if (byte(offset) == '0'
+        && (byte(offset + 1) == 'x' || byte(offset + 1) == 'X'))
+    {
+        offset += 2;
+        while (IsHexDigit(byte(offset)) || byte(offset) == '\'') {
+            ++offset;
+        }
+        if (byte(offset) == '.') {
+            return ParseFloatingPoint();
+        }
+        if (byte(offset) == 'p' || byte(offset) == 'P') {
+            return ParseFloatingPoint();
+        }
+        return ParseInteger();
+    }
+
+    while (IsDigit(byte(offset)) || byte(offset) == '\'') {
+        ++offset;
+    }
+    if (byte(offset) == '.' || byte(offset) == 'e' || byte(offset) == 'E') {
+        return ParseFloatingPoint();
+    }
+    return ParseInteger();
+}
+
+Token Tokenizer::ParseFloatingPoint()
+{
+    auto cur = CurrentCodePoint();
+    ASSERT(cur == '.' || IsDigit(cur));
+    bool valid = true;
+    auto next = [&] {
+        ConsumeCodePoint();
+        cur = CurrentCodePoint();
+    };
+    auto parseDigits = [&](auto isDigit) {
+        size_t count = 0;
+        bool previousSeparator = false;
+        bool lastSeparatorReported = false;
+        while (isDigit(cur) || cur == '\'') {
+            if (cur == '\'') {
+                bool invalidSeparator = count == 0 || previousSeparator;
+                if (invalidSeparator) {
+                    OnError(TokenizationErrorKind::InvalidDigitSeparator);
+                    valid = false;
+                }
+                previousSeparator = true;
+                lastSeparatorReported = invalidSeparator;
+            } else {
+                ++count;
+                previousSeparator = false;
+                lastSeparatorReported = false;
+            }
+            next();
+        }
+        if (previousSeparator && !lastSeparatorReported) {
+            OnError(TokenizationErrorKind::InvalidDigitSeparator);
+            valid = false;
+        }
+        return count;
+    };
+    auto parseExponent = [&] {
+        next();
+        if (cur == '+' || cur == '-') {
+            next();
+        }
+        if (parseDigits(IsDigit) == 0) {
+            OnError(TokenizationErrorKind::NoDigitsInFloatingPointExponent);
+            valid = false;
+        }
+    };
+
+    TokenKind kind;
+    if (cur == '0' && CurrentCodePointOffset_ + 1 < Input_.size()
+        && (Input_[CurrentCodePointOffset_ + 1] == 'x'
+            || Input_[CurrentCodePointOffset_ + 1] == 'X'))
+    {
+        kind = TokenKind::Literal_HexadecimalFloatingPoint;
+        next();
+        next();
+        auto digitCount = parseDigits(IsHexDigit);
+        if (cur == '.') {
+            next();
+            digitCount += parseDigits(IsHexDigit);
+        }
+        if (digitCount == 0) {
+            OnError(TokenizationErrorKind::NoDigitsInHexadecimalInteger);
+            valid = false;
+        }
+        if (cur == 'p' || cur == 'P') {
+            parseExponent();
+        } else {
+            OnError(
+                TokenizationErrorKind::
+                    HexadecimalFloatingPointRequiresExponent);
+            valid = false;
+        }
+    } else {
+        kind = TokenKind::Literal_DecimalFloatingPoint;
+        if (cur == '.') {
+            next();
+            parseDigits(IsDigit);
+        } else {
+            parseDigits(IsDigit);
+            if (cur == '.') {
+                next();
+                parseDigits(IsDigit);
+            }
+        }
+        if (cur == 'e' || cur == 'E') {
+            parseExponent();
+        }
+    }
+
+    size_t suffixStart = CurrentTokenText().size();
+    if (IsIdStart(cur)) {
+        do {
+            next();
+        }
+        while (IsIdContinuation(cur));
+    }
+    if (!valid) {
+        return FinishToken(TokenKind::Invalid);
+    }
+
+    constexpr static auto validSuffixes =
+        std::to_array({"", "f", "l", "f16", "f32", "f64", "f128", "bf16"});
+    auto suffix = CurrentTokenText().substr(suffixStart);
+    auto validSuffix = std::ranges::find_if(validSuffixes, [&](auto candidate) {
+        return EqualsIgnoringAsciiCase(suffix, candidate);
+    });
+    if (validSuffix == validSuffixes.end()) {
+        return FinishToken(TokenKind::Literal_UserDefinedFloatingPoint);
+    }
+    return FinishToken(kind);
+}
+
+Token Tokenizer::ParseInteger()
 {
     TokenKind kind = TokenKind::Invalid;
     auto cur = CurrentCodePoint();
@@ -684,12 +1043,14 @@ Token Tokenizer::ParseNumber()
                 while (cur == '0' || cur == '1' || cur == '\'') {
                     if (cur == '\'') {
                         if (prev == '\'') {
-                            OnError("No digits between digit separators");
+                            OnError(
+                                TokenizationErrorKind::
+                                    NoDigitsBetweenDigitSeparators);
                             kind = TokenKind::Invalid;
                         } else if (parsedDigits == 0) {
                             OnError(
-                                "Digit separator at the start of a binary "
-                                "integer");
+                                TokenizationErrorKind::
+                                    DigitSeparatorAtStartOfBinaryInteger);
                             kind = TokenKind::Invalid;
                         }
                     } else {
@@ -697,11 +1058,20 @@ Token Tokenizer::ParseNumber()
                     }
                     next();
                 }
+                if (IsDigit(cur)) {
+                    OnError(TokenizationErrorKind::InvalidDigitInBinaryInteger);
+                    kind = TokenKind::Invalid;
+                    while (IsDigit(cur) || cur == '\'') {
+                        next();
+                    }
+                }
                 if (parsedDigits == 0) {
-                    OnError("No digits in binary integer");
+                    OnError(TokenizationErrorKind::NoDigitsInBinaryInteger);
                     kind = TokenKind::Invalid;
                 } else if (prev == '\'') {
-                    OnError("Digit separator at the on of a binary integer");
+                    OnError(
+                        TokenizationErrorKind::
+                            DigitSeparatorAtEndOfBinaryInteger);
                     kind = TokenKind::Invalid;
                 }
                 break;
@@ -715,12 +1085,14 @@ Token Tokenizer::ParseNumber()
                 while (IsHexDigit(cur) || cur == '\'') {
                     if (cur == '\'') {
                         if (prev == '\'') {
-                            OnError("No digits between digit separators");
+                            OnError(
+                                TokenizationErrorKind::
+                                    NoDigitsBetweenDigitSeparators);
                             kind = TokenKind::Invalid;
                         } else if (parsedDigits == 0) {
                             OnError(
-                                "Digit separator at the start of a hexadecimal "
-                                "integer");
+                                TokenizationErrorKind::
+                                    DigitSeparatorAtStartOfHexadecimalInteger);
                             kind = TokenKind::Invalid;
                         }
                     } else {
@@ -729,11 +1101,13 @@ Token Tokenizer::ParseNumber()
                     next();
                 }
                 if (parsedDigits == 0) {
-                    OnError("No digits in hexadecimal integer");
+                    OnError(
+                        TokenizationErrorKind::NoDigitsInHexadecimalInteger);
                     kind = TokenKind::Invalid;
                 } else if (prev == '\'') {
                     OnError(
-                        "Digit separator at the on of a hexadecimal integer");
+                        TokenizationErrorKind::
+                            DigitSeparatorAtEndOfHexadecimalInteger);
                     kind = TokenKind::Invalid;
                 }
                 break;
@@ -744,7 +1118,9 @@ Token Tokenizer::ParseNumber()
                 while (IsOctalDigit(cur) || cur == '\'') {
                     if (cur == '\'') {
                         if (prev == '\'') {
-                            OnError("No digits between digit separators");
+                            OnError(
+                                TokenizationErrorKind::
+                                    NoDigitsBetweenDigitSeparators);
                             kind = TokenKind::Invalid;
                         }
                     } else {
@@ -752,8 +1128,17 @@ Token Tokenizer::ParseNumber()
                     }
                     next();
                 }
+                if (IsDigit(cur)) {
+                    OnError(TokenizationErrorKind::InvalidDigitInOctalInteger);
+                    kind = TokenKind::Invalid;
+                    while (IsDigit(cur) || cur == '\'') {
+                        next();
+                    }
+                }
                 if (prev == '\'') {
-                    OnError("Digit separator at the on of an octal integer");
+                    OnError(
+                        TokenizationErrorKind::
+                            DigitSeparatorAtEndOfOctalInteger);
                     kind = TokenKind::Invalid;
                 }
                 break;
@@ -764,7 +1149,8 @@ Token Tokenizer::ParseNumber()
         while (IsDigit(cur) || cur == '\'') {
             if (cur == '\'') {
                 if (prev == '\'') {
-                    OnError("No digits between digit separators");
+                    OnError(
+                        TokenizationErrorKind::NoDigitsBetweenDigitSeparators);
                     kind = TokenKind::Invalid;
                 }
             } else {
@@ -775,9 +1161,7 @@ Token Tokenizer::ParseNumber()
             cur = CurrentCodePoint();
         }
         if (prev == '\'') {
-            OnError(
-                "Digit separator cannot appear at the end of "
-                "decimal integer literal");
+            OnError(TokenizationErrorKind::DigitSeparatorAtEndOfDecimalInteger);
             return FinishToken(TokenKind::Invalid);
         }
     }
@@ -808,12 +1192,11 @@ Token Tokenizer::ParseNumber()
         return FinishToken(kind);
     }
 
-    auto suffix = std::string(CurrentTokenText().substr(suffixStart));
-    for (char& c : suffix) {
-        c = std::tolower(c);
-    }
-
-    if (!std::ranges::contains(validSuffixes, suffix)) {
+    auto suffix = CurrentTokenText().substr(suffixStart);
+    auto validSuffix = std::ranges::find_if(validSuffixes, [&](auto candidate) {
+        return EqualsIgnoringAsciiCase(suffix, candidate);
+    });
+    if (validSuffix == validSuffixes.end()) {
         return FinishToken(TokenKind::Literal_UserDefinedInteger);
     }
     return FinishToken(kind);
@@ -853,7 +1236,7 @@ Token Tokenizer::ParseMultilineComment()
     }
 
     if (cur == '\0') {
-        OnError("Unterminated multiline comment");
+        OnError(TokenizationErrorKind::UnterminatedMultilineComment);
         return FinishToken(TokenKind::Invalid);
     }
     return FinishToken(TokenKind::Comment);
@@ -988,17 +1371,16 @@ void Tokenizer::OnError(TokenizationError error)
     if (ErrorHandler_) {
         ErrorHandler_(std::move(error));
     } else {
-        std::cerr << std::format(
-            "Tokenization error at {}: {}\n",
-            error.ErrorPosition,
-            error.Message);
+        std::cerr << "Tokenization error at Ln " << error.ErrorPosition.Line
+                  << ", Col " << error.ErrorPosition.Column << ": "
+                  << GetTokenizationErrorDescription(error.Kind) << '\n';
     }
 }
 
-void Tokenizer::OnError(std::string error)
+void Tokenizer::OnError(TokenizationErrorKind error)
 {
     OnError({
-        .Message = std::move(error),
+        .Kind = error,
         .TokenStart = CurrentTokenPosition_,
         .ErrorPosition = CurrentCodePointPosition_,
         .TokenEnd = CurrentCodePointPosition_,

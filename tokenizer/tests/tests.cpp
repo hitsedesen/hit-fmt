@@ -6,6 +6,7 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include <array>
 #include <format>
 #include <fstream>
 #include <sstream>
@@ -39,7 +40,7 @@ std::ostream& operator<<(std::ostream& os, const TestCase& tc)
 
 std::ostream& operator<<(std::ostream& os, const TokenizationError& error)
 {
-    return os << error.Message;
+    return os << GetTokenizationErrorDescription(error.Kind);
 }
 
 struct GoldenCase
@@ -82,7 +83,9 @@ TokenizeAndSerialize(const std::string& input)
     Tokenizer tokenizer(input, [&](TokenizationError error) {
         errors.push_back(
             std::format(
-                "{} error: {}", error.ErrorPosition, std::move(error.Message)));
+                "{} error: {}",
+                error.ErrorPosition,
+                GetTokenizationErrorDescription(error.Kind)));
     });
     std::string result;
     std::vector<std::string> tokens;
@@ -105,6 +108,17 @@ std::vector<Token> Tokenize(std::string_view input)
         tokens.push_back(token);
     }
     return tokens;
+}
+
+std::vector<TokenizationErrorKind> TokenizeErrors(std::string_view input)
+{
+    std::vector<TokenizationErrorKind> errors;
+    Tokenizer tokenizer(input, [&](TokenizationError error) {
+        errors.push_back(error.Kind);
+    });
+    while (tokenizer.Get().Kind != TokenKind::EndOfFile) {
+    }
+    return errors;
 }
 
 void SaveToFile(const std::string& path, const std::string& content)
@@ -259,7 +273,7 @@ TEST(Tokenizer, KeepsDigitSeparatorsInExponentDigits)
         return token.Text.View(Source) == "1'2e0'1";
     });
     ASSERT_NE(literal, tokens.end());
-    EXPECT_EQ(literal->Kind, TokenKind::Literal_UserDefinedInteger);
+    EXPECT_EQ(literal->Kind, TokenKind::Literal_DecimalFloatingPoint);
 }
 
 TEST(Tokenizer, KeepsEmbeddedNullInRawStringLiteral)
@@ -310,4 +324,104 @@ TEST(Tokenizer, CalculatesTokenPositionsFromSource)
     EXPECT_EQ(second.Column, 3);
     EXPECT_EQ(third.Line, 2);
     EXPECT_EQ(third.Column, 3);
+}
+
+TEST(Utf8, ValidatesCodePointEncoding)
+{
+    constexpr auto Invalid = std::to_array<std::string_view>({
+        std::string_view("\x80", 1),
+        std::string_view("\xc0\x80", 2),
+        std::string_view("\xe0\x80\x80", 3),
+        std::string_view("\xed\xa0\x80", 3),
+        std::string_view("\xf4\x90\x80\x80", 4),
+        std::string_view("\xf0\x90\x80", 3),
+    });
+    for (auto encoding : Invalid) {
+        EXPECT_FALSE(unicode::utf8::GetFirstCodePoint(encoding));
+    }
+
+    constexpr auto Valid = std::to_array<std::string_view>({
+        std::string_view("\x7f", 1),
+        std::string_view("\xc2\x80", 2),
+        std::string_view("\xe0\xa0\x80", 3),
+        std::string_view("\xf4\x8f\xbf\xbf", 4),
+    });
+    for (auto encoding : Valid) {
+        EXPECT_TRUE(unicode::utf8::GetFirstCodePoint(encoding));
+    }
+}
+
+TEST(Tokenizer, RejectsMalformedUtf8)
+{
+    constexpr std::array Source{
+        static_cast<char>(0xf0),
+        static_cast<char>(0x28),
+        static_cast<char>(0x8c),
+        static_cast<char>(0x28),
+    };
+    auto errors =
+        TokenizeErrors(std::string_view(Source.data(), Source.size()));
+
+    EXPECT_THAT(
+        errors,
+        testing::ElementsAre(
+            TokenizationErrorKind::InvalidUtf8CodePoint,
+            TokenizationErrorKind::InvalidUtf8CodePoint));
+}
+
+TEST(Tokenizer, ValidatesEscapeSequences)
+{
+    constexpr std::string_view Source =
+        R"cpp("\q" "\x" "\u12" "\U00110000" "\o{}")cpp";
+    auto errors = TokenizeErrors(Source);
+
+    EXPECT_THAT(
+        errors,
+        testing::ElementsAre(
+            TokenizationErrorKind::InvalidEscapeSequence,
+            TokenizationErrorKind::InvalidEscapeSequence,
+            TokenizationErrorKind::InvalidUniversalCharacter,
+            TokenizationErrorKind::InvalidUniversalCharacter,
+            TokenizationErrorKind::InvalidEscapeSequence));
+}
+
+TEST(Tokenizer, ValidatesCharacterLiteralContents)
+{
+    auto errors = TokenizeErrors("'' u'ab'");
+
+    EXPECT_THAT(
+        errors,
+        testing::ElementsAre(
+            TokenizationErrorKind::EmptyCharacterLiteral,
+            TokenizationErrorKind::TooManyCharactersInCharacterLiteral));
+}
+
+TEST(Tokenizer, ValidatesRawStringDelimiters)
+{
+    constexpr std::string_view Source =
+        R"cpp(R"bad delimiter(contents)bad delimiter"
+R"12345678901234567(contents)12345678901234567")cpp";
+    auto errors = TokenizeErrors(Source);
+
+    EXPECT_THAT(
+        errors,
+        testing::ElementsAre(
+            TokenizationErrorKind::InvalidRawStringDelimiter,
+            TokenizationErrorKind::RawStringDelimiterTooLong));
+}
+
+TEST(Tokenizer, ValidatesNumericLiterals)
+{
+    auto errors = TokenizeErrors("0b102 078 1e 0x1.0 0x.p1 1e'2 1''2.0");
+
+    EXPECT_THAT(
+        errors,
+        testing::ElementsAre(
+            TokenizationErrorKind::InvalidDigitInBinaryInteger,
+            TokenizationErrorKind::InvalidDigitInOctalInteger,
+            TokenizationErrorKind::NoDigitsInFloatingPointExponent,
+            TokenizationErrorKind::HexadecimalFloatingPointRequiresExponent,
+            TokenizationErrorKind::NoDigitsInHexadecimalInteger,
+            TokenizationErrorKind::InvalidDigitSeparator,
+            TokenizationErrorKind::InvalidDigitSeparator));
 }

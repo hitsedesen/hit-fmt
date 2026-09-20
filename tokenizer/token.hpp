@@ -17,6 +17,9 @@ namespace tokenizer {
     TOKEN_KIND(Comment, "comment")                                             \
     TOKEN_KIND(Identifier, "identifier")                                       \
     TOKEN_KIND(Literal_UserDefinedInteger, "user_integer")                     \
+    TOKEN_KIND(Literal_UserDefinedFloatingPoint, "user_float")                 \
+    TOKEN_KIND(Literal_DecimalFloatingPoint, "float")                          \
+    TOKEN_KIND(Literal_HexadecimalFloatingPoint, "hex_float")                  \
     TOKEN_KIND(Literal_BinaryInteger, "bin_int")                               \
     TOKEN_KIND(Literal_OctalInteger, "oct_int")                                \
     TOKEN_KIND(Literal_DecimalInteger, "int")                                  \
