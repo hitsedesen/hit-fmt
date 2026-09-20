@@ -1,0 +1,248 @@
+(translation-unit
+  (template-declaration
+    "template"
+    (template-parameter-list
+      "<"
+      (template-parameter "class" "First")
+      (list-separator ",")
+      (template-parameter "class" "Second" "=" "int")
+      ">"
+    )
+    (record-declaration
+      "struct" "Derived"
+      (base-clause
+        ":"
+        (base-specifier
+          "public"
+          (base-type
+            "Base"
+            (template-argument-list
+              "<"
+              (template-argument "First")
+              (list-separator ",")
+              (template-argument "Second")
+              ">"
+            )
+          )
+        )
+        (list-separator ",")
+        (base-specifier
+          "virtual"
+          (base-type "Other")
+        )
+      )
+      "{"
+      (enum-declaration
+        "enum" "class" "Kind"
+        (enumerator-list
+          "{"
+          (enumerator
+            (enumerator-name "One")
+          )
+          (list-separator ",")
+          (enumerator
+            (enumerator-name "Two")
+            "="
+            (enumerator-value
+              (literal-expression "2")
+            )
+          )
+          (list-separator ",")
+          (enumerator
+            (enumerator-name "Three")
+          )
+          (list-separator ",")
+          "}"
+        )
+        ";"
+      )
+      (function-definition
+        (init-declarator-list
+          (init-declarator
+            (declarator
+              (declarator-name "Derived")
+              (function-declarator
+                (parameter-list "(" ")")
+                (constructor-initializer-list
+                  ":"
+                  (constructor-initializer "Base" "<" "First")
+                  (list-separator ",")
+                  (constructor-initializer "Second" ">" "{" "}")
+                  (list-separator ",")
+                  (constructor-initializer "Other" "(" ")")
+                )
+              )
+            )
+          )
+        )
+        (compound-statement "{" "}")
+      )
+      (function-definition
+        (declaration-specifiers "void")
+        (init-declarator-list
+          (init-declarator
+            (declarator
+              (declarator-name "function")
+              (function-declarator
+                (parameter-list
+                  "("
+                  (parameter-declaration
+                    (declaration-specifiers "int")
+                    (init-declarator-list
+                      (init-declarator
+                        (declarator
+                          (declarator-name "first")
+                        )
+                      )
+                    )
+                  )
+                  (list-separator ",")
+                  (parameter-declaration
+                    (declaration-specifiers "int")
+                    (init-declarator-list
+                      (init-declarator
+                        (declarator
+                          (declarator-name "second")
+                        )
+                        (initializer
+                          "="
+                          (literal-expression "2")
+                        )
+                      )
+                    )
+                  )
+                  ")"
+                )
+              )
+            )
+          )
+        )
+        (compound-statement
+          "{"
+          (expression-statement
+            (call-expression
+              (template-id-expression
+                (identifier-expression "target")
+                (template-argument-list
+                  "<"
+                  (template-argument "First")
+                  (list-separator ",")
+                  (template-argument "Second")
+                  ">"
+                )
+              )
+              (argument-list
+                "("
+                (argument
+                  (identifier-expression "first")
+                )
+                (list-separator ",")
+                (argument
+                  (binary-expression
+                    (identifier-expression "second")
+                    "+"
+                    (identifier-expression "third")
+                  )
+                )
+                ")"
+              )
+            )
+            ";"
+          )
+          (declaration-statement
+            (declaration-specifiers "int")
+            (init-declarator-list
+              (init-declarator
+                (declarator
+                  (declarator-name "values")
+                  (array-declarator "[" "]")
+                )
+                (initializer
+                  (braced-initializer
+                    (initializer-list
+                      "{"
+                      (initializer-element
+                        (literal-expression "1")
+                      )
+                      (list-separator ",")
+                      (initializer-element
+                        (literal-expression "2")
+                      )
+                      (list-separator ",")
+                      (initializer-element
+                        (literal-expression "3")
+                      )
+                      "}"
+                    )
+                  )
+                )
+              )
+            )
+            ";"
+          )
+          (declaration-statement
+            (declaration-specifiers "auto")
+            (init-declarator-list
+              (init-declarator
+                (declarator
+                  (structured-binding
+                    "["
+                    (declarator-name "left")
+                    (list-separator ",")
+                    (declarator-name "right")
+                    "]"
+                  )
+                )
+                (initializer
+                  "="
+                  (identifier-expression "pair")
+                )
+              )
+            )
+            ";"
+          )
+          (declaration-statement
+            (declaration-specifiers "auto")
+            (init-declarator-list
+              (init-declarator
+                (declarator
+                  (declarator-name "capture")
+                )
+                (initializer
+                  "="
+                  (lambda-expression
+                    (lambda-capture-list
+                      "["
+                      (lambda-capture "left")
+                      (list-separator ",")
+                      (lambda-capture "&" "right")
+                      "]"
+                    )
+                    (parameter-list
+                      "("
+                      (parameter-declaration
+                        (declaration-specifiers "int")
+                        (init-declarator-list
+                          (init-declarator
+                            (declarator
+                              (declarator-name "value")
+                            )
+                          )
+                        )
+                      )
+                      ")"
+                    )
+                    (lambda-body "{" "return" "value" ";" "}")
+                  )
+                )
+              )
+            )
+            ";"
+          )
+          "}"
+        )
+      )
+      "}" ";"
+    )
+  )
+)

@@ -1,0 +1,21 @@
+#pragma once
+
+#include <array>
+#include <string_view>
+
+namespace benchmarks {
+
+inline constexpr std::string_view Service =
+    R"HITFMTINPUT(@HIT_FMT_BENCHMARK_SERVICE@)HITFMTINPUT";
+inline constexpr std::string_view TemplateLibrary =
+    R"HITFMTINPUT(@HIT_FMT_BENCHMARK_TEMPLATE_LIBRARY@)HITFMTINPUT";
+inline constexpr std::string_view Platform =
+    R"HITFMTINPUT(@HIT_FMT_BENCHMARK_PLATFORM@)HITFMTINPUT";
+
+inline constexpr std::array Corpus{
+    Service,
+    TemplateLibrary,
+    Platform,
+};
+
+} // namespace benchmarks

@@ -1,0 +1,35 @@
+#include <something>
+%:define DIGRAPH 1
+#define APPLY(x) \
+    ((x) + 1)
+
+#if FIRST
+using Selected = int;
+#  if NESTED
+int nested();
+#  endif
+#elif SECOND
+using Selected = long;
+#else
+using Selected = short;
+#endif
+
+void function() {
+#if ENABLED
+    int value = APPLY(1);
+    use(value);
+#else
+    return;
+#endif
+}
+
+void split_conditional_block() {
+#if FIRST
+    if (first) {
+#else
+    if (second) {
+#endif
+        use();
+    }
+    finish();
+}

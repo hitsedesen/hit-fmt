@@ -1,0 +1,35 @@
+using Type = int;
+
+template<class... Values>
+concept Addable = requires(Values... values) {
+    typename Values::type;
+    { values + ... } -> Same;
+    requires Ready<Values...>;
+};
+
+template<class... Values>
+auto evaluate(Values... values) {
+    result = object.member(a + b * 2, items[index++])
+        ? -left
+        : right;
+    converted = static_cast<long>(value)
+        + reinterpret_cast<Type*>(pointer)
+        + (int)*pointer;
+    auto lambda = [value, &reference]<typename Element>(Element argument)
+        mutable noexcept -> Element { return argument + value; };
+    auto left_fold = (... + values);
+    auto right_fold = (values + ...);
+    auto binary_fold = (0 + ... + values);
+    auto placed = new (arena) Item[count]{1, 2};
+    auto direct = new Item(1, 2);
+    auto dependent = object.template get<Type>();
+    auto indirect = this->template find<Item>();
+    object.~Type();
+    object.operator bool();
+    object.operator()();
+    delete[] placed;
+    delete direct;
+    int initialized = source + scale * 2;
+    int braced{1};
+    return lambda(initialized);
+}

@@ -1,0 +1,259 @@
+(translation-unit
+  (function-declaration
+    (declaration-specifiers
+      (extension-attribute-specifier "__declspec" "(" "dllexport" ")")
+      "int"
+      (calling-convention-specifier "__cdecl")
+    )
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (declarator-name "exported")
+          (function-declarator
+            (parameter-list
+              "("
+              (parameter-declaration
+                (declaration-specifiers "int")
+                (init-declarator-list
+                  (init-declarator
+                    (declarator
+                      (declarator-name "value")
+                    )
+                  )
+                )
+              )
+              ")"
+            )
+          )
+        )
+      )
+    )
+    ";"
+  )
+  (declaration
+    (declaration-specifiers "int")
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (pointer-operator "*")
+          (declarator-name "__attribute__")
+        )
+        (initializer
+          (parenthesized-expression
+            "("
+            (parenthesized-expression
+              "("
+              (call-expression
+                (identifier-expression "aligned")
+                (argument-list
+                  "("
+                  (argument
+                    (literal-expression "16")
+                  )
+                  ")"
+                )
+              )
+              ")"
+            )
+            ")"
+          )
+          (unparsed-syntax "pointer")
+        )
+      )
+    )
+    ";"
+  )
+  (function-declaration
+    (declaration-specifiers "void")
+    (init-declarator-list
+      (init-declarator
+        (abstract-declarator
+          (nested-declarator
+            "(" "__stdcall"
+            (pointer-operator "*")
+            "callback" ")"
+          )
+          (function-declarator
+            (parameter-list
+              "("
+              (parameter-declaration
+                (declaration-specifiers
+                  (calling-convention-specifier "__stdcall")
+                )
+                (init-declarator-list
+                  (init-declarator
+                    (declarator
+                      (pointer-operator "*")
+                      (declarator-name "callback")
+                    )
+                  )
+                )
+              )
+              ")"
+            )
+            "(" "int" ")"
+          )
+        )
+      )
+    )
+    ";"
+  )
+  (function-declaration
+    (declaration-specifiers "void")
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (declarator-name "function")
+          "(" ")"
+          (extension-attribute-specifier "__attribute__" "(" "(" "cold" ")" ")")
+          (function-declarator
+            (parameter-list "(" ")")
+            (extension-attribute-specifier "__attribute__" "(" "(" "cold" ")" ")")
+          )
+        )
+      )
+    )
+    ";"
+  )
+  (record-declaration
+    "struct" "__attribute__" "(" "(" "packed" ")" ")" "Item" "{"
+    (function-definition
+      (init-declarator-list
+        (init-declarator
+          (declarator
+            (declarator-name "Item")
+            (function-declarator
+              (parameter-list "(" ")")
+              "try"
+              (constructor-initializer-list
+                ":"
+                (constructor-initializer "value" "(" "1" ")")
+              )
+            )
+          )
+        )
+      )
+      (function-try-block
+        "try" ":" "value" "(" "1" ")"
+        (compound-statement "{" "}")
+        (catch-clause
+          "catch"
+          (condition
+            "("
+            (expression "...")
+            ")"
+          )
+          (compound-statement "{" "}")
+        )
+      )
+    )
+    (declaration
+      (declaration-specifiers "int")
+      (init-declarator-list
+        (init-declarator
+          (declarator
+            (declarator-name "value")
+          )
+        )
+      )
+      ";"
+    )
+    "}" ";"
+  )
+  (declaration
+    (declaration-specifiers "int")
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (declarator-name "result")
+        )
+        (initializer
+          "="
+          (statement-expression
+            "("
+            (compound-statement
+              "{"
+              (declaration-statement
+                (declaration-specifiers "int")
+                (init-declarator-list
+                  (init-declarator
+                    (declarator
+                      (declarator-name "temporary")
+                    )
+                    (initializer
+                      "="
+                      (literal-expression "1")
+                    )
+                  )
+                )
+                ";"
+              )
+              (expression-statement
+                (binary-expression
+                  (identifier-expression "temporary")
+                  "+"
+                  (literal-expression "1")
+                )
+                ";"
+              )
+              "}"
+            )
+            ")"
+          )
+        )
+      )
+    )
+    ";"
+  )
+  (function-definition
+    (declaration-specifiers
+      (attribute-specifier "[" "[" "gnu" "::" "always_inline" "]" "]")
+      "inline" "int"
+    )
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (declarator-name "annotated")
+          (function-declarator
+            (parameter-list
+              "("
+              (parameter-declaration
+                (declaration-specifiers "int")
+                (init-declarator-list
+                  (init-declarator
+                    (declarator
+                      (declarator-name "value")
+                    )
+                  )
+                )
+              )
+              ")"
+            )
+          )
+        )
+      )
+    )
+    (compound-statement
+      "{"
+      (return-statement
+        "return"
+        (call-expression
+          (identifier-expression "__builtin_expect")
+          (argument-list
+            "("
+            (argument
+              (identifier-expression "value")
+            )
+            (list-separator ",")
+            (argument
+              (literal-expression "1")
+            )
+            ")"
+          )
+        )
+        ";"
+      )
+      "}"
+    )
+  )
+)

@@ -1,0 +1,427 @@
+(translation-unit
+  (function-definition
+    (declaration-specifiers "void")
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (declarator-name "function")
+          (function-declarator
+            (parameter-list
+              "("
+              (parameter-declaration
+                (declaration-specifiers "int")
+                (init-declarator-list
+                  (init-declarator
+                    (declarator
+                      (declarator-name "count")
+                    )
+                  )
+                )
+              )
+              (list-separator ",")
+              (parameter-declaration
+                (declaration-specifiers "Entries")
+                (init-declarator-list
+                  (init-declarator
+                    (declarator
+                      (declarator-name "entries")
+                    )
+                  )
+                )
+              )
+              ")"
+            )
+          )
+        )
+      )
+    )
+    (compound-statement
+      "{"
+      (for-statement
+        "for"
+        (for-header
+          "("
+          (for-init-statement
+            (declaration-specifiers "int")
+            (init-declarator-list
+              (init-declarator
+                (declarator
+                  (declarator-name "index")
+                )
+                (initializer
+                  "="
+                  (literal-expression "0")
+                )
+              )
+            )
+          )
+          (list-separator ";")
+          (for-condition
+            (binary-expression
+              (identifier-expression "index")
+              "<"
+              (identifier-expression "count")
+            )
+          )
+          (list-separator ";")
+          (for-iteration
+            (unary-expression
+              "++"
+              (identifier-expression "index")
+            )
+          )
+          ")"
+        )
+        (expression-statement
+          (call-expression
+            (identifier-expression "use")
+            (argument-list
+              "("
+              (argument
+                (identifier-expression "index")
+              )
+              ")"
+            )
+          )
+          ";"
+        )
+      )
+      (for-statement
+        "for"
+        (for-header
+          "("
+          (range-for-declaration
+            (declaration-specifiers "auto")
+            (init-declarator-list
+              (init-declarator
+                (declarator
+                  (pointer-operator "&&")
+                  (structured-binding
+                    "["
+                    (declarator-name "key")
+                    (list-separator ",")
+                    (declarator-name "value")
+                    "]"
+                  )
+                )
+              )
+            )
+          )
+          (range-for-separator ":")
+          (range-for-expression
+            (identifier-expression "entries")
+          )
+          ")"
+        )
+        (expression-statement
+          (call-expression
+            (identifier-expression "use")
+            (argument-list
+              "("
+              (argument
+                (identifier-expression "key")
+              )
+              (list-separator ",")
+              (argument
+                (identifier-expression "value")
+              )
+              ")"
+            )
+          )
+          ";"
+        )
+      )
+      (if-statement
+        "if"
+        (condition "(" "ready" "&&" "count" ">" "0" ")")
+        (compound-statement
+          "{"
+          (return-statement
+            "return"
+            (binary-expression
+              (member-expression
+                (identifier-expression "object")
+                "."
+                (identifier-expression "value")
+              )
+              "+"
+              (literal-expression "1")
+            )
+            ";"
+          )
+          "}"
+        )
+        "else"
+        (if-statement
+          "if"
+          (condition
+            "("
+            (identifier-expression "fallback")
+            ")"
+          )
+          (compound-statement
+            "{"
+            (throw-statement
+              "throw"
+              (identifier-expression "Error")
+              "{" "}" ";"
+            )
+            "}"
+          )
+        )
+      )
+      (switch-statement
+        "switch"
+        (condition
+          "("
+          (identifier-expression "count")
+          ")"
+        )
+        (compound-statement
+          "{"
+          (case-label "case" "0" ":")
+          (break-statement "break" ";")
+          (case-label "default" ":")
+          (break-statement "break" ";")
+          "}"
+        )
+      )
+      (while-statement
+        "while"
+        (condition
+          "("
+          (identifier-expression "ready")
+          ")"
+        )
+        (compound-statement
+          "{"
+          (if-statement
+            "if"
+            (condition
+              "("
+              (identifier-expression "skip")
+              ")"
+            )
+            (continue-statement "continue" ";")
+          )
+          (expression-statement
+            (unary-expression
+              "co_await"
+              (call-expression
+                (identifier-expression "next")
+                (argument-list "(" ")")
+              )
+            )
+            ";"
+          )
+          "}"
+        )
+      )
+      (do-while-statement
+        "do"
+        (compound-statement
+          "{"
+          (expression-statement
+            (unary-expression
+              "--"
+              (identifier-expression "count")
+            )
+            ";"
+          )
+          "}"
+        )
+        "while"
+        (condition
+          "("
+          (binary-expression
+            (identifier-expression "count")
+            ">"
+            (literal-expression "0")
+          )
+          ")"
+        )
+        ";"
+      )
+      (label-statement "label" ":")
+      (goto-statement "goto" "label" ";")
+      "}"
+    )
+  )
+  (function-definition
+    (declaration-specifiers "void")
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (declarator-name "macro_statements")
+          (function-declarator
+            (parameter-list "(" ")")
+          )
+        )
+      )
+    )
+    (compound-statement
+      "{"
+      (macro-block
+        (macro-invocation "with_lock" "(" "Mutex_" ")")
+        (compound-statement
+          "{"
+          (expression-statement
+            (call-expression
+              (identifier-expression "use")
+              (argument-list "(" ")")
+            )
+            ";"
+          )
+          "}"
+        )
+      )
+      (macro-block
+        (macro-invocation "MACRO_CONSTEXPR_IF" "(" "enabled" ")")
+        (compound-statement
+          "{"
+          (expression-statement
+            (call-expression
+              (identifier-expression "first")
+              (argument-list "(" ")")
+            )
+            ";"
+          )
+          "}"
+        )
+        "else"
+        (compound-statement
+          "{"
+          (expression-statement
+            (call-expression
+              (identifier-expression "second")
+              (argument-list "(" ")")
+            )
+            ";"
+          )
+          "}"
+        )
+      )
+      (macro-block
+        (macro-invocation "MACRO_TRY")
+        (compound-statement
+          "{"
+          (expression-statement
+            (call-expression
+              (identifier-expression "work")
+              (argument-list "(" ")")
+            )
+            ";"
+          )
+          "}"
+        )
+      )
+      (macro-control-statement
+        (macro-invocation "MACRO_IF" "(" "enabled" ")")
+        (return-statement "return" ";")
+        "else"
+        (expression-statement
+          (call-expression
+            (identifier-expression "use_default")
+            (argument-list "(" ")")
+          )
+          ";"
+        )
+      )
+      (if-statement
+        "if"
+        (condition
+          "("
+          (identifier-expression "first_field")
+          ")"
+        )
+        (compound-statement
+          "{"
+          (expression-statement
+            (call-expression
+              (identifier-expression "use_first")
+              (argument-list "(" ")")
+            )
+            ";"
+          )
+          "}"
+        )
+        "else"
+        (macro-control-statement
+          (macro-invocation "VALIDATE_FIELD" "(" "Second" ")")
+          "else"
+          (macro-control-statement
+            (macro-invocation "VALIDATE_FIELD" "(" "Third" ")")
+            "else"
+            (expression-statement
+              (call-expression
+                (identifier-expression "use_default")
+                (argument-list "(" ")")
+              )
+              ";"
+            )
+          )
+        )
+      )
+      "}"
+    )
+  )
+  (macro-block
+    (macro-invocation "Y_UNIT_TEST" "(" "FormatsMacroBody" ")")
+    (compound-statement
+      "{"
+      (expression-statement
+        (call-expression
+          (identifier-expression "check")
+          (argument-list "(" ")")
+        )
+        ";"
+      )
+      "}"
+    )
+  )
+  (macro-block
+    (macro-invocation "Y_UNIT_TEST_SUITE" "(" "FormatterSuite" ")")
+    (macro-declaration-body
+      "{"
+      (function-definition
+        (declaration-specifiers "void")
+        (init-declarator-list
+          (init-declarator
+            (declarator
+              (declarator-name "helper")
+              (function-declarator
+                (parameter-list "(" ")")
+              )
+            )
+          )
+        )
+        (compound-statement
+          "{"
+          (expression-statement
+            (call-expression
+              (identifier-expression "prepare")
+              (argument-list "(" ")")
+            )
+            ";"
+          )
+          "}"
+        )
+      )
+      (macro-block
+        (macro-invocation "Y_UNIT_TEST" "(" "UsesHelper" ")")
+        (compound-statement
+          "{"
+          (expression-statement
+            (call-expression
+              (identifier-expression "helper")
+              (argument-list "(" ")")
+            )
+            ";"
+          )
+          "}"
+        )
+      )
+      "}"
+    )
+  )
+)
