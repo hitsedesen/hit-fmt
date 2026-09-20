@@ -12,9 +12,67 @@
 
 namespace tokenizer {
 
+#define TOKENIZATION_ERROR_KINDS                                               \
+    TOKENIZATION_ERROR_KIND(                                                   \
+        InputTooLarge, "input exceeds the maximum supported size")             \
+    TOKENIZATION_ERROR_KIND(InvalidUtf8CodePoint, "Invalid UTF8 code point")   \
+    TOKENIZATION_ERROR_KIND(UnexpectedToken, "Unexpected token")               \
+    TOKENIZATION_ERROR_KIND(UnfinishedEllipsis, "Unfinished ellipsis")         \
+    TOKENIZATION_ERROR_KIND(                                                   \
+        UnterminatedCharacterLiteral, "Unterminated character literal")        \
+    TOKENIZATION_ERROR_KIND(                                                   \
+        UnterminatedStringLiteral, "Unterminated string literal")              \
+    TOKENIZATION_ERROR_KIND(                                                   \
+        UnterminatedRawStringLiteral, "Unterminated raw string literal")       \
+    TOKENIZATION_ERROR_KIND(                                                   \
+        NoDigitsBetweenDigitSeparators, "No digits between digit separators")  \
+    TOKENIZATION_ERROR_KIND(                                                   \
+        DigitSeparatorAtStartOfBinaryInteger,                                  \
+        "Digit separator at the start of a binary integer")                    \
+    TOKENIZATION_ERROR_KIND(                                                   \
+        NoDigitsInBinaryInteger, "No digits in binary integer")                \
+    TOKENIZATION_ERROR_KIND(                                                   \
+        DigitSeparatorAtEndOfBinaryInteger,                                    \
+        "Digit separator at the end of a binary integer")                      \
+    TOKENIZATION_ERROR_KIND(                                                   \
+        DigitSeparatorAtStartOfHexadecimalInteger,                             \
+        "Digit separator at the start of a hexadecimal integer")               \
+    TOKENIZATION_ERROR_KIND(                                                   \
+        NoDigitsInHexadecimalInteger, "No digits in hexadecimal integer")      \
+    TOKENIZATION_ERROR_KIND(                                                   \
+        DigitSeparatorAtEndOfHexadecimalInteger,                               \
+        "Digit separator at the end of a hexadecimal integer")                 \
+    TOKENIZATION_ERROR_KIND(                                                   \
+        DigitSeparatorAtEndOfOctalInteger,                                     \
+        "Digit separator at the end of an octal integer")                      \
+    TOKENIZATION_ERROR_KIND(                                                   \
+        DigitSeparatorAtEndOfDecimalInteger,                                   \
+        "Digit separator cannot appear at the end of decimal integer literal") \
+    TOKENIZATION_ERROR_KIND(                                                   \
+        UnterminatedMultilineComment, "Unterminated multiline comment")
+
+enum class TokenizationErrorKind : uint8_t
+{
+#define TOKENIZATION_ERROR_KIND(value, description) value,
+    TOKENIZATION_ERROR_KINDS
+#undef TOKENIZATION_ERROR_KIND
+};
+
+constexpr std::string_view
+GetTokenizationErrorDescription(TokenizationErrorKind kind)
+{
+    constexpr auto Descriptions = std::to_array<std::string_view>({
+#define TOKENIZATION_ERROR_KIND(value, description) {description},
+        TOKENIZATION_ERROR_KINDS
+#undef TOKENIZATION_ERROR_KIND
+    });
+
+    return Descriptions[std::to_underlying(kind)];
+}
+
 struct TokenizationError
 {
-    std::string Message;
+    TokenizationErrorKind Kind;
     util::Position TokenStart;
     util::Position ErrorPosition;
     util::Position TokenEnd;
@@ -93,7 +151,7 @@ private:
     Token ParsePreprocessingDirective();
 
     void OnError(TokenizationError error);
-    void OnError(std::string error);
+    void OnError(TokenizationErrorKind error);
 
     std::string_view Input_;
 

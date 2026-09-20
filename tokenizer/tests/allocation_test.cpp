@@ -55,10 +55,19 @@ int main()
 auto raw = R"delimiter(raw string contents)delimiter";
 auto literal = 42_a_user_defined_suffix_longer_than_sso;
 auto integer = 42ULL;
+@
+auto broken = R"missing(raw contents;
 )cpp";
 
+    size_t errorCount = 0;
+    size_t descriptionSize = 0;
     TrackAllocations = true;
-    tokenizer::Tokenizer tokenizer(Source);
+    tokenizer::Tokenizer tokenizer(
+        Source, [&](tokenizer::TokenizationError error) {
+            ++errorCount;
+            descriptionSize +=
+                tokenizer::GetTokenizationErrorDescription(error.Kind).size();
+        });
     size_t tokenCount = 0;
     for (auto token = tokenizer.Get();
          token.Kind != tokenizer::TokenKind::EndOfFile;
@@ -75,6 +84,10 @@ auto integer = 42ULL;
     }
     if (tokenCount == 0) {
         std::fputs("tokenizer produced no tokens\n", stderr);
+        return 1;
+    }
+    if (errorCount != 2 || descriptionSize == 0) {
+        std::fputs("tokenizer did not report expected errors\n", stderr);
         return 1;
     }
     return 0;

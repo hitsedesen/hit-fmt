@@ -90,7 +90,7 @@ Tokenizer::Tokenizer(
         Input_ = {};
         OnError(
             TokenizationError{
-                .Message = "input exceeds the maximum supported size",
+                .Kind = TokenizationErrorKind::InputTooLarge,
                 .TokenStart = {.Line = 1, .Column = 1},
                 .ErrorPosition = {.Line = 1, .Column = 1},
                 .TokenEnd = {.Line = 1, .Column = 1},
@@ -117,7 +117,7 @@ unicode::CodePoint Tokenizer::LoadCurrentCodePoint()
     auto first = unicode::utf8::GetFirstCodePoint(
         Input_.substr(CurrentCodePointOffset_));
     if (!first) {
-        OnError("Invalid UTF8 code point");
+        OnError(TokenizationErrorKind::InvalidUtf8CodePoint);
         CurrentCodePointValue_ = static_cast<char32_t>(firstByte);
         CurrentCodePointSize_ = 1;
     } else {
@@ -159,10 +159,7 @@ Token Tokenizer::Get()
         {
             if (!IsNewLine_) {
                 ConsumeCodePoint();
-                OnError(
-                    std::format(
-                        "Unexpected token {}",
-                        unicode::utf8::FromCodePoint(cur)));
+                OnError(TokenizationErrorKind::UnexpectedToken);
                 return FinishToken(TokenKind::Invalid);
             }
             return ParsePreprocessingDirective();
@@ -216,7 +213,7 @@ Token Tokenizer::Get()
                         ConsumeCodePoint();
                         return FinishToken(TokenKind::Operator_Ellipsis);
                     }
-                    OnError("Unfinished ellipsis");
+                    OnError(TokenizationErrorKind::UnfinishedEllipsis);
                     return FinishToken(TokenKind::Invalid);
                 }
             case '*':
@@ -464,10 +461,7 @@ Token Tokenizer::Get()
             }
             {
                 ConsumeCodePoint();
-                OnError(
-                    std::format(
-                        "Unexpected token {}",
-                        unicode::utf8::FromCodePoint(cur)));
+                OnError(TokenizationErrorKind::UnexpectedToken);
                 return FinishToken(TokenKind::Invalid);
             }
         }
@@ -597,7 +591,7 @@ Token Tokenizer::ParseCharacterLiteral()
         next();
     }
     if (cur != '\'') {
-        OnError("Unterminated character literal");
+        OnError(TokenizationErrorKind::UnterminatedCharacterLiteral);
         return FinishToken(TokenKind::Invalid);
     }
     next();
@@ -621,7 +615,7 @@ Token Tokenizer::ParseStringLiteral()
         next();
     }
     if (cur != '"') {
-        OnError("Unterminated string literal");
+        OnError(TokenizationErrorKind::UnterminatedStringLiteral);
         return FinishToken(TokenKind::Invalid);
     }
     next();
@@ -644,7 +638,7 @@ Token Tokenizer::ParseRawStringLiteral()
     }
 
     if (AtEnd() || cur != '(') {
-        OnError("Unterminated raw string literal");
+        OnError(TokenizationErrorKind::UnterminatedRawStringLiteral);
         return FinishToken(TokenKind::Invalid);
     }
 
@@ -671,7 +665,7 @@ Token Tokenizer::ParseRawStringLiteral()
         next();
     }
 
-    OnError("Unterminated raw string literal");
+    OnError(TokenizationErrorKind::UnterminatedRawStringLiteral);
     return FinishToken(TokenKind::Invalid);
 }
 
@@ -700,12 +694,14 @@ Token Tokenizer::ParseNumber()
                 while (cur == '0' || cur == '1' || cur == '\'') {
                     if (cur == '\'') {
                         if (prev == '\'') {
-                            OnError("No digits between digit separators");
+                            OnError(
+                                TokenizationErrorKind::
+                                    NoDigitsBetweenDigitSeparators);
                             kind = TokenKind::Invalid;
                         } else if (parsedDigits == 0) {
                             OnError(
-                                "Digit separator at the start of a binary "
-                                "integer");
+                                TokenizationErrorKind::
+                                    DigitSeparatorAtStartOfBinaryInteger);
                             kind = TokenKind::Invalid;
                         }
                     } else {
@@ -714,10 +710,12 @@ Token Tokenizer::ParseNumber()
                     next();
                 }
                 if (parsedDigits == 0) {
-                    OnError("No digits in binary integer");
+                    OnError(TokenizationErrorKind::NoDigitsInBinaryInteger);
                     kind = TokenKind::Invalid;
                 } else if (prev == '\'') {
-                    OnError("Digit separator at the on of a binary integer");
+                    OnError(
+                        TokenizationErrorKind::
+                            DigitSeparatorAtEndOfBinaryInteger);
                     kind = TokenKind::Invalid;
                 }
                 break;
@@ -731,12 +729,14 @@ Token Tokenizer::ParseNumber()
                 while (IsHexDigit(cur) || cur == '\'') {
                     if (cur == '\'') {
                         if (prev == '\'') {
-                            OnError("No digits between digit separators");
+                            OnError(
+                                TokenizationErrorKind::
+                                    NoDigitsBetweenDigitSeparators);
                             kind = TokenKind::Invalid;
                         } else if (parsedDigits == 0) {
                             OnError(
-                                "Digit separator at the start of a hexadecimal "
-                                "integer");
+                                TokenizationErrorKind::
+                                    DigitSeparatorAtStartOfHexadecimalInteger);
                             kind = TokenKind::Invalid;
                         }
                     } else {
@@ -745,11 +745,13 @@ Token Tokenizer::ParseNumber()
                     next();
                 }
                 if (parsedDigits == 0) {
-                    OnError("No digits in hexadecimal integer");
+                    OnError(
+                        TokenizationErrorKind::NoDigitsInHexadecimalInteger);
                     kind = TokenKind::Invalid;
                 } else if (prev == '\'') {
                     OnError(
-                        "Digit separator at the on of a hexadecimal integer");
+                        TokenizationErrorKind::
+                            DigitSeparatorAtEndOfHexadecimalInteger);
                     kind = TokenKind::Invalid;
                 }
                 break;
@@ -760,7 +762,9 @@ Token Tokenizer::ParseNumber()
                 while (IsOctalDigit(cur) || cur == '\'') {
                     if (cur == '\'') {
                         if (prev == '\'') {
-                            OnError("No digits between digit separators");
+                            OnError(
+                                TokenizationErrorKind::
+                                    NoDigitsBetweenDigitSeparators);
                             kind = TokenKind::Invalid;
                         }
                     } else {
@@ -769,7 +773,9 @@ Token Tokenizer::ParseNumber()
                     next();
                 }
                 if (prev == '\'') {
-                    OnError("Digit separator at the on of an octal integer");
+                    OnError(
+                        TokenizationErrorKind::
+                            DigitSeparatorAtEndOfOctalInteger);
                     kind = TokenKind::Invalid;
                 }
                 break;
@@ -780,7 +786,8 @@ Token Tokenizer::ParseNumber()
         while (IsDigit(cur) || cur == '\'') {
             if (cur == '\'') {
                 if (prev == '\'') {
-                    OnError("No digits between digit separators");
+                    OnError(
+                        TokenizationErrorKind::NoDigitsBetweenDigitSeparators);
                     kind = TokenKind::Invalid;
                 }
             } else {
@@ -791,9 +798,7 @@ Token Tokenizer::ParseNumber()
             cur = CurrentCodePoint();
         }
         if (prev == '\'') {
-            OnError(
-                "Digit separator cannot appear at the end of "
-                "decimal integer literal");
+            OnError(TokenizationErrorKind::DigitSeparatorAtEndOfDecimalInteger);
             return FinishToken(TokenKind::Invalid);
         }
     }
@@ -868,7 +873,7 @@ Token Tokenizer::ParseMultilineComment()
     }
 
     if (cur == '\0') {
-        OnError("Unterminated multiline comment");
+        OnError(TokenizationErrorKind::UnterminatedMultilineComment);
         return FinishToken(TokenKind::Invalid);
     }
     return FinishToken(TokenKind::Comment);
@@ -1003,17 +1008,16 @@ void Tokenizer::OnError(TokenizationError error)
     if (ErrorHandler_) {
         ErrorHandler_(std::move(error));
     } else {
-        std::cerr << std::format(
-            "Tokenization error at {}: {}\n",
-            error.ErrorPosition,
-            error.Message);
+        std::cerr << "Tokenization error at Ln " << error.ErrorPosition.Line
+                  << ", Col " << error.ErrorPosition.Column << ": "
+                  << GetTokenizationErrorDescription(error.Kind) << '\n';
     }
 }
 
-void Tokenizer::OnError(std::string error)
+void Tokenizer::OnError(TokenizationErrorKind error)
 {
     OnError({
-        .Message = std::move(error),
+        .Kind = error,
         .TokenStart = CurrentTokenPosition_,
         .ErrorPosition = CurrentCodePointPosition_,
         .TokenEnd = CurrentCodePointPosition_,

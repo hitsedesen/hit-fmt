@@ -39,7 +39,7 @@ std::ostream& operator<<(std::ostream& os, const TestCase& tc)
 
 std::ostream& operator<<(std::ostream& os, const TokenizationError& error)
 {
-    return os << error.Message;
+    return os << GetTokenizationErrorDescription(error.Kind);
 }
 
 struct GoldenCase
@@ -82,7 +82,9 @@ TokenizeAndSerialize(const std::string& input)
     Tokenizer tokenizer(input, [&](TokenizationError error) {
         errors.push_back(
             std::format(
-                "{} error: {}", error.ErrorPosition, std::move(error.Message)));
+                "{} error: {}",
+                error.ErrorPosition,
+                GetTokenizationErrorDescription(error.Kind)));
     });
     std::string result;
     std::vector<std::string> tokens;
