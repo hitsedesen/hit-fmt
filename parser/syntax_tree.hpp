@@ -426,9 +426,10 @@ struct StoredToken
 {
     util::SourceView Text;
     uint32_t Line;
+    uint32_t Column;
 };
 
-static_assert(sizeof(StoredToken) == 12);
+static_assert(sizeof(StoredToken) == 16);
 
 class TriviaPool
 {
@@ -499,6 +500,7 @@ class TokenPool
         std::array<StoredToken, TokensPerChunk> Tokens;
         std::array<tokenizer::TokenKind, TokensPerChunk> Kinds;
         std::array<PunctuationRole, TokensPerChunk> Roles;
+        std::array<TokenIndex, TokensPerChunk> MatchingDelimiters;
     };
 
 public:
@@ -526,6 +528,7 @@ public:
         chunk->Tokens[slot.Offset] = {
             .Text = token.Text,
             .Line = token.Position.Line,
+            .Column = token.Position.Column,
         };
         chunk->Kinds[slot.Offset] = token.Kind;
         chunk->Roles[slot.Offset] =
@@ -533,6 +536,8 @@ public:
                 && token.Kind <= tokenizer::TokenKind::Operator_Comma
             ? PunctuationRole::Generic
             : PunctuationRole::None;
+        chunk->MatchingDelimiters[slot.Offset] =
+            std::numeric_limits<TokenIndex>::max();
     }
 
     void Seal()
@@ -573,6 +578,20 @@ public:
             ->Roles[index % TokensPerChunk] = role;
     }
 
+    [[nodiscard]] TokenIndex MatchingDelimiter(TokenIndex index) const
+    {
+        assert(index < Storage_.Size());
+        return Storage_.ChunkAt(index / TokensPerChunk)
+            ->MatchingDelimiters[index % TokensPerChunk];
+    }
+
+    void SetMatchingDelimiter(TokenIndex index, TokenIndex matching)
+    {
+        assert(index < Storage_.Size());
+        Storage_.ChunkAtDuringBuild(index / TokensPerChunk)
+            ->MatchingDelimiters[index % TokensPerChunk] = matching;
+    }
+
     [[nodiscard]] TokenIndex
     FindPreprocessingDirective(TokenIndex begin, TokenIndex end) const;
     [[nodiscard]] TokenIndex
@@ -600,19 +619,68 @@ public:
     SyntaxTree& operator=(const SyntaxTree&) = delete;
 
     [[nodiscard]] const Node& Root() const;
-    [[nodiscard]] std::string_view Source() const;
-    [[nodiscard]] TokenIndex TokenCount() const;
+
+    [[nodiscard]] std::string_view Source() const
+    {
+        return Input_;
+    }
+
+    [[nodiscard]] TokenIndex TokenCount() const
+    {
+        return Tokens_.Size();
+    }
+
     [[nodiscard]] tokenizer::Token Token(TokenIndex index) const;
-    [[nodiscard]] tokenizer::TokenKind Kind(TokenIndex index) const;
-    [[nodiscard]] util::Position TokenPosition(TokenIndex index) const;
-    [[nodiscard]] std::string_view TokenText(TokenIndex index) const;
-    [[nodiscard]] PunctuationRole Role(TokenIndex index) const;
+
+    [[nodiscard]] tokenizer::TokenKind Kind(TokenIndex index) const
+    {
+        return Tokens_.Kind(index);
+    }
+
+    [[nodiscard]] util::Position TokenPosition(TokenIndex index) const
+    {
+        const auto& token = Tokens_[index];
+        return {.Line = token.Line, .Column = token.Column};
+    }
+
+    [[nodiscard]] std::string_view TokenText(TokenIndex index) const
+    {
+        return Tokens_[index].Text.View(Input_);
+    }
+
+    [[nodiscard]] PunctuationRole Role(TokenIndex index) const
+    {
+        return Tokens_.Role(index);
+    }
+
+    [[nodiscard]] TokenIndex MatchingDelimiter(TokenIndex index) const
+    {
+        return Tokens_.MatchingDelimiter(index);
+    }
+
     [[nodiscard]] const TriviaAttachments*
     AssociatedTrivia(const Node& node) const;
     [[nodiscard]] std::string_view SourceText(TokenRange range) const;
     [[nodiscard]] std::string_view SourceText(SourceRange range) const;
-    [[nodiscard]] std::string_view WhitespaceBefore(TokenIndex token) const;
-    [[nodiscard]] std::string_view WhitespaceAfter(TokenIndex token) const;
+
+    [[nodiscard]] std::string_view WhitespaceBefore(TokenIndex token) const
+    {
+        assert(token < TokenCount());
+        auto* begin = token == 0 ? Input_.data()
+                                 : Input_.data() + Tokens_[token - 1].Text.End;
+        auto* end = Input_.data() + Tokens_[token].Text.Begin;
+        return {begin, static_cast<size_t>(end - begin)};
+    }
+
+    [[nodiscard]] std::string_view WhitespaceAfter(TokenIndex token) const
+    {
+        assert(token < TokenCount());
+        auto* begin = Input_.data() + Tokens_[token].Text.End;
+        auto* end = token + 1 == TokenCount()
+            ? Input_.data() + Input_.size()
+            : Input_.data() + Tokens_[token + 1].Text.Begin;
+        return {begin, static_cast<size_t>(end - begin)};
+    }
 
 private:
     explicit SyntaxTree(std::string_view input);
