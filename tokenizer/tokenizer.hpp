@@ -129,10 +129,18 @@ private:
 
     static constexpr size_t UnloadedCodePoint =
         std::numeric_limits<size_t>::max();
+    static constexpr unicode::CodePoint InvalidCodePoint =
+        static_cast<char32_t>(std::numeric_limits<uint32_t>::max());
+
+    [[nodiscard]] bool CurrentCodePointValid() const
+    {
+        return CurrentCodePointValue_ != InvalidCodePoint;
+    }
+
     size_t CurrentCodePointOffset_ = 0;
     size_t CurrentCodePointSize_ = UnloadedCodePoint;
     unicode::CodePoint CurrentCodePointValue_ = '\0';
-    bool CurrentCodePointValid_ = true;
+    size_t EncodingErrorCount_ = 0;
     util::Position CurrentCodePointPosition_ = {.Line = 1, .Column = 1};
 
     void ConsumeCodePoint(bool skippingNewLine = false)

@@ -103,7 +103,6 @@ unicode::CodePoint Tokenizer::LoadCurrentCodePoint()
     if (CurrentCodePointOffset_ >= Input_.size()) {
         CurrentCodePointValue_ = '\0';
         CurrentCodePointSize_ = 0;
-        CurrentCodePointValid_ = true;
         return CurrentCodePointValue_;
     }
 
@@ -112,7 +111,6 @@ unicode::CodePoint Tokenizer::LoadCurrentCodePoint()
     if (firstByte < 0x80) [[likely]] {
         CurrentCodePointValue_ = static_cast<char32_t>(firstByte);
         CurrentCodePointSize_ = 1;
-        CurrentCodePointValid_ = true;
         return CurrentCodePointValue_;
     }
 
@@ -120,13 +118,12 @@ unicode::CodePoint Tokenizer::LoadCurrentCodePoint()
         Input_.substr(CurrentCodePointOffset_));
     if (!first) {
         OnError(TokenizationErrorKind::InvalidUtf8CodePoint);
-        CurrentCodePointValue_ = static_cast<char32_t>(firstByte);
+        ++EncodingErrorCount_;
+        CurrentCodePointValue_ = InvalidCodePoint;
         CurrentCodePointSize_ = 1;
-        CurrentCodePointValid_ = false;
     } else {
         CurrentCodePointValue_ = first->Value;
         CurrentCodePointSize_ = first->Size;
-        CurrentCodePointValid_ = true;
     }
     return CurrentCodePointValue_;
 }
@@ -157,11 +154,6 @@ Token Tokenizer::Get()
     if (AtEnd()) [[unlikely]] {
         return FinishToken(TokenKind::EndOfFile);
     }
-    if (!CurrentCodePointValid_) [[unlikely]] {
-        ConsumeCodePoint();
-        return FinishToken(TokenKind::Invalid);
-    }
-
     switch (cur) {
     case '#':
         {
@@ -211,7 +203,7 @@ Token Tokenizer::Get()
     case '.':
         {
             if (CurrentCodePointOffset_ + 1 < Input_.size()
-                && IsDigit(Input_[CurrentCodePointOffset_ + 1]))
+                && IsDigit(Input_[CurrentCodePointOffset_ + 1])) [[unlikely]]
             {
                 return ParseNumber();
             }
@@ -474,7 +466,9 @@ Token Tokenizer::Get()
             }
             {
                 ConsumeCodePoint();
-                OnError(TokenizationErrorKind::UnexpectedToken);
+                if (CurrentCodePointValid()) {
+                    OnError(TokenizationErrorKind::UnexpectedToken);
+                }
                 return FinishToken(TokenKind::Invalid);
             }
         }
@@ -747,13 +741,13 @@ Token Tokenizer::ParseCharacterLiteral()
 {
     ASSERT(CurrentCodePoint() == '\'');
     auto prefix = CurrentTokenText();
+    auto encodingErrorCount = EncodingErrorCount_;
     ConsumeCodePoint();
     bool valid = true;
     size_t characterCount = 0;
     while (CurrentCodePoint() != '\'' && CurrentCodePoint() != '\n'
            && CurrentCodePoint() != '\0')
     {
-        valid &= CurrentCodePointValid_;
         if (CurrentCodePoint() == '\\') {
             bool lineSplice = CurrentCodePointOffset_ + 1 < Input_.size()
                 && (Input_[CurrentCodePointOffset_ + 1] == '\n'
@@ -766,6 +760,7 @@ Token Tokenizer::ParseCharacterLiteral()
             ++characterCount;
         }
     }
+    valid &= encodingErrorCount == EncodingErrorCount_;
     if (CurrentCodePoint() != '\'') {
         OnError(TokenizationErrorKind::UnterminatedCharacterLiteral);
         return FinishToken(TokenKind::Invalid);
@@ -788,18 +783,19 @@ Token Tokenizer::ParseCharacterLiteral()
 Token Tokenizer::ParseStringLiteral()
 {
     ASSERT(CurrentCodePoint() == '"');
+    auto encodingErrorCount = EncodingErrorCount_;
     ConsumeCodePoint();
     bool valid = true;
     while (CurrentCodePoint() != '"' && CurrentCodePoint() != '\n'
            && CurrentCodePoint() != '\0')
     {
-        valid &= CurrentCodePointValid_;
         if (CurrentCodePoint() == '\\') {
             valid &= ConsumeEscapeSequence();
         } else {
             ConsumeCodePoint();
         }
     }
+    valid &= encodingErrorCount == EncodingErrorCount_;
     if (CurrentCodePoint() != '"') {
         OnError(TokenizationErrorKind::UnterminatedStringLiteral);
         return FinishToken(TokenKind::Invalid);
@@ -819,6 +815,7 @@ Token Tokenizer::ParseRawStringLiteral()
     next();
 
     auto delimiterStart = CurrentCodePointOffset_;
+    auto encodingErrorCount = EncodingErrorCount_;
     size_t delimiterLength = 0;
     bool valid = true;
     bool reportedInvalidDelimiter = false;
@@ -851,7 +848,6 @@ Token Tokenizer::ParseRawStringLiteral()
     next();
 
     while (!AtEnd()) {
-        valid &= CurrentCodePointValid_;
         if (cur == ')') {
             auto suffix = Input_.substr(CurrentCodePointOffset_ + 1);
             if (suffix.starts_with(delimiter)
@@ -864,6 +860,7 @@ Token Tokenizer::ParseRawStringLiteral()
                     ConsumeCodePoint();
                 }
                 while (CurrentCodePointOffset_ < closingDelimiterEnd);
+                valid &= encodingErrorCount == EncodingErrorCount_;
                 return FinishToken(
                     valid ? TokenKind::Literal_String : TokenKind::Invalid);
             }
