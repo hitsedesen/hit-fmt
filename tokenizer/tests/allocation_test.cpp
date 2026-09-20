@@ -55,6 +55,7 @@ int main()
 auto raw = R"delimiter(raw string contents)delimiter";
 auto literal = 42_a_user_defined_suffix_longer_than_sso;
 auto integer = 42ULL;
+auto invalid_escape = "\q";
 @
 auto broken = R"missing(raw contents;
 )cpp";
@@ -86,7 +87,7 @@ auto broken = R"missing(raw contents;
         std::fputs("tokenizer produced no tokens\n", stderr);
         return 1;
     }
-    if (errorCount != 2 || descriptionSize == 0) {
+    if (errorCount != 3 || descriptionSize == 0) {
         std::fputs("tokenizer did not report expected errors\n", stderr);
         return 1;
     }

@@ -103,6 +103,7 @@ unicode::CodePoint Tokenizer::LoadCurrentCodePoint()
     if (CurrentCodePointOffset_ >= Input_.size()) {
         CurrentCodePointValue_ = '\0';
         CurrentCodePointSize_ = 0;
+        CurrentCodePointValid_ = true;
         return CurrentCodePointValue_;
     }
 
@@ -111,6 +112,7 @@ unicode::CodePoint Tokenizer::LoadCurrentCodePoint()
     if (firstByte < 0x80) [[likely]] {
         CurrentCodePointValue_ = static_cast<char32_t>(firstByte);
         CurrentCodePointSize_ = 1;
+        CurrentCodePointValid_ = true;
         return CurrentCodePointValue_;
     }
 
@@ -120,9 +122,11 @@ unicode::CodePoint Tokenizer::LoadCurrentCodePoint()
         OnError(TokenizationErrorKind::InvalidUtf8CodePoint);
         CurrentCodePointValue_ = static_cast<char32_t>(firstByte);
         CurrentCodePointSize_ = 1;
+        CurrentCodePointValid_ = false;
     } else {
         CurrentCodePointValue_ = first->Value;
         CurrentCodePointSize_ = first->Size;
+        CurrentCodePointValid_ = true;
     }
     return CurrentCodePointValue_;
 }
@@ -152,6 +156,10 @@ Token Tokenizer::Get()
     auto cur = CurrentCodePoint();
     if (AtEnd()) [[unlikely]] {
         return FinishToken(TokenKind::EndOfFile);
+    }
+    if (!CurrentCodePointValid_) [[unlikely]] {
+        ConsumeCodePoint();
+        return FinishToken(TokenKind::Invalid);
     }
 
     switch (cur) {
@@ -202,6 +210,11 @@ Token Tokenizer::Get()
         }
     case '.':
         {
+            if (CurrentCodePointOffset_ + 1 < Input_.size()
+                && IsDigit(Input_[CurrentCodePointOffset_ + 1]))
+            {
+                return ParseNumber();
+            }
             ConsumeCodePoint();
             cur = CurrentCodePoint();
             switch (cur) {
@@ -574,52 +587,225 @@ Token Tokenizer::ParseIdentifier()
     return FinishToken(detail::ClassifyIdentifier(CurrentTokenText()));
 }
 
+bool Tokenizer::ConsumeEscapeSequence()
+{
+    ASSERT(CurrentCodePoint() == '\\');
+    ConsumeCodePoint();
+    auto cur = CurrentCodePoint();
+
+    switch (cur) {
+    case '\'':
+    case '"':
+    case '?':
+    case '\\':
+    case 'a':
+    case 'b':
+    case 'f':
+    case 'n':
+    case 'r':
+    case 't':
+    case 'v':
+        ConsumeCodePoint();
+        return true;
+    case '\n':
+        ConsumeCodePoint(/*skippingNewLine*/ true);
+        return true;
+    case '\r':
+        if (Input_.substr(CurrentCodePointOffset_).starts_with("\r\n")) {
+            ConsumeCodePoint();
+            ConsumeCodePoint(/*skippingNewLine*/ true);
+            return true;
+        }
+        break;
+    default:
+        break;
+    }
+
+    if (IsOctalDigit(cur)) {
+        for (int count = 0; count < 3 && IsOctalDigit(CurrentCodePoint());
+             ++count)
+        {
+            ConsumeCodePoint();
+        }
+        return true;
+    }
+
+    auto consumeBracedDigits = [&](auto isDigit) {
+        ASSERT(CurrentCodePoint() == '{');
+        ConsumeCodePoint();
+        bool hasDigits = false;
+        while (isDigit(CurrentCodePoint())) {
+            ConsumeCodePoint();
+            hasDigits = true;
+        }
+        if (CurrentCodePoint() != '}') {
+            return false;
+        }
+        ConsumeCodePoint();
+        return hasDigits;
+    };
+
+    if (cur == 'x') {
+        ConsumeCodePoint();
+        if (CurrentCodePoint() == '{') {
+            if (consumeBracedDigits(IsHexDigit)) {
+                return true;
+            }
+        } else if (IsHexDigit(CurrentCodePoint())) {
+            while (IsHexDigit(CurrentCodePoint())) {
+                ConsumeCodePoint();
+            }
+            return true;
+        }
+        OnError(TokenizationErrorKind::InvalidEscapeSequence);
+        return false;
+    }
+
+    if (cur == 'o') {
+        ConsumeCodePoint();
+        if (CurrentCodePoint() == '{' && consumeBracedDigits(IsOctalDigit)) {
+            return true;
+        }
+        OnError(TokenizationErrorKind::InvalidEscapeSequence);
+        return false;
+    }
+
+    if (cur == 'u' || cur == 'U') {
+        auto marker = cur;
+        ConsumeCodePoint();
+        uint32_t value = 0;
+        bool valid = true;
+        if (marker == 'u' && CurrentCodePoint() == '{') {
+            ConsumeCodePoint();
+            int digits = 0;
+            while (IsHexDigit(CurrentCodePoint())) {
+                auto digit = CurrentCodePoint();
+                value = value > 0x10ffff / 16 ? 0x110000
+                                              : value * 16
+                        + (IsDigit(digit)
+                               ? static_cast<uint32_t>(digit) - '0'
+                               : (static_cast<uint32_t>(digit) | 0x20) - 'a'
+                                   + 10);
+                ConsumeCodePoint();
+                ++digits;
+            }
+            valid = digits != 0 && CurrentCodePoint() == '}';
+            if (CurrentCodePoint() == '}') {
+                ConsumeCodePoint();
+            }
+        } else {
+            int expectedDigits = marker == 'u' ? 4 : 8;
+            for (int i = 0; i < expectedDigits; ++i) {
+                auto digit = CurrentCodePoint();
+                if (!IsHexDigit(digit)) {
+                    valid = false;
+                    break;
+                }
+                value = value * 16
+                    + (IsDigit(digit)
+                           ? static_cast<uint32_t>(digit) - '0'
+                           : (static_cast<uint32_t>(digit) | 0x20) - 'a' + 10);
+                ConsumeCodePoint();
+            }
+        }
+        if (!valid || value > 0x10ffff || (value >= 0xd800 && value <= 0xdfff))
+        {
+            OnError(TokenizationErrorKind::InvalidUniversalCharacter);
+            return false;
+        }
+        return true;
+    }
+
+    if (cur == 'N') {
+        ConsumeCodePoint();
+        if (CurrentCodePoint() == '{') {
+            ConsumeCodePoint();
+            bool hasName = false;
+            while (!AtEnd() && CurrentCodePoint() != '}'
+                   && CurrentCodePoint() != '\n')
+            {
+                ConsumeCodePoint();
+                hasName = true;
+            }
+            if (hasName && CurrentCodePoint() == '}') {
+                ConsumeCodePoint();
+                return true;
+            }
+        }
+        OnError(TokenizationErrorKind::InvalidUniversalCharacter);
+        return false;
+    }
+
+    if (!AtEnd() && cur != '\n') {
+        ConsumeCodePoint();
+    }
+    OnError(TokenizationErrorKind::InvalidEscapeSequence);
+    return false;
+}
+
 Token Tokenizer::ParseCharacterLiteral()
 {
-    auto cur = CurrentCodePoint();
-    ASSERT(cur == '\'');
-    auto next = [&] {
-        ConsumeCodePoint();
-        cur = CurrentCodePoint();
-    };
-    next();
-    while (cur != '\'' && cur != '\n' && cur != '\0') {
-        // TODO(hitsedesen): Tokenizer should validate escape sequences.
-        if (cur == '\\') {
-            next();
+    ASSERT(CurrentCodePoint() == '\'');
+    auto prefix = CurrentTokenText();
+    ConsumeCodePoint();
+    bool valid = true;
+    size_t characterCount = 0;
+    while (CurrentCodePoint() != '\'' && CurrentCodePoint() != '\n'
+           && CurrentCodePoint() != '\0')
+    {
+        valid &= CurrentCodePointValid_;
+        if (CurrentCodePoint() == '\\') {
+            bool lineSplice = CurrentCodePointOffset_ + 1 < Input_.size()
+                && (Input_[CurrentCodePointOffset_ + 1] == '\n'
+                    || Input_.substr(CurrentCodePointOffset_ + 1)
+                           .starts_with("\r\n"));
+            valid &= ConsumeEscapeSequence();
+            characterCount += !lineSplice;
+        } else {
+            ConsumeCodePoint();
+            ++characterCount;
         }
-        next();
     }
-    if (cur != '\'') {
+    if (CurrentCodePoint() != '\'') {
         OnError(TokenizationErrorKind::UnterminatedCharacterLiteral);
         return FinishToken(TokenKind::Invalid);
     }
-    next();
-    return FinishToken(TokenKind::Literal_Character);
+    ConsumeCodePoint();
+    if (characterCount == 0) {
+        OnError(TokenizationErrorKind::EmptyCharacterLiteral);
+        valid = false;
+    }
+    if ((prefix == "u8" || prefix == "u" || prefix == "U")
+        && characterCount > 1)
+    {
+        OnError(TokenizationErrorKind::TooManyCharactersInCharacterLiteral);
+        valid = false;
+    }
+    return FinishToken(
+        valid ? TokenKind::Literal_Character : TokenKind::Invalid);
 }
 
 Token Tokenizer::ParseStringLiteral()
 {
-    auto cur = CurrentCodePoint();
-    ASSERT(cur == '"');
-    auto next = [&] {
-        ConsumeCodePoint();
-        cur = CurrentCodePoint();
-    };
-    next();
-    while (cur != '"' && cur != '\n' && cur != '\0') {
-        // TODO(hitsedesen): Tokenizer should validate escape sequences.
-        if (cur == '\\') {
-            next();
+    ASSERT(CurrentCodePoint() == '"');
+    ConsumeCodePoint();
+    bool valid = true;
+    while (CurrentCodePoint() != '"' && CurrentCodePoint() != '\n'
+           && CurrentCodePoint() != '\0')
+    {
+        valid &= CurrentCodePointValid_;
+        if (CurrentCodePoint() == '\\') {
+            valid &= ConsumeEscapeSequence();
+        } else {
+            ConsumeCodePoint();
         }
-        next();
     }
-    if (cur != '"') {
+    if (CurrentCodePoint() != '"') {
         OnError(TokenizationErrorKind::UnterminatedStringLiteral);
         return FinishToken(TokenKind::Invalid);
     }
-    next();
-    return FinishToken(TokenKind::Literal_String);
+    ConsumeCodePoint();
+    return FinishToken(valid ? TokenKind::Literal_String : TokenKind::Invalid);
 }
 
 Token Tokenizer::ParseRawStringLiteral()
@@ -633,7 +819,25 @@ Token Tokenizer::ParseRawStringLiteral()
     next();
 
     auto delimiterStart = CurrentCodePointOffset_;
+    size_t delimiterLength = 0;
+    bool valid = true;
+    bool reportedInvalidDelimiter = false;
+    bool reportedLongDelimiter = false;
     while (!AtEnd() && cur != '(' && cur != '\n') {
+        auto value = static_cast<uint32_t>(cur);
+        if ((value < 0x21 || value > 0x7e || cur == ')' || cur == '\\')
+            && !reportedInvalidDelimiter)
+        {
+            OnError(TokenizationErrorKind::InvalidRawStringDelimiter);
+            reportedInvalidDelimiter = true;
+            valid = false;
+        }
+        ++delimiterLength;
+        if (delimiterLength > 16 && !reportedLongDelimiter) {
+            OnError(TokenizationErrorKind::RawStringDelimiterTooLong);
+            reportedLongDelimiter = true;
+            valid = false;
+        }
         next();
     }
 
@@ -647,6 +851,7 @@ Token Tokenizer::ParseRawStringLiteral()
     next();
 
     while (!AtEnd()) {
+        valid &= CurrentCodePointValid_;
         if (cur == ')') {
             auto suffix = Input_.substr(CurrentCodePointOffset_ + 1);
             if (suffix.starts_with(delimiter)
@@ -659,7 +864,8 @@ Token Tokenizer::ParseRawStringLiteral()
                     ConsumeCodePoint();
                 }
                 while (CurrentCodePointOffset_ < closingDelimiterEnd);
-                return FinishToken(TokenKind::Literal_String);
+                return FinishToken(
+                    valid ? TokenKind::Literal_String : TokenKind::Invalid);
             }
         }
         next();
@@ -670,6 +876,152 @@ Token Tokenizer::ParseRawStringLiteral()
 }
 
 Token Tokenizer::ParseNumber()
+{
+    size_t offset = CurrentCodePointOffset_;
+    auto byte = [&](size_t position) {
+        return position < Input_.size() ? Input_[position] : '\0';
+    };
+
+    if (byte(offset) == '.') {
+        return ParseFloatingPoint();
+    }
+    if (byte(offset) == '0'
+        && (byte(offset + 1) == 'x' || byte(offset + 1) == 'X'))
+    {
+        offset += 2;
+        while (IsHexDigit(byte(offset)) || byte(offset) == '\'') {
+            ++offset;
+        }
+        if (byte(offset) == '.') {
+            return ParseFloatingPoint();
+        }
+        if (byte(offset) == 'p' || byte(offset) == 'P') {
+            return ParseFloatingPoint();
+        }
+        return ParseInteger();
+    }
+
+    while (IsDigit(byte(offset)) || byte(offset) == '\'') {
+        ++offset;
+    }
+    if (byte(offset) == '.' || byte(offset) == 'e' || byte(offset) == 'E') {
+        return ParseFloatingPoint();
+    }
+    return ParseInteger();
+}
+
+Token Tokenizer::ParseFloatingPoint()
+{
+    auto cur = CurrentCodePoint();
+    ASSERT(cur == '.' || IsDigit(cur));
+    bool valid = true;
+    auto next = [&] {
+        ConsumeCodePoint();
+        cur = CurrentCodePoint();
+    };
+    auto parseDigits = [&](auto isDigit) {
+        size_t count = 0;
+        bool previousSeparator = false;
+        bool lastSeparatorReported = false;
+        while (isDigit(cur) || cur == '\'') {
+            if (cur == '\'') {
+                bool invalidSeparator = count == 0 || previousSeparator;
+                if (invalidSeparator) {
+                    OnError(TokenizationErrorKind::InvalidDigitSeparator);
+                    valid = false;
+                }
+                previousSeparator = true;
+                lastSeparatorReported = invalidSeparator;
+            } else {
+                ++count;
+                previousSeparator = false;
+                lastSeparatorReported = false;
+            }
+            next();
+        }
+        if (previousSeparator && !lastSeparatorReported) {
+            OnError(TokenizationErrorKind::InvalidDigitSeparator);
+            valid = false;
+        }
+        return count;
+    };
+    auto parseExponent = [&] {
+        next();
+        if (cur == '+' || cur == '-') {
+            next();
+        }
+        if (parseDigits(IsDigit) == 0) {
+            OnError(TokenizationErrorKind::NoDigitsInFloatingPointExponent);
+            valid = false;
+        }
+    };
+
+    TokenKind kind;
+    if (cur == '0' && CurrentCodePointOffset_ + 1 < Input_.size()
+        && (Input_[CurrentCodePointOffset_ + 1] == 'x'
+            || Input_[CurrentCodePointOffset_ + 1] == 'X'))
+    {
+        kind = TokenKind::Literal_HexadecimalFloatingPoint;
+        next();
+        next();
+        auto digitCount = parseDigits(IsHexDigit);
+        if (cur == '.') {
+            next();
+            digitCount += parseDigits(IsHexDigit);
+        }
+        if (digitCount == 0) {
+            OnError(TokenizationErrorKind::NoDigitsInHexadecimalInteger);
+            valid = false;
+        }
+        if (cur == 'p' || cur == 'P') {
+            parseExponent();
+        } else {
+            OnError(
+                TokenizationErrorKind::
+                    HexadecimalFloatingPointRequiresExponent);
+            valid = false;
+        }
+    } else {
+        kind = TokenKind::Literal_DecimalFloatingPoint;
+        if (cur == '.') {
+            next();
+            parseDigits(IsDigit);
+        } else {
+            parseDigits(IsDigit);
+            if (cur == '.') {
+                next();
+                parseDigits(IsDigit);
+            }
+        }
+        if (cur == 'e' || cur == 'E') {
+            parseExponent();
+        }
+    }
+
+    size_t suffixStart = CurrentTokenText().size();
+    if (IsIdStart(cur)) {
+        do {
+            next();
+        }
+        while (IsIdContinuation(cur));
+    }
+    if (!valid) {
+        return FinishToken(TokenKind::Invalid);
+    }
+
+    constexpr static auto validSuffixes =
+        std::to_array({"", "f", "l", "f16", "f32", "f64", "f128", "bf16"});
+    auto suffix = CurrentTokenText().substr(suffixStart);
+    auto validSuffix = std::ranges::find_if(validSuffixes, [&](auto candidate) {
+        return EqualsIgnoringAsciiCase(suffix, candidate);
+    });
+    if (validSuffix == validSuffixes.end()) {
+        return FinishToken(TokenKind::Literal_UserDefinedFloatingPoint);
+    }
+    return FinishToken(kind);
+}
+
+Token Tokenizer::ParseInteger()
 {
     TokenKind kind = TokenKind::Invalid;
     auto cur = CurrentCodePoint();
@@ -708,6 +1060,13 @@ Token Tokenizer::ParseNumber()
                         parsedDigits++;
                     }
                     next();
+                }
+                if (IsDigit(cur)) {
+                    OnError(TokenizationErrorKind::InvalidDigitInBinaryInteger);
+                    kind = TokenKind::Invalid;
+                    while (IsDigit(cur) || cur == '\'') {
+                        next();
+                    }
                 }
                 if (parsedDigits == 0) {
                     OnError(TokenizationErrorKind::NoDigitsInBinaryInteger);
@@ -771,6 +1130,13 @@ Token Tokenizer::ParseNumber()
                         parsedDigits++;
                     }
                     next();
+                }
+                if (IsDigit(cur)) {
+                    OnError(TokenizationErrorKind::InvalidDigitInOctalInteger);
+                    kind = TokenKind::Invalid;
+                    while (IsDigit(cur) || cur == '\'') {
+                        next();
+                    }
                 }
                 if (prev == '\'') {
                     OnError(
