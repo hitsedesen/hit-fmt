@@ -22,6 +22,6 @@ using ErrorHandler = std::move_only_function<void(ParseError)>;
 // the structure needed by a formatter and does not do type checking, macro
 // expansion, or conditional preprocessing.
 [[nodiscard]] SyntaxTree
-Parse(std::string_view input, ErrorHandler errorHandler = {});
+Parse(util::PaddedSourceView input, ErrorHandler errorHandler = {});
 
 } // namespace parser

@@ -34,6 +34,45 @@ GetFirstCodePoint(std::string_view str)
     };
 }
 
+// The input must have at least four readable bytes.
+[[nodiscard]] constexpr std::optional<CodePointWithSize>
+GetFirstCodePointFromPaddedInput(const char* str)
+{
+    auto byte = [&](size_t offset) {
+        return static_cast<unsigned char>(str[offset]);
+    };
+    auto isContinuation = [&](size_t offset) {
+        return (byte(offset) & 0xc0) == 0x80;
+    };
+
+    auto first = byte(0);
+    short size;
+    if (first <= 0x7f) {
+        size = 1;
+    } else if (first >= 0xc2 && first <= 0xdf && isContinuation(1)) {
+        size = 2;
+    } else if (
+        first >= 0xe0 && first <= 0xef && isContinuation(1) && isContinuation(2)
+        && !(first == 0xe0 && byte(1) < 0xa0)
+        && !(first == 0xed && byte(1) > 0x9f))
+    {
+        size = 3;
+    } else if (
+        first >= 0xf0 && first <= 0xf4 && isContinuation(1) && isContinuation(2)
+        && isContinuation(3) && !(first == 0xf0 && byte(1) < 0x90)
+        && !(first == 0xf4 && byte(1) > 0x8f))
+    {
+        size = 4;
+    } else {
+        return std::nullopt;
+    }
+
+    return CodePointWithSize{
+        .Value = ValueFromUtf8(std::string_view(str, size)),
+        .Size = size,
+    };
+}
+
 // Make a UTF8 byte sequence from code point.
 [[nodiscard]] constexpr std::string FromCodePoint(CodePoint cp)
 {

@@ -80,13 +80,17 @@ std::pair<std::string, std::vector<std::string>>
 TokenizeAndSerialize(const std::string& input)
 {
     std::vector<std::string> errors;
-    Tokenizer tokenizer(input, [&](TokenizationError error) {
-        errors.push_back(
-            std::format(
-                "{} error: {}",
-                error.ErrorPosition,
-                GetTokenizationErrorDescription(error.Kind)));
-    });
+    auto paddedInput = input;
+    paddedInput.append(util::SourcePaddingSize, '\0');
+    Tokenizer tokenizer(
+        {.Data = paddedInput.data(), .Size = input.size()},
+        [&](TokenizationError error) {
+            errors.push_back(
+                std::format(
+                    "{} error: {}",
+                    error.ErrorPosition,
+                    GetTokenizationErrorDescription(error.Kind)));
+        });
     std::string result;
     std::vector<std::string> tokens;
     auto token = tokenizer.Get();
@@ -100,7 +104,9 @@ TokenizeAndSerialize(const std::string& input)
 
 std::vector<Token> Tokenize(std::string_view input)
 {
-    Tokenizer tokenizer(input);
+    std::string paddedInput(input);
+    paddedInput.append(util::SourcePaddingSize, '\0');
+    Tokenizer tokenizer({.Data = paddedInput.data(), .Size = input.size()});
     std::vector<Token> tokens;
     for (auto token = tokenizer.Get(); token.Kind != TokenKind::EndOfFile;
          token = tokenizer.Get())
@@ -113,9 +119,13 @@ std::vector<Token> Tokenize(std::string_view input)
 std::vector<TokenizationErrorKind> TokenizeErrors(std::string_view input)
 {
     std::vector<TokenizationErrorKind> errors;
-    Tokenizer tokenizer(input, [&](TokenizationError error) {
-        errors.push_back(error.Kind);
-    });
+    std::string paddedInput(input);
+    paddedInput.append(util::SourcePaddingSize, '\0');
+    Tokenizer tokenizer(
+        {.Data = paddedInput.data(), .Size = input.size()},
+        [&](TokenizationError error) {
+            errors.push_back(error.Kind);
+        });
     while (tokenizer.Get().Kind != TokenKind::EndOfFile) {
     }
     return errors;

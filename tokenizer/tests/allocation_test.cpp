@@ -51,20 +51,25 @@ void operator delete[](void* storage, size_t) noexcept
 
 int main()
 {
-    constexpr std::string_view Source = R"cpp(
+    static constexpr char Source[] = R"cpp(
 auto raw = R"delimiter(raw string contents)delimiter";
 auto literal = 42_a_user_defined_suffix_longer_than_sso;
 auto integer = 42ULL;
 auto invalid_escape = "\q";
 @
 auto broken = R"missing(raw contents;
-)cpp";
+)cpp"
+                                     "\0\0\0";
+    static constexpr util::PaddedSourceView SourceView{
+        .Data = Source,
+        .Size = sizeof(Source) - util::SourcePaddingSize,
+    };
 
     size_t errorCount = 0;
     size_t descriptionSize = 0;
     TrackAllocations = true;
     tokenizer::Tokenizer tokenizer(
-        Source, [&](tokenizer::TokenizationError error) {
+        SourceView, [&](tokenizer::TokenizationError error) {
             ++errorCount;
             descriptionSize +=
                 tokenizer::GetTokenizationErrorDescription(error.Kind).size();

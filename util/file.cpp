@@ -6,7 +6,8 @@
 
 namespace util {
 
-std::string ReadEntireFile(const std::string& filePath, size_t maxSize)
+std::string
+ReadEntireFile(const std::string& filePath, size_t maxSize, size_t padding)
 {
     std::ifstream ifs{filePath, std::ios::in | std::ios::binary};
     if (!ifs.good()) {
@@ -22,7 +23,7 @@ std::string ReadEntireFile(const std::string& filePath, size_t maxSize)
             size,
             maxSize);
     }
-    std::string buffer(size, '\0');
+    std::string buffer(size + padding, '\0');
     ifs.seekg(0);
     ifs.read(buffer.data(), size);
     return buffer;

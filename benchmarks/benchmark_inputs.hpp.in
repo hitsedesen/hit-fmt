@@ -1,21 +1,34 @@
 #pragma once
 
+#include <util/input.hpp>
+
 #include <array>
-#include <string_view>
 
 namespace benchmarks {
 
-inline constexpr std::string_view Service =
-    R"HITFMTINPUT(@HIT_FMT_BENCHMARK_SERVICE@)HITFMTINPUT";
-inline constexpr std::string_view TemplateLibrary =
-    R"HITFMTINPUT(@HIT_FMT_BENCHMARK_TEMPLATE_LIBRARY@)HITFMTINPUT";
-inline constexpr std::string_view Platform =
-    R"HITFMTINPUT(@HIT_FMT_BENCHMARK_PLATFORM@)HITFMTINPUT";
+inline constexpr char ServiceData[] =
+    R"HITFMTINPUT(@HIT_FMT_BENCHMARK_SERVICE@)HITFMTINPUT"
+    "\0\0\0";
+inline constexpr char TemplateLibraryData[] =
+    R"HITFMTINPUT(@HIT_FMT_BENCHMARK_TEMPLATE_LIBRARY@)HITFMTINPUT"
+    "\0\0\0";
+inline constexpr char PlatformData[] =
+    R"HITFMTINPUT(@HIT_FMT_BENCHMARK_PLATFORM@)HITFMTINPUT"
+    "\0\0\0";
 
-inline constexpr std::array Corpus{
-    Service,
-    TemplateLibrary,
-    Platform,
+inline constexpr util::PaddedSourceView Service{
+    .Data = ServiceData,
+    .Size = sizeof(ServiceData) - util::SourcePaddingSize,
 };
+inline constexpr util::PaddedSourceView TemplateLibrary{
+    .Data = TemplateLibraryData,
+    .Size = sizeof(TemplateLibraryData) - util::SourcePaddingSize,
+};
+inline constexpr util::PaddedSourceView Platform{
+    .Data = PlatformData,
+    .Size = sizeof(PlatformData) - util::SourcePaddingSize,
+};
+
+inline constexpr std::array Corpus{Service, TemplateLibrary, Platform};
 
 } // namespace benchmarks

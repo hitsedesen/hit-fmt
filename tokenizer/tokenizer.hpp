@@ -106,7 +106,7 @@ class Tokenizer
 {
 public:
     Tokenizer(
-        std::string_view input,
+        util::PaddedSourceView input,
         std::move_only_function<void(TokenizationError)> errorHandler = {});
 
     Token Get();
@@ -124,7 +124,7 @@ private:
 
     [[nodiscard]] bool AtEnd() const
     {
-        return CurrentCodePointOffset_ >= Input_.size();
+        return CurrentCodePointSize_ == 0;
     }
 
     static constexpr size_t UnloadedCodePoint =
