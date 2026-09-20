@@ -75,10 +75,7 @@ auto broken = R"missing(raw contents;
                 tokenizer::GetTokenizationErrorDescription(error.Kind).size();
         });
     size_t tokenCount = 0;
-    for (auto token = tokenizer.Get();
-         token.Kind != tokenizer::TokenKind::EndOfFile;
-         token = tokenizer.Get())
-    {
+    for ([[maybe_unused]] const auto& token : tokenizer) {
         ++tokenCount;
     }
     TrackAllocations = false;

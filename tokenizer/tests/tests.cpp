@@ -9,12 +9,16 @@
 #include <array>
 #include <format>
 #include <fstream>
+#include <ranges>
 #include <sstream>
 #include <stdexcept>
 #include <string_view>
 #include <vector>
 
 using namespace tokenizer;
+
+static_assert(std::ranges::input_range<Tokenizer>);
+static_assert(!std::ranges::forward_range<Tokenizer>);
 
 bool operator==(const util::Position& lhs, const util::Position& rhs)
 {
@@ -93,11 +97,9 @@ TokenizeAndSerialize(const std::string& input)
         });
     std::string result;
     std::vector<std::string> tokens;
-    auto token = tokenizer.Get();
-    while (token.Kind != TokenKind::EndOfFile) {
+    for (const auto& token : tokenizer) {
         result += std::format(
             "{}: {} {}\n", token.Position, token.Kind, token.Text.View(input));
-        token = tokenizer.Get();
     }
     return {std::move(result), std::move(errors)};
 }
@@ -108,9 +110,7 @@ std::vector<Token> Tokenize(std::string_view input)
     paddedInput.append(util::SourcePaddingSize, '\0');
     Tokenizer tokenizer({.Data = paddedInput.data(), .Size = input.size()});
     std::vector<Token> tokens;
-    for (auto token = tokenizer.Get(); token.Kind != TokenKind::EndOfFile;
-         token = tokenizer.Get())
-    {
+    for (const auto& token : tokenizer) {
         tokens.push_back(token);
     }
     return tokens;
@@ -126,7 +126,7 @@ std::vector<TokenizationErrorKind> TokenizeErrors(std::string_view input)
         [&](TokenizationError error) {
             errors.push_back(error.Kind);
         });
-    while (tokenizer.Get().Kind != TokenKind::EndOfFile) {
+    for ([[maybe_unused]] const auto& token : tokenizer) {
     }
     return errors;
 }

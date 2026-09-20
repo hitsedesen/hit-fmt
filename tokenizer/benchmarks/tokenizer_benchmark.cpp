@@ -22,12 +22,8 @@ void RunTokenizer(
     for (auto _ : state) {
         for (auto source : sources) {
             tokenizer::Tokenizer tokenizer(source);
-            while (true) {
-                auto token = tokenizer.Get();
+            for (const auto& token : tokenizer) {
                 benchmark::DoNotOptimize(token.Kind);
-                if (token.Kind == tokenizer::TokenKind::EndOfFile) {
-                    break;
-                }
                 ++processedTokens;
             }
         }

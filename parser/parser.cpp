@@ -456,11 +456,7 @@ private:
         constexpr size_t MaximumDepth = 256;
         std::array<Delimiter, MaximumDepth> openings;
         size_t depth = 0;
-        while (true) {
-            auto token = tokenizer.Get();
-            if (token.Kind == TK::EndOfFile) {
-                break;
-            }
+        for (const auto& token : tokenizer) {
             Tree_.Tokens_.Add(token);
             auto* delimiterEnd = DelimiterEnds_.Add();
             if (!HasDelimiterMap_) {

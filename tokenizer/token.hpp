@@ -163,15 +163,17 @@ enum class TokenKind : uint8_t
 #define TOKEN_KIND(value, name) value,
     TOKEN_KINDS
 #undef TOKEN_KIND
+        Count,
 };
 
-constexpr std::string_view GetTokenKindName(TokenKind kind)
+[[nodiscard]] constexpr std::string_view GetTokenKindName(TokenKind kind)
 {
     constexpr auto Names = std::to_array<std::string_view>({
 #define TOKEN_KIND(value, name) {name},
         TOKEN_KINDS
 #undef TOKEN_KIND
     });
+    static_assert(Names.size() == std::to_underlying(TokenKind::Count));
 
     return Names[std::to_underlying(kind)];
 }
