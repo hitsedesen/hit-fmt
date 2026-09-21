@@ -1,0 +1,14 @@
+Ln 1, Col 1: identifier value
+Ln 1, Col 6: op< <
+Ln 1, Col 7: op:: ::
+Ln 1, Col 9: identifier type
+Ln 1, Col 13: op> >
+Ln 1, Col 14: op( (
+Ln 1, Col 15: op) )
+Ln 1, Col 16: op; ;
+Ln 2, Col 1: op++ ++
+Ln 2, Col 3: identifier value
+Ln 2, Col 8: op; ;
+Ln 3, Col 1: op-- --
+Ln 3, Col 3: identifier value
+Ln 3, Col 8: op; ;

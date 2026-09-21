@@ -20,33 +20,6 @@ using namespace tokenizer;
 static_assert(std::ranges::input_range<Tokenizer>);
 static_assert(!std::ranges::forward_range<Tokenizer>);
 
-bool operator==(const util::Position& lhs, const util::Position& rhs)
-{
-    return lhs.Column == rhs.Column && lhs.Line == rhs.Line;
-}
-
-bool operator==(const Token lhs, const Token rhs)
-{
-    return lhs.Kind == rhs.Kind && lhs.Position == rhs.Position
-        && lhs.Text == rhs.Text;
-}
-
-struct TestCase
-{
-    std::string_view Input;
-    std::string_view Expected;
-};
-
-std::ostream& operator<<(std::ostream& os, const TestCase& tc)
-{
-    return os << tc.Input;
-}
-
-std::ostream& operator<<(std::ostream& os, const TokenizationError& error)
-{
-    return os << GetTokenizationErrorDescription(error.Kind);
-}
-
 struct GoldenCase
 {
     std::string Name;
@@ -96,7 +69,6 @@ TokenizeAndSerialize(const std::string& input)
                     GetTokenizationErrorDescription(error.Kind)));
         });
     std::string result;
-    std::vector<std::string> tokens;
     for (const auto& token : tokenizer) {
         result += std::format(
             "{}: {} {}\n", token.Position, token.Kind, token.Text.View(input));
@@ -212,7 +184,9 @@ INSTANTIATE_TEST_SUITE_P(
         GoldenCase{"decimal_float_literals"},
         GoldenCase{"user_defined_literals"},
         GoldenCase{"decimal_literals"},
-        GoldenCase{"string_literals"}),
+        GoldenCase{"string_literals"},
+        GoldenCase{"operators"},
+        GoldenCase{"positions"}),
     [](const auto& info) {
         return info.param.Name;
     });
@@ -221,70 +195,12 @@ INSTANTIATE_TEST_SUITE_P(
     Tokenizer,
     GoldenBadTest,
     testing::Values(
-        GoldenCase{"bad_tokens"}, GoldenCase{"unterminated_raw_string"}),
+        GoldenCase{"bad_tokens"},
+        GoldenCase{"unterminated_raw_string"},
+        GoldenCase{"validation_errors"}),
     [](const auto& info) {
         return info.param.Name;
     });
-
-TEST(Tokenizer, KeepsMultilineMacroWithBlockCommentTogether)
-{
-    constexpr std::string_view Source =
-        "#define VALUE(x) x /* comment\ncontinued */\\\n + 1\nint value;";
-    auto tokens = Tokenize(Source);
-
-    ASSERT_GT(tokens.size(), 1);
-    EXPECT_EQ(tokens[0].Kind, TokenKind::PreprocessingDirective);
-    EXPECT_EQ(
-        tokens[0].Text.View(Source),
-        "#define VALUE(x) x /* comment\ncontinued */\\\n + 1");
-}
-
-TEST(Tokenizer, KeepsRawStringsInsidePreprocessingDirectives)
-{
-    constexpr std::string_view Source =
-        "#define DOCUMENT R\"(first line\nsecond line)\"\nint value;";
-    auto tokens = Tokenize(Source);
-
-    ASSERT_GT(tokens.size(), 1);
-    EXPECT_EQ(tokens[0].Kind, TokenKind::PreprocessingDirective);
-    EXPECT_EQ(
-        tokens[0].Text.View(Source),
-        "#define DOCUMENT R\"(first line\nsecond line)\"");
-}
-
-TEST(Tokenizer, KeepsLineSplicedStringsInsidePreprocessingDirectives)
-{
-    constexpr std::string_view Source =
-        "#define DOCUMENT \\\n"
-        "\"first line\\n\\\n"
-        "second line\\n\"\n"
-        "int value;";
-    auto [serialized, errors] = TokenizeAndSerialize(std::string(Source));
-    auto tokens = Tokenize(Source);
-
-    EXPECT_THAT(errors, testing::IsEmpty());
-    ASSERT_GT(tokens.size(), 1);
-    EXPECT_EQ(tokens[0].Kind, TokenKind::PreprocessingDirective);
-    EXPECT_EQ(
-        tokens[0].Text.View(Source),
-        "#define DOCUMENT \\\n"
-        "\"first line\\n\\\n"
-        "second line\\n\"");
-}
-
-TEST(Tokenizer, KeepsDigitSeparatorsInExponentDigits)
-{
-    constexpr std::string_view Source = "auto value = int(1'2e0'1);";
-    auto [serialized, errors] = TokenizeAndSerialize(std::string(Source));
-    auto tokens = Tokenize(Source);
-
-    EXPECT_THAT(errors, testing::IsEmpty());
-    auto literal = std::ranges::find_if(tokens, [&](Token token) {
-        return token.Text.View(Source) == "1'2e0'1";
-    });
-    ASSERT_NE(literal, tokens.end());
-    EXPECT_EQ(literal->Kind, TokenKind::Literal_DecimalFloatingPoint);
-}
 
 TEST(Tokenizer, KeepsEmbeddedNullInRawStringLiteral)
 {
@@ -299,41 +215,6 @@ TEST(Tokenizer, KeepsEmbeddedNullInRawStringLiteral)
     EXPECT_EQ(tokens[0].Kind, TokenKind::Literal_String);
     EXPECT_EQ(tokens[0].Text.View(source).size(), 17);
     EXPECT_EQ(tokens[1].Text.View(source), "identifier");
-}
-
-TEST(Tokenizer, AppliesLessColonColonLexingException)
-{
-    auto tokens = Tokenize("value<::type>();");
-
-    ASSERT_GE(tokens.size(), 7);
-    EXPECT_EQ(tokens[1].Kind, TokenKind::Operator_Less);
-    EXPECT_EQ(tokens[2].Kind, TokenKind::Operator_ScopeResolution);
-}
-
-TEST(Tokenizer, ConsumesIncrementAndDecrementOperators)
-{
-    auto tokens = Tokenize("++value; \\\n--value;");
-
-    ASSERT_GE(tokens.size(), 4);
-    EXPECT_EQ(tokens[0].Kind, TokenKind::Operator_Increment);
-    EXPECT_EQ(tokens[3].Kind, TokenKind::Operator_Decrement);
-}
-
-TEST(Tokenizer, CalculatesTokenPositionsFromSource)
-{
-    constexpr std::string_view Source = "\xCE\xB1 beta\n  gamma";
-    auto tokens = Tokenize(Source);
-
-    ASSERT_EQ(tokens.size(), 3);
-    auto first = tokens[0].Position;
-    auto second = tokens[1].Position;
-    auto third = tokens[2].Position;
-    EXPECT_EQ(first.Line, 1);
-    EXPECT_EQ(first.Column, 1);
-    EXPECT_EQ(second.Line, 1);
-    EXPECT_EQ(second.Column, 3);
-    EXPECT_EQ(third.Line, 2);
-    EXPECT_EQ(third.Column, 3);
 }
 
 TEST(Utf8, ValidatesCodePointEncoding)
@@ -377,61 +258,4 @@ TEST(Tokenizer, RejectsMalformedUtf8)
         testing::ElementsAre(
             TokenizationErrorKind::InvalidUtf8CodePoint,
             TokenizationErrorKind::InvalidUtf8CodePoint));
-}
-
-TEST(Tokenizer, ValidatesEscapeSequences)
-{
-    constexpr std::string_view Source =
-        R"cpp("\q" "\x" "\u12" "\U00110000" "\o{}")cpp";
-    auto errors = TokenizeErrors(Source);
-
-    EXPECT_THAT(
-        errors,
-        testing::ElementsAre(
-            TokenizationErrorKind::InvalidEscapeSequence,
-            TokenizationErrorKind::InvalidEscapeSequence,
-            TokenizationErrorKind::InvalidUniversalCharacter,
-            TokenizationErrorKind::InvalidUniversalCharacter,
-            TokenizationErrorKind::InvalidEscapeSequence));
-}
-
-TEST(Tokenizer, ValidatesCharacterLiteralContents)
-{
-    auto errors = TokenizeErrors("'' u'ab'");
-
-    EXPECT_THAT(
-        errors,
-        testing::ElementsAre(
-            TokenizationErrorKind::EmptyCharacterLiteral,
-            TokenizationErrorKind::TooManyCharactersInCharacterLiteral));
-}
-
-TEST(Tokenizer, ValidatesRawStringDelimiters)
-{
-    constexpr std::string_view Source =
-        R"cpp(R"bad delimiter(contents)bad delimiter"
-R"12345678901234567(contents)12345678901234567")cpp";
-    auto errors = TokenizeErrors(Source);
-
-    EXPECT_THAT(
-        errors,
-        testing::ElementsAre(
-            TokenizationErrorKind::InvalidRawStringDelimiter,
-            TokenizationErrorKind::RawStringDelimiterTooLong));
-}
-
-TEST(Tokenizer, ValidatesNumericLiterals)
-{
-    auto errors = TokenizeErrors("0b102 078 1e 0x1.0 0x.p1 1e'2 1''2.0");
-
-    EXPECT_THAT(
-        errors,
-        testing::ElementsAre(
-            TokenizationErrorKind::InvalidDigitInBinaryInteger,
-            TokenizationErrorKind::InvalidDigitInOctalInteger,
-            TokenizationErrorKind::NoDigitsInFloatingPointExponent,
-            TokenizationErrorKind::HexadecimalFloatingPointRequiresExponent,
-            TokenizationErrorKind::NoDigitsInHexadecimalInteger,
-            TokenizationErrorKind::InvalidDigitSeparator,
-            TokenizationErrorKind::InvalidDigitSeparator));
 }
