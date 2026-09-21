@@ -15,7 +15,7 @@ option(HIT_FMT_BENCHMARK "Build benchmarks" OFF)
 
 if(HIT_FMT_TEST)
     enable_testing()
-    add_subdirectory(external/googletest)
+    find_package(GTest CONFIG REQUIRED)
     include(GoogleTest)
 endif(HIT_FMT_TEST)
 
