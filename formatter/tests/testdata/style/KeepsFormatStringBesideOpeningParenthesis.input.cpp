@@ -1,0 +1,1 @@
+void Emit(){Output<<Format("Widget report (Name: %v, State: %v, Attempts: %v, Result: %v)\n",widgetName,state,attempts,result);LOG_DEBUG("Generated widget report (Name: %v, State: %v, Attempts: %v, Result: %v)",widgetName,state,attempts,result);}

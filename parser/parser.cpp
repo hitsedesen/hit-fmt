@@ -1159,6 +1159,22 @@ private:
             AddModuleDeclarationSyntax(*node, start, Cursor_, true);
         } else if (kind == NodeKind::ConceptDeclaration) {
             AddConceptDeclarationSyntax(*node, start, Cursor_);
+        } else if (kind == NodeKind::StaticAssertDeclaration) {
+            auto expressionBegin = NextSignificant(start + 1);
+            auto expressionEnd = Cursor_;
+            if (expressionEnd != 0
+                && Kind(expressionEnd - 1) == TK::Operator_Semicolon)
+            {
+                --expressionEnd;
+            }
+            if (expressionBegin < expressionEnd) {
+                auto expressionCursor = expressionBegin;
+                if (auto* expression = ParseExpressionSyntax(
+                        expressionCursor, expressionEnd))
+                {
+                    Append(*node, *expression);
+                }
+            }
         }
         AddDirectiveChildrenInGap(*node, start, Cursor_);
         return node;

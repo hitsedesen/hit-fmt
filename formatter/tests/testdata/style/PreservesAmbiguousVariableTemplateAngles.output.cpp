@@ -1,0 +1,8 @@
+template <class Element>
+bool IsScalar()
+{
+    if constexpr (std::is_same_v<String, decltype(value)>) {
+        return true;
+    }
+    return false;
+}

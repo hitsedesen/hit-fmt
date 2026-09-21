@@ -1,0 +1,1 @@
+void function(){const auto result = firstLongNamedValue + secondLongNamedValue + thirdLongNamedValue + fourthLongNamedValue;const auto nested = evaluate(firstLongNamedValue + secondLongNamedValue + thirdLongNamedValue, fourthLongNamedValue);}

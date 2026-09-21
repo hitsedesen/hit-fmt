@@ -1,0 +1,1 @@
+namespace N{class Item{public:int* Get(int x){if(x>0){return &x;}else{return nullptr;}}};}

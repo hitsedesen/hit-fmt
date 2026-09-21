@@ -1,0 +1,2 @@
+DECLARE_OBJECT(Widget)
+DECLARE_OBJECT(Gadget)
