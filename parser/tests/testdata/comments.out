@@ -1,0 +1,44 @@
+(translation-unit
+  (comment "// leading declaration")
+  (declaration
+    (leading-trivia
+      (whitespace "\n\n")
+      (comment "// leading declaration")
+    )
+    (declaration-specifiers "int")
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (declarator-name "value")
+        )
+      )
+    )
+    ";"
+    (trailing-trivia
+      (comment "// trailing declaration")
+    )
+  )
+  (comment "// trailing declaration")
+  (function-definition
+    (declaration-specifiers "void")
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (declarator-name "empty")
+          (function-declarator
+            (parameter-list "(" ")")
+          )
+        )
+      )
+    )
+    (compound-statement
+      "{"
+      (comment "// dangling in empty body")
+      "}"
+      (dangling-trivia
+        (whitespace "\n\n    ")
+        (comment "// dangling in empty body")
+      )
+    )
+  )
+)

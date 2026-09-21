@@ -67,11 +67,6 @@ struct TokenRange
     SYNTAX_NODE_KIND(HeaderName, "header-name")                                \
     SYNTAX_NODE_KIND(ExportDeclaration, "export-declaration")                  \
     SYNTAX_NODE_KIND(AsmDeclaration, "asm-declaration")                        \
-    SYNTAX_NODE_KIND(MacroInvocation, "macro-invocation")                      \
-    SYNTAX_NODE_KIND(MacroBlock, "macro-block")                                \
-    SYNTAX_NODE_KIND(MacroDeclarationBody, "macro-declaration-body")           \
-    SYNTAX_NODE_KIND(MacroControlStatement, "macro-control-statement")         \
-    SYNTAX_NODE_KIND(MacroSpecifier, "macro-specifier")                        \
     SYNTAX_NODE_KIND(LinkageSpecification, "linkage-specification")            \
     SYNTAX_NODE_KIND(AccessSpecifier, "access-specifier")                      \
     SYNTAX_NODE_KIND(RequiresClause, "requires-clause")                        \
@@ -236,6 +231,7 @@ enum class PunctuationRole : uint8_t
     BlockDelimiter,
     InitializerDelimiter,
     LambdaDelimiter,
+    AttributeDelimiter,
     RecordDelimiter,
     CallDelimiter,
     DeclarationDelimiter,

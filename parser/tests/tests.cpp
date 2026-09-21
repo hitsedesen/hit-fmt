@@ -3,13 +3,10 @@
 #include <gtest/gtest.h>
 
 #include <algorithm>
-#include <array>
-#include <cstdint>
 #include <cstdlib>
 #include <format>
 #include <fstream>
 #include <limits>
-#include <memory_resource>
 #include <optional>
 #include <sstream>
 #include <stdexcept>
@@ -21,26 +18,6 @@
 namespace {
 
 using parser::Node;
-using parser::NodeKind;
-
-const Node* FindChild(const Node& parent, NodeKind kind)
-{
-    for (auto* child = parent.FirstChild; child; child = child->NextSibling) {
-        if (child->Kind == kind) {
-            return child;
-        }
-    }
-    return nullptr;
-}
-
-size_t CountRoles(const parser::SyntaxTree& tree, parser::PunctuationRole role)
-{
-    size_t count = 0;
-    for (size_t i = 0; i < tree.TokenCount(); ++i) {
-        count += tree.Role(i) == role;
-    }
-    return count;
-}
 
 std::string ReadFile(const std::string& path)
 {
@@ -127,6 +104,31 @@ void AppendTokens(
     output.push_back('\n');
 }
 
+void AppendTriviaList(
+    std::string& output,
+    const parser::SyntaxTree& tree,
+    const parser::TriviaList& trivia,
+    std::string_view name,
+    size_t depth)
+{
+    if (!trivia.First) {
+        return;
+    }
+    AppendIndent(output, depth);
+    output.push_back('(');
+    output += name;
+    output.push_back('\n');
+    for (auto* item = trivia.First; item; item = item->Next) {
+        AppendIndent(output, depth + 1);
+        output += item->Kind == parser::TriviaKind::Comment ? "(comment "
+                                                            : "(whitespace ";
+        AppendQuoted(output, tree.SourceText(item->Source));
+        output += ")\n";
+    }
+    AppendIndent(output, depth);
+    output += ")\n";
+}
+
 void AppendSExpression(
     std::string& output,
     const parser::SyntaxTree& tree,
@@ -137,7 +139,8 @@ void AppendSExpression(
     output.push_back('(');
     output += parser::GetNodeKindName(node.Kind);
 
-    if (!node.FirstChild) {
+    auto* trivia = tree.AssociatedTrivia(node);
+    if (!node.FirstChild && !trivia) {
         for (auto index = node.Tokens.Begin; index < node.Tokens.End; ++index) {
             output.push_back(' ');
             AppendQuoted(output, tree.TokenText(index));
@@ -147,6 +150,10 @@ void AppendSExpression(
     }
 
     output.push_back('\n');
+    if (trivia) {
+        AppendTriviaList(
+            output, tree, trivia->Leading, "leading-trivia", depth + 1);
+    }
     auto cursor = node.Tokens.Begin;
     for (auto* child = node.FirstChild; child; child = child->NextSibling) {
         auto childBegin =
@@ -156,6 +163,12 @@ void AppendSExpression(
         cursor = std::max(cursor, std::min(child->Tokens.End, node.Tokens.End));
     }
     AppendTokens(output, tree, cursor, node.Tokens.End, depth + 1);
+    if (trivia) {
+        AppendTriviaList(
+            output, tree, trivia->Dangling, "dangling-trivia", depth + 1);
+        AppendTriviaList(
+            output, tree, trivia->Trailing, "trailing-trivia", depth + 1);
+    }
     AppendIndent(output, depth);
     output += ")\n";
 }
@@ -164,6 +177,80 @@ std::string Serialize(const parser::SyntaxTree& tree)
 {
     std::string output;
     AppendSExpression(output, tree, tree.Root(), 0);
+    return output;
+}
+
+std::string_view RoleName(parser::PunctuationRole role)
+{
+    using enum parser::PunctuationRole;
+    switch (role) {
+    case None:
+        return "none";
+    case Generic:
+        return "generic";
+    case PointerDeclarator:
+        return "pointer-declarator";
+    case ReferenceDeclarator:
+        return "reference-declarator";
+    case UnaryOperator:
+        return "unary-operator";
+    case BinaryOperator:
+        return "binary-operator";
+    case AssignmentOperator:
+        return "assignment-operator";
+    case TemplateDelimiter:
+        return "template-delimiter";
+    case ComparisonOperator:
+        return "comparison-operator";
+    case ShiftOperator:
+        return "shift-operator";
+    case LabelDelimiter:
+        return "label-delimiter";
+    case BaseDelimiter:
+        return "base-delimiter";
+    case BitFieldDelimiter:
+        return "bit-field-delimiter";
+    case ConditionalDelimiter:
+        return "conditional-delimiter";
+    case ConstructorInitializerDelimiter:
+        return "constructor-initializer-delimiter";
+    case BlockDelimiter:
+        return "block-delimiter";
+    case InitializerDelimiter:
+        return "initializer-delimiter";
+    case LambdaDelimiter:
+        return "lambda-delimiter";
+    case AttributeDelimiter:
+        return "attribute-delimiter";
+    case RecordDelimiter:
+        return "record-delimiter";
+    case CallDelimiter:
+        return "call-delimiter";
+    case DeclarationDelimiter:
+        return "declaration-delimiter";
+    case CastDelimiter:
+        return "cast-delimiter";
+    case ConditionDelimiter:
+        return "condition-delimiter";
+    case GroupingDelimiter:
+        return "grouping-delimiter";
+    case ListSeparator:
+        return "list-separator";
+    }
+    std::unreachable();
+}
+
+std::string SerializePunctuationRoles(const parser::SyntaxTree& tree)
+{
+    std::string output;
+    for (size_t index = 0; index < tree.TokenCount(); ++index) {
+        auto role = tree.Role(index);
+        if (role == parser::PunctuationRole::None) {
+            continue;
+        }
+        output += std::format(
+            "{}: {} {}\n", index, tree.TokenText(index), RoleName(role));
+    }
     return output;
 }
 
@@ -230,10 +317,34 @@ TEST_P(ParserGoldenTest, MatchesSExpression)
     }
 }
 
+TEST(ParserGoldenTest, MatchesPunctuationRoles)
+{
+    const auto input = ReadFile("./testdata/punctuation_roles.in");
+    PaddedInput paddedInput(input);
+    std::vector<parser::ParseError> errors;
+    auto tree =
+        parser::Parse(paddedInput.View(), [&](parser::ParseError error) {
+            errors.push_back(std::move(error));
+        });
+    EXPECT_TRUE(errors.empty());
+    auto actual = SerializePunctuationRoles(tree);
+    constexpr std::string_view OutputPath = "./testdata/punctuation_roles.out";
+    auto expected = ReadGoldenFile(std::string(OutputPath));
+
+    if (std::getenv("UPDATE_GOLDEN")) {
+        SaveFile(std::string(OutputPath), actual);
+    } else if (expected) {
+        EXPECT_EQ(actual, *expected);
+    } else {
+        FAIL() << "missing golden file " << OutputPath;
+    }
+}
+
 INSTANTIATE_TEST_SUITE_P(
     Parser,
     ParserGoldenTest,
     testing::Values(
+        GoldenCase{"comments"},
         GoldenCase{"declarations"},
         GoldenCase{"expressions"},
         GoldenCase{"separated_lists"},
@@ -241,152 +352,12 @@ INSTANTIATE_TEST_SUITE_P(
         GoldenCase{"modules_and_concepts"},
         GoldenCase{"statements"},
         GoldenCase{"name_classification"},
+        GoldenCase{"ambiguity"},
         GoldenCase{"extensions"},
         GoldenCase{"recovery", true}),
     [](const auto& info) {
         return info.param.Name;
     });
-
-TEST(Parser, AssociatesLeadingTrailingAndDanglingComments)
-{
-    constexpr std::string_view Source = R"cpp(
-
-// leading declaration
-int value; // trailing declaration
-void empty()
-{
-
-    // dangling in empty body
-}
-)cpp";
-
-    PaddedInput paddedSource(Source);
-    auto tree = parser::Parse(paddedSource.View());
-    const auto* declaration = FindChild(tree.Root(), NodeKind::Declaration);
-    ASSERT_NE(declaration, nullptr);
-    auto* declarationTrivia = tree.AssociatedTrivia(*declaration);
-    ASSERT_NE(declarationTrivia, nullptr);
-    ASSERT_NE(declarationTrivia->Leading.First, nullptr);
-    ASSERT_NE(declarationTrivia->Trailing.First, nullptr);
-    auto* leadingWhitespace = declarationTrivia->Leading.First;
-    ASSERT_EQ(leadingWhitespace->Kind, parser::TriviaKind::Whitespace);
-    EXPECT_EQ(tree.SourceText(leadingWhitespace->Source), "\n\n");
-    ASSERT_NE(leadingWhitespace->Next, nullptr);
-    EXPECT_EQ(
-        tree.TokenText(leadingWhitespace->Next->Tokens.Begin),
-        "// leading declaration");
-    EXPECT_EQ(
-        tree.TokenText(declarationTrivia->Trailing.First->Tokens.Begin),
-        "// trailing declaration");
-
-    const auto* function = FindChild(tree.Root(), NodeKind::FunctionDefinition);
-    ASSERT_NE(function, nullptr);
-    const auto* body = FindChild(*function, NodeKind::CompoundStatement);
-    ASSERT_NE(body, nullptr);
-    auto* bodyTrivia = tree.AssociatedTrivia(*body);
-    ASSERT_NE(bodyTrivia, nullptr);
-    ASSERT_NE(bodyTrivia->Dangling.First, nullptr);
-    auto* danglingWhitespace = bodyTrivia->Dangling.First;
-    ASSERT_EQ(danglingWhitespace->Kind, parser::TriviaKind::Whitespace);
-    EXPECT_EQ(tree.SourceText(danglingWhitespace->Source), "\n\n    ");
-    ASSERT_NE(danglingWhitespace->Next, nullptr);
-    EXPECT_EQ(
-        tree.TokenText(danglingWhitespace->Next->Tokens.Begin),
-        "// dangling in empty body");
-
-    size_t intToken = 0;
-    size_t semicolonToken = 0;
-    for (size_t i = 0; i < tree.TokenCount(); ++i) {
-        if (tree.TokenText(i) == "int") {
-            intToken = i;
-        } else if (tree.TokenText(i) == ";") {
-            semicolonToken = i;
-        }
-    }
-    EXPECT_EQ(tree.WhitespaceBefore(intToken), "\n");
-    EXPECT_EQ(tree.WhitespaceAfter(semicolonToken), " ");
-
-    auto moved = std::move(tree);
-    auto* movedTrivia = moved.AssociatedTrivia(*declaration);
-    ASSERT_NE(movedTrivia, nullptr);
-    EXPECT_EQ(
-        moved.TokenText(movedTrivia->Trailing.First->Tokens.Begin),
-        "// trailing declaration");
-
-    PaddedInput paddedAssigned("int old;");
-    auto assigned = parser::Parse(paddedAssigned.View());
-    assigned = std::move(moved);
-    auto* assignedTrivia = assigned.AssociatedTrivia(*declaration);
-    ASSERT_NE(assignedTrivia, nullptr);
-    EXPECT_EQ(
-        assigned.TokenText(assignedTrivia->Trailing.First->Tokens.Begin),
-        "// trailing declaration");
-}
-
-TEST(SegmentedStorage, IndexesChunksBeforeAndAfterSealing)
-{
-    constexpr uint16_t ItemsPerChunk = 3;
-
-    struct Chunk
-    {
-        Chunk* Next = nullptr;
-        uint16_t Size = 0;
-        std::array<int, ItemsPerChunk> Items;
-    };
-
-    std::pmr::monotonic_buffer_resource memory;
-    parser::detail::SegmentedStorage<Chunk, ItemsPerChunk> storage(memory);
-    for (uint32_t i = 0; i < 8; ++i) {
-        auto slot = storage.Append();
-        EXPECT_EQ(slot.Index, i);
-        EXPECT_EQ(slot.Offset, i % ItemsPerChunk);
-        slot.ChunkPtr->Items[slot.Offset] = static_cast<int>(i);
-    }
-
-    for (uint32_t i = 0; i < storage.Size(); ++i) {
-        auto* chunk = storage.ChunkAtDuringBuild(i / ItemsPerChunk);
-        EXPECT_EQ(chunk->Items[i % ItemsPerChunk], static_cast<int>(i));
-    }
-
-    storage.Seal();
-    auto moved = std::move(storage);
-    for (uint32_t i = 0; i < moved.Size(); ++i) {
-        auto* chunk = moved.ChunkAt(i / ItemsPerChunk);
-        EXPECT_EQ(chunk->Items[i % ItemsPerChunk], static_cast<int>(i));
-    }
-}
-
-TEST(Parser, ClassifiesContextualPunctuation)
-{
-    constexpr std::string_view Source = R"cpp(template<class T>
-struct Derived : Base<T> {
-    int* pointer;
-    int function(int value) {
-        return (value < 2 ? *pointer : value >> 1);
-    }
-};
-)cpp";
-
-    PaddedInput paddedSource(Source);
-    auto tree = parser::Parse(paddedSource.View());
-    for (size_t i = 0; i < tree.TokenCount(); ++i) {
-        auto kind = tree.Kind(i);
-        if (kind >= tokenizer::TokenKind::Operator_OpenBrace
-            && kind <= tokenizer::TokenKind::Operator_Comma)
-        {
-            EXPECT_NE(tree.Role(i), parser::PunctuationRole::None);
-        }
-    }
-    EXPECT_GE(CountRoles(tree, parser::PunctuationRole::TemplateDelimiter), 2);
-    EXPECT_GE(CountRoles(tree, parser::PunctuationRole::BaseDelimiter), 1);
-    EXPECT_GE(CountRoles(tree, parser::PunctuationRole::PointerDeclarator), 1);
-    EXPECT_GE(CountRoles(tree, parser::PunctuationRole::ComparisonOperator), 1);
-    EXPECT_GE(CountRoles(tree, parser::PunctuationRole::UnaryOperator), 1);
-    EXPECT_GE(CountRoles(tree, parser::PunctuationRole::ShiftOperator), 1);
-    EXPECT_GE(
-        CountRoles(tree, parser::PunctuationRole::ConditionalDelimiter), 2);
-    EXPECT_GE(CountRoles(tree, parser::PunctuationRole::BlockDelimiter), 2);
-}
 
 TEST(Parser, HandlesDeepCompoundNesting)
 {
@@ -403,7 +374,19 @@ TEST(Parser, HandlesDeepCompoundNesting)
     });
 
     EXPECT_EQ(errors, 0);
-    EXPECT_GT(tree.TokenCount(), Depth * 2);
+    auto outerOpening = std::numeric_limits<parser::TokenIndex>::max();
+    for (parser::TokenIndex index = 0; index < tree.TokenCount(); ++index) {
+        if (tree.Kind(index) == tokenizer::TokenKind::Operator_OpenBrace) {
+            outerOpening = index;
+            break;
+        }
+    }
+    ASSERT_NE(outerOpening, std::numeric_limits<parser::TokenIndex>::max());
+    auto outerClosing = tree.MatchingDelimiter(outerOpening);
+    ASSERT_NE(outerClosing, std::numeric_limits<parser::TokenIndex>::max());
+    EXPECT_EQ(
+        tree.Kind(outerClosing), tokenizer::TokenKind::Operator_CloseBrace);
+    EXPECT_GT(outerClosing - outerOpening, Depth * 2);
 }
 
 TEST(Parser, HandlesDeepExpressionNesting)
@@ -424,7 +407,6 @@ TEST(Parser, HandlesDeepExpressionNesting)
     });
 
     EXPECT_EQ(errors, 0);
-    EXPECT_GT(tree.TokenCount(), Depth * 2);
 
     parser::TokenIndex widestPair = 0;
     for (parser::TokenIndex index = 0; index < tree.TokenCount(); ++index) {

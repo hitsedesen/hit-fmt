@@ -1,0 +1,344 @@
+(translation-unit
+  (using-declaration "using" "Output" "=" "int" ";")
+  (function-declaration
+    (declaration-specifiers "Output")
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (declarator-name "BUILD")
+          (function-declarator
+            (parameter-list
+              "("
+              (parameter-declaration
+                (declaration-specifiers "int")
+                (init-declarator-list
+                  (init-declarator
+                    (declarator
+                      (declarator-name "value")
+                    )
+                  )
+                )
+              )
+              ")"
+            )
+          )
+        )
+      )
+    )
+    ";"
+  )
+  (function-declaration
+    (declaration-specifiers "Output")
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (declarator-name "build")
+          (function-declarator
+            (parameter-list
+              "("
+              (parameter-declaration
+                (declaration-specifiers "int")
+                (init-declarator-list
+                  (init-declarator
+                    (declarator
+                      (declarator-name "value")
+                    )
+                  )
+                )
+              )
+              ")"
+            )
+          )
+        )
+      )
+    )
+    ";"
+  )
+  (function-definition
+    (leading-trivia
+      (whitespace "\n\n")
+    )
+    (declaration-specifiers "bool")
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (declarator-name "inside")
+          (function-declarator
+            (parameter-list
+              "("
+              (parameter-declaration
+                (declaration-specifiers "int")
+                (init-declarator-list
+                  (init-declarator
+                    (declarator
+                      (declarator-name "Position")
+                    )
+                  )
+                )
+              )
+              (list-separator ",")
+              (parameter-declaration
+                (declaration-specifiers "int")
+                (init-declarator-list
+                  (init-declarator
+                    (declarator
+                      (declarator-name "limit")
+                    )
+                  )
+                )
+              )
+              ")"
+            )
+          )
+        )
+      )
+    )
+    (compound-statement
+      "{"
+      (return-statement
+        "return"
+        (binary-expression
+          (binary-expression
+            (identifier-expression "Position")
+            "<"
+            (literal-expression "0")
+          )
+          "||"
+          (binary-expression
+            (identifier-expression "Position")
+            ">"
+            (identifier-expression "limit")
+          )
+        )
+        ";"
+      )
+      "}"
+    )
+  )
+  (function-definition
+    (leading-trivia
+      (whitespace "\n\n")
+    )
+    (declaration-specifiers "bool")
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (declarator-name "compare")
+          (function-declarator
+            (parameter-list
+              "("
+              (parameter-declaration
+                (declaration-specifiers "int")
+                (init-declarator-list
+                  (init-declarator
+                    (declarator
+                      (declarator-name "left")
+                    )
+                  )
+                )
+              )
+              (list-separator ",")
+              (parameter-declaration
+                (declaration-specifiers "int")
+                (init-declarator-list
+                  (init-declarator
+                    (declarator
+                      (declarator-name "middle")
+                    )
+                  )
+                )
+              )
+              (list-separator ",")
+              (parameter-declaration
+                (declaration-specifiers "int")
+                (init-declarator-list
+                  (init-declarator
+                    (declarator
+                      (declarator-name "right")
+                    )
+                  )
+                )
+              )
+              ")"
+            )
+          )
+        )
+      )
+    )
+    (compound-statement
+      "{"
+      (return-statement
+        "return"
+        (call-expression
+          (unparsed-syntax "left" "<" "middle" ">")
+          (argument-list
+            "("
+            (argument
+              (identifier-expression "right")
+            )
+            ")"
+          )
+        )
+        ";"
+      )
+      "}"
+    )
+  )
+  (function-definition
+    (leading-trivia
+      (whitespace "\n\n")
+    )
+    (declaration-specifiers "bool")
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (declarator-name "compare_global")
+          (function-declarator
+            (parameter-list
+              "("
+              (parameter-declaration
+                (declaration-specifiers "int")
+                (init-declarator-list
+                  (init-declarator
+                    (declarator
+                      (declarator-name "left")
+                    )
+                  )
+                )
+              )
+              (list-separator ",")
+              (parameter-declaration
+                (declaration-specifiers "int")
+                (init-declarator-list
+                  (init-declarator
+                    (declarator
+                      (declarator-name "middle")
+                    )
+                  )
+                )
+              )
+              ")"
+            )
+          )
+        )
+      )
+    )
+    (compound-statement
+      "{"
+      (return-statement
+        "return"
+        (member-expression
+          (unparsed-syntax "left" "<" "middle" ">")
+          "::"
+          (identifier-expression "global_value")
+        )
+        ";"
+      )
+      "}"
+    )
+  )
+  (template-declaration
+    (leading-trivia
+      (whitespace "\n\n")
+    )
+    "template"
+    (template-parameter-list
+      "<"
+      (template-parameter "class" "Element")
+      ">"
+    )
+    (function-definition
+      (declaration-specifiers "bool")
+      (init-declarator-list
+        (init-declarator
+          (declarator
+            (declarator-name "inspect")
+            (function-declarator
+              (parameter-list "(" ")")
+            )
+          )
+        )
+      )
+      (compound-statement
+        "{"
+        (declaration-statement
+          (declaration-specifiers "auto")
+          (init-declarator-list
+            (init-declarator
+              (declarator
+                (declarator-name "scalar")
+              )
+              (initializer
+                "="
+                (member-expression
+                  (identifier-expression "std")
+                  "::"
+                  (unparsed-syntax "is_same_v" "<" "String" "," "decltype" "(" "value" ")" ">")
+                )
+              )
+            )
+          )
+          ";"
+        )
+        (ambiguous-statement
+          (unknown-type-name "Dictionary")
+          "<" "Key" "," "Payload" ">" "result" ";"
+        )
+        (ambiguous-statement
+          (unknown-type-name "catalog")
+          "::" "Sequence" "<" "Element" ">" "values" ";"
+        )
+        (ambiguous-statement
+          (unknown-type-name "Sequence")
+          "<" "Element" ">" "::" "Cursor" "position" ";"
+        )
+        (ambiguous-statement
+          (unknown-type-name "catalog")
+          "::" "Buffer" "<" "int" "," "extent" "+" "1" ">" "buffer" ";"
+        )
+        (ambiguous-statement
+          (unknown-type-name "Storage")
+          "<" "extent" "+" "1" ">" "storage" ";"
+        )
+        (declaration-statement
+          (declaration-specifiers "auto")
+          (init-declarator-list
+            (init-declarator
+              (declarator
+                (declarator-name "constructed")
+              )
+              (initializer
+                "="
+                (identifier-expression "CONSTRUCT")
+                (unparsed-syntax "{" "item" "}")
+              )
+            )
+          )
+          ";"
+        )
+        (declaration-statement
+          (declaration-specifiers "auto")
+          (init-declarator-list
+            (init-declarator
+              (declarator
+                (declarator-name "lower_constructed")
+              )
+              (initializer
+                "="
+                (identifier-expression "construct")
+                (unparsed-syntax "{" "item" "}")
+              )
+            )
+          )
+          ";"
+        )
+        (return-statement
+          "return"
+          (identifier-expression "scalar")
+          ";"
+        )
+        "}"
+      )
+    )
+  )
+)

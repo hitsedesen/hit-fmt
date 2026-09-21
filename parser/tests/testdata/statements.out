@@ -132,6 +132,9 @@
         )
       )
       (if-statement
+        (leading-trivia
+          (whitespace "\n\n    ")
+        )
         "if"
         (condition "(" "ready" "&&" "count" ">" "0" ")")
         (compound-statement
@@ -171,6 +174,9 @@
         )
       )
       (switch-statement
+        (leading-trivia
+          (whitespace "\n\n    ")
+        )
         "switch"
         (condition
           "("
@@ -187,6 +193,9 @@
         )
       )
       (while-statement
+        (leading-trivia
+          (whitespace "\n\n    ")
+        )
         "while"
         (condition
           "("
@@ -242,185 +251,13 @@
         )
         ";"
       )
-      (label-statement "label" ":")
+      (label-statement
+        (leading-trivia
+          (whitespace "\n\n")
+        )
+        "label" ":"
+      )
       (goto-statement "goto" "label" ";")
-      "}"
-    )
-  )
-  (function-definition
-    (declaration-specifiers "void")
-    (init-declarator-list
-      (init-declarator
-        (declarator
-          (declarator-name "macro_statements")
-          (function-declarator
-            (parameter-list "(" ")")
-          )
-        )
-      )
-    )
-    (compound-statement
-      "{"
-      (macro-block
-        (macro-invocation "with_lock" "(" "Mutex_" ")")
-        (compound-statement
-          "{"
-          (expression-statement
-            (call-expression
-              (identifier-expression "use")
-              (argument-list "(" ")")
-            )
-            ";"
-          )
-          "}"
-        )
-      )
-      (macro-block
-        (macro-invocation "MACRO_CONSTEXPR_IF" "(" "enabled" ")")
-        (compound-statement
-          "{"
-          (expression-statement
-            (call-expression
-              (identifier-expression "first")
-              (argument-list "(" ")")
-            )
-            ";"
-          )
-          "}"
-        )
-        "else"
-        (compound-statement
-          "{"
-          (expression-statement
-            (call-expression
-              (identifier-expression "second")
-              (argument-list "(" ")")
-            )
-            ";"
-          )
-          "}"
-        )
-      )
-      (macro-block
-        (macro-invocation "MACRO_TRY")
-        (compound-statement
-          "{"
-          (expression-statement
-            (call-expression
-              (identifier-expression "work")
-              (argument-list "(" ")")
-            )
-            ";"
-          )
-          "}"
-        )
-      )
-      (macro-control-statement
-        (macro-invocation "MACRO_IF" "(" "enabled" ")")
-        (return-statement "return" ";")
-        "else"
-        (expression-statement
-          (call-expression
-            (identifier-expression "use_default")
-            (argument-list "(" ")")
-          )
-          ";"
-        )
-      )
-      (if-statement
-        "if"
-        (condition
-          "("
-          (identifier-expression "first_field")
-          ")"
-        )
-        (compound-statement
-          "{"
-          (expression-statement
-            (call-expression
-              (identifier-expression "use_first")
-              (argument-list "(" ")")
-            )
-            ";"
-          )
-          "}"
-        )
-        "else"
-        (macro-control-statement
-          (macro-invocation "VALIDATE_FIELD" "(" "Second" ")")
-          "else"
-          (macro-control-statement
-            (macro-invocation "VALIDATE_FIELD" "(" "Third" ")")
-            "else"
-            (expression-statement
-              (call-expression
-                (identifier-expression "use_default")
-                (argument-list "(" ")")
-              )
-              ";"
-            )
-          )
-        )
-      )
-      "}"
-    )
-  )
-  (macro-block
-    (macro-invocation "Y_UNIT_TEST" "(" "FormatsMacroBody" ")")
-    (compound-statement
-      "{"
-      (expression-statement
-        (call-expression
-          (identifier-expression "check")
-          (argument-list "(" ")")
-        )
-        ";"
-      )
-      "}"
-    )
-  )
-  (macro-block
-    (macro-invocation "Y_UNIT_TEST_SUITE" "(" "FormatterSuite" ")")
-    (macro-declaration-body
-      "{"
-      (function-definition
-        (declaration-specifiers "void")
-        (init-declarator-list
-          (init-declarator
-            (declarator
-              (declarator-name "helper")
-              (function-declarator
-                (parameter-list "(" ")")
-              )
-            )
-          )
-        )
-        (compound-statement
-          "{"
-          (expression-statement
-            (call-expression
-              (identifier-expression "prepare")
-              (argument-list "(" ")")
-            )
-            ";"
-          )
-          "}"
-        )
-      )
-      (macro-block
-        (macro-invocation "Y_UNIT_TEST" "(" "UsesHelper" ")")
-        (compound-statement
-          "{"
-          (expression-statement
-            (call-expression
-              (identifier-expression "helper")
-              (argument-list "(" ")")
-            )
-            ";"
-          )
-          "}"
-        )
-      )
       "}"
     )
   )

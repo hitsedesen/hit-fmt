@@ -1,6 +1,9 @@
 (translation-unit
   (using-declaration "using" "Type" "=" "int" ";")
   (template-declaration
+    (leading-trivia
+      (whitespace "\n\n")
+    )
     "template"
     (template-parameter-list
       "<"
@@ -45,6 +48,9 @@
     )
   )
   (template-declaration
+    (leading-trivia
+      (whitespace "\n\n")
+    )
     "template"
     (template-parameter-list
       "<"
@@ -204,7 +210,90 @@
                   (function-qualifier "mutable")
                   (exception-specification "noexcept")
                   (trailing-return-type "->" "Element")
-                  (lambda-body "{" "return" "argument" "+" "value" ";" "}")
+                  (lambda-body
+                    "{"
+                    (return-statement
+                      "return"
+                      (binary-expression
+                        (identifier-expression "argument")
+                        "+"
+                        (identifier-expression "value")
+                      )
+                      ";"
+                    )
+                    "}"
+                  )
+                )
+              )
+            )
+          )
+          ";"
+        )
+        (declaration-statement
+          (declaration-specifiers "auto")
+          (init-declarator-list
+            (init-declarator
+              (declarator
+                (declarator-name "nested")
+              )
+              (initializer
+                "="
+                (lambda-expression
+                  (lambda-capture-list
+                    "["
+                    (lambda-capture "value")
+                    "]"
+                  )
+                  (lambda-body
+                    "{"
+                    (expression-statement
+                      (call-expression
+                        (identifier-expression "invoke")
+                        (argument-list
+                          "("
+                          (argument
+                            (lambda-expression
+                              (lambda-capture-list
+                                "["
+                                (lambda-capture "&")
+                                "]"
+                              )
+                              (parameter-list
+                                "("
+                                (parameter-declaration
+                                  (declaration-specifiers "auto")
+                                  (init-declarator-list
+                                    (init-declarator
+                                      (declarator
+                                        (declarator-name "item")
+                                      )
+                                    )
+                                  )
+                                )
+                                ")"
+                              )
+                              (lambda-body
+                                "{"
+                                (return-statement
+                                  "return"
+                                  (binary-expression
+                                    (identifier-expression "item")
+                                    "+"
+                                    (identifier-expression "value")
+                                  )
+                                  ";"
+                                )
+                                "}"
+                              )
+                            )
+                          )
+                          ")"
+                        )
+                      )
+                      ";"
+                    )
+                    "}"
+                  )
                 )
               )
             )

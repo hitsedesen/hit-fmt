@@ -57,6 +57,9 @@
         ";"
       )
       (function-definition
+        (leading-trivia
+          (whitespace "\n\n    ")
+        )
         (init-declarator-list
           (init-declarator
             (declarator
@@ -65,11 +68,24 @@
                 (parameter-list "(" ")")
                 (constructor-initializer-list
                   ":"
-                  (constructor-initializer "Base" "<" "First")
+                  (constructor-initializer
+                    "Base"
+                    (template-argument-list
+                      "<"
+                      (template-argument "First")
+                      (list-separator ",")
+                      (template-argument "Second")
+                      ">"
+                    )
+                    "{" "}"
+                  )
                   (list-separator ",")
-                  (constructor-initializer "Second" ">" "{" "}")
-                  (list-separator ",")
-                  (constructor-initializer "Other" "(" ")")
+                  (constructor-initializer
+                    (call-expression
+                      (identifier-expression "Other")
+                      (argument-list "(" ")")
+                    )
+                  )
                 )
               )
             )
@@ -78,6 +94,9 @@
         (compound-statement "{" "}")
       )
       (function-definition
+        (leading-trivia
+          (whitespace "\n\n    ")
+        )
         (declaration-specifiers "void")
         (init-declarator-list
           (init-declarator
@@ -121,16 +140,7 @@
           "{"
           (expression-statement
             (call-expression
-              (template-id-expression
-                (identifier-expression "target")
-                (template-argument-list
-                  "<"
-                  (template-argument "First")
-                  (list-separator ",")
-                  (template-argument "Second")
-                  ">"
-                )
-              )
+              (unparsed-syntax "target" "<" "First" "," "Second" ">")
               (argument-list
                 "("
                 (argument
@@ -232,7 +242,15 @@
                       )
                       ")"
                     )
-                    (lambda-body "{" "return" "value" ";" "}")
+                    (lambda-body
+                      "{"
+                      (return-statement
+                        "return"
+                        (identifier-expression "value")
+                        ";"
+                      )
+                      "}"
+                    )
                   )
                 )
               )

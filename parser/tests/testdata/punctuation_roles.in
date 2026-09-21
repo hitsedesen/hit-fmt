@@ -1,0 +1,13 @@
+template<class Element>
+struct Derived : Base<Element>
+{
+    [[nodiscard]] int* transform(int& value, int shift)
+    {
+        int bits : 3;
+        auto lambda = [&value](int item) { return item; };
+        if (value < 2) {
+            return (value ? *transform(value, shift) : value >> shift);
+        }
+        return static_cast<int>(value);
+    }
+};

@@ -23,6 +23,11 @@ void function() {
 #endif
 }
 
+#define declare_handle(name) class name;
+namespace sample {
+declare_handle(handle)
+}
+
 void split_conditional_block() {
 #if FIRST
     if (first) {
