@@ -1,0 +1,3 @@
+value<::type>();
+++value; \
+--value;

@@ -5,3 +5,12 @@
     } else { \
         std::cout << "baz"; \
     }
+
+#define VALUE(x) x /* comment
+continued */\
+ + 1
+#define DOCUMENT R"(first line
+second line)"
+#define MESSAGE \
+"first line\n\
+second line\n"

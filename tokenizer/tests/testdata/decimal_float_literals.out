@@ -6,3 +6,4 @@ Ln 5, Col 1: float 3.14L
 Ln 6, Col 1: float 3e4f
 Ln 7, Col 1: float 0.000001
 Ln 8, Col 1: float 1000000.0
+Ln 9, Col 1: float 1'2e0'1

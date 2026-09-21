@@ -1,0 +1,5 @@
+"\q" "\x" "\u12" "\U00110000" "\o{}"
+'' u'ab'
+R"bad delimiter(contents)bad delimiter"
+R"12345678901234567(contents)12345678901234567"
+0b102 078 1e 0x1.0 0x.p1 1e'2 1''2.0

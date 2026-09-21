@@ -5,3 +5,11 @@ Ln 1, Col 1: pp #define FOO(bar) \
     } else { \
         std::cout << "baz"; \
     }
+Ln 9, Col 1: pp #define VALUE(x) x /* comment
+continued */\
+ + 1
+Ln 12, Col 1: pp #define DOCUMENT R"(first line
+second line)"
+Ln 14, Col 1: pp #define MESSAGE \
+"first line\n\
+second line\n"

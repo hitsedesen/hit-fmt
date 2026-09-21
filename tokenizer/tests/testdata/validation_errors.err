@@ -1,0 +1,16 @@
+Ln 1, Col 4 error: Invalid escape sequence
+Ln 1, Col 9 error: Invalid escape sequence
+Ln 1, Col 16 error: Invalid universal character
+Ln 1, Col 29 error: Invalid universal character
+Ln 1, Col 36 error: Invalid escape sequence
+Ln 2, Col 3 error: Character literal cannot be empty
+Ln 2, Col 9 error: Encoded character literal must contain one character
+Ln 3, Col 6 error: Invalid raw string delimiter
+Ln 4, Col 19 error: Raw string delimiter exceeds 16 characters
+Ln 5, Col 5 error: Invalid digit in binary integer
+Ln 5, Col 9 error: Invalid digit in octal integer
+Ln 5, Col 13 error: No digits in floating-point exponent
+Ln 5, Col 19 error: Hexadecimal floating-point literal requires an exponent
+Ln 5, Col 23 error: No digits in hexadecimal integer
+Ln 5, Col 28 error: Invalid digit separator
+Ln 5, Col 33 error: Invalid digit separator
