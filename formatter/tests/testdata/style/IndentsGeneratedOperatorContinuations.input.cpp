@@ -1,0 +1,1 @@
+void Emit(){Sink<<"Entry: "<<entryName<<"\tWorkerCount: "<<processorsUsed<<"\tTime: "<<TimerApi::Now()-beginTime<<Flush;}

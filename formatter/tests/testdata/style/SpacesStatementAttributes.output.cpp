@@ -1,0 +1,8 @@
+void Run(bool ready)
+{
+    if (ready) [[likely]] {
+        Proceed();
+    } else [[unlikely]] {
+        Wait();
+    }
+}

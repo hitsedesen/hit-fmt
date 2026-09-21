@@ -831,4 +831,68 @@
     )
     "}" ";"
   )
+  (static-assert-declaration
+    (leading-trivia
+      (whitespace "\n\n")
+    )
+    "static_assert"
+    (parenthesized-expression
+      "("
+      (binary-expression
+        (binary-expression
+          (call-expression
+            (identifier-expression "offsetof")
+            (argument-list
+              "("
+              (argument
+                (member-expression
+                  (member-expression
+                    (identifier-expression "library")
+                    "::"
+                    (identifier-expression "records")
+                  )
+                  "::"
+                  (identifier-expression "StoredValue")
+                )
+              )
+              (list-separator ",")
+              (argument
+                (identifier-expression "length")
+              )
+              ")"
+            )
+          )
+          "=="
+          (literal-expression "4")
+        )
+        "&&"
+        (binary-expression
+          (unary-expression
+            "sizeof"
+            (parenthesized-expression
+              "("
+              (member-expression
+                (member-expression
+                  (member-expression
+                    (identifier-expression "library")
+                    "::"
+                    (identifier-expression "records")
+                  )
+                  "::"
+                  (identifier-expression "StoredValue")
+                )
+                "::"
+                (identifier-expression "length")
+              )
+              ")"
+            )
+          )
+          "=="
+          (literal-expression "4")
+        )
+      )
+      ")"
+    )
+    ";"
+  )
 )
