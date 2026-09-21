@@ -3,8 +3,16 @@
   (preprocessing-directive "%:define DIGRAPH 1")
   (preprocessing-directive "#define APPLY(x) \\\n    ((x) + 1)")
   (preprocessing-conditional
+    (leading-trivia
+      (whitespace "\n\n")
+    )
     (preprocessing-branch
-      (preprocessing-directive "#if FIRST")
+      (preprocessing-directive
+        (leading-trivia
+          (whitespace "\n\n")
+        )
+        "#if FIRST"
+      )
       (using-declaration "using" "Selected" "=" "int" ";")
       (preprocessing-conditional
         (preprocessing-branch
@@ -38,6 +46,9 @@
     (preprocessing-directive "#endif")
   )
   (function-definition
+    (leading-trivia
+      (whitespace "\n\n")
+    )
     (declaration-specifiers "void")
     (init-declarator-list
       (init-declarator
@@ -101,7 +112,21 @@
       "}"
     )
   )
+  (preprocessing-directive
+    (leading-trivia
+      (whitespace "\n\n")
+    )
+    "#define declare_handle(name) class name;"
+  )
+  (namespace-declaration
+    "namespace" "sample" "{"
+    (unparsed-syntax "declare_handle" "(" "handle" ")")
+    "}"
+  )
   (function-definition
+    (leading-trivia
+      (whitespace "\n\n")
+    )
     (declaration-specifiers "void")
     (init-declarator-list
       (init-declarator

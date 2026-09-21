@@ -23,6 +23,9 @@
   )
   (unexpected-token "}")
   (function-definition
+    (leading-trivia
+      (whitespace "\n\n")
+    )
     (declaration-specifiers "int")
     (init-declarator-list
       (init-declarator

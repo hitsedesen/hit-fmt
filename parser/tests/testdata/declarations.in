@@ -16,18 +16,16 @@ struct Record {
 using Type = int;
 Type* first = nullptr, second[3]{};
 auto function(Type* value, int count = 1) -> Type*;
+auto make_forward() -> class Forward*;
 void (*callback)(int);
 int (*table[4])(double);
 void consume(int*, void (*)(int), int (&)[4], int example::Record<int>::*);
 auto [first_value, second_value] = pair;
 auto&& [left, right] = get_pair();
 int [[maybe_unused]] tagged;
-API_EXPORT void exported_by_macro();
-API_WITH_ARGUMENTS(dllexport) int another_export();
 struct URL {
     URL() {}
 };
-REGISTER_TYPE(URL)
 const int registered_value = 1;
 const Items expected_items = {
     Item()("key", "one")("value", "1"),
@@ -54,3 +52,17 @@ template<size_t Bits, typename Signed>
 constexpr integer<Bits, Signed>::operator long double() const noexcept {
     return 0;
 }
+
+template<class Value>
+Value (*Select(Operation operation))(Value, Value)
+{
+    return nullptr;
+}
+
+class Fixture
+    : public Base
+{
+protected:
+    void Reset() override
+    { }
+};

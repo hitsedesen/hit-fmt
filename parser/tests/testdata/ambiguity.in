@@ -1,0 +1,32 @@
+using Output = int;
+Output BUILD(int value);
+Output build(int value);
+
+bool inside(int Position, int limit)
+{
+    return Position < 0 || Position > limit;
+}
+
+bool compare(int left, int middle, int right)
+{
+    return left < middle > (right);
+}
+
+bool compare_global(int left, int middle)
+{
+    return left < middle > ::global_value;
+}
+
+template<class Element>
+bool inspect()
+{
+    auto scalar = std::is_same_v<String, decltype(value)>;
+    Dictionary<Key, Payload> result;
+    catalog::Sequence<Element> values;
+    Sequence<Element>::Cursor position;
+    catalog::Buffer<int, extent + 1> buffer;
+    Storage<extent + 1> storage;
+    auto constructed = CONSTRUCT{item};
+    auto lower_constructed = construct{item};
+    return scalar;
+}

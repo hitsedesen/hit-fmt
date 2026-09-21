@@ -71,7 +71,18 @@
                     ":"
                     (constructor-initializer "bits" "{" "value" "}")
                     (list-separator ",")
-                    (constructor-initializer "member" "(" "nullptr" ")")
+                    (constructor-initializer
+                      (call-expression
+                        (identifier-expression "member")
+                        (argument-list
+                          "("
+                          (argument
+                            (literal-expression "nullptr")
+                          )
+                          ")"
+                        )
+                      )
+                    )
                   )
                 )
               )
@@ -208,7 +219,12 @@
     )
     "}"
   )
-  (using-declaration "using" "Type" "=" "int" ";")
+  (using-declaration
+    (leading-trivia
+      (whitespace "\n\n")
+    )
+    "using" "Type" "=" "int" ";"
+  )
   (declaration
     (declaration-specifiers "Type")
     (init-declarator-list
@@ -275,6 +291,21 @@
               ")"
             )
             (trailing-return-type "->" "Type" "*")
+          )
+        )
+      )
+    )
+    ";"
+  )
+  (function-declaration
+    (declaration-specifiers "auto")
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (declarator-name "make_forward")
+          (function-declarator
+            (parameter-list "(" ")")
+            (trailing-return-type "->" "class" "Forward" "*")
           )
         )
       )
@@ -470,40 +501,6 @@
     )
     ";"
   )
-  (function-declaration
-    (declaration-specifiers
-      (macro-specifier "API_EXPORT")
-      "void"
-    )
-    (init-declarator-list
-      (init-declarator
-        (declarator
-          (declarator-name "exported_by_macro")
-          (function-declarator
-            (parameter-list "(" ")")
-          )
-        )
-      )
-    )
-    ";"
-  )
-  (function-declaration
-    (declaration-specifiers
-      (macro-specifier "API_WITH_ARGUMENTS" "(" "dllexport" ")")
-      "int"
-    )
-    (init-declarator-list
-      (init-declarator
-        (declarator
-          (declarator-name "another_export")
-        )
-        (initializer
-          (parenthesized-expression "(" ")")
-        )
-      )
-    )
-    ";"
-  )
   (record-declaration
     "struct" "URL" "{"
     (function-definition
@@ -521,7 +518,6 @@
     )
     "}" ";"
   )
-  (macro-invocation "REGISTER_TYPE" "(" "URL" ")")
   (declaration
     (declaration-specifiers "const" "int")
     (init-declarator-list
@@ -591,6 +587,9 @@
     ";"
   )
   (record-declaration
+    (leading-trivia
+      (whitespace "\n\n")
+    )
     "struct" "Version" "{"
     (declaration
       (declaration-specifiers "int")
@@ -631,6 +630,9 @@
     (record-declaration "struct" "Versioned" "<" "Version" "{" "1" "," "0" "}" ">" "{" "}" ";")
   )
   (template-declaration
+    (leading-trivia
+      (whitespace "\n\n")
+    )
     "template"
     (template-parameter-list
       "<"
@@ -651,16 +653,12 @@
         (constraint-expression
           (parenthesized-expression
             "("
-            (binary-expression
-              (member-expression
-                (identifier-expression "std")
-                "::"
-                (identifier-expression "is_arithmetic_v")
-              )
-              "<"
-              (identifier-expression "T")
+            (member-expression
+              (identifier-expression "std")
+              "::"
+              (unparsed-syntax "is_arithmetic_v" "<" "T" ">")
             )
-            ">" ")"
+            ")"
           )
         )
       )
@@ -679,25 +677,158 @@
           (init-declarator
             (declarator
               "::"
-              (operator-function-name "operator")
-              "T"
-            )
-            (initializer
-              (parenthesized-expression "(" ")")
-              (unparsed-syntax "const" "noexcept" "{" "using" "UnsignedT" "=" "std" "::" "make_unsigned_t" "<" "T" ">" ";" "return" "{" "}" ";" "}" "template" "<" "size_t" "Bits" "," "typename" "Signed" ">" "constexpr" "integer" "<" "Bits" "," "Signed" ">" "::" "operator" "long" "double" "(" ")" "const" "noexcept")
+              (operator-function-name "operator" "T")
+              (function-declarator
+                (parameter-list "(" ")")
+                (function-qualifier "const")
+                (exception-specification "noexcept")
+              )
             )
           )
         )
         (compound-statement
           "{"
+          (using-declaration "using" "UnsignedT" "=" "std" "::" "make_unsigned_t" "<" "T" ">" ";")
           (return-statement
             "return"
-            (literal-expression "0")
+            (braced-initializer
+              (initializer-list "{" "}")
+            )
             ";"
           )
           "}"
         )
       )
     )
+  )
+  (template-declaration
+    (leading-trivia
+      (whitespace "\n\n")
+    )
+    "template"
+    (template-parameter-list
+      "<"
+      (template-parameter "size_t" "Bits")
+      (list-separator ",")
+      (template-parameter "typename" "Signed")
+      ">"
+    )
+    (function-definition
+      (declaration-specifiers
+        "constexpr" "integer"
+        (template-argument-list
+          "<"
+          (template-argument "Bits")
+          (list-separator ",")
+          (template-argument "Signed")
+          ">"
+        )
+      )
+      (init-declarator-list
+        (init-declarator
+          (declarator
+            "::"
+            (operator-function-name "operator" "long" "double")
+            (function-declarator
+              (parameter-list "(" ")")
+              (function-qualifier "const")
+              (exception-specification "noexcept")
+            )
+          )
+        )
+      )
+      (compound-statement
+        "{"
+        (return-statement
+          "return"
+          (literal-expression "0")
+          ";"
+        )
+        "}"
+      )
+    )
+  )
+  (template-declaration
+    (leading-trivia
+      (whitespace "\n\n")
+    )
+    "template"
+    (template-parameter-list
+      "<"
+      (template-parameter "class" "Value")
+      ">"
+    )
+    (function-definition
+      (declaration-specifiers "Value")
+      (init-declarator-list
+        (init-declarator
+          (declarator
+            (nested-declarator
+              "("
+              (pointer-operator "*")
+              (declarator-name "Select")
+              "(" "Operation" "operation" ")" ")"
+            )
+            (function-declarator
+              (parameter-list
+                "("
+                (parameter-declaration
+                  (declaration-specifiers "Operation")
+                  (init-declarator-list
+                    (init-declarator
+                      (declarator
+                        (declarator-name "operation")
+                      )
+                    )
+                  )
+                )
+                ")"
+              )
+              ")" "(" "Value" "," "Value" ")"
+            )
+          )
+        )
+      )
+      (compound-statement
+        "{"
+        (return-statement
+          "return"
+          (literal-expression "nullptr")
+          ";"
+        )
+        "}"
+      )
+    )
+  )
+  (record-declaration
+    (leading-trivia
+      (whitespace "\n\n")
+    )
+    "class" "Fixture"
+    (base-clause
+      ":"
+      (base-specifier
+        "public"
+        (base-type "Base")
+      )
+    )
+    "{"
+    (access-specifier "protected" ":")
+    (function-definition
+      (declaration-specifiers "void")
+      (init-declarator-list
+        (init-declarator
+          (declarator
+            (declarator-name "Reset")
+            (function-declarator
+              (parameter-list "(" ")")
+              (function-qualifier "override")
+            )
+          )
+        )
+      )
+      (compound-statement "{" "}")
+    )
+    "}" ";"
   )
 )

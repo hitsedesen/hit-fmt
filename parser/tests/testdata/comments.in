@@ -1,0 +1,9 @@
+
+
+// leading declaration
+int value; // trailing declaration
+void empty()
+{
+
+    // dangling in empty body
+}

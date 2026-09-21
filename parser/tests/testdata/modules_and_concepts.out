@@ -30,6 +30,9 @@
     ";"
   )
   (template-declaration
+    (leading-trivia
+      (whitespace "\n\n")
+    )
     "template"
     (function-declaration
       (declaration-specifiers "std" "::" "string")
@@ -48,6 +51,9 @@
     )
   )
   (template-declaration
+    (leading-trivia
+      (whitespace "\n\n")
+    )
     "template"
     (template-parameter-list
       "<"
@@ -89,6 +95,9 @@
     )
   )
   (template-declaration
+    (leading-trivia
+      (whitespace "\n\n")
+    )
     "template"
     (template-parameter-list
       "<"
@@ -128,6 +137,9 @@
     )
   )
   (template-declaration
+    (leading-trivia
+      (whitespace "\n\n")
+    )
     "template"
     (template-parameter-list
       "<"
@@ -207,6 +219,9 @@
     )
   )
   (template-declaration
+    (leading-trivia
+      (whitespace "\n\n")
+    )
     "template"
     (template-parameter-list
       "<"
@@ -246,9 +261,10 @@
       (compound-statement "{" "}")
     )
   )
-  (macro-invocation "DECLARE_REGISTRATION" "(" "example" ")")
-  (macro-invocation "OBJECT_ANNOTATION")
   (function-definition
+    (leading-trivia
+      (whitespace "\n\n")
+    )
     (declaration-specifiers "auto")
     (init-declarator-list
       (init-declarator

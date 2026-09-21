@@ -2,6 +2,9 @@
   (using-declaration "using" "Type" "=" "int" ";")
   (record-declaration "struct" "Record" "{" "}" ";")
   (function-definition
+    (leading-trivia
+      (whitespace "\n\n")
+    )
     (declaration-specifiers "void")
     (init-declarator-list
       (init-declarator
@@ -54,6 +57,9 @@
     )
   )
   (function-definition
+    (leading-trivia
+      (whitespace "\n\n")
+    )
     (declaration-specifiers "void")
     (init-declarator-list
       (init-declarator
@@ -173,6 +179,9 @@
     )
   )
   (function-definition
+    (leading-trivia
+      (whitespace "\n\n")
+    )
     (declaration-specifiers "void")
     (init-declarator-list
       (init-declarator

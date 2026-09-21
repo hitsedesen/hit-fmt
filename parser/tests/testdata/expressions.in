@@ -17,6 +17,9 @@ auto evaluate(Values... values) {
         + (int)*pointer;
     auto lambda = [value, &reference]<typename Element>(Element argument)
         mutable noexcept -> Element { return argument + value; };
+    auto nested = [value] {
+        invoke([&] (auto item) { return item + value; });
+    };
     auto left_fold = (... + values);
     auto right_fold = (values + ...);
     auto binary_fold = (0 + ... + values);

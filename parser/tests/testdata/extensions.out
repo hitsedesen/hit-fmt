@@ -116,6 +116,9 @@
     ";"
   )
   (record-declaration
+    (leading-trivia
+      (whitespace "\n\n")
+    )
     "struct" "__attribute__" "(" "(" "packed" ")" ")" "Item" "{"
     (function-definition
       (init-declarator-list
@@ -127,7 +130,18 @@
               "try"
               (constructor-initializer-list
                 ":"
-                (constructor-initializer "value" "(" "1" ")")
+                (constructor-initializer
+                  (call-expression
+                    (identifier-expression "value")
+                    (argument-list
+                      "("
+                      (argument
+                        (literal-expression "1")
+                      )
+                      ")"
+                    )
+                  )
+                )
               )
             )
           )
@@ -161,6 +175,9 @@
     "}" ";"
   )
   (declaration
+    (leading-trivia
+      (whitespace "\n\n")
+    )
     (declaration-specifiers "int")
     (init-declarator-list
       (init-declarator
@@ -206,6 +223,9 @@
     ";"
   )
   (function-definition
+    (leading-trivia
+      (whitespace "\n\n")
+    )
     (declaration-specifiers
       (attribute-specifier "[" "[" "gnu" "::" "always_inline" "]" "]")
       "inline" "int"

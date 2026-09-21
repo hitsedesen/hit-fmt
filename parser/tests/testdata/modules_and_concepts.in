@@ -29,9 +29,6 @@ template<typename T>
 void parenthesized_constraint() requires (sizeof(T) > 0)
 {}
 
-DECLARE_REGISTRATION(example)
-OBJECT_ANNOTATION
-
 auto coroutine() {
     if likely(true)
         co_yield 1;
