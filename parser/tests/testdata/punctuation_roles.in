@@ -11,3 +11,5 @@ struct Derived : Base<Element>
         return static_cast<int>(value);
     }
 };
+
+void Compare(const ::google::protobuf::Map<TKey, TValue>& value);

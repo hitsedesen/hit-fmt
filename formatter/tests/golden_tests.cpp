@@ -66,6 +66,9 @@ formatter::Style StyleForCase(std::string_view name)
     formatter::Style style;
     if (name == "ConfiguresFunctionsThatKeepTheirFirstArgument") {
         style.ForbidBreakAfter = {"render", "inspect"};
+    } else if (name == "FormatsContextualControlBraces") {
+        style.ControlBracePlacement =
+            formatter::BracePlacement::AttachUnlessMultiline;
     } else if (name == "PreservesWhitespaceSensitiveMacroAlignment") {
         style.WhitespaceSensitiveMacros = {"ALIGNED_VALUES"};
     } else if (name == "RegroupsSafeMultilineCalls") {
@@ -103,6 +106,9 @@ formatter::Style StyleForCase(std::string_view name)
         style.OpenBracketAlignment = formatter::BracketAlignment::Preserve;
         style.CloseBracketAlignment =
             formatter::ClosingBracketAlignment::Preserve;
+    } else if (name == "PreservesConfiguredBracedInitializerSpacing") {
+        style.SpaceInsideBracedInitializers =
+            formatter::BracedInitializerSpacing::Preserve;
     }
     return style;
 }

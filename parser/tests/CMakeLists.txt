@@ -1,7 +1,7 @@
 add_executable(parser-tests
     tests.cpp)
 target_link_libraries(parser-tests
-    GTest::gmock_main
+    GTest::gtest_main
     lib-parser)
 
 gtest_discover_tests(parser-tests)

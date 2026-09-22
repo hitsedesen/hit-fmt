@@ -3,7 +3,6 @@
 #include <util/file.hpp>
 #include <util/input.hpp>
 
-#include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
 #include <array>
@@ -121,7 +120,7 @@ TEST_P(GoldenGoodTest, Match)
     auto expected = ReadGoldenFile(goldenPath);
 
     auto [actual, errors] = TokenizeAndSerialize(input);
-    EXPECT_THAT(errors, testing::IsEmpty());
+    EXPECT_TRUE(errors.empty());
     if (std::getenv("UPDATE_GOLDEN")) {
         SaveToFile(goldenPath, actual);
     } else if (expected) {
@@ -210,7 +209,7 @@ TEST(Tokenizer, KeepsEmbeddedNullInRawStringLiteral)
     auto [serialized, errors] = TokenizeAndSerialize(source);
     auto tokens = Tokenize(source);
 
-    EXPECT_THAT(errors, testing::IsEmpty());
+    EXPECT_TRUE(errors.empty());
     ASSERT_EQ(tokens.size(), 2);
     EXPECT_EQ(tokens[0].Kind, TokenKind::Literal_String);
     EXPECT_EQ(tokens[0].Text.View(source).size(), 17);
@@ -253,9 +252,9 @@ TEST(Tokenizer, RejectsMalformedUtf8)
     auto errors =
         TokenizeErrors(std::string_view(Source.data(), Source.size()));
 
-    EXPECT_THAT(
+    EXPECT_EQ(
         errors,
-        testing::ElementsAre(
+        (std::vector{
             TokenizationErrorKind::InvalidUtf8CodePoint,
-            TokenizationErrorKind::InvalidUtf8CodePoint));
+            TokenizationErrorKind::InvalidUtf8CodePoint}));
 }

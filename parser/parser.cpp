@@ -1936,6 +1936,13 @@ private:
         {
             return index;
         }
+        if (Kind(index) == TK::Operator_ScopeResolution) {
+            auto component = NextSignificant(index + 1);
+            if (Kind(component) != TK::Identifier) {
+                return index;
+            }
+            index = component;
+        }
         if (Kind(index) != TK::Identifier) {
             return index;
         }

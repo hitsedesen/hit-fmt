@@ -49,3 +49,13 @@
 86: } block-delimiter
 87: } record-delimiter
 88: ; generic
+91: ( declaration-delimiter
+93: :: generic
+95: :: generic
+97: :: generic
+99: < template-delimiter
+101: , list-separator
+103: > template-delimiter
+104: & reference-declarator
+106: ) declaration-delimiter
+107: ; generic
