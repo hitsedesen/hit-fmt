@@ -128,12 +128,12 @@ void PrintMismatch(
     std::cout.put('\n');
     size_t sourceIndex = 0;
     size_t formattedIndex = 0;
-    while (sourceIndex < sourceLines.size()
-           || formattedIndex < formattedLines.size())
+    while (sourceIndex < sourceLines.size() ||
+        formattedIndex < formattedLines.size())
     {
-        if (sourceIndex < sourceLines.size()
-            && formattedIndex < formattedLines.size()
-            && sourceLines[sourceIndex] == formattedLines[formattedIndex])
+        if (sourceIndex < sourceLines.size() &&
+            formattedIndex < formattedLines.size() &&
+            sourceLines[sourceIndex] == formattedLines[formattedIndex])
         {
             ++sourceIndex;
             ++formattedIndex;
@@ -148,14 +148,14 @@ void PrintMismatch(
         auto formattedLimit =
             std::min(formattedLines.size(), formattedIndex + DiffLookahead + 1);
         for (auto nextSource = sourceIndex; nextSource < sourceLimit;
-             ++nextSource)
+            ++nextSource)
         {
             for (auto nextFormatted = formattedIndex;
-                 nextFormatted < formattedLimit;
-                 ++nextFormatted)
+                nextFormatted < formattedLimit;
+                ++nextFormatted)
             {
-                if (nextSource == sourceIndex
-                    && nextFormatted == formattedIndex)
+                if (nextSource == sourceIndex &&
+                    nextFormatted == formattedIndex)
                 {
                     continue;
                 }
@@ -199,10 +199,10 @@ void PrintMismatch(
 bool IsCppSource(const std::filesystem::path& path)
 {
     auto extension = path.extension().string();
-    return extension == ".c" || extension == ".cc" || extension == ".cpp"
-        || extension == ".cxx" || extension == ".h" || extension == ".hh"
-        || extension == ".hpp" || extension == ".hxx" || extension == ".inl"
-        || extension == ".ipp" || extension == ".tcc";
+    return extension == ".c" || extension == ".cc" || extension == ".cpp" ||
+        extension == ".cxx" || extension == ".h" || extension == ".hh" ||
+        extension == ".hpp" || extension == ".hxx" || extension == ".inl" ||
+        extension == ".ipp" || extension == ".tcc";
 }
 
 std::vector<std::filesystem::path> CollectFiles(
@@ -226,8 +226,8 @@ std::vector<std::filesystem::path> CollectFiles(
         for (const auto& entry :
              std::filesystem::recursive_directory_iterator(path))
         {
-            if (!entry.is_symlink() && entry.is_regular_file()
-                && IsCppSource(entry.path()))
+            if (!entry.is_symlink() && entry.is_regular_file() &&
+                IsCppSource(entry.path()))
             {
                 files.push_back(entry.path());
             }
@@ -399,9 +399,7 @@ int main(int argc, char* argv[])
             return 0;
         }
         bool standardOutputMode = options.FormattingMode == Mode::Format;
-        if (options.Paths.empty()
-            || (standardOutputMode && options.Paths.size() != 1))
-        {
+        if (options.Paths.empty() || (standardOutputMode && options.Paths.size() != 1)) {
             PrintHelp(std::cerr, argv[0]);
             return 1;
         }
@@ -420,7 +418,9 @@ int main(int argc, char* argv[])
         auto filePath = path.string();
         try {
             auto sourceStorage = util::ReadEntireFile(
-                filePath, MaxSourceFileSize, util::SourcePaddingSize);
+                filePath,
+                MaxSourceFileSize,
+                util::SourcePaddingSize);
             util::PaddedSourceView paddedSource{
                 .Data = sourceStorage.data(),
                 .Size = sourceStorage.size() - util::SourcePaddingSize,

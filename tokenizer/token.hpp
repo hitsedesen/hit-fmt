@@ -187,7 +187,7 @@ static_assert(sizeof(Token) == 20);
 
 } // namespace tokenizer
 
-template<>
+template <>
 struct std::formatter<tokenizer::TokenKind>
 {
     constexpr auto parse(std::format_parse_context& ctx) const

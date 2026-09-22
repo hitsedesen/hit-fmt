@@ -11,12 +11,13 @@ extern std::vector<std::pair<char32_t, char32_t>> XIDContinueRanges;
 namespace {
 
 bool IsInRange(
-    CodePoint cp, const std::vector<std::pair<char32_t, char32_t>>& range)
+    CodePoint cp,
+    const std::vector<std::pair<char32_t, char32_t>>& range)
 {
     return std::ranges::binary_search(
         range,
         std::pair(static_cast<char32_t>(cp), static_cast<char32_t>(cp)),
-        [](const auto& lhs, const auto& rhs) {
+        [] (const auto& lhs, const auto& rhs) {
             if (lhs.first < rhs.first && lhs.second < rhs.second) {
                 return true;
             }

@@ -28,9 +28,10 @@ static_assert(RequestedBytes == 146376);
 // This reproduces the allocation sizes, counts, resource lifetimes, and block
 // rollover of the service parser fixture. Persistent allocations belong to the
 // returned syntax tree; scratch allocations belong to the parse context.
-template<class AllocatePersistent, class AllocateScratch>
+template <class AllocatePersistent, class AllocateScratch>
 void ReplayParserAllocationTrace(
-    AllocatePersistent&& allocatePersistent, AllocateScratch&& allocateScratch)
+    AllocatePersistent&& allocatePersistent,
+    AllocateScratch&& allocateScratch)
 {
     // Five token chunks and the corresponding delimiter-map chunks.
     for (size_t i = 0; i < TokenChunkCount; ++i) {
@@ -116,8 +117,8 @@ private:
             reinterpret_cast<uintptr_t>(const_cast<Block&>(block).Data())
             + block.Used;
         auto padding = (-address) & (alignment - 1);
-        return padding <= block.Capacity - block.Used
-            && size <= block.Capacity - block.Used - padding;
+        return padding <= block.Capacity - block.Used &&
+            size <= block.Capacity - block.Used - padding;
     }
 
     void AddBlock(size_t minimumCapacity)
@@ -159,10 +160,10 @@ void BM_ParserAllocationTraceArena(benchmark::State& state)
         ParserArena persistent;
         ParserArena scratch;
         ReplayParserAllocationTrace(
-            [&](size_t size, size_t alignment) {
+            [&] (size_t size, size_t alignment) {
                 benchmark::DoNotOptimize(persistent.Allocate(size, alignment));
             },
-            [&](size_t size, size_t alignment) {
+            [&] (size_t size, size_t alignment) {
                 benchmark::DoNotOptimize(scratch.Allocate(size, alignment));
             });
     }
@@ -178,11 +179,11 @@ void BM_ParserAllocationTracePmr(benchmark::State& state)
         std::pmr::memory_resource* persistentMemory = persistent.get();
         std::pmr::memory_resource* scratchMemory = &scratch;
         ReplayParserAllocationTrace(
-            [&](size_t size, size_t alignment) {
+            [&] (size_t size, size_t alignment) {
                 benchmark::DoNotOptimize(
                     AllocatePmr(*persistentMemory, size, alignment));
             },
-            [&](size_t size, size_t alignment) {
+            [&] (size_t size, size_t alignment) {
                 benchmark::DoNotOptimize(
                     AllocatePmr(*scratchMemory, size, alignment));
             });

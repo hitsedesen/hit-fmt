@@ -70,7 +70,10 @@ TokenizeAndSerialize(const std::string& input)
     std::string result;
     for (const auto& token : tokenizer) {
         result += std::format(
-            "{}: {} {}\n", token.Position, token.Kind, token.Text.View(input));
+            "{}: {} {}\n",
+            token.Position,
+            token.Kind,
+            token.Text.View(input));
     }
     return {std::move(result), std::move(errors)};
 }
@@ -109,7 +112,8 @@ void SaveToFile(const std::string& path, const std::string& content)
     out << content;
 }
 
-class GoldenGoodTest : public testing::TestWithParam<GoldenCase>
+class GoldenGoodTest
+    : public testing::TestWithParam<GoldenCase>
 { };
 
 TEST_P(GoldenGoodTest, Match)
@@ -127,12 +131,14 @@ TEST_P(GoldenGoodTest, Match)
         ASSERT_EQ(actual, *expected);
     } else {
         std::cerr << std::format(
-            "No golden file for {}, saving first result\n", GetParam().Name);
+            "No golden file for {}, saving first result\n",
+            GetParam().Name);
         SaveToFile(goldenPath, actual);
     }
 }
 
-class GoldenBadTest : public testing::TestWithParam<GoldenCase>
+class GoldenBadTest
+    : public testing::TestWithParam<GoldenCase>
 { };
 
 TEST_P(GoldenBadTest, CanonizeErrors)
@@ -160,7 +166,8 @@ TEST_P(GoldenBadTest, CanonizeErrors)
         EXPECT_EQ(actualErrors, expectedErrors);
     } else {
         std::cerr << std::format(
-            "No golden file for {}, saving first result\n", GetParam().Name);
+            "No golden file for {}, saving first result\n",
+            GetParam().Name);
         SaveToFile(goldenPath, actual);
         SaveToFile(goldenErrorsPath, actualErrors);
     }

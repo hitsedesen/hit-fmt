@@ -152,7 +152,11 @@ void AppendSExpression(
     output.push_back('\n');
     if (trivia) {
         AppendTriviaList(
-            output, tree, trivia->Leading, "leading-trivia", depth + 1);
+            output,
+            tree,
+            trivia->Leading,
+            "leading-trivia",
+            depth + 1);
     }
     auto cursor = node.Tokens.Begin;
     for (auto* child = node.FirstChild; child; child = child->NextSibling) {
@@ -165,9 +169,17 @@ void AppendSExpression(
     AppendTokens(output, tree, cursor, node.Tokens.End, depth + 1);
     if (trivia) {
         AppendTriviaList(
-            output, tree, trivia->Dangling, "dangling-trivia", depth + 1);
+            output,
+            tree,
+            trivia->Dangling,
+            "dangling-trivia",
+            depth + 1);
         AppendTriviaList(
-            output, tree, trivia->Trailing, "trailing-trivia", depth + 1);
+            output,
+            tree,
+            trivia->Trailing,
+            "trailing-trivia",
+            depth + 1);
     }
     AppendIndent(output, depth);
     output += ")\n";
@@ -249,7 +261,10 @@ std::string SerializePunctuationRoles(const parser::SyntaxTree& tree)
             continue;
         }
         output += std::format(
-            "{}: {} {}\n", index, tree.TokenText(index), RoleName(role));
+            "{}: {} {}\n",
+            index,
+            tree.TokenText(index),
+            RoleName(role));
     }
     return output;
 }
@@ -285,7 +300,8 @@ std::ostream& operator<<(std::ostream& output, const GoldenCase& testCase)
     return output << testCase.Name;
 }
 
-class ParserGoldenTest : public testing::TestWithParam<GoldenCase>
+class ParserGoldenTest
+    : public testing::TestWithParam<GoldenCase>
 { };
 
 TEST_P(ParserGoldenTest, MatchesSExpression)
@@ -295,7 +311,7 @@ TEST_P(ParserGoldenTest, MatchesSExpression)
     std::vector<parser::ParseError> errors;
     PaddedInput paddedInput(input);
     auto tree =
-        parser::Parse(paddedInput.View(), [&](parser::ParseError error) {
+        parser::Parse(paddedInput.View(), [&] (parser::ParseError error) {
             errors.push_back(std::move(error));
         });
     auto actual = Serialize(tree);
@@ -323,7 +339,7 @@ TEST(ParserGoldenTest, MatchesPunctuationRoles)
     PaddedInput paddedInput(input);
     std::vector<parser::ParseError> errors;
     auto tree =
-        parser::Parse(paddedInput.View(), [&](parser::ParseError error) {
+        parser::Parse(paddedInput.View(), [&] (parser::ParseError error) {
             errors.push_back(std::move(error));
         });
     EXPECT_TRUE(errors.empty());
@@ -369,7 +385,7 @@ TEST(Parser, HandlesDeepCompoundNesting)
 
     size_t errors = 0;
     PaddedInput paddedSource(source);
-    auto tree = parser::Parse(paddedSource.View(), [&](parser::ParseError) {
+    auto tree = parser::Parse(paddedSource.View(), [&] (parser::ParseError) {
         ++errors;
     });
 
@@ -402,7 +418,7 @@ TEST(Parser, HandlesDeepExpressionNesting)
 
     size_t errors = 0;
     PaddedInput paddedSource(source);
-    auto tree = parser::Parse(paddedSource.View(), [&](parser::ParseError) {
+    auto tree = parser::Parse(paddedSource.View(), [&] (parser::ParseError) {
         ++errors;
     });
 
@@ -411,8 +427,8 @@ TEST(Parser, HandlesDeepExpressionNesting)
     parser::TokenIndex widestPair = 0;
     for (parser::TokenIndex index = 0; index < tree.TokenCount(); ++index) {
         auto matching = tree.MatchingDelimiter(index);
-        if (matching != std::numeric_limits<parser::TokenIndex>::max()
-            && matching > index)
+        if (matching != std::numeric_limits<parser::TokenIndex>::max() &&
+            matching > index)
         {
             widestPair = std::max(widestPair, matching - index);
         }

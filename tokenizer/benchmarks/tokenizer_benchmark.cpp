@@ -11,7 +11,8 @@
 namespace {
 
 void RunTokenizer(
-    benchmark::State& state, std::span<const util::PaddedSourceView> sources)
+    benchmark::State& state,
+    std::span<const util::PaddedSourceView> sources)
 {
     int64_t bytesPerIteration = 0;
     for (auto source : sources) {

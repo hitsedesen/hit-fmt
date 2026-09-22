@@ -105,7 +105,7 @@ struct TokenizationError
 
 namespace detail {
 
-template<typename Owner>
+template <typename Owner>
 class TokenizerCursor
 {
 protected:
@@ -165,8 +165,8 @@ protected:
             }
         } else {
             ++CurrentCodePointPosition_.Column;
-            if (value != ' ' && value != '\t' && value != '\r' && value != '\f'
-                && value != '\v')
+            if (value != ' ' && value != '\t' && value != '\r' && value != '\f' &&
+                value != '\v')
             {
                 owner.IsNewLine_ = false;
             }
@@ -200,7 +200,8 @@ private:
 
 } // namespace detail
 
-class Tokenizer : private detail::TokenizerCursor<Tokenizer>
+class Tokenizer
+    : private detail::TokenizerCursor<Tokenizer>
 {
 public:
     Tokenizer(

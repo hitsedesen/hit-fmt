@@ -21,7 +21,8 @@ int64_t InputBytes(std::span<const util::PaddedSourceView> sources)
 }
 
 void SetCounters(
-    benchmark::State& state, std::span<const util::PaddedSourceView> sources)
+    benchmark::State& state,
+    std::span<const util::PaddedSourceView> sources)
 {
     state.SetBytesProcessed(state.iterations() * InputBytes(sources));
     state.SetItemsProcessed(
@@ -29,7 +30,8 @@ void SetCounters(
 }
 
 void RunFormatter(
-    benchmark::State& state, std::span<const util::PaddedSourceView> sources)
+    benchmark::State& state,
+    std::span<const util::PaddedSourceView> sources)
 {
     for (auto _ : state) {
         for (auto source : sources) {
@@ -42,13 +44,14 @@ void RunFormatter(
 }
 
 void RunFormatterOnParsedTrees(
-    benchmark::State& state, std::span<const util::PaddedSourceView> sources)
+    benchmark::State& state,
+    std::span<const util::PaddedSourceView> sources)
 {
     std::vector<parser::SyntaxTree> trees;
     trees.reserve(sources.size());
     bool hasErrors = false;
     for (auto source : sources) {
-        trees.push_back(parser::Parse(source, [&](parser::ParseError) {
+        trees.push_back(parser::Parse(source, [&] (parser::ParseError) {
             hasErrors = true;
         }));
     }

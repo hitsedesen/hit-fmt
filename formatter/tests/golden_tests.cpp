@@ -33,8 +33,8 @@ std::string FormatSource(
 {
     std::string storage(source);
     storage.append(util::SourcePaddingSize, '\0');
-    return formatter::Format(
-        {.Data = storage.data(), .Size = source.size()}, style);
+    return formatter::Format({.Data = storage.data(), .Size = source.size()},
+        style);
 }
 
 void SaveFile(const std::filesystem::path& path, std::string_view contents)
@@ -113,7 +113,8 @@ formatter::Style StyleForCase(std::string_view name)
     return style;
 }
 
-class StyleGoldenTest : public testing::TestWithParam<std::string>
+class StyleGoldenTest
+    : public testing::TestWithParam<std::string>
 { };
 
 TEST_P(StyleGoldenTest, MatchesCppOutput)
@@ -137,7 +138,7 @@ INSTANTIATE_TEST_SUITE_P(
     Style,
     StyleGoldenTest,
     testing::ValuesIn(DiscoverGoldenCases()),
-    [](const auto& info) {
+    [] (const auto& info) {
         return std::string(info.param);
     });
 

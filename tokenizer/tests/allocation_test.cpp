@@ -82,7 +82,9 @@ auto broken = R"missing(raw contents;
 
     if (AllocationCount != 0) {
         std::fprintf(
-            stderr, "tokenizer performed %zu allocation(s)\n", AllocationCount);
+            stderr,
+            "tokenizer performed %zu allocation(s)\n",
+            AllocationCount);
         return 1;
     }
     if (tokenCount == 0) {

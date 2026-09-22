@@ -38,10 +38,10 @@ GetFirstCodePoint(std::string_view str)
 [[nodiscard]] constexpr std::optional<CodePointWithSize>
 GetFirstCodePointFromPaddedInput(const char* str)
 {
-    auto byte = [&](size_t offset) {
+    auto byte = [&] (size_t offset) {
         return static_cast<unsigned char>(str[offset]);
     };
-    auto isContinuation = [&](size_t offset) {
+    auto isContinuation = [&] (size_t offset) {
         return (byte(offset) & 0xc0) == 0x80;
     };
 
@@ -51,16 +51,14 @@ GetFirstCodePointFromPaddedInput(const char* str)
         size = 1;
     } else if (first >= 0xc2 && first <= 0xdf && isContinuation(1)) {
         size = 2;
-    } else if (
-        first >= 0xe0 && first <= 0xef && isContinuation(1) && isContinuation(2)
-        && !(first == 0xe0 && byte(1) < 0xa0)
-        && !(first == 0xed && byte(1) > 0x9f))
+    } else if (first >= 0xe0 && first <= 0xef && isContinuation(1) && isContinuation(2) &&
+        !(first == 0xe0 && byte(1) < 0xa0) &&
+        !(first == 0xed && byte(1) > 0x9f))
     {
         size = 3;
-    } else if (
-        first >= 0xf0 && first <= 0xf4 && isContinuation(1) && isContinuation(2)
-        && isContinuation(3) && !(first == 0xf0 && byte(1) < 0x90)
-        && !(first == 0xf4 && byte(1) > 0x8f))
+    } else if (first >= 0xf0 && first <= 0xf4 && isContinuation(1) && isContinuation(2) &&
+        isContinuation(3) && !(first == 0xf0 && byte(1) < 0x90) &&
+        !(first == 0xf4 && byte(1) > 0x8f))
     {
         size = 4;
     } else {
@@ -104,10 +102,10 @@ constexpr std::optional<short> GetFirstCodePointSize(std::string_view str)
         return 0;
     }
 
-    auto byte = [&](size_t offset) {
+    auto byte = [&] (size_t offset) {
         return static_cast<unsigned char>(str[offset]);
     };
-    auto isContinuation = [&](size_t offset) {
+    auto isContinuation = [&] (size_t offset) {
         return offset < str.size() && (byte(offset) & 0xc0) == 0x80;
     };
 
@@ -122,9 +120,7 @@ constexpr std::optional<short> GetFirstCodePointSize(std::string_view str)
         if (!isContinuation(1) || !isContinuation(2)) {
             return std::nullopt;
         }
-        if ((first == 0xe0 && byte(1) < 0xa0)
-            || (first == 0xed && byte(1) > 0x9f))
-        {
+        if ((first == 0xe0 && byte(1) < 0xa0) || (first == 0xed && byte(1) > 0x9f)) {
             return std::nullopt;
         }
         return 3;
@@ -133,9 +129,7 @@ constexpr std::optional<short> GetFirstCodePointSize(std::string_view str)
         if (!isContinuation(1) || !isContinuation(2) || !isContinuation(3)) {
             return std::nullopt;
         }
-        if ((first == 0xf0 && byte(1) < 0x90)
-            || (first == 0xf4 && byte(1) > 0x8f))
-        {
+        if ((first == 0xf0 && byte(1) < 0x90) || (first == 0xf4 && byte(1) > 0x8f)) {
             return std::nullopt;
         }
         return 4;
@@ -145,7 +139,7 @@ constexpr std::optional<short> GetFirstCodePointSize(std::string_view str)
 
 constexpr char32_t ValueFromUtf8(std::string_view cp)
 {
-    auto byte = [&](size_t offset) {
+    auto byte = [&] (size_t offset) {
         return static_cast<unsigned char>(cp[offset]);
     };
     switch (cp.size()) {

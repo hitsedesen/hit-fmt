@@ -300,7 +300,7 @@ namespace detail {
 
 inline constexpr size_t InitialMemoryResourceSize = 64 * 1024;
 
-template<class T, class... Args>
+template <class T, class... Args>
 [[nodiscard]] T* Make(std::pmr::memory_resource& memory, Args&&... args)
 {
     static_assert(std::is_trivially_destructible_v<T>);
@@ -308,7 +308,7 @@ template<class T, class... Args>
         T(std::forward<Args>(args)...);
 }
 
-template<class T>
+template <class T>
 [[nodiscard]] T* MakeDefaultInitialized(std::pmr::memory_resource& memory)
 {
     static_assert(std::is_trivially_destructible_v<T>);
@@ -317,7 +317,7 @@ template<class T>
 
 // Appends through linked chunks while building. Seal() creates a dense chunk
 // directory so formatter-facing indexed access remains constant-time.
-template<class Chunk, uint16_t Capacity>
+template <class Chunk, uint16_t Capacity>
 class SegmentedStorage
 {
 public:
@@ -528,8 +528,8 @@ public:
         };
         chunk->Kinds[slot.Offset] = token.Kind;
         chunk->Roles[slot.Offset] =
-            token.Kind >= tokenizer::TokenKind::Operator_OpenBrace
-                && token.Kind <= tokenizer::TokenKind::Operator_Comma
+            token.Kind >= tokenizer::TokenKind::Operator_OpenBrace &&
+            token.Kind <= tokenizer::TokenKind::Operator_Comma
             ? PunctuationRole::Generic
             : PunctuationRole::None;
         chunk->MatchingDelimiters[slot.Offset] =
