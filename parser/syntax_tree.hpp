@@ -19,9 +19,8 @@ namespace parser {
 using TokenIndex = uint32_t;
 using SourceOffset = util::SourceOffset;
 
-// The tree is deliberately lossless: a node refers to a half-open range in the
-// token pool and every source token belongs to the translation unit.  This is
-// useful to format code without having to reconstruct spelling information.
+// A half-open token range. The tree is lossless: every source token belongs
+// to the translation unit, so clients never need to reconstruct spelling.
 struct TokenRange
 {
     TokenIndex Begin = 0;
@@ -279,6 +278,7 @@ struct Node
     TokenRange Tokens;
     NodeKind Kind = NodeKind::Error;
 
+    // Returns the first child; follow NextSibling to visit the rest.
     [[nodiscard]] const Node* Child() const
     {
         return FirstChild;
@@ -493,6 +493,8 @@ class TokenPool
         uint16_t Size = 0;
         bool HasPreprocessingDirective = false;
         bool HasComment = false;
+        // Separate kind and role arrays let syntax scans read only the
+        // metadata they use, without spelling and source positions.
         std::array<StoredToken, TokensPerChunk> Tokens;
         std::array<tokenizer::TokenKind, TokensPerChunk> Kinds;
         std::array<PunctuationRole, TokensPerChunk> Roles;

@@ -34,7 +34,8 @@ GetFirstCodePoint(std::string_view str)
     };
 }
 
-// The input must have at least four readable bytes.
+// Decodes the first code point without bounds checks. At least four bytes must
+// be readable, including any zero padding after the logical input.
 [[nodiscard]] constexpr std::optional<CodePointWithSize>
 GetFirstCodePointFromPaddedInput(const char* str)
 {
@@ -71,7 +72,7 @@ GetFirstCodePointFromPaddedInput(const char* str)
     };
 }
 
-// Make a UTF8 byte sequence from code point.
+// Encodes one code point as UTF-8.
 [[nodiscard]] constexpr std::string FromCodePoint(CodePoint cp)
 {
     auto value = static_cast<uint32_t>(cp);

@@ -14,11 +14,12 @@ public:
     using std::runtime_error::runtime_error;
 };
 
-// Append padding zero bytes so callers can safely perform bounded lookahead
-// past the logical end of the file. The returned string size includes padding.
-std::string
+// Reads at most maxSize bytes, then appends padding zero bytes. The returned
+// size includes the padding.
+[[nodiscard]] std::string
 ReadEntireFile(const std::string& filePath, size_t maxSize, size_t padding = 0);
 
+// Replaces filePath with contents, preserving bytes exactly.
 void WriteEntireFile(const std::string& filePath, std::string_view contents);
 
 } // namespace util

@@ -11,8 +11,8 @@ target_link_libraries(lib-formatter
 
 if(HIT_FMT_TEST)
     add_subdirectory(tests)
-endif(HIT_FMT_TEST)
+endif()
 
 if(HIT_FMT_BENCHMARK)
     add_subdirectory(benchmarks)
-endif(HIT_FMT_BENCHMARK)
+endif()
