@@ -10,19 +10,19 @@ set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED TRUE)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-option(HIT_FMT_TEST NO)
+option(HIT_FMT_TEST "Build tests" OFF)
 option(HIT_FMT_BENCHMARK "Build benchmarks" OFF)
 
 if(HIT_FMT_TEST)
     enable_testing()
     find_package(GTest CONFIG REQUIRED)
     include(GoogleTest)
-endif(HIT_FMT_TEST)
+endif()
 
 if(HIT_FMT_BENCHMARK)
     find_package(benchmark CONFIG REQUIRED)
     add_subdirectory(benchmarks)
-endif(HIT_FMT_BENCHMARK)
+endif()
 
 add_subdirectory(util)
 add_subdirectory(unicode)

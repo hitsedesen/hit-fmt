@@ -200,6 +200,8 @@ private:
 
 } // namespace detail
 
+// Tokenizes one padded source buffer. Tokens refer to the original input, which
+// must outlive the tokenizer and all returned tokens.
 class Tokenizer
     : private detail::TokenizerCursor<Tokenizer>
 {
@@ -208,8 +210,10 @@ public:
         util::PaddedSourceView input,
         std::move_only_function<void(TokenizationError)> errorHandler = {});
 
+    // Returns the next token, or EndOfFile after the input is exhausted.
     [[nodiscard]] Token Get();
 
+    // A single-pass view over this tokenizer's remaining tokens.
     class Iterator
     {
     public:

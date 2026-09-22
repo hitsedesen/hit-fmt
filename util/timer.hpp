@@ -12,7 +12,7 @@ public:
         : Start_(Clock::now())
     { }
 
-    Clock::duration Elapsed() const
+    [[nodiscard]] Clock::duration Elapsed() const
     {
         return Clock::now() - Start_;
     }

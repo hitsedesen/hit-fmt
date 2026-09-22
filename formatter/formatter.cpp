@@ -985,7 +985,7 @@ private:
         if (!foundFirst) {
             return;
         }
-        bool indentCases;
+        bool indentCases = false;
         switch (Style_.IndentCaseLabels) {
         case CaseLabelIndentation::Preserve:
             indentCases = indentedCount == outdentedCount

@@ -5,24 +5,22 @@
 
 namespace unicode {
 
-extern std::vector<std::pair<char32_t, char32_t>> XIDStartRanges;
-extern std::vector<std::pair<char32_t, char32_t>> XIDContinueRanges;
+extern const std::vector<std::pair<char32_t, char32_t>> XIDStartRanges;
+extern const std::vector<std::pair<char32_t, char32_t>> XIDContinueRanges;
 
 namespace {
 
 bool IsInRange(
     CodePoint cp,
-    const std::vector<std::pair<char32_t, char32_t>>& range)
+    const std::vector<std::pair<char32_t, char32_t>>& ranges)
 {
-    return std::ranges::binary_search(
-        range,
-        std::pair(static_cast<char32_t>(cp), static_cast<char32_t>(cp)),
-        [] (const auto& lhs, const auto& rhs) {
-            if (lhs.first < rhs.first && lhs.second < rhs.second) {
-                return true;
-            }
-            return false;
-        });
+    auto value = static_cast<char32_t>(cp);
+    auto candidate = std::ranges::lower_bound(
+        ranges,
+        value,
+        {},
+        &std::pair<char32_t, char32_t>::second);
+    return candidate != ranges.end() && candidate->first <= value;
 }
 
 } // namespace

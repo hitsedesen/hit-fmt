@@ -8,36 +8,39 @@ class Range:
     end: int
 
 
-# Extract letter ranges from unicode DerivedCoreProperties.txt
+# Extract ranges from Unicode's DerivedCoreProperties.txt format.
 def parse_property_ranges(lines):
     for line in lines:
         if not line.strip() or line.startswith("#"):
             continue
-        data = line.split("#")[0]
-        data = [s.strip() for s in data.split(";")]
-        range_str, property = data[0], data[1]
+        data = line.partition("#")[0]
+        range_text, property_name = [part.strip() for part in data.split(";", 1)]
 
-        if ".." in range_str:
-            begin, end = [int(s, 16) for s in range_str.split("..")]
+        if ".." in range_text:
+            begin, end = [int(value, 16) for value in range_text.split("..")]
         else:
-            begin = end = int(range_str, 16)
-        yield Range(begin, end), property
+            begin = end = int(range_text, 16)
+        yield Range(begin, end), property_name
 
 
 def main():
-    if len(sys.argv) < 3:
-        print(f"Usage: {sys.argv[0]} <derived property> <path/to/DerivedCoreProperties.txt>")
-        exit(1)
+    if len(sys.argv) != 3:
+        print(
+            f"Usage: {sys.argv[0]} <derived properties> "
+            "<path/to/DerivedCoreProperties.txt>"
+        )
+        sys.exit(1)
+
+    property_names = set(sys.argv[1].split(","))
     matching_ranges = []
-    properties = sys.argv[1].split(',')
-    path = sys.argv[2]
-    with open(path) as file:
-        for r, property in parse_property_ranges(file):
-            if property in properties:
-                matching_ranges.append(r)
-    matching_ranges.sort(key=lambda k: k.begin)
-    for r in matching_ranges:
-        print(f"{{0x{r.begin:x}, 0x{r.end:x}}},")
+    with open(sys.argv[2], encoding="utf-8") as source:
+        for code_point_range, property_name in parse_property_ranges(source):
+            if property_name in property_names:
+                matching_ranges.append(code_point_range)
+
+    matching_ranges.sort(key=lambda code_point_range: code_point_range.begin)
+    for code_point_range in matching_ranges:
+        print(f"{{0x{code_point_range.begin:x}, 0x{code_point_range.end:x}}},")
 
 
 if __name__ == "__main__":
