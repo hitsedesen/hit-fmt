@@ -14,7 +14,7 @@ bool HasParseErrors(std::span<const util::PaddedSourceView> sources)
 {
     bool hasErrors = false;
     for (auto source : sources) {
-        auto tree = parser::Parse(source, [&](parser::ParseError) {
+        auto tree = parser::Parse(source, [&] (parser::ParseError) {
             hasErrors = true;
         });
         auto rootKind = tree.Root().Kind;
@@ -24,7 +24,8 @@ bool HasParseErrors(std::span<const util::PaddedSourceView> sources)
 }
 
 void RunParser(
-    benchmark::State& state, std::span<const util::PaddedSourceView> sources)
+    benchmark::State& state,
+    std::span<const util::PaddedSourceView> sources)
 {
     if (HasParseErrors(sources)) {
         state.SkipWithError("benchmark input produced parser errors");

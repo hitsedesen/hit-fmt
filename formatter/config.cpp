@@ -15,13 +15,13 @@ namespace {
 
 std::string_view Trim(std::string_view text)
 {
-    while (!text.empty()
-           && std::isspace(static_cast<unsigned char>(text.front())))
+    while (!text.empty() &&
+        std::isspace(static_cast<unsigned char>(text.front())))
     {
         text.remove_prefix(1);
     }
-    while (!text.empty()
-           && std::isspace(static_cast<unsigned char>(text.back())))
+    while (!text.empty() &&
+        std::isspace(static_cast<unsigned char>(text.back())))
     {
         text.remove_suffix(1);
     }
@@ -250,7 +250,9 @@ ParenthesisSpacing ParseParenthesisSpacing(
         return ParenthesisSpacing::Always;
     }
     ThrowConfigError(
-        path, line, "SpaceBeforeParentheses must be Never, ControlStatements, or Always");
+        path,
+        line,
+        "SpaceBeforeParentheses must be Never, ControlStatements, or Always");
 }
 
 DeclaratorAlignment ParseDeclaratorAlignment(
@@ -272,7 +274,9 @@ DeclaratorAlignment ParseDeclaratorAlignment(
         return DeclaratorAlignment::Middle;
     }
     ThrowConfigError(
-        path, line, "alignment must be Preserve, Left, Right, or Middle");
+        path,
+        line,
+        "alignment must be Preserve, Left, Right, or Middle");
 }
 
 CaseLabelIndentation ParseCaseLabelIndentation(
@@ -291,7 +295,9 @@ CaseLabelIndentation ParseCaseLabelIndentation(
         return CaseLabelIndentation::Indent;
     }
     ThrowConfigError(
-        path, line, "IndentCaseLabels must be Preserve, Outdent, or Indent");
+        path,
+        line,
+        "IndentCaseLabels must be Preserve, Outdent, or Indent");
 }
 
 BracedInitializerSpacing ParseBracedInitializerSpacing(

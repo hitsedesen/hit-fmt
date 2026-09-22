@@ -4,7 +4,7 @@
 
 namespace util {
 
-template<typename Clock = std::chrono::steady_clock>
+template <typename Clock = std::chrono::steady_clock>
 class Timer
 {
 public:
