@@ -1,3 +1,6 @@
+// Generated from the Unicode 17.0.0 DerivedCoreProperties.txt file.
+// See unicode/README.md for provenance, reproduction, and licensing.
+
 #include <utility>
 #include <vector>
 

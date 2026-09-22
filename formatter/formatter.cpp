@@ -166,61 +166,94 @@ bool IsBlockBrace(BraceKind kind)
 
 class Formatter
 {
-    enum CaseFlag : uint8_t
+    struct TokenFlags
     {
-        IndentedCaseLabelFlag = 1U << 0,
-        BeginIndentedCaseBodyFlag = 1U << 1,
-        EndIndentedCaseBodyFlag = 1U << 2,
-        CaseLabelDelimiterFlag = 1U << 3,
+        uint32_t AngleDelimiter : 1 = false;
+        uint32_t SpacedColon : 1 = false;
+        uint32_t DefinitionStart : 1 = false;
+        uint32_t BreakAfter : 1 = false;
+        uint32_t PreserveBreakBefore : 1 = false;
+        uint32_t BaseSeparator : 1 = false;
+        uint32_t ConstructorSeparator : 1 = false;
+        uint32_t CompactLambda : 1 = false;
+        uint32_t StructuredBinding : 1 = false;
+        uint32_t LambdaDelimiter : 1 = false;
+        uint32_t LambdaReturnArrow : 1 = false;
+        uint32_t DeclaratorOperator : 1 = false;
+        uint32_t SpaceBefore : 1 = false;
+        uint32_t PreserveLineIndent : 1 = false;
+        uint32_t DoWhileContinuation : 1 = false;
+        uint32_t InlineRecord : 1 = false;
+        uint32_t TemplateParameterPack : 1 = false;
+        uint32_t IndentedCaseLabel : 1 = false;
+        uint32_t BeginIndentedCaseBody : 1 = false;
+        uint32_t EndIndentedCaseBody : 1 = false;
+        uint32_t CaseLabelDelimiter : 1 = false;
     };
 
-    enum SyntaxFlag : uint8_t
+    struct LambdaInfo
     {
-        InlineRecordFlag = 1U << 0,
-        TemplateParameterPackFlag = 1U << 1,
+        // Body-opening brace -> capture-opening bracket.
+        TokenIndex Capture = NoToken;
+        // Output indentation at a capture-opening bracket.
+        TokenIndex Indent = NoToken;
     };
 
-    enum TokenFlag : uint16_t
+    struct OutputPosition
     {
-        AngleDelimiterFlag = 1U << 0,
-        SpacedColonFlag = 1U << 1,
-        DefinitionStartFlag = 1U << 2,
-        BreakAfterFlag = 1U << 3,
-        PreserveBreakBeforeFlag = 1U << 4,
-        BaseSeparatorFlag = 1U << 5,
-        ConstructorSeparatorFlag = 1U << 6,
-        CompactLambdaFlag = 1U << 7,
-        MultilineCloseFlag = 1U << 8,
-        StructuredBindingFlag = 1U << 9,
-        LambdaDelimiterFlag = 1U << 10,
-        LambdaReturnArrowFlag = 1U << 11,
-        DeclaratorOperatorFlag = 1U << 12,
-        SpaceBeforeFlag = 1U << 13,
-        PreserveLineIndentFlag = 1U << 14,
-        DoWhileContinuationFlag = 1U << 15,
+        TokenIndex Line = NoToken;
+        TokenIndex Column = NoToken;
     };
 
-    class TokenIndexView
+    struct Layout
+    {
+        TokenIndex Opening;
+        TokenIndex Closing;
+        bool Multiline;
+        bool BreakElements;
+        bool ClosingOwnLine;
+        bool Indents;
+        bool Regroup;
+        std::ptrdiff_t IndentOffset;
+        size_t OpeningLineIndent;
+    };
+
+    struct NamespaceComment
+    {
+        TokenIndex Closing;
+        std::string Text;
+    };
+
+    enum class BraceInsertionKind : uint8_t
+    {
+        Close,
+        Open,
+    };
+
+    struct BraceInsertion
+    {
+        TokenIndex Index;
+        BraceInsertionKind Kind;
+    };
+
+    class DelimiterPairs
     {
     public:
-        explicit TokenIndexView(std::vector<TokenIndex>& values)
-            : Values_(values)
+        explicit DelimiterPairs(const parser::SyntaxTree& tree)
+            : Tree_(tree)
         { }
-
-        TokenIndex& operator[](TokenIndex index)
-        {
-            return Values_[index];
-        }
 
         TokenIndex operator[](TokenIndex index) const
         {
-            return Values_[index];
+            return Tree_.MatchingDelimiter(index);
         }
 
     private:
-        std::vector<TokenIndex>& Values_;
+        const parser::SyntaxTree& Tree_;
     };
 
+    // Keep one reusable allocation per element type and thread. Each active
+    // formatter owns its buffers; only completed runs return them here.
     template <class T>
     static std::vector<T>& ScratchBuffer()
     {
@@ -254,89 +287,15 @@ class Formatter
         }
     }
 
-    class FlagView
-    {
-        class Reference
-        {
-        public:
-            Reference(uint16_t& value, uint16_t mask)
-                : Value_(value)
-                , Mask_(mask)
-            { }
-
-            Reference& operator=(bool enabled)
-            {
-                if (enabled) {
-                    Value_ |= Mask_;
-                } else {
-                    Value_ &= static_cast<uint16_t>(~Mask_);
-                }
-                return *this;
-            }
-
-            operator bool() const
-            {
-                return (Value_ & Mask_) != 0;
-            }
-
-        private:
-            uint16_t& Value_;
-            uint16_t Mask_;
-        };
-
-    public:
-        FlagView(std::vector<uint16_t>& values, TokenFlag flag)
-            : Values_(values)
-            , Mask_(flag)
-        { }
-
-        Reference operator[](TokenIndex index)
-        {
-            return {Values_[index], Mask_};
-        }
-
-        bool operator[](TokenIndex index) const
-        {
-            return (Values_[index] & Mask_) != 0;
-        }
-
-    private:
-        std::vector<uint16_t>& Values_;
-        uint16_t Mask_;
-    };
-
 public:
     Formatter(const parser::SyntaxTree& tree, const Style& style)
         : Tree_(tree)
         , Style_(style)
         , Pair_(tree)
         , Braces_(AcquireBuffer(tree.TokenCount(), BraceKind::None))
-        , SyntaxFlags_(AcquireBuffer<uint8_t>(tree.TokenCount(), 0))
-        , CaseFlags_(AcquireBuffer<uint8_t>(tree.TokenCount(), 0))
-        , TokenFlags_(AcquireBuffer<uint16_t>(tree.TokenCount(), 0))
-        , AngleDelimiter_(TokenFlags_, AngleDelimiterFlag)
-        , SpacedColon_(TokenFlags_, SpacedColonFlag)
-        , DefinitionStart_(TokenFlags_, DefinitionStartFlag)
-        , BreakAfter_(TokenFlags_, BreakAfterFlag)
-        , PreserveBreakBefore_(TokenFlags_, PreserveBreakBeforeFlag)
-        , BaseSeparator_(TokenFlags_, BaseSeparatorFlag)
-        , ConstructorSeparator_(TokenFlags_, ConstructorSeparatorFlag)
-        , CompactLambda_(TokenFlags_, CompactLambdaFlag)
-        , MultilineClose_(TokenFlags_, MultilineCloseFlag)
-        , StructuredBinding_(TokenFlags_, StructuredBindingFlag)
-        , LambdaDelimiter_(TokenFlags_, LambdaDelimiterFlag)
-        , LambdaReturnArrow_(TokenFlags_, LambdaReturnArrowFlag)
-        , DeclaratorOperator_(TokenFlags_, DeclaratorOperatorFlag)
-        , SpaceBefore_(TokenFlags_, SpaceBeforeFlag)
-        , PreserveLineIndent_(TokenFlags_, PreserveLineIndentFlag)
-        , DoWhileContinuation_(TokenFlags_, DoWhileContinuationFlag)
-        , LambdaData_(AcquireBuffer<TokenIndex>(tree.TokenCount(), NoToken))
-        , LambdaCaptureForBody_(LambdaData_)
-        , LambdaCaptureIndent_(LambdaData_)
-        , OutputTokenColumn_(
-            AcquireBuffer<TokenIndex>(tree.TokenCount(), NoToken))
-        , OutputTokenLine_(
-            AcquireBuffer<TokenIndex>(tree.TokenCount(), NoToken))
+        , TokenFlags_(AcquireBuffer(tree.TokenCount(), TokenFlags{}))
+        , Lambdas_(AcquireBuffer(tree.TokenCount(), LambdaInfo{}))
+        , OutputPositions_(AcquireBuffer(tree.TokenCount(), OutputPosition{}))
         , MemberChainIndentShift_(
             AcquireBuffer<int32_t>(
                 tree.TokenCount(),
@@ -371,12 +330,9 @@ public:
     ~Formatter()
     {
         RecycleBuffer(Braces_);
-        RecycleBuffer(SyntaxFlags_);
-        RecycleBuffer(CaseFlags_);
         RecycleBuffer(TokenFlags_);
-        RecycleBuffer(LambdaData_);
-        RecycleBuffer(OutputTokenColumn_);
-        RecycleBuffer(OutputTokenLine_);
+        RecycleBuffer(Lambdas_);
+        RecycleBuffer(OutputPositions_);
         RecycleBuffer(MemberChainIndentShift_);
         RecycleBuffer(PrefixWidth_);
         RecycleBuffer(Layouts_);
@@ -440,40 +396,6 @@ public:
     }
 
 private:
-    class DelimiterPairs
-    {
-    public:
-        explicit DelimiterPairs(const parser::SyntaxTree& tree)
-            : Tree_(tree)
-        { }
-
-        TokenIndex operator[](TokenIndex index) const
-        {
-            return Tree_.MatchingDelimiter(index);
-        }
-
-    private:
-        const parser::SyntaxTree& Tree_;
-    };
-
-    struct NamespaceComment
-    {
-        TokenIndex Closing;
-        std::string Text;
-    };
-
-    enum class BraceInsertionKind : uint8_t
-    {
-        Close,
-        Open,
-    };
-
-    struct BraceInsertion
-    {
-        TokenIndex Index;
-        BraceInsertionKind Kind;
-    };
-
     TokenIndex FindOpeningParenthesis(TokenIndex closing) const
     {
         size_t depth = 1;
@@ -499,37 +421,23 @@ private:
             !Tree_.WhitespaceBefore(index).contains('\n');
     }
 
-    struct Layout
-    {
-        TokenIndex Opening;
-        TokenIndex Closing;
-        bool Multiline;
-        bool BreakElements;
-        bool ClosingOwnLine;
-        bool Indents;
-        bool Regroup;
-        std::ptrdiff_t IndentOffset;
-        size_t OpeningLineIndent;
-        size_t OpeningOutputLine;
-    };
-
     // Syntax analysis -------------------------------------------------------
 
     void ClassifyAngles()
     {
         for (TokenIndex index = 0; index < Tree_.TokenCount(); ++index) {
-            AngleDelimiter_[index] = Tree_.Role(index) == PR::TemplateDelimiter;
+            TokenFlags_[index].AngleDelimiter = Tree_.Role(index) == PR::TemplateDelimiter;
         }
     }
 
     void UpdateTemplateDepth(TokenIndex index)
     {
         auto kind = Tree_.Kind(index);
-        if (kind == TK::Operator_Less && AngleDelimiter_[index]) {
+        if (kind == TK::Operator_Less && TokenFlags_[index].AngleDelimiter) {
             ++CurrentTemplateDepth_;
-        } else if (kind == TK::Operator_Greater && AngleDelimiter_[index]) {
+        } else if (kind == TK::Operator_Greater && TokenFlags_[index].AngleDelimiter) {
             CurrentTemplateDepth_ -= std::min(CurrentTemplateDepth_, size_t{1});
-        } else if (kind == TK::Operator_RightShift && AngleDelimiter_[index]) {
+        } else if (kind == TK::Operator_RightShift && TokenFlags_[index].AngleDelimiter) {
             CurrentTemplateDepth_ -= std::min(CurrentTemplateDepth_, size_t{2});
         }
     }
@@ -745,8 +653,8 @@ private:
                 Tree_.Kind(index - 1)
                     == TK::Operator_CloseParenthesis &&
                 LastControlKeyword_ != NoToken &&
-                OutputTokenLine_[LastControlKeyword_] != NoToken &&
-                OutputTokenLine_[LastControlKeyword_] != OutputLine_;
+                OutputPositions_[LastControlKeyword_].Line != NoToken &&
+                OutputPositions_[LastControlKeyword_].Line != OutputLine_;
             bool ownLine = Style_.ControlBracePlacement
                     == BracePlacement::NewLine || (Style_.ControlBracePlacement
                         == BracePlacement::AttachUnlessMultiline &&
@@ -814,9 +722,9 @@ private:
             {
                 return;
             }
-            SyntaxFlags_[opening] |= InlineRecordFlag;
+            TokenFlags_[opening].InlineRecord = true;
             if (Pair_[opening] != NoToken) {
-                SyntaxFlags_[Pair_[opening]] |= InlineRecordFlag;
+                TokenFlags_[Pair_[opening]].InlineRecord = true;
             }
             return;
         }
@@ -828,7 +736,7 @@ private:
             index < node.Tokens.End && index < Tree_.TokenCount(); ++index)
         {
             if (Tree_.Kind(index) == TK::Operator_Ellipsis) {
-                SyntaxFlags_[index] |= TemplateParameterPackFlag;
+                TokenFlags_[index].TemplateParameterPack = true;
                 return;
             }
         }
@@ -841,7 +749,7 @@ private:
                 child->Tokens.Begin < Tree_.TokenCount() &&
                 Tree_.WhitespaceBefore(child->Tokens.Begin).contains('\n'))
             {
-                PreserveBreakBefore_[child->Tokens.Begin] = true;
+                TokenFlags_[child->Tokens.Begin].PreserveBreakBefore = true;
                 return;
             }
         }
@@ -878,13 +786,13 @@ private:
         }
 
         if (Tree_.WhitespaceBefore(closing + 1).contains('\n')) {
-            PreserveBreakBefore_[closing + 1] = true;
+            TokenFlags_[closing + 1].PreserveBreakBefore = true;
         }
         for (auto index = closing + 1;
             index < node.Tokens.End && index < Tree_.TokenCount();
             ++index)
         {
-            PreserveLineIndent_[index] = true;
+            TokenFlags_[index].PreserveLineIndent = true;
         }
     }
 
@@ -909,7 +817,7 @@ private:
             }
         }
         if (continuation != NoToken) {
-            DoWhileContinuation_[continuation] = true;
+            TokenFlags_[continuation].DoWhileContinuation = true;
         }
     }
 
@@ -1013,9 +921,9 @@ private:
                 continue;
             }
             if (indentCases) {
-                CaseFlags_[index] |= IndentedCaseLabelFlag;
+                TokenFlags_[index].IndentedCaseLabel = true;
                 if (sawLabel) {
-                    CaseFlags_[index] |= EndIndentedCaseBodyFlag;
+                    TokenFlags_[index].EndIndentedCaseBody = true;
                 }
             }
             for (auto colon = index + 1; colon < closing; ++colon) {
@@ -1024,9 +932,9 @@ private:
                 {
                     continue;
                 }
-                CaseFlags_[colon] |= CaseLabelDelimiterFlag;
+                TokenFlags_[colon].CaseLabelDelimiter = true;
                 if (indentCases) {
-                    CaseFlags_[colon] |= BeginIndentedCaseBodyFlag;
+                    TokenFlags_[colon].BeginIndentedCaseBody = true;
                 }
                 auto body = colon + 1;
                 while (body < closing && Tree_.Kind(body) == TK::Comment) {
@@ -1045,7 +953,7 @@ private:
             sawLabel = true;
         }
         if (indentCases) {
-            CaseFlags_[closing] |= EndIndentedCaseBodyFlag;
+            TokenFlags_[closing].EndIndentedCaseBody = true;
         }
     }
 
@@ -1098,13 +1006,13 @@ private:
                 continue;
             }
             auto closing = Pair_[index];
-            LambdaDelimiter_[index] = true;
-            LambdaDelimiter_[closing] = true;
+            TokenFlags_[index].LambdaDelimiter = true;
+            TokenFlags_[closing].LambdaDelimiter = true;
             for (auto after = closing + 1; after < Tree_.TokenCount(); ++after) {
                 auto kind = Tree_.Kind(after);
                 if (kind == TK::Operator_OpenBrace) {
                     Braces_[after] = BraceKind::Lambda;
-                    LambdaCaptureForBody_[after] = index;
+                    Lambdas_[after].Capture = index;
                     if (Pair_[after] != NoToken) {
                         Braces_[Pair_[after]] = BraceKind::Lambda;
                     }
@@ -1117,9 +1025,7 @@ private:
         }
     }
 
-    void ClassifyTopLevelSeparators(
-        const parser::Node& node,
-        FlagView separators)
+    void ClassifyTopLevelSeparators(const parser::Node& node)
     {
         bool preserveTrailingSeparators = false;
         for (auto index = node.Tokens.Begin;
@@ -1135,14 +1041,14 @@ private:
             index < node.Tokens.End && index < Tree_.TokenCount(); ++index)
         {
             auto kind = Tree_.Kind(index);
-            if (kind == TK::Operator_Less && AngleDelimiter_[index]) {
+            if (kind == TK::Operator_Less && TokenFlags_[index].AngleDelimiter) {
                 ++depth;
             } else if (kind == TK::Operator_Greater &&
-                AngleDelimiter_[index])
+                TokenFlags_[index].AngleDelimiter)
             {
                 --depth;
             } else if (kind == TK::Operator_RightShift &&
-                AngleDelimiter_[index])
+                TokenFlags_[index].AngleDelimiter)
             {
                 depth -= std::min(depth, 2);
             } else if (IsOpening(kind)) {
@@ -1152,22 +1058,33 @@ private:
             } else if (kind == TK::Operator_Comma && depth == 0 &&
                 !preserveTrailingSeparators)
             {
-                separators[index] = true;
+                if (node.Kind == NK::BaseClause) {
+                    TokenFlags_[index].BaseSeparator = true;
+                } else {
+                    TokenFlags_[index].ConstructorSeparator = true;
+                }
             }
         }
     }
 
-    void MarkFirstBracket(const parser::Node& node, FlagView flags)
+    void ClassifyBracketPair(const parser::Node& node)
     {
+        auto mark = [&] (TokenIndex index) {
+            if (node.Kind == NK::LambdaCaptureList) {
+                TokenFlags_[index].LambdaDelimiter = true;
+            } else {
+                TokenFlags_[index].StructuredBinding = true;
+            }
+        };
         for (auto index = node.Tokens.Begin;
             index < node.Tokens.End && index < Tree_.TokenCount(); ++index)
         {
             if (Tree_.Kind(index) != TK::Operator_OpenBracket) {
                 continue;
             }
-            flags[index] = true;
+            mark(index);
             if (Pair_[index] != NoToken) {
-                flags[Pair_[index]] = true;
+                mark(Pair_[index]);
             }
             return;
         }
@@ -1183,9 +1100,9 @@ private:
             !Tree_.WhitespaceBefore(node.Tokens.Begin).contains('\n');
         if (!startsAtAttachedTemplateCloser &&
             node.Tokens.Begin < Tree_.TokenCount() && (node.Tokens.Begin == 0 ||
-                !BreakAfter_[node.Tokens.Begin - 1]))
+                !TokenFlags_[node.Tokens.Begin - 1].BreakAfter))
         {
-            DefinitionStart_[node.Tokens.Begin] = true;
+            TokenFlags_[node.Tokens.Begin].DefinitionStart = true;
         }
 
         const parser::Node* body = nullptr;
@@ -1221,7 +1138,7 @@ private:
         {
             return;
         }
-        DefinitionStart_[node.Tokens.Begin] = true;
+        TokenFlags_[node.Tokens.Begin].DefinitionStart = true;
         for (auto index = node.Tokens.Begin + 2; index < node.Tokens.End;
             ++index)
         {
@@ -1229,7 +1146,7 @@ private:
                     Tree_.Kind(index) == TK::Operator_RightShift) &&
                 Tree_.Role(index) == PR::TemplateDelimiter)
             {
-                BreakAfter_[index] = true;
+                TokenFlags_[index].BreakAfter = true;
                 return;
             }
         }
@@ -1291,7 +1208,7 @@ private:
                 for (auto i = node->Tokens.Begin;
                     i < node->Tokens.End && i < Tree_.TokenCount(); ++i)
                 {
-                    PreserveLineIndent_[i] = true;
+                    TokenFlags_[i].PreserveLineIndent = true;
                 }
                 break;
             case NK::SwitchStatement:
@@ -1322,7 +1239,8 @@ private:
                 AnalyzeFunctionDefinition(*node);
                 break;
             case NK::BaseClause:
-                ClassifyTopLevelSeparators(*node, BaseSeparator_);
+            case NK::ConstructorInitializerList:
+                ClassifyTopLevelSeparators(*node);
                 break;
             case NK::BracedInitializer:
             case NK::NewInitializer:
@@ -1335,7 +1253,8 @@ private:
                 SetFirstBrace(*node, BraceKind::Requirement);
                 break;
             case NK::LambdaCaptureList:
-                MarkFirstBracket(*node, LambdaDelimiter_);
+            case NK::StructuredBinding:
+                ClassifyBracketPair(*node);
                 break;
             case NK::TrailingReturnType:
                 if (node->Tokens.Begin < node->Tokens.End &&
@@ -1343,14 +1262,8 @@ private:
                     Tree_.Kind(node->Tokens.Begin)
                         == TK::Operator_IndirectClassMemberAccess)
                 {
-                    LambdaReturnArrow_[node->Tokens.Begin] = true;
+                    TokenFlags_[node->Tokens.Begin].LambdaReturnArrow = true;
                 }
-                break;
-            case NK::StructuredBinding:
-                MarkFirstBracket(*node, StructuredBinding_);
-                break;
-            case NK::ConstructorInitializerList:
-                ClassifyTopLevelSeparators(*node, ConstructorSeparator_);
                 break;
             case NK::TemplateDeclaration:
                 AnalyzeTemplateDeclaration(*node);
@@ -1378,7 +1291,7 @@ private:
                         break;
                     }
                     if (Tree_.Kind(i) == TK::Operator_Colon) {
-                        SpacedColon_[i] = true;
+                        TokenFlags_[i].SpacedColon = true;
                     }
                 }
                 break;
@@ -1601,7 +1514,7 @@ private:
             bool unresolvedBrace =
                 kind == TK::Operator_OpenBrace && Braces_[i] == BraceKind::None;
             bool unresolvedBracket = kind == TK::Operator_OpenBracket &&
-                !LambdaDelimiter_[i] && !StructuredBinding_[i];
+                !TokenFlags_[i].LambdaDelimiter && !TokenFlags_[i].StructuredBinding;
             if ((role == PR::None || role == PR::Generic) && (unresolvedBrace || unresolvedBracket)) {
                 auto closing = Pair_[i];
                 AddPreservedRange(
@@ -1660,9 +1573,9 @@ private:
         PrefixWidth_[0] = 0;
         for (TokenIndex i = 0; i < Tree_.TokenCount(); ++i) {
             if (i != 0) {
-                SpaceBefore_[i] = ComputeNeedsSpace(i - 1, i);
+                TokenFlags_[i].SpaceBefore = ComputeNeedsSpace(i - 1, i);
             }
-            auto tokenWidth = Tree_.TokenText(i).size() + SpaceBefore_[i];
+            auto tokenWidth = Tree_.TokenText(i).size() + TokenFlags_[i].SpaceBefore;
             if (width > std::numeric_limits<size_t>::max() - tokenWidth) {
                 width = std::numeric_limits<size_t>::max();
             } else {
@@ -1774,7 +1687,7 @@ private:
         for (auto index = opening + 1; index < closing; ++index) {
             auto kind = Tree_.Kind(index);
             if (kind == TK::Comment || kind == TK::PreprocessingDirective ||
-                BreakAfter_[index])
+                TokenFlags_[index].BreakAfter)
             {
                 return false;
             }
@@ -1907,13 +1820,13 @@ private:
         auto root = FindMemberChainRoot(index);
         auto sourceMemberIndent =
             static_cast<std::ptrdiff_t>(Tree_.TokenPosition(index).Column - 1);
-        if (OutputTokenColumn_[root] == NoToken) {
+        if (OutputPositions_[root].Column == NoToken) {
             return static_cast<size_t>(sourceMemberIndent);
         }
         auto sourceRootColumn = static_cast<std::ptrdiff_t>(
             Tree_.TokenPosition(root).Column - 1);
         auto outputRootColumn =
-            static_cast<std::ptrdiff_t>(OutputTokenColumn_[root]);
+            static_cast<std::ptrdiff_t>(OutputPositions_[root].Column);
         auto sourceLineToken = root;
         auto sourceLine = Tree_.TokenPosition(root).Line;
         while (sourceLineToken != 0 &&
@@ -2010,10 +1923,10 @@ private:
     {
         StartLine();
         if (CurrentToken_ != NoToken) {
-            OutputTokenColumn_[CurrentToken_] =
-                static_cast<TokenIndex>(Column_);
-            OutputTokenLine_[CurrentToken_] =
-                static_cast<TokenIndex>(OutputLine_);
+            OutputPositions_[CurrentToken_] = {
+                .Line = static_cast<TokenIndex>(OutputLine_),
+                .Column = static_cast<TokenIndex>(Column_),
+            };
             if (IsControlKeyword(Tree_.Kind(CurrentToken_))) {
                 LastControlKeyword_ = CurrentToken_;
             }
@@ -2092,7 +2005,7 @@ private:
                 Tree_.TokenPosition(range.Begin).Column - 1);
         auto sourceStartLine = Tree_.TokenPosition(range.Begin).Line;
         for (auto index = range.Begin; index < range.End; ++index) {
-            OutputTokenLine_[index] = static_cast<TokenIndex>(
+            OutputPositions_[index].Line = static_cast<TokenIndex>(
                 OutputLine_ + Tree_.TokenPosition(index).Line
                     - sourceStartLine);
             if (IsControlKeyword(Tree_.Kind(index))) {
@@ -2146,7 +2059,7 @@ private:
             index < Tree_.TokenCount() && IsMemberAccess(Tree_.Kind(index));
         if (!AtLineStart_ || index == 0 || !HasOriginalBlankLine(index) || (!IsStructuralBoundary(
             Tree_.Kind(index - 1)) &&
-                !BreakAfter_[index - 1] && !separatesMemberChain))
+                !TokenFlags_[index - 1].BreakAfter && !separatesMemberChain))
         {
             return;
         }
@@ -2197,13 +2110,13 @@ private:
     void ClassifyDeclaratorOperators()
     {
         for (TokenIndex i = 0; i < Tree_.TokenCount(); ++i) {
-            DeclaratorOperator_[i] = ComputeDeclaratorOperator(i);
+            TokenFlags_[i].DeclaratorOperator = ComputeDeclaratorOperator(i);
         }
     }
 
     bool IsDeclaratorOperator(TokenIndex index) const
     {
-        return DeclaratorOperator_[index];
+        return TokenFlags_[index].DeclaratorOperator;
     }
 
     bool StartsParenthesizedDeclarator(TokenIndex opening) const
@@ -2311,7 +2224,7 @@ private:
     bool IsUncertainContextDependentOperator(TokenIndex index) const
     {
         auto role = Tree_.Role(index);
-        return !LambdaReturnArrow_[index] && (role == PR::None || role == PR::Generic) &&
+        return !TokenFlags_[index].LambdaReturnArrow && (role == PR::None || role == PR::Generic) &&
             IsContextDependentOperator(Tree_.Kind(index));
     }
 
@@ -2378,14 +2291,14 @@ private:
         return kind == TK::Operator_ScopeResolution ||
             kind == TK::Operator_ClassMemberAccess ||
             kind == TK::Operator_PointerToMemberDereference || (kind == TK::Operator_IndirectClassMemberAccess &&
-            !LambdaReturnArrow_[index]) ||
+            !TokenFlags_[index].LambdaReturnArrow) ||
             kind == TK::Operator_IndirectPointerToMemberDereference;
     }
 
     bool ClosesLambdaTemplateParameterList(TokenIndex index) const
     {
         auto kind = Tree_.Kind(index);
-        if (!AngleDelimiter_[index] || (kind != TK::Operator_Greater &&
+        if (!TokenFlags_[index].AngleDelimiter || (kind != TK::Operator_Greater &&
                 kind != TK::Operator_RightShift))
         {
             return false;
@@ -2395,11 +2308,11 @@ private:
         for (auto cursor = index; cursor != 0;) {
             --cursor;
             auto current = Tree_.Kind(cursor);
-            if (AngleDelimiter_[cursor] &&
+            if (TokenFlags_[cursor].AngleDelimiter &&
                 current == TK::Operator_Greater)
             {
                 ++depth;
-            } else if (AngleDelimiter_[cursor] &&
+            } else if (TokenFlags_[cursor].AngleDelimiter &&
                 current == TK::Operator_RightShift)
             {
                 depth += 2;
@@ -2407,7 +2320,7 @@ private:
                 return cursor != 0 &&
                     Tree_.Kind(cursor - 1)
                         == TK::Operator_CloseBracket &&
-                    LambdaDelimiter_[cursor - 1];
+                    TokenFlags_[cursor - 1].LambdaDelimiter;
             }
         }
         return false;
@@ -2431,12 +2344,12 @@ private:
         if (previousKind == TK::Keyword_new) {
             return !Tree_.WhitespaceBefore(current).empty();
         }
-        if ((IsKnownBinaryOperator(previous) && !AngleDelimiter_[previous]) ||
+        if ((IsKnownBinaryOperator(previous) && !TokenFlags_[previous].AngleDelimiter) ||
             ClosesLambdaTemplateParameterList(previous) ||
             StartsParenthesizedDeclarator(current) || (previousKind == TK::Keyword_return &&
                 !Tree_.WhitespaceBefore(current).empty()) || (previousKind == TK::Operator_CloseBracket && (previousRole
                 == PR::LambdaDelimiter ||
-                LambdaDelimiter_[previous])))
+                TokenFlags_[previous].LambdaDelimiter)))
         {
             return true;
         }
@@ -2461,7 +2374,7 @@ private:
     {
         auto role = Tree_.Role(current);
         return role == PR::LambdaDelimiter || role == PR::AttributeDelimiter ||
-            LambdaDelimiter_[current] || StructuredBinding_[current] ||
+            TokenFlags_[current].LambdaDelimiter || TokenFlags_[current].StructuredBinding ||
             IsDeclaratorOperator(previous);
     }
 
@@ -2472,7 +2385,7 @@ private:
             role == PR::ConditionalDelimiter ||
             role == PR::ConditionDelimiter ||
             role == PR::ConstructorInitializerDelimiter ||
-            SpacedColon_[current] ||
+            TokenFlags_[current].SpacedColon ||
             !Tree_.WhitespaceBefore(current).empty();
     }
 
@@ -2500,8 +2413,8 @@ private:
         if (currentKind == TK::Operator_CloseBracket) {
             bool ordinaryBracket = currentRole != PR::LambdaDelimiter &&
                 currentRole != PR::AttributeDelimiter &&
-                !LambdaDelimiter_[current] &&
-                !StructuredBinding_[current];
+                !TokenFlags_[current].LambdaDelimiter &&
+                !TokenFlags_[current].StructuredBinding;
             return Style_.SpaceInsideSquareBrackets && ordinaryBracket &&
                 previousKind != TK::Operator_OpenBracket;
         }
@@ -2537,13 +2450,13 @@ private:
             return false;
         }
         bool currentAngle =
-            currentRole == PR::TemplateDelimiter || AngleDelimiter_[current];
+            currentRole == PR::TemplateDelimiter || TokenFlags_[current].AngleDelimiter;
         bool previousAngle =
-            previousRole == PR::TemplateDelimiter || AngleDelimiter_[previous];
+            previousRole == PR::TemplateDelimiter || TokenFlags_[previous].AngleDelimiter;
         if (currentAngle) {
             bool followsLambdaCapture =
                 previousKind == TK::Operator_CloseBracket &&
-                LambdaDelimiter_[previous];
+                TokenFlags_[previous].LambdaDelimiter;
             return previousKind == TK::Keyword_template ||
                 followsLambdaCapture;
         }
@@ -2551,12 +2464,12 @@ private:
             return false;
         }
         if (Style_.SpaceBeforeTemplateParameterPack &&
-            previousKind == TK::Operator_Ellipsis && (SyntaxFlags_[previous] & TemplateParameterPackFlag) != 0)
+            previousKind == TK::Operator_Ellipsis && TokenFlags_[previous].TemplateParameterPack)
         {
             return false;
         }
         if (currentKind == TK::Operator_Ellipsis) {
-            if (Style_.SpaceBeforeTemplateParameterPack && (SyntaxFlags_[current] & TemplateParameterPackFlag) != 0) {
+            if (Style_.SpaceBeforeTemplateParameterPack && TokenFlags_[current].TemplateParameterPack) {
                 return true;
             }
             // An ellipsis is otherwise attached in a parameter pack (Args...).
@@ -2591,8 +2504,8 @@ private:
         if (previousKind == TK::Operator_OpenBracket) {
             bool ordinaryBracket = previousRole != PR::LambdaDelimiter &&
                 previousRole != PR::AttributeDelimiter &&
-                !LambdaDelimiter_[previous] &&
-                !StructuredBinding_[previous];
+                !TokenFlags_[previous].LambdaDelimiter &&
+                !TokenFlags_[previous].StructuredBinding;
             return Style_.SpaceInsideSquareBrackets && ordinaryBracket &&
                 currentKind != TK::Operator_CloseBracket;
         }
@@ -2627,8 +2540,8 @@ private:
                 currentKind <= TK::Literal_String);
         }
         if (IsKnownBinaryOperator(current) ||
-            IsKnownBinaryOperator(previous) || LambdaReturnArrow_[current] ||
-            LambdaReturnArrow_[previous])
+            IsKnownBinaryOperator(previous) || TokenFlags_[current].LambdaReturnArrow ||
+            TokenFlags_[previous].LambdaReturnArrow)
         {
             return true;
         }
@@ -2665,7 +2578,7 @@ private:
 
     bool NeedsSpace(TokenIndex, TokenIndex current) const
     {
-        return SpaceBefore_[current];
+        return TokenFlags_[current].SpaceBefore;
     }
 
     // Dynamic layout state -------------------------------------------------
@@ -2680,7 +2593,7 @@ private:
                 return true;
             }
             if (Braces_[i->Opening] == BraceKind::Lambda &&
-                CompactLambda_[i->Opening])
+                TokenFlags_[i->Opening].CompactLambda)
             {
                 return true;
             }
@@ -2836,8 +2749,7 @@ private:
              .Indents = indents,
              .Regroup = regroup,
              .IndentOffset = 0,
-             .OpeningLineIndent = CurrentLineIndent_,
-             .OpeningOutputLine = OutputLine_});
+             .OpeningLineIndent = CurrentLineIndent_});
     }
 
     void PopLayout()
@@ -2905,7 +2817,7 @@ private:
                 NextLineAbsoluteIndent_ = Tree_.TokenPosition(index).Column - 1;
             } else if (next < Tree_.TokenCount() &&
                 IsMemberAccess(Tree_.Kind(next)) &&
-                !LambdaReturnArrow_[next] &&
+                !TokenFlags_[next].LambdaReturnArrow &&
                 !IsUncertainContextDependentOperator(next) &&
                 Tree_.WhitespaceBefore(next).contains('\n'))
             {
@@ -3019,6 +2931,90 @@ private:
         return sourceBreak;
     }
 
+    bool HasMultilineControlHeader(TokenIndex index) const
+    {
+        if (index == 0 ||
+            Tree_.Kind(index - 1) != TK::Operator_CloseParenthesis)
+        {
+            return false;
+        }
+        auto opening = FindOpeningParenthesis(index - 1);
+        if (opening != NoToken &&
+            OutputPositions_[opening].Line != NoToken &&
+            OutputPositions_[index - 1].Line != NoToken &&
+            OutputPositions_[opening].Line != OutputPositions_[index - 1].Line)
+        {
+            return true;
+        }
+        if (LastControlKeyword_ != NoToken &&
+            OutputPositions_[LastControlKeyword_].Line != NoToken &&
+            OutputPositions_[LastControlKeyword_].Line != OutputLine_)
+        {
+            return true;
+        }
+        if (opening == NoToken) {
+            return false;
+        }
+        if (opening != 0) {
+            auto header = opening - 1;
+            if (Tree_.TokenText(header) == "constexpr" && header != 0 &&
+                Tree_.Kind(header - 1) == TK::Keyword_if)
+            {
+                --header;
+            }
+            if (OutputPositions_[header].Line != NoToken &&
+                OutputPositions_[header].Line != OutputLine_)
+            {
+                return true;
+            }
+        }
+        for (auto cursor = opening + 1; cursor < index - 1; ++cursor) {
+            if (Tree_.Kind(cursor) == TK::Operator_OpenBrace &&
+                Braces_[cursor] == BraceKind::Block &&
+                Pair_[cursor] != NoToken && Pair_[cursor] != cursor + 1)
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    bool OpeningBraceOnOwnLine(TokenIndex index, BraceKind kind) const
+    {
+        bool sourceBreak = Tree_.WhitespaceBefore(index).contains('\n');
+        switch (kind) {
+        case BraceKind::Function:
+        case BraceKind::ConstructorFunction:
+            return PlacesBraceOnNewLine(Style_.FunctionBracePlacement, sourceBreak);
+        case BraceKind::Record:
+        case BraceKind::Enum: {
+            bool inlineRecord = kind == BraceKind::Record &&
+                TokenFlags_[index].InlineRecord && !Style_.BreakInlineRecordDeclarations;
+            return !inlineRecord && PlacesBraceOnNewLine(Style_.RecordBracePlacement, sourceBreak);
+        }
+        case BraceKind::Lambda: {
+            bool multilineHeader = index != 0 &&
+                Tree_.Kind(index - 1) == TK::Operator_CloseParenthesis &&
+                Pair_[index - 1] != NoToken &&
+                Tree_.TokenPosition(Pair_[index - 1]).Line != Tree_.TokenPosition(index - 1).Line;
+            return PlacesBraceOnNewLine(Style_.LambdaBracePlacement, sourceBreak && multilineHeader);
+        }
+        case BraceKind::Namespace:
+            return PlacesBraceOnNewLine(Style_.NamespaceBracePlacement, sourceBreak);
+        case BraceKind::Block:
+        case BraceKind::CaseBlock:
+        case BraceKind::UnindentedBlock: {
+            bool multilineHeader = HasMultilineControlHeader(index);
+            bool preferredBreak = Style_.ControlBracePlacement == BracePlacement::AttachUnlessMultiline
+                ? multilineHeader
+                : sourceBreak || multilineHeader;
+            return PlacesBraceOnNewLine(Style_.ControlBracePlacement, preferredBreak);
+        }
+        default:
+            return false;
+        }
+    }
+
     void FormatOpeningBrace(TokenIndex index)
     {
         auto kind = Braces_[index];
@@ -3065,93 +3061,7 @@ private:
             }
         }
 
-        bool multilineLambdaHeader = kind == BraceKind::Lambda && index != 0 &&
-            Tree_.Kind(index - 1) == TK::Operator_CloseParenthesis &&
-            Pair_[index - 1] != NoToken &&
-            Tree_.TokenPosition(Pair_[index - 1]).Line
-                != Tree_.TokenPosition(index - 1).Line;
-        bool inlineRecord = kind == BraceKind::Record && (SyntaxFlags_[index] & InlineRecordFlag) != 0 &&
-            !Style_.BreakInlineRecordDeclarations;
-        bool sourceBreak = Tree_.WhitespaceBefore(index).contains('\n');
-        bool ownLine = false;
-        if (kind == BraceKind::Function ||
-            kind == BraceKind::ConstructorFunction)
-        {
-            ownLine = PlacesBraceOnNewLine(
-                Style_.FunctionBracePlacement,
-                sourceBreak);
-        } else if (kind == BraceKind::Record || kind == BraceKind::Enum) {
-            ownLine = !inlineRecord && PlacesBraceOnNewLine(
-                Style_.RecordBracePlacement,
-                sourceBreak);
-        } else if (kind == BraceKind::Lambda) {
-            ownLine = PlacesBraceOnNewLine(
-                Style_.LambdaBracePlacement,
-                sourceBreak && multilineLambdaHeader);
-        } else if (kind == BraceKind::Namespace) {
-            ownLine = PlacesBraceOnNewLine(
-                Style_.NamespaceBracePlacement,
-                sourceBreak);
-        } else if (kind == BraceKind::Requirement) {
-            ownLine = false;
-        } else if (kind == BraceKind::Block || kind == BraceKind::CaseBlock ||
-            kind == BraceKind::UnindentedBlock)
-        {
-            bool multilineHeader = false;
-            if (index != 0 &&
-                Tree_.Kind(index - 1)
-                    == TK::Operator_CloseParenthesis)
-            {
-                auto opening = FindOpeningParenthesis(index - 1);
-                multilineHeader = opening != NoToken &&
-                    OutputTokenLine_[opening] != NoToken &&
-                    OutputTokenLine_[index - 1] != NoToken &&
-                    OutputTokenLine_[opening]
-                        != OutputTokenLine_[index - 1];
-                if (!multilineHeader && LastControlKeyword_ != NoToken &&
-                    OutputTokenLine_[LastControlKeyword_] != NoToken)
-                {
-                    multilineHeader =
-                        OutputTokenLine_[LastControlKeyword_] != OutputLine_;
-                }
-                if (!multilineHeader && opening != NoToken &&
-                    opening != 0)
-                {
-                    auto header = opening - 1;
-                    if (Tree_.TokenText(header) == "constexpr" &&
-                        header != 0 &&
-                        Tree_.Kind(header - 1) == TK::Keyword_if)
-                    {
-                        --header;
-                    }
-                    multilineHeader = OutputTokenLine_[header] != NoToken &&
-                        OutputTokenLine_[header] != OutputLine_;
-                }
-                if (!multilineHeader && opening != NoToken) {
-                    for (auto cursor = opening + 1; cursor < index - 1;
-                        ++cursor)
-                    {
-                        if (Tree_.Kind(cursor) == TK::Operator_OpenBrace &&
-                            Braces_[cursor] == BraceKind::Block &&
-                            Pair_[cursor] != NoToken &&
-                            Pair_[cursor] != cursor + 1)
-                        {
-                            multilineHeader = true;
-                            break;
-                        }
-                    }
-                }
-            }
-            bool preferredBreak =
-                Style_.ControlBracePlacement
-                    == BracePlacement::AttachUnlessMultiline
-                ? multilineHeader
-                : sourceBreak || multilineHeader;
-            ownLine = PlacesBraceOnNewLine(
-                Style_.ControlBracePlacement,
-                preferredBreak);
-        }
-        if (ownLine) {
+        if (OpeningBraceOnOwnLine(index, kind)) {
             Newline();
         } else if (index != 0 && NeedsSpace(index - 1, index)) {
             Space();
@@ -3169,8 +3079,8 @@ private:
                 semicolons += Tree_.Kind(i) == TK::Operator_Semicolon;
             }
             if (semicolons <= 1) {
-                CompactLambda_[index] = true;
-                CompactLambda_[closing] = true;
+                TokenFlags_[index].CompactLambda = true;
+                TokenFlags_[closing].CompactLambda = true;
                 PushLayout(index, false, false, false, false);
                 Space();
                 return;
@@ -3225,10 +3135,10 @@ private:
             if (kind == BraceKind::Lambda) {
                 auto computedIndent = static_cast<std::ptrdiff_t>(
                     EffectiveIndent() * Style_.IndentWidth);
-                auto capture = LambdaCaptureForBody_[index];
+                auto capture = Lambdas_[index].Capture;
                 auto lambdaIndent = capture != NoToken &&
-                    LambdaCaptureIndent_[capture] != NoToken
-                    ? LambdaCaptureIndent_[capture]
+                    Lambdas_[capture].Indent != NoToken
+                    ? Lambdas_[capture].Indent
                     : CurrentLineIndent_;
                 auto desiredIndent = static_cast<std::ptrdiff_t>(
                     lambdaIndent + Style_.IndentWidth);
@@ -3274,7 +3184,7 @@ private:
         bool closingOwnLine = hasLayout && Layouts_.back().ClosingOwnLine;
         bool indents = hasLayout && Layouts_.back().Indents;
 
-        if (kind == BraceKind::Lambda && CompactLambda_[index]) {
+        if (kind == BraceKind::Lambda && TokenFlags_[index].CompactLambda) {
             Write(Tree_.TokenText(index));
             if (hasLayout) {
                 PopLayout();
@@ -3325,11 +3235,11 @@ private:
             }
             if (hasLayout) {
                 if (kind == BraceKind::Lambda) {
-                    auto capture = LambdaCaptureForBody_[opening];
+                    auto capture = Lambdas_[opening].Capture;
                     if (capture != NoToken &&
-                        LambdaCaptureIndent_[capture] != NoToken)
+                        Lambdas_[capture].Indent != NoToken)
                     {
-                        NextLineAbsoluteIndent_ = LambdaCaptureIndent_[capture];
+                        NextLineAbsoluteIndent_ = Lambdas_[capture].Indent;
                     }
                 } else if (Layouts_.back().IndentOffset != 0) {
                     NextLineAbsoluteIndent_ = Layouts_.back().OpeningLineIndent;
@@ -3377,7 +3287,7 @@ private:
             return;
         }
         auto next = Tree_.Kind(index + 1);
-        if (kind == BraceKind::Record && (SyntaxFlags_[index] & InlineRecordFlag) != 0 &&
+        if (kind == BraceKind::Record && TokenFlags_[index].InlineRecord &&
             !Style_.BreakInlineRecordDeclarations &&
             next != TK::Operator_Semicolon)
         {
@@ -3399,7 +3309,7 @@ private:
             return;
         }
         if (next == TK::Keyword_else || next == TK::Keyword_catch || (next == TK::Keyword_while &&
-                DoWhileContinuation_[index + 1]) || (next == TK::Comment &&
+                TokenFlags_[index + 1].DoWhileContinuation) || (next == TK::Comment &&
                 Tree_.TokenPosition(index).Line
                     == Tree_.TokenPosition(index + 1).Line))
         {
@@ -3452,9 +3362,9 @@ private:
         }
         Write(Tree_.TokenText(index));
         if (Tree_.Kind(index) == TK::Operator_OpenBracket &&
-            LambdaDelimiter_[index])
+            TokenFlags_[index].LambdaDelimiter)
         {
-            LambdaCaptureIndent_[index] = CurrentLineIndent_;
+            Lambdas_[index].Indent = CurrentLineIndent_;
         }
         bool regroup = CanRegroupDelimiter(index);
         auto multiline = !regroup && ShouldBreakDelimiter(index);
@@ -3489,8 +3399,6 @@ private:
         bool multiline = hasLayout && Layouts_.back().Multiline;
         bool regroup = hasLayout && Layouts_.back().Regroup;
         bool closingOwnLine = hasLayout && Layouts_.back().ClosingOwnLine;
-        bool spansOutputLines = hasLayout &&
-            Layouts_.back().OpeningOutputLine != OutputLine_;
         if (multiline && ContinuationIndent_ != 0) {
             --ContinuationIndent_;
         }
@@ -3506,9 +3414,6 @@ private:
             }
             Newline();
         }
-        if (multiline || spansOutputLines) {
-            MultilineClose_[index] = true;
-        }
         if (!AtLineStart_ && index != 0 && NeedsSpace(index - 1, index)) {
             Space();
         }
@@ -3516,18 +3421,19 @@ private:
         if (hasLayout) {
             PopLayout();
         }
-        if (BreakAfter_[index]) {
+        if (TokenFlags_[index].BreakAfter) {
             Newline();
         }
     }
 
     void FormatComma(TokenIndex index)
     {
-        bool leadingComma = !IsRegrouping() && (BaseSeparator_[index] || ConstructorSeparator_[index] ||
+        bool leadingComma = !IsRegrouping() && (TokenFlags_[index].BaseSeparator ||
+            TokenFlags_[index].ConstructorSeparator ||
             Tree_.WhitespaceBefore(index).contains('\n'));
         if (leadingComma) {
             bool temporaryIndent =
-                !BaseSeparator_[index] && !ConstructorSeparator_[index];
+                !TokenFlags_[index].BaseSeparator && !TokenFlags_[index].ConstructorSeparator;
             if (temporaryIndent) {
                 ++ContinuationIndent_;
             }
@@ -3607,7 +3513,7 @@ private:
                     == BracketAlignment::AlignWithOpening)
                 {
                     auto opening = Layouts_.back().Opening;
-                    NextLineAbsoluteIndent_ = OutputTokenColumn_[opening]
+                    NextLineAbsoluteIndent_ = OutputPositions_[opening].Column
                         + Tree_.TokenText(opening).size();
                 } else if (originalBreak &&
                     Style_.OpenBracketAlignment
@@ -3689,7 +3595,7 @@ private:
 
         Write(Tree_.TokenText(index));
         bool inlineCaseBody =
-            (CaseFlags_[index] & CaseLabelDelimiterFlag) != 0 &&
+            TokenFlags_[index].CaseLabelDelimiter &&
             index + 1 < Tree_.TokenCount() &&
             !Tree_.WhitespaceBefore(index + 1).contains('\n');
         if (inlineCaseBody) {
@@ -3697,7 +3603,7 @@ private:
         } else {
             Newline();
         }
-        if ((CaseFlags_[index] & BeginIndentedCaseBodyFlag) != 0) {
+        if (TokenFlags_[index].BeginIndentedCaseBody) {
             ++Indent_;
         }
         return true;
@@ -3706,11 +3612,11 @@ private:
     void PrepareToken(TokenIndex index, TK kind)
     {
         CurrentToken_ = index;
-        if ((CaseFlags_[index] & EndIndentedCaseBodyFlag) != 0 && Indent_ != 0) {
+        if (TokenFlags_[index].EndIndentedCaseBody && Indent_ != 0) {
             --Indent_;
         }
         MaybePreserveBlankLine(index);
-        if (DefinitionStart_[index] && index != 0 &&
+        if (TokenFlags_[index].DefinitionStart && index != 0 &&
             Tree_.Kind(index - 1) != TK::Operator_OpenBrace &&
             Tree_.Kind(index - 1) != TK::PreprocessingDirective &&
             Tree_.Kind(index - 1) != TK::Comment &&
@@ -3746,7 +3652,7 @@ private:
         bool followsDirective = index != 0 &&
             Tree_.Kind(index - 1) == TK::PreprocessingDirective;
         bool preserveSourceIndent =
-            (PreserveLineIndent_[index] &&
+            (TokenFlags_[index].PreserveLineIndent &&
             Tree_.WhitespaceBefore(index).contains('\n')) || (followsDirective && AtLineStart_);
         if (preserveSourceIndent || (kind == TK::Operator_OpenBracket &&
                 Tree_.Role(index) == PR::AttributeDelimiter &&
@@ -3766,7 +3672,7 @@ private:
             FormatDirective(index);
             return true;
         }
-        if (PreserveBreakBefore_[index] && !AtLineStart_) {
+        if (TokenFlags_[index].PreserveBreakBefore && !AtLineStart_) {
             MakeInnermostDelimiterMultiline();
             Newline();
         }
@@ -3817,7 +3723,7 @@ private:
     bool IsJoinedContinuation(TokenIndex index, TK kind) const
     {
         return kind == TK::Keyword_else || kind == TK::Keyword_catch || (kind == TK::Keyword_while &&
-            DoWhileContinuation_[index]);
+            TokenFlags_[index].DoWhileContinuation);
     }
 
     bool StartsOriginalContinuation(TokenIndex index, TK kind) const
@@ -3832,12 +3738,12 @@ private:
         return IsKnownBinaryOperator(index) ||
             IsKnownBinaryOperator(index - 1) || ((previousKind == TK::Operator_Less ||
             previousKind == TK::Operator_Greater) &&
-            !AngleDelimiter_[index - 1]) ||
+            !TokenFlags_[index - 1].AngleDelimiter) ||
             previousKind == TK::Keyword_return || (kind == TK::Operator_Colon &&
             Tree_.Role(index) != PR::LabelDelimiter) || (IsWord(kind) && IsWord(previousKind) &&
             kind >= TK::Literal_UserDefinedInteger &&
             kind <= TK::Literal_String) || (previousKind == TK::Operator_Less &&
-            AngleDelimiter_[index - 1]);
+            TokenFlags_[index - 1].AngleDelimiter);
     }
 
     Continuations PrepareTextContinuations(TokenIndex index, TK kind)
@@ -3868,7 +3774,7 @@ private:
         if (StartsOriginalContinuation(index, kind)) {
             bool afterTemplateOpening =
                 Tree_.Kind(index - 1) == TK::Operator_Less &&
-                AngleDelimiter_[index - 1];
+                TokenFlags_[index - 1].AngleDelimiter;
             if (afterTemplateOpening || !MakeInnermostDelimiterMultiline()) {
                 ++ContinuationIndent_;
                 continuations.Original = true;
@@ -3904,7 +3810,7 @@ private:
             kind == TK::Keyword_private);
         bool caseLabel = AtLineStart_ && (kind == TK::Keyword_case || kind == TK::Keyword_default);
         bool outdentedCaseLabel =
-            caseLabel && (CaseFlags_[index] & IndentedCaseLabelFlag) == 0;
+            caseLabel && !TokenFlags_[index].IndentedCaseLabel;
         if ((!accessSpecifier && !outdentedCaseLabel) || Indent_ == 0) {
             return false;
         }
@@ -4000,7 +3906,7 @@ private:
             }
             Newline();
         }
-        if (BreakAfter_[index]) {
+        if (TokenFlags_[index].BreakAfter) {
             Newline();
         }
     }
@@ -4009,30 +3915,9 @@ private:
     const Style& Style_;
     DelimiterPairs Pair_;
     std::vector<BraceKind> Braces_;
-    std::vector<uint8_t> SyntaxFlags_;
-    std::vector<uint8_t> CaseFlags_;
-    std::vector<uint16_t> TokenFlags_;
-    FlagView AngleDelimiter_;
-    FlagView SpacedColon_;
-    FlagView DefinitionStart_;
-    FlagView BreakAfter_;
-    FlagView PreserveBreakBefore_;
-    FlagView BaseSeparator_;
-    FlagView ConstructorSeparator_;
-    FlagView CompactLambda_;
-    FlagView MultilineClose_;
-    FlagView StructuredBinding_;
-    FlagView LambdaDelimiter_;
-    FlagView LambdaReturnArrow_;
-    FlagView DeclaratorOperator_;
-    FlagView SpaceBefore_;
-    FlagView PreserveLineIndent_;
-    FlagView DoWhileContinuation_;
-    std::vector<TokenIndex> LambdaData_;
-    TokenIndexView LambdaCaptureForBody_;
-    TokenIndexView LambdaCaptureIndent_;
-    std::vector<TokenIndex> OutputTokenColumn_;
-    std::vector<TokenIndex> OutputTokenLine_;
+    std::vector<TokenFlags> TokenFlags_;
+    std::vector<LambdaInfo> Lambdas_;
+    std::vector<OutputPosition> OutputPositions_;
     std::vector<int32_t> MemberChainIndentShift_;
     std::vector<size_t> PrefixWidth_;
     std::vector<Layout> Layouts_;

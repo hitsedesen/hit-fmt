@@ -493,6 +493,8 @@ class TokenPool
         uint16_t Size = 0;
         bool HasPreprocessingDirective = false;
         bool HasComment = false;
+        // Separate kind and role arrays let syntax scans read only the
+        // metadata they use, without spelling and source positions.
         std::array<StoredToken, TokensPerChunk> Tokens;
         std::array<tokenizer::TokenKind, TokensPerChunk> Kinds;
         std::array<PunctuationRole, TokensPerChunk> Roles;

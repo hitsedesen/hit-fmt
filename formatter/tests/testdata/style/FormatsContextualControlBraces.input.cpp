@@ -21,4 +21,17 @@ void Check()
         thirdLongCondition &&
         fourthLongCondition)
         Accept();
+
+    if constexpr (
+        supportsFirstOperation &&
+        supportsSecondOperation) {
+        Accept();
+    }
+
+    if (Check([] {
+        Prepare();
+        return Ready();
+    })) {
+        Accept();
+    }
 }

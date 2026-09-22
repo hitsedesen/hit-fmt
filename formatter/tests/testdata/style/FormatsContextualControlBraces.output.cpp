@@ -22,4 +22,18 @@ void Check()
     {
         Accept();
     }
+
+    if constexpr (supportsFirstOperation &&
+        supportsSecondOperation)
+    {
+        Accept();
+    }
+
+    if (Check([] {
+        Prepare();
+        return Ready();
+    }))
+    {
+        Accept();
+    }
 }

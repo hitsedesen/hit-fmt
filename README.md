@@ -13,7 +13,12 @@ cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build
 ```
 
-The executable is written to `build/hit-fmt/hit-fmt` by default.
+The executable is written to `build/hit-fmt/hit-fmt` by default. Install it
+and its license notices under a chosen prefix with:
+
+```sh
+cmake --install build --prefix ~/.local
+```
 
 Tests require GoogleTest:
 
@@ -52,4 +57,7 @@ settings and defaults.
 
 ## License
 
-Licensed under the [MIT License](LICENSE).
+The project is licensed under the [MIT License](LICENSE). Generated Unicode
+character-property ranges are distributed under the
+[Unicode License v3](LICENSES/Unicode-3.0.txt); their exact provenance is
+[documented separately](unicode/README.md).
