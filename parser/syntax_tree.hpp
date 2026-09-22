@@ -383,13 +383,15 @@ public:
         }
     }
 
+    // Requires the directory built by Seal().
     [[nodiscard]] Chunk* ChunkAt(uint32_t index) const
     {
         assert(Chunks_ && index < ChunkCount_);
         return Chunks_[index];
     }
 
-    [[nodiscard]] Chunk* ChunkAtDuringBuild(uint32_t index) const
+    // Uses the directory when available, otherwise follows linked chunks.
+    [[nodiscard]] Chunk* ResolveChunk(uint32_t index) const
     {
         assert(index < ChunkCount_);
         if (Chunks_) {
@@ -468,14 +470,14 @@ public:
     [[nodiscard]] TriviaAttachments& operator[](uint32_t index)
     {
         assert(index < Storage_.Size());
-        return Storage_.ChunkAtDuringBuild(index / AttachmentsPerChunk)
+        return Storage_.ResolveChunk(index / AttachmentsPerChunk)
             ->Items[index % AttachmentsPerChunk];
     }
 
     [[nodiscard]] const TriviaAttachments& operator[](uint32_t index) const
     {
         assert(index < Storage_.Size());
-        return Storage_.ChunkAtDuringBuild(index / AttachmentsPerChunk)
+        return Storage_.ResolveChunk(index / AttachmentsPerChunk)
             ->Items[index % AttachmentsPerChunk];
     }
 
@@ -586,7 +588,7 @@ public:
     void SetMatchingDelimiter(TokenIndex index, TokenIndex matching)
     {
         assert(index < Storage_.Size());
-        Storage_.ChunkAtDuringBuild(index / TokensPerChunk)
+        Storage_.ResolveChunk(index / TokensPerChunk)
             ->MatchingDelimiters[index % TokensPerChunk] = matching;
     }
 

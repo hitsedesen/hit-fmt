@@ -21,6 +21,9 @@ using TK = tokenizer::TokenKind;
 using TokenIndex = parser::TokenIndex;
 
 constexpr TokenIndex NoToken = std::numeric_limits<TokenIndex>::max();
+constexpr uint32_t UnknownOutputPosition = std::numeric_limits<uint32_t>::max();
+constexpr uint32_t UnsetIndent = std::numeric_limits<uint32_t>::max();
+constexpr int32_t UncomputedIndentShift = std::numeric_limits<int32_t>::min();
 
 enum class BraceKind : uint8_t
 {
@@ -196,13 +199,23 @@ class Formatter
         // Body-opening brace -> capture-opening bracket.
         TokenIndex Capture = NoToken;
         // Output indentation at a capture-opening bracket.
-        TokenIndex Indent = NoToken;
+        uint32_t IndentSpaces = UnsetIndent;
     };
 
+    // Output positions are zero-based; source positions are one-based.
     struct OutputPosition
     {
-        TokenIndex Line = NoToken;
-        TokenIndex Column = NoToken;
+        uint32_t Line = UnknownOutputPosition;
+        uint32_t Column = UnknownOutputPosition;
+    };
+
+    struct LayoutOptions
+    {
+        bool Multiline = false;
+        bool BreakElements = false;
+        bool ClosingOwnLine = false;
+        bool Indents = false;
+        bool Regroup = false;
     };
 
     struct Layout
@@ -214,6 +227,7 @@ class Formatter
         bool ClosingOwnLine;
         bool Indents;
         bool Regroup;
+        // Space counts rather than indentation levels.
         std::ptrdiff_t IndentOffset;
         size_t OpeningLineIndent;
     };
@@ -299,7 +313,7 @@ public:
         , MemberChainIndentShift_(
             AcquireBuffer<int32_t>(
                 tree.TokenCount(),
-                std::numeric_limits<int32_t>::min()))
+                UncomputedIndentShift))
         , PrefixWidth_(
             AcquireBuffer<size_t>(
                 static_cast<size_t>(tree.TokenCount()) + 1,
@@ -318,10 +332,12 @@ public:
                 : sourceSize);
         ClassifyAngles();
         AnalyzeSyntax();
+        // Preserved ranges constrain where braces may be inserted.
         BuildPreservedRanges();
         if (Style_.InsertBraces) {
             ClassifyUnbracedIfBodies();
         }
+        // Spacing depends on declarator roles; widths include that spacing.
         ClassifyDeclaratorOperators();
         BuildSpacingAndWidthPrefix();
         Layouts_.reserve(64);
@@ -653,7 +669,7 @@ private:
                 Tree_.Kind(index - 1)
                     == TK::Operator_CloseParenthesis &&
                 LastControlKeyword_ != NoToken &&
-                OutputPositions_[LastControlKeyword_].Line != NoToken &&
+                OutputPositions_[LastControlKeyword_].Line != UnknownOutputPosition &&
                 OutputPositions_[LastControlKeyword_].Line != OutputLine_;
             bool ownLine = Style_.ControlBracePlacement
                     == BracePlacement::NewLine || (Style_.ControlBracePlacement
@@ -1567,6 +1583,8 @@ private:
 
     // Flat layout and wrapping ---------------------------------------------
 
+    // PrefixWidth_[i] is the saturating sum of token widths and their
+    // preceding spaces over [0, i).
     void BuildSpacingAndWidthPrefix()
     {
         size_t width = 0;
@@ -1591,7 +1609,8 @@ private:
             return 0;
         }
         auto width = PrefixWidth_[end] - PrefixWidth_[begin];
-        if (begin != 0 && NeedsSpace(begin - 1, begin) && width != 0) {
+        // A standalone range excludes the space preceding its first token.
+        if (begin != 0 && NeedsSpaceBefore(begin) && width != 0) {
             --width;
         }
         return width;
@@ -1820,7 +1839,7 @@ private:
         auto root = FindMemberChainRoot(index);
         auto sourceMemberIndent =
             static_cast<std::ptrdiff_t>(Tree_.TokenPosition(index).Column - 1);
-        if (OutputPositions_[root].Column == NoToken) {
+        if (OutputPositions_[root].Column == UnknownOutputPosition) {
             return static_cast<size_t>(sourceMemberIndent);
         }
         auto sourceRootColumn = static_cast<std::ptrdiff_t>(
@@ -1844,7 +1863,7 @@ private:
         }
 
         auto& cachedShift = MemberChainIndentShift_[root];
-        if (cachedShift == std::numeric_limits<int32_t>::min()) {
+        if (cachedShift == UncomputedIndentShift) {
             std::ptrdiff_t shift = 0;
             if (sourceRootColumn == sourceLineIndent) {
                 shift = outputRootColumn - sourceRootColumn;
@@ -1869,13 +1888,13 @@ private:
         auto computedSpaces = static_cast<std::ptrdiff_t>(
             (EffectiveIndent() + NextLineContinuationIndent_)
             * Style_.IndentWidth);
-        auto spaces = NextLineAbsoluteIndent_ != NoToken
+        auto spaces = NextLineAbsoluteIndent_ != UnsetIndent
             ? NextLineAbsoluteIndent_
             : static_cast<size_t>(std::max<std::ptrdiff_t>(
                 0,
                 computedSpaces + LayoutIndentOffset_));
         CurrentLineIndent_ = spaces;
-        NextLineAbsoluteIndent_ = NoToken;
+        NextLineAbsoluteIndent_ = UnsetIndent;
         NextLineContinuationIndent_ = 0;
         Output_.append(spaces, ' ');
         Column_ = spaces;
@@ -1924,8 +1943,8 @@ private:
         StartLine();
         if (CurrentToken_ != NoToken) {
             OutputPositions_[CurrentToken_] = {
-                .Line = static_cast<TokenIndex>(OutputLine_),
-                .Column = static_cast<TokenIndex>(Column_),
+                .Line = static_cast<uint32_t>(OutputLine_),
+                .Column = static_cast<uint32_t>(Column_),
             };
             if (IsControlKeyword(Tree_.Kind(CurrentToken_))) {
                 LastControlKeyword_ = CurrentToken_;
@@ -2005,7 +2024,7 @@ private:
                 Tree_.TokenPosition(range.Begin).Column - 1);
         auto sourceStartLine = Tree_.TokenPosition(range.Begin).Line;
         for (auto index = range.Begin; index < range.End; ++index) {
-            OutputPositions_[index].Line = static_cast<TokenIndex>(
+            OutputPositions_[index].Line = static_cast<uint32_t>(
                 OutputLine_ + Tree_.TokenPosition(index).Line
                     - sourceStartLine);
             if (IsControlKeyword(Tree_.Kind(index))) {
@@ -2576,9 +2595,9 @@ private:
         return !Tree_.WhitespaceBefore(current).empty();
     }
 
-    bool NeedsSpace(TokenIndex, TokenIndex current) const
+    bool NeedsSpaceBefore(TokenIndex index) const
     {
-        return TokenFlags_[current].SpaceBefore;
+        return TokenFlags_[index].SpaceBefore;
     }
 
     // Dynamic layout state -------------------------------------------------
@@ -2732,22 +2751,16 @@ private:
         return Column_ + FlatWidth(index, end) > Style_.ColumnLimit;
     }
 
-    void PushLayout(
-        TokenIndex index,
-        bool multiline,
-        bool breakElements,
-        bool closingOwnLine,
-        bool indents,
-        bool regroup = false)
+    void PushLayout(TokenIndex index, LayoutOptions options)
     {
         Layouts_.push_back(
             {.Opening = index,
              .Closing = Pair_[index],
-             .Multiline = multiline,
-             .BreakElements = breakElements,
-             .ClosingOwnLine = closingOwnLine,
-             .Indents = indents,
-             .Regroup = regroup,
+             .Multiline = options.Multiline,
+             .BreakElements = options.BreakElements,
+             .ClosingOwnLine = options.ClosingOwnLine,
+             .Indents = options.Indents,
+             .Regroup = options.Regroup,
              .IndentOffset = 0,
              .OpeningLineIndent = CurrentLineIndent_});
     }
@@ -2940,14 +2953,14 @@ private:
         }
         auto opening = FindOpeningParenthesis(index - 1);
         if (opening != NoToken &&
-            OutputPositions_[opening].Line != NoToken &&
-            OutputPositions_[index - 1].Line != NoToken &&
+            OutputPositions_[opening].Line != UnknownOutputPosition &&
+            OutputPositions_[index - 1].Line != UnknownOutputPosition &&
             OutputPositions_[opening].Line != OutputPositions_[index - 1].Line)
         {
             return true;
         }
         if (LastControlKeyword_ != NoToken &&
-            OutputPositions_[LastControlKeyword_].Line != NoToken &&
+            OutputPositions_[LastControlKeyword_].Line != UnknownOutputPosition &&
             OutputPositions_[LastControlKeyword_].Line != OutputLine_)
         {
             return true;
@@ -2962,7 +2975,7 @@ private:
             {
                 --header;
             }
-            if (OutputPositions_[header].Line != NoToken &&
+            if (OutputPositions_[header].Line != UnknownOutputPosition &&
                 OutputPositions_[header].Line != OutputLine_)
             {
                 return true;
@@ -3063,7 +3076,7 @@ private:
 
         if (OpeningBraceOnOwnLine(index, kind)) {
             Newline();
-        } else if (index != 0 && NeedsSpace(index - 1, index)) {
+        } else if (index != 0 && NeedsSpaceBefore(index)) {
             Space();
         }
         Write(Tree_.TokenText(index));
@@ -3081,7 +3094,7 @@ private:
             if (semicolons <= 1) {
                 TokenFlags_[index].CompactLambda = true;
                 TokenFlags_[closing].CompactLambda = true;
-                PushLayout(index, false, false, false, false);
+                PushLayout(index, {});
                 Space();
                 return;
             }
@@ -3094,12 +3107,12 @@ private:
                     != Tree_.TokenPosition(closing).Line;
             bool closingOwnLine = closing != NoToken &&
                 Tree_.WhitespaceBefore(closing).contains('\n');
-            PushLayout(
-                index,
-                multiline,
-                multiline && !existingMultiline,
-                closingOwnLine,
-                multiline);
+            PushLayout(index, {
+                .Multiline = multiline,
+                .BreakElements = multiline && !existingMultiline,
+                .ClosingOwnLine = closingOwnLine,
+                .Indents = multiline,
+            });
             if (multiline) {
                 ++ContinuationIndent_;
                 if (!existingMultiline ||
@@ -3120,12 +3133,11 @@ private:
         bool indents = (kind != BraceKind::Namespace || Style_.IndentNamespaces) &&
             kind != BraceKind::UnindentedBlock &&
             kind != BraceKind::CaseBlock;
-        PushLayout(
-            index,
-            !compactEmpty,
-            kind == BraceKind::Enum,
-            false,
-            indents);
+        PushLayout(index, {
+            .Multiline = !compactEmpty,
+            .BreakElements = kind == BraceKind::Enum,
+            .Indents = indents,
+        });
         if (compactEmpty) {
             Space();
             return;
@@ -3137,8 +3149,8 @@ private:
                     EffectiveIndent() * Style_.IndentWidth);
                 auto capture = Lambdas_[index].Capture;
                 auto lambdaIndent = capture != NoToken &&
-                    Lambdas_[capture].Indent != NoToken
-                    ? Lambdas_[capture].Indent
+                    Lambdas_[capture].IndentSpaces != UnsetIndent
+                    ? Lambdas_[capture].IndentSpaces
                     : CurrentLineIndent_;
                 auto desiredIndent = static_cast<std::ptrdiff_t>(
                     lambdaIndent + Style_.IndentWidth);
@@ -3237,9 +3249,9 @@ private:
                 if (kind == BraceKind::Lambda) {
                     auto capture = Lambdas_[opening].Capture;
                     if (capture != NoToken &&
-                        Lambdas_[capture].Indent != NoToken)
+                        Lambdas_[capture].IndentSpaces != UnsetIndent)
                     {
-                        NextLineAbsoluteIndent_ = Lambdas_[capture].Indent;
+                        NextLineAbsoluteIndent_ = Lambdas_[capture].IndentSpaces;
                     }
                 } else if (Layouts_.back().IndentOffset != 0) {
                     NextLineAbsoluteIndent_ = Layouts_.back().OpeningLineIndent;
@@ -3357,25 +3369,24 @@ private:
             }
             Newline();
         }
-        if (index != 0 && NeedsSpace(index - 1, index)) {
+        if (index != 0 && NeedsSpaceBefore(index)) {
             Space();
         }
         Write(Tree_.TokenText(index));
         if (Tree_.Kind(index) == TK::Operator_OpenBracket &&
             TokenFlags_[index].LambdaDelimiter)
         {
-            Lambdas_[index].Indent = CurrentLineIndent_;
+            Lambdas_[index].IndentSpaces = CurrentLineIndent_;
         }
         bool regroup = CanRegroupDelimiter(index);
         auto multiline = !regroup && ShouldBreakDelimiter(index);
         auto breakElements = multiline && SupportsMultilineLayout(index);
-        PushLayout(
-            index,
-            multiline,
-            breakElements,
-            false,
-            multiline,
-            regroup);
+        PushLayout(index, {
+            .Multiline = multiline,
+            .BreakElements = breakElements,
+            .Indents = multiline,
+            .Regroup = regroup,
+        });
         if (multiline) {
             auto computedOpeningIndent = static_cast<std::ptrdiff_t>(
                 EffectiveIndent() * Style_.IndentWidth);
@@ -3414,7 +3425,7 @@ private:
             }
             Newline();
         }
-        if (!AtLineStart_ && index != 0 && NeedsSpace(index - 1, index)) {
+        if (!AtLineStart_ && index != 0 && NeedsSpaceBefore(index)) {
             Space();
         }
         Write(Tree_.TokenText(index));
@@ -3879,7 +3890,7 @@ private:
 
         bool breakAfterLogical =
             !AtLineStart_ && ShouldBreakAfterLogicalOperator(index);
-        if (index != 0 && !AtLineStart_ && NeedsSpace(index - 1, index)) {
+        if (index != 0 && !AtLineStart_ && NeedsSpaceBefore(index)) {
             if (ShouldWrapBeforeTextToken(index)) {
                 NextLineContinuationIndent_ = 1;
                 Newline();
@@ -3925,15 +3936,22 @@ private:
     std::vector<parser::TokenRange> PreservedRanges_;
     std::vector<BraceInsertion> BraceInsertions_;
     std::string Output_;
-    std::ptrdiff_t LayoutIndentOffset_ = 0;
+
+    // Indentation depths, in multiples of Style_.IndentWidth.
     size_t Indent_ = 0;
     size_t ContinuationIndent_ = 0;
-    size_t Column_ = 0;
-    size_t CurrentLineIndent_ = 0;
-    size_t CurrentTemplateDepth_ = 0;
-    size_t OutputLine_ = 0;
     size_t NextLineContinuationIndent_ = 0;
-    size_t NextLineAbsoluteIndent_ = NoToken;
+
+    // Space counts. Absolute indentation overrides depth and layout offsets.
+    std::ptrdiff_t LayoutIndentOffset_ = 0;
+    size_t CurrentLineIndent_ = 0;
+    size_t NextLineAbsoluteIndent_ = UnsetIndent;
+
+    // Zero-based output position.
+    size_t Column_ = 0;
+    size_t OutputLine_ = 0;
+
+    size_t CurrentTemplateDepth_ = 0;
     size_t PreservedRangeIndex_ = 0;
     size_t BraceInsertionIndex_ = 0;
     TokenIndex CurrentToken_ = NoToken;
