@@ -1,8 +1,7 @@
 add_executable(fmt_tests tests.cpp)
 target_link_libraries(fmt_tests PRIVATE
     lib-tokenizer
-    GTest::gtest_main
-    GTest::gmock)
+    GTest::gtest_main)
 
 gtest_discover_tests(fmt_tests)
 

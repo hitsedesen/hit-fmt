@@ -225,8 +225,13 @@ BracePlacement ParseBracePlacement(
     if (normalized == "newline" || normalized == "break") {
         return BracePlacement::NewLine;
     }
+    if (normalized == "attachunlessmultiline") {
+        return BracePlacement::AttachUnlessMultiline;
+    }
     ThrowConfigError(
-        path, line, "brace placement must be Preserve, Attach, or NewLine");
+        path,
+        line,
+        "brace placement must be Preserve, Attach, NewLine, or AttachUnlessMultiline");
 }
 
 ParenthesisSpacing ParseParenthesisSpacing(
@@ -287,6 +292,27 @@ CaseLabelIndentation ParseCaseLabelIndentation(
     }
     ThrowConfigError(
         path, line, "IndentCaseLabels must be Preserve, Outdent, or Indent");
+}
+
+BracedInitializerSpacing ParseBracedInitializerSpacing(
+    std::string_view value,
+    const std::filesystem::path& path,
+    size_t line)
+{
+    auto normalized = NormalizeEnum(ParseString(value, path, line));
+    if (normalized == "preserve") {
+        return BracedInitializerSpacing::Preserve;
+    }
+    if (normalized == "never") {
+        return BracedInitializerSpacing::Never;
+    }
+    if (normalized == "always") {
+        return BracedInitializerSpacing::Always;
+    }
+    ThrowConfigError(
+        path,
+        line,
+        "SpaceInsideBracedInitializers must be Preserve, Never, or Always");
 }
 
 ClosingBracketAlignment ParseCloseBracketAlignment(
@@ -360,6 +386,9 @@ void ApplySetting(
         style.SpaceInsideParentheses = ParseBoolean(value, path, line);
     } else if (key == "SpaceInsideSquareBrackets") {
         style.SpaceInsideSquareBrackets = ParseBoolean(value, path, line);
+    } else if (key == "SpaceInsideBracedInitializers") {
+        style.SpaceInsideBracedInitializers =
+            ParseBracedInitializerSpacing(value, path, line);
     } else if (key == "IndentNamespaces") {
         style.IndentNamespaces = ParseBoolean(value, path, line);
     } else if (key == "KeepEmptyBlocksOnOneLine") {

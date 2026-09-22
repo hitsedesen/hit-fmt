@@ -49,6 +49,7 @@ enum class BracePlacement
     Preserve,
     Attach,
     NewLine,
+    AttachUnlessMultiline,
 };
 
 enum class ParenthesisSpacing
@@ -71,6 +72,13 @@ enum class CaseLabelIndentation
     Preserve,
     Outdent,
     Indent,
+};
+
+enum class BracedInitializerSpacing
+{
+    Preserve,
+    Never,
+    Always,
 };
 
 struct Style
@@ -102,6 +110,8 @@ struct Style
     CaseLabelIndentation IndentCaseLabels = CaseLabelIndentation::Preserve;
     bool SpaceInsideParentheses = false;
     bool SpaceInsideSquareBrackets = false;
+    BracedInitializerSpacing SpaceInsideBracedInitializers =
+        BracedInitializerSpacing::Never;
     bool IndentNamespaces = false;
     bool KeepEmptyBlocksOnOneLine = true;
     bool AllowShortLambdasOnOneLine = true;

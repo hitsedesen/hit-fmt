@@ -25,6 +25,7 @@ ReferenceAlignment = "Preserve"
 IndentCaseLabels = "Preserve"
 SpaceInsideParentheses = false
 SpaceInsideSquareBrackets = false
+SpaceInsideBracedInitializers = "Never"
 IndentNamespaces = false
 KeepEmptyBlocksOnOneLine = true
 AllowShortLambdasOnOneLine = true
@@ -52,6 +53,8 @@ WhitespaceSensitiveMacros = ["DEFINE_ENUM", "ALIGNED_VALUES"]
 - `FunctionBracePlacement`, `RecordBracePlacement`,
   `ControlBracePlacement`, `LambdaBracePlacement`, and
   `NamespaceBracePlacement`: accept `Preserve`, `Attach`, or `NewLine`.
+  `ControlBracePlacement` also accepts `AttachUnlessMultiline`, which attaches
+  a control brace unless its parenthesized header spans multiple lines.
 - `SpaceBeforeParentheses`: accepts `Never`, `ControlStatements`, or `Always`.
 - `PointerAlignment` and `ReferenceAlignment`: independently control `*` and
   `&`/`&&` declarators and accept `Preserve`, `Left`, `Right`, or `Middle`.
@@ -59,6 +62,8 @@ WhitespaceSensitiveMacros = ["DEFINE_ENUM", "ALIGNED_VALUES"]
 - `SpaceInsideParentheses`: inserts spaces inside non-empty parentheses.
 - `SpaceInsideSquareBrackets`: inserts spaces inside ordinary subscript
   brackets, without changing lambdas, attributes, or structured bindings.
+- `SpaceInsideBracedInitializers`: accepts `Preserve`, `Never`, or `Always`
+  and controls spaces immediately inside one-line initializer braces.
 - `IndentNamespaces`: indents namespace contents.
 - `KeepEmptyBlocksOnOneLine`: keeps supported empty bodies as `{ }`.
 - `AllowShortLambdasOnOneLine`: permits compact one-statement lambdas when
