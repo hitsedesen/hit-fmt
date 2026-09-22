@@ -1912,7 +1912,7 @@ private:
     void Space()
     {
         if (!AtLineStart_ && !Output_.empty() && Output_.back() != ' ' &&
-            Output_.back() != '\n')
+            Output_.back() != '\t' && Output_.back() != '\n')
         {
             Output_.push_back(' ');
             ++Column_;
@@ -2221,6 +2221,15 @@ private:
             IsMisclassifiedUnaryOperator(index);
     }
 
+    bool IsAmbiguousCastOperator(TokenIndex index) const
+    {
+        if (!FollowsCast(index)) {
+            return false;
+        }
+        auto kind = Tree_.Kind(index);
+        return kind == TK::Operator_Star || kind == TK::Operator_Ampersand;
+    }
+
     bool IsUncertainContextDependentOperator(TokenIndex index) const
     {
         auto role = Tree_.Role(index);
@@ -2405,6 +2414,11 @@ private:
 
         if (IsExponentSign(previous, current)) {
             return false;
+        }
+        if (IsAmbiguousCastOperator(current) ||
+            IsAmbiguousCastOperator(previous))
+        {
+            return !Tree_.WhitespaceBefore(current).empty();
         }
         if (currentKind == TK::Operator_CloseParenthesis) {
             return Style_.SpaceInsideParentheses &&
@@ -2835,7 +2849,8 @@ private:
             }
             auto sourceSpacing = Tree_.WhitespaceBefore(index).size();
             size_t outputSpacing = 0;
-            for (auto i = Output_.size(); i != 0 && Output_[i - 1] == ' ';
+            for (auto i = Output_.size();
+                i != 0 && (Output_[i - 1] == ' ' || Output_[i - 1] == '\t');
                 --i)
             {
                 ++outputSpacing;
