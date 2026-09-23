@@ -33,6 +33,7 @@ OpenBracketAlignment = "Continuation"
 CloseBracketAlignment = "AlignWithOpening"
 ForbidBreakAfter = ["Format", "LOG_DEBUG"]
 WhitespaceSensitiveMacros = ["DEFINE_ENUM", "ALIGNED_VALUES"]
+Exclude = ["(^|/)generated(/|$)", "(^|/)legacy\\.cpp$"]
 ```
 
 ## Settings
@@ -79,6 +80,16 @@ WhitespaceSensitiveMacros = ["DEFINE_ENUM", "ALIGNED_VALUES"]
   first string argument remains beside the opening parenthesis.
 - `WhitespaceSensitiveMacros`: replaces the default list of macro invocations
   whose contents are emitted verbatim.
+- `Exclude`: an array of ECMAScript regular expressions. Each pattern is
+  searched against paths relative to the directory containing this `.hit-fmt`
+  file, using `/` as the separator. A matching directory and its contents are
+  skipped during recursive formatting and checking. An explicit file input is
+  also skipped if it matches. `--config` uses the specified file's directory;
+  `--no-config` disables these exclusions. CLI `--exclude` patterns are
+  additionally applied relative to each input directory. Backslashes in
+  regexes must be doubled inside quoted configuration strings (for example,
+  `\\.` matches a literal dot). Nested `.hit-fmt` files take precedence
+  for paths they cover unless a parent exclusion skips their directory.
 
 Array settings replace, rather than extend, their built-in defaults. Use an
 empty array to disable a list.

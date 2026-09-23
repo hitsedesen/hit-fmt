@@ -340,12 +340,13 @@ ClosingBracketAlignment ParseCloseBracketAlignment(
 }
 
 void ApplySetting(
-    Style& style,
+    Configuration& config,
     std::string_view key,
     std::string_view value,
     const std::filesystem::path& path,
     size_t line)
 {
+    auto& style = config.FormattingStyle;
     if (key == "IndentWidth") {
         style.IndentWidth = ParsePositiveInteger(value, path, line);
         if (style.IndentWidth > 32) {
@@ -411,6 +412,21 @@ void ApplySetting(
         style.ForbidBreakAfter = ParseStringList(value, path, line);
     } else if (key == "WhitespaceSensitiveMacros") {
         style.WhitespaceSensitiveMacros = ParseStringList(value, path, line);
+    } else if (key == "Exclude") {
+        config.Exclusions.clear();
+        for (const auto& pattern : ParseStringList(value, path, line)) {
+            if (pattern.empty()) {
+                ThrowConfigError(path, line, "Exclude regex must not be empty");
+            }
+            try {
+                config.Exclusions.emplace_back(pattern);
+            } catch (const std::regex_error& error) {
+                ThrowConfigError(
+                    path,
+                    line,
+                    "invalid Exclude regex '" + pattern + "': " + error.what());
+            }
+        }
     } else {
         ThrowConfigError(path, line, "unknown setting '" + std::string(key) + "'");
     }
@@ -418,14 +434,14 @@ void ApplySetting(
 
 } // namespace
 
-Style LoadStyleFile(const std::filesystem::path& path)
+Configuration LoadConfigFile(const std::filesystem::path& path)
 {
     std::ifstream input(path);
     if (!input.is_open()) {
         throw std::runtime_error("cannot open configuration file: " + path.string());
     }
 
-    Style style;
+    Configuration config;
     std::string lineText;
     size_t lineNumber = 0;
     while (std::getline(input, lineText)) {
@@ -443,12 +459,12 @@ Style LoadStyleFile(const std::filesystem::path& path)
         if (key.empty() || value.empty()) {
             ThrowConfigError(path, lineNumber, "expected Key = Value");
         }
-        ApplySetting(style, key, value, path, lineNumber);
+        ApplySetting(config, key, value, path, lineNumber);
     }
     if (!input.eof()) {
         throw std::runtime_error("failed to read configuration file: " + path.string());
     }
-    return style;
+    return config;
 }
 
 std::optional<std::filesystem::path> FindStyleFile(
