@@ -56,8 +56,10 @@ tasks:
             cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DHIT_FMT_TEST=ON
             cmake --build build --parallel 1
             ctest --test-dir build --output-on-failure -j 1
+            echo 'All tests passed'
             # Test fixtures and benchmarks intentionally use nonstandard layout.
             find util unicode tokenizer parser formatter hit-fmt \
               -type d \( -name testdata -o -name benchmarks \) -prune -o \
               -type f \( -name '*.cpp' -o -name '*.hpp' -o -name '*.h' \) -print0 \
               | xargs -0 -r build/hit-fmt/hit-fmt --check
+            echo 'No formatting issues found'
