@@ -39,8 +39,9 @@ into `main`. To publish a release, update the `VERSION` in `project()` in
 `release` workflow in SourceCraft CI/CD on `main`. It repeats the checks before
 pushing an annotated `v<version>` tag for that commit. An existing version tag
 is never overwritten; bump the project version for each release. Formatting
-checks exclude golden test fixtures and benchmark sources, which deliberately
-use other layouts.
+checks run on the repository folder. The root `.hit-fmt` excludes build
+outputs, golden test fixtures, and benchmark sources, which deliberately use
+other layouts.
 
 ## Usage
 
