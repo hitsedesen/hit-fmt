@@ -23,7 +23,7 @@ workflows:
               - |
                 set -eu
                 apt-get update
-                DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends cmake git g++
+                DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends ca-certificates cmake git g++ make
                 test "$SOURCECRAFT_EVENT" = manual
                 test "$SOURCECRAFT_COMMIT_REF" = refs/heads/main
                 # Do not tag a stale checkout or a version already released.
@@ -52,12 +52,14 @@ tasks:
           - |
             set -eu
             apt-get update
-            DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends cmake g++ libgtest-dev
+            DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends cmake g++ libgtest-dev make
             cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DHIT_FMT_TEST=ON
             cmake --build build --parallel 1
             ctest --test-dir build --output-on-failure -j 1
+            echo 'All tests passed'
             # Test fixtures and benchmarks intentionally use nonstandard layout.
             find util unicode tokenizer parser formatter hit-fmt \
               -type d \( -name testdata -o -name benchmarks \) -prune -o \
               -type f \( -name '*.cpp' -o -name '*.hpp' -o -name '*.h' \) -print0 \
               | xargs -0 -r build/hit-fmt/hit-fmt --check
+            echo 'No formatting issues found'
