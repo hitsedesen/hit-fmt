@@ -31,6 +31,17 @@ ctest --test-dir build
 Benchmarks can be built separately with
 `-DHIT_FMT_BENCHMARK=ON`; they require Google Benchmark.
 
+## Releases
+
+SourceCraft runs the test suite and checks source formatting on pull requests
+into `main`. To publish a release, update the `VERSION` in `project()` in
+`CMakeLists.txt`, merge the change into `main`, then manually run the
+`release` workflow in SourceCraft CI/CD on `main`. It repeats the checks before
+pushing an annotated `v<version>` tag for that commit. An existing version tag
+is never overwritten; bump the project version for each release. Formatting
+checks exclude golden test fixtures and benchmark sources, which deliberately
+use other layouts.
+
 ## Usage
 
 Format one file to standard output:

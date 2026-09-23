@@ -1,0 +1,63 @@
+# Pull requests get the same checks as a manually started release.
+# Run the release workflow on main after updating the CMake project version.
+on:
+  pull_request:
+    - workflows: verify
+      filter:
+        target_branches: main
+
+workflows:
+  verify:
+    tasks:
+      - verify
+  release:
+    tasks:
+      - name: verify
+        uses: verify
+      - name: tag
+        needs: [verify]
+        cubes:
+          - name: publish-tag
+            image: ubuntu:24.04
+            script:
+              - |
+                set -eu
+                apt-get update
+                DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends cmake git g++
+                test "$SOURCECRAFT_EVENT" = manual
+                test "$SOURCECRAFT_COMMIT_REF" = refs/heads/main
+                # Do not tag a stale checkout or a version already released.
+                head=$(git ls-remote origin refs/heads/main)
+                test "${head%%[[:space:]]*}" = "$SOURCECRAFT_COMMIT_SHA"
+                cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+                version=$(awk -F= '$1 == "CMAKE_PROJECT_VERSION:STATIC" {print $2}' build/CMakeCache.txt)
+                test -n "$version"
+                tag="v$version"
+                remote_tag=$(git ls-remote origin "refs/tags/$tag")
+                if git show-ref --verify --quiet "refs/tags/$tag" ||
+                   test -n "$remote_tag"; then
+                  echo "Tag $tag already exists" >&2
+                  exit 1
+                fi
+                git -c user.name='SourceCraft CI' -c user.email='ci@sourcecraft.dev' \
+                  tag -a "$tag" -m "Release $tag" "$SOURCECRAFT_COMMIT_SHA"
+                git push origin "refs/tags/$tag:refs/tags/$tag"
+
+tasks:
+  - name: verify
+    cubes:
+      - name: test-and-format
+        image: ubuntu:24.04
+        script:
+          - |
+            set -eu
+            apt-get update
+            DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends cmake g++ libgtest-dev
+            cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DHIT_FMT_TEST=ON
+            cmake --build build --parallel 1
+            ctest --test-dir build --output-on-failure -j 1
+            # Test fixtures and benchmarks intentionally use nonstandard layout.
+            find util unicode tokenizer parser formatter hit-fmt \
+              -type d \( -name testdata -o -name benchmarks \) -prune -o \
+              -type f \( -name '*.cpp' -o -name '*.hpp' -o -name '*.h' \) -print0 \
+              | xargs -0 -r build/hit-fmt/hit-fmt --check
