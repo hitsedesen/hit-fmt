@@ -4,14 +4,22 @@
 
 #include <filesystem>
 #include <optional>
+#include <regex>
+#include <vector>
 
 namespace formatter {
 
 inline constexpr std::string_view DefaultConfigFileName = ".hit-fmt";
 
-// Parses a configuration file by applying its values over the default Style.
+struct Configuration
+{
+    Style FormattingStyle;
+    std::vector<std::regex> Exclusions;
+};
+
+// Parses formatting settings and exclusion patterns from a configuration file.
 // Unknown keys and malformed values are rejected with a descriptive error.
-[[nodiscard]] Style LoadStyleFile(const std::filesystem::path& path);
+[[nodiscard]] Configuration LoadConfigFile(const std::filesystem::path& path);
 
 // Finds the nearest fileName in startDirectory or one of its parents.
 [[nodiscard]] std::optional<std::filesystem::path> FindStyleFile(

@@ -62,6 +62,19 @@ Check formatting without modifying files:
 hit-fmt --check src/ include/
 ```
 
+Skip files or whole subdirectories while formatting or checking a folder:
+
+```sh
+hit-fmt --in-place --exclude '(^|/)generated(/|$)' \
+    --exclude '(^|/)legacy\.cpp$' src/
+```
+
+`--exclude` accepts a repeatable ECMAScript regular expression. It searches
+paths relative to each input directory (using `/` as the separator); an
+explicit file input is matched by its filename. A matching directory and
+all its contents are skipped. Anchor patterns to path components as above
+to avoid matching similarly named files or directories.
+
 Run `hit-fmt --help` for all command-line options. See
 [`hit-fmt/CONFIGURATION.md`](hit-fmt/CONFIGURATION.md) for configuration
 settings and defaults.

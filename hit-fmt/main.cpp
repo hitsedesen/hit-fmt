@@ -11,6 +11,7 @@
 #include <iostream>
 #include <limits>
 #include <optional>
+#include <regex>
 #include <stdexcept>
 #include <string>
 #include <string_view>
@@ -205,15 +206,34 @@ bool IsCppSource(const std::filesystem::path& path)
         extension == ".ipp" || extension == ".tcc";
 }
 
+bool IsExcluded(
+    const std::filesystem::path& relativePath,
+    const std::vector<std::regex>& exclusions)
+{
+    if (exclusions.empty()) {
+        return false;
+    }
+    auto name = relativePath.generic_string();
+    return std::ranges::any_of(exclusions, [&] (const auto& pattern) {
+        return std::regex_search(name, pattern);
+    });
+}
+
+template <typename ConfigExcludes>
 std::vector<std::filesystem::path> CollectFiles(
     const std::vector<std::filesystem::path>& paths,
-    bool allowDirectories)
+    const std::vector<std::regex>& exclusions,
+    bool allowDirectories,
+    ConfigExcludes configExcludes)
 {
     std::vector<std::filesystem::path> files;
-    for (const auto& inputPath : paths) {
-        std::filesystem::path path(inputPath);
+    for (const auto& path : paths) {
         if (std::filesystem::is_regular_file(path)) {
-            files.push_back(std::move(path));
+            if (!IsExcluded(path.filename(), exclusions) &&
+                !configExcludes(path, false))
+            {
+                files.push_back(path);
+            }
             continue;
         }
         if (!std::filesystem::is_directory(path)) {
@@ -223,9 +243,23 @@ std::vector<std::filesystem::path> CollectFiles(
             throw std::runtime_error(
                 path.string() + ": directory input requires -i or --check");
         }
-        for (const auto& entry :
-             std::filesystem::recursive_directory_iterator(path))
+        if (configExcludes(path, true)) {
+            continue;
+        }
+        auto iterator = std::filesystem::recursive_directory_iterator(path);
+        for (const auto end = std::filesystem::recursive_directory_iterator();
+            iterator != end; ++iterator)
         {
+            const auto& entry = *iterator;
+            bool directory = entry.is_directory();
+            if (IsExcluded(entry.path().lexically_relative(path), exclusions) ||
+                configExcludes(entry.path(), directory))
+            {
+                if (directory) {
+                    iterator.disable_recursion_pending();
+                }
+                continue;
+            }
             if (!entry.is_symlink() && entry.is_regular_file() &&
                 IsCppSource(entry.path()))
             {
@@ -245,6 +279,7 @@ struct Options
     bool DisableConfig = false;
     bool ShowHelp = false;
     std::optional<std::filesystem::path> ConfigPath;
+    std::vector<std::regex> Exclusions;
     std::vector<std::filesystem::path> Paths;
 };
 
@@ -284,6 +319,27 @@ Options ParseOptions(int argc, char* argv[])
             options.ConfigPath = argv[index];
         } else if (argument.starts_with("--config=")) {
             options.ConfigPath = std::string(argument.substr(9));
+        } else if (argument == "--exclude" ||
+            argument.starts_with("--exclude="))
+        {
+            std::string pattern;
+            if (argument == "--exclude") {
+                if (++index == argc) {
+                    throw std::runtime_error("--exclude requires a regex");
+                }
+                pattern = argv[index];
+            } else {
+                pattern = argument.substr(10);
+            }
+            if (pattern.empty()) {
+                throw std::runtime_error("--exclude requires a regex");
+            }
+            try {
+                options.Exclusions.emplace_back(pattern);
+            } catch (const std::regex_error& error) {
+                throw std::runtime_error(
+                    "invalid --exclude regex: " + pattern + ": " + error.what());
+            }
         } else {
             throw std::runtime_error("unknown option: " + std::string(argument));
         }
@@ -304,17 +360,47 @@ public:
         : Disabled_(options.DisableConfig)
     {
         if (options.ConfigPath) {
-            ExplicitStyle_ = formatter::LoadStyleFile(*options.ConfigPath);
+            ExplicitConfig_ = ConfigEntry{
+                .Directory = std::filesystem::absolute(*options.ConfigPath)
+                                 .parent_path().lexically_normal(),
+                .Settings = formatter::LoadConfigFile(*options.ConfigPath),
+            };
         }
     }
 
     const formatter::Style& Resolve(const std::filesystem::path& sourcePath)
     {
-        if (ExplicitStyle_) {
-            return *ExplicitStyle_;
+        return FindConfig(sourcePath).Settings.FormattingStyle;
+    }
+
+    bool IsExcluded(const std::filesystem::path& path, bool directory)
+    {
+        // A directory is checked against its parent's configuration before
+        // descending; a file uses its own nearest configuration.
+        auto source = directory ? path.parent_path() / "unused.cpp" : path;
+        const auto& config = FindConfig(source);
+        if (config.Settings.Exclusions.empty()) {
+            return false;
+        }
+        auto relative = std::filesystem::absolute(path).lexically_normal()
+                            .lexically_relative(config.Directory);
+        return ::IsExcluded(relative, config.Settings.Exclusions);
+    }
+
+private:
+    struct ConfigEntry
+    {
+        std::filesystem::path Directory;
+        formatter::Configuration Settings;
+    };
+
+    const ConfigEntry& FindConfig(const std::filesystem::path& sourcePath)
+    {
+        if (ExplicitConfig_) {
+            return *ExplicitConfig_;
         }
         if (Disabled_) {
-            return DefaultStyle_;
+            return DefaultConfig_;
         }
         auto directory = sourcePath.parent_path();
         std::error_code error;
@@ -322,7 +408,7 @@ public:
             ? std::filesystem::current_path(error)
             : std::filesystem::absolute(directory, error);
         if (error) {
-            return DefaultStyle_;
+            return DefaultConfig_;
         }
         auto directoryKey = directory.lexically_normal().string();
         auto [configIterator, configInserted] =
@@ -332,24 +418,25 @@ public:
         }
         const auto& config = configIterator->second;
         if (!config) {
-            return DefaultStyle_;
+            return DefaultConfig_;
         }
         auto key = config->lexically_normal().string();
-        auto [iterator, inserted] = Styles_.try_emplace(key);
+        auto [iterator, inserted] = Configs_.try_emplace(key);
         if (inserted) {
-            iterator->second = formatter::LoadStyleFile(*config);
+            iterator->second.Directory =
+                config->parent_path().lexically_normal();
+            iterator->second.Settings = formatter::LoadConfigFile(*config);
         }
         return iterator->second;
     }
 
-private:
     bool Disabled_;
-    formatter::Style DefaultStyle_;
-    std::optional<formatter::Style> ExplicitStyle_;
+    ConfigEntry DefaultConfig_;
+    std::optional<ConfigEntry> ExplicitConfig_;
     std::unordered_map<
         std::string,
         std::optional<std::filesystem::path>> ConfigPaths_;
-    std::unordered_map<std::string, formatter::Style> Styles_;
+    std::unordered_map<std::string, ConfigEntry> Configs_;
 };
 
 void PrintHelp(std::ostream& output, std::string_view executable)
@@ -366,6 +453,7 @@ void PrintHelp(std::ostream& output, std::string_view executable)
         << "  --summary        With --check, print only file names.\n"
         << "  --config <file>  Use one configuration file for every input.\n"
         << "  --no-config      Do not search parent directories for .hit-fmt.\n"
+        << "  --exclude <regex> Skip matching files or directories (repeatable).\n"
         << "  -h, --help       Show this help.\n"
         << "\n"
         << "Without --config or --no-config, each source file uses the "
@@ -373,6 +461,9 @@ void PrintHelp(std::ostream& output, std::string_view executable)
         << "Paths passed to -i or --check may be files or directories.\n"
         << "Directories are searched recursively for C and C++ source "
            "files.\n"
+        << "--exclude patterns search paths relative to each input directory; "
+           ".hit-fmt Exclude patterns search paths relative to the config file.\n"
+        << "Both use ECMAScript regex; matching directories are skipped.\n"
         << "Files larger than 4 MiB are skipped with a warning in -i and "
            "--check modes.\n"
         << "Check output is colorized when written to a terminal; set "
@@ -382,7 +473,8 @@ void PrintHelp(std::ostream& output, std::string_view executable)
         << "  " << executable << " source.cpp\n"
         << "  " << executable << " -i source.cpp include/\n"
         << "  " << executable << " --check src/ include/header.h\n"
-        << "  " << executable << " --check --summary src/ include/\n";
+        << "  " << executable << " --check --summary src/ include/\n"
+        << "  " << executable << " -i --exclude '(^|/)generated(/|$)' src/\n";
 }
 
 } // namespace
@@ -403,8 +495,14 @@ int main(int argc, char* argv[])
             PrintHelp(std::cerr, argv[0]);
             return 1;
         }
-        files = CollectFiles(options.Paths, !standardOutputMode);
         styleResolver.emplace(options);
+        files = CollectFiles(
+            options.Paths,
+            options.Exclusions,
+            !standardOutputMode,
+            [&] (const auto& path, bool directory) {
+                return styleResolver->IsExcluded(path, directory);
+            });
     } catch (const std::exception& error) {
         std::cerr << error.what() << '\n';
         return 1;

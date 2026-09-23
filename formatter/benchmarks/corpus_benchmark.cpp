@@ -50,7 +50,7 @@ int main(int argc, char* argv[])
         return 1;
     }
     try {
-        auto style = formatter::LoadStyleFile(argv[2]);
+        auto config = formatter::LoadConfigFile(argv[2]);
         std::filesystem::path root(argv[1]);
         std::vector<std::filesystem::path> paths;
         for (const auto& entry :
@@ -89,7 +89,7 @@ int main(int argc, char* argv[])
                 .Size = storage.size() - util::SourcePaddingSize,
             };
             auto start = std::chrono::steady_clock::now();
-            auto output = formatter::Format(source, style);
+            auto output = formatter::Format(source, config.FormattingStyle);
             elapsed += std::chrono::steady_clock::now() - start;
 
             ++files;
