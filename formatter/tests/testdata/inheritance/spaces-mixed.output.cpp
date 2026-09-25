@@ -1,6 +1,7 @@
 struct Inline: Alpha ,Beta {};
 class Previous: public Base {};
 class Leading: public Base {};
+class BlankHeader: public Base {};
 class Long
     final: public Alpha ,private Beta {};
 class Commented /* keep */

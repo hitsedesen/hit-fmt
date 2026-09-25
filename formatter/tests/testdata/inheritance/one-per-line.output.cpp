@@ -16,7 +16,8 @@ struct Deep : std::integral_constant<int, 3>,
     public End {};
 struct Covered : First, /* keep */ Second {};
 struct Blank : First,
-
+    Second {};
+struct BlankColon : First,
     Second {};
 struct Single : First {};
 struct Incomplete : First, public {};
