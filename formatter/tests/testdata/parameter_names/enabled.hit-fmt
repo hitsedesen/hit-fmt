@@ -1,1 +1,2 @@
-CheckFunctionParameterNames = true
+FunctionDeclarationParameterNames = Required
+FunctionDefinitionParameterNames = NameOrCommentedNameRequired

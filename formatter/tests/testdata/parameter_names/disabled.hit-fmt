@@ -1,1 +1,2 @@
-CheckFunctionParameterNames = false
+FunctionDeclarationParameterNames = Unchecked
+FunctionDefinitionParameterNames = Unchecked

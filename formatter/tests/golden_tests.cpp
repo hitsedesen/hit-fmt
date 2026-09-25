@@ -197,17 +197,18 @@ TEST_P(ParameterNameGoldenTest, ReportsConfiguredMissingNames)
         {.Data = storage.data(), .Size = input.size()},
         [] (parser::ParseError) { });
     std::string actual;
-    if (config.CheckFunctionParameterNames) {
-        for (const auto& diagnostic : formatter::CheckParameterNames(tree)) {
-            actual += std::to_string(diagnostic.Position.Line) + ":" +
-                std::to_string(diagnostic.Position.Column) + "\n";
-        }
+    for (const auto& diagnostic : formatter::CheckParameterNames(tree,
+        config))
+    {
+        actual += std::to_string(diagnostic.Position.Line) + ":" +
+            std::to_string(diagnostic.Position.Column) + "\n";
     }
     EXPECT_EQ(actual, expected);
 }
 
 INSTANTIATE_TEST_SUITE_P(Configurations, ParameterNameGoldenTest,
-    testing::Values("enabled", "disabled", "default"));
+    testing::Values("enabled", "disabled", "default",
+        "declarations_only", "definitions_only", "names_only"));
 
 TEST(FunctionParameterSafetyTest, ComposesWithBracePlacement)
 {

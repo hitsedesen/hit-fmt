@@ -541,9 +541,7 @@ int main(int argc, char* argv[])
                 break;
             case Mode::Check: {
                 auto names = formatter::CheckNames(tree, config.Naming);
-                auto parameters = config.CheckFunctionParameterNames
-                    ? formatter::CheckParameterNames(tree)
-                    : std::vector<formatter::ParameterNameDiagnostic>{};
+                auto parameters = formatter::CheckParameterNames(tree, config);
                 bool mismatch = formatted != source || !names.empty() ||
                     !parameters.empty();
                 if (summaryOnly && mismatch) {
@@ -567,8 +565,7 @@ int main(int argc, char* argv[])
                     for (const auto& diagnostic : parameters) {
                         std::cout << filePath << ':' << diagnostic.Position.Line
                                   << ':' << diagnostic.Position.Column
-                                  << ": function parameter needs a name"
-                                  << " (or a commented name in a definition)\n";
+                                  << ": function parameter name required\n";
                     }
                 }
                 mismatchCount += mismatch;

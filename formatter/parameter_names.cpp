@@ -97,6 +97,7 @@ bool IsCommentedName(std::string_view text)
 }
 
 void CheckFunction(const parser::SyntaxTree& tree, const Node& function,
+    FunctionDefinitionParameterNames definitionPolicy,
     std::vector<ParameterNameDiagnostic>& diagnostics)
 {
     auto* list = Child(function, NK::InitDeclaratorList);
@@ -153,7 +154,10 @@ void CheckFunction(const parser::SyntaxTree& tree, const Node& function,
             if (unsafe || HasName(*parameter)) {
                 continue;
             }
-            if (function.Kind == NK::FunctionDefinition) {
+            if (function.Kind == NK::FunctionDefinition &&
+                definitionPolicy ==
+                    FunctionDefinitionParameterNames::NameOrCommentedNameRequired)
+            {
                 // A comment naming an unused parameter must end the type,
                 // not be a note inside it or inside a default expression.
                 auto last = end;
@@ -178,17 +182,23 @@ void CheckFunction(const parser::SyntaxTree& tree, const Node& function,
 } // namespace
 
 std::vector<ParameterNameDiagnostic>
-CheckParameterNames(const parser::SyntaxTree& tree)
+CheckParameterNames(const parser::SyntaxTree& tree,
+    const Configuration& config)
 {
     std::vector<ParameterNameDiagnostic> diagnostics;
     std::vector<const Node*> stack{&tree.Root()};
     while (!stack.empty()) {
         auto* node = stack.back();
         stack.pop_back();
-        if (node->Kind == NK::FunctionDeclaration ||
-            node->Kind == NK::FunctionDefinition)
+        if ((node->Kind == NK::FunctionDeclaration &&
+                config.DeclarationParameterNames ==
+                    FunctionDeclarationParameterNames::Required) ||
+            (node->Kind == NK::FunctionDefinition &&
+                config.DefinitionParameterNames !=
+                    FunctionDefinitionParameterNames::Unchecked))
         {
-            CheckFunction(tree, *node, diagnostics);
+            CheckFunction(tree, *node, config.DefinitionParameterNames,
+                diagnostics);
         }
         for (auto* child = node->Child(); child; child = child->NextSibling) {
             stack.push_back(child);

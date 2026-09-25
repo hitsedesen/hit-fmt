@@ -1,5 +1,7 @@
 #pragma once
 
+#include "config.hpp"
+
 #include <parser/syntax_tree.hpp>
 
 #include <vector>
@@ -14,6 +16,7 @@ struct ParameterNameDiagnostic
 };
 
 [[nodiscard]] std::vector<ParameterNameDiagnostic>
-CheckParameterNames(const parser::SyntaxTree& tree);
+CheckParameterNames(const parser::SyntaxTree& tree,
+    const Configuration& config);
 
 } // namespace formatter
