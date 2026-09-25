@@ -20,6 +20,28 @@ using TK = tokenizer::TokenKind;
 using TokenIndex = parser::TokenIndex;
 constexpr TokenIndex NoToken = std::numeric_limits<TokenIndex>::max();
 
+bool IsIncompleteStatement(const parser::Node& node)
+{
+    if (node.Kind != NK::ExpressionStatement &&
+        node.Kind != NK::DeclarationStatement &&
+        node.Kind != NK::ReturnStatement &&
+        node.Kind != NK::ThrowStatement &&
+        node.Kind != NK::CoYieldStatement)
+    {
+        return false;
+    }
+    for (auto* child = node.Child(); child; child = child->NextSibling) {
+        if (child->Kind == NK::UnparsedSyntax ||
+            child->Kind == NK::MissingToken ||
+            child->Kind == NK::UnexpectedToken ||
+            child->Kind == NK::Error)
+        {
+            return true;
+        }
+    }
+    return false;
+}
+
 // Token spelling and all trivia other than the selected opening-brace gap
 // remain source-owned. Classification uses syntax nodes, not neighboring
 // keywords (which also occur in expressions and template arguments).
@@ -151,6 +173,10 @@ private:
         while (!nodes.empty()) {
             auto* node = nodes.back();
             nodes.pop_back();
+            // Do not format a valid-looking prefix of a recovered statement.
+            if (IsIncompleteStatement(*node)) {
+                continue;
+            }
             ClassifyNode(*node);
             for (auto* child = node->FirstChild; child;
                 child = child->NextSibling)
@@ -1047,6 +1073,9 @@ std::string FormatParameters(const parser::SyntaxTree& tree, const Style& style)
     while (!nodes.empty()) {
         auto [node, parent] = nodes.back();
         nodes.pop_back();
+        if (IsIncompleteStatement(*node)) {
+            continue;
+        }
         // A macro invocation can be recovered as an abstract function
         // declarator. Only a named declarator denotes a function here.
         if (node->Kind == parser::NodeKind::FunctionDeclarator &&

@@ -112,9 +112,9 @@ Exclude = ["(^|/)generated(/|$)", "(^|/)legacy\\.cpp$"]
   lambda parameters, built-in type casts, and control or `requires`
   expressions are unaffected. Ambiguous parenthesized callees, which
   could instead be C-style casts, are preserved unless the inner expression
-  is clearly callable (such as `(*fn)(arg)`).
-  The setting controls the gap *before* the argument list, not whitespace
-  between individual arguments.
+  is clearly callable (such as `(*fn)(arg)`). Calls in incompletely parsed
+  statements remain source-owned. The setting controls the gap *before*
+  the argument list, not whitespace between individual arguments.
 - `SpaceInsideFunctionParameters`: `Preserve` (default) leaves gaps just
   inside the `(` and `)` of a named function's nonempty parameter list
   unchanged; `Space` uses one space and `NoSpace` removes it. Newlines,
@@ -127,8 +127,9 @@ Exclude = ["(^|/)generated(/|$)", "(^|/)legacy\\.cpp$"]
   unchanged; `Space` uses one space and `NoSpace` removes it. Empty pairs,
   newlines, and gaps adjacent to comments or directives remain untouched.
   Ambiguous parenthesized callees (which may be casts), built-in type
-  casts, declarations, lambda parameters, and control conditions are
-  unaffected. The rule does not change whitespace between arguments.
+  casts, declarations, lambda parameters, control conditions, and calls
+  in incompletely parsed statements are unaffected. The rule does not
+  change whitespace between arguments.
 - `ControlBlockKeywordSpacing`: `Preserve` (default) leaves whitespace
   between a control keyword and its condition `(` unchanged; `Space` uses
   exactly one space and `NoSpace` removes it. Applies to `if`, `for`,

@@ -19,6 +19,7 @@ void use(int n) {
     target (target (n));
     functor.template invoke<int> (n);
     target /* keep */ (n);
+    target  (n) broken  (n);
     target
     (n);
     if (n) { target (n); }
