@@ -175,6 +175,30 @@ std::vector<std::string> ParseStringList(
     }
 }
 
+bool ParseBoolean(std::string_view value,
+    const std::filesystem::path& path, size_t line)
+{
+    if (value == "true") {
+        return true;
+    }
+    if (value == "false") {
+        return false;
+    }
+    ThrowConfigError(path, line, "expected true or false");
+}
+
+std::string_view ParseOption(std::string_view value,
+    const std::filesystem::path& path, size_t line)
+{
+    if (value.empty() || value.find_first_not_of(
+            "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ") !=
+            std::string_view::npos)
+    {
+        ThrowConfigError(path, line, "expected an option name");
+    }
+    return value;
+}
+
 void ApplySetting(
     Configuration& config,
     std::string_view key,
@@ -212,6 +236,49 @@ void ApplySetting(
     } else if (key == "NamespaceBracePlacement") {
         config.FormattingStyle.NamespaceBracePlacement =
             ParseBracePlacement(value, path, line);
+    } else if (key == "FunctionParameterSplit") {
+        value = ParseOption(value, path, line);
+        if (value == "Preserve") {
+            config.FormattingStyle.FunctionParameterSplit =
+                FunctionParameterSplit::Preserve;
+        } else if (value == "Pack") {
+            config.FormattingStyle.FunctionParameterSplit =
+                FunctionParameterSplit::Pack;
+        } else if (value == "OnePerLine") {
+            config.FormattingStyle.FunctionParameterSplit =
+                FunctionParameterSplit::OnePerLine;
+        } else {
+            ThrowConfigError(path, line, "invalid FunctionParameterSplit");
+        }
+    } else if (key == "FirstFunctionParameterPosition") {
+        value = ParseOption(value, path, line);
+        if (value == "NameLine") {
+            config.FormattingStyle.FirstFunctionParameterPosition =
+                FirstFunctionParameterPosition::NameLine;
+        } else if (value == "NewLine") {
+            config.FormattingStyle.FirstFunctionParameterPosition =
+                FirstFunctionParameterPosition::NewLine;
+        } else {
+            ThrowConfigError(path, line,
+                "invalid FirstFunctionParameterPosition");
+        }
+    } else if (key == "EnforceFirstFunctionParameterPosition") {
+        config.FormattingStyle.EnforceFirstFunctionParameterPosition =
+            ParseBoolean(value, path, line);
+    } else if (key == "FunctionParameterIndent") {
+        value = ParseOption(value, path, line);
+        if (value == "IndentWidth") {
+            config.FormattingStyle.FunctionParameterIndent =
+                FunctionParameterIndent::IndentWidth;
+        } else if (value == "Continuation") {
+            config.FormattingStyle.FunctionParameterIndent =
+                FunctionParameterIndent::Continuation;
+        } else {
+            ThrowConfigError(path, line, "invalid FunctionParameterIndent");
+        }
+    } else if (key == "MergeFunctionParameters") {
+        config.FormattingStyle.MergeFunctionParameters =
+            ParseBoolean(value, path, line);
     } else if (key == "Exclude") {
         config.Exclusions.clear();
         for (const auto& pattern : ParseStringList(value, path, line)) {
