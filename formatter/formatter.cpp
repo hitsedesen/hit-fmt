@@ -305,6 +305,27 @@ private:
         FunctionGaps_[opening] = true;
     }
 
+    bool IsAmbiguousParenthesizedCallee(const parser::Node& callee) const
+    {
+        if (callee.Kind != NK::ParenthesizedExpression) {
+            return false;
+        }
+        // (Type) (value) and (function) (value) are indistinguishable
+        // without name lookup. Only format unmistakable expression callees.
+        const auto* inner = callee.Child();
+        if (!inner || inner->Tokens.Empty()) {
+            return true;
+        }
+        if (inner->Kind == NK::LambdaExpression ||
+            inner->Kind == NK::CallExpression)
+        {
+            return false;
+        }
+        return inner->Kind != NK::UnaryExpression ||
+            (Tree_.Kind(inner->Tokens.Begin) != TK::Operator_Star &&
+                Tree_.Kind(inner->Tokens.Begin) != TK::Operator_Ampersand);
+    }
+
     void MarkCallGap(const parser::Node& call)
     {
         if (Style_.FunctionCallSpaceBeforeParameters ==
@@ -316,7 +337,9 @@ private:
         const auto* arguments = callee ? callee->NextSibling : nullptr;
         if (!callee || callee->Tokens.Empty() ||
             callee->Kind == NK::UnparsedSyntax ||
-            callee->Kind == NK::Expression || !arguments ||
+            callee->Kind == NK::Expression ||
+            IsAmbiguousParenthesizedCallee(*callee) ||
+            !arguments ||
             arguments->Kind != NK::ArgumentList || arguments->Tokens.Empty())
         {
             return;

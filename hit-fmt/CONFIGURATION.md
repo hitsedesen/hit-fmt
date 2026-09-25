@@ -108,7 +108,9 @@ Exclude = ["(^|/)generated(/|$)", "(^|/)legacy\\.cpp$"]
   inserts one space and `NoSpace` removes it. Newlines, intervening
   comments, and directives are left unchanged. Function declarations,
   lambda parameters, built-in type casts, and control or `requires`
-  expressions are unaffected.
+  expressions are unaffected. Ambiguous parenthesized callees, which
+  could instead be C-style casts, are preserved unless the inner expression
+  is clearly callable (such as `(*fn)(arg)`).
   The setting controls the gap *before* the argument list, not whitespace
   between individual arguments.
 - `ControlBlockKeywordSpacing`: `Preserve` (default) leaves whitespace
