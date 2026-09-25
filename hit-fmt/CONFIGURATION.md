@@ -2,8 +2,9 @@
 
 The formatter preserves source-owned token and trivia bytes except where an
 explicitly configured declaration brace, lambda capture-to-parameter
-spacing, control keyword spacing, namespace comment, or function parameter
-rule applies. All formatting rules default to preserving the source.
+spacing, control keyword spacing or brace placement, namespace comment,
+or function parameter rule applies. All formatting rules default to
+preserving the source.
 Naming rules default to unchecked and never rewrite identifiers; `--check`
 reports violations with file, line and column and returns a nonzero status.
 
@@ -34,6 +35,7 @@ ClassBraceSpacing = Preserve
 LambdaBraceSpacing = Preserve
 LambdaSpaceBeforeParameters = Preserve
 ControlBlockKeywordSpacing = Preserve
+ControlBlockBracePlacement = Preserve
 StructBraceSpacing = Preserve
 EnumBraceSpacing = Preserve
 UnionBraceSpacing = Preserve
@@ -99,6 +101,16 @@ Exclude = ["(^|/)generated(/|$)", "(^|/)legacy\\.cpp$"]
   `if constexpr (` and `for co_await (`. Newlines, comments, directives,
   macro-wrapped conditions, calls, and function declarations are unchanged.
   `else` and `do` have no condition `(` to which this rule applies.
+- `ControlBlockBracePlacement`: `Preserve` (default) leaves opening braces
+  untouched; `SameLine` attaches them to the control header, and `NewLine`
+  puts them on a separate line. `AttachUnlessMultiline` attaches braces
+  for single-line headers but puts them on a separate line when the header
+  spans multiple lines (not merely because the brace was detached). Applies
+  to compound bodies of `if`, `else`, `for`, `while`, `do`, `switch`, `try`,
+  and `catch`, but not unbraced statements or unrelated compound blocks.
+  Existing same-line whitespace is preserved; attaching a detached brace
+  uses one space. Comments and directives that cannot be moved safely stay
+  in place.
 - `<Kind>NameCase` and `<Kind>NamePrefixes`: independent naming checks for
   `Class`, `Enum`, `Union`, `Struct`, `Function`, `Concept`, `Variable`, and
   `Namespace`. Cases are `camelCase`, `PascalCase`, `snake_case`, and

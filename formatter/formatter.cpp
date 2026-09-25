@@ -33,6 +33,7 @@ public:
         , Spacings_(tree.TokenCount(), SameLineBraceSpacing::Preserve)
         , LambdaGaps_(tree.TokenCount(), false)
         , ControlGaps_(tree.TokenCount(), false)
+        , ControlBraces_(tree.TokenCount(), false)
     {
         Output_.reserve(tree.Source().size());
         if (style.ClassBracePlacement != BracePlacement::Preserve ||
@@ -51,7 +52,9 @@ public:
             style.LambdaSpaceBeforeParameters !=
                 LambdaSpaceBeforeParameters::Preserve ||
             style.ControlBlockKeywordSpacing !=
-                ControlBlockKeywordSpacing::Preserve)
+                ControlBlockKeywordSpacing::Preserve ||
+            style.ControlBlockBracePlacement !=
+                ControlBlockBracePlacement::Preserve)
         {
             Classify();
         }
@@ -80,7 +83,7 @@ public:
                     Output_.append(Tree_.TokenText(index + 1));
                     Output_.append(LineEnding(index));
                     auto header = HeaderStarts_[index];
-                    Output_.append(Indentation(
+                    Output_.append(BraceIndentation(index,
                         header == NoToken ? index : header));
                     Output_.append(Tree_.TokenText(index));
                     ++index; // The comment has already been emitted.
@@ -204,7 +207,9 @@ private:
         case NK::DoWhileStatement:
         case NK::SwitchStatement:
         case NK::CatchClause:
+        case NK::TryStatement:
             MarkControlGap(node);
+            MarkControlBraces(node);
             break;
         case NK::LambdaExpression:
             if (Style_.LambdaSpaceBeforeParameters !=
@@ -239,6 +244,62 @@ private:
             break;
         default:
             break;
+        }
+    }
+
+    void MarkControlBraces(const parser::Node& node)
+    {
+        auto policy = Style_.ControlBlockBracePlacement;
+        if (policy == ControlBlockBracePlacement::Preserve) {
+            return;
+        }
+        for (auto* child = node.Child(); child; child = child->NextSibling) {
+            if (child->Kind != NK::CompoundStatement ||
+                child->Tokens.Empty())
+            {
+                continue;
+            }
+            const auto opening = child->Tokens.Begin;
+            if (opening >= Tree_.TokenCount() ||
+                Tree_.Kind(opening) != TK::Operator_OpenBrace ||
+                Tree_.MatchingDelimiter(opening) == NoToken)
+            {
+                continue;
+            }
+            auto header = node.Tokens.Begin;
+            // The else branch belongs to its own header, not the if condition
+            // (which can itself span several lines).
+            if (node.Kind == NK::IfStatement) {
+                for (auto i = header; i < opening; ++i) {
+                    if (Tree_.Kind(i) == TK::Keyword_else) {
+                        header = i;
+                    }
+                }
+            }
+            // A detached brace must not count as a multiline header.
+            // Similarly, a comment after the header is not the header's end.
+            auto last = opening;
+            while (last > header) {
+                --last;
+                if (Tree_.Kind(last) != TK::Comment) {
+                    break;
+                }
+            }
+            if (last == header && Tree_.Kind(last) == TK::Comment) {
+                continue;
+            }
+            const auto begin = Tree_.Token(header).Text.Begin;
+            const auto end = Tree_.Token(last).Text.End;
+            const bool multiline = Tree_.Source().substr(begin, end - begin)
+                .contains('\n');
+            const auto placement =
+                policy == ControlBlockBracePlacement::NewLine ||
+                    (policy == ControlBlockBracePlacement::AttachUnlessMultiline &&
+                        multiline)
+                    ? BracePlacement::NewLine : BracePlacement::Attach;
+            MarkOpening(*child, placement, SameLineBraceSpacing::Preserve,
+                header);
+            ControlBraces_[opening] = true;
         }
     }
 
@@ -293,6 +354,20 @@ private:
         auto prefix = source.substr(start, offset - start);
         return prefix.find_first_not_of(" \t") == std::string_view::npos
             ? prefix : std::string_view{};
+    }
+
+    std::string_view BraceIndentation(TokenIndex brace, TokenIndex header) const
+    {
+        if (!ControlBraces_[brace]) {
+            return Indentation(header);
+        }
+        auto source = Tree_.Source();
+        auto offset = Tree_.Token(header).Text.Begin;
+        auto newline = offset == 0 ? std::string_view::npos
+            : source.rfind('\n', offset - 1);
+        auto start = newline == std::string_view::npos ? 0 : newline + 1;
+        auto prefix = source.substr(start, offset - start);
+        return prefix.substr(0, prefix.find_first_not_of(" \t"));
     }
 
     std::string_view LineEnding(TokenIndex index) const
@@ -405,7 +480,8 @@ private:
         } else {
             Output_.append(LineEnding(index));
             auto header = HeaderStarts_[index];
-            Output_.append(Indentation(header == NoToken ? index : header));
+            Output_.append(BraceIndentation(index,
+                header == NoToken ? index : header));
         }
     }
 
@@ -415,6 +491,7 @@ private:
     std::vector<SameLineBraceSpacing> Spacings_;
     std::vector<bool> LambdaGaps_;
     std::vector<bool> ControlGaps_;
+    std::vector<bool> ControlBraces_;
     // Only initialized for openings with an active placement.
     std::vector<TokenIndex> HeaderStarts_ =
         std::vector<TokenIndex>(Tree_.TokenCount(), NoToken);
@@ -799,7 +876,9 @@ std::string Format(const parser::SyntaxTree& tree, const Style& style)
         style.LambdaSpaceBeforeParameters ==
             LambdaSpaceBeforeParameters::Preserve &&
         style.ControlBlockKeywordSpacing ==
-            ControlBlockKeywordSpacing::Preserve;
+            ControlBlockKeywordSpacing::Preserve &&
+        style.ControlBlockBracePlacement ==
+            ControlBlockBracePlacement::Preserve;
     std::string formatted;
     if (style.FunctionParameterSplit == FunctionParameterSplit::Preserve) {
         formatted = Formatter(tree, style).Run();

@@ -28,6 +28,13 @@ enum class SameLineBraceSpacing
 
 enum class LambdaSpaceBeforeParameters { Preserve, Space, NoSpace };
 enum class ControlBlockKeywordSpacing { Preserve, Space, NoSpace };
+enum class ControlBlockBracePlacement
+{
+    Preserve,
+    SameLine,
+    NewLine,
+    AttachUnlessMultiline,
+};
 
 struct Style
 {
@@ -51,6 +58,8 @@ struct Style
     bool MergeFunctionParameters = false;
     formatter::ControlBlockKeywordSpacing ControlBlockKeywordSpacing =
         formatter::ControlBlockKeywordSpacing::Preserve;
+    formatter::ControlBlockBracePlacement ControlBlockBracePlacement =
+        formatter::ControlBlockBracePlacement::Preserve;
     SameLineBraceSpacing ClassBraceSpacing = SameLineBraceSpacing::Preserve;
     SameLineBraceSpacing LambdaBraceSpacing = SameLineBraceSpacing::Preserve;
     formatter::LambdaSpaceBeforeParameters LambdaSpaceBeforeParameters =

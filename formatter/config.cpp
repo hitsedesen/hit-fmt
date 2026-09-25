@@ -384,6 +384,25 @@ void ApplySetting(
     } else if (key == "MergeFunctionParameters") {
         config.FormattingStyle.MergeFunctionParameters =
             ParseBoolean(value, path, line);
+    } else if (key == "ControlBlockBracePlacement") {
+        value = ParseOption(value, path, line);
+        if (value == "Preserve") {
+            config.FormattingStyle.ControlBlockBracePlacement =
+                ControlBlockBracePlacement::Preserve;
+        } else if (value == "SameLine") {
+            config.FormattingStyle.ControlBlockBracePlacement =
+                ControlBlockBracePlacement::SameLine;
+        } else if (value == "NewLine") {
+            config.FormattingStyle.ControlBlockBracePlacement =
+                ControlBlockBracePlacement::NewLine;
+        } else if (value == "AttachUnlessMultiline") {
+            config.FormattingStyle.ControlBlockBracePlacement =
+                ControlBlockBracePlacement::AttachUnlessMultiline;
+        } else {
+            ThrowConfigError(path, line,
+                "expected Preserve, SameLine, NewLine or "
+                "AttachUnlessMultiline");
+        }
     } else if (key == "ControlBlockKeywordSpacing") {
         value = ParseOption(value, path, line);
         if (value == "Preserve") {

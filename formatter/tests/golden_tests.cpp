@@ -302,6 +302,26 @@ TEST_P(ControlKeywordSpacingGoldenTest, FormatsOnlyParsedControlHeaders)
 INSTANTIATE_TEST_SUITE_P(Configurations, ControlKeywordSpacingGoldenTest,
     testing::Values("preserve", "space", "no-space"));
 
+class ControlBracePlacementGoldenTest : public testing::TestWithParam<std::string>
+{ };
+
+TEST_P(ControlBracePlacementGoldenTest, PlacesOnlyControlBodyBraces)
+{
+    const auto directory = std::filesystem::path(CONTROL_BRACE_TESTDATA_DIR);
+    const auto input = ReadFile(directory /
+        (GetParam() == "combined" ? "combined.input.cpp" : "input.cpp"));
+    const auto expected = ReadFile(directory / (GetParam() + ".output.cpp"));
+    const auto style = formatter::LoadConfigFile(
+        directory / (GetParam() + ".hit-fmt")).FormattingStyle;
+
+    EXPECT_EQ(FormatWithStyle(input, style), expected);
+    EXPECT_EQ(FormatWithStyle(expected, style), expected);
+}
+
+INSTANTIATE_TEST_SUITE_P(Configurations, ControlBracePlacementGoldenTest,
+    testing::Values("preserve", "same-line", "new-line",
+        "attach-unless-multiline", "combined"));
+
 TEST(BraceSpacingTest, ComposesWithParameterReflow)
 {
     formatter::Style style;
@@ -392,6 +412,7 @@ TEST(PreserveConfigTest, RejectsInvalidSettings)
         "MergeFunctionParameters = yes\n",
         "LambdaSpaceBeforeParameters = Unknown\n",
         "ControlBlockKeywordSpacing = Unknown\n",
+        "ControlBlockBracePlacement = Unknown\n",
         "Exclude = [\"[\"]\n",
         "StructNameCase = lowercase\n",
         "ClassNamePrefixes = []\n",
