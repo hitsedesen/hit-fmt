@@ -3,7 +3,10 @@
 #include <parser/parser.hpp>
 #include <tokenizer/token.hpp>
 
+#include <algorithm>
+#include <cctype>
 #include <limits>
+#include <optional>
 #include <string>
 #include <string_view>
 #include <utility>
@@ -284,11 +287,242 @@ private:
     std::string Output_;
 };
 
+struct Replacement
+{
+    size_t Begin;
+    size_t End;
+    std::string Text;
+};
+
+bool IsWhitespace(std::string_view text)
+{
+    return std::ranges::all_of(text, [] (unsigned char ch) {
+        return std::isspace(ch) != 0;
+    });
+}
+
+// Only rewrite lists whose comma-separated elements and intervening trivia
+// can be moved without touching comments, directives, or nested line breaks.
+std::optional<Replacement> ReflowParameters(
+    const parser::SyntaxTree& tree, const parser::Node& list,
+    const Style& style)
+{
+    using TK = tokenizer::TokenKind;
+    auto opening = list.Tokens.Begin;
+    auto closing = list.Tokens.End - 1;
+    if (list.Tokens.Size() < 3 ||
+        tree.Kind(opening) != TK::Operator_OpenParenthesis ||
+        tree.Kind(closing) != TK::Operator_CloseParenthesis ||
+        tree.MatchingDelimiter(opening) != closing)
+    {
+        return std::nullopt;
+    }
+
+    auto source = tree.Source();
+    auto openBegin = tree.Token(opening).Text.Begin;
+    auto begin = tree.Token(opening).Text.End;
+    auto end = tree.Token(closing).Text.Begin;
+    std::vector<std::string_view> parameters;
+    size_t cursor = begin;
+    bool expectParameter = true;
+    for (auto* child = list.Child(); child; child = child->NextSibling) {
+        if (child->Tokens.Empty()) {
+            return std::nullopt;
+        }
+        if (expectParameter ? child->Kind != parser::NodeKind::ParameterDeclaration
+                            : child->Kind != parser::NodeKind::ListSeparator)
+        {
+            return std::nullopt;
+        }
+        auto first = child->Tokens.Begin;
+        auto last = child->Tokens.End - 1;
+        auto from = tree.Token(first).Text.Begin;
+        auto to = tree.Token(last).Text.End;
+        if (from < cursor || to > end ||
+            !IsWhitespace(source.substr(cursor, from - cursor)))
+        {
+            return std::nullopt;
+        }
+        if (expectParameter) {
+            auto text = source.substr(from, to - from);
+            if (text.find_first_of("\r\n") != std::string_view::npos) {
+                return std::nullopt;
+            }
+            for (auto i = first; i < child->Tokens.End; ++i) {
+                if (tree.Kind(i) == TK::Comment ||
+                    tree.Kind(i) == TK::PreprocessingDirective)
+                {
+                    return std::nullopt;
+                }
+            }
+            parameters.push_back(text);
+        } else if (first != last || tree.Kind(first) != TK::Operator_Comma) {
+            return std::nullopt;
+        }
+        cursor = to;
+        expectParameter = !expectParameter;
+    }
+    if (expectParameter || parameters.empty() ||
+        !IsWhitespace(source.substr(cursor, end - cursor)) ||
+        source.substr(begin, end - begin).find('\r') != std::string_view::npos)
+    {
+        return std::nullopt;
+    }
+
+    auto lineStart = source.rfind('\n', openBegin);
+    lineStart = lineStart == std::string_view::npos ? 0 : lineStart + 1;
+    auto prefix = openBegin + 1 - lineStart;
+    auto lineEnd = source.find('\n', end);
+    if (lineEnd == std::string_view::npos) {
+        lineEnd = source.size();
+    }
+    auto suffix = source.substr(end, lineEnd - end);
+    if (suffix.find('\r') != std::string_view::npos) {
+        return std::nullopt;
+    }
+    size_t flatWidth = prefix + suffix.size();
+    for (size_t i = 0; i < parameters.size(); ++i) {
+        flatWidth += parameters[i].size() + (i ? 2 : 0);
+    }
+    bool split = source.substr(begin, end - begin).find('\n') !=
+        std::string_view::npos;
+    if (!split && flatWidth <= style.ColumnLimit) {
+        return std::nullopt;
+    }
+
+    std::string flat;
+    for (auto parameter : parameters) {
+        if (!flat.empty()) {
+            flat += ", ";
+        }
+        flat += parameter;
+    }
+    if (split && style.MergeFunctionParameters &&
+        flatWidth <= style.ColumnLimit)
+    {
+        return Replacement{begin, end, std::move(flat)};
+    }
+    if (parameters.size() == 1 && flatWidth <= style.ColumnLimit) {
+        return std::nullopt;
+    }
+
+    bool firstNew = style.FirstFunctionParameterPosition ==
+        FirstFunctionParameterPosition::NewLine;
+    if (split && !style.EnforceFirstFunctionParameterPosition) {
+        firstNew = source.substr(begin,
+            tree.Token(list.Child()->Tokens.Begin).Text.Begin - begin)
+            .find('\n') != std::string_view::npos;
+    }
+    size_t baseIndent = 0;
+    while (lineStart + baseIndent < openBegin &&
+        source[lineStart + baseIndent] == ' ')
+    {
+        ++baseIndent;
+    }
+    const size_t indent = style.FunctionParameterIndent ==
+        FunctionParameterIndent::Continuation
+        ? openBegin + 1 - lineStart : baseIndent + style.IndentWidth;
+    const std::string continuation(indent, ' ');
+    std::string result;
+    if (firstNew) {
+        result = "\n" + continuation;
+    }
+    result += parameters.front();
+    size_t column = (firstNew ? indent : prefix) + parameters.front().size();
+    bool broke = firstNew;
+    for (size_t i = 1; i < parameters.size(); ++i) {
+        bool last = i + 1 == parameters.size();
+        bool overflow = column + 2 + parameters[i].size() +
+            (last ? suffix.size() : 1) > style.ColumnLimit;
+        bool forceSplit = split && !style.MergeFunctionParameters &&
+            flatWidth <= style.ColumnLimit && !broke && last;
+        bool breakBefore = style.FunctionParameterSplit ==
+            FunctionParameterSplit::OnePerLine || overflow || forceSplit;
+        result += ',';
+        if (breakBefore) {
+            result += '\n';
+            result += continuation;
+            column = indent + parameters[i].size();
+            broke = true;
+        } else {
+            result += ' ';
+            column += 2 + parameters[i].size();
+        }
+        result += parameters[i];
+    }
+    if (result == source.substr(begin, end - begin)) {
+        return std::nullopt;
+    }
+    return Replacement{begin, end, std::move(result)};
+}
+
+std::string FormatParameters(const parser::SyntaxTree& tree, const Style& style)
+{
+    if (style.FunctionParameterSplit == FunctionParameterSplit::Preserve) {
+        return std::string(tree.Source());
+    }
+    std::vector<Replacement> edits;
+    std::vector<const parser::Node*> nodes{&tree.Root()};
+    while (!nodes.empty()) {
+        auto* node = nodes.back();
+        nodes.pop_back();
+        if (node->Kind == parser::NodeKind::FunctionDeclarator) {
+            for (auto* child = node->Child(); child;
+                child = child->NextSibling)
+            {
+                if (child->Kind == parser::NodeKind::ParameterList) {
+                    if (auto replacement = ReflowParameters(tree, *child, style)) {
+                        edits.push_back(std::move(*replacement));
+                    }
+                }
+            }
+        }
+        for (auto* child = node->Child(); child; child = child->NextSibling) {
+            nodes.push_back(child);
+        }
+    }
+    std::ranges::sort(edits, {}, &Replacement::Begin);
+    std::string output;
+    output.reserve(tree.Source().size());
+    size_t cursor = 0;
+    for (const auto& edit : edits) {
+        if (edit.Begin < cursor) {
+            continue;
+        }
+        output.append(tree.Source().substr(cursor, edit.Begin - cursor));
+        output += edit.Text;
+        cursor = edit.End;
+    }
+    output.append(tree.Source().substr(cursor));
+    return output;
+}
+
 } // namespace
 
 std::string Format(const parser::SyntaxTree& tree, const Style& style)
 {
-    return Formatter(tree, style).Run();
+    if (style.FunctionParameterSplit == FunctionParameterSplit::Preserve) {
+        return Formatter(tree, style).Run();
+    }
+    const bool bracesPreserved =
+        style.ClassBracePlacement == BracePlacement::Preserve &&
+        style.StructBracePlacement == BracePlacement::Preserve &&
+        style.UnionBracePlacement == BracePlacement::Preserve &&
+        style.FunctionBracePlacement == BracePlacement::Preserve &&
+        style.LambdaBracePlacement == BracePlacement::Preserve &&
+        style.NamespaceBracePlacement == BracePlacement::Preserve;
+    if (bracesPreserved) {
+        return FormatParameters(tree, style);
+    }
+    auto braced = Formatter(tree, style).Run();
+    if (braced == tree.Source()) {
+        return FormatParameters(tree, style);
+    }
+    auto length = braced.size();
+    braced.append(util::SourcePaddingSize, '\0');
+    auto bracedTree = parser::Parse({.Data = braced.data(), .Size = length},
+        [] (parser::ParseError) { });
+    return FormatParameters(bracedTree, style);
 }
 
 std::string Format(const parser::SyntaxTree& tree)

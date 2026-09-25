@@ -113,6 +113,69 @@ TEST_P(BracePlacementGoldenTest, FormatsOnlySelectedDeclarationBraces)
 INSTANTIATE_TEST_SUITE_P(Configurations, BracePlacementGoldenTest,
     testing::Values("preserve", "attach", "newline", "mixed"));
 
+class FunctionParameterGoldenTest : public testing::TestWithParam<std::string>
+{ };
+
+TEST_P(FunctionParameterGoldenTest, MatchesConfiguredOutput)
+{
+    const auto directory = std::filesystem::path(FORMATTER_TESTDATA_DIR) /
+        "../function_parameters";
+    const auto input = ReadFile(directory / "input.cpp");
+    const auto config = formatter::LoadConfigFile(
+        directory / (GetParam() + ".hit-fmt"));
+    const auto expected = ReadFile(directory / (GetParam() + ".output.cpp"));
+
+    std::string storage(input);
+    storage.append(util::SourcePaddingSize, '\0');
+    const auto actual = formatter::Format(
+        {.Data = storage.data(), .Size = input.size()},
+        config.FormattingStyle);
+    EXPECT_EQ(actual, expected);
+
+    // A second pass must not change either packing or indentation.
+    storage.assign(actual);
+    storage.append(util::SourcePaddingSize, '\0');
+    EXPECT_EQ(formatter::Format(
+        {.Data = storage.data(), .Size = actual.size()},
+        config.FormattingStyle), actual);
+}
+
+INSTANTIATE_TEST_SUITE_P(FunctionParameters, FunctionParameterGoldenTest,
+    testing::Values("preserve", "pack_name", "pack_new", "one_name",
+        "one_new", "pack_merge"));
+
+TEST(FunctionParameterSafetyTest, ComposesWithBracePlacement)
+{
+    formatter::Style style;
+    style.ColumnLimit = 40;
+    style.FunctionParameterSplit = formatter::FunctionParameterSplit::Pack;
+    style.FunctionBracePlacement = formatter::BracePlacement::NewLine;
+    const auto format = [&] (std::string_view source) {
+        std::string storage(source);
+        storage.append(util::SourcePaddingSize, '\0');
+        return formatter::Format({.Data = storage.data(), .Size = source.size()},
+            style);
+    };
+    const std::string expected =
+        "void Many(int alpha, int beta,\n"
+        "    int gamma, int delta)\n"
+        "{}\n";
+    EXPECT_EQ(format("void Many(int alpha, int beta, int gamma, int delta) {}\n"),
+        expected);
+    EXPECT_EQ(format(expected), expected);
+}
+
+TEST(FunctionParameterSafetyTest, KeepsCrlfListsAndCalls)
+{
+    formatter::Style style;
+    style.FunctionParameterSplit = formatter::FunctionParameterSplit::Pack;
+    style.ColumnLimit = 25;
+    ExpectUnchanged(
+        "void f(int alpha, int beta, int gamma);\r\n"
+        "void g() { Use(very_long_argument, another_long_argument); }\r\n",
+        style);
+}
+
 TEST(PreserveFormatterTest, KeepsEmptyRecoveryAndBinarySource)
 {
     for (const std::string source : {
@@ -124,6 +187,41 @@ TEST(PreserveFormatterTest, KeepsEmptyRecoveryAndBinarySource)
     }) {
         ExpectUnchanged(source, formatter::Style{});
     }
+}
+
+TEST(PreserveConfigTest, RejectsInvalidSettings)
+{
+    const auto path = std::filesystem::temp_directory_path() /
+        "hit-fmt-preserve-config-test.hit-fmt";
+    auto save = [&] (std::string_view contents) {
+        std::ofstream output(path);
+        ASSERT_TRUE(output.is_open());
+        output << contents;
+    };
+    save("IndentWidth = 2\nColumnLimit = 40\n"
+         "Exclude = [\"(^|/)generated(/|$)\"]\n");
+    const auto config = formatter::LoadConfigFile(path);
+    EXPECT_EQ(config.FormattingStyle.IndentWidth, 2u);
+    EXPECT_EQ(config.FormattingStyle.ColumnLimit, 40u);
+    ASSERT_EQ(config.Exclusions.size(), 1u);
+    EXPECT_TRUE(std::regex_search("generated/source.cpp", config.Exclusions[0]));
+    for (auto setting : {
+        "Regroup = true\n",
+        "InsertBraces = false\n",
+        "WhitespaceSensitiveMacros = []\n",
+        "ColumnLimit = 0\n",
+        "IndentWidth = 0\n",
+        "FunctionParameterSplit = Together\n",
+        "FirstFunctionParameterPosition = BeforeName\n",
+        "EnforceFirstFunctionParameterPosition = maybe\n",
+        "FunctionParameterIndent = Tabs\n",
+        "MergeFunctionParameters = yes\n",
+        "Exclude = [\"[\"]\n",
+    }) {
+        save(setting);
+        EXPECT_THROW(formatter::LoadConfigFile(path), std::runtime_error);
+    }
+    std::filesystem::remove(path);
 }
 
 } // namespace
