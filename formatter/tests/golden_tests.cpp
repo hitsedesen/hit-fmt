@@ -1,145 +1,132 @@
+#include <formatter/config.hpp>
 #include <formatter/formatter.hpp>
 
 #include <gtest/gtest.h>
 
 #include <algorithm>
-#include <cstdlib>
 #include <filesystem>
-#include <format>
 #include <fstream>
-#include <sstream>
+#include <iterator>
+#include <regex>
 #include <stdexcept>
 #include <string>
 #include <string_view>
+#include <utility>
 #include <vector>
 
 namespace {
 
 std::string ReadFile(const std::filesystem::path& path)
 {
-    std::ifstream file(path);
-    if (!file.is_open()) {
-        throw std::runtime_error(
-            std::format("failed to open {}", path.string()));
+    std::ifstream input(path, std::ios::binary);
+    if (!input) {
+        throw std::runtime_error("cannot read fixture: " + path.string());
     }
-    std::stringstream buffer;
-    buffer << file.rdbuf();
-    return buffer.str();
+    return {std::istreambuf_iterator<char>(input),
+        std::istreambuf_iterator<char>()};
 }
 
-std::string FormatSource(
-    std::string_view source,
-    const formatter::Style& style = {})
+void ExpectUnchanged(std::string_view source, const formatter::Style& style)
 {
     std::string storage(source);
     storage.append(util::SourcePaddingSize, '\0');
-    return formatter::Format({.Data = storage.data(), .Size = source.size()},
-        style);
+    util::PaddedSourceView padded{.Data = storage.data(),
+        .Size = source.size()};
+    auto tree = parser::Parse(padded, [] (parser::ParseError) { });
+    EXPECT_EQ(formatter::Format(tree, style), source);
+    const auto first = formatter::Format(padded, style);
+    EXPECT_EQ(first, source);
+    storage.assign(first);
+    storage.append(util::SourcePaddingSize, '\0');
+    EXPECT_EQ(formatter::Format({.Data = storage.data(),
+        .Size = first.size()}, style), first);
 }
 
-void SaveFile(const std::filesystem::path& path, std::string_view contents)
+std::vector<std::filesystem::path> DiscoverCases()
 {
-    std::ofstream file(path);
-    ASSERT_TRUE(file.is_open());
-    file << contents;
-}
-
-std::vector<std::string> DiscoverGoldenCases()
-{
-    std::vector<std::string> cases;
-    constexpr std::string_view suffix = ".input.cpp";
+    std::vector<std::filesystem::path> cases;
     for (const auto& entry :
-         std::filesystem::directory_iterator(FORMATTER_TESTDATA_DIR))
+        std::filesystem::directory_iterator(FORMATTER_TESTDATA_DIR))
     {
-        auto name = entry.path().filename().string();
-        if (name.ends_with(suffix)) {
-            name.resize(name.size() - suffix.size());
-            cases.push_back(std::move(name));
+        auto filename = entry.path().filename().string();
+        if (filename.ends_with(".input.cpp") ||
+            filename.ends_with(".output.cpp"))
+        {
+            cases.push_back(entry.path());
         }
     }
     std::ranges::sort(cases);
     return cases;
 }
 
-formatter::Style StyleForCase(std::string_view name)
-{
-    formatter::Style style;
-    if (name == "ConfiguresFunctionsThatKeepTheirFirstArgument") {
-        style.ForbidBreakAfter = {"render", "inspect"};
-    } else if (name == "FormatsContextualControlBraces") {
-        style.ControlBracePlacement =
-            formatter::BracePlacement::AttachUnlessMultiline;
-    } else if (name == "PreservesWhitespaceSensitiveMacroAlignment") {
-        style.WhitespaceSensitiveMacros = {"ALIGNED_VALUES"};
-    } else if (name == "RegroupsSafeMultilineCalls") {
-        style.Regroup = true;
-    } else if (name == "LeavesUnbracedBodiesWhenConfigured") {
-        style.InsertBraces = false;
-    } else if (name == "KeepsInlineRecordsWhenConfigured") {
-        style.BreakInlineRecordDeclarations = false;
-    } else if (name == "SpacesTemplateParameterPacksWhenConfigured") {
-        style.SpaceBeforeTemplateParameterPack = true;
-    } else if (name == "UsesConfiguredDimensions") {
-        style.IndentWidth = 2;
-        style.ColumnLimit = 40;
-    } else if (name == "UsesAlternativeStyleOptions") {
-        style.FunctionBracePlacement = formatter::BracePlacement::Attach;
-        style.RecordBracePlacement = formatter::BracePlacement::Attach;
-        style.ControlBracePlacement = formatter::BracePlacement::NewLine;
-        style.LambdaBracePlacement = formatter::BracePlacement::NewLine;
-        style.NamespaceBracePlacement = formatter::BracePlacement::NewLine;
-        style.SpaceBeforeParentheses = formatter::ParenthesisSpacing::Always;
-        style.PointerAlignment = formatter::DeclaratorAlignment::Right;
-        style.ReferenceAlignment = formatter::DeclaratorAlignment::Right;
-        style.IndentCaseLabels = formatter::CaseLabelIndentation::Indent;
-        style.SpaceInsideParentheses = true;
-        style.SpaceInsideSquareBrackets = true;
-        style.IndentNamespaces = true;
-        style.KeepEmptyBlocksOnOneLine = false;
-        style.AllowShortLambdasOnOneLine = false;
-    } else if (name == "WrapsNestedExpressionsToConfiguredLimit") {
-        style.ColumnLimit = 60;
-    } else if (name == "AlignsMultilineItemsWithOpeningBracket") {
-        style.OpenBracketAlignment =
-            formatter::BracketAlignment::AlignWithOpening;
-    } else if (name == "PreservesConfiguredBracketAlignment") {
-        style.OpenBracketAlignment = formatter::BracketAlignment::Preserve;
-        style.CloseBracketAlignment =
-            formatter::ClosingBracketAlignment::Preserve;
-    } else if (name == "PreservesConfiguredBracedInitializerSpacing") {
-        style.SpaceInsideBracedInitializers =
-            formatter::BracedInitializerSpacing::Preserve;
-    }
-    return style;
-}
-
-class StyleGoldenTest
-    : public testing::TestWithParam<std::string>
+class PreserveGoldenTest : public testing::TestWithParam<std::filesystem::path>
 { };
 
-TEST_P(StyleGoldenTest, MatchesCppOutput)
+TEST_P(PreserveGoldenTest, KeepsEverySourceByteUnderAllWidths)
 {
-    const auto base =
-        std::filesystem::path(FORMATTER_TESTDATA_DIR) / GetParam();
-    const auto input = ReadFile(base.string() + ".input.cpp");
-    const auto style = StyleForCase(GetParam());
-    const auto actual = FormatSource(input, style);
-    const auto outputPath = base.string() + ".output.cpp";
-
-    EXPECT_EQ(FormatSource(actual, style), actual);
-    if (std::getenv("UPDATE_GOLDEN")) {
-        SaveFile(outputPath, actual);
-    } else {
-        EXPECT_EQ(actual, ReadFile(outputPath));
+    const auto input = ReadFile(GetParam());
+    for (auto [indent, column] : {
+        std::pair<size_t, size_t>{4, 120},
+        {1, 1},
+        {32, 10000},
+    }) {
+        formatter::Style style;
+        style.IndentWidth = indent;
+        style.ColumnLimit = column;
+        ExpectUnchanged(input, style);
     }
 }
 
-INSTANTIATE_TEST_SUITE_P(
-    Style,
-    StyleGoldenTest,
-    testing::ValuesIn(DiscoverGoldenCases()),
+INSTANTIATE_TEST_SUITE_P(Preserve, PreserveGoldenTest,
+    testing::ValuesIn(DiscoverCases()),
     [] (const auto& info) {
-        return std::string(info.param);
+        auto name = info.param.filename().string();
+        std::ranges::replace(name, '.', '_');
+        std::ranges::replace(name, '-', '_');
+        return name;
     });
+
+TEST(PreserveFormatterTest, KeepsEmptyRecoveryAndBinarySource)
+{
+    for (const std::string source : {
+        std::string{},
+        std::string{" \t\r\n\r\n"},
+        std::string{"#define STR(x) #x\r\nSTR(a+b);\r\n"},
+        std::string{"int f(\n  /* unfinished"},
+        std::string{"int x;\0int y;\n", 14},
+    }) {
+        ExpectUnchanged(source, formatter::Style{});
+    }
+}
+
+TEST(PreserveConfigTest, AcceptsOnlyExclusionsAndPassiveWidths)
+{
+    const auto path = std::filesystem::temp_directory_path() /
+        "hit-fmt-preserve-config-test.hit-fmt";
+    auto save = [&] (std::string_view contents) {
+        std::ofstream output(path);
+        ASSERT_TRUE(output.is_open());
+        output << contents;
+    };
+    save("IndentWidth = 2\nColumnLimit = 40\n"
+         "Exclude = [\"(^|/)generated(/|$)\"]\n");
+    const auto config = formatter::LoadConfigFile(path);
+    EXPECT_EQ(config.FormattingStyle.IndentWidth, 2u);
+    EXPECT_EQ(config.FormattingStyle.ColumnLimit, 40u);
+    ASSERT_EQ(config.Exclusions.size(), 1u);
+    EXPECT_TRUE(std::regex_search("generated/source.cpp", config.Exclusions[0]));
+    for (auto setting : {
+        "Regroup = true\n",
+        "InsertBraces = false\n",
+        "WhitespaceSensitiveMacros = []\n",
+        "ColumnLimit = 0\n",
+        "IndentWidth = 0\n",
+        "Exclude = [\"[\"]\n",
+    }) {
+        save(setting);
+        EXPECT_THROW(formatter::LoadConfigFile(path), std::runtime_error);
+    }
+    std::filesystem::remove(path);
+}
 
 } // namespace

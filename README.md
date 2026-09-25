@@ -1,8 +1,8 @@
 # hit-fmt
 
-`hit-fmt` is a configurable C++ formatter. It uses a recovery-oriented,
-lossless parser so incomplete or unsupported source regions can be preserved
-instead of rewritten unsafely.
+`hit-fmt` parses C and C++ source and emits its tokens and trivia unchanged.
+The only retained configuration settings are file exclusions and passive
+indent/column widths; no option enables source rewriting.
 
 ## Build
 
@@ -33,31 +33,30 @@ Benchmarks can be built separately with
 
 ## Releases
 
-SourceCraft runs the test suite and checks source formatting on pull requests
-into `main`. To publish a release, update the `VERSION` in `project()` in
+SourceCraft runs the test suite and verifies source preservation on pull
+requests into `main`. To publish a release, update the `VERSION` in `project()` in
 `CMakeLists.txt`, merge the change into `main`, then manually run the
 `release` workflow in SourceCraft CI/CD on `main`. It repeats the checks before
 pushing an annotated `v<version>` tag for that commit. An existing version tag
-is never overwritten; bump the project version for each release. Formatting
+is never overwritten; bump the project version for each release. Preservation
 checks run on the repository folder. The root `.hit-fmt` excludes build
-outputs, golden test fixtures, and benchmark sources, which deliberately use
-other layouts.
+outputs, golden test fixtures, and benchmark sources.
 
 ## Usage
 
-Format one file to standard output:
+Emit one file unchanged to standard output:
 
 ```sh
 hit-fmt source.cpp
 ```
 
-Format files or directories in place:
+Process files or directories in place without rewriting their bytes:
 
 ```sh
 hit-fmt --in-place source.cpp include/
 ```
 
-Check formatting without modifying files:
+Check processed files without modifying them:
 
 ```sh
 hit-fmt --check src/ include/
