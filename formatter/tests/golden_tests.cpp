@@ -322,6 +322,25 @@ INSTANTIATE_TEST_SUITE_P(Configurations, ControlBracePlacementGoldenTest,
     testing::Values("preserve", "same-line", "new-line",
         "attach-unless-multiline", "combined"));
 
+class FunctionSpacingGoldenTest : public testing::TestWithParam<std::string>
+{ };
+
+TEST_P(FunctionSpacingGoldenTest, FormatsOnlyFunctionParameterGaps)
+{
+    const auto directory = std::filesystem::path(FUNCTION_SPACING_TESTDATA_DIR);
+    const auto input = ReadFile(directory /
+        (GetParam() == "reflow" ? "reflow.input.cpp" : "input.cpp"));
+    const auto expected = ReadFile(directory / (GetParam() + ".output.cpp"));
+    const auto style = formatter::LoadConfigFile(
+        directory / (GetParam() + ".hit-fmt")).FormattingStyle;
+
+    EXPECT_EQ(FormatWithStyle(input, style), expected);
+    EXPECT_EQ(FormatWithStyle(expected, style), expected);
+}
+
+INSTANTIATE_TEST_SUITE_P(Configurations, FunctionSpacingGoldenTest,
+    testing::Values("preserve", "space", "no-space", "reflow"));
+
 TEST(BraceSpacingTest, ComposesWithParameterReflow)
 {
     formatter::Style style;
@@ -411,6 +430,7 @@ TEST(PreserveConfigTest, RejectsInvalidSettings)
         "FunctionParameterIndent = Tabs\n",
         "MergeFunctionParameters = yes\n",
         "LambdaSpaceBeforeParameters = Unknown\n",
+        "FunctionSpaceBeforeParameters = Unknown\n",
         "ControlBlockKeywordSpacing = Unknown\n",
         "ControlBlockBracePlacement = Unknown\n",
         "Exclude = [\"[\"]\n",
