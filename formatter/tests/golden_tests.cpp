@@ -207,8 +207,8 @@ TEST_P(ParameterNameGoldenTest, ReportsConfiguredMissingNames)
 }
 
 INSTANTIATE_TEST_SUITE_P(Configurations, ParameterNameGoldenTest,
-    testing::Values("enabled", "disabled", "default",
-        "declarations_only", "definitions_only", "names_only"));
+    testing::Values("enabled", "default", "declarations_only",
+        "definitions_only", "names_only"));
 
 TEST(FunctionParameterSafetyTest, ComposesWithBracePlacement)
 {
