@@ -30,6 +30,7 @@ public:
         : Tree_(tree)
         , Style_(style)
         , Placements_(tree.TokenCount(), BracePlacement::Preserve)
+        , Spacings_(tree.TokenCount(), SameLineBraceSpacing::Preserve)
     {
         Output_.reserve(tree.Source().size());
         if (style.ClassBracePlacement != BracePlacement::Preserve ||
@@ -37,7 +38,14 @@ public:
             style.UnionBracePlacement != BracePlacement::Preserve ||
             style.FunctionBracePlacement != BracePlacement::Preserve ||
             style.LambdaBracePlacement != BracePlacement::Preserve ||
-            style.NamespaceBracePlacement != BracePlacement::Preserve)
+            style.NamespaceBracePlacement != BracePlacement::Preserve ||
+            style.ClassBraceSpacing != SameLineBraceSpacing::Preserve ||
+            style.LambdaBraceSpacing != SameLineBraceSpacing::Preserve ||
+            style.StructBraceSpacing != SameLineBraceSpacing::Preserve ||
+            style.EnumBraceSpacing != SameLineBraceSpacing::Preserve ||
+            style.UnionBraceSpacing != SameLineBraceSpacing::Preserve ||
+            style.FunctionBraceSpacing != SameLineBraceSpacing::Preserve ||
+            style.NamespaceBraceSpacing != SameLineBraceSpacing::Preserve)
         {
             Classify();
         }
@@ -89,9 +97,12 @@ private:
     void MarkOpening(
         const parser::Node& node,
         BracePlacement placement,
+        SameLineBraceSpacing spacing,
         TokenIndex header = NoToken)
     {
-        if (placement == BracePlacement::Preserve) {
+        if (placement == BracePlacement::Preserve &&
+            spacing == SameLineBraceSpacing::Preserve)
+        {
             return;
         }
         for (auto index = node.Tokens.Begin;
@@ -105,6 +116,7 @@ private:
             }
             if (Tree_.MatchingDelimiter(index) != NoToken) {
                 Placements_[index] = placement;
+                Spacings_[index] = spacing;
                 HeaderStarts_[index] = header == NoToken
                     ? node.Tokens.Begin : header;
             }
@@ -136,21 +148,29 @@ private:
             if (node.Tokens.Begin < Tree_.TokenCount()) {
                 switch (Tree_.Kind(node.Tokens.Begin)) {
                 case TK::Keyword_class:
-                    MarkOpening(node, Style_.ClassBracePlacement);
+                    MarkOpening(node, Style_.ClassBracePlacement,
+                        Style_.ClassBraceSpacing);
                     break;
                 case TK::Keyword_struct:
-                    MarkOpening(node, Style_.StructBracePlacement);
+                    MarkOpening(node, Style_.StructBracePlacement,
+                        Style_.StructBraceSpacing);
                     break;
                 case TK::Keyword_union:
-                    MarkOpening(node, Style_.UnionBracePlacement);
+                    MarkOpening(node, Style_.UnionBracePlacement,
+                        Style_.UnionBraceSpacing);
                     break;
                 default:
                     break;
                 }
             }
             break;
+        case NK::EnumDeclaration:
+            MarkOpening(node, BracePlacement::Preserve,
+                Style_.EnumBraceSpacing);
+            break;
         case NK::NamespaceDeclaration:
-            MarkOpening(node, Style_.NamespaceBracePlacement);
+            MarkOpening(node, Style_.NamespaceBracePlacement,
+                Style_.NamespaceBraceSpacing);
             break;
         case NK::FunctionDefinition:
             for (auto* child = node.FirstChild; child;
@@ -158,14 +178,14 @@ private:
             {
                 if (child->Kind == NK::CompoundStatement) {
                     MarkOpening(*child, Style_.FunctionBracePlacement,
-                        node.Tokens.Begin);
+                        Style_.FunctionBraceSpacing, node.Tokens.Begin);
                 } else if (child->Kind == NK::FunctionTryBlock) {
                     for (auto* body = child->FirstChild; body;
                         body = body->NextSibling)
                     {
                         if (body->Kind == NK::CompoundStatement) {
                             MarkOpening(*body, Style_.FunctionBracePlacement,
-                                node.Tokens.Begin);
+                                Style_.FunctionBraceSpacing, node.Tokens.Begin);
                             break;
                         }
                     }
@@ -173,7 +193,8 @@ private:
             }
             break;
         case NK::LambdaBody:
-            MarkOpening(node, Style_.LambdaBracePlacement);
+            MarkOpening(node, Style_.LambdaBracePlacement,
+                Style_.LambdaBraceSpacing);
             // The capture can start before qualifiers and return types.
             break;
         default:
@@ -252,7 +273,7 @@ private:
     {
         auto gap = Tree_.WhitespaceBefore(index);
         auto placement = Placements_[index];
-        if (placement == BracePlacement::Preserve || index == 0 ||
+        if (index == 0 ||
             // Only a trailing header comment is safe to cross; leave other
             // comments and preprocessing directives where they are.
             (Tree_.Kind(index - 1) == TK::Comment &&
@@ -261,6 +282,15 @@ private:
             Tree_.Kind(index - 1) == TK::PreprocessingDirective ||
             gap.find_first_not_of(" \t\r\n") != std::string_view::npos)
         {
+            Output_.append(gap);
+        } else if (placement != BracePlacement::NewLine &&
+            gap.find('\n') == std::string_view::npos &&
+            Spacings_[index] == SameLineBraceSpacing::SingleSpace &&
+            gap.find_first_not_of(" \t") == std::string_view::npos &&
+            Tree_.Kind(index - 1) != TK::Comment)
+        {
+            Output_.push_back(' ');
+        } else if (placement == BracePlacement::Preserve) {
             Output_.append(gap);
         } else if (placement == BracePlacement::Attach) {
             // Placement controls line breaks, not existing same-line spacing.
@@ -281,6 +311,7 @@ private:
     const parser::SyntaxTree& Tree_;
     const Style& Style_;
     std::vector<BracePlacement> Placements_;
+    std::vector<SameLineBraceSpacing> Spacings_;
     // Only initialized for openings with an active placement.
     std::vector<TokenIndex> HeaderStarts_ =
         std::vector<TokenIndex>(Tree_.TokenCount(), NoToken);
@@ -510,7 +541,14 @@ std::string Format(const parser::SyntaxTree& tree, const Style& style)
         style.UnionBracePlacement == BracePlacement::Preserve &&
         style.FunctionBracePlacement == BracePlacement::Preserve &&
         style.LambdaBracePlacement == BracePlacement::Preserve &&
-        style.NamespaceBracePlacement == BracePlacement::Preserve;
+        style.NamespaceBracePlacement == BracePlacement::Preserve &&
+        style.ClassBraceSpacing == SameLineBraceSpacing::Preserve &&
+        style.LambdaBraceSpacing == SameLineBraceSpacing::Preserve &&
+        style.StructBraceSpacing == SameLineBraceSpacing::Preserve &&
+        style.EnumBraceSpacing == SameLineBraceSpacing::Preserve &&
+        style.UnionBraceSpacing == SameLineBraceSpacing::Preserve &&
+        style.FunctionBraceSpacing == SameLineBraceSpacing::Preserve &&
+        style.NamespaceBraceSpacing == SameLineBraceSpacing::Preserve;
     if (bracesPreserved) {
         return FormatParameters(tree, style);
     }

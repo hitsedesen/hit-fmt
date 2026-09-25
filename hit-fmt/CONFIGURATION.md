@@ -24,6 +24,13 @@ FirstFunctionParameterPosition = NameLine
 EnforceFirstFunctionParameterPosition = false
 FunctionParameterIndent = IndentWidth
 MergeFunctionParameters = false
+ClassBraceSpacing = Preserve
+LambdaBraceSpacing = Preserve
+StructBraceSpacing = Preserve
+EnumBraceSpacing = Preserve
+UnionBraceSpacing = Preserve
+FunctionBraceSpacing = Preserve
+NamespaceBraceSpacing = Preserve
 Exclude = ["(^|/)generated(/|$)", "(^|/)legacy\\.cpp$"]
 ```
 
@@ -55,6 +62,13 @@ Exclude = ["(^|/)generated(/|$)", "(^|/)legacy\\.cpp$"]
 - `MergeFunctionParameters`: `false` (default) retains split lists as
   multiline even when they would fit on one line; `true` joins them when
   the result fits within `ColumnLimit`.
+- `*BraceSpacing`: `Preserve` (default) leaves existing same-line whitespace
+  untouched, including zero or multiple spaces; `SingleSpace` uses exactly
+  one space before an opening brace on the same line. Class, lambda, struct,
+  enum, union, function definition, and namespace have independent settings.
+  Line breaks and gaps containing comments or directives remain untouched.
+  Placement is applied first: `NewLine` keeps the brace on its own line;
+  `Attach` joins it to the header, using one space at the join.
 - `Exclude`: ECMAScript regular expressions searched against paths relative
   to the config directory. A matching directory and its contents are skipped
   during recursive processing. An explicit file input is skipped if it

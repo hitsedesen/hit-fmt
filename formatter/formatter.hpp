@@ -19,6 +19,12 @@ enum class FunctionParameterSplit { Preserve, Pack, OnePerLine };
 enum class FirstFunctionParameterPosition { NameLine, NewLine };
 enum class FunctionParameterIndent { IndentWidth, Continuation };
 
+enum class SameLineBraceSpacing
+{
+    Preserve,
+    SingleSpace,
+};
+
 struct Style
 {
     size_t IndentWidth = 4;
@@ -37,6 +43,13 @@ struct Style
     formatter::FunctionParameterIndent FunctionParameterIndent =
         formatter::FunctionParameterIndent::IndentWidth;
     bool MergeFunctionParameters = false;
+    SameLineBraceSpacing ClassBraceSpacing = SameLineBraceSpacing::Preserve;
+    SameLineBraceSpacing LambdaBraceSpacing = SameLineBraceSpacing::Preserve;
+    SameLineBraceSpacing StructBraceSpacing = SameLineBraceSpacing::Preserve;
+    SameLineBraceSpacing EnumBraceSpacing = SameLineBraceSpacing::Preserve;
+    SameLineBraceSpacing UnionBraceSpacing = SameLineBraceSpacing::Preserve;
+    SameLineBraceSpacing FunctionBraceSpacing = SameLineBraceSpacing::Preserve;
+    SameLineBraceSpacing NamespaceBraceSpacing = SameLineBraceSpacing::Preserve;
 };
 
 // Preserve source-owned spans except for enabled declaration brace and

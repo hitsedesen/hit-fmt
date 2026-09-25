@@ -85,6 +85,19 @@ INSTANTIATE_TEST_SUITE_P(Preserve, PreserveGoldenTest,
         return name;
     });
 
+std::string FormatWithStyle(
+    std::string_view source, const formatter::Style& style)
+{
+    std::string storage(source);
+    storage.append(util::SourcePaddingSize, '\0');
+    util::PaddedSourceView padded{.Data = storage.data(),
+        .Size = source.size()};
+    auto tree = parser::Parse(padded, [] (parser::ParseError) { });
+    EXPECT_EQ(formatter::Format(tree, style),
+        formatter::Format(padded, style));
+    return formatter::Format(tree, style);
+}
+
 class BracePlacementGoldenTest : public testing::TestWithParam<std::string>
 { };
 
@@ -96,18 +109,8 @@ TEST_P(BracePlacementGoldenTest, FormatsOnlySelectedDeclarationBraces)
     const auto style = formatter::LoadConfigFile(
         directory / (GetParam() + ".hit-fmt")).FormattingStyle;
 
-    auto format = [&style] (std::string_view source) {
-        std::string storage(source);
-        storage.append(util::SourcePaddingSize, '\0');
-        util::PaddedSourceView padded{.Data = storage.data(),
-            .Size = source.size()};
-        auto tree = parser::Parse(padded, [] (parser::ParseError) { });
-        EXPECT_EQ(formatter::Format(tree, style),
-            formatter::Format(padded, style));
-        return formatter::Format(tree, style);
-    };
-    EXPECT_EQ(format(input), expected);
-    EXPECT_EQ(format(expected), expected);
+    EXPECT_EQ(FormatWithStyle(input, style), expected);
+    EXPECT_EQ(FormatWithStyle(expected, style), expected);
 }
 
 INSTANTIATE_TEST_SUITE_P(Configurations, BracePlacementGoldenTest,
@@ -174,6 +177,44 @@ TEST(FunctionParameterSafetyTest, KeepsCrlfListsAndCalls)
         "void f(int alpha, int beta, int gamma);\r\n"
         "void g() { Use(very_long_argument, another_long_argument); }\r\n",
         style);
+}
+
+class BraceSpacingGoldenTest : public testing::TestWithParam<std::string>
+{ };
+
+TEST_P(BraceSpacingGoldenTest, FormatsOnlySameLineDeclarationGaps)
+{
+    const auto directory = std::filesystem::path(BRACE_SPACING_TESTDATA_DIR);
+    const auto input = ReadFile(directory / "input.cpp");
+    const auto expected = ReadFile(directory / (GetParam() + ".output.cpp"));
+    const auto style = formatter::LoadConfigFile(
+        directory / (GetParam() + ".hit-fmt")).FormattingStyle;
+
+    EXPECT_EQ(FormatWithStyle(input, style), expected);
+    EXPECT_EQ(FormatWithStyle(expected, style), expected);
+}
+
+INSTANTIATE_TEST_SUITE_P(Configurations, BraceSpacingGoldenTest,
+    testing::Values("preserve", "single-space", "mixed"));
+
+TEST(BraceSpacingTest, ComposesWithParameterReflow)
+{
+    formatter::Style style;
+    style.ColumnLimit = 40;
+    style.FunctionParameterSplit = formatter::FunctionParameterSplit::Pack;
+    style.FunctionBraceSpacing = formatter::SameLineBraceSpacing::SingleSpace;
+    const std::string input =
+        "void Many(int alpha, int beta, int gamma, int delta){}\n";
+    const std::string expected =
+        "void Many(int alpha, int beta,\n"
+        "    int gamma, int delta) {}\n";
+    EXPECT_EQ(FormatWithStyle(input, style), expected);
+    EXPECT_EQ(FormatWithStyle(expected, style), expected);
+
+    style.FunctionBracePlacement = formatter::BracePlacement::Attach;
+    const std::string detached =
+        "void Many(int alpha, int beta, int gamma, int delta)\n{}\n";
+    EXPECT_EQ(FormatWithStyle(detached, style), expected);
 }
 
 TEST(PreserveFormatterTest, KeepsEmptyRecoveryAndBinarySource)
