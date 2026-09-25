@@ -1,7 +1,8 @@
 # Configuration
 
 The formatter preserves source-owned token and trivia bytes except where an
-explicitly configured declaration brace or function parameter rule applies.
+explicitly configured declaration brace, namespace comment, or function
+parameter rule applies.
 All formatting rules default to preserving the source.
 
 `hit-fmt` searches for `.hit-fmt` beside each source file and then in its
@@ -19,6 +20,7 @@ UnionBracePlacement = Preserve
 FunctionBracePlacement = Preserve
 LambdaBracePlacement = Preserve
 NamespaceBracePlacement = Preserve
+NamespaceComments = Preserve
 FunctionParameterSplit = Pack
 FirstFunctionParameterPosition = NameLine
 EnforceFirstFunctionParameterPosition = false
@@ -47,6 +49,11 @@ Exclude = ["(^|/)generated(/|$)", "(^|/)legacy\\.cpp$"]
   inline brace followed by a trailing comment, the comment stays with the
   declaration header and the brace goes below it. Other intervening comments
   and directives block attachment. Other braces are unaffected.
+- `NamespaceComments`: `Preserve` (default) leaves closing comments alone,
+  `Remove` removes a line comment immediately after a namespace's closing
+  brace, and `Required` adds `// namespace name` (or `// namespace` for an
+  anonymous namespace) and corrects an existing trailing line comment.
+  Unmatched braces and closings followed by a block comment are left alone.
 - `FunctionParameterSplit`: `Preserve` (default, leave parameter lists
   unchanged), `Pack` (put as many parameters as fit on each line), or
   `OnePerLine`. Lists already fitting on one line are left unchanged.

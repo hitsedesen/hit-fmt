@@ -16,3 +16,9 @@ combination and has a matching `.output.cpp` golden file. Unlike the legacy
 preservation cases, these compare formatted output and its second pass against
 explicit expectations for function declarations and definitions while
 leaving calls unchanged.
+
+`testdata/namespace_comments/input.cpp` is shared by the namespace-comment
+cases. The configured `.hit-fmt` files and matching `.output.cpp` files
+cover preservation, removal, correction, missing comments, nested and
+anonymous namespaces, and interaction with brace placement. Each output
+is also checked on a second formatting pass.

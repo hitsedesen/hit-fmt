@@ -15,6 +15,7 @@ enum class BracePlacement
     NewLine,
 };
 
+enum class NamespaceComments { Preserve, Remove, Required };
 enum class FunctionParameterSplit { Preserve, Pack, OnePerLine };
 enum class FirstFunctionParameterPosition { NameLine, NewLine };
 enum class FunctionParameterIndent { IndentWidth, Continuation };
@@ -35,6 +36,8 @@ struct Style
     BracePlacement FunctionBracePlacement = BracePlacement::Preserve;
     BracePlacement LambdaBracePlacement = BracePlacement::Preserve;
     BracePlacement NamespaceBracePlacement = BracePlacement::Preserve;
+    formatter::NamespaceComments NamespaceComments =
+        formatter::NamespaceComments::Preserve;
     formatter::FunctionParameterSplit FunctionParameterSplit =
         formatter::FunctionParameterSplit::Preserve;
     formatter::FirstFunctionParameterPosition FirstFunctionParameterPosition =
@@ -52,8 +55,8 @@ struct Style
     SameLineBraceSpacing NamespaceBraceSpacing = SameLineBraceSpacing::Preserve;
 };
 
-// Preserve source-owned spans except for enabled declaration brace and
-// function parameter layout rules.
+// Preserve source-owned spans except for enabled declaration brace,
+// namespace comment, and function parameter layout rules.
 [[nodiscard]] std::string Format(const parser::SyntaxTree& tree, const Style& style);
 [[nodiscard]] std::string Format(const parser::SyntaxTree& tree);
 [[nodiscard]] std::string Format(util::PaddedSourceView source, const Style& style);

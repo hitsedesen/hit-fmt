@@ -147,6 +147,37 @@ INSTANTIATE_TEST_SUITE_P(FunctionParameters, FunctionParameterGoldenTest,
     testing::Values("preserve", "pack_name", "pack_new", "one_name",
         "one_new", "pack_merge"));
 
+class NamespaceCommentGoldenTest : public testing::TestWithParam<std::string>
+{ };
+
+TEST_P(NamespaceCommentGoldenTest, MatchesConfiguredOutput)
+{
+    const auto directory = std::filesystem::path(FORMATTER_TESTDATA_DIR) /
+        "../namespace_comments";
+    const auto input = ReadFile(directory /
+        (GetParam() == "crlf_required" ? "crlf.input.cpp" : "input.cpp"));
+    const auto expected = ReadFile(directory / (GetParam() + ".output.cpp"));
+    const auto style = formatter::LoadConfigFile(
+        directory / (GetParam() + ".hit-fmt")).FormattingStyle;
+
+    auto format = [&style] (std::string_view source) {
+        std::string storage(source);
+        storage.append(util::SourcePaddingSize, '\0');
+        util::PaddedSourceView padded{.Data = storage.data(),
+            .Size = source.size()};
+        auto tree = parser::Parse(padded, [] (parser::ParseError) { });
+        const auto result = formatter::Format(tree, style);
+        EXPECT_EQ(result, formatter::Format(padded, style));
+        return result;
+    };
+    EXPECT_EQ(format(input), expected);
+    EXPECT_EQ(format(expected), expected);
+}
+
+INSTANTIATE_TEST_SUITE_P(Configurations, NamespaceCommentGoldenTest,
+    testing::Values("preserve", "remove", "required", "required_newline",
+        "crlf_required"));
+
 TEST(FunctionParameterSafetyTest, ComposesWithBracePlacement)
 {
     formatter::Style style;
