@@ -25,6 +25,14 @@ enum class InheritanceListSpacing { NoSpace, Space };
 enum class InheritanceListStart { NewLine, ClassLine, NewLineOnOverflow };
 enum class InheritanceListSplit { OnePerLine, Pack, OnePerLineOnOverflow };
 enum class FunctionParameterSplit { Preserve, Pack, OnePerLine };
+enum class CallArgumentSplit { Preserve, Pack, OnePerLine };
+enum class FirstCallArgumentPosition { CallLine, NewLine };
+enum class CallArgumentIndent { IndentWidth, Continuation };
+enum class ExpressionLayoutCondition {
+    Preserve, Overflow, FitOrOverflow, Always
+};
+enum class ExpressionLayoutAlgorithm { Greedy, DynamicProgramming };
+enum class BinaryOperatorPlacement { Leading, Trailing };
 enum class FirstFunctionParameterPosition { NameLine, NewLine };
 enum class FunctionParameterIndent { IndentWidth, Continuation };
 
@@ -54,6 +62,12 @@ struct Style
 {
     size_t IndentWidth = 4;
     size_t ColumnLimit = 120;
+    formatter::ExpressionLayoutCondition ExpressionLayoutCondition =
+        formatter::ExpressionLayoutCondition::Preserve;
+    formatter::ExpressionLayoutAlgorithm ExpressionLayoutAlgorithm =
+        formatter::ExpressionLayoutAlgorithm::Greedy;
+    formatter::BinaryOperatorPlacement BinaryOperatorPlacement =
+        formatter::BinaryOperatorPlacement::Trailing;
     formatter::IncludeOrder IncludeOrder = IncludeOrder::Preserve;
     BodyIndentation IndentAccessModifiers = BodyIndentation::Preserve;
     BodyIndentation IndentMembers = BodyIndentation::Preserve;
@@ -92,6 +106,13 @@ struct Style
     formatter::FunctionParameterIndent FunctionParameterIndent =
         formatter::FunctionParameterIndent::IndentWidth;
     bool MergeFunctionParameters = false;
+    formatter::CallArgumentSplit CallArgumentSplit =
+        formatter::CallArgumentSplit::Preserve;
+    formatter::FirstCallArgumentPosition FirstCallArgumentPosition =
+        formatter::FirstCallArgumentPosition::CallLine;
+    bool EnforceFirstCallArgumentPosition = false;
+    formatter::CallArgumentIndent CallArgumentIndent =
+        formatter::CallArgumentIndent::IndentWidth;
     formatter::ControlBlockKeywordSpacing ControlBlockKeywordSpacing =
         formatter::ControlBlockKeywordSpacing::Preserve;
     formatter::ControlBlockBracePlacement ControlBlockBracePlacement =
@@ -123,7 +144,8 @@ struct Style
 
 // Preserve source-owned spans except for enabled declaration brace,
 // lambda, function, call, and control keyword spacing, brace placement,
-// namespace comments, and parameter rules.
+// namespace comments, parameter and call argument rules, and expression
+// wrapping.
 [[nodiscard]] std::string Format(const parser::SyntaxTree& tree, const Style& style);
 [[nodiscard]] std::string Format(const parser::SyntaxTree& tree);
 [[nodiscard]] std::string Format(util::PaddedSourceView source, const Style& style);

@@ -237,6 +237,613 @@ INSTANTIATE_TEST_SUITE_P(Configurations, ParameterNameGoldenTest,
     testing::Values("enabled", "default", "declarations_only",
         "definitions_only", "names_only"));
 
+TEST(CallArgumentTest, ReflowsOnlySafeParsedCalls)
+{
+    formatter::Style style;
+    style.ColumnLimit = 34;
+    const auto input =
+        "void use(int a, int b, int c, int d);\n"
+        "void demo() {\n"
+        "    use(alpha, beta, gamma, delta);\n"
+        "    use(veryLongFirst, veryLongSecond);\n"
+        "    use(\n"
+        "        alpha,\n"
+        "        beta, gamma);\n"
+        "    auto x = nested(alpha, nested(beta, gamma, delta), epsilon);\n"
+        "    MACRO(alpha, beta, gamma, delta);\n"
+        "}\n";
+    EXPECT_EQ(FormatWithStyle(input, style), input);
+    style.CallArgumentSplit = formatter::CallArgumentSplit::Pack;
+    style.ExpressionLayoutCondition = formatter::ExpressionLayoutCondition::Overflow;
+    const auto packed =
+        "void use(int a, int b, int c, int d);\n"
+        "void demo() {\n"
+        "    use(alpha, beta, gamma,\n"
+        "        delta);\n"
+        "    use(veryLongFirst,\n"
+        "        veryLongSecond);\n"
+        "    use(\n"
+        "        alpha,\n"
+        "        beta, gamma);\n"
+        "    auto x = nested(alpha,\n"
+        "        nested(beta, gamma,\n"
+        "            delta),\n"
+        "        epsilon);\n"
+        "    MACRO(alpha, beta, gamma,\n"
+        "        delta);\n"
+        "}\n";
+    EXPECT_EQ(FormatWithStyle(input, style), packed);
+    EXPECT_EQ(FormatWithStyle(packed, style), packed);
+    style.ExpressionLayoutCondition = formatter::ExpressionLayoutCondition::FitOrOverflow;
+    const auto merged =
+        "void use(int a, int b, int c, int d);\n"
+        "void demo() {\n"
+        "    use(alpha, beta, gamma,\n"
+        "        delta);\n"
+        "    use(veryLongFirst,\n"
+        "        veryLongSecond);\n"
+        "    use(alpha, beta, gamma);\n"
+        "    auto x = nested(alpha,\n"
+        "        nested(beta, gamma,\n"
+        "            delta),\n"
+        "        epsilon);\n"
+        "    MACRO(alpha, beta, gamma,\n"
+        "        delta);\n"
+        "}\n";
+    EXPECT_EQ(FormatWithStyle(packed, style), merged);
+    EXPECT_EQ(FormatWithStyle(merged, style), merged);
+    const auto longMultiline =
+        "void f() {\n"
+        "    use(\n"
+        "        alpha,\n"
+        "        beta,\n"
+        "        gamma,\n"
+        "        delta);\n"
+        "}\n";
+    EXPECT_EQ(FormatWithStyle(longMultiline, style), longMultiline);
+    style.ExpressionLayoutCondition = formatter::ExpressionLayoutCondition::Always;
+    const auto repacked =
+        "void f() {\n"
+        "    use(alpha, beta, gamma,\n"
+        "        delta);\n"
+        "}\n";
+    EXPECT_EQ(FormatWithStyle(longMultiline, style), repacked);
+    EXPECT_EQ(FormatWithStyle(repacked, style), repacked);
+
+    style.CallArgumentSplit = formatter::CallArgumentSplit::OnePerLine;
+    style.FirstCallArgumentPosition =
+        formatter::FirstCallArgumentPosition::NewLine;
+    const auto onePerLine =
+        "void use(int a, int b, int c, int d);\n"
+        "void demo() {\n"
+        "    use(\n"
+        "        alpha,\n"
+        "        beta,\n"
+        "        gamma,\n"
+        "        delta);\n"
+        "    use(\n"
+        "        veryLongFirst,\n"
+        "        veryLongSecond);\n"
+        "    use(alpha, beta, gamma);\n"
+        "    auto x = nested(\n"
+        "        alpha,\n"
+        "        nested(\n"
+        "            beta,\n"
+        "            gamma,\n"
+        "            delta),\n"
+        "        epsilon);\n"
+        "    MACRO(\n"
+        "        alpha,\n"
+        "        beta,\n"
+        "        gamma,\n"
+        "        delta);\n"
+        "}\n";
+    EXPECT_EQ(FormatWithStyle(input, style), onePerLine);
+    EXPECT_EQ(FormatWithStyle(onePerLine, style), onePerLine);
+
+    style.CallArgumentSplit = formatter::CallArgumentSplit::Pack;
+    style.EnforceFirstCallArgumentPosition = true;
+    style.CallArgumentIndent = formatter::CallArgumentIndent::Continuation;
+    style.ColumnLimit = 25;
+    const auto repositioned =
+        "void f() {\n"
+        "    use(alpha,\n"
+        "        beta, gamma);\n"
+        "}\n";
+    const auto repositionedExpected =
+        "void f() {\n"
+        "    use(\n"
+        "        alpha, beta,\n"
+        "        gamma);\n"
+        "}\n";
+    EXPECT_EQ(FormatWithStyle(repositioned, style), repositionedExpected);
+    EXPECT_EQ(FormatWithStyle(repositionedExpected, style),
+        repositionedExpected);
+    style.FirstCallArgumentPosition =
+        formatter::FirstCallArgumentPosition::CallLine;
+    style.ColumnLimit = 32;
+    const auto aligned =
+        "void f() {\n"
+        "    longCall(alpha, beta, gamma, delta);\n"
+        "}\n";
+    const auto alignedExpected =
+        "void f() {\n"
+        "    longCall(alpha, beta, gamma,\n"
+        "             delta);\n"
+        "}\n";
+    EXPECT_EQ(FormatWithStyle(aligned, style), alignedExpected);
+    EXPECT_EQ(FormatWithStyle(alignedExpected, style), alignedExpected);
+
+    style.CallArgumentIndent = formatter::CallArgumentIndent::IndentWidth;
+    style.ControlBlockBracePlacement =
+        formatter::ControlBlockBracePlacement::AttachUnlessMultiline;
+    const auto control =
+        "void f() {\n"
+        "    if (check(alpha, beta, gamma, delta)) {\n"
+        "        run();\n"
+        "    }\n"
+        "}\n";
+    const auto controlExpected =
+        "void f() {\n"
+        "    if (check(alpha, beta,\n"
+        "        gamma, delta))\n"
+        "    {\n"
+        "        run();\n"
+        "    }\n"
+        "}\n";
+    EXPECT_EQ(FormatWithStyle(control, style), controlExpected);
+    EXPECT_EQ(FormatWithStyle(controlExpected, style), controlExpected);
+    style.ExpressionLayoutCondition = formatter::ExpressionLayoutCondition::Overflow;
+    ExpectUnchanged("void f() { use(alpha +\n        beta, gamma, delta); }\n",
+        style);
+    ExpectUnchanged("void f() { auto x = (Type)(alpha, beta, gamma, delta); }\n",
+        style);
+    ExpectUnchanged("void f() { use(alpha, /* note */ beta, gamma); }\n",
+        style);
+    ExpectUnchanged("void f() { use(alpha, beta, gamma, delta); }\r\n",
+        style);
+
+    style.ControlBlockBracePlacement =
+        formatter::ControlBlockBracePlacement::Preserve;
+    style.CallArgumentSplit = formatter::CallArgumentSplit::OnePerLine;
+    style.ExpressionLayoutCondition = formatter::ExpressionLayoutCondition::Always;
+    style.SpaceInsideCallArguments = formatter::SpaceInsideCallArguments::Space;
+    style.ColumnLimit = 25;
+    const auto spaced = "void f() { use(alpha, beta, gamma, delta); }\n";
+    const auto spacedExpected =
+        "void f() { use( alpha,\n"
+        "    beta,\n"
+        "    gamma,\n"
+        "    delta ); }\n";
+    EXPECT_EQ(FormatWithStyle(spaced, style), spacedExpected);
+    EXPECT_EQ(FormatWithStyle(spacedExpected, style), spacedExpected);
+
+    const auto balancedInput =
+        "void f() {\n"
+        "    use(a, bb, ccc, dddd, eeeee, ffffff);\n"
+        "}\n";
+    const auto balanced =
+        "void f() {\n"
+        "    use(a, bb, ccc, dddd,\n"
+        "        eeeee, ffffff);\n"
+        "}\n";
+    style.ColumnLimit = 32;
+    style.ExpressionLayoutCondition = formatter::ExpressionLayoutCondition::Overflow;
+    style.CallArgumentSplit = formatter::CallArgumentSplit::Pack;
+    style.SpaceInsideCallArguments = formatter::SpaceInsideCallArguments::Preserve;
+    style.ExpressionLayoutAlgorithm =
+        formatter::ExpressionLayoutAlgorithm::DynamicProgramming;
+    EXPECT_EQ(FormatWithStyle(balancedInput, style), balanced);
+    EXPECT_EQ(FormatWithStyle(balanced, style), balanced);
+    style.CallArgumentSplit = formatter::CallArgumentSplit::OnePerLine;
+    const auto onePerLineBalanced =
+        "void f() {\n"
+        "    use(a,\n"
+        "        bb,\n"
+        "        ccc,\n"
+        "        dddd,\n"
+        "        eeeee,\n"
+        "        ffffff);\n"
+        "}\n";
+    EXPECT_EQ(FormatWithStyle(balancedInput, style), onePerLineBalanced);
+    style.CallArgumentSplit = formatter::CallArgumentSplit::Preserve;
+    ExpectUnchanged(balancedInput, style);
+}
+
+TEST(CallArgumentTest, LaysOutEnclosingMacroAndNestedCalls)
+{
+    formatter::Style style;
+    style.ExpressionLayoutCondition = formatter::ExpressionLayoutCondition::Always;
+    style.CallArgumentSplit = formatter::CallArgumentSplit::Pack;
+    style.ColumnLimit = 100;
+    const auto input =
+        "void f() {\n"
+        "        EXPECT_EQ(GetDefault(UnwrapMember(GetMember("
+        "schema->FindChild(\"members\")->AsList(), \"sub\")), "
+        "\"my_uint\")->GetValue<ui64>(), 0u) << description;\n"
+        "        EXPECT_EQ(GetDefault(schema, \"sub\")->AsMap()->template "
+        "GetChildValueOrThrow<ui64>(\"my_uint\"), 8u) << description;\n"
+        "}\n";
+    const auto expected =
+        "void f() {\n"
+        "        EXPECT_EQ(GetDefault(UnwrapMember(GetMember("
+        "schema->FindChild(\"members\")->AsList(), \"sub\")),\n"
+        "            \"my_uint\")->GetValue<ui64>(),\n"
+        "            0u) << description;\n"
+        "        EXPECT_EQ(GetDefault(schema, \"sub\")->AsMap()->template "
+        "GetChildValueOrThrow<ui64>(\"my_uint\"),\n"
+        "            8u) << description;\n"
+        "}\n";
+    for (auto mode : {formatter::ExpressionLayoutCondition::Overflow,
+        formatter::ExpressionLayoutCondition::FitOrOverflow,
+        formatter::ExpressionLayoutCondition::Always})
+    {
+        style.ExpressionLayoutCondition = mode;
+        for (auto algorithm : {formatter::ExpressionLayoutAlgorithm::Greedy,
+            formatter::ExpressionLayoutAlgorithm::DynamicProgramming})
+        {
+            style.ExpressionLayoutAlgorithm = algorithm;
+            EXPECT_EQ(FormatWithStyle(input, style), expected);
+            EXPECT_EQ(FormatWithStyle(expected, style), expected);
+        }
+    }
+    style.CallArgumentSplit = formatter::CallArgumentSplit::OnePerLine;
+    ExpectUnchanged("void f() { EXPECT_EQ(a, b); }\n", style);
+}
+
+TEST(ExpressionLayoutTest, WrapsParsedOperatorsAndPreservesUnsafeLines)
+{
+    formatter::Style style;
+    style.ExpressionLayoutCondition = formatter::ExpressionLayoutCondition::Overflow;
+    style.BinaryOperatorPlacement = formatter::BinaryOperatorPlacement::Leading;
+    style.ColumnLimit = 32;
+    const auto input =
+        "int compute(int first, int second) {\n"
+        "    return first + second + first + second;\n"
+        "}\n"
+        "bool ready(bool first, bool second, bool third) {\n"
+        "    return first && second && third;\n"
+        "}\n"
+        "int choose(bool flag, int alpha, int beta) {\n"
+        "    return flag ? alpha + beta : alpha * beta;\n"
+        "}\n"
+        "int mixed(int alpha, int beta) {\n"
+        "    return alpha * beta + alpha * beta;\n"
+        "}\n"
+        "void update(int& result, int alpha, int beta) {\n"
+        "    result = alpha + beta + alpha + beta;\n"
+        "    result = alpha + beta + alpha + beta; // keep comment\n"
+        "    result = alpha + beta + alpha + beta; /* keep comment */\n"
+        "}\n";
+    const auto expected =
+        "int compute(int first, int second) {\n"
+        "    return first + second\n"
+        "        + first + second;\n"
+        "}\n"
+        "bool ready(bool first, bool second, bool third) {\n"
+        "    return first && second\n"
+        "        && third;\n"
+        "}\n"
+        "int choose(bool flag, int alpha, int beta) {\n"
+        "    return flag ? alpha + beta\n"
+        "        : alpha * beta;\n"
+        "}\n"
+        "int mixed(int alpha, int beta) {\n"
+        "    return alpha * beta\n"
+        "        + alpha * beta;\n"
+        "}\n"
+        "void update(int& result, int alpha, int beta) {\n"
+        "    result\n"
+        "        = alpha + beta + alpha\n"
+        "        + beta;\n"
+        "    result = alpha + beta + alpha + beta; // keep comment\n"
+        "    result = alpha + beta + alpha + beta; /* keep comment */\n"
+        "}\n";
+    EXPECT_EQ(FormatWithStyle(input, formatter::Style{}), input);
+    EXPECT_EQ(FormatWithStyle(input, style), expected);
+    EXPECT_EQ(FormatWithStyle(expected, style), expected);
+
+    style.BinaryOperatorPlacement = formatter::BinaryOperatorPlacement::Trailing;
+    const auto trailingInput =
+        "int sum(int alpha, int beta) {\n"
+        "    return alpha + beta + alpha + beta;\n"
+        "}\n";
+    const auto trailingExpected =
+        "int sum(int alpha, int beta) {\n"
+        "    return alpha + beta +\n"
+        "        alpha + beta;\n"
+        "}\n";
+    EXPECT_EQ(FormatWithStyle(trailingInput, style), trailingExpected);
+    EXPECT_EQ(FormatWithStyle(trailingExpected, style), trailingExpected);
+    const auto assigned =
+        "void f(int alpha, int beta, int& result) {\n"
+        "    result = alpha + beta + alpha + beta;\n"
+        "}\n";
+    const auto assignedExpected =
+        "void f(int alpha, int beta, int& result) {\n"
+        "    result\n"
+        "        = alpha + beta + alpha +\n"
+        "        beta;\n"
+        "}\n";
+    EXPECT_EQ(FormatWithStyle(assigned, style), assignedExpected);
+    EXPECT_EQ(FormatWithStyle(assignedExpected, style), assignedExpected);
+    style.ColumnLimit = 25;
+    const auto compact =
+        "int sum(int alpha, int beta) {\n"
+        "    return alpha+beta+alpha+beta;\n"
+        "}\n";
+    const auto compactExpected =
+        "int sum(int alpha, int beta) {\n"
+        "    return alpha+beta+\n"
+        "        alpha+beta;\n"
+        "}\n";
+    EXPECT_EQ(FormatWithStyle(compact, style), compactExpected);
+    EXPECT_EQ(FormatWithStyle(compactExpected, style), compactExpected);
+    ExpectUnchanged("int f(int a, int b) { return a + b + a + b; }\r\n",
+        style);
+    ExpectUnchanged("#define SUM(a, b) ((a) + (b) + (a) + (b))\n",
+        style);
+    ExpectUnchanged("int compute(int a, int b) { return a + b + a + b; // keep\n}\n",
+        style);
+    ExpectUnchanged("int compute(int a, int b) { return a + b @ broken; }\n",
+        style);
+    ExpectUnchanged("template <int N> struct Array {};\n"
+        "Array<1 + 2 + 3 + 4 + 5 + 6> value;\n", style);
+}
+
+TEST(ExpressionLayoutTest, PrefersOuterConditionalBreaks)
+{
+    formatter::Style style;
+    style.ExpressionLayoutCondition = formatter::ExpressionLayoutCondition::Overflow;
+    style.ControlBlockBracePlacement =
+        formatter::ControlBlockBracePlacement::AttachUnlessMultiline;
+    style.ColumnLimit = 120;
+    const auto input =
+        "void f() {\n"
+        "    if (DefaultCtor_ && !(std::is_base_of_v<TYsonStructLite, TValue> && dontSetLiteMembers && DefaultIsDefaultConstruction_)) {\n"
+        "        go();\n"
+        "    }\n"
+        "}\n";
+    const auto expected =
+        "void f() {\n"
+        "    if (DefaultCtor_ &&\n"
+        "        !(std::is_base_of_v<TYsonStructLite, TValue> && dontSetLiteMembers && DefaultIsDefaultConstruction_))\n"
+        "    {\n"
+        "        go();\n"
+        "    }\n"
+        "}\n";
+    EXPECT_EQ(FormatWithStyle(input, style), expected);
+    EXPECT_EQ(FormatWithStyle(expected, style), expected);
+    style.ExpressionLayoutAlgorithm =
+        formatter::ExpressionLayoutAlgorithm::DynamicProgramming;
+    EXPECT_EQ(FormatWithStyle(input, style), expected);
+}
+
+TEST(ExpressionLayoutTest, ComparesGreedyAndBoundedDynamicProgramming)
+{
+    formatter::Style style;
+    style.ExpressionLayoutCondition = formatter::ExpressionLayoutCondition::Overflow;
+    style.ColumnLimit = 40;
+    const auto input =
+        "void f() {\n"
+        "    return a + bb + ccc + dddd + eeeee + ffffff;\n"
+        "}\n";
+    const auto greedy =
+        "void f() {\n"
+        "    return a + bb + ccc + dddd + eeeee +\n"
+        "        ffffff;\n"
+        "}\n";
+    const auto balanced =
+        "void f() {\n"
+        "    return a + bb + ccc + dddd +\n"
+        "        eeeee + ffffff;\n"
+        "}\n";
+    EXPECT_EQ(FormatWithStyle(input, style), greedy);
+    style.ExpressionLayoutAlgorithm =
+        formatter::ExpressionLayoutAlgorithm::DynamicProgramming;
+    EXPECT_EQ(FormatWithStyle(input, style), balanced);
+    EXPECT_EQ(FormatWithStyle(balanced, style), balanced);
+    style.BinaryOperatorPlacement = formatter::BinaryOperatorPlacement::Leading;
+    const auto leading =
+        "void f() {\n"
+        "    return a + bb + ccc + dddd\n"
+        "        + eeeee + ffffff;\n"
+        "}\n";
+    EXPECT_EQ(FormatWithStyle(input, style), leading);
+    style.BinaryOperatorPlacement = formatter::BinaryOperatorPlacement::Trailing;
+    style.ExpressionLayoutCondition = formatter::ExpressionLayoutCondition::Always;
+    EXPECT_EQ(FormatWithStyle(greedy, style), balanced);
+    std::string many = "void f() {\n    return a";
+    for (int i = 0; i < 100; ++i) {
+        many += " + a";
+    }
+    many += ";\n}\n";
+    style.ExpressionLayoutCondition = formatter::ExpressionLayoutCondition::Overflow;
+    style.ExpressionLayoutAlgorithm = formatter::ExpressionLayoutAlgorithm::Greedy;
+    const auto fallback = FormatWithStyle(many, style);
+    style.ExpressionLayoutAlgorithm =
+        formatter::ExpressionLayoutAlgorithm::DynamicProgramming;
+    EXPECT_EQ(FormatWithStyle(many, style), fallback);
+    style.ExpressionLayoutCondition = formatter::ExpressionLayoutCondition::Preserve;
+    ExpectUnchanged(input, style);
+    style.ExpressionLayoutCondition = formatter::ExpressionLayoutCondition::Always;
+    style.ColumnLimit = 20;
+    ExpectUnchanged("void f() { bool v = alpha<beta; }\n", style);
+}
+
+TEST(ExpressionLayoutTest, ReflowsSafeOperatorContinuationsByPolicy)
+{
+    formatter::Style style;
+    style.ExpressionLayoutCondition = formatter::ExpressionLayoutCondition::Always;
+    style.ColumnLimit = 80;
+    const auto input =
+        "void f() {\n"
+        "    a=b+c;\n"
+        "    return flag\n"
+        "        ? a + b\n"
+        "        : a * c;\n"
+        "}\n";
+    const auto flat =
+        "void f() {\n"
+        "    a = b + c;\n"
+        "    return flag ? a + b : a * c;\n"
+        "}\n";
+    EXPECT_EQ(FormatWithStyle(input, style), flat);
+    EXPECT_EQ(FormatWithStyle(flat, style), flat);
+
+    const auto wrapped =
+        "int f(int alpha, int beta, int gamma) {\n"
+        "    return alpha\n"
+        "        + beta\n"
+        "        + gamma;\n"
+        "}\n";
+    style.ColumnLimit = 30;
+    style.BinaryOperatorPlacement = formatter::BinaryOperatorPlacement::Leading;
+    style.ExpressionLayoutCondition = formatter::ExpressionLayoutCondition::FitOrOverflow;
+    EXPECT_EQ(FormatWithStyle(wrapped, style), wrapped);
+    const auto mixed =
+        "void f(int alpha, int beta, int gamma) {\n"
+        "    int result = alpha\n"
+        "        + beta;\n"
+        "    result = alpha\n"
+        "        + beta\n"
+        "        + gamma;\n"
+        "}\n";
+    const auto partiallyJoined =
+        "void f(int alpha, int beta, int gamma) {\n"
+        "    int result = alpha + beta;\n"
+        "    result = alpha\n"
+        "        + beta\n"
+        "        + gamma;\n"
+        "}\n";
+    EXPECT_EQ(FormatWithStyle(mixed, style), partiallyJoined);
+    EXPECT_EQ(FormatWithStyle(partiallyJoined, style), partiallyJoined);
+    style.ColumnLimit = 40;
+    const auto joined =
+        "int f(int alpha, int beta, int gamma) {\n"
+        "    return alpha + beta + gamma;\n"
+        "}\n";
+    EXPECT_EQ(FormatWithStyle(wrapped, style), joined);
+    EXPECT_EQ(FormatWithStyle(joined, style), joined);
+    style.ExpressionLayoutCondition = formatter::ExpressionLayoutCondition::Overflow;
+    EXPECT_EQ(FormatWithStyle(wrapped, style), wrapped);
+    style.BinaryOperatorPlacement =
+        formatter::BinaryOperatorPlacement::Trailing;
+    const auto repositioned =
+        "int f(int alpha, int beta, int gamma) {\n"
+        "    return alpha +\n"
+        "        beta +\n"
+        "        gamma;\n"
+        "}\n";
+    EXPECT_EQ(FormatWithStyle(wrapped, style), repositioned);
+    EXPECT_EQ(FormatWithStyle(repositioned, style), repositioned);
+    style.BinaryOperatorPlacement = formatter::BinaryOperatorPlacement::Leading;
+    EXPECT_EQ(FormatWithStyle(repositioned, style), wrapped);
+    style.BinaryOperatorPlacement = formatter::BinaryOperatorPlacement::Trailing;
+    style.ColumnLimit = 30;
+    style.ExpressionLayoutCondition = formatter::ExpressionLayoutCondition::Always;
+    const auto trailing =
+        "int f(int alpha, int beta, int gamma) {\n"
+        "    return alpha + beta +\n"
+        "        gamma;\n"
+        "}\n";
+    EXPECT_EQ(FormatWithStyle(wrapped, style), trailing);
+    EXPECT_EQ(FormatWithStyle(trailing, style), trailing);
+    const auto compact =
+        "int f(int alpha, int beta, int gamma) {\n"
+        "    return alpha+beta+gamma+alpha;\n"
+        "}\n";
+    const auto spaced =
+        "int f(int alpha, int beta, int gamma) {\n"
+        "    return alpha + beta +\n"
+        "        gamma + alpha;\n"
+        "}\n";
+    EXPECT_EQ(FormatWithStyle(compact, style), spaced);
+    EXPECT_EQ(FormatWithStyle(spaced, style), spaced);
+    style.BinaryOperatorPlacement = formatter::BinaryOperatorPlacement::Leading;
+    const auto leading =
+        "int f(int alpha, int beta, int gamma) {\n"
+        "    return alpha + beta\n"
+        "        + gamma;\n"
+        "}\n";
+    EXPECT_EQ(FormatWithStyle(wrapped, style), leading);
+    EXPECT_EQ(FormatWithStyle(leading, style), leading);
+    style.ColumnLimit = 80;
+    ExpectUnchanged("void f() { call(alpha, beta, gamma); }\n", style);
+    ExpectUnchanged("void f() { int x = a + b; // keep\n}\n", style);
+    ExpectUnchanged("void f() { int x = a + b; }\r\n", style);
+    const auto ambiguous =
+        "template<class... Args> void f() {\n"
+        "    static_assert(TDependentFalse<Args...>, "
+        "\"Wrong number of arguments\");\n"
+        "}\n";
+    for (auto mode : {formatter::ExpressionLayoutCondition::Overflow,
+        formatter::ExpressionLayoutCondition::FitOrOverflow,
+        formatter::ExpressionLayoutCondition::Always})
+    {
+        style.ExpressionLayoutCondition = mode;
+        style.ColumnLimit = 32;
+        ExpectUnchanged(ambiguous, style);
+        ExpectUnchanged("void f() { bool v = alpha<beta; }\n", style);
+    }
+}
+
+TEST(ExpressionLayoutTest, ReconsidersControlBracesAfterWrapping)
+{
+    formatter::Style style;
+    style.ExpressionLayoutCondition = formatter::ExpressionLayoutCondition::Overflow;
+    style.ControlBlockBracePlacement =
+        formatter::ControlBlockBracePlacement::AttachUnlessMultiline;
+    style.ColumnLimit = 32;
+    const auto input =
+        "void f(bool alpha, bool beta, bool gamma) {\n"
+        "    if (alpha && beta && gamma) {\n"
+        "        run();\n"
+        "    } else {\n"
+        "        stop();\n"
+        "    }\n"
+        "    while (alpha && beta && gamma) {\n"
+        "        run();\n"
+        "    }\n"
+        "}\n";
+    const auto expected =
+        "void f(bool alpha, bool beta, bool gamma) {\n"
+        "    if (alpha && beta &&\n"
+        "        gamma)\n"
+        "    {\n"
+        "        run();\n"
+        "    } else {\n"
+        "        stop();\n"
+        "    }\n"
+        "    while (alpha && beta &&\n"
+        "        gamma)\n"
+        "    {\n"
+        "        run();\n"
+        "    }\n"
+        "}\n";
+    EXPECT_EQ(FormatWithStyle(input, style), expected);
+    EXPECT_EQ(FormatWithStyle(expected, style), expected);
+
+    style.ExpressionLayoutCondition = formatter::ExpressionLayoutCondition::Always;
+    style.ColumnLimit = 80;
+    const auto multiline =
+        "void f(bool alpha, bool beta) {\n"
+        "    if (alpha &&\n"
+        "        beta)\n"
+        "    {\n"
+        "        run();\n"
+        "    }\n"
+        "}\n";
+    const auto attached =
+        "void f(bool alpha, bool beta) {\n"
+        "    if (alpha && beta) {\n"
+        "        run();\n"
+        "    }\n"
+        "}\n";
+    EXPECT_EQ(FormatWithStyle(multiline, style), attached);
+    EXPECT_EQ(FormatWithStyle(attached, style), attached);
+}
+
 TEST(FunctionParameterSafetyTest, ComposesWithBracePlacement)
 {
     formatter::Style style;
@@ -586,12 +1193,37 @@ TEST(PreserveConfigTest, RejectsInvalidSettings)
         output << contents;
     };
     save("IndentWidth = 2\nColumnLimit = 40\n"
+         "ExpressionLayoutCondition = FitOrOverflow\n"
+         "ExpressionLayoutAlgorithm = DynamicProgramming\n"
+         "BinaryOperatorPlacement = Trailing\n"
+         "CallArgumentSplit = Pack\nFirstCallArgumentPosition = NewLine\n"
+         "EnforceFirstCallArgumentPosition = true\n"
+         "CallArgumentIndent = Continuation\n"
          "Exclude = [\"(^|/)generated(/|$)\"]\n");
     const auto config = formatter::LoadConfigFile(path);
     EXPECT_EQ(config.FormattingStyle.IndentWidth, 2u);
     EXPECT_EQ(config.FormattingStyle.ColumnLimit, 40u);
+    EXPECT_EQ(config.FormattingStyle.ExpressionLayoutCondition,
+        formatter::ExpressionLayoutCondition::FitOrOverflow);
+    EXPECT_EQ(config.FormattingStyle.ExpressionLayoutAlgorithm,
+        formatter::ExpressionLayoutAlgorithm::DynamicProgramming);
+    EXPECT_EQ(config.FormattingStyle.BinaryOperatorPlacement,
+        formatter::BinaryOperatorPlacement::Trailing);
+    EXPECT_EQ(config.FormattingStyle.CallArgumentSplit,
+        formatter::CallArgumentSplit::Pack);
+    EXPECT_EQ(config.FormattingStyle.FirstCallArgumentPosition,
+        formatter::FirstCallArgumentPosition::NewLine);
+    EXPECT_TRUE(config.FormattingStyle.EnforceFirstCallArgumentPosition);
+    EXPECT_EQ(config.FormattingStyle.CallArgumentIndent,
+        formatter::CallArgumentIndent::Continuation);
     ASSERT_EQ(config.Exclusions.size(), 1u);
     EXPECT_TRUE(std::regex_search("generated/source.cpp", config.Exclusions[0]));
+    save("CallArgumentSplit = Pack\nExpressionLayoutCondition = Always\n");
+    const auto alternate = formatter::LoadConfigFile(path).FormattingStyle;
+    EXPECT_EQ(alternate.ExpressionLayoutCondition, formatter::ExpressionLayoutCondition::Always);
+    save("ExpressionLayoutCondition = Overflow\n");
+    EXPECT_EQ(formatter::LoadConfigFile(path).FormattingStyle.ExpressionLayoutCondition,
+        formatter::ExpressionLayoutCondition::Overflow);
     for (auto setting : {
         "Regroup = true\n",
         "InsertBraces = false\n",
@@ -616,6 +1248,16 @@ TEST(PreserveConfigTest, RejectsInvalidSettings)
         "InheritanceListMerge = true\n",
         "InheritanceListPunctuation = WithAncestor\n",
         "FunctionParameterSplit = Together\n",
+        "ExpressionWrap = Always\n",
+        "ExpressionLayoutCondition = Unknown\n",
+        "ExpressionLayoutAlgorithm = BruteForce\n",
+        "BinaryOperatorPlacement = Middle\n",
+        "CallArgumentSplit = Together\n",
+        "FirstCallArgumentPosition = BeforeCall\n",
+        "EnforceFirstCallArgumentPosition = maybe\n",
+        "CallArgumentIndent = Tabs\n",
+        "MergeCallArguments = Underflow\n",
+        "ExpressionLayoutCondition = OnOverflow\n",
         "FirstFunctionParameterPosition = BeforeName\n",
         "EnforceFirstFunctionParameterPosition = maybe\n",
         "FunctionParameterIndent = Tabs\n",

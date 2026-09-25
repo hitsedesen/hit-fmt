@@ -507,6 +507,89 @@ void ApplySetting(
         } else {
             ThrowConfigError(path, line, "invalid FunctionParameterIndent");
         }
+    } else if (key == "CallArgumentSplit") {
+        value = ParseOption(value, path, line);
+        if (value == "Preserve") {
+            config.FormattingStyle.CallArgumentSplit =
+                CallArgumentSplit::Preserve;
+        } else if (value == "Pack") {
+            config.FormattingStyle.CallArgumentSplit = CallArgumentSplit::Pack;
+        } else if (value == "OnePerLine") {
+            config.FormattingStyle.CallArgumentSplit =
+                CallArgumentSplit::OnePerLine;
+        } else {
+            ThrowConfigError(path, line, "invalid CallArgumentSplit");
+        }
+    } else if (key == "FirstCallArgumentPosition") {
+        value = ParseOption(value, path, line);
+        if (value == "CallLine") {
+            config.FormattingStyle.FirstCallArgumentPosition =
+                FirstCallArgumentPosition::CallLine;
+        } else if (value == "NewLine") {
+            config.FormattingStyle.FirstCallArgumentPosition =
+                FirstCallArgumentPosition::NewLine;
+        } else {
+            ThrowConfigError(path, line,
+                "invalid FirstCallArgumentPosition");
+        }
+    } else if (key == "EnforceFirstCallArgumentPosition") {
+        config.FormattingStyle.EnforceFirstCallArgumentPosition =
+            ParseBoolean(value, path, line);
+    } else if (key == "CallArgumentIndent") {
+        value = ParseOption(value, path, line);
+        if (value == "IndentWidth") {
+            config.FormattingStyle.CallArgumentIndent =
+                CallArgumentIndent::IndentWidth;
+        } else if (value == "Continuation") {
+            config.FormattingStyle.CallArgumentIndent =
+                CallArgumentIndent::Continuation;
+        } else {
+            ThrowConfigError(path, line, "invalid CallArgumentIndent");
+        }
+    } else if (key == "ExpressionLayoutCondition") {
+        value = ParseOption(value, path, line);
+        if (value == "Preserve") {
+            config.FormattingStyle.ExpressionLayoutCondition =
+                ExpressionLayoutCondition::Preserve;
+        } else if (value == "Overflow") {
+            config.FormattingStyle.ExpressionLayoutCondition =
+                ExpressionLayoutCondition::Overflow;
+        } else if (value == "FitOrOverflow") {
+            config.FormattingStyle.ExpressionLayoutCondition =
+                ExpressionLayoutCondition::FitOrOverflow;
+        } else if (value == "Always") {
+            config.FormattingStyle.ExpressionLayoutCondition =
+                ExpressionLayoutCondition::Always;
+        } else {
+            ThrowConfigError(path, line,
+                "expected Preserve, Overflow, FitOrOverflow or Always for "
+                "ExpressionLayoutCondition");
+        }
+    } else if (key == "ExpressionLayoutAlgorithm") {
+        value = ParseOption(value, path, line);
+        if (value == "Greedy") {
+            config.FormattingStyle.ExpressionLayoutAlgorithm =
+                ExpressionLayoutAlgorithm::Greedy;
+        } else if (value == "DynamicProgramming") {
+            config.FormattingStyle.ExpressionLayoutAlgorithm =
+                ExpressionLayoutAlgorithm::DynamicProgramming;
+        } else {
+            ThrowConfigError(path, line,
+                "expected Greedy or DynamicProgramming for "
+                "ExpressionLayoutAlgorithm");
+        }
+    } else if (key == "BinaryOperatorPlacement") {
+        value = ParseOption(value, path, line);
+        if (value == "Leading") {
+            config.FormattingStyle.BinaryOperatorPlacement =
+                BinaryOperatorPlacement::Leading;
+        } else if (value == "Trailing") {
+            config.FormattingStyle.BinaryOperatorPlacement =
+                BinaryOperatorPlacement::Trailing;
+        } else {
+            ThrowConfigError(path, line,
+                "expected Leading or Trailing for BinaryOperatorPlacement");
+        }
     } else if (key == "MergeFunctionParameters") {
         config.FormattingStyle.MergeFunctionParameters =
             ParseBoolean(value, path, line);

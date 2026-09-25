@@ -5,6 +5,7 @@
 
 #include <algorithm>
 #include <cctype>
+#include <cstdint>
 #include <limits>
 #include <optional>
 #include <string>
@@ -1295,13 +1296,88 @@ bool IsWhitespace(std::string_view text)
     });
 }
 
+// Minimize a bounded whole-list cost for Pack. The candidate boundaries are
+// precisely the parsed argument commas; explicit OnePerLine and Preserve
+// policies never pass through this search.
+std::optional<std::vector<bool>> ChooseCallArgumentBreaks(
+    const std::vector<std::string_view>& arguments, size_t firstColumn,
+    size_t continuationColumn, size_t suffixWidth, size_t columnLimit,
+    bool requireBreak)
+{
+    constexpr size_t MaxArguments = 96;
+    const auto count = arguments.size();
+    if (count < 2 || count > MaxArguments) {
+        return std::nullopt;
+    }
+    constexpr auto Infinity = std::numeric_limits<uint64_t>::max();
+    std::vector<uint64_t> cost(count + 1, Infinity);
+    std::vector<size_t> next(count, count);
+    cost[count] = 0;
+    for (size_t start = count; start-- > 0;) {
+        auto width = start == 0 ? firstColumn : continuationColumn;
+        for (auto end = start; end < count; ++end) {
+            width += arguments[end].size() + (end == start ? 0 : 2);
+            const bool last = end + 1 == count;
+            auto projected = width + (last ? suffixWidth : 1);
+            if (projected > columnLimit) {
+                break;
+            }
+            if ((requireBreak && start == 0 && last) ||
+                cost[end + 1] == Infinity)
+            {
+                continue;
+            }
+            auto slack = columnLimit - projected;
+            auto score = cost[end + 1] + uint64_t(slack) * slack /
+                (last ? 2 : 1) + (last ? 0 : 250);
+            if (score < cost[start]) {
+                cost[start] = score;
+                next[start] = end + 1;
+            }
+        }
+    }
+    if (cost[0] == Infinity) {
+        return std::nullopt;
+    }
+    std::vector<bool> breakAfter(count - 1, false);
+    for (size_t start = 0; start < count && next[start] < count;) {
+        breakAfter[next[start] - 1] = true;
+        start = next[start];
+    }
+    return breakAfter;
+}
+
 // Only rewrite lists whose comma-separated elements and intervening trivia
 // can be moved without touching comments, directives, or nested line breaks.
-std::optional<Replacement> ReflowParameters(
+std::optional<Replacement> ReflowParenthesizedList(
     const parser::SyntaxTree& tree, const parser::Node& list,
     const Style& style)
 {
     using TK = tokenizer::TokenKind;
+    const bool call = list.Kind == NK::ArgumentList;
+    if (!call && list.Kind != NK::ParameterList) {
+        return std::nullopt;
+    }
+    const bool merge = call
+        ? style.ExpressionLayoutCondition == ExpressionLayoutCondition::FitOrOverflow ||
+            style.ExpressionLayoutCondition == ExpressionLayoutCondition::Always
+        : style.MergeFunctionParameters;
+    const bool onePerLine = call
+        ? style.CallArgumentSplit == CallArgumentSplit::OnePerLine
+        : style.FunctionParameterSplit == FunctionParameterSplit::OnePerLine;
+    const bool enforceFirst = call ? style.EnforceFirstCallArgumentPosition
+                                   : style.EnforceFirstFunctionParameterPosition;
+    const bool newLineFirst = call
+        ? style.FirstCallArgumentPosition == FirstCallArgumentPosition::NewLine
+        : style.FirstFunctionParameterPosition ==
+            FirstFunctionParameterPosition::NewLine;
+    const bool continuationIndent = call
+        ? style.CallArgumentIndent == CallArgumentIndent::Continuation
+        : style.FunctionParameterIndent == FunctionParameterIndent::Continuation;
+    const bool innerSpace = call
+        ? style.SpaceInsideCallArguments == SpaceInsideCallArguments::Space
+        : style.SpaceInsideFunctionParameters ==
+            SpaceInsideFunctionParameters::Space;
     auto opening = list.Tokens.Begin;
     auto closing = list.Tokens.End - 1;
     if (list.Tokens.Size() < 3 ||
@@ -1323,8 +1399,9 @@ std::optional<Replacement> ReflowParameters(
         if (child->Tokens.Empty()) {
             return std::nullopt;
         }
-        if (expectParameter ? child->Kind != parser::NodeKind::ParameterDeclaration
-                            : child->Kind != parser::NodeKind::ListSeparator)
+        if (expectParameter ? child->Kind != (call ? NK::Argument
+                                                   : NK::ParameterDeclaration)
+                            : child->Kind != NK::ListSeparator)
         {
             return std::nullopt;
         }
@@ -1378,13 +1455,34 @@ std::optional<Replacement> ReflowParameters(
     for (size_t i = 0; i < parameters.size(); ++i) {
         flatWidth += parameters[i].size() + (i ? 2 : 0);
     }
-    const bool innerSpace = style.SpaceInsideFunctionParameters ==
-        SpaceInsideFunctionParameters::Space;
     flatWidth += innerSpace ? 2 : 0;
     bool split = source.substr(begin, end - begin).find('\n') !=
         std::string_view::npos;
-    if (!split && flatWidth <= style.ColumnLimit) {
+    if ((call && parameters.size() == 1) ||
+        (!split && flatWidth <= style.ColumnLimit))
+    {
         return std::nullopt;
+    }
+    if (call && split && !(merge && flatWidth <= style.ColumnLimit) &&
+        style.ExpressionLayoutCondition != ExpressionLayoutCondition::Always)
+    {
+        // Overflow and FitOrOverflow retain an existing multiline layout
+        // unless one of its physical lines actually exceeds the limit.
+        bool overlong = false;
+        for (auto from = lineStart; from <= end;) {
+            auto until = source.find('\n', from);
+            if (until == std::string_view::npos) {
+                until = source.size();
+            }
+            overlong |= until - from > style.ColumnLimit;
+            if (until >= end || until == source.size()) {
+                break;
+            }
+            from = until + 1;
+        }
+        if (!overlong) {
+            return std::nullopt;
+        }
     }
 
     std::string flat;
@@ -1394,8 +1492,7 @@ std::optional<Replacement> ReflowParameters(
         }
         flat += parameter;
     }
-    if (split && style.MergeFunctionParameters &&
-        flatWidth <= style.ColumnLimit)
+    if (split && merge && flatWidth <= style.ColumnLimit)
     {
         if (innerSpace) {
             flat.insert(flat.begin(), ' ');
@@ -1407,9 +1504,9 @@ std::optional<Replacement> ReflowParameters(
         return std::nullopt;
     }
 
-    bool firstNew = style.FirstFunctionParameterPosition ==
-        FirstFunctionParameterPosition::NewLine;
-    if (split && !style.EnforceFirstFunctionParameterPosition) {
+    bool firstNew = newLineFirst;
+    if (split && !enforceFirst &&
+        (!call || style.ExpressionLayoutCondition != ExpressionLayoutCondition::Always)) {
         firstNew = source.substr(begin,
             tree.Token(list.Child()->Tokens.Begin).Text.Begin - begin)
             .find('\n') != std::string_view::npos;
@@ -1420,8 +1517,7 @@ std::optional<Replacement> ReflowParameters(
     {
         ++baseIndent;
     }
-    const size_t indent = style.FunctionParameterIndent ==
-        FunctionParameterIndent::Continuation
+    const size_t indent = continuationIndent
         ? openBegin + 1 - lineStart : baseIndent + style.IndentWidth;
     const std::string continuation(indent, ' ');
     std::string result;
@@ -1434,15 +1530,25 @@ std::optional<Replacement> ReflowParameters(
     size_t column = (firstNew ? indent : prefix + (innerSpace ? 1 : 0)) +
         parameters.front().size();
     bool broke = firstNew;
+    std::optional<std::vector<bool>> chosenBreaks;
+    if (call && !onePerLine &&
+        style.ExpressionLayoutAlgorithm ==
+            ExpressionLayoutAlgorithm::DynamicProgramming)
+    {
+        chosenBreaks = ChooseCallArgumentBreaks(parameters,
+            firstNew ? indent : prefix + (innerSpace ? 1 : 0), indent,
+            suffix.size() + (innerSpace ? 1 : 0), style.ColumnLimit,
+            split && !merge && flatWidth <= style.ColumnLimit && !firstNew);
+    }
     for (size_t i = 1; i < parameters.size(); ++i) {
         bool last = i + 1 == parameters.size();
         bool overflow = column + 2 + parameters[i].size() +
             (last ? suffix.size() + (innerSpace ? 1 : 0) : 1) >
                 style.ColumnLimit;
-        bool forceSplit = split && !style.MergeFunctionParameters &&
+        bool forceSplit = split && !merge &&
             flatWidth <= style.ColumnLimit && !broke && last;
-        bool breakBefore = style.FunctionParameterSplit ==
-            FunctionParameterSplit::OnePerLine || overflow || forceSplit;
+        bool breakBefore = chosenBreaks ? (*chosenBreaks)[i - 1] :
+            onePerLine || overflow || forceSplit;
         result += ',';
         if (breakBefore) {
             result += '\n';
@@ -1462,6 +1568,660 @@ std::optional<Replacement> ReflowParameters(
         return std::nullopt;
     }
     return Replacement{begin, end, std::move(result)};
+}
+
+// Even when the parser assigns a comparison or shift role, bare angle
+// operators can be template delimiters without name lookup (for example,
+// TDependentFalse<Args...>). Never move or space these ambiguous tokens.
+bool IsAmbiguousAngleOperator(TK kind)
+{
+    return kind == TK::Operator_Less || kind == TK::Operator_Greater ||
+        kind == TK::Operator_LeftShift || kind == TK::Operator_RightShift;
+}
+
+// Expression layout only uses operators identified by the parser. In Always
+// mode, normalize safe operator gaps before applying the same width-based
+// splitting pass used by Overflow.
+std::string FlattenExpressionOperators(const parser::SyntaxTree& tree,
+    bool normalizeAll, std::vector<size_t>* mergedPositions = nullptr,
+    std::vector<Replacement>* mergedEdits = nullptr)
+{
+    const auto source = tree.Source();
+    std::vector<bool> unsafe(tree.TokenCount(), false);
+    TokenIndex cursor = 0;
+    for (size_t lineStart = 0; lineStart < source.size();) {
+        auto lineEnd = source.find('\n', lineStart);
+        if (lineEnd == std::string_view::npos) {
+            lineEnd = source.size();
+        }
+        while (cursor < tree.TokenCount() &&
+            tree.Token(cursor).Text.End <= lineStart)
+        {
+            ++cursor;
+        }
+        auto end = cursor;
+        bool protectedLine = (lineEnd > lineStart &&
+            source[lineEnd - 1] == '\r') ||
+            source.substr(lineStart, lineEnd - lineStart).contains('\\');
+        auto first = source.find_first_not_of(" \t", lineStart);
+        protectedLine |= first < lineEnd && source[first] == '#';
+        while (end < tree.TokenCount() &&
+            tree.Token(end).Text.Begin < lineEnd)
+        {
+            const auto token = tree.Token(end).Text;
+            protectedLine |= tree.Kind(end) == TK::Comment ||
+                tree.Kind(end) == TK::PreprocessingDirective ||
+                token.Begin < lineStart || token.End > lineEnd ||
+                source.substr(token.Begin, token.End - token.Begin)
+                    .contains('\r');
+            ++end;
+        }
+        if (protectedLine) {
+            for (auto i = cursor; i < end; ++i) {
+                unsafe[i] = true;
+            }
+        }
+        lineStart = lineEnd == source.size() ? lineEnd : lineEnd + 1;
+    }
+
+    std::vector<TokenIndex> operators;
+    std::vector<bool> seen(tree.TokenCount(), false);
+    std::vector<const parser::Node*> nodes{&tree.Root()};
+    while (!nodes.empty()) {
+        auto* node = nodes.back();
+        nodes.pop_back();
+        if (IsIncompleteStatement(*node)) {
+            continue;
+        }
+        if (node->Kind == NK::BinaryExpression ||
+            node->Kind == NK::AssignmentExpression ||
+            node->Kind == NK::ConditionalExpression)
+        {
+            const auto* left = node->Child();
+            const auto* right = left ? left->NextSibling : nullptr;
+            const auto* alternative = right ? right->NextSibling : nullptr;
+            if (left && right && !left->Tokens.Empty() &&
+                !right->Tokens.Empty() &&
+                (node->Kind != NK::ConditionalExpression ||
+                    (alternative && !alternative->Tokens.Empty())))
+            {
+                auto collect = [&] (TokenIndex index) {
+                    if (index > 0 && index + 1 < tree.TokenCount() &&
+                        !seen[index] && !unsafe[index - 1] &&
+                        !unsafe[index] && !unsafe[index + 1] &&
+                        tree.Kind(index) != TK::Operator_Comma &&
+                        !IsAmbiguousAngleOperator(tree.Kind(index)))
+                    {
+                        seen[index] = true;
+                        operators.push_back(index);
+                    }
+                };
+                for (auto i = left->Tokens.End; i < right->Tokens.Begin; ++i) {
+                    const auto role = tree.Role(i);
+                    if (node->Kind == NK::ConditionalExpression
+                            ? role == parser::PunctuationRole::ConditionalDelimiter
+                            : node->Kind == NK::AssignmentExpression
+                                ? role == parser::PunctuationRole::AssignmentOperator
+                                : role == parser::PunctuationRole::BinaryOperator ||
+                                    role == parser::PunctuationRole::ComparisonOperator ||
+                                    role == parser::PunctuationRole::ShiftOperator)
+                    {
+                        collect(i);
+                    }
+                }
+                if (node->Kind == NK::ConditionalExpression) {
+                    for (auto i = right->Tokens.End;
+                        i < alternative->Tokens.Begin; ++i)
+                    {
+                        if (tree.Kind(i) == TK::Operator_Colon &&
+                            tree.Role(i) ==
+                                parser::PunctuationRole::ConditionalDelimiter)
+                        {
+                            collect(i);
+                        }
+                    }
+                }
+            }
+        }
+        for (auto* child = node->Child(); child; child = child->NextSibling) {
+            nodes.push_back(child);
+        }
+    }
+    std::vector<Replacement> edits;
+    for (auto index : operators) {
+        auto before = tree.WhitespaceBefore(index);
+        auto after = tree.WhitespaceAfter(index);
+        if (!IsWhitespace(before) || !IsWhitespace(after) ||
+            before.contains('\r') || after.contains('\r'))
+        {
+            continue;
+        }
+        auto opening = tree.Token(index).Text.Begin;
+        auto closing = tree.Token(index).Text.End;
+        if (before != " " &&
+            (normalizeAll || before.contains('\n')))
+        {
+            edits.push_back({opening - before.size(), opening, " "});
+        }
+        if (after != " " &&
+            (normalizeAll || after.contains('\n')))
+        {
+            edits.push_back({closing, closing + after.size(), " "});
+        }
+    }
+    std::ranges::sort(edits, {}, &Replacement::Begin);
+    std::string output;
+    output.reserve(source.size());
+    std::vector<Replacement> applied;
+    size_t from = 0;
+    for (const auto& edit : edits) {
+        if (edit.Begin < from) {
+            continue;
+        }
+        if (mergedEdits) {
+            applied.push_back(edit);
+        }
+        output.append(source.substr(from, edit.Begin - from));
+        if (mergedPositions &&
+            source.substr(edit.Begin, edit.End - edit.Begin).contains('\n'))
+        {
+            mergedPositions->push_back(output.size());
+        }
+        output += edit.Text;
+        from = edit.End;
+    }
+    output.append(source.substr(from));
+    if (mergedEdits) {
+        *mergedEdits = std::move(applied);
+    }
+    return output;
+}
+
+// Break only at operators identified by the parser. Other token and trivia
+// bytes remain source-owned; comments, directives, CRLF, and multiline tokens
+// keep their physical lines unchanged.
+int ExpressionPriority(TK kind)
+{
+    switch (kind) {
+    case TK::Operator_Or: return 2;
+    case TK::Operator_And: return 3;
+    case TK::Operator_BitOr: return 4;
+    case TK::Operator_Xor: return 5;
+    case TK::Operator_Ampersand: return 6;
+    case TK::Operator_Equals:
+    case TK::Operator_NotEquals: return 7;
+    case TK::Operator_Less:
+    case TK::Operator_Greater:
+    case TK::Operator_LessEquals:
+    case TK::Operator_GreaterEquals:
+    case TK::Operator_Spaceship: return 8;
+    case TK::Operator_LeftShift:
+    case TK::Operator_RightShift: return 9;
+    case TK::Operator_Plus:
+    case TK::Operator_Minus: return 10;
+    default: return 11;
+    }
+}
+
+struct ExpressionBreak
+{
+    size_t Begin;
+    size_t End;
+    int Priority;
+    int Nesting;
+};
+
+// Find a minimum-cost path through the same safe operator gaps as the greedy
+// pass. Each edge is a physical line; short lines and higher-precedence
+// breaks cost more. Bound the search on pathological single-line expressions.
+std::vector<size_t> ChooseExpressionBreaks(
+    std::string_view source, const std::vector<ExpressionBreak>& breaks,
+    size_t begin, size_t end, size_t lineStart, size_t lineEnd,
+    size_t continuationIndent, size_t columnLimit)
+{
+    constexpr size_t MaxCandidates = 96;
+    const auto count = end - begin;
+    if (count == 0 || count > MaxCandidates) {
+        return {};
+    }
+    constexpr auto Infinity = std::numeric_limits<uint64_t>::max();
+    int outerNesting = breaks[begin].Nesting;
+    for (auto i = begin + 1; i < end; ++i) {
+        outerNesting = std::min(outerNesting, breaks[i].Nesting);
+    }
+    std::vector<uint64_t> cost(count + 1, Infinity);
+    std::vector<size_t> next(count + 1, count);
+    for (size_t state = count + 1; state-- > 0;) {
+        const auto start = state == 0 ? lineStart
+            : breaks[begin + state - 1].End;
+        const auto indent = state == 0 ? 0 : continuationIndent;
+        if (start <= lineEnd && indent + lineEnd - start <= columnLimit) {
+            auto slack = columnLimit - (indent + lineEnd - start);
+            cost[state] = uint64_t(slack) * slack / 2;
+        }
+        for (size_t choice = state; choice < count; ++choice) {
+            const auto& candidate = breaks[begin + choice];
+            if (candidate.Begin <= start) {
+                continue;
+            }
+            const auto width = indent + candidate.Begin - start;
+            if (width > columnLimit) {
+                break; // Breakpoints are sorted by source position.
+            }
+            if (source.substr(start, candidate.Begin - start)
+                    .find_first_not_of(" \t") == std::string_view::npos ||
+                cost[choice + 1] == Infinity)
+            {
+                continue;
+            }
+            auto slack = columnLimit - width;
+            auto score = cost[choice + 1] + uint64_t(slack) * slack +
+                250 + 45 * candidate.Priority +
+                8000 * (candidate.Nesting - outerNesting);
+            if (score < cost[state]) {
+                cost[state] = score;
+                next[state] = choice;
+            }
+        }
+    }
+    if (cost[0] == Infinity || next[0] == count) {
+        return {};
+    }
+    std::vector<size_t> selected;
+    for (size_t state = 0; next[state] < count;) {
+        auto choice = next[state];
+        selected.push_back(begin + choice);
+        state = choice + 1;
+    }
+    return selected;
+}
+
+// Move only the newline beside a parsed binary operator. This enforces
+// operator placement without regrouping already split expressions.
+std::string PlaceExistingBinaryBreaks(const parser::SyntaxTree& tree,
+    const Style& style)
+{
+    const auto source = tree.Source();
+    std::vector<Replacement> edits;
+    std::vector<const parser::Node*> nodes{&tree.Root()};
+    while (!nodes.empty()) {
+        auto* node = nodes.back();
+        nodes.pop_back();
+        if (IsIncompleteStatement(*node)) {
+            continue;
+        }
+        if (node->Kind == NK::BinaryExpression) {
+            const auto* left = node->Child();
+            const auto* right = left ? left->NextSibling : nullptr;
+            if (left && right && !left->Tokens.Empty() &&
+                !right->Tokens.Empty())
+            {
+                for (auto i = left->Tokens.End; i < right->Tokens.Begin; ++i) {
+                    const auto kind = tree.Kind(i);
+                    const auto role = tree.Role(i);
+                    if (i == 0 || i + 1 == tree.TokenCount() ||
+                        kind == TK::Operator_Comma ||
+                        IsAmbiguousAngleOperator(kind) ||
+                        (role != parser::PunctuationRole::BinaryOperator &&
+                            role != parser::PunctuationRole::ComparisonOperator &&
+                            role != parser::PunctuationRole::ShiftOperator))
+                    {
+                        continue;
+                    }
+                    auto before = tree.WhitespaceBefore(i);
+                    auto after = tree.WhitespaceAfter(i);
+                    const bool leftBreak = before.contains('\n');
+                    const bool rightBreak = after.contains('\n');
+                    if (leftBreak == rightBreak || !IsWhitespace(before) ||
+                        !IsWhitespace(after) || before.contains('\r') ||
+                        after.contains('\r') ||
+                        tree.Kind(i - 1) == TK::Comment ||
+                        tree.Kind(i + 1) == TK::Comment ||
+                        tree.Kind(i - 1) == TK::PreprocessingDirective ||
+                        tree.Kind(i + 1) == TK::PreprocessingDirective)
+                    {
+                        continue;
+                    }
+                    auto newline = leftBreak ? before : after;
+                    auto breakAt = newline.find('\n');
+                    if (newline.find('\n', breakAt + 1) !=
+                            std::string_view::npos ||
+                        tree.TokenText(i - 1).contains('\n') ||
+                        tree.TokenText(i + 1).contains('\n'))
+                    {
+                        continue;
+                    }
+                    newline.remove_prefix(breakAt); // Discard trailing spaces.
+                    const bool leading = style.BinaryOperatorPlacement ==
+                        BinaryOperatorPlacement::Leading;
+                    if (leading == leftBreak) {
+                        continue;
+                    }
+                    const auto begin = tree.Token(i).Text.Begin;
+                    const auto end = tree.Token(i).Text.End;
+                    edits.push_back({begin - before.size(), begin,
+                        leading ? std::string(newline) : " "});
+                    edits.push_back({end, end + after.size(),
+                        leading ? " " : std::string(newline)});
+                }
+            }
+        }
+        for (auto* child = node->Child(); child; child = child->NextSibling) {
+            nodes.push_back(child);
+        }
+    }
+    std::ranges::sort(edits, {}, &Replacement::Begin);
+    std::string output;
+    output.reserve(source.size());
+    size_t from = 0;
+    for (const auto& edit : edits) {
+        if (edit.Begin < from) {
+            continue;
+        }
+        output.append(source.substr(from, edit.Begin - from));
+        output += edit.Text;
+        from = edit.End;
+    }
+    output.append(source.substr(from));
+    return output;
+}
+
+std::string FormatExpressions(const parser::SyntaxTree& tree,
+    const Style& style, bool correctExisting = true)
+{
+    if (style.ExpressionLayoutCondition == ExpressionLayoutCondition::Overflow &&
+        correctExisting)
+    {
+        auto placed = PlaceExistingBinaryBreaks(tree, style);
+        if (placed != tree.Source()) {
+            auto length = placed.size();
+            placed.append(util::SourcePaddingSize, '\0');
+            auto parsed = parser::Parse(
+                {.Data = placed.data(), .Size = length},
+                [] (parser::ParseError) { });
+            return FormatExpressions(parsed, style, false);
+        }
+    }
+    if (style.ExpressionLayoutCondition == ExpressionLayoutCondition::Always ||
+        style.ExpressionLayoutCondition == ExpressionLayoutCondition::FitOrOverflow)
+    {
+        const bool always = style.ExpressionLayoutCondition == ExpressionLayoutCondition::Always;
+        std::vector<size_t> mergedPositions;
+        std::vector<Replacement> mergedEdits;
+        auto flattened = FlattenExpressionOperators(tree, always,
+            always ? nullptr : &mergedPositions,
+            always ? nullptr : &mergedEdits);
+        Style overflowStyle = style;
+        overflowStyle.ExpressionLayoutCondition = ExpressionLayoutCondition::Overflow;
+        if (flattened == tree.Source()) {
+            return FormatExpressions(tree, overflowStyle);
+        }
+        if (!always) {
+            size_t lineStart = 0;
+            auto lineEnd = flattened.find('\n');
+            std::string partial;
+            size_t from = 0;
+            for (size_t i = 0; i < mergedPositions.size(); ++i) {
+                auto position = mergedPositions[i];
+                while (lineEnd != std::string::npos && position >= lineEnd) {
+                    lineStart = lineEnd + 1;
+                    lineEnd = flattened.find('\n', lineStart);
+                }
+                auto end = lineEnd == std::string::npos
+                    ? flattened.size() : lineEnd;
+                if (end - lineStart <= style.ColumnLimit) {
+                    const auto& edit = mergedEdits[i];
+                    partial.append(tree.Source().substr(from,
+                        edit.Begin - from));
+                    partial += edit.Text;
+                    from = edit.End;
+                }
+            }
+            partial.append(tree.Source().substr(from));
+            flattened = std::move(partial);
+            if (flattened == tree.Source()) {
+                return FormatExpressions(tree, overflowStyle);
+            }
+        }
+        auto length = flattened.size();
+        flattened.append(util::SourcePaddingSize, '\0');
+        auto parsed = parser::Parse(
+            {.Data = flattened.data(), .Size = length},
+            [] (parser::ParseError) { });
+        return FormatExpressions(parsed, overflowStyle);
+    }
+    auto source = tree.Source();
+    std::vector<ExpressionBreak> breaks;
+    std::vector<int> nesting(tree.TokenCount(), 0);
+    int parens = 0;
+    for (TokenIndex i = 0; i < tree.TokenCount(); ++i) {
+        if (tree.Kind(i) == TK::Operator_CloseParenthesis && parens > 0) {
+            --parens;
+        }
+        nesting[i] = parens;
+        if (tree.Kind(i) == TK::Operator_OpenParenthesis) {
+            ++parens;
+        }
+    }
+    std::vector<const parser::Node*> nodes{&tree.Root()};
+    while (!nodes.empty()) {
+        auto* node = nodes.back();
+        nodes.pop_back();
+        if (IsIncompleteStatement(*node)) {
+            continue;
+        }
+        if (node->Kind == NK::BinaryExpression ||
+            node->Kind == NK::AssignmentExpression ||
+            node->Kind == NK::ConditionalExpression)
+        {
+            const auto* left = node->Child();
+            const auto* right = left ? left->NextSibling : nullptr;
+            const auto* alternative = right ? right->NextSibling : nullptr;
+            if (left && right && !left->Tokens.Empty() &&
+                !right->Tokens.Empty() &&
+                (node->Kind != NK::ConditionalExpression ||
+                    (alternative && !alternative->Tokens.Empty())))
+            {
+                auto first = left->Tokens.End;
+                auto last = right->Tokens.Begin;
+                for (auto index = first; index < last; ++index) {
+                    auto role = tree.Role(index);
+                    bool selected = node->Kind == NK::ConditionalExpression
+                        ? role == parser::PunctuationRole::ConditionalDelimiter
+                        : node->Kind == NK::AssignmentExpression
+                            ? role == parser::PunctuationRole::AssignmentOperator
+                            : role == parser::PunctuationRole::BinaryOperator ||
+                                role == parser::PunctuationRole::ComparisonOperator ||
+                                role == parser::PunctuationRole::ShiftOperator;
+                    if (!selected || index == 0) {
+                        continue;
+                    }
+                    auto gap = tree.WhitespaceBefore(index);
+                    if (!IsWhitespace(gap) ||
+                        gap.find_first_of("\r\n") != std::string_view::npos)
+                    {
+                        continue;
+                    }
+                    // Avoid comma expressions and operators without a
+                    // significant left-hand side on this physical line.
+                    if (tree.Kind(index) == TK::Operator_Comma ||
+                        IsAmbiguousAngleOperator(tree.Kind(index)))
+                    {
+                        continue;
+                    }
+                    const bool trailing = node->Kind == NK::BinaryExpression &&
+                        style.BinaryOperatorPlacement ==
+                            BinaryOperatorPlacement::Trailing;
+                    if (trailing) {
+                        gap = tree.WhitespaceAfter(index);
+                        if (!IsWhitespace(gap) ||
+                            gap.find_first_of("\r\n") !=
+                                std::string_view::npos)
+                        {
+                            continue;
+                        }
+                    }
+                    const auto offset = trailing
+                        ? tree.Token(index).Text.End
+                        : tree.Token(index).Text.Begin;
+                    breaks.push_back({trailing ? offset : offset - gap.size(),
+                        trailing ? offset + gap.size() : offset,
+                        node->Kind == NK::AssignmentExpression ? 0 :
+                        node->Kind == NK::ConditionalExpression ? 1 :
+                        ExpressionPriority(tree.Kind(index)), nesting[index]});
+                }
+                if (node->Kind == NK::ConditionalExpression) {
+                    for (auto index = right->Tokens.End;
+                        index < alternative->Tokens.Begin; ++index)
+                    {
+                        if (tree.Kind(index) != TK::Operator_Colon ||
+                            tree.Role(index) !=
+                                parser::PunctuationRole::ConditionalDelimiter)
+                        {
+                            continue;
+                        }
+                        auto gap = tree.WhitespaceBefore(index);
+                        if (IsWhitespace(gap) &&
+                            gap.find_first_of("\r\n") ==
+                                std::string_view::npos)
+                        {
+                            breaks.push_back({
+                                tree.Token(index).Text.Begin - gap.size(),
+                                tree.Token(index).Text.Begin, 1,
+                                nesting[index]});
+                        }
+                    }
+                }
+            }
+        }
+        for (auto* child = node->Child(); child; child = child->NextSibling) {
+            nodes.push_back(child);
+        }
+    }
+    if (breaks.empty()) {
+        return std::string(source);
+    }
+    std::ranges::sort(breaks, {}, &ExpressionBreak::Begin);
+    std::vector<Replacement> edits;
+    size_t lineStart = 0;
+    size_t cursor = 0;
+    TokenIndex tokenCursor = 0;
+    while (lineStart < source.size()) {
+        auto lineEnd = source.find('\n', lineStart);
+        if (lineEnd == std::string_view::npos) {
+            lineEnd = source.size();
+        }
+        while (cursor < breaks.size() && breaks[cursor].Begin < lineStart) {
+            ++cursor;
+        }
+        auto stop = cursor;
+        while (stop < breaks.size() && breaks[stop].End <= lineEnd) {
+            ++stop;
+        }
+        size_t leading = 0;
+        while (lineStart + leading < lineEnd &&
+            source[lineStart + leading] == ' ')
+        {
+            ++leading;
+        }
+        bool safe = lineEnd == source.size() ||
+            (lineEnd == 0 || source[lineEnd - 1] != '\r');
+        safe &= source.substr(lineStart, lineEnd - lineStart).find('\\') ==
+            std::string_view::npos;
+        while (tokenCursor < tree.TokenCount() &&
+            tree.Token(tokenCursor).Text.End <= lineStart)
+        {
+            ++tokenCursor;
+        }
+        for (auto index = tokenCursor;
+            index < tree.TokenCount() &&
+                tree.Token(index).Text.Begin < lineEnd; ++index)
+        {
+            const auto begin = tree.Token(index).Text.Begin;
+            auto kind = tree.Kind(index);
+            if (kind == TK::Comment || kind == TK::PreprocessingDirective ||
+                source.substr(begin, tree.Token(index).Text.End - begin)
+                    .find_first_of("\r\n") != std::string_view::npos)
+            {
+                safe = false;
+                break;
+            }
+        }
+        if (safe && lineStart + leading < lineEnd &&
+            source[lineStart + leading] != '#')
+        {
+            if (style.ExpressionLayoutAlgorithm ==
+                    ExpressionLayoutAlgorithm::DynamicProgramming &&
+                lineEnd - lineStart > style.ColumnLimit)
+            {
+                auto selected = ChooseExpressionBreaks(source, breaks,
+                    cursor, stop, lineStart, lineEnd,
+                    leading + style.IndentWidth, style.ColumnLimit);
+                if (!selected.empty()) {
+                    for (auto choice : selected) {
+                        const auto& gap = breaks[choice];
+                        edits.push_back({gap.Begin, gap.End,
+                            "\n" + std::string(leading + style.IndentWidth,
+                                ' ')});
+                    }
+                    cursor = stop;
+                    lineStart = lineEnd == source.size()
+                        ? lineEnd : lineEnd + 1;
+                    continue;
+                }
+            }
+            size_t segment = lineStart;
+            size_t indent = 0;
+            while (indent + lineEnd - segment > style.ColumnLimit) {
+                size_t choice = stop;
+                for (auto i = cursor; i < stop; ++i) {
+                    const auto& candidate = breaks[i];
+                    if (candidate.Begin <= segment) {
+                        continue;
+                    }
+                    if (candidate.Begin - segment + indent >
+                        style.ColumnLimit)
+                    {
+                        break; // Candidates are ordered by source offset.
+                    }
+                    if (source.substr(segment, candidate.Begin - segment)
+                            .find_first_not_of(" \t") == std::string_view::npos)
+                    {
+                        continue;
+                    }
+                    if (choice == stop ||
+                        candidate.Nesting < breaks[choice].Nesting ||
+                        (candidate.Nesting == breaks[choice].Nesting &&
+                            (candidate.Priority < breaks[choice].Priority ||
+                                (candidate.Priority == breaks[choice].Priority &&
+                                    candidate.Begin > breaks[choice].Begin))))
+                    {
+                        choice = i;
+                    }
+                }
+                if (choice == stop) {
+                    break;
+                }
+                const auto& selected = breaks[choice];
+                edits.push_back({selected.Begin, selected.End,
+                    "\n" + std::string(leading + style.IndentWidth, ' ')});
+                segment = selected.End;
+                indent = leading + style.IndentWidth;
+                cursor = choice + 1;
+            }
+        }
+        lineStart = lineEnd == source.size() ? lineEnd : lineEnd + 1;
+    }
+    std::string result;
+    result.reserve(source.size() + edits.size() * (style.IndentWidth + 1));
+    size_t from = 0;
+    for (const auto& edit : edits) {
+        result.append(source.substr(from, edit.Begin - from));
+        result += edit.Text;
+        from = edit.End;
+    }
+    result.append(source.substr(from));
+    return result;
 }
 
 // Build comments only for unambiguous namespace headers and matched braces.
@@ -1629,7 +2389,7 @@ std::string FormatParameters(const parser::SyntaxTree& tree, const Style& style)
                 child = child->NextSibling)
             {
                 if (child->Kind == parser::NodeKind::ParameterList) {
-                    if (auto replacement = ReflowParameters(tree, *child, style)) {
+                    if (auto replacement = ReflowParenthesizedList(tree, *child, style)) {
                         edits.push_back(std::move(*replacement));
                     }
                 }
@@ -1637,6 +2397,89 @@ std::string FormatParameters(const parser::SyntaxTree& tree, const Style& style)
         }
         for (auto* child = node->Child(); child; child = child->NextSibling) {
             nodes.emplace_back(child, node);
+        }
+    }
+    std::ranges::sort(edits, {}, &Replacement::Begin);
+    std::string output;
+    output.reserve(tree.Source().size());
+    size_t cursor = 0;
+    for (const auto& edit : edits) {
+        if (edit.Begin < cursor) {
+            continue;
+        }
+        output.append(tree.Source().substr(cursor, edit.Begin - cursor));
+        output += edit.Text;
+        cursor = edit.End;
+    }
+    output.append(tree.Source().substr(cursor));
+    return output;
+}
+
+// Reflow parsed calls only. The parser cannot resolve names, so leave
+// ambiguous parenthesized casts source-owned. Lay out enclosing calls first
+// so their comma breaks can resolve overflow before trying nested calls.
+std::string FormatCalls(const parser::SyntaxTree& tree, const Style& style,
+    size_t targetDepth, bool& deeperCalls)
+{
+    if (style.CallArgumentSplit == CallArgumentSplit::Preserve ||
+        style.ExpressionLayoutCondition == ExpressionLayoutCondition::Preserve)
+    {
+        return std::string(tree.Source());
+    }
+    std::vector<Replacement> edits;
+    std::vector<std::pair<const parser::Node*, size_t>> nodes{
+        {&tree.Root(), 0}};
+    while (!nodes.empty()) {
+        auto [node, depth] = nodes.back();
+        nodes.pop_back();
+        if (IsIncompleteStatement(*node)) {
+            continue;
+        }
+        if (node->Kind == NK::CallExpression && depth > targetDepth) {
+            deeperCalls = true;
+            continue;
+        }
+        if (node->Kind == NK::CallExpression && depth == targetDepth) {
+            const auto* callee = node->Child();
+            const auto* arguments = callee ? callee->NextSibling : nullptr;
+            if (callee && !callee->Tokens.Empty() && arguments &&
+                arguments->Kind == NK::ArgumentList &&
+                !arguments->Tokens.Empty() &&
+                callee->Kind != NK::UnparsedSyntax &&
+                callee->Kind != NK::Expression)
+            {
+                const auto opening = arguments->Tokens.Begin;
+                bool ambiguous = false;
+                if (callee->Kind == NK::ParenthesizedExpression) {
+                    const auto* inner = callee->Child();
+                    ambiguous = !inner || inner->Tokens.Empty() ||
+                        (inner->Kind != NK::LambdaExpression &&
+                            inner->Kind != NK::CallExpression &&
+                            (inner->Kind != NK::UnaryExpression ||
+                                (tree.Kind(inner->Tokens.Begin) !=
+                                    TK::Operator_Star &&
+                                 tree.Kind(inner->Tokens.Begin) !=
+                                    TK::Operator_Ampersand)));
+                }
+                if (!ambiguous && opening > 0 &&
+                    callee->Tokens.End <= opening &&
+                    tree.Kind(opening - 1) != TK::Keyword_requires)
+                {
+                    if (auto edit = ReflowParenthesizedList(
+                        tree, *arguments, style))
+                    {
+                        edits.push_back(std::move(*edit));
+                    }
+                }
+            }
+        }
+        auto childDepth = depth + (node->Kind == NK::CallExpression ? 1 : 0);
+        if (childDepth <= targetDepth + 1) {
+            for (auto* child = node->Child(); child;
+                child = child->NextSibling)
+            {
+                nodes.emplace_back(child, childDepth);
+            }
         }
     }
     std::ranges::sort(edits, {}, &Replacement::Begin);
@@ -1815,6 +2658,68 @@ std::string Format(const parser::SyntaxTree& tree, const Style& style)
                 [] (parser::ParseError) { });
             formatted = FormatParameters(bracedTree, style);
         }
+    }
+    bool headerReflowed = false;
+    if (style.CallArgumentSplit != CallArgumentSplit::Preserve &&
+        style.ExpressionLayoutCondition != ExpressionLayoutCondition::Preserve)
+    {
+        // Choose enclosing calls first, then nested calls only when present.
+        // Bound reparsing on extremely deep expression chains.
+        for (size_t depth = 0; depth < 3; ++depth) {
+            bool deeperCalls = false;
+            if (formatted == tree.Source()) {
+                auto result = FormatCalls(tree, style, depth, deeperCalls);
+                headerReflowed |= result != formatted;
+                formatted = std::move(result);
+            } else {
+                auto length = formatted.size();
+                formatted.append(util::SourcePaddingSize, '\0');
+                auto parsed = parser::Parse(
+                    {.Data = formatted.data(), .Size = length},
+                    [] (parser::ParseError) { });
+                auto result = FormatCalls(parsed, style, depth, deeperCalls);
+                headerReflowed |= result !=
+                    std::string_view(formatted.data(), length);
+                formatted = std::move(result);
+            }
+            if (!deeperCalls) {
+                break;
+            }
+        }
+    }
+    if (style.ExpressionLayoutCondition != ExpressionLayoutCondition::Preserve) {
+        if (formatted == tree.Source()) {
+            auto result = FormatExpressions(tree, style);
+            headerReflowed |= result != formatted;
+            formatted = std::move(result);
+        } else {
+            auto length = formatted.size();
+            formatted.append(util::SourcePaddingSize, '\0');
+            auto parsed = parser::Parse(
+                {.Data = formatted.data(), .Size = length},
+                [] (parser::ParseError) { });
+            auto result = FormatExpressions(parsed, style);
+            headerReflowed |= result !=
+                std::string_view(formatted.data(), length);
+            formatted = std::move(result);
+        }
+    }
+    // AttachUnlessMultiline depends on the resulting header, not the
+    // original one. Revisit only control braces after argument and expression
+    // reflow; rerunning unrelated formatting passes is unnecessary.
+    if (headerReflowed && style.ControlBlockBracePlacement ==
+            ControlBlockBracePlacement::AttachUnlessMultiline)
+    {
+        auto length = formatted.size();
+        formatted.append(util::SourcePaddingSize, '\0');
+        auto parsed = parser::Parse(
+            {.Data = formatted.data(), .Size = length},
+            [] (parser::ParseError) { });
+        Style controlStyle;
+        controlStyle.IndentWidth = style.IndentWidth;
+        controlStyle.ControlBlockBracePlacement =
+            style.ControlBlockBracePlacement;
+        formatted = Formatter(parsed, controlStyle).Run();
     }
     if (style.NamespaceComments != NamespaceComments::Preserve) {
         if (formatted == tree.Source()) {
