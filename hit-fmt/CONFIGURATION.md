@@ -1,8 +1,8 @@
 # Configuration
 
 The formatter preserves source-owned token and trivia bytes except where an
-explicitly configured declaration brace, lambda parameter spacing,
-namespace comment, or function parameter rule applies. All formatting rules default to preserving the source.
+explicitly configured declaration brace, lambda capture-to-parameter
+spacing, namespace comment, or function parameter rule applies. All formatting rules default to preserving the source.
 Naming rules default to unchecked and never rewrite identifiers; `--check`
 reports violations with file, line and column and returns a nonzero status.
 
@@ -31,7 +31,7 @@ FunctionDeclarationParameterNames = Unchecked
 FunctionDefinitionParameterNames = Unchecked
 ClassBraceSpacing = Preserve
 LambdaBraceSpacing = Preserve
-LambdaParameterSpacing = Preserve
+LambdaSpaceBeforeParameters = Preserve
 StructBraceSpacing = Preserve
 EnumBraceSpacing = Preserve
 UnionBraceSpacing = Preserve
@@ -85,7 +85,7 @@ Exclude = ["(^|/)generated(/|$)", "(^|/)legacy\\.cpp$"]
   Line breaks and gaps containing comments or directives remain untouched.
   Placement is applied first: `NewLine` keeps the brace on its own line;
   `Attach` joins it to the header, using one space at the join.
-- `LambdaParameterSpacing`: `Preserve` (default) leaves the gap between a
+- `LambdaSpaceBeforeParameters`: `Preserve` (default) leaves the gap between a
   lambda's capture `]` and immediate parameter `(` unchanged; `Space`
   inserts exactly one space and `NoSpace` removes it. Newlines and
   intervening comments or directives are left unchanged. Calls and other

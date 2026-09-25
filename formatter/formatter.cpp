@@ -47,7 +47,8 @@ public:
             style.UnionBraceSpacing != SameLineBraceSpacing::Preserve ||
             style.FunctionBraceSpacing != SameLineBraceSpacing::Preserve ||
             style.NamespaceBraceSpacing != SameLineBraceSpacing::Preserve ||
-            style.LambdaParameterSpacing != LambdaParameterSpacing::Preserve)
+            style.LambdaSpaceBeforeParameters !=
+                LambdaSpaceBeforeParameters::Preserve)
         {
             Classify();
         }
@@ -195,8 +196,8 @@ private:
             }
             break;
         case NK::LambdaExpression:
-            if (Style_.LambdaParameterSpacing !=
-                LambdaParameterSpacing::Preserve)
+            if (Style_.LambdaSpaceBeforeParameters !=
+                LambdaSpaceBeforeParameters::Preserve)
             {
                 auto* capture = node.Child();
                 auto* parameters = capture ? capture->NextSibling : nullptr;
@@ -303,7 +304,9 @@ private:
         if (LambdaGaps_[index] &&
             gap.find_first_not_of(" \t") == std::string_view::npos)
         {
-            if (Style_.LambdaParameterSpacing == LambdaParameterSpacing::Space) {
+            if (Style_.LambdaSpaceBeforeParameters ==
+                LambdaSpaceBeforeParameters::Space)
+            {
                 Output_.push_back(' ');
             }
             return;
@@ -730,7 +733,8 @@ std::string Format(const parser::SyntaxTree& tree, const Style& style)
         style.UnionBraceSpacing == SameLineBraceSpacing::Preserve &&
         style.FunctionBraceSpacing == SameLineBraceSpacing::Preserve &&
         style.NamespaceBraceSpacing == SameLineBraceSpacing::Preserve &&
-        style.LambdaParameterSpacing == LambdaParameterSpacing::Preserve;
+        style.LambdaSpaceBeforeParameters ==
+            LambdaSpaceBeforeParameters::Preserve;
     std::string formatted;
     if (style.FunctionParameterSplit == FunctionParameterSplit::Preserve) {
         formatted = Formatter(tree, style).Run();

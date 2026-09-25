@@ -372,7 +372,7 @@ TEST(PreserveConfigTest, RejectsInvalidSettings)
         "EnforceFirstFunctionParameterPosition = maybe\n",
         "FunctionParameterIndent = Tabs\n",
         "MergeFunctionParameters = yes\n",
-        "LambdaParameterSpacing = Unknown\n",
+        "LambdaSpaceBeforeParameters = Unknown\n",
         "Exclude = [\"[\"]\n",
         "StructNameCase = lowercase\n",
         "ClassNamePrefixes = []\n",
