@@ -390,6 +390,21 @@ void ApplySetting(
     } else if (key == "LambdaBraceSpacing") {
         config.FormattingStyle.LambdaBraceSpacing =
             ParseSameLineBraceSpacing(value, path, line);
+    } else if (key == "LambdaParameterSpacing") {
+        value = ParseOption(value, path, line);
+        if (value == "Preserve") {
+            config.FormattingStyle.LambdaParameterSpacing =
+                LambdaParameterSpacing::Preserve;
+        } else if (value == "Space") {
+            config.FormattingStyle.LambdaParameterSpacing =
+                LambdaParameterSpacing::Space;
+        } else if (value == "NoSpace") {
+            config.FormattingStyle.LambdaParameterSpacing =
+                LambdaParameterSpacing::NoSpace;
+        } else {
+            ThrowConfigError(path, line,
+                "expected Preserve, Space or NoSpace");
+        }
     } else if (key == "StructBraceSpacing") {
         config.FormattingStyle.StructBraceSpacing =
             ParseSameLineBraceSpacing(value, path, line);
