@@ -22,3 +22,7 @@ cases. The configured `.hit-fmt` files and matching `.output.cpp` files
 cover preservation, removal, correction, missing comments, nested and
 anonymous namespaces, and interaction with brace placement. Each output
 is also checked on a second formatting pass.
+
+`testdata/include-order/` covers literal header sorting, group barriers,
+preprocessor branches, CRLF, and composition with namespace comments. Each
+configured output is checked again for idempotence.

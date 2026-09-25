@@ -1655,6 +1655,108 @@ std::string FormatParameters(const parser::SyntaxTree& tree, const Style& style)
     return output;
 }
 
+struct IncludeDirective
+{
+    std::string_view Path;
+    std::string_view Text;
+    bool Angled;
+};
+
+std::optional<IncludeDirective> ParseInclude(std::string_view text)
+{
+    if (text.contains('\n') || text.contains('\\')) {
+        return std::nullopt; // Continued or otherwise ambiguous directives.
+    }
+    auto skipSpaces = [&text] {
+        auto next = text.find_first_not_of(" \t");
+        text.remove_prefix(next == std::string_view::npos ? text.size() : next);
+    };
+    auto original = text;
+    if (!text.starts_with('#')) {
+        return std::nullopt;
+    }
+    text.remove_prefix(1);
+    skipSpaces();
+    if (!text.starts_with("include")) {
+        return std::nullopt;
+    }
+    text.remove_prefix(7);
+    skipSpaces();
+    if (text.empty() || (text.front() != '<' && text.front() != '"')) {
+        return std::nullopt;
+    }
+    bool angled = text.front() == '<';
+    char closing = angled ? '>' : '"';
+    auto end = text.find(closing, 1);
+    if (end == std::string_view::npos || end == 1 ||
+        text.substr(end + 1).find_first_not_of(" \t\r") !=
+            std::string_view::npos)
+    {
+        return std::nullopt;
+    }
+    return IncludeDirective{.Path = text.substr(1, end - 1),
+        .Text = original, .Angled = angled};
+}
+
+std::string FormatIncludes(const parser::SyntaxTree& tree)
+{
+    std::string output;
+    size_t cursor = 0;
+    for (TokenIndex begin = 0; begin < tree.TokenCount();) {
+        // An adjacent comment may document the next include specifically.
+        const bool attachedComment = begin > 0 &&
+            tree.Kind(begin - 1) == TK::Comment &&
+            (tree.WhitespaceBefore(begin) == "\n" ||
+                tree.WhitespaceBefore(begin) == "\r\n");
+        if (tree.Kind(begin) != TK::PreprocessingDirective ||
+            tree.TokenPosition(begin).Column != 1 || attachedComment)
+        {
+            ++begin;
+            continue;
+        }
+        auto first = ParseInclude(tree.TokenText(begin));
+        if (!first) {
+            ++begin;
+            continue;
+        }
+        std::vector<IncludeDirective> directives{*first};
+        TokenIndex end = begin + 1;
+        while (end < tree.TokenCount() &&
+            tree.Kind(end) == TK::PreprocessingDirective &&
+            tree.TokenPosition(end).Column == 1 &&
+            (tree.WhitespaceBefore(end) == "\n" ||
+                tree.WhitespaceBefore(end) == "\r\n"))
+        {
+            auto next = ParseInclude(tree.TokenText(end));
+            if (!next || tree.TokenText(end).ends_with('\r') !=
+                    tree.TokenText(begin).ends_with('\r'))
+            {
+                break;
+            }
+            directives.push_back(*next);
+            ++end;
+        }
+        if (directives.size() > 1) {
+            std::ranges::stable_sort(directives, [] (const auto& left,
+                const auto& right) {
+                if (left.Angled != right.Angled) {
+                    return !left.Angled; // Quoted headers before angled ones.
+                }
+                return left.Path < right.Path;
+            });
+            for (TokenIndex index = begin; index < end; ++index) {
+                const auto token = tree.Token(index).Text;
+                output.append(tree.Source().substr(cursor, token.Begin - cursor));
+                output.append(directives[index - begin].Text);
+                cursor = token.End;
+            }
+        }
+        begin = end;
+    }
+    output.append(tree.Source().substr(cursor));
+    return output;
+}
+
 } // namespace
 
 std::string Format(const parser::SyntaxTree& tree, const Style& style)
@@ -1714,18 +1816,31 @@ std::string Format(const parser::SyntaxTree& tree, const Style& style)
             formatted = FormatParameters(bracedTree, style);
         }
     }
-    if (style.NamespaceComments == NamespaceComments::Preserve) {
+    if (style.NamespaceComments != NamespaceComments::Preserve) {
+        if (formatted == tree.Source()) {
+            formatted = FormatNamespaceComments(tree, style.NamespaceComments);
+        } else {
+            auto length = formatted.size();
+            formatted.append(util::SourcePaddingSize, '\0');
+            auto finalTree = parser::Parse(
+                {.Data = formatted.data(), .Size = length},
+                [] (parser::ParseError) { });
+            formatted = FormatNamespaceComments(finalTree,
+                style.NamespaceComments);
+        }
+    }
+    if (style.IncludeOrder == IncludeOrder::Preserve) {
         return formatted;
     }
     if (formatted == tree.Source()) {
-        return FormatNamespaceComments(tree, style.NamespaceComments);
+        return FormatIncludes(tree);
     }
     auto length = formatted.size();
     formatted.append(util::SourcePaddingSize, '\0');
     auto finalTree = parser::Parse(
         {.Data = formatted.data(), .Size = length},
         [] (parser::ParseError) { });
-    return FormatNamespaceComments(finalTree, style.NamespaceComments);
+    return FormatIncludes(finalTree);
 }
 
 std::string Format(const parser::SyntaxTree& tree)
