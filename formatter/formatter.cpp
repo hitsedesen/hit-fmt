@@ -20,6 +20,28 @@ using TK = tokenizer::TokenKind;
 using TokenIndex = parser::TokenIndex;
 constexpr TokenIndex NoToken = std::numeric_limits<TokenIndex>::max();
 
+bool IsIncompleteStatement(const parser::Node& node)
+{
+    if (node.Kind != NK::ExpressionStatement &&
+        node.Kind != NK::DeclarationStatement &&
+        node.Kind != NK::ReturnStatement &&
+        node.Kind != NK::ThrowStatement &&
+        node.Kind != NK::CoYieldStatement)
+    {
+        return false;
+    }
+    for (auto* child = node.Child(); child; child = child->NextSibling) {
+        if (child->Kind == NK::UnparsedSyntax ||
+            child->Kind == NK::MissingToken ||
+            child->Kind == NK::UnexpectedToken ||
+            child->Kind == NK::Error)
+        {
+            return true;
+        }
+    }
+    return false;
+}
+
 // Token spelling and all trivia other than the selected opening-brace gap
 // remain source-owned. Classification uses syntax nodes, not neighboring
 // keywords (which also occur in expressions and template arguments).
@@ -34,6 +56,7 @@ public:
         , LambdaGaps_(tree.TokenCount(), false)
         , FunctionGaps_(tree.TokenCount(), false)
         , CallGaps_(tree.TokenCount(), false)
+        , CallInsideGaps_(tree.TokenCount(), false)
         , ParameterInsideGaps_(tree.TokenCount(), false)
         , ControlGaps_(tree.TokenCount(), false)
         , ControlBraces_(tree.TokenCount(), false)
@@ -58,6 +81,8 @@ public:
                 FunctionSpaceBeforeParameters::Preserve ||
             style.FunctionCallSpaceBeforeParameters !=
                 FunctionCallSpaceBeforeParameters::Preserve ||
+            style.SpaceInsideCallArguments !=
+                SpaceInsideCallArguments::Preserve ||
             style.SpaceInsideFunctionParameters !=
                 SpaceInsideFunctionParameters::Preserve ||
             style.ControlBlockKeywordSpacing !=
@@ -148,6 +173,10 @@ private:
         while (!nodes.empty()) {
             auto* node = nodes.back();
             nodes.pop_back();
+            // Do not format a valid-looking prefix of a recovered statement.
+            if (IsIncompleteStatement(*node)) {
+                continue;
+            }
             ClassifyNode(*node);
             for (auto* child = node->FirstChild; child;
                 child = child->NextSibling)
@@ -355,7 +384,9 @@ private:
     void MarkCallGap(const parser::Node& call)
     {
         if (Style_.FunctionCallSpaceBeforeParameters ==
-            FunctionCallSpaceBeforeParameters::Preserve)
+                FunctionCallSpaceBeforeParameters::Preserve &&
+            Style_.SpaceInsideCallArguments ==
+                SpaceInsideCallArguments::Preserve)
         {
             return;
         }
@@ -375,13 +406,40 @@ private:
             callee->Tokens.End > opening ||
             Tree_.Kind(opening) != TK::Operator_OpenParenthesis ||
             Tree_.MatchingDelimiter(opening) != arguments->Tokens.End - 1 ||
-            Tree_.Kind(opening - 1) == TK::Comment ||
-            Tree_.Kind(opening - 1) == TK::PreprocessingDirective ||
             Tree_.Kind(opening - 1) == TK::Keyword_requires)
         {
             return;
         }
-        CallGaps_[opening] = true;
+        if (Style_.FunctionCallSpaceBeforeParameters !=
+                FunctionCallSpaceBeforeParameters::Preserve &&
+            Tree_.Kind(opening - 1) != TK::Comment &&
+            Tree_.Kind(opening - 1) != TK::PreprocessingDirective)
+        {
+            CallGaps_[opening] = true;
+        }
+        if (Style_.SpaceInsideCallArguments ==
+            SpaceInsideCallArguments::Preserve)
+        {
+            return;
+        }
+        const auto closing = arguments->Tokens.End - 1;
+        const auto* first = arguments->Child();
+        if (opening + 1 == closing || !first ||
+            first->Kind != NK::Argument || first->Tokens.Empty())
+        {
+            return; // Leave empty and recovered lists source-owned.
+        }
+        if (first->Tokens.Begin == opening + 1) {
+            CallInsideGaps_[opening + 1] = true;
+        }
+        for (auto* child = first; child; child = child->NextSibling) {
+            if (child->Kind == NK::Argument &&
+                child->Tokens.End == closing)
+            {
+                CallInsideGaps_[closing] = true;
+                break;
+            }
+        }
     }
 
     void MarkControlBraces(const parser::Node& node)
@@ -605,6 +663,16 @@ private:
             }
             return;
         }
+        if (CallInsideGaps_[index] &&
+            gap.find_first_not_of(" \t") == std::string_view::npos)
+        {
+            if (Style_.SpaceInsideCallArguments ==
+                SpaceInsideCallArguments::Space)
+            {
+                Output_.push_back(' ');
+            }
+            return;
+        }
         if (ControlGaps_[index] &&
             gap.find_first_not_of(" \t") == std::string_view::npos)
         {
@@ -659,6 +727,7 @@ private:
     std::vector<bool> LambdaGaps_;
     std::vector<bool> FunctionGaps_;
     std::vector<bool> CallGaps_;
+    std::vector<bool> CallInsideGaps_;
     std::vector<bool> ParameterInsideGaps_;
     std::vector<bool> ControlGaps_;
     std::vector<bool> ControlBraces_;
@@ -1004,6 +1073,9 @@ std::string FormatParameters(const parser::SyntaxTree& tree, const Style& style)
     while (!nodes.empty()) {
         auto [node, parent] = nodes.back();
         nodes.pop_back();
+        if (IsIncompleteStatement(*node)) {
+            continue;
+        }
         // A macro invocation can be recovered as an abstract function
         // declarator. Only a named declarator denotes a function here.
         if (node->Kind == parser::NodeKind::FunctionDeclarator &&
@@ -1063,6 +1135,8 @@ std::string Format(const parser::SyntaxTree& tree, const Style& style)
             FunctionSpaceBeforeParameters::Preserve &&
         style.FunctionCallSpaceBeforeParameters ==
             FunctionCallSpaceBeforeParameters::Preserve &&
+        style.SpaceInsideCallArguments ==
+            SpaceInsideCallArguments::Preserve &&
         style.SpaceInsideFunctionParameters ==
             SpaceInsideFunctionParameters::Preserve &&
         style.ControlBlockKeywordSpacing ==
