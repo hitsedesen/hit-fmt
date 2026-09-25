@@ -613,10 +613,16 @@ int main(int argc, char* argv[])
                     !parameters.empty();
                 if (summaryOnly && mismatch) {
                     if (useColor) std::cout << BoldRed;
-                    std::cout << filePath << ": "
-                              << (formatted != source ? "formatting" :
-                                  !names.empty() ? "naming" : "parameter name")
-                              << " mismatch";
+                    std::cout << filePath << ": ";
+                    if (formatted != source || !names.empty()) {
+                        std::cout << (formatted != source ? "formatting" :
+                            "naming") << " mismatch";
+                    } else {
+                        std::cout << "fail: unnamed parameter";
+                        if (parameters.size() != 1) {
+                            std::cout << 's';
+                        }
+                    }
                     if (useColor) std::cout << ResetColor;
                     std::cout.put('\n');
                 } else if (!summaryOnly) {
