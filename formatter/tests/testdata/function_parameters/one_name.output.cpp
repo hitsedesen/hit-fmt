@@ -28,3 +28,6 @@ void Definition(int first,
 void Pinned(int alpha, // keep
     int beta, int gamma);
 void NoArguments();
+BUILD_TAG_TABLE(EWidgetTag,
+    MAP_TAGS(TAG_NAME)
+);

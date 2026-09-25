@@ -635,11 +635,16 @@ std::string FormatParameters(const parser::SyntaxTree& tree, const Style& style)
         return std::string(tree.Source());
     }
     std::vector<Replacement> edits;
-    std::vector<const parser::Node*> nodes{&tree.Root()};
+    std::vector<std::pair<const parser::Node*, const parser::Node*>> nodes{
+        {&tree.Root(), nullptr}};
     while (!nodes.empty()) {
-        auto* node = nodes.back();
+        auto [node, parent] = nodes.back();
         nodes.pop_back();
-        if (node->Kind == parser::NodeKind::FunctionDeclarator) {
+        // A macro invocation can be recovered as an abstract function
+        // declarator. Only a named declarator denotes a function here.
+        if (node->Kind == parser::NodeKind::FunctionDeclarator &&
+            parent && parent->Kind == parser::NodeKind::Declarator)
+        {
             for (auto* child = node->Child(); child;
                 child = child->NextSibling)
             {
@@ -651,7 +656,7 @@ std::string FormatParameters(const parser::SyntaxTree& tree, const Style& style)
             }
         }
         for (auto* child = node->Child(); child; child = child->NextSibling) {
-            nodes.push_back(child);
+            nodes.emplace_back(child, node);
         }
     }
     std::ranges::sort(edits, {}, &Replacement::Begin);
