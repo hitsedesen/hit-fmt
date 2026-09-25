@@ -113,6 +113,37 @@ TEST_P(BracePlacementGoldenTest, FormatsOnlySelectedDeclarationBraces)
 INSTANTIATE_TEST_SUITE_P(Configurations, BracePlacementGoldenTest,
     testing::Values("preserve", "attach", "newline", "mixed"));
 
+class FunctionParameterGoldenTest : public testing::TestWithParam<std::string>
+{ };
+
+TEST_P(FunctionParameterGoldenTest, MatchesConfiguredOutput)
+{
+    const auto directory = std::filesystem::path(FORMATTER_TESTDATA_DIR) /
+        "../function_parameters";
+    const auto input = ReadFile(directory / "parameters.input.cpp");
+    const auto config = formatter::LoadConfigFile(
+        directory / (GetParam() + ".hit-fmt"));
+    const auto expected = ReadFile(directory / (GetParam() + ".output.cpp"));
+
+    std::string storage(input);
+    storage.append(util::SourcePaddingSize, '\0');
+    const auto actual = formatter::Format(
+        {.Data = storage.data(), .Size = input.size()},
+        config.FormattingStyle);
+    EXPECT_EQ(actual, expected);
+
+    // A second pass must not change either packing or indentation.
+    storage.assign(actual);
+    storage.append(util::SourcePaddingSize, '\0');
+    EXPECT_EQ(formatter::Format(
+        {.Data = storage.data(), .Size = actual.size()},
+        config.FormattingStyle), actual);
+}
+
+INSTANTIATE_TEST_SUITE_P(FunctionParameters, FunctionParameterGoldenTest,
+    testing::Values("preserve", "pack_name", "pack_new", "one_name",
+        "one_new", "pack_merge"));
+
 TEST(PreserveFormatterTest, KeepsEmptyRecoveryAndBinarySource)
 {
     for (const std::string source : {
