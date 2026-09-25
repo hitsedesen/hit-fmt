@@ -32,6 +32,7 @@ public:
         , Placements_(tree.TokenCount(), BracePlacement::Preserve)
         , Spacings_(tree.TokenCount(), SameLineBraceSpacing::Preserve)
         , LambdaGaps_(tree.TokenCount(), false)
+        , ControlGaps_(tree.TokenCount(), false)
     {
         Output_.reserve(tree.Source().size());
         if (style.ClassBracePlacement != BracePlacement::Preserve ||
@@ -48,7 +49,9 @@ public:
             style.FunctionBraceSpacing != SameLineBraceSpacing::Preserve ||
             style.NamespaceBraceSpacing != SameLineBraceSpacing::Preserve ||
             style.LambdaSpaceBeforeParameters !=
-                LambdaSpaceBeforeParameters::Preserve)
+                LambdaSpaceBeforeParameters::Preserve ||
+            style.ControlBlockKeywordSpacing !=
+                ControlBlockKeywordSpacing::Preserve)
         {
             Classify();
         }
@@ -195,6 +198,14 @@ private:
                 }
             }
             break;
+        case NK::IfStatement:
+        case NK::ForStatement:
+        case NK::WhileStatement:
+        case NK::DoWhileStatement:
+        case NK::SwitchStatement:
+        case NK::CatchClause:
+            MarkControlGap(node);
+            break;
         case NK::LambdaExpression:
             if (Style_.LambdaSpaceBeforeParameters !=
                 LambdaSpaceBeforeParameters::Preserve)
@@ -228,6 +239,47 @@ private:
             break;
         default:
             break;
+        }
+    }
+
+    void MarkControlGap(const parser::Node& node)
+    {
+        if (Style_.ControlBlockKeywordSpacing ==
+            ControlBlockKeywordSpacing::Preserve)
+        {
+            return;
+        }
+        for (auto* child = node.Child(); child; child = child->NextSibling) {
+            if (child->Kind != NK::Condition && child->Kind != NK::ForHeader) {
+                continue;
+            }
+            auto opening = child->Tokens.Begin;
+            if (opening == 0 || opening >= Tree_.TokenCount() ||
+                Tree_.Kind(opening) != TK::Operator_OpenParenthesis ||
+                Tree_.MatchingDelimiter(opening) == NoToken)
+            {
+                continue;
+            }
+            const auto preceding = Tree_.Kind(opening - 1);
+            // Only a keyword directly preceding the parsed header owns this
+            // gap. A recovered `if MACRO(...)` must stay source-owned.
+            const bool eligible =
+                (node.Kind == NK::IfStatement &&
+                    (preceding == TK::Keyword_if ||
+                        preceding == TK::Keyword_constexpr)) ||
+                (node.Kind == NK::ForStatement &&
+                    (preceding == TK::Keyword_for ||
+                        preceding == TK::Keyword_co_await)) ||
+                ((node.Kind == NK::WhileStatement ||
+                    node.Kind == NK::DoWhileStatement) &&
+                    preceding == TK::Keyword_while) ||
+                (node.Kind == NK::SwitchStatement &&
+                    preceding == TK::Keyword_switch) ||
+                (node.Kind == NK::CatchClause &&
+                    preceding == TK::Keyword_catch);
+            if (eligible) {
+                ControlGaps_[opening] = true;
+            }
         }
     }
 
@@ -311,6 +363,16 @@ private:
             }
             return;
         }
+        if (ControlGaps_[index] &&
+            gap.find_first_not_of(" \t") == std::string_view::npos)
+        {
+            if (Style_.ControlBlockKeywordSpacing ==
+                ControlBlockKeywordSpacing::Space)
+            {
+                Output_.push_back(' ');
+            }
+            return;
+        }
         auto placement = Placements_[index];
         if (index == 0 ||
             // Only a trailing header comment is safe to cross; leave other
@@ -352,6 +414,7 @@ private:
     std::vector<BracePlacement> Placements_;
     std::vector<SameLineBraceSpacing> Spacings_;
     std::vector<bool> LambdaGaps_;
+    std::vector<bool> ControlGaps_;
     // Only initialized for openings with an active placement.
     std::vector<TokenIndex> HeaderStarts_ =
         std::vector<TokenIndex>(Tree_.TokenCount(), NoToken);
@@ -734,7 +797,9 @@ std::string Format(const parser::SyntaxTree& tree, const Style& style)
         style.FunctionBraceSpacing == SameLineBraceSpacing::Preserve &&
         style.NamespaceBraceSpacing == SameLineBraceSpacing::Preserve &&
         style.LambdaSpaceBeforeParameters ==
-            LambdaSpaceBeforeParameters::Preserve;
+            LambdaSpaceBeforeParameters::Preserve &&
+        style.ControlBlockKeywordSpacing ==
+            ControlBlockKeywordSpacing::Preserve;
     std::string formatted;
     if (style.FunctionParameterSplit == FunctionParameterSplit::Preserve) {
         formatted = Formatter(tree, style).Run();
