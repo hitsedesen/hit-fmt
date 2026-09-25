@@ -120,7 +120,7 @@ TEST_P(FunctionParameterGoldenTest, MatchesConfiguredOutput)
 {
     const auto directory = std::filesystem::path(FORMATTER_TESTDATA_DIR) /
         "../function_parameters";
-    const auto input = ReadFile(directory / "parameters.input.cpp");
+    const auto input = ReadFile(directory / "input.cpp");
     const auto config = formatter::LoadConfigFile(
         directory / (GetParam() + ".hit-fmt"));
     const auto expected = ReadFile(directory / (GetParam() + ".output.cpp"));
