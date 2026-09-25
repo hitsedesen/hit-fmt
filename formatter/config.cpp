@@ -88,6 +88,20 @@ BracePlacement ParseBracePlacement(
     ThrowConfigError(path, line, "expected Preserve, Attach or NewLine");
 }
 
+SameLineBraceSpacing ParseSameLineBraceSpacing(
+    std::string_view value,
+    const std::filesystem::path& path,
+    size_t line)
+{
+    if (value == "Preserve") {
+        return SameLineBraceSpacing::Preserve;
+    }
+    if (value == "SingleSpace") {
+        return SameLineBraceSpacing::SingleSpace;
+    }
+    ThrowConfigError(path, line, "expected Preserve or SingleSpace");
+}
+
 std::string ParseString(
     std::string_view value,
     const std::filesystem::path& path,
@@ -279,6 +293,27 @@ void ApplySetting(
     } else if (key == "MergeFunctionParameters") {
         config.FormattingStyle.MergeFunctionParameters =
             ParseBoolean(value, path, line);
+    } else if (key == "ClassBraceSpacing") {
+        config.FormattingStyle.ClassBraceSpacing =
+            ParseSameLineBraceSpacing(value, path, line);
+    } else if (key == "LambdaBraceSpacing") {
+        config.FormattingStyle.LambdaBraceSpacing =
+            ParseSameLineBraceSpacing(value, path, line);
+    } else if (key == "StructBraceSpacing") {
+        config.FormattingStyle.StructBraceSpacing =
+            ParseSameLineBraceSpacing(value, path, line);
+    } else if (key == "EnumBraceSpacing") {
+        config.FormattingStyle.EnumBraceSpacing =
+            ParseSameLineBraceSpacing(value, path, line);
+    } else if (key == "UnionBraceSpacing") {
+        config.FormattingStyle.UnionBraceSpacing =
+            ParseSameLineBraceSpacing(value, path, line);
+    } else if (key == "FunctionBraceSpacing") {
+        config.FormattingStyle.FunctionBraceSpacing =
+            ParseSameLineBraceSpacing(value, path, line);
+    } else if (key == "NamespaceBraceSpacing") {
+        config.FormattingStyle.NamespaceBraceSpacing =
+            ParseSameLineBraceSpacing(value, path, line);
     } else if (key == "Exclude") {
         config.Exclusions.clear();
         for (const auto& pattern : ParseStringList(value, path, line)) {
