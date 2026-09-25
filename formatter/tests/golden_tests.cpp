@@ -437,6 +437,63 @@ TEST_P(LambdaInnerParameterGoldenTest, FormatsOnlyLambdaParameterEdges)
 INSTANTIATE_TEST_SUITE_P(Configurations, LambdaInnerParameterGoldenTest,
     testing::Values("preserve", "space", "no-space", "combined"));
 
+class BodyIndentGoldenTest : public testing::TestWithParam<std::string>
+{ };
+
+TEST_P(BodyIndentGoldenTest, IndentsOnlyRecordAndEnumMembers)
+{
+    const auto directory = std::filesystem::path(BODY_INDENT_TESTDATA_DIR);
+    const auto input = ReadFile(directory / "input.cpp");
+    const auto expected = ReadFile(directory / (GetParam() + ".output.cpp"));
+    const auto style = formatter::LoadConfigFile(
+        directory / (GetParam() + ".hit-fmt")).FormattingStyle;
+
+    EXPECT_EQ(FormatWithStyle(input, style), expected);
+    EXPECT_EQ(FormatWithStyle(expected, style), expected);
+}
+
+INSTANTIATE_TEST_SUITE_P(Configurations, BodyIndentGoldenTest,
+    testing::Values("preserve", "indent", "no-indent", "mixed"));
+
+class InheritanceGoldenTest : public testing::TestWithParam<std::string>
+{ };
+
+TEST_P(InheritanceGoldenTest, PositionsOnlyParsedBaseClauses)
+{
+    const auto directory = std::filesystem::path(INHERITANCE_TESTDATA_DIR);
+    const auto input = ReadFile(directory / "input.cpp");
+    const auto expected = ReadFile(directory / (GetParam() + ".output.cpp"));
+    const auto style = formatter::LoadConfigFile(
+        directory / (GetParam() + ".hit-fmt")).FormattingStyle;
+
+    EXPECT_EQ(FormatWithStyle(input, style), expected);
+    EXPECT_EQ(FormatWithStyle(expected, style), expected);
+}
+
+INSTANTIATE_TEST_SUITE_P(Configurations, InheritanceGoldenTest,
+    testing::Values("preserve", "format", "leading",
+        "trailing", "overflow", "comma-leading", "no-space",
+        "spaces-mixed", "combined"));
+
+class InheritanceSplitGoldenTest : public testing::TestWithParam<std::string>
+{ };
+
+TEST_P(InheritanceSplitGoldenTest, SplitsOnlySafeBaseLists)
+{
+    const auto directory = std::filesystem::path(INHERITANCE_TESTDATA_DIR);
+    const auto input = ReadFile(directory / "split.input.cpp");
+    const auto expected = ReadFile(directory / (GetParam() + ".output.cpp"));
+    const auto style = formatter::LoadConfigFile(
+        directory / (GetParam() + ".hit-fmt")).FormattingStyle;
+
+    EXPECT_EQ(FormatWithStyle(input, style), expected);
+    EXPECT_EQ(FormatWithStyle(expected, style), expected);
+}
+
+INSTANTIATE_TEST_SUITE_P(Configurations, InheritanceSplitGoldenTest,
+    testing::Values("split-preserve", "one-per-line", "pack-wide",
+        "pack-tight", "split-combined"));
+
 TEST(BraceSpacingTest, ComposesWithParameterReflow)
 {
     formatter::Style style;
@@ -520,6 +577,23 @@ TEST(PreserveConfigTest, RejectsInvalidSettings)
         "WhitespaceSensitiveMacros = []\n",
         "ColumnLimit = 0\n",
         "IndentWidth = 0\n",
+        "IndentAccessModifiers = Unknown\n",
+        "IndentMembers = Unknown\n",
+        "InheritanceList = Unknown\n",
+        "InheritanceListColonPlacement = Unknown\n",
+        "InheritanceListColonSpaceBefore = Unknown\n",
+        "InheritanceListColonSpaceAfter = Unknown\n",
+        "InheritanceListCommaPlacement = Unknown\n",
+        "InheritanceListCommaSpaceBefore = Unknown\n",
+        "InheritanceListCommaSpaceAfter = Unknown\n",
+        "InheritanceListStart = Unknown\n",
+        "InheritanceListSplit = Unknown\n",
+        "InheritanceListIndent = 0\n",
+        "InheritanceListIndent = 33\n",
+        "InheritanceListStart = Attach\n",
+        "InheritanceListSplit = Preserve\n",
+        "InheritanceListMerge = true\n",
+        "InheritanceListPunctuation = WithAncestor\n",
         "FunctionParameterSplit = Together\n",
         "FirstFunctionParameterPosition = BeforeName\n",
         "EnforceFirstFunctionParameterPosition = maybe\n",

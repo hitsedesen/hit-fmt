@@ -10,6 +10,8 @@ target_compile_definitions(formatter-tests PRIVATE
     LAMBDA_SPACING_TESTDATA_DIR="${CMAKE_CURRENT_SOURCE_DIR}/testdata/lambda-spacing"
     LAMBDA_CAPTURE_TESTDATA_DIR="${CMAKE_CURRENT_SOURCE_DIR}/testdata/lambda-captures"
     LAMBDA_INNER_PARAMETER_TESTDATA_DIR="${CMAKE_CURRENT_SOURCE_DIR}/testdata/lambda-inner-parameters"
+    BODY_INDENT_TESTDATA_DIR="${CMAKE_CURRENT_SOURCE_DIR}/testdata/body-indent"
+    INHERITANCE_TESTDATA_DIR="${CMAKE_CURRENT_SOURCE_DIR}/testdata/inheritance"
     CONTROL_SPACING_TESTDATA_DIR="${CMAKE_CURRENT_SOURCE_DIR}/testdata/control-keyword-spacing"
     FUNCTION_SPACING_TESTDATA_DIR="${CMAKE_CURRENT_SOURCE_DIR}/testdata/function-spacing"
     FUNCTION_CALL_SPACING_TESTDATA_DIR="${CMAKE_CURRENT_SOURCE_DIR}/testdata/function-call-spacing"

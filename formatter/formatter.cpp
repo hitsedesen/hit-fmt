@@ -9,6 +9,7 @@
 #include <optional>
 #include <string>
 #include <string_view>
+#include <unordered_map>
 #include <utility>
 #include <vector>
 
@@ -20,16 +21,8 @@ using TK = tokenizer::TokenKind;
 using TokenIndex = parser::TokenIndex;
 constexpr TokenIndex NoToken = std::numeric_limits<TokenIndex>::max();
 
-bool IsIncompleteStatement(const parser::Node& node)
+bool HasRecoveryChild(const parser::Node& node)
 {
-    if (node.Kind != NK::ExpressionStatement &&
-        node.Kind != NK::DeclarationStatement &&
-        node.Kind != NK::ReturnStatement &&
-        node.Kind != NK::ThrowStatement &&
-        node.Kind != NK::CoYieldStatement)
-    {
-        return false;
-    }
     for (auto* child = node.Child(); child; child = child->NextSibling) {
         if (child->Kind == NK::UnparsedSyntax ||
             child->Kind == NK::MissingToken ||
@@ -42,9 +35,27 @@ bool IsIncompleteStatement(const parser::Node& node)
     return false;
 }
 
-// Token spelling and all trivia other than the selected opening-brace gap
-// remain source-owned. Classification uses syntax nodes, not neighboring
-// keywords (which also occur in expressions and template arguments).
+bool IsBaseSpacingKeyword(TK kind)
+{
+    return kind == TK::Keyword_public ||
+        kind == TK::Keyword_protected ||
+        kind == TK::Keyword_private ||
+        kind == TK::Keyword_virtual;
+}
+
+bool IsIncompleteStatement(const parser::Node& node)
+{
+    return (node.Kind == NK::ExpressionStatement ||
+            node.Kind == NK::DeclarationStatement ||
+            node.Kind == NK::ReturnStatement ||
+            node.Kind == NK::ThrowStatement ||
+            node.Kind == NK::CoYieldStatement) &&
+        HasRecoveryChild(node);
+}
+
+// Token spelling and trivia outside configured gaps remain source-owned.
+// Classification uses syntax nodes, not neighboring keywords (which also
+// occur in expressions and template arguments).
 class Formatter
 {
 public:
@@ -64,7 +75,10 @@ public:
         , ControlBraces_(tree.TokenCount(), false)
     {
         Output_.reserve(tree.Source().size());
-        if (style.ClassBracePlacement != BracePlacement::Preserve ||
+        if (style.IndentAccessModifiers != BodyIndentation::Preserve ||
+            style.IndentMembers != BodyIndentation::Preserve ||
+            style.InheritanceList == InheritanceListMode::Format ||
+            style.ClassBracePlacement != BracePlacement::Preserve ||
             style.StructBracePlacement != BracePlacement::Preserve ||
             style.UnionBracePlacement != BracePlacement::Preserve ||
             style.FunctionBracePlacement != BracePlacement::Preserve ||
@@ -198,6 +212,8 @@ private:
     {
         switch (node.Kind) {
         case NK::RecordDeclaration:
+            MarkBodyIndentation(node);
+            MarkInheritance(node);
             // The declaration keyword, not a keyword in a base clause or
             // attribute, selects the record's independent setting.
             if (node.Tokens.Begin < Tree_.TokenCount()) {
@@ -220,6 +236,7 @@ private:
             }
             break;
         case NK::EnumDeclaration:
+            MarkBodyIndentation(node);
             MarkOpening(node, BracePlacement::Preserve,
                 Style_.EnumBraceSpacing);
             break;
@@ -276,6 +293,336 @@ private:
             break;
         default:
             break;
+        }
+    }
+
+    void MarkBodyIndentation(const parser::Node& declaration)
+    {
+        if (HasRecoveryChild(declaration) ||
+            (Style_.IndentMembers == BodyIndentation::Preserve &&
+                Style_.IndentAccessModifiers == BodyIndentation::Preserve))
+        {
+            return;
+        }
+        TokenIndex opening = NoToken;
+        const parser::Node* enumerators = nullptr;
+        if (declaration.Kind == NK::EnumDeclaration) {
+            for (auto* child = declaration.Child(); child;
+                child = child->NextSibling)
+            {
+                if (child->Kind == NK::EnumeratorList) {
+                    enumerators = child;
+                    opening = child->Tokens.Begin;
+                    break;
+                }
+            }
+        } else {
+            for (auto i = declaration.Tokens.Begin;
+                i < declaration.Tokens.End; ++i)
+            {
+                if (Tree_.Kind(i) == TK::Operator_OpenBrace &&
+                    Tree_.Role(i) == parser::PunctuationRole::RecordDelimiter)
+                {
+                    opening = i;
+                    break;
+                }
+            }
+        }
+        if (opening == NoToken || opening >= Tree_.TokenCount() ||
+            Tree_.Kind(opening) != TK::Operator_OpenBrace)
+        {
+            return;
+        }
+        auto closing = Tree_.MatchingDelimiter(opening);
+        if (closing == NoToken || closing >= declaration.Tokens.End) {
+            return;
+        }
+        std::string baseline(Indentation(declaration.Tokens.Begin));
+        if (auto parent = BodyIndents_.find(declaration.Tokens.Begin);
+            parent != BodyIndents_.end())
+        {
+            baseline = parent->second;
+            BodyIndents_[closing] = baseline;
+        }
+        auto mark = [&](const parser::Node& member, BodyIndentation policy) {
+            auto index = member.Tokens.Begin;
+            if (policy != BodyIndentation::Preserve &&
+                !member.Tokens.Empty() && index > opening && index < closing &&
+                Tree_.Kind(index) != TK::Comment &&
+                Tree_.Kind(index) != TK::PreprocessingDirective)
+            {
+                BodyIndents_[index] = baseline;
+                if (policy == BodyIndentation::Indent) {
+                    BodyIndents_[index].append(Style_.IndentWidth, ' ');
+                }
+            }
+        };
+        if (enumerators) {
+            for (auto* child = enumerators->Child(); child;
+                child = child->NextSibling)
+            {
+                if (child->Kind == NK::Enumerator) {
+                    mark(*child, Style_.IndentMembers);
+                }
+            }
+        } else {
+            for (auto* child = declaration.Child(); child;
+                child = child->NextSibling)
+            {
+                if (child->Kind == NK::AccessSpecifier) {
+                    mark(*child, Style_.IndentAccessModifiers);
+                } else if (child->Kind != NK::BaseClause &&
+                    child->Kind != NK::PreprocessingDirective &&
+                    child->Kind != NK::UnparsedSyntax &&
+                    child->Kind != NK::MissingToken &&
+                    child->Kind != NK::UnexpectedToken &&
+                    child->Kind != NK::Error)
+                {
+                    mark(*child, Style_.IndentMembers);
+                }
+            }
+        }
+    }
+
+    struct BaseEntry
+    {
+        TokenIndex Opening;
+        TokenIndex Comma;
+        std::string Text;
+    };
+
+    std::optional<std::vector<BaseEntry>> CollectBases(
+        const parser::Node& first) const
+    {
+        std::vector<BaseEntry> entries;
+        TokenIndex comma = NoToken;
+        for (auto* child = &first; child; child = child->NextSibling) {
+            if (child->Tokens.Empty()) {
+                return std::nullopt;
+            }
+            if (child->Kind == NK::ListSeparator) {
+                if (child->Tokens.Size() != 1 ||
+                    Tree_.Kind(child->Tokens.Begin) != TK::Operator_Comma)
+                {
+                    return std::nullopt;
+                }
+                comma = child->Tokens.Begin;
+                continue;
+            }
+            const auto opening = child->Tokens.Begin;
+            const auto begin = Tree_.Token(opening).Text.Begin;
+            const auto end = Tree_.Token(child->Tokens.End - 1).Text.End;
+            auto text = Tree_.Source().substr(begin, end - begin);
+            if (text.find_first_of("\r\n") != std::string_view::npos) {
+                return std::nullopt;
+            }
+            bool hasName = false;
+            for (auto i = opening; i < child->Tokens.End; ++i) {
+                auto kind = Tree_.Kind(i);
+                if (kind == TK::Comment ||
+                    kind == TK::PreprocessingDirective)
+                {
+                    return std::nullopt;
+                }
+                hasName |= kind == TK::Identifier ||
+                    kind == TK::Keyword_decltype;
+            }
+            if (!hasName) {
+                return std::nullopt;
+            }
+            std::string normalized;
+            size_t cursor = begin;
+            for (auto i = opening; i + 1 < child->Tokens.End; ++i) {
+                if (!IsBaseSpacingKeyword(Tree_.Kind(i))) {
+                    continue;
+                }
+                const auto tokenEnd = Tree_.Token(i).Text.End;
+                normalized.append(Tree_.Source().substr(
+                    cursor, tokenEnd - cursor));
+                normalized.push_back(' ');
+                cursor = Tree_.Token(i + 1).Text.Begin;
+            }
+            normalized.append(Tree_.Source().substr(cursor, end - cursor));
+            entries.push_back({opening, comma, std::move(normalized)});
+            if (comma != NoToken) {
+                auto beforeComma = Tree_.WhitespaceBefore(comma);
+                auto beforeBase = Tree_.WhitespaceBefore(opening);
+                auto safe = [](std::string_view gap) {
+                    return gap.find_first_not_of(" \t\r\n") ==
+                            std::string_view::npos &&
+                        std::count(gap.begin(), gap.end(), '\n') <= 1;
+                };
+                if (!safe(beforeComma) || !safe(beforeBase) ||
+                    (beforeComma.contains('\n') && beforeBase.contains('\n')))
+                {
+                    return std::nullopt;
+                }
+            }
+        }
+        return entries;
+    }
+
+    void MarkInheritance(const parser::Node& declaration)
+    {
+        if (HasRecoveryChild(declaration) ||
+            Style_.InheritanceList != InheritanceListMode::Format ||
+            Tree_.Kind(declaration.Tokens.Begin) == TK::Keyword_union)
+        {
+            return;
+        }
+        const parser::Node* bases = nullptr;
+        for (auto* child = declaration.Child(); child;
+            child = child->NextSibling)
+        {
+            if (child->Kind == NK::BaseClause) {
+                bases = child;
+                break;
+            }
+        }
+        if (!bases || bases->Tokens.Empty() ||
+            bases->Tokens.End >= Tree_.TokenCount() ||
+            Tree_.Kind(bases->Tokens.End) != TK::Operator_OpenBrace ||
+            Tree_.Role(bases->Tokens.End) !=
+                parser::PunctuationRole::RecordDelimiter)
+        {
+            return; // An inheritance list belongs to a definition.
+        }
+        const auto colon = bases->Tokens.Begin;
+        if (colon <= declaration.Tokens.Begin ||
+            Tree_.Kind(colon) != TK::Operator_Colon ||
+            Tree_.Kind(colon - 1) == TK::Comment ||
+            Tree_.Kind(colon - 1) == TK::PreprocessingDirective)
+        {
+            return;
+        }
+        const auto* first = bases->Child();
+        const auto* last = first;
+        bool expectBase = true;
+        for (auto* child = first; child; child = child->NextSibling) {
+            if (child->Tokens.Empty() ||
+                child->Kind != (expectBase ? NK::BaseSpecifier
+                                            : NK::ListSeparator))
+            {
+                return;
+            }
+            expectBase = !expectBase;
+            last = child;
+        }
+        if (!first || !last || expectBase ||
+            first->Tokens.Begin != colon + 1 ||
+            last->Tokens.End != bases->Tokens.End ||
+            Tree_.Kind(colon + 1) == TK::Comment ||
+            Tree_.Kind(colon + 1) == TK::PreprocessingDirective)
+        {
+            return;
+        }
+        auto entries = CollectBases(*first);
+        if (!entries || entries->empty()) {
+            return; // Comments and recovered lists remain source-owned.
+        }
+        auto beforeColon = Tree_.WhitespaceBefore(colon);
+        auto beforeBase = Tree_.WhitespaceBefore(colon + 1);
+        auto safe = [](std::string_view gap) {
+            return gap.find_first_not_of(" \t\r\n") ==
+                    std::string_view::npos &&
+                std::count(gap.begin(), gap.end(), '\n') <= 1;
+        };
+        if (!safe(beforeColon) || !safe(beforeBase)) {
+            return;
+        }
+        for (auto* child = first; child; child = child->NextSibling) {
+            if (child->Kind != NK::BaseSpecifier) {
+                continue;
+            }
+            for (auto i = child->Tokens.Begin;
+                i + 1 < child->Tokens.End; ++i)
+            {
+                if (IsBaseSpacingKeyword(Tree_.Kind(i))) {
+                    InheritanceGaps_[i + 1] = " ";
+                }
+            }
+        }
+        std::string indent(Indentation(declaration.Tokens.Begin));
+        if (auto parent = BodyIndents_.find(declaration.Tokens.Begin);
+            parent != BodyIndents_.end())
+        {
+            indent = parent->second;
+        }
+        indent.append(Style_.InheritanceListIndent == 0
+            ? Style_.IndentWidth : Style_.InheritanceListIndent, ' ');
+        auto space = [](InheritanceListSpacing policy) -> std::string_view {
+            return policy == InheritanceListSpacing::Space ? " " : "";
+        };
+        const auto colonBefore =
+            space(Style_.InheritanceListColonSpaceBefore);
+        const auto colonAfter = space(Style_.InheritanceListColonSpaceAfter);
+        const auto commaBefore =
+            space(Style_.InheritanceListCommaSpaceBefore);
+        const auto commaAfter =
+            space(Style_.InheritanceListCommaSpaceAfter);
+        const auto source = Tree_.Source();
+        const auto headerBegin = Tree_.Token(declaration.Tokens.Begin).Text.Begin;
+        const auto headerEnd = Tree_.Token(colon - 1).Text.End;
+        const auto header = source.substr(headerBegin, headerEnd - headerBegin);
+        const auto lineStart = source.rfind('\n', headerBegin);
+        auto prefix = headerBegin - (lineStart == std::string_view::npos
+            ? 0 : lineStart + 1);
+        if (auto parent = BodyIndents_.find(declaration.Tokens.Begin);
+            parent != BodyIndents_.end() &&
+                Tree_.WhitespaceBefore(declaration.Tokens.Begin).contains('\n'))
+        {
+            prefix = parent->second.size();
+        }
+        size_t flatWidth = prefix + header.size() + colonBefore.size() +
+            1 + colonAfter.size();
+        for (const auto& entry : *entries) {
+            if (entry.Comma != NoToken) {
+                flatWidth += commaBefore.size() + 1 + commaAfter.size();
+            }
+            flatWidth += entry.Text.size();
+        }
+        const bool overflow = header.contains('\n') ||
+            flatWidth > Style_.ColumnLimit;
+        const bool firstNew = Style_.InheritanceListStart ==
+                InheritanceListStart::NewLine ||
+            (Style_.InheritanceListStart ==
+                InheritanceListStart::NewLineOnOverflow && overflow);
+        const auto newline = std::string(LineEnding(colon)) + indent;
+        const bool colonWithBase = Style_.InheritanceListColonPlacement ==
+            InheritanceListColonPlacement::AttachToBase;
+        InheritanceGaps_[colon] = firstNew && colonWithBase
+            ? newline : std::string(colonBefore);
+        InheritanceGaps_[entries->front().Opening] =
+            firstNew && !colonWithBase ? newline : std::string(colonAfter);
+        auto column = firstNew
+            ? indent.size() + entries->front().Text.size() +
+                (colonWithBase ? 1 + colonAfter.size() : 0)
+            : prefix + header.size() + colonBefore.size() + 1 +
+                colonAfter.size() + entries->front().Text.size();
+        const auto split = Style_.InheritanceListSplit;
+        const bool onePerLine = split == InheritanceListSplit::OnePerLine ||
+            (split == InheritanceListSplit::OnePerLineOnOverflow && overflow);
+        for (size_t i = 1; i < entries->size(); ++i) {
+            const auto& entry = (*entries)[i];
+            const auto width = column + commaBefore.size() + 1 +
+                commaAfter.size() + entry.Text.size();
+            const bool breakLine = onePerLine || width > Style_.ColumnLimit;
+            if (breakLine && Style_.InheritanceListCommaPlacement ==
+                    InheritanceListCommaPlacement::AttachToNext)
+            {
+                InheritanceGaps_[entry.Comma] = newline;
+                InheritanceGaps_[entry.Opening] = commaAfter;
+                column = indent.size() + 1 + commaAfter.size() +
+                    entry.Text.size();
+            } else if (breakLine) {
+                InheritanceGaps_[entry.Comma] = commaBefore;
+                InheritanceGaps_[entry.Opening] = newline;
+                column = indent.size() + entry.Text.size();
+            } else {
+                InheritanceGaps_[entry.Comma] = commaBefore;
+                InheritanceGaps_[entry.Opening] = commaAfter;
+                column = width;
+            }
         }
     }
 
@@ -784,6 +1131,24 @@ private:
     void EmitGap(TokenIndex index)
     {
         auto gap = Tree_.WhitespaceBefore(index);
+        if (auto replacement = InheritanceGaps_.find(index);
+            replacement != InheritanceGaps_.end())
+        {
+            Output_ += replacement->second;
+            return;
+        }
+        if (auto indent = BodyIndents_.find(index);
+            indent != BodyIndents_.end())
+        {
+            auto newline = gap.rfind('\n');
+            if (newline != std::string_view::npos &&
+                gap.find_first_not_of(" \t\r\n") == std::string_view::npos)
+            {
+                Output_.append(gap.substr(0, newline + 1));
+                Output_ += indent->second;
+                return;
+            }
+        }
         if (CaptureGaps_[index] != LambdaCaptureSpacing::Preserve &&
             gap.find_first_not_of(" \t") == std::string_view::npos)
         {
@@ -902,6 +1267,8 @@ private:
     const parser::SyntaxTree& Tree_;
     const Style& Style_;
     std::vector<BracePlacement> Placements_;
+    std::unordered_map<TokenIndex, std::string> BodyIndents_;
+    std::unordered_map<TokenIndex, std::string> InheritanceGaps_;
     std::vector<SameLineBraceSpacing> Spacings_;
     std::vector<bool> LambdaGaps_;
     std::vector<bool> LambdaParameterInsideGaps_;
@@ -1297,6 +1664,9 @@ std::string FormatParameters(const parser::SyntaxTree& tree, const Style& style)
 std::string Format(const parser::SyntaxTree& tree, const Style& style)
 {
     const bool bracesPreserved =
+        style.IndentAccessModifiers == BodyIndentation::Preserve &&
+        style.IndentMembers == BodyIndentation::Preserve &&
+        style.InheritanceList == InheritanceListMode::Preserve &&
         style.ClassBracePlacement == BracePlacement::Preserve &&
         style.StructBracePlacement == BracePlacement::Preserve &&
         style.UnionBracePlacement == BracePlacement::Preserve &&

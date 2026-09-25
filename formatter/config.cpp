@@ -103,6 +103,105 @@ SameLineBraceSpacing ParseSameLineBraceSpacing(
     ThrowConfigError(path, line, "expected Preserve or SingleSpace");
 }
 
+BodyIndentation ParseBodyIndentation(
+    std::string_view value,
+    const std::filesystem::path& path,
+    size_t line)
+{
+    if (value == "Preserve") {
+        return BodyIndentation::Preserve;
+    }
+    if (value == "Indent") {
+        return BodyIndentation::Indent;
+    }
+    if (value == "NoIndent") {
+        return BodyIndentation::NoIndent;
+    }
+    ThrowConfigError(path, line, "expected Preserve, Indent or NoIndent");
+}
+
+InheritanceListMode ParseInheritanceListMode(
+    std::string_view value, const std::filesystem::path& path, size_t line)
+{
+    if (value == "Preserve") {
+        return InheritanceListMode::Preserve;
+    }
+    if (value == "Format") {
+        return InheritanceListMode::Format;
+    }
+    ThrowConfigError(path, line, "expected Preserve or Format");
+}
+
+InheritanceListStart ParseInheritanceListStart(
+    std::string_view value, const std::filesystem::path& path, size_t line)
+{
+    if (value == "NewLine") {
+        return InheritanceListStart::NewLine;
+    }
+    if (value == "ClassLine") {
+        return InheritanceListStart::ClassLine;
+    }
+    if (value == "NewLineOnOverflow") {
+        return InheritanceListStart::NewLineOnOverflow;
+    }
+    ThrowConfigError(path, line,
+        "expected NewLine, ClassLine or NewLineOnOverflow");
+}
+
+InheritanceListSplit ParseInheritanceListSplit(
+    std::string_view value, const std::filesystem::path& path, size_t line)
+{
+    if (value == "OnePerLine") {
+        return InheritanceListSplit::OnePerLine;
+    }
+    if (value == "Pack") {
+        return InheritanceListSplit::Pack;
+    }
+    if (value == "OnePerLineOnOverflow") {
+        return InheritanceListSplit::OnePerLineOnOverflow;
+    }
+    ThrowConfigError(path, line,
+        "expected OnePerLine, Pack or OnePerLineOnOverflow");
+}
+
+InheritanceListColonPlacement ParseInheritanceListColonPlacement(
+    std::string_view value, const std::filesystem::path& path, size_t line)
+{
+    if (value == "AttachToBase") {
+        return InheritanceListColonPlacement::AttachToBase;
+    }
+    if (value == "AttachToClass") {
+        return InheritanceListColonPlacement::AttachToClass;
+    }
+    ThrowConfigError(path, line,
+        "expected AttachToBase or AttachToClass");
+}
+
+InheritanceListCommaPlacement ParseInheritanceListCommaPlacement(
+    std::string_view value, const std::filesystem::path& path, size_t line)
+{
+    if (value == "AttachToNext") {
+        return InheritanceListCommaPlacement::AttachToNext;
+    }
+    if (value == "AttachToPrevious") {
+        return InheritanceListCommaPlacement::AttachToPrevious;
+    }
+    ThrowConfigError(path, line,
+        "expected AttachToNext or AttachToPrevious");
+}
+
+InheritanceListSpacing ParseInheritanceListSpacing(
+    std::string_view value, const std::filesystem::path& path, size_t line)
+{
+    if (value == "Space") {
+        return InheritanceListSpacing::Space;
+    }
+    if (value == "NoSpace") {
+        return InheritanceListSpacing::NoSpace;
+    }
+    ThrowConfigError(path, line, "expected Space or NoSpace");
+}
+
 LambdaCaptureSpacing ParseLambdaCaptureSpacing(
     std::string_view value,
     const std::filesystem::path& path,
@@ -515,6 +614,46 @@ void ApplySetting(
         } else {
             ThrowConfigError(path, line,
                 "expected Preserve, Space or NoSpace");
+        }
+    } else if (key == "IndentAccessModifiers") {
+        config.FormattingStyle.IndentAccessModifiers =
+            ParseBodyIndentation(value, path, line);
+    } else if (key == "IndentMembers") {
+        config.FormattingStyle.IndentMembers =
+            ParseBodyIndentation(value, path, line);
+    } else if (key == "InheritanceList") {
+        config.FormattingStyle.InheritanceList =
+            ParseInheritanceListMode(value, path, line);
+    } else if (key == "InheritanceListColonPlacement") {
+        config.FormattingStyle.InheritanceListColonPlacement =
+            ParseInheritanceListColonPlacement(value, path, line);
+    } else if (key == "InheritanceListColonSpaceBefore") {
+        config.FormattingStyle.InheritanceListColonSpaceBefore =
+            ParseInheritanceListSpacing(value, path, line);
+    } else if (key == "InheritanceListColonSpaceAfter") {
+        config.FormattingStyle.InheritanceListColonSpaceAfter =
+            ParseInheritanceListSpacing(value, path, line);
+    } else if (key == "InheritanceListCommaPlacement") {
+        config.FormattingStyle.InheritanceListCommaPlacement =
+            ParseInheritanceListCommaPlacement(value, path, line);
+    } else if (key == "InheritanceListCommaSpaceBefore") {
+        config.FormattingStyle.InheritanceListCommaSpaceBefore =
+            ParseInheritanceListSpacing(value, path, line);
+    } else if (key == "InheritanceListCommaSpaceAfter") {
+        config.FormattingStyle.InheritanceListCommaSpaceAfter =
+            ParseInheritanceListSpacing(value, path, line);
+    } else if (key == "InheritanceListStart") {
+        config.FormattingStyle.InheritanceListStart =
+            ParseInheritanceListStart(value, path, line);
+    } else if (key == "InheritanceListSplit") {
+        config.FormattingStyle.InheritanceListSplit =
+            ParseInheritanceListSplit(value, path, line);
+    } else if (key == "InheritanceListIndent") {
+        config.FormattingStyle.InheritanceListIndent =
+            ParsePositiveInteger(value, path, line);
+        if (config.FormattingStyle.InheritanceListIndent > 32) {
+            ThrowConfigError(path, line,
+                "InheritanceListIndent must not exceed 32");
         }
     } else if (key == "SpaceAroundCaptureList") {
         config.FormattingStyle.SpaceAroundCaptureList =

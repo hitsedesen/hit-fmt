@@ -16,6 +16,13 @@ enum class BracePlacement
 };
 
 enum class NamespaceComments { Preserve, Remove, Required };
+enum class BodyIndentation { Preserve, Indent, NoIndent };
+enum class InheritanceListMode { Preserve, Format };
+enum class InheritanceListColonPlacement { AttachToBase, AttachToClass };
+enum class InheritanceListCommaPlacement { AttachToNext, AttachToPrevious };
+enum class InheritanceListSpacing { NoSpace, Space };
+enum class InheritanceListStart { NewLine, ClassLine, NewLineOnOverflow };
+enum class InheritanceListSplit { OnePerLine, Pack, OnePerLineOnOverflow };
 enum class FunctionParameterSplit { Preserve, Pack, OnePerLine };
 enum class FirstFunctionParameterPosition { NameLine, NewLine };
 enum class FunctionParameterIndent { IndentWidth, Continuation };
@@ -46,6 +53,27 @@ struct Style
 {
     size_t IndentWidth = 4;
     size_t ColumnLimit = 120;
+    BodyIndentation IndentAccessModifiers = BodyIndentation::Preserve;
+    BodyIndentation IndentMembers = BodyIndentation::Preserve;
+    InheritanceListMode InheritanceList = InheritanceListMode::Preserve;
+    formatter::InheritanceListColonPlacement InheritanceListColonPlacement =
+        formatter::InheritanceListColonPlacement::AttachToBase;
+    InheritanceListSpacing InheritanceListColonSpaceBefore =
+        InheritanceListSpacing::NoSpace;
+    InheritanceListSpacing InheritanceListColonSpaceAfter =
+        InheritanceListSpacing::Space;
+    formatter::InheritanceListCommaPlacement InheritanceListCommaPlacement =
+        formatter::InheritanceListCommaPlacement::AttachToNext;
+    InheritanceListSpacing InheritanceListCommaSpaceBefore =
+        InheritanceListSpacing::NoSpace;
+    InheritanceListSpacing InheritanceListCommaSpaceAfter =
+        InheritanceListSpacing::Space;
+    formatter::InheritanceListStart InheritanceListStart =
+        formatter::InheritanceListStart::NewLine;
+    formatter::InheritanceListSplit InheritanceListSplit =
+        formatter::InheritanceListSplit::OnePerLine;
+    // Zero uses the global IndentWidth.
+    size_t InheritanceListIndent = 0;
     BracePlacement ClassBracePlacement = BracePlacement::Preserve;
     BracePlacement StructBracePlacement = BracePlacement::Preserve;
     BracePlacement UnionBracePlacement = BracePlacement::Preserve;

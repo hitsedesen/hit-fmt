@@ -18,6 +18,18 @@ Blank lines and `#` comments are allowed. Example:
 ```text
 IndentWidth = 4
 ColumnLimit = 120
+IndentAccessModifiers = Preserve
+IndentMembers = Preserve
+InheritanceList = Preserve
+InheritanceListColonPlacement = AttachToBase
+InheritanceListColonSpaceBefore = NoSpace
+InheritanceListColonSpaceAfter = Space
+InheritanceListCommaPlacement = AttachToNext
+InheritanceListCommaSpaceBefore = NoSpace
+InheritanceListCommaSpaceAfter = Space
+InheritanceListStart = NewLine
+InheritanceListSplit = OnePerLine
+# InheritanceListIndent defaults to IndentWidth when omitted
 ClassBracePlacement = Preserve
 StructBracePlacement = Preserve
 UnionBracePlacement = Preserve
@@ -57,10 +69,11 @@ VariableNamePrefixes = ["m_", "s_"]
 Exclude = ["(^|/)generated(/|$)", "(^|/)legacy\\.cpp$"]
 ```
 
-- `IndentWidth`: positive integer up to 32. Used for parameter continuation
-  lines when `FunctionParameterIndent = IndentWidth`.
+- `IndentWidth`: positive integer up to 32. Used for record bodies and base
+  lists, and for parameter continuation lines when
+  `FunctionParameterIndent = IndentWidth`.
 - `ColumnLimit`: positive integer up to 10000. Function parameter lists
-  exceeding this limit can be wrapped according to `FunctionParameterSplit`.
+  and inheritance lists can be wrapped according to their split settings.
 - `*BracePlacement`: `Preserve` (default) keeps the existing layout,
   `Attach` joins a brace to its header, and `NewLine` moves it to its own
   line. Existing same-line spacing is left unchanged by `Attach`. Each of
@@ -75,6 +88,42 @@ Exclude = ["(^|/)generated(/|$)", "(^|/)legacy\\.cpp$"]
   brace, and `Required` adds `// namespace name` (or `// namespace` for an
   anonymous namespace) and corrects an existing trailing line comment.
   Unmatched braces and closings followed by a block comment are left alone.
+- `IndentAccessModifiers` and `IndentMembers`: `Preserve` (default)
+  leaves indentation unchanged, `Indent` uses one `IndentWidth` relative
+  to the record declaration, and `NoIndent` aligns with that declaration.
+  Access labels and direct members of class, struct, and union bodies use
+  independent settings. Enum enumerators use `IndentMembers` (enums do
+  not have access labels). Only existing lines are reindented; nested
+  closing braces follow their reindented declarations. Inline members,
+  comments, directives, and conditional branches remain source-owned.
+- `InheritanceList`: `Preserve` (default) leaves the entire base list
+  unchanged. `Format` applies the following settings to complete base
+  lists in class and struct definitions. Comments, directives, blank
+  lines, and multiline base specifiers keep a list source-owned. Enum
+  underlying-type colons are not inheritance lists.
+- `InheritanceListColonPlacement`: `AttachToBase` (default) puts `:` on
+  the first base line; `AttachToClass` puts it on the class header line.
+  `InheritanceListColonSpaceBefore` uses `NoSpace` (default) or `Space`;
+  `InheritanceListColonSpaceAfter` uses `Space` (default) or `NoSpace`.
+  Spacing applies only to same-line gaps around `:`.
+- `InheritanceListCommaPlacement`: `AttachToNext` (default) puts a comma
+  before the next base; `AttachToPrevious` puts it after the preceding
+  base. `InheritanceListCommaSpaceBefore` uses `NoSpace` (default) or
+  `Space`; `InheritanceListCommaSpaceAfter` uses `Space` (default) or
+  `NoSpace`. Spacing options do not remove line breaks.
+- `InheritanceListStart`: `NewLine` (default), `ClassLine`, or
+  `NewLineOnOverflow` controls the first base's line. The overflow case
+  checks whether the entire projected list fits on the class line.
+- `InheritanceListSplit`: `OnePerLine` (default) puts each subsequent
+  base on its own line; `Pack` joins bases until the next would exceed
+  `ColumnLimit`; `OnePerLineOnOverflow` splits only when the entire
+  projected list exceeds `ColumnLimit`. Safe existing line breaks are
+  merged whenever the chosen layout permits.
+- `InheritanceListIndent`: an optional positive integer up to 32 for
+  lines created in a base list, relative to the record declaration.
+  Defaults to `IndentWidth`. `Format` also uses one space after
+  `public`, `protected`, `private`, and `virtual` within each base
+  specifier; other internal spacing remains source-owned.
 - `FunctionParameterSplit`: `Preserve` (default, leave parameter lists
   unchanged), `Pack` (put as many parameters as fit on each line), or
   `OnePerLine`. Lists already fitting on one line are left unchanged.
