@@ -7,6 +7,7 @@ target_compile_definitions(formatter-tests PRIVATE
     FORMATTER_TESTDATA_DIR="${CMAKE_CURRENT_SOURCE_DIR}/testdata/style"
     BRACE_TESTDATA_DIR="${CMAKE_CURRENT_SOURCE_DIR}/testdata/brace-placement"
     BRACE_SPACING_TESTDATA_DIR="${CMAKE_CURRENT_SOURCE_DIR}/testdata/brace-spacing"
+    LAMBDA_SPACING_TESTDATA_DIR="${CMAKE_CURRENT_SOURCE_DIR}/testdata/lambda-spacing"
     NAMING_TESTDATA_DIR="${CMAKE_CURRENT_SOURCE_DIR}/testdata/naming")
 
 gtest_discover_tests(formatter-tests)

@@ -266,6 +266,24 @@ TEST_P(BraceSpacingGoldenTest, FormatsOnlySameLineDeclarationGaps)
 INSTANTIATE_TEST_SUITE_P(Configurations, BraceSpacingGoldenTest,
     testing::Values("preserve", "single-space", "mixed"));
 
+class LambdaSpacingGoldenTest : public testing::TestWithParam<std::string>
+{ };
+
+TEST_P(LambdaSpacingGoldenTest, FormatsOnlyLambdaCaptureParameterGaps)
+{
+    const auto directory = std::filesystem::path(LAMBDA_SPACING_TESTDATA_DIR);
+    const auto input = ReadFile(directory / "input.cpp");
+    const auto expected = ReadFile(directory / (GetParam() + ".output.cpp"));
+    const auto style = formatter::LoadConfigFile(
+        directory / (GetParam() + ".hit-fmt")).FormattingStyle;
+
+    EXPECT_EQ(FormatWithStyle(input, style), expected);
+    EXPECT_EQ(FormatWithStyle(expected, style), expected);
+}
+
+INSTANTIATE_TEST_SUITE_P(Configurations, LambdaSpacingGoldenTest,
+    testing::Values("preserve", "space", "no-space"));
+
 TEST(BraceSpacingTest, ComposesWithParameterReflow)
 {
     formatter::Style style;
@@ -354,6 +372,7 @@ TEST(PreserveConfigTest, RejectsInvalidSettings)
         "EnforceFirstFunctionParameterPosition = maybe\n",
         "FunctionParameterIndent = Tabs\n",
         "MergeFunctionParameters = yes\n",
+        "LambdaSpaceBeforeParameters = Unknown\n",
         "Exclude = [\"[\"]\n",
         "StructNameCase = lowercase\n",
         "ClassNamePrefixes = []\n",

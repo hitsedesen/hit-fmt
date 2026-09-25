@@ -31,6 +31,7 @@ public:
         , Style_(style)
         , Placements_(tree.TokenCount(), BracePlacement::Preserve)
         , Spacings_(tree.TokenCount(), SameLineBraceSpacing::Preserve)
+        , LambdaGaps_(tree.TokenCount(), false)
     {
         Output_.reserve(tree.Source().size());
         if (style.ClassBracePlacement != BracePlacement::Preserve ||
@@ -45,7 +46,9 @@ public:
             style.EnumBraceSpacing != SameLineBraceSpacing::Preserve ||
             style.UnionBraceSpacing != SameLineBraceSpacing::Preserve ||
             style.FunctionBraceSpacing != SameLineBraceSpacing::Preserve ||
-            style.NamespaceBraceSpacing != SameLineBraceSpacing::Preserve)
+            style.NamespaceBraceSpacing != SameLineBraceSpacing::Preserve ||
+            style.LambdaSpaceBeforeParameters !=
+                LambdaSpaceBeforeParameters::Preserve)
         {
             Classify();
         }
@@ -192,6 +195,32 @@ private:
                 }
             }
             break;
+        case NK::LambdaExpression:
+            if (Style_.LambdaSpaceBeforeParameters !=
+                LambdaSpaceBeforeParameters::Preserve)
+            {
+                auto* capture = node.Child();
+                auto* parameters = capture ? capture->NextSibling : nullptr;
+                if (capture && capture->Kind == NK::LambdaCaptureList &&
+                    parameters && parameters->Kind == NK::ParameterList &&
+                    !capture->Tokens.Empty() &&
+                    !parameters->Tokens.Empty())
+                {
+                    auto closing = capture->Tokens.End - 1;
+                    auto opening = parameters->Tokens.Begin;
+                    if (opening == closing + 1 &&
+                        Tree_.Kind(closing) == TK::Operator_CloseBracket &&
+                        Tree_.Kind(opening) == TK::Operator_OpenParenthesis &&
+                        Tree_.MatchingDelimiter(capture->Tokens.Begin) ==
+                            closing &&
+                        Tree_.MatchingDelimiter(opening) ==
+                            parameters->Tokens.End - 1)
+                    {
+                        LambdaGaps_[opening] = true;
+                    }
+                }
+            }
+            break;
         case NK::LambdaBody:
             MarkOpening(node, Style_.LambdaBracePlacement,
                 Style_.LambdaBraceSpacing);
@@ -272,6 +301,16 @@ private:
     void EmitGap(TokenIndex index)
     {
         auto gap = Tree_.WhitespaceBefore(index);
+        if (LambdaGaps_[index] &&
+            gap.find_first_not_of(" \t") == std::string_view::npos)
+        {
+            if (Style_.LambdaSpaceBeforeParameters ==
+                LambdaSpaceBeforeParameters::Space)
+            {
+                Output_.push_back(' ');
+            }
+            return;
+        }
         auto placement = Placements_[index];
         if (index == 0 ||
             // Only a trailing header comment is safe to cross; leave other
@@ -312,6 +351,7 @@ private:
     const Style& Style_;
     std::vector<BracePlacement> Placements_;
     std::vector<SameLineBraceSpacing> Spacings_;
+    std::vector<bool> LambdaGaps_;
     // Only initialized for openings with an active placement.
     std::vector<TokenIndex> HeaderStarts_ =
         std::vector<TokenIndex>(Tree_.TokenCount(), NoToken);
@@ -692,7 +732,9 @@ std::string Format(const parser::SyntaxTree& tree, const Style& style)
         style.EnumBraceSpacing == SameLineBraceSpacing::Preserve &&
         style.UnionBraceSpacing == SameLineBraceSpacing::Preserve &&
         style.FunctionBraceSpacing == SameLineBraceSpacing::Preserve &&
-        style.NamespaceBraceSpacing == SameLineBraceSpacing::Preserve;
+        style.NamespaceBraceSpacing == SameLineBraceSpacing::Preserve &&
+        style.LambdaSpaceBeforeParameters ==
+            LambdaSpaceBeforeParameters::Preserve;
     std::string formatted;
     if (style.FunctionParameterSplit == FunctionParameterSplit::Preserve) {
         formatted = Formatter(tree, style).Run();
