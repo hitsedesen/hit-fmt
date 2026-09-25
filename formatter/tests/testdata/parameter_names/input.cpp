@@ -18,3 +18,4 @@ void multiline(
     int)
 {
 }
+void arrays(int [3], int = 1);

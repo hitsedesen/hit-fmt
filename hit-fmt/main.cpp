@@ -84,10 +84,11 @@ void PrintParameterDiagnostics(
     if (diagnostics.size() != 1) {
         std::cout << 's';
     }
+    const auto width = std::to_string(first.SignatureEndLine).size();
     std::cout << " in " << first.Function << '\n'
               << "  --> " << path << ':' << first.Position.Line << ':'
               << first.Position.Column << '\n'
-              << "   |\n";
+              << std::string(width + 1, ' ') << "|\n";
 
     for (auto lineNumber = first.SignatureBeginLine;
         lineNumber <= first.SignatureEndLine; ++lineNumber)
@@ -101,9 +102,9 @@ void PrintParameterDiagnostics(
         if (text.ends_with('\r')) {
             text.remove_suffix(1);
         }
-        const auto gutter = std::string(
-            std::to_string(lineNumber).size(), ' ') + " | ";
-        std::cout << lineNumber << " | " << text << '\n';
+        const auto gutter = std::string(width + 1, ' ') + "| ";
+        std::cout << std::string(width - std::to_string(lineNumber).size(), ' ')
+                  << lineNumber << " | " << text << '\n';
         for (const auto& diagnostic : diagnostics) {
             if (diagnostic.Position.Line != lineNumber) {
                 continue;

@@ -82,6 +82,55 @@ const Node* FunctionName(const Node& node)
     return nullptr;
 }
 
+util::Position AfterToken(const parser::SyntaxTree& tree,
+    parser::TokenIndex index)
+{
+    auto position = tree.TokenPosition(index);
+    for (unsigned char c : tree.TokenText(index)) {
+        if (c == '\n') {
+            ++position.Line;
+            position.Column = 1;
+        } else if ((c & 0xc0) != 0x80) {
+            ++position.Column;
+        }
+    }
+    return position;
+}
+
+util::Position NamePosition(const parser::SyntaxTree& tree,
+    const Node& parameter, const Node& specifiers)
+{
+    if (auto* declarators = Child(parameter, NK::InitDeclaratorList)) {
+        if (auto* init = Child(*declarators, NK::InitDeclarator)) {
+            if (auto* abstract = Child(*init, NK::AbstractDeclarator)) {
+                if (auto* nested = Child(*abstract, NK::NestedDeclarator)) {
+                    // In a function pointer, the name goes inside (*...).
+                    return tree.TokenPosition(nested->Tokens.End - 1);
+                }
+                for (auto* child = abstract->Child(); child;
+                    child = child->NextSibling)
+                {
+                    if (child->Kind == NK::ArrayDeclarator ||
+                        child->Kind == NK::FunctionDeclarator)
+                    {
+                        return tree.TokenPosition(child->Tokens.Begin);
+                    }
+                }
+                if (!abstract->Tokens.Empty()) {
+                    return AfterToken(tree, abstract->Tokens.End - 1);
+                }
+            }
+        }
+    }
+    auto last = specifiers.Tokens.End;
+    while (last > specifiers.Tokens.Begin &&
+        tree.Kind(last - 1) == TK::Comment)
+    {
+        --last;
+    }
+    return AfterToken(tree, last - 1);
+}
+
 bool IsCommentedName(std::string_view text)
 {
     if (text.starts_with("/*") && text.ends_with("*/")) {
@@ -209,7 +258,7 @@ void CheckFunction(const parser::SyntaxTree& tree, const Node& function,
                 }
             }
             diagnostics.push_back({
-                .Position = tree.TokenPosition(begin),
+                .Position = NamePosition(tree, *parameter, *specifiers),
                 .Signature = signatureRange,
                 .SignatureBeginLine = beginLine,
                 .SignatureEndLine = endLine,
