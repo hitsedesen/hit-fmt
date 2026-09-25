@@ -1,0 +1,4 @@
+SpaceInsideFunctionParameters = Space
+FunctionParameterSplit = Pack
+MergeFunctionParameters = true
+ColumnLimit = 40

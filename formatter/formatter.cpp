@@ -34,6 +34,7 @@ public:
         , LambdaGaps_(tree.TokenCount(), false)
         , FunctionGaps_(tree.TokenCount(), false)
         , CallGaps_(tree.TokenCount(), false)
+        , ParameterInsideGaps_(tree.TokenCount(), false)
         , ControlGaps_(tree.TokenCount(), false)
         , ControlBraces_(tree.TokenCount(), false)
     {
@@ -57,6 +58,8 @@ public:
                 FunctionSpaceBeforeParameters::Preserve ||
             style.FunctionCallSpaceBeforeParameters !=
                 FunctionCallSpaceBeforeParameters::Preserve ||
+            style.SpaceInsideFunctionParameters !=
+                SpaceInsideFunctionParameters::Preserve ||
             style.ControlBlockKeywordSpacing !=
                 ControlBlockKeywordSpacing::Preserve ||
             style.ControlBlockBracePlacement !=
@@ -262,7 +265,9 @@ private:
     void MarkFunctionGap(const parser::Node& declarator)
     {
         if (Style_.FunctionSpaceBeforeParameters ==
-            FunctionSpaceBeforeParameters::Preserve)
+                FunctionSpaceBeforeParameters::Preserve &&
+            Style_.SpaceInsideFunctionParameters ==
+                SpaceInsideFunctionParameters::Preserve)
         {
             return;
         }
@@ -296,13 +301,34 @@ private:
             Tree_.MatchingDelimiter(opening) != parameters->Tokens.End - 1 ||
             // Recovery can misclassify a requires-expression parameter list
             // as a declarator; `requires` is never a function name.
-            Tree_.Kind(opening - 1) == TK::Keyword_requires ||
-            Tree_.Kind(opening - 1) == TK::Comment ||
-            Tree_.Kind(opening - 1) == TK::PreprocessingDirective)
+            Tree_.Kind(opening - 1) == TK::Keyword_requires)
         {
             return;
         }
-        FunctionGaps_[opening] = true;
+        if (Style_.FunctionSpaceBeforeParameters !=
+                FunctionSpaceBeforeParameters::Preserve &&
+            Tree_.Kind(opening - 1) != TK::Comment &&
+            Tree_.Kind(opening - 1) != TK::PreprocessingDirective)
+        {
+            FunctionGaps_[opening] = true;
+        }
+        if (Style_.SpaceInsideFunctionParameters ==
+                SpaceInsideFunctionParameters::Preserve ||
+            opening + 1 == parameters->Tokens.End - 1)
+        {
+            return; // No parameters: keep the empty pair source-owned.
+        }
+        auto closing = parameters->Tokens.End - 1;
+        if (Tree_.Kind(opening + 1) != TK::Comment &&
+            Tree_.Kind(opening + 1) != TK::PreprocessingDirective)
+        {
+            ParameterInsideGaps_[opening + 1] = true;
+        }
+        if (Tree_.Kind(closing - 1) != TK::Comment &&
+            Tree_.Kind(closing - 1) != TK::PreprocessingDirective)
+        {
+            ParameterInsideGaps_[closing] = true;
+        }
     }
 
     bool IsAmbiguousParenthesizedCallee(const parser::Node& callee) const
@@ -569,6 +595,16 @@ private:
             }
             return;
         }
+        if (ParameterInsideGaps_[index] &&
+            gap.find_first_not_of(" \t") == std::string_view::npos)
+        {
+            if (Style_.SpaceInsideFunctionParameters ==
+                SpaceInsideFunctionParameters::Space)
+            {
+                Output_.push_back(' ');
+            }
+            return;
+        }
         if (ControlGaps_[index] &&
             gap.find_first_not_of(" \t") == std::string_view::npos)
         {
@@ -623,6 +659,7 @@ private:
     std::vector<bool> LambdaGaps_;
     std::vector<bool> FunctionGaps_;
     std::vector<bool> CallGaps_;
+    std::vector<bool> ParameterInsideGaps_;
     std::vector<bool> ControlGaps_;
     std::vector<bool> ControlBraces_;
     // Only initialized for openings with an active placement.
@@ -728,6 +765,9 @@ std::optional<Replacement> ReflowParameters(
     for (size_t i = 0; i < parameters.size(); ++i) {
         flatWidth += parameters[i].size() + (i ? 2 : 0);
     }
+    const bool innerSpace = style.SpaceInsideFunctionParameters ==
+        SpaceInsideFunctionParameters::Space;
+    flatWidth += innerSpace ? 2 : 0;
     bool split = source.substr(begin, end - begin).find('\n') !=
         std::string_view::npos;
     if (!split && flatWidth <= style.ColumnLimit) {
@@ -744,6 +784,10 @@ std::optional<Replacement> ReflowParameters(
     if (split && style.MergeFunctionParameters &&
         flatWidth <= style.ColumnLimit)
     {
+        if (innerSpace) {
+            flat.insert(flat.begin(), ' ');
+            flat.push_back(' ');
+        }
         return Replacement{begin, end, std::move(flat)};
     }
     if (parameters.size() == 1 && flatWidth <= style.ColumnLimit) {
@@ -770,14 +814,18 @@ std::optional<Replacement> ReflowParameters(
     std::string result;
     if (firstNew) {
         result = "\n" + continuation;
+    } else if (innerSpace) {
+        result = " ";
     }
     result += parameters.front();
-    size_t column = (firstNew ? indent : prefix) + parameters.front().size();
+    size_t column = (firstNew ? indent : prefix + (innerSpace ? 1 : 0)) +
+        parameters.front().size();
     bool broke = firstNew;
     for (size_t i = 1; i < parameters.size(); ++i) {
         bool last = i + 1 == parameters.size();
         bool overflow = column + 2 + parameters[i].size() +
-            (last ? suffix.size() : 1) > style.ColumnLimit;
+            (last ? suffix.size() + (innerSpace ? 1 : 0) : 1) >
+                style.ColumnLimit;
         bool forceSplit = split && !style.MergeFunctionParameters &&
             flatWidth <= style.ColumnLimit && !broke && last;
         bool breakBefore = style.FunctionParameterSplit ==
@@ -793,6 +841,9 @@ std::optional<Replacement> ReflowParameters(
             column += 2 + parameters[i].size();
         }
         result += parameters[i];
+    }
+    if (innerSpace) {
+        result.push_back(' ');
     }
     if (result == source.substr(begin, end - begin)) {
         return std::nullopt;
@@ -1012,6 +1063,8 @@ std::string Format(const parser::SyntaxTree& tree, const Style& style)
             FunctionSpaceBeforeParameters::Preserve &&
         style.FunctionCallSpaceBeforeParameters ==
             FunctionCallSpaceBeforeParameters::Preserve &&
+        style.SpaceInsideFunctionParameters ==
+            SpaceInsideFunctionParameters::Preserve &&
         style.ControlBlockKeywordSpacing ==
             ControlBlockKeywordSpacing::Preserve &&
         style.ControlBlockBracePlacement ==
