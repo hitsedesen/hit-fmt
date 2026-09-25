@@ -103,6 +103,23 @@ SameLineBraceSpacing ParseSameLineBraceSpacing(
     ThrowConfigError(path, line, "expected Preserve or SingleSpace");
 }
 
+LambdaCaptureSpacing ParseLambdaCaptureSpacing(
+    std::string_view value,
+    const std::filesystem::path& path,
+    size_t line)
+{
+    if (value == "Preserve") {
+        return LambdaCaptureSpacing::Preserve;
+    }
+    if (value == "Space") {
+        return LambdaCaptureSpacing::Space;
+    }
+    if (value == "NoSpace") {
+        return LambdaCaptureSpacing::NoSpace;
+    }
+    ThrowConfigError(path, line, "expected Preserve, Space or NoSpace");
+}
+
 std::string ParseString(
     std::string_view value,
     const std::filesystem::path& path,
@@ -484,6 +501,12 @@ void ApplySetting(
             ThrowConfigError(path, line,
                 "expected Preserve, Space or NoSpace");
         }
+    } else if (key == "SpaceAroundCaptureList") {
+        config.FormattingStyle.SpaceAroundCaptureList =
+            ParseLambdaCaptureSpacing(value, path, line);
+    } else if (key == "SpaceAroundCaptureAssignment") {
+        config.FormattingStyle.SpaceAroundCaptureAssignment =
+            ParseLambdaCaptureSpacing(value, path, line);
     } else if (key == "LambdaSpaceBeforeParameters") {
         value = ParseOption(value, path, line);
         if (value == "Preserve") {
