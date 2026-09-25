@@ -1,30 +1,6 @@
-# YTSaurus C++ formatting profile.
+# Source-preserving profile. Widths remain passive dimensions.
 IndentWidth = 4
 ColumnLimit = 120
-Regroup = false
-InsertBraces = true
-BreakInlineRecordDeclarations = false
-SpaceBeforeTemplateParameterPack = false
-FunctionBracePlacement = "NewLine"
-RecordBracePlacement = "NewLine"
-ControlBracePlacement = "AttachUnlessMultiline"
-LambdaBracePlacement = "Attach"
-NamespaceBracePlacement = "Attach"
-SpaceBeforeParentheses = "ControlStatements"
-PointerAlignment = "Left"
-ReferenceAlignment = "Left"
-IndentCaseLabels = "Preserve"
-SpaceInsideParentheses = false
-SpaceInsideSquareBrackets = false
-SpaceInsideBracedInitializers = "Preserve"
-IndentNamespaces = false
-KeepEmptyBlocksOnOneLine = true
-AllowShortLambdasOnOneLine = true
-OpenBracketAlignment = "Continuation"
-CloseBracketAlignment = "AlignWithOpening"
 
-ForbidBreakAfter = ["TError", "Format", "YT_LOG_DEBUG", "YT_LOG_ERROR", "YT_LOG_FATAL", "YT_LOG_INFO", "YT_LOG_TRACE", "YT_LOG_WARNING"]
-WhitespaceSensitiveMacros = ["PP_STRINGIZE", "DEFINE_ENUM", "DEFINE_BIT_ENUM", "DEFINE_BIT_ENUM_WITH_UNDERLYING_TYPE", "DEFINE_ENUM_WITH_UNDERLYING_TYPE", "YT_DEFINE_ERROR_ENUM"]
-
-# Generated files, golden fixtures, and benchmark sources are not style-checked.
+# Build outputs, golden fixtures, and benchmarks need no repository scan.
 Exclude = ["(^|/)build(/|$)", "(^|/)testdata(/|$)", "(^|/)benchmarks(/|$)"]

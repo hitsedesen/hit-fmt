@@ -17,7 +17,7 @@ struct Configuration
     std::vector<std::regex> Exclusions;
 };
 
-// Parses formatting settings and exclusion patterns from a configuration file.
+// Parses passive width dimensions and exclusion patterns from a config file.
 // Unknown keys and malformed values are rejected with a descriptive error.
 [[nodiscard]] Configuration LoadConfigFile(const std::filesystem::path& path);
 
