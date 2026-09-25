@@ -416,6 +416,16 @@ void ApplySetting(
             return;
         }
     }
+    if (key == "IncludeOrder") {
+        if (value == "Preserve") {
+            config.FormattingStyle.IncludeOrder = IncludeOrder::Preserve;
+        } else if (value == "Sort") {
+            config.FormattingStyle.IncludeOrder = IncludeOrder::Sort;
+        } else {
+            ThrowConfigError(path, line, "expected Preserve or Sort");
+        }
+        return;
+    }
     if (key == "IndentWidth") {
         config.FormattingStyle.IndentWidth =
             ParsePositiveInteger(value, path, line);

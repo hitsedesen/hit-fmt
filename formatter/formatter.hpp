@@ -16,6 +16,7 @@ enum class BracePlacement
 };
 
 enum class NamespaceComments { Preserve, Remove, Required };
+enum class IncludeOrder { Preserve, Sort };
 enum class BodyIndentation { Preserve, Indent, NoIndent };
 enum class InheritanceListMode { Preserve, Format };
 enum class InheritanceListColonPlacement { AttachToBase, AttachToClass };
@@ -53,6 +54,7 @@ struct Style
 {
     size_t IndentWidth = 4;
     size_t ColumnLimit = 120;
+    formatter::IncludeOrder IncludeOrder = IncludeOrder::Preserve;
     BodyIndentation IndentAccessModifiers = BodyIndentation::Preserve;
     BodyIndentation IndentMembers = BodyIndentation::Preserve;
     InheritanceListMode InheritanceList = InheritanceListMode::Preserve;

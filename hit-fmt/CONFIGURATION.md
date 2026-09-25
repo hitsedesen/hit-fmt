@@ -3,8 +3,8 @@
 The formatter preserves source-owned token and trivia bytes except where an
 explicitly configured declaration brace, lambda capture-to-parameter
 spacing, lambda capture spacing, function parameter or call spacing,
-control keyword spacing or brace placement, namespace comment, or function
-parameter rule applies.
+control keyword spacing or brace placement, namespace comment, include
+ordering, or function parameter rule applies.
 All formatting rules default to preserving the source.
 Naming rules default to unchecked and never rewrite identifiers; `--check`
 reports violations with file, line and column and returns a nonzero status.
@@ -18,6 +18,7 @@ Blank lines and `#` comments are allowed. Example:
 ```text
 IndentWidth = 4
 ColumnLimit = 120
+IncludeOrder = Preserve
 IndentAccessModifiers = Preserve
 IndentMembers = Preserve
 InheritanceList = Preserve
@@ -69,6 +70,16 @@ VariableNamePrefixes = ["m_", "s_"]
 Exclude = ["(^|/)generated(/|$)", "(^|/)legacy\\.cpp$"]
 ```
 
+- `IncludeOrder`: `Preserve` (default) leaves directives untouched. `Sort`
+  stably sorts consecutive, column-one literal `#include "..."` and
+  `#include <...>` lines by header path, with quoted headers before angled
+  headers. It keeps each directive's spelling and the line endings in its
+  group. Blank lines, comments, non-include directives (including `#if`,
+  `#else`, and `#endif`), macro headers, trailing comments, continued lines,
+  and indentation break groups. An include immediately after a comment is
+  kept with that comment; later includes may still sort. No includes move
+  across these boundaries. This does not infer a main header, deduplicate
+  includes, or merge groups.
 - `IndentWidth`: positive integer up to 32. Used for record bodies and base
   lists, and for parameter continuation lines when
   `FunctionParameterIndent = IndentWidth`.

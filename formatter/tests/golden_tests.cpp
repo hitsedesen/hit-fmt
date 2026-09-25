@@ -180,6 +180,27 @@ INSTANTIATE_TEST_SUITE_P(Configurations, NamespaceCommentGoldenTest,
     testing::Values("preserve", "remove", "required", "required_newline",
         "crlf_required"));
 
+class IncludeOrderGoldenTest : public testing::TestWithParam<std::string>
+{ };
+
+TEST_P(IncludeOrderGoldenTest, SortsOnlySafeIncludeGroups)
+{
+    const auto directory = std::filesystem::path(FORMATTER_TESTDATA_DIR) /
+        "../include-order";
+    const auto input = ReadFile(directory /
+        (GetParam() == "crlf" ? "crlf.input.cpp" : "input.cpp"));
+    const auto expected = ReadFile(directory / (GetParam() + ".output.cpp"));
+    const auto style = formatter::LoadConfigFile(directory /
+        (GetParam() == "crlf" ? "sort.hit-fmt" :
+            GetParam() + ".hit-fmt")).FormattingStyle;
+
+    EXPECT_EQ(FormatWithStyle(input, style), expected);
+    EXPECT_EQ(FormatWithStyle(expected, style), expected);
+}
+
+INSTANTIATE_TEST_SUITE_P(Configurations, IncludeOrderGoldenTest,
+    testing::Values("sort", "composed", "crlf"));
+
 class ParameterNameGoldenTest : public testing::TestWithParam<std::string>
 { };
 
