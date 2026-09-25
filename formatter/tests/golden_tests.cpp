@@ -400,6 +400,24 @@ TEST_P(CallInnerSpacingGoldenTest, FormatsOnlyUnambiguousCallEdges)
 INSTANTIATE_TEST_SUITE_P(Configurations, CallInnerSpacingGoldenTest,
     testing::Values("preserve", "space", "no-space", "combined"));
 
+class LambdaCaptureGoldenTest : public testing::TestWithParam<std::string>
+{ };
+
+TEST_P(LambdaCaptureGoldenTest, FormatsListAndAssignments)
+{
+    const auto directory = std::filesystem::path(LAMBDA_CAPTURE_TESTDATA_DIR);
+    const auto input = ReadFile(directory / "input.cpp");
+    const auto expected = ReadFile(directory / (GetParam() + ".output.cpp"));
+    const auto style = formatter::LoadConfigFile(
+        directory / (GetParam() + ".hit-fmt")).FormattingStyle;
+
+    EXPECT_EQ(FormatWithStyle(input, style), expected);
+    EXPECT_EQ(FormatWithStyle(expected, style), expected);
+}
+
+INSTANTIATE_TEST_SUITE_P(Configurations, LambdaCaptureGoldenTest,
+    testing::Values("preserve", "space", "no-space", "mixed", "reverse"));
+
 TEST(BraceSpacingTest, ComposesWithParameterReflow)
 {
     formatter::Style style;
@@ -489,6 +507,10 @@ TEST(PreserveConfigTest, RejectsInvalidSettings)
         "FunctionParameterIndent = Tabs\n",
         "MergeFunctionParameters = yes\n",
         "LambdaSpaceBeforeParameters = Unknown\n",
+        "SpaceAroundCaptureList = Unknown\n",
+        "SpaceAroundCaptureAssignment = Unknown\n",
+        "LambdaImplicitCaptureSpacing = Space\n",
+        "LambdaExplicitCaptureSpacing = Space\n",
         "FunctionSpaceBeforeParameters = Unknown\n",
         "FunctionCallSpaceBeforeParameters = Unknown\n",
         "SpaceInsideFunctionParameters = Unknown\n",

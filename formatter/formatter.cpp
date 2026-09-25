@@ -54,6 +54,7 @@ public:
         , Placements_(tree.TokenCount(), BracePlacement::Preserve)
         , Spacings_(tree.TokenCount(), SameLineBraceSpacing::Preserve)
         , LambdaGaps_(tree.TokenCount(), false)
+        , CaptureGaps_(tree.TokenCount(), LambdaCaptureSpacing::Preserve)
         , FunctionGaps_(tree.TokenCount(), false)
         , CallGaps_(tree.TokenCount(), false)
         , CallInsideGaps_(tree.TokenCount(), false)
@@ -77,6 +78,10 @@ public:
             style.NamespaceBraceSpacing != SameLineBraceSpacing::Preserve ||
             style.LambdaSpaceBeforeParameters !=
                 LambdaSpaceBeforeParameters::Preserve ||
+            style.SpaceAroundCaptureList !=
+                LambdaCaptureSpacing::Preserve ||
+            style.SpaceAroundCaptureAssignment !=
+                LambdaCaptureSpacing::Preserve ||
             style.FunctionSpaceBeforeParameters !=
                 FunctionSpaceBeforeParameters::Preserve ||
             style.FunctionCallSpaceBeforeParameters !=
@@ -255,6 +260,9 @@ private:
         case NK::CallExpression:
             MarkCallGap(node);
             break;
+        case NK::LambdaCaptureList:
+            MarkCaptureGaps(node);
+            break;
         case NK::LambdaExpression:
             if (Style_.LambdaSpaceBeforeParameters !=
                 LambdaSpaceBeforeParameters::Preserve)
@@ -288,6 +296,104 @@ private:
             break;
         default:
             break;
+        }
+    }
+
+    void MarkCaptureAssignment(const parser::Node& capture)
+    {
+        TokenIndex firstToken = NoToken;
+        for (auto i = capture.Tokens.Begin; i < capture.Tokens.End; ++i) {
+            auto kind = Tree_.Kind(i);
+            if (kind == TK::PreprocessingDirective) {
+                return;
+            }
+            if (kind == TK::Comment) {
+                continue;
+            }
+            if (firstToken == NoToken) {
+                firstToken = i;
+                continue;
+            }
+            if (kind == TK::Operator_Assign) {
+                // The lone '=' in [=] is a default, not an assignment.
+                // Only the first '=' after a capture name belongs to the
+                // init-capture; later '=' tokens are part of its initializer.
+                if (i + 1 < capture.Tokens.End) {
+                    if (Tree_.Kind(i - 1) != TK::Comment) {
+                        CaptureGaps_[i] = Style_.SpaceAroundCaptureAssignment;
+                    }
+                    if (Tree_.Kind(i + 1) != TK::Comment &&
+                        Tree_.Kind(i + 1) != TK::PreprocessingDirective)
+                    {
+                        CaptureGaps_[i + 1] =
+                            Style_.SpaceAroundCaptureAssignment;
+                    }
+                }
+                return;
+            }
+        }
+    }
+
+    void MarkCaptureGaps(const parser::Node& captures)
+    {
+        if (Style_.SpaceAroundCaptureList ==
+                LambdaCaptureSpacing::Preserve &&
+            Style_.SpaceAroundCaptureAssignment ==
+                LambdaCaptureSpacing::Preserve)
+        {
+            return;
+        }
+        const auto opening = captures.Tokens.Begin;
+        if (captures.Tokens.Size() < 3 ||
+            opening >= Tree_.TokenCount() ||
+            Tree_.Kind(opening) != TK::Operator_OpenBracket ||
+            Tree_.MatchingDelimiter(opening) != captures.Tokens.End - 1)
+        {
+            return;
+        }
+        const auto closing = captures.Tokens.End - 1;
+        const auto* first = captures.Child();
+        const auto* last = first;
+        bool expectCapture = true;
+        for (auto* child = first; child; child = child->NextSibling) {
+            if (child->Tokens.Empty() ||
+                child->Kind != (expectCapture ? NK::LambdaCapture
+                                               : NK::ListSeparator))
+            {
+                return; // Do not format a partially parsed capture list.
+            }
+            expectCapture = !expectCapture;
+            last = child;
+        }
+        if (!first || !last || expectCapture ||
+            last->Kind != NK::LambdaCapture ||
+            first->Tokens.Begin != opening + 1 ||
+            last->Tokens.End != closing)
+        {
+            return;
+        }
+        if (Style_.SpaceAroundCaptureList !=
+            LambdaCaptureSpacing::Preserve)
+        {
+            if (Tree_.Kind(opening + 1) != TK::Comment &&
+                Tree_.Kind(opening + 1) != TK::PreprocessingDirective)
+            {
+                CaptureGaps_[opening + 1] = Style_.SpaceAroundCaptureList;
+            }
+            if (Tree_.Kind(closing - 1) != TK::Comment &&
+                Tree_.Kind(closing - 1) != TK::PreprocessingDirective)
+            {
+                CaptureGaps_[closing] = Style_.SpaceAroundCaptureList;
+            }
+        }
+        if (Style_.SpaceAroundCaptureAssignment !=
+            LambdaCaptureSpacing::Preserve)
+        {
+            for (auto* child = first; child; child = child->NextSibling) {
+                if (child->Kind == NK::LambdaCapture) {
+                    MarkCaptureAssignment(*child);
+                }
+            }
         }
     }
 
@@ -623,6 +729,14 @@ private:
     void EmitGap(TokenIndex index)
     {
         auto gap = Tree_.WhitespaceBefore(index);
+        if (CaptureGaps_[index] != LambdaCaptureSpacing::Preserve &&
+            gap.find_first_not_of(" \t") == std::string_view::npos)
+        {
+            if (CaptureGaps_[index] == LambdaCaptureSpacing::Space) {
+                Output_.push_back(' ');
+            }
+            return;
+        }
         if (LambdaGaps_[index] &&
             gap.find_first_not_of(" \t") == std::string_view::npos)
         {
@@ -725,6 +839,7 @@ private:
     std::vector<BracePlacement> Placements_;
     std::vector<SameLineBraceSpacing> Spacings_;
     std::vector<bool> LambdaGaps_;
+    std::vector<LambdaCaptureSpacing> CaptureGaps_;
     std::vector<bool> FunctionGaps_;
     std::vector<bool> CallGaps_;
     std::vector<bool> CallInsideGaps_;
@@ -1131,6 +1246,10 @@ std::string Format(const parser::SyntaxTree& tree, const Style& style)
         style.NamespaceBraceSpacing == SameLineBraceSpacing::Preserve &&
         style.LambdaSpaceBeforeParameters ==
             LambdaSpaceBeforeParameters::Preserve &&
+        style.SpaceAroundCaptureList ==
+            LambdaCaptureSpacing::Preserve &&
+        style.SpaceAroundCaptureAssignment ==
+            LambdaCaptureSpacing::Preserve &&
         style.FunctionSpaceBeforeParameters ==
             FunctionSpaceBeforeParameters::Preserve &&
         style.FunctionCallSpaceBeforeParameters ==

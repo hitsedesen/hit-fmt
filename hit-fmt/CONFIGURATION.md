@@ -2,8 +2,9 @@
 
 The formatter preserves source-owned token and trivia bytes except where an
 explicitly configured declaration brace, lambda capture-to-parameter
-spacing, function parameter or call spacing, control keyword spacing or brace
-placement, namespace comment, or function parameter rule applies.
+spacing, lambda capture spacing, function parameter or call spacing,
+control keyword spacing or brace placement, namespace comment, or function
+parameter rule applies.
 All formatting rules default to preserving the source.
 Naming rules default to unchecked and never rewrite identifiers; `--check`
 reports violations with file, line and column and returns a nonzero status.
@@ -34,6 +35,8 @@ FunctionDefinitionParameterNames = Unchecked
 ClassBraceSpacing = Preserve
 LambdaBraceSpacing = Preserve
 LambdaSpaceBeforeParameters = Preserve
+SpaceAroundCaptureList = Preserve
+SpaceAroundCaptureAssignment = Preserve
 FunctionSpaceBeforeParameters = Preserve
 FunctionCallSpaceBeforeParameters = Preserve
 SpaceInsideFunctionParameters = Preserve
@@ -98,6 +101,18 @@ Exclude = ["(^|/)generated(/|$)", "(^|/)legacy\\.cpp$"]
   inserts exactly one space and `NoSpace` removes it. Newlines and
   intervening comments or directives are left unchanged. Calls and other
   parenthesized expressions are unaffected.
+- `SpaceAroundCaptureList`: `Preserve` (default) leaves the whitespace
+  immediately inside the `[` and `]` of a nonempty lambda capture list
+  unchanged; `Space` uses one space and `NoSpace` removes it. Applies to
+  implicit (`[=]`, `[&]`) and explicit (`[value]`, `[&value]`) captures.
+  Empty brackets, multiline gaps, adjacent comments or directives, and
+  unrelated brackets remain untouched. Comma spacing is not changed.
+- `SpaceAroundCaptureAssignment`: `Preserve` (default) leaves whitespace
+  on either side of an initialized capture's `=` unchanged; `Space` uses
+  one space on each same-line side and `NoSpace` removes it. Standalone
+  capture defaults (`[=]` and `[=, x]`) are not assignments, nor are `=`
+  tokens inside initializers. Newlines and gaps next to comments or
+  directives remain untouched. This setting does not change `&` spacing.
 - `FunctionSpaceBeforeParameters`: `Preserve` (default) leaves the gap
   between a named function declarator and its parameter `(` unchanged;
   `Space` inserts one space, and `NoSpace` removes it. Applies to function
