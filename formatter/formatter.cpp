@@ -288,6 +288,9 @@ private:
         if (opening == 0 || opening >= Tree_.TokenCount() ||
             Tree_.Kind(opening) != TK::Operator_OpenParenthesis ||
             Tree_.MatchingDelimiter(opening) != parameters->Tokens.End - 1 ||
+            // Recovery can misclassify a requires-expression parameter list
+            // as a declarator; `requires` is never a function name.
+            Tree_.Kind(opening - 1) == TK::Keyword_requires ||
             Tree_.Kind(opening - 1) == TK::Comment ||
             Tree_.Kind(opening - 1) == TK::PreprocessingDirective)
         {
