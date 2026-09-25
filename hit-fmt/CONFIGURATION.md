@@ -35,6 +35,7 @@ FunctionDefinitionParameterNames = Unchecked
 ClassBraceSpacing = Preserve
 LambdaBraceSpacing = Preserve
 LambdaSpaceBeforeParameters = Preserve
+SpaceInsideLambdaParameters = Preserve
 SpaceAroundCaptureList = Preserve
 SpaceAroundCaptureAssignment = Preserve
 FunctionSpaceBeforeParameters = Preserve
@@ -101,6 +102,13 @@ Exclude = ["(^|/)generated(/|$)", "(^|/)legacy\\.cpp$"]
   inserts exactly one space and `NoSpace` removes it. Newlines and
   intervening comments or directives are left unchanged. Calls and other
   parenthesized expressions are unaffected.
+- `SpaceInsideLambdaParameters`: `Preserve` (default) leaves the gaps just
+  inside the `(` and `)` of a nonempty lambda parameter list unchanged;
+  `Space` uses one space and `NoSpace` removes it. For example, `Space`
+  formats `[](x)` as `[]( x )`. Applies to generic lambdas as well.
+  Empty `()`, newlines, adjacent comments or directives, and incomplete
+  lists remain untouched. Does not affect capture brackets, the gap
+  before `(`, named functions, calls, or control conditions.
 - `SpaceAroundCaptureList`: `Preserve` (default) leaves the whitespace
   immediately inside the `[` and `]` of a nonempty lambda capture list
   unchanged; `Space` uses one space and `NoSpace` removes it. Applies to

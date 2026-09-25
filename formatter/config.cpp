@@ -471,6 +471,21 @@ void ApplySetting(
             ThrowConfigError(path, line,
                 "expected Preserve, Space or NoSpace");
         }
+    } else if (key == "SpaceInsideLambdaParameters") {
+        value = ParseOption(value, path, line);
+        if (value == "Preserve") {
+            config.FormattingStyle.SpaceInsideLambdaParameters =
+                SpaceInsideLambdaParameters::Preserve;
+        } else if (value == "Space") {
+            config.FormattingStyle.SpaceInsideLambdaParameters =
+                SpaceInsideLambdaParameters::Space;
+        } else if (value == "NoSpace") {
+            config.FormattingStyle.SpaceInsideLambdaParameters =
+                SpaceInsideLambdaParameters::NoSpace;
+        } else {
+            ThrowConfigError(path, line,
+                "expected Preserve, Space or NoSpace");
+        }
     } else if (key == "SpaceInsideFunctionParameters") {
         value = ParseOption(value, path, line);
         if (value == "Preserve") {
