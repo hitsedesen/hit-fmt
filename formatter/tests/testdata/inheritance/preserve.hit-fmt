@@ -1,0 +1,4 @@
+InheritanceList = Preserve
+InheritanceListColonPlacement = AttachToBase
+InheritanceListStart = NewLine
+InheritanceListSplit = OnePerLine

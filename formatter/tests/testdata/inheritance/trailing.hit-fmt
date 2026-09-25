@@ -1,0 +1,7 @@
+InheritanceList = Format
+InheritanceListStart = NewLine
+InheritanceListColonPlacement = AttachToClass
+InheritanceListColonSpaceBefore = Space
+InheritanceListCommaPlacement = AttachToPrevious
+InheritanceListSplit = OnePerLine
+InheritanceListIndent = 2

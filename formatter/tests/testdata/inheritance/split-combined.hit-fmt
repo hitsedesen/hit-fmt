@@ -1,0 +1,8 @@
+InheritanceList = Format
+InheritanceListStart = NewLineOnOverflow
+InheritanceListColonPlacement = AttachToBase
+InheritanceListColonSpaceBefore = Space
+InheritanceListSplit = Pack
+InheritanceListCommaPlacement = AttachToNext
+InheritanceListIndent = 2
+ColumnLimit = 45
