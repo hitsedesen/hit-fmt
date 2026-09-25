@@ -33,6 +33,7 @@ public:
         , Spacings_(tree.TokenCount(), SameLineBraceSpacing::Preserve)
         , LambdaGaps_(tree.TokenCount(), false)
         , FunctionGaps_(tree.TokenCount(), false)
+        , CallGaps_(tree.TokenCount(), false)
         , ControlGaps_(tree.TokenCount(), false)
         , ControlBraces_(tree.TokenCount(), false)
     {
@@ -54,6 +55,8 @@ public:
                 LambdaSpaceBeforeParameters::Preserve ||
             style.FunctionSpaceBeforeParameters !=
                 FunctionSpaceBeforeParameters::Preserve ||
+            style.FunctionCallSpaceBeforeParameter !=
+                FunctionCallSpaceBeforeParameter::Preserve ||
             style.ControlBlockKeywordSpacing !=
                 ControlBlockKeywordSpacing::Preserve ||
             style.ControlBlockBracePlacement !=
@@ -217,6 +220,9 @@ private:
         case NK::Declarator:
             MarkFunctionGap(node);
             break;
+        case NK::CallExpression:
+            MarkCallGap(node);
+            break;
         case NK::LambdaExpression:
             if (Style_.LambdaSpaceBeforeParameters !=
                 LambdaSpaceBeforeParameters::Preserve)
@@ -297,6 +303,36 @@ private:
             return;
         }
         FunctionGaps_[opening] = true;
+    }
+
+    void MarkCallGap(const parser::Node& call)
+    {
+        if (Style_.FunctionCallSpaceBeforeParameter ==
+            FunctionCallSpaceBeforeParameter::Preserve)
+        {
+            return;
+        }
+        const auto* callee = call.Child();
+        const auto* arguments = callee ? callee->NextSibling : nullptr;
+        if (!callee || callee->Tokens.Empty() ||
+            callee->Kind == NK::UnparsedSyntax ||
+            callee->Kind == NK::Expression || !arguments ||
+            arguments->Kind != NK::ArgumentList || arguments->Tokens.Empty())
+        {
+            return;
+        }
+        auto opening = arguments->Tokens.Begin;
+        if (opening == 0 || opening >= Tree_.TokenCount() ||
+            callee->Tokens.End > opening ||
+            Tree_.Kind(opening) != TK::Operator_OpenParenthesis ||
+            Tree_.MatchingDelimiter(opening) != arguments->Tokens.End - 1 ||
+            Tree_.Kind(opening - 1) == TK::Comment ||
+            Tree_.Kind(opening - 1) == TK::PreprocessingDirective ||
+            Tree_.Kind(opening - 1) == TK::Keyword_requires)
+        {
+            return;
+        }
+        CallGaps_[opening] = true;
     }
 
     void MarkControlBraces(const parser::Node& node)
@@ -500,6 +536,16 @@ private:
             }
             return;
         }
+        if (CallGaps_[index] &&
+            gap.find_first_not_of(" \t") == std::string_view::npos)
+        {
+            if (Style_.FunctionCallSpaceBeforeParameter ==
+                FunctionCallSpaceBeforeParameter::Space)
+            {
+                Output_.push_back(' ');
+            }
+            return;
+        }
         if (ControlGaps_[index] &&
             gap.find_first_not_of(" \t") == std::string_view::npos)
         {
@@ -553,6 +599,7 @@ private:
     std::vector<SameLineBraceSpacing> Spacings_;
     std::vector<bool> LambdaGaps_;
     std::vector<bool> FunctionGaps_;
+    std::vector<bool> CallGaps_;
     std::vector<bool> ControlGaps_;
     std::vector<bool> ControlBraces_;
     // Only initialized for openings with an active placement.
@@ -940,6 +987,8 @@ std::string Format(const parser::SyntaxTree& tree, const Style& style)
             LambdaSpaceBeforeParameters::Preserve &&
         style.FunctionSpaceBeforeParameters ==
             FunctionSpaceBeforeParameters::Preserve &&
+        style.FunctionCallSpaceBeforeParameter ==
+            FunctionCallSpaceBeforeParameter::Preserve &&
         style.ControlBlockKeywordSpacing ==
             ControlBlockKeywordSpacing::Preserve &&
         style.ControlBlockBracePlacement ==
