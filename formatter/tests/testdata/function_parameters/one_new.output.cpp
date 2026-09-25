@@ -1,31 +1,31 @@
 void Many(
-         int alpha,
-         int beta,
-         int gamma,
-         int delta);
+          int alpha,
+          int beta,
+          int gamma,
+          int delta);
 void Short(int a, int b);
 void ExistingName(
+                  int first,
+                  int second,
+                  int third,
+                  int fourth);
+void ExistingNew(
                  int first,
                  int second,
                  int third,
                  int fourth);
-void ExistingNew(
+void Mergeable(
+               int a,
+               int b);
+void Nested(
+            std::pair<int, int> value,
+            int count,
+            int mode);
+void Definition(
                 int first,
                 int second,
                 int third,
-                int fourth);
-void Mergeable(
-              int a,
-              int b);
-void Nested(
-           std::pair<int, int> value,
-           int count,
-           int mode);
-void Definition(
-               int first,
-               int second,
-               int third,
-               int fourth)
+                int fourth)
 {
     Use(first, second, third, fourth);
 }

@@ -50,7 +50,8 @@ Exclude = ["(^|/)generated(/|$)", "(^|/)legacy\\.cpp$"]
   first parameter's position in already split lists; `true` applies the
   configured position to those lists as well.
 - `FunctionParameterIndent`: `IndentWidth` (default, indent one width
-  beyond the declaration) or `Continuation` (align with its opening `(`).
+  beyond the declaration) or `Continuation` (align with the first
+  parameter immediately after the opening `(`).
 - `MergeFunctionParameters`: `false` (default) retains split lists as
   multiline even when they would fit on one line; `true` joins them when
   the result fits within `ColumnLimit`.

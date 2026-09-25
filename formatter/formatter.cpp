@@ -421,7 +421,7 @@ std::optional<Replacement> ReflowParameters(
     }
     const size_t indent = style.FunctionParameterIndent ==
         FunctionParameterIndent::Continuation
-        ? openBegin - lineStart : baseIndent + style.IndentWidth;
+        ? openBegin + 1 - lineStart : baseIndent + style.IndentWidth;
     const std::string continuation(indent, ' ');
     std::string result;
     if (firstNew) {
