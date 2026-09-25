@@ -447,13 +447,10 @@ private:
             if (comma != NoToken) {
                 auto beforeComma = Tree_.WhitespaceBefore(comma);
                 auto beforeBase = Tree_.WhitespaceBefore(opening);
-                auto safe = [](std::string_view gap) {
-                    return gap.find_first_not_of(" \t\r\n") ==
-                            std::string_view::npos &&
-                        std::count(gap.begin(), gap.end(), '\n') <= 1;
-                };
-                if (!safe(beforeComma) || !safe(beforeBase) ||
-                    (beforeComma.contains('\n') && beforeBase.contains('\n')))
+                if (beforeComma.find_first_not_of(" \t\r\n") !=
+                        std::string_view::npos ||
+                    beforeBase.find_first_not_of(" \t\r\n") !=
+                        std::string_view::npos)
                 {
                     return std::nullopt;
                 }
@@ -522,12 +519,11 @@ private:
         }
         auto beforeColon = Tree_.WhitespaceBefore(colon);
         auto beforeBase = Tree_.WhitespaceBefore(colon + 1);
-        auto safe = [](std::string_view gap) {
-            return gap.find_first_not_of(" \t\r\n") ==
-                    std::string_view::npos &&
-                std::count(gap.begin(), gap.end(), '\n') <= 1;
-        };
-        if (!safe(beforeColon) || !safe(beforeBase)) {
+        if (beforeColon.find_first_not_of(" \t\r\n") !=
+                std::string_view::npos ||
+            beforeBase.find_first_not_of(" \t\r\n") !=
+                std::string_view::npos)
+        {
             return;
         }
         for (auto* child = first; child; child = child->NextSibling) {

@@ -98,9 +98,10 @@ Exclude = ["(^|/)generated(/|$)", "(^|/)legacy\\.cpp$"]
   comments, directives, and conditional branches remain source-owned.
 - `InheritanceList`: `Preserve` (default) leaves the entire base list
   unchanged. `Format` applies the following settings to complete base
-  lists in class and struct definitions. Comments, directives, blank
-  lines, and multiline base specifiers keep a list source-owned. Enum
-  underlying-type colons are not inheritance lists.
+  lists in class and struct definitions. Whitespace-only blank lines
+  between the header, colon, commas, and bases are normalized. Comments,
+  directives, and multiline base specifiers keep a list source-owned.
+  Enum underlying-type colons are not inheritance lists.
 - `InheritanceListColonPlacement`: `AttachToBase` (default) puts `:` on
   the first base line; `AttachToClass` puts it on the class header line.
   `InheritanceListColonSpaceBefore` uses `NoSpace` (default) or `Space`;
