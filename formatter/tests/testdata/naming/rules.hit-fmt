@@ -14,3 +14,4 @@ VariableNameCase = snake_case
 VariableNamePrefixes = ["m_", "s_"]
 NamespaceNameCase = snake_case
 NamespaceNamePrefixes = ["n_"]
+NamingNamespaceExemptions = ["std", "n_core::third_party"]

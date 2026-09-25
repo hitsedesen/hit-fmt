@@ -51,13 +51,45 @@ public:
 
     std::vector<NameDiagnostic> Run()
     {
-        std::vector<const parser::Node*> stack{&Tree.Root()};
+        struct Frame
+        {
+            const parser::Node* Node;
+            size_t ScopeLength;
+            bool Exit;
+        };
+        std::vector<Frame> stack{{&Tree.Root(), 0, false}};
         while (!stack.empty()) {
-            auto* node = stack.back();
+            auto frame = stack.back();
             stack.pop_back();
-            Visit(*node);
-            for (auto* child = node->Child(); child; child = child->NextSibling)
-                stack.push_back(child);
+            if (frame.Exit) {
+                Scope.resize(frame.ScopeLength);
+                continue;
+            }
+            const auto& node = *frame.Node;
+            if (node.Kind == NK::FunctionDeclaration ||
+                (node.Kind == NK::RecordDeclaration &&
+                    !HasRecordBody(node)) ||
+                (node.Kind == NK::EnumDeclaration &&
+                    !Child(node, NK::EnumeratorList)) ||
+                IsExplicitInstantiation(node))
+            {
+                continue;
+            }
+            auto parentLength = Scope.size();
+            auto namespaceNames = node.Kind == NK::NamespaceDeclaration
+                ? NamespaceNames(node) : std::vector<Index>{};
+            for (auto name : namespaceNames) {
+                if (!Scope.empty()) Scope += "::";
+                Scope += Tree.TokenText(name);
+            }
+            if (IsExempt()) {
+                Scope.resize(parentLength);
+                continue;
+            }
+            Visit(node, namespaceNames);
+            stack.push_back({&node, parentLength, true});
+            for (auto* child = node.Child(); child; child = child->NextSibling)
+                stack.push_back({child, 0, false});
         }
         std::ranges::sort(Results, [] (const auto& a, const auto& b) {
             return a.Position.Line < b.Position.Line ||
@@ -89,9 +121,11 @@ public:
             message += " name '";
             message += name;
             message += "' has invalid ";
-            message += !prefixOK && !caseOK ? "prefix and case" :
+            auto issue = !prefixOK && !caseOK ? "prefix and case" :
                 !prefixOK ? "prefix" : "case";
-            Results.push_back({Tree.TokenPosition(index), std::move(message)});
+            message += issue;
+            Results.push_back({Tree.TokenPosition(index),
+                std::move(message), issue});
         }
     }
 
@@ -136,7 +170,69 @@ private:
         }
     }
 
-    void Visit(const parser::Node& node)
+    bool HasRecordBody(const parser::Node& node) const
+    {
+        for (auto i = node.Tokens.Begin; i < node.Tokens.End; ++i) {
+            if (Tree.Kind(i) == TK::Operator_OpenBrace &&
+                Tree.Role(i) == parser::PunctuationRole::RecordDelimiter)
+                return true;
+        }
+        return false;
+    }
+
+    bool IsExplicitInstantiation(const parser::Node& node) const
+    {
+        auto start = node.Tokens.Begin;
+        if (start >= node.Tokens.End) return false;
+        if (node.Kind == NK::TemplateDeclaration &&
+            Tree.Kind(start) == TK::Keyword_template)
+        {
+            auto next = Next(start + 1, node.Tokens.End);
+            return next < node.Tokens.End &&
+                Tree.Kind(next) != TK::Operator_Less;
+        }
+        // Extern explicit instantiations can be recovered as a general
+        // declaration rather than a template-declaration.
+        if (node.Kind == NK::Declaration &&
+            Tree.Kind(start) == TK::Keyword_extern)
+        {
+            auto next = Next(start + 1, node.Tokens.End);
+            return next < node.Tokens.End &&
+                Tree.Kind(next) == TK::Keyword_template;
+        }
+        return false;
+    }
+
+    std::vector<Index> NamespaceNames(const parser::Node& node) const
+    {
+        std::vector<Index> names;
+        auto end = node.Tokens.End;
+        auto name = Next(node.Tokens.Begin + 1, end);
+        while (name < end && Tree.Kind(name) == TK::Identifier) {
+            names.push_back(name);
+            auto after = Next(name + 1, end);
+            if (after >= end) break;
+            if (Tree.Kind(after) == TK::Operator_OpenBrace) return names;
+            if (Tree.TokenText(after) != "::") break;
+            name = Next(after + 1, end);
+        }
+        // Aliases and incomplete declarations have no namespace body.
+        return {};
+    }
+
+    bool IsExempt() const
+    {
+        for (const auto& name : Style.ExemptNamespaces) {
+            if (Scope == name || (Scope.starts_with(name) &&
+                Scope.size() > name.size() + 1 &&
+                Scope.compare(name.size(), 2, "::") == 0))
+                return true;
+        }
+        return false;
+    }
+
+    void Visit(const parser::Node& node,
+        const std::vector<Index>& namespaceNames)
     {
         auto begin = node.Tokens.Begin;
         auto end = node.Tokens.End;
@@ -177,27 +273,10 @@ private:
             }
             break;
         }
-        case NK::NamespaceDeclaration: {
-            auto name = Next(begin + 1, end);
-            // 'inline namespace' begins at namespace; namespace alias is not
-            // a namespace declaration with a body.
-            if (name >= end || Tree.Kind(name) != TK::Identifier) break;
-            while (name < end && Tree.Kind(name) == TK::Identifier) {
-                auto after = Next(name + 1, end);
-                if (after >= end) break;
-                if (Tree.Kind(after) == TK::Operator_OpenBrace) {
-                    Check(name, Style.Namespace, "namespace");
-                    break;
-                }
-                if (Tree.TokenText(after) != "::") break;
-                auto following = Next(after + 1, end);
-                if (following >= end || Tree.Kind(following) != TK::Identifier)
-                    break;
+        case NK::NamespaceDeclaration:
+            for (auto name : namespaceNames)
                 Check(name, Style.Namespace, "namespace");
-                name = following;
-            }
             break;
-        }
         case NK::ConceptDeclaration:
             if (auto* name = Child(node, NK::ConceptName))
                 Check(name->Tokens.Begin, Style.Concept, "concept");
@@ -219,6 +298,7 @@ private:
     const parser::SyntaxTree& Tree;
     const NamingStyle& Style;
     std::vector<NameDiagnostic> Results;
+    std::string Scope;
 };
 
 } // namespace

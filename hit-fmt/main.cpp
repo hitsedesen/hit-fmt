@@ -73,6 +73,50 @@ std::vector<Line> SplitLines(std::string_view text)
     return lines;
 }
 
+// Both diagnostics use tokenizer columns (Unicode code points) rather than
+// byte offsets. Preserve tabs when drawing the marker under the source.
+void PrintCaretIndent(std::string_view text, size_t column)
+{
+    size_t offset = 0;
+    for (size_t current = 1; current < column && offset < text.size();
+        ++current)
+    {
+        ++offset;
+        while (offset < text.size() &&
+            (static_cast<unsigned char>(text[offset]) & 0xc0) == 0x80)
+        {
+            ++offset;
+        }
+    }
+    for (unsigned char c : text.substr(0, offset)) {
+        if ((c & 0xc0) != 0x80) {
+            std::cout.put(c == '\t' ? '\t' : ' ');
+        }
+    }
+}
+
+void PrintNameDiagnostics(
+    std::string_view path,
+    const std::vector<Line>& lines,
+    std::span<const formatter::NameDiagnostic> diagnostics)
+{
+    for (const auto& diagnostic : diagnostics) {
+        auto number = diagnostic.Position.Line;
+        auto text = lines[number - 1].Text;
+        if (text.ends_with('\r')) text.remove_suffix(1);
+        auto width = std::to_string(number).size();
+        auto gutter = std::string(width + 1, ' ') + "|";
+        std::cout << "fail: " << diagnostic.Message << '\n'
+                  << "  --> " << path << ':' << number << ':'
+                  << diagnostic.Position.Column << '\n'
+                  << gutter << '\n'
+                  << number << " | " << text << '\n'
+                  << gutter << ' ';
+        PrintCaretIndent(text, diagnostic.Position.Column);
+        std::cout << "^ invalid " << diagnostic.Issue << '\n';
+    }
+}
+
 void PrintParameterDiagnostics(
     std::string_view path,
     std::string_view source,
@@ -110,25 +154,7 @@ void PrintParameterDiagnostics(
                 continue;
             }
             std::cout << gutter;
-            // Positions count code points, not bytes. Retain source tabs
-            // so the caret follows the same tab stops as the source line.
-            size_t offset = 0;
-            for (size_t column = 1;
-                column < diagnostic.Position.Column && offset < text.size();
-                ++column)
-            {
-                ++offset;
-                while (offset < text.size() &&
-                    (static_cast<unsigned char>(text[offset]) & 0xc0) == 0x80)
-                {
-                    ++offset;
-                }
-            }
-            for (unsigned char c : text.substr(0, offset)) {
-                if ((c & 0xc0) != 0x80) {
-                    std::cout.put(c == '\t' ? '\t' : ' ');
-                }
-            }
+            PrintCaretIndent(text, diagnostic.Position.Column);
             std::cout << "^ parameter #" << diagnostic.ParameterNumber
                       << ": expected a name";
             if (diagnostic.AllowCommentedName) {
@@ -614,14 +640,14 @@ int main(int argc, char* argv[])
                 if (summaryOnly && mismatch) {
                     if (useColor) std::cout << BoldRed;
                     std::cout << filePath << ": ";
-                    if (formatted != source || !names.empty()) {
-                        std::cout << (formatted != source ? "formatting" :
-                            "naming") << " mismatch";
+                    if (formatted != source) {
+                        std::cout << "formatting mismatch";
+                    } else if (!names.empty()) {
+                        std::cout << "fail: invalid name";
+                        if (names.size() != 1) std::cout << 's';
                     } else {
                         std::cout << "fail: unnamed parameter";
-                        if (parameters.size() != 1) {
-                            std::cout << 's';
-                        }
+                        if (parameters.size() != 1) std::cout << 's';
                     }
                     if (useColor) std::cout << ResetColor;
                     std::cout.put('\n');
@@ -629,28 +655,25 @@ int main(int argc, char* argv[])
                     if (formatted != source) {
                         PrintMismatch(filePath, source, formatted, useColor);
                     }
-                    for (const auto& diagnostic : names) {
-                        std::cout << filePath << ':'
-                                  << diagnostic.Position.Line << ':'
-                                  << diagnostic.Position.Column << ": "
-                                  << diagnostic.Message << '\n';
-                    }
-                    if (!parameters.empty()) {
+                    if (!names.empty() || !parameters.empty()) {
                         auto sourceLines = SplitLines(source);
-                        for (size_t begin = 0; begin < parameters.size();) {
-                            auto end = begin + 1;
-                            while (end < parameters.size() &&
-                                parameters[end].Signature.Begin ==
-                                    parameters[begin].Signature.Begin &&
-                                parameters[end].Signature.End ==
-                                    parameters[begin].Signature.End)
-                            {
-                                ++end;
+                        PrintNameDiagnostics(filePath, sourceLines, names);
+                        if (!parameters.empty()) {
+                            for (size_t begin = 0; begin < parameters.size();) {
+                                auto end = begin + 1;
+                                while (end < parameters.size() &&
+                                    parameters[end].Signature.Begin ==
+                                        parameters[begin].Signature.Begin &&
+                                    parameters[end].Signature.End ==
+                                        parameters[begin].Signature.End)
+                                {
+                                    ++end;
+                                }
+                                PrintParameterDiagnostics(filePath, source,
+                                    sourceLines, std::span(parameters).subspan(
+                                        begin, end - begin));
+                                begin = end;
                             }
-                            PrintParameterDiagnostics(filePath, source,
-                                sourceLines,
-                                std::span(parameters).subspan(begin, end - begin));
-                            begin = end;
                         }
                     }
                 }

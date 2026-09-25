@@ -13,6 +13,7 @@ struct NameDiagnostic
 {
     util::Position Position;
     std::string Message;
+    std::string Issue;
 };
 
 // Reports only names whose declaration kind is established by the syntax tree.

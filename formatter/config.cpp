@@ -240,6 +240,35 @@ void ApplySetting(
     const std::filesystem::path& path,
     size_t line)
 {
+    if (key == "NamingNamespaceExemptions") {
+        auto names = ParseStringList(value, path, line);
+        for (const auto& name : names) {
+            size_t start = 0;
+            while (start < name.size()) {
+                auto end = name.find("::", start);
+                if (end == std::string::npos) end = name.size();
+                auto part = std::string_view(name).substr(start, end - start);
+                if (part.empty() ||
+                    !(std::isalpha(static_cast<unsigned char>(part.front())) ||
+                        part.front() == '_') ||
+                    part.find_first_not_of(
+                        "abcdefghijklmnopqrstuvwxyz"
+                        "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_") !=
+                        std::string_view::npos)
+                {
+                    ThrowConfigError(path, line,
+                        "expected qualified namespace names");
+                }
+                start = end == name.size() ? end : end + 2;
+            }
+            if (name.empty() || name.ends_with("::")) {
+                ThrowConfigError(path, line,
+                    "expected qualified namespace names");
+            }
+        }
+        config.Naming.ExemptNamespaces = std::move(names);
+        return;
+    }
     for (auto [category, rule] : {
         std::pair<std::string_view, NameRule*>{"Class", &config.Naming.Class},
         {"Enum", &config.Naming.Enum}, {"Union", &config.Naming.Union},
