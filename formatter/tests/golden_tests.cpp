@@ -284,6 +284,24 @@ TEST_P(LambdaSpacingGoldenTest, FormatsOnlyLambdaCaptureParameterGaps)
 INSTANTIATE_TEST_SUITE_P(Configurations, LambdaSpacingGoldenTest,
     testing::Values("preserve", "space", "no-space"));
 
+class ControlKeywordSpacingGoldenTest : public testing::TestWithParam<std::string>
+{ };
+
+TEST_P(ControlKeywordSpacingGoldenTest, FormatsOnlyParsedControlHeaders)
+{
+    const auto directory = std::filesystem::path(CONTROL_SPACING_TESTDATA_DIR);
+    const auto input = ReadFile(directory / "input.cpp");
+    const auto expected = ReadFile(directory / (GetParam() + ".output.cpp"));
+    const auto style = formatter::LoadConfigFile(
+        directory / (GetParam() + ".hit-fmt")).FormattingStyle;
+
+    EXPECT_EQ(FormatWithStyle(input, style), expected);
+    EXPECT_EQ(FormatWithStyle(expected, style), expected);
+}
+
+INSTANTIATE_TEST_SUITE_P(Configurations, ControlKeywordSpacingGoldenTest,
+    testing::Values("preserve", "space", "no-space"));
+
 TEST(BraceSpacingTest, ComposesWithParameterReflow)
 {
     formatter::Style style;
@@ -373,6 +391,7 @@ TEST(PreserveConfigTest, RejectsInvalidSettings)
         "FunctionParameterIndent = Tabs\n",
         "MergeFunctionParameters = yes\n",
         "LambdaSpaceBeforeParameters = Unknown\n",
+        "ControlBlockKeywordSpacing = Unknown\n",
         "Exclude = [\"[\"]\n",
         "StructNameCase = lowercase\n",
         "ClassNamePrefixes = []\n",

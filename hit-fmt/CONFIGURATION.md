@@ -2,7 +2,8 @@
 
 The formatter preserves source-owned token and trivia bytes except where an
 explicitly configured declaration brace, lambda capture-to-parameter
-spacing, namespace comment, or function parameter rule applies. All formatting rules default to preserving the source.
+spacing, control keyword spacing, namespace comment, or function parameter
+rule applies. All formatting rules default to preserving the source.
 Naming rules default to unchecked and never rewrite identifiers; `--check`
 reports violations with file, line and column and returns a nonzero status.
 
@@ -32,6 +33,7 @@ FunctionDefinitionParameterNames = Unchecked
 ClassBraceSpacing = Preserve
 LambdaBraceSpacing = Preserve
 LambdaSpaceBeforeParameters = Preserve
+ControlBlockKeywordSpacing = Preserve
 StructBraceSpacing = Preserve
 EnumBraceSpacing = Preserve
 UnionBraceSpacing = Preserve
@@ -90,6 +92,13 @@ Exclude = ["(^|/)generated(/|$)", "(^|/)legacy\\.cpp$"]
   inserts exactly one space and `NoSpace` removes it. Newlines and
   intervening comments or directives are left unchanged. Calls and other
   parenthesized expressions are unaffected.
+- `ControlBlockKeywordSpacing`: `Preserve` (default) leaves whitespace
+  between a control keyword and its condition `(` unchanged; `Space` uses
+  exactly one space and `NoSpace` removes it. Applies to `if`, `for`,
+  `while` (including `do`/`while`), `switch`, and `catch`, as well as
+  `if constexpr (` and `for co_await (`. Newlines, comments, directives,
+  macro-wrapped conditions, calls, and function declarations are unchanged.
+  `else` and `do` have no condition `(` to which this rule applies.
 - `<Kind>NameCase` and `<Kind>NamePrefixes`: independent naming checks for
   `Class`, `Enum`, `Union`, `Struct`, `Function`, `Concept`, `Variable`, and
   `Namespace`. Cases are `camelCase`, `PascalCase`, `snake_case`, and

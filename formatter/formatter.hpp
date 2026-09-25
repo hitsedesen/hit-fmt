@@ -27,6 +27,7 @@ enum class SameLineBraceSpacing
 };
 
 enum class LambdaSpaceBeforeParameters { Preserve, Space, NoSpace };
+enum class ControlBlockKeywordSpacing { Preserve, Space, NoSpace };
 
 struct Style
 {
@@ -48,6 +49,8 @@ struct Style
     formatter::FunctionParameterIndent FunctionParameterIndent =
         formatter::FunctionParameterIndent::IndentWidth;
     bool MergeFunctionParameters = false;
+    formatter::ControlBlockKeywordSpacing ControlBlockKeywordSpacing =
+        formatter::ControlBlockKeywordSpacing::Preserve;
     SameLineBraceSpacing ClassBraceSpacing = SameLineBraceSpacing::Preserve;
     SameLineBraceSpacing LambdaBraceSpacing = SameLineBraceSpacing::Preserve;
     formatter::LambdaSpaceBeforeParameters LambdaSpaceBeforeParameters =
@@ -60,7 +63,8 @@ struct Style
 };
 
 // Preserve source-owned spans except for enabled declaration brace,
-// lambda capture-to-parameter spacing, namespace comments, and parameter rules.
+// lambda capture-to-parameter and control keyword spacing, namespace comments,
+// and parameter rules.
 [[nodiscard]] std::string Format(const parser::SyntaxTree& tree, const Style& style);
 [[nodiscard]] std::string Format(const parser::SyntaxTree& tree);
 [[nodiscard]] std::string Format(util::PaddedSourceView source, const Style& style);
