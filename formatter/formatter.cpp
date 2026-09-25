@@ -55,8 +55,8 @@ public:
                 LambdaSpaceBeforeParameters::Preserve ||
             style.FunctionSpaceBeforeParameters !=
                 FunctionSpaceBeforeParameters::Preserve ||
-            style.FunctionCallSpaceBeforeParameter !=
-                FunctionCallSpaceBeforeParameter::Preserve ||
+            style.FunctionCallSpaceBeforeParameters !=
+                FunctionCallSpaceBeforeParameters::Preserve ||
             style.ControlBlockKeywordSpacing !=
                 ControlBlockKeywordSpacing::Preserve ||
             style.ControlBlockBracePlacement !=
@@ -307,8 +307,8 @@ private:
 
     void MarkCallGap(const parser::Node& call)
     {
-        if (Style_.FunctionCallSpaceBeforeParameter ==
-            FunctionCallSpaceBeforeParameter::Preserve)
+        if (Style_.FunctionCallSpaceBeforeParameters ==
+            FunctionCallSpaceBeforeParameters::Preserve)
         {
             return;
         }
@@ -539,8 +539,8 @@ private:
         if (CallGaps_[index] &&
             gap.find_first_not_of(" \t") == std::string_view::npos)
         {
-            if (Style_.FunctionCallSpaceBeforeParameter ==
-                FunctionCallSpaceBeforeParameter::Space)
+            if (Style_.FunctionCallSpaceBeforeParameters ==
+                FunctionCallSpaceBeforeParameters::Space)
             {
                 Output_.push_back(' ');
             }
@@ -987,8 +987,8 @@ std::string Format(const parser::SyntaxTree& tree, const Style& style)
             LambdaSpaceBeforeParameters::Preserve &&
         style.FunctionSpaceBeforeParameters ==
             FunctionSpaceBeforeParameters::Preserve &&
-        style.FunctionCallSpaceBeforeParameter ==
-            FunctionCallSpaceBeforeParameter::Preserve &&
+        style.FunctionCallSpaceBeforeParameters ==
+            FunctionCallSpaceBeforeParameters::Preserve &&
         style.ControlBlockKeywordSpacing ==
             ControlBlockKeywordSpacing::Preserve &&
         style.ControlBlockBracePlacement ==

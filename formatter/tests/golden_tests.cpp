@@ -451,7 +451,7 @@ TEST(PreserveConfigTest, RejectsInvalidSettings)
         "MergeFunctionParameters = yes\n",
         "LambdaSpaceBeforeParameters = Unknown\n",
         "FunctionSpaceBeforeParameters = Unknown\n",
-        "FunctionCallSpaceBeforeParameter = Unknown\n",
+        "FunctionCallSpaceBeforeParameters = Unknown\n",
         "ControlBlockKeywordSpacing = Unknown\n",
         "ControlBlockBracePlacement = Unknown\n",
         "Exclude = [\"[\"]\n",

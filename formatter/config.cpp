@@ -424,17 +424,17 @@ void ApplySetting(
     } else if (key == "LambdaBraceSpacing") {
         config.FormattingStyle.LambdaBraceSpacing =
             ParseSameLineBraceSpacing(value, path, line);
-    } else if (key == "FunctionCallSpaceBeforeParameter") {
+    } else if (key == "FunctionCallSpaceBeforeParameters") {
         value = ParseOption(value, path, line);
         if (value == "Preserve") {
-            config.FormattingStyle.FunctionCallSpaceBeforeParameter =
-                FunctionCallSpaceBeforeParameter::Preserve;
+            config.FormattingStyle.FunctionCallSpaceBeforeParameters =
+                FunctionCallSpaceBeforeParameters::Preserve;
         } else if (value == "Space") {
-            config.FormattingStyle.FunctionCallSpaceBeforeParameter =
-                FunctionCallSpaceBeforeParameter::Space;
+            config.FormattingStyle.FunctionCallSpaceBeforeParameters =
+                FunctionCallSpaceBeforeParameters::Space;
         } else if (value == "NoSpace") {
-            config.FormattingStyle.FunctionCallSpaceBeforeParameter =
-                FunctionCallSpaceBeforeParameter::NoSpace;
+            config.FormattingStyle.FunctionCallSpaceBeforeParameters =
+                FunctionCallSpaceBeforeParameters::NoSpace;
         } else {
             ThrowConfigError(path, line,
                 "expected Preserve, Space or NoSpace");

@@ -35,7 +35,7 @@ ClassBraceSpacing = Preserve
 LambdaBraceSpacing = Preserve
 LambdaSpaceBeforeParameters = Preserve
 FunctionSpaceBeforeParameters = Preserve
-FunctionCallSpaceBeforeParameter = Preserve
+FunctionCallSpaceBeforeParameters = Preserve
 ControlBlockKeywordSpacing = Preserve
 ControlBlockBracePlacement = Preserve
 StructBraceSpacing = Preserve
@@ -103,7 +103,7 @@ Exclude = ["(^|/)generated(/|$)", "(^|/)legacy\\.cpp$"]
   operators. Newlines, comments, and directives remain unchanged. Calls,
   lambdas, control conditions, and function-pointer declarations are
   unaffected.
-- `FunctionCallSpaceBeforeParameter`: `Preserve` (default) leaves the gap
+- `FunctionCallSpaceBeforeParameters`: `Preserve` (default) leaves the gap
   between a parsed call's callee and argument `(` unchanged; `Space`
   inserts one space and `NoSpace` removes it. Newlines, intervening
   comments, and directives are left unchanged. Function declarations,

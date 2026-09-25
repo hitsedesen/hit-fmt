@@ -28,7 +28,7 @@ enum class SameLineBraceSpacing
 
 enum class LambdaSpaceBeforeParameters { Preserve, Space, NoSpace };
 enum class FunctionSpaceBeforeParameters { Preserve, Space, NoSpace };
-enum class FunctionCallSpaceBeforeParameter { Preserve, Space, NoSpace };
+enum class FunctionCallSpaceBeforeParameters { Preserve, Space, NoSpace };
 enum class ControlBlockKeywordSpacing { Preserve, Space, NoSpace };
 enum class ControlBlockBracePlacement
 {
@@ -68,8 +68,8 @@ struct Style
         formatter::LambdaSpaceBeforeParameters::Preserve;
     formatter::FunctionSpaceBeforeParameters FunctionSpaceBeforeParameters =
         formatter::FunctionSpaceBeforeParameters::Preserve;
-    formatter::FunctionCallSpaceBeforeParameter FunctionCallSpaceBeforeParameter =
-        formatter::FunctionCallSpaceBeforeParameter::Preserve;
+    formatter::FunctionCallSpaceBeforeParameters FunctionCallSpaceBeforeParameters =
+        formatter::FunctionCallSpaceBeforeParameters::Preserve;
     SameLineBraceSpacing StructBraceSpacing = SameLineBraceSpacing::Preserve;
     SameLineBraceSpacing EnumBraceSpacing = SameLineBraceSpacing::Preserve;
     SameLineBraceSpacing UnionBraceSpacing = SameLineBraceSpacing::Preserve;
