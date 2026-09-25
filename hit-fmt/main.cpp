@@ -1,5 +1,6 @@
 #include <formatter/config.hpp>
 #include <formatter/formatter.hpp>
+#include <formatter/naming.hpp>
 #include <util/file.hpp>
 
 #include <algorithm>
@@ -368,9 +369,10 @@ public:
         }
     }
 
-    const formatter::Style& Resolve(const std::filesystem::path& sourcePath)
+    const formatter::Configuration& Resolve(
+        const std::filesystem::path& sourcePath)
     {
-        return FindConfig(sourcePath).Settings.FormattingStyle;
+        return FindConfig(sourcePath).Settings;
     }
 
     bool IsExcluded(const std::filesystem::path& path, bool directory)
@@ -524,8 +526,9 @@ int main(int argc, char* argv[])
                 .Size = sourceStorage.size() - util::SourcePaddingSize,
             };
             auto source = paddedSource.View();
-            const auto& style = styleResolver->Resolve(path);
-            auto formatted = formatter::Format(paddedSource, style);
+            const auto& config = styleResolver->Resolve(path);
+            auto tree = parser::Parse(paddedSource, [] (parser::ParseError) { });
+            auto formatted = formatter::Format(tree, config.FormattingStyle);
             switch (mode) {
             case Mode::Format:
                 std::cout.write(formatted.data(), formatted.size());
@@ -535,23 +538,28 @@ int main(int argc, char* argv[])
                     util::WriteEntireFile(filePath, formatted);
                 }
                 break;
-            case Mode::Check:
-                if (formatted != source) {
-                    if (summaryOnly) {
-                        if (useColor) {
-                            std::cout << BoldRed;
-                        }
-                        std::cout << filePath << ": formatting mismatch";
-                        if (useColor) {
-                            std::cout << ResetColor;
-                        }
-                        std::cout.put('\n');
-                    } else {
+            case Mode::Check: {
+                auto names = formatter::CheckNames(tree, config.Naming);
+                if (summaryOnly && (formatted != source || !names.empty())) {
+                    if (useColor) std::cout << BoldRed;
+                    std::cout << filePath << ": "
+                              << (formatted != source ? "formatting" : "naming")
+                              << " mismatch";
+                    if (useColor) std::cout << ResetColor;
+                    std::cout.put('\n');
+                } else if (!summaryOnly) {
+                    if (formatted != source)
                         PrintMismatch(filePath, source, formatted, useColor);
+                    for (const auto& diagnostic : names) {
+                        std::cout << filePath << ':'
+                                  << diagnostic.Position.Line << ':'
+                                  << diagnostic.Position.Column << ": "
+                                  << diagnostic.Message << '\n';
                     }
-                    ++mismatchCount;
                 }
+                mismatchCount += formatted != source || !names.empty();
                 break;
+            }
             }
         } catch (const util::FileTooLargeError& error) {
             if (mode == Mode::Format) {
@@ -571,7 +579,7 @@ int main(int argc, char* argv[])
         } else {
             std::cout << BoldRed << mismatchCount << " file"
                       << (mismatchCount == 1 ? "" : "s")
-                      << " require formatting." << ResetColor << '\n';
+                      << " require formatting or naming fixes." << ResetColor << '\n';
         }
     }
     return mismatchCount != 0 ? 1 : 0;

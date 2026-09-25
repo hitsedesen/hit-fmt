@@ -1,5 +1,6 @@
 #include <formatter/config.hpp>
 #include <formatter/formatter.hpp>
+#include <formatter/naming.hpp>
 
 #include <gtest/gtest.h>
 
@@ -248,6 +249,34 @@ TEST(BraceSpacingTest, ComposesWithParameterReflow)
     EXPECT_EQ(FormatWithStyle(detached, style), expected);
 }
 
+class NamingGoldenTest : public testing::TestWithParam<std::string> { };
+
+TEST_P(NamingGoldenTest, ReportsOnlyConfiguredUnambiguousNames)
+{
+    const auto dir = std::filesystem::path(NAMING_TESTDATA_DIR);
+    const auto name = GetParam();
+    const auto input = ReadFile(dir / (name == "rules" ? "input.cpp" :
+        "alternate.cpp"));
+    const auto expected = ReadFile(dir / (name + ".expected"));
+    const auto config = formatter::LoadConfigFile(dir / (name + ".hit-fmt"));
+    std::string storage = input;
+    storage.append(util::SourcePaddingSize, '\0');
+    const auto tree = parser::Parse({.Data = storage.data(),
+        .Size = input.size()}, [] (parser::ParseError) { });
+    std::string actual;
+    for (const auto& diagnostic : formatter::CheckNames(tree, config.Naming)) {
+        actual += std::to_string(diagnostic.Position.Line) + ":" +
+            std::to_string(diagnostic.Position.Column) + ": " +
+            diagnostic.Message + "\n";
+    }
+    EXPECT_EQ(actual, expected);
+    EXPECT_EQ(formatter::Format(tree, config.FormattingStyle), input);
+    EXPECT_TRUE(formatter::CheckNames(tree, {}).empty());
+}
+
+INSTANTIATE_TEST_SUITE_P(Configurations, NamingGoldenTest,
+    testing::Values("rules", "alternate"));
+
 TEST(PreserveFormatterTest, KeepsEmptyRecoveryAndBinarySource)
 {
     for (const std::string source : {
@@ -289,6 +318,10 @@ TEST(PreserveConfigTest, RejectsInvalidSettings)
         "FunctionParameterIndent = Tabs\n",
         "MergeFunctionParameters = yes\n",
         "Exclude = [\"[\"]\n",
+        "StructNameCase = lowercase\n",
+        "ClassNamePrefixes = []\n",
+        "EnumNamePrefixes = [\"bad prefix\"]\n",
+        "NamespaceNamePrefixes = [\"bad\\nname\"]\n",
     }) {
         save(setting);
         EXPECT_THROW(formatter::LoadConfigFile(path), std::runtime_error);

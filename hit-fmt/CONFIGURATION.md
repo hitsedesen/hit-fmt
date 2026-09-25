@@ -2,8 +2,9 @@
 
 The formatter preserves source-owned token and trivia bytes except where an
 explicitly configured declaration brace, namespace comment, or function
-parameter rule applies.
-All formatting rules default to preserving the source.
+parameter rule applies. All formatting rules default to preserving the source.
+Naming rules default to unchecked and never rewrite identifiers; `--check`
+reports violations with file, line and column and returns a nonzero status.
 
 `hit-fmt` searches for `.hit-fmt` beside each source file and then in its
 parent directories. The nearest file wins. `--config <file>` selects one
@@ -33,6 +34,10 @@ EnumBraceSpacing = Preserve
 UnionBraceSpacing = Preserve
 FunctionBraceSpacing = Preserve
 NamespaceBraceSpacing = Preserve
+StructNameCase = PascalCase
+StructNamePrefixes = ["S", "C"]
+VariableNameCase = snake_case
+VariableNamePrefixes = ["m_", "s_"]
 Exclude = ["(^|/)generated(/|$)", "(^|/)legacy\\.cpp$"]
 ```
 
@@ -76,6 +81,16 @@ Exclude = ["(^|/)generated(/|$)", "(^|/)legacy\\.cpp$"]
   Line breaks and gaps containing comments or directives remain untouched.
   Placement is applied first: `NewLine` keeps the brace on its own line;
   `Attach` joins it to the header, using one space at the join.
+- `<Kind>NameCase` and `<Kind>NamePrefixes`: independent naming checks for
+  `Class`, `Enum`, `Union`, `Struct`, `Function`, `Concept`, `Variable`, and
+  `Namespace`. Cases are `camelCase`, `PascalCase`, `snake_case`, and
+  `SCREAMING_SNAKE_CASE` (ASCII letters and digits). Prefixes are a nonempty
+  array of quoted identifier fragments; at least one must match. The case
+  applies to the name *after* its prefix. Use `[""]` to explicitly allow no prefix. Either check can be
+  enabled independently; omitted checks are disabled. Only unambiguous
+  declarations are checked (including function parameters and local
+  variables), not references, aliases, macros or uncertain declarators.
+  `-i` and ordinary output mode leave names untouched.
 - `Exclude`: ECMAScript regular expressions searched against paths relative
   to the config directory. A matching directory and its contents are skipped
   during recursive processing. An explicit file input is skipped if it

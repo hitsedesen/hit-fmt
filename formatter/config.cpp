@@ -6,6 +6,7 @@
 #include <stdexcept>
 #include <string>
 #include <string_view>
+#include <utility>
 #include <vector>
 
 namespace formatter {
@@ -213,6 +214,25 @@ std::string_view ParseOption(std::string_view value,
     return value;
 }
 
+NameCase ParseNameCase(std::string_view value,
+    const std::filesystem::path& path, size_t line)
+{
+    if (value == "camelCase") {
+        return NameCase::CamelCase;
+    }
+    if (value == "PascalCase") {
+        return NameCase::PascalCase;
+    }
+    if (value == "snake_case") {
+        return NameCase::SnakeCase;
+    }
+    if (value == "SCREAMING_SNAKE_CASE") {
+        return NameCase::ScreamingSnakeCase;
+    }
+    ThrowConfigError(path, line,
+        "expected camelCase, PascalCase, snake_case or SCREAMING_SNAKE_CASE");
+}
+
 void ApplySetting(
     Configuration& config,
     std::string_view key,
@@ -220,6 +240,37 @@ void ApplySetting(
     const std::filesystem::path& path,
     size_t line)
 {
+    for (auto [category, rule] : {
+        std::pair<std::string_view, NameRule*>{"Class", &config.Naming.Class},
+        {"Enum", &config.Naming.Enum}, {"Union", &config.Naming.Union},
+        {"Struct", &config.Naming.Struct},
+        {"Function", &config.Naming.Function},
+        {"Concept", &config.Naming.Concept},
+        {"Variable", &config.Naming.Variable},
+        {"Namespace", &config.Naming.Namespace},
+    }) {
+        if (key == std::string(category) + "NameCase") {
+            rule->Case = ParseNameCase(value, path, line);
+            return;
+        }
+        if (key == std::string(category) + "NamePrefixes") {
+            auto prefixes = ParseStringList(value, path, line);
+            if (prefixes.empty()) {
+                ThrowConfigError(path, line, "expected at least one prefix");
+            }
+            for (const auto& prefix : prefixes) {
+                if (prefix.find_first_not_of(
+                        "abcdefghijklmnopqrstuvwxyz"
+                        "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_")
+                    != std::string::npos)
+                {
+                    ThrowConfigError(path, line, "prefix must contain only identifier characters");
+                }
+            }
+            rule->Prefixes = std::move(prefixes);
+            return;
+        }
+    }
     if (key == "IndentWidth") {
         config.FormattingStyle.IndentWidth =
             ParsePositiveInteger(value, path, line);

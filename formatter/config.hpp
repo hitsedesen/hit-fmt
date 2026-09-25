@@ -5,15 +5,46 @@
 #include <filesystem>
 #include <optional>
 #include <regex>
+#include <string>
+#include <string_view>
 #include <vector>
 
 namespace formatter {
 
 inline constexpr std::string_view DefaultConfigFileName = ".hit-fmt";
 
+enum class NameCase
+{
+    Unchecked,
+    CamelCase,
+    PascalCase,
+    SnakeCase,
+    ScreamingSnakeCase,
+};
+
+struct NameRule
+{
+    NameCase Case = NameCase::Unchecked;
+    // No prefix rule by default; an explicit [""] permits no prefix.
+    std::optional<std::vector<std::string>> Prefixes;
+};
+
+struct NamingStyle
+{
+    NameRule Class;
+    NameRule Enum;
+    NameRule Union;
+    NameRule Struct;
+    NameRule Function;
+    NameRule Concept;
+    NameRule Variable;
+    NameRule Namespace;
+};
+
 struct Configuration
 {
     Style FormattingStyle;
+    NamingStyle Naming;
     std::vector<std::regex> Exclusions;
 };
 
