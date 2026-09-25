@@ -14,6 +14,7 @@
 #include <limits>
 #include <optional>
 #include <regex>
+#include <span>
 #include <stdexcept>
 #include <string>
 #include <string_view>
@@ -72,61 +73,69 @@ std::vector<Line> SplitLines(std::string_view text)
     return lines;
 }
 
-void PrintParameterDiagnostic(std::string_view path, const Line& line,
-    const formatter::ParameterNameDiagnostic& diagnostic)
+void PrintParameterDiagnostics(
+    std::string_view path,
+    std::string_view source,
+    const std::vector<Line>& lines,
+    std::span<const formatter::ParameterNameDiagnostic> diagnostics)
 {
-    const auto number = std::to_string(diagnostic.Position.Line);
-    std::cout << "error: " << diagnostic.Message << '\n'
-              << "  --> " << path << ':' << number << ':'
-              << diagnostic.Position.Column << '\n'
+    const auto& first = diagnostics.front();
+    std::cout << "error: unnamed parameter";
+    if (diagnostics.size() != 1) {
+        std::cout << 's';
+    }
+    std::cout << " in " << first.Function << '\n'
+              << "  --> " << path << ':' << first.Position.Line << ':'
+              << first.Position.Column << '\n'
               << "   |\n";
 
-    auto text = line.Text;
-    if (text.ends_with('\r')) {
-        text.remove_suffix(1);
-    }
-    // Token positions count code points, not bytes. Keep tabs from the
-    // source prefix so the caret follows the same tab stops as the snippet.
-    size_t offset = 0;
-    for (size_t column = 1;
-        column < diagnostic.Position.Column && offset < text.size(); ++column)
+    for (auto lineNumber = first.SignatureBeginLine;
+        lineNumber <= first.SignatureEndLine; ++lineNumber)
     {
-        ++offset;
-        while (offset < text.size() &&
-            (static_cast<unsigned char>(text[offset]) & 0xc0) == 0x80)
-        {
-            ++offset;
+        auto text = lines[lineNumber - 1].Text;
+        if (lineNumber == first.SignatureEndLine) {
+            auto end = static_cast<size_t>(first.Signature.End) -
+                static_cast<size_t>(text.data() - source.data());
+            text = text.substr(0, std::min(end, text.size()));
+        }
+        if (text.ends_with('\r')) {
+            text.remove_suffix(1);
+        }
+        const auto gutter = std::string(
+            std::to_string(lineNumber).size(), ' ') + " | ";
+        std::cout << lineNumber << " | " << text << '\n';
+        for (const auto& diagnostic : diagnostics) {
+            if (diagnostic.Position.Line != lineNumber) {
+                continue;
+            }
+            std::cout << gutter;
+            // Positions count code points, not bytes. Retain source tabs
+            // so the caret follows the same tab stops as the source line.
+            size_t offset = 0;
+            for (size_t column = 1;
+                column < diagnostic.Position.Column && offset < text.size();
+                ++column)
+            {
+                ++offset;
+                while (offset < text.size() &&
+                    (static_cast<unsigned char>(text[offset]) & 0xc0) == 0x80)
+                {
+                    ++offset;
+                }
+            }
+            for (unsigned char c : text.substr(0, offset)) {
+                if ((c & 0xc0) != 0x80) {
+                    std::cout.put(c == '\t' ? '\t' : ' ');
+                }
+            }
+            std::cout << "^ parameter #" << diagnostic.ParameterNumber
+                      << ": expected a name";
+            if (diagnostic.AllowCommentedName) {
+                std::cout << " or /*name*/ comment";
+            }
+            std::cout << '\n';
         }
     }
-    constexpr size_t MaxSnippet = 160;
-    auto begin = offset > 80 ? offset - 80 : 0;
-    while (begin < offset &&
-        (static_cast<unsigned char>(text[begin]) & 0xc0) == 0x80)
-    {
-        ++begin;
-    }
-    auto end = std::min(text.size(), begin + MaxSnippet);
-    while (end < text.size() &&
-        (static_cast<unsigned char>(text[end]) & 0xc0) == 0x80)
-    {
-        --end;
-    }
-    std::string_view excerpt = text.substr(begin, end - begin);
-    auto gutter = std::string(number.size(), ' ') + " | ";
-    std::cout << number << " | " << (begin ? "..." : "") << excerpt
-              << (end < text.size() ? "..." : "") << '\n'
-              << gutter << (begin ? "   " : "");
-    for (unsigned char c : text.substr(begin, offset - begin)) {
-        if ((c & 0xc0) == 0x80) {
-            continue;
-        }
-        std::cout.put(c == '\t' ? '\t' : ' ');
-    }
-    std::cout << "^ expected a name";
-    if (diagnostic.AllowCommentedName) {
-        std::cout << " or /*name*/ comment";
-    }
-    std::cout << '\n';
 }
 
 bool UseTerminalColors()
@@ -621,10 +630,20 @@ int main(int argc, char* argv[])
                     }
                     if (!parameters.empty()) {
                         auto sourceLines = SplitLines(source);
-                        for (const auto& diagnostic : parameters) {
-                            PrintParameterDiagnostic(filePath,
-                                sourceLines[diagnostic.Position.Line - 1],
-                                diagnostic);
+                        for (size_t begin = 0; begin < parameters.size();) {
+                            auto end = begin + 1;
+                            while (end < parameters.size() &&
+                                parameters[end].Signature.Begin ==
+                                    parameters[begin].Signature.Begin &&
+                                parameters[end].Signature.End ==
+                                    parameters[begin].Signature.End)
+                            {
+                                ++end;
+                            }
+                            PrintParameterDiagnostics(filePath, source,
+                                sourceLines,
+                                std::span(parameters).subspan(begin, end - begin));
+                            begin = end;
                         }
                     }
                 }
