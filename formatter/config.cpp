@@ -376,6 +376,33 @@ void ApplySetting(
     } else if (key == "NamespaceBraceSpacing") {
         config.FormattingStyle.NamespaceBraceSpacing =
             ParseSameLineBraceSpacing(value, path, line);
+    } else if (key == "FunctionDeclarationParameterNames") {
+        value = ParseOption(value, path, line);
+        if (value == "Unchecked") {
+            config.DeclarationParameterNames =
+                FunctionDeclarationParameterNames::Unchecked;
+        } else if (value == "Required") {
+            config.DeclarationParameterNames =
+                FunctionDeclarationParameterNames::Required;
+        } else {
+            ThrowConfigError(path, line,
+                "invalid FunctionDeclarationParameterNames");
+        }
+    } else if (key == "FunctionDefinitionParameterNames") {
+        value = ParseOption(value, path, line);
+        if (value == "Unchecked") {
+            config.DefinitionParameterNames =
+                FunctionDefinitionParameterNames::Unchecked;
+        } else if (value == "NameRequired") {
+            config.DefinitionParameterNames =
+                FunctionDefinitionParameterNames::NameRequired;
+        } else if (value == "NameOrCommentedNameRequired") {
+            config.DefinitionParameterNames =
+                FunctionDefinitionParameterNames::NameOrCommentedNameRequired;
+        } else {
+            ThrowConfigError(path, line,
+                "invalid FunctionDefinitionParameterNames");
+        }
     } else if (key == "Exclude") {
         config.Exclusions.clear();
         for (const auto& pattern : ParseStringList(value, path, line)) {

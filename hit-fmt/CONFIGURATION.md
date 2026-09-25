@@ -27,6 +27,8 @@ FirstFunctionParameterPosition = NameLine
 EnforceFirstFunctionParameterPosition = false
 FunctionParameterIndent = IndentWidth
 MergeFunctionParameters = false
+FunctionDeclarationParameterNames = Unchecked
+FunctionDefinitionParameterNames = Unchecked
 ClassBraceSpacing = Preserve
 LambdaBraceSpacing = Preserve
 StructBraceSpacing = Preserve
@@ -91,6 +93,13 @@ Exclude = ["(^|/)generated(/|$)", "(^|/)legacy\\.cpp$"]
   declarations are checked (including function parameters and local
   variables), not references, aliases, macros or uncertain declarators.
   `-i` and ordinary output mode leave names untouched.
+- `FunctionDeclarationParameterNames`: `Unchecked` (default) or
+  `Required`. When required, `--check` reports unnamed parameters in
+  unambiguous function declarations; a comment does not count as a name.
+- `FunctionDefinitionParameterNames`: `Unchecked` (default),
+  `NameRequired`, or `NameOrCommentedNameRequired`. The last option also
+  permits a trailing identifier comment such as `int /*unused*/`.
+  Neither check renames parameters or alters formatting output.
 - `Exclude`: ECMAScript regular expressions searched against paths relative
   to the config directory. A matching directory and its contents are skipped
   during recursive processing. An explicit file input is skipped if it

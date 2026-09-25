@@ -41,10 +41,27 @@ struct NamingStyle
     NameRule Namespace;
 };
 
+enum class FunctionDeclarationParameterNames
+{
+    Unchecked,
+    Required,
+};
+
+enum class FunctionDefinitionParameterNames
+{
+    Unchecked,
+    NameRequired,
+    NameOrCommentedNameRequired,
+};
+
 struct Configuration
 {
     Style FormattingStyle;
     NamingStyle Naming;
+    FunctionDeclarationParameterNames DeclarationParameterNames =
+        FunctionDeclarationParameterNames::Unchecked;
+    FunctionDefinitionParameterNames DefinitionParameterNames =
+        FunctionDefinitionParameterNames::Unchecked;
     std::vector<std::regex> Exclusions;
 };
 

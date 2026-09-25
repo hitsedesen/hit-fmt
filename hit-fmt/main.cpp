@@ -1,6 +1,7 @@
 #include <formatter/config.hpp>
 #include <formatter/formatter.hpp>
 #include <formatter/naming.hpp>
+#include <formatter/parameter_names.hpp>
 #include <util/file.hpp>
 
 #include <algorithm>
@@ -540,24 +541,34 @@ int main(int argc, char* argv[])
                 break;
             case Mode::Check: {
                 auto names = formatter::CheckNames(tree, config.Naming);
-                if (summaryOnly && (formatted != source || !names.empty())) {
+                auto parameters = formatter::CheckParameterNames(tree, config);
+                bool mismatch = formatted != source || !names.empty() ||
+                    !parameters.empty();
+                if (summaryOnly && mismatch) {
                     if (useColor) std::cout << BoldRed;
                     std::cout << filePath << ": "
-                              << (formatted != source ? "formatting" : "naming")
+                              << (formatted != source ? "formatting" :
+                                  !names.empty() ? "naming" : "parameter name")
                               << " mismatch";
                     if (useColor) std::cout << ResetColor;
                     std::cout.put('\n');
                 } else if (!summaryOnly) {
-                    if (formatted != source)
+                    if (formatted != source) {
                         PrintMismatch(filePath, source, formatted, useColor);
+                    }
                     for (const auto& diagnostic : names) {
                         std::cout << filePath << ':'
                                   << diagnostic.Position.Line << ':'
                                   << diagnostic.Position.Column << ": "
                                   << diagnostic.Message << '\n';
                     }
+                    for (const auto& diagnostic : parameters) {
+                        std::cout << filePath << ':' << diagnostic.Position.Line
+                                  << ':' << diagnostic.Position.Column
+                                  << ": function parameter name required\n";
+                    }
                 }
-                mismatchCount += formatted != source || !names.empty();
+                mismatchCount += mismatch;
                 break;
             }
             }
@@ -579,7 +590,8 @@ int main(int argc, char* argv[])
         } else {
             std::cout << BoldRed << mismatchCount << " file"
                       << (mismatchCount == 1 ? "" : "s")
-                      << " require formatting or naming fixes." << ResetColor << '\n';
+                      << " require formatting, naming or parameter names."
+                      << ResetColor << '\n';
         }
     }
     return mismatchCount != 0 ? 1 : 0;
