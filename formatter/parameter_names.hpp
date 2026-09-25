@@ -4,6 +4,9 @@
 
 #include <parser/syntax_tree.hpp>
 
+#include <cstddef>
+#include <cstdint>
+#include <string>
 #include <vector>
 
 namespace formatter {
@@ -13,6 +16,12 @@ namespace formatter {
 struct ParameterNameDiagnostic
 {
     util::Position Position;
+    parser::SourceRange Signature;
+    uint32_t SignatureBeginLine;
+    uint32_t SignatureEndLine;
+    std::string Function;
+    size_t ParameterNumber;
+    bool AllowCommentedName = false;
 };
 
 [[nodiscard]] std::vector<ParameterNameDiagnostic>

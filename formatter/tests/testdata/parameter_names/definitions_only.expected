@@ -1,2 +1,3 @@
-8:14
-14:18
+8:17 [8-8]: function definition 'defined', parameter #1 (comment allowed)
+14:21 [14-14]: function definition 'defined_bad', parameter #1 (comment allowed)
+18:8 [16-18]: function definition 'multiline', parameter #2 (comment allowed)

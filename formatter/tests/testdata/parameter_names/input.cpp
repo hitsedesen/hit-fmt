@@ -13,3 +13,9 @@ void empty(void);
 void variadic(int named, ...);
 void defined_bad(int /*note here*/) {}
 void defined_named(int /*note*/ value) {}
+void multiline(
+    int named,
+    int)
+{
+}
+void arrays(int [3], int = 1);

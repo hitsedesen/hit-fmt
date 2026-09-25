@@ -3,6 +3,7 @@
 #include <tokenizer/token.hpp>
 
 #include <algorithm>
+#include <string>
 #include <string_view>
 #include <vector>
 
@@ -62,6 +63,74 @@ bool HasName(const Node& node)
     return false;
 }
 
+const Node* FunctionName(const Node& node)
+{
+    if (node.Kind == NK::DeclaratorName ||
+        node.Kind == NK::DestructorName ||
+        node.Kind == NK::OperatorFunctionName)
+    {
+        return &node;
+    }
+    if (node.Kind == NK::FunctionDeclarator) {
+        return nullptr;
+    }
+    for (auto* child = node.Child(); child; child = child->NextSibling) {
+        if (auto* name = FunctionName(*child)) {
+            return name;
+        }
+    }
+    return nullptr;
+}
+
+util::Position AfterToken(const parser::SyntaxTree& tree,
+    parser::TokenIndex index)
+{
+    auto position = tree.TokenPosition(index);
+    for (unsigned char c : tree.TokenText(index)) {
+        if (c == '\n') {
+            ++position.Line;
+            position.Column = 1;
+        } else if ((c & 0xc0) != 0x80) {
+            ++position.Column;
+        }
+    }
+    return position;
+}
+
+util::Position NamePosition(const parser::SyntaxTree& tree,
+    const Node& parameter, const Node& specifiers)
+{
+    if (auto* declarators = Child(parameter, NK::InitDeclaratorList)) {
+        if (auto* init = Child(*declarators, NK::InitDeclarator)) {
+            if (auto* abstract = Child(*init, NK::AbstractDeclarator)) {
+                if (auto* nested = Child(*abstract, NK::NestedDeclarator)) {
+                    // In a function pointer, the name goes inside (*...).
+                    return tree.TokenPosition(nested->Tokens.End - 1);
+                }
+                for (auto* child = abstract->Child(); child;
+                    child = child->NextSibling)
+                {
+                    if (child->Kind == NK::ArrayDeclarator ||
+                        child->Kind == NK::FunctionDeclarator)
+                    {
+                        return tree.TokenPosition(child->Tokens.Begin);
+                    }
+                }
+                if (!abstract->Tokens.Empty()) {
+                    return AfterToken(tree, abstract->Tokens.End - 1);
+                }
+            }
+        }
+    }
+    auto last = specifiers.Tokens.End;
+    while (last > specifiers.Tokens.Begin &&
+        tree.Kind(last - 1) == TK::Comment)
+    {
+        --last;
+    }
+    return AfterToken(tree, last - 1);
+}
+
 bool IsCommentedName(std::string_view text)
 {
     if (text.starts_with("/*") && text.ends_with("*/")) {
@@ -116,12 +185,26 @@ void CheckFunction(const parser::SyntaxTree& tree, const Node& function,
         if (!parameters || UnsafeSyntax(*declarator)) {
             continue;
         }
+        std::string functionName = function.Kind == NK::FunctionDefinition
+            ? "function definition" : "function declaration";
+        if (auto* name = FunctionName(*declarator)) {
+            functionName += " '" +
+                std::string(tree.SourceText(name->Tokens)) + "'";
+        }
+        const auto first = tree.Token(function.Tokens.Begin);
+        const auto last = tree.Token(signature->Tokens.End - 1);
+        const parser::SourceRange signatureRange{first.Text.Begin, last.Text.End};
+        const auto beginLine = tree.TokenPosition(function.Tokens.Begin).Line;
+        const auto endLine = tree.TokenPosition(signature->Tokens.End - 1).Line;
+        size_t number = 0;
         for (auto* parameter = parameters->Child(); parameter;
             parameter = parameter->NextSibling)
         {
-            if (parameter->Kind != NK::ParameterDeclaration ||
-                parameter->Tokens.Empty() || UnsafeSyntax(*parameter))
-            {
+            if (parameter->Kind != NK::ParameterDeclaration) {
+                continue;
+            }
+            ++number;
+            if (parameter->Tokens.Empty() || UnsafeSyntax(*parameter)) {
                 continue;
             }
             auto* specifiers = Child(*parameter, NK::DeclarationSpecifiers);
@@ -174,7 +257,17 @@ void CheckFunction(const parser::SyntaxTree& tree, const Node& function,
                     continue;
                 }
             }
-            diagnostics.push_back({tree.TokenPosition(begin)});
+            diagnostics.push_back({
+                .Position = NamePosition(tree, *parameter, *specifiers),
+                .Signature = signatureRange,
+                .SignatureBeginLine = beginLine,
+                .SignatureEndLine = endLine,
+                .Function = functionName,
+                .ParameterNumber = number,
+                .AllowCommentedName = function.Kind == NK::FunctionDefinition &&
+                    definitionPolicy == FunctionDefinitionParameterNames::
+                        NameOrCommentedNameRequired,
+            });
         }
     }
 }

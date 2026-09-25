@@ -1,8 +1,11 @@
-2:20
-6:14
-6:19
-7:14
-8:14
-8:19
-9:14
-14:18
+2:23 [2-2]: function definition 'foo', parameter #2
+6:17 [6-6]: function declaration 'missing', parameter #1
+6:23 [6-6]: function declaration 'missing', parameter #2
+7:17 [7-7]: function declaration 'missing', parameter #1
+8:17 [8-8]: function definition 'defined', parameter #1
+8:22 [8-8]: function definition 'defined', parameter #2
+9:21 [9-9]: function declaration 'pointer', parameter #1
+14:21 [14-14]: function definition 'defined_bad', parameter #1
+18:8 [16-18]: function definition 'multiline', parameter #2
+21:16 [21-21]: function declaration 'arrays', parameter #1
+21:25 [21-21]: function declaration 'arrays', parameter #2

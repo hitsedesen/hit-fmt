@@ -201,7 +201,13 @@ TEST_P(ParameterNameGoldenTest, ReportsConfiguredMissingNames)
         config))
     {
         actual += std::to_string(diagnostic.Position.Line) + ":" +
-            std::to_string(diagnostic.Position.Column) + "\n";
+            std::to_string(diagnostic.Position.Column) + " [" +
+            std::to_string(diagnostic.SignatureBeginLine) + "-" +
+            std::to_string(diagnostic.SignatureEndLine) + "]: " +
+            diagnostic.Function + ", parameter #" +
+            std::to_string(diagnostic.ParameterNumber) +
+            (diagnostic.AllowCommentedName ? " (comment allowed)" : "") +
+            "\n";
     }
     EXPECT_EQ(actual, expected);
 }
