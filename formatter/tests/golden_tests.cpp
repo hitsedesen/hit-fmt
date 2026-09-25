@@ -381,6 +381,25 @@ TEST_P(FunctionInnerSpacingGoldenTest, FormatsOnlyParameterListEdges)
 INSTANTIATE_TEST_SUITE_P(Configurations, FunctionInnerSpacingGoldenTest,
     testing::Values("preserve", "space", "no-space", "reflow"));
 
+class CallInnerSpacingGoldenTest : public testing::TestWithParam<std::string>
+{ };
+
+TEST_P(CallInnerSpacingGoldenTest, FormatsOnlyUnambiguousCallEdges)
+{
+    const auto directory = std::filesystem::path(CALL_INNER_SPACING_TESTDATA_DIR);
+    const auto input = ReadFile(directory /
+        (GetParam() == "combined" ? "combined.input.cpp" : "input.cpp"));
+    const auto expected = ReadFile(directory / (GetParam() + ".output.cpp"));
+    const auto style = formatter::LoadConfigFile(
+        directory / (GetParam() + ".hit-fmt")).FormattingStyle;
+
+    EXPECT_EQ(FormatWithStyle(input, style), expected);
+    EXPECT_EQ(FormatWithStyle(expected, style), expected);
+}
+
+INSTANTIATE_TEST_SUITE_P(Configurations, CallInnerSpacingGoldenTest,
+    testing::Values("preserve", "space", "no-space", "combined"));
+
 TEST(BraceSpacingTest, ComposesWithParameterReflow)
 {
     formatter::Style style;
@@ -473,6 +492,7 @@ TEST(PreserveConfigTest, RejectsInvalidSettings)
         "FunctionSpaceBeforeParameters = Unknown\n",
         "FunctionCallSpaceBeforeParameters = Unknown\n",
         "SpaceInsideFunctionParameters = Unknown\n",
+        "SpaceInsideCallArguments = Unknown\n",
         "ControlBlockKeywordSpacing = Unknown\n",
         "ControlBlockBracePlacement = Unknown\n",
         "Exclude = [\"[\"]\n",

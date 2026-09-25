@@ -37,6 +37,7 @@ LambdaSpaceBeforeParameters = Preserve
 FunctionSpaceBeforeParameters = Preserve
 FunctionCallSpaceBeforeParameters = Preserve
 SpaceInsideFunctionParameters = Preserve
+SpaceInsideCallArguments = Preserve
 ControlBlockKeywordSpacing = Preserve
 ControlBlockBracePlacement = Preserve
 StructBraceSpacing = Preserve
@@ -121,6 +122,13 @@ Exclude = ["(^|/)generated(/|$)", "(^|/)legacy\\.cpp$"]
   lambdas, calls, control conditions, and `requires` expressions are
   unaffected. When function parameters are reflowed, `Space` also applies
   to the resulting list's same-line edges.
+- `SpaceInsideCallArguments`: `Preserve` (default) leaves same-line gaps
+  just inside the `(` and `)` of a nonempty parsed call argument list
+  unchanged; `Space` uses one space and `NoSpace` removes it. Empty pairs,
+  newlines, and gaps adjacent to comments or directives remain untouched.
+  Ambiguous parenthesized callees (which may be casts), built-in type
+  casts, declarations, lambda parameters, and control conditions are
+  unaffected. The rule does not change whitespace between arguments.
 - `ControlBlockKeywordSpacing`: `Preserve` (default) leaves whitespace
   between a control keyword and its condition `(` unchanged; `Space` uses
   exactly one space and `NoSpace` removes it. Applies to `if`, `for`,
