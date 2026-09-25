@@ -39,6 +39,8 @@ struct NamingStyle
     NameRule Concept;
     NameRule Variable;
     NameRule Namespace;
+    // Qualified namespace paths; each entry also excludes its descendants.
+    std::vector<std::string> ExemptNamespaces = {"std"};
 };
 
 enum class FunctionDeclarationParameterNames

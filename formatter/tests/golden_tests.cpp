@@ -312,7 +312,7 @@ TEST_P(NamingGoldenTest, ReportsOnlyConfiguredUnambiguousNames)
 }
 
 INSTANTIATE_TEST_SUITE_P(Configurations, NamingGoldenTest,
-    testing::Values("rules", "alternate"));
+    testing::Values("rules", "alternate", "no_exempt"));
 
 TEST(PreserveFormatterTest, KeepsEmptyRecoveryAndBinarySource)
 {
@@ -358,6 +358,9 @@ TEST(PreserveConfigTest, RejectsInvalidSettings)
         "StructNameCase = lowercase\n",
         "ClassNamePrefixes = []\n",
         "EnumNamePrefixes = [\"bad prefix\"]\n",
+        "NamingNamespaceExemptions = [\"std::\"]\n",
+        "NamingNamespaceExemptions = [\"::std\"]\n",
+        "NamingNamespaceExemptions = [\"std:chrono\"]\n",
         "NamespaceNamePrefixes = [\"bad\\nname\"]\n",
     }) {
         save(setting);

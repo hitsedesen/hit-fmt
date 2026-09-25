@@ -11,3 +11,7 @@
 20:11: namespace name 'wrong' has invalid prefix and case
 21:7: variable name 'bad_pointer' has invalid prefix and case
 25:43: variable name 'handler' has invalid prefix and case
+38:28: function name 'BadTemplate' has invalid prefix and case
+41:25: variable name 'BadVariable' has invalid prefix and case
+53:11: namespace name 'standard' has invalid prefix and case
+53:28: class name 'ExternalClass' has invalid prefix and case

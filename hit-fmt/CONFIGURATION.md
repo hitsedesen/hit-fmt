@@ -38,6 +38,7 @@ FunctionBraceSpacing = Preserve
 NamespaceBraceSpacing = Preserve
 StructNameCase = PascalCase
 StructNamePrefixes = ["S", "C"]
+NamingNamespaceExemptions = ["std"]
 VariableNameCase = snake_case
 VariableNamePrefixes = ["m_", "s_"]
 Exclude = ["(^|/)generated(/|$)", "(^|/)legacy\\.cpp$"]
@@ -88,11 +89,20 @@ Exclude = ["(^|/)generated(/|$)", "(^|/)legacy\\.cpp$"]
   `Namespace`. Cases are `camelCase`, `PascalCase`, `snake_case`, and
   `SCREAMING_SNAKE_CASE` (ASCII letters and digits). Prefixes are a nonempty
   array of quoted identifier fragments; at least one must match. The case
-  applies to the name *after* its prefix. Use `[""]` to explicitly allow no prefix. Either check can be
-  enabled independently; omitted checks are disabled. Only unambiguous
-  declarations are checked (including function parameters and local
-  variables), not references, aliases, macros or uncertain declarators.
-  `-i` and ordinary output mode leave names untouched.
+  applies to the name *after* its prefix. Use `[""]` to explicitly allow no
+  prefix. Either check can be enabled independently; omitted checks are
+  disabled. Only unambiguous definitions and variable declarations are
+  checked; forward declarations, function prototypes, explicit template
+  instantiations, references, aliases, macros and uncertain declarators are
+  skipped. Names in function definitions, including parameter names, are
+  checked. `-i` and ordinary output mode leave names untouched.
+- `NamingNamespaceExemptions`: qualified namespace paths excluded from all
+  naming checks, including the namespace name and everything it contains.
+  Defaults to `["std"]`, which also excludes `std::chrono`. Use `[]` to
+  disable exemptions or list other paths such as `"vendor::api"`.
+  Matching uses complete path components (so `std` does not exclude
+  `standard`). These exemptions do not affect formatting or the independent
+  unnamed-function-parameter checks.
 - `FunctionDeclarationParameterNames`: `Unchecked` (default) or
   `Required`. When required, `--check` reports unnamed parameters in
   unambiguous function declarations; a comment does not count as a name.
