@@ -31,6 +31,7 @@ enum class LambdaCaptureSpacing { Preserve, Space, NoSpace };
 enum class FunctionSpaceBeforeParameters { Preserve, Space, NoSpace };
 enum class FunctionCallSpaceBeforeParameters { Preserve, Space, NoSpace };
 enum class SpaceInsideFunctionParameters { Preserve, Space, NoSpace };
+enum class SpaceInsideLambdaParameters { Preserve, Space, NoSpace };
 enum class SpaceInsideCallArguments { Preserve, Space, NoSpace };
 enum class ControlBlockKeywordSpacing { Preserve, Space, NoSpace };
 enum class ControlBlockBracePlacement
@@ -79,6 +80,8 @@ struct Style
         formatter::FunctionCallSpaceBeforeParameters::Preserve;
     formatter::SpaceInsideFunctionParameters SpaceInsideFunctionParameters =
         formatter::SpaceInsideFunctionParameters::Preserve;
+    formatter::SpaceInsideLambdaParameters SpaceInsideLambdaParameters =
+        formatter::SpaceInsideLambdaParameters::Preserve;
     formatter::SpaceInsideCallArguments SpaceInsideCallArguments =
         formatter::SpaceInsideCallArguments::Preserve;
     SameLineBraceSpacing StructBraceSpacing = SameLineBraceSpacing::Preserve;

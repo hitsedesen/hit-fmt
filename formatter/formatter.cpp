@@ -54,6 +54,7 @@ public:
         , Placements_(tree.TokenCount(), BracePlacement::Preserve)
         , Spacings_(tree.TokenCount(), SameLineBraceSpacing::Preserve)
         , LambdaGaps_(tree.TokenCount(), false)
+        , LambdaParameterInsideGaps_(tree.TokenCount(), false)
         , CaptureGaps_(tree.TokenCount(), LambdaCaptureSpacing::Preserve)
         , FunctionGaps_(tree.TokenCount(), false)
         , CallGaps_(tree.TokenCount(), false)
@@ -78,6 +79,8 @@ public:
             style.NamespaceBraceSpacing != SameLineBraceSpacing::Preserve ||
             style.LambdaSpaceBeforeParameters !=
                 LambdaSpaceBeforeParameters::Preserve ||
+            style.SpaceInsideLambdaParameters !=
+                SpaceInsideLambdaParameters::Preserve ||
             style.SpaceAroundCaptureList !=
                 LambdaCaptureSpacing::Preserve ||
             style.SpaceAroundCaptureAssignment !=
@@ -264,30 +267,7 @@ private:
             MarkCaptureGaps(node);
             break;
         case NK::LambdaExpression:
-            if (Style_.LambdaSpaceBeforeParameters !=
-                LambdaSpaceBeforeParameters::Preserve)
-            {
-                auto* capture = node.Child();
-                auto* parameters = capture ? capture->NextSibling : nullptr;
-                if (capture && capture->Kind == NK::LambdaCaptureList &&
-                    parameters && parameters->Kind == NK::ParameterList &&
-                    !capture->Tokens.Empty() &&
-                    !parameters->Tokens.Empty())
-                {
-                    auto closing = capture->Tokens.End - 1;
-                    auto opening = parameters->Tokens.Begin;
-                    if (opening == closing + 1 &&
-                        Tree_.Kind(closing) == TK::Operator_CloseBracket &&
-                        Tree_.Kind(opening) == TK::Operator_OpenParenthesis &&
-                        Tree_.MatchingDelimiter(capture->Tokens.Begin) ==
-                            closing &&
-                        Tree_.MatchingDelimiter(opening) ==
-                            parameters->Tokens.End - 1)
-                    {
-                        LambdaGaps_[opening] = true;
-                    }
-                }
-            }
+            MarkLambdaParameterGaps(node);
             break;
         case NK::LambdaBody:
             MarkOpening(node, Style_.LambdaBracePlacement,
@@ -296,6 +276,81 @@ private:
             break;
         default:
             break;
+        }
+    }
+
+    void MarkLambdaParameterGaps(const parser::Node& lambda)
+    {
+        if (Style_.LambdaSpaceBeforeParameters ==
+                LambdaSpaceBeforeParameters::Preserve &&
+            Style_.SpaceInsideLambdaParameters ==
+                SpaceInsideLambdaParameters::Preserve)
+        {
+            return;
+        }
+        const auto* capture = lambda.Child();
+        const auto* parameters = capture ? capture->NextSibling : nullptr;
+        if (parameters && parameters->Kind == NK::TemplateParameterList) {
+            parameters = parameters->NextSibling;
+        }
+        if (!capture || capture->Kind != NK::LambdaCaptureList ||
+            capture->Tokens.Empty() || !parameters ||
+            parameters->Kind != NK::ParameterList ||
+            parameters->Tokens.Empty())
+        {
+            return;
+        }
+        const auto bracket = capture->Tokens.End - 1;
+        const auto opening = parameters->Tokens.Begin;
+        const auto closing = parameters->Tokens.End - 1;
+        if (opening <= bracket ||
+            Tree_.Kind(bracket) != TK::Operator_CloseBracket ||
+            Tree_.Kind(opening) != TK::Operator_OpenParenthesis ||
+            Tree_.MatchingDelimiter(capture->Tokens.Begin) != bracket ||
+            Tree_.MatchingDelimiter(opening) != closing)
+        {
+            return;
+        }
+        if (opening == bracket + 1 &&
+            Style_.LambdaSpaceBeforeParameters !=
+                LambdaSpaceBeforeParameters::Preserve)
+        {
+            LambdaGaps_[opening] = true;
+        }
+        if (Style_.SpaceInsideLambdaParameters ==
+                SpaceInsideLambdaParameters::Preserve ||
+            opening + 1 == closing)
+        {
+            return; // Empty parameter pairs remain source-owned.
+        }
+        const auto* first = parameters->Child();
+        const auto* last = first;
+        bool expectParameter = true;
+        for (auto* child = first; child; child = child->NextSibling) {
+            if (child->Tokens.Empty() ||
+                child->Kind != (expectParameter ? NK::ParameterDeclaration
+                                                 : NK::ListSeparator))
+            {
+                return;
+            }
+            expectParameter = !expectParameter;
+            last = child;
+        }
+        if (!first || !last || expectParameter ||
+            first->Tokens.Begin != opening + 1 ||
+            last->Tokens.End != closing)
+        {
+            return; // Incomplete lists remain source-owned.
+        }
+        if (Tree_.Kind(opening + 1) != TK::Comment &&
+            Tree_.Kind(opening + 1) != TK::PreprocessingDirective)
+        {
+            LambdaParameterInsideGaps_[opening + 1] = true;
+        }
+        if (Tree_.Kind(closing - 1) != TK::Comment &&
+            Tree_.Kind(closing - 1) != TK::PreprocessingDirective)
+        {
+            LambdaParameterInsideGaps_[closing] = true;
         }
     }
 
@@ -767,6 +822,16 @@ private:
             }
             return;
         }
+        if (LambdaParameterInsideGaps_[index] &&
+            gap.find_first_not_of(" \t") == std::string_view::npos)
+        {
+            if (Style_.SpaceInsideLambdaParameters ==
+                SpaceInsideLambdaParameters::Space)
+            {
+                Output_.push_back(' ');
+            }
+            return;
+        }
         if (ParameterInsideGaps_[index] &&
             gap.find_first_not_of(" \t") == std::string_view::npos)
         {
@@ -839,6 +904,7 @@ private:
     std::vector<BracePlacement> Placements_;
     std::vector<SameLineBraceSpacing> Spacings_;
     std::vector<bool> LambdaGaps_;
+    std::vector<bool> LambdaParameterInsideGaps_;
     std::vector<LambdaCaptureSpacing> CaptureGaps_;
     std::vector<bool> FunctionGaps_;
     std::vector<bool> CallGaps_;
@@ -1246,6 +1312,8 @@ std::string Format(const parser::SyntaxTree& tree, const Style& style)
         style.NamespaceBraceSpacing == SameLineBraceSpacing::Preserve &&
         style.LambdaSpaceBeforeParameters ==
             LambdaSpaceBeforeParameters::Preserve &&
+        style.SpaceInsideLambdaParameters ==
+            SpaceInsideLambdaParameters::Preserve &&
         style.SpaceAroundCaptureList ==
             LambdaCaptureSpacing::Preserve &&
         style.SpaceAroundCaptureAssignment ==
