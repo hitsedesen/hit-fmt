@@ -4,6 +4,7 @@ target_link_libraries(formatter-tests
     GTest::gtest_main
     lib-formatter)
 target_compile_definitions(formatter-tests PRIVATE
-    FORMATTER_TESTDATA_DIR="${CMAKE_CURRENT_SOURCE_DIR}/testdata/style")
+    FORMATTER_TESTDATA_DIR="${CMAKE_CURRENT_SOURCE_DIR}/testdata/style"
+    BRACE_TESTDATA_DIR="${CMAKE_CURRENT_SOURCE_DIR}/testdata/brace-placement")
 
 gtest_discover_tests(formatter-tests)

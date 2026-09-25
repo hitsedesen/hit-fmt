@@ -71,6 +71,23 @@ size_t ParsePositiveInteger(
     return result;
 }
 
+BracePlacement ParseBracePlacement(
+    std::string_view value,
+    const std::filesystem::path& path,
+    size_t line)
+{
+    if (value == "Preserve") {
+        return BracePlacement::Preserve;
+    }
+    if (value == "Attach") {
+        return BracePlacement::Attach;
+    }
+    if (value == "NewLine") {
+        return BracePlacement::NewLine;
+    }
+    ThrowConfigError(path, line, "expected Preserve, Attach or NewLine");
+}
+
 std::string ParseString(
     std::string_view value,
     const std::filesystem::path& path,
@@ -177,6 +194,24 @@ void ApplySetting(
         if (config.FormattingStyle.ColumnLimit > 10000) {
             ThrowConfigError(path, line, "ColumnLimit must not exceed 10000");
         }
+    } else if (key == "ClassBracePlacement") {
+        config.FormattingStyle.ClassBracePlacement =
+            ParseBracePlacement(value, path, line);
+    } else if (key == "StructBracePlacement") {
+        config.FormattingStyle.StructBracePlacement =
+            ParseBracePlacement(value, path, line);
+    } else if (key == "UnionBracePlacement") {
+        config.FormattingStyle.UnionBracePlacement =
+            ParseBracePlacement(value, path, line);
+    } else if (key == "FunctionBracePlacement") {
+        config.FormattingStyle.FunctionBracePlacement =
+            ParseBracePlacement(value, path, line);
+    } else if (key == "LambdaBracePlacement") {
+        config.FormattingStyle.LambdaBracePlacement =
+            ParseBracePlacement(value, path, line);
+    } else if (key == "NamespaceBracePlacement") {
+        config.FormattingStyle.NamespaceBracePlacement =
+            ParseBracePlacement(value, path, line);
     } else if (key == "Exclude") {
         config.Exclusions.clear();
         for (const auto& pattern : ParseStringList(value, path, line)) {

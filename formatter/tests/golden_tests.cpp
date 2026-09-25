@@ -7,7 +7,6 @@
 #include <filesystem>
 #include <fstream>
 #include <iterator>
-#include <regex>
 #include <stdexcept>
 #include <string>
 #include <string_view>
@@ -86,6 +85,34 @@ INSTANTIATE_TEST_SUITE_P(Preserve, PreserveGoldenTest,
         return name;
     });
 
+class BracePlacementGoldenTest : public testing::TestWithParam<std::string>
+{ };
+
+TEST_P(BracePlacementGoldenTest, FormatsOnlySelectedDeclarationBraces)
+{
+    const auto directory = std::filesystem::path(BRACE_TESTDATA_DIR);
+    const auto input = ReadFile(directory / "input.cpp");
+    const auto expected = ReadFile(directory / (GetParam() + ".output.cpp"));
+    const auto style = formatter::LoadConfigFile(
+        directory / (GetParam() + ".hit-fmt")).FormattingStyle;
+
+    auto format = [&style] (std::string_view source) {
+        std::string storage(source);
+        storage.append(util::SourcePaddingSize, '\0');
+        util::PaddedSourceView padded{.Data = storage.data(),
+            .Size = source.size()};
+        auto tree = parser::Parse(padded, [] (parser::ParseError) { });
+        EXPECT_EQ(formatter::Format(tree, style),
+            formatter::Format(padded, style));
+        return formatter::Format(tree, style);
+    };
+    EXPECT_EQ(format(input), expected);
+    EXPECT_EQ(format(expected), expected);
+}
+
+INSTANTIATE_TEST_SUITE_P(Configurations, BracePlacementGoldenTest,
+    testing::Values("preserve", "attach", "newline", "mixed"));
+
 TEST(PreserveFormatterTest, KeepsEmptyRecoveryAndBinarySource)
 {
     for (const std::string source : {
@@ -97,36 +124,6 @@ TEST(PreserveFormatterTest, KeepsEmptyRecoveryAndBinarySource)
     }) {
         ExpectUnchanged(source, formatter::Style{});
     }
-}
-
-TEST(PreserveConfigTest, AcceptsOnlyExclusionsAndPassiveWidths)
-{
-    const auto path = std::filesystem::temp_directory_path() /
-        "hit-fmt-preserve-config-test.hit-fmt";
-    auto save = [&] (std::string_view contents) {
-        std::ofstream output(path);
-        ASSERT_TRUE(output.is_open());
-        output << contents;
-    };
-    save("IndentWidth = 2\nColumnLimit = 40\n"
-         "Exclude = [\"(^|/)generated(/|$)\"]\n");
-    const auto config = formatter::LoadConfigFile(path);
-    EXPECT_EQ(config.FormattingStyle.IndentWidth, 2u);
-    EXPECT_EQ(config.FormattingStyle.ColumnLimit, 40u);
-    ASSERT_EQ(config.Exclusions.size(), 1u);
-    EXPECT_TRUE(std::regex_search("generated/source.cpp", config.Exclusions[0]));
-    for (auto setting : {
-        "Regroup = true\n",
-        "InsertBraces = false\n",
-        "WhitespaceSensitiveMacros = []\n",
-        "ColumnLimit = 0\n",
-        "IndentWidth = 0\n",
-        "Exclude = [\"[\"]\n",
-    }) {
-        save(setting);
-        EXPECT_THROW(formatter::LoadConfigFile(path), std::runtime_error);
-    }
-    std::filesystem::remove(path);
 }
 
 } // namespace

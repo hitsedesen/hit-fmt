@@ -8,15 +8,26 @@
 
 namespace formatter {
 
-// Retained configuration dimensions. Neither one changes source text.
+enum class BracePlacement
+{
+    Preserve,
+    Attach,
+    NewLine,
+};
+
 struct Style
 {
     size_t IndentWidth = 4;
     size_t ColumnLimit = 120;
+    BracePlacement ClassBracePlacement = BracePlacement::Preserve;
+    BracePlacement StructBracePlacement = BracePlacement::Preserve;
+    BracePlacement UnionBracePlacement = BracePlacement::Preserve;
+    BracePlacement FunctionBracePlacement = BracePlacement::Preserve;
+    BracePlacement LambdaBracePlacement = BracePlacement::Preserve;
+    BracePlacement NamespaceBracePlacement = BracePlacement::Preserve;
 };
 
-// Parse and emit every token and trivia span without changing their bytes,
-// including comments, line endings, and invalid syntax.
+// Preserve source-owned spans except for configured declaration brace trivia.
 [[nodiscard]] std::string Format(const parser::SyntaxTree& tree, const Style& style);
 [[nodiscard]] std::string Format(const parser::SyntaxTree& tree);
 [[nodiscard]] std::string Format(util::PaddedSourceView source, const Style& style);
