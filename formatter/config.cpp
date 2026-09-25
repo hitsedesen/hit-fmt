@@ -424,6 +424,21 @@ void ApplySetting(
     } else if (key == "LambdaBraceSpacing") {
         config.FormattingStyle.LambdaBraceSpacing =
             ParseSameLineBraceSpacing(value, path, line);
+    } else if (key == "FunctionCallSpaceBeforeParameters") {
+        value = ParseOption(value, path, line);
+        if (value == "Preserve") {
+            config.FormattingStyle.FunctionCallSpaceBeforeParameters =
+                FunctionCallSpaceBeforeParameters::Preserve;
+        } else if (value == "Space") {
+            config.FormattingStyle.FunctionCallSpaceBeforeParameters =
+                FunctionCallSpaceBeforeParameters::Space;
+        } else if (value == "NoSpace") {
+            config.FormattingStyle.FunctionCallSpaceBeforeParameters =
+                FunctionCallSpaceBeforeParameters::NoSpace;
+        } else {
+            ThrowConfigError(path, line,
+                "expected Preserve, Space or NoSpace");
+        }
     } else if (key == "FunctionSpaceBeforeParameters") {
         value = ParseOption(value, path, line);
         if (value == "Preserve") {

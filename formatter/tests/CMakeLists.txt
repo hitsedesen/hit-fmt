@@ -10,6 +10,7 @@ target_compile_definitions(formatter-tests PRIVATE
     LAMBDA_SPACING_TESTDATA_DIR="${CMAKE_CURRENT_SOURCE_DIR}/testdata/lambda-spacing"
     CONTROL_SPACING_TESTDATA_DIR="${CMAKE_CURRENT_SOURCE_DIR}/testdata/control-keyword-spacing"
     FUNCTION_SPACING_TESTDATA_DIR="${CMAKE_CURRENT_SOURCE_DIR}/testdata/function-spacing"
+    FUNCTION_CALL_SPACING_TESTDATA_DIR="${CMAKE_CURRENT_SOURCE_DIR}/testdata/function-call-spacing"
     CONTROL_BRACE_TESTDATA_DIR="${CMAKE_CURRENT_SOURCE_DIR}/testdata/control-brace-placement"
     NAMING_TESTDATA_DIR="${CMAKE_CURRENT_SOURCE_DIR}/testdata/naming")
 
