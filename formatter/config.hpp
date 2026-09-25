@@ -45,6 +45,7 @@ struct Configuration
 {
     Style FormattingStyle;
     NamingStyle Naming;
+    bool CheckFunctionParameterNames = false;
     std::vector<std::regex> Exclusions;
 };
 

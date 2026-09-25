@@ -1,7 +1,8 @@
 add_library(lib-formatter STATIC
     config.cpp
     formatter.cpp
-    naming.cpp)
+    naming.cpp
+    parameter_names.cpp)
 target_include_directories(lib-formatter
     PUBLIC ${CMAKE_SOURCE_DIR})
 target_include_directories(lib-formatter

@@ -376,6 +376,8 @@ void ApplySetting(
     } else if (key == "NamespaceBraceSpacing") {
         config.FormattingStyle.NamespaceBraceSpacing =
             ParseSameLineBraceSpacing(value, path, line);
+    } else if (key == "CheckFunctionParameterNames") {
+        config.CheckFunctionParameterNames = ParseBoolean(value, path, line);
     } else if (key == "Exclude") {
         config.Exclusions.clear();
         for (const auto& pattern : ParseStringList(value, path, line)) {

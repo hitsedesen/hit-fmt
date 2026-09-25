@@ -1,6 +1,7 @@
 #include <formatter/config.hpp>
 #include <formatter/formatter.hpp>
 #include <formatter/naming.hpp>
+#include <formatter/parameter_names.hpp>
 
 #include <gtest/gtest.h>
 
@@ -178,6 +179,35 @@ TEST_P(NamespaceCommentGoldenTest, MatchesConfiguredOutput)
 INSTANTIATE_TEST_SUITE_P(Configurations, NamespaceCommentGoldenTest,
     testing::Values("preserve", "remove", "required", "required_newline",
         "crlf_required"));
+
+class ParameterNameGoldenTest : public testing::TestWithParam<std::string>
+{ };
+
+TEST_P(ParameterNameGoldenTest, ReportsConfiguredMissingNames)
+{
+    const auto directory = std::filesystem::path(FORMATTER_TESTDATA_DIR) /
+        "../parameter_names";
+    const auto input = ReadFile(directory / "input.cpp");
+    const auto expected = ReadFile(directory / (GetParam() + ".expected"));
+    const auto config = formatter::LoadConfigFile(
+        directory / (GetParam() + ".hit-fmt"));
+    std::string storage(input);
+    storage.append(util::SourcePaddingSize, '\0');
+    const auto tree = parser::Parse(
+        {.Data = storage.data(), .Size = input.size()},
+        [] (parser::ParseError) { });
+    std::string actual;
+    if (config.CheckFunctionParameterNames) {
+        for (const auto& diagnostic : formatter::CheckParameterNames(tree)) {
+            actual += std::to_string(diagnostic.Position.Line) + ":" +
+                std::to_string(diagnostic.Position.Column) + "\n";
+        }
+    }
+    EXPECT_EQ(actual, expected);
+}
+
+INSTANTIATE_TEST_SUITE_P(Configurations, ParameterNameGoldenTest,
+    testing::Values("enabled", "disabled", "default"));
 
 TEST(FunctionParameterSafetyTest, ComposesWithBracePlacement)
 {
