@@ -487,6 +487,148 @@ std::optional<Replacement> ReflowParameters(
     return Replacement{begin, end, std::move(result)};
 }
 
+// Build comments only for unambiguous namespace headers and matched braces.
+// Never infer a name from a recovered declaration or a namespace alias.
+std::optional<std::pair<TokenIndex, std::string>> NamespaceClosing(
+    const parser::SyntaxTree& tree, const parser::Node& node)
+{
+    TokenIndex opening = NoToken;
+    std::string name;
+    bool expectName = true;
+    for (auto index = node.Tokens.Begin; index < node.Tokens.End; ++index) {
+        auto kind = tree.Kind(index);
+        if (kind == TK::Keyword_namespace && index == node.Tokens.Begin) {
+            continue;
+        }
+        if (kind == TK::Operator_OpenBrace) {
+            opening = index;
+            break;
+        }
+        if (kind == TK::Comment) {
+            continue;
+        }
+        if (kind == TK::Keyword_inline && expectName) {
+            continue;
+        }
+        if (kind == TK::Identifier && expectName) {
+            name += tree.TokenText(index);
+            expectName = false;
+        } else if (kind == TK::Operator_ScopeResolution && !expectName) {
+            name += "::";
+            expectName = true;
+        } else {
+            return std::nullopt;
+        }
+    }
+    if (opening == NoToken || (expectName && !name.empty())) {
+        return std::nullopt;
+    }
+    auto closing = tree.MatchingDelimiter(opening);
+    if (closing == NoToken || closing >= node.Tokens.End ||
+        tree.Kind(closing) != TK::Operator_CloseBrace)
+    {
+        return std::nullopt;
+    }
+    return std::pair{closing, std::move(name)};
+}
+
+std::string FormatNamespaceComments(
+    const parser::SyntaxTree& tree, NamespaceComments policy)
+{
+    std::vector<Replacement> edits;
+    std::vector<const parser::Node*> nodes{&tree.Root()};
+    auto source = tree.Source();
+    while (!nodes.empty()) {
+        auto* node = nodes.back();
+        nodes.pop_back();
+        if (node->Kind == NK::NamespaceDeclaration) {
+            if (auto closing = NamespaceClosing(tree, *node)) {
+                auto index = closing->first;
+                auto begin = tree.Token(index).Text.End;
+                auto next = index + 1;
+                auto gap = tree.WhitespaceAfter(index);
+                bool sameLine = gap.find_first_of("\r\n") ==
+                    std::string_view::npos;
+                bool lineComment = sameLine && next < tree.TokenCount() &&
+                    tree.Kind(next) == TK::Comment &&
+                    tree.TokenText(next).starts_with("//");
+                if (lineComment) {
+                    auto end = tree.Token(next).Text.End;
+                    // Line-comment tokens may include the CR of CRLF.
+                    if (end > begin && end < source.size() &&
+                        source[end - 1] == '\r' && source[end] == '\n')
+                    {
+                        --end;
+                    }
+                    while (end < source.size() &&
+                        (source[end] == ' ' || source[end] == '\t'))
+                    {
+                        ++end;
+                    }
+                    std::string replacement = policy == NamespaceComments::Remove
+                        ? "" : " // namespace" +
+                            (closing->second.empty() ? "" : " " + closing->second);
+                    if (source.substr(begin, end - begin) != replacement) {
+                        edits.push_back({begin, end, std::move(replacement)});
+                    }
+                } else if (policy == NamespaceComments::Required &&
+                    (next == tree.TokenCount() || !sameLine ||
+                        tree.Kind(next) != TK::Comment))
+                {
+                    std::string replacement = " // namespace";
+                    if (!closing->second.empty()) {
+                        replacement += " " + closing->second;
+                    }
+                    if (sameLine && next < tree.TokenCount()) {
+                        // A line comment must not swallow the next token.
+                        auto line = source.rfind('\n', begin);
+                        auto start = line == std::string_view::npos ? 0 : line + 1;
+                        auto prefix = source.substr(start,
+                            tree.Token(index).Text.Begin - start);
+                        auto newline = source.rfind('\n', begin);
+                        if (newline == std::string_view::npos) {
+                            newline = source.find('\n', begin);
+                        }
+                        replacement += newline != std::string_view::npos &&
+                                newline != 0 && source[newline - 1] == '\r'
+                            ? "\r\n" : "\n";
+                        if (prefix.find_first_not_of(" \t") ==
+                            std::string_view::npos)
+                        {
+                            replacement += prefix;
+                        }
+                        edits.push_back({begin, begin + gap.size(),
+                            std::move(replacement)});
+                    } else {
+                        auto lineEnd = gap.find_first_of("\r\n");
+                        edits.push_back({begin,
+                            begin + (lineEnd == std::string_view::npos
+                                ? gap.size() : lineEnd),
+                            std::move(replacement)});
+                    }
+                }
+            }
+        }
+        for (auto* child = node->Child(); child; child = child->NextSibling) {
+            nodes.push_back(child);
+        }
+    }
+    std::ranges::sort(edits, {}, &Replacement::Begin);
+    std::string output;
+    output.reserve(source.size());
+    size_t cursor = 0;
+    for (const auto& edit : edits) {
+        if (edit.Begin < cursor) {
+            continue;
+        }
+        output.append(source.substr(cursor, edit.Begin - cursor));
+        output += edit.Text;
+        cursor = edit.End;
+    }
+    output.append(source.substr(cursor));
+    return output;
+}
+
 std::string FormatParameters(const parser::SyntaxTree& tree, const Style& style)
 {
     if (style.FunctionParameterSplit == FunctionParameterSplit::Preserve) {
@@ -532,9 +674,6 @@ std::string FormatParameters(const parser::SyntaxTree& tree, const Style& style)
 
 std::string Format(const parser::SyntaxTree& tree, const Style& style)
 {
-    if (style.FunctionParameterSplit == FunctionParameterSplit::Preserve) {
-        return Formatter(tree, style).Run();
-    }
     const bool bracesPreserved =
         style.ClassBracePlacement == BracePlacement::Preserve &&
         style.StructBracePlacement == BracePlacement::Preserve &&
@@ -549,18 +688,36 @@ std::string Format(const parser::SyntaxTree& tree, const Style& style)
         style.UnionBraceSpacing == SameLineBraceSpacing::Preserve &&
         style.FunctionBraceSpacing == SameLineBraceSpacing::Preserve &&
         style.NamespaceBraceSpacing == SameLineBraceSpacing::Preserve;
-    if (bracesPreserved) {
-        return FormatParameters(tree, style);
+    std::string formatted;
+    if (style.FunctionParameterSplit == FunctionParameterSplit::Preserve) {
+        formatted = Formatter(tree, style).Run();
+    } else if (bracesPreserved) {
+        formatted = FormatParameters(tree, style);
+    } else {
+        auto braced = Formatter(tree, style).Run();
+        if (braced == tree.Source()) {
+            formatted = FormatParameters(tree, style);
+        } else {
+            auto length = braced.size();
+            braced.append(util::SourcePaddingSize, '\0');
+            auto bracedTree = parser::Parse(
+                {.Data = braced.data(), .Size = length},
+                [] (parser::ParseError) { });
+            formatted = FormatParameters(bracedTree, style);
+        }
     }
-    auto braced = Formatter(tree, style).Run();
-    if (braced == tree.Source()) {
-        return FormatParameters(tree, style);
+    if (style.NamespaceComments == NamespaceComments::Preserve) {
+        return formatted;
     }
-    auto length = braced.size();
-    braced.append(util::SourcePaddingSize, '\0');
-    auto bracedTree = parser::Parse({.Data = braced.data(), .Size = length},
+    if (formatted == tree.Source()) {
+        return FormatNamespaceComments(tree, style.NamespaceComments);
+    }
+    auto length = formatted.size();
+    formatted.append(util::SourcePaddingSize, '\0');
+    auto finalTree = parser::Parse(
+        {.Data = formatted.data(), .Size = length},
         [] (parser::ParseError) { });
-    return FormatParameters(bracedTree, style);
+    return FormatNamespaceComments(finalTree, style.NamespaceComments);
 }
 
 std::string Format(const parser::SyntaxTree& tree)

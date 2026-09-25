@@ -250,6 +250,17 @@ void ApplySetting(
     } else if (key == "NamespaceBracePlacement") {
         config.FormattingStyle.NamespaceBracePlacement =
             ParseBracePlacement(value, path, line);
+    } else if (key == "NamespaceComments") {
+        value = ParseOption(value, path, line);
+        if (value == "Preserve") {
+            config.FormattingStyle.NamespaceComments = NamespaceComments::Preserve;
+        } else if (value == "Remove") {
+            config.FormattingStyle.NamespaceComments = NamespaceComments::Remove;
+        } else if (value == "Required") {
+            config.FormattingStyle.NamespaceComments = NamespaceComments::Required;
+        } else {
+            ThrowConfigError(path, line, "invalid NamespaceComments");
+        }
     } else if (key == "FunctionParameterSplit") {
         value = ParseOption(value, path, line);
         if (value == "Preserve") {
