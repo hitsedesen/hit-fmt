@@ -1,0 +1,6 @@
+ClassBracePlacement = NewLine
+StructBracePlacement = NewLine
+UnionBracePlacement = NewLine
+FunctionBracePlacement = NewLine
+LambdaBracePlacement = NewLine
+NamespaceBracePlacement = NewLine

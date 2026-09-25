@@ -1,0 +1,6 @@
+ClassBracePlacement = Attach
+StructBracePlacement = Attach
+UnionBracePlacement = Attach
+FunctionBracePlacement = Attach
+LambdaBracePlacement = Attach
+NamespaceBracePlacement = Attach
