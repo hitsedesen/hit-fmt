@@ -439,6 +439,21 @@ void ApplySetting(
             ThrowConfigError(path, line,
                 "expected Preserve, Space or NoSpace");
         }
+    } else if (key == "SpaceInsideFunctionParameters") {
+        value = ParseOption(value, path, line);
+        if (value == "Preserve") {
+            config.FormattingStyle.SpaceInsideFunctionParameters =
+                SpaceInsideFunctionParameters::Preserve;
+        } else if (value == "Space") {
+            config.FormattingStyle.SpaceInsideFunctionParameters =
+                SpaceInsideFunctionParameters::Space;
+        } else if (value == "NoSpace") {
+            config.FormattingStyle.SpaceInsideFunctionParameters =
+                SpaceInsideFunctionParameters::NoSpace;
+        } else {
+            ThrowConfigError(path, line,
+                "expected Preserve, Space or NoSpace");
+        }
     } else if (key == "FunctionSpaceBeforeParameters") {
         value = ParseOption(value, path, line);
         if (value == "Preserve") {

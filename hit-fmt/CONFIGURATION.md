@@ -2,7 +2,7 @@
 
 The formatter preserves source-owned token and trivia bytes except where an
 explicitly configured declaration brace, lambda capture-to-parameter
-spacing, function or call spacing, control keyword spacing or brace
+spacing, function parameter or call spacing, control keyword spacing or brace
 placement, namespace comment, or function parameter rule applies.
 All formatting rules default to preserving the source.
 Naming rules default to unchecked and never rewrite identifiers; `--check`
@@ -36,6 +36,7 @@ LambdaBraceSpacing = Preserve
 LambdaSpaceBeforeParameters = Preserve
 FunctionSpaceBeforeParameters = Preserve
 FunctionCallSpaceBeforeParameters = Preserve
+SpaceInsideFunctionParameters = Preserve
 ControlBlockKeywordSpacing = Preserve
 ControlBlockBracePlacement = Preserve
 StructBraceSpacing = Preserve
@@ -113,6 +114,13 @@ Exclude = ["(^|/)generated(/|$)", "(^|/)legacy\\.cpp$"]
   is clearly callable (such as `(*fn)(arg)`).
   The setting controls the gap *before* the argument list, not whitespace
   between individual arguments.
+- `SpaceInsideFunctionParameters`: `Preserve` (default) leaves gaps just
+  inside the `(` and `)` of a named function's nonempty parameter list
+  unchanged; `Space` uses one space and `NoSpace` removes it. Newlines,
+  adjacent comments, and directives are preserved. Empty `()` pairs,
+  lambdas, calls, control conditions, and `requires` expressions are
+  unaffected. When function parameters are reflowed, `Space` also applies
+  to the resulting list's same-line edges.
 - `ControlBlockKeywordSpacing`: `Preserve` (default) leaves whitespace
   between a control keyword and its condition `(` unchanged; `Space` uses
   exactly one space and `NoSpace` removes it. Applies to `if`, `for`,
