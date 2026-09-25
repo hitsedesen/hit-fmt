@@ -80,7 +80,7 @@ void PrintParameterDiagnostics(
     std::span<const formatter::ParameterNameDiagnostic> diagnostics)
 {
     const auto& first = diagnostics.front();
-    std::cout << "parameter name mismatch: unnamed parameter";
+    std::cout << "fail: unnamed parameter";
     if (diagnostics.size() != 1) {
         std::cout << 's';
     }
