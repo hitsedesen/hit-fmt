@@ -2,9 +2,9 @@
 
 The formatter preserves source-owned token and trivia bytes except where an
 explicitly configured declaration brace, lambda capture-to-parameter
-spacing, control keyword spacing or brace placement, namespace comment,
-or function parameter rule applies. All formatting rules default to
-preserving the source.
+spacing, function name-to-parameter spacing, control keyword spacing or
+brace placement, namespace comment, or function parameter rule applies.
+All formatting rules default to preserving the source.
 Naming rules default to unchecked and never rewrite identifiers; `--check`
 reports violations with file, line and column and returns a nonzero status.
 
@@ -34,6 +34,7 @@ FunctionDefinitionParameterNames = Unchecked
 ClassBraceSpacing = Preserve
 LambdaBraceSpacing = Preserve
 LambdaSpaceBeforeParameters = Preserve
+FunctionSpaceBeforeParameters = Preserve
 ControlBlockKeywordSpacing = Preserve
 ControlBlockBracePlacement = Preserve
 StructBraceSpacing = Preserve
@@ -94,6 +95,13 @@ Exclude = ["(^|/)generated(/|$)", "(^|/)legacy\\.cpp$"]
   inserts exactly one space and `NoSpace` removes it. Newlines and
   intervening comments or directives are left unchanged. Calls and other
   parenthesized expressions are unaffected.
+- `FunctionSpaceBeforeParameters`: `Preserve` (default) leaves the gap
+  between a named function declarator and its parameter `(` unchanged;
+  `Space` inserts one space, and `NoSpace` removes it. Applies to function
+  declarations and definitions, including constructors, destructors, and
+  operators. Newlines, comments, and directives remain unchanged. Calls,
+  lambdas, control conditions, and function-pointer declarations are
+  unaffected.
 - `ControlBlockKeywordSpacing`: `Preserve` (default) leaves whitespace
   between a control keyword and its condition `(` unchanged; `Space` uses
   exactly one space and `NoSpace` removes it. Applies to `if`, `for`,

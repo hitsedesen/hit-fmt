@@ -32,6 +32,7 @@ public:
         , Placements_(tree.TokenCount(), BracePlacement::Preserve)
         , Spacings_(tree.TokenCount(), SameLineBraceSpacing::Preserve)
         , LambdaGaps_(tree.TokenCount(), false)
+        , FunctionGaps_(tree.TokenCount(), false)
         , ControlGaps_(tree.TokenCount(), false)
         , ControlBraces_(tree.TokenCount(), false)
     {
@@ -51,6 +52,8 @@ public:
             style.NamespaceBraceSpacing != SameLineBraceSpacing::Preserve ||
             style.LambdaSpaceBeforeParameters !=
                 LambdaSpaceBeforeParameters::Preserve ||
+            style.FunctionSpaceBeforeParameters !=
+                FunctionSpaceBeforeParameters::Preserve ||
             style.ControlBlockKeywordSpacing !=
                 ControlBlockKeywordSpacing::Preserve ||
             style.ControlBlockBracePlacement !=
@@ -211,6 +214,9 @@ private:
             MarkControlGap(node);
             MarkControlBraces(node);
             break;
+        case NK::Declarator:
+            MarkFunctionGap(node);
+            break;
         case NK::LambdaExpression:
             if (Style_.LambdaSpaceBeforeParameters !=
                 LambdaSpaceBeforeParameters::Preserve)
@@ -245,6 +251,52 @@ private:
         default:
             break;
         }
+    }
+
+    void MarkFunctionGap(const parser::Node& declarator)
+    {
+        if (Style_.FunctionSpaceBeforeParameters ==
+            FunctionSpaceBeforeParameters::Preserve)
+        {
+            return;
+        }
+        bool named = false;
+        const parser::Node* parameters = nullptr;
+        for (auto* child = declarator.Child(); child;
+            child = child->NextSibling)
+        {
+            if (child->Kind == NK::DeclaratorName ||
+                child->Kind == NK::DestructorName ||
+                child->Kind == NK::OperatorFunctionName)
+            {
+                named = true;
+            } else if (child->Kind == NK::FunctionDeclarator) {
+                for (auto* list = child->Child(); list;
+                    list = list->NextSibling)
+                {
+                    if (list->Kind == NK::ParameterList) {
+                        parameters = list;
+                        break;
+                    }
+                }
+            }
+        }
+        if (!named || !parameters || parameters->Tokens.Empty()) {
+            return;
+        }
+        auto opening = parameters->Tokens.Begin;
+        if (opening == 0 || opening >= Tree_.TokenCount() ||
+            Tree_.Kind(opening) != TK::Operator_OpenParenthesis ||
+            Tree_.MatchingDelimiter(opening) != parameters->Tokens.End - 1 ||
+            // Recovery can misclassify a requires-expression parameter list
+            // as a declarator; `requires` is never a function name.
+            Tree_.Kind(opening - 1) == TK::Keyword_requires ||
+            Tree_.Kind(opening - 1) == TK::Comment ||
+            Tree_.Kind(opening - 1) == TK::PreprocessingDirective)
+        {
+            return;
+        }
+        FunctionGaps_[opening] = true;
     }
 
     void MarkControlBraces(const parser::Node& node)
@@ -438,6 +490,16 @@ private:
             }
             return;
         }
+        if (FunctionGaps_[index] &&
+            gap.find_first_not_of(" \t") == std::string_view::npos)
+        {
+            if (Style_.FunctionSpaceBeforeParameters ==
+                FunctionSpaceBeforeParameters::Space)
+            {
+                Output_.push_back(' ');
+            }
+            return;
+        }
         if (ControlGaps_[index] &&
             gap.find_first_not_of(" \t") == std::string_view::npos)
         {
@@ -490,6 +552,7 @@ private:
     std::vector<BracePlacement> Placements_;
     std::vector<SameLineBraceSpacing> Spacings_;
     std::vector<bool> LambdaGaps_;
+    std::vector<bool> FunctionGaps_;
     std::vector<bool> ControlGaps_;
     std::vector<bool> ControlBraces_;
     // Only initialized for openings with an active placement.
@@ -875,6 +938,8 @@ std::string Format(const parser::SyntaxTree& tree, const Style& style)
         style.NamespaceBraceSpacing == SameLineBraceSpacing::Preserve &&
         style.LambdaSpaceBeforeParameters ==
             LambdaSpaceBeforeParameters::Preserve &&
+        style.FunctionSpaceBeforeParameters ==
+            FunctionSpaceBeforeParameters::Preserve &&
         style.ControlBlockKeywordSpacing ==
             ControlBlockKeywordSpacing::Preserve &&
         style.ControlBlockBracePlacement ==
