@@ -1,0 +1,16 @@
+ClassNameCase = PascalCase
+ClassNamePrefixes = ["C"]
+StructNameCase = PascalCase
+StructNamePrefixes = ["S", "C"]
+UnionNameCase = PascalCase
+UnionNamePrefixes = ["U"]
+EnumNameCase = PascalCase
+EnumNamePrefixes = ["E"]
+FunctionNameCase = camelCase
+FunctionNamePrefixes = ["f"]
+ConceptNameCase = PascalCase
+ConceptNamePrefixes = ["C"]
+VariableNameCase = snake_case
+VariableNamePrefixes = ["m_", "s_"]
+NamespaceNameCase = snake_case
+NamespaceNamePrefixes = ["n_"]

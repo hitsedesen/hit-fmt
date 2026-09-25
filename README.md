@@ -1,8 +1,8 @@
 # hit-fmt
 
-`hit-fmt` parses C and C++ source and emits its tokens and trivia unchanged.
-The only retained configuration settings are file exclusions and passive
-indent/column widths; no option enables source rewriting.
+`hit-fmt` parses C and C++ source. It preserves source by default, with
+configurable declaration layout rules. In `--check` mode it can also report
+naming violations without renaming identifiers.
 
 ## Build
 
@@ -44,19 +44,19 @@ outputs, golden test fixtures, and benchmark sources.
 
 ## Usage
 
-Emit one file unchanged to standard output:
+Emit a formatted file to standard output:
 
 ```sh
 hit-fmt source.cpp
 ```
 
-Process files or directories in place without rewriting their bytes:
+Format files or directories in place:
 
 ```sh
 hit-fmt --in-place source.cpp include/
 ```
 
-Check processed files without modifying them:
+Check layout and configured naming rules without modifying files:
 
 ```sh
 hit-fmt --check src/ include/
