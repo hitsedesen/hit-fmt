@@ -72,6 +72,63 @@ std::vector<Line> SplitLines(std::string_view text)
     return lines;
 }
 
+void PrintParameterDiagnostic(std::string_view path, const Line& line,
+    const formatter::ParameterNameDiagnostic& diagnostic)
+{
+    const auto number = std::to_string(diagnostic.Position.Line);
+    std::cout << "error: " << diagnostic.Message << '\n'
+              << "  --> " << path << ':' << number << ':'
+              << diagnostic.Position.Column << '\n'
+              << "   |\n";
+
+    auto text = line.Text;
+    if (text.ends_with('\r')) {
+        text.remove_suffix(1);
+    }
+    // Token positions count code points, not bytes. Keep tabs from the
+    // source prefix so the caret follows the same tab stops as the snippet.
+    size_t offset = 0;
+    for (size_t column = 1;
+        column < diagnostic.Position.Column && offset < text.size(); ++column)
+    {
+        ++offset;
+        while (offset < text.size() &&
+            (static_cast<unsigned char>(text[offset]) & 0xc0) == 0x80)
+        {
+            ++offset;
+        }
+    }
+    constexpr size_t MaxSnippet = 160;
+    auto begin = offset > 80 ? offset - 80 : 0;
+    while (begin < offset &&
+        (static_cast<unsigned char>(text[begin]) & 0xc0) == 0x80)
+    {
+        ++begin;
+    }
+    auto end = std::min(text.size(), begin + MaxSnippet);
+    while (end < text.size() &&
+        (static_cast<unsigned char>(text[end]) & 0xc0) == 0x80)
+    {
+        --end;
+    }
+    std::string_view excerpt = text.substr(begin, end - begin);
+    auto gutter = std::string(number.size(), ' ') + " | ";
+    std::cout << number << " | " << (begin ? "..." : "") << excerpt
+              << (end < text.size() ? "..." : "") << '\n'
+              << gutter << (begin ? "   " : "");
+    for (unsigned char c : text.substr(begin, offset - begin)) {
+        if ((c & 0xc0) == 0x80) {
+            continue;
+        }
+        std::cout.put(c == '\t' ? '\t' : ' ');
+    }
+    std::cout << "^ expected a name";
+    if (diagnostic.AllowCommentedName) {
+        std::cout << " or /*name*/ comment";
+    }
+    std::cout << '\n';
+}
+
 bool UseTerminalColors()
 {
     if (std::getenv("NO_COLOR") != nullptr) {
@@ -562,10 +619,13 @@ int main(int argc, char* argv[])
                                   << diagnostic.Position.Column << ": "
                                   << diagnostic.Message << '\n';
                     }
-                    for (const auto& diagnostic : parameters) {
-                        std::cout << filePath << ':' << diagnostic.Position.Line
-                                  << ':' << diagnostic.Position.Column
-                                  << ": function parameter name required\n";
+                    if (!parameters.empty()) {
+                        auto sourceLines = SplitLines(source);
+                        for (const auto& diagnostic : parameters) {
+                            PrintParameterDiagnostic(filePath,
+                                sourceLines[diagnostic.Position.Line - 1],
+                                diagnostic);
+                        }
                     }
                 }
                 mismatchCount += mismatch;

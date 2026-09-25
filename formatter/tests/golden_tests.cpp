@@ -201,7 +201,8 @@ TEST_P(ParameterNameGoldenTest, ReportsConfiguredMissingNames)
         config))
     {
         actual += std::to_string(diagnostic.Position.Line) + ":" +
-            std::to_string(diagnostic.Position.Column) + "\n";
+            std::to_string(diagnostic.Position.Column) + ": " +
+            diagnostic.Message + "\n";
     }
     EXPECT_EQ(actual, expected);
 }

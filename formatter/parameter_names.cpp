@@ -3,7 +3,9 @@
 #include <tokenizer/token.hpp>
 
 #include <algorithm>
+#include <string>
 #include <string_view>
+#include <utility>
 #include <vector>
 
 namespace formatter {
@@ -62,6 +64,58 @@ bool HasName(const Node& node)
     return false;
 }
 
+const Node* FunctionName(const Node& node)
+{
+    if (node.Kind == NK::DeclaratorName ||
+        node.Kind == NK::DestructorName ||
+        node.Kind == NK::OperatorFunctionName)
+    {
+        return &node;
+    }
+    if (node.Kind == NK::FunctionDeclarator) {
+        return nullptr;
+    }
+    for (auto* child = node.Child(); child; child = child->NextSibling) {
+        if (auto* name = FunctionName(*child)) {
+            return name;
+        }
+    }
+    return nullptr;
+}
+
+// Keep diagnostics on one line even for multiline or unusually long types.
+std::string Preview(std::string_view source)
+{
+    constexpr size_t MaxLength = 80;
+    std::string result;
+    bool space = false;
+    for (unsigned char c : source) {
+        if (c <= ' ') {
+            space = !result.empty();
+            continue;
+        }
+        if (space && result.size() < MaxLength) {
+            result += ' ';
+        }
+        space = false;
+        if (result.size() == MaxLength) {
+            break;
+        }
+        result += static_cast<char>(c);
+    }
+    if (result.size() == MaxLength && source.size() > MaxLength) {
+        auto length = MaxLength - 3;
+        while (length > 0 &&
+            (static_cast<unsigned char>(result[length]) & 0xc0) == 0x80)
+        {
+            --length;
+        }
+        result.resize(length);
+        result += "...";
+    }
+    return result;
+}
+
 bool IsCommentedName(std::string_view text)
 {
     if (text.starts_with("/*") && text.ends_with("*/")) {
@@ -116,12 +170,15 @@ void CheckFunction(const parser::SyntaxTree& tree, const Node& function,
         if (!parameters || UnsafeSyntax(*declarator)) {
             continue;
         }
+        size_t number = 0;
         for (auto* parameter = parameters->Child(); parameter;
             parameter = parameter->NextSibling)
         {
-            if (parameter->Kind != NK::ParameterDeclaration ||
-                parameter->Tokens.Empty() || UnsafeSyntax(*parameter))
-            {
+            if (parameter->Kind != NK::ParameterDeclaration) {
+                continue;
+            }
+            ++number;
+            if (parameter->Tokens.Empty() || UnsafeSyntax(*parameter)) {
                 continue;
             }
             auto* specifiers = Child(*parameter, NK::DeclarationSpecifiers);
@@ -174,7 +231,25 @@ void CheckFunction(const parser::SyntaxTree& tree, const Node& function,
                     continue;
                 }
             }
-            diagnostics.push_back({tree.TokenPosition(begin)});
+            std::string message = "parameter #" + std::to_string(number) +
+                " of function ";
+            message += function.Kind == NK::FunctionDefinition
+                ? "definition" : "declaration";
+            if (auto* name = FunctionName(*declarator)) {
+                message += " '" + Preview(tree.SourceText(name->Tokens)) + "'";
+            }
+            message += " ('" + Preview(tree.SourceText(parameter->Tokens)) +
+                "'): ";
+            message += function.Kind == NK::FunctionDefinition &&
+                definitionPolicy ==
+                    FunctionDefinitionParameterNames::NameOrCommentedNameRequired
+                ? "name or /*name*/ comment required"
+                : "name required";
+            diagnostics.push_back({tree.TokenPosition(begin),
+                std::move(message),
+                function.Kind == NK::FunctionDefinition &&
+                    definitionPolicy == FunctionDefinitionParameterNames::
+                        NameOrCommentedNameRequired});
         }
     }
 }

@@ -4,6 +4,7 @@
 
 #include <parser/syntax_tree.hpp>
 
+#include <string>
 #include <vector>
 
 namespace formatter {
@@ -13,6 +14,8 @@ namespace formatter {
 struct ParameterNameDiagnostic
 {
     util::Position Position;
+    std::string Message;
+    bool AllowCommentedName = false;
 };
 
 [[nodiscard]] std::vector<ParameterNameDiagnostic>
