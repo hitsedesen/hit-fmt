@@ -13,7 +13,9 @@ reports violations with file, line and column and returns a nonzero status.
 parent directories. The nearest file wins. `--config <file>` selects one
 file for every input; `--no-config` disables configuration lookup.
 
-Blank lines and `#` comments are allowed. Example:
+Blank lines and `#` comments are allowed. Arrays of quoted strings may
+span lines, with comments between items; each quoted item must stay on one
+line. Example:
 
 ```text
 IndentWidth = 4
@@ -67,7 +69,10 @@ StructNamePrefixes = ["S", "C"]
 NamingNamespaceExemptions = ["std"]
 VariableNameCase = snake_case
 VariableNamePrefixes = ["m_", "s_"]
-Exclude = ["(^|/)generated(/|$)", "(^|/)legacy\\.cpp$"]
+Exclude = [
+    "(^|/)generated(/|$)",
+    "(^|/)legacy\\.cpp$"
+]
 ```
 
 - `IncludeOrder`: `Preserve` (default) leaves directives untouched. `Sort`

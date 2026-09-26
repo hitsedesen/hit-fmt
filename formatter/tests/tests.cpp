@@ -1040,9 +1040,17 @@ TEST(PreserveConfigTest, RejectsInvalidSettings)
          "CallArgumentSplit = Pack\nFirstCallArgumentPosition = NewLine\n"
          "EnforceFirstCallArgumentPosition = true\n"
          "CallArgumentIndent = Continuation\n"
-         "Exclude = [\"(^|/)generated(/|$)\"]\n");
+         "Exclude = [ # list comment\n"
+         "  \"x]y\", # bracket in a quoted item\n"
+         "  \"(^|/)generated(/|$)\"\n"
+         "]\n"
+         "ClassNamePrefixes = [\n"
+         "  \"S\", # prefix comment\n"
+         "  \"C\"\n"
+         "]\n"
+         "IndentWidth = 3\n");
     const auto config = formatter::LoadConfigFile(path);
-    EXPECT_EQ(config.FormattingStyle.IndentWidth, 2u);
+    EXPECT_EQ(config.FormattingStyle.IndentWidth, 3u);
     EXPECT_EQ(config.FormattingStyle.ColumnLimit, 40u);
     EXPECT_EQ(config.FormattingStyle.ExpressionLayoutCondition,
         formatter::ExpressionLayoutCondition::FitOrOverflow);
@@ -1061,8 +1069,12 @@ TEST(PreserveConfigTest, RejectsInvalidSettings)
     EXPECT_TRUE(config.FormattingStyle.EnforceFirstCallArgumentPosition);
     EXPECT_EQ(config.FormattingStyle.CallArgumentIndent,
         formatter::CallArgumentIndent::Continuation);
-    ASSERT_EQ(config.Exclusions.size(), 1u);
-    EXPECT_TRUE(std::regex_search("generated/source.cpp", config.Exclusions[0]));
+    ASSERT_EQ(config.Exclusions.size(), 2u);
+    EXPECT_TRUE(std::regex_search("x]y", config.Exclusions[0]));
+    EXPECT_TRUE(std::regex_search("generated/source.cpp", config.Exclusions[1]));
+    ASSERT_TRUE(config.Naming.Class.Prefixes.has_value());
+    EXPECT_EQ(*config.Naming.Class.Prefixes,
+        (std::vector<std::string>{"S", "C"}));
     save("ClassNameCase = Unchecked\n");
     EXPECT_EQ(formatter::LoadConfigFile(path).Naming.Class.Case,
         formatter::NameCase::Unchecked);
@@ -1132,6 +1144,8 @@ TEST(PreserveConfigTest, RejectsInvalidSettings)
         "ControlBlockKeywordSpacing = Unknown\n",
         "ControlBlockBracePlacement = Unknown\n",
         "Exclude = [\"[\"]\n",
+        "Exclude = [\n  \"foo\",\n",
+        "Exclude = [\n  \"foo\"\n  \"bar\"\n]\n",
         "StructNameCase = lowercase\n",
         "ClassNamePrefixes = []\n",
         "EnumNamePrefixes = [\"bad prefix\"]\n",
@@ -1142,6 +1156,14 @@ TEST(PreserveConfigTest, RejectsInvalidSettings)
     }) {
         save(setting);
         EXPECT_THROW(formatter::LoadConfigFile(path), std::runtime_error);
+    }
+    save("Exclude = [\n  \"foo\"\n]\nUnknown = true\n");
+    try {
+        (void)formatter::LoadConfigFile(path);
+        FAIL() << "expected unknown setting";
+    } catch (const std::runtime_error& error) {
+        EXPECT_NE(std::string_view(error.what()).find(":4: unknown setting"),
+            std::string_view::npos);
     }
     save("ClassNameCase = CamelCase\n");
     try {

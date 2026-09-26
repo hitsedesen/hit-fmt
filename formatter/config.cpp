@@ -156,6 +156,30 @@ std::string_view StripComment(std::string_view line)
         + std::string(message));
 }
 
+// A closing bracket inside a quoted item does not terminate an array.
+// Quoted items themselves cannot span physical lines.
+bool HasArrayEnd(std::string_view text,
+    const std::filesystem::path& path, size_t line)
+{
+    bool quoted = false;
+    bool escaped = false;
+    for (char character : text) {
+        if (escaped) {
+            escaped = false;
+        } else if (character == '\\' && quoted) {
+            escaped = true;
+        } else if (character == '"') {
+            quoted = !quoted;
+        } else if (character == ']' && !quoted) {
+            return true;
+        }
+    }
+    if (quoted) {
+        ThrowConfigError(path, line, "unterminated quoted array item");
+    }
+    return false;
+}
+
 size_t ParsePositiveInteger(
     std::string_view value,
     const std::filesystem::path& path,
@@ -446,7 +470,33 @@ Configuration LoadConfigFile(const std::filesystem::path& path)
         if (key.empty() || value.empty()) {
             ThrowConfigError(path, lineNumber, "expected Key = Value");
         }
-        ApplySetting(config, key, value, path, lineNumber);
+        const size_t settingLine = lineNumber;
+        std::string arrayValue;
+        std::string arrayKey;
+        if (value.front() == '[' && !HasArrayEnd(value, path, lineNumber)) {
+            // key and value refer to lineText, which the next getline replaces.
+            arrayKey = key;
+            arrayValue = value;
+            while (true) {
+                if (!std::getline(input, lineText)) {
+                    if (!input.eof()) {
+                        throw std::runtime_error(
+                            "failed to read configuration file: " + path.string());
+                    }
+                    ThrowConfigError(path, settingLine, "unterminated array");
+                }
+                ++lineNumber;
+                auto itemLine = Trim(StripComment(lineText));
+                arrayValue.push_back('\n');
+                arrayValue.append(itemLine);
+                if (HasArrayEnd(itemLine, path, lineNumber)) {
+                    break;
+                }
+            }
+            key = arrayKey;
+            value = arrayValue;
+        }
+        ApplySetting(config, key, value, path, settingLine);
     }
     if (!input.eof()) {
         throw std::runtime_error("failed to read configuration file: " + path.string());
