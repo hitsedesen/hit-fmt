@@ -1,0 +1,3 @@
+ExpressionLayoutCondition = Overflow
+ControlBlockBracePlacement = AttachUnlessMultiline
+ColumnLimit = 120

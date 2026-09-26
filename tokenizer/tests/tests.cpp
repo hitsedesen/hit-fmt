@@ -86,13 +86,10 @@ class GoldenGoodTest
 
 TEST_P(GoldenGoodTest, Match)
 {
-    auto goldenPath = std::format("./testdata/{}.out", GetParam().Name);
-    auto input = test::golden::ReadFile(
-        std::format("./testdata/{}.in", GetParam().Name));
-
-    auto [actual, errors] = TokenizeAndSerialize(input);
+    const test::golden::Fixture fixture{"./testdata", GetParam().Name};
+    auto [actual, errors] = TokenizeAndSerialize(fixture.InputNamed(".in"));
     EXPECT_TRUE(errors.empty());
-    test::golden::ExpectGolden(goldenPath, actual);
+    fixture.Expect(actual, ".out");
 }
 
 class GoldenBadTest
@@ -101,12 +98,8 @@ class GoldenBadTest
 
 TEST_P(GoldenBadTest, CanonizeErrors)
 {
-    auto goldenPath = std::format("./testdata/{}.out", GetParam().Name);
-    auto goldenErrorsPath = std::format("./testdata/{}.err", GetParam().Name);
-    auto input = test::golden::ReadFile(
-        std::format("./testdata/{}.in", GetParam().Name));
-
-    auto [actual, errors] = TokenizeAndSerialize(input);
+    const test::golden::Fixture fixture{"./testdata", GetParam().Name};
+    auto [actual, errors] = TokenizeAndSerialize(fixture.InputNamed(".in"));
     EXPECT_FALSE(errors.empty()) << "should output errors";
     std::string actualErrors;
     for (auto& error : errors) {
@@ -114,8 +107,8 @@ TEST_P(GoldenBadTest, CanonizeErrors)
         actualErrors += "\n";
     }
 
-    test::golden::ExpectGolden(goldenPath, actual);
-    test::golden::ExpectGolden(goldenErrorsPath, actualErrors);
+    fixture.Expect(actual, ".out");
+    fixture.Expect(actualErrors, ".err");
 }
 
 INSTANTIATE_TEST_SUITE_P(

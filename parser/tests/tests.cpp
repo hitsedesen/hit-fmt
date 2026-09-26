@@ -273,8 +273,8 @@ class ParserGoldenTest
 
 TEST_P(ParserGoldenTest, MatchesSExpression)
 {
-    const auto input =
-        test::golden::ReadFile(std::format("./testdata/{}.in", GetParam().Name));
+    const test::golden::Fixture fixture{"./testdata", GetParam().Name};
+    const auto input = fixture.InputNamed(".in");
     std::vector<parser::ParseError> errors;
     PaddedInput paddedInput(input);
     auto tree =
@@ -282,19 +282,19 @@ TEST_P(ParserGoldenTest, MatchesSExpression)
             errors.push_back(std::move(error));
         });
     auto actual = Serialize(tree);
-    auto outputPath = std::format("./testdata/{}.out", GetParam().Name);
     if (GetParam().HasErrors) {
         EXPECT_FALSE(errors.empty());
     } else {
         EXPECT_TRUE(errors.empty());
     }
 
-    test::golden::ExpectGolden(outputPath, actual);
+    fixture.Expect(actual, ".out");
 }
 
 TEST(ParserGoldenTest, MatchesPunctuationRoles)
 {
-    const auto input = test::golden::ReadFile("./testdata/punctuation_roles.in");
+    const test::golden::Fixture fixture{"./testdata", "punctuation_roles"};
+    const auto input = fixture.InputNamed(".in");
     PaddedInput paddedInput(input);
     std::vector<parser::ParseError> errors;
     auto tree =
@@ -303,7 +303,7 @@ TEST(ParserGoldenTest, MatchesPunctuationRoles)
         });
     EXPECT_TRUE(errors.empty());
     auto actual = SerializePunctuationRoles(tree);
-    test::golden::ExpectGolden("./testdata/punctuation_roles.out", actual);
+    fixture.Expect(actual, ".out");
 }
 
 INSTANTIATE_TEST_SUITE_P(

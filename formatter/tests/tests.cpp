@@ -7,7 +7,10 @@
 #include <gtest/gtest.h>
 
 #include <algorithm>
+#include <array>
 #include <filesystem>
+#include <initializer_list>
+#include <optional>
 #include <string>
 #include <string_view>
 #include <utility>
@@ -98,22 +101,101 @@ void ExpectFormattedGolden(const std::filesystem::path& path,
     EXPECT_EQ(FormatWithStyle(actual, style), actual);
 }
 
-class BracePlacementGoldenTest : public testing::TestWithParam<std::string>
-{ };
-
-TEST_P(BracePlacementGoldenTest, FormatsOnlySelectedDeclarationBraces)
+struct FormattedCase
 {
-    const auto directory = std::filesystem::path(BRACE_TESTDATA_DIR);
-    const auto input = ReadFile(directory / "input.cpp");
-    const auto style = formatter::LoadConfigFile(
-        directory / (GetParam() + ".hit-fmt")).FormattingStyle;
+    std::filesystem::path Directory;
+    std::string Name;
+    std::string Input = "input.cpp";
+    std::string Config;
+};
 
-    ExpectFormattedGolden(directory / (GetParam() + ".output.cpp"),
-        input, style);
+void AddCases(std::vector<FormattedCase>& cases,
+    const std::filesystem::path& directory,
+    std::initializer_list<const char*> names,
+    std::string input = "input.cpp")
+{
+    for (const auto* name : names) {
+        cases.push_back({directory, name, input, {}});
+    }
 }
 
-INSTANTIATE_TEST_SUITE_P(Configurations, BracePlacementGoldenTest,
-    testing::Values("preserve", "attach", "newline", "mixed"));
+std::vector<FormattedCase> FormattedCases()
+{
+    std::vector<FormattedCase> cases;
+    AddCases(cases, BRACE_TESTDATA_DIR,
+        {"preserve", "attach", "newline", "mixed"});
+    AddCases(cases,
+        std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../include-order",
+        {"sort", "composed"});
+    cases.push_back({std::filesystem::path(FORMATTER_TESTDATA_DIR) /
+        "../include-order", "crlf", "crlf.input.cpp", "sort"});
+    AddCases(cases, BRACE_SPACING_TESTDATA_DIR,
+        {"preserve", "single-space", "mixed"});
+    AddCases(cases, LAMBDA_SPACING_TESTDATA_DIR,
+        {"preserve", "space", "no-space"});
+    AddCases(cases, CONTROL_SPACING_TESTDATA_DIR,
+        {"preserve", "space", "no-space"});
+    AddCases(cases, CONTROL_BRACE_TESTDATA_DIR,
+        {"preserve", "same-line", "new-line", "attach-unless-multiline"});
+    AddCases(cases, CONTROL_BRACE_TESTDATA_DIR, {"combined"},
+        "combined.input.cpp");
+    AddCases(cases, FUNCTION_SPACING_TESTDATA_DIR,
+        {"preserve", "space", "no-space"});
+    AddCases(cases, FUNCTION_SPACING_TESTDATA_DIR, {"reflow"},
+        "reflow.input.cpp");
+    AddCases(cases, FUNCTION_CALL_SPACING_TESTDATA_DIR,
+        {"preserve", "space", "no-space"});
+    AddCases(cases, FUNCTION_CALL_SPACING_TESTDATA_DIR, {"combined"},
+        "combined.input.cpp");
+    AddCases(cases, FUNCTION_INNER_SPACING_TESTDATA_DIR,
+        {"preserve", "space", "no-space"});
+    AddCases(cases, FUNCTION_INNER_SPACING_TESTDATA_DIR, {"reflow"},
+        "reflow.input.cpp");
+    AddCases(cases, CALL_INNER_SPACING_TESTDATA_DIR,
+        {"preserve", "space", "no-space"});
+    AddCases(cases, CALL_INNER_SPACING_TESTDATA_DIR, {"combined"},
+        "combined.input.cpp");
+    AddCases(cases, LAMBDA_CAPTURE_TESTDATA_DIR,
+        {"preserve", "space", "no-space", "mixed", "reverse"});
+    AddCases(cases, LAMBDA_INNER_PARAMETER_TESTDATA_DIR,
+        {"preserve", "space", "no-space", "combined"});
+    AddCases(cases, BODY_INDENT_TESTDATA_DIR,
+        {"preserve", "indent", "no-indent", "mixed"});
+    AddCases(cases, INHERITANCE_TESTDATA_DIR,
+        {"preserve", "format", "leading", "trailing", "overflow",
+            "comma-leading", "no-space", "spaces-mixed", "combined"});
+    AddCases(cases, INHERITANCE_TESTDATA_DIR,
+        {"split-preserve", "one-per-line", "pack-wide", "pack-tight",
+            "split-combined"}, "split.input.cpp");
+    for (const auto* name : {"parsed-operators", "outer-conditional",
+        "control-braces-after-wrap"}) {
+        cases.push_back({std::filesystem::path(FORMATTER_TESTDATA_DIR) /
+            ".." / name, "configured"});
+    }
+    return cases;
+}
+
+class FormattedGoldenTest : public testing::TestWithParam<FormattedCase> { };
+
+TEST_P(FormattedGoldenTest, MatchesConfiguredOutput)
+{
+    const auto& value = GetParam();
+    const test::golden::Fixture fixture{value.Directory, value.Name};
+    const auto config = value.Config.empty() ? value.Name : value.Config;
+    const auto style = formatter::LoadConfigFile(
+        fixture.Directory / (config + ".hit-fmt")).FormattingStyle;
+    ExpectFormattedGolden(fixture.Named(".output.cpp"),
+        fixture.Input(value.Input), style);
+}
+
+INSTANTIATE_TEST_SUITE_P(Configurations, FormattedGoldenTest,
+    testing::ValuesIn(FormattedCases()),
+    [] (const auto& info) {
+        auto name = info.param.Directory.filename().string() + "_" +
+            info.param.Name;
+        std::ranges::replace(name, '-', '_');
+        return name;
+    });
 
 class FunctionParameterGoldenTest : public testing::TestWithParam<std::string>
 { };
@@ -177,26 +259,6 @@ INSTANTIATE_TEST_SUITE_P(Configurations, NamespaceCommentGoldenTest,
     testing::Values("preserve", "remove", "required", "required_newline",
         "crlf_required"));
 
-class IncludeOrderGoldenTest : public testing::TestWithParam<std::string>
-{ };
-
-TEST_P(IncludeOrderGoldenTest, SortsOnlySafeIncludeGroups)
-{
-    const auto directory = std::filesystem::path(FORMATTER_TESTDATA_DIR) /
-        "../include-order";
-    const auto input = ReadFile(directory /
-        (GetParam() == "crlf" ? "crlf.input.cpp" : "input.cpp"));
-    const auto style = formatter::LoadConfigFile(directory /
-        (GetParam() == "crlf" ? "sort.hit-fmt" :
-            GetParam() + ".hit-fmt")).FormattingStyle;
-
-    ExpectFormattedGolden(directory / (GetParam() + ".output.cpp"),
-        input, style);
-}
-
-INSTANTIATE_TEST_SUITE_P(Configurations, IncludeOrderGoldenTest,
-    testing::Values("sort", "composed", "crlf"));
-
 class ParameterNameGoldenTest : public testing::TestWithParam<std::string>
 { };
 
@@ -237,104 +299,35 @@ TEST(CallArgumentTest, ReflowsOnlySafeParsedCalls)
 {
     formatter::Style style;
     style.ColumnLimit = 34;
-    const auto input =
-        "void use(int a, int b, int c, int d);\n"
-        "void demo() {\n"
-        "    use(alpha, beta, gamma, delta);\n"
-        "    use(veryLongFirst, veryLongSecond);\n"
-        "    use(\n"
-        "        alpha,\n"
-        "        beta, gamma);\n"
-        "    auto x = nested(alpha, nested(beta, gamma, delta), epsilon);\n"
-        "    MACRO(alpha, beta, gamma, delta);\n"
-        "}\n";
+    const auto directory = std::filesystem::path(FORMATTER_TESTDATA_DIR) /
+        "../call-reflow";
+    const auto input = ReadFile(directory / "input.cpp");
     EXPECT_EQ(FormatWithStyle(input, style), input);
     style.CallArgumentSplit = formatter::CallArgumentSplit::Pack;
     style.ExpressionLayoutCondition = formatter::ExpressionLayoutCondition::Overflow;
-    const auto packed =
-        "void use(int a, int b, int c, int d);\n"
-        "void demo() {\n"
-        "    use(alpha, beta, gamma,\n"
-        "        delta);\n"
-        "    use(veryLongFirst,\n"
-        "        veryLongSecond);\n"
-        "    use(\n"
-        "        alpha,\n"
-        "        beta, gamma);\n"
-        "    auto x = nested(alpha,\n"
-        "        nested(beta, gamma,\n"
-        "            delta),\n"
-        "        epsilon);\n"
-        "    MACRO(alpha, beta, gamma,\n"
-        "        delta);\n"
-        "}\n";
-    EXPECT_EQ(FormatWithStyle(input, style), packed);
+    const auto packed = FormatWithStyle(input, style);
+    test::golden::ExpectGolden(directory / "packed.output.cpp",
+        packed);
     EXPECT_EQ(FormatWithStyle(packed, style), packed);
     style.ExpressionLayoutCondition = formatter::ExpressionLayoutCondition::FitOrOverflow;
-    const auto merged =
-        "void use(int a, int b, int c, int d);\n"
-        "void demo() {\n"
-        "    use(alpha, beta, gamma,\n"
-        "        delta);\n"
-        "    use(veryLongFirst,\n"
-        "        veryLongSecond);\n"
-        "    use(alpha, beta, gamma);\n"
-        "    auto x = nested(alpha,\n"
-        "        nested(beta, gamma,\n"
-        "            delta),\n"
-        "        epsilon);\n"
-        "    MACRO(alpha, beta, gamma,\n"
-        "        delta);\n"
-        "}\n";
-    EXPECT_EQ(FormatWithStyle(packed, style), merged);
+    const auto merged = FormatWithStyle(packed, style);
+    test::golden::ExpectGolden(directory / "merged.output.cpp",
+        merged);
     EXPECT_EQ(FormatWithStyle(merged, style), merged);
-    const auto longMultiline =
-        "void f() {\n"
-        "    use(\n"
-        "        alpha,\n"
-        "        beta,\n"
-        "        gamma,\n"
-        "        delta);\n"
-        "}\n";
+    const auto longMultiline = ReadFile(directory / "long.input.cpp");
     EXPECT_EQ(FormatWithStyle(longMultiline, style), longMultiline);
     style.ExpressionLayoutCondition = formatter::ExpressionLayoutCondition::Always;
-    const auto repacked =
-        "void f() {\n"
-        "    use(alpha, beta, gamma,\n"
-        "        delta);\n"
-        "}\n";
-    EXPECT_EQ(FormatWithStyle(longMultiline, style), repacked);
+    const auto repacked = FormatWithStyle(longMultiline, style);
+    test::golden::ExpectGolden(directory / "repacked.output.cpp",
+        repacked);
     EXPECT_EQ(FormatWithStyle(repacked, style), repacked);
 
     style.CallArgumentSplit = formatter::CallArgumentSplit::OnePerLine;
     style.FirstCallArgumentPosition =
         formatter::FirstCallArgumentPosition::NewLine;
-    const auto onePerLine =
-        "void use(int a, int b, int c, int d);\n"
-        "void demo() {\n"
-        "    use(\n"
-        "        alpha,\n"
-        "        beta,\n"
-        "        gamma,\n"
-        "        delta);\n"
-        "    use(\n"
-        "        veryLongFirst,\n"
-        "        veryLongSecond);\n"
-        "    use(alpha, beta, gamma);\n"
-        "    auto x = nested(\n"
-        "        alpha,\n"
-        "        nested(\n"
-        "            beta,\n"
-        "            gamma,\n"
-        "            delta),\n"
-        "        epsilon);\n"
-        "    MACRO(\n"
-        "        alpha,\n"
-        "        beta,\n"
-        "        gamma,\n"
-        "        delta);\n"
-        "}\n";
-    EXPECT_EQ(FormatWithStyle(input, style), onePerLine);
+    const auto onePerLine = FormatWithStyle(input, style);
+    test::golden::ExpectGolden(directory / "one-per-line.output.cpp",
+        onePerLine);
     EXPECT_EQ(FormatWithStyle(onePerLine, style), onePerLine);
 
     style.CallArgumentSplit = formatter::CallArgumentSplit::Pack;
@@ -452,24 +445,11 @@ TEST(CallArgumentTest, LaysOutEnclosingMacroAndNestedCalls)
     style.ExpressionLayoutCondition = formatter::ExpressionLayoutCondition::Always;
     style.CallArgumentSplit = formatter::CallArgumentSplit::Pack;
     style.ColumnLimit = 100;
-    const auto input =
-        "void f() {\n"
-        "        EXPECT_EQ(GetDefault(UnwrapMember(GetMember("
-        "schema->FindChild(\"members\")->AsList(), \"sub\")), "
-        "\"my_uint\")->GetValue<ui64>(), 0u) << description;\n"
-        "        EXPECT_EQ(GetDefault(schema, \"sub\")->AsMap()->template "
-        "GetChildValueOrThrow<ui64>(\"my_uint\"), 8u) << description;\n"
-        "}\n";
-    const auto expected =
-        "void f() {\n"
-        "        EXPECT_EQ(GetDefault(UnwrapMember(GetMember("
-        "schema->FindChild(\"members\")->AsList(), \"sub\")),\n"
-        "            \"my_uint\")->GetValue<ui64>(),\n"
-        "            0u) << description;\n"
-        "        EXPECT_EQ(GetDefault(schema, \"sub\")->AsMap()->template "
-        "GetChildValueOrThrow<ui64>(\"my_uint\"),\n"
-        "            8u) << description;\n"
-        "}\n";
+    const test::golden::Fixture fixture{
+        std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../macro-nested-calls",
+        "configured"};
+    const auto input = fixture.Input();
+    std::optional<std::string> firstOutput;
     for (auto mode : {formatter::ExpressionLayoutCondition::Overflow,
         formatter::ExpressionLayoutCondition::FitOrOverflow,
         formatter::ExpressionLayoutCondition::Always})
@@ -479,8 +459,14 @@ TEST(CallArgumentTest, LaysOutEnclosingMacroAndNestedCalls)
             formatter::ExpressionLayoutAlgorithm::DynamicProgramming})
         {
             style.ExpressionLayoutAlgorithm = algorithm;
-            EXPECT_EQ(FormatWithStyle(input, style), expected);
-            EXPECT_EQ(FormatWithStyle(expected, style), expected);
+            const auto actual = FormatWithStyle(input, style);
+            if (!firstOutput) {
+                firstOutput = actual;
+                fixture.Expect(actual);
+            } else {
+                EXPECT_EQ(actual, *firstOutput);
+            }
+            EXPECT_EQ(FormatWithStyle(actual, style), actual);
         }
     }
     style.CallArgumentSplit = formatter::CallArgumentSplit::OnePerLine;
@@ -495,51 +481,11 @@ TEST(ExpressionLayoutTest, WrapsParsedOperatorsAndPreservesUnsafeLines)
     style.TernaryOperatorPlacement = formatter::TernaryOperatorPlacement::Leading;
     style.BinaryOperatorPlacement = formatter::BinaryOperatorPlacement::Leading;
     style.ColumnLimit = 32;
-    const auto input =
-        "int compute(int first, int second) {\n"
-        "    return first + second + first + second;\n"
-        "}\n"
-        "bool ready(bool first, bool second, bool third) {\n"
-        "    return first && second && third;\n"
-        "}\n"
-        "int choose(bool flag, int alpha, int beta) {\n"
-        "    return flag ? alpha + beta : alpha * beta;\n"
-        "}\n"
-        "int mixed(int alpha, int beta) {\n"
-        "    return alpha * beta + alpha * beta;\n"
-        "}\n"
-        "void update(int& result, int alpha, int beta) {\n"
-        "    result = alpha + beta + alpha + beta;\n"
-        "    result = alpha + beta + alpha + beta; // keep comment\n"
-        "    result = alpha + beta + alpha + beta; /* keep comment */\n"
-        "}\n";
-    const auto expected =
-        "int compute(int first, int second) {\n"
-        "    return first + second\n"
-        "        + first + second;\n"
-        "}\n"
-        "bool ready(bool first, bool second, bool third) {\n"
-        "    return first && second\n"
-        "        && third;\n"
-        "}\n"
-        "int choose(bool flag, int alpha, int beta) {\n"
-        "    return flag ? alpha + beta\n"
-        "        : alpha * beta;\n"
-        "}\n"
-        "int mixed(int alpha, int beta) {\n"
-        "    return alpha * beta\n"
-        "        + alpha * beta;\n"
-        "}\n"
-        "void update(int& result, int alpha, int beta) {\n"
-        "    result\n"
-        "        = alpha + beta + alpha\n"
-        "        + beta;\n"
-        "    result = alpha + beta + alpha + beta; // keep comment\n"
-        "    result = alpha + beta + alpha + beta; /* keep comment */\n"
-        "}\n";
-    EXPECT_EQ(FormatWithStyle(input, formatter::Style{}), input);
-    EXPECT_EQ(FormatWithStyle(input, style), expected);
-    EXPECT_EQ(FormatWithStyle(expected, style), expected);
+
+    const test::golden::Fixture fixture{
+        std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../parsed-operators",
+        "configured"};
+    ExpectUnchanged(fixture.Input(), formatter::Style{});
 
     style.BinaryOperatorPlacement = formatter::BinaryOperatorPlacement::Trailing;
     const auto trailingInput =
@@ -594,32 +540,19 @@ TEST(ExpressionLayoutTest, PlacesAndGroupsTernaryBreaks)
     formatter::Style style;
     style.ExpressionLayoutCondition = formatter::ExpressionLayoutCondition::Overflow;
     style.ColumnLimit = 40;
-    const auto input =
-        "int f(bool condition) {\n"
-        "    return condition ? alphaValue : betaValue;\n"
-        "}\n";
-    const auto twoLeading =
-        "int f(bool condition) {\n"
-        "    return condition ? alphaValue\n"
-        "        : betaValue;\n"
-        "}\n";
-    const auto twoTrailing =
-        "int f(bool condition) {\n"
-        "    return condition ? alphaValue :\n"
-        "        betaValue;\n"
-        "}\n";
-    const auto threeLeading =
-        "int f(bool condition) {\n"
-        "    return condition\n"
-        "        ? alphaValue\n"
-        "        : betaValue;\n"
-        "}\n";
-    const auto threeTrailing =
-        "int f(bool condition) {\n"
-        "    return condition ?\n"
-        "        alphaValue :\n"
-        "        betaValue;\n"
-        "}\n";
+    const auto directory = std::filesystem::path(FORMATTER_TESTDATA_DIR) /
+        "../ternary-layout";
+    const auto input = ReadFile(directory / "input.cpp");
+    std::array<std::optional<std::string>, 4> firstOutputs;
+    const auto verify = [&] (size_t index, const char* filename,
+        std::string_view actual) {
+        if (firstOutputs[index]) {
+            EXPECT_EQ(actual, *firstOutputs[index]);
+        } else {
+            firstOutputs[index] = actual;
+            test::golden::ExpectGolden(directory / filename, actual);
+        }
+    };
     for (auto algorithm : {formatter::ExpressionLayoutAlgorithm::Greedy,
         formatter::ExpressionLayoutAlgorithm::DynamicProgramming})
     {
@@ -629,18 +562,25 @@ TEST(ExpressionLayoutTest, PlacesAndGroupsTernaryBreaks)
         {
             style.TernaryOperatorPlacement = placement;
             style.TernarySplit = formatter::TernarySplit::AsNeeded;
-            auto two = placement == formatter::TernaryOperatorPlacement::Leading
-                ? twoLeading : twoTrailing;
-            EXPECT_EQ(FormatWithStyle(input, style), two);
+            const bool leading =
+                placement == formatter::TernaryOperatorPlacement::Leading;
+            const auto two = FormatWithStyle(input, style);
+            verify(leading ? 0 : 1,
+                leading ? "two-leading.output.cpp" : "two-trailing.output.cpp",
+                two);
             EXPECT_EQ(FormatWithStyle(two, style), two);
             style.TernarySplit = formatter::TernarySplit::ThreeLines;
-            auto three = placement == formatter::TernaryOperatorPlacement::Leading
-                ? threeLeading : threeTrailing;
-            EXPECT_EQ(FormatWithStyle(input, style), three);
+            const auto three = FormatWithStyle(input, style);
+            verify(leading ? 2 : 3,
+                leading ? "three-leading.output.cpp" : "three-trailing.output.cpp",
+                three);
             EXPECT_EQ(FormatWithStyle(three, style), three);
             ExpectUnchanged("int f() { return flag ? a : b; }\n", style);
         }
     }
+
+    const auto threeLeading = ReadFile(directory / "three-leading.output.cpp");
+    const auto threeTrailing = ReadFile(directory / "three-trailing.output.cpp");
 
     style.ColumnLimit = 80;
     style.TernaryOperatorPlacement = formatter::TernaryOperatorPlacement::Leading;
@@ -767,25 +707,13 @@ TEST(ExpressionLayoutTest, PrefersOuterConditionalBreaks)
     style.ControlBlockBracePlacement =
         formatter::ControlBlockBracePlacement::AttachUnlessMultiline;
     style.ColumnLimit = 120;
-    const auto input =
-        "void f() {\n"
-        "    if (DefaultCtor_ && !(std::is_base_of_v<TYsonStructLite, TValue> && dontSetLiteMembers && DefaultIsDefaultConstruction_)) {\n"
-        "        go();\n"
-        "    }\n"
-        "}\n";
-    const auto expected =
-        "void f() {\n"
-        "    if (DefaultCtor_ &&\n"
-        "        !(std::is_base_of_v<TYsonStructLite, TValue> && dontSetLiteMembers && DefaultIsDefaultConstruction_))\n"
-        "    {\n"
-        "        go();\n"
-        "    }\n"
-        "}\n";
-    EXPECT_EQ(FormatWithStyle(input, style), expected);
-    EXPECT_EQ(FormatWithStyle(expected, style), expected);
+    const test::golden::Fixture fixture{
+        std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../outer-conditional",
+        "configured"};
     style.ExpressionLayoutAlgorithm =
         formatter::ExpressionLayoutAlgorithm::DynamicProgramming;
-    EXPECT_EQ(FormatWithStyle(input, style), expected);
+    ExpectFormattedGolden(fixture.Named(".output.cpp"),
+        fixture.Input(), style);
 }
 
 TEST(ExpressionLayoutTest, ComparesGreedyAndBoundedDynamicProgramming)
@@ -966,35 +894,6 @@ TEST(ExpressionLayoutTest, ReconsidersControlBracesAfterWrapping)
     style.ControlBlockBracePlacement =
         formatter::ControlBlockBracePlacement::AttachUnlessMultiline;
     style.ColumnLimit = 32;
-    const auto input =
-        "void f(bool alpha, bool beta, bool gamma) {\n"
-        "    if (alpha && beta && gamma) {\n"
-        "        run();\n"
-        "    } else {\n"
-        "        stop();\n"
-        "    }\n"
-        "    while (alpha && beta && gamma) {\n"
-        "        run();\n"
-        "    }\n"
-        "}\n";
-    const auto expected =
-        "void f(bool alpha, bool beta, bool gamma) {\n"
-        "    if (alpha && beta &&\n"
-        "        gamma)\n"
-        "    {\n"
-        "        run();\n"
-        "    } else {\n"
-        "        stop();\n"
-        "    }\n"
-        "    while (alpha && beta &&\n"
-        "        gamma)\n"
-        "    {\n"
-        "        run();\n"
-        "    }\n"
-        "}\n";
-    EXPECT_EQ(FormatWithStyle(input, style), expected);
-    EXPECT_EQ(FormatWithStyle(expected, style), expected);
-
     style.ExpressionLayoutCondition = formatter::ExpressionLayoutCondition::Always;
     style.ColumnLimit = 80;
     const auto multiline =
@@ -1046,239 +945,6 @@ TEST(FunctionParameterSafetyTest, KeepsCrlfListsAndCalls)
         "void g() { Use(very_long_argument, another_long_argument); }\r\n",
         style);
 }
-
-class BraceSpacingGoldenTest : public testing::TestWithParam<std::string>
-{ };
-
-TEST_P(BraceSpacingGoldenTest, FormatsOnlySameLineDeclarationGaps)
-{
-    const auto directory = std::filesystem::path(BRACE_SPACING_TESTDATA_DIR);
-    const auto input = ReadFile(directory / "input.cpp");
-    const auto style = formatter::LoadConfigFile(
-        directory / (GetParam() + ".hit-fmt")).FormattingStyle;
-
-    ExpectFormattedGolden(directory / (GetParam() + ".output.cpp"),
-        input, style);
-}
-
-INSTANTIATE_TEST_SUITE_P(Configurations, BraceSpacingGoldenTest,
-    testing::Values("preserve", "single-space", "mixed"));
-
-class LambdaSpacingGoldenTest : public testing::TestWithParam<std::string>
-{ };
-
-TEST_P(LambdaSpacingGoldenTest, FormatsOnlyLambdaCaptureParameterGaps)
-{
-    const auto directory = std::filesystem::path(LAMBDA_SPACING_TESTDATA_DIR);
-    const auto input = ReadFile(directory / "input.cpp");
-    const auto style = formatter::LoadConfigFile(
-        directory / (GetParam() + ".hit-fmt")).FormattingStyle;
-
-    ExpectFormattedGolden(directory / (GetParam() + ".output.cpp"),
-        input, style);
-}
-
-INSTANTIATE_TEST_SUITE_P(Configurations, LambdaSpacingGoldenTest,
-    testing::Values("preserve", "space", "no-space"));
-
-class ControlKeywordSpacingGoldenTest : public testing::TestWithParam<std::string>
-{ };
-
-TEST_P(ControlKeywordSpacingGoldenTest, FormatsOnlyParsedControlHeaders)
-{
-    const auto directory = std::filesystem::path(CONTROL_SPACING_TESTDATA_DIR);
-    const auto input = ReadFile(directory / "input.cpp");
-    const auto style = formatter::LoadConfigFile(
-        directory / (GetParam() + ".hit-fmt")).FormattingStyle;
-
-    ExpectFormattedGolden(directory / (GetParam() + ".output.cpp"),
-        input, style);
-}
-
-INSTANTIATE_TEST_SUITE_P(Configurations, ControlKeywordSpacingGoldenTest,
-    testing::Values("preserve", "space", "no-space"));
-
-class ControlBracePlacementGoldenTest : public testing::TestWithParam<std::string>
-{ };
-
-TEST_P(ControlBracePlacementGoldenTest, PlacesOnlyControlBodyBraces)
-{
-    const auto directory = std::filesystem::path(CONTROL_BRACE_TESTDATA_DIR);
-    const auto input = ReadFile(directory /
-        (GetParam() == "combined" ? "combined.input.cpp" : "input.cpp"));
-    const auto style = formatter::LoadConfigFile(
-        directory / (GetParam() + ".hit-fmt")).FormattingStyle;
-
-    ExpectFormattedGolden(directory / (GetParam() + ".output.cpp"),
-        input, style);
-}
-
-INSTANTIATE_TEST_SUITE_P(Configurations, ControlBracePlacementGoldenTest,
-    testing::Values("preserve", "same-line", "new-line",
-        "attach-unless-multiline", "combined"));
-
-class FunctionSpacingGoldenTest : public testing::TestWithParam<std::string>
-{ };
-
-TEST_P(FunctionSpacingGoldenTest, FormatsOnlyFunctionParameterGaps)
-{
-    const auto directory = std::filesystem::path(FUNCTION_SPACING_TESTDATA_DIR);
-    const auto input = ReadFile(directory /
-        (GetParam() == "reflow" ? "reflow.input.cpp" : "input.cpp"));
-    const auto style = formatter::LoadConfigFile(
-        directory / (GetParam() + ".hit-fmt")).FormattingStyle;
-
-    ExpectFormattedGolden(directory / (GetParam() + ".output.cpp"),
-        input, style);
-}
-
-INSTANTIATE_TEST_SUITE_P(Configurations, FunctionSpacingGoldenTest,
-    testing::Values("preserve", "space", "no-space", "reflow"));
-
-class FunctionCallSpacingGoldenTest : public testing::TestWithParam<std::string>
-{ };
-
-TEST_P(FunctionCallSpacingGoldenTest, FormatsOnlyParsedCallGaps)
-{
-    const auto directory =
-        std::filesystem::path(FUNCTION_CALL_SPACING_TESTDATA_DIR);
-    const auto input = ReadFile(directory /
-        (GetParam() == "combined" ? "combined.input.cpp" : "input.cpp"));
-    const auto style = formatter::LoadConfigFile(
-        directory / (GetParam() + ".hit-fmt")).FormattingStyle;
-
-    ExpectFormattedGolden(directory / (GetParam() + ".output.cpp"),
-        input, style);
-}
-
-INSTANTIATE_TEST_SUITE_P(Configurations, FunctionCallSpacingGoldenTest,
-    testing::Values("preserve", "space", "no-space", "combined"));
-
-class FunctionInnerSpacingGoldenTest : public testing::TestWithParam<std::string>
-{ };
-
-TEST_P(FunctionInnerSpacingGoldenTest, FormatsOnlyParameterListEdges)
-{
-    const auto directory =
-        std::filesystem::path(FUNCTION_INNER_SPACING_TESTDATA_DIR);
-    const auto input = ReadFile(directory /
-        (GetParam() == "reflow" ? "reflow.input.cpp" : "input.cpp"));
-    const auto style = formatter::LoadConfigFile(
-        directory / (GetParam() + ".hit-fmt")).FormattingStyle;
-
-    ExpectFormattedGolden(directory / (GetParam() + ".output.cpp"),
-        input, style);
-}
-
-INSTANTIATE_TEST_SUITE_P(Configurations, FunctionInnerSpacingGoldenTest,
-    testing::Values("preserve", "space", "no-space", "reflow"));
-
-class CallInnerSpacingGoldenTest : public testing::TestWithParam<std::string>
-{ };
-
-TEST_P(CallInnerSpacingGoldenTest, FormatsOnlyUnambiguousCallEdges)
-{
-    const auto directory = std::filesystem::path(CALL_INNER_SPACING_TESTDATA_DIR);
-    const auto input = ReadFile(directory /
-        (GetParam() == "combined" ? "combined.input.cpp" : "input.cpp"));
-    const auto style = formatter::LoadConfigFile(
-        directory / (GetParam() + ".hit-fmt")).FormattingStyle;
-
-    ExpectFormattedGolden(directory / (GetParam() + ".output.cpp"),
-        input, style);
-}
-
-INSTANTIATE_TEST_SUITE_P(Configurations, CallInnerSpacingGoldenTest,
-    testing::Values("preserve", "space", "no-space", "combined"));
-
-class LambdaCaptureGoldenTest : public testing::TestWithParam<std::string>
-{ };
-
-TEST_P(LambdaCaptureGoldenTest, FormatsListAndAssignments)
-{
-    const auto directory = std::filesystem::path(LAMBDA_CAPTURE_TESTDATA_DIR);
-    const auto input = ReadFile(directory / "input.cpp");
-    const auto style = formatter::LoadConfigFile(
-        directory / (GetParam() + ".hit-fmt")).FormattingStyle;
-
-    ExpectFormattedGolden(directory / (GetParam() + ".output.cpp"),
-        input, style);
-}
-
-INSTANTIATE_TEST_SUITE_P(Configurations, LambdaCaptureGoldenTest,
-    testing::Values("preserve", "space", "no-space", "mixed", "reverse"));
-
-class LambdaInnerParameterGoldenTest : public testing::TestWithParam<std::string>
-{ };
-
-TEST_P(LambdaInnerParameterGoldenTest, FormatsOnlyLambdaParameterEdges)
-{
-    const auto directory =
-        std::filesystem::path(LAMBDA_INNER_PARAMETER_TESTDATA_DIR);
-    const auto input = ReadFile(directory / "input.cpp");
-    const auto style = formatter::LoadConfigFile(
-        directory / (GetParam() + ".hit-fmt")).FormattingStyle;
-
-    ExpectFormattedGolden(directory / (GetParam() + ".output.cpp"),
-        input, style);
-}
-
-INSTANTIATE_TEST_SUITE_P(Configurations, LambdaInnerParameterGoldenTest,
-    testing::Values("preserve", "space", "no-space", "combined"));
-
-class BodyIndentGoldenTest : public testing::TestWithParam<std::string>
-{ };
-
-TEST_P(BodyIndentGoldenTest, IndentsOnlyRecordAndEnumMembers)
-{
-    const auto directory = std::filesystem::path(BODY_INDENT_TESTDATA_DIR);
-    const auto input = ReadFile(directory / "input.cpp");
-    const auto style = formatter::LoadConfigFile(
-        directory / (GetParam() + ".hit-fmt")).FormattingStyle;
-
-    ExpectFormattedGolden(directory / (GetParam() + ".output.cpp"),
-        input, style);
-}
-
-INSTANTIATE_TEST_SUITE_P(Configurations, BodyIndentGoldenTest,
-    testing::Values("preserve", "indent", "no-indent", "mixed"));
-
-class InheritanceGoldenTest : public testing::TestWithParam<std::string>
-{ };
-
-TEST_P(InheritanceGoldenTest, PositionsOnlyParsedBaseClauses)
-{
-    const auto directory = std::filesystem::path(INHERITANCE_TESTDATA_DIR);
-    const auto input = ReadFile(directory / "input.cpp");
-    const auto style = formatter::LoadConfigFile(
-        directory / (GetParam() + ".hit-fmt")).FormattingStyle;
-
-    ExpectFormattedGolden(directory / (GetParam() + ".output.cpp"),
-        input, style);
-}
-
-INSTANTIATE_TEST_SUITE_P(Configurations, InheritanceGoldenTest,
-    testing::Values("preserve", "format", "leading",
-        "trailing", "overflow", "comma-leading", "no-space",
-        "spaces-mixed", "combined"));
-
-class InheritanceSplitGoldenTest : public testing::TestWithParam<std::string>
-{ };
-
-TEST_P(InheritanceSplitGoldenTest, SplitsOnlySafeBaseLists)
-{
-    const auto directory = std::filesystem::path(INHERITANCE_TESTDATA_DIR);
-    const auto input = ReadFile(directory / "split.input.cpp");
-    const auto style = formatter::LoadConfigFile(
-        directory / (GetParam() + ".hit-fmt")).FormattingStyle;
-
-    ExpectFormattedGolden(directory / (GetParam() + ".output.cpp"),
-        input, style);
-}
-
-INSTANTIATE_TEST_SUITE_P(Configurations, InheritanceSplitGoldenTest,
-    testing::Values("split-preserve", "one-per-line", "pack-wide",
-        "pack-tight", "split-combined"));
 
 TEST(BraceSpacingTest, ComposesWithParameterReflow)
 {

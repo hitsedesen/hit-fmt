@@ -60,4 +60,32 @@ inline void ExpectGolden(
     }
 }
 
+struct Fixture
+{
+    std::filesystem::path Directory;
+    std::string Name;
+
+    [[nodiscard]] std::filesystem::path Named(std::string_view suffix) const
+    {
+        return Directory / (Name + std::string(suffix));
+    }
+
+    [[nodiscard]] std::string Input(
+        const std::filesystem::path& filename = "input.cpp") const
+    {
+        return ReadFile(Directory / filename);
+    }
+
+    [[nodiscard]] std::string InputNamed(std::string_view suffix) const
+    {
+        return ReadFile(Named(suffix));
+    }
+
+    void Expect(
+        std::string_view actual, std::string_view suffix = ".output.cpp") const
+    {
+        ExpectGolden(Named(suffix), actual);
+    }
+};
+
 } // namespace test::golden
