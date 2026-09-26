@@ -671,6 +671,22 @@ TEST(ExpressionLayoutTest, PlacesAndGroupsTernaryBreaks)
     EXPECT_EQ(FormatWithStyle(existing, style), threeLeading);
     EXPECT_EQ(FormatWithStyle(bothSides, style), threeLeading);
     EXPECT_EQ(FormatWithStyle(threeLeading, style), threeLeading);
+    const auto chain =
+        "int f() {\n"
+        "    return one ? a :\n"
+        "        two ? b :\n"
+        "        three ? c : d;\n"
+        "}\n";
+    const auto alignedChain =
+        "int f() {\n"
+        "    return one\n"
+        "        ? a\n"
+        "        : two\n"
+        "            ? b\n"
+        "            : three ? c : d;\n"
+        "}\n";
+    EXPECT_EQ(FormatWithStyle(chain, style), alignedChain);
+    EXPECT_EQ(FormatWithStyle(alignedChain, style), alignedChain);
     style.TernaryOperatorPlacement = formatter::TernaryOperatorPlacement::Trailing;
     EXPECT_EQ(FormatWithStyle(corrected, style), threeTrailing);
     for (auto mode : {formatter::ExpressionLayoutCondition::FitOrOverflow,
