@@ -129,8 +129,14 @@ void PrintCells(const std::vector<std::string_view>& cells,
     for (auto i = begin; i < end; ++i) std::cout << cells[i];
 }
 
-size_t PrintSourceExcerpt(std::string_view text, size_t column,
-    size_t prefixWidth, size_t terminalWidth)
+struct Excerpt
+{
+    size_t CaretOffset;
+    bool CaretVisible;
+};
+
+Excerpt PrintSourceExcerpt(std::string_view text, size_t column,
+    size_t prefixWidth, size_t terminalWidth, bool fromStart = false)
 {
     auto rendered = RenderLine(text, column, prefixWidth);
     const auto& cells = rendered.Cells;
@@ -138,18 +144,21 @@ size_t PrintSourceExcerpt(std::string_view text, size_t column,
         ? terminalWidth - prefixWidth - 1 : size_t{16};
     auto window = available > 6 ? available - 6 : size_t{1};
     size_t begin = 0;
-    if (cells.size() > available) {
+    if (cells.size() > available && !fromStart) {
         begin = std::min(cells.size() - window,
             rendered.Caret > window / 2 ? rendered.Caret - window / 2 : 0);
     }
-    auto end = std::min(cells.size(), begin +
-        (cells.size() > available ? window : available));
+    auto count = cells.size() > available
+        ? (fromStart ? available - 3 : window) : available;
+    auto end = std::min(cells.size(), begin + count);
     if (begin) std::cout << "...";
     PrintCells(cells, begin, end);
     if (end < cells.size()) std::cout << "...";
     std::cout << '\n';
-    // The caret always falls within this window, even for end-of-line gaps.
-    return (begin ? 3 : 0) + rendered.Caret - begin;
+    return {.CaretOffset = (begin ? 3 : 0) +
+        std::min(rendered.Caret, end) - begin,
+        .CaretVisible = rendered.Caret < end ||
+            (rendered.Caret == end && end == cells.size())};
 }
 
 void PrintWrappedMessage(std::string_view message,
@@ -214,7 +223,7 @@ bool UseTerminalColors()
 #endif
 }
 
-enum class ViolationKind { Other, Reflow };
+enum class ViolationKind { Other, Reflow, LineWidth };
 
 struct Violation
 {
@@ -707,7 +716,10 @@ void PrintCheckDiagnostics(
         chunks.push_back({.Begin = issue.Position.Line,
             .End = issue.Position.Line + 1,
             .Violations = {{issue.Position.Line, issue.Position.Column,
-                issue.Message}}, .HasLayoutIssue = true,
+                issue.Message, issue.Kind ==
+                    formatter::LayoutDiagnosticKind::LineWidth
+                    ? ViolationKind::LineWidth : ViolationKind::Other}},
+            .HasLayoutIssue = true,
             .HasWidthIssue = issue.Kind ==
                 formatter::LayoutDiagnosticKind::LineWidth});
     }
@@ -805,10 +817,10 @@ void PrintCheckDiagnostics(
             const auto prefix = std::string(
                 width - std::to_string(lineNumber).size(), ' ') +
                 std::to_string(lineNumber) + " | ";
-            auto printLine = [&] (size_t column) {
+            auto printLine = [&] (size_t column, bool fromStart = false) {
                 std::cout << prefix;
                 return PrintSourceExcerpt(text, column, prefix.size(),
-                    terminalWidth);
+                    terminalWidth, fromStart);
             };
             if (violationIndex == chunk.Violations.size() ||
                 chunk.Violations[violationIndex].Line != lineNumber)
@@ -819,10 +831,19 @@ void PrintCheckDiagnostics(
                 chunk.Violations[violationIndex].Line == lineNumber)
             {
                 const auto& violation = chunk.Violations[violationIndex++];
-                auto offset = printLine(violation.Column);
-                std::cout << gutter << std::string(offset, ' ') << '^';
-                if (gutter.size() + offset + 2 + violation.Message.size() <
-                    terminalWidth)
+                auto excerpt = printLine(violation.Column,
+                    violation.Kind == ViolationKind::LineWidth);
+                std::cout << gutter;
+                if (!excerpt.CaretVisible) {
+                    // Do not imply that the cropped end of a long line is
+                    // the exact token at ColumnLimit + 1.
+                    PrintWrappedMessage(violation.Message, gutter,
+                        terminalWidth);
+                    continue;
+                }
+                std::cout << std::string(excerpt.CaretOffset, ' ') << '^';
+                if (gutter.size() + excerpt.CaretOffset + 2 +
+                    violation.Message.size() < terminalWidth)
                 {
                     std::cout << ' ' << violation.Message << '\n';
                 } else {
