@@ -25,17 +25,14 @@ struct NamingStyle
 #define FORMATTER_NAMING_FIELD(category) NameRule category;
     FORMATTER_NAMING_CATEGORIES(FORMATTER_NAMING_FIELD)
 #undef FORMATTER_NAMING_FIELD
-    // Qualified namespace paths; each entry also excludes its descendants.
-#define FORMATTER_NAMING_OPTION_FIELD(type, name, initial, key) type name = initial;
-    FORMATTER_NAMING_OPTIONS(FORMATTER_NAMING_OPTION_FIELD)
-#undef FORMATTER_NAMING_OPTION_FIELD
 };
 
 struct Configuration
 {
     Style FormattingStyle;
     NamingStyle Naming;
-#define FORMATTER_CONFIG_FIELD(type, name, initial, key) type name = initial;
+    // Qualified namespace paths; each entry also excludes its descendants.
+#define FORMATTER_CONFIG_FIELD(type, name, initial) type name = initial;
     FORMATTER_CONFIGURATION_OPTIONS(FORMATTER_CONFIG_FIELD)
 #undef FORMATTER_CONFIG_FIELD
 };

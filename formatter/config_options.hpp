@@ -110,16 +110,12 @@
     X(Class) X(Enum) X(Union) X(Struct) X(Function) X(Concept) X(Variable)    \
     X(Namespace)
 
-// Explicit on-disk names are needed only when they differ from the member.
-#define FORMATTER_NAMING_OPTIONS(X)                                             \
-    X(std::vector<std::string>, ExemptNamespaces, {"std"},                     \
-        NamingNamespaceExemptions)
-
 #define FORMATTER_CONFIGURATION_OPTIONS(X)                                      \
-    X(formatter::FunctionDeclarationParameterNames, DeclarationParameterNames, \
-        formatter::FunctionDeclarationParameterNames::Unchecked,              \
-        FunctionDeclarationParameterNames)                                     \
-    X(formatter::FunctionDefinitionParameterNames, DefinitionParameterNames,  \
-        formatter::FunctionDefinitionParameterNames::Unchecked,               \
-        FunctionDefinitionParameterNames)                                      \
-    X(std::vector<std::regex>, Exclusions, {}, Exclude)
+    X(std::vector<std::string>, NamingNamespaceExemptions, {"std"})           \
+    X(formatter::FunctionDeclarationParameterNames,                           \
+        FunctionDeclarationParameterNames,                                     \
+        formatter::FunctionDeclarationParameterNames::Unchecked)              \
+    X(formatter::FunctionDefinitionParameterNames,                            \
+        FunctionDefinitionParameterNames,                                      \
+        formatter::FunctionDefinitionParameterNames::Unchecked)               \
+    X(std::vector<std::regex>, Exclude, {})

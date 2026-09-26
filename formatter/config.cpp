@@ -338,13 +338,6 @@ void AssignConfig(Configuration& config, std::string_view value,
 }
 
 template <auto Member>
-void AssignNaming(Configuration& config, std::string_view value,
-    const std::filesystem::path& path, size_t line)
-{
-    ParseField(config.Naming.*Member, value, path, line);
-}
-
-template <auto Member>
 void AssignNamingCase(Configuration& config, std::string_view value,
     const std::filesystem::path& path, size_t line)
 {
@@ -376,12 +369,8 @@ constexpr auto Options = std::to_array<OptionBinding>({
     {#category "NamePrefixes", &AssignNamingPrefixes<&NamingStyle::category>},
     FORMATTER_NAMING_CATEGORIES(NAMING_CATEGORY_BINDINGS)
 #undef NAMING_CATEGORY_BINDINGS
-#define NAMING_BINDING(type, name, initial, key)                                \
-    {#key, &AssignNaming<&NamingStyle::name>},
-    FORMATTER_NAMING_OPTIONS(NAMING_BINDING)
-#undef NAMING_BINDING
-#define CONFIG_BINDING(type, name, initial, key)                                \
-    {#key, &AssignConfig<&Configuration::name>},
+#define CONFIG_BINDING(type, name, initial)                                     \
+    {#name, &AssignConfig<&Configuration::name>},
     FORMATTER_CONFIGURATION_OPTIONS(CONFIG_BINDING)
 #undef CONFIG_BINDING
 });

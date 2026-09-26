@@ -76,8 +76,11 @@ const parser::Node* Child(const parser::Node& node, NK kind)
 class Checker
 {
 public:
-    Checker(const parser::SyntaxTree& tree, const NamingStyle& style)
-        : Tree(tree), Style(style) { }
+    Checker(const parser::SyntaxTree& tree, const Configuration& config)
+        : Tree(tree)
+        , Style(config.Naming)
+        , ExemptNamespaces(config.NamingNamespaceExemptions)
+    { }
 
     std::vector<NameDiagnostic> Run()
     {
@@ -253,7 +256,7 @@ private:
 
     bool IsExempt() const
     {
-        for (const auto& name : Style.ExemptNamespaces) {
+        for (const auto& name : ExemptNamespaces) {
             if (Scope == name || (Scope.starts_with(name) &&
                 Scope.size() > name.size() + 1 &&
                 Scope.compare(name.size(), 2, "::") == 0))
@@ -328,6 +331,7 @@ private:
 
     const parser::SyntaxTree& Tree;
     const NamingStyle& Style;
+    const std::vector<std::string>& ExemptNamespaces;
     std::vector<NameDiagnostic> Results;
     std::string Scope;
 };
@@ -335,8 +339,9 @@ private:
 } // namespace
 
 std::vector<NameDiagnostic> CheckNames(
-    const parser::SyntaxTree& tree, const NamingStyle& style)
+    const parser::SyntaxTree& tree, const Configuration& config)
 {
+    const auto& style = config.Naming;
     auto enabled = [] (const NameRule& rule) {
         return rule.Case != NameCase::Unchecked || rule.Prefixes.has_value();
     };
@@ -344,7 +349,7 @@ std::vector<NameDiagnostic> CheckNames(
         !enabled(style.Union) && !enabled(style.Struct) &&
         !enabled(style.Function) && !enabled(style.Concept) &&
         !enabled(style.Variable) && !enabled(style.Namespace)) return {};
-    return Checker(tree, style).Run();
+    return Checker(tree, config).Run();
 }
 
 } // namespace formatter

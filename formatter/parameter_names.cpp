@@ -284,13 +284,13 @@ CheckParameterNames(const parser::SyntaxTree& tree,
         auto* node = stack.back();
         stack.pop_back();
         if ((node->Kind == NK::FunctionDeclaration &&
-                config.DeclarationParameterNames ==
+                config.FunctionDeclarationParameterNames ==
                     FunctionDeclarationParameterNames::Required) ||
             (node->Kind == NK::FunctionDefinition &&
-                config.DefinitionParameterNames !=
+                config.FunctionDefinitionParameterNames !=
                     FunctionDefinitionParameterNames::Unchecked))
         {
-            CheckFunction(tree, *node, config.DefinitionParameterNames,
+            CheckFunction(tree, *node, config.FunctionDefinitionParameterNames,
                 diagnostics);
         }
         for (auto* child = node->Child(); child; child = child->NextSibling) {

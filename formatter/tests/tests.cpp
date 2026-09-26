@@ -996,7 +996,7 @@ TEST_P(NamingGoldenTest, ReportsOnlyConfiguredUnambiguousNames)
     const auto tree = parser::Parse({.Data = storage.data(),
         .Size = input.size()}, [] (parser::ParseError) { });
     std::string actual;
-    for (const auto& diagnostic : formatter::CheckNames(tree, config.Naming)) {
+    for (const auto& diagnostic : formatter::CheckNames(tree, config)) {
         actual += std::to_string(diagnostic.Position.Line) + ":" +
             std::to_string(diagnostic.Position.Column) + ": " +
             diagnostic.Message + "\n";
@@ -1069,9 +1069,9 @@ TEST(PreserveConfigTest, RejectsInvalidSettings)
     EXPECT_TRUE(config.FormattingStyle.EnforceFirstCallArgumentPosition);
     EXPECT_EQ(config.FormattingStyle.CallArgumentIndent,
         formatter::CallArgumentIndent::Continuation);
-    ASSERT_EQ(config.Exclusions.size(), 2u);
-    EXPECT_TRUE(std::regex_search("x]y", config.Exclusions[0]));
-    EXPECT_TRUE(std::regex_search("generated/source.cpp", config.Exclusions[1]));
+    ASSERT_EQ(config.Exclude.size(), 2u);
+    EXPECT_TRUE(std::regex_search("x]y", config.Exclude[0]));
+    EXPECT_TRUE(std::regex_search("generated/source.cpp", config.Exclude[1]));
     ASSERT_TRUE(config.Naming.Class.Prefixes.has_value());
     EXPECT_EQ(*config.Naming.Class.Prefixes,
         (std::vector<std::string>{"S", "C"}));
