@@ -44,32 +44,32 @@ outputs, golden test fixtures, and benchmark sources.
 
 ## Usage
 
-Emit a formatted file to standard output:
+Check files or directories without modifying them (the default):
 
 ```sh
-hit-fmt source.cpp
+hit-fmt src/ include/
 ```
 
 Format files or directories in place:
 
 ```sh
-hit-fmt --in-place source.cpp include/
+hit-fmt --fix source.cpp include/
 ```
 
-Check layout and configured naming rules without modifying files:
+`--check` may be given explicitly when desired.
 
-```sh
-hit-fmt --check src/ include/
-```
-
-In check mode, expression and call reflow is not run. Configured layout
-checks report overlong lines and misplaced binary or ternary operators as
-file, line, and column diagnostics; other formatting rules still show diffs.
+Check mode reports affected source chunks with caret-marked formatting,
+expression-layout, naming and parameter-name violations. Source excerpts
+are cropped around the marked token to fit the terminal width; proposed
+formatter output wraps when needed. Naming checks remain advisory. Expression
+reflow is not run to decide check-mode formatting mismatches: layout checks
+inspect the original source. `--summary` reports only affected files.
+`--fix` writes formatted source in place.
 
 Skip files or whole subdirectories while formatting or checking a folder:
 
 ```sh
-hit-fmt --in-place --exclude '(^|/)generated(/|$)' \
+hit-fmt --fix --exclude '(^|/)generated(/|$)' \
     --exclude '(^|/)legacy\.cpp$' src/
 ```
 

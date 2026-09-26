@@ -148,10 +148,13 @@ struct Style
     SameLineBraceSpacing NamespaceBraceSpacing = SameLineBraceSpacing::Preserve;
 };
 
+enum class LayoutDiagnosticKind { LineWidth, OperatorPlacement, TernarySplit };
+
 struct LayoutDiagnostic
 {
     util::Position Position;
     std::string Message;
+    LayoutDiagnosticKind Kind;
 };
 
 // Check the source layout directly without computing a reflow.

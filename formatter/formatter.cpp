@@ -2110,6 +2110,78 @@ std::string CompleteTernaryBreaks(const parser::SyntaxTree& tree,
     return output;
 }
 
+// A nested conditional's ':' belongs at the same depth as its '?', not at
+// the indentation inherited from the next condition in the original chain.
+std::string AlignLeadingTernaryColons(const parser::SyntaxTree& tree)
+{
+    const auto source = tree.Source();
+    std::vector<Replacement> edits;
+    std::vector<const parser::Node*> nodes{&tree.Root()};
+    while (!nodes.empty()) {
+        auto* node = nodes.back();
+        nodes.pop_back();
+        if (IsIncompleteStatement(*node)) continue;
+        if (auto delimiters = ConditionalDelimiters(tree, *node)) {
+            auto [question, colon] = *delimiters;
+            auto span = source.substr(tree.Token(node->Tokens.Begin).Text.Begin,
+                tree.Token(node->Tokens.End - 1).Text.End -
+                    tree.Token(node->Tokens.Begin).Text.Begin);
+            bool unsafe = span.find_first_of("\\\r") !=
+                std::string_view::npos;
+            for (auto i = node->Tokens.Begin; i < node->Tokens.End; ++i) {
+                unsafe |= tree.Kind(i) == TK::Comment ||
+                    tree.Kind(i) == TK::PreprocessingDirective;
+            }
+            if (!unsafe && SafeOperatorGap(tree, question) &&
+                SafeOperatorGap(tree, colon))
+            {
+                auto questionAt = tree.Token(question).Text.Begin;
+                auto colonAt = tree.Token(colon).Text.Begin;
+                auto questionStart = source.rfind('\n', questionAt);
+                questionStart = questionStart == std::string_view::npos
+                    ? 0 : questionStart + 1;
+                auto colonStart = source.rfind('\n', colonAt);
+                colonStart = colonStart == std::string_view::npos
+                    ? 0 : colonStart + 1;
+                auto questionIndent = source.substr(questionStart,
+                    questionAt - questionStart);
+                auto colonIndent = source.substr(colonStart,
+                    colonAt - colonStart);
+                auto spacesOnly = [] (std::string_view indent) {
+                    return std::ranges::all_of(indent, [] (char c) {
+                        return c == ' ';
+                    });
+                };
+                if (questionStart != colonStart &&
+                    tree.WhitespaceBefore(question).contains('\n') &&
+                    tree.WhitespaceBefore(colon).contains('\n') &&
+                    spacesOnly(questionIndent) && spacesOnly(colonIndent) &&
+                    questionIndent != colonIndent)
+                {
+                    edits.push_back({colonStart, colonAt,
+                        std::string(questionIndent)});
+                }
+            }
+        }
+        for (auto* child = node->Child(); child; child = child->NextSibling) {
+            nodes.push_back(child);
+        }
+    }
+    if (edits.empty()) return std::string(source);
+    std::ranges::sort(edits, {}, &Replacement::Begin);
+    std::string output;
+    output.reserve(source.size());
+    size_t from = 0;
+    for (const auto& edit : edits) {
+        if (edit.Begin < from) continue;
+        output.append(source.substr(from, edit.Begin - from));
+        output += edit.Text;
+        from = edit.End;
+    }
+    output.append(source.substr(from));
+    return output;
+}
+
 std::string FormatExpressions(const parser::SyntaxTree& tree,
     const Style& style, bool correctExisting = true)
 {
@@ -2825,7 +2897,8 @@ std::vector<LayoutDiagnostic> CheckExpressionLayout(
                 {.Line = lineNumber,
                  .Column = static_cast<uint32_t>(style.ColumnLimit + 1)},
                 "line exceeds ColumnLimit (" + std::to_string(width) +
-                    " > " + std::to_string(style.ColumnLimit) + ")"});
+                    " > " + std::to_string(style.ColumnLimit) + ")",
+                LayoutDiagnosticKind::LineWidth});
         }
         start = end == source.size() ? end : end + 1;
     }
@@ -2840,7 +2913,9 @@ std::vector<LayoutDiagnostic> CheckExpressionLayout(
         if ((left || right) && (leading ? !left || right : !right || left)) {
             const auto& token = tree.Token(index);
             diagnostics.push_back({token.Position, std::string(name) +
-                (leading ? " must be leading" : " must be trailing")});
+                (leading ? " must start the following line" :
+                    " must end the preceding line"),
+                LayoutDiagnosticKind::OperatorPlacement});
         }
     };
     while (!nodes.empty()) {
@@ -2890,7 +2965,10 @@ std::vector<LayoutDiagnostic> CheckExpressionLayout(
                     auto missing = hasBreak(question) ? colon : question;
                     const auto& token = tree.Token(missing);
                     diagnostics.push_back({token.Position,
-                        "ternary split requires both ? and : breaks"});
+                        std::string("ternary '") +
+                            (missing == question ? '?' : ':') +
+                            "' needs a line break to match the other delimiter",
+                        LayoutDiagnosticKind::TernarySplit});
                 }
             }
         }
@@ -3027,6 +3105,16 @@ std::string Format(const parser::SyntaxTree& tree, const Style& style)
             } else {
                 formatted = std::move(grouped);
             }
+        }
+        if (style.TernarySplit == TernarySplit::ThreeLines &&
+            style.TernaryOperatorPlacement == TernaryOperatorPlacement::Leading)
+        {
+            auto length = formatted.size();
+            formatted.append(util::SourcePaddingSize, '\0');
+            auto parsed = parser::Parse(
+                {.Data = formatted.data(), .Size = length},
+                [] (parser::ParseError) { });
+            formatted = AlignLeadingTernaryColons(parsed);
         }
     }
     // AttachUnlessMultiline depends on the resulting header, not the
