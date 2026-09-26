@@ -273,6 +273,24 @@ std::string DescribeWhitespace(std::string_view gap)
     return description;
 }
 
+std::string TokenAt(std::string_view text, size_t offset)
+{
+    if (offset == text.size()) return "end of line";
+    auto c = static_cast<unsigned char>(text[offset]);
+    if (!std::isalnum(c) && c != '_' && c < 0x80) {
+        return std::string(1, text[offset]);
+    }
+    size_t end = offset;
+    while (end < text.size() && end - offset < 24) {
+        auto next = static_cast<unsigned char>(text[end]);
+        if (!std::isalnum(next) && next != '_' && next < 0x80) break;
+        ++end;
+        while (end < text.size() &&
+            (static_cast<unsigned char>(text[end]) & 0xc0) == 0x80) ++end;
+    }
+    return std::string(text.substr(offset, end - offset));
+}
+
 std::string SpacingMessage(std::string_view actual, std::string_view expected,
     size_t begin, size_t end, size_t expectedBegin, size_t expectedEnd)
 {
@@ -285,25 +303,7 @@ std::string SpacingMessage(std::string_view actual, std::string_view expected,
     if (end == actual.size()) {
         return "trailing whitespace: expected " + wanted + ", found " + found;
     }
-    std::string token;
-    auto c = static_cast<unsigned char>(actual[end]);
-    if (std::isalnum(c) || c == '_' || c >= 0x80) {
-        auto tokenEnd = end;
-        while (tokenEnd < actual.size() && tokenEnd - end < 24) {
-            auto next = static_cast<unsigned char>(actual[tokenEnd]);
-            if (!std::isalnum(next) && next != '_' && next < 0x80) break;
-            ++tokenEnd;
-            while (tokenEnd < actual.size() &&
-                (static_cast<unsigned char>(actual[tokenEnd]) & 0xc0) == 0x80)
-            {
-                ++tokenEnd;
-            }
-        }
-        token = std::string(actual.substr(end, tokenEnd - end));
-    } else {
-        token = actual[end];
-    }
-    return "expected " + wanted + " before '" + token +
+    return "expected " + wanted + " before '" + TokenAt(actual, end) +
         "', found " + found;
 }
 
@@ -406,6 +406,82 @@ bool SameNonWhitespace(std::string_view a, std::string_view b)
     }
 }
 
+// Align the source and formatted token streams across changed line breaks.
+// Only whitespace can be compared this way: for content edits, the line diff
+// below describes the changed text instead.
+std::optional<std::vector<Violation>> ReflowViolations(
+    std::span<const Line> source, std::span<const Line> formatted,
+    size_t firstLine)
+{
+    std::string original, replacement;
+    std::vector<size_t> lineStarts;
+    for (const auto& line : source) {
+        lineStarts.push_back(original.size());
+        original += line.Text;
+        if (line.HasNewline) original += '\n';
+    }
+    for (const auto& line : formatted) {
+        replacement += line.Text;
+        if (line.HasNewline) replacement += '\n';
+    }
+    if (!SameNonWhitespace(original, replacement)) return std::nullopt;
+
+    std::vector<Violation> violations;
+    size_t a = 0, b = 0;
+    while (a < original.size() || b < replacement.size()) {
+        auto startA = a, startB = b;
+        while (a < original.size() &&
+            std::isspace(static_cast<unsigned char>(original[a]))) ++a;
+        while (b < replacement.size() &&
+            std::isspace(static_cast<unsigned char>(replacement[b]))) ++b;
+        auto gapA = std::string_view(original).substr(startA, a - startA);
+        auto gapB = std::string_view(replacement).substr(startB, b - startB);
+        if (gapA != gapB) {
+            auto lineIndex = static_cast<size_t>(
+                std::upper_bound(lineStarts.begin(), lineStarts.end(), a) -
+                lineStarts.begin() - 1);
+            auto byte = std::min(a - lineStarts[lineIndex],
+                source[lineIndex].Text.size());
+            auto token = TokenAt(original, a);
+            std::string message;
+            auto oldBreaks = std::count(gapA.begin(), gapA.end(), '\n');
+            auto newBreaks = std::count(gapB.begin(), gapB.end(), '\n');
+            if (!oldBreaks && newBreaks) {
+                message = "insert a line break before '" + token + "'";
+                auto indent = gapB.substr(gapB.rfind('\n') + 1);
+                if (!indent.empty()) {
+                    message += " and indent by " + DescribeWhitespace(indent);
+                }
+            } else if (oldBreaks && !newBreaks) {
+                message = "join lines before '" + token + "' with " +
+                    DescribeWhitespace(gapB);
+            } else if (oldBreaks != newBreaks) {
+                auto difference = oldBreaks > newBreaks
+                    ? oldBreaks - newBreaks : newBreaks - oldBreaks;
+                message = (oldBreaks > newBreaks ? "remove " : "insert ") +
+                    std::to_string(difference) +
+                    (difference == 1 ? " blank line" : " blank lines") +
+                    " before '" + token + "'";
+            } else if (oldBreaks) {
+                auto oldIndent = gapA.substr(gapA.rfind('\n') + 1);
+                auto newIndent = gapB.substr(gapB.rfind('\n') + 1);
+                message = "indent '" + token + "' with " +
+                    DescribeWhitespace(newIndent) + " instead of " +
+                    DescribeWhitespace(oldIndent);
+            } else {
+                message = SpacingMessage(original, replacement,
+                    startA, a, startB, b);
+            }
+            violations.push_back({firstLine + lineIndex,
+                ColumnAt(source[lineIndex].Text, byte), std::move(message)});
+        }
+        if (a == original.size() || b == replacement.size()) break;
+        ++a;
+        ++b;
+    }
+    return violations;
+}
+
 bool IsIncludeLine(const Line& line)
 {
     auto begin = line.Text.find_first_not_of(" \t");
@@ -480,7 +556,20 @@ std::vector<Chunk> FormattingChunks(
             .FormattedBegin = formattedIndex,
             .FormattedEnd = formattedIndex + formattedCount,
             .HasFix = true};
-        for (size_t i = 0; i < sourceCount; ++i) {
+        bool alignedReflow = false;
+        if (sourceCount && formattedCount &&
+            (sourceCount != formattedCount || sourceCount > 1))
+        {
+            auto reflow = ReflowViolations(
+                std::span(source).subspan(sourceIndex, sourceCount),
+                std::span(formatted).subspan(formattedIndex, formattedCount),
+                sourceIndex + 1);
+            if (reflow && !reflow->empty()) {
+                chunk.Violations = std::move(*reflow);
+                alignedReflow = true;
+            }
+        }
+        for (size_t i = 0; i < sourceCount && !alignedReflow; ++i) {
             const auto& line = source[sourceIndex + i];
             auto replacement = i < formattedCount
                 ? formatted[formattedIndex + i].Text : std::string_view{};
