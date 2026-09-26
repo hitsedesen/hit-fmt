@@ -308,69 +308,58 @@ void ParseField(std::vector<std::regex>& field, std::string_view value,
     }
 }
 
-// Positive-integer limits are validation policy, not field metadata.
-template <auto Member>
-consteval size_t StyleIntegerLimit()
+void ValidateStyleLimits(const Style& style,
+    const std::filesystem::path& path, size_t line)
 {
-    if constexpr (Member == &Style::IndentWidth ||
-        Member == &Style::InheritanceListIndent)
-    {
-        return 32;
-    } else if constexpr (Member == &Style::ColumnLimit) {
-        return 10000;
-    } else {
-        static_assert(Member == &Style::IndentWidth ||
-            Member == &Style::InheritanceListIndent ||
-            Member == &Style::ColumnLimit,
-            "add a limit for the new integer style option");
+    if (style.IndentWidth > 32) {
+        ThrowConfigError(path, line, "IndentWidth must not exceed 32");
+    }
+    if (style.ColumnLimit > 10000) {
+        ThrowConfigError(path, line, "ColumnLimit must not exceed 10000");
+    }
+    if (style.InheritanceListIndent > 32) {
+        ThrowConfigError(path, line,
+            "InheritanceListIndent must not exceed 32");
     }
 }
 
 template <auto Member>
 void AssignStyle(Configuration& config, std::string_view value,
-    const std::filesystem::path& path, size_t line, std::string_view key)
+    const std::filesystem::path& path, size_t line)
 {
-    auto& field = config.FormattingStyle.*Member;
-    ParseField(field, value, path, line);
-    if constexpr (std::is_same_v<std::remove_cvref_t<decltype(field)>, size_t>) {
-        constexpr size_t Maximum = StyleIntegerLimit<Member>();
-        if (field > Maximum) {
-            ThrowConfigError(path, line, std::string(key) +
-                " must not exceed " + std::to_string(Maximum));
-        }
-    }
+    ParseField(config.FormattingStyle.*Member, value, path, line);
 }
 
 template <auto Member>
 void AssignConfig(Configuration& config, std::string_view value,
-    const std::filesystem::path& path, size_t line, std::string_view)
+    const std::filesystem::path& path, size_t line)
 {
     ParseField(config.*Member, value, path, line);
 }
 
 template <auto Member>
 void AssignNaming(Configuration& config, std::string_view value,
-    const std::filesystem::path& path, size_t line, std::string_view)
+    const std::filesystem::path& path, size_t line)
 {
     ParseField(config.Naming.*Member, value, path, line);
 }
 
 template <auto Member>
 void AssignNamingCase(Configuration& config, std::string_view value,
-    const std::filesystem::path& path, size_t line, std::string_view)
+    const std::filesystem::path& path, size_t line)
 {
     ParseField((config.Naming.*Member).Case, value, path, line);
 }
 
 template <auto Member>
 void AssignNamingPrefixes(Configuration& config, std::string_view value,
-    const std::filesystem::path& path, size_t line, std::string_view)
+    const std::filesystem::path& path, size_t line)
 {
     ParseField((config.Naming.*Member).Prefixes, value, path, line);
 }
 
 using OptionHandler = void (*)(Configuration&, std::string_view,
-    const std::filesystem::path&, size_t, std::string_view);
+    const std::filesystem::path&, size_t);
 struct OptionBinding
 {
     std::string_view Name;
@@ -402,7 +391,8 @@ void ApplySetting(Configuration& config, std::string_view key,
 {
     for (const auto& option : Options) {
         if (option.Name == key) {
-            option.Assign(config, value, path, line, key);
+            option.Assign(config, value, path, line);
+            ValidateStyleLimits(config.FormattingStyle, path, line);
             return;
         }
     }
