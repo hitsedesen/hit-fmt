@@ -1,5 +1,5 @@
 add_executable(formatter-tests
-    golden_tests.cpp)
+    tests.cpp)
 target_link_libraries(formatter-tests
     GTest::gtest_main
     lib-formatter)
