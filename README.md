@@ -62,9 +62,12 @@ Check layout and configured naming rules without modifying files:
 hit-fmt --check src/ include/
 ```
 
-In check mode, expression and call reflow is not run. Configured layout
-checks report overlong lines and misplaced binary or ternary operators as
-file, line, and column diagnostics; other formatting rules still show diffs.
+Check mode reports affected source chunks with caret-marked formatting,
+expression-layout, naming and parameter-name violations. It suggests
+formatter output where available; naming checks remain advisory. Expression
+reflow is not run to decide check-mode formatting mismatches: layout checks
+inspect the original source. `--summary` reports only affected files.
+Formatting mode (standard output or `--in-place`) emits formatted source.
 
 Skip files or whole subdirectories while formatting or checking a folder:
 

@@ -5,6 +5,7 @@
 #include <util/file.hpp>
 
 #include <algorithm>
+#include <cctype>
 #include <cstddef>
 #include <cstdio>
 #include <cstdlib>
@@ -35,10 +36,7 @@ constexpr size_t DiffLookahead = 16;
 constexpr std::string_view ResetColor = "\033[0m";
 constexpr std::string_view BoldRed = "\033[1;31m";
 constexpr std::string_view BoldGreen = "\033[1;32m";
-constexpr std::string_view Red = "\033[31m";
 constexpr std::string_view Green = "\033[32m";
-constexpr std::string_view Cyan = "\033[36m";
-constexpr std::string_view Faint = "\033[2m";
 
 enum class Mode
 {
@@ -95,76 +93,6 @@ void PrintCaretIndent(std::string_view text, size_t column)
     }
 }
 
-void PrintNameDiagnostics(
-    std::string_view path,
-    const std::vector<Line>& lines,
-    std::span<const formatter::NameDiagnostic> diagnostics)
-{
-    for (const auto& diagnostic : diagnostics) {
-        auto number = diagnostic.Position.Line;
-        auto text = lines[number - 1].Text;
-        if (text.ends_with('\r')) text.remove_suffix(1);
-        auto width = std::to_string(number).size();
-        auto gutter = std::string(width + 1, ' ') + "|";
-        std::cout << "fail: " << diagnostic.Message << '\n'
-                  << "  --> " << path << ':' << number << ':'
-                  << diagnostic.Position.Column << '\n'
-                  << gutter << '\n'
-                  << number << " | " << text << '\n'
-                  << gutter << ' ';
-        PrintCaretIndent(text, diagnostic.Position.Column);
-        std::cout << "^ invalid " << diagnostic.Issue << '\n';
-    }
-}
-
-void PrintParameterDiagnostics(
-    std::string_view path,
-    std::string_view source,
-    const std::vector<Line>& lines,
-    std::span<const formatter::ParameterNameDiagnostic> diagnostics)
-{
-    const auto& first = diagnostics.front();
-    std::cout << "fail: unnamed parameter";
-    if (diagnostics.size() != 1) {
-        std::cout << 's';
-    }
-    const auto width = std::to_string(first.SignatureEndLine).size();
-    std::cout << " in " << first.Function << '\n'
-              << "  --> " << path << ':' << first.Position.Line << ':'
-              << first.Position.Column << '\n'
-              << std::string(width + 1, ' ') << "|\n";
-
-    for (auto lineNumber = first.SignatureBeginLine;
-        lineNumber <= first.SignatureEndLine; ++lineNumber)
-    {
-        auto text = lines[lineNumber - 1].Text;
-        if (lineNumber == first.SignatureEndLine) {
-            auto end = static_cast<size_t>(first.Signature.End) -
-                static_cast<size_t>(text.data() - source.data());
-            text = text.substr(0, std::min(end, text.size()));
-        }
-        if (text.ends_with('\r')) {
-            text.remove_suffix(1);
-        }
-        const auto gutter = std::string(width + 1, ' ') + "| ";
-        std::cout << std::string(width - std::to_string(lineNumber).size(), ' ')
-                  << lineNumber << " | " << text << '\n';
-        for (const auto& diagnostic : diagnostics) {
-            if (diagnostic.Position.Line != lineNumber) {
-                continue;
-            }
-            std::cout << gutter;
-            PrintCaretIndent(text, diagnostic.Position.Column);
-            std::cout << "^ parameter #" << diagnostic.ParameterNumber
-                      << ": expected a name";
-            if (diagnostic.AllowCommentedName) {
-                std::cout << " or /*name*/ comment";
-            }
-            std::cout << '\n';
-        }
-    }
-}
-
 bool UseTerminalColors()
 {
     if (std::getenv("NO_COLOR") != nullptr) {
@@ -182,82 +110,119 @@ bool UseTerminalColors()
 #endif
 }
 
-void PrintLine(char prefix, const Line& line, bool useColor)
+struct Violation
 {
-    if (useColor) {
-        std::cout << (prefix == '-' ? Red : Green);
-    }
-    std::cout.put(prefix);
-    std::cout.write(line.Text.data(), line.Text.size());
-    if (useColor) {
-        std::cout << ResetColor;
-    }
-    std::cout.put('\n');
-    if (!line.HasNewline) {
-        if (useColor) {
-            std::cout << Faint;
+    size_t Line;
+    size_t Column;
+    std::string Message;
+};
+
+struct Chunk
+{
+    // Source line interval [Begin, End), one-based. Empty input uses [1, 2).
+    size_t Begin;
+    size_t End;
+    std::vector<Violation> Violations;
+    std::vector<Line> Fix;
+    std::vector<Line> LayoutFix;
+    size_t FormattedBegin = 0;
+    size_t FormattedEnd = 0;
+    size_t LayoutFormattedBegin = 0;
+    size_t LayoutFormattedEnd = 0;
+    bool HasFix = false;
+    bool HasLayoutFix = false;
+    bool HasLayoutIssue = false;
+};
+
+// The first differing code point is normally the token at which formatting
+// diverges. For removed whitespace, point to the following token instead.
+size_t ColumnAt(std::string_view text, size_t byte)
+{
+    return 1 + std::count_if(text.begin(), text.begin() + byte,
+        [] (unsigned char c) { return (c & 0xc0) != 0x80; });
+}
+
+size_t DifferenceColumn(std::string_view actual, std::string_view expected)
+{
+    size_t byte = 0;
+    while (byte < actual.size() && byte < expected.size() &&
+        actual[byte] == expected[byte]) ++byte;
+    while (byte < actual.size() &&
+        std::isspace(static_cast<unsigned char>(actual[byte]))) ++byte;
+    return ColumnAt(actual, byte);
+}
+
+std::vector<Violation> SpacingViolations(
+    size_t line, std::string_view actual, std::string_view expected)
+{
+    std::vector<Violation> violations;
+    size_t a = 0, b = 0;
+    while (a < actual.size() || b < expected.size()) {
+        auto startA = a, startB = b;
+        while (a < actual.size() &&
+            std::isspace(static_cast<unsigned char>(actual[a]))) ++a;
+        while (b < expected.size() &&
+            std::isspace(static_cast<unsigned char>(expected[b]))) ++b;
+        if (actual.substr(startA, a - startA) !=
+            expected.substr(startB, b - startB))
+        {
+            violations.push_back({line, ColumnAt(actual, a),
+                "incorrect spacing or indentation"});
         }
-        std::cout << "\\ No newline at end of file";
-        if (useColor) {
-            std::cout << ResetColor;
+        if (a == actual.size() || b == expected.size()) break;
+        // Compare gaps after each byte (including punctuation), not just
+        // after whole words: "f( int)" and "f(int)" differ inside a run.
+        ++a;
+        ++b;
+    }
+    return violations;
+}
+
+bool SameNonWhitespace(std::string_view a, std::string_view b)
+{
+    auto skip = [] (std::string_view text, size_t& i) {
+        while (i < text.size() &&
+            std::isspace(static_cast<unsigned char>(text[i]))) ++i;
+    };
+    size_t i = 0, j = 0;
+    for (;;) {
+        skip(a, i);
+        skip(b, j);
+        if (i == a.size() || j == b.size()) {
+            return i == a.size() && j == b.size();
         }
-        std::cout.put('\n');
+        if (a[i++] != b[j++]) return false;
     }
 }
 
-void PrintMismatch(
-    std::string_view path,
-    std::string_view source,
-    std::string_view formatted,
-    bool useColor)
+std::vector<Chunk> FormattingChunks(
+    const std::vector<Line>& source, const std::vector<Line>& formatted)
 {
-    auto sourceLines = SplitLines(source);
-    auto formattedLines = SplitLines(formatted);
-
-    if (useColor) {
-        std::cout << BoldRed;
-    }
-    std::cout << path << ": formatting mismatch";
-    if (useColor) {
-        std::cout << ResetColor;
-    }
-    std::cout.put('\n');
-    size_t sourceIndex = 0;
-    size_t formattedIndex = 0;
-    while (sourceIndex < sourceLines.size() ||
-        formattedIndex < formattedLines.size())
-    {
-        if (sourceIndex < sourceLines.size() &&
-            formattedIndex < formattedLines.size() &&
-            sourceLines[sourceIndex] == formattedLines[formattedIndex])
+    std::vector<Chunk> chunks;
+    size_t sourceIndex = 0, formattedIndex = 0;
+    while (sourceIndex < source.size() || formattedIndex < formatted.size()) {
+        if (sourceIndex < source.size() && formattedIndex < formatted.size() &&
+            source[sourceIndex] == formatted[formattedIndex])
         {
             ++sourceIndex;
             ++formattedIndex;
             continue;
         }
-
-        size_t sourceCount = sourceIndex < sourceLines.size() ? 1 : 0;
-        size_t formattedCount = formattedIndex < formattedLines.size() ? 1 : 0;
+        size_t sourceCount = sourceIndex < source.size() ? 1 : 0;
+        size_t formattedCount = formattedIndex < formatted.size() ? 1 : 0;
         size_t bestDistance = std::numeric_limits<size_t>::max();
-        auto sourceLimit =
-            std::min(sourceLines.size(), sourceIndex + DiffLookahead + 1);
+        auto sourceLimit = std::min(source.size(), sourceIndex + DiffLookahead + 1);
         auto formattedLimit =
-            std::min(formattedLines.size(), formattedIndex + DiffLookahead + 1);
+            std::min(formatted.size(), formattedIndex + DiffLookahead + 1);
         for (auto nextSource = sourceIndex; nextSource < sourceLimit;
             ++nextSource)
         {
             for (auto nextFormatted = formattedIndex;
-                nextFormatted < formattedLimit;
-                ++nextFormatted)
+                nextFormatted < formattedLimit; ++nextFormatted)
             {
                 if (nextSource == sourceIndex &&
-                    nextFormatted == formattedIndex)
-                {
-                    continue;
-                }
-                if (sourceLines[nextSource] != formattedLines[nextFormatted]) {
-                    continue;
-                }
+                    nextFormatted == formattedIndex) continue;
+                if (source[nextSource] != formatted[nextFormatted]) continue;
                 auto distance =
                     nextSource - sourceIndex + nextFormatted - formattedIndex;
                 if (distance < bestDistance) {
@@ -268,27 +233,206 @@ void PrintMismatch(
             }
         }
         if (bestDistance == std::numeric_limits<size_t>::max()) {
-            sourceCount = sourceLines.size() - sourceIndex;
-            formattedCount = formattedLines.size() - formattedIndex;
+            sourceCount = source.size() - sourceIndex;
+            formattedCount = formatted.size() - formattedIndex;
         }
 
-        if (useColor) {
-            std::cout << Cyan;
-        }
-        std::cout << "@@ -" << sourceIndex + 1 << ',' << sourceCount << " +"
-                  << formattedIndex + 1 << ',' << formattedCount << " @@";
-        if (useColor) {
-            std::cout << ResetColor;
-        }
-        std::cout.put('\n');
+        auto begin = std::min(sourceIndex + 1, std::max(size_t{1}, source.size()));
+        Chunk chunk{.Begin = begin,
+            .End = std::max(begin + 1, sourceIndex + sourceCount + 1),
+            .FormattedBegin = formattedIndex,
+            .FormattedEnd = formattedIndex + formattedCount,
+            .HasFix = true};
         for (size_t i = 0; i < sourceCount; ++i) {
-            PrintLine('-', sourceLines[sourceIndex + i], useColor);
+            const auto& line = source[sourceIndex + i];
+            auto replacement = i < formattedCount
+                ? formatted[formattedIndex + i].Text : std::string_view{};
+            std::string message;
+            if (line.Text == replacement && !line.HasNewline &&
+                i < formattedCount && formatted[formattedIndex + i].HasNewline)
+            {
+                message = "missing final newline";
+            } else if (line.Text == replacement && line.HasNewline &&
+                i < formattedCount && !formatted[formattedIndex + i].HasNewline)
+            {
+                message = "unexpected final newline";
+            } else if (SameNonWhitespace(line.Text, replacement)) {
+                auto spacing = SpacingViolations(
+                    sourceIndex + i + 1, line.Text, replacement);
+                chunk.Violations.insert(chunk.Violations.end(),
+                    spacing.begin(), spacing.end());
+                continue;
+            } else if (sourceCount != formattedCount) {
+                message = "incorrect line layout";
+            } else {
+                message = "content differs from configured formatting";
+            }
+            chunk.Violations.push_back({sourceIndex + i + 1,
+                DifferenceColumn(line.Text, replacement), std::move(message)});
+        }
+        if (sourceCount == 0) {
+            auto column = sourceIndex < source.size() || source.empty()
+                ? size_t{1}
+                : ColumnAt(source.back().Text, source.back().Text.size());
+            chunk.Violations.push_back({begin, column,
+                "expected formatted content here"});
         }
         for (size_t i = 0; i < formattedCount; ++i) {
-            PrintLine('+', formattedLines[formattedIndex + i], useColor);
+            chunk.Fix.push_back(formatted[formattedIndex + i]);
         }
+        chunks.push_back(std::move(chunk));
         sourceIndex += sourceCount;
         formattedIndex += formattedCount;
+    }
+    return chunks;
+}
+
+void PrintCheckDiagnostics(
+    std::string_view path, std::string_view source, std::string_view formatted,
+    std::string_view layoutFormatted,
+    std::span<const formatter::NameDiagnostic> names,
+    std::span<const formatter::ParameterNameDiagnostic> parameters,
+    std::span<const formatter::LayoutDiagnostic> layout,
+    bool useColor)
+{
+    auto sourceLines = SplitLines(source);
+    auto formattedLines = SplitLines(formatted);
+    auto chunks = FormattingChunks(sourceLines, formattedLines);
+    for (const auto& name : names) {
+        chunks.push_back({.Begin = name.Position.Line,
+            .End = name.Position.Line + 1,
+            .Violations = {{name.Position.Line, name.Position.Column,
+                name.Message}}});
+    }
+    for (const auto& parameter : parameters) {
+        auto message = "parameter #" + std::to_string(parameter.ParameterNumber) +
+            " in " + parameter.Function + ": expected a name";
+        if (parameter.AllowCommentedName) message += " or /*name*/ comment";
+        chunks.push_back({.Begin = parameter.SignatureBeginLine,
+            .End = parameter.SignatureEndLine + 1,
+            .Violations = {{parameter.Position.Line, parameter.Position.Column,
+                std::move(message)}}});
+    }
+    for (const auto& issue : layout) {
+        chunks.push_back({.Begin = issue.Position.Line,
+            .End = issue.Position.Line + 1,
+            .Violations = {{issue.Position.Line, issue.Position.Column,
+                issue.Message}}, .HasLayoutIssue = true});
+    }
+    // Check mode does not reflow expressions to decide whether a file fails.
+    // Use normal formatter output only as an optional suggestion for layout
+    // diagnostics whose source lines actually change under reflow.
+    auto layoutLines = SplitLines(layoutFormatted);
+    if (!layout.empty()) {
+        for (auto& candidate : FormattingChunks(sourceLines, layoutLines)) {
+            if (std::ranges::none_of(layout, [&] (const auto& issue) {
+                return issue.Position.Line >= candidate.Begin &&
+                    issue.Position.Line < candidate.End;
+            })) continue;
+            Chunk suggestion{.Begin = candidate.Begin, .End = candidate.End,
+                .LayoutFix = std::move(candidate.Fix),
+                .LayoutFormattedBegin = candidate.FormattedBegin,
+                .LayoutFormattedEnd = candidate.FormattedEnd,
+                .HasLayoutFix = true};
+            chunks.push_back(std::move(suggestion));
+        }
+    }
+    // Overlapping diagnostics share the source chunk and its proposed fix.
+    std::ranges::sort(chunks, [] (const Chunk& a, const Chunk& b) {
+        return a.Begin < b.Begin || (a.Begin == b.Begin && a.End < b.End);
+    });
+    std::vector<Chunk> merged;
+    for (auto& chunk : chunks) {
+        if (merged.empty() || chunk.Begin >= merged.back().End) {
+            merged.push_back(std::move(chunk));
+        } else {
+            auto& previous = merged.back();
+            previous.End = std::max(previous.End, chunk.End);
+            previous.Violations.insert(previous.Violations.end(),
+                std::make_move_iterator(chunk.Violations.begin()),
+                std::make_move_iterator(chunk.Violations.end()));
+            if (chunk.HasFix) {
+                if (previous.HasFix) {
+                    previous.Fix.insert(previous.Fix.end(),
+                        formattedLines.begin() + previous.FormattedEnd,
+                        formattedLines.begin() + chunk.FormattedBegin);
+                } else {
+                    previous.FormattedBegin = chunk.FormattedBegin;
+                }
+                previous.HasFix = true;
+                previous.FormattedEnd = chunk.FormattedEnd;
+                previous.Fix.insert(previous.Fix.end(), chunk.Fix.begin(),
+                    chunk.Fix.end());
+            }
+            if (chunk.HasLayoutFix) {
+                if (previous.HasLayoutFix) {
+                    previous.LayoutFix.insert(previous.LayoutFix.end(),
+                        layoutLines.begin() + previous.LayoutFormattedEnd,
+                        layoutLines.begin() + chunk.LayoutFormattedBegin);
+                } else {
+                    previous.LayoutFormattedBegin = chunk.LayoutFormattedBegin;
+                }
+                previous.HasLayoutFix = true;
+                previous.LayoutFormattedEnd = chunk.LayoutFormattedEnd;
+                previous.LayoutFix.insert(previous.LayoutFix.end(),
+                    chunk.LayoutFix.begin(), chunk.LayoutFix.end());
+            }
+            previous.HasLayoutIssue |= chunk.HasLayoutIssue;
+        }
+    }
+    for (auto& chunk : merged) {
+        std::ranges::stable_sort(chunk.Violations,
+            [] (const Violation& a, const Violation& b) {
+                return a.Line < b.Line ||
+                    (a.Line == b.Line && a.Column < b.Column);
+            });
+        const auto& first = chunk.Violations.front();
+        if (useColor) std::cout << BoldRed;
+        std::cout << "fail: " << chunk.Violations.size() << " violation"
+                  << (chunk.Violations.size() == 1 ? "" : "s");
+        if (useColor) std::cout << ResetColor;
+        std::cout << "\n  --> " << path << ':' << first.Line << ':'
+                  << first.Column << '\n';
+        const auto width = std::to_string(chunk.End - 1).size();
+        const auto gutter = std::string(width + 1, ' ') + "| ";
+        std::cout << gutter << '\n';
+        size_t violationIndex = 0;
+        for (auto lineNumber = chunk.Begin; lineNumber < chunk.End;
+            ++lineNumber)
+        {
+            auto text = lineNumber <= sourceLines.size()
+                ? sourceLines[lineNumber - 1].Text : std::string_view{};
+            if (text.ends_with('\r')) text.remove_suffix(1);
+            std::cout << std::string(width - std::to_string(lineNumber).size(), ' ')
+                      << lineNumber << " | " << text << '\n';
+            while (violationIndex < chunk.Violations.size() &&
+                chunk.Violations[violationIndex].Line == lineNumber)
+            {
+                const auto& violation = chunk.Violations[violationIndex++];
+                std::cout << gutter;
+                PrintCaretIndent(text, violation.Column);
+                std::cout << "^ " << violation.Message << '\n';
+            }
+        }
+        if (chunk.HasFix || chunk.HasLayoutFix) {
+            std::cout << "  suggested formatting:\n";
+            const auto& fix = chunk.HasLayoutFix ? chunk.LayoutFix : chunk.Fix;
+            for (const auto& line : fix) {
+                if (useColor) std::cout << Green;
+                std::cout << "  + " << line.Text;
+                if (useColor) std::cout << ResetColor;
+                std::cout << '\n';
+                if (!line.HasNewline) {
+                    std::cout << "    \\ No newline at end of file\n";
+                }
+            }
+            if (fix.empty()) std::cout << "  (remove this chunk)\n";
+        } else if (!chunk.HasLayoutIssue) {
+            std::cout << "  hint: names are not changed by the formatter.\n";
+        }
+        if (chunk.HasLayoutIssue && !chunk.HasLayoutFix) {
+            std::cout << "  hint: no safe automatic layout fix is available.\n";
+        }
     }
 }
 
@@ -545,7 +689,7 @@ void PrintHelp(std::ostream& output, std::string_view executable)
         << "\n"
         << "Options:\n"
         << "  -i, --in-place   Format files in place.\n"
-        << "  --check          Report formatting and layout violations.\n"
+        << "  --check          Show violations and fixes without editing.\n"
         << "  --summary        With --check, print only file names.\n"
         << "  --config <file>  Use one configuration file for every input.\n"
         << "  --no-config      Do not search parent directories for .hit-fmt.\n"
@@ -663,36 +807,11 @@ int main(int argc, char* argv[])
                     }
                     if (useColor) std::cout << ResetColor;
                     std::cout.put('\n');
-                } else if (!summaryOnly) {
-                    if (formatted != source) {
-                        PrintMismatch(filePath, source, formatted, useColor);
-                    }
-                    for (const auto& issue : layout) {
-                        std::cout << filePath << ':' << issue.Position.Line
-                                  << ':' << issue.Position.Column << ": "
-                                  << issue.Message << '\n';
-                    }
-                    if (!names.empty() || !parameters.empty()) {
-                        auto sourceLines = SplitLines(source);
-                        PrintNameDiagnostics(filePath, sourceLines, names);
-                        if (!parameters.empty()) {
-                            for (size_t begin = 0; begin < parameters.size();) {
-                                auto end = begin + 1;
-                                while (end < parameters.size() &&
-                                    parameters[end].Signature.Begin ==
-                                        parameters[begin].Signature.Begin &&
-                                    parameters[end].Signature.End ==
-                                        parameters[begin].Signature.End)
-                                {
-                                    ++end;
-                                }
-                                PrintParameterDiagnostics(filePath, source,
-                                    sourceLines, std::span(parameters).subspan(
-                                        begin, end - begin));
-                                begin = end;
-                            }
-                        }
-                    }
+                } else if (!summaryOnly && mismatch) {
+                    auto layoutFormatted = layout.empty() ? std::string{} :
+                        formatter::Format(tree, config.FormattingStyle);
+                    PrintCheckDiagnostics(filePath, source, formatted,
+                        layoutFormatted, names, parameters, layout, useColor);
                 }
                 mismatchCount += mismatch;
                 break;
