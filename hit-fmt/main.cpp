@@ -545,7 +545,7 @@ void PrintHelp(std::ostream& output, std::string_view executable)
         << "\n"
         << "Options:\n"
         << "  -i, --in-place   Format files in place.\n"
-        << "  --check          Report mismatches without modifying files.\n"
+        << "  --check          Report formatting and layout violations.\n"
         << "  --summary        With --check, print only file names.\n"
         << "  --config <file>  Use one configuration file for every input.\n"
         << "  --no-config      Do not search parent directories for .hit-fmt.\n"
@@ -622,7 +622,14 @@ int main(int argc, char* argv[])
             auto source = paddedSource.View();
             const auto& config = styleResolver->Resolve(path);
             auto tree = parser::Parse(paddedSource, [] (parser::ParseError) { });
-            auto formatted = formatter::Format(tree, config.FormattingStyle);
+            auto checkStyle = config.FormattingStyle;
+            if (mode == Mode::Check) {
+                // Check layout on the original syntax tree, not a speculative
+                // reflow. Keep checking unrelated formatting rules as before.
+                checkStyle.ExpressionLayoutCondition =
+                    formatter::ExpressionLayoutCondition::Preserve;
+            }
+            auto formatted = formatter::Format(tree, checkStyle);
             switch (mode) {
             case Mode::Format:
                 std::cout.write(formatted.data(), formatted.size());
@@ -635,13 +642,18 @@ int main(int argc, char* argv[])
             case Mode::Check: {
                 auto names = formatter::CheckNames(tree, config.Naming);
                 auto parameters = formatter::CheckParameterNames(tree, config);
+                auto layout = formatter::CheckExpressionLayout(tree,
+                    config.FormattingStyle);
                 bool mismatch = formatted != source || !names.empty() ||
-                    !parameters.empty();
+                    !parameters.empty() || !layout.empty();
                 if (summaryOnly && mismatch) {
                     if (useColor) std::cout << BoldRed;
                     std::cout << filePath << ": ";
                     if (formatted != source) {
                         std::cout << "formatting mismatch";
+                    } else if (!layout.empty()) {
+                        std::cout << "fail: layout violation";
+                        if (layout.size() != 1) std::cout << 's';
                     } else if (!names.empty()) {
                         std::cout << "fail: invalid name";
                         if (names.size() != 1) std::cout << 's';
@@ -654,6 +666,11 @@ int main(int argc, char* argv[])
                 } else if (!summaryOnly) {
                     if (formatted != source) {
                         PrintMismatch(filePath, source, formatted, useColor);
+                    }
+                    for (const auto& issue : layout) {
+                        std::cout << filePath << ':' << issue.Position.Line
+                                  << ':' << issue.Position.Column << ": "
+                                  << issue.Message << '\n';
                     }
                     if (!names.empty() || !parameters.empty()) {
                         auto sourceLines = SplitLines(source);

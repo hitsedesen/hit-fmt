@@ -81,10 +81,11 @@ Exclude = ["(^|/)generated(/|$)", "(^|/)legacy\\.cpp$"]
   across these boundaries. This does not infer a main header, deduplicate
   includes, or merge groups.
 - `IndentWidth`: positive integer up to 32. Used for record bodies and base
-  lists, and for parameter continuation lines when
-  `FunctionParameterIndent = IndentWidth`.
-- `ColumnLimit`: positive integer up to 10000. Function parameter lists
-  and inheritance lists can be wrapped according to their split settings.
+  lists, and for parameter or call argument continuation lines when their
+  respective indent setting is `IndentWidth`.
+- `ColumnLimit`: positive integer up to 10000. Function parameter lists,
+  call arguments, expressions, and inheritance lists can be wrapped
+  according to their split settings.
 - `*BracePlacement`: `Preserve` (default) keeps the existing layout,
   `Attach` joins a brace to its header, and `NewLine` moves it to its own
   line. Existing same-line spacing is left unchanged by `Attach`. Each of
@@ -136,6 +137,77 @@ Exclude = ["(^|/)generated(/|$)", "(^|/)legacy\\.cpp$"]
   Defaults to `IndentWidth`. `Format` also uses one space after
   `public`, `protected`, `private`, and `virtual` within each base
   specifier; other internal spacing remains source-owned.
+- `ExpressionLayoutCondition`: `Preserve` (default) retains expression
+  and call argument layout. `Overflow` splits safe overlong lines without
+  joining existing breaks. `FitOrOverflow` also joins safe multiline
+  expressions and calls when their flat form fits within `ColumnLimit`;
+  otherwise it behaves like `Overflow`. `Always` starts from the flat form
+  and reflows it according to `ColumnLimit`, even when that flat form
+  overflows. `Always` is not recommended for stable formatting: formatter
+  updates or small nearby edits can cause widespread layout changes.
+  Expression operator layout covers parsed binary, assignment, and
+  conditional operators. Operator gaps are normalized in `Always` mode;
+  other expression gaps, including call argument breaks, are controlled
+  separately by `CallArgumentSplit`. New continuations are indented by
+  `IndentWidth` beyond the original line's leading spaces. Comments,
+  directives, CRLF, backslashes, and ambiguous or recovered syntax stay
+  source-owned. Bare `<`, `>`, `<<`, and `>>` remain untouched even when
+  parsed as operators: without name lookup they can be template syntax.
+- `ExpressionLayoutAlgorithm`: `Greedy` (default) picks a preferred
+  breakpoint that fits the current line; `DynamicProgramming` minimizes
+  a bounded whole-line cost for raggedness, extra breaks, and operator
+  precedence. Both use the same parser-approved breakpoints, respect
+  `BinaryOperatorPlacement`, and prefer outer expression breaks over breaks
+  inside parentheses. The choice also affects `Pack` call argument grouping,
+  but not `Preserve` or `OnePerLine` calls, function parameters, or
+  inheritance. Searches with more than 96 candidates, or without a fitting
+  path, fall back to `Greedy`.
+- `BinaryOperatorPlacement`: `Trailing` (default, keep a wrapped binary
+  operator at the end of the previous line) or `Leading` (put it at the
+  start of the continuation line). Only applies when
+  `ExpressionLayoutCondition` is not `Preserve`; assignment operators and
+  conditional `?`/`:` remain leading. `Overflow` keeps existing operator
+  breaks but safely moves
+  the newline to the configured side of a binary operator, even if the
+  expression otherwise fits on one line.
+- `TernaryOperatorPlacement`: `Preserve` (default) leaves the side of
+  existing `?` and `:` breaks unchanged. New breaks use leading placement
+  unless another delimiter is already split, in which case `ThreeLines`
+  follows that delimiter's side. `Leading` puts the operators at the start
+  of their continuation lines; `Trailing` keeps them at the end of the
+  preceding line. Explicit placement also corrects safe existing breaks
+  in `Overflow` mode, independently of `TernarySplit`.
+- `TernarySplit`: `Preserve` (default) neither adds nor joins ternary
+  breaks. `AsNeeded` allows either delimiter or both to break. `ThreeLines`
+  keeps a flat ternary flat when it fits; if the ternary is split, it
+  separates the condition, true branch, and false branch by breaking at
+  both delimiters. These settings apply only when `ExpressionLayoutCondition`
+  is not `Preserve`. Comments, directives, CRLF, and ambiguous or incomplete
+  syntax stay source-owned. In `--check` mode, expression and call reflow
+  is skipped: configured layout checks report overlong lines, incorrect
+  existing operator placement, and incomplete `ThreeLines` splits instead
+  of showing a speculative expression reflow diff.
+- `CallArgumentSplit`: `Preserve` (default, leave call arguments
+  unchanged), `Pack` (put as many arguments as fit on each line), or
+  `OnePerLine` (one argument per continuation line if a split is chosen).
+  Enabled only when `ExpressionLayoutCondition` is not `Preserve`. Calls
+  that fit on one line are not forced to split.
+- `FirstCallArgumentPosition`: `CallLine` (default) or `NewLine` selects
+  where the first argument starts when a call is split.
+- `EnforceFirstCallArgumentPosition`: `false` (default) retains the first
+  argument's position when reflowing an already split call in `Overflow`
+  or `FitOrOverflow`; `true` applies the setting above to those calls.
+  `Always` always applies the configured position.
+- `CallArgumentIndent`: `IndentWidth` (default, indent one width beyond
+  the call's line) or `Continuation` (align with the opening `(`).
+  These options only affect complete parsed calls with plain, single-line
+  arguments and whitespace-only list gaps. Comments, directives, CRLF,
+  and ambiguous parenthesized callees remain unchanged. Parsed function-like
+  macro calls follow the same call layout rules; nested calls are considered
+  after enclosing calls, so outer commas can resolve overflow before inner
+  commas are tried. Multiline arguments keep their call list unchanged.
+  Reflowed lists use comma-space separators;
+  `SpaceInsideCallArguments = Space` also applies to their same-line edges.
 - `FunctionParameterSplit`: `Preserve` (default, leave parameter lists
   unchanged), `Pack` (put as many parameters as fit on each line), or
   `OnePerLine`. Lists already fitting on one line are left unchanged.
