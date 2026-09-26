@@ -33,6 +33,8 @@ enum class ExpressionLayoutCondition {
 };
 enum class ExpressionLayoutAlgorithm { Greedy, DynamicProgramming };
 enum class BinaryOperatorPlacement { Leading, Trailing };
+enum class TernaryOperatorPlacement { Leading, Trailing };
+enum class TernarySplit { AsNeeded, ThreeLines };
 enum class FirstFunctionParameterPosition { NameLine, NewLine };
 enum class FunctionParameterIndent { IndentWidth, Continuation };
 
@@ -68,6 +70,9 @@ struct Style
         formatter::ExpressionLayoutAlgorithm::Greedy;
     formatter::BinaryOperatorPlacement BinaryOperatorPlacement =
         formatter::BinaryOperatorPlacement::Trailing;
+    formatter::TernaryOperatorPlacement TernaryOperatorPlacement =
+        formatter::TernaryOperatorPlacement::Leading;
+    formatter::TernarySplit TernarySplit = formatter::TernarySplit::AsNeeded;
     formatter::IncludeOrder IncludeOrder = IncludeOrder::Preserve;
     BodyIndentation IndentAccessModifiers = BodyIndentation::Preserve;
     BodyIndentation IndentMembers = BodyIndentation::Preserve;

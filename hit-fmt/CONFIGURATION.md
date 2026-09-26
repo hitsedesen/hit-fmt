@@ -168,6 +168,16 @@ Exclude = ["(^|/)generated(/|$)", "(^|/)legacy\\.cpp$"]
   breaks but safely moves
   the newline to the configured side of a binary operator, even if the
   expression otherwise fits on one line.
+- `TernaryOperatorPlacement`: `Leading` (default) puts `?` and `:` at the
+  beginning of their continuation lines; `Trailing` keeps them at the end
+  of the preceding line. Existing safe ternary breaks are checked and
+  moved to the configured side even in `Overflow` mode.
+- `TernarySplit`: `AsNeeded` (default) allows either delimiter or both to
+  break. `ThreeLines` keeps a flat ternary flat when it fits; if the
+  ternary is split, it places the condition, true branch, and false branch
+  on separate lines by breaking at both delimiters. These settings apply
+  only when `ExpressionLayoutCondition` is not `Preserve`. Comments,
+  directives, CRLF, and ambiguous or incomplete syntax stay source-owned.
 - `CallArgumentSplit`: `Preserve` (default, leave call arguments
   unchanged), `Pack` (put as many arguments as fit on each line), or
   `OnePerLine` (one argument per continuation line if a split is chosen).
@@ -187,9 +197,8 @@ Exclude = ["(^|/)generated(/|$)", "(^|/)legacy\\.cpp$"]
   macro calls follow the same call layout rules; nested calls are considered
   after enclosing calls, so outer commas can resolve overflow before inner
   commas are tried. Multiline arguments keep their call list unchanged.
-  Reflowed lists use comma-space separators; `SpaceInsideCallArguments = Space`
-  also applies
-  to their same-line edges.
+  Reflowed lists use comma-space separators;
+  `SpaceInsideCallArguments = Space` also applies to their same-line edges.
 - `FunctionParameterSplit`: `Preserve` (default, leave parameter lists
   unchanged), `Pack` (put as many parameters as fit on each line), or
   `OnePerLine`. Lists already fitting on one line are left unchanged.

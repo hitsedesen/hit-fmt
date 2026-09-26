@@ -591,6 +591,118 @@ TEST(ExpressionLayoutTest, WrapsParsedOperatorsAndPreservesUnsafeLines)
         "Array<1 + 2 + 3 + 4 + 5 + 6> value;\n", style);
 }
 
+TEST(ExpressionLayoutTest, PlacesAndGroupsTernaryBreaks)
+{
+    formatter::Style style;
+    style.ExpressionLayoutCondition = formatter::ExpressionLayoutCondition::Overflow;
+    style.ColumnLimit = 40;
+    const auto input =
+        "int f(bool condition) {\n"
+        "    return condition ? alphaValue : betaValue;\n"
+        "}\n";
+    const auto twoLeading =
+        "int f(bool condition) {\n"
+        "    return condition ? alphaValue\n"
+        "        : betaValue;\n"
+        "}\n";
+    const auto twoTrailing =
+        "int f(bool condition) {\n"
+        "    return condition ? alphaValue :\n"
+        "        betaValue;\n"
+        "}\n";
+    const auto threeLeading =
+        "int f(bool condition) {\n"
+        "    return condition\n"
+        "        ? alphaValue\n"
+        "        : betaValue;\n"
+        "}\n";
+    const auto threeTrailing =
+        "int f(bool condition) {\n"
+        "    return condition ?\n"
+        "        alphaValue :\n"
+        "        betaValue;\n"
+        "}\n";
+    for (auto algorithm : {formatter::ExpressionLayoutAlgorithm::Greedy,
+        formatter::ExpressionLayoutAlgorithm::DynamicProgramming})
+    {
+        style.ExpressionLayoutAlgorithm = algorithm;
+        for (auto placement : {formatter::TernaryOperatorPlacement::Leading,
+            formatter::TernaryOperatorPlacement::Trailing})
+        {
+            style.TernaryOperatorPlacement = placement;
+            style.TernarySplit = formatter::TernarySplit::AsNeeded;
+            auto two = placement == formatter::TernaryOperatorPlacement::Leading
+                ? twoLeading : twoTrailing;
+            EXPECT_EQ(FormatWithStyle(input, style), two);
+            EXPECT_EQ(FormatWithStyle(two, style), two);
+            style.TernarySplit = formatter::TernarySplit::ThreeLines;
+            auto three = placement == formatter::TernaryOperatorPlacement::Leading
+                ? threeLeading : threeTrailing;
+            EXPECT_EQ(FormatWithStyle(input, style), three);
+            EXPECT_EQ(FormatWithStyle(three, style), three);
+            ExpectUnchanged("int f() { return flag ? a : b; }\n", style);
+        }
+    }
+
+    style.ColumnLimit = 80;
+    style.TernaryOperatorPlacement = formatter::TernaryOperatorPlacement::Leading;
+    style.TernarySplit = formatter::TernarySplit::AsNeeded;
+    const auto existing =
+        "int f(bool condition) {\n"
+        "    return condition ?\n"
+        "        alphaValue : betaValue;\n"
+        "}\n";
+    const auto corrected =
+        "int f(bool condition) {\n"
+        "    return condition\n"
+        "        ? alphaValue : betaValue;\n"
+        "}\n";
+    EXPECT_EQ(FormatWithStyle(existing, style), corrected);
+    const auto bothSides =
+        "int f(bool condition) {\n"
+        "    return condition\n"
+        "        ?\n"
+        "        alphaValue : betaValue;\n"
+        "}\n";
+    EXPECT_EQ(FormatWithStyle(bothSides, style), corrected);
+    style.TernarySplit = formatter::TernarySplit::ThreeLines;
+    EXPECT_EQ(FormatWithStyle(existing, style), threeLeading);
+    EXPECT_EQ(FormatWithStyle(bothSides, style), threeLeading);
+    EXPECT_EQ(FormatWithStyle(threeLeading, style), threeLeading);
+    style.TernaryOperatorPlacement = formatter::TernaryOperatorPlacement::Trailing;
+    EXPECT_EQ(FormatWithStyle(corrected, style), threeTrailing);
+    for (auto mode : {formatter::ExpressionLayoutCondition::FitOrOverflow,
+        formatter::ExpressionLayoutCondition::Always})
+    {
+        style.ExpressionLayoutCondition = mode;
+        EXPECT_EQ(FormatWithStyle(existing, style), input);
+    }
+    style.ExpressionLayoutCondition = formatter::ExpressionLayoutCondition::Preserve;
+    ExpectUnchanged(existing, style);
+    style.ExpressionLayoutCondition = formatter::ExpressionLayoutCondition::Overflow;
+    ExpectUnchanged("int f() {\r\n    return condition ?\r\n"
+        "        alphaValue : betaValue;\r\n}\r\n", style);
+    style.TernaryOperatorPlacement = formatter::TernaryOperatorPlacement::Trailing;
+    style.TernarySplit = formatter::TernarySplit::ThreeLines;
+    ExpectUnchanged("int f() {\n"
+        "    return condition ? alphaValue /* keep */\n"
+        "        : betaValue;\n"
+        "}\n", style);
+    const auto nested =
+        "int f() {\n"
+        "    return outer ? inner ? alpha\n"
+        "        : beta : gamma;\n"
+        "}\n";
+    const auto nestedExpected =
+        "int f() {\n"
+        "    return outer ? inner ?\n"
+        "        alpha :\n"
+        "        beta : gamma;\n"
+        "}\n";
+    EXPECT_EQ(FormatWithStyle(nested, style), nestedExpected);
+    EXPECT_EQ(FormatWithStyle(nestedExpected, style), nestedExpected);
+}
+
 TEST(ExpressionLayoutTest, PrefersOuterConditionalBreaks)
 {
     formatter::Style style;
@@ -1196,6 +1308,8 @@ TEST(PreserveConfigTest, RejectsInvalidSettings)
          "ExpressionLayoutCondition = FitOrOverflow\n"
          "ExpressionLayoutAlgorithm = DynamicProgramming\n"
          "BinaryOperatorPlacement = Trailing\n"
+         "TernaryOperatorPlacement = Trailing\n"
+         "TernarySplit = ThreeLines\n"
          "CallArgumentSplit = Pack\nFirstCallArgumentPosition = NewLine\n"
          "EnforceFirstCallArgumentPosition = true\n"
          "CallArgumentIndent = Continuation\n"
@@ -1209,6 +1323,10 @@ TEST(PreserveConfigTest, RejectsInvalidSettings)
         formatter::ExpressionLayoutAlgorithm::DynamicProgramming);
     EXPECT_EQ(config.FormattingStyle.BinaryOperatorPlacement,
         formatter::BinaryOperatorPlacement::Trailing);
+    EXPECT_EQ(config.FormattingStyle.TernaryOperatorPlacement,
+        formatter::TernaryOperatorPlacement::Trailing);
+    EXPECT_EQ(config.FormattingStyle.TernarySplit,
+        formatter::TernarySplit::ThreeLines);
     EXPECT_EQ(config.FormattingStyle.CallArgumentSplit,
         formatter::CallArgumentSplit::Pack);
     EXPECT_EQ(config.FormattingStyle.FirstCallArgumentPosition,
@@ -1252,6 +1370,8 @@ TEST(PreserveConfigTest, RejectsInvalidSettings)
         "ExpressionLayoutCondition = Unknown\n",
         "ExpressionLayoutAlgorithm = BruteForce\n",
         "BinaryOperatorPlacement = Middle\n",
+        "TernaryOperatorPlacement = Middle\n",
+        "TernarySplit = TwoLines\n",
         "CallArgumentSplit = Together\n",
         "FirstCallArgumentPosition = BeforeCall\n",
         "EnforceFirstCallArgumentPosition = maybe\n",

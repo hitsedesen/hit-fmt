@@ -590,6 +590,28 @@ void ApplySetting(
             ThrowConfigError(path, line,
                 "expected Leading or Trailing for BinaryOperatorPlacement");
         }
+    } else if (key == "TernaryOperatorPlacement") {
+        value = ParseOption(value, path, line);
+        if (value == "Leading") {
+            config.FormattingStyle.TernaryOperatorPlacement =
+                TernaryOperatorPlacement::Leading;
+        } else if (value == "Trailing") {
+            config.FormattingStyle.TernaryOperatorPlacement =
+                TernaryOperatorPlacement::Trailing;
+        } else {
+            ThrowConfigError(path, line,
+                "expected Leading or Trailing for TernaryOperatorPlacement");
+        }
+    } else if (key == "TernarySplit") {
+        value = ParseOption(value, path, line);
+        if (value == "AsNeeded") {
+            config.FormattingStyle.TernarySplit = TernarySplit::AsNeeded;
+        } else if (value == "ThreeLines") {
+            config.FormattingStyle.TernarySplit = TernarySplit::ThreeLines;
+        } else {
+            ThrowConfigError(path, line,
+                "expected AsNeeded or ThreeLines for TernarySplit");
+        }
     } else if (key == "MergeFunctionParameters") {
         config.FormattingStyle.MergeFunctionParameters =
             ParseBoolean(value, path, line);

@@ -1836,9 +1836,107 @@ std::vector<size_t> ChooseExpressionBreaks(
     return selected;
 }
 
-// Move only the newline beside a parsed binary operator. This enforces
-// operator placement without regrouping already split expressions.
-std::string PlaceExistingBinaryBreaks(const parser::SyntaxTree& tree,
+// Identify both delimiters of one complete parsed conditional expression.
+// A colon in a nested conditional, label, or braced initializer is not ours.
+std::optional<std::pair<TokenIndex, TokenIndex>> ConditionalDelimiters(
+    const parser::SyntaxTree& tree, const parser::Node& node)
+{
+    if (node.Kind != NK::ConditionalExpression) {
+        return std::nullopt;
+    }
+    const auto* condition = node.Child();
+    const auto* thenValue = condition ? condition->NextSibling : nullptr;
+    const auto* elseValue = thenValue ? thenValue->NextSibling : nullptr;
+    if (!condition || !thenValue || !elseValue ||
+        condition->Tokens.Empty() || thenValue->Tokens.Empty() ||
+        elseValue->Tokens.Empty())
+    {
+        return std::nullopt;
+    }
+    TokenIndex question = NoToken;
+    TokenIndex colon = NoToken;
+    for (auto i = condition->Tokens.End; i < thenValue->Tokens.Begin; ++i) {
+        if (tree.Kind(i) == TK::Operator_Conditional &&
+            tree.Role(i) == parser::PunctuationRole::ConditionalDelimiter)
+        {
+            question = i;
+        }
+    }
+    for (auto i = thenValue->Tokens.End; i < elseValue->Tokens.Begin; ++i) {
+        if (tree.Kind(i) == TK::Operator_Colon &&
+            tree.Role(i) == parser::PunctuationRole::ConditionalDelimiter)
+        {
+            colon = i;
+        }
+    }
+    if (question == NoToken || colon == NoToken) {
+        return std::nullopt;
+    }
+    return std::pair{question, colon};
+}
+
+bool SafeOperatorGap(const parser::SyntaxTree& tree, TokenIndex index)
+{
+    if (index == 0 || index + 1 >= tree.TokenCount()) {
+        return false;
+    }
+    auto before = tree.WhitespaceBefore(index);
+    auto after = tree.WhitespaceAfter(index);
+    return IsWhitespace(before) && IsWhitespace(after) &&
+        !before.contains('\r') && !after.contains('\r') &&
+        tree.Kind(index - 1) != TK::Comment &&
+        tree.Kind(index + 1) != TK::Comment &&
+        tree.Kind(index - 1) != TK::PreprocessingDirective &&
+        tree.Kind(index + 1) != TK::PreprocessingDirective &&
+        !tree.TokenText(index - 1).contains('\n') &&
+        !tree.TokenText(index + 1).contains('\n');
+}
+
+void PlaceOperatorBreak(const parser::SyntaxTree& tree, TokenIndex index,
+    bool leading, std::vector<Replacement>& edits)
+{
+    if (!SafeOperatorGap(tree, index)) {
+        return;
+    }
+    auto before = tree.WhitespaceBefore(index);
+    auto after = tree.WhitespaceAfter(index);
+    const bool leftBreak = before.contains('\n');
+    const bool rightBreak = after.contains('\n');
+    if (!leftBreak && !rightBreak) {
+        return;
+    }
+    const auto begin = tree.Token(index).Text.Begin;
+    const auto end = tree.Token(index).Text.End;
+    if (leftBreak && rightBreak) {
+        auto redundant = leading ? after : before;
+        auto breakAt = redundant.find('\n');
+        if (redundant.find('\n', breakAt + 1) ==
+            std::string_view::npos)
+        {
+            edits.push_back(leading
+                ? Replacement{end, end + after.size(), " "}
+                : Replacement{begin - before.size(), begin, " "});
+        }
+        return;
+    }
+    if (leading == leftBreak) {
+        return;
+    }
+    auto newline = leftBreak ? before : after;
+    auto breakAt = newline.find('\n');
+    if (newline.find('\n', breakAt + 1) != std::string_view::npos) {
+        return;
+    }
+    newline.remove_prefix(breakAt); // Discard trailing spaces.
+    edits.push_back({begin - before.size(), begin,
+        leading ? std::string(newline) : " "});
+    edits.push_back({end, end + after.size(),
+        leading ? " " : std::string(newline)});
+}
+
+// Move only the newline beside parsed binary and ternary operators. This
+// enforces placement without regrouping already split expressions.
+std::string PlaceExistingOperatorBreaks(const parser::SyntaxTree& tree,
     const Style& style)
 {
     const auto source = tree.Source();
@@ -1868,42 +1966,15 @@ std::string PlaceExistingBinaryBreaks(const parser::SyntaxTree& tree,
                     {
                         continue;
                     }
-                    auto before = tree.WhitespaceBefore(i);
-                    auto after = tree.WhitespaceAfter(i);
-                    const bool leftBreak = before.contains('\n');
-                    const bool rightBreak = after.contains('\n');
-                    if (leftBreak == rightBreak || !IsWhitespace(before) ||
-                        !IsWhitespace(after) || before.contains('\r') ||
-                        after.contains('\r') ||
-                        tree.Kind(i - 1) == TK::Comment ||
-                        tree.Kind(i + 1) == TK::Comment ||
-                        tree.Kind(i - 1) == TK::PreprocessingDirective ||
-                        tree.Kind(i + 1) == TK::PreprocessingDirective)
-                    {
-                        continue;
-                    }
-                    auto newline = leftBreak ? before : after;
-                    auto breakAt = newline.find('\n');
-                    if (newline.find('\n', breakAt + 1) !=
-                            std::string_view::npos ||
-                        tree.TokenText(i - 1).contains('\n') ||
-                        tree.TokenText(i + 1).contains('\n'))
-                    {
-                        continue;
-                    }
-                    newline.remove_prefix(breakAt); // Discard trailing spaces.
-                    const bool leading = style.BinaryOperatorPlacement ==
-                        BinaryOperatorPlacement::Leading;
-                    if (leading == leftBreak) {
-                        continue;
-                    }
-                    const auto begin = tree.Token(i).Text.Begin;
-                    const auto end = tree.Token(i).Text.End;
-                    edits.push_back({begin - before.size(), begin,
-                        leading ? std::string(newline) : " "});
-                    edits.push_back({end, end + after.size(),
-                        leading ? " " : std::string(newline)});
+                    PlaceOperatorBreak(tree, i, style.BinaryOperatorPlacement ==
+                        BinaryOperatorPlacement::Leading, edits);
                 }
+            }
+        } else if (auto delimiters = ConditionalDelimiters(tree, *node)) {
+            for (auto index : {delimiters->first, delimiters->second}) {
+                PlaceOperatorBreak(tree, index,
+                    style.TernaryOperatorPlacement ==
+                        TernaryOperatorPlacement::Leading, edits);
             }
         }
         for (auto* child = node->Child(); child; child = child->NextSibling) {
@@ -1926,13 +1997,114 @@ std::string PlaceExistingBinaryBreaks(const parser::SyntaxTree& tree,
     return output;
 }
 
+// ThreeLines is a constraint on the chosen split, not a requirement to
+// split every ternary. Once one delimiter is split, split the other too.
+std::string CompleteTernaryBreaks(const parser::SyntaxTree& tree,
+    const Style& style)
+{
+    const auto source = tree.Source();
+    std::vector<Replacement> edits;
+    std::vector<const parser::Node*> nodes{&tree.Root()};
+    while (!nodes.empty()) {
+        auto* node = nodes.back();
+        nodes.pop_back();
+        if (IsIncompleteStatement(*node)) {
+            continue;
+        }
+        if (auto delimiters = ConditionalDelimiters(tree, *node)) {
+            auto [question, colon] = *delimiters;
+            auto tokenBegin = tree.Token(node->Tokens.Begin).Text.Begin;
+            auto tokenEnd = tree.Token(node->Tokens.End - 1).Text.End;
+            bool unsafe = false;
+            for (auto i = node->Tokens.Begin; i < node->Tokens.End; ++i) {
+                unsafe |= tree.Kind(i) == TK::Comment ||
+                    tree.Kind(i) == TK::PreprocessingDirective;
+            }
+            if (!unsafe && SafeOperatorGap(tree, question) &&
+                SafeOperatorGap(tree, colon) &&
+                !source.substr(tokenBegin, tokenEnd - tokenBegin).contains('\r'))
+            {
+                auto hasBreak = [&] (TokenIndex i) {
+                    return tree.WhitespaceBefore(i).contains('\n') ||
+                        tree.WhitespaceAfter(i).contains('\n');
+                };
+                auto questionBreak = hasBreak(question);
+                auto colonBreak = hasBreak(colon);
+                const auto qPosition = tree.Token(question).Text.Begin;
+                const auto cPosition = tree.Token(colon).Text.Begin;
+                auto lineStart = source.rfind('\n', qPosition);
+                lineStart = lineStart == std::string_view::npos
+                    ? 0 : lineStart + 1;
+                auto lineEnd = source.find('\n', cPosition);
+                if (lineEnd == std::string_view::npos) {
+                    lineEnd = source.size();
+                }
+                auto sameLine = source.substr(qPosition,
+                    cPosition - qPosition).find('\n') ==
+                        std::string_view::npos;
+                if ((questionBreak || colonBreak ||
+                    (sameLine && lineEnd - lineStart > style.ColumnLimit)) &&
+                    !source.substr(lineStart, lineEnd - lineStart)
+                        .contains('\\') &&
+                    (lineEnd == source.size() || lineEnd == 0 ||
+                        source[lineEnd - 1] != '\r'))
+                {
+                    auto baseLine = source.rfind('\n', tokenBegin);
+                    baseLine = baseLine == std::string_view::npos
+                        ? 0 : baseLine + 1;
+                    size_t leading = 0;
+                    while (baseLine + leading < source.size() &&
+                        source[baseLine + leading] == ' ')
+                    {
+                        ++leading;
+                    }
+                    auto continuation = "\n" + std::string(
+                        leading + style.IndentWidth, ' ');
+                    for (auto index : {question, colon}) {
+                        if (hasBreak(index)) {
+                            continue;
+                        }
+                        const bool trailing = style.TernaryOperatorPlacement ==
+                            TernaryOperatorPlacement::Trailing;
+                        auto position = trailing
+                            ? tree.Token(index).Text.End
+                            : tree.Token(index).Text.Begin;
+                        auto gap = trailing ? tree.WhitespaceAfter(index)
+                            : tree.WhitespaceBefore(index);
+                        edits.push_back({trailing ? position :
+                            position - gap.size(), trailing ?
+                            position + gap.size() : position, continuation});
+                    }
+                }
+            }
+        }
+        for (auto* child = node->Child(); child; child = child->NextSibling) {
+            nodes.push_back(child);
+        }
+    }
+    std::ranges::sort(edits, {}, &Replacement::Begin);
+    std::string output;
+    output.reserve(source.size() + edits.size() * style.IndentWidth);
+    size_t from = 0;
+    for (const auto& edit : edits) {
+        if (edit.Begin < from) {
+            continue;
+        }
+        output.append(source.substr(from, edit.Begin - from));
+        output += edit.Text;
+        from = edit.End;
+    }
+    output.append(source.substr(from));
+    return output;
+}
+
 std::string FormatExpressions(const parser::SyntaxTree& tree,
     const Style& style, bool correctExisting = true)
 {
     if (style.ExpressionLayoutCondition == ExpressionLayoutCondition::Overflow &&
         correctExisting)
     {
-        auto placed = PlaceExistingBinaryBreaks(tree, style);
+        auto placed = PlaceExistingOperatorBreaks(tree, style);
         if (placed != tree.Source()) {
             auto length = placed.size();
             placed.append(util::SourcePaddingSize, '\0');
@@ -2033,7 +2205,10 @@ std::string FormatExpressions(const parser::SyntaxTree& tree,
                             : role == parser::PunctuationRole::BinaryOperator ||
                                 role == parser::PunctuationRole::ComparisonOperator ||
                                 role == parser::PunctuationRole::ShiftOperator;
-                    if (!selected || index == 0) {
+                    if (!selected || index == 0 ||
+                        (node->Kind == NK::ConditionalExpression &&
+                            style.TernarySplit == TernarySplit::ThreeLines))
+                    {
                         continue;
                     }
                     auto gap = tree.WhitespaceBefore(index);
@@ -2049,9 +2224,12 @@ std::string FormatExpressions(const parser::SyntaxTree& tree,
                     {
                         continue;
                     }
-                    const bool trailing = node->Kind == NK::BinaryExpression &&
-                        style.BinaryOperatorPlacement ==
-                            BinaryOperatorPlacement::Trailing;
+                    const bool trailing = node->Kind == NK::BinaryExpression
+                        ? style.BinaryOperatorPlacement ==
+                            BinaryOperatorPlacement::Trailing
+                        : node->Kind == NK::ConditionalExpression &&
+                            style.TernaryOperatorPlacement ==
+                                TernaryOperatorPlacement::Trailing;
                     if (trailing) {
                         gap = tree.WhitespaceAfter(index);
                         if (!IsWhitespace(gap) ||
@@ -2080,14 +2258,23 @@ std::string FormatExpressions(const parser::SyntaxTree& tree,
                         {
                             continue;
                         }
-                        auto gap = tree.WhitespaceBefore(index);
+                        if (style.TernarySplit == TernarySplit::ThreeLines) {
+                            continue;
+                        }
+                        const bool trailing = style.TernaryOperatorPlacement ==
+                            TernaryOperatorPlacement::Trailing;
+                        auto gap = trailing ? tree.WhitespaceAfter(index) :
+                            tree.WhitespaceBefore(index);
                         if (IsWhitespace(gap) &&
                             gap.find_first_of("\r\n") ==
                                 std::string_view::npos)
                         {
-                            breaks.push_back({
-                                tree.Token(index).Text.Begin - gap.size(),
-                                tree.Token(index).Text.Begin, 1,
+                            auto offset = trailing
+                                ? tree.Token(index).Text.End
+                                : tree.Token(index).Text.Begin;
+                            breaks.push_back({trailing ? offset :
+                                offset - gap.size(), trailing ?
+                                offset + gap.size() : offset, 1,
                                 nesting[index]});
                         }
                     }
@@ -2702,6 +2889,28 @@ std::string Format(const parser::SyntaxTree& tree, const Style& style)
             headerReflowed |= result !=
                 std::string_view(formatted.data(), length);
             formatted = std::move(result);
+        }
+        if (style.TernarySplit == TernarySplit::ThreeLines) {
+            auto length = formatted.size();
+            formatted.append(util::SourcePaddingSize, '\0');
+            auto parsed = parser::Parse(
+                {.Data = formatted.data(), .Size = length},
+                [] (parser::ParseError) { });
+            auto grouped = CompleteTernaryBreaks(parsed, style);
+            if (grouped != std::string_view(formatted.data(), length)) {
+                headerReflowed = true;
+                auto groupLength = grouped.size();
+                grouped.append(util::SourcePaddingSize, '\0');
+                auto groupTree = parser::Parse(
+                    {.Data = grouped.data(), .Size = groupLength},
+                    [] (parser::ParseError) { });
+                Style overflowStyle = style;
+                overflowStyle.ExpressionLayoutCondition =
+                    ExpressionLayoutCondition::Overflow;
+                formatted = FormatExpressions(groupTree, overflowStyle);
+            } else {
+                formatted = std::move(grouped);
+            }
         }
     }
     // AttachUnlessMultiline depends on the resulting header, not the
