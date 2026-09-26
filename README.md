@@ -56,12 +56,6 @@ Format files or directories in place:
 hit-fmt --fix source.cpp include/
 ```
 
-Emit a formatted file to standard output without editing it:
-
-```sh
-hit-fmt --stdout source.cpp
-```
-
 `--check` may be given explicitly when desired.
 
 Check mode reports affected source chunks with caret-marked formatting,
@@ -69,7 +63,7 @@ expression-layout, naming and parameter-name violations. It suggests
 formatter output where available; naming checks remain advisory. Expression
 reflow is not run to decide check-mode formatting mismatches: layout checks
 inspect the original source. `--summary` reports only affected files.
-Formatting mode (`--fix` or `--stdout`) emits formatted source.
+`--fix` writes formatted source in place.
 
 Skip files or whole subdirectories while formatting or checking a folder:
 

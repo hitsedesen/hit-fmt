@@ -314,7 +314,7 @@ Exclude = ["(^|/)generated(/|$)", "(^|/)legacy\\.cpp$"]
   checked; forward declarations, function prototypes, explicit template
   instantiations, references, aliases, macros and uncertain declarators are
   skipped. Names in function definitions, including parameter names, are
-  checked. `--fix` and `--stdout` leave names untouched.
+  checked. `--fix` leaves names untouched.
 - `NamingNamespaceExemptions`: qualified namespace paths excluded from all
   naming checks, including the namespace name and everything it contains.
   Defaults to `["std"]`, which also excludes `std::chrono`. Use `[]` to
