@@ -209,11 +209,14 @@ bool UseTerminalColors()
 #endif
 }
 
+enum class ViolationKind { Other, Reflow };
+
 struct Violation
 {
     size_t Line;
     size_t Column;
     std::string Message;
+    ViolationKind Kind = ViolationKind::Other;
 };
 
 struct Chunk
@@ -473,7 +476,8 @@ std::optional<std::vector<Violation>> ReflowViolations(
                     startA, a, startB, b);
             }
             violations.push_back({firstLine + lineIndex,
-                ColumnAt(source[lineIndex].Text, byte), std::move(message)});
+                ColumnAt(source[lineIndex].Text, byte), std::move(message),
+                ViolationKind::Reflow});
         }
         if (a == original.size() || b == replacement.size()) break;
         ++a;
@@ -577,6 +581,7 @@ std::vector<Chunk> FormattingChunks(
                 continue;
             }
             std::string message;
+            auto kind = ViolationKind::Other;
             if (line.Text == replacement && !line.HasNewline &&
                 i < formattedCount && formatted[formattedIndex + i].HasNewline)
             {
@@ -599,9 +604,11 @@ std::vector<Chunk> FormattingChunks(
                 } else if (formattedCount > sourceCount) {
                     message = "split line: expected " + QuoteSnippet(replacement) +
                         " on this line";
+                    kind = ViolationKind::Reflow;
                 } else {
                     message = "join lines: expected " + QuoteSnippet(replacement) +
                         " on this line";
+                    kind = ViolationKind::Reflow;
                 }
             } else if (SameNonWhitespace(line.Text, replacement)) {
                 auto spacing = SpacingViolations(
@@ -613,7 +620,8 @@ std::vector<Chunk> FormattingChunks(
                 message = ContentChange(line.Text, replacement);
             }
             chunk.Violations.push_back({sourceIndex + i + 1,
-                DifferenceColumn(line.Text, replacement), std::move(message)});
+                DifferenceColumn(line.Text, replacement), std::move(message),
+                kind});
         }
         if (sourceCount == 0) {
             auto column = sourceIndex < source.size() || source.empty()
@@ -662,6 +670,17 @@ void PrintCheckDiagnostics(
     auto sourceLines = SplitLines(source);
     auto formattedLines = SplitLines(formatted);
     auto chunks = FormattingChunks(sourceLines, formattedLines);
+    // A width violation and the breaks proposed to repair it describe one
+    // source problem, not a separate violation for each emitted line break.
+    for (auto& chunk : chunks) {
+        std::erase_if(chunk.Violations, [&] (const Violation& violation) {
+            return violation.Kind == ViolationKind::Reflow &&
+                std::ranges::any_of(layout, [&] (const auto& issue) {
+                    return issue.Position.Line == violation.Line &&
+                        issue.Message.starts_with("line exceeds ColumnLimit");
+                });
+        });
+    }
     const auto terminalWidth = TerminalWidth();
     for (const auto& name : names) {
         chunks.push_back({.Begin = name.Position.Line,
