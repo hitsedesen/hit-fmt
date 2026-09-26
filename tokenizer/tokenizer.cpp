@@ -104,7 +104,7 @@ EqualsIgnoringAsciiCase(std::string_view lhs, std::string_view rhs) noexcept
 
 Tokenizer::Tokenizer(
     util::PaddedSourceView input,
-    std::move_only_function<void(TokenizationError)> errorHandler)
+    std::function<void(TokenizationError)> errorHandler)
     : Input_(input.View())
     , ErrorHandler_(std::move(errorHandler))
 {
@@ -574,14 +574,20 @@ Token Tokenizer::ParseIdentifier()
     auto cur = CurrentCodePoint();
 
     if (cur == '\'') {
-        if (std::ranges::contains(EncodingPrefixes, CurrentTokenText())) {
+        if (std::ranges::find(EncodingPrefixes, CurrentTokenText()) !=
+            EncodingPrefixes.end())
+        {
             return ParseCharacterLiteral();
         }
     } else if (cur == '"') {
-        if (std::ranges::contains(EncodingPrefixes, CurrentTokenText())) {
+        if (std::ranges::find(EncodingPrefixes, CurrentTokenText()) !=
+            EncodingPrefixes.end())
+        {
             return ParseStringLiteral();
         }
-        if (std::ranges::contains(RawEncodingPrefixes, CurrentTokenText())) {
+        if (std::ranges::find(RawEncodingPrefixes, CurrentTokenText()) !=
+            RawEncodingPrefixes.end())
+        {
             return ParseRawStringLiteral();
         }
     }

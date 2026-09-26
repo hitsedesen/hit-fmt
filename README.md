@@ -6,7 +6,7 @@ naming violations without renaming identifiers.
 
 ## Build
 
-A C++23 compiler and CMake 3.20 or newer are required.
+A C++20 compiler and CMake 3.20 or newer are required.
 
 ```sh
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
