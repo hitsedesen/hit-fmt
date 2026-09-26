@@ -1,110 +1,109 @@
 #pragma once
 
 // Each entry defines a field, its default, and its config-file binding.
-// The last argument is the maximum for positive integers (zero otherwise).
-#define FORMATTER_STYLE_OPTIONS(OPT)                                              \
-    OPT(std::size_t, IndentWidth, 4, 32)                                         \
-    OPT(std::size_t, ColumnLimit, 120, 10000)                                    \
-    OPT(formatter::ExpressionLayoutCondition, ExpressionLayoutCondition,        \
-        formatter::ExpressionLayoutCondition::Preserve, 0)                     \
-    OPT(formatter::ExpressionLayoutAlgorithm, ExpressionLayoutAlgorithm,        \
-        formatter::ExpressionLayoutAlgorithm::Greedy, 0)                       \
-    OPT(formatter::BinaryOperatorPlacement, BinaryOperatorPlacement,            \
-        formatter::BinaryOperatorPlacement::Trailing, 0)                       \
-    OPT(formatter::TernaryOperatorPlacement, TernaryOperatorPlacement,          \
-        formatter::TernaryOperatorPlacement::Preserve, 0)                      \
-    OPT(formatter::TernarySplit, TernarySplit,                                    \
-        formatter::TernarySplit::Preserve, 0)                                   \
-    OPT(formatter::IncludeOrder, IncludeOrder,                                   \
-        formatter::IncludeOrder::Preserve, 0)                                  \
-    OPT(formatter::BodyIndentation, IndentAccessModifiers,                       \
-        formatter::BodyIndentation::Preserve, 0)                               \
-    OPT(formatter::BodyIndentation, IndentMembers,                               \
-        formatter::BodyIndentation::Preserve, 0)                               \
-    OPT(formatter::InheritanceListMode, InheritanceList,                        \
-        formatter::InheritanceListMode::Preserve, 0)                           \
+#define FORMATTER_STYLE_OPTIONS(OPT)                                           \
+    OPT(std::size_t, IndentWidth, 4)                                           \
+    OPT(std::size_t, ColumnLimit, 120)                                         \
+    OPT(formatter::ExpressionLayoutCondition, ExpressionLayoutCondition,       \
+        formatter::ExpressionLayoutCondition::Preserve)                        \
+    OPT(formatter::ExpressionLayoutAlgorithm, ExpressionLayoutAlgorithm,       \
+        formatter::ExpressionLayoutAlgorithm::Greedy)                          \
+    OPT(formatter::BinaryOperatorPlacement, BinaryOperatorPlacement,           \
+        formatter::BinaryOperatorPlacement::Trailing)                          \
+    OPT(formatter::TernaryOperatorPlacement, TernaryOperatorPlacement,         \
+        formatter::TernaryOperatorPlacement::Preserve)                         \
+    OPT(formatter::TernarySplit, TernarySplit,                                 \
+        formatter::TernarySplit::Preserve)                                     \
+    OPT(formatter::IncludeOrder, IncludeOrder,                                 \
+        formatter::IncludeOrder::Preserve)                                     \
+    OPT(formatter::BodyIndentation, IndentAccessModifiers,                     \
+        formatter::BodyIndentation::Preserve)                                  \
+    OPT(formatter::BodyIndentation, IndentMembers,                             \
+        formatter::BodyIndentation::Preserve)                                  \
+    OPT(formatter::InheritanceListMode, InheritanceList,                       \
+        formatter::InheritanceListMode::Preserve)                              \
     OPT(formatter::InheritanceListColonPlacement, InheritanceListColonPlacement, \
-        formatter::InheritanceListColonPlacement::AttachToBase, 0)            \
-    OPT(formatter::InheritanceListSpacing, InheritanceListColonSpaceBefore,     \
-        formatter::InheritanceListSpacing::NoSpace, 0)                         \
-    OPT(formatter::InheritanceListSpacing, InheritanceListColonSpaceAfter,      \
-        formatter::InheritanceListSpacing::Space, 0)                           \
+        formatter::InheritanceListColonPlacement::AttachToBase)                \
+    OPT(formatter::InheritanceListSpacing, InheritanceListColonSpaceBefore,    \
+        formatter::InheritanceListSpacing::NoSpace)                            \
+    OPT(formatter::InheritanceListSpacing, InheritanceListColonSpaceAfter,     \
+        formatter::InheritanceListSpacing::Space)                              \
     OPT(formatter::InheritanceListCommaPlacement, InheritanceListCommaPlacement, \
-        formatter::InheritanceListCommaPlacement::AttachToNext, 0)            \
-    OPT(formatter::InheritanceListSpacing, InheritanceListCommaSpaceBefore,     \
-        formatter::InheritanceListSpacing::NoSpace, 0)                         \
-    OPT(formatter::InheritanceListSpacing, InheritanceListCommaSpaceAfter,      \
-        formatter::InheritanceListSpacing::Space, 0)                           \
-    OPT(formatter::InheritanceListStart, InheritanceListStart,                  \
-        formatter::InheritanceListStart::NewLine, 0)                           \
-    OPT(formatter::InheritanceListSplit, InheritanceListSplit,                  \
-        formatter::InheritanceListSplit::OnePerLine, 0)                        \
+        formatter::InheritanceListCommaPlacement::AttachToNext)                \
+    OPT(formatter::InheritanceListSpacing, InheritanceListCommaSpaceBefore,    \
+        formatter::InheritanceListSpacing::NoSpace)                            \
+    OPT(formatter::InheritanceListSpacing, InheritanceListCommaSpaceAfter,     \
+        formatter::InheritanceListSpacing::Space)                              \
+    OPT(formatter::InheritanceListStart, InheritanceListStart,                 \
+        formatter::InheritanceListStart::NewLine)                              \
+    OPT(formatter::InheritanceListSplit, InheritanceListSplit,                 \
+        formatter::InheritanceListSplit::OnePerLine)                           \
     /* Zero uses the global IndentWidth. */                                    \
-    OPT(std::size_t, InheritanceListIndent, 0, 32)                               \
-    OPT(formatter::BracePlacement, ClassBracePlacement,                          \
-        formatter::BracePlacement::Preserve, 0)                                \
-    OPT(formatter::BracePlacement, StructBracePlacement,                         \
-        formatter::BracePlacement::Preserve, 0)                                \
-    OPT(formatter::BracePlacement, UnionBracePlacement,                          \
-        formatter::BracePlacement::Preserve, 0)                                \
-    OPT(formatter::BracePlacement, FunctionBracePlacement,                       \
-        formatter::BracePlacement::Preserve, 0)                                \
-    OPT(formatter::BracePlacement, LambdaBracePlacement,                         \
-        formatter::BracePlacement::Preserve, 0)                                \
-    OPT(formatter::BracePlacement, NamespaceBracePlacement,                      \
-        formatter::BracePlacement::Preserve, 0)                                \
-    OPT(formatter::NamespaceComments, NamespaceComments,                        \
-        formatter::NamespaceComments::Preserve, 0)                             \
+    OPT(std::size_t, InheritanceListIndent, 0)                                 \
+    OPT(formatter::BracePlacement, ClassBracePlacement,                        \
+        formatter::BracePlacement::Preserve)                                   \
+    OPT(formatter::BracePlacement, StructBracePlacement,                       \
+        formatter::BracePlacement::Preserve)                                   \
+    OPT(formatter::BracePlacement, UnionBracePlacement,                        \
+        formatter::BracePlacement::Preserve)                                   \
+    OPT(formatter::BracePlacement, FunctionBracePlacement,                     \
+        formatter::BracePlacement::Preserve)                                   \
+    OPT(formatter::BracePlacement, LambdaBracePlacement,                       \
+        formatter::BracePlacement::Preserve)                                   \
+    OPT(formatter::BracePlacement, NamespaceBracePlacement,                    \
+        formatter::BracePlacement::Preserve)                                   \
+    OPT(formatter::NamespaceComments, NamespaceComments,                       \
+        formatter::NamespaceComments::Preserve)                                \
     OPT(formatter::FunctionParameterSplit, FunctionParameterSplit,             \
-        formatter::FunctionParameterSplit::Preserve, 0)                        \
+        formatter::FunctionParameterSplit::Preserve)                           \
     OPT(formatter::FirstFunctionParameterPosition, FirstFunctionParameterPosition, \
-        formatter::FirstFunctionParameterPosition::NameLine, 0)               \
-    OPT(bool, EnforceFirstFunctionParameterPosition, false, 0)                  \
+        formatter::FirstFunctionParameterPosition::NameLine)                   \
+    OPT(bool, EnforceFirstFunctionParameterPosition, false)                    \
     OPT(formatter::FunctionParameterIndent, FunctionParameterIndent,           \
-        formatter::FunctionParameterIndent::IndentWidth, 0)                   \
-    OPT(bool, MergeFunctionParameters, false, 0)                                 \
-    OPT(formatter::CallArgumentSplit, CallArgumentSplit,                         \
-        formatter::CallArgumentSplit::Preserve, 0)                             \
-    OPT(formatter::FirstCallArgumentPosition, FirstCallArgumentPosition,        \
-        formatter::FirstCallArgumentPosition::CallLine, 0)                     \
-    OPT(bool, EnforceFirstCallArgumentPosition, false, 0)                        \
-    OPT(formatter::CallArgumentIndent, CallArgumentIndent,                       \
-        formatter::CallArgumentIndent::IndentWidth, 0)                         \
-    OPT(formatter::ControlBlockKeywordSpacing, ControlBlockKeywordSpacing,      \
-        formatter::ControlBlockKeywordSpacing::Preserve, 0)                    \
-    OPT(formatter::ControlBlockBracePlacement, ControlBlockBracePlacement,      \
-        formatter::ControlBlockBracePlacement::Preserve, 0)                    \
-    OPT(formatter::SameLineBraceSpacing, ClassBraceSpacing,                     \
-        formatter::SameLineBraceSpacing::Preserve, 0)                          \
-    OPT(formatter::SameLineBraceSpacing, LambdaBraceSpacing,                    \
-        formatter::SameLineBraceSpacing::Preserve, 0)                          \
-    OPT(formatter::LambdaSpaceBeforeParameters, LambdaSpaceBeforeParameters,    \
-        formatter::LambdaSpaceBeforeParameters::Preserve, 0)                   \
-    OPT(formatter::LambdaCaptureSpacing, SpaceAroundCaptureList,                \
-        formatter::LambdaCaptureSpacing::Preserve, 0)                          \
-    OPT(formatter::LambdaCaptureSpacing, SpaceAroundCaptureAssignment,          \
-        formatter::LambdaCaptureSpacing::Preserve, 0)                          \
+        formatter::FunctionParameterIndent::IndentWidth)                       \
+    OPT(bool, MergeFunctionParameters, false)                                  \
+    OPT(formatter::CallArgumentSplit, CallArgumentSplit,                       \
+        formatter::CallArgumentSplit::Preserve)                                \
+    OPT(formatter::FirstCallArgumentPosition, FirstCallArgumentPosition,       \
+        formatter::FirstCallArgumentPosition::CallLine)                        \
+    OPT(bool, EnforceFirstCallArgumentPosition, false)                         \
+    OPT(formatter::CallArgumentIndent, CallArgumentIndent,                     \
+        formatter::CallArgumentIndent::IndentWidth)                            \
+    OPT(formatter::ControlBlockKeywordSpacing, ControlBlockKeywordSpacing,     \
+        formatter::ControlBlockKeywordSpacing::Preserve)                       \
+    OPT(formatter::ControlBlockBracePlacement, ControlBlockBracePlacement,     \
+        formatter::ControlBlockBracePlacement::Preserve)                       \
+    OPT(formatter::SameLineBraceSpacing, ClassBraceSpacing,                    \
+        formatter::SameLineBraceSpacing::Preserve)                             \
+    OPT(formatter::SameLineBraceSpacing, LambdaBraceSpacing,                   \
+        formatter::SameLineBraceSpacing::Preserve)                             \
+    OPT(formatter::LambdaSpaceBeforeParameters, LambdaSpaceBeforeParameters,   \
+        formatter::LambdaSpaceBeforeParameters::Preserve)                      \
+    OPT(formatter::LambdaCaptureSpacing, SpaceAroundCaptureList,               \
+        formatter::LambdaCaptureSpacing::Preserve)                             \
+    OPT(formatter::LambdaCaptureSpacing, SpaceAroundCaptureAssignment,         \
+        formatter::LambdaCaptureSpacing::Preserve)                             \
     OPT(formatter::FunctionSpaceBeforeParameters, FunctionSpaceBeforeParameters, \
-        formatter::FunctionSpaceBeforeParameters::Preserve, 0)                 \
-    OPT(formatter::FunctionCallSpaceBeforeParameters,                        \
+        formatter::FunctionSpaceBeforeParameters::Preserve)                    \
+    OPT(formatter::FunctionCallSpaceBeforeParameters,                          \
         FunctionCallSpaceBeforeParameters,                                     \
-        formatter::FunctionCallSpaceBeforeParameters::Preserve, 0)             \
+        formatter::FunctionCallSpaceBeforeParameters::Preserve)                \
     OPT(formatter::SpaceInsideFunctionParameters, SpaceInsideFunctionParameters, \
-        formatter::SpaceInsideFunctionParameters::Preserve, 0)                 \
-    OPT(formatter::SpaceInsideLambdaParameters, SpaceInsideLambdaParameters,    \
-        formatter::SpaceInsideLambdaParameters::Preserve, 0)                   \
-    OPT(formatter::SpaceInsideCallArguments, SpaceInsideCallArguments,          \
-        formatter::SpaceInsideCallArguments::Preserve, 0)                      \
-    OPT(formatter::SameLineBraceSpacing, StructBraceSpacing,                    \
-        formatter::SameLineBraceSpacing::Preserve, 0)                          \
-    OPT(formatter::SameLineBraceSpacing, EnumBraceSpacing,                      \
-        formatter::SameLineBraceSpacing::Preserve, 0)                          \
-    OPT(formatter::SameLineBraceSpacing, UnionBraceSpacing,                     \
-        formatter::SameLineBraceSpacing::Preserve, 0)                          \
-    OPT(formatter::SameLineBraceSpacing, FunctionBraceSpacing,                  \
-        formatter::SameLineBraceSpacing::Preserve, 0)                          \
-    OPT(formatter::SameLineBraceSpacing, NamespaceBraceSpacing,                 \
-        formatter::SameLineBraceSpacing::Preserve, 0)
+        formatter::SpaceInsideFunctionParameters::Preserve)                    \
+    OPT(formatter::SpaceInsideLambdaParameters, SpaceInsideLambdaParameters,   \
+        formatter::SpaceInsideLambdaParameters::Preserve)                      \
+    OPT(formatter::SpaceInsideCallArguments, SpaceInsideCallArguments,         \
+        formatter::SpaceInsideCallArguments::Preserve)                         \
+    OPT(formatter::SameLineBraceSpacing, StructBraceSpacing,                   \
+        formatter::SameLineBraceSpacing::Preserve)                             \
+    OPT(formatter::SameLineBraceSpacing, EnumBraceSpacing,                     \
+        formatter::SameLineBraceSpacing::Preserve)                             \
+    OPT(formatter::SameLineBraceSpacing, UnionBraceSpacing,                    \
+        formatter::SameLineBraceSpacing::Preserve)                             \
+    OPT(formatter::SameLineBraceSpacing, FunctionBraceSpacing,                 \
+        formatter::SameLineBraceSpacing::Preserve)                             \
+    OPT(formatter::SameLineBraceSpacing, NamespaceBraceSpacing,                \
+        formatter::SameLineBraceSpacing::Preserve)
 
 // A category supplies its name-case and prefix options together.
 #define FORMATTER_NAMING_CATEGORIES(X)                                          \

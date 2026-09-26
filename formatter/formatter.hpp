@@ -14,7 +14,7 @@ namespace formatter {
 
 struct Style
 {
-#define FORMATTER_STYLE_FIELD(type, name, initial, maximum) type name = initial;
+#define FORMATTER_STYLE_FIELD(type, name, initial) type name = initial;
     FORMATTER_STYLE_OPTIONS(FORMATTER_STYLE_FIELD)
 #undef FORMATTER_STYLE_FIELD
 };
