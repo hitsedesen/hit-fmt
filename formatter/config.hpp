@@ -22,27 +22,22 @@ struct NameRule
 
 struct NamingStyle
 {
-    NameRule Class;
-    NameRule Enum;
-    NameRule Union;
-    NameRule Struct;
-    NameRule Function;
-    NameRule Concept;
-    NameRule Variable;
-    NameRule Namespace;
+#define FORMATTER_NAMING_FIELD(category) NameRule category;
+    FORMATTER_NAMING_CATEGORIES(FORMATTER_NAMING_FIELD)
+#undef FORMATTER_NAMING_FIELD
     // Qualified namespace paths; each entry also excludes its descendants.
-    std::vector<std::string> ExemptNamespaces = {"std"};
+#define FORMATTER_NAMING_OPTION_FIELD(type, name, initial, key) type name = initial;
+    FORMATTER_NAMING_OPTIONS(FORMATTER_NAMING_OPTION_FIELD)
+#undef FORMATTER_NAMING_OPTION_FIELD
 };
 
 struct Configuration
 {
     Style FormattingStyle;
     NamingStyle Naming;
-    FunctionDeclarationParameterNames DeclarationParameterNames =
-        FunctionDeclarationParameterNames::Unchecked;
-    FunctionDefinitionParameterNames DefinitionParameterNames =
-        FunctionDefinitionParameterNames::Unchecked;
-    std::vector<std::regex> Exclusions;
+#define FORMATTER_CONFIG_FIELD(type, name, initial, key) type name = initial;
+    FORMATTER_CONFIGURATION_OPTIONS(FORMATTER_CONFIG_FIELD)
+#undef FORMATTER_CONFIG_FIELD
 };
 
 // Parses formatting settings and exclusion patterns from a config file.

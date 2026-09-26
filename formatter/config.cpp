@@ -1,114 +1,17 @@
 #include "config.hpp"
 
+#include <array>
 #include <charconv>
 #include <cctype>
 #include <fstream>
 #include <stdexcept>
+#include <type_traits>
 #include <string>
 #include <string_view>
 #include <utility>
 #include <vector>
 
 namespace formatter {
-
-// A single registry supplies the accepted option names and their handlers.
-// Ordinary option names are the same as the Style members they configure.
-#define STYLE_ENUM_OPTIONS(X) \
-    X(IncludeOrder, IncludeOrder) \
-    X(ClassBracePlacement, BracePlacement) \
-    X(StructBracePlacement, BracePlacement) \
-    X(UnionBracePlacement, BracePlacement) \
-    X(FunctionBracePlacement, BracePlacement) \
-    X(LambdaBracePlacement, BracePlacement) \
-    X(NamespaceBracePlacement, BracePlacement) \
-    X(NamespaceComments, NamespaceComments) \
-    X(FunctionParameterSplit, FunctionParameterSplit) \
-    X(FirstFunctionParameterPosition, FirstFunctionParameterPosition) \
-    X(FunctionParameterIndent, FunctionParameterIndent) \
-    X(CallArgumentSplit, CallArgumentSplit) \
-    X(FirstCallArgumentPosition, FirstCallArgumentPosition) \
-    X(CallArgumentIndent, CallArgumentIndent) \
-    X(ExpressionLayoutCondition, ExpressionLayoutCondition) \
-    X(ExpressionLayoutAlgorithm, ExpressionLayoutAlgorithm) \
-    X(BinaryOperatorPlacement, BinaryOperatorPlacement) \
-    X(TernaryOperatorPlacement, TernaryOperatorPlacement) \
-    X(TernarySplit, TernarySplit) \
-    X(ControlBlockBracePlacement, ControlBlockBracePlacement) \
-    X(ControlBlockKeywordSpacing, ControlBlockKeywordSpacing) \
-    X(ClassBraceSpacing, SameLineBraceSpacing) \
-    X(LambdaBraceSpacing, SameLineBraceSpacing) \
-    X(FunctionCallSpaceBeforeParameters, FunctionCallSpaceBeforeParameters) \
-    X(SpaceInsideCallArguments, SpaceInsideCallArguments) \
-    X(SpaceInsideLambdaParameters, SpaceInsideLambdaParameters) \
-    X(SpaceInsideFunctionParameters, SpaceInsideFunctionParameters) \
-    X(FunctionSpaceBeforeParameters, FunctionSpaceBeforeParameters) \
-    X(IndentAccessModifiers, BodyIndentation) \
-    X(IndentMembers, BodyIndentation) \
-    X(InheritanceList, InheritanceListMode) \
-    X(InheritanceListColonPlacement, InheritanceListColonPlacement) \
-    X(InheritanceListColonSpaceBefore, InheritanceListSpacing) \
-    X(InheritanceListColonSpaceAfter, InheritanceListSpacing) \
-    X(InheritanceListCommaPlacement, InheritanceListCommaPlacement) \
-    X(InheritanceListCommaSpaceBefore, InheritanceListSpacing) \
-    X(InheritanceListCommaSpaceAfter, InheritanceListSpacing) \
-    X(InheritanceListStart, InheritanceListStart) \
-    X(InheritanceListSplit, InheritanceListSplit) \
-    X(SpaceAroundCaptureList, LambdaCaptureSpacing) \
-    X(SpaceAroundCaptureAssignment, LambdaCaptureSpacing) \
-    X(LambdaSpaceBeforeParameters, LambdaSpaceBeforeParameters) \
-    X(StructBraceSpacing, SameLineBraceSpacing) \
-    X(EnumBraceSpacing, SameLineBraceSpacing) \
-    X(UnionBraceSpacing, SameLineBraceSpacing) \
-    X(FunctionBraceSpacing, SameLineBraceSpacing) \
-    X(NamespaceBraceSpacing, SameLineBraceSpacing)
-
-#define STYLE_BOOLEAN_OPTIONS(X)                                                \
-    X(EnforceFirstFunctionParameterPosition)                                   \
-    X(EnforceFirstCallArgumentPosition)                                        \
-    X(MergeFunctionParameters)
-
-#define STYLE_INTEGER_OPTIONS(X)                                                \
-    X(IndentWidth, 32) X(ColumnLimit, 10000) X(InheritanceListIndent, 32)
-
-#define PARAMETER_NAME_OPTIONS(X)                                               \
-    X(FunctionDeclarationParameterNames, DeclarationParameterNames)           \
-    X(FunctionDefinitionParameterNames, DefinitionParameterNames)
-
-#define NAMING_CATEGORIES(X)                                                    \
-    X(Class) X(Enum) X(Union) X(Struct) X(Function) X(Concept) X(Variable)    \
-    X(Namespace)
-
-#define NAMING_OPTION_VALUE(category) category##NameCase, category##NamePrefixes,
-#define OPTION_VALUE(name, ...) name,
-enum class ConfigOption
-{
-    STYLE_ENUM_OPTIONS(OPTION_VALUE)
-    STYLE_BOOLEAN_OPTIONS(OPTION_VALUE)
-    STYLE_INTEGER_OPTIONS(OPTION_VALUE)
-    PARAMETER_NAME_OPTIONS(OPTION_VALUE)
-    NAMING_CATEGORIES(NAMING_OPTION_VALUE)
-    NamingNamespaceExemptions,
-    Exclude,
-};
-#undef OPTION_VALUE
-#undef NAMING_OPTION_VALUE
-
-#define NAMING_OPTION_NAME(category) #category "NameCase", #category "NamePrefixes",
-#define OPTION_NAME(name, ...) #name,
-template <> struct ConfigEnumNames<ConfigOption>
-{
-    static constexpr auto Values = std::to_array<std::string_view>({
-        STYLE_ENUM_OPTIONS(OPTION_NAME)
-        STYLE_BOOLEAN_OPTIONS(OPTION_NAME)
-        STYLE_INTEGER_OPTIONS(OPTION_NAME)
-        PARAMETER_NAME_OPTIONS(OPTION_NAME)
-        NAMING_CATEGORIES(NAMING_OPTION_NAME)
-        "NamingNamespaceExemptions",
-        "Exclude",
-    });
-};
-#undef OPTION_NAME
-#undef NAMING_OPTION_NAME
 
 namespace {
 
@@ -361,87 +264,139 @@ std::vector<std::string> ParseNamePrefixes(
     return prefixes;
 }
 
-void ApplySetting(
-    Configuration& config,
-    std::string_view key,
-    std::string_view value,
-    const std::filesystem::path& path,
-    size_t line)
+template <size_t Maximum, typename T>
+void ParseField(T& field, std::string_view value,
+    const std::filesystem::path& path, size_t line, std::string_view key)
 {
-    auto option = DeserializeConfigEnum<ConfigOption>(key);
-    if (!option) {
-        ThrowConfigError(path, line, "unknown setting '" + std::string(key) + "'");
-    }
-
-    switch (*option) {
-#define APPLY_ENUM_OPTION(name, type)                                           \
-    case ConfigOption::name:                                                    \
-        config.FormattingStyle.name = ParseEnum<type>(value, path, line);      \
-        return;
-        STYLE_ENUM_OPTIONS(APPLY_ENUM_OPTION)
-#undef APPLY_ENUM_OPTION
-
-#define APPLY_BOOLEAN_OPTION(name)                                              \
-    case ConfigOption::name:                                                    \
-        config.FormattingStyle.name = ParseBoolean(value, path, line);         \
-        return;
-        STYLE_BOOLEAN_OPTIONS(APPLY_BOOLEAN_OPTION)
-#undef APPLY_BOOLEAN_OPTION
-
-#define APPLY_INTEGER_OPTION(name, maximum)                                     \
-    case ConfigOption::name:                                                    \
-        config.FormattingStyle.name = ParsePositiveInteger(value, path, line); \
-        if (config.FormattingStyle.name > maximum) {                           \
-            ThrowConfigError(path, line, #name " must not exceed " #maximum);  \
-        }                                                                       \
-        return;
-        STYLE_INTEGER_OPTIONS(APPLY_INTEGER_OPTION)
-#undef APPLY_INTEGER_OPTION
-
-#define APPLY_PARAMETER_OPTION(name, member)                                    \
-    case ConfigOption::name:                                                    \
-        config.member = ParseEnum<name>(value, path, line);                     \
-        return;
-        PARAMETER_NAME_OPTIONS(APPLY_PARAMETER_OPTION)
-#undef APPLY_PARAMETER_OPTION
-
-#define APPLY_NAMING_CATEGORY(category)                                         \
-    case ConfigOption::category##NameCase:                                      \
-        config.Naming.category.Case = ParseEnum<NameCase>(value, path, line);   \
-        return;                                                                 \
-    case ConfigOption::category##NamePrefixes:                                  \
-        config.Naming.category.Prefixes = ParseNamePrefixes(value, path, line); \
-        return;
-        NAMING_CATEGORIES(APPLY_NAMING_CATEGORY)
-#undef APPLY_NAMING_CATEGORY
-
-    case ConfigOption::NamingNamespaceExemptions:
-        config.Naming.ExemptNamespaces = ParseNamespaceExemptions(
-            value, path, line);
-        return;
-
-    case ConfigOption::Exclude:
-        config.Exclusions.clear();
-        for (const auto& pattern : ParseStringList(value, path, line)) {
-            if (pattern.empty()) {
-                ThrowConfigError(path, line, "Exclude regex must not be empty");
-            }
-            try {
-                config.Exclusions.emplace_back(pattern);
-            } catch (const std::regex_error& error) {
-                ThrowConfigError(path, line,
-                    "invalid Exclude regex '" + pattern + "': " + error.what());
-            }
+    if constexpr (std::is_enum_v<T>) {
+        static_assert(Maximum == 0);
+        field = ParseEnum<T>(value, path, line);
+    } else if constexpr (std::is_same_v<T, bool>) {
+        static_assert(Maximum == 0);
+        field = ParseBoolean(value, path, line);
+    } else if constexpr (std::is_same_v<T, size_t>) {
+        static_assert(Maximum != 0);
+        auto parsed = ParsePositiveInteger(value, path, line);
+        if (parsed > Maximum) {
+            ThrowConfigError(path, line, std::string(key) +
+                " must not exceed " + std::to_string(Maximum));
         }
-        return;
+        field = parsed;
+    } else {
+        static_assert(std::is_same_v<T, void>, "unsupported config field type");
     }
 }
 
-#undef STYLE_ENUM_OPTIONS
-#undef STYLE_BOOLEAN_OPTIONS
-#undef STYLE_INTEGER_OPTIONS
-#undef PARAMETER_NAME_OPTIONS
-#undef NAMING_CATEGORIES
+template <size_t Maximum>
+void ParseField(std::optional<std::vector<std::string>>& field,
+    std::string_view value, const std::filesystem::path& path,
+    size_t line, std::string_view)
+{
+    static_assert(Maximum == 0);
+    field = ParseNamePrefixes(value, path, line);
+}
+
+template <size_t Maximum>
+void ParseField(std::vector<std::string>& field, std::string_view value,
+    const std::filesystem::path& path, size_t line, std::string_view)
+{
+    static_assert(Maximum == 0);
+    field = ParseNamespaceExemptions(value, path, line);
+}
+
+template <size_t Maximum>
+void ParseField(std::vector<std::regex>& field, std::string_view value,
+    const std::filesystem::path& path, size_t line, std::string_view)
+{
+    static_assert(Maximum == 0);
+    field.clear();
+    for (const auto& pattern : ParseStringList(value, path, line)) {
+        if (pattern.empty()) {
+            ThrowConfigError(path, line, "Exclude regex must not be empty");
+        }
+        try {
+            field.emplace_back(pattern);
+        } catch (const std::regex_error& error) {
+            ThrowConfigError(path, line,
+                "invalid Exclude regex '" + pattern + "': " + error.what());
+        }
+    }
+}
+
+template <auto Member, size_t Maximum>
+void AssignStyle(Configuration& config, std::string_view value,
+    const std::filesystem::path& path, size_t line, std::string_view key)
+{
+    ParseField<Maximum>(config.FormattingStyle.*Member, value, path, line, key);
+}
+
+template <auto Member>
+void AssignConfig(Configuration& config, std::string_view value,
+    const std::filesystem::path& path, size_t line, std::string_view key)
+{
+    ParseField<0>(config.*Member, value, path, line, key);
+}
+
+template <auto Member>
+void AssignNaming(Configuration& config, std::string_view value,
+    const std::filesystem::path& path, size_t line, std::string_view key)
+{
+    ParseField<0>(config.Naming.*Member, value, path, line, key);
+}
+
+template <auto Member>
+void AssignNamingCase(Configuration& config, std::string_view value,
+    const std::filesystem::path& path, size_t line, std::string_view key)
+{
+    ParseField<0>((config.Naming.*Member).Case, value, path, line, key);
+}
+
+template <auto Member>
+void AssignNamingPrefixes(Configuration& config, std::string_view value,
+    const std::filesystem::path& path, size_t line, std::string_view key)
+{
+    ParseField<0>((config.Naming.*Member).Prefixes, value, path, line, key);
+}
+
+using OptionHandler = void (*)(Configuration&, std::string_view,
+    const std::filesystem::path&, size_t, std::string_view);
+struct OptionBinding
+{
+    std::string_view Name;
+    OptionHandler Assign;
+};
+
+constexpr auto Options = std::to_array<OptionBinding>({
+#define STYLE_BINDING(type, name, initial, maximum)                             \
+    {#name, &AssignStyle<&Style::name, maximum>},
+    FORMATTER_STYLE_OPTIONS(STYLE_BINDING)
+#undef STYLE_BINDING
+#define NAMING_CATEGORY_BINDINGS(category)                                      \
+    {#category "NameCase", &AssignNamingCase<&NamingStyle::category>},           \
+    {#category "NamePrefixes", &AssignNamingPrefixes<&NamingStyle::category>},
+    FORMATTER_NAMING_CATEGORIES(NAMING_CATEGORY_BINDINGS)
+#undef NAMING_CATEGORY_BINDINGS
+#define NAMING_BINDING(type, name, initial, key)                                \
+    {#key, &AssignNaming<&NamingStyle::name>},
+    FORMATTER_NAMING_OPTIONS(NAMING_BINDING)
+#undef NAMING_BINDING
+#define CONFIG_BINDING(type, name, initial, key)                                \
+    {#key, &AssignConfig<&Configuration::name>},
+    FORMATTER_CONFIGURATION_OPTIONS(CONFIG_BINDING)
+#undef CONFIG_BINDING
+});
+
+void ApplySetting(Configuration& config, std::string_view key,
+    std::string_view value, const std::filesystem::path& path, size_t line)
+{
+    for (const auto& option : Options) {
+        if (option.Name == key) {
+            option.Assign(config, value, path, line, key);
+            return;
+        }
+    }
+    ThrowConfigError(path, line, "unknown setting '" + std::string(key) + "'");
+}
 
 } // namespace
 
