@@ -139,10 +139,12 @@ Exclude = ["(^|/)generated(/|$)", "(^|/)legacy\\.cpp$"]
   specifier; other internal spacing remains source-owned.
 - `ExpressionLayoutCondition`: `Preserve` (default) retains expression
   and call argument layout. `Overflow` splits safe overlong lines without
-  joining existing breaks. `FitOrOverflow` also joins safe multiline expressions
-  and calls when their flat form fits within `ColumnLimit`; otherwise it
-  behaves like `Overflow`. `Always` starts from the flat form and reflows
-  it according to `ColumnLimit`, even when that flat form overflows.
+  joining existing breaks. `FitOrOverflow` also joins safe multiline
+  expressions and calls when their flat form fits within `ColumnLimit`;
+  otherwise it behaves like `Overflow`. `Always` starts from the flat form
+  and reflows it according to `ColumnLimit`, even when that flat form
+  overflows. `Always` is not recommended for stable formatting: formatter
+  updates or small nearby edits can cause widespread layout changes.
   Expression operator layout covers parsed binary, assignment, and
   conditional operators. Operator gaps are normalized in `Always` mode;
   other expression gaps, including call argument breaks, are controlled
@@ -168,16 +170,23 @@ Exclude = ["(^|/)generated(/|$)", "(^|/)legacy\\.cpp$"]
   breaks but safely moves
   the newline to the configured side of a binary operator, even if the
   expression otherwise fits on one line.
-- `TernaryOperatorPlacement`: `Leading` (default) puts `?` and `:` at the
-  beginning of their continuation lines; `Trailing` keeps them at the end
-  of the preceding line. Existing safe ternary breaks are checked and
-  moved to the configured side even in `Overflow` mode.
-- `TernarySplit`: `AsNeeded` (default) allows either delimiter or both to
-  break. `ThreeLines` keeps a flat ternary flat when it fits; if the
-  ternary is split, it places the condition, true branch, and false branch
-  on separate lines by breaking at both delimiters. These settings apply
-  only when `ExpressionLayoutCondition` is not `Preserve`. Comments,
-  directives, CRLF, and ambiguous or incomplete syntax stay source-owned.
+- `TernaryOperatorPlacement`: `Preserve` (default) leaves the side of
+  existing `?` and `:` breaks unchanged. New breaks use leading placement
+  unless another delimiter is already split, in which case `ThreeLines`
+  follows that delimiter's side. `Leading` puts the operators at the start
+  of their continuation lines; `Trailing` keeps them at the end of the
+  preceding line. Explicit placement also corrects safe existing breaks
+  in `Overflow` mode, independently of `TernarySplit`.
+- `TernarySplit`: `Preserve` (default) neither adds nor joins ternary
+  breaks. `AsNeeded` allows either delimiter or both to break. `ThreeLines`
+  keeps a flat ternary flat when it fits; if the ternary is split, it
+  separates the condition, true branch, and false branch by breaking at
+  both delimiters. These settings apply only when `ExpressionLayoutCondition`
+  is not `Preserve`. Comments, directives, CRLF, and ambiguous or incomplete
+  syntax stay source-owned. In `--check` mode, expression and call reflow
+  is skipped: configured layout checks report overlong lines, incorrect
+  existing operator placement, and incomplete `ThreeLines` splits instead
+  of showing a speculative expression reflow diff.
 - `CallArgumentSplit`: `Preserve` (default, leave call arguments
   unchanged), `Pack` (put as many arguments as fit on each line), or
   `OnePerLine` (one argument per continuation line if a split is chosen).

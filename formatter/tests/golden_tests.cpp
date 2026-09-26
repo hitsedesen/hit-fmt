@@ -495,6 +495,8 @@ TEST(ExpressionLayoutTest, WrapsParsedOperatorsAndPreservesUnsafeLines)
 {
     formatter::Style style;
     style.ExpressionLayoutCondition = formatter::ExpressionLayoutCondition::Overflow;
+    style.TernarySplit = formatter::TernarySplit::AsNeeded;
+    style.TernaryOperatorPlacement = formatter::TernaryOperatorPlacement::Leading;
     style.BinaryOperatorPlacement = formatter::BinaryOperatorPlacement::Leading;
     style.ColumnLimit = 32;
     const auto input =
@@ -701,6 +703,65 @@ TEST(ExpressionLayoutTest, PlacesAndGroupsTernaryBreaks)
         "}\n";
     EXPECT_EQ(FormatWithStyle(nested, style), nestedExpected);
     EXPECT_EQ(FormatWithStyle(nestedExpected, style), nestedExpected);
+
+    formatter::Style preserve;
+    preserve.ExpressionLayoutCondition =
+        formatter::ExpressionLayoutCondition::Always;
+    preserve.ColumnLimit = 20;
+    ExpectUnchanged(input, preserve);
+    ExpectUnchanged(existing, preserve);
+    preserve.ExpressionLayoutCondition =
+        formatter::ExpressionLayoutCondition::Overflow;
+    preserve.ColumnLimit = 80;
+    preserve.TernaryOperatorPlacement =
+        formatter::TernaryOperatorPlacement::Leading;
+    EXPECT_EQ(FormatWithStyle(existing, preserve), corrected);
+    preserve.TernaryOperatorPlacement =
+        formatter::TernaryOperatorPlacement::Preserve;
+    preserve.TernarySplit = formatter::TernarySplit::AsNeeded;
+    ExpectUnchanged(existing, preserve);
+    preserve.TernarySplit = formatter::TernarySplit::ThreeLines;
+    EXPECT_EQ(FormatWithStyle(existing, preserve), threeTrailing);
+}
+
+TEST(ExpressionLayoutTest, ChecksLayoutWithoutReflowing)
+{
+    const auto input =
+        "int f() {\n"
+        "    auto description = someVeryLongIdentifierName;\n"
+        "    auto x = left\n"
+        "        + right;\n"
+        "    return condition ?\n"
+        "        alphaValue : betaValue;\n"
+        "}\n";
+    std::string storage(input);
+    auto length = storage.size();
+    storage.append(util::SourcePaddingSize, '\0');
+    auto tree = parser::Parse({.Data = storage.data(), .Size = length},
+        [] (parser::ParseError) { });
+    formatter::Style style;
+    style.ExpressionLayoutCondition = formatter::ExpressionLayoutCondition::Overflow;
+    style.ColumnLimit = 40;
+    style.TernaryOperatorPlacement = formatter::TernaryOperatorPlacement::Leading;
+    style.TernarySplit = formatter::TernarySplit::ThreeLines;
+    const auto issues = formatter::CheckExpressionLayout(tree, style);
+    ASSERT_EQ(issues.size(), 4u);
+    EXPECT_EQ(issues[0].Position.Line, 2u);
+    EXPECT_NE(issues[0].Message.find("line exceeds ColumnLimit"),
+        std::string::npos);
+    EXPECT_EQ(issues[1].Position.Line, 4u);
+    EXPECT_EQ(issues[1].Message, "binary operator must be trailing");
+    EXPECT_EQ(issues[2].Position.Line, 5u);
+    EXPECT_EQ(issues[2].Message, "ternary ? must be leading");
+    EXPECT_EQ(issues[3].Position.Line, 6u);
+    EXPECT_EQ(issues[3].Message,
+        "ternary split requires both ? and : breaks");
+    style.TernaryOperatorPlacement = formatter::TernaryOperatorPlacement::Preserve;
+    style.TernarySplit = formatter::TernarySplit::Preserve;
+    EXPECT_EQ(formatter::CheckExpressionLayout(tree, style).size(), 2u);
+    style.ExpressionLayoutCondition =
+        formatter::ExpressionLayoutCondition::Preserve;
+    EXPECT_TRUE(formatter::CheckExpressionLayout(tree, style).empty());
 }
 
 TEST(ExpressionLayoutTest, PrefersOuterConditionalBreaks)
@@ -787,6 +848,8 @@ TEST(ExpressionLayoutTest, ReflowsSafeOperatorContinuationsByPolicy)
 {
     formatter::Style style;
     style.ExpressionLayoutCondition = formatter::ExpressionLayoutCondition::Always;
+    style.TernarySplit = formatter::TernarySplit::AsNeeded;
+    style.TernaryOperatorPlacement = formatter::TernaryOperatorPlacement::Leading;
     style.ColumnLimit = 80;
     const auto input =
         "void f() {\n"
@@ -1339,9 +1402,15 @@ TEST(PreserveConfigTest, RejectsInvalidSettings)
     save("CallArgumentSplit = Pack\nExpressionLayoutCondition = Always\n");
     const auto alternate = formatter::LoadConfigFile(path).FormattingStyle;
     EXPECT_EQ(alternate.ExpressionLayoutCondition, formatter::ExpressionLayoutCondition::Always);
-    save("ExpressionLayoutCondition = Overflow\n");
-    EXPECT_EQ(formatter::LoadConfigFile(path).FormattingStyle.ExpressionLayoutCondition,
+    save("ExpressionLayoutCondition = Overflow\n"
+         "TernaryOperatorPlacement = Preserve\n"
+         "TernarySplit = Preserve\n");
+    const auto preserving = formatter::LoadConfigFile(path).FormattingStyle;
+    EXPECT_EQ(preserving.ExpressionLayoutCondition,
         formatter::ExpressionLayoutCondition::Overflow);
+    EXPECT_EQ(preserving.TernaryOperatorPlacement,
+        formatter::TernaryOperatorPlacement::Preserve);
+    EXPECT_EQ(preserving.TernarySplit, formatter::TernarySplit::Preserve);
     for (auto setting : {
         "Regroup = true\n",
         "InsertBraces = false\n",

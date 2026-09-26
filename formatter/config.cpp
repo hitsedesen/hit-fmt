@@ -592,7 +592,10 @@ void ApplySetting(
         }
     } else if (key == "TernaryOperatorPlacement") {
         value = ParseOption(value, path, line);
-        if (value == "Leading") {
+        if (value == "Preserve") {
+            config.FormattingStyle.TernaryOperatorPlacement =
+                TernaryOperatorPlacement::Preserve;
+        } else if (value == "Leading") {
             config.FormattingStyle.TernaryOperatorPlacement =
                 TernaryOperatorPlacement::Leading;
         } else if (value == "Trailing") {
@@ -600,17 +603,20 @@ void ApplySetting(
                 TernaryOperatorPlacement::Trailing;
         } else {
             ThrowConfigError(path, line,
-                "expected Leading or Trailing for TernaryOperatorPlacement");
+                "expected Preserve, Leading or Trailing for "
+                "TernaryOperatorPlacement");
         }
     } else if (key == "TernarySplit") {
         value = ParseOption(value, path, line);
-        if (value == "AsNeeded") {
+        if (value == "Preserve") {
+            config.FormattingStyle.TernarySplit = TernarySplit::Preserve;
+        } else if (value == "AsNeeded") {
             config.FormattingStyle.TernarySplit = TernarySplit::AsNeeded;
         } else if (value == "ThreeLines") {
             config.FormattingStyle.TernarySplit = TernarySplit::ThreeLines;
         } else {
             ThrowConfigError(path, line,
-                "expected AsNeeded or ThreeLines for TernarySplit");
+                "expected Preserve, AsNeeded or ThreeLines for TernarySplit");
         }
     } else if (key == "MergeFunctionParameters") {
         config.FormattingStyle.MergeFunctionParameters =

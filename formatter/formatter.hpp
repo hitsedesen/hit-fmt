@@ -5,6 +5,7 @@
 
 #include <cstddef>
 #include <string>
+#include <vector>
 
 namespace formatter {
 
@@ -33,8 +34,8 @@ enum class ExpressionLayoutCondition {
 };
 enum class ExpressionLayoutAlgorithm { Greedy, DynamicProgramming };
 enum class BinaryOperatorPlacement { Leading, Trailing };
-enum class TernaryOperatorPlacement { Leading, Trailing };
-enum class TernarySplit { AsNeeded, ThreeLines };
+enum class TernaryOperatorPlacement { Preserve, Leading, Trailing };
+enum class TernarySplit { Preserve, AsNeeded, ThreeLines };
 enum class FirstFunctionParameterPosition { NameLine, NewLine };
 enum class FunctionParameterIndent { IndentWidth, Continuation };
 
@@ -71,8 +72,8 @@ struct Style
     formatter::BinaryOperatorPlacement BinaryOperatorPlacement =
         formatter::BinaryOperatorPlacement::Trailing;
     formatter::TernaryOperatorPlacement TernaryOperatorPlacement =
-        formatter::TernaryOperatorPlacement::Leading;
-    formatter::TernarySplit TernarySplit = formatter::TernarySplit::AsNeeded;
+        formatter::TernaryOperatorPlacement::Preserve;
+    formatter::TernarySplit TernarySplit = formatter::TernarySplit::Preserve;
     formatter::IncludeOrder IncludeOrder = IncludeOrder::Preserve;
     BodyIndentation IndentAccessModifiers = BodyIndentation::Preserve;
     BodyIndentation IndentMembers = BodyIndentation::Preserve;
@@ -146,6 +147,16 @@ struct Style
     SameLineBraceSpacing FunctionBraceSpacing = SameLineBraceSpacing::Preserve;
     SameLineBraceSpacing NamespaceBraceSpacing = SameLineBraceSpacing::Preserve;
 };
+
+struct LayoutDiagnostic
+{
+    util::Position Position;
+    std::string Message;
+};
+
+// Check the source layout directly without computing a reflow.
+[[nodiscard]] std::vector<LayoutDiagnostic> CheckExpressionLayout(
+    const parser::SyntaxTree& tree, const Style& style);
 
 // Preserve source-owned spans except for enabled declaration brace,
 // lambda, function, call, and control keyword spacing, brace placement,

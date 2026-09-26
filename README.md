@@ -62,6 +62,10 @@ Check layout and configured naming rules without modifying files:
 hit-fmt --check src/ include/
 ```
 
+In check mode, expression and call reflow is not run. Configured layout
+checks report overlong lines and misplaced binary or ternary operators as
+file, line, and column diagnostics; other formatting rules still show diffs.
+
 Skip files or whole subdirectories while formatting or checking a folder:
 
 ```sh
