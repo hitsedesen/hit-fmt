@@ -674,76 +674,7 @@ std::vector<Chunk> FormattingChunks(
     return chunks;
 }
 
-// Adjacent ordinary C++ string literals concatenate without changing their
-// value. Offer a conservative check-only repair when the formatter cannot
-// reflow a line dominated by one long literal (for example a log message).
-std::vector<std::string> SuggestStringSplit(const parser::SyntaxTree& tree,
-    std::string_view line, size_t lineNumber, size_t limit,
-    size_t indentWidth)
-{
-    if (line.ends_with('\r') || line.contains('\\') || limit < 20) return {};
-    auto sourceOffset = static_cast<size_t>(line.data() - tree.Source().data());
-    auto leading = line.find_first_not_of(' ');
-    if (leading == std::string_view::npos) return {};
-    auto continuation = std::string(leading + indentWidth, ' ');
-    size_t index = 0, upper = tree.TokenCount();
-    while (index < upper) {
-        auto middle = index + (upper - index) / 2;
-        if (tree.TokenPosition(middle).Line < lineNumber) {
-            index = middle + 1;
-        } else {
-            upper = middle;
-        }
-    }
-    for (; index < tree.TokenCount() &&
-        tree.TokenPosition(index).Line == lineNumber; ++index)
-    {
-        if (tree.Kind(index) != tokenizer::TokenKind::Literal_String) continue;
-        auto literal = tree.TokenText(index);
-        if (literal.size() < 4 || literal.front() != '"' ||
-            literal.back() != '"' || literal.contains('\\') ||
-            literal.contains('\n')) continue;
-        auto begin = static_cast<size_t>(tree.Token(index).Text.Begin) -
-            sourceOffset;
-        if (begin > line.size() || literal.size() > line.size() - begin) {
-            continue;
-        }
-        auto prefix = line.substr(0, begin);
-        auto suffix = line.substr(begin + literal.size());
-        auto content = literal.substr(1, literal.size() - 2);
-        if (prefix.size() + 2 >= limit ||
-            continuation.size() + 2 + suffix.size() >= limit)
-        {
-            continue;
-        }
-        std::vector<std::string> suggestion;
-        auto remaining = content;
-        auto head = prefix;
-        while (head.size() + remaining.size() + 2 + suffix.size() > limit) {
-            auto capacity = limit - head.size() - 2;
-            auto space = remaining.rfind(' ', capacity - 1);
-            if (space == std::string_view::npos || !space ||
-                suggestion.size() >= 12) break;
-            auto split = space + 1; // Keep the original space in the literal.
-            suggestion.push_back(std::string(head) + '"' +
-                std::string(remaining.substr(0, split)) + '"');
-            remaining.remove_prefix(split);
-            head = continuation;
-        }
-        if (!suggestion.empty() &&
-            head.size() + remaining.size() + 2 + suffix.size() <= limit)
-        {
-            suggestion.push_back(std::string(head) + '"' +
-                std::string(remaining) + '"' + std::string(suffix));
-            return suggestion;
-        }
-    }
-    return {};
-}
-
 void PrintCheckDiagnostics(
-    const parser::SyntaxTree& tree,
-    const formatter::Style& style,
     std::string_view path, std::string_view source, std::string_view formatted,
     std::string_view layoutFormatted,
     std::span<const formatter::NameDiagnostic> names,
@@ -922,28 +853,6 @@ void PrintCheckDiagnostics(
                 }
             }
         }
-        bool hasManualFix = false;
-        if (!chunk.HasFix && !chunk.HasLayoutFix && chunk.HasWidthIssue) {
-            for (const auto& violation : chunk.Violations) {
-                if (violation.Kind != ViolationKind::LineWidth ||
-                    violation.Line > sourceLines.size()) continue;
-                auto suggestion = SuggestStringSplit(tree,
-                    sourceLines[violation.Line - 1].Text, violation.Line,
-                    style.ColumnLimit, style.IndentWidth);
-                if (suggestion.empty()) continue;
-                std::cout << "  suggested fix for line "
-                          << violation.Line << " (manual):\n";
-                for (const auto& line : suggestion) {
-                    PrintSuggestedLine(line, terminalWidth,
-                        gutter.size(), useColor);
-                }
-                if (!sourceLines[violation.Line - 1].HasNewline) {
-                    std::cout << std::string(gutter.size(), ' ')
-                              << "\\ No newline at end of file\n";
-                }
-                hasManualFix = true;
-            }
-        }
         if (chunk.HasFix || chunk.HasLayoutFix) {
             std::cout << "  suggested formatting:\n";
             const auto& fix = chunk.HasLayoutFix ? chunk.LayoutFix : chunk.Fix;
@@ -961,7 +870,7 @@ void PrintCheckDiagnostics(
             PrintWrappedMessage("hint: names are not changed by the formatter.",
                 "  ", terminalWidth);
         }
-        if (chunk.HasLayoutIssue && !chunk.HasLayoutFix && !hasManualFix) {
+        if (chunk.HasLayoutIssue && !chunk.HasLayoutFix) {
             std::cout << "  ";
             PrintWrappedMessage(chunk.HasWidthIssue
                 ? "hint: split the line manually or increase ColumnLimit."
@@ -1327,9 +1236,8 @@ int main(int argc, char* argv[])
                 } else if (!summaryOnly && mismatch) {
                     auto layoutFormatted = layout.empty() ? std::string{} :
                         formatter::Format(tree, config.FormattingStyle);
-                    PrintCheckDiagnostics(tree, config.FormattingStyle,
-                        filePath, source, formatted, layoutFormatted, names,
-                        parameters, layout, useColor);
+                    PrintCheckDiagnostics(filePath, source, formatted,
+                        layoutFormatted, names, parameters, layout, useColor);
                 }
                 mismatchCount += mismatch;
                 break;

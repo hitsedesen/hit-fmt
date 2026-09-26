@@ -61,10 +61,8 @@ hit-fmt --fix source.cpp include/
 Check mode reports affected source chunks with caret-marked formatting,
 expression-layout, naming and parameter-name violations. Source excerpts
 are cropped around the marked token to fit the terminal width; proposed
-formatter output wraps when needed. For overlong ordinary string literals,
-check mode may suggest an adjacent-literal split; `--fix` does not apply that
-suggestion. Naming checks remain advisory. Expression reflow is not run to
-decide check-mode formatting mismatches: layout checks
+formatter output wraps when needed. Naming checks remain advisory. Expression
+reflow is not run to decide check-mode formatting mismatches: layout checks
 inspect the original source. `--summary` reports only affected files.
 `--fix` writes formatted source in place.
 
