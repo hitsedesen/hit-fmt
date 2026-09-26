@@ -2,14 +2,12 @@
 #include <formatter/formatter.hpp>
 #include <formatter/naming.hpp>
 #include <formatter/parameter_names.hpp>
+#include <tests/golden.hpp>
 
 #include <gtest/gtest.h>
 
 #include <algorithm>
 #include <filesystem>
-#include <fstream>
-#include <iterator>
-#include <stdexcept>
 #include <string>
 #include <string_view>
 #include <utility>
@@ -17,15 +15,7 @@
 
 namespace {
 
-std::string ReadFile(const std::filesystem::path& path)
-{
-    std::ifstream input(path, std::ios::binary);
-    if (!input) {
-        throw std::runtime_error("cannot read fixture: " + path.string());
-    }
-    return {std::istreambuf_iterator<char>(input),
-        std::istreambuf_iterator<char>()};
-}
+using test::golden::ReadFile;
 
 void ExpectUnchanged(std::string_view source, const formatter::Style& style)
 {
@@ -100,6 +90,14 @@ std::string FormatWithStyle(
     return formatter::Format(tree, style);
 }
 
+void ExpectFormattedGolden(const std::filesystem::path& path,
+    std::string_view input, const formatter::Style& style)
+{
+    const auto actual = FormatWithStyle(input, style);
+    test::golden::ExpectGolden(path, actual);
+    EXPECT_EQ(FormatWithStyle(actual, style), actual);
+}
+
 class BracePlacementGoldenTest : public testing::TestWithParam<std::string>
 { };
 
@@ -107,12 +105,11 @@ TEST_P(BracePlacementGoldenTest, FormatsOnlySelectedDeclarationBraces)
 {
     const auto directory = std::filesystem::path(BRACE_TESTDATA_DIR);
     const auto input = ReadFile(directory / "input.cpp");
-    const auto expected = ReadFile(directory / (GetParam() + ".output.cpp"));
     const auto style = formatter::LoadConfigFile(
         directory / (GetParam() + ".hit-fmt")).FormattingStyle;
 
-    EXPECT_EQ(FormatWithStyle(input, style), expected);
-    EXPECT_EQ(FormatWithStyle(expected, style), expected);
+    ExpectFormattedGolden(directory / (GetParam() + ".output.cpp"),
+        input, style);
 }
 
 INSTANTIATE_TEST_SUITE_P(Configurations, BracePlacementGoldenTest,
@@ -128,14 +125,14 @@ TEST_P(FunctionParameterGoldenTest, MatchesConfiguredOutput)
     const auto input = ReadFile(directory / "input.cpp");
     const auto config = formatter::LoadConfigFile(
         directory / (GetParam() + ".hit-fmt"));
-    const auto expected = ReadFile(directory / (GetParam() + ".output.cpp"));
 
     std::string storage(input);
     storage.append(util::SourcePaddingSize, '\0');
     const auto actual = formatter::Format(
         {.Data = storage.data(), .Size = input.size()},
         config.FormattingStyle);
-    EXPECT_EQ(actual, expected);
+    test::golden::ExpectGolden(directory / (GetParam() + ".output.cpp"),
+        actual);
 
     // A second pass must not change either packing or indentation.
     storage.assign(actual);
@@ -158,7 +155,6 @@ TEST_P(NamespaceCommentGoldenTest, MatchesConfiguredOutput)
         "../namespace_comments";
     const auto input = ReadFile(directory /
         (GetParam() == "crlf_required" ? "crlf.input.cpp" : "input.cpp"));
-    const auto expected = ReadFile(directory / (GetParam() + ".output.cpp"));
     const auto style = formatter::LoadConfigFile(
         directory / (GetParam() + ".hit-fmt")).FormattingStyle;
 
@@ -172,8 +168,9 @@ TEST_P(NamespaceCommentGoldenTest, MatchesConfiguredOutput)
         EXPECT_EQ(result, formatter::Format(padded, style));
         return result;
     };
-    EXPECT_EQ(format(input), expected);
-    EXPECT_EQ(format(expected), expected);
+    const auto actual = format(input);
+    test::golden::ExpectGolden(directory / (GetParam() + ".output.cpp"), actual);
+    EXPECT_EQ(format(actual), actual);
 }
 
 INSTANTIATE_TEST_SUITE_P(Configurations, NamespaceCommentGoldenTest,
@@ -189,13 +186,12 @@ TEST_P(IncludeOrderGoldenTest, SortsOnlySafeIncludeGroups)
         "../include-order";
     const auto input = ReadFile(directory /
         (GetParam() == "crlf" ? "crlf.input.cpp" : "input.cpp"));
-    const auto expected = ReadFile(directory / (GetParam() + ".output.cpp"));
     const auto style = formatter::LoadConfigFile(directory /
         (GetParam() == "crlf" ? "sort.hit-fmt" :
             GetParam() + ".hit-fmt")).FormattingStyle;
 
-    EXPECT_EQ(FormatWithStyle(input, style), expected);
-    EXPECT_EQ(FormatWithStyle(expected, style), expected);
+    ExpectFormattedGolden(directory / (GetParam() + ".output.cpp"),
+        input, style);
 }
 
 INSTANTIATE_TEST_SUITE_P(Configurations, IncludeOrderGoldenTest,
@@ -209,7 +205,6 @@ TEST_P(ParameterNameGoldenTest, ReportsConfiguredMissingNames)
     const auto directory = std::filesystem::path(FORMATTER_TESTDATA_DIR) /
         "../parameter_names";
     const auto input = ReadFile(directory / "input.cpp");
-    const auto expected = ReadFile(directory / (GetParam() + ".expected"));
     const auto config = formatter::LoadConfigFile(
         directory / (GetParam() + ".hit-fmt"));
     std::string storage(input);
@@ -230,7 +225,8 @@ TEST_P(ParameterNameGoldenTest, ReportsConfiguredMissingNames)
             (diagnostic.AllowCommentedName ? " (comment allowed)" : "") +
             "\n";
     }
-    EXPECT_EQ(actual, expected);
+    test::golden::ExpectGolden(directory / (GetParam() + ".expected"),
+        actual);
 }
 
 INSTANTIATE_TEST_SUITE_P(Configurations, ParameterNameGoldenTest,
@@ -1058,12 +1054,11 @@ TEST_P(BraceSpacingGoldenTest, FormatsOnlySameLineDeclarationGaps)
 {
     const auto directory = std::filesystem::path(BRACE_SPACING_TESTDATA_DIR);
     const auto input = ReadFile(directory / "input.cpp");
-    const auto expected = ReadFile(directory / (GetParam() + ".output.cpp"));
     const auto style = formatter::LoadConfigFile(
         directory / (GetParam() + ".hit-fmt")).FormattingStyle;
 
-    EXPECT_EQ(FormatWithStyle(input, style), expected);
-    EXPECT_EQ(FormatWithStyle(expected, style), expected);
+    ExpectFormattedGolden(directory / (GetParam() + ".output.cpp"),
+        input, style);
 }
 
 INSTANTIATE_TEST_SUITE_P(Configurations, BraceSpacingGoldenTest,
@@ -1076,12 +1071,11 @@ TEST_P(LambdaSpacingGoldenTest, FormatsOnlyLambdaCaptureParameterGaps)
 {
     const auto directory = std::filesystem::path(LAMBDA_SPACING_TESTDATA_DIR);
     const auto input = ReadFile(directory / "input.cpp");
-    const auto expected = ReadFile(directory / (GetParam() + ".output.cpp"));
     const auto style = formatter::LoadConfigFile(
         directory / (GetParam() + ".hit-fmt")).FormattingStyle;
 
-    EXPECT_EQ(FormatWithStyle(input, style), expected);
-    EXPECT_EQ(FormatWithStyle(expected, style), expected);
+    ExpectFormattedGolden(directory / (GetParam() + ".output.cpp"),
+        input, style);
 }
 
 INSTANTIATE_TEST_SUITE_P(Configurations, LambdaSpacingGoldenTest,
@@ -1094,12 +1088,11 @@ TEST_P(ControlKeywordSpacingGoldenTest, FormatsOnlyParsedControlHeaders)
 {
     const auto directory = std::filesystem::path(CONTROL_SPACING_TESTDATA_DIR);
     const auto input = ReadFile(directory / "input.cpp");
-    const auto expected = ReadFile(directory / (GetParam() + ".output.cpp"));
     const auto style = formatter::LoadConfigFile(
         directory / (GetParam() + ".hit-fmt")).FormattingStyle;
 
-    EXPECT_EQ(FormatWithStyle(input, style), expected);
-    EXPECT_EQ(FormatWithStyle(expected, style), expected);
+    ExpectFormattedGolden(directory / (GetParam() + ".output.cpp"),
+        input, style);
 }
 
 INSTANTIATE_TEST_SUITE_P(Configurations, ControlKeywordSpacingGoldenTest,
@@ -1113,12 +1106,11 @@ TEST_P(ControlBracePlacementGoldenTest, PlacesOnlyControlBodyBraces)
     const auto directory = std::filesystem::path(CONTROL_BRACE_TESTDATA_DIR);
     const auto input = ReadFile(directory /
         (GetParam() == "combined" ? "combined.input.cpp" : "input.cpp"));
-    const auto expected = ReadFile(directory / (GetParam() + ".output.cpp"));
     const auto style = formatter::LoadConfigFile(
         directory / (GetParam() + ".hit-fmt")).FormattingStyle;
 
-    EXPECT_EQ(FormatWithStyle(input, style), expected);
-    EXPECT_EQ(FormatWithStyle(expected, style), expected);
+    ExpectFormattedGolden(directory / (GetParam() + ".output.cpp"),
+        input, style);
 }
 
 INSTANTIATE_TEST_SUITE_P(Configurations, ControlBracePlacementGoldenTest,
@@ -1133,12 +1125,11 @@ TEST_P(FunctionSpacingGoldenTest, FormatsOnlyFunctionParameterGaps)
     const auto directory = std::filesystem::path(FUNCTION_SPACING_TESTDATA_DIR);
     const auto input = ReadFile(directory /
         (GetParam() == "reflow" ? "reflow.input.cpp" : "input.cpp"));
-    const auto expected = ReadFile(directory / (GetParam() + ".output.cpp"));
     const auto style = formatter::LoadConfigFile(
         directory / (GetParam() + ".hit-fmt")).FormattingStyle;
 
-    EXPECT_EQ(FormatWithStyle(input, style), expected);
-    EXPECT_EQ(FormatWithStyle(expected, style), expected);
+    ExpectFormattedGolden(directory / (GetParam() + ".output.cpp"),
+        input, style);
 }
 
 INSTANTIATE_TEST_SUITE_P(Configurations, FunctionSpacingGoldenTest,
@@ -1153,12 +1144,11 @@ TEST_P(FunctionCallSpacingGoldenTest, FormatsOnlyParsedCallGaps)
         std::filesystem::path(FUNCTION_CALL_SPACING_TESTDATA_DIR);
     const auto input = ReadFile(directory /
         (GetParam() == "combined" ? "combined.input.cpp" : "input.cpp"));
-    const auto expected = ReadFile(directory / (GetParam() + ".output.cpp"));
     const auto style = formatter::LoadConfigFile(
         directory / (GetParam() + ".hit-fmt")).FormattingStyle;
 
-    EXPECT_EQ(FormatWithStyle(input, style), expected);
-    EXPECT_EQ(FormatWithStyle(expected, style), expected);
+    ExpectFormattedGolden(directory / (GetParam() + ".output.cpp"),
+        input, style);
 }
 
 INSTANTIATE_TEST_SUITE_P(Configurations, FunctionCallSpacingGoldenTest,
@@ -1173,12 +1163,11 @@ TEST_P(FunctionInnerSpacingGoldenTest, FormatsOnlyParameterListEdges)
         std::filesystem::path(FUNCTION_INNER_SPACING_TESTDATA_DIR);
     const auto input = ReadFile(directory /
         (GetParam() == "reflow" ? "reflow.input.cpp" : "input.cpp"));
-    const auto expected = ReadFile(directory / (GetParam() + ".output.cpp"));
     const auto style = formatter::LoadConfigFile(
         directory / (GetParam() + ".hit-fmt")).FormattingStyle;
 
-    EXPECT_EQ(FormatWithStyle(input, style), expected);
-    EXPECT_EQ(FormatWithStyle(expected, style), expected);
+    ExpectFormattedGolden(directory / (GetParam() + ".output.cpp"),
+        input, style);
 }
 
 INSTANTIATE_TEST_SUITE_P(Configurations, FunctionInnerSpacingGoldenTest,
@@ -1192,12 +1181,11 @@ TEST_P(CallInnerSpacingGoldenTest, FormatsOnlyUnambiguousCallEdges)
     const auto directory = std::filesystem::path(CALL_INNER_SPACING_TESTDATA_DIR);
     const auto input = ReadFile(directory /
         (GetParam() == "combined" ? "combined.input.cpp" : "input.cpp"));
-    const auto expected = ReadFile(directory / (GetParam() + ".output.cpp"));
     const auto style = formatter::LoadConfigFile(
         directory / (GetParam() + ".hit-fmt")).FormattingStyle;
 
-    EXPECT_EQ(FormatWithStyle(input, style), expected);
-    EXPECT_EQ(FormatWithStyle(expected, style), expected);
+    ExpectFormattedGolden(directory / (GetParam() + ".output.cpp"),
+        input, style);
 }
 
 INSTANTIATE_TEST_SUITE_P(Configurations, CallInnerSpacingGoldenTest,
@@ -1210,12 +1198,11 @@ TEST_P(LambdaCaptureGoldenTest, FormatsListAndAssignments)
 {
     const auto directory = std::filesystem::path(LAMBDA_CAPTURE_TESTDATA_DIR);
     const auto input = ReadFile(directory / "input.cpp");
-    const auto expected = ReadFile(directory / (GetParam() + ".output.cpp"));
     const auto style = formatter::LoadConfigFile(
         directory / (GetParam() + ".hit-fmt")).FormattingStyle;
 
-    EXPECT_EQ(FormatWithStyle(input, style), expected);
-    EXPECT_EQ(FormatWithStyle(expected, style), expected);
+    ExpectFormattedGolden(directory / (GetParam() + ".output.cpp"),
+        input, style);
 }
 
 INSTANTIATE_TEST_SUITE_P(Configurations, LambdaCaptureGoldenTest,
@@ -1229,12 +1216,11 @@ TEST_P(LambdaInnerParameterGoldenTest, FormatsOnlyLambdaParameterEdges)
     const auto directory =
         std::filesystem::path(LAMBDA_INNER_PARAMETER_TESTDATA_DIR);
     const auto input = ReadFile(directory / "input.cpp");
-    const auto expected = ReadFile(directory / (GetParam() + ".output.cpp"));
     const auto style = formatter::LoadConfigFile(
         directory / (GetParam() + ".hit-fmt")).FormattingStyle;
 
-    EXPECT_EQ(FormatWithStyle(input, style), expected);
-    EXPECT_EQ(FormatWithStyle(expected, style), expected);
+    ExpectFormattedGolden(directory / (GetParam() + ".output.cpp"),
+        input, style);
 }
 
 INSTANTIATE_TEST_SUITE_P(Configurations, LambdaInnerParameterGoldenTest,
@@ -1247,12 +1233,11 @@ TEST_P(BodyIndentGoldenTest, IndentsOnlyRecordAndEnumMembers)
 {
     const auto directory = std::filesystem::path(BODY_INDENT_TESTDATA_DIR);
     const auto input = ReadFile(directory / "input.cpp");
-    const auto expected = ReadFile(directory / (GetParam() + ".output.cpp"));
     const auto style = formatter::LoadConfigFile(
         directory / (GetParam() + ".hit-fmt")).FormattingStyle;
 
-    EXPECT_EQ(FormatWithStyle(input, style), expected);
-    EXPECT_EQ(FormatWithStyle(expected, style), expected);
+    ExpectFormattedGolden(directory / (GetParam() + ".output.cpp"),
+        input, style);
 }
 
 INSTANTIATE_TEST_SUITE_P(Configurations, BodyIndentGoldenTest,
@@ -1265,12 +1250,11 @@ TEST_P(InheritanceGoldenTest, PositionsOnlyParsedBaseClauses)
 {
     const auto directory = std::filesystem::path(INHERITANCE_TESTDATA_DIR);
     const auto input = ReadFile(directory / "input.cpp");
-    const auto expected = ReadFile(directory / (GetParam() + ".output.cpp"));
     const auto style = formatter::LoadConfigFile(
         directory / (GetParam() + ".hit-fmt")).FormattingStyle;
 
-    EXPECT_EQ(FormatWithStyle(input, style), expected);
-    EXPECT_EQ(FormatWithStyle(expected, style), expected);
+    ExpectFormattedGolden(directory / (GetParam() + ".output.cpp"),
+        input, style);
 }
 
 INSTANTIATE_TEST_SUITE_P(Configurations, InheritanceGoldenTest,
@@ -1285,12 +1269,11 @@ TEST_P(InheritanceSplitGoldenTest, SplitsOnlySafeBaseLists)
 {
     const auto directory = std::filesystem::path(INHERITANCE_TESTDATA_DIR);
     const auto input = ReadFile(directory / "split.input.cpp");
-    const auto expected = ReadFile(directory / (GetParam() + ".output.cpp"));
     const auto style = formatter::LoadConfigFile(
         directory / (GetParam() + ".hit-fmt")).FormattingStyle;
 
-    EXPECT_EQ(FormatWithStyle(input, style), expected);
-    EXPECT_EQ(FormatWithStyle(expected, style), expected);
+    ExpectFormattedGolden(directory / (GetParam() + ".output.cpp"),
+        input, style);
 }
 
 INSTANTIATE_TEST_SUITE_P(Configurations, InheritanceSplitGoldenTest,
@@ -1325,7 +1308,6 @@ TEST_P(NamingGoldenTest, ReportsOnlyConfiguredUnambiguousNames)
     const auto name = GetParam();
     const auto input = ReadFile(dir / (name == "rules" ? "input.cpp" :
         "alternate.cpp"));
-    const auto expected = ReadFile(dir / (name + ".expected"));
     const auto config = formatter::LoadConfigFile(dir / (name + ".hit-fmt"));
     std::string storage = input;
     storage.append(util::SourcePaddingSize, '\0');
@@ -1337,7 +1319,7 @@ TEST_P(NamingGoldenTest, ReportsOnlyConfiguredUnambiguousNames)
             std::to_string(diagnostic.Position.Column) + ": " +
             diagnostic.Message + "\n";
     }
-    EXPECT_EQ(actual, expected);
+    test::golden::ExpectGolden(dir / (name + ".expected"), actual);
     EXPECT_EQ(formatter::Format(tree, config.FormattingStyle), input);
     EXPECT_TRUE(formatter::CheckNames(tree, {}).empty());
 }

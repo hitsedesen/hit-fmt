@@ -1,3 +1,4 @@
+#include <tests/golden.hpp>
 #include <tokenizer/tokenizer.hpp>
 #include <unicode/utf8.hpp>
 #include <util/file.hpp>
@@ -7,10 +8,7 @@
 
 #include <array>
 #include <format>
-#include <fstream>
 #include <ranges>
-#include <sstream>
-#include <stdexcept>
 #include <string_view>
 #include <vector>
 
@@ -27,29 +25,6 @@ struct GoldenCase
 std::ostream& operator<<(std::ostream& os, const GoldenCase& testCase)
 {
     return os << testCase.Name;
-}
-
-std::string ReadInputFile(const std::string& path)
-{
-    std::ifstream file(path);
-    if (!file.is_open()) {
-        throw std::runtime_error(
-            std::format("Failed to open input file {}", path));
-    }
-    std::stringstream buffer;
-    buffer << file.rdbuf();
-    return buffer.str();
-}
-
-std::optional<std::string> ReadGoldenFile(const std::string& path)
-{
-    std::ifstream file(path);
-    if (!file.is_open()) {
-        return std::nullopt;
-    }
-    std::stringstream buffer;
-    buffer << file.rdbuf();
-    return buffer.str();
 }
 
 std::pair<std::string, std::vector<std::string>>
@@ -105,13 +80,6 @@ std::vector<TokenizationErrorKind> TokenizeErrors(std::string_view input)
     return errors;
 }
 
-void SaveToFile(const std::string& path, const std::string& content)
-{
-    std::ofstream out(path);
-    ASSERT(out.is_open());
-    out << content;
-}
-
 class GoldenGoodTest
     : public testing::TestWithParam<GoldenCase>
 { };
@@ -119,22 +87,12 @@ class GoldenGoodTest
 TEST_P(GoldenGoodTest, Match)
 {
     auto goldenPath = std::format("./testdata/{}.out", GetParam().Name);
-    auto input =
-        ReadInputFile(std::format("./testdata/{}.in", GetParam().Name));
-    auto expected = ReadGoldenFile(goldenPath);
+    auto input = test::golden::ReadFile(
+        std::format("./testdata/{}.in", GetParam().Name));
 
     auto [actual, errors] = TokenizeAndSerialize(input);
     EXPECT_TRUE(errors.empty());
-    if (std::getenv("UPDATE_GOLDEN")) {
-        SaveToFile(goldenPath, actual);
-    } else if (expected) {
-        ASSERT_EQ(actual, *expected);
-    } else {
-        std::cerr << std::format(
-            "No golden file for {}, saving first result\n",
-            GetParam().Name);
-        SaveToFile(goldenPath, actual);
-    }
+    test::golden::ExpectGolden(goldenPath, actual);
 }
 
 class GoldenBadTest
@@ -145,10 +103,8 @@ TEST_P(GoldenBadTest, CanonizeErrors)
 {
     auto goldenPath = std::format("./testdata/{}.out", GetParam().Name);
     auto goldenErrorsPath = std::format("./testdata/{}.err", GetParam().Name);
-    auto input =
-        ReadInputFile(std::format("./testdata/{}.in", GetParam().Name));
-    auto expected = ReadGoldenFile(goldenPath);
-    auto expectedErrors = ReadGoldenFile(goldenErrorsPath);
+    auto input = test::golden::ReadFile(
+        std::format("./testdata/{}.in", GetParam().Name));
 
     auto [actual, errors] = TokenizeAndSerialize(input);
     EXPECT_FALSE(errors.empty()) << "should output errors";
@@ -158,19 +114,8 @@ TEST_P(GoldenBadTest, CanonizeErrors)
         actualErrors += "\n";
     }
 
-    if (std::getenv("UPDATE_GOLDEN")) {
-        SaveToFile(goldenPath, actual);
-        SaveToFile(goldenErrorsPath, actualErrors);
-    } else if (expected && expectedErrors) {
-        EXPECT_EQ(actual, *expected);
-        EXPECT_EQ(actualErrors, expectedErrors);
-    } else {
-        std::cerr << std::format(
-            "No golden file for {}, saving first result\n",
-            GetParam().Name);
-        SaveToFile(goldenPath, actual);
-        SaveToFile(goldenErrorsPath, actualErrors);
-    }
+    test::golden::ExpectGolden(goldenPath, actual);
+    test::golden::ExpectGolden(goldenErrorsPath, actualErrors);
 }
 
 INSTANTIATE_TEST_SUITE_P(
