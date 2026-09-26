@@ -10,6 +10,106 @@
 #include <vector>
 
 namespace formatter {
+
+// A single registry supplies the accepted option names and their handlers.
+// Ordinary option names are the same as the Style members they configure.
+#define STYLE_ENUM_OPTIONS(X) \
+    X(IncludeOrder, IncludeOrder) \
+    X(ClassBracePlacement, BracePlacement) \
+    X(StructBracePlacement, BracePlacement) \
+    X(UnionBracePlacement, BracePlacement) \
+    X(FunctionBracePlacement, BracePlacement) \
+    X(LambdaBracePlacement, BracePlacement) \
+    X(NamespaceBracePlacement, BracePlacement) \
+    X(NamespaceComments, NamespaceComments) \
+    X(FunctionParameterSplit, FunctionParameterSplit) \
+    X(FirstFunctionParameterPosition, FirstFunctionParameterPosition) \
+    X(FunctionParameterIndent, FunctionParameterIndent) \
+    X(CallArgumentSplit, CallArgumentSplit) \
+    X(FirstCallArgumentPosition, FirstCallArgumentPosition) \
+    X(CallArgumentIndent, CallArgumentIndent) \
+    X(ExpressionLayoutCondition, ExpressionLayoutCondition) \
+    X(ExpressionLayoutAlgorithm, ExpressionLayoutAlgorithm) \
+    X(BinaryOperatorPlacement, BinaryOperatorPlacement) \
+    X(TernaryOperatorPlacement, TernaryOperatorPlacement) \
+    X(TernarySplit, TernarySplit) \
+    X(ControlBlockBracePlacement, ControlBlockBracePlacement) \
+    X(ControlBlockKeywordSpacing, ControlBlockKeywordSpacing) \
+    X(ClassBraceSpacing, SameLineBraceSpacing) \
+    X(LambdaBraceSpacing, SameLineBraceSpacing) \
+    X(FunctionCallSpaceBeforeParameters, FunctionCallSpaceBeforeParameters) \
+    X(SpaceInsideCallArguments, SpaceInsideCallArguments) \
+    X(SpaceInsideLambdaParameters, SpaceInsideLambdaParameters) \
+    X(SpaceInsideFunctionParameters, SpaceInsideFunctionParameters) \
+    X(FunctionSpaceBeforeParameters, FunctionSpaceBeforeParameters) \
+    X(IndentAccessModifiers, BodyIndentation) \
+    X(IndentMembers, BodyIndentation) \
+    X(InheritanceList, InheritanceListMode) \
+    X(InheritanceListColonPlacement, InheritanceListColonPlacement) \
+    X(InheritanceListColonSpaceBefore, InheritanceListSpacing) \
+    X(InheritanceListColonSpaceAfter, InheritanceListSpacing) \
+    X(InheritanceListCommaPlacement, InheritanceListCommaPlacement) \
+    X(InheritanceListCommaSpaceBefore, InheritanceListSpacing) \
+    X(InheritanceListCommaSpaceAfter, InheritanceListSpacing) \
+    X(InheritanceListStart, InheritanceListStart) \
+    X(InheritanceListSplit, InheritanceListSplit) \
+    X(SpaceAroundCaptureList, LambdaCaptureSpacing) \
+    X(SpaceAroundCaptureAssignment, LambdaCaptureSpacing) \
+    X(LambdaSpaceBeforeParameters, LambdaSpaceBeforeParameters) \
+    X(StructBraceSpacing, SameLineBraceSpacing) \
+    X(EnumBraceSpacing, SameLineBraceSpacing) \
+    X(UnionBraceSpacing, SameLineBraceSpacing) \
+    X(FunctionBraceSpacing, SameLineBraceSpacing) \
+    X(NamespaceBraceSpacing, SameLineBraceSpacing)
+
+#define STYLE_BOOLEAN_OPTIONS(X)                                                \
+    X(EnforceFirstFunctionParameterPosition)                                   \
+    X(EnforceFirstCallArgumentPosition)                                        \
+    X(MergeFunctionParameters)
+
+#define STYLE_INTEGER_OPTIONS(X)                                                \
+    X(IndentWidth, 32) X(ColumnLimit, 10000) X(InheritanceListIndent, 32)
+
+#define PARAMETER_NAME_OPTIONS(X)                                               \
+    X(FunctionDeclarationParameterNames, DeclarationParameterNames)           \
+    X(FunctionDefinitionParameterNames, DefinitionParameterNames)
+
+#define NAMING_CATEGORIES(X)                                                    \
+    X(Class) X(Enum) X(Union) X(Struct) X(Function) X(Concept) X(Variable)    \
+    X(Namespace)
+
+#define NAMING_OPTION_VALUE(category) category##NameCase, category##NamePrefixes,
+#define OPTION_VALUE(name, ...) name,
+enum class ConfigOption
+{
+    STYLE_ENUM_OPTIONS(OPTION_VALUE)
+    STYLE_BOOLEAN_OPTIONS(OPTION_VALUE)
+    STYLE_INTEGER_OPTIONS(OPTION_VALUE)
+    PARAMETER_NAME_OPTIONS(OPTION_VALUE)
+    NAMING_CATEGORIES(NAMING_OPTION_VALUE)
+    NamingNamespaceExemptions,
+    Exclude,
+};
+#undef OPTION_VALUE
+#undef NAMING_OPTION_VALUE
+
+#define NAMING_OPTION_NAME(category) #category "NameCase", #category "NamePrefixes",
+#define OPTION_NAME(name, ...) #name,
+template <> struct ConfigEnumNames<ConfigOption>
+{
+    static constexpr auto Values = std::to_array<std::string_view>({
+        STYLE_ENUM_OPTIONS(OPTION_NAME)
+        STYLE_BOOLEAN_OPTIONS(OPTION_NAME)
+        STYLE_INTEGER_OPTIONS(OPTION_NAME)
+        PARAMETER_NAME_OPTIONS(OPTION_NAME)
+        NAMING_CATEGORIES(NAMING_OPTION_NAME)
+        "NamingNamespaceExemptions",
+        "Exclude",
+    });
+};
+#undef OPTION_NAME
+#undef NAMING_OPTION_NAME
+
 namespace {
 
 std::string_view Trim(std::string_view text)
@@ -74,10 +174,18 @@ size_t ParsePositiveInteger(
 
 template <typename T>
 T ParseEnum(std::string_view value, const std::filesystem::path& path,
-    size_t line, std::string_view error)
+    size_t line)
 {
     if (auto result = DeserializeConfigEnum<T>(value)) {
         return *result;
+    }
+    std::string error = "expected ";
+    const auto& names = ConfigEnumNames<T>::Values;
+    for (size_t index = 0; index < names.size(); ++index) {
+        if (index != 0) {
+            error += index + 1 == names.size() ? " or " : ", ";
+        }
+        error += names[index];
     }
     ThrowConfigError(path, line, error);
 }
@@ -181,6 +289,54 @@ bool ParseBoolean(std::string_view value,
     ThrowConfigError(path, line, "expected true or false");
 }
 
+std::vector<std::string> ParseNamespaceExemptions(
+    std::string_view value, const std::filesystem::path& path, size_t line)
+{
+    auto names = ParseStringList(value, path, line);
+    for (const auto& name : names) {
+        size_t start = 0;
+        while (start < name.size()) {
+            auto end = name.find("::", start);
+            if (end == std::string::npos) end = name.size();
+            auto part = std::string_view(name).substr(start, end - start);
+            if (part.empty() ||
+                !(std::isalpha(static_cast<unsigned char>(part.front())) ||
+                    part.front() == '_') ||
+                part.find_first_not_of(
+                    "abcdefghijklmnopqrstuvwxyz"
+                    "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_") !=
+                    std::string_view::npos)
+            {
+                ThrowConfigError(path, line, "expected qualified namespace names");
+            }
+            start = end == name.size() ? end : end + 2;
+        }
+        if (name.empty() || name.ends_with("::")) {
+            ThrowConfigError(path, line, "expected qualified namespace names");
+        }
+    }
+    return names;
+}
+
+std::vector<std::string> ParseNamePrefixes(
+    std::string_view value, const std::filesystem::path& path, size_t line)
+{
+    auto prefixes = ParseStringList(value, path, line);
+    if (prefixes.empty()) {
+        ThrowConfigError(path, line, "expected at least one prefix");
+    }
+    for (const auto& prefix : prefixes) {
+        if (prefix.find_first_not_of(
+                "abcdefghijklmnopqrstuvwxyz"
+                "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_") != std::string::npos)
+        {
+            ThrowConfigError(path, line,
+                "prefix must contain only identifier characters");
+        }
+    }
+    return prefixes;
+}
+
 void ApplySetting(
     Configuration& config,
     std::string_view key,
@@ -188,295 +344,59 @@ void ApplySetting(
     const std::filesystem::path& path,
     size_t line)
 {
-    if (key == "NamingNamespaceExemptions") {
-        auto names = ParseStringList(value, path, line);
-        for (const auto& name : names) {
-            size_t start = 0;
-            while (start < name.size()) {
-                auto end = name.find("::", start);
-                if (end == std::string::npos) end = name.size();
-                auto part = std::string_view(name).substr(start, end - start);
-                if (part.empty() ||
-                    !(std::isalpha(static_cast<unsigned char>(part.front())) ||
-                        part.front() == '_') ||
-                    part.find_first_not_of(
-                        "abcdefghijklmnopqrstuvwxyz"
-                        "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_") !=
-                        std::string_view::npos)
-                {
-                    ThrowConfigError(path, line,
-                        "expected qualified namespace names");
-                }
-                start = end == name.size() ? end : end + 2;
-            }
-            if (name.empty() || name.ends_with("::")) {
-                ThrowConfigError(path, line,
-                    "expected qualified namespace names");
-            }
-        }
-        config.Naming.ExemptNamespaces = std::move(names);
+    auto option = DeserializeConfigEnum<ConfigOption>(key);
+    if (!option) {
+        ThrowConfigError(path, line, "unknown setting '" + std::string(key) + "'");
+    }
+
+    switch (*option) {
+#define APPLY_ENUM_OPTION(name, type)                                           \
+    case ConfigOption::name:                                                    \
+        config.FormattingStyle.name = ParseEnum<type>(value, path, line);      \
         return;
-    }
-    for (auto [category, rule] : {
-        std::pair<std::string_view, NameRule*>{"Class", &config.Naming.Class},
-        {"Enum", &config.Naming.Enum}, {"Union", &config.Naming.Union},
-        {"Struct", &config.Naming.Struct},
-        {"Function", &config.Naming.Function},
-        {"Concept", &config.Naming.Concept},
-        {"Variable", &config.Naming.Variable},
-        {"Namespace", &config.Naming.Namespace},
-    }) {
-        if (key == std::string(category) + "NameCase") {
-            rule->Case = ParseEnum<NameCase>(value, path, line,
-                "expected camelCase, PascalCase, snake_case or "
-                "SCREAMING_SNAKE_CASE");
-            return;
-        }
-        if (key == std::string(category) + "NamePrefixes") {
-            auto prefixes = ParseStringList(value, path, line);
-            if (prefixes.empty()) {
-                ThrowConfigError(path, line, "expected at least one prefix");
-            }
-            for (const auto& prefix : prefixes) {
-                if (prefix.find_first_not_of(
-                        "abcdefghijklmnopqrstuvwxyz"
-                        "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_")
-                    != std::string::npos)
-                {
-                    ThrowConfigError(path, line, "prefix must contain only identifier characters");
-                }
-            }
-            rule->Prefixes = std::move(prefixes);
-            return;
-        }
-    }
-    if (key == "IncludeOrder") {
-        config.FormattingStyle.IncludeOrder = ParseEnum<IncludeOrder>(
-            value, path, line, "expected Preserve or Sort");
+        STYLE_ENUM_OPTIONS(APPLY_ENUM_OPTION)
+#undef APPLY_ENUM_OPTION
+
+#define APPLY_BOOLEAN_OPTION(name)                                              \
+    case ConfigOption::name:                                                    \
+        config.FormattingStyle.name = ParseBoolean(value, path, line);         \
         return;
-    }
-    if (key == "IndentWidth") {
-        config.FormattingStyle.IndentWidth =
-            ParsePositiveInteger(value, path, line);
-        if (config.FormattingStyle.IndentWidth > 32) {
-            ThrowConfigError(path, line, "IndentWidth must not exceed 32");
-        }
-    } else if (key == "ColumnLimit") {
-        config.FormattingStyle.ColumnLimit =
-            ParsePositiveInteger(value, path, line);
-        if (config.FormattingStyle.ColumnLimit > 10000) {
-            ThrowConfigError(path, line, "ColumnLimit must not exceed 10000");
-        }
-    } else if (key == "ClassBracePlacement") {
-        config.FormattingStyle.ClassBracePlacement =
-            ParseEnum<BracePlacement>(value, path, line,
-                "expected Preserve, Attach or NewLine");
-    } else if (key == "StructBracePlacement") {
-        config.FormattingStyle.StructBracePlacement =
-            ParseEnum<BracePlacement>(value, path, line,
-                "expected Preserve, Attach or NewLine");
-    } else if (key == "UnionBracePlacement") {
-        config.FormattingStyle.UnionBracePlacement =
-            ParseEnum<BracePlacement>(value, path, line,
-                "expected Preserve, Attach or NewLine");
-    } else if (key == "FunctionBracePlacement") {
-        config.FormattingStyle.FunctionBracePlacement =
-            ParseEnum<BracePlacement>(value, path, line,
-                "expected Preserve, Attach or NewLine");
-    } else if (key == "LambdaBracePlacement") {
-        config.FormattingStyle.LambdaBracePlacement =
-            ParseEnum<BracePlacement>(value, path, line,
-                "expected Preserve, Attach or NewLine");
-    } else if (key == "NamespaceBracePlacement") {
-        config.FormattingStyle.NamespaceBracePlacement =
-            ParseEnum<BracePlacement>(value, path, line,
-                "expected Preserve, Attach or NewLine");
-    } else if (key == "NamespaceComments") {
-        config.FormattingStyle.NamespaceComments =
-            ParseEnum<NamespaceComments>(value, path, line,
-                "invalid NamespaceComments");
-    } else if (key == "FunctionParameterSplit") {
-        config.FormattingStyle.FunctionParameterSplit =
-            ParseEnum<FunctionParameterSplit>(value, path, line,
-                "invalid FunctionParameterSplit");
-    } else if (key == "FirstFunctionParameterPosition") {
-        config.FormattingStyle.FirstFunctionParameterPosition =
-            ParseEnum<FirstFunctionParameterPosition>(value, path, line,
-                "invalid FirstFunctionParameterPosition");
-    } else if (key == "EnforceFirstFunctionParameterPosition") {
-        config.FormattingStyle.EnforceFirstFunctionParameterPosition =
-            ParseBoolean(value, path, line);
-    } else if (key == "FunctionParameterIndent") {
-        config.FormattingStyle.FunctionParameterIndent =
-            ParseEnum<FunctionParameterIndent>(value, path, line,
-                "invalid FunctionParameterIndent");
-    } else if (key == "CallArgumentSplit") {
-        config.FormattingStyle.CallArgumentSplit =
-            ParseEnum<CallArgumentSplit>(value, path, line,
-                "invalid CallArgumentSplit");
-    } else if (key == "FirstCallArgumentPosition") {
-        config.FormattingStyle.FirstCallArgumentPosition =
-            ParseEnum<FirstCallArgumentPosition>(value, path, line,
-                "invalid FirstCallArgumentPosition");
-    } else if (key == "EnforceFirstCallArgumentPosition") {
-        config.FormattingStyle.EnforceFirstCallArgumentPosition =
-            ParseBoolean(value, path, line);
-    } else if (key == "CallArgumentIndent") {
-        config.FormattingStyle.CallArgumentIndent =
-            ParseEnum<CallArgumentIndent>(value, path, line,
-                "invalid CallArgumentIndent");
-    } else if (key == "ExpressionLayoutCondition") {
-        config.FormattingStyle.ExpressionLayoutCondition =
-            ParseEnum<ExpressionLayoutCondition>(value, path, line,
-                "expected Preserve, Overflow, FitOrOverflow or Always for "
-                "ExpressionLayoutCondition");
-    } else if (key == "ExpressionLayoutAlgorithm") {
-        config.FormattingStyle.ExpressionLayoutAlgorithm =
-            ParseEnum<ExpressionLayoutAlgorithm>(value, path, line,
-                "expected Greedy or DynamicProgramming for ExpressionLayoutAlgorithm");
-    } else if (key == "BinaryOperatorPlacement") {
-        config.FormattingStyle.BinaryOperatorPlacement =
-            ParseEnum<BinaryOperatorPlacement>(value, path, line,
-                "expected Leading or Trailing for BinaryOperatorPlacement");
-    } else if (key == "TernaryOperatorPlacement") {
-        config.FormattingStyle.TernaryOperatorPlacement =
-            ParseEnum<TernaryOperatorPlacement>(value, path, line,
-                "expected Preserve, Leading or Trailing for TernaryOperatorPlacement");
-    } else if (key == "TernarySplit") {
-        config.FormattingStyle.TernarySplit =
-            ParseEnum<TernarySplit>(value, path, line,
-                "expected Preserve, AsNeeded or ThreeLines for TernarySplit");
-    } else if (key == "MergeFunctionParameters") {
-        config.FormattingStyle.MergeFunctionParameters =
-            ParseBoolean(value, path, line);
-    } else if (key == "ControlBlockBracePlacement") {
-        config.FormattingStyle.ControlBlockBracePlacement =
-            ParseEnum<ControlBlockBracePlacement>(value, path, line,
-                "expected Preserve, SameLine, NewLine or AttachUnlessMultiline");
-    } else if (key == "ControlBlockKeywordSpacing") {
-        config.FormattingStyle.ControlBlockKeywordSpacing =
-            ParseEnum<ControlBlockKeywordSpacing>(value, path, line,
-                "expected Preserve, Space or NoSpace");
-    } else if (key == "ClassBraceSpacing") {
-        config.FormattingStyle.ClassBraceSpacing =
-            ParseEnum<SameLineBraceSpacing>(value, path, line,
-                "expected Preserve or SingleSpace");
-    } else if (key == "LambdaBraceSpacing") {
-        config.FormattingStyle.LambdaBraceSpacing =
-            ParseEnum<SameLineBraceSpacing>(value, path, line,
-                "expected Preserve or SingleSpace");
-    } else if (key == "FunctionCallSpaceBeforeParameters") {
-        config.FormattingStyle.FunctionCallSpaceBeforeParameters =
-            ParseEnum<FunctionCallSpaceBeforeParameters>(value, path, line,
-                "expected Preserve, Space or NoSpace");
-    } else if (key == "SpaceInsideCallArguments") {
-        config.FormattingStyle.SpaceInsideCallArguments =
-            ParseEnum<SpaceInsideCallArguments>(value, path, line,
-                "expected Preserve, Space or NoSpace");
-    } else if (key == "SpaceInsideLambdaParameters") {
-        config.FormattingStyle.SpaceInsideLambdaParameters =
-            ParseEnum<SpaceInsideLambdaParameters>(value, path, line,
-                "expected Preserve, Space or NoSpace");
-    } else if (key == "SpaceInsideFunctionParameters") {
-        config.FormattingStyle.SpaceInsideFunctionParameters =
-            ParseEnum<SpaceInsideFunctionParameters>(value, path, line,
-                "expected Preserve, Space or NoSpace");
-    } else if (key == "FunctionSpaceBeforeParameters") {
-        config.FormattingStyle.FunctionSpaceBeforeParameters =
-            ParseEnum<FunctionSpaceBeforeParameters>(value, path, line,
-                "expected Preserve, Space or NoSpace");
-    } else if (key == "IndentAccessModifiers") {
-        config.FormattingStyle.IndentAccessModifiers =
-            ParseEnum<BodyIndentation>(value, path, line,
-                "expected Preserve, Indent or NoIndent");
-    } else if (key == "IndentMembers") {
-        config.FormattingStyle.IndentMembers =
-            ParseEnum<BodyIndentation>(value, path, line,
-                "expected Preserve, Indent or NoIndent");
-    } else if (key == "InheritanceList") {
-        config.FormattingStyle.InheritanceList =
-            ParseEnum<InheritanceListMode>(value, path, line,
-                "expected Preserve or Format");
-    } else if (key == "InheritanceListColonPlacement") {
-        config.FormattingStyle.InheritanceListColonPlacement =
-            ParseEnum<InheritanceListColonPlacement>(value, path, line,
-                "expected AttachToBase or AttachToClass");
-    } else if (key == "InheritanceListColonSpaceBefore") {
-        config.FormattingStyle.InheritanceListColonSpaceBefore =
-            ParseEnum<InheritanceListSpacing>(value, path, line,
-                "expected Space or NoSpace");
-    } else if (key == "InheritanceListColonSpaceAfter") {
-        config.FormattingStyle.InheritanceListColonSpaceAfter =
-            ParseEnum<InheritanceListSpacing>(value, path, line,
-                "expected Space or NoSpace");
-    } else if (key == "InheritanceListCommaPlacement") {
-        config.FormattingStyle.InheritanceListCommaPlacement =
-            ParseEnum<InheritanceListCommaPlacement>(value, path, line,
-                "expected AttachToNext or AttachToPrevious");
-    } else if (key == "InheritanceListCommaSpaceBefore") {
-        config.FormattingStyle.InheritanceListCommaSpaceBefore =
-            ParseEnum<InheritanceListSpacing>(value, path, line,
-                "expected Space or NoSpace");
-    } else if (key == "InheritanceListCommaSpaceAfter") {
-        config.FormattingStyle.InheritanceListCommaSpaceAfter =
-            ParseEnum<InheritanceListSpacing>(value, path, line,
-                "expected Space or NoSpace");
-    } else if (key == "InheritanceListStart") {
-        config.FormattingStyle.InheritanceListStart =
-            ParseEnum<InheritanceListStart>(value, path, line,
-                "expected NewLine, ClassLine or NewLineOnOverflow");
-    } else if (key == "InheritanceListSplit") {
-        config.FormattingStyle.InheritanceListSplit =
-            ParseEnum<InheritanceListSplit>(value, path, line,
-                "expected OnePerLine, Pack or OnePerLineOnOverflow");
-    } else if (key == "InheritanceListIndent") {
-        config.FormattingStyle.InheritanceListIndent =
-            ParsePositiveInteger(value, path, line);
-        if (config.FormattingStyle.InheritanceListIndent > 32) {
-            ThrowConfigError(path, line,
-                "InheritanceListIndent must not exceed 32");
-        }
-    } else if (key == "SpaceAroundCaptureList") {
-        config.FormattingStyle.SpaceAroundCaptureList =
-            ParseEnum<LambdaCaptureSpacing>(value, path, line,
-                "expected Preserve, Space or NoSpace");
-    } else if (key == "SpaceAroundCaptureAssignment") {
-        config.FormattingStyle.SpaceAroundCaptureAssignment =
-            ParseEnum<LambdaCaptureSpacing>(value, path, line,
-                "expected Preserve, Space or NoSpace");
-    } else if (key == "LambdaSpaceBeforeParameters") {
-        config.FormattingStyle.LambdaSpaceBeforeParameters =
-            ParseEnum<LambdaSpaceBeforeParameters>(value, path, line,
-                "expected Preserve, Space or NoSpace");
-    } else if (key == "StructBraceSpacing") {
-        config.FormattingStyle.StructBraceSpacing =
-            ParseEnum<SameLineBraceSpacing>(value, path, line,
-                "expected Preserve or SingleSpace");
-    } else if (key == "EnumBraceSpacing") {
-        config.FormattingStyle.EnumBraceSpacing =
-            ParseEnum<SameLineBraceSpacing>(value, path, line,
-                "expected Preserve or SingleSpace");
-    } else if (key == "UnionBraceSpacing") {
-        config.FormattingStyle.UnionBraceSpacing =
-            ParseEnum<SameLineBraceSpacing>(value, path, line,
-                "expected Preserve or SingleSpace");
-    } else if (key == "FunctionBraceSpacing") {
-        config.FormattingStyle.FunctionBraceSpacing =
-            ParseEnum<SameLineBraceSpacing>(value, path, line,
-                "expected Preserve or SingleSpace");
-    } else if (key == "NamespaceBraceSpacing") {
-        config.FormattingStyle.NamespaceBraceSpacing =
-            ParseEnum<SameLineBraceSpacing>(value, path, line,
-                "expected Preserve or SingleSpace");
-    } else if (key == "FunctionDeclarationParameterNames") {
-        config.DeclarationParameterNames =
-            ParseEnum<FunctionDeclarationParameterNames>(value, path, line,
-                "invalid FunctionDeclarationParameterNames");
-    } else if (key == "FunctionDefinitionParameterNames") {
-        config.DefinitionParameterNames =
-            ParseEnum<FunctionDefinitionParameterNames>(value, path, line,
-                "invalid FunctionDefinitionParameterNames");
-    } else if (key == "Exclude") {
+        STYLE_BOOLEAN_OPTIONS(APPLY_BOOLEAN_OPTION)
+#undef APPLY_BOOLEAN_OPTION
+
+#define APPLY_INTEGER_OPTION(name, maximum)                                     \
+    case ConfigOption::name:                                                    \
+        config.FormattingStyle.name = ParsePositiveInteger(value, path, line); \
+        if (config.FormattingStyle.name > maximum) {                           \
+            ThrowConfigError(path, line, #name " must not exceed " #maximum);  \
+        }                                                                       \
+        return;
+        STYLE_INTEGER_OPTIONS(APPLY_INTEGER_OPTION)
+#undef APPLY_INTEGER_OPTION
+
+#define APPLY_PARAMETER_OPTION(name, member)                                    \
+    case ConfigOption::name:                                                    \
+        config.member = ParseEnum<name>(value, path, line);                     \
+        return;
+        PARAMETER_NAME_OPTIONS(APPLY_PARAMETER_OPTION)
+#undef APPLY_PARAMETER_OPTION
+
+#define APPLY_NAMING_CATEGORY(category)                                         \
+    case ConfigOption::category##NameCase:                                      \
+        config.Naming.category.Case = ParseEnum<NameCase>(value, path, line);   \
+        return;                                                                 \
+    case ConfigOption::category##NamePrefixes:                                  \
+        config.Naming.category.Prefixes = ParseNamePrefixes(value, path, line); \
+        return;
+        NAMING_CATEGORIES(APPLY_NAMING_CATEGORY)
+#undef APPLY_NAMING_CATEGORY
+
+    case ConfigOption::NamingNamespaceExemptions:
+        config.Naming.ExemptNamespaces = ParseNamespaceExemptions(
+            value, path, line);
+        return;
+
+    case ConfigOption::Exclude:
         config.Exclusions.clear();
         for (const auto& pattern : ParseStringList(value, path, line)) {
             if (pattern.empty()) {
@@ -489,10 +409,15 @@ void ApplySetting(
                     "invalid Exclude regex '" + pattern + "': " + error.what());
             }
         }
-    } else {
-        ThrowConfigError(path, line, "unknown setting '" + std::string(key) + "'");
+        return;
     }
 }
+
+#undef STYLE_ENUM_OPTIONS
+#undef STYLE_BOOLEAN_OPTIONS
+#undef STYLE_INTEGER_OPTIONS
+#undef PARAMETER_NAME_OPTIONS
+#undef NAMING_CATEGORIES
 
 } // namespace
 

@@ -1103,7 +1103,6 @@ TEST(PreserveConfigTest, RejectsInvalidSettings)
         "InheritanceListPunctuation = WithAncestor\n",
         "FunctionParameterSplit = Together\n",
         "ClassBracePlacement = attach\n",
-        "ClassNameCase = CamelCase\n",
         "ExpressionWrap = Always\n",
         "ExpressionLayoutCondition = Unknown\n",
         "ExpressionLayoutAlgorithm = BruteForce\n",
@@ -1143,6 +1142,15 @@ TEST(PreserveConfigTest, RejectsInvalidSettings)
     }) {
         save(setting);
         EXPECT_THROW(formatter::LoadConfigFile(path), std::runtime_error);
+    }
+    save("ClassNameCase = CamelCase\n");
+    try {
+        (void)formatter::LoadConfigFile(path);
+        FAIL() << "expected invalid enum spelling";
+    } catch (const std::runtime_error& error) {
+        EXPECT_NE(std::string_view(error.what()).find(
+            "expected Unchecked, camelCase, PascalCase, snake_case or "
+            "SCREAMING_SNAKE_CASE"), std::string_view::npos);
     }
     std::filesystem::remove(path);
 }
