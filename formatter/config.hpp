@@ -13,15 +13,6 @@ namespace formatter {
 
 inline constexpr std::string_view DefaultConfigFileName = ".hit-fmt";
 
-enum class NameCase
-{
-    Unchecked,
-    CamelCase,
-    PascalCase,
-    SnakeCase,
-    ScreamingSnakeCase,
-};
-
 struct NameRule
 {
     NameCase Case = NameCase::Unchecked;
@@ -41,19 +32,6 @@ struct NamingStyle
     NameRule Namespace;
     // Qualified namespace paths; each entry also excludes its descendants.
     std::vector<std::string> ExemptNamespaces = {"std"};
-};
-
-enum class FunctionDeclarationParameterNames
-{
-    Unchecked,
-    Required,
-};
-
-enum class FunctionDefinitionParameterNames
-{
-    Unchecked,
-    NameRequired,
-    NameOrCommentedNameRequired,
 };
 
 struct Configuration

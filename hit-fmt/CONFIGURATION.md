@@ -306,8 +306,9 @@ Exclude = ["(^|/)generated(/|$)", "(^|/)legacy\\.cpp$"]
 - `<Kind>NameCase` and `<Kind>NamePrefixes`: independent naming checks for
   `Class`, `Enum`, `Union`, `Struct`, `Function`, `Concept`, `Variable`, and
   `Namespace`. Cases are `camelCase`, `PascalCase`, `snake_case`, and
-  `SCREAMING_SNAKE_CASE` (ASCII letters and digits). Prefixes are a nonempty
-  array of quoted identifier fragments; at least one must match. The case
+  `SCREAMING_SNAKE_CASE` (ASCII letters and digits), or `Unchecked` to disable
+  the case check. Prefixes are a nonempty array of quoted identifier
+  fragments; at least one must match. The case
   applies to the name *after* its prefix. Use `[""]` to explicitly allow no
   prefix. Either check can be enabled independently; omitted checks are
   disabled. Only unambiguous definitions and variable declarations are

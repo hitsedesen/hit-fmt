@@ -72,151 +72,14 @@ size_t ParsePositiveInteger(
     return result;
 }
 
-BracePlacement ParseBracePlacement(
-    std::string_view value,
-    const std::filesystem::path& path,
-    size_t line)
+template <typename T>
+T ParseEnum(std::string_view value, const std::filesystem::path& path,
+    size_t line, std::string_view error)
 {
-    if (value == "Preserve") {
-        return BracePlacement::Preserve;
+    if (auto result = DeserializeConfigEnum<T>(value)) {
+        return *result;
     }
-    if (value == "Attach") {
-        return BracePlacement::Attach;
-    }
-    if (value == "NewLine") {
-        return BracePlacement::NewLine;
-    }
-    ThrowConfigError(path, line, "expected Preserve, Attach or NewLine");
-}
-
-SameLineBraceSpacing ParseSameLineBraceSpacing(
-    std::string_view value,
-    const std::filesystem::path& path,
-    size_t line)
-{
-    if (value == "Preserve") {
-        return SameLineBraceSpacing::Preserve;
-    }
-    if (value == "SingleSpace") {
-        return SameLineBraceSpacing::SingleSpace;
-    }
-    ThrowConfigError(path, line, "expected Preserve or SingleSpace");
-}
-
-BodyIndentation ParseBodyIndentation(
-    std::string_view value,
-    const std::filesystem::path& path,
-    size_t line)
-{
-    if (value == "Preserve") {
-        return BodyIndentation::Preserve;
-    }
-    if (value == "Indent") {
-        return BodyIndentation::Indent;
-    }
-    if (value == "NoIndent") {
-        return BodyIndentation::NoIndent;
-    }
-    ThrowConfigError(path, line, "expected Preserve, Indent or NoIndent");
-}
-
-InheritanceListMode ParseInheritanceListMode(
-    std::string_view value, const std::filesystem::path& path, size_t line)
-{
-    if (value == "Preserve") {
-        return InheritanceListMode::Preserve;
-    }
-    if (value == "Format") {
-        return InheritanceListMode::Format;
-    }
-    ThrowConfigError(path, line, "expected Preserve or Format");
-}
-
-InheritanceListStart ParseInheritanceListStart(
-    std::string_view value, const std::filesystem::path& path, size_t line)
-{
-    if (value == "NewLine") {
-        return InheritanceListStart::NewLine;
-    }
-    if (value == "ClassLine") {
-        return InheritanceListStart::ClassLine;
-    }
-    if (value == "NewLineOnOverflow") {
-        return InheritanceListStart::NewLineOnOverflow;
-    }
-    ThrowConfigError(path, line,
-        "expected NewLine, ClassLine or NewLineOnOverflow");
-}
-
-InheritanceListSplit ParseInheritanceListSplit(
-    std::string_view value, const std::filesystem::path& path, size_t line)
-{
-    if (value == "OnePerLine") {
-        return InheritanceListSplit::OnePerLine;
-    }
-    if (value == "Pack") {
-        return InheritanceListSplit::Pack;
-    }
-    if (value == "OnePerLineOnOverflow") {
-        return InheritanceListSplit::OnePerLineOnOverflow;
-    }
-    ThrowConfigError(path, line,
-        "expected OnePerLine, Pack or OnePerLineOnOverflow");
-}
-
-InheritanceListColonPlacement ParseInheritanceListColonPlacement(
-    std::string_view value, const std::filesystem::path& path, size_t line)
-{
-    if (value == "AttachToBase") {
-        return InheritanceListColonPlacement::AttachToBase;
-    }
-    if (value == "AttachToClass") {
-        return InheritanceListColonPlacement::AttachToClass;
-    }
-    ThrowConfigError(path, line,
-        "expected AttachToBase or AttachToClass");
-}
-
-InheritanceListCommaPlacement ParseInheritanceListCommaPlacement(
-    std::string_view value, const std::filesystem::path& path, size_t line)
-{
-    if (value == "AttachToNext") {
-        return InheritanceListCommaPlacement::AttachToNext;
-    }
-    if (value == "AttachToPrevious") {
-        return InheritanceListCommaPlacement::AttachToPrevious;
-    }
-    ThrowConfigError(path, line,
-        "expected AttachToNext or AttachToPrevious");
-}
-
-InheritanceListSpacing ParseInheritanceListSpacing(
-    std::string_view value, const std::filesystem::path& path, size_t line)
-{
-    if (value == "Space") {
-        return InheritanceListSpacing::Space;
-    }
-    if (value == "NoSpace") {
-        return InheritanceListSpacing::NoSpace;
-    }
-    ThrowConfigError(path, line, "expected Space or NoSpace");
-}
-
-LambdaCaptureSpacing ParseLambdaCaptureSpacing(
-    std::string_view value,
-    const std::filesystem::path& path,
-    size_t line)
-{
-    if (value == "Preserve") {
-        return LambdaCaptureSpacing::Preserve;
-    }
-    if (value == "Space") {
-        return LambdaCaptureSpacing::Space;
-    }
-    if (value == "NoSpace") {
-        return LambdaCaptureSpacing::NoSpace;
-    }
-    ThrowConfigError(path, line, "expected Preserve, Space or NoSpace");
+    ThrowConfigError(path, line, error);
 }
 
 std::string ParseString(
@@ -318,37 +181,6 @@ bool ParseBoolean(std::string_view value,
     ThrowConfigError(path, line, "expected true or false");
 }
 
-std::string_view ParseOption(std::string_view value,
-    const std::filesystem::path& path, size_t line)
-{
-    if (value.empty() || value.find_first_not_of(
-            "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ") !=
-            std::string_view::npos)
-    {
-        ThrowConfigError(path, line, "expected an option name");
-    }
-    return value;
-}
-
-NameCase ParseNameCase(std::string_view value,
-    const std::filesystem::path& path, size_t line)
-{
-    if (value == "camelCase") {
-        return NameCase::CamelCase;
-    }
-    if (value == "PascalCase") {
-        return NameCase::PascalCase;
-    }
-    if (value == "snake_case") {
-        return NameCase::SnakeCase;
-    }
-    if (value == "SCREAMING_SNAKE_CASE") {
-        return NameCase::ScreamingSnakeCase;
-    }
-    ThrowConfigError(path, line,
-        "expected camelCase, PascalCase, snake_case or SCREAMING_SNAKE_CASE");
-}
-
 void ApplySetting(
     Configuration& config,
     std::string_view key,
@@ -395,7 +227,9 @@ void ApplySetting(
         {"Namespace", &config.Naming.Namespace},
     }) {
         if (key == std::string(category) + "NameCase") {
-            rule->Case = ParseNameCase(value, path, line);
+            rule->Case = ParseEnum<NameCase>(value, path, line,
+                "expected camelCase, PascalCase, snake_case or "
+                "SCREAMING_SNAKE_CASE");
             return;
         }
         if (key == std::string(category) + "NamePrefixes") {
@@ -417,13 +251,8 @@ void ApplySetting(
         }
     }
     if (key == "IncludeOrder") {
-        if (value == "Preserve") {
-            config.FormattingStyle.IncludeOrder = IncludeOrder::Preserve;
-        } else if (value == "Sort") {
-            config.FormattingStyle.IncludeOrder = IncludeOrder::Sort;
-        } else {
-            ThrowConfigError(path, line, "expected Preserve or Sort");
-        }
+        config.FormattingStyle.IncludeOrder = ParseEnum<IncludeOrder>(
+            value, path, line, "expected Preserve or Sort");
         return;
     }
     if (key == "IndentWidth") {
@@ -440,335 +269,166 @@ void ApplySetting(
         }
     } else if (key == "ClassBracePlacement") {
         config.FormattingStyle.ClassBracePlacement =
-            ParseBracePlacement(value, path, line);
+            ParseEnum<BracePlacement>(value, path, line,
+                "expected Preserve, Attach or NewLine");
     } else if (key == "StructBracePlacement") {
         config.FormattingStyle.StructBracePlacement =
-            ParseBracePlacement(value, path, line);
+            ParseEnum<BracePlacement>(value, path, line,
+                "expected Preserve, Attach or NewLine");
     } else if (key == "UnionBracePlacement") {
         config.FormattingStyle.UnionBracePlacement =
-            ParseBracePlacement(value, path, line);
+            ParseEnum<BracePlacement>(value, path, line,
+                "expected Preserve, Attach or NewLine");
     } else if (key == "FunctionBracePlacement") {
         config.FormattingStyle.FunctionBracePlacement =
-            ParseBracePlacement(value, path, line);
+            ParseEnum<BracePlacement>(value, path, line,
+                "expected Preserve, Attach or NewLine");
     } else if (key == "LambdaBracePlacement") {
         config.FormattingStyle.LambdaBracePlacement =
-            ParseBracePlacement(value, path, line);
+            ParseEnum<BracePlacement>(value, path, line,
+                "expected Preserve, Attach or NewLine");
     } else if (key == "NamespaceBracePlacement") {
         config.FormattingStyle.NamespaceBracePlacement =
-            ParseBracePlacement(value, path, line);
+            ParseEnum<BracePlacement>(value, path, line,
+                "expected Preserve, Attach or NewLine");
     } else if (key == "NamespaceComments") {
-        value = ParseOption(value, path, line);
-        if (value == "Preserve") {
-            config.FormattingStyle.NamespaceComments = NamespaceComments::Preserve;
-        } else if (value == "Remove") {
-            config.FormattingStyle.NamespaceComments = NamespaceComments::Remove;
-        } else if (value == "Required") {
-            config.FormattingStyle.NamespaceComments = NamespaceComments::Required;
-        } else {
-            ThrowConfigError(path, line, "invalid NamespaceComments");
-        }
+        config.FormattingStyle.NamespaceComments =
+            ParseEnum<NamespaceComments>(value, path, line,
+                "invalid NamespaceComments");
     } else if (key == "FunctionParameterSplit") {
-        value = ParseOption(value, path, line);
-        if (value == "Preserve") {
-            config.FormattingStyle.FunctionParameterSplit =
-                FunctionParameterSplit::Preserve;
-        } else if (value == "Pack") {
-            config.FormattingStyle.FunctionParameterSplit =
-                FunctionParameterSplit::Pack;
-        } else if (value == "OnePerLine") {
-            config.FormattingStyle.FunctionParameterSplit =
-                FunctionParameterSplit::OnePerLine;
-        } else {
-            ThrowConfigError(path, line, "invalid FunctionParameterSplit");
-        }
+        config.FormattingStyle.FunctionParameterSplit =
+            ParseEnum<FunctionParameterSplit>(value, path, line,
+                "invalid FunctionParameterSplit");
     } else if (key == "FirstFunctionParameterPosition") {
-        value = ParseOption(value, path, line);
-        if (value == "NameLine") {
-            config.FormattingStyle.FirstFunctionParameterPosition =
-                FirstFunctionParameterPosition::NameLine;
-        } else if (value == "NewLine") {
-            config.FormattingStyle.FirstFunctionParameterPosition =
-                FirstFunctionParameterPosition::NewLine;
-        } else {
-            ThrowConfigError(path, line,
+        config.FormattingStyle.FirstFunctionParameterPosition =
+            ParseEnum<FirstFunctionParameterPosition>(value, path, line,
                 "invalid FirstFunctionParameterPosition");
-        }
     } else if (key == "EnforceFirstFunctionParameterPosition") {
         config.FormattingStyle.EnforceFirstFunctionParameterPosition =
             ParseBoolean(value, path, line);
     } else if (key == "FunctionParameterIndent") {
-        value = ParseOption(value, path, line);
-        if (value == "IndentWidth") {
-            config.FormattingStyle.FunctionParameterIndent =
-                FunctionParameterIndent::IndentWidth;
-        } else if (value == "Continuation") {
-            config.FormattingStyle.FunctionParameterIndent =
-                FunctionParameterIndent::Continuation;
-        } else {
-            ThrowConfigError(path, line, "invalid FunctionParameterIndent");
-        }
+        config.FormattingStyle.FunctionParameterIndent =
+            ParseEnum<FunctionParameterIndent>(value, path, line,
+                "invalid FunctionParameterIndent");
     } else if (key == "CallArgumentSplit") {
-        value = ParseOption(value, path, line);
-        if (value == "Preserve") {
-            config.FormattingStyle.CallArgumentSplit =
-                CallArgumentSplit::Preserve;
-        } else if (value == "Pack") {
-            config.FormattingStyle.CallArgumentSplit = CallArgumentSplit::Pack;
-        } else if (value == "OnePerLine") {
-            config.FormattingStyle.CallArgumentSplit =
-                CallArgumentSplit::OnePerLine;
-        } else {
-            ThrowConfigError(path, line, "invalid CallArgumentSplit");
-        }
+        config.FormattingStyle.CallArgumentSplit =
+            ParseEnum<CallArgumentSplit>(value, path, line,
+                "invalid CallArgumentSplit");
     } else if (key == "FirstCallArgumentPosition") {
-        value = ParseOption(value, path, line);
-        if (value == "CallLine") {
-            config.FormattingStyle.FirstCallArgumentPosition =
-                FirstCallArgumentPosition::CallLine;
-        } else if (value == "NewLine") {
-            config.FormattingStyle.FirstCallArgumentPosition =
-                FirstCallArgumentPosition::NewLine;
-        } else {
-            ThrowConfigError(path, line,
+        config.FormattingStyle.FirstCallArgumentPosition =
+            ParseEnum<FirstCallArgumentPosition>(value, path, line,
                 "invalid FirstCallArgumentPosition");
-        }
     } else if (key == "EnforceFirstCallArgumentPosition") {
         config.FormattingStyle.EnforceFirstCallArgumentPosition =
             ParseBoolean(value, path, line);
     } else if (key == "CallArgumentIndent") {
-        value = ParseOption(value, path, line);
-        if (value == "IndentWidth") {
-            config.FormattingStyle.CallArgumentIndent =
-                CallArgumentIndent::IndentWidth;
-        } else if (value == "Continuation") {
-            config.FormattingStyle.CallArgumentIndent =
-                CallArgumentIndent::Continuation;
-        } else {
-            ThrowConfigError(path, line, "invalid CallArgumentIndent");
-        }
+        config.FormattingStyle.CallArgumentIndent =
+            ParseEnum<CallArgumentIndent>(value, path, line,
+                "invalid CallArgumentIndent");
     } else if (key == "ExpressionLayoutCondition") {
-        value = ParseOption(value, path, line);
-        if (value == "Preserve") {
-            config.FormattingStyle.ExpressionLayoutCondition =
-                ExpressionLayoutCondition::Preserve;
-        } else if (value == "Overflow") {
-            config.FormattingStyle.ExpressionLayoutCondition =
-                ExpressionLayoutCondition::Overflow;
-        } else if (value == "FitOrOverflow") {
-            config.FormattingStyle.ExpressionLayoutCondition =
-                ExpressionLayoutCondition::FitOrOverflow;
-        } else if (value == "Always") {
-            config.FormattingStyle.ExpressionLayoutCondition =
-                ExpressionLayoutCondition::Always;
-        } else {
-            ThrowConfigError(path, line,
+        config.FormattingStyle.ExpressionLayoutCondition =
+            ParseEnum<ExpressionLayoutCondition>(value, path, line,
                 "expected Preserve, Overflow, FitOrOverflow or Always for "
                 "ExpressionLayoutCondition");
-        }
     } else if (key == "ExpressionLayoutAlgorithm") {
-        value = ParseOption(value, path, line);
-        if (value == "Greedy") {
-            config.FormattingStyle.ExpressionLayoutAlgorithm =
-                ExpressionLayoutAlgorithm::Greedy;
-        } else if (value == "DynamicProgramming") {
-            config.FormattingStyle.ExpressionLayoutAlgorithm =
-                ExpressionLayoutAlgorithm::DynamicProgramming;
-        } else {
-            ThrowConfigError(path, line,
-                "expected Greedy or DynamicProgramming for "
-                "ExpressionLayoutAlgorithm");
-        }
+        config.FormattingStyle.ExpressionLayoutAlgorithm =
+            ParseEnum<ExpressionLayoutAlgorithm>(value, path, line,
+                "expected Greedy or DynamicProgramming for ExpressionLayoutAlgorithm");
     } else if (key == "BinaryOperatorPlacement") {
-        value = ParseOption(value, path, line);
-        if (value == "Leading") {
-            config.FormattingStyle.BinaryOperatorPlacement =
-                BinaryOperatorPlacement::Leading;
-        } else if (value == "Trailing") {
-            config.FormattingStyle.BinaryOperatorPlacement =
-                BinaryOperatorPlacement::Trailing;
-        } else {
-            ThrowConfigError(path, line,
+        config.FormattingStyle.BinaryOperatorPlacement =
+            ParseEnum<BinaryOperatorPlacement>(value, path, line,
                 "expected Leading or Trailing for BinaryOperatorPlacement");
-        }
     } else if (key == "TernaryOperatorPlacement") {
-        value = ParseOption(value, path, line);
-        if (value == "Preserve") {
-            config.FormattingStyle.TernaryOperatorPlacement =
-                TernaryOperatorPlacement::Preserve;
-        } else if (value == "Leading") {
-            config.FormattingStyle.TernaryOperatorPlacement =
-                TernaryOperatorPlacement::Leading;
-        } else if (value == "Trailing") {
-            config.FormattingStyle.TernaryOperatorPlacement =
-                TernaryOperatorPlacement::Trailing;
-        } else {
-            ThrowConfigError(path, line,
-                "expected Preserve, Leading or Trailing for "
-                "TernaryOperatorPlacement");
-        }
+        config.FormattingStyle.TernaryOperatorPlacement =
+            ParseEnum<TernaryOperatorPlacement>(value, path, line,
+                "expected Preserve, Leading or Trailing for TernaryOperatorPlacement");
     } else if (key == "TernarySplit") {
-        value = ParseOption(value, path, line);
-        if (value == "Preserve") {
-            config.FormattingStyle.TernarySplit = TernarySplit::Preserve;
-        } else if (value == "AsNeeded") {
-            config.FormattingStyle.TernarySplit = TernarySplit::AsNeeded;
-        } else if (value == "ThreeLines") {
-            config.FormattingStyle.TernarySplit = TernarySplit::ThreeLines;
-        } else {
-            ThrowConfigError(path, line,
+        config.FormattingStyle.TernarySplit =
+            ParseEnum<TernarySplit>(value, path, line,
                 "expected Preserve, AsNeeded or ThreeLines for TernarySplit");
-        }
     } else if (key == "MergeFunctionParameters") {
         config.FormattingStyle.MergeFunctionParameters =
             ParseBoolean(value, path, line);
     } else if (key == "ControlBlockBracePlacement") {
-        value = ParseOption(value, path, line);
-        if (value == "Preserve") {
-            config.FormattingStyle.ControlBlockBracePlacement =
-                ControlBlockBracePlacement::Preserve;
-        } else if (value == "SameLine") {
-            config.FormattingStyle.ControlBlockBracePlacement =
-                ControlBlockBracePlacement::SameLine;
-        } else if (value == "NewLine") {
-            config.FormattingStyle.ControlBlockBracePlacement =
-                ControlBlockBracePlacement::NewLine;
-        } else if (value == "AttachUnlessMultiline") {
-            config.FormattingStyle.ControlBlockBracePlacement =
-                ControlBlockBracePlacement::AttachUnlessMultiline;
-        } else {
-            ThrowConfigError(path, line,
-                "expected Preserve, SameLine, NewLine or "
-                "AttachUnlessMultiline");
-        }
+        config.FormattingStyle.ControlBlockBracePlacement =
+            ParseEnum<ControlBlockBracePlacement>(value, path, line,
+                "expected Preserve, SameLine, NewLine or AttachUnlessMultiline");
     } else if (key == "ControlBlockKeywordSpacing") {
-        value = ParseOption(value, path, line);
-        if (value == "Preserve") {
-            config.FormattingStyle.ControlBlockKeywordSpacing =
-                ControlBlockKeywordSpacing::Preserve;
-        } else if (value == "Space") {
-            config.FormattingStyle.ControlBlockKeywordSpacing =
-                ControlBlockKeywordSpacing::Space;
-        } else if (value == "NoSpace") {
-            config.FormattingStyle.ControlBlockKeywordSpacing =
-                ControlBlockKeywordSpacing::NoSpace;
-        } else {
-            ThrowConfigError(path, line,
+        config.FormattingStyle.ControlBlockKeywordSpacing =
+            ParseEnum<ControlBlockKeywordSpacing>(value, path, line,
                 "expected Preserve, Space or NoSpace");
-        }
     } else if (key == "ClassBraceSpacing") {
         config.FormattingStyle.ClassBraceSpacing =
-            ParseSameLineBraceSpacing(value, path, line);
+            ParseEnum<SameLineBraceSpacing>(value, path, line,
+                "expected Preserve or SingleSpace");
     } else if (key == "LambdaBraceSpacing") {
         config.FormattingStyle.LambdaBraceSpacing =
-            ParseSameLineBraceSpacing(value, path, line);
+            ParseEnum<SameLineBraceSpacing>(value, path, line,
+                "expected Preserve or SingleSpace");
     } else if (key == "FunctionCallSpaceBeforeParameters") {
-        value = ParseOption(value, path, line);
-        if (value == "Preserve") {
-            config.FormattingStyle.FunctionCallSpaceBeforeParameters =
-                FunctionCallSpaceBeforeParameters::Preserve;
-        } else if (value == "Space") {
-            config.FormattingStyle.FunctionCallSpaceBeforeParameters =
-                FunctionCallSpaceBeforeParameters::Space;
-        } else if (value == "NoSpace") {
-            config.FormattingStyle.FunctionCallSpaceBeforeParameters =
-                FunctionCallSpaceBeforeParameters::NoSpace;
-        } else {
-            ThrowConfigError(path, line,
+        config.FormattingStyle.FunctionCallSpaceBeforeParameters =
+            ParseEnum<FunctionCallSpaceBeforeParameters>(value, path, line,
                 "expected Preserve, Space or NoSpace");
-        }
     } else if (key == "SpaceInsideCallArguments") {
-        value = ParseOption(value, path, line);
-        if (value == "Preserve") {
-            config.FormattingStyle.SpaceInsideCallArguments =
-                SpaceInsideCallArguments::Preserve;
-        } else if (value == "Space") {
-            config.FormattingStyle.SpaceInsideCallArguments =
-                SpaceInsideCallArguments::Space;
-        } else if (value == "NoSpace") {
-            config.FormattingStyle.SpaceInsideCallArguments =
-                SpaceInsideCallArguments::NoSpace;
-        } else {
-            ThrowConfigError(path, line,
+        config.FormattingStyle.SpaceInsideCallArguments =
+            ParseEnum<SpaceInsideCallArguments>(value, path, line,
                 "expected Preserve, Space or NoSpace");
-        }
     } else if (key == "SpaceInsideLambdaParameters") {
-        value = ParseOption(value, path, line);
-        if (value == "Preserve") {
-            config.FormattingStyle.SpaceInsideLambdaParameters =
-                SpaceInsideLambdaParameters::Preserve;
-        } else if (value == "Space") {
-            config.FormattingStyle.SpaceInsideLambdaParameters =
-                SpaceInsideLambdaParameters::Space;
-        } else if (value == "NoSpace") {
-            config.FormattingStyle.SpaceInsideLambdaParameters =
-                SpaceInsideLambdaParameters::NoSpace;
-        } else {
-            ThrowConfigError(path, line,
+        config.FormattingStyle.SpaceInsideLambdaParameters =
+            ParseEnum<SpaceInsideLambdaParameters>(value, path, line,
                 "expected Preserve, Space or NoSpace");
-        }
     } else if (key == "SpaceInsideFunctionParameters") {
-        value = ParseOption(value, path, line);
-        if (value == "Preserve") {
-            config.FormattingStyle.SpaceInsideFunctionParameters =
-                SpaceInsideFunctionParameters::Preserve;
-        } else if (value == "Space") {
-            config.FormattingStyle.SpaceInsideFunctionParameters =
-                SpaceInsideFunctionParameters::Space;
-        } else if (value == "NoSpace") {
-            config.FormattingStyle.SpaceInsideFunctionParameters =
-                SpaceInsideFunctionParameters::NoSpace;
-        } else {
-            ThrowConfigError(path, line,
+        config.FormattingStyle.SpaceInsideFunctionParameters =
+            ParseEnum<SpaceInsideFunctionParameters>(value, path, line,
                 "expected Preserve, Space or NoSpace");
-        }
     } else if (key == "FunctionSpaceBeforeParameters") {
-        value = ParseOption(value, path, line);
-        if (value == "Preserve") {
-            config.FormattingStyle.FunctionSpaceBeforeParameters =
-                FunctionSpaceBeforeParameters::Preserve;
-        } else if (value == "Space") {
-            config.FormattingStyle.FunctionSpaceBeforeParameters =
-                FunctionSpaceBeforeParameters::Space;
-        } else if (value == "NoSpace") {
-            config.FormattingStyle.FunctionSpaceBeforeParameters =
-                FunctionSpaceBeforeParameters::NoSpace;
-        } else {
-            ThrowConfigError(path, line,
+        config.FormattingStyle.FunctionSpaceBeforeParameters =
+            ParseEnum<FunctionSpaceBeforeParameters>(value, path, line,
                 "expected Preserve, Space or NoSpace");
-        }
     } else if (key == "IndentAccessModifiers") {
         config.FormattingStyle.IndentAccessModifiers =
-            ParseBodyIndentation(value, path, line);
+            ParseEnum<BodyIndentation>(value, path, line,
+                "expected Preserve, Indent or NoIndent");
     } else if (key == "IndentMembers") {
         config.FormattingStyle.IndentMembers =
-            ParseBodyIndentation(value, path, line);
+            ParseEnum<BodyIndentation>(value, path, line,
+                "expected Preserve, Indent or NoIndent");
     } else if (key == "InheritanceList") {
         config.FormattingStyle.InheritanceList =
-            ParseInheritanceListMode(value, path, line);
+            ParseEnum<InheritanceListMode>(value, path, line,
+                "expected Preserve or Format");
     } else if (key == "InheritanceListColonPlacement") {
         config.FormattingStyle.InheritanceListColonPlacement =
-            ParseInheritanceListColonPlacement(value, path, line);
+            ParseEnum<InheritanceListColonPlacement>(value, path, line,
+                "expected AttachToBase or AttachToClass");
     } else if (key == "InheritanceListColonSpaceBefore") {
         config.FormattingStyle.InheritanceListColonSpaceBefore =
-            ParseInheritanceListSpacing(value, path, line);
+            ParseEnum<InheritanceListSpacing>(value, path, line,
+                "expected Space or NoSpace");
     } else if (key == "InheritanceListColonSpaceAfter") {
         config.FormattingStyle.InheritanceListColonSpaceAfter =
-            ParseInheritanceListSpacing(value, path, line);
+            ParseEnum<InheritanceListSpacing>(value, path, line,
+                "expected Space or NoSpace");
     } else if (key == "InheritanceListCommaPlacement") {
         config.FormattingStyle.InheritanceListCommaPlacement =
-            ParseInheritanceListCommaPlacement(value, path, line);
+            ParseEnum<InheritanceListCommaPlacement>(value, path, line,
+                "expected AttachToNext or AttachToPrevious");
     } else if (key == "InheritanceListCommaSpaceBefore") {
         config.FormattingStyle.InheritanceListCommaSpaceBefore =
-            ParseInheritanceListSpacing(value, path, line);
+            ParseEnum<InheritanceListSpacing>(value, path, line,
+                "expected Space or NoSpace");
     } else if (key == "InheritanceListCommaSpaceAfter") {
         config.FormattingStyle.InheritanceListCommaSpaceAfter =
-            ParseInheritanceListSpacing(value, path, line);
+            ParseEnum<InheritanceListSpacing>(value, path, line,
+                "expected Space or NoSpace");
     } else if (key == "InheritanceListStart") {
         config.FormattingStyle.InheritanceListStart =
-            ParseInheritanceListStart(value, path, line);
+            ParseEnum<InheritanceListStart>(value, path, line,
+                "expected NewLine, ClassLine or NewLineOnOverflow");
     } else if (key == "InheritanceListSplit") {
         config.FormattingStyle.InheritanceListSplit =
-            ParseInheritanceListSplit(value, path, line);
+            ParseEnum<InheritanceListSplit>(value, path, line,
+                "expected OnePerLine, Pack or OnePerLineOnOverflow");
     } else if (key == "InheritanceListIndent") {
         config.FormattingStyle.InheritanceListIndent =
             ParsePositiveInteger(value, path, line);
@@ -778,67 +438,44 @@ void ApplySetting(
         }
     } else if (key == "SpaceAroundCaptureList") {
         config.FormattingStyle.SpaceAroundCaptureList =
-            ParseLambdaCaptureSpacing(value, path, line);
+            ParseEnum<LambdaCaptureSpacing>(value, path, line,
+                "expected Preserve, Space or NoSpace");
     } else if (key == "SpaceAroundCaptureAssignment") {
         config.FormattingStyle.SpaceAroundCaptureAssignment =
-            ParseLambdaCaptureSpacing(value, path, line);
-    } else if (key == "LambdaSpaceBeforeParameters") {
-        value = ParseOption(value, path, line);
-        if (value == "Preserve") {
-            config.FormattingStyle.LambdaSpaceBeforeParameters =
-                LambdaSpaceBeforeParameters::Preserve;
-        } else if (value == "Space") {
-            config.FormattingStyle.LambdaSpaceBeforeParameters =
-                LambdaSpaceBeforeParameters::Space;
-        } else if (value == "NoSpace") {
-            config.FormattingStyle.LambdaSpaceBeforeParameters =
-                LambdaSpaceBeforeParameters::NoSpace;
-        } else {
-            ThrowConfigError(path, line,
+            ParseEnum<LambdaCaptureSpacing>(value, path, line,
                 "expected Preserve, Space or NoSpace");
-        }
+    } else if (key == "LambdaSpaceBeforeParameters") {
+        config.FormattingStyle.LambdaSpaceBeforeParameters =
+            ParseEnum<LambdaSpaceBeforeParameters>(value, path, line,
+                "expected Preserve, Space or NoSpace");
     } else if (key == "StructBraceSpacing") {
         config.FormattingStyle.StructBraceSpacing =
-            ParseSameLineBraceSpacing(value, path, line);
+            ParseEnum<SameLineBraceSpacing>(value, path, line,
+                "expected Preserve or SingleSpace");
     } else if (key == "EnumBraceSpacing") {
         config.FormattingStyle.EnumBraceSpacing =
-            ParseSameLineBraceSpacing(value, path, line);
+            ParseEnum<SameLineBraceSpacing>(value, path, line,
+                "expected Preserve or SingleSpace");
     } else if (key == "UnionBraceSpacing") {
         config.FormattingStyle.UnionBraceSpacing =
-            ParseSameLineBraceSpacing(value, path, line);
+            ParseEnum<SameLineBraceSpacing>(value, path, line,
+                "expected Preserve or SingleSpace");
     } else if (key == "FunctionBraceSpacing") {
         config.FormattingStyle.FunctionBraceSpacing =
-            ParseSameLineBraceSpacing(value, path, line);
+            ParseEnum<SameLineBraceSpacing>(value, path, line,
+                "expected Preserve or SingleSpace");
     } else if (key == "NamespaceBraceSpacing") {
         config.FormattingStyle.NamespaceBraceSpacing =
-            ParseSameLineBraceSpacing(value, path, line);
+            ParseEnum<SameLineBraceSpacing>(value, path, line,
+                "expected Preserve or SingleSpace");
     } else if (key == "FunctionDeclarationParameterNames") {
-        value = ParseOption(value, path, line);
-        if (value == "Unchecked") {
-            config.DeclarationParameterNames =
-                FunctionDeclarationParameterNames::Unchecked;
-        } else if (value == "Required") {
-            config.DeclarationParameterNames =
-                FunctionDeclarationParameterNames::Required;
-        } else {
-            ThrowConfigError(path, line,
+        config.DeclarationParameterNames =
+            ParseEnum<FunctionDeclarationParameterNames>(value, path, line,
                 "invalid FunctionDeclarationParameterNames");
-        }
     } else if (key == "FunctionDefinitionParameterNames") {
-        value = ParseOption(value, path, line);
-        if (value == "Unchecked") {
-            config.DefinitionParameterNames =
-                FunctionDefinitionParameterNames::Unchecked;
-        } else if (value == "NameRequired") {
-            config.DefinitionParameterNames =
-                FunctionDefinitionParameterNames::NameRequired;
-        } else if (value == "NameOrCommentedNameRequired") {
-            config.DefinitionParameterNames =
-                FunctionDefinitionParameterNames::NameOrCommentedNameRequired;
-        } else {
-            ThrowConfigError(path, line,
+        config.DefinitionParameterNames =
+            ParseEnum<FunctionDefinitionParameterNames>(value, path, line,
                 "invalid FunctionDefinitionParameterNames");
-        }
     } else if (key == "Exclude") {
         config.Exclusions.clear();
         for (const auto& pattern : ParseStringList(value, path, line)) {

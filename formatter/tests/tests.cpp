@@ -1063,6 +1063,9 @@ TEST(PreserveConfigTest, RejectsInvalidSettings)
         formatter::CallArgumentIndent::Continuation);
     ASSERT_EQ(config.Exclusions.size(), 1u);
     EXPECT_TRUE(std::regex_search("generated/source.cpp", config.Exclusions[0]));
+    save("ClassNameCase = Unchecked\n");
+    EXPECT_EQ(formatter::LoadConfigFile(path).Naming.Class.Case,
+        formatter::NameCase::Unchecked);
     save("CallArgumentSplit = Pack\nExpressionLayoutCondition = Always\n");
     const auto alternate = formatter::LoadConfigFile(path).FormattingStyle;
     EXPECT_EQ(alternate.ExpressionLayoutCondition, formatter::ExpressionLayoutCondition::Always);
@@ -1099,6 +1102,8 @@ TEST(PreserveConfigTest, RejectsInvalidSettings)
         "InheritanceListMerge = true\n",
         "InheritanceListPunctuation = WithAncestor\n",
         "FunctionParameterSplit = Together\n",
+        "ClassBracePlacement = attach\n",
+        "ClassNameCase = CamelCase\n",
         "ExpressionWrap = Always\n",
         "ExpressionLayoutCondition = Unknown\n",
         "ExpressionLayoutAlgorithm = BruteForce\n",

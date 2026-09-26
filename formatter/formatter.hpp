@@ -1,5 +1,7 @@
 #pragma once
 
+#include "config_enum.hpp"
+
 #include <parser/parser.hpp>
 #include <util/input.hpp>
 
@@ -8,58 +10,6 @@
 #include <vector>
 
 namespace formatter {
-
-enum class BracePlacement
-{
-    Preserve,
-    Attach,
-    NewLine,
-};
-
-enum class NamespaceComments { Preserve, Remove, Required };
-enum class IncludeOrder { Preserve, Sort };
-enum class BodyIndentation { Preserve, Indent, NoIndent };
-enum class InheritanceListMode { Preserve, Format };
-enum class InheritanceListColonPlacement { AttachToBase, AttachToClass };
-enum class InheritanceListCommaPlacement { AttachToNext, AttachToPrevious };
-enum class InheritanceListSpacing { NoSpace, Space };
-enum class InheritanceListStart { NewLine, ClassLine, NewLineOnOverflow };
-enum class InheritanceListSplit { OnePerLine, Pack, OnePerLineOnOverflow };
-enum class FunctionParameterSplit { Preserve, Pack, OnePerLine };
-enum class CallArgumentSplit { Preserve, Pack, OnePerLine };
-enum class FirstCallArgumentPosition { CallLine, NewLine };
-enum class CallArgumentIndent { IndentWidth, Continuation };
-enum class ExpressionLayoutCondition {
-    Preserve, Overflow, FitOrOverflow, Always
-};
-enum class ExpressionLayoutAlgorithm { Greedy, DynamicProgramming };
-enum class BinaryOperatorPlacement { Leading, Trailing };
-enum class TernaryOperatorPlacement { Preserve, Leading, Trailing };
-enum class TernarySplit { Preserve, AsNeeded, ThreeLines };
-enum class FirstFunctionParameterPosition { NameLine, NewLine };
-enum class FunctionParameterIndent { IndentWidth, Continuation };
-
-enum class SameLineBraceSpacing
-{
-    Preserve,
-    SingleSpace,
-};
-
-enum class LambdaSpaceBeforeParameters { Preserve, Space, NoSpace };
-enum class LambdaCaptureSpacing { Preserve, Space, NoSpace };
-enum class FunctionSpaceBeforeParameters { Preserve, Space, NoSpace };
-enum class FunctionCallSpaceBeforeParameters { Preserve, Space, NoSpace };
-enum class SpaceInsideFunctionParameters { Preserve, Space, NoSpace };
-enum class SpaceInsideLambdaParameters { Preserve, Space, NoSpace };
-enum class SpaceInsideCallArguments { Preserve, Space, NoSpace };
-enum class ControlBlockKeywordSpacing { Preserve, Space, NoSpace };
-enum class ControlBlockBracePlacement
-{
-    Preserve,
-    SameLine,
-    NewLine,
-    AttachUnlessMultiline,
-};
 
 struct Style
 {
