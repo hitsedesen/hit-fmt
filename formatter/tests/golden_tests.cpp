@@ -750,12 +750,12 @@ TEST(ExpressionLayoutTest, ChecksLayoutWithoutReflowing)
     EXPECT_NE(issues[0].Message.find("line exceeds ColumnLimit"),
         std::string::npos);
     EXPECT_EQ(issues[1].Position.Line, 4u);
-    EXPECT_EQ(issues[1].Message, "binary operator must be trailing");
+    EXPECT_EQ(issues[1].Message, "binary operator must end the preceding line");
     EXPECT_EQ(issues[2].Position.Line, 5u);
-    EXPECT_EQ(issues[2].Message, "ternary ? must be leading");
+    EXPECT_EQ(issues[2].Message, "ternary ? must start the following line");
     EXPECT_EQ(issues[3].Position.Line, 6u);
     EXPECT_EQ(issues[3].Message,
-        "ternary split requires both ? and : breaks");
+        "ternary ':' needs a line break to match the other delimiter");
     style.TernaryOperatorPlacement = formatter::TernaryOperatorPlacement::Preserve;
     style.TernarySplit = formatter::TernarySplit::Preserve;
     EXPECT_EQ(formatter::CheckExpressionLayout(tree, style).size(), 2u);

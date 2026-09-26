@@ -2840,7 +2840,8 @@ std::vector<LayoutDiagnostic> CheckExpressionLayout(
         if ((left || right) && (leading ? !left || right : !right || left)) {
             const auto& token = tree.Token(index);
             diagnostics.push_back({token.Position, std::string(name) +
-                (leading ? " must be leading" : " must be trailing")});
+                (leading ? " must start the following line" :
+                    " must end the preceding line")});
         }
     };
     while (!nodes.empty()) {
@@ -2890,7 +2891,9 @@ std::vector<LayoutDiagnostic> CheckExpressionLayout(
                     auto missing = hasBreak(question) ? colon : question;
                     const auto& token = tree.Token(missing);
                     diagnostics.push_back({token.Position,
-                        "ternary split requires both ? and : breaks"});
+                        std::string("ternary '") +
+                            (missing == question ? '?' : ':') +
+                            "' needs a line break to match the other delimiter"});
                 }
             }
         }

@@ -17,6 +17,36 @@ bool Upper(char c) { return c >= 'A' && c <= 'Z'; }
 bool Lower(char c) { return c >= 'a' && c <= 'z'; }
 bool Digit(char c) { return c >= '0' && c <= '9'; }
 
+std::string_view CaseLabel(NameCase casing)
+{
+    switch (casing) {
+    case NameCase::CamelCase: return "camelCase";
+    case NameCase::PascalCase: return "PascalCase";
+    case NameCase::SnakeCase: return "snake_case";
+    case NameCase::ScreamingSnakeCase: return "SCREAMING_SNAKE_CASE";
+    case NameCase::Unchecked: return "";
+    }
+    return "";
+}
+
+std::string ExpectedName(const NameRule& rule, bool prefixOK, bool caseOK)
+{
+    std::string expected = "expected ";
+    if (!prefixOK && rule.Prefixes) {
+        expected += "prefix ";
+        for (size_t i = 0; i < rule.Prefixes->size(); ++i) {
+            if (i) expected += i + 1 == rule.Prefixes->size() ? " or " : ", ";
+            expected += "'" + (*rule.Prefixes)[i] + "'";
+        }
+    }
+    if (!caseOK && rule.Case != NameCase::Unchecked) {
+        if (!prefixOK) expected += " and ";
+        expected += CaseLabel(rule.Case);
+        if (rule.Prefixes) expected += " after the prefix";
+    }
+    return expected;
+}
+
 bool ValidCase(std::string_view name, NameCase casing)
 {
     if (name.empty()) return false;
@@ -125,7 +155,8 @@ public:
                 !prefixOK ? "prefix" : "case";
             message += issue;
             Results.push_back({Tree.TokenPosition(index),
-                std::move(message), issue});
+                std::move(message), issue,
+                ExpectedName(rule, prefixOK, caseOK)});
         }
     }
 
