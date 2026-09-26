@@ -2825,7 +2825,8 @@ std::vector<LayoutDiagnostic> CheckExpressionLayout(
                 {.Line = lineNumber,
                  .Column = static_cast<uint32_t>(style.ColumnLimit + 1)},
                 "line exceeds ColumnLimit (" + std::to_string(width) +
-                    " > " + std::to_string(style.ColumnLimit) + ")"});
+                    " > " + std::to_string(style.ColumnLimit) + ")",
+                LayoutDiagnosticKind::LineWidth});
         }
         start = end == source.size() ? end : end + 1;
     }
@@ -2841,7 +2842,8 @@ std::vector<LayoutDiagnostic> CheckExpressionLayout(
             const auto& token = tree.Token(index);
             diagnostics.push_back({token.Position, std::string(name) +
                 (leading ? " must start the following line" :
-                    " must end the preceding line")});
+                    " must end the preceding line"),
+                LayoutDiagnosticKind::OperatorPlacement});
         }
     };
     while (!nodes.empty()) {
@@ -2893,7 +2895,8 @@ std::vector<LayoutDiagnostic> CheckExpressionLayout(
                     diagnostics.push_back({token.Position,
                         std::string("ternary '") +
                             (missing == question ? '?' : ':') +
-                            "' needs a line break to match the other delimiter"});
+                            "' needs a line break to match the other delimiter",
+                        LayoutDiagnosticKind::TernarySplit});
                 }
             }
         }

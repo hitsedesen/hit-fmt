@@ -234,6 +234,7 @@ struct Chunk
     bool HasFix = false;
     bool HasLayoutFix = false;
     bool HasLayoutIssue = false;
+    bool HasWidthIssue = false;
 };
 
 // The first differing code point is normally the token at which formatting
@@ -670,14 +671,14 @@ void PrintCheckDiagnostics(
     auto sourceLines = SplitLines(source);
     auto formattedLines = SplitLines(formatted);
     auto chunks = FormattingChunks(sourceLines, formattedLines);
-    // A width violation and the breaks proposed to repair it describe one
-    // source problem, not a separate violation for each emitted line break.
+    // Source layout diagnostics own their line. A formatter-emitted break on
+    // that line is a possible repair, not another source violation. Preserve
+    // unrelated formatting, naming and parameter-name diagnostics.
     for (auto& chunk : chunks) {
         std::erase_if(chunk.Violations, [&] (const Violation& violation) {
             return violation.Kind == ViolationKind::Reflow &&
                 std::ranges::any_of(layout, [&] (const auto& issue) {
-                    return issue.Position.Line == violation.Line &&
-                        issue.Message.starts_with("line exceeds ColumnLimit");
+                    return issue.Position.Line == violation.Line;
                 });
         });
     }
@@ -701,7 +702,9 @@ void PrintCheckDiagnostics(
         chunks.push_back({.Begin = issue.Position.Line,
             .End = issue.Position.Line + 1,
             .Violations = {{issue.Position.Line, issue.Position.Column,
-                issue.Message}}, .HasLayoutIssue = true});
+                issue.Message}}, .HasLayoutIssue = true,
+            .HasWidthIssue = issue.Kind ==
+                formatter::LayoutDiagnosticKind::LineWidth});
     }
     // Check mode does not reflow expressions to decide whether a file fails.
     // Use normal formatter output only as an optional suggestion for layout
@@ -762,6 +765,7 @@ void PrintCheckDiagnostics(
                     chunk.LayoutFix.begin(), chunk.LayoutFix.end());
             }
             previous.HasLayoutIssue |= chunk.HasLayoutIssue;
+            previous.HasWidthIssue |= chunk.HasWidthIssue;
         }
     }
     for (auto& chunk : merged) {
@@ -839,12 +843,8 @@ void PrintCheckDiagnostics(
                 "  ", terminalWidth);
         }
         if (chunk.HasLayoutIssue && !chunk.HasLayoutFix) {
-            auto overlong = std::ranges::any_of(chunk.Violations,
-                [] (const Violation& issue) {
-                    return issue.Message.starts_with("line exceeds ColumnLimit");
-                });
             std::cout << "  ";
-            PrintWrappedMessage(overlong
+            PrintWrappedMessage(chunk.HasWidthIssue
                 ? "hint: split the line manually or increase ColumnLimit."
                 : "hint: adjust the operator or line break manually.",
                 "  ", terminalWidth);
