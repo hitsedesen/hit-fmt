@@ -176,13 +176,18 @@ void PrintWrappedMessage(std::string_view message,
 }
 
 void PrintSuggestedLine(std::string_view text, size_t terminalWidth,
-    bool useColor)
+    size_t gutterWidth, bool useColor)
 {
-    auto cells = RenderLine(text, 0, 4).Cells;
-    auto available = terminalWidth > 5 ? terminalWidth - 5 : size_t{16};
+    auto cells = RenderLine(text, 0, gutterWidth).Cells;
+    auto available = terminalWidth > gutterWidth + 1
+        ? terminalWidth - gutterWidth - 1 : size_t{16};
     for (size_t begin = 0;;) {
         if (useColor) std::cout << Green;
-        std::cout << (begin ? "    " : "  + ");
+        if (begin) {
+            std::cout << std::string(gutterWidth, ' ');
+        } else {
+            std::cout << std::string(gutterWidth - 3, ' ') << " + ";
+        }
         auto end = std::min(cells.size(), begin + available);
         PrintCells(cells, begin, end);
         if (useColor) std::cout << ResetColor;
@@ -831,9 +836,11 @@ void PrintCheckDiagnostics(
             std::cout << "  suggested formatting:\n";
             const auto& fix = chunk.HasLayoutFix ? chunk.LayoutFix : chunk.Fix;
             for (const auto& line : fix) {
-                PrintSuggestedLine(line.Text, terminalWidth, useColor);
+                PrintSuggestedLine(line.Text, terminalWidth,
+                    gutter.size(), useColor);
                 if (!line.HasNewline) {
-                    std::cout << "    \\ No newline at end of file\n";
+                    std::cout << std::string(gutter.size(), ' ')
+                              << "\\ No newline at end of file\n";
                 }
             }
             if (fix.empty()) std::cout << "  (remove this chunk)\n";
