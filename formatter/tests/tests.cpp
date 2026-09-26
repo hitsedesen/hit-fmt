@@ -996,7 +996,7 @@ TEST_P(NamingGoldenTest, ReportsOnlyConfiguredUnambiguousNames)
     const auto tree = parser::Parse({.Data = storage.data(),
         .Size = input.size()}, [] (parser::ParseError) { });
     std::string actual;
-    for (const auto& diagnostic : formatter::CheckNames(tree, config.Naming)) {
+    for (const auto& diagnostic : formatter::CheckNames(tree, config)) {
         actual += std::to_string(diagnostic.Position.Line) + ":" +
             std::to_string(diagnostic.Position.Column) + ": " +
             diagnostic.Message + "\n";
@@ -1040,9 +1040,17 @@ TEST(PreserveConfigTest, RejectsInvalidSettings)
          "CallArgumentSplit = Pack\nFirstCallArgumentPosition = NewLine\n"
          "EnforceFirstCallArgumentPosition = true\n"
          "CallArgumentIndent = Continuation\n"
-         "Exclude = [\"(^|/)generated(/|$)\"]\n");
+         "Exclude = [ # list comment\n"
+         "  \"x]y\", # bracket in a quoted item\n"
+         "  \"(^|/)generated(/|$)\"\n"
+         "]\n"
+         "ClassNamePrefixes = [\n"
+         "  \"S\", # prefix comment\n"
+         "  \"C\"\n"
+         "]\n"
+         "IndentWidth = 3\n");
     const auto config = formatter::LoadConfigFile(path);
-    EXPECT_EQ(config.FormattingStyle.IndentWidth, 2u);
+    EXPECT_EQ(config.FormattingStyle.IndentWidth, 3u);
     EXPECT_EQ(config.FormattingStyle.ColumnLimit, 40u);
     EXPECT_EQ(config.FormattingStyle.ExpressionLayoutCondition,
         formatter::ExpressionLayoutCondition::FitOrOverflow);
@@ -1061,8 +1069,15 @@ TEST(PreserveConfigTest, RejectsInvalidSettings)
     EXPECT_TRUE(config.FormattingStyle.EnforceFirstCallArgumentPosition);
     EXPECT_EQ(config.FormattingStyle.CallArgumentIndent,
         formatter::CallArgumentIndent::Continuation);
-    ASSERT_EQ(config.Exclusions.size(), 1u);
-    EXPECT_TRUE(std::regex_search("generated/source.cpp", config.Exclusions[0]));
+    ASSERT_EQ(config.Exclude.size(), 2u);
+    EXPECT_TRUE(std::regex_search("x]y", config.Exclude[0]));
+    EXPECT_TRUE(std::regex_search("generated/source.cpp", config.Exclude[1]));
+    ASSERT_TRUE(config.Naming.Class.Prefixes.has_value());
+    EXPECT_EQ(*config.Naming.Class.Prefixes,
+        (std::vector<std::string>{"S", "C"}));
+    save("ClassNameCase = Unchecked\n");
+    EXPECT_EQ(formatter::LoadConfigFile(path).Naming.Class.Case,
+        formatter::NameCase::Unchecked);
     save("CallArgumentSplit = Pack\nExpressionLayoutCondition = Always\n");
     const auto alternate = formatter::LoadConfigFile(path).FormattingStyle;
     EXPECT_EQ(alternate.ExpressionLayoutCondition, formatter::ExpressionLayoutCondition::Always);
@@ -1080,7 +1095,9 @@ TEST(PreserveConfigTest, RejectsInvalidSettings)
         "InsertBraces = false\n",
         "WhitespaceSensitiveMacros = []\n",
         "ColumnLimit = 0\n",
+        "ColumnLimit = 10001\n",
         "IndentWidth = 0\n",
+        "IndentWidth = 33\n",
         "IndentAccessModifiers = Unknown\n",
         "IndentMembers = Unknown\n",
         "InheritanceList = Unknown\n",
@@ -1099,6 +1116,7 @@ TEST(PreserveConfigTest, RejectsInvalidSettings)
         "InheritanceListMerge = true\n",
         "InheritanceListPunctuation = WithAncestor\n",
         "FunctionParameterSplit = Together\n",
+        "ClassBracePlacement = attach\n",
         "ExpressionWrap = Always\n",
         "ExpressionLayoutCondition = Unknown\n",
         "ExpressionLayoutAlgorithm = BruteForce\n",
@@ -1128,6 +1146,8 @@ TEST(PreserveConfigTest, RejectsInvalidSettings)
         "ControlBlockKeywordSpacing = Unknown\n",
         "ControlBlockBracePlacement = Unknown\n",
         "Exclude = [\"[\"]\n",
+        "Exclude = [\n  \"foo\",\n",
+        "Exclude = [\n  \"foo\"\n  \"bar\"\n]\n",
         "StructNameCase = lowercase\n",
         "ClassNamePrefixes = []\n",
         "EnumNamePrefixes = [\"bad prefix\"]\n",
@@ -1138,6 +1158,23 @@ TEST(PreserveConfigTest, RejectsInvalidSettings)
     }) {
         save(setting);
         EXPECT_THROW(formatter::LoadConfigFile(path), std::runtime_error);
+    }
+    save("Exclude = [\n  \"foo\"\n]\nUnknown = true\n");
+    try {
+        (void)formatter::LoadConfigFile(path);
+        FAIL() << "expected unknown setting";
+    } catch (const std::runtime_error& error) {
+        EXPECT_NE(std::string_view(error.what()).find(":4: unknown setting"),
+            std::string_view::npos);
+    }
+    save("ClassNameCase = CamelCase\n");
+    try {
+        (void)formatter::LoadConfigFile(path);
+        FAIL() << "expected invalid enum spelling";
+    } catch (const std::runtime_error& error) {
+        EXPECT_NE(std::string_view(error.what()).find(
+            "expected Unchecked, camelCase, PascalCase, snake_case or "
+            "SCREAMING_SNAKE_CASE"), std::string_view::npos);
     }
     std::filesystem::remove(path);
 }

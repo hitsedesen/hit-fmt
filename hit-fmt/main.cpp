@@ -1053,12 +1053,12 @@ public:
         // descending; a file uses its own nearest configuration.
         auto source = directory ? path.parent_path() / "unused.cpp" : path;
         const auto& config = FindConfig(source);
-        if (config.Settings.Exclusions.empty()) {
+        if (config.Settings.Exclude.empty()) {
             return false;
         }
         auto relative = std::filesystem::absolute(path).lexically_normal()
                             .lexically_relative(config.Directory);
-        return ::IsExcluded(relative, config.Settings.Exclusions);
+        return ::IsExcluded(relative, config.Settings.Exclude);
     }
 
 private:
@@ -1210,7 +1210,7 @@ int main(int argc, char* argv[])
                 }
                 break;
             case Mode::Check: {
-                auto names = formatter::CheckNames(tree, config.Naming);
+                auto names = formatter::CheckNames(tree, config);
                 auto parameters = formatter::CheckParameterNames(tree, config);
                 auto layout = formatter::CheckExpressionLayout(tree,
                     config.FormattingStyle);

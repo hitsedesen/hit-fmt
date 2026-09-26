@@ -13,7 +13,9 @@ reports violations with file, line and column and returns a nonzero status.
 parent directories. The nearest file wins. `--config <file>` selects one
 file for every input; `--no-config` disables configuration lookup.
 
-Blank lines and `#` comments are allowed. Example:
+Blank lines and `#` comments are allowed. Arrays of quoted strings may
+span lines, with comments between items; each quoted item must stay on one
+line. Example:
 
 ```text
 IndentWidth = 4
@@ -67,7 +69,10 @@ StructNamePrefixes = ["S", "C"]
 NamingNamespaceExemptions = ["std"]
 VariableNameCase = snake_case
 VariableNamePrefixes = ["m_", "s_"]
-Exclude = ["(^|/)generated(/|$)", "(^|/)legacy\\.cpp$"]
+Exclude = [
+    "(^|/)generated(/|$)",
+    "(^|/)legacy\\.cpp$"
+]
 ```
 
 - `IncludeOrder`: `Preserve` (default) leaves directives untouched. `Sort`
@@ -306,8 +311,9 @@ Exclude = ["(^|/)generated(/|$)", "(^|/)legacy\\.cpp$"]
 - `<Kind>NameCase` and `<Kind>NamePrefixes`: independent naming checks for
   `Class`, `Enum`, `Union`, `Struct`, `Function`, `Concept`, `Variable`, and
   `Namespace`. Cases are `camelCase`, `PascalCase`, `snake_case`, and
-  `SCREAMING_SNAKE_CASE` (ASCII letters and digits). Prefixes are a nonempty
-  array of quoted identifier fragments; at least one must match. The case
+  `SCREAMING_SNAKE_CASE` (ASCII letters and digits), or `Unchecked` to disable
+  the case check. Prefixes are a nonempty array of quoted identifier
+  fragments; at least one must match. The case
   applies to the name *after* its prefix. Use `[""]` to explicitly allow no
   prefix. Either check can be enabled independently; omitted checks are
   disabled. Only unambiguous definitions and variable declarations are

@@ -13,15 +13,6 @@ namespace formatter {
 
 inline constexpr std::string_view DefaultConfigFileName = ".hit-fmt";
 
-enum class NameCase
-{
-    Unchecked,
-    CamelCase,
-    PascalCase,
-    SnakeCase,
-    ScreamingSnakeCase,
-};
-
 struct NameRule
 {
     NameCase Case = NameCase::Unchecked;
@@ -31,40 +22,19 @@ struct NameRule
 
 struct NamingStyle
 {
-    NameRule Class;
-    NameRule Enum;
-    NameRule Union;
-    NameRule Struct;
-    NameRule Function;
-    NameRule Concept;
-    NameRule Variable;
-    NameRule Namespace;
-    // Qualified namespace paths; each entry also excludes its descendants.
-    std::vector<std::string> ExemptNamespaces = {"std"};
-};
-
-enum class FunctionDeclarationParameterNames
-{
-    Unchecked,
-    Required,
-};
-
-enum class FunctionDefinitionParameterNames
-{
-    Unchecked,
-    NameRequired,
-    NameOrCommentedNameRequired,
+#define FORMATTER_NAMING_FIELD(category) NameRule category;
+    FORMATTER_NAMING_CATEGORIES(FORMATTER_NAMING_FIELD)
+#undef FORMATTER_NAMING_FIELD
 };
 
 struct Configuration
 {
     Style FormattingStyle;
     NamingStyle Naming;
-    FunctionDeclarationParameterNames DeclarationParameterNames =
-        FunctionDeclarationParameterNames::Unchecked;
-    FunctionDefinitionParameterNames DefinitionParameterNames =
-        FunctionDefinitionParameterNames::Unchecked;
-    std::vector<std::regex> Exclusions;
+    // Qualified namespace paths; each entry also excludes its descendants.
+#define FORMATTER_CONFIG_FIELD(type, name, initial) type name = initial;
+    FORMATTER_CONFIGURATION_OPTIONS(FORMATTER_CONFIG_FIELD)
+#undef FORMATTER_CONFIG_FIELD
 };
 
 // Parses formatting settings and exclusion patterns from a config file.
