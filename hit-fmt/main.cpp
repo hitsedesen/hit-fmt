@@ -40,9 +40,9 @@ constexpr std::string_view Green = "\033[32m";
 
 enum class Mode
 {
-    Format,
-    InPlace,
     Check,
+    Fix,
+    Stdout,
 };
 
 struct Line
@@ -480,7 +480,7 @@ std::vector<std::filesystem::path> CollectFiles(
         }
         if (!allowDirectories) {
             throw std::runtime_error(
-                path.string() + ": directory input requires -i or --check");
+                path.string() + ": directory input requires check or --fix mode");
         }
         if (configExcludes(path, true)) {
             continue;
@@ -513,7 +513,7 @@ std::vector<std::filesystem::path> CollectFiles(
 
 struct Options
 {
-    Mode FormattingMode = Mode::Format;
+    Mode FormattingMode = Mode::Check;
     bool SummaryOnly = false;
     bool DisableConfig = false;
     bool ShowHelp = false;
@@ -535,17 +535,14 @@ Options ParseOptions(int argc, char* argv[])
             positionalOnly = true;
         } else if (argument == "-h" || argument == "--help") {
             options.ShowHelp = true;
-        } else if (argument == "-i" || argument == "--in-place") {
+        } else if (argument == "--fix" || argument == "--check" ||
+            argument == "--stdout")
+        {
             if (modeSelected) {
-                throw std::runtime_error("formatting mode specified more than once");
+                throw std::runtime_error("mode specified more than once");
             }
-            options.FormattingMode = Mode::InPlace;
-            modeSelected = true;
-        } else if (argument == "--check") {
-            if (modeSelected) {
-                throw std::runtime_error("formatting mode specified more than once");
-            }
-            options.FormattingMode = Mode::Check;
+            options.FormattingMode = argument == "--fix" ? Mode::Fix :
+                argument == "--stdout" ? Mode::Stdout : Mode::Check;
             modeSelected = true;
         } else if (argument == "--summary") {
             options.SummaryOnly = true;
@@ -584,7 +581,7 @@ Options ParseOptions(int argc, char* argv[])
         }
     }
     if (options.SummaryOnly && options.FormattingMode != Mode::Check) {
-        throw std::runtime_error("--summary requires --check");
+        throw std::runtime_error("--summary requires check mode");
     }
     if (options.DisableConfig && options.ConfigPath) {
         throw std::runtime_error("--config and --no-config cannot be combined");
@@ -683,14 +680,15 @@ void PrintHelp(std::ostream& output, std::string_view executable)
 {
     output
         << "Usage:\n"
-        << "  " << executable << " [options] <file>\n"
-        << "  " << executable << " -i [options] <path>...\n"
-        << "  " << executable << " --check [options] <path>...\n"
+        << "  " << executable << " [options] <path>...\n"
+        << "  " << executable << " --fix [options] <path>...\n"
+        << "  " << executable << " --stdout [options] <file>\n"
         << "\n"
         << "Options:\n"
-        << "  -i, --in-place   Format files in place.\n"
-        << "  --check          Show violations and fixes without editing.\n"
-        << "  --summary        With --check, print only file names.\n"
+        << "  --fix            Format files in place.\n"
+        << "  --check          Check without editing (default).\n"
+        << "  --stdout         Write formatted output for one file to stdout.\n"
+        << "  --summary        In check mode, print only file names.\n"
         << "  --config <file>  Use one configuration file for every input.\n"
         << "  --no-config      Do not search parent directories for .hit-fmt.\n"
         << "  --exclude <regex> Skip matching files or directories (repeatable).\n"
@@ -698,23 +696,23 @@ void PrintHelp(std::ostream& output, std::string_view executable)
         << "\n"
         << "Without --config or --no-config, each source file uses the "
            "nearest .hit-fmt file in its directory or a parent directory.\n"
-        << "Paths passed to -i or --check may be files or directories.\n"
+        << "Check and --fix paths may be files or directories.\n"
         << "Directories are searched recursively for C and C++ source "
            "files.\n"
         << "--exclude patterns search paths relative to each input directory; "
            ".hit-fmt Exclude patterns search paths relative to the config file.\n"
         << "Both use ECMAScript regex; matching directories are skipped.\n"
-        << "Files larger than 4 MiB are skipped with a warning in -i and "
-           "--check modes.\n"
+        << "Files larger than 4 MiB are skipped with a warning in check "
+           "and --fix modes.\n"
         << "Check output is colorized when written to a terminal; set "
            "NO_COLOR to disable it.\n"
         << "\n"
         << "Examples:\n"
         << "  " << executable << " source.cpp\n"
-        << "  " << executable << " -i source.cpp include/\n"
-        << "  " << executable << " --check src/ include/header.h\n"
-        << "  " << executable << " --check --summary src/ include/\n"
-        << "  " << executable << " -i --exclude '(^|/)generated(/|$)' src/\n";
+        << "  " << executable << " --fix source.cpp include/\n"
+        << "  " << executable << " --stdout source.cpp\n"
+        << "  " << executable << " --summary src/ include/\n"
+        << "  " << executable << " --fix --exclude '(^|/)generated(/|$)' src/\n";
 }
 
 } // namespace
@@ -730,7 +728,7 @@ int main(int argc, char* argv[])
             PrintHelp(std::cout, argv[0]);
             return 0;
         }
-        bool standardOutputMode = options.FormattingMode == Mode::Format;
+        bool standardOutputMode = options.FormattingMode == Mode::Stdout;
         if (options.Paths.empty() || (standardOutputMode && options.Paths.size() != 1)) {
             PrintHelp(std::cerr, argv[0]);
             return 1;
@@ -775,10 +773,10 @@ int main(int argc, char* argv[])
             }
             auto formatted = formatter::Format(tree, checkStyle);
             switch (mode) {
-            case Mode::Format:
+            case Mode::Stdout:
                 std::cout.write(formatted.data(), formatted.size());
                 break;
-            case Mode::InPlace:
+            case Mode::Fix:
                 if (formatted != source) {
                     util::WriteEntireFile(filePath, formatted);
                 }
@@ -818,7 +816,7 @@ int main(int argc, char* argv[])
             }
             }
         } catch (const util::FileTooLargeError& error) {
-            if (mode == Mode::Format) {
+            if (mode == Mode::Stdout) {
                 std::cerr << error.what() << '\n';
                 return 1;
             }

@@ -314,7 +314,7 @@ Exclude = ["(^|/)generated(/|$)", "(^|/)legacy\\.cpp$"]
   checked; forward declarations, function prototypes, explicit template
   instantiations, references, aliases, macros and uncertain declarators are
   skipped. Names in function definitions, including parameter names, are
-  checked. `-i` and ordinary output mode leave names untouched.
+  checked. `--fix` and `--stdout` leave names untouched.
 - `NamingNamespaceExemptions`: qualified namespace paths excluded from all
   naming checks, including the namespace name and everything it contains.
   Defaults to `["std"]`, which also excludes `std::chrono`. Use `[]` to
@@ -323,7 +323,7 @@ Exclude = ["(^|/)generated(/|$)", "(^|/)legacy\\.cpp$"]
   `standard`). These exemptions do not affect formatting or the independent
   unnamed-function-parameter checks.
 - `FunctionDeclarationParameterNames`: `Unchecked` (default) or
-  `Required`. When required, `--check` reports unnamed parameters in
+  `Required`. When required, check mode reports unnamed parameters in
   unambiguous function declarations; a comment does not count as a name.
 - `FunctionDefinitionParameterNames`: `Unchecked` (default),
   `NameRequired`, or `NameOrCommentedNameRequired`. The last option also
