@@ -151,6 +151,57 @@ size_t DifferenceColumn(std::string_view actual, std::string_view expected)
     return ColumnAt(actual, byte);
 }
 
+std::string DescribeWhitespace(std::string_view gap)
+{
+    if (gap.empty()) return "no whitespace";
+    std::string description;
+    auto append = [&] (size_t count, std::string_view name) {
+        if (!count) return;
+        if (!description.empty()) description += " and ";
+        description += count == 1 ? "one " : std::to_string(count) + " ";
+        description += name;
+        if (count != 1) description += 's';
+    };
+    append(std::count(gap.begin(), gap.end(), ' '), "space");
+    append(std::count(gap.begin(), gap.end(), '\t'), "tab");
+    // CR can appear at the end of a line split on LF.
+    append(std::count(gap.begin(), gap.end(), '\r'), "carriage return");
+    auto other = std::count_if(gap.begin(), gap.end(), [] (unsigned char c) {
+        return c != ' ' && c != '\t' && c != '\r';
+    });
+    append(other, "other whitespace character");
+    return description;
+}
+
+std::string SpacingMessage(std::string_view actual, std::string_view expected,
+    size_t begin, size_t end, size_t expectedBegin, size_t expectedEnd)
+{
+    auto found = DescribeWhitespace(actual.substr(begin, end - begin));
+    auto wanted = DescribeWhitespace(
+        expected.substr(expectedBegin, expectedEnd - expectedBegin));
+    if (begin == 0) {
+        return "indentation: expected " + wanted + ", found " + found;
+    }
+    if (end == actual.size()) {
+        return "trailing whitespace: expected " + wanted + ", found " + found;
+    }
+    std::string token;
+    auto c = static_cast<unsigned char>(actual[end]);
+    if (std::isalnum(c) || c == '_' || c >= 0x80) {
+        auto tokenEnd = end;
+        while (tokenEnd < actual.size() && tokenEnd - end < 24) {
+            auto next = static_cast<unsigned char>(actual[tokenEnd]);
+            if (!std::isalnum(next) && next != '_' && next < 0x80) break;
+            ++tokenEnd;
+        }
+        token = std::string(actual.substr(end, tokenEnd - end));
+    } else {
+        token = actual[end];
+    }
+    return "expected " + wanted + " before '" + token +
+        "', found " + found;
+}
+
 std::vector<Violation> SpacingViolations(
     size_t line, std::string_view actual, std::string_view expected)
 {
@@ -166,7 +217,7 @@ std::vector<Violation> SpacingViolations(
             expected.substr(startB, b - startB))
         {
             violations.push_back({line, ColumnAt(actual, a),
-                "incorrect spacing or indentation"});
+                SpacingMessage(actual, expected, startA, a, startB, b)});
         }
         if (a == actual.size() || b == expected.size()) break;
         // Compare gaps after each byte (including punctuation), not just
