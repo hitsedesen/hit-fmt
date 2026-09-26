@@ -58,7 +58,8 @@ bool ValidCase(std::string_view name, NameCase casing)
             return Lower(c) || Upper(c) || Digit(c);
         });
     }
-    if (name.front() == '_' || name.back() == '_' || name.contains("__"))
+    if (name.front() == '_' || name.back() == '_' ||
+        name.find("__") != std::string_view::npos)
         return false;
     return std::ranges::all_of(name, [casing] (char c) {
         return c == '_' || Digit(c) ||

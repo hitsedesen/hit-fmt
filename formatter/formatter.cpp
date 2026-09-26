@@ -128,7 +128,8 @@ public:
                     // The brace now precedes the trailing comment. Keep the
                     // header/body line break if the body was inline with '{'.
                     if (index + 1 == count ||
-                        !Tree_.WhitespaceAfter(index).contains('\n'))
+                        Tree_.WhitespaceAfter(index).find('\n') ==
+                            std::string_view::npos)
                     {
                         Output_.append(Tree_.WhitespaceBefore(index));
                     }
@@ -566,7 +567,8 @@ private:
             ? 0 : lineStart + 1);
         if (auto parent = BodyIndents_.find(declaration.Tokens.Begin);
             parent != BodyIndents_.end() &&
-                Tree_.WhitespaceBefore(declaration.Tokens.Begin).contains('\n'))
+                Tree_.WhitespaceBefore(declaration.Tokens.Begin).find('\n') !=
+                    std::string_view::npos)
         {
             prefix = parent->second.size();
         }
@@ -578,7 +580,7 @@ private:
             }
             flatWidth += entry.Text.size();
         }
-        const bool overflow = header.contains('\n') ||
+        const bool overflow = header.find('\n') != std::string_view::npos ||
             flatWidth > Style_.ColumnLimit;
         const bool firstNew = Style_.InheritanceListStart ==
                 InheritanceListStart::NewLine ||
@@ -990,8 +992,9 @@ private:
             }
             const auto begin = Tree_.Token(header).Text.Begin;
             const auto end = Tree_.Token(last).Text.End;
-            const bool multiline = Tree_.Source().substr(begin, end - begin)
-                .contains('\n');
+            const bool multiline =
+                Tree_.Source().substr(begin, end - begin).find('\n') !=
+                std::string_view::npos;
             const auto placement =
                 policy == ControlBlockBracePlacement::NewLine ||
                     (policy == ControlBlockBracePlacement::AttachUnlessMultiline &&
@@ -1122,7 +1125,8 @@ private:
                 std::string_view::npos &&
             beforeComment.find_first_not_of(" \t") ==
                 std::string_view::npos &&
-            Tree_.WhitespaceAfter(index + 1).contains('\n');
+            Tree_.WhitespaceAfter(index + 1).find('\n') !=
+            std::string_view::npos;
     }
 
     void EmitGap(TokenIndex index)
@@ -1603,7 +1607,8 @@ std::string FlattenExpressionOperators(const parser::SyntaxTree& tree,
         auto end = cursor;
         bool protectedLine = (lineEnd > lineStart &&
             source[lineEnd - 1] == '\r') ||
-            source.substr(lineStart, lineEnd - lineStart).contains('\\');
+            source.substr(lineStart, lineEnd - lineStart).find('\\') !=
+            std::string_view::npos;
         auto first = source.find_first_not_of(" \t", lineStart);
         protectedLine |= first < lineEnd && source[first] == '#';
         while (end < tree.TokenCount() &&
@@ -1614,7 +1619,7 @@ std::string FlattenExpressionOperators(const parser::SyntaxTree& tree,
                 tree.Kind(end) == TK::PreprocessingDirective ||
                 token.Begin < lineStart || token.End > lineEnd ||
                 source.substr(token.Begin, token.End - token.Begin)
-                    .contains('\r');
+                    .find('\r') != std::string_view::npos;
             ++end;
         }
         if (protectedLine) {
@@ -1693,19 +1698,20 @@ std::string FlattenExpressionOperators(const parser::SyntaxTree& tree,
         auto before = tree.WhitespaceBefore(index);
         auto after = tree.WhitespaceAfter(index);
         if (!IsWhitespace(before) || !IsWhitespace(after) ||
-            before.contains('\r') || after.contains('\r'))
+            before.find('\r') != std::string_view::npos ||
+            after.find('\r') != std::string_view::npos)
         {
             continue;
         }
         auto opening = tree.Token(index).Text.Begin;
         auto closing = tree.Token(index).Text.End;
         if (before != " " &&
-            (normalizeAll || before.contains('\n')))
+            (normalizeAll || before.find('\n') != std::string_view::npos))
         {
             edits.push_back({opening - before.size(), opening, " "});
         }
         if (after != " " &&
-            (normalizeAll || after.contains('\n')))
+            (normalizeAll || after.find('\n') != std::string_view::npos))
         {
             edits.push_back({closing, closing + after.size(), " "});
         }
@@ -1724,7 +1730,8 @@ std::string FlattenExpressionOperators(const parser::SyntaxTree& tree,
         }
         output.append(source.substr(from, edit.Begin - from));
         if (mergedPositions &&
-            source.substr(edit.Begin, edit.End - edit.Begin).contains('\n'))
+            source.substr(edit.Begin, edit.End - edit.Begin).find('\n') !=
+                std::string_view::npos)
         {
             mergedPositions->push_back(output.size());
         }
@@ -1884,13 +1891,14 @@ bool SafeOperatorGap(const parser::SyntaxTree& tree, TokenIndex index)
     auto before = tree.WhitespaceBefore(index);
     auto after = tree.WhitespaceAfter(index);
     return IsWhitespace(before) && IsWhitespace(after) &&
-        !before.contains('\r') && !after.contains('\r') &&
+        before.find('\r') == std::string_view::npos &&
+        after.find('\r') == std::string_view::npos &&
         tree.Kind(index - 1) != TK::Comment &&
         tree.Kind(index + 1) != TK::Comment &&
         tree.Kind(index - 1) != TK::PreprocessingDirective &&
         tree.Kind(index + 1) != TK::PreprocessingDirective &&
-        !tree.TokenText(index - 1).contains('\n') &&
-        !tree.TokenText(index + 1).contains('\n');
+        tree.TokenText(index - 1).find('\n') == std::string_view::npos &&
+        tree.TokenText(index + 1).find('\n') == std::string_view::npos;
 }
 
 void PlaceOperatorBreak(const parser::SyntaxTree& tree, TokenIndex index,
@@ -1901,8 +1909,8 @@ void PlaceOperatorBreak(const parser::SyntaxTree& tree, TokenIndex index,
     }
     auto before = tree.WhitespaceBefore(index);
     auto after = tree.WhitespaceAfter(index);
-    const bool leftBreak = before.contains('\n');
-    const bool rightBreak = after.contains('\n');
+    const bool leftBreak = before.find('\n') != std::string_view::npos;
+    const bool rightBreak = after.find('\n') != std::string_view::npos;
     if (!leftBreak && !rightBreak) {
         return;
     }
@@ -2027,11 +2035,14 @@ std::string CompleteTernaryBreaks(const parser::SyntaxTree& tree,
             }
             if (!unsafe && SafeOperatorGap(tree, question) &&
                 SafeOperatorGap(tree, colon) &&
-                !source.substr(tokenBegin, tokenEnd - tokenBegin).contains('\r'))
+                source.substr(tokenBegin, tokenEnd - tokenBegin).find('\r') ==
+                    std::string_view::npos)
             {
                 auto hasBreak = [&] (TokenIndex i) {
-                    return tree.WhitespaceBefore(i).contains('\n') ||
-                        tree.WhitespaceAfter(i).contains('\n');
+                    return tree.WhitespaceBefore(i).find('\n') !=
+                            std::string_view::npos ||
+                        tree.WhitespaceAfter(i).find('\n') !=
+                            std::string_view::npos;
                 };
                 auto questionBreak = hasBreak(question);
                 auto colonBreak = hasBreak(colon);
@@ -2049,8 +2060,8 @@ std::string CompleteTernaryBreaks(const parser::SyntaxTree& tree,
                         std::string_view::npos;
                 if ((questionBreak || colonBreak ||
                     (sameLine && lineEnd - lineStart > style.ColumnLimit)) &&
-                    !source.substr(lineStart, lineEnd - lineStart)
-                        .contains('\\') &&
+                    source.substr(lineStart, lineEnd - lineStart)
+                        .find('\\') == std::string_view::npos &&
                     (lineEnd == source.size() || lineEnd == 0 ||
                         source[lineEnd - 1] != '\r'))
                 {
@@ -2066,9 +2077,11 @@ std::string CompleteTernaryBreaks(const parser::SyntaxTree& tree,
                     auto continuation = "\n" + std::string(
                         leading + style.IndentWidth, ' ');
                     const bool inheritedTrailing = questionBreak
-                        ? tree.WhitespaceAfter(question).contains('\n')
+                        ? tree.WhitespaceAfter(question).find('\n') !=
+                              std::string_view::npos
                         : colonBreak &&
-                            tree.WhitespaceAfter(colon).contains('\n');
+                            tree.WhitespaceAfter(colon).find('\n') !=
+                              std::string_view::npos;
                     const bool trailing = style.TernaryOperatorPlacement ==
                         TernaryOperatorPlacement::Trailing ||
                         (style.TernaryOperatorPlacement ==
@@ -2153,8 +2166,10 @@ std::string AlignLeadingTernaryColons(const parser::SyntaxTree& tree)
                     });
                 };
                 if (questionStart != colonStart &&
-                    tree.WhitespaceBefore(question).contains('\n') &&
-                    tree.WhitespaceBefore(colon).contains('\n') &&
+                    tree.WhitespaceBefore(question).find('\n') !=
+                        std::string_view::npos &&
+                    tree.WhitespaceBefore(colon).find('\n') !=
+                        std::string_view::npos &&
                     spacesOnly(questionIndent) && spacesOnly(colonIndent) &&
                     questionIndent != colonIndent)
                 {
@@ -2779,7 +2794,8 @@ struct IncludeDirective
 
 std::optional<IncludeDirective> ParseInclude(std::string_view text)
 {
-    if (text.contains('\n') || text.contains('\\')) {
+    if (text.find('\n') != std::string_view::npos ||
+        text.find('\\') != std::string_view::npos) {
         return std::nullopt; // Continued or otherwise ambiguous directives.
     }
     auto skipSpaces = [&text] {
@@ -2908,8 +2924,10 @@ std::vector<LayoutDiagnostic> CheckExpressionLayout(
         if (!SafeOperatorGap(tree, index)) {
             return;
         }
-        bool left = tree.WhitespaceBefore(index).contains('\n');
-        bool right = tree.WhitespaceAfter(index).contains('\n');
+        bool left = tree.WhitespaceBefore(index).find('\n') !=
+            std::string_view::npos;
+        bool right = tree.WhitespaceAfter(index).find('\n') !=
+            std::string_view::npos;
         if ((left || right) && (leading ? !left || right : !right || left)) {
             const auto& token = tree.Token(index);
             diagnostics.push_back({token.Position, std::string(name) +
@@ -2958,8 +2976,10 @@ std::vector<LayoutDiagnostic> CheckExpressionLayout(
                 SafeOperatorGap(tree, colon))
             {
                 auto hasBreak = [&] (TokenIndex i) {
-                    return tree.WhitespaceBefore(i).contains('\n') ||
-                        tree.WhitespaceAfter(i).contains('\n');
+                    return tree.WhitespaceBefore(i).find('\n') !=
+                            std::string_view::npos ||
+                        tree.WhitespaceAfter(i).find('\n') !=
+                            std::string_view::npos;
                 };
                 if (hasBreak(question) != hasBreak(colon)) {
                     auto missing = hasBreak(question) ? colon : question;

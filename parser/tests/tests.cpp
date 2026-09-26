@@ -216,7 +216,7 @@ std::string_view RoleName(parser::PunctuationRole role)
     case ListSeparator:
         return "list-separator";
     }
-    std::unreachable();
+    return "unknown";
 }
 
 std::string SerializePunctuationRoles(const parser::SyntaxTree& tree)
