@@ -75,7 +75,9 @@ CastSpacing = NoSpace
 CommaSpacing = Space
 StatementSemicolonSpacing = NoSpace
 DeclarationSemicolonSpacing = NoSpace
-# NoSpace can merge an export macro with a leading :: qualified type.
+# Prefer Preserve: without name lookup or macro expansion, an identifier
+# before :: may be an export macro, not a qualified-name component.
+# NoSpace could turn GTEST_API_ ::std::string into GTEST_API_::std::string.
 MemberAccessOperatorsSpacing = Preserve
 UnaryOperatorSpacing = NoSpace
 PostfixOperatorSpacing = NoSpace
