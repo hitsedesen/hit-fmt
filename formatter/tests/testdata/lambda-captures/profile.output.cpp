@@ -1,9 +1,5 @@
 void Make()
 {
-    writer.Field = {
-        55,
-        34,
-    };
     auto values = MakeGroup(
         {
             MakeCallback([&] {

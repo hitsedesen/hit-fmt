@@ -177,16 +177,20 @@ std::vector<FormattedCase> FormattedCases()
     cases.push_back({closings, "remove", "trailing-comma.input.cpp"});
     AddCases(cases, std::filesystem::path(FORMATTER_TESTDATA_DIR) /
         "../fold-spacing", {"yt-like", "inherited", "group-space"});
-    const auto ytsaurus = std::filesystem::path(FORMATTER_TESTDATA_DIR) /
-        "../ytsaurus";
     const auto profile = (std::filesystem::path(FORMATTER_TESTDATA_DIR) /
         "../../../../hit-fmt/examples/ytsaurus").lexically_normal().string();
-    for (const auto* name : {"initializer-interior", "overflow-and-spacing",
-        "control-and-local-class", "initializer-and-lambda"})
-    {
-        cases.push_back({ytsaurus, name,
-            std::string(name) + ".input.cpp", profile});
-    }
+    auto addProfileCase = [&] (const char* directory, const char* name) {
+        cases.push_back({std::filesystem::path(FORMATTER_TESTDATA_DIR) /
+            directory, name, std::string(name) + ".input.cpp", profile});
+    };
+    addProfileCase("../spacing-options", "profile-initializers");
+    addProfileCase("../spacing-options", "profile-overflow");
+    addProfileCase("../ternary-layout", "profile");
+    addProfileCase("../assignment-location", "profile");
+    addProfileCase("../function_parameters", "profile");
+    addProfileCase("../body-indent", "profile-control-local");
+    addProfileCase("../lambda-captures", "profile");
+    addProfileCase("../call-reflow", "profile-tabbed-log");
     AddCases(cases, std::filesystem::path(FORMATTER_TESTDATA_DIR) /
         "../call-like-macro", {"selected"});
     AddCases(cases, std::filesystem::path(FORMATTER_TESTDATA_DIR) /
@@ -194,16 +198,13 @@ std::vector<FormattedCase> FormattedCases()
     AddCases(cases, std::filesystem::path(FORMATTER_TESTDATA_DIR) /
         "../control-header-clauses", {"preserve", "split",
             "indent-width"});
-    cases.push_back({ytsaurus, "lambda-body-profile",
-        "../lambda-body/input.cpp", profile});
-    cases.push_back({ytsaurus, "control-header-clauses",
-        "control-header-clauses.input.cpp", profile});
-    cases.push_back({ytsaurus, "enum-macro-closing",
-        "enum-macro-closing.input.cpp", profile});
-    cases.push_back({ytsaurus, "balanced-expression-breaks",
-        "balanced-expression-breaks.input.cpp", profile});
-    cases.push_back({ytsaurus, "deep-call-arguments",
-        "deep-call-arguments.input.cpp", profile});
+    cases.push_back({std::filesystem::path(FORMATTER_TESTDATA_DIR) /
+        "../lambda-body", "profile", "input.cpp", profile});
+    addProfileCase("../control-header-clauses", "profile");
+    addProfileCase("../whitespace-sensitive-macros", "profile");
+    addProfileCase("../call-reflow", "balanced-expressions");
+    addProfileCase("../call-reflow", "profile-nested");
+    addProfileCase("../chained-calls", "profile-multiline-lambda");
     const auto google = std::filesystem::path(FORMATTER_TESTDATA_DIR) /
         "../google-style-regressions";
     cases.push_back({google, "inline-record", "inline-record.input.cpp"});
@@ -258,7 +259,12 @@ std::vector<FormattedCase> FormattedCases()
         if (filename.ends_with(".input.cpp")) {
             const auto name = filename.substr(0,
                 filename.size() - std::string_view(".input.cpp").size());
-            cases.push_back({spacing, name, filename});
+            const auto duplicate = std::ranges::any_of(cases,
+                [&] (const FormattedCase& value) {
+                    return value.Directory.lexically_normal() ==
+                        spacing.lexically_normal() && value.Name == name;
+                });
+            if (!duplicate) cases.push_back({spacing, name, filename});
         }
     }
     std::ranges::sort(cases, {}, [] (const auto& value) {

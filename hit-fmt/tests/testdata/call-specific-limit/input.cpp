@@ -1,4 +1,4 @@
 void Check()
 {
-    EXPECT_THROW(WaitFor(taskPromise.ToFuture()).ThrowOnError(), TInterruptedRequestException);
+    EXPECT_THROW(WaitFor(notifyReady.ToFuture()).ThrowOnError(), TWorkerLeaseRevokedDuringShutdownException);
 }

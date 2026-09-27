@@ -17,29 +17,3 @@ void Check(Parts... parts)
             ? pendingValues
             : activeValues;
 }
-
-EMode ResolveMode()
-{
-    return configuredMode.value_or(
-        selectedEncoding == EEncoding::HumanReadable
-            ? EMode::ReadFriendlyFormat
-            : EMode::CompactBinaryFormat);
-}
-
-void ConfigureEndpoint()
-{
-    Endpoint endpoint;
-    endpoint = Endpoint::CreateSocketFromConfigPath(
-        Paths::ResolveNormalizedAbsolutePath(*settings.PreferredNetworkSocketPath));
-    auto unchanged =
-        MakeMode(shortCode);
-}
-
-void ResolvePath(
-    const SomeVeryLongPath& path,
-    Request* /*request*/,
-    Response* /*response*/,
-    const SomeVeryLongContextPointer& context)
-{
-    Use(path);
-}

@@ -1,6 +1,6 @@
 void Compare()
 {
-    auto previousPendingControl = static_cast<EPollControl>(PendingControl_.fetch_and(~static_cast<ui64>(EPollControl::Offline)));
+    auto previousChannelModeFromLegacyMask = static_cast<EChannelMode>(ControlBits_.fetch_and(~static_cast<uint64_t>(EChannelMode::Sleeping)));
     auto inner = static_cast<Tiny>(CalculateLongReachableIdentifierStateFromCachedValue(LongArgumentRepresentingCurrentEnvironmentAndScheduler));
     auto mustStay = static_cast<ELarge>(Make(/* preserve */ VeryLongArgumentRepresentingTheEntireSchedulerStateAndCurrentWorker));
     auto withTernary = static_cast<ELarge>(condition ? FetchValueFromPrimaryProcessorWithLongName() : FetchValueFromSecondaryProcessorWithLongName());
