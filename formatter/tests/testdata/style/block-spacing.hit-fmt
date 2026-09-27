@@ -1,0 +1,5 @@
+BlockInteriorSpacing = NoSpace
+EmptyBlockInteriorSpacing = Space
+ControlBlockSpaceBeforeBrace = Space
+DeclarationSemicolonSpacing = NoSpace
+StatementSemicolonSpacing = NoSpace

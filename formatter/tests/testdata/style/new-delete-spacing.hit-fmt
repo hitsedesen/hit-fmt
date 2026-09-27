@@ -1,0 +1,6 @@
+NewInitializerSpaceBeforeBraces = Space
+NewInitializerParenthesisInteriorSpacing = Space
+DeleteArraySpaceAfterBrackets = Space
+PlacementNewSpaceAfterArguments = Space
+NewInitializerBraceInteriorSpacing = Space
+PlacementNewArgumentInteriorSpacing = Space

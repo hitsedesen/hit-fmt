@@ -1824,7 +1824,8 @@ private:
 
     [[nodiscard]] bool IsDeclarationSpecifier(TK kind) const
     {
-        return IsTypeKeyword(kind) || kind == TK::Keyword_explicit ||
+        return IsTypeKeyword(kind) || kind == TK::Keyword_alignas ||
+            kind == TK::Keyword_explicit ||
             kind == TK::Keyword_friend || kind == TK::Keyword_virtual;
     }
 
@@ -3067,10 +3068,11 @@ private:
                     continue;
                 }
                 bool isOperatorName = Kind(previous) == TK::Keyword_operator;
-                bool isExtensionAttribute = Text(previous) == "__attribute__" ||
+                bool isAttribute = Kind(previous) == TK::Keyword_alignas ||
+                    Text(previous) == "__attribute__" ||
                     Text(previous) == "__declspec";
                 if (!sawAssignmentBeforeParameters && !sawTopLevelParameters &&
-                    !isOperatorName && !isExtensionAttribute)
+                    !isOperatorName && !isAttribute)
                 {
                     parameterBegin = begin;
                     parameterEnd = Cursor_;
@@ -4579,6 +4581,15 @@ private:
     [[nodiscard]] NodeKind ClassifySimpleStatement(size_t start) const
     {
         auto first = SkipAttributeSpecifiers(start);
+        while (Kind(first) == TK::Keyword_alignas &&
+            SignificantKind(first + 1) == TK::Operator_OpenParenthesis)
+        {
+            auto end = FindBalancedEnd(NextSignificant(first + 1));
+            if (end == std::numeric_limits<TokenIndex>::max()) {
+                break;
+            }
+            first = SkipAttributeSpecifiers(end);
+        }
         if (IsTypeKeyword(Kind(first)) || IsKnownType(first)) {
             return NodeKind::DeclarationStatement;
         }

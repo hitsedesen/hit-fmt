@@ -4,6 +4,7 @@
 #include <cstddef>
 #include <optional>
 #include <string_view>
+#include <type_traits>
 #include <utility>
 
 namespace formatter {
@@ -45,6 +46,69 @@ DEFINE_CONFIG_ENUM(IncludeOrder, INCLUDE_ORDER_VALUES);
 #define BODY_INDENTATION_VALUES(X) X(Preserve) X(Indent) X(NoIndent)
 DEFINE_CONFIG_ENUM(BodyIndentation, BODY_INDENTATION_VALUES);
 #undef BODY_INDENTATION_VALUES
+
+#define POINTER_REFERENCE_LOCATION_VALUES(X)                                  \
+    X(Preserve) X(Left) X(Middle) X(Right)
+DEFINE_CONFIG_ENUM(PointerReferenceLocation,
+    POINTER_REFERENCE_LOCATION_VALUES);
+#undef POINTER_REFERENCE_LOCATION_VALUES
+
+#define TOKEN_SPACING_VALUES(X) X(Preserve) X(Space) X(NoSpace)
+DEFINE_CONFIG_ENUM(TokenSpacing, TOKEN_SPACING_VALUES);
+#undef TOKEN_SPACING_VALUES
+
+#define TIGHT_OPERATOR_SPACING_VALUES(X) X(Preserve) X(NoSpace)
+DEFINE_CONFIG_ENUM(TightOperatorSpacing, TIGHT_OPERATOR_SPACING_VALUES);
+#undef TIGHT_OPERATOR_SPACING_VALUES
+
+#define TERNARY_OPERATOR_SPACING_VALUES(X) X(Preserve) X(Space)
+DEFINE_CONFIG_ENUM(TernaryOperatorSpacing, TERNARY_OPERATOR_SPACING_VALUES);
+#undef TERNARY_OPERATOR_SPACING_VALUES
+
+#define COMMA_SPACING_VALUES(X) X(Preserve) X(After) X(NoSpace)
+DEFINE_CONFIG_ENUM(CommaSpacing, COMMA_SPACING_VALUES);
+#undef COMMA_SPACING_VALUES
+
+#define COLON_SPACING_VALUES(X)                                                 \
+    X(Preserve) X(NoSpace) X(Left) X(Right) X(LeftAndRight)
+DEFINE_CONFIG_ENUM(ColonSpacing, COLON_SPACING_VALUES);
+#undef COLON_SPACING_VALUES
+
+#define CONSTRUCTOR_COLON_PLACEMENT_VALUES(X)                                   \
+    X(AttachToInitializer) X(AttachToConstructor)
+DEFINE_CONFIG_ENUM(ConstructorInitializerColonPlacement,
+    CONSTRUCTOR_COLON_PLACEMENT_VALUES);
+#undef CONSTRUCTOR_COLON_PLACEMENT_VALUES
+
+#define CONSTRUCTOR_LIST_START_VALUES(X)                                        \
+    X(NewLine) X(ConstructorLine) X(NewLineOnOverflow)
+DEFINE_CONFIG_ENUM(ConstructorInitializerStart,
+    CONSTRUCTOR_LIST_START_VALUES);
+#undef CONSTRUCTOR_LIST_START_VALUES
+
+#define RETURN_ARROW_SPACING_VALUES(X)                                          \
+    X(Preserve) X(NoSpace) X(Left) X(Right) X(LeftAndRight)
+DEFINE_CONFIG_ENUM(ReturnArrowSpacing, RETURN_ARROW_SPACING_VALUES);
+#undef RETURN_ARROW_SPACING_VALUES
+
+#define OPERATOR_OVERLOAD_SPACING_VALUES(X)                                     \
+    X(Preserve) X(NoSpace) X(Left) X(Right) X(LeftAndRight)
+DEFINE_CONFIG_ENUM(OperatorOverloadOperatorSpacing,
+    OPERATOR_OVERLOAD_SPACING_VALUES);
+#undef OPERATOR_OVERLOAD_SPACING_VALUES
+
+#define PREPROCESSOR_INDENTATION_VALUES(X)                                       \
+    X(Preserve) X(LineStart) X(PreprocessorIndented)
+DEFINE_CONFIG_ENUM(PreprocessorIndentation, PREPROCESSOR_INDENTATION_VALUES);
+#undef PREPROCESSOR_INDENTATION_VALUES
+
+#define INDENTATION_KIND_VALUES(X) X(Preserve) X(Spaces) X(Tabs)
+DEFINE_CONFIG_ENUM(IndentationKind, INDENTATION_KIND_VALUES);
+#undef INDENTATION_KIND_VALUES
+
+#define TRAILING_WHITESPACE_VALUES(X) X(Preserve) X(Trim)
+DEFINE_CONFIG_ENUM(TrailingWhitespace, TRAILING_WHITESPACE_VALUES);
+#undef TRAILING_WHITESPACE_VALUES
 
 #define INHERITANCE_LIST_MODE_VALUES(X) X(Preserve) X(Format)
 DEFINE_CONFIG_ENUM(InheritanceListMode, INHERITANCE_LIST_MODE_VALUES);
@@ -195,7 +259,8 @@ template <typename T>
 template <typename T>
 [[nodiscard]] constexpr std::string_view SerializeConfigEnum(T value)
 {
-    return ConfigEnumNames<T>::Values[std::to_underlying(value)];
+    return ConfigEnumNames<T>::Values[
+        static_cast<std::underlying_type_t<T>>(value)];
 }
 
 } // namespace formatter

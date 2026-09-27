@@ -1,0 +1,4 @@
+GroupingInteriorSpacing = Space
+ControlBlockConditionSpacing = Space
+AccessModifierColonSpacing = Space
+RangeBasedForColonSpacing = Space

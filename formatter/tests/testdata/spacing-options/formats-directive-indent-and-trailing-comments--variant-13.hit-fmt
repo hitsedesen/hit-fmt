@@ -1,0 +1,5 @@
+IndentWidth = 4
+IndentationKind = Spaces
+PreprocessorIndentation = PreprocessorIndented
+TrailingCommentSpacing = NoSpace
+IndentMembers = Indent

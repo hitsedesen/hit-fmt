@@ -1,0 +1,10 @@
+EmptyFunctionCallArgumentsSpacing = NoSpace
+EmptyFunctionParametersSpacing = NoSpace
+EmptyLambdaParametersSpacing = NoSpace
+EmptyLambdaCaptureSpacing = NoSpace
+ReturnArrowSpacing = NoSpace
+SubscriptOperatorSpacing = NoSpace
+SubscriptOperatorInteriorSpacing = NoSpace
+ArrayDeclarationSpacing = NoSpace
+ArrayDeclarationInteriorSpacing = NoSpace
+BraceInitializerSpacing = NoSpace

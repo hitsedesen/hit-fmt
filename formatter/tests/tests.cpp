@@ -172,6 +172,20 @@ std::vector<FormattedCase> FormattedCases()
         cases.push_back({std::filesystem::path(FORMATTER_TESTDATA_DIR) /
             ".." / name, "configured"});
     }
+    // Keep safety and recovered-syntax examples in separate parse units.
+    const auto spacing = std::filesystem::path(FORMATTER_TESTDATA_DIR) /
+        ".." / "spacing-options";
+    for (const auto& entry : std::filesystem::directory_iterator(spacing)) {
+        const auto filename = entry.path().filename().string();
+        if (filename.ends_with(".input.cpp")) {
+            const auto name = filename.substr(0,
+                filename.size() - std::string_view(".input.cpp").size());
+            cases.push_back({spacing, name, filename});
+        }
+    }
+    std::ranges::sort(cases, {}, [] (const auto& value) {
+        return value.Directory.string() + value.Name;
+    });
     return cases;
 }
 
@@ -949,6 +963,14 @@ TEST(FunctionParameterSafetyTest, ComposesWithBracePlacement)
     EXPECT_EQ(format("void Many(int alpha, int beta, int gamma, int delta) {}\n"),
         expected);
     EXPECT_EQ(format(expected), expected);
+    style.IndentationKind = formatter::IndentationKind::Tabs;
+    const std::string tabbed =
+        "void Many(int alpha, int beta,\n"
+        "\tint gamma, int delta)\n"
+        "{}\n";
+    EXPECT_EQ(format("void Many(int alpha, int beta, int gamma, int delta) {}\n"),
+        tabbed);
+    EXPECT_EQ(format(tabbed), tabbed);
 }
 
 TEST(FunctionParameterSafetyTest, KeepsCrlfListsAndCalls)
@@ -1111,6 +1133,22 @@ TEST(PreserveConfigTest, RejectsInvalidSettings)
         "InheritanceListSplit = Unknown\n",
         "InheritanceListIndent = 0\n",
         "InheritanceListIndent = 33\n",
+        "ConstructorInitializerListIndent = 33\n",
+        "ConstructorInitializerListIndent = 0\n",
+        "ConstructorInitializerListStart = Attach\n",
+        "ConstructorInitializerListColonPlacement = Left\n",
+        "CastArgumentSpacing = Middle\n",
+        "GroupingInteriorSpacing = Middle\n",
+        "BlockInteriorSpacing = Middle\n",
+        "EmptyBlockInteriorSpacing = Middle\n",
+        "ControlBlockSpaceBeforeBrace = Middle\n",
+        "DeclarationSemicolonSpacing = Middle\n",
+        "ControlBlockConditionSpacing = Middle\n",
+        "AccessModifierColonSpacing = Middle\n",
+        "RangeBasedForColonSpacing = Middle\n",
+        "BitFieldColonSpacing = Space\n",
+        "EnumUnderlyingTypeColonSpacing = Space\n",
+        "LabelColonSpacing = Space\n",
         "InheritanceListStart = Attach\n",
         "InheritanceListSplit = Preserve\n",
         "InheritanceListMerge = true\n",
@@ -1144,6 +1182,83 @@ TEST(PreserveConfigTest, RejectsInvalidSettings)
         "SpaceInsideLambdaParameters = Unknown\n",
         "SpaceInsideCallArguments = Unknown\n",
         "ControlBlockKeywordSpacing = Unknown\n",
+        "CommaSpacing = Space\n",
+        "LoopSemicolonSpacing = After\n",
+        "ConditionInitSemicolonSpacing = After\n",
+        "ControlBlockSemicolonSpacing = Space\n",
+        "TrailingWhitespace = Space\n",
+        "IndentationKind = Mixed\n",
+        "PreprocessorIndentation = Indent\n",
+        "TrailingCommentSpacing = After\n",
+        "TemplateKeywordSpacing = After\n",
+        "TemplateTypeArgumentInteriorSpacing = After\n",
+        "TemplateAngleBracketsSpacing = Space\n",
+        "TemplateTypeArgumentSpacing = After\n",
+        "EmptyBraceInitializerInteriorSpacing = After\n",
+        "OperatorOverloadOperatorSpacing = Space\n",
+        "AttributeInteriorSpacing = After\n",
+        "AttributeSpaceAfterSpecifier = After\n",
+        "NamedCastSpaceBeforeTypeArguments = After\n",
+        "PlacementNewSpaceBeforeArguments = After\n",
+        "AttributeSpaceBeforeSpecifier = After\n",
+        "NewInitializerSpaceBeforeParentheses = After\n",
+        "DeleteArraySpaceBeforeBrackets = After\n",
+        "SizeofPackSpaceBeforeParentheses = After\n",
+        "NewInitializerSpaceBeforeBraces = After\n",
+        "NewInitializerParenthesisInteriorSpacing = After\n",
+        "DeleteArraySpaceAfterBrackets = After\n",
+        "PlacementNewSpaceAfterArguments = After\n",
+        "NewArraySpaceBeforeBrackets = After\n",
+        "NewArrayInteriorSpacing = After\n",
+        "EmptyAttributeInteriorSpacing = After\n",
+        "CoAwaitSpaceBeforeParentheses = After\n",
+        "NewInitializerBraceInteriorSpacing = After\n",
+        "PlacementNewArgumentInteriorSpacing = After\n",
+        "EmptyArrayDeclarationInteriorSpacing = After\n",
+        "EmptyNewArrayInteriorSpacing = After\n",
+        "NoexceptSpaceBeforeSpecifier = After\n",
+        "NamedCastSpaceBeforeOperandParentheses = After\n",
+        "ReturnSpaceBeforeParentheses = After\n",
+        "ThrowSpaceBeforeParentheses = After\n",
+        "CoReturnSpaceBeforeParentheses = After\n",
+        "FunctionSuffixSpecifierSpacing = After\n",
+        "RecordBodyInteriorSpacing = After\n",
+        "NamespaceBodyInteriorSpacing = After\n",
+        "EnumBodyInteriorSpacing = After\n",
+        "RequirementBodyInteriorSpacing = After\n",
+        "FunctionQualifierSpacing = After\n",
+        "FunctionRefQualifierSpacing = After\n",
+        "NestedDeclaratorInteriorSpacing = After\n",
+        "NestedDeclaratorPointerSpacing = After\n",
+        "MemberPointerDeclaratorSpacing = After\n",
+        "NoexceptSpaceBeforeParentheses = After\n",
+        "AlignasSpaceBeforeParentheses = After\n",
+        "AlignofSpaceBeforeParentheses = After\n",
+        "SizeofSpaceBeforeParentheses = After\n",
+        "DecltypeSpaceBeforeParentheses = After\n",
+        "TypeidSpaceBeforeParentheses = After\n",
+        "RequiresSpaceBeforeParentheses = After\n",
+        "StaticAssertSpaceBeforeParentheses = After\n",
+        "StatementSemicolonSpacing = Space\n",
+        "MemberAccessOperatorsSpacing = Space\n",
+        "InitializerBracesSpacing = Middle\n",
+        "UnaryOperatorSpacing = Space\n",
+        "PostfixOperatorSpacing = Space\n",
+        "TernaryOperatorSpacing = NoSpace\n",
+        "ArrayDeclarationInteriorSpacing = Middle\n",
+        "SubscriptOperatorInteriorSpacing = Middle\n",
+        "SubscriptBracketSpacing = Space\n",
+        "ArrayDeclarationBracketSpacing = Space\n",
+        "ReturnArrowSpacing = Space\n",
+        "EmptyFunctionCallArgumentsSpacing = Middle\n",
+        "EmptyFunctionParametersSpacing = Middle\n",
+        "EmptyLambdaParametersSpacing = Middle\n",
+        "EmptyLambdaCaptureSpacing = Middle\n",
+        "SubscriptOperatorSpacing = Middle\n",
+        "ArrayDeclarationSpacing = Middle\n",
+        "BraceInitializerSpacing = Middle\n",
+        "StructuredBindingBracketSpacing = Middle\n",
+        "SemicolonSpacing = Space\n",
         "ControlBlockBracePlacement = Unknown\n",
         "Exclude = [\"[\"]\n",
         "Exclude = [\n  \"foo\",\n",

@@ -3,8 +3,9 @@
 The formatter preserves source-owned token and trivia bytes except where an
 explicitly configured declaration brace, lambda capture-to-parameter
 spacing, lambda capture spacing, function parameter or call spacing,
-control keyword spacing or brace placement, namespace comment, include
-ordering, or function parameter rule applies.
+control keyword spacing or brace placement, token spacing, generated
+indentation, preprocessor indentation, trailing comment spacing,
+namespace comment, include ordering, or function parameter rule applies.
 All formatting rules default to preserving the source.
 Naming rules default to unchecked and never rewrite identifiers; `--check`
 reports violations with file, line and column and returns a nonzero status.
@@ -20,6 +21,104 @@ line. Example:
 ```text
 IndentWidth = 4
 ColumnLimit = 120
+IndentationKind = Preserve
+PreprocessorIndentation = Preserve
+TrailingCommentSpacing = Preserve
+NamedCastSpaceBeforeOperandParentheses = Preserve
+ReturnSpaceBeforeParentheses = Preserve
+ThrowSpaceBeforeParentheses = Preserve
+CoReturnSpaceBeforeParentheses = Preserve
+FunctionSuffixSpecifierSpacing = Preserve
+RecordBodyInteriorSpacing = Preserve
+NamespaceBodyInteriorSpacing = Preserve
+EnumBodyInteriorSpacing = Preserve
+RequirementBodyInteriorSpacing = Preserve
+TrailingWhitespace = Preserve
+TemplateKeywordSpacing = Preserve
+TemplateTypeArgumentInteriorSpacing = Preserve
+TemplateTypeArgumentSpacing = Preserve
+EmptyBraceInitializerInteriorSpacing = Preserve
+OperatorOverloadOperatorSpacing = Preserve
+AttributeInteriorSpacing = Preserve
+AttributeSpaceAfterSpecifier = Preserve
+NamedCastSpaceBeforeTypeArguments = Preserve
+PlacementNewSpaceBeforeArguments = Preserve
+AttributeSpaceBeforeSpecifier = Preserve
+NewInitializerSpaceBeforeParentheses = Preserve
+DeleteArraySpaceBeforeBrackets = Preserve
+SizeofPackSpaceBeforeParentheses = Preserve
+NewInitializerSpaceBeforeBraces = Preserve
+NewInitializerParenthesisInteriorSpacing = Preserve
+DeleteArraySpaceAfterBrackets = Preserve
+PlacementNewSpaceAfterArguments = Preserve
+NewArraySpaceBeforeBrackets = Preserve
+NewArrayInteriorSpacing = Preserve
+EmptyAttributeInteriorSpacing = Preserve
+CoAwaitSpaceBeforeParentheses = Preserve
+NewInitializerBraceInteriorSpacing = Preserve
+PlacementNewArgumentInteriorSpacing = Preserve
+EmptyArrayDeclarationInteriorSpacing = Preserve
+EmptyNewArrayInteriorSpacing = Preserve
+NoexceptSpaceBeforeSpecifier = Preserve
+FunctionQualifierSpacing = Preserve
+FunctionRefQualifierSpacing = Preserve
+NestedDeclaratorInteriorSpacing = Preserve
+NestedDeclaratorPointerSpacing = Preserve
+MemberPointerDeclaratorSpacing = Preserve
+NoexceptSpaceBeforeParentheses = Preserve
+AlignasSpaceBeforeParentheses = Preserve
+AlignofSpaceBeforeParentheses = Preserve
+SizeofSpaceBeforeParentheses = Preserve
+DecltypeSpaceBeforeParentheses = Preserve
+TypeidSpaceBeforeParentheses = Preserve
+RequiresSpaceBeforeParentheses = Preserve
+StaticAssertSpaceBeforeParentheses = Preserve
+StatementSemicolonSpacing = Preserve
+MemberAccessOperatorsSpacing = Preserve
+InitializerBracesSpacing = Preserve
+CastArgumentSpacing = Preserve
+GroupingInteriorSpacing = Preserve
+ControlBlockConditionSpacing = Preserve
+AccessModifierColonSpacing = Preserve
+RangeBasedForColonSpacing = Preserve
+BlockInteriorSpacing = Preserve
+EmptyBlockInteriorSpacing = Preserve
+ControlBlockSpaceBeforeBrace = Preserve
+DeclarationSemicolonSpacing = Preserve
+BitFieldColonSpacing = Preserve
+EnumUnderlyingTypeColonSpacing = Preserve
+LabelColonSpacing = Preserve
+ConstructorInitializerList = Preserve
+ConstructorInitializerListColonPlacement = AttachToInitializer
+ConstructorInitializerListColonSpaceBefore = NoSpace
+ConstructorInitializerListColonSpaceAfter = Space
+ConstructorInitializerListCommaPlacement = AttachToNext
+ConstructorInitializerListCommaSpaceBefore = NoSpace
+ConstructorInitializerListCommaSpaceAfter = Space
+ConstructorInitializerListStart = NewLine
+ConstructorInitializerListSplit = OnePerLine
+# ConstructorInitializerListIndent defaults to IndentWidth when omitted
+PointerReferenceLocation = Preserve
+UnaryOperatorSpacing = Preserve
+PostfixOperatorSpacing = Preserve
+TernaryOperatorSpacing = Preserve
+BinaryOperatorSpacing = Preserve
+AssignmentOperatorSpacing = Preserve
+CastSpacing = Preserve
+CommaSpacing = Preserve
+LoopSemicolonSpacing = Preserve
+ConditionInitSemicolonSpacing = Preserve
+SubscriptOperatorInteriorSpacing = Preserve
+SubscriptOperatorSpacing = Preserve
+ArrayDeclarationInteriorSpacing = Preserve
+ArrayDeclarationSpacing = Preserve
+BraceInitializerSpacing = Preserve
+ReturnArrowSpacing = Preserve
+EmptyFunctionCallArgumentsSpacing = Preserve
+EmptyFunctionParametersSpacing = Preserve
+EmptyLambdaParametersSpacing = Preserve
+EmptyLambdaCaptureSpacing = Preserve
+StructuredBindingBracketSpacing = Preserve
 IncludeOrder = Preserve
 IndentAccessModifiers = Preserve
 IndentMembers = Preserve
@@ -91,6 +190,319 @@ Exclude = [
 - `ColumnLimit`: positive integer up to 10000. Function parameter lists,
   call arguments, expressions, and inheritance lists can be wrapped
   according to their split settings.
+- `IndentationKind`: `Preserve` (default), `Spaces`, or `Tabs` for
+  formatter-generated indentation. `Preserve` and `Spaces` retain the
+  previous space-based output; `Tabs` emits tabs at `IndentWidth`-column
+  stops, then spaces for any remainder. Existing indentation and comment
+  text are not converted. This also affects indentation generated by
+  `PreprocessorIndentation = PreprocessorIndented`.
+- `PreprocessorIndentation`: `Preserve` (default), `LineStart`, or
+  `PreprocessorIndented`. `LineStart` places single-line directives at
+  column zero. `PreprocessorIndented` does the same for outer directives
+  and adds one `IndentWidth` level after `#if`, `#ifdef`, and `#ifndef`;
+  nested directives, including `#define`, use that level. `#elif`,
+  `#else`, and `#endif` align with their opener. This setting changes
+  only directive prefixes, not code in branches, directive contents, or
+  multiline/continued directives. Unbalanced conditional groups remain
+  unchanged in `PreprocessorIndented` mode.
+- `TrailingCommentSpacing`: `Preserve` (default), `Space`, or `NoSpace`
+  between code and a same-line `//` comment. Standalone comments, block
+  comments, comments within directives, and line breaks stay unchanged;
+  this does not align comment columns.
+- `NamedCastSpaceBeforeOperandParentheses`: `Preserve` (default),
+  `Space`, or `NoSpace` between the closing `>` and operand `(` of a
+  complete parsed named cast (`static_cast<int> (x)` versus
+  `static_cast<int>(x)`). Ambiguous `>>`-terminated type arguments
+  remain source-owned.
+- `ReturnSpaceBeforeParentheses`, `ThrowSpaceBeforeParentheses`, and
+  `CoReturnSpaceBeforeParentheses`: `Preserve` (default), `Space`, or
+  `NoSpace` between the keyword and a complete grouped operand:
+  `return (x)` versus `return(x)`, similarly for `throw` and
+  `co_return`. They do not change other expression operands.
+- `FunctionSuffixSpecifierSpacing`: `Preserve` (default), `Space`, or
+  `NoSpace` before parsed function `override`/`final` and lambda
+  `mutable`/`constexpr`/`consteval`/`static` suffixes. For example,
+  `f() override` versus `f()override` and `[]() mutable` versus
+  `[]()mutable`. Gaps between two words cannot be removed when doing
+  so would merge their tokens.
+- `RecordBodyInteriorSpacing`, `NamespaceBodyInteriorSpacing`, and
+  `EnumBodyInteriorSpacing`: `Preserve` (default), `Space`, or `NoSpace`
+  just inside their respective parsed braces on one line, including
+  empty bodies: `struct S{ int x; }` versus `struct S{int x;}` and
+  `namespace N{ }` versus `namespace N{}`. Class, struct, and union
+  bodies share the record option; brace placement is separate.
+- `RequirementBodyInteriorSpacing`: `Preserve` (default), `Space`, or
+  `NoSpace` just inside a parsed requires-expression body, including
+  empty bodies: `requires(T x){ x; }` versus `requires(T x){x;}`.
+  All these rules preserve newlines, comments, and recovered syntax.
+- `TrailingWhitespace`: `Preserve` (default) leaves line endings intact;
+  `Trim` removes trailing spaces and tabs before LF, CRLF, or end of file.
+  Whitespace inside tokens (notably raw strings and preprocessor directives)
+  and lines ending in a backslash are preserved to avoid changing a line
+  splice.
+- `TemplateKeywordSpacing`: `Preserve` (default), `Space`, or `NoSpace`
+  between `template` and `<` in a complete parsed template declaration,
+  including `template<>`. `template` disambiguators in expressions are not
+  changed.
+- `TemplateTypeArgumentInteriorSpacing`: `Preserve` (default), `Space`, or
+  `NoSpace` just inside a nonempty, complete parsed template parameter or
+  argument list in an unambiguous type or template-id context. Comparisons,
+  shifts, unknown expressions, `>>`-terminated lists, and empty `<>` stay
+  unchanged. This renames `TemplateAngleBracketsSpacing`.
+- `TemplateTypeArgumentSpacing`: `Preserve` (default), `Space`, or
+  `NoSpace` before `<` in a complete, confirmed template argument list
+  following an identifier (`vector <int>` versus `vector<int>`). This
+  also covers empty `<>`; template parameter lists use
+  `TemplateKeywordSpacing` instead. Multiline and commented gaps are
+  preserved.
+- `StatementSemicolonSpacing`: `Preserve` (default) or `NoSpace` before
+  the terminator of a complete parsed statement (`return x ;` becomes
+  `return x;`). Loop and condition-init separators have separate options;
+  declarations at file scope are not statement terminators.
+- `MemberAccessOperatorsSpacing`: `Preserve` (default) or `NoSpace`
+  around parsed `.` and `->` access (`obj . field` becomes `obj.field`),
+  qualified `::` names (`std :: vector` becomes `std::vector`), and the
+  unambiguous `.*` and `->*` tokens. Leading `::` keeps its left gap.
+- `AttributeSpaceAfterSpecifier`: `Preserve` (default), `Space`, or
+  `NoSpace` between a parsed `[[...]]` specifier and a following
+  declaration word (`[[nodiscard]] int f()` versus `[[nodiscard]]int f()`).
+  This is independent of `AttributeInteriorSpacing`.
+- `NamedCastSpaceBeforeTypeArguments`: `Preserve` (default), `Space`, or
+  `NoSpace` between `static_cast`, `const_cast`, `reinterpret_cast`, or
+  `dynamic_cast` and the `<` of a complete parsed cast
+  (`static_cast <int>(x)` versus `static_cast<int>(x)`). Ambiguous or
+  `>>`-terminated type arguments remain unchanged.
+- `PlacementNewSpaceBeforeArguments`: `Preserve` (default), `Space`, or
+  `NoSpace` between `new` and a parsed placement argument list:
+  `new (buffer) T` versus `new(buffer) T`. Ordinary `new T(...)` and
+  incomplete expressions remain unchanged. All these options preserve
+  multiline and commented gaps.
+- `AttributeSpaceBeforeSpecifier`: `Preserve` (default), `Space`, or
+  `NoSpace` before a parsed `[[...]]` specifier following a declaration
+  token (`int [[maybe_unused]] x` versus `int[[maybe_unused]] x`).
+  Leading attributes have no preceding declaration gap.
+- `NewInitializerSpaceBeforeParentheses`: `Preserve` (default), `Space`,
+  or `NoSpace` between the type and parsed initializer parentheses in
+  `new T (1)` versus `new T(1)`. Placement arguments and braced
+  initializers have separate rules.
+- `DeleteArraySpaceBeforeBrackets`: `Preserve` (default), `Space`, or
+  `NoSpace` between `delete` and the complete array marker in
+  `delete [] p` versus `delete[] p`. Ordinary `delete p` is unchanged.
+- `SizeofPackSpaceBeforeParentheses`: `Preserve` (default), `Space`, or
+  `NoSpace` between `sizeof...` and its parsed pack-argument `(` in
+  `sizeof... (Ts)` versus `sizeof...(Ts)`. Ordinary `sizeof(x)` has
+  its own setting. All four rules preserve multiline and commented gaps.
+- `NewInitializerSpaceBeforeBraces`: `Preserve` (default), `Space`, or
+  `NoSpace` between the type and a parsed `new` initializer `{`:
+  `new T {1}` versus `new T{1}`.
+- `NewInitializerParenthesisInteriorSpacing`: `Preserve` (default),
+  `Space`, or `NoSpace` just inside parsed `new` initializer parentheses,
+  including both `new T( 1 )` versus `new T(1)` and `new T( )` versus
+  `new T()`. Placement arguments and braced initializers are unaffected.
+- `DeleteArraySpaceAfterBrackets`: `Preserve` (default), `Space`, or
+  `NoSpace` between a complete `delete[]` marker and its operand:
+  `delete[] p` versus `delete[]p`. The before-bracket gap is controlled
+  by `DeleteArraySpaceBeforeBrackets`.
+- `PlacementNewSpaceAfterArguments`: `Preserve` (default), `Space`, or
+  `NoSpace` between a complete placement argument list and the new type:
+  `new(buffer) T` versus `new(buffer)T`. The before-argument gap is
+  controlled by `PlacementNewSpaceBeforeArguments`. Multiline and
+  commented gaps, missing types, and missing operands are preserved.
+- `NewArraySpaceBeforeBrackets` and `NewArrayInteriorSpacing`:
+  `Preserve` (default), `Space`, or `NoSpace` before a parsed array
+  bracket in a `new` type-id (`new T [4]` versus `new T[4]`) and just
+  inside its nonempty brackets (`new T[ 4 ]` versus `new T[4]`),
+  respectively. Nested template arguments and attributes are unaffected.
+- `EmptyAttributeInteriorSpacing`: `Preserve` (default), `Space`, or
+  `NoSpace` inside an empty parsed attribute list (`[[ ]]` versus
+  `[[]]`). `AttributeInteriorSpacing` controls nonempty lists.
+- `CoAwaitSpaceBeforeParentheses`: `Preserve` (default), `Space`, or
+  `NoSpace` between `co_await` and a complete grouped operand:
+  `co_await (expr)` versus `co_await(expr)`. Other operands are
+  unaffected. These rules preserve multiline and commented gaps.
+- `NewInitializerBraceInteriorSpacing`: `Preserve` (default), `Space`,
+  or `NoSpace` just inside parsed `new` braced initializers, both
+  nonempty (`new T{ 1 }` versus `new T{1}`) and empty (`new T{ }`
+  versus `new T{}`). The gap before `{` has a separate option.
+- `PlacementNewArgumentInteriorSpacing`: `Preserve` (default), `Space`,
+  or `NoSpace` just inside nonempty parsed placement arguments:
+  `new ( buffer ) T` versus `new (buffer) T`.
+- `EmptyArrayDeclarationInteriorSpacing` and
+  `EmptyNewArrayInteriorSpacing`: `Preserve` (default), `Space`, or
+  `NoSpace` inside empty brackets in array declarations (`int a[ ]`
+  versus `int a[]`) and `new` type-ids (`new T[ ]{1}` versus
+  `new T[]{1}`), respectively. Nonempty brackets use their own rules.
+- `NoexceptSpaceBeforeSpecifier`: `Preserve` (default), `Space`, or
+  `NoSpace` before a parsed function or lambda exception specifier:
+  `void f() noexcept` versus `void f()noexcept`. The gap after
+  `noexcept` before its optional `(` uses
+  `NoexceptSpaceBeforeParentheses`. Multiline and commented gaps are
+  preserved by all five options.
+- `InitializerBracesSpacing`: `Preserve` (default), `Space`, or `NoSpace`
+  just inside nonempty parsed braced initializers (`{ x, y }` versus
+  `{x, y}`). `EmptyBraceInitializerInteriorSpacing` controls `{ }`
+  versus `{}` for empty parsed braced initializers. Neither setting
+  affects block, namespace, record, or lambda braces.
+- `OperatorOverloadOperatorSpacing`: `Preserve` (default), `NoSpace`,
+  `Left`, `Right`, or `LeftAndRight` around the symbolic operator in a
+  parsed overload name: `operator+()` versus `operator + ()`. `Left`
+  controls the gap after `operator`, and `Right` the gap before the
+  function parameters. Conversion operators (`operator int`) are
+  untouched to avoid merging keywords.
+- `AttributeInteriorSpacing`: `Preserve` (default), `Space`, or
+  `NoSpace` just inside nonempty parsed C++ attributes:
+  `[[ nodiscard ]]` versus `[[nodiscard]]`. The two bracket pairs are
+  kept intact. Multiline and commented gaps are preserved.
+- `NoexceptSpaceBeforeParentheses`, `AlignasSpaceBeforeParentheses`,
+  `AlignofSpaceBeforeParentheses`, `SizeofSpaceBeforeParentheses`,
+  `DecltypeSpaceBeforeParentheses`, `TypeidSpaceBeforeParentheses`,
+  `RequiresSpaceBeforeParentheses`, and
+  `StaticAssertSpaceBeforeParentheses`: `Preserve` (default), `Space`, or
+  `NoSpace` between the respective keyword and an immediately following
+  parsed `(`, for example `noexcept (x)` versus `noexcept(x)`.
+  `noexcept` expressions and function specifiers share one setting;
+  `requires` expressions and clauses share another. `alignas` applies
+  to parsed record headers and standalone declarations. `sizeof...(Ts)`
+  is unaffected. Other unparsed syntax, incomplete pairs, comments, and
+  newlines are preserved.
+- `CastArgumentSpacing`: `Preserve` (default), `Space`, or `NoSpace` just
+  inside the parentheses of a complete parsed C-style or named cast:
+  `( int )value` and `static_cast<int>( value )`. Empty, multiline, and
+  commented gaps are unchanged. `CastSpacing` independently controls the
+  space *after* a C-style cast.
+- `GroupingInteriorSpacing`: `Preserve` (default), `Space`, or `NoSpace`
+  immediately inside nonempty parsed expression grouping parentheses:
+  `( a + b )` versus `(a + b)`. Calls, declarators, and casts use their
+  own spacing rules.
+- `ControlBlockConditionSpacing`: `Preserve` (default), `Space`, or
+  `NoSpace` just inside complete `if`, `for`, `while`, `switch`, and `catch`
+  condition parentheses (including `do`/`while`). The separate
+  `ControlBlockKeywordSpacing` controls the gap *before* `(`.
+- `AccessModifierColonSpacing` and `RangeBasedForColonSpacing`:
+  `Preserve` (default), `Space`, or `NoSpace` on both same-line sides of
+  parsed access-label colons (`public : int x;` versus `public:int x;`)
+  and range-for separators (`for (auto x : items)` versus
+  `for (auto x:items)`), respectively. Other colons are unaffected.
+  The parenthesis rules skip empty pairs; all four settings leave
+  multiline, commented, or incomplete gaps source-owned.
+- `BlockInteriorSpacing`: `Preserve` (default), `Space`, or `NoSpace`
+  immediately inside a nonempty same-line compound or lambda body
+  (`{ statement; }` versus `{statement;}`). It does not change line
+  breaks, record/namespace braces, or initializer-brace spacing.
+- `EmptyBlockInteriorSpacing`: `Preserve` (default), `Space` (`{ }`), or
+  `NoSpace` (`{}`) for empty compound and lambda bodies. It is independent
+  of the nonempty block setting.
+- `ControlBlockSpaceBeforeBrace`: `Preserve` (default), `Space`, or
+  `NoSpace` between a control header (`if`, `else`, `for`, `while`, `do`,
+  `switch`, `try`, `catch`) and a same-line opening brace. Brace placement
+  runs first; a brace left on a separate line stays on that line.
+- `DeclarationSemicolonSpacing`: `Preserve` (default), `Space`, or
+  `NoSpace` *before* a parsed declaration's terminating semicolon, both
+  at file scope and in declaration statements. If both it and
+  `StatementSemicolonSpacing` are enabled, this setting takes precedence
+  for declaration statements. It does not change the gap after `;` or
+  the separators in control headers. All four options leave comments,
+  directives, and multiline gaps unchanged.
+- `BitFieldColonSpacing`, `EnumUnderlyingTypeColonSpacing`, and
+  `LabelColonSpacing`: `Preserve` (default), `NoSpace` (`x:1`), `Left`
+  (`x :1`), `Right` (`x: 1`), or `LeftAndRight` (`x : 1`). The options
+  apply only to their parsed bit-field, enum underlying-type, and label
+  colons, respectively; `LabelColonSpacing` covers `case` and `default`
+  labels as well. Line breaks, comments, and directives are untouched.
+- `ConstructorInitializerList`: `Preserve` (default) or `Format` for
+  complete constructor definitions. `Format` enables the same layout
+  controls as `InheritanceList`, using `ConstructorInitializerList*`
+  names. `ConstructorInitializerListColonPlacement` is
+  `AttachToInitializer` (default) or `AttachToConstructor`;
+  `ConstructorInitializerListStart` is `NewLine` (default),
+  `ConstructorLine`, or `NewLineOnOverflow`.
+  `ConstructorInitializerListSplit` is `OnePerLine` (default), `Pack`,
+  or `OnePerLineOnOverflow`. Colon and comma spacing use independent
+  `*SpaceBefore` and `*SpaceAfter` options (`NoSpace` or `Space`,
+  defaulting to `NoSpace` before and `Space` after). Comma placement is
+  `AttachToNext` (default) or `AttachToPrevious`.
+  `ConstructorInitializerListIndent` is an optional positive integer up
+  to 32, defaulting to `IndentWidth`; `ColumnLimit` controls packing and
+  overflow. Only complete single-line initializer entries with
+  whitespace-only separators are movable. Comments, directives,
+  recovered syntax, and multiline entries remain source-owned.
+- `PointerReferenceLocation`: `Preserve` (default), `Left` (`int* p`),
+  `Middle` (`int * p`), or `Right` (`int *p`). Applies to complete parsed
+  pointer and reference declarators, including adjacent `*`/`&` tokens.
+  Member pointers and nested declarators have independent rules below;
+  commas between declarators are not treated as type names. It does not
+  alter multiplication, address-of, or dereference expressions.
+- `FunctionQualifierSpacing`: `Preserve` (default), `Space`, or `NoSpace`
+  between a function's closing parameter `)` and an immediately following
+  `const` or `volatile` (`f() const` versus `f()const`).
+- `FunctionRefQualifierSpacing`: `Preserve` (default), `Space`, or
+  `NoSpace` before a parsed trailing `&` or `&&` after the parameters
+  or a `const`/`volatile` qualifier (`f() const &` versus `f() const&`).
+- `NestedDeclaratorInteriorSpacing`: `Preserve` (default), `Space`, or
+  `NoSpace` just inside complete nested declarator parentheses:
+  `( *callback )` versus `(*callback)`.
+- `NestedDeclaratorPointerSpacing`: `Preserve` (default), `Space`, or
+  `NoSpace` between a parsed `*`/`&` in a nested declarator and its
+  immediately following name (`(* callback)` versus `(*callback)`).
+- `MemberPointerDeclaratorSpacing`: `Preserve` (default), `Space`, or
+  `NoSpace` between a parsed member-pointer `::*` and the following
+  declarator name (`S::* member` versus `S::*member`). These rules
+  preserve multiline and commented gaps and do not alter expressions.
+- `UnaryOperatorSpacing` and `PostfixOperatorSpacing`: `Preserve`
+  (default) or `NoSpace`. The former removes same-line whitespace between
+  a parsed symbolic prefix operator and its operand (`! x` becomes `!x`);
+  the latter removes space before a parsed postfix `++` or `--` (`x ++`
+  becomes `x++`). Word operators (`sizeof`, `alignof`, `co_await`) retain
+  their required whitespace. Gaps that could merge two operators remain
+  untouched.
+- `TernaryOperatorSpacing`: `Preserve` (default) or `Space` on both
+  same-line sides of parsed `?` and `:` (`a?b:c` becomes `a ? b : c`).
+  This is independent of `TernaryOperatorPlacement` (line breaks).
+- `BinaryOperatorSpacing` and `AssignmentOperatorSpacing`: `Preserve`
+  (default), `Space`, or `NoSpace` on both sides of parsed binary and
+  assignment operators. Assignment initializers are included. Operators
+  that could also be template delimiters (`<`, `>`, `<<`, `>>`) remain
+  unchanged. `NoSpace` does not join two operator spellings if that could
+  change tokenization.
+- `CastSpacing`: `Preserve` (default), `Space`, or `NoSpace` between the
+  closing `)` and operand of a parsed C-style cast. Named casts are not
+  affected.
+- `CommaSpacing`: `Preserve` (default) leaves list commas unchanged;
+  `After` removes same-line space before a parsed list comma and uses one
+  space after it (`f(a ,b)` becomes `f(a, b)`); `NoSpace` removes same-line
+  spaces on both sides (`f(a , b)` becomes `f(a,b)`). A trailing comma
+  before a closing delimiter does not receive an added space.
+- `LoopSemicolonSpacing` and `ConditionInitSemicolonSpacing`: `Preserve`
+  (default), `Space`, or `NoSpace`. The first controls the two clause
+  separators of a parsed `for` header; the second controls the single
+  top-level init-statement separator in a complete `if` or `switch`
+  condition. When enabled, remove same-line space before the semicolon
+  and use the selected spacing after it; no space is added before `)` or
+  another semicolon. Statement and nested-expression semicolons are not
+  changed.
+- `SubscriptOperatorInteriorSpacing`, `ArrayDeclarationInteriorSpacing`,
+  and `StructuredBindingBracketSpacing`: `Preserve` (default), `Space`, or
+  `NoSpace` just inside nonempty parsed brackets of their respective
+  constructs: `a[ i ]`, `int a[ 4 ]`, and `auto [ x, y ]`. Lambda captures
+  and attributes have separate rules or remain untouched.
+- `SubscriptOperatorSpacing` and `ArrayDeclarationSpacing`: `Preserve`
+  (default), `Space`, or `NoSpace` before the respective opening bracket:
+  `a [i]` versus `a[i]`, and `int a [4]` versus `int a[4]`. These settings
+  are independent of their interior-spacing counterparts.
+- `BraceInitializerSpacing`: `Preserve` (default), `Space`, or `NoSpace`
+  before a parsed braced initializer (`T x {1}` versus `T x{1}`). The gap
+  following `=` remains controlled by `AssignmentOperatorSpacing`.
+- `ReturnArrowSpacing`: `Preserve` (default), `NoSpace` (`f()->T`), `Left`
+  (`f() ->T`), `Right` (`f()-> T`), or `LeftAndRight` (`f() -> T`) around
+  the arrow of a parsed trailing return type. Member-access `->` is
+  unaffected.
+- `EmptyFunctionCallArgumentsSpacing`, `EmptyFunctionParametersSpacing`,
+  `EmptyLambdaParametersSpacing`, and `EmptyLambdaCaptureSpacing`:
+  `Preserve` (default), `Space`, or `NoSpace` inside their respective
+  empty, parsed pairs: `f( )`, `void f( )`, `[]( )`, and `[ ]` versus
+  `f()`, `void f()`, `[]()`, and `[]`. Nonempty interiors have separate
+  options. All token-spacing rules leave newlines, comments, directives,
+  and incomplete statements unchanged.
 - `*BracePlacement`: `Preserve` (default) keeps the existing layout,
   `Attach` joins a brace to its header, and `NewLine` moves it to its own
   line. Existing same-line spacing is left unchanged by `Attach`. Each of

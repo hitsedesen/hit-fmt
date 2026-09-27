@@ -1,0 +1,3 @@
+BitFieldColonSpacing = NoSpace
+EnumUnderlyingTypeColonSpacing = NoSpace
+LabelColonSpacing = NoSpace

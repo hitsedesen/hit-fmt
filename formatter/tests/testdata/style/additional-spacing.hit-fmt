@@ -1,0 +1,6 @@
+TrailingWhitespace = Trim
+TemplateKeywordSpacing = NoSpace
+TemplateTypeArgumentInteriorSpacing = Space
+StatementSemicolonSpacing = NoSpace
+MemberAccessOperatorsSpacing = NoSpace
+InitializerBracesSpacing = Space
