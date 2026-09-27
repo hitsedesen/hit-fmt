@@ -1,4 +1,4 @@
 BinaryOperatorSpacing = Space
 CommaSpacing = Space
-NamespaceComments = Required
+NamespaceComments = AddMissing
 NamespaceCommentSpaces = 2

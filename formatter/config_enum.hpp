@@ -35,7 +35,7 @@ DEFINE_CONFIG_ENUM(BracePlacement, BRACE_PLACEMENT_VALUES);
 #undef BRACE_PLACEMENT_VALUES
 
 #define NAMESPACE_COMMENTS_VALUES(X)                                            \
-    X(Preserve) X(Remove) X(Required)
+    X(Preserve) X(Remove) X(AddMissing) X(Fix)
 DEFINE_CONFIG_ENUM(NamespaceComments, NAMESPACE_COMMENTS_VALUES);
 #undef NAMESPACE_COMMENTS_VALUES
 

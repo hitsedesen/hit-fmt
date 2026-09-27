@@ -28,7 +28,7 @@ LambdaBraceSpacing = SingleSpace
 NamespaceBraceSpacing = SingleSpace
 ControlBlockBracePlacement = SameLine
 ControlBlockKeywordSpacing = Space
-NamespaceComments = Required
+NamespaceComments = Fix
 ShortNamespaceLines = 1
 
 FunctionParameterSplit = Pack

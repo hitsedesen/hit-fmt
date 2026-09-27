@@ -3042,7 +3042,7 @@ std::string FormatNamespaceComments(
                     tree.Token(index).Position.Line -
                         tree.Token(opening).Position.Line <=
                         shortNamespaceLines + 1;
-                if (lineComment) {
+                if (lineComment && policy != NamespaceComments::AddMissing) {
                     auto end = tree.Token(next).Text.End;
                     // Line-comment tokens may include the CR of CRLF.
                     if (end > begin && end < source.size() &&
@@ -3061,7 +3061,8 @@ std::string FormatNamespaceComments(
                     if (source.substr(begin, end - begin) != replacement) {
                         edits.push_back({begin, end, std::move(replacement)});
                     }
-                } else if (policy == NamespaceComments::Required &&
+                } else if ((policy == NamespaceComments::AddMissing ||
+                        policy == NamespaceComments::Fix) && !lineComment &&
                     !shortNamespace &&
                     (next == tree.TokenCount() || !sameLine ||
                         tree.Kind(next) != TK::Comment))
@@ -3214,12 +3215,33 @@ std::string FormatBlockIndentation(const parser::SyntaxTree& tree,
             std::vector<Task> children;
             bool afterCase = false;
             bool nextIsCaseBlock = false;
+            bool afterUnbracedSwitch = false;
             std::string caseIndent;
             for (auto* child = node.Child(); child;
                 child = child->NextSibling)
             {
                 if (child->Tokens.Empty()) continue;
-                auto target = childIndent;
+                // The parser leaves the statement after an unbraced switch's
+                // case label as a sibling of the switch. Its original indent
+                // is more reliable than the compound block's normal indent.
+                const bool switchTail = afterUnbracedSwitch &&
+                    child->Kind != NK::Comment &&
+                    child->Kind != NK::PreprocessingDirective;
+                if (switchTail) afterUnbracedSwitch = false;
+                bool unbracedSwitch = false;
+                if (child->Kind == NK::SwitchStatement) {
+                    for (auto* body = child->Child(); body;
+                        body = body->NextSibling)
+                    {
+                        if (body->Kind == NK::CaseLabel) {
+                            unbracedSwitch = true;
+                            break;
+                        }
+                    }
+                }
+                if (unbracedSwitch) afterUnbracedSwitch = true;
+                auto target = switchTail
+                    ? originalIndent(child->Tokens.Begin) : childIndent;
                 const bool caseLabel = switchBody &&
                     child->Kind == NK::CaseLabel;
                 const bool caseBlock = switchBody && nextIsCaseBlock &&
@@ -3257,7 +3279,7 @@ std::string FormatBlockIndentation(const parser::SyntaxTree& tree,
                     style.IndentCaseLabels == BodyIndentation::Preserve;
                 const bool attribute =
                     isStatementAttribute(child->Tokens.Begin);
-                if (!preserveCase && !HasRecoveryChild(*child) &&
+                if (!switchTail && !preserveCase && !HasRecoveryChild(*child) &&
                     (attribute ? style.StatementAttributeIndent !=
                         StatementAttributeIndent::Preserve :
                         style.IndentBlockBodies || caseLabel))
@@ -3303,7 +3325,9 @@ std::string FormatBlockIndentation(const parser::SyntaxTree& tree,
                 child->Kind != NK::CompoundStatement &&
                 child->Kind != NK::PreprocessingDirective &&
                 child->Kind != NK::Comment && !child->Tokens.Empty();
-            if (body && !HasRecoveryChild(*child)) {
+            if (body && child->Kind != NK::CaseLabel &&
+                !HasRecoveryChild(*child))
+            {
                 const bool attribute =
                     isStatementAttribute(child->Tokens.Begin);
                 if (attribute) {
@@ -4819,7 +4843,16 @@ static std::string FormatTokenSpacing(const parser::SyntaxTree& tree,
             }
             if (node->Kind == NK::CastExpression &&
                 style.CastSpacing != TokenSpacing::Preserve &&
-                tree.Kind(node->Tokens.Begin) == TK::Operator_OpenParenthesis)
+                tree.Kind(node->Tokens.Begin) == TK::Operator_OpenParenthesis &&
+                // `sizeof(T)` can be parsed as a cast in dependent code.
+                // Its closing parenthesis is not a cast followed by an
+                // operand, so never tighten the following operator gap.
+                (node->Tokens.Begin == 0 ||
+                    (tree.Kind(node->Tokens.Begin - 1) != TK::Keyword_sizeof &&
+                        tree.Kind(node->Tokens.Begin - 1) != TK::Keyword_alignof &&
+                        tree.Kind(node->Tokens.Begin - 1) != TK::Keyword_typeid &&
+                        tree.Kind(node->Tokens.Begin - 1) != TK::Keyword_noexcept &&
+                        tree.Kind(node->Tokens.Begin - 1) != TK::Keyword_decltype)))
             {
                 auto close = tree.MatchingDelimiter(node->Tokens.Begin);
                 if (close + 1 < node->Tokens.End && close + 1 < count) {

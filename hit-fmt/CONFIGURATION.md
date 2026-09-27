@@ -484,8 +484,9 @@ Exclude = [
   unchanged. `NoSpace` does not join two operator spellings if that could
   change tokenization.
 - `CastSpacing`: `Preserve` (default), `Space`, or `NoSpace` between the
-  closing `)` and operand of a parsed C-style cast. Named casts are not
-  affected.
+  closing `)` and operand of a parsed C-style cast. Named casts and
+  parenthesized operands of `sizeof`, `alignof`, `decltype`, `typeid`, and
+  `noexcept` are not affected.
 - `CommaSpacing`: `Preserve` (default) leaves comma gaps unchanged;
   `Space` (also spelled `After` for compatibility) removes same-line space
   before a comma and uses one space after it (`f(a ,b)` becomes `f(a, b)`);
@@ -534,25 +535,29 @@ Exclude = [
   declaration header and the brace goes below it. Other intervening comments
   and directives block attachment. Other braces are unaffected.
 - `ShortNamespaceLines`: nonnegative integer up to 10000. With
-  `NamespaceComments = Required`, skip adding a closing comment when the
-  namespace has at most this many lines between its opening and closing
-  braces. `0` (default) disables the exemption. Existing closing comments
-  are retained and corrected even on short namespaces; `Remove` still
-  removes them.
+  `NamespaceComments = AddMissing` or `Fix`, skip adding a closing comment
+  when the namespace has at most this many lines between its opening and
+  closing braces. `0` (default) disables the exemption. Existing closing
+  comments remain untouched with `AddMissing` and are corrected even on
+  short namespaces with `Fix`; `Remove` still removes them.
 - `NamespaceComments`: `Preserve` (default) leaves closing comments alone,
   `Remove` removes a line comment immediately after a namespace's closing
-  brace, and `Required` adds `// namespace name` (or `// namespace` for an
-  anonymous namespace) and corrects an existing trailing line comment.
-  `NamespaceCommentSpaces` sets the spaces before generated or corrected
-  comments (1 by default, positive integer up to 32); it has no effect in
-  `Preserve` or `Remove` mode. Unmatched braces and closings followed by a
-  block comment are left alone.
+  brace, `AddMissing` inserts `// namespace name` (or `// namespace` for an
+  anonymous namespace) only when no same-line comment is present, and `Fix`
+  also corrects existing trailing line comments. The former `Required`
+  spelling is no longer accepted. `NamespaceCommentSpaces` sets the spaces
+  before generated or corrected comments (1 by default, positive integer
+  up to 32); it has no effect on existing comments with `AddMissing`, or
+  in `Preserve` and `Remove` modes. Unmatched braces and closings followed
+  by a block comment are left alone.
 - `IndentBlockBodies`: `false` (default) preserves statement indentation;
   `true` reindents statement starts and closing braces in complete compound
   and lambda blocks by `BlockBodyIndentWidth` relative to the header. It also
   indents parsed unbraced control bodies one level beyond the control header.
   Inline statements, continuations, comments, directives, and recovered
-  bodies remain source-owned.
+  bodies remain source-owned. Unbraced switch case labels and their following
+  statements retain their original indentation because they have no
+  compound body to anchor case indentation.
 - `IndentCaseLabels`: `Preserve` (default), `NoIndent` (align labels with
   their switch header), or `Indent` (`CaseLabelIndentWidth` inside the switch).
   Statements following a case get one additional level with `Indent` when
@@ -862,8 +867,8 @@ rejected rather than silently ignored.
 [`examples/google.hit-fmt`](examples/google.hit-fmt) approximates Google's
 C++ style (and clang-format's Google preset). Use it with `--config` or copy
 it to `.hit-fmt`. It selects two-space members and block bodies, one-space
-access-label indentation, 80 columns, attached braces, two-space namespace
-comments, and supported token spacing. It is not a replacement for
+access-label indentation, 80 columns, attached braces, two-space newly
+added namespace comments, and supported token spacing. It is not a replacement for
 `clang-format -style=Google` or a Google C++ style review.
 
 Still missing or insufficient for a full Google profile:
@@ -890,9 +895,9 @@ Corpus check: tested against the Ubuntu-packaged GoogleTest/GoogleMock
 `gmock-cardinalities.cc`, the macro-annotated record header and the
 `static_assert` comma in `gtest-port.h` now remain intact with active block,
 brace-initializer and binary-operator settings. `NamespaceCommentSpaces = 2`
-keeps Google's comment gap; `NamespaceComments = Required` still replaces a
-descriptive anonymous-namespace comment (`// Unnamed namespace`) with
-`// namespace`. `MemberAccessOperatorsSpacing` remains `Preserve`: `NoSpace`
+adds Google's two-space comment gap; `NamespaceComments = AddMissing` leaves
+existing anonymous-namespace comments such as `// Unnamed namespace` intact.
+`MemberAccessOperatorsSpacing` remains `Preserve`: `NoSpace`
 can still join `GTEST_API_ ::std::string` into `GTEST_API_::std::string`.
 `TernaryOperatorSpacing = Space` can collapse multiline alignment without
 realigning other branches, so the profile preserves it. Four-space newline

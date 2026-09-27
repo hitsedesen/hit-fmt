@@ -165,6 +165,10 @@ std::vector<FormattedCase> FormattedCases()
         "../google-style-regressions";
     cases.push_back({google, "inline-record", "inline-record.input.cpp"});
     cases.push_back({google, "widths", "widths.input.cpp"});
+    cases.push_back({google, "operator-spacing", "operator-spacing.input.cpp"});
+    cases.push_back({google, "unbraced-switch", "unbraced-switch.input.cpp"});
+    cases.push_back({google, "namespace-comments",
+        "namespace-comments.input.cpp"});
     AddCases(cases, google, {"punctuation-preserve", "punctuation-space",
         "comments-preserve"}, "punctuation-preserve.input.cpp");
     const auto attribute = std::filesystem::path(FORMATTER_TESTDATA_DIR) /
@@ -267,7 +271,7 @@ TEST_P(NamespaceCommentGoldenTest, MatchesConfiguredOutput)
     const auto directory = std::filesystem::path(FORMATTER_TESTDATA_DIR) /
         "../namespace_comments";
     const auto input = ReadFile(directory /
-        (GetParam() == "crlf_required" ? "crlf.input.cpp" : "input.cpp"));
+        (GetParam() == "crlf_fix" ? "crlf.input.cpp" : "input.cpp"));
     const auto style = formatter::LoadConfigFile(
         directory / (GetParam() + ".hit-fmt")).FormattingStyle;
 
@@ -287,8 +291,8 @@ TEST_P(NamespaceCommentGoldenTest, MatchesConfiguredOutput)
 }
 
 INSTANTIATE_TEST_SUITE_P(Configurations, NamespaceCommentGoldenTest,
-    testing::Values("preserve", "remove", "required", "required_newline",
-        "crlf_required"));
+    testing::Values("preserve", "remove", "add_missing", "fix",
+        "fix_spaced", "fix_newline", "crlf_fix"));
 
 class ParameterNameGoldenTest : public testing::TestWithParam<std::string>
 { };
@@ -1182,6 +1186,7 @@ TEST(PreserveConfigTest, RejectsInvalidSettings)
         "ColumnLimit = 0\n",
         "ColumnLimit = 10001\n",
         "ShortNamespaceLines = 10001\n",
+        "NamespaceComments = Required\n",
         "NamespaceCommentSpaces = 33\n",
         "AccessModifierIndentWidth = 33\n",
         "MemberIndentWidth = 33\n",

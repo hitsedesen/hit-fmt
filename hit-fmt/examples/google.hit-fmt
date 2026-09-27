@@ -30,7 +30,7 @@ NamespaceBraceSpacing = SingleSpace
 ControlBlockBracePlacement = SameLine
 ControlBlockSpaceBeforeBrace = Space
 ControlBlockKeywordSpacing = Space
-NamespaceComments = Required
+NamespaceComments = AddMissing
 NamespaceCommentSpaces = 2
 ShortNamespaceLines = 1
 

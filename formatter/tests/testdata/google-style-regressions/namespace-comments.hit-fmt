@@ -1,0 +1,3 @@
+NamespaceComments = AddMissing
+NamespaceCommentSpaces = 2
+ShortNamespaceLines = 1
