@@ -1,8 +1,8 @@
 # hit-fmt
 
 `hit-fmt` parses C and C++ source. It preserves source by default, with
-configurable declaration layout rules. In `--check` mode it can also report
-naming violations without renaming identifiers.
+configurable declaration layout rules. Checks also report naming violations
+without renaming identifiers, including after `--fix`.
 
 ## Build
 
@@ -58,13 +58,16 @@ hit-fmt --fix source.cpp include/
 
 `--check` may be given explicitly when desired.
 
-Check mode reports affected source chunks with caret-marked formatting,
+Checks report affected source chunks with caret-marked formatting,
 expression-layout, naming and parameter-name violations. Source excerpts
 are cropped around the marked token to fit the terminal width; proposed
-formatter output wraps when needed. Naming checks remain advisory. Expression
-reflow is not run to decide check-mode formatting mismatches: layout checks
-inspect the original source. `--summary` reports only affected files.
-`--fix` writes formatted source in place.
+formatter output wraps when needed. Expression reflow is not run to decide
+check-only formatting mismatches: layout checks inspect the original source.
+`--fix` writes auto-fixable changes, reports them as `fixed`, then checks the
+result and reports remaining violations as `fail`. Check-only returns a
+nonzero status for any violation; `--fix` does so only for remaining ones
+(such as naming errors, which never rewrite identifiers). `--summary`
+reports file status lines in either mode.
 
 Skip files or whole subdirectories while formatting or checking a folder:
 
@@ -79,9 +82,20 @@ explicit file input is matched by its filename. A matching directory and
 all its contents are skipped. Anchor patterns to path components as above
 to avoid matching similarly named files or directories.
 
-Run `hit-fmt --help` for all command-line options. See
-[`hit-fmt/CONFIGURATION.md`](hit-fmt/CONFIGURATION.md) for configuration
-settings and defaults.
+Format only changed hunks from one or more files by supplying `file` and
+`hunk` records on stdin:
+
+```text
+printf 'file src/a.cpp\nhunk 12:18\nfile src/b.cpp\nhunk 4:9\n' |
+  hit-fmt --fix --changed-hunks -
+```
+
+Paths are relative to the working directory. Formatting may spill into a
+bounded enclosing list or include group by default. Use `--no-spillover`
+to restrict fixes to the hunk lines; changes requiring spill-over remain
+check errors. See
+[`hit-fmt/CONFIGURATION.md`](hit-fmt/CONFIGURATION.md) for details.
+Run `hit-fmt --help` for all command-line options, settings and defaults.
 
 ## License
 

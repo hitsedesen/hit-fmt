@@ -1,4 +1,5 @@
 add_executable(formatter-tests
+    hunks.cpp
     tests.cpp)
 target_link_libraries(formatter-tests
     GTest::gtest_main
