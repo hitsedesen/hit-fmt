@@ -4611,6 +4611,7 @@ std::string BalanceDelimitedExpressions(const parser::SyntaxTree& tree,
         bool Cast;
     };
     std::vector<Candidate> candidates;
+    std::vector<std::pair<size_t, size_t>> ownedCallArguments;
     std::vector<const parser::Node*> nodes{&tree.Root()};
     while (!nodes.empty()) {
         const auto* node = nodes.back();
@@ -4619,6 +4620,37 @@ std::string BalanceDelimitedExpressions(const parser::SyntaxTree& tree,
             nodes.push_back(child);
         }
         if (node->Tokens.Empty() || HasRecoveryChild(*node)) continue;
+        if (node->Kind == NK::CallExpression &&
+            style.CallArgumentSplit == CallArgumentSplit::OnePerLine)
+        {
+            const auto* callee = node->Child();
+            const auto* args = callee ? callee->NextSibling : nullptr;
+            const auto* first = args ? args->Child() : nullptr;
+            if (callee && !callee->Tokens.Empty() &&
+                callee->Kind != NK::Expression &&
+                callee->Kind != NK::ParenthesizedExpression &&
+                args && args->Kind == NK::ArgumentList &&
+                !args->Tokens.Empty() &&
+                first && first->Kind == NK::Argument &&
+                first->NextSibling &&
+                first->NextSibling->Kind == NK::ListSeparator &&
+                first->NextSibling->NextSibling &&
+                first->NextSibling->NextSibling->Kind == NK::Argument)
+            {
+                auto begin = tree.Token(args->Tokens.Begin).Text.End;
+                auto end = tree.Token(args->Tokens.End - 1).Text.Begin;
+                if (begin <= end && source.substr(begin, end - begin)
+                        .find('\n') == std::string_view::npos)
+                {
+                    // If the call cannot be safely reflowed later, keep
+                    // its flat argument list source-owned instead of
+                    // hiding the overflow inside a nested expression.
+                    ownedCallArguments.emplace_back(
+                        tree.Token(args->Tokens.Begin).Text.Begin,
+                        tree.Token(args->Tokens.End - 1).Text.End);
+                }
+            }
+        }
         std::optional<Replacement> edit;
         bool cast = node->Kind == NK::CastExpression;
         if (cast) {
@@ -4748,6 +4780,15 @@ std::string BalanceDelimitedExpressions(const parser::SyntaxTree& tree,
         candidates.push_back({std::move(*edit), line, longest,
             longest - std::min(first, second), cast});
     }
+    // Once a multi-argument call is eligible for OnePerLine, a break
+    // inside one argument must not make its enclosing call appear to fit.
+    std::erase_if(candidates, [&] (const Candidate& candidate) {
+        return candidate.Cast && std::ranges::any_of(ownedCallArguments,
+            [&] (const auto& range) {
+                return candidate.Edit.Begin > range.first &&
+                    candidate.Edit.End < range.second;
+            });
+    });
     std::ranges::sort(candidates, {}, &Candidate::Line);
     std::vector<Replacement> edits;
     for (size_t i = 0; i < candidates.size();) {

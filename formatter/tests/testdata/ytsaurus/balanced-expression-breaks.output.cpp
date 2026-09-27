@@ -8,4 +8,13 @@ void Compare()
     auto withTernary = static_cast<ELarge>(condition
         ? FetchValueFromPrimaryProcessorWithLongName()
         : FetchValueFromSecondaryProcessorWithLongName());
+    if (!channelControl.compare_exchange_weak(
+        previousObservedControl,
+        static_cast<unsigned long long>(pendingStatusBits | receivedControlSignals)))
+    {
+        Retry();
+    }
+    if (!channelControl.compare_exchange_weak(previousObservedControl, /* keep */ static_cast<unsigned long long>(pendingStatusBits | receivedControlSignals))) {
+        Retry();
+    }
 }

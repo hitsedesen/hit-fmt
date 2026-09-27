@@ -817,6 +817,9 @@ Exclude = [
   single-call-argument candidates on the same overlong line are ranked by
   resulting maximum width, then balance. Ternary layout runs first;
   name-specific call limits and source-owned syntax retain their policies.
+  With `OnePerLine`, a flat enclosing multi-argument call owns the
+  overflow; unsafe calls remain source-owned rather than splitting only
+  inside an argument.
   A short single-argument member call is not split just because the following
   chain segment overflows; multiline lambda segments stay source-owned.
   A direct multiline lambda can move below `(` only if the relocated
