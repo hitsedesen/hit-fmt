@@ -1,0 +1,7 @@
+IndentWidth = 2
+IndentBlockBodies = true
+FunctionCallSpaceBeforeParameters = NoSpace
+BinaryOperatorSpacing = Space
+InitializerBracesSpacing = NoSpace
+BraceInitializerSpacing = NoSpace
+BlockInteriorSpacing = Space

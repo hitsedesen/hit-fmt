@@ -1,0 +1,12 @@
+template <typename Class, typename PropertyType>
+void Property(PropertyType (Class::*property)() const);
+template <typename Class, typename PropertyType, typename Matcher>
+inline PolymorphicMatcher<internal::PropertyMatcher<
+    Class, PropertyType, PropertyType (Class::*)() const>>
+Property(PropertyType (Class::*property)() const,
+         const Matcher& matcher) { return {}; }
+void f() {
+  EXPECT_DEATH_IF_SUPPORTED({ callback(); }, "");
+  EXPECT_EQ(kOther, GMOCK_KIND_OF_(char**));
+  int x = a * *p;
+}

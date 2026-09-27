@@ -2149,8 +2149,52 @@ private:
         auto argumentCursor = NextSignificant(opening + 1);
         while (argumentCursor + 1 < closingEnd) {
             auto before = argumentCursor;
-            auto* expression =
-                ParseExpressionSyntax(argumentCursor, closingEnd - 1, 2);
+            Node* expression = nullptr;
+            if (Kind(before) == TK::Operator_OpenBrace) {
+                auto braceEnd = FindBalancedEnd(before);
+                if (braceEnd != std::numeric_limits<TokenIndex>::max() &&
+                    braceEnd < closingEnd)
+                {
+                    auto following = NextSignificant(braceEnd);
+                    if (Kind(following) != TK::Operator_Comma &&
+                        following != closingEnd - 1)
+                    {
+                        braceEnd = before;
+                    }
+                }
+                if (braceEnd > before && braceEnd < closingEnd) {
+                    // Top-level semicolons cannot occur in a braced
+                    // initializer. A macro argument like `{ f(); }` is a
+                    // statement block; semicolons inside nested delimiters
+                    // (lambdas, calls, aggregates) are not decisive.
+                    bool statementBlock = false;
+                    for (auto i = before + 1; i < braceEnd - 1; ++i) {
+                        if (Kind(i) == TK::Operator_Semicolon) {
+                            statementBlock = true;
+                            break;
+                        }
+                        if (IsOpenDelimiter(Kind(i))) {
+                            auto nestedEnd = FindBalancedEnd(i);
+                            if (nestedEnd <= braceEnd - 1) {
+                                i = nestedEnd - 1;
+                            }
+                        }
+                    }
+                    if (statementBlock) {
+                        auto savedCursor = Cursor_;
+                        Cursor_ = before;
+                        ++BranchParseDepth_;
+                        expression = ParseCompoundStatement();
+                        --BranchParseDepth_;
+                        Cursor_ = savedCursor;
+                        argumentCursor = braceEnd;
+                    }
+                }
+            }
+            if (!expression) {
+                expression = ParseExpressionSyntax(
+                    argumentCursor, closingEnd - 1, 2);
+            }
             if (expression) {
                 auto* argument = MakeNode(NodeKind::Argument, before);
                 argument->Tokens.End = expression->Tokens.End;
@@ -3035,6 +3079,22 @@ private:
                 auto requiresEnd = SkipRequiresExpression(Cursor_);
                 if (requiresEnd != Cursor_ + 1) {
                     Cursor_ = requiresEnd;
+                    continue;
+                }
+            }
+            // Parentheses inside a return type's template arguments (for
+            // example a pointer-to-member-function type) are not the
+            // function's parameter list.
+            if (kind == TK::Operator_Less && !sawTopLevelParameters &&
+                !sawAssignmentBeforeParameters && Cursor_ > start &&
+                Kind(PreviousSignificant(Cursor_)) == TK::Identifier)
+            {
+                auto after = SkipTemplateArguments(Cursor_, Tree_.Tokens_.Size());
+                if (after > Cursor_ && after < Tree_.Tokens_.Size() &&
+                    (Kind(after - 1) == TK::Operator_Greater ||
+                        Kind(after - 1) == TK::Operator_RightShift))
+                {
+                    Cursor_ = after;
                     continue;
                 }
             }
@@ -4320,11 +4380,15 @@ private:
         } else if (IsPrefixOperator(kind)) {
             ++cursor;
             auto* operand = ParseExpressionSyntax(cursor, end, 14);
-            left = MakeNode(NodeKind::UnaryExpression, start);
-            left->Tokens.End = operand ? operand->Tokens.End : cursor;
-            if (operand) {
-                Append(*left, *operand);
+            if (!operand) {
+                // A dangling prefix operator cannot be the right operand
+                // of a binary expression (`char**` in a type-like macro
+                // argument is not `char * *<missing operand>`).
+                return nullptr;
             }
+            left = MakeNode(NodeKind::UnaryExpression, start);
+            left->Tokens.End = operand->Tokens.End;
+            Append(*left, *operand);
         } else if (kind == TK::Operator_OpenParenthesis) {
             auto closingEnd = FindBalancedEnd(cursor);
             if (closingEnd == std::numeric_limits<TokenIndex>::max() ||

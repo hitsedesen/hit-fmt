@@ -3190,7 +3190,12 @@ std::string FormatBlockIndentation(const parser::SyntaxTree& tree,
         auto task = std::move(tasks.back());
         tasks.pop_back();
         const auto& node = *task.Node;
-        if (HasRecoveryChild(node) || IsIncompleteStatement(node)) {
+        if (HasRecoveryChild(node) || IsIncompleteStatement(node) ||
+            (node.Kind == NK::CompoundStatement && task.Parent == NK::Argument))
+        {
+            // An argument containing a statement block is typically a macro
+            // body; its existing multi-line indentation belongs to the
+            // macro invocation rather than the surrounding compound block.
             continue;
         }
         if ((node.Kind == NK::CompoundStatement ||

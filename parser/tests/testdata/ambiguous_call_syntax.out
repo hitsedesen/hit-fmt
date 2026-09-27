@@ -1,0 +1,217 @@
+(translation-unit
+  (template-declaration
+    "template"
+    (template-parameter-list
+      "<"
+      (template-parameter "typename" "Class")
+      (list-separator ",")
+      (template-parameter "typename" "PropertyType")
+      ">"
+    )
+    (function-declaration
+      (declaration-specifiers "void")
+      (init-declarator-list
+        (init-declarator
+          (declarator
+            (declarator-name "Property")
+            (function-declarator
+              (parameter-list
+                "("
+                (parameter-declaration
+                  (declaration-specifiers "PropertyType")
+                  (init-declarator-list
+                    (init-declarator
+                      (declarator
+                        (nested-declarator
+                          "("
+                          (member-pointer-operator "Class" "::" "*")
+                          (declarator-name "property")
+                          ")"
+                        )
+                        (function-declarator
+                          (parameter-list "(" ")")
+                          (function-qualifier "const")
+                        )
+                      )
+                    )
+                  )
+                )
+                ")"
+              )
+            )
+          )
+        )
+      )
+      ";"
+    )
+  )
+  (template-declaration
+    "template"
+    (template-parameter-list
+      "<"
+      (template-parameter "typename" "Class")
+      (list-separator ",")
+      (template-parameter "typename" "PropertyType")
+      (list-separator ",")
+      (template-parameter "typename" "Matcher")
+      ">"
+    )
+    (function-definition
+      (declaration-specifiers
+        "inline" "PolymorphicMatcher"
+        (template-argument-list
+          "<"
+          (template-argument "internal" "::" "PropertyMatcher" "<" "Class" "," "PropertyType" "," "PropertyType" "(" "Class" "::" "*" ")" "(" ")" "const")
+          ">>"
+        )
+      )
+      (init-declarator-list
+        (init-declarator
+          (declarator
+            (declarator-name "Property")
+            (function-declarator
+              (parameter-list
+                "("
+                (parameter-declaration
+                  (declaration-specifiers "PropertyType")
+                  (init-declarator-list
+                    (init-declarator
+                      (declarator
+                        (nested-declarator
+                          "("
+                          (member-pointer-operator "Class" "::" "*")
+                          (declarator-name "property")
+                          ")"
+                        )
+                        (function-declarator
+                          (parameter-list "(" ")")
+                          (function-qualifier "const")
+                        )
+                      )
+                    )
+                  )
+                )
+                (list-separator ",")
+                (parameter-declaration
+                  (declaration-specifiers "const" "Matcher")
+                  (init-declarator-list
+                    (init-declarator
+                      (declarator
+                        (pointer-operator "&")
+                        (declarator-name "matcher")
+                      )
+                    )
+                  )
+                )
+                ")"
+              )
+            )
+          )
+        )
+      )
+      (compound-statement
+        "{"
+        (return-statement
+          "return"
+          (braced-initializer
+            (initializer-list "{" "}")
+          )
+          ";"
+        )
+        "}"
+      )
+    )
+  )
+  (function-definition
+    (declaration-specifiers "void")
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (declarator-name "f")
+          (function-declarator
+            (parameter-list "(" ")")
+          )
+        )
+      )
+    )
+    (compound-statement
+      "{"
+      (expression-statement
+        (call-expression
+          (identifier-expression "EXPECT_DEATH_IF_SUPPORTED")
+          (argument-list
+            "("
+            (argument
+              (compound-statement
+                "{"
+                (expression-statement
+                  (call-expression
+                    (identifier-expression "callback")
+                    (argument-list "(" ")")
+                  )
+                  ";"
+                )
+                "}"
+              )
+            )
+            (list-separator ",")
+            (argument
+              (literal-expression "\"\"")
+            )
+            ")"
+          )
+        )
+        ";"
+      )
+      (expression-statement
+        (call-expression
+          (identifier-expression "EXPECT_EQ")
+          (argument-list
+            "("
+            (argument
+              (identifier-expression "kOther")
+            )
+            (list-separator ",")
+            (argument
+              (call-expression
+                (identifier-expression "GMOCK_KIND_OF_")
+                (argument-list
+                  "("
+                  (argument
+                    (expression "char")
+                  )
+                  "*" "*" ")"
+                )
+              )
+            )
+            ")"
+          )
+        )
+        ";"
+      )
+      (declaration-statement
+        (declaration-specifiers "int")
+        (init-declarator-list
+          (init-declarator
+            (declarator
+              (declarator-name "x")
+            )
+            (initializer
+              "="
+              (binary-expression
+                (identifier-expression "a")
+                "*"
+                (unary-expression
+                  "*"
+                  (identifier-expression "p")
+                )
+              )
+            )
+          )
+        )
+        ";"
+      )
+      "}"
+    )
+  )
+)

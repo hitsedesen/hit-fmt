@@ -405,8 +405,11 @@ Exclude = [
   multiline, commented, or incomplete gaps source-owned.
 - `BlockInteriorSpacing`: `Preserve` (default), `Space`, or `NoSpace`
   immediately inside a nonempty same-line compound or lambda body
-  (`{ statement; }` versus `{statement;}`). It does not change line
-  breaks, record/namespace braces, or initializer-brace spacing.
+  (`{ statement; }` versus `{statement;}`). A complete braced call
+  argument with a top-level statement semicolon is classified as a block,
+  not an initializer; its multiline indentation remains source-owned. The
+  rule does not change line breaks, record/namespace braces, or
+  initializer-brace spacing.
 - `EmptyBlockInteriorSpacing`: `Preserve` (default), `Space` (`{ }`), or
   `NoSpace` (`{}`) for empty compound and lambda bodies. It is independent
   of the nonempty block setting.
@@ -481,8 +484,10 @@ Exclude = [
   assignment operators. Commas use `CommaSpacing` independently, even when
   that option is `Preserve`. Assignment initializers are included. Operators
   that could also be template delimiters (`<`, `>`, `<<`, `>>`) remain
-  unchanged. `NoSpace` does not join two operator spellings if that could
-  change tokenization.
+  unchanged. An operator with no valid operand is not treated as binary;
+  for example `char**` in an otherwise ambiguous call stays source-owned.
+  `NoSpace` does not join two operator spellings if that could change
+  tokenization.
 - `CastSpacing`: `Preserve` (default), `Space`, or `NoSpace` between the
   closing `)` and operand of a parsed C-style cast. Named casts and
   parenthesized operands of `sizeof`, `alignof`, `decltype`, `typeid`, and
@@ -789,8 +794,10 @@ Exclude = [
   expressions are unaffected. Ambiguous parenthesized callees, which
   could instead be C-style casts, are preserved unless the inner expression
   is clearly callable (such as `(*fn)(arg)`). Calls in incompletely parsed
-  statements remain source-owned. The setting controls the gap *before*
-  the argument list, not whitespace between individual arguments.
+  statements remain source-owned. Parentheses inside a templated return
+  type (including member-pointer types) are not mistaken for calls. The
+  setting controls the gap *before* the argument list, not whitespace
+  between individual arguments.
 - `SpaceInsideFunctionParameters`: `Preserve` (default) leaves gaps just
   inside the `(` and `)` of a named function's nonempty parameter list
   unchanged; `Space` uses one space and `NoSpace` removes it. Newlines,
@@ -897,8 +904,11 @@ Corpus check: tested against the Ubuntu-packaged GoogleTest/GoogleMock
 brace-initializer and binary-operator settings. `NamespaceCommentSpaces = 2`
 adds Google's two-space comment gap; `NamespaceComments = AddMissing` leaves
 existing anonymous-namespace comments such as `// Unnamed namespace` intact.
-`MemberAccessOperatorsSpacing` remains `Preserve`: `NoSpace`
-can still join `GTEST_API_ ::std::string` into `GTEST_API_::std::string`.
+Member-pointer parameter declarators in templated return-type functions,
+`char**` inside type-taking macros, and braced macro arguments containing
+statements now retain their correct Google spacing. `MemberAccessOperatorsSpacing`
+remains `Preserve`: `NoSpace` can still join `GTEST_API_ ::std::string` into
+`GTEST_API_::std::string` without declaration-prefix awareness.
 `TernaryOperatorSpacing = Space` can collapse multiline alignment without
 realigning other branches, so the profile preserves it. Four-space newline
 function parameter indentation is selected explicitly, and unsafe nested

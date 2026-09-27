@@ -169,6 +169,8 @@ std::vector<FormattedCase> FormattedCases()
     cases.push_back({google, "unbraced-switch", "unbraced-switch.input.cpp"});
     cases.push_back({google, "namespace-comments",
         "namespace-comments.input.cpp"});
+    cases.push_back({google, "syntax-boundaries",
+        "syntax-boundaries.input.cpp"});
     AddCases(cases, google, {"punctuation-preserve", "punctuation-space",
         "comments-preserve"}, "punctuation-preserve.input.cpp");
     const auto attribute = std::filesystem::path(FORMATTER_TESTDATA_DIR) /
