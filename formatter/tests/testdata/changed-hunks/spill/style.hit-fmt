@@ -3,3 +3,4 @@ CallArgumentSplit = OnePerLine
 FirstCallArgumentPosition = NewLine
 EnforceFirstCallArgumentPosition = true
 SpaceInsideFunctionParameters = NoSpace
+EnforceSpaceInsideFunctionParameters = true

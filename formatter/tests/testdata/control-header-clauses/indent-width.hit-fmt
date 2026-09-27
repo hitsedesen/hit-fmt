@@ -4,3 +4,4 @@ ControlConditionIndent = Continuation
 ForHeaderClauseIndent = IndentWidth
 ExpressionLayoutCondition = Overflow
 ControlBlockBracePlacement = AttachUnlessMultiline
+EnforceControlBlockBracePlacement = true

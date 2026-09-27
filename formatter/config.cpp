@@ -1,5 +1,6 @@
 #include "config.hpp"
 
+#include <algorithm>
 #include <array>
 #include <charconv>
 #include <cctype>
@@ -438,6 +439,21 @@ void ApplySetting(Configuration& config, std::string_view key,
 {
     for (const auto& option : Options) {
         if (option.Name == key) {
+            // Other options still use these shared enums' Preserve value.
+            constexpr std::array<std::string_view, 11> preferences = {
+                "SpaceInsideFunctionParameters", "SpaceInsideCallArguments",
+                "InitializerBracesSpacing", "EmptyBlockInteriorSpacing",
+                "ControlBlockSpaceBeforeBrace", "ClassBraceSpacing",
+                "StructBraceSpacing", "UnionBraceSpacing",
+                "FunctionBraceSpacing", "LambdaBraceSpacing",
+                "NamespaceBraceSpacing"};
+            if (value == "Preserve" &&
+                std::find(preferences.begin(), preferences.end(), key) !=
+                    preferences.end())
+            {
+                ThrowConfigError(path, line,
+                    "use the corresponding Enforce option instead of Preserve");
+            }
             option.Assign(config, value, path, line);
             ValidateStyleLimits(config.FormattingStyle, path, line);
             return;

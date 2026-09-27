@@ -1,2 +1,3 @@
 ControlBlockKeywordSpacing = Space
 ControlBlockBracePlacement = AttachUnlessMultiline
+EnforceControlBlockBracePlacement = true

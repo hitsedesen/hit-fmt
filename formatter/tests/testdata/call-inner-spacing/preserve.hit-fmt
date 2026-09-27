@@ -1,1 +1,1 @@
-SpaceInsideCallArguments = Preserve
+EnforceSpaceInsideCallArguments = false

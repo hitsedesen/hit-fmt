@@ -1,4 +1,8 @@
 FunctionParameterClosingParenthesis = NewLine
+EnforceFunctionParameterClosingParenthesis = true
 FunctionCallArgumentClosingParenthesis = NewLine
+EnforceFunctionCallArgumentClosingParenthesis = true
 InitializerClosingBrace = NewLine
+EnforceInitializerClosingBrace = true
 BlockClosingBrace = NewLine
+EnforceBlockClosingBrace = true

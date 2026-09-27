@@ -1,4 +1,5 @@
 BinaryOperatorSpacing = Space
 CommaSpacing = Space
+EnforceCommaSpacing = true
 NamespaceComments = Preserve
 NamespaceCommentSpaces = 2

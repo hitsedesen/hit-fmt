@@ -1,0 +1,4 @@
+ColumnLimit = 25
+CallArgumentSplit = OnePerLine
+SpaceInsideCallArguments = Space
+EnforceSpaceInsideCallArguments = false

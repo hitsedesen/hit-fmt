@@ -1,7 +1,7 @@
-ClassBraceSpacing = Preserve
-LambdaBraceSpacing = Preserve
-StructBraceSpacing = Preserve
+EnforceClassBraceSpacing = false
+EnforceLambdaBraceSpacing = false
+EnforceStructBraceSpacing = false
 EnumBraceSpacing = Preserve
-UnionBraceSpacing = Preserve
-FunctionBraceSpacing = Preserve
-NamespaceBraceSpacing = Preserve
+EnforceUnionBraceSpacing = false
+EnforceFunctionBraceSpacing = false
+EnforceNamespaceBraceSpacing = false

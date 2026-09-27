@@ -1,1 +1,2 @@
 ControlBlockBracePlacement = SameLine
+EnforceControlBlockBracePlacement = true

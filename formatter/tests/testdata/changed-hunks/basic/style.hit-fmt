@@ -2,3 +2,4 @@ IncludeOrder = Sort
 ColumnLimit = 25
 CallArgumentSplit = OnePerLine
 SpaceInsideFunctionParameters = NoSpace
+EnforceSpaceInsideFunctionParameters = true

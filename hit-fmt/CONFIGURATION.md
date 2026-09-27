@@ -124,14 +124,18 @@ InheritanceListStart = NewLine
 InheritanceListSplit = OnePerLine
 # InheritanceListIndent defaults to IndentWidth when omitted
 ClassBracePlacement = Preserve
-ClassBraceSpacing = Preserve
+ClassBraceSpacing = SingleSpace
+EnforceClassBraceSpacing = false
 StructBracePlacement = Preserve
-StructBraceSpacing = Preserve
+StructBraceSpacing = SingleSpace
+EnforceStructBraceSpacing = false
 UnionBracePlacement = Preserve
-UnionBraceSpacing = Preserve
+UnionBraceSpacing = SingleSpace
+EnforceUnionBraceSpacing = false
 EnumBraceSpacing = Preserve
 NamespaceBracePlacement = Preserve
-NamespaceBraceSpacing = Preserve
+NamespaceBraceSpacing = SingleSpace
+EnforceNamespaceBraceSpacing = false
 NamespaceComments = Preserve
 NamespaceCommentSpaces = 1
 ShortNamespaceLines = 0
@@ -144,7 +148,8 @@ NoexceptSpaceBeforeSpecifier = Preserve
 NoexceptSpaceBeforeParentheses = Preserve
 ReturnArrowSpacing = Preserve
 FunctionSpaceBeforeParameters = Preserve
-SpaceInsideFunctionParameters = Preserve
+SpaceInsideFunctionParameters = NoSpace
+EnforceSpaceInsideFunctionParameters = false
 EmptyFunctionParametersSpacing = Preserve
 FunctionParameterSplit = Pack
 FirstFunctionParameterPosition = NameLine
@@ -152,9 +157,11 @@ EnforceFirstFunctionParameterPosition = false
 FunctionParameterIndent = IndentWidth
 # FunctionParameterNewLineIndent = 4 overrides indentation when first is new
 MergeFunctionParameters = false
-FunctionParameterClosingParenthesis = Preserve
+FunctionParameterClosingParenthesis = SameLine
+EnforceFunctionParameterClosingParenthesis = false
 FunctionBracePlacement = Preserve
-FunctionBraceSpacing = Preserve
+FunctionBraceSpacing = SingleSpace
+EnforceFunctionBraceSpacing = false
 
 # Lambdas
 SpaceAroundCaptureList = Preserve
@@ -166,18 +173,22 @@ SpaceInsideLambdaParameters = Preserve
 EmptyLambdaParametersSpacing = Preserve
 LambdaCallSpaceBeforeArguments = Inherit
 LambdaBracePlacement = Preserve
-LambdaBraceSpacing = Preserve
+LambdaBraceSpacing = SingleSpace
+EnforceLambdaBraceSpacing = false
 EmptyLambdaBodySpacing = Inherit
 SingleStatementLambdaBodyLayout = Inherit
 
 # Calls and chains
 FunctionCallSpaceBeforeParameters = Preserve
-SpaceInsideCallArguments = Preserve
+SpaceInsideCallArguments = NoSpace
+EnforceSpaceInsideCallArguments = false
 EmptyFunctionCallArgumentsSpacing = Preserve
-FunctionCallArgumentClosingParenthesis = Preserve
+FunctionCallArgumentClosingParenthesis = SameLine
+EnforceFunctionCallArgumentClosingParenthesis = false
 CallArgumentSplitColumnLimit = 0
 CallArgumentSplitColumnLimitNames = []
-MultilineSingleCallArgumentPosition = Preserve
+MultilineSingleCallArgumentPosition = CallLine
+EnforceMultilineSingleCallArgumentPosition = false
 CallLineFirstStringNames = []
 CallLikeMacroNames = []
 WhitespaceSensitiveMacros = []
@@ -195,8 +206,10 @@ RangeBasedForColonSpacing = Preserve
 ControlHeaderClauseSplit = Preserve
 ControlConditionIndent = IndentWidth
 ForHeaderClauseIndent = Inherit
-ControlBlockBracePlacement = Preserve
-ControlBlockSpaceBeforeBrace = Preserve
+ControlBlockBracePlacement = SameLine
+EnforceControlBlockBracePlacement = false
+ControlBlockSpaceBeforeBrace = Space
+EnforceControlBlockSpaceBeforeBrace = false
 AddMissingControlBraces = false
 EmptyControlBody = Preserve
 IndentCaseLabels = Preserve
@@ -205,7 +218,8 @@ LabelColonSpacing = Preserve
 
 # Blocks and statements
 BlockInteriorSpacing = Preserve
-EmptyBlockInteriorSpacing = Preserve
+EmptyBlockInteriorSpacing = NoSpace
+EnforceEmptyBlockInteriorSpacing = false
 StatementSemicolonSpacing = Preserve
 DeclarationSemicolonSpacing = Preserve
 IndentBlockBodies = false
@@ -213,18 +227,21 @@ StandaloneBlockBraceIndentation = Indent
 CollapseEmptyFunctionBodies = false
 NonEmptyBlockBodyLayout = Preserve
 BlockBodyIndentWidth = 0
-BlockClosingBrace = Preserve
+BlockClosingBrace = NewLine
+EnforceBlockClosingBrace = false
 StatementAttributeIndent = Preserve
 StatementAttributeIndentWidth = 0
 
 # Initializers, new, and delete
 BraceInitializerSpacing = Preserve
-InitializerBracesSpacing = Preserve
+InitializerBracesSpacing = NoSpace
+EnforceInitializerBracesSpacing = false
 EmptyBraceInitializerInteriorSpacing = Preserve
 InitializerListSplit = Preserve
 FirstInitializerElementPosition = BraceLine
 InitializerListIndent = IndentWidth
-InitializerClosingBrace = Preserve
+InitializerClosingBrace = SameLine
+EnforceInitializerClosingBrace = false
 InitializerTrailingComma = Keep
 MergeInitializerList = false
 
@@ -278,10 +295,13 @@ BinaryOperatorSpacing = Preserve
 AssignmentOperatorSpacing = Preserve
 TernaryOperatorSpacing = Preserve
 OperatorOverloadOperatorSpacing = Preserve
-CommaSpacing = Preserve
+CommaSpacing = Space
+EnforceCommaSpacing = false
 SubscriptOperatorSpacing = Preserve
 SubscriptOperatorInteriorSpacing = Preserve
 ExpressionLayoutCondition = Preserve
+TernaryOperatorPlacement = Leading
+EnforceTernaryOperatorPlacement = false
 
 # Naming checks
 FunctionDeclarationParameterNames = Unchecked
@@ -443,10 +463,11 @@ Exclude = [
   inline brace followed by a trailing comment, the comment stays with the
   declaration header and the brace goes below it. Other intervening comments
   and directives block attachment. Other braces are unaffected.
-- `*BraceSpacing`: `Preserve` (default) leaves existing same-line whitespace
-  untouched, including zero or multiple spaces; `SingleSpace` uses exactly
-  one space before an opening brace on the same line. Class, lambda, struct,
-  enum, union, function definition, and namespace have independent settings.
+- `*BraceSpacing`: `SingleSpace` (default) selects the spacing when a
+  brace is attached to its header. For class, lambda, struct, union,
+  function definition, and namespace, the corresponding `Enforce*BraceSpacing`
+  (default `false`) also normalizes existing same-line gaps. Enum braces
+  retain their separate `Preserve`/`SingleSpace` setting.
   Line breaks and gaps containing comments or directives remain untouched.
   Placement is applied first: `NewLine` keeps the brace on its own line;
   `Attach` joins it to the header, using one space at the join.
@@ -534,9 +555,10 @@ Exclude = [
   the arrow of a parsed trailing return type. Member-access `->` is
   unaffected.
 - `FunctionParameterClosingParenthesis` and
-  `FunctionCallArgumentClosingParenthesis`: `Preserve` (default),
-  `SameLine` (beside the final parameter or argument), or `NewLine`.
-  Closing placement runs independently of parameter/call reflow.
+  `FunctionCallArgumentClosingParenthesis`: `SameLine` (default, beside the
+  final parameter or argument) or `NewLine` selects the position when
+  reflowing a list. Their matching `Enforce...` options (default `false`)
+  also apply the placement to existing closing gaps without reflow.
 - `FunctionParameterSplit`: `Preserve` (default, leave parameter lists
   unchanged), `Pack` (put as many parameters as fit on each line), or
   `OnePerLine`. Lists already fitting on one line are left unchanged.
@@ -567,13 +589,12 @@ Exclude = [
   operators. Newlines, comments, and directives remain unchanged. Calls,
   lambdas, control conditions, and function-pointer declarations are
   unaffected.
-- `SpaceInsideFunctionParameters`: `Preserve` (default) leaves gaps just
-  inside the `(` and `)` of a named function's nonempty parameter list
-  unchanged; `Space` uses one space and `NoSpace` removes it. Newlines,
-  adjacent comments, and directives are preserved. Empty `()` pairs,
-  lambdas, calls, control conditions, and `requires` expressions are
-  unaffected. When function parameters are reflowed, `Space` also applies
-  to the resulting list's same-line edges.
+- `SpaceInsideFunctionParameters`: `NoSpace` (default) or `Space` sets
+  the edges of reflowed nonempty parameter lists. Set
+  `EnforceSpaceInsideFunctionParameters` (default `false`) to also
+  normalize existing same-line gaps. Newlines, adjacent comments, and
+  directives are preserved. Empty `()` pairs, lambdas, calls, control
+  conditions, and `requires` expressions are unaffected.
 
 Function parameter rules change only safely movable lists in function
 declarators; comments, directives, multiline parameter expressions, and
@@ -678,16 +699,19 @@ CRLF lists are left intact. They do not change calls.
   shorter assertions.
 - `FirstCallArgumentPosition`: `CallLine` (default) or `NewLine` selects
   where the first argument starts when a call is split.
-- `MultilineSingleCallArgumentPosition`: `Preserve` (default) keeps the
-  opening of an already multiline sole argument beside the call name;
-  `NewLine` moves a safe parsed argument below `(` using
-  `CallArgumentIndent`. It does not split flat, fitting arguments or
+- `MultilineSingleCallArgumentPosition`: `CallLine` (default) keeps the
+  opening of a multiline sole argument beside the call name; `NewLine`
+  places it below `(` using `CallArgumentIndent` when a split is needed.
+  `EnforceMultilineSingleCallArgumentPosition` (default `false`) also
+  checks and corrects safe existing multiline calls, even when
+  `CallArgumentSplit = Preserve`. It does not split flat, fitting arguments or
   reshape the argument's interior. A sole nested call stays on the outer
   call's line so its own arguments can split first. Braced and
   lambda-containing arguments, comments, directives, and recovered syntax
   remain source-owned (apart from safe overlong direct lambdas, whose body
-  indentation moves with the capture). It applies when
-  `CallArgumentSplit` is enabled. The YTsaurus profile uses `NewLine`.
+  indentation moves with the capture). Without enforcement it applies when
+  `CallArgumentSplit` is enabled. The YTsaurus profile uses `NewLine`
+  with enforcement enabled.
 - `ChainedCallRootNames`: exact names of call expressions that may start
   a formatted member-call chain, default `[]`. A simple name also matches
   namespace-qualified calls ending in that name (`MakeAction` matches
@@ -759,9 +783,10 @@ CRLF lists are left intact. They do not change calls.
   type (including member-pointer types) are not mistaken for calls. The
   setting controls the gap *before* the argument list, not whitespace
   between individual arguments.
-- `SpaceInsideCallArguments`: `Preserve` (default) leaves same-line gaps
-  just inside the `(` and `)` of a nonempty parsed call argument list
-  unchanged; `Space` uses one space and `NoSpace` removes it. Empty pairs,
+- `SpaceInsideCallArguments`: `NoSpace` (default) or `Space` selects
+  the edges of reflowed nonempty call argument lists. Set
+  `EnforceSpaceInsideCallArguments` (default `false`) to also normalize
+  existing same-line gaps. Empty pairs,
   newlines, and gaps adjacent to comments or directives remain untouched.
   Ambiguous parenthesized callees (which may be casts), built-in type
   casts, declarations, lambda parameters, control conditions, and calls
@@ -774,9 +799,11 @@ CRLF lists are left intact. They do not change calls.
   `NoSpace` just inside complete `if`, `for`, `while`, `switch`, and `catch`
   condition parentheses (including `do`/`while`).
   `ControlBlockKeywordSpacing` controls the gap *before* `(`.
-- `ControlBlockSpaceBeforeBrace`: `Preserve` (default), `Space`, or
-  `NoSpace` between a control header (`if`, `else`, `for`, `while`, `do`,
-  `switch`, `try`, `catch`) and a same-line opening brace. Brace placement
+- `ControlBlockSpaceBeforeBrace`: `Space` (default) or `NoSpace` before
+  a new brace; `EnforceControlBlockSpaceBeforeBrace` (default `false`)
+  also normalizes existing same-line gaps between a control header
+  (`if`, `else`, `for`, `while`, `do`, `switch`, `try`, `catch`) and a
+  same-line opening brace. Brace placement
   runs first; a brace left on a separate line stays on that line.
 - `LoopSemicolonSpacing` and `ConditionInitSemicolonSpacing`: `Preserve`
   (default), `Space`, or `NoSpace`. The first controls the two clause
@@ -838,11 +865,12 @@ CRLF lists are left intact. They do not change calls.
   `if constexpr (` and `for co_await (`. Newlines, comments, directives,
   macro-wrapped conditions, calls, and function declarations are unchanged.
   `else` and `do` have no condition `(` to which this rule applies.
-- `ControlBlockBracePlacement`: `Preserve` (default) leaves opening braces
-  untouched; `SameLine` attaches them to the control header, and `NewLine`
-  puts them on a separate line. `AttachUnlessMultiline` attaches braces
-  for single-line headers but puts them on a separate line when the header
-  spans multiple lines (not merely because the brace was detached). Applies
+- `ControlBlockBracePlacement`: `SameLine` (default) attaches generated
+  braces to the header; `NewLine` puts them on a separate line.
+  `AttachUnlessMultiline` separates them when the header spans multiple
+  lines (not merely because the brace was detached).
+  `EnforceControlBlockBracePlacement` (default `false`) also corrects
+  existing braces, including after header reflow. Applies
   to compound bodies of `if`, `else`, `for`, `while`, `do`, `switch`, `try`,
   and `catch`, but not unbraced statements or unrelated compound blocks.
   Existing same-line whitespace is preserved; attaching a detached brace
@@ -858,8 +886,10 @@ CRLF lists are left intact. They do not change calls.
   not an initializer; its multiline indentation remains source-owned. The
   rule does not change line breaks, record/namespace braces, or
   initializer-brace spacing.
-- `EmptyBlockInteriorSpacing`: `Preserve` (default), `Space` (`{ }`), or
-  `NoSpace` (`{}`) for empty compound and lambda bodies. It is independent
+- `EmptyBlockInteriorSpacing`: `NoSpace` (`{}`, default) or `Space` (`{ }`)
+  selects spacing in newly generated empty blocks. Set
+  `EnforceEmptyBlockInteriorSpacing` (default `false`) to normalize
+  existing empty compound and lambda bodies. It is independent
   of the nonempty block setting.
 - `IndentBlockBodies`: `false` (default) preserves statement indentation;
   `true` reindents statement starts and closing braces in complete compound
@@ -886,10 +916,11 @@ CRLF lists are left intact. They do not change calls.
   function body containing only whitespace into `{ }`. It does not collapse
   bodies containing comments or directives, or CRLF bodies. Function brace
   placement still controls whether the opening brace is on its own line.
-- `BlockClosingBrace`: `Preserve` (default), `SameLine` (beside the last
-  statement), or `NewLine`. Applies to parsed compound statements and
-  lambda bodies, not namespace or type declarations. Empty bodies and
-  unsafe gaps remain unchanged.
+- `BlockClosingBrace`: `NewLine` (default) or `SameLine` (beside the last
+  statement) selects the preferred position. `EnforceBlockClosingBrace`
+  (default `false`) also corrects existing closers. Applies to parsed
+  compound statements and lambda bodies, not namespace or type
+  declarations. Empty bodies and unsafe gaps remain unchanged.
   For all closing-placement options, comments and directives adjacent to
   the closer and CRLF gaps remain source-owned. Unrecognized constructs
   other than the restricted typed-initializer closing gap stay unchanged.
@@ -918,10 +949,12 @@ CRLF lists are left intact. They do not change calls.
   before a parsed braced initializer (`T x {1}` versus `T x{1}`). The gap
   following `=` remains controlled by `AssignmentOperatorSpacing`.
   The gap after `return`/`co_return` stays source-owned.
-- `InitializerBracesSpacing`: `Preserve` (default), `Space`, or `NoSpace`
-  just inside nonempty parsed braced initializers (`{ x, y }` versus
-  `{x, y}`). `EmptyBraceInitializerInteriorSpacing` controls `{ }`
-  versus `{}` for empty parsed braced initializers. Neither setting
+- `InitializerBracesSpacing`: `NoSpace` (default) or `Space` selects
+  the edges of reflowed nonempty parsed braced initializers (`{ x, y }` versus
+  `{x, y}`). `EnforceInitializerBracesSpacing` (default `false`) also
+  normalizes existing same-line gaps.
+  `EmptyBraceInitializerInteriorSpacing` controls `{ }` versus `{}`
+  for empty parsed braced initializers. Neither setting
   affects block, namespace, record, or lambda braces.
 - `InitializerListSplit`: `Preserve` (default), `Pack` (put as many braced
   initializer elements on a line as fit), or `OnePerLine` (one element per
@@ -936,11 +969,11 @@ CRLF lists are left intact. They do not change calls.
   determines where the first element starts when a list is split.
 - `InitializerListIndent`: `IndentWidth` (default, one width beyond the
   list's line) or `Continuation` (align with the character after `{`).
-- `InitializerClosingBrace`: `Preserve` (default, retain the closing brace's
-  line), `SameLine` (beside the last element unless a retained comma
-  precedes it), or `NewLine`. Placement also applies with
-  `InitializerListSplit = Preserve`, independent of list splitting,
-  when an initializer has a safe whitespace-only gap before `}`. For
+- `InitializerClosingBrace`: `SameLine` (default, beside the last element
+  unless a retained comma precedes it) or `NewLine` selects the position
+  when reflowing a list. `EnforceInitializerClosingBrace` (default `false`)
+  also applies that position without reflow, including with
+  `InitializerListSplit = Preserve` when the gap before `}` is safe. For
   unknown typed temporary initializers, only the closing gap (or a safe
   trailing comma, if requested) is changed; their contents are not reflowed.
   A multiline final element retains its own closing-brace line.
@@ -1104,11 +1137,11 @@ CRLF lists are left intact. They do not change calls.
   closing `)` and operand of a parsed C-style cast. Named casts and
   parenthesized operands of `sizeof`, `alignof`, `decltype`, `typeid`, and
   `noexcept` are not affected.
-- `CommaSpacing`: `Preserve` (default) leaves comma gaps unchanged;
-  `Space` (also spelled `After` for compatibility) removes same-line space
-  before a comma and uses one space after it (`f(a ,b)` becomes `f(a, b)`);
-  `NoSpace` removes same-line spaces on both sides (`f(a , b)` becomes
-  `f(a,b)`). A trailing comma before a closing delimiter does not receive
+- `CommaSpacing`: `Space` (default, also spelled `After`) separates
+  reflowed list elements; `NoSpace` joins them without a gap. Set
+  `EnforceCommaSpacing` (default `false`) to also normalize existing
+  same-line comma gaps (`f(a ,b)` becomes `f(a, b)` under `Space` or
+  `f(a,b)` under `NoSpace`). A trailing comma before a closing delimiter does not receive
   an added space. Comments, line breaks, and recovered syntax are preserved.
 - `SubscriptOperatorInteriorSpacing`, `ArrayDeclarationInteriorSpacing`,
   and `StructuredBindingBracketSpacing`: `Preserve` (default), `Space`, or
@@ -1151,13 +1184,12 @@ CRLF lists are left intact. They do not change calls.
   only applies to parsed expressions when expression layout is enabled;
   `Overflow` also corrects safe existing assignment breaks without
   regrouping the expression.
-- `TernaryOperatorPlacement`: `Preserve` (default) leaves the side of
-  existing `?` and `:` breaks unchanged. New breaks use leading placement
-  unless another delimiter is already split, in which case `ThreeLines`
-  follows that delimiter's side. `Leading` puts the operators at the start
-  of their continuation lines; `Trailing` keeps them at the end of the
-  preceding line. Explicit placement also corrects safe existing breaks
-  in `Overflow` mode, independently of `TernarySplit`.
+- `TernaryOperatorPlacement`: `Leading` (default) puts newly created
+  `?` and `:` breaks at the start of continuation lines; `Trailing`
+  puts them at the end of the preceding line. Existing breaks retain
+  their side unless `EnforceTernaryOperatorPlacement` is `true` (default
+  `false`). Enforcement also corrects safe existing breaks in `Overflow`
+  mode, independently of `TernarySplit`.
 - `TernarySplit`: `Preserve` (default) neither adds nor joins ternary
   breaks. `AsNeeded` allows either delimiter or both to break. `ThreeLines`
   keeps a flat ternary flat when it fits; if the ternary is split, it
@@ -1275,7 +1307,7 @@ splitting remains disabled in this example to avoid reshaping nested
 initializers; the closing `}` policy still runs independently on safe
 initializer lists. With a trailing comma, the brace stays on its own line.
 The YT guide does not prescribe spaces inside initializer braces, and both
-layouts occur in source. `InitializerBracesSpacing = Preserve` avoids bulk
+layouts occur in source. `EnforceInitializerBracesSpacing = false` avoids bulk
 whitespace changes.
 `CallArgumentSplit = OnePerLine` only handles safe parsed calls with
 single-line arguments. Overlong safe ternaries split at both leading

@@ -1,5 +1,7 @@
 BlockInteriorSpacing = Space
 EmptyBlockInteriorSpacing = NoSpace
+EnforceEmptyBlockInteriorSpacing = true
 ControlBlockSpaceBeforeBrace = NoSpace
+EnforceControlBlockSpaceBeforeBrace = true
 DeclarationSemicolonSpacing = Space
 StatementSemicolonSpacing = NoSpace

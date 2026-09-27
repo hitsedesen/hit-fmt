@@ -18,13 +18,17 @@ IndentAccessModifiers = NoIndent
 IndentMembers = Indent
 ClassBracePlacement = Attach
 ClassBraceSpacing = SingleSpace
+EnforceClassBraceSpacing = true
 StructBracePlacement = Attach
 StructBraceSpacing = SingleSpace
+EnforceStructBraceSpacing = true
 UnionBracePlacement = Attach
 UnionBraceSpacing = SingleSpace
+EnforceUnionBraceSpacing = true
 EnumBraceSpacing = SingleSpace
 NamespaceBracePlacement = Attach
 NamespaceBraceSpacing = SingleSpace
+EnforceNamespaceBraceSpacing = true
 NamespaceComments = Fix
 ShortNamespaceLines = 1
 # LLVM base-list layout is context-dependent; keep it source-owned.
@@ -33,6 +37,7 @@ InheritanceList = Preserve
 # Functions and parameters
 FunctionBracePlacement = Attach
 FunctionBraceSpacing = SingleSpace
+EnforceFunctionBraceSpacing = true
 FunctionParameterSplit = Pack
 FirstFunctionParameterPosition = NameLineIfFits
 FunctionParameterIndent = Continuation
@@ -40,10 +45,12 @@ FunctionParameterNewLineIndent = 4
 MergeFunctionParameters = true
 FunctionSpaceBeforeParameters = NoSpace
 SpaceInsideFunctionParameters = NoSpace
+EnforceSpaceInsideFunctionParameters = true
 
 # Lambdas
 LambdaBracePlacement = Attach
 LambdaBraceSpacing = SingleSpace
+EnforceLambdaBraceSpacing = true
 LambdaSpaceBeforeParameters = NoSpace
 SpaceInsideLambdaParameters = NoSpace
 SpaceAroundCaptureList = NoSpace
@@ -55,11 +62,13 @@ FirstCallArgumentPosition = CallLine
 CallArgumentIndent = Continuation
 FunctionCallSpaceBeforeParameters = NoSpace
 SpaceInsideCallArguments = NoSpace
+EnforceSpaceInsideCallArguments = true
 
 # Control flow
 LabelColonSpacing = NoSpace
 IndentCaseLabels = NoIndent
 ControlBlockBracePlacement = SameLine
+EnforceControlBlockBracePlacement = true
 ControlBlockKeywordSpacing = Space
 ControlConditionIndent = Continuation
 
@@ -76,6 +85,7 @@ ExpressionLayoutCondition = Overflow
 BinaryOperatorPlacement = Trailing
 AssignmentOperatorPlacement = Trailing
 TernaryOperatorPlacement = Leading
+EnforceTernaryOperatorPlacement = true
 TernarySplit = AsNeeded
 
 # Naming checks

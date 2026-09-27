@@ -1,3 +1,5 @@
 SpaceInsideFunctionParameters = Space
+EnforceSpaceInsideFunctionParameters = true
 FunctionCallSpaceBeforeParameters = Space
 SpaceInsideCallArguments = NoSpace
+EnforceSpaceInsideCallArguments = true

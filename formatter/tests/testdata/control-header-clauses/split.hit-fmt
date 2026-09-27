@@ -3,3 +3,4 @@ ControlHeaderClauseSplit = WhenNeeded
 ControlConditionIndent = Continuation
 ExpressionLayoutCondition = Overflow
 ControlBlockBracePlacement = AttachUnlessMultiline
+EnforceControlBlockBracePlacement = true
