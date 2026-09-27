@@ -1,0 +1,24 @@
+void render(bool Alpha, bool Beta, bool Gamma, bool Delta, bool Epsilon, bool Zeta) {
+  while (Alpha && Beta && Gamma && Delta && Epsilon && Zeta) {
+wrong();
+    switch (0) {
+      case 1:
+          work();
+          break;
+      default:
+          break;
+    }
+  }
+}
+int Values[] = {100000000, 200000000, 300000000, 400000000, 500000000, 600000000};
+namespace small {
+int X;
+}
+namespace empty {}
+namespace withComment {
+int X;
+} // old name
+namespace larger {
+int X;
+int Y;
+}

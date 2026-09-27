@@ -1,0 +1,10 @@
+IndentWidth = 2
+ColumnLimit = 50
+ExpressionLayoutCondition = Overflow
+ControlConditionIndent = Continuation
+IndentBlockBodies = true
+IndentCaseLabels = NoIndent
+InitializerListSplit = Pack
+InitializerListIndent = Continuation
+NamespaceComments = Required
+ShortNamespaceLines = 1

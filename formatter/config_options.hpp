@@ -211,6 +211,8 @@
         formatter::ExpressionLayoutCondition::Preserve)                        \
     OPT(formatter::ExpressionLayoutAlgorithm, ExpressionLayoutAlgorithm,       \
         formatter::ExpressionLayoutAlgorithm::Greedy)                          \
+    OPT(formatter::CallArgumentIndent, ControlConditionIndent,                 \
+        formatter::CallArgumentIndent::IndentWidth)                            \
     OPT(formatter::BinaryOperatorPlacement, BinaryOperatorPlacement,           \
         formatter::BinaryOperatorPlacement::Trailing)                          \
     OPT(formatter::TernaryOperatorPlacement, TernaryOperatorPlacement,         \
@@ -222,6 +224,9 @@
     OPT(formatter::BodyIndentation, IndentAccessModifiers,                     \
         formatter::BodyIndentation::Preserve)                                  \
     OPT(formatter::BodyIndentation, IndentMembers,                             \
+        formatter::BodyIndentation::Preserve)                                  \
+    OPT(bool, IndentBlockBodies, false)                                        \
+    OPT(formatter::BodyIndentation, IndentCaseLabels,                           \
         formatter::BodyIndentation::Preserve)                                  \
     OPT(formatter::InheritanceListMode, InheritanceList,                       \
         formatter::InheritanceListMode::Preserve)                              \
@@ -257,6 +262,7 @@
         formatter::BracePlacement::Preserve)                                   \
     OPT(formatter::NamespaceComments, NamespaceComments,                       \
         formatter::NamespaceComments::Preserve)                                \
+    OPT(std::size_t, ShortNamespaceLines, 0)                                   \
     OPT(formatter::FunctionParameterSplit, FunctionParameterSplit,             \
         formatter::FunctionParameterSplit::Preserve)                           \
     OPT(formatter::FirstFunctionParameterPosition, FirstFunctionParameterPosition, \
@@ -272,6 +278,16 @@
     OPT(bool, EnforceFirstCallArgumentPosition, false)                         \
     OPT(formatter::CallArgumentIndent, CallArgumentIndent,                     \
         formatter::CallArgumentIndent::IndentWidth)                            \
+    OPT(formatter::FunctionParameterSplit, InitializerListSplit,               \
+        formatter::FunctionParameterSplit::Preserve)                           \
+    OPT(formatter::FirstInitializerElementPosition,                             \
+        FirstInitializerElementPosition,                                       \
+        formatter::FirstInitializerElementPosition::BraceLine)                 \
+    OPT(formatter::CallArgumentIndent, InitializerListIndent,                  \
+        formatter::CallArgumentIndent::IndentWidth)                            \
+    OPT(formatter::InitializerClosingBrace, InitializerClosingBrace,           \
+        formatter::InitializerClosingBrace::Preserve)                          \
+    OPT(bool, MergeInitializerList, false)                                     \
     OPT(formatter::ControlBlockKeywordSpacing, ControlBlockKeywordSpacing,     \
         formatter::ControlBlockKeywordSpacing::Preserve)                       \
     OPT(formatter::ControlBlockBracePlacement, ControlBlockBracePlacement,     \

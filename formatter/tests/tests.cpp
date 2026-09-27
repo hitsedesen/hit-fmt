@@ -175,6 +175,8 @@ std::vector<FormattedCase> FormattedCases()
     // Keep safety and recovered-syntax examples in separate parse units.
     const auto spacing = std::filesystem::path(FORMATTER_TESTDATA_DIR) /
         ".." / "spacing-options";
+    cases.push_back({spacing, "cases-preserved", "indented-cases.input.cpp",
+        "cases-preserved"});
     for (const auto& entry : std::filesystem::directory_iterator(spacing)) {
         const auto filename = entry.path().filename().string();
         if (filename.ends_with(".input.cpp")) {
@@ -1118,10 +1120,12 @@ TEST(PreserveConfigTest, RejectsInvalidSettings)
         "WhitespaceSensitiveMacros = []\n",
         "ColumnLimit = 0\n",
         "ColumnLimit = 10001\n",
+        "ShortNamespaceLines = 10001\n",
         "IndentWidth = 0\n",
         "IndentWidth = 33\n",
         "IndentAccessModifiers = Unknown\n",
         "IndentMembers = Unknown\n",
+        "IndentCaseLabels = Unknown\n",
         "InheritanceList = Unknown\n",
         "InheritanceListColonPlacement = Unknown\n",
         "InheritanceListColonSpaceBefore = Unknown\n",
@@ -1154,6 +1158,9 @@ TEST(PreserveConfigTest, RejectsInvalidSettings)
         "InheritanceListMerge = true\n",
         "InheritanceListPunctuation = WithAncestor\n",
         "FunctionParameterSplit = Together\n",
+        "InitializerListSplit = Together\n",
+        "InitializerClosingBrace = Attach\n",
+        "ControlConditionIndent = NameLine\n",
         "ClassBracePlacement = attach\n",
         "ExpressionWrap = Always\n",
         "ExpressionLayoutCondition = Unknown\n",

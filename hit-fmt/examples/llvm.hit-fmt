@@ -10,6 +10,8 @@ LabelColonSpacing = NoSpace
 
 IndentAccessModifiers = NoIndent
 IndentMembers = Indent
+IndentBlockBodies = true
+IndentCaseLabels = NoIndent
 ClassBracePlacement = Attach
 StructBracePlacement = Attach
 UnionBracePlacement = Attach
@@ -26,18 +28,22 @@ NamespaceBraceSpacing = SingleSpace
 ControlBlockBracePlacement = SameLine
 ControlBlockKeywordSpacing = Space
 NamespaceComments = Required
+ShortNamespaceLines = 1
 
 FunctionParameterSplit = Pack
 FirstFunctionParameterPosition = NameLine
 FunctionParameterIndent = Continuation
 MergeFunctionParameters = true
 ExpressionLayoutCondition = Overflow
+ControlConditionIndent = Continuation
 BinaryOperatorPlacement = Trailing
 TernaryOperatorPlacement = Leading
 TernarySplit = AsNeeded
 CallArgumentSplit = Pack
 FirstCallArgumentPosition = CallLine
 CallArgumentIndent = Continuation
+InitializerListSplit = Pack
+InitializerListIndent = Continuation
 
 FunctionSpaceBeforeParameters = NoSpace
 FunctionCallSpaceBeforeParameters = NoSpace
