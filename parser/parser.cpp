@@ -1576,6 +1576,7 @@ private:
         auto typeName = FindDeclaredTypeName(start);
         auto* node = MakeNode(NodeKind::RecordDeclaration, start);
         bool sawBaseClause = false;
+        bool unknownHeader = false;
         size_t baseClauseBegin = Tree_.Tokens_.Size();
         int angleDepth = 0;
         while (!AtEnd() && CurrentKind() != TK::Operator_Semicolon &&
@@ -1603,8 +1604,10 @@ private:
                 Kind(PreviousSignificant(Cursor_)) == TK::Identifier &&
                 Text(Cursor_) != "final" && !IsExtensionAttribute(Cursor_))
             {
-                Cursor_ = start;
-                return ParseGeneralDeclaration();
+                // A macro may appear between `class` and its name. Do not
+                // parse the following `{...}` as a variable initializer.
+                unknownHeader = true;
+                ++Cursor_;
             } else if (CurrentKind() == TK::Operator_OpenParenthesis) {
                 auto previous = PreviousSignificant(Cursor_);
                 if (angleDepth == 0 && !sawBaseClause &&
@@ -1622,7 +1625,14 @@ private:
                 ++Cursor_;
             }
         }
-        if (baseClauseBegin < Tree_.Tokens_.Size()) {
+        if (unknownHeader && CurrentKind() != TK::Operator_OpenBrace) {
+            Cursor_ = start;
+            return ParseGeneralDeclaration();
+        }
+        if (unknownHeader) {
+            AddUnparsedSyntax(*node, start + 1, Cursor_);
+        }
+        if (!unknownHeader && baseClauseBegin < Tree_.Tokens_.Size()) {
             auto* bases = MakeNode(NodeKind::BaseClause, baseClauseBegin);
             bases->Tokens.End = Cursor_;
             AddSeparatedElements(
@@ -1633,15 +1643,15 @@ private:
             Append(*node, *bases);
         }
         if (CurrentKind() == TK::Operator_OpenBrace) {
-            if (typeName < Tree_.Tokens_.Size()) {
+            if (!unknownHeader && typeName < Tree_.Tokens_.Size()) {
                 AddName(Text(typeName), NameKind::Type);
             }
             ++Cursor_;
             PushScope();
             RecordNames_.push_back(
-                typeName < Tree_.Tokens_.Size() ? Text(typeName)
-                                                : std::string_view{});
-            if (typeName < Tree_.Tokens_.Size()) {
+                !unknownHeader && typeName < Tree_.Tokens_.Size()
+                    ? Text(typeName) : std::string_view{});
+            if (!unknownHeader && typeName < Tree_.Tokens_.Size()) {
                 AddName(Text(typeName), NameKind::Type);
             }
             ParseDeclarationSequence(*node, TK::Operator_CloseBrace);

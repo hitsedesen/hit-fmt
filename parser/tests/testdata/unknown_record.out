@@ -1,0 +1,57 @@
+(translation-unit
+  (record-declaration
+    "class"
+    (unparsed-syntax "API" "Record")
+    "{"
+    (access-specifier "public" ":")
+    (declaration
+      (declaration-specifiers "int")
+      (init-declarator-list
+        (init-declarator
+          (declarator
+            (declarator-name "value")
+          )
+          (initializer
+            (braced-initializer
+              (initializer-list
+                "{"
+                (initializer-element
+                  (literal-expression "1")
+                )
+                "}"
+              )
+            )
+          )
+        )
+      )
+      ";"
+    )
+    "}" ";"
+  )
+  (record-declaration
+    "class" "Plain" "{"
+    (declaration
+      (declaration-specifiers "int")
+      (init-declarator-list
+        (init-declarator
+          (declarator
+            (declarator-name "value")
+          )
+        )
+      )
+      ";"
+    )
+    "}" ";"
+  )
+  (declaration
+    (declaration-specifiers "class" "Plain")
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (declarator-name "variable")
+        )
+      )
+    )
+    ";"
+  )
+)

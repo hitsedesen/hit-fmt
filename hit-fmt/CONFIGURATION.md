@@ -123,10 +123,15 @@ ExpressionLayoutCondition = Preserve
 ControlConditionIndent = IndentWidth
 IncludeOrder = Preserve
 IndentAccessModifiers = Preserve
+AccessModifierIndentWidth = 0
 IndentMembers = Preserve
+MemberIndentWidth = 0
 IndentBlockBodies = false
+BlockBodyIndentWidth = 0
 IndentCaseLabels = Preserve
+CaseLabelIndentWidth = 0
 StatementAttributeIndent = Preserve
+StatementAttributeIndentWidth = 0
 InheritanceList = Preserve
 InheritanceListColonPlacement = AttachToBase
 InheritanceListColonSpaceBefore = NoSpace
@@ -144,6 +149,7 @@ FunctionBracePlacement = Preserve
 LambdaBracePlacement = Preserve
 NamespaceBracePlacement = Preserve
 NamespaceComments = Preserve
+NamespaceCommentSpaces = 1
 ShortNamespaceLines = 0
 FunctionParameterSplit = Pack
 FirstFunctionParameterPosition = NameLine
@@ -472,18 +478,20 @@ Exclude = [
   This is independent of `TernaryOperatorPlacement` (line breaks).
 - `BinaryOperatorSpacing` and `AssignmentOperatorSpacing`: `Preserve`
   (default), `Space`, or `NoSpace` on both sides of parsed binary and
-  assignment operators. Assignment initializers are included. Operators
+  assignment operators. Commas use `CommaSpacing` independently, even when
+  that option is `Preserve`. Assignment initializers are included. Operators
   that could also be template delimiters (`<`, `>`, `<<`, `>>`) remain
   unchanged. `NoSpace` does not join two operator spellings if that could
   change tokenization.
 - `CastSpacing`: `Preserve` (default), `Space`, or `NoSpace` between the
   closing `)` and operand of a parsed C-style cast. Named casts are not
   affected.
-- `CommaSpacing`: `Preserve` (default) leaves list commas unchanged;
-  `After` removes same-line space before a parsed list comma and uses one
-  space after it (`f(a ,b)` becomes `f(a, b)`); `NoSpace` removes same-line
-  spaces on both sides (`f(a , b)` becomes `f(a,b)`). A trailing comma
-  before a closing delimiter does not receive an added space.
+- `CommaSpacing`: `Preserve` (default) leaves comma gaps unchanged;
+  `Space` (also spelled `After` for compatibility) removes same-line space
+  before a comma and uses one space after it (`f(a ,b)` becomes `f(a, b)`);
+  `NoSpace` removes same-line spaces on both sides (`f(a , b)` becomes
+  `f(a,b)`). A trailing comma before a closing delimiter does not receive
+  an added space. Comments, line breaks, and recovered syntax are preserved.
 - `LoopSemicolonSpacing` and `ConditionInitSemicolonSpacing`: `Preserve`
   (default), `Space`, or `NoSpace`. The first controls the two clause
   separators of a parsed `for` header; the second controls the single
@@ -504,6 +512,7 @@ Exclude = [
 - `BraceInitializerSpacing`: `Preserve` (default), `Space`, or `NoSpace`
   before a parsed braced initializer (`T x {1}` versus `T x{1}`). The gap
   following `=` remains controlled by `AssignmentOperatorSpacing`.
+  The gap after `return`/`co_return` stays source-owned.
 - `ReturnArrowSpacing`: `Preserve` (default), `NoSpace` (`f()->T`), `Left`
   (`f() ->T`), `Right` (`f()-> T`), or `LeftAndRight` (`f() -> T`) around
   the arrow of a parsed trailing return type. Member-access `->` is
@@ -534,15 +543,18 @@ Exclude = [
   `Remove` removes a line comment immediately after a namespace's closing
   brace, and `Required` adds `// namespace name` (or `// namespace` for an
   anonymous namespace) and corrects an existing trailing line comment.
-  Unmatched braces and closings followed by a block comment are left alone.
+  `NamespaceCommentSpaces` sets the spaces before generated or corrected
+  comments (1 by default, positive integer up to 32); it has no effect in
+  `Preserve` or `Remove` mode. Unmatched braces and closings followed by a
+  block comment are left alone.
 - `IndentBlockBodies`: `false` (default) preserves statement indentation;
   `true` reindents statement starts and closing braces in complete compound
-  and lambda blocks by one `IndentWidth` relative to the header. It also
+  and lambda blocks by `BlockBodyIndentWidth` relative to the header. It also
   indents parsed unbraced control bodies one level beyond the control header.
   Inline statements, continuations, comments, directives, and recovered
   bodies remain source-owned.
 - `IndentCaseLabels`: `Preserve` (default), `NoIndent` (align labels with
-  their switch header), or `Indent` (one level inside the switch).
+  their switch header), or `Indent` (`CaseLabelIndentWidth` inside the switch).
   Statements following a case get one additional level with `Indent` when
   `IndentBlockBodies` is enabled. Only parsed case/default labels directly
   in complete switch blocks are affected. An explicit `{` following a case
@@ -551,17 +563,21 @@ Exclude = [
   `[[...]]` statement attributes at their existing indentation, even when
   block body indentation is enabled. `Block` aligns them with the containing
   block's statement indent (or the control header for an unbraced body);
-  `Indent` adds one `IndentWidth` to that indent. Only parsed, line-leading
+  `Indent` adds `StatementAttributeIndentWidth` to that indent. Only parsed, line-leading
   attributes in complete blocks and control bodies are affected. Inline
   attributes, comments, directives, and conditional branches stay unchanged.
 - `IndentAccessModifiers` and `IndentMembers`: `Preserve` (default)
-  leaves indentation unchanged, `Indent` uses one `IndentWidth` relative
-  to the record declaration, and `NoIndent` aligns with that declaration.
+  leaves indentation unchanged, `Indent` uses `AccessModifierIndentWidth`
+  or `MemberIndentWidth` relative to the record declaration, and `NoIndent`
+  aligns with that declaration.
   Access labels and direct members of class, struct, and union bodies use
   independent settings. Enum enumerators use `IndentMembers` (enums do
   not have access labels). Only existing lines are reindented; nested
   closing braces follow their reindented declarations. Inline members,
   comments, directives, and conditional branches remain source-owned.
+  The five `*IndentWidth` overrides above accept positive integers up to 32;
+  `0` (default) uses the global `IndentWidth`. They affect only constructs
+  whose corresponding indentation setting is enabled.
 - `InheritanceList`: `Preserve` (default) leaves the entire base list
   unchanged. `Format` applies the following settings to complete base
   lists in class and struct definitions. Whitespace-only blank lines
@@ -843,22 +859,15 @@ rejected rather than silently ignored.
 
 ## Google-style example and limits
 
-[`examples/google.hit-fmt`](examples/google.hit-fmt) is a conservative
-approximation of Google's C++ style (and clang-format's Google preset). Use
-`--config hit-fmt/examples/google.hit-fmt`, or copy it to `.hit-fmt`. It
-selects two-space indentation, an 80-column limit, attached braces, left
-pointer alignment, packed arguments, and supported token spacing. It is not
-a replacement for `clang-format -style=Google` or a Google C++ style review.
-The profile deliberately preserves options that caused incorrect changes in
-real Google code (see below).
+[`examples/google.hit-fmt`](examples/google.hit-fmt) approximates Google's
+C++ style (and clang-format's Google preset). Use it with `--config` or copy
+it to `.hit-fmt`. It selects two-space members and block bodies, one-space
+access-label indentation, 80 columns, attached braces, two-space namespace
+comments, and supported token spacing. It is not a replacement for
+`clang-format -style=Google` or a Google C++ style review.
 
-Missing or insufficient controls for a full Google profile include:
+Still missing or insufficient for a full Google profile:
 
-- Access labels have a **one-space** offset (` public:`) with two-space
-  member indentation. `IndentAccessModifiers` supports only zero or one
-  *IndentWidth* (two spaces), not an arbitrary offset. Namespace comments
-  need **two** spaces before `//`; `NamespaceComments = Required` emits
-  one. No setting can add the comment without changing that spacing.
 - Include grouping (related header first, C/system/other libraries and
   project headers), blank lines between groups, and sorting inside each
   group; `IncludeOrder = Sort` cannot represent these categories. Header
@@ -876,41 +885,19 @@ Missing or insufficient controls for a full Google profile include:
   one case and prefix policy per declaration kind. Google conventions for
   headers, documentation, API design, and language usage need review.
 
-Corpus check: tested against the C++ sources in the Ubuntu-packaged
-GoogleTest/GoogleMock (`/usr/src/googletest`, GoogleTest 1.12.1). Copies of
-`gtest-filepath.cc`, `gmock-cardinalities.cc`, `gtest-port.h`, and
-`gmock-internal-utils.cc` remain unchanged with the profile. Observed
-behavior when trying the more aggressive, seemingly appropriate options:
-
-- `IndentBlockBodies = true` moves statements in inline methods of
-  `googlemock/src/gmock-cardinalities.cc` (around line 54) two spaces to the
-  left and moves closing braces too, destroying the already correct nesting.
-- `BraceInitializerSpacing = NoSpace` turns `class GTEST_API_ RE {` into
-  `class GTEST_API_ RE{` in `googletest/include/gtest/internal/gtest-port.h`
-  (around line 940): a macro-annotated record is mistaken for an initializer.
-  `MemberAccessOperatorsSpacing = NoSpace` changes
-  `GTEST_API_ ::std::string` to `GTEST_API_::std::string` there (around line
-  1016), potentially changing the meaning after macro expansion.
-- `BinaryOperatorSpacing = Space` introduces `value ,` in a
-  `static_assert(std::is_base_of<Base, Derived>::value, ...)` in the same
-  header (around line 1151). `TernaryOperatorSpacing = Space` collapses
-  deliberate alignment around `?` in the nested conditional expressions
-  in `googletest/src/gtest-death-test.cc` (around line 519) without aligning
-  the other branches.
-- `FunctionParameterIndent = Continuation` alone reindents the already
-  correct four-space, first-parameter-on-next-line layout in
-  `googlemock/src/gmock-internal-utils.cc:59` to the column after `(`.
-  `FunctionParameterNewLineIndent = 4` avoids that case. With
-  `InitializerListSplit = Pack`, the nested aggregate initializer near
-  line 217 of that file is also needlessly expanded.
-- `NamespaceComments = Required` rewrites `}  // namespace testing` to
-  `} // namespace testing` in `gtest-filepath.cc`, and replaces the
-  descriptive `}  // Unnamed namespace` in `gmock-cardinalities.cc` with
-  `} // namespace`. It is therefore left at `Preserve`.
-
-These examples are limitations of the current formatter, not violations in
-GoogleTest. Profile settings that preserve such constructs trade off coverage
-against modifying already correctly formatted code.
+Corpus check: tested against the Ubuntu-packaged GoogleTest/GoogleMock
+(`/usr/src/googletest`, GoogleTest 1.12.1). The inline member bodies in
+`gmock-cardinalities.cc`, the macro-annotated record header and the
+`static_assert` comma in `gtest-port.h` now remain intact with active block,
+brace-initializer and binary-operator settings. `NamespaceCommentSpaces = 2`
+keeps Google's comment gap; `NamespaceComments = Required` still replaces a
+descriptive anonymous-namespace comment (`// Unnamed namespace`) with
+`// namespace`. `MemberAccessOperatorsSpacing` remains `Preserve`: `NoSpace`
+can still join `GTEST_API_ ::std::string` into `GTEST_API_::std::string`.
+`TernaryOperatorSpacing = Space` can collapse multiline alignment without
+realigning other branches, so the profile preserves it. Four-space newline
+function parameter indentation is selected explicitly, and unsafe nested
+initializer-list reflow is disabled.
 
 ## LLVM-style example and limits
 

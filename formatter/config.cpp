@@ -320,6 +320,16 @@ void ValidateStyleLimits(const Style& style,
     if (style.ShortNamespaceLines > 10000) {
         ThrowConfigError(path, line, "ShortNamespaceLines must not exceed 10000");
     }
+    if (style.NamespaceCommentSpaces > 32) {
+        ThrowConfigError(path, line, "NamespaceCommentSpaces must not exceed 32");
+    }
+    if (style.AccessModifierIndentWidth > 32 ||
+        style.MemberIndentWidth > 32 || style.BlockBodyIndentWidth > 32 ||
+        style.CaseLabelIndentWidth > 32 ||
+        style.StatementAttributeIndentWidth > 32)
+    {
+        ThrowConfigError(path, line, "indent width must not exceed 32");
+    }
     if (style.FunctionParameterNewLineIndent > 32) {
         ThrowConfigError(path, line,
             "FunctionParameterNewLineIndent must not exceed 32");

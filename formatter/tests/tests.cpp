@@ -161,6 +161,12 @@ std::vector<FormattedCase> FormattedCases()
         {"preserve", "space", "no-space", "combined"});
     AddCases(cases, BODY_INDENT_TESTDATA_DIR,
         {"preserve", "indent", "no-indent", "mixed"});
+    const auto google = std::filesystem::path(FORMATTER_TESTDATA_DIR) /
+        "../google-style-regressions";
+    cases.push_back({google, "inline-record", "inline-record.input.cpp"});
+    cases.push_back({google, "widths", "widths.input.cpp"});
+    AddCases(cases, google, {"punctuation-preserve", "punctuation-space",
+        "comments-preserve"}, "punctuation-preserve.input.cpp");
     const auto attribute = std::filesystem::path(FORMATTER_TESTDATA_DIR) /
         "../attribute-indent";
     AddCases(cases, attribute, {"preserve", "block", "indent"});
@@ -1096,6 +1102,13 @@ TEST(PreserveConfigTest, RejectsInvalidSettings)
          "BinaryOperatorPlacement = Trailing\n"
          "AssignmentOperatorPlacement = Trailing\n"
          "StatementAttributeIndent = Block\n"
+         "AccessModifierIndentWidth = 1\n"
+         "MemberIndentWidth = 3\n"
+         "BlockBodyIndentWidth = 4\n"
+         "CaseLabelIndentWidth = 1\n"
+         "StatementAttributeIndentWidth = 2\n"
+         "NamespaceCommentSpaces = 2\n"
+         "CommaSpacing = Space\n"
          "TernaryOperatorPlacement = Trailing\n"
          "TernarySplit = ThreeLines\n"
          "CallArgumentSplit = Pack\nFirstCallArgumentPosition = NewLine\n"
@@ -1123,6 +1136,13 @@ TEST(PreserveConfigTest, RejectsInvalidSettings)
         formatter::BinaryOperatorPlacement::Trailing);
     EXPECT_EQ(config.FormattingStyle.StatementAttributeIndent,
         formatter::StatementAttributeIndent::Block);
+    EXPECT_EQ(config.FormattingStyle.AccessModifierIndentWidth, 1u);
+    EXPECT_EQ(config.FormattingStyle.MemberIndentWidth, 3u);
+    EXPECT_EQ(config.FormattingStyle.BlockBodyIndentWidth, 4u);
+    EXPECT_EQ(config.FormattingStyle.CaseLabelIndentWidth, 1u);
+    EXPECT_EQ(config.FormattingStyle.StatementAttributeIndentWidth, 2u);
+    EXPECT_EQ(config.FormattingStyle.NamespaceCommentSpaces, 2u);
+    EXPECT_EQ(config.FormattingStyle.CommaSpacing, formatter::CommaSpacing::Space);
     EXPECT_EQ(config.FormattingStyle.TernaryOperatorPlacement,
         formatter::TernaryOperatorPlacement::Trailing);
     EXPECT_EQ(config.FormattingStyle.TernarySplit,
@@ -1162,6 +1182,12 @@ TEST(PreserveConfigTest, RejectsInvalidSettings)
         "ColumnLimit = 0\n",
         "ColumnLimit = 10001\n",
         "ShortNamespaceLines = 10001\n",
+        "NamespaceCommentSpaces = 33\n",
+        "AccessModifierIndentWidth = 33\n",
+        "MemberIndentWidth = 33\n",
+        "BlockBodyIndentWidth = 33\n",
+        "CaseLabelIndentWidth = 33\n",
+        "StatementAttributeIndentWidth = 33\n",
         "IndentWidth = 0\n",
         "IndentWidth = 33\n",
         "IndentAccessModifiers = Unknown\n",
@@ -1234,7 +1260,7 @@ TEST(PreserveConfigTest, RejectsInvalidSettings)
         "SpaceInsideLambdaParameters = Unknown\n",
         "SpaceInsideCallArguments = Unknown\n",
         "ControlBlockKeywordSpacing = Unknown\n",
-        "CommaSpacing = Space\n",
+        "CommaSpacing = Unknown\n",
         "LoopSemicolonSpacing = After\n",
         "ConditionInitSemicolonSpacing = After\n",
         "ControlBlockSemicolonSpacing = Space\n",

@@ -8,10 +8,10 @@ PreprocessorIndentation = LineStart
 TrailingWhitespace = Trim
 PointerReferenceLocation = Left
 
+IndentAccessModifiers = Indent
+AccessModifierIndentWidth = 1
 IndentMembers = Indent
-# Keep existing statement indentation: the current reindenter misplaces
-# statements in inline member functions (see the Google corpus notes).
-IndentBlockBodies = false
+IndentBlockBodies = true
 IndentCaseLabels = Indent
 StatementAttributeIndent = Block
 ClassBracePlacement = Attach
@@ -30,9 +30,9 @@ NamespaceBraceSpacing = SingleSpace
 ControlBlockBracePlacement = SameLine
 ControlBlockSpaceBeforeBrace = Space
 ControlBlockKeywordSpacing = Space
-# Required rewrites Google's two-space closing comments as one-space
-# comments and replaces descriptive anonymous-namespace comments.
-NamespaceComments = Preserve
+NamespaceComments = Required
+NamespaceCommentSpaces = 2
+ShortNamespaceLines = 1
 
 FunctionParameterSplit = Pack
 FirstFunctionParameterPosition = NameLineIfFits
@@ -67,14 +67,12 @@ EmptyBlockInteriorSpacing = NoSpace
 EmptyBraceInitializerInteriorSpacing = NoSpace
 BlockInteriorSpacing = Space
 InitializerBracesSpacing = NoSpace
-# Preserve the gap before braced initializers: NoSpace also removes the
-# required gap in some macro-annotated record declarations.
-BraceInitializerSpacing = Preserve
+BraceInitializerSpacing = NoSpace
 ControlBlockConditionSpacing = NoSpace
 GroupingInteriorSpacing = NoSpace
 CastArgumentSpacing = NoSpace
 CastSpacing = NoSpace
-CommaSpacing = After
+CommaSpacing = Space
 StatementSemicolonSpacing = NoSpace
 DeclarationSemicolonSpacing = NoSpace
 # NoSpace can merge an export macro with a leading :: qualified type.
@@ -83,8 +81,7 @@ UnaryOperatorSpacing = NoSpace
 PostfixOperatorSpacing = NoSpace
 # Space collapses manually aligned multiline conditional columns.
 TernaryOperatorSpacing = Preserve
-# Space can introduce whitespace before a comma after a template-id.
-BinaryOperatorSpacing = Preserve
+BinaryOperatorSpacing = Space
 AssignmentOperatorSpacing = Space
 ReturnArrowSpacing = LeftAndRight
 TemplateKeywordSpacing = Space
@@ -102,9 +99,6 @@ FunctionQualifierSpacing = Space
 NoexceptSpaceBeforeSpecifier = Space
 NoexceptSpaceBeforeParentheses = NoSpace
 
-# Google uses a one-space access-label offset with two-space members;
-# neither NoIndent nor Indent can express that. Preserve existing labels.
-IndentAccessModifiers = Preserve
 # Google include categories, main-header precedence and regrouping cannot
 # be expressed by Sort's simple quoted-before-angled lexicographic order.
 IncludeOrder = Preserve
