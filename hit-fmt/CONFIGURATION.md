@@ -7,12 +7,55 @@ control keyword spacing or brace placement, token spacing, generated
 indentation, preprocessor indentation, trailing comment spacing,
 namespace comment, include ordering, or function parameter rule applies.
 All formatting rules default to preserving the source.
-Naming rules default to unchecked and never rewrite identifiers; `--check`
-reports violations with file, line and column and returns a nonzero status.
+Naming rules default to unchecked and never rewrite identifiers; checks
+report violations with file, line and column and return a nonzero status.
+`--fix` also checks: it reports applied changes as `fixed` and returns a
+nonzero status only when violations remain.
 
 `hit-fmt` searches for `.hit-fmt` beside each source file and then in its
 parent directories. The nearest file wins. `--config <file>` selects one
 file for every input; `--no-config` disables configuration lookup.
+
+## Changed-hunk mode
+
+Pass `--changed-hunks <file>` (or `--changed-hunks -` for stdin) instead
+of input paths to check only changed hunks. `--changed-ranges` is retained
+as an alias. Add `--fix` to apply available fixes and check the result:
+
+```text
+file src/a.cpp
+hunk 12:18
+hunk 35:35
+file src/b.cpp
+hunk 4:9
+```
+
+Each `file` path is relative to the process's current working directory,
+not the input file's directory. `hunk` endpoints are inclusive, one-based
+line numbers in the **current** file; a deletion should be anchored to a
+surviving neighbouring line. The ranges input can have blank lines and
+repeated file groups. Each group needs at least one hunk. Empty input
+processes no files; malformed input and out-of-bounds ranges are errors.
+Configuration and file exclusions still apply per file.
+
+Hunks are anchors, not hard edit boundaries. Edits can spill across an
+enclosing parsed argument, parameter, initializer or capture list (or a
+for-header), and a sorted include run can spill across its contiguous group.
+Whitespace edits retaining line breaks are selected per source line.
+Adding/removing line breaks requires one selected window to contain the
+whole gap. Include sorting may change token order within a selected run;
+other token-changing rules are not applied in this mode until they can
+expose atomic edits. If such a rule targets a selected hunk, formatting
+of that file is skipped rather than applying a partial structural change.
+Spill-over is on by default and capped at 200 source lines per unit.
+With `--no-spillover`, a fix that needs to leave the selected hunk lines
+is not applied; the usual formatting error is still reported. Independent
+fixable hunks can still be fixed. Check-only and `--fix` use the same
+scope for reporting violations, and naming and parameter-name checks run
+only on anchored lines. This mode does not run Git; a caller can supply
+hunks from any diff. File names containing newlines cannot be represented
+in this format.
+
 
 Standalone `// hit-fmt off` / `// hit-fmt on` and
 `// clang-format off` / `// clang-format on` comments disable formatting

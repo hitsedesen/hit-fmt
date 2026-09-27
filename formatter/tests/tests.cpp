@@ -1,5 +1,6 @@
 #include <formatter/config.hpp>
 #include <formatter/formatter.hpp>
+#include <formatter/hunks.hpp>
 #include <formatter/naming.hpp>
 #include <formatter/parameter_names.hpp>
 #include <tests/golden.hpp>
@@ -291,6 +292,51 @@ INSTANTIATE_TEST_SUITE_P(Configurations, FormattedGoldenTest,
     [] (const auto& info) {
         auto name = info.param.Directory.filename().string() + "_" +
             info.param.Name;
+        std::ranges::replace(name, '-', '_');
+        return name;
+    });
+
+struct ChangedHunkCase
+{
+    std::string Directory;
+    std::string Name;
+    std::vector<formatter::Hunk> Hunks;
+    bool Spillover;
+};
+
+class ChangedHunkGoldenTest : public testing::TestWithParam<ChangedHunkCase>
+{ };
+
+TEST_P(ChangedHunkGoldenTest, MatchesScopedOutput)
+{
+    const auto& value = GetParam();
+    const auto directory = std::filesystem::path(FORMATTER_TESTDATA_DIR) /
+        "../changed-hunks" / value.Directory;
+    const test::golden::Fixture fixture{directory, value.Name};
+    const auto input = fixture.Input();
+    const auto style = formatter::LoadConfigFile(
+        directory / "style.hit-fmt").FormattingStyle;
+    std::string storage(input);
+    storage.append(util::SourcePaddingSize, '\0');
+    const auto tree = parser::Parse(
+        {.Data = storage.data(), .Size = input.size()},
+        [] (parser::ParseError) { });
+    const auto actual = formatter::FormatChanged(tree, style, value.Hunks,
+        value.Spillover);
+    fixture.Expect(actual);
+}
+
+INSTANTIATE_TEST_SUITE_P(Scoped, ChangedHunkGoldenTest,
+    testing::Values(
+        ChangedHunkCase{"basic", "call", {{8, 8}}, true},
+        ChangedHunkCase{"basic", "includes", {{1, 1}}, true},
+        ChangedHunkCase{"basic", "includes-strict", {{1, 1}}, false},
+        ChangedHunkCase{"basic", "function", {{4, 4}}, true},
+        ChangedHunkCase{"spill", "default", {{3, 3}, {5, 5}}, true},
+        ChangedHunkCase{"spill", "strict", {{3, 3}, {5, 5}}, false},
+        ChangedHunkCase{"structural", "unsupported", {{2, 2}}, true}),
+    [] (const auto& info) {
+        auto name = info.param.Directory + "_" + info.param.Name;
         std::ranges::replace(name, '-', '_');
         return name;
     });

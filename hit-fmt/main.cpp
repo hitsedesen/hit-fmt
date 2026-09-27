@@ -1,5 +1,6 @@
 #include <formatter/config.hpp>
 #include <formatter/formatter.hpp>
+#include <formatter/hunks.hpp>
 #include <formatter/naming.hpp>
 #include <formatter/parameter_names.hpp>
 #include <util/file.hpp>
@@ -12,6 +13,7 @@
 #include <cstdlib>
 #include <exception>
 #include <filesystem>
+#include <fstream>
 #include <iostream>
 #include <limits>
 #include <optional>
@@ -39,12 +41,6 @@ constexpr std::string_view ResetColor = "\033[0m";
 constexpr std::string_view BoldRed = "\033[1;31m";
 constexpr std::string_view BoldGreen = "\033[1;32m";
 constexpr std::string_view Green = "\033[32m";
-
-enum class Mode
-{
-    Check,
-    Fix,
-};
 
 struct Line
 {
@@ -241,6 +237,8 @@ struct Chunk
     std::vector<Violation> Violations;
     std::vector<Line> Fix;
     std::vector<Line> LayoutFix;
+    size_t SourceBegin = 0;
+    size_t SourceEnd = 0;
     size_t FormattedBegin = 0;
     size_t FormattedEnd = 0;
     size_t LayoutFormattedBegin = 0;
@@ -562,6 +560,7 @@ std::vector<Chunk> FormattingChunks(
             }
         } else {
             size_t bestDistance = std::numeric_limits<size_t>::max();
+            size_t bestSkew = std::numeric_limits<size_t>::max();
             auto sourceLimit =
                 std::min(source.size(), sourceIndex + DiffLookahead + 1);
             auto formattedLimit =
@@ -575,12 +574,19 @@ std::vector<Chunk> FormattingChunks(
                     if (nextSource == sourceIndex &&
                         nextFormatted == formattedIndex) continue;
                     if (source[nextSource] != formatted[nextFormatted]) continue;
-                    auto distance = nextSource - sourceIndex +
-                        nextFormatted - formattedIndex;
-                    if (distance < bestDistance) {
+                    auto sourceSkip = nextSource - sourceIndex;
+                    auto formattedSkip = nextFormatted - formattedIndex;
+                    auto distance = sourceSkip + formattedSkip;
+                    auto skew = sourceSkip > formattedSkip
+                        ? sourceSkip - formattedSkip
+                        : formattedSkip - sourceSkip;
+                    if (distance < bestDistance ||
+                        (distance == bestDistance && skew < bestSkew))
+                    {
                         bestDistance = distance;
-                        sourceCount = nextSource - sourceIndex;
-                        formattedCount = nextFormatted - formattedIndex;
+                        bestSkew = skew;
+                        sourceCount = sourceSkip;
+                        formattedCount = formattedSkip;
                     }
                 }
             }
@@ -593,6 +599,8 @@ std::vector<Chunk> FormattingChunks(
         auto begin = std::min(sourceIndex + 1, std::max(size_t{1}, source.size()));
         Chunk chunk{.Begin = begin,
             .End = std::max(begin + 1, sourceIndex + sourceCount + 1),
+            .SourceBegin = sourceIndex,
+            .SourceEnd = sourceIndex + sourceCount,
             .FormattedBegin = formattedIndex,
             .FormattedEnd = formattedIndex + formattedCount,
             .HasFix = true};
@@ -717,7 +725,7 @@ void PrintCheckDiagnostics(
     std::span<const formatter::NameDiagnostic> names,
     std::span<const formatter::ParameterNameDiagnostic> parameters,
     std::span<const formatter::LayoutDiagnostic> layout,
-    bool useColor, size_t separatorLength)
+    bool useColor, size_t separatorLength, bool fixed = false)
 {
     auto sourceLines = SplitLines(source);
     auto formattedLines = SplitLines(formatted);
@@ -830,8 +838,9 @@ void PrintCheckDiagnostics(
                     (a.Line == b.Line && a.Column < b.Column);
             });
         const auto& first = chunk.Violations.front();
-        if (useColor) std::cout << BoldRed;
-        std::cout << "fail: " << chunk.Violations.size() << " violation"
+        if (useColor) std::cout << (fixed ? BoldGreen : BoldRed);
+        std::cout << (fixed ? "fixed: " : "fail: ") <<
+            chunk.Violations.size() << " violation"
                   << (chunk.Violations.size() == 1 ? "" : "s");
         if (useColor) std::cout << ResetColor;
         auto location = std::string(path) + ':' + std::to_string(first.Line) +
@@ -892,7 +901,8 @@ void PrintCheckDiagnostics(
             }
         }
         if (chunk.HasFix || chunk.HasLayoutFix) {
-            std::cout << "  suggested formatting:\n";
+            std::cout << (fixed ? "  applied formatting:\n" :
+                "  suggested formatting:\n");
             const auto& fix = chunk.HasLayoutFix ? chunk.LayoutFix : chunk.Fix;
             for (const auto& line : fix) {
                 PrintSuggestedLine(line.Text, terminalWidth,
@@ -988,13 +998,21 @@ std::vector<std::filesystem::path> CollectFiles(
     return files;
 }
 
+using formatter::Hunk;
+using formatter::FormatHunks;
+using formatter::HunkWindows;
+using formatter::InHunks;
+
 struct Options
 {
-    Mode FormattingMode = Mode::Check;
+    bool Fix = false;
+    bool NoSpillover = false;
     bool SummaryOnly = false;
     bool DisableConfig = false;
     bool ShowHelp = false;
     std::optional<std::filesystem::path> ConfigPath;
+    std::optional<std::string> HunkInput;
+    std::unordered_map<std::string, std::vector<Hunk>> Hunks;
     std::vector<std::regex> Exclusions;
     std::vector<std::filesystem::path> Paths;
 };
@@ -1002,7 +1020,6 @@ struct Options
 Options ParseOptions(int argc, char* argv[])
 {
     Options options;
-    bool modeSelected = false;
     bool positionalOnly = false;
     for (int index = 1; index < argc; ++index) {
         std::string_view argument(argv[index]);
@@ -1012,17 +1029,24 @@ Options ParseOptions(int argc, char* argv[])
             positionalOnly = true;
         } else if (argument == "-h" || argument == "--help") {
             options.ShowHelp = true;
-        } else if (argument == "--fix" || argument == "--check") {
-            if (modeSelected) {
-                throw std::runtime_error("mode specified more than once");
-            }
-            options.FormattingMode = argument == "--fix" ? Mode::Fix :
-                Mode::Check;
-            modeSelected = true;
+        } else if (argument == "--fix") {
+            options.Fix = true;
+        } else if (argument == "--check") {
+            // Retained as an alias for the default check behavior.
+        } else if (argument == "--no-spillover") {
+            options.NoSpillover = true;
         } else if (argument == "--summary") {
             options.SummaryOnly = true;
         } else if (argument == "--no-config") {
             options.DisableConfig = true;
+        } else if (argument == "--changed-hunks" ||
+            argument == "--changed-ranges")
+        {
+            if (++index == argc || options.HunkInput) {
+                throw std::runtime_error(
+                    "--changed-hunks requires one input file or -");
+            }
+            options.HunkInput = argv[index];
         } else if (argument == "--config") {
             if (++index == argc) {
                 throw std::runtime_error("--config requires a file path");
@@ -1055,13 +1079,77 @@ Options ParseOptions(int argc, char* argv[])
             throw std::runtime_error("unknown option: " + std::string(argument));
         }
     }
-    if (options.SummaryOnly && options.FormattingMode != Mode::Check) {
-        throw std::runtime_error("--summary requires check mode");
-    }
     if (options.DisableConfig && options.ConfigPath) {
         throw std::runtime_error("--config and --no-config cannot be combined");
     }
+    if (options.HunkInput && !options.Paths.empty()) {
+        throw std::runtime_error(
+            "--changed-hunks cannot be combined with input paths");
+    }
+    if (options.NoSpillover && !options.HunkInput) {
+        throw std::runtime_error(
+            "--no-spillover requires --changed-hunks");
+    }
     return options;
+}
+
+std::vector<Hunk> RemapHunks(const parser::SyntaxTree& beforeTree,
+    const parser::SyntaxTree& afterTree, std::span<const Hunk> hunks)
+{
+    bool sameTokens = beforeTree.TokenCount() == afterTree.TokenCount();
+    for (parser::TokenIndex i = 0; sameTokens &&
+        i < beforeTree.TokenCount(); ++i)
+    {
+        sameTokens = beforeTree.Kind(i) == afterTree.Kind(i) &&
+            beforeTree.TokenText(i) == afterTree.TokenText(i);
+    }
+    auto sourceLines = SplitLines(beforeTree.Source());
+    auto formattedLines = SplitLines(afterTree.Source());
+    auto chunks = FormattingChunks(sourceLines, formattedLines);
+    auto mapLine = [&] (size_t line) {
+        if (sameTokens && beforeTree.TokenCount() != 0) {
+            for (parser::TokenIndex i = 0; i < beforeTree.TokenCount(); ++i) {
+                auto original = beforeTree.TokenPosition(i).Line;
+                if (original >= line) {
+                    auto updated = afterTree.TokenPosition(i).Line;
+                    return original == line ? size_t{updated} :
+                        std::max(size_t{1}, size_t{updated} -
+                            (original - line));
+                }
+            }
+            auto last = beforeTree.TokenCount() - 1;
+            return size_t{afterTree.TokenPosition(last).Line} +
+                line - beforeTree.TokenPosition(last).Line;
+        }
+        size_t sourceCursor = 0;
+        size_t formattedCursor = 0;
+        size_t index = line - 1;
+        for (const auto& chunk : chunks) {
+            if (index < chunk.SourceBegin) {
+                return formattedCursor + (index - sourceCursor) + 1;
+            }
+            if (index < chunk.SourceEnd) {
+                auto count = chunk.FormattedEnd - chunk.FormattedBegin;
+                if (count == 0) {
+                    return std::max(size_t{1}, chunk.FormattedBegin);
+                }
+                return chunk.FormattedBegin +
+                    std::min(index - chunk.SourceBegin, count - 1) + 1;
+            }
+            sourceCursor = chunk.SourceEnd;
+            formattedCursor = chunk.FormattedEnd;
+        }
+        return formattedCursor + (index - sourceCursor) + 1;
+    };
+    std::vector<Hunk> mapped;
+    mapped.reserve(hunks.size());
+    auto limit = std::max(size_t{1}, formattedLines.size());
+    for (const auto& hunk : hunks) {
+        auto begin = std::min(mapLine(hunk.Begin), limit);
+        auto end = std::min(mapLine(hunk.End), limit);
+        mapped.push_back({begin, std::max(begin, end)});
+    }
+    return mapped;
 }
 
 class StyleResolver
@@ -1159,11 +1247,13 @@ void PrintHelp(std::ostream& output, std::string_view executable)
         << "  " << executable << " --fix [options] <path>...\n"
         << "\n"
         << "Options:\n"
-        << "  --fix            Format files in place.\n"
-        << "  --check          Check without editing (default).\n"
-        << "  --summary        In check mode, print only file names.\n"
+        << "  --fix            Fix what can be fixed; check the result.\n"
+        << "  --check          Check without editing (default; optional).\n"
+        << "  --no-spillover   Restrict fixes to the selected hunk lines.\n"
+        << "  --summary        Print only file status lines.\n"
         << "  --config <file>  Use one configuration file for every input.\n"
         << "  --no-config      Do not search parent directories for .hit-fmt.\n"
+        << "  --changed-hunks <file|->  Check hunks from a file or stdin.\n"
         << "  --exclude <regex> Skip matching files or directories (repeatable).\n"
         << "  -h, --help       Show this help.\n"
         << "\n"
@@ -1176,6 +1266,9 @@ void PrintHelp(std::ostream& output, std::string_view executable)
            ".hit-fmt Exclude patterns search paths relative to the config file.\n"
         << "Both use ECMAScript regex; matching directories are skipped.\n"
         << "Files larger than 4 MiB are skipped with a warning.\n"
+        << "Changed ranges use 'file <path>' followed by one or more\n"
+           "'hunk <first>:<last>' lines (inclusive, current-file lines).\n"
+        << "Paths are relative to the current working directory.\n"
         << "Check output is colorized when written to a terminal; set "
            "NO_COLOR to disable it.\n"
         << "\n"
@@ -1183,7 +1276,8 @@ void PrintHelp(std::ostream& output, std::string_view executable)
         << "  " << executable << " source.cpp\n"
         << "  " << executable << " --fix source.cpp include/\n"
         << "  " << executable << " --summary src/ include/\n"
-        << "  " << executable << " --fix --exclude '(^|/)generated(/|$)' src/\n";
+        << "  " << executable << " --fix --exclude '(^|/)generated(/|$)' src/\n"
+        << "  " << executable << " --fix --changed-hunks - < hunks.txt\n";
 }
 
 } // namespace
@@ -1199,7 +1293,24 @@ int main(int argc, char* argv[])
             PrintHelp(std::cout, argv[0]);
             return 0;
         }
-        if (options.Paths.empty()) {
+        if (options.HunkInput) {
+            formatter::ChangedHunkFiles changed;
+            if (*options.HunkInput == "-") {
+                changed = formatter::ParseChangedHunks(
+                    std::cin, std::filesystem::current_path());
+            } else {
+                std::ifstream input(*options.HunkInput);
+                if (!input) {
+                    throw std::runtime_error("cannot open changed ranges: " +
+                        *options.HunkInput);
+                }
+                changed = formatter::ParseChangedHunks(
+                    input, std::filesystem::current_path());
+            }
+            options.Paths = std::move(changed.Paths);
+            options.Hunks = std::move(changed.Hunks);
+        }
+        if (options.Paths.empty() && !options.HunkInput) {
             PrintHelp(std::cerr, argv[0]);
             return 1;
         }
@@ -1215,7 +1326,6 @@ int main(int argc, char* argv[])
         return 1;
     }
 
-    auto mode = options.FormattingMode;
     bool summaryOnly = options.SummaryOnly;
     bool useColor = UseTerminalColors();
     size_t mismatchCount = 0;
@@ -1231,56 +1341,129 @@ int main(int argc, char* argv[])
                 .Size = sourceStorage.size() - util::SourcePaddingSize,
             };
             auto source = paddedSource.View();
+            std::span<const Hunk> hunks;
+            if (options.HunkInput) {
+                hunks = options.Hunks.at(
+                    std::filesystem::absolute(path).lexically_normal().string());
+                auto lastLine = std::max(size_t{1}, SplitLines(source).size());
+                for (const auto& hunk : hunks) {
+                    if (hunk.End > lastLine) {
+                        throw std::runtime_error("hunk exceeds file length");
+                    }
+                }
+            }
             const auto& config = styleResolver->Resolve(path);
             auto tree = parser::Parse(paddedSource, [] (parser::ParseError) { });
-            auto checkStyle = config.FormattingStyle;
-            if (mode == Mode::Check) {
-                // Check layout on the original syntax tree, not a speculative
-                // reflow. Keep checking unrelated formatting rules as before.
+            // Check the actual text, never a speculative expression reflow.
+            // Fixes may reflow, but must be checked again after writing.
+            auto inspect = [&] (const parser::SyntaxTree& current,
+                std::span<const Hunk> selected) {
+                auto checkStyle = config.FormattingStyle;
                 checkStyle.ExpressionLayoutCondition =
                     formatter::ExpressionLayoutCondition::Preserve;
-            }
-            auto formatted = formatter::Format(tree, checkStyle);
-            switch (mode) {
-            case Mode::Fix:
-                if (formatted != source) {
-                    util::WriteEntireFile(filePath, formatted);
+                auto windows = options.HunkInput
+                    ? HunkWindows(current, selected, true)
+                    : std::vector<Hunk>{};
+                auto formatted = formatter::Format(current, checkStyle);
+                bool unsupported = false;
+                if (options.HunkInput) {
+                    formatted = FormatHunks(current, formatted, windows,
+                        &unsupported, true);
                 }
-                break;
-            case Mode::Check: {
-                auto names = formatter::CheckNames(tree, config);
-                auto parameters = formatter::CheckParameterNames(tree, config);
-                auto layout = formatter::CheckExpressionLayout(tree,
+                auto names = formatter::CheckNames(current, config);
+                auto parameters = formatter::CheckParameterNames(current, config);
+                auto layout = formatter::CheckExpressionLayout(current,
                     config.FormattingStyle);
-                bool mismatch = formatted != source || !names.empty() ||
-                    !parameters.empty() || !layout.empty();
+                if (options.HunkInput) {
+                    std::erase_if(names, [&] (const auto& issue) {
+                        return !InHunks(issue.Position.Line,
+                            issue.Position.Line, selected);
+                    });
+                    std::erase_if(parameters, [&] (const auto& issue) {
+                        return !InHunks(issue.Position.Line,
+                            issue.Position.Line, selected);
+                    });
+                    std::erase_if(layout, [&] (const auto& issue) {
+                        return !InHunks(issue.Position.Line,
+                            issue.Position.Line, windows);
+                    });
+                }
+                bool mismatch = formatted != current.Source() || unsupported ||
+                    !names.empty() || !parameters.empty() || !layout.empty();
                 if (summaryOnly && mismatch) {
                     if (useColor) std::cout << BoldRed;
                     std::cout << filePath << ": ";
-                    if (formatted != source) {
+                    if (formatted != current.Source()) {
                         std::cout << "formatting mismatch";
+                    } else if (unsupported) {
+                        std::cout << "fail: unsafe structural edit";
                     } else if (!layout.empty()) {
                         std::cout << "fail: layout violation";
                         if (layout.size() != 1) std::cout << 's';
                     } else if (!names.empty()) {
                         std::cout << "fail: invalid name";
-                        if (names.size() != 1) std::cout << 's';
                     } else {
                         std::cout << "fail: unnamed parameter";
-                        if (parameters.size() != 1) std::cout << 's';
                     }
                     if (useColor) std::cout << ResetColor;
                     std::cout.put('\n');
                 } else if (!summaryOnly && mismatch) {
                     auto layoutFormatted = layout.empty() ? std::string{} :
-                        formatter::Format(tree, config.FormattingStyle);
-                    PrintCheckDiagnostics(filePath, source, formatted,
-                        layoutFormatted, names, parameters, layout, useColor,
-                        checkStyle.SeparatorLength);
+                        formatter::Format(current, config.FormattingStyle);
+                    if (options.HunkInput && !layout.empty()) {
+                        layoutFormatted = FormatHunks(current,
+                            layoutFormatted, windows, nullptr, true);
+                    }
+                    if (formatted != current.Source() || !names.empty() ||
+                        !parameters.empty() || !layout.empty())
+                    {
+                        PrintCheckDiagnostics(filePath, current.Source(),
+                            formatted, layoutFormatted, names, parameters,
+                            layout, useColor, checkStyle.SeparatorLength);
+                    }
+                    if (unsupported) {
+                        std::cout << "fail: unsafe structural edit\n"
+                            "  --> " << filePath << ':' << selected.front().Begin
+                            << ":1\n";
+                    }
                 }
-                mismatchCount += mismatch;
-                break;
+                return mismatch;
+            };
+
+            if (!options.Fix) {
+                mismatchCount += inspect(tree, hunks);
+                continue;
             }
+
+            auto applied = options.HunkInput
+                ? formatter::FormatChanged(tree, config.FormattingStyle,
+                    hunks, !options.NoSpillover)
+                : formatter::Format(tree, config.FormattingStyle);
+            if (applied != source) {
+                util::WriteEntireFile(filePath, applied);
+                if (summaryOnly) {
+                    if (useColor) std::cout << BoldGreen;
+                    std::cout << filePath << ": fixed formatting";
+                    if (useColor) std::cout << ResetColor;
+                    std::cout.put('\n');
+                } else {
+                    PrintCheckDiagnostics(filePath, source, applied, {},
+                        {}, {}, {}, useColor,
+                        config.FormattingStyle.SeparatorLength, true);
+                }
+            }
+            if (applied == source) {
+                mismatchCount += inspect(tree, hunks);
+            } else {
+                applied.append(util::SourcePaddingSize, '\0');
+                auto updated = parser::Parse(
+                    {.Data = applied.data(),
+                     .Size = applied.size() - util::SourcePaddingSize},
+                    [] (parser::ParseError) { });
+                auto mapped = options.HunkInput
+                    ? RemapHunks(tree, updated, hunks)
+                    : std::vector<Hunk>{};
+                mismatchCount += inspect(updated, mapped);
             }
         } catch (const util::FileTooLargeError& error) {
             std::cerr << "warning: " << error.what() << "; skipping\n";
@@ -1289,7 +1472,7 @@ int main(int argc, char* argv[])
             return 1;
         }
     }
-    if (mode == Mode::Check && useColor) {
+    if (useColor) {
         if (mismatchCount == 0) {
             std::cout << BoldGreen << "All checked files are formatted."
                       << ResetColor << '\n';
