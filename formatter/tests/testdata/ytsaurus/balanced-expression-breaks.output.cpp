@@ -17,4 +17,9 @@ void Compare()
     if (!channelControl.compare_exchange_weak(previousObservedControl, /* keep */ static_cast<unsigned long long>(pendingStatusBits | receivedControlSignals))) {
         Retry();
     }
+    if (Any(previousChannelStatus & ~EChannelStatus::CurrentlyProcessing) &&
+        None(previousChannelStatus & EChannelStatus::PendingShutdown))
+    {
+        Handle();
+    }
 }

@@ -813,9 +813,11 @@ Exclude = [
   are not forced to split. A single safe argument can move to a continuation
   line. For nested single-argument calls, safe one-break inner and outer
   layouts are compared so the chosen split balances the resulting lines.
-  With expression layout enabled, safe one-break cast-operand and
-  single-call-argument candidates on the same overlong line are ranked by
-  resulting maximum width, then balance. Ternary layout runs first;
+  With expression layout enabled, safe logical-operator, cast-operand,
+  and single-call-argument breaks are compared on overlong lines.
+  Fitting outer logical expressions take priority over nested breaks;
+  remaining candidates are ranked by maximum width, then balance.
+  Ternary layout runs first;
   name-specific call limits and source-owned syntax retain their policies.
   With `OnePerLine`, a flat enclosing multi-argument call owns the
   overflow; unsafe calls remain source-owned rather than splitting only
@@ -1124,9 +1126,11 @@ are configured. Only explicit YT fluent-call roots may be reflowed when
 those chains themselves overflow; unrelated library calls are left alone.
 YT logging calls retain the first string argument on the call line.
 `PreprocessorIndentation = Preserve` keeps both indented
-conditional includes and unindented inl-header guards. Name checks are
-left off until scope-aware rules can distinguish local camelCase names,
-global PascalCase names and trailing-underscore fields. Include grouping
+conditional includes and unindented inl-header guards. Parameter names
+are required in declarations; definitions require a name or trailing
+`/*name*/` comment. General name checks remain off until scope-aware
+rules can distinguish local camelCase names, global PascalCase names and
+trailing-underscore fields. Include grouping
 is intentionally out of scope; `IncludeOrder = Preserve` leaves groups alone.
 
 This is not a replacement for a YTsaurus style review. Missing options or
@@ -1142,8 +1146,9 @@ insufficient support include:
   API practices, integer types, and other semantic rules need review.
 - Scope-aware names (local variables vs globals, fields with `_`, enum
   values, and macro-defined enums), acronym exceptions, and whether a
-  parameter is unused. Name checks are disabled in this profile;
-  even when enabled they only report violations, never rename. Namespace
+  parameter is unused. General name checks are disabled in this profile;
+  parameter-name checks report missing names but cannot determine whether
+  an unused named parameter should be commented out. Namespace
   comments can be added, but their surrounding separator lines cannot.
 
 On upstream `yt/yt/core/misc/error.cpp`, lambda bodies inside call

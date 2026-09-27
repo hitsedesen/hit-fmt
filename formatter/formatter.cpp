@@ -4608,7 +4608,8 @@ std::string BalanceDelimitedExpressions(const parser::SyntaxTree& tree,
         size_t Line;
         size_t Longest;
         size_t Imbalance;
-        bool Cast;
+        bool Outer;
+        size_t LogicalScope;
     };
     std::vector<Candidate> candidates;
     std::vector<std::pair<size_t, size_t>> ownedCallArguments;
@@ -4708,6 +4709,65 @@ std::string BalanceDelimitedExpressions(const parser::SyntaxTree& tree,
             auto leading = prefix.find_first_not_of(' ');
             edit = Replacement{begin, end,
                 "\n" + GeneratedIndent(leading + style.IndentWidth, style)};
+        } else if (node->Kind == NK::BinaryExpression &&
+            style.ControlConditionIndent == CallArgumentIndent::IndentWidth &&
+            style.CallArgumentIndent == CallArgumentIndent::IndentWidth)
+        {
+            const auto* left = node->Child();
+            const auto* right = left ? left->NextSibling : nullptr;
+            if (!left || !right || left->Tokens.Empty() ||
+                right->Tokens.Empty() || right->NextSibling ||
+                HasRecoveryChild(*left) || HasRecoveryChild(*right))
+            {
+                continue;
+            }
+            auto op = left->Tokens.End;
+            while (op < right->Tokens.Begin &&
+                tree.Kind(op) != TK::Operator_And &&
+                tree.Kind(op) != TK::Operator_Or)
+            {
+                ++op;
+            }
+            if (op >= right->Tokens.Begin) continue;
+            auto leftEnd = tree.Token(left->Tokens.End - 1).Text.End;
+            auto opBegin = tree.Token(op).Text.Begin;
+            auto opEnd = tree.Token(op).Text.End;
+            auto rightBegin = tree.Token(right->Tokens.Begin).Text.Begin;
+            if (leftEnd > opBegin || opEnd > rightBegin ||
+                !IsWhitespace(source.substr(leftEnd,
+                    opBegin - leftEnd)) ||
+                !IsWhitespace(source.substr(opEnd,
+                    rightBegin - opEnd)))
+            {
+                continue;
+            }
+            auto line = source.rfind('\n', opBegin);
+            line = line == std::string_view::npos ? 0 : line + 1;
+            auto prefix = source.substr(line, opBegin - line);
+            auto expressionEnd = tree.Token(node->Tokens.End - 1).Text.End;
+            if (prefix.find_first_of("\r\t\\") !=
+                    std::string_view::npos ||
+                source.substr(tree.Token(node->Tokens.Begin).Text.Begin,
+                    expressionEnd -
+                        tree.Token(node->Tokens.Begin).Text.Begin)
+                    .find_first_of("\r\n\\") != std::string_view::npos ||
+                expressionEnd - line <= style.ColumnLimit)
+            {
+                continue;
+            }
+            bool unsafe = false;
+            for (auto i = node->Tokens.Begin; i < node->Tokens.End; ++i) {
+                unsafe |= tree.Kind(i) == TK::Comment ||
+                    tree.Kind(i) == TK::PreprocessingDirective;
+            }
+            if (unsafe) continue;
+            auto leading = prefix.find_first_not_of(' ');
+            auto indent = "\n" +
+                GeneratedIndent(leading + style.IndentWidth, style);
+            edit = style.BinaryOperatorPlacement ==
+                    BinaryOperatorPlacement::Trailing
+                ? Replacement{opEnd, rightBegin, std::move(indent)}
+                : Replacement{leftEnd, opBegin, std::move(indent)};
         } else if (node->Kind == NK::CallExpression &&
             style.CallArgumentSplit != CallArgumentSplit::Preserve)
         {
@@ -4778,12 +4838,14 @@ std::string BalanceDelimitedExpressions(const parser::SyntaxTree& tree,
         auto longest = std::max(first, second);
         if (longest > style.ColumnLimit) continue;
         candidates.push_back({std::move(*edit), line, longest,
-            longest - std::min(first, second), cast});
+            longest - std::min(first, second),
+            cast || node->Kind == NK::BinaryExpression,
+            node->Kind == NK::BinaryExpression ? node->Tokens.Size() : 0});
     }
     // Once a multi-argument call is eligible for OnePerLine, a break
     // inside one argument must not make its enclosing call appear to fit.
     std::erase_if(candidates, [&] (const Candidate& candidate) {
-        return candidate.Cast && std::ranges::any_of(ownedCallArguments,
+        return candidate.Outer && std::ranges::any_of(ownedCallArguments,
             [&] (const auto& range) {
                 return candidate.Edit.Begin > range.first &&
                     candidate.Edit.End < range.second;
@@ -4793,21 +4855,25 @@ std::string BalanceDelimitedExpressions(const parser::SyntaxTree& tree,
     std::vector<Replacement> edits;
     for (size_t i = 0; i < candidates.size();) {
         auto end = i + 1;
-        bool hasCast = candidates[i].Cast;
+        bool hasOuter = candidates[i].Outer;
         while (end < candidates.size() &&
             candidates[end].Line == candidates[i].Line)
         {
-            hasCast |= candidates[end].Cast;
+            hasOuter |= candidates[end].Outer;
             ++end;
         }
         // Existing call reflow retains ownership of call-only lines.
-        if (hasCast) {
+        if (hasOuter) {
             auto best = i;
             for (auto k = i + 1; k < end; ++k) {
-                if (std::pair(candidates[k].Longest,
-                        candidates[k].Imbalance) <
-                    std::pair(candidates[best].Longest,
-                        candidates[best].Imbalance))
+                if (candidates[k].LogicalScope >
+                        candidates[best].LogicalScope ||
+                    (candidates[k].LogicalScope ==
+                        candidates[best].LogicalScope &&
+                        std::pair(candidates[k].Longest,
+                            candidates[k].Imbalance) <
+                        std::pair(candidates[best].Longest,
+                            candidates[best].Imbalance)))
                 {
                     best = k;
                 }

@@ -359,8 +359,12 @@ TEST_P(ParameterNameGoldenTest, ReportsConfiguredMissingNames)
     const auto directory = std::filesystem::path(FORMATTER_TESTDATA_DIR) /
         "../parameter_names";
     const auto input = ReadFile(directory / "input.cpp");
-    const auto config = formatter::LoadConfigFile(
-        directory / (GetParam() + ".hit-fmt"));
+    const bool ytsaurus = GetParam() == "ytsaurus";
+    const auto configPath = ytsaurus
+        ? (directory / "../../../../hit-fmt/examples/ytsaurus.hit-fmt")
+              .lexically_normal()
+        : directory / (GetParam() + ".hit-fmt");
+    const auto config = formatter::LoadConfigFile(configPath);
     std::string storage(input);
     storage.append(util::SourcePaddingSize, '\0');
     const auto tree = parser::Parse(
@@ -379,13 +383,13 @@ TEST_P(ParameterNameGoldenTest, ReportsConfiguredMissingNames)
             (diagnostic.AllowCommentedName ? " (comment allowed)" : "") +
             "\n";
     }
-    test::golden::ExpectGolden(directory / (GetParam() + ".expected"),
-        actual);
+    test::golden::ExpectGolden(directory /
+        (ytsaurus ? "enabled.expected" : GetParam() + ".expected"), actual);
 }
 
 INSTANTIATE_TEST_SUITE_P(Configurations, ParameterNameGoldenTest,
     testing::Values("enabled", "default", "declarations_only",
-        "definitions_only", "names_only"));
+        "definitions_only", "names_only", "ytsaurus"));
 
 TEST(CallArgumentTest, ReflowsOnlySafeParsedCalls)
 {

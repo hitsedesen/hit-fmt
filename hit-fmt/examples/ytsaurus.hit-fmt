@@ -163,6 +163,9 @@ NoexceptSpaceBeforeParentheses = NoSpace
 # This vendored queue header does not follow the YTsaurus style.
 Exclude = ["(^|/)moody_camel_concurrent_queue\\.h$"]
 
-# Name checks are deliberately left off until scope-aware rules exist.
+# Parameter-name presence is checkable without scope-aware naming rules.
+FunctionDeclarationParameterNames = Required
+FunctionDefinitionParameterNames = NameOrCommentedNameRequired
+# General name checks remain off until scope-aware rules exist.
 # Include grouping is deliberately out of scope.
 IncludeOrder = Preserve
