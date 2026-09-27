@@ -75,6 +75,7 @@ RequiresSpaceBeforeParentheses = Preserve
 StaticAssertSpaceBeforeParentheses = Preserve
 StatementSemicolonSpacing = Preserve
 MemberAccessOperatorsSpacing = Preserve
+ScopeResolutionSpacing = Preserve
 InitializerBracesSpacing = Preserve
 CastArgumentSpacing = Preserve
 GroupingInteriorSpacing = Preserve
@@ -278,9 +279,13 @@ Exclude = [
   `return x;`). Loop and condition-init separators have separate options;
   declarations at file scope are not statement terminators.
 - `MemberAccessOperatorsSpacing`: `Preserve` (default) or `NoSpace`
-  around parsed `.` and `->` access (`obj . field` becomes `obj.field`),
-  qualified `::` names (`std :: vector` becomes `std::vector`), and the
-  unambiguous `.*` and `->*` tokens. Leading `::` keeps its left gap.
+  around parsed `.` and `->` access (`obj . field` becomes `obj.field`)
+  and unambiguous `.*` and `->*` tokens. `::` is independent.
+- `ScopeResolutionSpacing`: `Preserve` (default) or `NoSpace` around parsed
+  qualified `::` names (`std :: vector` becomes `std::vector`). Leading
+  `::` keeps its left gap. Prefer `Preserve` when declaration-prefix macros
+  may occur: without name lookup or macro expansion, `GTEST_API_ ::std`
+  cannot reliably be distinguished from a qualified name.
 - `AttributeSpaceAfterSpecifier`: `Preserve` (default), `Space`, or
   `NoSpace` between a parsed `[[...]]` specifier and a following
   declaration word (`[[nodiscard]] int f()` versus `[[nodiscard]]int f()`).
@@ -906,9 +911,10 @@ adds Google's two-space comment gap; `NamespaceComments = AddMissing` leaves
 existing anonymous-namespace comments such as `// Unnamed namespace` intact.
 Member-pointer parameter declarators in templated return-type functions,
 `char**` inside type-taking macros, and braced macro arguments containing
-statements now retain their correct Google spacing. `MemberAccessOperatorsSpacing`
-remains `Preserve`: `NoSpace` can still join `GTEST_API_ ::std::string` into
-`GTEST_API_::std::string` without declaration-prefix awareness.
+statements now retain their correct Google spacing. `MemberAccessOperatorsSpacing = NoSpace` tightens `.` and `->`, while
+`ScopeResolutionSpacing = Preserve` avoids joining
+`GTEST_API_ ::std::string` into `GTEST_API_::std::string` without
+macro expansion or name lookup.
 `TernaryOperatorSpacing = Space` can collapse multiline alignment without
 realigning other branches, so the profile preserves it. Four-space newline
 function parameter indentation is selected explicitly, and unsafe nested

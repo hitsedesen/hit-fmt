@@ -4604,17 +4604,23 @@ static std::string FormatTokenSpacing(const parser::SyntaxTree& tree,
                 }
             }
             if (node->Kind == NK::MemberExpression &&
-                style.MemberAccessOperatorsSpacing ==
-                    TightOperatorSpacing::NoSpace &&
+                (style.MemberAccessOperatorsSpacing ==
+                        TightOperatorSpacing::NoSpace ||
+                    style.ScopeResolutionSpacing ==
+                        TightOperatorSpacing::NoSpace) &&
                 node->FirstChild && node->FirstChild->NextSibling)
             {
                 auto begin = node->FirstChild->Tokens.End;
                 auto end = node->FirstChild->NextSibling->Tokens.Begin;
                 for (auto i = begin; i < end && i + 1 < count; ++i) {
-                    if (tree.Kind(i) == TK::Operator_ClassMemberAccess ||
-                        tree.Kind(i) ==
-                            TK::Operator_IndirectClassMemberAccess ||
-                        tree.Kind(i) == TK::Operator_ScopeResolution)
+                    if (((tree.Kind(i) == TK::Operator_ClassMemberAccess ||
+                            tree.Kind(i) ==
+                                TK::Operator_IndirectClassMemberAccess) &&
+                            style.MemberAccessOperatorsSpacing ==
+                                TightOperatorSpacing::NoSpace) ||
+                        (tree.Kind(i) == TK::Operator_ScopeResolution &&
+                            style.ScopeResolutionSpacing ==
+                                TightOperatorSpacing::NoSpace))
                     {
                         gaps[i] = TokenSpacing::NoSpace;
                         gaps[i + 1] = TokenSpacing::NoSpace;
@@ -4952,7 +4958,7 @@ static std::string FormatTokenSpacing(const parser::SyntaxTree& tree,
                     ? TokenSpacing::Space : TokenSpacing::NoSpace;
             }
         }
-        if (style.MemberAccessOperatorsSpacing ==
+        if (style.ScopeResolutionSpacing ==
                 TightOperatorSpacing::NoSpace &&
             kind == TK::Operator_ScopeResolution && i + 1 < count &&
             (tree.Kind(i + 1) == TK::Identifier ||
@@ -5644,6 +5650,7 @@ std::string Format(const parser::SyntaxTree& tree, const Style& style)
         style.AttributeInteriorSpacing != TokenSpacing::Preserve ||
         style.StatementSemicolonSpacing != TightOperatorSpacing::Preserve ||
         style.MemberAccessOperatorsSpacing != TightOperatorSpacing::Preserve ||
+        style.ScopeResolutionSpacing != TightOperatorSpacing::Preserve ||
         style.InitializerBracesSpacing != TokenSpacing::Preserve ||
         style.CastArgumentSpacing != TokenSpacing::Preserve ||
         style.GroupingInteriorSpacing != TokenSpacing::Preserve ||

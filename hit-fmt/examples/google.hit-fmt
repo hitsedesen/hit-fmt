@@ -75,10 +75,11 @@ CastSpacing = NoSpace
 CommaSpacing = Space
 StatementSemicolonSpacing = NoSpace
 DeclarationSemicolonSpacing = NoSpace
-# Prefer Preserve: without name lookup or macro expansion, an identifier
-# before :: may be an export macro, not a qualified-name component.
+MemberAccessOperatorsSpacing = NoSpace
+# Prefer Preserve for :: without name lookup or macro expansion: an
+# identifier before :: could be an export macro, not a qualifier.
 # NoSpace could turn GTEST_API_ ::std::string into GTEST_API_::std::string.
-MemberAccessOperatorsSpacing = Preserve
+ScopeResolutionSpacing = Preserve
 UnaryOperatorSpacing = NoSpace
 PostfixOperatorSpacing = NoSpace
 # Space collapses manually aligned multiline conditional columns.

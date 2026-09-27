@@ -113,6 +113,8 @@
         formatter::TightOperatorSpacing::Preserve)                              \
     OPT(formatter::TightOperatorSpacing, MemberAccessOperatorsSpacing,         \
         formatter::TightOperatorSpacing::Preserve)                              \
+    OPT(formatter::TightOperatorSpacing, ScopeResolutionSpacing,               \
+        formatter::TightOperatorSpacing::Preserve)                              \
     OPT(formatter::TokenSpacing, InitializerBracesSpacing,                     \
         formatter::TokenSpacing::Preserve)                                      \
     OPT(formatter::TokenSpacing, CastArgumentSpacing,                           \

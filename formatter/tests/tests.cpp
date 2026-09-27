@@ -173,6 +173,8 @@ std::vector<FormattedCase> FormattedCases()
         "syntax-boundaries.input.cpp"});
     AddCases(cases, google, {"punctuation-preserve", "punctuation-space",
         "comments-preserve"}, "punctuation-preserve.input.cpp");
+    cases.push_back({google, "access-only", "access-scope.input.cpp"});
+    cases.push_back({google, "scope-only", "access-scope-safe.input.cpp"});
     const auto attribute = std::filesystem::path(FORMATTER_TESTDATA_DIR) /
         "../attribute-indent";
     AddCases(cases, attribute, {"preserve", "block", "indent"});
@@ -1326,6 +1328,7 @@ TEST(PreserveConfigTest, RejectsInvalidSettings)
         "StaticAssertSpaceBeforeParentheses = After\n",
         "StatementSemicolonSpacing = Space\n",
         "MemberAccessOperatorsSpacing = Space\n",
+        "ScopeResolutionSpacing = Space\n",
         "InitializerBracesSpacing = Middle\n",
         "UnaryOperatorSpacing = Space\n",
         "PostfixOperatorSpacing = Space\n",
