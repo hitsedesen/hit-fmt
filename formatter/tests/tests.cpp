@@ -161,6 +161,30 @@ std::vector<FormattedCase> FormattedCases()
         {"preserve", "space", "no-space", "combined"});
     AddCases(cases, BODY_INDENT_TESTDATA_DIR,
         {"preserve", "indent", "no-indent", "mixed"});
+    const auto google = std::filesystem::path(FORMATTER_TESTDATA_DIR) /
+        "../google-style-regressions";
+    cases.push_back({google, "inline-record", "inline-record.input.cpp"});
+    cases.push_back({google, "widths", "widths.input.cpp"});
+    cases.push_back({google, "operator-spacing", "operator-spacing.input.cpp"});
+    cases.push_back({google, "unbraced-switch", "unbraced-switch.input.cpp"});
+    cases.push_back({google, "namespace-comments",
+        "namespace-comments.input.cpp"});
+    cases.push_back({google, "syntax-boundaries",
+        "syntax-boundaries.input.cpp"});
+    cases.push_back({google, "declarator-and-macro-safety",
+        "declarator-and-macro-safety.input.cpp"});
+    const auto disabled = std::filesystem::path(FORMATTER_TESTDATA_DIR) /
+        "../format-disabled";
+    cases.push_back({disabled, "regions", "regions.input.cpp"});
+    cases.push_back({disabled, "unclosed", "unclosed.input.cpp", "regions"});
+    cases.push_back({disabled, "crlf", "crlf.input.cpp", "regions"});
+    const auto newArrays = std::filesystem::path(FORMATTER_TESTDATA_DIR) /
+        "../new-array-declarators";
+    AddCases(cases, newArrays, {"left", "array-space", "array-preserve"});
+    AddCases(cases, google, {"punctuation-preserve", "punctuation-space",
+        "comments-preserve"}, "punctuation-preserve.input.cpp");
+    cases.push_back({google, "access-only", "access-scope.input.cpp"});
+    cases.push_back({google, "scope-only", "access-scope-safe.input.cpp"});
     const auto attribute = std::filesystem::path(FORMATTER_TESTDATA_DIR) /
         "../attribute-indent";
     AddCases(cases, attribute, {"preserve", "block", "indent"});
@@ -261,7 +285,7 @@ TEST_P(NamespaceCommentGoldenTest, MatchesConfiguredOutput)
     const auto directory = std::filesystem::path(FORMATTER_TESTDATA_DIR) /
         "../namespace_comments";
     const auto input = ReadFile(directory /
-        (GetParam() == "crlf_required" ? "crlf.input.cpp" : "input.cpp"));
+        (GetParam() == "crlf_fix" ? "crlf.input.cpp" : "input.cpp"));
     const auto style = formatter::LoadConfigFile(
         directory / (GetParam() + ".hit-fmt")).FormattingStyle;
 
@@ -281,8 +305,8 @@ TEST_P(NamespaceCommentGoldenTest, MatchesConfiguredOutput)
 }
 
 INSTANTIATE_TEST_SUITE_P(Configurations, NamespaceCommentGoldenTest,
-    testing::Values("preserve", "remove", "required", "required_newline",
-        "crlf_required"));
+    testing::Values("preserve", "remove", "add_missing", "fix",
+        "fix_spaced", "fix_newline", "crlf_fix"));
 
 class ParameterNameGoldenTest : public testing::TestWithParam<std::string>
 { };
@@ -740,6 +764,29 @@ TEST(ExpressionLayoutTest, ChecksLayoutWithoutReflowing)
     EXPECT_TRUE(formatter::CheckExpressionLayout(tree, style).empty());
 }
 
+TEST(ExpressionLayoutTest, SkipsFormatDisabledRegionsAgainstGolden)
+{
+    const auto directory = std::filesystem::path(FORMATTER_TESTDATA_DIR) /
+        "../format-disabled";
+    auto source = ReadFile(directory / "regions.input.cpp");
+    const auto size = source.size();
+    source.append(util::SourcePaddingSize, '\0');
+    const auto tree = parser::Parse(
+        {.Data = source.data(), .Size = size},
+        [] (parser::ParseError) { });
+    const auto style = formatter::LoadConfigFile(
+        directory / "regions.hit-fmt").FormattingStyle;
+    std::string actual;
+    for (const auto& diagnostic :
+        formatter::CheckExpressionLayout(tree, style))
+    {
+        actual += std::to_string(diagnostic.Position.Line) + ":" +
+            std::to_string(diagnostic.Position.Column) + ": " +
+            diagnostic.Message + "\n";
+    }
+    test::golden::ExpectGolden(directory / "regions.layout.expected", actual);
+}
+
 TEST(ExpressionLayoutTest, ChecksAssignmentPlacementAgainstGolden)
 {
     const auto directory = std::filesystem::path(FORMATTER_TESTDATA_DIR) /
@@ -1096,6 +1143,13 @@ TEST(PreserveConfigTest, RejectsInvalidSettings)
          "BinaryOperatorPlacement = Trailing\n"
          "AssignmentOperatorPlacement = Trailing\n"
          "StatementAttributeIndent = Block\n"
+         "AccessModifierIndentWidth = 1\n"
+         "MemberIndentWidth = 3\n"
+         "BlockBodyIndentWidth = 4\n"
+         "CaseLabelIndentWidth = 1\n"
+         "StatementAttributeIndentWidth = 2\n"
+         "NamespaceCommentSpaces = 2\n"
+         "CommaSpacing = Space\n"
          "TernaryOperatorPlacement = Trailing\n"
          "TernarySplit = ThreeLines\n"
          "CallArgumentSplit = Pack\nFirstCallArgumentPosition = NewLine\n"
@@ -1123,6 +1177,13 @@ TEST(PreserveConfigTest, RejectsInvalidSettings)
         formatter::BinaryOperatorPlacement::Trailing);
     EXPECT_EQ(config.FormattingStyle.StatementAttributeIndent,
         formatter::StatementAttributeIndent::Block);
+    EXPECT_EQ(config.FormattingStyle.AccessModifierIndentWidth, 1u);
+    EXPECT_EQ(config.FormattingStyle.MemberIndentWidth, 3u);
+    EXPECT_EQ(config.FormattingStyle.BlockBodyIndentWidth, 4u);
+    EXPECT_EQ(config.FormattingStyle.CaseLabelIndentWidth, 1u);
+    EXPECT_EQ(config.FormattingStyle.StatementAttributeIndentWidth, 2u);
+    EXPECT_EQ(config.FormattingStyle.NamespaceCommentSpaces, 2u);
+    EXPECT_EQ(config.FormattingStyle.CommaSpacing, formatter::CommaSpacing::Space);
     EXPECT_EQ(config.FormattingStyle.TernaryOperatorPlacement,
         formatter::TernaryOperatorPlacement::Trailing);
     EXPECT_EQ(config.FormattingStyle.TernarySplit,
@@ -1162,6 +1223,13 @@ TEST(PreserveConfigTest, RejectsInvalidSettings)
         "ColumnLimit = 0\n",
         "ColumnLimit = 10001\n",
         "ShortNamespaceLines = 10001\n",
+        "NamespaceComments = Required\n",
+        "NamespaceCommentSpaces = 33\n",
+        "AccessModifierIndentWidth = 33\n",
+        "MemberIndentWidth = 33\n",
+        "BlockBodyIndentWidth = 33\n",
+        "CaseLabelIndentWidth = 33\n",
+        "StatementAttributeIndentWidth = 33\n",
         "IndentWidth = 0\n",
         "IndentWidth = 33\n",
         "IndentAccessModifiers = Unknown\n",
@@ -1234,7 +1302,7 @@ TEST(PreserveConfigTest, RejectsInvalidSettings)
         "SpaceInsideLambdaParameters = Unknown\n",
         "SpaceInsideCallArguments = Unknown\n",
         "ControlBlockKeywordSpacing = Unknown\n",
-        "CommaSpacing = Space\n",
+        "CommaSpacing = Unknown\n",
         "LoopSemicolonSpacing = After\n",
         "ConditionInitSemicolonSpacing = After\n",
         "ControlBlockSemicolonSpacing = Space\n",
@@ -1293,6 +1361,7 @@ TEST(PreserveConfigTest, RejectsInvalidSettings)
         "StaticAssertSpaceBeforeParentheses = After\n",
         "StatementSemicolonSpacing = Space\n",
         "MemberAccessOperatorsSpacing = Space\n",
+        "ScopeResolutionSpacing = Space\n",
         "InitializerBracesSpacing = Middle\n",
         "UnaryOperatorSpacing = Space\n",
         "PostfixOperatorSpacing = Space\n",

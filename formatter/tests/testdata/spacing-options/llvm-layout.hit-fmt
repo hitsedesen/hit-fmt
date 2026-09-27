@@ -10,5 +10,5 @@ CallArgumentSplit = Pack
 CallArgumentIndent = Continuation
 InitializerListSplit = Pack
 InitializerListIndent = Continuation
-NamespaceComments = Required
+NamespaceComments = Fix
 ShortNamespaceLines = 1

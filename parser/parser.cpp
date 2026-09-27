@@ -1342,7 +1342,24 @@ private:
         auto start = Cursor_;
         auto* node = ParseToSemicolon(NodeKind::TypedefDeclaration);
         auto declarationBegin = NextSignificant(start + 1);
-        AddDeclarationSyntax(*node, declarationBegin, node->Tokens.End);
+        // A typedef can name a function type: `typedef int Callback(int*);`.
+        // Its parentheses are parameters, never a direct initializer.
+        std::optional<TokenRange> parameters;
+        auto declarator = FindDeclarationSpecifiersEnd(
+            declarationBegin, node->Tokens.End);
+        if (Kind(declarator) == TK::Identifier &&
+            Kind(NextSignificant(declarator + 1)) == TK::Operator_OpenParenthesis)
+        {
+            auto open = NextSignificant(declarator + 1);
+            auto close = FindBalancedEnd(open);
+            if (close != std::numeric_limits<TokenIndex>::max() &&
+                close <= node->Tokens.End)
+            {
+                parameters = TokenRange{.Begin = open, .End = close};
+            }
+        }
+        AddDeclarationSyntax(*node, declarationBegin, node->Tokens.End,
+            parameters);
         RegisterDeclaredNames(*node, NameKind::Type);
         return node;
     }
@@ -1576,6 +1593,7 @@ private:
         auto typeName = FindDeclaredTypeName(start);
         auto* node = MakeNode(NodeKind::RecordDeclaration, start);
         bool sawBaseClause = false;
+        bool unknownHeader = false;
         size_t baseClauseBegin = Tree_.Tokens_.Size();
         int angleDepth = 0;
         while (!AtEnd() && CurrentKind() != TK::Operator_Semicolon &&
@@ -1603,8 +1621,10 @@ private:
                 Kind(PreviousSignificant(Cursor_)) == TK::Identifier &&
                 Text(Cursor_) != "final" && !IsExtensionAttribute(Cursor_))
             {
-                Cursor_ = start;
-                return ParseGeneralDeclaration();
+                // A macro may appear between `class` and its name. Do not
+                // parse the following `{...}` as a variable initializer.
+                unknownHeader = true;
+                ++Cursor_;
             } else if (CurrentKind() == TK::Operator_OpenParenthesis) {
                 auto previous = PreviousSignificant(Cursor_);
                 if (angleDepth == 0 && !sawBaseClause &&
@@ -1622,7 +1642,14 @@ private:
                 ++Cursor_;
             }
         }
-        if (baseClauseBegin < Tree_.Tokens_.Size()) {
+        if (unknownHeader && CurrentKind() != TK::Operator_OpenBrace) {
+            Cursor_ = start;
+            return ParseGeneralDeclaration();
+        }
+        if (unknownHeader) {
+            AddUnparsedSyntax(*node, start + 1, Cursor_);
+        }
+        if (!unknownHeader && baseClauseBegin < Tree_.Tokens_.Size()) {
             auto* bases = MakeNode(NodeKind::BaseClause, baseClauseBegin);
             bases->Tokens.End = Cursor_;
             AddSeparatedElements(
@@ -1633,15 +1660,15 @@ private:
             Append(*node, *bases);
         }
         if (CurrentKind() == TK::Operator_OpenBrace) {
-            if (typeName < Tree_.Tokens_.Size()) {
+            if (!unknownHeader && typeName < Tree_.Tokens_.Size()) {
                 AddName(Text(typeName), NameKind::Type);
             }
             ++Cursor_;
             PushScope();
             RecordNames_.push_back(
-                typeName < Tree_.Tokens_.Size() ? Text(typeName)
-                                                : std::string_view{});
-            if (typeName < Tree_.Tokens_.Size()) {
+                !unknownHeader && typeName < Tree_.Tokens_.Size()
+                    ? Text(typeName) : std::string_view{});
+            if (!unknownHeader && typeName < Tree_.Tokens_.Size()) {
                 AddName(Text(typeName), NameKind::Type);
             }
             ParseDeclarationSequence(*node, TK::Operator_CloseBrace);
@@ -2132,15 +2159,96 @@ private:
         }
     }
 
+    [[nodiscard]] bool HasEmptyArgumentSlot(
+        TokenIndex opening, TokenIndex closingEnd) const
+    {
+        bool missingArgument = false;
+        bool expectingArgument = true;
+        bool sawSeparator = false;
+        for (auto i = NextSignificant(opening + 1); i + 1 < closingEnd;
+            i = NextSignificant(i + 1))
+        {
+            if (Kind(i) == TK::Operator_Comma) {
+                missingArgument |= expectingArgument;
+                expectingArgument = true;
+                sawSeparator = true;
+            } else {
+                expectingArgument = false;
+                if (IsOpenDelimiter(Kind(i))) {
+                    auto nested = FindBalancedEnd(i);
+                    if (nested != std::numeric_limits<TokenIndex>::max() &&
+                        nested < closingEnd)
+                    {
+                        i = nested - 1;
+                    }
+                }
+            }
+        }
+        return missingArgument || (sawSeparator && expectingArgument);
+    }
+
     void AddArgumentList(Node& parent, size_t opening, size_t closingEnd)
     {
         auto* arguments = MakeNode(NodeKind::ArgumentList, opening);
         arguments->Tokens.End = closingEnd;
         auto argumentCursor = NextSignificant(opening + 1);
+        // Empty arguments are not expressions. A function-like macro can
+        // accept them, so keep the entire list as recovered syntax instead
+        // of inventing an expression for a bare separator.
+        if (HasEmptyArgumentSlot(opening, closingEnd)) {
+            AddUnparsedSyntax(*arguments, opening + 1, closingEnd - 1);
+            AddDirectiveChildrenInGap(*arguments, opening, closingEnd);
+            Append(parent, *arguments);
+            return;
+        }
         while (argumentCursor + 1 < closingEnd) {
             auto before = argumentCursor;
-            auto* expression =
-                ParseExpressionSyntax(argumentCursor, closingEnd - 1, 2);
+            Node* expression = nullptr;
+            if (Kind(before) == TK::Operator_OpenBrace) {
+                auto braceEnd = FindBalancedEnd(before);
+                if (braceEnd != std::numeric_limits<TokenIndex>::max() &&
+                    braceEnd < closingEnd)
+                {
+                    auto following = NextSignificant(braceEnd);
+                    if (Kind(following) != TK::Operator_Comma &&
+                        following != closingEnd - 1)
+                    {
+                        braceEnd = before;
+                    }
+                }
+                if (braceEnd > before && braceEnd < closingEnd) {
+                    // Top-level semicolons cannot occur in a braced
+                    // initializer. A macro argument like `{ f(); }` is a
+                    // statement block; semicolons inside nested delimiters
+                    // (lambdas, calls, aggregates) are not decisive.
+                    bool statementBlock = false;
+                    for (auto i = before + 1; i < braceEnd - 1; ++i) {
+                        if (Kind(i) == TK::Operator_Semicolon) {
+                            statementBlock = true;
+                            break;
+                        }
+                        if (IsOpenDelimiter(Kind(i))) {
+                            auto nestedEnd = FindBalancedEnd(i);
+                            if (nestedEnd <= braceEnd - 1) {
+                                i = nestedEnd - 1;
+                            }
+                        }
+                    }
+                    if (statementBlock) {
+                        auto savedCursor = Cursor_;
+                        Cursor_ = before;
+                        ++BranchParseDepth_;
+                        expression = ParseCompoundStatement();
+                        --BranchParseDepth_;
+                        Cursor_ = savedCursor;
+                        argumentCursor = braceEnd;
+                    }
+                }
+            }
+            if (!expression) {
+                expression = ParseExpressionSyntax(
+                    argumentCursor, closingEnd - 1, 2);
+            }
             if (expression) {
                 auto* argument = MakeNode(NodeKind::Argument, before);
                 argument->Tokens.End = expression->Tokens.End;
@@ -2508,6 +2616,27 @@ private:
                     MakeNode(NodeKind::CallingConventionSpecifier, i);
                 convention->Tokens.End = i + 1;
                 Append(node, *convention);
+            } else if (node.Kind == NodeKind::NewTypeId &&
+                Kind(i) == TK::Operator_Star)
+            {
+                auto afterPointers = NextSignificant(i + 1);
+                while (Kind(afterPointers) == TK::Operator_Star) {
+                    afterPointers = NextSignificant(afterPointers + 1);
+                }
+                if (afterPointers < end &&
+                    Kind(afterPointers) == TK::Operator_OpenBracket)
+                {
+                    for (auto pointer = i; pointer < afterPointers;
+                        ++pointer)
+                    {
+                        if (Kind(pointer) != TK::Operator_Star) continue;
+                        auto* part = MakeNode(NodeKind::PointerOperator,
+                            pointer);
+                        part->Tokens.End = pointer + 1;
+                        Append(node, *part);
+                    }
+                    i = afterPointers - 1;
+                }
             } else if (Kind(i) == TK::Operator_Less) {
                 auto templateEnd = SkipTemplateArguments(i, end);
                 if (templateEnd <= end && templateEnd > i && (Kind(templateEnd - 1) == TK::Operator_Greater ||
@@ -3004,6 +3133,62 @@ private:
             IsExtensionAttribute(index) || IsCallingConvention(index));
     }
 
+    [[nodiscard]] bool HasMacroLikeLambdaArgument(
+        TokenIndex opening, TokenIndex closingEnd) const
+    {
+        if (opening >= closingEnd ||
+            Kind(opening) != TK::Operator_OpenParenthesis)
+        {
+            return false;
+        }
+        bool hasDefault = false;
+        for (auto i = opening + 1; i + 1 < closingEnd; ++i) {
+            auto kind = Kind(i);
+            if (kind == TK::Operator_Comma) {
+                hasDefault = false;
+                continue;
+            }
+            if (kind == TK::Operator_Assign) {
+                hasDefault = true;
+                continue;
+            }
+            if (kind == TK::Operator_OpenBracket && !hasDefault) {
+                auto captureEnd = FindBalancedEnd(i);
+                if (captureEnd != std::numeric_limits<TokenIndex>::max() &&
+                    captureEnd < closingEnd &&
+                    Kind(NextSignificant(captureEnd)) ==
+                        TK::Operator_OpenParenthesis)
+                {
+                    auto parameterEnd = FindBalancedEnd(
+                        NextSignificant(captureEnd));
+                    if (parameterEnd != std::numeric_limits<TokenIndex>::max() &&
+                        parameterEnd < closingEnd)
+                    {
+                        auto body = NextSignificant(parameterEnd);
+                        if (Kind(body) == TK::Operator_OpenBrace) {
+                            auto bodyEnd = FindBalancedEnd(body);
+                            if (bodyEnd < closingEnd &&
+                                (Kind(bodyEnd) == TK::Operator_Comma ||
+                                    Kind(bodyEnd) == TK::Operator_CloseParenthesis))
+                            {
+                                return true;
+                            }
+                        }
+                    }
+                }
+            }
+            if (IsOpenDelimiter(kind)) {
+                auto nested = FindBalancedEnd(i);
+                if (nested != std::numeric_limits<TokenIndex>::max() &&
+                    nested <= closingEnd)
+                {
+                    i = nested - 1;
+                }
+            }
+        }
+        return false;
+    }
+
     Node* ParseGeneralDeclaration()
     {
         auto start = Cursor_;
@@ -3025,6 +3210,22 @@ private:
                 auto requiresEnd = SkipRequiresExpression(Cursor_);
                 if (requiresEnd != Cursor_ + 1) {
                     Cursor_ = requiresEnd;
+                    continue;
+                }
+            }
+            // Parentheses inside a return type's template arguments (for
+            // example a pointer-to-member-function type) are not the
+            // function's parameter list.
+            if (kind == TK::Operator_Less && !sawTopLevelParameters &&
+                !sawAssignmentBeforeParameters && Cursor_ > start &&
+                Kind(PreviousSignificant(Cursor_)) == TK::Identifier)
+            {
+                auto after = SkipTemplateArguments(Cursor_, Tree_.Tokens_.Size());
+                if (after > Cursor_ && after < Tree_.Tokens_.Size() &&
+                    (Kind(after - 1) == TK::Operator_Greater ||
+                        Kind(after - 1) == TK::Operator_RightShift))
+                {
+                    Cursor_ = after;
                     continue;
                 }
             }
@@ -3137,6 +3338,30 @@ private:
             }
             if (kind == TK::Operator_Semicolon) {
                 ++Cursor_;
+                // A top-level lambda argument or an empty argument slot
+                // cannot be a function parameter declaration. At namespace
+                // scope these are typically macro invocations: parse a call
+                // rather than inventing overlapping declarator syntax.
+                if (sawTopLevelParameters &&
+                    (HasMacroLikeLambdaArgument(parameterBegin, parameterEnd) ||
+                        HasEmptyArgumentSlot(parameterBegin, parameterEnd)))
+                {
+                    auto expressionCursor = start;
+                    auto* expression = ParseExpressionSyntax(
+                        expressionCursor, Cursor_ - 1);
+                    auto* node = MakeNode(
+                        expression && expressionCursor == Cursor_ - 1 &&
+                            expression->Kind == NodeKind::CallExpression
+                            ? NodeKind::ExpressionStatement
+                            : NodeKind::UnparsedSyntax,
+                        start);
+                    node->Tokens.End = Cursor_;
+                    if (node->Kind == NodeKind::ExpressionStatement) {
+                        Append(*node, *expression);
+                    }
+                    AddDirectiveChildrenInGap(*node, start, Cursor_);
+                    return node;
+                }
                 auto nodeKind = invalidFunctionSuffix ? NodeKind::UnparsedSyntax
                     : sawTopLevelParameters &&
                     !sawAssignmentBeforeParameters
@@ -4063,6 +4288,20 @@ private:
         auto typeEnd = cursor;
         while (typeEnd < end) {
             auto kind = Kind(typeEnd);
+            if (kind == TK::Operator_Star) {
+                // A following array bound makes this a pointer new-type-id,
+                // not multiplication with a bare '[' as its right operand.
+                auto afterPointers = NextSignificant(typeEnd + 1);
+                while (Kind(afterPointers) == TK::Operator_Star) {
+                    afterPointers = NextSignificant(afterPointers + 1);
+                }
+                if (Kind(afterPointers) == TK::Operator_OpenBracket &&
+                    afterPointers < end)
+                {
+                    typeEnd = afterPointers;
+                    continue;
+                }
+            }
             if (kind == TK::Operator_OpenBracket) {
                 auto balancedEnd = FindBalancedEnd(typeEnd);
                 if (balancedEnd == std::numeric_limits<TokenIndex>::max() ||
@@ -4310,11 +4549,15 @@ private:
         } else if (IsPrefixOperator(kind)) {
             ++cursor;
             auto* operand = ParseExpressionSyntax(cursor, end, 14);
-            left = MakeNode(NodeKind::UnaryExpression, start);
-            left->Tokens.End = operand ? operand->Tokens.End : cursor;
-            if (operand) {
-                Append(*left, *operand);
+            if (!operand) {
+                // A dangling prefix operator cannot be the right operand
+                // of a binary expression (`char**` in a type-like macro
+                // argument is not `char * *<missing operand>`).
+                return nullptr;
             }
+            left = MakeNode(NodeKind::UnaryExpression, start);
+            left->Tokens.End = operand->Tokens.End;
+            Append(*left, *operand);
         } else if (kind == TK::Operator_OpenParenthesis) {
             auto closingEnd = FindBalancedEnd(cursor);
             if (closingEnd == std::numeric_limits<TokenIndex>::max() ||

@@ -1,0 +1,217 @@
+(translation-unit
+  (template-declaration
+    "template"
+    (template-parameter-list
+      "<"
+      (template-parameter "typename" "Owner")
+      (list-separator ",")
+      (template-parameter "typename" "Result")
+      ">"
+    )
+    (function-declaration
+      (declaration-specifiers "void")
+      (init-declarator-list
+        (init-declarator
+          (declarator
+            (declarator-name "select")
+            (function-declarator
+              (parameter-list
+                "("
+                (parameter-declaration
+                  (declaration-specifiers "Result")
+                  (init-declarator-list
+                    (init-declarator
+                      (declarator
+                        (nested-declarator
+                          "("
+                          (member-pointer-operator "Owner" "::" "*")
+                          (declarator-name "member")
+                          ")"
+                        )
+                        (function-declarator
+                          (parameter-list "(" ")")
+                          (function-qualifier "const")
+                        )
+                      )
+                    )
+                  )
+                )
+                ")"
+              )
+            )
+          )
+        )
+      )
+      ";"
+    )
+  )
+  (template-declaration
+    "template"
+    (template-parameter-list
+      "<"
+      (template-parameter "typename" "Owner")
+      (list-separator ",")
+      (template-parameter "typename" "Result")
+      (list-separator ",")
+      (template-parameter "typename" "Rule")
+      ">"
+    )
+    (function-definition
+      (declaration-specifiers
+        "inline" "Adapter"
+        (template-argument-list
+          "<"
+          (template-argument "detail" "::" "MethodRule" "<" "Owner" "," "Result" "," "Result" "(" "Owner" "::" "*" ")" "(" ")" "const")
+          ">>"
+        )
+      )
+      (init-declarator-list
+        (init-declarator
+          (declarator
+            (declarator-name "select")
+            (function-declarator
+              (parameter-list
+                "("
+                (parameter-declaration
+                  (declaration-specifiers "Result")
+                  (init-declarator-list
+                    (init-declarator
+                      (declarator
+                        (nested-declarator
+                          "("
+                          (member-pointer-operator "Owner" "::" "*")
+                          (declarator-name "member")
+                          ")"
+                        )
+                        (function-declarator
+                          (parameter-list "(" ")")
+                          (function-qualifier "const")
+                        )
+                      )
+                    )
+                  )
+                )
+                (list-separator ",")
+                (parameter-declaration
+                  (declaration-specifiers "const" "Rule")
+                  (init-declarator-list
+                    (init-declarator
+                      (declarator
+                        (pointer-operator "&")
+                        (declarator-name "rule")
+                      )
+                    )
+                  )
+                )
+                ")"
+              )
+            )
+          )
+        )
+      )
+      (compound-statement
+        "{"
+        (return-statement
+          "return"
+          (braced-initializer
+            (initializer-list "{" "}")
+          )
+          ";"
+        )
+        "}"
+      )
+    )
+  )
+  (function-definition
+    (declaration-specifiers "void")
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (declarator-name "f")
+          (function-declarator
+            (parameter-list "(" ")")
+          )
+        )
+      )
+    )
+    (compound-statement
+      "{"
+      (expression-statement
+        (call-expression
+          (identifier-expression "VERIFY_FAILS")
+          (argument-list
+            "("
+            (argument
+              (compound-statement
+                "{"
+                (expression-statement
+                  (call-expression
+                    (identifier-expression "invoke")
+                    (argument-list "(" ")")
+                  )
+                  ";"
+                )
+                "}"
+              )
+            )
+            (list-separator ",")
+            (argument
+              (literal-expression "\"\"")
+            )
+            ")"
+          )
+        )
+        ";"
+      )
+      (expression-statement
+        (call-expression
+          (identifier-expression "ASSERT_SAME")
+          (argument-list
+            "("
+            (argument
+              (identifier-expression "kTag")
+            )
+            (list-separator ",")
+            (argument
+              (call-expression
+                (identifier-expression "MACRO_TYPE_")
+                (argument-list
+                  "("
+                  (argument
+                    (expression "char")
+                  )
+                  "*" "*" ")"
+                )
+              )
+            )
+            ")"
+          )
+        )
+        ";"
+      )
+      (declaration-statement
+        (declaration-specifiers "int")
+        (init-declarator-list
+          (init-declarator
+            (declarator
+              (declarator-name "x")
+            )
+            (initializer
+              "="
+              (binary-expression
+                (identifier-expression "a")
+                "*"
+                (unary-expression
+                  "*"
+                  (identifier-expression "p")
+                )
+              )
+            )
+          )
+        )
+        ";"
+      )
+      "}"
+    )
+  )
+)

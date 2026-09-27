@@ -5,7 +5,7 @@ IndentWidth = 2
 ColumnLimit = 80
 IndentationKind = Spaces
 TrailingWhitespace = Trim
-PointerReferenceLocation = Right
+PointerReferenceDeclaratorLocation = Right
 LabelColonSpacing = NoSpace
 
 IndentAccessModifiers = NoIndent
@@ -28,7 +28,7 @@ LambdaBraceSpacing = SingleSpace
 NamespaceBraceSpacing = SingleSpace
 ControlBlockBracePlacement = SameLine
 ControlBlockKeywordSpacing = Space
-NamespaceComments = Required
+NamespaceComments = Fix
 ShortNamespaceLines = 1
 
 FunctionParameterSplit = Pack

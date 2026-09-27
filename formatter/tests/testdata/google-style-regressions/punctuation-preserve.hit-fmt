@@ -1,0 +1,3 @@
+BinaryOperatorSpacing = Space
+NamespaceComments = AddMissing
+NamespaceCommentSpaces = 2

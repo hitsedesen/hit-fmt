@@ -1,0 +1,9 @@
+IndentWidth = 4
+IndentAccessModifiers = Indent
+AccessModifierIndentWidth = 1
+IndentMembers = Indent
+MemberIndentWidth = 2
+IndentBlockBodies = true
+BlockBodyIndentWidth = 2
+ClassBraceSpacing = SingleSpace
+BraceInitializerSpacing = NoSpace

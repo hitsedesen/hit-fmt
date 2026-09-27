@@ -1,0 +1,3 @@
+PointerReferenceDeclaratorLocation = Left
+BinaryOperatorSpacing = Space
+NewArraySpaceBeforeBrackets = NoSpace

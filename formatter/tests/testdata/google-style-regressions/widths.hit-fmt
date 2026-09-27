@@ -1,0 +1,7 @@
+IndentWidth = 2
+IndentBlockBodies = true
+BlockBodyIndentWidth = 3
+IndentCaseLabels = Indent
+CaseLabelIndentWidth = 1
+StatementAttributeIndent = Indent
+StatementAttributeIndentWidth = 1

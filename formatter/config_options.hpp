@@ -113,6 +113,8 @@
         formatter::TightOperatorSpacing::Preserve)                              \
     OPT(formatter::TightOperatorSpacing, MemberAccessOperatorsSpacing,         \
         formatter::TightOperatorSpacing::Preserve)                              \
+    OPT(formatter::TightOperatorSpacing, ScopeResolutionSpacing,               \
+        formatter::TightOperatorSpacing::Preserve)                              \
     OPT(formatter::TokenSpacing, InitializerBracesSpacing,                     \
         formatter::TokenSpacing::Preserve)                                      \
     OPT(formatter::TokenSpacing, CastArgumentSpacing,                           \
@@ -165,8 +167,9 @@
         formatter::InheritanceListSplit::OnePerLine)                            \
     /* Zero uses global IndentWidth. */                                        \
     OPT(std::size_t, ConstructorInitializerListIndent, 0)                     \
-    OPT(formatter::PointerReferenceLocation, PointerReferenceLocation,         \
-        formatter::PointerReferenceLocation::Preserve)                         \
+    OPT(formatter::PointerReferenceDeclaratorLocation,                      \
+        PointerReferenceDeclaratorLocation,                                   \
+        formatter::PointerReferenceDeclaratorLocation::Preserve)                         \
     OPT(formatter::TightOperatorSpacing, UnaryOperatorSpacing,                 \
         formatter::TightOperatorSpacing::Preserve)                              \
     OPT(formatter::TightOperatorSpacing, PostfixOperatorSpacing,               \
@@ -225,13 +228,18 @@
         formatter::IncludeOrder::Preserve)                                     \
     OPT(formatter::BodyIndentation, IndentAccessModifiers,                     \
         formatter::BodyIndentation::Preserve)                                  \
+    OPT(std::size_t, AccessModifierIndentWidth, 0)                             \
     OPT(formatter::BodyIndentation, IndentMembers,                             \
         formatter::BodyIndentation::Preserve)                                  \
+    OPT(std::size_t, MemberIndentWidth, 0)                                     \
     OPT(bool, IndentBlockBodies, false)                                        \
+    OPT(std::size_t, BlockBodyIndentWidth, 0)                                  \
     OPT(formatter::BodyIndentation, IndentCaseLabels,                           \
         formatter::BodyIndentation::Preserve)                                  \
+    OPT(std::size_t, CaseLabelIndentWidth, 0)                                  \
     OPT(formatter::StatementAttributeIndent, StatementAttributeIndent,         \
         formatter::StatementAttributeIndent::Preserve)                        \
+    OPT(std::size_t, StatementAttributeIndentWidth, 0)                         \
     OPT(formatter::InheritanceListMode, InheritanceList,                       \
         formatter::InheritanceListMode::Preserve)                              \
     OPT(formatter::InheritanceListColonPlacement, InheritanceListColonPlacement, \
@@ -266,6 +274,7 @@
         formatter::BracePlacement::Preserve)                                   \
     OPT(formatter::NamespaceComments, NamespaceComments,                       \
         formatter::NamespaceComments::Preserve)                                \
+    OPT(std::size_t, NamespaceCommentSpaces, 1)                                \
     OPT(std::size_t, ShortNamespaceLines, 0)                                   \
     OPT(formatter::FunctionParameterSplit, FunctionParameterSplit,             \
         formatter::FunctionParameterSplit::Preserve)                           \

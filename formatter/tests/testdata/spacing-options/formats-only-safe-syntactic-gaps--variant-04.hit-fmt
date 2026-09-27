@@ -1,4 +1,4 @@
-PointerReferenceLocation = Right
+PointerReferenceDeclaratorLocation = Right
 BinaryOperatorSpacing = Space
 AssignmentOperatorSpacing = Space
 CastSpacing = Space

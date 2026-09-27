@@ -1,0 +1,18 @@
+typedef void TaskSignature(bool, int*, char*);
+void inspect() {
+  for (const Entry<int>*first = chain->head(), *second = other->head();
+       first != nullptr; first = first->next()) {}
+}
+REGISTER_GROUP(Label, Variant, Make(1), &factory);
+REGISTER_GROUP(first, , last);
+REGISTER_GROUP(Label, Variant, Make(1),
+               [](const ItemInfo& info) { return info.value; });
+void accept(int number = []() { return 1; }());
+void allocate(int count) {
+  auto slots = new const Widget*[count];
+  auto layers = new Widget**[count];
+  auto product = new Widget * count;
+}
+static_assert(!HAS_EMPTY_ARG(, ), "");
+static_assert(!HAS_EMPTY_ARG(first, , last), "");
+static_assert(!HAS_EMPTY_ARG(first, ), "");

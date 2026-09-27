@@ -1,0 +1,6 @@
+class API Record {
+public:
+  int value {1};
+};
+class Plain { int value; };
+class Plain variable;
