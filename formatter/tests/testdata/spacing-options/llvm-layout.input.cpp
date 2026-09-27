@@ -1,6 +1,8 @@
 void render(bool Alpha, bool Beta, bool Gamma, bool Delta, bool Epsilon, bool Zeta) {
   while (Alpha && Beta && Gamma && Delta && Epsilon && Zeta) {
 wrong();
+    assert(Alpha && Beta && Gamma && Delta && Epsilon && Zeta);
+    record->longMemberFieldName = calculateValue();
     switch (0) {
       case 1:
           work();
@@ -10,6 +12,10 @@ wrong();
         fail();
         break;
       }
+      case 3:
+        if (Beta)
+          return;
+          [[fallthrough]];
       default:
           break;
     }

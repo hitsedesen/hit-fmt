@@ -378,7 +378,37 @@ TEST(CallArgumentTest, ReflowsOnlySafeParsedCalls)
         "}\n";
     EXPECT_EQ(FormatWithStyle(aligned, style), alignedExpected);
     EXPECT_EQ(FormatWithStyle(alignedExpected, style), alignedExpected);
+    const auto assertion =
+        "void f() {\n"
+        "    assert(check(alpha) && verify(beta) && confirm(gamma));\n"
+        "}\n";
+    const auto alignedAssertion =
+        "void f() {\n"
+        "    assert(check(alpha) &&\n"
+        "           verify(beta) &&\n"
+        "           confirm(gamma));\n"
+        "}\n";
+    EXPECT_EQ(FormatWithStyle(assertion, style), alignedAssertion);
+    EXPECT_EQ(FormatWithStyle(alignedAssertion, style), alignedAssertion);
+    style.CallArgumentSplit = formatter::CallArgumentSplit::Preserve;
+    style.ExpressionLayoutCondition =
+        formatter::ExpressionLayoutCondition::Overflow;
+    EXPECT_EQ(FormatWithStyle(assertion, style), alignedAssertion);
+    style.CallArgumentSplit = formatter::CallArgumentSplit::Pack;
 
+    style.CallArgumentIndent = formatter::CallArgumentIndent::IndentWidth;
+    const auto widthAssertion =
+        "void f() {\n"
+        "    assert(check(alpha) &&\n"
+        "        verify(beta) &&\n"
+        "        confirm(gamma));\n"
+        "}\n";
+    EXPECT_EQ(FormatWithStyle(assertion, style), widthAssertion);
+    style.ExpressionLayoutCondition =
+        formatter::ExpressionLayoutCondition::Preserve;
+    EXPECT_EQ(FormatWithStyle(assertion, style), assertion);
+    style.ExpressionLayoutCondition =
+        formatter::ExpressionLayoutCondition::Always;
     style.CallArgumentIndent = formatter::CallArgumentIndent::IndentWidth;
     style.ControlBlockBracePlacement =
         formatter::ControlBlockBracePlacement::AttachUnlessMultiline;
@@ -527,6 +557,23 @@ TEST(ExpressionLayoutTest, WrapsParsedOperatorsAndPreservesUnsafeLines)
         "}\n";
     EXPECT_EQ(FormatWithStyle(assigned, style), assignedExpected);
     EXPECT_EQ(FormatWithStyle(assignedExpected, style), assignedExpected);
+    const auto existingAssignment =
+        "void f() {\n"
+        "    result\n"
+        "        = value;\n"
+        "}\n";
+    const auto trailingAssignment =
+        "void f() {\n"
+        "    result =\n"
+        "        value;\n"
+        "}\n";
+    style.AssignmentOperatorPlacement =
+        formatter::BinaryOperatorPlacement::Trailing;
+    EXPECT_EQ(FormatWithStyle(existingAssignment, style), trailingAssignment);
+    EXPECT_EQ(FormatWithStyle(trailingAssignment, style), trailingAssignment);
+    style.AssignmentOperatorPlacement =
+        formatter::BinaryOperatorPlacement::Leading;
+    EXPECT_EQ(FormatWithStyle(trailingAssignment, style), existingAssignment);
     style.ColumnLimit = 25;
     const auto compact =
         "int sum(int alpha, int beta) {\n"
@@ -727,9 +774,98 @@ TEST(ExpressionLayoutTest, ChecksLayoutWithoutReflowing)
     style.TernaryOperatorPlacement = formatter::TernaryOperatorPlacement::Preserve;
     style.TernarySplit = formatter::TernarySplit::Preserve;
     EXPECT_EQ(formatter::CheckExpressionLayout(tree, style).size(), 2u);
+    const auto assignment = "void f() {\n    result\n        = value;\n}\n";
+    std::string assignedStorage(assignment);
+    const auto assignedLength = assignedStorage.size();
+    assignedStorage.append(util::SourcePaddingSize, '\0');
+    auto assignedTree = parser::Parse(
+        {.Data = assignedStorage.data(), .Size = assignedLength},
+        [] (parser::ParseError) { });
+    style.AssignmentOperatorPlacement =
+        formatter::BinaryOperatorPlacement::Trailing;
+    const auto assignmentIssues =
+        formatter::CheckExpressionLayout(assignedTree, style);
+    ASSERT_EQ(assignmentIssues.size(), 1u);
+    EXPECT_EQ(assignmentIssues[0].Message,
+        "assignment operator must end the preceding line");
+    style.AssignmentOperatorPlacement =
+        formatter::BinaryOperatorPlacement::Leading;
+    EXPECT_TRUE(formatter::CheckExpressionLayout(assignedTree, style).empty());
     style.ExpressionLayoutCondition =
         formatter::ExpressionLayoutCondition::Preserve;
     EXPECT_TRUE(formatter::CheckExpressionLayout(tree, style).empty());
+}
+
+TEST(BlockIndentationTest, AlignsStandaloneStatementAttributes)
+{
+    const auto input =
+        "void f(bool ready) {\n"
+        "  switch (1) {\n"
+        "    case 1:\n"
+        "      if (!ready)\n"
+        "        return;\n"
+        "         [[fallthrough]];\n"
+        "    default:\n"
+        "      break;\n"
+        "  }\n"
+        "}\n";
+    formatter::Style style;
+    style.IndentWidth = 2;
+    style.IndentBlockBodies = true;
+    style.IndentCaseLabels = formatter::BodyIndentation::NoIndent;
+    const auto preserved =
+        "void f(bool ready) {\n"
+        "  switch (1) {\n"
+        "  case 1:\n"
+        "    if (!ready)\n"
+        "      return;\n"
+        "         [[fallthrough]];\n"
+        "  default:\n"
+        "    break;\n"
+        "  }\n"
+        "}\n";
+    EXPECT_EQ(FormatWithStyle(input, style), preserved);
+    style.StatementAttributeIndent =
+        formatter::StatementAttributeIndent::Block;
+    const auto block =
+        "void f(bool ready) {\n"
+        "  switch (1) {\n"
+        "  case 1:\n"
+        "    if (!ready)\n"
+        "      return;\n"
+        "    [[fallthrough]];\n"
+        "  default:\n"
+        "    break;\n"
+        "  }\n"
+        "}\n";
+    EXPECT_EQ(FormatWithStyle(input, style), block);
+    EXPECT_EQ(FormatWithStyle(block, style), block);
+    style.StatementAttributeIndent =
+        formatter::StatementAttributeIndent::Indent;
+    const auto indented =
+        "void f(bool ready) {\n"
+        "  switch (1) {\n"
+        "  case 1:\n"
+        "    if (!ready)\n"
+        "      return;\n"
+        "      [[fallthrough]];\n"
+        "  default:\n"
+        "    break;\n"
+        "  }\n"
+        "}\n";
+    EXPECT_EQ(FormatWithStyle(input, style), indented);
+    EXPECT_EQ(FormatWithStyle(indented, style), indented);
+
+    style.IndentBlockBodies = false;
+    style.IndentCaseLabels = formatter::BodyIndentation::Preserve;
+    style.StatementAttributeIndent =
+        formatter::StatementAttributeIndent::Block;
+    const auto standalone =
+        "void f() {\n"
+        "      [[maybe_unused]] int value = 0;\n"
+        "}\n";
+    EXPECT_EQ(FormatWithStyle(standalone, style),
+        "void f() {\n  [[maybe_unused]] int value = 0;\n}\n");
 }
 
 TEST(ExpressionLayoutTest, PrefersOuterConditionalBreaks)
@@ -1059,6 +1195,8 @@ TEST(PreserveConfigTest, RejectsInvalidSettings)
          "ExpressionLayoutCondition = FitOrOverflow\n"
          "ExpressionLayoutAlgorithm = DynamicProgramming\n"
          "BinaryOperatorPlacement = Trailing\n"
+         "AssignmentOperatorPlacement = Trailing\n"
+         "StatementAttributeIndent = Block\n"
          "TernaryOperatorPlacement = Trailing\n"
          "TernarySplit = ThreeLines\n"
          "CallArgumentSplit = Pack\nFirstCallArgumentPosition = NewLine\n"
@@ -1082,6 +1220,10 @@ TEST(PreserveConfigTest, RejectsInvalidSettings)
         formatter::ExpressionLayoutAlgorithm::DynamicProgramming);
     EXPECT_EQ(config.FormattingStyle.BinaryOperatorPlacement,
         formatter::BinaryOperatorPlacement::Trailing);
+    EXPECT_EQ(config.FormattingStyle.AssignmentOperatorPlacement,
+        formatter::BinaryOperatorPlacement::Trailing);
+    EXPECT_EQ(config.FormattingStyle.StatementAttributeIndent,
+        formatter::StatementAttributeIndent::Block);
     EXPECT_EQ(config.FormattingStyle.TernaryOperatorPlacement,
         formatter::TernaryOperatorPlacement::Trailing);
     EXPECT_EQ(config.FormattingStyle.TernarySplit,
@@ -1126,6 +1268,7 @@ TEST(PreserveConfigTest, RejectsInvalidSettings)
         "IndentAccessModifiers = Unknown\n",
         "IndentMembers = Unknown\n",
         "IndentCaseLabels = Unknown\n",
+        "StatementAttributeIndent = Unknown\n",
         "InheritanceList = Unknown\n",
         "InheritanceListColonPlacement = Unknown\n",
         "InheritanceListColonSpaceBefore = Unknown\n",
@@ -1168,6 +1311,7 @@ TEST(PreserveConfigTest, RejectsInvalidSettings)
         "ExpressionLayoutCondition = Unknown\n",
         "ExpressionLayoutAlgorithm = BruteForce\n",
         "BinaryOperatorPlacement = Middle\n",
+        "AssignmentOperatorPlacement = Middle\n",
         "TernaryOperatorPlacement = Middle\n",
         "TernarySplit = TwoLines\n",
         "CallArgumentSplit = Together\n",

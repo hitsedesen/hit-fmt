@@ -126,6 +126,7 @@ IndentAccessModifiers = Preserve
 IndentMembers = Preserve
 IndentBlockBodies = false
 IndentCaseLabels = Preserve
+StatementAttributeIndent = Preserve
 InheritanceList = Preserve
 InheritanceListColonPlacement = AttachToBase
 InheritanceListColonSpaceBefore = NoSpace
@@ -546,6 +547,13 @@ Exclude = [
   `IndentBlockBodies` is enabled. Only parsed case/default labels directly
   in complete switch blocks are affected. An explicit `{` following a case
   aligns with the case label. This is independent of `LabelColonSpacing`.
+- `StatementAttributeIndent`: `Preserve` (default) leaves standalone
+  `[[...]]` statement attributes at their existing indentation, even when
+  block body indentation is enabled. `Block` aligns them with the containing
+  block's statement indent (or the control header for an unbraced body);
+  `Indent` adds one `IndentWidth` to that indent. Only parsed, line-leading
+  attributes in complete blocks and control bodies are affected. Inline
+  attributes, comments, directives, and conditional branches stay unchanged.
 - `IndentAccessModifiers` and `IndentMembers`: `Preserve` (default)
   leaves indentation unchanged, `Indent` uses one `IndentWidth` relative
   to the record declaration, and `NoIndent` aligns with that declaration.
@@ -596,7 +604,8 @@ Exclude = [
   other expression gaps, including call argument breaks, are controlled
   separately by `CallArgumentSplit`. New continuations normally use
   `IndentWidth` beyond the original line's leading spaces; parsed control
-  conditions can instead use `ControlConditionIndent`. Comments,
+  conditions can instead use `ControlConditionIndent`, and parsed calls
+  can use `CallArgumentIndent`. Comments,
   directives, CRLF, backslashes, and ambiguous or recovered syntax stay
   source-owned. Bare `<`, `>`, `<<`, and `>>` remain untouched even when
   parsed as operators: without name lookup they can be template syntax.
@@ -610,7 +619,8 @@ Exclude = [
   breakpoint that fits the current line; `DynamicProgramming` minimizes
   a bounded whole-line cost for raggedness, extra breaks, and operator
   precedence. Both use the same parser-approved breakpoints, respect
-  `BinaryOperatorPlacement`, and prefer outer expression breaks over breaks
+  `BinaryOperatorPlacement` and `AssignmentOperatorPlacement`, and prefer
+  outer expression breaks over breaks
   inside parentheses. The choice also affects `Pack` call argument and
   initializer grouping, but not `Preserve` or `OnePerLine` lists, function
   parameters, or inheritance. Searches with more than 96 candidates, or
@@ -618,11 +628,17 @@ Exclude = [
 - `BinaryOperatorPlacement`: `Trailing` (default, keep a wrapped binary
   operator at the end of the previous line) or `Leading` (put it at the
   start of the continuation line). Only applies when
-  `ExpressionLayoutCondition` is not `Preserve`; assignment operators and
-  conditional `?`/`:` remain leading. `Overflow` keeps existing operator
-  breaks but safely moves
-  the newline to the configured side of a binary operator, even if the
+  `ExpressionLayoutCondition` is not `Preserve`; assignment operators use
+  `AssignmentOperatorPlacement` and conditional `?`/`:` have their own
+  setting. `Overflow` keeps existing operator breaks but safely moves the
+  newline to the configured side of a binary operator, even if the
   expression otherwise fits on one line.
+- `AssignmentOperatorPlacement`: `Leading` (default, put a wrapped
+  assignment operator at the start of the continuation line) or `Trailing`
+  (keep it at the end of the preceding line). Like binary placement, this
+  only applies to parsed expressions when expression layout is enabled;
+  `Overflow` also corrects safe existing assignment breaks without
+  regrouping the expression.
 - `TernaryOperatorPlacement`: `Preserve` (default) leaves the side of
   existing `?` and `:` breaks unchanged. New breaks use leading placement
   unless another delimiter is already split, in which case `ThreeLines`
@@ -652,8 +668,11 @@ Exclude = [
   or `FitOrOverflow`; `true` applies the setting above to those calls.
   `Always` always applies the configured position.
 - `CallArgumentIndent`: `IndentWidth` (default, indent one width beyond
-  the call's line) or `Continuation` (align with the opening `(`).
-  These options only affect complete parsed calls with plain, single-line
+  the call's line) or `Continuation` (align with the character after the
+  opening `(`). With expression layout enabled, `Continuation` also aligns
+  new operator breaks inside complete parsed calls, including single-
+  argument macros such as `assert`. Call-list reflow only affects calls
+  with plain, single-line
   arguments and whitespace-only list gaps. Comments, directives, CRLF,
   and ambiguous parenthesized callees remain unchanged. Parsed function-like
   macro calls follow the same call layout rules; nested calls are considered
@@ -828,8 +847,10 @@ rejected rather than silently ignored.
 profile. Copy it to `.hit-fmt` or pass `--config hit-fmt/examples/llvm.hit-fmt`.
 It selects LLVM's 2-space indent and 80-column limit, attached braces,
 spacing for supported constructs, packed parameters and call arguments,
-trailing binary operators, leading ternary operators, LLVM-style pointer
-and reference placement, and basic naming checks. This is **not** a
+trailing binary and assignment operators, leading ternary operators,
+call-expression continuation and statement-attribute indentation,
+LLVM-style pointer and reference placement, and basic naming checks.
+This is **not** a
 replacement for `clang-format -style=LLVM` or a
 complete implementation of the [LLVM Coding
 Standards](https://llvm.org/docs/CodingStandards.html).

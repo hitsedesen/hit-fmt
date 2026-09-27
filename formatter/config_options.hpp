@@ -215,6 +215,8 @@
         formatter::CallArgumentIndent::IndentWidth)                            \
     OPT(formatter::BinaryOperatorPlacement, BinaryOperatorPlacement,           \
         formatter::BinaryOperatorPlacement::Trailing)                          \
+    OPT(formatter::BinaryOperatorPlacement, AssignmentOperatorPlacement,       \
+        formatter::BinaryOperatorPlacement::Leading)                           \
     OPT(formatter::TernaryOperatorPlacement, TernaryOperatorPlacement,         \
         formatter::TernaryOperatorPlacement::Preserve)                         \
     OPT(formatter::TernarySplit, TernarySplit,                                 \
@@ -228,6 +230,8 @@
     OPT(bool, IndentBlockBodies, false)                                        \
     OPT(formatter::BodyIndentation, IndentCaseLabels,                           \
         formatter::BodyIndentation::Preserve)                                  \
+    OPT(formatter::StatementAttributeIndent, StatementAttributeIndent,         \
+        formatter::StatementAttributeIndent::Preserve)                        \
     OPT(formatter::InheritanceListMode, InheritanceList,                       \
         formatter::InheritanceListMode::Preserve)                              \
     OPT(formatter::InheritanceListColonPlacement, InheritanceListColonPlacement, \
