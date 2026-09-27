@@ -407,6 +407,26 @@ std::string ContentChange(std::string_view actual, std::string_view expected)
         QuoteSnippet(added);
 }
 
+std::optional<size_t> SlashRulerLength(
+    std::string_view actual, std::string_view expected, size_t length)
+{
+    if (length == 0) return std::nullopt;
+    const auto indent = actual.find_first_not_of(" \t");
+    if (indent == std::string_view::npos) return std::nullopt;
+    auto ruler = actual.substr(indent);
+    if (ruler.ends_with('\r') && expected.ends_with('\r')) {
+        ruler.remove_suffix(1);
+        expected.remove_suffix(1);
+    }
+    if (ruler.size() < 8 || expected.size() != length ||
+        ruler.find_first_not_of('/') != std::string_view::npos ||
+        expected.find_first_not_of('/') != std::string_view::npos)
+    {
+        return std::nullopt;
+    }
+    return ruler.size();
+}
+
 bool SameNonWhitespace(std::string_view a, std::string_view b)
 {
     auto skip = [] (std::string_view text, size_t& i) {
@@ -512,7 +532,8 @@ bool IsIncludeLine(const Line& line)
 }
 
 std::vector<Chunk> FormattingChunks(
-    const std::vector<Line>& source, const std::vector<Line>& formatted)
+    const std::vector<Line>& source, const std::vector<Line>& formatted,
+    size_t separatorLength = 0)
 {
     std::vector<Chunk> chunks;
     size_t sourceIndex = 0, formattedIndex = 0;
@@ -597,7 +618,24 @@ std::vector<Chunk> FormattingChunks(
             }
             std::string message;
             auto kind = ViolationKind::Other;
-            if (line.Text == replacement && !line.HasNewline &&
+            auto column = DifferenceColumn(line.Text, replacement);
+            auto rulerLength = i < formattedCount
+                ? SlashRulerLength(line.Text, replacement, separatorLength)
+                : std::nullopt;
+            if (rulerLength) {
+                const auto indent = line.Text.find_first_not_of(" \t");
+                if (indent != 0) {
+                    message = "separator should start at column 1";
+                }
+                if (*rulerLength != separatorLength) {
+                    message += message.empty()
+                        ? "separator should be " : " and be ";
+                    message += std::to_string(separatorLength) +
+                        " characters long (found " +
+                        std::to_string(*rulerLength) + ")";
+                }
+                column = indent + 1;
+            } else if (line.Text == replacement && !line.HasNewline &&
                 i < formattedCount && formatted[formattedIndex + i].HasNewline)
             {
                 message = "missing final newline";
@@ -635,8 +673,7 @@ std::vector<Chunk> FormattingChunks(
                 message = ContentChange(line.Text, replacement);
             }
             chunk.Violations.push_back({sourceIndex + i + 1,
-                DifferenceColumn(line.Text, replacement), std::move(message),
-                kind});
+                column, std::move(message), kind});
         }
         if (sourceCount == 0) {
             auto column = sourceIndex < source.size() || source.empty()
@@ -680,11 +717,12 @@ void PrintCheckDiagnostics(
     std::span<const formatter::NameDiagnostic> names,
     std::span<const formatter::ParameterNameDiagnostic> parameters,
     std::span<const formatter::LayoutDiagnostic> layout,
-    bool useColor)
+    bool useColor, size_t separatorLength)
 {
     auto sourceLines = SplitLines(source);
     auto formattedLines = SplitLines(formatted);
-    auto chunks = FormattingChunks(sourceLines, formattedLines);
+    auto chunks = FormattingChunks(sourceLines, formattedLines,
+        separatorLength);
     // Source layout diagnostics own their line. A formatter-emitted break on
     // that line is a possible repair, not another source violation. Preserve
     // unrelated formatting, naming and parameter-name diagnostics.
@@ -806,7 +844,7 @@ void PrintCheckDiagnostics(
         }
         const auto width = std::to_string(chunk.End - 1).size();
         const auto gutter = std::string(width + 1, ' ') + "| ";
-        std::cout << gutter << '\n';
+        std::cout << gutter.substr(0, gutter.size() - 1) << '\n';
         size_t violationIndex = 0;
         for (auto lineNumber = chunk.Begin; lineNumber < chunk.End;
             ++lineNumber)
@@ -1237,7 +1275,8 @@ int main(int argc, char* argv[])
                     auto layoutFormatted = layout.empty() ? std::string{} :
                         formatter::Format(tree, config.FormattingStyle);
                     PrintCheckDiagnostics(filePath, source, formatted,
-                        layoutFormatted, names, parameters, layout, useColor);
+                        layoutFormatted, names, parameters, layout, useColor,
+                        checkStyle.SeparatorLength);
                 }
                 mismatchCount += mismatch;
                 break;

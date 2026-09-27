@@ -245,6 +245,25 @@ std::vector<std::string> ParseNamespaceExemptions(
     return names;
 }
 
+std::vector<std::string> ParseCallNames(
+    std::string_view value, const std::filesystem::path& path, size_t line)
+{
+    auto names = ParseStringList(value, path, line);
+    for (const auto& name : names) {
+        if (name.empty() ||
+            !(std::isalpha(static_cast<unsigned char>(name.front())) ||
+                name.front() == '_') ||
+            name.find_first_not_of(
+                "abcdefghijklmnopqrstuvwxyz"
+                "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_") !=
+                std::string::npos)
+        {
+            ThrowConfigError(path, line, "expected call identifier names");
+        }
+    }
+    return names;
+}
+
 std::vector<std::string> ParseNamePrefixes(
     std::string_view value, const std::filesystem::path& path, size_t line)
 {
@@ -320,6 +339,12 @@ void ValidateStyleLimits(const Style& style,
     if (style.ShortNamespaceLines > 10000) {
         ThrowConfigError(path, line, "ShortNamespaceLines must not exceed 10000");
     }
+    if (style.SeparatorLength != 0 &&
+        (style.SeparatorLength < 8 || style.SeparatorLength > 10000))
+    {
+        ThrowConfigError(path, line,
+            "SeparatorLength must be between 8 and 10000");
+    }
     if (style.NamespaceCommentSpaces > 32) {
         ThrowConfigError(path, line, "NamespaceCommentSpaces must not exceed 32");
     }
@@ -348,7 +373,19 @@ template <auto Member>
 void AssignStyle(Configuration& config, std::string_view value,
     const std::filesystem::path& path, size_t line)
 {
-    ParseField(config.FormattingStyle.*Member, value, path, line);
+    if constexpr (std::is_same_v<std::remove_cvref_t<
+            decltype(config.FormattingStyle.*Member)>,
+            std::vector<std::string>>)
+    {
+        if constexpr (Member == &Style::ChainedCallRootNames) {
+            config.FormattingStyle.*Member =
+                ParseNamespaceExemptions(value, path, line);
+        } else {
+            config.FormattingStyle.*Member = ParseCallNames(value, path, line);
+        }
+    } else {
+        ParseField(config.FormattingStyle.*Member, value, path, line);
+    }
 }
 
 template <auto Member>

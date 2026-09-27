@@ -161,6 +161,49 @@ std::vector<FormattedCase> FormattedCases()
         {"preserve", "space", "no-space", "combined"});
     AddCases(cases, BODY_INDENT_TESTDATA_DIR,
         {"preserve", "indent", "no-indent", "mixed"});
+    const auto chains = std::filesystem::path(FORMATTER_TESTDATA_DIR) /
+        "../chained-calls";
+    AddCases(cases, chains, {"always", "continuation", "preserve"});
+    cases.push_back({chains, "overflow", "overflow.input.cpp"});
+    AddCases(cases, std::filesystem::path(FORMATTER_TESTDATA_DIR) /
+        "../separator-length", {"normalize", "preserve"});
+    AddCases(cases, std::filesystem::path(FORMATTER_TESTDATA_DIR) /
+        "../standalone-block-indent", {"preserve", "indent"});
+    const auto closings = std::filesystem::path(FORMATTER_TESTDATA_DIR) /
+        "../closing-delimiters";
+    AddCases(cases, closings, {"same-line", "block", "preserve"});
+    cases.push_back({closings, "new-line", "new-line.input.cpp"});
+    cases.push_back({closings, "keep", "trailing-comma.input.cpp"});
+    cases.push_back({closings, "remove", "trailing-comma.input.cpp"});
+    AddCases(cases, std::filesystem::path(FORMATTER_TESTDATA_DIR) /
+        "../fold-spacing", {"yt-like", "inherited", "group-space"});
+    const auto ytsaurus = std::filesystem::path(FORMATTER_TESTDATA_DIR) /
+        "../ytsaurus";
+    const auto profile = (std::filesystem::path(FORMATTER_TESTDATA_DIR) /
+        "../../../../hit-fmt/examples/ytsaurus").lexically_normal().string();
+    for (const auto* name : {"initializer-interior", "overflow-and-spacing",
+        "control-and-local-class", "initializer-and-lambda"})
+    {
+        cases.push_back({ytsaurus, name,
+            std::string(name) + ".input.cpp", profile});
+    }
+    AddCases(cases, std::filesystem::path(FORMATTER_TESTDATA_DIR) /
+        "../call-like-macro", {"selected"});
+    AddCases(cases, std::filesystem::path(FORMATTER_TESTDATA_DIR) /
+        "../lambda-body", {"preserve", "inherit", "inline"});
+    AddCases(cases, std::filesystem::path(FORMATTER_TESTDATA_DIR) /
+        "../control-header-clauses", {"preserve", "split",
+            "indent-width"});
+    cases.push_back({ytsaurus, "lambda-body-profile",
+        "../lambda-body/input.cpp", profile});
+    cases.push_back({ytsaurus, "control-header-clauses",
+        "control-header-clauses.input.cpp", profile});
+    cases.push_back({ytsaurus, "enum-macro-closing",
+        "enum-macro-closing.input.cpp", profile});
+    cases.push_back({ytsaurus, "balanced-expression-breaks",
+        "balanced-expression-breaks.input.cpp", profile});
+    cases.push_back({ytsaurus, "deep-call-arguments",
+        "deep-call-arguments.input.cpp", profile});
     const auto google = std::filesystem::path(FORMATTER_TESTDATA_DIR) /
         "../google-style-regressions";
     cases.push_back({google, "inline-record", "inline-record.input.cpp"});
@@ -485,6 +528,64 @@ TEST(CallArgumentTest, ReflowsOnlySafeParsedCalls)
     EXPECT_EQ(FormatWithStyle(balancedInput, style), onePerLineBalanced);
     style.CallArgumentSplit = formatter::CallArgumentSplit::Preserve;
     ExpectUnchanged(balancedInput, style);
+
+    formatter::Style sole;
+    sole.CallArgumentSplit = formatter::CallArgumentSplit::OnePerLine;
+    sole.ExpressionLayoutCondition =
+        formatter::ExpressionLayoutCondition::Overflow;
+    sole.TernarySplit = formatter::TernarySplit::ThreeLines;
+    sole.TernaryOperatorPlacement =
+        formatter::TernaryOperatorPlacement::Leading;
+    const auto multiline =
+        "void f() {\n"
+        "    auto result = Select(status\n"
+        "        ? first\n"
+        "        : second);\n"
+        "    auto callback = MakeCallback([&] {\n"
+        "        Run();\n"
+        "    });\n"
+        "}\n";
+    ExpectUnchanged(multiline, sole);
+    sole.MultilineSingleCallArgumentPosition =
+        formatter::MultilineSingleCallArgumentPosition::NewLine;
+    const auto separated =
+        "void f() {\n"
+        "    auto result = Select(\n"
+        "        status\n"
+        "            ? first\n"
+        "            : second);\n"
+        "    auto callback = MakeCallback([&] {\n"
+        "        Run();\n"
+        "    });\n"
+        "}\n";
+    EXPECT_EQ(FormatWithStyle(multiline, sole), separated);
+    EXPECT_EQ(FormatWithStyle(separated, sole), separated);
+
+    formatter::Style lambdaStyle;
+    lambdaStyle.ColumnLimit = 32;
+    lambdaStyle.CallArgumentSplit = formatter::CallArgumentSplit::OnePerLine;
+    lambdaStyle.IndentBlockBodies = true;
+    const auto lambdaInput =
+        "void f() {\n"
+        "    CallWithLongName([first, second] {\n"
+        "        Process();\n"
+        "    });\n"
+        "}\n";
+    const auto lambdaExpected =
+        "void f() {\n"
+        "    CallWithLongName(\n"
+        "        [first, second] {\n"
+        "            Process();\n"
+        "        });\n"
+        "}\n";
+    EXPECT_EQ(FormatWithStyle(lambdaInput, lambdaStyle), lambdaExpected);
+    EXPECT_EQ(FormatWithStyle(lambdaExpected, lambdaStyle), lambdaExpected);
+    ExpectUnchanged(
+        "void f() {\n"
+        "    CallWithLongName([first = MakeVeryLongValue(), second] {\n"
+        "        Process();\n"
+        "    });\n"
+        "}\n", lambdaStyle);
 }
 
 TEST(CallArgumentTest, LaysOutEnclosingMacroAndNestedCalls)
@@ -1068,6 +1169,260 @@ TEST(FunctionParameterSafetyTest, KeepsCrlfListsAndCalls)
         style);
 }
 
+TEST(BlockIndentationTest, AnchorsInlineLambdaToItsCallLine)
+{
+    formatter::Style style;
+    style.IndentBlockBodies = true;
+    const std::string source =
+        "void f()\n"
+        "{\n"
+        "    Visit(\n"
+        "        MakeCallback([&] (auto value) {\n"
+        "            if (value) {\n"
+        "                Use(value);\n"
+        "            }\n"
+        "        }),\n"
+        "        other);\n"
+        "}\n";
+    ExpectUnchanged(source, style);
+
+    const std::string incorrect =
+        "void f()\n"
+        "{\n"
+        "    Visit(\n"
+        "        MakeCallback([&] (auto value) {\n"
+        "        if (value) {\n"
+        "            Use(value);\n"
+        "        }\n"
+        "    }),\n"
+        "        other);\n"
+        "}\n";
+    EXPECT_EQ(FormatWithStyle(incorrect, style), source);
+}
+
+TEST(BlockIndentationTest, ReflowsCallsAfterReindentingTheirStatements)
+{
+    formatter::Style style;
+    style.IndentWidth = 4;
+    style.IndentationKind = formatter::IndentationKind::Spaces;
+    style.IndentBlockBodies = true;
+    style.ColumnLimit = 72;
+    style.ExpressionLayoutCondition =
+        formatter::ExpressionLayoutCondition::Overflow;
+    style.CallArgumentSplit = formatter::CallArgumentSplit::OnePerLine;
+    style.FirstCallArgumentPosition =
+        formatter::FirstCallArgumentPosition::NewLine;
+    const std::string input =
+        "void f() {\n"
+        "\tLog(veryLongFirstArgument, veryLongSecondArgument, "
+        "veryLongThirdArgument);\n"
+        "}\n";
+    const std::string expected =
+        "void f() {\n"
+        "    Log(\n"
+        "        veryLongFirstArgument,\n"
+        "        veryLongSecondArgument,\n"
+        "        veryLongThirdArgument);\n"
+        "}\n";
+    EXPECT_EQ(FormatWithStyle(input, style), expected);
+    EXPECT_EQ(FormatWithStyle(expected, style), expected);
+}
+
+TEST(ControlBraceTest, WrapsOnlyCompleteUnbracedBodies)
+{
+    formatter::Style style;
+    style.AddMissingControlBraces = true;
+    style.IndentBlockBodies = true;
+    style.ControlBlockBracePlacement =
+        formatter::ControlBlockBracePlacement::AttachUnlessMultiline;
+    const std::string input =
+        "void f(bool a, bool b) {\n"
+        "    if (a) if (b) Go(); else Stop();\n"
+        "    for (;;) Go();\n"
+        "    while (a) Go();\n"
+        "    while (a);\n"
+        "    do Go(); while (a);\n"
+        "}\n";
+    const std::string expected =
+        "void f(bool a, bool b) {\n"
+        "    if (a) {\n"
+        "        if (b) {\n"
+        "            Go();\n"
+        "        } else {\n"
+        "            Stop();\n"
+        "        }\n"
+        "    }\n"
+        "    for (;;) {\n"
+        "        Go();\n"
+        "    }\n"
+        "    while (a) {\n"
+        "        Go();\n"
+        "    }\n"
+        "    while (a);\n"
+        "    do {\n"
+        "        Go();\n"
+        "    } while (a);\n"
+        "}\n";
+    EXPECT_EQ(FormatWithStyle(input, style), expected);
+    EXPECT_EQ(FormatWithStyle(expected, style), expected);
+    style.EmptyControlBody = formatter::EmptyControlBody::EmptyBlock;
+    style.EmptyBlockInteriorSpacing = formatter::TokenSpacing::Space;
+    const std::string emptyInput =
+        "void spin(bool a) {\n"
+        "    while (a);\n"
+        "    while (\n        a);\n"
+        "    for (; a; );\n"
+        "    do; while (a);\n"
+        "    if (a); else Stop();\n"
+        "    if (a) /* keep */ ;\n"
+        "}\n";
+    const std::string emptyExpected =
+        "void spin(bool a) {\n"
+        "    while (a) { }\n"
+        "    while (\n        a)\n    { }\n"
+        "    for (; a; ) { }\n"
+        "    do { } while (a);\n"
+        "    if (a) { } else {\n"
+        "        Stop();\n"
+        "    }\n"
+        "    if (a) /* keep */ ;\n"
+        "}\n";
+    EXPECT_EQ(FormatWithStyle(emptyInput, style), emptyExpected);
+    EXPECT_EQ(FormatWithStyle(emptyExpected, style), emptyExpected);
+    style.AddMissingControlBraces = false;
+    EXPECT_EQ(FormatWithStyle(
+        "void f() {\n    if (a);\n    if (b) Go();\n}\n", style),
+        "void f() {\n    if (a) { }\n    if (b) Go();\n}\n");
+    style.EmptyControlBody = formatter::EmptyControlBody::Preserve;
+    style.AddMissingControlBraces = true;
+    ExpectUnchanged("void f(bool a) { if (a) /* keep */ Go(); }\n", style);
+    EXPECT_EQ(FormatWithStyle(
+        "void f(bool a) { if (a)\r\n    Go(); }\r\n", style),
+        "void f(bool a) { if (a)\r\n        Go(); }\r\n");
+    ExpectUnchanged("void f(int x) { switch (x) case 0: Go(); }\n", style);
+    EXPECT_EQ(FormatWithStyle(
+        "void f(int x)\n{\n    switch (x) Go();\n}\n", style),
+        "void f(int x)\n{\n    switch (x) {\n"
+        "        Go();\n"
+        "    }\n}\n");
+    EXPECT_EQ(FormatWithStyle(
+        "void f(bool a)\n{\n    if (a) Go(); Other();\n}\n", style),
+        "void f(bool a)\n{\n"
+        "    if (a) {\n"
+        "        Go();\n"
+        "    }\n"
+        "    Other();\n"
+        "}\n");
+}
+
+TEST(EmptyFunctionBodyTest, CollapsesWhitespaceOnlyBody)
+{
+    formatter::Style style;
+    style.CollapseEmptyFunctionBodies = true;
+    style.FunctionBracePlacement = formatter::BracePlacement::NewLine;
+    const std::string input =
+        "void Empty()\n{\n}\n"
+        "void WithComment()\n{\n    // Keep this.\n}\n";
+    const std::string expected =
+        "void Empty()\n{ }\n"
+        "void WithComment()\n{\n    // Keep this.\n}\n";
+    EXPECT_EQ(FormatWithStyle(input, style), expected);
+    EXPECT_EQ(FormatWithStyle(expected, style), expected);
+    style.NonEmptyBlockBodyLayout =
+        formatter::NonEmptyBlockBodyLayout::Multiline;
+    EXPECT_EQ(FormatWithStyle(
+        "void Annotated() { /* keep */ Act(); }\n", style),
+        "void Annotated()\n{ /* keep */ Act(); }\n");
+}
+
+TEST(CallLayoutTest, KeepsFirstStringOnSelectedCallLine)
+{
+    formatter::Style style;
+    style.ColumnLimit = 65;
+    style.CallArgumentSplit = formatter::CallArgumentSplit::OnePerLine;
+    style.ExpressionLayoutCondition =
+        formatter::ExpressionLayoutCondition::Overflow;
+    style.FirstCallArgumentPosition =
+        formatter::FirstCallArgumentPosition::NewLine;
+    style.EnforceFirstCallArgumentPosition = true;
+    style.CallLineFirstStringNames = {"YT_LOG_INFO", "YT_TLOG_ERROR"};
+    const std::string input =
+        "void f() {\n"
+        "    YT_LOG_INFO(\"A long enough message to require wrapping\", "
+        "firstArgument, secondArgument);\n"
+        "    YT_TLOG_ERROR(error, \"Failure (%v)\", firstArgument);\n"
+        "    Other(\"A long enough message to require wrapping\", "
+        "firstArgument, secondArgument);\n"
+        "    YT_LOG_INFO_CUSTOM(\"A long enough message to require wrapping\", "
+        "firstArgument, secondArgument);\n"
+        "    YT_LOG_INFO_IF(enabled, \"A message requiring wrapping\", "
+        "firstArgument, secondArgument);\n"
+        "}\n";
+    const std::string expected =
+        "void f() {\n"
+        "    YT_LOG_INFO(\"A long enough message to require wrapping\",\n"
+        "        firstArgument,\n"
+        "        secondArgument);\n"
+        "    YT_TLOG_ERROR(error, \"Failure (%v)\", firstArgument);\n"
+        "    Other(\n"
+        "        \"A long enough message to require wrapping\",\n"
+        "        firstArgument,\n"
+        "        secondArgument);\n"
+        "    YT_LOG_INFO_CUSTOM(\n"
+        "        \"A long enough message to require wrapping\",\n"
+        "        firstArgument,\n"
+        "        secondArgument);\n"
+        "    YT_LOG_INFO_IF(\n"
+        "        enabled,\n"
+        "        \"A message requiring wrapping\",\n"
+        "        firstArgument,\n"
+        "        secondArgument);\n"
+        "}\n";
+    EXPECT_EQ(FormatWithStyle(input, style), expected);
+    EXPECT_EQ(FormatWithStyle(expected, style), expected);
+    const std::string split =
+        "void f() { YT_LOG_INFO(\n"
+        "    \"Message\",\n"
+        "    count); }\n";
+    const std::string anchored =
+        "void f() { YT_LOG_INFO(\"Message\",\n"
+        "    count); }\n";
+    EXPECT_EQ(FormatWithStyle(split, style), anchored);
+    EXPECT_EQ(FormatWithStyle(
+        "void f() { YT_LOG_INFO(\n    \"Message\"); }\n", style),
+        "void f() { YT_LOG_INFO(\"Message\"); }\n");
+}
+
+TEST(OperatorSpacingTest, PreservesUnknownCastOrBinaryOperator)
+{
+    formatter::Style style;
+    style.BinaryOperatorSpacing = formatter::TokenSpacing::Space;
+    style.CastSpacing = formatter::TokenSpacing::NoSpace;
+    style.UnaryOperatorSpacing = formatter::TightOperatorSpacing::NoSpace;
+    style.ExpressionLayoutCondition =
+        formatter::ExpressionLayoutCondition::Always;
+    style.ColumnLimit = 120;
+    const std::string source =
+        "void f(int a, int b) {\n"
+        "    auto address = (UnknownType) &a;\n"
+        "    auto pointer = (UnknownType)*b;\n"
+        "    auto bitwise = (a)& b;\n"
+        "    auto multiply = (a)* b;\n"
+        "    auto qualified = (NS::UnknownType) &a;\n"
+        "    auto certain = (a + b) & b;\n"
+        "    auto knownCast = (int)&a;\n"
+        "}\n";
+    ExpectUnchanged(source, style);
+    const auto compact = std::string(source).replace(
+        source.find("(a + b) & b"), std::string("(a + b) & b").size(),
+        "(a + b)&b");
+    EXPECT_EQ(FormatWithStyle(compact, style), source);
+    const auto separatedCast = std::string(source).replace(
+        source.find("(int)&a"), std::string("(int)&a").size(),
+        "(int) & a");
+    EXPECT_EQ(FormatWithStyle(separatedCast, style), source);
+}
+
 TEST(BraceSpacingTest, ComposesWithParameterReflow)
 {
     formatter::Style style;
@@ -1155,6 +1510,7 @@ TEST(PreserveConfigTest, RejectsInvalidSettings)
          "CallArgumentSplit = Pack\nFirstCallArgumentPosition = NewLine\n"
          "EnforceFirstCallArgumentPosition = true\n"
          "CallArgumentIndent = Continuation\n"
+         "CallLineFirstStringNames = [\"YT_LOG_INFO\", \"YT_LOG_ERROR\"]\n"
          "Exclude = [ # list comment\n"
          "  \"x]y\", # bracket in a quoted item\n"
          "  \"(^|/)generated(/|$)\"\n"
@@ -1195,6 +1551,8 @@ TEST(PreserveConfigTest, RejectsInvalidSettings)
     EXPECT_TRUE(config.FormattingStyle.EnforceFirstCallArgumentPosition);
     EXPECT_EQ(config.FormattingStyle.CallArgumentIndent,
         formatter::CallArgumentIndent::Continuation);
+    EXPECT_EQ(config.FormattingStyle.CallLineFirstStringNames,
+        (std::vector<std::string>{"YT_LOG_INFO", "YT_LOG_ERROR"}));
     ASSERT_EQ(config.Exclude.size(), 2u);
     EXPECT_TRUE(std::regex_search("x]y", config.Exclude[0]));
     EXPECT_TRUE(std::regex_search("generated/source.cpp", config.Exclude[1]));
@@ -1219,7 +1577,9 @@ TEST(PreserveConfigTest, RejectsInvalidSettings)
     for (auto setting : {
         "Regroup = true\n",
         "InsertBraces = false\n",
-        "WhitespaceSensitiveMacros = []\n",
+        "UnknownMacroNames = []\n",
+        "CallLineFirstStringNames = [\"YT_LOG_\" , \"NS::Call\"]\n",
+        "CallLineFirstStringNames = [\"\"]\n",
         "ColumnLimit = 0\n",
         "ColumnLimit = 10001\n",
         "ShortNamespaceLines = 10001\n",

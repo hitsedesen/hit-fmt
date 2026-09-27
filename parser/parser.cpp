@@ -4132,6 +4132,16 @@ private:
         int depth = 0;
         for (auto i = opening + 1; i < closing; ++i) {
             auto kind = Kind(i);
+            if (depth == 0 && kind == TK::Operator_Less && i > opening + 1 &&
+                (Kind(PreviousSignificant(i)) == TK::Identifier ||
+                    Kind(PreviousSignificant(i)) == TK::Operator_Greater))
+            {
+                auto templateEnd = SkipTemplateArguments(i, closing);
+                if (templateEnd > i + 1 && templateEnd <= closing) {
+                    i = templateEnd - 1;
+                    continue;
+                }
+            }
             if (IsOpenDelimiter(kind)) {
                 ++depth;
             } else if (kind == TK::Operator_CloseParenthesis ||
@@ -5268,6 +5278,38 @@ private:
         }
     }
 
+    // Without an included type declaration, (Name) &value and
+    // (Name) *value can be either casts of unary expressions or binary
+    // operations on a parenthesized name. Do not assign binary spacing or
+    // layout to the operator until the distinction is known.
+    [[nodiscard]] bool IsAmbiguousCastOperator(const Node& left,
+        TK operatorKind) const
+    {
+        if ((operatorKind != TK::Operator_Ampersand &&
+                operatorKind != TK::Operator_Star) ||
+            left.Kind != NodeKind::ParenthesizedExpression ||
+            left.Tokens.End < left.Tokens.Begin + 3)
+        {
+            return false;
+        }
+        const auto end = left.Tokens.End - 1;
+        if (Kind(left.Tokens.Begin) != TK::Operator_OpenParenthesis ||
+            Kind(end) != TK::Operator_CloseParenthesis ||
+            Kind(left.Tokens.Begin + 1) != TK::Identifier)
+        {
+            return false;
+        }
+        for (auto i = left.Tokens.Begin + 2; i < end; i += 2) {
+            if (i + 1 >= end ||
+                Kind(i) != TK::Operator_ScopeResolution ||
+                Kind(i + 1) != TK::Identifier)
+            {
+                return false;
+            }
+        }
+        return true;
+    }
+
     void MarkPunctuationRoles(Node& node)
     {
         switch (node.Kind) {
@@ -5310,7 +5352,11 @@ private:
                     auto role = node.Kind == NodeKind::AssignmentExpression
                         ? PunctuationRole::AssignmentOperator
                         : PunctuationRole::BinaryOperator;
-                    if (kind == TK::Operator_Less ||
+                    if (i == node.FirstChild->Tokens.End &&
+                        IsAmbiguousCastOperator(*node.FirstChild, kind))
+                    {
+                        role = PunctuationRole::AmbiguousOperator;
+                    } else if (kind == TK::Operator_Less ||
                         kind == TK::Operator_Greater ||
                         kind == TK::Operator_LessEquals ||
                         kind == TK::Operator_GreaterEquals ||

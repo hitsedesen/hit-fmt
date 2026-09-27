@@ -218,6 +218,7 @@ enum class PunctuationRole : uint8_t
     ReferenceDeclarator,
     UnaryOperator,
     BinaryOperator,
+    AmbiguousOperator,
     AssignmentOperator,
     TemplateDelimiter,
     ComparisonOperator,

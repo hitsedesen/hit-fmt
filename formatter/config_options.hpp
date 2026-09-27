@@ -131,6 +131,11 @@
         formatter::TokenSpacing::Preserve)                                      \
     OPT(formatter::TokenSpacing, EmptyBlockInteriorSpacing,                    \
         formatter::TokenSpacing::Preserve)                                      \
+    OPT(formatter::EmptyLambdaBodySpacing, EmptyLambdaBodySpacing,             \
+        formatter::EmptyLambdaBodySpacing::Inherit)                            \
+    OPT(formatter::SingleStatementLambdaBodyLayout,                           \
+        SingleStatementLambdaBodyLayout,                                       \
+        formatter::SingleStatementLambdaBodyLayout::Inherit)                  \
     OPT(formatter::TokenSpacing, ControlBlockSpaceBeforeBrace,                 \
         formatter::TokenSpacing::Preserve)                                      \
     OPT(formatter::TokenSpacing, DeclarationSemicolonSpacing,                  \
@@ -212,10 +217,14 @@
         formatter::TokenSpacing::Preserve)                                      \
     OPT(formatter::ExpressionLayoutCondition, ExpressionLayoutCondition,       \
         formatter::ExpressionLayoutCondition::Preserve)                        \
+    OPT(formatter::ControlHeaderClauseSplit, ControlHeaderClauseSplit,         \
+        formatter::ControlHeaderClauseSplit::Preserve)                         \
     OPT(formatter::ExpressionLayoutAlgorithm, ExpressionLayoutAlgorithm,       \
         formatter::ExpressionLayoutAlgorithm::Greedy)                          \
     OPT(formatter::CallArgumentIndent, ControlConditionIndent,                 \
         formatter::CallArgumentIndent::IndentWidth)                            \
+    OPT(formatter::ForHeaderClauseIndent, ForHeaderClauseIndent,               \
+        formatter::ForHeaderClauseIndent::Inherit)                             \
     OPT(formatter::BinaryOperatorPlacement, BinaryOperatorPlacement,           \
         formatter::BinaryOperatorPlacement::Trailing)                          \
     OPT(formatter::BinaryOperatorPlacement, AssignmentOperatorPlacement,       \
@@ -233,6 +242,18 @@
         formatter::BodyIndentation::Preserve)                                  \
     OPT(std::size_t, MemberIndentWidth, 0)                                     \
     OPT(bool, IndentBlockBodies, false)                                        \
+    OPT(formatter::StandaloneBlockBraceIndentation,                            \
+        StandaloneBlockBraceIndentation,                                       \
+        formatter::StandaloneBlockBraceIndentation::Indent)                   \
+    OPT(formatter::AmbiguousTemplateDeclarationSpacing,                       \
+        AmbiguousTemplateDeclarationSpacing,                                   \
+        formatter::AmbiguousTemplateDeclarationSpacing::Preserve)             \
+    OPT(bool, AddMissingControlBraces, false)                                  \
+    OPT(formatter::EmptyControlBody, EmptyControlBody,                         \
+        formatter::EmptyControlBody::Preserve)                                 \
+    OPT(formatter::NonEmptyBlockBodyLayout, NonEmptyBlockBodyLayout,           \
+        formatter::NonEmptyBlockBodyLayout::Preserve)                          \
+    OPT(bool, CollapseEmptyFunctionBodies, false)                              \
     OPT(std::size_t, BlockBodyIndentWidth, 0)                                  \
     OPT(formatter::BodyIndentation, IndentCaseLabels,                           \
         formatter::BodyIndentation::Preserve)                                  \
@@ -276,6 +297,8 @@
         formatter::NamespaceComments::Preserve)                                \
     OPT(std::size_t, NamespaceCommentSpaces, 1)                                \
     OPT(std::size_t, ShortNamespaceLines, 0)                                   \
+    /* Zero disables separator normalization. */                              \
+    OPT(std::size_t, SeparatorLength, 0)                                       \
     OPT(formatter::FunctionParameterSplit, FunctionParameterSplit,             \
         formatter::FunctionParameterSplit::Preserve)                           \
     OPT(formatter::FirstFunctionParameterPosition, FirstFunctionParameterPosition, \
@@ -290,8 +313,23 @@
         formatter::CallArgumentSplit::Preserve)                                \
     OPT(formatter::FirstCallArgumentPosition, FirstCallArgumentPosition,       \
         formatter::FirstCallArgumentPosition::CallLine)                        \
+    OPT(formatter::MultilineSingleCallArgumentPosition,                        \
+        MultilineSingleCallArgumentPosition,                                   \
+        formatter::MultilineSingleCallArgumentPosition::Preserve)             \
     OPT(bool, EnforceFirstCallArgumentPosition, false)                         \
     OPT(formatter::CallArgumentIndent, CallArgumentIndent,                     \
+        formatter::CallArgumentIndent::IndentWidth)                            \
+    OPT(std::vector<std::string>, CallLineFirstStringNames, {})                \
+    OPT(std::size_t, CallArgumentSplitColumnLimit, 0)                          \
+    OPT(std::vector<std::string>, CallArgumentSplitColumnLimitNames, {})       \
+    OPT(std::vector<std::string>, CallLikeMacroNames, {})                      \
+    OPT(std::vector<std::string>, WhitespaceSensitiveMacros, {})               \
+    OPT(std::vector<std::string>, ChainedCallRootNames, {})                    \
+    OPT(formatter::ChainedCallSplitCondition, ChainedCallSplitCondition,       \
+        formatter::ChainedCallSplitCondition::Preserve)                        \
+    OPT(formatter::ChainedCallLayout, ChainedCallLayout,                       \
+        formatter::ChainedCallLayout::OnePerLine)                               \
+    OPT(formatter::CallArgumentIndent, ChainedCallIndent,                      \
         formatter::CallArgumentIndent::IndentWidth)                            \
     OPT(formatter::FunctionParameterSplit, InitializerListSplit,               \
         formatter::FunctionParameterSplit::Preserve)                           \
@@ -302,6 +340,16 @@
         formatter::CallArgumentIndent::IndentWidth)                            \
     OPT(formatter::InitializerClosingBrace, InitializerClosingBrace,           \
         formatter::InitializerClosingBrace::Preserve)                          \
+    OPT(formatter::InitializerTrailingComma, InitializerTrailingComma,         \
+        formatter::InitializerTrailingComma::Keep)                            \
+    OPT(formatter::ClosingDelimiterPlacement,                                 \
+        FunctionParameterClosingParenthesis,                                   \
+        formatter::ClosingDelimiterPlacement::Preserve)                        \
+    OPT(formatter::ClosingDelimiterPlacement,                                 \
+        FunctionCallArgumentClosingParenthesis,                                \
+        formatter::ClosingDelimiterPlacement::Preserve)                        \
+    OPT(formatter::ClosingDelimiterPlacement, BlockClosingBrace,              \
+        formatter::ClosingDelimiterPlacement::Preserve)                        \
     OPT(bool, MergeInitializerList, false)                                     \
     OPT(formatter::ControlBlockKeywordSpacing, ControlBlockKeywordSpacing,     \
         formatter::ControlBlockKeywordSpacing::Preserve)                       \
@@ -317,11 +365,16 @@
         formatter::LambdaCaptureSpacing::Preserve)                             \
     OPT(formatter::LambdaCaptureSpacing, SpaceAroundCaptureAssignment,         \
         formatter::LambdaCaptureSpacing::Preserve)                             \
+    OPT(formatter::LambdaCaptureSplit, LambdaCaptureSplit,                     \
+        formatter::LambdaCaptureSplit::Preserve)                               \
     OPT(formatter::FunctionSpaceBeforeParameters, FunctionSpaceBeforeParameters, \
         formatter::FunctionSpaceBeforeParameters::Preserve)                    \
     OPT(formatter::FunctionCallSpaceBeforeParameters,                          \
         FunctionCallSpaceBeforeParameters,                                     \
         formatter::FunctionCallSpaceBeforeParameters::Preserve)                \
+    OPT(formatter::LambdaCallSpaceBeforeArguments,                             \
+        LambdaCallSpaceBeforeArguments,                                        \
+        formatter::LambdaCallSpaceBeforeArguments::Inherit)                    \
     OPT(formatter::SpaceInsideFunctionParameters, SpaceInsideFunctionParameters, \
         formatter::SpaceInsideFunctionParameters::Preserve)                    \
     OPT(formatter::SpaceInsideLambdaParameters, SpaceInsideLambdaParameters,   \

@@ -1,0 +1,168 @@
+# Approximation of the YTsaurus C++ style for yt/yt, yt/chyt, yt/yql,
+# and library/cpp/yt. Not intended for yt/cpp, util, or other library/cpp.
+# See ../CONFIGURATION.md for rules that cannot be expressed safely.
+IndentWidth = 4
+ColumnLimit = 120
+IndentationKind = Spaces
+# Header guards and conditional includes use different directive indents.
+PreprocessorIndentation = Preserve
+TrailingWhitespace = Trim
+PointerReferenceDeclaratorLocation = Left
+AmbiguousTemplateDeclarationSpacing = Space
+
+IndentAccessModifiers = NoIndent
+IndentMembers = Indent
+IndentCaseLabels = Indent
+IndentBlockBodies = true
+# Standalone scope braces can be aligned with their enclosing block.
+StandaloneBlockBraceIndentation = Preserve
+AddMissingControlBraces = true
+EmptyControlBody = EmptyBlock
+CollapseEmptyFunctionBodies = true
+# Nonempty function and control bodies occupy separate lines; lambdas do not.
+NonEmptyBlockBodyLayout = Multiline
+StatementAttributeIndent = Block
+ClassBracePlacement = NewLine
+StructBracePlacement = NewLine
+UnionBracePlacement = NewLine
+FunctionBracePlacement = NewLine
+LambdaBracePlacement = Attach
+NamespaceBracePlacement = Attach
+LambdaBraceSpacing = SingleSpace
+NamespaceBraceSpacing = SingleSpace
+EnumBraceSpacing = SingleSpace
+ControlBlockBracePlacement = AttachUnlessMultiline
+ControlBlockSpaceBeforeBrace = Space
+ControlBlockKeywordSpacing = Space
+NamespaceComments = AddMissing
+SeparatorLength = 80
+
+InheritanceList = Format
+InheritanceListColonPlacement = AttachToBase
+InheritanceListCommaPlacement = AttachToNext
+InheritanceListSplit = OnePerLine
+ConstructorInitializerList = Format
+ConstructorInitializerListColonPlacement = AttachToInitializer
+ConstructorInitializerListCommaPlacement = AttachToNext
+ConstructorInitializerListSplit = OnePerLine
+
+FunctionParameterSplit = OnePerLine
+# This declaration-like macro parses as an abstract function declarator.
+CallLikeMacroNames = ["REGISTER_DERIVED_EXTERNALIZED_YSON_STRUCT"]
+# Do not alter macro arguments or their closing-delimiter layout.
+WhitespaceSensitiveMacros = [
+    "PP_STRINGIZE", "DEFINE_ENUM", "DEFINE_BIT_ENUM",
+    "DEFINE_BIT_ENUM_WITH_UNDERLYING_TYPE",
+    "DEFINE_ENUM_WITH_UNDERLYING_TYPE", "YT_DEFINE_ERROR_ENUM"
+]
+FunctionParameterClosingParenthesis = SameLine
+FirstFunctionParameterPosition = NewLine
+EnforceFirstFunctionParameterPosition = true
+FunctionParameterNewLineIndent = 4
+CallArgumentSplit = OnePerLine
+# Keep short EXPECT_THROW calls inline; split its longer two-argument calls.
+CallArgumentSplitColumnLimit = 90
+CallArgumentSplitColumnLimitNames = ["EXPECT_THROW"]
+FunctionCallArgumentClosingParenthesis = SameLine
+FirstCallArgumentPosition = NewLine
+# Move safe multiline sole arguments; lambda bodies stay source-owned.
+MultilineSingleCallArgumentPosition = NewLine
+EnforceFirstCallArgumentPosition = true
+CallArgumentIndent = IndentWidth
+# Only direct logger calls: _IF and _UNLESS have a condition first.
+CallLineFirstStringNames = [
+    "YT_LOG_TRACE", "YT_LOG_DEBUG", "YT_LOG_INFO", "YT_LOG_WARNING",
+    "YT_LOG_ERROR", "YT_LOG_ALERT", "YT_LOG_FATAL",
+    "YT_LOG_ALERT_AND_THROW",
+    "YT_TLOG_TRACE", "YT_TLOG_DEBUG", "YT_TLOG_INFO", "YT_TLOG_WARNING",
+    "YT_TLOG_ERROR", "YT_TLOG_ALERT", "YT_TLOG_FATAL",
+    "YT_TLOG_ALERT_AND_THROW"
+]
+# Opt in only known YT fluent roots; ordinary method chains stay source-owned.
+ChainedCallRootNames = [
+    "BIND", "BIND_NO_PROPAGATE", "THROW_ERROR_EXCEPTION",
+    "TError", "BuildYsonFluently",
+    "WaitFor", "WaitForFast",
+    "YT_TLOG_TRACE", "YT_TLOG_DEBUG", "YT_TLOG_INFO",
+    "YT_TLOG_WARNING", "YT_TLOG_ERROR", "YT_TLOG_ALERT",
+    "YT_TLOG_FATAL", "YT_TLOG_ALERT_AND_THROW"
+]
+# Preserve short fluent chains such as .Item(...).Value(...).
+ChainedCallSplitCondition = Overflow
+ChainedCallLayout = Pack
+ChainedCallIndent = IndentWidth
+ExpressionLayoutCondition = Overflow
+ControlHeaderClauseSplit = WhenNeeded
+ControlConditionIndent = IndentWidth
+ForHeaderClauseIndent = Continuation
+BinaryOperatorPlacement = Trailing
+AssignmentOperatorPlacement = Trailing
+# Overlong ternaries split at both leading ? and : operators.
+TernaryOperatorPlacement = Leading
+TernarySplit = ThreeLines
+# Existing braced aggregates may be nested or macro arguments.
+InitializerListSplit = Preserve
+InitializerClosingBrace = SameLine
+# A trailing comma keeps the closing brace on its own line.
+InitializerTrailingComma = Keep
+
+FunctionSpaceBeforeParameters = NoSpace
+FunctionCallSpaceBeforeParameters = NoSpace
+# An immediately invoked lambda is still a call: attach its ().
+LambdaCallSpaceBeforeArguments = NoSpace
+SpaceInsideFunctionParameters = NoSpace
+SpaceInsideCallArguments = NoSpace
+LambdaSpaceBeforeParameters = Space
+SpaceInsideLambdaParameters = NoSpace
+SpaceAroundCaptureList = NoSpace
+SpaceAroundCaptureAssignment = Space
+LambdaCaptureSplit = OnePerLineOnOverflow
+EmptyLambdaCaptureSpacing = NoSpace
+EmptyLambdaParametersSpacing = NoSpace
+EmptyFunctionParametersSpacing = NoSpace
+EmptyFunctionCallArgumentsSpacing = NoSpace
+EmptyBlockInteriorSpacing = Space
+BlockInteriorSpacing = Space
+# Empty and single-statement lambdas vary in YT; keep their source layout.
+EmptyLambdaBodySpacing = Preserve
+SingleStatementLambdaBodyLayout = Preserve
+# Both {x, y} and { x, y } occur; do not normalize initializer interiors.
+InitializerBracesSpacing = Preserve
+BraceInitializerSpacing = NoSpace
+ControlBlockConditionSpacing = NoSpace
+GroupingInteriorSpacing = NoSpace
+CastArgumentSpacing = NoSpace
+CastSpacing = NoSpace
+CommaSpacing = Space
+StatementSemicolonSpacing = NoSpace
+DeclarationSemicolonSpacing = NoSpace
+MemberAccessOperatorsSpacing = NoSpace
+# Preserve :: near unexpanded macros (e.g. an export macro before ::NYT).
+ScopeResolutionSpacing = Preserve
+UnaryOperatorSpacing = NoSpace
+PostfixOperatorSpacing = NoSpace
+BinaryOperatorSpacing = Space
+AssignmentOperatorSpacing = Space
+ReturnArrowSpacing = LeftAndRight
+TemplateKeywordSpacing = Space
+TemplateTypeArgumentSpacing = NoSpace
+TemplateTypeArgumentInteriorSpacing = NoSpace
+SubscriptOperatorSpacing = NoSpace
+SubscriptOperatorInteriorSpacing = NoSpace
+ArrayDeclarationSpacing = NoSpace
+ArrayDeclarationInteriorSpacing = NoSpace
+NewArraySpaceBeforeBrackets = NoSpace
+StructuredBindingBracketSpacing = NoSpace
+LoopSemicolonSpacing = Space
+ConditionInitSemicolonSpacing = Space
+RangeBasedForColonSpacing = Space
+FunctionQualifierSpacing = Space
+NoexceptSpaceBeforeSpecifier = Space
+NoexceptSpaceBeforeParentheses = NoSpace
+
+# This vendored queue header does not follow the YTsaurus style.
+Exclude = ["(^|/)moody_camel_concurrent_queue\\.h$"]
+
+# Name checks are deliberately left off until scope-aware rules exist.
+# Include grouping is deliberately out of scope.
+IncludeOrder = Preserve

@@ -1,0 +1,6 @@
+ColumnLimit = 66
+ControlHeaderClauseSplit = WhenNeeded
+ControlConditionIndent = Continuation
+ForHeaderClauseIndent = IndentWidth
+ExpressionLayoutCondition = Overflow
+ControlBlockBracePlacement = AttachUnlessMultiline

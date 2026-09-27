@@ -1,0 +1,4 @@
+ColumnLimit = 60
+FunctionParameterSplit = OnePerLine
+FirstFunctionParameterPosition = NewLine
+CallLikeMacroNames = ["DECLARE_TYPED_ACTION"]

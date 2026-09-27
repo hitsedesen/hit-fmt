@@ -175,6 +175,8 @@ std::string_view RoleName(parser::PunctuationRole role)
         return "unary-operator";
     case BinaryOperator:
         return "binary-operator";
+    case AmbiguousOperator:
+        return "ambiguous-operator";
     case AssignmentOperator:
         return "assignment-operator";
     case TemplateDelimiter:

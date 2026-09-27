@@ -1,0 +1,5 @@
+ColumnLimit = 50
+EmptyBlockInteriorSpacing = Space
+BlockInteriorSpacing = Space
+EmptyLambdaBodySpacing = NoSpace
+SingleStatementLambdaBodyLayout = OneLineIfFits

@@ -93,6 +93,8 @@ AccessModifierColonSpacing = Preserve
 RangeBasedForColonSpacing = Preserve
 BlockInteriorSpacing = Preserve
 EmptyBlockInteriorSpacing = Preserve
+EmptyLambdaBodySpacing = Inherit
+SingleStatementLambdaBodyLayout = Inherit
 ControlBlockSpaceBeforeBrace = Preserve
 DeclarationSemicolonSpacing = Preserve
 BitFieldColonSpacing = Preserve
@@ -130,13 +132,21 @@ EmptyLambdaParametersSpacing = Preserve
 EmptyLambdaCaptureSpacing = Preserve
 StructuredBindingBracketSpacing = Preserve
 ExpressionLayoutCondition = Preserve
+ControlHeaderClauseSplit = Preserve
 ControlConditionIndent = IndentWidth
+ForHeaderClauseIndent = Inherit
 IncludeOrder = Preserve
 IndentAccessModifiers = Preserve
 AccessModifierIndentWidth = 0
 IndentMembers = Preserve
 MemberIndentWidth = 0
 IndentBlockBodies = false
+StandaloneBlockBraceIndentation = Indent
+AmbiguousTemplateDeclarationSpacing = Preserve
+AddMissingControlBraces = false
+EmptyControlBody = Preserve
+CollapseEmptyFunctionBodies = false
+NonEmptyBlockBodyLayout = Preserve
 BlockBodyIndentWidth = 0
 IndentCaseLabels = Preserve
 CaseLabelIndentWidth = 0
@@ -161,16 +171,31 @@ NamespaceBracePlacement = Preserve
 NamespaceComments = Preserve
 NamespaceCommentSpaces = 1
 ShortNamespaceLines = 0
+# SeparatorLength = 80 enforces existing standalone slash rulers
 FunctionParameterSplit = Pack
 FirstFunctionParameterPosition = NameLine
 EnforceFirstFunctionParameterPosition = false
 FunctionParameterIndent = IndentWidth
 # FunctionParameterNewLineIndent = 4 overrides indentation when first is new
 MergeFunctionParameters = false
+CallLikeMacroNames = []
+WhitespaceSensitiveMacros = []
+CallLineFirstStringNames = []
+CallArgumentSplitColumnLimit = 0
+CallArgumentSplitColumnLimitNames = []
+MultilineSingleCallArgumentPosition = Preserve
+ChainedCallRootNames = []
+ChainedCallSplitCondition = Preserve
+ChainedCallLayout = OnePerLine
+ChainedCallIndent = IndentWidth
 InitializerListSplit = Preserve
 FirstInitializerElementPosition = BraceLine
 InitializerListIndent = IndentWidth
 InitializerClosingBrace = Preserve
+InitializerTrailingComma = Keep
+FunctionParameterClosingParenthesis = Preserve
+FunctionCallArgumentClosingParenthesis = Preserve
+BlockClosingBrace = Preserve
 MergeInitializerList = false
 FunctionDeclarationParameterNames = Unchecked
 FunctionDefinitionParameterNames = Unchecked
@@ -180,8 +205,10 @@ LambdaSpaceBeforeParameters = Preserve
 SpaceInsideLambdaParameters = Preserve
 SpaceAroundCaptureList = Preserve
 SpaceAroundCaptureAssignment = Preserve
+LambdaCaptureSplit = Preserve
 FunctionSpaceBeforeParameters = Preserve
 FunctionCallSpaceBeforeParameters = Preserve
+LambdaCallSpaceBeforeArguments = Inherit
 SpaceInsideFunctionParameters = Preserve
 SpaceInsideCallArguments = Preserve
 ControlBlockKeywordSpacing = Preserve
@@ -429,6 +456,18 @@ Exclude = [
 - `EmptyBlockInteriorSpacing`: `Preserve` (default), `Space` (`{ }`), or
   `NoSpace` (`{}`) for empty compound and lambda bodies. It is independent
   of the nonempty block setting.
+- `EmptyLambdaBodySpacing`: `Inherit` (default) uses
+  `EmptyBlockInteriorSpacing`; `Preserve`, `Space`, or `NoSpace` overrides
+  it only for empty parsed lambda bodies. YTsaurus uses both `{}` and
+  `{ }`, so its example profile chooses `Preserve`.
+- `SingleStatementLambdaBodyLayout`: `Inherit` (default) uses
+  `BlockInteriorSpacing` for inline lambda bodies; `Preserve` leaves the
+  interior of single-statement lambdas untouched. `OneLineIfFits` joins a
+  safe multiline, single-line statement and its braces if the complete
+  resulting line fits `ColumnLimit`; it uses spaces around the statement.
+  Comments, directives, multiline statements, and recovered bodies stay
+  source-owned. The YTsaurus profile chooses `Preserve` because both
+  inline and multiline forms appear in the source.
 - `ControlBlockSpaceBeforeBrace`: `Preserve` (default), `Space`, or
   `NoSpace` between a control header (`if`, `else`, `for`, `while`, `do`,
   `switch`, `try`, `catch`) and a same-line opening brace. Brace placement
@@ -505,7 +544,8 @@ Exclude = [
   unchanged. An operator with no valid operand is not treated as binary;
   for example `char**` in an otherwise ambiguous call stays source-owned.
   `NoSpace` does not join two operator spellings if that could change
-  tokenization.
+  tokenization. In a fold expression, `GroupingInteriorSpacing` owns the
+  gap between the trailing `...` and `)`.
 - `CastSpacing`: `Preserve` (default), `Space`, or `NoSpace` between the
   closing `)` and operand of a parsed C-style cast. Named casts and
   parenthesized operands of `sizeof`, `alignof`, `decltype`, `typeid`, and
@@ -563,6 +603,12 @@ Exclude = [
   closing braces. `0` (default) disables the exemption. Existing closing
   comments remain untouched with `AddMissing` and are corrected even on
   short namespaces with `Fix`; `Remove` still removes them.
+- `SeparatorLength`: unset (default) leaves slash rulers unchanged; set to
+  an integer from 8 to 10000 to normalize existing, standalone comment
+  lines made solely of eight or more `/` characters. Rulers are also moved
+  to column 1, even when their length is already correct. It does not add
+  missing separators or alter trailing, documentation, or raw-string
+  comments.
 - `NamespaceComments`: `Preserve` (default) leaves closing comments alone,
   `Remove` removes a line comment immediately after a namespace's closing
   brace, `AddMissing` inserts `// namespace name` (or `// namespace` for an
@@ -581,6 +627,43 @@ Exclude = [
   bodies remain source-owned. Unbraced switch case labels and their following
   statements retain their original indentation because they have no
   compound body to anchor case indentation.
+- `StandaloneBlockBraceIndentation`: `Indent` (default) aligns an anonymous
+  scope's opening `{` with other statements at the same nesting level when
+  `IndentBlockBodies = true`; `Preserve` leaves only that opening brace's
+  existing indentation untouched. The scope body and closing `}` still
+  follow their parsed nesting depth. Control, function, and case braces are
+  unaffected.
+- `AmbiguousTemplateDeclarationSpacing`: `Preserve` (default) or
+  `Space`. In a conservatively parsed `Type<...> name = value;` statement,
+  `Space` normalizes the type-to-name gap to one space. It also normalizes
+  the name-to-`=` gap if `AssignmentOperatorSpacing = Space`. Other
+  ambiguous statements remain unchanged.
+- `AddMissingControlBraces`: `false` (default) or `true` wraps complete,
+  unbraced `if`/`else`, `for`, `while`, `switch`, and `do` bodies in `{}`.
+  Unbraced switch case labels remain unchanged. It handles nested controls
+  and `else if` without changing the binding of `else`.
+  Comments, directives, recovered statements and CRLF gaps remain unchanged.
+  Braces follow `ControlBlockBracePlacement = AttachUnlessMultiline` for
+  multiline headers; inserted bodies use `IndentWidth`. A null-statement
+  body (`;`) is governed separately by `EmptyControlBody` and is never
+  wrapped into `{ ; }`.
+- `EmptyControlBody`: `Preserve` (default) keeps an unbraced `;` body as
+  written even if `AddMissingControlBraces = true`; `EmptyBlock` replaces
+  the null statement with an empty `{}` body, independently of that option.
+  `EmptyBlockInteriorSpacing = Space` produces `{ }`. Brace placement
+  follows `ControlBlockBracePlacement`; comments and incomplete or CRLF
+  statements stay source-owned.
+- `CollapseEmptyFunctionBodies`: `false` (default) or `true` turns a complete
+  function body containing only whitespace into `{ }`. It does not collapse
+  bodies containing comments or directives, or CRLF bodies. Function brace
+  placement still controls whether the opening brace is on its own line.
+- `NonEmptyBlockBodyLayout`: `Preserve` (default) leaves one-line
+  compound bodies as written; `Multiline` separates complete parsed
+  statements and their braces onto their own lines. It applies to
+  functions and control blocks, not lambdas or empty bodies. Comments,
+  directives, recovered syntax, and CRLF gaps stay source-owned. The
+  YTsaurus profile uses `Multiline`; its empty functions still use `{ }`
+  on a separate line.
 - `IndentCaseLabels`: `Preserve` (default), `NoIndent` (align labels with
   their switch header), or `Indent` (`CaseLabelIndentWidth` inside the switch).
   Statements following a case get one additional level with `Indent` when
@@ -653,11 +736,29 @@ Exclude = [
   directives, CRLF, backslashes, and ambiguous or recovered syntax stay
   source-owned. Bare `<`, `>`, `<<`, and `>>` remain untouched even when
   parsed as operators: without name lookup they can be template syntax.
+- `ControlHeaderClauseSplit`: `Preserve` (default) leaves control header
+  clauses as written; `WhenNeeded` breaks after both top-level `for` header
+  semicolons or the `if`/`switch` init-statement semicolon when the header
+  exceeds `ColumnLimit` or is already multiline. A nested semicolon is not
+  a clause separator. Empty clauses, comments, directives, and incomplete
+  headers and existing clause breaks remain source-owned.
+  `if`/`switch` clause breaks use
+  `ControlConditionIndent`; `for` breaks use `ForHeaderClauseIndent`.
+  YTsaurus selects `WhenNeeded`, with `if`/`switch` clauses indented by
+  `IndentWidth` and `for` clauses aligned just after `(`.
+- `ForHeaderClauseIndent`: `Inherit` (default) uses
+  `ControlConditionIndent` for `for` clause breaks, preserving the previous
+  setting. `IndentWidth` indents one level beyond the `for` statement;
+  `Continuation` aligns under the first character after `(`. It applies
+  only to semicolon breaks selected by `ControlHeaderClauseSplit`.
 - `ControlConditionIndent`: `IndentWidth` (default) indents new expression
   breaks by one width beyond the original line; `Continuation` aligns
   breaks inside complete parsed `if`, `for`, `while`, `switch`, and `catch`
-  conditions below the character after the opening `(`. Requires expression
-  layout to be enabled. Existing breaks stay source-owned in `Overflow` mode;
+  conditions below the character after the opening `(`. Header clause
+  splitting uses this setting independently of expression layout (for
+  headers inherit it unless `ForHeaderClauseIndent` overrides it); other
+  expression breaks require expression layout. Existing expression breaks
+  stay source-owned in `Overflow` mode;
   tabs and recovered headers retain safe fallback layout.
 - `ExpressionLayoutAlgorithm`: `Greedy` (default) picks a preferred
   breakpoint that fits the current line; `DynamicProgramming` minimizes
@@ -694,19 +795,96 @@ Exclude = [
   breaks. `AsNeeded` allows either delimiter or both to break. `ThreeLines`
   keeps a flat ternary flat when it fits; if the ternary is split, it
   separates the condition, true branch, and false branch by breaking at
-  both delimiters. These settings apply only when `ExpressionLayoutCondition`
-  is not `Preserve`. Comments, directives, CRLF, and ambiguous or incomplete
-  syntax stay source-owned. In `--check` mode, expression and call reflow
-  is skipped: configured layout checks report overlong lines, incorrect
-  existing operator placement, and incomplete `ThreeLines` splits instead
-  of showing a speculative expression reflow diff.
+  both delimiters. Safe overlong ternaries are considered before call
+  argument reflow so a single argument does not hide the ternary break.
+  Safe leading `ThreeLines` breaks align `?` and `:` at
+  least one indent level past the condition's line, including when a
+  trailing-operator break is moved to the leading side. These settings
+  apply only when `ExpressionLayoutCondition` is not `Preserve`.
+  Comments, directives, CRLF, and ambiguous or incomplete
+  syntax stay source-owned. In `--check` mode, expression reflow is
+  skipped; safe call and parameter reflow still produces suggested fixes.
+  Unresolved layout checks report overlong lines, incorrect existing
+  operator placement, and incomplete `ThreeLines` splits.
 - `CallArgumentSplit`: `Preserve` (default, leave call arguments
   unchanged), `Pack` (put as many arguments as fit on each line), or
   `OnePerLine` (one argument per continuation line if a split is chosen).
-  Enabled only when `ExpressionLayoutCondition` is not `Preserve`. Calls
-  that fit on one line are not forced to split.
+  Independent of `ExpressionLayoutCondition`. Calls that fit on one line
+  are not forced to split. A single safe argument can move to a continuation
+  line. For nested single-argument calls, safe one-break inner and outer
+  layouts are compared so the chosen split balances the resulting lines.
+  With expression layout enabled, safe one-break cast-operand and
+  single-call-argument candidates on the same overlong line are ranked by
+  resulting maximum width, then balance. Ternary layout runs first;
+  name-specific call limits and source-owned syntax retain their policies.
+  A short single-argument member call is not split just because the following
+  chain segment overflows; multiline lambda segments stay source-owned.
+  A direct multiline lambda can move below `(` only if the relocated
+  header fits and its body can be reindented safely. When a call split
+  resolves an overlong assignment RHS, a safe break after `=` can join
+  if the new first line
+  fits; other existing breaks stay as written. Safe two-argument
+  `static_assert` declarations use the same split policy.
+- `CallArgumentSplitColumnLimit`: `0` (default) uses `ColumnLimit` for every
+  call. With a positive value, calls named in
+  `CallArgumentSplitColumnLimitNames` use the smaller of that value and
+  `ColumnLimit` to decide when to reflow arguments. The names are exact,
+  bare call identifiers, default `[]`; other calls keep the global limit.
+  This does not change the global expression line-length check. The
+  YTsaurus profile selects `EXPECT_THROW` at 90 columns without splitting
+  shorter assertions.
 - `FirstCallArgumentPosition`: `CallLine` (default) or `NewLine` selects
   where the first argument starts when a call is split.
+- `MultilineSingleCallArgumentPosition`: `Preserve` (default) keeps the
+  opening of an already multiline sole argument beside the call name;
+  `NewLine` moves a safe parsed argument below `(` using
+  `CallArgumentIndent`. It does not split flat, fitting arguments or
+  reshape the argument's interior. A sole nested call stays on the outer
+  call's line so its own arguments can split first. Braced and
+  lambda-containing arguments, comments, directives, and recovered syntax
+  remain source-owned (apart from safe overlong direct lambdas, whose body
+  indentation moves with the capture). It applies when
+  `CallArgumentSplit` is enabled. The YTsaurus profile uses `NewLine`.
+- `ChainedCallRootNames`: exact names of call expressions that may start
+  a formatted member-call chain, default `[]`. A simple name also matches
+  namespace-qualified calls ending in that name (`MakeAction` matches
+  `NExample::MakeAction`); a fully qualified name can restrict matching
+  to that spelling. A similarly named function or a method invoked on an
+  object is not a match. An empty list leaves all chains unchanged.
+- `ChainedCallSplitCondition`: `Preserve` (default) keeps chains unchanged;
+  `Overflow` splits only if an individual line of the chain exceeds
+  `ColumnLimit` measured from its root, excluding preceding statements
+  and surrounding ternary text. `Always` puts the first eligible
+  continuation on its own line regardless of width. Safe existing breaks
+  retain their indentation in `Overflow` mode.
+- `ChainedCallLayout`: `OnePerLine` (default) splits each member call once
+  the condition applies; `Pack` places as many calls as fit on a line.
+  A non-call receiver keeps its first call on the receiver line. Nested
+  calls, comments, directives, CRLF, and multiline call arguments remain
+  source-owned when they cannot be reflowed safely.
+- `ChainedCallIndent`: `IndentWidth` (default) indents new chain lines one
+  level relative to the chain statement. `Continuation` aligns them with
+  the start of the root call. Existing breaks are not reindented by
+  `Overflow`.
+- `CallLikeMacroNames`: exact macro names whose declaration-like syntax
+  the parser treats as abstract function declarators. These opt-in names
+  follow `FunctionParameterSplit` without reflowing unrelated macros.
+- `WhitespaceSensitiveMacros`: exact macro names, default `[]`. Preserve
+  the bytes from each named invocation through its matching `)`, even
+  if other formatting passes reflow or respaced the enclosing statement.
+  Other code around the invocation remains eligible for formatting.
+  Incomplete or unmatchable invocations keep the source unchanged.
+  YTsaurus selects `PP_STRINGIZE`, the four `DEFINE_*ENUM*` variants,
+  and `YT_DEFINE_ERROR_ENUM`. This preserves the source placement of
+  `DEFINE_ENUM`'s closing `);` rather than imposing a new layout.
+- `CallLineFirstStringNames`: array of exact, quoted call identifier names,
+  default `[]`. In a parsed call to one of these identifiers, the first
+  complete, single-token string-literal argument stays on the call line
+  when the call is split. Earlier arguments remain on that line too,
+  even if it exceeds `ColumnLimit`. Other arguments follow
+  `CallArgumentSplit`. Inter-argument comments, multiline arguments,
+  and unsafe calls remain unchanged. The YTsaurus profile lists the direct logging macro
+  names; it does not select `_IF` or `_UNLESS` variants.
 - `EnforceFirstCallArgumentPosition`: `false` (default) retains the first
   argument's position when reflowing an already split call in `Overflow`
   or `FitOrOverflow`; `true` applies the setting above to those calls.
@@ -716,9 +894,10 @@ Exclude = [
   opening `(`). With expression layout enabled, `Continuation` also aligns
   new operator breaks inside complete parsed calls, including single-
   argument macros such as `assert`. Call-list reflow only affects calls
-  with plain, single-line
-  arguments and whitespace-only list gaps. Comments, directives, CRLF,
-  and ambiguous parenthesized callees remain unchanged. Parsed function-like
+  with plain, single-line arguments and whitespace-only list gaps.
+  Single-line `/*...*/` comments inside a parameter move with that
+  parameter. Comments between arguments, directives, CRLF, and ambiguous
+  parenthesized callees remain unchanged. Parsed function-like
   macro calls follow the same call layout rules; nested calls are considered
   after enclosing calls, so outer commas can resolve overflow before inner
   commas are tried. Multiline arguments keep their call list unchanged.
@@ -738,8 +917,32 @@ Exclude = [
 - `InitializerListIndent`: `IndentWidth` (default, one width beyond the
   list's line) or `Continuation` (align with the character after `{`).
 - `InitializerClosingBrace`: `Preserve` (default, retain the closing brace's
-  line), `SameLine`, or `NewLine` when a list is reflowed. `NewLine` aligns
-  the brace with the original list line.
+  line), `SameLine` (beside the last element unless a retained comma
+  precedes it), or `NewLine`. Placement also applies with
+  `InitializerListSplit = Preserve`, independent of list splitting,
+  when an initializer has a safe whitespace-only gap before `}`. For
+  unknown typed temporary initializers, only the closing gap (or a safe
+  trailing comma, if requested) is changed; their contents are not reflowed.
+  A multiline final element retains its own closing-brace line.
+- `InitializerTrailingComma`: `Keep` (default) leaves a trailing comma
+  intact and puts `}` on its own line, even with
+  `InitializerClosingBrace = SameLine`; safe parsed compact lists are split one
+  element per line rather than leaving a comma immediately before the
+  newly separated brace. `Remove` removes the trailing comma and joins
+  `}` to the last element. Only applies to safe braced initializer gaps
+  when `InitializerClosingBrace = SameLine`; comments and directives
+  adjacent to the brace remain untouched.
+- `FunctionParameterClosingParenthesis` and
+  `FunctionCallArgumentClosingParenthesis`: `Preserve` (default),
+  `SameLine` (beside the final parameter or argument), or `NewLine`.
+  Closing placement runs independently of parameter/call reflow.
+- `BlockClosingBrace`: `Preserve` (default), `SameLine` (beside the last
+  statement), or `NewLine`. Applies to parsed compound statements and
+  lambda bodies, not namespace or type declarations. Empty bodies and
+  unsafe gaps remain unchanged.
+  For all closing-placement options, comments and directives adjacent to
+  the closer and CRLF gaps remain source-owned. Unrecognized constructs
+  other than the restricted typed-initializer closing gap stay unchanged.
 - `MergeInitializerList`: `false` (default) leaves already split lists
   multiline; `true` joins safe lists that fit within `ColumnLimit` unless
   `InitializerClosingBrace = NewLine` is requested.
@@ -797,6 +1000,16 @@ Exclude = [
   capture defaults (`[=]` and `[=, x]`) are not assignments, nor are `=`
   tokens inside initializers. Newlines and gaps next to comments or
   directives remain untouched. This setting does not change `&` spacing.
+- `LambdaCaptureSplit`: `Preserve` (default) leaves capture lists as
+  written; `OnePerLineOnOverflow` puts each safe, parsed capture on its
+  own line with `[` on the header line and `]` aligned with that line.
+  It triggers only when the capture list itself crosses `ColumnLimit`,
+  not when a short capture list precedes long lambda parameters. Such a
+  lambda can still move below `(` if its full header then fits. Existing
+  multiline lists, comments, directives, and ambiguous captures stay
+  source-owned. The YTsaurus profile uses `OnePerLineOnOverflow` to avoid
+  moving a multiline lambda away from its call merely to shorten the
+  header.
 - `FunctionSpaceBeforeParameters`: `Preserve` (default) leaves the gap
   between a named function declarator and its parameter `(` unchanged;
   `Space` inserts one space, and `NoSpace` removes it. Applies to function
@@ -816,6 +1029,11 @@ Exclude = [
   type (including member-pointer types) are not mistaken for calls. The
   setting controls the gap *before* the argument list, not whitespace
   between individual arguments.
+- `LambdaCallSpaceBeforeArguments`: `Inherit` (default) uses
+  `FunctionCallSpaceBeforeParameters` for an immediately invoked lambda;
+  `Preserve` keeps the original gap, `Space` inserts one space, and
+  `NoSpace` removes it. Other calls and lambda parameter declarations
+  are unaffected.
 - `SpaceInsideFunctionParameters`: `Preserve` (default) leaves gaps just
   inside the `(` and `)` of a named function's nonempty parameter list
   unchanged; `Space` uses one space and `NoSpace` removes it. Newlines,
@@ -886,6 +1104,70 @@ Only safely movable parameter lists in function declarators are changed:
 comments, directives, multiline parameter expressions and CRLF lists are
 left intact. Calls are unaffected. Other former formatting settings are
 rejected rather than silently ignored.
+
+## YTsaurus-style example and limits
+
+[`examples/ytsaurus.hit-fmt`](examples/ytsaurus.hit-fmt) approximates the
+[YTsaurus C++ style guide](https://github.com/ytsaurus/ytsaurus/blob/main/yt/styleguide/cpp.md)
+for `yt/yt`, `yt/chyt`, `yt/yql`, and `library/cpp/yt`. Use it with
+`--config hit-fmt/examples/ytsaurus.hit-fmt` or copy it to `.hit-fmt`
+only for those trees. It is not suitable for `yt/cpp`, `util`, or the rest
+of `library/cpp`. Four spaces, 120 columns (an approximation inferred from
+code, not a specified guide limit), next-line class/struct/function braces,
+attached namespaces/lambdas, indented case labels, multiline-control
+braces, one-per-line arguments and bases, block-body indentation, required
+control braces, collapsed empty function bodies, and supported token spacing
+are configured. Only explicit YT fluent-call roots may be reflowed when
+those chains themselves overflow; unrelated library calls are left alone.
+YT logging calls retain the first string argument on the call line.
+`PreprocessorIndentation = Preserve` keeps both indented
+conditional includes and unindented inl-header guards. Name checks are
+left off until scope-aware rules can distinguish local camelCase names,
+global PascalCase names and trailing-underscore fields. Include grouping
+is intentionally out of scope; `IncludeOrder = Preserve` leaves groups alone.
+
+This is not a replacement for a YTsaurus style review. Missing options or
+insufficient support include:
+
+- `#pragma once` and separator lines of 80 `/` characters around
+  namespaces are not generated or checked.
+- Full semantic classification and structural extra-indentation for
+  fluent chains, general continuation indentation, blank-line policies,
+  comment prose, and complete column-limit wrapping. Macro-defined
+  declarations and
+  statements are only partially parsed. Log and error message wording,
+  API practices, integer types, and other semantic rules need review.
+- Scope-aware names (local variables vs globals, fields with `_`, enum
+  values, and macro-defined enums), acronym exceptions, and whether a
+  parameter is unused. Name checks are disabled in this profile;
+  even when enabled they only report violations, never rename. Namespace
+  comments can be added, but their surrounding separator lines cannot.
+
+On upstream `yt/yt/core/misc/error.cpp`, lambda bodies inside call
+arguments retain their indentation with block-body reindentation enabled.
+On `misc/fs.cpp`, the unknown header type in `(PULARGE_INTEGER) &result`
+is ambiguous with binary `&`; the formatter preserves that gap instead of
+inserting a space after `&`. The same applies to ambiguous `*`. Known
+casts and unambiguous binary operators retain their own spacing. Existing
+conditional includes and inl-header `#ifndef` guards are preserved: the
+available `PreprocessorIndented` option cannot distinguish their
+indentation policies. A 137-column function declaration in
+`misc/error.cpp` is split, but column limits are not enforced on every
+expression or comment.
+
+Safe chains rooted at configured calls may be split; fluent variables and
+chains with multiline arguments remain source-owned. Braced initializer
+splitting remains disabled in this example to avoid reshaping nested
+initializers; the closing `}` policy still runs independently on safe
+initializer lists. With a trailing comma, the brace stays on its own line.
+The YT guide does not prescribe spaces inside initializer braces, and both
+layouts occur in source. `InitializerBracesSpacing = Preserve` avoids bulk
+whitespace changes.
+`CallArgumentSplit = OnePerLine` only handles safe parsed calls with
+single-line arguments. Overlong safe ternaries split at both leading
+`?` and `:` operators; comments and ambiguous expressions stay source-owned.
+Keep initializer reflow off for nested braced aggregates and macro arguments.
+Check diffs before applying `--fix` to unfamiliar code.
 
 ## Google-style example and limits
 

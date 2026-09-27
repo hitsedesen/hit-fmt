@@ -1,0 +1,4 @@
+ChainedCallRootNames = ["MAKE_TASK"]
+ChainedCallSplitCondition = Always
+ChainedCallLayout = OnePerLine
+ChainedCallIndent = IndentWidth

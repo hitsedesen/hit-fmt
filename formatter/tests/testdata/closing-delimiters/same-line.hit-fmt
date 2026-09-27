@@ -1,0 +1,7 @@
+FunctionParameterSplit = Preserve
+CallArgumentSplit = Preserve
+InitializerListSplit = Preserve
+FunctionParameterClosingParenthesis = SameLine
+FunctionCallArgumentClosingParenthesis = SameLine
+InitializerClosingBrace = SameLine
+BlockClosingBrace = Preserve
