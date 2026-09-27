@@ -320,6 +320,10 @@ void ValidateStyleLimits(const Style& style,
     if (style.ShortNamespaceLines > 10000) {
         ThrowConfigError(path, line, "ShortNamespaceLines must not exceed 10000");
     }
+    if (style.FunctionParameterNewLineIndent > 32) {
+        ThrowConfigError(path, line,
+            "FunctionParameterNewLineIndent must not exceed 32");
+    }
     if (style.InheritanceListIndent > 32) {
         ThrowConfigError(path, line,
             "InheritanceListIndent must not exceed 32");

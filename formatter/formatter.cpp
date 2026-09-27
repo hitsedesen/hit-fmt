@@ -398,7 +398,10 @@ private:
             if (policy != BodyIndentation::Preserve &&
                 !member.Tokens.Empty() && index > opening && index < closing &&
                 Tree_.Kind(index) != TK::Comment &&
-                Tree_.Kind(index) != TK::PreprocessingDirective)
+                Tree_.Kind(index) != TK::PreprocessingDirective &&
+                // A header interrupted by directives can be recovered with
+                // its initializer colon as the apparent member start.
+                Tree_.Kind(index) != TK::Operator_Colon)
             {
                 BodyIndents_[index] = baseline;
                 if (policy == BodyIndentation::Indent) {
@@ -1782,14 +1785,27 @@ std::optional<Replacement> ReflowDelimitedList(
             tree.Token(list.Child()->Tokens.Begin).Text.Begin - begin)
             .find('\n') != std::string_view::npos;
     }
+    if (!braced && !call &&
+        style.FirstFunctionParameterPosition ==
+            FirstFunctionParameterPosition::NameLineIfFits)
+    {
+        const size_t firstWidth = prefix + (innerSpace ? 1 : 0) +
+            parameters.front().size() +
+            (parameters.size() == 1
+                ? suffix.size() + (innerSpace ? 1 : 0) : 1);
+        if (firstWidth > style.ColumnLimit) firstNew = true;
+    }
     size_t baseIndent = 0;
     while (lineStart + baseIndent < openBegin &&
         source[lineStart + baseIndent] == ' ')
     {
         ++baseIndent;
     }
-    const size_t indent = continuationIndent
-        ? openBegin + 1 - lineStart : baseIndent + style.IndentWidth;
+    const size_t indent = !braced && !call && firstNew &&
+        style.FunctionParameterNewLineIndent != 0
+        ? baseIndent + style.FunctionParameterNewLineIndent
+        : continuationIndent ? openBegin + 1 - lineStart
+                             : baseIndent + style.IndentWidth;
     const std::string continuation = GeneratedIndent(indent, style);
     std::string result;
     if (firstNew) {
@@ -3125,50 +3141,92 @@ std::string FormatBlockIndentation(const parser::SyntaxTree& tree,
             if (style.IndentBlockBodies) {
                 mark(closing, base);
             }
-            std::vector<const parser::Node*> children;
+            std::vector<Task> children;
             bool afterCase = false;
+            bool nextIsCaseBlock = false;
+            std::string caseIndent;
             for (auto* child = node.Child(); child;
                 child = child->NextSibling)
             {
                 if (child->Tokens.Empty()) continue;
                 auto target = childIndent;
-                if (switchBody && child->Kind == NK::CaseLabel) {
+                const bool caseLabel = switchBody &&
+                    child->Kind == NK::CaseLabel;
+                const bool caseBlock = switchBody && nextIsCaseBlock &&
+                    child->Kind == NK::CompoundStatement;
+                if (caseLabel) {
                     afterCase = true;
+                    nextIsCaseBlock = true;
                     if (style.IndentCaseLabels == BodyIndentation::NoIndent)
                         target = base;
-                    else if (style.IndentCaseLabels == BodyIndentation::Indent)
-                        target = childIndent;
+                    caseIndent = style.IndentCaseLabels ==
+                        BodyIndentation::Preserve
+                        ? originalIndent(child->Tokens.Begin) : target;
+                } else if (caseBlock) {
+                    // A brace immediately after a case label belongs to the
+                    // label, not to an extra level within the switch body.
+                    target = caseIndent;
                 } else if (switchBody && afterCase &&
                     style.IndentCaseLabels == BodyIndentation::Indent)
                 {
                     target += GeneratedIndentAfter(target,
                         style.IndentWidth, style);
                 }
-                const bool preserveCase = switchBody &&
-                    child->Kind == NK::CaseLabel &&
+                if (!caseLabel && child->Kind != NK::Comment &&
+                    child->Kind != NK::PreprocessingDirective)
+                {
+                    nextIsCaseBlock = false;
+                }
+                const bool preserveCase = caseLabel &&
                     style.IndentCaseLabels == BodyIndentation::Preserve;
                 if (!preserveCase &&
-                    (style.IndentBlockBodies ||
-                        (switchBody && child->Kind == NK::CaseLabel)) &&
+                    (style.IndentBlockBodies || caseLabel) &&
                     !HasRecoveryChild(*child))
                 {
                     mark(child->Tokens.Begin, target);
                 }
-                children.push_back(child);
+                children.push_back({child, target, node.Kind});
             }
             for (auto it = children.rbegin(); it != children.rend(); ++it) {
-                tasks.push_back({*it, childIndent, node.Kind});
+                tasks.push_back(std::move(*it));
             }
             continue;
         }
-        std::vector<const parser::Node*> children;
+        const bool control = node.Kind == NK::IfStatement ||
+            node.Kind == NK::ForStatement ||
+            node.Kind == NK::WhileStatement ||
+            node.Kind == NK::DoWhileStatement ||
+            node.Kind == NK::SwitchStatement;
+        std::vector<Task> children;
         for (auto* child = node.Child(); child;
             child = child->NextSibling)
         {
-            children.push_back(child);
+            auto childBase = task.Base;
+            const bool body = control && childBase &&
+                child->Kind != NK::Condition &&
+                child->Kind != NK::ForHeader &&
+                child->Kind != NK::CompoundStatement &&
+                child->Kind != NK::PreprocessingDirective &&
+                child->Kind != NK::Comment && !child->Tokens.Empty();
+            if (body && style.IndentBlockBodies &&
+                !HasRecoveryChild(*child))
+            {
+                // `else if` continues the header rather than nesting a
+                // second unbraced body under it.
+                const bool elseIf = node.Kind == NK::IfStatement &&
+                    child->Kind == NK::IfStatement &&
+                    child->Tokens.Begin > node.Tokens.Begin &&
+                    tree.Kind(child->Tokens.Begin - 1) == TK::Keyword_else;
+                if (!elseIf) {
+                    *childBase += GeneratedIndentAfter(*childBase,
+                        style.IndentWidth, style);
+                    mark(child->Tokens.Begin, *childBase);
+                }
+            }
+            children.push_back({child, std::move(childBase), node.Kind});
         }
         for (auto it = children.rbegin(); it != children.rend(); ++it) {
-            tasks.push_back({*it, task.Base, node.Kind});
+            tasks.push_back(std::move(*it));
         }
     }
     std::ranges::sort(edits, {}, &Replacement::Begin);

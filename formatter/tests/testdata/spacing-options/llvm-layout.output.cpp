@@ -6,6 +6,11 @@ void render(bool Alpha, bool Beta, bool Gamma, bool Delta, bool Epsilon, bool Ze
     case 1:
       work();
       break;
+    case 2: {
+      if (!Alpha)
+        fail();
+      break;
+    }
     default:
       break;
     }

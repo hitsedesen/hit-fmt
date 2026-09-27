@@ -148,6 +148,7 @@ FunctionParameterSplit = Pack
 FirstFunctionParameterPosition = NameLine
 EnforceFirstFunctionParameterPosition = false
 FunctionParameterIndent = IndentWidth
+# FunctionParameterNewLineIndent = 4 overrides indentation when first is new
 MergeFunctionParameters = false
 InitializerListSplit = Preserve
 FirstInitializerElementPosition = BraceLine
@@ -535,15 +536,16 @@ Exclude = [
   Unmatched braces and closings followed by a block comment are left alone.
 - `IndentBlockBodies`: `false` (default) preserves statement indentation;
   `true` reindents statement starts and closing braces in complete compound
-  blocks by one `IndentWidth` relative to the header. Continuation lines,
-  inline statements, comments, directives, and recovered bodies remain
-  source-owned.
+  and lambda blocks by one `IndentWidth` relative to the header. It also
+  indents parsed unbraced control bodies one level beyond the control header.
+  Inline statements, continuations, comments, directives, and recovered
+  bodies remain source-owned.
 - `IndentCaseLabels`: `Preserve` (default), `NoIndent` (align labels with
   their switch header), or `Indent` (one level inside the switch).
   Statements following a case get one additional level with `Indent` when
   `IndentBlockBodies` is enabled. Only parsed case/default labels directly
-  in complete switch blocks are affected. This is independent of
-  `LabelColonSpacing`.
+  in complete switch blocks are affected. An explicit `{` following a case
+  aligns with the case label. This is independent of `LabelColonSpacing`.
 - `IndentAccessModifiers` and `IndentMembers`: `Preserve` (default)
   leaves indentation unchanged, `Indent` uses one `IndentWidth` relative
   to the record declaration, and `NoIndent` aligns with that declaration.
@@ -681,15 +683,23 @@ Exclude = [
 - `FunctionParameterSplit`: `Preserve` (default, leave parameter lists
   unchanged), `Pack` (put as many parameters as fit on each line), or
   `OnePerLine`. Lists already fitting on one line are left unchanged.
-- `FirstFunctionParameterPosition`: `NameLine` (default) or `NewLine`.
-  Determines whether the first parameter starts beside the function name
-  when a list is split.
+- `FirstFunctionParameterPosition`: `NameLine` (default), `NewLine`, or
+  `NameLineIfFits`. The latter keeps the first parameter beside `(` only
+  if it and its following comma or closing suffix fit within `ColumnLimit`;
+  otherwise it moves the first parameter to a new line. Existing split
+  lists retain their first parameter's position unless that placement
+  already exceeds the limit or enforcement is enabled.
 - `EnforceFirstFunctionParameterPosition`: `false` (default) retains the
   first parameter's position in already split lists; `true` applies the
   configured position to those lists as well.
 - `FunctionParameterIndent`: `IndentWidth` (default, indent one width
-  beyond the declaration) or `Continuation` (align with the first
-  parameter immediately after the opening `(`).
+  beyond the declaration) or `Continuation` (align with the character
+  immediately after the opening `(`).
+- `FunctionParameterNewLineIndent`: optional integer from 0 to 32. When
+  nonzero and the first parameter starts on a new line, indent all its
+  continuation lines by this many columns relative to the declaration,
+  instead of aligning them beneath `(`. Zero (default) uses the normal
+  `FunctionParameterIndent` policy.
 - `MergeFunctionParameters`: `false` (default) retains split lists as
   multiline even when they would fit on one line; `true` joins them when
   the result fits within `ColumnLimit`.

@@ -5,6 +5,11 @@ wrong();
       case 1:
           work();
           break;
+      case 2: {
+        if (!Alpha)
+        fail();
+        break;
+      }
       default:
           break;
     }

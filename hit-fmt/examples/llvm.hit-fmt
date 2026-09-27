@@ -31,8 +31,9 @@ NamespaceComments = Required
 ShortNamespaceLines = 1
 
 FunctionParameterSplit = Pack
-FirstFunctionParameterPosition = NameLine
+FirstFunctionParameterPosition = NameLineIfFits
 FunctionParameterIndent = Continuation
+FunctionParameterNewLineIndent = 4
 MergeFunctionParameters = true
 ExpressionLayoutCondition = Overflow
 ControlConditionIndent = Continuation

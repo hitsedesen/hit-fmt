@@ -270,6 +270,8 @@
     OPT(bool, EnforceFirstFunctionParameterPosition, false)                    \
     OPT(formatter::FunctionParameterIndent, FunctionParameterIndent,           \
         formatter::FunctionParameterIndent::IndentWidth)                       \
+    /* Zero keeps the existing FunctionParameterIndent policy. */             \
+    OPT(std::size_t, FunctionParameterNewLineIndent, 0)                        \
     OPT(bool, MergeFunctionParameters, false)                                  \
     OPT(formatter::CallArgumentSplit, CallArgumentSplit,                       \
         formatter::CallArgumentSplit::Preserve)                                \

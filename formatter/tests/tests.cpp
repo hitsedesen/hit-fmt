@@ -1158,6 +1158,8 @@ TEST(PreserveConfigTest, RejectsInvalidSettings)
         "InheritanceListMerge = true\n",
         "InheritanceListPunctuation = WithAncestor\n",
         "FunctionParameterSplit = Together\n",
+        "FirstFunctionParameterPosition = NameLineUnlessLong\n",
+        "FunctionParameterNewLineIndent = 33\n",
         "InitializerListSplit = Together\n",
         "InitializerClosingBrace = Attach\n",
         "ControlConditionIndent = NameLine\n",
