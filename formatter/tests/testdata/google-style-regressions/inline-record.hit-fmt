@@ -6,4 +6,5 @@ MemberIndentWidth = 2
 IndentBlockBodies = true
 BlockBodyIndentWidth = 2
 ClassBraceSpacing = SingleSpace
+EnforceClassBraceSpacing = true
 BraceInitializerSpacing = NoSpace

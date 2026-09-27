@@ -3,6 +3,7 @@ BinaryOperatorSpacing = Space
 AssignmentOperatorSpacing = Space
 CastSpacing = Space
 CommaSpacing = After
+EnforceCommaSpacing = true
 LoopSemicolonSpacing = Space
 ConditionInitSemicolonSpacing = Space
 UnaryOperatorSpacing = NoSpace

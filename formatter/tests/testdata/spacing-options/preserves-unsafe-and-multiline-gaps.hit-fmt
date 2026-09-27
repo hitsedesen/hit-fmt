@@ -1,5 +1,6 @@
 BinaryOperatorSpacing = NoSpace
 CommaSpacing = NoSpace
+EnforceCommaSpacing = true
 SubscriptOperatorInteriorSpacing = Space
 LoopSemicolonSpacing = NoSpace
 ConditionInitSemicolonSpacing = NoSpace

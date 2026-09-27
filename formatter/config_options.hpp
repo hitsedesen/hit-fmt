@@ -116,7 +116,8 @@
     OPT(formatter::TightOperatorSpacing, ScopeResolutionSpacing,               \
         formatter::TightOperatorSpacing::Preserve)                              \
     OPT(formatter::TokenSpacing, InitializerBracesSpacing,                     \
-        formatter::TokenSpacing::Preserve)                                      \
+        formatter::TokenSpacing::NoSpace)                                       \
+    OPT(bool, EnforceInitializerBracesSpacing, false)                          \
     OPT(formatter::TokenSpacing, CastArgumentSpacing,                           \
         formatter::TokenSpacing::Preserve)                                      \
     OPT(formatter::TokenSpacing, GroupingInteriorSpacing,                      \
@@ -130,14 +131,16 @@
     OPT(formatter::TokenSpacing, BlockInteriorSpacing,                         \
         formatter::TokenSpacing::Preserve)                                      \
     OPT(formatter::TokenSpacing, EmptyBlockInteriorSpacing,                    \
-        formatter::TokenSpacing::Preserve)                                      \
+        formatter::TokenSpacing::NoSpace)                                       \
+    OPT(bool, EnforceEmptyBlockInteriorSpacing, false)                         \
     OPT(formatter::EmptyLambdaBodySpacing, EmptyLambdaBodySpacing,             \
         formatter::EmptyLambdaBodySpacing::Inherit)                            \
     OPT(formatter::SingleStatementLambdaBodyLayout,                           \
         SingleStatementLambdaBodyLayout,                                       \
         formatter::SingleStatementLambdaBodyLayout::Inherit)                  \
     OPT(formatter::TokenSpacing, ControlBlockSpaceBeforeBrace,                 \
-        formatter::TokenSpacing::Preserve)                                      \
+        formatter::TokenSpacing::Space)                                         \
+    OPT(bool, EnforceControlBlockSpaceBeforeBrace, false)                      \
     OPT(formatter::TokenSpacing, DeclarationSemicolonSpacing,                  \
         formatter::TokenSpacing::Preserve)                                      \
     OPT(formatter::ColonSpacing, BitFieldColonSpacing,                          \
@@ -188,7 +191,8 @@
     OPT(formatter::TokenSpacing, CastSpacing,                                   \
         formatter::TokenSpacing::Preserve)                                      \
     OPT(formatter::CommaSpacing, CommaSpacing,                                  \
-        formatter::CommaSpacing::Preserve)                                      \
+        formatter::CommaSpacing::Space)                                         \
+    OPT(bool, EnforceCommaSpacing, false)                                      \
     OPT(formatter::TokenSpacing, LoopSemicolonSpacing,                          \
         formatter::TokenSpacing::Preserve)                                      \
     OPT(formatter::TokenSpacing, ConditionInitSemicolonSpacing,                 \
@@ -228,7 +232,8 @@
     OPT(formatter::BinaryOperatorPlacement, AssignmentOperatorPlacement,       \
         formatter::BinaryOperatorPlacement::Leading)                           \
     OPT(formatter::TernaryOperatorPlacement, TernaryOperatorPlacement,         \
-        formatter::TernaryOperatorPlacement::Preserve)                         \
+        formatter::TernaryOperatorPlacement::Leading)                          \
+    OPT(bool, EnforceTernaryOperatorPlacement, false)                          \
     OPT(formatter::TernarySplit, TernarySplit,                                 \
         formatter::TernarySplit::Preserve)                                     \
     OPT(formatter::IncludeOrder, IncludeOrder,                                 \
@@ -313,7 +318,8 @@
         formatter::FirstCallArgumentPosition::CallLine)                        \
     OPT(formatter::MultilineSingleCallArgumentPosition,                        \
         MultilineSingleCallArgumentPosition,                                   \
-        formatter::MultilineSingleCallArgumentPosition::Preserve)             \
+        formatter::MultilineSingleCallArgumentPosition::CallLine)             \
+    OPT(bool, EnforceMultilineSingleCallArgumentPosition, false)               \
     OPT(bool, EnforceFirstCallArgumentPosition, false)                         \
     OPT(formatter::CallArgumentIndent, CallArgumentIndent,                     \
         formatter::CallArgumentIndent::IndentWidth)                            \
@@ -337,26 +343,33 @@
     OPT(formatter::CallArgumentIndent, InitializerListIndent,                  \
         formatter::CallArgumentIndent::IndentWidth)                            \
     OPT(formatter::InitializerClosingBrace, InitializerClosingBrace,           \
-        formatter::InitializerClosingBrace::Preserve)                          \
+        formatter::InitializerClosingBrace::SameLine)                         \
+    OPT(bool, EnforceInitializerClosingBrace, false)                           \
     OPT(formatter::InitializerTrailingComma, InitializerTrailingComma,         \
         formatter::InitializerTrailingComma::Keep)                            \
     OPT(formatter::ClosingDelimiterPlacement,                                 \
         FunctionParameterClosingParenthesis,                                   \
-        formatter::ClosingDelimiterPlacement::Preserve)                        \
+        formatter::ClosingDelimiterPlacement::SameLine)                       \
+    OPT(bool, EnforceFunctionParameterClosingParenthesis, false)               \
     OPT(formatter::ClosingDelimiterPlacement,                                 \
         FunctionCallArgumentClosingParenthesis,                                \
-        formatter::ClosingDelimiterPlacement::Preserve)                        \
+        formatter::ClosingDelimiterPlacement::SameLine)                       \
+    OPT(bool, EnforceFunctionCallArgumentClosingParenthesis, false)            \
     OPT(formatter::ClosingDelimiterPlacement, BlockClosingBrace,              \
-        formatter::ClosingDelimiterPlacement::Preserve)                        \
+        formatter::ClosingDelimiterPlacement::NewLine)                        \
+    OPT(bool, EnforceBlockClosingBrace, false)                                 \
     OPT(bool, MergeInitializerList, false)                                     \
     OPT(formatter::ControlBlockKeywordSpacing, ControlBlockKeywordSpacing,     \
         formatter::ControlBlockKeywordSpacing::Preserve)                       \
     OPT(formatter::ControlBlockBracePlacement, ControlBlockBracePlacement,     \
-        formatter::ControlBlockBracePlacement::Preserve)                       \
+        formatter::ControlBlockBracePlacement::SameLine)                      \
+    OPT(bool, EnforceControlBlockBracePlacement, false)                        \
     OPT(formatter::SameLineBraceSpacing, ClassBraceSpacing,                    \
-        formatter::SameLineBraceSpacing::Preserve)                             \
+        formatter::SameLineBraceSpacing::SingleSpace)                          \
+    OPT(bool, EnforceClassBraceSpacing, false)                                 \
     OPT(formatter::SameLineBraceSpacing, LambdaBraceSpacing,                   \
-        formatter::SameLineBraceSpacing::Preserve)                             \
+        formatter::SameLineBraceSpacing::SingleSpace)                          \
+    OPT(bool, EnforceLambdaBraceSpacing, false)                                \
     OPT(formatter::LambdaSpaceBeforeParameters, LambdaSpaceBeforeParameters,   \
         formatter::LambdaSpaceBeforeParameters::Preserve)                      \
     OPT(formatter::LambdaCaptureSpacing, SpaceAroundCaptureList,               \
@@ -374,21 +387,27 @@
         LambdaCallSpaceBeforeArguments,                                        \
         formatter::LambdaCallSpaceBeforeArguments::Inherit)                    \
     OPT(formatter::SpaceInsideFunctionParameters, SpaceInsideFunctionParameters, \
-        formatter::SpaceInsideFunctionParameters::Preserve)                    \
+        formatter::SpaceInsideFunctionParameters::NoSpace)                    \
+    OPT(bool, EnforceSpaceInsideFunctionParameters, false)                     \
     OPT(formatter::SpaceInsideLambdaParameters, SpaceInsideLambdaParameters,   \
         formatter::SpaceInsideLambdaParameters::Preserve)                      \
     OPT(formatter::SpaceInsideCallArguments, SpaceInsideCallArguments,         \
-        formatter::SpaceInsideCallArguments::Preserve)                         \
+        formatter::SpaceInsideCallArguments::NoSpace)                          \
+    OPT(bool, EnforceSpaceInsideCallArguments, false)                          \
     OPT(formatter::SameLineBraceSpacing, StructBraceSpacing,                   \
-        formatter::SameLineBraceSpacing::Preserve)                             \
+        formatter::SameLineBraceSpacing::SingleSpace)                          \
+    OPT(bool, EnforceStructBraceSpacing, false)                                \
     OPT(formatter::SameLineBraceSpacing, EnumBraceSpacing,                     \
         formatter::SameLineBraceSpacing::Preserve)                             \
     OPT(formatter::SameLineBraceSpacing, UnionBraceSpacing,                    \
-        formatter::SameLineBraceSpacing::Preserve)                             \
+        formatter::SameLineBraceSpacing::SingleSpace)                          \
+    OPT(bool, EnforceUnionBraceSpacing, false)                                 \
     OPT(formatter::SameLineBraceSpacing, FunctionBraceSpacing,                 \
-        formatter::SameLineBraceSpacing::Preserve)                             \
+        formatter::SameLineBraceSpacing::SingleSpace)                          \
+    OPT(bool, EnforceFunctionBraceSpacing, false)                              \
     OPT(formatter::SameLineBraceSpacing, NamespaceBraceSpacing,                \
-        formatter::SameLineBraceSpacing::Preserve)
+        formatter::SameLineBraceSpacing::SingleSpace)                          \
+    OPT(bool, EnforceNamespaceBraceSpacing, false)
 
 // A category supplies its name-case and prefix options together.
 #define FORMATTER_NAMING_CATEGORIES(X)                                          \

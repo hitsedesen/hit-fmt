@@ -1,3 +1,4 @@
 ExpressionLayoutCondition = Overflow
 ControlBlockBracePlacement = AttachUnlessMultiline
+EnforceControlBlockBracePlacement = true
 ColumnLimit = 32

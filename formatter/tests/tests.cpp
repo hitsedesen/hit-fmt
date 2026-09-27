@@ -138,6 +138,8 @@ std::vector<FormattedCase> FormattedCases()
         {"preserve", "space", "no-space"});
     AddCases(cases, CONTROL_BRACE_TESTDATA_DIR,
         {"preserve", "same-line", "new-line", "attach-unless-multiline"});
+    cases.push_back({CONTROL_BRACE_TESTDATA_DIR, "reflow-preferred",
+        "reflow-preferred.input.cpp"});
     AddCases(cases, CONTROL_BRACE_TESTDATA_DIR, {"combined"},
         "combined.input.cpp");
     AddCases(cases, FUNCTION_SPACING_TESTDATA_DIR,
@@ -154,6 +156,10 @@ std::vector<FormattedCase> FormattedCases()
         "reflow.input.cpp");
     AddCases(cases, CALL_INNER_SPACING_TESTDATA_DIR,
         {"preserve", "space", "no-space"});
+    cases.push_back({CALL_INNER_SPACING_TESTDATA_DIR, "reflow-preferred",
+        "reflow-preferred.input.cpp"});
+    cases.push_back({CALL_INNER_SPACING_TESTDATA_DIR, "comma-preferred",
+        "comma-preferred.input.cpp"});
     AddCases(cases, CALL_INNER_SPACING_TESTDATA_DIR, {"combined"},
         "combined.input.cpp");
     AddCases(cases, LAMBDA_CAPTURE_TESTDATA_DIR,
@@ -173,6 +179,12 @@ std::vector<FormattedCase> FormattedCases()
     const auto closings = std::filesystem::path(FORMATTER_TESTDATA_DIR) /
         "../closing-delimiters";
     AddCases(cases, closings, {"same-line", "block", "preserve"});
+    cases.push_back({closings, "reflow-preferred",
+        "reflow-preferred.input.cpp"});
+    cases.push_back({closings, "generated-block",
+        "generated-block.input.cpp"});
+    cases.push_back({closings, "layout-preferred",
+        "layout-preferred.input.cpp"});
     cases.push_back({closings, "new-line", "new-line.input.cpp"});
     cases.push_back({closings, "keep", "trailing-comma.input.cpp"});
     cases.push_back({closings, "remove", "trailing-comma.input.cpp"});
@@ -187,11 +199,20 @@ std::vector<FormattedCase> FormattedCases()
     addProfileCase("../spacing-options", "profile-initializers");
     addProfileCase("../spacing-options", "profile-overflow");
     addProfileCase("../ternary-layout", "profile");
+    cases.push_back({std::filesystem::path(FORMATTER_TESTDATA_DIR) /
+        "../ternary-layout", "reflow-preferred",
+        "reflow-preferred.input.cpp"});
     addProfileCase("../assignment-location", "profile");
     addProfileCase("../function_parameters", "profile");
     addProfileCase("../body-indent", "profile-control-local");
     addProfileCase("../lambda-captures", "profile");
     addProfileCase("../call-reflow", "profile-tabbed-log");
+    const auto callReflow = std::filesystem::path(FORMATTER_TESTDATA_DIR) /
+        "../call-reflow";
+    AddCases(cases, callReflow, {"sole-call-line", "sole-new-line"},
+        "sole-position.input.cpp");
+    cases.push_back({callReflow, "sole-preferred",
+        "sole-preferred.input.cpp"});
     AddCases(cases, std::filesystem::path(FORMATTER_TESTDATA_DIR) /
         "../call-like-macro", {"selected"});
     AddCases(cases, std::filesystem::path(FORMATTER_TESTDATA_DIR) /
@@ -513,6 +534,7 @@ TEST(CallArgumentTest, ReflowsOnlySafeParsedCalls)
     style.CallArgumentIndent = formatter::CallArgumentIndent::IndentWidth;
     style.ControlBlockBracePlacement =
         formatter::ControlBlockBracePlacement::AttachUnlessMultiline;
+    style.EnforceControlBlockBracePlacement = true;
     const auto control =
         "void f() {\n"
         "    if (check(alpha, beta, gamma, delta)) {\n"
@@ -539,8 +561,7 @@ TEST(CallArgumentTest, ReflowsOnlySafeParsedCalls)
     ExpectUnchanged("void f() { use(alpha, beta, gamma, delta); }\r\n",
         style);
 
-    style.ControlBlockBracePlacement =
-        formatter::ControlBlockBracePlacement::Preserve;
+    style.EnforceControlBlockBracePlacement = false;
     style.CallArgumentSplit = formatter::CallArgumentSplit::OnePerLine;
     style.ExpressionLayoutCondition = formatter::ExpressionLayoutCondition::Always;
     style.SpaceInsideCallArguments = formatter::SpaceInsideCallArguments::Space;
@@ -601,7 +622,11 @@ TEST(CallArgumentTest, ReflowsOnlySafeParsedCalls)
         "}\n";
     ExpectUnchanged(multiline, sole);
     sole.MultilineSingleCallArgumentPosition =
+        formatter::MultilineSingleCallArgumentPosition::CallLine;
+    ExpectUnchanged(multiline, sole);
+    sole.MultilineSingleCallArgumentPosition =
         formatter::MultilineSingleCallArgumentPosition::NewLine;
+    sole.EnforceMultilineSingleCallArgumentPosition = true;
     const auto separated =
         "void f() {\n"
         "    auto result = Select(\n"
@@ -736,6 +761,7 @@ TEST(ExpressionLayoutTest, WrapsParsedOperatorsAndPreservesUnsafeLines)
 TEST(ExpressionLayoutTest, PlacesAndGroupsTernaryBreaks)
 {
     formatter::Style style;
+    style.EnforceTernaryOperatorPlacement = true;
     style.ExpressionLayoutCondition = formatter::ExpressionLayoutCondition::Overflow;
     style.ColumnLimit = 40;
     const auto directory = std::filesystem::path(FORMATTER_TESTDATA_DIR) /
@@ -850,9 +876,11 @@ TEST(ExpressionLayoutTest, PlacesAndGroupsTernaryBreaks)
     preserve.ColumnLimit = 80;
     preserve.TernaryOperatorPlacement =
         formatter::TernaryOperatorPlacement::Leading;
+    preserve.EnforceTernaryOperatorPlacement = true;
     EXPECT_EQ(FormatWithStyle(existing, preserve), corrected);
+    preserve.EnforceTernaryOperatorPlacement = false;
     preserve.TernaryOperatorPlacement =
-        formatter::TernaryOperatorPlacement::Preserve;
+        formatter::TernaryOperatorPlacement::Trailing;
     preserve.TernarySplit = formatter::TernarySplit::AsNeeded;
     ExpectUnchanged(existing, preserve);
     preserve.TernarySplit = formatter::TernarySplit::ThreeLines;
@@ -878,6 +906,7 @@ TEST(ExpressionLayoutTest, ChecksLayoutWithoutReflowing)
     style.ExpressionLayoutCondition = formatter::ExpressionLayoutCondition::Overflow;
     style.ColumnLimit = 40;
     style.TernaryOperatorPlacement = formatter::TernaryOperatorPlacement::Leading;
+    style.EnforceTernaryOperatorPlacement = true;
     style.TernarySplit = formatter::TernarySplit::ThreeLines;
     const auto issues = formatter::CheckExpressionLayout(tree, style);
     ASSERT_EQ(issues.size(), 4u);
@@ -891,7 +920,7 @@ TEST(ExpressionLayoutTest, ChecksLayoutWithoutReflowing)
     EXPECT_EQ(issues[3].Position.Line, 6u);
     EXPECT_EQ(issues[3].Message,
         "ternary ':' needs a line break to match the other delimiter");
-    style.TernaryOperatorPlacement = formatter::TernaryOperatorPlacement::Preserve;
+    style.EnforceTernaryOperatorPlacement = false;
     style.TernarySplit = formatter::TernarySplit::Preserve;
     EXPECT_EQ(formatter::CheckExpressionLayout(tree, style).size(), 2u);
     style.ExpressionLayoutCondition =
@@ -955,6 +984,7 @@ TEST(ExpressionLayoutTest, PrefersOuterConditionalBreaks)
     style.ExpressionLayoutCondition = formatter::ExpressionLayoutCondition::Overflow;
     style.ControlBlockBracePlacement =
         formatter::ControlBlockBracePlacement::AttachUnlessMultiline;
+    style.EnforceControlBlockBracePlacement = true;
     style.ColumnLimit = 120;
     const test::golden::Fixture fixture{
         std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../outer-conditional",
@@ -1119,6 +1149,7 @@ TEST(ExpressionLayoutTest, ReconsidersControlBracesAfterWrapping)
     style.ExpressionLayoutCondition = formatter::ExpressionLayoutCondition::Overflow;
     style.ControlBlockBracePlacement =
         formatter::ControlBlockBracePlacement::AttachUnlessMultiline;
+    style.EnforceControlBlockBracePlacement = true;
     style.ColumnLimit = 32;
     style.ExpressionLayoutCondition = formatter::ExpressionLayoutCondition::Always;
     style.ColumnLimit = 80;
@@ -1246,6 +1277,7 @@ TEST(ControlBraceTest, WrapsOnlyCompleteUnbracedBodies)
     style.IndentBlockBodies = true;
     style.ControlBlockBracePlacement =
         formatter::ControlBlockBracePlacement::AttachUnlessMultiline;
+    style.EnforceControlBlockBracePlacement = true;
     const std::string input =
         "void f(bool a, bool b) {\n"
         "    if (a) if (b) Go(); else Stop();\n"
@@ -1440,6 +1472,7 @@ TEST(BraceSpacingTest, ComposesWithParameterReflow)
     style.ColumnLimit = 40;
     style.FunctionParameterSplit = formatter::FunctionParameterSplit::Pack;
     style.FunctionBraceSpacing = formatter::SameLineBraceSpacing::SingleSpace;
+    style.EnforceFunctionBraceSpacing = true;
     const std::string input =
         "void Many(int alpha, int beta, int gamma, int delta){}\n";
     const std::string expected =
@@ -1518,6 +1551,7 @@ TEST(PreserveConfigTest, RejectsInvalidSettings)
          "TernaryOperatorPlacement = Trailing\n"
          "TernarySplit = ThreeLines\n"
          "CallArgumentSplit = Pack\nFirstCallArgumentPosition = NewLine\n"
+         "MultilineSingleCallArgumentPosition = CallLine\n"
          "EnforceFirstCallArgumentPosition = true\n"
          "CallArgumentIndent = Continuation\n"
          "CallLineFirstStringNames = [\"YT_LOG_INFO\", \"YT_LOG_ERROR\"]\n"
@@ -1556,6 +1590,8 @@ TEST(PreserveConfigTest, RejectsInvalidSettings)
         formatter::CallArgumentSplit::Pack);
     EXPECT_EQ(config.FormattingStyle.FirstCallArgumentPosition,
         formatter::FirstCallArgumentPosition::NewLine);
+    EXPECT_EQ(config.FormattingStyle.MultilineSingleCallArgumentPosition,
+        formatter::MultilineSingleCallArgumentPosition::CallLine);
     EXPECT_TRUE(config.FormattingStyle.EnforceFirstCallArgumentPosition);
     EXPECT_EQ(config.FormattingStyle.CallArgumentIndent,
         formatter::CallArgumentIndent::Continuation);
@@ -1574,13 +1610,13 @@ TEST(PreserveConfigTest, RejectsInvalidSettings)
     const auto alternate = formatter::LoadConfigFile(path).FormattingStyle;
     EXPECT_EQ(alternate.ExpressionLayoutCondition, formatter::ExpressionLayoutCondition::Always);
     save("ExpressionLayoutCondition = Overflow\n"
-         "TernaryOperatorPlacement = Preserve\n"
+         "TernaryOperatorPlacement = Leading\n"
          "TernarySplit = Preserve\n");
     const auto preserving = formatter::LoadConfigFile(path).FormattingStyle;
     EXPECT_EQ(preserving.ExpressionLayoutCondition,
         formatter::ExpressionLayoutCondition::Overflow);
     EXPECT_EQ(preserving.TernaryOperatorPlacement,
-        formatter::TernaryOperatorPlacement::Preserve);
+        formatter::TernaryOperatorPlacement::Leading);
     EXPECT_EQ(preserving.TernarySplit, formatter::TernarySplit::Preserve);
     for (auto setting : {
         "Regroup = true\n",
@@ -1648,9 +1684,11 @@ TEST(PreserveConfigTest, RejectsInvalidSettings)
         "BinaryOperatorPlacement = Middle\n",
         "AssignmentOperatorPlacement = Middle\n",
         "TernaryOperatorPlacement = Middle\n",
+        "TernaryOperatorPlacement = Preserve\n",
         "TernarySplit = TwoLines\n",
         "CallArgumentSplit = Together\n",
         "FirstCallArgumentPosition = BeforeCall\n",
+        "MultilineSingleCallArgumentPosition = Preserve\n",
         "EnforceFirstCallArgumentPosition = maybe\n",
         "CallArgumentIndent = Tabs\n",
         "MergeCallArguments = Underflow\n",

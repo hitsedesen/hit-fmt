@@ -1,0 +1,10 @@
+AddMissingControlBraces = true
+EmptyControlBody = EmptyBlock
+ControlBlockSpaceBeforeBrace = NoSpace
+EnforceControlBlockSpaceBeforeBrace = false
+EmptyBlockInteriorSpacing = Space
+EnforceEmptyBlockInteriorSpacing = false
+ControlBlockBracePlacement = SameLine
+EnforceControlBlockBracePlacement = false
+BlockClosingBrace = SameLine
+EnforceBlockClosingBrace = false

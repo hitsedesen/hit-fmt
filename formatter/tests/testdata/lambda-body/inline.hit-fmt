@@ -1,5 +1,6 @@
 ColumnLimit = 50
 EmptyBlockInteriorSpacing = Space
+EnforceEmptyBlockInteriorSpacing = true
 BlockInteriorSpacing = Space
 EmptyLambdaBodySpacing = NoSpace
 SingleStatementLambdaBodyLayout = OneLineIfFits

@@ -4,4 +4,5 @@ InitializerListSplit = OnePerLine
 FirstInitializerElementPosition = NewLine
 InitializerListIndent = IndentWidth
 InitializerClosingBrace = NewLine
+EnforceInitializerClosingBrace = true
 MergeInitializerList = true

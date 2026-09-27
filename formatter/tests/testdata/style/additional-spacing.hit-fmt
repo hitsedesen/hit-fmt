@@ -4,3 +4,4 @@ TemplateTypeArgumentInteriorSpacing = Space
 StatementSemicolonSpacing = NoSpace
 MemberAccessOperatorsSpacing = NoSpace
 InitializerBracesSpacing = Space
+EnforceInitializerBracesSpacing = true

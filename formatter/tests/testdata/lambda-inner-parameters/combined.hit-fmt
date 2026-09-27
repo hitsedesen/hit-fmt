@@ -3,4 +3,6 @@ LambdaSpaceBeforeParameters = NoSpace
 SpaceAroundCaptureList = Space
 SpaceAroundCaptureAssignment = Space
 SpaceInsideFunctionParameters = NoSpace
+EnforceSpaceInsideFunctionParameters = true
 SpaceInsideCallArguments = NoSpace
+EnforceSpaceInsideCallArguments = true

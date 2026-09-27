@@ -3,5 +3,6 @@ IndentBlockBodies = true
 FunctionCallSpaceBeforeParameters = NoSpace
 BinaryOperatorSpacing = Space
 InitializerBracesSpacing = NoSpace
+EnforceInitializerBracesSpacing = true
 BraceInitializerSpacing = NoSpace
 BlockInteriorSpacing = Space

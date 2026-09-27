@@ -1,0 +1,7 @@
+ColumnLimit = 32
+FunctionParameterSplit = OnePerLine
+CallArgumentSplit = OnePerLine
+FunctionParameterClosingParenthesis = NewLine
+FunctionCallArgumentClosingParenthesis = NewLine
+EnforceFunctionParameterClosingParenthesis = false
+EnforceFunctionCallArgumentClosingParenthesis = false

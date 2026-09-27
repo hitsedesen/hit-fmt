@@ -1,1 +1,2 @@
 ControlBlockBracePlacement = AttachUnlessMultiline
+EnforceControlBlockBracePlacement = true

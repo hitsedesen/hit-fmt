@@ -1,7 +1,13 @@
 ClassBraceSpacing = SingleSpace
+EnforceClassBraceSpacing = true
 LambdaBraceSpacing = SingleSpace
+EnforceLambdaBraceSpacing = true
 StructBraceSpacing = SingleSpace
+EnforceStructBraceSpacing = true
 EnumBraceSpacing = SingleSpace
 UnionBraceSpacing = SingleSpace
+EnforceUnionBraceSpacing = true
 FunctionBraceSpacing = SingleSpace
+EnforceFunctionBraceSpacing = true
 NamespaceBraceSpacing = SingleSpace
+EnforceNamespaceBraceSpacing = true

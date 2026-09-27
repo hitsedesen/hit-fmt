@@ -1,5 +1,6 @@
 ExpressionLayoutCondition = Overflow
 TernarySplit = AsNeeded
 TernaryOperatorPlacement = Leading
+EnforceTernaryOperatorPlacement = true
 BinaryOperatorPlacement = Leading
 ColumnLimit = 32
