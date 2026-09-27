@@ -3,4 +3,4 @@ FunctionRefQualifierSpacing = NoSpace
 NestedDeclaratorInteriorSpacing = NoSpace
 NestedDeclaratorPointerSpacing = NoSpace
 MemberPointerDeclaratorSpacing = NoSpace
-PointerReferenceLocation = Preserve
+PointerReferenceDeclaratorLocation = Preserve

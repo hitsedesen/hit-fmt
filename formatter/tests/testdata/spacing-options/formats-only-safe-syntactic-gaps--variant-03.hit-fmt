@@ -1,4 +1,4 @@
-PointerReferenceLocation = Middle
+PointerReferenceDeclaratorLocation = Middle
 BinaryOperatorSpacing = Space
 AssignmentOperatorSpacing = Space
 CastSpacing = Space

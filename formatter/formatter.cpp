@@ -1164,8 +1164,8 @@ private:
             callee->Kind == NK::UnparsedSyntax ||
             callee->Kind == NK::Expression ||
             IsAmbiguousParenthesizedCallee(*callee) ||
-            !arguments ||
-            arguments->Kind != NK::ArgumentList || arguments->Tokens.Empty())
+            !arguments || arguments->Kind != NK::ArgumentList ||
+            arguments->Tokens.Empty() || HasRecoveryChild(*arguments))
         {
             return;
         }
@@ -3324,6 +3324,17 @@ std::string FormatBlockIndentation(const parser::SyntaxTree& tree,
             {
                 childBase = originalIndent(node.Tokens.Begin);
             }
+            if (node.Kind == NK::LambdaExpression &&
+                child->Kind == NK::LambdaBody && !node.Tokens.Empty())
+            {
+                auto captureIndent = originalIndent(node.Tokens.Begin);
+                if (!captureIndent.empty()) {
+                    // A multiline call argument may start well to the
+                    // right of its enclosing statement. Anchor its body and
+                    // closing brace to the lambda's own line.
+                    childBase = std::move(captureIndent);
+                }
+            }
             const bool body = control && childBase &&
                 child->Kind != NK::Condition &&
                 child->Kind != NK::ForHeader &&
@@ -3672,6 +3683,7 @@ static std::string FormatTokenSpacing(const parser::SyntaxTree& tree,
     const auto count = tree.TokenCount();
     std::vector<TokenSpacing> gaps(count, TokenSpacing::Preserve);
     std::vector<bool> unsafe(count, false);
+    std::vector<bool> separatedDeclarators(count, false);
     std::vector<bool> loopSemicolons(count, false);
     std::vector<bool> conditionSemicolons(count, false);
     // Type positions and parser-confirmed template-ids are the only safe
@@ -3764,6 +3776,32 @@ static std::string FormatTokenSpacing(const parser::SyntaxTree& tree,
             continue;
         }
         if (!HasRecoveryChild(*node)) {
+            if (node->Kind == NK::InitDeclaratorList) {
+                bool afterComma = false;
+                for (auto* item = node->Child(); item;
+                    item = item->NextSibling)
+                {
+                    if (item->Kind == NK::ListSeparator) {
+                        afterComma = true;
+                    } else if (item->Kind == NK::InitDeclarator && afterComma) {
+                        for (auto* declarator = item->Child(); declarator;
+                            declarator = declarator->NextSibling)
+                        {
+                            if (declarator->Kind != NK::Declarator) continue;
+                            for (auto* part = declarator->Child(); part;
+                                part = part->NextSibling)
+                            {
+                                if (part->Kind == NK::PointerOperator &&
+                                    part->Tokens.Begin < count)
+                                {
+                                    separatedDeclarators[part->Tokens.Begin] = true;
+                                }
+                            }
+                        }
+                        afterComma = false;
+                    }
+                }
+            }
             const auto begin = node->Tokens.Begin;
             const auto end = node->Tokens.End;
             if (begin < count && end <= count) {
@@ -4890,7 +4928,8 @@ static std::string FormatTokenSpacing(const parser::SyntaxTree& tree,
     };
     for (TokenIndex i = 0; i < count; ++i) {
         if (pointer(i) &&
-            style.PointerReferenceLocation != PointerReferenceLocation::Preserve)
+            style.PointerReferenceDeclaratorLocation !=
+                PointerReferenceDeclaratorLocation::Preserve)
         {
             // Keep adjacent pointer/reference operators together. Leave
             // member pointers and nested declarators alone rather than
@@ -4909,17 +4948,24 @@ static std::string FormatTokenSpacing(const parser::SyntaxTree& tree,
             {
                 continue;
             }
-            auto location = style.PointerReferenceLocation;
-            // A comma separates declarators, not type and pointer. Leave
-            // its following gap to CommaSpacing (or the original source).
-            if (tree.Kind(first - 1) != TK::Operator_Comma) {
-                gaps[first] = location == PointerReferenceLocation::Left
-                    ? TokenSpacing::NoSpace : TokenSpacing::Space;
+            auto location = style.PointerReferenceDeclaratorLocation;
+            if (tree.Kind(first - 1) == TK::Operator_Comma) {
+                // After a comma, a confirmed subsequent declarator has no
+                // repeated type to attach to. An unconfirmed pointer (e.g.
+                // an argument of an unknown macro) stays source-owned.
+                if (separatedDeclarators[first]) {
+                    gaps[last + 1] = location ==
+                            PointerReferenceDeclaratorLocation::Middle
+                        ? TokenSpacing::Space : TokenSpacing::NoSpace;
+                }
+                continue;
             }
+            gaps[first] = location == PointerReferenceDeclaratorLocation::Left
+                ? TokenSpacing::NoSpace : TokenSpacing::Space;
             for (auto k = first + 1; k <= last; ++k) {
                 gaps[k] = TokenSpacing::NoSpace;
             }
-            gaps[last + 1] = location == PointerReferenceLocation::Right
+            gaps[last + 1] = location == PointerReferenceDeclaratorLocation::Right
                 ? TokenSpacing::NoSpace : TokenSpacing::Space;
             continue;
         }
@@ -4946,6 +4992,7 @@ static std::string FormatTokenSpacing(const parser::SyntaxTree& tree,
             }
         }
         if (kind == TK::Operator_Comma &&
+            (role == PR::ListSeparator || role == PR::BinaryOperator) &&
             style.CommaSpacing != CommaSpacing::Preserve && i + 1 < count)
         {
             gaps[i] = TokenSpacing::NoSpace;
@@ -5574,7 +5621,8 @@ std::string Format(const parser::SyntaxTree& tree, const Style& style)
                 style.NamespaceCommentSpaces);
         }
     }
-    if (style.PointerReferenceLocation != PointerReferenceLocation::Preserve ||
+    if (style.PointerReferenceDeclaratorLocation !=
+            PointerReferenceDeclaratorLocation::Preserve ||
         style.BinaryOperatorSpacing != TokenSpacing::Preserve ||
         style.AssignmentOperatorSpacing != TokenSpacing::Preserve ||
         style.CastSpacing != TokenSpacing::Preserve ||

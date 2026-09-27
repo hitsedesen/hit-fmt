@@ -1,0 +1,378 @@
+(translation-unit
+  (typedef-declaration
+    "typedef"
+    (declaration-specifiers "void")
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (declarator-name "TaskSignature")
+          (function-declarator
+            (parameter-list
+              "("
+              (parameter-declaration
+                (declaration-specifiers "bool")
+              )
+              (list-separator ",")
+              (parameter-declaration
+                (declaration-specifiers "int")
+                (init-declarator-list
+                  (init-declarator
+                    (abstract-declarator
+                      (pointer-operator "*")
+                    )
+                  )
+                )
+              )
+              (list-separator ",")
+              (parameter-declaration
+                (declaration-specifiers "char")
+                (init-declarator-list
+                  (init-declarator
+                    (abstract-declarator
+                      (pointer-operator "*")
+                    )
+                  )
+                )
+              )
+              ")"
+            )
+          )
+        )
+      )
+    )
+    ";"
+  )
+  (function-definition
+    (declaration-specifiers "void")
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (declarator-name "inspect")
+          (function-declarator
+            (parameter-list "(" ")")
+          )
+        )
+      )
+    )
+    (compound-statement
+      "{"
+      (for-statement
+        "for"
+        (for-header
+          "("
+          (for-init-statement
+            (declaration-specifiers
+              "const" "Entry"
+              (template-argument-list
+                "<"
+                (template-argument "int")
+                ">"
+              )
+            )
+            (init-declarator-list
+              (init-declarator
+                (declarator
+                  (pointer-operator "*")
+                  (declarator-name "first")
+                )
+                (initializer
+                  "="
+                  (call-expression
+                    (member-expression
+                      (identifier-expression "chain")
+                      "->"
+                      (identifier-expression "head")
+                    )
+                    (argument-list "(" ")")
+                  )
+                )
+              )
+              (list-separator ",")
+              (init-declarator
+                (declarator
+                  (pointer-operator "*")
+                  (declarator-name "second")
+                )
+                (initializer
+                  "="
+                  (call-expression
+                    (member-expression
+                      (identifier-expression "other")
+                      "->"
+                      (identifier-expression "head")
+                    )
+                    (argument-list "(" ")")
+                  )
+                )
+              )
+            )
+          )
+          (list-separator ";")
+          (for-condition
+            (binary-expression
+              (identifier-expression "first")
+              "!="
+              (literal-expression "nullptr")
+            )
+          )
+          (list-separator ";")
+          (for-iteration
+            (assignment-expression
+              (identifier-expression "first")
+              "="
+              (call-expression
+                (member-expression
+                  (identifier-expression "first")
+                  "->"
+                  (identifier-expression "next")
+                )
+                (argument-list "(" ")")
+              )
+            )
+          )
+          ")"
+        )
+        (compound-statement "{" "}")
+      )
+      "}"
+    )
+  )
+  (function-declaration
+    (declaration-specifiers "REGISTER_GROUP")
+    (init-declarator-list
+      (init-declarator
+        (abstract-declarator
+          (nested-declarator
+            "(" "Label" "," "Variant" "," "Make" "(" "1" ")" ","
+            (pointer-operator "&")
+            "factory" ")"
+          )
+          (function-declarator
+            (parameter-list
+              "("
+              (parameter-declaration
+                (declaration-specifiers "Label")
+              )
+              (list-separator ",")
+              (parameter-declaration
+                (declaration-specifiers "Variant")
+              )
+              (list-separator ",")
+              (parameter-declaration
+                (declaration-specifiers "Make")
+                (init-declarator-list
+                  (init-declarator
+                    (abstract-declarator "(" "1" ")")
+                  )
+                )
+              )
+              (list-separator ",")
+              (parameter-declaration
+                (init-declarator-list
+                  (init-declarator
+                    (declarator
+                      (pointer-operator "&")
+                      (declarator-name "factory")
+                    )
+                  )
+                )
+              )
+              ")"
+            )
+          )
+        )
+      )
+    )
+    ";"
+  )
+  (expression-statement
+    (call-expression
+      (identifier-expression "REGISTER_GROUP")
+      (argument-list
+        "("
+        (unparsed-syntax "first" "," "," "last")
+        ")"
+      )
+    )
+    ";"
+  )
+  (expression-statement
+    (call-expression
+      (identifier-expression "REGISTER_GROUP")
+      (argument-list
+        "("
+        (argument
+          (identifier-expression "Label")
+        )
+        (list-separator ",")
+        (argument
+          (identifier-expression "Variant")
+        )
+        (list-separator ",")
+        (argument
+          (call-expression
+            (identifier-expression "Make")
+            (argument-list
+              "("
+              (argument
+                (literal-expression "1")
+              )
+              ")"
+            )
+          )
+        )
+        (list-separator ",")
+        (argument
+          (lambda-expression
+            (lambda-capture-list "[" "]")
+            (parameter-list
+              "("
+              (parameter-declaration
+                (declaration-specifiers "const" "ItemInfo")
+                (init-declarator-list
+                  (init-declarator
+                    (declarator
+                      (pointer-operator "&")
+                      (declarator-name "info")
+                    )
+                  )
+                )
+              )
+              ")"
+            )
+            (lambda-body
+              "{"
+              (return-statement
+                "return"
+                (member-expression
+                  (identifier-expression "info")
+                  "."
+                  (identifier-expression "value")
+                )
+                ";"
+              )
+              "}"
+            )
+          )
+        )
+        ")"
+      )
+    )
+    ";"
+  )
+  (function-declaration
+    (declaration-specifiers "void")
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (declarator-name "accept")
+          (function-declarator
+            (parameter-list
+              "("
+              (parameter-declaration
+                (declaration-specifiers "int")
+                (init-declarator-list
+                  (init-declarator
+                    (declarator
+                      (declarator-name "number")
+                    )
+                    (initializer
+                      "="
+                      (call-expression
+                        (lambda-expression
+                          (lambda-capture-list "[" "]")
+                          (parameter-list "(" ")")
+                          (lambda-body
+                            "{"
+                            (return-statement
+                              "return"
+                              (literal-expression "1")
+                              ";"
+                            )
+                            "}"
+                          )
+                        )
+                        (argument-list "(" ")")
+                      )
+                    )
+                  )
+                )
+              )
+              ")"
+            )
+          )
+        )
+      )
+    )
+    ";"
+  )
+  (static-assert-declaration
+    "static_assert"
+    (parenthesized-expression
+      "("
+      (binary-expression
+        (unary-expression
+          "!"
+          (call-expression
+            (identifier-expression "HAS_EMPTY_ARG")
+            (argument-list
+              "("
+              (unparsed-syntax ",")
+              ")"
+            )
+          )
+        )
+        ","
+        (literal-expression "\"\"")
+      )
+      ")"
+    )
+    ";"
+  )
+  (static-assert-declaration
+    "static_assert"
+    (parenthesized-expression
+      "("
+      (binary-expression
+        (unary-expression
+          "!"
+          (call-expression
+            (identifier-expression "HAS_EMPTY_ARG")
+            (argument-list
+              "("
+              (unparsed-syntax "first" "," "," "last")
+              ")"
+            )
+          )
+        )
+        ","
+        (literal-expression "\"\"")
+      )
+      ")"
+    )
+    ";"
+  )
+  (static-assert-declaration
+    "static_assert"
+    (parenthesized-expression
+      "("
+      (binary-expression
+        (unary-expression
+          "!"
+          (call-expression
+            (identifier-expression "HAS_EMPTY_ARG")
+            (argument-list
+              "("
+              (unparsed-syntax "first" ",")
+              ")"
+            )
+          )
+        )
+        ","
+        (literal-expression "\"\"")
+      )
+      ")"
+    )
+    ";"
+  )
+)

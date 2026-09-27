@@ -1,7 +1,7 @@
 void f() {
   switch (0)
   case 0:
-    GTEST_CHECK_(true) << "Check failed in switch case";
+    VERIFY_FLAG_(true) << "unexpected state";
 }
 void g() {
   switch (1) {

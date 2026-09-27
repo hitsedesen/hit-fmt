@@ -1342,7 +1342,24 @@ private:
         auto start = Cursor_;
         auto* node = ParseToSemicolon(NodeKind::TypedefDeclaration);
         auto declarationBegin = NextSignificant(start + 1);
-        AddDeclarationSyntax(*node, declarationBegin, node->Tokens.End);
+        // A typedef can name a function type: `typedef int Callback(int*);`.
+        // Its parentheses are parameters, never a direct initializer.
+        std::optional<TokenRange> parameters;
+        auto declarator = FindDeclarationSpecifiersEnd(
+            declarationBegin, node->Tokens.End);
+        if (Kind(declarator) == TK::Identifier &&
+            Kind(NextSignificant(declarator + 1)) == TK::Operator_OpenParenthesis)
+        {
+            auto open = NextSignificant(declarator + 1);
+            auto close = FindBalancedEnd(open);
+            if (close != std::numeric_limits<TokenIndex>::max() &&
+                close <= node->Tokens.End)
+            {
+                parameters = TokenRange{.Begin = open, .End = close};
+            }
+        }
+        AddDeclarationSyntax(*node, declarationBegin, node->Tokens.End,
+            parameters);
         RegisterDeclaredNames(*node, NameKind::Type);
         return node;
     }
@@ -2142,11 +2159,48 @@ private:
         }
     }
 
+    [[nodiscard]] bool HasEmptyArgumentSlot(
+        TokenIndex opening, TokenIndex closingEnd) const
+    {
+        bool missingArgument = false;
+        bool expectingArgument = true;
+        bool sawSeparator = false;
+        for (auto i = NextSignificant(opening + 1); i + 1 < closingEnd;
+            i = NextSignificant(i + 1))
+        {
+            if (Kind(i) == TK::Operator_Comma) {
+                missingArgument |= expectingArgument;
+                expectingArgument = true;
+                sawSeparator = true;
+            } else {
+                expectingArgument = false;
+                if (IsOpenDelimiter(Kind(i))) {
+                    auto nested = FindBalancedEnd(i);
+                    if (nested != std::numeric_limits<TokenIndex>::max() &&
+                        nested < closingEnd)
+                    {
+                        i = nested - 1;
+                    }
+                }
+            }
+        }
+        return missingArgument || (sawSeparator && expectingArgument);
+    }
+
     void AddArgumentList(Node& parent, size_t opening, size_t closingEnd)
     {
         auto* arguments = MakeNode(NodeKind::ArgumentList, opening);
         arguments->Tokens.End = closingEnd;
         auto argumentCursor = NextSignificant(opening + 1);
+        // Empty arguments are not expressions. A function-like macro can
+        // accept them, so keep the entire list as recovered syntax instead
+        // of inventing an expression for a bare separator.
+        if (HasEmptyArgumentSlot(opening, closingEnd)) {
+            AddUnparsedSyntax(*arguments, opening + 1, closingEnd - 1);
+            AddDirectiveChildrenInGap(*arguments, opening, closingEnd);
+            Append(parent, *arguments);
+            return;
+        }
         while (argumentCursor + 1 < closingEnd) {
             auto before = argumentCursor;
             Node* expression = nullptr;
@@ -3058,6 +3112,62 @@ private:
             IsExtensionAttribute(index) || IsCallingConvention(index));
     }
 
+    [[nodiscard]] bool HasMacroLikeLambdaArgument(
+        TokenIndex opening, TokenIndex closingEnd) const
+    {
+        if (opening >= closingEnd ||
+            Kind(opening) != TK::Operator_OpenParenthesis)
+        {
+            return false;
+        }
+        bool hasDefault = false;
+        for (auto i = opening + 1; i + 1 < closingEnd; ++i) {
+            auto kind = Kind(i);
+            if (kind == TK::Operator_Comma) {
+                hasDefault = false;
+                continue;
+            }
+            if (kind == TK::Operator_Assign) {
+                hasDefault = true;
+                continue;
+            }
+            if (kind == TK::Operator_OpenBracket && !hasDefault) {
+                auto captureEnd = FindBalancedEnd(i);
+                if (captureEnd != std::numeric_limits<TokenIndex>::max() &&
+                    captureEnd < closingEnd &&
+                    Kind(NextSignificant(captureEnd)) ==
+                        TK::Operator_OpenParenthesis)
+                {
+                    auto parameterEnd = FindBalancedEnd(
+                        NextSignificant(captureEnd));
+                    if (parameterEnd != std::numeric_limits<TokenIndex>::max() &&
+                        parameterEnd < closingEnd)
+                    {
+                        auto body = NextSignificant(parameterEnd);
+                        if (Kind(body) == TK::Operator_OpenBrace) {
+                            auto bodyEnd = FindBalancedEnd(body);
+                            if (bodyEnd < closingEnd &&
+                                (Kind(bodyEnd) == TK::Operator_Comma ||
+                                    Kind(bodyEnd) == TK::Operator_CloseParenthesis))
+                            {
+                                return true;
+                            }
+                        }
+                    }
+                }
+            }
+            if (IsOpenDelimiter(kind)) {
+                auto nested = FindBalancedEnd(i);
+                if (nested != std::numeric_limits<TokenIndex>::max() &&
+                    nested <= closingEnd)
+                {
+                    i = nested - 1;
+                }
+            }
+        }
+        return false;
+    }
+
     Node* ParseGeneralDeclaration()
     {
         auto start = Cursor_;
@@ -3207,6 +3317,30 @@ private:
             }
             if (kind == TK::Operator_Semicolon) {
                 ++Cursor_;
+                // A top-level lambda argument or an empty argument slot
+                // cannot be a function parameter declaration. At namespace
+                // scope these are typically macro invocations: parse a call
+                // rather than inventing overlapping declarator syntax.
+                if (sawTopLevelParameters &&
+                    (HasMacroLikeLambdaArgument(parameterBegin, parameterEnd) ||
+                        HasEmptyArgumentSlot(parameterBegin, parameterEnd)))
+                {
+                    auto expressionCursor = start;
+                    auto* expression = ParseExpressionSyntax(
+                        expressionCursor, Cursor_ - 1);
+                    auto* node = MakeNode(
+                        expression && expressionCursor == Cursor_ - 1 &&
+                            expression->Kind == NodeKind::CallExpression
+                            ? NodeKind::ExpressionStatement
+                            : NodeKind::UnparsedSyntax,
+                        start);
+                    node->Tokens.End = Cursor_;
+                    if (node->Kind == NodeKind::ExpressionStatement) {
+                        Append(*node, *expression);
+                    }
+                    AddDirectiveChildrenInGap(*node, start, Cursor_);
+                    return node;
+                }
                 auto nodeKind = invalidFunctionSuffix ? NodeKind::UnparsedSyntax
                     : sawTopLevelParameters &&
                     !sawAssignmentBeforeParameters

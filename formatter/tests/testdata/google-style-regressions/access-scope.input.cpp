@@ -1,4 +1,4 @@
-GTEST_API_ ::std::string exported();
+LIB_EXPORT ::std::string exported();
 std :: vector<int> values;
 void f() {
   auto x = obj . member + ptr -> member;

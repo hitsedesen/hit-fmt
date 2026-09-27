@@ -99,7 +99,7 @@ ConstructorInitializerListCommaSpaceAfter = Space
 ConstructorInitializerListStart = NewLine
 ConstructorInitializerListSplit = OnePerLine
 # ConstructorInitializerListIndent defaults to IndentWidth when omitted
-PointerReferenceLocation = Preserve
+PointerReferenceDeclaratorLocation = Preserve
 UnaryOperatorSpacing = Preserve
 PostfixOperatorSpacing = Preserve
 TernaryOperatorSpacing = Preserve
@@ -452,12 +452,14 @@ Exclude = [
   overflow. Only complete single-line initializer entries with
   whitespace-only separators are movable. Comments, directives,
   recovered syntax, and multiline entries remain source-owned.
-- `PointerReferenceLocation`: `Preserve` (default), `Left` (`int* p`),
-  `Middle` (`int * p`), or `Right` (`int *p`). Applies to complete parsed
-  pointer and reference declarators, including adjacent `*`/`&` tokens.
-  Member pointers and nested declarators have independent rules below;
-  commas between declarators are not treated as type names. It does not
-  alter multiplication, address-of, or dereference expressions.
+- `PointerReferenceDeclaratorLocation`: `Preserve` (default), `Left`
+  (`int* p`), `Middle` (`int * p`), or `Right` (`int *p`). Applies only to
+  complete parsed pointer and reference declarators, including adjacent
+  `*`/`&` tokens. A later declarator after a comma has no repeated type;
+  under `Left` its `*`/`&` binds to the name (`int* a, *b`). Member pointers
+  and nested declarators have independent rules below. In expression
+  contexts, `UnaryOperatorSpacing` controls prefix dereference/address-of;
+  an ambiguous macro argument remains source-owned.
 - `FunctionQualifierSpacing`: `Preserve` (default), `Space`, or `NoSpace`
   between a function's closing parameter `)` and an immediately following
   `const` or `volatile` (`f() const` versus `f()const`).

@@ -8,7 +8,7 @@ return x;
   return 0;
 }
 };
-class GTEST_API_ RE {
+class LIB_EXPORT Widget {
 public:
 int x {1};
 };

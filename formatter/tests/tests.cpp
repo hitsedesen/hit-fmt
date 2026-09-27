@@ -171,6 +171,8 @@ std::vector<FormattedCase> FormattedCases()
         "namespace-comments.input.cpp"});
     cases.push_back({google, "syntax-boundaries",
         "syntax-boundaries.input.cpp"});
+    cases.push_back({google, "declarator-and-macro-safety",
+        "declarator-and-macro-safety.input.cpp"});
     AddCases(cases, google, {"punctuation-preserve", "punctuation-space",
         "comments-preserve"}, "punctuation-preserve.input.cpp");
     cases.push_back({google, "access-only", "access-scope.input.cpp"});

@@ -6,7 +6,7 @@ ColumnLimit = 80
 IndentationKind = Spaces
 PreprocessorIndentation = LineStart
 TrailingWhitespace = Trim
-PointerReferenceLocation = Left
+PointerReferenceDeclaratorLocation = Left
 
 IndentAccessModifiers = Indent
 AccessModifierIndentWidth = 1

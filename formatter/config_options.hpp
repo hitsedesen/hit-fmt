@@ -167,8 +167,9 @@
         formatter::InheritanceListSplit::OnePerLine)                            \
     /* Zero uses global IndentWidth. */                                        \
     OPT(std::size_t, ConstructorInitializerListIndent, 0)                     \
-    OPT(formatter::PointerReferenceLocation, PointerReferenceLocation,         \
-        formatter::PointerReferenceLocation::Preserve)                         \
+    OPT(formatter::PointerReferenceDeclaratorLocation,                      \
+        PointerReferenceDeclaratorLocation,                                   \
+        formatter::PointerReferenceDeclaratorLocation::Preserve)                         \
     OPT(formatter::TightOperatorSpacing, UnaryOperatorSpacing,                 \
         formatter::TightOperatorSpacing::Preserve)                              \
     OPT(formatter::TightOperatorSpacing, PostfixOperatorSpacing,               \

@@ -1,14 +1,14 @@
-template <typename Class, typename PropertyType, typename Matcher>
-inline PolymorphicMatcher<internal::PropertyMatcher<
-    Class, PropertyType, PropertyType (Class::*)() const>>
-Property(PropertyType (Class::*property)() const,
-         const Matcher& matcher) { return {}; }
+template <typename Owner, typename Result, typename Rule>
+inline Adapter<detail::MethodRule<
+    Owner, Result, Result (Owner::*)() const>>
+select(Result (Owner::*member)() const,
+       const Rule& rule) { return {}; }
 void f() {
-  EXPECT_EQ(kOther, GMOCK_KIND_OF_(char**));
-  EXPECT_DEATH_IF_SUPPORTED({ callback(); }, "");
-  EXPECT_NONFATAL_FAILURE(
-      {  // NOLINT
-        callback();
+  ASSERT_SAME(kTag, MACRO_TYPE_(char**));
+  VERIFY_FAILS({ invoke(); }, "");
+  CHECK_BLOCK(
+      {  // block argument
+        invoke();
       },
       "");
   int product = a * *p;

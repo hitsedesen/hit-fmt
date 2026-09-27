@@ -3,9 +3,9 @@
     "template"
     (template-parameter-list
       "<"
-      (template-parameter "typename" "Class")
+      (template-parameter "typename" "Owner")
       (list-separator ",")
-      (template-parameter "typename" "PropertyType")
+      (template-parameter "typename" "Result")
       ">"
     )
     (function-declaration
@@ -13,19 +13,19 @@
       (init-declarator-list
         (init-declarator
           (declarator
-            (declarator-name "Property")
+            (declarator-name "select")
             (function-declarator
               (parameter-list
                 "("
                 (parameter-declaration
-                  (declaration-specifiers "PropertyType")
+                  (declaration-specifiers "Result")
                   (init-declarator-list
                     (init-declarator
                       (declarator
                         (nested-declarator
                           "("
-                          (member-pointer-operator "Class" "::" "*")
-                          (declarator-name "property")
+                          (member-pointer-operator "Owner" "::" "*")
+                          (declarator-name "member")
                           ")"
                         )
                         (function-declarator
@@ -49,38 +49,38 @@
     "template"
     (template-parameter-list
       "<"
-      (template-parameter "typename" "Class")
+      (template-parameter "typename" "Owner")
       (list-separator ",")
-      (template-parameter "typename" "PropertyType")
+      (template-parameter "typename" "Result")
       (list-separator ",")
-      (template-parameter "typename" "Matcher")
+      (template-parameter "typename" "Rule")
       ">"
     )
     (function-definition
       (declaration-specifiers
-        "inline" "PolymorphicMatcher"
+        "inline" "Adapter"
         (template-argument-list
           "<"
-          (template-argument "internal" "::" "PropertyMatcher" "<" "Class" "," "PropertyType" "," "PropertyType" "(" "Class" "::" "*" ")" "(" ")" "const")
+          (template-argument "detail" "::" "MethodRule" "<" "Owner" "," "Result" "," "Result" "(" "Owner" "::" "*" ")" "(" ")" "const")
           ">>"
         )
       )
       (init-declarator-list
         (init-declarator
           (declarator
-            (declarator-name "Property")
+            (declarator-name "select")
             (function-declarator
               (parameter-list
                 "("
                 (parameter-declaration
-                  (declaration-specifiers "PropertyType")
+                  (declaration-specifiers "Result")
                   (init-declarator-list
                     (init-declarator
                       (declarator
                         (nested-declarator
                           "("
-                          (member-pointer-operator "Class" "::" "*")
-                          (declarator-name "property")
+                          (member-pointer-operator "Owner" "::" "*")
+                          (declarator-name "member")
                           ")"
                         )
                         (function-declarator
@@ -93,12 +93,12 @@
                 )
                 (list-separator ",")
                 (parameter-declaration
-                  (declaration-specifiers "const" "Matcher")
+                  (declaration-specifiers "const" "Rule")
                   (init-declarator-list
                     (init-declarator
                       (declarator
                         (pointer-operator "&")
-                        (declarator-name "matcher")
+                        (declarator-name "rule")
                       )
                     )
                   )
@@ -138,7 +138,7 @@
       "{"
       (expression-statement
         (call-expression
-          (identifier-expression "EXPECT_DEATH_IF_SUPPORTED")
+          (identifier-expression "VERIFY_FAILS")
           (argument-list
             "("
             (argument
@@ -146,7 +146,7 @@
                 "{"
                 (expression-statement
                   (call-expression
-                    (identifier-expression "callback")
+                    (identifier-expression "invoke")
                     (argument-list "(" ")")
                   )
                   ";"
@@ -165,16 +165,16 @@
       )
       (expression-statement
         (call-expression
-          (identifier-expression "EXPECT_EQ")
+          (identifier-expression "ASSERT_SAME")
           (argument-list
             "("
             (argument
-              (identifier-expression "kOther")
+              (identifier-expression "kTag")
             )
             (list-separator ",")
             (argument
               (call-expression
-                (identifier-expression "GMOCK_KIND_OF_")
+                (identifier-expression "MACRO_TYPE_")
                 (argument-list
                   "("
                   (argument
