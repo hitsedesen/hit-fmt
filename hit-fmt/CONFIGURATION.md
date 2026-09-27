@@ -841,6 +841,77 @@ comments, directives, multiline parameter expressions and CRLF lists are
 left intact. Calls are unaffected. Other former formatting settings are
 rejected rather than silently ignored.
 
+## Google-style example and limits
+
+[`examples/google.hit-fmt`](examples/google.hit-fmt) is a conservative
+approximation of Google's C++ style (and clang-format's Google preset). Use
+`--config hit-fmt/examples/google.hit-fmt`, or copy it to `.hit-fmt`. It
+selects two-space indentation, an 80-column limit, attached braces, left
+pointer alignment, packed arguments, and supported token spacing. It is not
+a replacement for `clang-format -style=Google` or a Google C++ style review.
+The profile deliberately preserves options that caused incorrect changes in
+real Google code (see below).
+
+Missing or insufficient controls for a full Google profile include:
+
+- Access labels have a **one-space** offset (` public:`) with two-space
+  member indentation. `IndentAccessModifiers` supports only zero or one
+  *IndentWidth* (two spaces), not an arbitrary offset. Namespace comments
+  need **two** spaces before `//`; `NamespaceComments = Required` emits
+  one. No setting can add the comment without changing that spacing.
+- Include grouping (related header first, C/system/other libraries and
+  project headers), blank lines between groups, and sorting inside each
+  group; `IncludeOrder = Sort` cannot represent these categories. Header
+  guards, forward declarations, and `clang-format off` regions are not
+  enforced. Existing leading/trailing comment columns and prose are not
+  aligned or reflowed.
+- General continuation indentation, return-type and template-declaration
+  breaks, short-function policies, existing whitespace in unparsed code,
+  and context-dependent constructor/base-list layout cannot be fully
+  expressed. `ColumnLimit` does not guarantee wrapping of arbitrary lines.
+  For example, `gmock_main.cc:57` in GoogleTest contains a 143-column URL
+  comment which this profile reports but cannot fix.
+- Naming rules for fields with trailing `_`, constants with leading `k`,
+  enum values, and exceptions for tests/macros cannot be represented by
+  one case and prefix policy per declaration kind. Google conventions for
+  headers, documentation, API design, and language usage need review.
+
+Corpus check: tested against the C++ sources in the Ubuntu-packaged
+GoogleTest/GoogleMock (`/usr/src/googletest`, GoogleTest 1.12.1). Copies of
+`gtest-filepath.cc`, `gmock-cardinalities.cc`, `gtest-port.h`, and
+`gmock-internal-utils.cc` remain unchanged with the profile. Observed
+behavior when trying the more aggressive, seemingly appropriate options:
+
+- `IndentBlockBodies = true` moves statements in inline methods of
+  `googlemock/src/gmock-cardinalities.cc` (around line 54) two spaces to the
+  left and moves closing braces too, destroying the already correct nesting.
+- `BraceInitializerSpacing = NoSpace` turns `class GTEST_API_ RE {` into
+  `class GTEST_API_ RE{` in `googletest/include/gtest/internal/gtest-port.h`
+  (around line 940): a macro-annotated record is mistaken for an initializer.
+  `MemberAccessOperatorsSpacing = NoSpace` changes
+  `GTEST_API_ ::std::string` to `GTEST_API_::std::string` there (around line
+  1016), potentially changing the meaning after macro expansion.
+- `BinaryOperatorSpacing = Space` introduces `value ,` in a
+  `static_assert(std::is_base_of<Base, Derived>::value, ...)` in the same
+  header (around line 1151). `TernaryOperatorSpacing = Space` collapses
+  deliberate alignment around `?` in the nested conditional expressions
+  in `googletest/src/gtest-death-test.cc` (around line 519) without aligning
+  the other branches.
+- `FunctionParameterIndent = Continuation` alone reindents the already
+  correct four-space, first-parameter-on-next-line layout in
+  `googlemock/src/gmock-internal-utils.cc:59` to the column after `(`.
+  `FunctionParameterNewLineIndent = 4` avoids that case. With
+  `InitializerListSplit = Pack`, the nested aggregate initializer near
+  line 217 of that file is also needlessly expanded.
+- `NamespaceComments = Required` rewrites `}  // namespace testing` to
+  `} // namespace testing` in `gtest-filepath.cc`, and replaces the
+  descriptive `}  // Unnamed namespace` in `gmock-cardinalities.cc` with
+  `} // namespace`. It is therefore left at `Preserve`.
+
+These examples are limitations of the current formatter, not violations in
+GoogleTest. Profile settings that preserve such constructs trade off coverage
+against modifying already correctly formatted code.
+
 ## LLVM-style example and limits
 
 [`examples/llvm.hit-fmt`](examples/llvm.hit-fmt) is an approximate LLVM C++
