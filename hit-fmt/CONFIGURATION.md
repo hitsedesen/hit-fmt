@@ -758,3 +758,45 @@ Only safely movable parameter lists in function declarators are changed:
 comments, directives, multiline parameter expressions and CRLF lists are
 left intact. Calls are unaffected. Other former formatting settings are
 rejected rather than silently ignored.
+
+## LLVM-style example and limits
+
+[`examples/llvm.hit-fmt`](examples/llvm.hit-fmt) is an approximate LLVM C++
+profile. Copy it to `.hit-fmt` or pass `--config hit-fmt/examples/llvm.hit-fmt`.
+It selects LLVM's 2-space indent and 80-column limit, attached braces,
+spacing for supported constructs, packed parameters and call arguments,
+trailing binary operators, leading ternary operators, LLVM-style pointer
+and reference placement, and basic naming checks. This is **not** a
+replacement for `clang-format -style=LLVM` or a
+complete implementation of the [LLVM Coding
+Standards](https://llvm.org/docs/CodingStandards.html).
+In particular, `ColumnLimit` does not guarantee that every line is wrapped,
+and naming checks only report violations in the declarations they recognize.
+
+LLVM rules not fully expressible or enforced by this profile include:
+
+- Include categories and ordering (main module header first, then local,
+  project, and system headers), required/minimal includes, and header guards.
+  `IncludeOrder = Sort` only sorts safe contiguous literal include runs by
+  path, with quoted headers before angled headers; it cannot encode LLVM's
+  categories. The example preserves includes instead.
+- LLVM's context-sensitive inheritance and constructor-initializer layout,
+  return-type, template, and `requires` breaks; alignment of continuations,
+  operands, trailing comments, and escaped newlines. The example preserves
+  inheritance lists rather than rewriting them to a different layout.
+- Full layout of initializer lists, case-label indentation, short functions
+  or lambdas, and empty lines. Specific initializer and label-colon gaps,
+  pointer/reference declarators, directive prefixes, and generated
+  indentation are configurable; these do not amount to full-file
+  formatting. Existing indentation, multiline directives, and comment
+  prose (including Doxygen text and file headers) remain source-owned.
+  Expression and argument wrapping applies only to safe parsed constructs.
+- LLVM's short-namespace exception for closing comments:
+  `NamespaceComments = Required` adds comments even to short namespaces.
+- Contextual naming rules: enumerators and public members, enum `Kind`
+  suffixes and enumerator prefixes, STL-like method exceptions, and the
+  distinction between declarations and definitions. The example's case
+  checks can flag legitimate exceptions and skip ambiguous declarations;
+  they cannot check whether names are descriptive nouns or verbs.
+- Language, library, documentation, and API-design guidance in the LLVM
+  Coding Standards. Those rules require review beyond a formatter.

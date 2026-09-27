@@ -1,0 +1,64 @@
+# Approximation of the LLVM C++ coding style / clang-format's LLVM preset.
+# Use with --config, or copy to .hit-fmt in the source tree.
+# See ../CONFIGURATION.md for unsupported rules and safety limits.
+IndentWidth = 2
+ColumnLimit = 80
+IndentationKind = Spaces
+TrailingWhitespace = Trim
+PointerReferenceLocation = Right
+LabelColonSpacing = NoSpace
+
+IndentAccessModifiers = NoIndent
+IndentMembers = Indent
+ClassBracePlacement = Attach
+StructBracePlacement = Attach
+UnionBracePlacement = Attach
+FunctionBracePlacement = Attach
+LambdaBracePlacement = Attach
+NamespaceBracePlacement = Attach
+ClassBraceSpacing = SingleSpace
+StructBraceSpacing = SingleSpace
+UnionBraceSpacing = SingleSpace
+EnumBraceSpacing = SingleSpace
+FunctionBraceSpacing = SingleSpace
+LambdaBraceSpacing = SingleSpace
+NamespaceBraceSpacing = SingleSpace
+ControlBlockBracePlacement = SameLine
+ControlBlockKeywordSpacing = Space
+NamespaceComments = Required
+
+FunctionParameterSplit = Pack
+FirstFunctionParameterPosition = NameLine
+FunctionParameterIndent = Continuation
+MergeFunctionParameters = true
+ExpressionLayoutCondition = Overflow
+BinaryOperatorPlacement = Trailing
+TernaryOperatorPlacement = Leading
+TernarySplit = AsNeeded
+CallArgumentSplit = Pack
+FirstCallArgumentPosition = CallLine
+CallArgumentIndent = Continuation
+
+FunctionSpaceBeforeParameters = NoSpace
+FunctionCallSpaceBeforeParameters = NoSpace
+SpaceInsideFunctionParameters = NoSpace
+SpaceInsideCallArguments = NoSpace
+LambdaSpaceBeforeParameters = NoSpace
+SpaceInsideLambdaParameters = NoSpace
+SpaceAroundCaptureList = NoSpace
+SpaceAroundCaptureAssignment = Space
+
+# LLVM uses upper-initial types and variables, lower-initial functions.
+# Naming checks only cover unambiguous definitions/declarations; see docs.
+ClassNameCase = PascalCase
+StructNameCase = PascalCase
+UnionNameCase = PascalCase
+EnumNameCase = PascalCase
+ConceptNameCase = PascalCase
+FunctionNameCase = camelCase
+VariableNameCase = PascalCase
+
+# Leave includes and inheritance lists alone rather than imposing an order or
+# continuation layout different from LLVM's context-dependent rules.
+IncludeOrder = Preserve
+InheritanceList = Preserve
