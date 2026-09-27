@@ -1094,16 +1094,6 @@ CRLF lists are left intact. They do not change calls.
   directives, CRLF, backslashes, and ambiguous or recovered syntax stay
   source-owned. Bare `<`, `>`, `<<`, and `>>` remain untouched even when
   parsed as operators: without name lookup they can be template syntax.
-- `ExpressionLayoutAlgorithm`: `Greedy` (default) picks a preferred
-  breakpoint that fits the current line; `DynamicProgramming` minimizes
-  a bounded whole-line cost for raggedness, extra breaks, and operator
-  precedence. Both use the same parser-approved breakpoints, respect
-  `BinaryOperatorPlacement` and `AssignmentOperatorPlacement`, and prefer
-  outer expression breaks over breaks
-  inside parentheses. The choice also affects `Pack` call argument and
-  initializer grouping, but not `Preserve` or `OnePerLine` lists, function
-  parameters, or inheritance. Searches with more than 96 candidates, or
-  without a fitting path, fall back to `Greedy`.
 - `BinaryOperatorPlacement`: `Trailing` (default, keep a wrapped binary
   operator at the end of the previous line) or `Leading` (put it at the
   start of the continuation line). Only applies when

@@ -1589,57 +1589,6 @@ bool IsWhitespace(std::string_view text)
     });
 }
 
-// Minimize a bounded whole-list cost for Pack. The candidate boundaries are
-// precisely the parsed argument commas; explicit OnePerLine and Preserve
-// policies never pass through this search.
-std::optional<std::vector<bool>> ChooseCallArgumentBreaks(
-    const std::vector<std::string_view>& arguments, size_t firstColumn,
-    size_t continuationColumn, size_t suffixWidth, size_t columnLimit,
-    bool requireBreak)
-{
-    constexpr size_t MaxArguments = 96;
-    const auto count = arguments.size();
-    if (count < 2 || count > MaxArguments) {
-        return std::nullopt;
-    }
-    constexpr auto Infinity = std::numeric_limits<uint64_t>::max();
-    std::vector<uint64_t> cost(count + 1, Infinity);
-    std::vector<size_t> next(count, count);
-    cost[count] = 0;
-    for (size_t start = count; start-- > 0;) {
-        auto width = start == 0 ? firstColumn : continuationColumn;
-        for (auto end = start; end < count; ++end) {
-            width += arguments[end].size() + (end == start ? 0 : 2);
-            const bool last = end + 1 == count;
-            auto projected = width + (last ? suffixWidth : 1);
-            if (projected > columnLimit) {
-                break;
-            }
-            if ((requireBreak && start == 0 && last) ||
-                cost[end + 1] == Infinity)
-            {
-                continue;
-            }
-            auto slack = columnLimit - projected;
-            auto score = cost[end + 1] + uint64_t(slack) * slack /
-                (last ? 2 : 1) + (last ? 0 : 250);
-            if (score < cost[start]) {
-                cost[start] = score;
-                next[start] = end + 1;
-            }
-        }
-    }
-    if (cost[0] == Infinity) {
-        return std::nullopt;
-    }
-    std::vector<bool> breakAfter(count - 1, false);
-    for (size_t start = 0; start < count && next[start] < count;) {
-        breakAfter[next[start] - 1] = true;
-        start = next[start];
-    }
-    return breakAfter;
-}
-
 // Only rewrite lists whose comma-separated elements and intervening trivia
 // can be moved without touching comments, directives, or nested line breaks.
 std::optional<Replacement> ReflowDelimitedList(
@@ -1882,17 +1831,6 @@ std::optional<Replacement> ReflowDelimitedList(
     size_t column = (firstNew ? indent : prefix + (innerSpace ? 1 : 0)) +
         parameters.front().size();
     bool broke = firstNew;
-    std::optional<std::vector<bool>> chosenBreaks;
-    if ((call || braced) && !onePerLine &&
-        style.ExpressionLayoutAlgorithm ==
-            ExpressionLayoutAlgorithm::DynamicProgramming)
-    {
-        chosenBreaks = ChooseCallArgumentBreaks(parameters,
-            firstNew ? indent : prefix + (innerSpace ? 1 : 0), indent,
-            suffix.size() + (innerSpace ? 1 : 0) + (trailingComma ? 1 : 0),
-            style.ColumnLimit,
-            split && !merge && flatWidth <= style.ColumnLimit && !firstNew);
-    }
     for (size_t i = 1; i < parameters.size(); ++i) {
         bool last = i + 1 == parameters.size();
         bool overflow = column + 2 + parameters[i].size() +
@@ -1900,8 +1838,7 @@ std::optional<Replacement> ReflowDelimitedList(
                 style.ColumnLimit;
         bool forceSplit = split && !merge &&
             flatWidth <= style.ColumnLimit && !broke && last;
-        bool breakBefore = chosenBreaks ? (*chosenBreaks)[i - 1] :
-            onePerLine || overflow || forceSplit;
+        bool breakBefore = onePerLine || overflow || forceSplit;
         if (callLineString && i <= *callLineString) {
             breakBefore = false;
         }
@@ -2148,71 +2085,6 @@ struct ExpressionBreak
     int Priority;
     int Nesting;
 };
-
-// Find a minimum-cost path through the same safe operator gaps as the greedy
-// pass. Each edge is a physical line; short lines and higher-precedence
-// breaks cost more. Bound the search on pathological single-line expressions.
-std::vector<size_t> ChooseExpressionBreaks(
-    std::string_view source, const std::vector<ExpressionBreak>& breaks,
-    size_t begin, size_t end, size_t lineStart, size_t lineEnd,
-    size_t continuationIndent, size_t columnLimit)
-{
-    constexpr size_t MaxCandidates = 96;
-    const auto count = end - begin;
-    if (count == 0 || count > MaxCandidates) {
-        return {};
-    }
-    constexpr auto Infinity = std::numeric_limits<uint64_t>::max();
-    int outerNesting = breaks[begin].Nesting;
-    for (auto i = begin + 1; i < end; ++i) {
-        outerNesting = std::min(outerNesting, breaks[i].Nesting);
-    }
-    std::vector<uint64_t> cost(count + 1, Infinity);
-    std::vector<size_t> next(count + 1, count);
-    for (size_t state = count + 1; state-- > 0;) {
-        const auto start = state == 0 ? lineStart
-            : breaks[begin + state - 1].End;
-        const auto indent = state == 0 ? 0 : continuationIndent;
-        if (start <= lineEnd && indent + lineEnd - start <= columnLimit) {
-            auto slack = columnLimit - (indent + lineEnd - start);
-            cost[state] = uint64_t(slack) * slack / 2;
-        }
-        for (size_t choice = state; choice < count; ++choice) {
-            const auto& candidate = breaks[begin + choice];
-            if (candidate.Begin <= start) {
-                continue;
-            }
-            const auto width = indent + candidate.Begin - start;
-            if (width > columnLimit) {
-                break; // Breakpoints are sorted by source position.
-            }
-            if (source.substr(start, candidate.Begin - start)
-                    .find_first_not_of(" \t") == std::string_view::npos ||
-                cost[choice + 1] == Infinity)
-            {
-                continue;
-            }
-            auto slack = columnLimit - width;
-            auto score = cost[choice + 1] + uint64_t(slack) * slack +
-                250 + 45 * candidate.Priority +
-                8000 * (candidate.Nesting - outerNesting);
-            if (score < cost[state]) {
-                cost[state] = score;
-                next[state] = choice;
-            }
-        }
-    }
-    if (cost[0] == Infinity || next[0] == count) {
-        return {};
-    }
-    std::vector<size_t> selected;
-    for (size_t state = 0; next[state] < count;) {
-        auto choice = next[state];
-        selected.push_back(begin + choice);
-        state = choice + 1;
-    }
-    return selected;
-}
 
 // Identify both delimiters of one complete parsed conditional expression.
 // A colon in a nested conditional, label, or braced initializer is not ours.
@@ -3135,29 +3007,6 @@ std::string FormatExpressions(const parser::SyntaxTree& tree,
         if (safe && lineStart + leading < lineEnd &&
             source[lineStart + leading] != '#')
         {
-            if (style.ExpressionLayoutAlgorithm ==
-                    ExpressionLayoutAlgorithm::DynamicProgramming &&
-                lineEnd - lineStart > style.ColumnLimit)
-            {
-                auto selected = ChooseExpressionBreaks(source, breaks,
-                    cursor, stop, lineStart, lineEnd,
-                    cursor < stop ? continuationColumn(breaks[cursor].Begin,
-                        leading) : leading + style.IndentWidth,
-                    style.ColumnLimit);
-                if (!selected.empty()) {
-                    for (auto choice : selected) {
-                        const auto& gap = breaks[choice];
-                        edits.push_back({gap.Begin, gap.End,
-                            "\n" + GeneratedIndent(
-                                continuationColumn(gap.Begin, leading),
-                                style)});
-                    }
-                    cursor = stop;
-                    lineStart = lineEnd == source.size()
-                        ? lineEnd : lineEnd + 1;
-                    continue;
-                }
-            }
             size_t segment = lineStart;
             size_t indent = 0;
             while (indent + lineEnd - segment > style.ColumnLimit) {

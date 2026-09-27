@@ -512,19 +512,17 @@ TEST(CallArgumentTest, ReflowsOnlySafeParsedCalls)
         "void f() {\n"
         "    use(a, bb, ccc, dddd, eeeee, ffffff);\n"
         "}\n";
-    const auto balanced =
+    const auto packedBalanced =
         "void f() {\n"
-        "    use(a, bb, ccc, dddd,\n"
-        "        eeeee, ffffff);\n"
+        "    use(a, bb, ccc, dddd, eeeee,\n"
+        "        ffffff);\n"
         "}\n";
     style.ColumnLimit = 32;
     style.ExpressionLayoutCondition = formatter::ExpressionLayoutCondition::Overflow;
     style.CallArgumentSplit = formatter::CallArgumentSplit::Pack;
     style.SpaceInsideCallArguments = formatter::SpaceInsideCallArguments::Preserve;
-    style.ExpressionLayoutAlgorithm =
-        formatter::ExpressionLayoutAlgorithm::DynamicProgramming;
-    EXPECT_EQ(FormatWithStyle(balancedInput, style), balanced);
-    EXPECT_EQ(FormatWithStyle(balanced, style), balanced);
+    EXPECT_EQ(FormatWithStyle(balancedInput, style), packedBalanced);
+    EXPECT_EQ(FormatWithStyle(packedBalanced, style), packedBalanced);
     style.CallArgumentSplit = formatter::CallArgumentSplit::OnePerLine;
     const auto onePerLineBalanced =
         "void f() {\n"
@@ -614,19 +612,14 @@ TEST(CallArgumentTest, LaysOutEnclosingMacroAndNestedCalls)
         formatter::ExpressionLayoutCondition::Always})
     {
         style.ExpressionLayoutCondition = mode;
-        for (auto algorithm : {formatter::ExpressionLayoutAlgorithm::Greedy,
-            formatter::ExpressionLayoutAlgorithm::DynamicProgramming})
-        {
-            style.ExpressionLayoutAlgorithm = algorithm;
-            const auto actual = FormatWithStyle(input, style);
-            if (!firstOutput) {
-                firstOutput = actual;
-                fixture.Expect(actual);
-            } else {
-                EXPECT_EQ(actual, *firstOutput);
-            }
-            EXPECT_EQ(FormatWithStyle(actual, style), actual);
+        const auto actual = FormatWithStyle(input, style);
+        if (!firstOutput) {
+            firstOutput = actual;
+            fixture.Expect(actual);
+        } else {
+            EXPECT_EQ(actual, *firstOutput);
         }
+        EXPECT_EQ(FormatWithStyle(actual, style), actual);
     }
     style.CallArgumentSplit = formatter::CallArgumentSplit::OnePerLine;
     ExpectUnchanged("void f() { EXPECT_EQ(a, b); }\n", style);
@@ -702,40 +695,25 @@ TEST(ExpressionLayoutTest, PlacesAndGroupsTernaryBreaks)
     const auto directory = std::filesystem::path(FORMATTER_TESTDATA_DIR) /
         "../ternary-layout";
     const auto input = ReadFile(directory / "input.cpp");
-    std::array<std::optional<std::string>, 4> firstOutputs;
-    const auto verify = [&] (size_t index, const char* filename,
-        std::string_view actual) {
-        if (firstOutputs[index]) {
-            EXPECT_EQ(actual, *firstOutputs[index]);
-        } else {
-            firstOutputs[index] = actual;
-            test::golden::ExpectGolden(directory / filename, actual);
-        }
-    };
-    for (auto algorithm : {formatter::ExpressionLayoutAlgorithm::Greedy,
-        formatter::ExpressionLayoutAlgorithm::DynamicProgramming})
+    for (auto placement : {formatter::TernaryOperatorPlacement::Leading,
+        formatter::TernaryOperatorPlacement::Trailing})
     {
-        style.ExpressionLayoutAlgorithm = algorithm;
-        for (auto placement : {formatter::TernaryOperatorPlacement::Leading,
-            formatter::TernaryOperatorPlacement::Trailing})
-        {
-            style.TernaryOperatorPlacement = placement;
-            style.TernarySplit = formatter::TernarySplit::AsNeeded;
-            const bool leading =
-                placement == formatter::TernaryOperatorPlacement::Leading;
-            const auto two = FormatWithStyle(input, style);
-            verify(leading ? 0 : 1,
-                leading ? "two-leading.output.cpp" : "two-trailing.output.cpp",
-                two);
-            EXPECT_EQ(FormatWithStyle(two, style), two);
-            style.TernarySplit = formatter::TernarySplit::ThreeLines;
-            const auto three = FormatWithStyle(input, style);
-            verify(leading ? 2 : 3,
-                leading ? "three-leading.output.cpp" : "three-trailing.output.cpp",
-                three);
-            EXPECT_EQ(FormatWithStyle(three, style), three);
-            ExpectUnchanged("int f() { return flag ? a : b; }\n", style);
-        }
+        style.TernaryOperatorPlacement = placement;
+        style.TernarySplit = formatter::TernarySplit::AsNeeded;
+        const bool leading =
+            placement == formatter::TernaryOperatorPlacement::Leading;
+        const auto two = FormatWithStyle(input, style);
+        test::golden::ExpectGolden(directory /
+            (leading ? "two-leading.output.cpp" : "two-trailing.output.cpp"),
+            two);
+        EXPECT_EQ(FormatWithStyle(two, style), two);
+        style.TernarySplit = formatter::TernarySplit::ThreeLines;
+        const auto three = FormatWithStyle(input, style);
+        test::golden::ExpectGolden(directory /
+            (leading ? "three-leading.output.cpp" : "three-trailing.output.cpp"),
+            three);
+        EXPECT_EQ(FormatWithStyle(three, style), three);
+        ExpectUnchanged("int f() { return flag ? a : b; }\n", style);
     }
 
     const auto threeLeading = ReadFile(directory / "three-leading.output.cpp");
@@ -935,13 +913,11 @@ TEST(ExpressionLayoutTest, PrefersOuterConditionalBreaks)
     const test::golden::Fixture fixture{
         std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../outer-conditional",
         "configured"};
-    style.ExpressionLayoutAlgorithm =
-        formatter::ExpressionLayoutAlgorithm::DynamicProgramming;
     ExpectFormattedGolden(fixture.Named(".output.cpp"),
         fixture.Input(), style);
 }
 
-TEST(ExpressionLayoutTest, ComparesGreedyAndBoundedDynamicProgramming)
+TEST(ExpressionLayoutTest, WrapsLongBinaryExpressions)
 {
     formatter::Style style;
     style.ExpressionLayoutCondition = formatter::ExpressionLayoutCondition::Overflow;
@@ -955,37 +931,16 @@ TEST(ExpressionLayoutTest, ComparesGreedyAndBoundedDynamicProgramming)
         "    return a + bb + ccc + dddd + eeeee +\n"
         "        ffffff;\n"
         "}\n";
-    const auto balanced =
-        "void f() {\n"
-        "    return a + bb + ccc + dddd +\n"
-        "        eeeee + ffffff;\n"
-        "}\n";
     EXPECT_EQ(FormatWithStyle(input, style), greedy);
-    style.ExpressionLayoutAlgorithm =
-        formatter::ExpressionLayoutAlgorithm::DynamicProgramming;
-    EXPECT_EQ(FormatWithStyle(input, style), balanced);
-    EXPECT_EQ(FormatWithStyle(balanced, style), balanced);
+    EXPECT_EQ(FormatWithStyle(greedy, style), greedy);
     style.BinaryOperatorPlacement = formatter::BinaryOperatorPlacement::Leading;
     const auto leading =
         "void f() {\n"
-        "    return a + bb + ccc + dddd\n"
-        "        + eeeee + ffffff;\n"
+        "    return a + bb + ccc + dddd + eeeee\n"
+        "        + ffffff;\n"
         "}\n";
     EXPECT_EQ(FormatWithStyle(input, style), leading);
     style.BinaryOperatorPlacement = formatter::BinaryOperatorPlacement::Trailing;
-    style.ExpressionLayoutCondition = formatter::ExpressionLayoutCondition::Always;
-    EXPECT_EQ(FormatWithStyle(greedy, style), balanced);
-    std::string many = "void f() {\n    return a";
-    for (int i = 0; i < 100; ++i) {
-        many += " + a";
-    }
-    many += ";\n}\n";
-    style.ExpressionLayoutCondition = formatter::ExpressionLayoutCondition::Overflow;
-    style.ExpressionLayoutAlgorithm = formatter::ExpressionLayoutAlgorithm::Greedy;
-    const auto fallback = FormatWithStyle(many, style);
-    style.ExpressionLayoutAlgorithm =
-        formatter::ExpressionLayoutAlgorithm::DynamicProgramming;
-    EXPECT_EQ(FormatWithStyle(many, style), fallback);
     style.ExpressionLayoutCondition = formatter::ExpressionLayoutCondition::Preserve;
     ExpectUnchanged(input, style);
     style.ExpressionLayoutCondition = formatter::ExpressionLayoutCondition::Always;
@@ -1504,7 +1459,6 @@ TEST(PreserveConfigTest, RejectsInvalidSettings)
     };
     save("IndentWidth = 2\nColumnLimit = 40\n"
          "ExpressionLayoutCondition = FitOrOverflow\n"
-         "ExpressionLayoutAlgorithm = DynamicProgramming\n"
          "BinaryOperatorPlacement = Trailing\n"
          "AssignmentOperatorPlacement = Trailing\n"
          "StatementAttributeIndent = Block\n"
@@ -1535,8 +1489,6 @@ TEST(PreserveConfigTest, RejectsInvalidSettings)
     EXPECT_EQ(config.FormattingStyle.ColumnLimit, 40u);
     EXPECT_EQ(config.FormattingStyle.ExpressionLayoutCondition,
         formatter::ExpressionLayoutCondition::FitOrOverflow);
-    EXPECT_EQ(config.FormattingStyle.ExpressionLayoutAlgorithm,
-        formatter::ExpressionLayoutAlgorithm::DynamicProgramming);
     EXPECT_EQ(config.FormattingStyle.BinaryOperatorPlacement,
         formatter::BinaryOperatorPlacement::Trailing);
     EXPECT_EQ(config.FormattingStyle.AssignmentOperatorPlacement,
@@ -1646,7 +1598,7 @@ TEST(PreserveConfigTest, RejectsInvalidSettings)
         "ClassBracePlacement = attach\n",
         "ExpressionWrap = Always\n",
         "ExpressionLayoutCondition = Unknown\n",
-        "ExpressionLayoutAlgorithm = BruteForce\n",
+        "ExpressionLayoutAlgorithm = DynamicProgramming\n",
         "BinaryOperatorPlacement = Middle\n",
         "AssignmentOperatorPlacement = Middle\n",
         "TernaryOperatorPlacement = Middle\n",
