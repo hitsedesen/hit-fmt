@@ -1,0 +1,2 @@
+[[nodiscard]]
+int f();

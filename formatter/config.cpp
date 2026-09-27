@@ -321,6 +321,10 @@ void ValidateStyleLimits(const Style& style,
         ThrowConfigError(path, line,
             "InheritanceListIndent must not exceed 32");
     }
+    if (style.ConstructorInitializerListIndent > 32) {
+        ThrowConfigError(path, line,
+            "ConstructorInitializerListIndent must not exceed 32");
+    }
 }
 
 template <auto Member>

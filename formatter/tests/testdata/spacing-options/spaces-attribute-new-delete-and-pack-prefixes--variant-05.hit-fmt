@@ -1,0 +1,4 @@
+AttributeSpaceBeforeSpecifier = Space
+NewInitializerSpaceBeforeParentheses = Space
+DeleteArraySpaceBeforeBrackets = Space
+SizeofPackSpaceBeforeParentheses = Space

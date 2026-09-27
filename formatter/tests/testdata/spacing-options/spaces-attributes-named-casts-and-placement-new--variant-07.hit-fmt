@@ -1,0 +1,4 @@
+AttributeSpaceAfterSpecifier = NoSpace
+NamedCastSpaceBeforeTypeArguments = NoSpace
+PlacementNewSpaceBeforeArguments = NoSpace
+AlignasSpaceBeforeParentheses = NoSpace

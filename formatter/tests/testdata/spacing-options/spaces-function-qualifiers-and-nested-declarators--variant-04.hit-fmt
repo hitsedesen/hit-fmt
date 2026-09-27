@@ -1,0 +1,6 @@
+FunctionQualifierSpacing = NoSpace
+FunctionRefQualifierSpacing = NoSpace
+NestedDeclaratorInteriorSpacing = NoSpace
+NestedDeclaratorPointerSpacing = NoSpace
+MemberPointerDeclaratorSpacing = NoSpace
+PointerReferenceLocation = Preserve

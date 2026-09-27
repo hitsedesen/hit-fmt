@@ -36,6 +36,51 @@ bool HasRecoveryChild(const parser::Node& node)
     return false;
 }
 
+std::string GeneratedIndent(size_t columns, const Style& style)
+{
+    if (style.IndentationKind != IndentationKind::Tabs ||
+        style.IndentWidth == 0)
+    {
+        return std::string(columns, ' ');
+    }
+    return std::string(columns / style.IndentWidth, '\t') +
+        std::string(columns % style.IndentWidth, ' ');
+}
+
+std::string GeneratedIndentAfter(std::string_view prefix, size_t columns,
+    const Style& style)
+{
+    if (style.IndentationKind != IndentationKind::Tabs ||
+        style.IndentWidth == 0)
+    {
+        return std::string(columns, ' ');
+    }
+    size_t column = 0;
+    for (char ch : prefix) {
+        if (ch == '\t') {
+            column += style.IndentWidth - column % style.IndentWidth;
+        } else if (ch == ' ') {
+            ++column;
+        } else {
+            return std::string(columns, ' ');
+        }
+    }
+    std::string indent;
+    const auto target = column + columns;
+    while (column < target) {
+        const auto next = column +
+            style.IndentWidth - column % style.IndentWidth;
+        if (next <= target) {
+            indent.push_back('\t');
+            column = next;
+        } else {
+            indent.append(target - column, ' ');
+            break;
+        }
+    }
+    return indent;
+}
+
 bool IsBaseSpacingKeyword(TK kind)
 {
     return kind == TK::Keyword_public ||
@@ -79,6 +124,7 @@ public:
         if (style.IndentAccessModifiers != BodyIndentation::Preserve ||
             style.IndentMembers != BodyIndentation::Preserve ||
             style.InheritanceList == InheritanceListMode::Format ||
+            style.ConstructorInitializerList == InheritanceListMode::Format ||
             style.ClassBracePlacement != BracePlacement::Preserve ||
             style.StructBracePlacement != BracePlacement::Preserve ||
             style.UnionBracePlacement != BracePlacement::Preserve ||
@@ -247,6 +293,7 @@ private:
                 Style_.NamespaceBraceSpacing);
             break;
         case NK::FunctionDefinition:
+            MarkConstructorInitializers(node);
             for (auto* child = node.FirstChild; child;
                 child = child->NextSibling)
             {
@@ -355,7 +402,8 @@ private:
             {
                 BodyIndents_[index] = baseline;
                 if (policy == BodyIndentation::Indent) {
-                    BodyIndents_[index].append(Style_.IndentWidth, ' ');
+                    BodyIndents_[index] += GeneratedIndentAfter(
+                        BodyIndents_[index], Style_.IndentWidth, Style_);
                 }
             }
         };
@@ -394,7 +442,7 @@ private:
     };
 
     std::optional<std::vector<BaseEntry>> CollectBases(
-        const parser::Node& first) const
+        const parser::Node& first, bool normalizeKeywords = true) const
     {
         std::vector<BaseEntry> entries;
         TokenIndex comma = NoToken;
@@ -434,15 +482,17 @@ private:
             }
             std::string normalized;
             size_t cursor = begin;
-            for (auto i = opening; i + 1 < child->Tokens.End; ++i) {
-                if (!IsBaseSpacingKeyword(Tree_.Kind(i))) {
-                    continue;
+            if (normalizeKeywords) {
+                for (auto i = opening; i + 1 < child->Tokens.End; ++i) {
+                    if (!IsBaseSpacingKeyword(Tree_.Kind(i))) {
+                        continue;
+                    }
+                    const auto tokenEnd = Tree_.Token(i).Text.End;
+                    normalized.append(Tree_.Source().substr(
+                        cursor, tokenEnd - cursor));
+                    normalized.push_back(' ');
+                    cursor = Tree_.Token(i + 1).Text.Begin;
                 }
-                const auto tokenEnd = Tree_.Token(i).Text.End;
-                normalized.append(Tree_.Source().substr(
-                    cursor, tokenEnd - cursor));
-                normalized.push_back(' ');
-                cursor = Tree_.Token(i + 1).Text.Begin;
             }
             normalized.append(Tree_.Source().substr(cursor, end - cursor));
             entries.push_back({opening, comma, std::move(normalized)});
@@ -546,8 +596,9 @@ private:
         {
             indent = parent->second;
         }
-        indent.append(Style_.InheritanceListIndent == 0
-            ? Style_.IndentWidth : Style_.InheritanceListIndent, ' ');
+        indent += GeneratedIndentAfter(indent,
+            Style_.InheritanceListIndent == 0 ? Style_.IndentWidth
+                : Style_.InheritanceListIndent, Style_);
         auto space = [](InheritanceListSpacing policy) -> std::string_view {
             return policy == InheritanceListSpacing::Space ? " " : "";
         };
@@ -607,6 +658,207 @@ private:
                 commaAfter.size() + entry.Text.size();
             const bool breakLine = onePerLine || width > Style_.ColumnLimit;
             if (breakLine && Style_.InheritanceListCommaPlacement ==
+                    InheritanceListCommaPlacement::AttachToNext)
+            {
+                InheritanceGaps_[entry.Comma] = newline;
+                InheritanceGaps_[entry.Opening] = commaAfter;
+                column = indent.size() + 1 + commaAfter.size() +
+                    entry.Text.size();
+            } else if (breakLine) {
+                InheritanceGaps_[entry.Comma] = commaBefore;
+                InheritanceGaps_[entry.Opening] = newline;
+                column = indent.size() + entry.Text.size();
+            } else {
+                InheritanceGaps_[entry.Comma] = commaBefore;
+                InheritanceGaps_[entry.Opening] = commaAfter;
+                column = width;
+            }
+        }
+    }
+
+    void MarkConstructorInitializers(const parser::Node& definition)
+    {
+        if (Style_.ConstructorInitializerList != InheritanceListMode::Format ||
+            HasRecoveryChild(definition))
+        {
+            return;
+        }
+        const parser::Node* list = nullptr;
+        std::vector<const parser::Node*> pending;
+        for (auto* child = definition.Child(); child;
+            child = child->NextSibling)
+        {
+            if (child->Kind != NK::CompoundStatement) {
+                pending.push_back(child);
+            }
+        }
+        while (!pending.empty()) {
+            const auto* node = pending.back();
+            pending.pop_back();
+            if (node->Kind == NK::ConstructorInitializerList) {
+                list = node;
+                break;
+            }
+            if (node->Kind == NK::FunctionDeclarator ||
+                node->Kind == NK::InitDeclaratorList ||
+                node->Kind == NK::InitDeclarator ||
+                node->Kind == NK::Declarator ||
+                node->Kind == NK::FunctionTryBlock)
+            {
+                for (auto* child = node->Child(); child;
+                    child = child->NextSibling)
+                {
+                    pending.push_back(child);
+                }
+            }
+        }
+        if (!list || HasRecoveryChild(*list) || list->Tokens.Empty() ||
+            list->Tokens.End >= Tree_.TokenCount() ||
+            Tree_.Kind(list->Tokens.End) != TK::Operator_OpenBrace)
+        {
+            return;
+        }
+        const auto colon = list->Tokens.Begin;
+        if (colon <= definition.Tokens.Begin ||
+            Tree_.Kind(colon) != TK::Operator_Colon ||
+            Tree_.Role(colon) !=
+                parser::PunctuationRole::ConstructorInitializerDelimiter ||
+            Tree_.Kind(colon - 1) == TK::Comment ||
+            Tree_.Kind(colon - 1) == TK::PreprocessingDirective)
+        {
+            return;
+        }
+        const auto* first = list->Child();
+        const auto* last = first;
+        bool expectInitializer = true;
+        for (auto* child = first; child; child = child->NextSibling) {
+            if (child->Tokens.Empty() || HasRecoveryChild(*child) ||
+                child->Kind != (expectInitializer
+                    ? NK::ConstructorInitializer : NK::ListSeparator))
+            {
+                return;
+            }
+            expectInitializer = !expectInitializer;
+            last = child;
+        }
+        if (!first || !last || expectInitializer ||
+            first->Tokens.Begin != colon + 1 ||
+            last->Tokens.End != list->Tokens.End)
+        {
+            return;
+        }
+        for (auto* child = first; child; child = child->NextSibling) {
+            if (child->Kind != NK::ConstructorInitializer) {
+                continue;
+            }
+            auto begin = child->Tokens.Begin;
+            auto end = child->Tokens.End - 1;
+            if ((Tree_.Kind(begin) != TK::Identifier &&
+                    Tree_.Kind(begin) != TK::Keyword_decltype) ||
+                (Tree_.Kind(end) != TK::Operator_CloseParenthesis &&
+                    Tree_.Kind(end) != TK::Operator_CloseBrace))
+            {
+                return;
+            }
+            bool complete = false;
+            for (auto i = begin + 1; i < end; ++i) {
+                if ((Tree_.Kind(i) == TK::Operator_OpenParenthesis ||
+                        Tree_.Kind(i) == TK::Operator_OpenBrace) &&
+                    Tree_.MatchingDelimiter(i) == end)
+                {
+                    complete = true;
+                    break;
+                }
+            }
+            if (!complete) {
+                return;
+            }
+        }
+        auto entries = CollectBases(*first, false);
+        if (!entries || entries->empty()) {
+            return;
+        }
+        auto beforeColon = Tree_.WhitespaceBefore(colon);
+        auto beforeInitializer = Tree_.WhitespaceBefore(colon + 1);
+        if (beforeColon.find_first_not_of(" \t\r\n") !=
+                std::string_view::npos ||
+            beforeInitializer.find_first_not_of(" \t\r\n") !=
+                std::string_view::npos)
+        {
+            return;
+        }
+        std::string indent(Indentation(definition.Tokens.Begin));
+        if (auto parent = BodyIndents_.find(definition.Tokens.Begin);
+            parent != BodyIndents_.end())
+        {
+            indent = parent->second;
+        }
+        indent += GeneratedIndentAfter(indent,
+            Style_.ConstructorInitializerListIndent == 0
+                ? Style_.IndentWidth
+                : Style_.ConstructorInitializerListIndent, Style_);
+        auto space = [](InheritanceListSpacing policy) -> std::string_view {
+            return policy == InheritanceListSpacing::Space ? " " : "";
+        };
+        const auto colonBefore =
+            space(Style_.ConstructorInitializerListColonSpaceBefore);
+        const auto colonAfter =
+            space(Style_.ConstructorInitializerListColonSpaceAfter);
+        const auto commaBefore =
+            space(Style_.ConstructorInitializerListCommaSpaceBefore);
+        const auto commaAfter =
+            space(Style_.ConstructorInitializerListCommaSpaceAfter);
+        const auto source = Tree_.Source();
+        const auto headerBegin = Tree_.Token(definition.Tokens.Begin).Text.Begin;
+        const auto headerEnd = Tree_.Token(colon - 1).Text.End;
+        const auto header = source.substr(headerBegin, headerEnd - headerBegin);
+        const auto lineStart = source.rfind('\n', headerBegin);
+        auto prefix = headerBegin - (lineStart == std::string_view::npos
+            ? 0 : lineStart + 1);
+        if (auto parent = BodyIndents_.find(definition.Tokens.Begin);
+            parent != BodyIndents_.end() &&
+                Tree_.WhitespaceBefore(definition.Tokens.Begin).find('\n') !=
+                    std::string_view::npos)
+        {
+            prefix = parent->second.size();
+        }
+        size_t flatWidth = prefix + header.size() + colonBefore.size() +
+            1 + colonAfter.size();
+        for (const auto& entry : *entries) {
+            if (entry.Comma != NoToken) {
+                flatWidth += commaBefore.size() + 1 + commaAfter.size();
+            }
+            flatWidth += entry.Text.size();
+        }
+        const bool overflow = header.find('\n') != std::string_view::npos ||
+            flatWidth > Style_.ColumnLimit;
+        const bool firstNew = Style_.ConstructorInitializerListStart ==
+                ConstructorInitializerStart::NewLine ||
+            (Style_.ConstructorInitializerListStart ==
+                ConstructorInitializerStart::NewLineOnOverflow && overflow);
+        const auto newline = std::string(LineEnding(colon)) + indent;
+        const bool colonWithInitializer =
+            Style_.ConstructorInitializerListColonPlacement ==
+                ConstructorInitializerColonPlacement::AttachToInitializer;
+        InheritanceGaps_[colon] = firstNew && colonWithInitializer
+            ? newline : std::string(colonBefore);
+        InheritanceGaps_[entries->front().Opening] =
+            firstNew && !colonWithInitializer ? newline
+                                             : std::string(colonAfter);
+        auto column = firstNew
+            ? indent.size() + entries->front().Text.size() +
+                (colonWithInitializer ? 1 + colonAfter.size() : 0)
+            : prefix + header.size() + colonBefore.size() + 1 +
+                colonAfter.size() + entries->front().Text.size();
+        const auto split = Style_.ConstructorInitializerListSplit;
+        const bool onePerLine = split == InheritanceListSplit::OnePerLine ||
+            (split == InheritanceListSplit::OnePerLineOnOverflow && overflow);
+        for (size_t i = 1; i < entries->size(); ++i) {
+            const auto& entry = (*entries)[i];
+            const auto width = column + commaBefore.size() + 1 +
+                commaAfter.size() + entry.Text.size();
+            const bool breakLine = onePerLine || width > Style_.ColumnLimit;
+            if (breakLine && Style_.ConstructorInitializerListCommaPlacement ==
                     InheritanceListCommaPlacement::AttachToNext)
             {
                 InheritanceGaps_[entry.Comma] = newline;
@@ -1523,7 +1775,7 @@ std::optional<Replacement> ReflowParenthesizedList(
     }
     const size_t indent = continuationIndent
         ? openBegin + 1 - lineStart : baseIndent + style.IndentWidth;
-    const std::string continuation(indent, ' ');
+    const std::string continuation = GeneratedIndent(indent, style);
     std::string result;
     if (firstNew) {
         result = "\n" + continuation;
@@ -2074,8 +2326,8 @@ std::string CompleteTernaryBreaks(const parser::SyntaxTree& tree,
                     {
                         ++leading;
                     }
-                    auto continuation = "\n" + std::string(
-                        leading + style.IndentWidth, ' ');
+                    auto continuation = "\n" + GeneratedIndent(
+                        leading + style.IndentWidth, style);
                     const bool inheritedTrailing = questionBreak
                         ? tree.WhitespaceAfter(question).find('\n') !=
                               std::string_view::npos
@@ -2448,8 +2700,8 @@ std::string FormatExpressions(const parser::SyntaxTree& tree,
                     for (auto choice : selected) {
                         const auto& gap = breaks[choice];
                         edits.push_back({gap.Begin, gap.End,
-                            "\n" + std::string(leading + style.IndentWidth,
-                                ' ')});
+                            "\n" + GeneratedIndent(
+                                leading + style.IndentWidth, style)});
                     }
                     cursor = stop;
                     lineStart = lineEnd == source.size()
@@ -2491,7 +2743,8 @@ std::string FormatExpressions(const parser::SyntaxTree& tree,
                 }
                 const auto& selected = breaks[choice];
                 edits.push_back({selected.Begin, selected.End,
-                    "\n" + std::string(leading + style.IndentWidth, ' ')});
+                    "\n" + GeneratedIndent(
+                        leading + style.IndentWidth, style)});
                 segment = selected.End;
                 indent = leading + style.IndentWidth;
                 cursor = choice + 1;
@@ -2890,6 +3143,1572 @@ std::string FormatIncludes(const parser::SyntaxTree& tree)
 
 } // namespace
 
+// Apply local, syntax-owned whitespace rules after structural reflow. Never
+// touch a newline, comment, directive, or a recovered statement's prefix.
+static std::string FormatTokenSpacing(const parser::SyntaxTree& tree,
+    const Style& style)
+{
+    using PR = parser::PunctuationRole;
+    const auto count = tree.TokenCount();
+    std::vector<TokenSpacing> gaps(count, TokenSpacing::Preserve);
+    std::vector<bool> unsafe(count, false);
+    std::vector<bool> loopSemicolons(count, false);
+    std::vector<bool> conditionSemicolons(count, false);
+    // Type positions and parser-confirmed template-ids are the only safe
+    // contexts for changing template argument gaps.
+    std::vector<std::pair<const parser::Node*, bool>> nodes{
+        {&tree.Root(), false}};
+    auto markColon = [&](TokenIndex colon, ColonSpacing spacing) {
+        if (spacing == ColonSpacing::Preserve || colon == 0 ||
+            colon + 1 >= count || tree.Kind(colon) != TK::Operator_Colon)
+        {
+            return;
+        }
+        gaps[colon] = spacing == ColonSpacing::Left ||
+                spacing == ColonSpacing::LeftAndRight
+            ? TokenSpacing::Space : TokenSpacing::NoSpace;
+        gaps[colon + 1] = spacing == ColonSpacing::Right ||
+                spacing == ColonSpacing::LeftAndRight
+            ? TokenSpacing::Space : TokenSpacing::NoSpace;
+    };
+    auto markInside = [&](TokenIndex open, TokenIndex close,
+        TokenSpacing spacing) {
+        if (spacing == TokenSpacing::Preserve || close <= open + 1 ||
+            close >= count ||
+            tree.WhitespaceBefore(open + 1).find('\n') !=
+                std::string_view::npos ||
+            tree.WhitespaceBefore(close).find('\n') !=
+                std::string_view::npos)
+        {
+            return;
+        }
+        gaps[open + 1] = spacing;
+        gaps[close] = spacing;
+    };
+    auto markBodyInterior = [&](TokenIndex open, TokenIndex close,
+        TokenSpacing spacing) {
+        if (spacing == TokenSpacing::Preserve) {
+            return;
+        }
+        if (close == open + 1) {
+            gaps[close] = spacing;
+        } else {
+            markInside(open, close, spacing);
+        }
+    };
+    auto markEmpty = [&](const parser::Node& list, TK opening,
+        TK closing, PR role, TokenSpacing spacing) {
+        const auto open = list.Tokens.Begin;
+        if (spacing == TokenSpacing::Preserve || open >= count ||
+            list.Tokens.End != open + 2 || open + 1 >= count ||
+            tree.Kind(open) != opening ||
+            tree.Kind(open + 1) != closing ||
+            tree.Role(open) != role || tree.Role(open + 1) != role ||
+            tree.MatchingDelimiter(open) != open + 1)
+        {
+            return;
+        }
+        gaps[open + 1] = spacing;
+    };
+    auto markKeywordParenthesis = [&](TokenIndex keyword, TokenIndex end,
+        TK expected, TokenSpacing spacing) {
+        if (spacing == TokenSpacing::Preserve || keyword + 1 >= end ||
+            keyword + 1 >= count || tree.Kind(keyword) != expected ||
+            tree.Kind(keyword + 1) != TK::Operator_OpenParenthesis)
+        {
+            return;
+        }
+        const auto close = tree.MatchingDelimiter(keyword + 1);
+        if (close == NoToken || close >= end ||
+            tree.Kind(close) != TK::Operator_CloseParenthesis)
+        {
+            return;
+        }
+        gaps[keyword + 1] = spacing;
+    };
+    while (!nodes.empty()) {
+        auto [node, typedContext] = nodes.back();
+        nodes.pop_back();
+        if (IsIncompleteStatement(*node) ||
+            (node != &tree.Root() && HasRecoveryChild(*node)) ||
+            node->Kind == NK::AmbiguousStatement ||
+            node->Kind == NK::UnparsedSyntax ||
+            node->Kind == NK::UnexpectedToken ||
+            node->Kind == NK::Error)
+        {
+            for (auto i = node->Tokens.Begin;
+                i < node->Tokens.End && i < count; ++i)
+            {
+                unsafe[i] = true;
+            }
+            continue;
+        }
+        if (!HasRecoveryChild(*node)) {
+            const auto begin = node->Tokens.Begin;
+            const auto end = node->Tokens.End;
+            if (begin < count && end <= count) {
+                if (node->Kind == NK::ExceptionSpecification) {
+                    markKeywordParenthesis(begin, end, TK::Keyword_noexcept,
+                        style.NoexceptSpaceBeforeParentheses);
+                    if (style.NoexceptSpaceBeforeSpecifier !=
+                            TokenSpacing::Preserve &&
+                        begin > 0 &&
+                        tree.Kind(begin) == TK::Keyword_noexcept &&
+                        ((tree.Kind(begin - 1) ==
+                                TK::Operator_CloseParenthesis &&
+                            tree.Role(begin - 1) ==
+                                PR::DeclarationDelimiter) ||
+                            tree.Kind(begin - 1) == TK::Keyword_const ||
+                            tree.Kind(begin - 1) == TK::Keyword_volatile ||
+                            tree.Kind(begin - 1) == TK::Operator_Ampersand ||
+                            tree.Kind(begin - 1) == TK::Operator_And))
+                    {
+                        gaps[begin] = style.NoexceptSpaceBeforeSpecifier;
+                    }
+                } else if (node->Kind == NK::UnaryExpression) {
+                    markKeywordParenthesis(begin, end, TK::Keyword_sizeof,
+                        style.SizeofSpaceBeforeParentheses);
+                    markKeywordParenthesis(begin, end, TK::Keyword_alignof,
+                        style.AlignofSpaceBeforeParentheses);
+                    if (node->FirstChild &&
+                        node->FirstChild->Kind ==
+                            NK::ParenthesizedExpression &&
+                        node->FirstChild->Tokens.Begin == begin + 1)
+                    {
+                        markKeywordParenthesis(begin, end,
+                            TK::Keyword_co_await,
+                            style.CoAwaitSpaceBeforeParentheses);
+                    }
+                    if (style.SizeofPackSpaceBeforeParentheses !=
+                            TokenSpacing::Preserve &&
+                        begin + 4 < end &&
+                        tree.Kind(begin) == TK::Keyword_sizeof &&
+                        tree.Kind(begin + 1) == TK::Operator_Ellipsis &&
+                        tree.Kind(begin + 2) == TK::Operator_OpenParenthesis &&
+                        node->FirstChild &&
+                        node->FirstChild->Kind == NK::CallExpression &&
+                        node->FirstChild->Tokens.Begin == begin + 1 &&
+                        node->FirstChild->Tokens.End == end &&
+                        tree.MatchingDelimiter(begin + 2) == end - 1 &&
+                        tree.Role(begin + 2) == PR::CallDelimiter)
+                    {
+                        gaps[begin + 2] =
+                            style.SizeofPackSpaceBeforeParentheses;
+                    }
+                } else if (node->Kind == NK::CallExpression &&
+                    node->FirstChild && node->FirstChild->NextSibling &&
+                    node->FirstChild->Tokens.Begin == begin &&
+                    node->FirstChild->Tokens.End == begin + 1 &&
+                    node->FirstChild->NextSibling->Kind == NK::ArgumentList &&
+                    node->FirstChild->NextSibling->Tokens.Begin == begin + 1)
+                {
+                    markKeywordParenthesis(begin, end, TK::Keyword_noexcept,
+                        style.NoexceptSpaceBeforeParentheses);
+                    markKeywordParenthesis(begin, end, TK::Keyword_typeid,
+                        style.TypeidSpaceBeforeParentheses);
+                } else if (node->Kind == NK::RequiresExpression ||
+                    node->Kind == NK::RequiresClause)
+                {
+                    markKeywordParenthesis(begin, end, TK::Keyword_requires,
+                        style.RequiresSpaceBeforeParentheses);
+                } else if (node->Kind == NK::StaticAssertDeclaration) {
+                    markKeywordParenthesis(begin, end,
+                        TK::Keyword_static_assert,
+                        style.StaticAssertSpaceBeforeParentheses);
+                } else if (node->Kind == NK::CastExpression &&
+                    style.NamedCastSpaceBeforeTypeArguments !=
+                        TokenSpacing::Preserve &&
+                    begin + 3 < end &&
+                    (tree.Kind(begin) == TK::Keyword_static_cast ||
+                        tree.Kind(begin) == TK::Keyword_const_cast ||
+                        tree.Kind(begin) == TK::Keyword_reinterpret_cast ||
+                        tree.Kind(begin) == TK::Keyword_dynamic_cast) &&
+                    tree.Kind(begin + 1) == TK::Operator_Less &&
+                    node->FirstChild && node->FirstChild->Kind == NK::TypeId &&
+                    node->FirstChild->Tokens.Begin == begin + 2 &&
+                    node->FirstChild->Tokens.End + 1 < end &&
+                    tree.Kind(node->FirstChild->Tokens.End) ==
+                        TK::Operator_Greater &&
+                    tree.Kind(node->FirstChild->Tokens.End + 1) ==
+                        TK::Operator_OpenParenthesis &&
+                    tree.MatchingDelimiter(
+                        node->FirstChild->Tokens.End + 1) < end)
+                {
+                    gaps[begin + 1] =
+                        style.NamedCastSpaceBeforeTypeArguments;
+                } else if (style.AlignasSpaceBeforeParentheses !=
+                        TokenSpacing::Preserve &&
+                    (node->Kind == NK::RecordDeclaration ||
+                        node->Kind == NK::EnumDeclaration ||
+                        node->Kind == NK::DeclarationSpecifiers))
+                {
+                    // Only inspect the declaration header, not members.
+                    for (auto i = begin; i + 1 < end; ++i) {
+                        if (tree.Kind(i) == TK::Operator_OpenBrace ||
+                            tree.Kind(i) == TK::Operator_Semicolon)
+                        {
+                            break;
+                        }
+                        markKeywordParenthesis(i, end, TK::Keyword_alignas,
+                            style.AlignasSpaceBeforeParentheses);
+                    }
+                }
+                if (node->Kind == NK::CastExpression &&
+                    style.NamedCastSpaceBeforeOperandParentheses !=
+                        TokenSpacing::Preserve &&
+                    (tree.Kind(begin) == TK::Keyword_static_cast ||
+                        tree.Kind(begin) == TK::Keyword_const_cast ||
+                        tree.Kind(begin) == TK::Keyword_reinterpret_cast ||
+                        tree.Kind(begin) == TK::Keyword_dynamic_cast) &&
+                    node->FirstChild &&
+                    node->FirstChild->Kind == NK::TypeId &&
+                    node->FirstChild->Tokens.End + 1 < end)
+                {
+                    const auto open = node->FirstChild->Tokens.End + 1;
+                    if (tree.Kind(open - 1) == TK::Operator_Greater &&
+                        tree.Kind(open) == TK::Operator_OpenParenthesis &&
+                        tree.MatchingDelimiter(open) == end - 1)
+                    {
+                        gaps[open] =
+                            style.NamedCastSpaceBeforeOperandParentheses;
+                    }
+                }
+                if ((node->Kind == NK::ReturnStatement ||
+                        node->Kind == NK::ThrowStatement) &&
+                    node->FirstChild &&
+                    node->FirstChild->Kind == NK::ParenthesizedExpression &&
+                    node->FirstChild->Tokens.Begin == begin + 1)
+                {
+                    const auto open = begin + 1;
+                    const auto close = tree.MatchingDelimiter(open);
+                    if (tree.Kind(open) == TK::Operator_OpenParenthesis &&
+                        close != NoToken &&
+                        close + 1 == node->FirstChild->Tokens.End &&
+                        tree.Role(open) == PR::GroupingDelimiter)
+                    {
+                        auto spacing = tree.Kind(begin) == TK::Keyword_return
+                            ? style.ReturnSpaceBeforeParentheses
+                            : tree.Kind(begin) == TK::Keyword_co_return
+                                ? style.CoReturnSpaceBeforeParentheses
+                                : tree.Kind(begin) == TK::Keyword_throw
+                                    ? style.ThrowSpaceBeforeParentheses
+                                    : TokenSpacing::Preserve;
+                        gaps[open] = spacing;
+                    }
+                }
+                if (node->Kind == NK::NewTypeId &&
+                    (style.NewArraySpaceBeforeBrackets !=
+                        TokenSpacing::Preserve ||
+                        style.NewArrayInteriorSpacing !=
+                            TokenSpacing::Preserve ||
+                        style.EmptyNewArrayInteriorSpacing !=
+                            TokenSpacing::Preserve))
+                {
+                    auto* child = node->Child();
+                    for (auto i = begin; i < end; ++i) {
+                        while (child && child->Tokens.End <= i) {
+                            child = child->NextSibling;
+                        }
+                        if (child && child->Tokens.Begin == i &&
+                            (child->Kind == NK::AttributeSpecifier ||
+                                child->Kind == NK::TemplateArgumentList ||
+                                child->Kind ==
+                                    NK::ExtensionAttributeSpecifier))
+                        {
+                            i = child->Tokens.End - 1;
+                            continue;
+                        }
+                        if (tree.Kind(i) == TK::Operator_OpenParenthesis ||
+                            tree.Kind(i) == TK::Operator_OpenBrace)
+                        {
+                            const auto close = tree.MatchingDelimiter(i);
+                            if (close == NoToken || close >= end) {
+                                break;
+                            }
+                            i = close;
+                            continue;
+                        }
+                        if (tree.Kind(i) != TK::Operator_OpenBracket ||
+                            i == begin || i + 1 >= end)
+                        {
+                            continue;
+                        }
+                        const auto close = tree.MatchingDelimiter(i);
+                        if (close == NoToken || close >= end ||
+                            tree.Kind(close) != TK::Operator_CloseBracket)
+                        {
+                            break;
+                        }
+                        gaps[i] = style.NewArraySpaceBeforeBrackets;
+                        if (close == i + 1) {
+                            gaps[close] =
+                                style.EmptyNewArrayInteriorSpacing;
+                        } else {
+                            markInside(i, close, style.NewArrayInteriorSpacing);
+                        }
+                        i = close;
+                    }
+                }
+                if (node->Kind == NK::NewExpression &&
+                    (style.NewInitializerSpaceBeforeParentheses !=
+                        TokenSpacing::Preserve ||
+                        style.NewInitializerSpaceBeforeBraces !=
+                            TokenSpacing::Preserve ||
+                        style.NewInitializerParenthesisInteriorSpacing !=
+                            TokenSpacing::Preserve ||
+                        style.NewInitializerBraceInteriorSpacing !=
+                            TokenSpacing::Preserve ||
+                        style.PlacementNewSpaceAfterArguments !=
+                            TokenSpacing::Preserve))
+                {
+                    for (auto* child = node->Child(); child;
+                        child = child->NextSibling)
+                    {
+                        auto* next = child->NextSibling;
+                        if (!next || child->Tokens.End != next->Tokens.Begin ||
+                            next->Tokens.Empty() ||
+                            next->Tokens.End > count)
+                        {
+                            continue;
+                        }
+                        if (child->Kind == NK::NewPlacement &&
+                            next->Kind == NK::NewTypeId &&
+                            child->Tokens.End > child->Tokens.Begin + 1 &&
+                            tree.Kind(child->Tokens.Begin) ==
+                                TK::Operator_OpenParenthesis &&
+                            tree.Kind(child->Tokens.End - 1) ==
+                                TK::Operator_CloseParenthesis &&
+                            tree.MatchingDelimiter(child->Tokens.Begin) ==
+                                child->Tokens.End - 1)
+                        {
+                            gaps[next->Tokens.Begin] =
+                                style.PlacementNewSpaceAfterArguments;
+                        }
+                        if (child->Kind != NK::NewTypeId ||
+                            next->Kind != NK::NewInitializer)
+                        {
+                            continue;
+                        }
+                        const auto open = next->Tokens.Begin;
+                        const auto close = next->Tokens.End - 1;
+                        if (tree.MatchingDelimiter(open) != close) {
+                            continue;
+                        }
+                        if (tree.Kind(open) == TK::Operator_OpenParenthesis &&
+                            tree.Kind(close) ==
+                                TK::Operator_CloseParenthesis &&
+                            tree.Role(open) == PR::CallDelimiter)
+                        {
+                            gaps[open] =
+                                style.NewInitializerSpaceBeforeParentheses;
+                            const auto interior =
+                                style.NewInitializerParenthesisInteriorSpacing;
+                            if (close == open + 1) {
+                                gaps[close] = interior;
+                            } else {
+                                markInside(open, close, interior);
+                            }
+                        } else if (tree.Kind(open) ==
+                                TK::Operator_OpenBrace &&
+                            tree.Kind(close) == TK::Operator_CloseBrace &&
+                            tree.Role(open) == PR::InitializerDelimiter)
+                        {
+                            gaps[open] = style.NewInitializerSpaceBeforeBraces;
+                            const auto interior =
+                                style.NewInitializerBraceInteriorSpacing;
+                            if (close == open + 1) {
+                                gaps[close] = interior;
+                            } else {
+                                markInside(open, close, interior);
+                            }
+                        }
+                    }
+                }
+                if (node->Kind == NK::DeleteExpression &&
+                    (style.DeleteArraySpaceBeforeBrackets !=
+                        TokenSpacing::Preserve ||
+                        style.DeleteArraySpaceAfterBrackets !=
+                            TokenSpacing::Preserve) &&
+                    node->FirstChild && node->FirstChild->NextSibling)
+                {
+                    auto* marker = node->FirstChild;
+                    const auto open = marker->Tokens.Begin;
+                    if (marker->Kind == NK::DeleteArrayMarker && open > begin &&
+                        marker->Tokens.End == open + 2 &&
+                        marker->Tokens.End <= count &&
+                        tree.Kind(open - 1) == TK::Keyword_delete &&
+                        tree.Kind(open) == TK::Operator_OpenBracket &&
+                        tree.Kind(open + 1) == TK::Operator_CloseBracket &&
+                        tree.MatchingDelimiter(open) == open + 1)
+                    {
+                        gaps[open] = style.DeleteArraySpaceBeforeBrackets;
+                        if (marker->Tokens.End < count &&
+                            marker->Tokens.End ==
+                                marker->NextSibling->Tokens.Begin)
+                        {
+                            gaps[marker->Tokens.End] =
+                                style.DeleteArraySpaceAfterBrackets;
+                        }
+                    }
+                }
+                if (node->Kind == NK::NewPlacement &&
+                    (style.PlacementNewSpaceBeforeArguments !=
+                        TokenSpacing::Preserve ||
+                        style.PlacementNewArgumentInteriorSpacing !=
+                            TokenSpacing::Preserve) &&
+                    begin > 0 && end > begin + 1 &&
+                    tree.Kind(begin - 1) == TK::Keyword_new &&
+                    tree.Kind(begin) == TK::Operator_OpenParenthesis &&
+                    tree.Kind(end - 1) == TK::Operator_CloseParenthesis &&
+                    tree.MatchingDelimiter(begin) == end - 1 &&
+                    tree.Role(begin) == PR::CallDelimiter)
+                {
+                    gaps[begin] = style.PlacementNewSpaceBeforeArguments;
+                    markInside(begin, end - 1,
+                        style.PlacementNewArgumentInteriorSpacing);
+                }
+                if (node->Kind == NK::AttributeSpecifier &&
+                    style.AttributeSpaceBeforeSpecifier !=
+                        TokenSpacing::Preserve &&
+                    begin > 0 && end > begin + 3 &&
+                    tree.Kind(begin) == TK::Operator_OpenBracket &&
+                    tree.Kind(end - 1) == TK::Operator_CloseBracket &&
+                    tree.Role(begin) == PR::AttributeDelimiter &&
+                    tree.MatchingDelimiter(begin) == end - 1 &&
+                    (tree.Kind(begin - 1) == TK::Identifier ||
+                        tree.Kind(begin - 1) ==
+                            TK::Operator_CloseParenthesis ||
+                        tree.Kind(begin - 1) == TK::Operator_CloseBracket ||
+                        (tree.Kind(begin - 1) >= TK::Keyword_alignas &&
+                            tree.Kind(begin - 1) <= TK::Keyword_while)))
+                {
+                    gaps[begin] = style.AttributeSpaceBeforeSpecifier;
+                }
+                if (node->Kind == NK::AttributeSpecifier &&
+                    style.AttributeSpaceAfterSpecifier !=
+                        TokenSpacing::Preserve &&
+                    end < count && end > begin + 3 &&
+                    tree.Kind(begin) == TK::Operator_OpenBracket &&
+                    tree.Kind(end - 1) == TK::Operator_CloseBracket &&
+                    tree.Role(begin) == PR::AttributeDelimiter &&
+                    tree.Role(end - 1) == PR::AttributeDelimiter &&
+                    tree.MatchingDelimiter(begin) == end - 1 &&
+                    (tree.Kind(end) == TK::Identifier ||
+                        (tree.Kind(end) >= TK::Keyword_alignas &&
+                            tree.Kind(end) <= TK::Keyword_while)))
+                {
+                    gaps[end] = style.AttributeSpaceAfterSpecifier;
+                }
+                if (style.DecltypeSpaceBeforeParentheses !=
+                        TokenSpacing::Preserve &&
+                    (node->Kind == NK::UsingDeclaration ||
+                        node->Kind == NK::TrailingReturnType ||
+                        node->Kind == NK::DeclarationSpecifiers ||
+                        node->Kind == NK::TypeId ||
+                        node->Kind == NK::NewTypeId))
+                {
+                    for (auto i = begin; i + 1 < end; ++i) {
+                        markKeywordParenthesis(i, end, TK::Keyword_decltype,
+                            style.DecltypeSpaceBeforeParentheses);
+                    }
+                }
+            }
+            if (node->Kind == NK::LambdaCaptureList) {
+                markEmpty(*node, TK::Operator_OpenBracket,
+                    TK::Operator_CloseBracket, PR::LambdaDelimiter,
+                    style.EmptyLambdaCaptureSpacing);
+            }
+            if (node->Kind == NK::LambdaExpression ||
+                node->Kind == NK::FunctionDeclarator ||
+                node->Kind == NK::CallExpression)
+            {
+                const auto role = node->Kind == NK::CallExpression
+                    ? PR::CallDelimiter : PR::DeclarationDelimiter;
+                const auto spacing = node->Kind == NK::LambdaExpression
+                    ? style.EmptyLambdaParametersSpacing
+                    : node->Kind == NK::FunctionDeclarator
+                        ? style.EmptyFunctionParametersSpacing
+                        : style.EmptyFunctionCallArgumentsSpacing;
+                for (auto* child = node->Child(); child;
+                    child = child->NextSibling)
+                {
+                    if (child->Kind == (node->Kind == NK::CallExpression
+                            ? NK::ArgumentList : NK::ParameterList) &&
+                        !child->Tokens.Empty())
+                    {
+                        markEmpty(*child, TK::Operator_OpenParenthesis,
+                            TK::Operator_CloseParenthesis, role, spacing);
+                    }
+                }
+            }
+            if (node->Kind == NK::TrailingReturnType &&
+                style.ReturnArrowSpacing != ReturnArrowSpacing::Preserve &&
+                node->Tokens.Begin > 0 && node->Tokens.Begin + 1 < count &&
+                node->Tokens.End > node->Tokens.Begin + 1 &&
+                tree.Kind(node->Tokens.Begin) ==
+                    TK::Operator_IndirectClassMemberAccess)
+            {
+                const auto arrow = node->Tokens.Begin;
+                auto policy = style.ReturnArrowSpacing;
+                gaps[arrow] = policy == ReturnArrowSpacing::Left ||
+                        policy == ReturnArrowSpacing::LeftAndRight
+                    ? TokenSpacing::Space : TokenSpacing::NoSpace;
+                gaps[arrow + 1] = policy == ReturnArrowSpacing::Right ||
+                        policy == ReturnArrowSpacing::LeftAndRight
+                    ? TokenSpacing::Space : TokenSpacing::NoSpace;
+            }
+            if (node->Kind == NK::FunctionQualifier &&
+                node->Tokens.Begin > 0 && node->Tokens.Begin < count)
+            {
+                const auto at = node->Tokens.Begin;
+                const auto kind = tree.Kind(at);
+                const auto previous = tree.Kind(at - 1);
+                if ((kind == TK::Keyword_const ||
+                        kind == TK::Keyword_volatile) &&
+                    previous == TK::Operator_CloseParenthesis &&
+                    tree.Role(at - 1) == PR::DeclarationDelimiter)
+                {
+                    gaps[at] = style.FunctionQualifierSpacing;
+                } else if ((kind == TK::Operator_Ampersand ||
+                               kind == TK::Operator_And) &&
+                    ((previous == TK::Operator_CloseParenthesis &&
+                         tree.Role(at - 1) == PR::DeclarationDelimiter) ||
+                        previous == TK::Keyword_const ||
+                        previous == TK::Keyword_volatile))
+                {
+                    gaps[at] = style.FunctionRefQualifierSpacing;
+                }
+                if (style.FunctionSuffixSpecifierSpacing !=
+                        TokenSpacing::Preserve &&
+                    ((kind == TK::Identifier &&
+                        (tree.TokenText(at) == "override" ||
+                            tree.TokenText(at) == "final")) ||
+                        kind == TK::Keyword_mutable ||
+                        kind == TK::Keyword_constexpr ||
+                        kind == TK::Keyword_consteval ||
+                        kind == TK::Keyword_static) &&
+                    (previous == TK::Operator_CloseParenthesis ||
+                        previous == TK::Operator_CloseBracket ||
+                        previous == TK::Keyword_const ||
+                        previous == TK::Keyword_volatile ||
+                        previous == TK::Keyword_noexcept ||
+                        previous == TK::Keyword_mutable ||
+                        previous == TK::Operator_Ampersand ||
+                        previous == TK::Operator_And))
+                {
+                    gaps[at] = style.FunctionSuffixSpecifierSpacing;
+                }
+            }
+            if (node->Kind == NK::NestedDeclarator &&
+                (style.NestedDeclaratorInteriorSpacing !=
+                    TokenSpacing::Preserve ||
+                    style.NestedDeclaratorPointerSpacing !=
+                        TokenSpacing::Preserve) &&
+                node->Tokens.Begin < count && node->Tokens.End <= count &&
+                node->Tokens.End > node->Tokens.Begin + 2)
+            {
+                const auto open = node->Tokens.Begin;
+                const auto close = node->Tokens.End - 1;
+                if (tree.Kind(open) == TK::Operator_OpenParenthesis &&
+                    tree.Kind(close) == TK::Operator_CloseParenthesis &&
+                    tree.Role(open) == PR::DeclarationDelimiter &&
+                    tree.Role(close) == PR::DeclarationDelimiter &&
+                    tree.MatchingDelimiter(open) == close)
+                {
+                    markInside(open, close,
+                        style.NestedDeclaratorInteriorSpacing);
+                    if (style.NestedDeclaratorPointerSpacing !=
+                        TokenSpacing::Preserve)
+                    {
+                        for (auto* child = node->Child(); child;
+                            child = child->NextSibling)
+                        {
+                            const auto next = child->Tokens.End;
+                            if (child->Kind == NK::PointerOperator &&
+                                next > open + 1 && next < close &&
+                                tree.Kind(next) == TK::Identifier &&
+                                (tree.Kind(next - 1) == TK::Operator_Star ||
+                                    tree.Kind(next - 1) ==
+                                        TK::Operator_Ampersand ||
+                                    tree.Kind(next - 1) == TK::Operator_And))
+                            {
+                                gaps[next] =
+                                    style.NestedDeclaratorPointerSpacing;
+                            }
+                        }
+                    }
+                }
+            }
+            if (node->Kind == NK::MemberPointerOperator &&
+                style.MemberPointerDeclaratorSpacing !=
+                    TokenSpacing::Preserve &&
+                node->Tokens.End > node->Tokens.Begin + 1 &&
+                node->Tokens.End < count &&
+                tree.Kind(node->Tokens.End - 1) == TK::Operator_Star &&
+                tree.Kind(node->Tokens.End - 2) ==
+                    TK::Operator_ScopeResolution &&
+                tree.Kind(node->Tokens.End) == TK::Identifier)
+            {
+                gaps[node->Tokens.End] =
+                    style.MemberPointerDeclaratorSpacing;
+            }
+            if (node->Kind == NK::TemplateDeclaration &&
+                style.TemplateKeywordSpacing != TokenSpacing::Preserve &&
+                node->Tokens.Begin < count &&
+                tree.Kind(node->Tokens.Begin) == TK::Keyword_template)
+            {
+                for (auto* child = node->Child(); child;
+                    child = child->NextSibling)
+                {
+                    if (child->Kind == NK::TemplateParameterList &&
+                        child->Tokens.Begin == node->Tokens.Begin + 1 &&
+                        child->Tokens.End <= count &&
+                        child->Tokens.End > child->Tokens.Begin + 1 &&
+                        tree.Kind(child->Tokens.Begin) == TK::Operator_Less &&
+                        tree.Kind(child->Tokens.End - 1) ==
+                            TK::Operator_Greater)
+                    {
+                        gaps[child->Tokens.Begin] =
+                            style.TemplateKeywordSpacing;
+                    }
+                }
+            }
+            if ((node->Kind == NK::TemplateParameterList ||
+                    (node->Kind == NK::TemplateArgumentList && typedContext)) &&
+                (style.TemplateTypeArgumentInteriorSpacing !=
+                    TokenSpacing::Preserve ||
+                    style.TemplateTypeArgumentSpacing !=
+                        TokenSpacing::Preserve) &&
+                node->Tokens.Begin < count && node->Tokens.End <= count &&
+                node->Tokens.End >= node->Tokens.Begin + 2 &&
+                tree.Kind(node->Tokens.Begin) == TK::Operator_Less &&
+                tree.Kind(node->Tokens.End - 1) == TK::Operator_Greater &&
+                tree.Role(node->Tokens.Begin) == PR::TemplateDelimiter &&
+                tree.Role(node->Tokens.End - 1) == PR::TemplateDelimiter)
+            {
+                const auto open = node->Tokens.Begin;
+                if (node->Kind == NK::TemplateArgumentList && open > 0 &&
+                    tree.Kind(open - 1) == TK::Identifier)
+                {
+                    gaps[open] = style.TemplateTypeArgumentSpacing;
+                }
+                markInside(open, node->Tokens.End - 1,
+                    style.TemplateTypeArgumentInteriorSpacing);
+            }
+            if (node->Kind == NK::BracedInitializer &&
+                (style.InitializerBracesSpacing != TokenSpacing::Preserve ||
+                    style.BraceInitializerSpacing != TokenSpacing::Preserve ||
+                    style.EmptyBraceInitializerInteriorSpacing !=
+                        TokenSpacing::Preserve) &&
+                node->Tokens.Begin < count && node->Tokens.End <= count &&
+                node->Tokens.End >= node->Tokens.Begin + 2 &&
+                tree.Kind(node->Tokens.Begin) == TK::Operator_OpenBrace &&
+                tree.Kind(node->Tokens.End - 1) == TK::Operator_CloseBrace &&
+                tree.Role(node->Tokens.Begin) == PR::InitializerDelimiter &&
+                tree.Role(node->Tokens.End - 1) ==
+                    PR::InitializerDelimiter &&
+                tree.MatchingDelimiter(node->Tokens.Begin) ==
+                    node->Tokens.End - 1 &&
+                (!node->FirstChild || !HasRecoveryChild(*node->FirstChild)))
+            {
+                const auto open = node->Tokens.Begin;
+                if (style.BraceInitializerSpacing != TokenSpacing::Preserve &&
+                    open > 0 && tree.Kind(open - 1) != TK::Operator_Assign)
+                {
+                    gaps[open] = style.BraceInitializerSpacing;
+                }
+                if (node->Tokens.End == open + 2) {
+                    gaps[node->Tokens.End - 1] =
+                        style.EmptyBraceInitializerInteriorSpacing;
+                } else {
+                    markInside(open, node->Tokens.End - 1,
+                        style.InitializerBracesSpacing);
+                }
+            }
+            if (node->Kind == NK::OperatorFunctionName &&
+                style.OperatorOverloadOperatorSpacing !=
+                    OperatorOverloadOperatorSpacing::Preserve &&
+                node->Tokens.Begin + 1 < node->Tokens.End &&
+                node->Tokens.End < count &&
+                tree.Kind(node->Tokens.Begin) == TK::Keyword_operator &&
+                tree.Kind(node->Tokens.End) == TK::Operator_OpenParenthesis)
+            {
+                const auto first = node->Tokens.Begin + 1;
+                const auto kind = tree.Kind(first);
+                if (kind == TK::Operator_OpenParenthesis ||
+                    kind == TK::Operator_OpenBracket ||
+                    (kind >= TK::Operator_Complement &&
+                        kind <= TK::Operator_Comma))
+                {
+                    auto placement = style.OperatorOverloadOperatorSpacing;
+                    gaps[first] = placement ==
+                            OperatorOverloadOperatorSpacing::Left ||
+                            placement ==
+                                OperatorOverloadOperatorSpacing::LeftAndRight
+                        ? TokenSpacing::Space : TokenSpacing::NoSpace;
+                    gaps[node->Tokens.End] = placement ==
+                            OperatorOverloadOperatorSpacing::Right ||
+                            placement ==
+                                OperatorOverloadOperatorSpacing::LeftAndRight
+                        ? TokenSpacing::Space : TokenSpacing::NoSpace;
+                }
+            }
+            if (node->Kind == NK::AttributeSpecifier &&
+                (style.AttributeInteriorSpacing != TokenSpacing::Preserve ||
+                    style.EmptyAttributeInteriorSpacing !=
+                        TokenSpacing::Preserve) &&
+                node->Tokens.Begin + 4 <= node->Tokens.End &&
+                node->Tokens.End <= count)
+            {
+                const auto open = node->Tokens.Begin;
+                const auto close = node->Tokens.End - 1;
+                if (tree.Kind(open) == TK::Operator_OpenBracket &&
+                    tree.Kind(open + 1) == TK::Operator_OpenBracket &&
+                    tree.Kind(close - 1) == TK::Operator_CloseBracket &&
+                    tree.Kind(close) == TK::Operator_CloseBracket &&
+                    tree.Role(open) == PR::AttributeDelimiter &&
+                    tree.Role(close) == PR::AttributeDelimiter &&
+                    tree.MatchingDelimiter(open) == close &&
+                    tree.MatchingDelimiter(open + 1) == close - 1)
+                {
+                    if (node->Tokens.End == open + 4) {
+                        gaps[open + 2] =
+                            style.EmptyAttributeInteriorSpacing;
+                    } else {
+                        markInside(open + 1, close - 1,
+                            style.AttributeInteriorSpacing);
+                    }
+                }
+            }
+            if ((node->Kind == NK::ParenthesizedExpression &&
+                    style.GroupingInteriorSpacing !=
+                        TokenSpacing::Preserve) ||
+                ((node->Kind == NK::Condition ||
+                    node->Kind == NK::ForHeader) &&
+                    style.ControlBlockConditionSpacing !=
+                        TokenSpacing::Preserve))
+            {
+                const auto open = node->Tokens.Begin;
+                const auto close = node->Tokens.End == 0
+                    ? NoToken : node->Tokens.End - 1;
+                const auto role = node->Kind == NK::ParenthesizedExpression
+                    ? PR::GroupingDelimiter : PR::ConditionDelimiter;
+                if (open < count && close < count &&
+                    tree.Kind(open) == TK::Operator_OpenParenthesis &&
+                    tree.Kind(close) == TK::Operator_CloseParenthesis &&
+                    tree.Role(open) == role && tree.Role(close) == role &&
+                    tree.MatchingDelimiter(open) == close)
+                {
+                    markInside(open, close,
+                        node->Kind == NK::ParenthesizedExpression
+                            ? style.GroupingInteriorSpacing
+                            : style.ControlBlockConditionSpacing);
+                }
+            }
+            if (node->Kind == NK::AccessSpecifier &&
+                style.AccessModifierColonSpacing != TokenSpacing::Preserve &&
+                node->Tokens.End <= count && !node->Tokens.Empty() &&
+                tree.Role(node->Tokens.End - 1) == PR::LabelDelimiter)
+            {
+                markColon(node->Tokens.End - 1,
+                    style.AccessModifierColonSpacing == TokenSpacing::Space
+                        ? ColonSpacing::LeftAndRight : ColonSpacing::NoSpace);
+            }
+            if (node->Kind == NK::RangeForSeparator &&
+                style.RangeBasedForColonSpacing != TokenSpacing::Preserve &&
+                node->Tokens.Begin < count &&
+                tree.Role(node->Tokens.Begin) == PR::ConditionDelimiter)
+            {
+                markColon(node->Tokens.Begin,
+                    style.RangeBasedForColonSpacing == TokenSpacing::Space
+                        ? ColonSpacing::LeftAndRight : ColonSpacing::NoSpace);
+            }
+            if ((node->Kind == NK::RecordDeclaration ||
+                    node->Kind == NK::NamespaceDeclaration) &&
+                node->Tokens.Begin < count && node->Tokens.End <= count &&
+                (node->Kind == NK::RecordDeclaration
+                    ? style.RecordBodyInteriorSpacing
+                    : style.NamespaceBodyInteriorSpacing) !=
+                    TokenSpacing::Preserve)
+            {
+                for (auto open = node->Tokens.Begin + 1;
+                    open < node->Tokens.End; ++open)
+                {
+                    if (tree.Kind(open) != TK::Operator_OpenBrace ||
+                        (node->Kind == NK::RecordDeclaration &&
+                            tree.Role(open) != PR::RecordDelimiter))
+                    {
+                        continue;
+                    }
+                    const auto close = tree.MatchingDelimiter(open);
+                    if (close == NoToken || close >= node->Tokens.End ||
+                        (node->Kind == NK::NamespaceDeclaration &&
+                            close != node->Tokens.End - 1))
+                    {
+                        continue;
+                    }
+                    markBodyInterior(open, close,
+                        node->Kind == NK::RecordDeclaration
+                            ? style.RecordBodyInteriorSpacing
+                            : style.NamespaceBodyInteriorSpacing);
+                    break;
+                }
+            }
+            if (node->Kind == NK::EnumDeclaration &&
+                style.EnumBodyInteriorSpacing != TokenSpacing::Preserve)
+            {
+                for (auto* child = node->Child(); child;
+                    child = child->NextSibling)
+                {
+                    if (child->Kind != NK::EnumeratorList ||
+                        child->Tokens.Empty() ||
+                        child->Tokens.End > count)
+                    {
+                        continue;
+                    }
+                    const auto open = child->Tokens.Begin;
+                    const auto close = child->Tokens.End - 1;
+                    if (tree.Kind(open) == TK::Operator_OpenBrace &&
+                        tree.Kind(close) == TK::Operator_CloseBrace &&
+                        tree.MatchingDelimiter(open) == close)
+                    {
+                        markBodyInterior(open, close,
+                            style.EnumBodyInteriorSpacing);
+                    }
+                }
+            }
+            if (node->Kind == NK::RequirementBody &&
+                style.RequirementBodyInteriorSpacing !=
+                    TokenSpacing::Preserve &&
+                !node->Tokens.Empty() && node->Tokens.End <= count)
+            {
+                const auto open = node->Tokens.Begin;
+                const auto close = node->Tokens.End - 1;
+                if (tree.Kind(open) == TK::Operator_OpenBrace &&
+                    tree.Kind(close) == TK::Operator_CloseBrace &&
+                    tree.Role(open) == PR::BlockDelimiter &&
+                    tree.MatchingDelimiter(open) == close)
+                {
+                    markBodyInterior(open, close,
+                        style.RequirementBodyInteriorSpacing);
+                }
+            }
+            if ((node->Kind == NK::CompoundStatement ||
+                    node->Kind == NK::LambdaBody) &&
+                (style.BlockInteriorSpacing != TokenSpacing::Preserve ||
+                    style.EmptyBlockInteriorSpacing !=
+                        TokenSpacing::Preserve) &&
+                node->Tokens.Begin < count && node->Tokens.End <= count &&
+                node->Tokens.End >= node->Tokens.Begin + 2)
+            {
+                const auto open = node->Tokens.Begin;
+                const auto close = node->Tokens.End - 1;
+                const auto role = node->Kind == NK::LambdaBody
+                    ? PR::LambdaDelimiter : PR::BlockDelimiter;
+                if (tree.Kind(open) == TK::Operator_OpenBrace &&
+                    tree.Kind(close) == TK::Operator_CloseBrace &&
+                    tree.Role(open) == role && tree.Role(close) == role &&
+                    tree.MatchingDelimiter(open) == close)
+                {
+                    if (close == open + 1) {
+                        gaps[close] = style.EmptyBlockInteriorSpacing;
+                    } else {
+                        markInside(open, close, style.BlockInteriorSpacing);
+                    }
+                }
+            }
+            if ((node->Kind == NK::IfStatement ||
+                    node->Kind == NK::ForStatement ||
+                    node->Kind == NK::WhileStatement ||
+                    node->Kind == NK::DoWhileStatement ||
+                    node->Kind == NK::SwitchStatement ||
+                    node->Kind == NK::TryStatement ||
+                    node->Kind == NK::CatchClause) &&
+                style.ControlBlockSpaceBeforeBrace !=
+                    TokenSpacing::Preserve)
+            {
+                for (auto* child = node->Child(); child;
+                    child = child->NextSibling)
+                {
+                    auto open = child->Tokens.Begin;
+                    if (child->Kind == NK::CompoundStatement &&
+                        !child->Tokens.Empty() && open > 0 && open < count &&
+                        tree.Kind(open) == TK::Operator_OpenBrace &&
+                        tree.Role(open) == PR::BlockDelimiter &&
+                        tree.MatchingDelimiter(open) != NoToken)
+                    {
+                        gaps[open] = style.ControlBlockSpaceBeforeBrace;
+                    }
+                }
+            }
+            if (node->Kind == NK::BitField &&
+                node->Tokens.Begin < count &&
+                tree.Role(node->Tokens.Begin) == PR::BitFieldDelimiter)
+            {
+                markColon(node->Tokens.Begin, style.BitFieldColonSpacing);
+            }
+            if ((node->Kind == NK::CaseLabel ||
+                    node->Kind == NK::LabelStatement) &&
+                !node->Tokens.Empty() && node->Tokens.End <= count &&
+                tree.Role(node->Tokens.End - 1) == PR::LabelDelimiter)
+            {
+                markColon(node->Tokens.End - 1, style.LabelColonSpacing);
+            }
+            if (node->Kind == NK::EnumDeclaration &&
+                style.EnumUnderlyingTypeColonSpacing !=
+                    ColonSpacing::Preserve)
+            {
+                for (auto i = node->Tokens.Begin;
+                    i < node->Tokens.End && i < count; ++i)
+                {
+                    const auto kind = tree.Kind(i);
+                    if (kind == TK::Operator_OpenBrace ||
+                        kind == TK::Operator_Semicolon)
+                    {
+                        break;
+                    }
+                    if (auto close = tree.MatchingDelimiter(i);
+                        close != NoToken && close > i &&
+                        close < node->Tokens.End)
+                    {
+                        i = close;
+                    } else if (kind == TK::Operator_Colon &&
+                        i > node->Tokens.Begin + 1 &&
+                        i + 1 < node->Tokens.End)
+                    {
+                        markColon(i, style.EnumUnderlyingTypeColonSpacing);
+                        break;
+                    }
+                }
+            }
+            if (node->Kind == NK::MemberExpression &&
+                style.MemberAccessOperatorsSpacing ==
+                    TightOperatorSpacing::NoSpace &&
+                node->FirstChild && node->FirstChild->NextSibling)
+            {
+                auto begin = node->FirstChild->Tokens.End;
+                auto end = node->FirstChild->NextSibling->Tokens.Begin;
+                for (auto i = begin; i < end && i + 1 < count; ++i) {
+                    if (tree.Kind(i) == TK::Operator_ClassMemberAccess ||
+                        tree.Kind(i) ==
+                            TK::Operator_IndirectClassMemberAccess ||
+                        tree.Kind(i) == TK::Operator_ScopeResolution)
+                    {
+                        gaps[i] = TokenSpacing::NoSpace;
+                        gaps[i + 1] = TokenSpacing::NoSpace;
+                        break;
+                    }
+                }
+            }
+            if (style.StatementSemicolonSpacing ==
+                    TightOperatorSpacing::NoSpace &&
+                !node->Tokens.Empty() && node->Tokens.End <= count &&
+                tree.Kind(node->Tokens.End - 1) == TK::Operator_Semicolon &&
+                (node->Kind == NK::DeclarationStatement ||
+                    node->Kind == NK::ExpressionStatement ||
+                    node->Kind == NK::ReturnStatement ||
+                    node->Kind == NK::CoYieldStatement ||
+                    node->Kind == NK::ThrowStatement ||
+                    node->Kind == NK::BreakStatement ||
+                    node->Kind == NK::ContinueStatement ||
+                    node->Kind == NK::GotoStatement ||
+                    node->Kind == NK::DoWhileStatement))
+            {
+                gaps[node->Tokens.End - 1] = TokenSpacing::NoSpace;
+            }
+            if (style.DeclarationSemicolonSpacing !=
+                    TokenSpacing::Preserve &&
+                !node->Tokens.Empty() && node->Tokens.End <= count &&
+                tree.Kind(node->Tokens.End - 1) == TK::Operator_Semicolon &&
+                (node->Kind == NK::DeclarationStatement ||
+                    node->Kind == NK::Declaration ||
+                    node->Kind == NK::FunctionDeclaration ||
+                    node->Kind == NK::RecordDeclaration ||
+                    node->Kind == NK::EnumDeclaration ||
+                    node->Kind == NK::TemplateDeclaration ||
+                    node->Kind == NK::UsingDeclaration ||
+                    node->Kind == NK::TypedefDeclaration ||
+                    node->Kind == NK::StaticAssertDeclaration ||
+                    node->Kind == NK::ConceptDeclaration ||
+                    node->Kind == NK::ModuleDeclaration ||
+                    node->Kind == NK::ImportDeclaration))
+            {
+                gaps[node->Tokens.End - 1] =
+                    style.DeclarationSemicolonSpacing;
+            }
+            if (node->Kind == NK::UnaryExpression && node->FirstChild) {
+                auto* operand = node->FirstChild;
+                if (style.UnaryOperatorSpacing ==
+                        TightOperatorSpacing::NoSpace &&
+                    node->Tokens.Begin < operand->Tokens.Begin &&
+                    operand->Tokens.Begin < count &&
+                    tree.Role(node->Tokens.Begin) == PR::UnaryOperator &&
+                    tree.Kind(node->Tokens.Begin) != TK::Keyword_sizeof &&
+                    tree.Kind(node->Tokens.Begin) != TK::Keyword_alignof &&
+                    tree.Kind(node->Tokens.Begin) != TK::Keyword_co_await)
+                {
+                    gaps[operand->Tokens.Begin] = TokenSpacing::NoSpace;
+                }
+                if (style.PostfixOperatorSpacing ==
+                        TightOperatorSpacing::NoSpace &&
+                    operand->Tokens.End < node->Tokens.End &&
+                    operand->Tokens.End < count &&
+                    (tree.Kind(operand->Tokens.End) == TK::Operator_Increment ||
+                        tree.Kind(operand->Tokens.End) ==
+                            TK::Operator_Decrement) &&
+                    tree.Role(operand->Tokens.End) == PR::UnaryOperator)
+                {
+                    gaps[operand->Tokens.End] = TokenSpacing::NoSpace;
+                }
+            }
+            if (node->Kind == NK::ConditionalExpression &&
+                style.TernaryOperatorSpacing ==
+                    TernaryOperatorSpacing::Space &&
+                node->FirstChild && node->FirstChild->NextSibling &&
+                node->FirstChild->NextSibling->NextSibling)
+            {
+                const auto* condition = node->FirstChild;
+                const auto* positive = condition->NextSibling;
+                const auto* negative = positive->NextSibling;
+                auto mark = [&](TokenIndex begin, TokenIndex end, TK kind) {
+                    for (auto i = begin; i < end && i + 1 < count; ++i) {
+                        if (tree.Kind(i) == kind &&
+                            tree.Role(i) == PR::ConditionalDelimiter)
+                        {
+                            gaps[i] = TokenSpacing::Space;
+                            gaps[i + 1] = TokenSpacing::Space;
+                            break;
+                        }
+                    }
+                };
+                mark(condition->Tokens.End, positive->Tokens.Begin,
+                    TK::Operator_Conditional);
+                mark(positive->Tokens.End, negative->Tokens.Begin,
+                    TK::Operator_Colon);
+            }
+            if (node->Kind == NK::IfStatement ||
+                node->Kind == NK::SwitchStatement)
+            {
+                if (style.ConditionInitSemicolonSpacing !=
+                    TokenSpacing::Preserve)
+                {
+                    for (auto* child = node->Child(); child;
+                        child = child->NextSibling)
+                    {
+                        if (child->Kind != NK::Condition ||
+                            child->Tokens.Empty() ||
+                            tree.Kind(child->Tokens.Begin) !=
+                                TK::Operator_OpenParenthesis)
+                        {
+                            continue;
+                        }
+                        auto open = child->Tokens.Begin;
+                        auto close = tree.MatchingDelimiter(open);
+                        if (close == NoToken ||
+                            close + 1 != child->Tokens.End || close <= open + 2)
+                        {
+                            continue;
+                        }
+                        TokenIndex separator = NoToken;
+                        for (auto i = open + 1; i < close; ++i) {
+                            if (tree.Kind(i) == TK::Operator_Semicolon) {
+                                if (separator != NoToken) {
+                                    separator = NoToken;
+                                    break;
+                                }
+                                separator = i;
+                            } else if (auto match = tree.MatchingDelimiter(i);
+                                match != NoToken && match > i && match < close)
+                            {
+                                i = match;
+                            }
+                        }
+                        if (separator != NoToken && separator > open + 1 &&
+                            separator + 1 < close)
+                        {
+                            conditionSemicolons[separator] = true;
+                        }
+                    }
+                }
+            }
+            if (node->Kind == NK::ForHeader &&
+                style.LoopSemicolonSpacing != TokenSpacing::Preserve)
+            {
+                for (auto* child = node->Child(); child;
+                    child = child->NextSibling)
+                {
+                    if (child->Kind == NK::ListSeparator &&
+                        child->Tokens.Begin < count &&
+                        tree.Kind(child->Tokens.Begin) == TK::Operator_Semicolon)
+                    {
+                        loopSemicolons[child->Tokens.Begin] = true;
+                    }
+                }
+            }
+            if ((node->Kind == NK::SubscriptExpression &&
+                    (style.SubscriptOperatorInteriorSpacing !=
+                        TokenSpacing::Preserve ||
+                        style.SubscriptOperatorSpacing !=
+                            TokenSpacing::Preserve)) ||
+                (node->Kind == NK::ArrayDeclarator &&
+                    (style.ArrayDeclarationInteriorSpacing !=
+                        TokenSpacing::Preserve ||
+                        style.ArrayDeclarationSpacing !=
+                            TokenSpacing::Preserve ||
+                        style.EmptyArrayDeclarationInteriorSpacing !=
+                            TokenSpacing::Preserve)) ||
+                (node->Kind == NK::StructuredBinding &&
+                    style.StructuredBindingBracketSpacing !=
+                        TokenSpacing::Preserve))
+            {
+                for (auto i = node->Tokens.Begin;
+                    i < node->Tokens.End && i < count; ++i)
+                {
+                    auto role = node->Kind == NK::SubscriptExpression
+                        ? PR::CallDelimiter : PR::DeclarationDelimiter;
+                    if (tree.Kind(i) != TK::Operator_OpenBracket ||
+                        tree.Role(i) != role)
+                    {
+                        continue;
+                    }
+                    auto close = tree.MatchingDelimiter(i);
+                    if (close != NoToken && close < node->Tokens.End) {
+                        auto before = node->Kind == NK::SubscriptExpression
+                            ? style.SubscriptOperatorSpacing
+                            : node->Kind == NK::ArrayDeclarator
+                                ? style.ArrayDeclarationSpacing
+                                : TokenSpacing::Preserve;
+                        if (i > 0 && before != TokenSpacing::Preserve) {
+                            gaps[i] = before;
+                        }
+                        auto inside = node->Kind == NK::SubscriptExpression
+                            ? style.SubscriptOperatorInteriorSpacing
+                            : node->Kind == NK::ArrayDeclarator
+                                ? style.ArrayDeclarationInteriorSpacing
+                                : style.StructuredBindingBracketSpacing;
+                        if (node->Kind == NK::ArrayDeclarator &&
+                            close == i + 1)
+                        {
+                            gaps[close] =
+                                style.EmptyArrayDeclarationInteriorSpacing;
+                        } else {
+                            markInside(i, close, inside);
+                        }
+                    }
+                    break;
+                }
+            }
+            if (node->Kind == NK::Initializer &&
+                style.AssignmentOperatorSpacing != TokenSpacing::Preserve &&
+                node->Tokens.Begin < count &&
+                tree.Kind(node->Tokens.Begin) == TK::Operator_Assign &&
+                node->Tokens.Begin > 0 && node->Tokens.Begin + 1 < count)
+            {
+                gaps[node->Tokens.Begin] = style.AssignmentOperatorSpacing;
+                gaps[node->Tokens.Begin + 1] = style.AssignmentOperatorSpacing;
+            }
+            if (node->Kind == NK::CastExpression &&
+                style.CastArgumentSpacing != TokenSpacing::Preserve)
+            {
+                for (auto i = node->Tokens.Begin;
+                    i < node->Tokens.End && i < count; ++i)
+                {
+                    if (tree.Kind(i) == TK::Operator_OpenParenthesis &&
+                        tree.Role(i) == PR::CastDelimiter)
+                    {
+                        auto close = tree.MatchingDelimiter(i);
+                        if (close != NoToken && close < node->Tokens.End) {
+                            markInside(i, close, style.CastArgumentSpacing);
+                        }
+                        break;
+                    }
+                }
+            }
+            if (node->Kind == NK::CastExpression &&
+                style.CastSpacing != TokenSpacing::Preserve &&
+                tree.Kind(node->Tokens.Begin) == TK::Operator_OpenParenthesis)
+            {
+                auto close = tree.MatchingDelimiter(node->Tokens.Begin);
+                if (close + 1 < node->Tokens.End && close + 1 < count) {
+                    gaps[close + 1] = style.CastSpacing;
+                }
+            }
+        }
+        // Do not pass template safety through arbitrary arguments or default
+        // expressions: they can contain comparisons that resemble templates.
+        const bool childTyped =
+            node->Kind == NK::TemplateIdExpression ||
+            node->Kind == NK::DeclarationSpecifiers ||
+            node->Kind == NK::TypeId || node->Kind == NK::NewTypeId ||
+            node->Kind == NK::BaseType;
+        for (auto* child = node->FirstChild; child;
+            child = child->NextSibling)
+        {
+            nodes.emplace_back(child, childTyped);
+        }
+    }
+    auto pointer = [&](TokenIndex i) {
+        return tree.Role(i) == PR::PointerDeclarator ||
+            tree.Role(i) == PR::ReferenceDeclarator;
+    };
+    for (TokenIndex i = 0; i < count; ++i) {
+        if (pointer(i) &&
+            style.PointerReferenceLocation != PointerReferenceLocation::Preserve)
+        {
+            // Keep adjacent pointer/reference operators together. Leave
+            // member pointers and nested declarators alone rather than
+            // guessing their binding.
+            auto first = i;
+            while (i + 1 < count && pointer(i + 1)) {
+                ++i;
+            }
+            auto last = i;
+            if (first == 0 || last + 1 == count ||
+                tree.Kind(first - 1) == TK::Operator_OpenParenthesis ||
+                tree.Kind(first - 1) == TK::Operator_ScopeResolution ||
+                (tree.Kind(last + 1) != TK::Identifier &&
+                    tree.Kind(last + 1) != TK::Keyword_const &&
+                    tree.Kind(last + 1) != TK::Keyword_volatile))
+            {
+                continue;
+            }
+            auto location = style.PointerReferenceLocation;
+            // A comma separates declarators, not type and pointer. Leave
+            // its following gap to CommaSpacing (or the original source).
+            if (tree.Kind(first - 1) != TK::Operator_Comma) {
+                gaps[first] = location == PointerReferenceLocation::Left
+                    ? TokenSpacing::NoSpace : TokenSpacing::Space;
+            }
+            for (auto k = first + 1; k <= last; ++k) {
+                gaps[k] = TokenSpacing::NoSpace;
+            }
+            gaps[last + 1] = location == PointerReferenceLocation::Right
+                ? TokenSpacing::NoSpace : TokenSpacing::Space;
+            continue;
+        }
+        auto role = tree.Role(i);
+        auto kind = tree.Kind(i);
+        TokenSpacing operatorStyle = TokenSpacing::Preserve;
+        if (role == PR::BinaryOperator ||
+            role == PR::ComparisonOperator || role == PR::ShiftOperator)
+        {
+            operatorStyle = style.BinaryOperatorSpacing;
+        } else if (role == PR::AssignmentOperator) {
+            operatorStyle = style.AssignmentOperatorSpacing;
+        }
+        // Angle and shift tokens can also spell template syntax; do not
+        // change them without name lookup.
+        if (operatorStyle != TokenSpacing::Preserve && i > 0 && i + 1 < count &&
+            kind != TK::Operator_Less && kind != TK::Operator_Greater &&
+            kind != TK::Operator_LeftShift && kind != TK::Operator_RightShift)
+        {
+            gaps[i] = operatorStyle;
+            gaps[i + 1] = operatorStyle;
+        }
+        if (kind == TK::Operator_Comma && role == PR::ListSeparator &&
+            style.CommaSpacing != CommaSpacing::Preserve && i + 1 < count)
+        {
+            gaps[i] = TokenSpacing::NoSpace;
+            if (tree.Kind(i + 1) != TK::Operator_CloseParenthesis &&
+                tree.Kind(i + 1) != TK::Operator_CloseBracket &&
+                tree.Kind(i + 1) != TK::Operator_CloseBrace)
+            {
+                gaps[i + 1] = style.CommaSpacing == CommaSpacing::After
+                    ? TokenSpacing::Space : TokenSpacing::NoSpace;
+            }
+        }
+        if (style.MemberAccessOperatorsSpacing ==
+                TightOperatorSpacing::NoSpace &&
+            kind == TK::Operator_ScopeResolution && i + 1 < count &&
+            (tree.Kind(i + 1) == TK::Identifier ||
+                tree.Kind(i + 1) == TK::Keyword_template ||
+                tree.Kind(i + 1) == TK::Keyword_operator ||
+                tree.Kind(i + 1) == TK::Operator_Complement))
+        {
+            // A leading :: has no qualifier on its left; preserve its
+            // separation from preceding keywords and assignments.
+            if (i > 0 && tree.Kind(i - 1) == TK::Identifier) {
+                gaps[i] = TokenSpacing::NoSpace;
+            }
+            gaps[i + 1] = TokenSpacing::NoSpace;
+        }
+        if (style.MemberAccessOperatorsSpacing ==
+                TightOperatorSpacing::NoSpace &&
+            (kind == TK::Operator_PointerToMemberDereference ||
+                kind == TK::Operator_IndirectPointerToMemberDereference) &&
+            i > 0 && i + 1 < count)
+        {
+            gaps[i] = TokenSpacing::NoSpace;
+            gaps[i + 1] = TokenSpacing::NoSpace;
+        }
+        if (kind == TK::Operator_Semicolon &&
+            (loopSemicolons[i] || conditionSemicolons[i]))
+        {
+            gaps[i] = TokenSpacing::NoSpace;
+            if (i + 1 < count &&
+                tree.Kind(i + 1) != TK::Operator_Semicolon &&
+                tree.Kind(i + 1) != TK::Operator_CloseParenthesis)
+            {
+                gaps[i + 1] = loopSemicolons[i]
+                    ? style.LoopSemicolonSpacing
+                    : style.ConditionInitSemicolonSpacing;
+            }
+        }
+    }
+    std::string output;
+    output.reserve(tree.Source().size());
+    for (TokenIndex i = 0; i < count; ++i) {
+        auto gap = tree.WhitespaceBefore(i);
+        auto setting = gaps[i];
+        const auto memberPointer = [](TK kind) {
+            return kind == TK::Operator_PointerToMemberDereference ||
+                kind == TK::Operator_IndirectPointerToMemberDereference;
+        };
+        // The parser may leave member-pointer expressions recovered, but
+        // the two complete operator tokens are lexically unambiguous.
+        const bool safeMemberPointerGap = i > 0 &&
+            style.MemberAccessOperatorsSpacing ==
+                TightOperatorSpacing::NoSpace &&
+            ((memberPointer(tree.Kind(i)) &&
+                (tree.Kind(i - 1) == TK::Identifier ||
+                    tree.Kind(i - 1) == TK::Operator_CloseParenthesis ||
+                    tree.Kind(i - 1) == TK::Operator_CloseBracket)) ||
+                (memberPointer(tree.Kind(i - 1)) &&
+                    tree.Kind(i) == TK::Identifier));
+        if (i == 0 ||
+            ((unsafe[i] || unsafe[i - 1]) && !safeMemberPointerGap) ||
+            tree.Kind(i - 1) == TK::Comment || tree.Kind(i) == TK::Comment ||
+            tree.Kind(i - 1) == TK::PreprocessingDirective ||
+            tree.Kind(i) == TK::PreprocessingDirective ||
+            gap.find_first_not_of(" \t") != std::string_view::npos)
+        {
+            setting = TokenSpacing::Preserve;
+        }
+        // Removing space between two operator spellings can change tokens
+        // (e.g. + + becomes ++). Restrict such gaps to word/delimiter edges.
+        if (setting == TokenSpacing::NoSpace) {
+            auto left = tree.TokenText(i - 1);
+            auto right = tree.TokenText(i);
+            auto edge = [](char ch) {
+                return std::isalnum(static_cast<unsigned char>(ch)) ||
+                    ch == '_' || ch == ')' || ch == ']' || ch == '(' ||
+                    ch == '[' || ch == ',' || ch == ';';
+            };
+            if (!edge(left.back()) && !edge(right.front()) &&
+                tree.Kind(i) != TK::Operator_Comma &&
+                tree.Kind(i) != TK::Operator_Semicolon &&
+                !(pointer(i - 1) && pointer(i)) &&
+                !(tree.Kind(i - 1) == TK::Operator_OpenBrace &&
+                    tree.Kind(i) == TK::Operator_OpenBrace) &&
+                !(tree.Kind(i - 1) == TK::Operator_CloseBrace &&
+                    tree.Kind(i) == TK::Operator_CloseBrace) &&
+                !(tree.Kind(i - 1) == TK::Operator_ScopeResolution &&
+                    tree.Kind(i) == TK::Operator_Complement) &&
+                tree.Kind(i - 1) != TK::Operator_OpenBrace &&
+                tree.Kind(i) != TK::Operator_CloseBrace) {
+                setting = TokenSpacing::Preserve;
+            }
+        }
+        if (setting == TokenSpacing::Preserve) {
+            output.append(gap);
+        } else if (setting == TokenSpacing::Space) {
+            output.push_back(' ');
+        }
+        output.append(tree.TokenText(i));
+    }
+    if (count) {
+        output.append(tree.WhitespaceAfter(count - 1));
+    } else {
+        output.append(tree.Source());
+    }
+    return output;
+}
+
+// Only horizontal trivia before standalone directives and trailing line
+// comments is eligible. Directive bodies, continuations, and comment text
+// stay byte-for-byte identical.
+static std::string FormatLineOwnedSpacing(const parser::SyntaxTree& tree,
+    const Style& style)
+{
+    enum class Directive { Other, If, Branch, EndIf };
+    auto directiveKind = [](std::string_view text) {
+        if (text.starts_with("%:")) {
+            text.remove_prefix(2);
+        } else if (text.starts_with('#')) {
+            text.remove_prefix(1);
+        } else {
+            return Directive::Other;
+        }
+        auto first = text.find_first_not_of(" \t\v\f");
+        if (first == std::string_view::npos) {
+            return Directive::Other;
+        }
+        text.remove_prefix(first);
+        const auto word = text.substr(0,
+            text.find_first_not_of(
+                "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_"));
+        if (word == "if" || word == "ifdef" || word == "ifndef") {
+            return Directive::If;
+        }
+        if (word == "elif" || word == "elifdef" ||
+            word == "elifndef" || word == "else")
+        {
+            return Directive::Branch;
+        }
+        return word == "endif" ? Directive::EndIf : Directive::Other;
+    };
+    size_t depth = 0;
+    bool balanced = true;
+    if (style.PreprocessorIndentation ==
+        PreprocessorIndentation::PreprocessorIndented)
+    {
+        for (TokenIndex i = 0; i < tree.TokenCount(); ++i) {
+            if (tree.Kind(i) != TK::PreprocessingDirective) {
+                continue;
+            }
+            switch (directiveKind(tree.TokenText(i))) {
+            case Directive::If:
+                ++depth;
+                break;
+            case Directive::Branch:
+                balanced &= depth != 0;
+                break;
+            case Directive::EndIf:
+                if (depth == 0) {
+                    balanced = false;
+                } else {
+                    --depth;
+                }
+                break;
+            case Directive::Other:
+                break;
+            }
+        }
+        balanced &= depth == 0;
+    }
+    depth = 0;
+    std::string output;
+    output.reserve(tree.Source().size());
+    for (TokenIndex i = 0; i < tree.TokenCount(); ++i) {
+        const auto gap = tree.WhitespaceBefore(i);
+        bool replaced = false;
+        if (style.TrailingCommentSpacing != TokenSpacing::Preserve &&
+            i > 0 && tree.Kind(i) == TK::Comment &&
+            tree.TokenText(i).starts_with("//") &&
+            tree.Kind(i - 1) != TK::Comment &&
+            tree.Kind(i - 1) != TK::PreprocessingDirective &&
+            (style.TrailingCommentSpacing != TokenSpacing::NoSpace ||
+                tree.TokenText(i - 1).back() != '/') &&
+            gap.find_first_not_of(" \t") == std::string_view::npos)
+        {
+            if (style.TrailingCommentSpacing == TokenSpacing::Space) {
+                output.push_back(' ');
+            }
+            replaced = true;
+        }
+        if (!replaced &&
+            style.PreprocessorIndentation != PreprocessorIndentation::Preserve &&
+            tree.Kind(i) == TK::PreprocessingDirective &&
+            tree.TokenText(i).find('\n') == std::string_view::npos &&
+            (balanced || style.PreprocessorIndentation ==
+                PreprocessorIndentation::LineStart))
+        {
+            const auto newline = gap.rfind('\n');
+            const auto indentStart = newline == std::string_view::npos
+                ? 0 : newline + 1;
+            const auto prefix = gap.substr(indentStart);
+            if ((newline != std::string_view::npos || i == 0) &&
+                prefix.find_first_not_of(" \t") ==
+                    std::string_view::npos)
+            {
+                auto level = depth;
+                const auto kind = directiveKind(tree.TokenText(i));
+                if (kind == Directive::Branch || kind == Directive::EndIf) {
+                    level = level == 0 ? 0 : level - 1;
+                }
+                if (level > 256 && style.PreprocessorIndentation ==
+                        PreprocessorIndentation::PreprocessorIndented)
+                {
+                    output.append(gap);
+                } else {
+                    output.append(gap.substr(0, indentStart));
+                }
+                if (style.PreprocessorIndentation ==
+                    PreprocessorIndentation::PreprocessorIndented &&
+                    level <= 256)
+                {
+                    output += GeneratedIndent(level * style.IndentWidth,
+                        style);
+                }
+                replaced = true;
+            }
+        }
+        if (!replaced) {
+            output.append(gap);
+        }
+        output.append(tree.TokenText(i));
+        if (tree.Kind(i) == TK::PreprocessingDirective && balanced &&
+            style.PreprocessorIndentation ==
+                PreprocessorIndentation::PreprocessorIndented)
+        {
+            const auto kind = directiveKind(tree.TokenText(i));
+            if (kind == Directive::If) {
+                ++depth;
+            } else if (kind == Directive::EndIf && depth != 0) {
+                --depth;
+            }
+        }
+    }
+    if (tree.TokenCount()) {
+        output.append(tree.WhitespaceAfter(tree.TokenCount() - 1));
+    } else {
+        output.append(tree.Source());
+    }
+    return output;
+}
+
+// Trim line-end trivia without editing raw strings, literal continuations,
+// or preprocessing tokens. A trailing backslash may be a line splice.
+static std::string TrimTrailingWhitespace(const parser::SyntaxTree& tree)
+{
+    const auto source = tree.Source();
+    std::string result;
+    result.reserve(source.size());
+    size_t token = 0;
+    for (size_t begin = 0; begin < source.size();) {
+        const auto newline = source.find('\n', begin);
+        const bool hasNewline = newline != std::string_view::npos;
+        const auto end = hasNewline ? newline : source.size();
+        const auto contentEnd = end > begin && source[end - 1] == '\r'
+            ? end - 1 : end;
+        auto trim = contentEnd;
+        while (trim > begin && (source[trim - 1] == ' ' ||
+                source[trim - 1] == '\t'))
+        {
+            --trim;
+        }
+        while (token < tree.TokenCount() &&
+            tree.Token(token).Text.End <= trim)
+        {
+            ++token;
+        }
+        const bool insideToken = token < tree.TokenCount() &&
+            tree.Token(token).Text.Begin < contentEnd &&
+            tree.Token(token).Text.End > trim &&
+            tree.Kind(token) != TK::Comment;
+        if (insideToken ||
+            (trim > begin && source[trim - 1] == '\\'))
+        {
+            trim = contentEnd;
+        }
+        result.append(source.substr(begin, trim - begin));
+        result.append(source.substr(contentEnd,
+            (hasNewline ? end + 1 : end) - contentEnd));
+        begin = hasNewline ? end + 1 : end;
+    }
+    return result;
+}
+
 std::vector<LayoutDiagnostic> CheckExpressionLayout(
     const parser::SyntaxTree& tree, const Style& style)
 {
@@ -3009,6 +4828,7 @@ std::string Format(const parser::SyntaxTree& tree, const Style& style)
         style.IndentAccessModifiers == BodyIndentation::Preserve &&
         style.IndentMembers == BodyIndentation::Preserve &&
         style.InheritanceList == InheritanceListMode::Preserve &&
+        style.ConstructorInitializerList == InheritanceListMode::Preserve &&
         style.ClassBracePlacement == BracePlacement::Preserve &&
         style.StructBracePlacement == BracePlacement::Preserve &&
         style.UnionBracePlacement == BracePlacement::Preserve &&
@@ -3150,6 +4970,7 @@ std::string Format(const parser::SyntaxTree& tree, const Style& style)
             [] (parser::ParseError) { });
         Style controlStyle;
         controlStyle.IndentWidth = style.IndentWidth;
+        controlStyle.IndentationKind = style.IndentationKind;
         controlStyle.ControlBlockBracePlacement =
             style.ControlBlockBracePlacement;
         formatted = Formatter(parsed, controlStyle).Run();
@@ -3167,18 +4988,145 @@ std::string Format(const parser::SyntaxTree& tree, const Style& style)
                 style.NamespaceComments);
         }
     }
-    if (style.IncludeOrder == IncludeOrder::Preserve) {
+    if (style.PointerReferenceLocation != PointerReferenceLocation::Preserve ||
+        style.BinaryOperatorSpacing != TokenSpacing::Preserve ||
+        style.AssignmentOperatorSpacing != TokenSpacing::Preserve ||
+        style.CastSpacing != TokenSpacing::Preserve ||
+        style.CommaSpacing != CommaSpacing::Preserve ||
+        style.LoopSemicolonSpacing != TokenSpacing::Preserve ||
+        style.ConditionInitSemicolonSpacing != TokenSpacing::Preserve ||
+        style.SubscriptOperatorInteriorSpacing != TokenSpacing::Preserve ||
+        style.SubscriptOperatorSpacing != TokenSpacing::Preserve ||
+        style.ArrayDeclarationInteriorSpacing != TokenSpacing::Preserve ||
+        style.ArrayDeclarationSpacing != TokenSpacing::Preserve ||
+        style.BraceInitializerSpacing != TokenSpacing::Preserve ||
+        style.ReturnArrowSpacing != ReturnArrowSpacing::Preserve ||
+        style.EmptyFunctionCallArgumentsSpacing != TokenSpacing::Preserve ||
+        style.EmptyFunctionParametersSpacing != TokenSpacing::Preserve ||
+        style.EmptyLambdaParametersSpacing != TokenSpacing::Preserve ||
+        style.EmptyLambdaCaptureSpacing != TokenSpacing::Preserve ||
+        style.StructuredBindingBracketSpacing != TokenSpacing::Preserve ||
+        style.UnaryOperatorSpacing != TightOperatorSpacing::Preserve ||
+        style.PostfixOperatorSpacing != TightOperatorSpacing::Preserve ||
+        style.TernaryOperatorSpacing != TernaryOperatorSpacing::Preserve ||
+        style.TemplateKeywordSpacing != TokenSpacing::Preserve ||
+        style.TemplateTypeArgumentInteriorSpacing != TokenSpacing::Preserve ||
+        style.TemplateTypeArgumentSpacing != TokenSpacing::Preserve ||
+        style.FunctionQualifierSpacing != TokenSpacing::Preserve ||
+        style.FunctionRefQualifierSpacing != TokenSpacing::Preserve ||
+        style.NestedDeclaratorInteriorSpacing != TokenSpacing::Preserve ||
+        style.NestedDeclaratorPointerSpacing != TokenSpacing::Preserve ||
+        style.MemberPointerDeclaratorSpacing != TokenSpacing::Preserve ||
+        style.NoexceptSpaceBeforeParentheses != TokenSpacing::Preserve ||
+        style.AlignasSpaceBeforeParentheses != TokenSpacing::Preserve ||
+        style.AlignofSpaceBeforeParentheses != TokenSpacing::Preserve ||
+        style.SizeofSpaceBeforeParentheses != TokenSpacing::Preserve ||
+        style.DecltypeSpaceBeforeParentheses != TokenSpacing::Preserve ||
+        style.TypeidSpaceBeforeParentheses != TokenSpacing::Preserve ||
+        style.RequiresSpaceBeforeParentheses != TokenSpacing::Preserve ||
+        style.StaticAssertSpaceBeforeParentheses != TokenSpacing::Preserve ||
+        style.AttributeSpaceAfterSpecifier != TokenSpacing::Preserve ||
+        style.NamedCastSpaceBeforeTypeArguments != TokenSpacing::Preserve ||
+        style.PlacementNewSpaceBeforeArguments != TokenSpacing::Preserve ||
+        style.AttributeSpaceBeforeSpecifier != TokenSpacing::Preserve ||
+        style.NewInitializerSpaceBeforeParentheses !=
+            TokenSpacing::Preserve ||
+        style.DeleteArraySpaceBeforeBrackets != TokenSpacing::Preserve ||
+        style.SizeofPackSpaceBeforeParentheses != TokenSpacing::Preserve ||
+        style.NewInitializerSpaceBeforeBraces != TokenSpacing::Preserve ||
+        style.NewInitializerParenthesisInteriorSpacing !=
+            TokenSpacing::Preserve ||
+        style.DeleteArraySpaceAfterBrackets != TokenSpacing::Preserve ||
+        style.PlacementNewSpaceAfterArguments != TokenSpacing::Preserve ||
+        style.NewArraySpaceBeforeBrackets != TokenSpacing::Preserve ||
+        style.NewArrayInteriorSpacing != TokenSpacing::Preserve ||
+        style.EmptyAttributeInteriorSpacing != TokenSpacing::Preserve ||
+        style.CoAwaitSpaceBeforeParentheses != TokenSpacing::Preserve ||
+        style.NewInitializerBraceInteriorSpacing != TokenSpacing::Preserve ||
+        style.PlacementNewArgumentInteriorSpacing != TokenSpacing::Preserve ||
+        style.EmptyArrayDeclarationInteriorSpacing !=
+            TokenSpacing::Preserve ||
+        style.EmptyNewArrayInteriorSpacing != TokenSpacing::Preserve ||
+        style.NoexceptSpaceBeforeSpecifier != TokenSpacing::Preserve ||
+        style.NamedCastSpaceBeforeOperandParentheses !=
+            TokenSpacing::Preserve ||
+        style.ReturnSpaceBeforeParentheses != TokenSpacing::Preserve ||
+        style.ThrowSpaceBeforeParentheses != TokenSpacing::Preserve ||
+        style.CoReturnSpaceBeforeParentheses != TokenSpacing::Preserve ||
+        style.FunctionSuffixSpecifierSpacing != TokenSpacing::Preserve ||
+        style.RecordBodyInteriorSpacing != TokenSpacing::Preserve ||
+        style.NamespaceBodyInteriorSpacing != TokenSpacing::Preserve ||
+        style.EnumBodyInteriorSpacing != TokenSpacing::Preserve ||
+        style.RequirementBodyInteriorSpacing != TokenSpacing::Preserve ||
+        style.EmptyBraceInitializerInteriorSpacing != TokenSpacing::Preserve ||
+        style.OperatorOverloadOperatorSpacing !=
+            OperatorOverloadOperatorSpacing::Preserve ||
+        style.AttributeInteriorSpacing != TokenSpacing::Preserve ||
+        style.StatementSemicolonSpacing != TightOperatorSpacing::Preserve ||
+        style.MemberAccessOperatorsSpacing != TightOperatorSpacing::Preserve ||
+        style.InitializerBracesSpacing != TokenSpacing::Preserve ||
+        style.CastArgumentSpacing != TokenSpacing::Preserve ||
+        style.GroupingInteriorSpacing != TokenSpacing::Preserve ||
+        style.ControlBlockConditionSpacing != TokenSpacing::Preserve ||
+        style.AccessModifierColonSpacing != TokenSpacing::Preserve ||
+        style.RangeBasedForColonSpacing != TokenSpacing::Preserve ||
+        style.BlockInteriorSpacing != TokenSpacing::Preserve ||
+        style.EmptyBlockInteriorSpacing != TokenSpacing::Preserve ||
+        style.ControlBlockSpaceBeforeBrace != TokenSpacing::Preserve ||
+        style.DeclarationSemicolonSpacing != TokenSpacing::Preserve ||
+        style.BitFieldColonSpacing != ColonSpacing::Preserve ||
+        style.EnumUnderlyingTypeColonSpacing != ColonSpacing::Preserve ||
+        style.LabelColonSpacing != ColonSpacing::Preserve)
+    {
+        if (formatted == tree.Source()) {
+            formatted = FormatTokenSpacing(tree, style);
+        } else {
+            auto length = formatted.size();
+            formatted.append(util::SourcePaddingSize, '\0');
+            auto parsed = parser::Parse(
+                {.Data = formatted.data(), .Size = length},
+                [] (parser::ParseError) { });
+            formatted = FormatTokenSpacing(parsed, style);
+        }
+    }
+    if (style.IncludeOrder != IncludeOrder::Preserve) {
+        if (formatted == tree.Source()) {
+            formatted = FormatIncludes(tree);
+        } else {
+            auto length = formatted.size();
+            formatted.append(util::SourcePaddingSize, '\0');
+            auto parsed = parser::Parse(
+                {.Data = formatted.data(), .Size = length},
+                [] (parser::ParseError) { });
+            formatted = FormatIncludes(parsed);
+        }
+    }
+    if (style.TrailingCommentSpacing != TokenSpacing::Preserve ||
+        style.PreprocessorIndentation != PreprocessorIndentation::Preserve)
+    {
+        if (formatted == tree.Source()) {
+            formatted = FormatLineOwnedSpacing(tree, style);
+        } else {
+            auto length = formatted.size();
+            formatted.append(util::SourcePaddingSize, '\0');
+            auto parsed = parser::Parse(
+                {.Data = formatted.data(), .Size = length},
+                [] (parser::ParseError) { });
+            formatted = FormatLineOwnedSpacing(parsed, style);
+        }
+    }
+    if (style.TrailingWhitespace == TrailingWhitespace::Preserve) {
         return formatted;
     }
     if (formatted == tree.Source()) {
-        return FormatIncludes(tree);
+        return TrimTrailingWhitespace(tree);
     }
     auto length = formatted.size();
     formatted.append(util::SourcePaddingSize, '\0');
     auto finalTree = parser::Parse(
         {.Data = formatted.data(), .Size = length},
         [] (parser::ParseError) { });
-    return FormatIncludes(finalTree);
+    return TrimTrailingWhitespace(finalTree);
 }
 
 std::string Format(const parser::SyntaxTree& tree)

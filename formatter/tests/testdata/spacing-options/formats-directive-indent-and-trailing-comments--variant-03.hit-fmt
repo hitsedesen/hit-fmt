@@ -1,0 +1,4 @@
+IndentWidth = 4
+IndentationKind = Tabs
+PreprocessorIndentation = LineStart
+TrailingCommentSpacing = Space

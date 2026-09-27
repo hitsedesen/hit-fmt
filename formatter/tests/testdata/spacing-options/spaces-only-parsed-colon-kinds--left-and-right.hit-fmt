@@ -1,0 +1,3 @@
+BitFieldColonSpacing = LeftAndRight
+EnumUnderlyingTypeColonSpacing = LeftAndRight
+LabelColonSpacing = LeftAndRight

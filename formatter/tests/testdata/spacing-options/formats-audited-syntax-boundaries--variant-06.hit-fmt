@@ -1,0 +1,9 @@
+NamedCastSpaceBeforeOperandParentheses = NoSpace
+ReturnSpaceBeforeParentheses = NoSpace
+ThrowSpaceBeforeParentheses = NoSpace
+CoReturnSpaceBeforeParentheses = NoSpace
+FunctionSuffixSpecifierSpacing = NoSpace
+RecordBodyInteriorSpacing = NoSpace
+NamespaceBodyInteriorSpacing = NoSpace
+EnumBodyInteriorSpacing = NoSpace
+RequirementBodyInteriorSpacing = NoSpace

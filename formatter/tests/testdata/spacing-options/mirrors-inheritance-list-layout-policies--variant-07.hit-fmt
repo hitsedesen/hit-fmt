@@ -1,0 +1,11 @@
+ConstructorInitializerList = Format
+ConstructorInitializerListColonPlacement = AttachToConstructor
+ConstructorInitializerListColonSpaceBefore = Space
+ConstructorInitializerListColonSpaceAfter = Space
+ConstructorInitializerListCommaPlacement = AttachToPrevious
+ConstructorInitializerListCommaSpaceBefore = NoSpace
+ConstructorInitializerListCommaSpaceAfter = Space
+ConstructorInitializerListStart = NewLineOnOverflow
+ConstructorInitializerListSplit = OnePerLineOnOverflow
+ConstructorInitializerListIndent = 2
+ColumnLimit = 120

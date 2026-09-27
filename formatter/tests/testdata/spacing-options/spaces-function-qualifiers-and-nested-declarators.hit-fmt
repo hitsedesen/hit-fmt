@@ -1,0 +1,5 @@
+FunctionQualifierSpacing = Space
+FunctionRefQualifierSpacing = Space
+NestedDeclaratorInteriorSpacing = Space
+NestedDeclaratorPointerSpacing = Space
+MemberPointerDeclaratorSpacing = Space

@@ -1,0 +1,13 @@
+PointerReferenceLocation = Left
+BinaryOperatorSpacing = Space
+AssignmentOperatorSpacing = Space
+CastSpacing = Space
+CommaSpacing = After
+LoopSemicolonSpacing = Space
+ConditionInitSemicolonSpacing = Space
+UnaryOperatorSpacing = NoSpace
+PostfixOperatorSpacing = NoSpace
+TernaryOperatorSpacing = Space
+ArrayDeclarationInteriorSpacing = NoSpace
+StructuredBindingBracketSpacing = NoSpace
+SubscriptOperatorInteriorSpacing = NoSpace
