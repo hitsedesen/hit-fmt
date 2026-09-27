@@ -321,7 +321,7 @@ INSTANTIATE_TEST_SUITE_P(
         GoldenCase{"ambiguity"},
         GoldenCase{"unknown_record"},
         GoldenCase{"ambiguous_call_syntax"},
-        GoldenCase{"google_declarators"},
+        GoldenCase{"declarator_syntax"},
         GoldenCase{"extensions"},
         GoldenCase{"recovery", true}),
     [](const auto& info) {

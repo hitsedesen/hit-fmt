@@ -173,6 +173,14 @@ std::vector<FormattedCase> FormattedCases()
         "syntax-boundaries.input.cpp"});
     cases.push_back({google, "declarator-and-macro-safety",
         "declarator-and-macro-safety.input.cpp"});
+    const auto disabled = std::filesystem::path(FORMATTER_TESTDATA_DIR) /
+        "../format-disabled";
+    cases.push_back({disabled, "regions", "regions.input.cpp"});
+    cases.push_back({disabled, "unclosed", "unclosed.input.cpp", "regions"});
+    cases.push_back({disabled, "crlf", "crlf.input.cpp", "regions"});
+    const auto newArrays = std::filesystem::path(FORMATTER_TESTDATA_DIR) /
+        "../new-array-declarators";
+    AddCases(cases, newArrays, {"left", "array-space", "array-preserve"});
     AddCases(cases, google, {"punctuation-preserve", "punctuation-space",
         "comments-preserve"}, "punctuation-preserve.input.cpp");
     cases.push_back({google, "access-only", "access-scope.input.cpp"});
@@ -754,6 +762,29 @@ TEST(ExpressionLayoutTest, ChecksLayoutWithoutReflowing)
     style.ExpressionLayoutCondition =
         formatter::ExpressionLayoutCondition::Preserve;
     EXPECT_TRUE(formatter::CheckExpressionLayout(tree, style).empty());
+}
+
+TEST(ExpressionLayoutTest, SkipsFormatDisabledRegionsAgainstGolden)
+{
+    const auto directory = std::filesystem::path(FORMATTER_TESTDATA_DIR) /
+        "../format-disabled";
+    auto source = ReadFile(directory / "regions.input.cpp");
+    const auto size = source.size();
+    source.append(util::SourcePaddingSize, '\0');
+    const auto tree = parser::Parse(
+        {.Data = source.data(), .Size = size},
+        [] (parser::ParseError) { });
+    const auto style = formatter::LoadConfigFile(
+        directory / "regions.hit-fmt").FormattingStyle;
+    std::string actual;
+    for (const auto& diagnostic :
+        formatter::CheckExpressionLayout(tree, style))
+    {
+        actual += std::to_string(diagnostic.Position.Line) + ":" +
+            std::to_string(diagnostic.Position.Column) + ": " +
+            diagnostic.Message + "\n";
+    }
+    test::golden::ExpectGolden(directory / "regions.layout.expected", actual);
 }
 
 TEST(ExpressionLayoutTest, ChecksAssignmentPlacementAgainstGolden)

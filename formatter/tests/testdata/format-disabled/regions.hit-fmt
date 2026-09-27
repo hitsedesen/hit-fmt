@@ -1,0 +1,9 @@
+IndentWidth = 2
+IndentBlockBodies = true
+BinaryOperatorSpacing = Space
+CommaSpacing = Space
+ControlBlockKeywordSpacing = Space
+ControlBlockSpaceBeforeBrace = Space
+TrailingWhitespace = Trim
+ColumnLimit = 40
+ExpressionLayoutCondition = Overflow

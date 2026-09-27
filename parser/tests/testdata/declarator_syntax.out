@@ -306,6 +306,103 @@
     )
     ";"
   )
+  (function-definition
+    (declaration-specifiers "void")
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (declarator-name "allocate")
+          (function-declarator
+            (parameter-list
+              "("
+              (parameter-declaration
+                (declaration-specifiers "int")
+                (init-declarator-list
+                  (init-declarator
+                    (declarator
+                      (declarator-name "count")
+                    )
+                  )
+                )
+              )
+              ")"
+            )
+          )
+        )
+      )
+    )
+    (compound-statement
+      "{"
+      (declaration-statement
+        (declaration-specifiers "auto")
+        (init-declarator-list
+          (init-declarator
+            (declarator
+              (declarator-name "slots")
+            )
+            (initializer
+              "="
+              (new-expression
+                "new"
+                (new-type-id
+                  "const" "Widget"
+                  (pointer-operator "*")
+                  "[" "count" "]"
+                )
+              )
+            )
+          )
+        )
+        ";"
+      )
+      (declaration-statement
+        (declaration-specifiers "auto")
+        (init-declarator-list
+          (init-declarator
+            (declarator
+              (declarator-name "layers")
+            )
+            (initializer
+              "="
+              (new-expression
+                "new"
+                (new-type-id
+                  "Widget"
+                  (pointer-operator "*")
+                  (pointer-operator "*")
+                  "[" "count" "]"
+                )
+              )
+            )
+          )
+        )
+        ";"
+      )
+      (declaration-statement
+        (declaration-specifiers "auto")
+        (init-declarator-list
+          (init-declarator
+            (declarator
+              (declarator-name "product")
+            )
+            (initializer
+              "="
+              (binary-expression
+                (new-expression
+                  "new"
+                  (new-type-id "Widget")
+                )
+                "*"
+                (identifier-expression "count")
+              )
+            )
+          )
+        )
+        ";"
+      )
+      "}"
+    )
+  )
   (static-assert-declaration
     "static_assert"
     (parenthesized-expression

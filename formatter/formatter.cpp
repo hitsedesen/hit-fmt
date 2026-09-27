@@ -3684,6 +3684,7 @@ static std::string FormatTokenSpacing(const parser::SyntaxTree& tree,
     std::vector<TokenSpacing> gaps(count, TokenSpacing::Preserve);
     std::vector<bool> unsafe(count, false);
     std::vector<bool> separatedDeclarators(count, false);
+    std::vector<bool> newArrayPointers(count, false);
     std::vector<bool> loopSemicolons(count, false);
     std::vector<bool> conditionSemicolons(count, false);
     // Type positions and parser-confirmed template-ids are the only safe
@@ -3776,6 +3777,17 @@ static std::string FormatTokenSpacing(const parser::SyntaxTree& tree,
             continue;
         }
         if (!HasRecoveryChild(*node)) {
+            if (node->Kind == NK::NewTypeId) {
+                for (auto* part = node->Child(); part;
+                    part = part->NextSibling)
+                {
+                    if (part->Kind == NK::PointerOperator &&
+                        part->Tokens.Begin < count)
+                    {
+                        newArrayPointers[part->Tokens.Begin] = true;
+                    }
+                }
+            }
             if (node->Kind == NK::InitDeclaratorList) {
                 bool afterComma = false;
                 for (auto* item = node->Child(); item;
@@ -4944,7 +4956,9 @@ static std::string FormatTokenSpacing(const parser::SyntaxTree& tree,
                 tree.Kind(first - 1) == TK::Operator_ScopeResolution ||
                 (tree.Kind(last + 1) != TK::Identifier &&
                     tree.Kind(last + 1) != TK::Keyword_const &&
-                    tree.Kind(last + 1) != TK::Keyword_volatile))
+                    tree.Kind(last + 1) != TK::Keyword_volatile &&
+                    !(newArrayPointers[first] &&
+                        tree.Kind(last + 1) == TK::Operator_OpenBracket)))
             {
                 continue;
             }
@@ -4965,8 +4979,15 @@ static std::string FormatTokenSpacing(const parser::SyntaxTree& tree,
             for (auto k = first + 1; k <= last; ++k) {
                 gaps[k] = TokenSpacing::NoSpace;
             }
-            gaps[last + 1] = location == PointerReferenceDeclaratorLocation::Right
-                ? TokenSpacing::NoSpace : TokenSpacing::Space;
+            // The array rule owns the bracket gap (including Preserve).
+            // Pointer placement changes only the type-to-pointer gap here.
+            if (!(newArrayPointers[first] &&
+                    tree.Kind(last + 1) == TK::Operator_OpenBracket))
+            {
+                gaps[last + 1] = location ==
+                        PointerReferenceDeclaratorLocation::Right
+                    ? TokenSpacing::NoSpace : TokenSpacing::Space;
+            }
             continue;
         }
         auto role = tree.Role(i);
@@ -5306,6 +5327,113 @@ static std::string TrimTrailingWhitespace(const parser::SyntaxTree& tree)
     return result;
 }
 
+namespace {
+
+struct DisabledRegion
+{
+    size_t Begin;
+    size_t End;
+};
+
+// Markers must occupy a whole comment line; text inside strings, directives,
+// or trailing comments must not disable formatting. The protected range
+// includes both marker lines so even their original indentation is retained.
+std::vector<DisabledRegion> FindDisabledRegions(
+    const parser::SyntaxTree& tree)
+{
+    const auto source = tree.Source();
+    std::vector<DisabledRegion> regions;
+    size_t begin = 0;
+    size_t depth = 0;
+    for (TokenIndex i = 0; i < tree.TokenCount(); ++i) {
+        if (tree.Kind(i) != TK::Comment) continue;
+        auto text = tree.TokenText(i);
+        if (text.starts_with("//")) {
+            while (!text.empty() && (text.back() == ' ' ||
+                    text.back() == '\t' || text.back() == '\r'))
+            {
+                text.remove_suffix(1);
+            }
+        }
+        const bool off = text == "// hit-fmt off" ||
+            text == "// clang-format off" ||
+            text == "/* hit-fmt off */" ||
+            text == "/* clang-format off */";
+        const bool on = text == "// hit-fmt on" ||
+            text == "// clang-format on" ||
+            text == "/* hit-fmt on */" ||
+            text == "/* clang-format on */";
+        if (!off && !on) continue;
+        const auto token = tree.Token(i).Text;
+        const auto previousNewline = source.rfind('\n', token.Begin);
+        const auto lineStart = previousNewline == std::string_view::npos
+            ? 0 : previousNewline + 1;
+        const auto newline = source.find('\n', token.End);
+        const auto lineEnd = newline == std::string_view::npos
+            ? source.size() : newline + 1;
+        auto whitespace = [] (std::string_view text) {
+            return text.find_first_not_of(" \t\r") == std::string_view::npos;
+        };
+        if (!whitespace(source.substr(lineStart, token.Begin - lineStart)) ||
+            !whitespace(source.substr(token.End,
+                (newline == std::string_view::npos ? source.size() : newline) -
+                    token.End)))
+        {
+            continue;
+        }
+        if (off) {
+            if (depth++ == 0) begin = lineStart;
+        } else if (depth != 0 && --depth == 0) {
+            regions.push_back({begin, lineEnd});
+        }
+    }
+    if (depth != 0) regions.push_back({begin, source.size()});
+    return regions;
+}
+
+bool IsDisabledOffset(const std::vector<DisabledRegion>& regions,
+    size_t offset)
+{
+    auto after = std::upper_bound(regions.begin(), regions.end(), offset,
+        [] (size_t position, const DisabledRegion& region) {
+            return position < region.Begin;
+        });
+    return after != regions.begin() && offset < (after - 1)->End;
+}
+
+std::string RestoreDisabledRegions(const parser::SyntaxTree& original,
+    std::string formatted)
+{
+    const auto regions = FindDisabledRegions(original);
+    if (regions.empty()) return formatted;
+    const auto length = formatted.size();
+    formatted.append(util::SourcePaddingSize, '\0');
+    const auto resultTree = parser::Parse(
+        {.Data = formatted.data(), .Size = length},
+        [] (parser::ParseError) { });
+    const auto resultRegions = FindDisabledRegions(resultTree);
+    if (regions.size() != resultRegions.size()) {
+        return std::string(original.Source());
+    }
+    std::string result;
+    result.reserve(length);
+    size_t cursor = 0;
+    for (size_t i = 0; i < regions.size(); ++i) {
+        if (resultRegions[i].Begin < cursor || resultRegions[i].End > length) {
+            return std::string(original.Source());
+        }
+        result.append(formatted.data() + cursor,
+            resultRegions[i].Begin - cursor);
+        result.append(original.Source().substr(regions[i].Begin,
+            regions[i].End - regions[i].Begin));
+        cursor = resultRegions[i].End;
+    }
+    result.append(formatted.data() + cursor, length - cursor);
+    return result;
+}
+
+} // namespace
+
 std::vector<LayoutDiagnostic> CheckExpressionLayout(
     const parser::SyntaxTree& tree, const Style& style)
 {
@@ -5314,6 +5442,7 @@ std::vector<LayoutDiagnostic> CheckExpressionLayout(
         return diagnostics;
     }
     const auto source = tree.Source();
+    const auto disabled = FindDisabledRegions(tree);
     uint32_t lineNumber = 1;
     for (size_t start = 0; start < source.size(); ++lineNumber) {
         auto end = source.find('\n', start);
@@ -5324,7 +5453,9 @@ std::vector<LayoutDiagnostic> CheckExpressionLayout(
         if (width && source[end - 1] == '\r') {
             --width;
         }
-        if (width > style.ColumnLimit) {
+        if (width > style.ColumnLimit &&
+            !IsDisabledOffset(disabled, start))
+        {
             diagnostics.push_back({
                 {.Line = lineNumber,
                  .Column = static_cast<uint32_t>(style.ColumnLimit + 1)},
@@ -5337,7 +5468,9 @@ std::vector<LayoutDiagnostic> CheckExpressionLayout(
     std::vector<const parser::Node*> nodes{&tree.Root()};
     auto checkPlacement = [&] (TokenIndex index, bool leading,
         std::string_view name) {
-        if (!SafeOperatorGap(tree, index)) {
+        if (!SafeOperatorGap(tree, index) ||
+            IsDisabledOffset(disabled, tree.Token(index).Text.Begin))
+        {
             return;
         }
         bool left = tree.WhitespaceBefore(index).find('\n') !=
@@ -5405,7 +5538,9 @@ std::vector<LayoutDiagnostic> CheckExpressionLayout(
             }
             if (style.TernarySplit == TernarySplit::ThreeLines &&
                 SafeOperatorGap(tree, question) &&
-                SafeOperatorGap(tree, colon))
+                SafeOperatorGap(tree, colon) &&
+                !IsDisabledOffset(disabled, tree.Token(question).Text.Begin) &&
+                !IsDisabledOffset(disabled, tree.Token(colon).Text.Begin))
             {
                 auto hasBreak = [&] (TokenIndex i) {
                     return tree.WhitespaceBefore(i).find('\n') !=
@@ -5761,18 +5896,19 @@ std::string Format(const parser::SyntaxTree& tree, const Style& style)
             [] (parser::ParseError) { });
         formatted = FormatBlockIndentation(parsed, style);
     }
-    if (style.TrailingWhitespace == TrailingWhitespace::Preserve) {
-        return formatted;
+    if (style.TrailingWhitespace != TrailingWhitespace::Preserve) {
+        if (formatted == tree.Source()) {
+            formatted = TrimTrailingWhitespace(tree);
+        } else {
+            auto length = formatted.size();
+            formatted.append(util::SourcePaddingSize, '\0');
+            auto finalTree = parser::Parse(
+                {.Data = formatted.data(), .Size = length},
+                [] (parser::ParseError) { });
+            formatted = TrimTrailingWhitespace(finalTree);
+        }
     }
-    if (formatted == tree.Source()) {
-        return TrimTrailingWhitespace(tree);
-    }
-    auto length = formatted.size();
-    formatted.append(util::SourcePaddingSize, '\0');
-    auto finalTree = parser::Parse(
-        {.Data = formatted.data(), .Size = length},
-        [] (parser::ParseError) { });
-    return TrimTrailingWhitespace(finalTree);
+    return RestoreDisabledRegions(tree, std::move(formatted));
 }
 
 std::string Format(const parser::SyntaxTree& tree)

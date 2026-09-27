@@ -94,6 +94,7 @@ SubscriptOperatorSpacing = NoSpace
 SubscriptOperatorInteriorSpacing = NoSpace
 ArrayDeclarationSpacing = NoSpace
 ArrayDeclarationInteriorSpacing = NoSpace
+NewArraySpaceBeforeBrackets = NoSpace
 StructuredBindingBracketSpacing = NoSpace
 LoopSemicolonSpacing = Space
 ConditionInitSemicolonSpacing = Space

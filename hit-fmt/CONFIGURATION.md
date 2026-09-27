@@ -14,6 +14,15 @@ reports violations with file, line and column and returns a nonzero status.
 parent directories. The nearest file wins. `--config <file>` selects one
 file for every input; `--no-config` disables configuration lookup.
 
+Standalone `// hit-fmt off` / `// hit-fmt on` and
+`// clang-format off` / `// clang-format on` comments disable formatting
+between and including their marker lines. Single-line `/* ... */` marker
+comments also work. Markers must be the only non-whitespace content on
+those lines; strings and trailing comments do not count. Nested off/on
+pairs are supported, an unclosed off runs to the end of the file, and a
+lone on has no effect. Disabled lines are excluded from layout diagnostics;
+other checks, such as naming and parameter names, remain active.
+
 Blank lines and `#` comments are allowed. Arrays of quoted strings may
 span lines, with comments between items; each quoted item must stay on one
 line. Example:
@@ -335,7 +344,9 @@ Exclude = [
   `Preserve` (default), `Space`, or `NoSpace` before a parsed array
   bracket in a `new` type-id (`new T [4]` versus `new T[4]`) and just
   inside its nonempty brackets (`new T[ 4 ]` versus `new T[4]`),
-  respectively. Nested template arguments and attributes are unaffected.
+  respectively. The parser treats `new T*[4]` as an array of pointers,
+  not multiplication; the bracket gap follows this array setting. Nested
+  template arguments and attributes are unaffected.
 - `EmptyAttributeInteriorSpacing`: `Preserve` (default), `Space`, or
   `NoSpace` inside an empty parsed attribute list (`[[ ]]` versus
   `[[]]`). `AttributeInteriorSpacing` controls nonempty lists.
@@ -890,9 +901,8 @@ Still missing or insufficient for a full Google profile:
 - Include grouping (related header first, C/system/other libraries and
   project headers), blank lines between groups, and sorting inside each
   group; `IncludeOrder = Sort` cannot represent these categories. Header
-  guards, forward declarations, and `clang-format off` regions are not
-  enforced. Existing leading/trailing comment columns and prose are not
-  aligned or reflowed.
+  guards and forward declarations are not enforced. Existing
+  leading/trailing comment columns and prose are not aligned or reflowed.
 - General continuation indentation, return-type and template-declaration
   breaks, short-function policies, existing whitespace in unparsed code,
   and context-dependent constructor/base-list layout cannot be fully

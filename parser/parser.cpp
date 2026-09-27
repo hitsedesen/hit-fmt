@@ -2616,6 +2616,27 @@ private:
                     MakeNode(NodeKind::CallingConventionSpecifier, i);
                 convention->Tokens.End = i + 1;
                 Append(node, *convention);
+            } else if (node.Kind == NodeKind::NewTypeId &&
+                Kind(i) == TK::Operator_Star)
+            {
+                auto afterPointers = NextSignificant(i + 1);
+                while (Kind(afterPointers) == TK::Operator_Star) {
+                    afterPointers = NextSignificant(afterPointers + 1);
+                }
+                if (afterPointers < end &&
+                    Kind(afterPointers) == TK::Operator_OpenBracket)
+                {
+                    for (auto pointer = i; pointer < afterPointers;
+                        ++pointer)
+                    {
+                        if (Kind(pointer) != TK::Operator_Star) continue;
+                        auto* part = MakeNode(NodeKind::PointerOperator,
+                            pointer);
+                        part->Tokens.End = pointer + 1;
+                        Append(node, *part);
+                    }
+                    i = afterPointers - 1;
+                }
             } else if (Kind(i) == TK::Operator_Less) {
                 auto templateEnd = SkipTemplateArguments(i, end);
                 if (templateEnd <= end && templateEnd > i && (Kind(templateEnd - 1) == TK::Operator_Greater ||
@@ -4267,6 +4288,20 @@ private:
         auto typeEnd = cursor;
         while (typeEnd < end) {
             auto kind = Kind(typeEnd);
+            if (kind == TK::Operator_Star) {
+                // A following array bound makes this a pointer new-type-id,
+                // not multiplication with a bare '[' as its right operand.
+                auto afterPointers = NextSignificant(typeEnd + 1);
+                while (Kind(afterPointers) == TK::Operator_Star) {
+                    afterPointers = NextSignificant(afterPointers + 1);
+                }
+                if (Kind(afterPointers) == TK::Operator_OpenBracket &&
+                    afterPointers < end)
+                {
+                    typeEnd = afterPointers;
+                    continue;
+                }
+            }
             if (kind == TK::Operator_OpenBracket) {
                 auto balancedEnd = FindBalancedEnd(typeEnd);
                 if (balancedEnd == std::numeric_limits<TokenIndex>::max() ||
