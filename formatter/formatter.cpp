@@ -398,7 +398,10 @@ private:
             if (policy != BodyIndentation::Preserve &&
                 !member.Tokens.Empty() && index > opening && index < closing &&
                 Tree_.Kind(index) != TK::Comment &&
-                Tree_.Kind(index) != TK::PreprocessingDirective)
+                Tree_.Kind(index) != TK::PreprocessingDirective &&
+                // A header interrupted by directives can be recovered with
+                // its initializer colon as the apparent member start.
+                Tree_.Kind(index) != TK::Operator_Colon)
             {
                 BodyIndents_[index] = baseline;
                 if (policy == BodyIndentation::Indent) {
@@ -1605,40 +1608,52 @@ std::optional<std::vector<bool>> ChooseCallArgumentBreaks(
 
 // Only rewrite lists whose comma-separated elements and intervening trivia
 // can be moved without touching comments, directives, or nested line breaks.
-std::optional<Replacement> ReflowParenthesizedList(
+std::optional<Replacement> ReflowDelimitedList(
     const parser::SyntaxTree& tree, const parser::Node& list,
     const Style& style)
 {
     using TK = tokenizer::TokenKind;
     const bool call = list.Kind == NK::ArgumentList;
-    if (!call && list.Kind != NK::ParameterList) {
+    const bool braced = list.Kind == NK::InitializerList;
+    if (!call && !braced && list.Kind != NK::ParameterList) {
         return std::nullopt;
     }
-    const bool merge = call
+    const bool merge = braced
+        ? style.MergeInitializerList &&
+            style.InitializerClosingBrace != InitializerClosingBrace::NewLine
+        : call
         ? style.ExpressionLayoutCondition == ExpressionLayoutCondition::FitOrOverflow ||
             style.ExpressionLayoutCondition == ExpressionLayoutCondition::Always
         : style.MergeFunctionParameters;
-    const bool onePerLine = call
+    const bool onePerLine = braced
+        ? style.InitializerListSplit == FunctionParameterSplit::OnePerLine : call
         ? style.CallArgumentSplit == CallArgumentSplit::OnePerLine
         : style.FunctionParameterSplit == FunctionParameterSplit::OnePerLine;
-    const bool enforceFirst = call ? style.EnforceFirstCallArgumentPosition
-                                   : style.EnforceFirstFunctionParameterPosition;
-    const bool newLineFirst = call
+    const bool enforceFirst = braced ? false : call
+        ? style.EnforceFirstCallArgumentPosition
+        : style.EnforceFirstFunctionParameterPosition;
+    const bool newLineFirst = braced
+        ? style.FirstInitializerElementPosition ==
+            FirstInitializerElementPosition::NewLine : call
         ? style.FirstCallArgumentPosition == FirstCallArgumentPosition::NewLine
         : style.FirstFunctionParameterPosition ==
             FirstFunctionParameterPosition::NewLine;
-    const bool continuationIndent = call
+    const bool continuationIndent = braced
+        ? style.InitializerListIndent == CallArgumentIndent::Continuation : call
         ? style.CallArgumentIndent == CallArgumentIndent::Continuation
         : style.FunctionParameterIndent == FunctionParameterIndent::Continuation;
-    const bool innerSpace = call
+    const bool innerSpace = braced
+        ? style.InitializerBracesSpacing == TokenSpacing::Space : call
         ? style.SpaceInsideCallArguments == SpaceInsideCallArguments::Space
         : style.SpaceInsideFunctionParameters ==
             SpaceInsideFunctionParameters::Space;
     auto opening = list.Tokens.Begin;
     auto closing = list.Tokens.End - 1;
     if (list.Tokens.Size() < 3 ||
-        tree.Kind(opening) != TK::Operator_OpenParenthesis ||
-        tree.Kind(closing) != TK::Operator_CloseParenthesis ||
+        tree.Kind(opening) != (braced ? TK::Operator_OpenBrace
+                                     : TK::Operator_OpenParenthesis) ||
+        tree.Kind(closing) != (braced ? TK::Operator_CloseBrace
+                                     : TK::Operator_CloseParenthesis) ||
         tree.MatchingDelimiter(opening) != closing)
     {
         return std::nullopt;
@@ -1655,8 +1670,8 @@ std::optional<Replacement> ReflowParenthesizedList(
         if (child->Tokens.Empty()) {
             return std::nullopt;
         }
-        if (expectParameter ? child->Kind != (call ? NK::Argument
-                                                   : NK::ParameterDeclaration)
+        if (expectParameter ? child->Kind != (braced ? NK::InitializerElement :
+            call ? NK::Argument : NK::ParameterDeclaration)
                             : child->Kind != NK::ListSeparator)
         {
             return std::nullopt;
@@ -1689,7 +1704,9 @@ std::optional<Replacement> ReflowParenthesizedList(
         cursor = to;
         expectParameter = !expectParameter;
     }
-    if (expectParameter || parameters.empty() ||
+    const bool trailingComma = braced && expectParameter &&
+        !parameters.empty();
+    if ((expectParameter && !trailingComma) || parameters.empty() ||
         !IsWhitespace(source.substr(cursor, end - cursor)) ||
         source.substr(begin, end - begin).find('\r') != std::string_view::npos)
     {
@@ -1711,7 +1728,7 @@ std::optional<Replacement> ReflowParenthesizedList(
     for (size_t i = 0; i < parameters.size(); ++i) {
         flatWidth += parameters[i].size() + (i ? 2 : 0);
     }
-    flatWidth += innerSpace ? 2 : 0;
+    flatWidth += (innerSpace ? 2 : 0) + (trailingComma ? 1 : 0);
     bool split = source.substr(begin, end - begin).find('\n') !=
         std::string_view::npos;
     if ((call && parameters.size() == 1) ||
@@ -1750,6 +1767,7 @@ std::optional<Replacement> ReflowParenthesizedList(
     }
     if (split && merge && flatWidth <= style.ColumnLimit)
     {
+        if (trailingComma) flat += ',';
         if (innerSpace) {
             flat.insert(flat.begin(), ' ');
             flat.push_back(' ');
@@ -1767,14 +1785,27 @@ std::optional<Replacement> ReflowParenthesizedList(
             tree.Token(list.Child()->Tokens.Begin).Text.Begin - begin)
             .find('\n') != std::string_view::npos;
     }
+    if (!braced && !call &&
+        style.FirstFunctionParameterPosition ==
+            FirstFunctionParameterPosition::NameLineIfFits)
+    {
+        const size_t firstWidth = prefix + (innerSpace ? 1 : 0) +
+            parameters.front().size() +
+            (parameters.size() == 1
+                ? suffix.size() + (innerSpace ? 1 : 0) : 1);
+        if (firstWidth > style.ColumnLimit) firstNew = true;
+    }
     size_t baseIndent = 0;
     while (lineStart + baseIndent < openBegin &&
         source[lineStart + baseIndent] == ' ')
     {
         ++baseIndent;
     }
-    const size_t indent = continuationIndent
-        ? openBegin + 1 - lineStart : baseIndent + style.IndentWidth;
+    const size_t indent = !braced && !call && firstNew &&
+        style.FunctionParameterNewLineIndent != 0
+        ? baseIndent + style.FunctionParameterNewLineIndent
+        : continuationIndent ? openBegin + 1 - lineStart
+                             : baseIndent + style.IndentWidth;
     const std::string continuation = GeneratedIndent(indent, style);
     std::string result;
     if (firstNew) {
@@ -1787,13 +1818,14 @@ std::optional<Replacement> ReflowParenthesizedList(
         parameters.front().size();
     bool broke = firstNew;
     std::optional<std::vector<bool>> chosenBreaks;
-    if (call && !onePerLine &&
+    if ((call || braced) && !onePerLine &&
         style.ExpressionLayoutAlgorithm ==
             ExpressionLayoutAlgorithm::DynamicProgramming)
     {
         chosenBreaks = ChooseCallArgumentBreaks(parameters,
             firstNew ? indent : prefix + (innerSpace ? 1 : 0), indent,
-            suffix.size() + (innerSpace ? 1 : 0), style.ColumnLimit,
+            suffix.size() + (innerSpace ? 1 : 0) + (trailingComma ? 1 : 0),
+            style.ColumnLimit,
             split && !merge && flatWidth <= style.ColumnLimit && !firstNew);
     }
     for (size_t i = 1; i < parameters.size(); ++i) {
@@ -1817,7 +1849,25 @@ std::optional<Replacement> ReflowParenthesizedList(
         }
         result += parameters[i];
     }
-    if (innerSpace) {
+    if (trailingComma) result.push_back(',');
+    if (braced) {
+        auto closingLine = source.rfind('\n', end);
+        bool oldCloseNew = closingLine != std::string_view::npos &&
+            source.substr(closingLine + 1, end - closingLine - 1)
+                .find_first_not_of(" \t") == std::string_view::npos;
+        bool closeNew = style.InitializerClosingBrace ==
+            InitializerClosingBrace::NewLine ||
+            (style.InitializerClosingBrace == InitializerClosingBrace::Preserve &&
+                oldCloseNew);
+        if (style.InitializerClosingBrace == InitializerClosingBrace::SameLine)
+            closeNew = false;
+        if (closeNew) {
+            result += "\n";
+            result += GeneratedIndent(baseIndent, style);
+        } else if (innerSpace) {
+            result.push_back(' ');
+        }
+    } else if (innerSpace) {
         result.push_back(' ');
     }
     if (result == source.substr(begin, end - begin)) {
@@ -2231,6 +2281,22 @@ std::string PlaceExistingOperatorBreaks(const parser::SyntaxTree& tree,
                         BinaryOperatorPlacement::Leading, edits);
                 }
             }
+        } else if (node->Kind == NK::AssignmentExpression) {
+            const auto* left = node->Child();
+            const auto* right = left ? left->NextSibling : nullptr;
+            if (left && right && !left->Tokens.Empty() &&
+                !right->Tokens.Empty())
+            {
+                for (auto i = left->Tokens.End; i < right->Tokens.Begin; ++i) {
+                    if (tree.Role(i) ==
+                            parser::PunctuationRole::AssignmentOperator)
+                    {
+                        PlaceOperatorBreak(tree, i,
+                            style.AssignmentOperatorPlacement ==
+                                BinaryOperatorPlacement::Leading, edits);
+                    }
+                }
+            }
         } else if (style.TernaryOperatorPlacement !=
                 TernaryOperatorPlacement::Preserve)
         {
@@ -2579,6 +2645,9 @@ std::string FormatExpressions(const parser::SyntaxTree& tree,
                     const bool trailing = node->Kind == NK::BinaryExpression
                         ? style.BinaryOperatorPlacement ==
                             BinaryOperatorPlacement::Trailing
+                        : node->Kind == NK::AssignmentExpression
+                            ? style.AssignmentOperatorPlacement ==
+                                BinaryOperatorPlacement::Trailing
                         : node->Kind == NK::ConditionalExpression &&
                             style.TernaryOperatorPlacement ==
                                 TernaryOperatorPlacement::Trailing;
@@ -2641,6 +2710,133 @@ std::string FormatExpressions(const parser::SyntaxTree& tree,
         return std::string(source);
     }
     std::ranges::sort(breaks, {}, &ExpressionBreak::Begin);
+    struct ConditionIndent {
+        size_t Begin;
+        size_t End;
+        size_t Column;
+    };
+    std::vector<ConditionIndent> conditions;
+    if (style.ControlConditionIndent == CallArgumentIndent::Continuation ||
+        style.CallArgumentIndent == CallArgumentIndent::Continuation)
+    {
+        std::vector<const parser::Node*> headers{&tree.Root()};
+        while (!headers.empty()) {
+            auto* node = headers.back();
+            headers.pop_back();
+            if (IsIncompleteStatement(*node) || HasRecoveryChild(*node)) {
+                continue;
+            }
+            if (style.ControlConditionIndent ==
+                    CallArgumentIndent::Continuation &&
+                (node->Kind == NK::IfStatement ||
+                    node->Kind == NK::ForStatement ||
+                    node->Kind == NK::WhileStatement ||
+                    node->Kind == NK::DoWhileStatement ||
+                    node->Kind == NK::SwitchStatement ||
+                    node->Kind == NK::CatchClause))
+            {
+                for (auto* child = node->Child(); child;
+                    child = child->NextSibling)
+                {
+                    if (child->Kind != NK::Condition &&
+                        child->Kind != NK::ForHeader)
+                    {
+                        continue;
+                    }
+                    auto open = child->Tokens.Begin;
+                    if (open >= tree.TokenCount() ||
+                        tree.Kind(open) != TK::Operator_OpenParenthesis)
+                    {
+                        continue;
+                    }
+                    auto close = tree.MatchingDelimiter(open);
+                    if (close == NoToken || close >= child->Tokens.End) {
+                        continue;
+                    }
+                    auto offset = tree.Token(open).Text.Begin;
+                    auto line = source.rfind('\n', offset);
+                    line = line == std::string_view::npos ? 0 : line + 1;
+                    if (source.substr(line, offset - line).find('\t') ==
+                            std::string_view::npos)
+                    {
+                        conditions.push_back({tree.Token(open).Text.End,
+                            tree.Token(close).Text.Begin, offset - line + 1});
+                    }
+                }
+            }
+            if (style.CallArgumentIndent ==
+                    CallArgumentIndent::Continuation &&
+                node->Kind == NK::CallExpression)
+            {
+                const auto* callee = node->Child();
+                const auto* arguments = callee ? callee->NextSibling : nullptr;
+                if (callee && arguments && !callee->Tokens.Empty() &&
+                    arguments->Kind == NK::ArgumentList &&
+                    !arguments->Tokens.Empty() &&
+                    callee->Kind != NK::UnparsedSyntax &&
+                    callee->Kind != NK::Expression &&
+                    callee->Kind != NK::ParenthesizedExpression)
+                {
+                    auto open = arguments->Tokens.Begin;
+                    auto close = tree.MatchingDelimiter(open);
+                    if (open > 0 && close != NoToken &&
+                        close < arguments->Tokens.End &&
+                        tree.Kind(open) == TK::Operator_OpenParenthesis &&
+                        tree.Kind(open - 1) != TK::Keyword_requires)
+                    {
+                        auto offset = tree.Token(open).Text.Begin;
+                        auto line = source.rfind('\n', offset);
+                        line = line == std::string_view::npos ? 0 : line + 1;
+                        if (source.substr(line, offset - line).find('\t') ==
+                                std::string_view::npos)
+                        {
+                            conditions.push_back({tree.Token(open).Text.End,
+                                tree.Token(close).Text.Begin,
+                                offset - line + 1});
+                        }
+                    }
+                }
+            }
+            for (auto* child = node->Child(); child;
+                child = child->NextSibling)
+            {
+                headers.push_back(child);
+            }
+        }
+    }
+    std::ranges::sort(conditions, [] (const auto& a, const auto& b) {
+        return a.Begin == b.Begin ? a.End > b.End : a.Begin < b.Begin;
+    });
+    std::vector<std::optional<size_t>> conditionColumns(breaks.size());
+    std::vector<const ConditionIndent*> active;
+    size_t nextCondition = 0;
+    for (size_t i = 0; i < breaks.size(); ++i) {
+        auto offset = breaks[i].Begin;
+        while (!active.empty() && active.back()->End <= offset) {
+            active.pop_back();
+        }
+        while (nextCondition < conditions.size() &&
+            conditions[nextCondition].Begin <= offset)
+        {
+            if (conditions[nextCondition].End > offset) {
+                active.push_back(&conditions[nextCondition]);
+            }
+            ++nextCondition;
+        }
+        if (!active.empty()) {
+            conditionColumns[i] = active.back()->Column;
+        }
+    }
+    auto continuationColumn = [&](size_t position, size_t leading) {
+        auto it = std::ranges::lower_bound(breaks, position, {},
+            &ExpressionBreak::Begin);
+        if (it != breaks.end() && it->Begin == position) {
+            if (auto column = conditionColumns[it - breaks.begin()]) {
+                return *column;
+            }
+        }
+        return leading + style.IndentWidth;
+    };
     std::vector<Replacement> edits;
     size_t lineStart = 0;
     size_t cursor = 0;
@@ -2695,13 +2891,16 @@ std::string FormatExpressions(const parser::SyntaxTree& tree,
             {
                 auto selected = ChooseExpressionBreaks(source, breaks,
                     cursor, stop, lineStart, lineEnd,
-                    leading + style.IndentWidth, style.ColumnLimit);
+                    cursor < stop ? continuationColumn(breaks[cursor].Begin,
+                        leading) : leading + style.IndentWidth,
+                    style.ColumnLimit);
                 if (!selected.empty()) {
                     for (auto choice : selected) {
                         const auto& gap = breaks[choice];
                         edits.push_back({gap.Begin, gap.End,
                             "\n" + GeneratedIndent(
-                                leading + style.IndentWidth, style)});
+                                continuationColumn(gap.Begin, leading),
+                                style)});
                     }
                     cursor = stop;
                     lineStart = lineEnd == source.size()
@@ -2742,11 +2941,12 @@ std::string FormatExpressions(const parser::SyntaxTree& tree,
                     break;
                 }
                 const auto& selected = breaks[choice];
+                const auto newIndent = continuationColumn(selected.Begin,
+                    leading);
                 edits.push_back({selected.Begin, selected.End,
-                    "\n" + GeneratedIndent(
-                        leading + style.IndentWidth, style)});
+                    "\n" + GeneratedIndent(newIndent, style)});
                 segment = selected.End;
-                indent = leading + style.IndentWidth;
+                indent = newIndent;
                 cursor = choice + 1;
             }
         }
@@ -2810,7 +3010,8 @@ std::optional<std::pair<TokenIndex, std::string>> NamespaceClosing(
 }
 
 std::string FormatNamespaceComments(
-    const parser::SyntaxTree& tree, NamespaceComments policy)
+    const parser::SyntaxTree& tree, NamespaceComments policy,
+    size_t shortNamespaceLines)
 {
     std::vector<Replacement> edits;
     std::vector<const parser::Node*> nodes{&tree.Root()};
@@ -2829,6 +3030,12 @@ std::string FormatNamespaceComments(
                 bool lineComment = sameLine && next < tree.TokenCount() &&
                     tree.Kind(next) == TK::Comment &&
                     tree.TokenText(next).starts_with("//");
+                auto opening = tree.MatchingDelimiter(index);
+                const bool shortNamespace = shortNamespaceLines != 0 &&
+                    opening != NoToken &&
+                    tree.Token(index).Position.Line -
+                        tree.Token(opening).Position.Line <=
+                        shortNamespaceLines + 1;
                 if (lineComment) {
                     auto end = tree.Token(next).Text.End;
                     // Line-comment tokens may include the CR of CRLF.
@@ -2849,6 +3056,7 @@ std::string FormatNamespaceComments(
                         edits.push_back({begin, end, std::move(replacement)});
                     }
                 } else if (policy == NamespaceComments::Required &&
+                    !shortNamespace &&
                     (next == tree.TokenCount() || !sameLine ||
                         tree.Kind(next) != TK::Comment))
                 {
@@ -2906,6 +3114,221 @@ std::string FormatNamespaceComments(
     return output;
 }
 
+// Reindent statement starts, not arbitrary physical lines in expressions or
+// comments. Preserve recovered blocks and lines containing directives.
+std::string FormatBlockIndentation(const parser::SyntaxTree& tree,
+    const Style& style)
+{
+    auto source = tree.Source();
+    std::vector<Replacement> edits;
+    // Conditional branches may have different syntactic owners. Keep their
+    // existing indentation rather than inferring layout across #if arms.
+    std::vector<bool> conditional(tree.TokenCount(), false);
+    size_t depth = 0;
+    for (TokenIndex i = 0; i < tree.TokenCount(); ++i) {
+        if (tree.Kind(i) == TK::PreprocessingDirective) {
+            auto text = tree.TokenText(i);
+            auto hash = text.find('#');
+            if (hash != std::string_view::npos) {
+                auto word = text.substr(hash + 1);
+                word.remove_prefix(std::min(word.find_first_not_of(" \t"),
+                    word.size()));
+                auto end = word.find_first_of(" \t\r\n");
+                word = word.substr(0, end);
+                if (word == "if" || word == "ifdef" || word == "ifndef")
+                    ++depth;
+                else if (word == "endif" && depth) --depth;
+            }
+        }
+        conditional[i] = depth != 0;
+    }
+    auto mark = [&](TokenIndex index, std::string_view indent) {
+        if (index >= tree.TokenCount() || conditional[index] ||
+            tree.Kind(index) == TK::Comment ||
+            tree.Kind(index) == TK::PreprocessingDirective)
+        {
+            return;
+        }
+        auto offset = tree.Token(index).Text.Begin;
+        auto line = source.rfind('\n', offset);
+        line = line == std::string_view::npos ? 0 : line + 1;
+        auto prefix = source.substr(line, offset - line);
+        if (prefix.find_first_not_of(" \t") == std::string_view::npos &&
+            prefix != indent && prefix.find('\r') == std::string_view::npos)
+        {
+            edits.push_back({line, offset, std::string(indent)});
+        }
+    };
+    auto isStatementAttribute = [&](TokenIndex index) {
+        return index < tree.TokenCount() &&
+            tree.Kind(index) == TK::Operator_OpenBracket &&
+            tree.Role(index) == parser::PunctuationRole::AttributeDelimiter;
+    };
+    auto originalIndent = [&](TokenIndex index) -> std::string {
+        auto offset = tree.Token(index).Text.Begin;
+        auto line = source.rfind('\n', offset);
+        line = line == std::string_view::npos ? 0 : line + 1;
+        auto prefix = source.substr(line, offset - line);
+        return prefix.find_first_not_of(" \t") == std::string_view::npos
+            ? std::string(prefix) : std::string{};
+    };
+    struct Task {
+        const parser::Node* Node;
+        std::optional<std::string> Base;
+        NK Parent;
+    };
+    std::vector<Task> tasks{{&tree.Root(), std::nullopt, tree.Root().Kind}};
+    while (!tasks.empty()) {
+        auto task = std::move(tasks.back());
+        tasks.pop_back();
+        const auto& node = *task.Node;
+        if (HasRecoveryChild(node) || IsIncompleteStatement(node)) {
+            continue;
+        }
+        if ((node.Kind == NK::CompoundStatement ||
+                node.Kind == NK::LambdaBody) &&
+            !node.Tokens.Empty() &&
+            tree.Kind(node.Tokens.Begin) == TK::Operator_OpenBrace)
+        {
+            auto opening = node.Tokens.Begin;
+            auto closing = tree.MatchingDelimiter(opening);
+            if (closing == NoToken || closing >= node.Tokens.End) {
+                continue;
+            }
+            std::string base = task.Base.value_or(originalIndent(opening));
+            std::string childIndent = base + GeneratedIndentAfter(base,
+                style.IndentWidth, style);
+            const bool switchBody = task.Parent == NK::SwitchStatement;
+            if (style.IndentBlockBodies) {
+                mark(closing, base);
+            }
+            std::vector<Task> children;
+            bool afterCase = false;
+            bool nextIsCaseBlock = false;
+            std::string caseIndent;
+            for (auto* child = node.Child(); child;
+                child = child->NextSibling)
+            {
+                if (child->Tokens.Empty()) continue;
+                auto target = childIndent;
+                const bool caseLabel = switchBody &&
+                    child->Kind == NK::CaseLabel;
+                const bool caseBlock = switchBody && nextIsCaseBlock &&
+                    child->Kind == NK::CompoundStatement;
+                if (caseLabel) {
+                    afterCase = true;
+                    nextIsCaseBlock = true;
+                    if (style.IndentCaseLabels == BodyIndentation::NoIndent)
+                        target = base;
+                    caseIndent = style.IndentCaseLabels ==
+                        BodyIndentation::Preserve
+                        ? originalIndent(child->Tokens.Begin) : target;
+                } else if (caseBlock) {
+                    // A brace immediately after a case label belongs to the
+                    // label, not to an extra level within the switch body.
+                    target = caseIndent;
+                } else if (switchBody && afterCase &&
+                    style.IndentCaseLabels == BodyIndentation::Indent)
+                {
+                    target += GeneratedIndentAfter(target,
+                        style.IndentWidth, style);
+                }
+                if (!caseLabel && child->Kind != NK::Comment &&
+                    child->Kind != NK::PreprocessingDirective)
+                {
+                    nextIsCaseBlock = false;
+                }
+                const bool preserveCase = caseLabel &&
+                    style.IndentCaseLabels == BodyIndentation::Preserve;
+                const bool attribute =
+                    isStatementAttribute(child->Tokens.Begin);
+                if (!preserveCase && !HasRecoveryChild(*child) &&
+                    (attribute ? style.StatementAttributeIndent !=
+                        StatementAttributeIndent::Preserve :
+                        style.IndentBlockBodies || caseLabel))
+                {
+                    auto indent = target;
+                    if (attribute && style.StatementAttributeIndent ==
+                            StatementAttributeIndent::Indent)
+                    {
+                        indent += GeneratedIndentAfter(indent,
+                            style.IndentWidth, style);
+                    }
+                    mark(child->Tokens.Begin, indent);
+                }
+                children.push_back({child, target, node.Kind});
+            }
+            for (auto it = children.rbegin(); it != children.rend(); ++it) {
+                tasks.push_back(std::move(*it));
+            }
+            continue;
+        }
+        const bool control = node.Kind == NK::IfStatement ||
+            node.Kind == NK::ForStatement ||
+            node.Kind == NK::WhileStatement ||
+            node.Kind == NK::DoWhileStatement ||
+            node.Kind == NK::SwitchStatement;
+        std::vector<Task> children;
+        for (auto* child = node.Child(); child;
+            child = child->NextSibling)
+        {
+            auto childBase = task.Base;
+            const bool body = control && childBase &&
+                child->Kind != NK::Condition &&
+                child->Kind != NK::ForHeader &&
+                child->Kind != NK::CompoundStatement &&
+                child->Kind != NK::PreprocessingDirective &&
+                child->Kind != NK::Comment && !child->Tokens.Empty();
+            if (body && !HasRecoveryChild(*child)) {
+                const bool attribute =
+                    isStatementAttribute(child->Tokens.Begin);
+                if (attribute) {
+                    if (style.StatementAttributeIndent !=
+                            StatementAttributeIndent::Preserve)
+                    {
+                        auto indent = *childBase;
+                        if (style.StatementAttributeIndent ==
+                                StatementAttributeIndent::Indent)
+                        {
+                            indent += GeneratedIndentAfter(indent,
+                                style.IndentWidth, style);
+                        }
+                        mark(child->Tokens.Begin, indent);
+                    }
+                } else if (style.IndentBlockBodies) {
+                    // `else if` continues the header rather than nesting a
+                    // second unbraced body under it.
+                    const bool elseIf = node.Kind == NK::IfStatement &&
+                        child->Kind == NK::IfStatement &&
+                        child->Tokens.Begin > node.Tokens.Begin &&
+                        tree.Kind(child->Tokens.Begin - 1) == TK::Keyword_else;
+                    if (!elseIf) {
+                        *childBase += GeneratedIndentAfter(*childBase,
+                            style.IndentWidth, style);
+                        mark(child->Tokens.Begin, *childBase);
+                    }
+                }
+            }
+            children.push_back({child, std::move(childBase), node.Kind});
+        }
+        for (auto it = children.rbegin(); it != children.rend(); ++it) {
+            tasks.push_back(std::move(*it));
+        }
+    }
+    std::ranges::sort(edits, {}, &Replacement::Begin);
+    std::string output;
+    output.reserve(source.size());
+    size_t cursor = 0;
+    for (const auto& edit : edits) {
+        if (edit.Begin < cursor) continue;
+        output.append(source.substr(cursor, edit.Begin - cursor));
+        output += edit.Text;
+        cursor = edit.End;
+    }
+    output.append(source.substr(cursor));
+    return output;
+}
+
 std::string FormatParameters(const parser::SyntaxTree& tree, const Style& style)
 {
     if (style.FunctionParameterSplit == FunctionParameterSplit::Preserve) {
@@ -2929,7 +3352,7 @@ std::string FormatParameters(const parser::SyntaxTree& tree, const Style& style)
                 child = child->NextSibling)
             {
                 if (child->Kind == parser::NodeKind::ParameterList) {
-                    if (auto replacement = ReflowParenthesizedList(tree, *child, style)) {
+                    if (auto replacement = ReflowDelimitedList(tree, *child, style)) {
                         edits.push_back(std::move(*replacement));
                     }
                 }
@@ -2952,6 +3375,46 @@ std::string FormatParameters(const parser::SyntaxTree& tree, const Style& style)
         cursor = edit.End;
     }
     output.append(tree.Source().substr(cursor));
+    return output;
+}
+
+// Reflow only complete, whitespace-separated braced initializer elements.
+// The caller reparses after outer lists move, then visits nested lists.
+std::string FormatInitializers(const parser::SyntaxTree& tree,
+    const Style& style)
+{
+    if (style.InitializerListSplit == FunctionParameterSplit::Preserve) {
+        return std::string(tree.Source());
+    }
+    std::vector<Replacement> edits;
+    std::vector<const parser::Node*> nodes{&tree.Root()};
+    while (!nodes.empty()) {
+        auto* node = nodes.back();
+        nodes.pop_back();
+        if (IsIncompleteStatement(*node) || HasRecoveryChild(*node)) {
+            continue;
+        }
+        if (node->Kind == NK::InitializerList) {
+            if (auto edit = ReflowDelimitedList(tree, *node, style)) {
+                edits.push_back(std::move(*edit));
+            }
+        }
+        for (auto* child = node->Child(); child; child = child->NextSibling) {
+            nodes.push_back(child);
+        }
+    }
+    std::ranges::sort(edits, {}, &Replacement::Begin);
+    std::string output;
+    auto source = tree.Source();
+    output.reserve(source.size());
+    size_t cursor = 0;
+    for (const auto& edit : edits) {
+        if (edit.Begin < cursor) continue;
+        output.append(source.substr(cursor, edit.Begin - cursor));
+        output += edit.Text;
+        cursor = edit.End;
+    }
+    output.append(source.substr(cursor));
     return output;
 }
 
@@ -3005,7 +3468,7 @@ std::string FormatCalls(const parser::SyntaxTree& tree, const Style& style,
                     callee->Tokens.End <= opening &&
                     tree.Kind(opening - 1) != TK::Keyword_requires)
                 {
-                    if (auto edit = ReflowParenthesizedList(
+                    if (auto edit = ReflowDelimitedList(
                         tree, *arguments, style))
                     {
                         edits.push_back(std::move(*edit));
@@ -4780,6 +5243,22 @@ std::vector<LayoutDiagnostic> CheckExpressionLayout(
                     }
                 }
             }
+        } else if (node->Kind == NK::AssignmentExpression) {
+            const auto* left = node->Child();
+            const auto* right = left ? left->NextSibling : nullptr;
+            if (left && right && !left->Tokens.Empty() &&
+                !right->Tokens.Empty())
+            {
+                for (auto i = left->Tokens.End; i < right->Tokens.Begin; ++i) {
+                    if (tree.Role(i) ==
+                            parser::PunctuationRole::AssignmentOperator)
+                    {
+                        checkPlacement(i, style.AssignmentOperatorPlacement ==
+                            BinaryOperatorPlacement::Leading,
+                            "assignment operator");
+                    }
+                }
+            }
         } else if (auto delimiters = ConditionalDelimiters(tree, *node)) {
             auto [question, colon] = *delimiters;
             if (style.TernaryOperatorPlacement !=
@@ -4880,6 +5359,24 @@ std::string Format(const parser::SyntaxTree& tree, const Style& style)
             formatted = FormatParameters(bracedTree, style);
         }
     }
+    if (style.InitializerListSplit != FunctionParameterSplit::Preserve) {
+        // Outer edits can contain nested lists. Reparse until they stabilize;
+        // if nesting exceeds the bound, leave initializer layout untouched.
+        auto beforeInitializers = formatted;
+        bool stable = false;
+        for (size_t pass = 0; pass < 16; ++pass) {
+            auto length = formatted.size();
+            formatted.append(util::SourcePaddingSize, '\0');
+            auto parsed = parser::Parse(
+                {.Data = formatted.data(), .Size = length},
+                [] (parser::ParseError) { });
+            auto result = FormatInitializers(parsed, style);
+            stable = result == std::string_view(formatted.data(), length);
+            formatted = std::move(result);
+            if (stable) break;
+        }
+        if (!stable) formatted = std::move(beforeInitializers);
+    }
     bool headerReflowed = false;
     if (style.CallArgumentSplit != CallArgumentSplit::Preserve &&
         style.ExpressionLayoutCondition != ExpressionLayoutCondition::Preserve)
@@ -4977,7 +5474,8 @@ std::string Format(const parser::SyntaxTree& tree, const Style& style)
     }
     if (style.NamespaceComments != NamespaceComments::Preserve) {
         if (formatted == tree.Source()) {
-            formatted = FormatNamespaceComments(tree, style.NamespaceComments);
+            formatted = FormatNamespaceComments(tree, style.NamespaceComments,
+                style.ShortNamespaceLines);
         } else {
             auto length = formatted.size();
             formatted.append(util::SourcePaddingSize, '\0');
@@ -4985,7 +5483,7 @@ std::string Format(const parser::SyntaxTree& tree, const Style& style)
                 {.Data = formatted.data(), .Size = length},
                 [] (parser::ParseError) { });
             formatted = FormatNamespaceComments(finalTree,
-                style.NamespaceComments);
+                style.NamespaceComments, style.ShortNamespaceLines);
         }
     }
     if (style.PointerReferenceLocation != PointerReferenceLocation::Preserve ||
@@ -5114,6 +5612,17 @@ std::string Format(const parser::SyntaxTree& tree, const Style& style)
                 [] (parser::ParseError) { });
             formatted = FormatLineOwnedSpacing(parsed, style);
         }
+    }
+    if (style.IndentBlockBodies ||
+        style.IndentCaseLabels != BodyIndentation::Preserve ||
+        style.StatementAttributeIndent != StatementAttributeIndent::Preserve)
+    {
+        auto length = formatted.size();
+        formatted.append(util::SourcePaddingSize, '\0');
+        auto parsed = parser::Parse(
+            {.Data = formatted.data(), .Size = length},
+            [] (parser::ParseError) { });
+        formatted = FormatBlockIndentation(parsed, style);
     }
     if (style.TrailingWhitespace == TrailingWhitespace::Preserve) {
         return formatted;

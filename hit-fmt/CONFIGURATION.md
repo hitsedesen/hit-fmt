@@ -119,9 +119,14 @@ EmptyFunctionParametersSpacing = Preserve
 EmptyLambdaParametersSpacing = Preserve
 EmptyLambdaCaptureSpacing = Preserve
 StructuredBindingBracketSpacing = Preserve
+ExpressionLayoutCondition = Preserve
+ControlConditionIndent = IndentWidth
 IncludeOrder = Preserve
 IndentAccessModifiers = Preserve
 IndentMembers = Preserve
+IndentBlockBodies = false
+IndentCaseLabels = Preserve
+StatementAttributeIndent = Preserve
 InheritanceList = Preserve
 InheritanceListColonPlacement = AttachToBase
 InheritanceListColonSpaceBefore = NoSpace
@@ -139,11 +144,18 @@ FunctionBracePlacement = Preserve
 LambdaBracePlacement = Preserve
 NamespaceBracePlacement = Preserve
 NamespaceComments = Preserve
+ShortNamespaceLines = 0
 FunctionParameterSplit = Pack
 FirstFunctionParameterPosition = NameLine
 EnforceFirstFunctionParameterPosition = false
 FunctionParameterIndent = IndentWidth
+# FunctionParameterNewLineIndent = 4 overrides indentation when first is new
 MergeFunctionParameters = false
+InitializerListSplit = Preserve
+FirstInitializerElementPosition = BraceLine
+InitializerListIndent = IndentWidth
+InitializerClosingBrace = Preserve
+MergeInitializerList = false
 FunctionDeclarationParameterNames = Unchecked
 FunctionDefinitionParameterNames = Unchecked
 ClassBraceSpacing = Preserve
@@ -512,11 +524,36 @@ Exclude = [
   inline brace followed by a trailing comment, the comment stays with the
   declaration header and the brace goes below it. Other intervening comments
   and directives block attachment. Other braces are unaffected.
+- `ShortNamespaceLines`: nonnegative integer up to 10000. With
+  `NamespaceComments = Required`, skip adding a closing comment when the
+  namespace has at most this many lines between its opening and closing
+  braces. `0` (default) disables the exemption. Existing closing comments
+  are retained and corrected even on short namespaces; `Remove` still
+  removes them.
 - `NamespaceComments`: `Preserve` (default) leaves closing comments alone,
   `Remove` removes a line comment immediately after a namespace's closing
   brace, and `Required` adds `// namespace name` (or `// namespace` for an
   anonymous namespace) and corrects an existing trailing line comment.
   Unmatched braces and closings followed by a block comment are left alone.
+- `IndentBlockBodies`: `false` (default) preserves statement indentation;
+  `true` reindents statement starts and closing braces in complete compound
+  and lambda blocks by one `IndentWidth` relative to the header. It also
+  indents parsed unbraced control bodies one level beyond the control header.
+  Inline statements, continuations, comments, directives, and recovered
+  bodies remain source-owned.
+- `IndentCaseLabels`: `Preserve` (default), `NoIndent` (align labels with
+  their switch header), or `Indent` (one level inside the switch).
+  Statements following a case get one additional level with `Indent` when
+  `IndentBlockBodies` is enabled. Only parsed case/default labels directly
+  in complete switch blocks are affected. An explicit `{` following a case
+  aligns with the case label. This is independent of `LabelColonSpacing`.
+- `StatementAttributeIndent`: `Preserve` (default) leaves standalone
+  `[[...]]` statement attributes at their existing indentation, even when
+  block body indentation is enabled. `Block` aligns them with the containing
+  block's statement indent (or the control header for an unbraced body);
+  `Indent` adds one `IndentWidth` to that indent. Only parsed, line-leading
+  attributes in complete blocks and control bodies are affected. Inline
+  attributes, comments, directives, and conditional branches stay unchanged.
 - `IndentAccessModifiers` and `IndentMembers`: `Preserve` (default)
   leaves indentation unchanged, `Indent` uses one `IndentWidth` relative
   to the record declaration, and `NoIndent` aligns with that declaration.
@@ -565,28 +602,43 @@ Exclude = [
   Expression operator layout covers parsed binary, assignment, and
   conditional operators. Operator gaps are normalized in `Always` mode;
   other expression gaps, including call argument breaks, are controlled
-  separately by `CallArgumentSplit`. New continuations are indented by
-  `IndentWidth` beyond the original line's leading spaces. Comments,
+  separately by `CallArgumentSplit`. New continuations normally use
+  `IndentWidth` beyond the original line's leading spaces; parsed control
+  conditions can instead use `ControlConditionIndent`, and parsed calls
+  can use `CallArgumentIndent`. Comments,
   directives, CRLF, backslashes, and ambiguous or recovered syntax stay
   source-owned. Bare `<`, `>`, `<<`, and `>>` remain untouched even when
   parsed as operators: without name lookup they can be template syntax.
+- `ControlConditionIndent`: `IndentWidth` (default) indents new expression
+  breaks by one width beyond the original line; `Continuation` aligns
+  breaks inside complete parsed `if`, `for`, `while`, `switch`, and `catch`
+  conditions below the character after the opening `(`. Requires expression
+  layout to be enabled. Existing breaks stay source-owned in `Overflow` mode;
+  tabs and recovered headers retain safe fallback layout.
 - `ExpressionLayoutAlgorithm`: `Greedy` (default) picks a preferred
   breakpoint that fits the current line; `DynamicProgramming` minimizes
   a bounded whole-line cost for raggedness, extra breaks, and operator
   precedence. Both use the same parser-approved breakpoints, respect
-  `BinaryOperatorPlacement`, and prefer outer expression breaks over breaks
-  inside parentheses. The choice also affects `Pack` call argument grouping,
-  but not `Preserve` or `OnePerLine` calls, function parameters, or
-  inheritance. Searches with more than 96 candidates, or without a fitting
-  path, fall back to `Greedy`.
+  `BinaryOperatorPlacement` and `AssignmentOperatorPlacement`, and prefer
+  outer expression breaks over breaks
+  inside parentheses. The choice also affects `Pack` call argument and
+  initializer grouping, but not `Preserve` or `OnePerLine` lists, function
+  parameters, or inheritance. Searches with more than 96 candidates, or
+  without a fitting path, fall back to `Greedy`.
 - `BinaryOperatorPlacement`: `Trailing` (default, keep a wrapped binary
   operator at the end of the previous line) or `Leading` (put it at the
   start of the continuation line). Only applies when
-  `ExpressionLayoutCondition` is not `Preserve`; assignment operators and
-  conditional `?`/`:` remain leading. `Overflow` keeps existing operator
-  breaks but safely moves
-  the newline to the configured side of a binary operator, even if the
+  `ExpressionLayoutCondition` is not `Preserve`; assignment operators use
+  `AssignmentOperatorPlacement` and conditional `?`/`:` have their own
+  setting. `Overflow` keeps existing operator breaks but safely moves the
+  newline to the configured side of a binary operator, even if the
   expression otherwise fits on one line.
+- `AssignmentOperatorPlacement`: `Leading` (default, put a wrapped
+  assignment operator at the start of the continuation line) or `Trailing`
+  (keep it at the end of the preceding line). Like binary placement, this
+  only applies to parsed expressions when expression layout is enabled;
+  `Overflow` also corrects safe existing assignment breaks without
+  regrouping the expression.
 - `TernaryOperatorPlacement`: `Preserve` (default) leaves the side of
   existing `?` and `:` breaks unchanged. New breaks use leading placement
   unless another delimiter is already split, in which case `ThreeLines`
@@ -616,8 +668,11 @@ Exclude = [
   or `FitOrOverflow`; `true` applies the setting above to those calls.
   `Always` always applies the configured position.
 - `CallArgumentIndent`: `IndentWidth` (default, indent one width beyond
-  the call's line) or `Continuation` (align with the opening `(`).
-  These options only affect complete parsed calls with plain, single-line
+  the call's line) or `Continuation` (align with the character after the
+  opening `(`). With expression layout enabled, `Continuation` also aligns
+  new operator breaks inside complete parsed calls, including single-
+  argument macros such as `assert`. Call-list reflow only affects calls
+  with plain, single-line
   arguments and whitespace-only list gaps. Comments, directives, CRLF,
   and ambiguous parenthesized callees remain unchanged. Parsed function-like
   macro calls follow the same call layout rules; nested calls are considered
@@ -625,18 +680,45 @@ Exclude = [
   commas are tried. Multiline arguments keep their call list unchanged.
   Reflowed lists use comma-space separators;
   `SpaceInsideCallArguments = Space` also applies to their same-line edges.
+- `InitializerListSplit`: `Preserve` (default), `Pack` (put as many braced
+  initializer elements on a line as fit), or `OnePerLine` (one element per
+  continuation line when a split is needed). Applies only to complete
+  parsed braced initializer lists with single-line elements, comma
+  separators, and whitespace-only gaps. Trailing commas are preserved;
+  comments, directives, CRLF, and multiline elements stay source-owned.
+  Lists that already fit on one line are not split. Nested lists are
+  reparsed until stable, with a limit of 16 passes; deeper layouts remain
+  source-owned rather than leaving a partially formatted result.
+- `FirstInitializerElementPosition`: `BraceLine` (default) or `NewLine`
+  determines where the first element starts when a list is split.
+- `InitializerListIndent`: `IndentWidth` (default, one width beyond the
+  list's line) or `Continuation` (align with the character after `{`).
+- `InitializerClosingBrace`: `Preserve` (default, retain the closing brace's
+  line), `SameLine`, or `NewLine` when a list is reflowed. `NewLine` aligns
+  the brace with the original list line.
+- `MergeInitializerList`: `false` (default) leaves already split lists
+  multiline; `true` joins safe lists that fit within `ColumnLimit` unless
+  `InitializerClosingBrace = NewLine` is requested.
 - `FunctionParameterSplit`: `Preserve` (default, leave parameter lists
   unchanged), `Pack` (put as many parameters as fit on each line), or
   `OnePerLine`. Lists already fitting on one line are left unchanged.
-- `FirstFunctionParameterPosition`: `NameLine` (default) or `NewLine`.
-  Determines whether the first parameter starts beside the function name
-  when a list is split.
+- `FirstFunctionParameterPosition`: `NameLine` (default), `NewLine`, or
+  `NameLineIfFits`. The latter keeps the first parameter beside `(` only
+  if it and its following comma or closing suffix fit within `ColumnLimit`;
+  otherwise it moves the first parameter to a new line. Existing split
+  lists retain their first parameter's position unless that placement
+  already exceeds the limit or enforcement is enabled.
 - `EnforceFirstFunctionParameterPosition`: `false` (default) retains the
   first parameter's position in already split lists; `true` applies the
   configured position to those lists as well.
 - `FunctionParameterIndent`: `IndentWidth` (default, indent one width
-  beyond the declaration) or `Continuation` (align with the first
-  parameter immediately after the opening `(`).
+  beyond the declaration) or `Continuation` (align with the character
+  immediately after the opening `(`).
+- `FunctionParameterNewLineIndent`: optional integer from 0 to 32. When
+  nonzero and the first parameter starts on a new line, indent all its
+  continuation lines by this many columns relative to the declaration,
+  instead of aligning them beneath `(`. Zero (default) uses the normal
+  `FunctionParameterIndent` policy.
 - `MergeFunctionParameters`: `false` (default) retains split lists as
   multiline even when they would fit on one line; `true` joins them when
   the result fits within `ColumnLimit`.
@@ -758,3 +840,46 @@ Only safely movable parameter lists in function declarators are changed:
 comments, directives, multiline parameter expressions and CRLF lists are
 left intact. Calls are unaffected. Other former formatting settings are
 rejected rather than silently ignored.
+
+## LLVM-style example and limits
+
+[`examples/llvm.hit-fmt`](examples/llvm.hit-fmt) is an approximate LLVM C++
+profile. Copy it to `.hit-fmt` or pass `--config hit-fmt/examples/llvm.hit-fmt`.
+It selects LLVM's 2-space indent and 80-column limit, attached braces,
+spacing for supported constructs, packed parameters and call arguments,
+trailing binary and assignment operators, leading ternary operators,
+call-expression continuation and statement-attribute indentation,
+LLVM-style pointer and reference placement, and basic naming checks.
+This is **not** a
+replacement for `clang-format -style=LLVM` or a
+complete implementation of the [LLVM Coding
+Standards](https://llvm.org/docs/CodingStandards.html).
+In particular, `ColumnLimit` does not guarantee that every line is wrapped,
+and naming checks only report violations in the declarations they recognize.
+
+LLVM rules not fully expressible or enforced by this profile include:
+
+- Include categories and ordering (main module header first, then local,
+  project, and system headers), required/minimal includes, and header guards.
+  `IncludeOrder = Sort` only sorts safe contiguous literal include runs by
+  path, with quoted headers before angled headers; it cannot encode LLVM's
+  categories. The example preserves includes instead.
+- LLVM's context-sensitive inheritance and constructor-initializer layout,
+  return-type, template, and `requires` breaks; alignment of other
+  continuations, operands, trailing comments, and escaped newlines. The
+  example preserves inheritance lists rather than rewriting their layout.
+- Full layout of unsafe or multiline initializer elements, short functions or
+  lambdas, and empty lines. Specific initializer and label-colon gaps,
+  pointer/reference declarators, directive prefixes, and generated
+  indentation are configurable; these do not amount to full-file
+  formatting. Existing continuation indentation, multiline directives,
+  and comment prose (including Doxygen text and file headers) remain
+  source-owned.
+  Expression and argument wrapping applies only to safe parsed constructs.
+- Contextual naming rules: enumerators and public members, enum `Kind`
+  suffixes and enumerator prefixes, STL-like method exceptions, and the
+  distinction between declarations and definitions. The example's case
+  checks can flag legitimate exceptions and skip ambiguous declarations;
+  they cannot check whether names are descriptive nouns or verbs.
+- Language, library, documentation, and API-design guidance in the LLVM
+  Coding Standards. Those rules require review beyond a formatter.

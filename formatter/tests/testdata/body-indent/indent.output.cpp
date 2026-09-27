@@ -27,3 +27,16 @@ enum class Shade : unsigned {
 };
 struct Forward;
 struct Inline { int member; };
+class TaggedBuffer : public StorageBase {
+    public:
+    template <size_t Capacity>
+  TaggedBuffer(const char (&Bytes)[Capacity])
+#if defined(__clang__) && __has_attribute(enable_if)
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wgnu"
+      __attribute((enable_if(Capacity > 0, "nonempty buffer")))
+#pragma clang diagnostic pop
+#endif
+      : StorageBase(Bytes, Capacity) {
+  }
+};

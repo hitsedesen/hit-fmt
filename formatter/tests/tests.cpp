@@ -161,6 +161,15 @@ std::vector<FormattedCase> FormattedCases()
         {"preserve", "space", "no-space", "combined"});
     AddCases(cases, BODY_INDENT_TESTDATA_DIR,
         {"preserve", "indent", "no-indent", "mixed"});
+    const auto attribute = std::filesystem::path(FORMATTER_TESTDATA_DIR) /
+        "../attribute-indent";
+    AddCases(cases, attribute, {"preserve", "block", "indent"});
+    cases.push_back({attribute, "block-only", "block-only.input.cpp"});
+    AddCases(cases, std::filesystem::path(FORMATTER_TESTDATA_DIR) /
+        "../assignment-location", {"leading", "trailing"});
+    AddCases(cases, std::filesystem::path(FORMATTER_TESTDATA_DIR) /
+        "../call-expression-indent", {"aligned", "aligned-no-call-reflow",
+            "indent-width", "preserve"});
     AddCases(cases, INHERITANCE_TESTDATA_DIR,
         {"preserve", "format", "leading", "trailing", "overflow",
             "comma-leading", "no-space", "spaces-mixed", "combined"});
@@ -175,6 +184,8 @@ std::vector<FormattedCase> FormattedCases()
     // Keep safety and recovered-syntax examples in separate parse units.
     const auto spacing = std::filesystem::path(FORMATTER_TESTDATA_DIR) /
         ".." / "spacing-options";
+    cases.push_back({spacing, "cases-preserved", "indented-cases.input.cpp",
+        "cases-preserved"});
     for (const auto& entry : std::filesystem::directory_iterator(spacing)) {
         const auto filename = entry.path().filename().string();
         if (filename.ends_with(".input.cpp")) {
@@ -376,7 +387,6 @@ TEST(CallArgumentTest, ReflowsOnlySafeParsedCalls)
         "}\n";
     EXPECT_EQ(FormatWithStyle(aligned, style), alignedExpected);
     EXPECT_EQ(FormatWithStyle(alignedExpected, style), alignedExpected);
-
     style.CallArgumentIndent = formatter::CallArgumentIndent::IndentWidth;
     style.ControlBlockBracePlacement =
         formatter::ControlBlockBracePlacement::AttachUnlessMultiline;
@@ -730,6 +740,33 @@ TEST(ExpressionLayoutTest, ChecksLayoutWithoutReflowing)
     EXPECT_TRUE(formatter::CheckExpressionLayout(tree, style).empty());
 }
 
+TEST(ExpressionLayoutTest, ChecksAssignmentPlacementAgainstGolden)
+{
+    const auto directory = std::filesystem::path(FORMATTER_TESTDATA_DIR) /
+        "../assignment-location";
+    auto source = ReadFile(directory / "input.cpp");
+    const auto size = source.size();
+    source.append(util::SourcePaddingSize, '\0');
+    const auto tree = parser::Parse(
+        {.Data = source.data(), .Size = size},
+        [] (parser::ParseError) { });
+    for (const auto* placement : {"leading", "trailing"}) {
+        const auto style = formatter::LoadConfigFile(
+            directory / (std::string(placement) + ".hit-fmt"))
+            .FormattingStyle;
+        std::string actual;
+        for (const auto& diagnostic :
+            formatter::CheckExpressionLayout(tree, style))
+        {
+            actual += std::to_string(diagnostic.Position.Line) + ":" +
+                std::to_string(diagnostic.Position.Column) + ": " +
+                diagnostic.Message + "\n";
+        }
+        test::golden::ExpectGolden(
+            directory / (std::string(placement) + ".expected"), actual);
+    }
+}
+
 TEST(ExpressionLayoutTest, PrefersOuterConditionalBreaks)
 {
     formatter::Style style;
@@ -1057,6 +1094,8 @@ TEST(PreserveConfigTest, RejectsInvalidSettings)
          "ExpressionLayoutCondition = FitOrOverflow\n"
          "ExpressionLayoutAlgorithm = DynamicProgramming\n"
          "BinaryOperatorPlacement = Trailing\n"
+         "AssignmentOperatorPlacement = Trailing\n"
+         "StatementAttributeIndent = Block\n"
          "TernaryOperatorPlacement = Trailing\n"
          "TernarySplit = ThreeLines\n"
          "CallArgumentSplit = Pack\nFirstCallArgumentPosition = NewLine\n"
@@ -1080,6 +1119,10 @@ TEST(PreserveConfigTest, RejectsInvalidSettings)
         formatter::ExpressionLayoutAlgorithm::DynamicProgramming);
     EXPECT_EQ(config.FormattingStyle.BinaryOperatorPlacement,
         formatter::BinaryOperatorPlacement::Trailing);
+    EXPECT_EQ(config.FormattingStyle.AssignmentOperatorPlacement,
+        formatter::BinaryOperatorPlacement::Trailing);
+    EXPECT_EQ(config.FormattingStyle.StatementAttributeIndent,
+        formatter::StatementAttributeIndent::Block);
     EXPECT_EQ(config.FormattingStyle.TernaryOperatorPlacement,
         formatter::TernaryOperatorPlacement::Trailing);
     EXPECT_EQ(config.FormattingStyle.TernarySplit,
@@ -1118,10 +1161,13 @@ TEST(PreserveConfigTest, RejectsInvalidSettings)
         "WhitespaceSensitiveMacros = []\n",
         "ColumnLimit = 0\n",
         "ColumnLimit = 10001\n",
+        "ShortNamespaceLines = 10001\n",
         "IndentWidth = 0\n",
         "IndentWidth = 33\n",
         "IndentAccessModifiers = Unknown\n",
         "IndentMembers = Unknown\n",
+        "IndentCaseLabels = Unknown\n",
+        "StatementAttributeIndent = Unknown\n",
         "InheritanceList = Unknown\n",
         "InheritanceListColonPlacement = Unknown\n",
         "InheritanceListColonSpaceBefore = Unknown\n",
@@ -1154,11 +1200,17 @@ TEST(PreserveConfigTest, RejectsInvalidSettings)
         "InheritanceListMerge = true\n",
         "InheritanceListPunctuation = WithAncestor\n",
         "FunctionParameterSplit = Together\n",
+        "FirstFunctionParameterPosition = NameLineUnlessLong\n",
+        "FunctionParameterNewLineIndent = 33\n",
+        "InitializerListSplit = Together\n",
+        "InitializerClosingBrace = Attach\n",
+        "ControlConditionIndent = NameLine\n",
         "ClassBracePlacement = attach\n",
         "ExpressionWrap = Always\n",
         "ExpressionLayoutCondition = Unknown\n",
         "ExpressionLayoutAlgorithm = BruteForce\n",
         "BinaryOperatorPlacement = Middle\n",
+        "AssignmentOperatorPlacement = Middle\n",
         "TernaryOperatorPlacement = Middle\n",
         "TernarySplit = TwoLines\n",
         "CallArgumentSplit = Together\n",

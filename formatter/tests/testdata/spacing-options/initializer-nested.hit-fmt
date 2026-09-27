@@ -1,0 +1,3 @@
+ColumnLimit = 35
+InitializerListSplit = Pack
+InitializerListIndent = Continuation
