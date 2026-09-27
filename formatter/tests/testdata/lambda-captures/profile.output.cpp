@@ -21,3 +21,20 @@ void Make()
         Notify(error);
     }));
 }
+
+void Schedule()
+{
+    auto handler = MakeHandler([
+            state,
+            connection = std::move(connection)
+        ] () mutable {
+            state->Prepare();
+            connection->Subscribe(MakeCallback([
+                state,
+                guard = std::move(guard)
+            ] (const TResult&) mutable {
+                state->Finish();
+                guard->Notify();
+            }));
+        });
+}

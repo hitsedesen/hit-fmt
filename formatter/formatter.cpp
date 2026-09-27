@@ -3977,11 +3977,10 @@ std::string FormatBlockIndentation(const parser::SyntaxTree& tree,
             if (node.Kind == NK::LambdaExpression &&
                 child->Kind == NK::LambdaBody && !node.Tokens.Empty())
             {
-                // The capture may follow a callee on the same line, so it
-                // need not be the first token on its continuation line.
-                // Anchor the body and closing brace to that line, not the
-                // enclosing call statement.
-                childBase = lineIndent(node.Tokens.Begin);
+                // A multiline capture list may end on a different line
+                // from its opening bracket. Anchor the body and closing
+                // brace to the line with the lambda's opening brace.
+                childBase = lineIndent(child->Tokens.Begin);
             }
             const bool body = control && childBase &&
                 child->Kind != NK::Condition &&
