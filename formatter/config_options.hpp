@@ -219,8 +219,6 @@
         formatter::ExpressionLayoutCondition::Preserve)                        \
     OPT(formatter::ControlHeaderClauseSplit, ControlHeaderClauseSplit,         \
         formatter::ControlHeaderClauseSplit::Preserve)                         \
-    OPT(formatter::ExpressionLayoutAlgorithm, ExpressionLayoutAlgorithm,       \
-        formatter::ExpressionLayoutAlgorithm::Greedy)                          \
     OPT(formatter::CallArgumentIndent, ControlConditionIndent,                 \
         formatter::CallArgumentIndent::IndentWidth)                            \
     OPT(formatter::ForHeaderClauseIndent, ForHeaderClauseIndent,               \
