@@ -1,80 +1,120 @@
 # Approximation of the Google C++ style / clang-format's Google preset.
 # Use with --config, or copy to .hit-fmt in a source tree.
 # See ../CONFIGURATION.md for unsupported rules and observed limitations.
+
+# Indentation and limits
 IndentWidth = 2
 ColumnLimit = 80
 IndentationKind = Spaces
-PreprocessorIndentation = LineStart
 TrailingWhitespace = Trim
-PointerReferenceDeclaratorLocation = Left
 
+# Includes, directives, and comments
+PreprocessorIndentation = LineStart
+# Google include categories, main-header precedence and regrouping cannot
+# be expressed by Sort's simple quoted-before-angled lexicographic order.
+IncludeOrder = Preserve
+
+# Templates and attributes
+TemplateKeywordSpacing = Space
+TemplateTypeArgumentSpacing = NoSpace
+TemplateTypeArgumentInteriorSpacing = NoSpace
+
+# Records, namespaces, and declarators
+PointerReferenceDeclaratorLocation = Left
 IndentAccessModifiers = Indent
 AccessModifierIndentWidth = 1
 IndentMembers = Indent
-IndentBlockBodies = true
-IndentCaseLabels = Indent
-StatementAttributeIndent = Block
 ClassBracePlacement = Attach
-StructBracePlacement = Attach
-UnionBracePlacement = Attach
-FunctionBracePlacement = Attach
-LambdaBracePlacement = Attach
-NamespaceBracePlacement = Attach
 ClassBraceSpacing = SingleSpace
+StructBracePlacement = Attach
 StructBraceSpacing = SingleSpace
+UnionBracePlacement = Attach
 UnionBraceSpacing = SingleSpace
 EnumBraceSpacing = SingleSpace
-FunctionBraceSpacing = SingleSpace
-LambdaBraceSpacing = SingleSpace
+NamespaceBracePlacement = Attach
 NamespaceBraceSpacing = SingleSpace
-ControlBlockBracePlacement = SameLine
-ControlBlockSpaceBeforeBrace = Space
-ControlBlockKeywordSpacing = Space
 NamespaceComments = AddMissing
 NamespaceCommentSpaces = 2
 ShortNamespaceLines = 1
+ArrayDeclarationSpacing = NoSpace
+ArrayDeclarationInteriorSpacing = NoSpace
+StructuredBindingBracketSpacing = NoSpace
+# Leave context-sensitive base lists source-owned.
+InheritanceList = Preserve
 
+# Functions and parameters
+FunctionBracePlacement = Attach
+FunctionBraceSpacing = SingleSpace
 FunctionParameterSplit = Pack
 FirstFunctionParameterPosition = NameLineIfFits
 FunctionParameterIndent = Continuation
 FunctionParameterNewLineIndent = 4
 MergeFunctionParameters = true
-ExpressionLayoutCondition = Overflow
-ControlConditionIndent = Continuation
-BinaryOperatorPlacement = Trailing
-AssignmentOperatorPlacement = Trailing
-TernaryOperatorPlacement = Leading
-TernarySplit = AsNeeded
-CallArgumentSplit = Pack
-FirstCallArgumentPosition = CallLine
-CallArgumentIndent = Continuation
-# Nested aggregate braces may be misclassified and reflowed incorrectly.
-InitializerListSplit = Preserve
-
 FunctionSpaceBeforeParameters = NoSpace
-FunctionCallSpaceBeforeParameters = NoSpace
 SpaceInsideFunctionParameters = NoSpace
-SpaceInsideCallArguments = NoSpace
+EmptyFunctionParametersSpacing = NoSpace
+ReturnArrowSpacing = LeftAndRight
+FunctionQualifierSpacing = Space
+NoexceptSpaceBeforeSpecifier = Space
+NoexceptSpaceBeforeParentheses = NoSpace
+
+# Lambdas
+LambdaBracePlacement = Attach
+LambdaBraceSpacing = SingleSpace
 LambdaSpaceBeforeParameters = NoSpace
 SpaceInsideLambdaParameters = NoSpace
 SpaceAroundCaptureList = NoSpace
 SpaceAroundCaptureAssignment = Space
 EmptyLambdaCaptureSpacing = NoSpace
 EmptyLambdaParametersSpacing = NoSpace
-EmptyFunctionParametersSpacing = NoSpace
+
+# Calls and chains
+CallArgumentSplit = Pack
+FirstCallArgumentPosition = CallLine
+CallArgumentIndent = Continuation
+FunctionCallSpaceBeforeParameters = NoSpace
+SpaceInsideCallArguments = NoSpace
 EmptyFunctionCallArgumentsSpacing = NoSpace
+
+# Control flow
+IndentCaseLabels = Indent
+ControlBlockBracePlacement = SameLine
+ControlBlockSpaceBeforeBrace = Space
+ControlBlockKeywordSpacing = Space
+ControlConditionIndent = Continuation
+ControlBlockConditionSpacing = NoSpace
+LoopSemicolonSpacing = Space
+ConditionInitSemicolonSpacing = Space
+RangeBasedForColonSpacing = Space
+
+# Blocks and statements
+IndentBlockBodies = true
+StatementAttributeIndent = Block
 EmptyBlockInteriorSpacing = NoSpace
-EmptyBraceInitializerInteriorSpacing = NoSpace
 BlockInteriorSpacing = Space
+StatementSemicolonSpacing = NoSpace
+DeclarationSemicolonSpacing = NoSpace
+
+# Initializers, new, and delete
+# Nested aggregate braces may be misclassified and reflowed incorrectly.
+InitializerListSplit = Preserve
+EmptyBraceInitializerInteriorSpacing = NoSpace
 InitializerBracesSpacing = NoSpace
 BraceInitializerSpacing = NoSpace
-ControlBlockConditionSpacing = NoSpace
+NewArraySpaceBeforeBrackets = NoSpace
+# Leave context-sensitive constructor lists source-owned.
+ConstructorInitializerList = Preserve
+
+# Expressions and operators
+ExpressionLayoutCondition = Overflow
+BinaryOperatorPlacement = Trailing
+AssignmentOperatorPlacement = Trailing
+TernaryOperatorPlacement = Leading
+TernarySplit = AsNeeded
 GroupingInteriorSpacing = NoSpace
 CastArgumentSpacing = NoSpace
 CastSpacing = NoSpace
 CommaSpacing = Space
-StatementSemicolonSpacing = NoSpace
-DeclarationSemicolonSpacing = NoSpace
 MemberAccessOperatorsSpacing = NoSpace
 # Prefer Preserve for :: without name lookup or macro expansion: an
 # identifier before :: could be an export macro, not a qualifier.
@@ -86,28 +126,9 @@ PostfixOperatorSpacing = NoSpace
 TernaryOperatorSpacing = Preserve
 BinaryOperatorSpacing = Space
 AssignmentOperatorSpacing = Space
-ReturnArrowSpacing = LeftAndRight
-TemplateKeywordSpacing = Space
-TemplateTypeArgumentSpacing = NoSpace
-TemplateTypeArgumentInteriorSpacing = NoSpace
 SubscriptOperatorSpacing = NoSpace
 SubscriptOperatorInteriorSpacing = NoSpace
-ArrayDeclarationSpacing = NoSpace
-ArrayDeclarationInteriorSpacing = NoSpace
-NewArraySpaceBeforeBrackets = NoSpace
-StructuredBindingBracketSpacing = NoSpace
-LoopSemicolonSpacing = Space
-ConditionInitSemicolonSpacing = Space
-RangeBasedForColonSpacing = Space
-FunctionQualifierSpacing = Space
-NoexceptSpaceBeforeSpecifier = Space
-NoexceptSpaceBeforeParentheses = NoSpace
 
-# Google include categories, main-header precedence and regrouping cannot
-# be expressed by Sort's simple quoted-before-angled lexicographic order.
-IncludeOrder = Preserve
-# Leave context-sensitive base and constructor lists source-owned.
-InheritanceList = Preserve
-ConstructorInitializerList = Preserve
+# Naming checks
 # Google naming depends on role (e.g. kConstant vs variable vs field);
 # the available per-kind checks cannot distinguish these roles.
