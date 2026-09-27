@@ -1,0 +1,5 @@
+TemplateTypeArgumentInteriorSpacing = NoSpace
+TemplateTypeArgumentSpacing = Space
+EmptyBraceInitializerInteriorSpacing = Space
+OperatorOverloadOperatorSpacing = LeftAndRight
+AttributeInteriorSpacing = Space

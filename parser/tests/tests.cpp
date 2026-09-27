@@ -1,15 +1,11 @@
 #include <parser/parser.hpp>
+#include <tests/golden.hpp>
 
 #include <gtest/gtest.h>
 
 #include <algorithm>
-#include <cstdlib>
 #include <format>
-#include <fstream>
 #include <limits>
-#include <optional>
-#include <sstream>
-#include <stdexcept>
 #include <string>
 #include <string_view>
 #include <utility>
@@ -18,35 +14,6 @@
 namespace {
 
 using parser::Node;
-
-std::string ReadFile(const std::string& path)
-{
-    std::ifstream file(path);
-    if (!file.is_open()) {
-        throw std::runtime_error(std::format("failed to open {}", path));
-    }
-    std::stringstream buffer;
-    buffer << file.rdbuf();
-    return buffer.str();
-}
-
-std::optional<std::string> ReadGoldenFile(const std::string& path)
-{
-    std::ifstream file(path);
-    if (!file.is_open()) {
-        return std::nullopt;
-    }
-    std::stringstream buffer;
-    buffer << file.rdbuf();
-    return buffer.str();
-}
-
-void SaveFile(const std::string& path, const std::string& contents)
-{
-    std::ofstream file(path);
-    ASSERT_TRUE(file.is_open());
-    file << contents;
-}
 
 void AppendIndent(std::string& output, size_t depth)
 {
@@ -208,6 +175,8 @@ std::string_view RoleName(parser::PunctuationRole role)
         return "unary-operator";
     case BinaryOperator:
         return "binary-operator";
+    case AmbiguousOperator:
+        return "ambiguous-operator";
     case AssignmentOperator:
         return "assignment-operator";
     case TemplateDelimiter:
@@ -249,7 +218,7 @@ std::string_view RoleName(parser::PunctuationRole role)
     case ListSeparator:
         return "list-separator";
     }
-    std::unreachable();
+    return "unknown";
 }
 
 std::string SerializePunctuationRoles(const parser::SyntaxTree& tree)
@@ -306,8 +275,8 @@ class ParserGoldenTest
 
 TEST_P(ParserGoldenTest, MatchesSExpression)
 {
-    const auto input =
-        ReadFile(std::format("./testdata/{}.in", GetParam().Name));
+    const test::golden::Fixture fixture{"./testdata", GetParam().Name};
+    const auto input = fixture.InputNamed(".in");
     std::vector<parser::ParseError> errors;
     PaddedInput paddedInput(input);
     auto tree =
@@ -315,27 +284,19 @@ TEST_P(ParserGoldenTest, MatchesSExpression)
             errors.push_back(std::move(error));
         });
     auto actual = Serialize(tree);
-    auto outputPath = std::format("./testdata/{}.out", GetParam().Name);
-    auto expected = ReadGoldenFile(outputPath);
-
     if (GetParam().HasErrors) {
         EXPECT_FALSE(errors.empty());
     } else {
         EXPECT_TRUE(errors.empty());
     }
 
-    if (std::getenv("UPDATE_GOLDEN")) {
-        SaveFile(outputPath, actual);
-    } else if (expected) {
-        EXPECT_EQ(actual, *expected);
-    } else {
-        FAIL() << "missing golden file " << outputPath;
-    }
+    fixture.Expect(actual, ".out");
 }
 
 TEST(ParserGoldenTest, MatchesPunctuationRoles)
 {
-    const auto input = ReadFile("./testdata/punctuation_roles.in");
+    const test::golden::Fixture fixture{"./testdata", "punctuation_roles"};
+    const auto input = fixture.InputNamed(".in");
     PaddedInput paddedInput(input);
     std::vector<parser::ParseError> errors;
     auto tree =
@@ -344,16 +305,7 @@ TEST(ParserGoldenTest, MatchesPunctuationRoles)
         });
     EXPECT_TRUE(errors.empty());
     auto actual = SerializePunctuationRoles(tree);
-    constexpr std::string_view OutputPath = "./testdata/punctuation_roles.out";
-    auto expected = ReadGoldenFile(std::string(OutputPath));
-
-    if (std::getenv("UPDATE_GOLDEN")) {
-        SaveFile(std::string(OutputPath), actual);
-    } else if (expected) {
-        EXPECT_EQ(actual, *expected);
-    } else {
-        FAIL() << "missing golden file " << OutputPath;
-    }
+    fixture.Expect(actual, ".out");
 }
 
 INSTANTIATE_TEST_SUITE_P(
@@ -369,6 +321,9 @@ INSTANTIATE_TEST_SUITE_P(
         GoldenCase{"statements"},
         GoldenCase{"name_classification"},
         GoldenCase{"ambiguity"},
+        GoldenCase{"unknown_record"},
+        GoldenCase{"ambiguous_call_syntax"},
+        GoldenCase{"declarator_syntax"},
         GoldenCase{"extensions"},
         GoldenCase{"recovery", true}),
     [](const auto& info) {

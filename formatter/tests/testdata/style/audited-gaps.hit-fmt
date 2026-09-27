@@ -1,0 +1,9 @@
+NamedCastSpaceBeforeOperandParentheses = Space
+ReturnSpaceBeforeParentheses = Space
+ThrowSpaceBeforeParentheses = Space
+CoReturnSpaceBeforeParentheses = Space
+FunctionSuffixSpecifierSpacing = Space
+RecordBodyInteriorSpacing = Space
+NamespaceBodyInteriorSpacing = Space
+EnumBodyInteriorSpacing = Space
+RequirementBodyInteriorSpacing = Space

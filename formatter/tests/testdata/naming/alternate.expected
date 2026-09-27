@@ -1,0 +1,7 @@
+4:5: variable name 'kBad' has invalid case
+5:5: variable name 'bad_name' has invalid case
+6:5: variable name 'kLOW__VALUE' has invalid case
+9:8: struct name 'Invalid' has invalid prefix
+11:6: function name 'BadName' has invalid case
+14:11: namespace name 'standard' has invalid case
+14:29: struct name 'Invalid' has invalid prefix

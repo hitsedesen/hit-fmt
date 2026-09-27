@@ -1,0 +1,12 @@
+ClassBracePlacement = NewLine
+ClassBraceSpacing = SingleSpace
+StructBracePlacement = Attach
+StructBraceSpacing = SingleSpace
+UnionBraceSpacing = Preserve
+EnumBraceSpacing = SingleSpace
+FunctionBracePlacement = Attach
+FunctionBraceSpacing = SingleSpace
+LambdaBracePlacement = Attach
+LambdaBraceSpacing = Preserve
+NamespaceBracePlacement = NewLine
+NamespaceBraceSpacing = SingleSpace

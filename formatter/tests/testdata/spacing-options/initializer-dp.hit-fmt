@@ -1,0 +1,5 @@
+IndentWidth = 2
+ColumnLimit = 48
+ExpressionLayoutAlgorithm = DynamicProgramming
+InitializerListSplit = Pack
+InitializerListIndent = Continuation

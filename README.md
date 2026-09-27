@@ -1,12 +1,12 @@
 # hit-fmt
 
-`hit-fmt` is a configurable C++ formatter. It uses a recovery-oriented,
-lossless parser so incomplete or unsupported source regions can be preserved
-instead of rewritten unsafely.
+`hit-fmt` parses C and C++ source. It preserves source by default, with
+configurable declaration layout rules. In `--check` mode it can also report
+naming violations without renaming identifiers.
 
 ## Build
 
-A C++23 compiler and CMake 3.20 or newer are required.
+A C++20 compiler and CMake 3.20 or newer are required.
 
 ```sh
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
@@ -33,40 +33,43 @@ Benchmarks can be built separately with
 
 ## Releases
 
-SourceCraft runs the test suite and checks source formatting on pull requests
-into `main`. To publish a release, update the `VERSION` in `project()` in
+SourceCraft runs the test suite and verifies source preservation on pull
+requests into `main`. To publish a release, update the `VERSION` in `project()` in
 `CMakeLists.txt`, merge the change into `main`, then manually run the
 `release` workflow in SourceCraft CI/CD on `main`. It repeats the checks before
 pushing an annotated `v<version>` tag for that commit. An existing version tag
-is never overwritten; bump the project version for each release. Formatting
+is never overwritten; bump the project version for each release. Preservation
 checks run on the repository folder. The root `.hit-fmt` excludes build
-outputs, golden test fixtures, and benchmark sources, which deliberately use
-other layouts.
+outputs, golden test fixtures, and benchmark sources.
 
 ## Usage
 
-Format one file to standard output:
+Check files or directories without modifying them (the default):
 
 ```sh
-hit-fmt source.cpp
+hit-fmt src/ include/
 ```
 
 Format files or directories in place:
 
 ```sh
-hit-fmt --in-place source.cpp include/
+hit-fmt --fix source.cpp include/
 ```
 
-Check formatting without modifying files:
+`--check` may be given explicitly when desired.
 
-```sh
-hit-fmt --check src/ include/
-```
+Check mode reports affected source chunks with caret-marked formatting,
+expression-layout, naming and parameter-name violations. Source excerpts
+are cropped around the marked token to fit the terminal width; proposed
+formatter output wraps when needed. Naming checks remain advisory. Expression
+reflow is not run to decide check-mode formatting mismatches: layout checks
+inspect the original source. `--summary` reports only affected files.
+`--fix` writes formatted source in place.
 
 Skip files or whole subdirectories while formatting or checking a folder:
 
 ```sh
-hit-fmt --in-place --exclude '(^|/)generated(/|$)' \
+hit-fmt --fix --exclude '(^|/)generated(/|$)' \
     --exclude '(^|/)legacy\.cpp$' src/
 ```
 

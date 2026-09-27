@@ -1,0 +1,6 @@
+InheritanceList = Format
+InheritanceListStart = NewLineOnOverflow
+InheritanceListSplit = OnePerLineOnOverflow
+InheritanceListIndent = 2
+IndentMembers = Indent
+ColumnLimit = 34

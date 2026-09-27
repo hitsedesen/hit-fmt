@@ -1,0 +1,6 @@
+InheritanceList = Format
+InheritanceListStart = ClassLine
+InheritanceListColonSpaceBefore = Space
+InheritanceListCommaPlacement = AttachToPrevious
+InheritanceListSplit = Pack
+ColumnLimit = 45

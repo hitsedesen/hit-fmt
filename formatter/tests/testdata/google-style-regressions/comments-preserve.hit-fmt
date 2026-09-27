@@ -1,0 +1,4 @@
+BinaryOperatorSpacing = Space
+CommaSpacing = Space
+NamespaceComments = Preserve
+NamespaceCommentSpaces = 2

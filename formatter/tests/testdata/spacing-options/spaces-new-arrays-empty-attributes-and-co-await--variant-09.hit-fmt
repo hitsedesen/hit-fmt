@@ -1,0 +1,6 @@
+NewArraySpaceBeforeBrackets = NoSpace
+NewArrayInteriorSpacing = Space
+EmptyAttributeInteriorSpacing = NoSpace
+CoAwaitSpaceBeforeParentheses = NoSpace
+EmptyArrayDeclarationInteriorSpacing = NoSpace
+EmptyNewArrayInteriorSpacing = NoSpace

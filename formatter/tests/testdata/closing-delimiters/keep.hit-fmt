@@ -1,0 +1,3 @@
+InitializerListSplit = Preserve
+InitializerClosingBrace = SameLine
+InitializerTrailingComma = Keep

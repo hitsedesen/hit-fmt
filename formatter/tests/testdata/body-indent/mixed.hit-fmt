@@ -1,0 +1,3 @@
+IndentAccessModifiers = NoIndent
+IndentMembers = Indent
+IndentWidth = 2

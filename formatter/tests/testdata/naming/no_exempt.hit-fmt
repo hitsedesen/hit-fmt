@@ -1,0 +1,6 @@
+VariableNameCase = SCREAMING_SNAKE_CASE
+VariableNamePrefixes = ["k", "kLong", ""]
+FunctionNameCase = camelCase
+StructNamePrefixes = ["S", "C"]
+NamespaceNameCase = PascalCase
+NamingNamespaceExemptions = []

@@ -1,0 +1,12 @@
+fail: 2 violations
+  --> <input>:3:18
+  |
+3 |     EXPECT_THROW(WaitFor(notifyReady.ToFuture()).ThrowOnError(), TWorkerLeaseRevokedDuringShutdownException);
+  |                  ^ insert a line break before 'WaitFor' and indent by 8 spaces
+3 |     EXPECT_THROW(WaitFor(notifyReady.ToFuture()).ThrowOnError(), TWorkerLeaseRevokedDuringShutdownException);
+  |                                                                  ^
+  |   insert a line break before 'TWorkerLeaseRevokedDurin' and indent by 8 spaces
+  suggested formatting:
+  +     EXPECT_THROW(
+  +         WaitFor(notifyReady.ToFuture()).ThrowOnError(),
+  +         TWorkerLeaseRevokedDuringShutdownException);

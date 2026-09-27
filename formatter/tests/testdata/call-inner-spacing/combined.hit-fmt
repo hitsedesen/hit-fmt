@@ -1,0 +1,3 @@
+SpaceInsideFunctionParameters = Space
+FunctionCallSpaceBeforeParameters = Space
+SpaceInsideCallArguments = NoSpace

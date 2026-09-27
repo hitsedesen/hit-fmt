@@ -1,0 +1,9 @@
+NoexceptSpaceBeforeParentheses = Space
+NoexceptSpaceBeforeSpecifier = Space
+AlignasSpaceBeforeParentheses = Space
+AlignofSpaceBeforeParentheses = Space
+SizeofSpaceBeforeParentheses = Space
+DecltypeSpaceBeforeParentheses = Space
+TypeidSpaceBeforeParentheses = Space
+RequiresSpaceBeforeParentheses = Space
+StaticAssertSpaceBeforeParentheses = Space

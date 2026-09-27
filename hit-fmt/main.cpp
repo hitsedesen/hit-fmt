@@ -1,8 +1,12 @@
 #include <formatter/config.hpp>
 #include <formatter/formatter.hpp>
+#include <formatter/naming.hpp>
+#include <formatter/parameter_names.hpp>
 #include <util/file.hpp>
 
 #include <algorithm>
+#include <charconv>
+#include <cctype>
 #include <cstddef>
 #include <cstdio>
 #include <cstdlib>
@@ -12,6 +16,7 @@
 #include <limits>
 #include <optional>
 #include <regex>
+#include <span>
 #include <stdexcept>
 #include <string>
 #include <string_view>
@@ -21,6 +26,7 @@
 #ifdef _WIN32
 #include <io.h>
 #else
+#include <sys/ioctl.h>
 #include <unistd.h>
 #endif
 
@@ -32,16 +38,12 @@ constexpr size_t DiffLookahead = 16;
 constexpr std::string_view ResetColor = "\033[0m";
 constexpr std::string_view BoldRed = "\033[1;31m";
 constexpr std::string_view BoldGreen = "\033[1;32m";
-constexpr std::string_view Red = "\033[31m";
 constexpr std::string_view Green = "\033[32m";
-constexpr std::string_view Cyan = "\033[36m";
-constexpr std::string_view Faint = "\033[2m";
 
 enum class Mode
 {
-    Format,
-    InPlace,
     Check,
+    Fix,
 };
 
 struct Line
@@ -70,6 +72,140 @@ std::vector<Line> SplitLines(std::string_view text)
     return lines;
 }
 
+size_t TerminalWidth()
+{
+#ifndef _WIN32
+    if (winsize size{}; isatty(fileno(stdout)) &&
+        ioctl(fileno(stdout), TIOCGWINSZ, &size) == 0 && size.ws_col > 0)
+    {
+        return std::max<size_t>(24, size.ws_col);
+    }
+#endif
+    if (const char* value = std::getenv("COLUMNS")) {
+        size_t width = 0;
+        auto end = value + std::char_traits<char>::length(value);
+        auto [next, error] = std::from_chars(value, end, width);
+        if (error == std::errc{} && next == end && width >= 24 &&
+            width <= 1000) return width;
+    }
+    return 80;
+}
+
+// Tokenizer columns count Unicode code points. Render a display cell per
+// code point, expanding tabs so both the excerpt and caret use cell offsets.
+struct RenderedLine
+{
+    std::vector<std::string_view> Cells;
+    size_t Caret = 0;
+};
+
+RenderedLine RenderLine(
+    std::string_view text, size_t column, size_t prefixWidth)
+{
+    RenderedLine rendered;
+    size_t codePoint = 1;
+    for (size_t i = 0; i < text.size(); ++codePoint) {
+        if (codePoint == column) rendered.Caret = rendered.Cells.size();
+        auto start = i++;
+        while (i < text.size() &&
+            (static_cast<unsigned char>(text[i]) & 0xc0) == 0x80) ++i;
+        if (text[start] == '\t') {
+            auto spaces = 8 - (prefixWidth + rendered.Cells.size()) % 8;
+            while (spaces--) rendered.Cells.push_back(" ");
+        } else if (text[start] == '\r') {
+            // CRLF lines are trimmed before reaching this function.
+            continue;
+        } else {
+            rendered.Cells.push_back(text.substr(start, i - start));
+        }
+    }
+    if (column >= codePoint) rendered.Caret = rendered.Cells.size();
+    return rendered;
+}
+
+void PrintCells(const std::vector<std::string_view>& cells,
+    size_t begin, size_t end)
+{
+    for (auto i = begin; i < end; ++i) std::cout << cells[i];
+}
+
+struct Excerpt
+{
+    size_t CaretOffset;
+    bool CaretVisible;
+};
+
+Excerpt PrintSourceExcerpt(std::string_view text, size_t column,
+    size_t prefixWidth, size_t terminalWidth, bool fromStart = false)
+{
+    auto rendered = RenderLine(text, column, prefixWidth);
+    const auto& cells = rendered.Cells;
+    auto available = terminalWidth > prefixWidth + 1
+        ? terminalWidth - prefixWidth - 1 : size_t{16};
+    auto window = available > 6 ? available - 6 : size_t{1};
+    size_t begin = 0;
+    if (cells.size() > available && !fromStart) {
+        begin = std::min(cells.size() - window,
+            rendered.Caret > window / 2 ? rendered.Caret - window / 2 : 0);
+    }
+    auto count = cells.size() > available
+        ? (fromStart ? available - 3 : window) : available;
+    auto end = std::min(cells.size(), begin + count);
+    if (begin) std::cout << "...";
+    PrintCells(cells, begin, end);
+    if (end < cells.size()) std::cout << "...";
+    std::cout << '\n';
+    return {.CaretOffset = (begin ? 3 : 0) +
+        std::min(rendered.Caret, end) - begin,
+        .CaretVisible = rendered.Caret < end ||
+            (rendered.Caret == end && end == cells.size())};
+}
+
+void PrintWrappedMessage(std::string_view message,
+    std::string_view prefix, size_t terminalWidth)
+{
+    auto available = terminalWidth > prefix.size() + 2
+        ? terminalWidth - prefix.size() - 2 : size_t{20};
+    while (!message.empty()) {
+        auto length = std::min(available, message.size());
+        if (length < message.size()) {
+            auto space = message.rfind(' ', length);
+            if (space != std::string_view::npos && space > 0) length = space;
+        }
+        while (length && length < message.size() &&
+            (static_cast<unsigned char>(message[length]) & 0xc0) == 0x80)
+        {
+            --length;
+        }
+        std::cout << "  " << message.substr(0, length) << '\n';
+        message.remove_prefix(length);
+        while (message.starts_with(' ')) message.remove_prefix(1);
+        if (!message.empty()) std::cout << prefix;
+    }
+}
+
+void PrintSuggestedLine(std::string_view text, size_t terminalWidth,
+    size_t gutterWidth, bool useColor)
+{
+    auto cells = RenderLine(text, 0, gutterWidth).Cells;
+    auto available = terminalWidth > gutterWidth + 1
+        ? terminalWidth - gutterWidth - 1 : size_t{16};
+    for (size_t begin = 0;;) {
+        if (useColor) std::cout << Green;
+        if (begin) {
+            std::cout << std::string(gutterWidth, ' ');
+        } else {
+            std::cout << std::string(gutterWidth - 3, ' ') << " + ";
+        }
+        auto end = std::min(cells.size(), begin + available);
+        PrintCells(cells, begin, end);
+        if (useColor) std::cout << ResetColor;
+        std::cout << '\n';
+        if (end == cells.size()) break;
+        begin = end;
+    }
+}
+
 bool UseTerminalColors()
 {
     if (std::getenv("NO_COLOR") != nullptr) {
@@ -87,113 +223,698 @@ bool UseTerminalColors()
 #endif
 }
 
-void PrintLine(char prefix, const Line& line, bool useColor)
+enum class ViolationKind { Other, Reflow, LineWidth };
+
+struct Violation
 {
-    if (useColor) {
-        std::cout << (prefix == '-' ? Red : Green);
+    size_t Line;
+    size_t Column;
+    std::string Message;
+    ViolationKind Kind = ViolationKind::Other;
+};
+
+struct Chunk
+{
+    // Source line interval [Begin, End), one-based. Empty input uses [1, 2).
+    size_t Begin;
+    size_t End;
+    std::vector<Violation> Violations;
+    std::vector<Line> Fix;
+    std::vector<Line> LayoutFix;
+    size_t FormattedBegin = 0;
+    size_t FormattedEnd = 0;
+    size_t LayoutFormattedBegin = 0;
+    size_t LayoutFormattedEnd = 0;
+    bool HasFix = false;
+    bool HasLayoutFix = false;
+    bool HasLayoutIssue = false;
+    bool HasWidthIssue = false;
+};
+
+// The first differing code point is normally the token at which formatting
+// diverges. For removed whitespace, point to the following token instead.
+size_t ColumnAt(std::string_view text, size_t byte)
+{
+    return 1 + std::count_if(text.begin(), text.begin() + byte,
+        [] (unsigned char c) { return (c & 0xc0) != 0x80; });
+}
+
+size_t DifferenceColumn(std::string_view actual, std::string_view expected)
+{
+    size_t byte = 0;
+    while (byte < actual.size() && byte < expected.size() &&
+        actual[byte] == expected[byte]) ++byte;
+    while (byte < actual.size() &&
+        std::isspace(static_cast<unsigned char>(actual[byte]))) ++byte;
+    return ColumnAt(actual, byte);
+}
+
+std::string DescribeWhitespace(std::string_view gap)
+{
+    if (gap.empty()) return "no whitespace";
+    std::string description;
+    auto append = [&] (size_t count, std::string_view name) {
+        if (!count) return;
+        if (!description.empty()) description += " and ";
+        description += count == 1 ? "one " : std::to_string(count) + " ";
+        description += name;
+        if (count != 1) description += 's';
+    };
+    append(std::count(gap.begin(), gap.end(), ' '), "space");
+    append(std::count(gap.begin(), gap.end(), '\t'), "tab");
+    // CR can appear at the end of a line split on LF.
+    append(std::count(gap.begin(), gap.end(), '\r'), "carriage return");
+    auto other = std::count_if(gap.begin(), gap.end(), [] (unsigned char c) {
+        return c != ' ' && c != '\t' && c != '\r';
+    });
+    append(other, "other whitespace character");
+    return description;
+}
+
+std::string TokenAt(std::string_view text, size_t offset)
+{
+    if (offset == text.size()) return "end of line";
+    auto c = static_cast<unsigned char>(text[offset]);
+    if (!std::isalnum(c) && c != '_' && c < 0x80) {
+        return std::string(1, text[offset]);
     }
-    std::cout.put(prefix);
-    std::cout.write(line.Text.data(), line.Text.size());
-    if (useColor) {
-        std::cout << ResetColor;
+    size_t end = offset;
+    while (end < text.size() && end - offset < 24) {
+        auto next = static_cast<unsigned char>(text[end]);
+        if (!std::isalnum(next) && next != '_' && next < 0x80) break;
+        ++end;
+        while (end < text.size() &&
+            (static_cast<unsigned char>(text[end]) & 0xc0) == 0x80) ++end;
     }
-    std::cout.put('\n');
-    if (!line.HasNewline) {
-        if (useColor) {
-            std::cout << Faint;
+    return std::string(text.substr(offset, end - offset));
+}
+
+std::string SpacingMessage(std::string_view actual, std::string_view expected,
+    size_t begin, size_t end, size_t expectedBegin, size_t expectedEnd)
+{
+    auto found = DescribeWhitespace(actual.substr(begin, end - begin));
+    auto wanted = DescribeWhitespace(
+        expected.substr(expectedBegin, expectedEnd - expectedBegin));
+    if (begin == 0) {
+        return "indentation: expected " + wanted + ", found " + found;
+    }
+    if (end == actual.size()) {
+        return "trailing whitespace: expected " + wanted + ", found " + found;
+    }
+    return "expected " + wanted + " before '" + TokenAt(actual, end) +
+        "', found " + found;
+}
+
+std::vector<Violation> SpacingViolations(
+    size_t line, std::string_view actual, std::string_view expected)
+{
+    std::vector<Violation> violations;
+    size_t a = 0, b = 0;
+    while (a < actual.size() || b < expected.size()) {
+        auto startA = a, startB = b;
+        while (a < actual.size() &&
+            std::isspace(static_cast<unsigned char>(actual[a]))) ++a;
+        while (b < expected.size() &&
+            std::isspace(static_cast<unsigned char>(expected[b]))) ++b;
+        if (actual.substr(startA, a - startA) !=
+            expected.substr(startB, b - startB))
+        {
+            violations.push_back({line, ColumnAt(actual, a),
+                SpacingMessage(actual, expected, startA, a, startB, b)});
         }
-        std::cout << "\\ No newline at end of file";
-        if (useColor) {
-            std::cout << ResetColor;
+        if (a == actual.size() || b == expected.size()) break;
+        // Compare gaps after each byte (including punctuation), not just
+        // after whole words: "f( int)" and "f(int)" differ inside a run.
+        ++a;
+        ++b;
+    }
+    return violations;
+}
+
+std::string QuoteSnippet(std::string_view text)
+{
+    std::string quoted = "\"";
+    size_t i = 0;
+    while (i < text.size() && i < 48) {
+        auto start = i++;
+        while (i < text.size() &&
+            (static_cast<unsigned char>(text[i]) & 0xc0) == 0x80) ++i;
+        if (i - start != 1) {
+            quoted += text.substr(start, i - start);
+            continue;
         }
-        std::cout.put('\n');
+        switch (text[start]) {
+        case '\t': quoted += "\\t"; break;
+        case '\r': quoted += "\\r"; break;
+        case '\"': quoted += "\\\""; break;
+        case '\\': quoted += "\\\\"; break;
+        default: quoted += text[start]; break;
+        }
+    }
+    if (text.size() > i) quoted += "...";
+    return quoted + '\"';
+}
+
+std::string ContentChange(std::string_view actual, std::string_view expected)
+{
+    size_t prefix = 0;
+    while (prefix < actual.size() && prefix < expected.size() &&
+        actual[prefix] == expected[prefix]) ++prefix;
+    while (prefix && ((prefix < actual.size() &&
+        (static_cast<unsigned char>(actual[prefix]) & 0xc0) == 0x80) ||
+        (prefix < expected.size() &&
+            (static_cast<unsigned char>(expected[prefix]) & 0xc0) == 0x80)))
+    {
+        --prefix;
+    }
+    size_t suffix = 0;
+    while (suffix < actual.size() - prefix &&
+        suffix < expected.size() - prefix &&
+        actual[actual.size() - suffix - 1] ==
+            expected[expected.size() - suffix - 1]) ++suffix;
+    while (suffix && ((static_cast<unsigned char>(
+        actual[actual.size() - suffix]) & 0xc0) == 0x80 ||
+        (static_cast<unsigned char>(expected[expected.size() - suffix]) &
+            0xc0) == 0x80))
+    {
+        --suffix;
+    }
+    auto removed = actual.substr(prefix, actual.size() - prefix - suffix);
+    auto added = expected.substr(prefix, expected.size() - prefix - suffix);
+    if (removed.empty()) return "insert " + QuoteSnippet(added) + " here";
+    if (added.empty()) return "remove " + QuoteSnippet(removed) + " here";
+    return "replace " + QuoteSnippet(removed) + " with " +
+        QuoteSnippet(added);
+}
+
+std::optional<size_t> SlashRulerLength(
+    std::string_view actual, std::string_view expected, size_t length)
+{
+    if (length == 0) return std::nullopt;
+    const auto indent = actual.find_first_not_of(" \t");
+    if (indent == std::string_view::npos) return std::nullopt;
+    auto ruler = actual.substr(indent);
+    if (ruler.ends_with('\r') && expected.ends_with('\r')) {
+        ruler.remove_suffix(1);
+        expected.remove_suffix(1);
+    }
+    if (ruler.size() < 8 || expected.size() != length ||
+        ruler.find_first_not_of('/') != std::string_view::npos ||
+        expected.find_first_not_of('/') != std::string_view::npos)
+    {
+        return std::nullopt;
+    }
+    return ruler.size();
+}
+
+bool SameNonWhitespace(std::string_view a, std::string_view b)
+{
+    auto skip = [] (std::string_view text, size_t& i) {
+        while (i < text.size() &&
+            std::isspace(static_cast<unsigned char>(text[i]))) ++i;
+    };
+    size_t i = 0, j = 0;
+    for (;;) {
+        skip(a, i);
+        skip(b, j);
+        if (i == a.size() || j == b.size()) {
+            return i == a.size() && j == b.size();
+        }
+        if (a[i++] != b[j++]) return false;
     }
 }
 
-void PrintMismatch(
-    std::string_view path,
-    std::string_view source,
-    std::string_view formatted,
-    bool useColor)
+// Align the source and formatted token streams across changed line breaks.
+// Only whitespace can be compared this way: for content edits, the line diff
+// below describes the changed text instead.
+std::optional<std::vector<Violation>> ReflowViolations(
+    std::span<const Line> source, std::span<const Line> formatted,
+    size_t firstLine)
 {
-    auto sourceLines = SplitLines(source);
-    auto formattedLines = SplitLines(formatted);
+    std::string original, replacement;
+    std::vector<size_t> lineStarts;
+    for (const auto& line : source) {
+        lineStarts.push_back(original.size());
+        original += line.Text;
+        if (line.HasNewline) original += '\n';
+    }
+    for (const auto& line : formatted) {
+        replacement += line.Text;
+        if (line.HasNewline) replacement += '\n';
+    }
+    if (!SameNonWhitespace(original, replacement)) return std::nullopt;
 
-    if (useColor) {
-        std::cout << BoldRed;
+    std::vector<Violation> violations;
+    size_t a = 0, b = 0;
+    while (a < original.size() || b < replacement.size()) {
+        auto startA = a, startB = b;
+        while (a < original.size() &&
+            std::isspace(static_cast<unsigned char>(original[a]))) ++a;
+        while (b < replacement.size() &&
+            std::isspace(static_cast<unsigned char>(replacement[b]))) ++b;
+        auto gapA = std::string_view(original).substr(startA, a - startA);
+        auto gapB = std::string_view(replacement).substr(startB, b - startB);
+        if (gapA != gapB) {
+            auto lineIndex = static_cast<size_t>(
+                std::upper_bound(lineStarts.begin(), lineStarts.end(), a) -
+                lineStarts.begin() - 1);
+            auto byte = std::min(a - lineStarts[lineIndex],
+                source[lineIndex].Text.size());
+            auto token = TokenAt(original, a);
+            std::string message;
+            auto oldBreaks = std::count(gapA.begin(), gapA.end(), '\n');
+            auto newBreaks = std::count(gapB.begin(), gapB.end(), '\n');
+            if (!oldBreaks && newBreaks) {
+                message = "insert a line break before '" + token + "'";
+                auto indent = gapB.substr(gapB.rfind('\n') + 1);
+                if (!indent.empty()) {
+                    message += " and indent by " + DescribeWhitespace(indent);
+                }
+            } else if (oldBreaks && !newBreaks) {
+                message = "join lines before '" + token + "' with " +
+                    DescribeWhitespace(gapB);
+            } else if (oldBreaks != newBreaks) {
+                auto difference = oldBreaks > newBreaks
+                    ? oldBreaks - newBreaks : newBreaks - oldBreaks;
+                message = (oldBreaks > newBreaks ? "remove " : "insert ") +
+                    std::to_string(difference) +
+                    (difference == 1 ? " blank line" : " blank lines") +
+                    " before '" + token + "'";
+            } else if (oldBreaks) {
+                auto oldIndent = gapA.substr(gapA.rfind('\n') + 1);
+                auto newIndent = gapB.substr(gapB.rfind('\n') + 1);
+                message = "indent '" + token + "' with " +
+                    DescribeWhitespace(newIndent) + " instead of " +
+                    DescribeWhitespace(oldIndent);
+            } else {
+                message = SpacingMessage(original, replacement,
+                    startA, a, startB, b);
+            }
+            violations.push_back({firstLine + lineIndex,
+                ColumnAt(source[lineIndex].Text, byte), std::move(message),
+                ViolationKind::Reflow});
+        }
+        if (a == original.size() || b == replacement.size()) break;
+        ++a;
+        ++b;
     }
-    std::cout << path << ": formatting mismatch";
-    if (useColor) {
-        std::cout << ResetColor;
-    }
-    std::cout.put('\n');
-    size_t sourceIndex = 0;
-    size_t formattedIndex = 0;
-    while (sourceIndex < sourceLines.size() ||
-        formattedIndex < formattedLines.size())
-    {
-        if (sourceIndex < sourceLines.size() &&
-            formattedIndex < formattedLines.size() &&
-            sourceLines[sourceIndex] == formattedLines[formattedIndex])
+    return violations;
+}
+
+bool IsIncludeLine(const Line& line)
+{
+    auto begin = line.Text.find_first_not_of(" \t");
+    if (begin == std::string_view::npos) return false;
+    auto text = line.Text.substr(begin);
+    return text.starts_with("#include") && text.size() > 8 &&
+        (std::isspace(static_cast<unsigned char>(text[8])) ||
+            text[8] == '<' || text[8] == '"');
+}
+
+std::vector<Chunk> FormattingChunks(
+    const std::vector<Line>& source, const std::vector<Line>& formatted,
+    size_t separatorLength = 0)
+{
+    std::vector<Chunk> chunks;
+    size_t sourceIndex = 0, formattedIndex = 0;
+    while (sourceIndex < source.size() || formattedIndex < formatted.size()) {
+        if (sourceIndex < source.size() && formattedIndex < formatted.size() &&
+            source[sourceIndex] == formatted[formattedIndex])
         {
             ++sourceIndex;
             ++formattedIndex;
             continue;
         }
-
-        size_t sourceCount = sourceIndex < sourceLines.size() ? 1 : 0;
-        size_t formattedCount = formattedIndex < formattedLines.size() ? 1 : 0;
-        size_t bestDistance = std::numeric_limits<size_t>::max();
-        auto sourceLimit =
-            std::min(sourceLines.size(), sourceIndex + DiffLookahead + 1);
-        auto formattedLimit =
-            std::min(formattedLines.size(), formattedIndex + DiffLookahead + 1);
-        for (auto nextSource = sourceIndex; nextSource < sourceLimit;
-            ++nextSource)
+        size_t sourceCount = sourceIndex < source.size() ? 1 : 0;
+        size_t formattedCount = formattedIndex < formatted.size() ? 1 : 0;
+        // Sorting a run of includes must not look like a series of insertions
+        // and deletions just because one moved line happens to match early.
+        if (sourceCount && formattedCount &&
+            IsIncludeLine(source[sourceIndex]) &&
+            IsIncludeLine(formatted[formattedIndex]))
         {
-            for (auto nextFormatted = formattedIndex;
-                nextFormatted < formattedLimit;
-                ++nextFormatted)
+            while (sourceIndex + sourceCount < source.size() &&
+                IsIncludeLine(source[sourceIndex + sourceCount])) ++sourceCount;
+            while (formattedIndex + formattedCount < formatted.size() &&
+                IsIncludeLine(formatted[formattedIndex + formattedCount]))
             {
-                if (nextSource == sourceIndex &&
-                    nextFormatted == formattedIndex)
+                ++formattedCount;
+            }
+        } else {
+            size_t bestDistance = std::numeric_limits<size_t>::max();
+            auto sourceLimit =
+                std::min(source.size(), sourceIndex + DiffLookahead + 1);
+            auto formattedLimit =
+                std::min(formatted.size(), formattedIndex + DiffLookahead + 1);
+            for (auto nextSource = sourceIndex; nextSource < sourceLimit;
+                ++nextSource)
+            {
+                for (auto nextFormatted = formattedIndex;
+                    nextFormatted < formattedLimit; ++nextFormatted)
                 {
+                    if (nextSource == sourceIndex &&
+                        nextFormatted == formattedIndex) continue;
+                    if (source[nextSource] != formatted[nextFormatted]) continue;
+                    auto distance = nextSource - sourceIndex +
+                        nextFormatted - formattedIndex;
+                    if (distance < bestDistance) {
+                        bestDistance = distance;
+                        sourceCount = nextSource - sourceIndex;
+                        formattedCount = nextFormatted - formattedIndex;
+                    }
+                }
+            }
+            if (bestDistance == std::numeric_limits<size_t>::max()) {
+                sourceCount = source.size() - sourceIndex;
+                formattedCount = formatted.size() - formattedIndex;
+            }
+        }
+
+        auto begin = std::min(sourceIndex + 1, std::max(size_t{1}, source.size()));
+        Chunk chunk{.Begin = begin,
+            .End = std::max(begin + 1, sourceIndex + sourceCount + 1),
+            .FormattedBegin = formattedIndex,
+            .FormattedEnd = formattedIndex + formattedCount,
+            .HasFix = true};
+        bool alignedReflow = false;
+        if (sourceCount && formattedCount &&
+            (sourceCount != formattedCount || sourceCount > 1))
+        {
+            auto reflow = ReflowViolations(
+                std::span(source).subspan(sourceIndex, sourceCount),
+                std::span(formatted).subspan(formattedIndex, formattedCount),
+                sourceIndex + 1);
+            if (reflow && !reflow->empty()) {
+                chunk.Violations = std::move(*reflow);
+                alignedReflow = true;
+            }
+        }
+        for (size_t i = 0; i < sourceCount && !alignedReflow; ++i) {
+            const auto& line = source[sourceIndex + i];
+            auto replacement = i < formattedCount
+                ? formatted[formattedIndex + i].Text : std::string_view{};
+            if (i < formattedCount && line == formatted[formattedIndex + i]) {
+                continue;
+            }
+            std::string message;
+            auto kind = ViolationKind::Other;
+            auto column = DifferenceColumn(line.Text, replacement);
+            auto rulerLength = i < formattedCount
+                ? SlashRulerLength(line.Text, replacement, separatorLength)
+                : std::nullopt;
+            if (rulerLength) {
+                const auto indent = line.Text.find_first_not_of(" \t");
+                if (indent != 0) {
+                    message = "separator should start at column 1";
+                }
+                if (*rulerLength != separatorLength) {
+                    message += message.empty()
+                        ? "separator should be " : " and be ";
+                    message += std::to_string(separatorLength) +
+                        " characters long (found " +
+                        std::to_string(*rulerLength) + ")";
+                }
+                column = indent + 1;
+            } else if (line.Text == replacement && !line.HasNewline &&
+                i < formattedCount && formatted[formattedIndex + i].HasNewline)
+            {
+                message = "missing final newline";
+            } else if (line.Text == replacement && line.HasNewline &&
+                i < formattedCount && !formatted[formattedIndex + i].HasNewline)
+            {
+                message = "unexpected final newline";
+            } else if (sourceCount == formattedCount &&
+                i < formattedCount && IsIncludeLine(line) &&
+                IsIncludeLine(formatted[formattedIndex + i]))
+            {
+                message = "include order: expected " +
+                    QuoteSnippet(replacement) + " on this line";
+            } else if (sourceCount != formattedCount) {
+                if (formattedCount == 0) {
+                    message = "remove this line";
+                } else if (i >= formattedCount) {
+                    message = "merge this line into the preceding formatted line";
+                } else if (formattedCount > sourceCount) {
+                    message = "split line: expected " + QuoteSnippet(replacement) +
+                        " on this line";
+                    kind = ViolationKind::Reflow;
+                } else {
+                    message = "join lines: expected " + QuoteSnippet(replacement) +
+                        " on this line";
+                    kind = ViolationKind::Reflow;
+                }
+            } else if (SameNonWhitespace(line.Text, replacement)) {
+                auto spacing = SpacingViolations(
+                    sourceIndex + i + 1, line.Text, replacement);
+                chunk.Violations.insert(chunk.Violations.end(),
+                    spacing.begin(), spacing.end());
+                continue;
+            } else {
+                message = ContentChange(line.Text, replacement);
+            }
+            chunk.Violations.push_back({sourceIndex + i + 1,
+                column, std::move(message), kind});
+        }
+        if (sourceCount == 0) {
+            auto column = sourceIndex < source.size() || source.empty()
+                ? size_t{1}
+                : ColumnAt(source.back().Text, source.back().Text.size());
+            auto location = sourceIndex == source.size()
+                ? " at end of file" : " before this line";
+            auto message = formattedCount == 1
+                ? "insert " + QuoteSnippet(formatted[formattedIndex].Text) +
+                    location
+                : "insert " + std::to_string(formattedCount) +
+                    " lines" + location + ", starting with " +
+                    QuoteSnippet(formatted[formattedIndex].Text);
+            chunk.Violations.push_back({begin, column, std::move(message)});
+        }
+        if (chunk.Violations.empty()) {
+            // A matched prefix can be followed by inserted output lines.
+            auto number = sourceIndex + sourceCount;
+            auto column = ColumnAt(source[number - 1].Text,
+                source[number - 1].Text.size());
+            auto inserted = formattedCount > sourceCount
+                ? formattedCount - sourceCount : size_t{0};
+            chunk.Violations.push_back({number, column,
+                inserted ? "insert " + std::to_string(inserted) +
+                    " formatted lines after this line" :
+                    "replace lines following this line with formatted output"});
+        }
+        for (size_t i = 0; i < formattedCount; ++i) {
+            chunk.Fix.push_back(formatted[formattedIndex + i]);
+        }
+        chunks.push_back(std::move(chunk));
+        sourceIndex += sourceCount;
+        formattedIndex += formattedCount;
+    }
+    return chunks;
+}
+
+void PrintCheckDiagnostics(
+    std::string_view path, std::string_view source, std::string_view formatted,
+    std::string_view layoutFormatted,
+    std::span<const formatter::NameDiagnostic> names,
+    std::span<const formatter::ParameterNameDiagnostic> parameters,
+    std::span<const formatter::LayoutDiagnostic> layout,
+    bool useColor, size_t separatorLength)
+{
+    auto sourceLines = SplitLines(source);
+    auto formattedLines = SplitLines(formatted);
+    auto chunks = FormattingChunks(sourceLines, formattedLines,
+        separatorLength);
+    // Source layout diagnostics own their line. A formatter-emitted break on
+    // that line is a possible repair, not another source violation. Preserve
+    // unrelated formatting, naming and parameter-name diagnostics.
+    for (auto& chunk : chunks) {
+        std::erase_if(chunk.Violations, [&] (const Violation& violation) {
+            return violation.Kind == ViolationKind::Reflow &&
+                std::ranges::any_of(layout, [&] (const auto& issue) {
+                    return issue.Position.Line == violation.Line;
+                });
+        });
+    }
+    const auto terminalWidth = TerminalWidth();
+    for (const auto& name : names) {
+        chunks.push_back({.Begin = name.Position.Line,
+            .End = name.Position.Line + 1,
+            .Violations = {{name.Position.Line, name.Position.Column,
+                name.Message + "; " + name.Expected}}});
+    }
+    for (const auto& parameter : parameters) {
+        auto message = "parameter #" + std::to_string(parameter.ParameterNumber) +
+            " in " + parameter.Function + ": expected a name";
+        if (parameter.AllowCommentedName) message += " or /*name*/ comment";
+        chunks.push_back({.Begin = parameter.SignatureBeginLine,
+            .End = parameter.SignatureEndLine + 1,
+            .Violations = {{parameter.Position.Line, parameter.Position.Column,
+                std::move(message)}}});
+    }
+    for (const auto& issue : layout) {
+        chunks.push_back({.Begin = issue.Position.Line,
+            .End = issue.Position.Line + 1,
+            .Violations = {{issue.Position.Line, issue.Position.Column,
+                issue.Message, issue.Kind ==
+                    formatter::LayoutDiagnosticKind::LineWidth
+                    ? ViolationKind::LineWidth : ViolationKind::Other}},
+            .HasLayoutIssue = true,
+            .HasWidthIssue = issue.Kind ==
+                formatter::LayoutDiagnosticKind::LineWidth});
+    }
+    // Check mode does not reflow expressions to decide whether a file fails.
+    // Use normal formatter output only as an optional suggestion for layout
+    // diagnostics whose source lines actually change under reflow.
+    auto layoutLines = SplitLines(layoutFormatted);
+    if (!layout.empty()) {
+        for (auto& candidate : FormattingChunks(sourceLines, layoutLines)) {
+            if (std::ranges::none_of(layout, [&] (const auto& issue) {
+                return issue.Position.Line >= candidate.Begin &&
+                    issue.Position.Line < candidate.End;
+            })) continue;
+            Chunk suggestion{.Begin = candidate.Begin, .End = candidate.End,
+                .LayoutFix = std::move(candidate.Fix),
+                .LayoutFormattedBegin = candidate.FormattedBegin,
+                .LayoutFormattedEnd = candidate.FormattedEnd,
+                .HasLayoutFix = true};
+            chunks.push_back(std::move(suggestion));
+        }
+    }
+    // Overlapping diagnostics share the source chunk and its proposed fix.
+    std::ranges::sort(chunks, [] (const Chunk& a, const Chunk& b) {
+        return a.Begin < b.Begin || (a.Begin == b.Begin && a.End < b.End);
+    });
+    std::vector<Chunk> merged;
+    for (auto& chunk : chunks) {
+        if (merged.empty() || chunk.Begin >= merged.back().End) {
+            merged.push_back(std::move(chunk));
+        } else {
+            auto& previous = merged.back();
+            previous.End = std::max(previous.End, chunk.End);
+            previous.Violations.insert(previous.Violations.end(),
+                std::make_move_iterator(chunk.Violations.begin()),
+                std::make_move_iterator(chunk.Violations.end()));
+            if (chunk.HasFix) {
+                if (previous.HasFix) {
+                    previous.Fix.insert(previous.Fix.end(),
+                        formattedLines.begin() + previous.FormattedEnd,
+                        formattedLines.begin() + chunk.FormattedBegin);
+                } else {
+                    previous.FormattedBegin = chunk.FormattedBegin;
+                }
+                previous.HasFix = true;
+                previous.FormattedEnd = chunk.FormattedEnd;
+                previous.Fix.insert(previous.Fix.end(), chunk.Fix.begin(),
+                    chunk.Fix.end());
+            }
+            if (chunk.HasLayoutFix) {
+                if (previous.HasLayoutFix) {
+                    previous.LayoutFix.insert(previous.LayoutFix.end(),
+                        layoutLines.begin() + previous.LayoutFormattedEnd,
+                        layoutLines.begin() + chunk.LayoutFormattedBegin);
+                } else {
+                    previous.LayoutFormattedBegin = chunk.LayoutFormattedBegin;
+                }
+                previous.HasLayoutFix = true;
+                previous.LayoutFormattedEnd = chunk.LayoutFormattedEnd;
+                previous.LayoutFix.insert(previous.LayoutFix.end(),
+                    chunk.LayoutFix.begin(), chunk.LayoutFix.end());
+            }
+            previous.HasLayoutIssue |= chunk.HasLayoutIssue;
+            previous.HasWidthIssue |= chunk.HasWidthIssue;
+        }
+    }
+    for (auto& chunk : merged) {
+        std::ranges::stable_sort(chunk.Violations,
+            [] (const Violation& a, const Violation& b) {
+                return a.Line < b.Line ||
+                    (a.Line == b.Line && a.Column < b.Column);
+            });
+        const auto& first = chunk.Violations.front();
+        if (useColor) std::cout << BoldRed;
+        std::cout << "fail: " << chunk.Violations.size() << " violation"
+                  << (chunk.Violations.size() == 1 ? "" : "s");
+        if (useColor) std::cout << ResetColor;
+        auto location = std::string(path) + ':' + std::to_string(first.Line) +
+            ':' + std::to_string(first.Column);
+        if (location.size() + 6 <= terminalWidth) {
+            std::cout << "\n  --> " << location << '\n';
+        } else {
+            std::cout << "\n  -->\n    ";
+            PrintWrappedMessage(location, "    ", terminalWidth);
+        }
+        const auto width = std::to_string(chunk.End - 1).size();
+        const auto gutter = std::string(width + 1, ' ') + "| ";
+        std::cout << gutter.substr(0, gutter.size() - 1) << '\n';
+        size_t violationIndex = 0;
+        for (auto lineNumber = chunk.Begin; lineNumber < chunk.End;
+            ++lineNumber)
+        {
+            auto text = lineNumber <= sourceLines.size()
+                ? sourceLines[lineNumber - 1].Text : std::string_view{};
+            if (text.ends_with('\r')) text.remove_suffix(1);
+            const auto prefix = std::string(
+                width - std::to_string(lineNumber).size(), ' ') +
+                std::to_string(lineNumber) + " | ";
+            auto printLine = [&] (size_t column, bool fromStart = false) {
+                std::cout << prefix;
+                return PrintSourceExcerpt(text, column, prefix.size(),
+                    terminalWidth, fromStart);
+            };
+            if (violationIndex == chunk.Violations.size() ||
+                chunk.Violations[violationIndex].Line != lineNumber)
+            {
+                printLine(0);
+            }
+            while (violationIndex < chunk.Violations.size() &&
+                chunk.Violations[violationIndex].Line == lineNumber)
+            {
+                const auto& violation = chunk.Violations[violationIndex++];
+                auto excerpt = printLine(violation.Column,
+                    violation.Kind == ViolationKind::LineWidth);
+                std::cout << gutter;
+                if (!excerpt.CaretVisible) {
+                    // Do not imply that the cropped end of a long line is
+                    // the exact token at ColumnLimit + 1.
+                    PrintWrappedMessage(violation.Message, gutter,
+                        terminalWidth);
                     continue;
                 }
-                if (sourceLines[nextSource] != formattedLines[nextFormatted]) {
-                    continue;
-                }
-                auto distance =
-                    nextSource - sourceIndex + nextFormatted - formattedIndex;
-                if (distance < bestDistance) {
-                    bestDistance = distance;
-                    sourceCount = nextSource - sourceIndex;
-                    formattedCount = nextFormatted - formattedIndex;
+                std::cout << std::string(excerpt.CaretOffset, ' ') << '^';
+                if (gutter.size() + excerpt.CaretOffset + 2 +
+                    violation.Message.size() < terminalWidth)
+                {
+                    std::cout << ' ' << violation.Message << '\n';
+                } else {
+                    std::cout << '\n' << gutter;
+                    PrintWrappedMessage(violation.Message, gutter,
+                        terminalWidth);
                 }
             }
         }
-        if (bestDistance == std::numeric_limits<size_t>::max()) {
-            sourceCount = sourceLines.size() - sourceIndex;
-            formattedCount = formattedLines.size() - formattedIndex;
+        if (chunk.HasFix || chunk.HasLayoutFix) {
+            std::cout << "  suggested formatting:\n";
+            const auto& fix = chunk.HasLayoutFix ? chunk.LayoutFix : chunk.Fix;
+            for (const auto& line : fix) {
+                PrintSuggestedLine(line.Text, terminalWidth,
+                    gutter.size(), useColor);
+                if (!line.HasNewline) {
+                    std::cout << std::string(gutter.size(), ' ')
+                              << "\\ No newline at end of file\n";
+                }
+            }
+            if (fix.empty()) std::cout << "  (remove this chunk)\n";
+        } else if (!chunk.HasLayoutIssue) {
+            std::cout << "  ";
+            PrintWrappedMessage("hint: names are not changed by the formatter.",
+                "  ", terminalWidth);
         }
-
-        if (useColor) {
-            std::cout << Cyan;
+        if (chunk.HasLayoutIssue && !chunk.HasLayoutFix) {
+            std::cout << "  ";
+            PrintWrappedMessage(chunk.HasWidthIssue
+                ? "hint: split the line manually or increase ColumnLimit."
+                : "hint: adjust the operator or line break manually.",
+                "  ", terminalWidth);
         }
-        std::cout << "@@ -" << sourceIndex + 1 << ',' << sourceCount << " +"
-                  << formattedIndex + 1 << ',' << formattedCount << " @@";
-        if (useColor) {
-            std::cout << ResetColor;
-        }
-        std::cout.put('\n');
-        for (size_t i = 0; i < sourceCount; ++i) {
-            PrintLine('-', sourceLines[sourceIndex + i], useColor);
-        }
-        for (size_t i = 0; i < formattedCount; ++i) {
-            PrintLine('+', formattedLines[formattedIndex + i], useColor);
-        }
-        sourceIndex += sourceCount;
-        formattedIndex += formattedCount;
     }
 }
 
@@ -223,7 +944,6 @@ template <typename ConfigExcludes>
 std::vector<std::filesystem::path> CollectFiles(
     const std::vector<std::filesystem::path>& paths,
     const std::vector<std::regex>& exclusions,
-    bool allowDirectories,
     ConfigExcludes configExcludes)
 {
     std::vector<std::filesystem::path> files;
@@ -238,10 +958,6 @@ std::vector<std::filesystem::path> CollectFiles(
         }
         if (!std::filesystem::is_directory(path)) {
             throw std::runtime_error(path.string() + ": path does not exist");
-        }
-        if (!allowDirectories) {
-            throw std::runtime_error(
-                path.string() + ": directory input requires -i or --check");
         }
         if (configExcludes(path, true)) {
             continue;
@@ -274,7 +990,7 @@ std::vector<std::filesystem::path> CollectFiles(
 
 struct Options
 {
-    Mode FormattingMode = Mode::Format;
+    Mode FormattingMode = Mode::Check;
     bool SummaryOnly = false;
     bool DisableConfig = false;
     bool ShowHelp = false;
@@ -296,17 +1012,12 @@ Options ParseOptions(int argc, char* argv[])
             positionalOnly = true;
         } else if (argument == "-h" || argument == "--help") {
             options.ShowHelp = true;
-        } else if (argument == "-i" || argument == "--in-place") {
+        } else if (argument == "--fix" || argument == "--check") {
             if (modeSelected) {
-                throw std::runtime_error("formatting mode specified more than once");
+                throw std::runtime_error("mode specified more than once");
             }
-            options.FormattingMode = Mode::InPlace;
-            modeSelected = true;
-        } else if (argument == "--check") {
-            if (modeSelected) {
-                throw std::runtime_error("formatting mode specified more than once");
-            }
-            options.FormattingMode = Mode::Check;
+            options.FormattingMode = argument == "--fix" ? Mode::Fix :
+                Mode::Check;
             modeSelected = true;
         } else if (argument == "--summary") {
             options.SummaryOnly = true;
@@ -345,7 +1056,7 @@ Options ParseOptions(int argc, char* argv[])
         }
     }
     if (options.SummaryOnly && options.FormattingMode != Mode::Check) {
-        throw std::runtime_error("--summary requires --check");
+        throw std::runtime_error("--summary requires check mode");
     }
     if (options.DisableConfig && options.ConfigPath) {
         throw std::runtime_error("--config and --no-config cannot be combined");
@@ -368,9 +1079,10 @@ public:
         }
     }
 
-    const formatter::Style& Resolve(const std::filesystem::path& sourcePath)
+    const formatter::Configuration& Resolve(
+        const std::filesystem::path& sourcePath)
     {
-        return FindConfig(sourcePath).Settings.FormattingStyle;
+        return FindConfig(sourcePath).Settings;
     }
 
     bool IsExcluded(const std::filesystem::path& path, bool directory)
@@ -379,12 +1091,12 @@ public:
         // descending; a file uses its own nearest configuration.
         auto source = directory ? path.parent_path() / "unused.cpp" : path;
         const auto& config = FindConfig(source);
-        if (config.Settings.Exclusions.empty()) {
+        if (config.Settings.Exclude.empty()) {
             return false;
         }
         auto relative = std::filesystem::absolute(path).lexically_normal()
                             .lexically_relative(config.Directory);
-        return ::IsExcluded(relative, config.Settings.Exclusions);
+        return ::IsExcluded(relative, config.Settings.Exclude);
     }
 
 private:
@@ -443,14 +1155,13 @@ void PrintHelp(std::ostream& output, std::string_view executable)
 {
     output
         << "Usage:\n"
-        << "  " << executable << " [options] <file>\n"
-        << "  " << executable << " -i [options] <path>...\n"
-        << "  " << executable << " --check [options] <path>...\n"
+        << "  " << executable << " [options] <path>...\n"
+        << "  " << executable << " --fix [options] <path>...\n"
         << "\n"
         << "Options:\n"
-        << "  -i, --in-place   Format files in place.\n"
-        << "  --check          Report mismatches without modifying files.\n"
-        << "  --summary        With --check, print only file names.\n"
+        << "  --fix            Format files in place.\n"
+        << "  --check          Check without editing (default).\n"
+        << "  --summary        In check mode, print only file names.\n"
         << "  --config <file>  Use one configuration file for every input.\n"
         << "  --no-config      Do not search parent directories for .hit-fmt.\n"
         << "  --exclude <regex> Skip matching files or directories (repeatable).\n"
@@ -458,23 +1169,21 @@ void PrintHelp(std::ostream& output, std::string_view executable)
         << "\n"
         << "Without --config or --no-config, each source file uses the "
            "nearest .hit-fmt file in its directory or a parent directory.\n"
-        << "Paths passed to -i or --check may be files or directories.\n"
+        << "Input paths may be files or directories.\n"
         << "Directories are searched recursively for C and C++ source "
            "files.\n"
         << "--exclude patterns search paths relative to each input directory; "
            ".hit-fmt Exclude patterns search paths relative to the config file.\n"
         << "Both use ECMAScript regex; matching directories are skipped.\n"
-        << "Files larger than 4 MiB are skipped with a warning in -i and "
-           "--check modes.\n"
+        << "Files larger than 4 MiB are skipped with a warning.\n"
         << "Check output is colorized when written to a terminal; set "
            "NO_COLOR to disable it.\n"
         << "\n"
         << "Examples:\n"
         << "  " << executable << " source.cpp\n"
-        << "  " << executable << " -i source.cpp include/\n"
-        << "  " << executable << " --check src/ include/header.h\n"
-        << "  " << executable << " --check --summary src/ include/\n"
-        << "  " << executable << " -i --exclude '(^|/)generated(/|$)' src/\n";
+        << "  " << executable << " --fix source.cpp include/\n"
+        << "  " << executable << " --summary src/ include/\n"
+        << "  " << executable << " --fix --exclude '(^|/)generated(/|$)' src/\n";
 }
 
 } // namespace
@@ -490,8 +1199,7 @@ int main(int argc, char* argv[])
             PrintHelp(std::cout, argv[0]);
             return 0;
         }
-        bool standardOutputMode = options.FormattingMode == Mode::Format;
-        if (options.Paths.empty() || (standardOutputMode && options.Paths.size() != 1)) {
+        if (options.Paths.empty()) {
             PrintHelp(std::cerr, argv[0]);
             return 1;
         }
@@ -499,7 +1207,6 @@ int main(int argc, char* argv[])
         files = CollectFiles(
             options.Paths,
             options.Exclusions,
-            !standardOutputMode,
             [&] (const auto& path, bool directory) {
                 return styleResolver->IsExcluded(path, directory);
             });
@@ -524,40 +1231,58 @@ int main(int argc, char* argv[])
                 .Size = sourceStorage.size() - util::SourcePaddingSize,
             };
             auto source = paddedSource.View();
-            const auto& style = styleResolver->Resolve(path);
-            auto formatted = formatter::Format(paddedSource, style);
+            const auto& config = styleResolver->Resolve(path);
+            auto tree = parser::Parse(paddedSource, [] (parser::ParseError) { });
+            auto checkStyle = config.FormattingStyle;
+            if (mode == Mode::Check) {
+                // Check layout on the original syntax tree, not a speculative
+                // reflow. Keep checking unrelated formatting rules as before.
+                checkStyle.ExpressionLayoutCondition =
+                    formatter::ExpressionLayoutCondition::Preserve;
+            }
+            auto formatted = formatter::Format(tree, checkStyle);
             switch (mode) {
-            case Mode::Format:
-                std::cout.write(formatted.data(), formatted.size());
-                break;
-            case Mode::InPlace:
+            case Mode::Fix:
                 if (formatted != source) {
                     util::WriteEntireFile(filePath, formatted);
                 }
                 break;
-            case Mode::Check:
-                if (formatted != source) {
-                    if (summaryOnly) {
-                        if (useColor) {
-                            std::cout << BoldRed;
-                        }
-                        std::cout << filePath << ": formatting mismatch";
-                        if (useColor) {
-                            std::cout << ResetColor;
-                        }
-                        std::cout.put('\n');
+            case Mode::Check: {
+                auto names = formatter::CheckNames(tree, config);
+                auto parameters = formatter::CheckParameterNames(tree, config);
+                auto layout = formatter::CheckExpressionLayout(tree,
+                    config.FormattingStyle);
+                bool mismatch = formatted != source || !names.empty() ||
+                    !parameters.empty() || !layout.empty();
+                if (summaryOnly && mismatch) {
+                    if (useColor) std::cout << BoldRed;
+                    std::cout << filePath << ": ";
+                    if (formatted != source) {
+                        std::cout << "formatting mismatch";
+                    } else if (!layout.empty()) {
+                        std::cout << "fail: layout violation";
+                        if (layout.size() != 1) std::cout << 's';
+                    } else if (!names.empty()) {
+                        std::cout << "fail: invalid name";
+                        if (names.size() != 1) std::cout << 's';
                     } else {
-                        PrintMismatch(filePath, source, formatted, useColor);
+                        std::cout << "fail: unnamed parameter";
+                        if (parameters.size() != 1) std::cout << 's';
                     }
-                    ++mismatchCount;
+                    if (useColor) std::cout << ResetColor;
+                    std::cout.put('\n');
+                } else if (!summaryOnly && mismatch) {
+                    auto layoutFormatted = layout.empty() ? std::string{} :
+                        formatter::Format(tree, config.FormattingStyle);
+                    PrintCheckDiagnostics(filePath, source, formatted,
+                        layoutFormatted, names, parameters, layout, useColor,
+                        checkStyle.SeparatorLength);
                 }
+                mismatchCount += mismatch;
                 break;
             }
-        } catch (const util::FileTooLargeError& error) {
-            if (mode == Mode::Format) {
-                std::cerr << error.what() << '\n';
-                return 1;
             }
+        } catch (const util::FileTooLargeError& error) {
             std::cerr << "warning: " << error.what() << "; skipping\n";
         } catch (const std::exception& error) {
             std::cerr << filePath << ": " << error.what() << '\n';
@@ -571,7 +1296,8 @@ int main(int argc, char* argv[])
         } else {
             std::cout << BoldRed << mismatchCount << " file"
                       << (mismatchCount == 1 ? "" : "s")
-                      << " require formatting." << ResetColor << '\n';
+                      << " require formatting, naming or parameter names."
+                      << ResetColor << '\n';
         }
     }
     return mismatchCount != 0 ? 1 : 0;

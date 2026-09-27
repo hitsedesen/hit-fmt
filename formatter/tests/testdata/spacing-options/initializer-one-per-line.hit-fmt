@@ -1,0 +1,7 @@
+IndentWidth = 2
+ColumnLimit = 21
+InitializerListSplit = OnePerLine
+FirstInitializerElementPosition = NewLine
+InitializerListIndent = IndentWidth
+InitializerClosingBrace = NewLine
+MergeInitializerList = true

@@ -1,16 +1,18 @@
 #include "config.hpp"
 
-#include <algorithm>
+#include <array>
 #include <charconv>
 #include <cctype>
 #include <fstream>
-#include <sstream>
 #include <stdexcept>
+#include <type_traits>
 #include <string>
 #include <string_view>
+#include <utility>
 #include <vector>
 
 namespace formatter {
+
 namespace {
 
 std::string_view Trim(std::string_view text)
@@ -57,6 +59,30 @@ std::string_view StripComment(std::string_view line)
         + std::string(message));
 }
 
+// A closing bracket inside a quoted item does not terminate an array.
+// Quoted items themselves cannot span physical lines.
+bool HasArrayEnd(std::string_view text,
+    const std::filesystem::path& path, size_t line)
+{
+    bool quoted = false;
+    bool escaped = false;
+    for (char character : text) {
+        if (escaped) {
+            escaped = false;
+        } else if (character == '\\' && quoted) {
+            escaped = true;
+        } else if (character == '"') {
+            quoted = !quoted;
+        } else if (character == ']' && !quoted) {
+            return true;
+        }
+    }
+    if (quoted) {
+        ThrowConfigError(path, line, "unterminated quoted array item");
+    }
+    return false;
+}
+
 size_t ParsePositiveInteger(
     std::string_view value,
     const std::filesystem::path& path,
@@ -65,26 +91,30 @@ size_t ParsePositiveInteger(
     size_t result = 0;
     auto [end, error] =
         std::from_chars(value.data(), value.data() + value.size(), result);
-    if (error != std::errc{} || end != value.data() + value.size()
-        || result == 0)
+    if (error != std::errc{} || end != value.data() + value.size() ||
+        result == 0)
     {
         ThrowConfigError(path, line, "expected a positive integer");
     }
     return result;
 }
 
-bool ParseBoolean(
-    std::string_view value,
-    const std::filesystem::path& path,
+template <typename T>
+T ParseEnum(std::string_view value, const std::filesystem::path& path,
     size_t line)
 {
-    if (value == "true") {
-        return true;
+    if (auto result = DeserializeConfigEnum<T>(value)) {
+        return *result;
     }
-    if (value == "false") {
-        return false;
+    std::string error = "expected ";
+    const auto& names = ConfigEnumNames<T>::Values;
+    for (size_t index = 0; index < names.size(); ++index) {
+        if (index != 0) {
+            error += index + 1 == names.size() ? " or " : ", ";
+        }
+        error += names[index];
     }
-    ThrowConfigError(path, line, "expected true or false");
+    ThrowConfigError(path, line, error);
 }
 
 std::string ParseString(
@@ -147,7 +177,6 @@ std::vector<std::string> ParseStringList(
         if (value.front() != '"') {
             ThrowConfigError(path, line, "expected a quoted array item");
         }
-
         bool escaped = false;
         size_t end = 1;
         for (; end < value.size(); ++end) {
@@ -175,261 +204,246 @@ std::vector<std::string> ParseStringList(
     }
 }
 
-std::string NormalizeEnum(std::string value)
+bool ParseBoolean(std::string_view value,
+    const std::filesystem::path& path, size_t line)
 {
-    std::string result;
-    result.reserve(value.size());
-    for (char character : value) {
-        if (character == '_' || character == '-') {
-            continue;
-        }
-        result.push_back(static_cast<char>(
-            std::tolower(static_cast<unsigned char>(character))));
+    if (value == "true") {
+        return true;
     }
-    return result;
+    if (value == "false") {
+        return false;
+    }
+    ThrowConfigError(path, line, "expected true or false");
 }
 
-BracketAlignment ParseOpenBracketAlignment(
-    std::string_view value,
-    const std::filesystem::path& path,
-    size_t line)
+std::vector<std::string> ParseNamespaceExemptions(
+    std::string_view value, const std::filesystem::path& path, size_t line)
 {
-    auto normalized = NormalizeEnum(ParseString(value, path, line));
-    if (normalized == "preserve") {
-        return BracketAlignment::Preserve;
-    }
-    if (normalized == "continuation") {
-        return BracketAlignment::Continuation;
-    }
-    if (normalized == "alignwithopening" || normalized == "opening") {
-        return BracketAlignment::AlignWithOpening;
-    }
-    ThrowConfigError(
-        path,
-        line,
-        "OpenBracketAlignment must be Preserve, Continuation, or AlignWithOpening");
-}
-
-BracePlacement ParseBracePlacement(
-    std::string_view value,
-    const std::filesystem::path& path,
-    size_t line)
-{
-    auto normalized = NormalizeEnum(ParseString(value, path, line));
-    if (normalized == "preserve") {
-        return BracePlacement::Preserve;
-    }
-    if (normalized == "attach") {
-        return BracePlacement::Attach;
-    }
-    if (normalized == "newline" || normalized == "break") {
-        return BracePlacement::NewLine;
-    }
-    if (normalized == "attachunlessmultiline") {
-        return BracePlacement::AttachUnlessMultiline;
-    }
-    ThrowConfigError(
-        path,
-        line,
-        "brace placement must be Preserve, Attach, NewLine, or AttachUnlessMultiline");
-}
-
-ParenthesisSpacing ParseParenthesisSpacing(
-    std::string_view value,
-    const std::filesystem::path& path,
-    size_t line)
-{
-    auto normalized = NormalizeEnum(ParseString(value, path, line));
-    if (normalized == "never") {
-        return ParenthesisSpacing::Never;
-    }
-    if (normalized == "controlstatements" || normalized == "control") {
-        return ParenthesisSpacing::ControlStatements;
-    }
-    if (normalized == "always") {
-        return ParenthesisSpacing::Always;
-    }
-    ThrowConfigError(
-        path,
-        line,
-        "SpaceBeforeParentheses must be Never, ControlStatements, or Always");
-}
-
-DeclaratorAlignment ParseDeclaratorAlignment(
-    std::string_view value,
-    const std::filesystem::path& path,
-    size_t line)
-{
-    auto normalized = NormalizeEnum(ParseString(value, path, line));
-    if (normalized == "preserve") {
-        return DeclaratorAlignment::Preserve;
-    }
-    if (normalized == "left") {
-        return DeclaratorAlignment::Left;
-    }
-    if (normalized == "right") {
-        return DeclaratorAlignment::Right;
-    }
-    if (normalized == "middle") {
-        return DeclaratorAlignment::Middle;
-    }
-    ThrowConfigError(
-        path,
-        line,
-        "alignment must be Preserve, Left, Right, or Middle");
-}
-
-CaseLabelIndentation ParseCaseLabelIndentation(
-    std::string_view value,
-    const std::filesystem::path& path,
-    size_t line)
-{
-    auto normalized = NormalizeEnum(ParseString(value, path, line));
-    if (normalized == "preserve") {
-        return CaseLabelIndentation::Preserve;
-    }
-    if (normalized == "outdent") {
-        return CaseLabelIndentation::Outdent;
-    }
-    if (normalized == "indent") {
-        return CaseLabelIndentation::Indent;
-    }
-    ThrowConfigError(
-        path,
-        line,
-        "IndentCaseLabels must be Preserve, Outdent, or Indent");
-}
-
-BracedInitializerSpacing ParseBracedInitializerSpacing(
-    std::string_view value,
-    const std::filesystem::path& path,
-    size_t line)
-{
-    auto normalized = NormalizeEnum(ParseString(value, path, line));
-    if (normalized == "preserve") {
-        return BracedInitializerSpacing::Preserve;
-    }
-    if (normalized == "never") {
-        return BracedInitializerSpacing::Never;
-    }
-    if (normalized == "always") {
-        return BracedInitializerSpacing::Always;
-    }
-    ThrowConfigError(
-        path,
-        line,
-        "SpaceInsideBracedInitializers must be Preserve, Never, or Always");
-}
-
-ClosingBracketAlignment ParseCloseBracketAlignment(
-    std::string_view value,
-    const std::filesystem::path& path,
-    size_t line)
-{
-    auto normalized = NormalizeEnum(ParseString(value, path, line));
-    if (normalized == "preserve") {
-        return ClosingBracketAlignment::Preserve;
-    }
-    if (normalized == "alignwithopening" || normalized == "opening") {
-        return ClosingBracketAlignment::AlignWithOpening;
-    }
-    ThrowConfigError(
-        path,
-        line,
-        "CloseBracketAlignment must be Preserve or AlignWithOpening");
-}
-
-void ApplySetting(
-    Configuration& config,
-    std::string_view key,
-    std::string_view value,
-    const std::filesystem::path& path,
-    size_t line)
-{
-    auto& style = config.FormattingStyle;
-    if (key == "IndentWidth") {
-        style.IndentWidth = ParsePositiveInteger(value, path, line);
-        if (style.IndentWidth > 32) {
-            ThrowConfigError(path, line, "IndentWidth must not exceed 32");
-        }
-    } else if (key == "ColumnLimit") {
-        style.ColumnLimit = ParsePositiveInteger(value, path, line);
-        if (style.ColumnLimit > 10000) {
-            ThrowConfigError(path, line, "ColumnLimit must not exceed 10000");
-        }
-    } else if (key == "Regroup") {
-        style.Regroup = ParseBoolean(value, path, line);
-    } else if (key == "InsertBraces") {
-        style.InsertBraces = ParseBoolean(value, path, line);
-    } else if (key == "BreakInlineRecordDeclarations") {
-        style.BreakInlineRecordDeclarations =
-            ParseBoolean(value, path, line);
-    } else if (key == "SpaceBeforeTemplateParameterPack") {
-        style.SpaceBeforeTemplateParameterPack =
-            ParseBoolean(value, path, line);
-    } else if (key == "FunctionBracePlacement") {
-        style.FunctionBracePlacement =
-            ParseBracePlacement(value, path, line);
-    } else if (key == "RecordBracePlacement") {
-        style.RecordBracePlacement = ParseBracePlacement(value, path, line);
-    } else if (key == "ControlBracePlacement") {
-        style.ControlBracePlacement = ParseBracePlacement(value, path, line);
-    } else if (key == "LambdaBracePlacement") {
-        style.LambdaBracePlacement = ParseBracePlacement(value, path, line);
-    } else if (key == "NamespaceBracePlacement") {
-        style.NamespaceBracePlacement = ParseBracePlacement(value, path, line);
-    } else if (key == "SpaceBeforeParentheses") {
-        style.SpaceBeforeParentheses =
-            ParseParenthesisSpacing(value, path, line);
-    } else if (key == "PointerAlignment") {
-        style.PointerAlignment = ParseDeclaratorAlignment(value, path, line);
-    } else if (key == "ReferenceAlignment") {
-        style.ReferenceAlignment =
-            ParseDeclaratorAlignment(value, path, line);
-    } else if (key == "IndentCaseLabels") {
-        style.IndentCaseLabels =
-            ParseCaseLabelIndentation(value, path, line);
-    } else if (key == "SpaceInsideParentheses") {
-        style.SpaceInsideParentheses = ParseBoolean(value, path, line);
-    } else if (key == "SpaceInsideSquareBrackets") {
-        style.SpaceInsideSquareBrackets = ParseBoolean(value, path, line);
-    } else if (key == "SpaceInsideBracedInitializers") {
-        style.SpaceInsideBracedInitializers =
-            ParseBracedInitializerSpacing(value, path, line);
-    } else if (key == "IndentNamespaces") {
-        style.IndentNamespaces = ParseBoolean(value, path, line);
-    } else if (key == "KeepEmptyBlocksOnOneLine") {
-        style.KeepEmptyBlocksOnOneLine = ParseBoolean(value, path, line);
-    } else if (key == "AllowShortLambdasOnOneLine") {
-        style.AllowShortLambdasOnOneLine = ParseBoolean(value, path, line);
-    } else if (key == "OpenBracketAlignment") {
-        style.OpenBracketAlignment =
-            ParseOpenBracketAlignment(value, path, line);
-    } else if (key == "CloseBracketAlignment") {
-        style.CloseBracketAlignment =
-            ParseCloseBracketAlignment(value, path, line);
-    } else if (key == "ForbidBreakAfter") {
-        style.ForbidBreakAfter = ParseStringList(value, path, line);
-    } else if (key == "WhitespaceSensitiveMacros") {
-        style.WhitespaceSensitiveMacros = ParseStringList(value, path, line);
-    } else if (key == "Exclude") {
-        config.Exclusions.clear();
-        for (const auto& pattern : ParseStringList(value, path, line)) {
-            if (pattern.empty()) {
-                ThrowConfigError(path, line, "Exclude regex must not be empty");
+    auto names = ParseStringList(value, path, line);
+    for (const auto& name : names) {
+        size_t start = 0;
+        while (start < name.size()) {
+            auto end = name.find("::", start);
+            if (end == std::string::npos) end = name.size();
+            auto part = std::string_view(name).substr(start, end - start);
+            if (part.empty() ||
+                !(std::isalpha(static_cast<unsigned char>(part.front())) ||
+                    part.front() == '_') ||
+                part.find_first_not_of(
+                    "abcdefghijklmnopqrstuvwxyz"
+                    "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_") !=
+                    std::string_view::npos)
+            {
+                ThrowConfigError(path, line, "expected qualified namespace names");
             }
-            try {
-                config.Exclusions.emplace_back(pattern);
-            } catch (const std::regex_error& error) {
-                ThrowConfigError(
-                    path,
-                    line,
-                    "invalid Exclude regex '" + pattern + "': " + error.what());
-            }
+            start = end == name.size() ? end : end + 2;
+        }
+        if (name.empty() || name.ends_with("::")) {
+            ThrowConfigError(path, line, "expected qualified namespace names");
+        }
+    }
+    return names;
+}
+
+std::vector<std::string> ParseCallNames(
+    std::string_view value, const std::filesystem::path& path, size_t line)
+{
+    auto names = ParseStringList(value, path, line);
+    for (const auto& name : names) {
+        if (name.empty() ||
+            !(std::isalpha(static_cast<unsigned char>(name.front())) ||
+                name.front() == '_') ||
+            name.find_first_not_of(
+                "abcdefghijklmnopqrstuvwxyz"
+                "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_") !=
+                std::string::npos)
+        {
+            ThrowConfigError(path, line, "expected call identifier names");
+        }
+    }
+    return names;
+}
+
+std::vector<std::string> ParseNamePrefixes(
+    std::string_view value, const std::filesystem::path& path, size_t line)
+{
+    auto prefixes = ParseStringList(value, path, line);
+    if (prefixes.empty()) {
+        ThrowConfigError(path, line, "expected at least one prefix");
+    }
+    for (const auto& prefix : prefixes) {
+        if (prefix.find_first_not_of(
+                "abcdefghijklmnopqrstuvwxyz"
+                "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_") != std::string::npos)
+        {
+            ThrowConfigError(path, line,
+                "prefix must contain only identifier characters");
+        }
+    }
+    return prefixes;
+}
+
+template <typename T>
+void ParseField(T& field, std::string_view value,
+    const std::filesystem::path& path, size_t line)
+{
+    if constexpr (std::is_enum_v<T>) {
+        field = ParseEnum<T>(value, path, line);
+    } else if constexpr (std::is_same_v<T, bool>) {
+        field = ParseBoolean(value, path, line);
+    } else if constexpr (std::is_same_v<T, size_t>) {
+        field = ParsePositiveInteger(value, path, line);
+    } else {
+        static_assert(std::is_same_v<T, void>, "unsupported config field type");
+    }
+}
+
+void ParseField(std::optional<std::vector<std::string>>& field,
+    std::string_view value, const std::filesystem::path& path, size_t line)
+{
+    field = ParseNamePrefixes(value, path, line);
+}
+
+void ParseField(std::vector<std::string>& field, std::string_view value,
+    const std::filesystem::path& path, size_t line)
+{
+    field = ParseNamespaceExemptions(value, path, line);
+}
+
+void ParseField(std::vector<std::regex>& field, std::string_view value,
+    const std::filesystem::path& path, size_t line)
+{
+    field.clear();
+    for (const auto& pattern : ParseStringList(value, path, line)) {
+        if (pattern.empty()) {
+            ThrowConfigError(path, line, "Exclude regex must not be empty");
+        }
+        try {
+            field.emplace_back(pattern);
+        } catch (const std::regex_error& error) {
+            ThrowConfigError(path, line,
+                "invalid Exclude regex '" + pattern + "': " + error.what());
+        }
+    }
+}
+
+void ValidateStyleLimits(const Style& style,
+    const std::filesystem::path& path, size_t line)
+{
+    if (style.IndentWidth > 32) {
+        ThrowConfigError(path, line, "IndentWidth must not exceed 32");
+    }
+    if (style.ColumnLimit > 10000) {
+        ThrowConfigError(path, line, "ColumnLimit must not exceed 10000");
+    }
+    if (style.ShortNamespaceLines > 10000) {
+        ThrowConfigError(path, line, "ShortNamespaceLines must not exceed 10000");
+    }
+    if (style.SeparatorLength != 0 &&
+        (style.SeparatorLength < 8 || style.SeparatorLength > 10000))
+    {
+        ThrowConfigError(path, line,
+            "SeparatorLength must be between 8 and 10000");
+    }
+    if (style.NamespaceCommentSpaces > 32) {
+        ThrowConfigError(path, line, "NamespaceCommentSpaces must not exceed 32");
+    }
+    if (style.AccessModifierIndentWidth > 32 ||
+        style.MemberIndentWidth > 32 || style.BlockBodyIndentWidth > 32 ||
+        style.CaseLabelIndentWidth > 32 ||
+        style.StatementAttributeIndentWidth > 32)
+    {
+        ThrowConfigError(path, line, "indent width must not exceed 32");
+    }
+    if (style.FunctionParameterNewLineIndent > 32) {
+        ThrowConfigError(path, line,
+            "FunctionParameterNewLineIndent must not exceed 32");
+    }
+    if (style.InheritanceListIndent > 32) {
+        ThrowConfigError(path, line,
+            "InheritanceListIndent must not exceed 32");
+    }
+    if (style.ConstructorInitializerListIndent > 32) {
+        ThrowConfigError(path, line,
+            "ConstructorInitializerListIndent must not exceed 32");
+    }
+}
+
+template <auto Member>
+void AssignStyle(Configuration& config, std::string_view value,
+    const std::filesystem::path& path, size_t line)
+{
+    if constexpr (std::is_same_v<std::remove_cvref_t<
+            decltype(config.FormattingStyle.*Member)>,
+            std::vector<std::string>>)
+    {
+        if constexpr (Member == &Style::ChainedCallRootNames) {
+            config.FormattingStyle.*Member =
+                ParseNamespaceExemptions(value, path, line);
+        } else {
+            config.FormattingStyle.*Member = ParseCallNames(value, path, line);
         }
     } else {
-        ThrowConfigError(path, line, "unknown setting '" + std::string(key) + "'");
+        ParseField(config.FormattingStyle.*Member, value, path, line);
     }
+}
+
+template <auto Member>
+void AssignConfig(Configuration& config, std::string_view value,
+    const std::filesystem::path& path, size_t line)
+{
+    ParseField(config.*Member, value, path, line);
+}
+
+template <auto Member>
+void AssignNamingCase(Configuration& config, std::string_view value,
+    const std::filesystem::path& path, size_t line)
+{
+    ParseField((config.Naming.*Member).Case, value, path, line);
+}
+
+template <auto Member>
+void AssignNamingPrefixes(Configuration& config, std::string_view value,
+    const std::filesystem::path& path, size_t line)
+{
+    ParseField((config.Naming.*Member).Prefixes, value, path, line);
+}
+
+using OptionHandler = void (*)(Configuration&, std::string_view,
+    const std::filesystem::path&, size_t);
+struct OptionBinding
+{
+    std::string_view Name;
+    OptionHandler Assign;
+};
+
+constexpr auto Options = std::to_array<OptionBinding>({
+#define STYLE_BINDING(type, name, initial)                                      \
+    {#name, &AssignStyle<&Style::name>},
+    FORMATTER_STYLE_OPTIONS(STYLE_BINDING)
+#undef STYLE_BINDING
+#define NAMING_CATEGORY_BINDINGS(category)                                      \
+    {#category "NameCase", &AssignNamingCase<&NamingStyle::category>},           \
+    {#category "NamePrefixes", &AssignNamingPrefixes<&NamingStyle::category>},
+    FORMATTER_NAMING_CATEGORIES(NAMING_CATEGORY_BINDINGS)
+#undef NAMING_CATEGORY_BINDINGS
+#define CONFIG_BINDING(type, name, initial)                                     \
+    {#name, &AssignConfig<&Configuration::name>},
+    FORMATTER_CONFIGURATION_OPTIONS(CONFIG_BINDING)
+#undef CONFIG_BINDING
+});
+
+void ApplySetting(Configuration& config, std::string_view key,
+    std::string_view value, const std::filesystem::path& path, size_t line)
+{
+    for (const auto& option : Options) {
+        if (option.Name == key) {
+            option.Assign(config, value, path, line);
+            ValidateStyleLimits(config.FormattingStyle, path, line);
+            return;
+        }
+    }
+    ThrowConfigError(path, line, "unknown setting '" + std::string(key) + "'");
 }
 
 } // namespace
@@ -459,7 +473,33 @@ Configuration LoadConfigFile(const std::filesystem::path& path)
         if (key.empty() || value.empty()) {
             ThrowConfigError(path, lineNumber, "expected Key = Value");
         }
-        ApplySetting(config, key, value, path, lineNumber);
+        const size_t settingLine = lineNumber;
+        std::string arrayValue;
+        std::string arrayKey;
+        if (value.front() == '[' && !HasArrayEnd(value, path, lineNumber)) {
+            // key and value refer to lineText, which the next getline replaces.
+            arrayKey = key;
+            arrayValue = value;
+            while (true) {
+                if (!std::getline(input, lineText)) {
+                    if (!input.eof()) {
+                        throw std::runtime_error(
+                            "failed to read configuration file: " + path.string());
+                    }
+                    ThrowConfigError(path, settingLine, "unterminated array");
+                }
+                ++lineNumber;
+                auto itemLine = Trim(StripComment(lineText));
+                arrayValue.push_back('\n');
+                arrayValue.append(itemLine);
+                if (HasArrayEnd(itemLine, path, lineNumber)) {
+                    break;
+                }
+            }
+            key = arrayKey;
+            value = arrayValue;
+        }
+        ApplySetting(config, key, value, path, settingLine);
     }
     if (!input.eof()) {
         throw std::runtime_error("failed to read configuration file: " + path.string());

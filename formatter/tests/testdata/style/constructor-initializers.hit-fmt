@@ -1,0 +1,10 @@
+ConstructorInitializerList = Format
+ConstructorInitializerListColonPlacement = AttachToInitializer
+ConstructorInitializerListColonSpaceBefore = NoSpace
+ConstructorInitializerListColonSpaceAfter = Space
+ConstructorInitializerListCommaPlacement = AttachToNext
+ConstructorInitializerListCommaSpaceBefore = NoSpace
+ConstructorInitializerListCommaSpaceAfter = Space
+ConstructorInitializerListStart = NewLine
+ConstructorInitializerListSplit = OnePerLine
+ConstructorInitializerListIndent = 4

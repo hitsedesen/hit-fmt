@@ -1,0 +1,4 @@
+IndentWidth = 2
+IndentBlockBodies = true
+IndentCaseLabels = NoIndent
+StatementAttributeIndent = Block

@@ -1,0 +1,7 @@
+ClassBraceSpacing = SingleSpace
+LambdaBraceSpacing = SingleSpace
+StructBraceSpacing = SingleSpace
+EnumBraceSpacing = SingleSpace
+UnionBraceSpacing = SingleSpace
+FunctionBraceSpacing = SingleSpace
+NamespaceBraceSpacing = SingleSpace

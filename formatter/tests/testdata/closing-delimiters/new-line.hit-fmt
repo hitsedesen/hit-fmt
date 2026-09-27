@@ -1,0 +1,4 @@
+FunctionParameterClosingParenthesis = NewLine
+FunctionCallArgumentClosingParenthesis = NewLine
+InitializerClosingBrace = NewLine
+BlockClosingBrace = NewLine

@@ -1,0 +1,4 @@
+BinaryOperatorSpacing = Space
+GroupingInteriorSpacing = Space
+FunctionCallSpaceBeforeParameters = NoSpace
+LambdaCallSpaceBeforeArguments = Space

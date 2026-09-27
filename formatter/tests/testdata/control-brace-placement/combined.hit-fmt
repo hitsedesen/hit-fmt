@@ -1,0 +1,2 @@
+ControlBlockKeywordSpacing = Space
+ControlBlockBracePlacement = AttachUnlessMultiline

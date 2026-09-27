@@ -1,0 +1,14 @@
+IndentWidth = 2
+ColumnLimit = 80
+CallArgumentSplit = Pack
+ExpressionLayoutCondition = Overflow
+PointerReferenceDeclaratorLocation = Left
+BinaryOperatorSpacing = Space
+UnaryOperatorSpacing = NoSpace
+CommaSpacing = Space
+SpaceInsideCallArguments = NoSpace
+FunctionCallSpaceBeforeParameters = NoSpace
+LambdaBraceSpacing = SingleSpace
+IndentBlockBodies = true
+BraceInitializerSpacing = NoSpace
+CastSpacing = NoSpace

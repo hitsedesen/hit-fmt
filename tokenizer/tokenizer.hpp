@@ -92,7 +92,7 @@ GetTokenizationErrorDescription(TokenizationErrorKind kind)
 #undef TOKENIZATION_ERROR_KIND
     });
 
-    return Descriptions[std::to_underlying(kind)];
+    return Descriptions[static_cast<std::underlying_type_t<TokenizationErrorKind>>(kind)];
 }
 
 struct TokenizationError
@@ -208,7 +208,7 @@ class Tokenizer
 public:
     Tokenizer(
         util::PaddedSourceView input,
-        std::move_only_function<void(TokenizationError)> errorHandler = {});
+        std::function<void(TokenizationError)> errorHandler = {});
 
     // Returns the next token, or EndOfFile after the input is exhausted.
     [[nodiscard]] Token Get();
@@ -302,7 +302,7 @@ private:
 
     std::string_view Input_;
 
-    std::move_only_function<void(TokenizationError)> ErrorHandler_;
+    std::function<void(TokenizationError)> ErrorHandler_;
 
     [[nodiscard]] bool IsFileStart() const noexcept;
     bool IsNewLine_ = true;

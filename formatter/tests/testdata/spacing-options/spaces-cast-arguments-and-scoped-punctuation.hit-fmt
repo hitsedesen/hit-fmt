@@ -1,0 +1,3 @@
+CastArgumentSpacing = Space
+MemberAccessOperatorsSpacing = NoSpace
+ScopeResolutionSpacing = NoSpace

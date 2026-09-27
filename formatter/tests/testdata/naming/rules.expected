@@ -1,0 +1,17 @@
+12:7: class name 'Widget' has invalid prefix and case
+13:8: struct name 'Snode' has invalid case
+14:8: struct name 'DRecord' has invalid prefix and case
+15:7: union name 'uData' has invalid prefix and case
+16:12: enum name 'State' has invalid prefix and case
+17:31: concept name 'valid' has invalid prefix and case
+18:6: function name 'Process' has invalid prefix and case
+18:18: variable name 'arg' has invalid prefix and case
+19:5: variable name 'count' has invalid prefix and case
+19:12: variable name 'm_Bad' has invalid case
+20:11: namespace name 'wrong' has invalid prefix and case
+21:7: variable name 'bad_pointer' has invalid prefix and case
+25:43: variable name 'handler' has invalid prefix and case
+38:28: function name 'BadTemplate' has invalid prefix and case
+41:25: variable name 'BadVariable' has invalid prefix and case
+53:11: namespace name 'standard' has invalid prefix and case
+53:28: class name 'ExternalClass' has invalid prefix and case

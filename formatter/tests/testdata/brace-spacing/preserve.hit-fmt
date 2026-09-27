@@ -1,0 +1,7 @@
+ClassBraceSpacing = Preserve
+LambdaBraceSpacing = Preserve
+StructBraceSpacing = Preserve
+EnumBraceSpacing = Preserve
+UnionBraceSpacing = Preserve
+FunctionBraceSpacing = Preserve
+NamespaceBraceSpacing = Preserve

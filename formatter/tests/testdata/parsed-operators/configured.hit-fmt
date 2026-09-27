@@ -1,0 +1,5 @@
+ExpressionLayoutCondition = Overflow
+TernarySplit = AsNeeded
+TernaryOperatorPlacement = Leading
+BinaryOperatorPlacement = Leading
+ColumnLimit = 32

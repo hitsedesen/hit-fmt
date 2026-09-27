@@ -1,0 +1,5 @@
+BinaryOperatorSpacing = NoSpace
+CommaSpacing = NoSpace
+SubscriptOperatorInteriorSpacing = Space
+LoopSemicolonSpacing = NoSpace
+ConditionInitSemicolonSpacing = NoSpace

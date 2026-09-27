@@ -1,0 +1,12 @@
+template <typename Owner, typename Result>
+void select(Result (Owner::*member)() const);
+template <typename Owner, typename Result, typename Rule>
+inline Adapter<detail::MethodRule<
+    Owner, Result, Result (Owner::*)() const>>
+select(Result (Owner::*member)() const,
+       const Rule& rule) { return {}; }
+void f() {
+  VERIFY_FAILS({ invoke(); }, "");
+  ASSERT_SAME(kTag, MACRO_TYPE_(char**));
+  int x = a * *p;
+}

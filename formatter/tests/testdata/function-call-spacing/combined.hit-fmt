@@ -1,0 +1,2 @@
+FunctionSpaceBeforeParameters = NoSpace
+FunctionCallSpaceBeforeParameters = Space

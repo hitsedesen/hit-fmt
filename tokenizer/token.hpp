@@ -173,7 +173,7 @@ enum class TokenKind : uint8_t
 #undef TOKEN_KIND
     });
 
-    return Names[std::to_underlying(kind)];
+    return Names[static_cast<std::underlying_type_t<TokenKind>>(kind)];
 }
 
 struct Token

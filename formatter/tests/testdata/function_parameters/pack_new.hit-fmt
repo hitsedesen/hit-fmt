@@ -1,0 +1,7 @@
+IndentWidth = 4
+ColumnLimit = 40
+FunctionParameterSplit = Pack
+FirstFunctionParameterPosition = NewLine
+EnforceFirstFunctionParameterPosition = false
+FunctionParameterIndent = Continuation
+MergeFunctionParameters = false
