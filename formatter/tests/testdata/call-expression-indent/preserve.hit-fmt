@@ -1,0 +1,4 @@
+ColumnLimit = 32
+ExpressionLayoutCondition = Preserve
+CallArgumentSplit = Pack
+CallArgumentIndent = Continuation

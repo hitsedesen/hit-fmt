@@ -161,6 +161,15 @@ std::vector<FormattedCase> FormattedCases()
         {"preserve", "space", "no-space", "combined"});
     AddCases(cases, BODY_INDENT_TESTDATA_DIR,
         {"preserve", "indent", "no-indent", "mixed"});
+    const auto attribute = std::filesystem::path(FORMATTER_TESTDATA_DIR) /
+        "../attribute-indent";
+    AddCases(cases, attribute, {"preserve", "block", "indent"});
+    cases.push_back({attribute, "block-only", "block-only.input.cpp"});
+    AddCases(cases, std::filesystem::path(FORMATTER_TESTDATA_DIR) /
+        "../assignment-location", {"leading", "trailing"});
+    AddCases(cases, std::filesystem::path(FORMATTER_TESTDATA_DIR) /
+        "../call-expression-indent", {"aligned", "aligned-no-call-reflow",
+            "indent-width", "preserve"});
     AddCases(cases, INHERITANCE_TESTDATA_DIR,
         {"preserve", "format", "leading", "trailing", "overflow",
             "comma-leading", "no-space", "spaces-mixed", "combined"});
@@ -378,37 +387,6 @@ TEST(CallArgumentTest, ReflowsOnlySafeParsedCalls)
         "}\n";
     EXPECT_EQ(FormatWithStyle(aligned, style), alignedExpected);
     EXPECT_EQ(FormatWithStyle(alignedExpected, style), alignedExpected);
-    const auto assertion =
-        "void f() {\n"
-        "    assert(check(alpha) && verify(beta) && confirm(gamma));\n"
-        "}\n";
-    const auto alignedAssertion =
-        "void f() {\n"
-        "    assert(check(alpha) &&\n"
-        "           verify(beta) &&\n"
-        "           confirm(gamma));\n"
-        "}\n";
-    EXPECT_EQ(FormatWithStyle(assertion, style), alignedAssertion);
-    EXPECT_EQ(FormatWithStyle(alignedAssertion, style), alignedAssertion);
-    style.CallArgumentSplit = formatter::CallArgumentSplit::Preserve;
-    style.ExpressionLayoutCondition =
-        formatter::ExpressionLayoutCondition::Overflow;
-    EXPECT_EQ(FormatWithStyle(assertion, style), alignedAssertion);
-    style.CallArgumentSplit = formatter::CallArgumentSplit::Pack;
-
-    style.CallArgumentIndent = formatter::CallArgumentIndent::IndentWidth;
-    const auto widthAssertion =
-        "void f() {\n"
-        "    assert(check(alpha) &&\n"
-        "        verify(beta) &&\n"
-        "        confirm(gamma));\n"
-        "}\n";
-    EXPECT_EQ(FormatWithStyle(assertion, style), widthAssertion);
-    style.ExpressionLayoutCondition =
-        formatter::ExpressionLayoutCondition::Preserve;
-    EXPECT_EQ(FormatWithStyle(assertion, style), assertion);
-    style.ExpressionLayoutCondition =
-        formatter::ExpressionLayoutCondition::Always;
     style.CallArgumentIndent = formatter::CallArgumentIndent::IndentWidth;
     style.ControlBlockBracePlacement =
         formatter::ControlBlockBracePlacement::AttachUnlessMultiline;
@@ -557,23 +535,6 @@ TEST(ExpressionLayoutTest, WrapsParsedOperatorsAndPreservesUnsafeLines)
         "}\n";
     EXPECT_EQ(FormatWithStyle(assigned, style), assignedExpected);
     EXPECT_EQ(FormatWithStyle(assignedExpected, style), assignedExpected);
-    const auto existingAssignment =
-        "void f() {\n"
-        "    result\n"
-        "        = value;\n"
-        "}\n";
-    const auto trailingAssignment =
-        "void f() {\n"
-        "    result =\n"
-        "        value;\n"
-        "}\n";
-    style.AssignmentOperatorPlacement =
-        formatter::BinaryOperatorPlacement::Trailing;
-    EXPECT_EQ(FormatWithStyle(existingAssignment, style), trailingAssignment);
-    EXPECT_EQ(FormatWithStyle(trailingAssignment, style), trailingAssignment);
-    style.AssignmentOperatorPlacement =
-        formatter::BinaryOperatorPlacement::Leading;
-    EXPECT_EQ(FormatWithStyle(trailingAssignment, style), existingAssignment);
     style.ColumnLimit = 25;
     const auto compact =
         "int sum(int alpha, int beta) {\n"
@@ -774,98 +735,36 @@ TEST(ExpressionLayoutTest, ChecksLayoutWithoutReflowing)
     style.TernaryOperatorPlacement = formatter::TernaryOperatorPlacement::Preserve;
     style.TernarySplit = formatter::TernarySplit::Preserve;
     EXPECT_EQ(formatter::CheckExpressionLayout(tree, style).size(), 2u);
-    const auto assignment = "void f() {\n    result\n        = value;\n}\n";
-    std::string assignedStorage(assignment);
-    const auto assignedLength = assignedStorage.size();
-    assignedStorage.append(util::SourcePaddingSize, '\0');
-    auto assignedTree = parser::Parse(
-        {.Data = assignedStorage.data(), .Size = assignedLength},
-        [] (parser::ParseError) { });
-    style.AssignmentOperatorPlacement =
-        formatter::BinaryOperatorPlacement::Trailing;
-    const auto assignmentIssues =
-        formatter::CheckExpressionLayout(assignedTree, style);
-    ASSERT_EQ(assignmentIssues.size(), 1u);
-    EXPECT_EQ(assignmentIssues[0].Message,
-        "assignment operator must end the preceding line");
-    style.AssignmentOperatorPlacement =
-        formatter::BinaryOperatorPlacement::Leading;
-    EXPECT_TRUE(formatter::CheckExpressionLayout(assignedTree, style).empty());
     style.ExpressionLayoutCondition =
         formatter::ExpressionLayoutCondition::Preserve;
     EXPECT_TRUE(formatter::CheckExpressionLayout(tree, style).empty());
 }
 
-TEST(BlockIndentationTest, AlignsStandaloneStatementAttributes)
+TEST(ExpressionLayoutTest, ChecksAssignmentPlacementAgainstGolden)
 {
-    const auto input =
-        "void f(bool ready) {\n"
-        "  switch (1) {\n"
-        "    case 1:\n"
-        "      if (!ready)\n"
-        "        return;\n"
-        "         [[fallthrough]];\n"
-        "    default:\n"
-        "      break;\n"
-        "  }\n"
-        "}\n";
-    formatter::Style style;
-    style.IndentWidth = 2;
-    style.IndentBlockBodies = true;
-    style.IndentCaseLabels = formatter::BodyIndentation::NoIndent;
-    const auto preserved =
-        "void f(bool ready) {\n"
-        "  switch (1) {\n"
-        "  case 1:\n"
-        "    if (!ready)\n"
-        "      return;\n"
-        "         [[fallthrough]];\n"
-        "  default:\n"
-        "    break;\n"
-        "  }\n"
-        "}\n";
-    EXPECT_EQ(FormatWithStyle(input, style), preserved);
-    style.StatementAttributeIndent =
-        formatter::StatementAttributeIndent::Block;
-    const auto block =
-        "void f(bool ready) {\n"
-        "  switch (1) {\n"
-        "  case 1:\n"
-        "    if (!ready)\n"
-        "      return;\n"
-        "    [[fallthrough]];\n"
-        "  default:\n"
-        "    break;\n"
-        "  }\n"
-        "}\n";
-    EXPECT_EQ(FormatWithStyle(input, style), block);
-    EXPECT_EQ(FormatWithStyle(block, style), block);
-    style.StatementAttributeIndent =
-        formatter::StatementAttributeIndent::Indent;
-    const auto indented =
-        "void f(bool ready) {\n"
-        "  switch (1) {\n"
-        "  case 1:\n"
-        "    if (!ready)\n"
-        "      return;\n"
-        "      [[fallthrough]];\n"
-        "  default:\n"
-        "    break;\n"
-        "  }\n"
-        "}\n";
-    EXPECT_EQ(FormatWithStyle(input, style), indented);
-    EXPECT_EQ(FormatWithStyle(indented, style), indented);
-
-    style.IndentBlockBodies = false;
-    style.IndentCaseLabels = formatter::BodyIndentation::Preserve;
-    style.StatementAttributeIndent =
-        formatter::StatementAttributeIndent::Block;
-    const auto standalone =
-        "void f() {\n"
-        "      [[maybe_unused]] int value = 0;\n"
-        "}\n";
-    EXPECT_EQ(FormatWithStyle(standalone, style),
-        "void f() {\n  [[maybe_unused]] int value = 0;\n}\n");
+    const auto directory = std::filesystem::path(FORMATTER_TESTDATA_DIR) /
+        "../assignment-location";
+    auto source = ReadFile(directory / "input.cpp");
+    const auto size = source.size();
+    source.append(util::SourcePaddingSize, '\0');
+    const auto tree = parser::Parse(
+        {.Data = source.data(), .Size = size},
+        [] (parser::ParseError) { });
+    for (const auto* placement : {"leading", "trailing"}) {
+        const auto style = formatter::LoadConfigFile(
+            directory / (std::string(placement) + ".hit-fmt"))
+            .FormattingStyle;
+        std::string actual;
+        for (const auto& diagnostic :
+            formatter::CheckExpressionLayout(tree, style))
+        {
+            actual += std::to_string(diagnostic.Position.Line) + ":" +
+                std::to_string(diagnostic.Position.Column) + ": " +
+                diagnostic.Message + "\n";
+        }
+        test::golden::ExpectGolden(
+            directory / (std::string(placement) + ".expected"), actual);
+    }
 }
 
 TEST(ExpressionLayoutTest, PrefersOuterConditionalBreaks)
