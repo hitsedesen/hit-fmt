@@ -1,62 +1,84 @@
 # Approximation of the LLVM C++ coding style / clang-format's LLVM preset.
 # Use with --config, or copy to .hit-fmt in the source tree.
 # See ../CONFIGURATION.md for unsupported rules and safety limits.
+
+# Indentation and limits
 IndentWidth = 2
 ColumnLimit = 80
 IndentationKind = Spaces
 TrailingWhitespace = Trim
-PointerReferenceDeclaratorLocation = Right
-LabelColonSpacing = NoSpace
 
+# Includes, directives, and comments
+# LLVM include order depends on categories, so preserve it.
+IncludeOrder = Preserve
+
+# Records, namespaces, and declarators
+PointerReferenceDeclaratorLocation = Right
 IndentAccessModifiers = NoIndent
 IndentMembers = Indent
-IndentBlockBodies = true
-IndentCaseLabels = NoIndent
-StatementAttributeIndent = Block
 ClassBracePlacement = Attach
-StructBracePlacement = Attach
-UnionBracePlacement = Attach
-FunctionBracePlacement = Attach
-LambdaBracePlacement = Attach
-NamespaceBracePlacement = Attach
 ClassBraceSpacing = SingleSpace
+StructBracePlacement = Attach
 StructBraceSpacing = SingleSpace
+UnionBracePlacement = Attach
 UnionBraceSpacing = SingleSpace
 EnumBraceSpacing = SingleSpace
-FunctionBraceSpacing = SingleSpace
-LambdaBraceSpacing = SingleSpace
+NamespaceBracePlacement = Attach
 NamespaceBraceSpacing = SingleSpace
-ControlBlockBracePlacement = SameLine
-ControlBlockKeywordSpacing = Space
 NamespaceComments = Fix
 ShortNamespaceLines = 1
+# LLVM base-list layout is context-dependent; keep it source-owned.
+InheritanceList = Preserve
 
+# Functions and parameters
+FunctionBracePlacement = Attach
+FunctionBraceSpacing = SingleSpace
 FunctionParameterSplit = Pack
 FirstFunctionParameterPosition = NameLineIfFits
 FunctionParameterIndent = Continuation
 FunctionParameterNewLineIndent = 4
 MergeFunctionParameters = true
-ExpressionLayoutCondition = Overflow
-ControlConditionIndent = Continuation
-BinaryOperatorPlacement = Trailing
-AssignmentOperatorPlacement = Trailing
-TernaryOperatorPlacement = Leading
-TernarySplit = AsNeeded
-CallArgumentSplit = Pack
-FirstCallArgumentPosition = CallLine
-CallArgumentIndent = Continuation
-InitializerListSplit = Pack
-InitializerListIndent = Continuation
-
 FunctionSpaceBeforeParameters = NoSpace
-FunctionCallSpaceBeforeParameters = NoSpace
 SpaceInsideFunctionParameters = NoSpace
-SpaceInsideCallArguments = NoSpace
+
+# Lambdas
+LambdaBracePlacement = Attach
+LambdaBraceSpacing = SingleSpace
 LambdaSpaceBeforeParameters = NoSpace
 SpaceInsideLambdaParameters = NoSpace
 SpaceAroundCaptureList = NoSpace
 SpaceAroundCaptureAssignment = Space
 
+# Calls and chains
+CallArgumentSplit = Pack
+FirstCallArgumentPosition = CallLine
+CallArgumentIndent = Continuation
+FunctionCallSpaceBeforeParameters = NoSpace
+SpaceInsideCallArguments = NoSpace
+
+# Control flow
+LabelColonSpacing = NoSpace
+IndentCaseLabels = NoIndent
+ControlBlockBracePlacement = SameLine
+ControlBlockKeywordSpacing = Space
+ControlConditionIndent = Continuation
+
+# Blocks and statements
+IndentBlockBodies = true
+StatementAttributeIndent = Block
+
+# Initializers, new, and delete
+InitializerListSplit = Pack
+InitializerListIndent = Continuation
+
+# Expressions and operators
+ExpressionLayoutCondition = Overflow
+BinaryOperatorPlacement = Trailing
+AssignmentOperatorPlacement = Trailing
+TernaryOperatorPlacement = Leading
+TernarySplit = AsNeeded
+
+# Naming checks
 # LLVM uses upper-initial types and variables, lower-initial functions.
 # Naming checks only cover unambiguous definitions/declarations; see docs.
 ClassNameCase = PascalCase
@@ -66,8 +88,3 @@ EnumNameCase = PascalCase
 ConceptNameCase = PascalCase
 FunctionNameCase = camelCase
 VariableNameCase = PascalCase
-
-# Leave includes and inheritance lists alone rather than imposing an order or
-# continuation layout different from LLVM's context-dependent rules.
-IncludeOrder = Preserve
-InheritanceList = Preserve
