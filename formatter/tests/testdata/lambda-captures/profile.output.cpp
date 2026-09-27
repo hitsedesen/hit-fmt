@@ -38,3 +38,13 @@ void Schedule()
             }));
         });
 }
+
+auto AdjustLater()
+{
+    return WhenAllComplete(workItems).Apply(BIND(
+        [this, weakHandle = MakeWeak(this), count] (const TError& /*ignored*/) {
+            if (auto current = weakHandle.Lock()) {
+                current->Adjust(count);
+            }
+        }));
+}

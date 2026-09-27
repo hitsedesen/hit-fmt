@@ -990,8 +990,10 @@ Exclude = [
   inside the `(` and `)` of a nonempty lambda parameter list unchanged;
   `Space` uses one space and `NoSpace` removes it. For example, `Space`
   formats `[](x)` as `[]( x )`. Applies to generic lambdas as well.
-  Empty `()`, newlines, adjacent comments or directives, and incomplete
-  lists remain untouched. Does not affect capture brackets, the gap
+  Empty `()`, newlines, incomplete lists, and gaps beside directives or
+  line comments remain untouched. A trailing block comment before `)`
+  follows this option only when separated by horizontal whitespace; the
+  comment text stays unchanged. Does not affect capture brackets, the gap
   before `(`, named functions, calls, or control conditions.
 - `SpaceAroundCaptureList`: `Preserve` (default) leaves the whitespace
   immediately inside the `[` and `]` of a nonempty lambda capture list

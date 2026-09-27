@@ -958,8 +958,12 @@ private:
         {
             LambdaParameterInsideGaps_[opening + 1] = true;
         }
-        if (Tree_.Kind(closing - 1) != TK::Comment &&
-            Tree_.Kind(closing - 1) != TK::PreprocessingDirective)
+        // A trailing block comment can be a commented parameter name.
+        // Only its horizontal gap before ')' belongs to this option;
+        // line comments and directives must keep their line ending.
+        if (Tree_.Kind(closing - 1) != TK::PreprocessingDirective &&
+            (Tree_.Kind(closing - 1) != TK::Comment ||
+                Tree_.TokenText(closing - 1).starts_with("/*")))
         {
             LambdaParameterInsideGaps_[closing] = true;
         }
