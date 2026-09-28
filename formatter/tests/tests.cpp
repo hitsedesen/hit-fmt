@@ -54,7 +54,8 @@ std::vector<std::filesystem::path> DiscoverCases()
     return cases;
 }
 
-class PreserveGoldenTest : public testing::TestWithParam<std::filesystem::path>
+class PreserveGoldenTest
+    : public testing::TestWithParam<std::filesystem::path>
 { };
 
 TEST_P(PreserveGoldenTest, KeepsEverySourceByteUnderAllWidths)
@@ -64,7 +65,8 @@ TEST_P(PreserveGoldenTest, KeepsEverySourceByteUnderAllWidths)
         std::pair<size_t, size_t>{4, 120},
         {1, 1},
         {32, 10000},
-    }) {
+    })
+    {
         formatter::Style style;
         style.IndentWidth = indent;
         style.ColumnLimit = column;
@@ -82,20 +84,22 @@ INSTANTIATE_TEST_SUITE_P(Preserve, PreserveGoldenTest,
     });
 
 std::string FormatWithStyle(
-    std::string_view source, const formatter::Style& style)
+    std::string_view source,
+    const formatter::Style& style)
 {
     std::string storage(source);
     storage.append(util::SourcePaddingSize, '\0');
     util::PaddedSourceView padded{.Data = storage.data(),
         .Size = source.size()};
     auto tree = parser::Parse(padded, [] (parser::ParseError) { });
-    EXPECT_EQ(formatter::Format(tree, style),
-        formatter::Format(padded, style));
+    EXPECT_EQ(formatter::Format(tree, style), formatter::Format(padded, style));
     return formatter::Format(tree, style);
 }
 
-void ExpectFormattedGolden(const std::filesystem::path& path,
-    std::string_view input, const formatter::Style& style)
+void ExpectFormattedGolden(
+    const std::filesystem::path& path,
+    std::string_view input,
+    const formatter::Style& style)
 {
     const auto actual = FormatWithStyle(input, style);
     test::golden::ExpectGolden(path, actual);
@@ -110,7 +114,8 @@ struct FormattedCase
     std::string Config;
 };
 
-void AddCases(std::vector<FormattedCase>& cases,
+void AddCases(
+    std::vector<FormattedCase>& cases,
     const std::filesystem::path& directory,
     std::initializer_list<const char*> names,
     std::string input = "input.cpp")
@@ -123,57 +128,101 @@ void AddCases(std::vector<FormattedCase>& cases,
 std::vector<FormattedCase> FormattedCases()
 {
     std::vector<FormattedCase> cases;
-    AddCases(cases, BRACE_TESTDATA_DIR,
+    AddCases(
+        cases,
+        BRACE_TESTDATA_DIR,
         {"preserve", "attach", "newline", "mixed"});
-    AddCases(cases,
+    AddCases(
+        cases,
         std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../include-order",
         {"sort", "composed"});
     cases.push_back({std::filesystem::path(FORMATTER_TESTDATA_DIR) /
         "../include-order", "crlf", "crlf.input.cpp", "sort"});
-    AddCases(cases, BRACE_SPACING_TESTDATA_DIR,
+    AddCases(
+        cases,
+        BRACE_SPACING_TESTDATA_DIR,
         {"preserve", "single-space", "mixed"});
-    AddCases(cases, LAMBDA_SPACING_TESTDATA_DIR,
+    AddCases(
+        cases,
+        LAMBDA_SPACING_TESTDATA_DIR,
         {"preserve", "space", "no-space"});
-    AddCases(cases, CONTROL_SPACING_TESTDATA_DIR,
+    AddCases(
+        cases,
+        CONTROL_SPACING_TESTDATA_DIR,
         {"preserve", "space", "no-space"});
-    AddCases(cases, CONTROL_BRACE_TESTDATA_DIR,
+    AddCases(
+        cases,
+        CONTROL_BRACE_TESTDATA_DIR,
         {"preserve", "same-line", "new-line", "attach-unless-multiline"});
     cases.push_back({CONTROL_BRACE_TESTDATA_DIR, "reflow-preferred",
         "reflow-preferred.input.cpp"});
-    AddCases(cases, CONTROL_BRACE_TESTDATA_DIR, {"combined"},
+    AddCases(
+        cases,
+        CONTROL_BRACE_TESTDATA_DIR,
+        {"combined"},
         "combined.input.cpp");
-    AddCases(cases, FUNCTION_SPACING_TESTDATA_DIR,
+    AddCases(
+        cases,
+        FUNCTION_SPACING_TESTDATA_DIR,
         {"preserve", "space", "no-space"});
-    AddCases(cases, FUNCTION_SPACING_TESTDATA_DIR, {"reflow"},
+    AddCases(
+        cases,
+        FUNCTION_SPACING_TESTDATA_DIR,
+        {"reflow"},
         "reflow.input.cpp");
-    AddCases(cases, FUNCTION_CALL_SPACING_TESTDATA_DIR,
+    AddCases(
+        cases,
+        FUNCTION_CALL_SPACING_TESTDATA_DIR,
         {"preserve", "space", "no-space"});
-    AddCases(cases, FUNCTION_CALL_SPACING_TESTDATA_DIR, {"combined"},
+    AddCases(
+        cases,
+        FUNCTION_CALL_SPACING_TESTDATA_DIR,
+        {"combined"},
         "combined.input.cpp");
-    AddCases(cases, FUNCTION_INNER_SPACING_TESTDATA_DIR,
+    AddCases(
+        cases,
+        FUNCTION_INNER_SPACING_TESTDATA_DIR,
         {"preserve", "space", "no-space"});
-    AddCases(cases, FUNCTION_INNER_SPACING_TESTDATA_DIR, {"reflow"},
+    AddCases(
+        cases,
+        FUNCTION_INNER_SPACING_TESTDATA_DIR,
+        {"reflow"},
         "reflow.input.cpp");
-    AddCases(cases, CALL_INNER_SPACING_TESTDATA_DIR,
+    AddCases(
+        cases,
+        CALL_INNER_SPACING_TESTDATA_DIR,
         {"preserve", "space", "no-space"});
     cases.push_back({CALL_INNER_SPACING_TESTDATA_DIR, "reflow-preferred",
         "reflow-preferred.input.cpp"});
     cases.push_back({CALL_INNER_SPACING_TESTDATA_DIR, "comma-preferred",
         "comma-preferred.input.cpp"});
-    AddCases(cases, CALL_INNER_SPACING_TESTDATA_DIR, {"combined"},
+    AddCases(
+        cases,
+        CALL_INNER_SPACING_TESTDATA_DIR,
+        {"combined"},
         "combined.input.cpp");
-    AddCases(cases, LAMBDA_CAPTURE_TESTDATA_DIR,
+    AddCases(
+        cases,
+        LAMBDA_CAPTURE_TESTDATA_DIR,
         {"preserve", "space", "no-space", "mixed", "reverse"});
-    AddCases(cases, LAMBDA_INNER_PARAMETER_TESTDATA_DIR,
+    AddCases(
+        cases,
+        LAMBDA_INNER_PARAMETER_TESTDATA_DIR,
         {"preserve", "space", "no-space", "combined"});
-    AddCases(cases, BODY_INDENT_TESTDATA_DIR,
+    AddCases(
+        cases,
+        BODY_INDENT_TESTDATA_DIR,
         {"preserve", "indent", "no-indent", "mixed"});
     AddCases(cases, std::filesystem::path(FORMATTER_TESTDATA_DIR) /
         "../null-statements", {"preserve", "remove"});
-    AddCases(cases, BODY_INDENT_TESTDATA_DIR,
+    AddCases(
+        cases,
+        BODY_INDENT_TESTDATA_DIR,
         {"grouped-preserve", "grouped-strict"},
         "grouped-statements.input.cpp");
-    AddCases(cases, BODY_INDENT_TESTDATA_DIR,
+    AddCases(
+        cases,
+        BODY_INDENT_TESTDATA_DIR,
         {"lambda-comments-follow", "lambda-comments-preserve"},
         "lambda-leading-comments.input.cpp");
     const auto chains = std::filesystem::path(FORMATTER_TESTDATA_DIR) /
@@ -225,7 +274,10 @@ std::vector<FormattedCase> FormattedCases()
     addProfileCase("../call-reflow", "profile-tabbed-log");
     const auto callReflow = std::filesystem::path(FORMATTER_TESTDATA_DIR) /
         "../call-reflow";
-    AddCases(cases, callReflow, {"sole-call-line", "sole-new-line"},
+    AddCases(
+        cases,
+        callReflow,
+        {"sole-call-line", "sole-new-line"},
         "sole-position.input.cpp");
     cases.push_back({callReflow, "sole-preferred",
         "sole-preferred.input.cpp"});
@@ -283,7 +335,8 @@ std::vector<FormattedCase> FormattedCases()
         {"split-preserve", "one-per-line", "pack-wide", "pack-tight",
             "split-combined"}, "split.input.cpp");
     for (const auto* name : {"parsed-operators", "outer-conditional",
-        "control-braces-after-wrap"}) {
+        "control-braces-after-wrap"})
+    {
         cases.push_back({std::filesystem::path(FORMATTER_TESTDATA_DIR) /
             ".." / name, "configured"});
     }
@@ -295,14 +348,17 @@ std::vector<FormattedCase> FormattedCases()
     for (const auto& entry : std::filesystem::directory_iterator(spacing)) {
         const auto filename = entry.path().filename().string();
         if (filename.ends_with(".input.cpp")) {
-            const auto name = filename.substr(0,
+            const auto name = filename.substr(
+                0,
                 filename.size() - std::string_view(".input.cpp").size());
             const auto duplicate = std::ranges::any_of(cases,
                 [&] (const FormattedCase& value) {
                     return value.Directory.lexically_normal() ==
                         spacing.lexically_normal() && value.Name == name;
                 });
-            if (!duplicate) cases.push_back({spacing, name, filename});
+            if (!duplicate) {
+                cases.push_back({spacing, name, filename});
+            }
         }
     }
     std::ranges::sort(cases, {}, [] (const auto& value) {
@@ -311,7 +367,9 @@ std::vector<FormattedCase> FormattedCases()
     return cases;
 }
 
-class FormattedGoldenTest : public testing::TestWithParam<FormattedCase> { };
+class FormattedGoldenTest
+    : public testing::TestWithParam<FormattedCase>
+{ };
 
 TEST_P(FormattedGoldenTest, MatchesConfiguredOutput)
 {
@@ -320,8 +378,10 @@ TEST_P(FormattedGoldenTest, MatchesConfiguredOutput)
     const auto config = value.Config.empty() ? value.Name : value.Config;
     const auto style = formatter::LoadConfigFile(
         fixture.Directory / (config + ".hit-fmt")).FormattingStyle;
-    ExpectFormattedGolden(fixture.Named(".output.cpp"),
-        fixture.Input(value.Input), style);
+    ExpectFormattedGolden(
+        fixture.Named(".output.cpp"),
+        fixture.Input(value.Input),
+        style);
 }
 
 INSTANTIATE_TEST_SUITE_P(Configurations, FormattedGoldenTest,
@@ -341,7 +401,8 @@ struct ChangedHunkCase
     bool Spillover;
 };
 
-class ChangedHunkGoldenTest : public testing::TestWithParam<ChangedHunkCase>
+class ChangedHunkGoldenTest
+    : public testing::TestWithParam<ChangedHunkCase>
 { };
 
 TEST_P(ChangedHunkGoldenTest, MatchesScopedOutput)
@@ -358,7 +419,10 @@ TEST_P(ChangedHunkGoldenTest, MatchesScopedOutput)
     const auto tree = parser::Parse(
         {.Data = storage.data(), .Size = input.size()},
         [] (parser::ParseError) { });
-    const auto actual = formatter::FormatChanged(tree, style, value.Hunks,
+    const auto actual = formatter::FormatChanged(
+        tree,
+        style,
+        value.Hunks,
         value.Spillover);
     fixture.Expect(actual);
 }
@@ -378,7 +442,8 @@ INSTANTIATE_TEST_SUITE_P(Scoped, ChangedHunkGoldenTest,
         return name;
     });
 
-class FunctionParameterGoldenTest : public testing::TestWithParam<std::string>
+class FunctionParameterGoldenTest
+    : public testing::TestWithParam<std::string>
 { };
 
 TEST_P(FunctionParameterGoldenTest, MatchesConfiguredOutput)
@@ -394,7 +459,8 @@ TEST_P(FunctionParameterGoldenTest, MatchesConfiguredOutput)
     const auto actual = formatter::Format(
         {.Data = storage.data(), .Size = input.size()},
         config.FormattingStyle);
-    test::golden::ExpectGolden(directory / (GetParam() + ".output.cpp"),
+    test::golden::ExpectGolden(
+        directory / (GetParam() + ".output.cpp"),
         actual);
 
     // A second pass must not change either packing or indentation.
@@ -409,7 +475,8 @@ INSTANTIATE_TEST_SUITE_P(FunctionParameters, FunctionParameterGoldenTest,
     testing::Values("preserve", "pack_name", "pack_new", "one_name",
         "one_new", "pack_merge"));
 
-class NamespaceCommentGoldenTest : public testing::TestWithParam<std::string>
+class NamespaceCommentGoldenTest
+    : public testing::TestWithParam<std::string>
 { };
 
 TEST_P(NamespaceCommentGoldenTest, MatchesConfiguredOutput)
@@ -432,7 +499,9 @@ TEST_P(NamespaceCommentGoldenTest, MatchesConfiguredOutput)
         return result;
     };
     const auto actual = format(input);
-    test::golden::ExpectGolden(directory / (GetParam() + ".output.cpp"), actual);
+    test::golden::ExpectGolden(
+        directory / (GetParam() + ".output.cpp"),
+        actual);
     EXPECT_EQ(format(actual), actual);
 }
 
@@ -440,7 +509,8 @@ INSTANTIATE_TEST_SUITE_P(Configurations, NamespaceCommentGoldenTest,
     testing::Values("preserve", "remove", "add_missing", "fix",
         "fix_spaced", "fix_newline", "crlf_fix"));
 
-class ParameterNameGoldenTest : public testing::TestWithParam<std::string>
+class ParameterNameGoldenTest
+    : public testing::TestWithParam<std::string>
 { };
 
 TEST_P(ParameterNameGoldenTest, ReportsConfiguredMissingNames)
@@ -460,7 +530,8 @@ TEST_P(ParameterNameGoldenTest, ReportsConfiguredMissingNames)
         {.Data = storage.data(), .Size = input.size()},
         [] (parser::ParseError) { });
     std::string actual;
-    for (const auto& diagnostic : formatter::CheckParameterNames(tree,
+    for (const auto& diagnostic : formatter::CheckParameterNames(
+        tree,
         config))
     {
         actual += std::to_string(diagnostic.Position.Line) + ":" +
@@ -489,29 +560,30 @@ TEST(CallArgumentTest, ReflowsOnlySafeParsedCalls)
     const auto input = ReadFile(directory / "input.cpp");
     EXPECT_EQ(FormatWithStyle(input, style), input);
     style.CallArgumentSplit = formatter::CallArgumentSplit::Pack;
-    style.ExpressionLayoutCondition = formatter::ExpressionLayoutCondition::Overflow;
+    style.ExpressionLayoutCondition =
+        formatter::ExpressionLayoutCondition::Overflow;
     const auto packed = FormatWithStyle(input, style);
-    test::golden::ExpectGolden(directory / "packed.output.cpp",
-        packed);
+    test::golden::ExpectGolden(directory / "packed.output.cpp", packed);
     EXPECT_EQ(FormatWithStyle(packed, style), packed);
-    style.ExpressionLayoutCondition = formatter::ExpressionLayoutCondition::FitOrOverflow;
+    style.ExpressionLayoutCondition =
+        formatter::ExpressionLayoutCondition::FitOrOverflow;
     const auto merged = FormatWithStyle(packed, style);
-    test::golden::ExpectGolden(directory / "merged.output.cpp",
-        merged);
+    test::golden::ExpectGolden(directory / "merged.output.cpp", merged);
     EXPECT_EQ(FormatWithStyle(merged, style), merged);
     const auto longMultiline = ReadFile(directory / "long.input.cpp");
     EXPECT_EQ(FormatWithStyle(longMultiline, style), longMultiline);
-    style.ExpressionLayoutCondition = formatter::ExpressionLayoutCondition::Always;
+    style.ExpressionLayoutCondition =
+        formatter::ExpressionLayoutCondition::Always;
     const auto repacked = FormatWithStyle(longMultiline, style);
-    test::golden::ExpectGolden(directory / "repacked.output.cpp",
-        repacked);
+    test::golden::ExpectGolden(directory / "repacked.output.cpp", repacked);
     EXPECT_EQ(FormatWithStyle(repacked, style), repacked);
 
     style.CallArgumentSplit = formatter::CallArgumentSplit::OnePerLine;
     style.FirstCallArgumentPosition =
         formatter::FirstCallArgumentPosition::NewLine;
     const auto onePerLine = FormatWithStyle(input, style);
-    test::golden::ExpectGolden(directory / "one-per-line.output.cpp",
+    test::golden::ExpectGolden(
+        directory / "one-per-line.output.cpp",
         onePerLine);
     EXPECT_EQ(FormatWithStyle(onePerLine, style), onePerLine);
 
@@ -531,7 +603,8 @@ TEST(CallArgumentTest, ReflowsOnlySafeParsedCalls)
         "        gamma);\n"
         "}\n";
     EXPECT_EQ(FormatWithStyle(repositioned, style), repositionedExpected);
-    EXPECT_EQ(FormatWithStyle(repositionedExpected, style),
+    EXPECT_EQ(
+        FormatWithStyle(repositionedExpected, style),
         repositionedExpected);
     style.FirstCallArgumentPosition =
         formatter::FirstCallArgumentPosition::CallLine;
@@ -567,19 +640,23 @@ TEST(CallArgumentTest, ReflowsOnlySafeParsedCalls)
         "}\n";
     EXPECT_EQ(FormatWithStyle(control, style), controlExpected);
     EXPECT_EQ(FormatWithStyle(controlExpected, style), controlExpected);
-    style.ExpressionLayoutCondition = formatter::ExpressionLayoutCondition::Overflow;
-    ExpectUnchanged("void f() { use(alpha +\n        beta, gamma, delta); }\n",
+    style.ExpressionLayoutCondition =
+        formatter::ExpressionLayoutCondition::Overflow;
+    ExpectUnchanged(
+        "void f() { use(alpha +\n        beta, gamma, delta); }\n",
         style);
-    ExpectUnchanged("void f() { auto x = (Type)(alpha, beta, gamma, delta); }\n",
+    ExpectUnchanged(
+        "void f() { auto x = (Type)(alpha, beta, gamma, delta); }\n",
         style);
-    ExpectUnchanged("void f() { use(alpha, /* note */ beta, gamma); }\n",
+    ExpectUnchanged(
+        "void f() { use(alpha, /* note */ beta, gamma); }\n",
         style);
-    ExpectUnchanged("void f() { use(alpha, beta, gamma, delta); }\r\n",
-        style);
+    ExpectUnchanged("void f() { use(alpha, beta, gamma, delta); }\r\n", style);
 
     style.EnforceControlBlockBracePlacement = false;
     style.CallArgumentSplit = formatter::CallArgumentSplit::OnePerLine;
-    style.ExpressionLayoutCondition = formatter::ExpressionLayoutCondition::Always;
+    style.ExpressionLayoutCondition =
+        formatter::ExpressionLayoutCondition::Always;
     style.SpaceInsideCallArguments = formatter::SpaceInsideCallArguments::Space;
     style.ColumnLimit = 25;
     const auto spaced = "void f() { use(alpha, beta, gamma, delta); }\n";
@@ -601,9 +678,11 @@ TEST(CallArgumentTest, ReflowsOnlySafeParsedCalls)
         "        ffffff);\n"
         "}\n";
     style.ColumnLimit = 32;
-    style.ExpressionLayoutCondition = formatter::ExpressionLayoutCondition::Overflow;
+    style.ExpressionLayoutCondition =
+        formatter::ExpressionLayoutCondition::Overflow;
     style.CallArgumentSplit = formatter::CallArgumentSplit::Pack;
-    style.SpaceInsideCallArguments = formatter::SpaceInsideCallArguments::Preserve;
+    style.SpaceInsideCallArguments =
+        formatter::SpaceInsideCallArguments::Preserve;
     EXPECT_EQ(FormatWithStyle(balancedInput, style), packedBalanced);
     EXPECT_EQ(FormatWithStyle(packedBalanced, style), packedBalanced);
     style.CallArgumentSplit = formatter::CallArgumentSplit::OnePerLine;
@@ -686,7 +765,8 @@ TEST(CallArgumentTest, ReflowsOnlySafeParsedCalls)
 TEST(CallArgumentTest, LaysOutEnclosingMacroAndNestedCalls)
 {
     formatter::Style style;
-    style.ExpressionLayoutCondition = formatter::ExpressionLayoutCondition::Always;
+    style.ExpressionLayoutCondition =
+        formatter::ExpressionLayoutCondition::Always;
     style.CallArgumentSplit = formatter::CallArgumentSplit::Pack;
     style.ColumnLimit = 100;
     const test::golden::Fixture fixture{
@@ -715,9 +795,11 @@ TEST(CallArgumentTest, LaysOutEnclosingMacroAndNestedCalls)
 TEST(ExpressionLayoutTest, WrapsParsedOperatorsAndPreservesUnsafeLines)
 {
     formatter::Style style;
-    style.ExpressionLayoutCondition = formatter::ExpressionLayoutCondition::Overflow;
+    style.ExpressionLayoutCondition =
+        formatter::ExpressionLayoutCondition::Overflow;
     style.TernarySplit = formatter::TernarySplit::AsNeeded;
-    style.TernaryOperatorPlacement = formatter::TernaryOperatorPlacement::Leading;
+    style.TernaryOperatorPlacement =
+        formatter::TernaryOperatorPlacement::Leading;
     style.BinaryOperatorPlacement = formatter::BinaryOperatorPlacement::Leading;
     style.ColumnLimit = 32;
 
@@ -726,7 +808,8 @@ TEST(ExpressionLayoutTest, WrapsParsedOperatorsAndPreservesUnsafeLines)
         "configured"};
     ExpectUnchanged(fixture.Input(), formatter::Style{});
 
-    style.BinaryOperatorPlacement = formatter::BinaryOperatorPlacement::Trailing;
+    style.BinaryOperatorPlacement =
+        formatter::BinaryOperatorPlacement::Trailing;
     const auto trailingInput =
         "int sum(int alpha, int beta) {\n"
         "    return alpha + beta + alpha + beta;\n"
@@ -762,13 +845,13 @@ TEST(ExpressionLayoutTest, WrapsParsedOperatorsAndPreservesUnsafeLines)
         "}\n";
     EXPECT_EQ(FormatWithStyle(compact, style), compactExpected);
     EXPECT_EQ(FormatWithStyle(compactExpected, style), compactExpected);
-    ExpectUnchanged("int f(int a, int b) { return a + b + a + b; }\r\n",
+    ExpectUnchanged("int f(int a, int b) { return a + b + a + b; }\r\n", style);
+    ExpectUnchanged("#define SUM(a, b) ((a) + (b) + (a) + (b))\n", style);
+    ExpectUnchanged(
+        "int compute(int a, int b) { return a + b + a + b; // keep\n}\n",
         style);
-    ExpectUnchanged("#define SUM(a, b) ((a) + (b) + (a) + (b))\n",
-        style);
-    ExpectUnchanged("int compute(int a, int b) { return a + b + a + b; // keep\n}\n",
-        style);
-    ExpectUnchanged("int compute(int a, int b) { return a + b @ broken; }\n",
+    ExpectUnchanged(
+        "int compute(int a, int b) { return a + b @ broken; }\n",
         style);
     ExpectUnchanged("template <int N> struct Array {};\n"
         "Array<1 + 2 + 3 + 4 + 5 + 6> value;\n", style);
@@ -778,7 +861,8 @@ TEST(ExpressionLayoutTest, PlacesAndGroupsTernaryBreaks)
 {
     formatter::Style style;
     style.EnforceTernaryOperatorPlacement = true;
-    style.ExpressionLayoutCondition = formatter::ExpressionLayoutCondition::Overflow;
+    style.ExpressionLayoutCondition =
+        formatter::ExpressionLayoutCondition::Overflow;
     style.ColumnLimit = 40;
     const auto directory = std::filesystem::path(FORMATTER_TESTDATA_DIR) /
         "../ternary-layout";
@@ -798,17 +882,21 @@ TEST(ExpressionLayoutTest, PlacesAndGroupsTernaryBreaks)
         style.TernarySplit = formatter::TernarySplit::ThreeLines;
         const auto three = FormatWithStyle(input, style);
         test::golden::ExpectGolden(directory /
-            (leading ? "three-leading.output.cpp" : "three-trailing.output.cpp"),
+            (leading
+                ? "three-leading.output.cpp"
+                : "three-trailing.output.cpp"),
             three);
         EXPECT_EQ(FormatWithStyle(three, style), three);
         ExpectUnchanged("int f() { return flag ? a : b; }\n", style);
     }
 
     const auto threeLeading = ReadFile(directory / "three-leading.output.cpp");
-    const auto threeTrailing = ReadFile(directory / "three-trailing.output.cpp");
+    const auto threeTrailing = ReadFile(directory /
+        "three-trailing.output.cpp");
 
     style.ColumnLimit = 80;
-    style.TernaryOperatorPlacement = formatter::TernaryOperatorPlacement::Leading;
+    style.TernaryOperatorPlacement =
+        formatter::TernaryOperatorPlacement::Leading;
     style.TernarySplit = formatter::TernarySplit::AsNeeded;
     const auto existing =
         "int f(bool condition) {\n"
@@ -848,7 +936,8 @@ TEST(ExpressionLayoutTest, PlacesAndGroupsTernaryBreaks)
         "}\n";
     EXPECT_EQ(FormatWithStyle(chain, style), alignedChain);
     EXPECT_EQ(FormatWithStyle(alignedChain, style), alignedChain);
-    style.TernaryOperatorPlacement = formatter::TernaryOperatorPlacement::Trailing;
+    style.TernaryOperatorPlacement =
+        formatter::TernaryOperatorPlacement::Trailing;
     EXPECT_EQ(FormatWithStyle(corrected, style), threeTrailing);
     for (auto mode : {formatter::ExpressionLayoutCondition::FitOrOverflow,
         formatter::ExpressionLayoutCondition::Always})
@@ -856,12 +945,15 @@ TEST(ExpressionLayoutTest, PlacesAndGroupsTernaryBreaks)
         style.ExpressionLayoutCondition = mode;
         EXPECT_EQ(FormatWithStyle(existing, style), input);
     }
-    style.ExpressionLayoutCondition = formatter::ExpressionLayoutCondition::Preserve;
+    style.ExpressionLayoutCondition =
+        formatter::ExpressionLayoutCondition::Preserve;
     ExpectUnchanged(existing, style);
-    style.ExpressionLayoutCondition = formatter::ExpressionLayoutCondition::Overflow;
+    style.ExpressionLayoutCondition =
+        formatter::ExpressionLayoutCondition::Overflow;
     ExpectUnchanged("int f() {\r\n    return condition ?\r\n"
         "        alphaValue : betaValue;\r\n}\r\n", style);
-    style.TernaryOperatorPlacement = formatter::TernaryOperatorPlacement::Trailing;
+    style.TernaryOperatorPlacement =
+        formatter::TernaryOperatorPlacement::Trailing;
     style.TernarySplit = formatter::TernarySplit::ThreeLines;
     ExpectUnchanged("int f() {\n"
         "    return condition ? alphaValue /* keep */\n"
@@ -916,25 +1008,30 @@ TEST(ExpressionLayoutTest, ChecksLayoutWithoutReflowing)
     std::string storage(input);
     auto length = storage.size();
     storage.append(util::SourcePaddingSize, '\0');
-    auto tree = parser::Parse({.Data = storage.data(), .Size = length},
+    auto tree = parser::Parse(
+        {.Data = storage.data(), .Size = length},
         [] (parser::ParseError) { });
     formatter::Style style;
-    style.ExpressionLayoutCondition = formatter::ExpressionLayoutCondition::Overflow;
+    style.ExpressionLayoutCondition =
+        formatter::ExpressionLayoutCondition::Overflow;
     style.ColumnLimit = 40;
-    style.TernaryOperatorPlacement = formatter::TernaryOperatorPlacement::Leading;
+    style.TernaryOperatorPlacement =
+        formatter::TernaryOperatorPlacement::Leading;
     style.EnforceTernaryOperatorPlacement = true;
     style.TernarySplit = formatter::TernarySplit::ThreeLines;
     const auto issues = formatter::CheckExpressionLayout(tree, style);
     ASSERT_EQ(issues.size(), 4u);
     EXPECT_EQ(issues[0].Position.Line, 2u);
-    EXPECT_NE(issues[0].Message.find("line exceeds ColumnLimit"),
+    EXPECT_NE(
+        issues[0].Message.find("line exceeds ColumnLimit"),
         std::string::npos);
     EXPECT_EQ(issues[1].Position.Line, 4u);
     EXPECT_EQ(issues[1].Message, "binary operator must end the preceding line");
     EXPECT_EQ(issues[2].Position.Line, 5u);
     EXPECT_EQ(issues[2].Message, "ternary ? must start the following line");
     EXPECT_EQ(issues[3].Position.Line, 6u);
-    EXPECT_EQ(issues[3].Message,
+    EXPECT_EQ(
+        issues[3].Message,
         "ternary ':' needs a line break to match the other delimiter");
     style.EnforceTernaryOperatorPlacement = false;
     style.TernarySplit = formatter::TernarySplit::Preserve;
@@ -992,7 +1089,8 @@ TEST(ExpressionLayoutTest, SoftLineLengthAgainstGolden)
                 diagnostic.Message + "\n";
         }
         test::golden::ExpectGolden(
-            directory / (std::string(mode) + ".expected"), actual);
+            directory / (std::string(mode) + ".expected"),
+            actual);
     }
 }
 
@@ -1019,14 +1117,16 @@ TEST(ExpressionLayoutTest, ChecksAssignmentPlacementAgainstGolden)
                 diagnostic.Message + "\n";
         }
         test::golden::ExpectGolden(
-            directory / (std::string(placement) + ".expected"), actual);
+            directory / (std::string(placement) + ".expected"),
+            actual);
     }
 }
 
 TEST(ExpressionLayoutTest, PrefersOuterConditionalBreaks)
 {
     formatter::Style style;
-    style.ExpressionLayoutCondition = formatter::ExpressionLayoutCondition::Overflow;
+    style.ExpressionLayoutCondition =
+        formatter::ExpressionLayoutCondition::Overflow;
     style.ControlBlockBracePlacement =
         formatter::ControlBlockBracePlacement::AttachUnlessMultiline;
     style.EnforceControlBlockBracePlacement = true;
@@ -1034,14 +1134,14 @@ TEST(ExpressionLayoutTest, PrefersOuterConditionalBreaks)
     const test::golden::Fixture fixture{
         std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../outer-conditional",
         "configured"};
-    ExpectFormattedGolden(fixture.Named(".output.cpp"),
-        fixture.Input(), style);
+    ExpectFormattedGolden(fixture.Named(".output.cpp"), fixture.Input(), style);
 }
 
 TEST(ExpressionLayoutTest, WrapsLongBinaryExpressions)
 {
     formatter::Style style;
-    style.ExpressionLayoutCondition = formatter::ExpressionLayoutCondition::Overflow;
+    style.ExpressionLayoutCondition =
+        formatter::ExpressionLayoutCondition::Overflow;
     style.ColumnLimit = 40;
     const auto input =
         "void f() {\n"
@@ -1061,10 +1161,13 @@ TEST(ExpressionLayoutTest, WrapsLongBinaryExpressions)
         "        + ffffff;\n"
         "}\n";
     EXPECT_EQ(FormatWithStyle(input, style), leading);
-    style.BinaryOperatorPlacement = formatter::BinaryOperatorPlacement::Trailing;
-    style.ExpressionLayoutCondition = formatter::ExpressionLayoutCondition::Preserve;
+    style.BinaryOperatorPlacement =
+        formatter::BinaryOperatorPlacement::Trailing;
+    style.ExpressionLayoutCondition =
+        formatter::ExpressionLayoutCondition::Preserve;
     ExpectUnchanged(input, style);
-    style.ExpressionLayoutCondition = formatter::ExpressionLayoutCondition::Always;
+    style.ExpressionLayoutCondition =
+        formatter::ExpressionLayoutCondition::Always;
     style.ColumnLimit = 20;
     ExpectUnchanged("void f() { bool v = alpha<beta; }\n", style);
 }
@@ -1072,9 +1175,11 @@ TEST(ExpressionLayoutTest, WrapsLongBinaryExpressions)
 TEST(ExpressionLayoutTest, ReflowsSafeOperatorContinuationsByPolicy)
 {
     formatter::Style style;
-    style.ExpressionLayoutCondition = formatter::ExpressionLayoutCondition::Always;
+    style.ExpressionLayoutCondition =
+        formatter::ExpressionLayoutCondition::Always;
     style.TernarySplit = formatter::TernarySplit::AsNeeded;
-    style.TernaryOperatorPlacement = formatter::TernaryOperatorPlacement::Leading;
+    style.TernaryOperatorPlacement =
+        formatter::TernaryOperatorPlacement::Leading;
     style.ColumnLimit = 80;
     const auto input =
         "void f() {\n"
@@ -1099,7 +1204,8 @@ TEST(ExpressionLayoutTest, ReflowsSafeOperatorContinuationsByPolicy)
         "}\n";
     style.ColumnLimit = 30;
     style.BinaryOperatorPlacement = formatter::BinaryOperatorPlacement::Leading;
-    style.ExpressionLayoutCondition = formatter::ExpressionLayoutCondition::FitOrOverflow;
+    style.ExpressionLayoutCondition =
+        formatter::ExpressionLayoutCondition::FitOrOverflow;
     EXPECT_EQ(FormatWithStyle(wrapped, style), wrapped);
     const auto mixed =
         "void f(int alpha, int beta, int gamma) {\n"
@@ -1125,7 +1231,8 @@ TEST(ExpressionLayoutTest, ReflowsSafeOperatorContinuationsByPolicy)
         "}\n";
     EXPECT_EQ(FormatWithStyle(wrapped, style), joined);
     EXPECT_EQ(FormatWithStyle(joined, style), joined);
-    style.ExpressionLayoutCondition = formatter::ExpressionLayoutCondition::Overflow;
+    style.ExpressionLayoutCondition =
+        formatter::ExpressionLayoutCondition::Overflow;
     EXPECT_EQ(FormatWithStyle(wrapped, style), wrapped);
     style.BinaryOperatorPlacement =
         formatter::BinaryOperatorPlacement::Trailing;
@@ -1139,9 +1246,11 @@ TEST(ExpressionLayoutTest, ReflowsSafeOperatorContinuationsByPolicy)
     EXPECT_EQ(FormatWithStyle(repositioned, style), repositioned);
     style.BinaryOperatorPlacement = formatter::BinaryOperatorPlacement::Leading;
     EXPECT_EQ(FormatWithStyle(repositioned, style), wrapped);
-    style.BinaryOperatorPlacement = formatter::BinaryOperatorPlacement::Trailing;
+    style.BinaryOperatorPlacement =
+        formatter::BinaryOperatorPlacement::Trailing;
     style.ColumnLimit = 30;
-    style.ExpressionLayoutCondition = formatter::ExpressionLayoutCondition::Always;
+    style.ExpressionLayoutCondition =
+        formatter::ExpressionLayoutCondition::Always;
     const auto trailing =
         "int f(int alpha, int beta, int gamma) {\n"
         "    return alpha + beta +\n"
@@ -1191,12 +1300,14 @@ TEST(ExpressionLayoutTest, ReflowsSafeOperatorContinuationsByPolicy)
 TEST(ExpressionLayoutTest, ReconsidersControlBracesAfterWrapping)
 {
     formatter::Style style;
-    style.ExpressionLayoutCondition = formatter::ExpressionLayoutCondition::Overflow;
+    style.ExpressionLayoutCondition =
+        formatter::ExpressionLayoutCondition::Overflow;
     style.ControlBlockBracePlacement =
         formatter::ControlBlockBracePlacement::AttachUnlessMultiline;
     style.EnforceControlBlockBracePlacement = true;
     style.ColumnLimit = 32;
-    style.ExpressionLayoutCondition = formatter::ExpressionLayoutCondition::Always;
+    style.ExpressionLayoutCondition =
+        formatter::ExpressionLayoutCondition::Always;
     style.ColumnLimit = 80;
     const auto multiline =
         "void f(bool alpha, bool beta) {\n"
@@ -1225,14 +1336,16 @@ TEST(FunctionParameterSafetyTest, ComposesWithBracePlacement)
     const auto format = [&] (std::string_view source) {
         std::string storage(source);
         storage.append(util::SourcePaddingSize, '\0');
-        return formatter::Format({.Data = storage.data(), .Size = source.size()},
+        return formatter::Format(
+            {.Data = storage.data(), .Size = source.size()},
             style);
     };
     const std::string expected =
         "void Many(int alpha, int beta,\n"
         "    int gamma, int delta)\n"
         "{}\n";
-    EXPECT_EQ(format("void Many(int alpha, int beta, int gamma, int delta) {}\n"),
+    EXPECT_EQ(
+        format("void Many(int alpha, int beta, int gamma, int delta) {}\n"),
         expected);
     EXPECT_EQ(format(expected), expected);
     style.IndentationKind = formatter::IndentationKind::Tabs;
@@ -1240,7 +1353,8 @@ TEST(FunctionParameterSafetyTest, ComposesWithBracePlacement)
         "void Many(int alpha, int beta,\n"
         "\tint gamma, int delta)\n"
         "{}\n";
-    EXPECT_EQ(format("void Many(int alpha, int beta, int gamma, int delta) {}\n"),
+    EXPECT_EQ(
+        format("void Many(int alpha, int beta, int gamma, int delta) {}\n"),
         tabbed);
     EXPECT_EQ(format(tabbed), tabbed);
 }
@@ -1379,22 +1493,26 @@ TEST(ControlBraceTest, WrapsOnlyCompleteUnbracedBodies)
     EXPECT_EQ(FormatWithStyle(emptyExpected, style), emptyExpected);
     style.AddMissingControlBraces = false;
     EXPECT_EQ(FormatWithStyle(
-        "void f() {\n    if (a);\n    if (b) Go();\n}\n", style),
+        "void f() {\n    if (a);\n    if (b) Go();\n}\n",
+        style),
         "void f() {\n    if (a) { }\n    if (b) Go();\n}\n");
     style.EmptyControlBody = formatter::EmptyControlBody::Preserve;
     style.AddMissingControlBraces = true;
     ExpectUnchanged("void f(bool a) { if (a) /* keep */ Go(); }\n", style);
     EXPECT_EQ(FormatWithStyle(
-        "void f(bool a) { if (a)\r\n    Go(); }\r\n", style),
+        "void f(bool a) { if (a)\r\n    Go(); }\r\n",
+        style),
         "void f(bool a) { if (a)\r\n        Go(); }\r\n");
     ExpectUnchanged("void f(int x) { switch (x) case 0: Go(); }\n", style);
     EXPECT_EQ(FormatWithStyle(
-        "void f(int x)\n{\n    switch (x) Go();\n}\n", style),
+        "void f(int x)\n{\n    switch (x) Go();\n}\n",
+        style),
         "void f(int x)\n{\n    switch (x) {\n"
         "        Go();\n"
         "    }\n}\n");
     EXPECT_EQ(FormatWithStyle(
-        "void f(bool a)\n{\n    if (a) Go(); Other();\n}\n", style),
+        "void f(bool a)\n{\n    if (a) Go(); Other();\n}\n",
+        style),
         "void f(bool a)\n{\n"
         "    if (a) {\n"
         "        Go();\n"
@@ -1419,7 +1537,8 @@ TEST(EmptyFunctionBodyTest, CollapsesWhitespaceOnlyBody)
     style.NonEmptyBlockBodyLayout =
         formatter::NonEmptyBlockBodyLayout::Multiline;
     EXPECT_EQ(FormatWithStyle(
-        "void Annotated() { /* keep */ Act(); }\n", style),
+        "void Annotated() { /* keep */ Act(); }\n",
+        style),
         "void Annotated()\n{ /* keep */ Act(); }\n");
 }
 
@@ -1477,7 +1596,8 @@ TEST(CallLayoutTest, KeepsFirstStringOnSelectedCallLine)
         "    count); }\n";
     EXPECT_EQ(FormatWithStyle(split, style), anchored);
     EXPECT_EQ(FormatWithStyle(
-        "void f() { YT_LOG_INFO(\n    \"Message\"); }\n", style),
+        "void f() { YT_LOG_INFO(\n    \"Message\"); }\n",
+        style),
         "void f() { YT_LOG_INFO(\"Message\"); }\n");
 }
 
@@ -1502,11 +1622,13 @@ TEST(OperatorSpacingTest, PreservesUnknownCastOrBinaryOperator)
         "}\n";
     ExpectUnchanged(source, style);
     const auto compact = std::string(source).replace(
-        source.find("(a + b) & b"), std::string("(a + b) & b").size(),
+        source.find("(a + b) & b"),
+        std::string("(a + b) & b").size(),
         "(a + b)&b");
     EXPECT_EQ(FormatWithStyle(compact, style), source);
     const auto separatedCast = std::string(source).replace(
-        source.find("(int)&a"), std::string("(int)&a").size(),
+        source.find("(int)&a"),
+        std::string("(int)&a").size(),
         "(int) & a");
     EXPECT_EQ(FormatWithStyle(separatedCast, style), source);
 }
@@ -1532,14 +1654,16 @@ TEST(BraceSpacingTest, ComposesWithParameterReflow)
     EXPECT_EQ(FormatWithStyle(detached, style), expected);
 }
 
-class NamingGoldenTest : public testing::TestWithParam<std::string> { };
+class NamingGoldenTest
+    : public testing::TestWithParam<std::string>
+{ };
 
 TEST_P(NamingGoldenTest, ReportsOnlyConfiguredUnambiguousNames)
 {
     const auto dir = std::filesystem::path(NAMING_TESTDATA_DIR);
     const auto name = GetParam();
-    const auto input = ReadFile(dir / (name == "rules" ? "input.cpp" :
-        "alternate.cpp"));
+    const auto input = ReadFile(
+        dir / (name == "rules" ? "input.cpp" : "alternate.cpp"));
     const auto config = formatter::LoadConfigFile(dir / (name + ".hit-fmt"));
     std::string storage = input;
     storage.append(util::SourcePaddingSize, '\0');
@@ -1567,7 +1691,8 @@ TEST(PreserveFormatterTest, KeepsEmptyRecoveryAndBinarySource)
         std::string{"#define STR(x) #x\r\nSTR(a+b);\r\n"},
         std::string{"int f(\n  /* unfinished"},
         std::string{"int x;\0int y;\n", 14},
-    }) {
+    })
+    {
         ExpectUnchanged(source, formatter::Style{});
     }
 }
@@ -1613,13 +1738,17 @@ TEST(PreserveConfigTest, RejectsInvalidSettings)
     const auto config = formatter::LoadConfigFile(path);
     EXPECT_EQ(config.FormattingStyle.IndentWidth, 3u);
     EXPECT_EQ(config.FormattingStyle.ColumnLimit, 40u);
-    EXPECT_EQ(config.FormattingStyle.ExpressionLayoutCondition,
+    EXPECT_EQ(
+        config.FormattingStyle.ExpressionLayoutCondition,
         formatter::ExpressionLayoutCondition::FitOrOverflow);
-    EXPECT_EQ(config.FormattingStyle.BinaryOperatorPlacement,
+    EXPECT_EQ(
+        config.FormattingStyle.BinaryOperatorPlacement,
         formatter::BinaryOperatorPlacement::Trailing);
-    EXPECT_EQ(config.FormattingStyle.AssignmentOperatorPlacement,
+    EXPECT_EQ(
+        config.FormattingStyle.AssignmentOperatorPlacement,
         formatter::BinaryOperatorPlacement::Trailing);
-    EXPECT_EQ(config.FormattingStyle.StatementAttributeIndent,
+    EXPECT_EQ(
+        config.FormattingStyle.StatementAttributeIndent,
         formatter::StatementAttributeIndent::Block);
     EXPECT_EQ(config.FormattingStyle.AccessModifierIndentWidth, 1u);
     EXPECT_EQ(config.FormattingStyle.MemberIndentWidth, 3u);
@@ -1627,43 +1756,59 @@ TEST(PreserveConfigTest, RejectsInvalidSettings)
     EXPECT_EQ(config.FormattingStyle.CaseLabelIndentWidth, 1u);
     EXPECT_EQ(config.FormattingStyle.StatementAttributeIndentWidth, 2u);
     EXPECT_EQ(config.FormattingStyle.NamespaceCommentSpaces, 2u);
-    EXPECT_EQ(config.FormattingStyle.CommaSpacing, formatter::CommaSpacing::Space);
-    EXPECT_EQ(config.FormattingStyle.TernaryOperatorPlacement,
+    EXPECT_EQ(
+        config.FormattingStyle.CommaSpacing,
+        formatter::CommaSpacing::Space);
+    EXPECT_EQ(
+        config.FormattingStyle.TernaryOperatorPlacement,
         formatter::TernaryOperatorPlacement::Trailing);
-    EXPECT_EQ(config.FormattingStyle.TernarySplit,
+    EXPECT_EQ(
+        config.FormattingStyle.TernarySplit,
         formatter::TernarySplit::ThreeLines);
-    EXPECT_EQ(config.FormattingStyle.CallArgumentSplit,
+    EXPECT_EQ(
+        config.FormattingStyle.CallArgumentSplit,
         formatter::CallArgumentSplit::Pack);
-    EXPECT_EQ(config.FormattingStyle.FirstCallArgumentPosition,
+    EXPECT_EQ(
+        config.FormattingStyle.FirstCallArgumentPosition,
         formatter::FirstCallArgumentPosition::NewLine);
-    EXPECT_EQ(config.FormattingStyle.MultilineSingleCallArgumentPosition,
+    EXPECT_EQ(
+        config.FormattingStyle.MultilineSingleCallArgumentPosition,
         formatter::MultilineSingleCallArgumentPosition::CallLine);
     EXPECT_TRUE(config.FormattingStyle.EnforceFirstCallArgumentPosition);
-    EXPECT_EQ(config.FormattingStyle.CallArgumentIndent,
+    EXPECT_EQ(
+        config.FormattingStyle.CallArgumentIndent,
         formatter::CallArgumentIndent::Continuation);
-    EXPECT_EQ(config.FormattingStyle.CallLineFirstStringNames,
+    EXPECT_EQ(
+        config.FormattingStyle.CallLineFirstStringNames,
         (std::vector<std::string>{"YT_LOG_INFO", "YT_LOG_ERROR"}));
-    EXPECT_EQ(config.FormattingStyle.IndentedCallScopePairs,
+    EXPECT_EQ(
+        config.FormattingStyle.IndentedCallScopePairs,
         (std::vector<std::string>{"OnBeginList:OnEndList"}));
     ASSERT_EQ(config.Exclude.size(), 2u);
     EXPECT_TRUE(std::regex_search("x]y", config.Exclude[0]));
     EXPECT_TRUE(std::regex_search("generated/source.cpp", config.Exclude[1]));
     ASSERT_TRUE(config.Naming.Class.Prefixes.has_value());
-    EXPECT_EQ(*config.Naming.Class.Prefixes,
+    EXPECT_EQ(
+        *config.Naming.Class.Prefixes,
         (std::vector<std::string>{"S", "C"}));
     save("ClassNameCase = Unchecked\n");
-    EXPECT_EQ(formatter::LoadConfigFile(path).Naming.Class.Case,
+    EXPECT_EQ(
+        formatter::LoadConfigFile(path).Naming.Class.Case,
         formatter::NameCase::Unchecked);
     save("CallArgumentSplit = Pack\nExpressionLayoutCondition = Always\n");
     const auto alternate = formatter::LoadConfigFile(path).FormattingStyle;
-    EXPECT_EQ(alternate.ExpressionLayoutCondition, formatter::ExpressionLayoutCondition::Always);
+    EXPECT_EQ(
+        alternate.ExpressionLayoutCondition,
+        formatter::ExpressionLayoutCondition::Always);
     save("ExpressionLayoutCondition = Overflow\n"
          "TernaryOperatorPlacement = Leading\n"
          "TernarySplit = Preserve\n");
     const auto preserving = formatter::LoadConfigFile(path).FormattingStyle;
-    EXPECT_EQ(preserving.ExpressionLayoutCondition,
+    EXPECT_EQ(
+        preserving.ExpressionLayoutCondition,
         formatter::ExpressionLayoutCondition::Overflow);
-    EXPECT_EQ(preserving.TernaryOperatorPlacement,
+    EXPECT_EQ(
+        preserving.TernaryOperatorPlacement,
         formatter::TernaryOperatorPlacement::Leading);
     EXPECT_EQ(preserving.TernarySplit, formatter::TernarySplit::Preserve);
     for (auto setting : {
@@ -1847,7 +1992,8 @@ TEST(PreserveConfigTest, RejectsInvalidSettings)
         "NamingNamespaceExemptions = [\"::std\"]\n",
         "NamingNamespaceExemptions = [\"std:chrono\"]\n",
         "NamespaceNamePrefixes = [\"bad\\nname\"]\n",
-    }) {
+    })
+    {
         save(setting);
         EXPECT_THROW(formatter::LoadConfigFile(path), std::runtime_error);
     }
@@ -1856,7 +2002,8 @@ TEST(PreserveConfigTest, RejectsInvalidSettings)
         (void)formatter::LoadConfigFile(path);
         FAIL() << "expected unknown setting";
     } catch (const std::runtime_error& error) {
-        EXPECT_NE(std::string_view(error.what()).find(":4: unknown setting"),
+        EXPECT_NE(
+            std::string_view(error.what()).find(":4: unknown setting"),
             std::string_view::npos);
     }
     save("ClassNameCase = CamelCase\n");

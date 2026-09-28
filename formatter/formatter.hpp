@@ -30,15 +30,20 @@ struct LayoutDiagnostic
 
 // Check the source layout directly without computing a reflow.
 [[nodiscard]] std::vector<LayoutDiagnostic> CheckExpressionLayout(
-    const parser::SyntaxTree& tree, const Style& style);
+    const parser::SyntaxTree& tree,
+    const Style& style);
 
 // Preserve source-owned spans except for enabled declaration brace,
 // lambda, function, call, and control keyword spacing, brace placement,
 // namespace comments, parameter and call argument rules, and expression
 // wrapping.
-[[nodiscard]] std::string Format(const parser::SyntaxTree& tree, const Style& style);
+[[nodiscard]] std::string Format(
+    const parser::SyntaxTree& tree,
+    const Style& style);
 [[nodiscard]] std::string Format(const parser::SyntaxTree& tree);
-[[nodiscard]] std::string Format(util::PaddedSourceView source, const Style& style);
+[[nodiscard]] std::string Format(
+    util::PaddedSourceView source,
+    const Style& style);
 [[nodiscard]] std::string Format(util::PaddedSourceView source);
 
 } // namespace formatter

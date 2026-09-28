@@ -25,27 +25,27 @@ void AppendQuoted(std::string& output, std::string_view text)
     output.push_back('"');
     for (unsigned char character : text) {
         switch (character) {
-        case '\\':
-            output += "\\\\";
-            break;
-        case '"':
-            output += "\\\"";
-            break;
-        case '\n':
-            output += "\\n";
-            break;
-        case '\r':
-            output += "\\r";
-            break;
-        case '\t':
-            output += "\\t";
-            break;
-        default:
-            if (character < 0x20) {
-                output += std::format("\\x{:02x}", character);
-            } else {
-                output.push_back(static_cast<char>(character));
-            }
+            case '\\':
+                output += "\\\\";
+                break;
+            case '"':
+                output += "\\\"";
+                break;
+            case '\n':
+                output += "\\n";
+                break;
+            case '\r':
+                output += "\\r";
+                break;
+            case '\t':
+                output += "\\t";
+                break;
+            default:
+                if (character < 0x20) {
+                    output += std::format("\\x{:02x}", character);
+                } else {
+                    output.push_back(static_cast<char>(character));
+                }
         }
     }
     output.push_back('"');
@@ -87,8 +87,9 @@ void AppendTriviaList(
     output.push_back('\n');
     for (auto* item = trivia.First; item; item = item->Next) {
         AppendIndent(output, depth + 1);
-        output += item->Kind == parser::TriviaKind::Comment ? "(comment "
-                                                            : "(whitespace ";
+        output += item->Kind == parser::TriviaKind::Comment
+            ? "(comment "
+            : "(whitespace ";
         AppendQuoted(output, tree.SourceText(item->Source));
         output += ")\n";
     }
@@ -163,60 +164,60 @@ std::string_view RoleName(parser::PunctuationRole role)
 {
     using enum parser::PunctuationRole;
     switch (role) {
-    case None:
-        return "none";
-    case Generic:
-        return "generic";
-    case PointerDeclarator:
-        return "pointer-declarator";
-    case ReferenceDeclarator:
-        return "reference-declarator";
-    case UnaryOperator:
-        return "unary-operator";
-    case BinaryOperator:
-        return "binary-operator";
-    case AmbiguousOperator:
-        return "ambiguous-operator";
-    case AssignmentOperator:
-        return "assignment-operator";
-    case TemplateDelimiter:
-        return "template-delimiter";
-    case ComparisonOperator:
-        return "comparison-operator";
-    case ShiftOperator:
-        return "shift-operator";
-    case LabelDelimiter:
-        return "label-delimiter";
-    case BaseDelimiter:
-        return "base-delimiter";
-    case BitFieldDelimiter:
-        return "bit-field-delimiter";
-    case ConditionalDelimiter:
-        return "conditional-delimiter";
-    case ConstructorInitializerDelimiter:
-        return "constructor-initializer-delimiter";
-    case BlockDelimiter:
-        return "block-delimiter";
-    case InitializerDelimiter:
-        return "initializer-delimiter";
-    case LambdaDelimiter:
-        return "lambda-delimiter";
-    case AttributeDelimiter:
-        return "attribute-delimiter";
-    case RecordDelimiter:
-        return "record-delimiter";
-    case CallDelimiter:
-        return "call-delimiter";
-    case DeclarationDelimiter:
-        return "declaration-delimiter";
-    case CastDelimiter:
-        return "cast-delimiter";
-    case ConditionDelimiter:
-        return "condition-delimiter";
-    case GroupingDelimiter:
-        return "grouping-delimiter";
-    case ListSeparator:
-        return "list-separator";
+        case None:
+            return "none";
+        case Generic:
+            return "generic";
+        case PointerDeclarator:
+            return "pointer-declarator";
+        case ReferenceDeclarator:
+            return "reference-declarator";
+        case UnaryOperator:
+            return "unary-operator";
+        case BinaryOperator:
+            return "binary-operator";
+        case AmbiguousOperator:
+            return "ambiguous-operator";
+        case AssignmentOperator:
+            return "assignment-operator";
+        case TemplateDelimiter:
+            return "template-delimiter";
+        case ComparisonOperator:
+            return "comparison-operator";
+        case ShiftOperator:
+            return "shift-operator";
+        case LabelDelimiter:
+            return "label-delimiter";
+        case BaseDelimiter:
+            return "base-delimiter";
+        case BitFieldDelimiter:
+            return "bit-field-delimiter";
+        case ConditionalDelimiter:
+            return "conditional-delimiter";
+        case ConstructorInitializerDelimiter:
+            return "constructor-initializer-delimiter";
+        case BlockDelimiter:
+            return "block-delimiter";
+        case InitializerDelimiter:
+            return "initializer-delimiter";
+        case LambdaDelimiter:
+            return "lambda-delimiter";
+        case AttributeDelimiter:
+            return "attribute-delimiter";
+        case RecordDelimiter:
+            return "record-delimiter";
+        case CallDelimiter:
+            return "call-delimiter";
+        case DeclarationDelimiter:
+            return "declaration-delimiter";
+        case CastDelimiter:
+            return "cast-delimiter";
+        case ConditionDelimiter:
+            return "condition-delimiter";
+        case GroupingDelimiter:
+            return "grouping-delimiter";
+        case ListSeparator:
+            return "list-separator";
     }
     return "unknown";
 }
@@ -326,7 +327,7 @@ INSTANTIATE_TEST_SUITE_P(
         GoldenCase{"declarator_syntax"},
         GoldenCase{"extensions"},
         GoldenCase{"recovery", true}),
-    [](const auto& info) {
+    [] (const auto& info) {
         return info.param.Name;
     });
 
@@ -356,7 +357,8 @@ TEST(Parser, HandlesDeepCompoundNesting)
     auto outerClosing = tree.MatchingDelimiter(outerOpening);
     ASSERT_NE(outerClosing, std::numeric_limits<parser::TokenIndex>::max());
     EXPECT_EQ(
-        tree.Kind(outerClosing), tokenizer::TokenKind::Operator_CloseBrace);
+        tree.Kind(outerClosing),
+        tokenizer::TokenKind::Operator_CloseBrace);
     EXPECT_GT(outerClosing - outerOpening, Depth * 2);
 }
 

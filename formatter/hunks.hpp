@@ -28,19 +28,30 @@ struct ChangedHunkFiles
 
 // Paths in file records are resolved against directory, not the input stream.
 [[nodiscard]] ChangedHunkFiles ParseChangedHunks(
-    std::istream& input, const std::filesystem::path& directory);
+    std::istream& input,
+    const std::filesystem::path& directory);
 
 [[nodiscard]] bool InHunks(
-    size_t begin, size_t end, std::span<const Hunk> hunks);
-[[nodiscard]] std::vector<Hunk> HunkWindows(const parser::SyntaxTree& tree,
-    std::span<const Hunk> hunks, bool allowLong = false);
-[[nodiscard]] std::string FormatHunks(const parser::SyntaxTree& tree,
-    std::string_view candidate, std::span<const Hunk> windows,
-    bool* unsupported = nullptr, bool allowLong = false);
+    size_t begin,
+    size_t end,
+    std::span<const Hunk> hunks);
+[[nodiscard]] std::vector<Hunk> HunkWindows(
+    const parser::SyntaxTree& tree,
+    std::span<const Hunk> hunks,
+    bool allowLong = false);
+[[nodiscard]] std::string FormatHunks(
+    const parser::SyntaxTree& tree,
+    std::string_view candidate,
+    std::span<const Hunk> windows,
+    bool* unsupported = nullptr,
+    bool allowLong = false);
 
 // Apply all fixable rules to selected hunks; preserve whole units when the
 // allowed spill policy cannot accommodate their complete edit.
-[[nodiscard]] std::string FormatChanged(const parser::SyntaxTree& tree,
-    const Style& style, std::span<const Hunk> hunks, bool spillover);
+[[nodiscard]] std::string FormatChanged(
+    const parser::SyntaxTree& tree,
+    const Style& style,
+    std::span<const Hunk> hunks,
+    bool spillover);
 
 } // namespace formatter

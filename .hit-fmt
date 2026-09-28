@@ -1,6 +1,161 @@
-# Source-preserving profile. Widths remain passive dimensions.
+# Repository style: YTsaurus-inspired, with an 80-column hard limit.
+# Continuations use one indentation level, never opening-delimiter alignment.
 IndentWidth = 4
-ColumnLimit = 120
+ColumnLimit = 80
+LineLengthCheck = Strict
+IndentationKind = Spaces
+TrailingWhitespace = Trim
 
-# Build outputs, golden fixtures, and benchmarks need no repository scan.
-Exclude = ["(^|/)build(/|$)", "(^|/)testdata(/|$)", "(^|/)benchmarks(/|$)"]
+# Includes, directives, and comments
+PreprocessorIndentation = Preserve
+IncludeOrder = Preserve
+SeparatorLength = 80
+
+# Templates and attributes
+AmbiguousTemplateDeclarationSpacing = Space
+TemplateKeywordSpacing = Space
+TemplateTypeArgumentSpacing = NoSpace
+TemplateTypeArgumentInteriorSpacing = NoSpace
+
+# Records, namespaces, and declarators
+PointerReferenceDeclaratorLocation = Left
+IndentAccessModifiers = NoIndent
+IndentMembers = Indent
+ClassBracePlacement = NewLine
+StructBracePlacement = NewLine
+UnionBracePlacement = NewLine
+NamespaceBracePlacement = Attach
+NamespaceBraceSpacing = SingleSpace
+EnforceNamespaceBraceSpacing = true
+EnumBraceSpacing = SingleSpace
+NamespaceComments = AddMissing
+InheritanceList = Format
+InheritanceListColonPlacement = AttachToBase
+InheritanceListCommaPlacement = AttachToNext
+InheritanceListSplit = OnePerLine
+InheritanceListIndent = 4
+ArrayDeclarationSpacing = NoSpace
+ArrayDeclarationInteriorSpacing = NoSpace
+StructuredBindingBracketSpacing = NoSpace
+
+# Functions and parameters
+FunctionBracePlacement = NewLine
+FunctionParameterSplit = OnePerLine
+FunctionParameterIndent = IndentWidth
+FunctionParameterClosingParenthesis = SameLine
+EnforceFunctionParameterClosingParenthesis = true
+FirstFunctionParameterPosition = NewLine
+EnforceFirstFunctionParameterPosition = true
+FunctionParameterNewLineIndent = 4
+FunctionSpaceBeforeParameters = NoSpace
+SpaceInsideFunctionParameters = NoSpace
+EnforceSpaceInsideFunctionParameters = true
+EmptyFunctionParametersSpacing = NoSpace
+ReturnArrowSpacing = LeftAndRight
+FunctionQualifierSpacing = Space
+NoexceptSpaceBeforeSpecifier = Space
+NoexceptSpaceBeforeParentheses = NoSpace
+
+# Lambdas
+LambdaBracePlacement = Attach
+LambdaBraceSpacing = SingleSpace
+EnforceLambdaBraceSpacing = true
+LambdaCallSpaceBeforeArguments = NoSpace
+LambdaSpaceBeforeParameters = Space
+SpaceInsideLambdaParameters = NoSpace
+SpaceAroundCaptureList = NoSpace
+SpaceAroundCaptureAssignment = Space
+LambdaCaptureSplit = OnePerLineOnOverflow
+EmptyLambdaCaptureSpacing = NoSpace
+EmptyLambdaParametersSpacing = NoSpace
+EmptyLambdaBodySpacing = Preserve
+SingleStatementLambdaBodyLayout = Preserve
+
+# Calls and chains
+CallArgumentSplit = OnePerLine
+FunctionCallArgumentClosingParenthesis = SameLine
+EnforceFunctionCallArgumentClosingParenthesis = true
+FirstCallArgumentPosition = NewLine
+MultilineSingleCallArgumentPosition = NewLine
+EnforceFirstCallArgumentPosition = true
+CallArgumentIndent = IndentWidth
+ChainedCallSplitCondition = Overflow
+ChainedCallLayout = Pack
+ChainedCallIndent = IndentWidth
+FunctionCallSpaceBeforeParameters = NoSpace
+SpaceInsideCallArguments = NoSpace
+EnforceSpaceInsideCallArguments = true
+EmptyFunctionCallArgumentsSpacing = NoSpace
+
+# Control flow
+IndentCaseLabels = Indent
+AddMissingControlBraces = true
+EmptyControlBody = EmptyBlock
+ControlBlockBracePlacement = AttachUnlessMultiline
+EnforceControlBlockBracePlacement = true
+ControlBlockSpaceBeforeBrace = Space
+EnforceControlBlockSpaceBeforeBrace = true
+ControlBlockKeywordSpacing = Space
+ControlHeaderClauseSplit = WhenNeeded
+ControlConditionIndent = IndentWidth
+ForHeaderClauseIndent = IndentWidth
+ControlBlockConditionSpacing = NoSpace
+LoopSemicolonSpacing = Space
+ConditionInitSemicolonSpacing = Space
+RangeBasedForColonSpacing = Space
+
+# Blocks and statements
+IndentBlockBodies = true
+# Standalone semicolons can carry fallthrough attributes.
+RemoveNullStatements = false
+IndentLeadingStatementComments = true
+StandaloneBlockBraceIndentation = Preserve
+CollapseEmptyFunctionBodies = true
+NonEmptyBlockBodyLayout = Multiline
+StatementAttributeIndent = Block
+EmptyBlockInteriorSpacing = Space
+EnforceEmptyBlockInteriorSpacing = true
+BlockInteriorSpacing = Space
+StatementSemicolonSpacing = NoSpace
+DeclarationSemicolonSpacing = NoSpace
+
+# Initializers, new, and delete
+ConstructorInitializerList = Format
+ConstructorInitializerListColonPlacement = AttachToInitializer
+ConstructorInitializerListCommaPlacement = AttachToNext
+ConstructorInitializerListSplit = OnePerLine
+InitializerListSplit = Preserve
+InitializerClosingBrace = SameLine
+EnforceInitializerClosingBrace = true
+InitializerTrailingComma = Keep
+EnforceInitializerBracesSpacing = false
+BraceInitializerSpacing = NoSpace
+NewArraySpaceBeforeBrackets = NoSpace
+
+# Expressions and operators
+ExpressionLayoutCondition = Overflow
+BinaryOperatorPlacement = Trailing
+AssignmentOperatorPlacement = Trailing
+TernaryOperatorPlacement = Leading
+EnforceTernaryOperatorPlacement = true
+TernarySplit = ThreeLines
+GroupingInteriorSpacing = NoSpace
+CastArgumentSpacing = NoSpace
+CastSpacing = NoSpace
+CommaSpacing = Space
+EnforceCommaSpacing = true
+MemberAccessOperatorsSpacing = NoSpace
+ScopeResolutionSpacing = Preserve
+UnaryOperatorSpacing = NoSpace
+PostfixOperatorSpacing = NoSpace
+BinaryOperatorSpacing = Space
+AssignmentOperatorSpacing = Space
+OperatorOverloadOperatorSpacing = NoSpace
+SubscriptOperatorSpacing = NoSpace
+SubscriptOperatorInteriorSpacing = NoSpace
+
+# Do not scan generated outputs, golden fixtures, or benchmarks.
+Exclude = [
+    "(^|/)build(/|$)", "(^|/)testdata(/|$)", "(^|/)benchmarks(/|$)",
+    "^unicode/unicode_data\\.cpp$"
+]

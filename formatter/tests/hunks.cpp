@@ -27,15 +27,16 @@ TEST(ChangedHunkParserTest, GroupsFilesAndResolvesPathsAgainstGivenDirectory)
     EXPECT_EQ(hunks[0], (formatter::Hunk{2, 4}));
     EXPECT_EQ(hunks[1], (formatter::Hunk{8, 8}));
     EXPECT_EQ(hunks[2], (formatter::Hunk{9, 10}));
-    EXPECT_EQ(parsed.Hunks.at(
-        (base / "src/file with spaces.cpp").string())[0],
+    EXPECT_EQ(
+        parsed.Hunks.at((base / "src/file with spaces.cpp").string())[0],
         (formatter::Hunk{1, 1}));
 }
 
 TEST(ChangedHunkParserTest, EmptyInputSelectsNoFiles)
 {
     std::istringstream input;
-    const auto parsed = formatter::ParseChangedHunks(input,
+    const auto parsed = formatter::ParseChangedHunks(
+        input,
         std::filesystem::current_path());
     EXPECT_TRUE(parsed.Paths.empty());
     EXPECT_TRUE(parsed.Hunks.empty());
@@ -51,10 +52,12 @@ TEST(ChangedHunkParserTest, RejectsMalformedRecordsWithLineNumbers)
         {"file a.cpp\nhunk 2:x\n", 2},
         {"file a.cpp\nhunk 1:2:3\n", 2},
         {"file a.cpp\nline 1:2\n", 2},
-    }) {
+    })
+    {
         std::istringstream input{std::string(text)};
         try {
-            (void)formatter::ParseChangedHunks(input,
+            (void)formatter::ParseChangedHunks(
+                input,
                 std::filesystem::current_path());
             FAIL() << "Accepted: " << text;
         } catch (const std::runtime_error& error) {
@@ -68,7 +71,8 @@ TEST(ChangedHunkParserTest, RejectsMalformedRecordsWithLineNumbers)
 TEST(ChangedHunkParserTest, RejectsFileWithoutHunksAtEndOfInput)
 {
     std::istringstream input("file a.cpp\n");
-    EXPECT_THROW(formatter::ParseChangedHunks(input,
+    EXPECT_THROW(formatter::ParseChangedHunks(
+        input,
         std::filesystem::current_path()), std::runtime_error);
 }
 

@@ -71,7 +71,8 @@ std::vector<Line> SplitLines(std::string_view text)
 size_t TerminalWidth()
 {
 #ifndef _WIN32
-    if (winsize size{}; isatty(fileno(stdout)) &&
+    if (winsize size{};
+        isatty(fileno(stdout)) &&
         ioctl(fileno(stdout), TIOCGWINSZ, &size) == 0 && size.ws_col > 0)
     {
         return std::max<size_t>(24, size.ws_col);
@@ -82,7 +83,10 @@ size_t TerminalWidth()
         auto end = value + std::char_traits<char>::length(value);
         auto [next, error] = std::from_chars(value, end, width);
         if (error == std::errc{} && next == end && width >= 24 &&
-            width <= 1000) return width;
+            width <= 1000)
+        {
+            return width;
+        }
     }
     return 80;
 }
@@ -96,18 +100,27 @@ struct RenderedLine
 };
 
 RenderedLine RenderLine(
-    std::string_view text, size_t column, size_t prefixWidth)
+    std::string_view text,
+    size_t column,
+    size_t prefixWidth)
 {
     RenderedLine rendered;
     size_t codePoint = 1;
     for (size_t i = 0; i < text.size(); ++codePoint) {
-        if (codePoint == column) rendered.Caret = rendered.Cells.size();
+        if (codePoint == column) {
+            rendered.Caret = rendered.Cells.size();
+        }
         auto start = i++;
         while (i < text.size() &&
-            (static_cast<unsigned char>(text[i]) & 0xc0) == 0x80) ++i;
+            (static_cast<unsigned char>(text[i]) & 0xc0) == 0x80)
+        {
+            ++i;
+        }
         if (text[start] == '\t') {
             auto spaces = 8 - (prefixWidth + rendered.Cells.size()) % 8;
-            while (spaces--) rendered.Cells.push_back(" ");
+            while (spaces--) {
+                rendered.Cells.push_back(" ");
+            }
         } else if (text[start] == '\r') {
             // CRLF lines are trimmed before reaching this function.
             continue;
@@ -115,14 +128,20 @@ RenderedLine RenderLine(
             rendered.Cells.push_back(text.substr(start, i - start));
         }
     }
-    if (column >= codePoint) rendered.Caret = rendered.Cells.size();
+    if (column >= codePoint) {
+        rendered.Caret = rendered.Cells.size();
+    }
     return rendered;
 }
 
-void PrintCells(const std::vector<std::string_view>& cells,
-    size_t begin, size_t end)
+void PrintCells(
+    const std::vector<std::string_view>& cells,
+    size_t begin,
+    size_t end)
 {
-    for (auto i = begin; i < end; ++i) std::cout << cells[i];
+    for (auto i = begin; i < end; ++i) {
+        std::cout << cells[i];
+    }
 }
 
 struct Excerpt
@@ -131,25 +150,36 @@ struct Excerpt
     bool CaretVisible;
 };
 
-Excerpt PrintSourceExcerpt(std::string_view text, size_t column,
-    size_t prefixWidth, size_t terminalWidth, bool fromStart = false)
+Excerpt PrintSourceExcerpt(
+    std::string_view text,
+    size_t column,
+    size_t prefixWidth,
+    size_t terminalWidth,
+    bool fromStart = false)
 {
     auto rendered = RenderLine(text, column, prefixWidth);
     const auto& cells = rendered.Cells;
     auto available = terminalWidth > prefixWidth + 1
-        ? terminalWidth - prefixWidth - 1 : size_t{16};
+        ? terminalWidth - prefixWidth - 1
+        : size_t{16};
     auto window = available > 6 ? available - 6 : size_t{1};
     size_t begin = 0;
     if (cells.size() > available && !fromStart) {
-        begin = std::min(cells.size() - window,
+        begin = std::min(
+            cells.size() - window,
             rendered.Caret > window / 2 ? rendered.Caret - window / 2 : 0);
     }
     auto count = cells.size() > available
-        ? (fromStart ? available - 3 : window) : available;
+        ? (fromStart ? available - 3 : window)
+        : available;
     auto end = std::min(cells.size(), begin + count);
-    if (begin) std::cout << "...";
+    if (begin) {
+        std::cout << "...";
+    }
     PrintCells(cells, begin, end);
-    if (end < cells.size()) std::cout << "...";
+    if (end < cells.size()) {
+        std::cout << "...";
+    }
     std::cout << '\n';
     return {.CaretOffset = (begin ? 3 : 0) +
         std::min(rendered.Caret, end) - begin,
@@ -157,16 +187,21 @@ Excerpt PrintSourceExcerpt(std::string_view text, size_t column,
             (rendered.Caret == end && end == cells.size())};
 }
 
-void PrintWrappedMessage(std::string_view message,
-    std::string_view prefix, size_t terminalWidth)
+void PrintWrappedMessage(
+    std::string_view message,
+    std::string_view prefix,
+    size_t terminalWidth)
 {
     auto available = terminalWidth > prefix.size() + 2
-        ? terminalWidth - prefix.size() - 2 : size_t{20};
+        ? terminalWidth - prefix.size() - 2
+        : size_t{20};
     while (!message.empty()) {
         auto length = std::min(available, message.size());
         if (length < message.size()) {
             auto space = message.rfind(' ', length);
-            if (space != std::string_view::npos && space > 0) length = space;
+            if (space != std::string_view::npos && space > 0) {
+                length = space;
+            }
         }
         while (length && length < message.size() &&
             (static_cast<unsigned char>(message[length]) & 0xc0) == 0x80)
@@ -175,19 +210,29 @@ void PrintWrappedMessage(std::string_view message,
         }
         std::cout << "  " << message.substr(0, length) << '\n';
         message.remove_prefix(length);
-        while (message.starts_with(' ')) message.remove_prefix(1);
-        if (!message.empty()) std::cout << prefix;
+        while (message.starts_with(' ')) {
+            message.remove_prefix(1);
+        }
+        if (!message.empty()) {
+            std::cout << prefix;
+        }
     }
 }
 
-void PrintSuggestedLine(std::string_view text, size_t terminalWidth,
-    size_t gutterWidth, bool useColor)
+void PrintSuggestedLine(
+    std::string_view text,
+    size_t terminalWidth,
+    size_t gutterWidth,
+    bool useColor)
 {
     auto cells = RenderLine(text, 0, gutterWidth).Cells;
     auto available = terminalWidth > gutterWidth + 1
-        ? terminalWidth - gutterWidth - 1 : size_t{16};
+        ? terminalWidth - gutterWidth - 1
+        : size_t{16};
     for (size_t begin = 0;;) {
-        if (useColor) std::cout << Green;
+        if (useColor) {
+            std::cout << Green;
+        }
         if (begin) {
             std::cout << std::string(gutterWidth, ' ');
         } else {
@@ -195,9 +240,13 @@ void PrintSuggestedLine(std::string_view text, size_t terminalWidth,
         }
         auto end = std::min(cells.size(), begin + available);
         PrintCells(cells, begin, end);
-        if (useColor) std::cout << ResetColor;
+        if (useColor) {
+            std::cout << ResetColor;
+        }
         std::cout << '\n';
-        if (end == cells.size()) break;
+        if (end == cells.size()) {
+            break;
+        }
         begin = end;
     }
 }
@@ -253,7 +302,9 @@ struct Chunk
 // diverges. For removed whitespace, point to the following token instead.
 size_t ColumnAt(std::string_view text, size_t byte)
 {
-    return 1 + std::count_if(text.begin(), text.begin() + byte,
+    return 1 + std::count_if(
+        text.begin(),
+        text.begin() + byte,
         [] (unsigned char c) { return (c & 0xc0) != 0x80; });
 }
 
@@ -261,22 +312,36 @@ size_t DifferenceColumn(std::string_view actual, std::string_view expected)
 {
     size_t byte = 0;
     while (byte < actual.size() && byte < expected.size() &&
-        actual[byte] == expected[byte]) ++byte;
+        actual[byte] == expected[byte])
+    {
+        ++byte;
+    }
     while (byte < actual.size() &&
-        std::isspace(static_cast<unsigned char>(actual[byte]))) ++byte;
+        std::isspace(static_cast<unsigned char>(actual[byte])))
+    {
+        ++byte;
+    }
     return ColumnAt(actual, byte);
 }
 
 std::string DescribeWhitespace(std::string_view gap)
 {
-    if (gap.empty()) return "no whitespace";
+    if (gap.empty()) {
+        return "no whitespace";
+    }
     std::string description;
     auto append = [&] (size_t count, std::string_view name) {
-        if (!count) return;
-        if (!description.empty()) description += " and ";
+        if (!count) {
+            return;
+        }
+        if (!description.empty()) {
+            description += " and ";
+        }
         description += count == 1 ? "one " : std::to_string(count) + " ";
         description += name;
-        if (count != 1) description += 's';
+        if (count != 1) {
+            description += 's';
+        }
     };
     append(std::count(gap.begin(), gap.end(), ' '), "space");
     append(std::count(gap.begin(), gap.end(), '\t'), "tab");
@@ -291,7 +356,9 @@ std::string DescribeWhitespace(std::string_view gap)
 
 std::string TokenAt(std::string_view text, size_t offset)
 {
-    if (offset == text.size()) return "end of line";
+    if (offset == text.size()) {
+        return "end of line";
+    }
     auto c = static_cast<unsigned char>(text[offset]);
     if (!std::isalnum(c) && c != '_' && c < 0x80) {
         return std::string(1, text[offset]);
@@ -299,16 +366,26 @@ std::string TokenAt(std::string_view text, size_t offset)
     size_t end = offset;
     while (end < text.size() && end - offset < 24) {
         auto next = static_cast<unsigned char>(text[end]);
-        if (!std::isalnum(next) && next != '_' && next < 0x80) break;
+        if (!std::isalnum(next) && next != '_' && next < 0x80) {
+            break;
+        }
         ++end;
         while (end < text.size() &&
-            (static_cast<unsigned char>(text[end]) & 0xc0) == 0x80) ++end;
+            (static_cast<unsigned char>(text[end]) & 0xc0) == 0x80)
+        {
+            ++end;
+        }
     }
     return std::string(text.substr(offset, end - offset));
 }
 
-std::string SpacingMessage(std::string_view actual, std::string_view expected,
-    size_t begin, size_t end, size_t expectedBegin, size_t expectedEnd)
+std::string SpacingMessage(
+    std::string_view actual,
+    std::string_view expected,
+    size_t begin,
+    size_t end,
+    size_t expectedBegin,
+    size_t expectedEnd)
 {
     auto found = DescribeWhitespace(actual.substr(begin, end - begin));
     auto wanted = DescribeWhitespace(
@@ -324,23 +401,33 @@ std::string SpacingMessage(std::string_view actual, std::string_view expected,
 }
 
 std::vector<Violation> SpacingViolations(
-    size_t line, std::string_view actual, std::string_view expected)
+    size_t line,
+    std::string_view actual,
+    std::string_view expected)
 {
     std::vector<Violation> violations;
     size_t a = 0, b = 0;
     while (a < actual.size() || b < expected.size()) {
         auto startA = a, startB = b;
         while (a < actual.size() &&
-            std::isspace(static_cast<unsigned char>(actual[a]))) ++a;
+            std::isspace(static_cast<unsigned char>(actual[a])))
+        {
+            ++a;
+        }
         while (b < expected.size() &&
-            std::isspace(static_cast<unsigned char>(expected[b]))) ++b;
+            std::isspace(static_cast<unsigned char>(expected[b])))
+        {
+            ++b;
+        }
         if (actual.substr(startA, a - startA) !=
             expected.substr(startB, b - startB))
         {
             violations.push_back({line, ColumnAt(actual, a),
                 SpacingMessage(actual, expected, startA, a, startB, b)});
         }
-        if (a == actual.size() || b == expected.size()) break;
+        if (a == actual.size() || b == expected.size()) {
+            break;
+        }
         // Compare gaps after each byte (including punctuation), not just
         // after whole words: "f( int)" and "f(int)" differ inside a run.
         ++a;
@@ -356,20 +443,35 @@ std::string QuoteSnippet(std::string_view text)
     while (i < text.size() && i < 48) {
         auto start = i++;
         while (i < text.size() &&
-            (static_cast<unsigned char>(text[i]) & 0xc0) == 0x80) ++i;
+            (static_cast<unsigned char>(text[i]) & 0xc0) == 0x80)
+        {
+            ++i;
+        }
         if (i - start != 1) {
             quoted += text.substr(start, i - start);
             continue;
         }
         switch (text[start]) {
-        case '\t': quoted += "\\t"; break;
-        case '\r': quoted += "\\r"; break;
-        case '\"': quoted += "\\\""; break;
-        case '\\': quoted += "\\\\"; break;
-        default: quoted += text[start]; break;
+            case '\t':
+                quoted += "\\t";
+                break;
+            case '\r':
+                quoted += "\\r";
+                break;
+            case '\"':
+                quoted += "\\\"";
+                break;
+            case '\\':
+                quoted += "\\\\";
+                break;
+            default:
+                quoted += text[start];
+                break;
         }
     }
-    if (text.size() > i) quoted += "...";
+    if (text.size() > i) {
+        quoted += "...";
+    }
     return quoted + '\"';
 }
 
@@ -377,7 +479,10 @@ std::string ContentChange(std::string_view actual, std::string_view expected)
 {
     size_t prefix = 0;
     while (prefix < actual.size() && prefix < expected.size() &&
-        actual[prefix] == expected[prefix]) ++prefix;
+        actual[prefix] == expected[prefix])
+    {
+        ++prefix;
+    }
     while (prefix && ((prefix < actual.size() &&
         (static_cast<unsigned char>(actual[prefix]) & 0xc0) == 0x80) ||
         (prefix < expected.size() &&
@@ -389,7 +494,10 @@ std::string ContentChange(std::string_view actual, std::string_view expected)
     while (suffix < actual.size() - prefix &&
         suffix < expected.size() - prefix &&
         actual[actual.size() - suffix - 1] ==
-            expected[expected.size() - suffix - 1]) ++suffix;
+            expected[expected.size() - suffix - 1])
+    {
+        ++suffix;
+    }
     while (suffix && ((static_cast<unsigned char>(
         actual[actual.size() - suffix]) & 0xc0) == 0x80 ||
         (static_cast<unsigned char>(expected[expected.size() - suffix]) &
@@ -399,18 +507,27 @@ std::string ContentChange(std::string_view actual, std::string_view expected)
     }
     auto removed = actual.substr(prefix, actual.size() - prefix - suffix);
     auto added = expected.substr(prefix, expected.size() - prefix - suffix);
-    if (removed.empty()) return "insert " + QuoteSnippet(added) + " here";
-    if (added.empty()) return "remove " + QuoteSnippet(removed) + " here";
-    return "replace " + QuoteSnippet(removed) + " with " +
-        QuoteSnippet(added);
+    if (removed.empty()) {
+        return "insert " + QuoteSnippet(added) + " here";
+    }
+    if (added.empty()) {
+        return "remove " + QuoteSnippet(removed) + " here";
+    }
+    return "replace " + QuoteSnippet(removed) + " with " + QuoteSnippet(added);
 }
 
 std::optional<size_t> SlashRulerLength(
-    std::string_view actual, std::string_view expected, size_t length)
+    std::string_view actual,
+    std::string_view expected,
+    size_t length)
 {
-    if (length == 0) return std::nullopt;
+    if (length == 0) {
+        return std::nullopt;
+    }
     const auto indent = actual.find_first_not_of(" \t");
-    if (indent == std::string_view::npos) return std::nullopt;
+    if (indent == std::string_view::npos) {
+        return std::nullopt;
+    }
     auto ruler = actual.substr(indent);
     if (ruler.ends_with('\r') && expected.ends_with('\r')) {
         ruler.remove_suffix(1);
@@ -429,7 +546,10 @@ bool SameNonWhitespace(std::string_view a, std::string_view b)
 {
     auto skip = [] (std::string_view text, size_t& i) {
         while (i < text.size() &&
-            std::isspace(static_cast<unsigned char>(text[i]))) ++i;
+            std::isspace(static_cast<unsigned char>(text[i])))
+        {
+            ++i;
+        }
     };
     size_t i = 0, j = 0;
     for (;;) {
@@ -438,7 +558,9 @@ bool SameNonWhitespace(std::string_view a, std::string_view b)
         if (i == a.size() || j == b.size()) {
             return i == a.size() && j == b.size();
         }
-        if (a[i++] != b[j++]) return false;
+        if (a[i++] != b[j++]) {
+            return false;
+        }
     }
 }
 
@@ -446,7 +568,8 @@ bool SameNonWhitespace(std::string_view a, std::string_view b)
 // Only whitespace can be compared this way: for content edits, the line diff
 // below describes the changed text instead.
 std::optional<std::vector<Violation>> ReflowViolations(
-    std::span<const Line> source, std::span<const Line> formatted,
+    std::span<const Line> source,
+    std::span<const Line> formatted,
     size_t firstLine)
 {
     std::string original, replacement;
@@ -454,29 +577,42 @@ std::optional<std::vector<Violation>> ReflowViolations(
     for (const auto& line : source) {
         lineStarts.push_back(original.size());
         original += line.Text;
-        if (line.HasNewline) original += '\n';
+        if (line.HasNewline) {
+            original += '\n';
+        }
     }
     for (const auto& line : formatted) {
         replacement += line.Text;
-        if (line.HasNewline) replacement += '\n';
+        if (line.HasNewline) {
+            replacement += '\n';
+        }
     }
-    if (!SameNonWhitespace(original, replacement)) return std::nullopt;
+    if (!SameNonWhitespace(original, replacement)) {
+        return std::nullopt;
+    }
 
     std::vector<Violation> violations;
     size_t a = 0, b = 0;
     while (a < original.size() || b < replacement.size()) {
         auto startA = a, startB = b;
         while (a < original.size() &&
-            std::isspace(static_cast<unsigned char>(original[a]))) ++a;
+            std::isspace(static_cast<unsigned char>(original[a])))
+        {
+            ++a;
+        }
         while (b < replacement.size() &&
-            std::isspace(static_cast<unsigned char>(replacement[b]))) ++b;
+            std::isspace(static_cast<unsigned char>(replacement[b])))
+        {
+            ++b;
+        }
         auto gapA = std::string_view(original).substr(startA, a - startA);
         auto gapB = std::string_view(replacement).substr(startB, b - startB);
         if (gapA != gapB) {
             auto lineIndex = static_cast<size_t>(
                 std::upper_bound(lineStarts.begin(), lineStarts.end(), a) -
                 lineStarts.begin() - 1);
-            auto byte = std::min(a - lineStarts[lineIndex],
+            auto byte = std::min(
+                a - lineStarts[lineIndex],
                 source[lineIndex].Text.size());
             auto token = TokenAt(original, a);
             std::string message;
@@ -493,7 +629,8 @@ std::optional<std::vector<Violation>> ReflowViolations(
                     DescribeWhitespace(gapB);
             } else if (oldBreaks != newBreaks) {
                 auto difference = oldBreaks > newBreaks
-                    ? oldBreaks - newBreaks : newBreaks - oldBreaks;
+                    ? oldBreaks - newBreaks
+                    : newBreaks - oldBreaks;
                 message = (oldBreaks > newBreaks ? "remove " : "insert ") +
                     std::to_string(difference) +
                     (difference == 1 ? " blank line" : " blank lines") +
@@ -505,33 +642,47 @@ std::optional<std::vector<Violation>> ReflowViolations(
                     DescribeWhitespace(newIndent) + " instead of " +
                     DescribeWhitespace(oldIndent);
             } else {
-                message = SpacingMessage(original, replacement,
-                    startA, a, startB, b);
+                message = SpacingMessage(
+                    original,
+                    replacement,
+                    startA,
+                    a,
+                    startB,
+                    b);
             }
             violations.push_back({firstLine + lineIndex,
                 ColumnAt(source[lineIndex].Text, byte), std::move(message),
                 ViolationKind::Reflow});
         }
-        if (a == original.size() || b == replacement.size()) break;
+        if (a == original.size() || b == replacement.size()) {
+            break;
+        }
         ++a;
         ++b;
     }
     return violations;
 }
 
-bool SameNonWhitespaceLines(std::span<const Line> source,
+bool SameNonWhitespaceLines(
+    std::span<const Line> source,
     std::span<const Line> formatted)
 {
     std::string a, b;
-    for (const auto& line : source) a += line.Text;
-    for (const auto& line : formatted) b += line.Text;
+    for (const auto& line : source) {
+        a += line.Text;
+    }
+    for (const auto& line : formatted) {
+        b += line.Text;
+    }
     return SameNonWhitespace(a, b);
 }
 
 bool IsIncludeLine(const Line& line)
 {
     auto begin = line.Text.find_first_not_of(" \t");
-    if (begin == std::string_view::npos) return false;
+    if (begin == std::string_view::npos) {
+        return false;
+    }
     auto text = line.Text.substr(begin);
     return text.starts_with("#include") && text.size() > 8 &&
         (std::isspace(static_cast<unsigned char>(text[8])) ||
@@ -539,7 +690,8 @@ bool IsIncludeLine(const Line& line)
 }
 
 std::vector<Chunk> FormattingChunks(
-    const std::vector<Line>& source, const std::vector<Line>& formatted,
+    const std::vector<Line>& source,
+    const std::vector<Line>& formatted,
     size_t separatorLength = 0)
 {
     std::vector<Chunk> chunks;
@@ -561,7 +713,10 @@ std::vector<Chunk> FormattingChunks(
             IsIncludeLine(formatted[formattedIndex]))
         {
             while (sourceIndex + sourceCount < source.size() &&
-                IsIncludeLine(source[sourceIndex + sourceCount])) ++sourceCount;
+                IsIncludeLine(source[sourceIndex + sourceCount]))
+            {
+                ++sourceCount;
+            }
             while (formattedIndex + formattedCount < formatted.size() &&
                 IsIncludeLine(formatted[formattedIndex + formattedCount]))
             {
@@ -575,15 +730,22 @@ std::vector<Chunk> FormattingChunks(
                 std::min(source.size(), sourceIndex + DiffLookahead + 1);
             auto formattedLimit =
                 std::min(formatted.size(), formattedIndex + DiffLookahead + 1);
-            for (auto nextSource = sourceIndex; nextSource < sourceLimit;
+            for (auto nextSource = sourceIndex;
+                nextSource < sourceLimit;
                 ++nextSource)
             {
                 for (auto nextFormatted = formattedIndex;
-                    nextFormatted < formattedLimit; ++nextFormatted)
+                    nextFormatted < formattedLimit;
+                    ++nextFormatted)
                 {
                     if (nextSource == sourceIndex &&
-                        nextFormatted == formattedIndex) continue;
-                    if (source[nextSource] != formatted[nextFormatted]) continue;
+                        nextFormatted == formattedIndex)
+                    {
+                        continue;
+                    }
+                    if (source[nextSource] != formatted[nextFormatted]) {
+                        continue;
+                    }
                     auto sourceSkip = nextSource - sourceIndex;
                     auto formattedSkip = nextFormatted - formattedIndex;
                     auto distance = sourceSkip + formattedSkip;
@@ -596,7 +758,8 @@ std::vector<Chunk> FormattingChunks(
                     bool preservesTokens = sourceSkip && formattedSkip &&
                         SameNonWhitespaceLines(
                             std::span(source).subspan(sourceIndex, sourceSkip),
-                            std::span(formatted).subspan(formattedIndex,
+                            std::span(formatted).subspan(
+                                formattedIndex,
                                 formattedSkip));
                     if ((preservesTokens && !bestPreservesTokens) ||
                         (preservesTokens == bestPreservesTokens &&
@@ -617,7 +780,9 @@ std::vector<Chunk> FormattingChunks(
             }
         }
 
-        auto begin = std::min(sourceIndex + 1, std::max(size_t{1}, source.size()));
+        auto begin = std::min(
+            sourceIndex + 1,
+            std::max(size_t{1}, source.size()));
         Chunk chunk{.Begin = begin,
             .End = std::max(begin + 1, sourceIndex + sourceCount + 1),
             .SourceBegin = sourceIndex,
@@ -641,7 +806,8 @@ std::vector<Chunk> FormattingChunks(
         for (size_t i = 0; i < sourceCount && !alignedReflow; ++i) {
             const auto& line = source[sourceIndex + i];
             auto replacement = i < formattedCount
-                ? formatted[formattedIndex + i].Text : std::string_view{};
+                ? formatted[formattedIndex + i].Text
+                : std::string_view{};
             if (i < formattedCount && line == formatted[formattedIndex + i]) {
                 continue;
             }
@@ -658,7 +824,8 @@ std::vector<Chunk> FormattingChunks(
                 }
                 if (*rulerLength != separatorLength) {
                     message += message.empty()
-                        ? "separator should be " : " and be ";
+                        ? "separator should be "
+                        : " and be ";
                     message += std::to_string(separatorLength) +
                         " characters long (found " +
                         std::to_string(*rulerLength) + ")";
@@ -682,21 +849,28 @@ std::vector<Chunk> FormattingChunks(
                 if (formattedCount == 0) {
                     message = "remove this line";
                 } else if (i >= formattedCount) {
-                    message = "merge this line into the preceding formatted line";
+                    message =
+                        "merge this line into the preceding formatted line";
                 } else if (formattedCount > sourceCount) {
-                    message = "split line: expected " + QuoteSnippet(replacement) +
+                    message = "split line: expected " +
+                        QuoteSnippet(replacement) +
                         " on this line";
                     kind = ViolationKind::Reflow;
                 } else {
-                    message = "join lines: expected " + QuoteSnippet(replacement) +
+                    message = "join lines: expected " +
+                        QuoteSnippet(replacement) +
                         " on this line";
                     kind = ViolationKind::Reflow;
                 }
             } else if (SameNonWhitespace(line.Text, replacement)) {
                 auto spacing = SpacingViolations(
-                    sourceIndex + i + 1, line.Text, replacement);
-                chunk.Violations.insert(chunk.Violations.end(),
-                    spacing.begin(), spacing.end());
+                    sourceIndex + i + 1,
+                    line.Text,
+                    replacement);
+                chunk.Violations.insert(
+                    chunk.Violations.end(),
+                    spacing.begin(),
+                    spacing.end());
                 continue;
             } else {
                 message = ContentChange(line.Text, replacement);
@@ -709,7 +883,8 @@ std::vector<Chunk> FormattingChunks(
                 ? size_t{1}
                 : ColumnAt(source.back().Text, source.back().Text.size());
             auto location = sourceIndex == source.size()
-                ? " at end of file" : " before this line";
+                ? " at end of file"
+                : " before this line";
             auto message = formattedCount == 1
                 ? "insert " + QuoteSnippet(formatted[formattedIndex].Text) +
                     location
@@ -721,14 +896,18 @@ std::vector<Chunk> FormattingChunks(
         if (chunk.Violations.empty()) {
             // A matched prefix can be followed by inserted output lines.
             auto number = sourceIndex + sourceCount;
-            auto column = ColumnAt(source[number - 1].Text,
+            auto column = ColumnAt(
+                source[number - 1].Text,
                 source[number - 1].Text.size());
             auto inserted = formattedCount > sourceCount
-                ? formattedCount - sourceCount : size_t{0};
+                ? formattedCount - sourceCount
+                : size_t{0};
             chunk.Violations.push_back({number, column,
-                inserted ? "insert " + std::to_string(inserted) +
-                    " formatted lines after this line" :
-                    "replace lines following this line with formatted output"});
+                inserted
+                    ? "insert " + std::to_string(inserted) +
+                    " formatted lines after this line"
+                    : "replace lines following this line with "
+                        "formatted output"});
         }
         for (size_t i = 0; i < formattedCount; ++i) {
             chunk.Fix.push_back(formatted[formattedIndex + i]);
@@ -741,16 +920,22 @@ std::vector<Chunk> FormattingChunks(
 }
 
 void PrintCheckDiagnostics(
-    std::string_view path, std::string_view source, std::string_view formatted,
+    std::string_view path,
+    std::string_view source,
+    std::string_view formatted,
     std::string_view layoutFormatted,
     std::span<const formatter::NameDiagnostic> names,
     std::span<const formatter::ParameterNameDiagnostic> parameters,
     std::span<const formatter::LayoutDiagnostic> layout,
-    bool useColor, size_t separatorLength, bool fixed = false)
+    bool useColor,
+    size_t separatorLength,
+    bool fixed = false)
 {
     auto sourceLines = SplitLines(source);
     auto formattedLines = SplitLines(formatted);
-    auto chunks = FormattingChunks(sourceLines, formattedLines,
+    auto chunks = FormattingChunks(
+        sourceLines,
+        formattedLines,
         separatorLength);
     // Source layout diagnostics own their line. A formatter-emitted break on
     // that line is a possible repair, not another source violation. Preserve
@@ -771,9 +956,12 @@ void PrintCheckDiagnostics(
                 name.Message + "; " + name.Expected}}});
     }
     for (const auto& parameter : parameters) {
-        auto message = "parameter #" + std::to_string(parameter.ParameterNumber) +
+        auto message = "parameter #" +
+            std::to_string(parameter.ParameterNumber) +
             " in " + parameter.Function + ": expected a name";
-        if (parameter.AllowCommentedName) message += " or /*name*/ comment";
+        if (parameter.AllowCommentedName) {
+            message += " or /*name*/ comment";
+        }
         chunks.push_back({.Begin = parameter.SignatureBeginLine,
             .End = parameter.SignatureEndLine + 1,
             .Violations = {{parameter.Position.Line, parameter.Position.Column,
@@ -799,7 +987,10 @@ void PrintCheckDiagnostics(
             if (std::ranges::none_of(layout, [&] (const auto& issue) {
                 return issue.Position.Line >= candidate.Begin &&
                     issue.Position.Line < candidate.End;
-            })) continue;
+            }))
+            {
+                continue;
+            }
             Chunk suggestion{.Begin = candidate.Begin, .End = candidate.End,
                 .LayoutFix = std::move(candidate.Fix),
                 .LayoutFormattedBegin = candidate.FormattedBegin,
@@ -819,12 +1010,14 @@ void PrintCheckDiagnostics(
         } else {
             auto& previous = merged.back();
             previous.End = std::max(previous.End, chunk.End);
-            previous.Violations.insert(previous.Violations.end(),
+            previous.Violations.insert(
+                previous.Violations.end(),
                 std::make_move_iterator(chunk.Violations.begin()),
                 std::make_move_iterator(chunk.Violations.end()));
             if (chunk.HasFix) {
                 if (previous.HasFix) {
-                    previous.Fix.insert(previous.Fix.end(),
+                    previous.Fix.insert(
+                        previous.Fix.end(),
                         formattedLines.begin() + previous.FormattedEnd,
                         formattedLines.begin() + chunk.FormattedBegin);
                 } else {
@@ -832,12 +1025,15 @@ void PrintCheckDiagnostics(
                 }
                 previous.HasFix = true;
                 previous.FormattedEnd = chunk.FormattedEnd;
-                previous.Fix.insert(previous.Fix.end(), chunk.Fix.begin(),
+                previous.Fix.insert(
+                    previous.Fix.end(),
+                    chunk.Fix.begin(),
                     chunk.Fix.end());
             }
             if (chunk.HasLayoutFix) {
                 if (previous.HasLayoutFix) {
-                    previous.LayoutFix.insert(previous.LayoutFix.end(),
+                    previous.LayoutFix.insert(
+                        previous.LayoutFix.end(),
                         layoutLines.begin() + previous.LayoutFormattedEnd,
                         layoutLines.begin() + chunk.LayoutFormattedBegin);
                 } else {
@@ -845,8 +1041,10 @@ void PrintCheckDiagnostics(
                 }
                 previous.HasLayoutFix = true;
                 previous.LayoutFormattedEnd = chunk.LayoutFormattedEnd;
-                previous.LayoutFix.insert(previous.LayoutFix.end(),
-                    chunk.LayoutFix.begin(), chunk.LayoutFix.end());
+                previous.LayoutFix.insert(
+                    previous.LayoutFix.end(),
+                    chunk.LayoutFix.begin(),
+                    chunk.LayoutFix.end());
             }
             previous.HasLayoutIssue |= chunk.HasLayoutIssue;
             previous.HasWidthIssue |= chunk.HasWidthIssue;
@@ -859,11 +1057,15 @@ void PrintCheckDiagnostics(
                     (a.Line == b.Line && a.Column < b.Column);
             });
         const auto& first = chunk.Violations.front();
-        if (useColor) std::cout << (fixed ? BoldGreen : BoldRed);
+        if (useColor) {
+            std::cout << (fixed ? BoldGreen : BoldRed);
+        }
         std::cout << (fixed ? "fixed: " : "fail: ") <<
             chunk.Violations.size() << " violation"
                   << (chunk.Violations.size() == 1 ? "" : "s");
-        if (useColor) std::cout << ResetColor;
+        if (useColor) {
+            std::cout << ResetColor;
+        }
         auto location = std::string(path) + ':' + std::to_string(first.Line) +
             ':' + std::to_string(first.Column);
         if (location.size() + 6 <= terminalWidth) {
@@ -876,19 +1078,27 @@ void PrintCheckDiagnostics(
         const auto gutter = std::string(width + 1, ' ') + "| ";
         std::cout << gutter.substr(0, gutter.size() - 1) << '\n';
         size_t violationIndex = 0;
-        for (auto lineNumber = chunk.Begin; lineNumber < chunk.End;
+        for (auto lineNumber = chunk.Begin;
+            lineNumber < chunk.End;
             ++lineNumber)
         {
             auto text = lineNumber <= sourceLines.size()
-                ? sourceLines[lineNumber - 1].Text : std::string_view{};
-            if (text.ends_with('\r')) text.remove_suffix(1);
+                ? sourceLines[lineNumber - 1].Text
+                : std::string_view{};
+            if (text.ends_with('\r')) {
+                text.remove_suffix(1);
+            }
             const auto prefix = std::string(
-                width - std::to_string(lineNumber).size(), ' ') +
-                std::to_string(lineNumber) + " | ";
+                width - std::to_string(lineNumber).size(),
+                ' ') + std::to_string(lineNumber) + " | ";
             auto printLine = [&] (size_t column, bool fromStart = false) {
                 std::cout << prefix;
-                return PrintSourceExcerpt(text, column, prefix.size(),
-                    terminalWidth, fromStart);
+                return PrintSourceExcerpt(
+                    text,
+                    column,
+                    prefix.size(),
+                    terminalWidth,
+                    fromStart);
             };
             if (violationIndex == chunk.Violations.size() ||
                 chunk.Violations[violationIndex].Line != lineNumber)
@@ -899,13 +1109,16 @@ void PrintCheckDiagnostics(
                 chunk.Violations[violationIndex].Line == lineNumber)
             {
                 const auto& violation = chunk.Violations[violationIndex++];
-                auto excerpt = printLine(violation.Column,
+                auto excerpt = printLine(
+                    violation.Column,
                     violation.Kind == ViolationKind::LineWidth);
                 std::cout << gutter;
                 if (!excerpt.CaretVisible) {
                     // Do not imply that the cropped end of a long line is
                     // the exact token at ColumnLimit + 1.
-                    PrintWrappedMessage(violation.Message, gutter,
+                    PrintWrappedMessage(
+                        violation.Message,
+                        gutter,
                         terminalWidth);
                     continue;
                 }
@@ -916,28 +1129,38 @@ void PrintCheckDiagnostics(
                     std::cout << ' ' << violation.Message << '\n';
                 } else {
                     std::cout << '\n' << gutter;
-                    PrintWrappedMessage(violation.Message, gutter,
+                    PrintWrappedMessage(
+                        violation.Message,
+                        gutter,
                         terminalWidth);
                 }
             }
         }
         if (chunk.HasFix || chunk.HasLayoutFix) {
-            std::cout << (fixed ? "  applied formatting:\n" :
-                "  suggested formatting:\n");
+            std::cout << (fixed
+                ? "  applied formatting:\n"
+                : "  suggested formatting:\n");
             const auto& fix = chunk.HasLayoutFix ? chunk.LayoutFix : chunk.Fix;
             for (const auto& line : fix) {
-                PrintSuggestedLine(line.Text, terminalWidth,
-                    gutter.size(), useColor);
+                PrintSuggestedLine(
+                    line.Text,
+                    terminalWidth,
+                    gutter.size(),
+                    useColor);
                 if (!line.HasNewline) {
                     std::cout << std::string(gutter.size(), ' ')
                               << "\\ No newline at end of file\n";
                 }
             }
-            if (fix.empty()) std::cout << "  (remove this chunk)\n";
+            if (fix.empty()) {
+                std::cout << "  (remove this chunk)\n";
+            }
         } else if (!chunk.HasLayoutIssue) {
             std::cout << "  ";
-            PrintWrappedMessage("hint: names are not changed by the formatter.",
-                "  ", terminalWidth);
+            PrintWrappedMessage(
+                "hint: names are not changed by the formatter.",
+                "  ",
+                terminalWidth);
         }
         if (chunk.HasLayoutIssue && !chunk.HasLayoutFix) {
             std::cout << "  ";
@@ -995,7 +1218,8 @@ std::vector<std::filesystem::path> CollectFiles(
         }
         auto iterator = std::filesystem::recursive_directory_iterator(path);
         for (const auto end = std::filesystem::recursive_directory_iterator();
-            iterator != end; ++iterator)
+            iterator != end;
+            ++iterator)
         {
             const auto& entry = *iterator;
             bool directory = entry.is_directory();
@@ -1094,10 +1318,12 @@ Options ParseOptions(int argc, char* argv[])
                 options.Exclusions.emplace_back(pattern);
             } catch (const std::regex_error& error) {
                 throw std::runtime_error(
-                    "invalid --exclude regex: " + pattern + ": " + error.what());
+                    "invalid --exclude regex: " + pattern + ": " +
+                        error.what());
             }
         } else {
-            throw std::runtime_error("unknown option: " + std::string(argument));
+            throw std::runtime_error("unknown option: " +
+                std::string(argument));
         }
     }
     if (options.DisableConfig && options.ConfigPath) {
@@ -1108,18 +1334,20 @@ Options ParseOptions(int argc, char* argv[])
             "--changed-hunks cannot be combined with input paths");
     }
     if (options.NoSpillover && !options.HunkInput) {
-        throw std::runtime_error(
-            "--no-spillover requires --changed-hunks");
+        throw std::runtime_error("--no-spillover requires --changed-hunks");
     }
     return options;
 }
 
-std::vector<Hunk> RemapHunks(const parser::SyntaxTree& beforeTree,
-    const parser::SyntaxTree& afterTree, std::span<const Hunk> hunks)
+std::vector<Hunk> RemapHunks(
+    const parser::SyntaxTree& beforeTree,
+    const parser::SyntaxTree& afterTree,
+    std::span<const Hunk> hunks)
 {
     bool sameTokens = beforeTree.TokenCount() == afterTree.TokenCount();
-    for (parser::TokenIndex i = 0; sameTokens &&
-        i < beforeTree.TokenCount(); ++i)
+    for (parser::TokenIndex i = 0;
+        sameTokens && i < beforeTree.TokenCount();
+        ++i)
     {
         sameTokens = beforeTree.Kind(i) == afterTree.Kind(i) &&
             beforeTree.TokenText(i) == afterTree.TokenText(i);
@@ -1275,7 +1503,8 @@ void PrintHelp(std::ostream& output, std::string_view executable)
         << "  --config <file>  Use one configuration file for every input.\n"
         << "  --no-config      Do not search parent directories for .hit-fmt.\n"
         << "  --changed-hunks <file|->  Check hunks from a file or stdin.\n"
-        << "  --exclude <regex> Skip matching files or directories (repeatable).\n"
+        << "  --exclude <regex> Skip matching files or directories "
+           "(repeatable).\n"
         << "  -h, --help       Show this help.\n"
         << "\n"
         << "Without --config or --no-config, each source file uses the "
@@ -1284,7 +1513,8 @@ void PrintHelp(std::ostream& output, std::string_view executable)
         << "Directories are searched recursively for C and C++ source "
            "files.\n"
         << "--exclude patterns search paths relative to each input directory; "
-           ".hit-fmt Exclude patterns search paths relative to the config file.\n"
+           ".hit-fmt Exclude patterns search paths relative to the "
+           "config file.\n"
         << "Both use ECMAScript regex; matching directories are skipped.\n"
         << "Files larger than 4 MiB are skipped with a warning.\n"
         << "Changed ranges use 'file <path>' followed by one or more\n"
@@ -1318,7 +1548,8 @@ int main(int argc, char* argv[])
             formatter::ChangedHunkFiles changed;
             if (*options.HunkInput == "-") {
                 changed = formatter::ParseChangedHunks(
-                    std::cin, std::filesystem::current_path());
+                    std::cin,
+                    std::filesystem::current_path());
             } else {
                 std::ifstream input(*options.HunkInput);
                 if (!input) {
@@ -1326,7 +1557,8 @@ int main(int argc, char* argv[])
                         *options.HunkInput);
                 }
                 changed = formatter::ParseChangedHunks(
-                    input, std::filesystem::current_path());
+                    input,
+                    std::filesystem::current_path());
             }
             options.Paths = std::move(changed.Paths);
             options.Hunks = std::move(changed.Hunks);
@@ -1364,8 +1596,9 @@ int main(int argc, char* argv[])
             auto source = paddedSource.View();
             std::span<const Hunk> hunks;
             if (options.HunkInput) {
-                hunks = options.Hunks.at(
-                    std::filesystem::absolute(path).lexically_normal().string());
+                auto absolute =
+                    std::filesystem::absolute(path).lexically_normal();
+                hunks = options.Hunks.at(absolute.string());
                 auto lastLine = std::max(size_t{1}, SplitLines(source).size());
                 for (const auto& hunk : hunks) {
                     if (hunk.End > lastLine) {
@@ -1374,82 +1607,115 @@ int main(int argc, char* argv[])
                 }
             }
             const auto& config = styleResolver->Resolve(path);
-            auto tree = parser::Parse(paddedSource, [] (parser::ParseError) { });
+            auto tree = parser::Parse(
+                paddedSource,
+                [] (parser::ParseError) { });
             // Check the actual text, never a speculative expression reflow.
             // Fixes may reflow, but must be checked again after writing.
             auto inspect = [&] (const parser::SyntaxTree& current,
                 std::span<const Hunk> selected) {
-                auto checkStyle = config.FormattingStyle;
-                checkStyle.ExpressionLayoutCondition =
+                    auto checkStyle = config.FormattingStyle;
+                    checkStyle.ExpressionLayoutCondition =
                     formatter::ExpressionLayoutCondition::Preserve;
-                auto windows = options.HunkInput
-                    ? HunkWindows(current, selected, true)
-                    : std::vector<Hunk>{};
-                auto formatted = formatter::Format(current, checkStyle);
-                bool unsupported = false;
-                if (options.HunkInput) {
-                    formatted = FormatHunks(current, formatted, windows,
-                        &unsupported, true);
-                }
-                auto names = formatter::CheckNames(current, config);
-                auto parameters = formatter::CheckParameterNames(current, config);
-                auto layout = formatter::CheckExpressionLayout(current,
-                    config.FormattingStyle);
-                if (options.HunkInput) {
-                    std::erase_if(names, [&] (const auto& issue) {
-                        return !InHunks(issue.Position.Line,
-                            issue.Position.Line, selected);
-                    });
-                    std::erase_if(parameters, [&] (const auto& issue) {
-                        return !InHunks(issue.Position.Line,
-                            issue.Position.Line, selected);
-                    });
-                    std::erase_if(layout, [&] (const auto& issue) {
-                        return !InHunks(issue.Position.Line,
-                            issue.Position.Line, windows);
-                    });
-                }
-                bool mismatch = formatted != current.Source() || unsupported ||
+                    auto windows = options.HunkInput
+                        ? HunkWindows(current, selected, true)
+                        : std::vector<Hunk>{};
+                    auto formatted = formatter::Format(current, checkStyle);
+                    bool unsupported = false;
+                    if (options.HunkInput) {
+                        formatted = FormatHunks(
+                            current,
+                            formatted,
+                            windows,
+                            &unsupported,
+                            true);
+                    }
+                    auto names = formatter::CheckNames(current, config);
+                    auto parameters = formatter::CheckParameterNames(
+                        current,
+                        config);
+                    auto layout = formatter::CheckExpressionLayout(
+                        current,
+                        config.FormattingStyle);
+                    if (options.HunkInput) {
+                        std::erase_if(names, [&] (const auto& issue) {
+                            return !InHunks(
+                                issue.Position.Line,
+                                issue.Position.Line,
+                                selected);
+                        });
+                        std::erase_if(parameters, [&] (const auto& issue) {
+                            return !InHunks(
+                                issue.Position.Line,
+                                issue.Position.Line,
+                                selected);
+                        });
+                        std::erase_if(layout, [&] (const auto& issue) {
+                            return !InHunks(
+                                issue.Position.Line,
+                                issue.Position.Line,
+                                windows);
+                        });
+                    }
+                    bool mismatch = formatted !=
+                        current.Source() || unsupported ||
                     !names.empty() || !parameters.empty() || !layout.empty();
-                if (summaryOnly && mismatch) {
-                    if (useColor) std::cout << BoldRed;
-                    std::cout << filePath << ": ";
-                    if (formatted != current.Source()) {
-                        std::cout << "formatting mismatch";
-                    } else if (unsupported) {
-                        std::cout << "fail: unsafe structural edit";
-                    } else if (!layout.empty()) {
-                        std::cout << "fail: layout violation";
-                        if (layout.size() != 1) std::cout << 's';
-                    } else if (!names.empty()) {
-                        std::cout << "fail: invalid name";
-                    } else {
-                        std::cout << "fail: unnamed parameter";
-                    }
-                    if (useColor) std::cout << ResetColor;
-                    std::cout.put('\n');
-                } else if (!summaryOnly && mismatch) {
-                    auto layoutFormatted = layout.empty() ? std::string{} :
+                    if (summaryOnly && mismatch) {
+                        if (useColor) {
+                            std::cout << BoldRed;
+                        }
+                        std::cout << filePath << ": ";
+                        if (formatted != current.Source()) {
+                            std::cout << "formatting mismatch";
+                        } else if (unsupported) {
+                            std::cout << "fail: unsafe structural edit";
+                        } else if (!layout.empty()) {
+                            std::cout << "fail: layout violation";
+                            if (layout.size() != 1) {
+                                std::cout << 's';
+                            }
+                        } else if (!names.empty()) {
+                            std::cout << "fail: invalid name";
+                        } else {
+                            std::cout << "fail: unnamed parameter";
+                        }
+                        if (useColor) {
+                            std::cout << ResetColor;
+                        }
+                        std::cout.put('\n');
+                    } else if (!summaryOnly && mismatch) {
+                        auto layoutFormatted = layout.empty() ? std::string{} :
                         formatter::Format(current, config.FormattingStyle);
-                    if (options.HunkInput && !layout.empty()) {
-                        layoutFormatted = FormatHunks(current,
-                            layoutFormatted, windows, nullptr, true);
-                    }
-                    if (formatted != current.Source() || !names.empty() ||
+                        if (options.HunkInput && !layout.empty()) {
+                            layoutFormatted = FormatHunks(
+                                current,
+                                layoutFormatted,
+                                windows,
+                                nullptr,
+                                true);
+                        }
+                        if (formatted != current.Source() || !names.empty() ||
                         !parameters.empty() || !layout.empty())
                     {
-                        PrintCheckDiagnostics(filePath, current.Source(),
-                            formatted, layoutFormatted, names, parameters,
-                            layout, useColor, checkStyle.SeparatorLength);
+                            PrintCheckDiagnostics(
+                                filePath,
+                                current.Source(),
+                                formatted,
+                                layoutFormatted,
+                                names,
+                                parameters,
+                                layout,
+                                useColor,
+                                checkStyle.SeparatorLength);
+                        }
+                        if (unsupported) {
+                            std::cout << "fail: unsafe structural edit\n"
+                                "  --> " << filePath << ':'
+                                << selected.front().Begin << ":1\n";
+                        }
                     }
-                    if (unsupported) {
-                        std::cout << "fail: unsafe structural edit\n"
-                            "  --> " << filePath << ':' << selected.front().Begin
-                            << ":1\n";
-                    }
-                }
-                return mismatch;
-            };
+                    return mismatch;
+                };
 
             if (!options.Fix) {
                 mismatchCount += inspect(tree, hunks);
@@ -1457,20 +1723,35 @@ int main(int argc, char* argv[])
             }
 
             auto applied = options.HunkInput
-                ? formatter::FormatChanged(tree, config.FormattingStyle,
-                    hunks, !options.NoSpillover)
+                ? formatter::FormatChanged(
+                    tree,
+                    config.FormattingStyle,
+                    hunks,
+                    !options.NoSpillover)
                 : formatter::Format(tree, config.FormattingStyle);
             if (applied != source) {
                 util::WriteEntireFile(filePath, applied);
                 if (summaryOnly) {
-                    if (useColor) std::cout << BoldGreen;
+                    if (useColor) {
+                        std::cout << BoldGreen;
+                    }
                     std::cout << filePath << ": fixed formatting";
-                    if (useColor) std::cout << ResetColor;
+                    if (useColor) {
+                        std::cout << ResetColor;
+                    }
                     std::cout.put('\n');
                 } else {
-                    PrintCheckDiagnostics(filePath, source, applied, {},
-                        {}, {}, {}, useColor,
-                        config.FormattingStyle.SeparatorLength, true);
+                    PrintCheckDiagnostics(
+                        filePath,
+                        source,
+                        applied,
+                        {},
+                        {},
+                        {},
+                        {},
+                        useColor,
+                        config.FormattingStyle.SeparatorLength,
+                        true);
                 }
             }
             if (applied == source) {

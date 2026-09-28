@@ -9,10 +9,10 @@ namespace tokenizer::detail {
 
 constexpr uint64_t IdentifierKey(std::string_view text)
 {
-    return text.size() | (static_cast<uint64_t>(text[0]) << 8)
-        | (static_cast<uint64_t>(text[1]) << 16)
-        | (static_cast<uint64_t>(text.size() > 4 ? text[4] : '\0') << 24)
-        | (static_cast<uint64_t>(text.back()) << 32);
+    return text.size() | (static_cast<uint64_t>(text[0]) << 8) |
+        (static_cast<uint64_t>(text[1]) << 16) |
+        (static_cast<uint64_t>(text.size() > 4 ? text[4] : '\0') << 24) |
+        (static_cast<uint64_t>(text.back()) << 32);
 }
 
 inline TokenKind ClassifyIdentifier(std::string_view identifier)
@@ -118,8 +118,8 @@ inline TokenKind ClassifyIdentifier(std::string_view identifier)
         TOKENIZER_KEYWORD("volatile", Keyword_volatile);
         TOKENIZER_KEYWORD("wchar_t", Keyword_wchar_t);
         TOKENIZER_KEYWORD("while", Keyword_while);
-    default:
-        return TokenKind::Identifier;
+        default:
+            return TokenKind::Identifier;
     }
 
 #undef TOKENIZER_KEYWORD

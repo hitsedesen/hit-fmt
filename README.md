@@ -1,8 +1,10 @@
 # hit-fmt
 
 `hit-fmt` parses C and C++ source. It preserves source by default, with
-configurable declaration layout rules. Checks also report naming violations
-without renaming identifiers, including after `--fix`.
+configurable layout rules. This repository uses a stricter YTsaurus-inspired
+profile: 80 columns, overflow reflow, three-line ternaries, and one-level
+rather than delimiter-aligned continuation indentation. Checks also report
+naming violations without renaming identifiers, including after `--fix`.
 
 ## Build
 
@@ -33,14 +35,13 @@ Benchmarks can be built separately with
 
 ## Releases
 
-SourceCraft runs the test suite and verifies source preservation on pull
-requests into `main`. To publish a release, update the `VERSION` in `project()` in
+SourceCraft runs the test suite and checks the repository's strict formatting
+on pull requests into `main`. To publish a release, update the `VERSION` in `project()` in
 `CMakeLists.txt`, merge the change into `main`, then manually run the
 `release` workflow in SourceCraft CI/CD on `main`. It repeats the checks before
 pushing an annotated `v<version>` tag for that commit. An existing version tag
-is never overwritten; bump the project version for each release. Preservation
-checks run on the repository folder. The root `.hit-fmt` excludes build
-outputs, golden test fixtures, and benchmark sources.
+is never overwritten; bump the project version for each release. Formatting checks run on the repository folder. The root `.hit-fmt` excludes
+build outputs, golden test fixtures, benchmarks, and generated Unicode data.
 
 ## Usage
 

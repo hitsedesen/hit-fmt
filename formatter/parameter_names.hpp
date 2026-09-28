@@ -25,7 +25,8 @@ struct ParameterNameDiagnostic
 };
 
 [[nodiscard]] std::vector<ParameterNameDiagnostic>
-CheckParameterNames(const parser::SyntaxTree& tree,
+CheckParameterNames(
+    const parser::SyntaxTree& tree,
     const Configuration& config);
 
 } // namespace formatter

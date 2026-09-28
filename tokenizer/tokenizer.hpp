@@ -92,7 +92,8 @@ GetTokenizationErrorDescription(TokenizationErrorKind kind)
 #undef TOKENIZATION_ERROR_KIND
     });
 
-    return Descriptions[static_cast<std::underlying_type_t<TokenizationErrorKind>>(kind)];
+    using Underlying = std::underlying_type_t<TokenizationErrorKind>;
+    return Descriptions[static_cast<Underlying>(kind)];
 }
 
 struct TokenizationError
@@ -165,7 +166,8 @@ protected:
             }
         } else {
             ++CurrentCodePointPosition_.Column;
-            if (value != ' ' && value != '\t' && value != '\r' && value != '\f' &&
+            if (value !=
+                ' ' && value != '\t' && value != '\r' && value != '\f' &&
                 value != '\v')
             {
                 owner.IsNewLine_ = false;
