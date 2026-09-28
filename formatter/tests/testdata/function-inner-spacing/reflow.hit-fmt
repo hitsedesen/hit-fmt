@@ -1,5 +1,6 @@
 SpaceInsideFunctionParameters = Space
 EnforceSpaceInsideFunctionParameters = true
 FunctionParameterSplit = Pack
+EnforceFunctionParameterSplit = true
 MergeFunctionParameters = true
 ColumnLimit = 40

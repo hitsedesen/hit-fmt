@@ -14,19 +14,23 @@ namespace formatter {
 
 inline constexpr std::string_view DefaultConfigFileName = ".hit-fmt";
 
-// These spacing preferences use Enforce* flags instead of Preserve.
-inline constexpr auto EnforcedSpacingPreferences =
+// These preferences use Enforce* flags instead of a Preserve config value.
+inline constexpr auto EnforcedPreferences =
     std::to_array<std::string_view>({
         "SpaceInsideFunctionParameters", "SpaceInsideCallArguments",
         "InitializerBracesSpacing", "EmptyBlockInteriorSpacing",
         "ControlBlockSpaceBeforeBrace", "ClassBraceSpacing",
         "StructBraceSpacing", "UnionBraceSpacing",
         "FunctionBraceSpacing", "LambdaBraceSpacing",
-        "NamespaceBraceSpacing"});
+        "NamespaceBraceSpacing", "ClassBracePlacement",
+        "StructBracePlacement", "UnionBracePlacement",
+        "FunctionBracePlacement", "LambdaBracePlacement",
+        "NamespaceBracePlacement", "FunctionParameterSplit",
+        "CallArgumentSplit", "InitializerListSplit", "TernarySplit"});
 
 [[nodiscard]] constexpr bool AllowsPreserveConfigValue(std::string_view key)
 {
-    for (auto preference : EnforcedSpacingPreferences) {
+    for (auto preference : EnforcedPreferences) {
         if (preference == key) {
             return false;
         }

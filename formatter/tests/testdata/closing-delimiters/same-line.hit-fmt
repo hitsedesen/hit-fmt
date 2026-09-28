@@ -1,6 +1,3 @@
-FunctionParameterSplit = Preserve
-CallArgumentSplit = Preserve
-InitializerListSplit = Preserve
 FunctionParameterClosingParenthesis = SameLine
 EnforceFunctionParameterClosingParenthesis = true
 FunctionCallArgumentClosingParenthesis = SameLine

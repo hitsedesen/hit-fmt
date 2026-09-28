@@ -26,9 +26,13 @@ PointerReferenceDeclaratorLocation = Left
 IndentAccessModifiers = NoIndent
 IndentMembers = Indent
 ClassBracePlacement = NewLine
+EnforceClassBracePlacement = true
 StructBracePlacement = NewLine
+EnforceStructBracePlacement = true
 UnionBracePlacement = NewLine
+EnforceUnionBracePlacement = true
 NamespaceBracePlacement = Attach
+EnforceNamespaceBracePlacement = true
 NamespaceBraceSpacing = SingleSpace
 EnforceNamespaceBraceSpacing = true
 EnumBraceSpacing = SingleSpace
@@ -43,7 +47,9 @@ StructuredBindingBracketSpacing = NoSpace
 
 # Functions and parameters
 FunctionBracePlacement = NewLine
+EnforceFunctionBracePlacement = true
 FunctionParameterSplit = OnePerLine
+EnforceFunctionParameterSplit = true
 FunctionParameterClosingParenthesis = SameLine
 EnforceFunctionParameterClosingParenthesis = true
 FirstFunctionParameterPosition = NewLine
@@ -60,6 +66,7 @@ NoexceptSpaceBeforeParentheses = NoSpace
 
 # Lambdas
 LambdaBracePlacement = Attach
+EnforceLambdaBracePlacement = true
 LambdaBraceSpacing = SingleSpace
 EnforceLambdaBraceSpacing = true
 # An immediately invoked lambda is still a call: attach its ().
@@ -86,6 +93,7 @@ WhitespaceSensitiveMacros = [
     "DEFINE_AMBIGUOUS_ENUM_WITH_UNDERLYING_TYPE", "YT_DEFINE_ERROR_ENUM"
 ]
 CallArgumentSplit = OnePerLine
+EnforceCallArgumentSplit = true
 # Keep short EXPECT_THROW calls inline; split its longer two-argument calls.
 CallArgumentSplitColumnLimit = 90
 CallArgumentSplitColumnLimitNames = ["EXPECT_THROW"]
@@ -168,7 +176,7 @@ ConstructorInitializerListColonPlacement = AttachToInitializer
 ConstructorInitializerListCommaPlacement = AttachToNext
 ConstructorInitializerListSplit = OnePerLine
 # Existing braced aggregates may be nested or macro arguments.
-InitializerListSplit = Preserve
+
 InitializerClosingBrace = SameLine
 EnforceInitializerClosingBrace = true
 # A trailing comma keeps the closing brace on its own line.
@@ -186,6 +194,7 @@ AssignmentOperatorPlacement = Trailing
 TernaryOperatorPlacement = Leading
 EnforceTernaryOperatorPlacement = true
 TernarySplit = ThreeLines
+EnforceTernarySplit = true
 GroupingInteriorSpacing = NoSpace
 CastArgumentSpacing = NoSpace
 CastSpacing = NoSpace

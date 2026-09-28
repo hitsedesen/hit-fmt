@@ -29,10 +29,13 @@ namespace formatter {
 
 template <typename T> struct ConfigEnumNames;
 
-#define BRACE_PLACEMENT_VALUES(X)                                              \
-    X(Preserve) X(Attach) X(NewLine)
-DEFINE_CONFIG_ENUM(BracePlacement, BRACE_PLACEMENT_VALUES);
-#undef BRACE_PLACEMENT_VALUES
+// Preserve is an internal sentinel for source-owned gaps, not a config value.
+enum class BracePlacement { Attach, NewLine, Preserve };
+template <> struct ConfigEnumNames<BracePlacement>
+{
+    static constexpr auto Values =
+        std::to_array<std::string_view>({"Attach", "NewLine"});
+};
 
 #define NAMESPACE_COMMENTS_VALUES(X)                                           \
     X(Preserve) X(Remove) X(AddMissing) X(Fix)
@@ -155,14 +158,19 @@ DEFINE_CONFIG_ENUM(InheritanceListStart, INHERITANCE_LIST_START_VALUES);
 DEFINE_CONFIG_ENUM(InheritanceListSplit, INHERITANCE_LIST_SPLIT_VALUES);
 #undef INHERITANCE_LIST_SPLIT_VALUES
 
-#define FUNCTION_PARAMETER_SPLIT_VALUES(X)                                     \
-    X(Preserve) X(Pack) X(OnePerLine)
-DEFINE_CONFIG_ENUM(FunctionParameterSplit, FUNCTION_PARAMETER_SPLIT_VALUES);
-#undef FUNCTION_PARAMETER_SPLIT_VALUES
+enum class FunctionParameterSplit { Pack, OnePerLine, Preserve };
+template <> struct ConfigEnumNames<FunctionParameterSplit>
+{
+    static constexpr auto Values =
+        std::to_array<std::string_view>({"Pack", "OnePerLine"});
+};
 
-#define CALL_ARGUMENT_SPLIT_VALUES(X) X(Preserve) X(Pack) X(OnePerLine)
-DEFINE_CONFIG_ENUM(CallArgumentSplit, CALL_ARGUMENT_SPLIT_VALUES);
-#undef CALL_ARGUMENT_SPLIT_VALUES
+enum class CallArgumentSplit { Pack, OnePerLine, Preserve };
+template <> struct ConfigEnumNames<CallArgumentSplit>
+{
+    static constexpr auto Values =
+        std::to_array<std::string_view>({"Pack", "OnePerLine"});
+};
 
 #define CHAINED_CALL_SPLIT_CONDITION_VALUES(X) X(Preserve) X(Overflow) X(Always)
 DEFINE_CONFIG_ENUM(ChainedCallSplitCondition,
@@ -246,9 +254,12 @@ DEFINE_CONFIG_ENUM(TernaryOperatorPlacement,
     TERNARY_OPERATOR_PLACEMENT_VALUES);
 #undef TERNARY_OPERATOR_PLACEMENT_VALUES
 
-#define TERNARY_SPLIT_VALUES(X) X(Preserve) X(AsNeeded) X(ThreeLines)
-DEFINE_CONFIG_ENUM(TernarySplit, TERNARY_SPLIT_VALUES);
-#undef TERNARY_SPLIT_VALUES
+enum class TernarySplit { AsNeeded, ThreeLines, Preserve };
+template <> struct ConfigEnumNames<TernarySplit>
+{
+    static constexpr auto Values =
+        std::to_array<std::string_view>({"AsNeeded", "ThreeLines"});
+};
 
 #define FIRST_FUNCTION_PARAMETER_POSITION_VALUES(X)                            \
     X(NameLine) X(NameLineIfFits) X(NewLine)

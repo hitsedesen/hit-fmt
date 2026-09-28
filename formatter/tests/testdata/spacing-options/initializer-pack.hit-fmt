@@ -1,4 +1,5 @@
 IndentWidth = 2
 ColumnLimit = 48
 InitializerListSplit = Pack
+EnforceInitializerListSplit = true
 InitializerListIndent = Continuation

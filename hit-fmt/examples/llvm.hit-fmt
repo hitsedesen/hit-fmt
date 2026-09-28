@@ -16,16 +16,20 @@ PointerReferenceDeclaratorLocation = Right
 IndentAccessModifiers = NoIndent
 IndentMembers = Indent
 ClassBracePlacement = Attach
+EnforceClassBracePlacement = true
 ClassBraceSpacing = SingleSpace
 EnforceClassBraceSpacing = true
 StructBracePlacement = Attach
+EnforceStructBracePlacement = true
 StructBraceSpacing = SingleSpace
 EnforceStructBraceSpacing = true
 UnionBracePlacement = Attach
+EnforceUnionBracePlacement = true
 UnionBraceSpacing = SingleSpace
 EnforceUnionBraceSpacing = true
 EnumBraceSpacing = SingleSpace
 NamespaceBracePlacement = Attach
+EnforceNamespaceBracePlacement = true
 NamespaceBraceSpacing = SingleSpace
 EnforceNamespaceBraceSpacing = true
 NamespaceComments = Fix
@@ -35,9 +39,11 @@ InheritanceList = Preserve
 
 # Functions and parameters
 FunctionBracePlacement = Attach
+EnforceFunctionBracePlacement = true
 FunctionBraceSpacing = SingleSpace
 EnforceFunctionBraceSpacing = true
 FunctionParameterSplit = Pack
+EnforceFunctionParameterSplit = true
 FirstFunctionParameterPosition = NameLineIfFits
 FunctionParameterIndent = Continuation
 FunctionParameterNewLineIndent = 4
@@ -48,6 +54,7 @@ EnforceSpaceInsideFunctionParameters = true
 
 # Lambdas
 LambdaBracePlacement = Attach
+EnforceLambdaBracePlacement = true
 LambdaBraceSpacing = SingleSpace
 EnforceLambdaBraceSpacing = true
 LambdaSpaceBeforeParameters = NoSpace
@@ -57,6 +64,7 @@ SpaceAroundCaptureAssignment = Space
 
 # Calls and chains
 CallArgumentSplit = Pack
+EnforceCallArgumentSplit = true
 FirstCallArgumentPosition = CallLine
 CallArgumentIndent = Continuation
 FunctionCallSpaceBeforeParameters = NoSpace
@@ -77,6 +85,7 @@ StatementAttributeIndent = Block
 
 # Initializers, new, and delete
 InitializerListSplit = Pack
+EnforceInitializerListSplit = true
 InitializerListIndent = Continuation
 
 # Expressions and operators
@@ -86,7 +95,7 @@ AssignmentOperatorPlacement = Trailing
 TernaryOperatorPlacement = Leading
 EnforceTernaryOperatorPlacement = true
 TernarySplit = AsNeeded
-
+EnforceTernarySplit = true
 # Naming checks
 # LLVM uses upper-initial types and variables, lower-initial functions.
 # Naming checks only cover unambiguous definitions/declarations; see docs.

@@ -1,4 +1,5 @@
 ColumnLimit = 23
 CallArgumentSplit = Pack
+EnforceCallArgumentSplit = true
 CommaSpacing = NoSpace
 EnforceCommaSpacing = false

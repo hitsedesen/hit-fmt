@@ -1,3 +1,2 @@
-CallArgumentSplit = Preserve
 MultilineSingleCallArgumentPosition = CallLine
 EnforceMultilineSingleCallArgumentPosition = true

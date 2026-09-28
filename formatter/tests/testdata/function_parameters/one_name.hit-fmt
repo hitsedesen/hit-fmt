@@ -1,6 +1,8 @@
 IndentWidth = 4
 ColumnLimit = 40
 FunctionParameterSplit = OnePerLine
+EnforceFunctionParameterSplit = true
+FunctionBracePlacement = NewLine
 FirstFunctionParameterPosition = NameLine
 EnforceFirstFunctionParameterPosition = false
 FunctionParameterIndent = IndentWidth

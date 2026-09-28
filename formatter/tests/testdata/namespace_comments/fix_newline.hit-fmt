@@ -1,2 +1,3 @@
 NamespaceComments = Fix
 NamespaceBracePlacement = NewLine
+EnforceNamespaceBracePlacement = true

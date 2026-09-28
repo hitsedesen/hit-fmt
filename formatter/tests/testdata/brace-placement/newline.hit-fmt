@@ -1,6 +1,12 @@
 ClassBracePlacement = NewLine
+EnforceClassBracePlacement = true
 StructBracePlacement = NewLine
+EnforceStructBracePlacement = true
 UnionBracePlacement = NewLine
+EnforceUnionBracePlacement = true
 FunctionBracePlacement = NewLine
+EnforceFunctionBracePlacement = true
 LambdaBracePlacement = NewLine
+EnforceLambdaBracePlacement = true
 NamespaceBracePlacement = NewLine
+EnforceNamespaceBracePlacement = true

@@ -1,3 +1,4 @@
 FunctionSpaceBeforeParameters = Space
 FunctionParameterSplit = Pack
+EnforceFunctionParameterSplit = true
 ColumnLimit = 40

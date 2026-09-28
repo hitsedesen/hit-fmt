@@ -1116,9 +1116,11 @@ constexpr HelpSection HelpSections[] = {
   NoSpace between a parsed member-pointer ::* and the following
   declarator name (S::* member versus S::*member). These rules
   preserve multiline and commented gaps and do not alter expressions.
-  • *BracePlacement: Preserve (default) keeps the existing layout,
-  Attach joins a brace to its header, and NewLine moves it to its own
-  line. Existing same-line spacing is left unchanged by Attach. Each of
+  • *BracePlacement: Attach (default) joins a brace to its header;
+  NewLine moves it to its own line. Each matching Enforce*BracePlacement
+  option (default false) also changes existing braces. Without enforcement,
+  existing braces stay put unless their declaration header is reflowed.
+  Existing same-line spacing is left unchanged by Attach. Each of
   class, struct, union, function definition, lambda, and
   namespace is configured independently. Attach places the brace before
   a trailing header comment (// or /* ... */). When NewLine splits an
@@ -1219,9 +1221,11 @@ constexpr HelpSection HelpSections[] = {
   final parameter or argument) or NewLine selects the position when
   reflowing a list. Their matching Enforce... options (default false)
   also apply the placement to existing closing gaps without reflow.
-  • FunctionParameterSplit: Preserve (default, leave parameter lists
-  unchanged), Pack (put as many parameters as fit on each line), or
-  OnePerLine. Lists already fitting on one line are left unchanged.
+  • FunctionParameterSplit: Pack (default, put as many parameters as fit
+  on each line) or OnePerLine. EnforceFunctionParameterSplit (default
+  false) reflows safe lists that exceed ColumnLimit or are already split.
+  Without enforcement, existing parameter lists remain source-owned.
+  Lists already fitting on one line are left unchanged.
   • FirstFunctionParameterPosition: NameLine (default), NewLine, or
   NameLineIfFits. The latter keeps the first parameter beside ( only
   if it and its following comma or closing suffix fit within ColumnLimit;
@@ -1323,11 +1327,13 @@ CRLF lists are left intact. They do not change calls.
   f(), void f(), [](), and []. Nonempty interiors have separate
   options. All token-spacing rules leave newlines, comments, directives,
   and incomplete statements unchanged.
-  • CallArgumentSplit: Preserve (default, leave call arguments
-  unchanged), Pack (put as many arguments as fit on each line), or
-  OnePerLine (one argument per continuation line when split, including
-  safe calls already split in the source). Independent of
-  ExpressionLayoutCondition. Calls that fit on one line
+  • CallArgumentSplit: Pack (default, put as many arguments as fit on each
+  line) or OnePerLine (one argument per continuation line when split,
+  including
+  safe calls already split in the source). EnforceCallArgumentSplit
+  (default false) enables reflow of safe existing lists; without it,
+  call lists remain source-owned. Independent of ExpressionLayoutCondition.
+  Calls that fit on one line
   are not forced to split. A single safe argument can move to a continuation
   line. For nested single-argument calls, safe one-break inner and outer
   layouts are compared so the chosen split balances the resulting lines.
@@ -1366,7 +1372,7 @@ CRLF lists are left intact. They do not change calls.
   places it below ( using CallArgumentIndent when a split is needed.
   EnforceMultilineSingleCallArgumentPosition (default false) also
   checks and corrects safe existing multiline calls, even when
-  CallArgumentSplit = Preserve. It does not split flat, fitting arguments or
+  EnforceCallArgumentSplit = false. It does not split flat, fitting arguments or
   reshape the argument's interior. A sole nested call stays on the outer
   call's line so its own arguments can split first. Braced and
   lambda-containing arguments, comments, directives, and recovered syntax
@@ -1640,9 +1646,10 @@ CRLF lists are left intact. They do not change calls.
   EmptyBraceInitializerInteriorSpacing controls { } versus {}
   for empty parsed braced initializers. Neither setting
   affects block, namespace, record, or lambda braces.
-  • InitializerListSplit: Preserve (default), Pack (put as many braced
-  initializer elements on a line as fit), or OnePerLine (one element per
-  continuation line when a split is needed). Applies only to complete
+  • InitializerListSplit: Pack (default, put as many braced initializer
+  elements on a line as fit) or OnePerLine (one element per continuation
+  line when a split is needed). EnforceInitializerListSplit (default false)
+  enables reflow of safe existing lists. Applies only to complete
   parsed braced initializer lists with single-line elements, comma
   separators, and whitespace-only gaps. Trailing commas are preserved;
   comments, directives, CRLF, and multiline elements stay source-owned.
@@ -1657,7 +1664,7 @@ CRLF lists are left intact. They do not change calls.
   unless a retained comma precedes it) or NewLine selects the position
   when reflowing a list. EnforceInitializerClosingBrace (default false)
   also applies that position without reflow, including with
-  InitializerListSplit = Preserve when the gap before } is safe. For
+  EnforceInitializerListSplit = false when the gap before } is safe. For
   unknown typed temporary initializers, only the closing gap (or a safe
   trailing comma, if requested) is changed; their contents are not reflowed.
   A multiline final element retains its own closing-brace line. A closing
@@ -1875,8 +1882,10 @@ CRLF lists are left intact. They do not change calls.
   their side unless EnforceTernaryOperatorPlacement is true (default
   false). Enforcement also corrects safe existing breaks in Overflow
   mode, independently of TernarySplit.
-  • TernarySplit: Preserve (default) neither adds nor joins ternary
-  breaks. AsNeeded allows either delimiter or both to break. ThreeLines
+  • TernarySplit: AsNeeded (default) allows either delimiter or both to
+  break. EnforceTernarySplit (default false) enables expression reflow
+  to correct safe ternary breaks even without another expression layout
+  setting. ThreeLines
   keeps a flat ternary flat when it fits; if the ternary is split, it
   separates the condition, true branch, and false branch by breaking at
   both delimiters. Safe overlong ternaries are considered before call
@@ -1884,7 +1893,8 @@ CRLF lists are left intact. They do not change calls.
   Safe leading ThreeLines breaks align ? and : at
   least one indent level past the condition's line, including when a
   trailing-operator break is moved to the leading side. These settings
-  apply only when ExpressionLayoutCondition is not Preserve.
+  apply when ExpressionLayoutCondition is not Preserve, or when
+  EnforceTernarySplit is true (using Overflow as the fallback).
   Comments, directives, CRLF, and ambiguous or incomplete
   syntax stay source-owned. In --check mode, expression reflow is
   skipped; safe call and parameter reflow still produces suggested fixes.

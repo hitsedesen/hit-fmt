@@ -1,7 +1,9 @@
 ColumnLimit = 30
 ExpressionLayoutCondition = Overflow
 TernarySplit = ThreeLines
+EnforceTernarySplit = true
 TernaryOperatorPlacement = Leading
 CallArgumentSplit = Pack
+EnforceCallArgumentSplit = true
 MultilineSingleCallArgumentPosition = NewLine
 EnforceMultilineSingleCallArgumentPosition = false

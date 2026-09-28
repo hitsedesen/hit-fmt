@@ -238,7 +238,8 @@
         formatter::TernaryOperatorPlacement::Leading)                          \
     OPT(bool, EnforceTernaryOperatorPlacement, false)                          \
     OPT(formatter::TernarySplit, TernarySplit,                                 \
-        formatter::TernarySplit::Preserve)                                     \
+        formatter::TernarySplit::AsNeeded)                                     \
+    OPT(bool, EnforceTernarySplit, false)                                      \
     OPT(formatter::IncludeOrder, IncludeOrder,                                 \
         formatter::IncludeOrder::Preserve)                                     \
     OPT(formatter::BodyIndentation, IndentAccessModifiers,                     \
@@ -293,17 +294,23 @@
     /* Zero uses the global IndentWidth. */                                    \
     OPT(std::size_t, InheritanceListIndent, 0)                                 \
     OPT(formatter::BracePlacement, ClassBracePlacement,                        \
-        formatter::BracePlacement::Preserve)                                   \
+        formatter::BracePlacement::Attach)                                     \
+    OPT(bool, EnforceClassBracePlacement, false)                               \
     OPT(formatter::BracePlacement, StructBracePlacement,                       \
-        formatter::BracePlacement::Preserve)                                   \
+        formatter::BracePlacement::Attach)                                     \
+    OPT(bool, EnforceStructBracePlacement, false)                              \
     OPT(formatter::BracePlacement, UnionBracePlacement,                        \
-        formatter::BracePlacement::Preserve)                                   \
+        formatter::BracePlacement::Attach)                                     \
+    OPT(bool, EnforceUnionBracePlacement, false)                               \
     OPT(formatter::BracePlacement, FunctionBracePlacement,                     \
-        formatter::BracePlacement::Preserve)                                   \
+        formatter::BracePlacement::Attach)                                     \
+    OPT(bool, EnforceFunctionBracePlacement, false)                            \
     OPT(formatter::BracePlacement, LambdaBracePlacement,                       \
-        formatter::BracePlacement::Preserve)                                   \
+        formatter::BracePlacement::Attach)                                     \
+    OPT(bool, EnforceLambdaBracePlacement, false)                              \
     OPT(formatter::BracePlacement, NamespaceBracePlacement,                    \
-        formatter::BracePlacement::Preserve)                                   \
+        formatter::BracePlacement::Attach)                                     \
+    OPT(bool, EnforceNamespaceBracePlacement, false)                           \
     OPT(formatter::NamespaceComments, NamespaceComments,                       \
         formatter::NamespaceComments::Preserve)                                \
     OPT(std::size_t, NamespaceCommentSpaces, 1)                                \
@@ -311,7 +318,8 @@
     /* Zero disables separator normalization. */                               \
     OPT(std::size_t, SeparatorLength, 0)                                       \
     OPT(formatter::FunctionParameterSplit, FunctionParameterSplit,             \
-        formatter::FunctionParameterSplit::Preserve)                           \
+        formatter::FunctionParameterSplit::Pack)                               \
+    OPT(bool, EnforceFunctionParameterSplit, false)                            \
     OPT(formatter::FirstFunctionParameterPosition,                             \
         FirstFunctionParameterPosition,                                        \
         formatter::FirstFunctionParameterPosition::NameLine)                   \
@@ -322,7 +330,8 @@
     OPT(std::size_t, FunctionParameterNewLineIndent, 0)                        \
     OPT(bool, MergeFunctionParameters, false)                                  \
     OPT(formatter::CallArgumentSplit, CallArgumentSplit,                       \
-        formatter::CallArgumentSplit::Preserve)                                \
+        formatter::CallArgumentSplit::Pack)                                    \
+    OPT(bool, EnforceCallArgumentSplit, false)                                 \
     OPT(formatter::FirstCallArgumentPosition, FirstCallArgumentPosition,       \
         formatter::FirstCallArgumentPosition::CallLine)                        \
     OPT(formatter::MultilineSingleCallArgumentPosition,                        \
@@ -345,7 +354,8 @@
     OPT(formatter::CallArgumentIndent, ChainedCallIndent,                      \
         formatter::CallArgumentIndent::IndentWidth)                            \
     OPT(formatter::FunctionParameterSplit, InitializerListSplit,               \
-        formatter::FunctionParameterSplit::Preserve)                           \
+        formatter::FunctionParameterSplit::Pack)                               \
+    OPT(bool, EnforceInitializerListSplit, false)                              \
     OPT(formatter::FirstInitializerElementPosition,                            \
         FirstInitializerElementPosition,                                       \
         formatter::FirstInitializerElementPosition::BraceLine)                 \
