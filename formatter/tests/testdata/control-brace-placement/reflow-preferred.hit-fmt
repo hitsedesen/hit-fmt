@@ -1,4 +1,5 @@
 ColumnLimit = 34
 CallArgumentSplit = Pack
+EnforceCallArgumentSplit = true
 ControlBlockBracePlacement = AttachUnlessMultiline
 EnforceControlBlockBracePlacement = false

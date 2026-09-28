@@ -22,9 +22,13 @@ PointerReferenceDeclaratorLocation = Left
 IndentAccessModifiers = NoIndent
 IndentMembers = Indent
 ClassBracePlacement = NewLine
+EnforceClassBracePlacement = true
 StructBracePlacement = NewLine
+EnforceStructBracePlacement = true
 UnionBracePlacement = NewLine
+EnforceUnionBracePlacement = true
 NamespaceBracePlacement = Attach
+EnforceNamespaceBracePlacement = true
 NamespaceBraceSpacing = SingleSpace
 EnforceNamespaceBraceSpacing = true
 EnumBraceSpacing = SingleSpace
@@ -40,7 +44,9 @@ StructuredBindingBracketSpacing = NoSpace
 
 # Functions and parameters
 FunctionBracePlacement = NewLine
+EnforceFunctionBracePlacement = true
 FunctionParameterSplit = OnePerLine
+EnforceFunctionParameterSplit = true
 FunctionParameterIndent = IndentWidth
 FunctionParameterClosingParenthesis = SameLine
 EnforceFunctionParameterClosingParenthesis = true
@@ -58,6 +64,7 @@ NoexceptSpaceBeforeParentheses = NoSpace
 
 # Lambdas
 LambdaBracePlacement = Attach
+EnforceLambdaBracePlacement = true
 LambdaBraceSpacing = SingleSpace
 EnforceLambdaBraceSpacing = true
 LambdaCallSpaceBeforeArguments = NoSpace
@@ -73,6 +80,7 @@ SingleStatementLambdaBodyLayout = Preserve
 
 # Calls and chains
 CallArgumentSplit = OnePerLine
+EnforceCallArgumentSplit = true
 FunctionCallArgumentClosingParenthesis = SameLine
 EnforceFunctionCallArgumentClosingParenthesis = true
 FirstCallArgumentPosition = NewLine
@@ -124,7 +132,7 @@ ConstructorInitializerList = Format
 ConstructorInitializerListColonPlacement = AttachToInitializer
 ConstructorInitializerListCommaPlacement = AttachToNext
 ConstructorInitializerListSplit = OnePerLine
-InitializerListSplit = Preserve
+
 InitializerClosingBrace = SameLine
 EnforceInitializerClosingBrace = true
 InitializerTrailingComma = Keep
@@ -139,6 +147,7 @@ AssignmentOperatorPlacement = Trailing
 TernaryOperatorPlacement = Leading
 EnforceTernaryOperatorPlacement = true
 TernarySplit = ThreeLines
+EnforceTernarySplit = true
 GroupingInteriorSpacing = NoSpace
 CastArgumentSpacing = NoSpace
 CastSpacing = NoSpace

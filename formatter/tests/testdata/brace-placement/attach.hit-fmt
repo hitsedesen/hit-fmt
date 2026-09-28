@@ -1,6 +1,12 @@
 ClassBracePlacement = Attach
+EnforceClassBracePlacement = true
 StructBracePlacement = Attach
+EnforceStructBracePlacement = true
 UnionBracePlacement = Attach
+EnforceUnionBracePlacement = true
 FunctionBracePlacement = Attach
+EnforceFunctionBracePlacement = true
 LambdaBracePlacement = Attach
+EnforceLambdaBracePlacement = true
 NamespaceBracePlacement = Attach
+EnforceNamespaceBracePlacement = true

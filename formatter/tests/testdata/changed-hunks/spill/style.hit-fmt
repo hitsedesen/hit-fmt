@@ -1,5 +1,6 @@
 ColumnLimit = 15
 CallArgumentSplit = OnePerLine
+EnforceCallArgumentSplit = true
 FirstCallArgumentPosition = NewLine
 EnforceFirstCallArgumentPosition = true
 SpaceInsideFunctionParameters = NoSpace

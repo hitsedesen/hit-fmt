@@ -1,3 +1,4 @@
 ColumnLimit = 35
 InitializerListSplit = Pack
+EnforceInitializerListSplit = true
 InitializerListIndent = Continuation

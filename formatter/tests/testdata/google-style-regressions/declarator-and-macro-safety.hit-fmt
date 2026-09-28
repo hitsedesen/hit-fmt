@@ -1,6 +1,7 @@
 IndentWidth = 2
 ColumnLimit = 80
 CallArgumentSplit = Pack
+EnforceCallArgumentSplit = true
 ExpressionLayoutCondition = Overflow
 PointerReferenceDeclaratorLocation = Left
 BinaryOperatorSpacing = Space

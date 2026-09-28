@@ -294,7 +294,11 @@ private:
             {
                 continue;
             }
-            if (Tree_.MatchingDelimiter(index) != NoToken) {
+            if (Tree_.MatchingDelimiter(index) != NoToken &&
+                (!ChangedControlHeaders_ ||
+                    (index < ChangedControlHeaders_->size() &&
+                        (*ChangedControlHeaders_)[index])))
+            {
                 Placements_[index] = placement;
                 Spacings_[index] = spacing;
                 HeaderStarts_[index] = header == NoToken
@@ -9523,9 +9527,49 @@ std::optional<std::string> FormatSeparators(
     return output;
 }
 
-std::string Format(const parser::SyntaxTree& tree, const Style& style)
+std::string Format(const parser::SyntaxTree& tree, const Style& requested)
 {
     HIT_FMT_PROFILE_PHASE("formatter.total");
+    Style style = requested;
+    if (style.EnforceTernarySplit &&
+        style.ExpressionLayoutCondition ==
+            ExpressionLayoutCondition::Preserve)
+    {
+        style.ExpressionLayoutCondition =
+            ExpressionLayoutCondition::Overflow;
+    }
+    // Keep source-owned layouts until their enforcement switch is enabled.
+    // The requested preferences remain available for newly reflowed headers.
+    if (!style.EnforceFunctionParameterSplit) {
+        style.FunctionParameterSplit = FunctionParameterSplit::Preserve;
+    }
+    if (!style.EnforceCallArgumentSplit) {
+        style.CallArgumentSplit = CallArgumentSplit::Preserve;
+    }
+    if (!style.EnforceInitializerListSplit) {
+        style.InitializerListSplit = FunctionParameterSplit::Preserve;
+    }
+    if (!style.EnforceTernarySplit) {
+        style.TernarySplit = TernarySplit::Preserve;
+    }
+    if (!style.EnforceClassBracePlacement) {
+        style.ClassBracePlacement = BracePlacement::Preserve;
+    }
+    if (!style.EnforceStructBracePlacement) {
+        style.StructBracePlacement = BracePlacement::Preserve;
+    }
+    if (!style.EnforceUnionBracePlacement) {
+        style.UnionBracePlacement = BracePlacement::Preserve;
+    }
+    if (!style.EnforceFunctionBracePlacement) {
+        style.FunctionBracePlacement = BracePlacement::Preserve;
+    }
+    if (!style.EnforceLambdaBracePlacement) {
+        style.LambdaBracePlacement = BracePlacement::Preserve;
+    }
+    if (!style.EnforceNamespaceBracePlacement) {
+        style.NamespaceBracePlacement = BracePlacement::Preserve;
+    }
     // The preferences are used in generated layouts. Unchanged gaps are
     // source-owned unless their independent enforcement switch is enabled.
     Style existing = style;
@@ -10220,6 +10264,12 @@ std::string Format(const parser::SyntaxTree& tree, const Style& style)
                 }
             }
             Style controlStyle;
+            controlStyle.ClassBracePlacement = BracePlacement::Preserve;
+            controlStyle.StructBracePlacement = BracePlacement::Preserve;
+            controlStyle.UnionBracePlacement = BracePlacement::Preserve;
+            controlStyle.FunctionBracePlacement = BracePlacement::Preserve;
+            controlStyle.LambdaBracePlacement = BracePlacement::Preserve;
+            controlStyle.NamespaceBracePlacement = BracePlacement::Preserve;
             controlStyle.ClassBraceSpacing = SameLineBraceSpacing::Preserve;
             controlStyle.StructBraceSpacing = SameLineBraceSpacing::Preserve;
             controlStyle.UnionBraceSpacing = SameLineBraceSpacing::Preserve;
@@ -10240,6 +10290,111 @@ std::string Format(const parser::SyntaxTree& tree, const Style& style)
                     ? nullptr
                     : &changed);
         });
+    }
+    // Apply brace preferences only where a preceding pass has reflowed the
+    // declaration header. Unchanged braces need explicit enforcement.
+    if (formatted != tree.Source() &&
+        (!requested.EnforceClassBracePlacement ||
+            !requested.EnforceStructBracePlacement ||
+            !requested.EnforceUnionBracePlacement ||
+            !requested.EnforceFunctionBracePlacement ||
+            !requested.EnforceLambdaBracePlacement ||
+            !requested.EnforceNamespaceBracePlacement))
+    {
+        const auto& parsed = currentTree();
+        if (tree.TokenCount() == parsed.TokenCount()) {
+            bool sameTokens = true;
+            for (TokenIndex i = 0; i < parsed.TokenCount(); ++i) {
+                sameTokens &= tree.Kind(i) == parsed.Kind(i) &&
+                    tree.TokenText(i) == parsed.TokenText(i);
+            }
+            if (sameTokens) {
+                std::vector<bool> changed(parsed.TokenCount(), false);
+                std::vector<const parser::Node*> nodes{&parsed.Root()};
+                while (!nodes.empty()) {
+                    const auto* node = nodes.back();
+                    nodes.pop_back();
+                    for (auto* child = node->Child(); child;
+                        child = child->NextSibling)
+                    {
+                        nodes.push_back(child);
+                    }
+                    if (node->Tokens.Empty() ||
+                        (node->Kind != NK::RecordDeclaration &&
+                            node->Kind != NK::NamespaceDeclaration &&
+                            node->Kind != NK::FunctionDefinition &&
+                            node->Kind != NK::LambdaExpression))
+                    {
+                        continue;
+                    }
+                    for (auto open = node->Tokens.Begin;
+                        open < node->Tokens.End; ++open)
+                    {
+                        if (parsed.Kind(open) != TK::Operator_OpenBrace ||
+                            (node->Kind == NK::RecordDeclaration &&
+                                parsed.Role(open) !=
+                                    parser::PunctuationRole::RecordDelimiter))
+                        {
+                            continue;
+                        }
+                        for (auto i = node->Tokens.Begin + 1; i < open;
+                            ++i)
+                        {
+                            if (tree.WhitespaceBefore(i) !=
+                                parsed.WhitespaceBefore(i) &&
+                                (tree.WhitespaceBefore(i).find('\n') !=
+                                        std::string_view::npos ||
+                                    parsed.WhitespaceBefore(i).find('\n') !=
+                                        std::string_view::npos))
+                            {
+                                changed[open] = true;
+                            }
+                        }
+                        break;
+                    }
+                }
+                if (std::ranges::any_of(changed, [] (bool value) {
+                    return value;
+                })) {
+                    Style braceStyle;
+                    braceStyle.ClassBracePlacement =
+                        requested.ClassBracePlacement;
+                    braceStyle.StructBracePlacement =
+                        requested.StructBracePlacement;
+                    braceStyle.UnionBracePlacement =
+                        requested.UnionBracePlacement;
+                    braceStyle.FunctionBracePlacement =
+                        requested.FunctionBracePlacement;
+                    braceStyle.LambdaBracePlacement =
+                        requested.LambdaBracePlacement;
+                    braceStyle.NamespaceBracePlacement =
+                        requested.NamespaceBracePlacement;
+                    braceStyle.ClassBraceSpacing =
+                        SameLineBraceSpacing::Preserve;
+                    braceStyle.StructBraceSpacing =
+                        SameLineBraceSpacing::Preserve;
+                    braceStyle.UnionBraceSpacing =
+                        SameLineBraceSpacing::Preserve;
+                    braceStyle.FunctionBraceSpacing =
+                        SameLineBraceSpacing::Preserve;
+                    braceStyle.LambdaBraceSpacing =
+                        SameLineBraceSpacing::Preserve;
+                    braceStyle.NamespaceBraceSpacing =
+                        SameLineBraceSpacing::Preserve;
+                    braceStyle.EnumBraceSpacing =
+                        SameLineBraceSpacing::Preserve;
+                    braceStyle.SpaceInsideCallArguments =
+                        SpaceInsideCallArguments::Preserve;
+                    braceStyle.SpaceInsideFunctionParameters =
+                        SpaceInsideFunctionParameters::Preserve;
+                    braceStyle.IndentWidth = style.IndentWidth;
+                    braceStyle.IndentationKind = style.IndentationKind;
+                    applyLayoutPass([&] (const auto& braced) {
+                        return RenderFormatter(braced, braceStyle, &changed);
+                    });
+                }
+            }
+        }
     }
     if (hasMemberAccess && !style.ChainedCallRootNames.empty() &&
         style.ChainedCallSplitCondition != ChainedCallSplitCondition::Preserve)

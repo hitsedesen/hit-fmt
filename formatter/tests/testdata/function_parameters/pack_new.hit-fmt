@@ -1,6 +1,8 @@
 IndentWidth = 4
 ColumnLimit = 40
 FunctionParameterSplit = Pack
+EnforceFunctionParameterSplit = true
+FunctionBracePlacement = NewLine
 FirstFunctionParameterPosition = NewLine
 EnforceFirstFunctionParameterPosition = false
 FunctionParameterIndent = Continuation

@@ -1,4 +1,5 @@
 IndentWidth = 2
 ColumnLimit = 80
 InitializerListSplit = Pack
+EnforceInitializerListSplit = true
 MergeInitializerList = true

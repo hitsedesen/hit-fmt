@@ -24,16 +24,20 @@ IndentAccessModifiers = Indent
 AccessModifierIndentWidth = 1
 IndentMembers = Indent
 ClassBracePlacement = Attach
+EnforceClassBracePlacement = true
 ClassBraceSpacing = SingleSpace
 EnforceClassBraceSpacing = true
 StructBracePlacement = Attach
+EnforceStructBracePlacement = true
 StructBraceSpacing = SingleSpace
 EnforceStructBraceSpacing = true
 UnionBracePlacement = Attach
+EnforceUnionBracePlacement = true
 UnionBraceSpacing = SingleSpace
 EnforceUnionBraceSpacing = true
 EnumBraceSpacing = SingleSpace
 NamespaceBracePlacement = Attach
+EnforceNamespaceBracePlacement = true
 NamespaceBraceSpacing = SingleSpace
 EnforceNamespaceBraceSpacing = true
 NamespaceComments = AddMissing
@@ -47,9 +51,11 @@ InheritanceList = Preserve
 
 # Functions and parameters
 FunctionBracePlacement = Attach
+EnforceFunctionBracePlacement = true
 FunctionBraceSpacing = SingleSpace
 EnforceFunctionBraceSpacing = true
 FunctionParameterSplit = Pack
+EnforceFunctionParameterSplit = true
 FirstFunctionParameterPosition = NameLineIfFits
 FunctionParameterIndent = Continuation
 FunctionParameterNewLineIndent = 4
@@ -65,6 +71,7 @@ NoexceptSpaceBeforeParentheses = NoSpace
 
 # Lambdas
 LambdaBracePlacement = Attach
+EnforceLambdaBracePlacement = true
 LambdaBraceSpacing = SingleSpace
 EnforceLambdaBraceSpacing = true
 LambdaSpaceBeforeParameters = NoSpace
@@ -76,6 +83,7 @@ EmptyLambdaParametersSpacing = NoSpace
 
 # Calls and chains
 CallArgumentSplit = Pack
+EnforceCallArgumentSplit = true
 FirstCallArgumentPosition = CallLine
 CallArgumentIndent = Continuation
 FunctionCallSpaceBeforeParameters = NoSpace
@@ -107,7 +115,7 @@ DeclarationSemicolonSpacing = NoSpace
 
 # Initializers, new, and delete
 # Nested aggregate braces may be misclassified and reflowed incorrectly.
-InitializerListSplit = Preserve
+
 EmptyBraceInitializerInteriorSpacing = NoSpace
 InitializerBracesSpacing = NoSpace
 EnforceInitializerBracesSpacing = true
@@ -123,6 +131,7 @@ AssignmentOperatorPlacement = Trailing
 TernaryOperatorPlacement = Leading
 EnforceTernaryOperatorPlacement = true
 TernarySplit = AsNeeded
+EnforceTernarySplit = true
 GroupingInteriorSpacing = NoSpace
 CastArgumentSpacing = NoSpace
 CastSpacing = NoSpace

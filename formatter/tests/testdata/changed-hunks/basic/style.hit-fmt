@@ -1,5 +1,6 @@
 IncludeOrder = Sort
 ColumnLimit = 25
 CallArgumentSplit = OnePerLine
+EnforceCallArgumentSplit = true
 SpaceInsideFunctionParameters = NoSpace
 EnforceSpaceInsideFunctionParameters = true

@@ -1,6 +1,6 @@
 IndentWidth = 4
 ColumnLimit = 40
-FunctionParameterSplit = Preserve
+
 FirstFunctionParameterPosition = NameLine
 EnforceFirstFunctionParameterPosition = false
 FunctionParameterIndent = IndentWidth
