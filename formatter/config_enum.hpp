@@ -31,7 +31,8 @@ template <typename T> struct ConfigEnumNames;
 
 // Preserve is an internal sentinel for source-owned gaps, not a config value.
 enum class BracePlacement { Attach, NewLine, Preserve };
-template <> struct ConfigEnumNames<BracePlacement> {
+template <> struct ConfigEnumNames<BracePlacement>
+{
     static constexpr auto Values =
         std::to_array<std::string_view>({"Attach", "NewLine"});
 };
@@ -158,13 +159,15 @@ DEFINE_CONFIG_ENUM(InheritanceListSplit, INHERITANCE_LIST_SPLIT_VALUES);
 #undef INHERITANCE_LIST_SPLIT_VALUES
 
 enum class FunctionParameterSplit { Pack, OnePerLine, Preserve };
-template <> struct ConfigEnumNames<FunctionParameterSplit> {
+template <> struct ConfigEnumNames<FunctionParameterSplit>
+{
     static constexpr auto Values =
         std::to_array<std::string_view>({"Pack", "OnePerLine"});
 };
 
 enum class CallArgumentSplit { Pack, OnePerLine, Preserve };
-template <> struct ConfigEnumNames<CallArgumentSplit> {
+template <> struct ConfigEnumNames<CallArgumentSplit>
+{
     static constexpr auto Values =
         std::to_array<std::string_view>({"Pack", "OnePerLine"});
 };
@@ -252,7 +255,8 @@ DEFINE_CONFIG_ENUM(TernaryOperatorPlacement,
 #undef TERNARY_OPERATOR_PLACEMENT_VALUES
 
 enum class TernarySplit { AsNeeded, ThreeLines, Preserve };
-template <> struct ConfigEnumNames<TernarySplit> {
+template <> struct ConfigEnumNames<TernarySplit>
+{
     static constexpr auto Values =
         std::to_array<std::string_view>({"AsNeeded", "ThreeLines"});
 };

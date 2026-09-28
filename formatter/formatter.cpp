@@ -10314,7 +10314,8 @@ std::string Format(const parser::SyntaxTree& tree, const Style& requested)
                 while (!nodes.empty()) {
                     const auto* node = nodes.back();
                     nodes.pop_back();
-                    for (auto* child = node->Child(); child;
+                    for (auto* child = node->Child();
+                        child;
                         child = child->NextSibling)
                     {
                         nodes.push_back(child);
@@ -10328,7 +10329,8 @@ std::string Format(const parser::SyntaxTree& tree, const Style& requested)
                         continue;
                     }
                     for (auto open = node->Tokens.Begin;
-                        open < node->Tokens.End; ++open)
+                        open < node->Tokens.End;
+                        ++open)
                     {
                         if (parsed.Kind(open) != TK::Operator_OpenBrace ||
                             (node->Kind == NK::RecordDeclaration &&
@@ -10337,7 +10339,8 @@ std::string Format(const parser::SyntaxTree& tree, const Style& requested)
                         {
                             continue;
                         }
-                        for (auto i = node->Tokens.Begin + 1; i < open;
+                        for (auto i = node->Tokens.Begin + 1;
+                            i < open;
                             ++i)
                         {
                             if (tree.WhitespaceBefore(i) !=
@@ -10355,7 +10358,8 @@ std::string Format(const parser::SyntaxTree& tree, const Style& requested)
                 }
                 if (std::ranges::any_of(changed, [] (bool value) {
                     return value;
-                })) {
+                }))
+                {
                     Style braceStyle;
                     braceStyle.ClassBracePlacement =
                         requested.ClassBracePlacement;

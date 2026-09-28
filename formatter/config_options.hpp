@@ -239,7 +239,7 @@
     OPT(bool, EnforceTernaryOperatorPlacement, false)                          \
     OPT(formatter::TernarySplit, TernarySplit,                                 \
         formatter::TernarySplit::AsNeeded)                                     \
-    OPT(bool, EnforceTernarySplit, false)                                       \
+    OPT(bool, EnforceTernarySplit, false)                                      \
     OPT(formatter::IncludeOrder, IncludeOrder,                                 \
         formatter::IncludeOrder::Preserve)                                     \
     OPT(formatter::BodyIndentation, IndentAccessModifiers,                     \
@@ -319,7 +319,7 @@
     OPT(std::size_t, SeparatorLength, 0)                                       \
     OPT(formatter::FunctionParameterSplit, FunctionParameterSplit,             \
         formatter::FunctionParameterSplit::Pack)                               \
-    OPT(bool, EnforceFunctionParameterSplit, false)                             \
+    OPT(bool, EnforceFunctionParameterSplit, false)                            \
     OPT(formatter::FirstFunctionParameterPosition,                             \
         FirstFunctionParameterPosition,                                        \
         formatter::FirstFunctionParameterPosition::NameLine)                   \
@@ -331,7 +331,7 @@
     OPT(bool, MergeFunctionParameters, false)                                  \
     OPT(formatter::CallArgumentSplit, CallArgumentSplit,                       \
         formatter::CallArgumentSplit::Pack)                                    \
-    OPT(bool, EnforceCallArgumentSplit, false)                                  \
+    OPT(bool, EnforceCallArgumentSplit, false)                                 \
     OPT(formatter::FirstCallArgumentPosition, FirstCallArgumentPosition,       \
         formatter::FirstCallArgumentPosition::CallLine)                        \
     OPT(formatter::MultilineSingleCallArgumentPosition,                        \
@@ -355,7 +355,7 @@
         formatter::CallArgumentIndent::IndentWidth)                            \
     OPT(formatter::FunctionParameterSplit, InitializerListSplit,               \
         formatter::FunctionParameterSplit::Pack)                               \
-    OPT(bool, EnforceInitializerListSplit, false)                               \
+    OPT(bool, EnforceInitializerListSplit, false)                              \
     OPT(formatter::FirstInitializerElementPosition,                            \
         FirstInitializerElementPosition,                                       \
         formatter::FirstInitializerElementPosition::BraceLine)                 \
