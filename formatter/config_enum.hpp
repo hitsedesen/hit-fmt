@@ -14,7 +14,7 @@ namespace formatter {
 #define CONFIG_ENUM_NAME(value) #value,
 #define NAMED_CONFIG_ENUM_ITEM(value, spelling) value,
 #define NAMED_CONFIG_ENUM_NAME(value, spelling) spelling,
-#define DEFINE_CONFIG_ENUM_WITH(type, values, item, name)                       \
+#define DEFINE_CONFIG_ENUM_WITH(type, values, item, name)                      \
     enum class type { values(item) };                                          \
     template <> struct ConfigEnumNames<type> {                                 \
         static constexpr auto Values = std::to_array<std::string_view>({       \
@@ -29,12 +29,12 @@ namespace formatter {
 
 template <typename T> struct ConfigEnumNames;
 
-#define BRACE_PLACEMENT_VALUES(X)                                               \
+#define BRACE_PLACEMENT_VALUES(X)                                              \
     X(Preserve) X(Attach) X(NewLine)
 DEFINE_CONFIG_ENUM(BracePlacement, BRACE_PLACEMENT_VALUES);
 #undef BRACE_PLACEMENT_VALUES
 
-#define NAMESPACE_COMMENTS_VALUES(X)                                            \
+#define NAMESPACE_COMMENTS_VALUES(X)                                           \
     X(Preserve) X(Remove) X(AddMissing) X(Fix)
 DEFINE_CONFIG_ENUM(NamespaceComments, NAMESPACE_COMMENTS_VALUES);
 #undef NAMESPACE_COMMENTS_VALUES
@@ -62,7 +62,7 @@ DEFINE_CONFIG_ENUM(StatementAttributeIndent,
     STATEMENT_ATTRIBUTE_INDENT_VALUES);
 #undef STATEMENT_ATTRIBUTE_INDENT_VALUES
 
-#define POINTER_REFERENCE_DECLARATOR_LOCATION_VALUES(X)                       \
+#define POINTER_REFERENCE_DECLARATOR_LOCATION_VALUES(X)                        \
     X(Preserve) X(Left) X(Middle) X(Right)
 DEFINE_CONFIG_ENUM(PointerReferenceDeclaratorLocation,
     POINTER_REFERENCE_DECLARATOR_LOCATION_VALUES);
@@ -84,35 +84,35 @@ DEFINE_CONFIG_ENUM(TernaryOperatorSpacing, TERNARY_OPERATOR_SPACING_VALUES);
 DEFINE_CONFIG_ENUM(CommaSpacing, COMMA_SPACING_VALUES);
 #undef COMMA_SPACING_VALUES
 
-#define COLON_SPACING_VALUES(X)                                                 \
+#define COLON_SPACING_VALUES(X)                                                \
     X(Preserve) X(NoSpace) X(Left) X(Right) X(LeftAndRight)
 DEFINE_CONFIG_ENUM(ColonSpacing, COLON_SPACING_VALUES);
 #undef COLON_SPACING_VALUES
 
-#define CONSTRUCTOR_COLON_PLACEMENT_VALUES(X)                                   \
+#define CONSTRUCTOR_COLON_PLACEMENT_VALUES(X)                                  \
     X(AttachToInitializer) X(AttachToConstructor)
 DEFINE_CONFIG_ENUM(ConstructorInitializerColonPlacement,
     CONSTRUCTOR_COLON_PLACEMENT_VALUES);
 #undef CONSTRUCTOR_COLON_PLACEMENT_VALUES
 
-#define CONSTRUCTOR_LIST_START_VALUES(X)                                        \
+#define CONSTRUCTOR_LIST_START_VALUES(X)                                       \
     X(NewLine) X(ConstructorLine) X(NewLineOnOverflow)
 DEFINE_CONFIG_ENUM(ConstructorInitializerStart,
     CONSTRUCTOR_LIST_START_VALUES);
 #undef CONSTRUCTOR_LIST_START_VALUES
 
-#define RETURN_ARROW_SPACING_VALUES(X)                                          \
+#define RETURN_ARROW_SPACING_VALUES(X)                                         \
     X(Preserve) X(NoSpace) X(Left) X(Right) X(LeftAndRight)
 DEFINE_CONFIG_ENUM(ReturnArrowSpacing, RETURN_ARROW_SPACING_VALUES);
 #undef RETURN_ARROW_SPACING_VALUES
 
-#define OPERATOR_OVERLOAD_SPACING_VALUES(X)                                     \
+#define OPERATOR_OVERLOAD_SPACING_VALUES(X)                                    \
     X(Preserve) X(NoSpace) X(Left) X(Right) X(LeftAndRight)
 DEFINE_CONFIG_ENUM(OperatorOverloadOperatorSpacing,
     OPERATOR_OVERLOAD_SPACING_VALUES);
 #undef OPERATOR_OVERLOAD_SPACING_VALUES
 
-#define PREPROCESSOR_INDENTATION_VALUES(X)                                       \
+#define PREPROCESSOR_INDENTATION_VALUES(X)                                     \
     X(Preserve) X(LineStart) X(PreprocessorIndented)
 DEFINE_CONFIG_ENUM(PreprocessorIndentation, PREPROCESSOR_INDENTATION_VALUES);
 #undef PREPROCESSOR_INDENTATION_VALUES
@@ -129,13 +129,13 @@ DEFINE_CONFIG_ENUM(TrailingWhitespace, TRAILING_WHITESPACE_VALUES);
 DEFINE_CONFIG_ENUM(InheritanceListMode, INHERITANCE_LIST_MODE_VALUES);
 #undef INHERITANCE_LIST_MODE_VALUES
 
-#define INHERITANCE_LIST_COLON_PLACEMENT_VALUES(X)                              \
+#define INHERITANCE_LIST_COLON_PLACEMENT_VALUES(X)                             \
     X(AttachToBase) X(AttachToClass)
 DEFINE_CONFIG_ENUM(InheritanceListColonPlacement,
     INHERITANCE_LIST_COLON_PLACEMENT_VALUES);
 #undef INHERITANCE_LIST_COLON_PLACEMENT_VALUES
 
-#define INHERITANCE_LIST_COMMA_PLACEMENT_VALUES(X)                              \
+#define INHERITANCE_LIST_COMMA_PLACEMENT_VALUES(X)                             \
     X(AttachToNext) X(AttachToPrevious)
 DEFINE_CONFIG_ENUM(InheritanceListCommaPlacement,
     INHERITANCE_LIST_COMMA_PLACEMENT_VALUES);
@@ -145,17 +145,17 @@ DEFINE_CONFIG_ENUM(InheritanceListCommaPlacement,
 DEFINE_CONFIG_ENUM(InheritanceListSpacing, INHERITANCE_LIST_SPACING_VALUES);
 #undef INHERITANCE_LIST_SPACING_VALUES
 
-#define INHERITANCE_LIST_START_VALUES(X)                                        \
+#define INHERITANCE_LIST_START_VALUES(X)                                       \
     X(NewLine) X(ClassLine) X(NewLineOnOverflow)
 DEFINE_CONFIG_ENUM(InheritanceListStart, INHERITANCE_LIST_START_VALUES);
 #undef INHERITANCE_LIST_START_VALUES
 
-#define INHERITANCE_LIST_SPLIT_VALUES(X)                                        \
+#define INHERITANCE_LIST_SPLIT_VALUES(X)                                       \
     X(OnePerLine) X(Pack) X(OnePerLineOnOverflow)
 DEFINE_CONFIG_ENUM(InheritanceListSplit, INHERITANCE_LIST_SPLIT_VALUES);
 #undef INHERITANCE_LIST_SPLIT_VALUES
 
-#define FUNCTION_PARAMETER_SPLIT_VALUES(X)                                      \
+#define FUNCTION_PARAMETER_SPLIT_VALUES(X)                                     \
     X(Preserve) X(Pack) X(OnePerLine)
 DEFINE_CONFIG_ENUM(FunctionParameterSplit, FUNCTION_PARAMETER_SPLIT_VALUES);
 #undef FUNCTION_PARAMETER_SPLIT_VALUES
@@ -212,7 +212,7 @@ DEFINE_CONFIG_ENUM(CallArgumentIndent, CALL_ARGUMENT_INDENT_VALUES);
 DEFINE_CONFIG_ENUM(LineLengthCheck, LINE_LENGTH_CHECK_VALUES);
 #undef LINE_LENGTH_CHECK_VALUES
 
-#define EXPRESSION_LAYOUT_CONDITION_VALUES(X)                                   \
+#define EXPRESSION_LAYOUT_CONDITION_VALUES(X)                                  \
     X(Preserve) X(Overflow) X(FitOrOverflow) X(Always)
 DEFINE_CONFIG_ENUM(ExpressionLayoutCondition,
     EXPRESSION_LAYOUT_CONDITION_VALUES);
@@ -232,7 +232,8 @@ DEFINE_CONFIG_ENUM(ControlHeaderClauseSplit,
     CONTROL_HEADER_CLAUSE_SPLIT_VALUES);
 #undef CONTROL_HEADER_CLAUSE_SPLIT_VALUES
 
-#define FOR_HEADER_CLAUSE_INDENT_VALUES(X) X(Inherit) X(IndentWidth) X(Continuation)
+#define FOR_HEADER_CLAUSE_INDENT_VALUES(X)                                     \
+    X(Inherit) X(IndentWidth) X(Continuation)
 DEFINE_CONFIG_ENUM(ForHeaderClauseIndent, FOR_HEADER_CLAUSE_INDENT_VALUES);
 #undef FOR_HEADER_CLAUSE_INDENT_VALUES
 
@@ -255,18 +256,18 @@ DEFINE_CONFIG_ENUM(FirstFunctionParameterPosition,
     FIRST_FUNCTION_PARAMETER_POSITION_VALUES);
 #undef FIRST_FUNCTION_PARAMETER_POSITION_VALUES
 
-#define FUNCTION_PARAMETER_INDENT_VALUES(X)                                     \
+#define FUNCTION_PARAMETER_INDENT_VALUES(X)                                    \
     X(IndentWidth) X(Continuation)
 DEFINE_CONFIG_ENUM(FunctionParameterIndent, FUNCTION_PARAMETER_INDENT_VALUES);
 #undef FUNCTION_PARAMETER_INDENT_VALUES
 
-#define SAME_LINE_BRACE_SPACING_VALUES(X)                                       \
+#define SAME_LINE_BRACE_SPACING_VALUES(X)                                      \
     X(Preserve) X(SingleSpace)
 DEFINE_CONFIG_ENUM(SameLineBraceSpacing, SAME_LINE_BRACE_SPACING_VALUES);
 #undef SAME_LINE_BRACE_SPACING_VALUES
 
 // These spacing policies share the same serialized values.
-#define PRESERVE_SPACE_VALUES(X)                                                \
+#define PRESERVE_SPACE_VALUES(X)                                               \
     X(Preserve) X(Space) X(NoSpace)
 DEFINE_CONFIG_ENUM(LambdaSpaceBeforeParameters, PRESERVE_SPACE_VALUES);
 DEFINE_CONFIG_ENUM(LambdaCaptureSpacing, PRESERVE_SPACE_VALUES);
@@ -292,27 +293,27 @@ DEFINE_CONFIG_ENUM(SpaceInsideCallArguments, PRESERVE_SPACE_VALUES);
 DEFINE_CONFIG_ENUM(ControlBlockKeywordSpacing, PRESERVE_SPACE_VALUES);
 #undef PRESERVE_SPACE_VALUES
 
-#define CONTROL_BLOCK_BRACE_PLACEMENT_VALUES(X)                                 \
+#define CONTROL_BLOCK_BRACE_PLACEMENT_VALUES(X)                                \
     X(SameLine) X(NewLine) X(AttachUnlessMultiline)
 DEFINE_CONFIG_ENUM(ControlBlockBracePlacement,
     CONTROL_BLOCK_BRACE_PLACEMENT_VALUES);
 #undef CONTROL_BLOCK_BRACE_PLACEMENT_VALUES
 
 // NameCase is the only enum whose spellings differ from its C++ members.
-#define NAME_CASE_VALUES(X)                                                     \
-    X(Unchecked, "Unchecked") X(CamelCase, "camelCase")                         \
-    X(PascalCase, "PascalCase") X(SnakeCase, "snake_case")                      \
+#define NAME_CASE_VALUES(X)                                                    \
+    X(Unchecked, "Unchecked") X(CamelCase, "camelCase")                        \
+    X(PascalCase, "PascalCase") X(SnakeCase, "snake_case")                     \
     X(ScreamingSnakeCase, "SCREAMING_SNAKE_CASE")
 DEFINE_NAMED_CONFIG_ENUM(NameCase, NAME_CASE_VALUES);
 #undef NAME_CASE_VALUES
 
-#define FUNCTION_DECLARATION_PARAMETER_NAMES_VALUES(X)                          \
+#define FUNCTION_DECLARATION_PARAMETER_NAMES_VALUES(X)                         \
     X(Unchecked) X(Required)
 DEFINE_CONFIG_ENUM(FunctionDeclarationParameterNames,
     FUNCTION_DECLARATION_PARAMETER_NAMES_VALUES);
 #undef FUNCTION_DECLARATION_PARAMETER_NAMES_VALUES
 
-#define FUNCTION_DEFINITION_PARAMETER_NAMES_VALUES(X)                           \
+#define FUNCTION_DEFINITION_PARAMETER_NAMES_VALUES(X)                          \
     X(Unchecked) X(NameRequired) X(NameOrCommentedNameRequired)
 DEFINE_CONFIG_ENUM(FunctionDefinitionParameterNames,
     FUNCTION_DEFINITION_PARAMETER_NAMES_VALUES);

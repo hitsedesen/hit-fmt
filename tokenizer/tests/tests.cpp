@@ -131,7 +131,7 @@ INSTANTIATE_TEST_SUITE_P(
         GoldenCase{"string_literals"},
         GoldenCase{"operators"},
         GoldenCase{"positions"}),
-    [](const auto& info) {
+    [] (const auto& info) {
         return info.param.Name;
     });
 
@@ -142,7 +142,7 @@ INSTANTIATE_TEST_SUITE_P(
         GoldenCase{"bad_tokens"},
         GoldenCase{"unterminated_raw_string"},
         GoldenCase{"validation_errors"}),
-    [](const auto& info) {
+    [] (const auto& info) {
         return info.param.Name;
     });
 

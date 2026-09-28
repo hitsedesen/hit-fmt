@@ -21,7 +21,8 @@ inline std::optional<std::string> ReadGoldenFile(
     if (!input) {
         return std::nullopt;
     }
-    return std::string(std::istreambuf_iterator<char>(input),
+    return std::string(
+        std::istreambuf_iterator<char>(input),
         std::istreambuf_iterator<char>());
 }
 
@@ -35,7 +36,8 @@ inline std::string ReadFile(const std::filesystem::path& path)
 }
 
 inline void WriteGoldenFile(
-    const std::filesystem::path& path, std::string_view contents)
+    const std::filesystem::path& path,
+    std::string_view contents)
 {
     std::ofstream output(path, std::ios::binary);
     if (output) {
@@ -49,7 +51,8 @@ inline void WriteGoldenFile(
 
 // Missing goldens are errors unless explicitly regenerated.
 inline void ExpectGolden(
-    const std::filesystem::path& path, std::string_view actual)
+    const std::filesystem::path& path,
+    std::string_view actual)
 {
     if (std::getenv("UPDATE_GOLDEN")) {
         WriteGoldenFile(path, actual);
@@ -82,7 +85,8 @@ struct Fixture
     }
 
     void Expect(
-        std::string_view actual, std::string_view suffix = ".output.cpp") const
+        std::string_view actual,
+        std::string_view suffix = ".output.cpp") const
     {
         ExpectGolden(Named(suffix), actual);
     }

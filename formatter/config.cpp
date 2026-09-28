@@ -56,14 +56,16 @@ std::string_view StripComment(std::string_view line)
     std::string_view message)
 {
     throw std::runtime_error(
-        path.string() + ":" + std::to_string(line) + ": "
-        + std::string(message));
+        path.string() + ":" + std::to_string(line) + ": " +
+        std::string(message));
 }
 
 // A closing bracket inside a quoted item does not terminate an array.
 // Quoted items themselves cannot span physical lines.
-bool HasArrayEnd(std::string_view text,
-    const std::filesystem::path& path, size_t line)
+bool HasArrayEnd(
+    std::string_view text,
+    const std::filesystem::path& path,
+    size_t line)
 {
     bool quoted = false;
     bool escaped = false;
@@ -101,7 +103,9 @@ size_t ParsePositiveInteger(
 }
 
 template <typename T>
-T ParseEnum(std::string_view value, const std::filesystem::path& path,
+T ParseEnum(
+    std::string_view value,
+    const std::filesystem::path& path,
     size_t line)
 {
     if (auto result = DeserializeConfigEnum<T>(value)) {
@@ -140,18 +144,18 @@ std::string ParseString(
             ThrowConfigError(path, line, "unterminated string escape");
         }
         switch (value[index]) {
-        case '\\':
-        case '"':
-            result.push_back(value[index]);
-            break;
-        case 'n':
-            result.push_back('\n');
-            break;
-        case 't':
-            result.push_back('\t');
-            break;
-        default:
-            ThrowConfigError(path, line, "unsupported string escape");
+            case '\\':
+            case '"':
+                result.push_back(value[index]);
+                break;
+            case 'n':
+                result.push_back('\n');
+                break;
+            case 't':
+                result.push_back('\t');
+                break;
+            default:
+                ThrowConfigError(path, line, "unsupported string escape");
         }
     }
     return result;
@@ -205,8 +209,10 @@ std::vector<std::string> ParseStringList(
     }
 }
 
-bool ParseBoolean(std::string_view value,
-    const std::filesystem::path& path, size_t line)
+bool ParseBoolean(
+    std::string_view value,
+    const std::filesystem::path& path,
+    size_t line)
 {
     if (value == "true") {
         return true;
@@ -218,14 +224,18 @@ bool ParseBoolean(std::string_view value,
 }
 
 std::vector<std::string> ParseNamespaceExemptions(
-    std::string_view value, const std::filesystem::path& path, size_t line)
+    std::string_view value,
+    const std::filesystem::path& path,
+    size_t line)
 {
     auto names = ParseStringList(value, path, line);
     for (const auto& name : names) {
         size_t start = 0;
         while (start < name.size()) {
             auto end = name.find("::", start);
-            if (end == std::string::npos) end = name.size();
+            if (end == std::string::npos) {
+                end = name.size();
+            }
             auto part = std::string_view(name).substr(start, end - start);
             if (part.empty() ||
                 !(std::isalpha(static_cast<unsigned char>(part.front())) ||
@@ -235,7 +245,10 @@ std::vector<std::string> ParseNamespaceExemptions(
                     "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_") !=
                     std::string_view::npos)
             {
-                ThrowConfigError(path, line, "expected qualified namespace names");
+                ThrowConfigError(
+                    path,
+                    line,
+                    "expected qualified namespace names");
             }
             start = end == name.size() ? end : end + 2;
         }
@@ -247,7 +260,9 @@ std::vector<std::string> ParseNamespaceExemptions(
 }
 
 std::vector<std::string> ParseCallNames(
-    std::string_view value, const std::filesystem::path& path, size_t line)
+    std::string_view value,
+    const std::filesystem::path& path,
+    size_t line)
 {
     auto names = ParseStringList(value, path, line);
     for (const auto& name : names) {
@@ -256,8 +271,7 @@ std::vector<std::string> ParseCallNames(
                 name.front() == '_') ||
             name.find_first_not_of(
                 "abcdefghijklmnopqrstuvwxyz"
-                "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_") !=
-                std::string::npos)
+                "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_") != std::string::npos)
         {
             ThrowConfigError(path, line, "expected call identifier names");
         }
@@ -266,7 +280,9 @@ std::vector<std::string> ParseCallNames(
 }
 
 std::vector<std::string> ParseCallPairs(
-    std::string_view value, const std::filesystem::path& path, size_t line)
+    std::string_view value,
+    const std::filesystem::path& path,
+    size_t line)
 {
     auto pairs = ParseStringList(value, path, line);
     auto validName = [] (std::string_view name) {
@@ -284,7 +300,9 @@ std::vector<std::string> ParseCallPairs(
             !validName(std::string_view(pair).substr(0, colon)) ||
             !validName(std::string_view(pair).substr(colon + 1)))
         {
-            ThrowConfigError(path, line,
+            ThrowConfigError(
+                path,
+                line,
                 "expected begin:end call identifier pairs");
         }
     }
@@ -292,7 +310,9 @@ std::vector<std::string> ParseCallPairs(
 }
 
 std::vector<std::string> ParseNamePrefixes(
-    std::string_view value, const std::filesystem::path& path, size_t line)
+    std::string_view value,
+    const std::filesystem::path& path,
+    size_t line)
 {
     auto prefixes = ParseStringList(value, path, line);
     if (prefixes.empty()) {
@@ -303,7 +323,9 @@ std::vector<std::string> ParseNamePrefixes(
                 "abcdefghijklmnopqrstuvwxyz"
                 "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_") != std::string::npos)
         {
-            ThrowConfigError(path, line,
+            ThrowConfigError(
+                path,
+                line,
                 "prefix must contain only identifier characters");
         }
     }
@@ -311,8 +333,11 @@ std::vector<std::string> ParseNamePrefixes(
 }
 
 template <typename T>
-void ParseField(T& field, std::string_view value,
-    const std::filesystem::path& path, size_t line)
+void ParseField(
+    T& field,
+    std::string_view value,
+    const std::filesystem::path& path,
+    size_t line)
 {
     if constexpr (std::is_enum_v<T>) {
         field = ParseEnum<T>(value, path, line);
@@ -325,20 +350,29 @@ void ParseField(T& field, std::string_view value,
     }
 }
 
-void ParseField(std::optional<std::vector<std::string>>& field,
-    std::string_view value, const std::filesystem::path& path, size_t line)
+void ParseField(
+    std::optional<std::vector<std::string>>& field,
+    std::string_view value,
+    const std::filesystem::path& path,
+    size_t line)
 {
     field = ParseNamePrefixes(value, path, line);
 }
 
-void ParseField(std::vector<std::string>& field, std::string_view value,
-    const std::filesystem::path& path, size_t line)
+void ParseField(
+    std::vector<std::string>& field,
+    std::string_view value,
+    const std::filesystem::path& path,
+    size_t line)
 {
     field = ParseNamespaceExemptions(value, path, line);
 }
 
-void ParseField(std::vector<std::regex>& field, std::string_view value,
-    const std::filesystem::path& path, size_t line)
+void ParseField(
+    std::vector<std::regex>& field,
+    std::string_view value,
+    const std::filesystem::path& path,
+    size_t line)
 {
     field.clear();
     for (const auto& pattern : ParseStringList(value, path, line)) {
@@ -348,14 +382,18 @@ void ParseField(std::vector<std::regex>& field, std::string_view value,
         try {
             field.emplace_back(pattern);
         } catch (const std::regex_error& error) {
-            ThrowConfigError(path, line,
+            ThrowConfigError(
+                path,
+                line,
                 "invalid Exclude regex '" + pattern + "': " + error.what());
         }
     }
 }
 
-void ValidateStyleLimits(const Style& style,
-    const std::filesystem::path& path, size_t line)
+void ValidateStyleLimits(
+    const Style& style,
+    const std::filesystem::path& path,
+    size_t line)
 {
     if (style.IndentWidth > 32) {
         ThrowConfigError(path, line, "IndentWidth must not exceed 32");
@@ -364,16 +402,24 @@ void ValidateStyleLimits(const Style& style,
         ThrowConfigError(path, line, "ColumnLimit must not exceed 10000");
     }
     if (style.ShortNamespaceLines > 10000) {
-        ThrowConfigError(path, line, "ShortNamespaceLines must not exceed 10000");
+        ThrowConfigError(
+            path,
+            line,
+            "ShortNamespaceLines must not exceed 10000");
     }
     if (style.SeparatorLength != 0 &&
         (style.SeparatorLength < 8 || style.SeparatorLength > 10000))
     {
-        ThrowConfigError(path, line,
+        ThrowConfigError(
+            path,
+            line,
             "SeparatorLength must be between 8 and 10000");
     }
     if (style.NamespaceCommentSpaces > 32) {
-        ThrowConfigError(path, line, "NamespaceCommentSpaces must not exceed 32");
+        ThrowConfigError(
+            path,
+            line,
+            "NamespaceCommentSpaces must not exceed 32");
     }
     if (style.AccessModifierIndentWidth > 32 ||
         style.MemberIndentWidth > 32 || style.BlockBodyIndentWidth > 32 ||
@@ -383,22 +429,31 @@ void ValidateStyleLimits(const Style& style,
         ThrowConfigError(path, line, "indent width must not exceed 32");
     }
     if (style.FunctionParameterNewLineIndent > 32) {
-        ThrowConfigError(path, line,
+        ThrowConfigError(
+            path,
+            line,
             "FunctionParameterNewLineIndent must not exceed 32");
     }
     if (style.InheritanceListIndent > 32) {
-        ThrowConfigError(path, line,
+        ThrowConfigError(
+            path,
+            line,
             "InheritanceListIndent must not exceed 32");
     }
     if (style.ConstructorInitializerListIndent > 32) {
-        ThrowConfigError(path, line,
+        ThrowConfigError(
+            path,
+            line,
             "ConstructorInitializerListIndent must not exceed 32");
     }
 }
 
 template <auto Member>
-void AssignStyle(Configuration& config, std::string_view value,
-    const std::filesystem::path& path, size_t line)
+void AssignStyle(
+    Configuration& config,
+    std::string_view value,
+    const std::filesystem::path& path,
+    size_t line)
 {
     if constexpr (std::is_same_v<std::remove_cvref_t<
             decltype(config.FormattingStyle.*Member)>,
@@ -418,22 +473,31 @@ void AssignStyle(Configuration& config, std::string_view value,
 }
 
 template <auto Member>
-void AssignConfig(Configuration& config, std::string_view value,
-    const std::filesystem::path& path, size_t line)
+void AssignConfig(
+    Configuration& config,
+    std::string_view value,
+    const std::filesystem::path& path,
+    size_t line)
 {
     ParseField(config.*Member, value, path, line);
 }
 
 template <auto Member>
-void AssignNamingCase(Configuration& config, std::string_view value,
-    const std::filesystem::path& path, size_t line)
+void AssignNamingCase(
+    Configuration& config,
+    std::string_view value,
+    const std::filesystem::path& path,
+    size_t line)
 {
     ParseField((config.Naming.*Member).Case, value, path, line);
 }
 
 template <auto Member>
-void AssignNamingPrefixes(Configuration& config, std::string_view value,
-    const std::filesystem::path& path, size_t line)
+void AssignNamingPrefixes(
+    Configuration& config,
+    std::string_view value,
+    const std::filesystem::path& path,
+    size_t line)
 {
     ParseField((config.Naming.*Member).Prefixes, value, path, line);
 }
@@ -447,23 +511,27 @@ struct OptionBinding
 };
 
 constexpr auto Options = std::to_array<OptionBinding>({
-#define STYLE_BINDING(type, name, initial)                                      \
+#define STYLE_BINDING(type, name, initial)                                     \
     {#name, &AssignStyle<&Style::name>},
     FORMATTER_STYLE_OPTIONS(STYLE_BINDING)
 #undef STYLE_BINDING
-#define NAMING_CATEGORY_BINDINGS(category)                                      \
-    {#category "NameCase", &AssignNamingCase<&NamingStyle::category>},           \
+#define NAMING_CATEGORY_BINDINGS(category)                                     \
+    {#category "NameCase", &AssignNamingCase<&NamingStyle::category>},         \
     {#category "NamePrefixes", &AssignNamingPrefixes<&NamingStyle::category>},
     FORMATTER_NAMING_CATEGORIES(NAMING_CATEGORY_BINDINGS)
 #undef NAMING_CATEGORY_BINDINGS
-#define CONFIG_BINDING(type, name, initial)                                     \
+#define CONFIG_BINDING(type, name, initial)                                    \
     {#name, &AssignConfig<&Configuration::name>},
     FORMATTER_CONFIGURATION_OPTIONS(CONFIG_BINDING)
 #undef CONFIG_BINDING
 });
 
-void ApplySetting(Configuration& config, std::string_view key,
-    std::string_view value, const std::filesystem::path& path, size_t line)
+void ApplySetting(
+    Configuration& config,
+    std::string_view key,
+    std::string_view value,
+    const std::filesystem::path& path,
+    size_t line)
 {
     for (const auto& option : Options) {
         if (option.Name == key) {
@@ -479,7 +547,9 @@ void ApplySetting(Configuration& config, std::string_view key,
                 std::find(preferences.begin(), preferences.end(), key) !=
                     preferences.end())
             {
-                ThrowConfigError(path, line,
+                ThrowConfigError(
+                    path,
+                    line,
                     "use the corresponding Enforce option instead of Preserve");
             }
             option.Assign(config, value, path, line);
@@ -496,7 +566,8 @@ Configuration LoadConfigFile(const std::filesystem::path& path)
 {
     std::ifstream input(path);
     if (!input.is_open()) {
-        throw std::runtime_error("cannot open configuration file: " + path.string());
+        throw std::runtime_error("cannot open configuration file: " +
+            path.string());
     }
 
     Configuration config;
@@ -528,7 +599,8 @@ Configuration LoadConfigFile(const std::filesystem::path& path)
                 if (!std::getline(input, lineText)) {
                     if (!input.eof()) {
                         throw std::runtime_error(
-                            "failed to read configuration file: " + path.string());
+                            "failed to read configuration file: " +
+                                path.string());
                     }
                     ThrowConfigError(path, settingLine, "unterminated array");
                 }
@@ -546,7 +618,8 @@ Configuration LoadConfigFile(const std::filesystem::path& path)
         ApplySetting(config, key, value, path, settingLine);
     }
     if (!input.eof()) {
-        throw std::runtime_error("failed to read configuration file: " + path.string());
+        throw std::runtime_error("failed to read configuration file: " +
+            path.string());
     }
     return config;
 }

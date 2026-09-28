@@ -46,7 +46,8 @@ namespace {
 
 [[nodiscard]] constexpr bool IsAsciiAlphaNumeric(unsigned char value) noexcept
 {
-    return IsAsciiDigit(value) || (value >= 'a' && value <= 'z') || (value >= 'A' && value <= 'Z') || value == '_';
+    return IsAsciiDigit(value) || (value >= 'a' && value <= 'z') ||
+        (value >= 'A' && value <= 'Z') || value == '_';
 }
 
 [[nodiscard]] bool IsIdStart(unicode::CodePoint cp)
@@ -125,7 +126,9 @@ unicode::CodePoint detail::TokenizerCursor<Tokenizer>::LoadCurrentCodePoint()
 {
     auto firstByte = static_cast<unsigned char>(PeekByte());
     const auto& input = GetOwner().Input_;
-    if (firstByte == 0 && CurrentCodePointOffset_ == input.size()) [[unlikely]] {
+    if (firstByte == 0 && CurrentCodePointOffset_ ==
+        input.size()) [[unlikely]]
+    {
         CurrentCodePointValue_ = '\0';
         CurrentCodePointSize_ = 0;
         return CurrentCodePointValue_;
@@ -177,7 +180,7 @@ Token Tokenizer::Get()
         return FinishToken(TokenKind::EndOfFile);
     }
     switch (cur) {
-    case '#':
+        case '#':
         {
             if (!IsNewLine_) {
                 ConsumeCodePoint();
@@ -186,43 +189,43 @@ Token Tokenizer::Get()
             }
             return ParsePreprocessingDirective();
         }
-    case '{':
-        ConsumeCodePoint();
-        return FinishToken(TokenKind::Operator_OpenBrace);
-    case '}':
-        ConsumeCodePoint();
-        return FinishToken(TokenKind::Operator_CloseBrace);
-    case '[':
-        ConsumeCodePoint();
-        return FinishToken(TokenKind::Operator_OpenBracket);
-    case ']':
-        ConsumeCodePoint();
-        return FinishToken(TokenKind::Operator_CloseBracket);
-    case '(':
-        ConsumeCodePoint();
-        return FinishToken(TokenKind::Operator_OpenParenthesis);
-    case ')':
-        ConsumeCodePoint();
-        return FinishToken(TokenKind::Operator_CloseParenthesis);
-    case ';':
-        ConsumeCodePoint();
-        return FinishToken(TokenKind::Operator_Semicolon);
-    case ':':
+        case '{':
+            ConsumeCodePoint();
+            return FinishToken(TokenKind::Operator_OpenBrace);
+        case '}':
+            ConsumeCodePoint();
+            return FinishToken(TokenKind::Operator_CloseBrace);
+        case '[':
+            ConsumeCodePoint();
+            return FinishToken(TokenKind::Operator_OpenBracket);
+        case ']':
+            ConsumeCodePoint();
+            return FinishToken(TokenKind::Operator_CloseBracket);
+        case '(':
+            ConsumeCodePoint();
+            return FinishToken(TokenKind::Operator_OpenParenthesis);
+        case ')':
+            ConsumeCodePoint();
+            return FinishToken(TokenKind::Operator_CloseParenthesis);
+        case ';':
+            ConsumeCodePoint();
+            return FinishToken(TokenKind::Operator_Semicolon);
+        case ':':
         {
             ConsumeCodePoint();
             cur = CurrentCodePoint();
             switch (cur) {
-            case ':':
-                ConsumeCodePoint();
-                return FinishToken(TokenKind::Operator_ScopeResolution);
-            case '>':
-                ConsumeCodePoint();
-                return FinishToken(TokenKind::Operator_CloseBracket);
-            default:
-                return FinishToken(TokenKind::Operator_Colon);
+                case ':':
+                    ConsumeCodePoint();
+                    return FinishToken(TokenKind::Operator_ScopeResolution);
+                case '>':
+                    ConsumeCodePoint();
+                    return FinishToken(TokenKind::Operator_CloseBracket);
+                default:
+                    return FinishToken(TokenKind::Operator_Colon);
             }
         }
-    case '.':
+        case '.':
         {
             if (IsDigit(PeekByte(1))) [[unlikely]] {
                 return ParseNumber();
@@ -230,7 +233,7 @@ Token Tokenizer::Get()
             ConsumeCodePoint();
             cur = CurrentCodePoint();
             switch (cur) {
-            case '.':
+                case '.':
                 {
                     ConsumeCodePoint();
                     cur = CurrentCodePoint();
@@ -241,46 +244,48 @@ Token Tokenizer::Get()
                     OnError(TokenizationErrorKind::UnfinishedEllipsis);
                     return FinishToken(TokenKind::Invalid);
                 }
-            case '*':
-                ConsumeCodePoint();
-                return FinishToken(
-                    TokenKind::Operator_PointerToMemberDereference);
-            default:
-                return FinishToken(TokenKind::Operator_ClassMemberAccess);
+                case '*':
+                    ConsumeCodePoint();
+                    return FinishToken(
+                        TokenKind::Operator_PointerToMemberDereference);
+                default:
+                    return FinishToken(TokenKind::Operator_ClassMemberAccess);
             }
         }
-    case '-':
+        case '-':
         {
             ConsumeCodePoint();
             cur = CurrentCodePoint();
             switch (cur) {
-            case '>':
-                ConsumeCodePoint();
-                cur = CurrentCodePoint();
-                if (cur == '*') {
+                case '>':
                     ConsumeCodePoint();
+                    cur = CurrentCodePoint();
+                    if (cur == '*') {
+                        ConsumeCodePoint();
+                        using Kind = TokenKind;
+                        auto kind =
+                            Kind::Operator_IndirectPointerToMemberDereference;
+                        return FinishToken(kind);
+                    }
                     return FinishToken(
-                        TokenKind::Operator_IndirectPointerToMemberDereference);
-                }
-                return FinishToken(
-                    TokenKind::Operator_IndirectClassMemberAccess);
-            case '=':
-                ConsumeCodePoint();
-                return FinishToken(TokenKind::Operator_MinusAssign);
-            case '-':
-                ConsumeCodePoint();
-                return FinishToken(TokenKind::Operator_Decrement);
-            default:
-                return FinishToken(TokenKind::Operator_Minus);
+                        TokenKind::Operator_IndirectClassMemberAccess);
+                case '=':
+                    ConsumeCodePoint();
+                    return FinishToken(TokenKind::Operator_MinusAssign);
+                case '-':
+                    ConsumeCodePoint();
+                    return FinishToken(TokenKind::Operator_Decrement);
+                default:
+                    return FinishToken(TokenKind::Operator_Minus);
             }
         }
-    case '?':
-        ConsumeCodePoint();
-        return FinishToken(TokenKind::Operator_Conditional);
-    case '~':
-        ConsumeCodePoint();
-        return FinishToken(TokenKind::Operator_Complement);
-    case '!':
+        case '?':
+            ConsumeCodePoint();
+            return FinishToken(TokenKind::Operator_Conditional);
+        case '~':
+            ConsumeCodePoint();
+            return FinishToken(TokenKind::Operator_Complement);
+        case '!':
         {
             ConsumeCodePoint();
             cur = CurrentCodePoint();
@@ -290,7 +295,7 @@ Token Tokenizer::Get()
             }
             return FinishToken(TokenKind::Operator_Not);
         }
-    case '+':
+        case '+':
         {
             ConsumeCodePoint();
             cur = CurrentCodePoint();
@@ -304,7 +309,7 @@ Token Tokenizer::Get()
             }
             return FinishToken(TokenKind::Operator_Plus);
         }
-    case '*':
+        case '*':
         {
             ConsumeCodePoint();
             cur = CurrentCodePoint();
@@ -314,23 +319,23 @@ Token Tokenizer::Get()
             }
             return FinishToken(TokenKind::Operator_Star);
         }
-    case '/':
+        case '/':
         {
             ConsumeCodePoint();
             cur = CurrentCodePoint();
             switch (cur) {
-            case '=':
-                ConsumeCodePoint();
-                return FinishToken(TokenKind::Operator_DivideAssign);
-            case '/':
-                return ParseInlineComment();
-            case '*':
-                return ParseMultilineComment();
-            default:
-                return FinishToken(TokenKind::Operator_Divide);
+                case '=':
+                    ConsumeCodePoint();
+                    return FinishToken(TokenKind::Operator_DivideAssign);
+                case '/':
+                    return ParseInlineComment();
+                case '*':
+                    return ParseMultilineComment();
+                default:
+                    return FinishToken(TokenKind::Operator_Divide);
             }
         }
-    case '%':
+        case '%':
         {
             const bool startsLine = IsNewLine_;
             ConsumeCodePoint();
@@ -347,7 +352,7 @@ Token Tokenizer::Get()
             }
             return FinishToken(TokenKind::Operator_Remainder);
         }
-    case '^':
+        case '^':
         {
             ConsumeCodePoint();
             cur = CurrentCodePoint();
@@ -357,37 +362,37 @@ Token Tokenizer::Get()
             }
             return FinishToken(TokenKind::Operator_Xor);
         }
-    case '&':
+        case '&':
         {
             ConsumeCodePoint();
             cur = CurrentCodePoint();
             switch (cur) {
-            case '=':
-                ConsumeCodePoint();
-                return FinishToken(TokenKind::Operator_BitAndAssign);
-            case '&':
-                ConsumeCodePoint();
-                return FinishToken(TokenKind::Operator_And);
-            default:
-                return FinishToken(TokenKind::Operator_Ampersand);
+                case '=':
+                    ConsumeCodePoint();
+                    return FinishToken(TokenKind::Operator_BitAndAssign);
+                case '&':
+                    ConsumeCodePoint();
+                    return FinishToken(TokenKind::Operator_And);
+                default:
+                    return FinishToken(TokenKind::Operator_Ampersand);
             }
         }
-    case '|':
+        case '|':
         {
             ConsumeCodePoint();
             cur = CurrentCodePoint();
             switch (cur) {
-            case '=':
-                ConsumeCodePoint();
-                return FinishToken(TokenKind::Operator_BitOrAssign);
-            case '|':
-                ConsumeCodePoint();
-                return FinishToken(TokenKind::Operator_Or);
-            default:
-                return FinishToken(TokenKind::Operator_BitOr);
+                case '=':
+                    ConsumeCodePoint();
+                    return FinishToken(TokenKind::Operator_BitOrAssign);
+                case '|':
+                    ConsumeCodePoint();
+                    return FinishToken(TokenKind::Operator_Or);
+                default:
+                    return FinishToken(TokenKind::Operator_BitOr);
             }
         }
-    case '=':
+        case '=':
         {
             ConsumeCodePoint();
             cur = CurrentCodePoint();
@@ -397,27 +402,27 @@ Token Tokenizer::Get()
             }
             return FinishToken(TokenKind::Operator_Assign);
         }
-    case '<':
+        case '<':
         {
             ConsumeCodePoint();
             cur = CurrentCodePoint();
             switch (cur) {
-            case ':':
-                // [lex.pptoken] has a special maximal-munch exception for
-                // <:: when the following character is neither ':' nor '>'.
-                // In that case this is '<' followed by '::', not the '<:'
-                // digraph followed by ':'.
-                if (PeekByte() == ':' && PeekByte(1) == ':' &&
+                case ':':
+                    // [lex.pptoken] has a special maximal-munch exception for
+                    // <:: when the following character is neither ':' nor '>'.
+                    // In that case this is '<' followed by '::', not the '<:'
+                    // digraph followed by ':'.
+                    if (PeekByte() == ':' && PeekByte(1) == ':' &&
                     PeekByte(2) != ':' && PeekByte(2) != '>')
                 {
-                    return FinishToken(TokenKind::Operator_Less);
-                }
-                ConsumeCodePoint();
-                return FinishToken(TokenKind::Operator_OpenBracket);
-            case '%':
-                ConsumeCodePoint();
-                return FinishToken(TokenKind::Operator_OpenBrace);
-            case '=':
+                        return FinishToken(TokenKind::Operator_Less);
+                    }
+                    ConsumeCodePoint();
+                    return FinishToken(TokenKind::Operator_OpenBracket);
+                case '%':
+                    ConsumeCodePoint();
+                    return FinishToken(TokenKind::Operator_OpenBrace);
+                case '=':
                 {
                     ConsumeCodePoint();
                     cur = CurrentCodePoint();
@@ -427,7 +432,7 @@ Token Tokenizer::Get()
                     }
                     return FinishToken(TokenKind::Operator_LessEquals);
                 }
-            case '<':
+                case '<':
                 {
                     ConsumeCodePoint();
                     cur = CurrentCodePoint();
@@ -437,20 +442,20 @@ Token Tokenizer::Get()
                     }
                     return FinishToken(TokenKind::Operator_LeftShift);
                 }
-            default:
-                return FinishToken(TokenKind::Operator_Less);
+                default:
+                    return FinishToken(TokenKind::Operator_Less);
             }
             break;
         }
-    case '>':
+        case '>':
         {
             ConsumeCodePoint();
             cur = CurrentCodePoint();
             switch (cur) {
-            case '=':
-                ConsumeCodePoint();
-                return FinishToken(TokenKind::Operator_GreaterEquals);
-            case '>':
+                case '=':
+                    ConsumeCodePoint();
+                    return FinishToken(TokenKind::Operator_GreaterEquals);
+                case '>':
                 {
                     ConsumeCodePoint();
                     cur = CurrentCodePoint();
@@ -461,18 +466,18 @@ Token Tokenizer::Get()
                     }
                     return FinishToken(TokenKind::Operator_RightShift);
                 }
-            default:
-                return FinishToken(TokenKind::Operator_Greater);
+                default:
+                    return FinishToken(TokenKind::Operator_Greater);
             }
         }
-    case ',':
-        ConsumeCodePoint();
-        return FinishToken(TokenKind::Operator_Comma);
-    case '\'':
-        return ParseCharacterLiteral();
-    case '"':
-        return ParseStringLiteral();
-    default:
+        case ',':
+            ConsumeCodePoint();
+            return FinishToken(TokenKind::Operator_Comma);
+        case '\'':
+            return ParseCharacterLiteral();
+        case '"':
+            return ParseStringLiteral();
+        default:
         {
             if (IsIdStart(cur)) {
                 return ParseIdentifier();
@@ -521,7 +526,8 @@ void Tokenizer::SkipWhitespace()
                 CurrentCodePointPosition_.Column = 1;
                 CurrentCodePointSize_ = UnloadedCodePoint;
                 IsNewLine_ = true;
-            } else if (byte == ' ' || byte == '\t' || byte == '\r' || byte == '\f' ||
+            } else if (byte ==
+                ' ' || byte == '\t' || byte == '\r' || byte == '\f' ||
                 byte == '\v')
             {
                 ++CurrentCodePointOffset_;
@@ -531,7 +537,9 @@ void Tokenizer::SkipWhitespace()
                 break;
             }
         }
-        if (IsFileStart() && CurrentCodePoint() == unicode::utf8::ByteOrderMark) {
+        if (IsFileStart() && CurrentCodePoint() ==
+            unicode::utf8::ByteOrderMark)
+        {
             ConsumeCodePoint();
             skippedNewline = true;
             continue;
@@ -602,35 +610,36 @@ bool Tokenizer::ConsumeEscapeSequence()
     auto cur = CurrentCodePoint();
 
     switch (cur) {
-    case '\'':
-    case '"':
-    case '?':
-    case '\\':
-    case 'a':
-    case 'b':
-    case 'f':
-    case 'n':
-    case 'r':
-    case 't':
-    case 'v':
-        ConsumeCodePoint();
-        return true;
-    case '\n':
-        ConsumeCodePoint(NewlineHandling::Ignore);
-        return true;
-    case '\r':
-        if (PeekByte() == '\r' && PeekByte(1) == '\n') {
+        case '\'':
+        case '"':
+        case '?':
+        case '\\':
+        case 'a':
+        case 'b':
+        case 'f':
+        case 'n':
+        case 'r':
+        case 't':
+        case 'v':
             ConsumeCodePoint();
+            return true;
+        case '\n':
             ConsumeCodePoint(NewlineHandling::Ignore);
             return true;
-        }
-        break;
-    default:
-        break;
+        case '\r':
+            if (PeekByte() == '\r' && PeekByte(1) == '\n') {
+                ConsumeCodePoint();
+                ConsumeCodePoint(NewlineHandling::Ignore);
+                return true;
+            }
+            break;
+        default:
+            break;
     }
 
     if (IsOctalDigit(cur)) {
-        for (int count = 0; count < 3 && IsOctalDigit(CurrentCodePoint());
+        for (int count = 0;
+            count < 3 && IsOctalDigit(CurrentCodePoint());
             ++count)
         {
             ConsumeCodePoint();
@@ -688,12 +697,13 @@ bool Tokenizer::ConsumeEscapeSequence()
             int digits = 0;
             while (IsHexDigit(CurrentCodePoint())) {
                 auto digit = CurrentCodePoint();
-                value = value > 0x10ffff / 16 ? 0x110000
-                                              : value * 16
-                        + (IsDigit(digit)
+                value = value > 0x10ffff / 16
+                    ? 0x110000
+                    : value * 16 +
+                        (IsDigit(digit)
                                ? static_cast<uint32_t>(digit) - '0'
-                               : (static_cast<uint32_t>(digit) | 0x20) - 'a'
-                                   + 10);
+                               : (static_cast<uint32_t>(digit) | 0x20) - 'a' +
+                                   10);
                 ConsumeCodePoint();
                 ++digits;
             }
@@ -709,14 +719,16 @@ bool Tokenizer::ConsumeEscapeSequence()
                     valid = false;
                     break;
                 }
-                value = value * 16
-                    + (IsDigit(digit)
+                value = value * 16 +
+                    (IsDigit(digit)
                            ? static_cast<uint32_t>(digit) - '0'
                            : (static_cast<uint32_t>(digit) | 0x20) - 'a' + 10);
                 ConsumeCodePoint();
             }
         }
-        if (!valid || value > 0x10ffff || (value >= 0xd800 && value <= 0xdfff)) {
+        if (!valid || value > 0x10ffff || (value >=
+            0xd800 && value <= 0xdfff))
+        {
             OnError(TokenizationErrorKind::InvalidUniversalCharacter);
             return false;
         }
@@ -762,7 +774,10 @@ Token Tokenizer::ParseCharacterLiteral()
         CurrentCodePoint() != '\0')
     {
         if (CurrentCodePoint() == '\\') {
-            bool lineSplice = PeekByte(1) == '\n' || (PeekByte(1) == '\r' && PeekByte(2) == '\n');
+            bool lineSplice = PeekByte(
+                1) == '\n' || (PeekByte(
+                1) == '\r' && PeekByte(
+                2) == '\n');
             valid &= ConsumeEscapeSequence();
             characterCount += !lineSplice;
         } else {
@@ -891,7 +906,9 @@ Token Tokenizer::ParseNumber()
     if (byte(offset) == '.') {
         return ParseFloatingPoint();
     }
-    if (byte(offset) == '0' && (byte(offset + 1) == 'x' || byte(offset + 1) == 'X')) {
+    if (byte(offset) == '0' &&
+        (byte(offset + 1) == 'x' || byte(offset + 1) == 'X'))
+    {
         offset += 2;
         while (IsHexDigit(byte(offset)) || byte(offset) == '\'') {
             ++offset;
@@ -1037,8 +1054,8 @@ Token Tokenizer::ParseInteger()
     };
     if (prev == '0') {
         switch (cur) {
-        case 'b':
-        case 'B':
+            case 'b':
+            case 'B':
             {
                 kind = TokenKind::Literal_BinaryInteger;
                 next();
@@ -1079,8 +1096,8 @@ Token Tokenizer::ParseInteger()
                 }
                 break;
             }
-        case 'x':
-        case 'X':
+            case 'x':
+            case 'X':
             {
                 kind = TokenKind::Literal_HexadecimalInteger;
                 parsedDigits = 0;
@@ -1115,7 +1132,7 @@ Token Tokenizer::ParseInteger()
                 }
                 break;
             }
-        default:
+            default:
             {
                 kind = TokenKind::Literal_OctalInteger;
                 while (IsOctalDigit(cur) || cur == '\'') {
@@ -1332,7 +1349,8 @@ Token Tokenizer::ParsePreprocessingDirective()
         bool digitSeparator =
             cur == '\'' && CurrentCodePointOffset_ != 0 &&
             IsAsciiAlphaNumeric(
-                static_cast<unsigned char>(ByteAt(CurrentCodePointOffset_ - 1))) &&
+                static_cast<unsigned char>(ByteAt(CurrentCodePointOffset_ -
+                    1))) &&
             IsAsciiAlphaNumeric(static_cast<unsigned char>(PeekByte(1)));
         if ((cur == '\'' && !digitSeparator) || cur == '"') {
             auto quote = cur;

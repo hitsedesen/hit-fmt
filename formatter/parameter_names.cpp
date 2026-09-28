@@ -27,15 +27,15 @@ const Node* Child(const Node& node, NK kind)
 bool UnsafeSyntax(const Node& node)
 {
     switch (node.Kind) {
-    case NK::AmbiguousStatement:
-    case NK::UnknownTypeName:
-    case NK::UnparsedSyntax:
-    case NK::MissingToken:
-    case NK::UnexpectedToken:
-    case NK::Error:
-        return true;
-    default:
-        break;
+        case NK::AmbiguousStatement:
+        case NK::UnknownTypeName:
+        case NK::UnparsedSyntax:
+        case NK::MissingToken:
+        case NK::UnexpectedToken:
+        case NK::Error:
+            return true;
+        default:
+            break;
     }
     for (auto* child = node.Child(); child; child = child->NextSibling) {
         if (UnsafeSyntax(*child)) {
@@ -82,7 +82,8 @@ const Node* FunctionName(const Node& node)
     return nullptr;
 }
 
-util::Position AfterToken(const parser::SyntaxTree& tree,
+util::Position AfterToken(
+    const parser::SyntaxTree& tree,
     parser::TokenIndex index)
 {
     auto position = tree.TokenPosition(index);
@@ -97,8 +98,10 @@ util::Position AfterToken(const parser::SyntaxTree& tree,
     return position;
 }
 
-util::Position NamePosition(const parser::SyntaxTree& tree,
-    const Node& parameter, const Node& specifiers)
+util::Position NamePosition(
+    const parser::SyntaxTree& tree,
+    const Node& parameter,
+    const Node& specifiers)
 {
     if (auto* declarators = Child(parameter, NK::InitDeclaratorList)) {
         if (auto* init = Child(*declarators, NK::InitDeclarator)) {
@@ -107,7 +110,8 @@ util::Position NamePosition(const parser::SyntaxTree& tree,
                     // In a function pointer, the name goes inside (*...).
                     return tree.TokenPosition(nested->Tokens.End - 1);
                 }
-                for (auto* child = abstract->Child(); child;
+                for (auto* child = abstract->Child();
+                    child;
                     child = child->NextSibling)
                 {
                     if (child->Kind == NK::ArrayDeclarator ||
@@ -123,8 +127,8 @@ util::Position NamePosition(const parser::SyntaxTree& tree,
         }
     }
     auto last = specifiers.Tokens.End;
-    while (last > specifiers.Tokens.Begin &&
-        tree.Kind(last - 1) == TK::Comment)
+    while (last > specifiers.Tokens.Begin && tree.Kind(last -
+        1) == TK::Comment)
     {
         --last;
     }
@@ -165,7 +169,9 @@ bool IsCommentedName(std::string_view text)
     return true;
 }
 
-void CheckFunction(const parser::SyntaxTree& tree, const Node& function,
+void CheckFunction(
+    const parser::SyntaxTree& tree,
+    const Node& function,
     FunctionDefinitionParameterNames definitionPolicy,
     std::vector<ParameterNameDiagnostic>& diagnostics)
 {
@@ -179,9 +185,11 @@ void CheckFunction(const parser::SyntaxTree& tree, const Node& function,
         }
         auto* declarator = Child(*init, NK::Declarator);
         auto* signature = declarator
-            ? Child(*declarator, NK::FunctionDeclarator) : nullptr;
+            ? Child(*declarator, NK::FunctionDeclarator)
+            : nullptr;
         auto* parameters = signature
-            ? Child(*signature, NK::ParameterList) : nullptr;
+            ? Child(*signature, NK::ParameterList)
+            : nullptr;
         if (!parameters || UnsafeSyntax(*declarator)) {
             continue;
         }
@@ -193,11 +201,13 @@ void CheckFunction(const parser::SyntaxTree& tree, const Node& function,
         }
         const auto first = tree.Token(function.Tokens.Begin);
         const auto last = tree.Token(signature->Tokens.End - 1);
-        const parser::SourceRange signatureRange{first.Text.Begin, last.Text.End};
+        const parser::SourceRange signatureRange{
+            first.Text.Begin, last.Text.End};
         const auto beginLine = tree.TokenPosition(function.Tokens.Begin).Line;
         const auto endLine = tree.TokenPosition(signature->Tokens.End - 1).Line;
         size_t number = 0;
-        for (auto* parameter = parameters->Child(); parameter;
+        for (auto* parameter = parameters->Child();
+            parameter;
             parameter = parameter->NextSibling)
         {
             if (parameter->Kind != NK::ParameterDeclaration) {
@@ -237,9 +247,10 @@ void CheckFunction(const parser::SyntaxTree& tree, const Node& function,
             if (unsafe || HasName(*parameter)) {
                 continue;
             }
+            const bool allowCommentedName = definitionPolicy ==
+                FunctionDefinitionParameterNames::NameOrCommentedNameRequired;
             if (function.Kind == NK::FunctionDefinition &&
-                definitionPolicy ==
-                    FunctionDefinitionParameterNames::NameOrCommentedNameRequired)
+                allowCommentedName)
             {
                 // A comment naming an unused parameter must end the type,
                 // not be a note inside it or inside a default expression.
@@ -275,7 +286,8 @@ void CheckFunction(const parser::SyntaxTree& tree, const Node& function,
 } // namespace
 
 std::vector<ParameterNameDiagnostic>
-CheckParameterNames(const parser::SyntaxTree& tree,
+CheckParameterNames(
+    const parser::SyntaxTree& tree,
     const Configuration& config)
 {
     std::vector<ParameterNameDiagnostic> diagnostics;
@@ -290,7 +302,10 @@ CheckParameterNames(const parser::SyntaxTree& tree,
                 config.FunctionDefinitionParameterNames !=
                     FunctionDefinitionParameterNames::Unchecked))
         {
-            CheckFunction(tree, *node, config.FunctionDefinitionParameterNames,
+            CheckFunction(
+                tree,
+                *node,
+                config.FunctionDefinitionParameterNames,
                 diagnostics);
         }
         for (auto* child = node->Child(); child; child = child->NextSibling) {

@@ -12,7 +12,9 @@ size_t ParseHunkLine(std::string_view text, size_t record)
 {
     size_t result = 0;
     auto [end, error] = std::from_chars(
-        text.data(), text.data() + text.size(), result);
+        text.data(),
+        text.data() + text.size(),
+        result);
     if (text.empty() || error != std::errc{} ||
         end != text.data() + text.size() || result == 0)
     {
@@ -25,7 +27,8 @@ size_t ParseHunkLine(std::string_view text, size_t record)
 } // namespace
 
 ChangedHunkFiles ParseChangedHunks(
-    std::istream& input, const std::filesystem::path& directory)
+    std::istream& input,
+    const std::filesystem::path& directory)
 {
     ChangedHunkFiles files;
     std::string record;
@@ -34,8 +37,12 @@ ChangedHunkFiles ParseChangedHunks(
     size_t groupHunks = 0;
     while (std::getline(input, record)) {
         ++line;
-        if (!record.empty() && record.back() == '\r') record.pop_back();
-        if (record.empty()) continue;
+        if (!record.empty() && record.back() == '\r') {
+            record.pop_back();
+        }
+        if (record.empty()) {
+            continue;
+        }
         if (record.starts_with("file ")) {
             if (!current.empty() && groupHunks == 0) {
                 throw std::runtime_error("changed ranges line " +
