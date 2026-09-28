@@ -4,6 +4,7 @@
 #include <gtest/gtest.h>
 
 #include <algorithm>
+#include <array>
 #include <format>
 #include <limits>
 #include <string>
@@ -330,6 +331,124 @@ INSTANTIATE_TEST_SUITE_P(
     [] (const auto& info) {
         return info.param.Name;
     });
+
+TEST(Parser, RebindsWhitespaceWithoutReclassifyingTokens)
+{
+    PaddedInput input("int f() { return value + 1; }\n");
+    PaddedInput reformatted("int f()\n{\n  return value + 1;\n}\n");
+    auto original = parser::Parse(input.View(), [](parser::ParseError) {});
+    auto rebound = original.RebindWhitespace(reformatted.View());
+    ASSERT_TRUE(rebound);
+    auto reparsed = parser::Parse(reformatted.View(), [](parser::ParseError) {});
+    ASSERT_EQ(rebound->TokenCount(), reparsed.TokenCount());
+    EXPECT_EQ(&rebound->Root(), &original.Root());
+    for (parser::TokenIndex i = 0; i < rebound->TokenCount(); ++i) {
+        EXPECT_EQ(rebound->Kind(i), reparsed.Kind(i));
+        EXPECT_EQ(rebound->TokenText(i), reparsed.TokenText(i));
+        EXPECT_EQ(rebound->TokenPosition(i).Line,
+            reparsed.TokenPosition(i).Line);
+        EXPECT_EQ(rebound->TokenPosition(i).Column,
+            reparsed.TokenPosition(i).Column);
+        EXPECT_EQ(rebound->Role(i), reparsed.Role(i));
+        EXPECT_EQ(rebound->MatchingDelimiter(i),
+            reparsed.MatchingDelimiter(i));
+    }
+
+    // Gap edits can update positions without running the lexer again.
+    const auto source = input.View().View();
+    const auto beforeBrace = source.find(" {");
+    const auto beforeReturn = source.find(" return");
+    const auto beforeClose = source.find(" }");
+    const std::array<parser::WhitespaceEdit, 3> edits{{
+        {static_cast<util::SourceOffset>(beforeBrace),
+            static_cast<util::SourceOffset>(beforeBrace + 1), "\n"},
+        {static_cast<util::SourceOffset>(beforeReturn),
+            static_cast<util::SourceOffset>(beforeReturn + 1), "\n  "},
+        {static_cast<util::SourceOffset>(beforeClose),
+            static_cast<util::SourceOffset>(beforeClose + 1), "\n"},
+    }};
+    auto fromEdits = original.RebindWhitespaceEdits(reformatted.View(), edits);
+    ASSERT_TRUE(fromEdits);
+    for (parser::TokenIndex i = 0; i < reparsed.TokenCount(); ++i) {
+        EXPECT_EQ(fromEdits->TokenText(i), reparsed.TokenText(i));
+        EXPECT_EQ(fromEdits->Token(i).Text, reparsed.Token(i).Text);
+        EXPECT_EQ(fromEdits->TokenPosition(i).Line,
+            reparsed.TokenPosition(i).Line);
+        EXPECT_EQ(fromEdits->TokenPosition(i).Column,
+            reparsed.TokenPosition(i).Column);
+    }
+    const auto expanded = reformatted.View().View();
+    const auto beforeOpen = expanded.find(")\n{") + 1;
+    const auto beforeBody = expanded.find("{\n  return") + 1;
+    const auto beforeEnd = expanded.find(";\n}") + 1;
+    const std::array<parser::WhitespaceEdit, 3> mergedEdits{{
+        {static_cast<util::SourceOffset>(beforeOpen),
+            static_cast<util::SourceOffset>(beforeOpen + 1), " "},
+        {static_cast<util::SourceOffset>(beforeBody),
+            static_cast<util::SourceOffset>(beforeBody + 3), " "},
+        {static_cast<util::SourceOffset>(beforeEnd),
+            static_cast<util::SourceOffset>(beforeEnd + 1), " "},
+    }};
+    auto merged = reparsed.RebindWhitespaceEdits(input.View(), mergedEdits);
+    ASSERT_TRUE(merged);
+    for (parser::TokenIndex i = 0; i < original.TokenCount(); ++i) {
+        EXPECT_EQ(merged->TokenPosition(i).Line,
+            original.TokenPosition(i).Line);
+        EXPECT_EQ(merged->TokenPosition(i).Column,
+            original.TokenPosition(i).Column);
+    }
+    PaddedInput joined("int f() { returnvalue + 1; }\n");
+    const std::array<parser::WhitespaceEdit, 1> unsafe{{
+        {static_cast<util::SourceOffset>(source.find(" value")),
+            static_cast<util::SourceOffset>(source.find(" value") + 1), ""},
+    }};
+    EXPECT_FALSE(original.RebindWhitespaceEdits(joined.View(), unsafe));
+    PaddedInput tight("int f() { return value+ 1; }\n");
+    const std::array<parser::WhitespaceEdit, 1> safe{{
+        {static_cast<util::SourceOffset>(source.find(" + ")),
+            static_cast<util::SourceOffset>(source.find(" + ") + 1), ""},
+    }};
+    auto tightRebound = original.RebindWhitespaceEdits(tight.View(), safe);
+    ASSERT_TRUE(tightRebound);
+    auto tightParsed = parser::Parse(tight.View(),
+        [](parser::ParseError) { });
+    for (parser::TokenIndex i = 0; i < tightParsed.TokenCount(); ++i) {
+        EXPECT_EQ(tightRebound->TokenPosition(i).Column,
+            tightParsed.TokenPosition(i).Column);
+    }
+    PaddedInput changedSpelling("int f()\n{\n  return other + 1;\n}\n");
+    EXPECT_FALSE(original.RebindWhitespaceEdits(
+        changedSpelling.View(), edits));
+
+    PaddedInput unicode("int f() { /* ñ */ return x; }\n");
+    PaddedInput unicodeSpaced("int f() { /* ñ */ return    x; }\n");
+    auto unicodeTree = parser::Parse(unicode.View(),
+        [](parser::ParseError) { });
+    auto unicodeSource = unicode.View().View();
+    auto gap = unicodeSource.find(" x;");
+    const std::array<parser::WhitespaceEdit, 1> unicodeEdit{{
+        {static_cast<util::SourceOffset>(gap),
+            static_cast<util::SourceOffset>(gap + 1), "    "},
+    }};
+    auto unicodeRebound = unicodeTree.RebindWhitespaceEdits(
+        unicodeSpaced.View(), unicodeEdit);
+    ASSERT_TRUE(unicodeRebound);
+    auto unicodeParsed = parser::Parse(unicodeSpaced.View(),
+        [](parser::ParseError) { });
+    for (parser::TokenIndex i = 0; i < unicodeParsed.TokenCount(); ++i) {
+        EXPECT_EQ(unicodeRebound->TokenPosition(i).Line,
+            unicodeParsed.TokenPosition(i).Line);
+        EXPECT_EQ(unicodeRebound->TokenPosition(i).Column,
+            unicodeParsed.TokenPosition(i).Column);
+    }
+
+    PaddedInput changedToken("int f() { return another + 1; }\n");
+    EXPECT_FALSE(original.RebindWhitespace(changedToken.View()));
+    PaddedInput comment("int f() { // hi\n return 1; }\n");
+    PaddedInput movedComment("int f() {\n // hi\n return 1; }\n");
+    auto commented = parser::Parse(comment.View(), [](parser::ParseError) {});
+    EXPECT_FALSE(commented.RebindWhitespace(movedComment.View()));
+}
 
 TEST(Parser, HandlesDeepCompoundNesting)
 {

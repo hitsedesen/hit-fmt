@@ -788,6 +788,21 @@ TEST(CallArgumentTest, LaysOutEnclosingMacroAndNestedCalls)
         }
         EXPECT_EQ(FormatWithStyle(actual, style), actual);
     }
+    // An unchanged outer call must not hide a deeper candidate.
+    style.ExpressionLayoutCondition =
+        formatter::ExpressionLayoutCondition::Preserve;
+    style.ColumnLimit = 48;
+    const auto nested =
+        "void f() {\n"
+        "    Outer(Middle(Inner(alpha, beta, gamma, delta, epsilon)));\n"
+        "}\n";
+    const auto nestedExpected =
+        "void f() {\n"
+        "    Outer(Middle(Inner(alpha, beta, gamma,\n"
+        "        delta, epsilon)));\n"
+        "}\n";
+    EXPECT_EQ(FormatWithStyle(nested, style), nestedExpected);
+    EXPECT_EQ(FormatWithStyle(nestedExpected, style), nestedExpected);
     style.CallArgumentSplit = formatter::CallArgumentSplit::OnePerLine;
     ExpectUnchanged("void f() { EXPECT_EQ(a, b); }\n", style);
 }
