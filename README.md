@@ -94,9 +94,15 @@ printf 'file src/a.cpp\nhunk 12:18\nfile src/b.cpp\nhunk 4:9\n' |
 Paths are relative to the working directory. Formatting may spill into a
 bounded enclosing list or include group by default. Use `--no-spillover`
 to restrict fixes to the hunk lines; changes requiring spill-over remain
-check errors. See
-[`hit-fmt/CONFIGURATION.md`](hit-fmt/CONFIGURATION.md) for details.
-Run `hit-fmt --help` for all command-line options, settings and defaults.
+check errors. Run `hit-fmt --help` for command-line options and
+`hit-fmt --help-config` for the configuration reference and per-option C++
+examples. Help is built into the binary and colored on terminals; set
+`NO_COLOR` to disable color. Generate a complete preserving configuration
+with all settings and their accepted values annotated:
+
+```sh
+hit-fmt --generate-config > .hit-fmt
+```
 
 ## License
 

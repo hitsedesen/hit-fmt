@@ -86,7 +86,7 @@ bool HasArrayEnd(
     return false;
 }
 
-size_t ParsePositiveInteger(
+size_t ParseNonnegativeInteger(
     std::string_view value,
     const std::filesystem::path& path,
     size_t line)
@@ -94,10 +94,8 @@ size_t ParsePositiveInteger(
     size_t result = 0;
     auto [end, error] =
         std::from_chars(value.data(), value.data() + value.size(), result);
-    if (error != std::errc{} || end != value.data() + value.size() ||
-        result == 0)
-    {
-        ThrowConfigError(path, line, "expected a positive integer");
+    if (error != std::errc{} || end != value.data() + value.size()) {
+        ThrowConfigError(path, line, "expected a nonnegative integer");
     }
     return result;
 }
@@ -309,14 +307,14 @@ std::vector<std::string> ParseCallPairs(
     return pairs;
 }
 
-std::vector<std::string> ParseNamePrefixes(
+std::optional<std::vector<std::string>> ParseNamePrefixes(
     std::string_view value,
     const std::filesystem::path& path,
     size_t line)
 {
     auto prefixes = ParseStringList(value, path, line);
     if (prefixes.empty()) {
-        ThrowConfigError(path, line, "expected at least one prefix");
+        return std::nullopt;
     }
     for (const auto& prefix : prefixes) {
         if (prefix.find_first_not_of(
@@ -344,7 +342,7 @@ void ParseField(
     } else if constexpr (std::is_same_v<T, bool>) {
         field = ParseBoolean(value, path, line);
     } else if constexpr (std::is_same_v<T, size_t>) {
-        field = ParsePositiveInteger(value, path, line);
+        field = ParseNonnegativeInteger(value, path, line);
     } else {
         static_assert(std::is_same_v<T, void>, "unsupported config field type");
     }
@@ -395,11 +393,11 @@ void ValidateStyleLimits(
     const std::filesystem::path& path,
     size_t line)
 {
-    if (style.IndentWidth > 32) {
-        ThrowConfigError(path, line, "IndentWidth must not exceed 32");
+    if (style.IndentWidth == 0 || style.IndentWidth > 32) {
+        ThrowConfigError(path, line, "IndentWidth must be between 1 and 32");
     }
-    if (style.ColumnLimit > 10000) {
-        ThrowConfigError(path, line, "ColumnLimit must not exceed 10000");
+    if (style.ColumnLimit == 0 || style.ColumnLimit > 10000) {
+        ThrowConfigError(path, line, "ColumnLimit must be between 1 and 10000");
     }
     if (style.ShortNamespaceLines > 10000) {
         ThrowConfigError(
@@ -415,11 +413,13 @@ void ValidateStyleLimits(
             line,
             "SeparatorLength must be between 8 and 10000");
     }
-    if (style.NamespaceCommentSpaces > 32) {
+    if (style.NamespaceCommentSpaces == 0 ||
+        style.NamespaceCommentSpaces > 32)
+    {
         ThrowConfigError(
             path,
             line,
-            "NamespaceCommentSpaces must not exceed 32");
+            "NamespaceCommentSpaces must be between 1 and 32");
     }
     if (style.AccessModifierIndentWidth > 32 ||
         style.MemberIndentWidth > 32 || style.BlockBodyIndentWidth > 32 ||
@@ -535,18 +535,7 @@ void ApplySetting(
 {
     for (const auto& option : Options) {
         if (option.Name == key) {
-            // Other options still use these shared enums' Preserve value.
-            constexpr std::array<std::string_view, 11> preferences = {
-                "SpaceInsideFunctionParameters", "SpaceInsideCallArguments",
-                "InitializerBracesSpacing", "EmptyBlockInteriorSpacing",
-                "ControlBlockSpaceBeforeBrace", "ClassBraceSpacing",
-                "StructBraceSpacing", "UnionBraceSpacing",
-                "FunctionBraceSpacing", "LambdaBraceSpacing",
-                "NamespaceBraceSpacing"};
-            if (value == "Preserve" &&
-                std::find(preferences.begin(), preferences.end(), key) !=
-                    preferences.end())
-            {
+            if (value == "Preserve" && !AllowsPreserveConfigValue(key)) {
                 ThrowConfigError(
                     path,
                     line,

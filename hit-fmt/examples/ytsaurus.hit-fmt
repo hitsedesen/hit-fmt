@@ -1,6 +1,5 @@
 # Approximation of the YTsaurus C++ style for yt/yt, yt/chyt, yt/yql,
 # and library/cpp/yt. Not intended for yt/cpp, util, or other library/cpp.
-# See ../CONFIGURATION.md for rules that cannot be expressed safely.
 
 # Indentation and limits
 IndentWidth = 4

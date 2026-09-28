@@ -1,6 +1,5 @@
 # Approximation of the Google C++ style / clang-format's Google preset.
 # Use with --config, or copy to .hit-fmt in a source tree.
-# See ../CONFIGURATION.md for unsupported rules and observed limitations.
 
 # Indentation and limits
 IndentWidth = 2
