@@ -1,6 +1,0 @@
-ColumnLimit = 120
-CallArgumentSplit = OnePerLine
-CallArgumentSplitColumnLimit = 90
-CallArgumentSplitColumnLimitNames = ["EXPECT_THROW"]
-FirstCallArgumentPosition = NewLine
-EnforceFirstCallArgumentPosition = true
