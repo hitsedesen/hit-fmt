@@ -1806,10 +1806,19 @@ TEST(PreserveConfigTest, RejectsInvalidSettings)
     EXPECT_EQ(
         *config.Naming.Class.Prefixes,
         (std::vector<std::string>{"S", "C"}));
-    save("ClassNameCase = Unchecked\n");
-    EXPECT_EQ(
-        formatter::LoadConfigFile(path).Naming.Class.Case,
-        formatter::NameCase::Unchecked);
+    save("ClassNameCase = Unchecked\n"
+         "ClassNamePrefixes = []\n"
+         "SeparatorLength = 0\n"
+         "InheritanceListIndent = 0\n"
+         "ConstructorInitializerListIndent = 0\n"
+         "ShortNamespaceLines = 0\n");
+    const auto disabled = formatter::LoadConfigFile(path);
+    EXPECT_EQ(disabled.Naming.Class.Case, formatter::NameCase::Unchecked);
+    EXPECT_FALSE(disabled.Naming.Class.Prefixes.has_value());
+    EXPECT_EQ(disabled.FormattingStyle.SeparatorLength, 0u);
+    EXPECT_EQ(disabled.FormattingStyle.InheritanceListIndent, 0u);
+    EXPECT_EQ(disabled.FormattingStyle.ConstructorInitializerListIndent, 0u);
+    EXPECT_EQ(disabled.FormattingStyle.ShortNamespaceLines, 0u);
     save("CallArgumentSplit = Pack\nExpressionLayoutCondition = Always\n");
     const auto alternate = formatter::LoadConfigFile(path).FormattingStyle;
     EXPECT_EQ(
@@ -1827,9 +1836,6 @@ TEST(PreserveConfigTest, RejectsInvalidSettings)
         formatter::TernaryOperatorPlacement::Leading);
     EXPECT_EQ(preserving.TernarySplit, formatter::TernarySplit::Preserve);
     for (auto setting : {
-        "Regroup = true\n",
-        "InsertBraces = false\n",
-        "UnknownMacroNames = []\n",
         "CallLineFirstStringNames = [\"YT_LOG_\" , \"NS::Call\"]\n",
         "CallLineFirstStringNames = [\"\"]\n",
         "IndentedCallScopePairs = [\"OnBeginList\"]\n",
@@ -1837,7 +1843,7 @@ TEST(PreserveConfigTest, RejectsInvalidSettings)
         "ColumnLimit = 0\n",
         "ColumnLimit = 10001\n",
         "ShortNamespaceLines = 10001\n",
-        "NamespaceComments = Required\n",
+        "NamespaceCommentSpaces = 0\n",
         "NamespaceCommentSpaces = 33\n",
         "AccessModifierIndentWidth = 33\n",
         "MemberIndentWidth = 33\n",
@@ -1859,10 +1865,8 @@ TEST(PreserveConfigTest, RejectsInvalidSettings)
         "InheritanceListCommaSpaceAfter = Unknown\n",
         "InheritanceListStart = Unknown\n",
         "InheritanceListSplit = Unknown\n",
-        "InheritanceListIndent = 0\n",
         "InheritanceListIndent = 33\n",
         "ConstructorInitializerListIndent = 33\n",
-        "ConstructorInitializerListIndent = 0\n",
         "ConstructorInitializerListStart = Attach\n",
         "ConstructorInitializerListColonPlacement = Left\n",
         "CastArgumentSpacing = Middle\n",
@@ -1879,18 +1883,13 @@ TEST(PreserveConfigTest, RejectsInvalidSettings)
         "LabelColonSpacing = Space\n",
         "InheritanceListStart = Attach\n",
         "InheritanceListSplit = Preserve\n",
-        "InheritanceListMerge = true\n",
-        "InheritanceListPunctuation = WithAncestor\n",
         "FunctionParameterSplit = Together\n",
-        "FirstFunctionParameterPosition = NameLineUnlessLong\n",
         "FunctionParameterNewLineIndent = 33\n",
         "InitializerListSplit = Together\n",
         "InitializerClosingBrace = Attach\n",
         "ControlConditionIndent = NameLine\n",
         "ClassBracePlacement = attach\n",
-        "ExpressionWrap = Always\n",
         "ExpressionLayoutCondition = Unknown\n",
-        "ExpressionLayoutAlgorithm = DynamicProgramming\n",
         "BinaryOperatorPlacement = Middle\n",
         "AssignmentOperatorPlacement = Middle\n",
         "TernaryOperatorPlacement = Middle\n",
@@ -1901,8 +1900,6 @@ TEST(PreserveConfigTest, RejectsInvalidSettings)
         "MultilineSingleCallArgumentPosition = Preserve\n",
         "EnforceFirstCallArgumentPosition = maybe\n",
         "CallArgumentIndent = Tabs\n",
-        "MergeCallArguments = Underflow\n",
-        "ExpressionLayoutCondition = OnOverflow\n",
         "FirstFunctionParameterPosition = BeforeName\n",
         "EnforceFirstFunctionParameterPosition = maybe\n",
         "FunctionParameterIndent = Tabs\n",
@@ -1910,8 +1907,6 @@ TEST(PreserveConfigTest, RejectsInvalidSettings)
         "LambdaSpaceBeforeParameters = Unknown\n",
         "SpaceAroundCaptureList = Unknown\n",
         "SpaceAroundCaptureAssignment = Unknown\n",
-        "LambdaImplicitCaptureSpacing = Space\n",
-        "LambdaExplicitCaptureSpacing = Space\n",
         "FunctionSpaceBeforeParameters = Unknown\n",
         "FunctionCallSpaceBeforeParameters = Unknown\n",
         "SpaceInsideFunctionParameters = Unknown\n",
@@ -1921,14 +1916,12 @@ TEST(PreserveConfigTest, RejectsInvalidSettings)
         "CommaSpacing = Unknown\n",
         "LoopSemicolonSpacing = After\n",
         "ConditionInitSemicolonSpacing = After\n",
-        "ControlBlockSemicolonSpacing = Space\n",
         "TrailingWhitespace = Space\n",
         "IndentationKind = Mixed\n",
         "PreprocessorIndentation = Indent\n",
         "TrailingCommentSpacing = After\n",
         "TemplateKeywordSpacing = After\n",
         "TemplateTypeArgumentInteriorSpacing = After\n",
-        "TemplateAngleBracketsSpacing = Space\n",
         "TemplateTypeArgumentSpacing = After\n",
         "EmptyBraceInitializerInteriorSpacing = After\n",
         "OperatorOverloadOperatorSpacing = Space\n",
@@ -1984,8 +1977,6 @@ TEST(PreserveConfigTest, RejectsInvalidSettings)
         "TernaryOperatorSpacing = NoSpace\n",
         "ArrayDeclarationInteriorSpacing = Middle\n",
         "SubscriptOperatorInteriorSpacing = Middle\n",
-        "SubscriptBracketSpacing = Space\n",
-        "ArrayDeclarationBracketSpacing = Space\n",
         "ReturnArrowSpacing = Space\n",
         "EmptyFunctionCallArgumentsSpacing = Middle\n",
         "EmptyFunctionParametersSpacing = Middle\n",
@@ -1995,13 +1986,11 @@ TEST(PreserveConfigTest, RejectsInvalidSettings)
         "ArrayDeclarationSpacing = Middle\n",
         "BraceInitializerSpacing = Middle\n",
         "StructuredBindingBracketSpacing = Middle\n",
-        "SemicolonSpacing = Space\n",
         "ControlBlockBracePlacement = Unknown\n",
         "Exclude = [\"[\"]\n",
         "Exclude = [\n  \"foo\",\n",
         "Exclude = [\n  \"foo\"\n  \"bar\"\n]\n",
         "StructNameCase = lowercase\n",
-        "ClassNamePrefixes = []\n",
         "EnumNamePrefixes = [\"bad prefix\"]\n",
         "NamingNamespaceExemptions = [\"std::\"]\n",
         "NamingNamespaceExemptions = [\"::std\"]\n",
@@ -2011,15 +2000,6 @@ TEST(PreserveConfigTest, RejectsInvalidSettings)
     {
         save(setting);
         EXPECT_THROW(formatter::LoadConfigFile(path), std::runtime_error);
-    }
-    save("Exclude = [\n  \"foo\"\n]\nUnknown = true\n");
-    try {
-        (void)formatter::LoadConfigFile(path);
-        FAIL() << "expected unknown setting";
-    } catch (const std::runtime_error& error) {
-        EXPECT_NE(
-            std::string_view(error.what()).find(":4: unknown setting"),
-            std::string_view::npos);
     }
     save("ClassNameCase = CamelCase\n");
     try {

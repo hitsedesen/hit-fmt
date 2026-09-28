@@ -1,6 +1,5 @@
 # Approximation of the LLVM C++ coding style / clang-format's LLVM preset.
 # Use with --config, or copy to .hit-fmt in the source tree.
-# See ../CONFIGURATION.md for unsupported rules and safety limits.
 
 # Indentation and limits
 IndentWidth = 2

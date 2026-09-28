@@ -1,3 +1,6 @@
+#include "config_help.hpp"
+#include "config_template.hpp"
+
 #include <formatter/config.hpp>
 #include <formatter/formatter.hpp>
 #include <formatter/hunks.hpp>
@@ -14,6 +17,7 @@
 #include <exception>
 #include <filesystem>
 #include <fstream>
+#include <initializer_list>
 #include <iostream>
 #include <limits>
 #include <optional>
@@ -40,6 +44,8 @@ constexpr size_t DiffLookahead = 16;
 constexpr std::string_view ResetColor = "\033[0m";
 constexpr std::string_view BoldRed = "\033[1;31m";
 constexpr std::string_view BoldGreen = "\033[1;32m";
+constexpr std::string_view BoldCyan = "\033[1;36m";
+constexpr std::string_view BoldYellow = "\033[1;33m";
 constexpr std::string_view Green = "\033[32m";
 
 struct Line
@@ -251,7 +257,7 @@ void PrintSuggestedLine(
     }
 }
 
-bool UseTerminalColors()
+bool UseTerminalColors(FILE* stream = stdout)
 {
     if (std::getenv("NO_COLOR") != nullptr) {
         return false;
@@ -262,9 +268,9 @@ bool UseTerminalColors()
         return false;
     }
 #ifdef _WIN32
-    return _isatty(_fileno(stdout)) != 0;
+    return _isatty(_fileno(stream)) != 0;
 #else
-    return isatty(fileno(stdout)) != 0;
+    return isatty(fileno(stream)) != 0;
 #endif
 }
 
@@ -1255,6 +1261,8 @@ struct Options
     bool SummaryOnly = false;
     bool DisableConfig = false;
     bool ShowHelp = false;
+    bool ShowConfigHelp = false;
+    bool GenerateConfig = false;
     std::optional<std::filesystem::path> ConfigPath;
     std::optional<std::string> HunkInput;
     std::unordered_map<std::string, std::vector<Hunk>> Hunks;
@@ -1274,6 +1282,10 @@ Options ParseOptions(int argc, char* argv[])
             positionalOnly = true;
         } else if (argument == "-h" || argument == "--help") {
             options.ShowHelp = true;
+        } else if (argument == "--help-config") {
+            options.ShowConfigHelp = true;
+        } else if (argument == "--generate-config") {
+            options.GenerateConfig = true;
         } else if (argument == "--fix") {
             options.Fix = true;
         } else if (argument == "--check") {
@@ -1488,24 +1500,46 @@ private:
     std::unordered_map<std::string, ConfigEntry> Configs_;
 };
 
-void PrintHelp(std::ostream& output, std::string_view executable)
+void PrintHelp(
+    std::ostream& output,
+    std::string_view executable,
+    bool useColor)
 {
+    auto highlight = [&] (std::string_view text, std::string_view color) {
+        if (useColor) {
+            output << color;
+        }
+        output << text;
+        if (useColor) {
+            output << ResetColor;
+        }
+    };
+    auto option = [&] (std::string_view name, std::string_view description) {
+        output << "  ";
+        highlight(name, BoldYellow);
+        output << description << '\n';
+    };
+    highlight("Usage:", BoldCyan);
+    output << "\n  " << executable << " [options] <path>...\n"
+           << "  " << executable << " --fix [options] <path>...\n\n";
+    highlight("Options:", BoldCyan);
+    output << '\n';
+    option("--fix", "            Fix what can be fixed; check the result.");
+    option("--check", "          Check without editing (default; optional).");
+    option("--no-spillover", "   Restrict fixes to the selected hunk lines.");
+    option("--summary", "        Print only file status lines.");
+    option("--config <file>", "  Use one configuration file for every input.");
+    option(
+        "--no-config",
+        "      Do not search parent directories for .hit-fmt.");
+    option("--changed-hunks <file|->", "  Check hunks from a file or stdin.");
+    option(
+        "--exclude <regex>",
+        " Skip matching files or directories (repeatable).");
+    option("-h, --help", "       Show this help.");
+    option("--help-config", "    Show configuration options and examples.");
+    option("--generate-config", " Print a preserving config to stdout.");
     output
-        << "Usage:\n"
-        << "  " << executable << " [options] <path>...\n"
-        << "  " << executable << " --fix [options] <path>...\n"
-        << "\n"
-        << "Options:\n"
-        << "  --fix            Fix what can be fixed; check the result.\n"
-        << "  --check          Check without editing (default; optional).\n"
-        << "  --no-spillover   Restrict fixes to the selected hunk lines.\n"
-        << "  --summary        Print only file status lines.\n"
-        << "  --config <file>  Use one configuration file for every input.\n"
-        << "  --no-config      Do not search parent directories for .hit-fmt.\n"
-        << "  --changed-hunks <file|->  Check hunks from a file or stdin.\n"
-        << "  --exclude <regex> Skip matching files or directories "
-           "(repeatable).\n"
-        << "  -h, --help       Show this help.\n"
         << "\n"
         << "Without --config or --no-config, each source file uses the "
            "nearest .hit-fmt file in its directory or a parent directory.\n"
@@ -1520,15 +1554,21 @@ void PrintHelp(std::ostream& output, std::string_view executable)
         << "Changed ranges use 'file <path>' followed by one or more\n"
            "'hunk <first>:<last>' lines (inclusive, current-file lines).\n"
         << "Paths are relative to the current working directory.\n"
-        << "Check output is colorized when written to a terminal; set "
-           "NO_COLOR to disable it.\n"
-        << "\n"
-        << "Examples:\n"
-        << "  " << executable << " source.cpp\n"
-        << "  " << executable << " --fix source.cpp include/\n"
-        << "  " << executable << " --summary src/ include/\n"
-        << "  " << executable << " --fix --exclude '(^|/)generated(/|$)' src/\n"
-        << "  " << executable << " --fix --changed-hunks - < hunks.txt\n";
+        << "Output is colorized when written to a terminal; set "
+           "NO_COLOR to disable it.\n\n";
+    highlight("Examples:", BoldCyan);
+    output << '\n';
+    for (auto example : {
+             " source.cpp",
+             " --fix source.cpp include/",
+             " --summary src/ include/",
+             " --fix --exclude '(^|/)generated(/|$)' src/",
+             " --fix --changed-hunks - < hunks.txt"})
+    {
+        output << "  ";
+        highlight(executable, BoldGreen);
+        output << example << '\n';
+    }
 }
 
 } // namespace
@@ -1541,7 +1581,15 @@ int main(int argc, char* argv[])
     try {
         options = ParseOptions(argc, argv);
         if (options.ShowHelp) {
-            PrintHelp(std::cout, argv[0]);
+            PrintHelp(std::cout, argv[0], UseTerminalColors());
+            return 0;
+        }
+        if (options.ShowConfigHelp) {
+            hit_fmt::PrintConfigHelp(std::cout, UseTerminalColors());
+            return 0;
+        }
+        if (options.GenerateConfig) {
+            hit_fmt::PrintPreserveConfig(std::cout);
             return 0;
         }
         if (options.HunkInput) {
@@ -1564,7 +1612,7 @@ int main(int argc, char* argv[])
             options.Hunks = std::move(changed.Hunks);
         }
         if (options.Paths.empty() && !options.HunkInput) {
-            PrintHelp(std::cerr, argv[0]);
+            PrintHelp(std::cerr, argv[0], UseTerminalColors(stderr));
             return 1;
         }
         styleResolver.emplace(options);

@@ -2,6 +2,7 @@
 
 #include "formatter.hpp"
 
+#include <array>
 #include <filesystem>
 #include <optional>
 #include <regex>
@@ -12,6 +13,26 @@
 namespace formatter {
 
 inline constexpr std::string_view DefaultConfigFileName = ".hit-fmt";
+
+// These spacing preferences use Enforce* flags instead of Preserve.
+inline constexpr auto EnforcedSpacingPreferences =
+    std::to_array<std::string_view>({
+        "SpaceInsideFunctionParameters", "SpaceInsideCallArguments",
+        "InitializerBracesSpacing", "EmptyBlockInteriorSpacing",
+        "ControlBlockSpaceBeforeBrace", "ClassBraceSpacing",
+        "StructBraceSpacing", "UnionBraceSpacing",
+        "FunctionBraceSpacing", "LambdaBraceSpacing",
+        "NamespaceBraceSpacing"});
+
+[[nodiscard]] constexpr bool AllowsPreserveConfigValue(std::string_view key)
+{
+    for (auto preference : EnforcedSpacingPreferences) {
+        if (preference == key) {
+            return false;
+        }
+    }
+    return true;
+}
 
 struct NameRule
 {

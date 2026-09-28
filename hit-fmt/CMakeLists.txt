@@ -1,5 +1,7 @@
 add_executable(hit-fmt
-    main.cpp)
+    main.cpp
+    config_help.cpp
+    config_template.cpp)
 target_link_libraries(hit-fmt
     lib-formatter
     lib-util)
