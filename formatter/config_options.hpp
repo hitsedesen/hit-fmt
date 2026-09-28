@@ -4,6 +4,8 @@
 #define FORMATTER_STYLE_OPTIONS(OPT)                                           \
     OPT(std::size_t, IndentWidth, 4)                                           \
     OPT(std::size_t, ColumnLimit, 120)                                         \
+    OPT(formatter::LineLengthCheck, LineLengthCheck,                            \
+        formatter::LineLengthCheck::Strict)                                     \
     OPT(formatter::IndentationKind, IndentationKind,                            \
         formatter::IndentationKind::Preserve)                                   \
     OPT(formatter::PreprocessorIndentation, PreprocessorIndentation,           \
@@ -245,6 +247,8 @@
         formatter::BodyIndentation::Preserve)                                  \
     OPT(std::size_t, MemberIndentWidth, 0)                                     \
     OPT(bool, IndentBlockBodies, false)                                        \
+    OPT(bool, IndentLeadingStatementComments, false)                           \
+    OPT(std::vector<std::string>, IndentedCallScopePairs, {})                  \
     OPT(formatter::StandaloneBlockBraceIndentation,                            \
         StandaloneBlockBraceIndentation,                                       \
         formatter::StandaloneBlockBraceIndentation::Indent)                   \
@@ -252,6 +256,7 @@
         AmbiguousTemplateDeclarationSpacing,                                   \
         formatter::AmbiguousTemplateDeclarationSpacing::Preserve)             \
     OPT(bool, AddMissingControlBraces, false)                                  \
+    OPT(bool, RemoveNullStatements, false)                                     \
     OPT(formatter::EmptyControlBody, EmptyControlBody,                         \
         formatter::EmptyControlBody::Preserve)                                 \
     OPT(formatter::NonEmptyBlockBodyLayout, NonEmptyBlockBodyLayout,           \

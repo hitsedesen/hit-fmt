@@ -1,0 +1,2 @@
+RemoveNullStatements = true
+NonEmptyBlockBodyLayout = Multiline

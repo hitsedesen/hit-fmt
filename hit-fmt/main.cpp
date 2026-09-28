@@ -519,6 +519,15 @@ std::optional<std::vector<Violation>> ReflowViolations(
     return violations;
 }
 
+bool SameNonWhitespaceLines(std::span<const Line> source,
+    std::span<const Line> formatted)
+{
+    std::string a, b;
+    for (const auto& line : source) a += line.Text;
+    for (const auto& line : formatted) b += line.Text;
+    return SameNonWhitespace(a, b);
+}
+
 bool IsIncludeLine(const Line& line)
 {
     auto begin = line.Text.find_first_not_of(" \t");
@@ -561,6 +570,7 @@ std::vector<Chunk> FormattingChunks(
         } else {
             size_t bestDistance = std::numeric_limits<size_t>::max();
             size_t bestSkew = std::numeric_limits<size_t>::max();
+            bool bestPreservesTokens = false;
             auto sourceLimit =
                 std::min(source.size(), sourceIndex + DiffLookahead + 1);
             auto formattedLimit =
@@ -580,9 +590,20 @@ std::vector<Chunk> FormattingChunks(
                     auto skew = sourceSkip > formattedSkip
                         ? sourceSkip - formattedSkip
                         : formattedSkip - sourceSkip;
-                    if (distance < bestDistance ||
-                        (distance == bestDistance && skew < bestSkew))
+                    // An unchanged line inside a repeated block can look
+                    // closer than the actual end of a whitespace-only edit.
+                    // Prefer an anchor that keeps all intervening tokens.
+                    bool preservesTokens = sourceSkip && formattedSkip &&
+                        SameNonWhitespaceLines(
+                            std::span(source).subspan(sourceIndex, sourceSkip),
+                            std::span(formatted).subspan(formattedIndex,
+                                formattedSkip));
+                    if ((preservesTokens && !bestPreservesTokens) ||
+                        (preservesTokens == bestPreservesTokens &&
+                            (distance < bestDistance ||
+                                (distance == bestDistance && skew < bestSkew))))
                     {
+                        bestPreservesTokens = preservesTokens;
                         bestDistance = distance;
                         bestSkew = skew;
                         sourceCount = sourceSkip;

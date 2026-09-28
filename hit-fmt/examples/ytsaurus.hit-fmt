@@ -5,6 +5,7 @@
 # Indentation and limits
 IndentWidth = 4
 ColumnLimit = 120
+LineLengthCheck = Soft
 IndentationKind = Spaces
 TrailingWhitespace = Trim
 
@@ -92,13 +93,16 @@ CallArgumentSplitColumnLimitNames = ["EXPECT_THROW"]
 FunctionCallArgumentClosingParenthesis = SameLine
 EnforceFunctionCallArgumentClosingParenthesis = true
 FirstCallArgumentPosition = NewLine
-# Move safe multiline sole arguments; lambda bodies stay source-owned.
+# Prefer a new line for overflowing multiline sole arguments, but keep
+# their existing position when it fits.
 MultilineSingleCallArgumentPosition = NewLine
-EnforceMultilineSingleCallArgumentPosition = true
+EnforceMultilineSingleCallArgumentPosition = false
 EnforceFirstCallArgumentPosition = true
 CallArgumentIndent = IndentWidth
-# Only direct logger calls: _IF and _UNLESS have a condition first.
+# Direct log calls and THROW_ERROR_EXCEPTION start with a message string.
+# _IF and _UNLESS variants have a condition first.
 CallLineFirstStringNames = [
+    "THROW_ERROR_EXCEPTION",
     "YT_LOG_TRACE", "YT_LOG_DEBUG", "YT_LOG_INFO", "YT_LOG_WARNING",
     "YT_LOG_ERROR", "YT_LOG_ALERT", "YT_LOG_FATAL",
     "YT_LOG_ALERT_AND_THROW",
@@ -143,6 +147,10 @@ RangeBasedForColonSpacing = Space
 
 # Blocks and statements
 IndentBlockBodies = true
+RemoveNullStatements = true
+IndentLeadingStatementComments = true
+# YSON writer calls open and close visual scopes without C++ braces.
+IndentedCallScopePairs = ["OnBeginList:OnEndList", "OnBeginMap:OnEndMap", "OnBeginAttributes:OnEndAttributes"]
 # Standalone scope braces can be aligned with their enclosing block.
 StandaloneBlockBraceIndentation = Preserve
 CollapseEmptyFunctionBodies = true
@@ -191,6 +199,7 @@ UnaryOperatorSpacing = NoSpace
 PostfixOperatorSpacing = NoSpace
 BinaryOperatorSpacing = Space
 AssignmentOperatorSpacing = Space
+OperatorOverloadOperatorSpacing = NoSpace
 SubscriptOperatorSpacing = NoSpace
 SubscriptOperatorInteriorSpacing = NoSpace
 

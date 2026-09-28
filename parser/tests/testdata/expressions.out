@@ -574,6 +574,78 @@
           ";"
         )
         (declaration-statement
+          (declaration-specifiers "auto")
+          (init-declarator-list
+            (init-declarator
+              (declarator
+                (declarator-name "shifted")
+              )
+              (initializer
+                "="
+                (binary-expression
+                  (parenthesized-expression
+                    "("
+                    (binary-expression
+                      (call-expression
+                        (identifier-expression "Type")
+                        (argument-list
+                          "("
+                          (argument
+                            (literal-expression "1")
+                          )
+                          ")"
+                        )
+                      )
+                      "<<"
+                      (identifier-expression "offset")
+                    )
+                    ")"
+                  )
+                  "-"
+                  (literal-expression "1")
+                )
+              )
+            )
+          )
+          ";"
+        )
+        (declaration-statement
+          (declaration-specifiers "auto")
+          (init-declarator-list
+            (init-declarator
+              (declarator
+                (declarator-name "summed")
+              )
+              (initializer
+                "="
+                (binary-expression
+                  (parenthesized-expression
+                    "("
+                    (binary-expression
+                      (call-expression
+                        (identifier-expression "Type")
+                        (argument-list
+                          "("
+                          (argument
+                            (literal-expression "2")
+                          )
+                          ")"
+                        )
+                      )
+                      "+"
+                      (identifier-expression "offset")
+                    )
+                    ")"
+                  )
+                  "-"
+                  (literal-expression "1")
+                )
+              )
+            )
+          )
+          ";"
+        )
+        (declaration-statement
           (declaration-specifiers "int")
           (init-declarator-list
             (init-declarator

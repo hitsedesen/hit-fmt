@@ -59,3 +59,14 @@
 104: & reference-declarator
 106: ) declaration-delimiter
 107: ; generic
+110: ( declaration-delimiter
+113: , list-separator
+116: ) declaration-delimiter
+117: { block-delimiter
+120: [ call-delimiter
+122: ] call-delimiter
+123: [ call-delimiter
+125: & binary-operator
+127: ] call-delimiter
+128: ; generic
+129: } block-delimiter

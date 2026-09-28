@@ -208,6 +208,10 @@ DEFINE_CONFIG_ENUM(MultilineSingleCallArgumentPosition,
 DEFINE_CONFIG_ENUM(CallArgumentIndent, CALL_ARGUMENT_INDENT_VALUES);
 #undef CALL_ARGUMENT_INDENT_VALUES
 
+#define LINE_LENGTH_CHECK_VALUES(X) X(Strict) X(Soft)
+DEFINE_CONFIG_ENUM(LineLengthCheck, LINE_LENGTH_CHECK_VALUES);
+#undef LINE_LENGTH_CHECK_VALUES
+
 #define EXPRESSION_LAYOUT_CONDITION_VALUES(X)                                   \
     X(Preserve) X(Overflow) X(FitOrOverflow) X(Always)
 DEFINE_CONFIG_ENUM(ExpressionLayoutCondition,

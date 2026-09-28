@@ -1,0 +1,3 @@
+BinaryOperatorSpacing = Space
+UnaryOperatorSpacing = NoSpace
+CastSpacing = NoSpace

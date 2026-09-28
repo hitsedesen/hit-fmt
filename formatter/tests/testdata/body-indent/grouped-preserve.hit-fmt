@@ -1,0 +1,2 @@
+IndentBlockBodies = true
+IndentedCallScopePairs = ["OnBeginList:OnEndList", "OnBeginMap:OnEndMap", "OnBeginAttributes:OnEndAttributes"]

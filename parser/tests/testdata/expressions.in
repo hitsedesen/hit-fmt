@@ -33,6 +33,8 @@ auto evaluate(Values... values) {
     delete[] placed;
     delete direct;
     int initialized = source + scale * 2;
+    auto shifted = (Type(1) << offset) - 1;
+    auto summed = (Type(2) + offset) - 1;
     int braced{1};
     return lambda(initialized);
 }

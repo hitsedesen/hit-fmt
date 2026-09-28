@@ -65,16 +65,19 @@
       (constraint-expression
         (parenthesized-expression
           "("
-          (unary-expression
-            "sizeof"
-            (cast-expression
-              "("
-              (type-id "T")
-              ")"
-              (expression ">")
+          (binary-expression
+            (unary-expression
+              "sizeof"
+              (parenthesized-expression
+                "("
+                (identifier-expression "T")
+                ")"
+              )
             )
+            ">"
+            (literal-expression "0")
           )
-          "0" ")"
+          ")"
         )
       )
     )
@@ -241,16 +244,19 @@
                 (constraint-expression
                   (parenthesized-expression
                     "("
-                    (unary-expression
-                      "sizeof"
-                      (cast-expression
-                        "("
-                        (type-id "T")
-                        ")"
-                        (expression ">")
+                    (binary-expression
+                      (unary-expression
+                        "sizeof"
+                        (parenthesized-expression
+                          "("
+                          (identifier-expression "T")
+                          ")"
+                        )
                       )
+                      ">"
+                      (literal-expression "0")
                     )
-                    "0" ")"
+                    ")"
                   )
                 )
               )
