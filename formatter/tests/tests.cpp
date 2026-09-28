@@ -168,6 +168,14 @@ std::vector<FormattedCase> FormattedCases()
         {"preserve", "space", "no-space", "combined"});
     AddCases(cases, BODY_INDENT_TESTDATA_DIR,
         {"preserve", "indent", "no-indent", "mixed"});
+    AddCases(cases, std::filesystem::path(FORMATTER_TESTDATA_DIR) /
+        "../null-statements", {"preserve", "remove"});
+    AddCases(cases, BODY_INDENT_TESTDATA_DIR,
+        {"grouped-preserve", "grouped-strict"},
+        "grouped-statements.input.cpp");
+    AddCases(cases, BODY_INDENT_TESTDATA_DIR,
+        {"lambda-comments-follow", "lambda-comments-preserve"},
+        "lambda-leading-comments.input.cpp");
     const auto chains = std::filesystem::path(FORMATTER_TESTDATA_DIR) /
         "../chained-calls";
     AddCases(cases, chains, {"always", "continuation", "preserve"});
@@ -205,6 +213,14 @@ std::vector<FormattedCase> FormattedCases()
     addProfileCase("../assignment-location", "profile");
     addProfileCase("../function_parameters", "profile");
     addProfileCase("../body-indent", "profile-control-local");
+    cases.push_back({std::filesystem::path(FORMATTER_TESTDATA_DIR) /
+        "../null-statements", "profile", "input.cpp", profile});
+    cases.push_back({BODY_INDENT_TESTDATA_DIR, "grouped-profile",
+        "grouped-statements.input.cpp", profile});
+    cases.push_back({BODY_INDENT_TESTDATA_DIR, "lambda-comments-profile",
+        "lambda-leading-comments.input.cpp", profile});
+    cases.push_back({BODY_INDENT_TESTDATA_DIR, "lambda-trailing-return",
+        "lambda-trailing-return.input.cpp"});
     addProfileCase("../lambda-captures", "profile");
     addProfileCase("../call-reflow", "profile-tabbed-log");
     const auto callReflow = std::filesystem::path(FORMATTER_TESTDATA_DIR) /
@@ -951,6 +967,35 @@ TEST(ExpressionLayoutTest, SkipsFormatDisabledRegionsAgainstGolden)
     test::golden::ExpectGolden(directory / "regions.layout.expected", actual);
 }
 
+TEST(ExpressionLayoutTest, SoftLineLengthAgainstGolden)
+{
+    const auto directory = std::filesystem::path(FORMATTER_TESTDATA_DIR) /
+        "../line-length";
+    auto source = ReadFile(directory / "input.cpp");
+    const auto size = source.size();
+    source.append(util::SourcePaddingSize, '\0');
+    const auto tree = parser::Parse(
+        {.Data = source.data(), .Size = size},
+        [] (parser::ParseError) { });
+    auto style = formatter::LoadConfigFile(
+        directory / "soft.hit-fmt").FormattingStyle;
+    for (const auto* mode : {"soft", "strict"}) {
+        if (std::string_view(mode) == "strict") {
+            style.LineLengthCheck = formatter::LineLengthCheck::Strict;
+        }
+        std::string actual;
+        for (const auto& diagnostic :
+            formatter::CheckExpressionLayout(tree, style))
+        {
+            actual += std::to_string(diagnostic.Position.Line) + ":" +
+                std::to_string(diagnostic.Position.Column) + ": " +
+                diagnostic.Message + "\n";
+        }
+        test::golden::ExpectGolden(
+            directory / (std::string(mode) + ".expected"), actual);
+    }
+}
+
 TEST(ExpressionLayoutTest, ChecksAssignmentPlacementAgainstGolden)
 {
     const auto directory = std::filesystem::path(FORMATTER_TESTDATA_DIR) /
@@ -1555,6 +1600,7 @@ TEST(PreserveConfigTest, RejectsInvalidSettings)
          "EnforceFirstCallArgumentPosition = true\n"
          "CallArgumentIndent = Continuation\n"
          "CallLineFirstStringNames = [\"YT_LOG_INFO\", \"YT_LOG_ERROR\"]\n"
+         "IndentedCallScopePairs = [\"OnBeginList:OnEndList\"]\n"
          "Exclude = [ # list comment\n"
          "  \"x]y\", # bracket in a quoted item\n"
          "  \"(^|/)generated(/|$)\"\n"
@@ -1597,6 +1643,8 @@ TEST(PreserveConfigTest, RejectsInvalidSettings)
         formatter::CallArgumentIndent::Continuation);
     EXPECT_EQ(config.FormattingStyle.CallLineFirstStringNames,
         (std::vector<std::string>{"YT_LOG_INFO", "YT_LOG_ERROR"}));
+    EXPECT_EQ(config.FormattingStyle.IndentedCallScopePairs,
+        (std::vector<std::string>{"OnBeginList:OnEndList"}));
     ASSERT_EQ(config.Exclude.size(), 2u);
     EXPECT_TRUE(std::regex_search("x]y", config.Exclude[0]));
     EXPECT_TRUE(std::regex_search("generated/source.cpp", config.Exclude[1]));
@@ -1624,6 +1672,8 @@ TEST(PreserveConfigTest, RejectsInvalidSettings)
         "UnknownMacroNames = []\n",
         "CallLineFirstStringNames = [\"YT_LOG_\" , \"NS::Call\"]\n",
         "CallLineFirstStringNames = [\"\"]\n",
+        "IndentedCallScopePairs = [\"OnBeginList\"]\n",
+        "IndentedCallScopePairs = [\"OnBeginList:End::List\"]\n",
         "ColumnLimit = 0\n",
         "ColumnLimit = 10001\n",
         "ShortNamespaceLines = 10001\n",

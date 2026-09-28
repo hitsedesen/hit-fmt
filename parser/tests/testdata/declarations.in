@@ -70,3 +70,14 @@ protected:
 static_assert(
     offsetof(library::records::StoredValue, length) == 4 &&
     sizeof(library::records::StoredValue::length) == 4);
+
+constexpr int FrameDifference = sizeof(Fixture) - sizeof(Fixture);
+constexpr int FrameAlignment = alignof(Fixture) - alignof(Fixture);
+
+template <typename T, int Steps>
+    requires std::is_arithmetic_v<T>
+TRollingGauge<T, Steps> operator+(const TRollingGauge<T, Steps>& left, const TRollingGauge<T, Steps>& right);
+
+template <typename T, int Steps>
+    requires std::is_arithmetic_v<T>
+TRollingGauge<T, Steps>& operator+=(TRollingGauge<T, Steps>& left, const TRollingGauge<T, Steps>& right);

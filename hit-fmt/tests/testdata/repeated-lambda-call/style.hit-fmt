@@ -1,0 +1,5 @@
+ColumnLimit = 120
+CallArgumentSplit = OnePerLine
+FirstCallArgumentPosition = NewLine
+IndentBlockBodies = true
+ExpressionLayoutCondition = Overflow

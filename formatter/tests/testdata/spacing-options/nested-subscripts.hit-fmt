@@ -1,0 +1,3 @@
+SubscriptOperatorSpacing = NoSpace
+SubscriptOperatorInteriorSpacing = NoSpace
+BinaryOperatorSpacing = Space

@@ -74,6 +74,7 @@ line. Example:
 # Indentation and limits
 IndentWidth = 4
 ColumnLimit = 120
+LineLengthCheck = Strict
 IndentationKind = Preserve
 TrailingWhitespace = Preserve
 
@@ -211,6 +212,7 @@ EnforceControlBlockBracePlacement = false
 ControlBlockSpaceBeforeBrace = Space
 EnforceControlBlockSpaceBeforeBrace = false
 AddMissingControlBraces = false
+RemoveNullStatements = false
 EmptyControlBody = Preserve
 IndentCaseLabels = Preserve
 CaseLabelIndentWidth = 0
@@ -223,6 +225,8 @@ EnforceEmptyBlockInteriorSpacing = false
 StatementSemicolonSpacing = Preserve
 DeclarationSemicolonSpacing = Preserve
 IndentBlockBodies = false
+IndentLeadingStatementComments = false
+IndentedCallScopePairs = []
 StandaloneBlockBraceIndentation = Indent
 CollapseEmptyFunctionBodies = false
 NonEmptyBlockBodyLayout = Preserve
@@ -329,6 +333,12 @@ Exclude = [
 - `ColumnLimit`: positive integer up to 10000. Function parameter lists,
   call arguments, expressions, and inheritance lists can be wrapped
   according to their split settings.
+- `LineLengthCheck`: with expression layout checking enabled, `Strict`
+  (default) reports every active line exceeding `ColumnLimit`. `Soft`
+  reports an overlong line only when the formatter can produce a layout at
+  or under the limit for that line. If the formatter cannot safely fix it,
+  the length alone is not a violation. Operator placement and other
+  diagnostics remain independent.
 - `IndentationKind`: `Preserve` (default), `Spaces`, or `Tabs` for
   formatter-generated indentation. `Preserve` and `Spaces` retain the
   previous space-based output; `Tabs` emits tabs at `IndentWidth`-column
@@ -667,8 +677,9 @@ CRLF lists are left intact. They do not change calls.
   and incomplete statements unchanged.
 - `CallArgumentSplit`: `Preserve` (default, leave call arguments
   unchanged), `Pack` (put as many arguments as fit on each line), or
-  `OnePerLine` (one argument per continuation line if a split is chosen).
-  Independent of `ExpressionLayoutCondition`. Calls that fit on one line
+  `OnePerLine` (one argument per continuation line when split, including
+  safe calls already split in the source). Independent of
+  `ExpressionLayoutCondition`. Calls that fit on one line
   are not forced to split. A single safe argument can move to a continuation
   line. For nested single-argument calls, safe one-break inner and outer
   layouts are compared so the chosen split balances the resulting lines.
@@ -678,9 +689,12 @@ CRLF lists are left intact. They do not change calls.
   remaining candidates are ranked by maximum width, then balance.
   Ternary layout runs first;
   name-specific call limits and source-owned syntax retain their policies.
-  With `OnePerLine`, a flat enclosing multi-argument call owns the
-  overflow; unsafe calls remain source-owned rather than splitting only
-  inside an argument.
+  With `OnePerLine`, an enclosing multi-argument call owns the overflow.
+  With `FirstCallArgumentPosition = NewLine`,
+  `CallArgumentIndent = IndentWidth`, and a same-line closing parenthesis,
+  a safe multiline nested-call argument can move with its continuation
+  adjusted to the new base. Comments, directives, multiline token text, braced argument bodies,
+  and tab indentation remain source-owned.
   A short single-argument member call is not split just because the following
   chain segment overflows; multiline lambda segments stay source-owned.
   A direct multiline lambda can move below `(` only if the relocated
@@ -750,8 +764,9 @@ CRLF lists are left intact. They do not change calls.
   when the call is split. Earlier arguments remain on that line too,
   even if it exceeds `ColumnLimit`. Other arguments follow
   `CallArgumentSplit`. Inter-argument comments, multiline arguments,
-  and unsafe calls remain unchanged. The YTsaurus profile lists the direct logging macro
-  names; it does not select `_IF` or `_UNLESS` variants.
+  and unsafe calls remain unchanged. The YTsaurus profile selects direct
+  logging calls and `THROW_ERROR_EXCEPTION`, but not `_IF` or `_UNLESS`
+  variants.
 - `EnforceFirstCallArgumentPosition`: `false` (default) retains the first
   argument's position when reflowing an already split call in `Overflow`
   or `FitOrOverflow`; `true` applies `FirstCallArgumentPosition` to
@@ -828,6 +843,12 @@ CRLF lists are left intact. They do not change calls.
   `EmptyBlockInteriorSpacing = Space` produces `{ }`. Brace placement
   follows `ControlBlockBracePlacement`; comments and incomplete or CRLF
   statements stay source-owned.
+- `RemoveNullStatements`: `false` (default) retains standalone `;`
+  statements. `true` removes complete null statements directly inside a
+  compound block, including a redundant `;` after `switch (...) { ... }`.
+  Controlled `if`/`while`/`for` bodies, labeled statements, directives,
+  comments on the same line and recovered syntax are left alone. This is
+  independent of `EmptyControlBody`.
 - `IndentCaseLabels`: `Preserve` (default), `NoIndent` (align labels with
   their switch header), or `Indent` (`CaseLabelIndentWidth` inside the switch).
   Statements following a case get one additional level with `Indent` when
@@ -899,6 +920,24 @@ CRLF lists are left intact. They do not change calls.
   bodies remain source-owned. Unbraced switch case labels and their following
   statements retain their original indentation because they have no
   compound body to anchor case indentation.
+- `IndentLeadingStatementComments`: `false` (default) preserves comment
+  indentation. When enabled with `IndentBlockBodies`, standalone `//`
+  comments directly adjacent to a reindented statement follow it if they
+  share its old indentation. Blank-separated, trailing, block, and
+  directive comments remain source-owned.
+- `IndentedCallScopePairs`: optional `Begin:End` call pairs (for example
+  `["OnBeginList:OnEndList"]`). With `IndentBlockBodies = true`, preserve
+  one existing extra indentation level between matching argument-free `.`
+  or `->` calls on the same receiver, or between standalone wrapper calls
+  containing one configured, argument-free `Begin()`/`End()` argument.
+  The method argument may occur anywhere in the wrapper's argument list.
+  The wrapper and all other argument tokens must match between the pair;
+  only the configured method name may differ. Nested configured scopes may
+  add further levels when already indented; flat nested calls do not force
+  an extra level. The opening and closing calls must match their
+  scope's indentation; intervening calls and declarations must be
+  consistently indented. The option never adds an extra level; other
+  over-indentation is still corrected.
 - `StandaloneBlockBraceIndentation`: `Indent` (default) aligns an anonymous
   scope's opening `{` with other statements at the same nesting level when
   `IndentBlockBodies = true`; `Preserve` leaves only that opening brace's
@@ -976,7 +1015,9 @@ CRLF lists are left intact. They do not change calls.
   `InitializerListSplit = Preserve` when the gap before `}` is safe. For
   unknown typed temporary initializers, only the closing gap (or a safe
   trailing comma, if requested) is changed; their contents are not reflowed.
-  A multiline final element retains its own closing-brace line.
+  A multiline final element retains its own closing-brace line. A closing
+  brace on the same line as `, {` for the next initializer element also
+  keeps that boundary rather than joining both elements onto the prior line.
 - `InitializerTrailingComma`: `Keep` (default) leaves a trailing comma
   intact and puts `}` on its own line, even with
   `InitializerClosingBrace = SameLine`; safe parsed compact lists are split one

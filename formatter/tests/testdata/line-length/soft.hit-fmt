@@ -1,0 +1,5 @@
+ColumnLimit = 55
+ExpressionLayoutCondition = Overflow
+BinaryOperatorPlacement = Trailing
+LineLengthCheck = Soft
+RemoveNullStatements = true

@@ -1,0 +1,26 @@
+fail: 7 violations
+  --> <input>:4:121
+   |
+ 4 |         .OnAdded(MakeHandler([&] (const ComponentPtr& component) -> TBuilder<VeryLongComponentSpecificationType...
+   |   line exceeds ColumnLimit (129 > 120)
+ 5 |             VERIFY_COMPONENT(
+   |             ^ indent 'VERIFY_COMPONENT' with 16 spaces instead of 12 spaces
+ 6 |                 component->Ready,
+   |                 ^ indent 'component' with 20 spaces instead of 16 spaces
+ 7 |                 "addition");
+   |                 ^ indent '"' with 20 spaces instead of 16 spaces
+ 8 |             ready = true;
+   |             ^ indent 'ready' with 16 spaces instead of 12 spaces
+ 9 |             return MakeBuilder(component);
+   |             ^ indent 'return' with 16 spaces instead of 12 spaces
+10 |         }))
+   |         ^ indent '}' with 12 spaces instead of 8 spaces
+  suggested formatting:
+   +         .OnAdded(MakeHandler(
+   +             [&] (const ComponentPtr& component) -> TBuilder<VeryLongComponentSpecificationTypeWithExtraSuffix> {
+   +                 VERIFY_COMPONENT(
+   +                     component->Ready,
+   +                     "addition");
+   +                 ready = true;
+   +                 return MakeBuilder(component);
+   +             }))

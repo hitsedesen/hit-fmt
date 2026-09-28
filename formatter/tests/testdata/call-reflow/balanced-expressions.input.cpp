@@ -13,4 +13,16 @@ void Compare()
     if (Any(previousChannelStatus & ~EChannelStatus::CurrentlyProcessing) && None(previousChannelStatus & EChannelStatus::PendingShutdown)) {
         Handle();
     }
+    if (Find(GetAvailableSerializationFormatIdentifiers(), format) != GetAvailableSerializationFormatIdentifiers().end()) {
+        Use();
+    }
+    if (Find(GetAvailableSerializationFormatIdentifiers(), GetAlternativeSerializationFormatIdentifiers()) != expected) {
+        UseAlternative();
+    }
+}
+
+void StoreRecord()
+{
+    Values_.push_back(std::string(Options_->Lead, '.') + std::string(DescribeArchivedRecordPayload(DecodeRecordVariant<TSubstantialRecordPayload>(record.Payload))));
+    auto product = ComputeLedgerWeight(factors.Base, factors.Limit) * ConvertTokenizedMetric(ExtractValueFromIndexedPayload<TStoredMetric>(record.Payload));
 }

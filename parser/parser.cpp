@@ -1475,12 +1475,29 @@ private:
                 kind == TK::Keyword_class ||
                 kind == TK::Keyword_struct || kind == TK::Keyword_union ||
                 kind == TK::Keyword_enum || kind == TK::Keyword_using ||
-                kind == TK::Keyword_concept || (kind == TK::Identifier && (Kind(next) == TK::Identifier || (Kind(next)
-                    == TK::Operator_OpenParenthesis &&
+                kind == TK::Keyword_concept || (kind == TK::Identifier && (Kind(next) == TK::Identifier ||
+                    Kind(next) == TK::Keyword_operator ||
+                    (Kind(next) == TK::Operator_OpenParenthesis &&
                     Kind(PreviousSignificant(Cursor_))
                                     != TK::Operator_And &&
                     Kind(PreviousSignificant(Cursor_))
                                     != TK::Operator_Or))));
+            // A dependent return type may be a template-id (optionally
+            // followed by pointer/reference qualifiers) and an overload
+            // name. Do not consume it as part of the constraint.
+            if (!startsDeclaration && angleDepth == 0 && consumedConstraint &&
+                kind == TK::Identifier && Kind(next) == TK::Operator_Less)
+            {
+                auto afterType = NextSignificant(SkipTemplateArguments(
+                    next, Tree_.Tokens_.Size()));
+                while (Kind(afterType) == TK::Operator_Star ||
+                    Kind(afterType) == TK::Operator_Ampersand ||
+                    Kind(afterType) == TK::Operator_And)
+                {
+                    afterType = NextSignificant(afterType + 1);
+                }
+                startsDeclaration = Kind(afterType) == TK::Keyword_operator;
+            }
             if (startsDeclaration || kind == TK::Operator_Semicolon ||
                 kind == TK::Operator_OpenBrace)
             {
@@ -3880,10 +3897,43 @@ private:
     [[nodiscard]] bool LooksLikeTypeId(size_t begin, size_t end) const
     {
         auto first = SkipAttributeSpecifiers(begin);
-        if (first >= end) {
+        if (first >= end ||
+            (!IsTypeKeyword(Kind(first)) && !IsKnownType(first)))
+        {
             return false;
         }
-        return IsTypeKeyword(Kind(first)) || IsKnownType(first);
+        for (auto i = first; i < end; ++i) {
+            auto kind = Kind(i);
+            if (kind == TK::Operator_OpenParenthesis ||
+                kind == TK::Operator_OpenBracket)
+            {
+                auto after = FindBalancedEnd(i);
+                if (after == std::numeric_limits<TokenIndex>::max() ||
+                    after > end) return false;
+                i = after - 1;
+                continue;
+            }
+            if (kind == TK::Operator_Less) {
+                auto after = SkipTemplateArguments(i, end);
+                if (after > i && after <= end &&
+                    (Kind(after - 1) == TK::Operator_Greater ||
+                        Kind(after - 1) == TK::Operator_RightShift))
+                {
+                    i = after - 1;
+                    continue;
+                }
+            }
+            // A known type followed by a top-level binary expression is
+            // not a cast type-id: (T(1) << shift) - 1 is subtraction.
+            if (GetBinaryOperatorInfo(kind).Precedence != 0 &&
+                kind != TK::Operator_Star &&
+                kind != TK::Operator_Ampersand &&
+                kind != TK::Operator_And)
+            {
+                return false;
+            }
+        }
+        return true;
     }
 
     [[nodiscard]] bool IsPrefixOperator(TK kind) const
@@ -4558,7 +4608,22 @@ private:
             }
         } else if (IsPrefixOperator(kind)) {
             ++cursor;
-            auto* operand = ParseExpressionSyntax(cursor, end, 14);
+            auto operandEnd = end;
+            if (kind == TK::Keyword_sizeof || kind == TK::Keyword_alignof) {
+                auto opening = NextSignificant(cursor);
+                if (Kind(opening) == TK::Operator_OpenParenthesis) {
+                    auto closingEnd = FindBalancedEnd(opening);
+                    if (closingEnd != std::numeric_limits<TokenIndex>::max() &&
+                        closingEnd <= end &&
+                        LooksLikeTypeId(opening + 1, closingEnd - 1))
+                    {
+                        // sizeof(type) is complete at ')': a following -
+                        // is binary subtraction, not a cast's unary operand.
+                        operandEnd = closingEnd;
+                    }
+                }
+            }
+            auto* operand = ParseExpressionSyntax(cursor, operandEnd, 14);
             if (!operand) {
                 // A dangling prefix operator cannot be the right operand
                 // of a binary expression (`char**` in a type-like macro
@@ -5530,13 +5595,22 @@ private:
                 TK::Operator_CloseParenthesis,
                 PunctuationRole::CastDelimiter);
             break;
-        case NodeKind::SubscriptExpression:
-            MarkDelimiterRole(
-                node,
-                TK::Operator_OpenBracket,
-                TK::Operator_CloseBracket,
-                PunctuationRole::CallDelimiter);
+        case NodeKind::SubscriptExpression: {
+            // A nested subscript's first '[' belongs to its base, not
+            // this expression. Mark the bracket after that base instead.
+            const auto* base = node.Child();
+            auto open = base ? base->Tokens.End : node.Tokens.End;
+            if (open < node.Tokens.End &&
+                Kind(open) == TK::Operator_OpenBracket &&
+                FindBalancedEnd(open) == node.Tokens.End)
+            {
+                Tree_.Tokens_.SetRole(open,
+                    PunctuationRole::CallDelimiter);
+                Tree_.Tokens_.SetRole(node.Tokens.End - 1,
+                    PunctuationRole::CallDelimiter);
+            }
             break;
+        }
         case NodeKind::FoldOperator:
         case NodeKind::FoldEllipsis:
             MarkRangeRole(

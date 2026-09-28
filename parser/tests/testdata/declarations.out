@@ -895,4 +895,254 @@
     )
     ";"
   )
+  (declaration
+    (leading-trivia
+      (whitespace "\n\n")
+    )
+    (declaration-specifiers "constexpr" "int")
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (declarator-name "FrameDifference")
+        )
+        (initializer
+          "="
+          (binary-expression
+            (unary-expression
+              "sizeof"
+              (parenthesized-expression
+                "("
+                (identifier-expression "Fixture")
+                ")"
+              )
+            )
+            "-"
+            (unary-expression
+              "sizeof"
+              (parenthesized-expression
+                "("
+                (identifier-expression "Fixture")
+                ")"
+              )
+            )
+          )
+        )
+      )
+    )
+    ";"
+  )
+  (declaration
+    (declaration-specifiers "constexpr" "int")
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (declarator-name "FrameAlignment")
+        )
+        (initializer
+          "="
+          (binary-expression
+            (unary-expression
+              "alignof"
+              (parenthesized-expression
+                "("
+                (identifier-expression "Fixture")
+                ")"
+              )
+            )
+            "-"
+            (unary-expression
+              "alignof"
+              (parenthesized-expression
+                "("
+                (identifier-expression "Fixture")
+                ")"
+              )
+            )
+          )
+        )
+      )
+    )
+    ";"
+  )
+  (template-declaration
+    (leading-trivia
+      (whitespace "\n\n")
+    )
+    "template"
+    (template-parameter-list
+      "<"
+      (template-parameter "typename" "T")
+      (list-separator ",")
+      (template-parameter "int" "Steps")
+      ">"
+    )
+    (requires-clause
+      "requires"
+      (constraint-expression
+        (member-expression
+          (identifier-expression "std")
+          "::"
+          (unparsed-syntax "is_arithmetic_v" "<" "T" ">")
+        )
+      )
+    )
+    (function-declaration
+      (declaration-specifiers
+        "TRollingGauge"
+        (template-argument-list
+          "<"
+          (template-argument "T")
+          (list-separator ",")
+          (template-argument "Steps")
+          ">"
+        )
+      )
+      (init-declarator-list
+        (init-declarator
+          (declarator
+            (operator-function-name "operator" "+")
+            (function-declarator
+              (parameter-list
+                "("
+                (parameter-declaration
+                  (declaration-specifiers
+                    "const" "TRollingGauge"
+                    (template-argument-list
+                      "<"
+                      (template-argument "T")
+                      (list-separator ",")
+                      (template-argument "Steps")
+                      ">"
+                    )
+                  )
+                  (init-declarator-list
+                    (init-declarator
+                      (declarator
+                        (pointer-operator "&")
+                        (declarator-name "left")
+                      )
+                    )
+                  )
+                )
+                (list-separator ",")
+                (parameter-declaration
+                  (declaration-specifiers
+                    "const" "TRollingGauge"
+                    (template-argument-list
+                      "<"
+                      (template-argument "T")
+                      (list-separator ",")
+                      (template-argument "Steps")
+                      ">"
+                    )
+                  )
+                  (init-declarator-list
+                    (init-declarator
+                      (declarator
+                        (pointer-operator "&")
+                        (declarator-name "right")
+                      )
+                    )
+                  )
+                )
+                ")"
+              )
+            )
+          )
+        )
+      )
+      ";"
+    )
+  )
+  (template-declaration
+    (leading-trivia
+      (whitespace "\n\n")
+    )
+    "template"
+    (template-parameter-list
+      "<"
+      (template-parameter "typename" "T")
+      (list-separator ",")
+      (template-parameter "int" "Steps")
+      ">"
+    )
+    (requires-clause
+      "requires"
+      (constraint-expression
+        (member-expression
+          (identifier-expression "std")
+          "::"
+          (unparsed-syntax "is_arithmetic_v" "<" "T" ">")
+        )
+      )
+    )
+    (function-declaration
+      (declaration-specifiers
+        "TRollingGauge"
+        (template-argument-list
+          "<"
+          (template-argument "T")
+          (list-separator ",")
+          (template-argument "Steps")
+          ">"
+        )
+      )
+      (init-declarator-list
+        (init-declarator
+          (declarator
+            (pointer-operator "&")
+            (operator-function-name "operator" "+=")
+            (function-declarator
+              (parameter-list
+                "("
+                (parameter-declaration
+                  (declaration-specifiers
+                    "TRollingGauge"
+                    (template-argument-list
+                      "<"
+                      (template-argument "T")
+                      (list-separator ",")
+                      (template-argument "Steps")
+                      ">"
+                    )
+                  )
+                  (init-declarator-list
+                    (init-declarator
+                      (declarator
+                        (pointer-operator "&")
+                        (declarator-name "left")
+                      )
+                    )
+                  )
+                )
+                (list-separator ",")
+                (parameter-declaration
+                  (declaration-specifiers
+                    "const" "TRollingGauge"
+                    (template-argument-list
+                      "<"
+                      (template-argument "T")
+                      (list-separator ",")
+                      (template-argument "Steps")
+                      ">"
+                    )
+                  )
+                  (init-declarator-list
+                    (init-declarator
+                      (declarator
+                        (pointer-operator "&")
+                        (declarator-name "right")
+                      )
+                    )
+                  )
+                )
+                ")"
+              )
+            )
+          )
+        )
+      )
+      ";"
+    )
+  )
 )

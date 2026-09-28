@@ -13,3 +13,8 @@ struct Derived : Base<Element>
 };
 
 void Compare(const ::google::protobuf::Map<TKey, TValue>& value);
+
+int Select(int row, int offset)
+{
+    return cells[row][ offset & 0xff];
+}

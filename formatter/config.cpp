@@ -265,6 +265,32 @@ std::vector<std::string> ParseCallNames(
     return names;
 }
 
+std::vector<std::string> ParseCallPairs(
+    std::string_view value, const std::filesystem::path& path, size_t line)
+{
+    auto pairs = ParseStringList(value, path, line);
+    auto validName = [] (std::string_view name) {
+        return !name.empty() &&
+            (std::isalpha(static_cast<unsigned char>(name.front())) ||
+                name.front() == '_') &&
+            name.find_first_not_of(
+                "abcdefghijklmnopqrstuvwxyz"
+                "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_") ==
+                std::string_view::npos;
+    };
+    for (const auto& pair : pairs) {
+        auto colon = pair.find(':');
+        if (colon == std::string::npos ||
+            !validName(std::string_view(pair).substr(0, colon)) ||
+            !validName(std::string_view(pair).substr(colon + 1)))
+        {
+            ThrowConfigError(path, line,
+                "expected begin:end call identifier pairs");
+        }
+    }
+    return pairs;
+}
+
 std::vector<std::string> ParseNamePrefixes(
     std::string_view value, const std::filesystem::path& path, size_t line)
 {
@@ -381,6 +407,8 @@ void AssignStyle(Configuration& config, std::string_view value,
         if constexpr (Member == &Style::ChainedCallRootNames) {
             config.FormattingStyle.*Member =
                 ParseNamespaceExemptions(value, path, line);
+        } else if constexpr (Member == &Style::IndentedCallScopePairs) {
+            config.FormattingStyle.*Member = ParseCallPairs(value, path, line);
         } else {
             config.FormattingStyle.*Member = ParseCallNames(value, path, line);
         }

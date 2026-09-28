@@ -7,7 +7,8 @@ target_include_directories(hit-fmt
     PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 
 if(HIT_FMT_TEST)
-    foreach(case separator-diagnostic separator-indent call-specific-limit)
+    foreach(case separator-diagnostic separator-indent call-specific-limit
+        repeated-lambda-call)
         add_test(NAME hit-fmt-${case}
             COMMAND ${CMAKE_COMMAND}
                 -DHIT_FMT=$<TARGET_FILE:hit-fmt>
