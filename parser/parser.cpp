@@ -215,12 +215,14 @@ std::optional<SyntaxTree> SyntaxTree::RebindWhitespace(
         HIT_FMT_PROFILE_PHASE("parser.rebind.scan_verify");
         for (auto token : tokenizer) {
             if (index >= TokenCount() || token.Kind != Kind(index) ||
-                source.View().substr(token.Text.Begin,
+                source.View().substr(
+                    token.Text.Begin,
                     token.Text.End - token.Text.Begin) != TokenText(index))
             {
                 return std::nullopt;
             }
-            const auto gap = source.View().substr(previousEnd,
+            const auto gap = source.View().substr(
+                previousEnd,
                 token.Text.Begin - previousEnd);
             const auto oldGap = WhitespaceBefore(index);
             // Escaped newlines between tokens must stay byte-for-byte intact;
@@ -259,7 +261,9 @@ std::optional<SyntaxTree> SyntaxTree::RebindWhitespace(
     {
         return std::nullopt;
     }
-    if (error || index != TokenCount()) return std::nullopt;
+    if (error || index != TokenCount()) {
+        return std::nullopt;
+    }
     {
         HIT_FMT_PROFILE_PHASE("parser.rebind.copy_roles");
         rebound.Tokens_.Seal();
@@ -274,10 +278,13 @@ std::optional<SyntaxTree> SyntaxTree::RebindWhitespace(
 }
 
 std::optional<SyntaxTree> SyntaxTree::RebindWhitespaceEdits(
-    util::PaddedSourceView source, std::span<const WhitespaceEdit> edits) const
+    util::PaddedSourceView source,
+    std::span<const WhitespaceEdit> edits) const
 {
     HIT_FMT_PROFILE_PHASE("parser.rebind_edits");
-    if (source.Size > util::MaxSourceSize) return std::nullopt;
+    if (source.Size > util::MaxSourceSize) {
+        return std::nullopt;
+    }
     SyntaxTree rebound(source.View());
     int64_t lineDelta = 0;
     int64_t columnDelta = 0;
@@ -372,7 +379,8 @@ std::optional<SyntaxTree> SyntaxTree::RebindWhitespaceEdits(
             return std::nullopt;
         }
         const auto oldGap = Input_.substr(oldCursor, oldBegin - oldCursor);
-        const auto newGap = source.View().substr(newCursor,
+        const auto newGap = source.View().substr(
+            newCursor,
             newBegin - newCursor);
         if (oldGap != newGap &&
             (!asciiWhitespace(oldGap) || !asciiWhitespace(newGap) ||
@@ -396,7 +404,9 @@ std::optional<SyntaxTree> SyntaxTree::RebindWhitespaceEdits(
             return std::nullopt;
         }
         const auto oldPosition = token.Position;
-        if (oldPosition.Line != previousOldLine) columnDelta = 0;
+        if (oldPosition.Line != previousOldLine) {
+            columnDelta = 0;
+        }
         if (oldGap != newGap) {
             const auto oldLines = std::ranges::count(oldGap, '\n');
             const auto newLines = std::ranges::count(newGap, '\n');
@@ -503,7 +513,9 @@ const TriviaAttachments* SyntaxTree::AssociatedTrivia(const Node& node) const
 {
     // Borrowed syntax retains original trivia offsets; do not expose them
     // against the rebound source.
-    if (Original_) return nullptr;
+    if (Original_) {
+        return nullptr;
+    }
     if (node.TriviaIndex_ == std::numeric_limits<uint32_t>::max()) {
         return nullptr;
     }

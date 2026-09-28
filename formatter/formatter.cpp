@@ -133,10 +133,16 @@ public:
         , ChangedControlHeaders_(changedControlHeaders)
         , Scratch_(ScratchBuffer_, sizeof(ScratchBuffer_))
         , Placements_(tree.TokenCount(), BracePlacement::Preserve, &Scratch_)
-        , Spacings_(tree.TokenCount(), SameLineBraceSpacing::Preserve, &Scratch_)
+        , Spacings_(
+            tree.TokenCount(),
+            SameLineBraceSpacing::Preserve,
+            &Scratch_)
         , LambdaGaps_(tree.TokenCount(), false, &Scratch_)
         , LambdaParameterInsideGaps_(tree.TokenCount(), false, &Scratch_)
-        , CaptureGaps_(tree.TokenCount(), LambdaCaptureSpacing::Preserve, &Scratch_)
+        , CaptureGaps_(
+            tree.TokenCount(),
+            LambdaCaptureSpacing::Preserve,
+            &Scratch_)
         , FunctionGaps_(tree.TokenCount(), false, &Scratch_)
         , CallGaps_(tree.TokenCount(), false, &Scratch_)
         , LambdaCallGaps_(tree.TokenCount(), false, &Scratch_)
@@ -201,7 +207,9 @@ public:
             for (TokenIndex index = 0; index < count; ++index) {
                 if (MoveBraceBeforeComment(index)) {
                     // Reordered tokens cannot borrow the original syntax.
-                    if (edits) edits->clear();
+                    if (edits) {
+                        edits->clear();
+                    }
                     edits = nullptr;
                     // The brace now precedes the trailing comment. Keep the
                     // header/body line break if the body was inline with '{'.
@@ -214,7 +222,9 @@ public:
                     continue;
                 }
                 if (MoveCommentBeforeBrace(index)) {
-                    if (edits) edits->clear();
+                    if (edits) {
+                        edits->clear();
+                    }
                     edits = nullptr;
                     auto gap = Tree_.WhitespaceBefore(index);
                     Output_.append(gap.empty() ? " " : gap);
@@ -231,7 +241,9 @@ public:
                 if (index + 1 < count &&
                     MoveBraceBeforeComment(index + 1))
                 {
-                    if (edits) edits->clear();
+                    if (edits) {
+                        edits->clear();
+                    }
                     edits = nullptr;
                     Output_.append(" {");
                 }
@@ -240,11 +252,14 @@ public:
                 if (edits) {
                     const auto gap = Tree_.WhitespaceBefore(index);
                     const auto emitted = std::string_view(Output_).substr(
-                        outputBegin, Output_.size() - outputBegin);
+                        outputBegin,
+                        Output_.size() - outputBegin);
                     if (emitted != gap) {
                         const auto begin = index == 0 ? size_t{0} :
                             Tree_.Token(index - 1).Text.End;
-                        edits->push_back({static_cast<util::SourceOffset>(begin),
+                        const auto editBegin =
+                            static_cast<util::SourceOffset>(begin);
+                        edits->push_back({editBegin,
                             Tree_.Token(index).Text.Begin, outputBegin,
                             emitted.size()});
                     }
@@ -1709,12 +1724,14 @@ struct LayoutEdits
 };
 
 std::optional<parser::SyntaxTree> TryRebindLayout(
-    const parser::SyntaxTree& tree, LayoutEdits& layout);
+    const parser::SyntaxTree& tree,
+    LayoutEdits& layout);
 
 // Record only gaps changed by the brace renderer. Moving a comment or brace
 // clears the plan so the caller falls back to verifying/parsing the output.
 std::optional<LayoutEdits> RenderFormatter(
-    const parser::SyntaxTree& tree, const Style& style,
+    const parser::SyntaxTree& tree,
+    const Style& style,
     const std::vector<bool>* changedControlHeaders = nullptr)
 {
     std::vector<RenderedGap> gaps;
@@ -1722,15 +1739,19 @@ std::optional<LayoutEdits> RenderFormatter(
     return LayoutEdits{std::move(output), {}, {}, std::move(gaps)};
 }
 
-LayoutEdits RenderLayoutEdits(std::string_view source,
-    std::vector<Replacement> edits, size_t reserve = 0)
+LayoutEdits RenderLayoutEdits(
+    std::string_view source,
+    std::vector<Replacement> edits,
+    size_t reserve = 0)
 {
     std::string output;
     output.reserve(std::max(source.size(), reserve));
     size_t cursor = 0;
     size_t accepted = 0;
     for (auto& edit : edits) {
-        if (edit.Begin < cursor) continue;
+        if (edit.Begin < cursor) {
+            continue;
+        }
         output.append(source.substr(cursor, edit.Begin - cursor));
         output += edit.Text;
         cursor = edit.End;
@@ -2410,7 +2431,8 @@ void PlaceOperatorBreak(
 // Move only the newline beside parsed binary and ternary operators. This
 // enforces placement without regrouping already split expressions.
 std::optional<LayoutEdits> PlaceExistingOperatorBreaks(
-    const parser::SyntaxTree& tree, const Style& style)
+    const parser::SyntaxTree& tree,
+    const Style& style)
 {
     HIT_FMT_PROFILE_PHASE("formatter.existing_operator_breaks");
     const auto source = tree.Source();
@@ -2474,7 +2496,9 @@ std::optional<LayoutEdits> PlaceExistingOperatorBreaks(
             nodes.push_back(child);
         }
     }
-    if (edits.empty()) return std::nullopt;
+    if (edits.empty()) {
+        return std::nullopt;
+    }
     std::ranges::sort(edits, {}, &Replacement::Begin);
     return RenderLayoutEdits(source, std::move(edits));
 }
@@ -2482,7 +2506,8 @@ std::optional<LayoutEdits> PlaceExistingOperatorBreaks(
 // ThreeLines leaves fitting ternaries flat. If a delimiter is already
 // broken or the enclosing line overflows, break both delimiters.
 std::optional<LayoutEdits> CompleteTernaryBreaks(
-    const parser::SyntaxTree& tree, const Style& style)
+    const parser::SyntaxTree& tree,
+    const Style& style)
 {
     const auto source = tree.Source();
     std::vector<Replacement> edits;
@@ -2574,7 +2599,9 @@ std::optional<LayoutEdits> CompleteTernaryBreaks(
             nodes.push_back(child);
         }
     }
-    if (edits.empty()) return std::nullopt;
+    if (edits.empty()) {
+        return std::nullopt;
+    }
     std::ranges::sort(edits, {}, &Replacement::Begin);
     const auto reserve = source.size() + edits.size() * style.IndentWidth;
     return RenderLayoutEdits(source, std::move(edits), reserve);
@@ -2583,7 +2610,8 @@ std::optional<LayoutEdits> CompleteTernaryBreaks(
 // Align leading ?/: one level past the condition's line; a nested
 // conditional's ':' stays at the same depth as its own '?'.
 std::optional<LayoutEdits> AlignLeadingTernaryOperators(
-    const parser::SyntaxTree& tree, const Style& style)
+    const parser::SyntaxTree& tree,
+    const Style& style)
 {
     const auto source = tree.Source();
     std::vector<Replacement> edits;
@@ -2670,7 +2698,9 @@ std::optional<LayoutEdits> AlignLeadingTernaryOperators(
             nodes.push_back(child);
         }
     }
-    if (edits.empty()) return std::nullopt;
+    if (edits.empty()) {
+        return std::nullopt;
+    }
     std::ranges::sort(edits, {}, &Replacement::Begin);
     return RenderLayoutEdits(source, std::move(edits));
 }
@@ -2678,7 +2708,8 @@ std::optional<LayoutEdits> AlignLeadingTernaryOperators(
 // Split complete for-clauses and if/switch init-statements before trying
 // expression operators. Do not infer semicolon roles from nested syntax.
 std::optional<LayoutEdits> FormatControlHeaderClauses(
-    const parser::SyntaxTree& tree, const Style& style)
+    const parser::SyntaxTree& tree,
+    const Style& style)
 {
     if (style.ControlHeaderClauseSplit == ControlHeaderClauseSplit::Preserve) {
         return std::nullopt;
@@ -2830,17 +2861,21 @@ std::optional<LayoutEdits> FormatControlHeaderClauses(
             }
         }
     }
-    if (edits.empty()) return std::nullopt;
+    if (edits.empty()) {
+        return std::nullopt;
+    }
     std::ranges::sort(edits, {}, &Replacement::Begin);
     return RenderLayoutEdits(source, std::move(edits));
 }
 
 std::optional<LayoutEdits> FormatExpressions(
-    const parser::SyntaxTree& tree, const Style& style,
+    const parser::SyntaxTree& tree,
+    const Style& style,
     bool correctExisting = true)
 {
     HIT_FMT_PROFILE_PHASE("formatter.expression_layout");
-    if (style.ExpressionLayoutCondition == ExpressionLayoutCondition::Overflow &&
+    if (style.ExpressionLayoutCondition ==
+        ExpressionLayoutCondition::Overflow &&
         correctExisting)
     {
         if (auto placed = PlaceExistingOperatorBreaks(tree, style)) {
@@ -2850,9 +2885,13 @@ std::optional<LayoutEdits> FormatExpressions(
             auto parsed = rebound ? std::move(*rebound) : parser::Parse(
                 {.Data = placed->Output.data(), .Size = length},
                 [] (parser::ParseError) { });
-            if (!rebound) HIT_FMT_PROFILE_EVENT("parse.expression_placement");
+            if (!rebound) {
+                HIT_FMT_PROFILE_EVENT("parse.expression_placement");
+            }
             auto result = FormatExpressions(parsed, style, false);
-            if (result) return LayoutEdits{std::move(result->Output), {}};
+            if (result) {
+                return LayoutEdits{std::move(result->Output), {}};
+            }
             placed->Output.resize(length);
             return LayoutEdits{std::move(placed->Output), {}};
         }
@@ -2913,7 +2952,9 @@ std::optional<LayoutEdits> FormatExpressions(
             {.Data = flattened.data(), .Size = length},
             [] (parser::ParseError) { });
         auto result = FormatExpressions(parsed, overflowStyle);
-        if (result) return LayoutEdits{std::move(result->Output), {}};
+        if (result) {
+            return LayoutEdits{std::move(result->Output), {}};
+        }
         flattened.resize(length);
         return LayoutEdits{std::move(flattened), {}};
     }
@@ -3061,7 +3102,8 @@ std::optional<LayoutEdits> FormatExpressions(
         return std::nullopt;
     }
     std::ranges::sort(breaks, {}, &ExpressionBreak::Begin);
-    struct ConditionIndent {
+    struct ConditionIndent
+    {
         ConditionIndent(size_t begin, size_t end, size_t column)
             : Begin(static_cast<util::SourceOffset>(begin))
             , End(static_cast<util::SourceOffset>(end))
@@ -3296,7 +3338,9 @@ std::optional<LayoutEdits> FormatExpressions(
         }
         lineStart = lineEnd == source.size() ? lineEnd : lineEnd + 1;
     }
-    if (edits.empty()) return std::nullopt;
+    if (edits.empty()) {
+        return std::nullopt;
+    }
     std::string result;
     result.reserve(source.size() + edits.size() * (style.IndentWidth + 1));
     size_t from = 0;
@@ -3356,8 +3400,10 @@ std::optional<std::pair<TokenIndex, std::string>> NamespaceClosing(
 }
 
 std::optional<std::string> FormatNamespaceComments(
-    const parser::SyntaxTree& tree, NamespaceComments policy,
-    size_t shortNamespaceLines, size_t spaces)
+    const parser::SyntaxTree& tree,
+    NamespaceComments policy,
+    size_t shortNamespaceLines,
+    size_t spaces)
 {
     std::vector<Replacement> edits;
     std::vector<const parser::Node*> nodes{&tree.Root()};
@@ -3455,7 +3501,9 @@ std::optional<std::string> FormatNamespaceComments(
             nodes.push_back(child);
         }
     }
-    if (edits.empty()) return std::nullopt;
+    if (edits.empty()) {
+        return std::nullopt;
+    }
     std::ranges::sort(edits, {}, &Replacement::Begin);
     std::string output;
     output.reserve(source.size());
@@ -3509,7 +3557,9 @@ std::optional<std::string> AttachElseToBrace(
             nodes.push_back(child);
         }
     }
-    if (edits.empty()) return std::nullopt;
+    if (edits.empty()) {
+        return std::nullopt;
+    }
     std::ranges::sort(edits, {}, &Replacement::Begin);
     std::string output;
     size_t cursor = 0;
@@ -3557,7 +3607,9 @@ std::optional<LayoutEdits> CollapseEmptyFunctionBodies(
             nodes.push_back(child);
         }
     }
-    if (edits.empty()) return std::nullopt;
+    if (edits.empty()) {
+        return std::nullopt;
+    }
     std::ranges::sort(edits, {}, &Replacement::Begin);
     return RenderLayoutEdits(source, std::move(edits));
 }
@@ -3632,13 +3684,17 @@ std::optional<std::string> RemoveNullStatements(
             }
         }
     }
-    if (edits.empty()) return std::nullopt;
+    if (edits.empty()) {
+        return std::nullopt;
+    }
     std::ranges::sort(edits, {}, &Replacement::Begin);
     std::string output;
     output.reserve(source.size());
     size_t cursor = 0;
     for (const auto& edit : edits) {
-        if (edit.Begin < cursor) continue;
+        if (edit.Begin < cursor) {
+            continue;
+        }
         output.append(source.substr(cursor, edit.Begin - cursor));
         output += edit.Text;
         cursor = edit.End;
@@ -3650,7 +3706,8 @@ std::optional<std::string> RemoveNullStatements(
 // Keep nonempty parsed blocks multiline without reshaping lambda bodies or
 // moving comments, directives, and ambiguous statements.
 std::optional<LayoutEdits> FormatNonEmptyBlockBodies(
-    const parser::SyntaxTree& tree, const Style& style)
+    const parser::SyntaxTree& tree,
+    const Style& style)
 {
     if (style.NonEmptyBlockBodyLayout != NonEmptyBlockBodyLayout::Multiline) {
         return std::nullopt;
@@ -3747,7 +3804,9 @@ std::optional<LayoutEdits> FormatNonEmptyBlockBodies(
         }
         edits.insert(edits.end(), bodyEdits.begin(), bodyEdits.end());
     }
-    if (edits.empty()) return std::nullopt;
+    if (edits.empty()) {
+        return std::nullopt;
+    }
     std::ranges::sort(edits, {}, &Replacement::Begin);
     return RenderLayoutEdits(source, std::move(edits));
 }
@@ -3755,7 +3814,8 @@ std::optional<LayoutEdits> FormatNonEmptyBlockBodies(
 // Add braces only around complete, trivia-free controlled statements. Use
 // innermost-first passes so nested unbraced controls keep their else binding.
 std::optional<std::string> AddControlBraces(
-    const parser::SyntaxTree& tree, const Style& style)
+    const parser::SyntaxTree& tree,
+    const Style& style)
 {
     auto source = tree.Source();
     std::vector<Replacement> edits;
@@ -3967,7 +4027,9 @@ std::optional<std::string> AddControlBraces(
             nodes.push_back(child);
         }
     }
-    if (edits.empty()) return std::nullopt;
+    if (edits.empty()) {
+        return std::nullopt;
+    }
     std::ranges::sort(edits, {}, &Replacement::Begin);
     std::string output;
     size_t cursor = 0;
@@ -3986,7 +4048,8 @@ std::optional<std::string> AddControlBraces(
 // Reindent statement starts, not arbitrary physical lines in expressions or
 // comments. Preserve recovered blocks and lines containing directives.
 std::optional<LayoutEdits> FormatBlockIndentation(
-    const parser::SyntaxTree& tree, const Style& style)
+    const parser::SyntaxTree& tree,
+    const Style& style)
 {
     auto source = tree.Source();
     char scratchBuffer[8192];
@@ -4532,7 +4595,8 @@ std::optional<LayoutEdits> FormatBlockIndentation(
             node.Kind == NK::DoWhileStatement ||
             node.Kind == NK::SwitchStatement;
         std::pmr::vector<Task> children{&scratch};
-        for (auto* child = node.Child(); child;
+        for (auto* child = node.Child();
+            child;
             child = child->NextSibling)
         {
             auto childBase = task.Base;
@@ -4615,7 +4679,9 @@ std::optional<LayoutEdits> FormatBlockIndentation(
             tasks.push_back(std::move(*it));
         }
     }
-    if (edits.empty()) return std::nullopt;
+    if (edits.empty()) {
+        return std::nullopt;
+    }
     std::ranges::sort(edits, {}, &Replacement::Begin);
     std::string output;
     output.reserve(source.size());
@@ -4635,7 +4701,8 @@ std::optional<LayoutEdits> FormatBlockIndentation(
 }
 
 std::optional<LayoutEdits> FormatParameters(
-    const parser::SyntaxTree& tree, const Style& style)
+    const parser::SyntaxTree& tree,
+    const Style& style)
 {
     if (style.FunctionParameterSplit == FunctionParameterSplit::Preserve) {
         return std::nullopt;
@@ -4679,7 +4746,9 @@ std::optional<LayoutEdits> FormatParameters(
             nodes.emplace_back(child, node);
         }
     }
-    if (edits.empty()) return std::nullopt;
+    if (edits.empty()) {
+        return std::nullopt;
+    }
     std::ranges::sort(edits, {}, &Replacement::Begin);
     return RenderLayoutEdits(tree.Source(), std::move(edits));
 }
@@ -4811,7 +4880,8 @@ std::string FormatStaticAsserts(
 // Reflow only complete, whitespace-separated braced initializer elements.
 // The caller reparses after outer lists move, then visits nested lists.
 std::optional<std::string> FormatInitializers(
-    const parser::SyntaxTree& tree, const Style& style)
+    const parser::SyntaxTree& tree,
+    const Style& style)
 {
     if (style.InitializerListSplit == FunctionParameterSplit::Preserve) {
         return std::nullopt;
@@ -4833,7 +4903,9 @@ std::optional<std::string> FormatInitializers(
             nodes.push_back(child);
         }
     }
-    if (edits.empty()) return std::nullopt;
+    if (edits.empty()) {
+        return std::nullopt;
+    }
     std::ranges::sort(edits, {}, &Replacement::Begin);
     std::string output;
     auto source = tree.Source();
@@ -5026,7 +5098,8 @@ std::string JoinAssignmentBeforeCallReflow(
 // Split only complete, flat capture lists on overlong lambda headers.
 // Keeping [ on the call line avoids relocating the lambda body.
 std::optional<std::string> FormatLambdaCaptures(
-    const parser::SyntaxTree& tree, const Style& style)
+    const parser::SyntaxTree& tree,
+    const Style& style)
 {
     if (style.LambdaCaptureSplit == LambdaCaptureSplit::Preserve) {
         return std::nullopt;
@@ -5148,7 +5221,9 @@ std::optional<std::string> FormatLambdaCaptures(
         replacement += "\n" + base;
         edits.push_back({begin, end, std::move(replacement)});
     }
-    if (edits.empty()) return std::nullopt;
+    if (edits.empty()) {
+        return std::nullopt;
+    }
     std::ranges::sort(edits, {}, &Replacement::Begin);
     std::string output;
     size_t cursor = 0;
@@ -5232,15 +5307,26 @@ std::vector<Replacement> MoveMultilineLambdaArgument(
 // than committing to the first nested call. Call candidates are built by
 // the configured call reflow; named casts contribute an operand boundary.
 std::optional<LayoutEdits> BalanceDelimitedExpressions(
-    const parser::SyntaxTree& tree, const Style& style)
+    const parser::SyntaxTree& tree,
+    const Style& style)
 {
     HIT_FMT_PROFILE_PHASE("formatter.expression_balance");
-    if (style.ExpressionLayoutCondition == ExpressionLayoutCondition::Preserve)
+    if (style.ExpressionLayoutCondition ==
+        ExpressionLayoutCondition::Preserve)
+    {
         return std::nullopt;
+    }
     const auto source = tree.Source();
-    struct Candidate {
-        Candidate(Replacement edit, size_t line, size_t longest,
-            size_t imbalance, size_t breaks, bool outer, size_t logicalScope,
+    struct Candidate
+    {
+        Candidate(
+            Replacement edit,
+            size_t line,
+            size_t longest,
+            size_t imbalance,
+            size_t breaks,
+            bool outer,
+            size_t logicalScope,
             bool needsCallCompetitor)
             : Edit(std::move(edit))
             , Line(static_cast<util::SourceOffset>(line))
@@ -5628,12 +5714,16 @@ std::optional<LayoutEdits> BalanceDelimitedExpressions(
         }
         i = end;
     }
-    if (edits.empty()) return std::nullopt;
+    if (edits.empty()) {
+        return std::nullopt;
+    }
     std::string result;
     size_t cursor = 0;
     size_t accepted = 0;
     for (auto& edit : edits) {
-        if (edit.Begin < cursor) continue;
+        if (edit.Begin < cursor) {
+            continue;
+        }
         result.append(source.substr(cursor, edit.Begin - cursor));
         result += edit.Text;
         cursor = edit.End;
@@ -5822,7 +5912,8 @@ using CallFrontier = std::pmr::vector<
 // Layout edits may replace entire constructs while preserving every token.
 // Recover changed gaps so positions can be updated without lexing the whole
 // output. Refuse anything that is not an ordered token copy.
-bool CollectWhitespaceEdits(const parser::SyntaxTree& tree,
+bool CollectWhitespaceEdits(
+    const parser::SyntaxTree& tree,
     const std::vector<Replacement>& replacements,
     std::pmr::vector<parser::WhitespaceEdit>& gaps)
 {
@@ -5845,18 +5936,22 @@ bool CollectWhitespaceEdits(const parser::SyntaxTree& tree,
             tree.Token(token).Text.Begin < replacement.End)
         {
             const auto span = tree.Token(token).Text;
-            if (span.End > replacement.End) return false;
+            if (span.End > replacement.End) {
+                return false;
+            }
             const auto text = tree.TokenText(token);
             const auto next = replacement.Text.find(text, rendered);
             if (next == std::string::npos ||
                 !IsWhitespace(std::string_view(replacement.Text).substr(
-                    rendered, next - rendered)))
+                    rendered,
+                    next - rendered)))
             {
                 return false;
             }
             auto oldGap = source.substr(cursor, span.Begin - cursor);
             auto newGap = std::string_view(replacement.Text).substr(
-                rendered, next - rendered);
+                rendered,
+                next - rendered);
             if (oldGap != newGap) {
                 gaps.push_back({static_cast<util::SourceOffset>(cursor),
                     span.Begin, newGap});
@@ -5866,8 +5961,11 @@ bool CollectWhitespaceEdits(const parser::SyntaxTree& tree,
             ++token;
         }
         const auto oldTail = source.substr(cursor, replacement.End - cursor);
-        const auto newTail = std::string_view(replacement.Text).substr(rendered);
-        if (!IsWhitespace(newTail)) return false;
+        const auto newTail = std::string_view(replacement.Text).substr(
+            rendered);
+        if (!IsWhitespace(newTail)) {
+            return false;
+        }
         if (oldTail != newTail) {
             gaps.push_back({static_cast<util::SourceOffset>(cursor),
                 replacement.End, newTail});
@@ -5877,7 +5975,8 @@ bool CollectWhitespaceEdits(const parser::SyntaxTree& tree,
 }
 
 std::optional<parser::SyntaxTree> TryRebindLayout(
-    const parser::SyntaxTree& tree, LayoutEdits& layout)
+    const parser::SyntaxTree& tree,
+    LayoutEdits& layout)
 {
     if (layout.Edits.empty() && layout.Gaps.empty() &&
         layout.RenderedGaps.empty())
@@ -5897,7 +5996,8 @@ std::optional<parser::SyntaxTree> TryRebindLayout(
         for (const auto& gap : layout.RenderedGaps) {
             edits.push_back({gap.Begin, gap.End,
                 std::string_view(layout.Output).substr(
-                    gap.OutputBegin, gap.OutputSize)});
+                    gap.OutputBegin,
+                    gap.OutputSize)});
         }
     } else {
         safe = CollectWhitespaceEdits(tree, layout.Edits, edits);
@@ -5909,16 +6009,20 @@ std::optional<parser::SyntaxTree> TryRebindLayout(
     const auto length = layout.Output.size();
     layout.Output.append(util::SourcePaddingSize, '\0');
     auto rebound = tree.RebindWhitespaceEdits(
-        {.Data = layout.Output.data(), .Size = length}, edits);
+        {.Data = layout.Output.data(), .Size = length},
+        edits);
     layout.Output.resize(length);
     return rebound;
 }
 
 std::optional<LayoutEdits> FormatCalls(
-    const parser::SyntaxTree& tree, const Style& style,
-    size_t targetDepth, bool& deeperCalls,
+    const parser::SyntaxTree& tree,
+    const Style& style,
+    size_t targetDepth,
+    bool& deeperCalls,
     const std::vector<bool>* newlySplitTokens = nullptr,
-    const CallFrontier* frontier = nullptr, CallFrontier* nextFrontier = nullptr)
+    const CallFrontier* frontier = nullptr,
+    CallFrontier* nextFrontier = nullptr)
 {
     if (style.CallArgumentSplit == CallArgumentSplit::Preserve &&
         !style.EnforceMultilineSingleCallArgumentPosition)
@@ -5944,7 +6048,9 @@ std::optional<LayoutEdits> FormatCalls(
         }
         if (node->Kind == NK::CallExpression && depth > targetDepth) {
             deeperCalls = true;
-            if (nextFrontier) nextFrontier->emplace_back(node, depth);
+            if (nextFrontier) {
+                nextFrontier->emplace_back(node, depth);
+            }
             continue;
         }
         if (node->Kind == NK::CallExpression && depth == targetDepth) {
@@ -6010,7 +6116,8 @@ std::optional<LayoutEdits> FormatCalls(
                             tree.TokenText(callee->Tokens.Begin)) !=
                             style.CallArgumentSplitColumnLimitNames.end();
                     if (selectedLimit && !newlySplitTokens &&
-                        style.CallArgumentSplit != CallArgumentSplit::Preserve &&
+                        style.CallArgumentSplit !=
+                            CallArgumentSplit::Preserve &&
                         !selectedCallStyle)
                     {
                         selectedCallStyle.emplace(style);
@@ -6268,14 +6375,18 @@ std::optional<LayoutEdits> FormatCalls(
             }
         }
     }
-    if (edits.empty()) return std::nullopt;
+    if (edits.empty()) {
+        return std::nullopt;
+    }
     std::ranges::sort(edits, {}, &Replacement::Begin);
     std::string output;
     output.reserve(tree.Source().size());
     size_t cursor = 0;
     size_t accepted = 0;
     for (auto& edit : edits) {
-        if (edit.Begin < cursor) continue;
+        if (edit.Begin < cursor) {
+            continue;
+        }
         output.append(tree.Source().substr(cursor, edit.Begin - cursor));
         output += edit.Text;
         cursor = edit.End;
@@ -6530,7 +6641,8 @@ std::vector<Replacement> ReflowChainedCall(
 }
 
 std::optional<std::string> FormatChainedCalls(
-    const parser::SyntaxTree& tree, const Style& style)
+    const parser::SyntaxTree& tree,
+    const Style& style)
 {
     if (style.ChainedCallSplitCondition ==
         ChainedCallSplitCondition::Preserve)
@@ -6561,7 +6673,9 @@ std::optional<std::string> FormatChainedCalls(
             nodes.push_back(child);
         }
     }
-    if (edits.empty()) return std::nullopt;
+    if (edits.empty()) {
+        return std::nullopt;
+    }
     std::ranges::sort(edits, {}, &Replacement::Begin);
     std::string output;
     auto source = tree.Source();
@@ -6689,7 +6803,8 @@ std::string FormatIncludes(const parser::SyntaxTree& tree)
 // Apply local, syntax-owned whitespace rules after structural reflow. Never
 // touch a newline, comment, directive, or a recovered statement's prefix.
 static std::optional<LayoutEdits> FormatTokenSpacing(
-    const parser::SyntaxTree& tree, const Style& style)
+    const parser::SyntaxTree& tree,
+    const Style& style)
 {
     using PR = parser::PunctuationRole;
     const auto count = tree.TokenCount();
@@ -6707,7 +6822,7 @@ static std::optional<LayoutEdits> FormatTokenSpacing(
     // contexts for changing template argument gaps.
     std::pmr::vector<std::pair<const parser::Node*, bool>> nodes{&scratch};
     nodes.emplace_back(&tree.Root(), false);
-    auto markColon = [&](TokenIndex colon, ColonSpacing spacing) {
+    auto markColon = [&] (TokenIndex colon, ColonSpacing spacing) {
         if (spacing == ColonSpacing::Preserve || colon == 0 ||
             colon + 1 >= count || tree.Kind(colon) != TK::Operator_Colon)
         {
@@ -8276,19 +8391,27 @@ static std::optional<LayoutEdits> FormatTokenSpacing(
         const bool replace =
             (setting == TokenSpacing::Space && gap != " ") ||
             (setting == TokenSpacing::NoSpace && !gap.empty());
-        if (!replace) continue;
+        if (!replace) {
+            continue;
+        }
         const auto begin = i == 0 ? size_t{0} : tree.Token(i - 1).Text.End;
         const auto end = tree.Token(i).Text.Begin;
-        if (!changed) output.reserve(tree.Source().size());
+        if (!changed) {
+            output.reserve(tree.Source().size());
+        }
         output.append(tree.Source().substr(cursor, begin - cursor));
-        if (setting == TokenSpacing::Space) output.push_back(' ');
+        if (setting == TokenSpacing::Space) {
+            output.push_back(' ');
+        }
         gapEdits.push_back({static_cast<util::SourceOffset>(begin),
             static_cast<util::SourceOffset>(end),
             setting == TokenSpacing::Space ? " " : ""});
         cursor = end;
         changed = true;
     }
-    if (!changed) return std::nullopt;
+    if (!changed) {
+        return std::nullopt;
+    }
     output.append(tree.Source().substr(cursor));
     return LayoutEdits{std::move(output), {}, std::move(gapEdits)};
 }
@@ -8443,7 +8566,8 @@ static std::string FormatLineOwnedSpacing(
 // comments and directives own their line, and empty constructs have no final
 // element to attach the closer to.
 static std::optional<LayoutEdits> FormatClosingDelimiters(
-    const parser::SyntaxTree& tree, const Style& style)
+    const parser::SyntaxTree& tree,
+    const Style& style)
 {
     const auto source = tree.Source();
     std::vector<Replacement> edits;
@@ -8667,14 +8791,18 @@ static std::optional<LayoutEdits> FormatClosingDelimiters(
             edits.push_back({begin, end, closingNewline()});
         }
     }
-    if (edits.empty()) return std::nullopt;
+    if (edits.empty()) {
+        return std::nullopt;
+    }
     std::ranges::sort(edits, {}, &Replacement::Begin);
     std::string result;
     result.reserve(source.size());
     size_t cursor = 0;
     size_t accepted = 0;
     for (auto& edit : edits) {
-        if (edit.Begin < cursor) continue;
+        if (edit.Begin < cursor) {
+            continue;
+        }
         result.append(source.substr(cursor, edit.Begin - cursor));
         result += edit.Text;
         cursor = edit.End;
@@ -8819,13 +8947,17 @@ static std::optional<std::string> TrimTrailingWhitespace(
             trim = contentEnd;
         }
         if (trim != contentEnd) {
-            if (result.empty()) result.reserve(source.size());
+            if (result.empty()) {
+                result.reserve(source.size());
+            }
             result.append(source.substr(cursor, trim - cursor));
             cursor = contentEnd;
         }
         begin = hasNewline ? end + 1 : end;
     }
-    if (cursor == 0) return std::nullopt;
+    if (cursor == 0) {
+        return std::nullopt;
+    }
     result.append(source.substr(cursor));
     return result;
 }
@@ -8953,7 +9085,9 @@ std::string RestoreSensitiveInvocations(
     std::string formatted)
 {
     HIT_FMT_PROFILE_PHASE("formatter.restore_sensitive");
-    if (style.WhitespaceSensitiveMacros.empty()) return formatted;
+    if (style.WhitespaceSensitiveMacros.empty()) {
+        return formatted;
+    }
     const auto before = FindSensitiveInvocations(original, style);
     if (!before) {
         return std::string(original.Source());
@@ -8963,12 +9097,14 @@ std::string RestoreSensitiveInvocations(
     }
     const auto length = formatted.size();
     formatted.append(util::SourcePaddingSize, '\0');
-    util::PaddedSourceView resultSource{.Data = formatted.data(), .Size = length};
+    util::PaddedSourceView resultSource{
+        .Data = formatted.data(), .Size = length};
     auto resultTree = original.RebindWhitespace(resultSource);
     if (!resultTree) {
         HIT_FMT_PROFILE_EVENT("parse.restore_sensitive");
         resultTree.emplace(parser::Parse(
-            resultSource, [] (parser::ParseError) { }));
+            resultSource,
+            [] (parser::ParseError) { }));
     }
     const auto after = FindSensitiveInvocations(*resultTree, style);
     if (!after || after->size() != before->size()) {
@@ -9006,12 +9142,14 @@ std::string RestoreDisabledRegions(
     }
     const auto length = formatted.size();
     formatted.append(util::SourcePaddingSize, '\0');
-    util::PaddedSourceView resultSource{.Data = formatted.data(), .Size = length};
+    util::PaddedSourceView resultSource{
+        .Data = formatted.data(), .Size = length};
     auto resultTree = original.RebindWhitespace(resultSource);
     if (!resultTree) {
         HIT_FMT_PROFILE_EVENT("parse.restore_disabled");
         resultTree.emplace(parser::Parse(
-            resultSource, [] (parser::ParseError) { }));
+            resultSource,
+            [] (parser::ParseError) { }));
     }
     const auto resultRegions = FindDisabledRegions(*resultTree);
     if (regions.size() != resultRegions.size()) {
@@ -9339,7 +9477,8 @@ std::vector<LayoutDiagnostic> CheckExpressionLayout(
 // Normalize standalone slash rulers, not arbitrary comments or slash text
 // inside a raw string. Short // and /// comments are never separators.
 std::optional<std::string> FormatSeparators(
-    const parser::SyntaxTree& tree, size_t length)
+    const parser::SyntaxTree& tree,
+    size_t length)
 {
     auto source = tree.Source();
     std::vector<Replacement> edits;
@@ -9370,7 +9509,9 @@ std::optional<std::string> FormatSeparators(
             edits.push_back({lineStart, end, std::string(length, '/')});
         }
     }
-    if (edits.empty()) return std::nullopt;
+    if (edits.empty()) {
+        return std::nullopt;
+    }
     std::string output;
     size_t cursor = 0;
     for (const auto& edit : edits) {
@@ -9466,7 +9607,8 @@ std::string Format(const parser::SyntaxTree& tree, const Style& style)
     // actually edits it rather than tokenizing the same source repeatedly.
     // Keep one reparsed syntax owner and its source alive while later
     // whitespace-only edits borrow its nodes. Replace it on a structural edit.
-    struct SyntaxOwner {
+    struct SyntaxOwner
+    {
         std::string Source;
         parser::SyntaxTree Tree;
     };
@@ -9479,9 +9621,11 @@ std::string Format(const parser::SyntaxTree& tree, const Style& style)
 #ifdef HIT_FMT_PROFILE_PHASES
     uint32_t lastEditLine = 0;
 #endif
-    auto currentTree = [&]() -> const parser::SyntaxTree& {
+    auto currentTree = [&] () -> const parser::SyntaxTree& {
         HIT_FMT_PROFILE_PHASE("formatter.tree_refresh");
-        if (formatted == tree.Source()) return tree;
+        if (formatted == tree.Source()) {
+            return tree;
+        }
         // Some specialized passes below still update formatted directly.
         // Discard a cached tree if one of them changed its input.
         if (cachedTree && cachedTree->Source() != formatted) {
@@ -9500,21 +9644,25 @@ std::string Format(const parser::SyntaxTree& tree, const Style& style)
                 HIT_FMT_PROFILE_EVENT("parse.current_tree");
 #ifdef HIT_FMT_PROFILE_PHASES
                 if (util::profile::Enabled()) {
-                    util::profile::GetResults().Count("parse.after_change",
+                    util::profile::GetResults().Count(
+                        "parse.after_change",
                         lastEditLine);
                 }
 #endif
                 cachedTree.emplace(parser::Parse(
-                    current, [] (parser::ParseError) { }));
+                    current,
+                    [] (parser::ParseError) { }));
             }
             formatted.resize(length);
         }
         return *cachedTree;
     };
-    auto applyPass = [&](auto&& pass HIT_FMT_PROFILE_PASS_ARG) {
+    auto applyPass = [&] (auto&& pass HIT_FMT_PROFILE_PASS_ARG) {
         HIT_FMT_PROFILE_PASS();
         auto result = pass(currentTree());
-        if (result == formatted) return false;
+        if (result == formatted) {
+            return false;
+        }
         HIT_FMT_PROFILE_EDIT(lastEditLine);
         cachedTree.reset();
         syntaxOwner.reset();
@@ -9526,10 +9674,12 @@ std::string Format(const parser::SyntaxTree& tree, const Style& style)
         ++revision;
         return true;
     };
-    auto applyOptionalPass = [&](auto&& pass HIT_FMT_PROFILE_PASS_ARG) {
+    auto applyOptionalPass = [&] (auto&& pass HIT_FMT_PROFILE_PASS_ARG) {
         HIT_FMT_PROFILE_PASS();
         auto result = pass(currentTree());
-        if (!result || *result == formatted) return false;
+        if (!result || *result == formatted) {
+            return false;
+        }
         HIT_FMT_PROFILE_EDIT(lastEditLine);
         cachedTree.reset();
         syntaxOwner.reset();
@@ -9541,7 +9691,7 @@ std::string Format(const parser::SyntaxTree& tree, const Style& style)
         ++revision;
         return true;
     };
-    auto rebindLayout = [&](const parser::SyntaxTree& parsed,
+    auto rebindLayout = [&] (const parser::SyntaxTree& parsed,
         LayoutEdits& layout) -> std::optional<parser::SyntaxTree> {
         if (&parsed != &tree && !parsed.BorrowsSyntax()) {
             HIT_FMT_PROFILE_EVENT("edits.owned_syntax");
@@ -9549,11 +9699,13 @@ std::string Format(const parser::SyntaxTree& tree, const Style& style)
         }
         return TryRebindLayout(parsed, layout);
     };
-    auto applyLayoutPass = [&](auto&& pass HIT_FMT_PROFILE_PASS_ARG) {
+    auto applyLayoutPass = [&] (auto&& pass HIT_FMT_PROFILE_PASS_ARG) {
         HIT_FMT_PROFILE_PASS();
         const auto& parsed = currentTree();
         auto layout = pass(parsed);
-        if (!layout || layout->Output == formatted) return false;
+        if (!layout || layout->Output == formatted) {
+            return false;
+        }
         HIT_FMT_PROFILE_EDIT(lastEditLine);
         std::optional<parser::SyntaxTree> rebound;
         if (&parsed != &tree && !parsed.BorrowsSyntax() &&
@@ -9566,7 +9718,9 @@ std::string Format(const parser::SyntaxTree& tree, const Style& style)
             if (retained->Tree.Source().data() == retained->Source.data()) {
                 syntaxOwner = std::move(retained);
                 rebound = TryRebindLayout(syntaxOwner->Tree, *layout);
-                if (rebound) HIT_FMT_PROFILE_EVENT("edits.owner_adopted");
+                if (rebound) {
+                    HIT_FMT_PROFILE_EVENT("edits.owner_adopted");
+                }
                 if (captureHeaderSource && !capturedHeaderSource) {
                     beforeHeaderReflow = syntaxOwner->Source;
                     capturedHeaderSource = true;
@@ -9590,7 +9744,9 @@ std::string Format(const parser::SyntaxTree& tree, const Style& style)
             HIT_FMT_PROFILE_EVENT("edits.cached_rebound");
         } else {
             syntaxOwner.reset();
-            if (rebound) HIT_FMT_PROFILE_EVENT("edits.moved_output");
+            if (rebound) {
+                HIT_FMT_PROFILE_EVENT("edits.moved_output");
+            }
         }
         ++revision;
         return true;
@@ -9598,7 +9754,7 @@ std::string Format(const parser::SyntaxTree& tree, const Style& style)
     bool initialTokensReordered = false;
     {
         HIT_FMT_PROFILE_PHASE("formatter.initial_layout");
-        auto applyParameters = [&](const parser::SyntaxTree& parsed) {
+        auto applyParameters = [&] (const parser::SyntaxTree& parsed) {
             auto layout = FormatParameters(parsed, style);
             if (!layout) {
                 formatted = std::string(parsed.Source());
@@ -9618,7 +9774,8 @@ std::string Format(const parser::SyntaxTree& tree, const Style& style)
         } else {
             auto braceLayout = *RenderFormatter(tree, existing);
             if (braceLayout.Output == tree.Source() &&
-                style.FunctionParameterSplit != FunctionParameterSplit::Preserve)
+                style.FunctionParameterSplit !=
+                    FunctionParameterSplit::Preserve)
             {
                 applyParameters(tree);
             } else {
@@ -9645,9 +9802,11 @@ std::string Format(const parser::SyntaxTree& tree, const Style& style)
                     if (!bracedTree) {
                         HIT_FMT_PROFILE_EVENT("parse.initial_braces");
                         bracedTree.emplace(parser::Parse(
-                            bracedSource, [] (parser::ParseError) { }));
+                            bracedSource,
+                            [] (parser::ParseError) { }));
                     }
-                    if (auto parameters = FormatParameters(*bracedTree, style)) {
+                    auto parameters = FormatParameters(*bracedTree, style);
+                    if (parameters) {
                         auto rebound = rebindLayout(*bracedTree, *parameters);
                         const auto* data = parameters->Output.data();
                         formatted = std::move(parameters->Output);
@@ -9693,7 +9852,7 @@ std::string Format(const parser::SyntaxTree& tree, const Style& style)
     if (style.CallArgumentSplit != CallArgumentSplit::Preserve &&
         hasStaticAssert)
     {
-        applyPass([&](const auto& parsed) {
+        applyPass([&] (const auto& parsed) {
             return FormatStaticAsserts(parsed, style);
         });
     }
@@ -9706,7 +9865,7 @@ std::string Format(const parser::SyntaxTree& tree, const Style& style)
         bool stable = false;
         bool changed = false;
         for (size_t pass = 0; pass < 16; ++pass) {
-            stable = !applyOptionalPass([&](const auto& parsed) {
+            stable = !applyOptionalPass([&] (const auto& parsed) {
                 auto result = FormatInitializers(parsed, style);
                 if (result && !changed && *result != formatted) {
                     beforeInitializers = std::move(formatted);
@@ -9714,7 +9873,9 @@ std::string Format(const parser::SyntaxTree& tree, const Style& style)
                 }
                 return result;
             });
-            if (stable) break;
+            if (stable) {
+                break;
+            }
         }
         if (!stable) {
             cachedTree.reset();
@@ -9746,32 +9907,35 @@ std::string Format(const parser::SyntaxTree& tree, const Style& style)
         style.EmptyControlBody == EmptyControlBody::EmptyBlock))
     {
         for (size_t pass = 0; pass < 16; ++pass) {
-            if (!applyOptionalPass([&](const auto& parsed) {
+            if (!applyOptionalPass([&] (const auto& parsed) {
                 return AddControlBraces(parsed, style);
-            })) break;
+            }))
+            {
+                break;
+            }
         }
     }
     if (hasControl && (style.AddMissingControlBraces ||
         style.EmptyControlBody == EmptyControlBody::EmptyBlock))
     {
-        applyOptionalPass([&](const auto& parsed) {
+        applyOptionalPass([&] (const auto& parsed) {
             return AttachElseToBrace(parsed);
         });
     }
     if (style.CollapseEmptyFunctionBodies) {
-        applyLayoutPass([&](const auto& parsed) {
+        applyLayoutPass([&] (const auto& parsed) {
             return CollapseEmptyFunctionBodies(parsed);
         });
     }
     if (style.NonEmptyBlockBodyLayout == NonEmptyBlockBodyLayout::Multiline) {
-        applyLayoutPass([&](const auto& parsed) {
+        applyLayoutPass([&] (const auto& parsed) {
             return FormatNonEmptyBlockBodies(parsed, style);
         });
     }
     if (hasCaptureBracket &&
         style.LambdaCaptureSplit != LambdaCaptureSplit::Preserve)
     {
-        applyOptionalPass([&](const auto& parsed) {
+        applyOptionalPass([&] (const auto& parsed) {
             return FormatLambdaCaptures(parsed, style);
         });
     }
@@ -9784,7 +9948,7 @@ std::string Format(const parser::SyntaxTree& tree, const Style& style)
     {
         // A changed pass can expose further edits on the next traversal.
         // Only a no-op pass is safe to reuse at the end of the pipeline.
-        indentedBeforeReflow = !applyLayoutPass([&](const auto& parsed) {
+        indentedBeforeReflow = !applyLayoutPass([&] (const auto& parsed) {
             return FormatBlockIndentation(parsed, style);
         });
         indentedRevision = revision;
@@ -9807,17 +9971,20 @@ std::string Format(const parser::SyntaxTree& tree, const Style& style)
         (!style.EnforceControlBlockBracePlacement || trackNewCallBreaks);
     bool headerReflowed = false;
     if (hasConditional &&
-        style.ExpressionLayoutCondition != ExpressionLayoutCondition::Preserve &&
+        style.ExpressionLayoutCondition !=
+            ExpressionLayoutCondition::Preserve &&
         style.TernarySplit == TernarySplit::ThreeLines)
     {
         // Give an overlong ternary inside a call argument its own breaks
         // before a call split hides the overflow on the enclosing line.
-        headerReflowed |= applyLayoutPass([&](const auto& parsed) {
+        headerReflowed |= applyLayoutPass([&] (const auto& parsed) {
             return CompleteTernaryBreaks(parsed, style);
         });
     }
-    if (style.ExpressionLayoutCondition != ExpressionLayoutCondition::Preserve) {
-        headerReflowed |= applyLayoutPass([&](const auto& parsed) {
+    if (style.ExpressionLayoutCondition !=
+        ExpressionLayoutCondition::Preserve)
+    {
+        headerReflowed |= applyLayoutPass([&] (const auto& parsed) {
             return BalanceDelimitedExpressions(parsed, style);
         });
     }
@@ -9825,7 +9992,7 @@ std::string Format(const parser::SyntaxTree& tree, const Style& style)
         style.EnforceMultilineSingleCallArgumentPosition)
     {
         if (style.CallArgumentSplit != CallArgumentSplit::Preserve) {
-            applyPass([&](const auto& parsed) {
+            applyPass([&] (const auto& parsed) {
                 return JoinAssignmentBeforeCallReflow(parsed, style);
             });
         }
@@ -9840,34 +10007,47 @@ std::string Format(const parser::SyntaxTree& tree, const Style& style)
         for (size_t depth = 0; depth < MaxCallReflowDepth; ++depth) {
             bool deeperCalls = false;
             nextFrontier.clear();
-            const bool changed = applyLayoutPass([&](const auto& parsed) {
-                return FormatCalls(parsed, style, depth, deeperCalls, nullptr,
-                    useFrontier ? &frontier : nullptr, &nextFrontier);
+            const bool changed = applyLayoutPass([&] (const auto& parsed) {
+                return FormatCalls(
+                    parsed,
+                    style,
+                    depth,
+                    deeperCalls,
+                    nullptr,
+                    useFrontier ? &frontier : nullptr,
+                    &nextFrontier);
             });
             headerReflowed |= changed;
-            if (!deeperCalls) break;
+            if (!deeperCalls) {
+                break;
+            }
             useFrontier = !changed;
-            if (useFrontier) frontier.swap(nextFrontier);
+            if (useFrontier) {
+                frontier.swap(nextFrontier);
+            }
         }
     }
     if (style.ControlHeaderClauseSplit != ControlHeaderClauseSplit::Preserve) {
-        headerReflowed |= applyLayoutPass([&](const auto& parsed) {
+        headerReflowed |= applyLayoutPass([&] (const auto& parsed) {
             return FormatControlHeaderClauses(parsed, style);
         });
     }
-    if (style.ExpressionLayoutCondition != ExpressionLayoutCondition::Preserve) {
-        headerReflowed |= applyLayoutPass([&](const auto& parsed) {
+    if (style.ExpressionLayoutCondition !=
+        ExpressionLayoutCondition::Preserve)
+    {
+        headerReflowed |= applyLayoutPass([&] (const auto& parsed) {
             return FormatExpressions(parsed, style);
         });
         if (hasConditional && style.TernarySplit == TernarySplit::ThreeLines) {
-            if (applyLayoutPass([&](const auto& parsed) {
+            if (applyLayoutPass([&] (const auto& parsed) {
                 return CompleteTernaryBreaks(parsed, style);
-            })) {
+            }))
+            {
                 headerReflowed = true;
                 Style overflowStyle = style;
                 overflowStyle.ExpressionLayoutCondition =
                     ExpressionLayoutCondition::Overflow;
-                applyLayoutPass([&](const auto& parsed) {
+                applyLayoutPass([&] (const auto& parsed) {
                     return FormatExpressions(parsed, overflowStyle);
                 });
             }
@@ -9875,7 +10055,7 @@ std::string Format(const parser::SyntaxTree& tree, const Style& style)
         if (hasConditional && style.TernarySplit == TernarySplit::ThreeLines &&
             style.TernaryOperatorPlacement == TernaryOperatorPlacement::Leading)
         {
-            applyLayoutPass([&](const auto& parsed) {
+            applyLayoutPass([&] (const auto& parsed) {
                 return AlignLeadingTernaryOperators(parsed, style);
             });
         }
@@ -9896,7 +10076,8 @@ std::string Format(const parser::SyntaxTree& tree, const Style& style)
             } else {
                 HIT_FMT_PROFILE_EVENT("parse.previous_header");
                 previousTree.emplace(parser::Parse(
-                    previousSource, [] (parser::ParseError) { }));
+                    previousSource,
+                    [] (parser::ParseError) { }));
             }
             before = &*previousTree;
         }
@@ -9925,16 +10106,26 @@ std::string Format(const parser::SyntaxTree& tree, const Style& style)
                 for (size_t depth = 0; depth < MaxCallReflowDepth; ++depth) {
                     bool deeperCalls = false;
                     nextFrontier.clear();
-                    const bool changedCall = applyLayoutPass([&](const auto& calls) {
-                        return FormatCalls(calls, style, depth, deeperCalls,
-                            &newBreaks, useFrontier ? &frontier : nullptr,
-                            &nextFrontier);
-                    });
+                    const bool changedCall = applyLayoutPass(
+                        [&] (const auto& calls) {
+                            return FormatCalls(
+                                calls,
+                                style,
+                                depth,
+                                deeperCalls,
+                                &newBreaks,
+                                useFrontier ? &frontier : nullptr,
+                                &nextFrontier);
+                        });
                     repositioned |= changedCall;
                     headerReflowed |= changedCall;
-                    if (!deeperCalls) break;
+                    if (!deeperCalls) {
+                        break;
+                    }
                     useFrontier = !changedCall;
-                    if (useFrontier) frontier.swap(nextFrontier);
+                    if (useFrontier) {
+                        frontier.swap(nextFrontier);
+                    }
                 }
             }
         }
@@ -9943,7 +10134,7 @@ std::string Format(const parser::SyntaxTree& tree, const Style& style)
             style.TernarySplit == TernarySplit::ThreeLines &&
             style.TernaryOperatorPlacement == TernaryOperatorPlacement::Leading)
         {
-            headerReflowed |= applyLayoutPass([&](const auto& alignedTree) {
+            headerReflowed |= applyLayoutPass([&] (const auto& alignedTree) {
                 return AlignLeadingTernaryOperators(alignedTree, style);
             });
         }
@@ -9951,7 +10142,7 @@ std::string Format(const parser::SyntaxTree& tree, const Style& style)
     if (style.SingleStatementLambdaBodyLayout ==
             SingleStatementLambdaBodyLayout::OneLineIfFits)
     {
-        headerReflowed |= applyPass([&](const auto& parsed) {
+        headerReflowed |= applyPass([&] (const auto& parsed) {
             return FormatSingleStatementLambdas(parsed, style);
         });
     }
@@ -9959,9 +10150,8 @@ std::string Format(const parser::SyntaxTree& tree, const Style& style)
     // Revisit control braces after a header was reflowed. Without
     // enforcement, limit this pass to headers whose line breaks changed;
     // other braces remain source-owned.
-    if (headerReflowed)
-    {
-        applyLayoutPass([&](const auto& parsed) {
+    if (headerReflowed) {
+        applyLayoutPass([&] (const auto& parsed) {
             std::vector<bool> changed;
             if (!style.EnforceControlBlockBracePlacement) {
                 std::optional<parser::SyntaxTree> previousTree;
@@ -9977,39 +10167,48 @@ std::string Format(const parser::SyntaxTree& tree, const Style& style)
                     } else {
                         HIT_FMT_PROFILE_EVENT("parse.previous_braces");
                         previousTree.emplace(parser::Parse(
-                            previousSource, [] (parser::ParseError) { }));
+                            previousSource,
+                            [] (parser::ParseError) { }));
                     }
                     before = &*previousTree;
                 }
                 changed.resize(parsed.TokenCount(), false);
                 if (before->TokenCount() == parsed.TokenCount()) {
                     bool sameTokens = true;
-                    for (TokenIndex i = 0; i < parsed.TokenCount(); ++i)
+                    for (TokenIndex i = 0; i < parsed.TokenCount(); ++i) {
                         sameTokens &= before->Kind(i) == parsed.Kind(i) &&
                             before->TokenText(i) == parsed.TokenText(i);
+                    }
                     if (sameTokens) {
                         std::vector<const parser::Node*> nodes{&parsed.Root()};
                         while (!nodes.empty()) {
                             auto* node = nodes.back();
                             nodes.pop_back();
-                            for (auto* child = node->Child(); child;
+                            for (auto* child = node->Child();
+                                child;
                                 child = child->NextSibling)
                             {
                                 nodes.push_back(child);
                                 if (child->Kind != NK::CompoundStatement ||
                                     child->Tokens.Empty())
+                                {
                                     continue;
+                                }
                                 const auto open = child->Tokens.Begin;
                                 if (open >= changed.size() ||
                                     node->Tokens.Begin >= open)
+                                {
                                     continue;
+                                }
                                 auto first = node->Tokens.Begin;
                                 for (auto i = first + 1; i <= open; ++i) {
                                     if (before->WhitespaceBefore(i) !=
                                             parsed.WhitespaceBefore(i) &&
-                                        (before->WhitespaceBefore(i).find('\n') !=
+                                        (before->WhitespaceBefore(i).find(
+                                            '\n') !=
                                                 std::string_view::npos ||
-                                            parsed.WhitespaceBefore(i).find('\n') !=
+                                            parsed.WhitespaceBefore(i).find(
+                                                '\n') !=
                                                 std::string_view::npos))
                                     {
                                         changed[open] = true;
@@ -10037,8 +10236,9 @@ std::string Format(const parser::SyntaxTree& tree, const Style& style)
                 style.ControlBlockBracePlacement;
             controlStyle.EnforceControlBlockBracePlacement = true;
             return RenderFormatter(parsed, controlStyle,
-                style.EnforceControlBlockBracePlacement ? nullptr :
-                    &changed);
+                style.EnforceControlBlockBracePlacement
+                    ? nullptr
+                    : &changed);
         });
     }
     if (hasMemberAccess && !style.ChainedCallRootNames.empty() &&
@@ -10047,17 +10247,23 @@ std::string Format(const parser::SyntaxTree& tree, const Style& style)
         // The outer chain is formatted first; revisit nested arguments
         // after reparsing, without overlapping edits in one pass.
         for (size_t pass = 0; pass < 4; ++pass) {
-            if (!applyOptionalPass([&](const auto& parsed) {
+            if (!applyOptionalPass([&] (const auto& parsed) {
                 return FormatChainedCalls(parsed, style);
-            })) break;
+            }))
+            {
+                break;
+            }
         }
     }
     if (hasNamespace && style.NamespaceComments !=
             NamespaceComments::Preserve)
     {
-        applyOptionalPass([&](const auto& parsed) {
-            return FormatNamespaceComments(parsed, style.NamespaceComments,
-                style.ShortNamespaceLines, style.NamespaceCommentSpaces);
+        applyOptionalPass([&] (const auto& parsed) {
+            return FormatNamespaceComments(
+                parsed,
+                style.NamespaceComments,
+                style.ShortNamespaceLines,
+                style.NamespaceCommentSpaces);
         });
     }
     if (style.PointerReferenceDeclaratorLocation !=
@@ -10153,26 +10359,26 @@ std::string Format(const parser::SyntaxTree& tree, const Style& style)
         style.EnumUnderlyingTypeColonSpacing != ColonSpacing::Preserve ||
         style.LabelColonSpacing != ColonSpacing::Preserve)
     {
-        applyLayoutPass([&](const auto& parsed) {
+        applyLayoutPass([&] (const auto& parsed) {
             return FormatTokenSpacing(parsed, existing);
         });
     }
     if (style.AmbiguousTemplateDeclarationSpacing !=
             AmbiguousTemplateDeclarationSpacing::Preserve)
     {
-        applyPass([&](const auto& parsed) {
+        applyPass([&] (const auto& parsed) {
             return FormatAmbiguousTemplateDeclarationSpacing(parsed, style);
         });
     }
     if (style.IncludeOrder != IncludeOrder::Preserve) {
-        applyPass([&](const auto& parsed) {
+        applyPass([&] (const auto& parsed) {
             return FormatIncludes(parsed);
         });
     }
     if (style.TrailingCommentSpacing != TokenSpacing::Preserve ||
         style.PreprocessorIndentation != PreprocessorIndentation::Preserve)
     {
-        applyPass([&](const auto& parsed) {
+        applyPass([&] (const auto& parsed) {
             return FormatLineOwnedSpacing(parsed, style);
         });
     }
@@ -10181,7 +10387,7 @@ std::string Format(const parser::SyntaxTree& tree, const Style& style)
         style.StatementAttributeIndent != StatementAttributeIndent::Preserve) &&
         (!indentedBeforeReflow || indentedRevision != revision))
     {
-        applyLayoutPass([&](const auto& parsed) {
+        applyLayoutPass([&] (const auto& parsed) {
             return FormatBlockIndentation(parsed, style);
         });
     }
@@ -10190,12 +10396,12 @@ std::string Format(const parser::SyntaxTree& tree, const Style& style)
         style.EnforceInitializerClosingBrace ||
         style.EnforceBlockClosingBrace)
     {
-        applyLayoutPass([&](const auto& parsed) {
+        applyLayoutPass([&] (const auto& parsed) {
             return FormatClosingDelimiters(parsed, style);
         });
     }
     if (style.TrailingWhitespace != TrailingWhitespace::Preserve) {
-        applyOptionalPass([&](const auto& parsed) {
+        applyOptionalPass([&] (const auto& parsed) {
             return TrimTrailingWhitespace(parsed);
         });
     }
@@ -10203,7 +10409,7 @@ std::string Format(const parser::SyntaxTree& tree, const Style& style)
         (hasComment || (hasNamespace && style.NamespaceComments !=
             NamespaceComments::Preserve)))
     {
-        applyOptionalPass([&](const auto& parsed) {
+        applyOptionalPass([&] (const auto& parsed) {
             return FormatSeparators(parsed, style.SeparatorLength);
         });
     }

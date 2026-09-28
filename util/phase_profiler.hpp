@@ -22,7 +22,8 @@ using Clock = std::chrono::steady_clock;
 
 inline bool Enabled()
 {
-    static const bool enabled = std::getenv("HIT_FMT_PROFILE_PHASES") != nullptr;
+    static const bool enabled = std::getenv(
+        "HIT_FMT_PROFILE_PHASES") != nullptr;
     return enabled;
 }
 
@@ -38,7 +39,9 @@ class Results
 public:
     ~Results()
     {
-        if (Phases_.empty()) return;
+        if (Phases_.empty()) {
+            return;
+        }
         std::vector<std::pair<Key, Summary>> phases(
             Phases_.begin(), Phases_.end());
         std::ranges::sort(phases, [] (const auto& left, const auto& right) {
@@ -47,7 +50,9 @@ public:
         std::cerr << std::fixed << std::setprecision(6);
         for (const auto& [key, value] : phases) {
             std::cerr << "phase=" << key.first;
-            if (key.second) std::cerr << ':' << key.second;
+            if (key.second) {
+                std::cerr << ':' << key.second;
+            }
             std::cerr << " calls=" << value.Calls << " inclusive="
                       << std::chrono::duration<double>(value.Inclusive).count()
                       << " exclusive="
@@ -61,7 +66,9 @@ public:
         ++Phases_[{name, line}].Calls;
     }
 
-    void Record(std::string_view name, uint32_t line,
+    void Record(
+        std::string_view name,
+        uint32_t line,
         std::chrono::nanoseconds inclusive,
         std::chrono::nanoseconds exclusive)
     {
@@ -89,7 +96,9 @@ public:
         : Name_(name)
         , Line_(line)
     {
-        if (!Enabled()) return;
+        if (!Enabled()) {
+            return;
+        }
         Parent_ = Current_;
         Current_ = this;
         Start_ = Clock::now();
@@ -98,11 +107,15 @@ public:
 
     ~Scope()
     {
-        if (!Active_) return;
+        if (!Active_) {
+            return;
+        }
         auto elapsed = std::chrono::duration_cast<std::chrono::nanoseconds>(
             Clock::now() - Start_);
         Current_ = Parent_;
-        if (Parent_) Parent_->Children_ += elapsed;
+        if (Parent_) {
+            Parent_->Children_ += elapsed;
+        }
         GetResults().Record(Name_, Line_, elapsed, elapsed - Children_);
     }
 
