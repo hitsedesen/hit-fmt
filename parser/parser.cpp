@@ -2,6 +2,7 @@
 
 #include <tokenizer/tokenizer.hpp>
 #include <util/assert.hpp>
+#include <util/phase_profiler.hpp>
 
 #include <algorithm>
 #include <array>
@@ -175,6 +176,7 @@ SyntaxTree::SyntaxTree(SyntaxTree&& other) noexcept
     , Tokens_(std::move(other.Tokens_))
     , Trivia_(std::move(other.Trivia_))
     , Root_(std::exchange(other.Root_, nullptr))
+    , Original_(other.Original_)
 { }
 
 SyntaxTree& SyntaxTree::operator=(SyntaxTree&& other) noexcept
@@ -185,6 +187,7 @@ SyntaxTree& SyntaxTree::operator=(SyntaxTree&& other) noexcept
         Tokens_.MoveFrom(std::move(other.Tokens_));
         Trivia_.MoveFrom(std::move(other.Trivia_));
         Root_ = std::exchange(other.Root_, nullptr);
+        Original_ = other.Original_;
     }
     return *this;
 }
@@ -195,6 +198,306 @@ const Node& SyntaxTree::Root() const
 {
     ASSERT(Root_)
     return *Root_;
+}
+
+std::optional<SyntaxTree> SyntaxTree::RebindWhitespace(
+    util::PaddedSourceView source) const
+{
+    HIT_FMT_PROFILE_PHASE("parser.rebind");
+    bool error = false;
+    tokenizer::Tokenizer tokenizer(source,
+        [&](tokenizer::TokenizationError) { error = true; });
+    SyntaxTree rebound(source.View());
+    TokenIndex index = 0;
+    size_t previousEnd = 0;
+    bool previousCommentOrDirective = false;
+    {
+        HIT_FMT_PROFILE_PHASE("parser.rebind.scan_verify");
+        for (auto token : tokenizer) {
+            if (index >= TokenCount() || token.Kind != Kind(index) ||
+                source.View().substr(
+                    token.Text.Begin,
+                    token.Text.End - token.Text.Begin) != TokenText(index))
+            {
+                return std::nullopt;
+            }
+            const auto gap = source.View().substr(
+                previousEnd,
+                token.Text.Begin - previousEnd);
+            const auto oldGap = WhitespaceBefore(index);
+            // Escaped newlines between tokens must stay byte-for-byte intact;
+            // those inside a token are checked by comparing token spellings.
+            if ((gap.find("\\\n") != std::string_view::npos ||
+                    oldGap.find("\\\n") != std::string_view::npos) &&
+                gap != oldGap)
+            {
+                return std::nullopt;
+            }
+            const bool commentOrDirective =
+                token.Kind == tokenizer::TokenKind::Comment ||
+                token.Kind == tokenizer::TokenKind::PreprocessingDirective;
+            // Do not reuse comment/directive ownership if a line boundary has
+            // moved across either token. The syntax tree keeps their old nodes.
+            if ((commentOrDirective || previousCommentOrDirective) &&
+                (gap.find('\n') != std::string_view::npos) !=
+                    (oldGap.find('\n') != std::string_view::npos))
+            {
+                return std::nullopt;
+            }
+            rebound.Tokens_.Add(token);
+            previousEnd = token.Text.End;
+            previousCommentOrDirective = commentOrDirective;
+            ++index;
+        }
+    }
+    const auto tail = source.View().substr(previousEnd);
+    const auto oldTail = index ? WhitespaceAfter(index - 1) : Input_;
+    if (((tail.find("\\\n") != std::string_view::npos ||
+            oldTail.find("\\\n") != std::string_view::npos) &&
+            tail != oldTail) ||
+        (previousCommentOrDirective &&
+            (tail.find('\n') != std::string_view::npos) !=
+                (oldTail.find('\n') != std::string_view::npos)))
+    {
+        return std::nullopt;
+    }
+    if (error || index != TokenCount()) {
+        return std::nullopt;
+    }
+    {
+        HIT_FMT_PROFILE_PHASE("parser.rebind.copy_roles");
+        rebound.Tokens_.Seal();
+        for (TokenIndex i = 0; i < index; ++i) {
+            rebound.Tokens_.SetRole(i, Role(i));
+            rebound.Tokens_.SetMatchingDelimiter(i, MatchingDelimiter(i));
+        }
+    }
+    rebound.Root_ = Root_;
+    rebound.Original_ = Original_ ? Original_ : this;
+    return rebound;
+}
+
+std::optional<SyntaxTree> SyntaxTree::RebindWhitespaceEdits(
+    util::PaddedSourceView source,
+    std::span<const WhitespaceEdit> edits) const
+{
+    HIT_FMT_PROFILE_PHASE("parser.rebind_edits");
+    if (source.Size > util::MaxSourceSize) {
+        return std::nullopt;
+    }
+    SyntaxTree rebound(source.View());
+    int64_t lineDelta = 0;
+    int64_t columnDelta = 0;
+    uint32_t previousOldLine = 0;
+    util::Position previousNewPosition{.Line = 1, .Column = 1};
+    auto asciiWhitespace = [] (std::string_view gap) {
+        return gap.find_first_not_of(" \t\r\n\f\v") ==
+            std::string_view::npos;
+    };
+    auto safeJoin = [&] (TokenIndex left, TokenIndex right) {
+        auto first = TokenText(left);
+        auto second = TokenText(right);
+        std::string joined;
+        joined.reserve(first.size() + second.size() + util::SourcePaddingSize);
+        joined.append(first);
+        joined.append(second);
+        auto length = joined.size();
+        joined.append(util::SourcePaddingSize, '\0');
+        bool error = false;
+        tokenizer::Tokenizer lexer({.Data = joined.data(), .Size = length},
+            [&] (tokenizer::TokenizationError) { error = true; });
+        const auto a = lexer.Get();
+        const auto b = lexer.Get();
+        const auto end = lexer.Get();
+        return !error && a.Kind == Kind(left) && b.Kind == Kind(right) &&
+            a.Text.Size() == first.size() && b.Text.Size() == second.size() &&
+            end.Kind == tokenizer::TokenKind::EndOfFile;
+    };
+    // Verify the edited output in contiguous spans, rather than comparing
+    // millions of individual token spellings. Gap ownership is checked below.
+    size_t oldSpan = 0;
+    size_t newSpan = 0;
+    for (const auto& edit : edits) {
+        if (edit.Begin < oldSpan || edit.End < edit.Begin ||
+            edit.End > Input_.size() || newSpan > source.Size)
+        {
+            return std::nullopt;
+        }
+        auto unchanged = Input_.substr(oldSpan, edit.Begin - oldSpan);
+        if (newSpan > source.Size || unchanged.size() > source.Size - newSpan ||
+            source.View().substr(newSpan, unchanged.size()) != unchanged)
+        {
+            return std::nullopt;
+        }
+        newSpan += unchanged.size();
+        if (edit.Text.size() > source.Size - newSpan ||
+            source.View().substr(newSpan, edit.Text.size()) != edit.Text)
+        {
+            return std::nullopt;
+        }
+        newSpan += edit.Text.size();
+        oldSpan = edit.End;
+    }
+    if (newSpan > source.Size ||
+        source.View().substr(newSpan) != Input_.substr(oldSpan))
+    {
+        return std::nullopt;
+    }
+    size_t oldCursor = 0;
+    size_t newCursor = 0;
+    size_t editIndex = 0;
+    int64_t delta = 0;
+    bool previousCommentOrDirective = false;
+    for (TokenIndex index = 0; index < TokenCount(); ++index) {
+        const auto token = Token(index);
+        const auto oldBegin = token.Text.Begin;
+        const auto oldEnd = token.Text.End;
+        size_t lastEditEnd = oldCursor;
+        while (editIndex < edits.size() &&
+            edits[editIndex].Begin <= oldBegin)
+        {
+            const auto& edit = edits[editIndex++];
+            if (edit.Begin < lastEditEnd || edit.End < edit.Begin ||
+                edit.End > oldBegin || edit.Text.size() > util::MaxSourceSize)
+            {
+                HIT_FMT_PROFILE_EVENT("edits.invalid_gap_range");
+                return std::nullopt;
+            }
+            delta += static_cast<int64_t>(edit.Text.size()) -
+                (edit.End - edit.Begin);
+            lastEditEnd = edit.End;
+        }
+        const auto shifted = static_cast<int64_t>(oldBegin) + delta;
+        if (shifted < 0 || static_cast<size_t>(shifted) > source.Size) {
+            HIT_FMT_PROFILE_EVENT("edits.invalid_offset");
+            return std::nullopt;
+        }
+        const auto newBegin = static_cast<size_t>(shifted);
+        const auto size = oldEnd - oldBegin;
+        if (newBegin < newCursor || size > source.Size - newBegin) {
+            HIT_FMT_PROFILE_EVENT("edits.token_mismatch");
+            return std::nullopt;
+        }
+        const auto oldGap = Input_.substr(oldCursor, oldBegin - oldCursor);
+        const auto newGap = source.View().substr(
+            newCursor,
+            newBegin - newCursor);
+        if (oldGap != newGap &&
+            (!asciiWhitespace(oldGap) || !asciiWhitespace(newGap) ||
+                oldGap.find("\\\n") != std::string_view::npos ||
+                newGap.find("\\\n") != std::string_view::npos ||
+                (newGap.empty() && !oldGap.empty() && index > 0 &&
+                    !safeJoin(index - 1, index))))
+        {
+            HIT_FMT_PROFILE_EVENT("edits.unsafe_gap");
+            return std::nullopt;
+        }
+        const auto commentOrDirective =
+            token.Kind == tokenizer::TokenKind::Comment ||
+            token.Kind == tokenizer::TokenKind::PreprocessingDirective;
+        if (oldGap != newGap &&
+            (commentOrDirective || previousCommentOrDirective) &&
+            (oldGap.find('\n') != std::string_view::npos) !=
+                (newGap.find('\n') != std::string_view::npos))
+        {
+            HIT_FMT_PROFILE_EVENT("edits.comment_boundary");
+            return std::nullopt;
+        }
+        const auto oldPosition = token.Position;
+        if (oldPosition.Line != previousOldLine) {
+            columnDelta = 0;
+        }
+        if (oldGap != newGap) {
+            const auto oldLines = std::ranges::count(oldGap, '\n');
+            const auto newLines = std::ranges::count(newGap, '\n');
+            lineDelta += newLines - oldLines;
+            if (newLines) {
+                columnDelta = static_cast<int64_t>(newGap.size() -
+                    newGap.rfind('\n')) - oldPosition.Column;
+            } else if (oldLines) {
+                int64_t previousEndColumn = 1;
+                if (index) {
+                    auto previous = TokenText(index - 1);
+                    if (previous.find('\n') != std::string_view::npos ||
+                        std::ranges::any_of(previous, [] (unsigned char c) {
+                            return c >= 0x80;
+                        }))
+                    {
+                        return std::nullopt;
+                    }
+                    previousEndColumn = previousNewPosition.Column +
+                        previous.size();
+                }
+                columnDelta = previousEndColumn +
+                    static_cast<int64_t>(newGap.size()) - oldPosition.Column;
+            } else {
+                columnDelta += static_cast<int64_t>(newGap.size()) -
+                    static_cast<int64_t>(oldGap.size());
+            }
+        }
+        const auto line = static_cast<int64_t>(oldPosition.Line) + lineDelta;
+        const auto column = static_cast<int64_t>(oldPosition.Column) +
+            columnDelta;
+        if (line < 1 || column < 1 ||
+            line > std::numeric_limits<uint32_t>::max() ||
+            column > std::numeric_limits<uint32_t>::max())
+        {
+            return std::nullopt;
+        }
+        rebound.Tokens_.Add({.Kind = token.Kind,
+            .Position = {.Line = static_cast<uint32_t>(line),
+                .Column = static_cast<uint32_t>(column)},
+            .Text = {.Begin = static_cast<util::SourceOffset>(newBegin),
+                .End = static_cast<util::SourceOffset>(newBegin + size)}});
+        previousNewPosition = {.Line = static_cast<uint32_t>(line),
+            .Column = static_cast<uint32_t>(column)};
+        previousOldLine = oldPosition.Line;
+        oldCursor = oldEnd;
+        newCursor = newBegin + size;
+        previousCommentOrDirective = commentOrDirective;
+    }
+    size_t lastEditEnd = oldCursor;
+    while (editIndex < edits.size()) {
+        const auto& edit = edits[editIndex++];
+        if (edit.Begin < lastEditEnd || edit.End < edit.Begin ||
+            edit.End > Input_.size() ||
+            edit.Text.size() > util::MaxSourceSize)
+        {
+            HIT_FMT_PROFILE_EVENT("edits.invalid_tail_edit");
+            return std::nullopt;
+        }
+        delta += static_cast<int64_t>(edit.Text.size()) -
+            (edit.End - edit.Begin);
+        lastEditEnd = edit.End;
+    }
+    if (static_cast<int64_t>(Input_.size()) + delta !=
+        static_cast<int64_t>(source.Size))
+    {
+        HIT_FMT_PROFILE_EVENT("edits.length_mismatch");
+        return std::nullopt;
+    }
+    const auto oldTail = Input_.substr(oldCursor);
+    const auto newTail = source.View().substr(newCursor);
+    if (oldTail != newTail &&
+        (!asciiWhitespace(oldTail) || !asciiWhitespace(newTail) ||
+            oldTail.find("\\\n") != std::string_view::npos ||
+            newTail.find("\\\n") != std::string_view::npos ||
+            (previousCommentOrDirective &&
+                (oldTail.find('\n') != std::string_view::npos) !=
+                    (newTail.find('\n') != std::string_view::npos))))
+    {
+        HIT_FMT_PROFILE_EVENT("edits.unsafe_tail");
+        return std::nullopt;
+    }
+    HIT_FMT_PROFILE_EVENT("edits.success");
+    rebound.Tokens_.Seal();
+    for (TokenIndex i = 0; i < TokenCount(); ++i) {
+        rebound.Tokens_.SetRole(i, Role(i));
+        rebound.Tokens_.SetMatchingDelimiter(i, MatchingDelimiter(i));
+    }
+    rebound.Root_ = Root_;
+    rebound.Original_ = Original_ ? Original_ : this;
+    return rebound;
 }
 
 tokenizer::Token SyntaxTree::Token(TokenIndex index) const
@@ -208,6 +511,11 @@ tokenizer::Token SyntaxTree::Token(TokenIndex index) const
 
 const TriviaAttachments* SyntaxTree::AssociatedTrivia(const Node& node) const
 {
+    // Borrowed syntax retains original trivia offsets; do not expose them
+    // against the rebound source.
+    if (Original_) {
+        return nullptr;
+    }
     if (node.TriviaIndex_ == std::numeric_limits<uint32_t>::max()) {
         return nullptr;
     }
@@ -244,18 +552,30 @@ public:
 
     void Build()
     {
-        Tokenize();
-        Tree_.Tokens_.Seal();
+        {
+            HIT_FMT_PROFILE_PHASE("parser.tokenize_and_delimiters");
+            Tokenize();
+            Tree_.Tokens_.Seal();
+        }
         ParseLimit_ = Tree_.Tokens_.Size();
         CurrentScope_ = detail::Make<NameScope>(ScratchMemory_);
 
         auto* root = MakeNode(NodeKind::TranslationUnit, 0);
         Tree_.Root_ = root;
-        ParseDeclarationSequence(*root, TK::EndOfFile);
-        root->Tokens.End = Cursor_;
-        AssociateComments(*root);
-        AssociateBlankLines(*root);
-        Tree_.Trivia_.Seal();
+        {
+            HIT_FMT_PROFILE_PHASE("parser.syntax");
+            ParseDeclarationSequence(*root, TK::EndOfFile);
+            root->Tokens.End = Cursor_;
+        }
+        {
+            HIT_FMT_PROFILE_PHASE("parser.comments");
+            AssociateComments(*root);
+        }
+        {
+            HIT_FMT_PROFILE_PHASE("parser.blank_lines");
+            AssociateBlankLines(*root);
+            Tree_.Trivia_.Seal();
+        }
     }
 
 private:
@@ -5847,6 +6167,7 @@ ParseContext::Run(util::PaddedSourceView input, ErrorHandler errorHandler)
 
 SyntaxTree Parse(util::PaddedSourceView input, ErrorHandler errorHandler)
 {
+    HIT_FMT_PROFILE_PHASE("parser.total");
     return ParseContext::Run(input, std::move(errorHandler));
 }
 

@@ -10,6 +10,8 @@
 #include <memory>
 #include <memory_resource>
 #include <new>
+#include <optional>
+#include <span>
 #include <string_view>
 #include <type_traits>
 #include <utility>
@@ -606,6 +608,14 @@ private:
 
 class ParseContext;
 
+// A formatter edit confined to a whitespace gap between unchanged tokens.
+struct WhitespaceEdit
+{
+    util::SourceOffset Begin;
+    util::SourceOffset End;
+    std::string_view Text;
+};
+
 // SyntaxTree owns its monotonic memory resource and segmented token pool.
 // Token spelling is a view into the input passed to Parse(), so that input must
 // outlive this object.
@@ -620,6 +630,23 @@ public:
     SyntaxTree& operator=(const SyntaxTree&) = delete;
 
     [[nodiscard]] const Node& Root() const;
+
+    // Borrow syntax for whitespace-only edits when tokens remain identical.
+    // This view is for formatting: trivia attachments are unavailable.
+    // The original tree and padded new source must outlive the result.
+    [[nodiscard]] std::optional<SyntaxTree>
+    RebindWhitespace(util::PaddedSourceView source) const;
+
+    // Reuse syntax for verified gap-only edits without lexing every token.
+    // The original tree and padded edited source must outlive the result.
+    [[nodiscard]] std::optional<SyntaxTree> RebindWhitespaceEdits(
+        util::PaddedSourceView source,
+        std::span<const WhitespaceEdit> edits) const;
+
+    [[nodiscard]] bool BorrowsSyntax() const
+    {
+        return Original_ != nullptr;
+    }
 
     [[nodiscard]] std::string_view Source() const
     {
@@ -692,6 +719,7 @@ private:
     detail::TokenPool Tokens_;
     detail::TriviaPool Trivia_;
     Node* Root_ = nullptr;
+    const SyntaxTree* Original_ = nullptr;
 
     friend class ParseContext;
 };

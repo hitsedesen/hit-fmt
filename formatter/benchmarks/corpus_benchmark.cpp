@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <chrono>
 #include <cstddef>
+#include <cstdlib>
 #include <cstdint>
 #include <exception>
 #include <filesystem>
@@ -67,6 +68,7 @@ int main(int argc, char* argv[])
             throw std::runtime_error("no C/C++ source files found");
         }
 
+        const bool perFile = std::getenv("HIT_FMT_BENCH_PER_FILE") != nullptr;
         std::chrono::steady_clock::duration elapsed{};
         size_t files = 0;
         size_t skipped = 0;
@@ -90,7 +92,14 @@ int main(int argc, char* argv[])
             };
             auto start = std::chrono::steady_clock::now();
             auto output = formatter::Format(source, config.FormattingStyle);
-            elapsed += std::chrono::steady_clock::now() - start;
+            auto fileElapsed = std::chrono::steady_clock::now() - start;
+            elapsed += fileElapsed;
+            if (perFile) {
+                std::cerr << "file_seconds="
+                          << std::chrono::duration<double>(fileElapsed).count()
+                          << '\t' << path.lexically_relative(root).generic_string()
+                          << '\n';
+            }
 
             ++files;
             inputBytes += source.Size;
