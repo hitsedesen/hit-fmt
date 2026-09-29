@@ -37,7 +37,8 @@ inline constexpr auto EnforcedPreferences =
         "FunctionParameterSplit",
         "CallArgumentSplit",
         "InitializerListSplit",
-        "TernarySplit"});
+        "TernarySplit",
+    });
 
 [[nodiscard]] constexpr bool AllowsPreserveConfigValue(std::string_view key)
 {

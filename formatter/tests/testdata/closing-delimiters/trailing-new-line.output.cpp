@@ -11,7 +11,7 @@ void Example()
     };
     int trailing[] = {
         10,
-        20,
+        20
     };
     int trailingSplit[] = {
         10,

@@ -207,7 +207,8 @@ public:
             Results.push_back({Tree.TokenPosition(index),
                 std::move(message),
                 issue,
-                ExpectedName(rule, prefixOK, caseOK)});
+                ExpectedName(rule, prefixOK, caseOK),
+            });
         }
     }
 

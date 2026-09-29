@@ -370,8 +370,13 @@
         formatter::InitializerListClosingBrace::SameLineUnlessTrailingComma)   \
     OPT(bool, EnforceInitializerListClosingBrace, false)                       \
     OPT(formatter::InitializerListTrailingComma, InitializerListTrailingComma, \
-        formatter::InitializerListTrailingComma::Keep)                         \
+        formatter::InitializerListTrailingComma::Remove)                       \
     OPT(bool, EnforceInitializerListTrailingComma, false)                      \
+    OPT(formatter::MultilineInitializerListTrailingComma,                     \
+        MultilineInitializerListTrailingComma,                                 \
+        formatter::MultilineInitializerListTrailingComma::Inherit)             \
+    OPT(std::optional<bool>, EnforceMultilineInitializerListTrailingComma,     \
+        std::nullopt)                                                        \
     OPT(formatter::ClosingDelimiterPlacement,                                  \
         FunctionParameterClosingParenthesis,                                   \
         formatter::ClosingDelimiterPlacement::SameLine)                        \

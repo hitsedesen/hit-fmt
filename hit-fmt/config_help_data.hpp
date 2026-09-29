@@ -735,7 +735,9 @@ T y{
     second,
 };
 )HIT_FMT_HELP"},
-    {R"HIT_FMT_HELP(InitializerListTrailingComma and EnforceInitializerListTrailingComma:)HIT_FMT_HELP", R"HIT_FMT_HELP(// InitializerListTrailingComma = Keep (default): preserve presence
+    {R"HIT_FMT_HELP(InitializerListTrailingComma and EnforceInitializerListTrailingComma:)HIT_FMT_HELP", R"HIT_FMT_HELP(// InitializerListTrailingComma = Remove (default)
+// EnforceInitializerListTrailingComma = false (default)
+// Existing single-line lists keep their commas unless reflowed.
 T x{first, second,};
 // InitializerListTrailingComma = Add
 // EnforceInitializerListTrailingComma = true
@@ -743,6 +745,18 @@ T x{first, second,};
 // InitializerListTrailingComma = Remove
 // EnforceInitializerListTrailingComma = true
 T x{first, second};
+)HIT_FMT_HELP"},
+    {R"HIT_FMT_HELP(MultilineInitializerListTrailingComma and EnforceMultilineInitializerListTrailingComma:)HIT_FMT_HELP", R"HIT_FMT_HELP(// MultilineInitializerListTrailingComma = Inherit (default)
+// Uses InitializerListTrailingComma for multiline lists.
+// MultilineInitializerListTrailingComma = Add
+// EnforceMultilineInitializerListTrailingComma = false
+// An existing multiline list is unchanged.
+T x{first,
+    second};
+// EnforceMultilineInitializerListTrailingComma = true
+// Applies Add to safe existing multiline lists too.
+T x{first,
+    second,};
 )HIT_FMT_HELP"},
     {R"HIT_FMT_HELP(MergeInitializerList:)HIT_FMT_HELP", R"HIT_FMT_HELP(// MergeInitializerList = false
 T x{first,
@@ -1691,13 +1705,20 @@ CRLF lists are left intact. They do not change calls.
   Compact comma-terminated lists are split one element per line when
   enforcing a NewLine brace. Unknown typed temporary initializers only
   have their safe closing gap adjusted; their contents are not reflowed.
-  • InitializerListTrailingComma: Keep (default) retains its presence on
-  reflow, Add inserts one, and Remove drops one.
-  EnforceInitializerListTrailingComma
-  (default false) additionally applies Add or Remove to safe existing
-  parsed lists independently of brace placement. An unknown typed temporary
-  can have a safe trailing comma removed, but one is never added to its
-  unparsed contents. Gaps next to comments or directives stay unchanged.
+  • InitializerListTrailingComma: Add inserts a trailing comma and Remove
+  (default) drops one when a safe single-line list is reflowed.
+  EnforceInitializerListTrailingComma (default false) additionally applies
+  that preference to safe existing single-line lists without reflow.
+  • MultilineInitializerListTrailingComma: Inherit (default) uses
+  InitializerListTrailingComma, Add inserts a comma, and Remove drops one
+  on reflowed multiline lists. EnforceMultilineInitializerListTrailingComma
+  defaults to inherit (follow EnforceInitializerListTrailingComma); false
+  preserves safe existing multiline lists, while true applies the
+  preference without reflow. Both flags operate independently of brace
+  placement.
+  An unknown typed temporary can have a safe trailing comma removed, but
+  one is never added to its unparsed contents. Gaps next to comments or
+  directives stay unchanged.
   • MergeInitializerList: false (default) leaves already split lists
   multiline; true joins safe lists that fit within ColumnLimit when
   EnforceInitializerListSplit is true, unless the selected closing-brace

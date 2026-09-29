@@ -7,6 +7,7 @@
 #include <util/input.hpp>
 
 #include <cstddef>
+#include <optional>
 #include <string>
 #include <vector>
 

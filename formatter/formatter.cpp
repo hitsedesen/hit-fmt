@@ -1828,6 +1828,29 @@ bool IsWhitespace(std::string_view text)
     });
 }
 
+InitializerListTrailingComma InitializerTrailingCommaPreference(
+    const Style& style,
+    bool multiline)
+{
+    if (multiline) {
+        switch (style.MultilineInitializerListTrailingComma) {
+            case MultilineInitializerListTrailingComma::Add:
+                return InitializerListTrailingComma::Add;
+            case MultilineInitializerListTrailingComma::Remove:
+                return InitializerListTrailingComma::Remove;
+            case MultilineInitializerListTrailingComma::Inherit:
+                break;
+        }
+    }
+    return style.InitializerListTrailingComma;
+}
+
+bool EnforceMultilineInitializerTrailingComma(const Style& style)
+{
+    return style.EnforceMultilineInitializerListTrailingComma.value_or(
+        style.EnforceInitializerListTrailingComma);
+}
+
 bool InitializerCloserOnNewLine(
     InitializerListClosingBrace placement,
     bool trailingComma)
@@ -1951,15 +1974,12 @@ std::optional<Replacement> ReflowDelimitedList(
         expectParameter = !expectParameter;
     }
     const bool trailingComma = braced && expectParameter && !parameters.empty();
-    const bool outputTrailingComma = braced &&
-        (style.InitializerListTrailingComma ==
-                InitializerListTrailingComma::Add ||
-            (trailingComma && style.InitializerListTrailingComma !=
-                InitializerListTrailingComma::Remove));
-    const bool closeNew = braced && InitializerCloserOnNewLine(
+    const bool flatTrailingComma = braced &&
+        style.InitializerListTrailingComma == InitializerListTrailingComma::Add;
+    const bool flatCloseNew = braced && InitializerCloserOnNewLine(
         style.InitializerListClosingBrace,
-        outputTrailingComma);
-    const bool canMerge = merge && !closeNew;
+        flatTrailingComma);
+    const bool canMerge = merge && !flatCloseNew;
     if ((expectParameter && !trailingComma) || parameters.empty() ||
         !IsWhitespace(source.substr(cursor, end - cursor)) ||
         source.substr(begin, end - begin).find('\r') != std::string_view::npos)
@@ -1982,7 +2002,7 @@ std::optional<Replacement> ReflowDelimitedList(
     for (size_t i = 0; i < parameters.size(); ++i) {
         flatWidth += parameters[i].size() + (i ? 1 + commaSpace : 0);
     }
-    flatWidth += (innerSpace ? 2 : 0) + (outputTrailingComma ? 1 : 0);
+    flatWidth += (innerSpace ? 2 : 0) + (flatTrailingComma ? 1 : 0);
     // A newline used only for the closing delimiter does not split the
     // elements and must not make a fitting list reflow on the next pass.
     bool split = source.substr(begin, cursor - begin).find('\n') !=
@@ -2050,7 +2070,7 @@ std::optional<Replacement> ReflowDelimitedList(
         flat += parameter;
     }
     if (split && canMerge && flatWidth <= style.ColumnLimit) {
-        if (outputTrailingComma) {
+        if (flatTrailingComma) {
             flat += ',';
         }
         if (innerSpace) {
@@ -2113,9 +2133,17 @@ std::optional<Replacement> ReflowDelimitedList(
     bool broke = firstNew;
     for (size_t i = 1; i < parameters.size(); ++i) {
         bool last = i + 1 == parameters.size();
+        size_t closingWidth = last
+            ? suffix.size() + (innerSpace ? 1 : 0)
+            : 1;
+        if (last && braced && broke &&
+            InitializerTrailingCommaPreference(style, true) ==
+                InitializerListTrailingComma::Add)
+        {
+            ++closingWidth;
+        }
         bool overflow = column + 1 + commaSpace + parameters[i].size() +
-            (last ? suffix.size() + (innerSpace ? 1 : 0) : 1) >
-                style.ColumnLimit;
+            closingWidth > style.ColumnLimit;
         bool forceSplit = split && !canMerge &&
             flatWidth <= style.ColumnLimit && !broke && last;
         bool breakBefore = onePerLine || overflow || forceSplit;
@@ -2136,6 +2164,14 @@ std::optional<Replacement> ReflowDelimitedList(
         }
         result += parameters[i];
     }
+    const bool outputTrailingComma = braced &&
+        InitializerTrailingCommaPreference(style, broke ||
+            style.InitializerListClosingBrace ==
+                InitializerListClosingBrace::NewLine) ==
+            InitializerListTrailingComma::Add;
+    const bool closeNew = braced && InitializerCloserOnNewLine(
+        style.InitializerListClosingBrace,
+        outputTrailingComma);
     if (outputTrailingComma) {
         result.push_back(',');
     }
@@ -8805,29 +8841,46 @@ static std::optional<LayoutEdits> FormatClosingDelimiters(
             default:
                 continue;
         }
-        if ((!enforce && !(node->Kind == NK::InitializerList &&
-                style.EnforceInitializerListTrailingComma) &&
-            !(node->Kind == NK::Initializer &&
-                style.EnforceInitializerListTrailingComma &&
-                style.InitializerListTrailingComma ==
-                    InitializerListTrailingComma::Remove)) ||
-            target->Tokens.End - target->Tokens.Begin < 3)
-        {
+        if (target->Tokens.End - target->Tokens.Begin < 3) {
             continue;
         }
         const auto open = target->Tokens.Begin;
         const auto close = target->Tokens.End - 1;
         const auto last = close - 1;
+        const auto openBegin = tree.Token(open).Text.Begin;
+        const auto lastEnd = tree.Token(last).Text.End;
+        const auto closeBegin = tree.Token(close).Text.Begin;
+        const bool elementsSplit = source.substr(
+            openBegin,
+            lastEnd - openBegin).find('\n') != std::string_view::npos;
+        const bool closingSplit = source.substr(
+            lastEnd,
+            closeBegin - lastEnd).find('\n') != std::string_view::npos;
+        // A comma-dependent closer alone does not change which element
+        // preference applies; otherwise opposing preferences can oscillate.
+        const bool multiline = elementsSplit ||
+            (style.InitializerListClosingBrace ==
+                    InitializerListClosingBrace::NewLine && enforce) ||
+            (closingSplit && !enforce);
+        const auto preference = InitializerTrailingCommaPreference(
+            style,
+            multiline);
+        const bool enforceTrailing = multiline
+            ? EnforceMultilineInitializerTrailingComma(style)
+            : style.EnforceInitializerListTrailingComma;
+        if (!enforce && !(enforceTrailing &&
+            (node->Kind == NK::InitializerList ||
+                (node->Kind == NK::Initializer &&
+                    preference == InitializerListTrailingComma::Remove))))
+        {
+            continue;
+        }
         const bool trailing = tree.Kind(last) == TK::Operator_Comma;
-        const bool wantTrailing = (node->Kind == NK::InitializerList ||
-            (node->Kind == NK::Initializer && trailing &&
-                style.InitializerListTrailingComma ==
-                    InitializerListTrailingComma::Remove)) &&
-            style.EnforceInitializerListTrailingComma
-            ? style.InitializerListTrailingComma ==
-                    InitializerListTrailingComma::Add ||
-                (trailing && style.InitializerListTrailingComma !=
-                    InitializerListTrailingComma::Remove)
+        const bool wantTrailing = enforceTrailing &&
+            (node->Kind == NK::InitializerList ||
+                (node->Kind == NK::Initializer && trailing &&
+                    preference == InitializerListTrailingComma::Remove))
+            ? preference == InitializerListTrailingComma::Add
             : trailing;
         if (node->Kind == NK::InitializerList ||
             node->Kind == NK::Initializer)
@@ -10368,9 +10421,7 @@ std::string Format(const parser::SyntaxTree& tree, const Style& requested)
             return BalanceDelimitedExpressions(parsed, style);
         });
         headerReflowed |= balanced;
-        if (balanced && style.InitializerListTrailingComma !=
-            InitializerListTrailingComma::Keep)
-        {
+        if (balanced) {
             allowInitializerTokenRefresh = true;
         }
     }
@@ -10392,11 +10443,7 @@ std::string Format(const parser::SyntaxTree& tree, const Style& requested)
             if (stable) {
                 break;
             }
-            if (style.InitializerListTrailingComma !=
-                InitializerListTrailingComma::Keep)
-            {
-                allowInitializerTokenRefresh = true;
-            }
+            allowInitializerTokenRefresh = true;
         }
         if (!stable) {
             cachedTree.reset();
@@ -10891,6 +10938,7 @@ std::string Format(const parser::SyntaxTree& tree, const Style& requested)
         style.EnforceFunctionCallArgumentClosingParenthesis ||
         style.EnforceInitializerListClosingBrace ||
         style.EnforceInitializerListTrailingComma ||
+        EnforceMultilineInitializerTrailingComma(style) ||
         style.EnforceBlockClosingBrace)
     {
         applyLayoutPass([&] (const auto& parsed) {
