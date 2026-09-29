@@ -343,6 +343,9 @@ std::vector<FormattedCase> FormattedCases()
     cases.push_back({callReflow,
         "first-position-reflow",
         "first-position-reflow.input.cpp"});
+    cases.push_back({callReflow,
+        "first-string-inline",
+        "first-string-inline.input.cpp"});
     cases.push_back({std::filesystem::path(FORMATTER_TESTDATA_DIR) /
         "../function_parameters", "first-position-reflow",
         "first-position-reflow.input.cpp"});
@@ -1735,66 +1738,6 @@ TEST(EmptyFunctionBodyTest, CollapsesWhitespaceOnlyBody)
         "void Annotated() { /* keep */ Act(); }\n",
         style),
         "void Annotated()\n{ /* keep */ Act(); }\n");
-}
-
-TEST(CallLayoutTest, KeepsFirstStringOnSelectedCallLine)
-{
-    formatter::Style style;
-    style.ColumnLimit = 65;
-    style.CallArgumentSplit = formatter::CallArgumentSplit::OnePerLine;
-    style.EnforceCallArgumentSplit = true;
-    style.ExpressionLayoutCondition =
-        formatter::ExpressionLayoutCondition::Overflow;
-    style.FirstCallArgumentPosition =
-        formatter::FirstCallArgumentPosition::NewLine;
-    style.EnforceFirstCallArgumentPosition = true;
-    style.CallLineFirstStringNames = {"YT_LOG_INFO", "YT_TLOG_ERROR"};
-    const std::string input =
-        "void f() {\n"
-        "    YT_LOG_INFO(\"A long enough message to require wrapping\", "
-        "firstArgument, secondArgument);\n"
-        "    YT_TLOG_ERROR(error, \"Failure (%v)\", firstArgument);\n"
-        "    Other(\"A long enough message to require wrapping\", "
-        "firstArgument, secondArgument);\n"
-        "    YT_LOG_INFO_CUSTOM(\"A long enough message to require wrapping\", "
-        "firstArgument, secondArgument);\n"
-        "    YT_LOG_INFO_IF(enabled, \"A message requiring wrapping\", "
-        "firstArgument, secondArgument);\n"
-        "}\n";
-    const std::string expected =
-        "void f() {\n"
-        "    YT_LOG_INFO(\"A long enough message to require wrapping\",\n"
-        "        firstArgument,\n"
-        "        secondArgument);\n"
-        "    YT_TLOG_ERROR(error, \"Failure (%v)\", firstArgument);\n"
-        "    Other(\n"
-        "        \"A long enough message to require wrapping\",\n"
-        "        firstArgument,\n"
-        "        secondArgument);\n"
-        "    YT_LOG_INFO_CUSTOM(\n"
-        "        \"A long enough message to require wrapping\",\n"
-        "        firstArgument,\n"
-        "        secondArgument);\n"
-        "    YT_LOG_INFO_IF(\n"
-        "        enabled,\n"
-        "        \"A message requiring wrapping\",\n"
-        "        firstArgument,\n"
-        "        secondArgument);\n"
-        "}\n";
-    EXPECT_EQ(FormatWithStyle(input, style), expected);
-    EXPECT_EQ(FormatWithStyle(expected, style), expected);
-    const std::string split =
-        "void f() { YT_LOG_INFO(\n"
-        "    \"Message\",\n"
-        "    count); }\n";
-    const std::string anchored =
-        "void f() { YT_LOG_INFO(\"Message\",\n"
-        "    count); }\n";
-    EXPECT_EQ(FormatWithStyle(split, style), anchored);
-    EXPECT_EQ(FormatWithStyle(
-        "void f() { YT_LOG_INFO(\n    \"Message\"); }\n",
-        style),
-        "void f() { YT_LOG_INFO(\"Message\"); }\n");
 }
 
 TEST(OperatorSpacingTest, PreservesUnknownCastOrBinaryOperator)

@@ -6331,25 +6331,13 @@ std::optional<LayoutEdits> FormatCalls(
                         bool selected = std::ranges::find(
                             style.CallLineFirstStringNames,
                             name) != style.CallLineFirstStringNames.end();
-                        if (selected) {
-                            size_t position = 0;
-                            for (auto* argument = arguments->Child();
-                                argument;
-                                argument = argument->NextSibling)
-                            {
-                                if (argument->Kind != NK::Argument) {
-                                    continue;
-                                }
-                                if (argument->Tokens.End ==
-                                        argument->Tokens.Begin + 1 &&
-                                    tree.Kind(argument->Tokens.Begin) ==
-                                        TK::Literal_String)
-                                {
-                                    callLineString = position;
-                                    break;
-                                }
-                                ++position;
-                            }
+                        const auto* first = arguments->Child();
+                        if (selected && first && first->Kind == NK::Argument &&
+                            first->Tokens.End == first->Tokens.Begin + 1 &&
+                            tree.Kind(first->Tokens.Begin) ==
+                                TK::Literal_String)
+                        {
+                            callLineString = 0;
                         }
                     }
                     const bool selectedLimit =

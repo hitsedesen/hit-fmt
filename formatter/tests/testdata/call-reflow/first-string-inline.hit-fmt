@@ -1,0 +1,7 @@
+ColumnLimit = 65
+CallArgumentSplit = OnePerLine
+EnforceCallArgumentSplit = true
+ExpressionLayoutCondition = Overflow
+FirstCallArgumentPosition = NewLine
+EnforceFirstCallArgumentPosition = true
+CallLineFirstStringNames = ["YT_LOG_INFO", "YT_TLOG_ERROR"]
