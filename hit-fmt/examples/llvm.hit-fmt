@@ -79,6 +79,10 @@ ControlBlockBracePlacement = SameLine
 EnforceControlBlockBracePlacement = true
 ControlBlockKeywordSpacing = Space
 ControlConditionIndent = Continuation
+MultilineControlBlockFirstConditionPosition = HeaderLine
+EnforceMultilineControlBlockFirstConditionPosition = false
+MultilineControlBlockClosingDelimiterPlacement = SameLine
+EnforceMultilineControlBlockClosingDelimiterPlacement = false
 
 # Blocks and statements
 IndentBlockBodies = true

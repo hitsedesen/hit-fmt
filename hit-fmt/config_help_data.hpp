@@ -1489,7 +1489,17 @@ CRLF lists are left intact. They do not change calls.
   change whitespace between arguments.
 
 )HIT_FMT_HELP", HelpExamples6},
-    {R"HIT_FMT_HELP(Control flow)HIT_FMT_HELP", R"HIT_FMT_HELP(  • ControlBlockConditionSpacing: Preserve (default), Space, or
+    {R"HIT_FMT_HELP(Control flow)HIT_FMT_HELP", R"HIT_FMT_HELP(  • MultilineControlBlockFirstConditionPosition: HeaderLine (default)
+  or NewLine places the first condition token when a control header is
+  reflowed across lines. EnforceMultilineControlBlockFirstConditionPosition
+  (default false) also corrects existing multiline headers.
+  • MultilineControlBlockClosingDelimiterPlacement: SameLine (default)
+  or NewLine places the closing ) of a reflowed multiline header.
+  EnforceMultilineControlBlockClosingDelimiterPlacement (default false)
+  also corrects existing multiline headers. Complete if, for, while,
+  switch, and catch headers are supported; comments, directives, and
+  CRLF headers remain untouched. Neither option affects function calls.
+  • ControlBlockConditionSpacing: Preserve (default), Space, or
   NoSpace just inside complete if, for, while, switch, and catch
   condition parentheses (including do/while).
   ControlBlockKeywordSpacing controls the gap *before* (.
