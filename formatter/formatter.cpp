@@ -8777,6 +8777,145 @@ static std::string FormatLineOwnedSpacing(
     return output;
 }
 
+// Control headers are not argument lists: their first expression and closing
+// parenthesis have independent preferences. Only apply preferences to headers
+// reflowed in this invocation; enforcement also fixes existing safe headers.
+static std::optional<LayoutEdits> FormatControlConditionDelimiters(
+    const parser::SyntaxTree& tree,
+    const Style& style,
+    const parser::SyntaxTree* before)
+{
+    const auto source = tree.Source();
+    std::vector<Replacement> edits;
+    bool matchingTokens = before && before->TokenCount() == tree.TokenCount();
+    if (matchingTokens) {
+        for (TokenIndex i = 0; i < tree.TokenCount(); ++i) {
+            if (tree.Kind(i) != before->Kind(i) ||
+                tree.TokenText(i) != before->TokenText(i))
+            {
+                matchingTokens = false;
+                break;
+            }
+        }
+    }
+    std::vector<const parser::Node*> nodes{&tree.Root()};
+    while (!nodes.empty()) {
+        const auto* node = nodes.back();
+        nodes.pop_back();
+        for (auto* child = node->Child(); child; child = child->NextSibling) {
+            nodes.push_back(child);
+        }
+        if (node->Kind != NK::IfStatement && node->Kind != NK::ForStatement &&
+            node->Kind != NK::WhileStatement &&
+            node->Kind != NK::DoWhileStatement &&
+            node->Kind != NK::SwitchStatement &&
+            node->Kind != NK::CatchClause)
+        {
+            continue;
+        }
+        if (IsIncompleteStatement(*node) || HasRecoveryChild(*node)) {
+            continue;
+        }
+        for (auto* child = node->Child(); child; child = child->NextSibling) {
+            if (child->Kind != NK::Condition &&
+                child->Kind != NK::ForHeader)
+            {
+                continue;
+            }
+            const auto open = child->Tokens.Begin;
+            if (open >= tree.TokenCount() ||
+                tree.Kind(open) != TK::Operator_OpenParenthesis)
+            {
+                continue;
+            }
+            const auto close = tree.MatchingDelimiter(open);
+            if (close == NoToken || close >= child->Tokens.End ||
+                close <= open + 1 ||
+                tree.Kind(close) != TK::Operator_CloseParenthesis)
+            {
+                continue;
+            }
+            const auto first = open + 1;
+            const auto last = close - 1;
+            bool unsafe = false;
+            for (auto i = first; i <= last; ++i) {
+                unsafe |= tree.Kind(i) == TK::Comment ||
+                    tree.Kind(i) == TK::PreprocessingDirective;
+            }
+            if (unsafe) continue;
+            const auto firstBegin = tree.Token(first).Text.Begin;
+            const auto openEnd = tree.Token(open).Text.End;
+            const auto lastEnd = tree.Token(last).Text.End;
+            const auto closeBegin = tree.Token(close).Text.Begin;
+            const auto firstGap = source.substr(openEnd, firstBegin - openEnd);
+            const auto closeGap = source.substr(lastEnd, closeBegin - lastEnd);
+            if (!IsWhitespace(firstGap) || !IsWhitespace(closeGap) ||
+                source.substr(openEnd, closeBegin - openEnd).find('\r') !=
+                    std::string_view::npos)
+            {
+                continue;
+            }
+            bool reflowed = false;
+            if (matchingTokens) {
+                for (auto i = first; i < close; ++i) {
+                    reflowed |= tree.WhitespaceBefore(i) !=
+                        before->WhitespaceBefore(i);
+                }
+            }
+            const auto lineStart = source.rfind('\n',
+                tree.Token(open).Text.Begin);
+            const auto base = lineStart == std::string_view::npos
+                ? 0
+                : lineStart + 1;
+            size_t baseIndent = 0;
+            while (base + baseIndent < tree.Token(open).Text.Begin &&
+                source[base + baseIndent] == ' ')
+            {
+                ++baseIndent;
+            }
+            const auto elementsSplit = source.substr(openEnd,
+                lastEnd - openEnd).find('\n') != std::string_view::npos;
+            const bool firstNew = firstGap.find('\n') !=
+                std::string_view::npos;
+            if ((style.EnforceMultilineControlBlockFirstConditionPosition ||
+                    reflowed) &&
+                elementsSplit && firstNew !=
+                    (style.MultilineControlBlockFirstConditionPosition ==
+                        MultilineControlBlockFirstConditionPosition::NewLine))
+            {
+                const auto indent = style.ControlConditionIndent ==
+                        CallArgumentIndent::Continuation
+                    ? tree.Token(open).Text.Begin - base + 1
+                    : baseIndent + style.IndentWidth;
+                edits.push_back({openEnd, firstBegin,
+                    style.MultilineControlBlockFirstConditionPosition ==
+                            MultilineControlBlockFirstConditionPosition::NewLine
+                        ? "\n" + GeneratedIndent(indent, style)
+                        : std::string(style.ControlBlockConditionSpacing ==
+                                TokenSpacing::Space ? " " : "")});
+            }
+            const bool closeNew = closeGap.find('\n') !=
+                std::string_view::npos;
+            if ((style.EnforceMultilineControlBlockClosingDelimiterPlacement ||
+                    reflowed) &&
+                (elementsSplit || closeNew) && closeNew !=
+                    (style.MultilineControlBlockClosingDelimiterPlacement ==
+                        ClosingDelimiterPlacement::NewLine))
+            {
+                edits.push_back({lastEnd, closeBegin,
+                    style.MultilineControlBlockClosingDelimiterPlacement ==
+                            ClosingDelimiterPlacement::NewLine
+                        ? "\n" + GeneratedIndent(baseIndent, style)
+                        : std::string(style.ControlBlockConditionSpacing ==
+                                TokenSpacing::Space ? " " : "")});
+            }
+        }
+    }
+    if (edits.empty()) return std::nullopt;
+    std::ranges::sort(edits, {}, &Replacement::Begin);
+    return RenderLayoutEdits(source, std::move(edits));
+}
+
 // Place closing delimiters independently of list and block reflow. Edit
 // whitespace following a real final token and safe trailing commas;
 // comments and directives own their line, and empty constructs have no final
@@ -10275,7 +10414,7 @@ std::string Format(const parser::SyntaxTree& tree, const Style& requested)
         hasBrace |= kind == TK::Operator_OpenBrace;
         hasControl |= kind == TK::Keyword_if || kind == TK::Keyword_for ||
             kind == TK::Keyword_while || kind == TK::Keyword_do ||
-            kind == TK::Keyword_switch;
+            kind == TK::Keyword_switch || kind == TK::Keyword_catch;
         hasMemberAccess |= kind == TK::Operator_ClassMemberAccess ||
             kind == TK::Operator_IndirectClassMemberAccess;
         hasCaptureBracket |= kind == TK::Operator_OpenBracket;
@@ -10401,7 +10540,9 @@ std::string Format(const parser::SyntaxTree& tree, const Style& requested)
         style.SingleStatementLambdaBodyLayout ==
             SingleStatementLambdaBodyLayout::OneLineIfFits;
     captureHeaderSource = mayReflowHeader &&
-        (!style.EnforceControlBlockBracePlacement || trackNewCallBreaks);
+        (!style.EnforceControlBlockBracePlacement || trackNewCallBreaks ||
+            !style.EnforceMultilineControlBlockFirstConditionPosition ||
+            !style.EnforceMultilineControlBlockClosingDelimiterPlacement);
     bool headerReflowed = false;
     if (hasConditional &&
         style.ExpressionLayoutCondition !=
@@ -10595,6 +10736,20 @@ std::string Format(const parser::SyntaxTree& tree, const Style& requested)
     {
         headerReflowed |= applyLayoutPass([&] (const auto& parsed) {
             return FormatSingleStatementLambdas(parsed, style);
+        });
+    }
+    if (hasControl && (headerReflowed ||
+        style.EnforceMultilineControlBlockFirstConditionPosition ||
+        style.EnforceMultilineControlBlockClosingDelimiterPlacement))
+    {
+        const parser::SyntaxTree* before = nullptr;
+        if (headerReflowed && capturedHeaderSource) {
+            before = beforeHeaderReflow == tree.Source()
+                ? &tree
+                : beforeHeaderTree ? &*beforeHeaderTree : nullptr;
+        }
+        headerReflowed |= applyLayoutPass([&] (const auto& parsed) {
+            return FormatControlConditionDelimiters(parsed, style, before);
         });
     }
     captureHeaderSource = false;

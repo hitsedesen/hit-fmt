@@ -1,0 +1,4 @@
+MultilineControlBlockFirstConditionPosition = HeaderLine
+EnforceMultilineControlBlockFirstConditionPosition = true
+MultilineControlBlockClosingDelimiterPlacement = SameLine
+EnforceMultilineControlBlockClosingDelimiterPlacement = true

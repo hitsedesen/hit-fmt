@@ -1,0 +1,4 @@
+ControlHeaderClauseSplit = WhenNeeded
+ColumnLimit = 32
+MultilineControlBlockFirstConditionPosition = NewLine
+MultilineControlBlockClosingDelimiterPlacement = NewLine

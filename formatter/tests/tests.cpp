@@ -354,6 +354,16 @@ std::vector<FormattedCase> FormattedCases()
         "../control-header-clauses", {"preserve",
             "split",
             "indent-width"});
+    const auto controlPlacement = std::filesystem::path(
+        FORMATTER_TESTDATA_DIR) / "../control-header-placement";
+    AddCases(cases, controlPlacement,
+        {"preserve", "first-only", "closing-only", "both"});
+    cases.push_back({controlPlacement,
+        "reflow", "reflow.input.cpp"});
+    cases.push_back({controlPlacement,
+        "reverse", "reverse.input.cpp"});
+    cases.push_back({controlPlacement,
+        "crlf", "crlf.input.cpp"});
     cases.push_back({std::filesystem::path(FORMATTER_TESTDATA_DIR) /
         "../lambda-body", "profile", "input.cpp", profile});
     addProfileCase("../control-header-clauses", "profile");

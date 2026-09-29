@@ -228,6 +228,14 @@
         formatter::ControlHeaderClauseSplit::Preserve)                         \
     OPT(formatter::CallArgumentIndent, ControlConditionIndent,                 \
         formatter::CallArgumentIndent::IndentWidth)                            \
+    OPT(formatter::MultilineControlBlockFirstConditionPosition,                \
+        MultilineControlBlockFirstConditionPosition,                           \
+        formatter::MultilineControlBlockFirstConditionPosition::HeaderLine)    \
+    OPT(bool, EnforceMultilineControlBlockFirstConditionPosition, false)       \
+    OPT(formatter::ClosingDelimiterPlacement,                                  \
+        MultilineControlBlockClosingDelimiterPlacement,                        \
+        formatter::ClosingDelimiterPlacement::SameLine)                        \
+    OPT(bool, EnforceMultilineControlBlockClosingDelimiterPlacement, false)    \
     OPT(formatter::ForHeaderClauseIndent, ForHeaderClauseIndent,               \
         formatter::ForHeaderClauseIndent::Inherit)                             \
     OPT(formatter::BinaryOperatorPlacement, BinaryOperatorPlacement,           \
