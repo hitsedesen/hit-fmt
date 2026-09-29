@@ -1906,8 +1906,10 @@ CRLF lists are left intact. They do not change calls.
   overflows. Always is not recommended for stable formatting: formatter
   updates or small nearby edits can cause widespread layout changes.
   Expression operator layout covers parsed binary, assignment, and
-  conditional operators. Operator gaps are normalized in Always mode;
-  other expression gaps, including call argument breaks, are controlled
+  conditional operators. Overlong lines can also break between adjacent
+  string literals without changing their contents; existing breaks remain.
+  Operator gaps are normalized in Always mode; other expression gaps,
+  including call argument breaks, are controlled
   separately by CallArgumentSplit. A fitting outer break is preferred to
   breaks inside calls, parentheses, or subscripts; inner breaks remain
   available when no outer break fits. New continuations normally use

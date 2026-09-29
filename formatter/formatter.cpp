@@ -5960,6 +5960,92 @@ std::optional<LayoutEdits> BalanceDelimitedExpressions(
     return LayoutEdits{std::move(result), std::move(edits)};
 }
 
+// Break only between adjacent string tokens: their contents and encoding
+// prefixes remain untouched, and whitespace-only gaps exclude comments and
+// line splices. Leave CRLF and multiline tokens source-owned.
+std::optional<LayoutEdits> SplitConcatenatedStrings(
+    const parser::SyntaxTree& tree,
+    const Style& style)
+{
+    if (style.ColumnLimit == 0) {
+        return std::nullopt;
+    }
+    const auto source = tree.Source();
+    std::vector<Replacement> edits;
+    size_t previousLine = std::string_view::npos;
+    size_t continuationStart = 0;
+    size_t continuationWidth = 0;
+    for (TokenIndex i = 1; i < tree.TokenCount(); ++i) {
+        if (tree.Kind(i - 1) != TK::Literal_String ||
+            tree.Kind(i) != TK::Literal_String)
+        {
+            continue;
+        }
+        const auto from = tree.Token(i - 1).Text.End;
+        const auto to = tree.Token(i).Text.Begin;
+        const auto gap = source.substr(from, to - from);
+        if (gap.find_first_not_of(" \t") != std::string_view::npos) {
+            continue;
+        }
+        const auto lineBreak = source.rfind('\n', to);
+        const auto line = lineBreak == std::string_view::npos
+            ? 0
+            : lineBreak + 1;
+        const auto lineEnd = source.find('\n', to);
+        const auto end = lineEnd == std::string_view::npos
+            ? source.size()
+            : lineEnd;
+        if (source.substr(line, end - line).find('\r') !=
+                std::string_view::npos ||
+            end - line <= style.ColumnLimit ||
+            tree.TokenText(i - 1).find('\n') != std::string_view::npos ||
+            tree.TokenText(i).find('\n') != std::string_view::npos)
+        {
+            continue;
+        }
+        if (previousLine != line) {
+            previousLine = line;
+            continuationStart = line;
+            continuationWidth = 0;
+        }
+        size_t base = line;
+        while (base < from && (source[base] == ' ' ||
+            source[base] == '\t'))
+        {
+            ++base;
+        }
+        const auto indent = style.IndentationKind == IndentationKind::Tabs
+            ? GeneratedIndentAfter(source.substr(line, base - line),
+                style.IndentWidth, style)
+            : GeneratedIndent(base - line + style.IndentWidth, style);
+        bool trailingComment = false;
+        bool trailingComma = false;
+        for (auto j = i + 1; j < tree.TokenCount() &&
+            tree.Token(j).Text.Begin < end; ++j)
+        {
+            trailingComment |= tree.Kind(j) == TK::Comment;
+            trailingComma |= tree.Kind(j) == TK::Operator_Comma;
+        }
+        const auto width = continuationWidth + end - continuationStart;
+        const auto leftWidth = continuationWidth + from - continuationStart;
+        const auto literalWidth = continuationWidth +
+            tree.Token(i).Text.End - continuationStart;
+        if (leftWidth > style.ColumnLimit || width <= style.ColumnLimit ||
+            indent.size() + end - to >= width || trailingComment ||
+            (trailingComma && literalWidth <= style.ColumnLimit))
+        {
+            continue;
+        }
+        edits.emplace_back(from, to, "\n" + indent);
+        continuationStart = to;
+        continuationWidth = indent.size();
+    }
+    if (edits.empty()) {
+        return std::nullopt;
+    }
+    return RenderLayoutEdits(source, std::move(edits));
+}
+
 // Split an overlong outer call even when an inner call already spans lines.
 // Only move plain parsed arguments; preserve their internal breaks while
 // shifting the inner call's existing continuation to its new base column.
@@ -11096,6 +11182,13 @@ std::string Format(const parser::SyntaxTree& tree, const Style& requested)
     {
         applyLayoutPass([&] (const auto& parsed) {
             return FormatBlockIndentation(parsed, style);
+        });
+    }
+    if (style.ExpressionLayoutCondition !=
+        ExpressionLayoutCondition::Preserve)
+    {
+        applyLayoutPass([&] (const auto& parsed) {
+            return SplitConcatenatedStrings(parsed, style);
         });
     }
     if (style.EnforceFunctionParameterClosingParenthesis ||
