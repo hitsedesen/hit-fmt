@@ -203,7 +203,8 @@ void CheckFunction(
         const auto last = tree.Token(signature->Tokens.End - 1);
         const parser::SourceRange signatureRange{
             first.Text.Begin,
-            last.Text.End};
+            last.Text.End,
+        };
         const auto beginLine = tree.TokenPosition(function.Tokens.Begin).Line;
         const auto endLine = tree.TokenPosition(signature->Tokens.End - 1).Line;
         size_t number = 0;

@@ -3,6 +3,7 @@
 #include <formatter/config.hpp>
 
 #include <cstddef>
+#include <optional>
 #include <ostream>
 #include <regex>
 #include <string>
@@ -87,6 +88,9 @@ void PrintOption(std::ostream& output, std::string_view name, const T& value)
     } else if constexpr (std::is_same_v<T, bool>) {
         output << "false | true\n" << name << " = "
                << (value ? "true" : "false");
+    } else if constexpr (std::is_same_v<T, std::optional<bool>>) {
+        output << "inherit | false | true\n" << name << " = "
+               << (value ? (*value ? "true" : "false") : "inherit");
     } else if constexpr (std::is_same_v<T, std::size_t>) {
         output << IntegerValues(name) << '\n' << name << " = " << value;
     } else if constexpr (std::is_same_v<T, std::vector<std::string>>) {

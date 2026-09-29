@@ -302,7 +302,8 @@ std::vector<std::string> ParseBinaryOperators(
         "-",
         "*",
         "/",
-        "%"};
+        "%",
+    };
     for (const auto& name : names) {
         if (std::ranges::find(operators, name) == operators.end()) {
             ThrowConfigError(path, line, "expected a binary operator spelling");
@@ -380,6 +381,17 @@ void ParseField(
     } else {
         static_assert(std::is_same_v<T, void>, "unsupported config field type");
     }
+}
+
+void ParseField(
+    std::optional<bool>& field,
+    std::string_view value,
+    const std::filesystem::path& path,
+    size_t line)
+{
+    field = value == "inherit"
+        ? std::nullopt
+        : std::optional<bool>{ParseBoolean(value, path, line)};
 }
 
 void ParseField(

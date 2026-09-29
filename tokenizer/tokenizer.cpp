@@ -78,7 +78,8 @@ constexpr std::array<std::string_view, 5> RawEncodingPrefixes{
     "u8R",
     "uR",
     "UR",
-    "LR"};
+    "LR",
+};
 constexpr std::array<std::string_view, 8> FloatingPointSuffixes{
     "",
     "f",
@@ -87,7 +88,8 @@ constexpr std::array<std::string_view, 8> FloatingPointSuffixes{
     "f32",
     "f64",
     "f128",
-    "bf16"};
+    "bf16",
+};
 constexpr std::array<std::string_view, 11> IntegerSuffixes{
     "",
     "u",
@@ -99,7 +101,8 @@ constexpr std::array<std::string_view, 11> IntegerSuffixes{
     "ll",
     "llu",
     "z",
-    "zu"};
+    "zu",
+};
 
 [[nodiscard]] constexpr bool
 EqualsIgnoringAsciiCase(std::string_view lhs, std::string_view rhs) noexcept

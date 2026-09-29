@@ -2,3 +2,4 @@ InitializerListClosingBrace = SameLineUnlessTrailingComma
 EnforceInitializerListClosingBrace = true
 InitializerListTrailingComma = Remove
 EnforceInitializerListTrailingComma = true
+EnforceMultilineInitializerListTrailingComma = inherit

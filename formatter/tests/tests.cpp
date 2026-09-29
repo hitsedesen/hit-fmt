@@ -96,6 +96,22 @@ std::string FormatWithStyle(
     return formatter::Format(tree, style);
 }
 
+TEST(InitializerTrailingCommaTest, ConditionalCloserDoesNotOscillate)
+{
+    formatter::Style style;
+    style.InitializerListTrailingComma =
+        formatter::InitializerListTrailingComma::Add;
+    style.EnforceInitializerListTrailingComma = true;
+    style.MultilineInitializerListTrailingComma =
+        formatter::MultilineInitializerListTrailingComma::Remove;
+    style.EnforceMultilineInitializerListTrailingComma = true;
+    style.EnforceInitializerListClosingBrace = true;
+    const auto source = "int values[] = {1, 2};\n";
+    const auto once = FormatWithStyle(source, style);
+    EXPECT_NE(once, source);
+    EXPECT_EQ(FormatWithStyle(once, style), once);
+}
+
 void ExpectFormattedGolden(
     const std::filesystem::path& path,
     std::string_view input,
@@ -261,10 +277,14 @@ std::vector<FormattedCase> FormattedCases()
         "layout-preferred",
         "layout-preferred.input.cpp"});
     cases.push_back({closings, "new-line", "new-line.input.cpp"});
-    cases.push_back({closings, "keep", "trailing-comma.input.cpp"});
+    cases.push_back({closings,
+        "conditional-preferred",
+        "trailing-comma.input.cpp"});
     cases.push_back({closings, "remove", "trailing-comma.input.cpp"});
     cases.push_back({closings, "trailing-add", "trailing-layout.input.cpp"});
-    cases.push_back({closings, "trailing-keep", "trailing-layout.input.cpp"});
+    cases.push_back({closings,
+        "trailing-conditional",
+        "trailing-layout.input.cpp"});
     cases.push_back({closings,
         "trailing-preferred",
         "trailing-preferred.input.cpp"});

@@ -1,4 +1,5 @@
 InitializerListTrailingComma = Add
 EnforceInitializerListTrailingComma = true
+EnforceMultilineInitializerListTrailingComma = true
 InitializerListClosingBrace = NewLine
 EnforceInitializerListClosingBrace = false

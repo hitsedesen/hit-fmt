@@ -186,9 +186,12 @@ InitializerListIndent = IndentWidth
 MergeInitializerList = false
 InitializerListClosingBrace = SameLineUnlessTrailingComma
 EnforceInitializerListClosingBrace = true
-# A trailing comma keeps the closing brace on its own line.
-InitializerListTrailingComma = Keep
+# Reflowed single-line lists have no trailing comma; multiline lists do.
+# Existing lists retain their commas unless another rule reflows them.
+InitializerListTrailingComma = Remove
 EnforceInitializerListTrailingComma = false
+MultilineInitializerListTrailingComma = Add
+EnforceMultilineInitializerListTrailingComma = false
 # Both {x, y} and { x, y } occur; do not normalize initializer interiors.
 EnforceInitializerBracesSpacing = false
 BraceInitializerSpacing = NoSpace
