@@ -1106,7 +1106,8 @@ TEST(ExpressionLayoutTest, ChecksLayoutWithoutReflowing)
         formatter::ExpressionLayoutCondition::Overflow;
     const auto placementOnly = formatter::CheckExpressionLayout(tree, style);
     ASSERT_EQ(placementOnly.size(), 1u);
-    EXPECT_EQ(placementOnly[0].Kind,
+    EXPECT_EQ(
+        placementOnly[0].Kind,
         formatter::LayoutDiagnosticKind::OperatorPlacement);
 }
 
