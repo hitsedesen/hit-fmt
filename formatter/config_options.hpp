@@ -5,7 +5,7 @@
     OPT(std::size_t, IndentWidth, 4)                                           \
     OPT(std::size_t, ColumnLimit, 120)                                         \
     OPT(formatter::LineLengthCheck, LineLengthCheck,                           \
-        formatter::LineLengthCheck::Strict)                                    \
+        formatter::LineLengthCheck::Preserve)                                  \
     OPT(formatter::IndentationKind, IndentationKind,                           \
         formatter::IndentationKind::Preserve)                                  \
     OPT(formatter::PreprocessorIndentation, PreprocessorIndentation,           \

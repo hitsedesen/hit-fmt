@@ -1070,6 +1070,7 @@ TEST(ExpressionLayoutTest, ChecksLayoutWithoutReflowing)
     style.ExpressionLayoutCondition =
         formatter::ExpressionLayoutCondition::Overflow;
     style.ColumnLimit = 40;
+    style.LineLengthCheck = formatter::LineLengthCheck::Strict;
     style.TernaryOperatorPlacement =
         formatter::TernaryOperatorPlacement::Leading;
     style.EnforceTernaryOperatorPlacement = true;
@@ -1095,7 +1096,18 @@ TEST(ExpressionLayoutTest, ChecksLayoutWithoutReflowing)
     EXPECT_EQ(formatter::CheckExpressionLayout(tree, style).size(), 2u);
     style.ExpressionLayoutCondition =
         formatter::ExpressionLayoutCondition::Preserve;
+    const auto widthOnly = formatter::CheckExpressionLayout(tree, style);
+    ASSERT_EQ(widthOnly.size(), 1u);
+    EXPECT_EQ(widthOnly[0].Position.Line, 2u);
+    EXPECT_EQ(widthOnly[0].Kind, formatter::LayoutDiagnosticKind::LineWidth);
+    style.LineLengthCheck = formatter::LineLengthCheck::Preserve;
     EXPECT_TRUE(formatter::CheckExpressionLayout(tree, style).empty());
+    style.ExpressionLayoutCondition =
+        formatter::ExpressionLayoutCondition::Overflow;
+    const auto placementOnly = formatter::CheckExpressionLayout(tree, style);
+    ASSERT_EQ(placementOnly.size(), 1u);
+    EXPECT_EQ(placementOnly[0].Kind,
+        formatter::LayoutDiagnosticKind::OperatorPlacement);
 }
 
 TEST(ExpressionLayoutTest, SkipsFormatDisabledRegionsAgainstGolden)
@@ -1149,6 +1161,13 @@ TEST(ExpressionLayoutTest, SoftLineLengthAgainstGolden)
             directory / (std::string(mode) + ".expected"),
             actual);
     }
+    style.ExpressionLayoutCondition =
+        formatter::ExpressionLayoutCondition::Preserve;
+    const auto strictWithoutLayout =
+        formatter::CheckExpressionLayout(tree, style);
+    ASSERT_EQ(strictWithoutLayout.size(), 4u);
+    style.LineLengthCheck = formatter::LineLengthCheck::Soft;
+    EXPECT_TRUE(formatter::CheckExpressionLayout(tree, style).empty());
 }
 
 TEST(ExpressionLayoutTest, ChecksAssignmentPlacementAgainstGolden)

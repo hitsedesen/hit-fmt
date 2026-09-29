@@ -36,7 +36,8 @@ send(first,
     second,
     third);
 )HIT_FMT_HELP"},
-    {R"HIT_FMT_HELP(LineLengthCheck (with ColumnLimit = 10 and expression layout enabled):)HIT_FMT_HELP", R"HIT_FMT_HELP(// Input: a single unbreakable identifier wider than 10 columns
+    {R"HIT_FMT_HELP(LineLengthCheck (with ColumnLimit = 10):)HIT_FMT_HELP", R"HIT_FMT_HELP(// Input: a single unbreakable identifier wider than 10 columns
+// LineLengthCheck = Preserve: no line-length check (default)
 // LineLengthCheck = Strict: line-length violation
 // LineLengthCheck = Soft: no length violation if no safe fix exists
 )HIT_FMT_HELP"},
@@ -988,12 +989,13 @@ constexpr HelpSection HelpSections[] = {
   • ColumnLimit: positive integer up to 10000. Function parameter lists,
   call arguments, expressions, and inheritance lists can be wrapped
   according to their split settings.
-  • LineLengthCheck: with expression layout checking enabled, Strict
-  (default) reports every active line exceeding ColumnLimit. Soft
-  reports an overlong line only when the formatter can produce a layout at
-  or under the limit for that line. If the formatter cannot safely fix it,
-  the length alone is not a violation. Operator placement and other
-  diagnostics remain independent.
+  • LineLengthCheck: Preserve (default) disables line-length diagnostics.
+  Strict reports every active line exceeding ColumnLimit. Soft reports an
+  overlong line only when the formatter can produce a layout at or under
+  the limit for that line. If the formatter cannot safely fix it, the
+  length alone is not a violation. Line-length checking is independent of
+  ExpressionLayoutCondition; operator placement and other diagnostics
+  remain governed by expression layout checking.
   • IndentationKind: Preserve (default), Spaces, or Tabs for
   formatter-generated indentation. Preserve and Spaces retain the
   previous space-based output; Tabs emits tabs at IndentWidth-column
@@ -1362,7 +1364,7 @@ CRLF lists are left intact. They do not change calls.
   CallArgumentSplitColumnLimitNames use the smaller of that value and
   ColumnLimit to decide when to reflow arguments. The names are exact,
   bare call identifiers, default []; other calls keep the global limit.
-  This does not change the global expression line-length check. The
+  This does not change the independent line-length check. The
   YTsaurus profile selects EXPECT_THROW at 90 columns without splitting
   shorter assertions.
   • FirstCallArgumentPosition: CallLine (default) or NewLine selects

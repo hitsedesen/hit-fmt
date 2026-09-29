@@ -9493,42 +9493,46 @@ std::vector<LayoutDiagnostic> CheckExpressionLayout(
     const Style& style)
 {
     std::vector<LayoutDiagnostic> diagnostics;
+    const auto source = tree.Source();
+    const auto disabled = FindDisabledRegions(tree);
+    uint32_t lineNumber = 1;
+    if (style.LineLengthCheck != LineLengthCheck::Preserve) {
+        for (size_t start = 0; start < source.size(); ++lineNumber) {
+            auto end = source.find('\n', start);
+            if (end == std::string_view::npos) {
+                end = source.size();
+            }
+            auto width = end - start;
+            if (width && source[end - 1] == '\r') {
+                --width;
+            }
+            if (width > style.ColumnLimit &&
+                !IsDisabledOffset(disabled, start))
+            {
+                diagnostics.push_back({
+                    {.Line = lineNumber,
+                     .Column = static_cast<uint32_t>(style.ColumnLimit + 1)},
+                    "line exceeds ColumnLimit (" + std::to_string(width) +
+                        " > " + std::to_string(style.ColumnLimit) + ")",
+                    LayoutDiagnosticKind::LineWidth});
+            }
+            start = end == source.size() ? end : end + 1;
+        }
+        if (style.LineLengthCheck == LineLengthCheck::Soft &&
+            !diagnostics.empty())
+        {
+            auto fixable = FixableLineWidths(tree, style);
+            std::erase_if(diagnostics, [&] (const LayoutDiagnostic& issue) {
+                return issue.Kind == LayoutDiagnosticKind::LineWidth &&
+                    (issue.Position.Line >= fixable.size() ||
+                        !fixable[issue.Position.Line]);
+            });
+        }
+    }
     if (style.ExpressionLayoutCondition ==
         ExpressionLayoutCondition::Preserve)
     {
         return diagnostics;
-    }
-    const auto source = tree.Source();
-    const auto disabled = FindDisabledRegions(tree);
-    uint32_t lineNumber = 1;
-    for (size_t start = 0; start < source.size(); ++lineNumber) {
-        auto end = source.find('\n', start);
-        if (end == std::string_view::npos) {
-            end = source.size();
-        }
-        auto width = end - start;
-        if (width && source[end - 1] == '\r') {
-            --width;
-        }
-        if (width > style.ColumnLimit && !IsDisabledOffset(disabled, start)) {
-            diagnostics.push_back({
-                {.Line = lineNumber,
-                 .Column = static_cast<uint32_t>(style.ColumnLimit + 1)},
-                "line exceeds ColumnLimit (" + std::to_string(width) +
-                    " > " + std::to_string(style.ColumnLimit) + ")",
-                LayoutDiagnosticKind::LineWidth});
-        }
-        start = end == source.size() ? end : end + 1;
-    }
-    if (style.LineLengthCheck ==
-        LineLengthCheck::Soft && !diagnostics.empty())
-    {
-        auto fixable = FixableLineWidths(tree, style);
-        std::erase_if(diagnostics, [&] (const LayoutDiagnostic& issue) {
-            return issue.Kind == LayoutDiagnosticKind::LineWidth &&
-                (issue.Position.Line >= fixable.size() ||
-                    !fixable[issue.Position.Line]);
-        });
     }
     std::vector<const parser::Node*> nodes{&tree.Root()};
     auto checkPlacement = [&] (TokenIndex index, bool leading,
