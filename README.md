@@ -67,6 +67,9 @@ hit-fmt --fix source.cpp include/
 
 `--check` may be given explicitly when desired.
 
+Use `-j N` or `--threads N` to process up to N files concurrently (default 1).
+File diagnostics remain in discovery order.
+
 Checks report affected source chunks with caret-marked formatting,
 expression-layout, naming and parameter-name violations. Source excerpts
 are cropped around the marked token to fit the terminal width; proposed

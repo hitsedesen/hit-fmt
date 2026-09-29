@@ -1,3 +1,5 @@
+find_package(Threads REQUIRED)
+
 add_executable(hit-fmt
     main.cpp
     config_help.cpp
@@ -5,7 +7,8 @@ add_executable(hit-fmt
     version.cpp)
 target_link_libraries(hit-fmt
     lib-formatter
-    lib-util)
+    lib-util
+    Threads::Threads)
 # Refresh the embedded version on each build, even if only Git state changes.
 set(version_header "${CMAKE_CURRENT_BINARY_DIR}/build_version.hpp")
 add_custom_target(hit-fmt-version-header

@@ -1,6 +1,6 @@
 #pragma once
 
-// Compile-time opt-in diagnostics for single-threaded corpus profiling.
+// Compile-time opt-in diagnostics for corpus profiling.
 // Build with -DHIT_FMT_PROFILE_PHASES=1 and set HIT_FMT_PROFILE_PHASES=1
 // to print inclusive and exclusive phase times at process exit.
 #ifdef HIT_FMT_PROFILE_PHASES
@@ -12,6 +12,7 @@
 #include <iomanip>
 #include <iostream>
 #include <map>
+#include <mutex>
 #include <source_location>
 #include <string_view>
 #include <vector>
@@ -63,6 +64,7 @@ public:
 
     void Count(std::string_view name, uint32_t line = 0)
     {
+        std::lock_guard lock(Mutex_);
         ++Phases_[{name, line}].Calls;
     }
 
@@ -72,6 +74,7 @@ public:
         std::chrono::nanoseconds inclusive,
         std::chrono::nanoseconds exclusive)
     {
+        std::lock_guard lock(Mutex_);
         auto& value = Phases_[{name, line}];
         ++value.Calls;
         value.Inclusive += inclusive;
@@ -80,6 +83,7 @@ public:
 
 private:
     using Key = std::pair<std::string_view, uint32_t>;
+    std::mutex Mutex_;
     std::map<Key, Summary> Phases_;
 };
 

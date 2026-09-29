@@ -13,6 +13,7 @@
 #include <charconv>
 #include <cctype>
 #include <cstddef>
+#include <condition_variable>
 #include <cstdio>
 #include <cstdlib>
 #include <exception>
@@ -21,12 +22,15 @@
 #include <initializer_list>
 #include <iostream>
 #include <limits>
+#include <mutex>
 #include <optional>
 #include <regex>
+#include <sstream>
 #include <span>
 #include <stdexcept>
 #include <string>
 #include <string_view>
+#include <thread>
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
@@ -143,12 +147,13 @@ RenderedLine RenderLine(
 }
 
 void PrintCells(
+    std::ostream& output,
     const std::vector<std::string_view>& cells,
     size_t begin,
     size_t end)
 {
     for (auto i = begin; i < end; ++i) {
-        std::cout << cells[i];
+        output << cells[i];
     }
 }
 
@@ -159,6 +164,7 @@ struct Excerpt
 };
 
 Excerpt PrintSourceExcerpt(
+    std::ostream& output,
     std::string_view text,
     size_t column,
     size_t prefixWidth,
@@ -182,13 +188,13 @@ Excerpt PrintSourceExcerpt(
         : available;
     auto end = std::min(cells.size(), begin + count);
     if (begin) {
-        std::cout << "...";
+        output << "...";
     }
-    PrintCells(cells, begin, end);
+    PrintCells(output, cells, begin, end);
     if (end < cells.size()) {
-        std::cout << "...";
+        output << "...";
     }
-    std::cout << '\n';
+    output << '\n';
     return {.CaretOffset = (begin ? 3 : 0) +
         std::min(rendered.Caret, end) - begin,
         .CaretVisible = rendered.Caret < end ||
@@ -196,6 +202,7 @@ Excerpt PrintSourceExcerpt(
 }
 
 void PrintWrappedMessage(
+    std::ostream& output,
     std::string_view message,
     std::string_view prefix,
     size_t terminalWidth)
@@ -216,18 +223,19 @@ void PrintWrappedMessage(
         {
             --length;
         }
-        std::cout << "  " << message.substr(0, length) << '\n';
+        output << "  " << message.substr(0, length) << '\n';
         message.remove_prefix(length);
         while (message.starts_with(' ')) {
             message.remove_prefix(1);
         }
         if (!message.empty()) {
-            std::cout << prefix;
+            output << prefix;
         }
     }
 }
 
 void PrintSuggestedLine(
+    std::ostream& output,
     std::string_view text,
     size_t terminalWidth,
     size_t gutterWidth,
@@ -239,19 +247,19 @@ void PrintSuggestedLine(
         : size_t{16};
     for (size_t begin = 0;;) {
         if (useColor) {
-            std::cout << Green;
+            output << Green;
         }
         if (begin) {
-            std::cout << std::string(gutterWidth, ' ');
+            output << std::string(gutterWidth, ' ');
         } else {
-            std::cout << std::string(gutterWidth - 3, ' ') << " + ";
+            output << std::string(gutterWidth - 3, ' ') << " + ";
         }
         auto end = std::min(cells.size(), begin + available);
-        PrintCells(cells, begin, end);
+        PrintCells(output, cells, begin, end);
         if (useColor) {
-            std::cout << ResetColor;
+            output << ResetColor;
         }
-        std::cout << '\n';
+        output << '\n';
         if (end == cells.size()) {
             break;
         }
@@ -932,6 +940,7 @@ std::vector<Chunk> FormattingChunks(
 }
 
 void PrintCheckDiagnostics(
+    std::ostream& output,
     std::string_view path,
     std::string_view source,
     std::string_view formatted,
@@ -1074,25 +1083,25 @@ void PrintCheckDiagnostics(
             });
         const auto& first = chunk.Violations.front();
         if (useColor) {
-            std::cout << (fixed ? BoldGreen : BoldRed);
+            output << (fixed ? BoldGreen : BoldRed);
         }
-        std::cout << (fixed ? "fixed: " : "fail: ")
+        output << (fixed ? "fixed: " : "fail: ")
             << chunk.Violations.size() << " violation"
                   << (chunk.Violations.size() == 1 ? "" : "s");
         if (useColor) {
-            std::cout << ResetColor;
+            output << ResetColor;
         }
         auto location = std::string(path) + ':' + std::to_string(first.Line) +
             ':' + std::to_string(first.Column);
         if (location.size() + 6 <= terminalWidth) {
-            std::cout << "\n  --> " << location << '\n';
+            output << "\n  --> " << location << '\n';
         } else {
-            std::cout << "\n  -->\n    ";
-            PrintWrappedMessage(location, "    ", terminalWidth);
+            output << "\n  -->\n    ";
+            PrintWrappedMessage(output, location, "    ", terminalWidth);
         }
         const auto width = std::to_string(chunk.End - 1).size();
         const auto gutter = std::string(width + 1, ' ') + "| ";
-        std::cout << gutter.substr(0, gutter.size() - 1) << '\n';
+        output << gutter.substr(0, gutter.size() - 1) << '\n';
         size_t violationIndex = 0;
         for (auto lineNumber = chunk.Begin;
             lineNumber < chunk.End;
@@ -1108,8 +1117,9 @@ void PrintCheckDiagnostics(
                 width - std::to_string(lineNumber).size(),
                 ' ') + std::to_string(lineNumber) + " | ";
             auto printLine = [&] (size_t column, bool fromStart = false) {
-                std::cout << prefix;
+                output << prefix;
                 return PrintSourceExcerpt(
+                    output,
                     text,
                     column,
                     prefix.size(),
@@ -1128,24 +1138,26 @@ void PrintCheckDiagnostics(
                 auto excerpt = printLine(
                     violation.Column,
                     violation.Kind == ViolationKind::LineWidth);
-                std::cout << gutter;
+                output << gutter;
                 if (!excerpt.CaretVisible) {
                     // Do not imply that the cropped end of a long line is
                     // the exact token at ColumnLimit + 1.
                     PrintWrappedMessage(
+                        output,
                         violation.Message,
                         gutter,
                         terminalWidth);
                     continue;
                 }
-                std::cout << std::string(excerpt.CaretOffset, ' ') << '^';
+                output << std::string(excerpt.CaretOffset, ' ') << '^';
                 if (gutter.size() + excerpt.CaretOffset + 2 +
                     violation.Message.size() < terminalWidth)
                 {
-                    std::cout << ' ' << violation.Message << '\n';
+                    output << ' ' << violation.Message << '\n';
                 } else {
-                    std::cout << '\n' << gutter;
+                    output << '\n' << gutter;
                     PrintWrappedMessage(
+                        output,
                         violation.Message,
                         gutter,
                         terminalWidth);
@@ -1153,34 +1165,36 @@ void PrintCheckDiagnostics(
             }
         }
         if (chunk.HasFix || chunk.HasLayoutFix) {
-            std::cout << (fixed
+            output << (fixed
                 ? "  applied formatting:\n"
                 : "  suggested formatting:\n");
             const auto& fix = chunk.HasLayoutFix ? chunk.LayoutFix : chunk.Fix;
             for (const auto& line : fix) {
                 PrintSuggestedLine(
+                    output,
                     line.Text,
                     terminalWidth,
                     gutter.size(),
                     useColor);
                 if (!line.HasNewline) {
-                    std::cout << std::string(gutter.size(), ' ')
+                    output << std::string(gutter.size(), ' ')
                               << "\\ No newline at end of file\n";
                 }
             }
             if (fix.empty()) {
-                std::cout << "  (remove this chunk)\n";
+                output << "  (remove this chunk)\n";
             }
         } else if (!chunk.HasLayoutIssue) {
-            std::cout << "  ";
+            output << "  ";
             PrintWrappedMessage(
+                output,
                 "hint: names are not changed by the formatter.",
                 "  ",
                 terminalWidth);
         }
         if (chunk.HasLayoutIssue && !chunk.HasLayoutFix) {
-            std::cout << "  ";
-            PrintWrappedMessage(chunk.HasWidthIssue
+            output << "  ";
+            PrintWrappedMessage(output, chunk.HasWidthIssue
                 ? "hint: split the line manually or increase ColumnLimit."
                 : "hint: adjust the operator or line break manually.",
                 "  ", terminalWidth);
@@ -1276,6 +1290,7 @@ struct Options
     bool ShowVersion = false;
     bool ShowConfigHelp = false;
     bool GenerateConfig = false;
+    size_t Threads = 1;
     std::optional<std::filesystem::path> ConfigPath;
     std::optional<std::string> HunkInput;
     std::unordered_map<std::string, std::vector<Hunk>> Hunks;
@@ -1311,6 +1326,32 @@ Options ParseOptions(int argc, char* argv[])
             options.SummaryOnly = true;
         } else if (argument == "--no-config") {
             options.DisableConfig = true;
+        } else if (argument == "-j" || argument == "--threads" ||
+            argument.starts_with("--threads=") ||
+            (argument.starts_with("-j") && argument.size() > 2))
+        {
+            std::string_view value;
+            if (argument == "-j" || argument == "--threads") {
+                if (++index == argc) {
+                    throw std::runtime_error(
+                        "--threads requires a positive integer");
+                }
+                value = argv[index];
+            } else {
+                value = argument.substr(argument.starts_with("-j") ? 2 : 10);
+            }
+            size_t threads = 0;
+            auto [end, error] = std::from_chars(
+                value.data(),
+                value.data() + value.size(),
+                threads);
+            if (error != std::errc{} || end != value.data() + value.size() ||
+                threads == 0)
+            {
+                throw std::runtime_error(
+                    "--threads requires a positive integer");
+            }
+            options.Threads = threads;
         } else if (argument == "--changed-hunks" ||
             argument == "--changed-ranges")
         {
@@ -1543,6 +1584,7 @@ void PrintHelp(
     option("--check", "          Check without editing (default; optional).");
     option("--no-spillover", "   Restrict fixes to the selected hunk lines.");
     option("--summary", "        Print only file status lines.");
+    option("-j, --threads <n>", " Run up to n files in parallel (default 1).");
     option("--config <file>", "  Use one configuration file for every input.");
     option(
         "--no-config",
@@ -1592,6 +1634,7 @@ void PrintHelp(
 int main(int argc, char* argv[])
 {
     Options options;
+    std::vector<std::filesystem::path> files;
     std::optional<StyleResolver> styleResolver;
     try {
         options = ParseOptions(argc, argv);
@@ -1642,38 +1685,50 @@ int main(int argc, char* argv[])
 
     bool summaryOnly = options.SummaryOnly;
     bool useColor = UseTerminalColors();
-    size_t mismatchCount = 0;
-    auto checkFile = [&] (const std::filesystem::path& path) {
-        auto filePath = path.string();
-        try {
-            auto sourceStorage = util::ReadEntireFile(
-                filePath,
-                MaxSourceFileSize,
-                util::SourcePaddingSize);
-            util::PaddedSourceView paddedSource{
+    struct FileResult
+    {
+        std::string Output;
+        std::string Error;
+        size_t Mismatches = 0;
+        bool Failed = false;
+    };
+    auto processFile = [&] (const std::filesystem::path& path,
+        StyleResolver& resolver) {
+            FileResult result;
+            std::ostringstream output;
+            std::ostringstream errors;
+            auto filePath = path.string();
+            try {
+                auto sourceStorage = util::ReadEntireFile(
+                    filePath,
+                    MaxSourceFileSize,
+                    util::SourcePaddingSize);
+                util::PaddedSourceView paddedSource{
                 .Data = sourceStorage.data(),
                 .Size = sourceStorage.size() - util::SourcePaddingSize,
             };
-            auto source = paddedSource.View();
-            std::span<const Hunk> hunks;
-            if (options.HunkInput) {
-                auto absolute =
+                auto source = paddedSource.View();
+                std::span<const Hunk> hunks;
+                if (options.HunkInput) {
+                    auto absolute =
                     std::filesystem::absolute(path).lexically_normal();
-                hunks = options.Hunks.at(absolute.string());
-                auto lastLine = std::max(size_t{1}, SplitLines(source).size());
-                for (const auto& hunk : hunks) {
-                    if (hunk.End > lastLine) {
-                        throw std::runtime_error("hunk exceeds file length");
+                    hunks = options.Hunks.at(absolute.string());
+                    auto lastLine = std::max(
+                        size_t{1}, SplitLines(source).size());
+                    for (const auto& hunk : hunks) {
+                        if (hunk.End > lastLine) {
+                            throw std::runtime_error(
+                                "hunk exceeds file length");
+                        }
                     }
                 }
-            }
-            const auto& config = styleResolver->Resolve(path);
-            auto tree = parser::Parse(
-                paddedSource,
-                [] (parser::ParseError) { });
-            // Check the actual text, never a speculative expression reflow.
-            // Fixes may reflow, but must be checked again after writing.
-            auto inspect = [&] (const parser::SyntaxTree& current,
+                const auto& config = resolver.Resolve(path);
+                auto tree = parser::Parse(
+                    paddedSource,
+                    [] (parser::ParseError) { });
+                // Check the actual text, never a speculative expression reflow.
+                // Fixes may reflow, but must be checked again after writing.
+                auto inspect = [&] (const parser::SyntaxTree& current,
                 std::span<const Hunk> selected) {
                     auto checkStyle = config.FormattingStyle;
                     checkStyle.ExpressionLayoutCondition =
@@ -1723,27 +1778,27 @@ int main(int argc, char* argv[])
                     !names.empty() || !parameters.empty() || !layout.empty();
                     if (summaryOnly && mismatch) {
                         if (useColor) {
-                            std::cout << BoldRed;
+                            output << BoldRed;
                         }
-                        std::cout << filePath << ": ";
+                        output << filePath << ": ";
                         if (formatted != current.Source()) {
-                            std::cout << "formatting mismatch";
+                            output << "formatting mismatch";
                         } else if (unsupported) {
-                            std::cout << "fail: unsafe structural edit";
+                            output << "fail: unsafe structural edit";
                         } else if (!layout.empty()) {
-                            std::cout << "fail: layout violation";
+                            output << "fail: layout violation";
                             if (layout.size() != 1) {
-                                std::cout << 's';
+                                output << 's';
                             }
                         } else if (!names.empty()) {
-                            std::cout << "fail: invalid name";
+                            output << "fail: invalid name";
                         } else {
-                            std::cout << "fail: unnamed parameter";
+                            output << "fail: unnamed parameter";
                         }
                         if (useColor) {
-                            std::cout << ResetColor;
+                            output << ResetColor;
                         }
-                        std::cout.put('\n');
+                        output.put('\n');
                     } else if (!summaryOnly && mismatch) {
                         auto layoutFormatted = layout.empty() ? std::string{} :
                         formatter::Format(current, config.FormattingStyle);
@@ -1759,6 +1814,7 @@ int main(int argc, char* argv[])
                         !parameters.empty() || !layout.empty())
                     {
                             PrintCheckDiagnostics(
+                                output,
                                 filePath,
                                 current.Source(),
                                 formatted,
@@ -1770,7 +1826,7 @@ int main(int argc, char* argv[])
                                 checkStyle.SeparatorLength);
                         }
                         if (unsupported) {
-                            std::cout << "fail: unsafe structural edit\n"
+                            output << "fail: unsafe structural edit\n"
                                 "  --> " << filePath << ':'
                                 << selected.front().Begin << ":1\n";
                         }
@@ -1778,80 +1834,196 @@ int main(int argc, char* argv[])
                     return mismatch;
                 };
 
-            if (!options.Fix) {
-                mismatchCount += inspect(tree, hunks);
-                std::cout.flush();
-                return true;
-            }
-
-            auto applied = options.HunkInput
-                ? formatter::FormatChanged(
-                    tree,
-                    config.FormattingStyle,
-                    hunks,
-                    !options.NoSpillover)
-                : formatter::Format(tree, config.FormattingStyle);
-            if (applied != source) {
-                util::WriteEntireFile(filePath, applied);
-                if (summaryOnly) {
-                    if (useColor) {
-                        std::cout << BoldGreen;
-                    }
-                    std::cout << filePath << ": fixed formatting";
-                    if (useColor) {
-                        std::cout << ResetColor;
-                    }
-                    std::cout.put('\n');
-                } else {
-                    PrintCheckDiagnostics(
-                        filePath,
-                        source,
-                        applied,
-                        {},
-                        {},
-                        {},
-                        {},
-                        useColor,
-                        config.FormattingStyle.SeparatorLength,
-                        true);
+                if (!options.Fix) {
+                    result.Mismatches += inspect(tree, hunks);
+                    result.Output = output.str();
+                    return result;
                 }
-            }
-            if (applied == source) {
-                mismatchCount += inspect(tree, hunks);
-            } else {
-                applied.append(util::SourcePaddingSize, '\0');
-                auto updated = parser::Parse(
+
+                auto applied = options.HunkInput
+                    ? formatter::FormatChanged(
+                        tree,
+                        config.FormattingStyle,
+                        hunks,
+                        !options.NoSpillover)
+                    : formatter::Format(tree, config.FormattingStyle);
+                if (applied != source) {
+                    util::WriteEntireFile(filePath, applied);
+                    if (summaryOnly) {
+                        if (useColor) {
+                            output << BoldGreen;
+                        }
+                        output << filePath << ": fixed formatting";
+                        if (useColor) {
+                            output << ResetColor;
+                        }
+                        output.put('\n');
+                    } else {
+                        PrintCheckDiagnostics(
+                            output,
+                            filePath,
+                            source,
+                            applied,
+                            {},
+                            {},
+                            {},
+                            {},
+                            useColor,
+                            config.FormattingStyle.SeparatorLength,
+                            true);
+                    }
+                }
+                if (applied == source) {
+                    result.Mismatches += inspect(tree, hunks);
+                } else {
+                    applied.append(util::SourcePaddingSize, '\0');
+                    auto updated = parser::Parse(
                     {.Data = applied.data(),
                         .Size = applied.size() - util::SourcePaddingSize},
                     [] (parser::ParseError) { });
-                auto mapped = options.HunkInput
-                    ? RemapHunks(tree, updated, hunks)
-                    : std::vector<Hunk>{};
-                mismatchCount += inspect(updated, mapped);
+                    auto mapped = options.HunkInput
+                        ? RemapHunks(tree, updated, hunks)
+                        : std::vector<Hunk>{};
+                    result.Mismatches += inspect(updated, mapped);
+                }
+            } catch (const util::FileTooLargeError& error) {
+                errors << "warning: " << error.what() << "; skipping\n";
+            } catch (const std::exception& error) {
+                errors << filePath << ": " << error.what() << '\n';
+                result.Failed = true;
             }
-        } catch (const util::FileTooLargeError& error) {
-            std::cerr << "warning: " << error.what() << "; skipping\n";
-        } catch (const std::exception& error) {
-            std::cerr << filePath << ": " << error.what() << '\n';
-            return false;
-        }
-        std::cout.flush();
-        return true;
+            result.Output = output.str();
+            result.Error = errors.str();
+            return result;
+        };
+
+    size_t mismatchCount = 0;
+    auto printResult = [&] (const FileResult& result) {
+        std::cout << result.Output;
+        std::cerr << result.Error;
+        mismatchCount += result.Mismatches;
+        return result.Failed;
     };
-    try {
-        if (!ForEachFile(
+    if (options.Threads == 1) {
+        try {
+            if (!ForEachFile(
+                    options.Paths,
+                    options.Exclusions,
+                    [&] (const auto& path, bool directory) {
+                        return styleResolver->IsExcluded(path, directory);
+                    },
+                    [&] (const auto& path) {
+                        bool failed = printResult(
+                            processFile(path, *styleResolver));
+                        std::cout.flush();
+                        return !failed;
+                    }))
+            {
+                return 1;
+            }
+        } catch (const std::exception& error) {
+            std::cerr << error.what() << '\n';
+            return 1;
+        }
+    } else {
+        try {
+            ForEachFile(
                 options.Paths,
                 options.Exclusions,
                 [&] (const auto& path, bool directory) {
                     return styleResolver->IsExcluded(path, directory);
                 },
-                checkFile))
-        {
+                [&] (const auto& path) {
+                    files.push_back(path);
+                    return true;
+                });
+        } catch (const std::exception& error) {
+            std::cerr << error.what() << '\n';
             return 1;
         }
-    } catch (const std::exception& error) {
-        std::cerr << error.what() << '\n';
-        return 1;
+        const auto count = std::min(options.Threads, files.size());
+        std::vector<StyleResolver> resolvers;
+        try {
+            resolvers.reserve(count);
+            for (size_t worker = 0; worker < count; ++worker) {
+                resolvers.emplace_back(options);
+            }
+        } catch (const std::exception& error) {
+            std::cerr << error.what() << '\n';
+            return 1;
+        }
+        std::vector<std::optional<FileResult>> results(files.size());
+        std::mutex mutex;
+        std::condition_variable ready;
+        // A slow file must not leave other workers idle. Bound pending
+        // diagnostics by bytes rather than by a fixed number of files.
+        constexpr size_t BufferedOutputLimit = 16 * 1024 * 1024;
+        size_t bufferedBytes = 0;
+        size_t next = 0;
+        bool stop = false;
+        {
+            std::vector<std::jthread> workers;
+            workers.reserve(count);
+            try {
+                for (size_t worker = 0; worker < count; ++worker) {
+                    workers.emplace_back([&, worker] {
+                        auto& resolver = resolvers[worker];
+                        for (;;) {
+                            size_t index;
+                            {
+                                std::unique_lock lock(mutex);
+                                ready.wait(lock, [&] {
+                                    return stop || next == files.size() ||
+                                        bufferedBytes < BufferedOutputLimit;
+                                });
+                                if (stop || next == files.size()) {
+                                    return;
+                                }
+                                index = next++;
+                            }
+                            auto result = processFile(files[index], resolver);
+                            {
+                                std::lock_guard lock(mutex);
+                                bufferedBytes += result.Output.size() +
+                                    result.Error.size();
+                                results[index] = std::move(result);
+                            }
+                            ready.notify_all();
+                        }
+                    });
+                }
+            } catch (const std::exception& error) {
+                {
+                    std::lock_guard lock(mutex);
+                    stop = true;
+                }
+                ready.notify_all();
+                std::cerr << error.what() << '\n';
+                return 1;
+            }
+            for (size_t index = 0; index < files.size(); ++index) {
+                FileResult result;
+                {
+                    std::unique_lock lock(mutex);
+                    ready.wait(
+                        lock,
+                        [&] { return results[index].has_value(); });
+                    bufferedBytes -= results[index]->Output.size() +
+                        results[index]->Error.size();
+                    result = std::move(*results[index]);
+                    results[index].reset();
+                }
+                ready.notify_all();
+                if (printResult(result)) {
+                    {
+                        std::lock_guard lock(mutex);
+                        stop = true;
+                    }
+                    ready.notify_all();
+                    return 1;
+                }
+            }
+        } // Join workers before reporting the final status.
     }
     if (useColor) {
         if (mismatchCount == 0) {
