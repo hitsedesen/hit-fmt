@@ -3788,7 +3788,7 @@ std::optional<NullStatementRemoval> RemoveNullStatements(
 {
     const auto source = tree.Source();
     std::vector<std::pair<Replacement, TokenIndex>> edits;
-    auto remove = [&] (TokenIndex index) {
+    auto remove = [&] (TokenIndex index, bool declaration) {
         const auto begin = tree.Token(index).Text.Begin;
         const auto end = tree.Token(index).Text.End;
         auto lineStart = source.rfind('\n', begin);
@@ -3798,7 +3798,27 @@ std::optional<NullStatementRemoval> RemoveNullStatements(
             lineEnd = source.size();
         }
         auto suffix = source.substr(end, lineEnd - end);
-        if (suffix.find_first_not_of(" \t") != std::string_view::npos ||
+        auto first = suffix.find_first_not_of(" \t");
+        suffix.remove_prefix(std::min(first, suffix.size()));
+        // A comment after `};` belongs to the braced declaration, not
+        // the redundant semicolon. Leave comments on standalone `;` alone.
+        const bool afterBrace = declaration && index > 0 &&
+            tree.Kind(index - 1) == TK::Operator_CloseBrace &&
+            source.substr(tree.Token(index - 1).Text.End,
+                begin - tree.Token(index - 1).Text.End)
+                .find_first_not_of(" \t") == std::string_view::npos &&
+            tree.Token(index - 1).Position.Line ==
+                tree.Token(index).Position.Line;
+        bool trailingComment = false;
+        if (afterBrace && suffix.starts_with("//")) {
+            trailingComment = true;
+        } else if (afterBrace && suffix.starts_with("/*")) {
+            auto close = suffix.find("*/", 2);
+            trailingComment = close != std::string_view::npos &&
+                suffix.substr(close + 2).find_first_not_of(" \t") ==
+                    std::string_view::npos;
+        }
+        if ((!suffix.empty() && !trailingComment) ||
             source.substr(lineStart, lineEnd - lineStart).find('\r') !=
                 std::string_view::npos)
         {
@@ -3827,7 +3847,7 @@ std::optional<NullStatementRemoval> RemoveNullStatements(
             !IsIncompleteStatement(*node) &&
             tree.Kind(node->Tokens.End - 1) == TK::Operator_Semicolon)
         {
-            remove(node->Tokens.End - 1);
+            remove(node->Tokens.End - 1, true);
         }
         const bool statements = style.RemoveNullStatements &&
             node->Kind == NK::CompoundStatement &&
@@ -3868,7 +3888,8 @@ std::optional<NullStatementRemoval> RemoveNullStatements(
                 child->Tokens.End == child->Tokens.Begin + 1 &&
                 tree.Kind(child->Tokens.Begin) == TK::Operator_Semicolon)
             {
-                remove(child->Tokens.Begin);
+                remove(child->Tokens.Begin,
+                    declarations && child->Kind == NK::EmptyDeclaration);
             }
             if (child->Kind != NK::Comment) {
                 previous = child;

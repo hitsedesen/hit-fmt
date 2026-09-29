@@ -1542,8 +1542,9 @@ CRLF lists are left intact. They do not change calls.
   (;). true removes standalone empty declarations at file scope and in
   namespace, extern "C" and export blocks, including ; after a closing
   brace, and redundant ; after function definitions. Other declaration
-  terminators, same-line comments, directives and recovered syntax remain
-  untouched. Independent of RemoveNullStatements.
+  terminators, comments on standalone ;, directives and recovered syntax
+  remain untouched. Comments after }; are preserved when the redundant ;
+  is removed. Independent of RemoveNullStatements.
   • IndentCaseLabels: Preserve (default), NoIndent (align labels with
   their switch header), or Indent (CaseLabelIndentWidth inside the switch).
   Statements following a case get one additional level with Indent when
