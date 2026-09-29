@@ -2159,7 +2159,7 @@ std::optional<Replacement> ReflowDelimitedList(
     if (result == source.substr(begin, end - begin)) {
         return std::nullopt;
     }
-    if (preserveExistingFirst) {
+    if (preserveExistingFirst && !braced) {
         // The list is being reflowed for a reason other than its first
         // element's position. Apply the preferred position to that reflow;
         // enforcement is only needed to correct an otherwise unchanged list.
@@ -2580,7 +2580,10 @@ std::optional<LayoutEdits> PlaceExistingOperatorBreaks(
                     {
                         continue;
                     }
-                    PlaceOperatorBreak(tree, i, BinaryPlacement(tree, i, style) ==
+                    PlaceOperatorBreak(tree, i, BinaryPlacement(
+                        tree,
+                        i,
+                        style) ==
                         BinaryOperatorPlacement::Leading, edits);
                 }
             }
@@ -5533,7 +5536,8 @@ std::optional<LayoutEdits> BalanceDelimitedExpressions(
         bool Shift;
     };
     std::vector<Candidate> candidates;
-    std::vector<std::pair<const parser::Node*, size_t>> nodes{{&tree.Root(), 0}};
+    std::vector<std::pair<const parser::Node*, size_t>> nodes{
+        {&tree.Root(), 0}};
     while (!nodes.empty()) {
         auto [node, nestingDepth] = nodes.back();
         nodes.pop_back();

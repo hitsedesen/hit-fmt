@@ -410,7 +410,8 @@ std::vector<FormattedCase> FormattedCases()
     const auto parsedOperators = std::filesystem::path(FORMATTER_TESTDATA_DIR) /
         "../parsed-operators";
     for (const auto* name : {"placement-lists", "delimiter-choice"}) {
-        cases.push_back({parsedOperators, name,
+        cases.push_back({parsedOperators,
+            name,
             std::string(name) + ".input.cpp"});
     }
     // Keep safety and recovered-syntax examples in separate parse units.

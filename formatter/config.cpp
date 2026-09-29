@@ -284,8 +284,25 @@ std::vector<std::string> ParseBinaryOperators(
 {
     auto names = ParseStringList(value, path, line);
     constexpr std::array<std::string_view, 19> operators{
-        "||", "&&", "|", "^", "&", "==", "!=", "<", ">", "<=", ">=",
-        "<=>", "<<", ">>", "+", "-", "*", "/", "%"};
+        "||",
+        "&&",
+        "|",
+        "^",
+        "&",
+        "==",
+        "!=",
+        "<",
+        ">",
+        "<=",
+        ">=",
+        "<=>",
+        "<<",
+        ">>",
+        "+",
+        "-",
+        "*",
+        "/",
+        "%"};
     for (const auto& name : names) {
         if (std::ranges::find(operators, name) == operators.end()) {
             ThrowConfigError(path, line, "expected a binary operator spelling");
@@ -414,7 +431,9 @@ void ValidateStyleLimits(
         if (std::ranges::find(style.TrailingBinaryOperatorList, op) !=
             style.TrailingBinaryOperatorList.end())
         {
-            ThrowConfigError(path, line,
+            ThrowConfigError(
+                path,
+                line,
                 "binary operator cannot be both leading and trailing");
         }
     }
