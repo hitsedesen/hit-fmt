@@ -1,0 +1,2 @@
+InitializerListClosingBrace = NewLine
+EnforceInitializerListClosingBrace = true

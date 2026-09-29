@@ -165,6 +165,10 @@ template <> struct ConfigEnumNames<FunctionParameterSplit>
         std::to_array<std::string_view>({"Pack", "OnePerLine"});
 };
 
+#define INITIALIZER_LIST_SPLIT_VALUES(X) X(Pack) X(OnePerLine)
+DEFINE_CONFIG_ENUM(InitializerListSplit, INITIALIZER_LIST_SPLIT_VALUES);
+#undef INITIALIZER_LIST_SPLIT_VALUES
+
 enum class CallArgumentSplit { Pack, OnePerLine, Preserve };
 template <> struct ConfigEnumNames<CallArgumentSplit>
 {
@@ -186,13 +190,16 @@ DEFINE_CONFIG_ENUM(FirstInitializerElementPosition,
     FIRST_INITIALIZER_ELEMENT_VALUES);
 #undef FIRST_INITIALIZER_ELEMENT_VALUES
 
-#define INITIALIZER_CLOSING_BRACE_VALUES(X) X(SameLine) X(NewLine)
-DEFINE_CONFIG_ENUM(InitializerClosingBrace, INITIALIZER_CLOSING_BRACE_VALUES);
-#undef INITIALIZER_CLOSING_BRACE_VALUES
+#define INITIALIZER_LIST_CLOSING_BRACE_VALUES(X)                               \
+    X(SameLine) X(NewLine) X(SameLineUnlessTrailingComma)
+DEFINE_CONFIG_ENUM(InitializerListClosingBrace,
+    INITIALIZER_LIST_CLOSING_BRACE_VALUES);
+#undef INITIALIZER_LIST_CLOSING_BRACE_VALUES
 
-#define INITIALIZER_TRAILING_COMMA_VALUES(X) X(Keep) X(Remove)
-DEFINE_CONFIG_ENUM(InitializerTrailingComma, INITIALIZER_TRAILING_COMMA_VALUES);
-#undef INITIALIZER_TRAILING_COMMA_VALUES
+#define INITIALIZER_LIST_TRAILING_COMMA_VALUES(X) X(Keep) X(Add) X(Remove)
+DEFINE_CONFIG_ENUM(InitializerListTrailingComma,
+    INITIALIZER_LIST_TRAILING_COMMA_VALUES);
+#undef INITIALIZER_LIST_TRAILING_COMMA_VALUES
 
 #define CLOSING_DELIMITER_VALUES(X) X(SameLine) X(NewLine)
 DEFINE_CONFIG_ENUM(ClosingDelimiterPlacement, CLOSING_DELIMITER_VALUES);

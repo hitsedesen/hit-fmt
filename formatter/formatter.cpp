@@ -232,7 +232,8 @@ public:
             result.append(Output_);
             if (edits) {
                 edits->push_back({static_cast<util::SourceOffset>(begin),
-                    static_cast<util::SourceOffset>(end), outputBegin,
+                    static_cast<util::SourceOffset>(end),
+                    outputBegin,
                     Output_.size()});
             }
             cursor = end;
@@ -309,7 +310,8 @@ public:
                         const auto editBegin =
                             static_cast<util::SourceOffset>(begin);
                         edits->push_back({editBegin,
-                            Tree_.Token(index).Text.Begin, outputBegin,
+                            Tree_.Token(index).Text.Begin,
+                            outputBegin,
                             emitted.size()});
                     }
                 }
@@ -1826,6 +1828,15 @@ bool IsWhitespace(std::string_view text)
     });
 }
 
+bool InitializerCloserOnNewLine(
+    InitializerListClosingBrace placement,
+    bool trailingComma)
+{
+    return placement == InitializerListClosingBrace::NewLine ||
+        (trailingComma && placement ==
+            InitializerListClosingBrace::SameLineUnlessTrailingComma);
+}
+
 // Only rewrite lists whose comma-separated elements and intervening trivia
 // can be moved without touching comments, directives, or nested line breaks.
 std::optional<Replacement> ReflowDelimitedList(
@@ -1841,15 +1852,14 @@ std::optional<Replacement> ReflowDelimitedList(
         return std::nullopt;
     }
     const bool merge = braced
-        ? style.MergeInitializerList &&
-            style.InitializerClosingBrace != InitializerClosingBrace::NewLine
+        ? style.MergeInitializerList
         : call
             ? style.ExpressionLayoutCondition ==
             ExpressionLayoutCondition::FitOrOverflow ||
             style.ExpressionLayoutCondition == ExpressionLayoutCondition::Always
             : style.MergeFunctionParameters;
     const bool onePerLine = braced
-        ? style.InitializerListSplit == FunctionParameterSplit::OnePerLine
+        ? style.InitializerListSplit == InitializerListSplit::OnePerLine
         : call
             ? style.CallArgumentSplit == CallArgumentSplit::OnePerLine
             : style.FunctionParameterSplit ==
@@ -1941,6 +1951,15 @@ std::optional<Replacement> ReflowDelimitedList(
         expectParameter = !expectParameter;
     }
     const bool trailingComma = braced && expectParameter && !parameters.empty();
+    const bool outputTrailingComma = braced &&
+        (style.InitializerListTrailingComma ==
+                InitializerListTrailingComma::Add ||
+            (trailingComma && style.InitializerListTrailingComma !=
+                InitializerListTrailingComma::Remove));
+    const bool closeNew = braced && InitializerCloserOnNewLine(
+        style.InitializerListClosingBrace,
+        outputTrailingComma);
+    const bool canMerge = merge && !closeNew;
     if ((expectParameter && !trailingComma) || parameters.empty() ||
         !IsWhitespace(source.substr(cursor, end - cursor)) ||
         source.substr(begin, end - begin).find('\r') != std::string_view::npos)
@@ -1963,7 +1982,7 @@ std::optional<Replacement> ReflowDelimitedList(
     for (size_t i = 0; i < parameters.size(); ++i) {
         flatWidth += parameters[i].size() + (i ? 1 + commaSpace : 0);
     }
-    flatWidth += (innerSpace ? 2 : 0) + (trailingComma ? 1 : 0);
+    flatWidth += (innerSpace ? 2 : 0) + (outputTrailingComma ? 1 : 0);
     // A newline used only for the closing delimiter does not split the
     // elements and must not make a fitting list reflow on the next pass.
     bool split = source.substr(begin, cursor - begin).find('\n') !=
@@ -1998,13 +2017,14 @@ std::optional<Replacement> ReflowDelimitedList(
     if (!split && flatWidth <= style.ColumnLimit) {
         return std::nullopt;
     }
-    if (call && split && !onePerLine && !stringMoved &&
-        !(merge && flatWidth <= style.ColumnLimit) &&
-        style.ExpressionLayoutCondition != ExpressionLayoutCondition::Always)
+    if ((braced && split && !style.EnforceInitializerListSplit) ||
+        (call && split && !onePerLine && !stringMoved &&
+            !(merge && flatWidth <= style.ColumnLimit) &&
+            style.ExpressionLayoutCondition !=
+                ExpressionLayoutCondition::Always))
     {
-        // Packed Overflow and FitOrOverflow retain an existing multiline
-        // layout unless one of its physical lines exceeds the limit.
-        // OnePerLine must normalize safe already-split calls as well.
+        // Keep compliant multiline initializer layouts unless explicitly
+        // enforced. Packed calls also retain their existing safe layout.
         bool overlong = false;
         for (auto from = lineStart; from <= end;) {
             auto until = source.find('\n', from);
@@ -2029,8 +2049,8 @@ std::optional<Replacement> ReflowDelimitedList(
         }
         flat += parameter;
     }
-    if (split && merge && flatWidth <= style.ColumnLimit) {
-        if (trailingComma) {
+    if (split && canMerge && flatWidth <= style.ColumnLimit) {
+        if (outputTrailingComma) {
             flat += ',';
         }
         if (innerSpace) {
@@ -2096,7 +2116,7 @@ std::optional<Replacement> ReflowDelimitedList(
         bool overflow = column + 1 + commaSpace + parameters[i].size() +
             (last ? suffix.size() + (innerSpace ? 1 : 0) : 1) >
                 style.ColumnLimit;
-        bool forceSplit = split && !merge &&
+        bool forceSplit = split && !canMerge &&
             flatWidth <= style.ColumnLimit && !broke && last;
         bool breakBefore = onePerLine || overflow || forceSplit;
         if (callLineString && i <= *callLineString) {
@@ -2116,12 +2136,10 @@ std::optional<Replacement> ReflowDelimitedList(
         }
         result += parameters[i];
     }
-    if (trailingComma) {
+    if (outputTrailingComma) {
         result.push_back(',');
     }
     if (braced) {
-        bool closeNew = style.InitializerClosingBrace ==
-            InitializerClosingBrace::NewLine;
         if (closeNew) {
             result += "\n";
             result += GeneratedIndent(baseIndent, style);
@@ -2476,9 +2494,11 @@ void PlaceOperatorBreak(
         return;
     }
     newline.remove_prefix(breakAt); // Discard trailing spaces.
-    edits.push_back({begin - before.size(), begin,
+    edits.push_back({begin - before.size(),
+        begin,
         leading ? std::string(newline) : " "});
-    edits.push_back({end, end + after.size(),
+    edits.push_back({end,
+        end + after.size(),
         leading ? " " : std::string(newline)});
 }
 
@@ -2738,11 +2758,13 @@ std::optional<LayoutEdits> AlignLeadingTernaryOperators(
                         auto newIndent = GeneratedIndent(required, style);
                         edits.push_back({questionStart, questionAt, newIndent});
                         if (colonIndent != newIndent) {
-                            edits.push_back({colonStart, colonAt,
+                            edits.push_back({colonStart,
+                                colonAt,
                                 std::move(newIndent)});
                         }
                     } else if (questionIndent != colonIndent) {
-                        edits.push_back({colonStart, colonAt,
+                        edits.push_back({colonStart,
+                            colonAt,
                             std::string(questionIndent)});
                     }
                 }
@@ -2903,7 +2925,8 @@ std::optional<LayoutEdits> FormatControlHeaderClauses(
                     break;
                 }
                 if (gap.find('\n') == std::string_view::npos) {
-                    clauseEdits.push_back({begin, end,
+                    clauseEdits.push_back({begin,
+                        end,
                         "\n" + GeneratedIndent(indent, style)});
                 }
             }
@@ -3221,7 +3244,8 @@ std::optional<LayoutEdits> FormatExpressions(
                             std::string_view::npos)
                     {
                         conditions.push_back({tree.Token(open).Text.End,
-                            tree.Token(close).Text.Begin, offset - line + 1});
+                            tree.Token(close).Text.Begin,
+                            offset - line + 1});
                     }
                 }
             }
@@ -3387,7 +3411,8 @@ std::optional<LayoutEdits> FormatExpressions(
                 const auto newIndent = continuationColumn(
                     selected.Begin,
                     leading);
-                edits.push_back({selected.Begin, selected.End,
+                edits.push_back({selected.Begin,
+                    selected.End,
                     "\n" + GeneratedIndent(newIndent, style)});
                 segment = selected.End;
                 indent = newIndent;
@@ -3550,7 +3575,8 @@ std::vector<Replacement> CollectNamespaceCommentEdits(
                         {
                             replacement += prefix;
                         }
-                        edits.push_back({begin, begin + gap.size(),
+                        edits.push_back({begin,
+                            begin + gap.size(),
                             std::move(replacement)});
                     } else {
                         auto lineEnd = gap.find_first_of("\r\n");
@@ -3691,7 +3717,8 @@ std::optional<NullStatementRemoval> RemoveNullStatements(
         auto prefix = source.substr(lineStart, begin - lineStart);
         if (prefix.find_first_not_of(" \t") == std::string_view::npos) {
             edits.push_back({{lineStart,
-                std::min(source.size(), lineEnd + 1), ""}, index});
+                std::min(source.size(), lineEnd + 1),
+                ""}, index});
         } else {
             edits.push_back({{begin, end, ""}, index});
         }
@@ -3876,7 +3903,8 @@ std::optional<LayoutEdits> FormatNonEmptyBlockBodies(
             style.BlockClosingBrace == ClosingDelimiterPlacement::NewLine &&
             gap.find('\n') == std::string_view::npos)
         {
-            bodyEdits.push_back({previous, tree.Token(close).Text.Begin,
+            bodyEdits.push_back({previous,
+                tree.Token(close).Text.Begin,
                 "\n" + base});
         }
         edits.insert(edits.end(), bodyEdits.begin(), bodyEdits.end());
@@ -4064,7 +4092,8 @@ std::optional<ControlBracesResult> AddControlBraces(
                     {
                         beforeBrace = " ";
                     }
-                    edits.push_back({before, end,
+                    edits.push_back({before,
+                        end,
                         beforeBrace + "{" + interior + "}"});
                     blocks.push_back({child, true});
                     continue;
@@ -4970,9 +4999,6 @@ std::optional<std::string> FormatInitializers(
     const parser::SyntaxTree& tree,
     const Style& style)
 {
-    if (style.InitializerListSplit == FunctionParameterSplit::Preserve) {
-        return std::nullopt;
-    }
     std::vector<Replacement> edits;
     std::vector<const parser::Node*> nodes{&tree.Root()};
     while (!nodes.empty()) {
@@ -4981,7 +5007,23 @@ std::optional<std::string> FormatInitializers(
         if (IsIncompleteStatement(*node) || HasRecoveryChild(*node)) {
             continue;
         }
-        if (node->Kind == NK::InitializerList) {
+        if (node->Kind == NK::InitializerList &&
+            node->Tokens.Size() >= 2)
+        {
+            // The list pass owns overflow through the closing brace, not
+            // an unrelated expression later on the same line. The balance
+            // pass above may still choose a list break for that expression.
+            auto source = tree.Source();
+            auto open = tree.Token(node->Tokens.Begin).Text.Begin;
+            auto close = tree.Token(node->Tokens.End - 1).Text.End;
+            auto line = source.rfind('\n', open);
+            line = line == std::string_view::npos ? 0 : line + 1;
+            if (source.substr(open, close - open).find('\n') ==
+                    std::string_view::npos &&
+                close - line <= style.ColumnLimit)
+            {
+                continue;
+            }
             if (auto edit = ReflowDelimitedList(tree, *node, style)) {
                 edits.push_back(std::move(*edit));
             }
@@ -5371,7 +5413,8 @@ std::vector<Replacement> MoveMultilineLambdaArgument(
             {
                 return {};
             }
-            edits.push_back({line, first,
+            edits.push_back({line,
+                first,
                 std::string(first - line + delta, ' ')});
         }
         line = end == argumentEnd ? end : end + 1;
@@ -5380,8 +5423,8 @@ std::vector<Replacement> MoveMultilineLambdaArgument(
 }
 
 // Compare safe one-break layouts across the parsed expression rather
-// than committing to the first nested call. Call candidates are built by
-// the configured call reflow; named casts contribute an operand boundary.
+// than committing to the first nested call or initializer. Delimited-list
+// candidates use their configured reflow; named casts add an operand break.
 std::optional<LayoutEdits> BalanceDelimitedExpressions(
     const parser::SyntaxTree& tree,
     const Style& style)
@@ -5609,6 +5652,8 @@ std::optional<LayoutEdits> BalanceDelimitedExpressions(
                     BinaryOperatorPlacement::Trailing
                 ? Replacement{opEnd, rightBegin, std::move(indent)}
                 : Replacement{leftEnd, opBegin, std::move(indent)};
+        } else if (node->Kind == NK::InitializerList) {
+            edit = ReflowDelimitedList(tree, *node, style);
         } else if (node->Kind == NK::CallExpression &&
             style.CallArgumentSplit != CallArgumentSplit::Preserve)
         {
@@ -5666,7 +5711,8 @@ std::optional<LayoutEdits> BalanceDelimitedExpressions(
         auto split = edit->Text.find('\n');
         if (source.substr(edit->Begin, edit->End - edit->Begin)
                 .find_first_of("\r\n\\") != std::string_view::npos ||
-            split == std::string::npos || (!multiArgumentCall &&
+            split == std::string::npos ||
+            (node->Kind != NK::InitializerList && !multiArgumentCall &&
                 edit->Text.find('\n', split + 1) != std::string::npos))
         {
             continue;
@@ -5712,8 +5758,11 @@ std::optional<LayoutEdits> BalanceDelimitedExpressions(
         if (longest > style.ColumnLimit) {
             continue;
         }
-        candidates.push_back({std::move(*edit), line, longest,
-            longest - shortest, breaks,
+        candidates.push_back({std::move(*edit),
+            line,
+            longest,
+            longest - shortest,
+            breaks,
             cast || node->Kind == NK::BinaryExpression,
             node->Kind == NK::BinaryExpression ? node->Tokens.Size() : 0,
             needsCallCompetitor});
@@ -5727,8 +5776,8 @@ std::optional<LayoutEdits> BalanceDelimitedExpressions(
                     candidate.Edit.End < range.second;
             });
     });
-    // Keep the established expression pass in charge when no call layout
-    // competes with a higher-precedence binary break on the same line.
+    // Keep the established expression pass in charge when no delimited-list
+    // layout competes with a higher-precedence binary break on the line.
     std::vector<size_t> callLines;
     for (const auto& candidate : candidates) {
         if (!candidate.Outer) {
@@ -5750,9 +5799,9 @@ std::optional<LayoutEdits> BalanceDelimitedExpressions(
             hasOuter |= candidates[end].Outer;
             ++end;
         }
-        // Leave call-only lines to normal call reflow. Where a parsed
-        // expression offers an alternative, score all its safe layouts
-        // (including multi-argument calls) by their resulting line widths.
+        // Leave list-only lines to normal list reflow. Where a parsed
+        // expression offers an alternative, score all safe layouts by
+        // their resulting line widths.
         if (hasOuter) {
             auto best = i;
             for (auto k = i + 1; k < end; ++k) {
@@ -6030,7 +6079,8 @@ bool CollectWhitespaceEdits(
                 next - rendered);
             if (oldGap != newGap) {
                 gaps.push_back({static_cast<util::SourceOffset>(cursor),
-                    span.Begin, newGap});
+                    span.Begin,
+                    newGap});
             }
             cursor = span.End;
             rendered = next + text.size();
@@ -6044,7 +6094,8 @@ bool CollectWhitespaceEdits(
         }
         if (oldTail != newTail) {
             gaps.push_back({static_cast<util::SourceOffset>(cursor),
-                replacement.End, newTail});
+                replacement.End,
+                newTail});
         }
     }
     return true;
@@ -6451,7 +6502,8 @@ std::optional<LayoutEdits> FormatCalls(
                                             std::make_move_iterator(
                                                 lambdaEdits.end()));
                                     } else {
-                                        edits.push_back({start, end,
+                                        edits.push_back({start,
+                                            end,
                                             "\n" + indent});
                                     }
                                 }
@@ -6555,7 +6607,8 @@ std::optional<LayoutEdits> FormatSingleStatementLambdas(
         if (width > style.ColumnLimit) {
             continue;
         }
-        edits.push_back({begin, end,
+        edits.push_back({begin,
+            end,
             " " + std::string(statementText) + " "});
     }
     if (edits.empty()) {
@@ -8669,7 +8722,7 @@ static std::string FormatLineOwnedSpacing(
 }
 
 // Place closing delimiters independently of list and block reflow. Edit
-// whitespace following a real final token (or remove a safe trailing comma);
+// whitespace following a real final token and safe trailing commas;
 // comments and directives own their line, and empty constructs have no final
 // element to attach the closer to.
 static std::optional<LayoutEdits> FormatClosingDelimiters(
@@ -8720,11 +8773,7 @@ static std::optional<LayoutEdits> FormatClosingDelimiters(
                 if (target == node) break;
                 [[fallthrough]];
             case NK::InitializerList:
-                enforce = style.EnforceInitializerClosingBrace;
-                placement = style.InitializerClosingBrace ==
-                    InitializerClosingBrace::NewLine
-                    ? ClosingDelimiterPlacement::NewLine
-                    : ClosingDelimiterPlacement::SameLine;
+                enforce = style.EnforceInitializerListClosingBrace;
                 closing = "}";
                 break;
             case NK::CompoundStatement:
@@ -8736,12 +8785,39 @@ static std::optional<LayoutEdits> FormatClosingDelimiters(
             default:
                 continue;
         }
-        if (!enforce || target->Tokens.End - target->Tokens.Begin < 3) {
+        if ((!enforce && !(node->Kind == NK::InitializerList &&
+                style.EnforceInitializerListTrailingComma) &&
+            !(node->Kind == NK::Initializer &&
+                style.EnforceInitializerListTrailingComma &&
+                style.InitializerListTrailingComma ==
+                    InitializerListTrailingComma::Remove)) ||
+            target->Tokens.End - target->Tokens.Begin < 3)
+        {
             continue;
         }
         const auto open = target->Tokens.Begin;
         const auto close = target->Tokens.End - 1;
         const auto last = close - 1;
+        const bool trailing = tree.Kind(last) == TK::Operator_Comma;
+        const bool wantTrailing = (node->Kind == NK::InitializerList ||
+            (node->Kind == NK::Initializer && trailing &&
+                style.InitializerListTrailingComma ==
+                    InitializerListTrailingComma::Remove)) &&
+            style.EnforceInitializerListTrailingComma
+            ? style.InitializerListTrailingComma ==
+                    InitializerListTrailingComma::Add ||
+                (trailing && style.InitializerListTrailingComma !=
+                    InitializerListTrailingComma::Remove)
+            : trailing;
+        if (node->Kind == NK::InitializerList ||
+            node->Kind == NK::Initializer)
+        {
+            placement = InitializerCloserOnNewLine(
+                style.InitializerListClosingBrace,
+                wantTrailing)
+                ? ClosingDelimiterPlacement::NewLine
+                : ClosingDelimiterPlacement::SameLine;
+        }
         if (tree.TokenText(close) != closing ||
             tree.Kind(last) == TK::Comment ||
             tree.Kind(last) == TK::PreprocessingDirective)
@@ -8790,9 +8866,7 @@ static std::optional<LayoutEdits> FormatClosingDelimiters(
             // moving it would also pull the next '{' onto the prior line.
             continue;
         }
-        if (initializer && node->Kind == NK::InitializerList &&
-            placement == ClosingDelimiterPlacement::SameLine)
-        {
+        if (node->Kind == NK::InitializerList) {
             const parser::Node* finalElement = nullptr;
             for (auto* child = node->Child();
                 child;
@@ -8802,61 +8876,112 @@ static std::optional<LayoutEdits> FormatClosingDelimiters(
                     finalElement = child;
                 }
             }
-            if (finalElement && !finalElement->Tokens.Empty()) {
-                auto from = tree.Token(finalElement->Tokens.Begin).Text.Begin;
-                auto to = tree.Token(finalElement->Tokens.End - 1).Text.End;
-                if (source.substr(from, to - from).find('\n') !=
+            if (!finalElement || finalElement->Tokens.Empty()) {
+                continue;
+            }
+            auto elementEnd = tree.Token(
+                finalElement->Tokens.End - 1).Text.End;
+            auto commaBegin = trailing
+                ? tree.Token(last).Text.Begin
+                : end;
+            if (elementEnd > commaBegin ||
+                (trailing
+                    ? finalElement->Tokens.End != last
+                    : finalElement->Tokens.End - 1 != last))
+            {
+                continue;
+            }
+            auto beforeComma = trailing
+                ? source.substr(elementEnd, commaBegin - elementEnd)
+                : std::string_view{};
+            if (!IsWhitespace(beforeComma) ||
+                beforeComma.find('\r') != std::string_view::npos)
+            {
+                continue;
+            }
+            if (enforce && wantTrailing &&
+                placement == ClosingDelimiterPlacement::NewLine &&
+                !separate && source.substr(
+                    tree.Token(open).Text.Begin,
+                    end - tree.Token(open).Text.Begin).find('\n') ==
                     std::string_view::npos)
+            {
+                // Keep compact comma-terminated lists from acquiring a
+                // dangling brace line with all elements still beside {.
+                auto splitStyle = style;
+                splitStyle.InitializerListSplit =
+                    InitializerListSplit::OnePerLine;
+                splitStyle.FirstInitializerElementPosition =
+                    FirstInitializerElementPosition::NewLine;
+                splitStyle.ColumnLimit = 0;
+                if (auto split = ReflowDelimitedList(
+                    tree, *node, splitStyle))
                 {
+                    edits.push_back(std::move(*split));
                     continue;
                 }
             }
+            bool placeClosing = enforce &&
+                (placement == ClosingDelimiterPlacement::NewLine
+                    ? !separate
+                    : separate);
+            if (placeClosing &&
+                placement == ClosingDelimiterPlacement::SameLine &&
+                source.substr(tree.Token(finalElement->Tokens.Begin)
+                    .Text.Begin, elementEnd -
+                    tree.Token(finalElement->Tokens.Begin).Text.Begin)
+                    .find('\n') != std::string_view::npos)
+            {
+                // Do not attach a brace to a multiline final element.
+                placeClosing = false;
+            }
+            std::string tail(beforeComma);
+            if (wantTrailing) {
+                tail += ',';
+            }
+            if (placeClosing) {
+                tail += placement == ClosingDelimiterPlacement::NewLine
+                    ? closingNewline()
+                    : style.InitializerBracesSpacing == TokenSpacing::Space
+                        ? " "
+                        : "";
+            } else {
+                tail += gap;
+            }
+            if (tail != source.substr(elementEnd, end - elementEnd)) {
+                edits.push_back({elementEnd, end, std::move(tail)});
+            }
+            continue;
         }
-        if (initializer && placement == ClosingDelimiterPlacement::SameLine &&
-            tree.Kind(last) == TK::Operator_Comma)
+        if (node->Kind == NK::Initializer && trailing && !wantTrailing &&
+            last > open + 1 &&
+            tree.Kind(last - 1) != TK::Comment &&
+            tree.Kind(last - 1) != TK::PreprocessingDirective)
         {
-            if (style.InitializerTrailingComma ==
-                InitializerTrailingComma::Keep)
+            auto previousEnd = tree.Token(last - 1).Text.End;
+            if (previousEnd > tree.Token(last).Text.Begin) {
+                continue;
+            }
+            auto beforeComma = source.substr(
+                previousEnd,
+                tree.Token(last).Text.Begin - previousEnd);
+            if (IsWhitespace(beforeComma) &&
+                beforeComma.find('\r') == std::string_view::npos)
             {
-                if (!separate) {
-                    if (node->Kind == NK::InitializerList && source.substr(
-                        tree.Token(open).Text.Begin,
-                        end - tree.Token(open).Text.Begin).find('\n') ==
-                            std::string_view::npos)
-                    {
-                        auto splitStyle = style;
-                        splitStyle.InitializerListSplit =
-                            FunctionParameterSplit::OnePerLine;
-                        splitStyle.FirstInitializerElementPosition =
-                            FirstInitializerElementPosition::NewLine;
-                        splitStyle.ColumnLimit = 0;
-                        if (auto split = ReflowDelimitedList(
-                            tree, *node, splitStyle))
-                        {
-                            split->Text += closingNewline();
-                            edits.push_back(std::move(*split));
-                            continue;
-                        }
-                    }
-                    edits.push_back({begin, end, closingNewline()});
-                }
-            } else if (last > open + 1 &&
-                tree.Kind(last - 1) != TK::Comment &&
-                tree.Kind(last - 1) != TK::PreprocessingDirective)
-            {
-                const auto previousEnd = tree.Token(last - 1).Text.End;
-                const auto commaBegin = tree.Token(last).Text.Begin;
-                if (previousEnd <= commaBegin && IsWhitespace(source.substr(
-                    previousEnd,
-                    commaBegin - previousEnd)) &&
-                    source.substr(previousEnd, commaBegin - previousEnd)
-                        .find('\r') == std::string_view::npos)
+                std::string tail(beforeComma);
+                if (enforce && separate &&
+                    placement == ClosingDelimiterPlacement::SameLine)
                 {
-                    edits.push_back({previousEnd, end,
-                        style.InitializerBracesSpacing == TokenSpacing::Space
-                            ? " "
-                            : ""});
+                    tail += style.InitializerBracesSpacing ==
+                        TokenSpacing::Space ? " " : "";
+                } else if (enforce && !separate &&
+                    placement == ClosingDelimiterPlacement::NewLine)
+                {
+                    tail += closingNewline();
+                } else {
+                    tail += gap;
                 }
+                edits.push_back({previousEnd, end, std::move(tail)});
             }
             continue;
         }
@@ -9199,7 +9324,8 @@ std::optional<std::vector<SensitiveInvocation>> FindSensitiveInvocations(
             return std::nullopt;
         }
         invocations.push_back({tree.Token(i).Text.Begin,
-            tree.Token(close).Text.End, tree.TokenText(i)});
+            tree.Token(close).Text.End,
+            tree.TokenText(i)});
         i = close;
     }
     return invocations;
@@ -9269,7 +9395,8 @@ std::optional<std::vector<SensitiveInvocation>> FindSensitiveInvocations(
             return std::nullopt;
         }
         invocations.push_back({tokens[i].Text.Begin,
-            tokens[close].Text.End, name});
+            tokens[close].Text.End,
+            name});
         i = close;
     }
     return invocations;
@@ -9534,7 +9661,7 @@ std::vector<LayoutDiagnostic> CheckExpressionLayout(
             {
                 diagnostics.push_back({
                     {.Line = lineNumber,
-                     .Column = static_cast<uint32_t>(style.ColumnLimit + 1)},
+                        .Column = static_cast<uint32_t>(style.ColumnLimit + 1)},
                     "line exceeds ColumnLimit (" + std::to_string(width) +
                         " > " + std::to_string(style.ColumnLimit) + ")",
                     LayoutDiagnosticKind::LineWidth});
@@ -9722,9 +9849,6 @@ std::string Format(const parser::SyntaxTree& tree, const Style& requested)
     if (!style.EnforceCallArgumentSplit) {
         style.CallArgumentSplit = CallArgumentSplit::Preserve;
     }
-    if (!style.EnforceInitializerListSplit) {
-        style.InitializerListSplit = FunctionParameterSplit::Preserve;
-    }
     if (!style.EnforceTernarySplit) {
         style.TernarySplit = TernarySplit::Preserve;
     }
@@ -9836,6 +9960,7 @@ std::string Format(const parser::SyntaxTree& tree, const Style& requested)
     std::optional<parser::SyntaxTree> cachedTree;
     size_t revision = 0;
     bool unsafeStructuralEdit = false;
+    bool allowInitializerTokenRefresh = false;
     std::string beforeHeaderReflow;
     std::optional<parser::SyntaxTree> beforeHeaderTree;
     bool captureHeaderSource = false;
@@ -9868,6 +9993,13 @@ std::string Format(const parser::SyntaxTree& tree, const Style& requested)
             } else if (auto rebound = tree.RebindReorderedComments(current)) {
                 cachedTree.emplace(std::move(*rebound));
                 HIT_FMT_PROFILE_EVENT("parser.rebind_reordered_fallback");
+            } else if (allowInitializerTokenRefresh) {
+                // ReflowDelimitedList only adds/removes a trailing comma
+                // after validating complete elements and safe list gaps. Token
+                // rebinding cannot represent that edit; parse its new syntax.
+                cachedTree.emplace(parser::Parse(
+                    current,
+                    [] (parser::ParseError) { }));
             } else {
                 HIT_FMT_PROFILE_EVENT(
                     "formatter.unsafe_structure_preserved");
@@ -9886,6 +10018,7 @@ std::string Format(const parser::SyntaxTree& tree, const Style& requested)
             }
             formatted.resize(length);
         }
+        allowInitializerTokenRefresh = false;
         return *cachedTree;
     };
     auto captureHeader = [&] (const parser::SyntaxTree& parsed) {
@@ -10084,33 +10217,6 @@ std::string Format(const parser::SyntaxTree& tree, const Style& requested)
             return FormatStaticAsserts(parsed, style);
         });
     }
-    if (hasBrace &&
-        style.InitializerListSplit != FunctionParameterSplit::Preserve)
-    {
-        // Outer edits can contain nested lists. Repeat until they stabilize;
-        // if nesting exceeds the bound, leave initializer layout untouched.
-        std::string beforeInitializers;
-        bool stable = false;
-        bool changed = false;
-        for (size_t pass = 0; pass < 16; ++pass) {
-            stable = !applyOptionalPass([&] (const auto& parsed) {
-                auto result = FormatInitializers(parsed, style);
-                if (result && !changed && *result != formatted) {
-                    beforeInitializers = std::move(formatted);
-                    changed = true;
-                }
-                return result;
-            });
-            if (stable) {
-                break;
-            }
-        }
-        if (!stable) {
-            cachedTree.reset();
-            syntaxOwner.reset();
-            formatted = std::move(beforeInitializers);
-        }
-    }
     if ((style.RemoveNullStatements || style.RemoveNullDeclarations) &&
         (RemoveNullStatements(tree, style) ||
             (initialTokensReordered &&
@@ -10238,9 +10344,46 @@ std::string Format(const parser::SyntaxTree& tree, const Style& requested)
     if (style.ExpressionLayoutCondition !=
         ExpressionLayoutCondition::Preserve)
     {
-        headerReflowed |= applyLayoutPass([&] (const auto& parsed) {
+        const bool balanced = applyLayoutPass([&] (const auto& parsed) {
             return BalanceDelimitedExpressions(parsed, style);
         });
+        headerReflowed |= balanced;
+        if (balanced && style.InitializerListTrailingComma !=
+            InitializerListTrailingComma::Keep)
+        {
+            allowInitializerTokenRefresh = true;
+        }
+    }
+    if (hasBrace) {
+        // Balance flat expressions before committing to a braced-list break.
+        // Outer edits can contain nested lists, so refresh after each pass.
+        std::string beforeInitializers;
+        bool stable = false;
+        bool changed = false;
+        for (size_t pass = 0; pass < 16; ++pass) {
+            stable = !applyOptionalPass([&] (const auto& parsed) {
+                auto result = FormatInitializers(parsed, style);
+                if (result && !changed && *result != formatted) {
+                    beforeInitializers = formatted;
+                    changed = true;
+                }
+                return result;
+            });
+            if (stable) {
+                break;
+            }
+            if (style.InitializerListTrailingComma !=
+                InitializerListTrailingComma::Keep)
+            {
+                allowInitializerTokenRefresh = true;
+            }
+        }
+        if (!stable) {
+            cachedTree.reset();
+            syntaxOwner.reset();
+            allowInitializerTokenRefresh = false;
+            formatted = std::move(beforeInitializers);
+        }
     }
     if (style.CallArgumentSplit != CallArgumentSplit::Preserve ||
         style.EnforceMultilineSingleCallArgumentPosition)
@@ -10726,7 +10869,8 @@ std::string Format(const parser::SyntaxTree& tree, const Style& requested)
     }
     if (style.EnforceFunctionParameterClosingParenthesis ||
         style.EnforceFunctionCallArgumentClosingParenthesis ||
-        style.EnforceInitializerClosingBrace ||
+        style.EnforceInitializerListClosingBrace ||
+        style.EnforceInitializerListTrailingComma ||
         style.EnforceBlockClosingBrace)
     {
         applyLayoutPass([&] (const auto& parsed) {

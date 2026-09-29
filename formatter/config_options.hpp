@@ -354,19 +354,20 @@
         formatter::ChainedCallLayout::OnePerLine)                              \
     OPT(formatter::CallArgumentIndent, ChainedCallIndent,                      \
         formatter::CallArgumentIndent::IndentWidth)                            \
-    OPT(formatter::FunctionParameterSplit, InitializerListSplit,               \
-        formatter::FunctionParameterSplit::Pack)                               \
+    OPT(formatter::InitializerListSplit, InitializerListSplit,                 \
+        formatter::InitializerListSplit::Pack)                                 \
     OPT(bool, EnforceInitializerListSplit, false)                              \
     OPT(formatter::FirstInitializerElementPosition,                            \
         FirstInitializerElementPosition,                                       \
         formatter::FirstInitializerElementPosition::BraceLine)                 \
     OPT(formatter::CallArgumentIndent, InitializerListIndent,                  \
         formatter::CallArgumentIndent::IndentWidth)                            \
-    OPT(formatter::InitializerClosingBrace, InitializerClosingBrace,           \
-        formatter::InitializerClosingBrace::SameLine)                          \
-    OPT(bool, EnforceInitializerClosingBrace, false)                           \
-    OPT(formatter::InitializerTrailingComma, InitializerTrailingComma,         \
-        formatter::InitializerTrailingComma::Keep)                             \
+    OPT(formatter::InitializerListClosingBrace, InitializerListClosingBrace,   \
+        formatter::InitializerListClosingBrace::SameLineUnlessTrailingComma)   \
+    OPT(bool, EnforceInitializerListClosingBrace, false)                       \
+    OPT(formatter::InitializerListTrailingComma, InitializerListTrailingComma, \
+        formatter::InitializerListTrailingComma::Keep)                         \
+    OPT(bool, EnforceInitializerListTrailingComma, false)                      \
     OPT(formatter::ClosingDelimiterPlacement,                                  \
         FunctionParameterClosingParenthesis,                                   \
         formatter::ClosingDelimiterPlacement::SameLine)                        \

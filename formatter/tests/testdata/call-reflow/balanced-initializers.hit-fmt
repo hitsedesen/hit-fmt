@@ -1,0 +1,5 @@
+ColumnLimit = 48
+IndentWidth = 4
+ExpressionLayoutCondition = Overflow
+EnforceInitializerListSplit = false
+MergeInitializerList = true

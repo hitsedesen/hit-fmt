@@ -176,12 +176,19 @@ ConstructorInitializerList = Format
 ConstructorInitializerListColonPlacement = AttachToInitializer
 ConstructorInitializerListCommaPlacement = AttachToNext
 ConstructorInitializerListSplit = OnePerLine
-# Existing braced aggregates may be nested or macro arguments.
-
-InitializerClosingBrace = SameLine
-EnforceInitializerClosingBrace = true
+# YT's multiline designated aggregates start each member on a new line.
+# Reflow safe overflowing lists, but retain fitting existing layouts;
+# nested or multiline elements and macro trivia remain source-owned.
+InitializerListSplit = OnePerLine
+EnforceInitializerListSplit = false
+FirstInitializerElementPosition = NewLine
+InitializerListIndent = IndentWidth
+MergeInitializerList = false
+InitializerListClosingBrace = SameLineUnlessTrailingComma
+EnforceInitializerListClosingBrace = true
 # A trailing comma keeps the closing brace on its own line.
-InitializerTrailingComma = Keep
+InitializerListTrailingComma = Keep
+EnforceInitializerListTrailingComma = false
 # Both {x, y} and { x, y } occur; do not normalize initializer interiors.
 EnforceInitializerBracesSpacing = false
 BraceInitializerSpacing = NoSpace

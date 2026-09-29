@@ -116,8 +116,18 @@ StatementSemicolonSpacing = NoSpace
 DeclarationSemicolonSpacing = NoSpace
 
 # Initializers, new, and delete
-# Nested aggregate braces may be misclassified and reflowed incorrectly.
-
+# Google-style aggregates pack elements beside { and align continuations.
+# Reflow safe overflowing lists, but leave fitting existing layouts alone.
+# Nested or multiline elements remain source-owned.
+InitializerListSplit = Pack
+EnforceInitializerListSplit = false
+FirstInitializerElementPosition = BraceLine
+InitializerListIndent = Continuation
+MergeInitializerList = true
+InitializerListClosingBrace = SameLineUnlessTrailingComma
+EnforceInitializerListClosingBrace = false
+InitializerListTrailingComma = Keep
+EnforceInitializerListTrailingComma = false
 EmptyBraceInitializerInteriorSpacing = NoSpace
 InitializerBracesSpacing = NoSpace
 EnforceInitializerBracesSpacing = true

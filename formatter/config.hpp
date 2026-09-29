@@ -17,16 +17,27 @@ inline constexpr std::string_view DefaultConfigFileName = ".hit-fmt";
 // These preferences use Enforce* flags instead of a Preserve config value.
 inline constexpr auto EnforcedPreferences =
     std::to_array<std::string_view>({
-        "SpaceInsideFunctionParameters", "SpaceInsideCallArguments",
-        "InitializerBracesSpacing", "EmptyBlockInteriorSpacing",
-        "ControlBlockSpaceBeforeBrace", "ClassBraceSpacing",
-        "StructBraceSpacing", "UnionBraceSpacing",
-        "FunctionBraceSpacing", "LambdaBraceSpacing",
-        "NamespaceBraceSpacing", "ClassBracePlacement",
-        "StructBracePlacement", "UnionBracePlacement",
-        "FunctionBracePlacement", "LambdaBracePlacement",
-        "NamespaceBracePlacement", "FunctionParameterSplit",
-        "CallArgumentSplit", "InitializerListSplit", "TernarySplit"});
+        "SpaceInsideFunctionParameters",
+        "SpaceInsideCallArguments",
+        "InitializerBracesSpacing",
+        "EmptyBlockInteriorSpacing",
+        "ControlBlockSpaceBeforeBrace",
+        "ClassBraceSpacing",
+        "StructBraceSpacing",
+        "UnionBraceSpacing",
+        "FunctionBraceSpacing",
+        "LambdaBraceSpacing",
+        "NamespaceBraceSpacing",
+        "ClassBracePlacement",
+        "StructBracePlacement",
+        "UnionBracePlacement",
+        "FunctionBracePlacement",
+        "LambdaBracePlacement",
+        "NamespaceBracePlacement",
+        "FunctionParameterSplit",
+        "CallArgumentSplit",
+        "InitializerListSplit",
+        "TernarySplit"});
 
 [[nodiscard]] constexpr bool AllowsPreserveConfigValue(std::string_view key)
 {

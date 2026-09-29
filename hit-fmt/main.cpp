@@ -69,7 +69,7 @@ std::vector<Line> SplitLines(std::string_view text)
         auto end = hasNewline ? newline : text.size();
         lines.push_back(
             {.Text = text.substr(begin, end - begin),
-             .HasNewline = hasNewline});
+                .HasNewline = hasNewline});
         begin = hasNewline ? end + 1 : text.size();
     }
     return lines;
@@ -429,7 +429,8 @@ std::vector<Violation> SpacingViolations(
         if (actual.substr(startA, a - startA) !=
             expected.substr(startB, b - startB))
         {
-            violations.push_back({line, ColumnAt(actual, a),
+            violations.push_back({line,
+                ColumnAt(actual, a),
                 SpacingMessage(actual, expected, startA, a, startB, b)});
         }
         if (a == actual.size() || b == expected.size()) {
@@ -658,7 +659,8 @@ std::optional<std::vector<Violation>> ReflowViolations(
                     b);
             }
             violations.push_back({firstLine + lineIndex,
-                ColumnAt(source[lineIndex].Text, byte), std::move(message),
+                ColumnAt(source[lineIndex].Text, byte),
+                std::move(message),
                 ViolationKind::Reflow});
         }
         if (a == original.size() || b == replacement.size()) {
@@ -883,7 +885,9 @@ std::vector<Chunk> FormattingChunks(
                 message = ContentChange(line.Text, replacement);
             }
             chunk.Violations.push_back({sourceIndex + i + 1,
-                column, std::move(message), kind});
+                column,
+                std::move(message),
+                kind});
         }
         if (sourceCount == 0) {
             auto column = sourceIndex < source.size() || source.empty()
@@ -959,7 +963,8 @@ void PrintCheckDiagnostics(
     for (const auto& name : names) {
         chunks.push_back({.Begin = name.Position.Line,
             .End = name.Position.Line + 1,
-            .Violations = {{name.Position.Line, name.Position.Column,
+            .Violations = {{name.Position.Line,
+                name.Position.Column,
                 name.Message + "; " + name.Expected}}});
     }
     for (const auto& parameter : parameters) {
@@ -971,7 +976,8 @@ void PrintCheckDiagnostics(
         }
         chunks.push_back({.Begin = parameter.SignatureBeginLine,
             .End = parameter.SignatureEndLine + 1,
-            .Violations = {{parameter.Position.Line, parameter.Position.Column,
+            .Violations = {{parameter.Position.Line,
+                parameter.Position.Column,
                 std::move(message)}}});
     }
     for (const auto& issue : layout) {
@@ -980,7 +986,8 @@ void PrintCheckDiagnostics(
             .Violations = {{issue.Position.Line, issue.Position.Column,
                 issue.Message, issue.Kind ==
                     formatter::LayoutDiagnosticKind::LineWidth
-                    ? ViolationKind::LineWidth : ViolationKind::Other}},
+                    ? ViolationKind::LineWidth
+                    : ViolationKind::Other}},
             .HasLayoutIssue = true,
             .HasWidthIssue = issue.Kind ==
                 formatter::LayoutDiagnosticKind::LineWidth});
@@ -998,7 +1005,8 @@ void PrintCheckDiagnostics(
             {
                 continue;
             }
-            Chunk suggestion{.Begin = candidate.Begin, .End = candidate.End,
+            Chunk suggestion{.Begin = candidate.Begin,
+                .End = candidate.End,
                 .LayoutFix = std::move(candidate.Fix),
                 .LayoutFormattedBegin = candidate.FormattedBegin,
                 .LayoutFormattedEnd = candidate.FormattedEnd,
@@ -1562,11 +1570,11 @@ void PrintHelp(
     highlight("Examples:", BoldCyan);
     output << '\n';
     for (auto example : {
-             " source.cpp",
-             " --fix source.cpp include/",
-             " --summary src/ include/",
-             " --fix --exclude '(^|/)generated(/|$)' src/",
-             " --fix --changed-hunks - < hunks.txt"})
+        " source.cpp",
+        " --fix source.cpp include/",
+        " --summary src/ include/",
+        " --fix --exclude '(^|/)generated(/|$)' src/",
+        " --fix --changed-hunks - < hunks.txt"})
     {
         output << "  ";
         highlight(executable, BoldGreen);
@@ -1805,7 +1813,7 @@ int main(int argc, char* argv[])
                 applied.append(util::SourcePaddingSize, '\0');
                 auto updated = parser::Parse(
                     {.Data = applied.data(),
-                     .Size = applied.size() - util::SourcePaddingSize},
+                        .Size = applied.size() - util::SourcePaddingSize},
                     [] (parser::ParseError) { });
                 auto mapped = options.HunkInput
                     ? RemapHunks(tree, updated, hunks)

@@ -74,11 +74,32 @@ namespace {
 
 constexpr std::array<std::string_view, 4> EncodingPrefixes{"u8", "u", "U", "L"};
 constexpr std::array<std::string_view, 5> RawEncodingPrefixes{
-    "R", "u8R", "uR", "UR", "LR"};
+    "R",
+    "u8R",
+    "uR",
+    "UR",
+    "LR"};
 constexpr std::array<std::string_view, 8> FloatingPointSuffixes{
-    "", "f", "l", "f16", "f32", "f64", "f128", "bf16"};
+    "",
+    "f",
+    "l",
+    "f16",
+    "f32",
+    "f64",
+    "f128",
+    "bf16"};
 constexpr std::array<std::string_view, 11> IntegerSuffixes{
-    "", "u", "ul", "ull", "uz", "l", "lu", "ll", "llu", "z", "zu"};
+    "",
+    "u",
+    "ul",
+    "ull",
+    "uz",
+    "l",
+    "lu",
+    "ll",
+    "llu",
+    "z",
+    "zu"};
 
 [[nodiscard]] constexpr bool
 EqualsIgnoringAsciiCase(std::string_view lhs, std::string_view rhs) noexcept
