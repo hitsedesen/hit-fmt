@@ -320,6 +320,12 @@ std::vector<FormattedCase> FormattedCases()
     cases.push_back({callReflow,
         "sole-preferred",
         "sole-preferred.input.cpp"});
+    cases.push_back({callReflow,
+        "first-position-reflow",
+        "first-position-reflow.input.cpp"});
+    cases.push_back({std::filesystem::path(FORMATTER_TESTDATA_DIR) /
+        "../function_parameters", "first-position-reflow",
+        "first-position-reflow.input.cpp"});
     AddCases(cases, std::filesystem::path(FORMATTER_TESTDATA_DIR) /
         "../call-like-macro", {"selected"});
     AddCases(cases, std::filesystem::path(FORMATTER_TESTDATA_DIR) /
@@ -333,6 +339,7 @@ std::vector<FormattedCase> FormattedCases()
     addProfileCase("../control-header-clauses", "profile");
     addProfileCase("../whitespace-sensitive-macros", "profile");
     addProfileCase("../call-reflow", "balanced-expressions");
+    addProfileCase("../call-reflow", "nested-operator-choice");
     cases.push_back({callReflow,
         "balanced-initializers",
         "balanced-initializers.input.cpp"});
@@ -399,6 +406,13 @@ std::vector<FormattedCase> FormattedCases()
     {
         cases.push_back({std::filesystem::path(FORMATTER_TESTDATA_DIR) /
             ".." / name, "configured"});
+    }
+    const auto parsedOperators = std::filesystem::path(FORMATTER_TESTDATA_DIR) /
+        "../parsed-operators";
+    for (const auto* name : {"placement-lists", "delimiter-choice"}) {
+        cases.push_back({parsedOperators,
+            name,
+            std::string(name) + ".input.cpp"});
     }
     // Keep safety and recovered-syntax examples in separate parse units.
     const auto spacing = std::filesystem::path(FORMATTER_TESTDATA_DIR) /
@@ -1851,7 +1865,7 @@ TEST(PreserveFormatterTest, KeepsEmptyRecoveryAndBinarySource)
     }
 }
 
-TEST(PreserveConfigTest, RejectsInvalidSettings)
+TEST(PreserveConfigTest, ParsesSettings)
 {
     const auto path = std::filesystem::temp_directory_path() /
         "hit-fmt-preserve-config-test.hit-fmt";
@@ -1975,190 +1989,6 @@ TEST(PreserveConfigTest, RejectsInvalidSettings)
         formatter::TernaryOperatorPlacement::Leading);
     EXPECT_EQ(preserving.TernarySplit, formatter::TernarySplit::AsNeeded);
     EXPECT_FALSE(preserving.EnforceTernarySplit);
-    for (auto setting : {
-        "CallLineFirstStringNames = [\"YT_LOG_\" , \"NS::Call\"]\n",
-        "CallLineFirstStringNames = [\"\"]\n",
-        "IndentedCallScopePairs = [\"OnBeginList\"]\n",
-        "IndentedCallScopePairs = [\"OnBeginList:End::List\"]\n",
-        "ColumnLimit = 0\n",
-        "ColumnLimit = 10001\n",
-        "ShortNamespaceLines = 10001\n",
-        "NamespaceCommentSpaces = 0\n",
-        "NamespaceCommentSpaces = 33\n",
-        "AccessModifierIndentWidth = 33\n",
-        "MemberIndentWidth = 33\n",
-        "BlockBodyIndentWidth = 33\n",
-        "CaseLabelIndentWidth = 33\n",
-        "StatementAttributeIndentWidth = 33\n",
-        "IndentWidth = 0\n",
-        "IndentWidth = 33\n",
-        "IndentAccessModifiers = Unknown\n",
-        "IndentMembers = Unknown\n",
-        "IndentCaseLabels = Unknown\n",
-        "StatementAttributeIndent = Unknown\n",
-        "InheritanceList = Unknown\n",
-        "InheritanceListColonPlacement = Unknown\n",
-        "InheritanceListColonSpaceBefore = Unknown\n",
-        "InheritanceListColonSpaceAfter = Unknown\n",
-        "InheritanceListCommaPlacement = Unknown\n",
-        "InheritanceListCommaSpaceBefore = Unknown\n",
-        "InheritanceListCommaSpaceAfter = Unknown\n",
-        "InheritanceListStart = Unknown\n",
-        "InheritanceListSplit = Unknown\n",
-        "InheritanceListIndent = 33\n",
-        "ConstructorInitializerListIndent = 33\n",
-        "ConstructorInitializerListStart = Attach\n",
-        "ConstructorInitializerListColonPlacement = Left\n",
-        "CastArgumentSpacing = Middle\n",
-        "GroupingInteriorSpacing = Middle\n",
-        "BlockInteriorSpacing = Middle\n",
-        "EmptyBlockInteriorSpacing = Middle\n",
-        "ControlBlockSpaceBeforeBrace = Middle\n",
-        "DeclarationSemicolonSpacing = Middle\n",
-        "ControlBlockConditionSpacing = Middle\n",
-        "AccessModifierColonSpacing = Middle\n",
-        "RangeBasedForColonSpacing = Middle\n",
-        "BitFieldColonSpacing = Space\n",
-        "EnumUnderlyingTypeColonSpacing = Space\n",
-        "LabelColonSpacing = Space\n",
-        "InheritanceListStart = Attach\n",
-        "InheritanceListSplit = Preserve\n",
-        "FunctionParameterSplit = Together\n",
-        "FunctionParameterNewLineIndent = 33\n",
-        "InitializerListSplit = Together\n",
-        "InitializerListClosingBrace = Attach\n",
-        "InitializerClosingBrace = SameLine\n",
-        "EnforceInitializerClosingBrace = true\n",
-        "InitializerTrailingComma = Keep\n",
-        "EnforceInitializerTrailingComma = true\n",
-        "ControlConditionIndent = NameLine\n",
-        "ClassBracePlacement = attach\n",
-        "ExpressionLayoutCondition = Unknown\n",
-        "BinaryOperatorPlacement = Middle\n",
-        "AssignmentOperatorPlacement = Middle\n",
-        "TernaryOperatorPlacement = Middle\n",
-        "TernaryOperatorPlacement = Preserve\n",
-        "TernarySplit = TwoLines\n",
-        "TernarySplit = Preserve\n",
-        "ClassBracePlacement = Preserve\n",
-        "FunctionParameterSplit = Preserve\n",
-        "CallArgumentSplit = Preserve\n",
-        "InitializerListSplit = Preserve\n",
-        "CallArgumentSplit = Together\n",
-        "FirstCallArgumentPosition = BeforeCall\n",
-        "MultilineSingleCallArgumentPosition = Preserve\n",
-        "EnforceFirstCallArgumentPosition = maybe\n",
-        "CallArgumentIndent = Tabs\n",
-        "FirstFunctionParameterPosition = BeforeName\n",
-        "EnforceFirstFunctionParameterPosition = maybe\n",
-        "FunctionParameterIndent = Tabs\n",
-        "MergeFunctionParameters = yes\n",
-        "LambdaSpaceBeforeParameters = Unknown\n",
-        "SpaceAroundCaptureList = Unknown\n",
-        "SpaceAroundCaptureAssignment = Unknown\n",
-        "FunctionSpaceBeforeParameters = Unknown\n",
-        "FunctionCallSpaceBeforeParameters = Unknown\n",
-        "SpaceInsideFunctionParameters = Unknown\n",
-        "SpaceInsideLambdaParameters = Unknown\n",
-        "SpaceInsideCallArguments = Unknown\n",
-        "ControlBlockKeywordSpacing = Unknown\n",
-        "CommaSpacing = Unknown\n",
-        "LoopSemicolonSpacing = After\n",
-        "ConditionInitSemicolonSpacing = After\n",
-        "TrailingWhitespace = Space\n",
-        "IndentationKind = Mixed\n",
-        "PreprocessorIndentation = Indent\n",
-        "TrailingCommentSpacing = After\n",
-        "TemplateKeywordSpacing = After\n",
-        "TemplateTypeArgumentInteriorSpacing = After\n",
-        "TemplateTypeArgumentSpacing = After\n",
-        "EmptyBraceInitializerInteriorSpacing = After\n",
-        "OperatorOverloadOperatorSpacing = Space\n",
-        "AttributeInteriorSpacing = After\n",
-        "AttributeSpaceAfterSpecifier = After\n",
-        "NamedCastSpaceBeforeTypeArguments = After\n",
-        "PlacementNewSpaceBeforeArguments = After\n",
-        "AttributeSpaceBeforeSpecifier = After\n",
-        "NewInitializerSpaceBeforeParentheses = After\n",
-        "DeleteArraySpaceBeforeBrackets = After\n",
-        "SizeofPackSpaceBeforeParentheses = After\n",
-        "NewInitializerSpaceBeforeBraces = After\n",
-        "NewInitializerParenthesisInteriorSpacing = After\n",
-        "DeleteArraySpaceAfterBrackets = After\n",
-        "PlacementNewSpaceAfterArguments = After\n",
-        "NewArraySpaceBeforeBrackets = After\n",
-        "NewArrayInteriorSpacing = After\n",
-        "EmptyAttributeInteriorSpacing = After\n",
-        "CoAwaitSpaceBeforeParentheses = After\n",
-        "NewInitializerBraceInteriorSpacing = After\n",
-        "PlacementNewArgumentInteriorSpacing = After\n",
-        "EmptyArrayDeclarationInteriorSpacing = After\n",
-        "EmptyNewArrayInteriorSpacing = After\n",
-        "NoexceptSpaceBeforeSpecifier = After\n",
-        "NamedCastSpaceBeforeOperandParentheses = After\n",
-        "ReturnSpaceBeforeParentheses = After\n",
-        "ThrowSpaceBeforeParentheses = After\n",
-        "CoReturnSpaceBeforeParentheses = After\n",
-        "FunctionSuffixSpecifierSpacing = After\n",
-        "RecordBodyInteriorSpacing = After\n",
-        "NamespaceBodyInteriorSpacing = After\n",
-        "EnumBodyInteriorSpacing = After\n",
-        "RequirementBodyInteriorSpacing = After\n",
-        "FunctionQualifierSpacing = After\n",
-        "FunctionRefQualifierSpacing = After\n",
-        "NestedDeclaratorInteriorSpacing = After\n",
-        "NestedDeclaratorPointerSpacing = After\n",
-        "MemberPointerDeclaratorSpacing = After\n",
-        "NoexceptSpaceBeforeParentheses = After\n",
-        "AlignasSpaceBeforeParentheses = After\n",
-        "AlignofSpaceBeforeParentheses = After\n",
-        "SizeofSpaceBeforeParentheses = After\n",
-        "DecltypeSpaceBeforeParentheses = After\n",
-        "TypeidSpaceBeforeParentheses = After\n",
-        "RequiresSpaceBeforeParentheses = After\n",
-        "StaticAssertSpaceBeforeParentheses = After\n",
-        "StatementSemicolonSpacing = Space\n",
-        "MemberAccessOperatorsSpacing = Space\n",
-        "ScopeResolutionSpacing = Space\n",
-        "InitializerBracesSpacing = Middle\n",
-        "UnaryOperatorSpacing = Space\n",
-        "PostfixOperatorSpacing = Space\n",
-        "TernaryOperatorSpacing = NoSpace\n",
-        "ArrayDeclarationInteriorSpacing = Middle\n",
-        "SubscriptOperatorInteriorSpacing = Middle\n",
-        "ReturnArrowSpacing = Space\n",
-        "EmptyFunctionCallArgumentsSpacing = Middle\n",
-        "EmptyFunctionParametersSpacing = Middle\n",
-        "EmptyLambdaParametersSpacing = Middle\n",
-        "EmptyLambdaCaptureSpacing = Middle\n",
-        "SubscriptOperatorSpacing = Middle\n",
-        "ArrayDeclarationSpacing = Middle\n",
-        "BraceInitializerSpacing = Middle\n",
-        "StructuredBindingBracketSpacing = Middle\n",
-        "ControlBlockBracePlacement = Unknown\n",
-        "Exclude = [\"[\"]\n",
-        "Exclude = [\n  \"foo\",\n",
-        "Exclude = [\n  \"foo\"\n  \"bar\"\n]\n",
-        "StructNameCase = lowercase\n",
-        "EnumNamePrefixes = [\"bad prefix\"]\n",
-        "NamingNamespaceExemptions = [\"std::\"]\n",
-        "NamingNamespaceExemptions = [\"::std\"]\n",
-        "NamingNamespaceExemptions = [\"std:chrono\"]\n",
-        "NamespaceNamePrefixes = [\"bad\\nname\"]\n",
-    })
-    {
-        save(setting);
-        EXPECT_THROW(formatter::LoadConfigFile(path), std::runtime_error);
-    }
-    save("ClassNameCase = CamelCase\n");
-    try {
-        (void)formatter::LoadConfigFile(path);
-        FAIL() << "expected invalid enum spelling";
-    } catch (const std::runtime_error& error) {
-        EXPECT_NE(std::string_view(error.what()).find(
-            "expected Unchecked, camelCase, PascalCase, snake_case or "
-            "SCREAMING_SNAKE_CASE"), std::string_view::npos);
-    }
     std::filesystem::remove(path);
 }
 

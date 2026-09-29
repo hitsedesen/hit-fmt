@@ -232,6 +232,10 @@
         formatter::ForHeaderClauseIndent::Inherit)                             \
     OPT(formatter::BinaryOperatorPlacement, BinaryOperatorPlacement,           \
         formatter::BinaryOperatorPlacement::Trailing)                          \
+    OPT(formatter::BinaryOperatorPlacement, DefaultBinaryOperatorPlacement,    \
+        formatter::BinaryOperatorPlacement::Trailing)                          \
+    OPT(std::vector<std::string>, TrailingBinaryOperatorList, {})             \
+    OPT(std::vector<std::string>, LeadingBinaryOperatorList, {})              \
     OPT(formatter::BinaryOperatorPlacement, AssignmentOperatorPlacement,       \
         formatter::BinaryOperatorPlacement::Leading)                           \
     OPT(formatter::TernaryOperatorPlacement, TernaryOperatorPlacement,         \

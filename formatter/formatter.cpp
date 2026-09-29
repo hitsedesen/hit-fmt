@@ -2066,10 +2066,10 @@ std::optional<Replacement> ReflowDelimitedList(
     }
 
     bool firstNew = callLineString ? false : newLineFirst;
-    if (!callLineString && split && !enforceFirst &&
-        (!call || style.ExpressionLayoutCondition !=
-            ExpressionLayoutCondition::Always))
-    {
+    const bool preserveExistingFirst = !callLineString && split &&
+        !enforceFirst && (!call || style.ExpressionLayoutCondition !=
+            ExpressionLayoutCondition::Always);
+    if (preserveExistingFirst) {
         firstNew = source.substr(
             begin,
             tree.Token(list.Child()->Tokens.Begin).Text.Begin - begin)
@@ -2159,16 +2159,32 @@ std::optional<Replacement> ReflowDelimitedList(
     if (result == source.substr(begin, end - begin)) {
         return std::nullopt;
     }
+    if (preserveExistingFirst && !braced) {
+        // The list is being reflowed for a reason other than its first
+        // element's position. Apply the preferred position to that reflow;
+        // enforcement is only needed to correct an otherwise unchanged list.
+        auto preferredStyle = style;
+        if (call) {
+            preferredStyle.EnforceFirstCallArgumentPosition = true;
+        } else {
+            preferredStyle.EnforceFirstFunctionParameterPosition = true;
+        }
+        if (auto preferred = ReflowDelimitedList(
+                tree, list, preferredStyle, callLineString))
+        {
+            return preferred;
+        }
+    }
     return Replacement{begin, end, std::move(result)};
 }
 
-// Even when the parser assigns a comparison or shift role, bare angle
-// operators can be template delimiters without name lookup (for example,
-// TDependentFalse<Args...>). Never move or space these ambiguous tokens.
+// Bare comparison angles and >> can be template delimiters without name
+// lookup (for example, TDependentFalse<Args...>). A parsed << is not a
+// template delimiter, so allow it to own a safe expression break.
 bool IsAmbiguousAngleOperator(TK kind)
 {
     return kind == TK::Operator_Less || kind == TK::Operator_Greater ||
-        kind == TK::Operator_LeftShift || kind == TK::Operator_RightShift;
+        kind == TK::Operator_RightShift;
 }
 
 // Expression layout only uses operators identified by the parser. In Always
@@ -2342,6 +2358,33 @@ std::string FlattenExpressionOperators(
         *mergedEdits = std::move(applied);
     }
     return output;
+}
+
+// Lists override the default only for parsed binary operators. Retain the
+// original field as a compatibility alias for programmatically built styles.
+BinaryOperatorPlacement BinaryPlacement(
+    const parser::SyntaxTree& tree,
+    TokenIndex index,
+    const Style& style)
+{
+    const auto text = tree.TokenText(index);
+    if (std::ranges::find(style.LeadingBinaryOperatorList, text) !=
+        style.LeadingBinaryOperatorList.end())
+    {
+        return BinaryOperatorPlacement::Leading;
+    }
+    if (std::ranges::find(style.TrailingBinaryOperatorList, text) !=
+        style.TrailingBinaryOperatorList.end())
+    {
+        return BinaryOperatorPlacement::Trailing;
+    }
+    if (style.DefaultBinaryOperatorPlacement ==
+            BinaryOperatorPlacement::Trailing &&
+        style.BinaryOperatorPlacement == BinaryOperatorPlacement::Leading)
+    {
+        return style.BinaryOperatorPlacement;
+    }
+    return style.DefaultBinaryOperatorPlacement;
 }
 
 // Break only at operators identified by the parser. Other token and trivia
@@ -2537,7 +2580,10 @@ std::optional<LayoutEdits> PlaceExistingOperatorBreaks(
                     {
                         continue;
                     }
-                    PlaceOperatorBreak(tree, i, style.BinaryOperatorPlacement ==
+                    PlaceOperatorBreak(tree, i, BinaryPlacement(
+                        tree,
+                        i,
+                        style) ==
                         BinaryOperatorPlacement::Leading, edits);
                 }
             }
@@ -3042,14 +3088,22 @@ std::optional<LayoutEdits> FormatExpressions(
     auto source = tree.Source();
     std::vector<ExpressionBreak> breaks;
     std::vector<int> nesting(tree.TokenCount(), 0);
-    int parens = 0;
+    std::vector<TokenIndex> closingDelimiters;
     for (TokenIndex i = 0; i < tree.TokenCount(); ++i) {
-        if (tree.Kind(i) == TK::Operator_CloseParenthesis && parens > 0) {
-            --parens;
+        if (!closingDelimiters.empty() &&
+            closingDelimiters.back() == i)
+        {
+            closingDelimiters.pop_back();
         }
-        nesting[i] = parens;
-        if (tree.Kind(i) == TK::Operator_OpenParenthesis) {
-            ++parens;
+        nesting[i] = static_cast<int>(closingDelimiters.size());
+        const auto kind = tree.Kind(i);
+        if (kind == TK::Operator_OpenParenthesis ||
+            kind == TK::Operator_OpenBracket)
+        {
+            auto close = tree.MatchingDelimiter(i);
+            if (close != NoToken && close > i) {
+                closingDelimiters.push_back(close);
+            }
         }
     }
     std::vector<const parser::Node*> nodes{&tree.Root()};
@@ -3109,7 +3163,7 @@ std::optional<LayoutEdits> FormatExpressions(
                         continue;
                     }
                     const bool trailing = node->Kind == NK::BinaryExpression
-                        ? style.BinaryOperatorPlacement ==
+                        ? BinaryPlacement(tree, index, style) ==
                             BinaryOperatorPlacement::Trailing
                         : node->Kind == NK::AssignmentExpression
                             ? style.AssignmentOperatorPlacement ==
@@ -5423,8 +5477,10 @@ std::vector<Replacement> MoveMultilineLambdaArgument(
 }
 
 // Compare safe one-break layouts across the parsed expression rather
-// than committing to the first nested call or initializer. Delimited-list
-// candidates use their configured reflow; named casts add an operand break.
+// than committing to the first nested call or initializer. Parsed delimiter
+// ancestry penalizes internal breaks only when an outer layout also fits.
+// Delimited-list candidates use their configured reflow; named casts add an
+// operand break.
 std::optional<LayoutEdits> BalanceDelimitedExpressions(
     const parser::SyntaxTree& tree,
     const Style& style)
@@ -5446,7 +5502,9 @@ std::optional<LayoutEdits> BalanceDelimitedExpressions(
             size_t breaks,
             bool outer,
             size_t logicalScope,
-            bool needsCallCompetitor)
+            size_t nestingDepth,
+            bool needsCallCompetitor,
+            bool shift)
             : Edit(std::move(edit))
             , Line(static_cast<util::SourceOffset>(line))
             , Longest(static_cast<util::SourceOffset>(longest))
@@ -5454,13 +5512,16 @@ std::optional<LayoutEdits> BalanceDelimitedExpressions(
             , Breaks(static_cast<util::SourceOffset>(breaks))
             , Outer(outer)
             , LogicalScope(static_cast<util::SourceOffset>(logicalScope))
+            , NestingDepth(static_cast<util::SourceOffset>(nestingDepth))
             , NeedsCallCompetitor(needsCallCompetitor)
+            , Shift(shift)
         {
             ASSERT(line <= util::MaxSourceSize &&
                 longest <= util::MaxSourceSize &&
                 imbalance <= util::MaxSourceSize &&
                 breaks <= util::MaxSourceSize &&
-                logicalScope <= util::MaxSourceSize)
+                logicalScope <= util::MaxSourceSize &&
+                nestingDepth <= util::MaxSourceSize)
         }
 
         Replacement Edit;
@@ -5470,54 +5531,34 @@ std::optional<LayoutEdits> BalanceDelimitedExpressions(
         util::SourceOffset Breaks;
         bool Outer;
         util::SourceOffset LogicalScope;
+        util::SourceOffset NestingDepth;
         bool NeedsCallCompetitor;
+        bool Shift;
     };
     std::vector<Candidate> candidates;
-    std::vector<std::pair<size_t, size_t>> ownedCallArguments;
-    std::vector<const parser::Node*> nodes{&tree.Root()};
+    std::vector<std::pair<const parser::Node*, size_t>> nodes{
+        {&tree.Root(), 0}};
     while (!nodes.empty()) {
-        const auto* node = nodes.back();
+        auto [node, nestingDepth] = nodes.back();
         nodes.pop_back();
         for (auto* child = node->Child(); child; child = child->NextSibling) {
-            nodes.push_back(child);
+            const bool insideDelimiters =
+                (node->Kind == NK::CallExpression &&
+                    child->Kind == NK::ArgumentList) ||
+                node->Kind == NK::ParenthesizedExpression ||
+                (node->Kind == NK::SubscriptExpression &&
+                    child != node->Child()) ||
+                (node->Kind == NK::BracedInitializer &&
+                    child->Kind == NK::InitializerList);
+            nodes.emplace_back(child, nestingDepth + insideDelimiters);
         }
         if (node->Tokens.Empty() || HasRecoveryChild(*node)) {
             continue;
         }
-        if (node->Kind == NK::CallExpression &&
-            style.CallArgumentSplit == CallArgumentSplit::OnePerLine)
-        {
-            const auto* callee = node->Child();
-            const auto* args = callee ? callee->NextSibling : nullptr;
-            const auto* first = args ? args->Child() : nullptr;
-            if (callee && !callee->Tokens.Empty() &&
-                callee->Kind != NK::Expression &&
-                callee->Kind != NK::ParenthesizedExpression &&
-                args && args->Kind == NK::ArgumentList &&
-                !args->Tokens.Empty() &&
-                first && first->Kind == NK::Argument &&
-                first->NextSibling &&
-                first->NextSibling->Kind == NK::ListSeparator &&
-                first->NextSibling->NextSibling &&
-                first->NextSibling->NextSibling->Kind == NK::Argument)
-            {
-                auto begin = tree.Token(args->Tokens.Begin).Text.End;
-                auto end = tree.Token(args->Tokens.End - 1).Text.Begin;
-                if (begin <= end && source.substr(begin, end - begin)
-                        .find('\n') == std::string_view::npos)
-                {
-                    // If the call cannot be safely reflowed later, keep
-                    // its flat argument list source-owned instead of
-                    // hiding the overflow inside a nested expression.
-                    ownedCallArguments.emplace_back(
-                        tree.Token(args->Tokens.Begin).Text.Begin,
-                        tree.Token(args->Tokens.End - 1).Text.End);
-                }
-            }
-        }
         std::optional<Replacement> edit;
         bool multiArgumentCall = false;
         bool needsCallCompetitor = false;
+        bool shift = false;
         bool cast = node->Kind == NK::CastExpression;
         if (cast) {
             const auto* type = node->Child();
@@ -5605,7 +5646,9 @@ std::optional<LayoutEdits> BalanceDelimitedExpressions(
             {
                 continue;
             }
-            needsCallCompetitor = ExpressionPriority(tree.Kind(op)) > 8;
+            shift = tree.Kind(op) == TK::Operator_LeftShift;
+            needsCallCompetitor = ExpressionPriority(tree.Kind(op)) > 8 &&
+                !shift;
             auto leftEnd = tree.Token(left->Tokens.End - 1).Text.End;
             auto opBegin = tree.Token(op).Text.Begin;
             auto opEnd = tree.Token(op).Text.End;
@@ -5630,10 +5673,9 @@ std::optional<LayoutEdits> BalanceDelimitedExpressions(
                         expressionEnd -
                             tree.Token(node->Tokens.Begin).Text.Begin)
                     .find_first_of("\r\n\\") != std::string_view::npos ||
-                (ExpressionPriority(tree.Kind(op)) >= 7
+                ((nestingDepth || ExpressionPriority(tree.Kind(op)) >= 7)
                     ? lineEnd - line
-                    : expressionEnd - line) <=
-                    style.ColumnLimit)
+                    : expressionEnd - line) <= style.ColumnLimit)
             {
                 continue;
             }
@@ -5648,7 +5690,7 @@ std::optional<LayoutEdits> BalanceDelimitedExpressions(
             auto leading = prefix.find_first_not_of(' ');
             auto indent = "\n" +
                 GeneratedIndent(leading + style.IndentWidth, style);
-            edit = style.BinaryOperatorPlacement ==
+            edit = BinaryPlacement(tree, op, style) ==
                     BinaryOperatorPlacement::Trailing
                 ? Replacement{opEnd, rightBegin, std::move(indent)}
                 : Replacement{leftEnd, opBegin, std::move(indent)};
@@ -5765,19 +5807,13 @@ std::optional<LayoutEdits> BalanceDelimitedExpressions(
             breaks,
             cast || node->Kind == NK::BinaryExpression,
             node->Kind == NK::BinaryExpression ? node->Tokens.Size() : 0,
-            needsCallCompetitor});
+            nestingDepth,
+            needsCallCompetitor,
+            shift});
     }
-    // Once a multi-argument call is eligible for OnePerLine, a break
-    // inside one argument must not make its enclosing call appear to fit.
-    std::erase_if(candidates, [&] (const Candidate& candidate) {
-        return candidate.Outer && std::ranges::any_of(ownedCallArguments,
-            [&] (const auto& range) {
-                return candidate.Edit.Begin > range.first &&
-                    candidate.Edit.End < range.second;
-            });
-    });
-    // Keep the established expression pass in charge when no delimited-list
-    // layout competes with a higher-precedence binary break on the line.
+    // Keep the established expression pass for high-precedence arithmetic
+    // unless a list layout competes. Parsed shifts can own their line even
+    // when no call candidate fits.
     std::vector<size_t> callLines;
     for (const auto& candidate : candidates) {
         if (!candidate.Outer) {
@@ -5807,7 +5843,14 @@ std::optional<LayoutEdits> BalanceDelimitedExpressions(
             for (auto k = i + 1; k < end; ++k) {
                 const auto& candidate = candidates[k];
                 const auto& selected = candidates[best];
-                if (candidate.LogicalScope && selected.LogicalScope &&
+                if (candidate.NestingDepth != selected.NestingDepth) {
+                    // Parsed delimiters are a penalty, not a hard stop.
+                    if (candidate.NestingDepth < selected.NestingDepth) {
+                        best = k;
+                    }
+                } else if (!candidate.NestingDepth && !selected.NestingDepth &&
+                    !candidate.Shift && !selected.Shift &&
+                    candidate.LogicalScope && selected.LogicalScope &&
                     candidate.LogicalScope != selected.LogicalScope)
                 {
                     if (candidate.LogicalScope > selected.LogicalScope) {
@@ -5817,8 +5860,6 @@ std::optional<LayoutEdits> BalanceDelimitedExpressions(
                     !selected.Outer &&
                     candidate.Breaks <= selected.Breaks)
                 {
-                    // A fitting expression break owns its enclosing
-                    // layout before a nested call with no fewer breaks.
                     best = k;
                 } else if (selected.NeedsCallCompetitor &&
                     !candidate.Outer &&
@@ -6416,27 +6457,8 @@ std::optional<LayoutEdits> FormatCalls(
                                 const bool overlong = lineEnd !=
                                     std::string_view::npos &&
                                     lineEnd - line > style.ColumnLimit;
-                                const auto* expression = argument->Child();
-                                const auto* left = expression &&
-                                        expression->Kind == NK::BinaryExpression
-                                    ? expression->Child()
-                                    : nullptr;
-                                const auto* right = left
-                                    ? left->NextSibling
-                                    : nullptr;
-                                // A fitting binary break already gives a
-                                // multiline sole argument a stable layout.
-                                const auto binaryBreak = right &&
-                                    !right->Tokens.Empty() && newlySplitTokens
-                                    ? (style.BinaryOperatorPlacement ==
-                                            BinaryOperatorPlacement::Trailing
-                                        ? right->Tokens.Begin
-                                        : left->Tokens.End)
-                                    : NoToken;
-                                const bool newlySplitBinary = binaryBreak !=
-                                        NoToken &&
-                                    binaryBreak < newlySplitTokens->size() &&
-                                    (*newlySplitTokens)[binaryBreak];
+                                // A newly created argument break is a reflow
+                                // even when it belongs to a binary operator.
                                 const bool newLine =
                                     gap.find('\n') != std::string_view::npos;
                                 using Position =
@@ -6452,10 +6474,8 @@ std::optional<LayoutEdits> FormatCalls(
                                     !opaque && !nestedCall;
                                 const bool moveToNewLine = position ==
                                         Position::NewLine &&
-                                    (enforce ||
-                                        (newlySplitTokens &&
-                                            !newlySplitBinary) ||
-                                        overlong) && !opaque && !nestedCall;
+                                    (enforce || newlySplitTokens || overlong) &&
+                                    !opaque && !nestedCall;
                                 if (newLine) {
                                     if (moveToCallLine) {
                                         auto spacing =
@@ -9728,7 +9748,7 @@ std::vector<LayoutDiagnostic> CheckExpressionLayout(
                                 parser::PunctuationRole::ComparisonOperator ||
                             role == parser::PunctuationRole::ShiftOperator))
                     {
-                        checkPlacement(i, style.BinaryOperatorPlacement ==
+                        checkPlacement(i, BinaryPlacement(tree, i, style) ==
                             BinaryOperatorPlacement::Leading,
                             "binary operator");
                     }

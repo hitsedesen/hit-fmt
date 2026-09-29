@@ -1,0 +1,5 @@
+ColumnLimit = 44
+ExpressionLayoutCondition = Overflow
+DefaultBinaryOperatorPlacement = Leading
+TrailingBinaryOperatorList = ["+", "<<"]
+LeadingBinaryOperatorList = ["||"]

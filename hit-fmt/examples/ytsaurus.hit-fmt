@@ -196,7 +196,8 @@ NewArraySpaceBeforeBrackets = NoSpace
 
 # Expressions and operators
 ExpressionLayoutCondition = Overflow
-BinaryOperatorPlacement = Trailing
+DefaultBinaryOperatorPlacement = Trailing
+LeadingBinaryOperatorList = ["<<"]
 AssignmentOperatorPlacement = Trailing
 # Overlong ternaries split at both leading ? and : operators.
 TernaryOperatorPlacement = Leading

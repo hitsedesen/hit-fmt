@@ -150,6 +150,7 @@ NewArraySpaceBeforeBrackets = NoSpace
 # Expressions and operators
 ExpressionLayoutCondition = Overflow
 BinaryOperatorPlacement = Trailing
+LeadingBinaryOperatorList = ["<<"]
 AssignmentOperatorPlacement = Trailing
 TernaryOperatorPlacement = Leading
 EnforceTernaryOperatorPlacement = true

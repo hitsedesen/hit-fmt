@@ -14,7 +14,9 @@ void Compare()
     {
         Retry();
     }
-    if (!channelControl.compare_exchange_weak(previousObservedControl, /* keep */ static_cast<unsigned long long>(pendingStatusBits | receivedControlSignals))) {
+    if (!channelControl.compare_exchange_weak(previousObservedControl, /* keep */ static_cast<unsigned long long>(
+        pendingStatusBits | receivedControlSignals)))
+    {
         Retry();
     }
     if (Any(previousChannelStatus & ~EChannelStatus::CurrentlyProcessing) &&
@@ -37,7 +39,8 @@ void Compare()
 
 void StoreRecord()
 {
-    Values_.push_back(std::string(Options_->Lead, '.') +
+    Values_.push_back(
+        std::string(Options_->Lead, '.') +
         std::string(DescribeArchivedRecordPayload(DecodeRecordVariant<TSubstantialRecordPayload>(record.Payload))));
     auto product = ComputeLedgerWeight(factors.Base, factors.Limit) *
         ConvertTokenizedMetric(ExtractValueFromIndexedPayload<TStoredMetric>(record.Payload));

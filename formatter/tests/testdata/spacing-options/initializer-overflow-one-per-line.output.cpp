@@ -3,3 +3,7 @@ int values[] = {alphaValue,
     gammaValue};
 int keep[] = {alphaValue,
     betaValue, gammaValue};
+int overflow[] = {alphaValue,
+    betaValue,
+    gammaValue,
+    deltaValue};

@@ -1,0 +1,5 @@
+ColumnLimit = 60
+FunctionParameterSplit = OnePerLine
+EnforceFunctionParameterSplit = true
+FirstFunctionParameterPosition = NewLine
+EnforceFirstFunctionParameterPosition = false

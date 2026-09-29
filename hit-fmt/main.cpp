@@ -1075,8 +1075,8 @@ void PrintCheckDiagnostics(
         if (useColor) {
             std::cout << (fixed ? BoldGreen : BoldRed);
         }
-        std::cout << (fixed ? "fixed: " : "fail: ") <<
-            chunk.Violations.size() << " violation"
+        std::cout << (fixed ? "fixed: " : "fail: ")
+            << chunk.Violations.size() << " violation"
                   << (chunk.Violations.size() == 1 ? "" : "s");
         if (useColor) {
             std::cout << ResetColor;
