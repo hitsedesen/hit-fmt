@@ -935,7 +935,8 @@ std::optional<SyntaxTree> SyntaxTree::RebindRemovedNullStatements(
                 return std::nullopt;
             }
             if (last == first + 1 && deleted[first] &&
-                child->Kind == NodeKind::ExpressionStatement)
+                (child->Kind == NodeKind::ExpressionStatement ||
+                    child->Kind == NodeKind::EmptyDeclaration))
             {
                 continue;
             }

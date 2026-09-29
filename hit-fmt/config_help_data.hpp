@@ -550,6 +550,10 @@ while (busy()) {}
 // RemoveNullStatements = true
 void f() { work(); }
 )HIT_FMT_HELP"},
+    {R"HIT_FMT_HELP(RemoveNullDeclarations:)HIT_FMT_HELP", R"HIT_FMT_HELP(// Input: namespace N {}; void f() {};
+// RemoveNullDeclarations = true
+namespace N {} void f() {}
+)HIT_FMT_HELP"},
     {R"HIT_FMT_HELP(IndentCaseLabels (with CaseLabelIndentWidth = 2):)HIT_FMT_HELP", R"HIT_FMT_HELP(// IndentCaseLabels = NoIndent
 switch (x) {
 case 1: break;
@@ -1504,6 +1508,12 @@ CRLF lists are left intact. They do not change calls.
   Controlled if/while/for bodies, labeled statements, directives,
   comments on the same line and recovered syntax are left alone. This is
   independent of EmptyControlBody.
+  • RemoveNullDeclarations: false (default) retains empty declarations
+  (;). true removes standalone empty declarations at file scope and in
+  namespace, extern "C" and export blocks, including ; after a closing
+  brace, and redundant ; after function definitions. Other declaration
+  terminators, same-line comments, directives and recovered syntax remain
+  untouched. Independent of RemoveNullStatements.
   • IndentCaseLabels: Preserve (default), NoIndent (align labels with
   their switch header), or Indent (CaseLabelIndentWidth inside the switch).
   Statements following a case get one additional level with Indent when

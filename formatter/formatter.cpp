@@ -3657,9 +3657,9 @@ std::optional<LayoutEdits> CollapseEmptyFunctionBodies(
     return RenderLayoutEdits(source, std::move(edits));
 }
 
-// Remove only complete, standalone null statements in compound bodies.
-// Control bodies (if (x);, while (x);, etc.) and declaration terminators
-// have different syntactic owners and must remain untouched.
+// Remove standalone null statements in compound bodies, empty declarations
+// in declaration sequences and redundant function-definition terminators.
+// Never touch controlled bodies or terminators of other declarations.
 struct NullStatementRemoval
 {
     std::string Output;
@@ -3667,10 +3667,35 @@ struct NullStatementRemoval
 };
 
 std::optional<NullStatementRemoval> RemoveNullStatements(
-    const parser::SyntaxTree& tree)
+    const parser::SyntaxTree& tree,
+    const Style& style)
 {
     const auto source = tree.Source();
     std::vector<std::pair<Replacement, TokenIndex>> edits;
+    auto remove = [&] (TokenIndex index) {
+        const auto begin = tree.Token(index).Text.Begin;
+        const auto end = tree.Token(index).Text.End;
+        auto lineStart = source.rfind('\n', begin);
+        lineStart = lineStart == std::string_view::npos ? 0 : lineStart + 1;
+        auto lineEnd = source.find('\n', end);
+        if (lineEnd == std::string_view::npos) {
+            lineEnd = source.size();
+        }
+        auto suffix = source.substr(end, lineEnd - end);
+        if (suffix.find_first_not_of(" \t") != std::string_view::npos ||
+            source.substr(lineStart, lineEnd - lineStart).find('\r') !=
+                std::string_view::npos)
+        {
+            return;
+        }
+        auto prefix = source.substr(lineStart, begin - lineStart);
+        if (prefix.find_first_not_of(" \t") == std::string_view::npos) {
+            edits.push_back({{lineStart,
+                std::min(source.size(), lineEnd + 1), ""}, index});
+        } else {
+            edits.push_back({{begin, end, ""}, index});
+        }
+    };
     std::vector<std::pair<const parser::Node*, NK>> nodes{
         {&tree.Root(), tree.Root().Kind}};
     while (!nodes.empty()) {
@@ -3679,8 +3704,30 @@ std::optional<NullStatementRemoval> RemoveNullStatements(
         for (auto* child = node->Child(); child; child = child->NextSibling) {
             nodes.emplace_back(child, node->Kind);
         }
-        if (node->Kind != NK::CompoundStatement ||
-            parentKind == NK::Argument || HasRecoveryChild(*node) ||
+        if (style.RemoveNullDeclarations &&
+            node->Kind == NK::FunctionDefinition &&
+            !node->Tokens.Empty() && !HasRecoveryChild(*node) &&
+            !IsIncompleteStatement(*node) &&
+            tree.Kind(node->Tokens.End - 1) == TK::Operator_Semicolon)
+        {
+            remove(node->Tokens.End - 1);
+        }
+        const bool statements = style.RemoveNullStatements &&
+            node->Kind == NK::CompoundStatement &&
+            parentKind != NK::Argument;
+        bool exportBlock = false;
+        if (style.RemoveNullDeclarations &&
+            node->Kind == NK::ExportDeclaration)
+        {
+            for (auto i = node->Tokens.Begin; i < node->Tokens.End; ++i) {
+                exportBlock |= tree.Kind(i) == TK::Operator_OpenBrace;
+            }
+        }
+        const bool declarations = style.RemoveNullDeclarations &&
+            (node->Kind == NK::TranslationUnit ||
+                node->Kind == NK::NamespaceDeclaration ||
+                node->Kind == NK::LinkageSpecification || exportBlock);
+        if ((!statements && !declarations) || HasRecoveryChild(*node) ||
             IsIncompleteStatement(*node))
         {
             continue;
@@ -3690,45 +3737,21 @@ std::optional<NullStatementRemoval> RemoveNullStatements(
             directives |= child->Kind == NK::PreprocessingDirective ||
                 child->Kind == NK::PreprocessingConditional;
         }
-        if (directives) {
+        // Top-level directives are siblings of declarations, not part of
+        // them; a #include must not disable cleanup for the entire file.
+        if (directives && node->Kind != NK::TranslationUnit) {
             continue;
         }
         const parser::Node* previous = nullptr;
         for (auto* child = node->Child(); child; child = child->NextSibling) {
-            if (child->Kind == NK::ExpressionStatement &&
+            if (((statements && child->Kind == NK::ExpressionStatement &&
+                    (!previous || (previous->Kind != NK::CaseLabel &&
+                        previous->Kind != NK::LabelStatement))) ||
+                    (declarations && child->Kind == NK::EmptyDeclaration)) &&
                 child->Tokens.End == child->Tokens.Begin + 1 &&
-                tree.Kind(child->Tokens.Begin) == TK::Operator_Semicolon &&
-                (!previous || (previous->Kind != NK::CaseLabel &&
-                    previous->Kind != NK::LabelStatement)))
+                tree.Kind(child->Tokens.Begin) == TK::Operator_Semicolon)
             {
-                const auto begin = tree.Token(child->Tokens.Begin).Text.Begin;
-                const auto end = tree.Token(child->Tokens.Begin).Text.End;
-                auto lineStart = source.rfind('\n', begin);
-                lineStart = lineStart == std::string_view::npos
-                    ? 0
-                    : lineStart + 1;
-                auto lineEnd = source.find('\n', end);
-                if (lineEnd == std::string_view::npos) {
-                    lineEnd = source.size();
-                }
-                auto suffix = source.substr(end, lineEnd - end);
-                if (suffix.find_first_not_of(" \t") ==
-                        std::string_view::npos &&
-                    source.substr(lineStart, lineEnd - lineStart).find('\r') ==
-                        std::string_view::npos)
-                {
-                    auto prefix = source.substr(lineStart, begin - lineStart);
-                    if (prefix.find_first_not_of(" \t") ==
-                            std::string_view::npos)
-                    {
-                        edits.push_back({{lineStart,
-                            std::min(source.size(), lineEnd + 1), ""},
-                            child->Tokens.Begin});
-                    } else {
-                        edits.push_back({{begin, end, ""},
-                            child->Tokens.Begin});
-                    }
-                }
+                remove(child->Tokens.Begin);
             }
             if (child->Kind != NK::Comment) {
                 previous = child;
@@ -10088,14 +10111,15 @@ std::string Format(const parser::SyntaxTree& tree, const Style& requested)
             formatted = std::move(beforeInitializers);
         }
     }
-    if (style.RemoveNullStatements &&
-        (RemoveNullStatements(tree) ||
-            (initialTokensReordered && RemoveNullStatements(currentTree()))))
+    if ((style.RemoveNullStatements || style.RemoveNullDeclarations) &&
+        (RemoveNullStatements(tree, style) ||
+            (initialTokensReordered &&
+                RemoveNullStatements(currentTree(), style))))
     {
-        // The removed statement is represented in scratch syntax; no
-        // second syntax parse is needed after its semicolon disappears.
+        // Removed semicolons are represented in scratch syntax; no second
+        // syntax parse is needed after they disappear.
         const auto& parsed = currentTree();
-        auto result = RemoveNullStatements(parsed);
+        auto result = RemoveNullStatements(parsed, style);
         std::optional<parser::SyntaxTree> updated;
         if (result) {
             const auto length = result->Output.size();
