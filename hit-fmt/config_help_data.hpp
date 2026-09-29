@@ -1441,13 +1441,13 @@ CRLF lists are left intact. They do not change calls.
   DEFINE_ENUM's closing ); rather than imposing a new layout.
   • CallLineFirstStringNames: array of exact, quoted call identifier names,
   default []. In a parsed call to one of these identifiers, the first
-  complete, single-token string-literal argument stays on the call line
-  when the call is split. Earlier arguments remain on that line too,
-  even if it exceeds ColumnLimit. Other arguments follow
-  CallArgumentSplit. Inter-argument comments, multiline arguments,
-  and unsafe calls remain unchanged. The YTsaurus profile selects direct
-  logging calls and THROW_ERROR_EXCEPTION, but not _IF or _UNLESS
-  variants.
+  argument stays on the call line when the call is split only if it is
+  a complete, single-token string literal, even if that exceeds
+  ColumnLimit. Other arguments follow CallArgumentSplit. Calls whose
+  first argument is not a string follow the usual layout rules.
+  Inter-argument comments, multiline arguments, and unsafe calls remain
+  unchanged. The YTsaurus profile selects direct logging calls and
+  THROW_ERROR_EXCEPTION, but not _IF or _UNLESS variants.
   • EnforceFirstCallArgumentPosition: false (default) preserves the first
   argument's position in already split calls that need no reflow; true
   applies FirstCallArgumentPosition to those calls as well. A reflowed
