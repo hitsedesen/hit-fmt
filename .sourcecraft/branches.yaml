@@ -6,3 +6,8 @@ branch_protection:
         - prevent_force_push
         - prevent_non_pr_changes
         - prevent_deletion
+    - target: tag
+      matches: "v*"
+      message: "Release tags cannot be changed or deleted"
+      rules:
+        - prevent_update
