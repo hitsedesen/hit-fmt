@@ -1,5 +1,9 @@
 #include <cstddef>
 namespace N {};
+namespace foo {
+}; // foo
+namespace bar {
+}; /* bar */
 namespace Alias = N;
 export ;
 namespace Outer {
@@ -18,6 +22,7 @@ struct S {};
 struct Methods { void run() {}; };
 enum E { A };
 void g() {};
+void commented() {}; // commented
 void f() {
     work();
     ;
