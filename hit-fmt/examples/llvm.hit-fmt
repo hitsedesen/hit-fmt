@@ -81,6 +81,7 @@ ControlConditionIndent = Continuation
 
 # Blocks and statements
 IndentBlockBodies = true
+RemoveNullDeclarations = true
 StatementAttributeIndent = Block
 
 # Initializers, new, and delete

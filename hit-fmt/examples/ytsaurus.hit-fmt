@@ -155,6 +155,7 @@ RangeBasedForColonSpacing = Space
 # Blocks and statements
 IndentBlockBodies = true
 RemoveNullStatements = true
+RemoveNullDeclarations = true
 IndentLeadingStatementComments = true
 # YSON writer calls open and close visual scopes without C++ braces.
 IndentedCallScopePairs = ["OnBeginList:OnEndList", "OnBeginMap:OnEndMap", "OnBeginAttributes:OnEndAttributes"]
