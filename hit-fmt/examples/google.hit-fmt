@@ -4,6 +4,7 @@
 # Indentation and limits
 IndentWidth = 2
 ColumnLimit = 80
+LineLengthCheck = Strict
 IndentationKind = Spaces
 TrailingWhitespace = Trim
 
