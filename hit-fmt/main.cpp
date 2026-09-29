@@ -27,6 +27,7 @@
 #include <string>
 #include <string_view>
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
 
 #ifdef _WIN32
@@ -1200,19 +1201,23 @@ bool IsExcluded(
     });
 }
 
-template <typename ConfigExcludes>
-std::vector<std::filesystem::path> CollectFiles(
+template <typename ConfigExcludes, typename Visit>
+bool ForEachFile(
     const std::vector<std::filesystem::path>& paths,
     const std::vector<std::regex>& exclusions,
-    ConfigExcludes configExcludes)
+    ConfigExcludes configExcludes,
+    Visit visit)
 {
-    std::vector<std::filesystem::path> files;
+    std::unordered_set<std::filesystem::path> seen;
+    auto emit = [&] (const std::filesystem::path& path) {
+        return !seen.insert(path).second || visit(path);
+    };
     for (const auto& path : paths) {
         if (std::filesystem::is_regular_file(path)) {
             if (!IsExcluded(path.filename(), exclusions) &&
-                !configExcludes(path, false))
+                !configExcludes(path, false) && !emit(path))
             {
-                files.push_back(path);
+                return false;
             }
             continue;
         }
@@ -1238,15 +1243,13 @@ std::vector<std::filesystem::path> CollectFiles(
                 continue;
             }
             if (!entry.is_symlink() && entry.is_regular_file() &&
-                IsCppSource(entry.path()))
+                IsCppSource(entry.path()) && !emit(entry.path()))
             {
-                files.push_back(entry.path());
+                return false;
             }
         }
     }
-    std::ranges::sort(files);
-    files.erase(std::ranges::unique(files).begin(), files.end());
-    return files;
+    return true;
 }
 
 using formatter::Hunk;
@@ -1576,7 +1579,6 @@ void PrintHelp(
 int main(int argc, char* argv[])
 {
     Options options;
-    std::vector<std::filesystem::path> files;
     std::optional<StyleResolver> styleResolver;
     try {
         options = ParseOptions(argc, argv);
@@ -1616,12 +1618,6 @@ int main(int argc, char* argv[])
             return 1;
         }
         styleResolver.emplace(options);
-        files = CollectFiles(
-            options.Paths,
-            options.Exclusions,
-            [&] (const auto& path, bool directory) {
-                return styleResolver->IsExcluded(path, directory);
-            });
     } catch (const std::exception& error) {
         std::cerr << error.what() << '\n';
         return 1;
@@ -1630,7 +1626,7 @@ int main(int argc, char* argv[])
     bool summaryOnly = options.SummaryOnly;
     bool useColor = UseTerminalColors();
     size_t mismatchCount = 0;
-    for (const auto& path : files) {
+    auto checkFile = [&] (const std::filesystem::path& path) {
         auto filePath = path.string();
         try {
             auto sourceStorage = util::ReadEntireFile(
@@ -1767,7 +1763,8 @@ int main(int argc, char* argv[])
 
             if (!options.Fix) {
                 mismatchCount += inspect(tree, hunks);
-                continue;
+                std::cout.flush();
+                return true;
             }
 
             auto applied = options.HunkInput
@@ -1819,8 +1816,25 @@ int main(int argc, char* argv[])
             std::cerr << "warning: " << error.what() << "; skipping\n";
         } catch (const std::exception& error) {
             std::cerr << filePath << ": " << error.what() << '\n';
+            return false;
+        }
+        std::cout.flush();
+        return true;
+    };
+    try {
+        if (!ForEachFile(
+                options.Paths,
+                options.Exclusions,
+                [&] (const auto& path, bool directory) {
+                    return styleResolver->IsExcluded(path, directory);
+                },
+                checkFile))
+        {
             return 1;
         }
+    } catch (const std::exception& error) {
+        std::cerr << error.what() << '\n';
+        return 1;
     }
     if (useColor) {
         if (mismatchCount == 0) {
