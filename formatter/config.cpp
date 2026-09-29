@@ -277,6 +277,23 @@ std::vector<std::string> ParseCallNames(
     return names;
 }
 
+std::vector<std::string> ParseBinaryOperators(
+    std::string_view value,
+    const std::filesystem::path& path,
+    size_t line)
+{
+    auto names = ParseStringList(value, path, line);
+    constexpr std::array<std::string_view, 19> operators{
+        "||", "&&", "|", "^", "&", "==", "!=", "<", ">", "<=", ">=",
+        "<=>", "<<", ">>", "+", "-", "*", "/", "%"};
+    for (const auto& name : names) {
+        if (std::ranges::find(operators, name) == operators.end()) {
+            ThrowConfigError(path, line, "expected a binary operator spelling");
+        }
+    }
+    return names;
+}
+
 std::vector<std::string> ParseCallPairs(
     std::string_view value,
     const std::filesystem::path& path,
@@ -393,6 +410,14 @@ void ValidateStyleLimits(
     const std::filesystem::path& path,
     size_t line)
 {
+    for (const auto& op : style.LeadingBinaryOperatorList) {
+        if (std::ranges::find(style.TrailingBinaryOperatorList, op) !=
+            style.TrailingBinaryOperatorList.end())
+        {
+            ThrowConfigError(path, line,
+                "binary operator cannot be both leading and trailing");
+        }
+    }
     if (style.IndentWidth == 0 || style.IndentWidth > 32) {
         ThrowConfigError(path, line, "IndentWidth must be between 1 and 32");
     }
@@ -464,11 +489,30 @@ void AssignStyle(
                 ParseNamespaceExemptions(value, path, line);
         } else if constexpr (Member == &Style::IndentedCallScopePairs) {
             config.FormattingStyle.*Member = ParseCallPairs(value, path, line);
+        } else if constexpr (Member == &Style::LeadingBinaryOperatorList ||
+            Member == &Style::TrailingBinaryOperatorList)
+        {
+            config.FormattingStyle.*Member =
+                ParseBinaryOperators(value, path, line);
         } else {
             config.FormattingStyle.*Member = ParseCallNames(value, path, line);
         }
     } else {
         ParseField(config.FormattingStyle.*Member, value, path, line);
+        if constexpr (std::is_same_v<std::remove_cvref_t<
+                decltype(config.FormattingStyle.*Member)>,
+                BinaryOperatorPlacement>)
+        {
+            if constexpr (Member == &Style::BinaryOperatorPlacement) {
+                config.FormattingStyle.DefaultBinaryOperatorPlacement =
+                    config.FormattingStyle.BinaryOperatorPlacement;
+            } else if constexpr (Member ==
+                &Style::DefaultBinaryOperatorPlacement)
+            {
+                config.FormattingStyle.BinaryOperatorPlacement =
+                    config.FormattingStyle.DefaultBinaryOperatorPlacement;
+            }
+        }
     }
 }
 

@@ -2,7 +2,8 @@ void Many(
           int alpha, int beta,
           int gamma, int delta);
 void Short(int a, int b);
-void ExistingName(int first, int second,
+void ExistingName(
+                  int first, int second,
                   int third,
                   int fourth);
 void ExistingNew(

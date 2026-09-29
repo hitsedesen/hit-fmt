@@ -450,6 +450,7 @@ send(
 send(
     first +
         second);
+// Newly generated breaks move the sole argument even without enforcement.
 // EnforceMultilineSingleCallArgumentPosition = true also moves
 // an existing safe multiline sole argument.
 )HIT_FMT_HELP"},
@@ -927,12 +928,14 @@ result = first +
 // FitOrOverflow also rejoins safe existing breaks when flat form fits.
 // Always starts flat and reflows, even if previously laid out differently.
 )HIT_FMT_HELP"},
-    {R"HIT_FMT_HELP(BinaryOperatorPlacement (with expression layout enabled):)HIT_FMT_HELP", R"HIT_FMT_HELP(// BinaryOperatorPlacement = Trailing
+    {R"HIT_FMT_HELP(DefaultBinaryOperatorPlacement and binary operator lists:)HIT_FMT_HELP", R"HIT_FMT_HELP(// DefaultBinaryOperatorPlacement = Leading
+// TrailingBinaryOperatorList = ["+", "<<"]
+// LeadingBinaryOperatorList = ["||"]
 result = first +
     second;
-// BinaryOperatorPlacement = Leading
-result = first
-    + second;
+result = first || second
+    || third;
+// BinaryOperatorPlacement remains a compatibility alias for the default.
 )HIT_FMT_HELP"},
     {R"HIT_FMT_HELP(AssignmentOperatorPlacement (with expression layout enabled):)HIT_FMT_HELP", R"HIT_FMT_HELP(// AssignmentOperatorPlacement = Leading
 result
@@ -1239,12 +1242,11 @@ constexpr HelpSection HelpSections[] = {
   • FirstFunctionParameterPosition: NameLine (default), NewLine, or
   NameLineIfFits. The latter keeps the first parameter beside ( only
   if it and its following comma or closing suffix fit within ColumnLimit;
-  otherwise it moves the first parameter to a new line. Existing split
-  lists retain their first parameter's position unless that placement
-  already exceeds the limit or enforcement is enabled.
-  • EnforceFirstFunctionParameterPosition: false (default) retains the
-  first parameter's position in already split lists; true applies the
-  configured position to those lists as well.
+  otherwise it moves the first parameter to a new line. Reflowed lists
+  use the configured position, even when they were already split.
+  • EnforceFirstFunctionParameterPosition: false (default) preserves the
+  first parameter's position in already split lists that need no reflow;
+  true applies the configured position to those lists as well.
   • FunctionParameterIndent: IndentWidth (default, indent one width
   beyond the declaration) or Continuation (align with the character
   immediately after the opening ().
@@ -1379,8 +1381,9 @@ CRLF lists are left intact. They do not change calls.
   where the first argument starts when a call is split.
   • MultilineSingleCallArgumentPosition: CallLine (default) keeps the
   opening of a multiline sole argument beside the call name; NewLine
-  places it below ( using CallArgumentIndent when a split is needed.
-  EnforceMultilineSingleCallArgumentPosition (default false) also
+  places it below the opening ( using CallArgumentIndent when a split is
+  generated.
+  EnforceMultilineSingleCallArgumentPosition (default false) additionally
   checks and corrects safe existing multiline calls, even when
   EnforceCallArgumentSplit = false. It does not split flat, fitting arguments or
   reshape the argument's interior. A sole nested call stays on the outer
@@ -1389,7 +1392,7 @@ CRLF lists are left intact. They do not change calls.
   remain source-owned (apart from safe overlong direct lambdas, whose body
   indentation moves with the capture). Without enforcement it applies when
   CallArgumentSplit is enabled. The YTsaurus profile uses NewLine
-  with enforcement enabled.
+  with enforcement disabled; generated multiline arguments still move.
   • ChainedCallRootNames: exact names of call expressions that may start
   a formatted member-call chain, default []. A simple name also matches
   namespace-qualified calls ending in that name (MakeAction matches
@@ -1431,11 +1434,10 @@ CRLF lists are left intact. They do not change calls.
   and unsafe calls remain unchanged. The YTsaurus profile selects direct
   logging calls and THROW_ERROR_EXCEPTION, but not _IF or _UNLESS
   variants.
-  • EnforceFirstCallArgumentPosition: false (default) retains the first
-  argument's position when reflowing an already split call in Overflow
-  or FitOrOverflow; true applies FirstCallArgumentPosition to
-  those calls.
-  Always always applies the configured position.
+  • EnforceFirstCallArgumentPosition: false (default) preserves the first
+  argument's position in already split calls that need no reflow; true
+  applies FirstCallArgumentPosition to those calls as well. A reflowed
+  call uses the configured position even when it was already split.
   • CallArgumentIndent: IndentWidth (default, indent one width beyond
   the call's line) or Continuation (align with the character after the
   opening (). With expression layout enabled, Continuation also aligns
@@ -1874,21 +1876,26 @@ CRLF lists are left intact. They do not change calls.
   Expression operator layout covers parsed binary, assignment, and
   conditional operators. Operator gaps are normalized in Always mode;
   other expression gaps, including call argument breaks, are controlled
-  separately by CallArgumentSplit. New continuations normally use
+  separately by CallArgumentSplit. A fitting outer break is preferred to
+  breaks inside calls, parentheses, or subscripts; inner breaks remain
+  available when no outer break fits. New continuations normally use
   IndentWidth beyond the original line's leading spaces; parsed control
   conditions can instead use ControlConditionIndent, and parsed calls
   can use CallArgumentIndent. Comments,
   directives, CRLF, backslashes, and ambiguous or recovered syntax stay
-  source-owned. Bare <, >, <<, and >> remain untouched even when
-  parsed as operators: without name lookup they can be template syntax.
-  • BinaryOperatorPlacement: Trailing (default, keep a wrapped binary
-  operator at the end of the previous line) or Leading (put it at the
-  start of the continuation line). Only applies when
-  ExpressionLayoutCondition is not Preserve; assignment operators use
-  AssignmentOperatorPlacement and conditional ?/: have their own
-  setting. Overflow keeps existing operator breaks but safely moves the
-  newline to the configured side of a binary operator, even if the
-  expression otherwise fits on one line.
+  source-owned. Bare <, >, and >> remain untouched when they could be
+  template syntax; parsed << shifts can be split.
+  • DefaultBinaryOperatorPlacement: Trailing (default, keep a wrapped
+  binary operator at the end of the previous line) or Leading (put it at
+  the start of the continuation line). BinaryOperatorPlacement remains
+  a compatibility alias for this setting. TrailingBinaryOperatorList and
+  LeadingBinaryOperatorList override the default for exact operator
+  spellings (for example ["+", "<<"] or ["||"]). An operator cannot
+  occur in both lists. Only parsed binary operators are affected; unary,
+  assignment, and ternary operators use their own settings. These options
+  apply when ExpressionLayoutCondition is not Preserve. Overflow keeps
+  existing operator breaks but safely moves the newline to the selected
+  side, even if the expression otherwise fits on one line.
   • AssignmentOperatorPlacement: Leading (default, put a wrapped
   assignment operator at the start of the continuation line) or Trailing
   (keep it at the end of the preceding line). Like binary placement, this

@@ -1,0 +1,3 @@
+ColumnLimit = 85
+ExpressionLayoutCondition = Overflow
+DefaultBinaryOperatorPlacement = Leading

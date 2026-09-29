@@ -1,0 +1,5 @@
+ColumnLimit = 55
+CallArgumentSplit = OnePerLine
+EnforceCallArgumentSplit = true
+FirstCallArgumentPosition = NewLine
+EnforceFirstCallArgumentPosition = false
