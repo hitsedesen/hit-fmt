@@ -440,6 +440,10 @@ std::vector<FormattedCase> FormattedCases()
         cases.push_back({std::filesystem::path(FORMATTER_TESTDATA_DIR) /
             ".." / name, "configured"});
     }
+    const auto strings = std::filesystem::path(FORMATTER_TESTDATA_DIR) /
+        "../concat-strings";
+    AddCases(cases, strings, {"overflow", "preserve"});
+    cases.push_back({strings, "crlf", "crlf.input.cpp", "overflow"});
     const auto parsedOperators = std::filesystem::path(FORMATTER_TESTDATA_DIR) /
         "../parsed-operators";
     for (const auto* name : {"placement-lists", "delimiter-choice"}) {
