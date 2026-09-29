@@ -98,7 +98,12 @@ bounded enclosing list or include group by default. Use `--no-spillover`
 to restrict fixes to the hunk lines; changes requiring spill-over remain
 check errors. Run `hit-fmt --help` for command-line options and
 `hit-fmt --help-config` for the configuration reference and per-option C++
-examples. Help is built into the binary and colored on terminals; set
+examples. `hit-fmt --version` (or `-V`) prints the version built into the
+binary. A clean checkout at the matching `v<version>` Git tag reports the
+release version. Other checkouts include `-dev+<commit>` and append `.dirty`
+when there are uncommitted changes (including untracked files). Source
+archives without Git metadata report only `-dev`. The version updates on
+each build. Help is built into the binary and colored on terminals; set
 `NO_COLOR` to disable color. Generate a complete preserving configuration
 with all settings and their accepted values annotated:
 
