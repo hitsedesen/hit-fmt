@@ -697,13 +697,14 @@ T x{1, 2};
     {R"HIT_FMT_HELP(EmptyBraceInitializerInteriorSpacing:)HIT_FMT_HELP", R"HIT_FMT_HELP(// EmptyBraceInitializerInteriorSpacing = Space | NoSpace
 T x{ };  T x{};
 )HIT_FMT_HELP"},
-    {R"HIT_FMT_HELP(InitializerListSplit (with a small ColumnLimit):)HIT_FMT_HELP", R"HIT_FMT_HELP(// InitializerListSplit = Pack
+    {R"HIT_FMT_HELP(InitializerListSplit (with a small ColumnLimit):)HIT_FMT_HELP", R"HIT_FMT_HELP(// InitializerListSplit = Pack (default): break an overflowing list
 T x{first, second,
     third};
-// InitializerListSplit = OnePerLine
+// InitializerListSplit = OnePerLine: break an overflowing list
 T x{first,
     second,
     third};
+// EnforceInitializerListSplit = true also normalizes fitting split lists
 )HIT_FMT_HELP"},
     {R"HIT_FMT_HELP(FirstInitializerElementPosition (when splitting):)HIT_FMT_HELP", R"HIT_FMT_HELP(// FirstInitializerElementPosition = BraceLine
 T x{first,
@@ -720,30 +721,33 @@ T x{first,
 T x{first,
     second}; // aligns beneath the first element
 )HIT_FMT_HELP"},
-    {R"HIT_FMT_HELP(InitializerClosingBrace and EnforceInitializerClosingBrace:)HIT_FMT_HELP", R"HIT_FMT_HELP(// InitializerClosingBrace = SameLine
-// EnforceInitializerClosingBrace = true
-T x{first,
-    second};
-// InitializerClosingBrace = NewLine
-// EnforceInitializerClosingBrace = true
-T x{first,
-    second
+    {R"HIT_FMT_HELP(InitializerListClosingBrace and EnforceInitializerListClosingBrace:)HIT_FMT_HELP", R"HIT_FMT_HELP(// InitializerListClosingBrace = SameLine
+// EnforceInitializerListClosingBrace = true
+T x{first, second,};
+// InitializerListClosingBrace = NewLine
+T x{first, second
 };
-)HIT_FMT_HELP"},
-    {R"HIT_FMT_HELP(InitializerTrailingComma (with InitializerClosingBrace = SameLine):)HIT_FMT_HELP", R"HIT_FMT_HELP(// InitializerTrailingComma = Keep
-T x{
+// InitializerListClosingBrace = SameLineUnlessTrailingComma (default)
+T x{first, second};
+T y{
     first,
     second,
 };
-// InitializerTrailingComma = Remove
-T x{
-    first,
-    second};
+)HIT_FMT_HELP"},
+    {R"HIT_FMT_HELP(InitializerListTrailingComma and EnforceInitializerListTrailingComma:)HIT_FMT_HELP", R"HIT_FMT_HELP(// InitializerListTrailingComma = Keep (default): preserve presence
+T x{first, second,};
+// InitializerListTrailingComma = Add
+// EnforceInitializerListTrailingComma = true
+T x{first, second,};
+// InitializerListTrailingComma = Remove
+// EnforceInitializerListTrailingComma = true
+T x{first, second};
 )HIT_FMT_HELP"},
     {R"HIT_FMT_HELP(MergeInitializerList:)HIT_FMT_HELP", R"HIT_FMT_HELP(// MergeInitializerList = false
 T x{first,
     second};
-// MergeInitializerList = true (if the result fits)
+// MergeInitializerList = true with EnforceInitializerListSplit = true
+// (if the result fits)
 T x{first, second};
 )HIT_FMT_HELP"},
     {R"HIT_FMT_HELP(PlacementNewSpaceBeforeArguments:)HIT_FMT_HELP", R"HIT_FMT_HELP(// PlacementNewSpaceBeforeArguments = Space | NoSpace
@@ -1659,11 +1663,15 @@ CRLF lists are left intact. They do not change calls.
   for empty parsed braced initializers. Neither setting
   affects block, namespace, record, or lambda braces.
   • InitializerListSplit: Pack (default, put as many braced initializer
-  elements on a line as fit) or OnePerLine (one element per continuation
-  line when a split is needed). EnforceInitializerListSplit (default false)
-  enables reflow of safe existing lists. Applies only to complete
-  parsed braced initializer lists with single-line elements, comma
-  separators, and whitespace-only gaps. Trailing commas are preserved;
+  elements on a line as fit), or OnePerLine (one element per continuation
+  line when a split is needed).
+  Safe overflowing lists reflow using that layout, while lists whose
+  physical lines already fit stay unchanged. EnforceInitializerListSplit
+  (default false) additionally normalizes safe, already-split lists
+  whose lines fit ColumnLimit. Applies only to complete
+  parsed braced initializer lists with single-line elements, including
+  .field = value and [index] = value designators, comma separators,
+  and whitespace-only gaps. Trailing commas are preserved by default;
   comments, directives, CRLF, and multiline elements stay source-owned.
   Lists that already fit on one line are not split. Nested lists are
   reparsed until stable, with a limit of 16 passes; deeper layouts remain
@@ -1672,27 +1680,26 @@ CRLF lists are left intact. They do not change calls.
   determines where the first element starts when a list is split.
   • InitializerListIndent: IndentWidth (default, one width beyond the
   list's line) or Continuation (align with the character after {).
-  • InitializerClosingBrace: SameLine (default, beside the last element
-  unless a retained comma precedes it) or NewLine selects the position
-  when reflowing a list. EnforceInitializerClosingBrace (default false)
-  also applies that position without reflow, including with
-  EnforceInitializerListSplit = false when the gap before } is safe. For
-  unknown typed temporary initializers, only the closing gap (or a safe
-  trailing comma, if requested) is changed; their contents are not reflowed.
-  A multiline final element retains its own closing-brace line. A closing
-  brace on the same line as , { for the next initializer element also
-  keeps that boundary rather than joining both elements onto the prior line.
-  • InitializerTrailingComma: Keep (default) leaves a trailing comma
-  intact and puts } on its own line, even with
-  InitializerClosingBrace = SameLine; safe parsed compact lists are split one
-  element per line rather than leaving a comma immediately before the
-  newly separated brace. Remove removes the trailing comma and joins
-  } to the last element. Only applies to safe braced initializer gaps
-  when InitializerClosingBrace = SameLine; comments and directives
-  adjacent to the brace remain untouched.
+  • InitializerListClosingBrace: SameLine, NewLine, or
+  SameLineUnlessTrailingComma (default) chooses the position of }.
+  EnforceInitializerListClosingBrace (default false) also applies the
+  chosen placement to safe existing gaps without list reflow.
+  A multiline final element retains its own closing-brace line; a brace
+  anchoring the next sibling initializer stays on its original line.
+  Compact comma-terminated lists are split one element per line when
+  enforcing a NewLine brace. Unknown typed temporary initializers only
+  have their safe closing gap adjusted; their contents are not reflowed.
+  • InitializerListTrailingComma: Keep (default) retains its presence on
+  reflow, Add inserts one, and Remove drops one.
+  EnforceInitializerListTrailingComma
+  (default false) additionally applies Add or Remove to safe existing
+  parsed lists independently of brace placement. An unknown typed temporary
+  can have a safe trailing comma removed, but one is never added to its
+  unparsed contents. Gaps next to comments or directives stay unchanged.
   • MergeInitializerList: false (default) leaves already split lists
-  multiline; true joins safe lists that fit within ColumnLimit unless
-  InitializerClosingBrace = NewLine is requested.
+  multiline; true joins safe lists that fit within ColumnLimit when
+  EnforceInitializerListSplit is true, unless the selected closing-brace
+  position (with or without a trailing comma) is NewLine.
   • PlacementNewSpaceBeforeArguments: Preserve (default), Space, or
   NoSpace between new and a parsed placement argument list:
   new (buffer) T versus new(buffer) T. Ordinary new T(...) and

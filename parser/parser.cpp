@@ -316,7 +316,8 @@ std::optional<SyntaxTree> SyntaxTree::RebindWhitespaceGaps(
     const auto tail = input.substr(newEnd);
     if (tail != Input_.substr(oldEnd)) {
         edits.push_back({oldEnd,
-            static_cast<util::SourceOffset>(Input_.size()), tail});
+            static_cast<util::SourceOffset>(Input_.size()),
+            tail});
     }
     return RebindWhitespaceEdits(source, edits);
 }
@@ -3362,6 +3363,26 @@ private:
         auto elementCursor = NextSignificant(opening + 1);
         while (elementCursor + 1 < closingEnd) {
             auto before = elementCursor;
+            // A designated member is one list element, including its
+            // designator and assignment. Parse the value as an expression
+            // while keeping the complete element available to list reflow.
+            TokenIndex afterDesignator = before;
+            if (Kind(before) == TK::Operator_ClassMemberAccess &&
+                Kind(NextSignificant(before + 1)) == TK::Identifier)
+            {
+                afterDesignator = NextSignificant(
+                    NextSignificant(before + 1) + 1);
+            } else if (Kind(before) == TK::Operator_OpenBracket) {
+                auto closing = Tree_.Tokens_.MatchingDelimiter(before);
+                if (closing > before && closing < closingEnd - 1) {
+                    afterDesignator = NextSignificant(closing + 1);
+                }
+            }
+            if (afterDesignator != before &&
+                Kind(afterDesignator) == TK::Operator_Assign)
+            {
+                elementCursor = NextSignificant(afterDesignator + 1);
+            }
             auto* expression =
                 ParseExpressionSyntax(elementCursor, closingEnd - 1, 2);
             if (expression) {
@@ -5069,10 +5090,10 @@ private:
             case TK::Operator_LeftShiftAssign:
             case TK::Operator_RightShiftAssign:
                 return {
-                .Precedence = 2,
-                .RightAssociative = true,
-                .Kind = NodeKind::AssignmentExpression,
-            };
+                    .Precedence = 2,
+                    .RightAssociative = true,
+                    .Kind = NodeKind::AssignmentExpression,
+                };
             case TK::Operator_Or:
                 return {.Precedence = 4};
             case TK::Operator_And:

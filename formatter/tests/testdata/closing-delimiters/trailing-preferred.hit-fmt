@@ -1,0 +1,4 @@
+ColumnLimit = 48
+InitializerListTrailingComma = Add
+EnforceInitializerListTrailingComma = false
+InitializerListClosingBrace = SameLine

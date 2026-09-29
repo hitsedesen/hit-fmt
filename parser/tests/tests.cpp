@@ -366,11 +366,14 @@ TEST(Parser, RebindsWhitespaceWithoutReclassifyingTokens)
     const auto beforeClose = source.find(" }");
     const std::array<parser::WhitespaceEdit, 3> edits{{
         {static_cast<util::SourceOffset>(beforeBrace),
-            static_cast<util::SourceOffset>(beforeBrace + 1), "\n"},
+            static_cast<util::SourceOffset>(beforeBrace + 1),
+            "\n"},
         {static_cast<util::SourceOffset>(beforeReturn),
-            static_cast<util::SourceOffset>(beforeReturn + 1), "\n  "},
+            static_cast<util::SourceOffset>(beforeReturn + 1),
+            "\n  "},
         {static_cast<util::SourceOffset>(beforeClose),
-            static_cast<util::SourceOffset>(beforeClose + 1), "\n"},
+            static_cast<util::SourceOffset>(beforeClose + 1),
+            "\n"},
     }};
     auto fromEdits = original.RebindWhitespaceEdits(reformatted.View(), edits);
     auto fromGaps = original.RebindWhitespaceGaps(reformatted.View());
@@ -400,11 +403,14 @@ TEST(Parser, RebindsWhitespaceWithoutReclassifyingTokens)
     const auto beforeEnd = expanded.find(";\n}") + 1;
     const std::array<parser::WhitespaceEdit, 3> mergedEdits{{
         {static_cast<util::SourceOffset>(beforeOpen),
-            static_cast<util::SourceOffset>(beforeOpen + 1), " "},
+            static_cast<util::SourceOffset>(beforeOpen + 1),
+            " "},
         {static_cast<util::SourceOffset>(beforeBody),
-            static_cast<util::SourceOffset>(beforeBody + 3), " "},
+            static_cast<util::SourceOffset>(beforeBody + 3),
+            " "},
         {static_cast<util::SourceOffset>(beforeEnd),
-            static_cast<util::SourceOffset>(beforeEnd + 1), " "},
+            static_cast<util::SourceOffset>(beforeEnd + 1),
+            " "},
     }};
     auto merged = reparsed.RebindWhitespaceEdits(input.View(), mergedEdits);
     ASSERT_TRUE(merged);
@@ -419,14 +425,16 @@ TEST(Parser, RebindsWhitespaceWithoutReclassifyingTokens)
     PaddedInput joined("int f() { returnvalue + 1; }\n");
     const std::array<parser::WhitespaceEdit, 1> unsafe{{
         {static_cast<util::SourceOffset>(source.find(" value")),
-            static_cast<util::SourceOffset>(source.find(" value") + 1), ""},
+            static_cast<util::SourceOffset>(source.find(" value") + 1),
+            ""},
     }};
     EXPECT_FALSE(original.RebindWhitespaceEdits(joined.View(), unsafe));
     EXPECT_FALSE(original.RebindWhitespaceGaps(joined.View()));
     PaddedInput tight("int f() { return value+ 1; }\n");
     const std::array<parser::WhitespaceEdit, 1> safe{{
         {static_cast<util::SourceOffset>(source.find(" + ")),
-            static_cast<util::SourceOffset>(source.find(" + ") + 1), ""},
+            static_cast<util::SourceOffset>(source.find(" + ") + 1),
+            ""},
     }};
     auto tightRebound = original.RebindWhitespaceEdits(tight.View(), safe);
     ASSERT_TRUE(tightRebound);
@@ -453,7 +461,8 @@ TEST(Parser, RebindsWhitespaceWithoutReclassifyingTokens)
     auto gap = unicodeSource.find(" x;");
     const std::array<parser::WhitespaceEdit, 1> unicodeEdit{{
         {static_cast<util::SourceOffset>(gap),
-            static_cast<util::SourceOffset>(gap + 1), "    "},
+            static_cast<util::SourceOffset>(gap + 1),
+            "    "},
     }};
     auto unicodeRebound = unicodeTree.RebindWhitespaceEdits(
         unicodeSpaced.View(),

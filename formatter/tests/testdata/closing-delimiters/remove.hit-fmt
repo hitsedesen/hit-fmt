@@ -1,3 +1,4 @@
-InitializerClosingBrace = SameLine
-EnforceInitializerClosingBrace = true
-InitializerTrailingComma = Remove
+InitializerListClosingBrace = SameLineUnlessTrailingComma
+EnforceInitializerListClosingBrace = true
+InitializerListTrailingComma = Remove
+EnforceInitializerListTrailingComma = true
