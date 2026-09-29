@@ -8,4 +8,5 @@ ControlBlockSpaceBeforeBrace = Space
 EnforceControlBlockSpaceBeforeBrace = true
 TrailingWhitespace = Trim
 ColumnLimit = 40
+LineLengthCheck = Strict
 ExpressionLayoutCondition = Overflow
