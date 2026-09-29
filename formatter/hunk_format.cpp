@@ -172,9 +172,8 @@ std::string FormatHunks(
     // Also separates adjacent calls whose reflows share a line-diff chunk.
     std::string padded(candidate);
     padded.append(util::SourcePaddingSize, '\0');
-    auto formattedTree = parser::Parse(
-        {.Data = padded.data(), .Size = candidate.size()},
-        [] (parser::ParseError) { });
+    auto formattedTree = parser::SyntaxTree::TokenizeOnly(
+        {.Data = padded.data(), .Size = candidate.size()});
     bool sameTokens = tree.TokenCount() == formattedTree.TokenCount();
     for (parser::TokenIndex i = 0; sameTokens && i < tree.TokenCount(); ++i) {
         sameTokens = tree.Kind(i) == formattedTree.Kind(i) &&

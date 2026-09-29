@@ -277,6 +277,348 @@ std::optional<SyntaxTree> SyntaxTree::RebindWhitespace(
     return rebound;
 }
 
+std::optional<SyntaxTree> SyntaxTree::RebindWhitespaceGaps(
+    util::PaddedSourceView source) const
+{
+    HIT_FMT_PROFILE_PHASE("parser.rebind_gaps");
+    if (source.Size > util::MaxSourceSize) {
+        return std::nullopt;
+    }
+    std::byte buffer[512];
+    std::pmr::monotonic_buffer_resource scratch(buffer, sizeof(buffer));
+    std::pmr::vector<WhitespaceEdit> edits(&scratch);
+    const auto input = source.View();
+    util::SourceOffset oldEnd = 0;
+    size_t newEnd = 0;
+    auto isWhitespace = [] (char c) {
+        return c == ' ' || c == '\t' || c == '\r' || c == '\n' ||
+            c == '\f' || c == '\v';
+    };
+    for (TokenIndex index = 0; index < TokenCount(); ++index) {
+        const auto text = Tokens_[index].Text;
+        auto newBegin = newEnd;
+        while (newBegin < input.size() && isWhitespace(input[newBegin])) {
+            ++newBegin;
+        }
+        const auto spelling = text.View(Input_);
+        if (spelling.size() > input.size() - newBegin ||
+            input.substr(newBegin, spelling.size()) != spelling)
+        {
+            return std::nullopt;
+        }
+        const auto gap = input.substr(newEnd, newBegin - newEnd);
+        if (gap != Input_.substr(oldEnd, text.Begin - oldEnd)) {
+            edits.push_back({oldEnd, text.Begin, gap});
+        }
+        oldEnd = text.End;
+        newEnd = newBegin + spelling.size();
+    }
+    const auto tail = input.substr(newEnd);
+    if (tail != Input_.substr(oldEnd)) {
+        edits.push_back({oldEnd,
+            static_cast<util::SourceOffset>(Input_.size()), tail});
+    }
+    return RebindWhitespaceEdits(source, edits);
+}
+
+std::optional<SyntaxTree> SyntaxTree::RebindMatchingTokens(
+    util::PaddedSourceView source) const
+{
+    HIT_FMT_PROFILE_PHASE("parser.rebind_matching_tokens");
+    if (source.Size > util::MaxSourceSize) {
+        return std::nullopt;
+    }
+    SyntaxTree rebound(source.View());
+    bool error = false;
+    tokenizer::Tokenizer lexer(source,
+        [&] (tokenizer::TokenizationError) { error = true; });
+    TokenIndex index = 0;
+    for (auto token : lexer) {
+        if (index >= TokenCount() || token.Kind != Kind(index) ||
+            (token.Kind != tokenizer::TokenKind::Comment &&
+                source.View().substr(token.Text.Begin, token.Text.Size()) !=
+                    TokenText(index)))
+        {
+            return std::nullopt;
+        }
+        rebound.Tokens_.Add(token);
+        ++index;
+    }
+    if (error || index != TokenCount()) {
+        return std::nullopt;
+    }
+    rebound.Tokens_.Seal();
+    for (TokenIndex i = 0; i < TokenCount(); ++i) {
+        rebound.Tokens_.SetRole(i, Role(i));
+        rebound.Tokens_.SetMatchingDelimiter(i, MatchingDelimiter(i));
+    }
+    rebound.Root_ = Root_;
+    rebound.Original_ = this;
+    return rebound;
+}
+
+std::optional<SyntaxTree> SyntaxTree::RebindReorderedComments(
+    util::PaddedSourceView source) const
+{
+    HIT_FMT_PROFILE_PHASE("parser.rebind_reordered_comments");
+    if (source.Size > util::MaxSourceSize || TokenCount() < 2) {
+        return std::nullopt;
+    }
+    bool error = false;
+    tokenizer::Tokenizer lexer(source,
+        [&] (tokenizer::TokenizationError) { error = true; });
+    std::vector<tokenizer::Token> tokens;
+    for (auto token : lexer) {
+        tokens.push_back(token);
+    }
+    if (error || tokens.size() != TokenCount()) {
+        return std::nullopt;
+    }
+    auto same = [&] (TokenIndex oldIndex, TokenIndex newIndex) {
+        const auto& token = tokens[newIndex];
+        return token.Kind == Kind(oldIndex) &&
+            (token.Kind == tokenizer::TokenKind::Comment ||
+                source.View().substr(token.Text.Begin, token.Text.Size()) ==
+                    TokenText(oldIndex));
+    };
+    auto brace = [] (tokenizer::TokenKind kind) {
+        return kind == tokenizer::TokenKind::Operator_OpenBrace ||
+            kind == tokenizer::TokenKind::Operator_CloseBrace;
+    };
+    std::vector<TokenIndex> mapped(TokenCount());
+    std::vector<bool> movedComment(TokenCount(), false);
+    size_t swaps = 0;
+    for (TokenIndex i = 0; i < TokenCount();) {
+        if (same(i, i)) {
+            mapped[i] = i;
+            ++i;
+        } else if (i + 1 < TokenCount() &&
+            ((brace(Kind(i)) &&
+                Kind(i + 1) == tokenizer::TokenKind::Comment) ||
+                (Kind(i) == tokenizer::TokenKind::Comment &&
+                    brace(Kind(i + 1)))) &&
+            same(i, i + 1) && same(i + 1, i))
+        {
+            mapped[i] = i + 1;
+            mapped[i + 1] = i;
+            movedComment[Kind(i) == tokenizer::TokenKind::Comment
+                ? i
+                : i + 1] = true;
+            ++swaps;
+            i += 2;
+        } else {
+            return std::nullopt;
+        }
+    }
+    if (!swaps) {
+        return std::nullopt;
+    }
+    SyntaxTree rebound(source.View());
+    for (auto token : tokens) {
+        rebound.Tokens_.Add(token);
+    }
+    rebound.Tokens_.Seal();
+    for (TokenIndex i = 0; i < TokenCount(); ++i) {
+        rebound.Tokens_.SetRole(mapped[i], Role(i));
+        auto match = MatchingDelimiter(i);
+        if (match != std::numeric_limits<TokenIndex>::max()) {
+            if (match >= TokenCount()) {
+                return std::nullopt;
+            }
+            match = mapped[match];
+        }
+        rebound.Tokens_.SetMatchingDelimiter(mapped[i], match);
+    }
+    auto* root = detail::Make<Node>(*rebound.Memory_);
+    root->Kind = Root().Kind;
+    root->Tokens = {0, TokenCount()};
+    std::byte buffer[1024];
+    std::pmr::monotonic_buffer_resource scratch(buffer, sizeof(buffer));
+    std::pmr::vector<std::pair<const Node*, Node*>> pending(&scratch);
+    pending.emplace_back(&Root(), root);
+    std::pmr::vector<Node*> moved(&scratch);
+    while (!pending.empty()) {
+        auto [original, clone] = pending.back();
+        pending.pop_back();
+        for (auto* child = original->Child();
+            child;
+            child = child->NextSibling)
+        {
+            auto* copy = detail::Make<Node>(*rebound.Memory_);
+            copy->Kind = child->Kind;
+            if (child->Tokens.Empty()) {
+                const auto index = child->Tokens.Begin;
+                auto position = index < TokenCount()
+                    ? mapped[index]
+                    : TokenCount();
+                copy->Tokens = {position, position};
+            } else {
+                copy->Tokens = {mapped[child->Tokens.Begin],
+                    mapped[child->Tokens.End - 1] + 1};
+                if (copy->Tokens.Begin >= copy->Tokens.End) {
+                    return std::nullopt;
+                }
+            }
+            if (child->Kind == NodeKind::Comment &&
+                child->Tokens.End == child->Tokens.Begin + 1 &&
+                movedComment[child->Tokens.Begin])
+            {
+                moved.push_back(copy);
+            } else {
+                if (clone->LastChild) {
+                    clone->LastChild->NextSibling = copy;
+                } else {
+                    clone->FirstChild = copy;
+                }
+                clone->LastChild = copy;
+            }
+            pending.emplace_back(child, copy);
+        }
+    }
+    for (auto* comment : moved) {
+        const auto position = comment->Tokens.Begin;
+        auto* parent = root;
+        while (true) {
+            Node* containing = nullptr;
+            for (auto* child = parent->FirstChild;
+                child;
+                child = child->NextSibling)
+            {
+                if (child->Kind != NodeKind::Comment &&
+                    child->Tokens.Begin <= position &&
+                    position < child->Tokens.End &&
+                    (child->FirstChild ||
+                        child->Kind == NodeKind::CompoundStatement))
+                {
+                    containing = child;
+                    break;
+                }
+            }
+            if (!containing) {
+                break;
+            }
+            parent = containing;
+        }
+        Node* previous = nullptr;
+        auto* next = parent->FirstChild;
+        while (next && next->Tokens.Begin <= position) {
+            previous = next;
+            next = next->NextSibling;
+        }
+        if (parent->Kind == NodeKind::FunctionDefinition &&
+            previous && previous->Kind == NodeKind::InitDeclaratorList &&
+            next && next->Kind == NodeKind::CompoundStatement &&
+            next->Tokens.Begin == position + 1 &&
+            previous->Tokens.End == position)
+        {
+            // Between a function declarator and its body the parser owns
+            // the comment as header trivia, not as a comment child.
+            auto* header = previous;
+            while (header) {
+                header->Tokens.End = position + 1;
+                Node* tail = nullptr;
+                for (auto* child = header->FirstChild;
+                    child;
+                    child = child->NextSibling)
+                {
+                    if (child->Tokens.End == position &&
+                        (child->Kind == NodeKind::InitDeclarator ||
+                            child->Kind == NodeKind::Declarator ||
+                            child->Kind == NodeKind::FunctionDeclarator))
+                    {
+                        tail = child;
+                    }
+                }
+                header = tail;
+            }
+            continue;
+        }
+        comment->NextSibling = next;
+        if (previous) {
+            previous->NextSibling = comment;
+        } else {
+            parent->FirstChild = comment;
+        }
+        if (!next) {
+            parent->LastChild = comment;
+        }
+    }
+    rebound.Root_ = root;
+    return rebound;
+}
+
+std::optional<SyntaxTree> SyntaxTree::RebindSortedIncludes(
+    util::PaddedSourceView source) const
+{
+    HIT_FMT_PROFILE_PHASE("parser.rebind_sorted_includes");
+    if (source.Size > util::MaxSourceSize) {
+        return std::nullopt;
+    }
+    bool error = false;
+    tokenizer::Tokenizer lexer(source,
+        [&] (tokenizer::TokenizationError) { error = true; });
+    std::vector<tokenizer::Token> tokens;
+    for (auto token : lexer) {
+        tokens.push_back(token);
+    }
+    if (error || tokens.size() != TokenCount()) {
+        return std::nullopt;
+    }
+    bool changed = false;
+    for (TokenIndex i = 0; i < TokenCount();) {
+        if (tokens[i].Kind != Kind(i)) {
+            return std::nullopt;
+        }
+        if (Kind(i) != tokenizer::TokenKind::PreprocessingDirective) {
+            if (source.View().substr(
+                tokens[i].Text.Begin,
+                tokens[i].Text.Size()) != TokenText(i))
+            {
+                return std::nullopt;
+            }
+            ++i;
+            continue;
+        }
+        auto end = i;
+        std::vector<std::string_view> before;
+        std::vector<std::string_view> after;
+        while (end < TokenCount() &&
+            Kind(end) == tokenizer::TokenKind::PreprocessingDirective &&
+            tokens[end].Kind == Kind(end))
+        {
+            before.push_back(TokenText(end));
+            after.push_back(source.View().substr(
+                tokens[end].Text.Begin,
+                tokens[end].Text.Size()));
+            ++end;
+        }
+        auto sortedBefore = before;
+        auto sortedAfter = after;
+        std::ranges::sort(sortedBefore);
+        std::ranges::sort(sortedAfter);
+        if (sortedBefore != sortedAfter) {
+            return std::nullopt;
+        }
+        changed |= before != after;
+        i = end;
+    }
+    if (!changed) {
+        return std::nullopt;
+    }
+    SyntaxTree rebound(source.View());
+    for (auto token : tokens) {
+        rebound.Tokens_.Add(token);
+    }
+    rebound.Tokens_.Seal();
+    for (TokenIndex i = 0; i < TokenCount(); ++i) {
+        rebound.Tokens_.SetRole(i, Role(i));
+        rebound.Tokens_.SetMatchingDelimiter(i, MatchingDelimiter(i));
+    }
+    rebound.Root_ = Root_;
+    rebound.Original_ = this;
+    return rebound;
+}
+
 std::optional<SyntaxTree> SyntaxTree::RebindWhitespaceEdits(
     util::PaddedSourceView source,
     std::span<const WhitespaceEdit> edits) const
@@ -353,10 +695,12 @@ std::optional<SyntaxTree> SyntaxTree::RebindWhitespaceEdits(
         const auto oldBegin = token.Text.Begin;
         const auto oldEnd = token.Text.End;
         size_t lastEditEnd = oldCursor;
+        bool gapEdited = false;
         while (editIndex < edits.size() &&
             edits[editIndex].Begin <= oldBegin)
         {
             const auto& edit = edits[editIndex++];
+            gapEdited = true;
             if (edit.Begin < lastEditEnd || edit.End < edit.Begin ||
                 edit.End > oldBegin || edit.Text.size() > util::MaxSourceSize)
             {
@@ -378,10 +722,13 @@ std::optional<SyntaxTree> SyntaxTree::RebindWhitespaceEdits(
             HIT_FMT_PROFILE_EVENT("edits.token_mismatch");
             return std::nullopt;
         }
-        const auto oldGap = Input_.substr(oldCursor, oldBegin - oldCursor);
-        const auto newGap = source.View().substr(
-            newCursor,
-            newBegin - newCursor);
+        // Unedited spans were already compared byte-for-byte above.
+        const auto oldGap = gapEdited
+            ? Input_.substr(oldCursor, oldBegin - oldCursor)
+            : std::string_view{};
+        const auto newGap = gapEdited
+            ? source.View().substr(newCursor, newBegin - newCursor)
+            : std::string_view{};
         if (oldGap != newGap &&
             (!asciiWhitespace(oldGap) || !asciiWhitespace(newGap) ||
                 oldGap.find("\\\n") != std::string_view::npos ||
@@ -498,6 +845,371 @@ std::optional<SyntaxTree> SyntaxTree::RebindWhitespaceEdits(
     rebound.Root_ = Root_;
     rebound.Original_ = Original_ ? Original_ : this;
     return rebound;
+}
+
+std::optional<SyntaxTree> SyntaxTree::RebindRemovedNullStatements(
+    util::PaddedSourceView source,
+    std::span<const TokenIndex> removed) const
+{
+    HIT_FMT_PROFILE_PHASE("parser.rebind_removed_null");
+    if (removed.empty() || source.Size > util::MaxSourceSize) {
+        return std::nullopt;
+    }
+    std::vector<bool> deleted(TokenCount(), false);
+    for (auto index : removed) {
+        if (index >= TokenCount() || deleted[index] ||
+            Kind(index) != tokenizer::TokenKind::Operator_Semicolon)
+        {
+            return std::nullopt;
+        }
+        deleted[index] = true;
+    }
+    std::vector<TokenIndex> mapped(TokenCount() + 1);
+    TokenIndex remaining = 0;
+    for (TokenIndex index = 0; index < TokenCount(); ++index) {
+        mapped[index] = remaining;
+        remaining += !deleted[index];
+    }
+    mapped[TokenCount()] = remaining;
+
+    bool error = false;
+    tokenizer::Tokenizer lexer(source,
+        [&] (tokenizer::TokenizationError) { error = true; });
+    SyntaxTree rebound(source.View());
+    std::vector<TokenIndex> originals;
+    originals.reserve(remaining);
+    TokenIndex oldIndex = 0;
+    for (auto token : lexer) {
+        while (oldIndex < TokenCount() && deleted[oldIndex]) {
+            ++oldIndex;
+        }
+        if (oldIndex == TokenCount() || token.Kind != Kind(oldIndex) ||
+            source.View().substr(token.Text.Begin, token.Text.Size()) !=
+                TokenText(oldIndex))
+        {
+            return std::nullopt;
+        }
+        originals.push_back(oldIndex++);
+        rebound.Tokens_.Add(token);
+    }
+    while (oldIndex < TokenCount() && deleted[oldIndex]) {
+        ++oldIndex;
+    }
+    if (error || oldIndex != TokenCount() || originals.size() != remaining) {
+        return std::nullopt;
+    }
+    rebound.Tokens_.Seal();
+    for (TokenIndex index = 0; index < remaining; ++index) {
+        const auto original = originals[index];
+        rebound.Tokens_.SetRole(index, Role(original));
+        const auto match = MatchingDelimiter(original);
+        if (match != std::numeric_limits<TokenIndex>::max() &&
+            (match >= TokenCount() || deleted[match]))
+        {
+            return std::nullopt;
+        }
+        rebound.Tokens_.SetMatchingDelimiter(index,
+            match == std::numeric_limits<TokenIndex>::max()
+                ? match
+                : mapped[match]);
+    }
+
+    auto* root = detail::Make<Node>(*rebound.Memory_);
+    root->Kind = Root().Kind;
+    root->Tokens = {mapped[Root().Tokens.Begin],
+        mapped[Root().Tokens.End]};
+    std::byte buffer[1024];
+    std::pmr::monotonic_buffer_resource scratch(buffer, sizeof(buffer));
+    std::pmr::vector<std::pair<const Node*, Node*>> pending(&scratch);
+    pending.emplace_back(&Root(), root);
+    while (!pending.empty()) {
+        auto [original, clone] = pending.back();
+        pending.pop_back();
+        for (auto* child = original->Child();
+            child;
+            child = child->NextSibling)
+        {
+            const auto first = child->Tokens.Begin;
+            const auto last = child->Tokens.End;
+            if (first > last || last > TokenCount()) {
+                return std::nullopt;
+            }
+            if (last == first + 1 && deleted[first] &&
+                child->Kind == NodeKind::ExpressionStatement)
+            {
+                continue;
+            }
+            if (first < last && mapped[first] == mapped[last]) {
+                return std::nullopt;
+            }
+            auto* copy = detail::Make<Node>(*rebound.Memory_);
+            copy->Kind = child->Kind;
+            copy->Tokens = {mapped[first], mapped[last]};
+            if (clone->LastChild) {
+                clone->LastChild->NextSibling = copy;
+            } else {
+                clone->FirstChild = copy;
+            }
+            clone->LastChild = copy;
+            pending.emplace_back(child, copy);
+        }
+    }
+    rebound.Root_ = root;
+    return rebound;
+}
+
+std::optional<SyntaxTree> SyntaxTree::RebindControlBraces(
+    util::PaddedSourceView source,
+    std::span<const InsertedControlBlock> blocks) const
+{
+    HIT_FMT_PROFILE_PHASE("parser.rebind_control_braces");
+    if (blocks.empty() || source.Size > util::MaxSourceSize) {
+        return std::nullopt;
+    }
+    struct Insertion
+    {
+        TokenIndex At;
+        size_t Block;
+        bool Closing;
+    };
+    std::vector<Insertion> insertions;
+    std::vector<bool> removed(TokenCount(), false);
+    insertions.reserve(blocks.size() * 2);
+    for (size_t i = 0; i < blocks.size(); ++i) {
+        const auto* body = blocks[i].Body;
+        if (!body || body->Tokens.Empty() ||
+            body->Tokens.End > TokenCount() ||
+            (blocks[i].ReplacesNull &&
+                (body->Tokens.End != body->Tokens.Begin + 1 ||
+                    Kind(body->Tokens.Begin) !=
+                        tokenizer::TokenKind::Operator_Semicolon ||
+                    removed[body->Tokens.Begin])))
+        {
+            return std::nullopt;
+        }
+        insertions.push_back({body->Tokens.Begin, i, false});
+        insertions.push_back({body->Tokens.End, i, true});
+        if (blocks[i].ReplacesNull) {
+            removed[body->Tokens.Begin] = true;
+        }
+    }
+    std::ranges::sort(insertions, [&] (const Insertion& left,
+        const Insertion& right) {
+            if (left.At != right.At) {
+                return left.At < right.At;
+            }
+            if (left.Closing != right.Closing) {
+                return left.Closing;
+            }
+            return left.Closing
+                ? blocks[left.Block].Body->Tokens.Begin >
+                    blocks[right.Block].Body->Tokens.Begin
+                : blocks[left.Block].Body->Tokens.End >
+                    blocks[right.Block].Body->Tokens.End;
+        });
+    // Node beginnings exclude injected opening braces; node endings include
+    // closing braces belonging to the surrounding control statement.
+    std::vector<TokenIndex> begins(TokenCount() + 1);
+    std::vector<TokenIndex> ends(TokenCount() + 1);
+    std::vector<TokenIndex> originalTokens(TokenCount());
+    std::vector<TokenIndex> openings(blocks.size());
+    std::vector<TokenIndex> closings(blocks.size());
+    SyntaxTree rebound(source.View());
+    bool error = false;
+    tokenizer::Tokenizer lexer(source,
+        [&] (tokenizer::TokenizationError) { error = true; });
+    size_t nextInsertion = 0;
+    for (TokenIndex i = 0; i <= TokenCount(); ++i) {
+        while (nextInsertion < insertions.size() &&
+            insertions[nextInsertion].At == i &&
+            insertions[nextInsertion].Closing)
+        {
+            auto token = lexer.Get();
+            if (token.Kind != tokenizer::TokenKind::Operator_CloseBrace) {
+                return std::nullopt;
+            }
+            auto index = rebound.Tokens_.Size();
+            closings[insertions[nextInsertion].Block] = index;
+            rebound.Tokens_.Add(token);
+            ++nextInsertion;
+        }
+        ends[i] = rebound.Tokens_.Size();
+        while (nextInsertion < insertions.size() &&
+            insertions[nextInsertion].At == i)
+        {
+            auto token = lexer.Get();
+            if (token.Kind != tokenizer::TokenKind::Operator_OpenBrace) {
+                return std::nullopt;
+            }
+            auto index = rebound.Tokens_.Size();
+            openings[insertions[nextInsertion].Block] = index;
+            rebound.Tokens_.Add(token);
+            ++nextInsertion;
+        }
+        begins[i] = rebound.Tokens_.Size();
+        if (i == TokenCount()) {
+            break;
+        }
+        if (removed[i]) {
+            continue;
+        }
+        originalTokens[i] = rebound.Tokens_.Size();
+        auto token = lexer.Get();
+        if (token.Kind != Kind(i) ||
+            source.View().substr(token.Text.Begin, token.Text.Size()) !=
+                TokenText(i))
+        {
+            return std::nullopt;
+        }
+        rebound.Tokens_.Add(token);
+    }
+    if (error || nextInsertion != insertions.size() ||
+        lexer.Get().Kind != tokenizer::TokenKind::EndOfFile)
+    {
+        return std::nullopt;
+    }
+    rebound.Tokens_.Seal();
+    for (TokenIndex i = 0; i < TokenCount(); ++i) {
+        if (removed[i]) {
+            continue;
+        }
+        const auto index = originalTokens[i];
+        rebound.Tokens_.SetRole(index, Role(i));
+        auto match = MatchingDelimiter(i);
+        if (match != std::numeric_limits<TokenIndex>::max()) {
+            if (match >= TokenCount() || removed[match]) {
+                return std::nullopt;
+            }
+            match = originalTokens[match];
+        }
+        rebound.Tokens_.SetMatchingDelimiter(index, match);
+    }
+    for (size_t i = 0; i < blocks.size(); ++i) {
+        rebound.Tokens_.SetRole(
+            openings[i],
+            PunctuationRole::BlockDelimiter);
+        rebound.Tokens_.SetRole(
+            closings[i],
+            PunctuationRole::BlockDelimiter);
+        rebound.Tokens_.SetMatchingDelimiter(openings[i], closings[i]);
+        rebound.Tokens_.SetMatchingDelimiter(closings[i], openings[i]);
+    }
+
+    auto* root = detail::Make<Node>(*rebound.Memory_);
+    root->Kind = Root().Kind;
+    root->Tokens = {begins[Root().Tokens.Begin],
+        ends[Root().Tokens.End]};
+    std::byte buffer[1024];
+    std::pmr::monotonic_buffer_resource scratch(buffer, sizeof(buffer));
+    std::pmr::vector<std::pair<const Node*, Node*>> pending(&scratch);
+    pending.emplace_back(&Root(), root);
+    std::vector<bool> wrapped(blocks.size(), false);
+    while (!pending.empty()) {
+        auto [original, clone] = pending.back();
+        pending.pop_back();
+        for (auto* child = original->Child();
+            child;
+            child = child->NextSibling)
+        {
+            size_t block = 0;
+            while (block < blocks.size() && blocks[block].Body != child) {
+                ++block;
+            }
+            Node* parent = clone;
+            if (block < blocks.size()) {
+                if (wrapped[block]) {
+                    return std::nullopt;
+                }
+                wrapped[block] = true;
+                auto* wrapper = detail::Make<Node>(*rebound.Memory_);
+                wrapper->Kind = NodeKind::CompoundStatement;
+                wrapper->Tokens = {openings[block],
+                    closings[block] + 1};
+                if (clone->LastChild) {
+                    clone->LastChild->NextSibling = wrapper;
+                } else {
+                    clone->FirstChild = wrapper;
+                }
+                clone->LastChild = wrapper;
+                parent = wrapper;
+                if (blocks[block].ReplacesNull) {
+                    continue;
+                }
+            }
+            auto* copy = detail::Make<Node>(*rebound.Memory_);
+            copy->Kind = child->Kind;
+            copy->Tokens = {begins[child->Tokens.Begin],
+                block < blocks.size()
+                    ? closings[block]
+                    : ends[child->Tokens.End]};
+            if (parent->LastChild) {
+                parent->LastChild->NextSibling = copy;
+            } else {
+                parent->FirstChild = copy;
+            }
+            parent->LastChild = copy;
+            pending.emplace_back(child, copy);
+        }
+    }
+    if (std::ranges::find(wrapped, false) != wrapped.end()) {
+        return std::nullopt;
+    }
+    rebound.Root_ = root;
+    return rebound;
+}
+
+SyntaxTree SyntaxTree::TokenizeOnly(util::PaddedSourceView source)
+{
+    SyntaxTree tree(source.View());
+    tokenizer::Tokenizer lexer(source,
+        [] (tokenizer::TokenizationError) { });
+    for (auto token : lexer) {
+        tree.Tokens_.Add(token);
+    }
+    tree.Tokens_.Seal();
+    return tree;
+}
+
+SyntaxTree SyntaxTree::CloneSyntax(util::PaddedSourceView source) const
+{
+    ASSERT(source.View() == Source());
+    SyntaxTree clone(source.View());
+    for (TokenIndex i = 0; i < TokenCount(); ++i) {
+        clone.Tokens_.Add(Token(i));
+    }
+    clone.Tokens_.Seal();
+    for (TokenIndex i = 0; i < TokenCount(); ++i) {
+        clone.Tokens_.SetRole(i, Role(i));
+        clone.Tokens_.SetMatchingDelimiter(i, MatchingDelimiter(i));
+    }
+    auto* root = detail::Make<Node>(*clone.Memory_);
+    root->Kind = Root().Kind;
+    root->Tokens = Root().Tokens;
+    std::byte buffer[1024];
+    std::pmr::monotonic_buffer_resource scratch(buffer, sizeof(buffer));
+    std::pmr::vector<std::pair<const Node*, Node*>> pending(&scratch);
+    pending.emplace_back(&Root(), root);
+    while (!pending.empty()) {
+        auto [original, copy] = pending.back();
+        pending.pop_back();
+        for (auto* child = original->Child();
+            child;
+            child = child->NextSibling)
+        {
+            auto* next = detail::Make<Node>(*clone.Memory_);
+            next->Kind = child->Kind;
+            next->Tokens = child->Tokens;
+            if (copy->LastChild) {
+                copy->LastChild->NextSibling = next;
+            } else {
+                copy->FirstChild = next;
+            }
+            copy->LastChild = next;
+            pending.emplace_back(child, next);
+        }
+    }
+    clone.Root_ = root;
+    return clone;
 }
 
 tokenizer::Token SyntaxTree::Token(TokenIndex index) const
