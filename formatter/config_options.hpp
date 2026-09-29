@@ -259,6 +259,7 @@
         formatter::AmbiguousTemplateDeclarationSpacing::Preserve)              \
     OPT(bool, AddMissingControlBraces, false)                                  \
     OPT(bool, RemoveNullStatements, false)                                     \
+    OPT(bool, RemoveNullDeclarations, false)                                   \
     OPT(formatter::EmptyControlBody, EmptyControlBody,                         \
         formatter::EmptyControlBody::Preserve)                                 \
     OPT(formatter::NonEmptyBlockBodyLayout, NonEmptyBlockBodyLayout,           \

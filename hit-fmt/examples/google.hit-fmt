@@ -107,6 +107,7 @@ RangeBasedForColonSpacing = Space
 
 # Blocks and statements
 IndentBlockBodies = true
+RemoveNullDeclarations = true
 StatementAttributeIndent = Block
 EmptyBlockInteriorSpacing = NoSpace
 EnforceEmptyBlockInteriorSpacing = true

@@ -213,8 +213,18 @@ std::vector<FormattedCase> FormattedCases()
         cases,
         BODY_INDENT_TESTDATA_DIR,
         {"preserve", "indent", "no-indent", "mixed"});
-    AddCases(cases, std::filesystem::path(FORMATTER_TESTDATA_DIR) /
-        "../null-statements", {"preserve", "remove"});
+    const auto nullStatements = std::filesystem::path(FORMATTER_TESTDATA_DIR) /
+        "../null-statements";
+    AddCases(cases, nullStatements, {"preserve", "remove"});
+    for (const auto& [name, config] : {
+        std::pair{"decl-preserve", "preserve"},
+        std::pair{"decl-statements", "remove"},
+        std::pair{"decl-only", "declarations"},
+        std::pair{"decl-both", "both"}})
+    {
+        cases.push_back({nullStatements, name, "declarations.input.cpp",
+            config});
+    }
     AddCases(
         cases,
         BODY_INDENT_TESTDATA_DIR,

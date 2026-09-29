@@ -116,6 +116,7 @@ RangeBasedForColonSpacing = Space
 IndentBlockBodies = true
 # Standalone semicolons can carry fallthrough attributes.
 RemoveNullStatements = false
+RemoveNullDeclarations = false
 IndentLeadingStatementComments = true
 StandaloneBlockBraceIndentation = Preserve
 CollapseEmptyFunctionBodies = true
