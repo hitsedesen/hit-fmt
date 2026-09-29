@@ -315,6 +315,7 @@ std::vector<FormattedCase> FormattedCases()
     addProfileCase("../assignment-location", "profile");
     addProfileCase("../function_parameters", "profile");
     addProfileCase("../body-indent", "profile-control-local");
+    addProfileCase("../body-indent", "profile-direct-initializer");
     cases.push_back({std::filesystem::path(FORMATTER_TESTDATA_DIR) /
         "../null-statements", "profile", "input.cpp", profile});
     cases.push_back({BODY_INDENT_TESTDATA_DIR,

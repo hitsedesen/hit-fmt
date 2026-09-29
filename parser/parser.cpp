@@ -3267,6 +3267,24 @@ private:
         return missingArgument || (sawSeparator && expectingArgument);
     }
 
+    [[nodiscard]] bool HasTopLevelSemicolonInBraces(
+        TokenIndex opening,
+        TokenIndex closingEnd) const
+    {
+        for (auto i = opening + 1; i < closingEnd - 1; ++i) {
+            if (Kind(i) == TK::Operator_Semicolon) {
+                return true;
+            }
+            if (IsOpenDelimiter(Kind(i))) {
+                auto nestedEnd = FindBalancedEnd(i);
+                if (nestedEnd <= closingEnd - 1) {
+                    i = nestedEnd - 1;
+                }
+            }
+        }
+        return false;
+    }
+
     void AddArgumentList(Node& parent, size_t opening, size_t closingEnd)
     {
         auto* arguments = MakeNode(NodeKind::ArgumentList, opening);
@@ -3301,20 +3319,7 @@ private:
                     // initializer. A macro argument like `{ f(); }` is a
                     // statement block; semicolons inside nested delimiters
                     // (lambdas, calls, aggregates) are not decisive.
-                    bool statementBlock = false;
-                    for (auto i = before + 1; i < braceEnd - 1; ++i) {
-                        if (Kind(i) == TK::Operator_Semicolon) {
-                            statementBlock = true;
-                            break;
-                        }
-                        if (IsOpenDelimiter(Kind(i))) {
-                            auto nestedEnd = FindBalancedEnd(i);
-                            if (nestedEnd <= braceEnd - 1) {
-                                i = nestedEnd - 1;
-                            }
-                        }
-                    }
-                    if (statementBlock) {
+                    if (HasTopLevelSemicolonInBraces(before, braceEnd)) {
                         auto savedCursor = Cursor_;
                         Cursor_ = before;
                         ++BranchParseDepth_;
@@ -5773,7 +5778,12 @@ private:
             auto statementEnd = Kind(innerBegin) == TK::Operator_OpenBrace
                 ? FindBalancedEnd(innerBegin)
                 : std::numeric_limits<TokenIndex>::max();
-            if (statementEnd == closing) {
+            // `({ ... })` can also wrap a braced initializer in a direct
+            // initializer. A top-level semicolon distinguishes the GNU
+            // statement expression from an initializer list.
+            if (statementEnd == closing &&
+                HasTopLevelSemicolonInBraces(innerBegin, statementEnd))
+            {
                 auto savedCursor = Cursor_;
                 Cursor_ = innerBegin;
                 auto* statement =
