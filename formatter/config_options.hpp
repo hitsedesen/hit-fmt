@@ -281,6 +281,8 @@
     OPT(formatter::BodyIndentation, IndentCaseLabels,                          \
         formatter::BodyIndentation::Preserve)                                  \
     OPT(std::size_t, CaseLabelIndentWidth, 0)                                  \
+    OPT(formatter::BracePlacement, CaseBlockBracePlacement,                    \
+        formatter::BracePlacement::Preserve)                                   \
     OPT(formatter::StatementAttributeIndent, StatementAttributeIndent,         \
         formatter::StatementAttributeIndent::Preserve)                         \
     OPT(std::size_t, StatementAttributeIndentWidth, 0)                         \

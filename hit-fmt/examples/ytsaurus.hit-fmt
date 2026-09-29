@@ -87,7 +87,8 @@ SingleStatementLambdaBodyLayout = Preserve
 CallLikeMacroNames = ["REGISTER_DERIVED_EXTERNALIZED_YSON_STRUCT"]
 # Do not alter macro arguments or their closing-delimiter layout.
 WhitespaceSensitiveMacros = [
-    "PP_STRINGIZE", "DEFINE_ENUM", "DEFINE_BIT_ENUM",
+    "PP_STRINGIZE", # Preserve whitespace passed to stringization.
+    "DEFINE_ENUM", "DEFINE_BIT_ENUM",
     "DEFINE_BIT_ENUM_WITH_UNDERLYING_TYPE",
     "DEFINE_ENUM_WITH_UNDERLYING_TYPE",
     "DEFINE_AMBIGUOUS_ENUM_WITH_UNDERLYING_TYPE", "YT_DEFINE_ERROR_ENUM"
@@ -137,6 +138,7 @@ EmptyFunctionCallArgumentsSpacing = NoSpace
 
 # Control flow
 IndentCaseLabels = Indent
+CaseBlockBracePlacement = Attach
 AddMissingControlBraces = true
 EmptyControlBody = EmptyBlock
 ControlBlockBracePlacement = AttachUnlessMultiline
