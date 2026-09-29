@@ -509,6 +509,20 @@ INSTANTIATE_TEST_SUITE_P(Configurations, NamespaceCommentGoldenTest,
     testing::Values("preserve", "remove", "add_missing", "fix",
         "fix_spaced", "fix_newline", "crlf_fix"));
 
+TEST(NamespaceCommentTest, ComposesWithTrailingCommentSpacing)
+{
+    formatter::Style style;
+    style.NamespaceComments = formatter::NamespaceComments::AddMissing;
+    style.NamespaceCommentSpaces = 2;
+    style.TrailingCommentSpacing = formatter::TokenSpacing::NoSpace;
+    const std::string input = "namespace a {\nint value;\n}\n";
+    std::string storage = input;
+    storage.append(util::SourcePaddingSize, '\0');
+    EXPECT_EQ(formatter::Format(
+        {.Data = storage.data(), .Size = input.size()},
+        style), "namespace a {\nint value;\n}// namespace a\n");
+}
+
 class ParameterNameGoldenTest
     : public testing::TestWithParam<std::string>
 { };

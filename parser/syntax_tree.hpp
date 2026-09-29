@@ -299,6 +299,12 @@ private:
 static_assert(sizeof(Node) == 40);
 static_assert(std::is_trivially_destructible_v<Node>);
 
+struct InsertedControlBlock
+{
+    const Node* Body;
+    bool ReplacesNull;
+};
+
 namespace detail {
 
 inline constexpr size_t InitialMemoryResourceSize = 64 * 1024;
@@ -399,6 +405,9 @@ public:
         assert(index < ChunkCount_);
         if (Chunks_) {
             return Chunks_[index];
+        }
+        if (index + 1 == ChunkCount_) {
+            return Last_;
         }
         auto* chunk = First_;
         while (index-- != 0) {
@@ -637,11 +646,45 @@ public:
     [[nodiscard]] std::optional<SyntaxTree>
     RebindWhitespace(util::PaddedSourceView source) const;
 
+    // Find whitespace-only gaps in an edited source without lexing it.
+    // Return no tree if any token spelling or non-whitespace gap changes.
+    [[nodiscard]] std::optional<SyntaxTree>
+    RebindWhitespaceGaps(util::PaddedSourceView source) const;
+
+    // A lexical check also accepts gap edits the local edit verifier cannot
+    // express. Identical token kinds and spellings retain the same syntax.
+    [[nodiscard]] std::optional<SyntaxTree>
+    RebindMatchingTokens(util::PaddedSourceView source) const;
+
+    // Track an adjacent brace/comment move while retaining all other syntax.
+    [[nodiscard]] std::optional<SyntaxTree>
+    RebindReorderedComments(util::PaddedSourceView source) const;
+
+    // Reorder verified runs of directive tokens without changing their nodes.
+    [[nodiscard]] std::optional<SyntaxTree>
+    RebindSortedIncludes(util::PaddedSourceView source) const;
+
     // Reuse syntax for verified gap-only edits without lexing every token.
     // The original tree and padded edited source must outlive the result.
     [[nodiscard]] std::optional<SyntaxTree> RebindWhitespaceEdits(
         util::PaddedSourceView source,
         std::span<const WhitespaceEdit> edits) const;
+
+    // Delete known null-statement tokens and their syntax nodes without
+    // parsing the updated source. Reject any other token change.
+    [[nodiscard]] std::optional<SyntaxTree> RebindRemovedNullStatements(
+        util::PaddedSourceView source,
+        std::span<const TokenIndex> removed) const;
+
+    [[nodiscard]] std::optional<SyntaxTree> RebindControlBraces(
+        util::PaddedSourceView source,
+        std::span<const InsertedControlBlock> blocks) const;
+
+    // Snapshot syntax before a header changes; the new source owns its text.
+    [[nodiscard]] SyntaxTree CloneSyntax(util::PaddedSourceView source) const;
+
+    // Lex a verification result without constructing a second syntax tree.
+    [[nodiscard]] static SyntaxTree TokenizeOnly(util::PaddedSourceView source);
 
     [[nodiscard]] bool BorrowsSyntax() const
     {
