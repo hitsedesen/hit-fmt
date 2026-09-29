@@ -3,7 +3,8 @@ void f(bool ready) {
     case 0:
       work();
       break;
-    case 1: {
+    case 1:
+    {
       if (ready)
         work();
       break;

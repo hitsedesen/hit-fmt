@@ -190,7 +190,8 @@ public:
                 SpaceInsideFunctionParameters::Preserve ||
             style.ControlBlockKeywordSpacing !=
                 ControlBlockKeywordSpacing::Preserve ||
-            style.EnforceControlBlockBracePlacement || changedControlHeaders)
+            style.EnforceControlBlockBracePlacement || changedControlHeaders ||
+            style.CaseBlockBracePlacement != BracePlacement::Preserve)
         {
             HIT_FMT_PROFILE_PHASE("formatter.brace_classify");
             Classify();
@@ -454,6 +455,34 @@ private:
                                     node.Tokens.Begin);
                                 break;
                             }
+                        }
+                    }
+                }
+                break;
+            case NK::CompoundStatement:
+                if (Style_.CaseBlockBracePlacement !=
+                    BracePlacement::Preserve && !HasRecoveryChild(node))
+                {
+                    for (auto* label = node.Child(); label;
+                        label = label->NextSibling)
+                    {
+                        if (label->Kind != NK::CaseLabel ||
+                            label->Tokens.Empty())
+                        {
+                            continue;
+                        }
+                        auto* block = label->NextSibling;
+                        if (block && block->Kind == NK::CompoundStatement &&
+                            !block->Tokens.Empty() &&
+                            label->Tokens.End == block->Tokens.Begin &&
+                            Tree_.Role(block->Tokens.Begin) ==
+                                parser::PunctuationRole::BlockDelimiter &&
+                            !HasRecoveryChild(*block))
+                        {
+                            MarkOpening(*block,
+                                Style_.CaseBlockBracePlacement,
+                                SameLineBraceSpacing::SingleSpace,
+                                label->Tokens.Begin);
                         }
                     }
                 }
@@ -3963,6 +3992,7 @@ std::optional<LayoutEdits> FormatNonEmptyBlockBodies(
                 : style.IndentWidth, style);
         std::vector<Replacement> bodyEdits;
         auto previous = tree.Token(open).Text.End;
+        const parser::Node* previousChild = nullptr;
         bool safe = true;
         for (auto* child = node->Child(); child; child = child->NextSibling) {
             if (child->Tokens.Empty() || HasRecoveryChild(*child) ||
@@ -3985,7 +4015,13 @@ std::optional<LayoutEdits> FormatNonEmptyBlockBodies(
                 safe = false;
                 break;
             }
-            if (gap.find('\n') == std::string_view::npos) {
+            const bool attachedCaseBlock = parentKind == NK::SwitchStatement &&
+                style.CaseBlockBracePlacement == BracePlacement::Attach &&
+                previousChild && previousChild->Kind == NK::CaseLabel &&
+                child->Kind == NK::CompoundStatement;
+            if (gap.find('\n') == std::string_view::npos &&
+                !attachedCaseBlock)
+            {
                 bodyEdits.push_back({previous, begin, "\n" + interior});
             }
             for (auto i = child->Tokens.Begin; i < child->Tokens.End; ++i) {
@@ -4000,6 +4036,7 @@ std::optional<LayoutEdits> FormatNonEmptyBlockBodies(
                 break;
             }
             previous = tree.Token(child->Tokens.End - 1).Text.End;
+            previousChild = child;
         }
         if (!safe || previous > tree.Token(close).Text.Begin) {
             continue;
@@ -10225,6 +10262,7 @@ std::string Format(const parser::SyntaxTree& tree, const Style& requested)
         style.FunctionBracePlacement == BracePlacement::Preserve &&
         style.LambdaBracePlacement == BracePlacement::Preserve &&
         style.NamespaceBracePlacement == BracePlacement::Preserve &&
+        style.CaseBlockBracePlacement == BracePlacement::Preserve &&
         existing.ClassBraceSpacing == SameLineBraceSpacing::Preserve &&
         existing.LambdaBraceSpacing == SameLineBraceSpacing::Preserve &&
         existing.StructBraceSpacing == SameLineBraceSpacing::Preserve &&

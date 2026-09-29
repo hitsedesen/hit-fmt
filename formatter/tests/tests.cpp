@@ -305,6 +305,7 @@ std::vector<FormattedCase> FormattedCases()
     };
     addProfileCase("../spacing-options", "profile-initializers");
     addProfileCase("../spacing-options", "profile-overflow");
+    addProfileCase("../spacing-options", "profile-case-blocks");
     cases.push_back({std::filesystem::path(FORMATTER_TESTDATA_DIR) /
         "../spacing-options", "initializer-overflow-one-per-line",
         "initializer-overflow-one-per-line.input.cpp"});

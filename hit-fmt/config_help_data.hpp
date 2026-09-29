@@ -569,6 +569,13 @@ switch (x) {
     case 1: break;
 }
 )HIT_FMT_HELP"},
+    {R"HIT_FMT_HELP(CaseBlockBracePlacement:)HIT_FMT_HELP", R"HIT_FMT_HELP(// CaseBlockBracePlacement = Attach
+switch (x) {
+    case 1: {
+        break;
+    }
+}
+)HIT_FMT_HELP"},
     {R"HIT_FMT_HELP(ControlHeaderClauseSplit:)HIT_FMT_HELP", R"HIT_FMT_HELP(// ControlHeaderClauseSplit = WhenNeeded; ColumnLimit small
 for (int index = 0;
     index < count;
@@ -1551,6 +1558,10 @@ CRLF lists are left intact. They do not change calls.
   IndentBlockBodies is enabled. Only parsed case/default labels directly
   in complete switch blocks are affected. An explicit { following a case
   aligns with the case label. This is independent of LabelColonSpacing.
+  • CaseBlockBracePlacement: Preserve (default) leaves an explicit case
+  block's opening brace where it is; Attach joins it to the case/default
+  label with a single space; NewLine puts it on its own line. Comments,
+  directives, and recovered blocks remain source-owned.
   • ControlHeaderClauseSplit: Preserve (default) leaves control header
   clauses as written; WhenNeeded breaks after both top-level for header
   semicolons or the if/switch init-statement semicolon when the header
