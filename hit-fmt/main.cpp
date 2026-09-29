@@ -1,5 +1,6 @@
 #include "config_help.hpp"
 #include "config_template.hpp"
+#include "version.hpp"
 
 #include <formatter/config.hpp>
 #include <formatter/formatter.hpp>
@@ -1272,6 +1273,7 @@ struct Options
     bool SummaryOnly = false;
     bool DisableConfig = false;
     bool ShowHelp = false;
+    bool ShowVersion = false;
     bool ShowConfigHelp = false;
     bool GenerateConfig = false;
     std::optional<std::filesystem::path> ConfigPath;
@@ -1293,6 +1295,8 @@ Options ParseOptions(int argc, char* argv[])
             positionalOnly = true;
         } else if (argument == "-h" || argument == "--help") {
             options.ShowHelp = true;
+        } else if (argument == "-V" || argument == "--version") {
+            options.ShowVersion = true;
         } else if (argument == "--help-config") {
             options.ShowConfigHelp = true;
         } else if (argument == "--generate-config") {
@@ -1548,6 +1552,7 @@ void PrintHelp(
         "--exclude <regex>",
         " Skip matching files or directories (repeatable).");
     option("-h, --help", "       Show this help.");
+    option("-V, --version", "    Show the build version.");
     option("--help-config", "    Show configuration options and examples.");
     option("--generate-config", " Print a preserving config to stdout.");
     output
@@ -1592,6 +1597,10 @@ int main(int argc, char* argv[])
         options = ParseOptions(argc, argv);
         if (options.ShowHelp) {
             PrintHelp(std::cout, argv[0], UseTerminalColors());
+            return 0;
+        }
+        if (options.ShowVersion) {
+            std::cout << "hit-fmt " << hit_fmt::BuildVersion() << '\n';
             return 0;
         }
         if (options.ShowConfigHelp) {
