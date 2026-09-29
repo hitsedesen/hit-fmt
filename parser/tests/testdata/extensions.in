@@ -13,6 +13,17 @@ int result = ({
     temporary + 1;
 });
 
+void direct_initialization()
+{
+    static Foo::Bar::Baz variable(
+        {
+            "foo",
+            "bar",
+            "baz",
+        });
+    auto with_lambda = Foo({[] { return 1; }(), 2});
+}
+
 [[gnu::always_inline]] inline int annotated(int value)
 {
     return __builtin_expect(value, 1);

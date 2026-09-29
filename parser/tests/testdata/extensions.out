@@ -226,6 +226,111 @@
     (leading-trivia
       (whitespace "\n\n")
     )
+    (declaration-specifiers "void")
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (declarator-name "direct_initialization")
+          (function-declarator
+            (parameter-list "(" ")")
+          )
+        )
+      )
+    )
+    (compound-statement
+      "{"
+      (declaration-statement
+        (declaration-specifiers "static" "Foo" "::" "Bar" "::" "Baz")
+        (init-declarator-list
+          (init-declarator
+            (declarator
+              (declarator-name "variable")
+            )
+            (initializer
+              (parenthesized-expression
+                "("
+                (braced-initializer
+                  (initializer-list
+                    "{"
+                    (initializer-element
+                      (literal-expression "\"foo\"")
+                    )
+                    (list-separator ",")
+                    (initializer-element
+                      (literal-expression "\"bar\"")
+                    )
+                    (list-separator ",")
+                    (initializer-element
+                      (literal-expression "\"baz\"")
+                    )
+                    (list-separator ",")
+                    "}"
+                  )
+                )
+                ")"
+              )
+            )
+          )
+        )
+        ";"
+      )
+      (declaration-statement
+        (declaration-specifiers "auto")
+        (init-declarator-list
+          (init-declarator
+            (declarator
+              (declarator-name "with_lambda")
+            )
+            (initializer
+              "="
+              (call-expression
+                (identifier-expression "Foo")
+                (argument-list
+                  "("
+                  (argument
+                    (braced-initializer
+                      (initializer-list
+                        "{"
+                        (initializer-element
+                          (call-expression
+                            (lambda-expression
+                              (lambda-capture-list "[" "]")
+                              (lambda-body
+                                "{"
+                                (return-statement
+                                  "return"
+                                  (literal-expression "1")
+                                  ";"
+                                )
+                                "}"
+                              )
+                            )
+                            (argument-list "(" ")")
+                          )
+                        )
+                        (list-separator ",")
+                        (initializer-element
+                          (literal-expression "2")
+                        )
+                        "}"
+                      )
+                    )
+                  )
+                  ")"
+                )
+              )
+            )
+          )
+        )
+        ";"
+      )
+      "}"
+    )
+  )
+  (function-definition
+    (leading-trivia
+      (whitespace "\n\n")
+    )
     (declaration-specifiers
       (attribute-specifier "[" "[" "gnu" "::" "always_inline" "]" "]")
       "inline" "int"
