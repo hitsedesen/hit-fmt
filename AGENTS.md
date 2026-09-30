@@ -1,10 +1,21 @@
 # Agent instructions
 
+Before pushing a branch or creating a pull request, run
+`build/hit-fmt/hit-fmt --fix .` from the repository root. Review and
+commit any formatting changes, and resolve any remaining violations.
+
 ## Tests and examples
 
+- Run `build/tests/tests` directly to see each GoogleTest case, and
+  run `build/tests/allocation_tests` for the separate allocation
+  check. Use `--gtest_filter` on the GoogleTest binary for focused runs.
+  Do not use CTest for this suite.
 - Use golden tests for input-to-output behavior, including formatting,
   tokenization, parsing, and diagnostic output. Use the shared helpers in
-  `tests/golden.hpp` and the existing fixture conventions.
+  `tests/golden.hpp` and the existing fixture conventions. Keep full-file
+  cases in `Tokenizer/GoodTest.Golden`, `Tokenizer/BadTest.Golden`,
+  `Parser/FileTest.Golden`, or `Formatter/FormatTest.Golden` as appropriate;
+  keep diagnostic and property checks separate.
 - Regenerate goldens explicitly with `UPDATE_GOLDEN=1`. Review each changed
   expectation for correctness; generated output is not proof of correctness.
   Normal test runs must not update expectations.

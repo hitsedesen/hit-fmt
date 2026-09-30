@@ -13,10 +13,6 @@ target_include_directories(lib-formatter
 target_link_libraries(lib-formatter
     lib-parser)
 
-if(HIT_FMT_TEST)
-    add_subdirectory(tests)
-endif()
-
 if(HIT_FMT_BENCHMARK)
     add_subdirectory(benchmarks)
 endif()

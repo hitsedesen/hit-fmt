@@ -1,0 +1,8 @@
+IndentWidth = 4
+IndentationKind = Spaces
+IndentBlockBodies = true
+ColumnLimit = 72
+ExpressionLayoutCondition = Overflow
+CallArgumentSplit = OnePerLine
+EnforceCallArgumentSplit = true
+FirstCallArgumentPosition = NewLine

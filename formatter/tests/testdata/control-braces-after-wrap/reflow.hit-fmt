@@ -1,0 +1,4 @@
+ExpressionLayoutCondition = Always
+ControlBlockBracePlacement = AttachUnlessMultiline
+EnforceControlBlockBracePlacement = true
+ColumnLimit = 80

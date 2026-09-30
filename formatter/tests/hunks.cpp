@@ -10,7 +10,7 @@
 
 namespace {
 
-TEST(ChangedHunkParserTest, GroupsFilesAndResolvesPathsAgainstGivenDirectory)
+TEST(HunkParser, GroupsFilesAndResolvesPathsAgainstGivenDirectory)
 {
     std::istringstream input(
         "file src/a.cpp\r\nhunk 2:4\r\nhunk 8:8\n"
@@ -32,7 +32,7 @@ TEST(ChangedHunkParserTest, GroupsFilesAndResolvesPathsAgainstGivenDirectory)
         (formatter::Hunk{1, 1}));
 }
 
-TEST(ChangedHunkParserTest, EmptyInputSelectsNoFiles)
+TEST(HunkParser, EmptyInputSelectsNoFiles)
 {
     std::istringstream input;
     const auto parsed = formatter::ParseChangedHunks(
@@ -42,7 +42,7 @@ TEST(ChangedHunkParserTest, EmptyInputSelectsNoFiles)
     EXPECT_TRUE(parsed.Hunks.empty());
 }
 
-TEST(ChangedHunkParserTest, RejectsMalformedRecordsWithLineNumbers)
+TEST(HunkParser, RejectsMalformedRecordsWithLineNumbers)
 {
     for (auto [text, line] : {
         std::pair<std::string_view, size_t>{"hunk 1:2\n", 1},
@@ -68,7 +68,7 @@ TEST(ChangedHunkParserTest, RejectsMalformedRecordsWithLineNumbers)
     }
 }
 
-TEST(ChangedHunkParserTest, RejectsFileWithoutHunksAtEndOfInput)
+TEST(HunkParser, RejectsFileWithoutHunksAtEndOfInput)
 {
     std::istringstream input("file a.cpp\n");
     EXPECT_THROW(formatter::ParseChangedHunks(

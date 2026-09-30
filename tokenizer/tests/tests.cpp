@@ -80,40 +80,45 @@ std::vector<TokenizationErrorKind> TokenizeErrors(std::string_view input)
     return errors;
 }
 
-class GoldenGoodTest
+class GoodTest
     : public testing::TestWithParam<GoldenCase>
 { };
 
-TEST_P(GoldenGoodTest, Match)
+TEST_P(GoodTest, Golden)
 {
-    const test::golden::Fixture fixture{"./testdata", GetParam().Name};
+    const test::golden::Fixture fixture{
+        TOKENIZER_TESTDATA_DIR,
+        GetParam().Name,
+    };
     auto [actual, errors] = TokenizeAndSerialize(fixture.InputNamed(".in"));
     EXPECT_TRUE(errors.empty());
     fixture.Expect(actual, ".out");
 }
 
-class GoldenBadTest
+class BadTest
     : public testing::TestWithParam<GoldenCase>
 { };
 
-TEST_P(GoldenBadTest, CanonizeErrors)
+TEST_P(BadTest, Golden)
 {
-    const test::golden::Fixture fixture{"./testdata", GetParam().Name};
+    const test::golden::Fixture fixture{
+        TOKENIZER_TESTDATA_DIR,
+        GetParam().Name,
+    };
     auto [actual, errors] = TokenizeAndSerialize(fixture.InputNamed(".in"));
     EXPECT_FALSE(errors.empty()) << "should output errors";
     std::string actualErrors;
-    for (auto& error : errors) {
+    for (const auto& error : errors) {
         actualErrors += error;
         actualErrors += "\n";
     }
-
     fixture.Expect(actual, ".out");
     fixture.Expect(actualErrors, ".err");
 }
 
 INSTANTIATE_TEST_SUITE_P(
     Tokenizer,
-    GoldenGoodTest,
+    GoodTest,
     testing::Values(
         GoldenCase{"multiline_preprocessing"},
         GoldenCase{"program_exists"},
@@ -137,7 +142,7 @@ INSTANTIATE_TEST_SUITE_P(
 
 INSTANTIATE_TEST_SUITE_P(
     Tokenizer,
-    GoldenBadTest,
+    BadTest,
     testing::Values(
         GoldenCase{"bad_tokens"},
         GoldenCase{"unterminated_raw_string"},

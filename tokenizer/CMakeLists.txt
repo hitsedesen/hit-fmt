@@ -9,10 +9,6 @@ target_link_libraries(lib-tokenizer
     lib-util
     lib-unicode)
 
-if(HIT_FMT_TEST)
-    add_subdirectory(tests)
-endif()
-
 if(HIT_FMT_BENCHMARK)
     add_subdirectory(benchmarks)
 endif()
