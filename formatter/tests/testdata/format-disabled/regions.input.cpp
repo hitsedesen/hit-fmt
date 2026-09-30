@@ -15,4 +15,9 @@ void f() {
   const char* text = "// hit-fmt off";
   int more=11+12;  // clang-format off
   // This active sentence deliberately exceeds the forty-column limit.
+  // hit-fmt off
+  // clang-format on
+    int mixed=13+14;
+  // hit-fmt on
+  int following=15+16;
 }

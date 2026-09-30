@@ -4,6 +4,7 @@
 #define FORMATTER_STYLE_OPTIONS(OPT)                                           \
     OPT(std::size_t, IndentWidth, 4)                                           \
     OPT(std::size_t, ColumnLimit, 120)                                         \
+    OPT(bool, HonorClangFormatDirectives, true)                                \
     OPT(formatter::LineLengthCheck, LineLengthCheck,                           \
         formatter::LineLengthCheck::Preserve)                                  \
     OPT(formatter::IndentationKind, IndentationKind,                           \

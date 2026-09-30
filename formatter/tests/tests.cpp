@@ -418,6 +418,7 @@ std::vector<FormatCase> FormatCases()
     const auto disabled = std::filesystem::path(FORMATTER_TESTDATA_DIR) /
         "../format-disabled";
     cases.push_back({disabled, "regions", "regions.input.cpp"});
+    cases.push_back({disabled, "regions-no-clang", "regions.input.cpp"});
     cases.push_back({disabled, "unclosed", "unclosed.input.cpp", "regions"});
     cases.push_back({disabled, "crlf", "crlf.input.cpp", "regions"});
     const auto newArrays = std::filesystem::path(FORMATTER_TESTDATA_DIR) /
@@ -1214,6 +1215,8 @@ TEST_P(LayoutDiagnosticTest, Golden)
 INSTANTIATE_TEST_SUITE_P(Formatter, LayoutDiagnosticTest,
     testing::Values(
         LayoutDiagnosticCase{"format-disabled", "regions",
+            "regions.input.cpp", {}, false, ".layout.expected"},
+        LayoutDiagnosticCase{"format-disabled", "regions-no-clang",
             "regions.input.cpp", {}, false, ".layout.expected"},
         LayoutDiagnosticCase{"line-length", "soft"},
         LayoutDiagnosticCase{"line-length", "strict", "input.cpp",

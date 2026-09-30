@@ -9546,6 +9546,7 @@ struct DisabledRegion
 template <class Visit>
 std::vector<DisabledRegion> FindDisabledRegionsImpl(
     std::string_view source,
+    bool honorClangFormatDirectives,
     Visit&& visit)
 {
     std::vector<DisabledRegion> regions;
@@ -9563,13 +9564,15 @@ std::vector<DisabledRegion> FindDisabledRegionsImpl(
             }
         }
         const bool off = text == "// hit-fmt off" ||
-            text == "// clang-format off" ||
             text == "/* hit-fmt off */" ||
-            text == "/* clang-format off */";
+            (honorClangFormatDirectives &&
+                (text == "// clang-format off" ||
+                    text == "/* clang-format off */"));
         const bool on = text == "// hit-fmt on" ||
-            text == "// clang-format on" ||
             text == "/* hit-fmt on */" ||
-            text == "/* clang-format on */";
+            (honorClangFormatDirectives &&
+                (text == "// clang-format on" ||
+                    text == "/* clang-format on */"));
         if (!off && !on) {
             return;
         }
@@ -9607,28 +9610,32 @@ std::vector<DisabledRegion> FindDisabledRegionsImpl(
 }
 
 std::vector<DisabledRegion> FindDisabledRegions(
-    const parser::SyntaxTree& tree)
+    const parser::SyntaxTree& tree,
+    bool honorClangFormatDirectives)
 {
-    return FindDisabledRegionsImpl(tree.Source(), [&] (auto&& found) {
-        for (TokenIndex i = 0; i < tree.TokenCount(); ++i) {
-            if (tree.Kind(i) == TK::Comment) {
-                found(tree.Token(i));
+    return FindDisabledRegionsImpl(tree.Source(), honorClangFormatDirectives,
+        [&] (auto&& found) {
+            for (TokenIndex i = 0; i < tree.TokenCount(); ++i) {
+                if (tree.Kind(i) == TK::Comment) {
+                    found(tree.Token(i));
+                }
             }
-        }
-    });
+        });
 }
 
 std::vector<DisabledRegion> FindDisabledRegions(
-    util::PaddedSourceView source)
+    util::PaddedSourceView source,
+    bool honorClangFormatDirectives)
 {
     tokenizer::Tokenizer lexer(source);
-    return FindDisabledRegionsImpl(source.View(), [&] (auto&& found) {
-        for (auto token : lexer) {
-            if (token.Kind == TK::Comment) {
-                found(token);
+    return FindDisabledRegionsImpl(source.View(), honorClangFormatDirectives,
+        [&] (auto&& found) {
+            for (auto token : lexer) {
+                if (token.Kind == TK::Comment) {
+                    found(token);
+                }
             }
-        }
-    });
+        });
 }
 
 bool IsDisabledOffset(
@@ -9796,10 +9803,12 @@ std::string RestoreSensitiveInvocations(
 
 std::string RestoreDisabledRegions(
     const parser::SyntaxTree& original,
+    const Style& style,
     std::string formatted)
 {
     HIT_FMT_PROFILE_PHASE("formatter.restore_disabled");
-    const auto regions = FindDisabledRegions(original);
+    const auto regions = FindDisabledRegions(
+        original, style.HonorClangFormatDirectives);
     if (regions.empty()) {
         return formatted;
     }
@@ -9809,8 +9818,8 @@ std::string RestoreDisabledRegions(
         .Data = formatted.data(), .Size = length};
     auto resultTree = original.RebindWhitespaceGaps(resultSource);
     const auto resultRegions = resultTree
-        ? FindDisabledRegions(*resultTree)
-        : FindDisabledRegions(resultSource);
+        ? FindDisabledRegions(*resultTree, style.HonorClangFormatDirectives)
+        : FindDisabledRegions(resultSource, style.HonorClangFormatDirectives);
     if (regions.size() != resultRegions.size()) {
         return std::string(original.Source());
     }
@@ -9988,7 +9997,8 @@ std::vector<LayoutDiagnostic> CheckExpressionLayout(
 {
     std::vector<LayoutDiagnostic> diagnostics;
     const auto source = tree.Source();
-    const auto disabled = FindDisabledRegions(tree);
+    const auto disabled = FindDisabledRegions(
+        tree, style.HonorClangFormatDirectives);
     uint32_t lineNumber = 1;
     if (style.LineLengthCheck != LineLengthCheck::Preserve) {
         for (size_t start = 0; start < source.size(); ++lineNumber) {
@@ -11285,7 +11295,7 @@ std::string Format(const parser::SyntaxTree& tree, const Style& requested)
     if (unsafeStructuralEdit) {
         return std::string(tree.Source());
     }
-    formatted = RestoreDisabledRegions(tree, std::move(formatted));
+    formatted = RestoreDisabledRegions(tree, style, std::move(formatted));
     return RestoreSensitiveInvocations(tree, style, std::move(formatted));
 }
 
