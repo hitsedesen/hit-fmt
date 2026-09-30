@@ -47,7 +47,10 @@ tasks:
   - name: verify
     cubes:
       - name: test-and-format
-        image: pkg.sourcecraft.tech/cr/hitsedesen/cn1osjs28tvvpuh057nf/hit-fmt-ci:ubuntu24-v1
+        image:
+          name: pkg.sourcecraft.tech/cr/hitsedesen/cn1osjs28tvvpuh057nf/hit-fmt-ci:ubuntu24-v1
+          username: iam
+          password: ${{ secrets.CI_IMAGE_PAT }}
         script:
           - |
             set -eu
