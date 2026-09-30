@@ -1,0 +1,13 @@
+IndentWidth = 2
+IndentBlockBodies = true
+BinaryOperatorSpacing = Space
+CommaSpacing = Space
+EnforceCommaSpacing = true
+ControlBlockKeywordSpacing = Space
+ControlBlockSpaceBeforeBrace = Space
+EnforceControlBlockSpaceBeforeBrace = true
+TrailingWhitespace = Trim
+ColumnLimit = 40
+LineLengthCheck = Strict
+ExpressionLayoutCondition = Overflow
+HonorClangFormatDirectives = false

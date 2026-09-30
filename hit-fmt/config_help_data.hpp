@@ -52,6 +52,14 @@ send(first,
 };
 
 constexpr HelpExample HelpExamples1[] = {
+    {R"HIT_FMT_HELP(HonorClangFormatDirectives:)HIT_FMT_HELP", R"HIT_FMT_HELP(// HonorClangFormatDirectives = false
+// clang-format off
+int n = 1 + 2;
+// clang-format on
+// hit-fmt off
+int m=3+4;
+// hit-fmt on
+)HIT_FMT_HELP"},
     {R"HIT_FMT_HELP(IncludeOrder:)HIT_FMT_HELP", R"HIT_FMT_HELP(// IncludeOrder = Sort
 #include "alpha.h"
 #include "zeta.h"
@@ -1041,7 +1049,13 @@ constexpr HelpSection HelpSections[] = {
   splice.
 
 )HIT_FMT_HELP", HelpExamples0},
-    {R"HIT_FMT_HELP(Includes, directives, and comments)HIT_FMT_HELP", R"HIT_FMT_HELP(  • IncludeOrder: Preserve (default) leaves directives untouched. Sort
+    {R"HIT_FMT_HELP(Includes, directives, and comments)HIT_FMT_HELP", R"HIT_FMT_HELP(  • HonorClangFormatDirectives: true (default) preserves regions between
+  standalone // clang-format off, // clang-format on, or corresponding
+  /* clang-format off */ and /* clang-format on */ comment lines. False
+  ignores clang-format off/on markers, leaving those regions eligible
+  for formatting and layout diagnostics. hit-fmt off/on markers
+  remain active. Markers in strings or trailing comments are not directives.
+  • IncludeOrder: Preserve (default) leaves directives untouched. Sort
   stably sorts consecutive, column-one literal #include "..." and
   #include <...> lines by header path, with quoted headers before angled
   headers. It keeps each directive's spelling and the line endings in its
