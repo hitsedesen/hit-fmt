@@ -1,13 +1,13 @@
 # Unicode data
 
 `unicode_data.cpp` contains the `XID_Start` and `XID_Continue` ranges from
-the Unicode 17.0.0 Character Database file
-[`DerivedCoreProperties.txt`](https://www.unicode.org/Public/17.0.0/ucd/DerivedCoreProperties.txt).
+the Unicode 18.0.0 Character Database file
+[`DerivedCoreProperties.txt`](https://www.unicode.org/Public/18.0.0/ucd/DerivedCoreProperties.txt).
 
 The SHA-256 digest of the source file is:
 
 ```text
-24c7fed1195c482faaefd5c1e7eb821c5ee1fb6de07ecdbaa64b56a99da22c08
+09c928886a178fcafd93c29e4bd59073a058e5a100b716d425cb563ab50f68c9
 ```
 
 Generate each range list with:
