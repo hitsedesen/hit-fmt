@@ -47,7 +47,7 @@ tasks:
   - name: verify
     cubes:
       - name: test-and-format
-        image: pkg.sourcecraft.tech/cr/hitsedesen/cn1osjs28tvvpuh057nf:ubuntu24-v1
+        image: pkg.sourcecraft.tech/cr/hitsedesen/cn1osjs28tvvpuh057nf/hit-fmt-ci:ubuntu24-v1
         script:
           - |
             set -eu
