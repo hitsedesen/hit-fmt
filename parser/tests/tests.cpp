@@ -271,13 +271,13 @@ std::ostream& operator<<(std::ostream& output, const GoldenCase& testCase)
     return output << testCase.Name;
 }
 
-class ParserGoldenTest
+class FileTest
     : public testing::TestWithParam<GoldenCase>
 { };
 
-TEST_P(ParserGoldenTest, MatchesSExpression)
+TEST_P(FileTest, Golden)
 {
-    const test::golden::Fixture fixture{"./testdata", GetParam().Name};
+    const test::golden::Fixture fixture{PARSER_TESTDATA_DIR, GetParam().Name};
     const auto input = fixture.InputNamed(".in");
     std::vector<parser::ParseError> errors;
     PaddedInput paddedInput(input);
@@ -295,9 +295,10 @@ TEST_P(ParserGoldenTest, MatchesSExpression)
     fixture.Expect(actual, ".out");
 }
 
-TEST(ParserGoldenTest, MatchesPunctuationRoles)
+TEST(Parser, MatchesPunctuationRoles)
 {
-    const test::golden::Fixture fixture{"./testdata", "punctuation_roles"};
+    const test::golden::Fixture fixture{
+        PARSER_TESTDATA_DIR, "punctuation_roles"};
     const auto input = fixture.InputNamed(".in");
     PaddedInput paddedInput(input);
     std::vector<parser::ParseError> errors;
@@ -312,7 +313,7 @@ TEST(ParserGoldenTest, MatchesPunctuationRoles)
 
 INSTANTIATE_TEST_SUITE_P(
     Parser,
-    ParserGoldenTest,
+    FileTest,
     testing::Values(
         GoldenCase{"comments"},
         GoldenCase{"declarations"},

@@ -29,8 +29,14 @@ Tests require GoogleTest:
 ```sh
 cmake -S . -B build -DHIT_FMT_TEST=ON
 cmake --build build
-ctest --test-dir build
+build/tests/tests
+build/tests/allocation_tests
 ```
+
+The GoogleTest executable prints each test as it runs. Select a subset with
+`build/tests/tests --gtest_filter='Parser/*:Parser.*'`, or list names
+with `--gtest_list_tests`. The tokenizer allocation check uses a separate
+executable.
 
 Benchmarks can be built separately with
 `-DHIT_FMT_BENCHMARK=ON`; they require Google Benchmark.

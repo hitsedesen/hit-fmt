@@ -16,9 +16,7 @@ option(HIT_FMT_TEST "Build tests" OFF)
 option(HIT_FMT_BENCHMARK "Build benchmarks" OFF)
 
 if(HIT_FMT_TEST)
-    enable_testing()
     find_package(GTest CONFIG REQUIRED)
-    include(GoogleTest)
 endif()
 
 if(HIT_FMT_BENCHMARK)
@@ -32,6 +30,10 @@ add_subdirectory(tokenizer)
 add_subdirectory(parser)
 add_subdirectory(formatter)
 add_subdirectory(hit-fmt)
+
+if(HIT_FMT_TEST)
+    add_subdirectory(tests)
+endif()
 
 install(FILES
     LICENSE
