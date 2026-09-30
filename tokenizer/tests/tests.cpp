@@ -1,5 +1,6 @@
 #include <tests/golden.hpp>
 #include <tokenizer/tokenizer.hpp>
+#include <unicode/code_point.hpp>
 #include <unicode/utf8.hpp>
 #include <util/file.hpp>
 #include <util/input.hpp>
@@ -164,6 +165,21 @@ TEST(Tokenizer, KeepsEmbeddedNullInRawStringLiteral)
     EXPECT_EQ(tokens[0].Kind, TokenKind::Literal_String);
     EXPECT_EQ(tokens[0].Text.View(source).size(), 17);
     EXPECT_EQ(tokens[1].Text.View(source), "identifier");
+}
+
+TEST(Unicode, UsesUnicode18IdentifierProperties)
+{
+    // New starts in both the BMP and a supplementary CJK block.
+    EXPECT_TRUE(unicode::IsXIDStart(U'\u058B'));
+    EXPECT_TRUE(unicode::IsXIDStart(U'\U0003D000'));
+    EXPECT_TRUE(unicode::IsXIDStart(U'\U0003FC3F'));
+    EXPECT_TRUE(unicode::IsXIDContinue(U'\U0003FC3F'));
+
+    // A new combining mark can continue an identifier but cannot start one.
+    EXPECT_FALSE(unicode::IsXIDStart(U'\u05C8'));
+    EXPECT_TRUE(unicode::IsXIDContinue(U'\u05C8'));
+    EXPECT_FALSE(unicode::IsXIDStart(U'\U0003FC40'));
+    EXPECT_FALSE(unicode::IsXIDContinue(U'\U0003FC40'));
 }
 
 TEST(Utf8, ValidatesCodePointEncoding)
