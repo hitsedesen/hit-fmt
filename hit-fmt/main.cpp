@@ -16,6 +16,7 @@
 #include <condition_variable>
 #include <cstdio>
 #include <cstdlib>
+#include <deque>
 #include <exception>
 #include <filesystem>
 #include <fstream>
@@ -1331,7 +1332,23 @@ Options ParseOptions(int argc, char* argv[])
             (argument.starts_with("-j") && argument.size() > 2))
         {
             std::string_view value;
-            if (argument == "-j" || argument == "--threads") {
+            if (argument == "-j") {
+                // Only consume the next token if it is a thread count;
+                // otherwise it remains an input path or another option.
+                if (index + 1 < argc) {
+                    std::string_view next(argv[index + 1]);
+                    if (!next.empty() && std::ranges::all_of(next,
+                            [] (char c) { return c >= '0' && c <= '9'; }))
+                    {
+                        value = argv[++index];
+                    }
+                }
+                if (value.empty()) {
+                    options.Threads = std::max(
+                        1u, std::thread::hardware_concurrency());
+                    continue;
+                }
+            } else if (argument == "--threads") {
                 if (++index == argc) {
                     throw std::runtime_error(
                         "--threads requires a positive integer");
@@ -1584,7 +1601,8 @@ void PrintHelp(
     option("--check", "          Check without editing (default; optional).");
     option("--no-spillover", "   Restrict fixes to the selected hunk lines.");
     option("--summary", "        Print only file status lines.");
-    option("-j, --threads <n>", " Run up to n files in parallel (default 1).");
+    option("-j [n]", "         Use n threads, or all cores without n.");
+    option("--threads <n>", "  Use n threads (default 1).");
     option("--config <file>", "  Use one configuration file for every input.");
     option(
         "--no-config",
@@ -1634,7 +1652,6 @@ void PrintHelp(
 int main(int argc, char* argv[])
 {
     Options options;
-    std::vector<std::filesystem::path> files;
     std::optional<StyleResolver> styleResolver;
     try {
         options = ParseOptions(argc, argv);
@@ -1900,6 +1917,7 @@ int main(int argc, char* argv[])
     size_t mismatchCount = 0;
     auto printResult = [&] (const FileResult& result) {
         std::cout << result.Output;
+        std::cout.flush();
         std::cerr << result.Error;
         mismatchCount += result.Mismatches;
         return result.Failed;
@@ -1915,7 +1933,6 @@ int main(int argc, char* argv[])
                     [&] (const auto& path) {
                         bool failed = printResult(
                             processFile(path, *styleResolver));
-                        std::cout.flush();
                         return !failed;
                     }))
             {
@@ -1926,72 +1943,102 @@ int main(int argc, char* argv[])
             return 1;
         }
     } else {
-        try {
-            ForEachFile(
-                options.Paths,
-                options.Exclusions,
-                [&] (const auto& path, bool directory) {
-                    return styleResolver->IsExcluded(path, directory);
-                },
-                [&] (const auto& path) {
-                    files.push_back(path);
-                    return true;
-                });
-        } catch (const std::exception& error) {
-            std::cerr << error.what() << '\n';
-            return 1;
-        }
-        const auto count = std::min(options.Threads, files.size());
-        std::vector<StyleResolver> resolvers;
-        try {
-            resolvers.reserve(count);
-            for (size_t worker = 0; worker < count; ++worker) {
-                resolvers.emplace_back(options);
-            }
-        } catch (const std::exception& error) {
-            std::cerr << error.what() << '\n';
-            return 1;
-        }
-        std::vector<std::optional<FileResult>> results(files.size());
+        const auto pendingFileLimit = std::max(options.Threads, size_t{128});
+        // Deque keeps each worker's resolver address stable as workers join.
+        std::deque<StyleResolver> resolvers;
         std::mutex mutex;
         std::condition_variable ready;
-        // A slow file must not leave other workers idle. Bound pending
-        // diagnostics by bytes rather than by a fixed number of files.
+        std::deque<std::filesystem::path> pending;
+        std::deque<std::optional<FileResult>> results;
+        // Bound both undispatched paths and completed diagnostics. A slow
+        // file must not let discovery or the other workers run arbitrarily
+        // far ahead of ordered output.
         constexpr size_t BufferedOutputLimit = 16 * 1024 * 1024;
         size_t bufferedBytes = 0;
         size_t next = 0;
+        size_t processing = 0;
+        size_t printed = 0;
+        bool discoveryDone = false;
         bool stop = false;
+        std::optional<std::string> discoveryError;
         {
             std::vector<std::jthread> workers;
-            workers.reserve(count);
-            try {
-                for (size_t worker = 0; worker < count; ++worker) {
-                    workers.emplace_back([&, worker] {
-                        auto& resolver = resolvers[worker];
-                        for (;;) {
-                            size_t index;
+            auto launchWorker = [&] {
+                resolvers.emplace_back(options);
+                auto* resolver = &resolvers.back();
+                workers.emplace_back([&, resolver] {
+                    for (;;) {
+                        size_t index;
+                        std::filesystem::path path;
+                        {
+                            std::unique_lock lock(mutex);
+                            ready.wait(lock, [&] {
+                                bool canClaim = !pending.empty() &&
+                                    bufferedBytes < BufferedOutputLimit;
+                                return stop || canClaim ||
+                                    (discoveryDone && pending.empty());
+                            });
+                            if (stop ||
+                                (discoveryDone && pending.empty()))
                             {
+                                return;
+                            }
+                            index = next++;
+                            ++processing;
+                            path = std::move(pending.front());
+                            pending.pop_front();
+                        }
+                        auto result = processFile(path, *resolver);
+                        {
+                            std::lock_guard lock(mutex);
+                            bufferedBytes += result.Output.size() +
+                                result.Error.size();
+                            // Printed results have been removed from
+                            // the front of the deque.
+                            results[index - printed] = std::move(result);
+                            --processing;
+                        }
+                        ready.notify_all();
+                    }
+                });
+            };
+            std::jthread discovery;
+            try {
+                discovery = std::jthread([&] {
+                    try {
+                        ForEachFile(
+                            options.Paths,
+                            options.Exclusions,
+                            [&] (const auto& path, bool directory) {
+                                return styleResolver->IsExcluded(
+                                    path, directory);
+                            },
+                            [&] (const auto& path) {
                                 std::unique_lock lock(mutex);
                                 ready.wait(lock, [&] {
-                                    return stop || next == files.size() ||
-                                        bufferedBytes < BufferedOutputLimit;
+                                    return stop ||
+                                        results.size() < pendingFileLimit;
                                 });
-                                if (stop || next == files.size()) {
-                                    return;
+                                if (stop) {
+                                    return false;
                                 }
-                                index = next++;
-                            }
-                            auto result = processFile(files[index], resolver);
-                            {
-                                std::lock_guard lock(mutex);
-                                bufferedBytes += result.Output.size() +
-                                    result.Error.size();
-                                results[index] = std::move(result);
-                            }
-                            ready.notify_all();
-                        }
-                    });
-                }
+                                results.emplace_back();
+                                pending.push_back(path);
+                                lock.unlock();
+                                ready.notify_all();
+                                return true;
+                            });
+                    } catch (const std::exception& error) {
+                        std::lock_guard lock(mutex);
+                        discoveryError = error.what();
+                        stop = true;
+                    }
+                    {
+                        std::lock_guard lock(mutex);
+                        discoveryDone = true;
+                    }
+                    ready.notify_all();
+                });
             } catch (const std::exception& error) {
                 {
                     std::lock_guard lock(mutex);
@@ -2001,17 +2048,48 @@ int main(int argc, char* argv[])
                 std::cerr << error.what() << '\n';
                 return 1;
             }
-            for (size_t index = 0; index < files.size(); ++index) {
+            auto canLaunch = [&] {
+                return !pending.empty() &&
+                    bufferedBytes < BufferedOutputLimit &&
+                    workers.size() < options.Threads &&
+                    workers.size() < pending.size() + processing;
+            };
+            for (;;) {
                 FileResult result;
                 {
                     std::unique_lock lock(mutex);
-                    ready.wait(
-                        lock,
-                        [&] { return results[index].has_value(); });
-                    bufferedBytes -= results[index]->Output.size() +
-                        results[index]->Error.size();
-                    result = std::move(*results[index]);
-                    results[index].reset();
+                    ready.wait(lock, [&] {
+                        return discoveryError ||
+                            (!results.empty() && results.front().has_value()) ||
+                            (discoveryDone && results.empty()) || canLaunch();
+                    });
+                    if (discoveryError) {
+                        std::cerr << *discoveryError << '\n';
+                        return 1;
+                    }
+                    if (canLaunch()) {
+                        lock.unlock();
+                        try {
+                            launchWorker();
+                        } catch (const std::exception& error) {
+                            {
+                                std::lock_guard guard(mutex);
+                                stop = true;
+                            }
+                            ready.notify_all();
+                            std::cerr << error.what() << '\n';
+                            return 1;
+                        }
+                        continue;
+                    }
+                    if (results.empty()) {
+                        break;
+                    }
+                    bufferedBytes -= results.front()->Output.size() +
+                        results.front()->Error.size();
+                    result = std::move(*results.front());
+                    results.pop_front();
+                    ++printed;
                 }
                 ready.notify_all();
                 if (printResult(result)) {
@@ -2023,7 +2101,7 @@ int main(int argc, char* argv[])
                     return 1;
                 }
             }
-        } // Join workers before reporting the final status.
+        } // Join discovery and workers before reporting the final status.
     }
     if (useColor) {
         if (mismatchCount == 0) {

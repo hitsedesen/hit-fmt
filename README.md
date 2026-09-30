@@ -68,6 +68,8 @@ hit-fmt --fix source.cpp include/
 `--check` may be given explicitly when desired.
 
 Use `-j N` or `--threads N` to process up to N files concurrently (default 1).
+Bare `-j` uses the available hardware concurrency (or 1 if unknown).
+With multiple workers, formatting starts while discovery continues.
 File diagnostics remain in discovery order.
 
 Checks report affected source chunks with caret-marked formatting,
