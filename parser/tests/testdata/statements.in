@@ -1,4 +1,62 @@
+struct Entries {};
+enum Kind { value };
+struct Pair { Pair(int, int); operator int() const; };
+template<class Item> struct Box {
+    using type = int;
+    static constexpr int value = 1;
+};
+struct Outer {
+    using Inner = int;
+    struct Nested { using Leaf = int; };
+    enum { value = 1 };
+};
+struct Outer;
+namespace local { int move(int); }
+
 void function(int count, Entries entries) {
+    int empty();
+    int typed(int, const Entries&);
+    int variadic(int, ...);
+    int any(...);
+    int n = 1;
+    int postfix(int(n++));
+    int function_parameter(int(n));
+    int constructed(Pair(n, n));
+    int function_argument(Pair(int, int));
+    int template_value(Box<int>::value);
+    int template_member_type(Box<int>::type);
+    int template_type(Box<int>);
+    int value(n);
+    int literal(2);
+    int pair(n, 2);
+    int first(), second(n), third(int);
+    using Number = int;
+    int alias(Number);
+    int moved(local::move(n));
+    int member(Kind::value);
+    int qualified_type(Outer::Inner);
+    int deep_type(Outer::Nested::Leaf);
+    int qualified_value(Outer::value);
+    int unresolved(External);
+    int indirect(External * n);
+    int unknown_call(External(n));
+    int definite_call(External(1));
+    int mixed_unknown(External), mixed_known(int);
+    int (nested_unknown)(External);
+    int (nested_value)(n);
+    int (nested_function)(int);
+    int cast(int(1));
+    int braced(Number{2});
+    int nested(Number(3));
+    int product(int(n * n));
+    int multiplied(int() * n);
+    int compared(int(n == n));
+    int assigned(int(n = n));
+    int parenthesized(int(n));
+    int parameter(int (*callback)(int, int) = nullptr);
+    int exception_spec(int (*callback)(int) noexcept(noexcept(n, n)));
+    int exception_value(int(noexcept(n, n)));
+    int defaulted(int count = Number{1}, int next = 2);
     for (int index = 0; index < count; ++index)
         use(index);
     for (auto&& [key, value] : entries)
@@ -28,4 +86,8 @@ void function(int count, Entries entries) {
 
 label:
     goto label;
+}
+
+void argument(int n) {
+    int value(n);
 }
