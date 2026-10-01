@@ -1384,9 +1384,10 @@ private:
     {
         auto* binding = LookupBinding(Text(first));
         auto scope = NextSignificant(first + 1);
-        if (!binding || binding->Kind != NameKind::Type ||
-            Kind(scope) != TK::Operator_ScopeResolution)
-        {
+        if (!binding || binding->Kind != NameKind::Type) {
+            return false;
+        }
+        if (Kind(scope) != TK::Operator_ScopeResolution) {
             return false;
         }
         do {
@@ -1401,6 +1402,9 @@ private:
                 return false;
             }
             scope = NextSignificant(member + 1);
+            if (Kind(scope) == TK::Operator_Less) {
+                return false; // Member specializations may be in includes.
+            }
         } while (scope < end &&
             Kind(scope) == TK::Operator_ScopeResolution);
         return true;
@@ -2819,7 +2823,12 @@ private:
         if (CurrentKind() == TK::Operator_Semicolon) {
             ++Cursor_;
             if (!node->FirstChild && typeName < Tree_.Tokens_.Size()) {
-                AddName(Text(typeName), NameKind::Type);
+                auto type = Text(typeName);
+                auto* previous = FindName(*CurrentScope_, type);
+                auto* binding = AddName(type, NameKind::Type);
+                if (previous && previous->Kind == NameKind::Type) {
+                    binding->Members = previous->Members;
+                }
             }
         } else {
             ErrorAt(start, "expected semicolon after record declaration");
@@ -3865,7 +3874,9 @@ private:
         Node& initDeclarator,
         size_t begin,
         size_t end,
-        std::optional<TokenRange> parameters)
+        std::optional<TokenRange> parameters,
+        bool ambiguousSuffix = false,
+        bool inferNestedParameters = true)
     {
         if (parameters && !(
                 begin <= parameters->Begin &&
@@ -3874,7 +3885,7 @@ private:
         {
             parameters.reset();
         }
-        if (!parameters) {
+        if (!parameters && inferNestedParameters) {
             parameters = InferNestedFunctionParameters(begin, end);
         }
         bool isFunction = parameters && !parameters->Empty();
@@ -3918,10 +3929,23 @@ private:
                     nameNode->Tokens.End = name + 1;
                     Append(*declarator, *nameNode);
                     if (afterName < end) {
-                        auto* initializer =
-                            MakeNode(NodeKind::Initializer, afterName);
+                        auto* initializer = MakeNode(
+                            ambiguousSuffix
+                                ? NodeKind::AmbiguousDeclaratorSuffix
+                                : NodeKind::Initializer,
+                            afterName);
                         initializer->Tokens.End = end;
-                        AddInitializerExpression(*initializer, afterName, end);
+                        if (ambiguousSuffix) {
+                            AddDirectiveChildrenInGap(
+                                *initializer,
+                                afterName,
+                                end);
+                        } else {
+                            AddInitializerExpression(
+                                *initializer,
+                                afterName,
+                                end);
+                        }
                         Append(initDeclarator, *initializer);
                     }
                     return;
@@ -4141,23 +4165,92 @@ private:
         }
 
         if (initializerStart < end) {
-            auto* initializer =
-                MakeNode(NodeKind::Initializer, initializerStart);
+            auto* initializer = MakeNode(
+                ambiguousSuffix
+                    ? NodeKind::AmbiguousDeclaratorSuffix
+                    : NodeKind::Initializer,
+                initializerStart);
             initializer->Tokens.End = end;
-            AddInitializerExpression(*initializer, initializerStart, end);
+            if (ambiguousSuffix) {
+                AddDirectiveChildrenInGap(*initializer, initializerStart, end);
+            } else {
+                AddInitializerExpression(*initializer, initializerStart, end);
+            }
             Append(initDeclarator, *initializer);
         }
     }
 
-    [[nodiscard]] std::optional<TokenRange> InferStatementParameters(
-        TokenIndex begin,
+    enum class ParameterTypeEvidence
+    {
+        Type,
+        Value,
+        Unknown,
+    };
+
+    [[nodiscard]] ParameterTypeEvidence StartsStatementParameterType(
+        TokenIndex first,
         TokenIndex end) const
     {
+        auto type = first;
+        while (Kind(type) == TK::Keyword_const ||
+            Kind(type) == TK::Keyword_volatile)
+        {
+            type = NextSignificant(type + 1);
+        }
+        auto typeKind = Kind(type);
+        bool explicitType = IsFundamentalTypeKeyword(typeKind) ||
+            typeKind == TK::Keyword_typename ||
+            typeKind == TK::Keyword_struct ||
+            typeKind == TK::Keyword_class ||
+            typeKind == TK::Keyword_union ||
+            typeKind == TK::Keyword_enum;
+        auto binding = typeKind == TK::Identifier
+            ? LookupName(Text(type))
+            : std::nullopt;
+        if (!explicitType && (!binding || *binding != NameKind::Type)) {
+            return typeKind == TK::Identifier && !binding
+                ? ParameterTypeEvidence::Unknown
+                : ParameterTypeEvidence::Value;
+        }
+        if (binding) {
+            auto afterType = NextSignificant(type + 1);
+            bool templateId = Kind(afterType) == TK::Operator_Less;
+            if (templateId) {
+                afterType = NextSignificant(
+                    SkipTemplateArguments(afterType, end));
+            }
+            if (Kind(afterType) == TK::Operator_ScopeResolution) {
+                // An included specialization can change a member's role.
+                if (templateId || !IsKnownQualifiedType(type, end)) {
+                    return ParameterTypeEvidence::Unknown;
+                }
+            }
+        }
+        return ParameterTypeEvidence::Type;
+    }
+
+    [[nodiscard]] std::optional<TokenRange> InferStatementParameters(
+        TokenIndex begin,
+        TokenIndex end,
+        bool& ambiguous) const
+    {
+        ambiguous = false;
+        auto initializer = [&] () -> std::optional<TokenRange> {
+            ambiguous = false;
+            return std::nullopt;
+        };
         auto name = FindDeclaratorName(begin, end, std::nullopt);
         if (name >= end || Kind(name) != TK::Identifier) {
             return std::nullopt;
         }
         auto opening = NextSignificant(name + 1);
+        if (Kind(opening) != TK::Operator_OpenParenthesis &&
+            Kind(begin) == TK::Operator_OpenParenthesis)
+        {
+            if (auto nested = InferNestedFunctionParameters(begin, end)) {
+                opening = nested->Begin;
+            }
+        }
         if (Kind(opening) != TK::Operator_OpenParenthesis) {
             return std::nullopt;
         }
@@ -4178,50 +4271,50 @@ private:
         while (first < closing - 1) {
             if (Kind(first) == TK::Operator_Ellipsis) {
                 if (NextSignificant(first + 1) != closing - 1) {
-                    return std::nullopt;
+                    return initializer();
                 }
-                return TokenRange{.Begin = opening, .End = closing};
+                return ambiguous
+                    ? std::nullopt
+                    : std::optional<TokenRange>(TokenRange{
+                          .Begin = opening,
+                          .End = closing,
+                      });
             }
-            auto type = first;
-            while (Kind(type) == TK::Keyword_const ||
-                Kind(type) == TK::Keyword_volatile)
-            {
-                type = NextSignificant(type + 1);
+            auto evidence = StartsStatementParameterType(
+                first,
+                closing - 1);
+            if (evidence == ParameterTypeEvidence::Value) {
+                return initializer();
             }
-            auto typeKind = Kind(type);
-            bool explicitType = IsFundamentalTypeKeyword(typeKind) ||
-                typeKind == TK::Keyword_typename ||
-                typeKind == TK::Keyword_struct ||
-                typeKind == TK::Keyword_class ||
-                typeKind == TK::Keyword_union ||
-                typeKind == TK::Keyword_enum;
-            bool knownType = IsKnownType(type);
-            if (!explicitType && !knownType) {
-                return std::nullopt;
-            }
-            // A known class does not establish what all its members denote.
-            // Resolve qualified names through types declared in its body.
-            if (knownType &&
-                SignificantKind(type + 1) == TK::Operator_ScopeResolution &&
-                !IsKnownQualifiedType(type, closing - 1))
-            {
-                return std::nullopt;
-            }
+            ambiguous |= evidence == ParameterTypeEvidence::Unknown;
             // Before a parameter's default argument, a declarator cannot
             // contain a value expression or a braced initializer. A type
             // followed by either one is still direct initialization.
             int depth = 0;
+            std::array<TokenIndex, 256> nestedParameterStarts;
             bool sawDeclaratorParentheses = false;
             bool defaultArgument = false;
             auto cursor = first;
             for (; cursor < closing - 1; ++cursor) {
                 auto kind = Kind(cursor);
-                if (kind == TK::Operator_Comma && depth == 0) {
-                    break;
+                if (kind == TK::Operator_Comma) {
+                    if (depth == 0) {
+                        break;
+                    }
+                    auto nestedEvidence = StartsStatementParameterType(
+                        nestedParameterStarts[depth - 1],
+                        closing - 1);
+                    if (nestedEvidence == ParameterTypeEvidence::Value) {
+                        return initializer();
+                    }
+                    ambiguous |= nestedEvidence ==
+                        ParameterTypeEvidence::Unknown;
+                    nestedParameterStarts[depth - 1] =
+                        NextSignificant(cursor + 1);
                 }
                 if (kind == TK::Operator_Assign) {
                     if (depth != 0) {
-                        return std::nullopt;
+                        return initializer();
                     }
                     defaultArgument = true;
                 }
@@ -4237,7 +4330,23 @@ private:
                     }
                     continue;
                 }
-                if (kind == TK::Keyword_decltype &&
+                if (kind == TK::Keyword_noexcept &&
+                    Kind(PreviousSignificant(cursor)) ==
+                        TK::Operator_CloseParenthesis &&
+                    SignificantKind(cursor + 1) ==
+                        TK::Operator_OpenParenthesis)
+                {
+                    // The expression in an exception specification is not
+                    // a parameter list, even when it contains commas.
+                    auto nested = FindBalancedEnd(
+                        NextSignificant(cursor + 1));
+                    if (nested == std::numeric_limits<TokenIndex>::max() ||
+                        nested >= closing)
+                    {
+                        return std::nullopt;
+                    }
+                    cursor = nested - 1;
+                } else if (kind == TK::Keyword_decltype &&
                     SignificantKind(cursor + 1) ==
                         TK::Operator_OpenParenthesis)
                 {
@@ -4269,7 +4378,7 @@ private:
                 {
                     // A pointer operator cannot follow a completed
                     // parenthesized declarator or function suffix.
-                    return std::nullopt;
+                    return initializer();
                 } else if (depth > 0 && kind == TK::Identifier &&
                     (SignificantKind(cursor + 1) == TK::Operator_Star ||
                         SignificantKind(cursor + 1) ==
@@ -4280,7 +4389,7 @@ private:
                 {
                     // Pointer operators precede a declarator name; a
                     // name followed by one is a binary expression.
-                    return std::nullopt;
+                    return initializer();
                 } else if (kind == TK::Operator_OpenBrace ||
                     (kind >= TK::Literal_UserDefinedInteger &&
                         kind <= TK::Literal_String) ||
@@ -4288,9 +4397,11 @@ private:
                     kind == TK::Keyword_nullptr ||
                     kind == TK::Operator_Conditional ||
                     kind == TK::Operator_ClassMemberAccess ||
-                    kind == TK::Operator_IndirectClassMemberAccess)
+                    kind == TK::Operator_IndirectClassMemberAccess ||
+                    kind == TK::Operator_Increment ||
+                    kind == TK::Operator_Decrement)
                 {
-                    return std::nullopt;
+                    return initializer();
                 } else if (GetBinaryOperatorInfo(kind).Precedence != 0 &&
                     kind != TK::Operator_Star &&
                     kind != TK::Operator_Ampersand &&
@@ -4298,10 +4409,16 @@ private:
                     kind != TK::Operator_Comma &&
                     kind != TK::Operator_Assign)
                 {
-                    return std::nullopt;
+                    return initializer();
                 } else if (kind == TK::Operator_OpenParenthesis) {
                     sawDeclaratorParentheses |= depth == 0;
-                    ++depth;
+                    if (depth == static_cast<int>(
+                            nestedParameterStarts.size()))
+                    {
+                        return std::nullopt;
+                    }
+                    nestedParameterStarts[depth++] =
+                        NextSignificant(cursor + 1);
                 } else if (kind == TK::Operator_CloseParenthesis) {
                     --depth;
                 }
@@ -4311,8 +4428,11 @@ private:
                 break;
             }
             if (first == closing - 1) {
-                return std::nullopt;
+                return initializer();
             }
+        }
+        if (ambiguous) {
+            return std::nullopt;
         }
         return TokenRange{.Begin = opening, .End = closing};
     }
@@ -4382,18 +4502,22 @@ private:
                 {
                     segmentParameters = parameters;
                 }
+                bool ambiguousSuffix = false;
                 if (!segmentParameters &&
                     declaration.Kind == NodeKind::DeclarationStatement)
                 {
                     segmentParameters = InferStatementParameters(
                         segmentBegin,
-                        segmentEnd);
+                        segmentEnd,
+                        ambiguousSuffix);
                 }
                 AddDeclaratorSyntax(
                     *init,
                     segmentBegin,
                     segmentEnd,
-                    segmentParameters);
+                    segmentParameters,
+                    ambiguousSuffix,
+                    declaration.Kind != NodeKind::DeclarationStatement);
             }
             if (i != end) {
                 auto* comma = MakeNode(NodeKind::ListSeparator, i);

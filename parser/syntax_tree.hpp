@@ -39,6 +39,8 @@ struct TokenRange
     }
 };
 
+// An AmbiguousDeclaratorSuffix is either a FunctionDeclarator with a
+// ParameterList or an Initializer; neither speculative tree is attached.
 #define SYNTAX_NODE_KINDS                                                      \
     SYNTAX_NODE_KIND(TranslationUnit, "translation-unit")                      \
     SYNTAX_NODE_KIND(PreprocessingConditional, "preprocessing-conditional")    \
@@ -98,6 +100,8 @@ struct TokenRange
     SYNTAX_NODE_KIND(StructuredBinding, "structured-binding")                  \
     SYNTAX_NODE_KIND(BitField, "bit-field")                                    \
     SYNTAX_NODE_KIND(Initializer, "initializer")                               \
+    SYNTAX_NODE_KIND(                                                          \
+        AmbiguousDeclaratorSuffix, "ambiguous-declarator-suffix")              \
     SYNTAX_NODE_KIND(CompoundStatement, "compound-statement")                  \
     SYNTAX_NODE_KIND(DeclarationStatement, "declaration-statement")            \
     SYNTAX_NODE_KIND(ExpressionStatement, "expression-statement")              \

@@ -12,6 +12,75 @@
     ";"
   )
   (record-declaration
+    "struct" "Pair" "{"
+    (function-declaration
+      (init-declarator-list
+        (init-declarator
+          (declarator
+            (declarator-name "Pair")
+            (function-declarator
+              (parameter-list
+                "("
+                (parameter-declaration
+                  (declaration-specifiers "int")
+                )
+                (list-separator ",")
+                (parameter-declaration
+                  (declaration-specifiers "int")
+                )
+                ")"
+              )
+            )
+          )
+        )
+      )
+      ";"
+    )
+    (function-declaration
+      (init-declarator-list
+        (init-declarator
+          (declarator
+            (operator-function-name "operator" "int")
+            (function-declarator
+              (parameter-list "(" ")")
+              (function-qualifier "const")
+            )
+          )
+        )
+      )
+      ";"
+    )
+    "}" ";"
+  )
+  (template-declaration
+    "template"
+    (template-parameter-list
+      "<"
+      (template-parameter "class" "Item")
+      ">"
+    )
+    (record-declaration
+      "struct" "Box" "{"
+      (using-declaration "using" "type" "=" "int" ";")
+      (declaration
+        (declaration-specifiers "static" "constexpr" "int")
+        (init-declarator-list
+          (init-declarator
+            (declarator
+              (declarator-name "value")
+            )
+            (initializer
+              "="
+              (literal-expression "1")
+            )
+          )
+        )
+        ";"
+      )
+      "}" ";"
+    )
+  )
+  (record-declaration
     "struct" "Outer" "{"
     (using-declaration "using" "Inner" "=" "int" ";")
     (record-declaration
@@ -36,6 +105,7 @@
     )
     "}" ";"
   )
+  (record-declaration "struct" "Outer" ";")
   (namespace-declaration
     "namespace" "local" "{"
     (function-declaration
@@ -218,6 +288,174 @@
         (init-declarator-list
           (init-declarator
             (declarator
+              (declarator-name "postfix")
+            )
+            (initializer
+              (parenthesized-expression
+                "("
+                (call-expression
+                  (expression "int")
+                  (argument-list
+                    "("
+                    (argument
+                      (unary-expression
+                        (identifier-expression "n")
+                        "++"
+                      )
+                    )
+                    ")"
+                  )
+                )
+                ")"
+              )
+            )
+          )
+        )
+        ";"
+      )
+      (declaration-statement
+        (declaration-specifiers "int")
+        (init-declarator-list
+          (init-declarator
+            (declarator
+              (declarator-name "function_parameter")
+              (function-declarator
+                (parameter-list
+                  "("
+                  (parameter-declaration
+                    (declaration-specifiers "int")
+                    (init-declarator-list
+                      (init-declarator
+                        (declarator
+                          (nested-declarator
+                            "("
+                            (declarator-name "n")
+                            ")"
+                          )
+                        )
+                      )
+                    )
+                  )
+                  ")"
+                )
+              )
+            )
+          )
+        )
+        ";"
+      )
+      (declaration-statement
+        (declaration-specifiers "int")
+        (init-declarator-list
+          (init-declarator
+            (declarator
+              (declarator-name "constructed")
+            )
+            (initializer
+              (parenthesized-expression
+                "("
+                (call-expression
+                  (identifier-expression "Pair")
+                  (argument-list
+                    "("
+                    (argument
+                      (identifier-expression "n")
+                    )
+                    (list-separator ",")
+                    (argument
+                      (identifier-expression "n")
+                    )
+                    ")"
+                  )
+                )
+                ")"
+              )
+            )
+          )
+        )
+        ";"
+      )
+      (declaration-statement
+        (declaration-specifiers "int")
+        (init-declarator-list
+          (init-declarator
+            (declarator
+              (declarator-name "function_argument")
+              (function-declarator
+                (parameter-list
+                  "("
+                  (parameter-declaration
+                    (declaration-specifiers "Pair")
+                    (init-declarator-list
+                      (init-declarator
+                        (abstract-declarator "(" "int" "," "int" ")")
+                      )
+                    )
+                  )
+                  ")"
+                )
+              )
+            )
+          )
+        )
+        ";"
+      )
+      (declaration-statement
+        (declaration-specifiers "int")
+        (init-declarator-list
+          (init-declarator
+            (declarator
+              (declarator-name "template_value")
+            )
+            (ambiguous-declarator-suffix "(" "Box" "<" "int" ">" "::" "value" ")")
+          )
+        )
+        ";"
+      )
+      (declaration-statement
+        (declaration-specifiers "int")
+        (init-declarator-list
+          (init-declarator
+            (declarator
+              (declarator-name "template_member_type")
+            )
+            (ambiguous-declarator-suffix "(" "Box" "<" "int" ">" "::" "type" ")")
+          )
+        )
+        ";"
+      )
+      (declaration-statement
+        (declaration-specifiers "int")
+        (init-declarator-list
+          (init-declarator
+            (declarator
+              (declarator-name "template_type")
+              (function-declarator
+                (parameter-list
+                  "("
+                  (parameter-declaration
+                    (declaration-specifiers
+                      "Box"
+                      (template-argument-list
+                        "<"
+                        (template-argument "int")
+                        ">"
+                      )
+                    )
+                  )
+                  ")"
+                )
+              )
+            )
+          )
+        )
+        ";"
+      )
+      (declaration-statement
+        (declaration-specifiers "int")
+        (init-declarator-list
+          (init-declarator
+            (declarator
               (declarator-name "value")
             )
             (initializer
@@ -341,26 +579,7 @@
             (declarator
               (declarator-name "moved")
             )
-            (initializer
-              (parenthesized-expression
-                "("
-                (call-expression
-                  (member-expression
-                    (identifier-expression "local")
-                    "::"
-                    (identifier-expression "move")
-                  )
-                  (argument-list
-                    "("
-                    (argument
-                      (identifier-expression "n")
-                    )
-                    ")"
-                  )
-                )
-                ")"
-              )
-            )
+            (ambiguous-declarator-suffix "(" "local" "::" "move" "(" "n" ")" ")")
           )
         )
         ";"
@@ -372,17 +591,7 @@
             (declarator
               (declarator-name "member")
             )
-            (initializer
-              (parenthesized-expression
-                "("
-                (member-expression
-                  (identifier-expression "Kind")
-                  "::"
-                  (identifier-expression "value")
-                )
-                ")"
-              )
-            )
+            (ambiguous-declarator-suffix "(" "Kind" "::" "value" ")")
           )
         )
         ";"
@@ -434,17 +643,7 @@
             (declarator
               (declarator-name "qualified_value")
             )
-            (initializer
-              (parenthesized-expression
-                "("
-                (member-expression
-                  (identifier-expression "Outer")
-                  "::"
-                  (identifier-expression "value")
-                )
-                ")"
-              )
-            )
+            (ambiguous-declarator-suffix "(" "Outer" "::" "value" ")")
           )
         )
         ";"
@@ -456,10 +655,55 @@
             (declarator
               (declarator-name "unresolved")
             )
+            (ambiguous-declarator-suffix "(" "External" ")")
+          )
+        )
+        ";"
+      )
+      (declaration-statement
+        (declaration-specifiers "int")
+        (init-declarator-list
+          (init-declarator
+            (declarator
+              (declarator-name "indirect")
+            )
+            (ambiguous-declarator-suffix "(" "External" "*" "n" ")")
+          )
+        )
+        ";"
+      )
+      (declaration-statement
+        (declaration-specifiers "int")
+        (init-declarator-list
+          (init-declarator
+            (declarator
+              (declarator-name "unknown_call")
+            )
+            (ambiguous-declarator-suffix "(" "External" "(" "n" ")" ")")
+          )
+        )
+        ";"
+      )
+      (declaration-statement
+        (declaration-specifiers "int")
+        (init-declarator-list
+          (init-declarator
+            (declarator
+              (declarator-name "definite_call")
+            )
             (initializer
               (parenthesized-expression
                 "("
-                (identifier-expression "External")
+                (call-expression
+                  (identifier-expression "External")
+                  (argument-list
+                    "("
+                    (argument
+                      (literal-expression "1")
+                    )
+                    ")"
+                  )
+                )
                 ")"
               )
             )
@@ -472,17 +716,84 @@
         (init-declarator-list
           (init-declarator
             (declarator
-              (declarator-name "indirect")
+              (declarator-name "mixed_unknown")
+            )
+            (ambiguous-declarator-suffix "(" "External" ")")
+          )
+          (list-separator ",")
+          (init-declarator
+            (declarator
+              (declarator-name "mixed_known")
+              (function-declarator
+                (parameter-list
+                  "("
+                  (parameter-declaration
+                    (declaration-specifiers "int")
+                  )
+                  ")"
+                )
+              )
+            )
+          )
+        )
+        ";"
+      )
+      (declaration-statement
+        (declaration-specifiers "int")
+        (init-declarator-list
+          (init-declarator
+            (declarator
+              (nested-declarator
+                "("
+                (declarator-name "nested_unknown")
+                ")"
+              )
+            )
+            (ambiguous-declarator-suffix "(" "External" ")")
+          )
+        )
+        ";"
+      )
+      (declaration-statement
+        (declaration-specifiers "int")
+        (init-declarator-list
+          (init-declarator
+            (declarator
+              (nested-declarator
+                "("
+                (declarator-name "nested_value")
+                ")"
+              )
             )
             (initializer
               (parenthesized-expression
                 "("
-                (binary-expression
-                  (identifier-expression "External")
-                  "*"
-                  (identifier-expression "n")
-                )
+                (identifier-expression "n")
                 ")"
+              )
+            )
+          )
+        )
+        ";"
+      )
+      (declaration-statement
+        (declaration-specifiers "int")
+        (init-declarator-list
+          (init-declarator
+            (declarator
+              (nested-declarator
+                "("
+                (declarator-name "nested_function")
+                ")"
+              )
+              (function-declarator
+                (parameter-list
+                  "("
+                  (parameter-declaration
+                    (declaration-specifiers "int")
+                  )
+                  ")"
+                )
               )
             )
           )
@@ -753,6 +1064,88 @@
                   )
                   ")"
                 )
+              )
+            )
+          )
+        )
+        ";"
+      )
+      (declaration-statement
+        (declaration-specifiers "int")
+        (init-declarator-list
+          (init-declarator
+            (declarator
+              (declarator-name "exception_spec")
+              (function-declarator
+                (parameter-list
+                  "("
+                  (parameter-declaration
+                    (declaration-specifiers "int")
+                    (init-declarator-list
+                      (init-declarator
+                        (declarator
+                          (nested-declarator
+                            "("
+                            (pointer-operator "*")
+                            (declarator-name "callback")
+                            ")"
+                          )
+                          (function-declarator
+                            (parameter-list
+                              "("
+                              (parameter-declaration
+                                (declaration-specifiers "int")
+                              )
+                              ")"
+                            )
+                            (exception-specification "noexcept" "(" "noexcept" "(" "n" "," "n" ")" ")")
+                          )
+                        )
+                      )
+                    )
+                  )
+                  ")"
+                )
+              )
+            )
+          )
+        )
+        ";"
+      )
+      (declaration-statement
+        (declaration-specifiers "int")
+        (init-declarator-list
+          (init-declarator
+            (declarator
+              (declarator-name "exception_value")
+            )
+            (initializer
+              (parenthesized-expression
+                "("
+                (call-expression
+                  (expression "int")
+                  (argument-list
+                    "("
+                    (argument
+                      (call-expression
+                        (expression "noexcept")
+                        (argument-list
+                          "("
+                          (argument
+                            (identifier-expression "n")
+                          )
+                          (list-separator ",")
+                          (argument
+                            (identifier-expression "n")
+                          )
+                          ")"
+                        )
+                      )
+                    )
+                    ")"
+                  )
+                )
+                ")"
               )
             )
           )
