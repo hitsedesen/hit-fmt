@@ -4141,14 +4141,50 @@ private:
             {
                 return std::nullopt;
             }
-            // Skip nested declarators and default arguments while looking
-            // for the next parameter at the top level.
+            // Before a parameter's default argument, a declarator cannot
+            // contain a value expression or a braced initializer. A type
+            // followed by either one is still direct initialization.
+            int depth = 0;
+            bool defaultArgument = false;
             auto cursor = first;
             for (; cursor < closing - 1; ++cursor) {
-                if (Kind(cursor) == TK::Operator_Comma) {
+                auto kind = Kind(cursor);
+                if (kind == TK::Operator_Comma && depth == 0) {
                     break;
                 }
-                if (IsOpenDelimiter(Kind(cursor))) {
+                if (kind == TK::Operator_Assign && depth == 0) {
+                    defaultArgument = true;
+                }
+                if (defaultArgument) {
+                    if (IsOpenDelimiter(kind)) {
+                        auto nested = FindBalancedEnd(cursor);
+                        if (nested == std::numeric_limits<TokenIndex>::max() ||
+                            nested >= closing)
+                        {
+                            return std::nullopt;
+                        }
+                        cursor = nested - 1;
+                    }
+                    continue;
+                }
+                if (kind == TK::Keyword_decltype &&
+                    SignificantKind(cursor + 1) ==
+                        TK::Operator_OpenParenthesis)
+                {
+                    auto nested = FindBalancedEnd(
+                        NextSignificant(cursor + 1));
+                    if (nested == std::numeric_limits<TokenIndex>::max() ||
+                        nested >= closing)
+                    {
+                        return std::nullopt;
+                    }
+                    cursor = nested - 1;
+                } else if (kind == TK::Operator_Less) {
+                    auto after = SkipTemplateArguments(cursor, closing);
+                    if (after > cursor && after < closing) {
+                        cursor = after - 1;
+                    }
+                } else if (kind == TK::Operator_OpenBracket) {
                     auto nested = FindBalancedEnd(cursor);
                     if (nested == std::numeric_limits<TokenIndex>::max() ||
                         nested >= closing)
@@ -4156,11 +4192,39 @@ private:
                         return std::nullopt;
                     }
                     cursor = nested - 1;
-                } else if (Kind(cursor) == TK::Operator_Less) {
-                    auto after = SkipTemplateArguments(cursor, closing);
-                    if (after > cursor && after < closing) {
-                        cursor = after - 1;
-                    }
+                } else if (depth > 0 && kind == TK::Identifier &&
+                    (SignificantKind(cursor + 1) == TK::Operator_Star ||
+                        SignificantKind(cursor + 1) ==
+                            TK::Operator_Ampersand ||
+                        SignificantKind(cursor + 1) == TK::Operator_And) &&
+                    Kind(PreviousSignificant(cursor)) !=
+                        TK::Operator_ScopeResolution)
+                {
+                    // Pointer operators precede a declarator name; a
+                    // name followed by one is a binary expression.
+                    return std::nullopt;
+                } else if (kind == TK::Operator_OpenBrace ||
+                    (kind >= TK::Literal_UserDefinedInteger &&
+                        kind <= TK::Literal_String) ||
+                    kind == TK::Keyword_true || kind == TK::Keyword_false ||
+                    kind == TK::Keyword_nullptr ||
+                    kind == TK::Operator_Conditional ||
+                    kind == TK::Operator_ClassMemberAccess ||
+                    kind == TK::Operator_IndirectClassMemberAccess)
+                {
+                    return std::nullopt;
+                } else if (GetBinaryOperatorInfo(kind).Precedence != 0 &&
+                    kind != TK::Operator_Star &&
+                    kind != TK::Operator_Ampersand &&
+                    kind != TK::Operator_And &&
+                    kind != TK::Operator_Comma &&
+                    kind != TK::Operator_Assign)
+                {
+                    return std::nullopt;
+                } else if (kind == TK::Operator_OpenParenthesis) {
+                    ++depth;
+                } else if (kind == TK::Operator_CloseParenthesis) {
+                    --depth;
                 }
             }
             first = NextSignificant(cursor + 1);

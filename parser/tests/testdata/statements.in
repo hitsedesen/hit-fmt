@@ -8,6 +8,14 @@ void function(int count, Entries entries) {
     int first(), second(n), third(int);
     using Number = int;
     int alias(Number);
+    int cast(int(1));
+    int braced(Number{2});
+    int nested(Number(3));
+    int product(int(n * n));
+    int compared(int(n == n));
+    int parenthesized(int(n));
+    int parameter(int (*callback)(int, int) = nullptr);
+    int defaulted(int count = Number{1}, int next = 2);
     for (int index = 0; index < count; ++index)
         use(index);
     for (auto&& [key, value] : entries)

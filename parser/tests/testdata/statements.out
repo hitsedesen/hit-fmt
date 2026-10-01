@@ -218,6 +218,267 @@
         )
         ";"
       )
+      (declaration-statement
+        (declaration-specifiers "int")
+        (init-declarator-list
+          (init-declarator
+            (declarator
+              (declarator-name "cast")
+            )
+            (initializer
+              (parenthesized-expression
+                "("
+                (call-expression
+                  (expression "int")
+                  (argument-list
+                    "("
+                    (argument
+                      (literal-expression "1")
+                    )
+                    ")"
+                  )
+                )
+                ")"
+              )
+            )
+          )
+        )
+        ";"
+      )
+      (declaration-statement
+        (declaration-specifiers "int")
+        (init-declarator-list
+          (init-declarator
+            (declarator
+              (declarator-name "braced")
+            )
+            (initializer
+              (parenthesized-expression
+                "("
+                (identifier-expression "Number")
+                "{" "2" "}" ")"
+              )
+            )
+          )
+        )
+        ";"
+      )
+      (declaration-statement
+        (declaration-specifiers "int")
+        (init-declarator-list
+          (init-declarator
+            (declarator
+              (declarator-name "nested")
+            )
+            (initializer
+              (parenthesized-expression
+                "("
+                (call-expression
+                  (identifier-expression "Number")
+                  (argument-list
+                    "("
+                    (argument
+                      (literal-expression "3")
+                    )
+                    ")"
+                  )
+                )
+                ")"
+              )
+            )
+          )
+        )
+        ";"
+      )
+      (declaration-statement
+        (declaration-specifiers "int")
+        (init-declarator-list
+          (init-declarator
+            (declarator
+              (declarator-name "product")
+            )
+            (initializer
+              (parenthesized-expression
+                "("
+                (call-expression
+                  (expression "int")
+                  (argument-list
+                    "("
+                    (argument
+                      (binary-expression
+                        (identifier-expression "n")
+                        "*"
+                        (identifier-expression "n")
+                      )
+                    )
+                    ")"
+                  )
+                )
+                ")"
+              )
+            )
+          )
+        )
+        ";"
+      )
+      (declaration-statement
+        (declaration-specifiers "int")
+        (init-declarator-list
+          (init-declarator
+            (declarator
+              (declarator-name "compared")
+            )
+            (initializer
+              (parenthesized-expression
+                "("
+                (call-expression
+                  (expression "int")
+                  (argument-list
+                    "("
+                    (argument
+                      (binary-expression
+                        (identifier-expression "n")
+                        "=="
+                        (identifier-expression "n")
+                      )
+                    )
+                    ")"
+                  )
+                )
+                ")"
+              )
+            )
+          )
+        )
+        ";"
+      )
+      (declaration-statement
+        (declaration-specifiers "int")
+        (init-declarator-list
+          (init-declarator
+            (declarator
+              (declarator-name "parenthesized")
+              (function-declarator
+                (parameter-list
+                  "("
+                  (parameter-declaration
+                    (declaration-specifiers "int")
+                    (init-declarator-list
+                      (init-declarator
+                        (declarator
+                          (nested-declarator
+                            "("
+                            (declarator-name "n")
+                            ")"
+                          )
+                        )
+                      )
+                    )
+                  )
+                  ")"
+                )
+              )
+            )
+          )
+        )
+        ";"
+      )
+      (declaration-statement
+        (declaration-specifiers "int")
+        (init-declarator-list
+          (init-declarator
+            (declarator
+              (declarator-name "parameter")
+              (function-declarator
+                (parameter-list
+                  "("
+                  (parameter-declaration
+                    (declaration-specifiers "int")
+                    (init-declarator-list
+                      (init-declarator
+                        (declarator
+                          (nested-declarator
+                            "("
+                            (pointer-operator "*")
+                            (declarator-name "callback")
+                            ")"
+                          )
+                          (function-declarator
+                            (parameter-list
+                              "("
+                              (parameter-declaration
+                                (declaration-specifiers "int")
+                              )
+                              (list-separator ",")
+                              (parameter-declaration
+                                (declaration-specifiers "int")
+                              )
+                              ")"
+                            )
+                          )
+                        )
+                        (initializer
+                          "="
+                          (literal-expression "nullptr")
+                        )
+                      )
+                    )
+                  )
+                  ")"
+                )
+              )
+            )
+          )
+        )
+        ";"
+      )
+      (declaration-statement
+        (declaration-specifiers "int")
+        (init-declarator-list
+          (init-declarator
+            (declarator
+              (declarator-name "defaulted")
+              (function-declarator
+                (parameter-list
+                  "("
+                  (parameter-declaration
+                    (declaration-specifiers "int")
+                    (init-declarator-list
+                      (init-declarator
+                        (declarator
+                          (declarator-name "count")
+                        )
+                        (initializer
+                          "="
+                          (identifier-expression "Number")
+                          (unparsed-syntax "{" "1" "}")
+                        )
+                      )
+                    )
+                  )
+                  (list-separator ",")
+                  (parameter-declaration
+                    (declaration-specifiers "int")
+                    (init-declarator-list
+                      (init-declarator
+                        (declarator
+                          (declarator-name "next")
+                        )
+                        (initializer
+                          "="
+                          (literal-expression "2")
+                        )
+                      )
+                    )
+                  )
+                  ")"
+                )
+              )
+            )
+          )
+        )
+        ";"
+      )
       (for-statement
         "for"
         (for-header
