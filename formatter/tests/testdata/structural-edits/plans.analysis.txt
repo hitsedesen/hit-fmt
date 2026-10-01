@@ -1,0 +1,29 @@
+action 0 kind=3 tokens=[2,3)
+action 1 kind=3 tokens=[6,7)
+action 2 kind=2 tokens=[13,14)
+action 3 kind=0 tokens=[18,31)
+action 4 kind=0 tokens=[22,26)
+action 5 kind=0 tokens=[27,31)
+action 6 kind=1 tokens=[35,36)
+action 7 kind=0 tokens=[76,80)
+action 8 kind=4 tokens=[0,2)
+edit action=8 source=[0,30) edge=2 depth=0 pieces=source[15,30) source[0,15)
+edit action=0 source=[30,31) edge=2 depth=0 pieces=
+edit action=1 source=[46,47) edge=2 depth=0 pieces=
+edit action=2 source=[65,66) edge=2 depth=0 pieces=
+edit action=3 source=[78,78) edge=1 depth=3 pieces='{'
+edit action=4 source=[85,85) edge=1 depth=4 pieces='{'
+edit action=4 source=[89,89) edge=0 depth=4 pieces='}'
+edit action=5 source=[95,95) edge=1 depth=4 pieces='{'
+edit action=5 source=[99,99) edge=0 depth=4 pieces='}'
+edit action=3 source=[99,99) edge=0 depth=3 pieces='}'
+edit action=6 source=[114,115) edge=2 depth=3 pieces='{}'
+edit action=7 source=[263,263) edge=1 depth=3 pieces='{'
+edit action=7 source=[267,267) edge=0 depth=3 pieces='}'
+skip kind=2 tokens=[38,39) reason=4
+skip kind=0 tokens=[48,52) reason=3
+skip kind=0 tokens=[56,60) reason=2
+skip kind=0 tokens=[66,70) reason=1
+namespace-output-plan
+action 0 kind=5 tokens=[3,8)
+edit action=0 source=[47,47) edge=2 depth=0 pieces=' ' '// namespace' ' ' 'n'

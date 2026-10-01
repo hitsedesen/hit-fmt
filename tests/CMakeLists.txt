@@ -4,6 +4,7 @@ add_executable(tests
     ../formatter/tests/hunks.cpp
     ../formatter/tests/layout.cpp
     ../formatter/tests/source_analysis_tests.cpp
+    ../formatter/tests/structural_edits_tests.cpp
     ../formatter/tests/tests.cpp
     ../hit-fmt/tests/file_batch.cpp
     ../hit-fmt/tests/file_dispatch.cpp)
