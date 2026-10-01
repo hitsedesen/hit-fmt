@@ -4118,8 +4118,8 @@ private:
         }
 
         // A parenthesized initializer can also start with an identifier.
-        // Prefer a parameter list only when its contents can start a type,
-        // and a name already bound as a value cannot be that type.
+        // Infer parameters only from types established in this file or
+        // explicit type keywords. An unresolved name may instead be a value.
         while (first < closing - 1) {
             auto type = first;
             while (Kind(type) == TK::Keyword_const ||
@@ -4127,17 +4127,22 @@ private:
             {
                 type = NextSignificant(type + 1);
             }
-            auto next = NextSignificant(type + 1);
-            auto nextKind = Kind(next);
-            bool unknownTypeWithDeclarator =
-                Kind(type) == TK::Identifier && !LookupName(Text(type)) &&
-                (nextKind == TK::Identifier || nextKind == TK::Operator_Star ||
-                    nextKind == TK::Operator_Ampersand ||
-                    nextKind == TK::Operator_And ||
-                    nextKind == TK::Operator_ScopeResolution ||
-                    nextKind == TK::Operator_Less);
-            if (!IsTypeKeyword(Kind(type)) && !IsKnownType(type) &&
-                !unknownTypeWithDeclarator)
+            auto typeKind = Kind(type);
+            bool explicitType = IsFundamentalTypeKeyword(typeKind) ||
+                typeKind == TK::Keyword_typename ||
+                typeKind == TK::Keyword_struct ||
+                typeKind == TK::Keyword_class ||
+                typeKind == TK::Keyword_union ||
+                typeKind == TK::Keyword_enum;
+            bool knownType = IsKnownType(type);
+            if (!explicitType && !knownType) {
+                return std::nullopt;
+            }
+            // A known class or enum does not establish what its qualified
+            // members denote. Only an explicit 'typename' disambiguates
+            // such a dependent member as a type here.
+            if (knownType &&
+                SignificantKind(type + 1) == TK::Operator_ScopeResolution)
             {
                 return std::nullopt;
             }

@@ -1,5 +1,44 @@
 (translation-unit
+  (record-declaration "struct" "Entries" "{" "}" ";")
+  (enum-declaration
+    "enum" "Kind"
+    (enumerator-list
+      "{"
+      (enumerator
+        (enumerator-name "value")
+      )
+      "}"
+    )
+    ";"
+  )
+  (namespace-declaration
+    "namespace" "local" "{"
+    (function-declaration
+      (declaration-specifiers "int")
+      (init-declarator-list
+        (init-declarator
+          (declarator
+            (declarator-name "move")
+            (function-declarator
+              (parameter-list
+                "("
+                (parameter-declaration
+                  (declaration-specifiers "int")
+                )
+                ")"
+              )
+            )
+          )
+        )
+      )
+      ";"
+    )
+    "}"
+  )
   (function-definition
+    (leading-trivia
+      (whitespace "\n\n")
+    )
     (declaration-specifiers "void")
     (init-declarator-list
       (init-declarator
@@ -212,6 +251,99 @@
                   )
                   ")"
                 )
+              )
+            )
+          )
+        )
+        ";"
+      )
+      (declaration-statement
+        (declaration-specifiers "int")
+        (init-declarator-list
+          (init-declarator
+            (declarator
+              (declarator-name "moved")
+            )
+            (initializer
+              (parenthesized-expression
+                "("
+                (call-expression
+                  (member-expression
+                    (identifier-expression "local")
+                    "::"
+                    (identifier-expression "move")
+                  )
+                  (argument-list
+                    "("
+                    (argument
+                      (identifier-expression "n")
+                    )
+                    ")"
+                  )
+                )
+                ")"
+              )
+            )
+          )
+        )
+        ";"
+      )
+      (declaration-statement
+        (declaration-specifiers "int")
+        (init-declarator-list
+          (init-declarator
+            (declarator
+              (declarator-name "member")
+            )
+            (initializer
+              (parenthesized-expression
+                "("
+                (member-expression
+                  (identifier-expression "Kind")
+                  "::"
+                  (identifier-expression "value")
+                )
+                ")"
+              )
+            )
+          )
+        )
+        ";"
+      )
+      (declaration-statement
+        (declaration-specifiers "int")
+        (init-declarator-list
+          (init-declarator
+            (declarator
+              (declarator-name "unresolved")
+            )
+            (initializer
+              (parenthesized-expression
+                "("
+                (identifier-expression "External")
+                ")"
+              )
+            )
+          )
+        )
+        ";"
+      )
+      (declaration-statement
+        (declaration-specifiers "int")
+        (init-declarator-list
+          (init-declarator
+            (declarator
+              (declarator-name "indirect")
+            )
+            (initializer
+              (parenthesized-expression
+                "("
+                (binary-expression
+                  (identifier-expression "External")
+                  "*"
+                  (identifier-expression "n")
+                )
+                ")"
               )
             )
           )

@@ -1,3 +1,7 @@
+struct Entries {};
+enum Kind { value };
+namespace local { int move(int); }
+
 void function(int count, Entries entries) {
     int empty();
     int typed(int, const Entries&);
@@ -8,6 +12,10 @@ void function(int count, Entries entries) {
     int first(), second(n), third(int);
     using Number = int;
     int alias(Number);
+    int moved(local::move(n));
+    int member(Kind::value);
+    int unresolved(External);
+    int indirect(External * n);
     int cast(int(1));
     int braced(Number{2});
     int nested(Number(3));
