@@ -4094,6 +4094,86 @@ private:
         }
     }
 
+    [[nodiscard]] std::optional<TokenRange> InferStatementParameters(
+        TokenIndex begin,
+        TokenIndex end) const
+    {
+        auto name = FindDeclaratorName(begin, end, std::nullopt);
+        if (name >= end || Kind(name) != TK::Identifier) {
+            return std::nullopt;
+        }
+        auto opening = NextSignificant(name + 1);
+        if (Kind(opening) != TK::Operator_OpenParenthesis) {
+            return std::nullopt;
+        }
+        auto closing = FindBalancedEnd(opening);
+        if (closing == std::numeric_limits<TokenIndex>::max() ||
+            closing > end)
+        {
+            return std::nullopt;
+        }
+        auto first = NextSignificant(opening + 1);
+        if (first == closing - 1) {
+            return TokenRange{.Begin = opening, .End = closing};
+        }
+
+        // A parenthesized initializer can also start with an identifier.
+        // Prefer a parameter list only when its contents can start a type,
+        // and a name already bound as a value cannot be that type.
+        while (first < closing - 1) {
+            auto type = first;
+            while (Kind(type) == TK::Keyword_const ||
+                Kind(type) == TK::Keyword_volatile)
+            {
+                type = NextSignificant(type + 1);
+            }
+            auto next = NextSignificant(type + 1);
+            auto nextKind = Kind(next);
+            bool unknownTypeWithDeclarator =
+                Kind(type) == TK::Identifier && !LookupName(Text(type)) &&
+                (nextKind == TK::Identifier || nextKind == TK::Operator_Star ||
+                    nextKind == TK::Operator_Ampersand ||
+                    nextKind == TK::Operator_And ||
+                    nextKind == TK::Operator_ScopeResolution ||
+                    nextKind == TK::Operator_Less);
+            if (!IsTypeKeyword(Kind(type)) && !IsKnownType(type) &&
+                !unknownTypeWithDeclarator)
+            {
+                return std::nullopt;
+            }
+            // Skip nested declarators and default arguments while looking
+            // for the next parameter at the top level.
+            auto cursor = first;
+            for (; cursor < closing - 1; ++cursor) {
+                if (Kind(cursor) == TK::Operator_Comma) {
+                    break;
+                }
+                if (IsOpenDelimiter(Kind(cursor))) {
+                    auto nested = FindBalancedEnd(cursor);
+                    if (nested == std::numeric_limits<TokenIndex>::max() ||
+                        nested >= closing)
+                    {
+                        return std::nullopt;
+                    }
+                    cursor = nested - 1;
+                } else if (Kind(cursor) == TK::Operator_Less) {
+                    auto after = SkipTemplateArguments(cursor, closing);
+                    if (after > cursor && after < closing) {
+                        cursor = after - 1;
+                    }
+                }
+            }
+            first = NextSignificant(cursor + 1);
+            if (cursor == closing - 1) {
+                break;
+            }
+            if (first == closing - 1) {
+                return std::nullopt;
+            }
+        }
+        return TokenRange{.Begin = opening, .End = closing};
+    }
+
     void AddDeclarationSyntax(
         Node& declaration,
         size_t begin,
@@ -4158,6 +4238,13 @@ private:
                     parameters->End <= segmentEnd)
                 {
                     segmentParameters = parameters;
+                }
+                if (!segmentParameters &&
+                    declaration.Kind == NodeKind::DeclarationStatement)
+                {
+                    segmentParameters = InferStatementParameters(
+                        segmentBegin,
+                        segmentEnd);
                 }
                 AddDeclaratorSyntax(
                     *init,

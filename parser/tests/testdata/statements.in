@@ -1,4 +1,13 @@
 void function(int count, Entries entries) {
+    int empty();
+    int typed(int, const Entries&);
+    int n = 1;
+    int value(n);
+    int literal(2);
+    int pair(n, 2);
+    int first(), second(n), third(int);
+    using Number = int;
+    int alias(Number);
     for (int index = 0; index < count; ++index)
         use(index);
     for (auto&& [key, value] : entries)
@@ -28,4 +37,8 @@ void function(int count, Entries entries) {
 
 label:
     goto label;
+}
+
+void argument(int n) {
+    int value(n);
 }

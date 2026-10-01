@@ -37,6 +37,187 @@
     )
     (compound-statement
       "{"
+      (declaration-statement
+        (declaration-specifiers "int")
+        (init-declarator-list
+          (init-declarator
+            (declarator
+              (declarator-name "empty")
+              (function-declarator
+                (parameter-list "(" ")")
+              )
+            )
+          )
+        )
+        ";"
+      )
+      (declaration-statement
+        (declaration-specifiers "int")
+        (init-declarator-list
+          (init-declarator
+            (declarator
+              (declarator-name "typed")
+              (function-declarator
+                (parameter-list
+                  "("
+                  (parameter-declaration
+                    (declaration-specifiers "int")
+                  )
+                  (list-separator ",")
+                  (parameter-declaration
+                    (declaration-specifiers "const" "Entries")
+                    (init-declarator-list
+                      (init-declarator
+                        (abstract-declarator
+                          (pointer-operator "&")
+                        )
+                      )
+                    )
+                  )
+                  ")"
+                )
+              )
+            )
+          )
+        )
+        ";"
+      )
+      (declaration-statement
+        (declaration-specifiers "int")
+        (init-declarator-list
+          (init-declarator
+            (declarator
+              (declarator-name "n")
+            )
+            (initializer
+              "="
+              (literal-expression "1")
+            )
+          )
+        )
+        ";"
+      )
+      (declaration-statement
+        (declaration-specifiers "int")
+        (init-declarator-list
+          (init-declarator
+            (declarator
+              (declarator-name "value")
+            )
+            (initializer
+              (parenthesized-expression
+                "("
+                (identifier-expression "n")
+                ")"
+              )
+            )
+          )
+        )
+        ";"
+      )
+      (declaration-statement
+        (declaration-specifiers "int")
+        (init-declarator-list
+          (init-declarator
+            (declarator
+              (declarator-name "literal")
+            )
+            (initializer
+              (parenthesized-expression
+                "("
+                (literal-expression "2")
+                ")"
+              )
+            )
+          )
+        )
+        ";"
+      )
+      (declaration-statement
+        (declaration-specifiers "int")
+        (init-declarator-list
+          (init-declarator
+            (declarator
+              (declarator-name "pair")
+            )
+            (initializer
+              (parenthesized-expression
+                "("
+                (binary-expression
+                  (identifier-expression "n")
+                  ","
+                  (literal-expression "2")
+                )
+                ")"
+              )
+            )
+          )
+        )
+        ";"
+      )
+      (declaration-statement
+        (declaration-specifiers "int")
+        (init-declarator-list
+          (init-declarator
+            (declarator
+              (declarator-name "first")
+              (function-declarator
+                (parameter-list "(" ")")
+              )
+            )
+          )
+          (list-separator ",")
+          (init-declarator
+            (declarator
+              (declarator-name "second")
+            )
+            (initializer
+              (parenthesized-expression
+                "("
+                (identifier-expression "n")
+                ")"
+              )
+            )
+          )
+          (list-separator ",")
+          (init-declarator
+            (declarator
+              (declarator-name "third")
+              (function-declarator
+                (parameter-list
+                  "("
+                  (parameter-declaration
+                    (declaration-specifiers "int")
+                  )
+                  ")"
+                )
+              )
+            )
+          )
+        )
+        ";"
+      )
+      (using-declaration "using" "Number" "=" "int" ";")
+      (declaration-statement
+        (declaration-specifiers "int")
+        (init-declarator-list
+          (init-declarator
+            (declarator
+              (declarator-name "alias")
+              (function-declarator
+                (parameter-list
+                  "("
+                  (parameter-declaration
+                    (declaration-specifiers "Number")
+                  )
+                  ")"
+                )
+              )
+            )
+          )
+        )
+        ";"
+      )
       (for-statement
         "for"
         (for-header
@@ -258,6 +439,57 @@
         "label" ":"
       )
       (goto-statement "goto" "label" ";")
+      "}"
+    )
+  )
+  (function-definition
+    (leading-trivia
+      (whitespace "\n\n")
+    )
+    (declaration-specifiers "void")
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (declarator-name "argument")
+          (function-declarator
+            (parameter-list
+              "("
+              (parameter-declaration
+                (declaration-specifiers "int")
+                (init-declarator-list
+                  (init-declarator
+                    (declarator
+                      (declarator-name "n")
+                    )
+                  )
+                )
+              )
+              ")"
+            )
+          )
+        )
+      )
+    )
+    (compound-statement
+      "{"
+      (declaration-statement
+        (declaration-specifiers "int")
+        (init-declarator-list
+          (init-declarator
+            (declarator
+              (declarator-name "value")
+            )
+            (initializer
+              (parenthesized-expression
+                "("
+                (identifier-expression "n")
+                ")"
+              )
+            )
+          )
+        )
+        ";"
+      )
       "}"
     )
   )
