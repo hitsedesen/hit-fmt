@@ -2,7 +2,8 @@ add_executable(tests
     ../tokenizer/tests/tests.cpp
     ../parser/tests/tests.cpp
     ../formatter/tests/hunks.cpp
-    ../formatter/tests/tests.cpp)
+    ../formatter/tests/tests.cpp
+    ../hit-fmt/tests/file_batch.cpp)
 target_link_libraries(tests PRIVATE
     GTest::gtest_main
     lib-formatter)
