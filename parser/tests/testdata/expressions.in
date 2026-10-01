@@ -36,5 +36,14 @@ auto evaluate(Values... values) {
     auto shifted = (Type(1) << offset) - 1;
     auto summed = (Type(2) + offset) - 1;
     int braced{1};
+    auto mixed = a + b * c + d;
+    auto equal = a - b + c;
+    auto assigned = a = b += c;
+    auto grouped = (a + b) * c;
+    auto alternatives = a bitand b xor c bitor d and e or f;
+    a and_eq b or_eq c xor_eq d;
+    auto unequal = a not_eq b;
+    auto negated = not a;
+    auto complemented = compl a;
     return lambda(initialized);
 }

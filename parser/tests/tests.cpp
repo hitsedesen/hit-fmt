@@ -1,3 +1,4 @@
+#include <parser/operator_info.hpp>
 #include <parser/parser.hpp>
 #include <tests/golden.hpp>
 
@@ -293,6 +294,104 @@ TEST_P(FileTest, Golden)
     }
 
     fixture.Expect(actual, ".out");
+}
+
+TEST(Parser, BinaryOperatorMetadataMatchesGrouping)
+{
+    const test::golden::Fixture fixture{PARSER_TESTDATA_DIR, "expressions"};
+    const auto source = fixture.InputNamed(".in");
+    PaddedInput input(source);
+    size_t errors = 0;
+    auto tree = parser::Parse(input.View(), [&] (parser::ParseError) {
+        ++errors;
+    });
+    EXPECT_EQ(errors, 0);
+
+    auto isBinary = [] (const Node& node) {
+        return node.Kind == parser::NodeKind::BinaryExpression ||
+            node.Kind == parser::NodeKind::AssignmentExpression;
+    };
+    auto operatorToken = [&] (const Node& node) {
+        auto token = node.FirstChild->Tokens.End;
+        while (tree.Kind(token) == tokenizer::TokenKind::Comment) {
+            ++token;
+        }
+        return token;
+    };
+    bool tighterChild = false;
+    bool equalLeftChild = false;
+    bool equalRightChild = false;
+    bool parenthesized = false;
+    bool alternativeBinary = false;
+    bool unsupportedUnary = false;
+    bool supportedUnary = false;
+    std::vector<const Node*> pending{&tree.Root()};
+    while (!pending.empty()) {
+        const auto* node = pending.back();
+        pending.pop_back();
+        if (isBinary(*node)) {
+            auto* left = node->FirstChild;
+            ASSERT_NE(left, nullptr);
+            auto* right = left->NextSibling;
+            ASSERT_NE(right, nullptr);
+            ASSERT_EQ(right->NextSibling, nullptr);
+            auto token = operatorToken(*node);
+            ASSERT_LT(token, right->Tokens.Begin);
+            auto info = parser::GetBinaryOperatorInfo(tree.Kind(token));
+            EXPECT_GT(info.Precedence, 0);
+            EXPECT_EQ(
+                node->Kind == parser::NodeKind::AssignmentExpression,
+                info.Precedence == 2);
+            for (const auto* child : {left, right}) {
+                if (isBinary(*child)) {
+                    ASSERT_NE(child->FirstChild, nullptr);
+                    auto childInfo = parser::GetBinaryOperatorInfo(
+                        tree.Kind(operatorToken(*child)));
+                    EXPECT_GE(childInfo.Precedence, info.Precedence);
+                    tighterChild |= childInfo.Precedence > info.Precedence;
+                    if (childInfo.Precedence == info.Precedence) {
+                        EXPECT_EQ(info.RightAssociative, child == right);
+                        equalLeftChild |= child == left;
+                        equalRightChild |= child == right;
+                    }
+                }
+            }
+            auto text = tree.TokenText(token);
+            alternativeBinary |= text == "and" || text == "or" ||
+                text == "bitand" || text == "bitor" || text == "xor" ||
+                text == "and_eq" || text == "or_eq" || text == "xor_eq" ||
+                text == "not_eq";
+        } else if (node->Kind == parser::NodeKind::IdentifierExpression ||
+            node->Kind == parser::NodeKind::LiteralExpression ||
+            node->Kind == parser::NodeKind::ParenthesizedExpression)
+        {
+            auto info = parser::GetBinaryOperatorInfo(
+                tree.Kind(node->Tokens.Begin));
+            EXPECT_EQ(info.Precedence, 0);
+            EXPECT_FALSE(info.RightAssociative);
+            parenthesized |=
+                node->Kind == parser::NodeKind::ParenthesizedExpression;
+        } else if (node->Kind == parser::NodeKind::UnaryExpression) {
+            auto info = parser::GetBinaryOperatorInfo(
+                tree.Kind(node->Tokens.Begin));
+            // A supported token can still have a unary rather than binary role.
+            supportedUnary |= info.Precedence != 0;
+            unsupportedUnary |= info.Precedence == 0;
+        }
+        for (auto* child = node->FirstChild;
+            child;
+            child = child->NextSibling)
+        {
+            pending.push_back(child);
+        }
+    }
+    EXPECT_TRUE(tighterChild);
+    EXPECT_TRUE(equalLeftChild);
+    EXPECT_TRUE(equalRightChild);
+    EXPECT_TRUE(parenthesized);
+    EXPECT_TRUE(alternativeBinary);
+    EXPECT_TRUE(unsupportedUnary);
+    EXPECT_TRUE(supportedUnary);
 }
 
 TEST(Parser, MatchesPunctuationRoles)

@@ -667,6 +667,212 @@
           )
           ";"
         )
+        (declaration-statement
+          (declaration-specifiers "auto")
+          (init-declarator-list
+            (init-declarator
+              (declarator
+                (declarator-name "mixed")
+              )
+              (initializer
+                "="
+                (binary-expression
+                  (binary-expression
+                    (identifier-expression "a")
+                    "+"
+                    (binary-expression
+                      (identifier-expression "b")
+                      "*"
+                      (identifier-expression "c")
+                    )
+                  )
+                  "+"
+                  (identifier-expression "d")
+                )
+              )
+            )
+          )
+          ";"
+        )
+        (declaration-statement
+          (declaration-specifiers "auto")
+          (init-declarator-list
+            (init-declarator
+              (declarator
+                (declarator-name "equal")
+              )
+              (initializer
+                "="
+                (binary-expression
+                  (binary-expression
+                    (identifier-expression "a")
+                    "-"
+                    (identifier-expression "b")
+                  )
+                  "+"
+                  (identifier-expression "c")
+                )
+              )
+            )
+          )
+          ";"
+        )
+        (declaration-statement
+          (declaration-specifiers "auto")
+          (init-declarator-list
+            (init-declarator
+              (declarator
+                (declarator-name "assigned")
+              )
+              (initializer
+                "="
+                (assignment-expression
+                  (identifier-expression "a")
+                  "="
+                  (assignment-expression
+                    (identifier-expression "b")
+                    "+="
+                    (identifier-expression "c")
+                  )
+                )
+              )
+            )
+          )
+          ";"
+        )
+        (declaration-statement
+          (declaration-specifiers "auto")
+          (init-declarator-list
+            (init-declarator
+              (declarator
+                (declarator-name "grouped")
+              )
+              (initializer
+                "="
+                (binary-expression
+                  (parenthesized-expression
+                    "("
+                    (binary-expression
+                      (identifier-expression "a")
+                      "+"
+                      (identifier-expression "b")
+                    )
+                    ")"
+                  )
+                  "*"
+                  (identifier-expression "c")
+                )
+              )
+            )
+          )
+          ";"
+        )
+        (declaration-statement
+          (declaration-specifiers "auto")
+          (init-declarator-list
+            (init-declarator
+              (declarator
+                (declarator-name "alternatives")
+              )
+              (initializer
+                "="
+                (binary-expression
+                  (binary-expression
+                    (binary-expression
+                      (binary-expression
+                        (binary-expression
+                          (identifier-expression "a")
+                          "bitand"
+                          (identifier-expression "b")
+                        )
+                        "xor"
+                        (identifier-expression "c")
+                      )
+                      "bitor"
+                      (identifier-expression "d")
+                    )
+                    "and"
+                    (identifier-expression "e")
+                  )
+                  "or"
+                  (identifier-expression "f")
+                )
+              )
+            )
+          )
+          ";"
+        )
+        (expression-statement
+          (assignment-expression
+            (identifier-expression "a")
+            "and_eq"
+            (assignment-expression
+              (identifier-expression "b")
+              "or_eq"
+              (assignment-expression
+                (identifier-expression "c")
+                "xor_eq"
+                (identifier-expression "d")
+              )
+            )
+          )
+          ";"
+        )
+        (declaration-statement
+          (declaration-specifiers "auto")
+          (init-declarator-list
+            (init-declarator
+              (declarator
+                (declarator-name "unequal")
+              )
+              (initializer
+                "="
+                (binary-expression
+                  (identifier-expression "a")
+                  "not_eq"
+                  (identifier-expression "b")
+                )
+              )
+            )
+          )
+          ";"
+        )
+        (declaration-statement
+          (declaration-specifiers "auto")
+          (init-declarator-list
+            (init-declarator
+              (declarator
+                (declarator-name "negated")
+              )
+              (initializer
+                "="
+                (unary-expression
+                  "not"
+                  (identifier-expression "a")
+                )
+              )
+            )
+          )
+          ";"
+        )
+        (declaration-statement
+          (declaration-specifiers "auto")
+          (init-declarator-list
+            (init-declarator
+              (declarator
+                (declarator-name "complemented")
+              )
+              (initializer
+                "="
+                (unary-expression
+                  "compl"
+                  (identifier-expression "a")
+                )
+              )
+            )
+          )
+          ";"
+        )
         (return-statement
           "return"
           (call-expression
