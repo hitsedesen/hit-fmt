@@ -5,6 +5,8 @@ namespace local { int move(int); }
 void function(int count, Entries entries) {
     int empty();
     int typed(int, const Entries&);
+    int variadic(int, ...);
+    int any(...);
     int n = 1;
     int value(n);
     int literal(2);
@@ -20,6 +22,7 @@ void function(int count, Entries entries) {
     int braced(Number{2});
     int nested(Number(3));
     int product(int(n * n));
+    int multiplied(int() * n);
     int compared(int(n == n));
     int parenthesized(int(n));
     int parameter(int (*callback)(int, int) = nullptr);

@@ -126,6 +126,58 @@
         (init-declarator-list
           (init-declarator
             (declarator
+              (declarator-name "variadic")
+              (function-declarator
+                (parameter-list
+                  "("
+                  (parameter-declaration
+                    (declaration-specifiers "int")
+                  )
+                  (list-separator ",")
+                  (parameter-declaration
+                    (init-declarator-list
+                      (init-declarator
+                        (abstract-declarator "...")
+                      )
+                    )
+                  )
+                  ")"
+                )
+              )
+            )
+          )
+        )
+        ";"
+      )
+      (declaration-statement
+        (declaration-specifiers "int")
+        (init-declarator-list
+          (init-declarator
+            (declarator
+              (declarator-name "any")
+              (function-declarator
+                (parameter-list
+                  "("
+                  (parameter-declaration
+                    (init-declarator-list
+                      (init-declarator
+                        (abstract-declarator "...")
+                      )
+                    )
+                  )
+                  ")"
+                )
+              )
+            )
+          )
+        )
+        ";"
+      )
+      (declaration-statement
+        (declaration-specifiers "int")
+        (init-declarator-list
+          (init-declarator
+            (declarator
               (declarator-name "n")
             )
             (initializer
@@ -445,6 +497,31 @@
                     )
                     ")"
                   )
+                )
+                ")"
+              )
+            )
+          )
+        )
+        ";"
+      )
+      (declaration-statement
+        (declaration-specifiers "int")
+        (init-declarator-list
+          (init-declarator
+            (declarator
+              (declarator-name "multiplied")
+            )
+            (initializer
+              (parenthesized-expression
+                "("
+                (binary-expression
+                  (call-expression
+                    (expression "int")
+                    (argument-list "(" ")")
+                  )
+                  "*"
+                  (identifier-expression "n")
                 )
                 ")"
               )

@@ -4121,6 +4121,12 @@ private:
         // Infer parameters only from types established in this file or
         // explicit type keywords. An unresolved name may instead be a value.
         while (first < closing - 1) {
+            if (Kind(first) == TK::Operator_Ellipsis) {
+                if (NextSignificant(first + 1) != closing - 1) {
+                    return std::nullopt;
+                }
+                return TokenRange{.Begin = opening, .End = closing};
+            }
             auto type = first;
             while (Kind(type) == TK::Keyword_const ||
                 Kind(type) == TK::Keyword_volatile)
@@ -4150,6 +4156,7 @@ private:
             // contain a value expression or a braced initializer. A type
             // followed by either one is still direct initialization.
             int depth = 0;
+            bool sawDeclaratorParentheses = false;
             bool defaultArgument = false;
             auto cursor = first;
             for (; cursor < closing - 1; ++cursor) {
@@ -4197,6 +4204,14 @@ private:
                         return std::nullopt;
                     }
                     cursor = nested - 1;
+                } else if (depth == 0 && sawDeclaratorParentheses &&
+                    (kind == TK::Operator_Star ||
+                        kind == TK::Operator_Ampersand ||
+                        kind == TK::Operator_And))
+                {
+                    // A pointer operator cannot follow a completed
+                    // parenthesized declarator or function suffix.
+                    return std::nullopt;
                 } else if (depth > 0 && kind == TK::Identifier &&
                     (SignificantKind(cursor + 1) == TK::Operator_Star ||
                         SignificantKind(cursor + 1) ==
@@ -4227,6 +4242,7 @@ private:
                 {
                     return std::nullopt;
                 } else if (kind == TK::Operator_OpenParenthesis) {
+                    sawDeclaratorParentheses |= depth == 0;
                     ++depth;
                 } else if (kind == TK::Operator_CloseParenthesis) {
                     --depth;
