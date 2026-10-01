@@ -1,0 +1,3 @@
+#define KEEP(x) \
+	 x +  x
+// off:  untouched

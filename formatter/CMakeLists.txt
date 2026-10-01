@@ -3,6 +3,7 @@ add_library(lib-formatter STATIC
     formatter.cpp
     hunk_format.cpp
     hunks.cpp
+    layout.cpp
     naming.cpp
     parameter_names.cpp
     source_analysis.cpp)

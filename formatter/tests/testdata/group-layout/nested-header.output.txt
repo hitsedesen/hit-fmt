@@ -1,0 +1,10 @@
+auto handlers = {
+  [&] {
+    if (first_check
+      &&
+      second_check)
+    {
+      work();
+    }
+  },
+};
