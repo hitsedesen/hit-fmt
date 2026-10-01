@@ -4239,7 +4239,9 @@ private:
             ambiguous = false;
             return std::nullopt;
         };
-        auto name = FindDeclaratorName(begin, end, std::nullopt);
+        auto name = Kind(begin) == TK::Identifier
+            ? begin
+            : FindDeclaratorName(begin, end, std::nullopt);
         if (name >= end || Kind(name) != TK::Identifier) {
             return std::nullopt;
         }
@@ -4263,6 +4265,22 @@ private:
         auto first = NextSignificant(opening + 1);
         if (first == closing - 1) {
             return TokenRange{.Begin = opening, .End = closing};
+        }
+        if (NextSignificant(first + 1) == closing - 1) {
+            if (Kind(first) == TK::Operator_Ellipsis) {
+                return TokenRange{.Begin = opening, .End = closing};
+            }
+            auto evidence = StartsStatementParameterType(first, closing - 1);
+            if (evidence == ParameterTypeEvidence::Value) {
+                return std::nullopt;
+            }
+            ambiguous = evidence == ParameterTypeEvidence::Unknown;
+            return ambiguous
+                ? std::nullopt
+                : std::optional<TokenRange>(TokenRange{
+                      .Begin = opening,
+                      .End = closing,
+                  });
         }
 
         // A parenthesized initializer can also start with an identifier.
