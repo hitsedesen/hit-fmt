@@ -3,10 +3,12 @@ add_executable(tests
     ../parser/tests/tests.cpp
     ../formatter/tests/hunks.cpp
     ../formatter/tests/tests.cpp
-    ../hit-fmt/tests/file_batch.cpp)
+    ../hit-fmt/tests/file_batch.cpp
+    ../hit-fmt/tests/file_dispatch.cpp)
 target_link_libraries(tests PRIVATE
     GTest::gtest_main
-    lib-formatter)
+    lib-formatter
+    Threads::Threads)
 target_compile_definitions(tests PRIVATE
     TOKENIZER_TESTDATA_DIR="${CMAKE_SOURCE_DIR}/tokenizer/tests/testdata"
     PARSER_TESTDATA_DIR="${CMAKE_SOURCE_DIR}/parser/tests/testdata"

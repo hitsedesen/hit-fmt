@@ -35,6 +35,8 @@ struct Summary
     std::chrono::nanoseconds Exclusive{};
 };
 
+using Key = std::pair<std::string_view, uint32_t>;
+
 class Results
 {
 public:
@@ -62,9 +64,47 @@ public:
         }
     }
 
-    void Count(std::string_view name, uint32_t line = 0)
+    void Merge(const std::map<Key, Summary>& phases)
     {
         std::lock_guard lock(Mutex_);
+        for (const auto& [key, source] : phases) {
+            auto& target = Phases_[key];
+            target.Calls += source.Calls;
+            target.Inclusive += source.Inclusive;
+            target.Exclusive += source.Exclusive;
+        }
+    }
+
+private:
+    std::mutex Mutex_;
+    std::map<Key, Summary> Phases_;
+};
+
+inline Results& GetResults()
+{
+    static Results results;
+    return results;
+}
+
+class LocalResults
+{
+public:
+    LocalResults()
+    {
+        // Construct the process summary first, so the main thread merges
+        // its local data before the process summary is destroyed.
+        (void)GetResults();
+    }
+
+    ~LocalResults()
+    {
+        if (!Phases_.empty()) {
+            GetResults().Merge(Phases_);
+        }
+    }
+
+    void Count(std::string_view name, uint32_t line = 0)
+    {
         ++Phases_[{name, line}].Calls;
     }
 
@@ -74,7 +114,6 @@ public:
         std::chrono::nanoseconds inclusive,
         std::chrono::nanoseconds exclusive)
     {
-        std::lock_guard lock(Mutex_);
         auto& value = Phases_[{name, line}];
         ++value.Calls;
         value.Inclusive += inclusive;
@@ -82,15 +121,13 @@ public:
     }
 
 private:
-    using Key = std::pair<std::string_view, uint32_t>;
-    std::mutex Mutex_;
     std::map<Key, Summary> Phases_;
 };
 
-inline Results& GetResults()
+inline LocalResults& GetLocalResults()
 {
-    static Results results;
-    return results;
+    thread_local LocalResults local;
+    return local;
 }
 
 class Scope
@@ -120,7 +157,7 @@ public:
         if (Parent_) {
             Parent_->Children_ += elapsed;
         }
-        GetResults().Record(Name_, Line_, elapsed, elapsed - Children_);
+        GetLocalResults().Record(Name_, Line_, elapsed, elapsed - Children_);
     }
 
     Scope(const Scope&) = delete;
@@ -150,13 +187,13 @@ private:
 #define HIT_FMT_PROFILE_EVENT(name) \
     do { \
         if (::util::profile::Enabled()) \
-            ::util::profile::GetResults().Count(name); \
+            ::util::profile::GetLocalResults().Count(name); \
     } while (false)
 #define HIT_FMT_PROFILE_EDIT(lastLine) \
     do { \
         lastLine = phaseLocation.line(); \
         if (::util::profile::Enabled()) \
-            ::util::profile::GetResults().Count("formatter.changed", \
+            ::util::profile::GetLocalResults().Count("formatter.changed", \
                 phaseLocation.line()); \
     } while (false)
 

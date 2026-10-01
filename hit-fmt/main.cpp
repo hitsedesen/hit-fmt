@@ -1,6 +1,6 @@
 #include "config_help.hpp"
 #include "config_template.hpp"
-#include "file_batch.hpp"
+#include "file_dispatch.hpp"
 #include "version.hpp"
 
 #include <formatter/config.hpp>
@@ -14,24 +14,19 @@
 #include <charconv>
 #include <cctype>
 #include <cstddef>
-#include <cstdint>
-#include <condition_variable>
 #include <cstdio>
 #include <cstdlib>
-#include <deque>
 #include <exception>
 #include <filesystem>
 #include <fstream>
 #include <initializer_list>
 #include <iostream>
 #include <limits>
-#include <mutex>
 #include <optional>
 #include <regex>
 #include <sstream>
 #include <span>
 #include <stdexcept>
-#include <system_error>
 #include <string>
 #include <string_view>
 #include <thread>
@@ -1705,13 +1700,7 @@ int main(int argc, char* argv[])
 
     bool summaryOnly = options.SummaryOnly;
     bool useColor = UseTerminalColors();
-    struct FileResult
-    {
-        std::string Output;
-        std::string Error;
-        size_t Mismatches = 0;
-        bool Failed = false;
-    };
+    using hit_fmt::FileResult;
     auto processFile = [&] (const std::filesystem::path& path,
         StyleResolver& resolver) {
             FileResult result;
@@ -1946,208 +1935,24 @@ int main(int argc, char* argv[])
             return 1;
         }
     } else {
-        const auto pendingFileLimit = std::max(options.Threads, size_t{128});
-        // Deque keeps each worker's resolver address stable as workers join.
-        std::deque<StyleResolver> resolvers;
-        std::mutex mutex;
-        std::condition_variable ready;
-        std::deque<FileBatch> pending;
-        std::deque<std::optional<FileResult>> results;
-        // Bound both undispatched paths and completed diagnostics. A slow
-        // file must not let discovery or the other workers run arbitrarily
-        // far ahead of ordered output.
-        constexpr size_t BufferedOutputLimit = 16 * 1024 * 1024;
-        constexpr size_t BatchFileLimit = 4;
-        constexpr size_t BatchByteLimit = 256 * 1024;
-        size_t bufferedBytes = 0;
-        size_t processing = 0;
-        size_t printed = 0;
-        bool discoveryDone = false;
-        bool stop = false;
-        std::optional<std::string> discoveryError;
+        if (!hit_fmt::RunParallelFiles(
+                options.Threads,
+                [&] (auto visit) {
+                    return ForEachFile(
+                        options.Paths,
+                        options.Exclusions,
+                        [&] (const auto& path, bool directory) {
+                            return styleResolver->IsExcluded(path, directory);
+                        },
+                        visit);
+                },
+                [&] { return StyleResolver(options); },
+                processFile,
+                printResult,
+                std::cerr))
         {
-            std::vector<std::jthread> workers;
-            auto launchWorker = [&] {
-                resolvers.emplace_back(options);
-                auto* resolver = &resolvers.back();
-                workers.emplace_back([&, resolver] {
-                    std::vector<FileResult> completed;
-                    completed.reserve(BatchFileLimit);
-                    for (;;) {
-                        FileBatch batch;
-                        {
-                            std::unique_lock lock(mutex);
-                            ready.wait(lock, [&] {
-                                bool canClaim = !pending.empty() &&
-                                    bufferedBytes < BufferedOutputLimit;
-                                return stop || canClaim ||
-                                    (discoveryDone && pending.empty());
-                            });
-                            if (stop ||
-                                (discoveryDone && pending.empty()))
-                            {
-                                return;
-                            }
-                            batch = std::move(pending.front());
-                            pending.pop_front();
-                            ++processing;
-                        }
-                        completed.clear();
-                        for (const auto& path : batch.Paths) {
-                            completed.push_back(processFile(path, *resolver));
-                        }
-                        {
-                            std::lock_guard lock(mutex);
-                            for (size_t index = 0; index < completed.size();
-                                ++index)
-                            {
-                                auto& result = completed[index];
-                                bufferedBytes += result.Output.size() +
-                                    result.Error.size();
-                                // Printed results have been removed from
-                                // the front of the deque.
-                                results[batch.FirstIndex + index - printed] =
-                                    std::move(result);
-                            }
-                            --processing;
-                        }
-                        ready.notify_all();
-                    }
-                });
-            };
-            std::jthread discovery;
-            try {
-                discovery = std::jthread([&] {
-                    try {
-                        FileBatch batch;
-                        batch.Paths.reserve(BatchFileLimit);
-                        size_t batchBytes = 0;
-                        size_t nextIndex = 0;
-                        bool first = true;
-                        auto flush = [&] {
-                            if (batch.Paths.empty()) {
-                                return true;
-                            }
-                            std::unique_lock lock(mutex);
-                            ready.wait(lock, [&] {
-                                return stop || results.size() +
-                                    batch.Paths.size() <= pendingFileLimit;
-                            });
-                            if (stop) {
-                                return false;
-                            }
-                            for (size_t i = 0; i < batch.Paths.size(); ++i) {
-                                results.emplace_back();
-                            }
-                            pending.push_back(std::move(batch));
-                            lock.unlock();
-                            ready.notify_all();
-                            return true;
-                        };
-                        if (ForEachFile(
-                                options.Paths,
-                                options.Exclusions,
-                                [&] (const auto& path, bool directory) {
-                                    return styleResolver->IsExcluded(
-                                        path, directory);
-                                },
-                                [&] (const auto& path) {
-                                    std::error_code error;
-                                    auto size = std::filesystem::file_size(
-                                        path, error);
-                                    size_t estimatedBytes = error
-                                        ? BatchByteLimit
-                                        : static_cast<size_t>(
-                                            std::min<std::uintmax_t>(
-                                                size, BatchByteLimit));
-                                    return AddFileToBatch(
-                                        batch,
-                                        batchBytes,
-                                        nextIndex,
-                                        first,
-                                        path,
-                                        estimatedBytes,
-                                        BatchFileLimit,
-                                        BatchByteLimit,
-                                        flush);
-                                }))
-                        {
-                            flush();
-                        }
-                    } catch (const std::exception& error) {
-                        std::lock_guard lock(mutex);
-                        discoveryError = error.what();
-                        stop = true;
-                    }
-                    {
-                        std::lock_guard lock(mutex);
-                        discoveryDone = true;
-                    }
-                    ready.notify_all();
-                });
-            } catch (const std::exception& error) {
-                {
-                    std::lock_guard lock(mutex);
-                    stop = true;
-                }
-                ready.notify_all();
-                std::cerr << error.what() << '\n';
-                return 1;
-            }
-            auto canLaunch = [&] {
-                return !pending.empty() &&
-                    bufferedBytes < BufferedOutputLimit &&
-                    workers.size() < options.Threads &&
-                    workers.size() < pending.size() + processing;
-            };
-            for (;;) {
-                FileResult result;
-                {
-                    std::unique_lock lock(mutex);
-                    ready.wait(lock, [&] {
-                        return discoveryError ||
-                            (!results.empty() && results.front().has_value()) ||
-                            (discoveryDone && results.empty()) || canLaunch();
-                    });
-                    if (discoveryError) {
-                        std::cerr << *discoveryError << '\n';
-                        return 1;
-                    }
-                    if (canLaunch()) {
-                        lock.unlock();
-                        try {
-                            launchWorker();
-                        } catch (const std::exception& error) {
-                            {
-                                std::lock_guard guard(mutex);
-                                stop = true;
-                            }
-                            ready.notify_all();
-                            std::cerr << error.what() << '\n';
-                            return 1;
-                        }
-                        continue;
-                    }
-                    if (results.empty()) {
-                        break;
-                    }
-                    bufferedBytes -= results.front()->Output.size() +
-                        results.front()->Error.size();
-                    result = std::move(*results.front());
-                    results.pop_front();
-                    ++printed;
-                }
-                ready.notify_all();
-                if (printResult(result)) {
-                    {
-                        std::lock_guard lock(mutex);
-                        stop = true;
-                    }
-                    ready.notify_all();
-                    return 1;
-                }
-            }
-        } // Join discovery and workers before reporting the final status.
+            return 1;
+        }
     }
     if (useColor) {
         if (mismatchCount == 0) {

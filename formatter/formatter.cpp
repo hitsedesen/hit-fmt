@@ -10350,7 +10350,7 @@ std::string Format(const parser::SyntaxTree& tree, const Style& requested)
                     "formatter.unsafe_structure_preserved");
 #ifdef HIT_FMT_PROFILE_PHASES
                 if (util::profile::Enabled()) {
-                    util::profile::GetResults().Count(
+                    util::profile::GetLocalResults().Count(
                         "formatter.unsafe_after_change",
                         lastEditLine);
                 }
