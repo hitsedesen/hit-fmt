@@ -11,6 +11,31 @@
     )
     ";"
   )
+  (record-declaration
+    "struct" "Outer" "{"
+    (using-declaration "using" "Inner" "=" "int" ";")
+    (record-declaration
+      "struct" "Nested" "{"
+      (using-declaration "using" "Leaf" "=" "int" ";")
+      "}" ";"
+    )
+    (enum-declaration
+      "enum"
+      (enumerator-list
+        "{"
+        (enumerator
+          (enumerator-name "value")
+          "="
+          (enumerator-value
+            (literal-expression "1")
+          )
+        )
+        "}"
+      )
+      ";"
+    )
+    "}" ";"
+  )
   (namespace-declaration
     "namespace" "local" "{"
     (function-declaration
@@ -367,6 +392,68 @@
         (init-declarator-list
           (init-declarator
             (declarator
+              (declarator-name "qualified_type")
+              (function-declarator
+                (parameter-list
+                  "("
+                  (parameter-declaration
+                    (declaration-specifiers "Outer" "::" "Inner")
+                  )
+                  ")"
+                )
+              )
+            )
+          )
+        )
+        ";"
+      )
+      (declaration-statement
+        (declaration-specifiers "int")
+        (init-declarator-list
+          (init-declarator
+            (declarator
+              (declarator-name "deep_type")
+              (function-declarator
+                (parameter-list
+                  "("
+                  (parameter-declaration
+                    (declaration-specifiers "Outer" "::" "Nested" "::" "Leaf")
+                  )
+                  ")"
+                )
+              )
+            )
+          )
+        )
+        ";"
+      )
+      (declaration-statement
+        (declaration-specifiers "int")
+        (init-declarator-list
+          (init-declarator
+            (declarator
+              (declarator-name "qualified_value")
+            )
+            (initializer
+              (parenthesized-expression
+                "("
+                (member-expression
+                  (identifier-expression "Outer")
+                  "::"
+                  (identifier-expression "value")
+                )
+                ")"
+              )
+            )
+          )
+        )
+        ";"
+      )
+      (declaration-statement
+        (declaration-specifiers "int")
+        (init-declarator-list
+          (init-declarator
+            (declarator
               (declarator-name "unresolved")
             )
             (initializer
@@ -548,6 +635,37 @@
                       (binary-expression
                         (identifier-expression "n")
                         "=="
+                        (identifier-expression "n")
+                      )
+                    )
+                    ")"
+                  )
+                )
+                ")"
+              )
+            )
+          )
+        )
+        ";"
+      )
+      (declaration-statement
+        (declaration-specifiers "int")
+        (init-declarator-list
+          (init-declarator
+            (declarator
+              (declarator-name "assigned")
+            )
+            (initializer
+              (parenthesized-expression
+                "("
+                (call-expression
+                  (expression "int")
+                  (argument-list
+                    "("
+                    (argument
+                      (assignment-expression
+                        (identifier-expression "n")
+                        "="
                         (identifier-expression "n")
                       )
                     )

@@ -1299,11 +1299,14 @@ private:
         Value,
     };
 
+    struct NameScope;
+
     struct NameBinding
     {
         std::string_view Name;
         NameKind Kind;
         NameBinding* Next = nullptr;
+        NameScope* Members = nullptr;
     };
 
     struct NameScope
@@ -1327,7 +1330,7 @@ private:
         CurrentScope_ = CurrentScope_->Parent;
     }
 
-    void AddName(std::string_view name, NameKind kind)
+    NameBinding* AddName(std::string_view name, NameKind kind)
     {
         ASSERT(CurrentScope_)
         auto* binding = detail::Make<NameBinding>(
@@ -1338,22 +1341,69 @@ private:
                 .Next = CurrentScope_->Bindings,
             });
         CurrentScope_->Bindings = binding;
+        return binding;
+    }
+
+    [[nodiscard]] const NameBinding* FindName(
+        const NameScope& scope,
+        std::string_view name) const
+    {
+        for (auto* binding = scope.Bindings; binding;
+            binding = binding->Next)
+        {
+            if (binding->Name == name) {
+                return binding;
+            }
+        }
+        return nullptr;
+    }
+
+    [[nodiscard]] const NameBinding* LookupBinding(
+        std::string_view name) const
+    {
+        for (auto* scope = CurrentScope_; scope; scope = scope->Parent) {
+            if (auto* binding = FindName(*scope, name)) {
+                return binding;
+            }
+        }
+        return nullptr;
     }
 
     [[nodiscard]] std::optional<NameKind>
     LookupName(std::string_view name) const
     {
-        for (auto* scope = CurrentScope_; scope; scope = scope->Parent) {
-            for (auto* binding = scope->Bindings;
-                binding;
-                binding = binding->Next)
-            {
-                if (binding->Name == name) {
-                    return binding->Kind;
-                }
-            }
+        if (auto* binding = LookupBinding(name)) {
+            return binding->Kind;
         }
         return std::nullopt;
+    }
+
+    [[nodiscard]] bool IsKnownQualifiedType(
+        TokenIndex first,
+        TokenIndex end) const
+    {
+        auto* binding = LookupBinding(Text(first));
+        auto scope = NextSignificant(first + 1);
+        if (!binding || binding->Kind != NameKind::Type ||
+            Kind(scope) != TK::Operator_ScopeResolution)
+        {
+            return false;
+        }
+        do {
+            auto member = NextSignificant(scope + 1);
+            if (member >= end || Kind(member) != TK::Identifier ||
+                !binding->Members)
+            {
+                return false;
+            }
+            binding = FindName(*binding->Members, Text(member));
+            if (!binding || binding->Kind != NameKind::Type) {
+                return false;
+            }
+            scope = NextSignificant(member + 1);
+        } while (scope < end &&
+            Kind(scope) == TK::Operator_ScopeResolution);
+        return true;
     }
 
     [[nodiscard]] bool IsKnownType(TokenIndex index) const
@@ -2733,17 +2783,22 @@ private:
             Append(*node, *bases);
         }
         if (CurrentKind() == TK::Operator_OpenBrace) {
+            NameBinding* record = nullptr;
             if (!unknownHeader && typeName < Tree_.Tokens_.Size()) {
-                AddName(Text(typeName), NameKind::Type);
+                record = AddName(Text(typeName), NameKind::Type);
             }
             ++Cursor_;
             PushScope();
+            if (record) {
+                record->Members = CurrentScope_;
+            }
             RecordNames_.push_back(
                 !unknownHeader && typeName < Tree_.Tokens_.Size()
                     ? Text(typeName)
                     : std::string_view{});
-            if (!unknownHeader && typeName < Tree_.Tokens_.Size()) {
-                AddName(Text(typeName), NameKind::Type);
+            if (record) {
+                AddName(Text(typeName), NameKind::Type)->Members =
+                    CurrentScope_;
             }
             ParseDeclarationSequence(*node, TK::Operator_CloseBrace);
             RecordNames_.pop_back();
@@ -4144,11 +4199,11 @@ private:
             if (!explicitType && !knownType) {
                 return std::nullopt;
             }
-            // A known class or enum does not establish what its qualified
-            // members denote. Only an explicit 'typename' disambiguates
-            // such a dependent member as a type here.
+            // A known class does not establish what all its members denote.
+            // Resolve qualified names through types declared in its body.
             if (knownType &&
-                SignificantKind(type + 1) == TK::Operator_ScopeResolution)
+                SignificantKind(type + 1) == TK::Operator_ScopeResolution &&
+                !IsKnownQualifiedType(type, closing - 1))
             {
                 return std::nullopt;
             }
@@ -4164,7 +4219,10 @@ private:
                 if (kind == TK::Operator_Comma && depth == 0) {
                     break;
                 }
-                if (kind == TK::Operator_Assign && depth == 0) {
+                if (kind == TK::Operator_Assign) {
+                    if (depth != 0) {
+                        return std::nullopt;
+                    }
                     defaultArgument = true;
                 }
                 if (defaultArgument) {

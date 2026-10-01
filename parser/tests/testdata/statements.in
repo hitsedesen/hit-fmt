@@ -1,5 +1,10 @@
 struct Entries {};
 enum Kind { value };
+struct Outer {
+    using Inner = int;
+    struct Nested { using Leaf = int; };
+    enum { value = 1 };
+};
 namespace local { int move(int); }
 
 void function(int count, Entries entries) {
@@ -16,6 +21,9 @@ void function(int count, Entries entries) {
     int alias(Number);
     int moved(local::move(n));
     int member(Kind::value);
+    int qualified_type(Outer::Inner);
+    int deep_type(Outer::Nested::Leaf);
+    int qualified_value(Outer::value);
     int unresolved(External);
     int indirect(External * n);
     int cast(int(1));
@@ -24,6 +32,7 @@ void function(int count, Entries entries) {
     int product(int(n * n));
     int multiplied(int() * n);
     int compared(int(n == n));
+    int assigned(int(n = n));
     int parenthesized(int(n));
     int parameter(int (*callback)(int, int) = nullptr);
     int defaulted(int count = Number{1}, int next = 2);
