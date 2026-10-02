@@ -1231,32 +1231,39 @@ TEST(Parser, RecordHeadTemplateArgumentsOwnTheirSeparators)
         const auto linked = parser::Parse(input.View(),
             [&](parser::ParseError) { ++errors; });
         EXPECT_EQ(errors, 0u);
-        size_t functions = 0;
+        size_t typedParameters = 0;
         size_t outsideExpressions = 0;
+        size_t outsideAmbiguities = 0;
         size_t constructors = 0;
         pending = {&linked.Root()};
         while (!pending.empty()) {
             const auto* node = pending.back();
             pending.pop_back();
             const auto text = linked.SourceText(node->Tokens);
-            if (node->Kind == parser::NodeKind::FunctionDeclaration &&
-                text == "int consume(Catalog::Element);")
-                ++functions;
+            if (node->Kind == parser::NodeKind::ParameterDeclaration &&
+                text == "Catalog::Element")
+                ++typedParameters;
             if (node->Kind == parser::NodeKind::FunctionDefinition &&
                 text == "Catalog(int) {}")
                 ++constructors;
             if (node->Kind == parser::NodeKind::ExpressionStatement &&
                 text == "Catalog*marker;")
                 ++outsideExpressions;
+            if (node->Kind == parser::NodeKind::AmbiguousStatement &&
+                text == "Catalog*marker;")
+                ++outsideAmbiguities;
             EXPECT_FALSE(node->Kind == parser::NodeKind::DeclarationStatement &&
                 text == "Catalog*marker;");
             for (auto* child = node->FirstChild; child; child = child->NextSibling)
                 pending.push_back(child);
         }
-        EXPECT_EQ(functions, 1u);
+        EXPECT_EQ(typedParameters, 1u) << Serialize(linked);
         const bool qualified = source.find("Host::Catalog") != std::string_view::npos;
         EXPECT_EQ(constructors, qualified ? 1u : 0u);
-        EXPECT_EQ(outsideExpressions, qualified ? 1u : 0u);
+        // This global declaration has no initializer: unresolved value names
+        // may remain ambiguous, but a leaked type would become a declaration.
+        EXPECT_EQ(outsideExpressions + outsideAmbiguities,
+            qualified ? 1u : 0u) << Serialize(linked);
     }
 }
 
