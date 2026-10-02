@@ -1208,6 +1208,56 @@ TEST(Parser, RecordHeadTemplateArgumentsOwnTheirSeparators)
             pending.push_back(child);
     }
     EXPECT_EQ(declarations, 1u);
+
+    // The rebase must retain main's member-scope linkage while suppressing
+    // qualified definitions' surrounding-name export. Forward redeclarations
+    // and the local injected self-name must both preserve member type lookup.
+    const std::string_view linkageCases[] = {
+        "struct Catalog { using Element = int; };\n"
+        "void inspect() { int consume(Catalog::Element); }\n",
+        "struct Catalog { using Element = int; }; struct Catalog;\n"
+        "void inspect() { int consume(Catalog::Element); }\n",
+        "struct Catalog { using Element = int;\n"
+        "void inspect() { int consume(Catalog::Element); } };\n",
+        "struct Host {}; struct Host::Catalog { using Element = int;\n"
+        "Catalog(int) {}\n"
+        "void inspect() { int consume(Catalog::Element); } };\n"
+        "int Catalog; void outside() { Catalog*marker; }\n",
+    };
+    for (const auto source : linkageCases) {
+        SCOPED_TRACE(source);
+        PaddedInput input(source);
+        unsigned errors = 0;
+        const auto linked = parser::Parse(input.View(),
+            [&](parser::ParseError) { ++errors; });
+        EXPECT_EQ(errors, 0u);
+        size_t functions = 0;
+        size_t outsideExpressions = 0;
+        size_t constructors = 0;
+        pending = {&linked.Root()};
+        while (!pending.empty()) {
+            const auto* node = pending.back();
+            pending.pop_back();
+            const auto text = linked.SourceText(node->Tokens);
+            if (node->Kind == parser::NodeKind::FunctionDeclaration &&
+                text == "int consume(Catalog::Element);")
+                ++functions;
+            if (node->Kind == parser::NodeKind::FunctionDefinition &&
+                text == "Catalog(int) {}")
+                ++constructors;
+            if (node->Kind == parser::NodeKind::ExpressionStatement &&
+                text == "Catalog*marker;")
+                ++outsideExpressions;
+            EXPECT_FALSE(node->Kind == parser::NodeKind::DeclarationStatement &&
+                text == "Catalog*marker;");
+            for (auto* child = node->FirstChild; child; child = child->NextSibling)
+                pending.push_back(child);
+        }
+        EXPECT_EQ(functions, 1u);
+        const bool qualified = source.find("Host::Catalog") != std::string_view::npos;
+        EXPECT_EQ(constructors, qualified ? 1u : 0u);
+        EXPECT_EQ(outsideExpressions, qualified ? 1u : 0u);
+    }
 }
 
 TEST(Parser, RecordHeadChildrenAreBoundedWithoutGuessingOperands)
