@@ -2,26 +2,21 @@
 #include <formatter/syntax_layout.hpp>
 #include <parser/parser.hpp>
 #include <tests/golden.hpp>
-
 #include <gtest/gtest.h>
-
 #include <algorithm>
 #include <memory_resource>
 #include <stdexcept>
 #include <string>
 #include <utility>
 #include <vector>
-
 namespace
 {
-
 struct Output
 {
     std::string Text;
     std::vector<formatter::layout::Mapping> Map;
     std::vector<uint8_t> Broken;
 };
-
 Output Lower(
     std::string input, const formatter::Style &style,
     const formatter::SyntaxLayoutOptions &options = {},
@@ -88,7 +83,6 @@ Output Lower(
             {rendered.Map.begin(), rendered.Map.end()},
             {rendered.Broken.begin(), rendered.Broken.end()}};
 }
-
 void ExpectSplitGapMap(const Output &output, size_t sourceBegin,
                        size_t indentBegin, size_t sourceEnd,
                        std::string_view prefix, std::string_view indent)
@@ -121,7 +115,6 @@ void ExpectSplitGapMap(const Output &output, size_t sourceBegin,
     }
     EXPECT_TRUE(found) << "missing generated-prefix / exact-indent association";
 }
-
 formatter::Style Canonical(size_t width = 40)
 {
     formatter::Style style;
@@ -141,7 +134,6 @@ formatter::Style Canonical(size_t width = 40)
     style.DeclarationSemicolonSpacing = formatter::GapPolicy::GeneratedNoSpace;
     return style;
 }
-
 TEST(SyntaxLayout, PartialIndentationRetainsFixedTopologyAndSplitMaps)
 {
     const std::string input = "void f() {\n      work();\n}\n";
@@ -190,7 +182,6 @@ TEST(SyntaxLayout, PartialIndentationRetainsFixedTopologyAndSplitMaps)
         EXPECT_TRUE(generatedIndent);
     }
 }
-
 TEST(SyntaxLayout, PartialCRLFIndentationMapsBorrowedTerminatorExactly)
 {
     const std::string input = "void f() {\r\n      work();\r\n}\r\n";
@@ -225,7 +216,6 @@ TEST(SyntaxLayout, PartialCRLFIndentationMapsBorrowedTerminatorExactly)
     }
     EXPECT_TRUE(split);
 }
-
 TEST(SyntaxLayout, PartialTrimDoesNotRewriteUnselectedBlankSuffix)
 {
     const std::string input = "void f() {\n  work();  \r\n \n\t \r\n}\n";
@@ -248,7 +238,6 @@ TEST(SyntaxLayout, PartialTrimDoesNotRewriteUnselectedBlankSuffix)
     style.TrailingWhitespace = formatter::TrailingWhitespace::Preserve;
     EXPECT_EQ(Lower(input, style, {}, scope).Text, input);
 }
-
 TEST(SyntaxLayout, PartialGapPoliciesAndAnchorsGolden)
 {
     std::string records;
@@ -403,7 +392,6 @@ TEST(SyntaxLayout, PartialGapPoliciesAndAnchorsGolden)
     };
     fixture.Expect(records, ".golden");
 }
-
 TEST(SyntaxLayout, PartialInsertionPointsCutsAndTailRemainFenced)
 {
     auto style = Canonical(80);
@@ -466,7 +454,6 @@ TEST(SyntaxLayout, PartialInsertionPointsCutsAndTailRemainFenced)
     scope.EditScope = eofLF;
     EXPECT_EQ(Lower(eof, style, {}, scope).Text, eof);
 }
-
 TEST(SyntaxLayout, PartialFixedLinesCannotSatisfyAlwaysOwnedBreak)
 {
     const std::string input =
@@ -489,7 +476,6 @@ TEST(SyntaxLayout, PartialFixedLinesCannotSatisfyAlwaysOwnedBreak)
     EXPECT_EQ(Lower(input, style, {}, scope).Text,
               "void f() {\n  call(\n    alpha, beta);\n}\n");
 }
-
 TEST(SyntaxLayout, PartialPermissionsDoNotBypassRealOrUncertainProtection)
 {
     auto style = Canonical(80);
@@ -537,7 +523,6 @@ TEST(SyntaxLayout, PartialPermissionsDoNotBypassRealOrUncertainProtection)
     expected.replace(work, 6, "  ");
     EXPECT_EQ(Lower(separate, style, {}, scope).Text, expected);
 }
-
 TEST(SyntaxLayout, ScopedSyntaxContextCannotAuthorizeExcludedCommaRemoval)
 {
     const std::string input = "void f() { consume({alpha  ,  }); }\n";
@@ -584,7 +569,6 @@ TEST(SyntaxLayout, ScopedSyntaxContextCannotAuthorizeExcludedCommaRemoval)
         scope.EditScope = ranges;
     }
 }
-
 TEST(SyntaxLayout, ScopedCloserDoesNotAuthorizeCommaInsertionBeforeComment)
 {
     auto style = Canonical(80);
@@ -686,7 +670,6 @@ TEST(SyntaxLayout, ScopedCloserDoesNotAuthorizeCommaInsertionBeforeComment)
     EXPECT_EQ(Lower(existing, style, {}, scope).Text.find(','),
               std::string::npos);
 }
-
 TEST(SyntaxLayout, UnscopedAndFullySelectedLoweringAgree)
 {
     const std::string input = "void f(){ call(alpha,beta); work(); }\n";
@@ -701,7 +684,6 @@ TEST(SyntaxLayout, UnscopedAndFullySelectedLoweringAgree)
                   Lower(input, style).Text);
     }
 }
-
 TEST(SyntaxLayout, AllPreserveExactIncludingCRLFAndProtectedRecovery)
 {
     const std::string input =
@@ -711,7 +693,6 @@ TEST(SyntaxLayout, AllPreserveExactIncludingCRLFAndProtectedRecovery)
         "\t\tcall(  x, y ); // keep \r\n\t}\r\n}\r\n";
     EXPECT_EQ(Lower(input, {}).Text, input);
 }
-
 TEST(SyntaxLayout, CanonicalListTopologyIsSourceIndependent)
 {
     auto style = Canonical(24);
@@ -733,7 +714,6 @@ TEST(SyntaxLayout, CanonicalListTopologyIsSourceIndependent)
     EXPECT_NE(a.find("nested("), std::string::npos);
     EXPECT_NE(a.find("\n"), std::string::npos);
 }
-
 TEST(SyntaxLayout, HeaderDecisionEndsBeforeExpandedBody)
 {
     auto style = Canonical(80);
@@ -784,7 +764,6 @@ TEST(SyntaxLayout, HeaderDecisionEndsBeforeExpandedBody)
                   .Text.find("void\nf()\n{"),
               std::string::npos);
 }
-
 TEST(SyntaxLayout, FunctionTryHeaderUsesConfirmedSpacingFallback)
 {
     auto style = Canonical(80);
@@ -804,7 +783,6 @@ TEST(SyntaxLayout, FunctionTryHeaderUsesConfirmedSpacingFallback)
         EXPECT_EQ(Lower(output, style).Text, output);
     }
 }
-
 TEST(SyntaxLayout, EachControlledArmOwnsItsOpeningAndBody)
 {
     auto style = Canonical(80);
@@ -899,7 +877,6 @@ TEST(SyntaxLayout, EachControlledArmOwnsItsOpeningAndBody)
     EXPECT_NE(protectedArm.find("if (ready)\n  {"), std::string::npos);
     EXPECT_NE(protectedArm.find("else {"), std::string::npos) << protectedArm;
 }
-
 TEST(SyntaxLayout, MixedPreserveDoesNotActivateOuterGeneratedGaps)
 {
     auto style = Canonical(18);
@@ -914,7 +891,6 @@ TEST(SyntaxLayout, MixedPreserveDoesNotActivateOuterGeneratedGaps)
     EXPECT_NE(output.find("delta  )"), std::string::npos);
     EXPECT_EQ(Lower(output, style).Text, output);
 }
-
 TEST(SyntaxLayout, ThreePartTernaryAndOperatorSides)
 {
     auto style = Canonical(22);
@@ -933,7 +909,6 @@ TEST(SyntaxLayout, ThreePartTernaryAndOperatorSides)
     const auto flat = Lower("void f(){ x = a ? b : c; }\n", Canonical(80)).Text;
     EXPECT_NE(flat.find("x = a ? b : c;"), std::string::npos);
 }
-
 TEST(SyntaxLayout, FluentCalleeSpineIncludesRepeatedInvocation)
 {
     auto style = Canonical(26);
@@ -955,7 +930,6 @@ TEST(SyntaxLayout, FluentCalleeSpineIncludesRepeatedInvocation)
     EXPECT_NE(Lower("void f(){ factory()(alpha)(beta); }\n", style).Text,
               Lower("void f(){ factory()(alpha)(beta); }\n", ordinary).Text);
 }
-
 TEST(SyntaxLayout, MessagePinAcceptsOnlyCompleteStringLiteralSequence)
 {
     auto style = Canonical(32);
@@ -981,7 +955,6 @@ TEST(SyntaxLayout, MessagePinAcceptsOnlyCompleteStringLiteralSequence)
             .Text;
     EXPECT_EQ(wide.find("message(\"a string"), std::string::npos);
 }
-
 TEST(SyntaxLayout, MatchedScopesRetainOnlyExistingExtraLevel)
 {
     auto style = Canonical(80);
@@ -1007,7 +980,6 @@ TEST(SyntaxLayout, MatchedScopesRetainOnlyExistingExtraLevel)
             .Text;
     EXPECT_NE(different.find("\n     work(  arg );"), std::string::npos);
 }
-
 TEST(SyntaxLayout, CRLFCommentOwnsCRAndGapStartsWithLF)
 {
     auto style = Canonical(18);
@@ -1030,7 +1002,6 @@ TEST(SyntaxLayout, CRLFCommentOwnsCRAndGapStartsWithLF)
         }
     }
 }
-
 TEST(SyntaxLayout,
      TopologyRebuiltPreserveUsesStableFallbackAndFlatOnlyRetainsTabs)
 {
@@ -1053,7 +1024,6 @@ TEST(SyntaxLayout,
         Lower("void f(){ call(alpha,\tbeta); }\n", style).Text.find(",\tbeta"),
         std::string::npos);
 }
-
 TEST(SyntaxLayout, InitializerCommaFollowsOutputShapeNotInputComma)
 {
     auto style = Canonical(80);
@@ -1086,7 +1056,6 @@ TEST(SyntaxLayout, InitializerCommaFollowsOutputShapeNotInputComma)
     }
     EXPECT_TRUE(found);
 }
-
 TEST(SyntaxLayout, IncompleteInitializerTailCannotAuthorizeCommaEdits)
 {
     auto style = Canonical(80);
@@ -1125,7 +1094,6 @@ TEST(SyntaxLayout, IncompleteInitializerTailCannotAuthorizeCommaEdits)
         }
     }
 }
-
 TEST(SyntaxLayout, NestedInitializerCommaUsesCompleteElementEndpoint)
 {
     auto style = Canonical(80);
@@ -1183,7 +1151,6 @@ TEST(SyntaxLayout, NestedInitializerCommaUsesCompleteElementEndpoint)
     scope.ImmutableRanges = protectedPoint;
     expectNoOuterComma(Lower(input, style, {}, scope));
 }
-
 TEST(SyntaxLayout, CommaDeletionRetainsIncompatibleGapUnits)
 {
     auto style = Canonical(24);
@@ -1196,7 +1163,6 @@ TEST(SyntaxLayout, CommaDeletionRetainsIncompatibleGapUnits)
     EXPECT_NE(comment.find(",}"), std::string::npos) << comment;
     EXPECT_EQ(comment.find("\r\r\n"), std::string::npos);
     EXPECT_EQ(Lower(comment, style, options).Text, comment);
-
     const std::string protectedSource = "int values[] = {alpha  ,};\n";
     const auto comma = protectedSource.find(',');
     const parser::SourceRange immutable[] = {
@@ -1205,7 +1171,6 @@ TEST(SyntaxLayout, CommaDeletionRetainsIncompatibleGapUnits)
     safety.ImmutableRanges = immutable;
     EXPECT_NE(Lower(protectedSource, style, {}, safety).Text.find("alpha  ,"),
               std::string::npos);
-
     formatter::Style preserved;
     preserved.InitializersTrailingComma = formatter::TrailingCommaPolicy::Never;
     const std::string topology = "int values[] = {alpha\n  ,};\n";
@@ -1214,7 +1179,6 @@ TEST(SyntaxLayout, CommaDeletionRetainsIncompatibleGapUnits)
     EXPECT_EQ(Lower("int values[] = {alpha,};\n", style).Text.find("alpha,"),
               std::string::npos);
 }
-
 TEST(SyntaxLayout, ExplicitImmutableRegionWinsWithoutFreezingOtherStatements)
 {
     auto style = Canonical(20);
@@ -1230,7 +1194,6 @@ TEST(SyntaxLayout, ExplicitImmutableRegionWinsWithoutFreezingOtherStatements)
     EXPECT_NE(output.find("next(alpha,"), std::string::npos);
     EXPECT_EQ(output.find("next(alpha, beta, gamma)"), std::string::npos);
 }
-
 TEST(SyntaxLayout, DelimiterFallbackIncludesCloserAndSemicolonSuffix)
 {
     auto style = Canonical(18);
@@ -1248,7 +1211,6 @@ TEST(SyntaxLayout, DelimiterFallbackIncludesCloserAndSemicolonSuffix)
                   .Text.find("\n\tbetabetabeta);"),
               std::string::npos);
 }
-
 TEST(SyntaxLayout, ListsHeadersLambdasAndControlClausesCompose)
 {
     auto style = Canonical(28);
@@ -1276,8 +1238,36 @@ TEST(SyntaxLayout, ListsHeadersLambdasAndControlClausesCompose)
     EXPECT_NE(output.find("for ("), std::string::npos);
     EXPECT_NE(output.find("[first,"), std::string::npos) << output;
     EXPECT_NE(output.find("value("), std::string::npos);
+    const auto directory = std::filesystem::path(FORMATTER_TESTDATA_DIR) /
+        ".." / "qualified-record";
+    const auto qualified = test::golden::ReadFile(directory / "input.cpp");
+    formatter::Style minimal;
+    minimal.Layout = formatter::LayoutMode::Canonical;
+    const auto ytsaurus = formatter::LoadConfigFile(
+        directory / "ytsaurus.hit-fmt").FormattingStyle;
+    for (const auto& policy : {minimal, ytsaurus}) {
+        const auto rendered = Lower(qualified, policy).Text;
+        EXPECT_EQ(Lower(rendered, policy).Text, rendered);
+        // Protect only one constructor header, not its record or the file.
+        const auto begin = qualified.find("Pointer(int* v)");
+        const auto end = begin + std::string_view("Pointer(int* v)").size();
+        const parser::SourceRange immutable[] = {
+            {parser::SourceOffset(begin), parser::SourceOffset(end)}};
+        formatter::SourceAnalysisOptions protection;
+        protection.ImmutableRanges = immutable;
+        const auto protectedOutput = Lower(qualified, policy, {}, protection);
+        EXPECT_NE(protectedOutput.Text.find("Pointer(int* v)"),
+            std::string::npos);
+        for (const auto& map : protectedOutput.Map) {
+            if (map.Source.Begin >= begin && map.Source.End <= end &&
+                map.Source.Begin < map.Source.End)
+            {
+                EXPECT_TRUE(map.Exact);
+                EXPECT_TRUE(map.Protected);
+            }
+        }
+    }
 }
-
 TEST(SyntaxLayout, IndependentBodyAndIndentControls)
 {
     auto style = Canonical(80);
@@ -1301,7 +1291,6 @@ TEST(SyntaxLayout, IndependentBodyAndIndentControls)
     const auto block = Lower("void f(){ { work(); } }\n", style).Text;
     EXPECT_NE(block.find("\n    {"), std::string::npos) << block;
 }
-
 TEST(SyntaxLayout, CaseBraceAndLabelIndentAreIndependentOfFollowingBody)
 {
     auto style = Canonical(80);
@@ -1316,7 +1305,6 @@ TEST(SyntaxLayout, CaseBraceAndLabelIndentAreIndependentOfFollowingBody)
     EXPECT_NE(output.find("\n  case 1:\n    {"), std::string::npos) << output;
     EXPECT_EQ(Lower(output, style).Text, output);
 }
-
 TEST(SyntaxLayout, AlwaysRequiresOwnedBoundariesButPreserveAndEmptyWin)
 {
     auto style = Canonical(100);
@@ -1347,7 +1335,6 @@ TEST(SyntaxLayout, AlwaysRequiresOwnedBoundariesButPreserveAndEmptyWin)
     EXPECT_NE(Lower("void f(){ call(item); }\n", style).Text.find("call(item)"),
               std::string::npos);
 }
-
 TEST(SyntaxLayout, EmptyShapeNamespaceIndentAndEnumListAreIndependent)
 {
     auto style = Canonical(80);
@@ -1385,7 +1372,6 @@ TEST(SyntaxLayout, EmptyShapeNamespaceIndentAndEnumListAreIndependent)
                   .Text.find("\n   void"),
               std::string::npos);
 }
-
 TEST(SyntaxLayout, ExpressionPackingCoOwnsOnlySamePrecedenceSpine)
 {
     auto style = Canonical(18);
@@ -1403,7 +1389,6 @@ TEST(SyntaxLayout, ExpressionPackingCoOwnsOnlySamePrecedenceSpine)
     EXPECT_NE(parenthesized.find("beta +\n"), std::string::npos);
     EXPECT_EQ(Lower(parenthesized, style).Text, parenthesized);
 }
-
 TEST(SyntaxLayout, DeclarationAssignmentsAndPreservedEnumeratorOwners)
 {
     auto style = Canonical(22);
@@ -1418,7 +1403,6 @@ TEST(SyntaxLayout, DeclarationAssignmentsAndPreservedEnumeratorOwners)
     EXPECT_EQ(Lower("enum E { A  ,  B  };\n", style).Text,
               "enum E { A  ,  B  };\n");
 }
-
 TEST(SyntaxLayout, ExactVerticalGapsCapAndPreservedIndentation)
 {
     formatter::Style style;
@@ -1469,7 +1453,6 @@ TEST(SyntaxLayout, ExactVerticalGapsCapAndPreservedIndentation)
     EXPECT_EQ(Lower("namespace Empty {}\n", empty).Text,
               "namespace Empty {}\n");
 }
-
 TEST(SyntaxLayout, PrefixedDelimiterAnchorsUseRenderedColonAndRebasedFallback)
 {
     auto style = Canonical(17);
@@ -1517,7 +1500,6 @@ TEST(SyntaxLayout, PrefixedDelimiterAnchorsUseRenderedColonAndRebasedFallback)
         << constructor;
     EXPECT_EQ(Lower(constructor, style).Text, constructor);
 }
-
 TEST(SyntaxLayout,
      GeneratedAdjacencyMetadataDoesNotActivateUnrelatedPreservedEdges)
 {
@@ -1529,7 +1511,6 @@ TEST(SyntaxLayout,
     EXPECT_EQ(Lower(source, {}, options).Text,
               "void f(){ call(item,  other  ); }\n");
 }
-
 TEST(SyntaxLayout, NestedVisualScopesAndWrapperContextRespectBarriers)
 {
     auto style = Canonical(80);
@@ -1676,7 +1657,6 @@ TEST(SyntaxLayout, NestedVisualScopesAndWrapperContextRespectBarriers)
     EXPECT_NE(afterDirective.find("\n    after();"), std::string::npos)
         << afterDirective;
 }
-
 TEST(SyntaxLayout, MacroProtectionWinsOverBreakSpacingAndCommaActions)
 {
     auto style = Canonical(18);
@@ -1695,8 +1675,76 @@ TEST(SyntaxLayout, MacroProtectionWinsOverBreakSpacingAndCommaActions)
         << output;
     EXPECT_EQ(output.rfind("beta,"), output.find("beta,"));
     EXPECT_EQ(Lower(output, style, {}, protection).Text, output);
+    // Protection inside an argument prevents the outer list combinator from
+    // being planned. Its generated edges/separators must remain preserved,
+    // while the flat-only callee prefix and safe child/neighbor owners still
+    // have their independent contexts.
+    formatter::Style calls;
+    calls.CallsLayout = formatter::CategoryLayout::Canonical;
+    calls.FunctionCallSpaceBeforeParameters =
+        formatter::GapPolicy::GeneratedNoSpace;
+    const std::string input =
+        "void demo(){ outer  (  child(  a , b  ) , VERBATIM(x,  y) ,\n"
+        "    right  ); side  (  c , d  ); }\n";
+    const auto mapped = Lower(input, calls, {}, protection);
+    EXPECT_NE(mapped.Text.find(
+                  "outer(  child(a, b) , VERBATIM(x,  y) ,\n    right  )"),
+              std::string::npos) << mapped.Text;
+    EXPECT_NE(mapped.Text.find("side(c, d)"), std::string::npos);
+    EXPECT_EQ(Lower(mapped.Text, calls, {}, protection).Text, mapped.Text);
+    const auto macroBegin = input.find("VERBATIM");
+    const auto macroEnd = input.find(')', macroBegin) + 1;
+    size_t protectedBytes = 0;
+    for (const auto &map : mapped.Map)
+    {
+        if (map.Source.Begin >= macroBegin && map.Source.End <= macroEnd &&
+            map.Source.Begin < map.Source.End)
+        {
+            EXPECT_TRUE(map.Exact);
+            EXPECT_TRUE(map.Protected);
+            protectedBytes += map.Source.End - map.Source.Begin;
+        }
+    }
+    EXPECT_EQ(protectedBytes, macroEnd - macroBegin);
+    calls.CallsLayout = formatter::CategoryLayout::Preserve;
+    EXPECT_EQ(Lower(input, calls, {}, protection).Text, input);
+    calls.CallsLayout = formatter::CategoryLayout::Canonical;
+    const auto safe = Lower(input, calls).Text;
+    EXPECT_NE(safe.find("outer(child(a, b), VERBATIM(x, y), right)"),
+              std::string::npos) << safe;
+    EXPECT_EQ(safe.find(",\n"), std::string::npos);
+    // Explicit spacing is not a generated-only policy and remains authorized
+    // on editable horizontal gaps even without the surrounding combinator.
+    calls.SpaceInsideCallArguments = formatter::GapPolicy::Space;
+    calls.CommaSpaceBefore = formatter::GapPolicy::NoSpace;
+    calls.CommaSpaceAfter = formatter::GapPolicy::Space;
+    const auto explicitOutput = Lower(input, calls, {}, protection).Text;
+    EXPECT_NE(explicitOutput.find(
+                  "outer( child( a, b ), VERBATIM(x,  y),\n    right )"),
+              std::string::npos) << explicitOutput;
+    // An excluded macro/list does not grant authority outside the selected
+    // neighboring call, nor block its legitimate canonical spacing.
+    calls.SpaceInsideCallArguments = formatter::GapPolicy::GeneratedNoSpace;
+    calls.CommaSpaceBefore = formatter::GapPolicy::GeneratedNoSpace;
+    calls.CommaSpaceAfter = formatter::GapPolicy::GeneratedSpace;
+    const auto neighbor = parser::SourceOffset(input.find("side"));
+    const auto neighborEnd = parser::SourceOffset(input.find(';', neighbor));
+    const parser::SourceRange selected[] = {{neighbor, neighborEnd}};
+    protection.EditScope = selected;
+    const auto scoped = Lower(input, calls, {}, protection).Text;
+    EXPECT_EQ(scoped.substr(0, neighbor), input.substr(0, neighbor));
+    EXPECT_NE(scoped.find("side(c, d)"), std::string::npos);
+    protection.EditScope = {};
+    // The same unplanned-list rule applies to parameters, without changing
+    // their separately owned flat-only function opener.
+    calls.ParametersLayout = formatter::CategoryLayout::Canonical;
+    calls.FunctionSpaceBeforeParameters =
+        formatter::GapPolicy::GeneratedNoSpace;
+    const std::string declaration =
+        "void declared  (  int value = VERBATIM(x,  y) , int other  );\n";
+    EXPECT_EQ(Lower(declaration, calls, {}, protection).Text,
+              "void declared(  int value = VERBATIM(x,  y) , int other  );\n");
 }
-
 TEST(SyntaxLayout, VerticalCountsAfterCommentCRAndDirectiveBarriersStaySafe)
 {
     formatter::Style style;
@@ -1719,14 +1767,12 @@ TEST(SyntaxLayout, VerticalCountsAfterCommentCRAndDirectiveBarriersStaySafe)
     EXPECT_EQ(output.find("\r\r\n"), std::string::npos);
     EXPECT_EQ(Lower(output, style, options).Text, output);
 }
-
 class CountingResource : public std::pmr::memory_resource
 {
   public:
     size_t Current = 0;
     size_t Peak = 0;
     size_t Allocations = 0;
-
   private:
     void *do_allocate(size_t bytes, size_t alignment) override
     {
@@ -1746,7 +1792,6 @@ class CountingResource : public std::pmr::memory_resource
         return this == &other;
     }
 };
-
 TEST(SyntaxLayout, FileAndScratchArenasReleaseAndScaleWithWideInput)
 {
     size_t smallFile = 0;
@@ -1793,7 +1838,6 @@ TEST(SyntaxLayout, FileAndScratchArenasReleaseAndScaleWithWideInput)
         EXPECT_LT(output.Text.size(), input.size() * 3);
     }
 }
-
 TEST(SyntaxLayout, SparsePartialPermissionsReleaseScratchAndScale)
 {
     size_t smallFile = 0;
@@ -1850,7 +1894,6 @@ TEST(SyntaxLayout, SparsePartialPermissionsReleaseScratchAndScale)
         }
     }
 }
-
 TEST(SyntaxLayout, WideAndDeepGroupsHaveBoundedIterativeConstruction)
 {
     auto style = Canonical(60);
@@ -1877,5 +1920,4 @@ TEST(SyntaxLayout, WideAndDeepGroupsHaveBoundedIterativeConstruction)
     deep += "; }\n";
     EXPECT_LT(Lower(deep, style).Text.size(), deep.size() * 40);
 }
-
 } // namespace

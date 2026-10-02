@@ -4,9 +4,7 @@
 #include <formatter/naming.hpp>
 #include <formatter/parameter_names.hpp>
 #include <tests/golden.hpp>
-
 #include <gtest/gtest.h>
-
 #include <algorithm>
 #include <array>
 #include <filesystem>
@@ -16,11 +14,8 @@
 #include <string_view>
 #include <utility>
 #include <vector>
-
 namespace {
-
 using test::golden::ReadFile;
-
 void ExpectUnchanged(std::string_view source, const formatter::Style& style)
 {
     std::string storage(source);
@@ -36,17 +31,14 @@ void ExpectUnchanged(std::string_view source, const formatter::Style& style)
     EXPECT_EQ(formatter::Format({.Data = storage.data(),
         .Size = first.size()}, style), first);
 }
-
 struct PreserveCase
 {
     std::string Name;
 };
-
 void PrintTo(const PreserveCase& value, std::ostream* output)
 {
     *output << "style/" << value.Name;
 }
-
 std::vector<PreserveCase> DiscoverCases()
 {
     std::vector<PreserveCase> cases;
@@ -63,11 +55,9 @@ std::vector<PreserveCase> DiscoverCases()
     std::ranges::sort(cases, {}, &PreserveCase::Name);
     return cases;
 }
-
 class PreserveTest
     : public testing::TestWithParam<PreserveCase>
 { };
-
 TEST_P(PreserveTest, KeepsUnchanged)
 {
     const auto input = ReadFile(
@@ -84,7 +74,6 @@ TEST_P(PreserveTest, KeepsUnchanged)
         ExpectUnchanged(input, style);
     }
 }
-
 INSTANTIATE_TEST_SUITE_P(Formatter, PreserveTest,
     testing::ValuesIn(DiscoverCases()),
     [] (const auto& info) {
@@ -93,7 +82,6 @@ INSTANTIATE_TEST_SUITE_P(Formatter, PreserveTest,
         std::ranges::replace(name, '-', '_');
         return name;
     });
-
 std::string FormatWithStyle(
     std::string_view source,
     const formatter::Style& style)
@@ -106,7 +94,6 @@ std::string FormatWithStyle(
     EXPECT_EQ(formatter::Format(tree, style), formatter::Format(padded, style));
     return formatter::Format(tree, style);
 }
-
 void ExpectFormattedGolden(
     const std::filesystem::path& path,
     std::string_view input,
@@ -116,7 +103,6 @@ void ExpectFormattedGolden(
     test::golden::ExpectGolden(path, actual);
     EXPECT_EQ(FormatWithStyle(actual, style), actual);
 }
-
 struct FormatCase
 {
     std::filesystem::path Directory;
@@ -125,7 +111,6 @@ struct FormatCase
     std::string Config;
     std::vector<formatter::Hunk> Hunks;
     bool Spillover;
-
     FormatCase(std::filesystem::path directory, std::string name,
         std::string input, std::string config = {},
         std::vector<formatter::Hunk> hunks = {}, bool spillover = true)
@@ -137,7 +122,6 @@ struct FormatCase
         , Spillover(spillover)
     { }
 };
-
 void PrintTo(const FormatCase& value, std::ostream* output)
 {
     const auto root = (std::filesystem::path(FORMATTER_TESTDATA_DIR) /
@@ -145,7 +129,6 @@ void PrintTo(const FormatCase& value, std::ostream* output)
     *output << value.Directory.lexically_normal()
         .lexically_relative(root).generic_string() << '/' << value.Name;
 }
-
 void AddCases(
     std::vector<FormatCase>& cases,
     const std::filesystem::path& directory,
@@ -156,7 +139,6 @@ void AddCases(
         cases.push_back({directory, name, input, {}});
     }
 }
-
 std::vector<FormatCase> FormatCases()
 {
     std::vector<FormatCase> cases;
@@ -288,6 +270,11 @@ std::vector<FormatCase> FormatCases()
     const auto initializerSafety =
         std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../initializer-safety";
     AddCases(cases, initializerSafety, {"conditional", "never", "preserve"});
+    const auto ownerContext =
+        std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../owner-context";
+    AddCases(cases, ownerContext,
+        {"canonical-protected", "preserve-protected", "canonical-safe",
+            "explicit-protected"});
     cases.push_back({closings,
         "reflow-preferred",
         "reflow-preferred.input.cpp"});
@@ -503,7 +490,8 @@ std::vector<FormatCase> FormatCases()
         }
     }
     const auto data = std::filesystem::path(FORMATTER_TESTDATA_DIR) / "..";
-    for (const auto* name : {"layout", "structural", "comments"}) {
+    for (const auto* name : {"layout", "structural", "comments",
+        "enumerator-assignment"}) {
         cases.push_back({data / "public-pipeline", name,
             std::string(name) + ".input.cpp"});
     }
@@ -523,7 +511,7 @@ std::vector<FormatCase> FormatCases()
         "crlf.input.cpp"});
     cases.push_back({data / "namespace_comments", "composes-spacing",
         "composes-spacing.input.cpp"});
-
+    AddCases(cases, data / "qualified-record", {"canonical", "ytsaurus"});
     const auto hunks = data / "changed-hunks";
     cases.push_back({hunks / "basic", "call", "input.cpp",
         "style", {{8, 8}}});
@@ -539,17 +527,21 @@ std::vector<FormatCase> FormatCases()
         "style", {{3, 3}, {5, 5}}, false});
     cases.push_back({hunks / "structural", "unsupported", "input.cpp",
         "style", {{2, 2}}});
-
+    cases.push_back({hunks / "planned", "strict-independent",
+        "strict-independent.input.cpp",
+        "style", {{3, 3}, {6, 6}}, false});
+    cases.push_back({hunks / "planned", "nested", "nested.input.cpp",
+        "style", {{3, 3}}, true});
+    cases.push_back({hunks / "planned", "atomic", "atomic.input.cpp",
+        "structural", {{2, 5}}, false});
     std::ranges::sort(cases, {}, [] (const auto& value) {
         return value.Directory.string() + value.Name;
     });
     return cases;
 }
-
 class FormatTest
     : public testing::TestWithParam<FormatCase>
 { };
-
 TEST_P(FormatTest, Golden)
 {
     const auto& value = GetParam();
@@ -570,7 +562,6 @@ TEST_P(FormatTest, Golden)
             tree, style, value.Hunks, value.Spillover));
     }
 }
-
 INSTANTIATE_TEST_SUITE_P(Formatter, FormatTest,
     testing::ValuesIn(FormatCases()),
     [] (const auto& info) {
@@ -582,16 +573,13 @@ INSTANTIATE_TEST_SUITE_P(Formatter, FormatTest,
         std::ranges::replace(name, '-', '_');
         return name;
     });
-
 std::string ConfigName(const testing::TestParamInfo<std::string>& info)
 {
     return info.param;
 }
-
 class ParameterNameTest
     : public testing::TestWithParam<std::string>
 { };
-
 TEST_P(ParameterNameTest, Golden)
 {
     const auto directory = std::filesystem::path(FORMATTER_TESTDATA_DIR) /
@@ -625,11 +613,9 @@ TEST_P(ParameterNameTest, Golden)
     test::golden::ExpectGolden(directory /
         (ytsaurus ? "enabled.expected" : GetParam() + ".expected"), actual);
 }
-
 INSTANTIATE_TEST_SUITE_P(Formatter, ParameterNameTest,
     testing::Values("enabled", "default", "declarations_only",
         "definitions_only", "names_only", "ytsaurus"), ConfigName);
-
 TEST(Formatter, CallArgument_ReflowsOnlySafeParsedCalls)
 {
     formatter::Style style;
@@ -658,7 +644,6 @@ TEST(Formatter, CallArgument_ReflowsOnlySafeParsedCalls)
     const auto repacked = FormatWithStyle(longMultiline, style);
     test::golden::ExpectGolden(directory / "repacked.output.cpp", repacked);
     EXPECT_EQ(FormatWithStyle(repacked, style), repacked);
-
     style.CallsPacking = formatter::ListPacking::VerticalWhenBroken;
     style.CallsLayout = formatter::CategoryLayout::Canonical;
     style.CallsFirstItem =
@@ -668,7 +653,6 @@ TEST(Formatter, CallArgument_ReflowsOnlySafeParsedCalls)
         directory / "one-per-line.output.cpp",
         onePerLine);
     EXPECT_EQ(FormatWithStyle(onePerLine, style), onePerLine);
-
     style.CallsPacking = formatter::ListPacking::Fill;
     style.CallsLayout = formatter::CategoryLayout::Canonical;
     style.CallsAlignment = formatter::ContinuationAlignment::Delimiter;
@@ -734,7 +718,6 @@ TEST(Formatter, CallArgument_ReflowsOnlySafeParsedCalls)
         "void f() { use(alpha, /* note */ beta, gamma); }\n",
         style);
     ExpectUnchanged("void f() { use(alpha, beta, gamma, delta); }\r\n", style);
-
     // Subsequent call cases have no control header to deactivate.
     style.CallsPacking = formatter::ListPacking::VerticalWhenBroken;
     style.CallsLayout = formatter::CategoryLayout::Canonical;
@@ -749,7 +732,6 @@ TEST(Formatter, CallArgument_ReflowsOnlySafeParsedCalls)
         "    delta ); }\n";
     EXPECT_EQ(FormatWithStyle(spaced, style), spacedExpected);
     EXPECT_EQ(FormatWithStyle(spacedExpected, style), spacedExpected);
-
     const auto balancedInput =
         "void f() {\n"
         "    use(a, bb, ccc, dddd, eeeee, ffffff);\n"
@@ -783,7 +765,6 @@ TEST(Formatter, CallArgument_ReflowsOnlySafeParsedCalls)
     // This subcase explicitly retains the original call break topology.
     style.CallsLayout = formatter::CategoryLayout::Preserve;
     ExpectUnchanged(balancedInput, style);
-
     formatter::Style sole;
     sole.CallsPacking = formatter::ListPacking::VerticalWhenBroken;
     sole.CallsLayout = formatter::CategoryLayout::Canonical;
@@ -819,7 +800,6 @@ TEST(Formatter, CallArgument_ReflowsOnlySafeParsedCalls)
         "}\n";
     EXPECT_EQ(FormatWithStyle(multiline, sole), separated);
     EXPECT_EQ(FormatWithStyle(separated, sole), separated);
-
     formatter::Style lambdaStyle;
     lambdaStyle.ColumnLimit = 32;
     lambdaStyle.CallsPacking = formatter::ListPacking::VerticalWhenBroken;
@@ -847,7 +827,6 @@ TEST(Formatter, CallArgument_ReflowsOnlySafeParsedCalls)
         "    });\n"
         "}\n", lambdaStyle);
 }
-
 TEST(Formatter, CallArgument_LaysOutEnclosingMacroAndNestedCalls)
 {
     formatter::Style style;
@@ -902,7 +881,6 @@ TEST(Formatter, CallArgument_LaysOutEnclosingMacroAndNestedCalls)
     style.CallsLayout = formatter::CategoryLayout::Canonical;
     ExpectUnchanged("void f() { EXPECT_EQ(a, b); }\n", style);
 }
-
 TEST(Formatter, ExpressionLayout_WrapsParsedOperatorsAndPreservesUnsafeLines)
 {
     formatter::Style style;
@@ -914,12 +892,10 @@ TEST(Formatter, ExpressionLayout_WrapsParsedOperatorsAndPreservesUnsafeLines)
         formatter::OperatorSide::Leading;
     style.BinaryOperatorSide = formatter::OperatorSide::Leading;
     style.ColumnLimit = 32;
-
     const test::golden::Fixture fixture{
         std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../parsed-operators",
         "configured"};
     ExpectUnchanged(fixture.Input(), formatter::Style{});
-
     style.BinaryOperatorSide =
         formatter::OperatorSide::Trailing;
     const auto trailingInput =
@@ -968,7 +944,6 @@ TEST(Formatter, ExpressionLayout_WrapsParsedOperatorsAndPreservesUnsafeLines)
     ExpectUnchanged("template <int N> struct Array {};\n"
         "Array<1 + 2 + 3 + 4 + 5 + 6> value;\n", style);
 }
-
 TEST(Formatter, ExpressionLayout_PlacesAndGroupsTernaryBreaks)
 {
     formatter::Style style;
@@ -1006,11 +981,9 @@ TEST(Formatter, ExpressionLayout_PlacesAndGroupsTernaryBreaks)
         EXPECT_EQ(FormatWithStyle(three, style), three);
         ExpectUnchanged("int f() { return flag ? a : b; }\n", style);
     }
-
     const auto threeLeading = ReadFile(directory / "three-leading.output.cpp");
     const auto threeTrailing = ReadFile(directory /
         "three-trailing.output.cpp");
-
     style.ColumnLimit = 80;
     style.TernaryOperatorSide =
         formatter::OperatorSide::Leading;
@@ -1093,7 +1066,6 @@ TEST(Formatter, ExpressionLayout_PlacesAndGroupsTernaryBreaks)
         "}\n";
     EXPECT_EQ(FormatWithStyle(nested, style), nestedExpected);
     EXPECT_EQ(FormatWithStyle(nestedExpected, style), nestedExpected);
-
     formatter::Style preserve;
     // Explicit topology retention wins even over an Always requirement.
     preserve.ExpressionsLayout = formatter::CategoryLayout::Preserve;
@@ -1118,7 +1090,6 @@ TEST(Formatter, ExpressionLayout_PlacesAndGroupsTernaryBreaks)
     preserve.ExpressionsLayout = formatter::CategoryLayout::Canonical;
     EXPECT_EQ(FormatWithStyle(existing, preserve), threeTrailing);
 }
-
 TEST(Formatter, ExpressionLayout_ChecksPipelineMismatchAndEmittedWidth)
 {
     const auto input =
@@ -1174,7 +1145,6 @@ TEST(Formatter, ExpressionLayout_ChecksPipelineMismatchAndEmittedWidth)
     EXPECT_EQ(mismatchOnly.Text, result.Text);
     EXPECT_TRUE(mismatchOnly.Diagnostics.empty());
 }
-
 struct LayoutDiagnosticCase
 {
     std::string Directory;
@@ -1184,16 +1154,13 @@ struct LayoutDiagnosticCase
     bool StrictLength = false;
     std::string Suffix = ".expected";
 };
-
 void PrintTo(const LayoutDiagnosticCase& value, std::ostream* output)
 {
     *output << value.Directory << '/' << value.Name;
 }
-
 class LayoutDiagnosticTest
     : public testing::TestWithParam<LayoutDiagnosticCase>
 { };
-
 TEST_P(LayoutDiagnosticTest, Golden)
 {
     const auto& value = GetParam();
@@ -1225,7 +1192,6 @@ TEST_P(LayoutDiagnosticTest, Golden)
     test::golden::ExpectGolden(
         directory / (value.Name + value.Suffix), actual);
 }
-
 INSTANTIATE_TEST_SUITE_P(Formatter, LayoutDiagnosticTest,
     testing::Values(
         LayoutDiagnosticCase{"format-disabled", "regions",
@@ -1242,7 +1208,6 @@ INSTANTIATE_TEST_SUITE_P(Formatter, LayoutDiagnosticTest,
         std::ranges::replace(name, '-', '_');
         return name;
     });
-
 TEST(Formatter, ExpressionLayout_ReportsUnavoidableWidthWithoutReflowing)
 {
     const auto directory = std::filesystem::path(FORMATTER_TESTDATA_DIR) /
@@ -1271,7 +1236,6 @@ TEST(Formatter, ExpressionLayout_ReportsUnavoidableWidthWithoutReflowing)
     EXPECT_EQ(quiet.Text, input);
     EXPECT_TRUE(quiet.Diagnostics.empty());
 }
-
 TEST(Formatter, ExpressionLayout_WrapsLongBinaryExpressions)
 {
     formatter::Style style;
@@ -1305,7 +1269,6 @@ TEST(Formatter, ExpressionLayout_WrapsLongBinaryExpressions)
     style.ColumnLimit = 20;
     ExpectUnchanged("void f() { bool v = alpha<beta; }\n", style);
 }
-
 TEST(Formatter, ExpressionLayout_ReflowsSafeOperatorContinuationsByPolicy)
 {
     formatter::Style style;
@@ -1330,7 +1293,6 @@ TEST(Formatter, ExpressionLayout_ReflowsSafeOperatorContinuationsByPolicy)
         "}\n";
     EXPECT_EQ(FormatWithStyle(input, style), flat);
     EXPECT_EQ(FormatWithStyle(flat, style), flat);
-
     const auto wrapped =
         "int f(int alpha, int beta, int gamma) {\n"
         "    return alpha\n"
@@ -1430,7 +1392,6 @@ TEST(Formatter, ExpressionLayout_ReflowsSafeOperatorContinuationsByPolicy)
         ExpectUnchanged("void f() { bool v = alpha<beta; }\n", style);
     }
 }
-
 TEST(Formatter, FunctionParameterSafety_ComposesWithBracePlacement)
 {
     formatter::Style style;
@@ -1471,7 +1432,6 @@ TEST(Formatter, FunctionParameterSafety_ComposesWithBracePlacement)
         tabbed);
     EXPECT_EQ(format(tabbed), tabbed);
 }
-
 TEST(Formatter, FunctionParameterSafety_KeepsCrlfListsAndCalls)
 {
     formatter::Style style;
@@ -1483,7 +1443,6 @@ TEST(Formatter, FunctionParameterSafety_KeepsCrlfListsAndCalls)
         "void g() { Use(very_long_argument, another_long_argument); }\r\n",
         style);
 }
-
 TEST(Formatter, BlockIndentation_AnchorsInlineLambdaToItsCallLine)
 {
     formatter::Style style;
@@ -1500,7 +1459,6 @@ TEST(Formatter, BlockIndentation_AnchorsInlineLambdaToItsCallLine)
         "        other);\n"
         "}\n";
     ExpectUnchanged(source, style);
-
     const std::string incorrect =
         "void f()\n"
         "{\n"
@@ -1514,7 +1472,6 @@ TEST(Formatter, BlockIndentation_AnchorsInlineLambdaToItsCallLine)
         "}\n";
     EXPECT_EQ(FormatWithStyle(incorrect, style), source);
 }
-
 TEST(Formatter, ControlBrace_WrapsOnlyCompleteUnbracedBodies)
 {
     formatter::Style style;
@@ -1606,7 +1563,6 @@ TEST(Formatter, ControlBrace_WrapsOnlyCompleteUnbracedBodies)
         "    Other();\n"
         "}\n");
 }
-
 TEST(Formatter, EmptyFunctionBody_CollapsesWhitespaceOnlyBody)
 {
     formatter::Style style;
@@ -1628,7 +1584,6 @@ TEST(Formatter, EmptyFunctionBody_CollapsesWhitespaceOnlyBody)
         style),
         "void Annotated()\n{ /* keep */ Act(); }\n");
 }
-
 TEST(Formatter, OperatorSpacing_PreservesUnknownCastOrBinaryOperator)
 {
     formatter::Style style;
@@ -1660,7 +1615,6 @@ TEST(Formatter, OperatorSpacing_PreservesUnknownCastOrBinaryOperator)
         "(int) & a");
     EXPECT_EQ(FormatWithStyle(separatedCast, style), source);
 }
-
 TEST(Formatter, BraceSpacing_ComposesWithParameterReflow)
 {
     formatter::Style style;
@@ -1676,18 +1630,15 @@ TEST(Formatter, BraceSpacing_ComposesWithParameterReflow)
         "    int gamma, int delta) {}\n";
     EXPECT_EQ(FormatWithStyle(input, style), expected);
     EXPECT_EQ(FormatWithStyle(expected, style), expected);
-
     style.FunctionBracePlacement = formatter::BracePlacement::Attached;
     style.DeclarationHeadersLayout = formatter::CategoryLayout::Canonical;
     const std::string detached =
         "void Many(int alpha, int beta, int gamma, int delta)\n{}\n";
     EXPECT_EQ(FormatWithStyle(detached, style), expected);
 }
-
 class NamingTest
     : public testing::TestWithParam<std::string>
 { };
-
 TEST_P(NamingTest, Golden)
 {
     const auto dir = std::filesystem::path(NAMING_TESTDATA_DIR);
@@ -1709,10 +1660,8 @@ TEST_P(NamingTest, Golden)
     EXPECT_EQ(formatter::Format(tree, config.FormattingStyle), input);
     EXPECT_TRUE(formatter::CheckNames(tree, {}).empty());
 }
-
 INSTANTIATE_TEST_SUITE_P(Formatter, NamingTest,
     testing::Values("rules", "alternate", "no_exempt"), ConfigName);
-
 TEST(Formatter, Preserve_KeepsEmptyRecoveryAndBinarySource)
 {
     for (const std::string source : {
@@ -1726,7 +1675,6 @@ TEST(Formatter, Preserve_KeepsEmptyRecoveryAndBinarySource)
         ExpectUnchanged(source, formatter::Style{});
     }
 }
-
 TEST(Formatter, PreserveConfig_ParsesSettings)
 {
     const auto path = std::filesystem::temp_directory_path() /
@@ -1832,5 +1780,4 @@ TEST(Formatter, PreserveConfig_ParsesSettings)
     }
     std::filesystem::remove(path);
 }
-
 } // namespace

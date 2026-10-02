@@ -196,6 +196,91 @@ TEST(SyntaxSpacing, EveryControlProjectsPoliciesOnlyToItsClassifiedSites)
     }
 }
 
+TEST(SyntaxSpacing, EnumeratorAssignmentsOwnBothGaps)
+{
+    for (const auto policy : {GapPolicy::Space,
+        GapPolicy::NoSpace,
+        GapPolicy::Preserve,
+        GapPolicy::GeneratedSpace,
+        GapPolicy::GeneratedNoSpace,
+    })
+    {
+        GapPolicies policies;
+        policies.AssignmentOperatorSpacing = policy;
+        Analysis analysis("enum class Mode { First=1, Second = (1 + 2), "
+            "Third=choose(3, 4) }; int count=0; void f(int x=1){count+=x;}",
+            policies);
+        for (size_t occurrence = 0; occurrence != 5; ++occurrence) {
+            const auto token = analysis.Before("=", occurrence);
+            SCOPED_TRACE(static_cast<int>(analysis.Tree.Role(token)));
+            for (const auto gap : {token, token + 1}) {
+                EXPECT_EQ(
+                    analysis.Spacing.Gaps()[gap].Field,
+                    F::AssignmentOperatorSpacing) << occurrence;
+                EXPECT_EQ(analysis.Spacing.Gaps()[gap].Policy, policy);
+                for (const auto context : {GapContext::Preserved,
+                    GapContext::Rebuilt,
+                })
+                {
+                    EXPECT_EQ(analysis.Spacing.SpacePreference(
+                        gap,
+                        context,
+                        analysis.Safety),
+                        GapUsesSpace(policy, context)) << occurrence;
+                }
+            }
+            if (occurrence < 3) {
+                EXPECT_EQ(
+                    analysis.Spacing.Gaps()[token].Category,
+                    C::Initializers);
+                EXPECT_EQ(
+                    analysis.Spacing.Gaps()[token].Owner,
+                    analysis.Spacing.Gaps()[token + 1].Owner);
+            }
+        }
+        const auto compound = analysis.Before("+=");
+        EXPECT_EQ(
+            analysis.Spacing.Gaps()[compound].Field,
+            F::AssignmentOperatorSpacing);
+        EXPECT_EQ(
+            analysis.Spacing.Gaps()[compound + 1].Field,
+            F::AssignmentOperatorSpacing);
+        EXPECT_EQ(
+            analysis.Spacing.Gaps()[analysis.Before("+")].Field,
+            F::BinaryOperatorSpacing);
+        EXPECT_EQ(
+            analysis.Spacing.Gaps()[analysis.Before(",", 2) + 1].Field,
+            F::CommaSpaceAfter);
+    }
+}
+
+TEST(SyntaxSpacing, TrailingCommentPolicyOverridesAssignmentGap)
+{
+    GapPolicies policies;
+    policies.AssignmentOperatorSpacing = GapPolicy::Space;
+    Analysis analysis("enum Mode { First=  // note\n 1 }; "
+        "int count=  // control\n 1;", policies);
+    for (const auto comment : {"// note", "// control"}) {
+        const auto gap = analysis.Before(comment);
+        EXPECT_EQ(
+            analysis.Spacing.Gaps()[gap - 1].Field,
+            F::AssignmentOperatorSpacing);
+        EXPECT_EQ(
+            analysis.Spacing.Gaps()[gap].Field,
+            F::TrailingCommentSpacing);
+        EXPECT_EQ(analysis.Spacing.Gaps()[gap].Policy, GapPolicy::Preserve);
+        EXPECT_EQ(analysis.Spacing.Gaps()[gap].Priority, 3);
+        EXPECT_EQ(analysis.Safety.Gaps()[gap].Original, "  ");
+        EXPECT_EQ(analysis.Safety.Gaps()[gap].Reasons, ProtectionReason::None);
+        EXPECT_FALSE(analysis.Safety.Gaps()[gap].Preserve);
+        EXPECT_TRUE(analysis.Safety.CanReplaceGap(gap, " "));
+        EXPECT_FALSE(analysis.Spacing.SpacePreference(
+            gap,
+            GapContext::Rebuilt,
+            analysis.Safety));
+    }
+}
+
 TEST(SyntaxSpacing, SpecificAndEmptyRulesOverrideGeneralRulesEvenWhenPreserved)
 {
     GapPolicies policies;

@@ -64,3 +64,17 @@ add_executable(cli_checks
     ../hit-fmt/tests/file_dispatch.cpp
     ../hit-fmt/tests/file_check.cpp)
 target_link_libraries(cli_checks PRIVATE GTest::gtest_main lib-file-check Threads::Threads)
+
+# Original-scope library adapter checks; legacy golden registration migrates separately.
+add_executable(hunk_checks
+    ../formatter/tests/hunks.cpp
+    ../formatter/tests/hunk_scope.cpp)
+target_sources(tests PRIVATE ../formatter/tests/hunk_scope.cpp)
+target_link_libraries(hunk_checks PRIVATE GTest::gtest_main lib-formatter)
+target_compile_definitions(hunk_checks PRIVATE
+    HIT_FMT_HUNK_CHECKS=1
+    HUNK_TESTDATA_DIR="${CMAKE_SOURCE_DIR}/formatter/tests/testdata/changed-hunks")
+
+# Independent original-line planning checks while the shared pipeline seam is reviewed.
+add_executable(hunk_scope_checks ../formatter/tests/hunk_scope.cpp)
+target_link_libraries(hunk_scope_checks PRIVATE GTest::gtest_main lib-formatter)

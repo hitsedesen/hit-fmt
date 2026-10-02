@@ -25,10 +25,13 @@ license notices under a chosen prefix with:
 cmake --install build-cli --prefix ~/.local
 ```
 
-The full `tests` target now compiles after the reviewed test-API migration,
-but the normal and ASan/UBSan runs have 207 failures out of 798 tests.
-Existing goldens remain unchanged. This CLI-only build does not imply
-full-suite acceptance. Focused component checks require GoogleTest:
+This accepted constructor/enum checkpoint also includes the reviewed
+library hunk/context safety work; CLI hunk flags remain unsupported.
+The normal and ASan/UBSan full runs observe 205 failing identities out of
+845 tests, with 640 passing. These are WIP mismatches under an independent
+configuration-contract audit, not 205 proven implementation defects.
+Existing golden expectations are not regenerated. This CLI-only build
+does not imply full-suite acceptance. Focused checks require GoogleTest:
 
 ```sh
 cmake -S . -B build-checks -DHIT_FMT_TEST=ON -DHIT_FMT_BENCHMARK=OFF

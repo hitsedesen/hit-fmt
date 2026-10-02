@@ -1,0 +1,1558 @@
+(translation-unit
+  (record-declaration
+    "struct" "Host" "{"
+    (record-declaration "struct" "Value" ";")
+    (record-declaration "struct" "Pointer" ";")
+    (record-declaration "struct" "Lvalue" ";")
+    (record-declaration "struct" "Rvalue" ";")
+    (record-declaration "struct" "Callback" ";")
+    (record-declaration "struct" "Aligned" ";")
+    (record-declaration "struct" "Extended" ";")
+    "}" ";"
+  )
+  (record-declaration
+    "struct" "[" "[" "nodiscard" "]" "]" "Host" "::" "Value" "{"
+    (declaration
+      (declaration-specifiers "int")
+      (init-declarator-list
+        (init-declarator
+          (declarator
+            (declarator-name "stored")
+          )
+        )
+      )
+      ";"
+    )
+    (function-definition
+      (init-declarator-list
+        (init-declarator
+          (declarator
+            (declarator-name "Value")
+            (function-declarator
+              (parameter-list
+                "("
+                (parameter-declaration
+                  (declaration-specifiers "int")
+                  (init-declarator-list
+                    (init-declarator
+                      (declarator
+                        (declarator-name "v")
+                      )
+                    )
+                  )
+                )
+                ")"
+              )
+              (constructor-initializer-list
+                ":"
+                (constructor-initializer
+                  (call-expression
+                    (identifier-expression "stored")
+                    (argument-list
+                      "("
+                      (argument
+                        (identifier-expression "v")
+                      )
+                      ")"
+                    )
+                  )
+                )
+              )
+            )
+          )
+        )
+      )
+      (compound-statement "{" "}")
+    )
+    "}" ";"
+  )
+  (record-declaration
+    "struct" "Host" "::" "Pointer" "{"
+    (declaration
+      (declaration-specifiers "int")
+      (init-declarator-list
+        (init-declarator
+          (declarator
+            (pointer-operator "*")
+            (declarator-name "stored")
+          )
+        )
+      )
+      ";"
+    )
+    (function-definition
+      (init-declarator-list
+        (init-declarator
+          (declarator
+            (declarator-name "Pointer")
+            (function-declarator
+              (parameter-list
+                "("
+                (parameter-declaration
+                  (declaration-specifiers "int")
+                  (init-declarator-list
+                    (init-declarator
+                      (declarator
+                        (pointer-operator "*")
+                        (declarator-name "v")
+                      )
+                    )
+                  )
+                )
+                ")"
+              )
+              (constructor-initializer-list
+                ":"
+                (constructor-initializer
+                  (call-expression
+                    (identifier-expression "stored")
+                    (argument-list
+                      "("
+                      (argument
+                        (identifier-expression "v")
+                      )
+                      ")"
+                    )
+                  )
+                )
+              )
+            )
+          )
+        )
+      )
+      (compound-statement "{" "}")
+    )
+    "}" ";"
+  )
+  (record-declaration
+    "struct" "Host" "::" "Lvalue" "{"
+    (declaration
+      (declaration-specifiers "const" "int")
+      (init-declarator-list
+        (init-declarator
+          (declarator
+            (pointer-operator "&")
+            (declarator-name "stored")
+          )
+        )
+      )
+      ";"
+    )
+    (function-definition
+      (init-declarator-list
+        (init-declarator
+          (declarator
+            (declarator-name "Lvalue")
+            (function-declarator
+              (parameter-list
+                "("
+                (parameter-declaration
+                  (declaration-specifiers "const" "int")
+                  (init-declarator-list
+                    (init-declarator
+                      (declarator
+                        (pointer-operator "&")
+                        (declarator-name "v")
+                      )
+                    )
+                  )
+                )
+                ")"
+              )
+              (constructor-initializer-list
+                ":"
+                (constructor-initializer
+                  (call-expression
+                    (identifier-expression "stored")
+                    (argument-list
+                      "("
+                      (argument
+                        (identifier-expression "v")
+                      )
+                      ")"
+                    )
+                  )
+                )
+              )
+            )
+          )
+        )
+      )
+      (compound-statement "{" "}")
+    )
+    "}" ";"
+  )
+  (record-declaration
+    "struct" "Host" "::" "Rvalue" "{"
+    (declaration
+      (declaration-specifiers "int")
+      (init-declarator-list
+        (init-declarator
+          (declarator
+            (declarator-name "stored")
+          )
+        )
+      )
+      ";"
+    )
+    (function-definition
+      (init-declarator-list
+        (init-declarator
+          (declarator
+            (declarator-name "Rvalue")
+            (function-declarator
+              (parameter-list
+                "("
+                (parameter-declaration
+                  (declaration-specifiers "int")
+                  (init-declarator-list
+                    (init-declarator
+                      (declarator
+                        (pointer-operator "&&")
+                        (declarator-name "v")
+                      )
+                    )
+                  )
+                )
+                ")"
+              )
+              (constructor-initializer-list
+                ":"
+                (constructor-initializer
+                  (call-expression
+                    (identifier-expression "stored")
+                    (argument-list
+                      "("
+                      (argument
+                        (identifier-expression "v")
+                      )
+                      ")"
+                    )
+                  )
+                )
+              )
+            )
+          )
+        )
+      )
+      (compound-statement "{" "}")
+    )
+    "}" ";"
+  )
+  (record-declaration
+    "struct" "Host" "::" "Callback" "{"
+    (function-definition
+      (init-declarator-list
+        (init-declarator
+          (declarator
+            (declarator-name "Callback")
+            (function-declarator
+              (parameter-list
+                "("
+                (parameter-declaration
+                  (declaration-specifiers "void")
+                  (init-declarator-list
+                    (init-declarator
+                      (declarator
+                        (nested-declarator
+                          "("
+                          (pointer-operator "*")
+                          (declarator-name "cb")
+                          ")"
+                        )
+                        (function-declarator
+                          (parameter-list
+                            "("
+                            (parameter-declaration
+                              (declaration-specifiers "int")
+                              (init-declarator-list
+                                (init-declarator
+                                  (abstract-declarator
+                                    (pointer-operator "&")
+                                  )
+                                )
+                              )
+                            )
+                            ")"
+                          )
+                        )
+                      )
+                    )
+                  )
+                )
+                ")"
+              )
+            )
+          )
+        )
+      )
+      (compound-statement
+        "{"
+        (expression-statement
+          (call-expression
+            (identifier-expression "cb")
+            (argument-list
+              "("
+              (argument
+                (identifier-expression "value")
+              )
+              ")"
+            )
+          )
+          ";"
+        )
+        "}"
+      )
+    )
+    (declaration
+      (declaration-specifiers "int")
+      (init-declarator-list
+        (init-declarator
+          (declarator
+            (declarator-name "value")
+          )
+        )
+      )
+      ";"
+    )
+    (declaration
+      (declaration-specifiers "void")
+      (init-declarator-list
+        (init-declarator
+          (declarator
+            (nested-declarator
+              "("
+              (pointer-operator "*")
+              (declarator-name "callback")
+              ")"
+            )
+            (function-declarator
+              (parameter-list
+                "("
+                (parameter-declaration
+                  (declaration-specifiers "int")
+                  (init-declarator-list
+                    (init-declarator
+                      (abstract-declarator
+                        (pointer-operator "&")
+                      )
+                    )
+                  )
+                )
+                ")"
+              )
+            )
+          )
+        )
+      )
+      ";"
+    )
+    "}" ";"
+  )
+  (record-declaration
+    "struct" "Plain" "{"
+    (function-definition
+      (init-declarator-list
+        (init-declarator
+          (declarator
+            (declarator-name "Plain")
+            (function-declarator
+              (parameter-list
+                "("
+                (parameter-declaration
+                  (declaration-specifiers "int")
+                  (init-declarator-list
+                    (init-declarator
+                      (declarator
+                        (pointer-operator "*")
+                        (declarator-name "p")
+                      )
+                    )
+                  )
+                )
+                (list-separator ",")
+                (parameter-declaration
+                  (declaration-specifiers "int")
+                  (init-declarator-list
+                    (init-declarator
+                      (declarator
+                        (pointer-operator "&")
+                        (declarator-name "l")
+                      )
+                    )
+                  )
+                )
+                (list-separator ",")
+                (parameter-declaration
+                  (declaration-specifiers "int")
+                  (init-declarator-list
+                    (init-declarator
+                      (declarator
+                        (pointer-operator "&&")
+                        (declarator-name "r")
+                      )
+                    )
+                  )
+                )
+                (list-separator ",")
+                (parameter-declaration
+                  (declaration-specifiers "int")
+                  (init-declarator-list
+                    (init-declarator
+                      (declarator
+                        (declarator-name "v")
+                      )
+                    )
+                  )
+                )
+                ")"
+              )
+            )
+          )
+        )
+      )
+      (compound-statement "{" "}")
+    )
+    "}" ";"
+  )
+  (namespace-declaration
+    "namespace" "Scope" "{"
+    (record-declaration
+      "struct" "Box" "{"
+      (record-declaration "struct" "Item" ";")
+      "}" ";"
+    )
+    "}"
+  )
+  (record-declaration
+    "struct" "Scope" "::" "Box" "::" "Item" "{"
+    (function-definition
+      (init-declarator-list
+        (init-declarator
+          (declarator
+            (declarator-name "Item")
+            (function-declarator
+              (parameter-list
+                "("
+                (parameter-declaration
+                  (declaration-specifiers "int")
+                  (init-declarator-list
+                    (init-declarator
+                      (declarator
+                        (pointer-operator "&")
+                        (declarator-name "v")
+                      )
+                    )
+                  )
+                )
+                ")"
+              )
+            )
+          )
+        )
+      )
+      (compound-statement "{" "}")
+    )
+    "}" ";"
+  )
+  (template-declaration
+    "template"
+    (template-parameter-list
+      "<"
+      (template-parameter "class" "T")
+      ">"
+    )
+    (record-declaration
+      "struct" "Family" "{"
+      (record-declaration "struct" "Child" ";")
+      "}" ";"
+    )
+  )
+  (template-declaration
+    "template"
+    (template-parameter-list
+      "<"
+      (template-parameter "class" "T")
+      ">"
+    )
+    (record-declaration
+      "struct" "Family" "<" "T" ">" "::" "Child" "{"
+      (function-definition
+        (init-declarator-list
+          (init-declarator
+            (declarator
+              (declarator-name "Child")
+              (function-declarator
+                (parameter-list
+                  "("
+                  (parameter-declaration
+                    (declaration-specifiers "T")
+                    (init-declarator-list
+                      (init-declarator
+                        (declarator
+                          (pointer-operator "*")
+                          (declarator-name "v")
+                        )
+                      )
+                    )
+                  )
+                  ")"
+                )
+              )
+            )
+          )
+        )
+        (compound-statement "{" "}")
+      )
+      (declaration
+        (declaration-specifiers "Child")
+        (init-declarator-list
+          (init-declarator
+            (declarator
+              (pointer-operator "*")
+              (declarator-name "next")
+            )
+          )
+        )
+        ";"
+      )
+      (function-definition
+        (declaration-specifiers "void")
+        (init-declarator-list
+          (init-declarator
+            (declarator
+              (declarator-name "use")
+              (function-declarator
+                (parameter-list "(" ")")
+              )
+            )
+          )
+        )
+        (compound-statement
+          "{"
+          (declaration-statement
+            (declaration-specifiers "Child")
+            (init-declarator-list
+              (init-declarator
+                (declarator
+                  (pointer-operator "*")
+                  (declarator-name "copy")
+                )
+                (initializer
+                  "="
+                  (identifier-expression "next")
+                )
+              )
+            )
+            ";"
+          )
+          "}"
+        )
+      )
+      "}" ";"
+    )
+  )
+  (template-declaration
+    "template"
+    (template-parameter-list
+      "<"
+      (template-parameter "class" "T")
+      ">"
+    )
+    (record-declaration "struct" "Spec" ";")
+  )
+  (template-declaration
+    "template"
+    (template-parameter-list "<" ">")
+    (record-declaration
+      "struct" "Spec" "<" "int" ">" "{"
+      (function-definition
+        (init-declarator-list
+          (init-declarator
+            (declarator
+              (declarator-name "Spec")
+              (function-declarator
+                (parameter-list
+                  "("
+                  (parameter-declaration
+                    (declaration-specifiers "int")
+                    (init-declarator-list
+                      (init-declarator
+                        (declarator
+                          (pointer-operator "&")
+                          (declarator-name "v")
+                        )
+                      )
+                    )
+                  )
+                  ")"
+                )
+              )
+            )
+          )
+        )
+        (compound-statement "{" "}")
+      )
+      "}" ";"
+    )
+  )
+  (template-declaration
+    "template"
+    (template-parameter-list
+      "<"
+      (template-parameter "class" "T")
+      ">"
+    )
+    (record-declaration
+      "struct" "Container" "{"
+      (template-declaration
+        "template"
+        (template-parameter-list
+          "<"
+          (template-parameter "class" "U")
+          ">"
+        )
+        (record-declaration "struct" "Entry" ";")
+      )
+      "}" ";"
+    )
+  )
+  (template-declaration
+    "template"
+    (template-parameter-list
+      "<"
+      (template-parameter "class" "T")
+      ">"
+    )
+    (template-declaration
+      "template"
+      (template-parameter-list
+        "<"
+        (template-parameter "class" "U")
+        ">"
+      )
+      (record-declaration
+        "struct" "Container" "<" "T" ">" "::" "Entry" "{"
+        (function-definition
+          (init-declarator-list
+            (init-declarator
+              (declarator
+                (declarator-name "Entry")
+                (function-declarator
+                  (parameter-list
+                    "("
+                    (parameter-declaration
+                      (declaration-specifiers "U")
+                      (init-declarator-list
+                        (init-declarator
+                          (declarator
+                            (pointer-operator "&&")
+                            (declarator-name "v")
+                          )
+                        )
+                      )
+                    )
+                    ")"
+                  )
+                )
+              )
+            )
+          )
+          (compound-statement "{" "}")
+        )
+        "}" ";"
+      )
+    )
+  )
+  (function-declaration
+    (declaration-specifiers "void")
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (declarator-name "accept")
+          (function-declarator
+            (parameter-list
+              "("
+              (parameter-declaration
+                (declaration-specifiers "void")
+                (init-declarator-list
+                  (init-declarator
+                    (abstract-declarator
+                      (nested-declarator
+                        "("
+                        (pointer-operator "*")
+                        ")"
+                      )
+                      (function-declarator
+                        (parameter-list
+                          "("
+                          (parameter-declaration
+                            (declaration-specifiers "int")
+                            (init-declarator-list
+                              (init-declarator
+                                (abstract-declarator
+                                  (pointer-operator "&")
+                                )
+                              )
+                            )
+                          )
+                          ")"
+                        )
+                      )
+                    )
+                  )
+                )
+              )
+              (list-separator ",")
+              (parameter-declaration
+                (declaration-specifiers "void")
+                (init-declarator-list
+                  (init-declarator
+                    (abstract-declarator
+                      (nested-declarator
+                        "("
+                        (pointer-operator "&")
+                        ")"
+                      )
+                      (function-declarator
+                        (parameter-list
+                          "("
+                          (parameter-declaration
+                            (declaration-specifiers "int")
+                            (init-declarator-list
+                              (init-declarator
+                                (abstract-declarator
+                                  (pointer-operator "*")
+                                )
+                              )
+                            )
+                          )
+                          ")"
+                        )
+                      )
+                    )
+                  )
+                )
+              )
+              ")"
+            )
+          )
+        )
+      )
+    )
+    ";"
+  )
+  (function-definition
+    (declaration-specifiers "void")
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (declarator-name "nested")
+          (function-declarator
+            (parameter-list
+              "("
+              (parameter-declaration
+                (declaration-specifiers "int")
+                (init-declarator-list
+                  (init-declarator
+                    (declarator
+                      (nested-declarator
+                        "("
+                        (pointer-operator "*")
+                        (declarator-name "cb")
+                        ")"
+                      )
+                      (function-declarator
+                        (parameter-list
+                          "("
+                          (parameter-declaration
+                            (declaration-specifiers "int")
+                            (init-declarator-list
+                              (init-declarator
+                                (abstract-declarator
+                                  (pointer-operator "&")
+                                )
+                              )
+                            )
+                          )
+                          ")"
+                        )
+                      )
+                    )
+                  )
+                )
+              )
+              ")"
+            )
+          )
+        )
+      )
+    )
+    (compound-statement
+      "{"
+      (declaration-statement
+        (declaration-specifiers "int")
+        (init-declarator-list
+          (init-declarator
+            (declarator
+              (nested-declarator
+                "("
+                (pointer-operator "*")
+                (declarator-name "local")
+                ")"
+              )
+              (function-declarator
+                (parameter-list
+                  "("
+                  (parameter-declaration
+                    (declaration-specifiers "int")
+                    (init-declarator-list
+                      (init-declarator
+                        (abstract-declarator
+                          (pointer-operator "&")
+                        )
+                      )
+                    )
+                  )
+                  ")"
+                )
+              )
+            )
+            (initializer
+              "="
+              (identifier-expression "cb")
+            )
+          )
+        )
+        ";"
+      )
+      "}"
+    )
+  )
+  (function-declaration
+    (declaration-specifiers "void")
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (declarator-name "ordinary")
+          (function-declarator
+            (parameter-list
+              "("
+              (parameter-declaration
+                (declaration-specifiers "int")
+                (init-declarator-list
+                  (init-declarator
+                    (declarator
+                      (pointer-operator "*")
+                      (declarator-name "cb")
+                    )
+                  )
+                )
+              )
+              (list-separator ",")
+              (parameter-declaration
+                (declaration-specifiers "int")
+                (init-declarator-list
+                  (init-declarator
+                    (declarator
+                      (pointer-operator "&")
+                      (declarator-name "value")
+                    )
+                  )
+                )
+              )
+              ")"
+            )
+          )
+        )
+      )
+    )
+    ";"
+  )
+  (function-definition
+    (declaration-specifiers "void")
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (declarator-name "invoke")
+          (function-declarator
+            (parameter-list
+              "("
+              (parameter-declaration
+                (declaration-specifiers "int")
+                (init-declarator-list
+                  (init-declarator
+                    (declarator
+                      (pointer-operator "&")
+                      (declarator-name "value")
+                    )
+                  )
+                )
+              )
+              ")"
+            )
+          )
+        )
+      )
+    )
+    (compound-statement
+      "{"
+      (expression-statement
+        (call-expression
+          (identifier-expression "ordinary")
+          (argument-list
+            "("
+            (argument
+              (literal-expression "nullptr")
+            )
+            (list-separator ",")
+            (argument
+              (identifier-expression "value")
+            )
+            ")"
+          )
+        )
+        ";"
+      )
+      "}"
+    )
+  )
+  (declaration
+    (declaration-specifiers "constexpr" "int")
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (declarator-name "Alignment")
+        )
+        (initializer
+          "="
+          (literal-expression "16")
+        )
+      )
+    )
+    ";"
+  )
+  (record-declaration
+    "struct" "alignas" "(" "Alignment" ")" "Host" "::" "Aligned" "{"
+    (function-definition
+      (init-declarator-list
+        (init-declarator
+          (declarator
+            (declarator-name "Aligned")
+            (function-declarator
+              (parameter-list
+                "("
+                (parameter-declaration
+                  (declaration-specifiers "int")
+                  (init-declarator-list
+                    (init-declarator
+                      (declarator
+                        (pointer-operator "&")
+                        (declarator-name "v")
+                      )
+                    )
+                  )
+                )
+                ")"
+              )
+            )
+          )
+        )
+      )
+      (compound-statement "{" "}")
+    )
+    "}" ";"
+  )
+  (record-declaration
+    "struct" "__attribute__" "(" "(" "aligned" "(" "16" ")" ")" ")" "Host" "::" "Extended" "{"
+    (function-definition
+      (init-declarator-list
+        (init-declarator
+          (declarator
+            (declarator-name "Extended")
+            (function-declarator
+              (parameter-list
+                "("
+                (parameter-declaration
+                  (declaration-specifiers "int")
+                  (init-declarator-list
+                    (init-declarator
+                      (declarator
+                        (pointer-operator "*")
+                        (declarator-name "v")
+                      )
+                    )
+                  )
+                )
+                ")"
+              )
+            )
+          )
+        )
+      )
+      (compound-statement "{" "}")
+    )
+    "}" ";"
+  )
+  (record-declaration
+    "class" "Vessel" "{"
+    (access-specifier "public" ":")
+    (record-declaration "class" "Leaf" ";")
+    "}" ";"
+  )
+  (record-declaration
+    "class" "Vessel" "::" "Leaf"
+    (base-clause
+      ":"
+      (base-specifier
+        "public"
+        (base-type "Plain")
+      )
+    )
+    "{"
+    (access-specifier "public" ":")
+    (function-definition
+      (declaration-specifiers "explicit")
+      (init-declarator-list
+        (init-declarator
+          (declarator
+            (declarator-name "Leaf")
+            (function-declarator
+              (parameter-list
+                "("
+                (parameter-declaration
+                  (declaration-specifiers "int")
+                  (init-declarator-list
+                    (init-declarator
+                      (declarator
+                        (pointer-operator "&")
+                        (declarator-name "v")
+                      )
+                    )
+                  )
+                )
+                ")"
+              )
+              (constructor-initializer-list
+                ":"
+                (constructor-initializer
+                  (call-expression
+                    (identifier-expression "Plain")
+                    (argument-list
+                      "("
+                      (argument
+                        (literal-expression "nullptr")
+                      )
+                      (list-separator ",")
+                      (argument
+                        (identifier-expression "v")
+                      )
+                      (list-separator ",")
+                      (argument
+                        (literal-expression "0")
+                      )
+                      (list-separator ",")
+                      (argument
+                        (literal-expression "0")
+                      )
+                      ")"
+                    )
+                  )
+                )
+              )
+            )
+          )
+        )
+      )
+      (compound-statement "{" "}")
+    )
+    (function-definition
+      (init-declarator-list
+        (init-declarator
+          (declarator
+            (destructor-name "~" "Leaf")
+            (function-declarator
+              (parameter-list "(" ")")
+            )
+          )
+        )
+      )
+      (compound-statement "{" "}")
+    )
+    "}" ";"
+  )
+  (template-declaration
+    "template"
+    (template-parameter-list "<" ">")
+    (record-declaration
+      "struct" "Family" "<" "Spec" "<" "int" ">>" "::" "Child" "{"
+      (function-definition
+        (init-declarator-list
+          (init-declarator
+            (declarator
+              (declarator-name "Child")
+              (function-declarator
+                (parameter-list
+                  "("
+                  (parameter-declaration
+                    (declaration-specifiers "int")
+                    (init-declarator-list
+                      (init-declarator
+                        (declarator
+                          (pointer-operator "*")
+                          (declarator-name "v")
+                        )
+                      )
+                    )
+                  )
+                  ")"
+                )
+              )
+            )
+          )
+        )
+        (compound-statement "{" "}")
+      )
+      "}" ";"
+    )
+  )
+  (declaration
+    (declaration-specifiers "int")
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (declarator-name "Tally")
+        )
+        (initializer
+          "="
+          (literal-expression "0")
+        )
+      )
+    )
+    ";"
+  )
+  (record-declaration
+    "struct" "Ledger" "{"
+    (record-declaration "struct" "Tally" ";")
+    "}" ";"
+  )
+  (record-declaration "struct" "Ledger" "::" "Tally" "{" "}" ";")
+  (function-definition
+    (declaration-specifiers "void")
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (declarator-name "update_tally")
+          (function-declarator
+            (parameter-list "(" ")")
+          )
+        )
+      )
+    )
+    (compound-statement
+      "{"
+      (expression-statement
+        (assignment-expression
+          (identifier-expression "Tally")
+          "+="
+          (literal-expression "1")
+        )
+        ";"
+      )
+      "}"
+    )
+  )
+  (declaration
+    (declaration-specifiers "int")
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (declarator-name "EntryCount")
+        )
+        (initializer
+          "="
+          (literal-expression "0")
+        )
+      )
+    )
+    ";"
+  )
+  (template-declaration
+    "template"
+    (template-parameter-list
+      "<"
+      (template-parameter "class" "T")
+      ">"
+    )
+    (record-declaration
+      "struct" "Shelf" "{"
+      (record-declaration "struct" "EntryCount" ";")
+      "}" ";"
+    )
+  )
+  (template-declaration
+    "template"
+    (template-parameter-list
+      "<"
+      (template-parameter "class" "T")
+      ">"
+    )
+    (record-declaration
+      "struct" "Shelf" "<" "T" ">" "::" "EntryCount" "{"
+      (function-definition
+        (init-declarator-list
+          (init-declarator
+            (declarator
+              (declarator-name "EntryCount")
+              (function-declarator
+                (parameter-list
+                  "("
+                  (parameter-declaration
+                    (declaration-specifiers "T")
+                    (init-declarator-list
+                      (init-declarator
+                        (declarator
+                          (pointer-operator "*")
+                          (declarator-name "v")
+                        )
+                      )
+                    )
+                  )
+                  ")"
+                )
+              )
+            )
+          )
+        )
+        (compound-statement "{" "}")
+      )
+      (declaration
+        (declaration-specifiers "EntryCount")
+        (init-declarator-list
+          (init-declarator
+            (declarator
+              (pointer-operator "*")
+              (declarator-name "next")
+            )
+          )
+        )
+        ";"
+      )
+      "}" ";"
+    )
+  )
+  (function-definition
+    (declaration-specifiers "void")
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (declarator-name "update_entries")
+          (function-declarator
+            (parameter-list "(" ")")
+          )
+        )
+      )
+    )
+    (compound-statement
+      "{"
+      (expression-statement
+        (assignment-expression
+          (identifier-expression "EntryCount")
+          "+="
+          (literal-expression "1")
+        )
+        ";"
+      )
+      "}"
+    )
+  )
+  (namespace-declaration
+    "namespace" "ForwardCollision" "{"
+    (declaration
+      (declaration-specifiers "int")
+      (init-declarator-list
+        (init-declarator
+          (declarator
+            (declarator-name "Pending")
+          )
+          (initializer
+            "="
+            (literal-expression "0")
+          )
+        )
+      )
+      ";"
+    )
+    (record-declaration
+      "struct" "Owner" "{"
+      (record-declaration "struct" "Pending" ";")
+      "}" ";"
+    )
+    (record-declaration "struct" "Owner" "::" "Pending" ";")
+    (function-definition
+      (declaration-specifiers "void")
+      (init-declarator-list
+        (init-declarator
+          (declarator
+            (declarator-name "update")
+            (function-declarator
+              (parameter-list "(" ")")
+            )
+          )
+        )
+      )
+      (compound-statement
+        "{"
+        (expression-statement
+          (assignment-expression
+            (identifier-expression "Pending")
+            "+="
+            (literal-expression "1")
+          )
+          ";"
+        )
+        "}"
+      )
+    )
+    "}"
+  )
+  (namespace-declaration
+    "namespace" "EmptyTemplateCollision" "{"
+    (declaration
+      (declaration-specifiers "int")
+      (init-declarator-list
+        (init-declarator
+          (declarator
+            (declarator-name "Entry")
+          )
+          (initializer
+            "="
+            (literal-expression "0")
+          )
+        )
+      )
+      ";"
+    )
+    (template-declaration
+      "template"
+      (template-parameter-list
+        "<"
+        (template-parameter "class" "T")
+        ">"
+      )
+      (record-declaration
+        "struct" "Owner" "{"
+        (record-declaration "struct" "Entry" ";")
+        "}" ";"
+      )
+    )
+    (template-declaration
+      "template"
+      (template-parameter-list
+        "<"
+        (template-parameter "class" "T")
+        ">"
+      )
+      (record-declaration "struct" "Owner" "<" "T" ">" "::" "Entry" "{" "}" ";")
+    )
+    (function-definition
+      (declaration-specifiers "void")
+      (init-declarator-list
+        (init-declarator
+          (declarator
+            (declarator-name "update")
+            (function-declarator
+              (parameter-list "(" ")")
+            )
+          )
+        )
+      )
+      (compound-statement
+        "{"
+        (expression-statement
+          (assignment-expression
+            (identifier-expression "Entry")
+            "+="
+            (literal-expression "1")
+          )
+          ";"
+        )
+        "}"
+      )
+    )
+    "}"
+  )
+  (namespace-declaration
+    "namespace" "ForwardTemplateCollision" "{"
+    (declaration
+      (declaration-specifiers "int")
+      (init-declarator-list
+        (init-declarator
+          (declarator
+            (declarator-name "Pending")
+          )
+          (initializer
+            "="
+            (literal-expression "0")
+          )
+        )
+      )
+      ";"
+    )
+    (template-declaration
+      "template"
+      (template-parameter-list
+        "<"
+        (template-parameter "class" "T")
+        ">"
+      )
+      (record-declaration
+        "struct" "Owner" "{"
+        (record-declaration "struct" "Pending" ";")
+        "}" ";"
+      )
+    )
+    (template-declaration
+      "template"
+      (template-parameter-list "<" ">")
+      (record-declaration "struct" "Owner" "<" "int" ">" "::" "Pending" ";")
+    )
+    (function-definition
+      (declaration-specifiers "void")
+      (init-declarator-list
+        (init-declarator
+          (declarator
+            (declarator-name "update")
+            (function-declarator
+              (parameter-list "(" ")")
+            )
+          )
+        )
+      )
+      (compound-statement
+        "{"
+        (expression-statement
+          (assignment-expression
+            (identifier-expression "Pending")
+            "+="
+            (literal-expression "1")
+          )
+          ";"
+        )
+        "}"
+      )
+    )
+    "}"
+  )
+  (record-declaration "struct" "ExportedEmpty" "{" "}" ";")
+  (record-declaration "struct" "ExportedForward" ";")
+  (template-declaration
+    "template"
+    (template-parameter-list
+      "<"
+      (template-parameter "class" "T")
+      ">"
+    )
+    (record-declaration "struct" "ExportedTemplateEmpty" "{" "}" ";")
+  )
+  (template-declaration
+    "template"
+    (template-parameter-list
+      "<"
+      (template-parameter "class" "T")
+      ">"
+    )
+    (record-declaration "struct" "ExportedTemplateForward" ";")
+  )
+  (function-definition
+    (declaration-specifiers "void")
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (declarator-name "keep_exports")
+          (function-declarator
+            (parameter-list "(" ")")
+          )
+        )
+      )
+    )
+    (compound-statement
+      "{"
+      (declaration-statement
+        (declaration-specifiers "Plain")
+        (init-declarator-list
+          (init-declarator
+            (declarator
+              (pointer-operator "*")
+              (declarator-name "nonempty")
+            )
+          )
+        )
+        ";"
+      )
+      (declaration-statement
+        (declaration-specifiers "ExportedEmpty")
+        (init-declarator-list
+          (init-declarator
+            (declarator
+              (pointer-operator "*")
+              (declarator-name "empty")
+            )
+          )
+        )
+        ";"
+      )
+      (declaration-statement
+        (declaration-specifiers "ExportedForward")
+        (init-declarator-list
+          (init-declarator
+            (declarator
+              (pointer-operator "*")
+              (declarator-name "forward")
+            )
+          )
+        )
+        ";"
+      )
+      (declaration-statement
+        (declaration-specifiers
+          "ExportedTemplateEmpty"
+          (template-argument-list
+            "<"
+            (template-argument "int")
+            ">"
+          )
+        )
+        (init-declarator-list
+          (init-declarator
+            (declarator
+              (pointer-operator "*")
+              (declarator-name "template_empty")
+            )
+          )
+        )
+        ";"
+      )
+      (declaration-statement
+        (declaration-specifiers
+          "ExportedTemplateForward"
+          (template-argument-list
+            "<"
+            (template-argument "int")
+            ">"
+          )
+        )
+        (init-declarator-list
+          (init-declarator
+            (declarator
+              (pointer-operator "*")
+              (declarator-name "template_forward")
+            )
+          )
+        )
+        ";"
+      )
+      "}"
+    )
+  )
+)

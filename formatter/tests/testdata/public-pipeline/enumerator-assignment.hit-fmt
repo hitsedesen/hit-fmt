@@ -1,0 +1,4 @@
+Layout = Canonical
+AssignmentOperatorSpacing = Space
+BinaryOperatorSpacing = Space
+CommaSpaceAfter = Space

@@ -226,6 +226,10 @@ class Planner
             PlanHeaderAndBody(i);
             if (!Syntax_[i].Safe)
             {
+                if (ListFor(node.Kind))
+                {
+                    PreserveUnplannedListContext(i);
+                }
                 continue;
             }
             if (const auto *list = ListFor(node.Kind))
@@ -606,6 +610,69 @@ class Planner
                    Syntax_[first].TreeNode->Tokens.Begin &&
                Syntax_[expression].TreeNode->Tokens.End ==
                    Syntax_[first].TreeNode->Tokens.End;
+    }
+
+    void PreserveUnplannedListContext(Index id)
+    {
+        const auto &entry = Syntax_[id];
+        const auto &node = *entry.TreeNode;
+        if (node.Tokens.Size() < 2)
+        {
+            return;
+        }
+        // These edges/separators belong to the absent list combinator, not
+        // to its category's default mode. Leave independently classified child
+        // properties and the flat-only callee/declarator prefix alone. Explicit
+        // Space/NoSpace and inserted-adjacency context still apply normally.
+        auto preserve = [&](Index gap)
+        {
+            if (gap >= Gaps_.size())
+            {
+                return;
+            }
+            const auto *owner = Spacing_.Gaps()[gap].Owner;
+            if ((owner == &node ||
+                 (entry.Parent != None &&
+                  owner == Syntax_[entry.Parent].TreeNode)) &&
+                !Gaps_[gap].ContextKnown)
+            {
+                Gaps_[gap].Context = GapContext::Preserved;
+                Gaps_[gap].ContextKnown = true;
+            }
+        };
+        const bool prefixed = node.Kind == NodeKind::BaseClause ||
+                              node.Kind == NodeKind::ConstructorInitializerList;
+        preserve(node.Tokens.Begin + 1);
+        if (prefixed)
+        {
+            preserve(node.Tokens.Begin);
+        }
+        else
+        {
+            preserve(node.Tokens.End - 1);
+        }
+        for (auto child = entry.FirstChild; child != None;
+             child = Syntax_[child].NextSibling)
+        {
+            const auto &part = *Syntax_[child].TreeNode;
+            if (part.Kind == NodeKind::ListSeparator ||
+                part.Kind == NodeKind::RangeForSeparator)
+            {
+                preserve(part.Tokens.Begin);
+                preserve(part.Tokens.Begin + 1);
+            }
+        }
+        if (node.Kind == NodeKind::ForHeader)
+        {
+            DirectTokens(id, [&](Index token)
+            {
+                if (Tree_.Kind(token) == TokenKind::Operator_Semicolon)
+                {
+                    preserve(token);
+                    preserve(token + 1);
+                }
+            });
+        }
     }
 
     void PlanList(Index id, const ListPolicy &policy)

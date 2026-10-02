@@ -122,6 +122,27 @@ struct StructuralMaterialization
     std::pmr::vector<StructuralProvenance> Provenance;
     std::pmr::vector<GeneratedAdjacency> GeneratedAdjacencies;
 };
+struct IncludeGroup
+{
+    parser::TokenRange Tokens;
+    // Complete exact line atoms, including indentation and terminating LF.
+    parser::SourceRange Source;
+};
+// Read-only discovery of maximal adjacent safe groups, in source order,
+// including already sorted groups. Empty/singleton groups are omitted. Uses
+// the structural planner's attachment, line-ending and Directive-only rules;
+// additional protection (including OutsideEditScope) excludes a whole group.
+// Use original unrestricted semantic analysis for hunk eligibility. Discovery
+// never authorizes edits: the planner must still check current scoped safety.
+// Tree and analysis must describe the same original input. Throws
+// invalid_argument for mismatched source identity/token count. Returned value
+// descriptors retain no source/tree/analysis/scratch references; fileMemory
+// must survive the result. No operations, sorting or output are generated.
+[[nodiscard]] std::pmr::vector<IncludeGroup> DiscoverIncludeGroups(
+    const parser::SyntaxTree& tree,
+    const SourceAnalysis& safety,
+    std::pmr::memory_resource& fileMemory,
+    std::pmr::memory_resource& scratchMemory);
 // One iterative traversal of original parsed syntax, with a single postorder
 // completeness annotation for colon-only labels and their enclosing controls.
 // Required labeled statements may be siblings of those controls. Unrelated

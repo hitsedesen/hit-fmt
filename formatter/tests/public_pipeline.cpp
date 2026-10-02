@@ -134,7 +134,8 @@ TEST_P(FormatTest, Golden)
 }
 INSTANTIATE_TEST_SUITE_P(Formatter, FormatTest,
     testing::Values("public-pipeline/layout", "public-pipeline/structural",
-        "public-pipeline/comments", "group-syntax/nested",
+        "public-pipeline/comments", "public-pipeline/enumerator-assignment",
+        "group-syntax/nested",
         "group-syntax/messages"),
     [](const auto& info)
     {
@@ -252,6 +253,117 @@ TEST(PublicPipeline, ProtectedBytesSurviveBothBranchesAndCRLF)
             }
         EXPECT_EQ(FormatInput(result.Text, prepared).Text, result.Text);
     }
+}
+
+TEST(PublicPipeline, EnumeratorAssignmentExplicitSpacing)
+{
+    const std::string source = "enum class Mode { First=1, Second =2 };\n";
+    for (const auto mode : {formatter::LayoutMode::Preserve,
+        formatter::LayoutMode::Canonical})
+    {
+        auto style = Canonical();
+        style.Layout = mode;
+        for (const auto policy : {formatter::GapPolicy::Space,
+            formatter::GapPolicy::GeneratedSpace})
+        {
+            style.AssignmentOperatorSpacing = policy;
+            const formatter::PreparedFormat prepared(style);
+            const auto result = FormatInput(source, prepared);
+            if (policy == formatter::GapPolicy::GeneratedSpace &&
+                mode == formatter::LayoutMode::Preserve)
+            {
+                EXPECT_EQ(result.Text, source);
+            } else {
+                EXPECT_NE(result.Text.find("First = 1"), std::string::npos)
+                    << result.Text;
+                EXPECT_NE(result.Text.find("Second = 2"), std::string::npos)
+                    << result.Text;
+            }
+            CheckIdentities(source, result);
+            EXPECT_EQ(FormatInput(result.Text, prepared).Text, result.Text);
+        }
+    }
+}
+
+TEST(PublicPipeline, EnumeratorAssignmentPoliciesAndProtection)
+{
+    const std::string source = "enum Mode { First  =  1, Second=2 };\n";
+    for (const auto policy : {formatter::GapPolicy::Space,
+        formatter::GapPolicy::NoSpace, formatter::GapPolicy::Preserve,
+        formatter::GapPolicy::GeneratedSpace,
+        formatter::GapPolicy::GeneratedNoSpace})
+    {
+        formatter::Style style;
+        style.AssignmentOperatorSpacing = policy;
+        const formatter::PreparedFormat prepared(style);
+        const auto result = FormatInput(source, prepared);
+        const auto expected = policy == formatter::GapPolicy::Space
+            ? "enum Mode { First = 1, Second = 2 };\n"
+            : policy == formatter::GapPolicy::NoSpace
+                ? "enum Mode { First=1, Second=2 };\n"
+                : source;
+        EXPECT_EQ(result.Text, expected);
+        CheckIdentities(source, result);
+    }
+    formatter::Style style;
+    style.AssignmentOperatorSpacing = formatter::GapPolicy::Space;
+    const formatter::PreparedFormat prepared(style);
+    const auto second = uint32_t(source.find("Second"));
+    const std::array<parser::SourceRange, 1> selected{{{0, second}}};
+    const auto scoped = FormatInput(source, prepared,
+        {.SourceMap = true, .EditScope = selected});
+    EXPECT_EQ(scoped.Text, "enum Mode { First = 1, Second=2 };\n");
+    CheckIdentities(source, scoped);
+    CheckExcludedCopies(source, scoped, selected);
+    const std::array<parser::SourceRange, 1> immutable{{{0, second}}};
+    const auto locked = FormatInput(source, prepared,
+        {.ImmutableRanges = immutable, .SourceMap = true});
+    EXPECT_EQ(locked.Text, "enum Mode { First  =  1, Second = 2 };\n");
+    CheckIdentities(source, locked);
+    const auto gap = uint32_t(source.find("  ="));
+    const std::array<parser::SourceRange, 1> partial{{{gap, gap + 1}}};
+    const auto denied = FormatInput(source, prepared,
+        {.SourceMap = true, .EditScope = partial});
+    EXPECT_EQ(denied.Text, source);
+    CheckExcludedCopies(source, denied, partial);
+}
+
+TEST(PublicPipeline, EnumeratorAssignmentCommentsAndLineBoundaries)
+{
+    const std::string source = "enum Mode {\n"
+        "    First=  // note\n"
+        "        1,\n"
+        "    Second=/* value */2,\n"
+        "};\n"
+        "int count=  // control\n"
+        "    1;\n";
+    formatter::Style style;
+    style.AssignmentOperatorSpacing = formatter::GapPolicy::Space;
+    const formatter::PreparedFormat prepared(style);
+    const auto result = FormatInput(source, prepared);
+    EXPECT_EQ(result.Text, "enum Mode {\n"
+        "    First =  // note\n"
+        "        1,\n"
+        "    Second = /* value */2,\n"
+        "};\n"
+        "int count =  // control\n"
+        "    1;\n");
+    for (const auto comment : {"// note", "// control"}) {
+        const auto end = uint32_t(source.find(comment));
+        const auto begin = end - 2;
+        EXPECT_TRUE(std::ranges::any_of(result.Map,
+            [=](const auto& map) {
+                return map.Exact && map.HasOriginal &&
+                    map.Original.Begin <= begin && map.Original.End >= end;
+            }));
+    }
+    CheckIdentities(source, result);
+    EXPECT_EQ(FormatInput(result.Text, prepared).Text, result.Text);
+    const std::string protectedSource = "// clang-format off\n" + source +
+        "// clang-format on\n";
+    const auto locked = FormatInput(protectedSource, prepared);
+    EXPECT_EQ(locked.Text, protectedSource);
+    CheckIdentities(protectedSource, locked);
 }
 
 TEST(PublicPipeline, GeneratedAdjacenciesUnderPreserveAndEmptyControlBodies)

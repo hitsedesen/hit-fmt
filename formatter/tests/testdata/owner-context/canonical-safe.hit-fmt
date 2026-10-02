@@ -1,0 +1,2 @@
+CallsLayout = Canonical
+FunctionCallSpaceBeforeParameters = GeneratedNoSpace

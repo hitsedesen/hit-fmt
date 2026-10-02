@@ -1,4 +1,5 @@
 #include "formatter.hpp"
+#include "format_pipeline.hpp"
 #include "syntax_layout.hpp"
 
 #include <algorithm>
@@ -520,6 +521,16 @@ FormatResult Format(const parser::SyntaxTree& original,
             .EditScope = request.EditScope },
         file, scratch);
     scratch.release();
+    return detail::FormatWithAnalysis(
+        original, prepared, safety, sensitive, request, file, scratch);
+}
+
+FormatResult detail::FormatWithAnalysis(const parser::SyntaxTree& original,
+    const PreparedFormat& prepared, const SourceAnalysis& safety,
+    std::span<const std::string_view> sensitive, const FormatRequest& request,
+    std::pmr::memory_resource& file,
+    std::pmr::monotonic_buffer_resource& scratch)
+{
     auto plan = PlanStructuralEdits(
         original, safety, prepared.Structural, file, scratch);
     scratch.release();

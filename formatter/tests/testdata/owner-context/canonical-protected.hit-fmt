@@ -1,0 +1,3 @@
+CallsLayout = Canonical
+FunctionCallSpaceBeforeParameters = GeneratedNoSpace
+WhitespaceSensitiveMacros = ["KEEP"]

@@ -59,6 +59,13 @@ struct SourceGap
     bool MustStartWithLineFeed = false;
     // Lexically identical punctuation can still change grammar (e.g. [ [).
     bool ContextSensitive = false;
+    // Facts before semantic protection is folded into
+    // Preserve/ContextSensitive.
+    // A protected exact prefix can coexist with a safe selected gap suffix.
+    // Packed into the existing trailing padding, with no per-gap storage
+    // growth.
+    bool IntrinsicPreserve : 1 = false;
+    bool IntrinsicContextSensitive : 1 = false;
 };
 
 enum class RegionStatus : uint8_t
@@ -104,7 +111,8 @@ struct SourceAnalysisOptions
     // structural normalization to retain original reasons through provenance.
     // Rediscovered protection is merged conservatively, never substituted.
     std::span<const ProtectedSourceRange> InheritedProtection = {};
-    // Current-input BYTE coordinates, borrowed only during Build. nullopt is
+    // Current-input BYTE coordinates, borrowed only during Build. Uses the same
+    // one-time restriction as SourceAnalysis::RestrictEditScope. nullopt is
     // unrestricted; an engaged empty span permits no edits or insertions.
     // Ranges must be nonempty, sorted, disjoint and within the source. Touching
     // ranges are coalesced. Insertion belongs to [Begin, End), never its end
@@ -120,10 +128,14 @@ struct SourceAnalysisOptions
 };
 
 // Source and fileMemory must outlive this result. No tree/scratch pointers are
-// retained. Gap i precedes token i; gap TokenCount() is the file tail. Region
-// IDs are preorder indices. Protection intervals are sorted/disjoint, merging
-// touching intervals and unioning their reasons conservatively. HeaderName
-// protection owns internal gaps, not an insertion before its opening token;
+// retained. Analysis queries require a successfully built, non-moved-from
+// result.
+// Gap i precedes token i; gap TokenCount() is the file tail. Region
+// IDs are preorder indices. Protection intervals are sorted/disjoint. True
+// overlaps conservatively union reasons; touching identical masks coalesce,
+// while touching different masks retain their half-open reason locations.
+// HeaderName protection owns internal gaps, not an insertion before its
+// opening token;
 // other protection reasons still own that boundary. Range queries include
 // insertion at an interval's beginning conservatively. Protection() describes
 // bytes; use IntersectsImmutable/Gaps for scoped insertion fences, including
@@ -136,7 +148,7 @@ class SourceAnalysis
 {
 public:
     explicit SourceAnalysis(std::pmr::memory_resource& fileMemory);
-    SourceAnalysis(SourceAnalysis&&) = default;
+    SourceAnalysis(SourceAnalysis&& other) noexcept;
     SourceAnalysis(const SourceAnalysis&) = delete;
 
     [[nodiscard]] std::span<const SourceGap> Gaps() const
@@ -163,6 +175,25 @@ public:
     {
         return PartialGapPermissions_;
     }
+    // Apply an explicit current-input byte scope once, after an unrestricted
+    // Build. The intervals/endpoint rules match
+    // SourceAnalysisOptions::EditScope.
+    // No source or tree is accepted: coordinates belong to this analysis's
+    // original input (never a structurally normalized/different input).
+    // Source and fileMemory must remain live; caller range storage may die on
+    // return. No tree/scratch storage is retained and no tree is rescanned.
+    // Successful restriction invalidates previously borrowed Protection and
+    // PartialGapPermissions spans; Gaps/Regions storage stays stable, but gap
+    // flags/reasons change. Failed restriction invalidates no borrowed spans.
+    // Throws logic_error for unbuilt, moved-from or already restricted objects;
+    // invalid_argument for invalid ranges. All exceptions (including allocation
+    // failure) leave the object unchanged, so valid unrestricted objects can be
+    // retried. O(gap bytes + gaps log scope +
+    // candidates (log scope + log protection) + intervals log intervals),
+    // with O(scope + permissions + protection) bounded
+    // temporary/file-PMR storage and no per-gap allocation.
+    void RestrictEditScope(std::span<const parser::SourceRange> ranges);
+
     [[nodiscard]] bool IntersectsImmutable(parser::SourceRange source) const;
     [[nodiscard]] bool CanReplaceGap(
         GapId gap,
@@ -175,6 +206,7 @@ private:
     std::pmr::vector<parser::SourceRange> EditScope_;
     std::pmr::vector<PartialGapPermission> PartialGapPermissions_;
     bool HasEditScope_ = false;
+    bool Built_ = false;
 
     friend SourceAnalysis BuildSourceAnalysis(
         const parser::SyntaxTree&,

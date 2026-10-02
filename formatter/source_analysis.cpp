@@ -1,22 +1,18 @@
 #include "source_analysis.hpp"
-
 #include <algorithm>
 #include <cassert>
 #include <limits>
 #include <stdexcept>
-
+#include <utility>
 namespace formatter {
 namespace {
-
 using TK = tokenizer::TokenKind;
 using Offset = parser::SourceOffset;
 constexpr auto NoToken = std::numeric_limits<parser::TokenIndex>::max();
-
 bool Whitespace(std::string_view text)
 {
     return text.find_first_not_of(" \t\r\n\f\v") == std::string_view::npos;
 }
-
 bool Covered(
     std::span<const parser::SourceRange> ranges,
     parser::SourceRange source)
@@ -29,7 +25,6 @@ bool Covered(
     return first != ranges.end() && first->Begin <= source.Begin &&
         (source.Empty() ? source.Begin < first->End : source.End <= first->End);
 }
-
 bool WholeGapCovered(
     std::span<const parser::SourceRange> ranges,
     const SourceGap& gap)
@@ -41,7 +36,37 @@ bool WholeGapCovered(
         (!gap.Original.ends_with('\n') ||
             Covered(ranges, {gap.Source.End, gap.Source.End}));
 }
-
+void MergeProtection(std::pmr::vector<ProtectedSourceRange>& protection)
+{
+    std::sort(protection.begin(), protection.end(),
+        [] (const auto& a, const auto& b) {
+            return a.Source.Begin < b.Source.Begin;
+        });
+    size_t merged = 0;
+    for (const auto range : protection) {
+        if (merged && (range.Source.Begin < protection[merged - 1].Source.End ||
+            (range.Source.Begin == protection[merged - 1].Source.End &&
+                range.Reasons == protection[merged - 1].Reasons))) {
+            auto& previous = protection[merged - 1];
+            previous.Source.End = std::max(previous.Source.End,
+                range.Source.End);
+            previous.Reasons = previous.Reasons | range.Reasons;
+            // A true overlap can make the union equal to its touching neighbor.
+            while (merged > 1 &&
+                protection[merged - 2].Source.End == protection[merged -
+                    1].Source.Begin &&
+                protection[merged - 2].Reasons == protection[merged -
+                    1].Reasons) {
+                protection[merged - 2].Source.End = protection[merged -
+                    1].Source.End;
+                --merged;
+            }
+        } else {
+            protection[merged++] = range;
+        }
+    }
+    protection.resize(merged);
+}
 bool Word(TK kind, std::string_view text)
 {
     // Alternative operators are identifier spellings with operator kinds.
@@ -49,28 +74,23 @@ bool Word(TK kind, std::string_view text)
         (kind >= TK::Operator_OpenBrace && kind <= TK::Operator_Comma &&
             !text.empty() && text.front() >= 'a' && text.front() <= 'z');
 }
-
 bool Literal(TK kind)
 {
     return kind >= TK::Literal_UserDefinedInteger && kind <= TK::Literal_String;
 }
-
 bool Number(TK kind)
 {
     return Literal(kind) && kind < TK::Literal_Character;
 }
-
 bool Punctuation(TK kind)
 {
     return kind >= TK::Operator_OpenBrace && kind <= TK::Operator_Comma;
 }
-
 bool PlainDelimiter(std::string_view text)
 {
     return text.size() == 1 && std::string_view("{}[]();,").find(
         text[0]) != std::string_view::npos;
 }
-
 // Conservative maximal-munch constraints, based on the tokenizer's categories
 // and spellings. Extra separation is intentional: it handles comments,
 // digraphs, <:: lookahead, ellipses spanning three tokens, literal prefixes and
@@ -99,22 +119,18 @@ bool NeedsSeparation(const parser::SyntaxTree& tree, parser::TokenIndex right)
     // A slash before a comment can turn a block comment into a line comment.
     return a == TK::Operator_Divide && b == TK::Comment;
 }
-
 bool Recovery(parser::NodeKind kind)
 {
     using NK = parser::NodeKind;
     return kind == NK::UnparsedSyntax || kind == NK::MissingToken ||
         kind == NK::UnexpectedToken || kind == NK::Error;
 }
-
 RegionStatus Combine(RegionStatus a, RegionStatus b)
 {
     return static_cast<RegionStatus>(
         static_cast<uint8_t>(a) | static_cast<uint8_t>(b));
 }
-
 } // namespace
-
 bool TokenGapNeedsSeparation(
     const parser::SyntaxTree& tree,
     parser::TokenIndex right)
@@ -122,7 +138,6 @@ bool TokenGapNeedsSeparation(
     assert(right > 0 && right < tree.TokenCount());
     return NeedsSeparation(tree, right);
 }
-
 parser::SourceOffset CheckedSourceAnalysisSize(size_t size)
 {
     if (size > util::MaxSourceSize) {
@@ -130,7 +145,6 @@ parser::SourceOffset CheckedSourceAnalysisSize(size_t size)
     }
     return static_cast<parser::SourceOffset>(size);
 }
-
 SourceAnalysis::SourceAnalysis(std::pmr::memory_resource& fileMemory)
     : Gaps_(&fileMemory)
     , Protection_(&fileMemory)
@@ -138,7 +152,15 @@ SourceAnalysis::SourceAnalysis(std::pmr::memory_resource& fileMemory)
     , EditScope_(&fileMemory)
     , PartialGapPermissions_(&fileMemory)
 { }
-
+SourceAnalysis::SourceAnalysis(SourceAnalysis&& other) noexcept
+    : Gaps_(std::move(other.Gaps_))
+    , Protection_(std::move(other.Protection_))
+    , Regions_(std::move(other.Regions_))
+    , EditScope_(std::move(other.EditScope_))
+    , PartialGapPermissions_(std::move(other.PartialGapPermissions_))
+    , HasEditScope_(other.HasEditScope_)
+    , Built_(std::exchange(other.Built_, false))
+{ }
 bool SourceAnalysis::IntersectsImmutable(parser::SourceRange source) const
 {
     assert(source.Begin <= source.End);
@@ -157,7 +179,6 @@ bool SourceAnalysis::IntersectsImmutable(parser::SourceRange source) const
             ? first->Source.Begin <= source.Begin
             : first->Source.Begin < source.End);
 }
-
 bool SourceAnalysis::CanReplaceGap(GapId id, std::string_view replacement) const
 {
     if (id >= Gaps_.size()) {
@@ -179,7 +200,133 @@ bool SourceAnalysis::CanReplaceGap(GapId id, std::string_view replacement) const
     return (gap.LineBoundary != GapLineBoundary::Required || newline) &&
         (gap.LineBoundary != GapLineBoundary::Forbidden || !newline);
 }
-
+void SourceAnalysis::RestrictEditScope(
+    std::span<const parser::SourceRange> ranges)
+{
+    if (!Built_ || Gaps_.empty() || HasEditScope_) {
+        throw
+            std::logic_error("edit scope requires built unrestricted analysis");
+    }
+    const auto size = Gaps_.back().Source.End;
+    // Validate before allocating or changing any analysis facts.
+    Offset previousEnd = 0;
+    for (const auto range : ranges) {
+        if (range.Begin >= range.End || range.End > size ||
+            range.Begin < previousEnd)
+        {
+            throw std::invalid_argument("invalid source edit scope");
+        }
+        previousEnd = range.End;
+    }
+    const auto allocator = Gaps_.get_allocator().resource();
+    std::pmr::vector<parser::SourceRange> scope(allocator);
+    scope.reserve(ranges.size());
+    for (const auto range : ranges) {
+        if (!scope.empty() && range.Begin == scope.back().End) {
+            scope.back().End = range.End;
+        } else {
+            scope.push_back(range);
+        }
+    }
+    // All potentially throwing work precedes commit. Protection still contains
+    // semantic/explicit reasons only; the complement must not hide safe slices.
+    std::pmr::vector<PartialGapPermission> permissions(allocator);
+    for (GapId id = 0; id < Gaps_.size(); ++id) {
+        const auto& gap = Gaps_[id];
+        if (!WholeGapCovered(scope, gap) &&
+            !gap.IntrinsicPreserve && !gap.IntrinsicContextSensitive &&
+            (!gap.MustStartWithLineFeed || gap.Original.starts_with('\n')) &&
+            gap.Original.find_first_not_of(" \t\r\n") == std::string_view::npos)
+        {
+            // Lone CR is not a supported horizontal slice or LF-ended prefix.
+            bool supported = true;
+            for (size_t i = 0; i < gap.Original.size(); ++i) {
+                if (gap.Original[i] == '\r' && (i + 1 == gap.Original.size() ||
+                    gap.Original[i + 1] != '\n'))
+                {
+                    supported = false;
+                    break;
+                }
+            }
+            auto permit = [&] (
+                parser::SourceRange slice,
+                PartialGapPermissionKind kind)
+            {
+                if (!Covered(scope, slice)) {
+                    return;
+                }
+                // HeaderName alone does not own insertion before its opener.
+                auto first = std::lower_bound(
+                    Protection_.begin(), Protection_.end(),
+                    slice.Begin,
+                    [] (const auto& range, Offset begin) {
+                        return range.Source.End <= begin;
+                    });
+                const bool beforeHeader = first != Protection_.end() &&
+                    slice.Empty() && slice.Begin == first->Source.Begin &&
+                    first->Reasons == ProtectionReason::HeaderName;
+                if (first != Protection_.end() && !beforeHeader &&
+                    (slice.Empty()
+                        ? first->Source.Begin <= slice.Begin
+                        : first->Source.Begin < slice.End))
+                {
+                    return;
+                }
+                permissions.push_back({id, slice, kind});
+            };
+            if (supported) {
+                size_t lineBegin = 0;
+                for (size_t i = 0; i < gap.Original.size(); ++i) {
+                    if (gap.Original[i] != '\n') {
+                        continue;
+                    }
+                    const auto end = i && gap.Original[i - 1] == '\r'
+                        ? i - 1
+                        : i;
+                    if (lineBegin < end) {
+                        permit({gap.Source.Begin +
+                            static_cast<Offset>(lineBegin),
+                            gap.Source.Begin + static_cast<Offset>(end)},
+                            PartialGapPermissionKind::TrimHorizontal);
+                    }
+                    lineBegin = i + 1;
+                }
+                if (lineBegin && id + 1 < Gaps_.size()) {
+                    permit({
+                        gap.Source.Begin + static_cast<Offset>(lineBegin),
+                        gap.Source.End,
+                    }, PartialGapPermissionKind::FinalIndentation);
+                }
+            }
+        }
+    }
+    std::pmr::vector<ProtectedSourceRange> protection(allocator);
+    protection.reserve(Protection_.size() + scope.size() + 1);
+    protection.insert(protection.end(), Protection_.begin(), Protection_.end());
+    Offset begin = 0;
+    auto outside = [&] (Offset end) {
+        if (begin < end) {
+            protection.push_back({{begin, end},
+                ProtectionReason::OutsideEditScope});
+        }
+    };
+    for (const auto range : scope) {
+        outside(range.Begin);
+        begin = range.End;
+    }
+    outside(size);
+    MergeProtection(protection);
+    for (auto& gap : Gaps_) {
+        if (!WholeGapCovered(scope, gap)) {
+            gap.Preserve = true;
+            gap.Reasons = gap.Reasons | ProtectionReason::OutsideEditScope;
+        }
+    }
+    EditScope_.swap(scope);
+    PartialGapPermissions_.swap(permissions);
+    Protection_.swap(protection);
+    HasEditScope_ = true;
+}
 SourceAnalysis BuildSourceAnalysis(
     const parser::SyntaxTree& tree,
     const SourceAnalysisOptions& options,
@@ -190,23 +337,6 @@ SourceAnalysis BuildSourceAnalysis(
     const auto size = CheckedSourceAnalysisSize(source.size());
     SourceAnalysis result(fileMemory);
     const auto count = tree.TokenCount();
-    if (options.EditScope) {
-        for (const auto range : *options.EditScope) {
-            if (range.Begin >= range.End || range.End > size ||
-                (!result.EditScope_.empty() &&
-                    range.Begin < result.EditScope_.back().End))
-            {
-                throw std::invalid_argument("invalid source edit scope");
-            }
-            if (!result.EditScope_.empty() &&
-                range.Begin == result.EditScope_.back().End)
-            {
-                result.EditScope_.back().End = range.End;
-            } else {
-                result.EditScope_.push_back(range);
-            }
-        }
-    }
     result.Gaps_.reserve(static_cast<size_t>(count) + 1);
     auto protect = [&] (Offset begin, Offset end, ProtectionReason reason) {
         if (begin > end || end > size) {
@@ -531,104 +661,20 @@ SourceAnalysis BuildSourceAnalysis(
             }
         }
     }
-    std::sort(
-        result.Protection_.begin(),
-        result.Protection_.end(),
-        [] (const auto& a, const auto& b) {
-            return a.Source.Begin < b.Source.Begin;
-        });
-    size_t merged = 0;
-    for (const auto range : result.Protection_) {
-        if (merged &&
-            range.Source.Begin <= result.Protection_[merged - 1].Source.End)
-        {
-            auto& previous = result.Protection_[merged - 1];
-            previous.Source.End = std::max(
-                previous.Source.End,
-                range.Source.End);
-            previous.Reasons = previous.Reasons | range.Reasons;
-        } else {
-            result.Protection_[merged++] = range;
-        }
-    }
-    result.Protection_.resize(merged);
-    // At this point Protection_ contains semantic/explicit protection only.
-    // Decide narrow permissions before adding the scope complement: merging
-    // its reasons must not hide a safe slice behind an exact protected prefix.
+    MergeProtection(result.Protection_);
     size_t interval = 0;
-    for (GapId id = 0; id < result.Gaps_.size(); ++id) {
-        auto& gap = result.Gaps_[id];
-        if (options.EditScope && !WholeGapCovered(result.EditScope_, gap) &&
-            !gap.Preserve && !gap.ContextSensitive &&
-            (!gap.MustStartWithLineFeed || gap.Original.starts_with('\n')) &&
-            gap.Original.find_first_not_of(" \t\r\n") == std::string_view::npos)
-        {
-            // Lone CR is not a supported horizontal slice or LF-ended prefix.
-            bool supported = true;
-            for (size_t i = 0; i < gap.Original.size(); ++i) {
-                if (gap.Original[i] == '\r' && (i + 1 == gap.Original.size() ||
-                    gap.Original[i + 1] != '\n'))
-                {
-                    supported = false;
-                    break;
-                }
-            }
-            auto permit = [&] (
-                parser::SourceRange slice,
-                PartialGapPermissionKind kind)
-            {
-                if (!Covered(result.EditScope_, slice)) {
-                    return;
-                }
-                // HeaderName alone does not own insertion before its opener.
-                auto first = std::lower_bound(
-                    result.Protection_.begin(), result.Protection_.end(),
-                    slice.Begin,
-                    [] (const auto& range, Offset begin) {
-                        return range.Source.End <= begin;
-                    });
-                const bool beforeHeader = first != result.Protection_.end() &&
-                    slice.Empty() && slice.Begin == first->Source.Begin &&
-                    first->Reasons == ProtectionReason::HeaderName;
-                if (first != result.Protection_.end() && !beforeHeader &&
-                    (slice.Empty()
-                        ? first->Source.Begin <= slice.Begin
-                        : first->Source.Begin < slice.End))
-                {
-                    return;
-                }
-                result.PartialGapPermissions_.push_back({id, slice, kind});
-            };
-            if (supported) {
-                size_t lineBegin = 0;
-                for (size_t i = 0; i < gap.Original.size(); ++i) {
-                    if (gap.Original[i] != '\n') {
-                        continue;
-                    }
-                    const auto end = i && gap.Original[i - 1] == '\r' ? i -
-                        1 : i;
-                    if (lineBegin < end) {
-                        permit({gap.Source.Begin + static_cast<Offset>(
-                            lineBegin),
-                            gap.Source.Begin + static_cast<Offset>(end)},
-                            PartialGapPermissionKind::TrimHorizontal);
-                    }
-                    lineBegin = i + 1;
-                }
-                if (lineBegin && id < count) {
-                    permit({
-                        gap.Source.Begin + static_cast<Offset>(lineBegin),
-                        gap.Source.End,
-                    }, PartialGapPermissionKind::FinalIndentation);
-                }
-            }
-        }
-        while (interval < merged &&
+    for (auto& gap : result.Gaps_) {
+        // Keep intrinsic fences distinct from protection folded into the gap:
+        // a protected exact prefix need not protect a selected
+        // horizontal slice.
+        gap.IntrinsicPreserve = gap.Preserve;
+        gap.IntrinsicContextSensitive = gap.ContextSensitive;
+        while (interval < result.Protection_.size() &&
             result.Protection_[interval].Source.End <= gap.Source.Begin)
         {
             ++interval;
         }
-        if (interval < merged) {
+        if (interval < result.Protection_.size()) {
             const auto& range = result.Protection_[interval];
             // An insertion before the opening header delimiter is outside
             // its spelling, despite sharing the delimiter's source offset.
@@ -650,42 +696,10 @@ SourceAnalysis BuildSourceAnalysis(
             }
         }
     }
+    result.Built_ = true;
     if (options.EditScope) {
-        result.HasEditScope_ = true;
-        // Fence ordinary gap replacement independently from horizontal
-        // permissions, including zero-width insertions at strict scope ends.
-        for (auto& gap : result.Gaps_) {
-            if (!WholeGapCovered(result.EditScope_, gap)) {
-                gap.Preserve = true;
-                gap.Reasons = gap.Reasons | ProtectionReason::OutsideEditScope;
-            }
-        }
-        Offset begin = 0;
-        for (const auto range : result.EditScope_) {
-            protect(begin, range.Begin, ProtectionReason::OutsideEditScope);
-            begin = range.End;
-        }
-        protect(begin, size, ProtectionReason::OutsideEditScope);
-        std::sort(result.Protection_.begin(), result.Protection_.end(),
-            [] (const auto& a, const auto& b) {
-                return a.Source.Begin < b.Source.Begin;
-            });
-        merged = 0;
-        for (const auto range : result.Protection_) {
-            if (merged &&
-                range.Source.Begin <= result.Protection_[merged - 1].Source.End)
-            {
-                auto& previous = result.Protection_[merged - 1];
-                previous.Source.End = std::max(previous.Source.End,
-                    range.Source.End);
-                previous.Reasons = previous.Reasons | range.Reasons;
-            } else {
-                result.Protection_[merged++] = range;
-            }
-        }
-        result.Protection_.resize(merged);
+        result.RestrictEditScope(*options.EditScope);
     }
     return result;
 }
-
 } // namespace formatter

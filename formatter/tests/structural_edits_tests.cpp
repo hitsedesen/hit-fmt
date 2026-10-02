@@ -1,15 +1,12 @@
 #include <formatter/structural_edits.hpp>
 #include <parser/parser.hpp>
 #include <tests/golden.hpp>
-
 #include <gtest/gtest.h>
-
 #include <array>
 #include <filesystem>
 #include <format>
 #include <memory_resource>
 #include <string>
-
 namespace {
 using namespace formatter;
 struct Input
@@ -317,8 +314,22 @@ TEST(StructuralEdits, ExactIncludeLineAtomsAndConditionalCommentBarriers)
     File file("#include <z.h>\r\n#include \"a.h\"\r\n#if FLAG\r\n#include "
               "<d.h>\r\n#include <c.h>\r\n#endif\r\n// belongs to "
               "b\r\n#include <b.h>\r\n#include <a.h>\r\n");
+    auto groups = DiscoverIncludeGroups(
+        file.Tree,
+        file.Safety,
+        file.Memory,
+        file.Scratch);
+    ASSERT_EQ(groups.size(), 2u);
     auto plan = file.Plan({.SortIncludes = true});
     EXPECT_EQ(plan.Operations.size(), 2u);
+    ASSERT_EQ(plan.Skipped.size(), 1u);
+    EXPECT_EQ(plan.Skipped.front().Reason, StructuralSkip::CommentAttached);
+    for (size_t i = 0; i < groups.size(); ++i) {
+        EXPECT_EQ(groups[i].Tokens.Begin, plan.Operations[i].Owner.Begin);
+        EXPECT_EQ(groups[i].Tokens.End, plan.Operations[i].Owner.End);
+        EXPECT_EQ(groups[i].Source.Begin, plan.Edits[i].Source.Begin);
+        EXPECT_EQ(groups[i].Source.End, plan.Edits[i].Source.End);
+    }
     auto result = file.Apply(plan);
     EXPECT_EQ(
         result.Text, "#include \"a.h\"\r\n#include <z.h>\r\n#if "
@@ -337,6 +348,15 @@ TEST(StructuralEdits, IncludeIndentationAndDigraphMarkersStayWithExactAtoms)
     File file("  %:include <z.h>\r\n\t# include \"a.h\"\r\n");
     auto plan = file.Plan({.SortIncludes = true});
     ASSERT_EQ(plan.Operations.size(), 1u);
+    auto groups = DiscoverIncludeGroups(
+        file.Tree,
+        file.Safety,
+        file.Memory,
+        file.Scratch);
+    ASSERT_EQ(groups.size(), 1u);
+    EXPECT_EQ(groups.front().Source.Begin, 0u);
+    EXPECT_EQ(groups.front().Source.End, file.Source.Size);
+    file.Scratch.release();
     auto result = file.Apply(plan);
     EXPECT_EQ(result.Text, "\t# include \"a.h\"\r\n  %:include <z.h>\r\n");
     CheckMapping(file, result);
@@ -356,6 +376,325 @@ TEST(StructuralEdits, IncludesCannotBypassExplicitDisabledOrSpliceProtection)
     EXPECT_TRUE(continued.Plan({.SortIncludes = true}).Edits.empty());
     File commented("#include <z.h> // comment\n#include <a.h>\n");
     EXPECT_TRUE(commented.Plan({.SortIncludes = true}).Edits.empty());
+}
+TEST(StructuralEdits, IncludeDiscoveryContainsSortedGroupsAndExactPermutations)
+{
+    File file("  #include \"a.h\"\n\t#include <z.h>\n\n"
+              " #include <z.h>\n\t#include \"a.h\"\n#include \"a.h\"\n");
+    auto groups = DiscoverIncludeGroups(
+        file.Tree,
+        file.Safety,
+        file.Memory,
+        file.Scratch);
+    ASSERT_EQ(groups.size(), 2u);
+    EXPECT_EQ(groups[0].Tokens.Begin, 0u);
+    EXPECT_EQ(groups[0].Tokens.End, 2u);
+    EXPECT_EQ(groups[1].Tokens.Begin, 2u);
+    EXPECT_EQ(groups[1].Tokens.End, 5u);
+    EXPECT_EQ(groups[0].Source.Begin, 0u);
+    EXPECT_EQ(groups[0].Source.End + 1, groups[1].Source.Begin);
+    EXPECT_EQ(groups[1].Source.End, file.Source.Size);
+    auto plan = file.Plan({.SortIncludes = true});
+    ASSERT_EQ(plan.Operations.size(), 1u); // Sorted discovery is not an edit.
+    EXPECT_TRUE(plan.Skipped.empty());
+    EXPECT_EQ(plan.Operations.front().Owner.Begin, groups[1].Tokens.Begin);
+    EXPECT_EQ(plan.Edits.front().Source.Begin, groups[1].Source.Begin);
+    EXPECT_EQ(plan.Edits.front().Source.End, groups[1].Source.End);
+    std::vector<parser::SourceRange> atoms;
+    for (const auto& piece : plan.Pieces) {
+        EXPECT_TRUE(piece.FromSource);
+        EXPECT_TRUE(piece.Literal.empty());
+        atoms.push_back(piece.Source);
+    }
+    std::sort(atoms.begin(), atoms.end(), [] (auto a, auto b) {
+        return a.Begin < b.Begin;
+    });
+    auto cursor = groups[1].Source.Begin;
+    for (auto atom : atoms) {
+        EXPECT_EQ(atom.Begin, cursor);
+        EXPECT_TRUE(file.Tree.SourceText(atom).ends_with('\n'));
+        cursor = atom.End;
+    }
+    EXPECT_EQ(cursor, groups[1].Source.End);
+    auto result = file.Apply(plan);
+    EXPECT_EQ(result.Text.size(), file.Source.Size);
+    CheckMapping(file, result);
+    File sorted(result.Text);
+    EXPECT_EQ(DiscoverIncludeGroups(
+        sorted.Tree,
+        sorted.Safety,
+        sorted.Memory,
+        sorted.Scratch).size(), 2u);
+    EXPECT_TRUE(sorted.Plan({.SortIncludes = true}).Operations.empty());
+}
+TEST(StructuralEdits, IncludeDiscoveryRespectsCompleteGroupBoundaries)
+{
+    // Every separator is a fence, not a spelling-based eligibility shortcut.
+    for (auto separator : {
+        "\n",
+        "// attached\n",
+        "/* attached */\n",
+        "#define VALUE 1\n",
+        "#include HEADER\n",
+        "#include <>\n",
+        "#include <bad.h> // tail\n",
+        "#include \\\n<continued.h>\n",
+        "opaque();\n",
+    })
+    {
+        std::string first = "#include <a.h>\n#include <b.h>\n";
+        std::string second = "  %:include <d.h>\n\t#include <c.h>\n";
+        File file(first + separator + second);
+        auto groups = DiscoverIncludeGroups(
+            file.Tree,
+            file.Safety,
+            file.Memory,
+            file.Scratch);
+        bool comment = std::string_view(separator).starts_with("//") ||
+            std::string_view(separator).starts_with("/*");
+        bool splice = std::string_view(separator).find('\\') !=
+            std::string_view::npos;
+        if (splice) {
+            // The splice itself stays protected. Distinct touching reason masks
+            // do not contaminate complete groups wholly on either side of it.
+            const auto begin = first.size();
+            const auto end = begin + std::string_view(separator).size();
+            ASSERT_EQ(groups.size(), 2u);
+            EXPECT_EQ(groups[0].Source.End, begin);
+            EXPECT_EQ(groups[1].Source.Begin, end);
+            for (const auto& group : groups) {
+                EXPECT_TRUE(
+                    group.Source.End <= begin || end <= group.Source.Begin);
+            }
+            EXPECT_TRUE(std::any_of(file.Safety.Protection().begin(),
+                file.Safety.Protection().end(), [&] (const auto& range) {
+                    return range.Source.Begin < end &&
+                        begin < range.Source.End &&
+                        (uint16_t(range.Reasons) & uint16_t(
+                            ProtectionReason::LineSplice));
+                }));
+        }
+        ASSERT_EQ(groups.size(), comment ? 1u : 2u) << separator;
+        EXPECT_EQ(groups.front().Source.Begin, 0u);
+        EXPECT_EQ(groups.front().Source.End, first.size());
+        if (!comment) {
+            EXPECT_EQ(
+                groups.back().Source.Begin,
+                first.size() + std::string_view(separator).size());
+            EXPECT_EQ(groups.back().Source.End, file.Source.Size);
+        }
+        auto plan = file.Plan({.SortIncludes = true});
+        EXPECT_EQ(plan.Operations.size(), comment ? 0u : 1u) << separator;
+        EXPECT_EQ(plan.Skipped.size(), comment ? 1u : 0u) << separator;
+        if (comment) {
+            EXPECT_EQ(
+                plan.Skipped.front().Reason,
+                StructuralSkip::CommentAttached);
+        }
+    }
+    for (auto text : {"",
+        "#include <a.h>\n",
+        "#include <b.h>\n#include <a.h>",
+        "#include <b.h>\r\n#include <a.h>\n",
+    })
+    {
+        File file(text);
+        EXPECT_TRUE(DiscoverIncludeGroups(
+            file.Tree,
+            file.Safety,
+            file.Memory,
+            file.Scratch).empty());
+        EXPECT_TRUE(file.Plan({.SortIncludes = true}).Edits.empty());
+    }
+    File mixed("#include <b.h>\r\n#include <a.h>\r\n"
+               "#include <b.h>\n#include <a.h>\n#include <final.h>");
+    auto groups = DiscoverIncludeGroups(
+        mixed.Tree,
+        mixed.Safety,
+        mixed.Memory,
+        mixed.Scratch);
+    ASSERT_EQ(groups.size(), 2u);
+    EXPECT_EQ(groups[0].Source.End, groups[1].Source.Begin);
+    EXPECT_EQ(groups[0].Tokens.End, groups[1].Tokens.Begin);
+    EXPECT_EQ(groups[1].Tokens.End, mixed.Tree.TokenCount() - 1);
+    auto plan = mixed.Plan({.SortIncludes = true});
+    EXPECT_EQ(plan.Operations.size(), 2u);
+    CheckMapping(mixed, mixed.Apply(plan));
+}
+TEST(StructuralEdits, IncludeDiscoveryNeverWeakensProtectionOrScope)
+{
+    std::string text = "#include <z.h>\n#include <a.h>\n";
+    for (auto reason : {ProtectionReason::Directive,
+        ProtectionReason::Explicit,
+        ProtectionReason::Disabled,
+        ProtectionReason::SensitiveMacro,
+        ProtectionReason::Recovery,
+        ProtectionReason::Ambiguous,
+        ProtectionReason::Recovery | ProtectionReason::Ambiguous,
+        ProtectionReason::LineSplice,
+        ProtectionReason::HeaderName,
+        ProtectionReason::OutsideEditScope,
+    })
+    {
+        std::array inherited{ProtectedSourceRange{{1, 2}, reason}};
+        File file(text, {.InheritedProtection = inherited});
+        auto groups = DiscoverIncludeGroups(
+            file.Tree,
+            file.Safety,
+            file.Memory,
+            file.Scratch);
+        auto plan = file.Plan({.SortIncludes = true});
+        bool safe = reason == ProtectionReason::Directive;
+        EXPECT_EQ(groups.size(), safe ? 1u : 0u);
+        EXPECT_EQ(plan.Operations.size(), safe ? 1u : 0u);
+        EXPECT_EQ(plan.Skipped.size(), safe ? 0u : 1u);
+        if (!safe) {
+            EXPECT_EQ(plan.Skipped.front().Reason, StructuralSkip::Protected);
+            EXPECT_EQ(plan.Skipped.front().Tokens.Begin, 0u);
+            EXPECT_EQ(plan.Skipped.front().Tokens.End, 2u);
+            EXPECT_EQ(
+                file.Safety.Protection().front().Reasons,
+                ProtectionReason::Directive | reason);
+        }
+    }
+    File original(text);
+    ASSERT_EQ(DiscoverIncludeGroups(
+        original.Tree,
+        original.Safety,
+        original.Memory,
+        original.Scratch).size(), 1u);
+    for (parser::SourceRange scope : {
+        parser::SourceRange{0, static_cast<parser::SourceOffset>(text.size())},
+        parser::SourceRange{0, static_cast<parser::SourceOffset>(text.size() -
+            1)},
+        parser::SourceRange{0, 1}, parser::SourceRange{1, 2},
+    })
+    {
+        std::array selection{scope};
+        auto safety = BuildSourceAnalysis(
+            original.Tree,
+            {.EditScope = selection},
+            original.Memory,
+            original.Scratch);
+        bool whole = scope.End == text.size();
+        auto discovered = DiscoverIncludeGroups(
+            original.Tree,
+            safety,
+            original.Memory,
+            original.Scratch);
+        auto scopedPlan = PlanStructuralEdits(
+            original.Tree,
+            safety,
+            {.SortIncludes = true},
+            original.Memory,
+            original.Scratch);
+        EXPECT_EQ(discovered.size(), whole ? 1u : 0u);
+        EXPECT_EQ(scopedPlan.Operations.size(), whole ? 1u : 0u);
+        EXPECT_EQ(scopedPlan.Skipped.size(), whole ? 0u : 1u);
+        if (!whole) {
+            EXPECT_EQ(
+                scopedPlan.Skipped.front().Reason,
+                StructuralSkip::Protected);
+        }
+    }
+    // Exact atom authority excludes the separating blank LF. Touching different
+    // reason masks keep their locations; real overlapping protection
+    // still wins.
+    std::array firstGroupOnly{parser::SourceRange{
+        0, static_cast<parser::SourceOffset>(text.size())}};
+    File disjoint(text + "\n" + text, {.EditScope = firstGroupOnly});
+    auto selected = DiscoverIncludeGroups(
+        disjoint.Tree,
+        disjoint.Safety,
+        disjoint.Memory,
+        disjoint.Scratch);
+    ASSERT_EQ(selected.size(), 1u);
+    EXPECT_EQ(selected.front().Source.Begin, 0u);
+    EXPECT_EQ(selected.front().Source.End, text.size());
+    auto disjointPlan = disjoint.Plan({.SortIncludes = true});
+    ASSERT_EQ(disjointPlan.Operations.size(), 1u);
+    ASSERT_EQ(disjointPlan.Skipped.size(), 1u);
+    EXPECT_EQ(disjointPlan.Skipped.front().Reason, StructuralSkip::Protected);
+    EXPECT_EQ(disjointPlan.Skipped.front().Tokens.Begin, 2u);
+    // Semantic exclusion can independently remove the selected group too.
+    std::array excluded{parser::SourceRange{0, 1}};
+    File excludedSelection(text + "\n" + text,
+        {.ImmutableRanges = excluded, .EditScope = firstGroupOnly});
+    EXPECT_TRUE(DiscoverIncludeGroups(
+        excludedSelection.Tree,
+        excludedSelection.Safety,
+        excludedSelection.Memory,
+        excludedSelection.Scratch).empty());
+    auto excludedPlan = excludedSelection.Plan({.SortIncludes = true});
+    EXPECT_TRUE(excludedPlan.Operations.empty());
+    EXPECT_EQ(excludedPlan.Skipped.size(), 2u);
+    File empty(text, {.EditScope = std::span<const parser::SourceRange>{}});
+    EXPECT_TRUE(DiscoverIncludeGroups(
+        empty.Tree,
+        empty.Safety,
+        empty.Memory,
+        empty.Scratch).empty());
+    EXPECT_TRUE(empty.Plan({.SortIncludes = true}).Operations.empty());
+    File disabled("// clang-format off\n" + text + "// clang-format on\n",
+        {.HonorClangFormatDirectives = true});
+    EXPECT_TRUE(DiscoverIncludeGroups(
+        disabled.Tree,
+        disabled.Safety,
+        disabled.Memory,
+        disabled.Scratch).empty());
+    File other(text);
+    EXPECT_THROW((void)DiscoverIncludeGroups(
+        original.Tree,
+        other.Safety,
+        original.Memory,
+        original.Scratch), std::invalid_argument);
+    SourceAnalysis unbuilt(original.Memory);
+    EXPECT_THROW((void)DiscoverIncludeGroups(
+        original.Tree,
+        unbuilt,
+        original.Memory,
+        original.Scratch), std::invalid_argument);
+}
+TEST(StructuralEdits, IncludeDiscoveryOwnsDescriptorsForManyDisjointGroups)
+{
+    constexpr size_t Count = 256;
+    std::pmr::monotonic_buffer_resource memory;
+    auto groups = [&] {
+        std::string source;
+        for (size_t i = 0; i < Count; ++i) {
+            source += i % 2
+                ? "#include <z.h>\n#include <a.h>\n\n"
+                            : "#include <a.h>\n#include <z.h>\n\n";
+        }
+        File file(source);
+        std::pmr::monotonic_buffer_resource scratch;
+        auto result = DiscoverIncludeGroups(
+            file.Tree,
+            file.Safety,
+            memory,
+            scratch);
+        scratch.release();
+        auto plan = file.Plan({.SortIncludes = true});
+        EXPECT_EQ(plan.Operations.size(), Count / 2);
+        EXPECT_TRUE(plan.Skipped.empty());
+        for (size_t i = 0; i < plan.Operations.size(); ++i) {
+            EXPECT_EQ(
+                plan.Operations[i].Owner.Begin,
+                result[2 * i + 1].Tokens.Begin);
+            EXPECT_EQ(
+                plan.Edits[i].Source.Begin,
+                result[2 * i + 1].Source.Begin);
+            EXPECT_EQ(plan.Edits[i].Source.End, result[2 * i + 1].Source.End);
+        }
+        return result; // Source, tree, analysis and scratch all die here.
+    }();
+    ASSERT_EQ(groups.size(), Count);
+    for (size_t i = 0; i < Count; ++i) {
+        EXPECT_EQ(groups[i].Tokens.Begin, 2 * i);
+        EXPECT_EQ(groups[i].Tokens.End, 2 * i + 2);
+        EXPECT_EQ(groups[i].Source.Begin, 31 * i);
+        EXPECT_EQ(groups[i].Source.End, 31 * i + 30);
+    }
 }
 TEST(StructuralEdits, OwnershipValidationRejectsOverlapsAndCoownedInsertions)
 {

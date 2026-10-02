@@ -2550,11 +2550,13 @@ private:
         if (declaration && (declaration->Kind == NodeKind::RecordDeclaration ||
                 declaration->Kind == NodeKind::EnumDeclaration))
         {
-            auto name = FindDeclaredTypeName(
-                declaration->Tokens.Begin,
-                declaration->Kind == NodeKind::EnumDeclaration);
-            if (name < Tree_.Tokens_.Size()) {
-                AddName(Text(name), NameKind::Type);
+            auto name = declaration->Kind == NodeKind::RecordDeclaration
+                ? FindDeclaredRecordName(declaration->Tokens.Begin)
+                : RecordHeadName{
+                    FindDeclaredTypeName(declaration->Tokens.Begin, true),
+                    false};
+            if (!name.IsQualified && name.Token < Tree_.Tokens_.Size()) {
+                AddName(Text(name.Token), NameKind::Type);
             }
         } else if (declaration &&
             declaration->Kind == NodeKind::UsingDeclaration)
@@ -2688,6 +2690,64 @@ private:
         return Tree_.Tokens_.Size();
     }
 
+    struct RecordHeadName
+    {
+        size_t Token;
+        bool IsQualified;
+    };
+
+    [[nodiscard]] RecordHeadName FindDeclaredRecordName(size_t start) const
+    {
+        const auto end = Tree_.Tokens_.Size();
+        auto name = NextSignificant(start + 1);
+        // Attributes belong to the record head, not its qualified name.
+        while (name < end) {
+            if (IsExtensionAttribute(name)) {
+                name = NextSignificant(FindExtensionAttributeEnd(name, end));
+            } else if (Kind(name) == TK::Operator_OpenBracket ||
+                Kind(name) == TK::Keyword_alignas)
+            {
+                auto opening = Kind(name) == TK::Keyword_alignas
+                    ? NextSignificant(name + 1)
+                    : name;
+                auto attributeEnd = FindBalancedEnd(opening);
+                if (attributeEnd == std::numeric_limits<TokenIndex>::max()) {
+                    return {end, false};
+                }
+                name = NextSignificant(attributeEnd);
+            } else {
+                break;
+            }
+        }
+        bool isQualified = false;
+        if (Kind(name) == TK::Operator_ScopeResolution) {
+            isQualified = true;
+            name = NextSignificant(name + 1);
+        }
+        if (Kind(name) != TK::Identifier) {
+            return {end, isQualified};
+        }
+        while (name < end) {
+            auto next = NextSignificant(name + 1);
+            if (Kind(next) == TK::Operator_Less) {
+                next = NextSignificant(SkipTemplateArguments(next, end));
+            }
+            if (Kind(next) != TK::Operator_ScopeResolution) {
+                break;
+            }
+            auto component = NextSignificant(next + 1);
+            if (Kind(component) == TK::Keyword_template) {
+                component = NextSignificant(component + 1);
+            }
+            if (Kind(component) != TK::Identifier) {
+                break;
+            }
+            isQualified = true;
+            name = component;
+        }
+        return {name, isQualified};
+    }
+
     Node* ParseNamespaceDeclaration()
     {
         auto start = Cursor_;
@@ -2719,7 +2779,8 @@ private:
     Node* ParseRecordDeclaration()
     {
         auto start = Cursor_;
-        auto typeName = FindDeclaredTypeName(start);
+        const auto recordName = FindDeclaredRecordName(start);
+        const auto typeName = recordName.Token;
         auto* node = MakeNode(NodeKind::RecordDeclaration, start);
         bool sawBaseClause = false;
         bool unknownHeader = false;
@@ -2789,8 +2850,12 @@ private:
             Append(*node, *bases);
         }
         if (CurrentKind() == TK::Operator_OpenBrace) {
+            // A qualified definition injects its terminal name only inside
+            // the record; it does not introduce a surrounding binding.
             NameBinding* record = nullptr;
-            if (!unknownHeader && typeName < Tree_.Tokens_.Size()) {
+            if (!unknownHeader && !recordName.IsQualified &&
+                typeName < Tree_.Tokens_.Size())
+            {
                 record = AddName(Text(typeName), NameKind::Type);
             }
             ++Cursor_;
@@ -2802,7 +2867,7 @@ private:
                 !unknownHeader && typeName < Tree_.Tokens_.Size()
                     ? Text(typeName)
                     : std::string_view{});
-            if (record) {
+            if (!unknownHeader && typeName < Tree_.Tokens_.Size()) {
                 AddName(Text(typeName), NameKind::Type)->Members =
                     CurrentScope_;
             }
@@ -2824,7 +2889,9 @@ private:
         }
         if (CurrentKind() == TK::Operator_Semicolon) {
             ++Cursor_;
-            if (!node->FirstChild && typeName < Tree_.Tokens_.Size()) {
+            if (!recordName.IsQualified && !node->FirstChild &&
+                typeName < Tree_.Tokens_.Size())
+            {
                 auto type = Text(typeName);
                 auto* previous = FindName(*CurrentScope_, type);
                 auto* binding = AddName(type, NameKind::Type);

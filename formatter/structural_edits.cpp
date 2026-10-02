@@ -70,6 +70,14 @@ void Sort(StructuralPlan& plan)
                        : a.Depth < b.Depth;
         });
 }
+void CheckAnalysisSource(
+    const parser::SyntaxTree& tree, const SourceAnalysis& safety)
+{
+    if (safety.Gaps().size() != static_cast<size_t>(tree.TokenCount()) + 1 ||
+        safety.Gaps().front().Original.data() != tree.Source().data()) {
+        throw std::invalid_argument("analysis is not from original source");
+    }
+}
 // Walk in SourceAnalysis preorder, with a bounded explicit heap stack. No
 // scratch-node pointers are retained in either public plan.
 template <class F>
@@ -85,11 +93,8 @@ void Walk(const parser::SyntaxTree& tree, const SourceAnalysis* safety,
         bool DeclarationSequence = false;
         bool PreviousTrailingLabel = false;
     };
-    if (safety &&
-        (safety->Gaps().size() != static_cast<size_t>(tree.TokenCount()) + 1 ||
-            safety->Gaps().front().Original.data() != tree.Source().data())) {
-        throw std::invalid_argument("analysis is not from original source");
-    }
+    if (safety)
+        CheckAnalysisSource(tree, *safety);
     std::pmr::vector<Frame> stack(&scratch);
     size_t region = 0;
     auto enter = [&](const parser::Node* node, NK parent, NK previous,
@@ -237,8 +242,10 @@ bool DirectiveOnly(const SourceAnalysis& safety, SR range)
     }
     return true;
 }
-void Includes(const parser::SyntaxTree& tree, const SourceAnalysis& safety,
-    StructuralPlan& plan, std::pmr::memory_resource& scratch)
+template <class Accept, class Reject>
+void ScanIncludeGroups(const parser::SyntaxTree& tree,
+    const SourceAnalysis& safety, std::pmr::memory_resource& scratch,
+    Accept accept, Reject reject)
 {
     std::pmr::vector<Include> group(&scratch);
     for (TI i = 0; i < tree.TokenCount();) {
@@ -261,34 +268,45 @@ void Includes(const parser::SyntaxTree& tree, const SourceAnalysis& safety,
         if (group.size() > 1) {
             SR range{group.front().Atom.Begin, group.back().Atom.End};
             if (AdjacentComment(tree, {i, end})) {
-                Skip(plan, StructuralAction::IncludeOrder, {i, end},
+                reject(parser::TokenRange{i, end},
                     StructuralSkip::CommentAttached);
             } else if (!DirectiveOnly(safety, range)) {
-                Skip(plan, StructuralAction::IncludeOrder, {i, end},
-                    StructuralSkip::Protected);
+                reject(parser::TokenRange{i, end}, StructuralSkip::Protected);
             } else {
-                auto compare = [](const Include& a, const Include& b) {
-                    if (a.Angled != b.Angled)
-                        return !a.Angled;
-                    return a.Path != b.Path
-                        ? a.Path < b.Path
-                        : a.Token < b.Token;
-                };
-                if (!std::is_sorted(group.begin(), group.end(), compare)) {
-                    std::sort(group.begin(), group.end(), compare);
-                    auto id = Operation(
-                        plan, StructuralAction::IncludeOrder, {i, end});
-                    auto start = static_cast<uint32_t>(plan.Pieces.size());
-                    for (const auto& atom : group) {
-                        plan.Pieces.push_back({atom.Atom, {}, true});
-                    }
-                    plan.Edits.push_back({range, start,
-                        static_cast<uint32_t>(plan.Pieces.size()), id});
-                }
+                accept(
+                    IncludeGroup{{i, end}, range}, std::span<Include>(group));
             }
         }
         i = end;
     }
+}
+void Includes(const parser::SyntaxTree& tree, const SourceAnalysis& safety,
+    StructuralPlan& plan, std::pmr::memory_resource& scratch)
+{
+    ScanIncludeGroups(tree, safety, scratch,
+        [&](IncludeGroup descriptor, std::span<Include> group) {
+            auto compare = [](const Include& a, const Include& b) {
+                if (a.Angled != b.Angled)
+                    return !a.Angled;
+                return a.Path != b.Path
+                    ? a.Path < b.Path
+                    : a.Token < b.Token;
+            };
+            if (!std::is_sorted(group.begin(), group.end(), compare)) {
+                std::sort(group.begin(), group.end(), compare);
+                auto id = Operation(
+                    plan, StructuralAction::IncludeOrder, descriptor.Tokens);
+                auto start = static_cast<uint32_t>(plan.Pieces.size());
+                for (const auto& atom : group) {
+                    plan.Pieces.push_back({atom.Atom, {}, true});
+                }
+                plan.Edits.push_back({descriptor.Source, start,
+                    static_cast<uint32_t>(plan.Pieces.size()), id});
+            }
+        },
+        [&](parser::TokenRange tokens, StructuralSkip reason) {
+            Skip(plan, StructuralAction::IncludeOrder, tokens, reason);
+        });
 }
 
 size_t Validate(std::string_view source, const StructuralPlan& plan)
@@ -392,6 +410,21 @@ StructuralMaterialization::StructuralMaterialization(
 NamespaceCommentPlan::NamespaceCommentPlan(std::pmr::memory_resource& memory)
     : Namespaces(&memory), Skipped(&memory)
 {
+}
+
+std::pmr::vector<IncludeGroup> DiscoverIncludeGroups(
+    const parser::SyntaxTree& tree, const SourceAnalysis& safety,
+    std::pmr::memory_resource& fileMemory,
+    std::pmr::memory_resource& scratchMemory)
+{
+    CheckAnalysisSource(tree, safety);
+    std::pmr::vector<IncludeGroup> result(&fileMemory);
+    ScanIncludeGroups(tree, safety, scratchMemory,
+        [&](IncludeGroup group, std::span<Include>) {
+            result.push_back(group);
+        },
+        [](parser::TokenRange, StructuralSkip) {});
+    return result;
 }
 
 StructuralPlan PlanStructuralEdits(const parser::SyntaxTree& tree,

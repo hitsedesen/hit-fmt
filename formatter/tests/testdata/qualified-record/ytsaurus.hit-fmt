@@ -1,0 +1,178 @@
+# Runnable experimental preview variant of the YTsaurus example.
+# Macro syntax hints are unsupported by this executable. The affected macro is
+# protected byte-for-byte below instead of being reformatted through that hint.
+# YTsaurus-inspired approximation for yt/yt, yt/chyt, yt/yql and library/cpp/yt.
+# Not intended for yt/cpp, util or other library/cpp. See docs/config-migration.md.
+# Canonical fitting lists flatten; library annotations select generic policies.
+# Exactly messages, fluent chains and paired visual scopes; no named widths.
+# Fluent chains include . / -> members and repeated invocation factory()(arg)(next).
+Layout = Canonical
+IndentWidth = 4
+ColumnLimit = 120
+WidthDiagnostics = Report
+IndentationKind = Spaces
+TrailingWhitespace = Trim
+ListBreak = IfNeeded
+ListPacking = VerticalWhenBroken
+ListFirstItem = NextLine
+ListCloser = SameLine
+ListAlignment = Block
+ContinuationOffset = 4
+AlignmentFallbackOffset = 4
+# Base lists always start on a new line, with leading colon/comma punctuation.
+BaseListsBreak = Always
+BaseListsPacking = VerticalWhenBroken
+BaseListsFirstItem = NextLine
+BaseListsColonSide = Leading
+BaseListsCommaSide = Leading
+ControlHeadersFirstItem = InlineIfFits
+ChainsBreak = IfNeeded
+ChainsPacking = Fill
+InitializersCloser = OwnLine
+InitializersTrailingComma = WhenMultiline
+# Unlike the old comma-sensitive closer, every broken initializer owns its closer.
+ClassBracePlacement = NextLine
+StructBracePlacement = NextLine
+UnionBracePlacement = NextLine
+FunctionBracePlacement = NextLine
+ControlBracePlacement = NextLineIfHeaderBroken
+CaseBlockBracePlacement = Attached
+BodyShape = Expanded
+EmptyBodyShape = CompactIfFits
+# Empty and single-statement lambdas vary; preserve body topology explicitly.
+LambdaBodiesLayout = Preserve
+PointerReferenceDeclaratorLocation = Left
+IndentAccessModifiers = NoIndent
+IndentMembers = Indent
+IndentNamespaces = NoIndent
+IndentCaseLabels = Indent
+StatementAttributeIndent = Block
+NamespaceComments = AddMissing
+IncludeOrder = Preserve
+AddMissingControlBraces = true
+EmptyControlBody = EmptyBlock
+RemoveNullStatements = true
+RemoveNullDeclarations = true
+
+# Semantic macro syntax/protection hints, not aesthetic identifier exceptions.
+CallLikeMacroNames = []
+WhitespaceSensitiveMacros = [
+    "REGISTER_DERIVED_EXTERNALIZED_YSON_STRUCT",
+    "PP_STRINGIZE", "DEFINE_ENUM", "DEFINE_BIT_ENUM",
+    "DEFINE_BIT_ENUM_WITH_UNDERLYING_TYPE",
+    "DEFINE_ENUM_WITH_UNDERLYING_TYPE",
+    "DEFINE_AMBIGUOUS_ENUM_WITH_UNDERLYING_TYPE", "YT_DEFINE_ERROR_ENUM"
+]
+
+TemplateKeywordSpacing = Space
+TemplateTypeArgumentSpacing = NoSpace
+TemplateTypeArgumentInteriorSpacing = NoSpace
+NamespaceBraceSpacing = Space
+EnumBraceSpacing = Space
+ArrayDeclarationSpacing = NoSpace
+ArrayDeclarationInteriorSpacing = NoSpace
+StructuredBindingBracketSpacing = NoSpace
+FunctionSpaceBeforeParameters = NoSpace
+SpaceInsideFunctionParameters = NoSpace
+EmptyFunctionParametersSpacing = NoSpace
+ReturnArrowSpaceBefore = Space
+ReturnArrowSpaceAfter = Space
+FunctionQualifierSpacing = Space
+NoexceptSpaceBeforeSpecifier = Space
+NoexceptSpaceBeforeParentheses = NoSpace
+LambdaSpaceBeforeParameters = Space
+LambdaCallSpaceBeforeArguments = NoSpace
+LambdaBraceSpacing = Space
+SpaceInsideLambdaParameters = NoSpace
+SpaceAroundCaptureList = NoSpace
+SpaceAroundCaptureAssignment = Space
+EmptyLambdaCaptureSpacing = NoSpace
+EmptyLambdaParametersSpacing = NoSpace
+EmptyLambdaBodySpacing = Preserve
+FunctionCallSpaceBeforeParameters = NoSpace
+SpaceInsideCallArguments = NoSpace
+EmptyFunctionCallArgumentsSpacing = NoSpace
+ControlBlockSpaceBeforeBrace = Space
+ControlBlockKeywordSpacing = Space
+ControlBlockConditionSpacing = NoSpace
+LoopSemicolonSpacing = Space
+ConditionInitSemicolonSpacing = Space
+RangeBasedForColonSpacing = Space
+EmptyBlockInteriorSpacing = Space
+BlockInteriorSpacing = Space
+StatementSemicolonSpacing = NoSpace
+DeclarationSemicolonSpacing = NoSpace
+InitializerBracesSpacing = Preserve
+BraceInitializerSpacing = NoSpace
+NewArraySpaceBeforeBrackets = NoSpace
+
+ExpressionsBreak = IfNeeded
+ExpressionsPacking = Fill
+BinaryOperatorSide = Trailing
+ShiftOperatorSide = Leading
+AssignmentOperatorSide = Trailing
+TernaryOperatorSide = Leading
+TernaryLayout = ThreePart
+GroupingInteriorSpacing = NoSpace
+CastArgumentSpacing = NoSpace
+CastSpacing = NoSpace
+CommaSpaceBefore = NoSpace
+CommaSpaceAfter = Space
+MemberAccessOperatorsSpacing = NoSpace
+ScopeResolutionSpacing = Preserve
+UnaryOperatorSpacing = NoSpace
+PostfixOperatorSpacing = NoSpace
+BinaryOperatorSpacing = Space
+AssignmentOperatorSpacing = Space
+OperatorOverloadOperatorSpaceBefore = NoSpace
+OperatorOverloadOperatorSpaceAfter = NoSpace
+SubscriptOperatorSpacing = NoSpace
+SubscriptOperatorInteriorSpacing = NoSpace
+
+FunctionDeclarationParameterNames = Required
+FunctionDefinitionParameterNames = NameOrCommentedNameRequired
+# General naming checks remain off until role-aware rules exist.
+Exclude = ["(^|/)moody_camel_concurrent_queue\\.h$"]
+
+# Explicit YTsaurus library annotations; syntax lowering owns contextual guards.
+CallLineFirstStringNames = [
+    "THROW_ERROR_EXCEPTION",
+    "YT_LOG_TRACE",
+    "YT_LOG_DEBUG",
+    "YT_LOG_INFO",
+    "YT_LOG_WARNING",
+    "YT_LOG_ERROR",
+    "YT_LOG_ALERT",
+    "YT_LOG_FATAL",
+    "YT_LOG_ALERT_AND_THROW",
+    "YT_TLOG_TRACE",
+    "YT_TLOG_DEBUG",
+    "YT_TLOG_INFO",
+    "YT_TLOG_WARNING",
+    "YT_TLOG_ERROR",
+    "YT_TLOG_ALERT",
+    "YT_TLOG_FATAL",
+    "YT_TLOG_ALERT_AND_THROW",
+]
+ChainedCallRootNames = [
+    "BIND",
+    "BIND_NO_PROPAGATE",
+    "THROW_ERROR_EXCEPTION",
+    "TError",
+    "BuildYsonFluently",
+    "WaitFor",
+    "WaitForFast",
+    "YT_TLOG_TRACE",
+    "YT_TLOG_DEBUG",
+    "YT_TLOG_INFO",
+    "YT_TLOG_WARNING",
+    "YT_TLOG_ERROR",
+    "YT_TLOG_ALERT",
+    "YT_TLOG_FATAL",
+    "YT_TLOG_ALERT_AND_THROW",
+]
+IndentedCallScopePairs = [
+    "OnBeginList:OnEndList",
+    "OnBeginMap:OnEndMap",
+    "OnBeginAttributes:OnEndAttributes",
+]

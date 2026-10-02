@@ -1,0 +1,7 @@
+Layout = Canonical
+IndentWidth = 4
+CallsLayout = Canonical
+CallsPacking = Fill
+ColumnLimit = 120
+IndentationKind = Spaces
+SpaceInsideFunctionParameters = NoSpace

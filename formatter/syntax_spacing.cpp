@@ -943,7 +943,9 @@ public:
                     C::Expressions,
                     1);
             } else if (role == PR::AssignmentOperator ||
-                (node.Kind == NK::Initializer && kind == TK::Operator_Assign))
+                ((node.Kind == NK::Initializer ||
+                    node.Kind == NK::Enumerator) &&
+                    kind == TK::Operator_Assign))
             {
                 Pair(
                     i,

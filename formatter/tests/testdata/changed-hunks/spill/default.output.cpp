@@ -1,7 +1,7 @@
 void f() {
   g(
-      first,
-      second,
-      third);
+        first,
+        second,
+        third);
 }
 int h(int x);
