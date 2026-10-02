@@ -13,6 +13,7 @@
 #include <optional>
 #include <span>
 #include <string>
+#include <string_view>
 #include <vector>
 
 namespace formatter {
@@ -65,6 +66,11 @@ struct FormatRequest
     // authority through accepted atomic operations, not source-map anchors.
     std::optional<std::span<const parser::SourceRange>> EditScope = std::
         nullopt;
+    // Original input file, not normalized text or a temporary filename.
+    // Slash-separated lexical path; borrowed for this synchronous Format or
+    // FormatChanged call only. Never retained by prepared metadata or results.
+    // Empty preserves existing behavior when matching-header selection is Off.
+    std::string_view InputFilePath = {};
 };
 
 struct FormatMapping

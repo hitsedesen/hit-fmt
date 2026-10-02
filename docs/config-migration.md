@@ -34,6 +34,14 @@ Declaration braces use declaration-header ownership; control/case braces use
 control-header ownership. Lambda opening braces use declaration-header ownership,
 while lambda body topology uses `LambdaBodiesLayout` independently.
 
+When a complete declaration header is actually rebuilt, the boundary from its
+complete type/specifiers to a direct named declarator has a one-space flat
+fallback, including template return types. This is not a universal space after
+`>`: flat-only declarations and preserved headers retain source spacing, and
+uncertain or protected syntax remains unchanged. Pointer/reference binding,
+nested/member-pointer, operator-name and attribute spacing keep their specific
+rules; a type-to-entry fallback never rewrites a pointer-to-name gap.
+
 Preserved layout is distinct from **byte protection**. Directives, disabled
 regions and whitespace-sensitive macro invocations must remain byte-exact under
 both layout modes, including explicit transforms/spacing. Directives are never
@@ -433,9 +441,10 @@ No extra compiler dependency or runtime allocation facility is required (C++20).
 The old formatter/CLI/tests temporarily reference removed fields; that is an
 intentional handoff boundary, not a reason to restore legacy flags.
 
-## Staged configuration contracts (not formatting features yet)
+## Configuration consumer status
 
-The schema accepts eight new keys for reviewed downstream integration:
+The schema accepts these eight keys; standalone-comment counts are implemented,
+while the other nondefault consumers remain staged:
 
 | Key | Values | Default |
 | --- | --- | --- |
@@ -465,10 +474,19 @@ Regroup requires one empty line and conflicts with MaxEmptyLines=0 independently
 of input, Layout or IncludeOrder. Validation runs after final overrides and
 before public preparation's pending-consumer rejection.
 
-Public PreparedFormat currently rejects nondefault new behavior by setting name;
+Standalone-comment counts own only external gaps of maximal own-line comment
+blocks in declaration, statement and member sequences. Before and After default
+to no override (Preserve); explicit After wins over Before on a shared boundary,
+then existing boundary policies apply. Internal comment whitespace and bytes,
+attachment, inline/trailing comments and list/expression interiors are unchanged.
+Safety and edit scope win; file start/end do not acquire phantom edges. Positive
+counts force only the owned boundary to break; zero retains required topology.
+Exact counts are validated against MaxEmptyLines, with no cap exemption.
+
+Public PreparedFormat rejects the remaining nondefault staged behavior by setting name;
 it must not silently ignore a staged option. Inactive prefixes may validate, but
 they cannot change output. Remove each isolated guard clause only after the
-corresponding comment/template/expression/constructor/include consumer has been
+corresponding template/expression/constructor/include consumer has been
 reviewed and integrated. Matching additionally needs the reviewed original-file
 context boundary; metadata alone is not matching or grouping support.
 

@@ -1208,6 +1208,36 @@ public:
         }
     }
 
+    void DeclarationBoundary(
+        const parser::Node& declaration,
+        const parser::Node& specifiers,
+        const parser::Node& list)
+    {
+        if ((!IsDeclaration(declaration.Kind) &&
+                declaration.Kind != NK::FunctionDefinition) ||
+            specifiers.Kind != NK::DeclarationSpecifiers ||
+            list.Kind != NK::InitDeclaratorList || specifiers.Tokens.Empty() ||
+            specifiers.Tokens.End != list.Tokens.Begin)
+        {
+            return;
+        }
+        const auto* init = list.FirstChild;
+        const auto* declarator = init ? init->FirstChild : nullptr;
+        const auto* name = declarator ? declarator->FirstChild : nullptr;
+        if (!init || init->Kind != NK::InitDeclarator ||
+            !declarator || declarator->Kind != NK::Declarator ||
+            !name || name->Kind != NK::DeclaratorName || name->Tokens.Empty() ||
+            name->Tokens.Begin != list.Tokens.Begin)
+        {
+            // Pointer/nested/member-pointer/operator/attribute entries are
+            // distinct boundaries. Their specific rules, including Preserve,
+            // must not acquire a direct-name fallback.
+            return;
+        }
+        Mark(list.Tokens.Begin, F::None, declaration,
+            C::DeclarationHeaders, 1, true);
+    }
+
     void Finish(const parser::Node& node)
     {
         if (node.Kind != NK::SubscriptExpression || !node.FirstChild) {
@@ -1672,6 +1702,10 @@ SyntaxSpacing BuildSyntaxSpacing(
                 frame.PreviousSiblingComplete)
             {
                 classifier.SequenceBoundary(
+                    *frame.Parent,
+                    *frame.PreviousSibling,
+                    node);
+                classifier.DeclarationBoundary(
                     *frame.Parent,
                     *frame.PreviousSibling,
                     node);

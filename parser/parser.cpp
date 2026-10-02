@@ -2578,39 +2578,76 @@ private:
         ++Cursor_;
 
         int angleDepth = 0;
-        bool consumedConstraint = false;
+        // Boundary eligibility is not proof of valid constraint syntax. Recovery
+        // permits only strong declaration prefixes, not identifier-pair guesses.
+        bool constraintMayEnd = false;
+        bool recoveredBoundary = false;
         while (!AtEnd()) {
             auto kind = CurrentKind();
-            auto next = NextSignificant(Cursor_ + 1);
-            bool startsDeclaration = angleDepth ==
-                0 && consumedConstraint && (IsTypeKeyword(kind) ||
-                kind == TK::Keyword_class ||
-                kind == TK::Keyword_struct || kind == TK::Keyword_union ||
-                kind == TK::Keyword_enum || kind == TK::Keyword_using ||
-                kind == TK::Keyword_concept || (kind ==
-                    TK::Identifier && (Kind(next) == TK::Identifier ||
-                    Kind(next) == TK::Keyword_operator ||
-                    (Kind(next) == TK::Operator_OpenParenthesis &&
-                    Kind(PreviousSignificant(Cursor_)) !=
-                                    TK::Operator_And &&
-                    Kind(PreviousSignificant(Cursor_)) !=
-                                    TK::Operator_Or))));
-            // A dependent return type may be a template-id (optionally
-            // followed by pointer/reference qualifiers) and an overload
-            // name. Do not consume it as part of the constraint.
-            if (!startsDeclaration && angleDepth == 0 && consumedConstraint &&
-                kind == TK::Identifier && Kind(next) == TK::Operator_Less)
-            {
-                auto afterType = NextSignificant(SkipTemplateArguments(
-                    next,
-                    Tree_.Tokens_.Size()));
-                while (Kind(afterType) == TK::Operator_Star ||
-                    Kind(afterType) == TK::Operator_Ampersand ||
-                    Kind(afterType) == TK::Operator_And)
-                {
-                    afterType = NextSignificant(afterType + 1);
+            if (kind == TK::Comment || kind == TK::Invalid) {
+                // Comments preserve operand state. Invalid bytes permit a recovery
+                // boundary but stay in the constraint for AddExpressionRange.
+                if (kind == TK::Invalid) {
+                    constraintMayEnd = false;
+                    recoveredBoundary = true;
                 }
-                startsDeclaration = Kind(afterType) == TK::Keyword_operator;
+                ++Cursor_;
+                continue;
+            }
+            if (kind == TK::Keyword_requires) {
+                recoveredBoundary = false;
+                // The nested requires-expression owns its optional parameters
+                // and requirement body, not the following declaration's body.
+                // Only scan delimiters here; AddExpressionRange builds it once.
+                auto expressionEnd = SkipRequiresExpression(Cursor_);
+                constraintMayEnd = expressionEnd > Cursor_ + 1 &&
+                    expressionEnd <= ParseLimit_;
+                if (constraintMayEnd) {
+                    Cursor_ = expressionEnd;
+                } else {
+                    ErrorAt(Cursor_, "expected complete requirement body");
+                    ++Cursor_;
+                }
+                continue;
+            }
+            auto next = NextSignificant(Cursor_ + 1);
+            const bool boundaryEligible = constraintMayEnd || recoveredBoundary;
+            bool startsDeclaration = angleDepth == 0 &&
+                ((boundaryEligible && (IsTypeKeyword(kind) ||
+                    kind == TK::Keyword_class || kind == TK::Keyword_struct ||
+                    kind == TK::Keyword_union || kind == TK::Keyword_enum ||
+                    kind == TK::Keyword_using || kind == TK::Keyword_concept)) ||
+                    (constraintMayEnd && kind == TK::Identifier &&
+                        (Kind(next) == TK::Identifier ||
+                            Kind(next) == TK::Keyword_operator ||
+                            Kind(next) == TK::Operator_OpenParenthesis)));
+            // An adjacent return-type prefix follows a finished constraint,
+            // never an operator awaiting its operand. Reuse the bounded type
+            // scan and require an actual named function declarator after * / &.
+            if (!startsDeclaration && angleDepth == 0 && boundaryEligible &&
+                kind == TK::Identifier && (Kind(next) == TK::Operator_Less ||
+                    Kind(next) == TK::Operator_ScopeResolution ||
+                    Kind(next) == TK::Operator_Star ||
+                    Kind(next) == TK::Operator_Ampersand ||
+                    Kind(next) == TK::Operator_And))
+            {
+                auto declarator = FindDeclarationSpecifiersEnd(Cursor_, ParseLimit_);
+                bool hasPointerOrReference = false;
+                while (declarator < ParseLimit_ &&
+                    (Kind(declarator) == TK::Operator_Star ||
+                        Kind(declarator) == TK::Operator_Ampersand ||
+                        Kind(declarator) == TK::Operator_And ||
+                        Kind(declarator) == TK::Keyword_const ||
+                        Kind(declarator) == TK::Keyword_volatile))
+                {
+                    hasPointerOrReference |= Kind(declarator) == TK::Operator_Star ||
+                        Kind(declarator) == TK::Operator_Ampersand ||
+                        Kind(declarator) == TK::Operator_And;
+                    declarator = NextSignificant(declarator + 1);
+                }
+                startsDeclaration = Kind(declarator) == TK::Keyword_operator ||
+                    (hasPointerOrReference && Kind(declarator) == TK::Identifier &&
+                        Kind(NextSignificant(declarator + 1)) == TK::Operator_OpenParenthesis);
             }
             if (startsDeclaration || kind == TK::Operator_Semicolon ||
                 kind == TK::Operator_OpenBrace)
@@ -2618,19 +2655,23 @@ private:
                 break;
             }
 
+            recoveredBoundary = false;
             if (IsOpenDelimiter(kind)) {
                 ConsumeBalanced();
-                consumedConstraint = true;
+                constraintMayEnd = true;
                 continue;
             }
+            constraintMayEnd = kind == TK::Identifier || IsLiteralExpressionToken(kind);
             if (kind == TK::Operator_Less) {
                 ++angleDepth;
+                constraintMayEnd = false;
             } else if (kind == TK::Operator_Greater && angleDepth > 0) {
                 --angleDepth;
+                constraintMayEnd = angleDepth == 0;
             } else if (kind == TK::Operator_RightShift && angleDepth > 0) {
                 angleDepth = std::max(0, angleDepth - 2);
+                constraintMayEnd = angleDepth == 0;
             }
-            consumedConstraint = true;
             ++Cursor_;
         }
 

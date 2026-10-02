@@ -38,11 +38,13 @@ struct CheckedFile
 };
 
 // One original parse and one public pipeline invocation, mode-independent.
-// Result owns all data; no references into input/configuration/parser arenas.
+// Original slash-separated inputFilePath is borrowed only during this call.
+// Result owns all data; no references into input/path/configuration/parser arenas.
 [[nodiscard]] CheckedFile
 CheckFile(
     util::PaddedSourceView source,
-    const PreparedFileConfiguration& configuration);
+    const PreparedFileConfiguration& configuration,
+    std::string_view inputFilePath = {});
 
 // Width locations are explicitly emitted-output coordinates even in check
 // mode. Semantic locations use original source in check, final mapped output

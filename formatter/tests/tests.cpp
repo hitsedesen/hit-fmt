@@ -142,6 +142,9 @@ void AddCases(
 std::vector<FormatCase> FormatCases()
 {
     std::vector<FormatCase> cases;
+    AddCases(cases,
+        std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../standalone-comment-gaps",
+        {"preserve", "before", "after", "zero", "canonical"});
     AddCases(
         cases,
         BRACE_TESTDATA_DIR,
@@ -270,6 +273,8 @@ std::vector<FormatCase> FormatCases()
     const auto initializerSafety =
         std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../initializer-safety";
     AddCases(cases, initializerSafety, {"conditional", "never", "preserve"});
+    AddCases(cases, std::filesystem::path(FORMATTER_TESTDATA_DIR) /
+        "../declaration-gap", {"canonical", "preserve"});
     const auto ownerContext =
         std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../owner-context";
     AddCases(cases, ownerContext,

@@ -149,12 +149,14 @@ bool CheckedFile::HasFailures(bool fix) const
 
 CheckedFile CheckFile(
     util::PaddedSourceView source,
-    const PreparedFileConfiguration& configuration)
+    const PreparedFileConfiguration& configuration,
+    std::string_view inputFilePath)
 {
     auto tree = parser::Parse(source, [] (parser::ParseError) {});
     CheckedFile checked;
-    checked.Formatting =
-        formatter::Format(tree, configuration.Formatting, {.SourceMap = true});
+    checked.Formatting = formatter::Format(
+        tree, configuration.Formatting,
+        {.SourceMap = true, .InputFilePath = inputFilePath});
     checked.FormattingMismatch = checked.Formatting.Text != tree.Source();
     for (auto& diagnostic : formatter::CheckNames(
         tree,

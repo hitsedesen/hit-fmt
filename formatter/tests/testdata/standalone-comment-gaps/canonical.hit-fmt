@@ -1,0 +1,8 @@
+Layout = Canonical
+BodyShape = Expanded
+EmptyBodyShape = Expanded
+NamespaceBlankLinesAfterOpen = 2
+NamespaceBlankLinesBeforeClose = 2
+DefinitionBlankLines = 2
+StandaloneCommentBlankLinesBefore = 1
+StandaloneCommentBlankLinesAfter = 1

@@ -310,6 +310,68 @@ TEST(SourceAnalysis, CommentsDirectivesSplicesAndCrLf)
         }
     }
 }
+
+TEST(SourceAnalysis, RequiresTerminalRecoveryProtectsConstraintNotFollowingFunction)
+{
+    const std::string_view declarations[] = {
+        "int inspect(T value) { return 1; }",
+        "T* inspect(T* value) { return value; }",
+        "T& access(T& value) { return value; }",
+    };
+    struct TerminalCase
+    {
+        std::string_view Text;
+        bool Unparsed;
+    };
+    const TerminalCase terminals[] = {{"@", true}, {"&& @", false}};
+    for (const auto declaration : declarations) {
+        for (const auto &terminal : terminals) {
+            const auto source = "template<class T> requires requires(T v) { v.touch(); } " +
+                std::string(terminal.Text) + "\n" + std::string(declaration) + "\n";
+            SCOPED_TRACE(source);
+            Input input(source);
+            auto tree = Parse(input);
+            std::pmr::monotonic_buffer_resource memory;
+            auto analysis = Analyze(tree, memory);
+            const auto invalid = static_cast<parser::SourceOffset>(source.find('@'));
+            EXPECT_TRUE(analysis.IntersectsImmutable({invalid, invalid}));
+            EXPECT_TRUE(analysis.IntersectsImmutable({invalid, invalid + 1}));
+            size_t clauses = 0;
+            size_t functions = 0;
+            size_t unparsed = 0;
+            size_t invalidRegions = 0;
+            for (const auto &region : analysis.Regions()) {
+                if (region.Source.Begin == invalid && region.Source.End == invalid + 1) {
+                    ++invalidRegions;
+                    EXPECT_TRUE(region.Status == formatter::RegionStatus::Recovery ||
+                        region.Status == formatter::RegionStatus::RecoveryAndAmbiguous);
+                }
+                if (region.Kind == parser::NodeKind::RequiresClause) {
+                    ++clauses;
+                    EXPECT_TRUE(region.Status == formatter::RegionStatus::Recovery ||
+                        region.Status == formatter::RegionStatus::RecoveryAndAmbiguous);
+                }
+                if (region.Kind == parser::NodeKind::UnparsedSyntax) {
+                    ++unparsed;
+                    EXPECT_EQ(region.Source.Begin, invalid);
+                    EXPECT_EQ(region.Source.End, invalid + 1);
+                }
+                if (region.Kind == parser::NodeKind::FunctionDefinition) {
+                    ++functions;
+                    EXPECT_EQ(region.Status, formatter::RegionStatus::Complete);
+                    EXPECT_EQ(std::string_view(source).substr(region.Source.Begin,
+                        region.Source.End - region.Source.Begin), declaration);
+                    EXPECT_FALSE(analysis.IntersectsImmutable(region.Source));
+                }
+            }
+            EXPECT_EQ(clauses, 1u);
+            EXPECT_EQ(unparsed, terminal.Unparsed ? 1u : 0u);
+            EXPECT_EQ(invalidRegions, 1u);
+            EXPECT_EQ(functions, 1u);
+        }
+    }
+}
+
 TEST(SourceAnalysis, RecoverySummariesAndMergedExplicitRanges)
 {
     Input input("int good = 1;\nvoid f() { call(a,,b); }\nint tail = 2;\n");

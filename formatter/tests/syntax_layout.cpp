@@ -1700,6 +1700,170 @@ TEST(SyntaxLayout, CaseBraceAndLabelIndentAreIndependentOfFollowingBody)
             .Text;
     EXPECT_NE(output.find("\n  case 1:\n    {"), std::string::npos) << output;
     EXPECT_EQ(Lower(output, style).Text, output);
+
+    // A real body supplies its own level; unbraced siblings need one too.
+    EXPECT_NE(output.find("\n      first();\n      second();"),
+              std::string::npos) << output;
+    EXPECT_NE(output.find("default:\n      break;"),
+              std::string::npos) << output;
+    for (const auto label : {formatter::BodyIndentation::Indent,
+                            formatter::BodyIndentation::NoIndent})
+    {
+        style.IndentWidth = 4;
+        style.BlockBodyIndentWidth = 3;
+        style.IndentCaseLabels = label;
+        style.CaseLabelIndentWidth = 1;
+        const auto contents = Lower(
+            "void f(){ switch(value){ case 0: case 1: first(); second(); "
+            "break; case 2: { third(); } fourth(); break; default: } }\n",
+            style).Text;
+        // Function and switch content each resolve width3; contents are9.
+        const std::string labelIndent = label == formatter::BodyIndentation::Indent
+                                            ? "    " : "   ";
+        EXPECT_NE(contents.find("\n" + labelIndent + "case 0:"),
+                  std::string::npos) << contents;
+        EXPECT_NE(contents.find("case 1:\n         first();\n         second();"
+                                "\n         break;"), std::string::npos) << contents;
+        EXPECT_NE(contents.find("case 2:\n      {\n         third();\n      }"
+                                "\n         fourth();\n         break;"),
+                  std::string::npos) << contents;
+        EXPECT_EQ(Lower(contents, style).Text, contents);
+    }
+
+    style.IndentWidth = 4;
+    style.BlockBodyIndentWidth = 0;
+    style.IndentCaseLabels = formatter::BodyIndentation::NoIndent;
+    const auto nested = Lower(
+        "void f(int value){ switch(value){ case 1: while(value){ "
+        "case 2: third(); } break; } }\n", style).Text;
+    // Bases: switch content8, case content12, real while content16,
+    // direct unbraced contents20. The local NoIndent label is12, not a base.
+    EXPECT_NE(nested.find("case 1:\n            while (value) {\n"
+                         "            case 2:\n                    third();\n"
+                         "            }\n            break;"),
+              std::string::npos) << nested;
+    EXPECT_EQ(Lower(nested, style).Text, nested);
+
+    // This parser bounds an unbraced controlled label at its colon. It does
+    // not own the following statement/else as that arm: do not project it.
+    const auto incompleteArm = Lower(
+        "void f(int value){ switch(value){ if(value) case 0: first(); "
+        "else second(); default: break; } }\n", style).Text;
+    EXPECT_NE(incompleteArm.find("if(value) case 0:\n"
+                                 "        first(); else second();"),
+              std::string::npos) << incompleteArm;
+}
+
+TEST(SyntaxLayout, CaseLabelPreserveRetainsOnlyExistingIndentation)
+{
+    auto style = Canonical(120);
+    style.IndentWidth = 4;
+    style.IndentCaseLabels = formatter::BodyIndentation::Preserve;
+    const std::string input =
+        "void f(){\n switch(value){\ncase 0: first();\n  case 1: second();\n"
+        "\tdefault: break;\n }\n}\n";
+    const auto output = Lower(input, style);
+    EXPECT_NE(output.Text.find("\ncase 0:\n            first();"),
+              std::string::npos) << output.Text;
+    EXPECT_NE(output.Text.find("\n  case 1:\n            second();"),
+              std::string::npos) << output.Text;
+    EXPECT_NE(output.Text.find("\n\tdefault:\n            break;"),
+              std::string::npos) << output.Text;
+    EXPECT_EQ(Lower(output.Text, style).Text, output.Text);
+    for (const std::string_view name : {"case 0", "case 1", "default"})
+    {
+        const auto end = input.find(name);
+        const auto begin = input.rfind('\n', end) + 1;
+        bool exactIndent = false;
+        for (const auto &map : output.Map)
+        {
+            if (map.Source.Begin == begin && map.Source.End == end && map.Exact)
+            {
+                EXPECT_EQ(std::string_view(output.Text).substr(
+                              map.OutputBegin, map.OutputEnd - map.OutputBegin),
+                          std::string_view(input).substr(begin, end - begin));
+                exactIndent = true;
+            }
+        }
+        EXPECT_TRUE(exactIndent) << name;
+    }
+    const auto generated = Lower(
+        "void f(){ switch(value){ case 0: first(); default: break; } }\n",
+        style).Text;
+    EXPECT_NE(generated.find("\n        case 0:\n            first();"),
+              std::string::npos) << generated;
+    EXPECT_EQ(Lower(generated, style).Text, generated);
+
+    // Selecting indentation without its LF must not override label Preserve.
+    for (const auto shape : {formatter::BodyShape::Expanded,
+                             formatter::BodyShape::CompactIfFits})
+    {
+        style.BodyShape = shape;
+        const auto begin = parser::SourceOffset(input.find("  case 1"));
+        const parser::SourceRange ranges[] = {{begin, begin + 2}};
+        formatter::SourceAnalysisOptions scope;
+        scope.EditScope = ranges;
+        const auto partial = Lower(input, style, {}, scope);
+        EXPECT_EQ(partial.Text, input);
+        bool exact = false;
+        for (const auto &map : partial.Map)
+        {
+            if (map.Source.Begin <= begin && map.Source.End >= begin + 2)
+            {
+                EXPECT_TRUE(map.Exact);
+                EXPECT_EQ(std::string_view(partial.Text).substr(
+                              map.OutputBegin, map.OutputEnd - map.OutputBegin),
+                          std::string_view(input).substr(
+                              map.Source.Begin, map.Source.End - map.Source.Begin));
+                exact = true;
+            }
+        }
+        EXPECT_TRUE(exact);
+    }
+
+    style.BodyShape = formatter::BodyShape::Expanded;
+    // Token-internal LF and an inline token column are not indentation evidence.
+    for (const std::string_view comment : {"/* note */", "/* note\n */"})
+    {
+        const auto inlineLabel = Lower(
+            "void f(){ switch(value){ " + std::string(comment) +
+                " case 0: first(); } }\n", style).Text;
+        // The comment attachment vetoes a new label boundary; its LF must
+        // neither create indentation provenance nor leak into the body base.
+        EXPECT_NE(inlineLabel.find(std::string(comment) +
+                                  " case 0:\n            first();"),
+                  std::string::npos) << inlineLabel;
+        EXPECT_EQ(Lower(inlineLabel, style).Text, inlineLabel);
+    }
+
+    // Independent immutable and disabled bytes still veto the new indentation.
+    const std::string protectedInput =
+        "void f(){ switch(value){\n  case 0: first();\n"
+        "// clang-format off\n case 1:   second();\n// clang-format on\n"
+        "default: break; } }\n";
+    const auto begin = parser::SourceOffset(protectedInput.find("  case 0"));
+    const auto end = parser::SourceOffset(protectedInput.find("\n", begin));
+    const parser::SourceRange ranges[] = {{begin, end}};
+    formatter::SourceAnalysisOptions protection;
+    protection.ImmutableRanges = ranges;
+    protection.HonorClangFormatDirectives = true;
+    const auto protectedOutput = Lower(protectedInput, style, {}, protection);
+    EXPECT_NE(protectedOutput.Text.find("  case 0: first();"),
+              std::string::npos) << protectedOutput.Text;
+    EXPECT_NE(protectedOutput.Text.find(
+                  "// clang-format off\n case 1:   second();\n// clang-format on"),
+              std::string::npos) << protectedOutput.Text;
+    for (const auto &map : protectedOutput.Map)
+    {
+        if (map.Protected)
+        {
+            EXPECT_TRUE(map.Exact);
+            EXPECT_EQ(std::string_view(protectedOutput.Text).substr(
+                          map.OutputBegin, map.OutputEnd - map.OutputBegin),
+                      std::string_view(protectedInput).substr(
+                          map.Source.Begin, map.Source.End - map.Source.Begin));
+        }
+    }
 }
 TEST(SyntaxLayout, AlwaysRequiresOwnedBoundariesButPreserveAndEmptyWin)
 {
@@ -1849,6 +2013,130 @@ TEST(SyntaxLayout, ExactVerticalGapsCapAndPreservedIndentation)
     EXPECT_EQ(Lower("namespace Empty {}\n", empty).Text,
               "namespace Empty {}\n");
 }
+
+TEST(SyntaxLayout, StandaloneCommentExternalGapsKeepBlocksAndAttachments)
+{
+    formatter::Style style;
+    style.StandaloneCommentBlankLinesBefore = {formatter::BlankLineMode::Exact, 1};
+    style.StandaloneCommentBlankLinesAfter = {formatter::BlankLineMode::Exact, 2};
+    style.NamespaceBlankLinesAfterOpen = {formatter::BlankLineMode::Exact, 3};
+    style.NamespaceBlankLinesBeforeClose = {formatter::BlankLineMode::Exact, 3};
+    const std::string source =
+        "namespace N {\n// first\n\n/* second */\nint value;\n// end\n}\n";
+    const auto output = Lower(source, style).Text;
+    EXPECT_EQ(output, "namespace N {\n\n// first\n\n/* second */\n\n\n"
+                      "int value;\n\n// end\n\n\n}\n");
+    EXPECT_EQ(Lower(output, style).Text, output);
+    style.StandaloneCommentBlankLinesBefore = {};
+    style.StandaloneCommentBlankLinesAfter = {};
+    EXPECT_EQ(Lower(source, style).Text,
+              "namespace N {\n\n\n\n// first\n\n/* second */\nint value;\n"
+              "// end\n\n\n\n}\n");
+}
+
+TEST(SyntaxLayout, StandaloneCommentSequenceBodiesAndZeroRetainTopology)
+{
+    formatter::Style style;
+    style.StandaloneCommentBlankLinesBefore = {formatter::BlankLineMode::Exact, 1};
+    style.StandaloneCommentBlankLinesAfter = {formatter::BlankLineMode::Exact, 1};
+    const std::string source = "struct S {\n// member\nint x;\n};\n"
+                               "void f() {\n/* only */\n}\n";
+    const auto output = Lower(source, style).Text;
+    EXPECT_EQ(output, "struct S {\n\n// member\n\nint x;\n};\n"
+                      "void f() {\n\n/* only */\n\n}\n");
+    style.StandaloneCommentBlankLinesBefore.EmptyLines = 0;
+    style.StandaloneCommentBlankLinesAfter.EmptyLines = 0;
+    EXPECT_EQ(Lower(output, style).Text, source);
+}
+
+TEST(SyntaxLayout, StandaloneCommentExcludesInteriorInlineAndPhantomEdges)
+{
+    formatter::Style style;
+    style.StandaloneCommentBlankLinesBefore = {formatter::BlankLineMode::Exact, 2};
+    style.StandaloneCommentBlankLinesAfter = {formatter::BlankLineMode::Exact, 2};
+    const std::string source =
+        "// file\nint x; // trailing\nint y = /* inline */ 1;\n"
+        "void f(int\n// parameter\nx) { call(\n// argument\nx); }\n"
+        "int a[] = {\n// initializer\n1};\n"
+        "template<\n// template parameter\nclass T> struct C {};\n"
+        "// eof";
+    const auto output = Lower(source, style).Text;
+    auto expected = source;
+    expected.replace(expected.find("// file\n"), 8, "// file\n\n\n");
+    expected.replace(expected.find("// eof"), 6, "\n\n// eof");
+    EXPECT_EQ(output, expected);
+    EXPECT_EQ(Lower(output, style).Text, output);
+}
+
+TEST(SyntaxLayout, StandaloneCommentOnlyInsideRealSequenceBodies)
+{
+    formatter::Style style;
+    style.StandaloneCommentBlankLinesBefore = {formatter::BlankLineMode::Exact, 1};
+    style.StandaloneCommentBlankLinesAfter = {formatter::BlankLineMode::Exact, 1};
+    const std::string unbraced = "export\n// declaration header\nint value;\n";
+    EXPECT_EQ(Lower(unbraced, style).Text, unbraced);
+    const std::string braced =
+        "export\n// block header\n{\n// body\nint value;\n}\n";
+    const auto output = Lower(braced, style).Text;
+    EXPECT_EQ(output, "export\n// block header\n{\n\n// body\n\nint value;\n}\n");
+    EXPECT_EQ(Lower(output, style).Text, output);
+    EXPECT_EQ(Lower("extern \"C\" {\n// body\nint value;\n}\n", style).Text,
+              "extern \"C\" {\n\n// body\n\nint value;\n}\n");
+}
+
+TEST(SyntaxLayout, StandaloneCommentMixedRunsKeepOpaqueTokenInteriors)
+{
+    formatter::Style style;
+    style.StandaloneCommentBlankLinesBefore = {formatter::BlankLineMode::Exact, 1};
+    style.StandaloneCommentBlankLinesAfter = {formatter::BlankLineMode::Exact, 2};
+    const std::string source =
+        "int x; /* trailing\n * continuation */\n"
+        "/* own line\n * interior */\n\n// next\nint y;\n"
+        "/* inline\n * continuation */ int z;\n";
+    const auto output = Lower(source, style).Text;
+    EXPECT_EQ(output, "int x; /* trailing\n * continuation */\n\n"
+                      "/* own line\n * interior */\n\n// next\n\n\nint y;\n"
+                      "/* inline\n * continuation */ int z;\n");
+    EXPECT_EQ(Lower(output, style).Text, output);
+}
+
+TEST(SyntaxLayout, StandaloneCommentConditionalAndDirectiveBoundaries)
+{
+    formatter::Style style;
+    style.StandaloneCommentBlankLinesBefore = {formatter::BlankLineMode::Exact, 1};
+    style.StandaloneCommentBlankLinesAfter = {formatter::BlankLineMode::Exact, 1};
+    const std::string source =
+        "#if ENABLED\n// first branch\nint x;\n#else\n"
+        "// second branch\nint y;\n#endif\n"
+        "// before directive\n#define VALUE 1\n// after directive\nint z;\n";
+    const auto output = Lower(source, style).Text;
+    // Directive line protection includes its terminator; new counts cannot
+    // insert a blank line on that protected edge or join blocks across it.
+    EXPECT_EQ(output, "#if ENABLED\n// first branch\n\nint x;\n#else\n"
+                      "// second branch\n\nint y;\n#endif\n"
+                      "// before directive\n\n#define VALUE 1\n"
+                      "// after directive\n\nint z;\n");
+    EXPECT_EQ(Lower(output, style).Text, output);
+}
+
+TEST(SyntaxLayout, StandaloneCommentProtectedAndScopeEndGapsRemainExact)
+{
+    formatter::Style style;
+    style.StandaloneCommentBlankLinesBefore = {formatter::BlankLineMode::Exact, 1};
+    style.StandaloneCommentBlankLinesAfter = {formatter::BlankLineMode::Exact, 1};
+    const std::string source = "int x;\n// note\nint y;\n";
+    const auto comment = parser::SourceOffset(source.find("//"));
+    const auto next = parser::SourceOffset(source.find("int y"));
+    const std::array immutable{parser::SourceRange{comment - 1, next}};
+    formatter::SourceAnalysisOptions protection;
+    protection.ImmutableRanges = immutable;
+    EXPECT_EQ(Lower(source, style, {}, protection).Text, source);
+    const std::array scope{parser::SourceRange{0, comment}};
+    protection.ImmutableRanges = {};
+    protection.EditScope = scope;
+    EXPECT_EQ(Lower(source, style, {}, protection).Text, source);
+}
+
 TEST(SyntaxLayout, PrefixedDelimiterAnchorsUseRenderedColonAndRebasedFallback)
 {
     auto style = Canonical(17);

@@ -122,10 +122,26 @@ TEST(FileCheck, PreparedConfigurationOwnsSettingsAndResultsOutliveInputs)
     hit_fmt::CheckedFile first;
     {
         const Input input("void bad_name(){invoke(a,b);}\n");
-        first = hit_fmt::CheckFile(input.View(), prepared);
+        std::string path = "missing/directory with spaces/original.cpp";
+        first = hit_fmt::CheckFile(input.View(), prepared, path);
+        const auto withoutPath = hit_fmt::CheckFile(input.View(), prepared);
+        EXPECT_EQ(first.Formatting.Text, withoutPath.Formatting.Text);
+        ASSERT_EQ(first.Semantic.size(), withoutPath.Semantic.size());
+        for (size_t i = 0; i < first.Semantic.size(); ++i) {
+            EXPECT_EQ(first.Semantic[i].Message, withoutPath.Semantic[i].Message);
+            EXPECT_EQ(first.Semantic[i].Original.Line,
+                withoutPath.Semantic[i].Original.Line);
+            EXPECT_EQ(first.Semantic[i].Original.Column,
+                withoutPath.Semantic[i].Original.Column);
+            EXPECT_EQ(first.Semantic[i].Emitted.Line,
+                withoutPath.Semantic[i].Emitted.Line);
+            EXPECT_EQ(first.Semantic[i].Emitted.Column,
+                withoutPath.Semantic[i].Emitted.Column);
+        }
+        path.assign(path.size(), '?');
     }
     const Input second("void other_bad(){invoke(c,d);}\n");
-    const auto other = hit_fmt::CheckFile(second.View(), prepared);
+    const auto other = hit_fmt::CheckFile(second.View(), prepared, {});
     EXPECT_NE(first.Formatting.Text.find("a, b"), std::string::npos);
     EXPECT_NE(other.Formatting.Text.find("c, d"), std::string::npos);
     ASSERT_EQ(first.Semantic.size(), 1u);

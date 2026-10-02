@@ -54,6 +54,7 @@ struct Gap
     uint16_t NewlineCount = 1;
     bool Vertical = false;
     bool PreserveIndent = false;
+    uint8_t VerticalPriority = 0;
     Index MarkDelimiter = None;
     GapContext Context = GapContext::Preserved;
     bool ContextKnown = false;
@@ -107,6 +108,8 @@ struct Syntax
     bool Safe = true;
     bool String = false;
     bool Definition = false;
+    bool ItemSequence = false;
+    parser::TokenRange SequenceBody = {};
     parser::TokenRange Attached = {};
 };
 struct ScopeName
@@ -339,6 +342,25 @@ class Planner
             Syntax_.push_back({item.NodePtr, item.Parent});
             LastChild_.push_back(None);
             BlockOf_.push_back(None);
+            switch (item.NodePtr->Kind)
+            {
+            case NodeKind::TranslationUnit:
+            case NodeKind::NamespaceDeclaration:
+            case NodeKind::RecordDeclaration:
+            case NodeKind::CompoundStatement:
+            case NodeKind::LambdaBody:
+            case NodeKind::LinkageSpecification:
+            case NodeKind::ExportDeclaration:
+                Syntax_[id].ItemSequence = true;
+                break;
+            case NodeKind::PreprocessingConditional:
+            case NodeKind::PreprocessingBranch:
+                Syntax_[id].ItemSequence = item.Parent != None &&
+                                          Syntax_[item.Parent].ItemSequence;
+                break;
+            default:
+                break;
+            }
             if (item.Parent != None)
             {
                 if (LastChild_[item.Parent] == None)
@@ -392,6 +414,38 @@ class Planner
                  child = Syntax_[child].NextSibling)
             {
                 entry.Safe = entry.Safe && Syntax_[child].Safe;
+            }
+            if (entry.ItemSequence)
+            {
+                entry.SequenceBody = node.Tokens;
+                if (node.Kind != NodeKind::TranslationUnit &&
+                    node.Kind != NodeKind::PreprocessingConditional &&
+                    node.Kind != NodeKind::PreprocessingBranch)
+                {
+                    Index opening = None;
+                    Index closing = None;
+                    DirectTokens(i, [&](Index token)
+                    {
+                        if (opening == None && Tree_.Kind(token) ==
+                                                   TokenKind::Operator_OpenBrace)
+                        {
+                            opening = token;
+                        }
+                        else if (Tree_.Kind(token) ==
+                                 TokenKind::Operator_CloseBrace)
+                        {
+                            closing = token;
+                        }
+                    });
+                    // Only real sequence bodies own these gaps. In particular,
+                    // an unbraced export wrapper and pre-brace trivia do not.
+                    entry.ItemSequence = opening != None && closing != None &&
+                                         opening < closing;
+                    if (entry.ItemSequence)
+                    {
+                        entry.SequenceBody = {opening + 1, closing};
+                    }
+                }
             }
             if (node.Kind == NodeKind::BinaryExpression ||
                 node.Kind == NodeKind::AssignmentExpression)
@@ -1609,6 +1663,8 @@ class Planner
             Reindent(opening + 1, group, false, independentIndent);
             Reindent(close, group, true);
         }
+        bool inCase = false;
+        Index contents = None;
         for (auto child = Syntax_[id].FirstChild; child != None;
              child = Syntax_[child].NextSibling)
         {
@@ -1618,13 +1674,40 @@ class Planner
             {
                 continue;
             }
+            // Labels delimit direct-child case regions. A real compound body
+            // supplies its own level; statements after it start another region.
+            if (part.Kind == NodeKind::CaseLabel)
+            {
+                inCase = true;
+                contents = None;
+            }
+            else if (part.Kind == NodeKind::CompoundStatement)
+            {
+                contents = None;
+            }
+            else if (inCase)
+            {
+                if (contents == None)
+                {
+                    contents = GroupAt(GapPosition(part.Tokens.Begin),
+                                       GapPosition(part.Tokens.End),
+                                       layout::GroupMode::Consistent,
+                                       int32_t(policy.IndentWidth));
+                    Groups_[contents].Spec.StructuralBase = true;
+                }
+                else
+                {
+                    Groups_[contents].End = GapPosition(part.Tokens.End);
+                }
+            }
+            const auto owner = contents == None ? group : contents;
             if (!Syntax_[child].Safe)
             {
                 continue;
             }
             if (canonical)
             {
-                Own(part.Tokens.Begin, group,
+                Own(part.Tokens.Begin, owner,
                     shape == BodyShape::Expanded
                         ? Boundary::Hard
                         : Boundary::Soft);
@@ -1632,8 +1715,8 @@ class Planner
             }
             else
             {
-                Own(part.Tokens.Begin, group, Boundary::Preserve);
-                Reindent(part.Tokens.Begin, group, false, independentIndent);
+                Own(part.Tokens.Begin, owner, Boundary::Preserve);
+                Reindent(part.Tokens.Begin, owner, false, independentIndent);
             }
             // Indentation controls are structural subgroups, not a text pass.
             const auto special = part.Kind == NodeKind::AccessSpecifier
@@ -1641,6 +1724,15 @@ class Planner
                                  : part.Kind == NodeKind::CaseLabel
                                      ? &Policies_.Indentation.CaseLabels
                                      : nullptr;
+            if (part.Kind == NodeKind::CaseLabel && special &&
+                special->Mode == BodyIndentation::Preserve &&
+                SourceIndent(part.Tokens.Begin) != None)
+            {
+                // Preserve the source indentation, not the body's topology.
+                auto &gap = Gaps_[part.Tokens.Begin];
+                gap.PreserveIndent = true;
+                gap.Reindent = false;
+            }
             if (special && special->Mode != BodyIndentation::Preserve)
             {
                 const auto target = BodyOffset(*special, offset);
@@ -2121,14 +2213,15 @@ class Planner
         }
     }
 
-    void ExactVertical(Index gap, VerticalGapPolicy policy)
+    void ExactVertical(Index gap, VerticalGapPolicy policy, uint8_t priority = 0)
     {
-        if (policy.Mode != VerticalGapMode::Exact || !GapMutable(gap))
+        if (policy.Mode != VerticalGapMode::Exact || !GapMutable(gap) ||
+            Gaps_[gap].VerticalPriority > priority)
         {
             return;
         }
         auto &plan = Gaps_[gap];
-        plan.PreserveIndent = plan.Shape == Boundary::Preserve &&
+        plan.PreserveIndent |= plan.Shape == Boundary::Preserve &&
                               !plan.Reindent && !plan.OverrideIndent;
         if (!plan.ContextKnown)
         {
@@ -2136,6 +2229,7 @@ class Planner
             plan.Context = GapContext::Preserved;
         }
         plan.Vertical = true;
+        plan.VerticalPriority = priority;
         plan.NewlineCount = uint16_t(policy.EmptyLines + 1);
         if (policy.EmptyLines != 0)
         {
@@ -2143,10 +2237,84 @@ class Planner
         }
     }
 
+    void PlanStandaloneCommentGaps(Index id)
+    {
+        if (!Syntax_[id].ItemSequence)
+        {
+            return;
+        }
+        const auto &policy = Policies_.VerticalGaps;
+        for (auto child = Syntax_[id].FirstChild; child != None;)
+        {
+            const auto &entry = Syntax_[child];
+            if (entry.TreeNode->Kind != NodeKind::Comment || !entry.Safe ||
+                entry.TreeNode->Tokens.Begin < Syntax_[id].SequenceBody.Begin ||
+                entry.TreeNode->Tokens.End > Syntax_[id].SequenceBody.End)
+            {
+                child = entry.NextSibling;
+                continue;
+            }
+            auto begin = entry.TreeNode->Tokens.Begin;
+            auto end = entry.TreeNode->Tokens.End;
+            child = entry.NextSibling;
+            while (child != None && Syntax_[child].Safe &&
+                   Syntax_[child].TreeNode->Kind == NodeKind::Comment &&
+                   Syntax_[child].TreeNode->Tokens.Begin == end &&
+                   Syntax_[child].TreeNode->Tokens.End <=
+                       Syntax_[id].SequenceBody.End &&
+                   !Gaps_[end].Frozen &&
+                   !ContextProtected(Safety_.Gaps()[end].Source))
+            {
+                end = Syntax_[child].TreeNode->Tokens.End;
+                child = Syntax_[child].NextSibling;
+            }
+            // Trim comments sharing a physical line with noncomment syntax.
+            // Internal comment newlines are token bytes, never owned gaps.
+            bool line = begin == 0 || HasLine(Safety_.Gaps()[begin].Original);
+            auto first = end;
+            for (auto token = begin; token < end; ++token)
+            {
+                line = line || HasLine(Safety_.Gaps()[token].Original);
+                if (line && first == end)
+                {
+                    first = token;
+                }
+                line = line || HasLine(Tree_.TokenText(token));
+            }
+            line = end == Tree_.TokenCount() ||
+                   HasLine(Safety_.Gaps()[end].Original);
+            auto last = begin;
+            for (auto token = end; token-- > begin;)
+            {
+                line = line || HasLine(Safety_.Gaps()[token + 1].Original);
+                if (line && last == begin)
+                {
+                    last = token + 1;
+                }
+                line = line || HasLine(Tree_.TokenText(token));
+            }
+            if (first >= last)
+            {
+                continue;
+            }
+            if (first != 0)
+            {
+                ExactVertical(first, policy.StandaloneCommentBlankLinesBefore, 1);
+            }
+            if (last != Tree_.TokenCount())
+            {
+                ExactVertical(last, policy.StandaloneCommentBlankLinesAfter, 2);
+            }
+        }
+    }
+
     void PlanVerticalGaps()
     {
         const auto &policy = Policies_.VerticalGaps;
-        const bool sequenceRules =
+        const bool commentRules =
+            policy.StandaloneCommentBlankLinesBefore.Mode == VerticalGapMode::Exact ||
+            policy.StandaloneCommentBlankLinesAfter.Mode == VerticalGapMode::Exact;
+        const bool sequenceRules = commentRules ||
             policy.DefinitionBlankLines.Mode == VerticalGapMode::Exact ||
             policy.MemberDefinitionBlankLines.Mode == VerticalGapMode::Exact ||
             policy.NamespaceBlankLinesAfterOpen.Mode ==
@@ -2166,6 +2334,27 @@ class Planner
             for (Index id = 0; id < Syntax_.size(); ++id)
             {
                 const auto &node = *Syntax_[id].TreeNode;
+                if (commentRules)
+                {
+                    if (node.Kind == NodeKind::PreprocessingConditional ||
+                        node.Kind == NodeKind::PreprocessingBranch)
+                    {
+                        auto &entry = Syntax_[id];
+                        const auto parent = entry.Parent;
+                        entry.ItemSequence = parent != None &&
+                                             Syntax_[parent].ItemSequence;
+                        if (entry.ItemSequence)
+                        {
+                            entry.SequenceBody.Begin = std::max(
+                                entry.SequenceBody.Begin,
+                                Syntax_[parent].SequenceBody.Begin);
+                            entry.SequenceBody.End = std::min(
+                                entry.SequenceBody.End,
+                                Syntax_[parent].SequenceBody.End);
+                        }
+                    }
+                    PlanStandaloneCommentGaps(id);
+                }
                 if (node.Kind != NodeKind::TranslationUnit &&
                     node.Kind != NodeKind::NamespaceDeclaration &&
                     node.Kind != NodeKind::RecordDeclaration)
@@ -2302,7 +2491,7 @@ class Planner
                 if (lines > policy.MaxEmptyLines.EmptyLines + 1)
                 {
                     auto &gap = Gaps_[i];
-                    gap.PreserveIndent = gap.Shape == Boundary::Preserve &&
+                    gap.PreserveIndent |= gap.Shape == Boundary::Preserve &&
                                          !gap.Reindent && !gap.OverrideIndent;
                     if (!gap.ContextKnown)
                     {
@@ -2324,7 +2513,8 @@ class Planner
             auto &gap = Gaps_[i];
             gap.PartialIndent =
                 gap.Reindent ||
-                (Policies_.IndentationKind != IndentationKind::Preserve &&
+                (!gap.PreserveIndent &&
+                 Policies_.IndentationKind != IndentationKind::Preserve &&
                  (gap.Shape == Boundary::Hard || gap.Shape == Boundary::Soft ||
                   (gap.Shape == Boundary::Conditional &&
                    gap.Broken != layout::GapKind::Flat)));
@@ -2495,7 +2685,7 @@ class Planner
         spec.Spaces = uint16_t(std::min<Index>(FlatWidth(i), UINT16_MAX));
         spec.RequiredWidth = Gaps_[i].RequiredWidth;
         spec.NewlineCount = Gaps_[i].NewlineCount;
-        if (Gaps_[i].Vertical && Gaps_[i].PreserveIndent && !Gaps_[i].Reindent)
+        if (Gaps_[i].PreserveIndent && !Gaps_[i].Reindent)
         {
             const auto &source = Safety_.Gaps()[i];
             const auto lf = source.Original.rfind('\n');

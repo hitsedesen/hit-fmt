@@ -482,6 +482,7 @@ INSTANTIATE_TEST_SUITE_P(
         GoldenCase{"separated_lists"},
         GoldenCase{"preprocessing"},
         GoldenCase{"modules_and_concepts"},
+        GoldenCase{"requires_clause_boundaries"},
         GoldenCase{"statements"},
         GoldenCase{"name_classification"},
         GoldenCase{"ambiguity"},
@@ -1385,6 +1386,458 @@ TEST(Parser, RecordHeadChildrenAreBoundedWithoutGuessingOperands)
         }
         EXPECT_EQ(found, 1u);
     }
+}
+
+TEST(Parser, RequiresClauseOwnsNestedExpressionBeforeDeclaration)
+{
+    const std::string_view constraints[] = {
+        "requires(T value) { value.touch(); }",
+        "requires { typename T::value_type; }",
+        "requires(T value) { { value.touch() } noexcept; typename T::value_type; requires requires { typename T::other_type; }; }",
+        "requires(T value) /* body */ { value.touch(); } && true",
+        "true && requires(T value) { value.touch(); }",
+        "(requires(T value) { value.touch(); })",
+        "requires(T value) { value.touch(); } || requires { typename T::value_type; }",
+    };
+    for (const auto constraintText : constraints) {
+        for (const bool function : {false, true}) {
+            const std::string declaration = function
+                ? "int inspect(T value) { return 1; }"
+                : "struct Container { T member; };";
+            const auto source = "template<class T> requires " +
+                std::string(constraintText) + "\n" + declaration +
+                "\nint outside;\n";
+            SCOPED_TRACE(source);
+            PaddedInput input(source);
+            std::vector<parser::ParseError> errors;
+            const auto tree = parser::Parse(input.View(),
+                [&](parser::ParseError error) { errors.push_back(std::move(error)); });
+            EXPECT_TRUE(errors.empty());
+            const auto *owner = tree.Root().FirstChild;
+            ASSERT_NE(owner, nullptr);
+            ASSERT_EQ(owner->Kind, parser::NodeKind::TemplateDeclaration);
+            const auto *clause = owner->FirstChild;
+            while (clause && clause->Kind != parser::NodeKind::RequiresClause) {
+                clause = clause->NextSibling;
+            }
+            ASSERT_NE(clause, nullptr);
+            ASSERT_NE(clause->FirstChild, nullptr);
+            EXPECT_EQ(clause->FirstChild->Kind, parser::NodeKind::ConstraintExpression);
+            EXPECT_EQ(tree.SourceText(clause->FirstChild->Tokens), constraintText);
+            const auto *following = clause->NextSibling;
+            ASSERT_NE(following, nullptr);
+            EXPECT_EQ(following->Kind, function
+                ? parser::NodeKind::FunctionDefinition
+                : parser::NodeKind::RecordDeclaration);
+            EXPECT_EQ(tree.SourceText(following->Tokens), declaration);
+            EXPECT_EQ(following->Tokens.Begin, clause->Tokens.End);
+            EXPECT_EQ(following->NextSibling, nullptr);
+            size_t bodies = 0;
+            size_t parameters = 0;
+            std::vector<const Node *> pending{clause};
+            while (!pending.empty()) {
+                const auto *node = pending.back();
+                pending.pop_back();
+                EXPECT_NE(node->Kind, parser::NodeKind::UnparsedSyntax);
+                EXPECT_GE(node->Tokens.Begin, clause->Tokens.Begin);
+                EXPECT_LE(node->Tokens.End, clause->Tokens.End);
+                if (node->Kind == parser::NodeKind::RequirementBody) {
+                    ++bodies;
+                    EXPECT_EQ(tree.Role(node->Tokens.Begin), parser::PunctuationRole::BlockDelimiter);
+                    EXPECT_EQ(tree.Role(node->Tokens.End - 1), parser::PunctuationRole::BlockDelimiter);
+                    ASSERT_NE(node->FirstChild, nullptr);
+                    EXPECT_EQ(node->FirstChild->Kind, parser::NodeKind::Requirement);
+                    EXPECT_EQ(node->LastChild->Kind, parser::NodeKind::ListSeparator);
+                    EXPECT_EQ(tree.Role(node->LastChild->Tokens.Begin), parser::PunctuationRole::ListSeparator);
+                }
+                if (node->Kind == parser::NodeKind::RequiresExpression &&
+                    node->FirstChild && node->FirstChild->Kind == parser::NodeKind::ParameterList)
+                {
+                    ++parameters;
+                    EXPECT_EQ(tree.SourceText(node->FirstChild->Tokens), "(T value)");
+                    EXPECT_EQ(node->LastChild->Kind, parser::NodeKind::RequirementBody);
+                }
+                for (const auto *child = node->FirstChild; child; child = child->NextSibling) {
+                    pending.push_back(child);
+                }
+            }
+            EXPECT_GE(bodies, 1u);
+            EXPECT_EQ(parameters, constraintText.find("(T value)") != std::string_view::npos ? 1u : 0u);
+            const auto *outside = owner->NextSibling;
+            ASSERT_NE(outside, nullptr);
+            EXPECT_EQ(outside->Kind, parser::NodeKind::Declaration);
+            EXPECT_EQ(tree.SourceText(outside->Tokens), "int outside;");
+            EXPECT_EQ(outside->Tokens.Begin, owner->Tokens.End);
+            EXPECT_EQ(outside->NextSibling, nullptr);
+            if (function) {
+                ASSERT_NE(following->FirstChild, nullptr);
+                EXPECT_EQ(following->FirstChild->Kind, parser::NodeKind::DeclarationSpecifiers);
+                EXPECT_EQ(tree.SourceText(following->FirstChild->Tokens), "int");
+                ASSERT_NE(following->FirstChild->NextSibling, nullptr);
+                EXPECT_EQ(following->FirstChild->NextSibling->Kind, parser::NodeKind::InitDeclaratorList);
+                EXPECT_EQ(tree.SourceText(following->FirstChild->NextSibling->Tokens), "inspect(T value)");
+                EXPECT_EQ(following->LastChild->Kind, parser::NodeKind::CompoundStatement);
+            }
+        }
+    }
+}
+
+TEST(Parser, RequiresClauseOwnsDependentFunctionReturnPrefix)
+{
+    struct DeclarationCase
+    {
+        std::string_view Specifiers;
+        std::string_view Declarator;
+        std::string_view Body;
+    };
+    const DeclarationCase declarations[] = {
+        {"T", "* inspect(T* value)", "{ return value; }"},
+        {"T", "& access(T& value)", "{ return value; }"},
+        {"T", "&& relay(T&& value)", "{ return static_cast<T&&>(value); }"},
+        {"T", "* const retain(T* value)", "{ return value; }"},
+        {"T::value_type", "** fetch(T::value_type** value)", "{ return value; }"},
+        {"const T", "* view(const T* value)", "{ return value; }"},
+    };
+    struct ConstraintCase
+    {
+        std::string_view Text;
+        bool Unparsed;
+    };
+    const ConstraintCase constraints[] = {
+        {"requires(T v) { v.touch(); }", false},
+        {"requires { typename T::value_type; } && enabled", false},
+        {"enabled && requires(T v) { v.touch(); }", false},
+        {"(requires(T v) { v.touch(); })", false},
+        {"requires(T v) { v.touch(); } || (limit * scale > 0)", false},
+        {"Valid<T>", true},
+    };
+    for (const auto &declaration : declarations) {
+        for (const auto &constraint : constraints) {
+            const auto constraintText = constraint.Text;
+            const auto declarationText = std::string(declaration.Specifiers) +
+                " " + std::string(declaration.Declarator) + " " +
+                std::string(declaration.Body);
+            const auto source = "template<class T> requires " +
+                std::string(constraintText) + "\n" + declarationText +
+                "\nint outside;\n";
+            SCOPED_TRACE(source);
+            PaddedInput input(source);
+            size_t errors = 0;
+            const auto tree = parser::Parse(input.View(), [&](parser::ParseError) { ++errors; });
+            EXPECT_EQ(errors, 0u);
+            const auto *owner = tree.Root().FirstChild;
+            ASSERT_NE(owner, nullptr);
+            EXPECT_EQ(owner->Kind, parser::NodeKind::TemplateDeclaration);
+            const auto *clause = owner->FirstChild;
+            while (clause && clause->Kind != parser::NodeKind::RequiresClause) {
+                clause = clause->NextSibling;
+            }
+            ASSERT_NE(clause, nullptr);
+            ASSERT_NE(clause->FirstChild, nullptr);
+            EXPECT_EQ(tree.SourceText(clause->FirstChild->Tokens), constraintText);
+            const auto *function = clause->NextSibling;
+            ASSERT_NE(function, nullptr);
+            EXPECT_EQ(function->Kind, parser::NodeKind::FunctionDefinition);
+            EXPECT_EQ(tree.SourceText(function->Tokens), declarationText);
+            EXPECT_EQ(function->Tokens.Begin, clause->Tokens.End);
+            ASSERT_NE(function->FirstChild, nullptr);
+            EXPECT_EQ(function->FirstChild->Kind, parser::NodeKind::DeclarationSpecifiers);
+            EXPECT_EQ(tree.SourceText(function->FirstChild->Tokens), declaration.Specifiers);
+            const auto *declarator = function->FirstChild->NextSibling;
+            ASSERT_NE(declarator, nullptr);
+            EXPECT_EQ(declarator->Kind, parser::NodeKind::InitDeclaratorList);
+            EXPECT_EQ(tree.SourceText(declarator->Tokens), declaration.Declarator);
+            EXPECT_EQ(declarator->Tokens.Begin, function->FirstChild->Tokens.End);
+            ASSERT_NE(function->LastChild, nullptr);
+            EXPECT_EQ(function->LastChild->Kind, parser::NodeKind::CompoundStatement);
+            EXPECT_EQ(tree.SourceText(function->LastChild->Tokens), declaration.Body);
+            EXPECT_EQ(function->LastChild->Tokens.End, function->Tokens.End);
+            ASSERT_NE(owner->NextSibling, nullptr);
+            EXPECT_EQ(tree.SourceText(owner->NextSibling->Tokens), "int outside;");
+            EXPECT_EQ(owner->NextSibling->Tokens.Begin, owner->Tokens.End);
+            bool unparsed = false;
+            std::vector<const Node *> pending{clause};
+            while (!pending.empty()) {
+                const auto *node = pending.back();
+                pending.pop_back();
+                unparsed |= node->Kind == parser::NodeKind::UnparsedSyntax;
+                EXPECT_GE(node->Tokens.Begin, clause->Tokens.Begin);
+                EXPECT_LE(node->Tokens.End, clause->Tokens.End);
+                for (const auto *child = node->FirstChild; child; child = child->NextSibling) {
+                    pending.push_back(child);
+                }
+            }
+            EXPECT_EQ(unparsed, constraint.Unparsed);
+        }
+    }
+}
+
+TEST(Parser, RequiresClausePreservesOperatorAndUnknownConstraints)
+{
+    struct ConstraintCase
+    {
+        std::string_view Text;
+        bool Unparsed;
+        bool Invalid;
+    };
+    const ConstraintCase constraints[] = {
+        {"requires(T v) { v.touch(); } && (left * invoke(value) > 0)", false, false},
+        {"requires(T v) { v.touch(); } || (left & mask)", false, false},
+        {"requires(T v) { v.touch(); } && (left && invoke(value))", false, false},
+        {"requires(T v) { v.touch(); } && !enabled", false, false},
+        {"requires(T v) { v.touch(); } && unresolved", false, false},
+        {"requires(T v) { v.touch(); } @ discarded", true, true},
+        {"requires(T v) { v.touch(); } && (unresolved @ tail)", false, true},
+    };
+    for (const auto &constraint : constraints) {
+        const auto source = "template<class T> requires " +
+            std::string(constraint.Text) + "\nT* inspect(T* value) { return value; }\n";
+        SCOPED_TRACE(source);
+        PaddedInput input(source);
+        std::vector<parser::ParseError> errors;
+        const auto tree = parser::Parse(input.View(),
+            [&](parser::ParseError error) { errors.push_back(std::move(error)); });
+        if (constraint.Invalid) {
+            ASSERT_EQ(errors.size(), 1u);
+            EXPECT_EQ(errors.front().Message, "Unexpected token");
+            EXPECT_EQ(errors.front().Position.Line, 1u);
+            // The tokenizer reports the position after consuming the invalid character.
+            EXPECT_EQ(errors.front().Position.Column, source.find('@') + 2);
+        } else {
+            EXPECT_TRUE(errors.empty());
+        }
+        const auto *owner = tree.Root().FirstChild;
+        ASSERT_NE(owner, nullptr);
+        const auto *clause = owner->FirstChild;
+        while (clause && clause->Kind != parser::NodeKind::RequiresClause) {
+            clause = clause->NextSibling;
+        }
+        ASSERT_NE(clause, nullptr);
+        ASSERT_NE(clause->FirstChild, nullptr);
+        EXPECT_EQ(tree.SourceText(clause->FirstChild->Tokens), constraint.Text);
+        size_t invalidTokens = 0;
+        for (auto token = clause->Tokens.Begin; token < clause->Tokens.End; ++token) {
+            if (tree.Kind(token) == tokenizer::TokenKind::Invalid) {
+                ++invalidTokens;
+                EXPECT_EQ(tree.TokenText(token), "@");
+            }
+        }
+        EXPECT_EQ(invalidTokens, constraint.Invalid ? 1u : 0u);
+        bool unparsed = false;
+        std::vector<const Node *> pending{clause};
+        while (!pending.empty()) {
+            const auto *node = pending.back();
+            pending.pop_back();
+            unparsed |= node->Kind == parser::NodeKind::UnparsedSyntax;
+            EXPECT_GE(node->Tokens.Begin, clause->Tokens.Begin);
+            EXPECT_LE(node->Tokens.End, clause->Tokens.End);
+            for (const auto *child = node->FirstChild; child; child = child->NextSibling) {
+                pending.push_back(child);
+            }
+        }
+        EXPECT_EQ(unparsed, constraint.Unparsed);
+        ASSERT_NE(clause->NextSibling, nullptr);
+        EXPECT_EQ(tree.SourceText(clause->NextSibling->Tokens), "T* inspect(T* value) { return value; }");
+        EXPECT_EQ(clause->NextSibling->Tokens.Begin, clause->Tokens.End);
+    }
+}
+
+TEST(Parser, RequiresClauseKeepsBoundaryCommentsAndTerminalRecovery)
+{
+    struct DeclarationCase
+    {
+        std::string_view Specifiers;
+        std::string_view Declarator;
+        std::string_view Body;
+    };
+    const DeclarationCase declarations[] = {
+        {"int", "inspect(T value)", "{ return 1; }"},
+        {"T", "* inspect(T* value)", "{ return value; }"},
+        {"T", "& access(T& value)", "{ return value; }"},
+    };
+    struct ConstraintCase
+    {
+        std::string_view Text;
+        bool Unparsed;
+    };
+    const ConstraintCase constraints[] = {
+        {"requires(T v) { v.touch(); } /* boundary */", false},
+        {"requires(T v) { v.touch(); } // boundary", false},
+        {"requires(T v) { v.touch(); } @", true},
+        {"requires(T v) { v.touch(); } && @", false},
+        {"requires(T v) { v.touch(); } @ /* boundary */", true},
+        {"requires(T v) { v.touch(); } && /* operand */ enabled", false},
+        {"requires(T v) { v.touch(); } || // operand\n enabled", false},
+        {"requires(T v) { v.touch(); } && (left * invoke(value) > 0)", false},
+        {"requires(T v) { v.touch(); } || (left & mask)", false},
+        {"requires(T v) { v.touch(); } && ! /* unary */ enabled", false},
+        {"requires(T v) { v.touch(); } @ && /* operand */ enabled", true},
+    };
+    for (const auto &declaration : declarations) {
+        for (const auto &constraint : constraints) {
+            const auto constraintText = constraint.Text;
+            const auto declarationText = std::string(declaration.Specifiers) +
+                " " + std::string(declaration.Declarator) + " " +
+                std::string(declaration.Body);
+            const auto source = "template<class T> requires " +
+                std::string(constraintText) + "\n" + declarationText +
+                "\nint outside;\n";
+            SCOPED_TRACE(source);
+            PaddedInput input(source);
+            std::vector<parser::ParseError> errors;
+            const auto tree = parser::Parse(input.View(),
+                [&](parser::ParseError error) { errors.push_back(std::move(error)); });
+            const auto invalidOffset = source.find('@');
+            if (invalidOffset != std::string::npos) {
+                ASSERT_EQ(errors.size(), 1u);
+                EXPECT_EQ(errors.front().Message, "Unexpected token");
+                EXPECT_EQ(errors.front().Position.Line, 1u);
+                EXPECT_EQ(errors.front().Position.Column, invalidOffset + 2);
+            } else {
+                EXPECT_TRUE(errors.empty());
+            }
+            const auto *owner = tree.Root().FirstChild;
+            ASSERT_NE(owner, nullptr);
+            EXPECT_EQ(owner->Kind, parser::NodeKind::TemplateDeclaration);
+            const auto *clause = owner->FirstChild;
+            while (clause && clause->Kind != parser::NodeKind::RequiresClause) {
+                clause = clause->NextSibling;
+            }
+            ASSERT_NE(clause, nullptr);
+            ASSERT_NE(clause->FirstChild, nullptr);
+            EXPECT_EQ(tree.SourceText(clause->FirstChild->Tokens), constraintText);
+            bool unparsed = false;
+            std::vector<const Node *> pending{clause};
+            while (!pending.empty()) {
+                const auto *node = pending.back();
+                pending.pop_back();
+                unparsed |= node->Kind == parser::NodeKind::UnparsedSyntax;
+                EXPECT_GE(node->Tokens.Begin, clause->Tokens.Begin);
+                EXPECT_LE(node->Tokens.End, clause->Tokens.End);
+                for (const auto *child = node->FirstChild; child; child = child->NextSibling) {
+                    pending.push_back(child);
+                }
+            }
+            EXPECT_EQ(unparsed, constraint.Unparsed);
+            size_t invalidTokens = 0;
+            for (auto token = clause->Tokens.Begin; token < clause->Tokens.End; ++token) {
+                if (tree.Kind(token) == tokenizer::TokenKind::Invalid) {
+                    ++invalidTokens;
+                    EXPECT_EQ(tree.TokenText(token), "@");
+                    EXPECT_EQ(tree.Token(token).Text.Begin, invalidOffset);
+                    EXPECT_EQ(tree.Token(token).Text.End, invalidOffset + 1);
+                }
+            }
+            EXPECT_EQ(invalidTokens, invalidOffset != std::string::npos ? 1u : 0u);
+            if (constraint.Unparsed) {
+                const auto *tail = clause->FirstChild->LastChild;
+                ASSERT_NE(tail, nullptr);
+                EXPECT_EQ(tail->Kind, parser::NodeKind::UnparsedSyntax);
+                EXPECT_EQ(tree.Kind(tail->Tokens.Begin), tokenizer::TokenKind::Invalid);
+                EXPECT_EQ(tree.TokenText(tail->Tokens.Begin), "@");
+                EXPECT_EQ(tree.SourceText(tail->Tokens), constraintText.substr(constraintText.find('@')));
+                EXPECT_EQ(tail->Tokens.End, clause->Tokens.End);
+            }
+            const auto *function = clause->NextSibling;
+            ASSERT_NE(function, nullptr);
+            EXPECT_EQ(tree.SourceText(function->Tokens), declarationText);
+            EXPECT_EQ(function->Tokens.Begin, clause->Tokens.End);
+            EXPECT_EQ(function->Kind, parser::NodeKind::FunctionDefinition);
+            if (function->Kind != parser::NodeKind::FunctionDefinition) {
+                continue;
+            }
+            ASSERT_NE(function->FirstChild, nullptr);
+            EXPECT_EQ(function->FirstChild->Kind, parser::NodeKind::DeclarationSpecifiers);
+            EXPECT_EQ(tree.SourceText(function->FirstChild->Tokens), declaration.Specifiers);
+            const auto *declarator = function->FirstChild->NextSibling;
+            ASSERT_NE(declarator, nullptr);
+            EXPECT_EQ(declarator->Kind, parser::NodeKind::InitDeclaratorList);
+            EXPECT_EQ(tree.SourceText(declarator->Tokens), declaration.Declarator);
+            EXPECT_EQ(function->LastChild->Kind, parser::NodeKind::CompoundStatement);
+            EXPECT_EQ(tree.SourceText(function->LastChild->Tokens), declaration.Body);
+            ASSERT_NE(owner->NextSibling, nullptr);
+            EXPECT_EQ(tree.SourceText(owner->NextSibling->Tokens), "int outside;");
+            EXPECT_EQ(owner->NextSibling->Tokens.Begin, owner->Tokens.End);
+        }
+    }
+}
+
+TEST(Parser, RequiresClauseKeepsUnparsedSuffixAndDiagnosesMissingBody)
+{
+    for (const bool missingBody : {false, true}) {
+        const std::string constraintText = missingBody
+            ? "requires(T value)"
+            : "requires(T value) { value.touch(); } @ discarded";
+        const auto source = "template<class T> requires " + constraintText +
+            "\nstruct Container {};\nint outside;\n";
+        SCOPED_TRACE(source);
+        PaddedInput input(source);
+        std::vector<parser::ParseError> errors;
+        const auto tree = parser::Parse(input.View(),
+            [&](parser::ParseError error) { errors.push_back(std::move(error)); });
+        if (missingBody) {
+            ASSERT_FALSE(errors.empty());
+            EXPECT_EQ(errors.front().Message, "expected complete requirement body");
+        }
+        const auto *owner = tree.Root().FirstChild;
+        ASSERT_NE(owner, nullptr);
+        const auto *clause = owner->FirstChild;
+        while (clause && clause->Kind != parser::NodeKind::RequiresClause) {
+            clause = clause->NextSibling;
+        }
+        ASSERT_NE(clause, nullptr);
+        ASSERT_NE(clause->FirstChild, nullptr);
+        EXPECT_EQ(tree.SourceText(clause->FirstChild->Tokens), constraintText);
+        if (!missingBody) {
+            const auto *tail = clause->FirstChild->LastChild;
+            ASSERT_NE(tail, nullptr);
+            EXPECT_EQ(tail->Kind, parser::NodeKind::UnparsedSyntax);
+            EXPECT_EQ(tree.SourceText(tail->Tokens), "@ discarded");
+            EXPECT_EQ(tail->Tokens.End, clause->Tokens.End);
+        }
+        ASSERT_NE(clause->NextSibling, nullptr);
+        EXPECT_EQ(clause->NextSibling->Kind, parser::NodeKind::RecordDeclaration);
+        EXPECT_EQ(tree.SourceText(clause->NextSibling->Tokens), "struct Container {};");
+        ASSERT_NE(owner->NextSibling, nullptr);
+        EXPECT_EQ(tree.SourceText(owner->NextSibling->Tokens), "int outside;");
+    }
+}
+
+TEST(Parser, RequiresClauseRetainsDirectiveInsideRequirementBody)
+{
+    PaddedInput input("template<class T> requires requires(T value) {\n"
+        "#define REQUIREMENT_VALUE 1\n"
+        "value.touch();\n}\nstruct Container {};\n");
+    size_t errors = 0;
+    const auto tree = parser::Parse(input.View(), [&](parser::ParseError) { ++errors; });
+    EXPECT_EQ(errors, 0u);
+    const auto *owner = tree.Root().FirstChild;
+    ASSERT_NE(owner, nullptr);
+    size_t bodies = 0;
+    size_t directives = 0;
+    std::vector<const Node *> pending{owner};
+    while (!pending.empty()) {
+        const auto *node = pending.back();
+        pending.pop_back();
+        if (node->Kind == parser::NodeKind::RequirementBody) {
+            ++bodies;
+            EXPECT_EQ(tree.Role(node->Tokens.Begin), parser::PunctuationRole::BlockDelimiter);
+            for (auto token = node->Tokens.Begin; token < node->Tokens.End; ++token) {
+                if (tree.Kind(token) == tokenizer::TokenKind::PreprocessingDirective) {
+                    ++directives;
+                    EXPECT_TRUE(tree.TokenText(token).starts_with("#define REQUIREMENT_VALUE 1"));
+                }
+            }
+        }
+        for (const auto *child = node->FirstChild; child; child = child->NextSibling) {
+            pending.push_back(child);
+        }
+    }
+    EXPECT_EQ(bodies, 1u);
+    EXPECT_EQ(directives, 1u);
+    ASSERT_NE(owner->LastChild, nullptr);
+    EXPECT_EQ(owner->LastChild->Kind, parser::NodeKind::RecordDeclaration);
+    EXPECT_EQ(tree.SourceText(owner->LastChild->Tokens), "struct Container {};");
 }
 
 TEST(Parser, ParameterDefaultsKeepDelimitedComparisonBoundaries)

@@ -947,6 +947,12 @@ TEST(ConfigPolicy, PendingConsumersFailClosedWithoutChangingExistingRejections)
         const TemporaryConfig config(text);
         auto style = formatter::LoadConfigFile(config.Path).FormattingStyle;
         EXPECT_NO_THROW((void)formatter::CompilePolicies(style));
+        if (std::string_view(text).starts_with("StandaloneComment"))
+        {
+            EXPECT_NO_THROW((void)formatter::PreparedFormat(style));
+        }
+        else
+        {
         try {
             (void)formatter::PreparedFormat(style);
             FAIL() << "unsupported behavior was silently accepted";
@@ -956,6 +962,7 @@ TEST(ConfigPolicy, PendingConsumersFailClosedWithoutChangingExistingRejections)
             EXPECT_NE(message.find(setting.substr(0, setting.find(' '))),
                       std::string::npos);
             EXPECT_NE(message.find("staged configuration"), std::string::npos);
+        }
         }
         style.CallLikeMacroNames = {"REGISTER_ITEM"};
         try {

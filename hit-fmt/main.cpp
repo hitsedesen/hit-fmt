@@ -1453,7 +1453,9 @@ int main(int argc, char *argv[])
             };
             auto source = paddedSource.View();
             const auto &config = resolver.Resolve(path);
-            const auto checked = hit_fmt::CheckFile(paddedSource, config);
+            const auto inputFilePath = path.generic_string();
+            const auto checked = hit_fmt::CheckFile(
+                paddedSource, config, inputFilePath);
             if (options.Fix && checked.FormattingMismatch)
             {
                 util::WriteEntireFile(filePath, checked.Formatting.Text);

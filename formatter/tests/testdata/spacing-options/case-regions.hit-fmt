@@ -1,0 +1,9 @@
+Layout = Canonical
+ColumnLimit = 120
+IndentationKind = Spaces
+IndentWidth = 4
+BlockBodyIndentWidth = 3
+BodiesLayout = Canonical
+BodyShape = Expanded
+IndentCaseLabels = Preserve
+CaseBlockBracePlacement = NextLine

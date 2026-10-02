@@ -206,6 +206,24 @@ TEST(HunkAdapter, CallerScopeAndExplicitProtectionOnlyNarrowAuthority)
         false,
         HunkStyle(),
         {.ImmutableRanges = protectedLine}).Result.Text, source);
+    formatter::ChangedFormatResult withPath;
+    {
+        std::string path = "missing/directory with spaces/original.cpp";
+        withPath = Changed(source, selected, false, HunkStyle(),
+            {.SourceMap = true, .InputFilePath = path});
+        EXPECT_EQ(withPath.Result.Text,
+            Changed(source, selected, false, HunkStyle()).Result.Text);
+        EXPECT_EQ(Changed(source, selected, false, HunkStyle(),
+            {.ImmutableRanges = protectedLine, .InputFilePath = path}).Result.Text,
+            source);
+        EXPECT_EQ(Changed(source, selected, true, HunkStyle(),
+            {.EditScope = empty, .InputFilePath = path}).Result.Text, source);
+        path.assign(path.size(), '?');
+    }
+    EXPECT_EQ(withPath.SelectedLines, std::vector<formatter::Hunk>({{2, 2}}));
+    EXPECT_EQ(withPath.Result.Text, "void f() {\n    work();\n}\n");
+    EXPECT_FALSE(withPath.Result.Map.empty());
+
     // Scope exclusion limits authority, not semantic planning. A sensitive
     // excluded child makes the outer list genuinely unplanned; selected safe
     // child/neighbor owners still establish their own generated context.

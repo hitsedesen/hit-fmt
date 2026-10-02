@@ -12,10 +12,12 @@
 15 before=public field=RecordBodyInteriorSpacing owner=record-declaration category=11 priority=3 fallback=1 protected=0 constraint=0
 16 before=: field=AccessModifierColonSpacing owner=access-specifier category=11 priority=3 fallback=0 protected=0 constraint=0
 17 before=unsigned field=AccessModifierColonSpacing owner=access-specifier category=11 priority=3 fallback=1 protected=0 constraint=0
+18 before=flags field=None owner=declaration category=10 priority=1 fallback=1 protected=0 constraint=0
 19 before=: field=BitFieldColonSpaceBefore owner=bit-field category=10 priority=3 fallback=1 protected=0 constraint=0
 20 before=3 field=BitFieldColonSpaceAfter owner=bit-field category=10 priority=3 fallback=1 protected=0 constraint=0
 21 before=; field=DeclarationSemicolonSpacing owner=declaration category=10 priority=3 fallback=0 protected=0 constraint=0
 22 before=int field=None owner=record-declaration category=11 priority=1 fallback=1 protected=0 constraint=0
+23 before=field field=None owner=declaration category=10 priority=1 fallback=1 protected=0 constraint=0
 24 before=; field=DeclarationSemicolonSpacing owner=declaration category=10 priority=3 fallback=0 protected=0 constraint=0
 25 before=} field=RecordBodyInteriorSpacing owner=record-declaration category=11 priority=3 fallback=1 protected=0 constraint=0
 26 before=; field=DeclarationSemicolonSpacing owner=record-declaration category=10 priority=3 fallback=0 protected=0 constraint=0
@@ -39,8 +41,10 @@
 48 before=namespace field=None owner=translation-unit category=11 priority=1 fallback=1 protected=0 constraint=0
 50 before={ field=NamespaceBraceSpacing owner=namespace-declaration category=10 priority=3 fallback=1 protected=0 constraint=0
 51 before=int field=NamespaceBodyInteriorSpacing owner=namespace-declaration category=11 priority=3 fallback=1 protected=0 constraint=0
+52 before=item field=None owner=declaration category=10 priority=1 fallback=1 protected=0 constraint=0
 53 before=; field=DeclarationSemicolonSpacing owner=declaration category=10 priority=3 fallback=0 protected=0 constraint=0
 54 before=int field=None owner=namespace-declaration category=11 priority=1 fallback=1 protected=0 constraint=0
+55 before=next field=None owner=declaration category=10 priority=1 fallback=1 protected=0 constraint=0
 56 before=; field=DeclarationSemicolonSpacing owner=declaration category=10 priority=3 fallback=0 protected=0 constraint=0
 57 before=} field=NamespaceBodyInteriorSpacing owner=namespace-declaration category=11 priority=3 fallback=1 protected=0 constraint=0
 58 before=struct field=None owner=translation-unit category=11 priority=1 fallback=1 protected=0 constraint=0
@@ -53,6 +57,7 @@
 66 before=] field=AttributeInteriorSpacing owner=attribute-specifier category=10 priority=3 fallback=0 protected=0 constraint=0
 67 before=] field=None owner=declaration-specifiers category=10 priority=0 fallback=0 protected=1 constraint=2
 68 before=int field=AttributeSpaceAfterSpecifier owner=declaration-specifiers category=10 priority=3 fallback=1 protected=0 constraint=0
+69 before=compute field=None owner=function-declaration category=10 priority=1 fallback=1 protected=0 constraint=0
 70 before=( field=FunctionSpaceBeforeParameters owner=function-declarator category=2 priority=2 fallback=0 protected=0 constraint=0
 71 before=int field=SpaceInsideFunctionParameters owner=function-declarator category=2 priority=2 fallback=0 protected=0 constraint=0
 73 before=, field=CommaSpaceBefore owner=function-declarator category=2 priority=3 fallback=0 protected=0 constraint=0
@@ -71,6 +76,7 @@
 93 before=] field=EmptyAttributeInteriorSpacing owner=attribute-specifier category=10 priority=4 fallback=0 protected=0 constraint=0
 94 before=] field=None owner=declaration-specifiers category=10 priority=0 fallback=0 protected=1 constraint=2
 95 before=int field=AttributeSpaceAfterSpecifier owner=declaration-specifiers category=10 priority=3 fallback=1 protected=0 constraint=0
+96 before=annotated field=None owner=declaration category=10 priority=1 fallback=1 protected=0 constraint=0
 97 before=; field=DeclarationSemicolonSpacing owner=declaration category=10 priority=3 fallback=0 protected=0 constraint=0
 98 before=int field=None owner=translation-unit category=11 priority=1 fallback=1 protected=0 constraint=0
 100 before=* field=NestedDeclaratorInteriorSpacing owner=nested-declarator category=10 priority=3 fallback=0 protected=0 constraint=0
@@ -90,6 +96,7 @@
 120 before=; field=DeclarationSemicolonSpacing owner=using-declaration category=10 priority=3 fallback=0 protected=0 constraint=0
 121 before=alignas field=None owner=translation-unit category=11 priority=1 fallback=1 protected=0 constraint=0
 122 before=( field=AlignasSpaceBeforeParentheses owner=declaration-specifiers category=10 priority=4 fallback=1 protected=0 constraint=0
+126 before=aligned field=None owner=declaration category=10 priority=1 fallback=1 protected=0 constraint=0
 127 before=; field=DeclarationSemicolonSpacing owner=declaration category=10 priority=3 fallback=0 protected=0 constraint=0
 128 before=static_assert field=None owner=translation-unit category=11 priority=1 fallback=1 protected=0 constraint=0
 129 before=( field=StaticAssertSpaceBeforeParentheses owner=static-assert-declaration category=10 priority=4 fallback=1 protected=0 constraint=0
@@ -104,6 +111,7 @@
 139 before=< field=TemplateKeywordSpacing owner=template-parameter-list category=10 priority=2 fallback=0 protected=0 constraint=0
 140 before=class field=TemplateTypeArgumentInteriorSpacing owner=template-parameter-list category=10 priority=2 fallback=0 protected=0 constraint=0
 143 before=> field=TemplateTypeArgumentInteriorSpacing owner=template-parameter-list category=10 priority=2 fallback=0 protected=0 constraint=0
+145 before=examine field=None owner=function-definition category=10 priority=1 fallback=1 protected=0 constraint=0
 146 before=( field=FunctionSpaceBeforeParameters owner=function-declarator category=2 priority=2 fallback=0 protected=0 constraint=0
 147 before=Pack field=SpaceInsideFunctionParameters owner=function-declarator category=2 priority=2 fallback=0 protected=0 constraint=0
 150 before=) field=SpaceInsideFunctionParameters owner=function-declarator category=2 priority=2 fallback=0 protected=0 constraint=0
@@ -112,15 +120,18 @@
 153 before=< field=TemplateTypeArgumentSpacing owner=template-argument-list category=10 priority=2 fallback=0 protected=0 constraint=0
 154 before=int field=TemplateTypeArgumentInteriorSpacing owner=template-argument-list category=10 priority=2 fallback=0 protected=0 constraint=0
 155 before=> field=TemplateTypeArgumentInteriorSpacing owner=template-argument-list category=10 priority=2 fallback=0 protected=0 constraint=0
+156 before=object field=None owner=declaration-statement category=10 priority=1 fallback=1 protected=0 constraint=0
 157 before={ field=BraceInitializerSpacing owner=braced-initializer category=3 priority=2 fallback=0 protected=0 constraint=0
 158 before=} field=EmptyBraceInitializerInteriorSpacing owner=braced-initializer category=3 priority=3 fallback=0 protected=0 constraint=0
 159 before=; field=DeclarationSemicolonSpacing owner=declaration-statement category=10 priority=3 fallback=0 protected=0 constraint=0
 160 before=int field=None owner=compound-statement category=11 priority=1 fallback=1 protected=0 constraint=0
+161 before=values field=None owner=declaration-statement category=10 priority=1 fallback=1 protected=0 constraint=0
 162 before=[ field=ArrayDeclarationSpacing owner=array-declarator category=10 priority=2 fallback=0 protected=0 constraint=0
 163 before=2 field=ArrayDeclarationInteriorSpacing owner=array-declarator category=10 priority=2 fallback=0 protected=0 constraint=0
 164 before=] field=ArrayDeclarationInteriorSpacing owner=array-declarator category=10 priority=2 fallback=0 protected=0 constraint=0
 165 before=; field=DeclarationSemicolonSpacing owner=declaration-statement category=10 priority=3 fallback=0 protected=0 constraint=0
 166 before=extern field=None owner=compound-statement category=11 priority=1 fallback=1 protected=0 constraint=0
+168 before=incomplete field=None owner=declaration-statement category=10 priority=1 fallback=1 protected=0 constraint=0
 169 before=[ field=ArrayDeclarationSpacing owner=array-declarator category=10 priority=2 fallback=0 protected=0 constraint=0
 170 before=] field=EmptyArrayDeclarationInteriorSpacing owner=array-declarator category=10 priority=3 fallback=0 protected=0 constraint=0
 171 before=; field=DeclarationSemicolonSpacing owner=declaration-statement category=10 priority=3 fallback=0 protected=0 constraint=0
@@ -133,6 +144,7 @@
 179 before=object field=AssignmentOperatorSpacing owner=declaration-statement category=10 priority=1 fallback=1 protected=0 constraint=0
 180 before=; field=DeclarationSemicolonSpacing owner=declaration-statement category=10 priority=3 fallback=0 protected=0 constraint=0
 181 before=auto field=None owner=compound-statement category=11 priority=1 fallback=1 protected=0 constraint=0
+182 before=capture field=None owner=declaration-statement category=10 priority=1 fallback=1 protected=0 constraint=0
 183 before== field=AssignmentOperatorSpacing owner=declaration-statement category=10 priority=1 fallback=1 protected=0 constraint=0
 184 before=[ field=AssignmentOperatorSpacing owner=declaration-statement category=10 priority=1 fallback=1 protected=0 constraint=0
 185 before=first field=SpaceAroundCaptureList owner=lambda-capture-list category=4 priority=2 fallback=0 protected=0 constraint=0
@@ -159,6 +171,7 @@
 208 before=} field=BlockInteriorSpacing owner=lambda-body category=12 priority=2 fallback=1 protected=0 constraint=0
 209 before=; field=DeclarationSemicolonSpacing owner=declaration-statement category=10 priority=3 fallback=0 protected=0 constraint=0
 210 before=auto field=None owner=compound-statement category=11 priority=1 fallback=1 protected=0 constraint=0
+211 before=empty field=None owner=declaration-statement category=10 priority=1 fallback=1 protected=0 constraint=0
 212 before== field=AssignmentOperatorSpacing owner=declaration-statement category=10 priority=1 fallback=1 protected=0 constraint=0
 213 before=[ field=AssignmentOperatorSpacing owner=declaration-statement category=10 priority=1 fallback=1 protected=0 constraint=0
 214 before=] field=EmptyLambdaCaptureSpacing owner=lambda-capture-list category=4 priority=3 fallback=0 protected=0 constraint=0
@@ -192,6 +205,7 @@
 242 before=] field=AttributeInteriorSpacing owner=attribute-specifier category=10 priority=3 fallback=0 protected=0 constraint=0
 243 before=] field=None owner=declaration-specifiers category=10 priority=0 fallback=0 protected=1 constraint=2
 244 before=int field=AttributeSpaceAfterSpecifier owner=declaration-specifiers category=10 priority=3 fallback=1 protected=0 constraint=0
+245 before=attached field=None owner=declaration-statement category=10 priority=1 fallback=1 protected=0 constraint=0
 246 before=; field=DeclarationSemicolonSpacing owner=declaration-statement category=10 priority=3 fallback=0 protected=0 constraint=0
 248 before=opaque field=GroupingInteriorSpacing owner=parenthesized-expression category=8 priority=2 fallback=0 protected=0 constraint=0
 249 before=) field=GroupingInteriorSpacing owner=parenthesized-expression category=8 priority=2 fallback=0 protected=0 constraint=0
@@ -201,6 +215,7 @@
 253 before=second field=None owner=call-expression category=0 priority=255 fallback=0 protected=0 constraint=1
 254 before=) field=None owner=call-expression category=0 priority=255 fallback=0 protected=0 constraint=1
 255 before=; field=StatementSemicolonSpacing owner=expression-statement category=11 priority=2 fallback=0 protected=0 constraint=0
+257 before=aggregate field=None owner=declaration-statement category=10 priority=1 fallback=1 protected=0 constraint=0
 258 before={ field=BraceInitializerSpacing owner=braced-initializer category=3 priority=2 fallback=0 protected=0 constraint=0
 259 before=1 field=InitializerBracesSpacing owner=braced-initializer category=3 priority=2 fallback=0 protected=0 constraint=0
 260 before=, field=CommaSpaceBefore owner=initializer-list category=3 priority=3 fallback=0 protected=0 constraint=0
@@ -208,6 +223,7 @@
 262 before=} field=InitializerBracesSpacing owner=braced-initializer category=3 priority=2 fallback=0 protected=0 constraint=0
 263 before=; field=DeclarationSemicolonSpacing owner=declaration-statement category=10 priority=3 fallback=0 protected=0 constraint=0
 264 before=auto field=None owner=compound-statement category=11 priority=1 fallback=1 protected=0 constraint=0
+265 before=allocation field=None owner=declaration-statement category=10 priority=1 fallback=1 protected=0 constraint=0
 266 before== field=AssignmentOperatorSpacing owner=declaration-statement category=10 priority=1 fallback=1 protected=0 constraint=0
 267 before=new field=AssignmentOperatorSpacing owner=declaration-statement category=10 priority=1 fallback=1 protected=0 constraint=0
 268 before=( field=PlacementNewSpaceBeforeArguments owner=new-placement category=8 priority=4 fallback=1 protected=0 constraint=0
@@ -219,6 +235,7 @@
 274 before=) field=NewInitializerParenthesisInteriorSpacing owner=new-initializer category=3 priority=4 fallback=0 protected=0 constraint=0
 275 before=; field=DeclarationSemicolonSpacing owner=declaration-statement category=10 priority=3 fallback=0 protected=0 constraint=0
 276 before=auto field=None owner=compound-statement category=11 priority=1 fallback=1 protected=0 constraint=0
+277 before=braceAllocation field=None owner=declaration-statement category=10 priority=1 fallback=1 protected=0 constraint=0
 278 before== field=AssignmentOperatorSpacing owner=declaration-statement category=10 priority=1 fallback=1 protected=0 constraint=0
 279 before=new field=AssignmentOperatorSpacing owner=declaration-statement category=10 priority=1 fallback=1 protected=0 constraint=0
 281 before={ field=NewInitializerSpaceBeforeBraces owner=new-initializer category=3 priority=4 fallback=0 protected=0 constraint=0
@@ -226,6 +243,7 @@
 283 before=} field=NewInitializerBraceInteriorSpacing owner=new-initializer category=3 priority=4 fallback=0 protected=0 constraint=0
 284 before=; field=DeclarationSemicolonSpacing owner=declaration-statement category=10 priority=3 fallback=0 protected=0 constraint=0
 285 before=auto field=None owner=compound-statement category=11 priority=1 fallback=1 protected=0 constraint=0
+286 before=arrayAllocation field=None owner=declaration-statement category=10 priority=1 fallback=1 protected=0 constraint=0
 287 before== field=AssignmentOperatorSpacing owner=declaration-statement category=10 priority=1 fallback=1 protected=0 constraint=0
 288 before=new field=AssignmentOperatorSpacing owner=declaration-statement category=10 priority=1 fallback=1 protected=0 constraint=0
 290 before=[ field=NewArraySpaceBeforeBrackets owner=new-expression category=8 priority=3 fallback=0 protected=0 constraint=0
@@ -233,6 +251,7 @@
 292 before=] field=NewArrayInteriorSpacing owner=new-expression category=8 priority=3 fallback=0 protected=0 constraint=0
 293 before=; field=DeclarationSemicolonSpacing owner=declaration-statement category=10 priority=3 fallback=0 protected=0 constraint=0
 294 before=auto field=None owner=compound-statement category=11 priority=1 fallback=1 protected=0 constraint=0
+295 before=emptyArrayAllocation field=None owner=declaration-statement category=10 priority=1 fallback=1 protected=0 constraint=0
 296 before== field=AssignmentOperatorSpacing owner=declaration-statement category=10 priority=1 fallback=1 protected=0 constraint=0
 297 before=new field=AssignmentOperatorSpacing owner=declaration-statement category=10 priority=1 fallback=1 protected=0 constraint=0
 299 before=[ field=NewArraySpaceBeforeBrackets owner=new-expression category=8 priority=3 fallback=0 protected=0 constraint=0
@@ -257,6 +276,7 @@
 322 before=arrayAllocation field=DeleteArraySpaceAfterBrackets owner=delete-array-marker category=8 priority=4 fallback=1 protected=0 constraint=0
 323 before=; field=StatementSemicolonSpacing owner=expression-statement category=11 priority=2 fallback=0 protected=0 constraint=0
 324 before=auto field=None owner=compound-statement category=11 priority=1 fallback=1 protected=0 constraint=0
+325 before=converted field=None owner=declaration-statement category=10 priority=1 fallback=1 protected=0 constraint=0
 326 before== field=AssignmentOperatorSpacing owner=declaration-statement category=10 priority=1 fallback=1 protected=0 constraint=0
 327 before=static_cast field=AssignmentOperatorSpacing owner=declaration-statement category=10 priority=1 fallback=1 protected=0 constraint=0
 328 before=< field=NamedCastSpaceBeforeTypeArguments owner=cast-expression category=8 priority=4 fallback=0 protected=0 constraint=0
@@ -267,6 +287,7 @@
 333 before=) field=CastArgumentSpacing owner=cast-expression category=8 priority=3 fallback=0 protected=0 constraint=0
 334 before=; field=DeclarationSemicolonSpacing owner=declaration-statement category=10 priority=3 fallback=0 protected=0 constraint=0
 335 before=auto field=None owner=compound-statement category=11 priority=1 fallback=1 protected=0 constraint=0
+336 before=cStyle field=None owner=declaration-statement category=10 priority=1 fallback=1 protected=0 constraint=0
 337 before== field=AssignmentOperatorSpacing owner=declaration-statement category=10 priority=1 fallback=1 protected=0 constraint=0
 338 before=( field=AssignmentOperatorSpacing owner=declaration-statement category=10 priority=1 fallback=1 protected=0 constraint=0
 339 before=int field=CastArgumentSpacing owner=cast-expression category=8 priority=3 fallback=0 protected=0 constraint=0
@@ -274,6 +295,7 @@
 341 before=first field=CastSpacing owner=cast-expression category=8 priority=3 fallback=0 protected=0 constraint=0
 342 before=; field=DeclarationSemicolonSpacing owner=declaration-statement category=10 priority=3 fallback=0 protected=0 constraint=0
 343 before=auto field=None owner=compound-statement category=11 priority=1 fallback=1 protected=0 constraint=0
+344 before=grouped field=None owner=declaration-statement category=10 priority=1 fallback=1 protected=0 constraint=0
 345 before== field=AssignmentOperatorSpacing owner=declaration-statement category=10 priority=1 fallback=1 protected=0 constraint=0
 346 before=( field=AssignmentOperatorSpacing owner=declaration-statement category=10 priority=1 fallback=1 protected=0 constraint=0
 347 before=first field=GroupingInteriorSpacing owner=parenthesized-expression category=8 priority=2 fallback=0 protected=0 constraint=0
@@ -282,6 +304,7 @@
 350 before=) field=GroupingInteriorSpacing owner=parenthesized-expression category=8 priority=2 fallback=0 protected=0 constraint=0
 351 before=; field=DeclarationSemicolonSpacing owner=declaration-statement category=10 priority=3 fallback=0 protected=0 constraint=0
 352 before=auto field=None owner=compound-statement category=11 priority=1 fallback=1 protected=0 constraint=0
+353 before=unary field=None owner=declaration-statement category=10 priority=1 fallback=1 protected=0 constraint=0
 354 before== field=AssignmentOperatorSpacing owner=declaration-statement category=10 priority=1 fallback=1 protected=0 constraint=0
 355 before=not field=AssignmentOperatorSpacing owner=declaration-statement category=10 priority=1 fallback=1 protected=0 constraint=0
 356 before=first field=UnaryOperatorSpacing owner=unary-expression category=8 priority=1 fallback=1 protected=0 constraint=0
@@ -300,6 +323,7 @@
 369 before=second field=TernaryOperatorSpacing owner=conditional-expression category=8 priority=1 fallback=1 protected=0 constraint=0
 370 before=; field=StatementSemicolonSpacing owner=expression-statement category=11 priority=2 fallback=0 protected=0 constraint=0
 371 before=auto field=None owner=compound-statement category=11 priority=1 fallback=1 protected=0 constraint=0
+372 before=folded field=None owner=declaration-statement category=10 priority=1 fallback=1 protected=0 constraint=0
 373 before== field=AssignmentOperatorSpacing owner=declaration-statement category=10 priority=1 fallback=1 protected=0 constraint=0
 374 before=( field=AssignmentOperatorSpacing owner=declaration-statement category=10 priority=1 fallback=1 protected=0 constraint=0
 375 before=arguments field=GroupingInteriorSpacing owner=fold-expression category=8 priority=2 fallback=0 protected=0 constraint=0
@@ -310,6 +334,7 @@
 380 before=) field=GroupingInteriorSpacing owner=fold-expression category=8 priority=2 fallback=0 protected=0 constraint=0
 381 before=; field=DeclarationSemicolonSpacing owner=declaration-statement category=10 priority=3 fallback=0 protected=0 constraint=0
 382 before=auto field=None owner=compound-statement category=11 priority=1 fallback=1 protected=0 constraint=0
+383 before=size field=None owner=declaration-statement category=10 priority=1 fallback=1 protected=0 constraint=0
 384 before== field=AssignmentOperatorSpacing owner=declaration-statement category=10 priority=1 fallback=1 protected=0 constraint=0
 385 before=sizeof field=AssignmentOperatorSpacing owner=declaration-statement category=10 priority=1 fallback=1 protected=0 constraint=0
 386 before=( field=SizeofSpaceBeforeParentheses owner=unary-expression category=8 priority=4 fallback=1 protected=0 constraint=0
@@ -327,6 +352,7 @@
 399 before=) field=GroupingInteriorSpacing owner=call-expression category=8 priority=3 fallback=0 protected=0 constraint=0
 400 before=; field=DeclarationSemicolonSpacing owner=declaration-statement category=10 priority=3 fallback=0 protected=0 constraint=0
 401 before=auto field=None owner=compound-statement category=11 priority=1 fallback=1 protected=0 constraint=0
+402 before=identity field=None owner=declaration-statement category=10 priority=1 fallback=1 protected=0 constraint=0
 403 before== field=AssignmentOperatorSpacing owner=declaration-statement category=10 priority=1 fallback=1 protected=0 constraint=0
 404 before=typeid field=AssignmentOperatorSpacing owner=declaration-statement category=10 priority=1 fallback=1 protected=0 constraint=0
 405 before=( field=TypeidSpaceBeforeParentheses owner=call-expression category=8 priority=4 fallback=1 protected=0 constraint=0
@@ -334,6 +360,7 @@
 407 before=) field=GroupingInteriorSpacing owner=call-expression category=8 priority=3 fallback=0 protected=0 constraint=0
 408 before=; field=DeclarationSemicolonSpacing owner=declaration-statement category=10 priority=3 fallback=0 protected=0 constraint=0
 409 before=auto field=None owner=compound-statement category=11 priority=1 fallback=1 protected=0 constraint=0
+410 before=ready field=None owner=declaration-statement category=10 priority=1 fallback=1 protected=0 constraint=0
 411 before== field=AssignmentOperatorSpacing owner=declaration-statement category=10 priority=1 fallback=1 protected=0 constraint=0
 412 before=co_await field=AssignmentOperatorSpacing owner=declaration-statement category=10 priority=1 fallback=1 protected=0 constraint=0
 413 before=( field=CoAwaitSpaceBeforeParentheses owner=unary-expression category=8 priority=4 fallback=1 protected=0 constraint=0
@@ -434,10 +461,12 @@
 521 before=} field=RecordBodyInteriorSpacing owner=record-declaration category=11 priority=3 fallback=1 protected=0 constraint=0
 522 before=; field=DeclarationSemicolonSpacing owner=record-declaration category=10 priority=3 fallback=0 protected=0 constraint=0
 523 before=int field=None owner=translation-unit category=11 priority=1 fallback=1 protected=0 constraint=0
+524 before=emptyParameters field=None owner=function-declaration category=10 priority=1 fallback=1 protected=0 constraint=0
 525 before=( field=FunctionSpaceBeforeParameters owner=function-declarator category=2 priority=2 fallback=0 protected=0 constraint=0
 526 before=) field=EmptyFunctionParametersSpacing owner=function-declarator category=2 priority=3 fallback=0 protected=0 constraint=0
 527 before=; field=DeclarationSemicolonSpacing owner=function-declaration category=10 priority=3 fallback=0 protected=0 constraint=0
 528 before=auto field=None owner=translation-unit category=11 priority=1 fallback=1 protected=0 constraint=0
+529 before=trailing field=None owner=function-declaration category=10 priority=1 fallback=1 protected=0 constraint=0
 530 before=( field=FunctionSpaceBeforeParameters owner=function-declarator category=2 priority=2 fallback=0 protected=0 constraint=0
 531 before=int field=SpaceInsideFunctionParameters owner=function-declarator category=2 priority=2 fallback=0 protected=0 constraint=0
 533 before=) field=SpaceInsideFunctionParameters owner=function-declarator category=2 priority=2 fallback=0 protected=0 constraint=0
@@ -445,6 +474,7 @@
 535 before=int field=ReturnArrowSpaceAfter owner=function-declarator category=10 priority=3 fallback=1 protected=0 constraint=0
 536 before=; field=DeclarationSemicolonSpacing owner=function-declaration category=10 priority=3 fallback=0 protected=0 constraint=0
 537 before=auto field=None owner=translation-unit category=11 priority=1 fallback=1 protected=0 constraint=0
+538 before=requirements field=None owner=declaration category=10 priority=1 fallback=1 protected=0 constraint=0
 539 before== field=AssignmentOperatorSpacing owner=declaration category=10 priority=1 fallback=1 protected=0 constraint=0
 540 before=requires field=AssignmentOperatorSpacing owner=declaration category=10 priority=1 fallback=1 protected=0 constraint=0
 541 before=( field=RequiresSpaceBeforeParentheses owner=requires-expression category=8 priority=4 fallback=1 protected=0 constraint=0
@@ -454,6 +484,7 @@
 550 before=} field=RequirementBodyInteriorSpacing owner=requirement-body category=11 priority=2 fallback=1 protected=0 constraint=0
 551 before=; field=DeclarationSemicolonSpacing owner=declaration category=10 priority=3 fallback=0 protected=0 constraint=0
 552 before=auto field=None owner=translation-unit category=11 priority=1 fallback=1 protected=0 constraint=0
+553 before=allocateEmpty field=None owner=declaration category=10 priority=1 fallback=1 protected=0 constraint=0
 554 before== field=AssignmentOperatorSpacing owner=declaration category=10 priority=1 fallback=1 protected=0 constraint=0
 555 before=new field=AssignmentOperatorSpacing owner=declaration category=10 priority=1 fallback=1 protected=0 constraint=0
 557 before=( field=NewInitializerSpaceBeforeParentheses owner=new-initializer category=3 priority=4 fallback=0 protected=0 constraint=0
@@ -493,6 +524,7 @@
 593 before=; field=DeclarationSemicolonSpacing owner=import-declaration category=10 priority=3 fallback=0 protected=0 constraint=0
 594 before=#define FEATURE_LEVEL 1 field=None owner=preprocessing-directive category=0 priority=0 fallback=0 protected=0 constraint=2
 595 before=export field=None owner=export-declaration category=0 priority=0 fallback=0 protected=1 constraint=2
+599 before=exposed field=None owner=declaration category=10 priority=1 fallback=1 protected=0 constraint=0
 600 before=; field=DeclarationSemicolonSpacing owner=declaration category=10 priority=3 fallback=0 protected=0 constraint=0
 601 before=/* member */ field=None owner=export-declaration category=11 priority=1 fallback=1 protected=0 constraint=2
 602 before=[ field=AttributeSpaceBeforeSpecifier owner=declaration-specifiers category=10 priority=3 fallback=1 protected=0 constraint=0
@@ -501,16 +533,19 @@
 605 before=] field=AttributeInteriorSpacing owner=attribute-specifier category=10 priority=3 fallback=0 protected=0 constraint=0
 606 before=] field=None owner=declaration-specifiers category=10 priority=0 fallback=0 protected=1 constraint=2
 607 before=int field=AttributeSpaceAfterSpecifier owner=declaration-specifiers category=10 priority=3 fallback=1 protected=0 constraint=0
+608 before=another field=None owner=declaration category=10 priority=1 fallback=1 protected=0 constraint=0
 609 before=; field=DeclarationSemicolonSpacing owner=declaration category=10 priority=3 fallback=0 protected=0 constraint=0
 611 before=template field=None owner=translation-unit category=11 priority=1 fallback=1 protected=0 constraint=0
 612 before=< field=TemplateKeywordSpacing owner=template-parameter-list category=10 priority=2 fallback=0 protected=0 constraint=0
 613 before=class field=TemplateTypeArgumentInteriorSpacing owner=template-parameter-list category=10 priority=2 fallback=0 protected=0 constraint=0
 616 before=> field=TemplateTypeArgumentInteriorSpacing owner=template-parameter-list category=10 priority=2 fallback=0 protected=0 constraint=0
+618 before=captureAssign field=None owner=function-definition category=10 priority=1 fallback=1 protected=0 constraint=0
 619 before=( field=FunctionSpaceBeforeParameters owner=function-declarator category=2 priority=2 fallback=0 protected=0 constraint=0
 620 before=Values field=SpaceInsideFunctionParameters owner=function-declarator category=2 priority=2 fallback=0 protected=0 constraint=0
 623 before=) field=SpaceInsideFunctionParameters owner=function-declarator category=2 priority=2 fallback=0 protected=0 constraint=0
 624 before={ field=FunctionBraceSpacing owner=function-definition category=10 priority=3 fallback=1 protected=0 constraint=0
 625 before=auto field=BlockInteriorSpacing owner=compound-statement category=11 priority=2 fallback=1 protected=0 constraint=0
+626 before=nested field=None owner=declaration-statement category=10 priority=1 fallback=1 protected=0 constraint=0
 627 before== field=AssignmentOperatorSpacing owner=declaration-statement category=10 priority=1 fallback=1 protected=0 constraint=0
 628 before=[ field=AssignmentOperatorSpacing owner=declaration-statement category=10 priority=1 fallback=1 protected=0 constraint=0
 629 before=& field=SpaceAroundCaptureList owner=lambda-capture-list category=4 priority=2 fallback=0 protected=0 constraint=0
@@ -525,6 +560,7 @@
 640 before=} field=EmptyLambdaBodySpacing owner=lambda-body category=12 priority=3 fallback=1 protected=0 constraint=0
 641 before=; field=DeclarationSemicolonSpacing owner=declaration-statement category=10 priority=3 fallback=0 protected=0 constraint=0
 642 before=auto field=None owner=compound-statement category=11 priority=1 fallback=1 protected=0 constraint=0
+643 before=chain field=None owner=declaration-statement category=10 priority=1 fallback=1 protected=0 constraint=0
 644 before== field=AssignmentOperatorSpacing owner=declaration-statement category=10 priority=1 fallback=1 protected=0 constraint=0
 645 before=[ field=AssignmentOperatorSpacing owner=declaration-statement category=10 priority=1 fallback=1 protected=0 constraint=0
 646 before=... field=SpaceAroundCaptureList owner=lambda-capture-list category=4 priority=2 fallback=0 protected=0 constraint=0
@@ -537,6 +573,7 @@
 654 before=} field=EmptyLambdaBodySpacing owner=lambda-body category=12 priority=3 fallback=1 protected=0 constraint=0
 655 before=; field=DeclarationSemicolonSpacing owner=declaration-statement category=10 priority=3 fallback=0 protected=0 constraint=0
 656 before=auto field=None owner=compound-statement category=11 priority=1 fallback=1 protected=0 constraint=0
+657 before=defaults field=None owner=declaration-statement category=10 priority=1 fallback=1 protected=0 constraint=0
 658 before== field=AssignmentOperatorSpacing owner=declaration-statement category=10 priority=1 fallback=1 protected=0 constraint=0
 659 before=[ field=AssignmentOperatorSpacing owner=declaration-statement category=10 priority=1 fallback=1 protected=0 constraint=0
 660 before== field=SpaceAroundCaptureList owner=lambda-capture-list category=4 priority=2 fallback=0 protected=0 constraint=0
@@ -553,6 +590,7 @@
 672 before=; field=StatementSemicolonSpacing owner=do-while-statement category=11 priority=2 fallback=0 protected=0 constraint=0
 673 before=} field=BlockInteriorSpacing owner=compound-statement category=11 priority=2 fallback=1 protected=0 constraint=0
 674 before=void field=None owner=translation-unit category=11 priority=1 fallback=1 protected=0 constraint=0
+675 before=guarded field=None owner=function-definition category=10 priority=1 fallback=1 protected=0 constraint=0
 676 before=( field=FunctionSpaceBeforeParameters owner=function-declarator category=2 priority=2 fallback=0 protected=0 constraint=0
 677 before=) field=EmptyFunctionParametersSpacing owner=function-declarator category=2 priority=3 fallback=0 protected=0 constraint=0
 678 before=try field=None owner=function-definition category=10 priority=2 fallback=1 protected=0 constraint=0
@@ -582,6 +620,7 @@
 705 before={ field=ControlBlockSpaceBeforeBrace owner=catch-clause category=5 priority=3 fallback=1 protected=0 constraint=0
 706 before=} field=EmptyBlockInteriorSpacing owner=compound-statement category=11 priority=3 fallback=1 protected=0 constraint=0
 707 before=int field=None owner=record-declaration category=11 priority=1 fallback=1 protected=0 constraint=0
+708 before=value field=None owner=declaration category=10 priority=1 fallback=1 protected=0 constraint=0
 709 before=; field=DeclarationSemicolonSpacing owner=declaration category=10 priority=3 fallback=0 protected=0 constraint=0
 710 before=} field=RecordBodyInteriorSpacing owner=record-declaration category=11 priority=3 fallback=1 protected=0 constraint=0
 711 before=; field=DeclarationSemicolonSpacing owner=record-declaration category=10 priority=3 fallback=0 protected=0 constraint=0

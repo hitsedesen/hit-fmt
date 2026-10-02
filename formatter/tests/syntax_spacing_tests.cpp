@@ -560,6 +560,64 @@ TEST(SyntaxSpacing, ExactTokensAndProtectionOverrideAllPreferences)
         protectedSource.Safety));
 }
 
+TEST(SyntaxSpacing, CompleteSpecifierToDirectNamedDeclaratorFallback)
+{
+    Analysis analysis("template<class T> struct Box {}; "
+        "Box<int>make(){} Box<Box<int>>nested(){} "
+        "Box<int>  flat(); int scalar(){} "
+        "namespace types {template<class T> struct Box {}; } "
+        "types::Box<int>qualified(){}");
+    for (const auto name : {"make", "nested", "flat", "scalar", "qualified"}) {
+        const auto id = analysis.Before(name);
+        const auto& gap = analysis.Spacing.Gaps()[id];
+        ASSERT_NE(gap.Owner, nullptr) << name;
+        EXPECT_EQ(gap.Category, C::DeclarationHeaders) << name;
+        EXPECT_EQ(gap.Field, F::None) << name;
+        EXPECT_TRUE(gap.FallbackSpace) << name;
+        // This is a lowering fallback, not an explicit spacing demand.
+        EXPECT_EQ(gap.Policy, GapPolicy::Preserve) << name;
+        EXPECT_EQ(analysis.Spacing.SpacePreference(
+            id, GapContext::Rebuilt, analysis.Safety), std::nullopt) << name;
+    }
+}
+
+TEST(SyntaxSpacing, DeclarationFallbackDoesNotGuessPunctuationBoundaries)
+{
+    Analysis analysis("template<class T> struct Box {}; "
+        "Box<int>*pointer(){} Box<int>&reference(){} "
+        "Box<int>(*nested)(int); Box<int> Holder::*member; "
+        "struct C {C(){} ~C(){} operator int(){} }; "
+        "void use(){put<int>(); value=a>b; "
+        "auto cast=static_cast<int>(value);}");
+    for (const auto name : {"pointer", "reference", "nested", "member"}) {
+        const auto id = analysis.Before(name);
+        EXPECT_FALSE(analysis.Spacing.Gaps()[id].FallbackSpace) << name;
+    }
+    // Existing lexical separation at punctuation is independent of the
+    // declaration fallback; do not assert that those gaps have no fallback.
+    for (const auto token : {"*", "&"}) {
+        const auto id = analysis.Before(token);
+        EXPECT_EQ(analysis.Spacing.Gaps()[id].FallbackSpace,
+            analysis.Safety.Gaps()[id].Separation == GapSeparation::Required);
+        EXPECT_EQ(analysis.Spacing.SpacePreference(
+            id, GapContext::Rebuilt, analysis.Safety), std::nullopt);
+    }
+    EXPECT_EQ(analysis.Spacing.Gaps()[analysis.Before("b")].Category,
+        C::Expressions);
+    EXPECT_NE(analysis.Spacing.Gaps()[analysis.Before("put")].Category,
+        C::DeclarationHeaders);
+    // A constructor can inherit a body sequence fallback, not a return-type
+    // boundary. Its owner category must remain independent of this rule.
+    EXPECT_NE(analysis.Spacing.Gaps()[analysis.Before("C", 1)].Category,
+        C::DeclarationHeaders);
+
+    Analysis uncertain("decltype(value)  incomplete(){}");
+    const auto id = uncertain.Before("incomplete");
+    EXPECT_FALSE(uncertain.Spacing.Gaps()[id].FallbackSpace);
+    EXPECT_EQ(uncertain.Spacing.SpacePreference(
+        id, GapContext::Rebuilt, uncertain.Safety), std::nullopt);
+}
+
 TEST(SyntaxSpacing, PointerBindingAndNestedMemberOverrides)
 {
     GapPolicies policies;

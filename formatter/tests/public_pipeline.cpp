@@ -110,6 +110,43 @@ void CheckExcludedCopies(std::string_view source,
     }
 }
 
+TEST(PublicPipeline, StandaloneCommentCountsSupportOwningMapsAndScopedEdges)
+{
+    auto style = Canonical();
+    style.BodyShape = formatter::BodyShape::Expanded;
+    style.EmptyBodyShape = formatter::BodyShape::Expanded;
+    style.StandaloneCommentBlankLinesBefore = {formatter::BlankLineMode::Exact, 1};
+    style.StandaloneCommentBlankLinesAfter = {formatter::BlankLineMode::Exact, 1};
+    const formatter::PreparedFormat prepared(style);
+    const std::string source = "namespace N {\n// note\nint x;\n// end\n}\n";
+    const auto result = FormatInput(source, prepared);
+    EXPECT_NE(result.Text.find("{\n\n// note\n\n"), std::string::npos);
+    EXPECT_NE(result.Text.find("x;\n\n// end\n\n}"), std::string::npos);
+    CheckIdentities(source, result);
+    EXPECT_EQ(FormatInput(result.Text, prepared).Text, result.Text);
+    Input input(source);
+    auto tree = parser::Parse(input.View(), [](parser::ParseError) {});
+    EXPECT_EQ(formatter::Format(tree, prepared).Text, result.Text);
+
+    const auto comment = parser::SourceOffset(source.find("// note"));
+    const std::array selected{parser::SourceRange{0, comment}};
+    formatter::FormatRequest request{.SourceMap = true};
+    request.EditScope = selected;
+    const auto limited = FormatInput(source, prepared, request);
+    EXPECT_EQ(limited.Text, source);
+    CheckExcludedCopies(source, limited, selected);
+    const std::array immutable{parser::SourceRange{comment - 1,
+        parser::SourceOffset(source.find("int x"))}};
+    request.EditScope = {};
+    request.ImmutableRanges = immutable;
+    const auto protectedResult = FormatInput(source, prepared, request);
+    EXPECT_NE(protectedResult.Text.find("{\n// note\nint x;"), std::string::npos);
+    CheckIdentities(source, protectedResult);
+
+    style.MaxEmptyLines = 0;
+    EXPECT_THROW((void)formatter::PreparedFormat(style), std::invalid_argument);
+}
+
 #ifdef HIT_FMT_PIPELINE_CHECKS
 // The full test target registers these fixtures in its existing FormatTest.
 class FormatTest : public testing::TestWithParam<const char*>
@@ -167,6 +204,44 @@ TEST(PublicPipeline, FinalNamespaceWidthDiagnosticsGolden)
     fixture.Expect(diagnostics, ".diagnostics.txt");
 }
 
+TEST(PublicPipeline, DeclarationFallbackRequiresRebuiltOwnerAndEditableGap)
+{
+    const std::string source = "template<class T> struct Box {};\n"
+        "Box<int>  make(){return {};}\n"
+        "Box<int>  flat();\n";
+    auto style = formatter::Style{};
+    style.DeclarationHeadersLayout = formatter::CategoryLayout::Canonical;
+    const formatter::PreparedFormat prepared(style);
+    const auto gapBegin = uint32_t(source.find("  make"));
+    const auto gapEnd = gapBegin + 2;
+    const auto result = FormatInput(source, prepared);
+    EXPECT_NE(result.Text.find("Box<int> make()"), std::string::npos);
+    EXPECT_NE(result.Text.find("Box<int>  flat()"), std::string::npos);
+    CheckIdentities(source, result);
+    EXPECT_EQ(FormatInput(result.Text, prepared).Text, result.Text);
+
+    const std::array<parser::SourceRange, 1> selected{{{gapBegin, gapEnd}}};
+    const auto scoped = FormatInput(source, prepared,
+        {.SourceMap = true, .EditScope = selected});
+    EXPECT_NE(scoped.Text.find("Box<int> make()"), std::string::npos);
+    CheckIdentities(source, scoped);
+    CheckExcludedCopies(source, scoped, selected);
+    const std::array<parser::SourceRange, 1> partial{{{gapBegin, gapEnd - 1}}};
+    const auto unownedEnd = FormatInput(source, prepared,
+        {.SourceMap = true, .EditScope = partial});
+    EXPECT_NE(unownedEnd.Text.find("Box<int>  make()"), std::string::npos);
+    CheckExcludedCopies(source, unownedEnd, partial);
+    const auto protectedGap = FormatInput(source, prepared,
+        {.ImmutableRanges = selected, .SourceMap = true});
+    EXPECT_NE(protectedGap.Text.find("Box<int>  make()"), std::string::npos);
+    CheckIdentities(source, protectedGap);
+
+    style.DeclarationHeadersLayout = formatter::CategoryLayout::Preserve;
+    style.Layout = formatter::LayoutMode::Canonical;
+    const auto preserved = FormatInput(source, formatter::PreparedFormat(style));
+    EXPECT_NE(preserved.Text.find("Box<int>  make()"), std::string::npos);
+}
+
 TEST(PublicPipeline, NoEditTreeSourceParityAndResultLifetime)
 {
     const std::string source = "void f(){ invoke(left,right); }\n";
@@ -177,8 +252,15 @@ TEST(PublicPipeline, NoEditTreeSourceParityAndResultLifetime)
         style.CommaSpaceAfter = formatter::GapPolicy::NoSpace;
         Input input(source);
         auto tree = parser::Parse(input.View(), [](parser::ParseError) {});
-        result = formatter::Format(tree, prepared, { .SourceMap = true });
+        std::string path = "missing/directory with spaces/original.cpp";
+        const formatter::FormatRequest request{
+            .SourceMap = true, .InputFilePath = path};
+        result = formatter::Format(tree, prepared, request);
+        const auto fromSource = formatter::Format(input.View(), prepared, request);
+        EXPECT_EQ(result.Text, fromSource.Text);
+        CheckIdentities(source, fromSource);
         EXPECT_EQ(result.Text, formatter::Format(input.View(), prepared).Text);
+        path.assign(path.size(), '?');
         EXPECT_EQ(result.Text, formatter::Format(tree, Canonical()));
         EXPECT_EQ(result.Text, formatter::Format(input.View(), Canonical()));
     }
@@ -208,13 +290,16 @@ TEST(PublicPipeline, NoEditTreeSourceParityAndResultLifetime)
         style.ColumnLimit = 0; // Mutating Style cannot affect prepared scalars.
         Input input(composed);
         auto tree = parser::Parse(input.View(), [](parser::ParseError) {});
+        std::string path = "not/a/real/source/location/record.cpp";
         withMetadata = formatter::Format(tree, prepared,
-            {.SourceMap = true, .EditScope = selected});
+            {.SourceMap = true, .EditScope = selected, .InputFilePath = path});
         EXPECT_EQ(withMetadata.Text, FormatInput(composed, prepared,
-            {.SourceMap = true, .EditScope = selected}).Text);
+            {.SourceMap = true, .EditScope = selected, .InputFilePath = path}).Text);
         const std::array<parser::SourceRange, 1> immutable{{{point - 1, point + 1}}};
         const auto protectedResult = FormatInput(composed, prepared,
-            {.ImmutableRanges = immutable, .SourceMap = true, .EditScope = selected});
+            {.ImmutableRanges = immutable, .SourceMap = true, .EditScope = selected,
+                .InputFilePath = path});
+        path.assign(path.size(), '?');
         EXPECT_EQ(protectedResult.Text, composed);
         CheckIdentities(composed, protectedResult);
         CheckExcludedCopies(composed, protectedResult, selected);
@@ -1035,6 +1120,83 @@ TEST(PublicPipeline, EditScopeInvalidRangesAndProtectionRemainStronger)
              { { 4, 6 }, { 1, 3 } }, { { 0, 5 }, { 4, 7 } } })
         EXPECT_THROW(FormatInput(source, prepared, { .EditScope = invalid }),
             std::invalid_argument);
+}
+TEST(PublicPipeline, RequiresRecoveryScopeAndMapsPreserveInvalidBytes)
+{
+    const formatter::PreparedFormat prepared(Canonical());
+    for (const auto declaration : {
+             "int inspect(T value){return 1;}",
+             "T* inspect(T* value){return value;}",
+             "T& access(T& value){return value;}" })
+    {
+        for (const auto terminal : { "@", "&& @" })
+        {
+            const auto source = "template<class T> requires requires(T v) { v.touch(); } " +
+                std::string(terminal) + "\n" + std::string(declaration) + "\n";
+            SCOPED_TRACE(source);
+            const auto invalid = uint32_t(source.find('@'));
+            const auto function = uint32_t(source.find(declaration));
+            formatter::FormatResult result;
+            parser::TokenIndex invalidToken = 0;
+            {
+                Input input(source);
+                auto tree = parser::Parse(input.View(), [](parser::ParseError) {});
+                const std::array<parser::SourceRange, 1> selected {
+                    { { function, uint32_t(source.size()) } }
+                };
+                result = formatter::Format(tree, prepared,
+                    { .SourceMap = true, .EditScope = selected });
+                ASSERT_EQ(result.OriginalTokens.size(), tree.TokenCount());
+                size_t invalidCount = 0;
+                for (parser::TokenIndex token = 0; token < tree.TokenCount(); ++token)
+                {
+                    const auto map = result.OriginalTokens[token];
+                    ASSERT_TRUE(map.Present);
+                    EXPECT_LE(map.Output.Begin, map.Output.End);
+                    EXPECT_LE(map.Output.End, result.Text.size());
+                    EXPECT_EQ(std::string_view(result.Text).substr(map.Output.Begin,
+                        map.Output.End - map.Output.Begin), tree.TokenText(token));
+                    if (tree.Kind(token) == tokenizer::TokenKind::Invalid)
+                    {
+                        ++invalidCount;
+                        invalidToken = token;
+                    }
+                }
+                EXPECT_EQ(invalidCount, 1u);
+            }
+            // Result maps/protection remain owning after source/tree/scope storage dies.
+            const auto invalidOutput = result.OriginalTokens[invalidToken].Output;
+            EXPECT_EQ(std::string_view(result.Text).substr(invalidOutput.Begin,
+                invalidOutput.End - invalidOutput.Begin), "@");
+            EXPECT_TRUE(std::ranges::any_of(result.OutputProtection,
+                [&](const auto& range) {
+                    return range.Source.Begin <= invalidOutput.Begin &&
+                        range.Source.End >= invalidOutput.End &&
+                        (uint16_t(range.Reasons) & uint16_t(formatter::ProtectionReason::Recovery)) &&
+                        (uint16_t(range.Reasons) & uint16_t(formatter::ProtectionReason::OutsideEditScope));
+                }));
+            const std::array<parser::SourceRange, 1> selected {
+                { { function, uint32_t(source.size()) } }
+            };
+            CheckExcludedCopies(source, result, selected);
+            EXPECT_EQ(result.Text.substr(0, function), source.substr(0, function));
+            size_t invalidCopies = 0;
+            for (const auto& map : result.Map)
+            {
+                EXPECT_LE(map.Output.Begin, map.Output.End);
+                EXPECT_LE(map.Output.End, result.Text.size());
+                if (map.Exact && map.HasOriginal)
+                {
+                    EXPECT_EQ(std::string_view(result.Text).substr(map.Output.Begin,
+                        map.Output.End - map.Output.Begin), std::string_view(source).substr(
+                            map.Original.Begin, map.Original.End - map.Original.Begin));
+                    if (map.Original.Begin <= invalid && map.Original.End > invalid)
+                        ++invalidCopies;
+                }
+            }
+            EXPECT_EQ(invalidCopies, 1u);
+        }
+    }
 }
 } // namespace
 } // namespace public_pipeline

@@ -32,16 +32,6 @@ CompiledPolicies PreparePolicies(const Style& style)
     // Pending-consumer guard: staged schema must not silently ignore behavior.
     // Remove each clause only with its reviewed consumer integration.
     const auto pending = [&] () -> std::string_view {
-        if (style.StandaloneCommentBlankLinesBefore.Mode !=
-            BlankLineMode::Preserve)
-        {
-            return "StandaloneCommentBlankLinesBefore";
-        }
-        if (style.StandaloneCommentBlankLinesAfter.Mode !=
-            BlankLineMode::Preserve)
-        {
-            return "StandaloneCommentBlankLinesAfter";
-        }
         if (style.BreakAfterTemplateHeader)
         {
             return "BreakAfterTemplateHeader";

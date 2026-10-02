@@ -1,0 +1,14 @@
+template<class T>
+requires requires(T value) {
+    value.touch();
+    { value.touch() } noexcept;
+    typename T::value_type;
+    requires requires { typename T::other_type; };
+}
+struct Container { T member; };
+
+template<class T>
+requires (requires { typename T::value_type; }) && true
+int inspect(T value) { return 1; }
+
+int outside;
