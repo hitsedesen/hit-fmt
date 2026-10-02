@@ -1,8 +1,10 @@
 # Agent instructions
 
-Before pushing a branch or creating a pull request, run
-`build/hit-fmt/hit-fmt --fix .` from the repository root. Review and
-commit any formatting changes, and resolve any remaining violations.
+Before submitting a final version of the PR for publication, run the hit-fmt
+on the repository source code. Review and commit any formatting changes, 
+and resolve any remaining violations. Do not block pushing to a branch or
+creating a PR if the formatter is temporarily unavailable due to work
+in the repo.
 
 ## Tests and examples
 
