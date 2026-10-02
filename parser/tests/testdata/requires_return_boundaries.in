@@ -1,0 +1,17 @@
+template<class T>
+requires library::Ready<T>
+Envelope<T> inspect(T value) { return {}; }
+
+template<class T>
+requires (Ready<T> && !Blocked<T>)
+library::Envelope<T> collect(const T& value) { return {}; }
+
+template<class T>
+requires requires(T value) { value.touch(); } or (left & mask)
+Envelope<Envelope<T>> Owner::inspect(T value) { return {}; }
+
+template<class T>
+requires Ready<T> and /* operand */ Enabled<T> /* boundary */
+Envelope<T> Owner::operator()(T value) { return {}; }
+
+int outside;

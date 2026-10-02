@@ -2622,8 +2622,8 @@ private:
                             Kind(next) == TK::Keyword_operator ||
                             Kind(next) == TK::Operator_OpenParenthesis)));
             // An adjacent return-type prefix follows a finished constraint,
-            // never an operator awaiting its operand. Reuse the bounded type
-            // scan and require an actual named function declarator after * / &.
+            // never an operator awaiting its operand. Recovery alone retains
+            // the stronger pointer/reference requirement.
             if (!startsDeclaration && angleDepth == 0 && boundaryEligible &&
                 kind == TK::Identifier && (Kind(next) == TK::Operator_Less ||
                     Kind(next) == TK::Operator_ScopeResolution ||
@@ -2631,7 +2631,7 @@ private:
                     Kind(next) == TK::Operator_Ampersand ||
                     Kind(next) == TK::Operator_And))
             {
-                auto declarator = FindDeclarationSpecifiersEnd(Cursor_, ParseLimit_);
+                auto declarator = FindDeclarationSpecifiersEnd(Cursor_, ParseLimit_, true);
                 bool hasPointerOrReference = false;
                 while (declarator < ParseLimit_ &&
                     (Kind(declarator) == TK::Operator_Star ||
@@ -2648,6 +2648,22 @@ private:
                 startsDeclaration = Kind(declarator) == TK::Keyword_operator ||
                     (hasPointerOrReference && Kind(declarator) == TK::Identifier &&
                         Kind(NextSignificant(declarator + 1)) == TK::Operator_OpenParenthesis);
+                if (constraintMayEnd) {
+                    // Only the declarator-id suffix is inspected here. Its
+                    // parameters and body remain owned by ParseDeclaration.
+                    while (Kind(declarator) == TK::Identifier) {
+                        auto suffix = NextSignificant(declarator + 1);
+                        if (Kind(suffix) == TK::Operator_Less) {
+                            suffix = NextSignificant(SkipTemplateArguments(suffix, ParseLimit_, true));
+                        }
+                        if (Kind(suffix) != TK::Operator_ScopeResolution) {
+                            startsDeclaration = Kind(suffix) == TK::Operator_OpenParenthesis;
+                            break;
+                        }
+                        declarator = NextSignificant(suffix + 1);
+                    }
+                    startsDeclaration |= Kind(declarator) == TK::Keyword_operator;
+                }
             }
             if (startsDeclaration || kind == TK::Operator_Semicolon ||
                 kind == TK::Operator_OpenBrace)
@@ -3139,7 +3155,10 @@ private:
             kind == TK::Keyword_friend || kind == TK::Keyword_virtual;
     }
 
-    [[nodiscard]] size_t SkipTemplateArguments(size_t index, size_t end) const
+    [[nodiscard]] size_t SkipTemplateArguments(
+        size_t index,
+        size_t end,
+        bool requireComplete = false) const
     {
         if (Kind(index) != TK::Operator_Less) {
             return index;
@@ -3155,11 +3174,13 @@ private:
             } else if (Kind(index) == TK::Operator_RightShift) {
                 depth -= 2;
                 if (depth <= 0) {
-                    return index + 1;
+                    return requireComplete && depth < 0 ? end : index + 1;
                 }
             } else if (IsOpenDelimiter(Kind(index))) {
                 auto balancedEnd = FindBalancedEnd(index);
-                if (balancedEnd == std::numeric_limits<TokenIndex>::max()) {
+                if (balancedEnd == std::numeric_limits<TokenIndex>::max() ||
+                    (requireComplete && balancedEnd > end))
+                {
                     return end;
                 }
                 index = balancedEnd - 1;
@@ -3193,7 +3214,10 @@ private:
     }
 
     [[nodiscard]] size_t
-    FindDeclarationSpecifiersEnd(size_t begin, size_t end) const
+    FindDeclarationSpecifiersEnd(
+        size_t begin,
+        size_t end,
+        bool requireComplete = false) const
     {
         auto index = NextSignificant(begin);
         bool foundType = false;
@@ -3257,7 +3281,7 @@ private:
         // arguments. The following token begins the declarator.
         index = NextSignificant(index + 1);
         if (Kind(index) == TK::Operator_Less) {
-            index = NextSignificant(SkipTemplateArguments(index, end));
+            index = NextSignificant(SkipTemplateArguments(index, end, requireComplete));
         }
         while (Kind(index) == TK::Operator_ScopeResolution) {
             auto component = NextSignificant(index + 1);
@@ -3266,7 +3290,7 @@ private:
             }
             index = NextSignificant(component + 1);
             if (Kind(index) == TK::Operator_Less) {
-                index = NextSignificant(SkipTemplateArguments(index, end));
+                index = NextSignificant(SkipTemplateArguments(index, end, requireComplete));
             }
         }
         return index;

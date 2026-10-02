@@ -483,6 +483,7 @@ INSTANTIATE_TEST_SUITE_P(
         GoldenCase{"preprocessing"},
         GoldenCase{"modules_and_concepts"},
         GoldenCase{"requires_clause_boundaries"},
+        GoldenCase{"requires_return_boundaries"},
         GoldenCase{"statements"},
         GoldenCase{"name_classification"},
         GoldenCase{"ambiguity"},
@@ -1569,6 +1570,125 @@ TEST(Parser, RequiresClauseOwnsDependentFunctionReturnPrefix)
             }
             EXPECT_EQ(unparsed, constraint.Unparsed);
         }
+    }
+}
+
+TEST(Parser, RequiresClauseOwnsOrdinaryTemplateAndQualifiedReturnPrefix)
+{
+    struct DeclarationCase
+    {
+        std::string_view Specifiers;
+        std::string_view Declarator;
+    };
+    const DeclarationCase declarations[] = {
+        {"Envelope<T>", "inspect(T value)"},
+        {"library::Envelope<T>", "inspect(T value)"},
+        {"T::value_type", "inspect(T value)"},
+        {"library::Result", "inspect(T value)"},
+        {"Envelope<T>", "Owner::inspect(T value)"},
+        {"Envelope<T>", "Owner::operator()(T value)"},
+        {"Envelope<T>", "operator+(T value)"},
+        {"Envelope<Envelope<T>>", "inspect(T value)"},
+    };
+    const std::string_view constraints[] = {
+        "Ready<T>",
+        "library::Ready<T>",
+        "requires(T value) { value.touch(); }",
+        "(Ready<T> && !Blocked<T>)",
+        "requires(T value) { value.touch(); } && (left * invoke(value) > 0)",
+        "requires(T value) { value.touch(); } or (left & mask)",
+        "Ready<T> and /* operand */ Enabled<T> /* boundary */",
+        "(sizeof...(T) > 0)",
+    };
+    for (const auto& declaration : declarations) {
+        const auto declarationText = std::string(declaration.Specifiers) + " " +
+            std::string(declaration.Declarator) + " { return {}; }";
+        for (const auto constraint : constraints) {
+            const auto source = "template<class T> requires " + std::string(constraint) +
+                "\n" + declarationText + "\nint outside;\n";
+            SCOPED_TRACE(source);
+            PaddedInput input(source);
+            size_t errors = 0;
+            const auto tree = parser::Parse(input.View(), [&](parser::ParseError) { ++errors; });
+            EXPECT_EQ(errors, 0u);
+            const auto* owner = tree.Root().FirstChild;
+            ASSERT_NE(owner, nullptr);
+            EXPECT_EQ(owner->Kind, parser::NodeKind::TemplateDeclaration);
+            const auto* clause = owner->FirstChild;
+            while (clause && clause->Kind != parser::NodeKind::RequiresClause) {
+                clause = clause->NextSibling;
+            }
+            ASSERT_NE(clause, nullptr);
+            ASSERT_NE(clause->FirstChild, nullptr);
+            EXPECT_EQ(tree.SourceText(clause->FirstChild->Tokens), constraint);
+            const auto* function = clause->NextSibling;
+            ASSERT_NE(function, nullptr);
+            EXPECT_EQ(function->Kind, parser::NodeKind::FunctionDefinition);
+            EXPECT_EQ(tree.SourceText(function->Tokens), declarationText);
+            EXPECT_EQ(function->Tokens.Begin, clause->Tokens.End);
+            ASSERT_NE(function->FirstChild, nullptr);
+            EXPECT_EQ(function->FirstChild->Kind, parser::NodeKind::DeclarationSpecifiers);
+            EXPECT_EQ(tree.SourceText(function->FirstChild->Tokens), declaration.Specifiers);
+            ASSERT_NE(function->FirstChild->NextSibling, nullptr);
+            EXPECT_EQ(tree.SourceText(function->FirstChild->NextSibling->Tokens), declaration.Declarator);
+            ASSERT_NE(function->LastChild, nullptr);
+            EXPECT_EQ(function->LastChild->Kind, parser::NodeKind::CompoundStatement);
+            EXPECT_EQ(tree.SourceText(function->LastChild->Tokens), "{ return {}; }");
+            EXPECT_EQ(function->LastChild->Tokens.End, function->Tokens.End);
+            ASSERT_NE(owner->NextSibling, nullptr);
+            EXPECT_EQ(tree.SourceText(owner->NextSibling->Tokens), "int outside;");
+            EXPECT_EQ(owner->NextSibling->Tokens.Begin, owner->Tokens.End);
+        }
+    }
+}
+
+TEST(Parser, RequiresClauseDoesNotSplitQualifiedConstraintOperands)
+{
+    const std::string_view constraints[] = {
+        "library::predicate<T>(value)",
+        "Ready<T> && library::predicate<T>(value)",
+        "Ready<T> or /* operand */ library::predicate<T>(value)",
+        "Ready<T> and (library::value<T> > limit)",
+        "Ready<T> && library::value<T> > limit",
+        "requires(T value) { value.touch(); } && (left * library::invoke(value) > 0)",
+    };
+    for (const auto constraint : constraints) {
+        const auto source = "template<class T> requires " + std::string(constraint) +
+            "\nint inspect(T value) { return 1; }\n";
+        SCOPED_TRACE(source);
+        PaddedInput input(source);
+        size_t errors = 0;
+        const auto tree = parser::Parse(input.View(), [&](parser::ParseError) { ++errors; });
+        EXPECT_EQ(errors, 0u);
+        const auto* clause = tree.Root().FirstChild->FirstChild;
+        while (clause && clause->Kind != parser::NodeKind::RequiresClause) {
+            clause = clause->NextSibling;
+        }
+        ASSERT_NE(clause, nullptr);
+        ASSERT_NE(clause->FirstChild, nullptr);
+        EXPECT_EQ(tree.SourceText(clause->FirstChild->Tokens), constraint);
+        ASSERT_NE(clause->NextSibling, nullptr);
+        EXPECT_EQ(tree.SourceText(clause->NextSibling->Tokens), "int inspect(T value) { return 1; }");
+    }
+}
+
+TEST(Parser, RequiresClauseDoesNotCertifyMalformedTemplateReturnPrefix)
+{
+    for (const auto prefix : {"Envelope<T>>", "Envelope<T", "library::Envelope<T>>",
+             "Envelope<T> Owner::<T>", "Envelope<T> Owner<U>>"}) {
+        const auto source = "template<class T> requires Ready<T>\n" + std::string(prefix) +
+            " inspect(T value) { return {}; }\n";
+        SCOPED_TRACE(source);
+        PaddedInput input(source);
+        const auto tree = parser::Parse(input.View(), [](parser::ParseError) {});
+        const auto* clause = tree.Root().FirstChild->FirstChild;
+        while (clause && clause->Kind != parser::NodeKind::RequiresClause) {
+            clause = clause->NextSibling;
+        }
+        ASSERT_NE(clause, nullptr);
+        ASSERT_NE(clause->FirstChild, nullptr);
+        EXPECT_TRUE(tree.SourceText(clause->FirstChild->Tokens).starts_with(
+            "Ready<T>\n" + std::string(prefix)));
     }
 }
 

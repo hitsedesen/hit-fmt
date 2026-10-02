@@ -1121,6 +1121,46 @@ TEST(PublicPipeline, EditScopeInvalidRangesAndProtectionRemainStronger)
         EXPECT_THROW(FormatInput(source, prepared, { .EditScope = invalid }),
             std::invalid_argument);
 }
+TEST(PublicPipeline, RequiresOrdinaryReturnBoundaryPreservesScopeAndOwningMaps)
+{
+    const formatter::PreparedFormat prepared(Canonical());
+    for (const auto declaration : {
+             "Envelope<T> inspect(T value){return {};}",
+             "library::Envelope<T> inspect(T value){return {};}",
+             "Envelope<Envelope<T>> Owner::inspect(T value){return {};}",
+             "Envelope<T> Owner::operator()(T value){return {};}" })
+    {
+        const auto source = "template<class T> requires (requires(T v) { v.touch(); })\n" +
+            std::string(declaration) + "\n";
+        SCOPED_TRACE(source);
+        const auto function = uint32_t(source.find(declaration));
+        formatter::FormatResult result;
+        {
+            Input input(source);
+            const auto tree = parser::Parse(input.View(), [](parser::ParseError) {});
+            const std::array<parser::SourceRange, 1> selected {
+                { { function, uint32_t(source.size()) } }
+            };
+            result = formatter::Format(tree, prepared,
+                { .SourceMap = true, .EditScope = selected });
+        }
+        CheckIdentities(source, result);
+        const std::array<parser::SourceRange, 1> selected {
+            { { function, uint32_t(source.size()) } }
+        };
+        CheckExcludedCopies(source, result, selected);
+        EXPECT_EQ(result.Text.substr(0, function), source.substr(0, function));
+        const std::array<parser::SourceRange, 1> selectedOutput {
+            { { function, uint32_t(result.Text.size()) } }
+        };
+        EXPECT_EQ(FormatInput(result.Text, prepared,
+            { .SourceMap = true, .EditScope = selectedOutput }).Text, result.Text);
+        const auto unrestricted = FormatInput(source, prepared);
+        CheckIdentities(source, unrestricted);
+        EXPECT_EQ(FormatInput(unrestricted.Text, prepared).Text, unrestricted.Text);
+    }
+}
+
 TEST(PublicPipeline, RequiresRecoveryScopeAndMapsPreserveInvalidBytes)
 {
     const formatter::PreparedFormat prepared(Canonical());
