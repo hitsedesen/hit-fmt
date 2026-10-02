@@ -2338,16 +2338,16 @@ private:
                     kind == TK::Operator_CloseBrace)
                 {
                     --delimiterDepth;
-                } else if (trackAngles && kind == TK::Operator_Less) {
-                    ++angleDepth;
-                } else if (trackAngles && kind == TK::Operator_Greater &&
-                    angleDepth > 0)
-                {
-                    --angleDepth;
-                } else if (trackAngles && kind == TK::Operator_RightShift &&
-                    angleDepth > 0)
-                {
-                    angleDepth = std::max(0, angleDepth - 2);
+                } else if (trackAngles && delimiterDepth == 0) {
+                    // Balanced operand interiors cannot open or close the
+                    // template nesting that owns this list's separators.
+                    if (kind == TK::Operator_Less) {
+                        ++angleDepth;
+                    } else if (kind == TK::Operator_Greater && angleDepth > 0) {
+                        --angleDepth;
+                    } else if (kind == TK::Operator_RightShift && angleDepth > 0) {
+                        angleDepth = std::max(0, angleDepth - 2);
+                    }
                 }
             }
             bool separator = i < end && kind == TK::Operator_Comma &&
@@ -2832,6 +2832,7 @@ private:
                 ++Cursor_;
             }
         }
+        const auto headEnd = sawBaseClause ? baseClauseBegin : Cursor_;
         if (unknownHeader && CurrentKind() != TK::Operator_OpenBrace) {
             Cursor_ = start;
             return ParseGeneralDeclaration();
@@ -2904,6 +2905,38 @@ private:
             AddMissingToken(*node, Cursor_);
         }
         node->Tokens.End = Cursor_;
+        if (!unknownHeader && angleDepth == 0) {
+            // Add syntax after registration: head children must not change
+            // the existing forward-declaration name-registration condition.
+            Node head;
+            for (auto i = start + 1; i < headEnd; ++i) {
+                if (IsOpenDelimiter(Kind(i))) {
+                    auto balancedEnd = FindBalancedEnd(i);
+                    if (balancedEnd > headEnd) {
+                        break;
+                    }
+                    i = balancedEnd - 1;
+                } else if (Kind(i) == TK::Operator_Less &&
+                    Kind(PreviousSignificant(i)) == TK::Identifier)
+                {
+                    auto end = SkipTemplateArguments(i, headEnd);
+                    if (end > i + 1 && end <= headEnd &&
+                        (Kind(end - 1) == TK::Operator_Greater ||
+                            Kind(end - 1) == TK::Operator_RightShift))
+                    {
+                        Append(head, *MakeTemplateArgumentList(i, end));
+                        i = end - 1;
+                    }
+                }
+            }
+            if (head.FirstChild) {
+                head.LastChild->NextSibling = node->FirstChild;
+                node->FirstChild = head.FirstChild;
+                if (!node->LastChild) {
+                    node->LastChild = head.LastChild;
+                }
+            }
+        }
         AddDirectiveChildrenInGap(*node, start, Cursor_);
         return node;
     }
@@ -3340,12 +3373,16 @@ private:
                     kind == TK::Operator_CloseBrace)
                 {
                     --delimiterDepth;
-                } else if (kind == TK::Operator_Less) {
-                    ++angleDepth;
-                } else if (kind == TK::Operator_Greater && angleDepth > 0) {
-                    --angleDepth;
-                } else if (kind == TK::Operator_RightShift && angleDepth > 0) {
-                    angleDepth = std::max(0, angleDepth - 2);
+                } else if (delimiterDepth == 0) {
+                    // Defaults nested inside delimiters do not change the
+                    // template depth that owns the parameter separators.
+                    if (kind == TK::Operator_Less) {
+                        ++angleDepth;
+                    } else if (kind == TK::Operator_Greater && angleDepth > 0) {
+                        --angleDepth;
+                    } else if (kind == TK::Operator_RightShift && angleDepth > 0) {
+                        angleDepth = std::max(0, angleDepth - 2);
+                    }
                 }
             }
             if (!atEnd && (kind != TK::Operator_Comma || delimiterDepth != 0 ||

@@ -31,6 +31,125 @@ void ExpectText(
     EXPECT_EQ(repeated.Broken, output.Broken);
 }
 
+TEST(GroupLayout, StructuralBaseDistinguishesProspectiveAndRealizedContinuation)
+{
+    for (const bool rhsLine : {false, true}) {
+        for (const bool delimiter : {false, true}) {
+            Document document("");
+            const auto block = document.BeginGroup({GroupMode::Fill, 4});
+            document.Gap({GapKind::Hard, 0});
+            document.Text("x =");
+            const auto expression = document.BeginGroup(
+                {GroupMode::Fill, 4, false, true});
+            document.Gap({rhsLine ? GapKind::Hard : GapKind::Flat, 1});
+            document.Text("f(");
+            const auto anchor = document.MarkAnchor({
+                delimiter ? AnchorKind::DelimiterColumn : AnchorKind::BlockRelative,
+                delimiter ? 0 : 4, 4, 4, true});
+            const auto call = document.BeginGroup(
+                {GroupMode::Fill, 4, true, false, true});
+            document.Gap({GapKind::Soft, 0, 5}, anchor);
+            document.Text("item)");
+            document.EndGroup(call);
+            document.EndGroup(expression);
+            document.EndGroup(block);
+            ASSERT_TRUE(document.Seal());
+            const auto prefix = rhsLine ? "\n    x =\n        f(" : "\n    x = f(";
+            const auto indent = rhsLine ? 12 : delimiter ? 10 : 8;
+            const std::string expected = std::string(prefix) + "\n" +
+                std::string(indent, ' ') + "item)";
+            ExpectText(document, 80, expected);
+            // No room for the complete atom: delimiter fallback uses the same
+            // structural base, never the physical delimiter's column.
+            ExpectText(document, 13, std::string(prefix) + "\n" +
+                std::string(rhsLine ? 12 : 8, ' ') + "item)");
+        }
+    }
+}
+
+TEST(GroupLayout, ExpressionRealizationPropagatesButConsumerLinesAreFenced)
+{
+    for (const bool consumer : {false, true}) {
+        Document document("");
+        auto block = document.BeginGroup({GroupMode::Fill, 4});
+        auto outer = document.BeginGroup({GroupMode::Fill, 4, false, true});
+        auto child = document.BeginGroup(consumer
+            ? GroupSpec{GroupMode::Fill, 4, false, false, true}
+            : GroupSpec{GroupMode::Fill, 4, false, true});
+        document.Gap({GapKind::Hard, 0});
+        document.Text("first");
+        document.EndGroup(child);
+        auto base = document.MarkAnchor({AnchorKind::BlockRelative, 0, 0, 0, true});
+        document.Gap({GapKind::Hard, 0}, base);
+        document.Text("sibling");
+        document.EndGroup(outer);
+        document.EndGroup(block);
+        ASSERT_TRUE(document.Seal());
+        ExpectText(document, 80, consumer
+            ? "\n        first\n    sibling"
+            : "\n            first\n        sibling");
+    }
+}
+
+TEST(GroupLayout, FixedExpressionGapRealizesWithoutBecomingEditableBreak)
+{
+    const std::string source = "\n    ";
+    for (const bool split : {false, true}) {
+        Document document(source);
+        auto outer = document.BeginGroup({GroupMode::Fill, 4, true, true});
+        if (split) {
+            document.SourceLineIndent(0, 1, 1, 5);
+        } else {
+            document.SourceText(0, 5, NoIdentity, true);
+        }
+        document.ExpressionLine();
+        auto base = document.MarkAnchor({AnchorKind::BlockRelative, 0, 0, 0, true});
+        auto child = document.BeginGroup({GroupMode::Fill, 0, false, false, true});
+        document.Text("f(");
+        document.Gap({GapKind::Flat, 0});
+        document.Text("item)");
+        document.EndGroup(child);
+        document.Gap({GapKind::Hard, 0}, base);
+        document.Text("tail");
+        document.EndGroup(outer);
+        ASSERT_TRUE(document.Seal());
+        ExpectText(document, 80, "\n    f(item)\n    tail");
+        auto result = document.Render({.Width = 80});
+        // Fixed prefix/marker cannot satisfy ForceBreak at the child's flat gap.
+        EXPECT_EQ(result.Broken[child], 0);
+        EXPECT_EQ(result.Map.size(), split ? 7 : 6);
+    }
+}
+
+TEST(GroupLayout, ContinuationMetadataRejectsInvalidOwnersPrefixesAndOverflow)
+{
+    for (const std::string source : {"\n// comment", "\n token", "    "}) {
+        Document document(source);
+        auto group = document.BeginGroup({GroupMode::Fill, 4, false, true});
+        document.SourceText(0, source.size(), NoIdentity, true);
+        document.ExpressionLine();
+        document.EndGroup(group);
+        EXPECT_EQ(document.Seal().Code, Error::InvalidLinePrefix);
+    }
+    Document outside("\n");
+    outside.SourceText(0, 1, NoIdentity, true);
+    outside.ExpressionLine();
+    EXPECT_EQ(outside.Seal().Code, Error::InvalidGroup);
+    Document negative("");
+    negative.BeginGroup({GroupMode::Fill, -1, false, true});
+    EXPECT_EQ(negative.Seal().Code, Error::InvalidPolicy);
+    Document overflow("");
+    auto first = overflow.BeginGroup({GroupMode::Fill, INT32_MAX, false, true});
+    auto second = overflow.BeginGroup({GroupMode::Fill, INT32_MAX, false, true});
+    auto third = overflow.BeginGroup({GroupMode::Fill, 1, false, true});
+    overflow.Text("x");
+    overflow.EndGroup(third);
+    overflow.EndGroup(second);
+    overflow.EndGroup(first);
+    ASSERT_TRUE(overflow.Seal());
+    EXPECT_EQ(overflow.Render().State.Code, Error::IndentationOverflow);
+}
+
 TEST(GroupLayout, ConsistentFitIncludesCloserAndRootSuffix)
 {
     Document document("");

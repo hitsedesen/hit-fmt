@@ -1,0 +1,10 @@
+Layout = Preserve
+IndentationKind = Spaces
+IndentWidth = 4
+ColumnLimit = 80
+CallsLayout = Canonical
+CallsBreak = Always
+CallsFirstItem = NextLine
+CallsPacking = VerticalWhenBroken
+CallsCloser = OwnLine
+LambdaBodiesLayout = Canonical

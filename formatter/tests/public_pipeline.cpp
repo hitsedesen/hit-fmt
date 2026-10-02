@@ -186,6 +186,48 @@ TEST(PublicPipeline, NoEditTreeSourceParityAndResultLifetime)
     CheckIdentities(source, result);
     for (const auto& token : result.OriginalTokens)
         EXPECT_TRUE(token.Present);
+
+    // Inactive Stage S metadata must not activate a consumer or change the
+    // composed constructor/head rule, scope authority, maps or lifetimes.
+    const auto composed = test::golden::ReadFile(
+        std::filesystem::path(__FILE__).parent_path() /
+        "testdata/record-head-commas/constructor-composition.input.cpp");
+    const auto point = parser::SourceOffset(composed.find(">,2>") + 2);
+    const std::array<parser::SourceRange, 1> selected{{{point, point + 1}}};
+    formatter::Style defaults;
+    defaults.Layout = formatter::LayoutMode::Preserve;
+    defaults.CommaSpaceAfter = formatter::GapPolicy::Space;
+    const auto baseline = FormatInput(composed, formatter::PreparedFormat(defaults),
+        {.SourceMap = true, .EditScope = selected});
+    formatter::FormatResult withMetadata;
+    {
+        auto style = defaults;
+        style.IncludeGroupPrefixes = {"engine/", "engine/detail/"};
+        const formatter::PreparedFormat prepared(style);
+        style.IncludeGroupPrefixes.clear();
+        style.ColumnLimit = 0; // Mutating Style cannot affect prepared scalars.
+        Input input(composed);
+        auto tree = parser::Parse(input.View(), [](parser::ParseError) {});
+        withMetadata = formatter::Format(tree, prepared,
+            {.SourceMap = true, .EditScope = selected});
+        EXPECT_EQ(withMetadata.Text, FormatInput(composed, prepared,
+            {.SourceMap = true, .EditScope = selected}).Text);
+        const std::array<parser::SourceRange, 1> immutable{{{point - 1, point + 1}}};
+        const auto protectedResult = FormatInput(composed, prepared,
+            {.ImmutableRanges = immutable, .SourceMap = true, .EditScope = selected});
+        EXPECT_EQ(protectedResult.Text, composed);
+        CheckIdentities(composed, protectedResult);
+        CheckExcludedCopies(composed, protectedResult, selected);
+    }
+    auto expected = composed;
+    expected.insert(point, " ");
+    EXPECT_EQ(baseline.Text, expected);
+    EXPECT_EQ(withMetadata.Text, baseline.Text);
+    EXPECT_TRUE(withMetadata.StructuralOperations.empty());
+    CheckIdentities(composed, withMetadata);
+    CheckExcludedCopies(composed, withMetadata, selected);
+    for (const auto& token : withMetadata.OriginalTokens)
+        EXPECT_TRUE(token.Present);
 }
 
 TEST(

@@ -1,5 +1,6 @@
 #include <formatter/config.hpp>
 #include <formatter/policy.hpp>
+#include <formatter/include_policy.hpp>
 #include <hit-fmt/config_template.hpp>
 
 #include <gtest/gtest.h>
@@ -381,6 +382,8 @@ TEST(ConfigPolicy, VerticalBoundsCannotBeBypassedByProgrammaticStyles)
         &formatter::Style::AccessSectionBlankLinesAfterLabel,
         &formatter::Style::DefinitionBlankLines,
         &formatter::Style::MemberDefinitionBlankLines,
+        &formatter::Style::StandaloneCommentBlankLinesBefore,
+        &formatter::Style::StandaloneCommentBlankLinesAfter,
     })
     {
         formatter::Style style;
@@ -451,6 +454,8 @@ TEST(ConfigPolicy, CapConflictsUseFinalOverridesAndReportSettingLocations)
         "AccessSectionBlankLinesAfterLabel",
         "DefinitionBlankLines",
         "MemberDefinitionBlankLines",
+        "StandaloneCommentBlankLinesBefore",
+        "StandaloneCommentBlankLinesAfter",
     })
     {
         SCOPED_TRACE(key);
@@ -812,6 +817,293 @@ TEST(ConfigPolicy, RemovedClosersAndInvalidValuesAreRejected)
             (void)formatter::LoadConfigFile(ConfigData(name)),
             std::runtime_error);
     }
+}
+
+// These prove stage-S metadata/validation, not downstream formatting behavior.
+TEST(ConfigPolicy, StagedOptionsResolveFinalInheritanceAndOwnScalarSnapshot)
+{
+    const TemporaryConfig config(
+        "FunctionBracePlacement = NextLine\n"
+        "ConstructorBracePlacement = Inherit\n"
+        "FunctionBracePlacement = NextLineIfHeaderBroken\n"
+        "StandaloneCommentBlankLinesBefore = 0\n"
+        "StandaloneCommentBlankLinesAfter = 2\n"
+        "MaxEmptyLines = 2\n"
+        "BreakAfterTemplateHeader = true\n"
+        "ExpressionsAlignment = Operand\n"
+        "IncludeMatchingHeader = First\n"
+        "IncludeGrouping = Regroup\n"
+        "IncludeGroupPrefixes = [\"engine/\", \"engine/detail/\"]\n");
+    auto style = formatter::LoadConfigFile(config.Path).FormattingStyle;
+    const auto policies = formatter::CompilePolicies(style);
+    EXPECT_EQ(policies.Braces.Constructor,
+              formatter::BracePlacement::NextLineIfHeaderBroken);
+    EXPECT_EQ(policies.VerticalGaps.StandaloneCommentBlankLinesBefore.Mode,
+              formatter::VerticalGapMode::Exact);
+    EXPECT_EQ(
+        policies.VerticalGaps.StandaloneCommentBlankLinesBefore.EmptyLines, 0u);
+    EXPECT_EQ(policies.VerticalGaps.StandaloneCommentBlankLinesAfter.EmptyLines,
+              2u);
+    EXPECT_EQ(policies.Expressions.Alignment,
+              formatter::ExpressionAlignment::Operand);
+    EXPECT_EQ(policies.Expressions.Indent.Alignment,
+              formatter::ContinuationAlignment::Block);
+    EXPECT_EQ(policies.Expressions.Indent.ContinuationOffset,
+              style.IndentWidth);
+    EXPECT_TRUE(policies.BreakAfterTemplateHeader);
+    EXPECT_EQ(policies.Includes.MatchingHeader,
+              formatter::IncludeMatchingHeader::First);
+    EXPECT_EQ(policies.Includes.Grouping, formatter::IncludeGrouping::Regroup);
+    style.FunctionBracePlacement = formatter::BracePlacement::Attached;
+    style.ConstructorBracePlacement = formatter::BracePlacement::NextLine;
+    style.StandaloneCommentBlankLinesAfter = {};
+    const auto changed = formatter::CompilePolicies(style);
+    EXPECT_EQ(changed.Braces.Constructor, formatter::BracePlacement::NextLine);
+    EXPECT_EQ(changed.Braces.Function, formatter::BracePlacement::Attached);
+    EXPECT_EQ(policies.Braces.Constructor,
+              formatter::BracePlacement::NextLineIfHeaderBroken);
+    EXPECT_EQ(policies.VerticalGaps.StandaloneCommentBlankLinesAfter.EmptyLines,
+              2u);
+    for (const auto placement :
+         {formatter::BracePlacement::Attached,
+          formatter::BracePlacement::NextLine,
+          formatter::BracePlacement::NextLineIfHeaderBroken})
+    {
+        style.ConstructorBracePlacement.reset();
+        style.FunctionBracePlacement = placement;
+        EXPECT_EQ(formatter::CompilePolicies(style).Braces.Constructor,
+                  placement);
+    }
+}
+
+TEST(ConfigPolicy, StagedCapsValidateBeforePublicPendingConsumerGuard)
+{
+    for (const auto layout :
+         {formatter::LayoutMode::Preserve, formatter::LayoutMode::Canonical})
+    {
+        for (const auto order :
+             {formatter::IncludeOrder::Preserve, formatter::IncludeOrder::Sort})
+        {
+            formatter::Style style;
+            style.Layout = layout;
+            style.IncludeOrder = order;
+            style.IncludeGrouping = formatter::IncludeGrouping::Regroup;
+            style.MaxEmptyLines = 0;
+            try {
+                (void)formatter::PreparedFormat(style);
+                FAIL() << "Regroup cap zero was accepted";
+            } catch (const std::invalid_argument &error) {
+                const std::string message = error.what();
+                EXPECT_NE(message.find("IncludeGrouping = Regroup"),
+                          std::string::npos);
+                EXPECT_NE(message.find("MaxEmptyLines = 0"), std::string::npos);
+                EXPECT_EQ(message.find("staged"), std::string::npos);
+            }
+            style.MaxEmptyLines = 1;
+            EXPECT_NO_THROW((void)formatter::CompilePolicies(style));
+            EXPECT_THROW((void)formatter::PreparedFormat(style),
+                         std::invalid_argument);
+            style.MaxEmptyLines.reset();
+            EXPECT_NO_THROW((void)formatter::CompilePolicies(style));
+            style.IncludeGrouping = formatter::IncludeGrouping::Preserve;
+            style.MaxEmptyLines = 0;
+            style.IncludeGroupPrefixes = {"engine/"};
+            EXPECT_NO_THROW((void)formatter::PreparedFormat(style));
+        }
+    }
+    const TemporaryConfig finalGood(
+        "IncludeGrouping = Regroup\nMaxEmptyLines = 0\nMaxEmptyLines = 1\n");
+    EXPECT_NO_THROW((void)formatter::LoadConfigFile(finalGood.Path));
+    const TemporaryConfig invalid(
+        "IncludeGrouping = Regroup\nMaxEmptyLines = 0\n");
+    try {
+        (void)formatter::LoadConfigFile(invalid.Path);
+        FAIL() << "Regroup cap conflict was accepted";
+    } catch (const std::runtime_error &error) {
+        const std::string message = error.what();
+        EXPECT_NE(
+            message.find("IncludeGrouping at " + invalid.Path.string() + ":1"),
+            std::string::npos);
+        EXPECT_NE(
+            message.find("MaxEmptyLines at " + invalid.Path.string() + ":2"),
+            std::string::npos);
+    }
+}
+
+TEST(ConfigPolicy, PendingConsumersFailClosedWithoutChangingExistingRejections)
+{
+    for (const auto text : {
+             "StandaloneCommentBlankLinesBefore = 0\n",
+             "StandaloneCommentBlankLinesAfter = 1\n",
+             "StandaloneCommentBlankLinesAfter = 0\n",
+             "BreakAfterTemplateHeader = true\n",
+             "ExpressionsAlignment = Operand\n",
+             "IncludeMatchingHeader = First\n",
+             "IncludeGrouping = Regroup\n",
+             "ConstructorBracePlacement = Attached\n",
+         })
+    {
+        SCOPED_TRACE(text);
+        const TemporaryConfig config(text);
+        auto style = formatter::LoadConfigFile(config.Path).FormattingStyle;
+        EXPECT_NO_THROW((void)formatter::CompilePolicies(style));
+        try {
+            (void)formatter::PreparedFormat(style);
+            FAIL() << "unsupported behavior was silently accepted";
+        } catch (const std::invalid_argument &error) {
+            const std::string message = error.what();
+            const std::string_view setting(text);
+            EXPECT_NE(message.find(setting.substr(0, setting.find(' '))),
+                      std::string::npos);
+            EXPECT_NE(message.find("staged configuration"), std::string::npos);
+        }
+        style.CallLikeMacroNames = {"REGISTER_ITEM"};
+        try {
+            (void)formatter::PreparedFormat(style);
+            FAIL() << "existing CallLike rejection disappeared";
+        } catch (const std::invalid_argument &error) {
+            EXPECT_NE(std::string(error.what())
+                          .find("CallLikeMacroNames syntax hints"),
+                      std::string::npos);
+        }
+        style.CallLikeMacroNames.clear();
+        style.AmbiguousTemplateDeclarationSpacing = formatter::GapPolicy::Space;
+        try {
+            (void)formatter::PreparedFormat(style);
+            FAIL() << "existing ambiguous-template rejection disappeared";
+        } catch (const std::invalid_argument &error) {
+            EXPECT_EQ(std::string(error.what()),
+                      "AmbiguousTemplateDeclarationSpacing is unsupported");
+        }
+    }
+    formatter::Style style;
+    style.ColumnLimit = 0;
+    EXPECT_THROW((void)formatter::PreparedFormat(style), std::invalid_argument);
+    for (const auto key : {"StandaloneCommentBlankLinesBefore",
+                           "StandaloneCommentBlankLinesAfter"})
+    {
+        const TemporaryConfig invalid(std::string(key) + " = Inherit\n");
+        EXPECT_THROW((void)formatter::LoadConfigFile(invalid.Path),
+                     std::runtime_error);
+    }
+}
+
+TEST(ConfigPolicy, OrderedPrefixIndexPreservesEarliestRuleAcrossOwningLifetimes)
+{
+    auto make = [] {
+        formatter::Style style;
+        style.IncludeGroupPrefixes = {"engine/", "engine/detail/", "platform/",
+                                      "eng/"};
+        auto prepared =
+            formatter::PreparedIncludePrefixes(style.IncludeGroupPrefixes);
+        style.IncludeGroupPrefixes = {"other/"};
+        return prepared;
+    };
+    auto original = make();
+    auto copy = original;
+    auto moved = std::move(copy);
+    original = formatter::PreparedIncludePrefixes(
+        std::vector<std::string>{"replacement/"});
+    EXPECT_EQ(moved.ClassifyNormalizedRelativePath("engine/detail/item.h"), 0u);
+    EXPECT_EQ(moved.ClassifyNormalizedRelativePath("platform/item.h"), 2u);
+    EXPECT_EQ(moved.ClassifyNormalizedRelativePath("engine/item\\name.h"), 0u);
+    EXPECT_EQ(moved.ClassifyNormalizedRelativePath("engine/..\\name.h"), 0u);
+    EXPECT_EQ(moved.ClassifyNormalizedRelativePath("eng/item.h"), 3u);
+    EXPECT_EQ(moved.ClassifyNormalizedRelativePath("engineer/item.h"),
+              moved.RuleCount());
+    for (const auto path :
+         {"/engine/item.h", "../engine/item.h", "engine/../item.h",
+          "engine//item.h", "engine/./item.h", "engine", "", "engine\\item.h"})
+    {
+        SCOPED_TRACE(path);
+        EXPECT_EQ(moved.ClassifyNormalizedRelativePath(path),
+                  moved.RuleCount());
+    }
+    const formatter::PreparedIncludePrefixes reversed(
+        std::vector<std::string>{"engine/detail/", "engine/"});
+    EXPECT_EQ(reversed.ClassifyNormalizedRelativePath("engine/detail/item.h"),
+              0u);
+    EXPECT_EQ(reversed.ClassifyNormalizedRelativePath("engine/item.h"), 1u);
+    const formatter::PreparedIncludePrefixes empty(std::vector<std::string>{});
+    EXPECT_EQ(empty.ClassifyNormalizedRelativePath("engine/item.h"),
+              empty.RuleCount());
+    // Many fan-out edges and long shared prefixes exercise sorted compact
+    // edges.
+    std::vector<std::string> many;
+    for (int index = 255; index >= 1; --index) {
+        if (index == '/' || index == '\\' || index == '.')
+            continue;
+        many.push_back("base/" + std::string(1, static_cast<char>(index)) +
+                       "/");
+    }
+    const formatter::PreparedIncludePrefixes wide(many);
+    for (std::size_t index = 0; index < many.size(); ++index) {
+        EXPECT_EQ(wide.ClassifyNormalizedRelativePath(many[index] + "item.h"),
+                  index);
+    }
+}
+
+TEST(ConfigPolicy, PrefixValidationIsFinalOrderedAndCannotBeBypassed)
+{
+    for (const auto prefixes : {
+             std::vector<std::string>{""},
+             {"engine"},
+             {"/engine/"},
+             {"engine//"},
+             {"./engine/"},
+             {"engine/../"},
+             {"engine\\detail/"},
+             {"engine/", "engine/"},
+         })
+    {
+        formatter::Style style;
+        style.IncludeGroupPrefixes = prefixes;
+        EXPECT_THROW((void)formatter::CompilePolicies(style),
+                     std::invalid_argument);
+        EXPECT_THROW((void)formatter::PreparedIncludePrefixes(prefixes),
+                     std::invalid_argument);
+        EXPECT_THROW((void)formatter::PreparedFormat(style),
+                     std::invalid_argument);
+    }
+    const TemporaryConfig repaired(
+        "IncludeGroupPrefixes = [\"bad\"]\n"
+        "IncludeGroupPrefixes = [\"engine/\", \"engine/detail/\"]\n");
+    EXPECT_NO_THROW((void)formatter::LoadConfigFile(repaired.Path));
+    const TemporaryConfig duplicate(
+        "IncludeGroupPrefixes = [\"engine/\", \"engine/\"]\n");
+    try {
+        (void)formatter::LoadConfigFile(duplicate.Path);
+        FAIL() << "duplicate prefixes were accepted";
+    } catch (const std::runtime_error &error) {
+        EXPECT_NE(std::string(error.what())
+                      .find("IncludeGroupPrefixes at " +
+                            duplicate.Path.string() + ":1"),
+                  std::string::npos);
+    }
+    const TemporaryConfig serialized(
+        std::string("ExpressionsAlignment = ") +
+        std::string(formatter::SerializeConfigEnum(
+            formatter::ExpressionAlignment::Operand)) +
+        "\nIncludeMatchingHeader = " +
+        std::string(formatter::SerializeConfigEnum(
+            formatter::IncludeMatchingHeader::First)) +
+        "\nIncludeGrouping = " +
+        std::string(formatter::SerializeConfigEnum(
+            formatter::IncludeGrouping::Regroup)) +
+        "\nConstructorBracePlacement = " +
+        std::string(formatter::SerializeConfigEnum(
+            formatter::BracePlacement::NextLine)) +
+        "\n");
+    const auto parsed =
+        formatter::LoadConfigFile(serialized.Path).FormattingStyle;
+    EXPECT_EQ(formatter::CompilePolicies(parsed).Braces.Constructor,
+              formatter::BracePlacement::NextLine);
+    EXPECT_EQ(formatter::CompilePolicies(parsed).Includes.Grouping,
+              formatter::IncludeGrouping::Regroup);
+    EXPECT_EQ(formatter::CompilePolicies(parsed).Includes.MatchingHeader,
+              formatter::IncludeMatchingHeader::First);
+    EXPECT_EQ(formatter::CompilePolicies(parsed).Expressions.Alignment,
+              formatter::ExpressionAlignment::Operand);
 }
 
 } // namespace

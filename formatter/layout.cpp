@@ -189,11 +189,18 @@ GroupId Document::BeginGroup(GroupSpec spec)
     if (spec.Mode != GroupMode::Consistent && spec.Mode != GroupMode::Fill) {
         Fail(Error::InvalidPolicy);
     }
+    if (spec.ExpressionContinuation &&
+        (spec.Indent < 0 || spec.StructuralBase))
+    {
+        Fail(Error::InvalidPolicy);
+    }
     Node node;
     node.Type = Kind::Begin;
     node.Mode = spec.Mode;
     node.Indent = spec.Indent;
     node.ForceBreak = spec.ForceBreak;
+    node.ExpressionContinuation = spec.ExpressionContinuation;
+    node.StructuralBase = spec.StructuralBase;
     node.Reference = static_cast<GroupId>(Groups_.size());
     auto index = Add(node);
     if (index == InvalidId) {
@@ -359,10 +366,42 @@ AnchorId Document::MarkAnchor(AnchorSpec spec)
     node.Indent = spec.Offset;
     node.Fallback = spec.Fallback;
     node.Minimum = spec.Minimum;
+    node.StructuralBase = spec.StructuralBase;
     if (Add(node) == InvalidId) {
         return InvalidId;
     }
     return Anchors_++;
+}
+
+void Document::ExpressionLine()
+{
+    if (Open_.empty() ||
+        !Nodes_[Groups_[Open_.back()]].ExpressionContinuation)
+    {
+        Fail(Error::InvalidGroup);
+        return;
+    }
+    if (Nodes_.empty()) {
+        Fail(Error::InvalidLinePrefix);
+        return;
+    }
+    const auto &previous = Nodes_.back();
+    if ((previous.Type != Kind::Verbatim &&
+         previous.Type != Kind::SourceLineIndent) ||
+        previous.Owner != Open_.back() ||
+        previous.Origin.Identity != NoIdentity ||
+        previous.Origin.Begin == InvalidId ||
+        previous.FlatText != Source_.substr(previous.Origin.Begin,
+            previous.Origin.End - previous.Origin.Begin) ||
+        previous.FlatText.find('\n') == std::string_view::npos ||
+        previous.FlatText.find_first_not_of(" \t\r\n") != std::string_view::npos)
+    {
+        Fail(Error::InvalidLinePrefix);
+        return;
+    }
+    Node node;
+    node.Type = Kind::ExpressionLine;
+    Add(node);
 }
 
 void Document::ConditionalText(GroupId reference,
@@ -482,7 +521,7 @@ Result Document::Render(
         const auto& node = Nodes_[i];
         auto& entry = cache[i];
         if (node.Type != Kind::Begin && node.Type != Kind::End &&
-            node.Type != Kind::Anchor)
+            node.Type != Kind::Anchor && node.Type != Kind::ExpressionLine)
         {
             ++mappingCount;
             if (node.Type == Kind::SourceLineIndent ||
@@ -605,6 +644,11 @@ Result Document::Render(
         bool Flat = false;
         bool ForceOwned = false;
         bool OwnedLine = false;
+        std::uint32_t PendingExpressionIndent = 0;
+        bool ExpressionContinuation = false;
+        bool StructuralBase = false;
+        bool RealizedExpressionLine = false;
+        bool ReversibleIndent = true;
     };
     std::pmr::vector<Frame> frames(resource);
     frames.reserve(Depth_);
@@ -659,6 +703,12 @@ Result Document::Render(
         }
         column = indent;
     };
+    auto indentationError = [&](std::size_t i) {
+        result.State = {Error::IndentationOverflow, static_cast<std::uint32_t>(i)};
+        result.Text.clear();
+        result.Map.clear();
+        result.Broken.clear();
+    };
     for (std::size_t i = 0; i < Nodes_.size(); ++i) {
         const auto& node = Nodes_[i];
         const auto& entry = cache[i];
@@ -675,7 +725,32 @@ Result Document::Render(
             frames.push_back(frame);
             const bool forceOwned =
                 node.ForceBreak && entry.OwnedLastBreak != InvalidId;
-            frame = {Offset(frame.Indent, node.Indent),
+            auto base = frame.Indent;
+            auto pending = frame.PendingExpressionIndent;
+            auto reversible = frame.ReversibleIndent;
+            if (node.StructuralBase) {
+                if (!reversible || pending > base) {
+                    indentationError(i);
+                    return result;
+                }
+                base -= pending;
+                pending = 0;
+                reversible = true;
+            }
+            const auto logical = std::int64_t(base) + node.Indent;
+            if (node.ExpressionContinuation) {
+                const auto bias = std::uint64_t(pending) +
+                    static_cast<std::uint32_t>(node.Indent);
+                if (!reversible || logical >= Infinity || bias >= Infinity) {
+                    indentationError(i);
+                    return result;
+                }
+                pending = static_cast<std::uint32_t>(bias);
+            }
+            if (pending != 0 && (logical < 0 || logical >= Infinity)) {
+                reversible = false;
+            }
+            frame = {Offset(base, node.Indent),
                 tail,
                 forceOwned
                     ? entry.OwnedLastBreak
@@ -685,22 +760,51 @@ Result Document::Render(
                 lines,
                 !broken,
                 forceOwned,
-                false};
+                false,
+                pending,
+                node.ExpressionContinuation,
+                node.StructuralBase,
+                false,
+                reversible};
             continue;
         }
         if (node.Type == Kind::End) {
+            const bool realized = frame.RealizedExpressionLine &&
+                !frame.StructuralBase;
             frame = frames.back();
             frames.pop_back();
+            if (realized) {
+                // Realize inherited contributions, not the closed child's
+                // additional offset. Independent child consumers fence this.
+                frame.PendingExpressionIndent = 0;
+                frame.RealizedExpressionLine = true;
+                frame.ReversibleIndent = true;
+            }
             continue;
         }
         if (node.Type == Kind::Anchor) {
+            auto base = frame.Indent;
+            if (node.StructuralBase) {
+                if (!frame.ReversibleIndent || frame.PendingExpressionIndent > base) {
+                    indentationError(i);
+                    return result;
+                }
+                base -= frame.PendingExpressionIndent;
+            }
             const auto target = Offset(
-                node.Alignment == AnchorKind::BlockRelative
-                    ? frame.Indent
-                    : column,
+                node.Alignment == AnchorKind::BlockRelative ? base : column,
                 node.Indent);
             anchors[node.Anchor] = {
-                target, frame.Indent, static_cast<std::uint32_t>(i)};
+                target, base, static_cast<std::uint32_t>(i)};
+            continue;
+        }
+        if (node.Type == Kind::ExpressionLine) {
+            if (!frame.ReversibleIndent) {
+                indentationError(i);
+                return result;
+            }
+            frame.PendingExpressionIndent = 0;
+            frame.RealizedExpressionLine = true;
             continue;
         }
         auto outputBegin = result.Text.size();
@@ -761,6 +865,14 @@ Result Document::Render(
                 }
                 lines += gap.NewlineCount;
                 frame.OwnedLine = true;
+                if (frame.ExpressionContinuation) {
+                    if (!frame.ReversibleIndent) {
+                        indentationError(i);
+                        return result;
+                    }
+                    frame.PendingExpressionIndent = 0;
+                    frame.RealizedExpressionLine = true;
+                }
                 if (gap.IndentSourceBegin != InvalidId) {
                     if (policy.SourceMap) {
                         result.Map.push_back({outputBegin,

@@ -60,6 +60,9 @@ struct AnchorSpec
     // Delimiter alignment floor relative to that block; ignored by
     // BlockRelative.
     std::uint32_t Minimum = 0;
+    // Capture the enclosing base without unrealized expression continuation.
+    // DelimiterColumn still captures the unchanged physical output column.
+    bool StructuralBase = false;
 };
 
 struct GroupSpec
@@ -68,6 +71,11 @@ struct GroupSpec
     std::int32_t Indent = 0;
     // Require an editable owned break, not merely a multiline child.
     bool ForceBreak = false;
+    // Prospective visual continuation, realized only by this group's line gaps.
+    // Contributors require nonnegative Indent and cannot be structural consumers.
+    bool ExpressionContinuation = false;
+    // Independent child layout uses only realized enclosing continuation.
+    bool StructuralBase = false;
 };
 
 enum class Error : std::uint8_t {
@@ -83,7 +91,8 @@ enum class Error : std::uint8_t {
     InvalidConditionalGap,
     InvalidPolicy,
     TooLarge,
-    InvalidLinePrefix
+    InvalidLinePrefix,
+    IndentationOverflow
 };
 
 struct Status
@@ -176,6 +185,10 @@ public:
         std::uint32_t requiredWidth = 0,
         std::uint64_t identity = NoIdentity);
     AnchorId MarkAnchor(AnchorSpec spec);
+    // Record a fixed source GAP line for the current expression contributor.
+    // The preceding node must be exact source whitespace containing LF, or a
+    // SourceLineIndent prefix. This is provenance, never an editable break site.
+    void ExpressionLine();
     // reference must be the current owning group. No external, forward,
     // ancestor/descendant or mutually dependent shape references are accepted.
     // Text alternatives must be single-line; a gap's flat branch must be Flat.
@@ -206,7 +219,8 @@ private:
         Anchor,
         ConditionalText,
         ConditionalGap,
-        SourceLineIndent
+        SourceLineIndent,
+        ExpressionLine
     };
     struct Node
     {
@@ -230,6 +244,8 @@ private:
         AnchorKind Alignment = AnchorKind::BlockRelative;
         bool Exact = false;
         bool ForceBreak = false;
+        bool ExpressionContinuation = false;
+        bool StructuralBase = false;
     };
     std::uint32_t Add(Node node);
     bool CheckOrigin(Provenance origin);

@@ -979,3 +979,440 @@ TEST(Parser, HandlesDeepExpressionNesting)
 }
 
 } // namespace
+
+TEST(Parser, RecordHeadTemplateArgumentsOwnTheirSeparators)
+{
+    PaddedInput input(
+        "template<class A, class B> struct Pair;\n"
+        "template<class A, class B> struct Pair<A,B> {};\n");
+    const auto tree = parser::Parse(input.View(), [](parser::ParseError) {});
+    const auto *declaration = tree.Root().FirstChild->NextSibling->FirstChild;
+    ASSERT_EQ(declaration->Kind, parser::NodeKind::TemplateParameterList);
+    const auto *record = declaration->NextSibling;
+    ASSERT_EQ(record->Kind, parser::NodeKind::RecordDeclaration);
+    ASSERT_NE(record->FirstChild, nullptr);
+    EXPECT_EQ(record->FirstChild->Kind, parser::NodeKind::TemplateArgumentList);
+    for (auto i = record->Tokens.Begin; i < record->Tokens.End; ++i) {
+        if (tree.Kind(i) == tokenizer::TokenKind::Operator_Comma) {
+            EXPECT_EQ(tree.Role(i), parser::PunctuationRole::ListSeparator);
+        }
+    }
+
+    struct BoundaryCase
+    {
+        std::string_view Prefix;
+        std::string_view First;
+        std::string_view Second;
+    };
+    const std::string_view values =
+        "template<auto, auto> struct Pair;\n";
+    const std::string_view types =
+        "template<auto, class> struct Wrap;\n"
+        "template<class, auto> struct Pair;\n";
+    const BoundaryCase boundaries[] = {
+        {values, "(1<2)", "0"},
+        {types, "Wrap<(1>0),int>", "2"},
+        {types, "Wrap<(8>>1),int>", "2"},
+        {types, "Wrap<(1<<2),Wrap<(3>2),int>>", "2"},
+        {"constexpr int limits[] = {1,2};\n"
+         "template<auto, auto> struct Pair;\n", "limits[1<2]", "0"},
+        {"struct Value { int first, second; };\n"
+         "template<Value, int> struct Pair;\n", "Value{1<2,2}", "0"},
+        {"struct Value { int first, second; };\n"
+         "template<Value, class> struct Wrap;\n"
+         "template<class, int> struct Pair;\n", "Wrap<(Value{1>0,2}),int>", "0"},
+        {"constexpr int limits[] = {1,2};\n"
+         "template<auto, class> struct Wrap;\n"
+         "template<class, auto> struct Pair;\n", "Wrap<(limits[1>0]),int>", "0"},
+    };
+    const auto checkBoundary = [&](const BoundaryCase &value) {
+        const auto source = std::string(value.Prefix) +
+            "template<> struct Pair<" + std::string(value.First) + "," +
+            std::string(value.Second) + "> {};\n";
+        SCOPED_TRACE(source);
+        PaddedInput padded(source);
+        std::vector<parser::ParseError> errors;
+        const auto parsed = parser::Parse(padded.View(),
+            [&](parser::ParseError error) { errors.push_back(std::move(error)); });
+        EXPECT_TRUE(errors.empty());
+        const auto *record = parsed.Root().LastChild->FirstChild->NextSibling;
+        ASSERT_EQ(record->Kind, parser::NodeKind::RecordDeclaration);
+        const auto *list = record->FirstChild;
+        ASSERT_NE(list, nullptr);
+        ASSERT_EQ(list->Kind, parser::NodeKind::TemplateArgumentList);
+        const auto *first = list->FirstChild;
+        ASSERT_NE(first, nullptr);
+        ASSERT_EQ(first->Kind, parser::NodeKind::TemplateArgument);
+        const auto *separator = first->NextSibling;
+        ASSERT_NE(separator, nullptr);
+        EXPECT_EQ(separator->Kind, parser::NodeKind::ListSeparator);
+        const auto *second = separator->NextSibling;
+        ASSERT_NE(second, nullptr);
+        EXPECT_EQ(second->Kind, parser::NodeKind::TemplateArgument);
+        EXPECT_EQ(second->NextSibling, nullptr);
+
+        const auto firstBegin = source.find(value.First, value.Prefix.size());
+        const auto outerComma = firstBegin + value.First.size();
+        const auto secondBegin = outerComma + 1;
+        const auto tokenAt = [&](size_t offset) {
+            for (parser::TokenIndex i = 0; i < parsed.TokenCount(); ++i) {
+                if (parsed.Token(i).Text.Begin == offset) {
+                    return i;
+                }
+            }
+            return parsed.TokenCount();
+        };
+        EXPECT_EQ(first->Tokens.Begin, tokenAt(firstBegin));
+        EXPECT_EQ(first->Tokens.End, tokenAt(outerComma));
+        EXPECT_EQ(second->Tokens.Begin, tokenAt(secondBegin));
+        EXPECT_EQ(second->Tokens.End,
+            tokenAt(secondBegin + value.Second.size()));
+        EXPECT_EQ(parsed.SourceText(first->Tokens), value.First);
+        EXPECT_EQ(parsed.SourceText(second->Tokens), value.Second);
+        EXPECT_EQ(separator->Tokens.Begin, tokenAt(outerComma));
+        EXPECT_EQ(separator->Tokens.End, tokenAt(outerComma) + 1);
+        for (auto i = list->Tokens.Begin; i < list->Tokens.End; ++i) {
+            if (parsed.Kind(i) == tokenizer::TokenKind::Operator_Comma) {
+                EXPECT_EQ(parsed.Role(i), i == tokenAt(outerComma)
+                    ? parser::PunctuationRole::ListSeparator
+                    : parser::PunctuationRole::Generic);
+            }
+        }
+    };
+    for (const auto &value : boundaries) {
+        checkBoundary(value);
+    }
+
+    // Head children must compose with injected constructor/self-type scope,
+    // without exporting the qualified terminal name over an outer variable.
+    const auto source = test::golden::ReadFile(
+        std::filesystem::path(PARSER_TESTDATA_DIR) / "../../.." /
+        "formatter/tests/testdata/record-head-commas/constructor-composition.input.cpp");
+    PaddedInput composedInput(source);
+    unsigned errors = 0;
+    const auto composed = parser::Parse(composedInput.View(),
+        [&](parser::ParseError) { ++errors; });
+    EXPECT_EQ(errors, 0u);
+    const Node *specialization = nullptr;
+    const Node *constructor = nullptr;
+    size_t outsideExpressions = 0;
+    size_t outsideAmbiguities = 0;
+    size_t unknownPairNames = 0;
+    size_t selfTypes = 0;
+    std::vector<const Node *> pending{&composed.Root()};
+    while (!pending.empty()) {
+        const auto *node = pending.back();
+        pending.pop_back();
+        const auto text = composed.SourceText(node->Tokens);
+        if (node->Kind == parser::NodeKind::RecordDeclaration &&
+            text.starts_with("struct Host::Pair<"))
+            specialization = node;
+        if (node->Kind == parser::NodeKind::FunctionDefinition &&
+            text.starts_with("Pair("))
+            constructor = node;
+        if (node->Kind == parser::NodeKind::DeclarationSpecifiers && text == "Pair")
+            ++selfTypes;
+        if (node->Kind == parser::NodeKind::ExpressionStatement && text == "Pair*marker;")
+            ++outsideExpressions;
+        if (node->Kind == parser::NodeKind::AmbiguousStatement && text == "Pair*marker;")
+            ++outsideAmbiguities;
+        if (node->Kind == parser::NodeKind::UnknownTypeName && text == "Pair")
+            ++unknownPairNames;
+        EXPECT_FALSE(node->Kind == parser::NodeKind::DeclarationStatement &&
+            text == "Pair*marker;");
+        for (auto *child = node->FirstChild; child; child = child->NextSibling)
+            pending.push_back(child);
+    }
+    ASSERT_NE(specialization, nullptr);
+    const auto *head = specialization->FirstChild;
+    ASSERT_NE(head, nullptr);
+    ASSERT_EQ(head->Kind, parser::NodeKind::TemplateArgumentList);
+    const auto *first = head->FirstChild;
+    ASSERT_NE(first, nullptr);
+    EXPECT_EQ(composed.SourceText(first->Tokens), "Wrap<(1>0),int>");
+    const auto *separator = first->NextSibling;
+    ASSERT_NE(separator, nullptr);
+    EXPECT_EQ(separator->Kind, parser::NodeKind::ListSeparator);
+    EXPECT_EQ(separator->Tokens.Begin, first->Tokens.End);
+    EXPECT_EQ(composed.Role(separator->Tokens.Begin), parser::PunctuationRole::ListSeparator);
+    const auto *second = separator->NextSibling;
+    ASSERT_NE(second, nullptr);
+    EXPECT_EQ(composed.SourceText(second->Tokens), "2");
+    EXPECT_EQ(second->Tokens.Begin, separator->Tokens.End);
+    EXPECT_EQ(second->Tokens.End, head->Tokens.End - 1);
+    EXPECT_EQ(second->NextSibling, nullptr);
+    for (auto i = first->Tokens.Begin; i < first->Tokens.End; ++i)
+        if (composed.Kind(i) == tokenizer::TokenKind::Operator_Comma)
+            EXPECT_EQ(composed.Role(i), parser::PunctuationRole::Generic);
+    ASSERT_NE(constructor, nullptr);
+    const Node *parameters = nullptr;
+    const Node *initializers = nullptr;
+    pending = {constructor};
+    while (!pending.empty()) {
+        const auto *node = pending.back();
+        pending.pop_back();
+        if (node->Kind == parser::NodeKind::ParameterList) parameters = node;
+        if (node->Kind == parser::NodeKind::ConstructorInitializerList) initializers = node;
+        for (auto *child = node->FirstChild; child; child = child->NextSibling)
+            pending.push_back(child);
+    }
+    ASSERT_NE(initializers, nullptr);
+    EXPECT_EQ(composed.SourceText(initializers->Tokens), ": stored(first+second)");
+    ASSERT_NE(parameters, nullptr);
+    const auto *parameter = parameters->FirstChild;
+    ASSERT_NE(parameter, nullptr);
+    EXPECT_EQ(composed.SourceText(parameter->Tokens), "int first=(1<2)");
+    const auto *parameterComma = parameter->NextSibling;
+    ASSERT_NE(parameterComma, nullptr);
+    EXPECT_EQ(parameterComma->Kind, parser::NodeKind::ListSeparator);
+    EXPECT_EQ(composed.Role(parameterComma->Tokens.Begin), parser::PunctuationRole::ListSeparator);
+    const auto *other = parameterComma->NextSibling;
+    ASSERT_NE(other, nullptr);
+    EXPECT_EQ(composed.SourceText(other->Tokens), "int second=(3>2)");
+    EXPECT_EQ(other->Tokens.End, parameters->Tokens.End - 1);
+    EXPECT_EQ(other->NextSibling, nullptr);
+    size_t defaultTails = 0;
+    for (const auto* value : {parameter, other}) {
+        pending = {value};
+        while (!pending.empty()) {
+            const auto* node = pending.back();
+            pending.pop_back();
+            if (node->Kind == parser::NodeKind::Initializer) {
+                ++defaultTails;
+                EXPECT_EQ(node->Tokens.End, value->Tokens.End);
+                EXPECT_NE(node->FirstChild, nullptr);
+            }
+            for (auto* child = node->FirstChild; child; child = child->NextSibling)
+                pending.push_back(child);
+        }
+    }
+    EXPECT_EQ(defaultTails, 2u);
+    EXPECT_EQ(selfTypes, 1u);
+    EXPECT_EQ(outsideExpressions, 1u);
+    EXPECT_EQ(outsideAmbiguities, 1u);
+    EXPECT_EQ(unknownPairNames, 1u);
+
+    // A registered type would trip the no-export assertion above: this is
+    // deliberately a declaration, unlike the conservative unknown-global case.
+    PaddedInput registeredType("struct Pair {}; void known_type() { Pair*marker; }\n");
+    const auto control = parser::Parse(registeredType.View(), [](parser::ParseError) {});
+    pending = {&control.Root()};
+    size_t declarations = 0;
+    while (!pending.empty()) {
+        const auto* node = pending.back();
+        pending.pop_back();
+        if (node->Kind == parser::NodeKind::DeclarationStatement &&
+            control.SourceText(node->Tokens) == "Pair*marker;")
+            ++declarations;
+        for (auto* child = node->FirstChild; child; child = child->NextSibling)
+            pending.push_back(child);
+    }
+    EXPECT_EQ(declarations, 1u);
+}
+
+TEST(Parser, RecordHeadChildrenAreBoundedWithoutGuessingOperands)
+{
+    const std::pair<std::string_view, size_t> cases[] = {
+        {"struct Plain {};", 0},
+        {"struct Outer::Inner {};", 0},
+        {"template<> struct Outer<int>::Inner<long,char> {};", 2},
+        {"template<> struct Pair<> {};", 1},
+        {"template<> struct Pair<Wrap<int,long>, char> {};", 1},
+        {"template<> struct Pair<(a < b), 2> {};", 1},
+        {"template<> struct Pair<Value{1,2}, 3> {};", 1},
+        {"template<> struct Pair<decltype(auto), 2> {};", 1},
+        {"template<> struct Pair<decltype(call(a,b)), 2> {};", 1},
+        {"struct alignas(alignof(int)) Pair<int,long> {};", 1},
+        {"struct API Pair<int,long> {};", 0},
+        {"struct Pair<int, Wrap<long> {};", 0},
+        {"struct Pair<(1<2],0> {};", 0},
+        {"struct Pair<Value{1>0],0> {};", 0},
+    };
+    for (const auto &[source, expectedLists] : cases) {
+        SCOPED_TRACE(source);
+        PaddedInput input(source);
+        const auto tree = parser::Parse(input.View(), [](parser::ParseError) {});
+        size_t lists = 0;
+        size_t calls = 0;
+        std::vector<const Node *> pending{&tree.Root()};
+        while (!pending.empty()) {
+            const auto *node = pending.back();
+            pending.pop_back();
+            lists += node->Kind == parser::NodeKind::TemplateArgumentList;
+            calls += node->Kind == parser::NodeKind::CallExpression;
+            auto end = node->Tokens.Begin;
+            for (auto *child = node->FirstChild; child;
+                child = child->NextSibling)
+            {
+                EXPECT_GE(child->Tokens.Begin, end);
+                EXPECT_LE(child->Tokens.End, node->Tokens.End);
+                end = child->Tokens.End;
+                pending.push_back(child);
+            }
+            if (node->Kind == parser::NodeKind::TemplateArgument) {
+                // This patch exposes the head list, not the unresolved
+                // type/expression operands. In particular, nested commas
+                // must not be mistaken for the head's list separators.
+                EXPECT_EQ(node->FirstChild, nullptr);
+                for (auto i = node->Tokens.Begin; i < node->Tokens.End; ++i) {
+                    if (tree.Kind(i) == tokenizer::TokenKind::Operator_Comma) {
+                        EXPECT_NE(tree.Role(i),
+                            parser::PunctuationRole::ListSeparator);
+                    }
+                }
+            }
+        }
+        EXPECT_EQ(lists, expectedLists);
+        EXPECT_EQ(calls, 0u);
+    }
+
+    // Attaching head syntax must not alter the old registration path for
+    // forward declarations or the declaration following them.
+    PaddedInput input(
+        "template<class A, class B> struct Pair;\n"
+        "template<> struct Pair<int,long>;\n"
+        "Pair<int,long> value;\n");
+    const auto tree = parser::Parse(input.View(), [](parser::ParseError) {});
+    const auto *last = tree.Root().LastChild;
+    ASSERT_EQ(last->Kind, parser::NodeKind::Declaration);
+    ASSERT_NE(last->FirstChild, nullptr);
+    EXPECT_EQ(last->FirstChild->Kind, parser::NodeKind::DeclarationSpecifiers);
+
+    // Ordinary callers retain their independent delimiter/element ownership.
+    const std::string ordinary =
+        "void sink(int first=(1<2),int second=(3>2));\n"
+        "void use(){ sink((1<2),0); int items[]={(1<2),0}; }\n"
+        "enum Values { first=(1<2), second=0 };\n";
+    PaddedInput ordinaryInput(ordinary);
+    std::vector<parser::ParseError> errors;
+    const auto ordinaryTree = parser::Parse(ordinaryInput.View(),
+        [&](parser::ParseError error) { errors.push_back(std::move(error)); });
+    EXPECT_TRUE(errors.empty());
+    const std::pair<parser::NodeKind, std::string_view> expected[] = {
+        {parser::NodeKind::ParameterList, "int first=(1<2)"},
+        {parser::NodeKind::ArgumentList, "(1<2)"},
+        {parser::NodeKind::InitializerList, "(1<2)"},
+        {parser::NodeKind::EnumeratorList, "first=(1<2)"},
+    };
+    for (const auto &[kind, firstText] : expected) {
+        SCOPED_TRACE(parser::GetNodeKindName(kind));
+        size_t found = 0;
+        std::vector<const Node *> nodes{&ordinaryTree.Root()};
+        while (!nodes.empty()) {
+            const auto *node = nodes.back();
+            nodes.pop_back();
+            for (auto *child = node->FirstChild; child;
+                child = child->NextSibling)
+            {
+                nodes.push_back(child);
+            }
+            if (node->Kind != kind || !node->FirstChild ||
+                ordinaryTree.SourceText(node->FirstChild->Tokens) != firstText)
+            {
+                continue;
+            }
+            ++found;
+            const auto *first = node->FirstChild;
+            const auto *comma = first->NextSibling;
+            ASSERT_NE(comma, nullptr);
+            EXPECT_EQ(comma->Kind, parser::NodeKind::ListSeparator);
+            EXPECT_EQ(comma->Tokens.Begin, first->Tokens.End);
+            EXPECT_EQ(comma->Tokens.End, first->Tokens.End + 1);
+            EXPECT_EQ(ordinaryTree.Role(comma->Tokens.Begin),
+                parser::PunctuationRole::ListSeparator);
+            const auto *second = comma->NextSibling;
+            ASSERT_NE(second, nullptr);
+            EXPECT_EQ(second->Tokens.Begin, comma->Tokens.End);
+            EXPECT_EQ(second->Tokens.End, node->Tokens.End - 1);
+            EXPECT_EQ(second->NextSibling, nullptr);
+        }
+        EXPECT_EQ(found, 1u);
+    }
+}
+
+TEST(Parser, ParameterDefaultsKeepDelimitedComparisonBoundaries)
+{
+    const std::string_view firstParameters[] = {
+        "int value=(1<2)",
+        "int value=(8>>1)",
+        "int value=select((1<2),0)",
+        "int value=values[1<2]",
+        "Value value=Value{1<2,2}",
+        "Wrap<(1>0),int> value={}",
+        "Wrap<(1<<2),Wrap<(3>2),int>> value={}",
+    };
+    for (const auto firstText : firstParameters) {
+        const auto source =
+            "constexpr int values[] = {1,2};\n"
+            "constexpr int select(int left,int right){return left+right;}\n"
+            "struct Value { int first, second; };\n"
+            "template<auto, class> struct Wrap {};\n"
+            "void sink(" + std::string(firstText) + ",int other=0) {}\n"
+            "Value outside;\n";
+        SCOPED_TRACE(firstText);
+        PaddedInput input(source);
+        std::vector<parser::ParseError> errors;
+        const auto tree = parser::Parse(input.View(),
+            [&](parser::ParseError error) { errors.push_back(std::move(error)); });
+        EXPECT_TRUE(errors.empty());
+        const Node *parameters = nullptr;
+        std::vector<const Node *> pending{&tree.Root()};
+        while (!pending.empty()) {
+            const auto *node = pending.back();
+            pending.pop_back();
+            if (node->Kind == parser::NodeKind::ParameterList &&
+                tree.SourceText(node->Tokens).starts_with("(" + std::string(firstText)))
+            {
+                parameters = node;
+            }
+            for (auto *child = node->FirstChild; child;
+                child = child->NextSibling)
+            {
+                pending.push_back(child);
+            }
+        }
+        ASSERT_NE(parameters, nullptr);
+        const auto *first = parameters->FirstChild;
+        ASSERT_NE(first, nullptr);
+        EXPECT_EQ(first->Kind, parser::NodeKind::ParameterDeclaration);
+        EXPECT_EQ(tree.SourceText(first->Tokens), firstText);
+        EXPECT_EQ(first->Tokens.Begin, parameters->Tokens.Begin + 1);
+        const auto *comma = first->NextSibling;
+        ASSERT_NE(comma, nullptr);
+        EXPECT_EQ(comma->Kind, parser::NodeKind::ListSeparator);
+        EXPECT_EQ(comma->Tokens.Begin, first->Tokens.End);
+        EXPECT_EQ(comma->Tokens.End, first->Tokens.End + 1);
+        EXPECT_EQ(tree.Role(comma->Tokens.Begin), parser::PunctuationRole::ListSeparator);
+        const auto *second = comma->NextSibling;
+        ASSERT_NE(second, nullptr);
+        EXPECT_EQ(second->Kind, parser::NodeKind::ParameterDeclaration);
+        EXPECT_EQ(tree.SourceText(second->Tokens), "int other=0");
+        EXPECT_EQ(second->Tokens.Begin, comma->Tokens.End);
+        EXPECT_EQ(second->Tokens.End, parameters->Tokens.End - 1);
+        EXPECT_EQ(second->NextSibling, nullptr);
+        size_t defaults = 0;
+        for (const auto *parameter : {first, second}) {
+            pending = {parameter};
+            while (!pending.empty()) {
+                const auto *node = pending.back();
+                pending.pop_back();
+                if (node->Kind == parser::NodeKind::Initializer) {
+                    ++defaults;
+                    EXPECT_EQ(node->Tokens.End, parameter->Tokens.End);
+                    EXPECT_NE(node->FirstChild, nullptr);
+                }
+                for (auto *child = node->FirstChild; child;
+                    child = child->NextSibling)
+                {
+                    pending.push_back(child);
+                }
+            }
+        }
+        EXPECT_EQ(defaults, 2u);
+        const auto *outside = tree.Root().LastChild;
+        ASSERT_EQ(outside->Kind, parser::NodeKind::Declaration);
+        ASSERT_NE(outside->FirstChild, nullptr);
+        EXPECT_EQ(outside->FirstChild->Kind, parser::NodeKind::DeclarationSpecifiers);
+        EXPECT_EQ(tree.SourceText(outside->FirstChild->Tokens), "Value");
+    }
+}

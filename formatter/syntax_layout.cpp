@@ -696,6 +696,7 @@ class Planner
         {
             return;
         }
+        Groups_[group].Spec.StructuralBase = true;
         const bool empty = !prefixed && node.Tokens.Size() == 2;
         Groups_[group].Spec.ForceBreak =
             canonical && !empty && policy.Break == BreakRequirement::Always;
@@ -994,6 +995,7 @@ class Planner
             GapPosition(node.Tokens.End),
             threePart ? layout::GroupMode::Consistent : layout::GroupMode::Fill,
             int32_t(policy.Indent.ContinuationOffset), policy.Indent);
+        Groups_[group].Spec.ExpressionContinuation = true;
         Groups_[group].Spec.ForceBreak =
             canonical && policy.Break == BreakRequirement::Always &&
             (declarationAssignment || kind == NodeKind::BinaryExpression ||
@@ -1312,6 +1314,7 @@ class Planner
                                                 ? TokenPosition(opening)
                                                 : GapPosition(opening),
                                         layout::GroupMode::Fill);
+            Groups_[header].Spec.StructuralBase = true;
             if (canonical)
             {
                 ProjectHeaderGaps(id, begin, opening, header);
@@ -1343,6 +1346,7 @@ class Planner
                     GroupAt(GapPosition(opening), GapPosition(body.Tokens.End),
                             layout::GroupMode::Consistent,
                             int32_t(Policies_.Bodies.IndentWidth));
+                Groups_[group].Spec.StructuralBase = true;
                 if (Policies_.Bodies.Layout == LayoutMode::Canonical)
                 {
                     Own(opening, group,
@@ -1499,6 +1503,7 @@ class Planner
         const auto group =
             GroupAt(TokenPosition(node.Tokens.Begin), GapPosition(opening + 1),
                     layout::GroupMode::Fill);
+        Groups_[group].Spec.StructuralBase = true;
         if (canonical)
         {
             Own(opening, group,
@@ -1585,6 +1590,7 @@ class Planner
                     layout::GroupMode::Consistent, offset,
                     IndentationPolicy{ContinuationAlignment::Block,
                                       size_t(offset), size_t(offset)});
+        Groups_[group].Spec.StructuralBase = true;
         BlockOf_[id] = group;
         if (canonical)
         {
@@ -2543,12 +2549,42 @@ class Planner
         return Safety_.CanReplaceGap(i, line);
     }
 
-    void PreservedSlice(Index begin, Index end, bool trim,
+    bool ExpressionGap(Index i) const
+    {
+        const auto owner = Gaps_[i].Owner;
+        return owner != None && Groups_[owner].Spec.ExpressionContinuation &&
+               !Stack_.empty() && Stack_.back() == owner;
+    }
+
+    void RecordFixedExpressionLine(Index i, Index begin, Index end)
+    {
+        // Protection retains bytes, not the fact that a safe current-expression
+        // whitespace line realized continuation. Tokens never enter this path.
+        if (Gaps_[i].Frozen || Uncertain(i) ||
+            Safety_.Gaps()[i].ContextSensitive || !ExpressionGap(i))
+        {
+            return;
+        }
+        const auto text = Tree_.Source().substr(begin, end - begin);
+        if (HasLine(text) &&
+            text.find_first_not_of(" \t\r\n") == std::string_view::npos)
+        {
+            Document_.ExpressionLine();
+        }
+    }
+
+    void FixedGapSlice(Index i, Index begin, Index end)
+    {
+        Document_.SourceText(begin, end, layout::NoIdentity, true);
+        RecordFixedExpressionLine(i, begin, end);
+    }
+
+    void PreservedSlice(Index i, Index begin, Index end, bool trim,
                         bool trimTail = false)
     {
         if (!trim)
         {
-            Document_.SourceText(begin, end, layout::NoIdentity, true);
+            FixedGapSlice(i, begin, end);
             return;
         }
         const auto source = Tree_.Source();
@@ -2570,7 +2606,7 @@ class Planner
             {
                 --space;
             }
-            Document_.SourceText(run, space, layout::NoIdentity, true);
+            FixedGapSlice(i, run, space);
             run = newline;
         }
         if (trimTail)
@@ -2581,7 +2617,7 @@ class Planner
                 --end;
             }
         }
-        Document_.SourceText(run, end, layout::NoIdentity, true);
+        FixedGapSlice(i, run, end);
     }
 
     void PreserveGap(Index i)
@@ -2591,8 +2627,7 @@ class Planner
         if (plan.Frozen || Uncertain(i) || source.Preserve ||
             source.ContextSensitive)
         {
-            Document_.SourceText(source.Source.Begin, source.Source.End,
-                                 layout::NoIdentity, true);
+            FixedGapSlice(i, source.Source.Begin, source.Source.End);
             return;
         }
         const auto lf = source.Original.rfind('\n');
@@ -2618,7 +2653,7 @@ class Planner
                 const bool crlf = lf > 0 && source.Original[lf - 1] == '\r';
                 const auto newlineBegin =
                     source.Source.Begin + Index(lf) - (crlf ? 1 : 0);
-                PreservedSlice(source.Source.Begin, newlineBegin,
+                PreservedSlice(i, source.Source.Begin, newlineBegin,
                                Policies_.TrailingWhitespace ==
                                    TrailingWhitespace::Trim);
                 auto spec = Spec(i, layout::GapKind::Hard, false);
@@ -2640,7 +2675,7 @@ class Planner
             }
             else
             {
-                PreservedSlice(source.Source.Begin, source.Source.End,
+                PreservedSlice(i, source.Source.Begin, source.Source.End,
                                Policies_.TrailingWhitespace ==
                                        TrailingWhitespace::Trim &&
                                    Safety_.CanReplaceGap(i, source.Original),
@@ -2652,8 +2687,7 @@ class Planner
             Policies_.TrailingWhitespace == TrailingWhitespace::Trim &&
             Safety_.CanReplaceGap(i, ""))
         {
-            Document_.SourceText(source.Source.Begin, source.Source.Begin,
-                                 layout::NoIdentity, true);
+            FixedGapSlice(i, source.Source.Begin, source.Source.Begin);
             return;
         }
         const auto context = ContextFor(i);
@@ -2665,8 +2699,7 @@ class Planner
         }
         else
         {
-            Document_.SourceText(source.Source.Begin, source.Source.End,
-                                 layout::NoIdentity, true);
+            FixedGapSlice(i, source.Source.Begin, source.Source.End);
         }
     }
 
@@ -2679,8 +2712,7 @@ class Planner
         // whole gap remains Preserve. Annotation/spacing uncertainty wins too.
         if (plan.Frozen || Uncertain(i) || source.ContextSensitive)
         {
-            Document_.SourceText(source.Source.Begin, source.Source.End,
-                                 layout::NoIdentity, true);
+            FixedGapSlice(i, source.Source.Begin, source.Source.End);
             return;
         }
         auto cursor = source.Source.Begin;
@@ -2692,8 +2724,7 @@ class Planner
                 {
                     if (cursor < permission.Source.Begin)
                     {
-                        Document_.SourceText(cursor, permission.Source.Begin,
-                                             layout::NoIdentity, true);
+                        FixedGapSlice(i, cursor, permission.Source.Begin);
                     }
                     cursor = permission.Source.End;
                 }
@@ -2716,13 +2747,13 @@ class Planner
                 Document_.SourceLineIndent(
                     cursor, permission.Source.Begin, permission.Source.Begin,
                     permission.Source.End, anchor, plan.RequiredWidth);
+                RecordFixedExpressionLine(i, cursor, permission.Source.Begin);
                 cursor = permission.Source.End;
             }
         }
         if (cursor < source.Source.End)
         {
-            Document_.SourceText(cursor, source.Source.End, layout::NoIdentity,
-                                 true);
+            FixedGapSlice(i, cursor, source.Source.End);
         }
     }
 
@@ -2845,12 +2876,14 @@ class Planner
                 const auto id = Order_[next++];
                 auto &group = Groups_[id];
                 group.Block = Document_.MarkAnchor(
-                    {layout::AnchorKind::BlockRelative, 0});
+                    {layout::AnchorKind::BlockRelative, 0, 0, 0,
+                     group.Spec.StructuralBase});
                 if (group.PrefixGap != None)
                 {
                     group.Anchor = Document_.MarkAnchor(
                         {layout::AnchorKind::BlockRelative,
-                         int32_t(group.Indent.ContinuationOffset)});
+                         int32_t(group.Indent.ContinuationOffset), 0, 0,
+                         group.Spec.StructuralBase});
                 }
                 else if (group.HasAnchor)
                 {
@@ -2864,7 +2897,8 @@ class Planner
                              ? 0
                              : int32_t(group.Indent.ContinuationOffset),
                          int32_t(group.Indent.FallbackOffset),
-                         uint32_t(group.Indent.ContinuationOffset)});
+                         uint32_t(group.Indent.ContinuationOffset),
+                         group.Spec.StructuralBase});
                 }
                 group.Id = Document_.BeginGroup(group.Spec);
                 Stack_.push_back(id);

@@ -275,6 +275,21 @@ std::vector<FormatCase> FormatCases()
     AddCases(cases, ownerContext,
         {"canonical-protected", "preserve-protected", "canonical-safe",
             "explicit-protected"});
+    const auto recordHead =
+        std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../record-head-commas";
+    AddCases(cases, recordHead,
+        {"space", "no-space", "preserve", "generated-canonical",
+            "generated-preserve"});
+    for (const auto *profile : {"space", "no-space", "preserve",
+            "generated-canonical", "generated-preserve"})
+    {
+        cases.push_back({recordHead, std::string("comparisons-") + profile,
+            "comparisons.input.cpp", profile});
+    }
+    for (const auto* profile : {"space", "generated-preserve"}) {
+        cases.push_back({recordHead, std::string("constructor-composition-") + profile,
+            "constructor-composition.input.cpp", profile});
+    }
     cases.push_back({closings,
         "reflow-preferred",
         "reflow-preferred.input.cpp"});
@@ -499,6 +514,8 @@ std::vector<FormatCase> FormatCases()
         cases.push_back({data / "group-syntax", name,
             std::string(name) + ".input.cpp"});
     }
+    AddCases(cases, data / "structural-expression-base",
+        {"canonical", "preserved"});
     cases.push_back({data / "initializer-trailing-comma",
         "conditional-closer", "input.cpp"});
     AddCases(cases, data / "function_parameters",

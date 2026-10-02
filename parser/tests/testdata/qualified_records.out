@@ -476,7 +476,13 @@
       ">"
     )
     (record-declaration
-      "struct" "Family" "<" "T" ">" "::" "Child" "{"
+      "struct" "Family"
+      (template-argument-list
+        "<"
+        (template-argument "T")
+        ">"
+      )
+      "::" "Child" "{"
       (function-definition
         (init-declarator-list
           (init-declarator
@@ -565,7 +571,13 @@
     "template"
     (template-parameter-list "<" ">")
     (record-declaration
-      "struct" "Spec" "<" "int" ">" "{"
+      "struct" "Spec"
+      (template-argument-list
+        "<"
+        (template-argument "int")
+        ">"
+      )
+      "{"
       (function-definition
         (init-declarator-list
           (init-declarator
@@ -632,7 +644,13 @@
         ">"
       )
       (record-declaration
-        "struct" "Container" "<" "T" ">" "::" "Entry" "{"
+        "struct" "Container"
+        (template-argument-list
+          "<"
+          (template-argument "T")
+          ">"
+        )
+        "::" "Entry" "{"
         (function-definition
           (init-declarator-list
             (init-declarator
@@ -1085,7 +1103,13 @@
     "template"
     (template-parameter-list "<" ">")
     (record-declaration
-      "struct" "Family" "<" "Spec" "<" "int" ">>" "::" "Child" "{"
+      "struct" "Family"
+      (template-argument-list
+        "<"
+        (template-argument "Spec" "<" "int")
+        ">>"
+      )
+      "::" "Child" "{"
       (function-definition
         (init-declarator-list
           (init-declarator
@@ -1198,7 +1222,13 @@
       ">"
     )
     (record-declaration
-      "struct" "Shelf" "<" "T" ">" "::" "EntryCount" "{"
+      "struct" "Shelf"
+      (template-argument-list
+        "<"
+        (template-argument "T")
+        ">"
+      )
+      "::" "EntryCount" "{"
       (function-definition
         (init-declarator-list
           (init-declarator
@@ -1353,7 +1383,15 @@
         (template-parameter "class" "T")
         ">"
       )
-      (record-declaration "struct" "Owner" "<" "T" ">" "::" "Entry" "{" "}" ";")
+      (record-declaration
+        "struct" "Owner"
+        (template-argument-list
+          "<"
+          (template-argument "T")
+          ">"
+        )
+        "::" "Entry" "{" "}" ";"
+      )
     )
     (function-definition
       (declaration-specifiers "void")
@@ -1415,7 +1453,15 @@
     (template-declaration
       "template"
       (template-parameter-list "<" ">")
-      (record-declaration "struct" "Owner" "<" "int" ">" "::" "Pending" ";")
+      (record-declaration
+        "struct" "Owner"
+        (template-argument-list
+          "<"
+          (template-argument "int")
+          ">"
+        )
+        "::" "Pending" ";"
+      )
     )
     (function-definition
       (declaration-specifiers "void")

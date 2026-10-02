@@ -432,3 +432,50 @@ into the test executable; it calls library helpers, never the CLI.
 No extra compiler dependency or runtime allocation facility is required (C++20).
 The old formatter/CLI/tests temporarily reference removed fields; that is an
 intentional handoff boundary, not a reason to restore legacy flags.
+
+## Staged configuration contracts (not formatting features yet)
+
+The schema accepts eight new keys for reviewed downstream integration:
+
+| Key | Values | Default |
+| --- | --- | --- |
+| StandaloneCommentBlankLinesBefore | Preserve or 0..10000 | Preserve |
+| StandaloneCommentBlankLinesAfter | Preserve or 0..10000 | Preserve |
+| BreakAfterTemplateHeader | false or true | false |
+| ExpressionsAlignment | Block or Operand | Block |
+| IncludeMatchingHeader | Off or First | Off |
+| IncludeGrouping | Preserve or Regroup | Preserve |
+| IncludeGroupPrefixes | ordered quoted directory-prefix array | [] |
+| ConstructorBracePlacement | Inherit, Attached, NextLine, NextLineIfHeaderBroken | Inherit |
+
+Low-level CompilePolicies resolves immutable scalar metadata, including
+ConstructorBracePlacement from the final FunctionBracePlacement once. Prefix
+metadata is separately configuration-owned by PreparedIncludePrefixes: no Style
+views, input paths, per-file compilation or mutable caches. Its lookup accepts
+already-normalized relative slash paths and returns the earliest configured
+matching ordinal (not the longest); RuleCount denotes unmatched. Prefixes must
+end in `/`, with no empty, `.` or `..` components, absolute paths, backslashes or
+duplicates. Backslashes in input include names remain ordinary bytes: engine/
+item\name.h matches engine/, but engine\item.h does not. This is a rule-syntax
+restriction, not a reinterpretation of input path bytes. Overlapping prefixes are valid. Inactive prefixes do not enable
+regrouping. IncludeOrder still defaults to Preserve; only explicit Sort sorts.
+
+Explicit standalone-comment counts must fit an explicit MaxEmptyLines cap.
+Regroup requires one empty line and conflicts with MaxEmptyLines=0 independently
+of input, Layout or IncludeOrder. Validation runs after final overrides and
+before public preparation's pending-consumer rejection.
+
+Public PreparedFormat currently rejects nondefault new behavior by setting name;
+it must not silently ignore a staged option. Inactive prefixes may validate, but
+they cannot change output. Remove each isolated guard clause only after the
+corresponding comment/template/expression/constructor/include consumer has been
+reviewed and integrated. Matching additionally needs the reviewed original-file
+context boundary; metadata alone is not matching or grouping support.
+
+ColumnLimit remains 1..10000, default 120, and zero is still rejected. After the
+reviewed dynamic renderer and width-zero consumer R integrate, the activation
+patch must change ValidatePolicyStyle's lower bound to accept zero, change
+IntegerValues("ColumnLimit") help to `0 (unlimited) or 1..10000`, and document its
+no-width-driven-wrap/no-width-diagnostic meaning. Only then apply the separately
+approved zero-invalid witness disposition (10001) and real mandatory-break,
+saturation and finite/zero behavior coverage. This stage does not implement 18.

@@ -43,6 +43,8 @@ struct VerticalGapPolicies
     VerticalGapPolicy DefinitionBlankLines;
     VerticalGapPolicy MemberDefinitionBlankLines;
     EmptyLineCap MaxEmptyLines;
+    VerticalGapPolicy StandaloneCommentBlankLinesBefore;
+    VerticalGapPolicy StandaloneCommentBlankLinesAfter;
 };
 
 } // namespace formatter

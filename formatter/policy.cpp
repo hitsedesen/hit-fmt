@@ -1,6 +1,7 @@
 #include "policy.hpp"
 
 #include "formatter.hpp"
+#include "include_policy.hpp"
 
 #include <stdexcept>
 #include <string>
@@ -129,6 +130,10 @@ void ValidatePolicyStyle(const Style& style)
         style.MemberDefinitionBlankLines,
         "MemberDefinitionBlankLines",
         true);
+    CheckBlankSetting(style.StandaloneCommentBlankLinesBefore,
+        "StandaloneCommentBlankLinesBefore");
+    CheckBlankSetting(style.StandaloneCommentBlankLinesAfter,
+        "StandaloneCommentBlankLinesAfter");
     if (style.MaxEmptyLines && *style.MaxEmptyLines > 10000) {
         throw std::invalid_argument("MaxEmptyLines must not exceed 10000");
     }
@@ -156,6 +161,42 @@ void ValidatePolicyStyle(const Style& style)
         style.DefinitionBlankLines,
         style.MaxEmptyLines,
         "DefinitionBlankLines");
+    CheckBlankCap(style.StandaloneCommentBlankLinesBefore,
+        style.MaxEmptyLines, "StandaloneCommentBlankLinesBefore");
+    CheckBlankCap(style.StandaloneCommentBlankLinesAfter,
+        style.MaxEmptyLines, "StandaloneCommentBlankLinesAfter");
+    if (style.IncludeGrouping == IncludeGrouping::Regroup &&
+        style.MaxEmptyLines && *style.MaxEmptyLines == 0)
+    {
+        throw std::invalid_argument(
+            "IncludeGrouping = Regroup requires one empty line, exceeding "
+            "MaxEmptyLines = 0");
+    }
+    ValidateIncludeGroupPrefixes(style.IncludeGroupPrefixes);
+    if (style.ExpressionsAlignment != ExpressionAlignment::Block &&
+        style.ExpressionsAlignment != ExpressionAlignment::Operand)
+    {
+        throw std::invalid_argument("ExpressionsAlignment has invalid value");
+    }
+    if (style.IncludeMatchingHeader != IncludeMatchingHeader::Off &&
+        style.IncludeMatchingHeader != IncludeMatchingHeader::First)
+    {
+        throw std::invalid_argument("IncludeMatchingHeader has invalid value");
+    }
+    if (style.IncludeGrouping != IncludeGrouping::Preserve &&
+        style.IncludeGrouping != IncludeGrouping::Regroup)
+    {
+        throw std::invalid_argument("IncludeGrouping has invalid value");
+    }
+    if (style.ConstructorBracePlacement &&
+        *style.ConstructorBracePlacement != BracePlacement::Attached &&
+        *style.ConstructorBracePlacement != BracePlacement::NextLine &&
+        *style.ConstructorBracePlacement !=
+            BracePlacement::NextLineIfHeaderBroken)
+    {
+        throw std::invalid_argument(
+            "ConstructorBracePlacement has invalid value");
+    }
     if (style.ShortNamespaceLines > 10000) {
         throw std::invalid_argument(
             "ShortNamespaceLines must not exceed 10000");
@@ -240,7 +281,8 @@ CompiledPolicies CompilePolicies(const Style& style)
             style.ShiftOperatorSide, style.TernaryOperatorSide,
             style.TernaryLayout,
             {ContinuationAlignment::Block, continuation, fallback},
-            style.ExpressionsBreak, style.ExpressionsPacking},
+            style.ExpressionsBreak, style.ExpressionsPacking,
+            style.ExpressionsAlignment},
         .Chains = {ResolveLayout(style.ChainsLayout, style.Layout),
             style.ChainsPacking,
             {style.ChainsAlignment, continuation, fallback}, style.ChainsBreak},
@@ -257,7 +299,9 @@ CompiledPolicies CompilePolicies(const Style& style)
             style.UnionBracePlacement, style.FunctionBracePlacement,
             style.LambdaBracePlacement, style.NamespaceBracePlacement,
             style.ControlBracePlacement, style.CaseBlockBracePlacement,
-            style.EnumBracePlacement},
+            style.EnumBracePlacement,
+            style.ConstructorBracePlacement.value_or(
+                style.FunctionBracePlacement)},
         .InitializersTrailingComma = style.InitializersTrailingComma,
         .Spacing = spacing,
         .Enumerators = Enumerators,
@@ -269,7 +313,11 @@ CompiledPolicies CompilePolicies(const Style& style)
             CompileBlankLines(style.DefinitionBlankLines),
             CompileBlankLines(ResolveMemberBlankLines(style)),
             {style.MaxEmptyLines.has_value(), static_cast<std::uint16_t>(
-                style.MaxEmptyLines.value_or(0))}},
+                style.MaxEmptyLines.value_or(0))},
+            CompileBlankLines(style.StandaloneCommentBlankLinesBefore),
+            CompileBlankLines(style.StandaloneCommentBlankLinesAfter)},
+        .BreakAfterTemplateHeader = style.BreakAfterTemplateHeader,
+        .Includes = {style.IncludeMatchingHeader, style.IncludeGrouping},
     };
 }
 

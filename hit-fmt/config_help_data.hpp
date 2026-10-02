@@ -142,6 +142,21 @@ Exclude = ["(^|/)generated(/|$)"]
 )CONFIG"},
 };
 
+constexpr HelpExample StagedExamples[] = {
+    {"Staged contracts with backward-neutral defaults:",
+        R"(StandaloneCommentBlankLinesBefore = Preserve
+StandaloneCommentBlankLinesAfter = Preserve
+BreakAfterTemplateHeader = false
+ExpressionsAlignment = Block
+IncludeMatchingHeader = Off
+IncludeGrouping = Preserve
+IncludeGroupPrefixes = []
+ConstructorBracePlacement = Inherit
+# These defaults are safe; nondefault behavior requires reviewed consumers.
+# Inactive directory prefixes do not enable grouping.
+)"},
+};
+
 constexpr HelpSection HelpSections[] = {
     {"Layout and width", "Layout defaults to Preserve: retain source "
         "break topology. "
@@ -282,6 +297,20 @@ constexpr HelpSection HelpSections[] = {
             "heuristics or a matcher DSL. All calls "
         "use global ColumnLimit. Macro safety hints "
             "are separate.\n", AnnotationExamples},
+    {"Staged configuration (not formatting features)",
+        "Public preparation rejects explicit comment counts, template breaks, "
+        "Operand alignment, matching First, Regroup and constructor overrides "
+        "until their reviewed consumers integrate. Low-level scalar compilation "
+        "and owning prefix metadata may be used separately. Comment counts "
+        "accept Preserve or 0..10000 and must fit MaxEmptyLines. Constructor "
+        "Inherit resolves final FunctionBracePlacement once. IncludeGroupPrefixes "
+        "is an ordered quoted array of normalized relative directory prefixes "
+        "ending in /; duplicates, absolute paths, backslashes, empty, . and .. "
+        "components are invalid. Earliest rule wins, not longest match. "
+        "Regroup conflicts with explicit MaxEmptyLines=0 before pending-consumer "
+        "rejection. IncludeOrder remains Preserve by default. ColumnLimit still "
+        "accepts 1..10000; zero remains invalid pending reviewed width support.\n",
+        StagedExamples},
     {"Safety, transforms and checks",
         "Directives and protected bytes are never "
         "rewritten. hit-fmt off/on always protects "

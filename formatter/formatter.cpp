@@ -29,6 +29,47 @@ CompiledPolicies PreparePolicies(const Style& style)
         throw std::invalid_argument(
             "AmbiguousTemplateDeclarationSpacing is unsupported");
     }
+    // Pending-consumer guard: staged schema must not silently ignore behavior.
+    // Remove each clause only with its reviewed consumer integration.
+    const auto pending = [&] () -> std::string_view {
+        if (style.StandaloneCommentBlankLinesBefore.Mode !=
+            BlankLineMode::Preserve)
+        {
+            return "StandaloneCommentBlankLinesBefore";
+        }
+        if (style.StandaloneCommentBlankLinesAfter.Mode !=
+            BlankLineMode::Preserve)
+        {
+            return "StandaloneCommentBlankLinesAfter";
+        }
+        if (style.BreakAfterTemplateHeader)
+        {
+            return "BreakAfterTemplateHeader";
+        }
+        if (style.ExpressionsAlignment != ExpressionAlignment::Block)
+        {
+            return "ExpressionsAlignment";
+        }
+        if (style.IncludeMatchingHeader != IncludeMatchingHeader::Off)
+        {
+            return "IncludeMatchingHeader";
+        }
+        if (style.IncludeGrouping != IncludeGrouping::Preserve)
+        {
+            return "IncludeGrouping";
+        }
+        if (style.ConstructorBracePlacement)
+        {
+            return "ConstructorBracePlacement";
+        }
+        return {};
+    }();
+    if (!pending.empty())
+    {
+        throw std::invalid_argument(std::string(pending) +
+            " is staged configuration; its public pipeline consumer "
+            "is not yet supported");
+    }
     return policies;
 }
 

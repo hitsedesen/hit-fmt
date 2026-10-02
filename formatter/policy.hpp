@@ -84,6 +84,7 @@ struct ExpressionPolicy
     IndentationPolicy Indent;
     BreakRequirement Break = BreakRequirement::IfNeeded;
     ListPacking Packing = ListPacking::Fill;
+    ExpressionAlignment Alignment = ExpressionAlignment::Block;
 };
 
 struct ChainPolicy
@@ -144,6 +145,7 @@ struct BracePolicy
     BracePlacement Control;
     BracePlacement Case;
     BracePlacement Enum = BracePlacement::Attached;
+    BracePlacement Constructor = BracePlacement::Attached;
 };
 
 struct HeaderListPolicy
@@ -151,6 +153,12 @@ struct HeaderListPolicy
     ListPolicy Items;
     OperatorSide Colon;
     OperatorSide Comma;
+};
+
+struct IncludePolicy
+{
+    IncludeMatchingHeader MatchingHeader;
+    IncludeGrouping Grouping;
 };
 
 struct GapPolicies
@@ -195,6 +203,9 @@ struct CompiledPolicies
     const ListPolicy Enumerators;
     // Syntax-owned exact counts/cap, not a post-layout cleanup stage.
     const VerticalGapPolicies VerticalGaps;
+    // Staged metadata only until reviewed consumers remove preparation guards.
+    const bool BreakAfterTemplateHeader;
+    const IncludePolicy Includes;
 };
 
 static_assert(std::is_trivially_copyable_v<CompiledPolicies>);

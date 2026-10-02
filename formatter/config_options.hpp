@@ -298,6 +298,8 @@
         formatter::BreakRequirement::IfNeeded)                               \
     OPT(formatter::ListPacking, ExpressionsPacking, \
         formatter::ListPacking::Fill) \
+    OPT(formatter::ExpressionAlignment, ExpressionsAlignment, \
+        formatter::ExpressionAlignment::Block) \
     OPT(formatter::CategoryLayout, ExpressionsLayout, \
         formatter::CategoryLayout::Inherit) \
     OPT(formatter::OperatorSide, BinaryOperatorSide, \
@@ -319,6 +321,7 @@
         formatter::ContinuationAlignment::Block) \
     OPT(formatter::CategoryLayout, DeclarationHeadersLayout, \
         formatter::CategoryLayout::Inherit) \
+    OPT(bool, BreakAfterTemplateHeader, false) \
     OPT(formatter::CategoryLayout, BodiesLayout, \
         formatter::CategoryLayout::Inherit) \
     OPT(formatter::BodyShape, BodyShape, formatter::BodyShape::Expanded)       \
@@ -336,6 +339,8 @@
         formatter::BracePlacement::Attached) \
     OPT(formatter::BracePlacement, FunctionBracePlacement, \
         formatter::BracePlacement::Attached) \
+    OPT(std::optional<formatter::BracePlacement>, ConstructorBracePlacement, \
+        std::nullopt) \
     OPT(formatter::BracePlacement, LambdaBracePlacement, \
         formatter::BracePlacement::Attached) \
     OPT(formatter::BracePlacement, NamespaceBracePlacement, \
@@ -387,6 +392,8 @@
     OPT(formatter::BlankLineSetting, DefinitionBlankLines, {})                 \
     OPT(formatter::BlankLineSetting, MemberDefinitionBlankLines,              \
         formatter::BlankLineSetting::Inherited())                            \
+    OPT(formatter::BlankLineSetting, StandaloneCommentBlankLinesBefore, {}) \
+    OPT(formatter::BlankLineSetting, StandaloneCommentBlankLinesAfter, {}) \
     OPT(std::optional<std::size_t>, MaxEmptyLines, std::nullopt)              \
     OPT(std::vector<std::string>, CallLineFirstStringNames, {})               \
     OPT(std::vector<std::string>, ChainedCallRootNames, {})                   \
@@ -395,6 +402,11 @@
     OPT(std::vector<std::string>, WhitespaceSensitiveMacros, {})              \
     OPT(formatter::IncludeOrder, IncludeOrder, \
         formatter::IncludeOrder::Preserve) \
+    OPT(formatter::IncludeMatchingHeader, IncludeMatchingHeader, \
+        formatter::IncludeMatchingHeader::Off) \
+    OPT(formatter::IncludeGrouping, IncludeGrouping, \
+        formatter::IncludeGrouping::Preserve) \
+    OPT(std::vector<std::string>, IncludeGroupPrefixes, {}) \
     OPT(bool, AddMissingControlBraces, false)                                \
     OPT(bool, RemoveNullStatements, false)                                  \
     OPT(bool, RemoveNullDeclarations, false)                                \

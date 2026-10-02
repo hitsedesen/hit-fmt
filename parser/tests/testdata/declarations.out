@@ -627,7 +627,15 @@
   (template-declaration
     "template"
     (template-parameter-list "<" ">")
-    (record-declaration "struct" "Versioned" "<" "Version" "{" "1" "," "0" "}" ">" "{" "}" ";")
+    (record-declaration
+      "struct" "Versioned"
+      (template-argument-list
+        "<"
+        (template-argument "Version" "{" "1" "," "0" "}")
+        ">"
+      )
+      "{" "}" ";"
+    )
   )
   (template-declaration
     (leading-trivia

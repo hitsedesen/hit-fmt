@@ -127,6 +127,8 @@ void PrintOption(std::ostream& output, std::string_view name, const T& value)
             name == "ChainedCallRootNames")
         {
             output << "[] or [\"qualified::name\", ...]";
+        } else if (name == "IncludeGroupPrefixes") {
+            output << "[] or [\"directory/\", ...] (ordered literal prefixes)";
         } else if (name == "IndentedCallScopePairs") {
             output << "[] or [\"Begin:End\", ...]";
         } else {
@@ -157,6 +159,11 @@ void PrintPreserveConfig(std::ostream& output)
                   "retains boundary topology.\n"
               "# Exact counts above an explicit "
                   "MaxEmptyLines cap are invalid.\n"
+              "# Staged: standalone comment counts, template breaks, Operand,\n"
+              "# matching/regrouping and constructor overrides require consumers.\n"
+              "# Public preparation rejects enabled staged behavior; inactive\n"
+              "# include prefixes validate but do not activate regrouping.\n"
+              "# Regroup conflicts with MaxEmptyLines = 0.\n"
               "# Directives and protected regions remain byte-exact.\n"
               "# Migration: docs/config-migration.md\n\n"
               "# Formatting options\n\n";

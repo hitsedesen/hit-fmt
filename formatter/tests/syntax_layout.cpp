@@ -4,6 +4,7 @@
 #include <tests/golden.hpp>
 #include <gtest/gtest.h>
 #include <algorithm>
+#include <array>
 #include <memory_resource>
 #include <stdexcept>
 #include <string>
@@ -1268,6 +1269,401 @@ TEST(SyntaxLayout, ListsHeadersLambdasAndControlClausesCompose)
         }
     }
 }
+
+TEST(SyntaxLayout, ExpressionContinuationDoesNotBecomeChildBlockBase)
+{
+    for (const auto parent : {formatter::LayoutMode::Preserve,
+                              formatter::LayoutMode::Canonical})
+    {
+        SCOPED_TRACE(int(parent));
+        auto style = Canonical(80);
+        style.Layout = parent;
+        style.IndentWidth = 4;
+        style.CallsLayout = formatter::CategoryLayout::Canonical;
+        style.CallsBreak = formatter::BreakRequirement::Always;
+        style.CallsFirstItem = formatter::FirstItemPlacement::NextLine;
+        style.CallsPacking = formatter::ListPacking::VerticalWhenBroken;
+        style.CallsCloser = formatter::CloserPlacement::OwnLine;
+        style.LambdaBodiesLayout = formatter::CategoryLayout::Canonical;
+        for (const auto prefix : {"", "auto value = "})
+        {
+            SCOPED_TRACE(prefix);
+            const std::string call =
+                "void f() {\n    " + std::string(prefix) +
+                "take(1, 2);\n}\n";
+            const auto output = Lower(call, style).Text;
+            EXPECT_NE(output.find("take(\n        1,\n        2\n    )"),
+                      std::string::npos) << output;
+            EXPECT_EQ(Lower(output, style).Text, output);
+            const std::string lambda =
+                "void f() {\n    " + std::string(prefix) +
+                "[]() { return 1; };\n}\n";
+            const auto body = Lower(lambda, style).Text;
+            EXPECT_NE(body.find("[]() {\n        return 1;\n    }"),
+                      std::string::npos) << body;
+            EXPECT_EQ(Lower(body, style).Text, body);
+        }
+    }
+}
+
+TEST(SyntaxLayout, RealizedExpressionLineRetainsChildContinuationBase)
+{
+    auto style = Canonical(80);
+    style.Layout = formatter::LayoutMode::Preserve;
+    style.IndentWidth = 4;
+    style.CallsLayout = formatter::CategoryLayout::Canonical;
+    style.CallsBreak = formatter::BreakRequirement::Always;
+    style.CallsFirstItem = formatter::FirstItemPlacement::NextLine;
+    const std::string input = "void f() {\n    auto value =\n        take(1);\n}\n";
+    for (const auto kind : {formatter::IndentationKind::Preserve,
+                            formatter::IndentationKind::Spaces})
+    {
+        style.IndentationKind = kind;
+        const auto output = Lower(input, style).Text;
+        EXPECT_NE(output.find("=\n        take(\n            1)"),
+                  std::string::npos) << output;
+        EXPECT_EQ(Lower(output, style).Text, output);
+    }
+    for (const std::string_view newline : {"\n", "\r\n"})
+    {
+        for (const auto kind : {formatter::IndentationKind::Spaces,
+                                formatter::IndentationKind::Tabs})
+        {
+            SCOPED_TRACE(newline == "\n" ? "LF" : "CRLF");
+            SCOPED_TRACE(int(kind));
+            const std::string continued =
+                "void f() {" + std::string(newline) +
+                "    auto value =" + std::string(newline) +
+                "        take(" + std::string(newline) +
+                "            item);" + std::string(newline) + "}" +
+                std::string(newline);
+            const auto begin = parser::SourceOffset(
+                continued.find("            item"));
+            const parser::SourceRange ranges[] = {{begin, begin + 12}};
+            formatter::SourceAnalysisOptions protection;
+            protection.EditScope = ranges;
+            style.IndentationKind = kind;
+            formatter::SyntaxLayoutOptions options;
+            options.TabWidth = 4;
+            const auto output = Lower(continued, style, options, protection);
+            auto expected = continued;
+            if (kind == formatter::IndentationKind::Tabs)
+            {
+                expected.replace(begin, 12, "\t\t\t");
+            }
+            EXPECT_EQ(output.Text, expected);
+            const parser::SourceRange repeatedRanges[] = {
+                {begin, begin + (kind == formatter::IndentationKind::Tabs
+                                    ? 3u
+                                    : 12u)}};
+            formatter::SourceAnalysisOptions repeatedScope;
+            repeatedScope.EditScope = repeatedRanges;
+            EXPECT_EQ(Lower(expected, style, options, repeatedScope).Text,
+                      expected);
+            const auto parentBegin = continued.find('=') + 1;
+            const auto parentEnd = continued.find("take(");
+            bool exactParent = false;
+            bool exactChildPrefix = false;
+            bool selectedIndent = false;
+            for (const auto &map : output.Map)
+            {
+                if (!map.Exact)
+                {
+                    EXPECT_GE(map.Source.Begin, begin);
+                    EXPECT_LE(map.Source.End, begin + 12);
+                }
+                if (map.Source.Identity != formatter::layout::NoIdentity)
+                {
+                    continue;
+                }
+                const auto text = std::string_view(output.Text).substr(
+                    map.OutputBegin, map.OutputEnd - map.OutputBegin);
+                if (map.Source.Begin == parentBegin &&
+                    map.Source.End == parentEnd)
+                {
+                    EXPECT_TRUE(map.Exact);
+                    EXPECT_TRUE(map.Protected);
+                    EXPECT_EQ(text, std::string_view(continued).substr(
+                                        parentBegin, parentEnd - parentBegin));
+                    exactParent = true;
+                }
+                if (map.Source.Begin == begin - newline.size() &&
+                    map.Source.End == begin)
+                {
+                    EXPECT_TRUE(map.Exact);
+                    EXPECT_TRUE(map.Protected);
+                    EXPECT_EQ(text, newline);
+                    exactChildPrefix = true;
+                }
+                if (map.Source.Begin == begin && map.Source.End == begin + 12)
+                {
+                    EXPECT_FALSE(map.Exact);
+                    EXPECT_FALSE(map.Protected);
+                    const std::string_view indent =
+                        kind == formatter::IndentationKind::Tabs
+                            ? "\t\t\t"
+                            : "            ";
+                    EXPECT_EQ(text, indent);
+                    selectedIndent = true;
+                }
+            }
+            EXPECT_TRUE(exactParent);
+            EXPECT_TRUE(exactChildPrefix);
+            EXPECT_TRUE(selectedIndent);
+        }
+    }
+    for (const std::string_view newline : {"\n", "\r\n"})
+    {
+        for (const auto trailing : {formatter::TrailingWhitespace::Preserve,
+                                    formatter::TrailingWhitespace::Trim})
+        {
+            for (const bool selectParentIndent : {false, true})
+            {
+                SCOPED_TRACE(newline == "\n" ? "LF" : "CRLF");
+                SCOPED_TRACE(int(trailing));
+                SCOPED_TRACE(selectParentIndent);
+                const std::string continued =
+                    "void f() {" + std::string(newline) +
+                    "    auto value =  " + std::string(newline) +
+                    "        take(" + std::string(newline) +
+                    "            item);" + std::string(newline) + "}" +
+                    std::string(newline);
+                const auto trimBegin = parser::SourceOffset(
+                    continued.find('=') + 1);
+                const auto parentEnd = parser::SourceOffset(
+                    continued.find("take("));
+                const auto childBegin = parser::SourceOffset(
+                    continued.find("            item"));
+                const std::array<parser::SourceRange, 3> ranges = {
+                    parser::SourceRange{trimBegin, trimBegin + 2},
+                    selectParentIndent
+                        ? parser::SourceRange{parentEnd - 8, parentEnd}
+                        : parser::SourceRange{childBegin, childBegin + 12},
+                    parser::SourceRange{childBegin, childBegin + 12}};
+                formatter::SourceAnalysisOptions protection;
+                protection.EditScope = std::span(ranges).first(
+                    selectParentIndent ? 3 : 2);
+                style.IndentationKind = formatter::IndentationKind::Spaces;
+                style.TrailingWhitespace = trailing;
+                const auto output = Lower(continued, style, {}, protection);
+                auto expected = continued;
+                const bool trim =
+                    trailing == formatter::TrailingWhitespace::Trim;
+                if (trim)
+                {
+                    expected.erase(trimBegin, 2);
+                }
+                EXPECT_EQ(output.Text, expected);
+                auto repeatedRanges = ranges;
+                for (auto &range : repeatedRanges)
+                {
+                    if (trim && range.Begin > trimBegin)
+                    {
+                        range.Begin -= 2;
+                        range.End -= 2;
+                    }
+                }
+                formatter::SourceAnalysisOptions repeatedScope;
+                repeatedScope.EditScope = std::span(repeatedRanges).subspan(
+                    trim ? 1 : 0,
+                    (selectParentIndent ? 3 : 2) - (trim ? 1 : 0));
+                EXPECT_EQ(Lower(expected, style, {}, repeatedScope).Text,
+                          expected);
+                bool exactParent = false;
+                bool exactChildPrefix = false;
+                bool selectedChild = false;
+                bool selectedParent = false;
+                for (const auto &map : output.Map)
+                {
+                    if (!map.Exact)
+                    {
+                        EXPECT_TRUE(std::any_of(
+                            protection.EditScope->begin(),
+                            protection.EditScope->end(), [&](const auto range)
+                            {
+                                return map.Source.Begin >= range.Begin &&
+                                       map.Source.End <= range.End;
+                            }));
+                    }
+                    if (map.Source.Identity != formatter::layout::NoIdentity)
+                    {
+                        continue;
+                    }
+                    const auto text = std::string_view(output.Text).substr(
+                        map.OutputBegin, map.OutputEnd - map.OutputBegin);
+                    const auto prefixBegin = trimBegin + (trim ? 2 : 0);
+                    const auto prefixEnd =
+                        parentEnd - (selectParentIndent ? 8 : 0);
+                    if (map.Source.Begin == prefixBegin &&
+                        map.Source.End == prefixEnd)
+                    {
+                        EXPECT_TRUE(map.Exact);
+                        EXPECT_TRUE(map.Protected);
+                        EXPECT_EQ(text, std::string_view(continued).substr(
+                            prefixBegin, prefixEnd - prefixBegin));
+                        exactParent = true;
+                    }
+                    if (map.Source.Begin == childBegin - newline.size() &&
+                        map.Source.End == childBegin)
+                    {
+                        EXPECT_TRUE(map.Exact);
+                        EXPECT_TRUE(map.Protected);
+                        EXPECT_EQ(text, newline);
+                        exactChildPrefix = true;
+                    }
+                    if (map.Source.Begin == childBegin &&
+                        map.Source.End == childBegin + 12)
+                    {
+                        EXPECT_FALSE(map.Exact);
+                        EXPECT_FALSE(map.Protected);
+                        EXPECT_EQ(text, std::string_view("            "));
+                        selectedChild = true;
+                    }
+                    if (selectParentIndent &&
+                        map.Source.Begin == parentEnd - 8 &&
+                        map.Source.End == parentEnd)
+                    {
+                        EXPECT_FALSE(map.Exact);
+                        EXPECT_FALSE(map.Protected);
+                        EXPECT_EQ(text, std::string_view("        "));
+                        selectedParent = true;
+                    }
+                }
+                EXPECT_TRUE(exactParent);
+                EXPECT_TRUE(exactChildPrefix);
+                EXPECT_TRUE(selectedChild);
+                EXPECT_EQ(selectedParent, selectParentIndent);
+            }
+        }
+    }
+    // A retained prefix before a selected trim already contains an owned LF;
+    // the final indentation can remain borrowed rather than generated.
+    const std::string blankLine =
+        "void f() {\n    auto value =\n  \n        take(\n            item);\n}\n";
+    const auto blankBegin = parser::SourceOffset(blankLine.find("  \n"));
+    const auto itemBegin = parser::SourceOffset(blankLine.find("            item"));
+    const parser::SourceRange blankRanges[] = {
+        {blankBegin, blankBegin + 2}, {itemBegin, itemBegin + 12}};
+    formatter::SourceAnalysisOptions blankScope;
+    blankScope.EditScope = blankRanges;
+    auto blankExpected = blankLine;
+    blankExpected.erase(blankBegin, 2);
+    EXPECT_EQ(Lower(blankLine, style, {}, blankScope).Text, blankExpected);
+    style.IndentationKind = formatter::IndentationKind::Preserve;
+    EXPECT_EQ(Lower(blankLine, style).Text, blankExpected);
+    // With indentation Preserve, the parent final-indent descriptor is ignored;
+    // its retained LF still realizes the base for a newly broken child call.
+    const std::string ignoredIndent =
+        "void f() {\n    auto value =\n        take(item);\n}\n";
+    const auto ignoredBegin =
+        parser::SourceOffset(ignoredIndent.find("        take"));
+    const auto ignoredEnd = parser::SourceOffset(ignoredIndent.find(");") + 1);
+    const parser::SourceRange ignoredRanges[] = {{ignoredBegin, ignoredEnd}};
+    formatter::SourceAnalysisOptions ignoredScope;
+    ignoredScope.EditScope = ignoredRanges;
+    const auto ignored = Lower(ignoredIndent, style, {}, ignoredScope);
+    EXPECT_EQ(ignored.Text,
+        "void f() {\n    auto value =\n        take(\n            item);\n}\n");
+    for (const auto &map : ignored.Map)
+    {
+        if (!map.Exact)
+        {
+            EXPECT_GE(map.Source.Begin, ignoredBegin);
+            EXPECT_LE(map.Source.End, ignoredEnd);
+        }
+    }
+    // An opaque comment LF is not a current-expression whitespace gap line.
+    const std::string comment =
+        "void f() {\n    auto value = /*\n    opaque */ take(\n            item);\n}\n";
+    const auto commentItem =
+        parser::SourceOffset(comment.find("            item"));
+    const parser::SourceRange commentRanges[] = {
+        {commentItem, commentItem + 12}};
+    formatter::SourceAnalysisOptions commentScope;
+    commentScope.EditScope = commentRanges;
+    style.IndentationKind = formatter::IndentationKind::Spaces;
+    auto commentExpected = comment;
+    commentExpected.replace(commentItem, 12, "        ");
+    EXPECT_EQ(Lower(comment, style, {}, commentScope).Text, commentExpected);
+    style.Layout = formatter::LayoutMode::Canonical;
+    style.IndentationKind = formatter::IndentationKind::Spaces;
+    const auto flat = Lower(input, style).Text;
+    EXPECT_NE(flat.find("= take(\n        1)"), std::string::npos) << flat;
+}
+
+TEST(SyntaxLayout, StructuralConsumersRetainListAndVisualScopeNesting)
+{
+    auto style = Canonical(80);
+    style.IndentWidth = 4;
+    style.CallsBreak = formatter::BreakRequirement::Always;
+    style.CallsFirstItem = formatter::FirstItemPlacement::NextLine;
+    const auto nested = Lower(
+        "void f() { auto value = outer(1 + inner(2)); }\n", style).Text;
+    EXPECT_NE(nested.find("outer(\n        1 + inner(\n            2)"),
+              std::string::npos) << nested;
+    EXPECT_EQ(Lower(nested, style).Text, nested);
+    style.IndentedCallScopePairs = {"Begin:End"};
+    const auto scoped = Lower(
+        "void f() {\n    flow.Begin();\n        auto value = take(1);\n"
+        "    flow.End();\n}\n", style).Text;
+    EXPECT_NE(scoped.find("\n        auto value = take(\n            1)"),
+              std::string::npos) << scoped;
+    EXPECT_EQ(Lower(scoped, style).Text, scoped);
+}
+
+TEST(SyntaxLayout, StructuralBaseHandlesDelimiterFallbackTabsAndScopedProtection)
+{
+    auto style = Canonical(80);
+    style.Layout = formatter::LayoutMode::Preserve;
+    style.IndentWidth = 4;
+    style.CallsLayout = formatter::CategoryLayout::Canonical;
+    style.CallsBreak = formatter::BreakRequirement::Always;
+    style.CallsFirstItem = formatter::FirstItemPlacement::NextLine;
+    style.CallsAlignment = formatter::ContinuationAlignment::Delimiter;
+    const std::string input = "void f() {\n    auto value = take(item);\n}\n";
+    const auto aligned = Lower(input, style).Text;
+    EXPECT_NE(aligned.find("take(\n                      item)"),
+              std::string::npos) << aligned;
+    style.ColumnLimit = 15;
+    const auto fallback = Lower(input, style).Text;
+    EXPECT_NE(fallback.find("take(\n        item)"), std::string::npos) << fallback;
+    style.CallsAlignment = formatter::ContinuationAlignment::Block;
+    style.IndentationKind = formatter::IndentationKind::Tabs;
+    formatter::SyntaxLayoutOptions options;
+    options.TabWidth = 4;
+    const auto tabs = Lower("void f() {\r\n\tauto value = take(item);\r\n}\r\n",
+                            style, options).Text;
+    EXPECT_NE(tabs.find("take(\n\t\titem)"), std::string::npos) << tabs;
+    const std::string scoped =
+        "void f() {\r\n    auto value = take(\r\n            item);\r\n}\r\n";
+    const auto begin = parser::SourceOffset(scoped.find("            item"));
+    const parser::SourceRange range[] = {{begin, begin + 12}};
+    formatter::SourceAnalysisOptions protection;
+    protection.EditScope = range;
+    style.IndentationKind = formatter::IndentationKind::Spaces;
+    const auto partial = Lower(scoped, style, {}, protection);
+    auto expected = scoped;
+    // The source '=' is inline: the fixed call gap cannot realize assignment
+    // continuation. Only this selected indentation range may be generated.
+    expected.replace(begin, 12, "        ");
+    EXPECT_EQ(partial.Text, expected);
+    bool exactPrefix = false;
+    for (const auto &map : partial.Map)
+    {
+        if (map.Source.Begin == begin - 2 && map.Source.End == begin)
+        {
+            EXPECT_TRUE(map.Exact);
+            EXPECT_TRUE(map.Protected);
+            exactPrefix = true;
+        }
+    }
+    EXPECT_TRUE(exactPrefix);
+    protection.EditScope = {};
+    protection.ImmutableRanges = range;
+    const auto fixed = Lower(scoped, style, {}, protection).Text;
+    EXPECT_NE(fixed.find("\r\n            item"), std::string::npos) << fixed;
+}
+
 TEST(SyntaxLayout, IndependentBodyAndIndentControls)
 {
     auto style = Canonical(80);
@@ -1798,7 +2194,7 @@ TEST(SyntaxLayout, FileAndScratchArenasReleaseAndScaleWithWideInput)
     size_t smallScratch = 0;
     for (const int count : {1000, 2000})
     {
-        std::string input = "void f(){ call(";
+        std::string input = "void f(){ auto result = call(";
         for (int i = 0; i < count; ++i)
         {
             if (i)
@@ -1910,7 +2306,7 @@ TEST(SyntaxLayout, WideAndDeepGroupsHaveBoundedIterativeConstruction)
     const auto output = Lower(wide, style).Text;
     EXPECT_LT(output.size(), wide.size() * 3);
     EXPECT_EQ(Lower(output, style).Text, output);
-    std::string deep = "void f(){ ";
+    std::string deep = "void f(){ auto result = ";
     for (int i = 0; i < 100; ++i)
     {
         deep += "call(";
@@ -1921,3 +2317,244 @@ TEST(SyntaxLayout, WideAndDeepGroupsHaveBoundedIterativeConstruction)
     EXPECT_LT(Lower(deep, style).Text.size(), deep.size() * 40);
 }
 } // namespace
+
+TEST(SyntaxLayout, RecordHeadTemplateCommasKeepExplicitPreference)
+{
+    // A qualified specialization combines record-head children, constructor
+    // injected scope and delimiter-isolated parameter defaults in one input.
+    const auto composition = test::golden::ReadFile(
+        std::filesystem::path(FORMATTER_TESTDATA_DIR) /
+        "../record-head-commas/constructor-composition.input.cpp");
+    auto composedStyle = Canonical(200);
+    composedStyle.CommaSpaceAfter = formatter::GapPolicy::Space;
+    const auto composedOutput = Lower(composition, composedStyle).Text;
+    EXPECT_NE(composedOutput.find("Host::Pair<Wrap<(1>0),int>, 2>"), std::string::npos);
+    EXPECT_EQ(Lower(composedOutput, composedStyle).Text, composedOutput);
+    const auto point = parser::SourceOffset(composition.find(">,2>") + 2);
+    const parser::SourceRange selected[] = {{point, point + 1}};
+    formatter::SourceAnalysisOptions composedProtection;
+    composedProtection.EditScope = selected;
+    auto scopedExpected = composition;
+    scopedExpected.insert(point, " ");
+    EXPECT_EQ(Lower(composition, composedStyle, {}, composedProtection).Text,
+        scopedExpected);
+    const parser::SourceRange immutable[] = {{point - 1, point + 1}};
+    composedProtection.ImmutableRanges = immutable;
+    EXPECT_EQ(Lower(composition, composedStyle, {}, composedProtection).Text,
+        composition);
+
+    const std::string prefix =
+        "template<class A, class B> struct Pair;\n"
+        "template<class A, class B> struct Pair";
+    for (const auto layout : {formatter::LayoutMode::Preserve,
+                              formatter::LayoutMode::Canonical})
+    {
+        auto style = Canonical(200);
+        style.Layout = layout;
+        style.CommaSpaceAfter = formatter::GapPolicy::Space;
+        const auto input = prefix + "<A,B> {};\n";
+        EXPECT_NE(Lower(input, style).Text.find("Pair<A, B>"),
+                  std::string::npos);
+        style.CommaSpaceAfter = formatter::GapPolicy::NoSpace;
+        EXPECT_NE(Lower(prefix + "<A,   B> {};\n", style).Text.find("Pair<A,B>"),
+                  std::string::npos);
+        style.CommaSpaceAfter = formatter::GapPolicy::Preserve;
+        EXPECT_NE(Lower(prefix + "<A,   B> {};\n", style).Text.find("Pair<A,   B>"),
+                  std::string::npos);
+        style.CommaSpaceAfter = formatter::GapPolicy::GeneratedSpace;
+        const auto generated = Lower(input, style).Text;
+        EXPECT_NE(generated.find(layout == formatter::LayoutMode::Canonical
+                                     ? "Pair<A, B>" : "Pair<A,B>"),
+                  std::string::npos);
+        style.CommaSpaceAfter = formatter::GapPolicy::GeneratedNoSpace;
+        EXPECT_NE(Lower(prefix + "<A,   B> {};\n", style).Text.find(
+                      layout == formatter::LayoutMode::Canonical
+                          ? "Pair<A,B>" : "Pair<A,   B>"),
+                  std::string::npos);
+    }
+
+    // Nested operands remain raw, not invented expression/list syntax. Only
+    // the grammar-confirmed outer specialization separator is normalized.
+    auto style = Canonical(200);
+    style.CommaSpaceAfter = formatter::GapPolicy::Space;
+    EXPECT_NE(Lower(prefix + "<Wrap<A,  B>,C> {};\n", style).Text.find(
+                  "Pair<Wrap<A,  B>, C>"), std::string::npos);
+    EXPECT_NE(Lower("template<> struct Pair<> {};\n", style).Text.find("Pair<>"),
+              std::string::npos);
+    EXPECT_NE(Lower(prefix + "<A,/*note*/B> {};\n", style).Text.find("/*note*/"),
+              std::string::npos);
+
+    const std::pair<std::string_view, std::string_view> comparisons[] = {
+        {"template<auto, auto> struct Pair;\n", "(1<2)"},
+        {"template<auto, class> struct Wrap;\n"
+         "template<class, auto> struct Pair;\n", "Wrap<(1>0),int>"},
+        {"template<auto, class> struct Wrap;\n"
+         "template<class, auto> struct Pair;\n", "Wrap<(8>>1),   int>"},
+    };
+    for (const auto &[declarations, operand] : comparisons)
+    {
+        for (const auto mode : {formatter::LayoutMode::Preserve,
+                                formatter::LayoutMode::Canonical})
+        {
+            SCOPED_TRACE(operand);
+            style.Layout = mode;
+            const auto head = "Pair<" + std::string(operand) + ",";
+            const auto absent = std::string(declarations) +
+                "template<> struct " + head + "2> {};\n";
+            const auto excess = std::string(declarations) +
+                "template<> struct " + head + "   2> {};\n";
+            style.CommaSpaceAfter = formatter::GapPolicy::Space;
+            EXPECT_NE(Lower(absent, style).Text.find(head + " 2>"),
+                      std::string::npos);
+            EXPECT_NE(Lower(excess, style).Text.find(head + " 2>"),
+                      std::string::npos);
+            style.CommaSpaceAfter = formatter::GapPolicy::NoSpace;
+            EXPECT_NE(Lower(excess, style).Text.find(head + "2>"),
+                      std::string::npos);
+            style.CommaSpaceAfter = formatter::GapPolicy::Preserve;
+            EXPECT_NE(Lower(excess, style).Text.find(head + "   2>"),
+                      std::string::npos);
+            style.CommaSpaceAfter = formatter::GapPolicy::GeneratedSpace;
+            EXPECT_NE(Lower(absent, style).Text.find(head +
+                          (mode == formatter::LayoutMode::Canonical
+                              ? " 2>" : "2>")), std::string::npos);
+            style.CommaSpaceAfter = formatter::GapPolicy::GeneratedNoSpace;
+            EXPECT_NE(Lower(excess, style).Text.find(head +
+                          (mode == formatter::LayoutMode::Canonical
+                              ? "2>" : "   2>")), std::string::npos);
+        }
+    }
+}
+
+TEST(SyntaxLayout, RecordHeadCommaPreferenceIsClassifiedAndLocallyAuthorized)
+{
+    const std::string source = "template<> struct Pair<int,long> {};\n";
+    std::string storage(source);
+    storage.append(util::SourcePaddingSize, '\0');
+    const auto tree = parser::Parse({storage.data(), source.size()},
+                                   [](parser::ParseError) {});
+    auto style = Canonical(200);
+    style.CommaSpaceAfter = formatter::GapPolicy::Space;
+    std::pmr::monotonic_buffer_resource file;
+    std::pmr::monotonic_buffer_resource scratch;
+    const auto safety = formatter::BuildSourceAnalysis(tree, {}, file, scratch);
+    const auto policies = formatter::CompilePolicies(style);
+    const auto spacing =
+        formatter::BuildSyntaxSpacing(tree, safety, policies, file, scratch);
+    const auto *record = tree.Root().FirstChild->FirstChild->NextSibling;
+    ASSERT_EQ(record->Kind, parser::NodeKind::RecordDeclaration);
+    size_t separators = 0;
+    formatter::GapId afterComma = 0;
+    for (parser::TokenIndex i = 0; i < tree.TokenCount(); ++i)
+    {
+        if (tree.Kind(i) != tokenizer::TokenKind::Operator_Comma)
+        {
+            continue;
+        }
+        ++separators;
+        afterComma = i + 1;
+        EXPECT_EQ(tree.Role(i), parser::PunctuationRole::ListSeparator);
+        const auto &gap = spacing.Gaps()[i + 1];
+        EXPECT_EQ(gap.Field, formatter::SpacingField::CommaSpaceAfter);
+        EXPECT_EQ(gap.Policy, formatter::GapPolicy::Space);
+        EXPECT_EQ(gap.Category, formatter::SpacingOwner::DeclarationHeaders);
+        EXPECT_EQ(gap.Owner, record);
+        EXPECT_EQ(gap.Priority, 3);
+        EXPECT_EQ(spacing.SpacePreference(i + 1, formatter::GapContext::Preserved,
+                                         safety), true);
+    }
+    EXPECT_EQ(separators, 1u);
+    style.Layout = formatter::LayoutMode::Preserve;
+    style.CommaSpaceAfter = formatter::GapPolicy::GeneratedSpace;
+    formatter::SyntaxLayoutOptions inserted;
+    inserted.GeneratedAdjacencies = {&afterComma, 1};
+    EXPECT_EQ(Lower(source, style).Text, source);
+    EXPECT_EQ(Lower(source, style, inserted).Text,
+              "template<> struct Pair<int, long> {};\n");
+    style.Layout = formatter::LayoutMode::Canonical;
+    style.CommaSpaceAfter = formatter::GapPolicy::Space;
+
+    const auto comma = parser::SourceOffset(source.find(','));
+    formatter::SourceAnalysisOptions protection;
+    const parser::SourceRange selected[] = {{comma, comma + 1}};
+    protection.EditScope = selected;
+    EXPECT_EQ(Lower(source, style, {}, protection).Text, source);
+    const parser::SourceRange insertion[] = {{comma + 1, comma + 2}};
+    protection.EditScope = insertion;
+    EXPECT_EQ(Lower(source, style, {}, protection).Text,
+              "template<> struct Pair<int, long> {};\n");
+    protection.EditScope = {};
+    const parser::SourceRange immutable[] = {{comma, comma + 2}};
+    protection.ImmutableRanges = immutable;
+    const auto protectedOutput = Lower(source, style, {}, protection);
+    EXPECT_NE(protectedOutput.Text.find("Pair<int,long>"), std::string::npos);
+
+    const std::string_view macros[] = {"OPAQUE"};
+    protection.ImmutableRanges = {};
+    protection.WhitespaceSensitiveMacros = macros;
+    const std::string macroInput =
+        "template<> struct Pair<OPAQUE(a,   b),long> {};\n";
+    const auto macroOutput = Lower(macroInput, style, {}, protection);
+    EXPECT_NE(macroOutput.Text.find("Pair<OPAQUE(a,   b), long>"),
+              std::string::npos);
+    const auto begin = macroInput.find("OPAQUE");
+    const auto end = macroInput.find(')', begin) + 1;
+    size_t protectedBytes = 0;
+    for (const auto &map : macroOutput.Map)
+    {
+        if (map.Source.Begin >= begin && map.Source.End <= end &&
+            map.Source.Begin < map.Source.End)
+        {
+            EXPECT_TRUE(map.Exact);
+            EXPECT_TRUE(map.Protected);
+            protectedBytes += map.Source.End - map.Source.Begin;
+        }
+    }
+    EXPECT_EQ(protectedBytes, end - begin);
+
+    style.Layout = formatter::LayoutMode::Preserve;
+    const std::pair<std::string_view, std::string_view> operands[] = {
+        {"template<auto, auto> struct Pair;\n", "(1<2)"},
+        {"template<auto, class> struct Wrap;\n"
+         "template<class, auto> struct Pair;\n", "Wrap<(1>0),int>"},
+    };
+    for (const auto &[declarations, operand] : operands)
+    {
+        const auto head = "Pair<" + std::string(operand) + ",";
+        const auto input = std::string(declarations) +
+            "template<> struct " + head + "0> {};\n";
+        SCOPED_TRACE(input);
+        const auto outer = parser::SourceOffset(input.rfind(','));
+        protection = {};
+        const parser::SourceRange commaOnly[] = {{outer, outer + 1}};
+        protection.EditScope = commaOnly;
+        EXPECT_EQ(Lower(input, style, {}, protection).Text, input);
+        const parser::SourceRange followingToken[] = {{outer + 1, outer + 2}};
+        protection.EditScope = followingToken;
+        const auto edited = Lower(input, style, {}, protection);
+        EXPECT_EQ(edited.Text, std::string(declarations) +
+                      "template<> struct " + head + " 0> {};\n");
+        protection.EditScope = {};
+        const parser::SourceRange blocked[] = {{outer, outer + 2}};
+        protection.ImmutableRanges = blocked;
+        EXPECT_EQ(Lower(input, style, {}, protection).Text, input);
+    }
+
+    protection = {};
+    protection.WhitespaceSensitiveMacros = macros;
+    const std::string comparisonMacro =
+        "template<auto, class> struct Wrap;\n"
+        "template<class, auto> struct Pair;\n"
+        "template<> struct Pair<Wrap<(OPAQUE(1>0)),int>,0> {};\n";
+    EXPECT_EQ(Lower(comparisonMacro, style, {}, protection).Text,
+              "template<auto, class> struct Wrap;\n"
+              "template<class, auto> struct Pair;\n"
+              "template<> struct Pair<Wrap<(OPAQUE(1>0)),int>, 0> {};\n");
+
+    protection = {};
+    const std::string malformed =
+        "template<auto,auto> struct Pair;\n"
+        "template<> struct Pair<(1<2],0> {};\n";
+    EXPECT_NE(Lower(malformed, style, {}, protection).Text.find(
+                  "Pair<(1<2],0>"), std::string::npos);
+}

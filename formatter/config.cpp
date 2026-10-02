@@ -387,7 +387,8 @@ void AssignStyle(
             std::vector<std::string>>)
     {
         if constexpr (Member == &Style::ChainedCallRootNames ||
-            Member == &Style::IndentedCallScopePairs)
+            Member == &Style::IndentedCallScopePairs ||
+            Member == &Style::IncludeGroupPrefixes)
         {
             config.FormattingStyle.*Member = ParseStringList(value, path, line);
         } else {
