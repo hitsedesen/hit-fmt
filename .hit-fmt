@@ -179,6 +179,6 @@ SubscriptOperatorInteriorSpacing = NoSpace
 
 # Do not scan generated outputs, golden fixtures, or benchmarks.
 Exclude = [
-    "(^|/)build(/|$)", "(^|/)testdata(/|$)", "(^|/)benchmarks(/|$)",
+    "(^|/)build[^/]*(/|$)", "(^|/)testdata(/|$)", "(^|/)benchmarks(/|$)",
     "^unicode/unicode_data\\.cpp$"
 ]

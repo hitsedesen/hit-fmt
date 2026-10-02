@@ -1,12 +1,9 @@
-ClassBracePlacement = NewLine
-EnforceClassBracePlacement = true
-StructBracePlacement = NewLine
-EnforceStructBracePlacement = true
-UnionBracePlacement = NewLine
-EnforceUnionBracePlacement = true
-FunctionBracePlacement = NewLine
-EnforceFunctionBracePlacement = true
-LambdaBracePlacement = NewLine
-EnforceLambdaBracePlacement = true
-NamespaceBracePlacement = NewLine
-EnforceNamespaceBracePlacement = true
+# Migrated to group policies; legacy output equivalence is not implied.
+# Shape preferences apply when broken; fitting canonical groups flatten.
+ClassBracePlacement = NextLine
+DeclarationHeadersLayout = Canonical
+StructBracePlacement = NextLine
+UnionBracePlacement = NextLine
+FunctionBracePlacement = NextLine
+LambdaBracePlacement = NextLine
+NamespaceBracePlacement = NextLine

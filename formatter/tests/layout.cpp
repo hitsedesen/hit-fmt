@@ -306,38 +306,58 @@ TEST(GroupLayout, CapturedBlockMinimumAfterParentBreak)
 
 TEST(GroupLayout, AlignmentRequirementSaturatesWithoutHugeIndentation)
 {
-    Document document("");
-    document.Text("(");
-    auto minimum = document.MarkAnchor(
-        {AnchorKind::DelimiterColumn, INT32_MAX, 2, UINT32_MAX});
-    auto requirement = document.MarkAnchor({AnchorKind::DelimiterColumn, 0, 2});
-    auto negative =
-        document.MarkAnchor({AnchorKind::DelimiterColumn, INT32_MIN, -1});
-    auto group = document.BeginGroup();
-    document.Gap({GapKind::Hard, 0, 1}, minimum);
-    document.Text("x");
-    document.Gap({GapKind::Hard, 0, UINT32_MAX}, requirement);
-    document.Text("y");
-    document.Gap({GapKind::Hard, 0, UINT32_MAX}, negative);
-    document.Text("z");
-    document.EndGroup(group);
-    ASSERT_TRUE(document.Seal());
-    ExpectText(document, 8, "(\n  x\n  y\nz");
-    ExpectText(document, UINT32_MAX - 1, "(\n  x\n  y\nz");
+    for (bool borrowed : {false, true}) {
+        Document document("\n");
+        auto line = [&] (AnchorId anchor, std::uint32_t demand) {
+            if (borrowed) {
+                document.SourceLineIndent(0, 1, 1, 1, anchor, demand);
+            } else {
+                document.Gap({GapKind::Hard, 0, demand}, anchor);
+            }
+        };
+        document.Text("(");
+        auto minimum = document.MarkAnchor(
+            {AnchorKind::DelimiterColumn, INT32_MAX, 2, UINT32_MAX});
+        auto requirement = document.MarkAnchor({
+            AnchorKind::DelimiterColumn,
+            0,
+            2,
+        });
+        auto negative =
+            document.MarkAnchor({AnchorKind::DelimiterColumn, INT32_MIN, -1});
+        auto group = document.BeginGroup();
+        line(minimum, 1);
+        document.Text("x");
+        line(requirement, UINT32_MAX);
+        document.Text("y");
+        line(negative, UINT32_MAX);
+        document.Text("z");
+        document.EndGroup(group);
+        ASSERT_TRUE(document.Seal());
+        ExpectText(document, 8, "(\n  x\n  y\nz");
+        ExpectText(document, UINT32_MAX - 1, "(\n  x\n  y\nz");
+    }
 }
 
 TEST(GroupLayout, AlignmentFallbackPreservesUnbreakableOverflow)
 {
-    Document document("");
-    document.Text("call(");
-    auto anchor = document.MarkAnchor({AnchorKind::DelimiterColumn, 0, 2, 2});
-    auto group = document.BeginGroup({GroupMode::Consistent, 2});
-    document.Gap({GapKind::Hard, 0, 15}, anchor);
-    document.Text("very_long_atom)");
-    document.EndGroup(group);
-    ASSERT_TRUE(document.Seal());
-    ExpectText(document, 8, "call(\n  very_long_atom)");
-    ExpectText(document, 20, "call(\n     very_long_atom)");
+    for (bool borrowed : {false, true}) {
+        Document document("\n");
+        document.Text("call(");
+        auto anchor = document.MarkAnchor(
+            {AnchorKind::DelimiterColumn, 0, 2, 2});
+        auto group = document.BeginGroup({GroupMode::Consistent, 2});
+        if (borrowed) {
+            document.SourceLineIndent(0, 1, 1, 1, anchor, 15);
+        } else {
+            document.Gap({GapKind::Hard, 0, 15}, anchor);
+        }
+        document.Text("very_long_atom)");
+        document.EndGroup(group);
+        ASSERT_TRUE(document.Seal());
+        ExpectText(document, 8, "call(\n  very_long_atom)");
+        ExpectText(document, 20, "call(\n     very_long_atom)");
+    }
 }
 
 TEST(GroupLayout, BlockAnchorsFollowGeneratedIndentNotSourceColumns)
@@ -880,6 +900,393 @@ TEST(GroupLayout, BorrowedIndentAfterBlankLinesPreservesBytesAndBlockBase)
     EXPECT_EQ(emptyIndent.Map[2].Source.Begin, 2u);
 }
 
+TEST(GroupLayout, SourceLineIndentPrefixesAndMappingsGolden)
+{
+    constexpr std::array<std::string_view, 4> prefixes{
+        "\n",
+        "\r\n",
+        " \t\r\n\t\n\n",
+        "\n",
+    };
+    std::string actual;
+    for (std::size_t index = 0; index < prefixes.size(); ++index) {
+        const bool commentCR = index == prefixes.size() - 1;
+        std::string source = commentCR ? "// note\r" : "";
+        const auto begin = static_cast<std::uint32_t>(source.size());
+        source += prefixes[index];
+        const auto end = static_cast<std::uint32_t>(source.size());
+        source += " \t ";
+        for (auto indent : {0, 6}) {
+            Document document(source);
+            auto group = document.BeginGroup({GroupMode::Fill, indent});
+            if (commentCR) {
+                document.SourceText(0, begin, 100, true);
+            } else {
+                document.Text("head");
+            }
+            document.SourceLineIndent(
+                begin,
+                end,
+                end,
+                end + 3,
+                InvalidId,
+                0,
+                101);
+            document.Text("x");
+            document.EndGroup(group);
+            ASSERT_TRUE(document.Seal());
+            for (std::uint8_t tabWidth : {1, 4, 32}) {
+                for (auto kind : {
+                    IndentationKind::Spaces,
+                    IndentationKind::Tabs,
+                })
+                {
+                    Policy policy{.Width = 80,
+                        .TabWidth = tabWidth,
+                        .LineEnding = Newline::CRLF,
+                        .Indentation = kind,
+                    };
+                    auto output = document.Render(policy);
+                    ASSERT_TRUE(output.State);
+                    EXPECT_TRUE(output.Broken[group]);
+                    ASSERT_EQ(output.Map.size(), 4u);
+                    const auto mapped = [&] (std::size_t i) {
+                        const auto& map = output.Map[i];
+                        return std::string_view(output.Text).substr(
+                            map.OutputBegin,
+                            map.OutputEnd - map.OutputBegin);
+                    };
+                    EXPECT_EQ(mapped(1), prefixes[index]);
+                    EXPECT_TRUE(output.Map[1].Exact);
+                    EXPECT_TRUE(output.Map[1].Protected);
+                    EXPECT_EQ(output.Map[1].Source.Begin, begin);
+                    EXPECT_EQ(output.Map[1].Source.End, end);
+                    EXPECT_EQ(output.Map[1].Source.Identity, 101u);
+                    EXPECT_EQ(
+                        ExpandTabs(mapped(2), tabWidth),
+                        std::string(indent, ' '));
+                    EXPECT_FALSE(output.Map[2].Exact);
+                    EXPECT_FALSE(output.Map[2].Protected);
+                    EXPECT_EQ(output.Map[2].Source.Begin, end);
+                    EXPECT_EQ(output.Map[2].Source.End, end + 3);
+                    EXPECT_EQ(output.Map[2].Source.Identity, NoIdentity);
+                    EXPECT_EQ(
+                        mapped(2).find_first_of("\r\n"),
+                        std::string_view::npos);
+                    if (indent == 0) {
+                        EXPECT_EQ(
+                            output.Map[2].OutputBegin,
+                            output.Map[2].OutputEnd);
+                    }
+                    std::size_t mappedEnd = 0;
+                    for (const auto& map : output.Map) {
+                        EXPECT_EQ(map.OutputBegin, mappedEnd);
+                        EXPECT_LE(map.OutputBegin, map.OutputEnd);
+                        mappedEnd = map.OutputEnd;
+                    }
+                    EXPECT_EQ(mappedEnd, output.Text.size());
+                    if (commentCR) {
+                        EXPECT_EQ(
+                            std::string_view(output.Text).substr(0, end),
+                            std::string_view(source).substr(0, end));
+                        EXPECT_TRUE(output.Map[0].Exact);
+                        EXPECT_EQ(output.Map[0].Source.Identity, 100u);
+                        EXPECT_EQ(
+                            output.Text.find("\r\r\n"),
+                            std::string_view::npos);
+                    }
+                    auto repeated = document.Render(policy);
+                    EXPECT_EQ(repeated.Text, output.Text);
+                    EXPECT_EQ(repeated.Broken, output.Broken);
+                    policy.SourceMap = false;
+                    auto unmapped = document.Render(policy);
+                    EXPECT_EQ(unmapped.Text, output.Text);
+                    EXPECT_EQ(unmapped.Broken, output.Broken);
+                    EXPECT_TRUE(unmapped.Map.empty());
+                    actual += "prefix=" + std::to_string(index) + " indent=" +
+                              std::to_string(indent) + " tab=" +
+                              std::to_string(tabWidth);
+                    actual += kind == IndentationKind::Tabs
+                                  ? " tabs:\n"
+                                  : " spaces:\n";
+                    actual.append(output.Text);
+                    actual += '\n';
+                }
+            }
+        }
+    }
+    test::golden::ExpectGolden(
+        std::filesystem::path(GROUP_LAYOUT_TESTDATA_DIR) /
+            "source-line-indent.output.txt",
+        actual);
+}
+
+TEST(GroupLayout, SourceLineIndentUsesCapturedMinimumFallbackAndEquality)
+{
+    Document document("\n");
+    auto block = document.BeginGroup({GroupMode::Consistent, 3});
+    document.Text("outer{");
+    document.Gap({GapKind::Soft, 0});
+    document.Text("c(");
+    auto anchor = document.MarkAnchor({AnchorKind::DelimiterColumn, -3, 2, 4});
+    auto floor = document.MarkAnchor({AnchorKind::DelimiterColumn, -7, 2});
+    auto blockAnchor = document.MarkAnchor(
+        {AnchorKind::BlockRelative, 1, INT32_MAX, UINT32_MAX});
+    auto continuation = document.BeginGroup({GroupMode::Consistent, 6});
+    document.SourceLineIndent(0, 1, 1, 1, anchor, 2);
+    document.Text("x;");
+    document.SourceLineIndent(0, 1, 1, 1, anchor, 4);
+    document.Text("abc;");
+    document.SourceLineIndent(0, 1, 1, 1, floor, 1);
+    document.Text("z");
+    document.SourceLineIndent(0, 1, 1, 1, blockAnchor, UINT32_MAX);
+    document.Text("q");
+    document.EndGroup(continuation);
+    document.EndGroup(block);
+    ASSERT_TRUE(document.Seal());
+    // Rendered block is 3, not continuation indent 9 or a source column.
+    // Width 9 permits Minimum 7 + demand 2 exactly; demand 4 falls back to 5.
+    ExpectText(document, 9, "outer{\n   c(\n       x;\n     abc;\n   z\n    q");
+    ExpectText(document, 8, "outer{\n   c(\n     x;\n     abc;\n   z\n    q");
+}
+
+TEST(GroupLayout, SourceLineIndentNoDemandRetainsTargetAtWidthFallback)
+{
+    for (bool borrowed : {false, true}) {
+        Document document("\n");
+        document.Text("call(");
+        auto anchor = document.MarkAnchor({AnchorKind::DelimiterColumn, 0, 2});
+        auto group = document.BeginGroup();
+        if (borrowed) {
+            document.SourceLineIndent(0, 1, 1, 1, anchor, 0);
+        } else {
+            document.Gap({GapKind::Hard, 0, 0}, anchor);
+        }
+        document.EndGroup(group);
+        ASSERT_TRUE(document.Seal());
+        // Zero demand is the inherited default, not permission to occupy a
+        // delimiter target exactly at the column limit. Positive demand
+        // equality at a target below Width is covered separately above.
+        ExpectText(document, 5, "call(\n  ");
+        ExpectText(document, 6, "call(\n     ");
+    }
+}
+
+TEST(GroupLayout,
+    SourceLineIndentCountsRenderedIndentAndSameLineSuffixInChildFit)
+{
+    Document document("\n\t ");
+    auto parent = document.BeginGroup({GroupMode::Fill, 4});
+    document.Text("head");
+    document.SourceLineIndent(0, 1, 1, 3);
+    auto child = document.BeginGroup({GroupMode::Fill, 0});
+    document.Text("aa");
+    document.Gap();
+    document.Text("bb");
+    document.EndGroup(child);
+    document.Text(")");
+    document.EndGroup(parent);
+    document.Text(";");
+    ASSERT_TRUE(document.Seal());
+    ExpectText(document, 11, "head\n    aa bb);");
+    ExpectText(document, 10, "head\n    aa\n    bb);");
+    auto equal = document.Render({.Width = 11});
+    EXPECT_TRUE(equal.Broken[parent]);
+    EXPECT_FALSE(equal.Broken[child]);
+    EXPECT_TRUE(document.Render({.Width = 10}).Broken[child]);
+    auto tabs = document.Render(
+        {.Width = 10, .TabWidth = 4, .Indentation = IndentationKind::Tabs});
+    EXPECT_EQ(tabs.Text, "head\n\taa\n\tbb);");
+    EXPECT_TRUE(tabs.Broken[child]);
+}
+
+TEST(GroupLayout,
+    SourceLineIndentFixedChildShapeContributesBrokenPrefixToOwnerFit)
+{
+    for (bool nested : {false, true}) {
+        Document document("\n");
+        auto parent = document.BeginGroup({GroupMode::Fill, 0});
+        document.Text("aa");
+        document.Gap();
+        GroupId wrapper = InvalidId;
+        if (nested) {
+            wrapper = document.BeginGroup({GroupMode::Fill, 0});
+        }
+        auto child = document.BeginGroup({GroupMode::Fill, 4});
+        document.ConditionalText(child, "", "bbbb");
+        document.SourceLineIndent(0, 1, 1, 1);
+        document.Text("x");
+        document.EndGroup(child);
+        if (nested) {
+            document.EndGroup(wrapper);
+        }
+        document.EndGroup(parent);
+        ASSERT_TRUE(document.Seal());
+        ExpectText(document, 7, "aa bbbb\n    x");
+        ExpectText(document, 5, "aa\nbbbb\n    x");
+        auto output = document.Render({.Width = 5});
+        EXPECT_TRUE(output.Broken[parent]);
+        EXPECT_TRUE(output.Broken[child]);
+        if (nested) {
+            EXPECT_TRUE(output.Broken[wrapper]);
+        }
+    }
+}
+
+TEST(GroupLayout, SourceLineIndentForceBreakStillRequiresEditableOwnedBoundary)
+{
+    Document document("\n");
+    auto parent = document.BeginGroup({GroupMode::Fill, 2, true});
+    document.SourceLineIndent(0, 1, 1, 1);
+    document.Text("aa");
+    document.Gap();
+    document.Text("bb");
+    document.Gap();
+    document.Text("cc");
+    document.EndGroup(parent);
+    ASSERT_TRUE(document.Seal());
+    // Borrowing made the group multiline, but cannot satisfy Always. Fill must
+    // use the last editable owned gap even though it would otherwise fit.
+    ExpectText(document, 80, "\n  aa bb\n  cc");
+    ASSERT_EQ(document.Render().Map.size(), 7u);
+    EXPECT_FALSE(document.Render().Map[5].Exact);
+
+    Document earlierBoundary("\n");
+    parent = earlierBoundary.BeginGroup({GroupMode::Fill, 2, true});
+    earlierBoundary.Text("aa");
+    earlierBoundary.Gap();
+    earlierBoundary.Text("bb");
+    earlierBoundary.SourceLineIndent(0, 1, 1, 1);
+    earlierBoundary.Text("cc");
+    earlierBoundary.EndGroup(parent);
+    ASSERT_TRUE(earlierBoundary.Seal());
+    // The borrowed node cannot displace an earlier editable OwnedLastBreak.
+    ExpectText(earlierBoundary, 80, "aa\n  bb\n  cc");
+
+    Document satisfied("\n");
+    parent = satisfied.BeginGroup({GroupMode::Fill, 2, true});
+    satisfied.Gap({GapKind::Hard, 0});
+    satisfied.Text("head");
+    satisfied.SourceLineIndent(0, 1, 1, 1);
+    satisfied.Text("aa");
+    satisfied.Gap();
+    satisfied.Text("bb");
+    satisfied.EndGroup(parent);
+    ASSERT_TRUE(satisfied.Seal());
+    ExpectText(satisfied, 80, "\n  head\n  aa bb");
+
+    Document childOnly("\n");
+    parent = childOnly.BeginGroup({GroupMode::Fill, 2, true});
+    auto child = childOnly.BeginGroup({GroupMode::Fill, 2});
+    childOnly.SourceLineIndent(0, 1, 1, 1);
+    childOnly.Text("aa");
+    childOnly.Gap();
+    childOnly.Text("bb");
+    childOnly.EndGroup(child);
+    childOnly.Gap();
+    childOnly.Text("cc");
+    childOnly.EndGroup(parent);
+    ASSERT_TRUE(childOnly.Seal());
+    ExpectText(childOnly, 80, "\n    aa bb\n  cc");
+}
+
+TEST(GroupLayout, SourceLineIndentCannotInventEditableBreakWithoutOwnedSite)
+{
+    Document document("\n");
+    auto parent = document.BeginGroup({GroupMode::Fill, 2, true});
+    auto child = document.BeginGroup({GroupMode::Fill, 2});
+    document.SourceLineIndent(0, 1, 1, 1);
+    document.Text("aa");
+    document.Gap();
+    document.Text("bb");
+    document.EndGroup(child);
+    document.ConditionalText(parent, "flat", "broken");
+    document.EndGroup(parent);
+    ASSERT_TRUE(document.Seal());
+    auto output = document.Render();
+    EXPECT_EQ(output.Text, "\n    aa bbbroken");
+    EXPECT_TRUE(output.Broken[parent]);
+    EXPECT_TRUE(output.Broken[child]);
+
+    Document fixedOnly("\n");
+    parent = fixedOnly.BeginGroup({GroupMode::Fill, 0, true});
+    fixedOnly.SourceLineIndent(0, 1, 1, 1);
+    fixedOnly.EndGroup(parent);
+    ASSERT_TRUE(fixedOnly.Seal());
+    output = fixedOnly.Render({.Width = 1});
+    EXPECT_EQ(output.Text, "\n");
+    EXPECT_TRUE(output.Broken[parent]);
+    ASSERT_EQ(output.Map.size(), 2u);
+    EXPECT_TRUE(output.Map[0].Exact);
+    EXPECT_FALSE(output.Map[1].Exact);
+    EXPECT_FALSE(output.Map[1].Protected);
+    EXPECT_EQ(output.Map[1].OutputBegin, output.Map[1].OutputEnd);
+
+    Document empty("");
+    parent = empty.BeginGroup({GroupMode::Fill, 0, true});
+    empty.EndGroup(parent);
+    ASSERT_TRUE(empty.Seal());
+    EXPECT_TRUE(empty.Render().Text.empty());
+    EXPECT_FALSE(empty.Render().Broken[parent]);
+}
+
+TEST(GroupLayout, SourceLineIndentRejectsMalformedRangesPrefixesAndAnchors)
+{
+    constexpr std::array<Provenance, 6> badRanges{
+        {{InvalidId, InvalidId},
+            {InvalidId, 0},
+            {0, InvalidId},
+            {2, 1},
+            {0, 4},
+            {4, 4},
+        },
+    };
+    for (auto range : badRanges) {
+        for (bool badPrefix : {false, true}) {
+            Document document("\n \t");
+            EXPECT_NO_THROW(document.SourceLineIndent(
+                badPrefix ? range.Begin : 0,
+                badPrefix ? range.End : 1,
+                badPrefix ? 1 : range.Begin,
+                badPrefix ? 3 : range.End));
+            EXPECT_EQ(document.Seal().Code, Error::InvalidSourceRange);
+            EXPECT_TRUE(document.Render().Text.empty());
+        }
+    }
+    for (auto prefix : {"", " ", "\n\t", "\r", "\n\r", "x\n", "\v\n"}) {
+        Document document(prefix);
+        const auto end = static_cast<std::uint32_t>(
+            std::string_view(prefix).size());
+        document.SourceLineIndent(0, end, end, end);
+        EXPECT_EQ(document.Seal().Code, Error::InvalidLinePrefix);
+        EXPECT_EQ(document.Render().State.Code, Error::InvalidLinePrefix);
+    }
+    Document horizontal("\nx");
+    horizontal.SourceLineIndent(0, 1, 1, 2);
+    EXPECT_EQ(horizontal.Seal().Code, Error::InvalidSourceRange);
+    Document newlineIndent("\n");
+    newlineIndent.SourceLineIndent(0, 1, 0, 1);
+    EXPECT_EQ(newlineIndent.Seal().Code, Error::InvalidSourceRange);
+    Document anchor("\n");
+    anchor.SourceLineIndent(0, 1, 1, 1, 0);
+    anchor.MarkAnchor({});
+    EXPECT_EQ(anchor.Seal().Code, Error::InvalidAnchor);
+    Document sealed("\n");
+    ASSERT_TRUE(sealed.Seal());
+    sealed.SourceLineIndent(0, 1, 1, 1);
+    EXPECT_EQ(sealed.Render().State.Code, Error::Sealed);
+
+    // A combined node is valid at root or after mid-line text: the fixed prefix
+    // itself resets the column. A horizontal-only/out-of-line prefix is not.
+    Document root("\n");
+    root.Text("head");
+    auto block = root.MarkAnchor({AnchorKind::BlockRelative, 2});
+    root.SourceLineIndent(0, 1, 1, 1, block);
+    root.Text("x");
+    ASSERT_TRUE(root.Seal());
+    ExpectText(root, 80, "head\n  x");
+}
+
 TEST(GroupLayout, RejectsMalformedBorrowedIndentEvenWhenFlat)
 {
     constexpr std::array<Provenance, 5> ranges{
@@ -1354,13 +1761,17 @@ TEST(GroupLayout, DeepNestingUsesExplicitStacksAndSublinearAllocationCount)
 {
     constexpr std::uint32_t depth = 100000;
     CountingResource resource;
-    {
-        Document document("", &resource);
+    for (bool borrowed : {false, true}) {
+        Document document("\n", &resource);
         for (std::uint32_t i = 0; i < depth; ++i) {
             document.BeginGroup();
         }
         document.Text("leaf");
-        document.Gap({GapKind::Hard, 0});
+        if (borrowed) {
+            document.SourceLineIndent(0, 1, 1, 1);
+        } else {
+            document.Gap({GapKind::Hard, 0});
+        }
         document.Text("tail");
         for (std::uint32_t i = depth; i != 0; --i) {
             document.EndGroup(i - 1);
@@ -1389,7 +1800,7 @@ TEST(GroupLayout, DecisionsDescribeActualMultilineAcrossNestedShapes)
         return seed;
     };
     for (std::uint32_t trial = 0; trial < 200; ++trial) {
-        Document document("");
+        Document document("\n");
         document.Reserve(700, 100);
         std::vector<GroupId> open;
         for (std::uint32_t item = 0; item < 100; ++item) {
@@ -1405,7 +1816,11 @@ TEST(GroupLayout, DecisionsDescribeActualMultilineAcrossNestedShapes)
                 next() & 1 ? "long_suffix" : "",
                 ",");
             if (next() % 7 == 0) {
-                document.Verbatim("opaque\nbytes");
+                if (trial % 2 == 0) {
+                    document.Verbatim("opaque\nbytes");
+                } else {
+                    document.SourceLineIndent(0, 1, 1, 1);
+                }
             }
             while (!open.empty() && next() % 3 != 0) {
                 group = open.back();

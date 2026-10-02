@@ -1,2 +1,5 @@
-IndentBlockBodies = true
-IndentLeadingStatementComments = true
+# Migrated to group policies; legacy output equivalence is not implied.
+# Shape preferences apply when broken; fitting canonical groups flatten.
+# Migration: comments now follow syntax attachment, not a separate indentation pass
+BodiesLayout = Canonical
+BodyShape = Expanded

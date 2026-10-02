@@ -1,21 +1,15 @@
-ClassBracePlacement = NewLine
-EnforceClassBracePlacement = true
-ClassBraceSpacing = SingleSpace
-EnforceClassBraceSpacing = true
-StructBracePlacement = Attach
-EnforceStructBracePlacement = true
-StructBraceSpacing = SingleSpace
-EnforceStructBraceSpacing = true
-EnforceUnionBraceSpacing = false
-EnumBraceSpacing = SingleSpace
-FunctionBracePlacement = Attach
-EnforceFunctionBracePlacement = true
-FunctionBraceSpacing = SingleSpace
-EnforceFunctionBraceSpacing = true
-LambdaBracePlacement = Attach
-EnforceLambdaBracePlacement = true
-EnforceLambdaBraceSpacing = false
-NamespaceBracePlacement = NewLine
-EnforceNamespaceBracePlacement = true
-NamespaceBraceSpacing = SingleSpace
-EnforceNamespaceBraceSpacing = true
+# Migrated to group policies; legacy output equivalence is not implied.
+# Shape preferences apply when broken; fitting canonical groups flatten.
+ClassBracePlacement = NextLine
+DeclarationHeadersLayout = Canonical
+ClassBraceSpacing = Space
+StructBracePlacement = Attached
+StructBraceSpacing = Space
+UnionBraceSpacing = GeneratedSpace
+EnumBraceSpacing = Space
+FunctionBracePlacement = Attached
+FunctionBraceSpacing = Space
+LambdaBracePlacement = Attached
+LambdaBraceSpacing = GeneratedSpace
+NamespaceBracePlacement = NextLine
+NamespaceBraceSpacing = Space

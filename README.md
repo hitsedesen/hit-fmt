@@ -1,42 +1,45 @@
 # hit-fmt
 
-`hit-fmt` parses C and C++ source. It preserves compliant source by default,
-with configurable layout rules. Safe overflowing initializer lists can reflow
-without enforcing changes to already-fitting lists. This repository uses a
-stricter YTsaurus-inspired profile: 80 columns, overflow reflow, three-line
-ternaries, and one-level
-rather than delimiter-aligned continuation indentation. Checks also report
-naming violations without renaming identifiers, including after `--fix`.
+`hit-fmt` parses C and C++ source. This experimental checkpoint provides the
+whole-file group-policy pipeline, not final whole-project acceptance. The
+migrated repository profile uses canonical YTsaurus-inspired layout with
+80 columns and block continuation indentation. Explicit spacing and
+structural rules are independent. Use an explicit migrated config below.
 
 ## Build
 
-A C++20 compiler and CMake 3.20 or newer are required.
+Run these commands from the repository root. CMake 3.20+ and a C++20
+compiler are required; GCC 13 is tested. This is a CLI-only build:
 
 ```sh
-cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
-cmake --build build
+cmake -S . -B build-cli -DCMAKE_BUILD_TYPE=Release \
+    -DHIT_FMT_TEST=OFF -DHIT_FMT_BENCHMARK=OFF
+cmake --build build-cli --target hit-fmt -j1
+build-cli/hit-fmt/hit-fmt --help
 ```
 
-The executable is written to `build/hit-fmt/hit-fmt` by default. Install it
-and its license notices under a chosen prefix with:
+The executable is written to `build-cli/hit-fmt/hit-fmt`. Install it and its
+license notices under a chosen prefix with:
 
 ```sh
-cmake --install build --prefix ~/.local
+cmake --install build-cli --prefix ~/.local
 ```
 
-Tests require GoogleTest:
+The full `tests` target now compiles after the reviewed test-API migration,
+but the normal and ASan/UBSan runs have 207 failures out of 798 tests.
+Existing goldens remain unchanged. This CLI-only build does not imply
+full-suite acceptance. Focused component checks require GoogleTest:
 
 ```sh
-cmake -S . -B build -DHIT_FMT_TEST=ON
-cmake --build build
-build/tests/tests
-build/tests/allocation_tests
+cmake -S . -B build-checks -DHIT_FMT_TEST=ON -DHIT_FMT_BENCHMARK=OFF
+cmake --build build-checks --target pipeline_checks cli_checks -j1
+build-checks/tests/pipeline_checks
+build-checks/tests/cli_checks
 ```
 
-The GoogleTest executable prints each test as it runs. Select a subset with
-`build/tests/tests --gtest_filter='Parser/*:Parser.*'`, or list names
-with `--gtest_list_tests`. The tokenizer allocation check uses a separate
-executable.
+Run GoogleTest binaries directly, not through CTest. The separate tokenizer
+allocation check is available as the `allocation_tests` target; it is not
+whole-pipeline allocation certification.
 
 Benchmarks can be built separately with
 `-DHIT_FMT_BENCHMARK=ON`; they require Google Benchmark.
@@ -56,13 +59,15 @@ build outputs, golden test fixtures, benchmarks, and generated Unicode data.
 Check files or directories without modifying them (the default):
 
 ```sh
-hit-fmt src/ include/
+build-cli/hit-fmt/hit-fmt --config hit-fmt/examples/repository.hit-fmt \
+    src/ include/
 ```
 
 Format files or directories in place:
 
 ```sh
-hit-fmt --fix source.cpp include/
+build-cli/hit-fmt/hit-fmt --fix \
+    --config hit-fmt/examples/repository.hit-fmt source.cpp include/
 ```
 
 `--check` may be given explicitly when desired.
@@ -75,10 +80,8 @@ comes first; large files get their own batch. File diagnostics remain in
 discovery order.
 
 Checks report affected source chunks with caret-marked formatting,
-expression-layout, naming and parameter-name violations. Source excerpts
-are cropped around the marked token to fit the terminal width; proposed
-formatter output wraps when needed. Expression reflow is not run to decide
-check-only formatting mismatches: layout checks inspect the original source.
+naming and parameter-name violations. Check-only runs the whole-file
+pipeline without writing files and compares its output with the source.
 `--fix` writes auto-fixable changes, reports them as `fixed`, then checks the
 result and reports remaining violations as `fail`. Check-only returns a
 nonzero status for any violation; `--fix` does so only for remaining ones
@@ -88,7 +91,9 @@ reports file status lines in either mode.
 Skip files or whole subdirectories while formatting or checking a folder:
 
 ```sh
-hit-fmt --fix --exclude '(^|/)generated(/|$)' \
+build-cli/hit-fmt/hit-fmt --fix \
+    --config hit-fmt/examples/repository.hit-fmt \
+    --exclude '(^|/)generated(/|$)' \
     --exclude '(^|/)legacy\.cpp$' src/
 ```
 
@@ -98,20 +103,46 @@ explicit file input is matched by its filename. A matching directory and
 all its contents are skipped. Anchor patterns to path components as above
 to avoid matching similarly named files or directories.
 
-Format only changed hunks from one or more files by supplying `file` and
-`hunk` records on stdin:
+### Experimental configs and limitations
 
-```text
-printf 'file src/a.cpp\nhunk 12:18\nfile src/b.cpp\nhunk 4:9\n' |
-  hit-fmt --fix --changed-hunks -
+Use explicit migrated configurations; legacy keys have no compatibility
+aliases. See [the migration guide](docs/config-migration.md). Google and
+LLVM examples use the migrated schema. The canonical YTsaurus example
+retains its syntax hints, but nonempty `CallLikeMacroNames` is currently
+rejected. Use the runnable preview instead:
+
+```sh
+build-cli/hit-fmt/hit-fmt --config hit-fmt/examples/ytsaurus-preview.hit-fmt \
+    source.cpp
+build-cli/hit-fmt/hit-fmt --fix \
+    --config hit-fmt/examples/ytsaurus-preview.hit-fmt source.cpp
 ```
 
-Paths are relative to the working directory. Formatting may spill into a
-bounded enclosing list or include group by default. Use `--no-spillover`
-to restrict fixes to the hunk lines; changes requiring spill-over remain
-check errors. Run `hit-fmt --help` for command-line options and
-`hit-fmt --help-config` for the configuration reference and per-option C++
-examples. `hit-fmt --version` (or `-V`) prints the version built into the
+The preview clears that syntax hint and conservatively byte-protects
+`REGISTER_DERIVED_EXTERNALIZED_YSON_STRUCT` via `WhitespaceSensitiveMacros`.
+This is a temporary workaround, not equivalent macro formatting. Both
+YTsaurus profiles force base lists onto new lines with leading colons and
+commas. The migrated repository profile is
+`hit-fmt/examples/repository.hit-fmt`; Google and LLVM are alternative
+explicit profiles. Always pass `--config` when running this new CLI in
+the repository. The checked-in root `.hit-fmt` deliberately remains the
+legacy bootstrap profile and cannot be consumed by the new CLI.
+
+Repository development formatting uses a trusted pre-migration bootstrap
+formatter with that legacy root config until new-engine self-hosting is
+ready. This is a development workflow, not a runtime legacy fallback in
+the new CLI. The experimental engine still has self-format width/anchor
+limitations; they are not claimed solved by bootstrap formatting.
+
+`--changed-hunks` and `--no-spillover` are explicitly unsupported. Non-Preserve
+`AmbiguousTemplateDeclarationSpacing` is also rejected. Incompletely parsed
+CTAD initializer lists preserve punctuation conservatively and can retain
+awkward or overwidth layout; new safety goldens do not certify ideal layout.
+No corpus compatibility, speedup or whole-pipeline allocation certification
+is claimed.
+
+Run `hit-fmt --help` for command-line options and `hit-fmt --help-config`
+for the configuration reference and per-option C++ examples. `hit-fmt --version` (or `-V`) prints the version built into the
 binary. A clean checkout at the matching `v<version>` Git tag reports the
 release version. Other checkouts include `-dev+<commit>` and append `.dirty`
 when there are uncommitted changes (including untracked files). Source
@@ -121,7 +152,7 @@ each build. Help is built into the binary and colored on terminals; set
 with all settings and their accepted values annotated:
 
 ```sh
-hit-fmt --generate-config > .hit-fmt
+build-cli/hit-fmt/hit-fmt --generate-config > preserving.hit-fmt
 ```
 
 ## License

@@ -202,7 +202,8 @@ TEST(StructuralEdits, NullBodyIsNotRemovedAndEmptyBlockIsIndependent)
 {
     for (bool add : {false, true}) {
         File preserved(
-            "void f(){while(a); for(;;); if(a); else ; do ; while(a);}");
+            "void f(){while(a); for(;;); if(a); else ; "
+                "do ; while(a);}");
         auto keep = preserved.Plan({
             .AddMissingControlBraces = add,
             .RemoveNullStatements = true,
@@ -537,7 +538,8 @@ TEST(StructuralEdits, AnonymousNamespaceNoOpFixAndOriginalProtection)
         correct.Scratch)
                     .Edits.empty());
     File disabled(
-        "// clang-format off\nnamespace n {} // keep\n// clang-format on\n",
+        "// clang-format off\nnamespace n {} // "
+            "keep\n// clang-format on\n",
         {
             .HonorClangFormatDirectives = true,
         });

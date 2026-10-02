@@ -873,6 +873,254 @@
           )
           ";"
         )
+        (declaration-statement
+          (declaration-specifiers "auto")
+          (init-declarator-list
+            (init-declarator
+              (declarator
+                (declarator-name "text")
+              )
+              (initializer
+                "="
+                (literal-expression
+                  "\"first\"" "/* join */" "\"second\"" "/* again */" "\"third\""
+                  (dangling-trivia
+                    (comment "/* join */")
+                    (comment "/* again */")
+                  )
+                )
+              )
+            )
+          )
+          ";"
+        )
+        (declaration-statement
+          (declaration-specifiers "auto")
+          (init-declarator-list
+            (init-declarator
+              (declarator
+                (declarator-name "raw_text")
+              )
+              (initializer
+                "="
+                (literal-expression "R\"tag(raw)tag\"" "\" tail\"")
+              )
+            )
+          )
+          ";"
+        )
+        (declaration-statement
+          (declaration-specifiers "auto")
+          (init-declarator-list
+            (init-declarator
+              (declarator
+                (declarator-name "wide_text")
+              )
+              (initializer
+                "="
+                (literal-expression "L\"wide\"" "LR\"tag( tail)tag\"")
+              )
+            )
+          )
+          ";"
+        )
+        (declaration-statement
+          (declaration-specifiers "auto")
+          (init-declarator-list
+            (init-declarator
+              (declarator
+                (declarator-name "utf8_text")
+              )
+              (initializer
+                "="
+                (literal-expression "u8\"head\"" "u8R\"(tail)\"")
+              )
+            )
+          )
+          ";"
+        )
+        (declaration-statement
+          (declaration-specifiers "auto")
+          (init-declarator-list
+            (init-declarator
+              (declarator
+                (declarator-name "utf16_text")
+              )
+              (initializer
+                "="
+                (literal-expression "u\"head\"" "uR\"(tail)\"")
+              )
+            )
+          )
+          ";"
+        )
+        (declaration-statement
+          (declaration-specifiers "auto")
+          (init-declarator-list
+            (init-declarator
+              (declarator
+                (declarator-name "utf32_text")
+              )
+              (initializer
+                "="
+                (literal-expression "U\"head\"" "UR\"(tail)\"")
+              )
+            )
+          )
+          ";"
+        )
+        (expression-statement
+          (call-expression
+            (identifier-expression "invoke")
+            (argument-list
+              "("
+              (argument
+                (literal-expression "\"first\"" "\" argument\"" "\" end\"")
+              )
+              (list-separator ",")
+              (argument
+                (identifier-expression "value")
+              )
+              (list-separator ",")
+              (argument
+                (literal-expression "\"middle\"" "\" argument\"")
+              )
+              (list-separator ",")
+              (argument
+                (identifier-expression "last")
+              )
+              ")"
+            )
+          )
+          ";"
+        )
+        (expression-statement
+          (call-expression
+            (identifier-expression "invoke")
+            (argument-list
+              "("
+              (argument
+                (literal-expression
+                  "\"line\"" "// join on the next line" "\" continued\""
+                  (dangling-trivia
+                    (comment "// join on the next line")
+                  )
+                )
+                (trailing-trivia
+                  (comment "/* trailing */")
+                )
+              )
+              "/* trailing */"
+              (list-separator ",")
+              (argument
+                (literal-expression "\"separate\"")
+              )
+              (list-separator ",")
+              (argument
+                (literal-expression "\"argument\"")
+              )
+              ")"
+            )
+          )
+          ";"
+        )
+        (declaration-statement
+          (declaration-specifiers "auto")
+          (init-declarator-list
+            (init-declarator
+              (declarator
+                (declarator-name "sum")
+              )
+              (initializer
+                "="
+                (binary-expression
+                  (literal-expression "\"left\"" "\" part\"")
+                  "+"
+                  (binary-expression
+                    (literal-expression "\"right\"" "\" part\"")
+                    "*"
+                    (identifier-expression "scale")
+                  )
+                )
+              )
+            )
+          )
+          ";"
+        )
+        (declaration-statement
+          (declaration-specifiers "auto")
+          (init-declarator-list
+            (init-declarator
+              (declarator
+                (declarator-name "character")
+              )
+              (initializer
+                "="
+                (subscript-expression
+                  (literal-expression "\"indexed\"" "\" text\"")
+                  "["
+                  (identifier-expression "index")
+                  "]"
+                )
+              )
+            )
+          )
+          ";"
+        )
+        (declaration-statement
+          (declaration-specifiers "auto")
+          (init-declarator-list
+            (init-declarator
+              (declarator
+                (declarator-name "size")
+              )
+              (initializer
+                "="
+                (call-expression
+                  (member-expression
+                    (parenthesized-expression
+                      "("
+                      (literal-expression "\"member\"" "\" text\"")
+                      ")"
+                    )
+                    "."
+                    (identifier-expression "size")
+                  )
+                  (argument-list "(" ")")
+                )
+              )
+            )
+          )
+          ";"
+        )
+        (declaration-statement
+          (declaration-specifiers "auto")
+          (init-declarator-list
+            (init-declarator
+              (declarator
+                (declarator-name "called")
+              )
+              (initializer
+                "="
+                (call-expression
+                  (parenthesized-expression
+                    "("
+                    (literal-expression "\"callee\"" "\" text\"")
+                    ")"
+                  )
+                  (argument-list
+                    "("
+                    (argument
+                      (identifier-expression "value")
+                    )
+                    ")"
+                  )
+                )
+              )
+            )
+          )
+          ";"
+        )
         (return-statement
           "return"
           (call-expression

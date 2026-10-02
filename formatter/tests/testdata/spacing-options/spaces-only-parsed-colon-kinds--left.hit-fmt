@@ -1,3 +1,8 @@
-BitFieldColonSpacing = Left
-EnumUnderlyingTypeColonSpacing = Left
-LabelColonSpacing = Left
+# Migrated to group policies; legacy output equivalence is not implied.
+# Shape preferences apply when broken; fitting canonical groups flatten.
+BitFieldColonSpaceBefore = Space
+BitFieldColonSpaceAfter = NoSpace
+EnumUnderlyingTypeColonSpaceBefore = Space
+EnumUnderlyingTypeColonSpaceAfter = NoSpace
+LabelColonSpaceBefore = Space
+LabelColonSpaceAfter = NoSpace

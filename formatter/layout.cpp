@@ -306,6 +306,45 @@ void Document::Gap(GapSpec spec, AnchorId anchor, Provenance origin)
     Add(node);
 }
 
+void Document::SourceLineIndent(std::uint32_t begin,
+    std::uint32_t end,
+    std::uint32_t indentBegin,
+    std::uint32_t indentEnd,
+    AnchorId anchor,
+    std::uint32_t requiredWidth,
+    std::uint64_t identity)
+{
+    if (begin == InvalidId || end == InvalidId || indentBegin == InvalidId ||
+        indentEnd == InvalidId)
+    {
+        Fail(Error::InvalidSourceRange);
+        return;
+    }
+    if (!CheckOrigin({begin, end, identity}) ||
+        !CheckHorizontalSource(indentBegin, indentEnd))
+    {
+        return;
+    }
+    const auto prefix = Source_.substr(begin, end - begin);
+    if (prefix.empty() || prefix.back() != '\n' ||
+        prefix.find_first_not_of(" \t\r\n") != std::string_view::npos)
+    {
+        Fail(Error::InvalidLinePrefix);
+    }
+    if (anchor != InvalidId && anchor >= Anchors_) {
+        Fail(Error::InvalidAnchor);
+    }
+    Node node;
+    node.Type = Kind::SourceLineIndent;
+    node.FlatText = prefix;
+    node.Origin = {begin, end, identity};
+    node.Anchor = anchor;
+    node.FlatGap.RequiredWidth = requiredWidth;
+    node.FlatGap.IndentSourceBegin = indentBegin;
+    node.FlatGap.IndentSourceEnd = indentEnd;
+    Add(node);
+}
+
 AnchorId Document::MarkAnchor(AnchorSpec spec)
 {
     if (spec.Kind != AnchorKind::BlockRelative &&
@@ -446,9 +485,11 @@ Result Document::Render(
             node.Type != Kind::Anchor)
         {
             ++mappingCount;
-            if ((node.Type == Kind::Gap || node.Type == Kind::ConditionalGap) &&
-                (node.FlatGap.IndentSourceBegin != InvalidId ||
-                    node.BrokenGap.IndentSourceBegin != InvalidId))
+            if (node.Type == Kind::SourceLineIndent ||
+                ((node.Type == Kind::Gap || node.Type == Kind::
+                    ConditionalGap) &&
+                    (node.FlatGap.IndentSourceBegin != InvalidId ||
+                        node.BrokenGap.IndentSourceBegin != InvalidId)))
             {
                 ++mappingCount;
             }
@@ -490,8 +531,12 @@ Result Document::Render(
             summary = summaries.back();
             summaries.pop_back();
         } else if (node.Type == Kind::Text || node.Type == Kind::Verbatim ||
-                   node.Type == Kind::ConditionalText)
+                   node.Type == Kind::ConditionalText ||
+                   node.Type == Kind::SourceLineIndent)
         {
+            // Fixed prefixes establish shape like Verbatim, but never publish
+            // lastBreak/ownedBreak. Their indentation follows a guaranteed
+            // line, and emission counts it before any following child fit.
             flat = MeasureText(node.FlatText, policy.TabWidth);
             if (node.Type == Kind::ConditionalText) {
                 flat.Width = flat.Prefix =
@@ -586,6 +631,34 @@ Result Document::Render(
     auto tailWidth = [&](Measure tail) {
         return tail.Line ? tail.Prefix : AddWidth(tail.Prefix, frame.Tail);
     };
+    auto resolveIndent = [&](AnchorId id, std::uint32_t requiredWidth) {
+        auto indent = frame.Indent;
+        if (id != InvalidId) {
+            const auto& anchor = anchors[id];
+            const auto& spec = Nodes_[anchor.Node];
+            indent = anchor.Column;
+            if (spec.Alignment == AnchorKind::DelimiterColumn) {
+                const auto minimum = std::min(
+                    AddWidth(anchor.Block, spec.Minimum), Infinity - 1);
+                indent = std::max(indent, minimum);
+                if (indent >= policy.Width ||
+                    requiredWidth > policy.Width - indent)
+                {
+                    indent = Offset(anchor.Block, spec.Fallback);
+                }
+            }
+        }
+        return indent;
+    };
+    auto emitIndent = [&](std::uint32_t indent) {
+        if (policy.Indentation == IndentationKind::Tabs) {
+            result.Text.append(indent / policy.TabWidth, '\t');
+            result.Text.append(indent % policy.TabWidth, ' ');
+        } else {
+            result.Text.append(indent, ' ');
+        }
+        column = indent;
+    };
     for (std::size_t i = 0; i < Nodes_.size(); ++i) {
         const auto& node = Nodes_[i];
         const auto& entry = cache[i];
@@ -643,6 +716,23 @@ Result Document::Render(
                             : node.FlatText;
             result.Text.append(text);
             advance(text);
+        } else if (node.Type == Kind::SourceLineIndent) {
+            result.Text.append(node.FlatText);
+            advance(node.FlatText);
+            if (policy.SourceMap) {
+                result.Map.push_back({outputBegin,
+                    result.Text.size(),
+                    node.Origin,
+                    true,
+                    true});
+            }
+            outputBegin = result.Text.size();
+            emittedOrigin = {node.FlatGap.IndentSourceBegin,
+                node.FlatGap.IndentSourceEnd,
+                NoIdentity};
+            emitIndent(resolveIndent(node.Anchor, node.FlatGap.RequiredWidth));
+            // Do not set frame.OwnedLine: only editable gaps satisfy
+            // ForceOwned.
         } else {
             auto gap = node.Type == Kind::ConditionalGap && ownerBroken
                            ? node.BrokenGap
@@ -689,30 +779,7 @@ Result Document::Render(
                     emittedOrigin.End = gap.IndentSourceEnd;
                     exact = true;
                 } else {
-                    auto indent = frame.Indent;
-                    if (node.Anchor != InvalidId) {
-                        const auto& anchor = anchors[node.Anchor];
-                        const auto& spec = Nodes_[anchor.Node];
-                        indent = anchor.Column;
-                        if (spec.Alignment == AnchorKind::DelimiterColumn) {
-                            const auto minimum =
-                                std::min(AddWidth(anchor.Block, spec.Minimum),
-                                    Infinity - 1);
-                            indent = std::max(indent, minimum);
-                            if (indent >= policy.Width ||
-                                gap.RequiredWidth > policy.Width - indent)
-                            {
-                                indent = Offset(anchor.Block, spec.Fallback);
-                            }
-                        }
-                    }
-                    if (policy.Indentation == IndentationKind::Tabs) {
-                        result.Text.append(indent / policy.TabWidth, '\t');
-                        result.Text.append(indent % policy.TabWidth, ' ');
-                    } else {
-                        result.Text.append(indent, ' ');
-                    }
-                    column = indent;
+                    emitIndent(resolveIndent(node.Anchor, gap.RequiredWidth));
                 }
             } else if (gap.FlatSourceBegin != InvalidId) {
                 auto text = Source_.substr(gap.FlatSourceBegin,

@@ -1,5 +1,8 @@
+# Migrated to group policies; legacy output equivalence is not implied.
+# Shape preferences apply when broken; fitting canonical groups flatten.
+# Migration: TrailingBinaryOperatorList spelling overrides generalized to shared operator categories
+# Migration: LeadingBinaryOperatorList spelling overrides generalized to shared operator categories
 ColumnLimit = 44
-ExpressionLayoutCondition = Overflow
-DefaultBinaryOperatorPlacement = Leading
-TrailingBinaryOperatorList = ["+", "<<"]
-LeadingBinaryOperatorList = ["||"]
+ExpressionsLayout = Canonical
+BinaryOperatorSide = Leading
+ShiftOperatorSide = Trailing

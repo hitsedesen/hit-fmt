@@ -1,4 +1,6 @@
-InitializerListTrailingComma = Add
-EnforceInitializerListTrailingComma = false
-InitializerListClosingBrace = SameLineUnlessTrailingComma
-EnforceInitializerListClosingBrace = true
+# Migrated to group policies; legacy output equivalence is not implied.
+# Shape preferences apply when broken; fitting canonical groups flatten.
+# Migration: always-add removed; migrated policy follows multiline preference.
+InitializersTrailingComma = Preserve
+InitializersLayout = Canonical
+InitializersCloser = SameLine

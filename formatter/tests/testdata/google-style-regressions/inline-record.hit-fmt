@@ -1,10 +1,12 @@
+# Migrated to group policies; legacy output equivalence is not implied.
+# Shape preferences apply when broken; fitting canonical groups flatten.
 IndentWidth = 4
 IndentAccessModifiers = Indent
 AccessModifierIndentWidth = 1
 IndentMembers = Indent
 MemberIndentWidth = 2
-IndentBlockBodies = true
+BodiesLayout = Canonical
+BodyShape = Expanded
 BlockBodyIndentWidth = 2
-ClassBraceSpacing = SingleSpace
-EnforceClassBraceSpacing = true
+ClassBraceSpacing = Space
 BraceInitializerSpacing = NoSpace

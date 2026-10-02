@@ -9,4 +9,7 @@ void f() {
   VERIFY_FAILS({ invoke(); }, "");
   ASSERT_SAME(kTag, MACRO_TYPE_(char**));
   int x = a * *p;
+  invoke('x' "not concatenated", next);
+  invoke("not concatenated" 'x', next);
+  invoke("head" "tail"_label, next);
 }

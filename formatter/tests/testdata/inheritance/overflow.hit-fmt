@@ -1,7 +1,9 @@
-InheritanceList = Format
-InheritanceListStart = NewLineOnOverflow
-InheritanceListColonPlacement = AttachToClass
-InheritanceListColonSpaceBefore = Space
-InheritanceListCommaPlacement = AttachToPrevious
-InheritanceListSplit = OnePerLineOnOverflow
+# Migrated to group policies; legacy output equivalence is not implied.
+# Shape preferences apply when broken; fitting canonical groups flatten.
+BaseListsLayout = Canonical
+BaseListsFirstItem = InlineIfFits
+BaseListsColonSide = Trailing
+BaseListsColonSpaceBefore = Space
+BaseListsCommaSide = Trailing
+BaseListsPacking = VerticalWhenBroken
 ColumnLimit = 34

@@ -1,4 +1,7 @@
-ExpressionLayoutCondition = Always
-ControlBlockBracePlacement = AttachUnlessMultiline
-EnforceControlBlockBracePlacement = true
+# Migrated to group policies; legacy output equivalence is not implied.
+# Always requires a legal owned break; Preserve/protection still win.
+ExpressionsLayout = Canonical
+ExpressionsBreak = Always
+ControlHeadersLayout = Canonical
+ControlBracePlacement = NextLineIfHeaderBroken
 ColumnLimit = 80

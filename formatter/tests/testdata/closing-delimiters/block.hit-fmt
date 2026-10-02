@@ -1,2 +1,4 @@
-BlockClosingBrace = SameLine
-EnforceBlockClosingBrace = true
+# Migrated to group policies; legacy output equivalence is not implied.
+# Shape preferences apply when broken; fitting canonical groups flatten.
+BodiesLayout = Canonical
+BodyShape = CompactIfFits

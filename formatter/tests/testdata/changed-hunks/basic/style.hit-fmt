@@ -1,6 +1,7 @@
+# Migrated to group policies; legacy output equivalence is not implied.
+# Shape preferences apply when broken; fitting canonical groups flatten.
 IncludeOrder = Sort
 ColumnLimit = 25
-CallArgumentSplit = OnePerLine
-EnforceCallArgumentSplit = true
+CallsLayout = Canonical
+CallsPacking = VerticalWhenBroken
 SpaceInsideFunctionParameters = NoSpace
-EnforceSpaceInsideFunctionParameters = true

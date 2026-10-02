@@ -1,0 +1,7 @@
+Layout = Canonical
+AddMissingControlBraces = true
+RemoveNullStatements = true
+RemoveNullDeclarations = true
+IncludeOrder = Sort
+ControlBlockKeywordSpacing = Space
+CommaSpaceAfter = GeneratedSpace

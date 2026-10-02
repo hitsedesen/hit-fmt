@@ -1,0 +1,12 @@
+Layout = Canonical
+IndentWidth = 2
+IndentationKind = Spaces
+ColumnLimit = 32
+CallsPacking = VerticalWhenBroken
+CallsFirstItem = NextLine
+CallLineFirstStringNames = ["message"]
+BinaryOperatorSpacing = GeneratedSpace
+AssignmentOperatorSpacing = GeneratedSpace
+MemberAccessOperatorsSpacing = GeneratedNoSpace
+FunctionCallSpaceBeforeParameters = GeneratedNoSpace
+FunctionSpaceBeforeParameters = GeneratedNoSpace

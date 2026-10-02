@@ -1,124 +1,69 @@
-# Approximation of the LLVM C++ coding style / clang-format's LLVM preset.
-# Use with --config, or copy to .hit-fmt in the source tree.
-
-# Indentation and limits
+# LLVM-inspired approximation, not clang-format compatibility.
+# Canonical groups flatten fitting lists; delimiter alignment has a fixed fallback.
+# Directives/protected regions are byte-exact. See docs/config-migration.md.
+Layout = Canonical
 IndentWidth = 2
 ColumnLimit = 80
-LineLengthCheck = Strict
+WidthDiagnostics = Report
 IndentationKind = Spaces
 TrailingWhitespace = Trim
-
-# Includes, directives, and comments
-# LLVM include order depends on categories, so preserve it.
-IncludeOrder = Preserve
-
-# Records, namespaces, and declarators
+ListBreak = IfNeeded
+ListPacking = Fill
+ListFirstItem = InlineIfFits
+ListCloser = SameLine
+ListAlignment = Delimiter
+ContinuationOffset = 4
+AlignmentFallbackOffset = 4
+# Context-dependent header lists remain source-owned explicitly.
+BaseListsLayout = Preserve
+ConstructorListsLayout = Preserve
+BodyShape = CompactIfFits
+EmptyBodyShape = CompactIfFits
 PointerReferenceDeclaratorLocation = Right
 IndentAccessModifiers = NoIndent
 IndentMembers = Indent
-ClassBracePlacement = Attach
-EnforceClassBracePlacement = true
-ClassBraceSpacing = SingleSpace
-EnforceClassBraceSpacing = true
-StructBracePlacement = Attach
-EnforceStructBracePlacement = true
-StructBraceSpacing = SingleSpace
-EnforceStructBraceSpacing = true
-UnionBracePlacement = Attach
-EnforceUnionBracePlacement = true
-UnionBraceSpacing = SingleSpace
-EnforceUnionBraceSpacing = true
-EnumBraceSpacing = SingleSpace
-NamespaceBracePlacement = Attach
-EnforceNamespaceBracePlacement = true
-NamespaceBraceSpacing = SingleSpace
-EnforceNamespaceBraceSpacing = true
+IndentNamespaces = NoIndent
+IndentCaseLabels = NoIndent
+StatementAttributeIndent = Block
+IncludeOrder = Preserve
 NamespaceComments = Fix
 ShortNamespaceLines = 1
-# LLVM base-list layout is context-dependent; keep it source-owned.
-InheritanceList = Preserve
+RemoveNullDeclarations = true
 
-# Functions and parameters
-FunctionBracePlacement = Attach
-EnforceFunctionBracePlacement = true
-FunctionBraceSpacing = SingleSpace
-EnforceFunctionBraceSpacing = true
-FunctionParameterSplit = Pack
-EnforceFunctionParameterSplit = true
-FirstFunctionParameterPosition = NameLineIfFits
-FunctionParameterIndent = Continuation
-FunctionParameterNewLineIndent = 4
-MergeFunctionParameters = true
+ClassBraceSpacing = Space
+StructBraceSpacing = Space
+UnionBraceSpacing = Space
+EnumBraceSpacing = Space
+FunctionBraceSpacing = Space
+LambdaBraceSpacing = Space
+NamespaceBraceSpacing = Space
 FunctionSpaceBeforeParameters = NoSpace
 SpaceInsideFunctionParameters = NoSpace
-EnforceSpaceInsideFunctionParameters = true
-
-# Lambdas
-LambdaBracePlacement = Attach
-EnforceLambdaBracePlacement = true
-LambdaBraceSpacing = SingleSpace
-EnforceLambdaBraceSpacing = true
 LambdaSpaceBeforeParameters = NoSpace
 SpaceInsideLambdaParameters = NoSpace
 SpaceAroundCaptureList = NoSpace
 SpaceAroundCaptureAssignment = Space
-
-# Calls and chains
-CallArgumentSplit = Pack
-EnforceCallArgumentSplit = true
-FirstCallArgumentPosition = CallLine
-CallArgumentIndent = Continuation
 FunctionCallSpaceBeforeParameters = NoSpace
 SpaceInsideCallArguments = NoSpace
-EnforceSpaceInsideCallArguments = true
-
-# Control flow
-LabelColonSpacing = NoSpace
-IndentCaseLabels = NoIndent
-ControlBlockBracePlacement = SameLine
-EnforceControlBlockBracePlacement = true
 ControlBlockKeywordSpacing = Space
-ControlConditionIndent = Continuation
-MultilineControlBlockFirstConditionPosition = HeaderLine
-EnforceMultilineControlBlockFirstConditionPosition = false
-MultilineControlBlockClosingDelimiterPlacement = SameLine
-EnforceMultilineControlBlockClosingDelimiterPlacement = false
-
-# Blocks and statements
-IndentBlockBodies = true
-RemoveNullDeclarations = true
-StatementAttributeIndent = Block
-
-# Initializers, new, and delete
-InitializerListSplit = Pack
-EnforceInitializerListSplit = true
-FirstInitializerElementPosition = BraceLine
-InitializerListIndent = Continuation
-MergeInitializerList = true
-InitializerListClosingBrace = SameLineUnlessTrailingComma
-EnforceInitializerListClosingBrace = false
-InitializerListTrailingComma = Remove
-EnforceInitializerListTrailingComma = false
-MultilineInitializerListTrailingComma = Inherit
-EnforceMultilineInitializerListTrailingComma = inherit
+LabelColonSpaceBefore = NoSpace
+LabelColonSpaceAfter = NoSpace
 InitializerBracesSpacing = NoSpace
-EnforceInitializerBracesSpacing = true
 BraceInitializerSpacing = NoSpace
-
-# Expressions and operators
-CommaSpacing = Space
-EnforceCommaSpacing = true
+CommaSpaceBefore = NoSpace
+CommaSpaceAfter = Space
 AssignmentOperatorSpacing = Space
-ExpressionLayoutCondition = Overflow
-BinaryOperatorPlacement = Trailing
-AssignmentOperatorPlacement = Trailing
-TernaryOperatorPlacement = Leading
-EnforceTernaryOperatorPlacement = true
-TernarySplit = AsNeeded
-EnforceTernarySplit = true
-# Naming checks
-# LLVM uses upper-initial types and variables, lower-initial functions.
-# Naming checks only cover unambiguous definitions/declarations; see docs.
+ExpressionsBreak = IfNeeded
+ExpressionsPacking = Fill
+BinaryOperatorSide = Trailing
+AssignmentOperatorSide = Trailing
+TernaryOperatorSide = Leading
+TernaryLayout = Flexible
+InitializersTrailingComma = Preserve
+# Closer placement no longer depends on an existing trailing comma.
+InitializersCloser = SameLine
+
+# Diagnostics only; role-aware upstream naming is not fully modeled.
 ClassNameCase = PascalCase
 StructNameCase = PascalCase
 UnionNameCase = PascalCase

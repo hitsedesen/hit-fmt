@@ -1,7 +1,7 @@
+# Migrated to group policies; legacy output equivalence is not implied.
+# Shape preferences apply when broken; fitting canonical groups flatten.
 ColumnLimit = 15
-CallArgumentSplit = OnePerLine
-EnforceCallArgumentSplit = true
-FirstCallArgumentPosition = NewLine
-EnforceFirstCallArgumentPosition = true
+CallsLayout = Canonical
+CallsPacking = VerticalWhenBroken
+CallsFirstItem = NextLine
 SpaceInsideFunctionParameters = NoSpace
-EnforceSpaceInsideFunctionParameters = true

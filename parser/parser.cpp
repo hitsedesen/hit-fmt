@@ -6158,6 +6158,16 @@ private:
                        : NodeKind::Expression);
             left = MakeNode(nodeKind, cursor);
             left->Tokens.End = ++cursor;
+            if (kind == TK::Literal_String) {
+                // Adjacent string tokens form one primary expression. Keep
+                // intervening comments in its range, but not trailing trivia.
+                auto next = NextSignificant(cursor);
+                while (next < end && Kind(next) == TK::Literal_String) {
+                    cursor = next + 1;
+                    left->Tokens.End = cursor;
+                    next = NextSignificant(cursor);
+                }
+            }
         }
 
         while (left && cursor < end) {

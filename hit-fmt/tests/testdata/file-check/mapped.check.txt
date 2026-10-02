@@ -1,0 +1,11 @@
+fail: function name 'bad_name' has invalid case; expected PascalCase
+  --> sample.cpp:1:23 [original source]
+fail: parameter #1 in function definition 'bad_name': expected a name
+  --> sample.cpp:1:35 [original source]
+fail: function name 'later_bad' has invalid case; expected PascalCase
+  --> sample.cpp:2:6 [original source]
+fail: parameter #1 in function definition 'later_bad': expected a name
+  --> sample.cpp:2:19 [original source]
+fail: emitted line width 25 exceeds ColumnLimit 24
+  --> sample.cpp:7:25 [formatted output; not original source]
+summary: formatting mismatch; fail: naming or parameter-name violation; fail: emitted width violation

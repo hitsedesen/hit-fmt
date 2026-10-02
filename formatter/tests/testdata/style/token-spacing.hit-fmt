@@ -1,9 +1,11 @@
+# Migrated to group policies; legacy output equivalence is not implied.
+# Shape preferences apply when broken; fitting canonical groups flatten.
 PointerReferenceDeclaratorLocation = Left
 BinaryOperatorSpacing = Space
 AssignmentOperatorSpacing = Space
 CastSpacing = Space
-CommaSpacing = After
-EnforceCommaSpacing = true
+CommaSpaceBefore = NoSpace
+CommaSpaceAfter = Space
 LoopSemicolonSpacing = Space
 ConditionInitSemicolonSpacing = Space
 UnaryOperatorSpacing = NoSpace

@@ -1,1 +1,3 @@
-SeparatorLength = 80
+# Migrated to group policies; legacy output equivalence is not implied.
+# Shape preferences apply when broken; fitting canonical groups flatten.
+# Migration: SeparatorLength removed; see docs/config-migration.md

@@ -17,6 +17,31 @@ bool Whitespace(std::string_view text)
     return text.find_first_not_of(" \t\r\n\f\v") == std::string_view::npos;
 }
 
+bool Covered(
+    std::span<const parser::SourceRange> ranges,
+    parser::SourceRange source)
+{
+    const auto first = std::lower_bound(
+        ranges.begin(), ranges.end(), source.Begin,
+        [] (parser::SourceRange range, Offset begin) {
+            return range.End <= begin;
+        });
+    return first != ranges.end() && first->Begin <= source.Begin &&
+        (source.Empty() ? source.Begin < first->End : source.End <= first->End);
+}
+
+bool WholeGapCovered(
+    std::span<const parser::SourceRange> ranges,
+    const SourceGap& gap)
+{
+    // Replacing an LF-ended gap can synthesize indentation at the following
+    // line's zero-width point. Owning the preceding LF is not
+    // owning that point.
+    return Covered(ranges, gap.Source) &&
+        (!gap.Original.ends_with('\n') ||
+            Covered(ranges, {gap.Source.End, gap.Source.End}));
+}
+
 bool Word(TK kind, std::string_view text)
 {
     // Alternative operators are identifier spellings with operator kinds.
@@ -110,11 +135,16 @@ SourceAnalysis::SourceAnalysis(std::pmr::memory_resource& fileMemory)
     : Gaps_(&fileMemory)
     , Protection_(&fileMemory)
     , Regions_(&fileMemory)
+    , EditScope_(&fileMemory)
+    , PartialGapPermissions_(&fileMemory)
 { }
 
 bool SourceAnalysis::IntersectsImmutable(parser::SourceRange source) const
 {
     assert(source.Begin <= source.End);
+    if (HasEditScope_ && !Covered(EditScope_, source)) {
+        return true;
+    }
     auto first = std::lower_bound(
         Protection_.begin(),
         Protection_.end(),
@@ -160,9 +190,28 @@ SourceAnalysis BuildSourceAnalysis(
     const auto size = CheckedSourceAnalysisSize(source.size());
     SourceAnalysis result(fileMemory);
     const auto count = tree.TokenCount();
+    if (options.EditScope) {
+        for (const auto range : *options.EditScope) {
+            if (range.Begin >= range.End || range.End > size ||
+                (!result.EditScope_.empty() &&
+                    range.Begin < result.EditScope_.back().End))
+            {
+                throw std::invalid_argument("invalid source edit scope");
+            }
+            if (!result.EditScope_.empty() &&
+                range.Begin == result.EditScope_.back().End)
+            {
+                result.EditScope_.back().End = range.End;
+            } else {
+                result.EditScope_.push_back(range);
+            }
+        }
+    }
     result.Gaps_.reserve(static_cast<size_t>(count) + 1);
     auto protect = [&] (Offset begin, Offset end, ProtectionReason reason) {
-        assert(begin <= end && end <= size);
+        if (begin > end || end > size) {
+            throw std::invalid_argument("invalid immutable source range");
+        }
         if (begin != end) {
             result.Protection_.push_back({{begin, end}, reason});
         }
@@ -398,6 +447,13 @@ SourceAnalysis BuildSourceAnalysis(
     for (const auto range : options.ImmutableRanges) {
         protect(range.Begin, range.End, ProtectionReason::Explicit);
     }
+    for (const auto& range : options.InheritedProtection) {
+        if (range.Reasons == ProtectionReason::None) {
+            throw std::invalid_argument(
+                "inherited protection requires a reason");
+        }
+        protect(range.Source.Begin, range.Source.End, range.Reasons);
+    }
     struct Frame
     {
         const parser::Node* Next;
@@ -432,8 +488,10 @@ SourceAnalysis BuildSourceAnalysis(
             status,
         });
         if (node.Kind == parser::NodeKind::HeaderName) {
-            // Header spelling includes internal whitespace. Ordinary lexical
-            // identity alone cannot authorize edits inside angle delimiters.
+            // Header spelling includes internal whitespace. Ordinary
+            // lexical
+            // identity alone cannot authorize edits inside angle
+            // delimiters.
             protect(begin, end, ProtectionReason::HeaderName);
         }
         if (recovery || ambiguous) {
@@ -494,8 +552,77 @@ SourceAnalysis BuildSourceAnalysis(
         }
     }
     result.Protection_.resize(merged);
+    // At this point Protection_ contains semantic/explicit protection only.
+    // Decide narrow permissions before adding the scope complement: merging
+    // its reasons must not hide a safe slice behind an exact protected prefix.
     size_t interval = 0;
-    for (auto& gap : result.Gaps_) {
+    for (GapId id = 0; id < result.Gaps_.size(); ++id) {
+        auto& gap = result.Gaps_[id];
+        if (options.EditScope && !WholeGapCovered(result.EditScope_, gap) &&
+            !gap.Preserve && !gap.ContextSensitive &&
+            (!gap.MustStartWithLineFeed || gap.Original.starts_with('\n')) &&
+            gap.Original.find_first_not_of(" \t\r\n") == std::string_view::npos)
+        {
+            // Lone CR is not a supported horizontal slice or LF-ended prefix.
+            bool supported = true;
+            for (size_t i = 0; i < gap.Original.size(); ++i) {
+                if (gap.Original[i] == '\r' && (i + 1 == gap.Original.size() ||
+                    gap.Original[i + 1] != '\n'))
+                {
+                    supported = false;
+                    break;
+                }
+            }
+            auto permit = [&] (
+                parser::SourceRange slice,
+                PartialGapPermissionKind kind)
+            {
+                if (!Covered(result.EditScope_, slice)) {
+                    return;
+                }
+                // HeaderName alone does not own insertion before its opener.
+                auto first = std::lower_bound(
+                    result.Protection_.begin(), result.Protection_.end(),
+                    slice.Begin,
+                    [] (const auto& range, Offset begin) {
+                        return range.Source.End <= begin;
+                    });
+                const bool beforeHeader = first != result.Protection_.end() &&
+                    slice.Empty() && slice.Begin == first->Source.Begin &&
+                    first->Reasons == ProtectionReason::HeaderName;
+                if (first != result.Protection_.end() && !beforeHeader &&
+                    (slice.Empty()
+                        ? first->Source.Begin <= slice.Begin
+                        : first->Source.Begin < slice.End))
+                {
+                    return;
+                }
+                result.PartialGapPermissions_.push_back({id, slice, kind});
+            };
+            if (supported) {
+                size_t lineBegin = 0;
+                for (size_t i = 0; i < gap.Original.size(); ++i) {
+                    if (gap.Original[i] != '\n') {
+                        continue;
+                    }
+                    const auto end = i && gap.Original[i - 1] == '\r' ? i -
+                        1 : i;
+                    if (lineBegin < end) {
+                        permit({gap.Source.Begin + static_cast<Offset>(
+                            lineBegin),
+                            gap.Source.Begin + static_cast<Offset>(end)},
+                            PartialGapPermissionKind::TrimHorizontal);
+                    }
+                    lineBegin = i + 1;
+                }
+                if (lineBegin && id < count) {
+                    permit({
+                        gap.Source.Begin + static_cast<Offset>(lineBegin),
+                        gap.Source.End,
+                    }, PartialGapPermissionKind::FinalIndentation);
+                }
+            }
+        }
         while (interval < merged &&
             result.Protection_[interval].Source.End <= gap.Source.Begin)
         {
@@ -522,6 +649,41 @@ SourceAnalysis BuildSourceAnalysis(
                 }
             }
         }
+    }
+    if (options.EditScope) {
+        result.HasEditScope_ = true;
+        // Fence ordinary gap replacement independently from horizontal
+        // permissions, including zero-width insertions at strict scope ends.
+        for (auto& gap : result.Gaps_) {
+            if (!WholeGapCovered(result.EditScope_, gap)) {
+                gap.Preserve = true;
+                gap.Reasons = gap.Reasons | ProtectionReason::OutsideEditScope;
+            }
+        }
+        Offset begin = 0;
+        for (const auto range : result.EditScope_) {
+            protect(begin, range.Begin, ProtectionReason::OutsideEditScope);
+            begin = range.End;
+        }
+        protect(begin, size, ProtectionReason::OutsideEditScope);
+        std::sort(result.Protection_.begin(), result.Protection_.end(),
+            [] (const auto& a, const auto& b) {
+                return a.Source.Begin < b.Source.Begin;
+            });
+        merged = 0;
+        for (const auto range : result.Protection_) {
+            if (merged &&
+                range.Source.Begin <= result.Protection_[merged - 1].Source.End)
+            {
+                auto& previous = result.Protection_[merged - 1];
+                previous.Source.End = std::max(previous.Source.End,
+                    range.Source.End);
+                previous.Reasons = previous.Reasons | range.Reasons;
+            } else {
+                result.Protection_[merged++] = range;
+            }
+        }
+        result.Protection_.resize(merged);
     }
     return result;
 }

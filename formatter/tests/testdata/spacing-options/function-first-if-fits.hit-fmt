@@ -1,8 +1,9 @@
+# Migrated to group policies; legacy output equivalence is not implied.
+# Shape preferences apply when broken; fitting canonical groups flatten.
 IndentWidth = 2
 ColumnLimit = 80
-FunctionParameterSplit = Pack
-EnforceFunctionParameterSplit = true
-FirstFunctionParameterPosition = NameLineIfFits
-FunctionParameterIndent = Continuation
-FunctionParameterNewLineIndent = 4
-MergeFunctionParameters = true
+ParametersLayout = Canonical
+ParametersPacking = Fill
+ParametersFirstItem = InlineIfFits
+ParametersAlignment = Delimiter
+ParametersAlignmentFallbackOffset = 4

@@ -1,12 +1,15 @@
 find_package(Threads REQUIRED)
 
+add_library(lib-file-check STATIC file_check.cpp)
+target_link_libraries(lib-file-check PUBLIC lib-formatter)
+
 add_executable(hit-fmt
     main.cpp
     config_help.cpp
     config_template.cpp
     version.cpp)
 target_link_libraries(hit-fmt
-    lib-formatter
+    lib-file-check
     lib-util
     Threads::Threads)
 # Refresh the embedded version on each build, even if only Git state changes.

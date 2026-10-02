@@ -1,11 +1,13 @@
-ConstructorInitializerList = Format
-ConstructorInitializerListColonPlacement = AttachToConstructor
-ConstructorInitializerListColonSpaceBefore = Space
-ConstructorInitializerListColonSpaceAfter = Space
-ConstructorInitializerListCommaPlacement = AttachToPrevious
-ConstructorInitializerListCommaSpaceBefore = NoSpace
-ConstructorInitializerListCommaSpaceAfter = Space
-ConstructorInitializerListStart = NewLineOnOverflow
-ConstructorInitializerListSplit = OnePerLineOnOverflow
-ConstructorInitializerListIndent = 2
+# Migrated to group policies; legacy output equivalence is not implied.
+# Shape preferences apply when broken; fitting canonical groups flatten.
+ConstructorListsLayout = Canonical
+ConstructorListsColonSide = Trailing
+ConstructorListsColonSpaceBefore = Space
+ConstructorListsColonSpaceAfter = Space
+ConstructorListsCommaSide = Trailing
+CommaSpaceBefore = NoSpace
+CommaSpaceAfter = Space
+ConstructorListsFirstItem = InlineIfFits
+ConstructorListsPacking = VerticalWhenBroken
+ConstructorListsContinuationOffset = 2
 ColumnLimit = 35

@@ -1,4 +1,8 @@
+# Migrated to group policies; legacy output equivalence is not implied.
+# Always requires a legal owned break; Preserve/protection still win.
+ChainsLayout = Canonical
+ChainsBreak = Always
+ChainsPacking = VerticalWhenBroken
+ChainsAlignment = Delimiter
+# Explicit library annotations; no renderer identifier checks.
 ChainedCallRootNames = ["MAKE_TASK"]
-ChainedCallSplitCondition = Always
-ChainedCallLayout = OnePerLine
-ChainedCallIndent = Continuation

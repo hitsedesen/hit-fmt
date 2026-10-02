@@ -82,7 +82,8 @@ enum class Error : std::uint8_t {
     InvalidConditionalDependency,
     InvalidConditionalGap,
     InvalidPolicy,
-    TooLarge
+    TooLarge,
+    InvalidLinePrefix
 };
 
 struct Status
@@ -153,6 +154,27 @@ public:
         GapSpec spec = {},
         AnchorId anchor = InvalidId,
         Provenance origin = {});
+    // Borrow an exact, protected whitespace/newline prefix, then generate only
+    // indentation (no new newline). The nonempty prefix must end in LF;
+    // it may contain spaces/tabs and intermediate blank lines. Keeping prefix
+    // and indentation in one node puts the fixed line inside its owning groups,
+    // so flat summaries cannot omit leading indentation. It is multiline shape,
+    // never an editable owned break, and may also be used outside a group.
+    // indentBegin/indentEnd must be a real horizontal source span or point;
+    // generated indentation maps there non-exactly with NoIdentity, even at 0
+    // width. The prefix retains identity. Source must outlive Render; anchors
+    // must already be marked and resolve at their rendered position as for Gap.
+    // requiredWidth has GapSpec::RequiredWidth's delimiter-demand semantics:
+    // positive demand equality fits, but a target at/above Width falls back
+    // even with no demand (0), as for existing gaps.
+    void SourceLineIndent(
+        std::uint32_t begin,
+        std::uint32_t end,
+        std::uint32_t indentBegin,
+        std::uint32_t indentEnd,
+        AnchorId anchor = InvalidId,
+        std::uint32_t requiredWidth = 0,
+        std::uint64_t identity = NoIdentity);
     AnchorId MarkAnchor(AnchorSpec spec);
     // reference must be the current owning group. No external, forward,
     // ancestor/descendant or mutually dependent shape references are accepted.
@@ -183,7 +205,8 @@ private:
         Gap,
         Anchor,
         ConditionalText,
-        ConditionalGap
+        ConditionalGap,
+        SourceLineIndent
     };
     struct Node
     {
@@ -198,6 +221,8 @@ private:
         std::int32_t Fallback = 0;
         std::uint32_t Minimum = 0;
         std::uint32_t FitWidthFloor = 0;
+        // SourceLineIndent stores its horizontal association in FlatGap's
+        // IndentSource offsets and its delimiter demand in RequiredWidth.
         GapSpec FlatGap;
         GapSpec BrokenGap;
         Kind Type = Kind::Text;

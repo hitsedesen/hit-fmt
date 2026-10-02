@@ -1,5 +1,6 @@
+# Migrated to group policies; legacy output equivalence is not implied.
+# Shape preferences apply when broken; fitting canonical groups flatten.
 ColumnLimit = 48
 IndentWidth = 4
-ExpressionLayoutCondition = Overflow
-EnforceInitializerListSplit = false
-MergeInitializerList = true
+ExpressionsLayout = Canonical
+InitializersLayout = Canonical

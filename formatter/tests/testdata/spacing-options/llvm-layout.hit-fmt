@@ -1,16 +1,20 @@
+# Migrated to group policies; legacy output equivalence is not implied.
+# Shape preferences apply when broken; fitting canonical groups flatten.
 IndentWidth = 2
 ColumnLimit = 50
-ExpressionLayoutCondition = Overflow
-ControlConditionIndent = Continuation
-IndentBlockBodies = true
+ExpressionsLayout = Canonical
+ControlHeadersLayout = Canonical
+ControlHeadersAlignment = Delimiter
+BodiesLayout = Canonical
+BodyShape = Expanded
 IndentCaseLabels = NoIndent
 StatementAttributeIndent = Block
-AssignmentOperatorPlacement = Trailing
-CallArgumentSplit = Pack
-EnforceCallArgumentSplit = true
-CallArgumentIndent = Continuation
-InitializerListSplit = Pack
-EnforceInitializerListSplit = true
-InitializerListIndent = Continuation
+AssignmentOperatorSide = Trailing
+CallsLayout = Canonical
+CallsPacking = Fill
+CallsAlignment = Delimiter
+InitializersLayout = Canonical
+InitializersPacking = Fill
+InitializersAlignment = Delimiter
 NamespaceComments = Fix
 ShortNamespaceLines = 1

@@ -250,7 +250,8 @@ void CheckFunction(
                 continue;
             }
             const bool allowCommentedName = definitionPolicy ==
-                FunctionDefinitionParameterNames::NameOrCommentedNameRequired;
+                FunctionDefinitionParameterNames::
+                    NameOrCommentedNameRequired;
             if (function.Kind == NK::FunctionDefinition &&
                 allowCommentedName)
             {

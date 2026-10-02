@@ -1,7 +1,7 @@
-ExpressionLayoutCondition = Overflow
-TernarySplit = AsNeeded
-EnforceTernarySplit = true
-TernaryOperatorPlacement = Leading
-EnforceTernaryOperatorPlacement = true
-BinaryOperatorPlacement = Leading
+# Migrated to group policies; legacy output equivalence is not implied.
+# Shape preferences apply when broken; fitting canonical groups flatten.
+ExpressionsLayout = Canonical
+TernaryLayout = Flexible
+TernaryOperatorSide = Leading
+BinaryOperatorSide = Leading
 ColumnLimit = 32

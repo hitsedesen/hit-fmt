@@ -1,0 +1,5 @@
+Layout = Canonical
+NamespaceComments = Fix
+NamespaceCommentSpaces = 3
+ColumnLimit = 20
+WidthDiagnostics = Report

@@ -1,10 +1,10 @@
+# Migrated to group policies; legacy output equivalence is not implied.
+# Shape preferences apply when broken; fitting canonical groups flatten.
 AddMissingControlBraces = true
 EmptyControlBody = EmptyBlock
-ControlBlockSpaceBeforeBrace = NoSpace
-EnforceControlBlockSpaceBeforeBrace = false
-EmptyBlockInteriorSpacing = Space
-EnforceEmptyBlockInteriorSpacing = false
-ControlBlockBracePlacement = SameLine
-EnforceControlBlockBracePlacement = false
-BlockClosingBrace = SameLine
-EnforceBlockClosingBrace = false
+ControlBlockSpaceBeforeBrace = GeneratedNoSpace
+EmptyBlockInteriorSpacing = GeneratedSpace
+ControlHeadersLayout = Canonical
+ControlBracePlacement = Attached
+BodiesLayout = Canonical
+BodyShape = CompactIfFits

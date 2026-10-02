@@ -1,7 +1,7 @@
+# Migrated to group policies; legacy output equivalence is not implied.
+# Shape preferences apply when broken; fitting canonical groups flatten.
 BlockInteriorSpacing = Space
 EmptyBlockInteriorSpacing = NoSpace
-EnforceEmptyBlockInteriorSpacing = true
 ControlBlockSpaceBeforeBrace = NoSpace
-EnforceControlBlockSpaceBeforeBrace = true
 DeclarationSemicolonSpacing = Space
 StatementSemicolonSpacing = NoSpace

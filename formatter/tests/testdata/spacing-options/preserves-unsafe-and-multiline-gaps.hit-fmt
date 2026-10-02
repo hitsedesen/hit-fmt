@@ -1,6 +1,8 @@
+# Migrated to group policies; legacy output equivalence is not implied.
+# Shape preferences apply when broken; fitting canonical groups flatten.
 BinaryOperatorSpacing = NoSpace
-CommaSpacing = NoSpace
-EnforceCommaSpacing = true
+CommaSpaceBefore = NoSpace
+CommaSpaceAfter = NoSpace
 SubscriptOperatorInteriorSpacing = Space
 LoopSemicolonSpacing = NoSpace
 ConditionInitSemicolonSpacing = NoSpace

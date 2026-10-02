@@ -1,9 +1,10 @@
+# Migrated to group policies; legacy output equivalence is not implied.
+# Shape preferences apply when broken; fitting canonical groups flatten.
 IndentWidth = 4
 ColumnLimit = 40
-FunctionParameterSplit = OnePerLine
-EnforceFunctionParameterSplit = true
-FunctionBracePlacement = NewLine
-FirstFunctionParameterPosition = NameLine
-EnforceFirstFunctionParameterPosition = false
-FunctionParameterIndent = IndentWidth
-MergeFunctionParameters = false
+ParametersLayout = Canonical
+ParametersPacking = VerticalWhenBroken
+FunctionBracePlacement = NextLine
+DeclarationHeadersLayout = Canonical
+ParametersFirstItem = InlineIfFits
+ParametersAlignment = Block

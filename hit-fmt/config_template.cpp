@@ -25,17 +25,11 @@ std::string_view IntegerValues(std::string_view name)
     if (name == "NamespaceCommentSpaces") {
         return "1..32";
     }
+    if (name == "MaxEmptyLines") {
+        return "0..10000";
+    }
     if (name == "ShortNamespaceLines") {
         return "0 (no exemption) or 1..10000";
-    }
-    if (name == "SeparatorLength") {
-        return "0 (disabled) or 8..10000";
-    }
-    if (name == "CallArgumentSplitColumnLimit") {
-        return "0 (use ColumnLimit) or a positive integer";
-    }
-    if (name == "FunctionParameterNewLineIndent") {
-        return "0 (normal indent) or 1..32";
     }
     return "0 (use IndentWidth) or 1..32";
 }
@@ -61,6 +55,17 @@ void PrintStringList(
     output << ']';
 }
 
+template <typename T> struct OptionalValue
+{
+    static constexpr bool IsOptional = false;
+};
+
+template <typename T> struct OptionalValue<std::optional<T>>
+{
+    static constexpr bool IsOptional = true;
+    using Type = T;
+};
+
 template <typename T>
 void PrintOption(std::ostream& output, std::string_view name, const T& value)
 {
@@ -68,36 +73,62 @@ void PrintOption(std::ostream& output, std::string_view name, const T& value)
     if constexpr (std::is_enum_v<T>) {
         bool first = true;
         for (auto spelling : formatter::ConfigEnumNames<T>::Values) {
-            if (spelling == "Preserve" &&
-                !formatter::AllowsPreserveConfigValue(name))
-            {
-                continue;
-            }
             if (!first) {
                 output << " | ";
             }
             output << spelling;
             first = false;
         }
-        auto preserved = formatter::DeserializeConfigEnum<T>("Preserve");
-        auto setting = preserved && formatter::AllowsPreserveConfigValue(name)
-            ? *preserved
-            : value;
         output << "\n" << name << " = "
-               << formatter::SerializeConfigEnum(setting);
+               << formatter::SerializeConfigEnum(value);
     } else if constexpr (std::is_same_v<T, bool>) {
         output << "false | true\n" << name << " = "
                << (value ? "true" : "false");
-    } else if constexpr (std::is_same_v<T, std::optional<bool>>) {
-        output << "inherit | false | true\n" << name << " = "
-               << (value ? (*value ? "true" : "false") : "inherit");
+    } else if constexpr (std::is_same_v<T, formatter::BlankLineSetting>) {
+        if (name == "MemberDefinitionBlankLines") {
+            output << "Inherit | ";
+        }
+        output << "Preserve | 0..10000\n" << name << " = ";
+        if (value.Mode == formatter::BlankLineMode::Exact) {
+            output << value.EmptyLines;
+        } else {
+            output << (value.Mode == formatter::BlankLineMode::Inherit
+                ? "Inherit"
+                : "Preserve");
+        }
+    } else if constexpr (OptionalValue<T>::IsOptional) {
+        using Item = typename OptionalValue<T>::Type;
+        output << (name == "MaxEmptyLines" ? "Preserve | " : "Inherit | ");
+        if constexpr (std::is_enum_v<Item>) {
+            bool first = true;
+            for (auto spelling : formatter::ConfigEnumNames<Item>::Values) {
+                if (!first) {
+                    output << " | ";
+                }
+                output << spelling;
+                first = false;
+            }
+            output << '\n' << name << " = ";
+            output << (value
+                ? formatter::SerializeConfigEnum(*value)
+                : "Inherit");
+        } else {
+            output << IntegerValues(name) << '\n' << name << " = ";
+            if (value) {
+                output << *value;
+            } else {
+                output << (name == "MaxEmptyLines" ? "Preserve" : "Inherit");
+            }
+        }
     } else if constexpr (std::is_same_v<T, std::size_t>) {
         output << IntegerValues(name) << '\n' << name << " = " << value;
     } else if constexpr (std::is_same_v<T, std::vector<std::string>>) {
-        if (name == "IndentedCallScopePairs") {
+        if (name == "NamingNamespaceExemptions" ||
+            name == "ChainedCallRootNames")
+        {
+            output << "[] or [\"qualified::name\", ...]";
+        } else if (name == "IndentedCallScopePairs") {
             output << "[] or [\"Begin:End\", ...]";
-        } else if (name == "NamingNamespaceExemptions") {
-            output << "[] or [\"namespace::path\", ...]";
         } else {
             output << "[] or [\"name\", ...]";
         }
@@ -113,8 +144,21 @@ void PrintOption(std::ostream& output, std::string_view name, const T& value)
 
 void PrintPreserveConfig(std::ostream& output)
 {
-    output << "# Preserve source layout. Options without Preserve use\n"
-              "# inactive defaults; Enforce options stay false.\n\n"
+    output << "# Preserve source break topology by "
+        "default. Set Layout = Canonical\n"
+              "# to normalize groups. Category Inherit values resolve once.\n"
+              "# Generated* applies to properties rebuilt "
+                  "by their owning canonical\n"
+              "# combinator (also inserted gaps), not unrelated nested edits.\n"
+              "# Break = Always requires a legal owned "
+                  "break; Preserve/protection win.\n"
+              "# EmptyBodyShape is independent of nonempty BodyShape.\n"
+              "# Blank counts measure empty lines; zero "
+                  "retains boundary topology.\n"
+              "# Exact counts above an explicit "
+                  "MaxEmptyLines cap are invalid.\n"
+              "# Directives and protected regions remain byte-exact.\n"
+              "# Migration: docs/config-migration.md\n\n"
               "# Formatting options\n\n";
     const formatter::Style style;
 #define PRINT_STYLE_OPTION(type, name, initial) \

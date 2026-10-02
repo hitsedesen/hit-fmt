@@ -1,8 +1,8 @@
+# Migrated to group policies; legacy output equivalence is not implied.
+# Shape preferences apply when broken; fitting canonical groups flatten.
 SpaceInsideLambdaParameters = Space
 LambdaSpaceBeforeParameters = NoSpace
 SpaceAroundCaptureList = Space
 SpaceAroundCaptureAssignment = Space
 SpaceInsideFunctionParameters = NoSpace
-EnforceSpaceInsideFunctionParameters = true
 SpaceInsideCallArguments = NoSpace
-EnforceSpaceInsideCallArguments = true

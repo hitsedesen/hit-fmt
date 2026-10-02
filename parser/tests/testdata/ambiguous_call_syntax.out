@@ -211,6 +211,45 @@
         )
         ";"
       )
+      (expression-statement
+        (call-expression
+          (identifier-expression "invoke")
+          (argument-list
+            "("
+            (argument
+              (literal-expression "'x'")
+            )
+            "\"not concatenated\"" "," "next" ")"
+          )
+        )
+        ";"
+      )
+      (expression-statement
+        (call-expression
+          (identifier-expression "invoke")
+          (argument-list
+            "("
+            (argument
+              (literal-expression "\"not concatenated\"")
+            )
+            "'x'" "," "next" ")"
+          )
+        )
+        ";"
+      )
+      (expression-statement
+        (call-expression
+          (identifier-expression "invoke")
+          (argument-list
+            "("
+            (argument
+              (literal-expression "\"head\"" "\"tail\"")
+            )
+            "_label" "," "next" ")"
+          )
+        )
+        ";"
+      )
       "}"
     )
   )

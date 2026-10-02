@@ -1,8 +1,10 @@
-FunctionParameterClosingParenthesis = NewLine
-EnforceFunctionParameterClosingParenthesis = true
-FunctionCallArgumentClosingParenthesis = NewLine
-EnforceFunctionCallArgumentClosingParenthesis = true
-InitializerListClosingBrace = NewLine
-EnforceInitializerListClosingBrace = true
-BlockClosingBrace = NewLine
-EnforceBlockClosingBrace = true
+# Migrated to group policies; legacy output equivalence is not implied.
+# Shape preferences apply when broken; fitting canonical groups flatten.
+ParametersLayout = Canonical
+ParametersCloser = OwnLine
+CallsLayout = Canonical
+CallsCloser = OwnLine
+InitializersLayout = Canonical
+InitializersCloser = OwnLine
+BodiesLayout = Canonical
+BodyShape = Expanded

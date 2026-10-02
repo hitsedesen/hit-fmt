@@ -296,6 +296,68 @@ TEST_P(FileTest, Golden)
     fixture.Expect(actual, ".out");
 }
 
+TEST(Parser, StringLiteralSequencesHaveCompleteRanges)
+{
+    const test::golden::Fixture fixture{PARSER_TESTDATA_DIR, "expressions"};
+    const auto source = fixture.InputNamed(".in");
+    PaddedInput input(source);
+    size_t errors = 0;
+    auto tree = parser::Parse(input.View(), [&] (parser::ParseError) {
+        ++errors;
+    });
+    EXPECT_EQ(errors, 0);
+
+    using enum tokenizer::TokenKind;
+    size_t stringTokens = 0;
+    for (parser::TokenIndex i = 0; i < tree.TokenCount(); ++i) {
+        stringTokens += tree.Kind(i) == Literal_String;
+    }
+    size_t coveredStrings = 0;
+    size_t sequences = 0;
+    bool foundCommentRange = false;
+    std::vector<const Node*> pending{&tree.Root()};
+    while (!pending.empty()) {
+        const auto* node = pending.back();
+        pending.pop_back();
+        EXPECT_NE(node->Kind, parser::NodeKind::UnparsedSyntax);
+        if (node->Kind == parser::NodeKind::Argument) {
+            ASSERT_NE(node->FirstChild, nullptr);
+            EXPECT_EQ(node->Tokens.Begin, node->FirstChild->Tokens.Begin);
+            EXPECT_EQ(node->Tokens.End, node->FirstChild->Tokens.End);
+        }
+        if (node->Kind == parser::NodeKind::LiteralExpression &&
+            tree.Kind(node->Tokens.Begin) == Literal_String)
+        {
+            ASSERT_GT(node->Tokens.End, node->Tokens.Begin);
+            EXPECT_EQ(tree.Kind(node->Tokens.End - 1), Literal_String);
+            size_t strings = 0;
+            for (auto i = node->Tokens.Begin; i < node->Tokens.End; ++i) {
+                auto kind = tree.Kind(i);
+                EXPECT_TRUE(kind == Literal_String || kind == Comment);
+                strings += kind == Literal_String;
+            }
+            coveredStrings += strings;
+            sequences += strings > 1;
+            auto next = node->Tokens.End;
+            while (next < tree.TokenCount() && tree.Kind(next) == Comment) {
+                ++next;
+            }
+            if (next < tree.TokenCount()) {
+                EXPECT_NE(tree.Kind(next), Literal_String);
+            }
+            foundCommentRange |= tree.SourceText(node->Tokens) ==
+                "\"first\" /* join */ \"second\" /* again */ \"third\"";
+        }
+        for (auto* child = node->FirstChild; child; child =
+            child->NextSibling) {
+            pending.push_back(child);
+        }
+    }
+    EXPECT_GT(sequences, 0);
+    EXPECT_EQ(coveredStrings, stringTokens);
+    EXPECT_TRUE(foundCommentRange);
+}
+
 TEST(Parser, BinaryOperatorMetadataMatchesGrouping)
 {
     const test::golden::Fixture fixture{PARSER_TESTDATA_DIR, "expressions"};
@@ -808,7 +870,8 @@ TEST(Parser, InsertsControlBracesWithoutReparsingSyntax)
     PaddedInput nestedInput(
         "void f(){if(a) if(b) Go(); else Stop();}\n");
     PaddedInput nestedEdited(
-        "void f(){if(a) {if(b) {Go();} else {Stop();}}}\n");
+        "void f(){if(a) {if(b) {Go();} else "
+            "{Stop();}}}\n");
     auto nested = parser::Parse(
         nestedInput.View(),
         [] (parser::ParseError) { });

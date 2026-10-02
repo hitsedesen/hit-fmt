@@ -1,9 +1,9 @@
+# Migrated to group policies; legacy output equivalence is not implied.
+# Shape preferences apply when broken; fitting canonical groups flatten.
 ColumnLimit = 30
-ExpressionLayoutCondition = Overflow
-TernarySplit = ThreeLines
-EnforceTernarySplit = true
-TernaryOperatorPlacement = Leading
-CallArgumentSplit = Pack
-EnforceCallArgumentSplit = true
-MultilineSingleCallArgumentPosition = NewLine
-EnforceMultilineSingleCallArgumentPosition = false
+ExpressionsLayout = Canonical
+TernaryLayout = ThreePart
+TernaryOperatorSide = Leading
+CallsLayout = Canonical
+CallsPacking = Fill
+CallsFirstItem = NextLine

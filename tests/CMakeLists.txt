@@ -7,10 +7,11 @@ add_executable(tests
     ../formatter/tests/structural_edits_tests.cpp
     ../formatter/tests/tests.cpp
     ../hit-fmt/tests/file_batch.cpp
-    ../hit-fmt/tests/file_dispatch.cpp)
+    ../hit-fmt/tests/file_dispatch.cpp
+    ../hit-fmt/tests/file_check.cpp)
 target_link_libraries(tests PRIVATE
     GTest::gtest_main
-    lib-formatter
+    lib-file-check
     Threads::Threads)
 target_compile_definitions(tests PRIVATE
     TOKENIZER_TESTDATA_DIR="${CMAKE_SOURCE_DIR}/tokenizer/tests/testdata"
@@ -35,3 +36,31 @@ target_compile_definitions(tests PRIVATE
 add_executable(allocation_tests
     ../tokenizer/tests/allocation_test.cpp)
 target_link_libraries(allocation_tests PRIVATE lib-tokenizer)
+
+# Focused integration checkpoint: old formatter tests migrate separately.
+set(public_pipeline_sources
+    ../formatter/tests/config_policy.cpp
+    ../formatter/tests/public_pipeline.cpp
+    ../formatter/tests/syntax_layout.cpp
+    ../formatter/tests/syntax_spacing_tests.cpp
+    ../hit-fmt/config_template.cpp)
+target_sources(tests PRIVATE ${public_pipeline_sources})
+add_executable(pipeline_checks
+    ../parser/tests/tests.cpp
+    ../formatter/tests/layout.cpp
+    ../formatter/tests/source_analysis_tests.cpp
+    ../formatter/tests/structural_edits_tests.cpp
+    ${public_pipeline_sources})
+target_link_libraries(pipeline_checks PRIVATE GTest::gtest_main lib-formatter)
+target_compile_definitions(pipeline_checks PRIVATE
+    HIT_FMT_PIPELINE_CHECKS=1
+    PARSER_TESTDATA_DIR="${CMAKE_SOURCE_DIR}/parser/tests/testdata"
+    FORMATTER_TESTDATA_DIR="${CMAKE_SOURCE_DIR}/formatter/tests/testdata/style"
+    GROUP_LAYOUT_TESTDATA_DIR="${CMAKE_SOURCE_DIR}/formatter/tests/testdata/group-layout")
+
+# Library-level preview checks; no test launches the CLI executable.
+add_executable(cli_checks
+    ../hit-fmt/tests/file_batch.cpp
+    ../hit-fmt/tests/file_dispatch.cpp
+    ../hit-fmt/tests/file_check.cpp)
+target_link_libraries(cli_checks PRIVATE GTest::gtest_main lib-file-check Threads::Threads)

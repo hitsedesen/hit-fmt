@@ -1,5 +1,6 @@
+# Migrated to group policies; legacy output equivalence is not implied.
+# Shape preferences apply when broken; fitting canonical groups flatten.
 ColumnLimit = 60
-FunctionParameterSplit = OnePerLine
-EnforceFunctionParameterSplit = true
-FirstFunctionParameterPosition = NewLine
-EnforceFirstFunctionParameterPosition = false
+ParametersLayout = Canonical
+ParametersPacking = VerticalWhenBroken
+ParametersFirstItem = NextLine

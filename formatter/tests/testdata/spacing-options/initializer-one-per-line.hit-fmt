@@ -1,9 +1,9 @@
+# Migrated to group policies; legacy output equivalence is not implied.
+# Shape preferences apply when broken; fitting canonical groups flatten.
 IndentWidth = 2
 ColumnLimit = 21
-InitializerListSplit = OnePerLine
-EnforceInitializerListSplit = true
-FirstInitializerElementPosition = NewLine
-InitializerListIndent = IndentWidth
-InitializerListClosingBrace = NewLine
-EnforceInitializerListClosingBrace = true
-MergeInitializerList = true
+InitializersLayout = Canonical
+InitializersPacking = VerticalWhenBroken
+InitializersFirstItem = NextLine
+InitializersAlignment = Block
+InitializersCloser = OwnLine

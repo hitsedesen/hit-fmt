@@ -1,6 +1,8 @@
+# Migrated to group policies; legacy output equivalence is not implied.
+# Shape preferences apply when broken; fitting canonical groups flatten.
 ColumnLimit = 50
 EmptyBlockInteriorSpacing = Space
-EnforceEmptyBlockInteriorSpacing = true
 BlockInteriorSpacing = Space
 EmptyLambdaBodySpacing = NoSpace
-SingleStatementLambdaBodyLayout = OneLineIfFits
+LambdaBodiesLayout = Canonical
+LambdaBodyShape = CompactIfFits

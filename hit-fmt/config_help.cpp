@@ -56,10 +56,11 @@ void PrintCode(std::ostream& output, std::string_view code, bool color)
 void PrintConfigHelp(std::ostream& output, bool useColor)
 {
     PrintHeading(output, "Configuration options", useColor);
-    output << "Examples show the effect of each setting on C or C++ code. "
-              "Other settings named in an example are assumed to be enabled.\n"
-              "Preserve leaves source layout unchanged and is not shown. "
-              "Naming checks report violations; they never rename code.\n\n";
+    output << "Flat Key = Value syntax; # comments and quoted-string arrays.\n"
+              "Defaults preserve source break topology. "
+                  "Canonical layout is opt-in.\n"
+              "Unknown and removed options are errors, "
+                  "never compatibility aliases.\n\n";
     for (const auto& section : HelpSections) {
         PrintHeading(output, section.Title, useColor);
         output << section.Description;

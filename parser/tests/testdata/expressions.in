@@ -45,5 +45,18 @@ auto evaluate(Values... values) {
     auto unequal = a not_eq b;
     auto negated = not a;
     auto complemented = compl a;
+    auto text = "first" /* join */ "second" /* again */ "third";
+    auto raw_text = R"tag(raw)tag" " tail";
+    auto wide_text = L"wide" LR"tag( tail)tag";
+    auto utf8_text = u8"head" u8R"(tail)";
+    auto utf16_text = u"head" uR"(tail)";
+    auto utf32_text = U"head" UR"(tail)";
+    invoke("first" " argument" " end", value, "middle" " argument", last);
+    invoke("line" // join on the next line
+        " continued" /* trailing */, "separate", "argument");
+    auto sum = "left" " part" + "right" " part" * scale;
+    auto character = "indexed" " text"[index];
+    auto size = ("member" " text").size();
+    auto called = ("callee" " text")(value);
     return lambda(initialized);
 }
