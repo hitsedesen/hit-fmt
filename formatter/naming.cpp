@@ -7,22 +7,30 @@
 #include <vector>
 
 namespace formatter {
+
 namespace {
+
 using NK = parser::NodeKind;
+
 using TK = tokenizer::TokenKind;
+
 using Index = parser::TokenIndex;
+
 bool Upper(char c)
 {
     return c >= 'A' && c <= 'Z';
 }
+
 bool Lower(char c)
 {
     return c >= 'a' && c <= 'z';
 }
+
 bool Digit(char c)
 {
     return c >= '0' && c <= '9';
 }
+
 std::string_view CaseLabel(NameCase casing)
 {
     switch (casing) {
@@ -63,6 +71,7 @@ std::string ExpectedName(const NameRule& rule, bool prefixOK, bool caseOK)
     }
     return expected;
 }
+
 bool ValidCase(std::string_view name, NameCase casing)
 {
     if (name.empty()) {
@@ -98,6 +107,7 @@ bool ValidCase(std::string_view name, NameCase casing)
                 (casing == NameCase::SnakeCase ? Lower(c) : Upper(c));
         });
 }
+
 const parser::Node* Child(const parser::Node& node, NK kind)
 {
     for (auto* child = node.Child(); child; child = child->NextSibling) {
@@ -219,6 +229,7 @@ public:
                     });
         }
     }
+
 private:
     Index Next(Index index, Index end) const
     {
@@ -227,6 +238,7 @@ private:
         }
         return index;
     }
+
     // A nested declarator may be a function pointer, not a function.
     void CheckDeclarators(const parser::Node& node, bool function)
     {
@@ -275,6 +287,7 @@ private:
             }
         }
     }
+
     bool HasRecordBody(const parser::Node& node) const
     {
         for (auto i = node.Tokens.Begin; i < node.Tokens.End; ++i) {
@@ -287,6 +300,7 @@ private:
         }
         return false;
     }
+
     bool IsExplicitInstantiation(const parser::Node& node) const
     {
         auto start = node.Tokens.Begin;
@@ -336,6 +350,7 @@ private:
         // Aliases and incomplete declarations have no namespace body.
         return {};
     }
+
     bool IsExempt() const
     {
         for (const auto& name : ExemptNamespaces) {
@@ -446,13 +461,16 @@ private:
                 break;
         }
     }
+
     const parser::SyntaxTree& Tree;
     const NamingStyle& Style;
     const std::vector<std::string>& ExemptNamespaces;
     std::vector<NameDiagnostic> Results;
     std::string Scope;
 };
+
 } // namespace
+
 std::vector<NameDiagnostic> CheckNames(
     const parser::SyntaxTree& tree,
     const Configuration& config)
@@ -471,4 +489,5 @@ std::vector<NameDiagnostic> CheckNames(
     }
     return Checker(tree, config).Run();
 }
+
 } // namespace formatter

@@ -13,20 +13,25 @@
 #include <string>
 
 namespace public_pipeline {
+
 namespace {
+
 struct Input
 {
     std::string Storage;
     size_t Size;
+
     explicit Input(std::string_view text): Storage(text), Size(text.size())
     {
         Storage.append(util::SourcePaddingSize, '\0');
     }
+
     util::PaddedSourceView View() const
     {
         return {Storage.data(), Size};
     }
 };
+
 formatter::FormatResult FormatInput(
     std::string_view source,
     const formatter::PreparedFormat& prepared,
@@ -90,6 +95,7 @@ void CheckIdentities(
         }
     }
 }
+
 // Maps are evidence of exact preservation, not edit authorization. Every
 // excluded original byte must survive once, even through moved/deleted pieces.
 void CheckExcludedCopies(
@@ -2618,9 +2624,11 @@ TEST(PublicPipeline, LineEndingCompositionRecoveryCloneAndScopedTail)
 }
 
 } // namespace
+
 } // namespace public_pipeline
 
 namespace public_pipeline {
+
 namespace {
 TEST(PublicPipeline, TrailingCommentSpacesNamespaceOwnershipAndLegacyCoupling)
 {
@@ -2761,9 +2769,11 @@ TEST(PublicPipeline, TrailingCommentSpacesBoundedScalarReportsHonestWidth)
     EXPECT_EQ(FormatInput(result.Text, prepared).Text, result.Text);
 }
 }
+
 }
 
 namespace public_pipeline {
+
 namespace {
 TEST(PublicPipeline, TrailingCommentSpacesCompositionRetainsScopedProducerBoundaries)
 {
@@ -2803,4 +2813,5 @@ TEST(PublicPipeline, TrailingCommentSpacesCompositionRetainsScopedProducerBounda
     }
 }
 }
+
 }

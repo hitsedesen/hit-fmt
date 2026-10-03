@@ -5,12 +5,19 @@
 #include <string_view>
 
 namespace hit_fmt {
+
 namespace {
+
 constexpr std::string_view Reset = "\033[0m";
+
 constexpr std::string_view Heading = "\033[1;36m";
+
 constexpr std::string_view Setting = "\033[1;33m";
+
 constexpr std::string_view Example = "\033[36m";
+
 constexpr std::string_view Comment = "\033[2m";
+
 void PrintHeading(std::ostream& output, std::string_view title, bool color)
 {
     if (color) {
@@ -53,7 +60,9 @@ void PrintCode(std::ostream& output, std::string_view code, bool color)
         output << '\n';
     }
 }
+
 } // namespace
+
 void PrintConfigHelp(std::ostream& output, bool useColor)
 {
     PrintHeading(output, "Configuration options", useColor);
@@ -79,4 +88,5 @@ void PrintConfigHelp(std::ostream& output, bool useColor)
         }
     }
 }
+
 } // namespace hit_fmt

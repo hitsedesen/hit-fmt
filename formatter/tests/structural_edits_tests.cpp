@@ -8,20 +8,25 @@
 #include <memory_resource>
 #include <string>
 namespace {
+
 using namespace formatter;
+
 struct Input
 {
     std::string Storage;
     size_t Size;
+
     explicit Input(std::string_view text): Storage(text), Size(text.size())
     {
         Storage.append(util::SourcePaddingSize, '\0');
     }
+
     util::PaddedSourceView View() const
     {
         return {Storage.data(), Size};
     }
 };
+
 struct File
 {
     Input Source;
@@ -29,6 +34,7 @@ struct File
     std::pmr::monotonic_buffer_resource Memory;
     std::pmr::monotonic_buffer_resource Scratch;
     SourceAnalysis Safety;
+
     explicit File(
         std::string_view source,
         SourceAnalysisOptions options =
@@ -37,15 +43,18 @@ struct File
         , Tree(parser::Parse(Source.View(), [] (parser::ParseError) {}))
         , Safety(BuildSourceAnalysis(Tree, options, Memory, Scratch))
     { }
+
     StructuralPlan Plan(StructuralOptions options)
     {
         return PlanStructuralEdits(Tree, Safety, options, Memory, Scratch);
     }
+
     StructuralMaterialization Apply(const StructuralPlan& plan)
     {
         return MaterializeStructuralEdits(Tree, plan, Memory, Scratch);
     }
 };
+
 constexpr StructuralOptions All{true, true, true, true, true};
 std::string Dump(const StructuralPlan& plan)
 {

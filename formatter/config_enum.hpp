@@ -10,6 +10,7 @@
 #include <type_traits>
 
 namespace formatter {
+
 template <typename T> struct ConfigEnumNames;
 
 #define CONFIG_ENUM_ITEM(value) value,
@@ -121,12 +122,14 @@ DEFINE_CONFIG_ENUM(
 #undef DEFINITION_PARAMETER_NAMES_VALUES
 
 // Diagnostic spellings are intentionally independent of C++ enumerator names.
-enum class NameCase : std::uint8_t {
+enum class NameCase : std::uint8_t
+{
     Unchecked,
     CamelCase,
     PascalCase,
     SnakeCase,
-    ScreamingSnakeCase };
+    ScreamingSnakeCase
+};
 template <> struct ConfigEnumNames<NameCase>
 {
     static constexpr auto Values = std::to_array<std::string_view>(
@@ -164,4 +167,5 @@ template <typename T>
     return ConfigEnumNames<T>::Values[
         static_cast<std::underlying_type_t<T>>(value)];
 }
+
 } // namespace formatter

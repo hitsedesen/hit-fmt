@@ -16,6 +16,7 @@
 #include <type_traits>
 
 namespace {
+
 std::filesystem::path ConfigData(std::string_view name)
 {
     return std::filesystem::path(FORMATTER_TESTDATA_DIR).parent_path() /
@@ -335,6 +336,8 @@ TEST(ConfigPolicy, IndependentFamiliesDoNotCrossInherit)
 TEST(ConfigPolicy, VerticalCountsResolveZeroAndMemberOverrides)
 {
     const TemporaryConfig config(
+        "DeclarationBlankLines = 1\n"
+        "MemberDeclarationBlankLines = 0\n"
         "DefinitionBlankLines = 1\n"
         "MemberDefinitionBlankLines = 0\n"
         "NamespaceBlankLinesAfterOpen = 0\n"
@@ -343,6 +346,10 @@ TEST(ConfigPolicy, VerticalCountsResolveZeroAndMemberOverrides)
     const auto style = formatter::LoadConfigFile(config.Path).FormattingStyle;
     const auto policies = formatter::CompilePolicies(style);
     EXPECT_EQ(policies.Layout, formatter::LayoutMode::Preserve);
+    EXPECT_EQ(policies.VerticalGaps.DeclarationBlankLines.EmptyLines, 1u);
+    EXPECT_EQ(policies.VerticalGaps.MemberDeclarationBlankLines.Mode,
+              formatter::VerticalGapMode::Exact);
+    EXPECT_EQ(policies.VerticalGaps.MemberDeclarationBlankLines.EmptyLines, 0u);
     EXPECT_EQ(policies.VerticalGaps.DefinitionBlankLines.EmptyLines, 1u);
     EXPECT_EQ(
         policies.VerticalGaps.MemberDefinitionBlankLines.Mode,
@@ -364,6 +371,14 @@ TEST(ConfigPolicy, VerticalCountsResolveZeroAndMemberOverrides)
         formatter::BlankLineSetting::Inherited();
     const auto inherited = formatter::CompilePolicies(changed);
     EXPECT_EQ(inherited.VerticalGaps.MemberDefinitionBlankLines.EmptyLines, 1u);
+    changed.MemberDeclarationBlankLines = formatter::BlankLineSetting::Inherited();
+    EXPECT_EQ(formatter::CompilePolicies(changed).VerticalGaps
+                  .MemberDeclarationBlankLines.EmptyLines, 1u);
+    changed.MemberDeclarationBlankLines = {};
+    EXPECT_EQ(formatter::CompilePolicies(changed).VerticalGaps
+                  .MemberDeclarationBlankLines.Mode,
+              formatter::VerticalGapMode::Preserve);
+    changed.DeclarationBlankLines = {};
     changed.DefinitionBlankLines = {};
     changed.MaxEmptyLines = 0;
     const auto zeroCap = formatter::CompilePolicies(changed);
@@ -381,6 +396,8 @@ TEST(ConfigPolicy, VerticalBoundsCannotBeBypassedByProgrammaticStyles)
         &formatter::Style::NamespaceBlankLinesBeforeClose,
         &formatter::Style::AccessSectionBlankLinesBefore,
         &formatter::Style::AccessSectionBlankLinesAfterLabel,
+        &formatter::Style::DeclarationBlankLines,
+        &formatter::Style::MemberDeclarationBlankLines,
         &formatter::Style::DefinitionBlankLines,
         &formatter::Style::MemberDefinitionBlankLines,
         &formatter::Style::StandaloneCommentBlankLinesBefore,
@@ -421,6 +438,9 @@ TEST(ConfigPolicy, VerticalBoundsCannotBeBypassedByProgrammaticStyles)
         "NamespaceBlankLinesBeforeClose = Inherit\n",
         "AccessSectionBlankLinesBefore = 10001\n",
         "AccessSectionBlankLinesAfterLabel = 10001\n",
+        "DeclarationBlankLines = 10001\n",
+        "DeclarationBlankLines = Inherit\n",
+        "MemberDeclarationBlankLines = 10001\n",
         "DefinitionBlankLines = 10001\n",
         "MemberDefinitionBlankLines = 10001\n",
         "MaxEmptyLines = 10001\n",
@@ -453,6 +473,8 @@ TEST(ConfigPolicy, CapConflictsUseFinalOverridesAndReportSettingLocations)
         "NamespaceBlankLinesBeforeClose",
         "AccessSectionBlankLinesBefore",
         "AccessSectionBlankLinesAfterLabel",
+        "DeclarationBlankLines",
+        "MemberDeclarationBlankLines",
         "DefinitionBlankLines",
         "MemberDefinitionBlankLines",
         "StandaloneCommentBlankLinesBefore",

@@ -20,6 +20,7 @@
 #include <vector>
 
 namespace hit_fmt {
+
 struct FileResult
 {
     std::string Output;
@@ -27,6 +28,7 @@ struct FileResult
     size_t Mismatches = 0;
     bool Failed = false;
 };
+
 // Discovery yields file paths through visit(path). Each worker owns a
 // resolver; only the caller prints results, in discovery order.
 template <typename Discover, typename MakeResolver, typename Process,
@@ -43,6 +45,7 @@ bool RunParallelFiles(
     constexpr size_t BatchFileLimit = 4;
     constexpr size_t BatchByteLimit = 256 * 1024;
     const auto pendingFileLimit = std::max(threadCount, size_t{128});
+
     using Resolver = std::invoke_result_t<MakeResolver&>;
     // Deque keeps resolver addresses stable as workers join.
     std::deque<Resolver> resolvers;
@@ -240,4 +243,5 @@ bool RunParallelFiles(
     } // Join discovery and workers before returning.
     return true;
 }
+
 } // namespace hit_fmt

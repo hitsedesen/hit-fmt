@@ -389,6 +389,9 @@
     OPT(formatter::BlankLineSetting, AccessSectionBlankLinesBefore, {})        \
     OPT(formatter::BlankLineSetting, AccessSectionBlankLinesAfterLabel, \
         {}) \
+    OPT(formatter::BlankLineSetting, DeclarationBlankLines, {})               \
+    OPT(formatter::BlankLineSetting, MemberDeclarationBlankLines,            \
+        formatter::BlankLineSetting::Inherited())                            \
     OPT(formatter::BlankLineSetting, DefinitionBlankLines, {})                 \
     OPT(formatter::BlankLineSetting, MemberDefinitionBlankLines,              \
         formatter::BlankLineSetting::Inherited())                            \

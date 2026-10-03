@@ -9,9 +9,13 @@
 #include <stdexcept>
 
 namespace formatter {
+
 namespace {
+
 using Range = parser::SourceRange;
+
 using Offset = parser::SourceOffset;
+
 CompiledPolicies PreparePolicies(const Style& style)
 {
     auto policies = CompilePolicies(style);
@@ -79,6 +83,7 @@ NamespaceCommentOptions CommentOptions(const Style& style)
         style.LineEnding != LineEnding::Preserve,
     };
 }
+
 // Normalized copied pieces can be permuted. Each lookup starts with the
 // sorted original protection index, then visits only intersections with
 // that piece.
@@ -119,6 +124,7 @@ std::pmr::vector<ProtectedSourceRange> ProjectProtection(
     }
     return result;
 }
+
 // Copied bytes retain precisely their selected intersections, even when an
 // include permutation changes their order. Literal bytes are authorized by the
 // safe atomic original plan: materialization validates operation ownership and
@@ -184,6 +190,8 @@ std::pmr::vector<Range> ProjectEditScope(
 std::pmr::vector<GapId> GeneratedGaps(
     const SourceAnalysis& safety,
     std::span<const GeneratedAdjacency> adjacency,
+    std::span<const StructuralProvenance> provenance,
+    std::pmr::vector<GapId>& reassembled,
     std::pmr::memory_resource& scratch)
 {
     std::pmr::vector<Range> ranges(&scratch);
@@ -206,6 +214,7 @@ std::pmr::vector<GapId> GeneratedGaps(
     ranges.resize(merged);
     std::pmr::vector<GapId> result(&scratch);
     size_t interval = 0;
+    size_t piece = 0;
     for (GapId i = 0; i < safety.Gaps().size(); ++i)
     {
         const auto range = safety.Gaps()[i].Source;
@@ -219,10 +228,29 @@ std::pmr::vector<GapId> GeneratedGaps(
                 !safety.Gaps()[i].Preserve)
         {
             result.push_back(i);
+            // Provenance is emitted in output order. A copied gap inside a
+            // larger structural replacement still has authored line breaks;
+            // whitespace joined across a deletion does not.
+            while (
+                piece < provenance.size() &&
+                    provenance[piece].Output.End <= range.Begin)
+            {
+                ++piece;
+            }
+            if (
+                range.Begin < range.End &&
+                    (piece == provenance.size() ||
+                            provenance[piece].Generated ||
+                            range.Begin < provenance[piece].Output.Begin ||
+                            range.End > provenance[piece].Output.End))
+            {
+                reassembled.push_back(i);
+            }
         }
     }
     return result;
 }
+
 struct CurrentIdentity
 {
     Range Source;
@@ -434,6 +462,7 @@ void ComposeMaps(
     }
     MergeProtection(result.OutputProtection);
 }
+
 // Comment edits have output coordinates. Copy maps through the same pieces,
 // dropping consumed identities and emitting honest generated comment
 // mappings.
@@ -652,7 +681,9 @@ void WidthDiagnostics(
     }
     report();
 }
+
 } // namespace
+
 PreparedFormat::PreparedFormat(const Style& style)
     : Policies(PreparePolicies(style))
     , Annotations(CompileLibraryAnnotations(style))
@@ -810,13 +841,15 @@ FormatResult detail::FormatWithAnalysis(
             options.LineEnding = layout::Newline::CRLF;
         }
     }
+    std::pmr::vector<GapId> reassembled(&scratch);
     auto gaps = GeneratedGaps(*currentSafety,
         normalized
             ? std::span<const GeneratedAdjacency>(
         normalized->GeneratedAdjacencies)
             : std::span<const GeneratedAdjacency> {},
-        scratch);
+        provenance, reassembled, scratch);
     options.GeneratedAdjacencies = gaps;
+    options.ReassembledGaps = reassembled;
     layout::Document document(tree->Source(), &file);
     const auto built =
         BuildSyntaxDocument(
@@ -837,6 +870,7 @@ FormatResult detail::FormatWithAnalysis(
                 int(built.Core.Code)));
     }
     options.GeneratedAdjacencies ={};
+    options.ReassembledGaps ={};
     scratch.release();
     const bool needMaps =
         request.SourceMap ||
@@ -908,6 +942,7 @@ FormatResult detail::FormatWithAnalysis(
     }
     return result;
 }
+
 FormatResult Format(
     util::PaddedSourceView source,
     const PreparedFormat& prepared,
@@ -916,6 +951,7 @@ FormatResult Format(
     auto tree = parser::Parse(source, [] (parser::ParseError) {});
     return Format(tree, prepared, request);
 }
+
 std::string Format(const parser::SyntaxTree& tree, const Style& style)
 {
     return Format(tree, PreparedFormat(style)).Text;
@@ -932,4 +968,5 @@ std::string Format(util::PaddedSourceView source)
 {
     return Format(source, Style {});
 }
+
 } // namespace formatter

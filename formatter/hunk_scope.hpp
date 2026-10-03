@@ -5,6 +5,7 @@
 #include <memory_resource>
 #include <stdexcept>
 namespace formatter::detail {
+
 // One ORIGINAL-input line index. Physical lines contain bytes: empty input has
 // none; a final LF adds no phantom line. CR belongs to its original line, never
 // an extra boundary. Storage is operation-owned and has no tree/source views.
@@ -57,6 +58,7 @@ public:
         Validate(hunk);
         return {Boundaries_[hunk.Begin - 1], Boundaries_[hunk.End]};
     }
+
     // A nonempty parsed unit's physical line envelope. End is exclusive, so a
     // token/atom ending just after LF still belongs to the preceding line.
     Hunk Cover(parser::SourceRange source) const
@@ -83,6 +85,7 @@ private:
             throw std::invalid_argument("invalid original physical hunk lines");
         }
     }
+
     std::pmr::vector<parser::SourceOffset> Boundaries_;
 };
 // Queries require sorted/coalesced nonempty ranges. A zero-width insertion
@@ -105,6 +108,7 @@ inline bool HunkScopeContains(
     return range.Begin <= source.Begin && source.Begin < range.End &&
         source.End <= range.End;
 }
+
 inline bool HunkScopeIntersects(
     std::span<const parser::SourceRange> scope,
     parser::SourceRange source)
@@ -120,4 +124,5 @@ inline bool HunkScopeIntersects(
             [] (const auto range, auto begin) { return range.End <= begin; });
     return it != scope.end() && it->Begin < source.End;
 }
+
 } // namespace formatter::detail

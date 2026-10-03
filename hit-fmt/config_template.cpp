@@ -12,7 +12,9 @@
 #include <vector>
 
 namespace hit_fmt {
+
 namespace {
+
 std::string_view IntegerValues(std::string_view name)
 {
     if (name == "IndentWidth") {
@@ -53,10 +55,12 @@ void PrintStringList(
     }
     output << ']';
 }
+
 template <typename T> struct OptionalValue
 {
     static constexpr bool IsOptional = false;
 };
+
 template <typename T> struct OptionalValue<std::optional<T>>
 {
     static constexpr bool IsOptional = true;
@@ -100,7 +104,10 @@ void PrintOption(std::ostream& output, std::string_view name, const T& value)
         output << "false | true\n" << name << " = "
             << (value ? "true" : "false");
     } else if constexpr (std::is_same_v<T, formatter::BlankLineSetting>) {
-        if (name == "MemberDefinitionBlankLines") {
+        if (
+            name == "MemberDefinitionBlankLines" ||
+                name == "MemberDeclarationBlankLines")
+        {
             output << "Inherit | ";
         }
         output << "Preserve | 0..10000\n" << name << " = ";
@@ -159,6 +166,7 @@ void PrintOption(std::ostream& output, std::string_view name, const T& value)
     }
     output << "\n\n";
 }
+
 } // namespace
 
 void PrintPreserveConfig(std::ostream& output)
@@ -208,4 +216,5 @@ void PrintPreserveConfig(std::ostream& output)
     FORMATTER_CONFIGURATION_OPTIONS(PRINT_CONFIG_OPTION)
 #undef PRINT_CONFIG_OPTION
 }
+
 } // namespace hit_fmt

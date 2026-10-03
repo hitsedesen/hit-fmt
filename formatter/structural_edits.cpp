@@ -5,11 +5,17 @@
 #include <stdexcept>
 
 namespace formatter {
+
 namespace {
+
 using NK = parser::NodeKind;
+
 using TK = tokenizer::TokenKind;
+
 using TI = parser::TokenIndex;
+
 using SR = parser::SourceRange;
+
 SR Range(const parser::SyntaxTree& tree, parser::TokenRange tokens)
 {
     return {
@@ -17,25 +23,30 @@ SR Range(const parser::SyntaxTree& tree, parser::TokenRange tokens)
         tree.Token(tokens.End - 1).Text.End,
     };
 }
+
 bool Horizontal(std::string_view text)
 {
     return text.find_first_not_of(" \t") == std::string_view::npos;
 }
+
 bool Control(NK kind)
 {
     return kind == NK::IfStatement || kind == NK::ForStatement ||
         kind == NK::WhileStatement || kind == NK::SwitchStatement ||
         kind == NK::DoWhileStatement;
 }
+
 bool Header(NK kind)
 {
     return kind == NK::Condition || kind == NK::ForHeader;
 }
+
 bool Attribute(NK kind)
 {
     return kind == NK::AttributeSpecifier ||
         kind == NK::ExtensionAttributeSpecifier;
 }
+
 void Skip(
     StructuralPlan& plan,
     StructuralAction action,
@@ -44,6 +55,7 @@ void Skip(
 {
     plan.Skipped.push_back({action, tokens, reason});
 }
+
 StructuralActionId Operation(
     StructuralPlan& plan,
     StructuralAction kind,
@@ -53,6 +65,7 @@ StructuralActionId Operation(
     plan.Operations.push_back({kind, owner});
     return id;
 }
+
 void Literal(
     StructuralPlan& plan,
     SR source,
@@ -76,6 +89,7 @@ void Literal(
                 edge,
             });
 }
+
 void Sort(StructuralPlan& plan)
 {
     std::sort(
@@ -93,6 +107,7 @@ void Sort(StructuralPlan& plan)
                 : a.Depth < b.Depth;
         });
 }
+
 void CheckAnalysisSource(
     const parser::SyntaxTree& tree,
     const SourceAnalysis& safety)
@@ -206,6 +221,7 @@ void Walk(
         throw std::invalid_argument("analysis/tree mismatch");
     }
 }
+
 bool AdjacentComment(const parser::SyntaxTree& tree, parser::TokenRange tokens)
 {
     if (tokens.Begin && tree.Kind(tokens.Begin - 1) == TK::Comment) {
@@ -215,6 +231,7 @@ bool AdjacentComment(const parser::SyntaxTree& tree, parser::TokenRange tokens)
         tree.Kind(tokens.End) == TK::Comment &&
         tree.WhitespaceBefore(tokens.End).find('\n') == std::string_view::npos;
 }
+
 struct Include
 {
     TI Token;
@@ -222,6 +239,7 @@ struct Include
     std::string_view Path;
     bool Angled;
 };
+
 bool ParseInclude(const parser::SyntaxTree& tree, TI token, Include& result)
 {
     if (tree.Kind(token) != TK::PreprocessingDirective) {
@@ -278,10 +296,10 @@ bool ParseInclude(const parser::SyntaxTree& tree, TI token, Include& result)
     }
     auto begin =
         range.Begin - static_cast<parser::SourceOffset>(leading.size());
-    result =
-        {token, {begin, range.End + 1}, text.substr(1, close - 1), angled};
+    result ={token, {begin, range.End + 1}, text.substr(1, close - 1), angled};
     return true;
 }
+
 bool DirectiveOnly(const SourceAnalysis& safety, SR range)
 {
     auto intervals = safety.Protection();
@@ -474,6 +492,7 @@ TI FirstBeginningAt(const parser::SyntaxTree& tree, parser::SourceOffset offset)
     }
     return low;
 }
+
 bool Intersects(std::span<const SR> ranges, SR query)
 {
     auto it =
@@ -485,7 +504,9 @@ bool Intersects(std::span<const SR> ranges, SR query)
     return it != ranges.end() &&
         (query.Empty() ? it->Begin <= query.Begin : it->Begin < query.End);
 }
+
 } // namespace
+
 StructuralPlan::StructuralPlan(
     std::pmr::memory_resource& memory)
     : Operations(&memory)
@@ -493,6 +514,7 @@ StructuralPlan::StructuralPlan(
     , Pieces(&memory)
     , Skipped(&memory)
 { }
+
 StructuralMaterialization::StructuralMaterialization(
     std::pmr::memory_resource& memory)
     : Text(&memory)
@@ -500,6 +522,7 @@ StructuralMaterialization::StructuralMaterialization(
     , Provenance(&memory)
     , GeneratedAdjacencies(&memory)
 { }
+
 NamespaceCommentPlan::NamespaceCommentPlan(
     std::pmr::memory_resource& memory): Namespaces(&memory), Skipped(&memory)
 { }
@@ -941,11 +964,7 @@ NamespaceCommentPlan PlanNamespaceComments(
         auto fail = [&] (StructuralSkip reason) {
             plan.Skipped
                 .push_back(
-                    {
-                        StructuralAction::NamespaceComments,
-                        node.Tokens,
-                        reason,
-                    });
+                    {StructuralAction::NamespaceComments, node.Tokens, reason});
         };
             TI open = original.TokenCount();
             bool expectName = true, named = false, valid = true;
@@ -997,8 +1016,7 @@ NamespaceCommentPlan PlanNamespaceComments(
                 .IntersectsImmutable(
                     Range(original, {node.Tokens.Begin, open + 1})) ||
                 safety
-                    .IntersectsImmutable(
-                        Range(original, {close, close + 1})) ||
+                    .IntersectsImmutable(Range(original, {close, close + 1})) ||
                 safety.IntersectsImmutable(window))
         {
             fail(StructuralSkip::Protected);
@@ -1006,13 +1024,7 @@ NamespaceCommentPlan PlanNamespaceComments(
         }
         plan.Namespaces
             .push_back(
-                {
-                    node.Tokens,
-                    {node.Tokens.Begin, open},
-                    open,
-                    close,
-                    comment,
-                });
+                {node.Tokens, {node.Tokens.Begin, open}, open, close, comment});
     });
     return plan;
 }
@@ -1078,6 +1090,7 @@ StructuralPlan ResolveNamespaceComments(
         parser::SourceOffset Begin = UINT32_MAX;
         parser::SourceOffset End = 0;
         bool Invalid = false;
+
         void Merge(const Interior& other)
         {
             Begin = std::min(Begin, other.Begin);
@@ -1328,4 +1341,5 @@ std::pmr::string MaterializeNamespaceComments(
     result.append(output.substr(cursor));
     return result;
 }
+
 } // namespace formatter

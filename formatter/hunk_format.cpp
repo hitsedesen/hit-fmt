@@ -5,10 +5,15 @@
 #include <memory_resource>
 #include <stdexcept>
 namespace formatter {
+
 namespace {
+
 using Range = parser::SourceRange;
+
 using Tokens = parser::TokenRange;
+
 using Reason = HunkCoverageReason;
+
 bool SpillList(parser::NodeKind kind)
 {
     using NK = parser::NodeKind;
@@ -16,6 +21,7 @@ bool SpillList(parser::NodeKind kind)
         kind == NK::InitializerList || kind == NK::LambdaCaptureList ||
         kind == NK::ForHeader;
 }
+
 Range Source(const parser::SyntaxTree& tree, Tokens tokens)
 {
     return {
@@ -100,6 +106,7 @@ bool SemanticProtection(const SourceAnalysis& safety, Range source)
     }
     return false;
 }
+
 struct NamespaceFootprint
 {
     parser::TokenIndex Begin;
@@ -179,6 +186,7 @@ std::vector<HunkCoverage> FinishCoverage(
         });
     return result;
 }
+
 } // namespace
 ChangedFormatResult FormatChanged(
     const parser::SyntaxTree& tree,
@@ -288,8 +296,7 @@ ChangedFormatResult FormatChanged(
             file);
     for (const auto& protection : safety.Protection()) {
         if (detail::HunkScopeIntersects(selectedBytes, protection.Source)) {
-            coverage
-                .push_back({protection.Source, Reason::SemanticProtection});
+            coverage.push_back({protection.Source, Reason::SemanticProtection});
         }
     }
     safety.RestrictEditScope(scope);
@@ -384,4 +391,5 @@ std::string FormatChanged(
     return FormatChanged(tree, PreparedFormat(style), hunks, spillover).Result
         .Text;
 }
+
 } // namespace formatter

@@ -4,13 +4,21 @@
 #include <stdexcept>
 
 namespace formatter {
+
 namespace {
+
 using NK = parser::NodeKind;
+
 using TK = tokenizer::TokenKind;
+
 using PR = parser::PunctuationRole;
+
 using TI = parser::TokenIndex;
+
 using F = SpacingField;
+
 using C = SpacingOwner;
+
 constexpr TI NoToken = UINT32_MAX;
 
 GapPolicy PolicyFor(const GapPolicies& policies, F field)
@@ -23,6 +31,7 @@ GapPolicy PolicyFor(const GapPolicies& policies, F field)
         default: return GapPolicy::Preserve;
     }
 }
+
 bool IsControl(NK kind)
 {
     switch (kind) {
@@ -38,6 +47,7 @@ bool IsControl(NK kind)
             return false;
     }
 }
+
 bool IsDeclaration(NK kind)
 {
     switch (kind) {
@@ -60,6 +70,7 @@ bool IsDeclaration(NK kind)
             return false;
     }
 }
+
 struct Context
 {
     const parser::Node* Owner = nullptr;
@@ -73,6 +84,7 @@ struct Context
     bool UncertainOperands = false;
     bool UncertainSyntax = false;
 };
+
 // Only the current root-to-node path is retained. Next child and direct-token
 // cursor avoid collecting a wide node's children onto the stack.
 struct Frame
@@ -89,6 +101,7 @@ struct Frame
     bool PreviousChildComplete = false;
     bool PreviousSiblingComplete = false;
 };
+
 class Classifier
 {
 public:
@@ -102,6 +115,7 @@ public:
         , Binding_(binding)
         , Gaps_(gaps)
     { }
+
     void Mark(
         TI gap,
         F field,
@@ -128,6 +142,7 @@ public:
                 Gaps_[gap].NamespaceClosingComment,
             };
     }
+
     void PreserveUncertain(TI gap, const parser::Node& owner)
     {
         if (gap > 0 && gap < Tree_.TokenCount()) {
@@ -144,6 +159,7 @@ public:
                 };
         }
     }
+
     void Pair(
         TI token,
         F before,
@@ -156,12 +172,14 @@ public:
         Mark(token, before, owner, category, priority, fallback);
         Mark(token + 1, after, owner, category, priority, fallback);
     }
+
     bool Delimited(TI open, TI end) const
     {
         return open < Tree_.TokenCount() && end > open + 1 &&
             end <= Tree_.TokenCount() &&
             Tree_.MatchingDelimiter(open) == end - 1;
     }
+
     void Interior(
         TI open,
         TI end,
@@ -182,6 +200,7 @@ public:
             Mark(end - 1, nonempty, owner, category, priority, fallback);
         }
     }
+
     Context Enter(
         const parser::Node& node,
         const parser::Node* parent,
@@ -965,6 +984,7 @@ public:
         }
         return state;
     }
+
     void Direct(const parser::Node& node, Context& state, TI begin, TI end)
     {
         // Capture initializer ranges are raw, not parsed expression children.
@@ -1267,6 +1287,7 @@ public:
             }
         }
     }
+
     void SequenceBoundary(
         const parser::Node& container,
         const parser::Node& previous,
@@ -1354,6 +1375,7 @@ public:
             }
         }
     }
+
     void DeclarationBoundary(
         const parser::Node& declaration,
         const parser::Node& specifiers,
@@ -1391,6 +1413,7 @@ public:
             1,
             true);
     }
+
     void Finish(const parser::Node& node)
     {
         if (node.Kind != NK::SubscriptExpression || !node.FirstChild) {
@@ -1411,6 +1434,7 @@ public:
             PreserveUncertain(node.Tokens.End, node);
         }
     }
+
 private:
     void Capture(const parser::Node& node, const parser::Node* parent)
     {
@@ -1462,6 +1486,7 @@ private:
             PreserveUncertain(i, node);
         }
     }
+
     bool SizeofPackOperand(
         const parser::Node& node,
         const parser::Node* parent) const
@@ -1490,6 +1515,7 @@ private:
         }
         return cursor == node.Tokens.Begin;
     }
+
     bool ControlKeywordBoundary(TI open, const parser::Node* parent) const
     {
         if (!parent || !IsControl(parent->Kind)) {
@@ -1522,6 +1548,7 @@ private:
                 return false;
         }
     }
+
     void KeywordParenthesis(const parser::Node& node, F field, C category)
     {
         const auto open = node.Tokens.Begin + 1;
@@ -1533,6 +1560,7 @@ private:
             Mark(open, field, node, category, 4, true);
         }
     }
+
     void KeywordAt(const parser::Node& node, Context state, TI i)
     {
         if (i + 1 >= node.Tokens.End) {
@@ -1603,6 +1631,7 @@ private:
                 true);
         }
     }
+
     void Pointer(const parser::Node& node, Context state)
     {
         const auto begin = node.Tokens.Begin;
@@ -1657,6 +1686,7 @@ private:
                 4);
         }
     }
+
     void Cast(const parser::Node& node)
     {
         const auto begin = node.Tokens.Begin;
@@ -1718,11 +1748,13 @@ private:
             }
         }
     }
+
     const parser::SyntaxTree& Tree_;
     const GapPolicies& Policies_;
     PointerReferenceDeclaratorLocation Binding_;
     std::span<SyntaxGapPreference> Gaps_;
 };
+
 } // namespace
 
 std::string_view SpacingFieldName(SpacingField field)
@@ -1737,6 +1769,7 @@ std::string_view SpacingFieldName(SpacingField field)
     const auto index = static_cast<size_t>(field);
     return index < std::size(Names) ? Names[index] : std::string_view{};
 }
+
 bool SupportsSpacingField(SpacingField field)
 {
     return field > F::None && field < F::Count &&
@@ -1792,9 +1825,11 @@ GapContext SpacingOwnerContext(
         ? GapContext::Rebuilt
         : GapContext::Preserved;
 }
+
 SyntaxSpacing::SyntaxSpacing(
     std::pmr::memory_resource& fileMemory): Gaps_(&fileMemory)
 { }
+
 std::optional<bool>SyntaxSpacing::SpacePreference(
     GapId gap,
     GapContext ownerContext,
@@ -2014,4 +2049,5 @@ SyntaxSpacing BuildSyntaxSpacing(
     }
     return result;
 }
+
 } // namespace formatter

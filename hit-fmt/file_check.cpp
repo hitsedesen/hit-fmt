@@ -10,11 +10,14 @@
 #include <utility>
 
 namespace hit_fmt {
+
 namespace {
+
 bool Before(util::Position a, util::Position b)
 {
     return a.Line < b.Line || (a.Line == b.Line && a.Column < b.Column);
 }
+
 // Sorted queries permit one byte/code-point sweep of each text, including
 // multiple parameter-name points on a wide line. No per-diagnostic file scan.
 class PositionSweep
@@ -22,6 +25,7 @@ class PositionSweep
 public:
     explicit PositionSweep(std::string_view text): Text_(text)
     { }
+
     size_t Offset(util::Position position)
     {
         while (Before(Current_, position) && Cursor_ < Text_.size()) {
@@ -35,6 +39,7 @@ public:
         }
         return Cursor_;
     }
+
     util::Position Position(size_t offset)
     {
         if (offset < Cursor_ || offset > Text_.size()) {
@@ -48,6 +53,7 @@ public:
         }
         return Current_;
     }
+
 private:
     void Advance()
     {
@@ -65,6 +71,7 @@ private:
             ++Current_.Column;
         }
     }
+
     std::string_view Text_;
     size_t Cursor_ = 0;
     util::Position Current_{1, 1};
@@ -133,12 +140,15 @@ void MapSemanticPositions(const parser::SyntaxTree& tree, CheckedFile& checked)
             emitted.Position(point.Offset);
     }
 }
+
 } // namespace
+
 PreparedFileConfiguration::PreparedFileConfiguration(
     formatter::Configuration configuration)
     : Settings(std::move(configuration))
     , Formatting(Settings.FormattingStyle)
 { }
+
 bool CheckedFile::HasFailures(bool fix) const
 {
     return (!fix && FormattingMismatch) || !Semantic.empty() ||
@@ -183,6 +193,7 @@ CheckedFile CheckFile(
     MapSemanticPositions(tree, checked);
     return checked;
 }
+
 void PrintFileIssues(
     std::ostream& output,
     std::string_view path,
@@ -203,6 +214,7 @@ void PrintFileIssues(
                     : " [formatted output; not original source]") << '\n';
     }
 }
+
 void PrintFileSummaryIssues(
     std::ostream& output,
     const CheckedFile& checked,
@@ -226,6 +238,7 @@ void PrintFileSummaryIssues(
         issue("fail: emitted width violation");
     }
 }
+
 void ValidatePreviewOption(std::string_view argument)
 {
     if (
@@ -241,4 +254,5 @@ void ValidatePreviewOption(std::string_view argument)
                 "integration is blocked");
     }
 }
+
 } // namespace hit_fmt

@@ -10,13 +10,17 @@
 #include <string_view>
 
 namespace unicode::utf8 {
+
 constexpr char32_t ValueFromUtf8(std::string_view cp);
+
 constexpr std::optional<short> GetFirstCodePointSize(std::string_view str);
+
 struct CodePointWithSize
 {
     CodePoint Value;
     short Size;
 };
+
 [[nodiscard]] constexpr std::optional<CodePointWithSize> GetFirstCodePoint(
     std::string_view str)
 {
@@ -29,6 +33,7 @@ struct CodePointWithSize
         .Size = *bytes,
     };
 }
+
 // Decodes the first code point without bounds checks. At least four bytes must
 // be readable, including any zero padding after the logical input.
 [[nodiscard]] constexpr std::optional<CodePointWithSize> GetFirstCodePointFromPaddedInput(
@@ -40,6 +45,7 @@ struct CodePointWithSize
     auto isContinuation = [&] (size_t offset) {
         return (byte(offset) & 0xc0) == 0x80;
     };
+
     auto first = byte(0);
     short size;
     if (first <= 0x7f) {
@@ -62,6 +68,7 @@ struct CodePointWithSize
     } else {
         return std::nullopt;
     }
+
     return CodePointWithSize{
         .Value = ValueFromUtf8(std::string_view(str, size)),
         .Size = size,
@@ -89,6 +96,7 @@ struct CodePointWithSize
     }
     return bytes;
 }
+
 constexpr auto ByteOrderMark = unicode::CodePoint(U'\uFEFF');
 
 constexpr std::optional<short> GetFirstCodePointSize(std::string_view str)
@@ -96,12 +104,14 @@ constexpr std::optional<short> GetFirstCodePointSize(std::string_view str)
     if (str.empty()) {
         return 0;
     }
+
     auto byte = [&] (size_t offset) {
         return static_cast<unsigned char>(str[offset]);
     };
     auto isContinuation = [&] (size_t offset) {
         return offset < str.size() && (byte(offset) & 0xc0) == 0x80;
     };
+
     auto first = byte(0);
     if (first <= 0x7f) {
         return 1;
@@ -135,6 +145,7 @@ constexpr std::optional<short> GetFirstCodePointSize(std::string_view str)
     }
     return std::nullopt;
 }
+
 constexpr char32_t ValueFromUtf8(std::string_view cp)
 {
     auto byte = [&] (size_t offset) {
@@ -157,4 +168,5 @@ constexpr char32_t ValueFromUtf8(std::string_view cp)
             ASSERT(false);
     }
 }
+
 } // namespace unicode::utf8

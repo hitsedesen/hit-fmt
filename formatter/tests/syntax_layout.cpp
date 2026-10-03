@@ -11,6 +11,7 @@
 #include <utility>
 #include <vector>
 namespace {
+
 struct Output
 {
     std::string Text;
@@ -28,8 +29,7 @@ Output Lower(
 {
     const auto size = input.size();
     input.append(util::SourcePaddingSize, '\0');
-    auto tree =
-        parser::Parse({input.data(), size}, [] (parser::ParseError) {});
+    auto tree = parser::Parse({input.data(), size}, [] (parser::ParseError) {});
     std::pmr::monotonic_buffer_resource file(fileUpstream);
     std::pmr::monotonic_buffer_resource scratch(scratchUpstream);
     const auto policies = formatter::CompilePolicies(style);
@@ -1253,12 +1253,16 @@ TEST(SyntaxLayout, InitializerCommaFollowsOutputShapeNotInputComma)
     EXPECT_EQ(a, b);
     EXPECT_EQ(a.find("beta,"), std::string::npos);
     style.ColumnLimit = 16;
+    const auto fitting = Lower("int values[] = {alpha, beta,};\n", style).Text;
+    EXPECT_EQ(fitting.find("beta,"), std::string::npos);
+    EXPECT_EQ(Lower(fitting, style).Text, fitting);
+    style.ColumnLimit = 15;
     const auto c = Lower("int values[] = {alpha, beta,};\n", style).Text;
     const std::string source = "int values[] = {alpha, beta};\n";
     const auto mapped = Lower(source, style);
     const auto &d = mapped.Text;
     EXPECT_EQ(c, d);
-    EXPECT_NE(c.find("beta,"), std::string::npos);
+    ASSERT_NE(c.find("beta,"), std::string::npos);
     const auto comma = d.find("beta,") + 4;
     bool found = false;
     for (const auto &map : mapped.Map)
@@ -2718,11 +2722,13 @@ private:
         ++Allocations;
         return std::pmr::new_delete_resource()->allocate(bytes, alignment);
     }
+
     void do_deallocate(void* pointer, size_t bytes, size_t alignment) override
     {
         Current -= bytes;
         std::pmr::new_delete_resource()->deallocate(pointer, bytes, alignment);
     }
+
     bool do_is_equal(
         const std::pmr::memory_resource& other) const noexcept override
     {

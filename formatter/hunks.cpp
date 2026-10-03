@@ -5,7 +5,9 @@
 #include <stdexcept>
 
 namespace formatter {
+
 namespace {
+
 size_t ParseHunkLine(std::string_view text, size_t record)
 {
     size_t result = 0;
@@ -20,6 +22,7 @@ size_t ParseHunkLine(std::string_view text, size_t record)
     }
     return result;
 }
+
 } // namespace
 
 ChangedHunkFiles ParseChangedHunks(
@@ -92,4 +95,5 @@ ChangedHunkFiles ParseChangedHunks(
     }
     return files;
 }
+
 } // namespace formatter

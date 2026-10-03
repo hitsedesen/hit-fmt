@@ -2,6 +2,7 @@
 #include "alpha.hpp"
 
 namespace sample {
+enum class Mode { Quiet, Loud };
 void Run( int item ){
 auto total=Collect(
 item,

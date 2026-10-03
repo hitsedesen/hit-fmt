@@ -5,14 +5,18 @@
 #include <stdexcept>
 #include <utility>
 namespace formatter {
+
 namespace {
+
 using TK = tokenizer::TokenKind;
+
 using Offset = parser::SourceOffset;
 constexpr auto NoToken = std::numeric_limits<parser::TokenIndex>::max();
 bool Whitespace(std::string_view text)
 {
     return text.find_first_not_of(" \t\r\n\f\v") == std::string_view::npos;
 }
+
 bool Covered(
     std::span<const parser::SourceRange> ranges,
     parser::SourceRange source)
@@ -27,6 +31,7 @@ bool Covered(
     return first != ranges.end() && first->Begin <= source.Begin &&
         (source.Empty() ? source.Begin < first->End : source.End <= first->End);
 }
+
 bool WholeGapCovered(
     std::span<const parser::SourceRange> ranges,
     const SourceGap& gap)
@@ -85,23 +90,28 @@ bool Word(TK kind, std::string_view text)
         (kind >= TK::Operator_OpenBrace && kind <= TK::Operator_Comma &&
                 !text.empty() && text.front() >= 'a' && text.front() <= 'z');
 }
+
 bool Literal(TK kind)
 {
     return kind >= TK::Literal_UserDefinedInteger && kind <= TK::Literal_String;
 }
+
 bool Number(TK kind)
 {
     return Literal(kind) && kind < TK::Literal_Character;
 }
+
 bool Punctuation(TK kind)
 {
     return kind >= TK::Operator_OpenBrace && kind <= TK::Operator_Comma;
 }
+
 bool PlainDelimiter(std::string_view text)
 {
     return text.size() == 1 &&
         std::string_view("{}[]();,").find(text[0]) != std::string_view::npos;
 }
+
 // Conservative maximal-munch constraints, based on the tokenizer's categories
 // and spellings. Extra separation is intentional: it handles comments,
 // digraphs, <:: lookahead, ellipses spanning three tokens, literal prefixes and
@@ -132,17 +142,20 @@ bool NeedsSeparation(const parser::SyntaxTree& tree, parser::TokenIndex right)
     // A slash before a comment can turn a block comment into a line comment.
     return a == TK::Operator_Divide && b == TK::Comment;
 }
+
 bool Recovery(parser::NodeKind kind)
 {
     using NK = parser::NodeKind;
     return kind == NK::UnparsedSyntax || kind == NK::MissingToken ||
         kind == NK::UnexpectedToken || kind == NK::Error;
 }
+
 RegionStatus Combine(RegionStatus a, RegionStatus b)
 {
     return static_cast<RegionStatus>(static_cast<uint8_t>(a) |
             static_cast<uint8_t>(b));
 }
+
 } // namespace
 bool TokenGapNeedsSeparation(
     const parser::SyntaxTree& tree,
@@ -151,6 +164,7 @@ bool TokenGapNeedsSeparation(
     assert(right > 0 && right < tree.TokenCount());
     return NeedsSeparation(tree, right);
 }
+
 parser::SourceOffset CheckedSourceAnalysisSize(size_t size)
 {
     if (size > util::MaxSourceSize) {
@@ -158,6 +172,7 @@ parser::SourceOffset CheckedSourceAnalysisSize(size_t size)
     }
     return static_cast<parser::SourceOffset>(size);
 }
+
 SourceAnalysis::SourceAnalysis(
     std::pmr::memory_resource& fileMemory)
     : Gaps_(&fileMemory)
@@ -166,6 +181,7 @@ SourceAnalysis::SourceAnalysis(
     , EditScope_(&fileMemory)
     , PartialGapPermissions_(&fileMemory)
 { }
+
 SourceAnalysis::SourceAnalysis(
     SourceAnalysis&& other) noexcept
     : Gaps_(std::move(other.Gaps_))
@@ -176,6 +192,7 @@ SourceAnalysis::SourceAnalysis(
     , HasEditScope_(other.HasEditScope_)
     , Built_(std::exchange(other.Built_, false))
 { }
+
 bool SourceAnalysis::IntersectsImmutable(parser::SourceRange source) const
 {
     assert(source.Begin <= source.End);
@@ -194,6 +211,7 @@ bool SourceAnalysis::IntersectsImmutable(parser::SourceRange source) const
                 ? first->Source.Begin <= source.Begin
                 : first->Source.Begin < source.End);
 }
+
 bool SourceAnalysis::CanReplaceGap(GapId id, std::string_view replacement) const
 {
     if (id >= Gaps_.size()) {
@@ -216,6 +234,7 @@ bool SourceAnalysis::CanReplaceGap(GapId id, std::string_view replacement) const
     return (gap.LineBoundary != GapLineBoundary::Required || newline) &&
         (gap.LineBoundary != GapLineBoundary::Forbidden || !newline);
 }
+
 bool SourceAnalysis::CanSpellGapNewlines(GapId id) const
 {
     if (!Built_ || id >= Gaps_.size()) {
@@ -343,8 +362,7 @@ void SourceAnalysis::RestrictEditScope(
     auto outside = [&] (Offset end) {
         if (begin < end) {
             protection
-                .push_back(
-                    {{begin, end}, ProtectionReason::OutsideEditScope});
+                .push_back({{begin, end}, ProtectionReason::OutsideEditScope});
         }
     };
     for (const auto range : scope) {
@@ -773,4 +791,5 @@ SourceAnalysis BuildSourceAnalysis(
     }
     return result;
 }
+
 } // namespace formatter

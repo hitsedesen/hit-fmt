@@ -9,23 +9,42 @@
 #include <stdexcept>
 
 namespace formatter {
+
 namespace {
+
 using Index = uint32_t;
+
 using parser::Node;
+
 using parser::NodeKind;
+
 using parser::PunctuationRole;
+
 using tokenizer::TokenKind;
+
 constexpr Index None = UINT32_MAX;
+
 using Position = uint64_t;
+
 constexpr Position GapPosition(Index i)
 {
     return Position(i) * 2;
 }
+
 constexpr Position TokenPosition(Index i)
 {
     return GapPosition(i) + 1;
 }
-enum class Boundary : uint8_t { Preserve, Flat, Soft, Hard, Conditional };
+
+enum class Boundary : uint8_t
+{
+    Preserve,
+    Flat,
+    Soft,
+    Hard,
+    Conditional
+};
+
 struct Gap
 {
     Index Owner = None;
@@ -36,6 +55,8 @@ struct Gap
     bool Reindent = false;
     // Style-owned indentation demand survives a scope fence on topology.
     bool PartialIndent = false;
+    bool ParagraphBoundary = false;
+    bool Reassembled = false;
     Index RequiredWidth = 0;
     int32_t ExtraIndent = 0;
     bool OverrideIndent = false;
@@ -52,6 +73,7 @@ struct Gap
     bool CanonicalFlat = false;
     bool ControlSeparator = false;
 };
+
 struct Group
 {
     Position Begin;
@@ -67,6 +89,7 @@ struct Group
     uint32_t LogicalIndent = 0;
     bool SaturatedIndent = false;
 };
+
 struct IndentBasis
 {
     uint32_t Column;
@@ -79,11 +102,14 @@ constexpr IndentBasis AccumulateIndent(IndentBasis parent, int32_t delta)
     return {uint32_t(std::clamp<int64_t>(logical, 0, int64_t(UINT32_MAX) - 1)),
             parent.Saturated || logical >= int64_t(UINT32_MAX)};
 }
+
 // A later negative offset cannot undo information lost by an ancestor clamp.
 static_assert(AccumulateIndent(
         AccumulateIndent({UINT32_MAX - 2, false}, 3),
         -32).Saturated);
+
 static_assert(!AccumulateIndent({UINT32_MAX - 2, false}, 1).Saturated);
+
 struct Syntax
 {
     const Node* TreeNode;
@@ -100,30 +126,36 @@ struct Syntax
     parser::TokenRange SequenceBody = {};
     parser::TokenRange Attached = {};
 };
+
 struct ScopeName
 {
     std::string_view Name;
     Index Pair;
     bool Begin;
 };
+
 struct VisualRange
 {
     Index First;
     Index End;
 };
+
 struct Comma
 {
     Index Owner = None;
     Index Existing = None;
 };
+
 Index AddWidth(Index a, Index b)
 {
     return a > None - b ? None : a + b;
 }
+
 bool HasLine(std::string_view text)
 {
     return text.find('\n') != std::string_view::npos;
 }
+
 Index HorizontalColumns(std::string_view text, uint8_t tabWidth)
 {
     Index width = 0;
@@ -135,6 +167,7 @@ Index HorizontalColumns(std::string_view text, uint8_t tabWidth)
     }
     return width;
 }
+
 bool IsControl(NodeKind kind)
 {
     switch (kind) {
@@ -150,6 +183,7 @@ bool IsControl(NodeKind kind)
             return false;
     }
 }
+
 bool IsSpine(NodeKind kind)
 {
     return kind == NodeKind::CallExpression ||
@@ -189,6 +223,7 @@ public:
         , RootName_(&scratch)
         , ScopeNames_(&scratch)
     { }
+
     SyntaxLayoutStatus Build()
     {
         const auto count = Tree_.TokenCount();
@@ -214,10 +249,35 @@ public:
             }
             Gaps_[id].Generated = true;
         }
+        for (auto id : Options_.ReassembledGaps) {
+            if (id > count) {
+                return {SyntaxLayoutError::InvalidGeneratedAdjacency, id};
+            }
+            Gaps_[id].Reassembled = true;
+        }
         ProjectSyntax();
         AnalyzeVisualScopes();
         for (Index i = 0; i < Syntax_.size(); ++i) {
-            const auto& node = *Syntax_[i].TreeNode;
+            const auto& entry = Syntax_[i];
+            const auto& node = *entry.TreeNode;
+            if (
+                entry.ItemSequence &&
+                    entry.SequenceBody.Begin < entry.SequenceBody.End)
+            {
+                Gaps_[entry.SequenceBody.Begin].ParagraphBoundary = true;
+                Gaps_[entry.SequenceBody.End].ParagraphBoundary = true;
+            }
+            if (entry.Parent != None) {
+                const auto& parent = Syntax_[entry.Parent];
+                if (
+                    parent.ItemSequence && !node.Tokens.Empty() &&
+                        node.Tokens.Begin >= parent.SequenceBody.Begin &&
+                        node.Tokens.End <= parent.SequenceBody.End)
+                {
+                    Gaps_[node.Tokens.Begin].ParagraphBoundary = true;
+                    Gaps_[node.Tokens.End].ParagraphBoundary = true;
+                }
+            }
             PlanHeaderAndBody(i);
             if (!Syntax_[i].Safe) {
                 if (ListFor(node.Kind)) {
@@ -253,6 +313,7 @@ public:
         }
         return {};
     }
+
 private:
     const parser::SyntaxTree& Tree_;
     const CompiledPolicies& Policies_;
@@ -276,6 +337,7 @@ private:
     std::pmr::vector<ScopeName> ScopeNames_;
     SyntaxLayoutStatus State_;
     size_t NextPermission_ = 0;
+
     // Scope exclusions prohibit edits, not understanding the surrounding
     // grammar. Keep real reason unions (including scope + semantic reasons)
     // stronger. Edit queries continue to use the unfiltered safety analysis.
@@ -304,12 +366,14 @@ private:
         }
         return false;
     }
+
     void Fail(SyntaxLayoutError error, Index token)
     {
         if (State_) {
             State_ ={error, token};
         }
     }
+
     // Preorder projection visits each node once. Reverse order computes shared
     // callee roots/string eligibility and safety. No overlapping range scans.
     void ProjectSyntax()
@@ -555,6 +619,7 @@ private:
                            anchor.has_value()});
         return id;
     }
+
     void Own(
         Index gap,
         Index owner,
@@ -580,22 +645,26 @@ private:
         plan.Broken = broken;
         plan.Closing = closing;
     }
+
     bool Uncertain(Index gap) const
     {
         return (uint8_t(Spacing_.Gaps()[gap].Constraint) &
                     uint8_t(SpacingConstraint::UncertainSyntax)) != 0;
     }
+
     bool RetainsBareCR(Index gap) const
     {
         return Policies_.LineEnding != LineEnding::Preserve &&
             Safety_.Gaps()[gap].HasBareCR;
     }
+
     bool GapMutable(Index gap) const
     {
         return gap < Gaps_.size() && !RetainsBareCR(gap) && !Uncertain(gap) &&
             !Gaps_[gap].Frozen && !Safety_.Gaps()[gap].Preserve &&
             !Safety_.Gaps()[gap].ContextSensitive;
     }
+
     const ListPolicy* ListFor(NodeKind kind) const
     {
         switch (kind) {
@@ -620,6 +689,7 @@ private:
                 return nullptr;
         }
     }
+
     bool PinFirst(Index id) const
     {
         const auto parent = Syntax_[id].Parent;
@@ -657,6 +727,7 @@ private:
             Syntax_[expression].TreeNode->Tokens.End ==
                 Syntax_[first].TreeNode->Tokens.End;
     }
+
     void PreserveUnplannedListContext(Index id)
     {
         const auto& entry = Syntax_[id];
@@ -716,6 +787,7 @@ private:
                 });
         }
     }
+
     void PlanList(Index id, const ListPolicy& policy)
     {
         const auto& node = *Syntax_[id].TreeNode;
@@ -929,8 +1001,7 @@ private:
                 (Policies_.InitializersTrailingComma ==
                                 TrailingCommaPolicy::WhenMultiline &&
                             Safety_
-                                .IntersectsImmutable(
-                                    {insertion, insertion})) ||
+                                .IntersectsImmutable({insertion, insertion})) ||
                     (existing &&
                             (Safety_
                                 .IntersectsImmutable(
@@ -965,12 +1036,14 @@ private:
             }
         }
     }
+
     static layout::GapKind firstKindFor(const ListPolicy& policy)
     {
         return policy.FirstItem == FirstItemPlacement::NextLine
             ? layout::GapKind::Hard
             : layout::GapKind::Soft;
     }
+
     template <class Function>
     void DirectTokens(Index id, Function function) const
     {
@@ -990,6 +1063,7 @@ private:
             function(cursor);
         }
     }
+
     bool SameOperatorSequence(Index parent, Index child) const
     {
         const auto& a = Syntax_[parent];
@@ -1009,6 +1083,7 @@ private:
             child ==
                 (outer.RightAssociative ? LastChild_[parent] : a.FirstChild);
     }
+
     void PlanExpression(Index id)
     {
         const auto& node = *Syntax_[id].TreeNode;
@@ -1152,6 +1227,7 @@ private:
             segment = next;
         }
     }
+
     void Reindent(
         Index gap,
         Index owner,
@@ -1166,6 +1242,7 @@ private:
             Gaps_[gap].Reindent = true;
         }
     }
+
     std::optional<BracePlacement> BraceFor(Index id) const
     {
         const auto& node = *Syntax_[id].TreeNode;
@@ -1198,6 +1275,7 @@ private:
                 return std::nullopt;
         }
     }
+
     static bool TransparentHeader(NodeKind kind)
     {
         switch (kind) {
@@ -1224,6 +1302,7 @@ private:
                 return false;
         }
     }
+
     void ProjectHeaderGaps(Index id, Index begin, Index end, Index group)
     {
         Stack_.clear();
@@ -1279,6 +1358,7 @@ private:
             }
         }
     }
+
     static bool ControlledBody(NodeKind kind)
     {
         switch (kind) {
@@ -1302,6 +1382,7 @@ private:
                 return false;
         }
     }
+
     void PlanControlledArms(Index id, BracePlacement brace)
     {
         const auto& node = *Syntax_[id].TreeNode;
@@ -1502,6 +1583,7 @@ private:
             }
         }
     }
+
     void PlanHeaderAndBody(Index id)
     {
         const auto& node = *Syntax_[id].TreeNode;
@@ -1703,6 +1785,7 @@ private:
             }
         }
     }
+
     int32_t BodyOffset(const BodyIndentControl& control, int32_t fallback) const
     {
         if (control.Mode == BodyIndentation::NoIndent) {
@@ -1876,6 +1959,7 @@ private:
             }
         }
     }
+
     void PlanAttribute(Index id)
     {
         const auto& node = *Syntax_[id].TreeNode;
@@ -1930,6 +2014,7 @@ private:
         }
         gap.Reindent = true;
     }
+
     void PlanChain(Index id)
     {
         const auto& entry = Syntax_[id];
@@ -2023,6 +2108,7 @@ private:
             spine = callee;
         }
     }
+
     struct Endpoint
     {
         Index Statement;
@@ -2030,12 +2116,20 @@ private:
         Index Pair;
         bool Begin;
     };
-    enum class Discovery : uint8_t { None, Unique, Ambiguous };
+
+    enum class Discovery : uint8_t
+    {
+        None,
+        Unique,
+        Ambiguous
+    };
+
     struct DiscoveredEndpoint
     {
         Discovery Kind = Discovery::None;
         Endpoint Value = {};
     };
+
     DiscoveredEndpoint ScopeEndpoint(Index statement)
     {
         if (
@@ -2131,6 +2225,7 @@ private:
         }
         return result;
     }
+
     bool SameContext(const Endpoint& begin, const Endpoint& end) const
     {
         const auto a = Syntax_[begin.Statement].TreeNode->Tokens;
@@ -2153,6 +2248,7 @@ private:
         }
         return true;
     }
+
     Index SourceIndent(Index token) const
     {
         const auto& gap = Safety_.Gaps()[token];
@@ -2319,6 +2415,7 @@ private:
                         PrefixProtection_[range.End];
         }
     }
+
     void PlanVisualScopes()
     {
         if (Policies_.IndentationKind == IndentationKind::Preserve) {
@@ -2349,6 +2446,7 @@ private:
             }
         }
     }
+
     static bool DeclarationItem(NodeKind kind)
     {
         switch (kind) {
@@ -2375,6 +2473,7 @@ private:
                 return false;
         }
     }
+
     void ExactVertical(
         Index gap,
         VerticalGapPolicy policy,
@@ -2401,6 +2500,7 @@ private:
             plan.Shape = Boundary::Hard;
         }
     }
+
     void PlanStandaloneCommentGaps(Index id)
     {
         if (!Syntax_[id].ItemSequence) {
@@ -2479,6 +2579,9 @@ private:
                     VerticalGapMode::Exact;
         const bool sequenceRules =
             commentRules ||
+                policy.DeclarationBlankLines.Mode == VerticalGapMode::Exact ||
+                policy.MemberDeclarationBlankLines.Mode ==
+                    VerticalGapMode::Exact ||
                 policy.DefinitionBlankLines.Mode == VerticalGapMode::Exact ||
                 policy.MemberDefinitionBlankLines.Mode ==
                     VerticalGapMode::Exact ||
@@ -2631,15 +2734,21 @@ private:
                             policy.AccessSectionBlankLinesAfterLabel);
                         access = None;
                     }
-                    if (
-                        previous != None &&
-                            (entry.Definition || Syntax_[previous].Definition))
-                    {
+                    if (previous != None) {
+                        const bool member =
+                            node.Kind == NodeKind::RecordDeclaration;
                         ExactVertical(
                             entry.Attached.Begin,
-                            node.Kind == NodeKind::RecordDeclaration
-                                ? policy.MemberDefinitionBlankLines
-                                : policy.DefinitionBlankLines);
+                            member
+                                ? policy.MemberDeclarationBlankLines
+                                : policy.DeclarationBlankLines);
+                        if (entry.Definition || Syntax_[previous].Definition) {
+                            ExactVertical(
+                                entry.Attached.Begin,
+                                member
+                                    ? policy.MemberDefinitionBlankLines
+                                    : policy.DefinitionBlankLines);
+                        }
                     }
                     previous = child;
                 }
@@ -2677,6 +2786,7 @@ private:
             }
         }
     }
+
     void ResolveSafety()
     {
         for (Index i = 0; i < Gaps_.size(); ++i) {
@@ -2694,6 +2804,26 @@ private:
                     Groups_[gap.MarkDelimiter].AnchorAfterGap = true;
                 }
                 continue;
+            }
+            // Canonical layout may reflow ordinary line breaks, not erase
+            // authored paragraphs. Exact counts/caps have already won; retain
+            // original newline spellings while allowing owned indentation.
+            if (
+                gap.ParagraphBoundary && !gap.Vertical && !gap.Reassembled &&
+                    gap.Shape != Boundary::Flat && GapMutable(i))
+            {
+                const auto original = Safety_.Gaps()[i].Original;
+                const auto first = original.find('\n');
+                if (
+                    first != std::string_view::npos &&
+                        original.find('\n', first + 1) !=
+                            std::string_view::npos)
+                {
+                    gap.Reindent |=
+                        gap.Shape != Boundary::Preserve && !gap.PreserveIndent;
+                    gap.Shape = Boundary::Preserve;
+                    gap.CanonicalFlat = false;
+                }
             }
             gap.PartialIndent =
                 gap.Reindent ||
@@ -2719,6 +2849,7 @@ private:
             }
         }
     }
+
     void SummarizeSegments()
     {
         // One reverse pass computes next indivisible segment plus mandatory
@@ -2750,6 +2881,7 @@ private:
             }
         }
     }
+
     GapContext ContextFor(Index i) const
     {
         const auto& gap = Gaps_[i];
@@ -2761,6 +2893,7 @@ private:
         }
         return SpacingOwnerContext(Spacing_.Gaps()[i].Category, Policies_);
     }
+
     bool RebuildsTopology(Index i) const
     {
         const auto& gap = Gaps_[i];
@@ -2769,6 +2902,7 @@ private:
             (gap.Shape == Boundary::Conditional &&
                     gap.Broken != layout::GapKind::Flat);
     }
+
     Index FlatWidth(Index i) const
     {
         if (Removed_.size() > i && Removed_[i]) {
@@ -2888,11 +3022,13 @@ private:
         }
         return spec;
     }
+
     layout::Provenance GapOrigin(Index i) const
     {
         const auto range = Safety_.Gaps()[i].Source;
         return {range.Begin, range.End, layout::NoIdentity};
     }
+
     bool Allows(Index i, layout::GapKind kind) const
     {
         const auto& gap = Safety_.Gaps()[i];
@@ -2913,12 +3049,14 @@ private:
                 : "\r\n";
         return Safety_.CanReplaceGap(i, line);
     }
+
     bool ExpressionGap(Index i) const
     {
         const auto owner = Gaps_[i].Owner;
         return owner != None && Groups_[owner].Spec.ExpressionContinuation &&
             !Stack_.empty() && Stack_.back() == owner;
     }
+
     void RecordFixedExpressionLine(Index i, Index begin, Index end)
     {
         // Protection retains bytes, not the fact that a safe current-expression
@@ -2937,11 +3075,13 @@ private:
             Document_.ExpressionLine();
         }
     }
+
     void FixedGapSlice(Index i, Index begin, Index end)
     {
         Document_.SourceText(begin, end, layout::NoIdentity, true);
         RecordFixedExpressionLine(i, begin, end);
     }
+
     void EditableGapSlice(Index i, Index begin, Index end)
     {
         if (Policies_.LineEnding == LineEnding::Preserve || begin == end) {
@@ -2966,6 +3106,7 @@ private:
             RecordFixedExpressionLine(i, begin, end);
         }
     }
+
     void PreservedSlice(
         Index i,
         Index begin,
@@ -3020,6 +3161,7 @@ private:
         }
         EditableGapSlice(i, run, end);
     }
+
     void PreserveGap(Index i)
     {
         const auto& source = Safety_.Gaps()[i];
@@ -3140,6 +3282,7 @@ private:
             FixedGapSlice(i, source.Source.Begin, source.Source.End);
         }
     }
+
     void EmitPartialGap(
         Index i,
         std::span<const PartialGapPermission> permissions)
@@ -3206,6 +3349,7 @@ private:
             copied(cursor, source.Source.End);
         }
     }
+
     void EmitGap(Index i)
     {
         const auto permissions = Safety_.PartialGapPermissions();
@@ -3288,6 +3432,7 @@ private:
                     GapOrigin(i));
         }
     }
+
     void MarkPrefixAnchor(Index id)
     {
         auto& group = Groups_[id];
@@ -3386,15 +3531,16 @@ private:
                         return;
                     }
                     // Syntax-selected insertion point after the last item,
-                    // not an identity for a surviving source comma.
+                    // not an identity for a surviving source comma. The flat
+                    // alternative has zero width: charging for the broken-only
+                    // comma would spuriously break a fitting ancestor.
                     const auto end = Tree_.Token(i - 1).Text.End;
                     Document_
                         .ConditionalText(
                             Groups_[owner].Id,
                             "",
                             ",",
-                            {end, end, layout::NoIdentity},
-                            1);
+                            {end, end, layout::NoIdentity});
                 }
                 const auto delayed = Gaps_[i].MarkDelimiter;
                 if (delayed != None && !Groups_[delayed].AnchorAfterGap) {
@@ -3423,7 +3569,9 @@ private:
         }
     }
 };
+
 } // namespace
+
 SyntaxLayoutStatus BuildSyntaxDocument(
     const parser::SyntaxTree& tree,
     const CompiledPolicies& policies,
@@ -3462,4 +3610,5 @@ layout::Policy SyntaxRenderPolicy(
             : layout::IndentationKind::Spaces;
     return result;
 }
+
 } // namespace formatter

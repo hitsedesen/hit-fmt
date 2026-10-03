@@ -4,11 +4,13 @@
 #include <string_view>
 
 namespace hit_fmt {
+
 struct HelpExample
 {
     std::string_view Title;
     std::string_view Code;
 };
+
 struct HelpSection
 {
     std::string_view Title;
@@ -90,6 +92,8 @@ constexpr HelpExample VerticalExamples[] = {
 NamespaceBlankLinesBeforeClose = 1
 AccessSectionBlankLinesBefore = 1
 AccessSectionBlankLinesAfterLabel = 1
+DeclarationBlankLines = 1
+MemberDeclarationBlankLines = Preserve
 DefinitionBlankLines = 1
 MemberDefinitionBlankLines = 0
 MaxEmptyLines = 1
@@ -226,10 +230,11 @@ constexpr HelpSection HelpSections[] = {
             "grammar-approved initializer sites; "
         "comma presence never determines closer placement.\n", ShapeExamples},
     {"Structural vertical gaps", "Exact counts and caps accept Preserve or "
-        "0..10000. "
-        "Only MemberDefinitionBlankLines also "
-            "accepts Inherit (from "
-            "DefinitionBlankLines). "
+        "0..10000. Canonical item/body boundaries retain authored blank lines "
+        "unless an exact count or cap overrides them; list/header interiors "
+        "still follow their layout policies. "
+        "MemberDeclarationBlankLines and MemberDefinitionBlankLines also "
+            "accept Inherit from their respective non-member settings. "
         "At broken boundaries, n empty lines mean "
             "n+1 newlines. Positive exact counts "
         "own a boundary break independently of "
@@ -240,7 +245,11 @@ constexpr HelpSection HelpSections[] = {
             "explicit sections, not the first at "
             "opening; "
         "after-label applies only with following "
-            "content. Definition gaps separate "
+            "content. Declaration gaps separate complete neighboring "
+            "declaration items in file, namespace and record scopes, including "
+            "prototypes and variables and their attached comments. "
+            "An exact definition count overrides the general declaration "
+            "count at definition boundaries. Definition gaps separate "
             "neighboring "
         "complete declaration items if either is a "
             "function/record/enum definition; not two "

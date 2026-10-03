@@ -17,13 +17,19 @@
 #include <vector>
 
 namespace formatter {
+
 struct Style
 {
     #define FORMATTER_STYLE_FIELD(type, name, initial) type name = initial;
     FORMATTER_STYLE_OPTIONS(FORMATTER_STYLE_FIELD)
 #undef FORMATTER_STYLE_FIELD
 };
-enum class LayoutDiagnosticKind { LineWidth };
+
+enum class LayoutDiagnosticKind
+{
+    LineWidth
+};
+
 struct LayoutDiagnostic
 {
     // Final emitted coordinates, not an independent source feasibility check.
@@ -31,6 +37,7 @@ struct LayoutDiagnostic
     std::string Message;
     LayoutDiagnosticKind Kind;
 };
+
 // Immutable configuration-lifetime snapshot. Owns all metadata; no raw Style
 // views or mutable derived cache. Preparation throws invalid_argument,
 // including for currently unsupported nonempty CallLikeMacroNames and ambiguous
@@ -46,6 +53,7 @@ public:
     const bool HonorClangFormatDirectives;
     const std::vector<std::string> WhitespaceSensitiveMacros;
 };
+
 struct FormatRequest
 {
     // Original source coordinates. Constrain planning AND layout from the
@@ -65,6 +73,7 @@ struct FormatRequest
     // Empty preserves existing behavior when matching-header selection is Off.
     std::string_view InputFilePath = {};
 };
+
 struct FormatMapping
 {
     parser::SourceRange Output;
@@ -84,6 +93,7 @@ struct FormatMapping
     // ID.
     bool Generated = false;
 };
+
 struct FormatResult
 {
     std::string Text;
@@ -99,6 +109,7 @@ struct FormatResult
     std::vector<TokenOutputOffset> OriginalTokens;
     std::vector<ProtectedSourceRange> OutputProtection;
 };
+
 // One optional atomic normalization, one syntax document, one render. Failures
 // throw; no original-text fallback, retry, repair, or alternate pipeline.
 // Tree/source need survive only this call. Results own storage independently of
@@ -107,17 +118,23 @@ struct FormatResult
     const parser::SyntaxTree& tree,
     const PreparedFormat& prepared,
     const FormatRequest& request = {});
+
 [[nodiscard]] FormatResult Format(
     util::PaddedSourceView source,
     const PreparedFormat& prepared,
     const FormatRequest& request = {});
+
 // Convenience entrypoints compile once per call over the SAME pipeline.
 [[nodiscard]] std::string Format(
     const parser::SyntaxTree& tree,
     const Style& style);
+
 [[nodiscard]] std::string Format(const parser::SyntaxTree& tree);
+
 [[nodiscard]] std::string Format(
     util::PaddedSourceView source,
     const Style& style);
+
 [[nodiscard]] std::string Format(util::PaddedSourceView source);
+
 } // namespace formatter

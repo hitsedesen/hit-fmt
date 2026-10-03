@@ -9,16 +9,21 @@
 #include <vector>
 
 namespace formatter {
+
 // Independent of spacing, width and configuration storage. Sort authorizes
 // moving exact directive atoms, not rewriting their protected interiors.
-enum class StructuralAction : uint8_t {
+enum class StructuralAction : uint8_t
+{
     AddMissingControlBraces,
     EmptyControlBody,
     RemoveNullStatements,
     RemoveNullDeclarations,
     IncludeOrder,
-    NamespaceComments, };
-enum class StructuralSkip : uint8_t {
+    NamespaceComments,
+};
+
+enum class StructuralSkip : uint8_t
+{
     Incomplete,
     Protected,
     CommentAttached,
@@ -28,13 +33,16 @@ enum class StructuralSkip : uint8_t {
     InvalidMapping,
     FollowingText,
     ShortNamespace,
-    RequiredBody, };
+    RequiredBody,
+};
+
 struct StructuralDiagnostic
 {
     StructuralAction Action;
     parser::TokenRange Tokens;
     StructuralSkip Reason;
 };
+
 struct StructuralOptions
 {
     bool AddMissingControlBraces = false;
@@ -45,13 +53,17 @@ struct StructuralOptions
     // Explicit ending selection retains original whitespace bare-CR membership.
     bool PreserveBareCR = false;
 };
+
 using StructuralActionId = uint32_t;
+
 inline constexpr StructuralActionId NoStructuralAction = UINT32_MAX;
+
 struct StructuralOperation
 {
     StructuralAction Kind;
     parser::TokenRange Owner;
 };
+
 // Source pieces borrow original bytes; literal pieces borrow static strings
 // or original namespace name views (the original source must survive).
 // Each operation owns all its edits atomically. Equal-offset insertions have
@@ -62,6 +74,7 @@ struct StructuralPiece
     std::string_view Literal;
     bool FromSource = true;
 };
+
 struct StructuralEdit
 {
     parser::SourceRange Source;
@@ -69,7 +82,13 @@ struct StructuralEdit
     uint32_t PieceEnd;
     StructuralActionId Operation;
     uint32_t Depth = 0;
-    enum class Edge : uint8_t { Close, Open, Replace } Boundary = Edge::Replace;
+
+    enum class Edge : uint8_t
+    {
+        Close,
+        Open,
+        Replace
+    } Boundary = Edge::Replace;
 };
 // Planner-created records are exposed for inspection, not permission to
 // fabricate semantic edits. Materialization validates ownership, not C++
@@ -90,6 +109,7 @@ struct TokenOutputOffset
     parser::SourceRange Output;
     bool Present = false;
 };
+
 struct StructuralProvenance
 {
     parser::SourceRange Output;
@@ -97,6 +117,7 @@ struct StructuralProvenance
     StructuralActionId Operation = NoStructuralAction;
     bool Generated = false;
 };
+
 struct GeneratedAdjacency
 {
     // Includes the two surrounding gaps, or a zero-width deletion boundary.
@@ -105,6 +126,7 @@ struct GeneratedAdjacency
     parser::SourceRange Output;
     StructuralActionId Operation;
 };
+
 struct StructuralMaterialization
 {
     explicit StructuralMaterialization(std::pmr::memory_resource& memory);
@@ -113,12 +135,14 @@ struct StructuralMaterialization
     std::pmr::vector<StructuralProvenance> Provenance;
     std::pmr::vector<GeneratedAdjacency> GeneratedAdjacencies;
 };
+
 struct IncludeGroup
 {
     parser::TokenRange Tokens;
     // Complete exact line atoms, including indentation and terminating LF.
     parser::SourceRange Source;
 };
+
 // Read-only discovery of maximal adjacent safe groups, in source order,
 // including already sorted groups. Empty/singleton groups are omitted. Uses
 // the structural planner's attachment, line-ending and Directive-only rules;
@@ -134,6 +158,7 @@ struct IncludeGroup
     const SourceAnalysis& safety,
     std::pmr::memory_resource& fileMemory,
     std::pmr::memory_resource& scratchMemory);
+
 // One iterative traversal of original parsed syntax, with a single postorder
 // completeness annotation for colon-only labels and their enclosing controls.
 // Required labeled statements may be siblings of those controls. Unrelated
@@ -144,6 +169,7 @@ struct IncludeGroup
     StructuralOptions options,
     std::pmr::memory_resource& fileMemory,
     std::pmr::memory_resource& scratchMemory);
+
 // Validates ownership/overlaps before emission, reserves then copies once.
 // Throws invalid_argument for malformed plans; length_error for oversized
 // output. No parser or renderer is invoked. Original tree/source must survive.
@@ -152,11 +178,15 @@ struct IncludeGroup
     const StructuralPlan& plan,
     std::pmr::memory_resource& fileMemory,
     std::pmr::memory_resource& scratchMemory);
-enum class NamespaceCommentPolicy : uint8_t {
+
+enum class NamespaceCommentPolicy : uint8_t
+{
     Preserve,
     AddMissing,
     Fix,
-    Remove };
+    Remove
+};
+
 struct NamespaceCommentOptions
 {
     NamespaceCommentPolicy Policy = NamespaceCommentPolicy::Preserve;
@@ -167,6 +197,7 @@ struct NamespaceCommentOptions
     bool PreserveBareCR =
         false; // Do not capture EOF whitespace in a NEW comment.
 };
+
 struct NamespaceIdentity
 {
     parser::TokenRange Owner;
@@ -175,6 +206,7 @@ struct NamespaceIdentity
     parser::TokenIndex Close;
     parser::TokenIndex Comment; // TokenCount() if absent
 };
+
 struct NamespaceCommentPlan
 {
     explicit NamespaceCommentPlan(std::pmr::memory_resource& memory);
@@ -182,12 +214,14 @@ struct NamespaceCommentPlan
     std::pmr::vector<NamespaceIdentity> Namespaces;
     std::pmr::vector<StructuralDiagnostic> Skipped;
 };
+
 [[nodiscard]] NamespaceCommentPlan PlanNamespaceComments(
     const parser::SyntaxTree& original,
     const SourceAnalysis& safety,
     NamespaceCommentOptions options,
     std::pmr::memory_resource& fileMemory,
     std::pmr::memory_resource& scratchMemory);
+
 // Mapping is indexed by ORIGINAL token identity, composed by the caller
 // through normalization AND final layout. Mapped namespace/comment atoms must
 // retain exact spelling and enclose surviving original interior identities in
@@ -205,10 +239,12 @@ struct NamespaceCommentPlan
     std::span<const parser::SourceRange> outputProtection,
     std::pmr::memory_resource& fileMemory,
     std::pmr::memory_resource& scratchMemory);
+
 // Apply the resolved output-coordinate comment plan once, without token map
 // reconstruction. Literal/name views borrow static storage/original source.
 [[nodiscard]] std::pmr::string MaterializeNamespaceComments(
     std::string_view output,
     const StructuralPlan& resolved,
     std::pmr::memory_resource& fileMemory);
+
 } // namespace formatter

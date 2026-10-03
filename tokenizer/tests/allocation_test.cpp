@@ -7,8 +7,11 @@
 #include <string_view>
 
 namespace {
+
 thread_local bool TrackAllocations = false;
+
 thread_local size_t AllocationCount = 0;
+
 } // namespace
 
 void* operator new(size_t size)
@@ -80,6 +83,7 @@ auto broken = R"missing(raw contents;
         ++tokenCount;
     }
     TrackAllocations = false;
+
     if (AllocationCount != 0) {
         std::fprintf(
             stderr,

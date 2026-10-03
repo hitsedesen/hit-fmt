@@ -8,8 +8,11 @@
 #include <string>
 
 namespace {
+
 using formatter::Hunk;
+
 using formatter::detail::OriginalHunkLines;
+
 using Range = parser::SourceRange;
 
 TEST(HunkScope, OriginalPhysicalLinesRejectInvalidAndHaveNoPhantomEOFLine)
@@ -122,10 +125,12 @@ private:
         ++Calls;
         return std::pmr::new_delete_resource()->allocate(bytes, alignment);
     }
+
     void do_deallocate(void* pointer, size_t bytes, size_t alignment) override
     {
         std::pmr::new_delete_resource()->deallocate(pointer, bytes, alignment);
     }
+
     bool do_is_equal(
         const std::pmr::memory_resource& other) const noexcept override
     {

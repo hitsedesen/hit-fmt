@@ -8,10 +8,15 @@
 #include <vector>
 
 namespace formatter {
+
 namespace {
+
 using NK = parser::NodeKind;
+
 using TK = tokenizer::TokenKind;
+
 using Node = parser::Node;
+
 const Node* Child(const Node& node, NK kind)
 {
     for (auto* child = node.Child(); child; child = child->NextSibling) {
@@ -21,6 +26,7 @@ const Node* Child(const Node& node, NK kind)
     }
     return nullptr;
 }
+
 bool UnsafeSyntax(const Node& node)
 {
     switch (node.Kind) {
@@ -41,6 +47,7 @@ bool UnsafeSyntax(const Node& node)
     }
     return false;
 }
+
 // Do not mistake a name in the parameter list of a function-pointer type for
 // the name of the enclosing parameter.
 bool HasName(const Node& node)
@@ -58,6 +65,7 @@ bool HasName(const Node& node)
     }
     return false;
 }
+
 const Node* FunctionName(const Node& node)
 {
     if (
@@ -76,6 +84,7 @@ const Node* FunctionName(const Node& node)
     }
     return nullptr;
 }
+
 util::Position AfterToken(
     const parser::SyntaxTree& tree,
     parser::TokenIndex index)
@@ -91,6 +100,7 @@ util::Position AfterToken(
     }
     return position;
 }
+
 util::Position NamePosition(
     const parser::SyntaxTree& tree,
     const Node& parameter,
@@ -127,6 +137,7 @@ util::Position NamePosition(
     }
     return AfterToken(tree, last - 1);
 }
+
 bool IsCommentedName(std::string_view text)
 {
     if (text.starts_with("/*") && text.ends_with("*/")) {
@@ -278,6 +289,7 @@ void CheckFunction(
         }
     }
 }
+
 } // namespace
 
 std::vector<ParameterNameDiagnostic> CheckParameterNames(
@@ -316,4 +328,5 @@ std::vector<ParameterNameDiagnostic> CheckParameterNames(
         });
     return diagnostics;
 }
+
 } // namespace formatter

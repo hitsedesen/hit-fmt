@@ -17,18 +17,23 @@
 #include <utility>
 
 namespace parser {
+
 using TokenIndex = uint32_t;
+
 using SourceOffset = util::SourceOffset;
+
 // A half-open token range. The tree is lossless: every source token belongs
 // to the translation unit, so clients never need to reconstruct spelling.
 struct TokenRange
 {
     TokenIndex Begin = 0;
     TokenIndex End = 0;
+
     [[nodiscard]] constexpr bool Empty() const
     {
         return Begin == End;
     }
+
     [[nodiscard]] constexpr TokenIndex Size() const
     {
         return End - Begin;
@@ -182,11 +187,13 @@ struct TokenRange
     SYNTAX_NODE_KIND(RangeForSeparator, "range-for-separator")                 \
     SYNTAX_NODE_KIND(Error, "error")
 
-enum class NodeKind : uint8_t {
+enum class NodeKind : uint8_t
+{
 #define SYNTAX_NODE_KIND(value, name) value,
     SYNTAX_NODE_KINDS
 #undef SYNTAX_NODE_KIND
 };
+
 static_assert(static_cast<size_t>(NodeKind::Error) < 256);
 
 [[nodiscard]] constexpr std::string_view GetNodeKindName(NodeKind kind)
@@ -198,21 +205,28 @@ static_assert(static_cast<size_t>(NodeKind::Error) < 256);
     };
     return Names[static_cast<size_t>(kind)];
 }
-enum class FunctionKind : uint8_t {
+
+enum class FunctionKind : uint8_t
+{
     Unknown,
     Ordinary,
     Constructor,
-    Destructor, };
+    Destructor,
+};
+
 struct SourceRange
 {
     SourceOffset Begin = 0;
     SourceOffset End = 0;
+
     [[nodiscard]] constexpr bool Empty() const
     {
         return Begin == End;
     }
 };
-enum class PunctuationRole : uint8_t {
+
+enum class PunctuationRole : uint8_t
+{
     None,
     Generic,
     PointerDeclarator,
@@ -239,8 +253,15 @@ enum class PunctuationRole : uint8_t {
     CastDelimiter,
     ConditionDelimiter,
     GroupingDelimiter,
-    ListSeparator, };
-enum class TriviaKind { Comment, Whitespace, };
+    ListSeparator,
+};
+
+enum class TriviaKind
+{
+    Comment,
+    Whitespace,
+};
+
 struct Trivia
 {
     TriviaKind Kind = TriviaKind::Comment;
@@ -248,17 +269,21 @@ struct Trivia
     SourceRange Source;
     Trivia* Next = nullptr;
 };
+
 struct TriviaList
 {
     Trivia* First = nullptr;
 };
+
 struct TriviaAttachments
 {
     TriviaList Leading;
     TriviaList Trailing;
     TriviaList Dangling;
 };
+
 static_assert(sizeof(TriviaAttachments) == 24);
+
 // Nodes and sibling links are allocated in the syntax tree arena and remain
 // stable for the lifetime of SyntaxTree. They must not be deleted individually.
 struct Node
@@ -268,26 +293,33 @@ struct Node
     Node* NextSibling = nullptr;
     TokenRange Tokens;
     NodeKind Kind = NodeKind::Error;
+
     [[nodiscard]] const Node* Child() const
     {
         return FirstChild;
     }
+
     // Only positive function heads carry a kind. A FunctionDefinition owns
     // its FunctionTryBlock child; the wrapper and catches remain Unknown.
     [[nodiscard]] FunctionKind GetFunctionKind() const noexcept
     {
         return FunctionKind_;
     }
+
 private:
     FunctionKind FunctionKind_ = FunctionKind::Unknown;
+
     // Sparse trivia metadata is resolved through SyntaxTree so nodes do not
     // each carry another pointer.
     uint32_t TriviaIndex_ = std::numeric_limits<uint32_t>::max();
+
     friend class SyntaxTree;
     friend class ParseContext;
 };
+
 static_assert(sizeof(Node) == 40);
 static_assert(std::is_trivially_destructible_v<Node>);
+
 struct InsertedControlBlock
 {
     const Node* Body;
@@ -295,6 +327,7 @@ struct InsertedControlBlock
 };
 
 namespace detail {
+
 inline constexpr size_t InitialMemoryResourceSize = 64 * 1024;
 
 template <class T, class... Args>
@@ -311,6 +344,7 @@ template <class T>
     static_assert(std::is_trivially_destructible_v<T>);
     return ::new (memory.allocate(sizeof(T), alignof(T))) T;
 }
+
 // Appends through linked chunks while building. Seal() creates a dense chunk
 // directory so formatter-facing indexed access remains constant-time.
 template <class Chunk, uint16_t Capacity>
@@ -323,9 +357,11 @@ public:
         uint16_t Offset;
         uint32_t Index;
     };
+
     explicit SegmentedStorage(
         std::pmr::memory_resource& memory): Memory_(&memory)
     { }
+
     SegmentedStorage(SegmentedStorage&& other) noexcept
     {
         MoveFrom(std::move(other));
@@ -333,6 +369,7 @@ public:
 
     SegmentedStorage(const SegmentedStorage&) = delete;
     SegmentedStorage& operator=(const SegmentedStorage&) = delete;
+
     void MoveFrom(SegmentedStorage&& other) noexcept
     {
         Memory_ = std::exchange(other.Memory_, nullptr);
@@ -376,12 +413,14 @@ public:
             chunk = chunk->Next;
         }
     }
+
     // Requires the directory built by Seal().
     [[nodiscard]] Chunk* ChunkAt(uint32_t index) const
     {
         assert(Chunks_ && index < ChunkCount_);
         return Chunks_[index];
     }
+
     // Uses the directory when available, otherwise follows linked chunks.
     [[nodiscard]] Chunk* ResolveChunk(uint32_t index) const
     {
@@ -398,12 +437,15 @@ public:
         }
         return chunk;
     }
+
     [[nodiscard]] uint32_t Size() const
     {
         return Size_;
     }
+
 private:
     static_assert(std::is_trivially_destructible_v<Chunk>);
+
     std::pmr::memory_resource* Memory_;
     Chunk* First_ = nullptr;
     Chunk* Last_ = nullptr;
@@ -411,56 +453,67 @@ private:
     uint32_t ChunkCount_ = 0;
     uint32_t Size_ = 0;
 };
+
 struct StoredToken
 {
     util::SourceView Text;
     uint32_t Line;
     uint32_t Column;
 };
+
 static_assert(sizeof(StoredToken) == 16);
 
 class TriviaPool
 {
     static constexpr uint16_t AttachmentsPerChunk = 128;
+
     struct Chunk
     {
         Chunk* Next = nullptr;
         uint16_t Size = 0;
         std::array<TriviaAttachments, AttachmentsPerChunk> Items;
     };
+
 public:
     explicit TriviaPool(std::pmr::memory_resource& memory): Storage_(memory)
     { }
+
     TriviaPool(TriviaPool&& other) noexcept = default;
 
     TriviaPool(const TriviaPool&) = delete;
     TriviaPool& operator=(const TriviaPool&) = delete;
+
     void MoveFrom(TriviaPool&& other) noexcept
     {
         Storage_.MoveFrom(std::move(other.Storage_));
     }
+
     [[nodiscard]] uint32_t Add()
     {
         auto slot = Storage_.Append();
         slot.ChunkPtr->Items[slot.Offset] ={};
         return slot.Index;
     }
+
     void Seal()
     {
         Storage_.Seal();
     }
+
     [[nodiscard]] TriviaAttachments& operator[](uint32_t index)
     {
         assert(index < Storage_.Size());
         return Storage_.ResolveChunk(index / AttachmentsPerChunk)
             ->Items[index % AttachmentsPerChunk];
     }
+
     [[nodiscard]] const TriviaAttachments& operator[](uint32_t index) const
     {
         assert(index < Storage_.Size());
         return Storage_.ResolveChunk(index / AttachmentsPerChunk)
             ->Items[index % AttachmentsPerChunk];
     }
+
 private:
     SegmentedStorage<Chunk, AttachmentsPerChunk> Storage_;
 };
@@ -468,6 +521,7 @@ private:
 class TokenPool
 {
     static constexpr uint16_t TokensPerChunk = 512;
+
     struct Chunk
     {
         Chunk* Next = nullptr;
@@ -481,13 +535,16 @@ class TokenPool
         std::array<PunctuationRole, TokensPerChunk> Roles;
         std::array<TokenIndex, TokensPerChunk> MatchingDelimiters;
     };
+
 public:
     explicit TokenPool(std::pmr::memory_resource& memory): Storage_(memory)
     { }
+
     TokenPool(TokenPool&& other) noexcept = default;
 
     TokenPool(const TokenPool&) = delete;
     TokenPool& operator=(const TokenPool&) = delete;
+
     void MoveFrom(TokenPool&& other) noexcept
     {
         Storage_.MoveFrom(std::move(other.Storage_));
@@ -515,59 +572,72 @@ public:
         chunk->MatchingDelimiters[slot.Offset] =
             std::numeric_limits<TokenIndex>::max();
     }
+
     void Seal()
     {
         Storage_.Seal();
     }
+
     [[nodiscard]] const StoredToken& operator[](TokenIndex index) const
     {
         assert(index < Storage_.Size());
         return Storage_.ChunkAt(index / TokensPerChunk)
             ->Tokens[index % TokensPerChunk];
     }
+
     [[nodiscard]] TokenIndex Size() const
     {
         return Storage_.Size();
     }
+
     [[nodiscard]] tokenizer::TokenKind Kind(TokenIndex index) const
     {
         assert(index < Storage_.Size());
         return Storage_.ChunkAt(index / TokensPerChunk)
             ->Kinds[index % TokensPerChunk];
     }
+
     [[nodiscard]] PunctuationRole Role(TokenIndex index) const
     {
         assert(index < Storage_.Size());
         return Storage_.ChunkAt(index / TokensPerChunk)
             ->Roles[index % TokensPerChunk];
     }
+
     void SetRole(TokenIndex index, PunctuationRole role)
     {
         assert(index < Storage_.Size());
         Storage_.ChunkAt(index / TokensPerChunk)
             ->Roles[index % TokensPerChunk] = role;
     }
+
     [[nodiscard]] TokenIndex MatchingDelimiter(TokenIndex index) const
     {
         assert(index < Storage_.Size());
         return Storage_.ChunkAt(index / TokensPerChunk)
             ->MatchingDelimiters[index % TokensPerChunk];
     }
+
     void SetMatchingDelimiter(TokenIndex index, TokenIndex matching)
     {
         assert(index < Storage_.Size());
         Storage_.ResolveChunk(index / TokensPerChunk)
             ->MatchingDelimiters[index % TokensPerChunk] = matching;
     }
+
     [[nodiscard]] TokenIndex
     FindPreprocessingDirective(TokenIndex begin, TokenIndex end) const;
     [[nodiscard]] TokenIndex
     FindComment(TokenIndex begin, TokenIndex end) const;
+
 private:
     SegmentedStorage<Chunk, TokensPerChunk> Storage_;
 };
+
 } // namespace detail
+
 class ParseContext;
+
 // A formatter edit confined to a whitespace gap between unchanged tokens.
 struct WhitespaceEdit
 {
@@ -575,6 +645,7 @@ struct WhitespaceEdit
     util::SourceOffset End;
     std::string_view Text;
 };
+
 // SyntaxTree owns its monotonic memory resource and segmented token pool.
 // Token spelling is a view into the input passed to Parse(), so that input must
 // outlive this object.
@@ -587,81 +658,103 @@ public:
 
     SyntaxTree(const SyntaxTree&) = delete;
     SyntaxTree& operator=(const SyntaxTree&) = delete;
+
     [[nodiscard]] const Node& Root() const;
+
     // Borrow syntax for whitespace-only edits when tokens remain identical.
     // This view is for formatting: trivia attachments are unavailable.
     // The original tree and padded new source must outlive the result.
     [[nodiscard]] std::optional<SyntaxTree>
     RebindWhitespace(util::PaddedSourceView source) const;
+
     // Find whitespace-only gaps in an edited source without lexing it.
     // Return no tree if any token spelling or non-whitespace gap changes.
     [[nodiscard]] std::optional<SyntaxTree>
     RebindWhitespaceGaps(util::PaddedSourceView source) const;
+
     // A lexical check also accepts gap edits the local edit verifier cannot
     // express. Identical token kinds and spellings retain the same syntax.
     [[nodiscard]] std::optional<SyntaxTree>
     RebindMatchingTokens(util::PaddedSourceView source) const;
+
     // Track an adjacent brace/comment move while retaining all other syntax.
     [[nodiscard]] std::optional<SyntaxTree>
     RebindReorderedComments(util::PaddedSourceView source) const;
+
     // Reorder verified runs of directive tokens without changing their nodes.
     [[nodiscard]] std::optional<SyntaxTree>
     RebindSortedIncludes(util::PaddedSourceView source) const;
+
     // Reuse syntax for verified gap-only edits without lexing every token.
     // The original tree and padded edited source must outlive the result.
     [[nodiscard]] std::optional<SyntaxTree> RebindWhitespaceEdits(
         util::PaddedSourceView source,
         std::span<const WhitespaceEdit> edits) const;
+
     // Delete known null-statement tokens and their syntax nodes without
     // parsing the updated source. Reject any other token change.
     [[nodiscard]] std::optional<SyntaxTree> RebindRemovedNullStatements(
         util::PaddedSourceView source,
         std::span<const TokenIndex> removed) const;
+
     [[nodiscard]] std::optional<SyntaxTree> RebindControlBraces(
         util::PaddedSourceView source,
         std::span<const InsertedControlBlock> blocks) const;
+
     // Snapshot syntax before a header changes; the new source owns its text.
     [[nodiscard]] SyntaxTree CloneSyntax(util::PaddedSourceView source) const;
+
     // Lex a verification result without constructing a second syntax tree.
     [[nodiscard]] static SyntaxTree TokenizeOnly(util::PaddedSourceView source);
+
     [[nodiscard]] bool BorrowsSyntax() const
     {
         return Original_ != nullptr;
     }
+
     [[nodiscard]] std::string_view Source() const
     {
         return Input_;
     }
+
     [[nodiscard]] TokenIndex TokenCount() const
     {
         return Tokens_.Size();
     }
+
     [[nodiscard]] tokenizer::Token Token(TokenIndex index) const;
+
     [[nodiscard]] tokenizer::TokenKind Kind(TokenIndex index) const
     {
         return Tokens_.Kind(index);
     }
+
     [[nodiscard]] util::Position TokenPosition(TokenIndex index) const
     {
         const auto& token = Tokens_[index];
         return {.Line = token.Line, .Column = token.Column};
     }
+
     [[nodiscard]] std::string_view TokenText(TokenIndex index) const
     {
         return Tokens_[index].Text.View(Input_);
     }
+
     [[nodiscard]] PunctuationRole Role(TokenIndex index) const
     {
         return Tokens_.Role(index);
     }
+
     [[nodiscard]] TokenIndex MatchingDelimiter(TokenIndex index) const
     {
         return Tokens_.MatchingDelimiter(index);
     }
+
     [[nodiscard]] const TriviaAttachments*
     AssociatedTrivia(const Node& node) const;
     [[nodiscard]] std::string_view SourceText(TokenRange range) const;
     [[nodiscard]] std::string_view SourceText(SourceRange range) const;
+
     [[nodiscard]] std::string_view WhitespaceBefore(TokenIndex token) const
     {
         assert(token < TokenCount());
@@ -672,6 +765,7 @@ public:
         auto* end = Input_.data() + Tokens_[token].Text.Begin;
         return {begin, static_cast<size_t>(end - begin)};
     }
+
     [[nodiscard]] std::string_view WhitespaceAfter(TokenIndex token) const
     {
         assert(token < TokenCount());
@@ -682,14 +776,18 @@ public:
                 : Input_.data() + Tokens_[token + 1].Text.Begin;
         return {begin, static_cast<size_t>(end - begin)};
     }
+
 private:
     explicit SyntaxTree(std::string_view input);
+
     std::unique_ptr<std::pmr::monotonic_buffer_resource> Memory_;
     std::string_view Input_;
     detail::TokenPool Tokens_;
     detail::TriviaPool Trivia_;
     Node* Root_ = nullptr;
     const SyntaxTree* Original_ = nullptr;
+
     friend class ParseContext;
 };
+
 } // namespace parser

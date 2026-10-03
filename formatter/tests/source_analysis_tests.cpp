@@ -12,19 +12,23 @@
 #include <string>
 #include <vector>
 namespace {
+
 struct Input
 {
     std::string Storage;
     size_t Size;
+
     explicit Input(std::string_view text): Storage(text), Size(text.size())
     {
         Storage.append(util::SourcePaddingSize, '\0');
     }
+
     util::PaddedSourceView View() const
     {
         return {Storage.data(), Size};
     }
 };
+
 parser::SyntaxTree Parse(const Input& input)
 {
     return parser::Parse(input.View(), [] (parser::ParseError) { });
@@ -728,6 +732,7 @@ TEST(SourceAnalysis, SourceSizeIsCheckedBeforeOffsetNarrowing)
     }
 }
 using PermissionKind = formatter::PartialGapPermissionKind;
+
 const formatter::PartialGapPermission* Permission(
     const formatter::SourceAnalysis& analysis,
     formatter::GapId gap,
@@ -1175,10 +1180,12 @@ private:
         ++Calls;
         return std::pmr::new_delete_resource()->allocate(bytes, alignment);
     }
+
     void do_deallocate(void* pointer, size_t bytes, size_t alignment) override
     {
         std::pmr::new_delete_resource()->deallocate(pointer, bytes, alignment);
     }
+
     bool do_is_equal(
         const std::pmr::memory_resource& other) const noexcept override
     {

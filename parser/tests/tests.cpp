@@ -14,11 +14,14 @@
 #include <vector>
 
 namespace {
+
 using parser::Node;
+
 void AppendIndent(std::string& output, size_t depth)
 {
     output.append(depth * 2, ' ');
 }
+
 void AppendQuoted(std::string& output, std::string_view text)
 {
     output.push_back('"');
@@ -49,6 +52,7 @@ void AppendQuoted(std::string& output, std::string_view text)
     }
     output.push_back('"');
 }
+
 void AppendTokens(
     std::string& output,
     const parser::SyntaxTree& tree,
@@ -68,6 +72,7 @@ void AppendTokens(
     }
     output.push_back('\n');
 }
+
 void AppendTriviaList(
     std::string& output,
     const parser::SyntaxTree& tree,
@@ -94,6 +99,7 @@ void AppendTriviaList(
     AppendIndent(output, depth);
     output += ")\n";
 }
+
 void AppendSExpression(
     std::string& output,
     const parser::SyntaxTree& tree,
@@ -103,6 +109,7 @@ void AppendSExpression(
     AppendIndent(output, depth);
     output.push_back('(');
     output += parser::GetNodeKindName(node.Kind);
+
     auto* trivia = tree.AssociatedTrivia(node);
     if (!node.FirstChild && !trivia) {
         for (auto index = node.Tokens.Begin; index < node.Tokens.End; ++index) {
@@ -112,6 +119,7 @@ void AppendSExpression(
         output += ")\n";
         return;
     }
+
     output.push_back('\n');
     if (trivia) {
         AppendTriviaList(
@@ -154,6 +162,7 @@ std::string Serialize(const parser::SyntaxTree& tree)
     AppendSExpression(output, tree, tree.Root(), 0);
     return output;
 }
+
 std::string_view RoleName(parser::PunctuationRole role)
 {
     using enum parser::PunctuationRole;
@@ -233,6 +242,7 @@ std::string SerializePunctuationRoles(const parser::SyntaxTree& tree)
     }
     return output;
 }
+
 class PaddedInput
 {
 public:
@@ -241,23 +251,28 @@ public:
     {
         Storage_.append(util::SourcePaddingSize, '\0');
     }
+
     [[nodiscard]] util::PaddedSourceView View() const
     {
         return {.Data = Storage_.data(), .Size = Size_};
     }
+
 private:
     size_t Size_;
     std::string Storage_;
 };
+
 struct GoldenCase
 {
     std::string Name;
     bool HasErrors = false;
 };
+
 std::ostream& operator<<(std::ostream& output, const GoldenCase& testCase)
 {
     return output << testCase.Name;
 }
+
 class FileTest
     : public testing::TestWithParam<GoldenCase>
 { };

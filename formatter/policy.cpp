@@ -8,7 +8,9 @@
 #include <string_view>
 
 namespace formatter {
+
 namespace {
+
 LayoutMode ResolveLayout(CategoryLayout category, LayoutMode parent)
 {
     switch (category) {
@@ -21,10 +23,12 @@ LayoutMode ResolveLayout(CategoryLayout category, LayoutMode parent)
     }
     throw std::invalid_argument("invalid category layout");
 }
+
 std::size_t ResolveOffset(std::size_t offset, std::size_t indentWidth)
 {
     return offset == 0 ? indentWidth : offset;
 }
+
 void CheckOffset(std::size_t offset, std::string_view key)
 {
     if (offset > 32) {
@@ -32,6 +36,7 @@ void CheckOffset(std::size_t offset, std::string_view key)
             std::string(key) + ": indentation offset must not exceed 32");
     }
 }
+
 void CheckBlankSetting(
     BlankLineSetting setting,
     std::string_view key,
@@ -54,12 +59,21 @@ void CheckBlankSetting(
             std::string(key) + " has invalid blank-line mode");
     }
 }
+
 BlankLineSetting ResolveMemberBlankLines(const Style& style)
 {
     return style.MemberDefinitionBlankLines.Mode == BlankLineMode::Inherit
         ? style.DefinitionBlankLines
         : style.MemberDefinitionBlankLines;
 }
+
+BlankLineSetting ResolveMemberDeclarationBlankLines(const Style& style)
+{
+    return style.MemberDeclarationBlankLines.Mode == BlankLineMode::Inherit
+        ? style.DeclarationBlankLines
+        : style.MemberDeclarationBlankLines;
+}
+
 void CheckBlankCap(
     BlankLineSetting setting,
     std::optional<std::size_t> cap,
@@ -73,6 +87,7 @@ void CheckBlankCap(
             std::string(key) + " exceeds MaxEmptyLines");
     }
 }
+
 VerticalGapPolicy CompileBlankLines(BlankLineSetting setting)
 {
     return setting.Mode == BlankLineMode::Exact
@@ -80,6 +95,7 @@ VerticalGapPolicy CompileBlankLines(BlankLineSetting setting)
             static_cast<std::uint16_t>(setting.EmptyLines)}
         : VerticalGapPolicy{};
 }
+
 } // namespace
 
 void ValidatePolicyStyle(const Style& style)
@@ -126,6 +142,11 @@ void ValidatePolicyStyle(const Style& style)
     CheckBlankSetting(
         style.AccessSectionBlankLinesAfterLabel,
         "AccessSectionBlankLinesAfterLabel");
+    CheckBlankSetting(style.DeclarationBlankLines, "DeclarationBlankLines");
+    CheckBlankSetting(
+        style.MemberDeclarationBlankLines,
+        "MemberDeclarationBlankLines",
+        true);
     CheckBlankSetting(style.DefinitionBlankLines, "DefinitionBlankLines");
     CheckBlankSetting(
         style.MemberDefinitionBlankLines,
@@ -156,6 +177,16 @@ void ValidatePolicyStyle(const Style& style)
         style.AccessSectionBlankLinesAfterLabel,
         style.MaxEmptyLines,
         "AccessSectionBlankLinesAfterLabel");
+    CheckBlankCap(
+        style.DeclarationBlankLines,
+        style.MaxEmptyLines,
+        "DeclarationBlankLines");
+    CheckBlankCap(
+        ResolveMemberDeclarationBlankLines(style),
+        style.MaxEmptyLines,
+        style.MemberDeclarationBlankLines.Mode == BlankLineMode::Inherit
+            ? "MemberDeclarationBlankLines (inherited from DeclarationBlankLines)"
+            : "MemberDeclarationBlankLines");
     CheckBlankCap(
         ResolveMemberBlankLines(style),
         style.MaxEmptyLines,
@@ -332,6 +363,8 @@ CompiledPolicies CompilePolicies(const Style& style)
             CompileBlankLines(style.NamespaceBlankLinesBeforeClose),
             CompileBlankLines(style.AccessSectionBlankLinesBefore),
             CompileBlankLines(style.AccessSectionBlankLinesAfterLabel),
+            CompileBlankLines(style.DeclarationBlankLines),
+            CompileBlankLines(ResolveMemberDeclarationBlankLines(style)),
             CompileBlankLines(style.DefinitionBlankLines),
             CompileBlankLines(ResolveMemberBlankLines(style)),
             {style.MaxEmptyLines.has_value(), static_cast<std::uint16_t>(
@@ -342,4 +375,5 @@ CompiledPolicies CompilePolicies(const Style& style)
         .Includes = {style.IncludeMatchingHeader, style.IncludeGrouping},
     };
 }
+
 } // namespace formatter

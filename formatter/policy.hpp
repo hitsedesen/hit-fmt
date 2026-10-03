@@ -9,12 +9,19 @@
 #include <type_traits>
 
 namespace formatter {
+
 struct Style;
+
 // Lowering supplies the owning property's layout context, independently of
 // token provenance. A canonical combinator rebuilds its own gaps, including
 // existing adjacencies; unrelated nested edits do not rebuild preserved owners.
 // Inserted gaps are always Rebuilt. Never infer context from before/after text.
-enum class GapContext : std::uint8_t { Preserved, Rebuilt };
+enum class GapContext : std::uint8_t
+{
+    Preserved,
+    Rebuilt
+};
+
 // nullopt means preserve/fallback, not unconditional source spelling: lowering
 // uses syntax-safe flat fallback BEFORE fitting canonical
 // topology-changing gaps,
@@ -41,6 +48,7 @@ enum class GapContext : std::uint8_t { Preserved, Rebuilt };
     }
     return std::nullopt;
 }
+
 struct IndentationPolicy
 {
     ContinuationAlignment Alignment;
@@ -52,6 +60,7 @@ struct IndentationPolicy
     std::size_t ContinuationOffset;
     std::size_t FallbackOffset;
 };
+
 struct ListPolicy
 {
     LayoutMode Layout;
@@ -65,6 +74,7 @@ struct ListPolicy
     // fabricate brokenness.
     BreakRequirement Break = BreakRequirement::IfNeeded;
 };
+
 struct ExpressionPolicy
 {
     LayoutMode Layout;
@@ -80,6 +90,7 @@ struct ExpressionPolicy
     ListPacking Packing = ListPacking::Fill;
     ExpressionAlignment Alignment = ExpressionAlignment::Block;
 };
+
 struct ChainPolicy
 {
     LayoutMode Layout;
@@ -87,6 +98,7 @@ struct ChainPolicy
     IndentationPolicy Indent;
     BreakRequirement Break = BreakRequirement::IfNeeded;
 };
+
 struct BodyPolicy
 {
     LayoutMode Layout;
@@ -95,6 +107,7 @@ struct BodyPolicy
     // Separate from nonempty Shape; excludes enums/lists/requirement bodies.
     BodyShape EmptyShape = BodyShape::Expanded;
 };
+
 // Offsets are 1..32 after validation/resolution and fit in one byte. The mode
 // decides whether to apply the offset, align to the block, or retain source.
 struct BodyIndentControl
@@ -102,16 +115,19 @@ struct BodyIndentControl
     BodyIndentation Mode;
     std::uint8_t Offset;
 };
+
 struct StandaloneBraceIndentControl
 {
     StandaloneBlockBraceIndentation Mode;
     std::uint8_t Offset;
 };
+
 struct AttributeIndentControl
 {
     StatementAttributeIndent Mode;
     std::uint8_t Offset;
 };
+
 struct IndentationControls
 {
     BodyIndentControl AccessModifiers;
@@ -121,6 +137,7 @@ struct IndentationControls
     AttributeIndentControl StatementAttributes;
     BodyIndentControl Namespaces;
 };
+
 struct BracePolicy
 {
     BracePlacement Class;
@@ -134,17 +151,20 @@ struct BracePolicy
     BracePlacement Enum = BracePlacement::Attached;
     BracePlacement Constructor = BracePlacement::Attached;
 };
+
 struct HeaderListPolicy
 {
     ListPolicy Items;
     OperatorSide Colon;
     OperatorSide Comma;
 };
+
 struct IncludePolicy
 {
     IncludeMatchingHeader MatchingHeader;
     IncludeGrouping Grouping;
 };
+
 // An engaged outer option with no Count means explicit Preserve, not omission.
 struct TrailingCommentSpaceSetting
 {
@@ -160,6 +180,7 @@ struct GapPolicies
     FORMATTER_GAP_OPTIONS(FORMATTER_GAP_FIELD)
 #undef FORMATTER_GAP_FIELD
 };
+
 // An immutable, allocation-free snapshot, independent of parser/engine types.
 // Inherit and zero-offset sentinels cannot reach syntax lowering.
 struct CompiledPolicies
@@ -203,8 +224,11 @@ struct CompiledPolicies
 };
 
 static_assert(std::is_trivially_copyable_v<CompiledPolicies>);
+
 // Throws invalid_argument for out-of-range widths/offsets, including those in
 // programmatic Styles. Compile once per style; reuse the snapshot across files.
 [[nodiscard]] CompiledPolicies CompilePolicies(const Style& style);
+
 void ValidatePolicyStyle(const Style& style);
+
 } // namespace formatter

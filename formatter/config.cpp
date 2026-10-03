@@ -14,7 +14,9 @@
 #include <vector>
 
 namespace formatter {
+
 namespace {
+
 std::string_view Trim(std::string_view text)
 {
     while (
@@ -48,6 +50,7 @@ std::string_view StripComment(std::string_view line)
     }
     return line;
 }
+
 [[noreturn]] void ThrowConfigError(
     const std::filesystem::path& path,
     size_t line,
@@ -57,6 +60,7 @@ std::string_view StripComment(std::string_view line)
         path.string() + ":" + std::to_string(line) + ": " +
             std::string(message));
 }
+
 // A closing bracket inside a quoted item does not terminate an array.
 // Quoted items themselves cannot span physical lines.
 bool HasArrayEnd(
@@ -203,6 +207,7 @@ std::vector<std::string> ParseStringList(
         value.remove_prefix(1);
     }
 }
+
 bool ParseBoolean(
     std::string_view value,
     const std::filesystem::path& path,
@@ -254,6 +259,7 @@ std::vector<std::string> ParseNamespaceExemptions(
     }
     return names;
 }
+
 std::vector<std::string> ParseCallNames(
     std::string_view value,
     const std::filesystem::path& path,
@@ -276,6 +282,7 @@ std::vector<std::string> ParseCallNames(
     }
     return names;
 }
+
 std::optional<std::vector<std::string>> ParseNamePrefixes(
     std::string_view value,
     const std::filesystem::path& path,
@@ -319,6 +326,7 @@ void ParseField(
         static_assert(std::is_same_v<T, void>, "unsupported config field type");
     }
 }
+
 template <typename T>
 void ParseField(
     std::optional<T>& field,
@@ -334,6 +342,7 @@ void ParseField(
     ParseField(parsed, value, path, line);
     field = parsed;
 }
+
 void ParseField(
     std::optional<std::vector<std::string>>& field,
     std::string_view value,
@@ -342,6 +351,7 @@ void ParseField(
 {
     field = ParseNamePrefixes(value, path, line);
 }
+
 void ParseField(
     std::vector<std::string>& field,
     std::string_view value,
@@ -350,6 +360,7 @@ void ParseField(
 {
     field = ParseNamespaceExemptions(value, path, line);
 }
+
 void ParseField(
     std::vector<std::regex>& field,
     std::string_view value,
@@ -405,13 +416,16 @@ void AssignStyle(
         if (value == "Preserve") {
             config.FormattingStyle.*Member = {};
         } else if (value == "Inherit") {
-            if constexpr (Member == &Style::MemberDefinitionBlankLines) {
+            if constexpr (
+                Member == &Style::MemberDefinitionBlankLines ||
+                    Member == &Style::MemberDeclarationBlankLines)
+            {
                 config.FormattingStyle.*Member = BlankLineSetting::Inherited();
             } else {
                 ThrowConfigError(
                     path,
                     line,
-                    "Inherit is only valid for MemberDefinitionBlankLines");
+                    "Inherit is only valid for member blank-line settings");
             }
         } else {
             config.FormattingStyle.*Member = {BlankLineMode::Exact,
@@ -442,6 +456,7 @@ void AssignConfig(
 {
     ParseField(config.*Member, value, path, line);
 }
+
 template <auto Member>
 void AssignNamingCase(
     Configuration& config,
@@ -451,6 +466,7 @@ void AssignNamingCase(
 {
     ParseField((config.Naming.*Member).Case, value, path, line);
 }
+
 template <auto Member>
 void AssignNamingPrefixes(
     Configuration& config,
@@ -460,8 +476,10 @@ void AssignNamingPrefixes(
 {
     ParseField((config.Naming.*Member).Prefixes, value, path, line);
 }
+
 using OptionHandler = void (*)(Configuration&, std::string_view,
     const std::filesystem::path&, size_t);
+
 struct OptionBinding
 {
     std::string_view Name;
@@ -544,8 +562,11 @@ void ApplySetting(
         line,
         "unknown setting '" + std::string(key) + "'; see --help-config.");
 }
+
 } // namespace
+
 namespace {
+
 bool AnnotationIdentifier(std::string_view name)
 {
     constexpr std::string_view first =
@@ -556,6 +577,7 @@ bool AnnotationIdentifier(std::string_view name)
         first.find(name.front()) != std::string_view::npos &&
         name.find_first_not_of(rest) == std::string_view::npos;
 }
+
 bool AnnotationQualifiedName(std::string_view name)
 {
     while (true) {
@@ -569,6 +591,7 @@ bool AnnotationQualifiedName(std::string_view name)
         name.remove_prefix(separator + 2);
     }
 }
+
 void RejectDuplicateAnnotations(
     std::vector<std::string_view>& names,
     std::string_view key)
@@ -580,6 +603,7 @@ void RejectDuplicateAnnotations(
                 " annotation name or scope endpoint");
     }
 }
+
 void ValidateAnnotationNames(
     std::span<const std::string> input,
     std::vector<std::string_view>& scratch,
@@ -600,6 +624,7 @@ void ValidateAnnotationNames(
     }
     RejectDuplicateAnnotations(scratch, key);
 }
+
 std::pair<std::string_view, std::string_view> AnnotationScopePair(
     std::string_view pair)
 {
@@ -619,6 +644,7 @@ std::pair<std::string_view, std::string_view> AnnotationScopePair(
     }
     return {begin, end};
 }
+
 } // namespace
 
 void ValidateLibraryAnnotationStyle(const Style& style)
@@ -691,10 +717,12 @@ LibraryAnnotations CompileLibraryAnnotations(const Style& style)
         });
     return result;
 }
+
 std::span<const MessagePinAnnotation>LibraryAnnotations::MessagePins() const
 {
     return MessagePins_;
 }
+
 const MessagePinAnnotation* LibraryAnnotations::FindMessagePin(
     std::string_view name) const noexcept
 {
@@ -708,25 +736,30 @@ const MessagePinAnnotation* LibraryAnnotations::FindMessagePin(
         ? &*found
         : nullptr;
 }
+
 ChainParticipation LibraryAnnotations::Chains() const noexcept
 {
     return ChainRoots_.empty()
         ? ChainParticipation::AllSafe
         : ChainParticipation::AnnotatedRoots;
 }
+
 bool LibraryAnnotations::IsAnnotatedChainRoot(
     std::string_view name) const noexcept
 {
     return std::binary_search(ChainRoots_.begin(), ChainRoots_.end(), name);
 }
+
 std::span<const std::string>LibraryAnnotations::ChainRoots() const
 {
     return ChainRoots_;
 }
+
 std::span<const VisualScopeAnnotation>LibraryAnnotations::VisualScopes() const
 {
     return VisualScopes_;
 }
+
 const VisualScopeAnnotation* LibraryAnnotations::FindScopeBegin(
     std::string_view name) const noexcept
 {
@@ -740,6 +773,7 @@ const VisualScopeAnnotation* LibraryAnnotations::FindScopeBegin(
         ? &*found
         : nullptr;
 }
+
 const VisualScopeAnnotation* LibraryAnnotations::FindScopeEnd(
     std::string_view name) const noexcept
 {
@@ -839,6 +873,7 @@ std::optional<std::filesystem::path> FindStyleFile(
     if (error) {
         return std::nullopt;
     }
+
     while (!startDirectory.empty()) {
         auto candidate = startDirectory / fileName;
         if (std::filesystem::is_regular_file(candidate, error) && !error) {
@@ -853,4 +888,5 @@ std::optional<std::filesystem::path> FindStyleFile(
     }
     return std::nullopt;
 }
+
 } // namespace formatter

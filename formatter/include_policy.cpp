@@ -6,7 +6,9 @@
 #include <stdexcept>
 
 namespace formatter {
+
 namespace {
+
 bool NormalizedRelativePath(std::string_view path) noexcept
 {
     if (path.empty() || path.front() == '/') {
@@ -62,7 +64,9 @@ std::vector<std::size_t> ValidateAndSort(std::span<const std::string> prefixes)
     }
     return order;
 }
+
 } // namespace
+
 void ValidateIncludeGroupPrefixes(std::span<const std::string> prefixes)
 {
     (void)ValidateAndSort(prefixes);
@@ -175,4 +179,5 @@ std::size_t PreparedIncludePrefixes::ClassifyNormalizedRelativePath(
     }
     return match;
 }
+
 } // namespace formatter

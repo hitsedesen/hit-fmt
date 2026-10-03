@@ -4,6 +4,7 @@
 #include <fstream>
 
 namespace util {
+
 std::string ReadEntireFile(
     const std::string& filePath,
     size_t maxSize,
@@ -43,4 +44,5 @@ void WriteEntireFile(const std::string& filePath, std::string_view contents)
             std::format("Failed to write file {}", filePath));
     }
 }
+
 } // namespace util

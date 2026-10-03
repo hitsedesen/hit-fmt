@@ -15,6 +15,7 @@
 #include <utility>
 #include <vector>
 namespace {
+
 using test::golden::ReadFile;
 void ExpectUnchanged(std::string_view source, const formatter::Style& style)
 {
@@ -38,6 +39,7 @@ struct PreserveCase
 {
     std::string Name;
 };
+
 void PrintTo(const PreserveCase& value, std::ostream* output)
 {
     *output << "style/" << value.Name;
@@ -109,6 +111,7 @@ void ExpectFormattedGolden(
     test::golden::ExpectGolden(path, actual);
     EXPECT_EQ(FormatWithStyle(actual, style), actual);
 }
+
 struct FormatCase
 {
     std::filesystem::path Directory;
@@ -117,6 +120,7 @@ struct FormatCase
     std::string Config;
     std::vector<formatter::Hunk> Hunks;
     bool Spillover;
+
     FormatCase(
         std::filesystem::path directory,
         std::string name,
@@ -133,6 +137,7 @@ struct FormatCase
         , Spillover(spillover)
     { }
 };
+
 void PrintTo(const FormatCase& value, std::ostream* output)
 {
     const auto root =
@@ -142,6 +147,7 @@ void PrintTo(const FormatCase& value, std::ostream* output)
         << value.Directory.lexically_normal().lexically_relative(root)
             .generic_string() << '/' << value.Name;
 }
+
 void AddCases(
     std::vector<FormatCase>& cases,
     const std::filesystem::path& directory,
@@ -155,6 +161,24 @@ void AddCases(
 std::vector<FormatCase> FormatCases()
 {
     std::vector<FormatCase> cases;
+    AddCases(
+        cases,
+        std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../vertical-grouping",
+        {"preserve", "declarations", "overrides", "capped"});
+    AddCases(
+        cases,
+        std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../vertical-grouping",
+        {"structural"},
+        "structural.input.cpp");
+    AddCases(
+        cases,
+        std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../group-fit-boundary",
+        {"fit", "overflow", "forced"});
+    AddCases(
+        cases,
+        std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../group-fit-boundary",
+        {"call-fit"},
+        "call.input.cpp");
     const auto llvmProfile =
         (std::filesystem::path(FORMATTER_TESTDATA_DIR) /
                     "../../../../hit-fmt/examples/llvm").lexically_normal()
@@ -446,8 +470,7 @@ std::vector<FormatCase> FormatCases()
     cases
         .push_back(
             {closings, "reflow-preferred", "reflow-preferred.input.cpp"});
-    cases
-        .push_back({closings, "generated-block", "generated-block.input.cpp"});
+    cases.push_back({closings, "generated-block", "generated-block.input.cpp"});
     cases
         .push_back(
             {closings, "layout-preferred", "layout-preferred.input.cpp"});
@@ -564,8 +587,7 @@ std::vector<FormatCase> FormatCases()
         callReflow,
         {"sole-call-line", "sole-new-line"},
         "sole-position.input.cpp");
-    cases
-        .push_back({callReflow, "sole-preferred", "sole-preferred.input.cpp"});
+    cases.push_back({callReflow, "sole-preferred", "sole-preferred.input.cpp"});
     cases
         .push_back(
             {
@@ -650,8 +672,7 @@ std::vector<FormatCase> FormatCases()
             });
     cases.push_back({google, "inline-record", "inline-record.input.cpp"});
     cases.push_back({google, "widths", "widths.input.cpp"});
-    cases
-        .push_back({google, "operator-spacing", "operator-spacing.input.cpp"});
+    cases.push_back({google, "operator-spacing", "operator-spacing.input.cpp"});
     cases.push_back({google, "unbraced-switch", "unbraced-switch.input.cpp"});
     cases
         .push_back(
@@ -867,8 +888,7 @@ std::vector<FormatCase> FormatCases()
             "fix_newline",
         });
     cases
-        .push_back(
-            {data / "namespace_comments", "crlf_fix", "crlf.input.cpp"});
+        .push_back({data / "namespace_comments", "crlf_fix", "crlf.input.cpp"});
     cases
         .push_back(
             {
@@ -884,9 +904,7 @@ std::vector<FormatCase> FormatCases()
         {"canonical", "preserve"});
     AddCases(cases, data / "lambda-argument-tail-recovery", {"canonical"});
     const auto hunks = data / "changed-hunks";
-    cases
-        .push_back(
-            {hunks / "basic", "call", "input.cpp", "style", {{8, 8}}});
+    cases.push_back({hunks / "basic", "call", "input.cpp", "style", {{8, 8}}});
     cases
         .push_back(
             {hunks / "basic", "includes", "input.cpp", "style", {{1, 1}}});
@@ -1011,6 +1029,7 @@ std::string ConfigName(const testing::TestParamInfo<std::string>& info)
 {
     return info.param;
 }
+
 class ParameterNameTest
     : public testing::TestWithParam<std::string>
 { };
@@ -1633,10 +1652,12 @@ struct LayoutDiagnosticCase
     bool StrictLength = false;
     std::string Suffix = ".expected";
 };
+
 void PrintTo(const LayoutDiagnosticCase& value, std::ostream* output)
 {
     *output << value.Directory << '/' << value.Name;
 }
+
 class LayoutDiagnosticTest
     : public testing::TestWithParam<LayoutDiagnosticCase>
 { };

@@ -3,6 +3,7 @@
 namespace Scope {
 
 // first
+
 /* second */
 
 int Step() {

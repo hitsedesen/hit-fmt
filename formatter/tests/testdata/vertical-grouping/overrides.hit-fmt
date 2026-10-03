@@ -1,0 +1,13 @@
+Layout = Canonical
+IndentWidth = 4
+ColumnLimit = 80
+StructBracePlacement = NextLine
+IndentNamespaces = NoIndent
+IndentMembers = Indent
+EmptyBodyShape = CompactIfFits
+NamespaceBodyInteriorSpacing = NoSpace
+DeclarationBlankLines = 1
+MemberDeclarationBlankLines = 0
+DefinitionBlankLines = 2
+NamespaceBlankLinesAfterOpen = 1
+NamespaceBlankLinesBeforeClose = 1

@@ -3,12 +3,14 @@
 #include <tokenizer/token.hpp>
 
 namespace parser {
+
 struct BinaryOperatorInfo
 {
     // Higher values bind more tightly; zero means unsupported by the table.
     int Precedence = 0;
     bool RightAssociative = false;
 };
+
 // Lexical metadata only: callers must establish the token's binary role.
 // Unary/declarator uses, template angles, and split tokens need syntax context.
 // Conditional expressions are handled separately, not by this binary table.
@@ -64,4 +66,5 @@ struct BinaryOperatorInfo
             return {};
     }
 }
+
 } // namespace parser

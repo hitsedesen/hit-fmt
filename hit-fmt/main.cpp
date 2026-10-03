@@ -41,18 +41,28 @@
 #endif
 
 namespace {
+
 constexpr size_t MaxSourceFileSize = 4 * 1024 * 1024;
+
 constexpr size_t DiffLookahead = 16;
+
 constexpr std::string_view ResetColor = "\033[0m";
+
 constexpr std::string_view BoldRed = "\033[1;31m";
+
 constexpr std::string_view BoldGreen = "\033[1;32m";
+
 constexpr std::string_view BoldCyan = "\033[1;36m";
+
 constexpr std::string_view BoldYellow = "\033[1;33m";
+
 constexpr std::string_view Green = "\033[32m";
+
 struct Line
 {
     std::string_view Text;
     bool HasNewline;
+
     bool operator==(const Line&) const = default;
 };
 
@@ -99,6 +109,7 @@ size_t TerminalWidth()
     }
     return 80;
 }
+
 // Tokenizer columns count Unicode code points. Render a display cell per
 // code point, expanding tabs so both the excerpt and caret use cell offsets.
 struct RenderedLine
@@ -142,6 +153,7 @@ RenderedLine RenderLine(
     }
     return rendered;
 }
+
 void PrintCells(
     std::ostream& output,
     const std::vector<std::string_view>& cells,
@@ -152,6 +164,7 @@ void PrintCells(
         output << cells[i];
     }
 }
+
 struct Excerpt
 {
     size_t CaretOffset;
@@ -282,7 +295,13 @@ bool UseTerminalColors(FILE* stream = stdout)
     return isatty(fileno(stream)) != 0;
 #endif
 }
-enum class ViolationKind { Other, Reflow };
+
+enum class ViolationKind
+{
+    Other,
+    Reflow
+};
+
 struct Violation
 {
     size_t Line;
@@ -290,6 +309,7 @@ struct Violation
     std::string Message;
     ViolationKind Kind = ViolationKind::Other;
 };
+
 struct Chunk
 {
     // Source line interval [Begin, End), one-based. Empty input uses [1, 2).
@@ -303,6 +323,7 @@ struct Chunk
     size_t FormattedEnd = 0;
     bool HasFix = false;
 };
+
 // The first differing code point is normally the token at which formatting
 // diverges. For removed whitespace, point to the following token instead.
 size_t ColumnAt(std::string_view text, size_t byte)
@@ -390,6 +411,7 @@ std::string TokenAt(std::string_view text, size_t offset)
     }
     return std::string(text.substr(offset, end - offset));
 }
+
 std::string SpacingMessage(
     std::string_view actual,
     std::string_view expected,
@@ -566,6 +588,7 @@ bool SameNonWhitespace(std::string_view a, std::string_view b)
         }
     }
 }
+
 // Align the source and formatted token streams across changed line breaks.
 // Only whitespace can be compared this way: for content edits, the line diff
 // below describes the changed text instead.
@@ -687,6 +710,7 @@ bool SameNonWhitespaceLines(
     }
     return SameNonWhitespace(a, b);
 }
+
 bool IsIncludeLine(const Line& line)
 {
     auto begin = line.Text.find_first_not_of(" \t");
@@ -939,6 +963,7 @@ std::vector<Chunk> FormattingChunks(
     }
     return chunks;
 }
+
 // Display the one pipeline's formatting difference, without a second model.
 void PrintFormattingDiagnostics(
     std::ostream& output,
@@ -1069,6 +1094,7 @@ void PrintFormattingDiagnostics(
         }
     }
 }
+
 bool IsCppSource(const std::filesystem::path& path)
 {
     auto extension = path.extension().string();
@@ -1077,6 +1103,7 @@ bool IsCppSource(const std::filesystem::path& path)
         extension == ".hpp" || extension == ".hxx" || extension == ".inl" ||
         extension == ".ipp" || extension == ".tcc";
 }
+
 bool IsExcluded(
     const std::filesystem::path& relativePath,
     const std::vector<std::regex>& exclusions)
@@ -1145,6 +1172,7 @@ bool ForEachFile(
     }
     return true;
 }
+
 struct Options
 {
     bool Fix = false;
@@ -1291,11 +1319,13 @@ public:
             };
         }
     }
+
     const hit_fmt::PreparedFileConfiguration& Resolve(
         const std::filesystem::path& sourcePath)
     {
         return *FindConfig(sourcePath).Settings;
     }
+
     bool IsExcluded(const std::filesystem::path& path, bool directory)
     {
         // A directory is checked against its parent's configuration before
@@ -1310,6 +1340,7 @@ public:
                 .lexically_relative(config.Directory);
         return ::IsExcluded(relative, config.Settings->Settings.Exclude);
     }
+
 private:
     struct ConfigEntry
     {
@@ -1374,6 +1405,7 @@ private:
         }
         return iterator->second;
     }
+
     bool Disabled_;
     ConfigEntry DefaultConfig_;
     std::optional<ConfigEntry> ExplicitConfig_;
@@ -1381,6 +1413,7 @@ private:
         ConfigPaths_;
     std::unordered_map<std::string, ConfigEntry> Configs_;
 };
+
 void PrintHelp(std::ostream& output, std::string_view executable, bool useColor)
 {
     auto highlight = [&] (std::string_view text, std::string_view color) {
@@ -1452,6 +1485,7 @@ void PrintHelp(std::ostream& output, std::string_view executable, bool useColor)
         output << example << '\n';
     }
 }
+
 } // namespace
 
 int main(int argc, char* argv[])
@@ -1486,6 +1520,7 @@ int main(int argc, char* argv[])
         std::cerr << error.what() << '\n';
         return 1;
     }
+
     bool summaryOnly = options.SummaryOnly;
     bool useColor = UseTerminalColors();
     using hit_fmt::FileResult;

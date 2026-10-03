@@ -4,8 +4,11 @@
 #include <limits>
 
 namespace formatter::layout {
+
 namespace {
+
 constexpr auto Infinity = UINT32_MAX;
+
 std::uint32_t AddWidth(std::uint32_t a, std::uint32_t b)
 {
     return b > Infinity - a ? Infinity : a + b;
@@ -17,6 +20,7 @@ std::uint32_t Offset(std::uint32_t base, std::int32_t offset)
     return static_cast<std::uint32_t>(
         std::clamp<std::int64_t>(value, 0, Infinity - 1));
 }
+
 struct Measure
 {
     std::uint32_t Width = 0;
@@ -24,6 +28,7 @@ struct Measure
     bool Line = false;
     bool CanBreak = false;
 };
+
 Measure Join(Measure a, Measure b)
 {
     return {
@@ -33,6 +38,7 @@ Measure Join(Measure a, Measure b)
         a.CanBreak || b.CanBreak,
     };
 }
+
 Measure MeasureText(std::string_view text, std::uint8_t tabWidth)
 {
     Measure result;
@@ -50,6 +56,7 @@ Measure MeasureText(std::string_view text, std::uint8_t tabWidth)
     }
     return result;
 }
+
 Measure MeasureFlatGap(
     GapSpec gap,
     std::string_view source,
@@ -71,10 +78,12 @@ Measure MeasureFlatGap(
     }
     return {gap.Spaces, gap.Spaces, false, gap.Kind == GapKind::Soft};
 }
+
 bool Multiline(std::string_view text)
 {
     return text.find_first_of("\r\n") != std::string_view::npos;
 }
+
 // LF offsets identify complete authorized atoms. Contracting CRLF must not
 // pair its original bare-CR predecessor with the surviving LF.
 bool ChangesWhitespaceAtom(
@@ -85,18 +94,22 @@ bool ChangesWhitespaceAtom(
     const bool crlf = lf && source[lf - 1] == '\r';
     return crlf != targetCRLF && (!crlf || lf < 2 || source[lf - 2] != '\r');
 }
+
 bool ValidGapNewline(GapNewline value)
 {
     return value == GapNewline::Inherit || value == GapNewline::LF ||
         value == GapNewline::CRLF;
 }
+
 } // namespace
+
 Result::Result(
     std::pmr::memory_resource* resource)
     : Text(resource)
     , Map(resource)
     , Broken(resource)
 { }
+
 Document::Document(
     std::string_view source,
     std::pmr::memory_resource* resource)
@@ -109,7 +122,9 @@ Document::Document(
         Fail(Error::TooLarge);
     }
 }
+
 Document::~Document() = default;
+
 void Document::Reserve(std::uint32_t nodes, std::uint32_t groups)
 {
     if (Sealed_) {
@@ -123,12 +138,14 @@ void Document::Reserve(std::uint32_t nodes, std::uint32_t groups)
         Groups_.reserve(groups);
     }
 }
+
 void Document::Fail(Error error)
 {
     if (State_) {
         State_ ={error, static_cast<std::uint32_t>(Nodes_.size())};
     }
 }
+
 std::uint32_t Document::Add(Node node)
 {
     if (Sealed_) {
@@ -146,6 +163,7 @@ std::uint32_t Document::Add(Node node)
     Nodes_.push_back(node);
     return id;
 }
+
 bool Document::CheckOrigin(Provenance origin)
 {
     if (
@@ -157,6 +175,7 @@ bool Document::CheckOrigin(Provenance origin)
     }
     return static_cast<bool>(State_);
 }
+
 bool Document::CheckGapData(GapSpec spec)
 {
     if (!ValidGapNewline(spec.LineEnding) || spec.NewlineCount == 0) {
@@ -166,6 +185,7 @@ bool Document::CheckGapData(GapSpec spec)
     CheckHorizontalSource(spec.IndentSourceBegin, spec.IndentSourceEnd);
     return static_cast<bool>(State_);
 }
+
 bool Document::CheckHorizontalSource(std::uint32_t begin, std::uint32_t end)
 {
     if (!CheckOrigin({begin, end})) {
@@ -181,6 +201,7 @@ bool Document::CheckHorizontalSource(std::uint32_t begin, std::uint32_t end)
     }
     return static_cast<bool>(State_);
 }
+
 bool Document::CheckReference(GroupId reference)
 {
     if (reference >= Groups_.size()) {
@@ -530,6 +551,7 @@ void Document::ConditionalGap(
     node.Origin = origin;
     Add(node);
 }
+
 Status Document::Seal()
 {
     if (!Open_.empty()) {
@@ -717,6 +739,7 @@ Result Document::Render(
         }
         summary.GuaranteedLine = summary.GuaranteedLine || guaranteedLine;
     }
+
     result.Broken.resize(Groups_.size(), 0);
     if (policy.SourceMap) {
         result.Map.reserve(mappingCount);
@@ -902,8 +925,7 @@ Result Document::Render(
                 Offset(
                     node.Alignment == AnchorKind::BlockRelative ? base : column,
                     node.Indent);
-            anchors[node.Anchor] =
-                {target, base, static_cast<std::uint32_t>(i)};
+            anchors[node.Anchor] ={target, base, static_cast<std::uint32_t>(i)};
             continue;
         }
         if (node.Type == Kind::ExpressionLine) {
@@ -1155,4 +1177,5 @@ Result Document::Render(
     }
     return result;
 }
+
 } // namespace formatter::layout

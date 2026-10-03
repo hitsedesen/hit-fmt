@@ -12,17 +12,23 @@
 #include <string>
 
 namespace {
+
 using namespace formatter;
+
 using F = SpacingField;
+
 using C = SpacingOwner;
+
 struct Input
 {
     std::string Storage;
     size_t Size;
+
     explicit Input(std::string_view text): Storage(text), Size(text.size())
     {
         Storage.append(util::SourcePaddingSize, '\0');
     }
+
     util::PaddedSourceView View() const
     {
         return {Storage.data(), Size};
@@ -36,6 +42,7 @@ struct Analysis
     std::pmr::monotonic_buffer_resource Memory;
     SourceAnalysis Safety;
     SyntaxSpacing Spacing;
+
     explicit Analysis(
         std::string_view text,
         GapPolicies policies = {},
@@ -78,6 +85,7 @@ struct Analysis
         return Tree.TokenCount();
     }
 };
+
 std::filesystem::path FixturePath(std::string_view name)
 {
     return std::filesystem::path("formatter/tests/testdata/syntax-spacing") /
@@ -893,10 +901,12 @@ private:
         Bytes += bytes;
         return std::pmr::new_delete_resource()->allocate(bytes, alignment);
     }
+
     void do_deallocate(void* ptr, size_t bytes, size_t alignment) override
     {
         std::pmr::new_delete_resource()->deallocate(ptr, bytes, alignment);
     }
+
     bool do_is_equal(
         const std::pmr::memory_resource& other) const noexcept override
     {

@@ -15,7 +15,9 @@
 #endif
 
 namespace {
+
 using namespace formatter::layout;
+
 void ExpectText(
     const Document& document,
     std::uint32_t width,
@@ -1850,6 +1852,7 @@ public:
     std::size_t Allocations = 0;
     std::size_t Bytes = 0;
     std::size_t Peak = 0;
+
 private:
     void* do_allocate(std::size_t bytes, std::size_t alignment) override
     {
@@ -1858,6 +1861,7 @@ private:
         Peak = std::max(Peak, Bytes);
         return std::pmr::new_delete_resource()->allocate(bytes, alignment);
     }
+
     void do_deallocate(
         void* pointer,
         std::size_t bytes,
@@ -1866,6 +1870,7 @@ private:
         Bytes -= bytes;
         std::pmr::new_delete_resource()->deallocate(pointer, bytes, alignment);
     }
+
     bool do_is_equal(
         const std::pmr::memory_resource& other) const noexcept override
     {
