@@ -23,8 +23,7 @@ namespace scoped::inner
 {
 } // namespace scoped::inner
 namespace inlineSpace
-{ } // namespace inlineSpace
-int after = 1;
+{ } int after = 1;
 namespace withBlock
 {
 } /* preserve this block */

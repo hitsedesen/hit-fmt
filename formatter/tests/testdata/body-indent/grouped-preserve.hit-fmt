@@ -1,5 +1,6 @@
-# Migrated to group policies; legacy output equivalence is not implied.
 # Shape preferences apply when broken; fitting canonical groups flatten.
+# Visual scopes need generated indentation; global Preserve wins otherwise.
+IndentationKind = Spaces
 BodiesLayout = Canonical
 BodyShape = Expanded
 # Explicit library annotations; no renderer identifier checks.

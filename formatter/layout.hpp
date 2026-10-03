@@ -8,12 +8,10 @@
 #include <vector>
 
 namespace formatter::layout {
-
 using GroupId = std::uint32_t;
 using AnchorId = std::uint32_t;
 inline constexpr std::uint32_t InvalidId = UINT32_MAX;
 inline constexpr std::uint64_t NoIdentity = UINT64_MAX;
-
 // Half-open original byte offsets and immutable caller-assigned token/range ID.
 // InvalidId offsets denote generated text. Borrowed text must outlive
 // rendering.
@@ -23,14 +21,12 @@ struct Provenance
     std::uint32_t End = InvalidId;
     std::uint64_t Identity = NoIdentity;
 };
-
 enum class GroupMode : std::uint8_t { Consistent, Fill };
 enum class GapKind : std::uint8_t { Flat, Soft, Hard };
 enum class AnchorKind : std::uint8_t { BlockRelative, DelimiterColumn };
 enum class Newline : std::uint8_t { LF, CRLF };
 enum class GapNewline : std::uint8_t { Inherit, LF, CRLF };
 enum class IndentationKind : std::uint8_t { Spaces, Tabs };
-
 struct GapSpec
 {
     GapKind Kind = GapKind::Soft;
@@ -50,7 +46,6 @@ struct GapSpec
     std::uint32_t IndentSourceBegin = InvalidId;
     std::uint32_t IndentSourceEnd = InvalidId;
 };
-
 struct AnchorSpec
 {
     AnchorKind Kind = AnchorKind::BlockRelative;
@@ -64,7 +59,6 @@ struct AnchorSpec
     // DelimiterColumn still captures the unchanged physical output column.
     bool StructuralBase = false;
 };
-
 struct GroupSpec
 {
     GroupMode Mode = GroupMode::Consistent;
@@ -77,7 +71,6 @@ struct GroupSpec
     // Independent child layout uses only realized enclosing continuation.
     bool StructuralBase = false;
 };
-
 enum class Error : std::uint8_t {
     None,
     Sealed,
@@ -92,9 +85,7 @@ enum class Error : std::uint8_t {
     InvalidPolicy,
     TooLarge,
     InvalidLinePrefix,
-    IndentationOverflow
-};
-
+    IndentationOverflow };
 struct Status
 {
     Error Code = Error::None;
@@ -104,7 +95,6 @@ struct Status
         return Code == Error::None;
     }
 };
-
 struct Policy
 {
     std::uint32_t Width = 80;
@@ -113,7 +103,6 @@ struct Policy
     bool SourceMap = true;
     IndentationKind Indentation = IndentationKind::Spaces;
 };
-
 struct Mapping
 {
     std::size_t OutputBegin = 0;
@@ -123,7 +112,6 @@ struct Mapping
     bool Exact = false;
     bool Protected = false;
 };
-
 struct Result
 {
     explicit Result(std::pmr::memory_resource* resource);
@@ -133,7 +121,6 @@ struct Result
     // A broken decision denotes output shape, never input whitespace history.
     std::pmr::vector<std::uint8_t> Broken;
 };
-
 // One file-scoped document. All storage uses resource; source/literal views and
 // resource must outlive Document and every Render call. No per-atom string
 // copy.
@@ -146,7 +133,6 @@ public:
     ~Document();
     Document(const Document&) = delete;
     Document& operator=(const Document&) = delete;
-
     // Optional capacity hint avoids geometric-growth retention in arenas.
     void Reserve(std::uint32_t nodes, std::uint32_t groups = 0);
     GroupId BeginGroup(GroupSpec spec = {});
@@ -165,7 +151,10 @@ public:
     // Even unchanged LF requires a safe incoming boundary: a producer that
     // omits its necessary separator receives InvalidSourceRange at Render.
     // Borrowed source and resource survive rendering, like SourceText.
-    void SourceWhitespace(std::uint32_t begin, std::uint32_t end, Newline ending);
+    void SourceWhitespace(
+        std::uint32_t begin,
+        std::uint32_t end,
+        Newline ending);
     void Verbatim(std::string_view borrowed, Provenance origin = {});
     void Gap(
         GapSpec spec = {},
@@ -213,10 +202,10 @@ public:
         AnchorId anchor = InvalidId,
         Provenance origin = {});
     Status Seal();
-    Result Render(Policy policy = {},
+    Result Render(
+        Policy policy = {},
         std::pmr::memory_resource* resource =
             std::pmr::get_default_resource()) const;
-
 private:
     enum class Kind : std::uint8_t {
         Begin,
@@ -229,8 +218,7 @@ private:
         ConditionalGap,
         SourceLineIndent,
         SourceWhitespace,
-        ExpressionLine
-    };
+        ExpressionLine };
     struct Node
     {
         std::string_view FlatText;
@@ -269,7 +257,6 @@ private:
     bool CheckHorizontalSource(std::uint32_t begin, std::uint32_t end);
     bool CheckReference(GroupId reference);
     void Fail(Error error);
-
     std::string_view Source_;
     std::pmr::vector<Node> Nodes_;
     std::pmr::vector<std::uint32_t> Groups_;
@@ -279,5 +266,4 @@ private:
     Status State_;
     bool Sealed_ = false;
 };
-
 } // namespace formatter::layout

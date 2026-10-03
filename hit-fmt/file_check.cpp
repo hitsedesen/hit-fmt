@@ -11,27 +11,25 @@
 
 namespace hit_fmt {
 namespace {
-
 bool Before(util::Position a, util::Position b)
 {
     return a.Line < b.Line || (a.Line == b.Line && a.Column < b.Column);
 }
-
 // Sorted queries permit one byte/code-point sweep of each text, including
 // multiple parameter-name points on a wide line. No per-diagnostic file scan.
 class PositionSweep
 {
 public:
-    explicit PositionSweep(std::string_view text)
-        : Text_(text)
+    explicit PositionSweep(std::string_view text): Text_(text)
     { }
     size_t Offset(util::Position position)
     {
         while (Before(Current_, position) && Cursor_ < Text_.size()) {
             Advance();
         }
-        if (Current_.Line != position.Line ||
-            Current_.Column != position.Column)
+        if (
+            Current_.Line != position.Line ||
+                Current_.Column != position.Column)
         {
             throw std::runtime_error("invalid original diagnostic position");
         }
@@ -50,7 +48,6 @@ public:
         }
         return Current_;
     }
-
 private:
     void Advance()
     {
@@ -60,7 +57,7 @@ private:
             c < 0x80
                 ? 1
                 : unicode::utf8::GetFirstCodePointSize(Text_.substr(Cursor_))
-                      .value_or(1);
+                    .value_or(1);
         if (c == '\n') {
             ++Current_.Line;
             Current_.Column = 1;
@@ -78,9 +75,9 @@ void MapSemanticPositions(const parser::SyntaxTree& tree, CheckedFile& checked)
     std::sort(
         checked.Semantic.begin(),
         checked.Semantic.end(),
-        [] (const auto& a, const auto& b) { return Before(
-            a.Original,
-            b.Original); });
+        [] (
+            const auto& a,
+            const auto& b) { return Before(a.Original, b.Original); });
     std::pmr::monotonic_buffer_resource scratch;
     struct Point
     {
@@ -104,8 +101,9 @@ void MapSemanticPositions(const parser::SyntaxTree& tree, CheckedFile& checked)
             }
         }
         auto token = low;
-        if (token == tree.TokenCount() ||
-            tree.Token(token).Text.Begin != offset)
+        if (
+            token == tree.TokenCount() ||
+                tree.Token(token).Text.Begin != offset)
         {
             if (token == 0) {
                 throw std::runtime_error(
@@ -115,8 +113,10 @@ void MapSemanticPositions(const parser::SyntaxTree& tree, CheckedFile& checked)
         }
         const auto range = tree.Token(token).Text;
         const auto& mapped = checked.Formatting.OriginalTokens.at(token);
-        if (offset < range.Begin || offset > range.End || !mapped.Present ||
-            mapped.Output.End - mapped.Output.Begin != range.End - range.Begin)
+        if (
+            offset < range.Begin || offset > range.End || !mapped.Present ||
+                mapped.Output.End - mapped.Output.Begin !=
+                    range.End - range.Begin)
         {
             throw std::runtime_error(
                 "diagnostic token identity did not survive formatting");
@@ -134,17 +134,15 @@ void MapSemanticPositions(const parser::SyntaxTree& tree, CheckedFile& checked)
     }
 }
 } // namespace
-
 PreparedFileConfiguration::PreparedFileConfiguration(
     formatter::Configuration configuration)
     : Settings(std::move(configuration))
     , Formatting(Settings.FormattingStyle)
 { }
-
 bool CheckedFile::HasFailures(bool fix) const
 {
     return (!fix && FormattingMismatch) || !Semantic.empty() ||
-           !Formatting.Diagnostics.empty();
+        !Formatting.Diagnostics.empty();
 }
 
 CheckedFile CheckFile(
@@ -154,36 +152,37 @@ CheckedFile CheckFile(
 {
     auto tree = parser::Parse(source, [] (parser::ParseError) {});
     CheckedFile checked;
-    checked.Formatting = formatter::Format(
-        tree, configuration.Formatting,
-        {.SourceMap = true, .InputFilePath = inputFilePath});
+    checked.Formatting =
+        formatter::Format(
+            tree,
+            configuration.Formatting,
+            {.SourceMap = true, .InputFilePath = inputFilePath});
     checked.FormattingMismatch = checked.Formatting.Text != tree.Source();
-    for (auto& diagnostic : formatter::CheckNames(
-        tree,
-        configuration.Settings))
+    for (auto& diagnostic : formatter::CheckNames(tree, configuration.Settings))
     {
-        checked.Semantic.push_back(
-            {diagnostic.Position,
-                {},
-                diagnostic.Message + "; " + diagnostic.Expected,
-            });
+        checked.Semantic
+            .push_back(
+                {
+                    diagnostic.Position,
+                    {},
+                    diagnostic.Message + "; " + diagnostic.Expected,
+                });
     }
     for (const auto& diagnostic :
-         formatter::CheckParameterNames(tree, configuration.Settings))
+        formatter::CheckParameterNames(tree, configuration.Settings))
     {
-        auto message = "parameter #" +
-                       std::to_string(diagnostic.ParameterNumber) + " in " +
-                       diagnostic.Function + ": expected a name";
+        auto message =
+            "parameter #" + std::to_string(diagnostic.ParameterNumber) +
+                " in " + diagnostic.Function + ": expected a name";
         if (diagnostic.AllowCommentedName) {
             message += " or /*name*/ comment";
         }
-        checked.Semantic.push_back(
-            {diagnostic.Position, {}, std::move(message)});
+        checked.Semantic
+            .push_back({diagnostic.Position, {}, std::move(message)});
     }
     MapSemanticPositions(tree, checked);
     return checked;
 }
-
 void PrintFileIssues(
     std::ostream& output,
     std::string_view path,
@@ -193,19 +192,17 @@ void PrintFileIssues(
     for (const auto& diagnostic : checked.Semantic) {
         const auto position = fix ? diagnostic.Emitted : diagnostic.Original;
         output << "fail: " << diagnostic.Message << "\n  --> " << path << ':'
-               << position.Line << ':' << position.Column
-               << (fix ? " [written output]" : " [original source]") << '\n';
+            << position.Line << ':' << position.Column
+            << (fix ? " [written output]" : " [original source]") << '\n';
     }
     for (const auto& diagnostic : checked.Formatting.Diagnostics) {
         output << "fail: " << diagnostic.Message << "\n  --> " << path << ':'
-               << diagnostic.Position.Line << ':' << diagnostic.Position.Column
-               << (fix
-                   ? " [written output]"
-                   : " [formatted output; not original source]")
-               << '\n';
+            << diagnostic.Position.Line << ':' << diagnostic.Position.Column
+            << (fix
+                    ? " [written output]"
+                    : " [formatted output; not original source]") << '\n';
     }
 }
-
 void PrintFileSummaryIssues(
     std::ostream& output,
     const CheckedFile& checked,
@@ -229,19 +226,19 @@ void PrintFileSummaryIssues(
         issue("fail: emitted width violation");
     }
 }
-
 void ValidatePreviewOption(std::string_view argument)
 {
-    if (argument == "--changed-hunks" ||
-        argument.starts_with("--changed-hunks=") ||
-        argument == "--changed-ranges" ||
-        argument.starts_with("--changed-ranges=") ||
-        argument == "--no-spillover")
+    if (
+        argument == "--changed-hunks" ||
+            argument.starts_with("--changed-hunks=") ||
+            argument == "--changed-ranges" ||
+            argument.starts_with("--changed-ranges=") ||
+            argument == "--no-spillover")
     {
         throw std::invalid_argument(
             "--changed-hunks/--changed-ranges and --no-spillover are "
-            "unsupported in this whole-file preview; constrained-hunk "
-            "integration is blocked");
+                "unsupported in this whole-file preview; constrained-hunk "
+                "integration is blocked");
     }
 }
 } // namespace hit_fmt

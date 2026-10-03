@@ -1,6 +1,4 @@
-# Migrated to group policies; legacy output equivalence is not implied.
-# Shape preferences apply when broken; fitting canonical groups flatten.
-# Migration: PreprocessorIndentation removed; see --help-config
+# Directive indentation and CRLF line endings remain byte-exact.
 IndentWidth = 4
 IndentationKind = Tabs
 TrailingCommentSpacing = Space

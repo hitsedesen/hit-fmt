@@ -11,14 +11,11 @@
 #include <vector>
 
 namespace formatter {
-
 using GapId = parser::TokenIndex;
 using RegionId = uint32_t;
 inline constexpr RegionId NoRegion = UINT32_MAX;
-
 // Reasons apply to immutable bytes, not to ordinary comment line barriers.
-enum class ProtectionReason : uint16_t
-{
+enum class ProtectionReason : uint16_t {
     None = 0,
     Disabled = 1,
     SensitiveMacro = 2,
@@ -28,24 +25,19 @@ enum class ProtectionReason : uint16_t
     LineSplice = 32,
     Explicit = 64,
     HeaderName = 128,
-    OutsideEditScope = 256,
-};
-
+    OutsideEditScope = 256, };
 constexpr ProtectionReason operator|(ProtectionReason a, ProtectionReason b)
 {
-    return static_cast<ProtectionReason>(
-        static_cast<uint16_t>(a) | static_cast<uint16_t>(b));
+    return static_cast<ProtectionReason>(static_cast<uint16_t>(a) |
+            static_cast<uint16_t>(b));
 }
-
 struct ProtectedSourceRange
 {
     parser::SourceRange Source;
     ProtectionReason Reasons = ProtectionReason::None;
 };
-
 enum class GapSeparation : uint8_t { Optional, Required };
 enum class GapLineBoundary : uint8_t { Any, Required, Forbidden };
-
 struct SourceGap
 {
     parser::SourceRange Source;
@@ -70,15 +62,11 @@ struct SourceGap
     // only: this grants no replacement, protection or partial-gap rights.
     bool HasBareCR : 1 = false;
 };
-
-enum class RegionStatus : uint8_t
-{
+enum class RegionStatus : uint8_t {
     Complete,
     Recovery,
     Ambiguous,
-    RecoveryAndAmbiguous,
-};
-
+    RecoveryAndAmbiguous, };
 struct SourceRegion
 {
     parser::TokenRange Tokens;
@@ -87,25 +75,20 @@ struct SourceRegion
     RegionId Parent = NoRegion;
     RegionStatus Status = RegionStatus::Complete;
 };
-
 // Only these complete horizontal slices may change in a partly selected gap.
 // In genuinely partly selected/protected gaps, every other byte, including
 // LF/CRLF, stays exact. Fully byte-covered but insertion-fenced gaps may use
 // CanSpellGapNewlines independently; these descriptors grant no such rights.
 // These are properties, not edit instructions or editable owned line breaks.
-enum class PartialGapPermissionKind : uint8_t
-{
+enum class PartialGapPermissionKind : uint8_t {
     FinalIndentation,
-    TrimHorizontal,
-};
-
+    TrimHorizontal, };
 struct PartialGapPermission
 {
     GapId Gap;
     parser::SourceRange Source;
     PartialGapPermissionKind Kind;
 };
-
 struct SourceAnalysisOptions
 {
     bool HonorClangFormatDirectives = false;
@@ -131,7 +114,6 @@ struct SourceAnalysisOptions
     std::optional<std::span<const parser::SourceRange>> EditScope = std::
         nullopt;
 };
-
 // Source and fileMemory must outlive this result. No tree/scratch pointers are
 // retained. Analysis queries require a successfully built, non-moved-from
 // result.
@@ -155,7 +137,6 @@ public:
     explicit SourceAnalysis(std::pmr::memory_resource& fileMemory);
     SourceAnalysis(SourceAnalysis&& other) noexcept;
     SourceAnalysis(const SourceAnalysis&) = delete;
-
     [[nodiscard]] std::span<const SourceGap> Gaps() const
     {
         return Gaps_;
@@ -175,8 +156,7 @@ public:
     // before LF/CRLF. No token, terminator, prefix/suffix or topology edits
     // are authorized. A cut
     // horizontal run gets no permission. All other safety constraints win.
-    [[nodiscard]] std::span<const PartialGapPermission>
-    PartialGapPermissions() const
+    [[nodiscard]] std::span<const PartialGapPermission> PartialGapPermissions() const
     {
         return PartialGapPermissions_;
     }
@@ -198,7 +178,6 @@ public:
     // with O(scope + permissions + protection) bounded
     // temporary/file-PMR storage and no per-gap allocation.
     void RestrictEditScope(std::span<const parser::SourceRange> ranges);
-
     [[nodiscard]] bool IntersectsImmutable(parser::SourceRange source) const;
     [[nodiscard]] bool CanReplaceGap(
         GapId gap,
@@ -210,7 +189,6 @@ public:
     // Intrinsic fences and any immutable or unselected byte reject the gap;
     // emission must also retain MustStartWithLineFeed/token-owned CR boundaries.
     [[nodiscard]] bool CanSpellGapNewlines(GapId gap) const;
-
 private:
     std::pmr::vector<SourceGap> Gaps_;
     std::pmr::vector<ProtectedSourceRange> Protection_;
@@ -219,14 +197,12 @@ private:
     std::pmr::vector<PartialGapPermission> PartialGapPermissions_;
     bool HasEditScope_ = false;
     bool Built_ = false;
-
     friend SourceAnalysis BuildSourceAnalysis(
         const parser::SyntaxTree&,
         const SourceAnalysisOptions&,
         std::pmr::memory_resource&,
         std::pmr::memory_resource&);
 };
-
 // Lexical-only conservative maximal-munch predicate for adjacent tokens.
 // Accepts parsed or TokenizeOnly trees. right must be in [1, TokenCount()).
 // False does not authorize a gap edit: line/context/protection constraints also
@@ -234,12 +210,10 @@ private:
 [[nodiscard]] bool TokenGapNeedsSeparation(
     const parser::SyntaxTree& tree,
     parser::TokenIndex right);
-
 // Throws std::length_error for sizes exceeding util::MaxSourceSize. Exposed
 // separately so callers/tests can validate lengths without constructing huge
 // source buffers. BuildSourceAnalysis checks this before scanning/allocating.
 [[nodiscard]] parser::SourceOffset CheckedSourceAnalysisSize(size_t size);
-
 // Requires a parsed tree (TokenizeOnly has no syntax root).
 // Throws std::length_error for oversized sources, before reading source bytes.
 // One source scan, one token classification, one iterative tree traversal;
@@ -255,5 +229,4 @@ private:
     const SourceAnalysisOptions& options,
     std::pmr::memory_resource& fileMemory,
     std::pmr::memory_resource& scratchMemory);
-
 } // namespace formatter

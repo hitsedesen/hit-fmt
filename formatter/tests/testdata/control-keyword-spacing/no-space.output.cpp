@@ -8,7 +8,7 @@ void demo(int n) {
     do {} while(n);
     switch(n) { default: break; }
     try {} catch(...) {}
-    if /* keep */ (n) {}
+    if /* keep */(n) {}
     if
     (n) {}
     if CHECK(n) {}

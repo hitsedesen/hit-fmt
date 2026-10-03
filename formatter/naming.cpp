@@ -8,11 +8,9 @@
 
 namespace formatter {
 namespace {
-
 using NK = parser::NodeKind;
 using TK = tokenizer::TokenKind;
 using Index = parser::TokenIndex;
-
 bool Upper(char c)
 {
     return c >= 'A' && c <= 'Z';
@@ -25,7 +23,6 @@ bool Digit(char c)
 {
     return c >= '0' && c <= '9';
 }
-
 std::string_view CaseLabel(NameCase casing)
 {
     switch (casing) {
@@ -66,7 +63,6 @@ std::string ExpectedName(const NameRule& rule, bool prefixOK, bool caseOK)
     }
     return expected;
 }
-
 bool ValidCase(std::string_view name, NameCase casing)
 {
     if (name.empty()) {
@@ -76,27 +72,32 @@ bool ValidCase(std::string_view name, NameCase casing)
         return true;
     }
     if (casing == NameCase::CamelCase || casing == NameCase::PascalCase) {
-        if (!(casing == NameCase::CamelCase
-            ? Lower(name.front())
-            : Upper(name.front())))
+        if (
+            !(casing == NameCase::CamelCase
+                    ? Lower(name.front())
+                    : Upper(name.front())))
         {
             return false;
         }
-        return std::ranges::all_of(name, [] (char c) {
-            return Lower(c) || Upper(c) || Digit(c);
-        });
+        return std::ranges::all_of(
+            name,
+            [] (char c) {
+                return Lower(c) || Upper(c) || Digit(c);
+            });
     }
-    if (name.front() == '_' || name.back() == '_' ||
-        name.find("__") != std::string_view::npos)
+    if (
+        name.front() == '_' || name.back() == '_' ||
+            name.find("__") != std::string_view::npos)
     {
         return false;
     }
-    return std::ranges::all_of(name, [casing] (char c) {
-        return c == '_' || Digit(c) ||
-            (casing == NameCase::SnakeCase ? Lower(c) : Upper(c));
-    });
+    return std::ranges::all_of(
+        name,
+        [casing] (char c) {
+            return c == '_' || Digit(c) ||
+                (casing == NameCase::SnakeCase ? Lower(c) : Upper(c));
+        });
 }
-
 const parser::Node* Child(const parser::Node& node, NK kind)
 {
     for (auto* child = node.Child(); child; child = child->NextSibling) {
@@ -110,7 +111,9 @@ const parser::Node* Child(const parser::Node& node, NK kind)
 class Checker
 {
 public:
-    Checker(const parser::SyntaxTree& tree, const Configuration& config)
+    Checker(
+        const parser::SyntaxTree& tree,
+        const Configuration& config)
         : Tree(tree)
         , Style(config.Naming)
         , ExemptNamespaces(config.NamingNamespaceExemptions)
@@ -133,12 +136,13 @@ public:
                 continue;
             }
             const auto& node = *frame.Node;
-            if (node.Kind == NK::FunctionDeclaration ||
-                (node.Kind == NK::RecordDeclaration &&
-                    !HasRecordBody(node)) ||
-                (node.Kind == NK::EnumDeclaration &&
-                    !Child(node, NK::EnumeratorList)) ||
-                IsExplicitInstantiation(node))
+            if (
+                node.Kind == NK::FunctionDeclaration ||
+                    (node.Kind == NK::RecordDeclaration &&
+                            !HasRecordBody(node)) ||
+                    (node.Kind == NK::EnumDeclaration &&
+                            !Child(node, NK::EnumeratorList)) ||
+                    IsExplicitInstantiation(node))
             {
                 continue;
             }
@@ -158,18 +162,18 @@ public:
             }
             Visit(node, namespaceNames);
             stack.push_back({&node, parentLength, true});
-            for (auto* child = node.Child();
-                child;
-                child = child->NextSibling)
+            for (auto* child = node.Child(); child; child = child->NextSibling)
             {
                 stack.push_back({child, 0, false});
             }
         }
-        std::ranges::sort(Results, [] (const auto& a, const auto& b) {
-            return a.Position.Line < b.Position.Line ||
-                (a.Position.Line == b.Position.Line &&
-                    a.Position.Column < b.Position.Column);
-        });
+        std::ranges::sort(
+            Results,
+            [] (const auto& a, const auto& b) {
+                return a.Position.Line < b.Position.Line ||
+                    (a.Position.Line == b.Position.Line &&
+                            a.Position.Column < b.Position.Column);
+            });
         return std::move(Results);
     }
 
@@ -200,18 +204,21 @@ public:
             message += " name '";
             message += name;
             message += "' has invalid ";
-            auto issue = !prefixOK && !caseOK
-                ? "prefix and case"
-                : !prefixOK ? "prefix" : "case";
+            auto issue =
+                !prefixOK && !caseOK
+                    ? "prefix and case"
+                    : !prefixOK ? "prefix" : "case";
             message += issue;
-            Results.push_back({Tree.TokenPosition(index),
-                std::move(message),
-                issue,
-                ExpectedName(rule, prefixOK, caseOK),
-            });
+            Results
+                .push_back(
+                    {
+                        Tree.TokenPosition(index),
+                        std::move(message),
+                        issue,
+                        ExpectedName(rule, prefixOK, caseOK),
+                    });
         }
     }
-
 private:
     Index Next(Index index, Index end) const
     {
@@ -220,7 +227,6 @@ private:
         }
         return index;
     }
-
     // A nested declarator may be a function pointer, not a function.
     void CheckDeclarators(const parser::Node& node, bool function)
     {
@@ -259,9 +265,8 @@ private:
             if (!name || name->Tokens.Size() != 1) {
                 continue;
             }
-            bool hasFunction = Child(
-                *declarator,
-                NK::FunctionDeclarator) != nullptr;
+            bool hasFunction =
+                Child(*declarator, NK::FunctionDeclarator) != nullptr;
             if (function && hasFunction) {
                 Check(name->Tokens.Begin, Style.Function, "function");
             }
@@ -270,27 +275,27 @@ private:
             }
         }
     }
-
     bool HasRecordBody(const parser::Node& node) const
     {
         for (auto i = node.Tokens.Begin; i < node.Tokens.End; ++i) {
-            if (Tree.Kind(i) == TK::Operator_OpenBrace &&
-                Tree.Role(i) == parser::PunctuationRole::RecordDelimiter)
+            if (
+                Tree.Kind(i) == TK::Operator_OpenBrace &&
+                    Tree.Role(i) == parser::PunctuationRole::RecordDelimiter)
             {
                 return true;
             }
         }
         return false;
     }
-
     bool IsExplicitInstantiation(const parser::Node& node) const
     {
         auto start = node.Tokens.Begin;
         if (start >= node.Tokens.End) {
             return false;
         }
-        if (node.Kind == NK::TemplateDeclaration &&
-            Tree.Kind(start) == TK::Keyword_template)
+        if (
+            node.Kind == NK::TemplateDeclaration &&
+                Tree.Kind(start) == TK::Keyword_template)
         {
             auto next = Next(start + 1, node.Tokens.End);
             return next < node.Tokens.End &&
@@ -298,8 +303,9 @@ private:
         }
         // Extern explicit instantiations can be recovered as a general
         // declaration rather than a template-declaration.
-        if (node.Kind == NK::Declaration &&
-            Tree.Kind(start) == TK::Keyword_extern)
+        if (
+            node.Kind == NK::Declaration &&
+                Tree.Kind(start) == TK::Keyword_extern)
         {
             auto next = Next(start + 1, node.Tokens.End);
             return next < node.Tokens.End &&
@@ -330,13 +336,14 @@ private:
         // Aliases and incomplete declarations have no namespace body.
         return {};
     }
-
     bool IsExempt() const
     {
         for (const auto& name : ExemptNamespaces) {
-            if (Scope == name || (Scope.starts_with(name) &&
-                Scope.size() > name.size() + 1 &&
-                Scope.compare(name.size(), 2, "::") == 0))
+            if (
+                Scope == name ||
+                    (Scope.starts_with(name) &&
+                            Scope.size() > name.size() + 1 &&
+                            Scope.compare(name.size(), 2, "::") == 0))
             {
                 return true;
             }
@@ -379,12 +386,14 @@ private:
                 // guessing which token is declared.
                 if (name < end && Tree.Kind(name) == TK::Identifier) {
                     auto after = Next(name + 1, end);
-                    if (after < end && (Tree.Kind(
-                        after) == TK::Operator_OpenBrace ||
-                    Tree.Kind(after) == TK::Operator_Semicolon ||
-                    Tree.Kind(after) == TK::Operator_Colon ||
-                    Tree.TokenText(after) == "final"))
-                {
+                    if (
+                        after < end &&
+                            (Tree.Kind(after) == TK::Operator_OpenBrace ||
+                                    Tree.Kind(after) ==
+                                        TK::Operator_Semicolon ||
+                                    Tree.Kind(after) == TK::Operator_Colon ||
+                                    Tree.TokenText(after) == "final"))
+                    {
                         Check(name, *rule, category);
                     }
                 }
@@ -392,18 +401,22 @@ private:
             }
             case NK::EnumDeclaration: {
                 auto name = Next(begin + 1, end);
-                if (name < end && (Tree.Kind(name) == TK::Keyword_class ||
-                Tree.Kind(name) == TK::Keyword_struct))
-            {
+                if (
+                    name < end &&
+                        (Tree.Kind(name) == TK::Keyword_class ||
+                                Tree.Kind(name) == TK::Keyword_struct))
+                {
                     name = Next(name + 1, end);
                 }
                 if (name < end && Tree.Kind(name) == TK::Identifier) {
                     auto after = Next(name + 1, end);
-                    if (after < end && (Tree.Kind(
-                        after) == TK::Operator_OpenBrace ||
-                    Tree.Kind(after) == TK::Operator_Semicolon ||
-                    Tree.Kind(after) == TK::Operator_Colon))
-                {
+                    if (
+                        after < end &&
+                            (Tree.Kind(after) == TK::Operator_OpenBrace ||
+                                    Tree.Kind(after) ==
+                                        TK::Operator_Semicolon ||
+                                    Tree.Kind(after) == TK::Operator_Colon))
+                    {
                         Check(name, Style.Enum, "enum");
                     }
                 }
@@ -429,19 +442,17 @@ private:
             case NK::RangeForDeclaration:
                 CheckDeclarators(node, false);
                 break;
-            default: break;
+            default:
+                break;
         }
     }
-
     const parser::SyntaxTree& Tree;
     const NamingStyle& Style;
     const std::vector<std::string>& ExemptNamespaces;
     std::vector<NameDiagnostic> Results;
     std::string Scope;
 };
-
 } // namespace
-
 std::vector<NameDiagnostic> CheckNames(
     const parser::SyntaxTree& tree,
     const Configuration& config)
@@ -450,14 +461,14 @@ std::vector<NameDiagnostic> CheckNames(
     auto enabled = [] (const NameRule& rule) {
         return rule.Case != NameCase::Unchecked || rule.Prefixes.has_value();
     };
-    if (!enabled(style.Class) && !enabled(style.Enum) &&
-        !enabled(style.Union) && !enabled(style.Struct) &&
-        !enabled(style.Function) && !enabled(style.Concept) &&
-        !enabled(style.Variable) && !enabled(style.Namespace))
+    if (
+        !enabled(style.Class) && !enabled(style.Enum) &&
+            !enabled(style.Union) && !enabled(style.Struct) &&
+            !enabled(style.Function) && !enabled(style.Concept) &&
+            !enabled(style.Variable) && !enabled(style.Namespace))
     {
         return {};
     }
     return Checker(tree, config).Run();
 }
-
 } // namespace formatter

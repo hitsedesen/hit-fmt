@@ -13,9 +13,7 @@ struct Input
 {
     std::string Storage;
     size_t Size;
-    explicit Input(std::string_view text)
-        : Storage(text)
-        , Size(text.size())
+    explicit Input(std::string_view text): Storage(text), Size(text.size())
     {
         Storage.append(util::SourcePaddingSize, '\0');
     }
@@ -31,7 +29,10 @@ struct File
     std::pmr::monotonic_buffer_resource Memory;
     std::pmr::monotonic_buffer_resource Scratch;
     SourceAnalysis Safety;
-    explicit File(std::string_view source, SourceAnalysisOptions options = {})
+    explicit File(
+        std::string_view source,
+        SourceAnalysisOptions options =
+            {})
         : Source(source)
         , Tree(parser::Parse(Source.View(), [] (parser::ParseError) {}))
         , Safety(BuildSourceAnalysis(Tree, options, Memory, Scratch))
@@ -51,29 +52,32 @@ std::string Dump(const StructuralPlan& plan)
     std::string result;
     for (size_t i = 0; i < plan.Operations.size(); ++i) {
         auto op = plan.Operations[i];
-        result += std::format(
-            "action {} kind={} tokens=[{},{})\n",
-            i,
-            static_cast<unsigned>(op.Kind),
-            op.Owner.Begin,
-            op.Owner.End);
+        result +=
+            std::format(
+                "action {} kind={} tokens=[{},{})\n",
+                i,
+                static_cast<unsigned>(op.Kind),
+                op.Owner.Begin,
+                op.Owner.End);
     }
     for (auto edit : plan.Edits) {
-        result += std::format(
-            "edit action={} source=[{},{}) edge={} depth={} pieces=",
-            edit.Operation,
-            edit.Source.Begin,
-            edit.Source.End,
-            static_cast<unsigned>(edit.Boundary),
-            edit.Depth);
+        result +=
+            std::format(
+                "edit action={} source=[{},{}) edge={} depth={} pieces=",
+                edit.Operation,
+                edit.Source.Begin,
+                edit.Source.End,
+                static_cast<unsigned>(edit.Boundary),
+                edit.Depth);
         for (auto i = edit.PieceBegin; i < edit.PieceEnd; ++i) {
             const auto& piece = plan.Pieces[i];
-            result += piece.FromSource
-                          ? std::format(
-                              "source[{},{}) ",
-                              piece.Source.Begin,
-                              piece.Source.End)
-                          : std::format("'{}' ", piece.Literal);
+            result +=
+                piece.FromSource
+                    ? std::format(
+                        "source[{},{}) ",
+                        piece.Source.Begin,
+                        piece.Source.End)
+                    : std::format("'{}' ", piece.Literal);
         }
         if (result.ends_with(' ')) {
             result.pop_back();
@@ -81,12 +85,13 @@ std::string Dump(const StructuralPlan& plan)
         result += "\n";
     }
     for (auto skip : plan.Skipped) {
-        result += std::format(
-            "skip kind={} tokens=[{},{}) reason={}\n",
-            static_cast<unsigned>(skip.Action),
-            skip.Tokens.Begin,
-            skip.Tokens.End,
-            static_cast<unsigned>(skip.Reason));
+        result +=
+            std::format(
+                "skip kind={} tokens=[{},{}) reason={}\n",
+                static_cast<unsigned>(skip.Action),
+                skip.Tokens.Begin,
+                skip.Tokens.End,
+                static_cast<unsigned>(skip.Reason));
     }
     return result;
 }
@@ -95,10 +100,11 @@ void CheckMapping(File& file, const StructuralMaterialization& result)
     for (parser::TokenIndex i = 0; i < file.Tree.TokenCount(); ++i) {
         auto map = result.OriginalTokens[i];
         if (map.Present) {
-            EXPECT_EQ(std::string_view(result.Text)
-                          .substr(
-                              map.Output.Begin,
-                              map.Output.End - map.Output.Begin),
+            EXPECT_EQ(
+                std::string_view(result.Text)
+                    .substr(
+                        map.Output.Begin,
+                        map.Output.End - map.Output.Begin),
                 file.Tree.TokenText(i));
         } else {
             EXPECT_EQ(
@@ -111,10 +117,11 @@ void CheckMapping(File& file, const StructuralMaterialization& result)
         EXPECT_EQ(span.Output.Begin, cursor);
         cursor = span.Output.End;
         if (!span.Generated) {
-            EXPECT_EQ(std::string_view(result.Text)
-                          .substr(
-                              span.Output.Begin,
-                              span.Output.End - span.Output.Begin),
+            EXPECT_EQ(
+                std::string_view(result.Text)
+                    .substr(
+                        span.Output.Begin,
+                        span.Output.End - span.Output.Begin),
                 file.Tree.SourceText(span.Original));
         }
     }
@@ -138,7 +145,7 @@ std::vector<TokenOutputOffset> MapOutput(
     {
         EXPECT_EQ(tokens.TokenText(i), original.TokenText(i));
         auto r = tokens.Token(i).Text;
-        map[i] = {{r.Begin, r.End}, true};
+        map[i] ={{r.Begin, r.End}, true};
     }
     return map;
 }
@@ -790,7 +797,7 @@ TEST(StructuralEdits, NamespaceZeroDisablesExemptionAndNestedIdentities)
     EXPECT_EQ(MaterializeNamespaceComments(output, resolved, file.Memory),
         "namespace a {\nnamespace b::c {} // namespace b::c\n} // namespace "
         "a\n");
-    // Baseline parser classifies inline namespace as a generic declaration:
+    // The parser classifies inline namespace as a generic declaration:
     // a typed keyword only authorizes a diagnostic, never a fabricated
     // identity.
     File recovered("inline namespace a {}\n");
@@ -995,7 +1002,7 @@ TEST(StructuralEdits, NamespaceCannotSwallowFollowingCodeCommentsOrProtection)
             {},
             braces.Memory,
             braces.Scratch);
-        ASSERT_EQ(stale.Edits.size(), 1u); // Unaffected namespace stays safe.
+        ASSERT_EQ(stale.Edits.size(), 1u);
         ASSERT_EQ(stale.Skipped.size(), 1u);
         EXPECT_EQ(stale.Skipped.front().Reason, StructuralSkip::InvalidMapping);
         EXPECT_EQ(

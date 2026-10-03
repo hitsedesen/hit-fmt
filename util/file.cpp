@@ -4,9 +4,10 @@
 #include <fstream>
 
 namespace util {
-
-std::string
-ReadEntireFile(const std::string& filePath, size_t maxSize, size_t padding)
+std::string ReadEntireFile(
+    const std::string& filePath,
+    size_t maxSize,
+    size_t padding)
 {
     std::ifstream ifs{filePath, std::ios::in | std::ios::binary};
     if (!ifs.good()) {
@@ -42,5 +43,4 @@ void WriteEntireFile(const std::string& filePath, std::string_view contents)
             std::format("Failed to write file {}", filePath));
     }
 }
-
 } // namespace util

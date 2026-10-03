@@ -45,8 +45,10 @@ void nested_branches() {
   }
 #else
  if (second)
-    act(); else if (third)
-    recover(); else
+    act();
+  else if (third)
+    recover();
+  else
     stop();
 #endif
 #else
@@ -63,15 +65,18 @@ void nested_branches() {
 void dangling() {
   if (outer)
     if (inner)
-      act(); else
+      act();
+    else
       recover();
 }
 
 void double_dangling() {
   if (outer)
     if (inner)
-      act(); else
-      recover(); else
+      act();
+    else
+      recover();
+  else
     finish();
 }
 
@@ -83,7 +88,8 @@ void braced_inner() {
     } else
     {
       recover();
-    } else
+    }
+  else
   {
     finish();
   }
@@ -93,7 +99,8 @@ void braced_outer() {
   if (outer)
   {
     if (inner)
-      act(); else
+      act();
+    else
       recover();
   } else
     finish();

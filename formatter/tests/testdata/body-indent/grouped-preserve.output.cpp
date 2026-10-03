@@ -19,7 +19,7 @@ void WritePacket()
     Log();
     Trace();
     other.OnBeginList();
-    other.Item(4);
+        other.Item(4);
     encoder.OnEndList();
     EXPECT_CALL(writerMock, OnBeginList());
         EXPECT_CALL(writerMock, RecordStep());
@@ -33,16 +33,16 @@ void WritePacket()
     EXPECT_CALL(writerMock, RecordStep());
     EXPECT_CALL(writerMock, OnEndList());
     EXPECT_CALL(unrelatedMock, OnBeginList());
-    EXPECT_CALL(unrelatedMock, RecordStep());
+        EXPECT_CALL(unrelatedMock, RecordStep());
     EXPECT_CALL(writerMock, OnEndList());
     EXPECT_CALL(writerMock, OnBeginList());
-    EXPECT_CALL(writerMock, RecordStep());
+        EXPECT_CALL(writerMock, RecordStep());
     EXPECT_CALL(writerMock, OnEndMap());
     AUDIT_CALL(writerMock, OnBeginList());
         AUDIT_CALL(writerMock, RecordStep());
     AUDIT_CALL(writerMock, OnEndList());
     AUDIT_CALL(writerMock, OnBeginList());
-    AUDIT_CALL(writerMock, RecordStep());
+        AUDIT_CALL(writerMock, RecordStep());
     EXPECT_CALL(writerMock, OnEndList());
     EXPECT_CALL(writerMock, OnBeginList());
         EXPECT_CALL(writerMock, AcceptToken(31));
@@ -64,17 +64,17 @@ void WritePacket()
         SCOPE_LOG(writerMock, Marker(1), Note());
     SCOPE_LOG(writerMock, Marker(1), OnEndList());
     SCOPE_LOG(OnBeginList(), writerMock, Marker(1));
-    SCOPE_LOG(Note(), writerMock, Marker(1));
+        SCOPE_LOG(Note(), writerMock, Marker(1));
     SCOPE_LOG(OnEndList(), writerMock, Marker(2));
     EXPECT_CALL(writerMock, OnBeginList());
-    EXPECT_CALL(writerMock, OnBeginMap());
-    EXPECT_CALL(writerMock, CaptureTag("missing"));
+        EXPECT_CALL(writerMock, OnBeginMap());
+        EXPECT_CALL(writerMock, CaptureTag("missing"));
     EXPECT_CALL(writerMock, OnEndList());
     TRACE_SCOPE(OnBeginList());
         TRACE_SCOPE(LogStep());
     TRACE_SCOPE(OnEndList());
     TRACE_SCOPE(OnBeginList(), OnBeginMap());
-    TRACE_SCOPE(LogStep());
+        TRACE_SCOPE(LogStep());
     TRACE_SCOPE(OnEndList(), OnEndMap());
 }
 

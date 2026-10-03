@@ -4,13 +4,11 @@
 #include <string_view>
 
 namespace hit_fmt {
-
 struct HelpExample
 {
     std::string_view Title;
     std::string_view Code;
 };
-
 struct HelpSection
 {
     std::string_view Title;
@@ -143,7 +141,7 @@ Exclude = ["(^|/)generated(/|$)"]
 };
 
 constexpr HelpExample StagedExamples[] = {
-    {"Staged contracts with backward-neutral defaults:",
+    {"Defaults for configuration with limited public-pipeline support:",
         R"(StandaloneCommentBlankLinesBefore = Preserve
 StandaloneCommentBlankLinesAfter = Preserve
 BreakAfterTemplateHeader = false
@@ -152,8 +150,8 @@ IncludeMatchingHeader = Off
 IncludeGrouping = Preserve
 IncludeGroupPrefixes = []
 ConstructorBracePlacement = Inherit
-# These defaults are safe; nondefault behavior requires reviewed consumers.
-# Inactive directory prefixes do not enable grouping.
+# Template breaks, Operand, matching/regrouping and constructor overrides
+# are rejected by public preparation. Inactive prefixes do not enable grouping.
 )"},
 };
 
@@ -272,8 +270,8 @@ constexpr HelpSection HelpSections[] = {
         "fallback BEFORE fitting, even if selected "
             "flat. This distinction is structural, "
         "not final brokenness or text-history. "
-        "Before/After keys replace combined "
-            "colon/arrow/operator-overload policies. "
+        "Before/After keys control the two sides "
+            "of colons, arrows and operator-overload boundaries independently. "
         "Lexical safety and comment boundaries "
             "override spacing. Use --generate-config "
         "for the complete option list and defaults, "
@@ -297,19 +295,19 @@ constexpr HelpSection HelpSections[] = {
             "heuristics or a matcher DSL. All calls "
         "use global ColumnLimit. Macro safety hints "
             "are separate.\n", AnnotationExamples},
-    {"Staged configuration (not formatting features)",
-        "Public preparation rejects explicit comment counts, template breaks, "
-        "Operand alignment, matching First, Regroup and constructor overrides "
-        "until their reviewed consumers integrate. Low-level scalar compilation "
+    {"Configuration limits",
+        "Public preparation rejects template breaks, Operand alignment, "
+        "matching First, Regroup and constructor overrides. "
+        "Low-level scalar compilation "
         "and owning prefix metadata may be used separately. Comment counts "
         "accept Preserve or 0..10000 and must fit MaxEmptyLines. Constructor "
         "Inherit resolves final FunctionBracePlacement once. IncludeGroupPrefixes "
         "is an ordered quoted array of normalized relative directory prefixes "
         "ending in /; duplicates, absolute paths, backslashes, empty, . and .. "
         "components are invalid. Earliest rule wins, not longest match. "
-        "Regroup conflicts with explicit MaxEmptyLines=0 before pending-consumer "
-        "rejection. IncludeOrder remains Preserve by default. ColumnLimit still "
-        "accepts 1..10000; zero remains invalid pending reviewed width support.\n",
+        "Regroup conflicts with explicit MaxEmptyLines=0 before unsupported-feature "
+        "rejection. IncludeOrder defaults to Preserve. ColumnLimit "
+        "accepts 1..10000; zero is invalid.\n",
         StagedExamples},
     {"Safety, transforms and checks",
         "Directives and protected bytes are never "
@@ -321,9 +319,7 @@ constexpr HelpSection HelpSections[] = {
             "not cross protected spans. Naming "
         "and parameter checks never rename code. "
             "Profiles approximate styles, not "
-        "clang-format compatibility. Removed options have no aliases. "
-        "Comment/directive rewrites and named widths "
-            "remain unsupported.\n", SafetyExamples},
+        "clang-format compatibility.\n", SafetyExamples},
 };
 // hit-fmt on
 

@@ -32,10 +32,10 @@
 #include "spaced-a.h"
 # include "spaced-z.h"
 
-  #include "indented-z.h"
-  #include "indented-a.h"
 #include "boundary-a.h"
 #include "boundary-z.h"
+  #include "indented-a.h"
+  #include "indented-z.h"
 #include_next <alternate.h>
 #include "tail-a.h"
 #include "tail-z.h"
@@ -46,8 +46,8 @@
 
 // Must stay with protected-z.h.
 #include "protected-z.h"
-#include "protected-a.h"
 #include "protected-c.h"
+#include "protected-a.h"
 
 namespace example {
 void use();

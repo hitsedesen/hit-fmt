@@ -5,7 +5,6 @@
 #include <memory_resource>
 
 namespace formatter::detail {
-
 // Internal operation-only entry: analysis describes THIS original tree and
 // prepared semantic options, with request.EditScope already applied exactly
 // once. Sensitive views name that same configuration. Source/configuration and
@@ -20,5 +19,4 @@ namespace formatter::detail {
     const FormatRequest& request,
     std::pmr::memory_resource& file,
     std::pmr::monotonic_buffer_resource& scratch);
-
 } // namespace formatter::detail

@@ -14,9 +14,7 @@ void ExistingNew(
                  int second,
                  int third,
                  int fourth);
-void Mergeable(
-               int a,
-               int b);
+void Mergeable(int a, int b);
 void Nested(
             std::pair<int, int> value,
             int count,
@@ -29,9 +27,11 @@ void Definition(
 {
     Use(first, second, third, fourth);
 }
-void Pinned(int alpha, // keep
-    int beta, int gamma);
+void Pinned(
+            int alpha, // keep
+    int beta,
+            int gamma);
 void NoArguments();
-BUILD_TAG_TABLE(EWidgetTag,
-    MAP_TAGS(TAG_NAME)
-);
+BUILD_TAG_TABLE(
+                EWidgetTag,
+                MAP_TAGS(TAG_NAME));

@@ -1,0 +1,10 @@
+# Body, label and attribute offsets are independent.
+# A leading attributed null statement without a parsed owner stays protected.
+IndentWidth = 2
+BodiesLayout = Canonical
+BodyShape = Expanded
+BlockBodyIndentWidth = 3
+IndentCaseLabels = Indent
+CaseLabelIndentWidth = 1
+StatementAttributeIndent = Indent
+StatementAttributeIndentWidth = 1

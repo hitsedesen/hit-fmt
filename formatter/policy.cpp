@@ -9,7 +9,6 @@
 
 namespace formatter {
 namespace {
-
 LayoutMode ResolveLayout(CategoryLayout category, LayoutMode parent)
 {
     switch (category) {
@@ -22,12 +21,10 @@ LayoutMode ResolveLayout(CategoryLayout category, LayoutMode parent)
     }
     throw std::invalid_argument("invalid category layout");
 }
-
 std::size_t ResolveOffset(std::size_t offset, std::size_t indentWidth)
 {
     return offset == 0 ? indentWidth : offset;
 }
-
 void CheckOffset(std::size_t offset, std::string_view key)
 {
     if (offset > 32) {
@@ -35,7 +32,6 @@ void CheckOffset(std::size_t offset, std::string_view key)
             std::string(key) + ": indentation offset must not exceed 32");
     }
 }
-
 void CheckBlankSetting(
     BlankLineSetting setting,
     std::string_view key,
@@ -49,35 +45,34 @@ void CheckBlankSetting(
         throw std::invalid_argument(
             std::string(key) + " does not accept Inherit");
     }
-    if (setting.Mode != BlankLineMode::Preserve &&
-        setting.Mode != BlankLineMode::Inherit &&
-        setting.Mode != BlankLineMode::Exact)
+    if (
+        setting.Mode != BlankLineMode::Preserve &&
+            setting.Mode != BlankLineMode::Inherit &&
+            setting.Mode != BlankLineMode::Exact)
     {
         throw std::invalid_argument(
             std::string(key) + " has invalid blank-line mode");
     }
 }
-
 BlankLineSetting ResolveMemberBlankLines(const Style& style)
 {
     return style.MemberDefinitionBlankLines.Mode == BlankLineMode::Inherit
         ? style.DefinitionBlankLines
         : style.MemberDefinitionBlankLines;
 }
-
 void CheckBlankCap(
     BlankLineSetting setting,
     std::optional<std::size_t> cap,
     std::string_view key)
 {
-    if (cap && setting.Mode ==
-        BlankLineMode::Exact && setting.EmptyLines > *cap)
+    if (
+        cap && setting.Mode == BlankLineMode::Exact &&
+            setting.EmptyLines > *cap)
     {
         throw std::invalid_argument(
             std::string(key) + " exceeds MaxEmptyLines");
     }
 }
-
 VerticalGapPolicy CompileBlankLines(BlankLineSetting setting)
 {
     return setting.Mode == BlankLineMode::Exact
@@ -85,7 +80,6 @@ VerticalGapPolicy CompileBlankLines(BlankLineSetting setting)
             static_cast<std::uint16_t>(setting.EmptyLines)}
         : VerticalGapPolicy{};
 }
-
 } // namespace
 
 void ValidatePolicyStyle(const Style& style)
@@ -93,8 +87,10 @@ void ValidatePolicyStyle(const Style& style)
     if (style.IndentWidth == 0 || style.IndentWidth > 32) {
         throw std::invalid_argument("IndentWidth must be between 1 and 32");
     }
-    if (style.LineEnding != LineEnding::Preserve &&
-        style.LineEnding != LineEnding::LF && style.LineEnding != LineEnding::CRLF)
+    if (
+        style.LineEnding != LineEnding::Preserve &&
+            style.LineEnding != LineEnding::LF &&
+            style.LineEnding != LineEnding::CRLF)
     {
         throw std::invalid_argument("LineEnding has invalid value");
     }
@@ -135,9 +131,11 @@ void ValidatePolicyStyle(const Style& style)
         style.MemberDefinitionBlankLines,
         "MemberDefinitionBlankLines",
         true);
-    CheckBlankSetting(style.StandaloneCommentBlankLinesBefore,
+    CheckBlankSetting(
+        style.StandaloneCommentBlankLinesBefore,
         "StandaloneCommentBlankLinesBefore");
-    CheckBlankSetting(style.StandaloneCommentBlankLinesAfter,
+    CheckBlankSetting(
+        style.StandaloneCommentBlankLinesAfter,
         "StandaloneCommentBlankLinesAfter");
     if (style.MaxEmptyLines && *style.MaxEmptyLines > 10000) {
         throw std::invalid_argument("MaxEmptyLines must not exceed 10000");
@@ -158,7 +156,9 @@ void ValidatePolicyStyle(const Style& style)
         style.AccessSectionBlankLinesAfterLabel,
         style.MaxEmptyLines,
         "AccessSectionBlankLinesAfterLabel");
-    CheckBlankCap(ResolveMemberBlankLines(style), style.MaxEmptyLines,
+    CheckBlankCap(
+        ResolveMemberBlankLines(style),
+        style.MaxEmptyLines,
         style.MemberDefinitionBlankLines.Mode == BlankLineMode::Inherit
             ? "MemberDefinitionBlankLines (inherited from DefinitionBlankLines)"
             : "MemberDefinitionBlankLines");
@@ -166,38 +166,47 @@ void ValidatePolicyStyle(const Style& style)
         style.DefinitionBlankLines,
         style.MaxEmptyLines,
         "DefinitionBlankLines");
-    CheckBlankCap(style.StandaloneCommentBlankLinesBefore,
-        style.MaxEmptyLines, "StandaloneCommentBlankLinesBefore");
-    CheckBlankCap(style.StandaloneCommentBlankLinesAfter,
-        style.MaxEmptyLines, "StandaloneCommentBlankLinesAfter");
-    if (style.IncludeGrouping == IncludeGrouping::Regroup &&
-        style.MaxEmptyLines && *style.MaxEmptyLines == 0)
+    CheckBlankCap(
+        style.StandaloneCommentBlankLinesBefore,
+        style.MaxEmptyLines,
+        "StandaloneCommentBlankLinesBefore");
+    CheckBlankCap(
+        style.StandaloneCommentBlankLinesAfter,
+        style.MaxEmptyLines,
+        "StandaloneCommentBlankLinesAfter");
+    if (
+        style.IncludeGrouping == IncludeGrouping::Regroup &&
+            style.MaxEmptyLines && *style.MaxEmptyLines == 0)
     {
         throw std::invalid_argument(
             "IncludeGrouping = Regroup requires one empty line, exceeding "
-            "MaxEmptyLines = 0");
+                "MaxEmptyLines = 0");
     }
     ValidateIncludeGroupPrefixes(style.IncludeGroupPrefixes);
-    if (style.ExpressionsAlignment != ExpressionAlignment::Block &&
-        style.ExpressionsAlignment != ExpressionAlignment::Operand)
+    if (
+        style.ExpressionsAlignment != ExpressionAlignment::Block &&
+            style.ExpressionsAlignment != ExpressionAlignment::Operand)
     {
         throw std::invalid_argument("ExpressionsAlignment has invalid value");
     }
-    if (style.IncludeMatchingHeader != IncludeMatchingHeader::Off &&
-        style.IncludeMatchingHeader != IncludeMatchingHeader::First)
+    if (
+        style.IncludeMatchingHeader != IncludeMatchingHeader::Off &&
+            style.IncludeMatchingHeader != IncludeMatchingHeader::First)
     {
         throw std::invalid_argument("IncludeMatchingHeader has invalid value");
     }
-    if (style.IncludeGrouping != IncludeGrouping::Preserve &&
-        style.IncludeGrouping != IncludeGrouping::Regroup)
+    if (
+        style.IncludeGrouping != IncludeGrouping::Preserve &&
+            style.IncludeGrouping != IncludeGrouping::Regroup)
     {
         throw std::invalid_argument("IncludeGrouping has invalid value");
     }
-    if (style.ConstructorBracePlacement &&
-        *style.ConstructorBracePlacement != BracePlacement::Attached &&
-        *style.ConstructorBracePlacement != BracePlacement::NextLine &&
-        *style.ConstructorBracePlacement !=
-            BracePlacement::NextLineIfHeaderBroken)
+    if (
+        style.ConstructorBracePlacement &&
+            *style.ConstructorBracePlacement != BracePlacement::Attached &&
+            *style.ConstructorBracePlacement != BracePlacement::NextLine &&
+            *style.ConstructorBracePlacement !=
+                BracePlacement::NextLineIfHeaderBroken)
     {
         throw std::invalid_argument(
             "ConstructorBracePlacement has invalid value");
@@ -206,14 +215,14 @@ void ValidatePolicyStyle(const Style& style)
         throw std::invalid_argument(
             "ShortNamespaceLines must not exceed 10000");
     }
-    if (style.TrailingCommentSpaces && style.TrailingCommentSpaces->Count &&
-        *style.TrailingCommentSpaces->Count > 10000)
+    if (
+        style.TrailingCommentSpaces && style.TrailingCommentSpaces->Count &&
+            *style.TrailingCommentSpaces->Count > 10000)
     {
         throw std::invalid_argument(
             "TrailingCommentSpaces must be between 0 and 10000");
     }
-    if (style.NamespaceCommentSpaces ==
-        0 || style.NamespaceCommentSpaces > 32)
+    if (style.NamespaceCommentSpaces == 0 || style.NamespaceCommentSpaces > 32)
     {
         throw std::invalid_argument(
             "NamespaceCommentSpaces must be between 1 and 32");
@@ -333,5 +342,4 @@ CompiledPolicies CompilePolicies(const Style& style)
         .Includes = {style.IncludeMatchingHeader, style.IncludeGrouping},
     };
 }
-
 } // namespace formatter

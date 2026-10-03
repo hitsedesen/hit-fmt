@@ -8,7 +8,7 @@ void sample(int value, int& source) {
     auto valueAndRef = [ value, &source ] { return source; };
     auto init = [ value=&source ] { return value; };
     auto nested = [ value=(source = value) ] { return value; };
-    auto commentedAssignment = [ value /* keep */ = /* keep */ &source ] {
+    auto commentedAssignment = [ value /* keep */=/* keep */ &source ] {
         return value;
     };
     auto area = [ height=value, width=source ] (int n) {
@@ -17,8 +17,8 @@ void sample(int value, int& source) {
     auto byRef = [ &value ] { return value; };
     auto empty = [] { return 0; };
     auto spacedEmpty = [  ] { return 0; };
-    auto commented = [/* keep */ value ] { return value; };
-    auto commentAfter = [ value /* keep */] { return value; };
+    auto commented = [ /* keep */ value ] { return value; };
+    auto commentAfter = [ value /* keep */ ] { return value; };
     auto multiline = [
         value
     ] { return value; };

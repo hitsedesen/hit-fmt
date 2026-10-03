@@ -17,8 +17,8 @@ void sample(int value, int& source) {
     auto byRef = [ &value ] { return value; };
     auto empty = [] { return 0; };
     auto spacedEmpty = [  ] { return 0; };
-    auto commented = [/* keep */ value ] { return value; };
-    auto commentAfter = [ value /* keep */] { return value; };
+    auto commented = [ /* keep */ value ] { return value; };
+    auto commentAfter = [ value /* keep */ ] { return value; };
     auto multiline = [
         value
     ] { return value; };

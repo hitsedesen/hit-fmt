@@ -9,8 +9,8 @@ class S {
   }
 };
 class LIB_EXPORT Widget {
-public:
-int x {1};
+ public:
+  int x{1};
 };
 int f() {
   return {1};

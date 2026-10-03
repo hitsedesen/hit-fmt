@@ -16,7 +16,6 @@
 #include <type_traits>
 
 namespace {
-
 std::filesystem::path ConfigData(std::string_view name)
 {
     return std::filesystem::path(FORMATTER_TESTDATA_DIR).parent_path() /
@@ -25,10 +24,12 @@ std::filesystem::path ConfigData(std::string_view name)
 
 struct TemporaryConfig
 {
-    std::filesystem::path Path = std::filesystem::temp_directory_path() /
-        ("hit-fmt-policy-" + std::to_string(
-            std::chrono::steady_clock::now().time_since_epoch().count()) +
-            ".hit-fmt");
+    std::filesystem::path Path =
+        std::filesystem::temp_directory_path() /
+            ("hit-fmt-policy-" +
+                    std::to_string(
+                        std::chrono::steady_clock::now().time_since_epoch()
+                            .count()) + ".hit-fmt");
 
     explicit TemporaryConfig(std::string_view contents)
     {
@@ -721,100 +722,29 @@ TEST(ConfigPolicy, SchemaCompilesOwnedAnnotationsAndIndependentMetadata)
     EXPECT_FALSE(ytAnnotations.IsAnnotatedChainRoot("BuildYsonFluently"));
 }
 
-TEST(ConfigPolicy, RemovedOptionsFailWithMigrationAdviceInsteadOfAliases)
+TEST(ConfigPolicy, UnknownSettingsReportKeyAndSourceLocation)
 {
-    struct Case
-    {
-        std::string_view Name;
-        std::string_view Advice;
-    };
-    for (const auto value : {
-        Case{"invalid-enforce", "Enforce flags were removed"},
-        Case{"invalid-merge", "canonical groups flatten"},
-        Case{"invalid-width", "Soft feasibility probing was removed"},
-        Case{"invalid-directive", "directives are byte-protected"},
-        Case{"invalid-separator", "comment-separator rewriting is unsupported"},
-    })
-    {
-        const auto path = ConfigData(value.Name);
-        SCOPED_TRACE(path.string());
-        try {
-            (void)formatter::LoadConfigFile(path);
-            FAIL() << "removed option was accepted";
-        } catch (const std::runtime_error& error) {
-            const std::string message = error.what();
-            EXPECT_NE(message.find(":1:"), std::string::npos);
-            EXPECT_NE(
-                message.find("unknown or removed setting"),
-                std::string::npos);
-            EXPECT_NE(
-                message.find("--help-config"),
-                std::string::npos);
-            EXPECT_NE(message.find(value.Advice), std::string::npos);
-        }
-    }
-}
-
-TEST(ConfigPolicy, EmptyOnlyAndAlwaysMigrationAdviceIsNotAnAlias)
-{
-    struct Case
-    {
-        std::string_view Text;
-        std::string_view Advice;
-    };
-    for (const auto value : {
-        Case{"CollapseEmptyFunctionBodies = true\n", "EmptyBodyShape"},
-        Case{"ExpressionLayoutCondition = Always\n", "ExpressionsBreak"},
-        Case{"ChainedCallSplitCondition = Always\n", "ChainsLayout/Break"},
-    })
-    {
-        const TemporaryConfig config(value.Text);
-        try {
-            (void)formatter::LoadConfigFile(config.Path);
-            FAIL() << "legacy setting became a compatibility alias";
-        } catch (const std::runtime_error& error) {
-            EXPECT_NE(
-                std::string(error.what()).find(value.Advice),
-                std::string::npos);
-        }
-    }
-}
-
-TEST(ConfigPolicy, RemovedClosersAndInvalidValuesAreRejected)
-{
-    for (const auto key : {"CallArgumentSplitColumnLimit",
-        "CallArgumentSplitColumnLimitNames",
-    })
-    {
-        const auto value = std::string_view(key).ends_with("Names")
-            ? "[\"EXPECT_THROW\"]"
-            : "90";
-        const TemporaryConfig config(std::string(key) + " = " + value + "\n");
-        try {
-            (void)formatter::LoadConfigFile(config.Path);
-            FAIL() << "named call width option was accepted";
-        } catch (const std::runtime_error& error) {
-            EXPECT_NE(
-                std::string(error.what()).find("global ColumnLimit"),
-                std::string::npos);
-        }
-    }
-    for (const auto key : {"BaseListsCloser", "ConstructorListsCloser"}) {
+    for (const auto key : {"UnknownOption", "columnlimit", "CallsPackng"}) {
         SCOPED_TRACE(key);
-        const TemporaryConfig config(std::string(key) + " = OwnLine\n");
+        const TemporaryConfig config(
+            "# configuration\nColumnLimit = 80\n" + std::string(key) +
+            " = true\n");
         try {
             (void)formatter::LoadConfigFile(config.Path);
-            FAIL() << "delimiterless closer option was accepted";
+            FAIL() << "unknown setting was accepted";
         } catch (const std::runtime_error& error) {
             const std::string message = error.what();
-            EXPECT_NE(message.find(key), std::string::npos);
-            EXPECT_NE(message.find("no closing delimiter"), std::string::npos);
-            EXPECT_NE(message.find("ClassBracePlacement"), std::string::npos);
-            EXPECT_NE(
-                message.find("FunctionBracePlacement"),
+            EXPECT_NE(message.find(config.Path.string() + ":3:"),
                 std::string::npos);
+            EXPECT_NE(message.find("unknown setting '" + std::string(key) +
+                "'"), std::string::npos);
+            EXPECT_NE(message.find("--help-config"), std::string::npos);
         }
     }
+}
+
+TEST(ConfigPolicy, InvalidEnumValuesAndOffsetsAreRejected)
+{
     for (const auto name : {"invalid-brace-value", "invalid-offset"}) {
         SCOPED_TRACE(name);
         EXPECT_THROW(
@@ -823,7 +753,7 @@ TEST(ConfigPolicy, RemovedClosersAndInvalidValuesAreRejected)
     }
 }
 
-// These prove stage-S metadata/validation, not downstream formatting behavior.
+// Scalar compilation and metadata validation do not prove formatting behavior.
 TEST(ConfigPolicy, StagedOptionsResolveFinalInheritanceAndOwnScalarSnapshot)
 {
     const TemporaryConfig config(
@@ -1142,7 +1072,7 @@ TEST(ConfigPolicy, LineEndingPreparationValidationAndDefaultSerialization)
     std::ostringstream output;
     hit_fmt::PrintPreserveConfig(output);
     EXPECT_NE(output.str().find("LineEnding = Preserve\n"), std::string::npos);
-    EXPECT_NE(output.str().find("legacy first-LF"), std::string::npos);
+    EXPECT_NE(output.str().find("first newline"), std::string::npos);
 }
 
 namespace {

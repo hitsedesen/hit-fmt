@@ -9,7 +9,6 @@
 #include <utility>
 
 namespace tokenizer {
-
 #define TOKEN_KINDS                                                            \
     TOKEN_KIND(Invalid, "invalid")                                             \
     TOKEN_KIND(EndOfFile, "eof")                                               \
@@ -158,8 +157,7 @@ namespace tokenizer {
     TOKEN_KIND(Keyword_wchar_t, "wchar_t")                                     \
     TOKEN_KIND(Keyword_while, "while")
 
-enum class TokenKind : uint8_t
-{
+enum class TokenKind : uint8_t {
 #define TOKEN_KIND(value, name) value,
     TOKEN_KINDS
 #undef TOKEN_KIND
@@ -172,19 +170,15 @@ enum class TokenKind : uint8_t
         TOKEN_KINDS
 #undef TOKEN_KIND
     });
-
     return Names[static_cast<std::underlying_type_t<TokenKind>>(kind)];
 }
-
 struct Token
 {
     TokenKind Kind;
     util::Position Position;
     util::SourceView Text;
 };
-
 static_assert(sizeof(Token) == 20);
-
 } // namespace tokenizer
 
 template <>
@@ -194,7 +188,6 @@ struct std::formatter<tokenizer::TokenKind>
     {
         return ctx.begin();
     }
-
     auto format(tokenizer::TokenKind kind, std::format_context& ctx) const
     {
         return std::format_to(ctx.out(), "{}", GetTokenKindName(kind));

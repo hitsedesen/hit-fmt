@@ -30,7 +30,7 @@ ChainsBreak = IfNeeded
 ChainsPacking = Fill
 InitializersCloser = OwnLine
 InitializersTrailingComma = WhenMultiline
-# Unlike the old comma-sensitive closer, every broken initializer owns its closer.
+# Every broken initializer owns its closer, independently of trailing commas.
 ClassBracePlacement = NextLine
 StructBracePlacement = NextLine
 UnionBracePlacement = NextLine

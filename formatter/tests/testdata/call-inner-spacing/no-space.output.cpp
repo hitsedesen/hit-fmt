@@ -25,9 +25,9 @@ void use(int n) {
     auto lambda = []( int x ) { return x; };
 #define CALL(x) x
     CALL(n);
-    target(  n  ) broken(  n  );
+    target(n) broken(  n  );
     switch (n) {
-        UNROLLED( 1)
+        UNROLLED(1)
         UNROLLED( 2)
         UNROLLED( 3);
     }

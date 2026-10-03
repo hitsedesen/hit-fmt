@@ -1,4 +1,3 @@
-# Migrated to group policies; legacy output equivalence is not implied.
 # Always requires a legal owned break; Preserve/protection still win.
 ChainsLayout = Canonical
 ChainsBreak = Always

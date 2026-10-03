@@ -10,7 +10,6 @@
 #include <span>
 
 namespace formatter {
-
 // Structural normalization precedes lowering. These are gap IDs in the supplied
 // tree, not offsets in an earlier source: inserted adjacencies always use
 // Rebuilt spacing, independently of the containing property's layout mode.
@@ -20,18 +19,14 @@ struct SyntaxLayoutOptions
     layout::Newline LineEnding = layout::Newline::LF;
     uint8_t TabWidth = 8;
 };
-
-enum class SyntaxLayoutError : uint8_t
-{
+enum class SyntaxLayoutError : uint8_t {
     None,
     MismatchedInputs,
     InvalidGeneratedAdjacency,
     CrossingGroups,
     ConflictingGapOwners,
     IndentationOverflow,
-    CoreFailure,
-};
-
+    CoreFailure, };
 struct SyntaxLayoutStatus
 {
     SyntaxLayoutError Code = SyntaxLayoutError::None;
@@ -42,7 +37,6 @@ struct SyntaxLayoutStatus
         return Code == SyntaxLayoutError::None;
     }
 };
-
 // Requires a validated policy snapshot and safety/spacing for this exact tree.
 // Build appends to an empty, unsealed document borrowing tree.Source(), and
 // seals exactly once. Render once with SyntaxRenderPolicy. The tree/source,
@@ -58,7 +52,7 @@ struct SyntaxLayoutStatus
 // CanSpellGapNewlines; neither fixed nor respelled atoms become owned breaks.
 // Groups form a laminar token/gap event
 // forest; crossing intervals and competing explicit gap owners are errors,
-// never a request to invoke a legacy formatter or retry a reparse.
+// never a request to switch pipelines or retry a reparse.
 // Prefixed delimiter anchors are rebased inside their continuation group;
 // IndentationOverflow rejects saturation in that group or any ancestor, since
 // a later negative offset cannot recover a saturated block basis. On failure,
@@ -72,10 +66,8 @@ struct SyntaxLayoutStatus
     layout::Document& document,
     std::pmr::memory_resource& scratch,
     const SyntaxLayoutOptions& options = {});
-
 [[nodiscard]] layout::Policy
 SyntaxRenderPolicy(
     const CompiledPolicies& policies,
     const SyntaxLayoutOptions& options = {});
-
 } // namespace formatter

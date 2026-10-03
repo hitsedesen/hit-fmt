@@ -291,19 +291,21 @@
               (declarator-name "postfix")
             )
             (initializer
-              (parenthesized-expression
+              (argument-list
                 "("
-                (call-expression
-                  (expression "int")
-                  (argument-list
-                    "("
-                    (argument
-                      (unary-expression
-                        (identifier-expression "n")
-                        "++"
+                (argument
+                  (call-expression
+                    (expression "int")
+                    (argument-list
+                      "("
+                      (argument
+                        (unary-expression
+                          (identifier-expression "n")
+                          "++"
+                        )
                       )
+                      ")"
                     )
-                    ")"
                   )
                 )
                 ")"
@@ -352,20 +354,22 @@
               (declarator-name "constructed")
             )
             (initializer
-              (parenthesized-expression
+              (argument-list
                 "("
-                (call-expression
-                  (identifier-expression "Pair")
-                  (argument-list
-                    "("
-                    (argument
-                      (identifier-expression "n")
+                (argument
+                  (call-expression
+                    (identifier-expression "Pair")
+                    (argument-list
+                      "("
+                      (argument
+                        (identifier-expression "n")
+                      )
+                      (list-separator ",")
+                      (argument
+                        (identifier-expression "n")
+                      )
+                      ")"
                     )
-                    (list-separator ",")
-                    (argument
-                      (identifier-expression "n")
-                    )
-                    ")"
                   )
                 )
                 ")"
@@ -459,9 +463,11 @@
               (declarator-name "value")
             )
             (initializer
-              (parenthesized-expression
+              (argument-list
                 "("
-                (identifier-expression "n")
+                (argument
+                  (identifier-expression "n")
+                )
                 ")"
               )
             )
@@ -477,9 +483,11 @@
               (declarator-name "literal")
             )
             (initializer
-              (parenthesized-expression
+              (argument-list
                 "("
-                (literal-expression "2")
+                (argument
+                  (literal-expression "2")
+                )
                 ")"
               )
             )
@@ -495,11 +503,13 @@
               (declarator-name "pair")
             )
             (initializer
-              (parenthesized-expression
+              (argument-list
                 "("
-                (binary-expression
+                (argument
                   (identifier-expression "n")
-                  ","
+                )
+                (list-separator ",")
+                (argument
                   (literal-expression "2")
                 )
                 ")"
@@ -526,9 +536,11 @@
               (declarator-name "second")
             )
             (initializer
-              (parenthesized-expression
+              (argument-list
                 "("
-                (identifier-expression "n")
+                (argument
+                  (identifier-expression "n")
+                )
                 ")"
               )
             )
@@ -692,16 +704,18 @@
               (declarator-name "definite_call")
             )
             (initializer
-              (parenthesized-expression
+              (argument-list
                 "("
-                (call-expression
-                  (identifier-expression "External")
-                  (argument-list
-                    "("
-                    (argument
-                      (literal-expression "1")
+                (argument
+                  (call-expression
+                    (identifier-expression "External")
+                    (argument-list
+                      "("
+                      (argument
+                        (literal-expression "1")
+                      )
+                      ")"
                     )
-                    ")"
                   )
                 )
                 ")"
@@ -766,9 +780,11 @@
               )
             )
             (initializer
-              (parenthesized-expression
+              (argument-list
                 "("
-                (identifier-expression "n")
+                (argument
+                  (identifier-expression "n")
+                )
                 ")"
               )
             )
@@ -808,16 +824,18 @@
               (declarator-name "cast")
             )
             (initializer
-              (parenthesized-expression
+              (argument-list
                 "("
-                (call-expression
-                  (expression "int")
-                  (argument-list
-                    "("
-                    (argument
-                      (literal-expression "1")
+                (argument
+                  (call-expression
+                    (expression "int")
+                    (argument-list
+                      "("
+                      (argument
+                        (literal-expression "1")
+                      )
+                      ")"
                     )
-                    ")"
                   )
                 )
                 ")"
@@ -835,10 +853,13 @@
               (declarator-name "braced")
             )
             (initializer
-              (parenthesized-expression
+              (argument-list
                 "("
-                (identifier-expression "Number")
-                "{" "2" "}" ")"
+                (argument
+                  (identifier-expression "Number")
+                  (unparsed-syntax "{" "2" "}")
+                )
+                ")"
               )
             )
           )
@@ -853,16 +874,18 @@
               (declarator-name "nested")
             )
             (initializer
-              (parenthesized-expression
+              (argument-list
                 "("
-                (call-expression
-                  (identifier-expression "Number")
-                  (argument-list
-                    "("
-                    (argument
-                      (literal-expression "3")
+                (argument
+                  (call-expression
+                    (identifier-expression "Number")
+                    (argument-list
+                      "("
+                      (argument
+                        (literal-expression "3")
+                      )
+                      ")"
                     )
-                    ")"
                   )
                 )
                 ")"
@@ -880,20 +903,22 @@
               (declarator-name "product")
             )
             (initializer
-              (parenthesized-expression
+              (argument-list
                 "("
-                (call-expression
-                  (expression "int")
-                  (argument-list
-                    "("
-                    (argument
-                      (binary-expression
-                        (identifier-expression "n")
-                        "*"
-                        (identifier-expression "n")
+                (argument
+                  (call-expression
+                    (expression "int")
+                    (argument-list
+                      "("
+                      (argument
+                        (binary-expression
+                          (identifier-expression "n")
+                          "*"
+                          (identifier-expression "n")
+                        )
                       )
+                      ")"
                     )
-                    ")"
                   )
                 )
                 ")"
@@ -911,15 +936,17 @@
               (declarator-name "multiplied")
             )
             (initializer
-              (parenthesized-expression
+              (argument-list
                 "("
-                (binary-expression
-                  (call-expression
-                    (expression "int")
-                    (argument-list "(" ")")
+                (argument
+                  (binary-expression
+                    (call-expression
+                      (expression "int")
+                      (argument-list "(" ")")
+                    )
+                    "*"
+                    (identifier-expression "n")
                   )
-                  "*"
-                  (identifier-expression "n")
                 )
                 ")"
               )
@@ -936,20 +963,22 @@
               (declarator-name "compared")
             )
             (initializer
-              (parenthesized-expression
+              (argument-list
                 "("
-                (call-expression
-                  (expression "int")
-                  (argument-list
-                    "("
-                    (argument
-                      (binary-expression
-                        (identifier-expression "n")
-                        "=="
-                        (identifier-expression "n")
+                (argument
+                  (call-expression
+                    (expression "int")
+                    (argument-list
+                      "("
+                      (argument
+                        (binary-expression
+                          (identifier-expression "n")
+                          "=="
+                          (identifier-expression "n")
+                        )
                       )
+                      ")"
                     )
-                    ")"
                   )
                 )
                 ")"
@@ -967,20 +996,22 @@
               (declarator-name "assigned")
             )
             (initializer
-              (parenthesized-expression
+              (argument-list
                 "("
-                (call-expression
-                  (expression "int")
-                  (argument-list
-                    "("
-                    (argument
-                      (assignment-expression
-                        (identifier-expression "n")
-                        "="
-                        (identifier-expression "n")
+                (argument
+                  (call-expression
+                    (expression "int")
+                    (argument-list
+                      "("
+                      (argument
+                        (assignment-expression
+                          (identifier-expression "n")
+                          "="
+                          (identifier-expression "n")
+                        )
                       )
+                      ")"
                     )
-                    ")"
                   )
                 )
                 ")"
@@ -1120,29 +1151,31 @@
               (declarator-name "exception_value")
             )
             (initializer
-              (parenthesized-expression
+              (argument-list
                 "("
-                (call-expression
-                  (expression "int")
-                  (argument-list
-                    "("
-                    (argument
-                      (call-expression
-                        (expression "noexcept")
-                        (argument-list
-                          "("
-                          (argument
-                            (identifier-expression "n")
+                (argument
+                  (call-expression
+                    (expression "int")
+                    (argument-list
+                      "("
+                      (argument
+                        (call-expression
+                          (expression "noexcept")
+                          (argument-list
+                            "("
+                            (argument
+                              (identifier-expression "n")
+                            )
+                            (list-separator ",")
+                            (argument
+                              (identifier-expression "n")
+                            )
+                            ")"
                           )
-                          (list-separator ",")
-                          (argument
-                            (identifier-expression "n")
-                          )
-                          ")"
                         )
                       )
+                      ")"
                     )
-                    ")"
                   )
                 )
                 ")"
@@ -1461,9 +1494,11 @@
               (declarator-name "value")
             )
             (initializer
-              (parenthesized-expression
+              (argument-list
                 "("
-                (identifier-expression "n")
+                (argument
+                  (identifier-expression "n")
+                )
                 ")"
               )
             )

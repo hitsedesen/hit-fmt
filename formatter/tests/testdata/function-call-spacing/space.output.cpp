@@ -15,11 +15,11 @@ void use(int n) {
     (T) (value);
     (callback)  (n);
     (&callback) (n);
-    [] (int x) { return x; } (n);
+    [] (int x) { return x; }  (n);
     target (target (n));
     functor.template invoke<int> (n);
     target /* keep */ (n);
-    target  (n) broken  (n);
+    target (n) broken  (n);
     target
     (n);
     if (n) { target (n); }

@@ -10,11 +10,12 @@ using NK = parser::NodeKind;
 using TK = tokenizer::TokenKind;
 using TI = parser::TokenIndex;
 using SR = parser::SourceRange;
-
 SR Range(const parser::SyntaxTree& tree, parser::TokenRange tokens)
 {
-    return {tree.Token(tokens.Begin).Text.Begin,
-        tree.Token(tokens.End - 1).Text.End};
+    return {
+        tree.Token(tokens.Begin).Text.Begin,
+        tree.Token(tokens.End - 1).Text.End,
+    };
 }
 bool Horizontal(std::string_view text)
 {
@@ -23,42 +24,64 @@ bool Horizontal(std::string_view text)
 bool Control(NK kind)
 {
     return kind == NK::IfStatement || kind == NK::ForStatement ||
-           kind == NK::WhileStatement || kind == NK::SwitchStatement ||
-           kind == NK::DoWhileStatement;
+        kind == NK::WhileStatement || kind == NK::SwitchStatement ||
+        kind == NK::DoWhileStatement;
 }
-bool Header(NK kind) { return kind == NK::Condition || kind == NK::ForHeader; }
+bool Header(NK kind)
+{
+    return kind == NK::Condition || kind == NK::ForHeader;
+}
 bool Attribute(NK kind)
 {
     return kind == NK::AttributeSpecifier ||
-           kind == NK::ExtensionAttributeSpecifier;
+        kind == NK::ExtensionAttributeSpecifier;
 }
-void Skip(StructuralPlan& plan, StructuralAction action,
-    parser::TokenRange tokens, StructuralSkip reason)
+void Skip(
+    StructuralPlan& plan,
+    StructuralAction action,
+    parser::TokenRange tokens,
+    StructuralSkip reason)
 {
     plan.Skipped.push_back({action, tokens, reason});
 }
 StructuralActionId Operation(
-    StructuralPlan& plan, StructuralAction kind, parser::TokenRange owner)
+    StructuralPlan& plan,
+    StructuralAction kind,
+    parser::TokenRange owner)
 {
     auto id = static_cast<StructuralActionId>(plan.Operations.size());
     plan.Operations.push_back({kind, owner});
     return id;
 }
-void Literal(StructuralPlan& plan, SR source, std::string_view text,
-    StructuralActionId id, uint32_t depth = 0,
+void Literal(
+    StructuralPlan& plan,
+    SR source,
+    std::string_view text,
+    StructuralActionId id,
+    uint32_t depth = 0,
     StructuralEdit::Edge edge = StructuralEdit::Edge::Replace)
 {
     auto begin = static_cast<uint32_t>(plan.Pieces.size());
     if (!text.empty()) {
         plan.Pieces.push_back({{}, text, false});
     }
-    plan.Edits.push_back({source, begin,
-        static_cast<uint32_t>(plan.Pieces.size()), id, depth, edge});
+    plan.Edits
+        .push_back(
+            {
+                source,
+                begin,
+                static_cast<uint32_t>(plan.Pieces.size()),
+                id,
+                depth,
+                edge,
+            });
 }
 void Sort(StructuralPlan& plan)
 {
     std::sort(
-        plan.Edits.begin(), plan.Edits.end(), [](const auto& a, const auto& b) {
+        plan.Edits.begin(),
+        plan.Edits.end(),
+        [] (const auto& a, const auto& b) {
             if (a.Source.Begin != b.Source.Begin) {
                 return a.Source.Begin < b.Source.Begin;
             }
@@ -66,23 +89,29 @@ void Sort(StructuralPlan& plan)
                 return a.Boundary < b.Boundary;
             }
             return a.Boundary == StructuralEdit::Edge::Close
-                       ? a.Depth > b.Depth
-                       : a.Depth < b.Depth;
+                ? a.Depth > b.Depth
+                : a.Depth < b.Depth;
         });
 }
 void CheckAnalysisSource(
-    const parser::SyntaxTree& tree, const SourceAnalysis& safety)
+    const parser::SyntaxTree& tree,
+    const SourceAnalysis& safety)
 {
-    if (safety.Gaps().size() != static_cast<size_t>(tree.TokenCount()) + 1 ||
-        safety.Gaps().front().Original.data() != tree.Source().data()) {
+    if (
+        safety.Gaps().size() != static_cast<size_t>(tree.TokenCount()) + 1 ||
+            safety.Gaps().front().Original.data() != tree.Source().data())
+    {
         throw std::invalid_argument("analysis is not from original source");
     }
 }
 // Walk in SourceAnalysis preorder, with a bounded explicit heap stack. No
 // scratch-node pointers are retained in either public plan.
 template <class F>
-void Walk(const parser::SyntaxTree& tree, const SourceAnalysis* safety,
-    std::pmr::memory_resource& scratch, F visit,
+void Walk(
+    const parser::SyntaxTree& tree,
+    const SourceAnalysis* safety,
+    std::pmr::memory_resource& scratch,
+    F visit,
     std::span<const uint8_t> trailingLabels = {})
 {
     struct Frame
@@ -97,7 +126,11 @@ void Walk(const parser::SyntaxTree& tree, const SourceAnalysis* safety,
         CheckAnalysisSource(tree, *safety);
     std::pmr::vector<Frame> stack(&scratch);
     size_t region = 0;
-    auto enter = [&](const parser::Node* node, NK parent, NK previous,
+    auto enter = [
+        &] (
+        const parser::Node* node,
+        NK parent,
+        NK previous,
         bool previousTrailingLabel) {
         RegionStatus status = RegionStatus::Complete;
         bool trailingLabel = false;
@@ -107,8 +140,10 @@ void Walk(const parser::SyntaxTree& tree, const SourceAnalysis* safety,
             }
             trailingLabel = !trailingLabels.empty() && trailingLabels[region];
             const auto& r = safety->Regions()[region++];
-            if (r.Kind != node->Kind || r.Tokens.Begin != node->Tokens.Begin ||
-                r.Tokens.End != node->Tokens.End) {
+            if (
+                r.Kind != node->Kind || r.Tokens.Begin != node->Tokens.Begin ||
+                    r.Tokens.End != node->Tokens.End)
+            {
                 throw std::invalid_argument("analysis/tree mismatch");
             }
             status = r.Status;
@@ -117,21 +152,35 @@ void Walk(const parser::SyntaxTree& tree, const SourceAnalysis* safety,
             stack.size() > 1 ? stack[stack.size() - 2].Node->Kind : NK::Error;
         bool parentSequence =
             !stack.empty() && stack.back().DeclarationSequence;
-        visit(*node, parent, previous, grandparent, parentSequence,
-            static_cast<uint32_t>(stack.size()), status, trailingLabel,
+        visit(
+            *node,
+            parent,
+            previous,
+            grandparent,
+            parentSequence,
+            static_cast<uint32_t>(stack.size()),
+            status,
+            trailingLabel,
             previousTrailingLabel);
-        bool sequence = node->Kind == NK::TranslationUnit ||
-                        node->Kind == NK::NamespaceDeclaration;
-        if (node->Kind == NK::ExportDeclaration ||
-            node->Kind == NK::LinkageSpecification) {
-            auto header = node->Tokens.Begin +
-                          (node->Kind == NK::ExportDeclaration ? 1 : 2);
+        bool sequence =
+            node->Kind == NK::TranslationUnit ||
+                node->Kind == NK::NamespaceDeclaration;
+        if (
+            node->Kind == NK::ExportDeclaration ||
+                node->Kind == NK::LinkageSpecification)
+        {
+            auto header =
+                node->Tokens.Begin +
+                    (node->Kind == NK::ExportDeclaration ? 1 : 2);
             while (
                 header < node->Tokens.End && tree.Kind(header) == TK::Comment)
+            {
                 ++header;
-            sequence = header < node->Tokens.End &&
-                       tree.Kind(header) == TK::Operator_OpenBrace &&
-                       tree.MatchingDelimiter(header) < node->Tokens.End;
+            }
+            sequence =
+                header < node->Tokens.End &&
+                    tree.Kind(header) == TK::Operator_OpenBrace &&
+                    tree.MatchingDelimiter(header) < node->Tokens.End;
         }
         stack.push_back({node, node->Child(), NK::Error, sequence});
     };
@@ -145,8 +194,8 @@ void Walk(const parser::SyntaxTree& tree, const SourceAnalysis* safety,
             frame.Next = child->NextSibling;
             if (child->Kind != NK::Comment) {
                 frame.Previous = child->Kind;
-                frame.PreviousTrailingLabel = region < trailingLabels.size() &&
-                    trailingLabels[region];
+                frame.PreviousTrailingLabel =
+                    region < trailingLabels.size() && trailingLabels[region];
             }
             enter(child, parent, previous, previousTrailingLabel);
         } else {
@@ -157,16 +206,14 @@ void Walk(const parser::SyntaxTree& tree, const SourceAnalysis* safety,
         throw std::invalid_argument("analysis/tree mismatch");
     }
 }
-
 bool AdjacentComment(const parser::SyntaxTree& tree, parser::TokenRange tokens)
 {
     if (tokens.Begin && tree.Kind(tokens.Begin - 1) == TK::Comment) {
         return true;
     }
     return tokens.End < tree.TokenCount() &&
-           tree.Kind(tokens.End) == TK::Comment &&
-           tree.WhitespaceBefore(tokens.End).find('\n') ==
-               std::string_view::npos;
+        tree.Kind(tokens.End) == TK::Comment &&
+        tree.WhitespaceBefore(tokens.End).find('\n') == std::string_view::npos;
 }
 struct Include
 {
@@ -206,9 +253,11 @@ bool ParseInclude(const parser::SyntaxTree& tree, TI token, Include& result)
     }
     bool angled = text.front() == '<';
     auto close = text.find(angled ? '>' : '"', 1);
-    if (close == std::string_view::npos || close == 1 ||
-        text.substr(close + 1).find_first_not_of(" \t\r") !=
-            std::string_view::npos) {
+    if (
+        close == std::string_view::npos || close == 1 ||
+            text.substr(close + 1).find_first_not_of(" \t\r") !=
+                std::string_view::npos)
+    {
         return false;
     }
     auto range = tree.Token(token).Text;
@@ -219,22 +268,29 @@ bool ParseInclude(const parser::SyntaxTree& tree, TI token, Include& result)
     // disjoint source slices; they never search the whole source per include.
     auto before = tree.WhitespaceBefore(token);
     auto lf = before.rfind('\n');
-    if (token && lf == std::string_view::npos) return false;
-    auto leading = lf == std::string_view::npos
-        ? before
-        : before.substr(lf + 1);
-    if (!Horizontal(leading)) return false;
-    auto begin = range.Begin -
-        static_cast<parser::SourceOffset>(leading.size());
-    result = {
-        token, {begin, range.End + 1}, text.substr(1, close - 1), angled};
+    if (token && lf == std::string_view::npos) {
+        return false;
+    }
+    auto leading =
+        lf == std::string_view::npos ? before : before.substr(lf + 1);
+    if (!Horizontal(leading)) {
+        return false;
+    }
+    auto begin =
+        range.Begin - static_cast<parser::SourceOffset>(leading.size());
+    result =
+        {token, {begin, range.End + 1}, text.substr(1, close - 1), angled};
     return true;
 }
 bool DirectiveOnly(const SourceAnalysis& safety, SR range)
 {
     auto intervals = safety.Protection();
-    auto it = std::lower_bound(intervals.begin(), intervals.end(), range.Begin,
-        [](const auto& r, auto offset) { return r.Source.End <= offset; });
+    auto it =
+        std::lower_bound(
+            intervals.begin(),
+            intervals.end(),
+            range.Begin,
+            [] (const auto& r, auto offset) { return r.Source.End <= offset; });
     for (; it != intervals.end() && it->Source.Begin < range.End; ++it) {
         if (it->Reasons != ProtectionReason::Directive) {
             return false;
@@ -243,9 +299,12 @@ bool DirectiveOnly(const SourceAnalysis& safety, SR range)
     return true;
 }
 template <class Accept, class Reject>
-void ScanIncludeGroups(const parser::SyntaxTree& tree,
-    const SourceAnalysis& safety, std::pmr::memory_resource& scratch,
-    Accept accept, Reject reject)
+void ScanIncludeGroups(
+    const parser::SyntaxTree& tree,
+    const SourceAnalysis& safety,
+    std::pmr::memory_resource& scratch,
+    Accept accept,
+    Reject reject)
 {
     std::pmr::vector<Include> group(&scratch);
     for (TI i = 0; i < tree.TokenCount();) {
@@ -258,10 +317,12 @@ void ScanIncludeGroups(const parser::SyntaxTree& tree,
         group.push_back(first);
         TI end = i + 1;
         Include next;
-        while (end < tree.TokenCount() && ParseInclude(tree, end, next) &&
-               group.back().Atom.End == next.Atom.Begin &&
-               tree.TokenText(i).ends_with('\r') ==
-                   tree.TokenText(end).ends_with('\r')) {
+        while (
+            end < tree.TokenCount() && ParseInclude(tree, end, next) &&
+                group.back().Atom.End == next.Atom.Begin &&
+                tree.TokenText(i).ends_with('\r') ==
+                    tree.TokenText(end).ends_with('\r'))
+        {
             group.push_back(next);
             ++end;
         }
@@ -280,31 +341,45 @@ void ScanIncludeGroups(const parser::SyntaxTree& tree,
         i = end;
     }
 }
-void Includes(const parser::SyntaxTree& tree, const SourceAnalysis& safety,
-    StructuralPlan& plan, std::pmr::memory_resource& scratch)
+void Includes(
+    const parser::SyntaxTree& tree,
+    const SourceAnalysis& safety,
+    StructuralPlan& plan,
+    std::pmr::memory_resource& scratch)
 {
-    ScanIncludeGroups(tree, safety, scratch,
-        [&](IncludeGroup descriptor, std::span<Include> group) {
-            auto compare = [](const Include& a, const Include& b) {
-                if (a.Angled != b.Angled)
+    ScanIncludeGroups(
+        tree,
+        safety,
+        scratch,
+        [&] (IncludeGroup descriptor, std::span<Include> group) {
+            auto compare = [] (const Include& a, const Include& b) {
+                if (a.Angled != b.Angled) {
                     return !a.Angled;
-                return a.Path != b.Path
-                    ? a.Path < b.Path
-                    : a.Token < b.Token;
+                }
+                return a.Path != b.Path ? a.Path < b.Path : a.Token < b.Token;
             };
             if (!std::is_sorted(group.begin(), group.end(), compare)) {
                 std::sort(group.begin(), group.end(), compare);
-                auto id = Operation(
-                    plan, StructuralAction::IncludeOrder, descriptor.Tokens);
+                auto id =
+                    Operation(
+                        plan,
+                        StructuralAction::IncludeOrder,
+                        descriptor.Tokens);
                 auto start = static_cast<uint32_t>(plan.Pieces.size());
                 for (const auto& atom : group) {
                     plan.Pieces.push_back({atom.Atom, {}, true});
                 }
-                plan.Edits.push_back({descriptor.Source, start,
-                    static_cast<uint32_t>(plan.Pieces.size()), id});
+                plan.Edits
+                    .push_back(
+                        {
+                            descriptor.Source,
+                            start,
+                            static_cast<uint32_t>(plan.Pieces.size()),
+                            id,
+                        });
             }
         },
-        [&](parser::TokenRange tokens, StructuralSkip reason) {
+        [&] (parser::TokenRange tokens, StructuralSkip reason) {
             Skip(plan, StructuralAction::IncludeOrder, tokens, reason);
         });
 }
@@ -317,47 +392,56 @@ size_t Validate(std::string_view source, const StructuralPlan& plan)
         plan.Operations.size(), 0, plan.Edits.get_allocator().resource());
     const StructuralEdit* previous = nullptr;
     for (const auto& edit : plan.Edits) {
-        if (edit.Source.Begin > edit.Source.End ||
-            edit.Source.End > source.size() || edit.Source.Begin < cursor ||
-            edit.Operation >= plan.Operations.size() ||
-            edit.PieceBegin > edit.PieceEnd ||
-            edit.PieceEnd > plan.Pieces.size()) {
+        if (
+            edit.Source.Begin > edit.Source.End ||
+                edit.Source.End > source.size() || edit.Source.Begin < cursor ||
+                edit.Operation >= plan.Operations.size() ||
+                edit.PieceBegin > edit.PieceEnd ||
+                edit.PieceEnd > plan.Pieces.size())
+        {
             throw std::invalid_argument(
                 "invalid structural edit ownership/range");
         }
-        if (previous && previous->Source.Begin == edit.Source.Begin &&
-            previous->Source.Empty() && edit.Source.Empty() &&
-            (previous->Boundary > edit.Boundary ||
-                (previous->Boundary == edit.Boundary &&
-                    (edit.Boundary == StructuralEdit::Edge::Close
-                            ? previous->Depth <= edit.Depth
-                            : previous->Depth >= edit.Depth)))) {
+        if (
+            previous && previous->Source.Begin == edit.Source.Begin &&
+                previous->Source.Empty() && edit.Source.Empty() &&
+                (previous->Boundary > edit.Boundary ||
+                        (previous->Boundary == edit.Boundary &&
+                                (edit.Boundary == StructuralEdit::Edge::Close
+                                        ? previous->Depth <= edit.Depth
+                                        : previous->Depth >= edit.Depth))))
+        {
             throw std::invalid_argument(
                 "unordered/co-owned structural insertion");
         }
         auto kind = plan.Operations[edit.Operation].Kind;
-        auto bit = edit.Boundary == StructuralEdit::Edge::Open
-            ? 1u
-            : edit.Boundary == StructuralEdit::Edge::Close
-                ? 2u
-                : 4u;
-        if ((ownership[edit.Operation] & bit) != 0 ||
-            (kind == StructuralAction::AddMissingControlBraces
-                    ? !edit.Source.Empty() || bit == 4u
-                    : bit != 4u)) {
+        auto bit =
+            edit.Boundary == StructuralEdit::Edge::Open
+                ? 1u
+                : edit.Boundary == StructuralEdit::Edge::Close ? 2u : 4u;
+        if (
+            (ownership[edit.Operation] & bit) != 0 ||
+                (kind == StructuralAction::AddMissingControlBraces
+                        ? !edit.Source.Empty() || bit == 4u
+                        : bit != 4u))
+        {
             throw std::invalid_argument("non-atomic structural operation");
         }
         ownership[edit.Operation] |= static_cast<uint8_t>(bit);
         size -= edit.Source.End - edit.Source.Begin;
         for (auto p = edit.PieceBegin; p < edit.PieceEnd; ++p) {
             const auto& piece = plan.Pieces[p];
-            if (piece.FromSource && (piece.Source.Begin > piece.Source.End ||
-                                        piece.Source.End > source.size())) {
+            if (
+                piece.FromSource &&
+                    (piece.Source.Begin > piece.Source.End ||
+                            piece.Source.End > source.size()))
+            {
                 throw std::invalid_argument("invalid structural source piece");
             }
-            auto extra = piece.FromSource
-                             ? piece.Source.End - piece.Source.Begin
-                             : piece.Literal.size();
+            auto extra =
+                piece.FromSource
+                    ? piece.Source.End - piece.Source.Begin
+                    : piece.Literal.size();
             if (extra > util::MaxSourceSize - size) {
                 throw std::length_error("structural output too large");
             }
@@ -371,8 +455,9 @@ size_t Validate(std::string_view source, const StructuralPlan& plan)
             plan.Operations[i].Kind == StructuralAction::AddMissingControlBraces
                 ? 3u
                 : 4u;
-        if (ownership[i] != required)
+        if (ownership[i] != required) {
             throw std::invalid_argument("incomplete structural operation");
+        }
     }
     return size;
 }
@@ -381,54 +466,67 @@ TI FirstBeginningAt(const parser::SyntaxTree& tree, parser::SourceOffset offset)
     TI low = 0, high = tree.TokenCount();
     while (low < high) {
         TI mid = low + (high - low) / 2;
-        if (tree.Token(mid).Text.Begin < offset)
+        if (tree.Token(mid).Text.Begin < offset) {
             low = mid + 1;
-        else
+        } else {
             high = mid;
+        }
     }
     return low;
 }
 bool Intersects(std::span<const SR> ranges, SR query)
 {
-    auto it = std::lower_bound(ranges.begin(), ranges.end(), query.Begin,
-        [](SR r, auto offset) { return r.End <= offset; });
+    auto it =
+        std::lower_bound(
+            ranges.begin(),
+            ranges.end(),
+            query.Begin,
+            [] (SR r, auto offset) { return r.End <= offset; });
     return it != ranges.end() &&
-           (query.Empty() ? it->Begin <= query.Begin : it->Begin < query.End);
+        (query.Empty() ? it->Begin <= query.Begin : it->Begin < query.End);
 }
 } // namespace
-
-StructuralPlan::StructuralPlan(std::pmr::memory_resource& memory)
-    : Operations(&memory), Edits(&memory), Pieces(&memory), Skipped(&memory)
-{
-}
+StructuralPlan::StructuralPlan(
+    std::pmr::memory_resource& memory)
+    : Operations(&memory)
+    , Edits(&memory)
+    , Pieces(&memory)
+    , Skipped(&memory)
+{ }
 StructuralMaterialization::StructuralMaterialization(
     std::pmr::memory_resource& memory)
-    : Text(&memory), OriginalTokens(&memory), Provenance(&memory),
-      GeneratedAdjacencies(&memory)
-{
-}
-NamespaceCommentPlan::NamespaceCommentPlan(std::pmr::memory_resource& memory)
-    : Namespaces(&memory), Skipped(&memory)
-{
-}
+    : Text(&memory)
+    , OriginalTokens(&memory)
+    , Provenance(&memory)
+    , GeneratedAdjacencies(&memory)
+{ }
+NamespaceCommentPlan::NamespaceCommentPlan(
+    std::pmr::memory_resource& memory): Namespaces(&memory), Skipped(&memory)
+{ }
 
 std::pmr::vector<IncludeGroup> DiscoverIncludeGroups(
-    const parser::SyntaxTree& tree, const SourceAnalysis& safety,
+    const parser::SyntaxTree& tree,
+    const SourceAnalysis& safety,
     std::pmr::memory_resource& fileMemory,
     std::pmr::memory_resource& scratchMemory)
 {
     CheckAnalysisSource(tree, safety);
     std::pmr::vector<IncludeGroup> result(&fileMemory);
-    ScanIncludeGroups(tree, safety, scratchMemory,
-        [&](IncludeGroup group, std::span<Include>) {
+    ScanIncludeGroups(
+        tree,
+        safety,
+        scratchMemory,
+        [&] (IncludeGroup group, std::span<Include>) {
             result.push_back(group);
         },
-        [](parser::TokenRange, StructuralSkip) {});
+        [] (parser::TokenRange, StructuralSkip) {});
     return result;
 }
 
-StructuralPlan PlanStructuralEdits(const parser::SyntaxTree& tree,
-    const SourceAnalysis& safety, StructuralOptions options,
+StructuralPlan PlanStructuralEdits(
+    const parser::SyntaxTree& tree,
+    const SourceAnalysis& safety,
+    StructuralOptions options,
     std::pmr::memory_resource& fileMemory,
     std::pmr::memory_resource& scratchMemory)
 {
@@ -438,8 +536,9 @@ StructuralPlan PlanStructuralEdits(const parser::SyntaxTree& tree,
     barriers.resize(tree.TokenCount() + 1);
     for (TI i = 0; i < tree.TokenCount(); ++i) {
         barriers[i + 1] =
-            barriers[i] + (tree.Kind(i) == TK::Comment ||
-                              tree.Kind(i) == TK::PreprocessingDirective);
+            barriers[i] +
+                (tree.Kind(i) == TK::Comment ||
+                        tree.Kind(i) == TK::PreprocessingDirective);
     }
     // Labels stop at their colon in this parser. A control containing an
     // unresolved label also ends before its required statement, which can be
@@ -449,164 +548,210 @@ StructuralPlan PlanStructuralEdits(const parser::SyntaxTree& tree,
     std::pmr::vector<uint8_t> trailingLabels(regions.size(), 0, &scratchMemory);
     for (size_t i = regions.size(); i > 0; --i) {
         const auto& region = regions[i - 1];
-        trailingLabels[i - 1] |= region.Kind == NK::LabelStatement ||
-            region.Kind == NK::CaseLabel;
-        if (trailingLabels[i - 1] && region.Parent != NoRegion &&
-            Control(regions[region.Parent].Kind)) {
+        trailingLabels[i - 1] |=
+            region.Kind == NK::LabelStatement || region.Kind == NK::CaseLabel;
+        if (
+            trailingLabels[i - 1] && region.Parent != NoRegion &&
+                Control(regions[region.Parent].Kind))
+        {
             trailingLabels[region.Parent] = true;
         }
     }
     Walk(tree, &safety, scratchMemory,
-        [&](const parser::Node& node, NK parent, NK previous, NK grandparent,
-            bool declarationSequence, uint32_t depth, RegionStatus status,
-            bool trailingLabel, bool previousTrailingLabel) {
-            if (Control(node.Kind)) {
-                bool attributes = false, labels = false, directives = false;
-                for (auto* child = node.Child(); child;
-                     child = child->NextSibling) {
-                    attributes |= Attribute(child->Kind);
-                    labels |= child->Kind == NK::CaseLabel ||
-                              child->Kind == NK::LabelStatement;
-                    directives |= child->Kind == NK::PreprocessingDirective ||
+        [
+        &] (
+        const parser::Node& node,
+        NK parent,
+        NK previous,
+        NK grandparent,
+        bool declarationSequence,
+        uint32_t depth,
+        RegionStatus status,
+        bool trailingLabel,
+        bool previousTrailingLabel) {
+        if (Control(node.Kind)) {
+            bool attributes = false, labels = false, directives = false;
+            for (auto* child = node.Child(); child; child = child->NextSibling)
+            {
+                attributes |= Attribute(child->Kind);
+                labels |=
+                    child->Kind == NK::CaseLabel ||
+                        child->Kind == NK::LabelStatement;
+                directives |=
+                    child->Kind == NK::PreprocessingDirective ||
                         child->Kind == NK::PreprocessingConditional;
-                }
-                for (auto* body = node.Child(); body;
-                     body = body->NextSibling) {
-                    if (Header(body->Kind) || Attribute(body->Kind) ||
+            }
+            for (auto* body = node.Child(); body; body = body->NextSibling) {
+                if (
+                    Header(body->Kind) || Attribute(body->Kind) ||
                         body->Kind == NK::CompoundStatement ||
                         body->Kind == NK::Comment ||
                         body->Kind == NK::PreprocessingDirective ||
                         body->Tokens.Empty())
-                        continue;
-                    auto tokens = body->Tokens;
-                    bool null =
-                        body->Kind == NK::ExpressionStatement &&
+                {
+                    continue;
+                }
+                auto tokens = body->Tokens;
+                bool null =
+                    body->Kind == NK::ExpressionStatement &&
                         tokens.Size() == 1 &&
                         tree.Kind(tokens.Begin) == TK::Operator_Semicolon;
-                    if (!(null
-                        ? options.EmptyControlBody
-                        : options.AddMissingControlBraces))
-                        continue;
+                if (
+                    !(null
+                            ? options.EmptyControlBody
+                            : options.AddMissingControlBraces))
+                    continue;
                     // Preserve the conventional else-if chain; nested
                     // then-controls are wrapped together, with closes ordered
                     // deepest-first.
-                    if (body->Kind == NK::IfStatement && tokens.Begin &&
+                if (
+                    body->Kind == NK::IfStatement && tokens.Begin &&
                         tree.Kind(tokens.Begin - 1) == TK::Keyword_else)
-                        continue;
-                    auto action = null
+                {
+                    continue;
+                }
+                auto action =
+                    null
                         ? StructuralAction::EmptyControlBody
                         : StructuralAction::AddMissingControlBraces;
-                    auto range = Range(tree, tokens);
-                    if (status != RegionStatus::Complete) {
-                        Skip(plan, action, tokens, StructuralSkip::Incomplete);
-                    } else if (attributes) {
-                        Skip(plan, action, tokens, StructuralSkip::Attributes);
-                    } else if (trailingLabel || labels ||
+                auto range = Range(tree, tokens);
+                if (status != RegionStatus::Complete) {
+                    Skip(plan, action, tokens, StructuralSkip::Incomplete);
+                } else if (attributes) {
+                    Skip(plan, action, tokens, StructuralSkip::Attributes);
+                } else if (
+                    trailingLabel || labels ||
                         body->Kind == NK::LabelStatement ||
-                        body->Kind == NK::CaseLabel) {
-                        Skip(plan, action, tokens, StructuralSkip::LabelBody);
-                    } else if (directives) {
-                        Skip(plan, action, tokens,
-                            StructuralSkip::DirectiveBoundary);
-                    } else if (barriers[node.Tokens.End] !=
-                                   barriers[node.Tokens.Begin] ||
-                               AdjacentComment(tree, tokens)) {
-                        Skip(plan, action, tokens,
-                            StructuralSkip::CommentAttached);
-                    } else if (safety.IntersectsImmutable(range) ||
-                               safety.IntersectsImmutable(
-                                   {range.End, range.End}) ||
-                               (safety.Gaps()[tokens.Begin].Preserve &&
-                                   safety.Gaps()[tokens.Begin]
-                                       .Source.Empty()) ||
-                               (!null && safety.Gaps()[tokens.End].Preserve &&
-                                   safety.Gaps()[tokens.End].Source.Empty())) {
-                        Skip(plan, action, tokens, StructuralSkip::Protected);
+                        body->Kind == NK::CaseLabel)
+                {
+                    Skip(plan, action, tokens, StructuralSkip::LabelBody);
+                } else if (directives) {
+                    Skip(
+                        plan,
+                        action,
+                        tokens,
+                        StructuralSkip::DirectiveBoundary);
+                } else if (
+                    barriers[node.Tokens.End] != barriers[node.Tokens.Begin] ||
+                        AdjacentComment(tree, tokens))
+                {
+                    Skip(plan, action, tokens, StructuralSkip::CommentAttached);
+                } else if (
+                    safety.IntersectsImmutable(range) ||
+                        safety.IntersectsImmutable({range.End, range.End}) ||
+                        (safety.Gaps()[tokens.Begin].Preserve &&
+                                safety.Gaps()[tokens.Begin].Source.Empty()) ||
+                        (!null && safety.Gaps()[tokens.End].Preserve &&
+                                safety.Gaps()[tokens.End].Source.Empty()))
+                {
+                    Skip(plan, action, tokens, StructuralSkip::Protected);
+                } else {
+                    auto id = Operation(plan, action, tokens);
+                    if (null) {
+                        Literal(plan, range, "{}", id, depth);
                     } else {
-                        auto id = Operation(plan, action, tokens);
-                        if (null) {
-                            Literal(plan, range, "{}", id, depth);
-                        } else {
-                            Literal(plan, {range.Begin, range.Begin}, "{", id,
-                                depth, StructuralEdit::Edge::Open);
-                            Literal(plan, {range.End, range.End}, "}", id,
-                                depth, StructuralEdit::Edge::Close);
-                        }
+                        Literal(
+                            plan,
+                            {range.Begin, range.Begin},
+                            "{",
+                            id,
+                            depth,
+                            StructuralEdit::Edge::Open);
+                        Literal(
+                            plan,
+                            {range.End, range.End},
+                            "}",
+                            id,
+                            depth,
+                            StructuralEdit::Edge::Close);
                     }
                 }
             }
-            bool nullStatement = options.RemoveNullStatements &&
-                                 parent == NK::CompoundStatement &&
-                                 node.Kind == NK::ExpressionStatement &&
-                                 node.Tokens.Size() == 1;
-            bool declarationParent = parent == NK::TranslationUnit ||
-                                     parent == NK::NamespaceDeclaration ||
-                                     parent == NK::LinkageSpecification ||
-                                     parent == NK::ExportDeclaration;
-            bool nullDeclaration =
-                options.RemoveNullDeclarations && declarationParent &&
+        }
+        bool nullStatement =
+            options.RemoveNullStatements && parent == NK::CompoundStatement &&
+                node.Kind == NK::ExpressionStatement && node.Tokens.Size() == 1;
+        bool declarationParent =
+            parent == NK::TranslationUnit ||
+                parent == NK::NamespaceDeclaration ||
+                parent == NK::LinkageSpecification ||
+                parent == NK::ExportDeclaration;
+        bool nullDeclaration =
+            options.RemoveNullDeclarations && declarationParent &&
                 node.Kind == NK::EmptyDeclaration && node.Tokens.Size() == 1;
-            bool functionSuffix =
-                options.RemoveNullDeclarations &&
+        bool functionSuffix =
+            options.RemoveNullDeclarations &&
                 node.Kind == NK::FunctionDefinition && !node.Tokens.Empty() &&
                 tree.Kind(node.Tokens.End - 1) == TK::Operator_Semicolon;
-            if (!(nullStatement || nullDeclaration || functionSuffix))
-                return;
+        if (!(nullStatement || nullDeclaration || functionSuffix))
+            return;
             TI token = functionSuffix ? node.Tokens.End - 1 : node.Tokens.Begin;
-            if (tree.Kind(token) != TK::Operator_Semicolon)
-                return;
-            auto action = nullStatement
-                              ? StructuralAction::RemoveNullStatements
-                              : StructuralAction::RemoveNullDeclarations;
+            if (tree.Kind(token) != TK::Operator_Semicolon) {
+            return;
+        }
+        auto action =
+            nullStatement
+                ? StructuralAction::RemoveNullStatements
+                : StructuralAction::RemoveNullDeclarations;
             parser::TokenRange tokens{token, token + 1};
             if (status != RegionStatus::Complete) {
-                Skip(plan, action, tokens, StructuralSkip::Incomplete);
-            } else if ((nullDeclaration && !declarationSequence) ||
-                       (nullStatement &&
-                           (grandparent == NK::Argument ||
-                               grandparent == NK::StatementExpression))) {
-                // GNU statement expressions can change from void to a value if
-                // their final null statement disappears. Macro braced arguments
-                // and non-sequence exported declarations are not redundant
-                // bodies.
-                Skip(plan, action, tokens, StructuralSkip::RequiredBody);
-            } else if (nullStatement && (previousTrailingLabel ||
-                previous == NK::CaseLabel || previous == NK::LabelStatement)) {
-                Skip(plan, action, tokens, StructuralSkip::LabelBody);
-            } else if (AdjacentComment(tree, tokens)) {
-                Skip(plan, action, tokens, StructuralSkip::CommentAttached);
-            } else if (safety.IntersectsImmutable(Range(tree, tokens)) ||
-                       (safety.Gaps()[tokens.Begin].Preserve &&
-                           safety.Gaps()[tokens.Begin].Source.Empty()) ||
-                       (safety.Gaps()[tokens.End].Preserve &&
-                           safety.Gaps()[tokens.End].Source.Empty())) {
-                Skip(plan, action, tokens, StructuralSkip::Protected);
-            } else if (options.PreserveBareCR &&
-                safety.Gaps()[token].HasBareCR &&
-                safety.Gaps()[token].Original.ends_with('\r')) {
-                // Retain the first original separator of a zero-gap deletion
-                // chain before admission: no cancellation or ID remapping.
-                Skip(plan, action, tokens, StructuralSkip::RequiredBody);
-            } else {
-                auto id = Operation(plan, action, tokens);
-                // Token-only removal cannot take neighboring comments or gaps.
-                Literal(plan, Range(tree, tokens), "", id);
-            }
-        }, trailingLabels);
-    if (options.SortIncludes)
+            Skip(plan, action, tokens, StructuralSkip::Incomplete);
+        } else if (
+            (nullDeclaration && !declarationSequence) ||
+                (nullStatement &&
+                        (grandparent == NK::Argument ||
+                                grandparent == NK::StatementExpression)))
+        {
+            // GNU statement expressions can change from void to a value if
+            // their final null statement disappears. Macro braced arguments
+            // and non-sequence exported declarations are not redundant
+            // bodies.
+            Skip(plan, action, tokens, StructuralSkip::RequiredBody);
+        } else if (
+            nullStatement &&
+                (previousTrailingLabel || previous == NK::CaseLabel ||
+                        previous == NK::LabelStatement))
+        {
+            Skip(plan, action, tokens, StructuralSkip::LabelBody);
+        } else if (AdjacentComment(tree, tokens)) {
+            Skip(plan, action, tokens, StructuralSkip::CommentAttached);
+        } else if (
+            safety.IntersectsImmutable(Range(tree, tokens)) ||
+                (safety.Gaps()[tokens.Begin].Preserve &&
+                        safety.Gaps()[tokens.Begin].Source.Empty()) ||
+                (safety.Gaps()[tokens.End].Preserve &&
+                        safety.Gaps()[tokens.End].Source.Empty()))
+        {
+            Skip(plan, action, tokens, StructuralSkip::Protected);
+        } else if (
+            options.PreserveBareCR && safety.Gaps()[token].HasBareCR &&
+                safety.Gaps()[token].Original.ends_with('\r'))
+        {
+            // Retain the first original separator of a zero-gap deletion
+            // chain before admission: no cancellation or ID remapping.
+            Skip(plan, action, tokens, StructuralSkip::RequiredBody);
+        } else {
+            auto id = Operation(plan, action, tokens);
+            // Token-only removal cannot take neighboring comments or gaps.
+            Literal(plan, Range(tree, tokens), "", id);
+        }
+    }, trailingLabels);
+    if (options.SortIncludes) {
         Includes(tree, safety, plan, scratchMemory);
+    }
     Sort(plan);
     (void)Validate(tree.Source(), plan);
     return plan;
 }
 
 StructuralMaterialization MaterializeStructuralEdits(
-    const parser::SyntaxTree& tree, const StructuralPlan& plan,
+    const parser::SyntaxTree& tree,
+    const StructuralPlan& plan,
     std::pmr::memory_resource& fileMemory,
     std::pmr::memory_resource& scratchMemory)
 {
     auto size = Validate(tree.Source(), plan);
-    auto boundary = [&](parser::SourceOffset offset) {
+    auto boundary = [&] (parser::SourceOffset offset) {
         auto next = FirstBeginningAt(tree, offset);
         return !next || tree.Token(next - 1).Text.End <= offset;
     };
@@ -617,8 +762,10 @@ StructuralMaterialization MaterializeStructuralEdits(
         }
     }
     for (const auto& piece : plan.Pieces) {
-        if (piece.FromSource &&
-            (!boundary(piece.Source.Begin) || !boundary(piece.Source.End))) {
+        if (
+            piece.FromSource &&
+                (!boundary(piece.Source.Begin) || !boundary(piece.Source.End)))
+        {
             throw std::invalid_argument(
                 "structural piece splits an original token");
         }
@@ -628,25 +775,40 @@ StructuralMaterialization MaterializeStructuralEdits(
     result.OriginalTokens.resize(tree.TokenCount());
     result.Provenance.reserve(plan.Pieces.size() + plan.Edits.size() + 1);
     result.GeneratedAdjacencies.reserve(plan.Edits.size());
-    auto copy = [&](SR source, StructuralActionId operation) {
-        if (source.Empty())
+    auto copy = [&] (SR source, StructuralActionId operation) {
+        if (source.Empty()) {
             return;
+        }
         auto begin = static_cast<parser::SourceOffset>(result.Text.size());
         result.Text.append(tree.SourceText(source));
-        result.Provenance.push_back(
-            {{begin, static_cast<parser::SourceOffset>(result.Text.size())},
-                source, operation, false});
+        result.Provenance
+            .push_back(
+                {
+                    {
+                        begin,
+                        static_cast<parser::SourceOffset>(result.Text.size()),
+                    },
+                    source,
+                    operation,
+                    false,
+                });
         for (TI i = FirstBeginningAt(tree, source.Begin); i < tree.TokenCount();
              ++i) {
             auto token = tree.Token(i).Text;
-            if (token.Begin >= source.End)
+            if (token.Begin >= source.End) {
                 break;
+            }
             if (token.End > source.End || result.OriginalTokens[i].Present) {
                 throw std::invalid_argument("split/duplicated original token");
             }
-            result.OriginalTokens[i] = {{begin + token.Begin - source.Begin,
-                                            begin + token.End - source.Begin},
-                true};
+            result.OriginalTokens[i] =
+                {
+                    {
+                        begin + token.Begin - source.Begin,
+                        begin + token.End - source.Begin,
+                    },
+                    true,
+                };
         }
     };
     parser::SourceOffset cursor = 0;
@@ -655,24 +817,39 @@ StructuralMaterialization MaterializeStructuralEdits(
         auto begin = static_cast<parser::SourceOffset>(result.Text.size());
         for (auto p = edit.PieceBegin; p < edit.PieceEnd; ++p) {
             const auto& piece = plan.Pieces[p];
-            if (piece.FromSource)
+            if (piece.FromSource) {
                 copy(piece.Source, edit.Operation);
-            else {
+            } else {
                 auto start =
                     static_cast<parser::SourceOffset>(result.Text.size());
                 result.Text.append(piece.Literal);
-                result.Provenance.push_back(
-                    {{start,
-                         static_cast<parser::SourceOffset>(result.Text.size())},
-                        edit.Source, edit.Operation, true});
+                result.Provenance
+                    .push_back(
+                        {
+                            {
+                                start,
+                                static_cast<parser::SourceOffset>(result.Text
+                                    .size()),
+                            },
+                            edit.Source,
+                            edit.Operation,
+                            true,
+                        });
             }
         }
-        result.GeneratedAdjacencies.push_back(
-            {{begin, static_cast<parser::SourceOffset>(result.Text.size())},
-                edit.Operation});
+        result.GeneratedAdjacencies
+            .push_back(
+                {
+                    {
+                        begin,
+                        static_cast<parser::SourceOffset>(result.Text.size()),
+                    },
+                    edit.Operation,
+                });
         cursor = edit.Source.End;
     }
-    copy({cursor, static_cast<parser::SourceOffset>(tree.Source().size())},
+    copy(
+        {cursor, static_cast<parser::SourceOffset>(tree.Source().size())},
         NoStructuralAction);
     // Linear nearest-survivor tables bound chains of neighboring deletions.
     std::pmr::vector<TI> before(
@@ -690,29 +867,34 @@ StructuralMaterialization MaterializeStructuralEdits(
         auto left = before[leftIndex];
         auto right = after[rightIndex];
         auto& range = result.GeneratedAdjacencies[i].Output;
-        if (left != tree.TokenCount())
+        if (left != tree.TokenCount()) {
             range.Begin =
                 std::min(range.Begin, result.OriginalTokens[left].Output.End);
-        else
+        } else {
             range.Begin = 0;
-        if (right != tree.TokenCount())
+        }
+        if (right != tree.TokenCount()) {
             range.End =
                 std::max(range.End, result.OriginalTokens[right].Output.Begin);
-        else
+        } else {
             range.End = static_cast<parser::SourceOffset>(result.Text.size());
+        }
     }
     return result;
 }
 
-NamespaceCommentPlan PlanNamespaceComments(const parser::SyntaxTree& original,
-    const SourceAnalysis& safety, NamespaceCommentOptions options,
+NamespaceCommentPlan PlanNamespaceComments(
+    const parser::SyntaxTree& original,
+    const SourceAnalysis& safety,
+    NamespaceCommentOptions options,
     std::pmr::memory_resource& fileMemory,
     std::pmr::memory_resource& scratchMemory)
 {
     NamespaceCommentPlan plan(fileMemory);
     plan.Options = options;
-    if (options.Spaces > 32)
+    if (options.Spaces > 32) {
         throw std::invalid_argument("namespace comment spacing exceeds 32");
+    }
     if (options.Policy == NamespaceCommentPolicy::Preserve)
         return plan;
     std::pmr::vector<uint32_t> namespaceKeywords(
@@ -722,109 +904,154 @@ NamespaceCommentPlan PlanNamespaceComments(const parser::SyntaxTree& original,
             namespaceKeywords[i] + (original.Kind(i) == TK::Keyword_namespace);
     }
     Walk(original, &safety, scratchMemory,
-        [&](const parser::Node& node, NK, NK, NK, bool, uint32_t,
-            RegionStatus status, bool, bool) {
-            if (node.Kind != NK::NamespaceDeclaration) {
-                // A keyword in opaque/generic grammar is evidence to SKIP,
-                // never permission to invent a namespace identity or inspect
-                // its text.
-                if ((node.Kind == NK::Declaration ||
-                        node.Kind == NK::UnparsedSyntax) &&
+        [
+        &] (
+        const parser::Node& node,
+        NK,
+        NK,
+        NK,
+        bool,
+        uint32_t,
+        RegionStatus status,
+        bool,
+        bool) {
+        if (node.Kind != NK::NamespaceDeclaration) {
+            // A keyword in opaque/generic grammar is evidence to SKIP,
+            // never permission to invent a namespace identity or inspect
+            // its text.
+            if (
+                (node.Kind == NK::Declaration ||
+                            node.Kind == NK::UnparsedSyntax) &&
                     namespaceKeywords[node.Tokens.End] !=
-                        namespaceKeywords[node.Tokens.Begin]) {
-                    plan.Skipped.push_back({StructuralAction::NamespaceComments,
-                        node.Tokens, StructuralSkip::Incomplete});
-                }
-                return;
+                        namespaceKeywords[node.Tokens.Begin])
+            {
+                plan.Skipped
+                    .push_back(
+                        {
+                            StructuralAction::NamespaceComments,
+                            node.Tokens,
+                            StructuralSkip::Incomplete,
+                        });
             }
-            if (node.Tokens.Empty())
-                return;
-            auto fail = [&](StructuralSkip reason) {
-                plan.Skipped.push_back(
-                    {StructuralAction::NamespaceComments, node.Tokens, reason});
-            };
+            return;
+        }
+        if (node.Tokens.Empty()) {
+            return;
+        }
+        auto fail = [&] (StructuralSkip reason) {
+            plan.Skipped
+                .push_back(
+                    {
+                        StructuralAction::NamespaceComments,
+                        node.Tokens,
+                        reason,
+                    });
+        };
             TI open = original.TokenCount();
             bool expectName = true, named = false, valid = true;
             for (TI i = node.Tokens.Begin; i < node.Tokens.End; ++i) {
-                auto kind = original.Kind(i);
-                if (kind == TK::Operator_OpenBrace) {
-                    open = i;
-                    break;
-                }
-                if ((kind == TK::Keyword_namespace && expectName && !named) ||
+            auto kind = original.Kind(i);
+            if (kind == TK::Operator_OpenBrace) {
+                open = i;
+                break;
+            }
+            if (
+                (kind == TK::Keyword_namespace && expectName && !named) ||
                     (kind == TK::Keyword_inline && expectName))
-                    continue;
-                if (kind == TK::Identifier && expectName) {
-                    expectName = false;
-                    named = true;
-                } else if (kind == TK::Operator_ScopeResolution && !expectName)
-                    expectName = true;
-                else {
-                    valid = false;
-                    break;
-                }
+            {
+                continue;
             }
-            if (open == original.TokenCount() || !valid ||
-                (expectName && named))
-                return; // alias/non-header
-            auto close = original.MatchingDelimiter(open);
-            if (status != RegionStatus::Complete || close >= node.Tokens.End ||
-                original.Kind(close) != TK::Operator_CloseBrace) {
-                fail(StructuralSkip::Incomplete);
-                return;
+            if (kind == TK::Identifier && expectName) {
+                expectName = false;
+                named = true;
+            } else if (kind == TK::Operator_ScopeResolution && !expectName) {
+                expectName = true;
+            } else {
+                valid = false;
+                break;
             }
-            auto begin = original.Token(close).Text.End;
-            auto comment = original.TokenCount();
-            if (close + 1 < original.TokenCount() &&
+        }
+        if (open == original.TokenCount() || !valid || (expectName && named))
+            return; // alias/non-header
+        auto close = original.MatchingDelimiter(open);
+        if (
+            status != RegionStatus::Complete || close >= node.Tokens.End ||
+                original.Kind(close) != TK::Operator_CloseBrace)
+        {
+            fail(StructuralSkip::Incomplete);
+            return;
+        }
+        auto begin = original.Token(close).Text.End;
+        auto comment = original.TokenCount();
+        if (
+            close + 1 < original.TokenCount() &&
                 original.Kind(close + 1) == TK::Comment &&
                 original.TokenText(close + 1).starts_with("//") &&
                 Horizontal(original.WhitespaceAfter(close)))
-                comment = close + 1;
+            comment = close + 1;
             SR window{begin, comment == original.TokenCount()
                                  ? begin
                                  : original.Token(comment).Text.End};
-            if (safety.IntersectsImmutable(
+            if (
+            safety
+                .IntersectsImmutable(
                     Range(original, {node.Tokens.Begin, open + 1})) ||
-                safety.IntersectsImmutable(
-                    Range(original, {close, close + 1})) ||
-                safety.IntersectsImmutable(window)) {
-                fail(StructuralSkip::Protected);
-                return;
-            }
-            plan.Namespaces.push_back(
-                {node.Tokens, {node.Tokens.Begin, open}, open, close, comment});
-        });
+                safety
+                    .IntersectsImmutable(
+                        Range(original, {close, close + 1})) ||
+                safety.IntersectsImmutable(window))
+        {
+            fail(StructuralSkip::Protected);
+            return;
+        }
+        plan.Namespaces
+            .push_back(
+                {
+                    node.Tokens,
+                    {node.Tokens.Begin, open},
+                    open,
+                    close,
+                    comment,
+                });
+    });
     return plan;
 }
 
-StructuralPlan ResolveNamespaceComments(const parser::SyntaxTree& original,
-    const NamespaceCommentPlan& plan, std::string_view output,
+StructuralPlan ResolveNamespaceComments(
+    const parser::SyntaxTree& original,
+    const NamespaceCommentPlan& plan,
+    std::string_view output,
     std::span<const TokenOutputOffset> mapping,
-    std::span<const SR> outputProtection, std::pmr::memory_resource& fileMemory,
+    std::span<const SR> outputProtection,
+    std::pmr::memory_resource& fileMemory,
     std::pmr::memory_resource& scratchMemory)
 {
     (void)CheckedSourceAnalysisSize(output.size());
     StructuralPlan resolved(fileMemory);
     resolved.Skipped.assign(plan.Skipped.begin(), plan.Skipped.end());
-    if (plan.Options.Policy == NamespaceCommentPolicy::Preserve)
+    if (plan.Options.Policy == NamespaceCommentPolicy::Preserve) {
         return resolved;
+    }
     if (mapping.size() != original.TokenCount())
         throw std::invalid_argument("original token mapping size");
     parser::SourceOffset previousEnd = 0;
     for (auto r : outputProtection) {
-        if (r.Begin > r.End || r.End > output.size() || r.Begin < previousEnd)
+        if (r.Begin > r.End || r.End > output.size() || r.Begin < previousEnd) {
             throw std::invalid_argument("output protection ordering");
+        }
         previousEnd = r.End;
     }
     std::pmr::vector<parser::SourceOffset> lines(&scratchMemory);
     lines.push_back(0);
     for (size_t i = 0; i < output.size(); ++i)
-        if (output[i] == '\n')
+        if (output[i] == '\n') {
             lines.push_back(static_cast<parser::SourceOffset>(i + 1));
-    auto line = [&](parser::SourceOffset offset) {
-        return static_cast<size_t>(
-            std::upper_bound(lines.begin(), lines.end(), offset) -
-            lines.begin() - 1);
+        }
+    auto line = [&] (parser::SourceOffset offset) {
+        return static_cast<size_t>(std::upper_bound(
+            lines.begin(),
+            lines.end(),
+            offset) - lines.begin() - 1);
     };
     const auto count = original.TokenCount();
     std::pmr::vector<uint8_t> mappedValid(count, 0, &scratchMemory);
@@ -832,17 +1059,18 @@ StructuralPlan ResolveNamespaceComments(const parser::SyntaxTree& original,
     std::pmr::vector<TI> after(count + 1, count, &scratchMemory);
     for (TI token = 0; token < count; ++token) {
         auto r = mapping[token].Output;
-        mappedValid[token] = mapping[token].Present && r.Begin <= r.End &&
-            r.End <= output.size() && output.substr(r.Begin, r.End - r.Begin) ==
-                original.TokenText(token);
+        mappedValid[token] =
+            mapping[token].Present && r.Begin <= r.End &&
+                r.End <= output.size() &&
+                output.substr(r.Begin, r.End - r.Begin) ==
+                    original.TokenText(token);
         before[token + 1] = mapping[token].Present ? token : before[token];
     }
     for (TI token = count; token > 0; --token) {
-        after[token - 1] = mapping[token - 1].Present
-            ? token - 1
-            : after[token];
+        after[token - 1] =
+            mapping[token - 1].Present ? token - 1 : after[token];
     }
-    auto valid = [&](TI token) {
+    auto valid = [&] (TI token) {
         return token < count && mappedValid[token];
     };
     struct Interior
@@ -850,7 +1078,6 @@ StructuralPlan ResolveNamespaceComments(const parser::SyntaxTree& original,
         parser::SourceOffset Begin = UINT32_MAX;
         parser::SourceOffset End = 0;
         bool Invalid = false;
-
         void Merge(const Interior& other)
         {
             Begin = std::min(Begin, other.Begin);
@@ -867,8 +1094,8 @@ StructuralPlan ResolveNamespaceComments(const parser::SyntaxTree& original,
     // parent once. Containment checks do not require original interior order:
     // authorized include permutations and deleted tokens remain admissible.
     for (TI token = 0; token < count; ++token) {
-        while (!active.empty() &&
-            plan.Namespaces[active.back()].Close == token) {
+        while (!active.empty() && plan.Namespaces[active.back()].Close == token)
+        {
             auto closed = active.back();
             active.pop_back();
             if (!active.empty()) {
@@ -879,13 +1106,18 @@ StructuralPlan ResolveNamespaceComments(const parser::SyntaxTree& original,
             auto r = mapping[token].Output;
             interiors[active.back()].Merge({r.Begin, r.End, !valid(token)});
         }
-        while (nextNamespace < plan.Namespaces.size() &&
-            plan.Namespaces[nextNamespace].Open == token) {
+        while (
+            nextNamespace < plan.Namespaces.size() &&
+                plan.Namespaces[nextNamespace].Open == token)
+        {
             const auto& ns = plan.Namespaces[nextNamespace];
-            if (ns.Close <= token || ns.Close >= count ||
-                ns.Header.Begin >= ns.Header.End || ns.Header.End != token ||
-                (!active.empty() &&
-                    ns.Close >= plan.Namespaces[active.back()].Close)) {
+            if (
+                ns.Close <= token || ns.Close >= count ||
+                    ns.Header.Begin >= ns.Header.End ||
+                    ns.Header.End != token ||
+                    (!active.empty() &&
+                            ns.Close >= plan.Namespaces[active.back()].Close))
+            {
                 throw std::invalid_argument(
                     "invalid original namespace identity");
             }
@@ -898,8 +1130,11 @@ StructuralPlan ResolveNamespaceComments(const parser::SyntaxTree& original,
     for (size_t namespaceIndex = 0; namespaceIndex < plan.Namespaces.size();
         ++namespaceIndex) {
         const auto& ns = plan.Namespaces[namespaceIndex];
-        auto skip = [&](StructuralSkip reason) {
-            Skip(resolved, StructuralAction::NamespaceComments, ns.Owner,
+        auto skip = [&] (StructuralSkip reason) {
+            Skip(
+                resolved,
+                StructuralAction::NamespaceComments,
+                ns.Owner,
                 reason);
         };
         bool existing = ns.Comment != original.TokenCount();
@@ -912,25 +1147,33 @@ StructuralPlan ResolveNamespaceComments(const parser::SyntaxTree& original,
             }
             headerEnd = mapping[token].Output.End;
         }
-        if (!validHeader || !valid(ns.Open) || !valid(ns.Close) ||
-            (existing && !valid(ns.Comment)) ||
-            headerEnd > mapping[ns.Open].Output.Begin ||
-            mapping[ns.Open].Output.End > mapping[ns.Close].Output.Begin) {
+        if (
+            !validHeader || !valid(ns.Open) || !valid(ns.Close) ||
+                (existing && !valid(ns.Comment)) ||
+                headerEnd > mapping[ns.Open].Output.Begin ||
+                mapping[ns.Open].Output.End > mapping[ns.Close].Output.Begin)
+        {
             skip(StructuralSkip::InvalidMapping);
             continue;
         }
         const auto& interior = interiors[namespaceIndex];
         auto previous = before[ns.Header.Begin];
         auto following = after[ns.Close + 1];
-        if (interior.Invalid || (interior.Begin != UINT32_MAX &&
-                (interior.Begin < mapping[ns.Open].Output.End ||
-                    interior.End > mapping[ns.Close].Output.Begin)) ||
-            (previous != count && (!valid(previous) ||
-                mapping[previous].Output.End >
-                    mapping[ns.Header.Begin].Output.Begin)) ||
-            (following != count && (!valid(following) ||
-                mapping[following].Output.Begin <
-                    mapping[ns.Close].Output.End))) {
+        if (
+            interior.Invalid ||
+                (interior.Begin != UINT32_MAX &&
+                        (interior.Begin < mapping[ns.Open].Output.End ||
+                                interior.End >
+                                    mapping[ns.Close].Output.Begin)) ||
+                (previous != count &&
+                        (!valid(previous) ||
+                                mapping[previous].Output.End >
+                                    mapping[ns.Header.Begin].Output.Begin)) ||
+                (following != count &&
+                        (!valid(following) ||
+                                mapping[following].Output.Begin <
+                                    mapping[ns.Close].Output.End)))
+        {
             skip(StructuralSkip::InvalidMapping);
             continue;
         }
@@ -938,26 +1181,35 @@ StructuralPlan ResolveNamespaceComments(const parser::SyntaxTree& original,
         auto end = begin;
         if (existing) {
             auto r = mapping[ns.Comment].Output;
-            if (r.Begin < begin ||
-                !Horizontal(output.substr(begin, r.Begin - begin))) {
+            if (
+                r.Begin < begin ||
+                    !Horizontal(output.substr(begin, r.Begin - begin)))
+            {
                 skip(StructuralSkip::InvalidMapping);
                 continue;
             }
             end = r.End;
             // Keep token-owned CR before the existing LF, not in replacement.
-            if (end > begin && output[end - 1] == '\r' && end < output.size() &&
-                output[end] == '\n')
+            if (
+                end > begin && output[end - 1] == '\r' && end < output.size() &&
+                    output[end] == '\n')
+            {
                 --end;
-            if (plan.Options.Policy == NamespaceCommentPolicy::AddMissing)
+            }
+            if (plan.Options.Policy == NamespaceCommentPolicy::AddMissing) {
                 continue;
+            }
         } else {
-            if (plan.Options.Policy == NamespaceCommentPolicy::Remove)
+            if (plan.Options.Policy == NamespaceCommentPolicy::Remove) {
                 continue;
+            }
             auto openLine = line(mapping[ns.Open].Output.Begin);
             auto closeLine = line(mapping[ns.Close].Output.Begin);
             auto interior = closeLine > openLine ? closeLine - openLine - 1 : 0;
-            if (plan.Options.ShortNamespaceLines &&
-                interior <= plan.Options.ShortNamespaceLines) {
+            if (
+                plan.Options.ShortNamespaceLines &&
+                    interior <= plan.Options.ShortNamespaceLines)
+            {
                 skip(StructuralSkip::ShortNamespace);
                 continue;
             }
@@ -966,10 +1218,14 @@ StructuralPlan ResolveNamespaceComments(const parser::SyntaxTree& original,
                     ? lines[closeLine + 1] - 1
                     : static_cast<parser::SourceOffset>(output.size());
             auto suffix = output.substr(begin, lineEnd - begin);
-            if (suffix.ends_with('\r') &&
-                (!plan.Options.PreserveBareCR ||
-                    (lineEnd < output.size() && output[lineEnd] == '\n')))
+            if (
+                suffix.ends_with('\r') &&
+                    (!plan.Options.PreserveBareCR ||
+                            (lineEnd < output.size() &&
+                                    output[lineEnd] == '\n')))
+            {
                 suffix.remove_suffix(1);
+            }
             if (!Horizontal(suffix)) {
                 skip(StructuralSkip::FollowingText);
                 continue;
@@ -977,8 +1233,10 @@ StructuralPlan ResolveNamespaceComments(const parser::SyntaxTree& original,
             // Replace only horizontal trailing space; do not move any atom.
             end = begin + static_cast<parser::SourceOffset>(suffix.size());
         }
-        if (Intersects(outputProtection, {begin, end}) ||
-            Intersects(outputProtection, mapping[ns.Close].Output)) {
+        if (
+            Intersects(outputProtection, {begin, end}) ||
+                Intersects(outputProtection, mapping[ns.Close].Output))
+        {
             skip(StructuralSkip::Protected);
             continue;
         }
@@ -989,19 +1247,25 @@ StructuralPlan ResolveNamespaceComments(const parser::SyntaxTree& original,
             // A single shared static space view avoids per-comment strings.
             static constexpr std::string_view Spaces =
                 "                                ";
-            if (plan.Options.Spaces > Spaces.size())
+            if (plan.Options.Spaces > Spaces.size()) {
                 throw std::invalid_argument(
                     "namespace comment spacing exceeds 32");
-            if (plan.Options.Spaces)
-                resolved.Pieces.push_back(
-                    {{}, Spaces.substr(0, plan.Options.Spaces), false});
+            }
+            if (plan.Options.Spaces) {
+                resolved.Pieces
+                    .push_back(
+                        {{}, Spaces.substr(0, plan.Options.Spaces), false});
+            }
             resolved.Pieces.push_back({{}, "// namespace", false});
             bool firstName = true;
             for (TI i = ns.Header.Begin; i < ns.Header.End; ++i) {
                 auto kind = original.Kind(i);
-                if (kind != TK::Identifier &&
-                    kind != TK::Operator_ScopeResolution)
+                if (
+                    kind != TK::Identifier &&
+                        kind != TK::Operator_ScopeResolution)
+                {
                     continue;
+                }
                 if (firstName) {
                     resolved.Pieces.push_back({{}, " ", false});
                     firstName = false;
@@ -1013,8 +1277,10 @@ StructuralPlan ResolveNamespaceComments(const parser::SyntaxTree& original,
         bool identical = true;
         for (size_t p = pieceBegin; p < resolved.Pieces.size(); ++p) {
             auto literal = resolved.Pieces[p].Literal;
-            if (literal.size() > end - cursor ||
-                output.substr(cursor, literal.size()) != literal) {
+            if (
+                literal.size() > end - cursor ||
+                    output.substr(cursor, literal.size()) != literal)
+            {
                 identical = false;
                 break;
             }
@@ -1024,8 +1290,14 @@ StructuralPlan ResolveNamespaceComments(const parser::SyntaxTree& original,
             resolved.Pieces.resize(pieceBegin);
             resolved.Operations.pop_back();
         } else {
-            resolved.Edits.push_back({{begin, end}, pieceBegin,
-                static_cast<uint32_t>(resolved.Pieces.size()), id});
+            resolved.Edits
+                .push_back(
+                    {
+                        {begin, end},
+                        pieceBegin,
+                        static_cast<uint32_t>(resolved.Pieces.size()),
+                        id,
+                    });
         }
     }
     Sort(resolved);
@@ -1033,8 +1305,10 @@ StructuralPlan ResolveNamespaceComments(const parser::SyntaxTree& original,
     return resolved;
 }
 
-std::pmr::string MaterializeNamespaceComments(std::string_view output,
-    const StructuralPlan& resolved, std::pmr::memory_resource& fileMemory)
+std::pmr::string MaterializeNamespaceComments(
+    std::string_view output,
+    const StructuralPlan& resolved,
+    std::pmr::memory_resource& fileMemory)
 {
     std::pmr::string result(&fileMemory);
     result.reserve(Validate(output, resolved));
@@ -1043,9 +1317,10 @@ std::pmr::string MaterializeNamespaceComments(std::string_view output,
         result.append(output.substr(cursor, edit.Source.Begin - cursor));
         for (auto p = edit.PieceBegin; p < edit.PieceEnd; ++p) {
             const auto& piece = resolved.Pieces[p];
-            if (piece.FromSource)
+            if (piece.FromSource) {
                 throw std::invalid_argument(
                     "comment plan requires literal/name pieces");
+            }
             result.append(piece.Literal);
         }
         cursor = edit.Source.End;

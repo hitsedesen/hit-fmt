@@ -12,28 +12,25 @@
 #include <stdexcept>
 #include <string>
 
-namespace public_pipeline
-{
-namespace
-{
+namespace public_pipeline {
+namespace {
 struct Input
 {
     std::string Storage;
     size_t Size;
-    explicit Input(std::string_view text)
-        : Storage(text)
-        , Size(text.size())
+    explicit Input(std::string_view text): Storage(text), Size(text.size())
     {
         Storage.append(util::SourcePaddingSize, '\0');
     }
     util::PaddedSourceView View() const
     {
-        return { Storage.data(), Size };
+        return {Storage.data(), Size};
     }
 };
-formatter::FormatResult FormatInput(std::string_view source,
+formatter::FormatResult FormatInput(
+    std::string_view source,
     const formatter::PreparedFormat& prepared,
-    formatter::FormatRequest request = { .SourceMap = true })
+    formatter::FormatRequest request = {.SourceMap = true})
 {
     Input input(source);
     return formatter::Format(input.View(), prepared, request);
@@ -48,67 +45,74 @@ formatter::Style Canonical()
     return style;
 }
 void CheckIdentities(
-    std::string_view source, const formatter::FormatResult& result)
+    std::string_view source,
+    const formatter::FormatResult& result)
 {
     Input input(source);
-    auto tree = parser::Parse(input.View(), [](parser::ParseError) {});
+    auto tree = parser::Parse(input.View(), [] (parser::ParseError) {});
     ASSERT_EQ(result.OriginalTokens.size(), tree.TokenCount());
     for (parser::TokenIndex i = 0; i < tree.TokenCount(); ++i)
     {
         const auto map = result.OriginalTokens[i];
-        if (map.Present)
-            EXPECT_EQ(std::string_view(result.Text)
-                          .substr(map.Output.Begin,
-                              map.Output.End - map.Output.Begin),
-                tree.TokenText(i))
-                << i;
+        if (map.Present) {
+            EXPECT_EQ(
+                std::string_view(result.Text)
+                    .substr(
+                        map.Output.Begin,
+                        map.Output.End - map.Output.Begin),
+                tree.TokenText(i)) << i;
+        }
     }
-    for (const auto& map : result.Map)
-    {
+    for (const auto& map : result.Map) {
         EXPECT_LE(map.Output.Begin, map.Output.End);
         EXPECT_LE(map.Output.End, result.Text.size());
-        if (map.Exact && map.HasOriginal)
-            EXPECT_EQ(std::string_view(result.Text)
-                          .substr(map.Output.Begin,
-                              map.Output.End - map.Output.Begin),
-                source.substr(
-                    map.Original.Begin, map.Original.End - map.Original.Begin));
-        if (map.Action != formatter::NoStructuralAction)
-        {
+        if (map.Exact && map.HasOriginal) {
+            EXPECT_EQ(
+                std::string_view(result.Text)
+                    .substr(
+                        map.Output.Begin,
+                        map.Output.End - map.Output.Begin),
+                source
+                    .substr(
+                        map.Original.Begin,
+                        map.Original.End - map.Original.Begin));
+        }
+        if (map.Action != formatter::NoStructuralAction) {
             ASSERT_LT(map.Action, result.StructuralOperations.size());
-            EXPECT_LE(result.StructuralOperations[map.Action].Owner.End,
+            EXPECT_LE(
+                result.StructuralOperations[map.Action].Owner.End,
                 tree.TokenCount());
         }
-        if (map.OriginalToken != formatter::layout::NoIdentity)
-        {
+        if (map.OriginalToken != formatter::layout::NoIdentity) {
             ASSERT_LT(map.OriginalToken, result.OriginalTokens.size());
             EXPECT_TRUE(result.OriginalTokens[map.OriginalToken].Present);
             EXPECT_FALSE(map.Generated);
         }
     }
 }
-
 // Maps are evidence of exact preservation, not edit authorization. Every
 // excluded original byte must survive once, even through moved/deleted pieces.
-void CheckExcludedCopies(std::string_view source,
+void CheckExcludedCopies(
+    std::string_view source,
     const formatter::FormatResult& result,
     std::span<const parser::SourceRange> selected)
 {
     std::vector<unsigned> copies(source.size(), 0);
     for (const auto& map : result.Map)
         if (map.Exact && map.HasOriginal)
-            for (auto i = map.Original.Begin; i < map.Original.End; ++i)
-            {
+            for (auto i = map.Original.Begin; i < map.Original.End; ++i) {
                 ASSERT_LT(i, copies.size());
                 ++copies[i];
             }
     size_t range = 0;
     for (size_t i = 0; i < source.size(); ++i)
     {
-        while (range < selected.size() && selected[range].End <= i)
+        while (range < selected.size() && selected[range].End <= i) {
             ++range;
-        if (range == selected.size() || i < selected[range].Begin)
+        }
+        if (range == selected.size() || i < selected[range].Begin) {
             EXPECT_EQ(copies[i], 1u) << "excluded original byte " << i;
+        }
     }
 }
 
@@ -300,6 +304,46 @@ TEST(PublicPipeline, UncertainLambdaArgumentsRetainRecoveryProtection)
             EXPECT_GT(missing, 0u);
         } else {
             EXPECT_GT(protectedRecoveryBytes, 0u);
+        }
+    }
+}
+
+TEST(PublicPipeline, IfElseLookaheadPreservesFollowingAttributedNullStatement)
+{
+    for (const bool braces : {false, true}) {
+        auto style = Canonical();
+        style.RemoveNullStatements = true;
+        style.AddMissingControlBraces = braces;
+        const formatter::PreparedFormat prepared(style);
+        for (const auto candidate : {"if (!ready) return; [[fallthrough]];",
+                 "if (outer) if (!ready) return; [[fallthrough]];"}) {
+            SCOPED_TRACE(candidate);
+            SCOPED_TRACE(braces);
+            const std::string source =
+                "void sample(int n, bool ready, bool outer) { switch(n) { case 1: " +
+                std::string(candidate) + " case 2: break; } }\n";
+            const auto result = FormatInput(source, prepared);
+            const auto attribute = source.find("[[fallthrough]]");
+            const auto semicolon = source.find(';', attribute);
+            Input input(source);
+            auto tree = parser::Parse(input.View(), [](parser::ParseError) {});
+            bool found = false;
+            for (parser::TokenIndex i = 0; i < tree.TokenCount(); ++i) {
+                if (tree.Token(i).Text.Begin == semicolon) {
+                    found = true;
+                    ASSERT_LT(i, result.OriginalTokens.size());
+                    EXPECT_TRUE(result.OriginalTokens[i].Present);
+                }
+            }
+            EXPECT_TRUE(found);
+            EXPECT_NE(result.Text.find("[[fallthrough]];"), std::string::npos);
+            std::vector<unsigned> copies(source.size(), 0);
+            for (const auto& map : result.Map)
+                if (map.Exact && map.HasOriginal)
+                    for (auto i = map.Original.Begin; i < map.Original.End; ++i) ++copies[i];
+            for (auto i = attribute; i <= semicolon; ++i) EXPECT_EQ(copies[i], 1u) << i;
+            CheckIdentities(source, result);
+            EXPECT_EQ(FormatInput(result.Text, prepared).Text, result.Text);
         }
     }
 }
@@ -705,10 +749,9 @@ TEST(PublicPipeline, StandaloneCommentCountsSupportOwningMapsAndScopedEdges)
 }
 
 #ifdef HIT_FMT_PIPELINE_CHECKS
-// The full test target registers these fixtures in its existing FormatTest.
-class FormatTest : public testing::TestWithParam<const char*>
-{
-};
+class FormatTest
+    : public testing::TestWithParam<const char*>
+{ };
 TEST_P(FormatTest, Golden)
 {
     const auto relative = std::filesystem::path(GetParam());
@@ -726,29 +769,40 @@ TEST_P(FormatTest, Golden)
     CheckIdentities(source, result);
     EXPECT_EQ(FormatInput(result.Text, prepared).Text, result.Text);
 }
-INSTANTIATE_TEST_SUITE_P(Formatter, FormatTest,
-    testing::Values("line-endings/lf", "line-endings/crlf",
-        "line-endings/legacy", "line-endings/canonical-lf",
-        "line-endings/canonical-crlf", "line-endings/opaque-lf",
-        "line-endings/boundary-lf", "line-endings/boundary-crlf",
-        "line-endings/boundary-nulls", "line-endings/boundary-namespace-lf",
+INSTANTIATE_TEST_SUITE_P(
+    Formatter,
+    FormatTest,
+    testing::Values(
+        "line-endings/lf",
+        "line-endings/crlf",
+        "line-endings/legacy",
+        "line-endings/canonical-lf",
+        "line-endings/canonical-crlf",
+        "line-endings/opaque-lf",
+        "line-endings/boundary-lf",
+        "line-endings/boundary-crlf",
+        "line-endings/boundary-nulls",
+        "line-endings/boundary-namespace-lf",
         "line-endings/boundary-namespace-crlf",
         "line-endings/composition-control-lf",
-        "public-pipeline/layout", "public-pipeline/structural",
-        "public-pipeline/comments", "public-pipeline/enumerator-assignment",
+        "public-pipeline/layout",
+        "public-pipeline/structural",
+        "public-pipeline/comments",
+        "public-pipeline/enumerator-assignment",
         "public-pipeline/opaque-record-owners",
         "public-pipeline/control-ownership",
-        "public-pipeline/annotation-constructors", "public-pipeline/annotation-suffixes",
+        "public-pipeline/annotation-constructors",
+        "public-pipeline/annotation-suffixes",
         "public-pipeline/annotation-constraints",
         "group-syntax/nested",
-        "group-syntax/messages", "public-pipeline/declaration-operands",
+        "group-syntax/messages",
+        "public-pipeline/declaration-operands",
         "public-pipeline/declaration-operands-recovery",
         "public-pipeline/terminal-constructor-template-ids"),
-    [](const auto& info)
-    {
+    [] (const auto& info) {
         const auto path = std::filesystem::path(info.param);
-        auto name
-            = path.parent_path().string() + "_" + path.filename().string();
+        auto name =
+            path.parent_path().string() + "_" + path.filename().string();
         std::replace(name.begin(), name.end(), '-', '_');
         return name;
     });
@@ -839,7 +893,7 @@ TEST(PublicPipeline, NoEditTreeSourceParityAndResultLifetime)
     for (const auto& token : result.OriginalTokens)
         EXPECT_TRUE(token.Present);
 
-    // Inactive Stage S metadata must not activate a consumer or change the
+    // Inactive include metadata must not activate regrouping or change the
     // composed constructor/head rule, scope authority, maps or lifetimes.
     const auto composed = test::golden::ReadFile(
         std::filesystem::path(__FILE__).parent_path() /
@@ -1423,9 +1477,8 @@ TEST(PublicPipeline, EmptyAndRecoveryInputRemainLocalWithoutFallback)
     EXPECT_EQ(FormatInput(result.Text, prepared).Text, result.Text);
 }
 
-// Scope tests use whole eligible gaps and identity/protection properties. The
-// partial-indentation consumer is a separate lane; no frozen-indent golden is
-// an expectation of this public projection seam.
+// Whole-gap projection checks identity and protection; selected partial
+// indentation is tested separately, not assumed to remain frozen here.
 TEST(PublicPipeline, EditScopeAbsenceEmptyFullPartialAndLifetime)
 {
     const std::string source
@@ -1729,8 +1782,8 @@ TEST(PublicPipeline, EditScopeCopiedIntersectionsAfterNormalization)
     EXPECT_NE(result.Text.find("invoke(a, b)"), std::string::npos);
     CheckIdentities(source, result);
     CheckExcludedCopies(source, result, selected);
-    // This does not require the old lowerer to consume the selected trim run;
-    // it checks exact excluded suffix/prefix bytes and projected whole gaps.
+    // The selected trim run may change; excluded suffix/prefix bytes must
+    // stay exact.
     EXPECT_NE(result.Text.find("\r\n\t\n}\r\n"), std::string::npos);
 }
 
@@ -2123,8 +2176,10 @@ TEST(PublicPipeline, TerminalConstructorBoundariesKeepOwningMapsAndStatementScop
 }
 formatter::Style EndingStyle(std::string_view name)
 {
-    return formatter::LoadConfigFile(std::filesystem::path(__FILE__).parent_path() /
-        "testdata/line-endings" / (std::string(name) + ".hit-fmt")).FormattingStyle;
+    return formatter::LoadConfigFile(
+            std::filesystem::path(__FILE__).parent_path() /
+                "testdata/line-endings" / (std::string(name) + ".hit-fmt"))
+        .FormattingStyle;
 }
 
 TEST(PublicPipeline, LineEndingWholeAtomsScopeAndExistingEOFReplacement)
@@ -2304,26 +2359,34 @@ TEST(PublicPipeline, LineEndingFullBytesAtEndKeepHorizontalAndPartialFences)
         "int a; \r\nint b;\n");
 }
 
-void CheckBareCRCopies(std::string_view source,
+void CheckBareCRCopies(
+    std::string_view source,
     const formatter::FormatResult& result)
 {
     CheckIdentities(source, result);
     for (size_t i = 0; i < source.size(); ++i)
     {
-        if (source[i] != '\r' || (i + 1 < source.size() && source[i + 1] == '\n'))
-            continue;
-        unsigned copies = 0;
-        for (const auto& map : result.Map)
+        if (
+            source[i] != '\r' ||
+                (i + 1 < source.size() && source[i + 1] == '\n'))
         {
-            if (!map.Exact || !map.HasOriginal || map.Original.Begin > i ||
-                map.Original.End <= i)
+            continue;
+        }
+        unsigned copies = 0;
+        for (const auto& map : result.Map) {
+            if (
+                !map.Exact || !map.HasOriginal || map.Original.Begin > i ||
+                    map.Original.End <= i)
+            {
                 continue;
+            }
             ++copies;
             const auto output = map.Output.Begin + i - map.Original.Begin;
             ASSERT_LT(output, result.Text.size());
             EXPECT_EQ(result.Text[output], '\r');
-            if (output + 1 < result.Text.size())
+            if (output + 1 < result.Text.size()) {
                 EXPECT_NE(result.Text[output + 1], '\n');
+            }
         }
         EXPECT_EQ(copies, 1u) << "original bare CR " << i;
     }

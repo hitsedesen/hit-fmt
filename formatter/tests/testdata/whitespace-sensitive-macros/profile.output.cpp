@@ -33,16 +33,15 @@ YT_DEFINE_ERROR_ENUM(
     ((Invalid) (20))
 );
 
-DEFINE_ENUM_HELPER(EOther,
+DEFINE_ENUM_HELPER(
+    EOther,
     (First)
     (Second));
 
-void Process(
-    int first,
-    int second);
+void Process(int first, int second);
 
 void Read()
 {
-    auto spelling = PP_STRINGIZE( first+  second );
+    auto spelling =PP_STRINGIZE( first+  second );
     Use(spelling);
 }

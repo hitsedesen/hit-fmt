@@ -1,3 +1,3 @@
 #if A
-    #define X 1
+#define X 1
 #endif

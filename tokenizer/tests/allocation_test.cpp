@@ -7,10 +7,8 @@
 #include <string_view>
 
 namespace {
-
 thread_local bool TrackAllocations = false;
 thread_local size_t AllocationCount = 0;
-
 } // namespace
 
 void* operator new(size_t size)
@@ -62,8 +60,7 @@ auto invalid_integer = 0b102;
 auto invalid_escape = "\q";
 @
 auto broken = R"missing(raw contents;
-)cpp"
-                                     "\0\0\0";
+)cpp" "\0\0\0";
     static constexpr util::PaddedSourceView SourceView{
         .Data = Source,
         .Size = sizeof(Source) - util::SourcePaddingSize,
@@ -79,11 +76,10 @@ auto broken = R"missing(raw contents;
                 tokenizer::GetTokenizationErrorDescription(error.Kind).size();
         });
     size_t tokenCount = 0;
-    for ([[maybe_unused]] const auto& token : tokenizer) {
+    for ( [[maybe_unused]] const auto& token : tokenizer) {
         ++tokenCount;
     }
     TrackAllocations = false;
-
     if (AllocationCount != 0) {
         std::fprintf(
             stderr,

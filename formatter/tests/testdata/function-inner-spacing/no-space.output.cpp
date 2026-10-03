@@ -16,7 +16,7 @@ struct Widget {
     int operator()(int value) const;
     int method(int value) { return value; }
 };
-void (*callback)( int value );
+void (*callback)(int value);
 template<class T> concept HasValue = requires (const T& value) {
     value();
 };

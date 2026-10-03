@@ -16,9 +16,7 @@ struct Input
 {
     std::string Storage;
     size_t Size;
-    explicit Input(std::string_view text)
-        : Storage(text)
-        , Size(text.size())
+    explicit Input(std::string_view text): Storage(text), Size(text.size())
     {
         Storage.append(util::SourcePaddingSize, '\0');
     }
@@ -50,16 +48,21 @@ void ExpectSameAnalysis(
         EXPECT_EQ(a.MustStartWithLineFeed, b.MustStartWithLineFeed);
         EXPECT_EQ(a.ContextSensitive, b.ContextSensitive);
         EXPECT_EQ(bool(a.IntrinsicPreserve), bool(b.IntrinsicPreserve));
-        EXPECT_EQ(bool(a.IntrinsicContextSensitive),
+        EXPECT_EQ(
+            bool(a.IntrinsicContextSensitive),
             bool(b.IntrinsicContextSensitive));
-        for (auto replacement : {"", " ", "\t", "\n  ", "\r\n", " \n",
-            "/* no */"}) {
-            EXPECT_EQ(direct.CanReplaceGap(i, replacement),
+        for (auto replacement :
+            {"", " ", "\t", "\n  ", "\r\n", " \n", "/* no */"})
+        {
+            EXPECT_EQ(
+                direct.CanReplaceGap(i, replacement),
                 deferred.CanReplaceGap(i, replacement));
         }
-        EXPECT_EQ(direct.CanReplaceGap(i, a.Original),
+        EXPECT_EQ(
+            direct.CanReplaceGap(i, a.Original),
             deferred.CanReplaceGap(i, b.Original));
-        EXPECT_EQ(direct.IntersectsImmutable(a.Source),
+        EXPECT_EQ(
+            direct.IntersectsImmutable(a.Source),
             deferred.IntersectsImmutable(b.Source));
     }
     ASSERT_EQ(direct.Protection().size(), deferred.Protection().size());
@@ -82,7 +85,8 @@ void ExpectSameAnalysis(
         EXPECT_EQ(a.Parent, b.Parent);
         EXPECT_EQ(a.Status, b.Status);
     }
-    ASSERT_EQ(direct.PartialGapPermissions().size(),
+    ASSERT_EQ(
+        direct.PartialGapPermissions().size(),
         deferred.PartialGapPermissions().size());
     for (size_t i = 0; i < direct.PartialGapPermissions().size(); ++i) {
         const auto& a = direct.PartialGapPermissions()[i];
@@ -94,10 +98,12 @@ void ExpectSameAnalysis(
     }
     const auto size = direct.Gaps().back().Source.End;
     for (parser::SourceOffset i = 0; i <= size; ++i) {
-        EXPECT_EQ(direct.IntersectsImmutable({i, i}),
+        EXPECT_EQ(
+            direct.IntersectsImmutable({i, i}),
             deferred.IntersectsImmutable({i, i})) << i;
         if (i < size) {
-            EXPECT_EQ(direct.IntersectsImmutable({i, i + 1}),
+            EXPECT_EQ(
+                direct.IntersectsImmutable({i, i + 1}),
                 deferred.IntersectsImmutable({i, i + 1})) << i;
         }
     }
@@ -108,13 +114,13 @@ formatter::SourceAnalysis Analyze(
     formatter::SourceAnalysisOptions options = {})
 {
     std::pmr::monotonic_buffer_resource scratch;
-    auto direct = formatter::BuildSourceAnalysis(tree, options, memory,
-        scratch);
+    auto direct =
+        formatter::BuildSourceAnalysis(tree, options, memory, scratch);
     if (options.EditScope) {
         const auto scope = *options.EditScope;
         options.EditScope.reset();
-        auto deferred = formatter::BuildSourceAnalysis(tree, options, memory,
-            scratch);
+        auto deferred =
+            formatter::BuildSourceAnalysis(tree, options, memory, scratch);
         deferred.RestrictEditScope(scope);
         ExpectSameAnalysis(direct, deferred);
     }
@@ -1149,7 +1155,8 @@ TEST(SourceAnalysis, DeferredRestrictionOutlivesTreeScopeAndScratch)
     EXPECT_FALSE(analysis.IntersectsImmutable({11, 13}));
     EXPECT_TRUE(analysis.IntersectsImmutable({24, 24}));
 }
-class CountingResource : public std::pmr::memory_resource
+class CountingResource
+    : public std::pmr::memory_resource
 {
 public:
     size_t BytesRequested = 0;
@@ -1209,11 +1216,10 @@ TEST(SourceAnalysis,
 }
 TEST(SourceAnalysis, AdversarialMarkersHaveLinearStorage)
 {
-    // Each marker candidate used to scan the same N-byte prefix. Growing both
-    // axes exercises that path without a flaky wall-clock assertion. The
-    // classifier now uses cached first/last content offsets (constant work per
-    // candidate); these assertions check correctness and linear storage as the
-    // workload grows, not a timing surrogate.
+    // Cached first/last content offsets keep each marker lookup constant-time.
+    // Growing both the shared prefix and marker count checks correctness and
+    // linear storage without a flaky wall-clock assertion, not as a timing
+    // surrogate.
     for (size_t count : {128u, 2048u, 32768u}) {
         std::string source(count, ' ');
         for (size_t i = 0; i < count; ++i) {

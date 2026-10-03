@@ -1,6 +1,0 @@
-# Migrated to group policies; legacy output equivalence is not implied.
-# Shape preferences apply when broken; fitting canonical groups flatten.
-# Migration: PreprocessorIndentation removed; see --help-config
-IndentWidth = 4
-IndentationKind = Tabs
-TrailingCommentSpacing = Space

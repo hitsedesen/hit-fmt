@@ -14,9 +14,7 @@ struct Input
 {
     std::string Storage;
     size_t Size;
-    explicit Input(std::string_view text)
-        : Storage(text)
-        , Size(text.size())
+    explicit Input(std::string_view text): Storage(text), Size(text.size())
     {
         Storage.append(util::SourcePaddingSize, '\0');
     }

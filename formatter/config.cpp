@@ -14,18 +14,16 @@
 #include <vector>
 
 namespace formatter {
-
 namespace {
-
 std::string_view Trim(std::string_view text)
 {
-    while (!text.empty() &&
-        std::isspace(static_cast<unsigned char>(text.front())))
+    while (
+        !text.empty() && std::isspace(static_cast<unsigned char>(text.front())))
     {
         text.remove_prefix(1);
     }
-    while (!text.empty() &&
-        std::isspace(static_cast<unsigned char>(text.back())))
+    while (
+        !text.empty() && std::isspace(static_cast<unsigned char>(text.back())))
     {
         text.remove_suffix(1);
     }
@@ -50,7 +48,6 @@ std::string_view StripComment(std::string_view line)
     }
     return line;
 }
-
 [[noreturn]] void ThrowConfigError(
     const std::filesystem::path& path,
     size_t line,
@@ -58,9 +55,8 @@ std::string_view StripComment(std::string_view line)
 {
     throw std::runtime_error(
         path.string() + ":" + std::to_string(line) + ": " +
-        std::string(message));
+            std::string(message));
 }
-
 // A closing bracket inside a quoted item does not terminate an array.
 // Quoted items themselves cannot span physical lines.
 bool HasArrayEnd(
@@ -207,7 +203,6 @@ std::vector<std::string> ParseStringList(
         value.remove_prefix(1);
     }
 }
-
 bool ParseBoolean(
     std::string_view value,
     const std::filesystem::path& path,
@@ -236,13 +231,15 @@ std::vector<std::string> ParseNamespaceExemptions(
                 end = name.size();
             }
             auto part = std::string_view(name).substr(start, end - start);
-            if (part.empty() ||
-                !(std::isalpha(static_cast<unsigned char>(part.front())) ||
-                    part.front() == '_') ||
-                part.find_first_not_of(
-                    "abcdefghijklmnopqrstuvwxyz"
-                    "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_") !=
-                    std::string_view::npos)
+            if (
+                part.empty() ||
+                    !(std::isalpha(static_cast<unsigned char>(part.front())) ||
+                            part.front() == '_') ||
+                    part
+                        .find_first_not_of(
+                            "abcdefghijklmnopqrstuvwxyz"
+                                "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_") !=
+                        std::string_view::npos)
             {
                 ThrowConfigError(
                     path,
@@ -257,7 +254,6 @@ std::vector<std::string> ParseNamespaceExemptions(
     }
     return names;
 }
-
 std::vector<std::string> ParseCallNames(
     std::string_view value,
     const std::filesystem::path& path,
@@ -265,19 +261,21 @@ std::vector<std::string> ParseCallNames(
 {
     auto names = ParseStringList(value, path, line);
     for (const auto& name : names) {
-        if (name.empty() ||
-            !(std::isalpha(static_cast<unsigned char>(name.front())) ||
-                name.front() == '_') ||
-            name.find_first_not_of(
-                "abcdefghijklmnopqrstuvwxyz"
-                "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_") != std::string::npos)
+        if (
+            name.empty() ||
+                !(std::isalpha(static_cast<unsigned char>(name.front())) ||
+                        name.front() == '_') ||
+                name
+                    .find_first_not_of(
+                        "abcdefghijklmnopqrstuvwxyz"
+                            "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_") !=
+                    std::string::npos)
         {
             ThrowConfigError(path, line, "expected call identifier names");
         }
     }
     return names;
 }
-
 std::optional<std::vector<std::string>> ParseNamePrefixes(
     std::string_view value,
     const std::filesystem::path& path,
@@ -288,9 +286,12 @@ std::optional<std::vector<std::string>> ParseNamePrefixes(
         return std::nullopt;
     }
     for (const auto& prefix : prefixes) {
-        if (prefix.find_first_not_of(
-                "abcdefghijklmnopqrstuvwxyz"
-                "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_") != std::string::npos)
+        if (
+            prefix
+                .find_first_not_of(
+                    "abcdefghijklmnopqrstuvwxyz"
+                        "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_") !=
+                std::string::npos)
         {
             ThrowConfigError(
                 path,
@@ -318,7 +319,6 @@ void ParseField(
         static_assert(std::is_same_v<T, void>, "unsupported config field type");
     }
 }
-
 template <typename T>
 void ParseField(
     std::optional<T>& field,
@@ -334,7 +334,6 @@ void ParseField(
     ParseField(parsed, value, path, line);
     field = parsed;
 }
-
 void ParseField(
     std::optional<std::vector<std::string>>& field,
     std::string_view value,
@@ -343,7 +342,6 @@ void ParseField(
 {
     field = ParseNamePrefixes(value, path, line);
 }
-
 void ParseField(
     std::vector<std::string>& field,
     std::string_view value,
@@ -352,7 +350,6 @@ void ParseField(
 {
     field = ParseNamespaceExemptions(value, path, line);
 }
-
 void ParseField(
     std::vector<std::regex>& field,
     std::string_view value,
@@ -386,9 +383,10 @@ void AssignStyle(
             decltype(config.FormattingStyle.*Member)>,
             std::vector<std::string>>)
     {
-        if constexpr (Member == &Style::ChainedCallRootNames ||
-            Member == &Style::IndentedCallScopePairs ||
-            Member == &Style::IncludeGroupPrefixes)
+        if constexpr (
+            Member == &Style::ChainedCallRootNames ||
+                Member == &Style::IndentedCallScopePairs ||
+                Member == &Style::IncludeGroupPrefixes)
         {
             config.FormattingStyle.*Member = ParseStringList(value, path, line);
         } else {
@@ -444,7 +442,6 @@ void AssignConfig(
 {
     ParseField(config.*Member, value, path, line);
 }
-
 template <auto Member>
 void AssignNamingCase(
     Configuration& config,
@@ -454,7 +451,6 @@ void AssignNamingCase(
 {
     ParseField((config.Naming.*Member).Case, value, path, line);
 }
-
 template <auto Member>
 void AssignNamingPrefixes(
     Configuration& config,
@@ -464,7 +460,6 @@ void AssignNamingPrefixes(
 {
     ParseField((config.Naming.*Member).Prefixes, value, path, line);
 }
-
 using OptionHandler = void (*)(Configuration&, std::string_view,
     const std::filesystem::path&, size_t);
 struct OptionBinding
@@ -511,13 +506,14 @@ void ValidateStyleLimits(
                     return std::isalnum(static_cast<unsigned char>(value)) ||
                         value == '_';
                 };
-                if ((at == 0 || !identifier(reason[at - 1])) &&
-                    (at + key.size() == reason.size() ||
-                        !identifier(reason[at + key.size()])))
+                if (
+                    (at == 0 || !identifier(reason[at - 1])) &&
+                        (at + key.size() == reason.size() ||
+                                !identifier(reason[at + key.size()])))
                 {
-                    message += " [" + std::string(key) + " at " +
-                        path.string() +
-                        ":" + std::to_string(settingLines[index]) + "]";
+                    message +=
+                        " [" + std::string(key) + " at " + path.string() + ":" +
+                            std::to_string(settingLines[index]) + "]";
                     break;
                 }
                 at = reason.find(key, at + key.size());
@@ -543,16 +539,13 @@ void ApplySetting(
             return;
         }
     }
-    ThrowConfigError(path, line,
-        "unknown or removed setting '" + std::string(key) + "'; " +
-        std::string(ConfigMigrationHint(key)) +
-        " See --help-config.");
+    ThrowConfigError(
+        path,
+        line,
+        "unknown setting '" + std::string(key) + "'; see --help-config.");
 }
-
 } // namespace
-
 namespace {
-
 bool AnnotationIdentifier(std::string_view name)
 {
     constexpr std::string_view first =
@@ -563,7 +556,6 @@ bool AnnotationIdentifier(std::string_view name)
         first.find(name.front()) != std::string_view::npos &&
         name.find_first_not_of(rest) == std::string_view::npos;
 }
-
 bool AnnotationQualifiedName(std::string_view name)
 {
     while (true) {
@@ -577,18 +569,17 @@ bool AnnotationQualifiedName(std::string_view name)
         name.remove_prefix(separator + 2);
     }
 }
-
 void RejectDuplicateAnnotations(
     std::vector<std::string_view>& names,
     std::string_view key)
 {
     std::sort(names.begin(), names.end());
     if (std::adjacent_find(names.begin(), names.end()) != names.end()) {
-        throw std::invalid_argument("duplicate " + std::string(key) +
-            " annotation name or scope endpoint");
+        throw std::invalid_argument(
+            "duplicate " + std::string(key) +
+                " annotation name or scope endpoint");
     }
 }
-
 void ValidateAnnotationNames(
     std::span<const std::string> input,
     std::vector<std::string_view>& scratch,
@@ -597,18 +588,18 @@ void ValidateAnnotationNames(
 {
     scratch.clear();
     for (const auto& name : input) {
-        if (!(qualified
-            ? AnnotationQualifiedName(name)
-            : AnnotationIdentifier(name)))
+        if (
+            !(qualified
+                    ? AnnotationQualifiedName(name)
+                    : AnnotationIdentifier(name)))
         {
-            throw std::invalid_argument("invalid " + std::string(key) +
-                " annotation name");
+            throw std::invalid_argument(
+                "invalid " + std::string(key) + " annotation name");
         }
         scratch.push_back(name);
     }
     RejectDuplicateAnnotations(scratch, key);
 }
-
 std::pair<std::string_view, std::string_view> AnnotationScopePair(
     std::string_view pair)
 {
@@ -619,24 +610,28 @@ std::pair<std::string_view, std::string_view> AnnotationScopePair(
     }
     const auto begin = pair.substr(0, colon);
     const auto end = pair.substr(colon + 1);
-    if (!AnnotationIdentifier(begin) || !AnnotationIdentifier(end) ||
-        begin == end)
+    if (
+        !AnnotationIdentifier(begin) || !AnnotationIdentifier(end) ||
+            begin == end)
     {
         throw std::invalid_argument(
             "IndentedCallScopePairs expects distinct Begin:End identifiers");
     }
     return {begin, end};
 }
-
 } // namespace
 
 void ValidateLibraryAnnotationStyle(const Style& style)
 {
     std::vector<std::string_view> scratch;
-    scratch.reserve(std::max({style.CallLineFirstStringNames.size(),
-        style.ChainedCallRootNames.size(),
-        style.IndentedCallScopePairs.size() * 2,
-    }));
+    scratch
+        .reserve(
+            std::max(
+                {
+                    style.CallLineFirstStringNames.size(),
+                    style.ChainedCallRootNames.size(),
+                    style.IndentedCallScopePairs.size() * 2,
+                }));
     ValidateAnnotationNames(
         style.CallLineFirstStringNames,
         scratch,
@@ -664,7 +659,9 @@ LibraryAnnotations CompileLibraryAnnotations(const Style& style)
     for (const auto& name : style.CallLineFirstStringNames) {
         result.MessagePins_.push_back({name});
     }
-    std::sort(result.MessagePins_.begin(), result.MessagePins_.end(),
+    std::sort(
+        result.MessagePins_.begin(),
+        result.MessagePins_.end(),
         [] (const auto& left, const auto& right) {
             return left.Name < right.Name;
         });
@@ -675,7 +672,9 @@ LibraryAnnotations CompileLibraryAnnotations(const Style& style)
         const auto [begin, end] = AnnotationScopePair(pair);
         result.VisualScopes_.push_back({std::string(begin), std::string(end)});
     }
-    std::sort(result.VisualScopes_.begin(), result.VisualScopes_.end(),
+    std::sort(
+        result.VisualScopes_.begin(),
+        result.VisualScopes_.end(),
         [] (const auto& left, const auto& right) {
             return left.Begin < right.Begin;
         });
@@ -683,237 +682,87 @@ LibraryAnnotations CompileLibraryAnnotations(const Style& style)
     for (std::size_t index = 0; index < result.VisualScopes_.size(); ++index) {
         result.ScopeEndOrder_.push_back(index);
     }
-    std::sort(result.ScopeEndOrder_.begin(), result.ScopeEndOrder_.end(),
+    std::sort(
+        result.ScopeEndOrder_.begin(),
+        result.ScopeEndOrder_.end(),
         [&] (auto left, auto right) {
             return result.VisualScopes_[left].End <
                 result.VisualScopes_[right].End;
         });
     return result;
 }
-
-std::span<const MessagePinAnnotation> LibraryAnnotations::MessagePins() const
+std::span<const MessagePinAnnotation>LibraryAnnotations::MessagePins() const
 {
     return MessagePins_;
 }
-
 const MessagePinAnnotation* LibraryAnnotations::FindMessagePin(
     std::string_view name) const noexcept
 {
-    const auto found = std::lower_bound(
-        MessagePins_.begin(),
-        MessagePins_.end(),
-        name,
-        [] (const auto& value, auto key) { return value.Name < key; });
+    const auto found =
+        std::lower_bound(
+            MessagePins_.begin(),
+            MessagePins_.end(),
+            name,
+            [] (const auto& value, auto key) { return value.Name < key; });
     return found != MessagePins_.end() && found->Name == name
         ? &*found
         : nullptr;
 }
-
 ChainParticipation LibraryAnnotations::Chains() const noexcept
 {
     return ChainRoots_.empty()
         ? ChainParticipation::AllSafe
         : ChainParticipation::AnnotatedRoots;
 }
-
 bool LibraryAnnotations::IsAnnotatedChainRoot(
     std::string_view name) const noexcept
 {
     return std::binary_search(ChainRoots_.begin(), ChainRoots_.end(), name);
 }
-
-std::span<const std::string> LibraryAnnotations::ChainRoots() const
+std::span<const std::string>LibraryAnnotations::ChainRoots() const
 {
     return ChainRoots_;
 }
-
-std::span<const VisualScopeAnnotation> LibraryAnnotations::VisualScopes() const
+std::span<const VisualScopeAnnotation>LibraryAnnotations::VisualScopes() const
 {
     return VisualScopes_;
 }
-
 const VisualScopeAnnotation* LibraryAnnotations::FindScopeBegin(
     std::string_view name) const noexcept
 {
-    const auto found = std::lower_bound(
-        VisualScopes_.begin(),
-        VisualScopes_.end(),
-        name,
-        [] (const auto& value, auto key) { return value.Begin < key; });
+    const auto found =
+        std::lower_bound(
+            VisualScopes_.begin(),
+            VisualScopes_.end(),
+            name,
+            [] (const auto& value, auto key) { return value.Begin < key; });
     return found != VisualScopes_.end() && found->Begin == name
         ? &*found
         : nullptr;
 }
-
 const VisualScopeAnnotation* LibraryAnnotations::FindScopeEnd(
     std::string_view name) const noexcept
 {
-    const auto found = std::lower_bound(
-        ScopeEndOrder_.begin(),
-        ScopeEndOrder_.end(),
-        name,
-        [&] (auto index, auto key) { return VisualScopes_[index].End < key; });
+    const auto found =
+        std::lower_bound(
+            ScopeEndOrder_.begin(),
+            ScopeEndOrder_.end(),
+            name,
+            [
+                &] (
+                auto index,
+                auto key) { return VisualScopes_[index].End < key; });
     return found != ScopeEndOrder_.end() && VisualScopes_[*found].End == name
         ? &VisualScopes_[*found]
         : nullptr;
-}
-
-std::string_view ConfigMigrationHint(std::string_view key)
-{
-    if (key == "BaseListsCloser" || key == "ConstructorListsCloser") {
-        return "base/constructor lists have no closing delimiter; use "
-               "ClassBracePlacement or "
-                   "FunctionBracePlacement for the body brace.";
-    }
-    if (key.starts_with("Enforce")) {
-        return "Enforce flags were removed: use Layout = Canonical for shape; "
-               "use Space/NoSpace or GeneratedSpace/GeneratedNoSpace for gaps.";
-    }
-    if (key.starts_with("Merge")) {
-        return "Merge flags were removed: IfNeeded "
-            "canonical groups flatten when they fit; "
-               "use the category Layout = Preserve to retain break topology.";
-    }
-    if (key == "CallArgumentSplitColumnLimit" ||
-        key == "CallArgumentSplitColumnLimitNames")
-    {
-        return "named call widths were removed; all calls "
-            "use the global ColumnLimit.";
-    }
-    if (key == "SeparatorLength") {
-        return "comment-separator rewriting is unsupported; "
-            "comments retain their spelling.";
-    }
-    if (key == "PreprocessorIndentation") {
-        return "directive rewriting is unsupported; "
-            "directives are byte-protected.";
-    }
-    if (key == "LineLengthCheck") {
-        return "use WidthDiagnostics = Off or Report; Soft "
-            "feasibility probing was removed.";
-    }
-    if (key == "CommaSpacing") {
-        return "use CommaSpaceBefore and CommaSpaceAfter "
-            "(shared GapPolicy values).";
-    }
-    if (key == "BitFieldColonSpacing" || key ==
-        "EnumUnderlyingTypeColonSpacing" ||
-        key == "LabelColonSpacing" || key == "ReturnArrowSpacing" ||
-        key == "OperatorOverloadOperatorSpacing")
-    {
-        return "replace the combined spacing option with "
-            "its SpaceBefore and SpaceAfter keys.";
-    }
-    if (key.starts_with("InheritanceList")) {
-        return "use "
-            "BaseListsLayout/Packing/FirstItem/Alignment/"
-            "ContinuationOffset, "
-               "ColonSide/CommaSide and "
-                   "ColonSpaceBefore/After; commas use shared "
-                   "gap policies.";
-    }
-    if (key.starts_with("ConstructorInitializerList")) {
-        return "use "
-            "ConstructorListsLayout/Packing/FirstItem/Ali"
-            "gnment/ContinuationOffset, "
-               "ColonSide/CommaSide and "
-                   "ColonSpaceBefore/After; commas use shared "
-                   "gap policies.";
-    }
-    if (key.find("TrailingComma") != std::string_view::npos ||
-        key == "InitializerListClosingBrace")
-    {
-        return "use InitializersTrailingComma = "
-            "Preserve/Never/WhenMultiline and "
-               "InitializersCloser = SameLine/OwnLine "
-                   "independently of comma presence.";
-    }
-    if (key.starts_with("FunctionParameter") ||
-        key == "FirstFunctionParameterPosition")
-    {
-        return "use "
-            "ParametersLayout/Packing/FirstItem/Closer/Al"
-            "ignment/ContinuationOffset; "
-               "Continuation became Delimiter alignment "
-                   "with explicit fallback.";
-    }
-    if (key.starts_with("CallArgument") || key == "FirstCallArgumentPosition" ||
-        key == "MultilineSingleCallArgumentPosition" ||
-        key == "FunctionCallArgumentClosingParenthesis")
-    {
-        return "use "
-            "CallsLayout/Packing/FirstItem/Closer/Alignme"
-            "nt/ContinuationOffset; "
-               "all argument counts follow the same list policy.";
-    }
-    if (key.starts_with("InitializerList") ||
-        key == "FirstInitializerElementPosition")
-    {
-        return "use "
-            "InitializersLayout/Packing/FirstItem/Closer/"
-            "Alignment/ContinuationOffset.";
-    }
-    if (key.starts_with("ChainedCall")) {
-        return "use ChainsLayout/Break/Packing/Alignment "
-            "(Always requires an owned break) "
-               "and ChainedCallRootNames "
-               "participation annotations.";
-    }
-    if (key == "LambdaCaptureSplit") {
-        return "use CapturesLayout and CapturesPacking = VerticalWhenBroken.";
-    }
-    if (key.find("OperatorPlacement") != std::string_view::npos ||
-        key == "LeadingBinaryOperatorList" || key ==
-            "TrailingBinaryOperatorList")
-    {
-        return "use BinaryOperatorSide, "
-            "AssignmentOperatorSide, ShiftOperatorSide "
-               "and TernaryOperatorSide = Leading/Trailing; "
-                   "spelling lists were removed.";
-    }
-    if (key == "ExpressionLayoutCondition" || key == "TernarySplit") {
-        return "use ExpressionsLayout = Preserve/Canonical, ExpressionsBreak = "
-               "IfNeeded/Always and TernaryLayout = Flexible/ThreePart; "
-               "Always requires a legal owned break, not "
-                   "merely Canonical activation.";
-    }
-    if (key == "ControlBlockBracePlacement") {
-        return "use ControlBracePlacement = "
-            "Attached/NextLine/NextLineIfHeaderBroken.";
-    }
-    if (key == "ControlHeaderClauseSplit" || key == "ControlConditionIndent" ||
-        key == "ForHeaderClauseIndent" || key.starts_with(
-            "MultilineControlBlock"))
-    {
-        return "use ControlHeadersLayout/Packing/FirstItem/Closer/Alignment; "
-               "for clauses share the same header policy.";
-    }
-    if (key == "CollapseEmptyFunctionBodies") {
-        return "use BodiesLayout = Canonical and "
-            "EmptyBodyShape = CompactIfFits "
-               "(true) or Expanded (false); BodyShape "
-                   "independently controls nonempty bodies.";
-    }
-    if (key == "IndentBlockBodies" || key == "NonEmptyBlockBodyLayout" ||
-        key == "BlockClosingBrace" ||
-        key == "SingleStatementLambdaBodyLayout" || key ==
-            "IndentLeadingStatementComments")
-    {
-        return "use BodiesLayout/LambdaBodiesLayout and "
-            "BodyShape/LambdaBodyShape "
-               "= Expanded/CompactIfFits; comments follow "
-                   "their syntax attachment.";
-    }
-    return "the schema uses Layout and typed category "
-        "policies; setting names are case-sensitive.";
 }
 
 Configuration LoadConfigFile(const std::filesystem::path& path)
 {
     std::ifstream input(path);
     if (!input.is_open()) {
-        throw std::runtime_error("cannot open configuration file: " +
-            path.string());
+        throw std::runtime_error(
+            "cannot open configuration file: " + path.string());
     }
 
     Configuration config;
@@ -965,8 +814,8 @@ Configuration LoadConfigFile(const std::filesystem::path& path)
         ApplySetting(config, key, value, path, settingLine, settingLines);
     }
     if (!input.eof()) {
-        throw std::runtime_error("failed to read configuration file: " +
-            path.string());
+        throw std::runtime_error(
+            "failed to read configuration file: " + path.string());
     }
     ValidateStyleLimits(config.FormattingStyle, path, lineNumber, settingLines);
     try {
@@ -990,7 +839,6 @@ std::optional<std::filesystem::path> FindStyleFile(
     if (error) {
         return std::nullopt;
     }
-
     while (!startDirectory.empty()) {
         auto candidate = startDirectory / fileName;
         if (std::filesystem::is_regular_file(candidate, error) && !error) {
@@ -1005,5 +853,4 @@ std::optional<std::filesystem::path> FindStyleFile(
     }
     return std::nullopt;
 }
-
 } // namespace formatter

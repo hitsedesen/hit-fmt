@@ -13,8 +13,7 @@ class OriginalHunkLines
 public:
     OriginalHunkLines(
         std::string_view source,
-        std::pmr::memory_resource& memory)
-        : Boundaries_(&memory)
+        std::pmr::memory_resource& memory): Boundaries_(&memory)
     {
         const auto size = CheckedSourceAnalysisSize(source.size());
         Boundaries_.push_back(0);
@@ -35,15 +34,17 @@ public:
             Validate(hunk);
         }
         std::pmr::vector<Hunk> result(hunks.begin(), hunks.end(), &memory);
-        std::sort(result.begin(), result.end(), [] (Hunk a, Hunk b) {
-            return a.Begin != b.Begin ? a.Begin < b.Begin : a.End < b.End;
-        });
+        std::sort(
+            result.begin(),
+            result.end(),
+            [] (Hunk a, Hunk b) {
+                return a.Begin != b.Begin ? a.Begin < b.Begin : a.End < b.End;
+            });
         size_t count = 0;
         for (const auto hunk : result) {
             if (count && hunk.Begin <= result[count - 1].End + 1) {
-                result[count - 1].End = std::max(
-                    result[count - 1].End,
-                    hunk.End);
+                result[count - 1].End =
+                    std::max(result[count - 1].End, hunk.End);
             } else {
                 result[count++] = hunk;
             }
@@ -75,8 +76,9 @@ public:
 private:
     void Validate(Hunk hunk) const
     {
-        if (!hunk.Begin || hunk.Begin > hunk.End ||
-            hunk.End >= Boundaries_.size())
+        if (
+            !hunk.Begin || hunk.Begin > hunk.End ||
+                hunk.End >= Boundaries_.size())
         {
             throw std::invalid_argument("invalid original physical hunk lines");
         }
@@ -90,11 +92,12 @@ inline bool HunkScopeContains(
     std::span<const parser::SourceRange> scope,
     parser::SourceRange source)
 {
-    const auto it = std::upper_bound(
-        scope.begin(),
-        scope.end(),
-        source.Begin,
-        [] (auto begin, const auto range) { return begin < range.Begin; });
+    const auto it =
+        std::upper_bound(
+            scope.begin(),
+            scope.end(),
+            source.Begin,
+            [] (auto begin, const auto range) { return begin < range.Begin; });
     if (it == scope.begin()) {
         return false;
     }
@@ -109,11 +112,12 @@ inline bool HunkScopeIntersects(
     if (source.Empty()) {
         return HunkScopeContains(scope, source);
     }
-    const auto it = std::lower_bound(
-        scope.begin(),
-        scope.end(),
-        source.Begin,
-        [] (const auto range, auto begin) { return range.End <= begin; });
+    const auto it =
+        std::lower_bound(
+            scope.begin(),
+            scope.end(),
+            source.Begin,
+            [] (const auto range, auto begin) { return range.End <= begin; });
     return it != scope.end() && it->Begin < source.End;
 }
 } // namespace formatter::detail

@@ -1,6 +1,7 @@
 void f() {
-    auto x = Select(
-        condition
-            ? LongerValueName
-            : OtherLongValueName);
+    auto x =
+        Select(
+            condition
+                ? LongerValueName
+                : OtherLongValueName);
 }

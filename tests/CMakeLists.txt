@@ -37,7 +37,6 @@ add_executable(allocation_tests
     ../tokenizer/tests/allocation_test.cpp)
 target_link_libraries(allocation_tests PRIVATE lib-tokenizer)
 
-# Focused integration checkpoint: old formatter tests migrate separately.
 set(public_pipeline_sources
     ../formatter/tests/config_policy.cpp
     ../formatter/tests/public_pipeline.cpp
@@ -58,14 +57,13 @@ target_compile_definitions(pipeline_checks PRIVATE
     FORMATTER_TESTDATA_DIR="${CMAKE_SOURCE_DIR}/formatter/tests/testdata/style"
     GROUP_LAYOUT_TESTDATA_DIR="${CMAKE_SOURCE_DIR}/formatter/tests/testdata/group-layout")
 
-# Library-level preview checks; no test launches the CLI executable.
+# CLI checks exercise the library without launching the executable.
 add_executable(cli_checks
     ../hit-fmt/tests/file_batch.cpp
     ../hit-fmt/tests/file_dispatch.cpp
     ../hit-fmt/tests/file_check.cpp)
 target_link_libraries(cli_checks PRIVATE GTest::gtest_main lib-file-check Threads::Threads)
 
-# Original-scope library adapter checks; legacy golden registration migrates separately.
 add_executable(hunk_checks
     ../formatter/tests/hunks.cpp
     ../formatter/tests/hunk_scope.cpp)
@@ -75,6 +73,5 @@ target_compile_definitions(hunk_checks PRIVATE
     HIT_FMT_HUNK_CHECKS=1
     HUNK_TESTDATA_DIR="${CMAKE_SOURCE_DIR}/formatter/tests/testdata/changed-hunks")
 
-# Independent original-line planning checks while the shared pipeline seam is reviewed.
 add_executable(hunk_scope_checks ../formatter/tests/hunk_scope.cpp)
 target_link_libraries(hunk_scope_checks PRIVATE GTest::gtest_main lib-formatter)

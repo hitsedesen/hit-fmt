@@ -75,16 +75,14 @@ struct HunkInput
 {
     std::string Storage;
     size_t Size;
-    explicit HunkInput(std::string_view text)
-        : Storage(text)
-        , Size(text.size())
+    explicit HunkInput(std::string_view text): Storage(text), Size(text.size())
     {
         Storage.append(util::SourcePaddingSize, '\0');
     }
     parser::SyntaxTree Tree() const
     {
         return parser::Parse(
-            { Storage.data(), Size },
+            {Storage.data(), Size},
             [] (parser::ParseError) {});
     }
 };
@@ -688,7 +686,7 @@ struct HunkGoldenCase
 };
 class FormatTest
     : public testing::TestWithParam<HunkGoldenCase>
-{};
+{ };
 TEST_P(FormatTest, Golden)
 {
     const auto& value = GetParam();
@@ -712,9 +710,9 @@ INSTANTIATE_TEST_SUITE_P(Formatter, FormatTest, testing::Values(
     HunkGoldenCase{"nested", {{3, 3}}, true},
     HunkGoldenCase{"atomic", {{2, 5}}, false, "structural"}),
     [] (const auto& info) {
-        auto name = info.param.Name;
-        std::replace(name.begin(), name.end(), '-', '_');
-        return name;
-    });
+    auto name = info.param.Name;
+    std::replace(name.begin(), name.end(), '-', '_');
+    return name;
+});
 #endif
 } // namespace

@@ -7,17 +7,14 @@
 #include <vector>
 
 namespace formatter {
-
 void ValidateIncludeGroupPrefixes(std::span<const std::string> prefixes);
-
 // Configuration-lifetime owning metadata, not a formatter feature yet. Compile
 // after final overrides, then reuse read-only. No Style/input/scratch views are
 // retained; copies and moves keep index-based edges valid.
 class PreparedIncludePrefixes
 {
-  public:
+public:
     explicit PreparedIncludePrefixes(std::span<const std::string> prefixes);
-
     // Input must already be lexically normalized relative slash syntax. Invalid
     // syntax is unmatched; this lookup neither normalizes nor rewrites paths.
     // Backslashes in input names are ordinary bytes, not slash separators.
@@ -28,8 +25,7 @@ class PreparedIncludePrefixes
     {
         return Prefixes_.size();
     }
-
-  private:
+private:
     struct Node
     {
         std::size_t FirstEdge = 0;
@@ -45,5 +41,4 @@ class PreparedIncludePrefixes
     std::vector<Node> Nodes_;
     std::vector<Edge> Edges_;
 };
-
 } // namespace formatter

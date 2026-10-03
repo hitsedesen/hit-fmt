@@ -2,3 +2,4 @@ AttributeSpaceBeforeSpecifier = NoSpace
 NewInitializerSpaceBeforeParentheses = NoSpace
 DeleteArraySpaceBeforeBrackets = NoSpace
 SizeofPackSpaceBeforeParentheses = NoSpace
+GroupingInteriorSpacing = Space

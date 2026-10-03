@@ -1,7 +1,6 @@
 #pragma once
 
-// One typed policy for every syntax-owned whitespace gap. Safety constraints
-// Lexical separation, comments and opaque spans override these preferences.
+// Lexical separation, comments and opaque spans override gap preferences.
 #define FORMATTER_GAP_OPTIONS(OPT)                                            \
     OPT(formatter::GapPolicy, TrailingCommentSpacing, \
         formatter::GapPolicy::Preserve) \

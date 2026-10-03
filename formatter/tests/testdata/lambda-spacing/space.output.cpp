@@ -5,7 +5,7 @@ auto empty = [] () { return 1; };
 auto noArguments = [] () { return 2; };
 auto implicit = []  { return 3; };
 auto captured = [base = 1] (int value) { return base + value; };
-auto generic = []<typename T>(T value) { return value; };
+auto generic = []<typename T> (T value) { return value; };
 auto commented = [] /* keep */ (int value) { return value; };
 auto line = []
     (int value) { return value; };

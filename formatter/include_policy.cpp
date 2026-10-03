@@ -7,7 +7,6 @@
 
 namespace formatter {
 namespace {
-
 bool NormalizedRelativePath(std::string_view path) noexcept
 {
     if (path.empty() || path.front() == '/') {
@@ -31,23 +30,27 @@ std::vector<std::size_t> SortedRules(std::span<const std::string> prefixes)
 {
     std::vector<std::size_t> order(prefixes.size());
     std::iota(order.begin(), order.end(), 0);
-    std::sort(order.begin(), order.end(), [&](auto left, auto right) {
-        return prefixes[left] < prefixes[right];
-    });
+    std::sort(
+        order.begin(),
+        order.end(),
+        [&] (auto left, auto right) {
+            return prefixes[left] < prefixes[right];
+        });
     return order;
 }
 
 std::vector<std::size_t> ValidateAndSort(std::span<const std::string> prefixes)
 {
-    for (const auto &prefix : prefixes) {
-        if (prefix.empty() || prefix.back() != '/' ||
-            prefix.find('\\') != std::string_view::npos ||
-            !NormalizedRelativePath(prefix))
+    for (const auto& prefix : prefixes) {
+        if (
+            prefix.empty() || prefix.back() != '/' ||
+                prefix.find('\\') != std::string_view::npos ||
+                !NormalizedRelativePath(prefix))
         {
             throw std::invalid_argument(
                 "IncludeGroupPrefixes requires nonempty normalized relative "
-                "directory prefixes ending in / (no empty, . or .. components "
-                "or backslashes)");
+                    "directory prefixes ending in / (no empty, . or .. components "
+                    "or backslashes)");
         }
     }
     auto order = SortedRules(prefixes);
@@ -59,9 +62,7 @@ std::vector<std::size_t> ValidateAndSort(std::span<const std::string> prefixes)
     }
     return order;
 }
-
 } // namespace
-
 void ValidateIncludeGroupPrefixes(std::span<const std::string> prefixes)
 {
     (void)ValidateAndSort(prefixes);
@@ -78,8 +79,9 @@ PreparedIncludePrefixes::PreparedIncludePrefixes(
     for (const auto rule : order) {
         const std::string_view prefix = Prefixes_[rule];
         std::size_t common = 0;
-        while (common < std::min(previous.size(), prefix.size()) &&
-               previous[common] == prefix[common])
+        while (
+            common < std::min(previous.size(), prefix.size()) &&
+                previous[common] == prefix[common])
         {
             ++common;
         }
@@ -104,14 +106,15 @@ PreparedIncludePrefixes::PreparedIncludePrefixes(
     std::vector<std::size_t> ancestors;
     ancestors.reserve(longest + 1);
     ancestors.push_back(0);
-    previous = {};
+    previous ={};
     // Sorted input permits prefix sharing without hash tables or per-node heap
     // allocations. Explicit ancestor indices bound traversal memory by length.
     for (const auto rule : order) {
         const std::string_view prefix = Prefixes_[rule];
         std::size_t common = 0;
-        while (common < std::min(previous.size(), prefix.size()) &&
-               previous[common] == prefix[common])
+        while (
+            common < std::min(previous.size(), prefix.size()) &&
+                previous[common] == prefix[common])
         {
             ++common;
         }
@@ -120,8 +123,12 @@ PreparedIncludePrefixes::PreparedIncludePrefixes(
             const auto parent = ancestors.back();
             const auto child = Nodes_.size();
             Nodes_.push_back({0, 0, RuleCount()});
-            pending.push_back(
-                {parent, {static_cast<unsigned char>(prefix[index]), child}});
+            pending
+                .push_back(
+                    {
+                        parent,
+                        {static_cast<unsigned char>(prefix[index]), child},
+                    });
             ++Nodes_[parent].EdgeCount;
             ancestors.push_back(child);
         }
@@ -129,13 +136,13 @@ PreparedIncludePrefixes::PreparedIncludePrefixes(
         previous = prefix;
     }
     std::size_t first = 0;
-    for (auto &node : Nodes_) {
+    for (auto& node : Nodes_) {
         node.FirstEdge = first;
         first += node.EdgeCount;
     }
     Edges_.resize(pending.size());
     std::vector<std::size_t> inserted(Nodes_.size(), 0);
-    for (const auto &edge : pending) {
+    for (const auto& edge : pending) {
         Edges_[Nodes_[edge.Parent].FirstEdge + inserted[edge.Parent]++] =
             edge.Value;
     }
@@ -150,11 +157,14 @@ std::size_t PreparedIncludePrefixes::ClassifyNormalizedRelativePath(
     }
     std::size_t node = 0;
     for (const unsigned char byte : path) {
-        const auto &current = Nodes_[node];
+        const auto& current = Nodes_[node];
         const auto begin = Edges_.begin() + current.FirstEdge;
         const auto end = begin + current.EdgeCount;
-        const auto edge =
-            std::lower_bound(begin, end, byte, [](const Edge &value, auto key) {
+        const auto edge = std::lower_bound(
+            begin,
+            end,
+            byte,
+            [] (const Edge& value, auto key) {
                 return value.Byte < key;
             });
         if (edge == end || edge->Byte != byte) {
@@ -165,5 +175,4 @@ std::size_t PreparedIncludePrefixes::ClassifyNormalizedRelativePath(
     }
     return match;
 }
-
 } // namespace formatter

@@ -6,7 +6,6 @@
 #include <string_view>
 
 namespace tokenizer::detail {
-
 constexpr uint64_t IdentifierKey(std::string_view text)
 {
     return text.size() | (static_cast<uint64_t>(text[0]) << 8) |
@@ -127,5 +126,4 @@ inline TokenKind ClassifyIdentifier(std::string_view identifier)
 
 #undef TOKENIZER_KEYWORD
 }
-
 } // namespace tokenizer::detail

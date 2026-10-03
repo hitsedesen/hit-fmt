@@ -15,9 +15,7 @@
 #endif
 
 namespace {
-
 using namespace formatter::layout;
-
 void ExpectText(
     const Document& document,
     std::uint32_t width,
@@ -1852,7 +1850,6 @@ public:
     std::size_t Allocations = 0;
     std::size_t Bytes = 0;
     std::size_t Peak = 0;
-
 private:
     void* do_allocate(std::size_t bytes, std::size_t alignment) override
     {

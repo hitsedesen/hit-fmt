@@ -1,10 +1,9 @@
 # hit-fmt
 
-`hit-fmt` parses C and C++ source. This experimental checkpoint provides the
-whole-file group-policy pipeline, not final whole-project acceptance. The
-migrated repository profile uses canonical YTsaurus-inspired layout with
-80 columns and block continuation indentation. Explicit spacing and
-structural rules are independent. Use an explicit migrated config below.
+`hit-fmt` is an experimental C and C++ formatter with syntax-owned group
+policies. The shipped repository profile uses canonical YTsaurus-inspired
+layout with 80 columns and block continuation indentation. Spacing and
+structural rules are independent. Use an explicit configuration as shown below.
 
 ## Build
 
@@ -25,13 +24,8 @@ license notices under a chosen prefix with:
 cmake --install build-cli --prefix ~/.local
 ```
 
-This accepted constructor/enum checkpoint also includes the reviewed
-library hunk/context safety work; CLI hunk flags remain unsupported.
-The normal and ASan/UBSan full runs observe 205 failing identities out of
-845 tests, with 640 passing. These are WIP mismatches under an independent
-configuration-contract audit, not 205 proven implementation defects.
-Existing golden expectations are not regenerated. This CLI-only build
-does not imply full-suite acceptance. Focused checks require GoogleTest:
+A CLI-only build does not validate the test suite. Library-level pipeline
+and CLI checks require GoogleTest:
 
 ```sh
 cmake -S . -B build-checks -DHIT_FMT_TEST=ON -DHIT_FMT_BENCHMARK=OFF
@@ -108,9 +102,8 @@ to avoid matching similarly named files or directories.
 
 ### Experimental configs and limitations
 
-Use explicit migrated configurations; legacy keys have no compatibility
-aliases. Use `--help-config` for option guidance. Google and
-LLVM examples use the migrated schema. Use the canonical YTsaurus example:
+Use `--help-config` for accepted options and values. The shipped Google,
+LLVM and YTsaurus examples are explicit configurations. For YTsaurus:
 
 ```sh
 build-cli/hit-fmt/hit-fmt --config hit-fmt/examples/ytsaurus.hit-fmt \
@@ -122,28 +115,20 @@ build-cli/hit-fmt/hit-fmt --fix \
 Nonempty `CallLikeMacroNames` is currently rejected by the public pipeline.
 The YTsaurus example clears that hint and conservatively byte-protects
 `REGISTER_DERIVED_EXTERNALIZED_YSON_STRUCT` via `WhitespaceSensitiveMacros`.
-This is a temporary workaround, not equivalent macro formatting. It forces
+Byte protection is not equivalent macro formatting. The profile forces
 base and constructor lists onto new lines with leading colons and commas,
 uses four-space continuations for all safely parsed chains, and repairs
 namespace closing names. It remains a guide approximation for `yt/yt`,
 `yt/chyt`, `yt/yql` and `library/cpp/yt`, not `yt/cpp` or unrelated libraries;
-namespace rulers and include regrouping remain unsupported. The migrated
-repository profile is
-`hit-fmt/examples/repository.hit-fmt`; Google and LLVM are alternative
-explicit profiles. Always pass `--config` when running this new CLI in
-the repository. The checked-in root `.hit-fmt` deliberately remains the
-legacy bootstrap profile and cannot be consumed by the new CLI.
-
-Repository development formatting uses a trusted pre-migration bootstrap
-formatter with that legacy root config until new-engine self-hosting is
-ready. This is a development workflow, not a runtime legacy fallback in
-the new CLI. The experimental engine still has self-format width/anchor
-limitations; they are not claimed solved by bootstrap formatting.
+namespace rulers and include regrouping remain unsupported. For repository
+runs, always pass `--config hit-fmt/examples/repository.hit-fmt`; Google and
+LLVM are alternative explicit profiles. The checked-in root `.hit-fmt`
+is not accepted by this CLI. Self-format width and anchor limitations remain.
 
 `--changed-hunks` and `--no-spillover` are explicitly unsupported. Non-Preserve
 `AmbiguousTemplateDeclarationSpacing` is also rejected. Incompletely parsed
 CTAD initializer lists preserve punctuation conservatively and can retain
-awkward or overwidth layout; new safety goldens do not certify ideal layout.
+awkward or overwidth layout; safety checks do not certify ideal layout.
 No corpus compatibility, speedup or whole-pipeline allocation certification
 is claimed.
 

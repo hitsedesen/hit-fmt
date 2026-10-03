@@ -65,12 +65,12 @@ AssignmentOperatorSide = Trailing
 TernaryOperatorSide = Leading
 TernaryLayout = Flexible
 InitializersTrailingComma = Preserve
-# Closer placement no longer depends on an existing trailing comma.
+# Closer placement is independent of trailing-comma presence.
 InitializersCloser = SameLine
 
 # Diagnostics only: upper-initial types/variables, lower-initial functions.
 # No role-aware STL exceptions, typedef/enumerator rules or semantic name checks.
-# Retained ConceptNameCase is an approximation, not a separate upstream mandate.
+# ConceptNameCase is an approximation, not a separate upstream mandate.
 ClassNameCase = PascalCase
 StructNameCase = PascalCase
 UnionNameCase = PascalCase

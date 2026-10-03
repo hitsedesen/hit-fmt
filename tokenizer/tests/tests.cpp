@@ -28,8 +28,8 @@ std::ostream& operator<<(std::ostream& os, const GoldenCase& testCase)
     return os << testCase.Name;
 }
 
-std::pair<std::string, std::vector<std::string>>
-TokenizeAndSerialize(const std::string& input)
+std::pair<std::string, std::vector<std::string>> TokenizeAndSerialize(
+    const std::string& input)
 {
     std::vector<std::string> errors;
     auto paddedInput = input;
@@ -45,11 +45,12 @@ TokenizeAndSerialize(const std::string& input)
         });
     std::string result;
     for (const auto& token : tokenizer) {
-        result += std::format(
-            "{}: {} {}\n",
-            token.Position,
-            token.Kind,
-            token.Text.View(input));
+        result +=
+            std::format(
+                "{}: {} {}\n",
+                token.Position,
+                token.Kind,
+                token.Text.View(input));
     }
     return {std::move(result), std::move(errors)};
 }
@@ -76,8 +77,7 @@ std::vector<TokenizationErrorKind> TokenizeErrors(std::string_view input)
         [&](TokenizationError error) {
             errors.push_back(error.Kind);
         });
-    for ([[maybe_unused]] const auto& token : tokenizer) {
-    }
+    for ( [[maybe_unused]] const auto& token : tokenizer) { }
     return errors;
 }
 
@@ -138,8 +138,8 @@ INSTANTIATE_TEST_SUITE_P(
         GoldenCase{"operators"},
         GoldenCase{"positions"}),
     [] (const auto& info) {
-        return info.param.Name;
-    });
+    return info.param.Name;
+});
 
 INSTANTIATE_TEST_SUITE_P(
     Tokenizer,
@@ -150,8 +150,8 @@ INSTANTIATE_TEST_SUITE_P(
         GoldenCase{"validation_errors"},
         GoldenCase{"cursor_utf8"}),
     [] (const auto& info) {
-        return info.param.Name;
-    });
+    return info.param.Name;
+});
 
 TEST(Tokenizer, KeepsEmbeddedNullInRawStringLiteral)
 {

@@ -1,1 +1,1 @@
-int S::* /*comment*/ member;
+int S::*/*comment*/ member;

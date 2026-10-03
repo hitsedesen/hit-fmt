@@ -1,1 +1,1 @@
-void f(){delete [];}
+void f(){delete []; delete []  ; delete [] pointer;}

@@ -1,5 +1,6 @@
 #include <cstddef>
-namespace N {};
+namespace N {
+};
 namespace foo {
 }; // foo
 namespace bar {
@@ -7,7 +8,9 @@ namespace bar {
 namespace Alias = N;
 export ;
 namespace Outer {
-    namespace Inner {};
+    namespace Inner {
+    }
+    ;
     ;
     int value;
     ; // Keep this placeholder.
@@ -18,11 +21,17 @@ extern "C" {
 export {
     int exported;;
 };
-struct S {};
-struct Methods { void run() {}; };
+struct S {
+};
+struct Methods {
+    void run() {
+    };
+};
 enum E { A };
-void g() {};
-void commented() {}; // commented
+void g() {
+};
+void commented() {
+}; // commented
 void f() {
     work();
     ;

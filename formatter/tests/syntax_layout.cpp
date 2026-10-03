@@ -10,8 +10,7 @@
 #include <string>
 #include <utility>
 #include <vector>
-namespace
-{
+namespace {
 struct Output
 {
     std::string Text;
@@ -19,16 +18,18 @@ struct Output
     std::vector<uint8_t> Broken;
 };
 Output Lower(
-    std::string input, const formatter::Style &style,
-    const formatter::SyntaxLayoutOptions &options = {},
-    const formatter::SourceAnalysisOptions &protection = {},
-    std::pmr::memory_resource *fileUpstream = std::pmr::get_default_resource(),
-    std::pmr::memory_resource *scratchUpstream =
+    std::string input,
+    const formatter::Style& style,
+    const formatter::SyntaxLayoutOptions& options = {},
+    const formatter::SourceAnalysisOptions& protection = {},
+    std::pmr::memory_resource* fileUpstream = std::pmr::get_default_resource(),
+    std::pmr::memory_resource* scratchUpstream =
         std::pmr::get_default_resource())
 {
     const auto size = input.size();
     input.append(util::SourcePaddingSize, '\0');
-    auto tree = parser::Parse({input.data(), size}, [](parser::ParseError) {});
+    auto tree =
+        parser::Parse({input.data(), size}, [] (parser::ParseError) {});
     std::pmr::monotonic_buffer_resource file(fileUpstream);
     std::pmr::monotonic_buffer_resource scratch(scratchUpstream);
     const auto policies = formatter::CompilePolicies(style);
@@ -39,27 +40,31 @@ Output Lower(
         formatter::BuildSyntaxSpacing(tree, safety, policies, file, scratch);
     formatter::layout::Document document(tree.Source(), &file);
     const auto status =
-        formatter::BuildSyntaxDocument(tree, policies, annotations, safety,
-                                       spacing, document, scratch, options);
+        formatter::BuildSyntaxDocument(
+            tree,
+            policies,
+            annotations,
+            safety,
+            spacing,
+            document,
+            scratch,
+            options);
     EXPECT_TRUE(status) << "lowering error " << int(status.Code) << " token "
-                        << status.Token << " core " << int(status.Core.Code);
-    if (!status)
-    {
+        << status.Token << " core " << int(status.Core.Code);
+    if (!status) {
         throw std::runtime_error("failed syntax lowering");
     }
     scratch.release(); // The document must not retain planner storage.
-    const auto rendered = document.Render(
-        formatter::SyntaxRenderPolicy(policies, options), &file);
+    const auto rendered =
+        document
+            .Render(formatter::SyntaxRenderPolicy(policies, options), &file);
     EXPECT_TRUE(rendered.State) << "core " << int(rendered.State.Code);
-    if (!rendered.State)
-    {
+    if (!rendered.State) {
         throw std::runtime_error("failed rendering");
     }
     std::vector<bool> seen(tree.TokenCount());
-    for (const auto &map : rendered.Map)
-    {
-        if (map.Source.Identity == formatter::layout::NoIdentity)
-        {
+    for (const auto& map : rendered.Map) {
+        if (map.Source.Identity == formatter::layout::NoIdentity) {
             continue;
         }
         EXPECT_LT(map.Source.Identity, tree.TokenCount());
@@ -67,51 +72,63 @@ Output Lower(
         EXPECT_FALSE(seen[id]);
         seen[id] = true;
         EXPECT_TRUE(map.Exact);
-        EXPECT_EQ(std::string_view(rendered.Text)
-                      .substr(map.OutputBegin, map.OutputEnd - map.OutputBegin),
-                  tree.TokenText(id));
+        EXPECT_EQ(
+            std::string_view(rendered.Text)
+                .substr(map.OutputBegin, map.OutputEnd - map.OutputBegin),
+            tree.TokenText(id));
     }
     for (parser::TokenIndex i = 0; i < tree.TokenCount(); ++i)
     {
-        if (!seen[i])
-        {
+        if (!seen[i]) {
             EXPECT_EQ(tree.Kind(i), tokenizer::TokenKind::Operator_Comma);
-            EXPECT_NE(style.InitializersTrailingComma,
-                      formatter::TrailingCommaPolicy::Preserve);
+            EXPECT_NE(
+                style.InitializersTrailingComma,
+                formatter::TrailingCommaPolicy::Preserve);
         }
     }
-    return {std::string(rendered.Text),
-            {rendered.Map.begin(), rendered.Map.end()},
-            {rendered.Broken.begin(), rendered.Broken.end()}};
+    return {
+        std::string(rendered.Text),
+        {rendered.Map.begin(), rendered.Map.end()},
+        {rendered.Broken.begin(), rendered.Broken.end()},
+    };
 }
-void ExpectSplitGapMap(const Output &output, size_t sourceBegin,
-                       size_t indentBegin, size_t sourceEnd,
-                       std::string_view prefix, std::string_view indent)
+void ExpectSplitGapMap(
+    const Output& output,
+    size_t sourceBegin,
+    size_t indentBegin,
+    size_t sourceEnd,
+    std::string_view prefix,
+    std::string_view indent)
 {
     bool found = false;
     for (size_t i = 0; i + 1 < output.Map.size(); ++i)
     {
-        const auto &generated = output.Map[i];
-        const auto &borrowed = output.Map[i + 1];
-        if (generated.Source.Identity != formatter::layout::NoIdentity ||
-            generated.Exact || generated.Source.Begin != sourceBegin ||
-            generated.Source.End != sourceEnd)
+        const auto& generated = output.Map[i];
+        const auto& borrowed = output.Map[i + 1];
+        if (
+            generated.Source.Identity != formatter::layout::NoIdentity ||
+                generated.Exact || generated.Source.Begin != sourceBegin ||
+                generated.Source.End != sourceEnd)
         {
             continue;
         }
-        EXPECT_EQ(std::string_view(output.Text)
-                      .substr(generated.OutputBegin,
-                              generated.OutputEnd - generated.OutputBegin),
-                  prefix);
+        EXPECT_EQ(
+            std::string_view(output.Text)
+                .substr(
+                    generated.OutputBegin,
+                    generated.OutputEnd - generated.OutputBegin),
+            prefix);
         EXPECT_TRUE(borrowed.Exact);
         EXPECT_EQ(borrowed.Source.Identity, formatter::layout::NoIdentity);
         EXPECT_EQ(borrowed.Source.Begin, indentBegin);
         EXPECT_EQ(borrowed.Source.End, sourceEnd);
         EXPECT_EQ(generated.OutputEnd, borrowed.OutputBegin);
-        EXPECT_EQ(std::string_view(output.Text)
-                      .substr(borrowed.OutputBegin,
-                              borrowed.OutputEnd - borrowed.OutputBegin),
-                  indent);
+        EXPECT_EQ(
+            std::string_view(output.Text)
+                .substr(
+                    borrowed.OutputBegin,
+                    borrowed.OutputEnd - borrowed.OutputBegin),
+            indent);
         found = true;
     }
     EXPECT_TRUE(found) << "missing generated-prefix / exact-indent association";
@@ -818,7 +835,7 @@ TEST(SyntaxLayout, EachControlledArmOwnsItsOpeningAndBody)
     EXPECT_EQ(
         Lower("void f(){ if (ready) first(); else { second(); } }\n", style)
             .Text,
-        "void f() {\n  if (ready)\n    first(); "
+        "void f() {\n  if (ready)\n    first();\n  "
             "else\n  {\n    second();\n  }\n}\n");
     for (const auto placement :
          {formatter::BracePlacement::Attached,
@@ -838,8 +855,7 @@ TEST(SyntaxLayout, EachControlledArmOwnsItsOpeningAndBody)
             Lower("void f(){ if (ready) { first(); }\nelse { second(); } }\n",
                   style)
                 .Text,
-            "void f() {\n  if (ready) {\n    first();\n  "
-                "}\n  else {\n    second();\n  }\n}\n");
+            expected);
         EXPECT_EQ(
             Lower(
                 "void f(){ if (ready) { first(); } else if "
@@ -893,6 +909,21 @@ TEST(SyntaxLayout, EachControlledArmOwnsItsOpeningAndBody)
     const auto protectedArm = Lower(protectedInput, style, {}, safety).Text;
     EXPECT_NE(protectedArm.find("if (ready)\n  {"), std::string::npos);
     EXPECT_NE(protectedArm.find("else {"), std::string::npos) << protectedArm;
+
+    // A statement try header follows control policy, not declaration policy.
+    style.DeclarationHeadersLayout = formatter::CategoryLayout::Preserve;
+    const std::string tryInput =
+        "void f() { try { work(); } catch (...) { recover(); } }\n";
+    const std::string tryExpected =
+        "void f() {\n  try\n  {\n    work();\n  } catch (...)\n"
+        "  {\n    recover();\n  }\n}\n";
+    EXPECT_EQ(Lower(tryInput, style).Text, tryExpected);
+    EXPECT_EQ(Lower(tryExpected, style).Text, tryExpected);
+    style.ControlHeadersLayout = formatter::CategoryLayout::Preserve;
+    style.DeclarationHeadersLayout = formatter::CategoryLayout::Canonical;
+    const auto preservedTry = Lower(tryInput, style).Text;
+    EXPECT_NE(preservedTry.find("try {"), std::string::npos) << preservedTry;
+    EXPECT_EQ(Lower(preservedTry, style).Text, preservedTry);
 }
 TEST(SyntaxLayout, ControlledArmsSkipDescendantElseSeparators)
 {
@@ -1242,6 +1273,41 @@ TEST(SyntaxLayout, InitializerCommaFollowsOutputShapeNotInputComma)
         }
     }
     EXPECT_TRUE(found);
+    // Designators belong to the complete element; normalization must use the
+    // value endpoint, not the designator or the original trailing comma.
+    for (const std::string input : {
+             "Pair value = {.first = alpha, .second = beta,};\n",
+             "int values[] = {[0] = alpha, [1] = beta,};\n",
+         })
+    {
+        SCOPED_TRACE(input);
+        style.ColumnLimit = 80;
+        const auto flat = Lower(input, style).Text;
+        EXPECT_EQ(flat.find("beta,"), std::string::npos);
+        EXPECT_EQ(Lower(flat, style).Text, flat);
+        style.ColumnLimit = 16;
+        const auto broken = Lower(input, style);
+        EXPECT_NE(broken.Text.find("beta,"), std::string::npos);
+        const auto endpoint = input.find("beta") + 4;
+        EXPECT_TRUE(std::any_of(
+            broken.Map.begin(), broken.Map.end(), [&](const auto &map)
+            {
+                return !map.Exact &&
+                       map.Source.Identity == formatter::layout::NoIdentity &&
+                       map.Source.Begin == endpoint &&
+                       map.Source.End == endpoint &&
+                       std::string_view(broken.Text).substr(
+                           map.OutputBegin, map.OutputEnd - map.OutputBegin) ==
+                           ",";
+            }));
+        EXPECT_EQ(Lower(broken.Text, style).Text, broken.Text);
+        style.InitializersTrailingComma = formatter::TrailingCommaPolicy::Never;
+        const auto deleted = Lower(input, style).Text;
+        EXPECT_EQ(deleted.find("beta,"), std::string::npos);
+        EXPECT_EQ(Lower(deleted, style).Text, deleted);
+        style.InitializersTrailingComma =
+            formatter::TrailingCommaPolicy::WhenMultiline;
+    }
 }
 TEST(SyntaxLayout, IncompleteInitializerTailCannotAuthorizeCommaEdits)
 {
@@ -2637,27 +2703,28 @@ TEST(SyntaxLayout, VerticalCountsAfterCommentCRAndDirectiveBarriersStaySafe)
     EXPECT_EQ(output.find("\r\r\n"), std::string::npos);
     EXPECT_EQ(Lower(output, style, options).Text, output);
 }
-class CountingResource : public std::pmr::memory_resource
+class CountingResource
+    : public std::pmr::memory_resource
 {
-  public:
+public:
     size_t Current = 0;
     size_t Peak = 0;
     size_t Allocations = 0;
-  private:
-    void *do_allocate(size_t bytes, size_t alignment) override
+private:
+    void* do_allocate(size_t bytes, size_t alignment) override
     {
         Current += bytes;
         Peak = std::max(Peak, Current);
         ++Allocations;
         return std::pmr::new_delete_resource()->allocate(bytes, alignment);
     }
-    void do_deallocate(void *pointer, size_t bytes, size_t alignment) override
+    void do_deallocate(void* pointer, size_t bytes, size_t alignment) override
     {
         Current -= bytes;
         std::pmr::new_delete_resource()->deallocate(pointer, bytes, alignment);
     }
-    bool
-    do_is_equal(const std::pmr::memory_resource &other) const noexcept override
+    bool do_is_equal(
+        const std::pmr::memory_resource& other) const noexcept override
     {
         return this == &other;
     }

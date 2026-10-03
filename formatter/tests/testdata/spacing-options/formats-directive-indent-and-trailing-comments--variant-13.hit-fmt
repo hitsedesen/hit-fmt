@@ -1,6 +1,4 @@
-# Migrated to group policies; legacy output equivalence is not implied.
-# Shape preferences apply when broken; fitting canonical groups flatten.
-# Migration: PreprocessorIndentation removed; see --help-config
+# Member indentation does not authorize edits inside directives.
 IndentWidth = 4
 IndentationKind = Spaces
 TrailingCommentSpacing = NoSpace

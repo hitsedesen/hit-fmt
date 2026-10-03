@@ -1,17 +1,16 @@
 struct Inline : Alpha, Beta {};
 class Previous : public Base {};
 class Leading : public Base {};
-class BlankHeader : public Base {};
+class BlankHeader :
+    public Base {};
 class Long
-    final :
-    public Alpha,
+    final : public Alpha,
     private Beta {};
 class Commented /* keep */
     : public Base {};
 struct Outer {
-  struct Nested :
-      public Alpha,
-      Beta {};
+  struct Nested : public Alpha,
+        Beta {};
 };
 enum class Flag : unsigned { On };
 struct Incomplete : public {};

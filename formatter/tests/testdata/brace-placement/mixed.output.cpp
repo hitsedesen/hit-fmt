@@ -4,23 +4,22 @@ class C
 {
     int value;
 };
-class InlineClass // class comment
-{
+class InlineClass
+{ // class comment
     int value;
 };
 struct S { int value; };
 struct InlineComment { // opening comment
     int value;
 };
-struct CommentedStruct { // struct comment
- int value; };
+struct CommentedStruct // struct comment
+{ int value; };
 struct WithConstructor {
     WithConstructor() : value{1} {
     }
     int value;
 };
-union U
-{
+union U {
     int value;
 };
 union InlineUnion { // union comment
@@ -43,9 +42,10 @@ int blockTrailing() { /* function block comment */
 int detached(int x) {
     return x;
 }
-int annotated() { // header comment
- return 1; }
-int noted() { /* keep this comment */
+int annotated() // header comment
+{ return 1; }
+int noted() /* keep this comment */
+{
     return 0;
 }
 auto action = [value = 1]
@@ -54,8 +54,8 @@ auto withParams = [](int n)
 { return n; };
 auto notedLambda = [] // lambda comment
 { return 4; };
-auto inlineLambda = [] // lambda inline comment
-{
+auto inlineLambda = []
+{ // lambda inline comment
     return 5;
 };
 auto first = []

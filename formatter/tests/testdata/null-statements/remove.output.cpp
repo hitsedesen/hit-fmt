@@ -11,10 +11,13 @@ void Process(bool ready, int mode)
             break;
     }
     Emit();
-    if (ready);
-    while (ready);
-    for (;;);
-label:
+    if (ready)
+        ;
+    while (ready)
+        ;
+    for (;;)
+        ;
+    label:
     ;
     ; // Deliberate placeholder.
 }

@@ -82,19 +82,19 @@ TEST(TScopeSuite, EmitsTokens)
 {
     SessionGuard scope;
     EXPECT_CALL(writerMock, OnBeginList());
-    EXPECT_CALL(writerMock, AcceptToken(47));
-    EXPECT_CALL(writerMock, OnBeginMap());
-    EXPECT_CALL(writerMock, CaptureTag("umber"));
-    EXPECT_CALL(writerMock, OnEndMap());
+        EXPECT_CALL(writerMock, AcceptToken(47));
+        EXPECT_CALL(writerMock, OnBeginMap());
+        EXPECT_CALL(writerMock, CaptureTag("umber"));
+        EXPECT_CALL(writerMock, OnEndMap());
     EXPECT_CALL(writerMock, OnEndList());
 }
 
 TEST(TScopeSuite, RecordsWithLocal)
 {
     EXPECT_CALL(writerMock, OnBeginMap());
-    EXPECT_CALL(writerMock, CaptureTag("teal"));
-    int localId = 17;
-    SampleBatch batch(localId, 'V');
-    EXPECT_CALL(writerMock, CaptureCount(SizeOf(batch)));
+        EXPECT_CALL(writerMock, CaptureTag("teal"));
+        int localId = 17;
+        SampleBatch batch(localId, 'V');
+        EXPECT_CALL(writerMock, CaptureCount(SizeOf(batch)));
     EXPECT_CALL(writerMock, OnEndMap());
 }

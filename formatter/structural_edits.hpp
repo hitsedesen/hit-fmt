@@ -9,20 +9,16 @@
 #include <vector>
 
 namespace formatter {
-
 // Independent of spacing, width and configuration storage. Sort authorizes
 // moving exact directive atoms, not rewriting their protected interiors.
-enum class StructuralAction : uint8_t
-{
+enum class StructuralAction : uint8_t {
     AddMissingControlBraces,
     EmptyControlBody,
     RemoveNullStatements,
     RemoveNullDeclarations,
     IncludeOrder,
-    NamespaceComments,
-};
-enum class StructuralSkip : uint8_t
-{
+    NamespaceComments, };
+enum class StructuralSkip : uint8_t {
     Incomplete,
     Protected,
     CommentAttached,
@@ -32,8 +28,7 @@ enum class StructuralSkip : uint8_t
     InvalidMapping,
     FollowingText,
     ShortNamespace,
-    RequiredBody,
-};
+    RequiredBody, };
 struct StructuralDiagnostic
 {
     StructuralAction Action;
@@ -52,7 +47,6 @@ struct StructuralOptions
 };
 using StructuralActionId = uint32_t;
 inline constexpr StructuralActionId NoStructuralAction = UINT32_MAX;
-
 struct StructuralOperation
 {
     StructuralAction Kind;
@@ -75,12 +69,7 @@ struct StructuralEdit
     uint32_t PieceEnd;
     StructuralActionId Operation;
     uint32_t Depth = 0;
-    enum class Edge : uint8_t
-    {
-        Close,
-        Open,
-        Replace
-    } Boundary = Edge::Replace;
+    enum class Edge : uint8_t { Close, Open, Replace } Boundary = Edge::Replace;
 };
 // Planner-created records are exposed for inspection, not permission to
 // fabricate semantic edits. Materialization validates ownership, not C++
@@ -163,14 +152,11 @@ struct IncludeGroup
     const StructuralPlan& plan,
     std::pmr::memory_resource& fileMemory,
     std::pmr::memory_resource& scratchMemory);
-
-enum class NamespaceCommentPolicy : uint8_t
-{
+enum class NamespaceCommentPolicy : uint8_t {
     Preserve,
     AddMissing,
     Fix,
-    Remove
-};
+    Remove };
 struct NamespaceCommentOptions
 {
     NamespaceCommentPolicy Policy = NamespaceCommentPolicy::Preserve;
@@ -178,7 +164,8 @@ struct NamespaceCommentOptions
     // Zero disables exemption. Fix/Remove of existing comments ignores it.
     size_t ShortNamespaceLines = 0;
     size_t Spaces = 1; // 0..32, after the caller resolves trailing gap policy
-    bool PreserveBareCR = false; // Do not capture EOF whitespace in a NEW comment.
+    bool PreserveBareCR =
+        false; // Do not capture EOF whitespace in a NEW comment.
 };
 struct NamespaceIdentity
 {
@@ -224,5 +211,4 @@ struct NamespaceCommentPlan
     std::string_view output,
     const StructuralPlan& resolved,
     std::pmr::memory_resource& fileMemory);
-
 } // namespace formatter

@@ -10,8 +10,8 @@ struct S { int value; };
 struct InlineComment { // opening comment
     int value;
 };
-struct CommentedStruct { // struct comment
- int value; };
+struct CommentedStruct // struct comment
+{ int value; };
 struct WithConstructor {
     WithConstructor() : value{1} {
     }
@@ -23,9 +23,10 @@ union U {
 union InlineUnion { // union comment
     int value;
 };
-union CommentedUnion { // union comment
- int value; };
-class Commented { // keep this comment
+union CommentedUnion // union comment
+{ int value; };
+class Commented // keep this comment
+{
 };
 
 int attached(int x) { return x; }
@@ -39,15 +40,16 @@ int blockTrailing() { /* function block comment */
 int detached(int x) {
     return x;
 }
-int annotated() { // header comment
- return 1; }
-int noted() { /* keep this comment */
+int annotated() // header comment
+{ return 1; }
+int noted() /* keep this comment */
+{
     return 0;
 }
-auto action = [value = 1]{ return value; };
-auto withParams = [](int n){ return n; };
-auto notedLambda = [] { // lambda comment
- return 4; };
+auto action = [value = 1] { return value; };
+auto withParams = [](int n) { return n; };
+auto notedLambda = [] // lambda comment
+{ return 4; };
 auto inlineLambda = [] { // lambda inline comment
     return 5;
 };
@@ -65,7 +67,8 @@ int control(int x) {
     return values[0];
 }
 } // alpha
-namespace beta { // namespace comment
+namespace beta // namespace comment
+{
 struct Nested {
     int method() { return 3; }
 };
