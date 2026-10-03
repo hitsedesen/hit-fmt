@@ -246,8 +246,9 @@ std::string SerializePunctuationRoles(const parser::SyntaxTree& tree)
 class PaddedInput
 {
 public:
-    explicit PaddedInput(
-        std::string_view input): Size_(input.size()), Storage_(input)
+    explicit PaddedInput(std::string_view input)
+        : Size_(input.size())
+        , Storage_(input)
     {
         Storage_.append(util::SourcePaddingSize, '\0');
     }

@@ -16,7 +16,9 @@ struct Input
     std::string Storage;
     size_t Size;
 
-    explicit Input(std::string_view text): Storage(text), Size(text.size())
+    explicit Input(std::string_view text)
+        : Storage(text)
+        , Size(text.size())
     {
         Storage.append(util::SourcePaddingSize, '\0');
     }
@@ -35,10 +37,7 @@ struct File
     std::pmr::monotonic_buffer_resource Scratch;
     SourceAnalysis Safety;
 
-    explicit File(
-        std::string_view source,
-        SourceAnalysisOptions options =
-            {})
+    explicit File(std::string_view source, SourceAnalysisOptions options = {})
         : Source(source)
         , Tree(parser::Parse(Source.View(), [] (parser::ParseError) {}))
         , Safety(BuildSourceAnalysis(Tree, options, Memory, Scratch))

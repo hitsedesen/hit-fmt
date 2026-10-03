@@ -103,16 +103,13 @@ bool ValidGapNewline(GapNewline value)
 
 } // namespace
 
-Result::Result(
-    std::pmr::memory_resource* resource)
+Result::Result(std::pmr::memory_resource* resource)
     : Text(resource)
     , Map(resource)
     , Broken(resource)
 { }
 
-Document::Document(
-    std::string_view source,
-    std::pmr::memory_resource* resource)
+Document::Document(std::string_view source, std::pmr::memory_resource* resource)
     : Source_(source)
     , Nodes_(resource)
     , Groups_(resource)

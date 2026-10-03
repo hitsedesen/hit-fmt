@@ -24,7 +24,9 @@ struct Input
     std::string Storage;
     size_t Size;
 
-    explicit Input(std::string_view text): Storage(text), Size(text.size())
+    explicit Input(std::string_view text)
+        : Storage(text)
+        , Size(text.size())
     {
         Storage.append(util::SourcePaddingSize, '\0');
     }
@@ -48,8 +50,7 @@ struct Analysis
         GapPolicies policies = {},
         PointerReferenceDeclaratorLocation binding =
             PointerReferenceDeclaratorLocation::Preserve,
-        SourceAnalysisOptions options =
-            {})
+        SourceAnalysisOptions options = {})
         : Source(text)
         , Tree(parser::Parse(Source.View(), [] (parser::ParseError) {}))
         , Safety(Analyze(options))

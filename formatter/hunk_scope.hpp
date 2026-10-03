@@ -14,7 +14,8 @@ class OriginalHunkLines
 public:
     OriginalHunkLines(
         std::string_view source,
-        std::pmr::memory_resource& memory): Boundaries_(&memory)
+        std::pmr::memory_resource& memory)
+        : Boundaries_(&memory)
     {
         const auto size = CheckedSourceAnalysisSize(source.size());
         Boundaries_.push_back(0);

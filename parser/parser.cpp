@@ -174,8 +174,7 @@ SyntaxTree::SyntaxTree(std::string_view input)
     , Trivia_(*Memory_)
 { }
 
-SyntaxTree::SyntaxTree(
-    SyntaxTree&& other) noexcept
+SyntaxTree::SyntaxTree(SyntaxTree&& other) noexcept
     : Memory_(std::move(other.Memory_))
     , Input_(other.Input_)
     , Tokens_(std::move(other.Tokens_))
@@ -1315,9 +1314,9 @@ public:
     [[nodiscard]] static SyntaxTree
     Run(util::PaddedSourceView input, ErrorHandler errorHandler);
 
-    ParseContext(
-        SyntaxTree& tree,
-        ErrorHandler& errorHandler): Tree_(tree), ErrorHandler_(errorHandler)
+    ParseContext(SyntaxTree& tree, ErrorHandler& errorHandler)
+        : Tree_(tree)
+        , ErrorHandler_(errorHandler)
     { }
 
     void Build()

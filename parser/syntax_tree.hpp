@@ -358,8 +358,8 @@ public:
         uint32_t Index;
     };
 
-    explicit SegmentedStorage(
-        std::pmr::memory_resource& memory): Memory_(&memory)
+    explicit SegmentedStorage(std::pmr::memory_resource& memory)
+        : Memory_(&memory)
     { }
 
     SegmentedStorage(SegmentedStorage&& other) noexcept
@@ -475,7 +475,8 @@ class TriviaPool
     };
 
 public:
-    explicit TriviaPool(std::pmr::memory_resource& memory): Storage_(memory)
+    explicit TriviaPool(std::pmr::memory_resource& memory)
+        : Storage_(memory)
     { }
 
     TriviaPool(TriviaPool&& other) noexcept = default;
@@ -537,7 +538,8 @@ class TokenPool
     };
 
 public:
-    explicit TokenPool(std::pmr::memory_resource& memory): Storage_(memory)
+    explicit TokenPool(std::pmr::memory_resource& memory)
+        : Storage_(memory)
     { }
 
     TokenPool(TokenPool&& other) noexcept = default;

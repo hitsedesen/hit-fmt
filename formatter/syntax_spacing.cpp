@@ -1826,8 +1826,8 @@ GapContext SpacingOwnerContext(
         : GapContext::Preserved;
 }
 
-SyntaxSpacing::SyntaxSpacing(
-    std::pmr::memory_resource& fileMemory): Gaps_(&fileMemory)
+SyntaxSpacing::SyntaxSpacing(std::pmr::memory_resource& fileMemory)
+    : Gaps_(&fileMemory)
 { }
 
 std::optional<bool>SyntaxSpacing::SpacePreference(

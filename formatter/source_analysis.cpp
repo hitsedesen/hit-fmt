@@ -173,8 +173,7 @@ parser::SourceOffset CheckedSourceAnalysisSize(size_t size)
     return static_cast<parser::SourceOffset>(size);
 }
 
-SourceAnalysis::SourceAnalysis(
-    std::pmr::memory_resource& fileMemory)
+SourceAnalysis::SourceAnalysis(std::pmr::memory_resource& fileMemory)
     : Gaps_(&fileMemory)
     , Protection_(&fileMemory)
     , Regions_(&fileMemory)
@@ -182,8 +181,7 @@ SourceAnalysis::SourceAnalysis(
     , PartialGapPermissions_(&fileMemory)
 { }
 
-SourceAnalysis::SourceAnalysis(
-    SourceAnalysis&& other) noexcept
+SourceAnalysis::SourceAnalysis(SourceAnalysis&& other) noexcept
     : Gaps_(std::move(other.Gaps_))
     , Protection_(std::move(other.Protection_))
     , Regions_(std::move(other.Regions_))

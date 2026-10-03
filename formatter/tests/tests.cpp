@@ -127,8 +127,7 @@ struct FormatCase
         std::string input,
         std::string config = {},
         std::vector<formatter::Hunk> hunks = {},
-        bool spillover =
-            true)
+        bool spillover = true)
         : Directory(std::move(directory))
         , Name(std::move(name))
         , Input(std::move(input))

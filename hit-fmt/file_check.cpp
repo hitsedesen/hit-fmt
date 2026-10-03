@@ -23,7 +23,8 @@ bool Before(util::Position a, util::Position b)
 class PositionSweep
 {
 public:
-    explicit PositionSweep(std::string_view text): Text_(text)
+    explicit PositionSweep(std::string_view text)
+        : Text_(text)
     { }
 
     size_t Offset(util::Position position)

@@ -135,9 +135,9 @@ inline LocalResults& GetLocalResults()
 class Scope
 {
 public:
-    explicit Scope(
-        std::string_view name,
-        uint32_t line = 0): Name_(name), Line_(line)
+    explicit Scope(std::string_view name, uint32_t line = 0)
+        : Name_(name)
+        , Line_(line)
     {
         if (!Enabled()) {
             return;

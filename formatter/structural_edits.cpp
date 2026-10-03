@@ -507,8 +507,7 @@ bool Intersects(std::span<const SR> ranges, SR query)
 
 } // namespace
 
-StructuralPlan::StructuralPlan(
-    std::pmr::memory_resource& memory)
+StructuralPlan::StructuralPlan(std::pmr::memory_resource& memory)
     : Operations(&memory)
     , Edits(&memory)
     , Pieces(&memory)
@@ -523,8 +522,9 @@ StructuralMaterialization::StructuralMaterialization(
     , GeneratedAdjacencies(&memory)
 { }
 
-NamespaceCommentPlan::NamespaceCommentPlan(
-    std::pmr::memory_resource& memory): Namespaces(&memory), Skipped(&memory)
+NamespaceCommentPlan::NamespaceCommentPlan(std::pmr::memory_resource& memory)
+    : Namespaces(&memory)
+    , Skipped(&memory)
 { }
 
 std::pmr::vector<IncludeGroup> DiscoverIncludeGroups(

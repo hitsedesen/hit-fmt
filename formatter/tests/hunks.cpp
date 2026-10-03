@@ -76,7 +76,9 @@ struct HunkInput
     std::string Storage;
     size_t Size;
 
-    explicit HunkInput(std::string_view text): Storage(text), Size(text.size())
+    explicit HunkInput(std::string_view text)
+        : Storage(text)
+        , Size(text.size())
     {
         Storage.append(util::SourcePaddingSize, '\0');
     }

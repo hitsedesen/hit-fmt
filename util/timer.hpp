@@ -8,7 +8,8 @@ template <typename Clock = std::chrono::steady_clock>
 class Timer
 {
 public:
-    Timer(): Start_(Clock::now())
+    Timer()
+        : Start_(Clock::now())
     { }
 
     [[nodiscard]] Clock::duration Elapsed() const

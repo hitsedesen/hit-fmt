@@ -1307,8 +1307,8 @@ Options ParseOptions(int argc, char* argv[])
 class StyleResolver
 {
 public:
-    explicit StyleResolver(
-        const Options& options): Disabled_(options.DisableConfig)
+    explicit StyleResolver(const Options& options)
+        : Disabled_(options.DisableConfig)
     {
         if (options.ConfigPath) {
             ExplicitConfig_ = ConfigEntry{

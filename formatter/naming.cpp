@@ -121,9 +121,7 @@ const parser::Node* Child(const parser::Node& node, NK kind)
 class Checker
 {
 public:
-    Checker(
-        const parser::SyntaxTree& tree,
-        const Configuration& config)
+    Checker(const parser::SyntaxTree& tree, const Configuration& config)
         : Tree(tree)
         , Style(config.Naming)
         , ExemptNamespaces(config.NamingNamespaceExemptions)
