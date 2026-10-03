@@ -107,8 +107,8 @@ void ExpectSplitGapMap(
         const auto& borrowed = output.Map[i + 1];
         if (
             generated.Source.Identity != document::NoIdentity ||
-                generated.Exact || generated.Source.Begin != sourceBegin ||
-                generated.Source.End != sourceEnd)
+            generated.Exact || generated.Source.Begin != sourceBegin ||
+            generated.Source.End != sourceEnd)
         {
             continue;
         }
@@ -1558,6 +1558,43 @@ TEST(SyntaxLayout, ExpressionContinuationDoesNotBecomeChildBlockBase)
             EXPECT_NE(body.find("[]() {\n        return 1;\n    }"),
                       std::string::npos) << body;
             EXPECT_EQ(Lower(body, style).Text, body);
+        }
+    }
+}
+
+TEST(SyntaxLayout, ControlRootSharesAnchorWithoutCancelingReturnContinuation)
+{
+    auto style = Canonical(80);
+    style.IndentWidth = 4;
+    style.ContinuationOffset = 7;
+    style.ControlHeadersContinuationOffset = 3;
+    style.ControlHeadersBreak = formatter::BreakRequirement::Always;
+    style.ControlHeadersFirstItem = formatter::FirstItemPlacement::NextLine;
+    style.ExpressionsBreak = formatter::BreakRequirement::Always;
+    const std::string input =
+        "void f(){ if(alpha || beta){ return left | right; } }\n";
+    for (const auto alignment : {formatter::ContinuationAlignment::Block,
+             formatter::ContinuationAlignment::Delimiter})
+    {
+        style.ControlHeadersAlignment = alignment;
+        for (const auto side : {formatter::OperatorSide::Leading,
+                 formatter::OperatorSide::Trailing})
+        {
+            style.BinaryOperatorSide = side;
+            const auto output = Lower(input, style).Text;
+            const auto lineIndent = [&] (std::string_view token) {
+                const auto position = output.find(token);
+                EXPECT_NE(position, std::string::npos) << output;
+                const auto start = output.rfind('\n', position) + 1;
+                const auto first = output.find_first_not_of(' ', start);
+                return first - start;
+            };
+            const auto headerIndent = alignment ==
+                    formatter::ContinuationAlignment::Block ? 7u : 8u;
+            EXPECT_EQ(lineIndent("alpha"), headerIndent) << output;
+            EXPECT_EQ(lineIndent("beta"), headerIndent) << output;
+            EXPECT_EQ(lineIndent("right"), 15u) << output;
+            EXPECT_EQ(Lower(output, style).Text, output);
         }
     }
 }

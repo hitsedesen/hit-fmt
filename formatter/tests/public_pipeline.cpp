@@ -2423,7 +2423,7 @@ void CheckBareCRCopies(
     {
         if (
             source[i] != '\r' ||
-                (i + 1 < source.size() && source[i + 1] == '\n'))
+            (i + 1 < source.size() && source[i + 1] == '\n'))
         {
             continue;
         }
@@ -2431,7 +2431,7 @@ void CheckBareCRCopies(
         for (const auto& map : result.Map) {
             if (
                 !map.Exact || !map.HasOriginal || map.Original.Begin > i ||
-                    map.Original.End <= i)
+                map.Original.End <= i)
             {
                 continue;
             }

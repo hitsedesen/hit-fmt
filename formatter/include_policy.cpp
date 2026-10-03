@@ -46,8 +46,8 @@ std::vector<std::size_t> ValidateAndSort(std::span<const std::string> prefixes)
     for (const auto& prefix : prefixes) {
         if (
             prefix.empty() || prefix.back() != '/' ||
-                prefix.find('\\') != std::string_view::npos ||
-                !NormalizedRelativePath(prefix))
+            prefix.find('\\') != std::string_view::npos ||
+            !NormalizedRelativePath(prefix))
         {
             throw std::invalid_argument(
                 "IncludeGroupPrefixes requires nonempty normalized relative "
@@ -85,7 +85,7 @@ PreparedIncludePrefixes::PreparedIncludePrefixes(
         std::size_t common = 0;
         while (
             common < std::min(previous.size(), prefix.size()) &&
-                previous[common] == prefix[common])
+            previous[common] == prefix[common])
         {
             ++common;
         }
@@ -118,7 +118,7 @@ PreparedIncludePrefixes::PreparedIncludePrefixes(
         std::size_t common = 0;
         while (
             common < std::min(previous.size(), prefix.size()) &&
-                previous[common] == prefix[common])
+            previous[common] == prefix[common])
         {
             ++common;
         }

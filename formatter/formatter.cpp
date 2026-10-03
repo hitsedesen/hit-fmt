@@ -145,7 +145,7 @@ std::pmr::vector<Range> ProjectEditScope(
             // follow. A deletion emits no literal and grants no new authority.
             if (
                 piece.Operation == NoStructuralAction ||
-                    safety.IntersectsImmutable(piece.Original))
+                safety.IntersectsImmutable(piece.Original))
             {
                 throw std::runtime_error("unauthorized structural literal");
             }
@@ -225,7 +225,7 @@ std::pmr::vector<GapId> GeneratedGaps(
         // deletion.
         if (
             interval < ranges.size() && ranges[interval].Begin <= range.End &&
-                !safety.Gaps()[i].Preserve)
+            !safety.Gaps()[i].Preserve)
         {
             result.push_back(i);
             // Provenance is emitted in output order. A copied gap inside a
@@ -233,16 +233,15 @@ std::pmr::vector<GapId> GeneratedGaps(
             // whitespace joined across a deletion does not.
             while (
                 piece < provenance.size() &&
-                    provenance[piece].Output.End <= range.Begin)
+                provenance[piece].Output.End <= range.Begin)
             {
                 ++piece;
             }
             if (
                 range.Begin < range.End &&
-                    (piece == provenance.size() ||
-                            provenance[piece].Generated ||
-                            range.Begin < provenance[piece].Output.Begin ||
-                            range.End > provenance[piece].Output.End))
+                (piece == provenance.size() || provenance[piece].Generated ||
+                        range.Begin < provenance[piece].Output.Begin ||
+                        range.End > provenance[piece].Output.End))
             {
                 reassembled.push_back(i);
             }
@@ -291,7 +290,7 @@ std::pmr::vector<uint64_t> OriginalIdentities(
         const auto range = tree.Token(i).Text;
         if (
             range.Begin == surviving[next].Source.Begin &&
-                range.End == surviving[next].Source.End)
+            range.End == surviving[next].Source.End)
         {
             identities[i] = surviving[next++].Original;
         } else if (range.End > surviving[next].Source.Begin) {
@@ -379,7 +378,7 @@ void ComposeMaps(
                         Offset begin) { return range.Source.End <= begin; });
             for (;
                 it != safety.Protection().end() &&
-                    it->Source.Begin < source.End;
+                it->Source.Begin < source.End;
                 ++it)
             {
                 const auto begin = std::max(source.Begin, it->Source.Begin);
@@ -410,8 +409,8 @@ void ComposeMaps(
         bool added = false;
         for (;
             it != provenance.end() &&
-                (it->Output.Begin < source.End ||
-                        (source.Empty() && it->Output.Begin <= source.Begin));
+            (it->Output.Begin < source.End ||
+                    (source.Empty() && it->Output.Begin <= source.Begin));
             ++it)
         {
             const auto begin = std::max(source.Begin, it->Output.Begin);
@@ -525,7 +524,7 @@ void ApplyComments(
                             token; });
             if (
                 identity == namespaces.end() ||
-                    identity->Owner.Begin != owner.Begin)
+                identity->Owner.Begin != owner.Begin)
             {
                 throw std::runtime_error("missing namespace action identity");
             }
@@ -558,7 +557,7 @@ void ApplyComments(
                     Offset begin) { return copy.Before.End <= begin; });
         if (
             it != copies.end() && it->Before.Begin <= range.Begin &&
-                range.End <= it->Before.End)
+            range.End <= it->Before.End)
         {
             return &*it;
         }
@@ -620,7 +619,7 @@ void ApplyComments(
             // the rest of that token. The byte remains exact, not the ID.
             if (
                 next.OriginalToken != document::NoIdentity &&
-                    !result.OriginalTokens[next.OriginalToken].Present)
+                !result.OriginalTokens[next.OriginalToken].Present)
             {
                 next.OriginalToken = document::NoIdentity;
             }
@@ -669,7 +668,7 @@ void WidthDiagnostics(
             width = 0;
             if (
                 c == '\r' && i + 1 < result.Text.size() &&
-                    result.Text[i + 1] == '\n')
+                result.Text[i + 1] == '\n')
             {
                 ++i;
             }
@@ -836,7 +835,7 @@ FormatResult detail::FormatWithAnalysis(
         const auto lf = original.Source().find('\n');
         if (
             lf != std::string_view::npos && lf &&
-                original.Source()[lf - 1] == '\r')
+            original.Source()[lf - 1] == '\r')
         {
             options.LineEnding = document::Newline::CRLF;
         }

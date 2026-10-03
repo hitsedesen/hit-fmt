@@ -70,7 +70,7 @@ const Node* FunctionName(const Node& node)
 {
     if (
         node.Kind == NK::DeclaratorName || node.Kind == NK::DestructorName ||
-            node.Kind == NK::OperatorFunctionName)
+        node.Kind == NK::OperatorFunctionName)
     {
         return &node;
     }
@@ -119,7 +119,7 @@ util::Position NamePosition(
                 {
                     if (
                         child->Kind == NK::ArrayDeclarator ||
-                            child->Kind == NK::FunctionDeclarator)
+                        child->Kind == NK::FunctionDeclarator)
                     {
                         return tree.TokenPosition(child->Tokens.Begin);
                     }
@@ -234,8 +234,8 @@ void CheckFunction(
             }
             if (
                 significant == begin + 1 &&
-                    (tree.Kind(begin) == TK::Identifier ||
-                            tree.Kind(begin) == TK::Keyword_void))
+                (tree.Kind(begin) == TK::Identifier ||
+                        tree.Kind(begin) == TK::Keyword_void))
             {
                 continue;
             }
@@ -243,7 +243,7 @@ void CheckFunction(
             for (auto i = begin; i < end; ++i) {
                 if (
                     tree.Kind(i) == TK::PreprocessingDirective ||
-                        tree.Kind(i) == TK::Operator_Ellipsis)
+                    tree.Kind(i) == TK::Operator_Ellipsis)
                 {
                     unsafe = true;
                     break;
@@ -268,7 +268,7 @@ void CheckFunction(
                 }
                 if (
                     !hasDefault && last < end &&
-                        IsCommentedName(tree.TokenText(end - 1)))
+                    IsCommentedName(tree.TokenText(end - 1)))
                 {
                     continue;
                 }
@@ -303,11 +303,11 @@ std::vector<ParameterNameDiagnostic> CheckParameterNames(
         stack.pop_back();
         if (
             (node->Kind == NK::FunctionDeclaration &&
-                        config.FunctionDeclarationParameterNames ==
-                            FunctionDeclarationParameterNames::Required) ||
-                (node->Kind == NK::FunctionDefinition &&
-                        config.FunctionDefinitionParameterNames !=
-                            FunctionDefinitionParameterNames::Unchecked))
+                    config.FunctionDeclarationParameterNames ==
+                        FunctionDeclarationParameterNames::Required) ||
+            (node->Kind == NK::FunctionDefinition &&
+                    config.FunctionDefinitionParameterNames !=
+                        FunctionDefinitionParameterNames::Unchecked))
         {
             CheckFunction(
                 tree,

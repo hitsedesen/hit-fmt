@@ -81,7 +81,7 @@ private:
     {
         if (
             !hunk.Begin || hunk.Begin > hunk.End ||
-                hunk.End >= Boundaries_.size())
+            hunk.End >= Boundaries_.size())
         {
             throw std::invalid_argument("invalid original physical hunk lines");
         }

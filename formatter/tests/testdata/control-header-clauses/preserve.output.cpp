@@ -2,7 +2,7 @@ void Process()
 {
     for (auto ready =
             ReadNext(); ready ||
-            CanProceedAfterDelay(); ready = ReadNext()) {
+         CanProceedAfterDelay(); ready = ReadNext()) {
         Use(ready);
     }
     if (auto value = ReadNext(); value && PassesLongPredicate(value)) {
@@ -14,7 +14,7 @@ void Process()
     }
     for (auto x =
             Make([] { return 1; }); x <
-            ALongMaximumCount(); ++x) {
+         ALongMaximumCount(); ++x) {
         Use(x);
     }
     for (auto item : ItemsWithAnExtremelyLongExpression()) {
@@ -22,7 +22,7 @@ void Process()
     }
     for (auto ready =
             ReadNext(); /* keep */ ready ||
-            CanProceedAfterDelay(); ready = ReadNext()) {
+         CanProceedAfterDelay(); ready = ReadNext()) {
         Use(ready);
     }
     for (; ExpensiveLongConditionCheckWithContext(context, scheduler); ) {

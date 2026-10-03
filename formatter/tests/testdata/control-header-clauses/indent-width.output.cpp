@@ -26,7 +26,7 @@ void Process()
     for (
         auto ready =
             ReadNext(); /* keep */ ready ||
-            CanProceedAfterDelay(); ready = ReadNext())
+        CanProceedAfterDelay(); ready = ReadNext())
     {
         Use(ready);
     }

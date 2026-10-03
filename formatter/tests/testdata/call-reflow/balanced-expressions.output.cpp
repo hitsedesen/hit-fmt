@@ -27,7 +27,7 @@ void Compare()
     }
     if (
         Any(previousChannelStatus & ~EChannelStatus::CurrentlyProcessing) &&
-            None(previousChannelStatus & EChannelStatus::PendingShutdown))
+        None(previousChannelStatus & EChannelStatus::PendingShutdown))
     {
         Handle();
     }

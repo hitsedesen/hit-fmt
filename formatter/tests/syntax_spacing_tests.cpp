@@ -100,7 +100,7 @@ std::string Dump(const Analysis& analysis)
         const auto& gap = analysis.Spacing.Gaps()[i];
         if (
             gap.Field == F::None && gap.Constraint == SpacingConstraint::None &&
-                gap.Priority == 0)
+            gap.Priority == 0)
         {
             continue;
         }

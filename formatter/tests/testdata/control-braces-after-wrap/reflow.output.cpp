@@ -1,6 +1,6 @@
 void f(bool alpha, bool beta) {
     if (alpha &&
-            beta)
+        beta)
     {
         run();
     }

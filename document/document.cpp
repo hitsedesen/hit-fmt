@@ -165,8 +165,8 @@ bool Document::CheckOrigin(Provenance origin)
 {
     if (
         (origin.Begin == InvalidId) != (origin.End == InvalidId) ||
-            (origin.Begin != InvalidId &&
-                    (origin.Begin > origin.End || origin.End > Source_.size())))
+        (origin.Begin != InvalidId &&
+                (origin.Begin > origin.End || origin.End > Source_.size())))
     {
         Fail(Error::InvalidSourceRange);
     }
@@ -308,7 +308,7 @@ void Document::SourceWhitespace(
     }
     if (
         begin == InvalidId || end == InvalidId ||
-            !CheckOrigin({begin, end, NoIdentity}))
+        !CheckOrigin({begin, end, NoIdentity}))
     {
         Fail(Error::InvalidSourceRange);
         return;
@@ -316,10 +316,10 @@ void Document::SourceWhitespace(
     const auto text = Source_.substr(begin, end - begin);
     if (
         text.find_first_not_of(" \t\r\n\f\v") != std::string_view::npos ||
-            (begin && begin < end && Source_[begin - 1] == '\r' &&
-                    Source_[begin] == '\n') ||
-            (begin < end && end < Source_.size() && Source_[end - 1] == '\r' &&
-                    Source_[end] == '\n'))
+        (begin && begin < end && Source_[begin - 1] == '\r' &&
+                Source_[begin] == '\n') ||
+        (begin < end && end < Source_.size() && Source_[end - 1] == '\r' &&
+                Source_[end] == '\n'))
     {
         Fail(Error::InvalidSourceRange);
         return;
@@ -360,7 +360,7 @@ void Document::Verbatim(std::string_view borrowed, Provenance origin)
     node.Exact = origin.Begin != InvalidId;
     if (
         node.Exact &&
-            borrowed != Source_.substr(origin.Begin, origin.End - origin.Begin))
+        borrowed != Source_.substr(origin.Begin, origin.End - origin.Begin))
     {
         Fail(Error::InvalidSourceRange);
         return;
@@ -372,7 +372,7 @@ void Document::Gap(GapSpec spec, AnchorId anchor, Provenance origin)
 {
     if (
         spec.Kind != GapKind::Flat && spec.Kind != GapKind::Soft &&
-            spec.Kind != GapKind::Hard)
+        spec.Kind != GapKind::Hard)
     {
         Fail(Error::InvalidPolicy);
     }
@@ -402,21 +402,21 @@ void Document::SourceLineIndent(
 {
     if (
         begin == InvalidId || end == InvalidId || indentBegin == InvalidId ||
-            indentEnd == InvalidId)
+        indentEnd == InvalidId)
     {
         Fail(Error::InvalidSourceRange);
         return;
     }
     if (
         !CheckOrigin({begin, end, identity}) ||
-            !CheckHorizontalSource(indentBegin, indentEnd))
+        !CheckHorizontalSource(indentBegin, indentEnd))
     {
         return;
     }
     const auto prefix = Source_.substr(begin, end - begin);
     if (
         prefix.empty() || prefix.back() != '\n' ||
-            prefix.find_first_not_of(" \t\r\n") != std::string_view::npos)
+        prefix.find_first_not_of(" \t\r\n") != std::string_view::npos)
     {
         Fail(Error::InvalidLinePrefix);
     }
@@ -438,7 +438,7 @@ AnchorId Document::MarkAnchor(AnchorSpec spec)
 {
     if (
         spec.Kind != AnchorKind::BlockRelative &&
-            spec.Kind != AnchorKind::DelimiterColumn)
+        spec.Kind != AnchorKind::DelimiterColumn)
     {
         Fail(Error::InvalidPolicy);
     }
@@ -470,19 +470,19 @@ void Document::ExpressionLine()
     const auto& previous = Nodes_.back();
     if (
         (previous.Type != Kind::Verbatim &&
-                    previous.Type != Kind::SourceWhitespace &&
-                    previous.Type != Kind::SourceLineIndent) ||
-            previous.Owner != Open_.back() ||
-            previous.Origin.Identity != NoIdentity ||
-            previous.Origin.Begin == InvalidId ||
-            previous.FlatText !=
-                Source_
-                    .substr(
-                        previous.Origin.Begin,
-                        previous.Origin.End - previous.Origin.Begin) ||
-            previous.FlatText.find('\n') == std::string_view::npos ||
-            previous.FlatText.find_first_not_of(" \t\r\n") !=
-                std::string_view::npos)
+                previous.Type != Kind::SourceWhitespace &&
+                previous.Type != Kind::SourceLineIndent) ||
+        previous.Owner != Open_.back() ||
+        previous.Origin.Identity != NoIdentity ||
+        previous.Origin.Begin == InvalidId ||
+        previous.FlatText !=
+            Source_
+                .substr(
+                    previous.Origin.Begin,
+                    previous.Origin.End - previous.Origin.Begin) ||
+        previous.FlatText.find('\n') == std::string_view::npos ||
+        previous.FlatText.find_first_not_of(" \t\r\n") !=
+            std::string_view::npos)
     {
         Fail(Error::InvalidLinePrefix);
         return;
@@ -527,7 +527,7 @@ void Document::ConditionalGap(
     }
     if (
         broken.Kind != GapKind::Flat && broken.Kind != GapKind::Soft &&
-            broken.Kind != GapKind::Hard)
+        broken.Kind != GapKind::Hard)
     {
         Fail(Error::InvalidPolicy);
     }
@@ -572,11 +572,11 @@ const
     }
     if (
         policy.Width == 0 || policy.Width == Infinity || policy.TabWidth == 0 ||
-            policy.TabWidth > 32 ||
-            (policy.LineEnding != Newline::LF &&
-                    policy.LineEnding != Newline::CRLF) ||
-            (policy.Indentation != IndentationKind::Spaces &&
-                    policy.Indentation != IndentationKind::Tabs))
+        policy.TabWidth > 32 ||
+        (policy.LineEnding != Newline::LF &&
+                policy.LineEnding != Newline::CRLF) ||
+        (policy.Indentation != IndentationKind::Spaces &&
+                policy.Indentation != IndentationKind::Tabs))
     {
         result.State ={Error::InvalidPolicy, InvalidId};
         return result;
@@ -614,15 +614,15 @@ const
         auto& entry = cache[i];
         if (
             node.Type != Kind::Begin && node.Type != Kind::End &&
-                node.Type != Kind::Anchor && node.Type != Kind::ExpressionLine)
+            node.Type != Kind::Anchor && node.Type != Kind::ExpressionLine)
         {
             ++mappingCount;
             if (node.Type == Kind::SourceWhitespace) {
                 // At most one copied run on either side of each changed atom.
                 if (
                     mappingCount > result.Map.max_size() ||
-                        node.ChangedNewlines >
-                            (result.Map.max_size() - mappingCount) / 2)
+                    node.ChangedNewlines >
+                        (result.Map.max_size() - mappingCount) / 2)
                 {
                     result.State =
                         {Error::TooLarge, static_cast<std::uint32_t>(i)};
@@ -631,11 +631,10 @@ const
                 mappingCount += std::size_t(node.ChangedNewlines) * 2;
             }
             if (node.Type == Kind::SourceLineIndent ||
-                    ((node.Type == Kind::Gap || node.Type == Kind::
+                ((node.Type == Kind::Gap || node.Type == Kind::
                     ConditionalGap) &&
-                            (node.FlatGap.IndentSourceBegin != InvalidId ||
-                                    node.BrokenGap.IndentSourceBegin !=
-                                        InvalidId)))
+                        (node.FlatGap.IndentSourceBegin != InvalidId ||
+                                node.BrokenGap.IndentSourceBegin != InvalidId)))
             {
                 ++mappingCount;
             }
@@ -678,9 +677,9 @@ const
             summaries.pop_back();
         } else if (
             node.Type == Kind::Text || node.Type == Kind::Verbatim ||
-                node.Type == Kind::ConditionalText ||
-                node.Type == Kind::SourceLineIndent ||
-                node.Type == Kind::SourceWhitespace)
+            node.Type == Kind::ConditionalText ||
+            node.Type == Kind::SourceLineIndent ||
+            node.Type == Kind::SourceWhitespace)
         {
             // Fixed prefixes establish shape like Verbatim, but never publish
             // lastBreak/ownedBreak. Their indentation follows a guaranteed
@@ -715,9 +714,8 @@ const
             guaranteedLine = node.BrokenGap.Kind == GapKind::Hard;
             if (
                 node.Owner != InvalidId &&
-                    (node.BrokenGap.Kind == GapKind::Soft ||
-                            (node.Type == Kind::ConditionalGap &&
-                                    guaranteedLine)))
+                (node.BrokenGap.Kind == GapKind::Soft ||
+                        (node.Type == Kind::ConditionalGap && guaranteedLine)))
             {
                 lastBreak = static_cast<std::uint32_t>(i);
             }
@@ -803,7 +801,7 @@ const
                 indent = std::max(indent, minimum);
                 if (
                     indent >= policy.Width ||
-                        requiredWidth > policy.Width - indent)
+                    requiredWidth > policy.Width - indent)
                 {
                     indent = Offset(anchor.Block, spec.Fallback);
                 }
@@ -910,7 +908,7 @@ const
             if (node.StructuralBase) {
                 if (
                     !frame.ReversibleIndent ||
-                        frame.PendingExpressionIndent > base)
+                    frame.PendingExpressionIndent > base)
                 {
                     indentationError(i);
                     return result;
@@ -943,9 +941,9 @@ const
             const auto text = node.FlatText;
             if (
                 text.size() > result.Text.max_size() ||
-                    (targetCRLF &&
-                            node.ChangedNewlines >
-                                result.Text.max_size() - text.size()))
+                (targetCRLF &&
+                        node.ChangedNewlines >
+                            result.Text.max_size() - text.size()))
             {
                 result.State ={Error::TooLarge, static_cast<std::uint32_t>(i)};
                 return result;
@@ -1042,7 +1040,7 @@ const
         }
         if (
             node.Type == Kind::Text || node.Type == Kind::Verbatim ||
-                node.Type == Kind::ConditionalText)
+            node.Type == Kind::ConditionalText)
         {
             auto text =
                 node.Type == Kind::ConditionalText && ownerBroken

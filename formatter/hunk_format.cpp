@@ -55,7 +55,7 @@ std::pmr::vector<Range> NarrowScope(
     for (const auto range : *caller) {
         if (
             range.Begin >= range.End || range.End > size ||
-                range.Begin < previous)
+            range.Begin < previous)
         {
             throw std::invalid_argument("invalid original hunk edit scope");
         }
@@ -96,8 +96,8 @@ bool SemanticProtection(const SourceAnalysis& safety, Range source)
     constexpr auto outside = uint16_t(ProtectionReason::OutsideEditScope);
     for (;
         it != ranges.end() &&
-            (it->Source.Begin < source.End ||
-                    (source.Empty() && it->Source.Begin <= source.Begin));
+        (it->Source.Begin < source.End ||
+                (source.Empty() && it->Source.Begin <= source.Begin));
         ++it)
     {
         if (uint16_t(it->Reasons) & ~outside) {
@@ -151,7 +151,7 @@ std::vector<HunkCoverage> FinishCoverage(
         }
         while (
             next < selected.size() &&
-                selected[next].End <= record.Original.Begin)
+            selected[next].End <= record.Original.Begin)
         {
             ++next;
         }
@@ -225,8 +225,8 @@ ChangedFormatResult FormatChanged(
         }
         if (
             prepared.NamespaceComments.Policy !=
-                    NamespaceCommentPolicy::Preserve &&
-                region.Kind == parser::NodeKind::NamespaceDeclaration)
+                NamespaceCommentPolicy::Preserve &&
+            region.Kind == parser::NodeKind::NamespaceDeclaration)
         {
             // Matching delimiter metadata, not header/comment text guesses.
             for (auto i = region.Tokens.Begin; i < region.Tokens.End; ++i) {
@@ -249,7 +249,7 @@ ChangedFormatResult FormatChanged(
         }
         if (
             !SpillList(region.Kind) ||
-                !detail::HunkScopeIntersects(selectedBytes, region.Source))
+            !detail::HunkScopeIntersects(selectedBytes, region.Source))
         {
             continue;
         }
@@ -278,7 +278,7 @@ ChangedFormatResult FormatChanged(
                 windows.push_back(unit);
             } else if (
                 prepared.Structural.SortIncludes &&
-                    !detail::HunkScopeContains(selectedBytes, group.Source))
+                !detail::HunkScopeContains(selectedBytes, group.Source))
             {
                 coverage
                     .push_back({group.Source, Reason::StructuralEligibility});
@@ -303,7 +303,7 @@ ChangedFormatResult FormatChanged(
     for (const auto& gap : safety.Gaps())
         if (
             gap.Preserve &&
-                detail::HunkScopeIntersects(selectedBytes, gap.Source))
+            detail::HunkScopeIntersects(selectedBytes, gap.Source))
             coverage.push_back({gap.Source, Reason::LimitedLayout});
     // EOF is never an owned insertion point, even with the last line selected.
     // That limits layout-check coverage; it is not evidence of a missing LF.
@@ -331,11 +331,11 @@ ChangedFormatResult FormatChanged(
         // Proven policy exemptions are neither violations nor missing checks.
         if (
             diagnostic.Reason == StructuralSkip::ShortNamespace ||
-                (diagnostic.Reason == StructuralSkip::RequiredBody &&
-                        (diagnostic.Action ==
-                                    StructuralAction::RemoveNullStatements ||
-                                diagnostic.Action ==
-                                    StructuralAction::RemoveNullDeclarations)))
+            (diagnostic.Reason == StructuralSkip::RequiredBody &&
+                    (diagnostic.Action ==
+                                StructuralAction::RemoveNullStatements ||
+                            diagnostic.Action ==
+                                StructuralAction::RemoveNullDeclarations)))
         {
             continue;
         }
@@ -366,13 +366,13 @@ ChangedFormatResult FormatChanged(
         // selection fence can be promoted to a definite required-action skip.
         if (
             requiredCandidate && !SemanticProtection(safety, footprint) &&
-                !SemanticProtection(safety, {footprint.End, footprint.End}) &&
-                !safety.Gaps()[beginGap].IntrinsicPreserve &&
-                !safety.Gaps()[endGap].IntrinsicPreserve &&
-                !(uint16_t(safety.Gaps()[beginGap].Reasons) &
-                        ~uint16_t(ProtectionReason::OutsideEditScope)) &&
-                !(uint16_t(safety.Gaps()[endGap].Reasons) &
-                        ~uint16_t(ProtectionReason::OutsideEditScope)))
+            !SemanticProtection(safety, {footprint.End, footprint.End}) &&
+            !safety.Gaps()[beginGap].IntrinsicPreserve &&
+            !safety.Gaps()[endGap].IntrinsicPreserve &&
+            !(uint16_t(safety.Gaps()[beginGap].Reasons) &
+                    ~uint16_t(ProtectionReason::OutsideEditScope)) &&
+            !(uint16_t(safety.Gaps()[endGap].Reasons) &
+                    ~uint16_t(ProtectionReason::OutsideEditScope)))
         {
             result.RequiredSkips.push_back(diagnostic);
         } else {

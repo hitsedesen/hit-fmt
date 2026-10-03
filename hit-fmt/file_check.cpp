@@ -34,7 +34,7 @@ public:
         }
         if (
             Current_.Line != position.Line ||
-                Current_.Column != position.Column)
+            Current_.Column != position.Column)
         {
             throw std::runtime_error("invalid original diagnostic position");
         }
@@ -111,7 +111,7 @@ void MapSemanticPositions(const parser::SyntaxTree& tree, CheckedFile& checked)
         auto token = low;
         if (
             token == tree.TokenCount() ||
-                tree.Token(token).Text.Begin != offset)
+            tree.Token(token).Text.Begin != offset)
         {
             if (token == 0) {
                 throw std::runtime_error(
@@ -123,8 +123,7 @@ void MapSemanticPositions(const parser::SyntaxTree& tree, CheckedFile& checked)
         const auto& mapped = checked.Formatting.OriginalTokens.at(token);
         if (
             offset < range.Begin || offset > range.End || !mapped.Present ||
-                mapped.Output.End - mapped.Output.Begin !=
-                    range.End - range.Begin)
+            mapped.Output.End - mapped.Output.Begin != range.End - range.Begin)
         {
             throw std::runtime_error(
                 "diagnostic token identity did not survive formatting");
@@ -244,10 +243,10 @@ void ValidatePreviewOption(std::string_view argument)
 {
     if (
         argument == "--changed-hunks" ||
-            argument.starts_with("--changed-hunks=") ||
-            argument == "--changed-ranges" ||
-            argument.starts_with("--changed-ranges=") ||
-            argument == "--no-spillover")
+        argument.starts_with("--changed-hunks=") ||
+        argument == "--changed-ranges" ||
+        argument.starts_with("--changed-ranges=") ||
+        argument == "--no-spillover")
     {
         throw std::invalid_argument(
             "--changed-hunks/--changed-ranges and --no-spillover are "

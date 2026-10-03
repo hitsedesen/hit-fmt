@@ -132,7 +132,7 @@ RenderedLine RenderLine(
         auto start = i++;
         while (
             i < text.size() &&
-                (static_cast<unsigned char>(text[i]) & 0xc0) == 0x80)
+            (static_cast<unsigned char>(text[i]) & 0xc0) == 0x80)
         {
             ++i;
         }
@@ -231,7 +231,7 @@ void PrintWrappedMessage(
         }
         while (
             length && length < message.size() &&
-                (static_cast<unsigned char>(message[length]) & 0xc0) == 0x80)
+            (static_cast<unsigned char>(message[length]) & 0xc0) == 0x80)
         {
             --length;
         }
@@ -340,13 +340,13 @@ size_t DifferenceColumn(std::string_view actual, std::string_view expected)
     size_t byte = 0;
     while (
         byte < actual.size() && byte < expected.size() &&
-            actual[byte] == expected[byte])
+        actual[byte] == expected[byte])
     {
         ++byte;
     }
     while (
         byte < actual.size() &&
-            std::isspace(static_cast<unsigned char>(actual[byte])))
+        std::isspace(static_cast<unsigned char>(actual[byte])))
     {
         ++byte;
     }
@@ -404,7 +404,7 @@ std::string TokenAt(std::string_view text, size_t offset)
         ++end;
         while (
             end < text.size() &&
-                (static_cast<unsigned char>(text[end]) & 0xc0) == 0x80)
+            (static_cast<unsigned char>(text[end]) & 0xc0) == 0x80)
         {
             ++end;
         }
@@ -445,19 +445,19 @@ std::vector<Violation> SpacingViolations(
         auto startA = a, startB = b;
         while (
             a < actual.size() &&
-                std::isspace(static_cast<unsigned char>(actual[a])))
+            std::isspace(static_cast<unsigned char>(actual[a])))
         {
             ++a;
         }
         while (
             b < expected.size() &&
-                std::isspace(static_cast<unsigned char>(expected[b])))
+            std::isspace(static_cast<unsigned char>(expected[b])))
         {
             ++b;
         }
         if (
             actual.substr(startA, a - startA) !=
-                expected.substr(startB, b - startB))
+            expected.substr(startB, b - startB))
         {
             violations
                 .push_back(
@@ -486,7 +486,7 @@ std::string QuoteSnippet(std::string_view text)
         auto start = i++;
         while (
             i < text.size() &&
-                (static_cast<unsigned char>(text[i]) & 0xc0) == 0x80)
+            (static_cast<unsigned char>(text[i]) & 0xc0) == 0x80)
         {
             ++i;
         }
@@ -523,35 +523,35 @@ std::string ContentChange(std::string_view actual, std::string_view expected)
     size_t prefix = 0;
     while (
         prefix < actual.size() && prefix < expected.size() &&
-            actual[prefix] == expected[prefix])
+        actual[prefix] == expected[prefix])
     {
         ++prefix;
     }
     while (
         prefix &&
-            ((prefix < actual.size() &&
-                            (static_cast<unsigned char>(actual[prefix]) &
-                                        0xc0) == 0x80) ||
-                    (prefix < expected.size() &&
-                            (static_cast<unsigned char>(expected[prefix]) &
-                                        0xc0) == 0x80)))
+        ((prefix < actual.size() &&
+                        (static_cast<unsigned char>(actual[prefix]) & 0xc0) ==
+                            0x80) ||
+                (prefix < expected.size() &&
+                        (static_cast<unsigned char>(expected[prefix]) & 0xc0) ==
+                            0x80)))
     {
         --prefix;
     }
     size_t suffix = 0;
     while (
         suffix < actual.size() - prefix && suffix < expected.size() - prefix &&
-            actual[actual.size() - suffix - 1] ==
-                expected[expected.size() - suffix - 1])
+        actual[actual.size() - suffix - 1] ==
+            expected[expected.size() - suffix - 1])
     {
         ++suffix;
     }
     while (
         suffix &&
-            ((static_cast<unsigned char>(actual[actual.size() - suffix]) &
-                                0xc0) == 0x80 ||
-                    (static_cast<unsigned char>(expected[expected.size() -
-                                            suffix]) & 0xc0) == 0x80))
+        ((static_cast<unsigned char>(actual[actual.size() - suffix]) & 0xc0) ==
+                    0x80 ||
+                (static_cast<unsigned char>(expected[expected.size() -
+                                        suffix]) & 0xc0) == 0x80))
     {
         --suffix;
     }
@@ -571,7 +571,7 @@ bool SameNonWhitespace(std::string_view a, std::string_view b)
     auto skip = [] (std::string_view text, size_t& i) {
         while (
             i < text.size() &&
-                std::isspace(static_cast<unsigned char>(text[i])))
+            std::isspace(static_cast<unsigned char>(text[i])))
         {
             ++i;
         }
@@ -622,13 +622,13 @@ std::optional<std::vector<Violation>> ReflowViolations(
         auto startA = a, startB = b;
         while (
             a < original.size() &&
-                std::isspace(static_cast<unsigned char>(original[a])))
+            std::isspace(static_cast<unsigned char>(original[a])))
         {
             ++a;
         }
         while (
             b < replacement.size() &&
-                std::isspace(static_cast<unsigned char>(replacement[b])))
+            std::isspace(static_cast<unsigned char>(replacement[b])))
         {
             ++b;
         }
@@ -732,7 +732,7 @@ std::vector<Chunk> FormattingChunks(
     while (sourceIndex < source.size() || formattedIndex < formatted.size()) {
         if (
             sourceIndex < source.size() && formattedIndex < formatted.size() &&
-                source[sourceIndex] == formatted[formattedIndex])
+            source[sourceIndex] == formatted[formattedIndex])
         {
             ++sourceIndex;
             ++formattedIndex;
@@ -748,13 +748,13 @@ std::vector<Chunk> FormattingChunks(
         {
             while (
                 sourceIndex + sourceCount < source.size() &&
-                    IsIncludeLine(source[sourceIndex + sourceCount]))
+                IsIncludeLine(source[sourceIndex + sourceCount]))
             {
                 ++sourceCount;
             }
             while (
                 formattedIndex + formattedCount < formatted.size() &&
-                    IsIncludeLine(formatted[formattedIndex + formattedCount]))
+                IsIncludeLine(formatted[formattedIndex + formattedCount]))
             {
                 ++formattedCount;
             }
@@ -776,7 +776,7 @@ std::vector<Chunk> FormattingChunks(
                 {
                     if (
                         nextSource == sourceIndex &&
-                            nextFormatted == formattedIndex)
+                        nextFormatted == formattedIndex)
                     {
                         continue;
                     }
@@ -802,10 +802,10 @@ std::vector<Chunk> FormattingChunks(
                                     .subspan(formattedIndex, formattedSkip));
                     if (
                         (preservesTokens && !bestPreservesTokens) ||
-                            (preservesTokens == bestPreservesTokens &&
-                                    (distance < bestDistance ||
-                                            (distance == bestDistance &&
-                                                    skew < bestSkew))))
+                        (preservesTokens == bestPreservesTokens &&
+                                (distance < bestDistance ||
+                                        (distance == bestDistance &&
+                                                skew < bestSkew))))
                     {
                         bestPreservesTokens = preservesTokens;
                         bestDistance = distance;
@@ -861,20 +861,18 @@ std::vector<Chunk> FormattingChunks(
             auto column = DifferenceColumn(line.Text, replacement);
             if (
                 line.Text == replacement && !line.HasNewline &&
-                    i < formattedCount &&
-                    formatted[formattedIndex + i].HasNewline)
+                i < formattedCount && formatted[formattedIndex + i].HasNewline)
             {
                 message = "missing final newline";
             } else if (
                 line.Text == replacement && line.HasNewline &&
-                    i < formattedCount &&
-                    !formatted[formattedIndex + i].HasNewline)
+                i < formattedCount && !formatted[formattedIndex + i].HasNewline)
             {
                 message = "unexpected final newline";
             } else if (
                 sourceCount == formattedCount && i < formattedCount &&
-                    IsIncludeLine(line) &&
-                    IsIncludeLine(formatted[formattedIndex + i]))
+                IsIncludeLine(line) &&
+                IsIncludeLine(formatted[formattedIndex + i]))
             {
                 message =
                     "include order: expected " + QuoteSnippet(replacement) +
@@ -1033,13 +1031,13 @@ void PrintFormattingDiagnostics(
             };
             if (
                 violationIndex == chunk.Violations.size() ||
-                    chunk.Violations[violationIndex].Line != lineNumber)
+                chunk.Violations[violationIndex].Line != lineNumber)
             {
                 printLine(0);
             }
             while (
                 violationIndex < chunk.Violations.size() &&
-                    chunk.Violations[violationIndex].Line == lineNumber)
+                chunk.Violations[violationIndex].Line == lineNumber)
             {
                 const auto& violation = chunk.Violations[violationIndex++];
                 auto excerpt = printLine(violation.Column);
@@ -1057,7 +1055,7 @@ void PrintFormattingDiagnostics(
                 output << std::string(excerpt.CaretOffset, ' ') << '^';
                 if (
                     gutter.size() + excerpt.CaretOffset + 2 +
-                            violation.Message.size() < terminalWidth)
+                        violation.Message.size() < terminalWidth)
                 {
                     output << ' ' << violation.Message << '\n';
                 } else {
@@ -1134,7 +1132,7 @@ bool ForEachFile(
         if (std::filesystem::is_regular_file(path)) {
             if (
                 !IsExcluded(path.filename(), exclusions) &&
-                    !configExcludes(path, false) && !emit(path))
+                !configExcludes(path, false) && !emit(path))
             {
                 return false;
             }
@@ -1155,7 +1153,7 @@ bool ForEachFile(
             bool directory = entry.is_directory();
             if (
                 IsExcluded(entry.path().lexically_relative(path), exclusions) ||
-                    configExcludes(entry.path(), directory))
+                configExcludes(entry.path(), directory))
             {
                 if (directory) {
                     iterator.disable_recursion_pending();
@@ -1164,7 +1162,7 @@ bool ForEachFile(
             }
             if (
                 !entry.is_symlink() && entry.is_regular_file() &&
-                    IsCppSource(entry.path()) && !emit(entry.path()))
+                IsCppSource(entry.path()) && !emit(entry.path()))
             {
                 return false;
             }
@@ -1219,8 +1217,8 @@ Options ParseOptions(int argc, char* argv[])
             options.DisableConfig = true;
         } else if (
             argument == "-j" || argument == "--threads" ||
-                argument.starts_with("--threads=") ||
-                (argument.starts_with("-j") && argument.size() > 2))
+            argument.starts_with("--threads=") ||
+            (argument.starts_with("-j") && argument.size() > 2))
         {
             std::string_view value;
             if (argument == "-j") {
@@ -1230,9 +1228,9 @@ Options ParseOptions(int argc, char* argv[])
                     std::string_view next(argv[index + 1]);
                     if (
                         !next.empty() &&
-                            std::ranges::all_of(
-                                next,
-                                [] (char c) { return c >= '0' && c <= '9'; }))
+                        std::ranges::all_of(
+                            next,
+                            [] (char c) { return c >= '0' && c <= '9'; }))
                     {
                         value = argv[++index];
                     }

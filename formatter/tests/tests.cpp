@@ -53,7 +53,7 @@ std::vector<PreserveCase> DiscoverCases()
         auto filename = entry.path().filename().string();
         if (
             filename.ends_with(".input.cpp") ||
-                filename.ends_with(".output.cpp"))
+            filename.ends_with(".output.cpp"))
         {
             cases.push_back({filename});
         }
@@ -198,6 +198,15 @@ std::vector<FormatCase> FormatCases()
                     llvmProfile,
                 });
     }
+    cases
+        .push_back(
+            {
+                std::filesystem::path(FORMATTER_TESTDATA_DIR) /
+                    "../control-expression-continuation",
+                "repository",
+                "input.cpp",
+                "../../../../",
+            });
     // Bind to the root configuration, not a fixture-local copy of its settings.
     for (const auto* name : {"repository-lf", "repository-crlf"}) {
         cases
@@ -1725,7 +1734,7 @@ void ExpectEmittedWidthDiagnostics(
         begin = end;
         if (
             begin < text.size() && text[begin++] == '\r' &&
-                begin < text.size() && text[begin] == '\n')
+            begin < text.size() && text[begin] == '\n')
         {
             ++begin;
         }

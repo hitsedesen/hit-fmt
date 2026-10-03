@@ -126,7 +126,7 @@ public:
     {
         if (
             gap == 0 || gap >= Tree_.TokenCount() ||
-                priority < Gaps_[gap].Priority)
+            priority < Gaps_[gap].Priority)
         {
             return;
         }
@@ -212,7 +212,7 @@ public:
         const auto end = node.Tokens.End;
         if (
             begin >= Tree_.TokenCount() || end > Tree_.TokenCount() ||
-                begin == end)
+            begin == end)
         {
             return state;
         }
@@ -223,7 +223,7 @@ public:
             {
                 if (
                     child->Kind == NK::NewTypeId && child->Tokens.Size() == 1 &&
-                        Tree_.Kind(child->Tokens.Begin) == TK::Keyword_decltype)
+                    Tree_.Kind(child->Tokens.Begin) == TK::Keyword_decltype)
                 {
                     // A decltype type production needs its operand, not a
                     // new-initializer. The parser can mark this Complete;
@@ -241,9 +241,8 @@ public:
             state.Category == C::LambdaBodies ? C::LambdaBodies : C::Bodies;
         if (
             IsDeclaration(kind) || kind == NK::FunctionDefinition ||
-                kind == NK::LambdaExpression ||
-                kind == NK::NamespaceDeclaration ||
-                kind == NK::DeclarationSpecifiers || kind == NK::TypeId)
+            kind == NK::LambdaExpression || kind == NK::NamespaceDeclaration ||
+            kind == NK::DeclarationSpecifiers || kind == NK::TypeId)
         {
             state.Owner = &node;
             state.Category = C::DeclarationHeaders;
@@ -254,12 +253,11 @@ public:
         }
         if (
             kind == NK::BinaryExpression || kind == NK::AssignmentExpression ||
-                kind == NK::ConditionalExpression ||
-                kind == NK::UnaryExpression || kind == NK::CastExpression ||
-                kind == NK::FoldExpression || kind == NK::NewExpression ||
-                kind == NK::DeleteExpression ||
-                kind == NK::ParenthesizedExpression ||
-                kind == NK::StatementExpression)
+            kind == NK::ConditionalExpression || kind == NK::UnaryExpression ||
+            kind == NK::CastExpression || kind == NK::FoldExpression ||
+            kind == NK::NewExpression || kind == NK::DeleteExpression ||
+            kind == NK::ParenthesizedExpression ||
+            kind == NK::StatementExpression)
         {
             state.Owner = &node;
             state.Category = C::Expressions;
@@ -279,7 +277,7 @@ public:
         }
         if (
             kind == NK::InitDeclarator && parent &&
-                parent->Kind == NK::InitDeclaratorList)
+            parent->Kind == NK::InitDeclaratorList)
         {
             state.SeparatedDeclarator = begin != parent->Tokens.Begin;
         }
@@ -317,7 +315,7 @@ public:
                                                         TK::Operator_Ampersand)));
                 } else if (
                     callee && callee->Kind == NK::Expression &&
-                        !state.KeywordOperands)
+                    !state.KeywordOperands)
                 {
                     state.UncertainOperands = true;
                 }
@@ -437,10 +435,10 @@ public:
                 list(C::Initializers);
                 if (
                     (!parent || parent->Kind != NK::Initializer ||
-                                parent->Tokens.Begin == begin) &&
-                        (!parent ||
-                                (parent->Kind != NK::ReturnStatement &&
-                                        parent->Kind != NK::ThrowStatement)))
+                            parent->Tokens.Begin == begin) &&
+                    (!parent ||
+                            (parent->Kind != NK::ReturnStatement &&
+                                    parent->Kind != NK::ThrowStatement)))
                 {
                     Mark(
                         begin,
@@ -527,10 +525,9 @@ public:
             case NK::StatementExpression:
                 if (
                     kind == NK::ParenthesizedExpression &&
-                        (status == RegionStatus::Recovery ||
-                                status == RegionStatus::RecoveryAndAmbiguous) &&
-                        SizeofPackOperand(node, parent) &&
-                        Delimited(begin, end))
+                    (status == RegionStatus::Recovery ||
+                            status == RegionStatus::RecoveryAndAmbiguous) &&
+                    SizeofPackOperand(node, parent) && Delimited(begin, end))
                 {
                     // Recovery can end exactly at the closer's insertion
                     // point. Source gap permission alone does not prove an
@@ -586,7 +583,7 @@ public:
                     const auto open = node.FirstChild->Tokens.End;
                     if (
                         open < end &&
-                            Tree_.Kind(open) == TK::Operator_OpenBracket)
+                        Tree_.Kind(open) == TK::Operator_OpenBracket)
                     {
                         Mark(
                             open,
@@ -607,7 +604,7 @@ public:
             case NK::TemplateArgumentList:
                 if (
                     Tree_.Role(begin) == PR::TemplateDelimiter &&
-                        Tree_.Role(end - 1) == PR::TemplateDelimiter)
+                    Tree_.Role(end - 1) == PR::TemplateDelimiter)
                 {
                     Mark(
                         begin,
@@ -633,8 +630,8 @@ public:
             case NK::AttributeSpecifier:
                 if (
                     end >= begin + 4 && Delimited(begin, end) &&
-                        Tree_.Kind(begin + 1) == TK::Operator_OpenBracket &&
-                        Tree_.MatchingDelimiter(begin + 1) == end - 2)
+                    Tree_.Kind(begin + 1) == TK::Operator_OpenBracket &&
+                    Tree_.MatchingDelimiter(begin + 1) == end - 2)
                 {
                     Mark(
                         begin,
@@ -719,13 +716,13 @@ public:
                     4);
                 if (
                     parent && parent->Kind == NK::DeleteExpression &&
-                        node.NextSibling && !node.NextSibling->Tokens.Empty() &&
-                        node.NextSibling->Tokens.Begin >= end &&
-                        node.NextSibling->Tokens.End <= parent->Tokens.End &&
-                        node.NextSibling->Kind != NK::MissingToken &&
-                        node.NextSibling->Kind != NK::UnparsedSyntax &&
-                        node.NextSibling->Kind != NK::UnexpectedToken &&
-                        node.NextSibling->Kind != NK::Error)
+                    node.NextSibling && !node.NextSibling->Tokens.Empty() &&
+                    node.NextSibling->Tokens.Begin >= end &&
+                    node.NextSibling->Tokens.End <= parent->Tokens.End &&
+                    node.NextSibling->Kind != NK::MissingToken &&
+                    node.NextSibling->Kind != NK::UnparsedSyntax &&
+                    node.NextSibling->Kind != NK::UnexpectedToken &&
+                    node.NextSibling->Kind != NK::Error)
                 {
                     Mark(
                         end,
@@ -739,7 +736,7 @@ public:
             case NK::FunctionTryBlock:
                 if (
                     parent && parent->Kind == NK::FunctionDefinition &&
-                        Tree_.Kind(begin) == TK::Keyword_try)
+                    Tree_.Kind(begin) == TK::Keyword_try)
                 {
                     // The introducer is a header transition, not a suffix.
                     Mark(
@@ -882,8 +879,8 @@ public:
                         true);
                 } else if (
                     parent &&
-                        (parent->Kind == NK::FunctionDefinition ||
-                                parent->Kind == NK::FunctionTryBlock))
+                    (parent->Kind == NK::FunctionDefinition ||
+                            parent->Kind == NK::FunctionTryBlock))
                 {
                     Mark(
                         begin,
@@ -926,8 +923,8 @@ public:
             case NK::ThrowStatement:
                 if (
                     node.FirstChild &&
-                        node.FirstChild->Kind == NK::ParenthesizedExpression &&
-                        node.FirstChild->Tokens.Begin == begin + 1)
+                    node.FirstChild->Kind == NK::ParenthesizedExpression &&
+                    node.FirstChild->Tokens.Begin == begin + 1)
                 {
                     Mark(
                         begin + 1,
@@ -968,12 +965,11 @@ public:
                     3);
             } else if (
                 kind == NK::ExpressionStatement ||
-                    kind == NK::DeclarationStatement ||
-                    kind == NK::ReturnStatement || kind == NK::ThrowStatement ||
-                    kind == NK::BreakStatement ||
-                    kind == NK::ContinueStatement ||
-                    kind == NK::GotoStatement || kind == NK::CoYieldStatement ||
-                    kind == NK::DoWhileStatement)
+                kind == NK::DeclarationStatement ||
+                kind == NK::ReturnStatement || kind == NK::ThrowStatement ||
+                kind == NK::BreakStatement || kind == NK::ContinueStatement ||
+                kind == NK::GotoStatement || kind == NK::CoYieldStatement ||
+                kind == NK::DoWhileStatement)
             {
                 Mark(
                     end - 1,
@@ -1007,21 +1003,21 @@ public:
             const auto role = Tree_.Role(i);
             if (
                 i != 0 && Gaps_[i].Priority == 0 &&
-                    node.Kind != NK::UnparsedSyntax &&
-                    node.Kind != NK::AmbiguousStatement &&
-                    node.Kind != NK::UnexpectedToken &&
-                    node.Kind != NK::Error && role != PR::AmbiguousOperator)
+                node.Kind != NK::UnparsedSyntax &&
+                node.Kind != NK::AmbiguousStatement &&
+                node.Kind != NK::UnexpectedToken && node.Kind != NK::Error &&
+                role != PR::AmbiguousOperator)
             {
                 Gaps_[i].Owner = &owner;
                 Gaps_[i].Category = state.Category;
             }
             if (
                 kind == TK::Operator_Comma &&
-                    (role == PR::ListSeparator || role == PR::BinaryOperator))
+                (role == PR::ListSeparator || role == PR::BinaryOperator))
             {
                 if (
                     state.UncertainOperands && role == PR::ListSeparator &&
-                        state.ListOwner)
+                    state.ListOwner)
                 {
                     PreserveUncertain(i, *state.ListOwner);
                     PreserveUncertain(i + 1, *state.ListOwner);
@@ -1036,10 +1032,10 @@ public:
                 // A trailing comma's right gap is a closer edge.
                 if (
                     i + 1 < Tree_.TokenCount() &&
-                        Tree_.Kind(i + 1) != TK::Operator_CloseBrace &&
-                        Tree_.Kind(i + 1) != TK::Operator_CloseParenthesis &&
-                        Tree_.Kind(i + 1) != TK::Operator_CloseBracket &&
-                        Tree_.Role(i + 1) != PR::TemplateDelimiter)
+                    Tree_.Kind(i + 1) != TK::Operator_CloseBrace &&
+                    Tree_.Kind(i + 1) != TK::Operator_CloseParenthesis &&
+                    Tree_.Kind(i + 1) != TK::Operator_CloseBracket &&
+                    Tree_.Role(i + 1) != PR::TemplateDelimiter)
                 {
                     Mark(
                         i + 1,
@@ -1051,14 +1047,14 @@ public:
                 }
             } else if (
                 kind == TK::Operator_Semicolon &&
-                    state.ListCategory == C::ControlHeaders)
+                state.ListCategory == C::ControlHeaders)
             {
                 // Header separators override a declaration init-statement's ;.
                 Mark(i, F::None, *state.ListOwner, C::ControlHeaders, 4);
                 if (
                     i + 1 < Tree_.TokenCount() &&
-                        Tree_.Kind(i + 1) != TK::Operator_Semicolon &&
-                        Tree_.Kind(i + 1) != TK::Operator_CloseParenthesis)
+                    Tree_.Kind(i + 1) != TK::Operator_Semicolon &&
+                    Tree_.Kind(i + 1) != TK::Operator_CloseParenthesis)
                 {
                     Mark(
                         i + 1,
@@ -1072,7 +1068,7 @@ public:
                 }
             } else if (
                 role == PR::BinaryOperator || role == PR::ComparisonOperator ||
-                    role == PR::ShiftOperator || node.Kind == NK::FoldOperator)
+                role == PR::ShiftOperator || node.Kind == NK::FoldOperator)
             {
                 Pair(
                     i,
@@ -1083,9 +1079,9 @@ public:
                     1);
             } else if (
                 role == PR::AssignmentOperator ||
-                    ((node.Kind == NK::Initializer ||
-                                    node.Kind == NK::Enumerator) &&
-                            kind == TK::Operator_Assign))
+                ((node.Kind == NK::Initializer ||
+                                node.Kind == NK::Enumerator) &&
+                        kind == TK::Operator_Assign))
             {
                 Pair(
                     i,
@@ -1117,8 +1113,8 @@ public:
                     1);
             } else if (
                 kind == TK::Operator_ScopeResolution &&
-                    role != PR::AmbiguousOperator &&
-                    node.Kind != NK::OperatorFunctionName)
+                role != PR::AmbiguousOperator &&
+                node.Kind != NK::OperatorFunctionName)
             {
                 // Leading global qualification has no left qualifier edge.
                 if (i > node.Tokens.Begin) {
@@ -1137,11 +1133,11 @@ public:
                     1);
             } else if (
                 node.Kind == NK::MemberExpression &&
-                    (kind == TK::Operator_ClassMemberAccess ||
-                            kind == TK::Operator_IndirectClassMemberAccess ||
-                            kind == TK::Operator_PointerToMemberDereference ||
-                            kind ==
-                                TK::Operator_IndirectPointerToMemberDereference))
+                (kind == TK::Operator_ClassMemberAccess ||
+                        kind == TK::Operator_IndirectClassMemberAccess ||
+                        kind == TK::Operator_PointerToMemberDereference ||
+                        kind ==
+                            TK::Operator_IndirectPointerToMemberDereference))
             {
                 Pair(
                     i,
@@ -1154,8 +1150,8 @@ public:
             }
             if (
                 node.Kind == NK::NewTypeId &&
-                    (kind == TK::Operator_OpenParenthesis ||
-                            kind == TK::Operator_OpenBrace))
+                (kind == TK::Operator_OpenParenthesis ||
+                        kind == TK::Operator_OpenBrace))
             {
                 const auto close = Tree_.MatchingDelimiter(i);
                 if (close != NoToken && close < node.Tokens.End) {
@@ -1166,8 +1162,8 @@ public:
             }
             if (
                 node.Kind == NK::NewTypeId &&
-                    kind == TK::Operator_OpenBracket &&
-                    role != PR::AttributeDelimiter)
+                kind == TK::Operator_OpenBracket &&
+                role != PR::AttributeDelimiter)
             {
                 const auto close = Tree_.MatchingDelimiter(i);
                 if (close != NoToken && close < node.Tokens.End) {
@@ -1195,8 +1191,7 @@ public:
             }
             if (
                 node.Kind == NK::RecordDeclaration &&
-                    kind == TK::Operator_OpenBrace &&
-                    role == PR::RecordDelimiter)
+                kind == TK::Operator_OpenBrace && role == PR::RecordDelimiter)
             {
                 const auto close = Tree_.MatchingDelimiter(i);
                 Interior(
@@ -1228,16 +1223,16 @@ public:
             }
             if (
                 node.Kind == NK::NamespaceDeclaration &&
-                    kind == TK::Operator_OpenBrace)
+                kind == TK::Operator_OpenBrace)
             {
                 const auto close = Tree_.MatchingDelimiter(i);
                 if (
                     close != NoToken && close < node.Tokens.End &&
-                        close + 1 < Tree_.TokenCount() &&
-                        Tree_.Kind(close + 1) == TK::Comment &&
-                        Tree_.TokenText(close + 1).starts_with("//") &&
-                        Tree_.WhitespaceBefore(close + 1)
-                            .find_first_not_of(" \t") == std::string_view::npos)
+                    close + 1 < Tree_.TokenCount() &&
+                    Tree_.Kind(close + 1) == TK::Comment &&
+                    Tree_.TokenText(close + 1).starts_with("//") &&
+                    Tree_.WhitespaceBefore(close + 1)
+                        .find_first_not_of(" \t") == std::string_view::npos)
                 {
                     Gaps_[close + 1].NamespaceClosingComment = true;
                 }
@@ -1271,11 +1266,10 @@ public:
             KeywordAt(node, state, i);
             if (
                 kind == TK::Comment && i > 0 &&
-                    Tree_.TokenText(i).starts_with("//") &&
-                    Tree_.Kind(i - 1) != TK::Comment &&
-                    Tree_.Kind(i - 1) != TK::PreprocessingDirective &&
-                    Tree_.WhitespaceBefore(i).find('\n') ==
-                        std::string_view::npos)
+                Tree_.TokenText(i).starts_with("//") &&
+                Tree_.Kind(i - 1) != TK::Comment &&
+                Tree_.Kind(i - 1) != TK::PreprocessingDirective &&
+                Tree_.WhitespaceBefore(i).find('\n') == std::string_view::npos)
             {
                 Mark(
                     i,
@@ -1340,7 +1334,7 @@ public:
                 const auto open = Tree_.MatchingDelimiter(close);
                 if (
                     open == NoToken || previous.Tokens.Begin <= open ||
-                        current.Tokens.End > close)
+                    current.Tokens.End > close)
                 {
                     return;
                 }
@@ -1351,8 +1345,8 @@ public:
         }
         if (
             !previous.Tokens.Empty() && !current.Tokens.Empty() &&
-                previous.Tokens.End == current.Tokens.Begin &&
-                isItem(previous.Kind) && isItem(current.Kind))
+            previous.Tokens.End == current.Tokens.Begin &&
+            isItem(previous.Kind) && isItem(current.Kind))
         {
             // A complete direct sibling boundary is a sequence edge, not a
             // semicolon heuristic. Specific attribute/comment/colon rules win.
@@ -1368,8 +1362,8 @@ public:
             auto& gap = Gaps_[current.Tokens.Begin];
             if (
                 (static_cast<uint8_t>(gap.Constraint) &
-                            static_cast<uint8_t>(SpacingConstraint::UncertainSyntax)) ==
-                    0)
+                        static_cast<uint8_t>(SpacingConstraint::UncertainSyntax)) ==
+                0)
             {
                 gap.FallbackSpace = true;
             }
@@ -1383,11 +1377,10 @@ public:
     {
         if (
             (!IsDeclaration(declaration.Kind) &&
-                        declaration.Kind != NK::FunctionDefinition) ||
-                specifiers.Kind != NK::DeclarationSpecifiers ||
-                list.Kind != NK::InitDeclaratorList ||
-                specifiers.Tokens.Empty() ||
-                specifiers.Tokens.End != list.Tokens.Begin)
+                    declaration.Kind != NK::FunctionDefinition) ||
+            specifiers.Kind != NK::DeclarationSpecifiers ||
+            list.Kind != NK::InitDeclaratorList || specifiers.Tokens.Empty() ||
+            specifiers.Tokens.End != list.Tokens.Begin)
         {
             return;
         }
@@ -1396,9 +1389,9 @@ public:
         const auto* name = declarator ? declarator->FirstChild : nullptr;
         if (
             !init || init->Kind != NK::InitDeclarator || !declarator ||
-                declarator->Kind != NK::Declarator || !name ||
-                name->Kind != NK::DeclaratorName || name->Tokens.Empty() ||
-                name->Tokens.Begin != list.Tokens.Begin)
+            declarator->Kind != NK::Declarator || !name ||
+            name->Kind != NK::DeclaratorName || name->Tokens.Empty() ||
+            name->Tokens.Begin != list.Tokens.Begin)
         {
             // Pointer/nested/member-pointer/operator/attribute entries are
             // distinct boundaries. Their specific rules, including Preserve,
@@ -1422,9 +1415,9 @@ public:
         const auto open = node.FirstChild->Tokens.End;
         if (
             open < Tree_.TokenCount() &&
-                (static_cast<uint8_t>(Gaps_[open].Constraint) &
-                            static_cast<uint8_t>(SpacingConstraint::UncertainSyntax)) !=
-                    0)
+            (static_cast<uint8_t>(Gaps_[open].Constraint) &
+                        static_cast<uint8_t>(SpacingConstraint::UncertainSyntax)) !=
+                0)
         {
             // Propagate an uncertain base through subscript edges in O(1),
             // rather than rescanning the base subtree at each chain suffix.
@@ -1459,8 +1452,8 @@ private:
             unknown = cursor;
             if (
                 cursor < end && Tree_.Kind(cursor) == TK::Operator_Assign &&
-                    next(cursor + 1) < end && parent &&
-                    parent->Kind == NK::LambdaCaptureList)
+                next(cursor + 1) < end && parent &&
+                parent->Kind == NK::LambdaCaptureList)
             {
                 Pair(
                     cursor,
@@ -1474,7 +1467,7 @@ private:
                 unknown = cursor + 2;
             } else if (
                 cursor < end && Tree_.Kind(cursor) == TK::Operator_Ellipsis &&
-                    next(cursor + 1) == end)
+                next(cursor + 1) == end)
             {
                 // A simple pack capture has a suffix, not an initializer.
                 unknown = end;
@@ -1492,7 +1485,7 @@ private:
     {
         if (
             !parent || parent->Kind != NK::UnaryExpression ||
-                Tree_.Kind(parent->Tokens.Begin) != TK::Keyword_sizeof)
+            Tree_.Kind(parent->Tokens.Begin) != TK::Keyword_sizeof)
         {
             return false;
         }
@@ -1503,7 +1496,7 @@ private:
         }
         if (
             cursor >= node.Tokens.Begin ||
-                Tree_.Kind(cursor) != TK::Operator_Ellipsis)
+            Tree_.Kind(cursor) != TK::Operator_Ellipsis)
         {
             return false;
         }
@@ -1523,7 +1516,7 @@ private:
         TI previous = open;
         while (
             previous > parent->Tokens.Begin &&
-                Tree_.Kind(previous - 1) == TK::Comment)
+            Tree_.Kind(previous - 1) == TK::Comment)
         {
             --previous;
         }
@@ -1553,8 +1546,8 @@ private:
         const auto open = node.Tokens.Begin + 1;
         if (
             open < node.Tokens.End &&
-                Tree_.Kind(open) == TK::Operator_OpenParenthesis &&
-                Tree_.MatchingDelimiter(open) < node.Tokens.End)
+            Tree_.Kind(open) == TK::Operator_OpenParenthesis &&
+            Tree_.MatchingDelimiter(open) < node.Tokens.End)
         {
             Mark(open, field, node, category, 4, true);
         }
@@ -1585,8 +1578,8 @@ private:
             }
             if (
                 kind == TK::Keyword_sizeof && i + 2 < node.Tokens.End &&
-                    Tree_.Kind(i + 1) == TK::Operator_Ellipsis &&
-                    Tree_.Kind(i + 2) == TK::Operator_OpenParenthesis)
+                Tree_.Kind(i + 1) == TK::Operator_Ellipsis &&
+                Tree_.Kind(i + 2) == TK::Operator_OpenParenthesis)
             {
                 Mark(
                     i + 2,
@@ -1604,11 +1597,10 @@ private:
             }
         } else if (
             node.Kind == NK::DeclarationSpecifiers || node.Kind == NK::TypeId ||
-                node.Kind == NK::NewTypeId ||
-                node.Kind == NK::UsingDeclaration ||
-                node.Kind == NK::TrailingReturnType ||
-                node.Kind == NK::RecordDeclaration ||
-                node.Kind == NK::EnumDeclaration)
+            node.Kind == NK::NewTypeId || node.Kind == NK::UsingDeclaration ||
+            node.Kind == NK::TrailingReturnType ||
+            node.Kind == NK::RecordDeclaration ||
+            node.Kind == NK::EnumDeclaration)
         {
             if (kind == TK::Keyword_decltype) {
                 field = F::DecltypeSpaceBeforeParentheses;
@@ -1618,8 +1610,8 @@ private:
         }
         if (
             field != F::None &&
-                Tree_.Kind(i + 1) == TK::Operator_OpenParenthesis &&
-                Tree_.MatchingDelimiter(i + 1) < node.Tokens.End)
+            Tree_.Kind(i + 1) == TK::Operator_OpenParenthesis &&
+            Tree_.MatchingDelimiter(i + 1) < node.Tokens.End)
         {
             Mark(
                 i + 1,
@@ -1658,7 +1650,7 @@ private:
             Mark(end, F::PointerBinding, node, C::DeclarationHeaders, 1);
             if (
                 end < Tree_.TokenCount() &&
-                    Gaps_[end].Field == F::PointerBinding)
+                Gaps_[end].Field == F::PointerBinding)
             {
                 const bool attachName =
                     Binding_ == PointerReferenceDeclaratorLocation::Right ||
@@ -1705,7 +1697,7 @@ private:
             }
         } else if (
             node.FirstChild && node.FirstChild->Kind == NK::TypeId &&
-                begin + 1 < end && Tree_.Kind(begin + 1) == TK::Operator_Less)
+            begin + 1 < end && Tree_.Kind(begin + 1) == TK::Operator_Less)
         {
             Mark(
                 begin + 1,
@@ -1728,7 +1720,7 @@ private:
                 3);
             if (
                 typeEnd + 1 < end &&
-                    Tree_.Kind(typeEnd + 1) == TK::Operator_OpenParenthesis)
+                Tree_.Kind(typeEnd + 1) == TK::Operator_OpenParenthesis)
             {
                 Mark(
                     typeEnd + 1,
@@ -1840,15 +1832,14 @@ std::optional<bool>SyntaxSpacing::SpacePreference(
     const auto& source = safety.Gaps()[gap];
     if (
         (static_cast<uint8_t>(Gaps_[gap].Constraint) &
-                    static_cast<uint8_t>(SpacingConstraint::UncertainSyntax)) !=
-            0)
+                static_cast<uint8_t>(SpacingConstraint::UncertainSyntax)) != 0)
     {
         return std::nullopt;
     }
     if (
         source.Preserve || source.ContextSensitive ||
-            source.LineBoundary == GapLineBoundary::Required ||
-            source.MustStartWithLineFeed)
+        source.LineBoundary == GapLineBoundary::Required ||
+        source.MustStartWithLineFeed)
     {
         return std::nullopt;
     }
@@ -1860,7 +1851,7 @@ std::optional<bool>SyntaxSpacing::SpacePreference(
     auto preference = GapUsesSpace(Gaps_[gap].Policy, ownerContext);
     if (
         preference && source.Separation == GapSeparation::Required &&
-            !source.Original.empty())
+        !source.Original.empty())
     {
         return true;
     }
@@ -1873,7 +1864,7 @@ std::optional<std::uint16_t>SyntaxSpacing::TrailingCommentCount(
 {
     if (
         !TrailingCommentSpaces_ || !TrailingCommentSpaces_->Count ||
-            gap >= Gaps_.size() || gap >= safety.Gaps().size())
+        gap >= Gaps_.size() || gap >= safety.Gaps().size())
     {
         return std::nullopt;
     }
@@ -1881,20 +1872,20 @@ std::optional<std::uint16_t>SyntaxSpacing::TrailingCommentCount(
     const auto& source = safety.Gaps()[gap];
     if (
         preference.Field != F::TrailingCommentSpacing ||
-            preference.NamespaceClosingComment ||
-            (static_cast<uint8_t>(preference.Constraint) &
-                        static_cast<uint8_t>(SpacingConstraint::UncertainSyntax)) !=
-                0 || source.Preserve || source.ContextSensitive ||
-            source.LineBoundary == GapLineBoundary::Required ||
-            source.MustStartWithLineFeed ||
-            source.Original.find_first_not_of(" \t") != std::string_view::npos)
+        preference.NamespaceClosingComment ||
+        (static_cast<uint8_t>(preference.Constraint) &
+                    static_cast<uint8_t>(SpacingConstraint::UncertainSyntax)) !=
+            0 || source.Preserve || source.ContextSensitive ||
+        source.LineBoundary == GapLineBoundary::Required ||
+        source.MustStartWithLineFeed ||
+        source.Original.find_first_not_of(" \t") != std::string_view::npos)
     {
         return std::nullopt;
     }
     auto count = *TrailingCommentSpaces_->Count;
     if (
         source.Separation == GapSeparation::Required &&
-            !source.Original.empty())
+        !source.Original.empty())
     {
         count = std::max<std::size_t>(count, 1);
     }
@@ -1912,7 +1903,7 @@ SyntaxSpacing BuildSyntaxSpacing(
 {
     if (
         trailingCommentSpaces && trailingCommentSpaces->Count &&
-            *trailingCommentSpaces->Count > 10000)
+        *trailingCommentSpaces->Count > 10000)
     {
         throw std::invalid_argument(
             "TrailingCommentSpaces must be between 0 and 10000");
@@ -1955,8 +1946,8 @@ SyntaxSpacing BuildSyntaxSpacing(
             const auto& region = safety.Regions()[nextRegion++];
             if (
                 region.Kind != node.Kind ||
-                    region.Tokens.Begin != node.Tokens.Begin ||
-                    region.Tokens.End != node.Tokens.End)
+                region.Tokens.Begin != node.Tokens.Begin ||
+                region.Tokens.End != node.Tokens.End)
             {
                 throw std::invalid_argument(
                     "syntax spacing requires matching tree regions");
@@ -1981,7 +1972,7 @@ SyntaxSpacing BuildSyntaxSpacing(
             auto state = frame.State;
             if (
                 child->Kind == NK::Comment && frame.PreviousChild &&
-                    IsDeclaration(frame.PreviousChild->Kind))
+                IsDeclaration(frame.PreviousChild->Kind))
             {
                 state.Owner = frame.PreviousChild;
                 state.Category = C::DeclarationHeaders;
@@ -2009,7 +2000,7 @@ SyntaxSpacing BuildSyntaxSpacing(
             classifier.Finish(node);
             if (
                 frame.Parent && frame.Complete && frame.PreviousSibling &&
-                    frame.PreviousSiblingComplete)
+                frame.PreviousSiblingComplete)
             {
                 classifier
                     .SequenceBoundary(
@@ -2036,8 +2027,8 @@ SyntaxSpacing BuildSyntaxSpacing(
         gap.FallbackSpace |= source.Separation == GapSeparation::Required;
         if (
             source.Preserve || source.ContextSensitive ||
-                source.LineBoundary == GapLineBoundary::Required ||
-                source.MustStartWithLineFeed)
+            source.LineBoundary == GapLineBoundary::Required ||
+            source.MustStartWithLineFeed)
         {
             gap.Policy = GapPolicy::Preserve;
             gap.Constraint =

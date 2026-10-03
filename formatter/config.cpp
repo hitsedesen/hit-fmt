@@ -238,13 +238,13 @@ std::vector<std::string> ParseNamespaceExemptions(
             auto part = std::string_view(name).substr(start, end - start);
             if (
                 part.empty() ||
-                    !(std::isalpha(static_cast<unsigned char>(part.front())) ||
-                            part.front() == '_') ||
-                    part
-                        .find_first_not_of(
-                            "abcdefghijklmnopqrstuvwxyz"
-                                "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_") !=
-                        std::string_view::npos)
+                !(std::isalpha(static_cast<unsigned char>(part.front())) ||
+                        part.front() == '_') ||
+                part
+                    .find_first_not_of(
+                        "abcdefghijklmnopqrstuvwxyz"
+                            "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_") !=
+                    std::string_view::npos)
             {
                 ThrowConfigError(
                     path,
@@ -269,13 +269,13 @@ std::vector<std::string> ParseCallNames(
     for (const auto& name : names) {
         if (
             name.empty() ||
-                !(std::isalpha(static_cast<unsigned char>(name.front())) ||
-                        name.front() == '_') ||
-                name
-                    .find_first_not_of(
-                        "abcdefghijklmnopqrstuvwxyz"
-                            "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_") !=
-                    std::string::npos)
+            !(std::isalpha(static_cast<unsigned char>(name.front())) ||
+                    name.front() == '_') ||
+            name
+                .find_first_not_of(
+                    "abcdefghijklmnopqrstuvwxyz"
+                        "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_") !=
+                std::string::npos)
         {
             ThrowConfigError(path, line, "expected call identifier names");
         }
@@ -298,7 +298,7 @@ std::optional<std::vector<std::string>> ParseNamePrefixes(
                 .find_first_not_of(
                     "abcdefghijklmnopqrstuvwxyz"
                         "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_") !=
-                std::string::npos)
+            std::string::npos)
         {
             ThrowConfigError(
                 path,
@@ -396,8 +396,8 @@ void AssignStyle(
     {
         if constexpr (
             Member == &Style::ChainedCallRootNames ||
-                Member == &Style::IndentedCallScopePairs ||
-                Member == &Style::IncludeGroupPrefixes)
+            Member == &Style::IndentedCallScopePairs ||
+            Member == &Style::IncludeGroupPrefixes)
         {
             config.FormattingStyle.*Member = ParseStringList(value, path, line);
         } else {
@@ -418,7 +418,7 @@ void AssignStyle(
         } else if (value == "Inherit") {
             if constexpr (
                 Member == &Style::MemberDefinitionBlankLines ||
-                    Member == &Style::MemberDeclarationBlankLines)
+                Member == &Style::MemberDeclarationBlankLines)
             {
                 config.FormattingStyle.*Member = BlankLineSetting::Inherited();
             } else {
@@ -526,8 +526,8 @@ void ValidateStyleLimits(
                 };
                 if (
                     (at == 0 || !identifier(reason[at - 1])) &&
-                        (at + key.size() == reason.size() ||
-                                !identifier(reason[at + key.size()])))
+                    (at + key.size() == reason.size() ||
+                            !identifier(reason[at + key.size()])))
                 {
                     message +=
                         " [" + std::string(key) + " at " + path.string() + ":" +
@@ -637,7 +637,7 @@ std::pair<std::string_view, std::string_view> AnnotationScopePair(
     const auto end = pair.substr(colon + 1);
     if (
         !AnnotationIdentifier(begin) || !AnnotationIdentifier(end) ||
-            begin == end)
+        begin == end)
     {
         throw std::invalid_argument(
             "IndentedCallScopePairs expects distinct Begin:End identifiers");
