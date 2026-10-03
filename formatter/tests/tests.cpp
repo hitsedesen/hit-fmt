@@ -162,6 +162,11 @@ std::vector<FormatCase> FormatCases()
     std::vector<FormatCase> cases;
     AddCases(
         cases,
+        std::filesystem::path(FORMATTER_TESTDATA_DIR) /
+            "../declaration-headers",
+        {"wrap", "narrow", "wide"});
+    AddCases(
+        cases,
         std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../vertical-grouping",
         {"preserve", "declarations", "overrides", "capped"});
     AddCases(

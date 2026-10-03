@@ -40,8 +40,7 @@ struct CheckedFile
 // One original parse and one public pipeline invocation, mode-independent.
 // Original slash-separated inputFilePath is borrowed only during this call.
 // Result owns all data; no references into input/path/configuration/parser arenas.
-[[nodiscard]] CheckedFile
-CheckFile(
+[[nodiscard]] CheckedFile CheckFile(
     util::PaddedSourceView source,
     const PreparedFileConfiguration& configuration,
     std::string_view inputFilePath = {});

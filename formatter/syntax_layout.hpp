@@ -77,8 +77,7 @@ struct SyntaxLayoutStatus
     std::pmr::memory_resource& scratch,
     const SyntaxLayoutOptions& options = {});
 
-[[nodiscard]] document::Policy
-SyntaxRenderPolicy(
+[[nodiscard]] document::Policy SyntaxRenderPolicy(
     const CompiledPolicies& policies,
     const SyntaxLayoutOptions& options = {});
 

@@ -22,8 +22,8 @@ public:
     // syntax is unmatched; this lookup neither normalizes nor rewrites paths.
     // Backslashes in input names are ordinary bytes, not slash separators.
     // First configured match wins, not the longest. RuleCount is unmatched.
-    [[nodiscard]] std::size_t
-    ClassifyNormalizedRelativePath(std::string_view path) const noexcept;
+    [[nodiscard]] std::size_t ClassifyNormalizedRelativePath(
+        std::string_view path) const noexcept;
 
     [[nodiscard]] std::size_t RuleCount() const noexcept
     {

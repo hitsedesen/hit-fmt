@@ -192,6 +192,39 @@ TEST(GroupLayout, FillPacksSegmentsButIncludesCloser)
     ExpectText(document, 20, "[aa, bb, cc, dd];");
 }
 
+TEST(GroupLayout, FillSegmentDemandKeepsIndependentChildBreaks)
+{
+    std::string actual;
+    for (bool segmentFit : {false, true}) {
+        Document document("");
+        auto header = document.BeginGroup({GroupMode::Fill});
+        document.Text("void");
+        GapSpec prefix;
+        prefix.RequiredWidth = 5; // The indivisible name and opener.
+        prefix.FitNextSegment = segmentFit;
+        document.Gap(prefix);
+        document.Text("Many(");
+        auto parameters = document.BeginGroup({GroupMode::Fill, 2});
+        document.Gap({GapKind::Soft, 0});
+        document.Text("int a,");
+        document.Gap();
+        document.Text("int b);");
+        document.EndGroup(parameters);
+        document.EndGroup(header);
+        ASSERT_TRUE(document.Seal());
+        const auto output = document.Render({.Width = 12});
+        ASSERT_TRUE(output.State);
+        EXPECT_TRUE(output.Broken[header]);
+        EXPECT_TRUE(output.Broken[parameters]);
+        actual += segmentFit ? "segment:\n" : "whole child:\n";
+        actual.append(output.Text);
+        actual += '\n';
+    }
+    test::golden::ExpectGolden(
+        std::filesystem::path(DOCUMENT_TESTDATA_DIR) /
+            "fill-segment-fit.expected", actual);
+}
+
 TEST(GroupLayout, NestedFitsIncludeBrokenOwnerConditionalComma)
 {
     Document document("");
@@ -761,11 +794,12 @@ TEST(GroupLayout, VerticalGapCountUsesFirstOverrideAndNoBlankLineIndent)
     auto group = document.BeginGroup({GroupMode::Consistent, 6});
     document.SourceText(0, 8, 1, true);
     document.Gap(
-        {GapKind::Hard, 0, 0, GapNewline::LF, 3},
+        {.Kind = GapKind::Hard, .Spaces = 0,
+            .LineEnding = GapNewline::LF, .NewlineCount = 3},
         InvalidId,
         {8, 9, 2});
     document.Text("next;");
-    document.Gap({GapKind::Hard, 0, 0, GapNewline::Inherit, 2});
+    document.Gap({.Kind = GapKind::Hard, .Spaces = 0, .NewlineCount = 2});
     document.Text("last;");
     document.EndGroup(group);
     ASSERT_TRUE(document.Seal());
@@ -940,7 +974,7 @@ TEST(GroupLayout, RejectsMalformedGapSourcesAndZeroNewlineCounts)
     }
     for (auto kind : {GapKind::Flat, GapKind::Soft, GapKind::Hard}) {
         Document document("");
-        document.Gap({kind, 0, 0, GapNewline::Inherit, 0});
+        document.Gap({.Kind = kind, .Spaces = 0, .NewlineCount = 0});
         EXPECT_EQ(document.Seal().Code, Error::InvalidPolicy);
     }
     for (bool badFlat : {false, true}) {
@@ -960,7 +994,8 @@ TEST(GroupLayout, BorrowedIndentAfterBlankLinesPreservesBytesAndBlockBase)
     Document document(source);
     auto group = document.BeginGroup({GroupMode::Consistent, 2});
     document.SourceText(0, 8, 40, true);
-    GapSpec preserved{GapKind::Hard, 0, 0, GapNewline::LF, 3};
+    GapSpec preserved{.Kind = GapKind::Hard, .Spaces = 0,
+        .LineEnding = GapNewline::LF, .NewlineCount = 3};
     preserved.IndentSourceBegin = 9;
     preserved.IndentSourceEnd = 11;
     document.Gap(preserved, InvalidId, {8, 11, 42});
@@ -1862,17 +1897,15 @@ private:
         return std::pmr::new_delete_resource()->allocate(bytes, alignment);
     }
 
-    void do_deallocate(
-        void* pointer,
-        std::size_t bytes,
-        std::size_t alignment) override
+    void do_deallocate(void* pointer, std::size_t bytes, std::size_t alignment)
+    override
     {
         Bytes -= bytes;
         std::pmr::new_delete_resource()->deallocate(pointer, bytes, alignment);
     }
 
-    bool do_is_equal(
-        const std::pmr::memory_resource& other) const noexcept override
+    bool do_is_equal(const std::pmr::memory_resource& other) const noexcept
+    override
     {
         return this == &other;
     }

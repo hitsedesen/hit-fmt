@@ -36,8 +36,8 @@ struct CodePointWithSize
 
 // Decodes the first code point without bounds checks. At least four bytes must
 // be readable, including any zero padding after the logical input.
-[[nodiscard]] constexpr std::optional<CodePointWithSize> GetFirstCodePointFromPaddedInput(
-    const char* str)
+[[nodiscard]] constexpr std::optional<CodePointWithSize>
+GetFirstCodePointFromPaddedInput(const char* str)
 {
     auto byte = [&] (size_t offset) {
         return static_cast<unsigned char>(str[offset]);

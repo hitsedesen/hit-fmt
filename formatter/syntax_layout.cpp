@@ -72,6 +72,8 @@ struct Gap
     // Preserve spelling must use the same safe fallback before fitting.
     bool CanonicalFlat = false;
     bool ControlSeparator = false;
+    bool HeaderBreak = false;
+    bool KeepFlatSpacing = false;
 };
 
 struct Group
@@ -1308,17 +1310,52 @@ private:
         }
     }
 
+    static bool HeaderBreakPart(NodeKind kind)
+    {
+        switch (kind) {
+            case NodeKind::DeclaratorName:
+            case NodeKind::OperatorFunctionName:
+            case NodeKind::FunctionQualifier:
+            case NodeKind::ExceptionSpecification:
+            case NodeKind::TrailingReturnType:
+                return true;
+            default:
+                return false;
+        }
+    }
+
     void ProjectHeaderGaps(Index id, Index begin, Index end, Index group)
     {
+        const auto kind = Syntax_[id].TreeNode->Kind;
+        const bool function =
+            kind == NodeKind::FunctionDeclaration ||
+                kind == NodeKind::FunctionDefinition ||
+                kind == NodeKind::FunctionTryBlock;
         Stack_.clear();
         Stack_.push_back(id);
         while (!Stack_.empty()) {
             const auto current = Stack_.back();
             Stack_.pop_back();
+            Index operandEnd = 0;
             DirectTokens(
                 current,
                 [&] (Index t) {
                     const auto& node = *Syntax_[current].TreeNode;
+                    // decltype and extension operands can be direct tokens,
+                    // not expression children. Keep those balanced units flat.
+                    const bool operandOpening =
+                        Tree_.Kind(t) == TokenKind::Operator_OpenParenthesis ||
+                            Tree_.Kind(t) == TokenKind::Operator_OpenBracket;
+                    const bool operand = t < operandEnd || operandOpening;
+                    if (
+                        node.Kind == NodeKind::DeclarationSpecifiers &&
+                            operandOpening)
+                    {
+                        const auto close = Tree_.MatchingDelimiter(t);
+                        if (close != None) {
+                            operandEnd = std::max(operandEnd, close + 1);
+                        }
+                    }
                     const bool opaqueExceptionOperand =
                         node.Kind == NodeKind::ExceptionSpecification &&
                             t > node.Tokens.Begin + 1;
@@ -1331,8 +1368,33 @@ private:
                                     Spacing_.Gaps()[t].Category ==
                                         SpacingOwner::ControlHeaders))
                     {
-                        Own(t, group, Boundary::Flat);
+                        const bool separated =
+                            Spacing_.Gaps()[t].FallbackSpace ||
+                                Safety_.Gaps()[t].Separation ==
+                                    GapSeparation::Required;
+                        const bool breakable =
+                            function && !operand &&
+                                Tree_.Kind(t - 1) != TokenKind::Comment &&
+                                ((node.Kind ==
+                                                    NodeKind::DeclarationSpecifiers &&
+                                                separated) ||
+                                        (t == node.Tokens.Begin &&
+                                                HeaderBreakPart(node.Kind)));
+                        // Declarations without bodies previously owned only
+                        // their lists. Add header breaks without canonicalizing
+                        // opaque operands or unrelated pointer boundaries.
+                        if (kind == NodeKind::FunctionDeclaration && !breakable)
+                        {
+                            return;
+                        }
+                        Own(
+                            t,
+                            group,
+                            breakable ? Boundary::Soft : Boundary::Flat);
                         Gaps_[t].CanonicalFlat = true;
+                        Gaps_[t].HeaderBreak = breakable;
+                        Gaps_[t].KeepFlatSpacing =
+                            kind == NodeKind::FunctionDeclaration;
                     }
                 });
             for (auto child = Syntax_[current].FirstChild;
@@ -1345,6 +1407,20 @@ private:
                         node.Tokens.Begin >= end)
                 {
                     continue;
+                }
+                if (
+                    function &&
+                        (node.Kind == NodeKind::AttributeSpecifier ||
+                                node.Kind ==
+                                    NodeKind::ExtensionAttributeSpecifier) &&
+                        node.Tokens.Begin > begin &&
+                        GapMutable(node.Tokens.Begin) &&
+                        Tree_.Kind(node.Tokens.Begin - 1) != TokenKind::Comment)
+                {
+                    Own(node.Tokens.Begin, group, Boundary::Soft);
+                    Gaps_[node.Tokens.Begin].CanonicalFlat = true;
+                    Gaps_[node.Tokens.Begin].HeaderBreak = true;
+                    Gaps_[node.Tokens.Begin].KeepFlatSpacing = true;
                 }
                 if (TransparentHeader(node.Kind)) {
                     Stack_.push_back(child);
@@ -1592,6 +1668,27 @@ private:
     void PlanHeaderAndBody(Index id)
     {
         const auto& node = *Syntax_[id].TreeNode;
+        if (node.Kind == NodeKind::FunctionDeclaration) {
+            if (
+                !node.Tokens.Empty() && Syntax_[id].Safe &&
+                    Policies_.DeclarationHeaders == LayoutMode::Canonical &&
+                    PrefixProtection_[node.Tokens.Begin] ==
+                        PrefixProtection_[node.Tokens.End])
+            {
+                const auto group =
+                    GroupAt(
+                        TokenPosition(node.Tokens.Begin),
+                        GapPosition(node.Tokens.End),
+                        document::GroupMode::Fill);
+                Groups_[group].Spec.StructuralBase = true;
+                ProjectHeaderGaps(
+                    id,
+                    node.Tokens.Begin,
+                    node.Tokens.End,
+                    group);
+            }
+            return;
+        }
         if (
             node.Kind == NodeKind::CompoundStatement ||
                 node.Kind == NodeKind::LambdaBody)
@@ -2935,7 +3032,10 @@ private:
             return *preference ? 1 : 0;
         }
         const auto& source = Safety_.Gaps()[i];
-        if (!RebuildsTopology(i) && !HasLine(source.Original)) {
+        if (
+            (!RebuildsTopology(i) || Gaps_[i].KeepFlatSpacing) &&
+                !HasLine(source.Original))
+        {
             return HorizontalColumns(source.Original, Options_.TabWidth);
         }
         return Spacing_.Gaps()[i].FallbackSpace ||
@@ -3003,6 +3103,7 @@ private:
         spec.Kind = kind;
         spec.Spaces = uint16_t(std::min<Index>(FlatWidth(i), UINT16_MAX));
         spec.RequiredWidth = Gaps_[i].RequiredWidth;
+        spec.FitNextSegment = Gaps_[i].HeaderBreak;
         spec.NewlineCount = Gaps_[i].NewlineCount;
         if (Gaps_[i].PreserveIndent && !Gaps_[i].Reindent) {
             const auto& source = Safety_.Gaps()[i];
@@ -3021,7 +3122,8 @@ private:
         }
         const auto context = ContextFor(i);
         if (
-            sourceHorizontal && !RebuildsTopology(i) &&
+            sourceHorizontal &&
+                (!RebuildsTopology(i) || Gaps_[i].KeepFlatSpacing) &&
                 Safety_.Gaps()[i].Original.find_first_not_of(" \t") ==
                     std::string_view::npos &&
                 !Spacing_.TrailingCommentCount(i, Safety_) &&

@@ -1348,8 +1348,8 @@ private:
         std::unique_ptr<const hit_fmt::PreparedFileConfiguration> Settings;
     };
 
-    static std::unique_ptr<const hit_fmt::PreparedFileConfiguration> LoadPreparedConfig(
-        const std::filesystem::path& path)
+    static std::unique_ptr<const hit_fmt::PreparedFileConfiguration>
+    LoadPreparedConfig(const std::filesystem::path& path)
     {
         try {
             return std::make_unique<const hit_fmt::PreparedFileConfiguration>(

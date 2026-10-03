@@ -744,8 +744,8 @@ ChainParticipation LibraryAnnotations::Chains() const noexcept
         : ChainParticipation::AnnotatedRoots;
 }
 
-bool LibraryAnnotations::IsAnnotatedChainRoot(
-    std::string_view name) const noexcept
+bool LibraryAnnotations::IsAnnotatedChainRoot(std::string_view name) const
+noexcept
 {
     return std::binary_search(ChainRoots_.begin(), ChainRoots_.end(), name);
 }

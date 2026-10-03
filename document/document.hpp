@@ -70,10 +70,13 @@ struct GapSpec
     GapKind Kind = GapKind::Soft;
     std::uint16_t Spaces = 1;
     // Next indivisible segment plus its same-line suffix, supplied by lowering.
-    // Used only on a newline with a delimiter-column anchor; 0 adds no demand.
+    // Used on a newline with a delimiter-column anchor; 0 adds no demand.
     std::uint32_t RequiredWidth = 0;
     // Override generated newline bytes only; flat gaps emit no newline.
     GapNewline LineEnding = GapNewline::Inherit;
+    // Fill may keep independently breakable children on this line. Fit the
+    // supplied segment instead of charging their complete flat alternatives.
+    bool FitNextSegment = false;
     // First newline honors LineEnding; remaining newlines inherit Policy.
     std::uint16_t NewlineCount = 1;
     // Optional exact horizontal source slice used instead of Spaces when flat.
@@ -254,8 +257,8 @@ public:
     Status Seal();
     Result Render(
         Policy policy = {},
-        std::pmr::memory_resource* resource =
-            std::pmr::get_default_resource()) const;
+        std::pmr::memory_resource* resource = std::pmr::get_default_resource())
+    const;
 
 private:
     enum class Kind : std::uint8_t

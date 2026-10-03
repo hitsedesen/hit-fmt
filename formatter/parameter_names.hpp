@@ -24,8 +24,7 @@ struct ParameterNameDiagnostic
     bool AllowCommentedName = false;
 };
 
-[[nodiscard]] std::vector<ParameterNameDiagnostic>
-CheckParameterNames(
+[[nodiscard]] std::vector<ParameterNameDiagnostic> CheckParameterNames(
     const parser::SyntaxTree& tree,
     const Configuration& config);
 

@@ -627,10 +627,11 @@ public:
             ->MatchingDelimiters[index % TokensPerChunk] = matching;
     }
 
-    [[nodiscard]] TokenIndex
-    FindPreprocessingDirective(TokenIndex begin, TokenIndex end) const;
-    [[nodiscard]] TokenIndex
-    FindComment(TokenIndex begin, TokenIndex end) const;
+    [[nodiscard]] TokenIndex FindPreprocessingDirective(
+        TokenIndex begin,
+        TokenIndex end) const;
+    [[nodiscard]] TokenIndex FindComment(TokenIndex begin, TokenIndex end)
+    const;
 
 private:
     SegmentedStorage<Chunk, TokensPerChunk> Storage_;
@@ -666,26 +667,26 @@ public:
     // Borrow syntax for whitespace-only edits when tokens remain identical.
     // This view is for formatting: trivia attachments are unavailable.
     // The original tree and padded new source must outlive the result.
-    [[nodiscard]] std::optional<SyntaxTree>
-    RebindWhitespace(util::PaddedSourceView source) const;
+    [[nodiscard]] std::optional<SyntaxTree> RebindWhitespace(
+        util::PaddedSourceView source) const;
 
     // Find whitespace-only gaps in an edited source without lexing it.
     // Return no tree if any token spelling or non-whitespace gap changes.
-    [[nodiscard]] std::optional<SyntaxTree>
-    RebindWhitespaceGaps(util::PaddedSourceView source) const;
+    [[nodiscard]] std::optional<SyntaxTree> RebindWhitespaceGaps(
+        util::PaddedSourceView source) const;
 
     // A lexical check also accepts gap edits the local edit verifier cannot
     // express. Identical token kinds and spellings retain the same syntax.
-    [[nodiscard]] std::optional<SyntaxTree>
-    RebindMatchingTokens(util::PaddedSourceView source) const;
+    [[nodiscard]] std::optional<SyntaxTree> RebindMatchingTokens(
+        util::PaddedSourceView source) const;
 
     // Track an adjacent brace/comment move while retaining all other syntax.
-    [[nodiscard]] std::optional<SyntaxTree>
-    RebindReorderedComments(util::PaddedSourceView source) const;
+    [[nodiscard]] std::optional<SyntaxTree> RebindReorderedComments(
+        util::PaddedSourceView source) const;
 
     // Reorder verified runs of directive tokens without changing their nodes.
-    [[nodiscard]] std::optional<SyntaxTree>
-    RebindSortedIncludes(util::PaddedSourceView source) const;
+    [[nodiscard]] std::optional<SyntaxTree> RebindSortedIncludes(
+        util::PaddedSourceView source) const;
 
     // Reuse syntax for verified gap-only edits without lexing every token.
     // The original tree and padded edited source must outlive the result.
@@ -752,8 +753,8 @@ public:
         return Tokens_.MatchingDelimiter(index);
     }
 
-    [[nodiscard]] const TriviaAttachments*
-    AssociatedTrivia(const Node& node) const;
+    [[nodiscard]] const TriviaAttachments* AssociatedTrivia(const Node& node)
+    const;
     [[nodiscard]] std::string_view SourceText(TokenRange range) const;
     [[nodiscard]] std::string_view SourceText(SourceRange range) const;
 

@@ -874,6 +874,53 @@ TEST(PublicPipeline, DeclarationFallbackRequiresRebuiltOwnerAndEditableGap)
     EXPECT_NE(preserved.Text.find("Box<int>  make()"), std::string::npos);
 }
 
+TEST(PublicPipeline, DeclarationHeaderBreaksRespectWidthAndByteAuthority)
+{
+    const auto directory = std::filesystem::path(FORMATTER_TESTDATA_DIR) /
+        "../declaration-headers";
+    const auto source = test::golden::ReadFile(directory / "input.cpp");
+    for (const auto* profile : {"wrap", "narrow", "wide"}) {
+        SCOPED_TRACE(profile);
+        auto style = formatter::LoadConfigFile(
+            directory / (std::string(profile) + ".hit-fmt")).FormattingStyle;
+        style.WidthDiagnostics = formatter::WidthDiagnosticPolicy::Report;
+        const formatter::PreparedFormat prepared(style);
+        const auto result = FormatInput(source, prepared);
+        EXPECT_TRUE(result.Diagnostics.empty());
+        CheckIdentities(source, result);
+        EXPECT_EQ(FormatInput(result.Text, prepared).Text, result.Text);
+    }
+
+    auto style = formatter::LoadConfigFile(
+        directory / "wrap.hit-fmt").FormattingStyle;
+    style.WidthDiagnostics = formatter::WidthDiagnosticPolicy::Report;
+    const formatter::PreparedFormat prepared(style);
+    const auto firstLine = source.substr(0, source.find('\n') + 1);
+    const std::array immutable{
+        parser::SourceRange{0, uint32_t(firstLine.size())}};
+    const auto protectedResult = FormatInput(firstLine, prepared,
+        {.ImmutableRanges = immutable, .SourceMap = true});
+    EXPECT_EQ(protectedResult.Text, firstLine);
+    ASSERT_EQ(protectedResult.Diagnostics.size(), 1u);
+    EXPECT_EQ(protectedResult.Diagnostics[0].Kind,
+        formatter::LayoutDiagnosticKind::LineWidth);
+    CheckIdentities(firstLine, protectedResult);
+
+    const auto gap = uint32_t(firstLine.find("> ReadFirstResult") + 1);
+    const std::array selected{parser::SourceRange{gap, gap + 1}};
+    const auto scoped = FormatInput(firstLine, prepared,
+        {.SourceMap = true, .EditScope = selected});
+    EXPECT_NE(scoped.Text.find(">\nReadFirstResult"), std::string::npos);
+    EXPECT_TRUE(scoped.Diagnostics.empty());
+    CheckIdentities(firstLine, scoped);
+    CheckExcludedCopies(firstLine, scoped, selected);
+
+    style.DeclarationHeadersLayout = formatter::CategoryLayout::Preserve;
+    const auto preserved = FormatInput(firstLine,
+        formatter::PreparedFormat(style));
+    EXPECT_NE(preserved.Text.find("> ReadFirstResult"), std::string::npos);
+}
+
 TEST(PublicPipeline, NoEditTreeSourceParityAndResultLifetime)
 {
     const std::string source = "void f(){ invoke(left,right); }\n";

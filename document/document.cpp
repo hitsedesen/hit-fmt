@@ -558,9 +558,8 @@ Status Document::Seal()
     return State_;
 }
 
-Result Document::Render(
-    Policy policy,
-    std::pmr::memory_resource* resource) const
+Result Document::Render(Policy policy, std::pmr::memory_resource* resource)
+const
 {
     Result result(resource);
     if (!State_) {
@@ -1089,7 +1088,9 @@ Result Document::Render(
                         !fits(
                             AddWidth(
                                 entry.ExpandedGapWidth,
-                                tailWidth(entry.BrokenTail))) ||
+                                gap.FitNextSegment
+                                    ? gap.RequiredWidth
+                                    : tailWidth(entry.BrokenTail))) ||
                             (frame.Mandatory == i &&
                                     (frame.ForceOwned
                                             ? !frame.OwnedLine

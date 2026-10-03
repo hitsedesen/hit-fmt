@@ -1487,9 +1487,8 @@ private:
         }
     }
 
-    bool SizeofPackOperand(
-        const parser::Node& node,
-        const parser::Node* parent) const
+    bool SizeofPackOperand(const parser::Node& node, const parser::Node* parent)
+    const
     {
         if (
             !parent || parent->Kind != NK::UnaryExpression ||

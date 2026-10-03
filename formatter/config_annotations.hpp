@@ -54,8 +54,8 @@ public:
     [[nodiscard]] const MessagePinAnnotation* FindMessagePin(
         std::string_view name) const noexcept;
     [[nodiscard]] ChainParticipation Chains() const noexcept;
-    [[nodiscard]] bool IsAnnotatedChainRoot(
-        std::string_view name) const noexcept;
+    [[nodiscard]] bool IsAnnotatedChainRoot(std::string_view name) const
+    noexcept;
     [[nodiscard]] std::span<const std::string> ChainRoots() const;
     [[nodiscard]] std::span<const VisualScopeAnnotation> VisualScopes() const;
     [[nodiscard]] const VisualScopeAnnotation* FindScopeBegin(

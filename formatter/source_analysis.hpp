@@ -190,7 +190,8 @@ public:
     // before LF/CRLF. No token, terminator, prefix/suffix or topology edits
     // are authorized. A cut
     // horizontal run gets no permission. All other safety constraints win.
-    [[nodiscard]] std::span<const PartialGapPermission> PartialGapPermissions() const
+    [[nodiscard]] std::span<const PartialGapPermission> PartialGapPermissions()
+    const
     {
         return PartialGapPermissions_;
     }
@@ -215,9 +216,8 @@ public:
     void RestrictEditScope(std::span<const parser::SourceRange> ranges);
 
     [[nodiscard]] bool IntersectsImmutable(parser::SourceRange source) const;
-    [[nodiscard]] bool CanReplaceGap(
-        GapId gap,
-        std::string_view replacement) const;
+    [[nodiscard]] bool CanReplaceGap(GapId gap, std::string_view replacement)
+    const;
     // Spelling-only authority for the ENTIRE nonempty original whitespace gap.
     // Full byte coverage can permit existing atom replacement at scope End/EOF
     // even when generic replacement lacks insertion-point ownership. No empty

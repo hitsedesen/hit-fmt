@@ -43,9 +43,8 @@ TokenIndex detail::TokenPool::FindPreprocessingDirective(
     return end;
 }
 
-TokenIndex detail::TokenPool::FindComment(
-    TokenIndex begin,
-    TokenIndex end) const
+TokenIndex detail::TokenPool::FindComment(TokenIndex begin, TokenIndex end)
+const
 {
     ASSERT(begin <= end && end <= Storage_.Size())
     while (begin < end) {
@@ -1311,8 +1310,9 @@ std::string_view SyntaxTree::SourceText(SourceRange range) const
 class ParseContext
 {
 public:
-    [[nodiscard]] static SyntaxTree
-    Run(util::PaddedSourceView input, ErrorHandler errorHandler);
+    [[nodiscard]] static SyntaxTree Run(
+        util::PaddedSourceView input,
+        ErrorHandler errorHandler);
 
     ParseContext(SyntaxTree& tree, ErrorHandler& errorHandler)
         : Tree_(tree)
@@ -1421,8 +1421,8 @@ private:
         return nullptr;
     }
 
-    [[nodiscard]] std::optional<NameKind> LookupName(
-        std::string_view name) const
+    [[nodiscard]] std::optional<NameKind> LookupName(std::string_view name)
+    const
     {
         if (auto* binding = LookupBinding(name)) {
             return binding->Kind;
@@ -1430,9 +1430,8 @@ private:
         return std::nullopt;
     }
 
-    [[nodiscard]] bool IsKnownQualifiedType(
-        TokenIndex first,
-        TokenIndex end) const
+    [[nodiscard]] bool IsKnownQualifiedType(TokenIndex first, TokenIndex end)
+    const
     {
         auto* binding = LookupBinding(Text(first));
         auto scope = NextSignificant(first + 1);
@@ -2775,9 +2774,8 @@ private:
         return node;
     }
 
-    [[nodiscard]] size_t FindDeclaredTypeName(
-        size_t start,
-        bool isEnum = false) const
+    [[nodiscard]] size_t FindDeclaredTypeName(size_t start, bool isEnum = false)
+    const
     {
         auto index = NextSignificant(start) + 1;
         if (
@@ -3259,9 +3257,8 @@ private:
             text == "__clrcall";
     }
 
-    [[nodiscard]] size_t FindExtensionAttributeEnd(
-        size_t index,
-        size_t end) const
+    [[nodiscard]] size_t FindExtensionAttributeEnd(size_t index, size_t end)
+    const
     {
         if (!IsExtensionAttribute(index)) {
             return index;
@@ -5575,8 +5572,8 @@ private:
             : bodyEnd;
     }
 
-    [[nodiscard]] TokenIndex SkipRecoveredRequiresExpression(
-        TokenIndex start) const
+    [[nodiscard]] TokenIndex SkipRecoveredRequiresExpression(TokenIndex start)
+    const
     {
         // Mismatched interiors can leave populated outer pairs. A valid map
         // is required so cached advancement cannot hide their diagnostics.
@@ -8539,9 +8536,8 @@ private:
         return left;
     }
 
-    [[nodiscard]] bool LooksLikeUnknownTypeDeclaration(
-        size_t first,
-        size_t end) const
+    [[nodiscard]] bool LooksLikeUnknownTypeDeclaration(size_t first, size_t end)
+    const
     {
         auto cursor = NextSignificant(first + 1);
         bool hasQualifiedType = false;

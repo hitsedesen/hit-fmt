@@ -1,0 +1,8 @@
+whole child:
+void
+Many(int a,
+  int b);
+segment:
+void Many(
+  int a,
+  int b);
