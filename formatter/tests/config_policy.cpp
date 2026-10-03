@@ -711,13 +711,14 @@ TEST(ConfigPolicy, SchemaCompilesOwnedAnnotationsAndIndependentMetadata)
     const auto ytAnnotations =
         formatter::CompileLibraryAnnotations(yt.FormattingStyle);
     EXPECT_EQ(ytAnnotations.MessagePins().size(), 17u);
-    EXPECT_EQ(ytAnnotations.ChainRoots().size(), 15u);
+    EXPECT_TRUE(ytAnnotations.ChainRoots().empty());
+    EXPECT_EQ(ytAnnotations.Chains(), formatter::ChainParticipation::AllSafe);
     EXPECT_EQ(ytAnnotations.VisualScopes().size(), 3u);
     EXPECT_NE(ytAnnotations.FindMessagePin("THROW_ERROR_EXCEPTION"), nullptr);
     EXPECT_EQ(
         ytAnnotations.FindMessagePin("THROW_ERROR_EXCEPTION_IF"),
         nullptr);
-    EXPECT_TRUE(ytAnnotations.IsAnnotatedChainRoot("BuildYsonFluently"));
+    EXPECT_FALSE(ytAnnotations.IsAnnotatedChainRoot("BuildYsonFluently"));
 }
 
 TEST(ConfigPolicy, RemovedOptionsFailWithMigrationAdviceInsteadOfAliases)

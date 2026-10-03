@@ -110,22 +110,25 @@ to avoid matching similarly named files or directories.
 
 Use explicit migrated configurations; legacy keys have no compatibility
 aliases. See [the migration guide](docs/config-migration.md). Google and
-LLVM examples use the migrated schema. The canonical YTsaurus example
-retains its syntax hints, but nonempty `CallLikeMacroNames` is currently
-rejected. Use the runnable preview instead:
+LLVM examples use the migrated schema. Use the canonical YTsaurus example:
 
 ```sh
-build-cli/hit-fmt/hit-fmt --config hit-fmt/examples/ytsaurus-preview.hit-fmt \
+build-cli/hit-fmt/hit-fmt --config hit-fmt/examples/ytsaurus.hit-fmt \
     source.cpp
 build-cli/hit-fmt/hit-fmt --fix \
-    --config hit-fmt/examples/ytsaurus-preview.hit-fmt source.cpp
+    --config hit-fmt/examples/ytsaurus.hit-fmt source.cpp
 ```
 
-The preview clears that syntax hint and conservatively byte-protects
+Nonempty `CallLikeMacroNames` is currently rejected by the public pipeline.
+The YTsaurus example clears that hint and conservatively byte-protects
 `REGISTER_DERIVED_EXTERNALIZED_YSON_STRUCT` via `WhitespaceSensitiveMacros`.
-This is a temporary workaround, not equivalent macro formatting. Both
-YTsaurus profiles force base lists onto new lines with leading colons and
-commas. The migrated repository profile is
+This is a temporary workaround, not equivalent macro formatting. It forces
+base and constructor lists onto new lines with leading colons and commas,
+uses four-space continuations for all safely parsed chains, and repairs
+namespace closing names. It remains a guide approximation for `yt/yt`,
+`yt/chyt`, `yt/yql` and `library/cpp/yt`, not `yt/cpp` or unrelated libraries;
+namespace rulers and include regrouping remain unsupported. The migrated
+repository profile is
 `hit-fmt/examples/repository.hit-fmt`; Google and LLVM are alternative
 explicit profiles. Always pass `--config` when running this new CLI in
 the repository. The checked-in root `.hit-fmt` deliberately remains the

@@ -142,6 +142,18 @@ void AddCases(
 std::vector<FormatCase> FormatCases()
 {
     std::vector<FormatCase> cases;
+    const auto llvmProfile = (std::filesystem::path(FORMATTER_TESTDATA_DIR) /
+        "../../../../hit-fmt/examples/llvm").lexically_normal().string();
+    for (const auto* name : {"lf", "opaque", "no-final-newline"}) {
+        cases.push_back({std::filesystem::path(FORMATTER_TESTDATA_DIR) /
+            "../example-llvm", name, std::string(name) + ".input.cpp",
+            llvmProfile});
+    }
+    // Bind to the shipped example, not a fixture-local copy of its settings.
+    for (const auto* name : {"repository-lf", "repository-crlf"})
+        cases.push_back({std::filesystem::path(FORMATTER_TESTDATA_DIR) /
+            "../example-repository", name, std::string(name) + ".input.cpp",
+            "../../../../hit-fmt/examples/repository"});
     for (const auto* name : {"lf", "crlf", "legacy", "canonical-lf",
                             "canonical-crlf", "opaque-lf", "boundary-lf", "boundary-crlf",
                             "boundary-nulls", "boundary-namespace-lf",
@@ -346,6 +358,11 @@ std::vector<FormatCase> FormatCases()
         cases.push_back({std::filesystem::path(FORMATTER_TESTDATA_DIR) /
             directory, name, std::string(name) + ".input.cpp", profile});
     };
+    for (const auto* name : {"constructor-lists", "chains", "namespace-comments",
+        "macro-protection", "annotations"})
+    {
+        addProfileCase("../example-ytsaurus", name);
+    }
     addProfileCase("../spacing-options", "profile-initializers");
     addProfileCase("../spacing-options", "profile-overflow");
     addProfileCase("../spacing-options", "profile-case-blocks");
@@ -427,6 +444,10 @@ std::vector<FormatCase> FormatCases()
     addProfileCase("../chained-calls", "profile-multiline-lambda");
     const auto google = std::filesystem::path(FORMATTER_TESTDATA_DIR) /
         "../google-style-regressions";
+    const auto googleProfile = (std::filesystem::path(FORMATTER_TESTDATA_DIR) /
+        "../../../../hit-fmt/examples/google").lexically_normal().string();
+    cases.push_back({google, "profile-trailing-comments",
+        "profile-trailing-comments.input.cpp", googleProfile});
     cases.push_back({google, "inline-record", "inline-record.input.cpp"});
     cases.push_back({google, "widths", "widths.input.cpp"});
     cases.push_back({google, "operator-spacing", "operator-spacing.input.cpp"});

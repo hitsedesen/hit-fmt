@@ -1,13 +1,18 @@
 # YTsaurus-inspired approximation for yt/yt, yt/chyt, yt/yql and library/cpp/yt.
 # Not intended for yt/cpp, util or other library/cpp. See docs/config-migration.md.
-# Canonical fitting lists flatten; library annotations select generic policies.
-# Exactly messages, fluent chains and paired visual scopes; no named widths.
-# Fluent chains include . / -> members and repeated invocation factory()(arg)(next).
+# Canonical fitting calls/parameters flatten; base/constructor lists and chains break.
+# Message pins and paired visual scopes remain explicit library annotations.
+# Chains use general AllSafe selection, including . / -> and repeated invocation.
+# Approximation: no namespace rulers, include regrouping or naming-role enforcement;
+# protected macro bytes and preserved lambda bodies are not style conformance.
 Layout = Canonical
 IndentWidth = 4
 ColumnLimit = 120
 WidthDiagnostics = Report
 IndentationKind = Spaces
+# The guide mandates neither newline spelling nor an ordinary comment-space count.
+LineEnding = Preserve
+# TrailingCommentSpaces stays omitted: retain existing ordinary comment gaps.
 TrailingWhitespace = Trim
 ListBreak = IfNeeded
 ListPacking = VerticalWhenBroken
@@ -22,9 +27,14 @@ BaseListsPacking = VerticalWhenBroken
 BaseListsFirstItem = NextLine
 BaseListsColonSide = Leading
 BaseListsCommaSide = Leading
+# Even fitting constructor entries break, inheriting vertical/next-line/block + 4.
+ConstructorListsBreak = Always
+ConstructorListsColonSide = Leading
+ConstructorListsCommaSide = Leading
 ControlHeadersFirstItem = InlineIfFits
-ChainsBreak = IfNeeded
-ChainsPacking = Fill
+ChainsBreak = Always
+ChainsPacking = VerticalWhenBroken
+ChainsAlignment = Block
 InitializersCloser = OwnLine
 InitializersTrailingComma = WhenMultiline
 # Unlike the old comma-sensitive closer, every broken initializer owns its closer.
@@ -44,16 +54,19 @@ IndentMembers = Indent
 IndentNamespaces = NoIndent
 IndentCaseLabels = Indent
 StatementAttributeIndent = Block
-NamespaceComments = AddMissing
+NamespaceComments = Fix
 IncludeOrder = Preserve
 AddMissingControlBraces = true
 EmptyControlBody = EmptyBlock
 RemoveNullStatements = true
 RemoveNullDeclarations = true
 
-# Semantic macro syntax/protection hints, not aesthetic identifier exceptions.
-CallLikeMacroNames = ["REGISTER_DERIVED_EXTERNALIZED_YSON_STRUCT"]
+# Nonempty CallLikeMacroNames is rejected by the public pipeline. Protect the
+# affected invocation byte-for-byte instead; this is NOT macro-language formatting.
+# Other semantic macro protection remains intact (not aesthetic name exceptions).
+CallLikeMacroNames = []
 WhitespaceSensitiveMacros = [
+    "REGISTER_DERIVED_EXTERNALIZED_YSON_STRUCT",
     "PP_STRINGIZE", "DEFINE_ENUM", "DEFINE_BIT_ENUM",
     "DEFINE_BIT_ENUM_WITH_UNDERLYING_TYPE",
     "DEFINE_ENUM_WITH_UNDERLYING_TYPE",
@@ -150,23 +163,8 @@ CallLineFirstStringNames = [
     "YT_TLOG_FATAL",
     "YT_TLOG_ALERT_AND_THROW",
 ]
-ChainedCallRootNames = [
-    "BIND",
-    "BIND_NO_PROPAGATE",
-    "THROW_ERROR_EXCEPTION",
-    "TError",
-    "BuildYsonFluently",
-    "WaitFor",
-    "WaitForFast",
-    "YT_TLOG_TRACE",
-    "YT_TLOG_DEBUG",
-    "YT_TLOG_INFO",
-    "YT_TLOG_WARNING",
-    "YT_TLOG_ERROR",
-    "YT_TLOG_ALERT",
-    "YT_TLOG_FATAL",
-    "YT_TLOG_ALERT_AND_THROW",
-]
+# Empty annotations select AllSafe, not disabled: the guide's chain rule is generic.
+ChainedCallRootNames = []
 IndentedCallScopePairs = [
     "OnBeginList:OnEndList",
     "OnBeginMap:OnEndMap",

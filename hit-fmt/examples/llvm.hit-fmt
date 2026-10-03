@@ -1,11 +1,16 @@
 # LLVM-inspired approximation, not clang-format compatibility.
 # Canonical groups flatten fitting lists; delimiter alignment has a fixed fallback.
 # Directives/protected regions are byte-exact. See docs/config-migration.md.
+# Include categories, contextual lambda indentation and brace removal remain unsupported.
+# Comments/literals are not reflowed to guarantee the column limit.
 Layout = Canonical
 IndentWidth = 2
 ColumnLimit = 80
 WidthDiagnostics = Report
 IndentationKind = Spaces
+# Unix spelling for editable whitespace atoms only; token-owned CR, directives,
+# protected/partial gaps and bare CR can remain. No missing final newline is added.
+LineEnding = LF
 TrailingWhitespace = Trim
 ListBreak = IfNeeded
 ListPacking = Fill
@@ -63,7 +68,9 @@ InitializersTrailingComma = Preserve
 # Closer placement no longer depends on an existing trailing comma.
 InitializersCloser = SameLine
 
-# Diagnostics only; role-aware upstream naming is not fully modeled.
+# Diagnostics only: upper-initial types/variables, lower-initial functions.
+# No role-aware STL exceptions, typedef/enumerator rules or semantic name checks.
+# Retained ConceptNameCase is an approximation, not a separate upstream mandate.
 ClassNameCase = PascalCase
 StructNameCase = PascalCase
 UnionNameCase = PascalCase

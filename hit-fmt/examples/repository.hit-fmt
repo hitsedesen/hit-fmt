@@ -1,11 +1,16 @@
-# Repository approximation of YTsaurus; canonical groups, 80 columns.
-# IfNeeded fitting groups flatten; no renderer identifier heuristics.
+# Repository style approximation: YTsaurus-inspired, but 80 columns, not 120.
+# IfNeeded fitting groups flatten; no upstream library-name annotations.
+# Comment separator rewriting and ambiguous template spacing are unsupported.
+# Directives remain protected; no preprocessor indentation rewrite is selected.
 Layout = Canonical
 IndentWidth = 4
 ColumnLimit = 80
 WidthDiagnostics = Report
 IndentationKind = Spaces
 TrailingWhitespace = Trim
+# The repository config specifies neither newline spelling nor comment counts.
+LineEnding = Preserve
+# Leave TrailingCommentSpaces omitted; do not impose a two-space comment gap.
 
 ListBreak = IfNeeded
 ListPacking = VerticalWhenBroken
@@ -23,6 +28,8 @@ BaseListsCommaSide = Leading
 ControlHeadersFirstItem = InlineIfFits
 ChainsBreak = IfNeeded
 ChainsPacking = Fill
+# Chains use the enclosing structural block and the shared four-column offset.
+ChainsAlignment = Block
 InitializersCloser = OwnLine
 InitializersTrailingComma = WhenMultiline
 

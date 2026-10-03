@@ -290,8 +290,9 @@ Profiles explicitly opt into Canonical with IfNeeded; fitting normalization is
 conditional on that break requirement. They are approximate styles, not
 byte-for-byte upstream presets: fitting source multiline constructs can flatten
 unless Always requires a legal owned break,
-safe nested groups participate, YTsaurus message/chain-root/visual-scope annotations
-are retained, named EXPECT_THROW width overrides are removed, control clauses
+safe nested groups participate, YTsaurus message/visual-scope annotations
+are retained while chains use AllSafe, named EXPECT_THROW width overrides
+are removed, control clauses
 share one anchor policy, and commas do not
 drive closer placement. LLVM/Google context-dependent base/constructor lists use
 explicit Preserve overrides. All existing fixture `.hit-fmt` files have been
@@ -332,8 +333,9 @@ renderer name checks or sequential-pass triggers:
 All names are case-sensitive exact spellings. Message/scope names must be simple
 identifiers; chain roots may be qualified identifier paths. Empty/invalid names,
 duplicates, same-name Begin/End pairs and reused/ambiguous scope endpoints are
-rejected deterministically. The three YTsaurus annotation sets from the base
-profile are retained: 17 message names, 15 fluent roots and three scope pairs.
+rejected deterministically. The canonical YTsaurus profile retains 17 message
+names and three scope pairs. Its empty chain-root list selects AllSafe;
+explicit root annotations remain available to profiles using AnnotatedRoots.
 
 `formatter/config_annotations.hpp` defines the separately owned metadata API:
 

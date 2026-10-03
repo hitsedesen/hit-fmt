@@ -27,6 +27,8 @@ IndentCaseLabels = Indent
 StatementAttributeIndent = Block
 # Include categories/main-header precedence are not modeled.
 IncludeOrder = Preserve
+# Ordinary trailing // gaps; comment alignment and prose wrapping are not modeled.
+TrailingCommentSpaces = 2
 NamespaceComments = AddMissing
 NamespaceCommentSpaces = 2
 ShortNamespaceLines = 1
