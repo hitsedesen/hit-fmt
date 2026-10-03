@@ -1,7 +1,7 @@
 void Process()
 {
     for (auto ready =
-            ReadNext(); ready ||
+         ReadNext(); ready ||
          CanProceedAfterDelay(); ready = ReadNext()) {
         Use(ready);
     }
@@ -13,15 +13,14 @@ void Process()
         Use(ready);
     }
     for (auto x =
-            Make([] { return 1; }); x <
-         ALongMaximumCount(); ++x) {
+         Make([] { return 1; }); x < ALongMaximumCount(); ++x) {
         Use(x);
     }
     for (auto item : ItemsWithAnExtremelyLongExpression()) {
         Use(item);
     }
     for (auto ready =
-            ReadNext(); /* keep */ ready ||
+         ReadNext(); /* keep */ ready ||
          CanProceedAfterDelay(); ready = ReadNext()) {
         Use(ready);
     }

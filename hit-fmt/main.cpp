@@ -78,10 +78,10 @@ std::vector<Line> SplitLines(std::string_view text)
         auto end = hasNewline ? newline : text.size();
         lines
             .push_back(
-                {
-                    .Text = text.substr(begin, end - begin),
-                    .HasNewline = hasNewline,
-                });
+            {
+                .Text = text.substr(begin, end - begin),
+                .HasNewline = hasNewline,
+            });
         begin = hasNewline ? end + 1 : text.size();
     }
     return lines;
@@ -188,13 +188,13 @@ Excerpt PrintSourceExcerpt(
     if (cells.size() > available && !fromStart) {
         begin =
             std::min(
-                cells.size() - window,
-                rendered.Caret > window / 2 ? rendered.Caret - window / 2 : 0);
+            cells.size() - window,
+            rendered.Caret > window / 2 ? rendered.Caret - window / 2 : 0);
     }
     auto count =
         cells.size() > available
-            ? (fromStart ? available - 3 : window)
-            : available;
+        ? (fromStart ? available - 3 : window)
+        : available;
     auto end = std::min(cells.size(), begin + count);
     if (begin) {
         output << "...";
@@ -328,9 +328,9 @@ size_t ColumnAt(std::string_view text, size_t byte)
 {
     return 1 +
         std::count_if(
-            text.begin(),
-            text.begin() + byte,
-            [] (unsigned char c) { return (c & 0xc0) != 0x80; });
+        text.begin(),
+        text.begin() + byte,
+        [] (unsigned char c) { return (c & 0xc0) != 0x80; });
 }
 
 size_t DifferenceColumn(std::string_view actual, std::string_view expected)
@@ -418,7 +418,7 @@ std::string SpacingMessage(
     auto found = DescribeWhitespace(actual.substr(begin, end - begin));
     auto wanted =
         DescribeWhitespace(
-            expected.substr(expectedBegin, expectedEnd - expectedBegin));
+        expected.substr(expectedBegin, expectedEnd - expectedBegin));
     if (begin == 0) {
         return "indentation: expected " + wanted + ", found " + found;
     }
@@ -453,11 +453,11 @@ std::vector<Violation> SpacingViolations(
         {
             violations
                 .push_back(
-                    {
-                        line,
-                        ColumnAt(actual, a),
-                        SpacingMessage(actual, expected, startA, a, startB, b),
-                    });
+                {
+                    line,
+                    ColumnAt(actual, a),
+                    SpacingMessage(actual, expected, startA, a, startB, b),
+                });
         }
         if (a == actual.size() || b == expected.size()) {
             break;
@@ -519,11 +519,9 @@ std::string ContentChange(std::string_view actual, std::string_view expected)
     }
     while (prefix &&
         ((prefix < actual.size() &&
-                        (static_cast<unsigned char>(actual[prefix]) & 0xc0) ==
-                            0x80) ||
-                (prefix < expected.size() &&
-                        (static_cast<unsigned char>(expected[prefix]) & 0xc0) ==
-                            0x80)))
+        (static_cast<unsigned char>(actual[prefix]) & 0xc0) == 0x80) ||
+        (prefix < expected.size() &&
+        (static_cast<unsigned char>(expected[prefix]) & 0xc0) == 0x80)))
     {
         --prefix;
     }
@@ -531,15 +529,15 @@ std::string ContentChange(std::string_view actual, std::string_view expected)
     while (suffix < actual.size() - prefix &&
         suffix < expected.size() - prefix &&
         actual[actual.size() - suffix - 1] ==
-            expected[expected.size() - suffix - 1])
+        expected[expected.size() - suffix - 1])
     {
         ++suffix;
     }
     while (suffix &&
         ((static_cast<unsigned char>(actual[actual.size() - suffix]) & 0xc0) ==
-                    0x80 ||
-                (static_cast<unsigned char>(expected[expected.size() -
-                                        suffix]) & 0xc0) == 0x80))
+        0x80 ||
+        (static_cast<unsigned char>(expected[expected.size() - suffix]) &
+        0xc0) == 0x80))
     {
         --suffix;
     }
@@ -622,13 +620,13 @@ std::optional<std::vector<Violation>> ReflowViolations(
         if (gapA != gapB) {
             auto lineIndex =
                 static_cast<size_t>(std::upper_bound(
-                    lineStarts.begin(),
-                    lineStarts.end(),
-                    a) - lineStarts.begin() - 1);
+                lineStarts.begin(),
+                lineStarts.end(),
+                a) - lineStarts.begin() - 1);
             auto byte =
                 std::min(
-                    a - lineStarts[lineIndex],
-                    source[lineIndex].Text.size());
+                a - lineStarts[lineIndex],
+                source[lineIndex].Text.size());
             auto token = TokenAt(original, a);
             std::string message;
             auto oldBreaks = std::count(gapA.begin(), gapA.end(), '\n');
@@ -642,36 +640,36 @@ std::optional<std::vector<Violation>> ReflowViolations(
             } else if (oldBreaks && !newBreaks) {
                 message =
                     "join lines before '" + token + "' with " +
-                        DescribeWhitespace(gapB);
+                    DescribeWhitespace(gapB);
             } else if (oldBreaks != newBreaks) {
                 auto difference =
                     oldBreaks > newBreaks
-                        ? oldBreaks - newBreaks
-                        : newBreaks - oldBreaks;
+                    ? oldBreaks - newBreaks
+                    : newBreaks - oldBreaks;
                 message =
                     (oldBreaks > newBreaks ? "remove " : "insert ") +
-                        std::to_string(difference) +
-                        (difference == 1 ? " blank line" : " blank lines") +
-                        " before '" + token + "'";
+                    std::to_string(difference) +
+                    (difference == 1 ? " blank line" : " blank lines") +
+                    " before '" + token + "'";
             } else if (oldBreaks) {
                 auto oldIndent = gapA.substr(gapA.rfind('\n') + 1);
                 auto newIndent = gapB.substr(gapB.rfind('\n') + 1);
                 message =
                     "indent '" + token + "' with " +
-                        DescribeWhitespace(newIndent) + " instead of " +
-                        DescribeWhitespace(oldIndent);
+                    DescribeWhitespace(newIndent) + " instead of " +
+                    DescribeWhitespace(oldIndent);
             } else {
                 message =
                     SpacingMessage(original, replacement, startA, a, startB, b);
             }
             violations
                 .push_back(
-                    {
-                        firstLine + lineIndex,
-                        ColumnAt(source[lineIndex].Text, byte),
-                        std::move(message),
-                        ViolationKind::Reflow,
-                    });
+                {
+                    firstLine + lineIndex,
+                    ColumnAt(source[lineIndex].Text, byte),
+                    std::move(message),
+                    ViolationKind::Reflow,
+                });
         }
         if (a == original.size() || b == replacement.size()) {
             break;
@@ -705,7 +703,7 @@ bool IsIncludeLine(const Line& line)
     auto text = line.Text.substr(begin);
     return text.starts_with("#include") && text.size() > 8 &&
         (std::isspace(static_cast<unsigned char>(text[8])) || text[8] == '<' ||
-                text[8] == '"');
+        text[8] == '"');
 }
 
 std::vector<Chunk> FormattingChunks(
@@ -769,23 +767,21 @@ std::vector<Chunk> FormattingChunks(
                     auto distance = sourceSkip + formattedSkip;
                     auto skew =
                         sourceSkip > formattedSkip
-                            ? sourceSkip - formattedSkip
-                            : formattedSkip - sourceSkip;
+                        ? sourceSkip - formattedSkip
+                        : formattedSkip - sourceSkip;
                     // An unchanged line inside a repeated block can look
                     // closer than the actual end of a whitespace-only edit.
                     // Prefer an anchor that keeps all intervening tokens.
                     bool preservesTokens =
                         sourceSkip && formattedSkip &&
-                            SameNonWhitespaceLines(
-                                std::span(source)
-                                    .subspan(sourceIndex, sourceSkip),
-                                std::span(formatted)
-                                    .subspan(formattedIndex, formattedSkip));
+                        SameNonWhitespaceLines(
+                        std::span(source).subspan(sourceIndex, sourceSkip),
+                        std::span(formatted)
+                        .subspan(formattedIndex, formattedSkip));
                     if ((preservesTokens && !bestPreservesTokens) ||
                         (preservesTokens == bestPreservesTokens &&
-                                (distance < bestDistance ||
-                                        (distance == bestDistance &&
-                                                skew < bestSkew))))
+                        (distance < bestDistance ||
+                        (distance == bestDistance && skew < bestSkew))))
                     {
                         bestPreservesTokens = preservesTokens;
                         bestDistance = distance;
@@ -819,10 +815,9 @@ std::vector<Chunk> FormattingChunks(
         {
             auto reflow =
                 ReflowViolations(
-                    std::span(source).subspan(sourceIndex, sourceCount),
-                    std::span(formatted)
-                        .subspan(formattedIndex, formattedCount),
-                    sourceIndex + 1);
+                std::span(source).subspan(sourceIndex, sourceCount),
+                std::span(formatted).subspan(formattedIndex, formattedCount),
+                sourceIndex + 1);
             if (reflow && !reflow->empty()) {
                 chunk.Violations = std::move(*reflow);
                 alignedReflow = true;
@@ -853,7 +848,7 @@ std::vector<Chunk> FormattingChunks(
             {
                 message =
                     "include order: expected " + QuoteSnippet(replacement) +
-                        " on this line";
+                    " on this line";
             } else if (sourceCount != formattedCount) {
                 if (formattedCount == 0) {
                     message = "remove this line";
@@ -863,32 +858,32 @@ std::vector<Chunk> FormattingChunks(
                 } else if (formattedCount > sourceCount) {
                     message =
                         "split line: expected " + QuoteSnippet(replacement) +
-                            " on this line";
+                        " on this line";
                     kind = ViolationKind::Reflow;
                 } else {
                     message =
                         "join lines: expected " + QuoteSnippet(replacement) +
-                            " on this line";
+                        " on this line";
                     kind = ViolationKind::Reflow;
                 }
             } else if (SameNonWhitespace(line.Text, replacement)) {
                 auto spacing =
                     SpacingViolations(
-                        sourceIndex + i + 1,
-                        line.Text,
-                        replacement);
+                    sourceIndex + i + 1,
+                    line.Text,
+                    replacement);
                 chunk.Violations
                     .insert(
-                        chunk.Violations.end(),
-                        spacing.begin(),
-                        spacing.end());
+                    chunk.Violations.end(),
+                    spacing.begin(),
+                    spacing.end());
                 continue;
             } else {
                 message = ContentChange(line.Text, replacement);
             }
             chunk.Violations
                 .push_back(
-                    {sourceIndex + i + 1, column, std::move(message), kind});
+                {sourceIndex + i + 1, column, std::move(message), kind});
         }
         if (sourceCount == 0) {
             auto column = sourceIndex < source.size() || source.empty()
@@ -896,15 +891,15 @@ std::vector<Chunk> FormattingChunks(
                 : ColumnAt(source.back().Text, source.back().Text.size());
             auto location =
                 sourceIndex == source.size()
-                    ? " at end of file"
-                    : " before this line";
+                ? " at end of file"
+                : " before this line";
             auto message =
                 formattedCount == 1
-                    ? "insert " + QuoteSnippet(formatted[formattedIndex].Text) +
-                        location
-                    : "insert " + std::to_string(formattedCount) + " lines" +
-                        location + ", starting with " +
-                        QuoteSnippet(formatted[formattedIndex].Text);
+                ? "insert " + QuoteSnippet(formatted[formattedIndex].Text) +
+                location
+                : "insert " + std::to_string(formattedCount) + " lines" +
+                location + ", starting with " +
+                QuoteSnippet(formatted[formattedIndex].Text);
             chunk.Violations.push_back({begin, column, std::move(message)});
         }
         if (chunk.Violations.empty()) {
@@ -912,22 +907,22 @@ std::vector<Chunk> FormattingChunks(
             auto number = sourceIndex + sourceCount;
             auto column =
                 ColumnAt(
-                    source[number - 1].Text,
-                    source[number - 1].Text.size());
+                source[number - 1].Text,
+                source[number - 1].Text.size());
             auto inserted = formattedCount > sourceCount
                 ? formattedCount - sourceCount
                 : size_t{0};
             chunk.Violations
                 .push_back(
-                    {
-                        number,
-                        column,
-                        inserted
-                            ? "insert " + std::to_string(inserted) +
-                                " formatted lines after this line"
-                            : "replace lines following this line with "
-                                "formatted output",
-                    });
+                {
+                    number,
+                    column,
+                    inserted
+                        ? "insert " + std::to_string(inserted) +
+                        " formatted lines after this line"
+                        : "replace lines following this line with "
+                        "formatted output",
+                });
         }
         for (size_t i = 0; i < formattedCount; ++i) {
             chunk.Fix.push_back(formatted[formattedIndex + i]);
@@ -969,7 +964,7 @@ void PrintFormattingDiagnostics(
         }
         auto location =
             std::string(path) + ':' + std::to_string(first.Line) + ':' +
-                std::to_string(first.Column);
+            std::to_string(first.Column);
         if (fixed) {
             location += " [original source; before formatting]";
         }
@@ -995,7 +990,7 @@ void PrintFormattingDiagnostics(
             }
             const auto prefix =
                 std::string(width - std::to_string(lineNumber).size(), ' ') +
-                    std::to_string(lineNumber) + " | ";
+                std::to_string(lineNumber) + " | ";
             auto printLine = [&] (size_t column, bool fromStart = false) {
                 output << prefix;
                 return PrintSourceExcerpt(
@@ -1029,7 +1024,7 @@ void PrintFormattingDiagnostics(
                 }
                 output << std::string(excerpt.CaretOffset, ' ') << '^';
                 if (gutter.size() + excerpt.CaretOffset + 2 +
-                        violation.Message.size() < terminalWidth)
+                    violation.Message.size() < terminalWidth)
                 {
                     output << ' ' << violation.Message << '\n';
                 } else {
@@ -1045,8 +1040,8 @@ void PrintFormattingDiagnostics(
         if (chunk.HasFix) {
             output
                 << (fixed
-                        ? "  applied formatting:\n"
-                        : "  suggested formatting:\n");
+                ? "  applied formatting:\n"
+                : "  suggested formatting:\n");
             const auto& fix = chunk.Fix;
             for (const auto& line : fix) {
                 PrintSuggestedLine(
@@ -1198,8 +1193,8 @@ Options ParseOptions(int argc, char* argv[])
                     std::string_view next(argv[index + 1]);
                     if (!next.empty() &&
                         std::ranges::all_of(
-                            next,
-                            [] (char c) { return c >= '0' && c <= '9'; }))
+                        next,
+                        [] (char c) { return c >= '0' && c <= '9'; }))
                     {
                         value = argv[++index];
                     }
@@ -1221,9 +1216,9 @@ Options ParseOptions(int argc, char* argv[])
             size_t threads = 0;
             auto [end, error] =
                 std::from_chars(
-                    value.data(),
-                    value.data() + value.size(),
-                    threads);
+                value.data(),
+                value.data() + value.size(),
+                threads);
             if (error != std::errc{} || end != value.data() + value.size() ||
                 threads == 0)
             {
@@ -1258,7 +1253,7 @@ Options ParseOptions(int argc, char* argv[])
             } catch (const std::regex_error& error) {
                 throw std::runtime_error(
                     "invalid --exclude regex: " + pattern + ": " +
-                        error.what());
+                    error.what());
             }
         } else {
             throw std::runtime_error(
@@ -1304,7 +1299,7 @@ public:
         }
         auto relative =
             std::filesystem::absolute(path).lexically_normal()
-                .lexically_relative(config.Directory);
+            .lexically_relative(config.Directory);
         return ::IsExcluded(relative, config.Settings->Settings.Exclude);
     }
 
@@ -1348,8 +1343,8 @@ private:
         std::error_code error;
         directory =
             directory.empty()
-                ? std::filesystem::current_path(error)
-                : std::filesystem::absolute(directory, error);
+            ? std::filesystem::current_path(error)
+            : std::filesystem::absolute(directory, error);
         if (error) {
             return DefaultConfig();
         }
@@ -1424,19 +1419,19 @@ void PrintHelp(std::ostream& output, std::string_view executable, bool useColor)
     option("--generate-config", " Print a preserving config to stdout.");
     output << "\n"
         << "Without --config or --no-config, each source file uses the "
-            "nearest .hit-fmt file in its directory or a parent directory.\n"
+        "nearest .hit-fmt file in its directory or a parent directory.\n"
         << "Input paths may be files or directories.\n"
         << "Directories are searched recursively for C and C++ source "
-            "files.\n"
+        "files.\n"
         << "--exclude patterns search paths relative to each input directory; "
-            ".hit-fmt Exclude patterns search paths relative to the "
-            "config file.\n"
+        ".hit-fmt Exclude patterns search paths relative to the "
+        "config file.\n"
         << "Both use ECMAScript regex; matching directories are skipped.\n"
         << "Files larger than 4 MiB are skipped with a warning.\n"
         << "Experimental whole-file pipeline: changed-hunks/no-spillover and "
-            "nonempty CallLikeMacroNames are currently unsupported.\n"
+        "nonempty CallLikeMacroNames are currently unsupported.\n"
         << "Output is colorized when written to a terminal; set "
-            "NO_COLOR to disable it.\n\n";
+        "NO_COLOR to disable it.\n\n";
     highlight("Examples:", BoldCyan);
     output << '\n';
     for (auto example :
@@ -1500,9 +1495,9 @@ int main(int argc, char* argv[])
         try {
             auto sourceStorage =
                 util::ReadEntireFile(
-                    filePath,
-                    MaxSourceFileSize,
-                    util::SourcePaddingSize);
+                filePath,
+                MaxSourceFileSize,
+                util::SourcePaddingSize);
             util::PaddedSourceView paddedSource{
                 .Data = sourceStorage.data(),
                 .Size = sourceStorage.size() - util::SourcePaddingSize,
@@ -1584,18 +1579,18 @@ int main(int argc, char* argv[])
     if (options.Threads == 1) {
         try {
             if (!ForEachFile(
-                    options.Paths,
-                    options.Exclusions,
-                    [
-                        &] (
-                        const auto& path,
-                        bool directory) { return styleResolver
-                            ->IsExcluded(path, directory); },
-                    [&] (const auto& path) {
-                        bool failed =
-                            printResult(processFile(path, *styleResolver));
-                        return !failed;
-                    }))
+                options.Paths,
+                options.Exclusions,
+                [
+                    &] (
+                    const auto& path,
+                    bool directory) { return styleResolver
+                        ->IsExcluded(path, directory); },
+                [&] (const auto& path) {
+                    bool failed =
+                        printResult(processFile(path, *styleResolver));
+                    return !failed;
+                }))
             {
                 return 1;
             }
@@ -1606,22 +1601,22 @@ int main(int argc, char* argv[])
         }
     } else {
         if (!hit_fmt::RunParallelFiles(
-                options.Threads,
-                [&] (auto visit) {
-                    return ForEachFile(
-                        options.Paths,
-                        options.Exclusions,
-                        [
-                            &] (
-                            const auto& path,
-                            bool directory) { return styleResolver
-                                ->IsExcluded(path, directory); },
-                        visit);
-                },
-                [&] { return StyleResolver(options); },
-                processFile,
-                printResult,
-                std::cerr))
+            options.Threads,
+            [&] (auto visit) {
+                return ForEachFile(
+                    options.Paths,
+                    options.Exclusions,
+                    [
+                        &] (
+                        const auto& path,
+                        bool directory) { return styleResolver
+                            ->IsExcluded(path, directory); },
+                    visit);
+            },
+            [&] { return StyleResolver(options); },
+            processFile,
+            printResult,
+            std::cerr))
         {
             return 1;
         }

@@ -1,19 +1,18 @@
 void f() {
     consume("foo "
-            "bar");
+        "bar");
     consume("abc "
-            "def "
-            "ghi "
-            "jkl");
+        "def " "ghi "
+        "jkl");
     consume("short"
-            "ok");
+        "ok");
     consume("foo "
-            "bar", otherArgument);
+        "bar", otherArgument);
     consume("https://"
-            "example");
+        "example");
     consume(u8"escaped\\n"
-            u8"suffix");
+        u8"suffix");
     consume("foo " /* keep */ "bar");
     consume("foo "
-            "bar");
+        "bar");
 }

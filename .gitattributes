@@ -1,3 +1,6 @@
+# CRLF goldens retain carriage returns as part of the line ending.
+formatter/tests/testdata/**/*crlf.output.cpp whitespace=cr-at-eol
+
 # Spacing fixtures intentionally include trailing whitespace and CRLF.
 formatter/tests/testdata/spacing-options/*.input.cpp -whitespace
 formatter/tests/testdata/spacing-options/*.output.cpp -whitespace

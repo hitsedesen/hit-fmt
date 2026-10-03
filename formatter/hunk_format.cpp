@@ -96,7 +96,7 @@ bool SemanticProtection(const SourceAnalysis& safety, Range source)
     for (;
         it != ranges.end() &&
         (it->Source.Begin < source.End ||
-                (source.Empty() && it->Source.Begin <= source.Begin));
+        (source.Empty() && it->Source.Begin <= source.Begin));
         ++it)
     {
         if (uint16_t(it->Reasons) & ~outside) {
@@ -165,13 +165,13 @@ std::vector<HunkCoverage> FinishCoverage(
         {
             result
                 .push_back(
+                {
                     {
-                        {
-                            std::max(record.Original.Begin, selected[i].Begin),
-                            std::min(record.Original.End, selected[i].End),
-                        },
-                        record.Reason,
-                    });
+                        std::max(record.Original.Begin, selected[i].Begin),
+                        std::min(record.Original.End, selected[i].End),
+                    },
+                    record.Reason,
+                });
         }
     }
     std::sort(
@@ -204,15 +204,14 @@ ChangedFormatResult FormatChanged(
     }
     auto safety =
         BuildSourceAnalysis(
-            tree,
-            {
-                .HonorClangFormatDirectives = prepared
-                    .HonorClangFormatDirectives,
-                .WhitespaceSensitiveMacros = sensitive,
-                .ImmutableRanges = request.ImmutableRanges,
-            },
-            file,
-            scratch);
+        tree,
+        {
+            .HonorClangFormatDirectives = prepared.HonorClangFormatDirectives,
+            .WhitespaceSensitiveMacros = sensitive,
+            .ImmutableRanges = request.ImmutableRanges,
+        },
+        file,
+        scratch);
     scratch.release();
     std::pmr::vector<Hunk> windows(selected.begin(), selected.end(), &file);
     std::pmr::vector<HunkCoverage> coverage(&file);
@@ -222,7 +221,7 @@ ChangedFormatResult FormatChanged(
             continue;
         }
         if (prepared.NamespaceComments.Policy !=
-                NamespaceCommentPolicy::Preserve &&
+            NamespaceCommentPolicy::Preserve &&
             region.Kind == parser::NodeKind::NamespaceDeclaration)
         {
             // Matching delimiter metadata, not header/comment text guesses.
@@ -232,13 +231,13 @@ ChangedFormatResult FormatChanged(
                     if (close < region.Tokens.End) {
                         namespaces
                             .push_back(
+                            {
+                                region.Tokens.Begin,
                                 {
-                                    region.Tokens.Begin,
-                                    {
-                                        tree.Token(close).Text.Begin,
-                                        tree.Token(close).Text.End,
-                                    },
-                                });
+                                    tree.Token(close).Text.Begin,
+                                    tree.Token(close).Text.End,
+                                },
+                            });
                     }
                     break;
                 }
@@ -252,7 +251,7 @@ ChangedFormatResult FormatChanged(
         const auto unit = lines.Cover(region.Source);
         const bool safe =
             region.Status == RegionStatus::Complete &&
-                !safety.IntersectsImmutable(region.Source);
+            !safety.IntersectsImmutable(region.Source);
         if (spillover && safe && unit.End - unit.Begin < 200) {
             windows.push_back(unit);
         } else if (!safe ||
@@ -285,10 +284,10 @@ ChangedFormatResult FormatChanged(
     const auto permittedBytes = ByteScope(lines, permitted, file);
     const auto scope =
         NarrowScope(
-            permittedBytes,
-            request.EditScope,
-            tree.Source().size(),
-            file);
+        permittedBytes,
+        request.EditScope,
+        tree.Source().size(),
+        file);
     for (const auto& protection : safety.Protection()) {
         if (detail::HunkScopeIntersects(selectedBytes, protection.Source)) {
             coverage.push_back({protection.Source, Reason::SemanticProtection});
@@ -312,23 +311,21 @@ ChangedFormatResult FormatChanged(
     scoped.EditScope = scope;
     result.Result =
         detail::FormatWithAnalysis(
-            tree,
-            prepared,
-            safety,
-            sensitive,
-            scoped,
-            file,
-            scratch);
+        tree,
+        prepared,
+        safety,
+        sensitive,
+        scoped,
+        file,
+        scratch);
     for (const auto& diagnostic : result.Result.StructuralDiagnostics) {
         if (diagnostic.Tokens.Empty())
             continue;
         // Proven policy exemptions are neither violations nor missing checks.
         if (diagnostic.Reason == StructuralSkip::ShortNamespace ||
             (diagnostic.Reason == StructuralSkip::RequiredBody &&
-                    (diagnostic.Action ==
-                                StructuralAction::RemoveNullStatements ||
-                            diagnostic.Action ==
-                                StructuralAction::RemoveNullDeclarations)))
+            (diagnostic.Action == StructuralAction::RemoveNullStatements ||
+            diagnostic.Action == StructuralAction::RemoveNullDeclarations)))
         {
             continue;
         }
@@ -350,8 +347,8 @@ ChangedFormatResult FormatChanged(
         }
         const bool requiredCandidate =
             diagnostic.Action != StructuralAction::IncludeOrder &&
-                diagnostic.Action != StructuralAction::NamespaceComments &&
-                diagnostic.Reason == StructuralSkip::Protected;
+            diagnostic.Action != StructuralAction::NamespaceComments &&
+            diagnostic.Reason == StructuralSkip::Protected;
         const auto beginGap = diagnostic.Tokens.Begin;
         const auto endGap = diagnostic.Tokens.End;
         // These planner skips occur only AFTER action-specific requiredness,
@@ -362,9 +359,9 @@ ChangedFormatResult FormatChanged(
             !safety.Gaps()[beginGap].IntrinsicPreserve &&
             !safety.Gaps()[endGap].IntrinsicPreserve &&
             !(uint16_t(safety.Gaps()[beginGap].Reasons) &
-                    ~uint16_t(ProtectionReason::OutsideEditScope)) &&
+            ~uint16_t(ProtectionReason::OutsideEditScope)) &&
             !(uint16_t(safety.Gaps()[endGap].Reasons) &
-                    ~uint16_t(ProtectionReason::OutsideEditScope)))
+            ~uint16_t(ProtectionReason::OutsideEditScope)))
         {
             result.RequiredSkips.push_back(diagnostic);
         } else {

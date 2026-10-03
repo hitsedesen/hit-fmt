@@ -16,6 +16,17 @@ ListFirstItem = NextLine
 ListCloser = SameLine
 ListAlignment = Block
 ContinuationOffset = 4
+# Share continuation levels; bodies still establish their own structural base.
+ContinuationNesting = Shared
+ControlHeadersContinuationNesting = Shared
+ControlBodiesContinuationNesting = Shared
+CallsContinuationNesting = Inherit
+ParametersContinuationNesting = Inherit
+CapturesContinuationNesting = Inherit
+BaseListsContinuationNesting = Inherit
+ConstructorListsContinuationNesting = Inherit
+ExpressionsContinuationNesting = Inherit
+ChainsContinuationNesting = Inherit
 AlignmentFallbackOffset = 4
 BaseListsBreak = Always
 BaseListsPacking = VerticalWhenBroken

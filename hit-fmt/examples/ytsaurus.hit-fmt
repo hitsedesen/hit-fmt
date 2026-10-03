@@ -20,6 +20,18 @@ ListFirstItem = NextLine
 ListCloser = SameLine
 ListAlignment = Block
 ContinuationOffset = 4
+# Wrapped expressions and predicate calls share one continuation level.
+# Normal control and lambda bodies retain their own structural indentation.
+ContinuationNesting = Shared
+ControlHeadersContinuationNesting = Shared
+ControlBodiesContinuationNesting = Shared
+CallsContinuationNesting = Inherit
+ParametersContinuationNesting = Inherit
+CapturesContinuationNesting = Inherit
+BaseListsContinuationNesting = Inherit
+ConstructorListsContinuationNesting = Inherit
+ExpressionsContinuationNesting = Inherit
+ChainsContinuationNesting = Inherit
 AlignmentFallbackOffset = 4
 # Base lists always start on a new line, with leading colon/comma punctuation.
 BaseListsBreak = Always

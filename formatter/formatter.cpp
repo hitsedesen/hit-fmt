@@ -22,7 +22,7 @@ CompiledPolicies PreparePolicies(const Style& style)
     if (!style.CallLikeMacroNames.empty()) {
         throw std::invalid_argument(
             "CallLikeMacroNames syntax hints are not yet supported by the "
-                "public pipeline");
+            "public pipeline");
     }
     if (style.AmbiguousTemplateDeclarationSpacing != GapPolicy::Preserve) {
         throw std::invalid_argument(
@@ -50,8 +50,8 @@ CompiledPolicies PreparePolicies(const Style& style)
     if (!pending.empty()) {
         throw std::invalid_argument(
             std::string(pending) +
-                " is staged configuration; its public pipeline consumer "
-                    "is not yet supported");
+            " is staged configuration; its public pipeline consumer "
+            "is not yet supported");
     }
     return policies;
 }
@@ -74,8 +74,8 @@ NamespaceCommentOptions CommentOptions(const Style& style)
     }
     const auto space =
         style.TrailingCommentSpaces
-            ? std::nullopt
-            : GapUsesSpace(style.TrailingCommentSpacing, GapContext::Rebuilt);
+        ? std::nullopt
+        : GapUsesSpace(style.TrailingCommentSpacing, GapContext::Rebuilt);
     return {
         policy,
         style.ShortNamespaceLines,
@@ -99,12 +99,12 @@ std::pmr::vector<ProtectedSourceRange> ProjectProtection(
         }
         auto it =
             std::lower_bound(
-                original.begin(),
-                original.end(),
-                piece.Original.Begin,
-                [] (
-                    const auto& range,
-                    Offset begin) { return range.Source.End <= begin; });
+            original.begin(),
+            original.end(),
+            piece.Original.Begin,
+            [] (
+                const auto& range,
+                Offset begin) { return range.Source.End <= begin; });
         for (;
             it != original.end() && it->Source.Begin < piece.Original.End;
             ++it)
@@ -113,13 +113,13 @@ std::pmr::vector<ProtectedSourceRange> ProjectProtection(
             const auto end = std::min(it->Source.End, piece.Original.End);
             result
                 .push_back(
+                {
                     {
-                        {
-                            piece.Output.Begin + begin - piece.Original.Begin,
-                            piece.Output.Begin + end - piece.Original.Begin,
-                        },
-                        it->Reasons,
-                    });
+                        piece.Output.Begin + begin - piece.Original.Begin,
+                        piece.Output.Begin + end - piece.Original.Begin,
+                    },
+                    it->Reasons,
+                });
         }
     }
     return result;
@@ -155,19 +155,19 @@ std::pmr::vector<Range> ProjectEditScope(
         }
         auto it =
             std::lower_bound(
-                original.begin(),
-                original.end(),
-                piece.Original.Begin,
-                [] (Range range, Offset begin) { return range.End <= begin; });
+            original.begin(),
+            original.end(),
+            piece.Original.Begin,
+            [] (Range range, Offset begin) { return range.End <= begin; });
         for (; it != original.end() && it->Begin < piece.Original.End; ++it) {
             const auto begin = std::max(it->Begin, piece.Original.Begin);
             const auto end = std::min(it->End, piece.Original.End);
             result
                 .push_back(
-                    {
-                        piece.Output.Begin + begin - piece.Original.Begin,
-                        piece.Output.Begin + end - piece.Original.Begin,
-                    });
+                {
+                    piece.Output.Begin + begin - piece.Original.Begin,
+                    piece.Output.Begin + end - piece.Original.Begin,
+                });
         }
     }
     std::sort(
@@ -236,8 +236,8 @@ std::pmr::vector<GapId> GeneratedGaps(
             }
             if (range.Begin < range.End &&
                 (piece == provenance.size() || provenance[piece].Generated ||
-                        range.Begin < provenance[piece].Output.Begin ||
-                        range.End > provenance[piece].Output.End))
+                range.Begin < provenance[piece].Output.Begin ||
+                range.End > provenance[piece].Output.End))
             {
                 reassembled.push_back(i);
             }
@@ -346,16 +346,16 @@ void ComposeMaps(
         if (map.Source.Begin == document::InvalidId) {
             result.Map
                 .push_back(
-                    {
-                        output,
-                        {},
-                        original,
-                        NoStructuralAction,
-                        false,
-                        map.Exact,
-                        map.Protected,
-                        true,
-                    });
+                {
+                    output,
+                    {},
+                    original,
+                    NoStructuralAction,
+                    false,
+                    map.Exact,
+                    map.Protected,
+                    true,
+                });
             continue;
         }
         const auto source = Range { map.Source.Begin, map.Source.End };
@@ -365,12 +365,12 @@ void ComposeMaps(
             }
             auto it =
                 std::lower_bound(
-                    safety.Protection().begin(),
-                    safety.Protection().end(),
-                    source.Begin,
-                    [] (
-                        const auto& range,
-                        Offset begin) { return range.Source.End <= begin; });
+                safety.Protection().begin(),
+                safety.Protection().end(),
+                source.Begin,
+                [] (
+                    const auto& range,
+                    Offset begin) { return range.Source.End <= begin; });
             for (;
                 it != safety.Protection().end() &&
                 it->Source.Begin < source.End;
@@ -380,13 +380,13 @@ void ComposeMaps(
                 const auto end = std::min(source.End, it->Source.End);
                 result.OutputProtection
                     .push_back(
+                    {
                         {
-                            {
-                                output.Begin + begin - source.Begin,
-                                output.Begin + end - source.Begin,
-                            },
-                            it->Reasons,
-                        });
+                            output.Begin + begin - source.Begin,
+                            output.Begin + end - source.Begin,
+                        },
+                        it->Reasons,
+                    });
             }
         }
         // A zero-width syntax insertion anchor belongs to the preceding
@@ -405,7 +405,7 @@ void ComposeMaps(
         for (;
             it != provenance.end() &&
             (it->Output.Begin < source.End ||
-                    (source.Empty() && it->Output.Begin <= source.Begin));
+            (source.Empty() && it->Output.Begin <= source.Begin));
             ++it)
         {
             const auto begin = std::max(source.Begin, it->Output.Begin);
@@ -424,16 +424,16 @@ void ComposeMaps(
                       it->Original.Begin + end - it->Output.Begin };
             result.Map
                 .push_back(
-                    {
-                        mappedOutput,
-                        origin,
-                        original,
-                        it->Operation,
-                        true,
-                        map.Exact && !it->Generated,
-                        map.Protected,
-                        !map.Exact || it->Generated,
-                    });
+                {
+                    mappedOutput,
+                    origin,
+                    original,
+                    it->Operation,
+                    true,
+                    map.Exact && !it->Generated,
+                    map.Protected,
+                    !map.Exact || it->Generated,
+                });
             added = true;
             if (source.Empty()) {
                 break;
@@ -442,16 +442,16 @@ void ComposeMaps(
         if (!added) {
             result.Map
                 .push_back(
-                    {
-                        output,
-                        {},
-                        original,
-                        NoStructuralAction,
-                        false,
-                        false,
-                        map.Protected,
-                        true,
-                    });
+                {
+                    output,
+                    {},
+                    original,
+                    NoStructuralAction,
+                    false,
+                    false,
+                    map.Protected,
+                    true,
+                });
         }
     }
     MergeProtection(result.OutputProtection);
@@ -470,9 +470,9 @@ void ApplyComments(
     const auto actionBase = result.StructuralOperations.size();
     result.StructuralOperations
         .insert(
-            result.StructuralOperations.end(),
-            comments.Operations.begin(),
-            comments.Operations.end());
+        result.StructuralOperations.end(),
+        comments.Operations.begin(),
+        comments.Operations.end());
     std::pmr::vector<NamespaceIdentity> namespaces(
         namespacePlan.Namespaces.begin(), namespacePlan.Namespaces.end(),
         &scratch);
@@ -496,10 +496,10 @@ void ApplyComments(
     for (const auto& edit : comments.Edits) {
         copies
             .push_back(
-                {
-                    {cursor, edit.Source.Begin},
-                    {output, output + edit.Source.Begin - cursor},
-                });
+            {
+                {cursor, edit.Source.Begin},
+                {output, output + edit.Source.Begin - cursor},
+            });
         output += edit.Source.Begin - cursor;
         const auto begin = output;
         for (auto p = edit.PieceBegin; p < edit.PieceEnd; ++p) {
@@ -510,13 +510,13 @@ void ApplyComments(
             const auto owner = comments.Operations[edit.Operation].Owner;
             const auto identity =
                 std::lower_bound(
-                    namespaces.begin(),
-                    namespaces.end(),
-                    owner.Begin,
-                    [] (
-                        const auto& ns,
-                        parser::TokenIndex token) { return ns.Owner.Begin <
-                            token; });
+                namespaces.begin(),
+                namespaces.end(),
+                owner.Begin,
+                [] (
+                    const auto& ns,
+                    parser::TokenIndex token) { return ns.Owner.Begin <
+                        token; });
             if (identity == namespaces.end() ||
                 identity->Owner.Begin != owner.Begin)
             {
@@ -525,16 +525,16 @@ void ApplyComments(
             const auto anchor = original.Token(identity->Close).Text.End;
             generated
                 .push_back(
-                    {
-                        {begin, output},
-                        {anchor, anchor},
-                        document::NoIdentity,
-                        StructuralActionId(actionBase + edit.Operation),
-                        true,
-                        false,
-                        false,
-                        true,
-                    });
+                {
+                    {begin, output},
+                    {anchor, anchor},
+                    document::NoIdentity,
+                    StructuralActionId(actionBase + edit.Operation),
+                    true,
+                    false,
+                    false,
+                    true,
+                });
         }
         cursor = edit.Source.End;
     }
@@ -543,12 +543,12 @@ void ApplyComments(
     auto containing = [&] (Range range) -> const Copy* {
         auto it =
             std::lower_bound(
-                copies.begin(),
-                copies.end(),
-                range.Begin,
-                [] (
-                    const auto& copy,
-                    Offset begin) { return copy.Before.End <= begin; });
+            copies.begin(),
+            copies.end(),
+            range.Begin,
+            [] (
+                const auto& copy,
+                Offset begin) { return copy.Before.End <= begin; });
         if (it != copies.end() && it->Before.Begin <= range.Begin &&
             range.End <= it->Before.End)
         {
@@ -587,12 +587,12 @@ void ApplyComments(
     for (const auto& map : result.Map) {
         auto it =
             std::lower_bound(
-                copies.begin(),
-                copies.end(),
-                map.Output.Begin,
-                [] (
-                    const auto& copy,
-                    Offset begin) { return copy.Before.End <= begin; });
+            copies.begin(),
+            copies.end(),
+            map.Output.Begin,
+            [] (
+                const auto& copy,
+                Offset begin) { return copy.Before.End <= begin; });
         for (; it != copies.end() && it->Before.Begin < map.Output.End; ++it) {
             const auto begin = std::max(map.Output.Begin, it->Before.Begin);
             const auto end = std::min(map.Output.End, it->Before.End);
@@ -641,14 +641,14 @@ void WidthDiagnostics(
         if (width > policies.ColumnLimit) {
             result.Diagnostics
                 .push_back(
-                    {
-                        {line, uint32_t(policies.ColumnLimit + 1)},
-                        std::format(
-                            "emitted line width {} exceeds ColumnLimit {}",
-                            width,
-                            policies.ColumnLimit),
-                        LayoutDiagnosticKind::LineWidth,
-                    });
+                {
+                    {line, uint32_t(policies.ColumnLimit + 1)},
+                    std::format(
+                        "emitted line width {} exceeds ColumnLimit {}",
+                        width,
+                        policies.ColumnLimit),
+                    LayoutDiagnosticKind::LineWidth,
+                });
         }
     };
     for (size_t i = 0; i < result.Text.size(); ++i)
@@ -700,16 +700,15 @@ FormatResult Format(
     }
     auto safety =
         BuildSourceAnalysis(
-            original,
-            {
-                .HonorClangFormatDirectives = prepared
-                    .HonorClangFormatDirectives,
-                .WhitespaceSensitiveMacros = sensitive,
-                .ImmutableRanges = request.ImmutableRanges,
-                .EditScope = request.EditScope,
-            },
-            file,
-            scratch);
+        original,
+        {
+            .HonorClangFormatDirectives = prepared.HonorClangFormatDirectives,
+            .WhitespaceSensitiveMacros = sensitive,
+            .ImmutableRanges = request.ImmutableRanges,
+            .EditScope = request.EditScope,
+        },
+        file,
+        scratch);
     scratch.release();
     return detail::FormatWithAnalysis(
         original,
@@ -732,19 +731,19 @@ FormatResult detail::FormatWithAnalysis(
 {
     auto plan =
         PlanStructuralEdits(
-            original,
-            safety,
-            prepared.Structural,
-            file,
-            scratch);
+        original,
+        safety,
+        prepared.Structural,
+        file,
+        scratch);
     scratch.release();
     auto namespacePlan =
         PlanNamespaceComments(
-            original,
-            safety,
-            prepared.NamespaceComments,
-            file,
-            scratch);
+        original,
+        safety,
+        prepared.NamespaceComments,
+        file,
+        scratch);
     scratch.release();
     FormatResult result;
     result.StructuralDiagnostics
@@ -764,60 +763,60 @@ FormatResult detail::FormatWithAnalysis(
         normalized->Text.append(util::SourcePaddingSize, '\0');
         normalizedTree
             .emplace(
-                parser::Parse(
-                    {normalized->Text.data(), size},
-                    [] (parser::ParseError) {}));
+            parser::Parse(
+            {normalized->Text.data(), size},
+            [] (parser::ParseError) {}));
         tree = &*normalizedTree;
         auto inherited =
             ProjectProtection(
-                safety.Protection(),
-                normalized->Provenance,
-                scratch);
+            safety.Protection(),
+            normalized->Provenance,
+            scratch);
         std::optional<std::span<const Range>> currentScope;
         std::pmr::vector<Range> selected(&scratch);
         if (request.EditScope) {
             selected =
                 ProjectEditScope(
-                    *request.EditScope,
-                    safety,
-                    normalized->Provenance,
-                    scratch);
+                *request.EditScope,
+                safety,
+                normalized->Provenance,
+                scratch);
             currentScope = selected;
         }
         normalizedSafety
             .emplace(
-                BuildSourceAnalysis(
-                    *tree,
-                    {
-                        .HonorClangFormatDirectives = prepared
-                            .HonorClangFormatDirectives,
-                        .WhitespaceSensitiveMacros = sensitive,
-                        .InheritedProtection = inherited,
-                        .EditScope = currentScope,
-                    },
-                    file,
-                    scratch));
+            BuildSourceAnalysis(
+            *tree,
+            {
+                .HonorClangFormatDirectives = prepared
+                    .HonorClangFormatDirectives,
+                .WhitespaceSensitiveMacros = sensitive,
+                .InheritedProtection = inherited,
+                .EditScope = currentScope,
+            },
+            file,
+            scratch));
         currentSafety = &*normalizedSafety;
         provenance = normalized->Provenance;
     } else {
         unchanged
             .push_back(
-                {
-                    {0, CheckedSourceAnalysisSize(original.Source().size())},
-                    {0, CheckedSourceAnalysisSize(original.Source().size())},
-                    NoStructuralAction,
-                    false,
-                });
+            {
+                {0, CheckedSourceAnalysisSize(original.Source().size())},
+                {0, CheckedSourceAnalysisSize(original.Source().size())},
+                NoStructuralAction,
+                false,
+            });
         provenance = unchanged;
     }
     scratch.release();
     auto spacing =
         BuildSyntaxSpacing(
-            *tree,
-            *currentSafety,
-            prepared.Policies,
-            file,
-            scratch);
+        *tree,
+        *currentSafety,
+        prepared.Policies,
+        file,
+        scratch);
     scratch.release();
     SyntaxLayoutOptions options;
     if (prepared.Policies.LineEnding == LineEnding::CRLF) {
@@ -842,38 +841,37 @@ FormatResult detail::FormatWithAnalysis(
     document::Document document(tree->Source(), &file);
     const auto built =
         BuildSyntaxDocument(
-            *tree,
-            prepared.Policies,
-            prepared.Annotations,
-            *currentSafety,
-            spacing,
-            document,
-            scratch,
-            options);
+        *tree,
+        prepared.Policies,
+        prepared.Annotations,
+        *currentSafety,
+        spacing,
+        document,
+        scratch,
+        options);
     if (!built) {
         throw std::runtime_error(
             std::format(
-                "syntax lowering failed: code {} token {} core {}",
-                int(built.Code),
-                built.Token,
-                int(built.Core.Code)));
+            "syntax lowering failed: code {} token {} core {}",
+            int(built.Code),
+            built.Token,
+            int(built.Core.Code)));
     }
     options.GeneratedAdjacencies ={};
     options.ReassembledGaps ={};
     scratch.release();
     const bool needMaps =
         request.SourceMap ||
-            prepared.NamespaceComments.Policy !=
-                NamespaceCommentPolicy::Preserve;
+        prepared.NamespaceComments.Policy != NamespaceCommentPolicy::Preserve;
     auto renderPolicy = SyntaxRenderPolicy(prepared.Policies, options);
     renderPolicy.SourceMap = needMaps;
     auto rendered = document.Render(renderPolicy, &file);
     if (!rendered.State) {
         throw std::runtime_error(
             std::format(
-                "layout rendering failed: code {} node {}",
-                int(rendered.State.Code),
-                rendered.State.Node));
+            "layout rendering failed: code {} node {}",
+            int(rendered.State.Code),
+            rendered.State.Node));
     }
     result.Text.assign(rendered.Text);
     if (needMaps) {
@@ -882,9 +880,9 @@ FormatResult detail::FormatWithAnalysis(
         result.OriginalTokens.resize(original.TokenCount());
         auto identities =
             OriginalIdentities(
-                *tree,
-                normalized ? &*normalized : nullptr,
-                scratch);
+            *tree,
+            normalized ? &*normalized : nullptr,
+            scratch);
         ComposeMaps(result, rendered, *currentSafety, identities, provenance);
         scratch.release();
         std::pmr::vector<Range> outputProtection(&scratch);
@@ -898,18 +896,18 @@ FormatResult detail::FormatWithAnalysis(
         // nonempty output protection alone cannot express an EOF point fence.
         auto comments =
             ResolveNamespaceComments(
-                original,
-                namespacePlan,
-                result.Text,
-                result.OriginalTokens,
-                outputProtection,
-                file,
-                scratch);
+            original,
+            namespacePlan,
+            result.Text,
+            result.OriginalTokens,
+            outputProtection,
+            file,
+            scratch);
         result.StructuralDiagnostics
             .insert(
-                result.StructuralDiagnostics.end(),
-                comments.Skipped.begin(),
-                comments.Skipped.end());
+            result.StructuralDiagnostics.end(),
+            comments.Skipped.begin(),
+            comments.Skipped.end());
         scratch.release();
         if (!comments.Edits.empty()) {
             auto text =

@@ -17,11 +17,11 @@ int mixed(int alpha, int beta) {
 void update(int& result, int alpha, int beta) {
     result =
         alpha + beta + alpha
-            + beta;
+        + beta;
     result =
         alpha + beta + alpha
-            + beta; // keep comment
+        + beta; // keep comment
     result =
         alpha + beta + alpha
-            + beta; /* keep comment */
+        + beta; /* keep comment */
 }

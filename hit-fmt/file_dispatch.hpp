@@ -74,14 +74,14 @@ bool RunParallelFiles(
                     {
                         std::unique_lock lock(mutex);
                         ready.wait(
-                                lock,
-                                [&] {
-                                    bool canClaim =
-                                        !pending.empty() &&
-                                            bufferedBytes < BufferedOutputLimit;
-                                    return stop || canClaim ||
-                                        (discoveryDone && pending.empty());
-                                });
+                            lock,
+                            [&] {
+                                bool canClaim =
+                                    !pending.empty() &&
+                                    bufferedBytes < BufferedOutputLimit;
+                                return stop || canClaim ||
+                                    (discoveryDone && pending.empty());
+                            });
                         if (stop || (discoveryDone && pending.empty())) {
                             return;
                         }
@@ -128,12 +128,12 @@ bool RunParallelFiles(
                         }
                         std::unique_lock lock(mutex);
                         ready.wait(
-                                lock,
-                                [&] {
-                                    return stop ||
-                                        results.size() + batch.Paths.size() <=
-                                            pendingFileLimit;
-                                });
+                            lock,
+                            [&] {
+                                return stop ||
+                                    results.size() + batch.Paths.size() <=
+                                    pendingFileLimit;
+                            });
                         if (stop) {
                             return false;
                         }
@@ -193,14 +193,12 @@ bool RunParallelFiles(
             {
                 std::unique_lock lock(mutex);
                 ready.wait(
-                        lock,
-                        [&] {
-                            return discoveryError ||
-                                (!results.empty() &&
-                                        results.front().has_value()) ||
-                                (discoveryDone && results.empty()) ||
-                                canLaunch();
-                        });
+                    lock,
+                    [&] {
+                        return discoveryError ||
+                            (!results.empty() && results.front().has_value()) ||
+                            (discoveryDone && results.empty()) || canLaunch();
+                    });
                 if (discoveryError) {
                     errors << *discoveryError << '\n';
                     return false;
@@ -225,7 +223,7 @@ bool RunParallelFiles(
                 }
                 bufferedBytes -=
                     results.front()->Output.size() +
-                        results.front()->Error.size();
+                    results.front()->Error.size();
                 result = std::move(*results.front());
                 results.pop_front();
                 ++printed;

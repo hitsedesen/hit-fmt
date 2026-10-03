@@ -36,7 +36,7 @@ enum class ProtectionReason : uint16_t
 constexpr ProtectionReason operator|(ProtectionReason a, ProtectionReason b)
 {
     return static_cast<ProtectionReason>(static_cast<uint16_t>(a) |
-            static_cast<uint16_t>(b));
+        static_cast<uint16_t>(b));
 }
 
 struct ProtectedSourceRange

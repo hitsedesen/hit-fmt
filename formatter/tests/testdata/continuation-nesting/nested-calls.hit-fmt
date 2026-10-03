@@ -1,0 +1,17 @@
+Layout = Canonical
+IndentWidth = 4
+ColumnLimit = 60
+IndentationKind = Spaces
+CallsBreak = Always
+CallsFirstItem = NextLine
+CallsAlignment = Block
+ExpressionsBreak = Always
+InitializersBreak = Always
+InitializersFirstItem = NextLine
+InitializersCloser = OwnLine
+ControlHeadersFirstItem = InlineIfFits
+ControlHeadersAlignment = Block
+ControlBracePlacement = NextLineIfHeaderBroken
+ControlHeadersContinuationNesting = Shared
+ControlBodiesContinuationNesting = Shared
+CallsContinuationNesting = Additive

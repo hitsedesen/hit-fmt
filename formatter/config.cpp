@@ -58,7 +58,7 @@ std::string_view StripComment(std::string_view line)
 {
     throw std::runtime_error(
         path.string() + ":" + std::to_string(line) + ": " +
-            std::string(message));
+        std::string(message));
 }
 
 // A closing bracket inside a quoted item does not terminate an array.
@@ -238,12 +238,12 @@ std::vector<std::string> ParseNamespaceExemptions(
             auto part = std::string_view(name).substr(start, end - start);
             if (part.empty() ||
                 !(std::isalpha(static_cast<unsigned char>(part.front())) ||
-                        part.front() == '_') ||
+                part.front() == '_') ||
                 part
-                    .find_first_not_of(
-                        "abcdefghijklmnopqrstuvwxyz"
-                            "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_") !=
-                    std::string_view::npos)
+                .find_first_not_of(
+                "abcdefghijklmnopqrstuvwxyz"
+                "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_") !=
+                std::string_view::npos)
             {
                 ThrowConfigError(
                     path,
@@ -268,12 +268,11 @@ std::vector<std::string> ParseCallNames(
     for (const auto& name : names) {
         if (name.empty() ||
             !(std::isalpha(static_cast<unsigned char>(name.front())) ||
-                    name.front() == '_') ||
+            name.front() == '_') ||
             name
-                .find_first_not_of(
-                    "abcdefghijklmnopqrstuvwxyz"
-                        "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_") !=
-                std::string::npos)
+            .find_first_not_of(
+            "abcdefghijklmnopqrstuvwxyz"
+            "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_") != std::string::npos)
         {
             ThrowConfigError(path, line, "expected call identifier names");
         }
@@ -292,10 +291,9 @@ std::optional<std::vector<std::string>> ParseNamePrefixes(
     }
     for (const auto& prefix : prefixes) {
         if (prefix
-                .find_first_not_of(
-                    "abcdefghijklmnopqrstuvwxyz"
-                        "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_") !=
-            std::string::npos)
+            .find_first_not_of(
+            "abcdefghijklmnopqrstuvwxyz"
+            "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_") != std::string::npos)
         {
             ThrowConfigError(
                 path,
@@ -521,11 +519,11 @@ void ValidateStyleLimits(
                 };
                 if ((at == 0 || !identifier(reason[at - 1])) &&
                     (at + key.size() == reason.size() ||
-                            !identifier(reason[at + key.size()])))
+                    !identifier(reason[at + key.size()])))
                 {
                     message +=
                         " [" + std::string(key) + " at " + path.string() + ":" +
-                            std::to_string(settingLines[index]) + "]";
+                        std::to_string(settingLines[index]) + "]";
                     break;
                 }
                 at = reason.find(key, at + key.size());
@@ -594,7 +592,7 @@ void RejectDuplicateAnnotations(
     if (std::adjacent_find(names.begin(), names.end()) != names.end()) {
         throw std::invalid_argument(
             "duplicate " + std::string(key) +
-                " annotation name or scope endpoint");
+            " annotation name or scope endpoint");
     }
 }
 
@@ -607,8 +605,8 @@ void ValidateAnnotationNames(
     scratch.clear();
     for (const auto& name : input) {
         if (!(qualified
-                    ? AnnotationQualifiedName(name)
-                    : AnnotationIdentifier(name)))
+            ? AnnotationQualifiedName(name)
+            : AnnotationIdentifier(name)))
         {
             throw std::invalid_argument(
                 "invalid " + std::string(key) + " annotation name");
@@ -644,12 +642,12 @@ void ValidateLibraryAnnotationStyle(const Style& style)
     std::vector<std::string_view> scratch;
     scratch
         .reserve(
-            std::max(
-                {
-                    style.CallLineFirstStringNames.size(),
-                    style.ChainedCallRootNames.size(),
-                    style.IndentedCallScopePairs.size() * 2,
-                }));
+        std::max(
+        {
+            style.CallLineFirstStringNames.size(),
+            style.ChainedCallRootNames.size(),
+            style.IndentedCallScopePairs.size() * 2,
+        }));
     ValidateAnnotationNames(
         style.CallLineFirstStringNames,
         scratch,
@@ -720,10 +718,10 @@ const MessagePinAnnotation* LibraryAnnotations::FindMessagePin(
 {
     const auto found =
         std::lower_bound(
-            MessagePins_.begin(),
-            MessagePins_.end(),
-            name,
-            [] (const auto& value, auto key) { return value.Name < key; });
+        MessagePins_.begin(),
+        MessagePins_.end(),
+        name,
+        [] (const auto& value, auto key) { return value.Name < key; });
     return found != MessagePins_.end() && found->Name == name
         ? &*found
         : nullptr;
@@ -757,10 +755,10 @@ const VisualScopeAnnotation* LibraryAnnotations::FindScopeBegin(
 {
     const auto found =
         std::lower_bound(
-            VisualScopes_.begin(),
-            VisualScopes_.end(),
-            name,
-            [] (const auto& value, auto key) { return value.Begin < key; });
+        VisualScopes_.begin(),
+        VisualScopes_.end(),
+        name,
+        [] (const auto& value, auto key) { return value.Begin < key; });
     return found != VisualScopes_.end() && found->Begin == name
         ? &*found
         : nullptr;
@@ -771,13 +769,10 @@ const VisualScopeAnnotation* LibraryAnnotations::FindScopeEnd(
 {
     const auto found =
         std::lower_bound(
-            ScopeEndOrder_.begin(),
-            ScopeEndOrder_.end(),
-            name,
-            [
-                &] (
-                auto index,
-                auto key) { return VisualScopes_[index].End < key; });
+        ScopeEndOrder_.begin(),
+        ScopeEndOrder_.end(),
+        name,
+        [&] (auto index, auto key) { return VisualScopes_[index].End < key; });
     return found != ScopeEndOrder_.end() && VisualScopes_[*found].End == name
         ? &VisualScopes_[*found]
         : nullptr;
@@ -822,7 +817,7 @@ Configuration LoadConfigFile(const std::filesystem::path& path)
                     if (!input.eof()) {
                         throw std::runtime_error(
                             "failed to read configuration file: " +
-                                path.string());
+                            path.string());
                     }
                     ThrowConfigError(path, settingLine, "unterminated array");
                 }

@@ -2,14 +2,14 @@ void f()
 {
     auto sum =
         firstValue + secondValue
-            + thirdValue;
+        + thirdValue;
     auto value =
         firstValue || secondValue
-            || thirdValue;
+        || thirdValue;
     auto result =
         firstValue << secondValue <<
-            thirdValue;
+        thirdValue;
     auto product =
         firstValue * secondValue
-            * thirdValue;
+        * thirdValue;
 }

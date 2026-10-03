@@ -80,14 +80,14 @@ void Literal(
     }
     plan.Edits
         .push_back(
-            {
-                source,
-                begin,
-                static_cast<uint32_t>(plan.Pieces.size()),
-                id,
-                depth,
-                edge,
-            });
+        {
+            source,
+            begin,
+            static_cast<uint32_t>(plan.Pieces.size()),
+            id,
+            depth,
+            edge,
+        });
 }
 
 void Sort(StructuralPlan& plan)
@@ -177,13 +177,13 @@ void Walk(
             previousTrailingLabel);
         bool sequence =
             node->Kind == NK::TranslationUnit ||
-                node->Kind == NK::NamespaceDeclaration;
+            node->Kind == NK::NamespaceDeclaration;
         if (node->Kind == NK::ExportDeclaration ||
             node->Kind == NK::LinkageSpecification)
         {
             auto header =
                 node->Tokens.Begin +
-                    (node->Kind == NK::ExportDeclaration ? 1 : 2);
+                (node->Kind == NK::ExportDeclaration ? 1 : 2);
             while (header < node->Tokens.End &&
                 tree.Kind(header) == TK::Comment)
             {
@@ -191,8 +191,8 @@ void Walk(
             }
             sequence =
                 header < node->Tokens.End &&
-                    tree.Kind(header) == TK::Operator_OpenBrace &&
-                    tree.MatchingDelimiter(header) < node->Tokens.End;
+                tree.Kind(header) == TK::Operator_OpenBrace &&
+                tree.MatchingDelimiter(header) < node->Tokens.End;
         }
         stack.push_back({node, node->Child(), NK::Error, sequence});
     };
@@ -270,7 +270,7 @@ bool ParseInclude(const parser::SyntaxTree& tree, TI token, Include& result)
     auto close = text.find(angled ? '>' : '"', 1);
     if (close == std::string_view::npos || close == 1 ||
         text.substr(close + 1).find_first_not_of(" \t\r") !=
-            std::string_view::npos)
+        std::string_view::npos)
     {
         return false;
     }
@@ -301,10 +301,10 @@ bool DirectiveOnly(const SourceAnalysis& safety, SR range)
     auto intervals = safety.Protection();
     auto it =
         std::lower_bound(
-            intervals.begin(),
-            intervals.end(),
-            range.Begin,
-            [] (const auto& r, auto offset) { return r.Source.End <= offset; });
+        intervals.begin(),
+        intervals.end(),
+        range.Begin,
+        [] (const auto& r, auto offset) { return r.Source.End <= offset; });
     for (; it != intervals.end() && it->Source.Begin < range.End; ++it) {
         if (it->Reasons != ProtectionReason::Directive) {
             return false;
@@ -334,7 +334,7 @@ void ScanIncludeGroups(
         while (end < tree.TokenCount() && ParseInclude(tree, end, next) &&
             group.back().Atom.End == next.Atom.Begin &&
             tree.TokenText(i).ends_with('\r') ==
-                tree.TokenText(end).ends_with('\r'))
+            tree.TokenText(end).ends_with('\r'))
         {
             group.push_back(next);
             ++end;
@@ -375,21 +375,21 @@ void Includes(
                 std::sort(group.begin(), group.end(), compare);
                 auto id =
                     Operation(
-                        plan,
-                        StructuralAction::IncludeOrder,
-                        descriptor.Tokens);
+                    plan,
+                    StructuralAction::IncludeOrder,
+                    descriptor.Tokens);
                 auto start = static_cast<uint32_t>(plan.Pieces.size());
                 for (const auto& atom : group) {
                     plan.Pieces.push_back({atom.Atom, {}, true});
                 }
                 plan.Edits
                     .push_back(
-                        {
-                            descriptor.Source,
-                            start,
-                            static_cast<uint32_t>(plan.Pieces.size()),
-                            id,
-                        });
+                    {
+                        descriptor.Source,
+                        start,
+                        static_cast<uint32_t>(plan.Pieces.size()),
+                        id,
+                    });
             }
         },
         [&] (parser::TokenRange tokens, StructuralSkip reason) {
@@ -417,10 +417,10 @@ size_t Validate(std::string_view source, const StructuralPlan& plan)
         if (previous && previous->Source.Begin == edit.Source.Begin &&
             previous->Source.Empty() && edit.Source.Empty() &&
             (previous->Boundary > edit.Boundary ||
-                    (previous->Boundary == edit.Boundary &&
-                            (edit.Boundary == StructuralEdit::Edge::Close
-                                    ? previous->Depth <= edit.Depth
-                                    : previous->Depth >= edit.Depth))))
+            (previous->Boundary == edit.Boundary &&
+            (edit.Boundary == StructuralEdit::Edge::Close
+            ? previous->Depth <= edit.Depth
+            : previous->Depth >= edit.Depth))))
         {
             throw std::invalid_argument(
                 "unordered/co-owned structural insertion");
@@ -428,12 +428,12 @@ size_t Validate(std::string_view source, const StructuralPlan& plan)
         auto kind = plan.Operations[edit.Operation].Kind;
         auto bit =
             edit.Boundary == StructuralEdit::Edge::Open
-                ? 1u
-                : edit.Boundary == StructuralEdit::Edge::Close ? 2u : 4u;
+            ? 1u
+            : edit.Boundary == StructuralEdit::Edge::Close ? 2u : 4u;
         if ((ownership[edit.Operation] & bit) != 0 ||
             (kind == StructuralAction::AddMissingControlBraces
-                    ? !edit.Source.Empty() || bit == 4u
-                    : bit != 4u))
+            ? !edit.Source.Empty() || bit == 4u
+            : bit != 4u))
         {
             throw std::invalid_argument("non-atomic structural operation");
         }
@@ -443,14 +443,14 @@ size_t Validate(std::string_view source, const StructuralPlan& plan)
             const auto& piece = plan.Pieces[p];
             if (piece.FromSource &&
                 (piece.Source.Begin > piece.Source.End ||
-                        piece.Source.End > source.size()))
+                piece.Source.End > source.size()))
             {
                 throw std::invalid_argument("invalid structural source piece");
             }
             auto extra =
                 piece.FromSource
-                    ? piece.Source.End - piece.Source.Begin
-                    : piece.Literal.size();
+                ? piece.Source.End - piece.Source.Begin
+                : piece.Literal.size();
             if (extra > util::MaxSourceSize - size) {
                 throw std::length_error("structural output too large");
             }
@@ -462,8 +462,8 @@ size_t Validate(std::string_view source, const StructuralPlan& plan)
     for (size_t i = 0; i < ownership.size(); ++i) {
         auto required =
             plan.Operations[i].Kind == StructuralAction::AddMissingControlBraces
-                ? 3u
-                : 4u;
+            ? 3u
+            : 4u;
         if (ownership[i] != required) {
             throw std::invalid_argument("incomplete structural operation");
         }
@@ -488,10 +488,10 @@ bool Intersects(std::span<const SR> ranges, SR query)
 {
     auto it =
         std::lower_bound(
-            ranges.begin(),
-            ranges.end(),
-            query.Begin,
-            [] (SR r, auto offset) { return r.End <= offset; });
+        ranges.begin(),
+        ranges.end(),
+        query.Begin,
+        [] (SR r, auto offset) { return r.End <= offset; });
     return it != ranges.end() &&
         (query.Empty() ? it->Begin <= query.Begin : it->Begin < query.End);
 }
@@ -551,8 +551,8 @@ StructuralPlan PlanStructuralEdits(
     for (TI i = 0; i < tree.TokenCount(); ++i) {
         barriers[i + 1] =
             barriers[i] +
-                (tree.Kind(i) == TK::Comment ||
-                        tree.Kind(i) == TK::PreprocessingDirective);
+            (tree.Kind(i) == TK::Comment ||
+            tree.Kind(i) == TK::PreprocessingDirective);
     }
     // Labels stop at their colon in this parser. A control containing an
     // unresolved label also ends before its required statement, which can be
@@ -589,10 +589,10 @@ StructuralPlan PlanStructuralEdits(
                 attributes |= Attribute(child->Kind);
                 labels |=
                     child->Kind == NK::CaseLabel ||
-                        child->Kind == NK::LabelStatement;
+                    child->Kind == NK::LabelStatement;
                 directives |=
                     child->Kind == NK::PreprocessingDirective ||
-                        child->Kind == NK::PreprocessingConditional;
+                    child->Kind == NK::PreprocessingConditional;
             }
             for (auto* body = node.Child(); body; body = body->NextSibling) {
                 if (Header(body->Kind) || Attribute(body->Kind) ||
@@ -606,11 +606,11 @@ StructuralPlan PlanStructuralEdits(
                 auto tokens = body->Tokens;
                 bool null =
                     body->Kind == NK::ExpressionStatement &&
-                        tokens.Size() == 1 &&
-                        tree.Kind(tokens.Begin) == TK::Operator_Semicolon;
+                    tokens.Size() == 1 &&
+                    tree.Kind(tokens.Begin) == TK::Operator_Semicolon;
                 if (!(null
-                            ? options.EmptyControlBody
-                            : options.AddMissingControlBraces))
+                    ? options.EmptyControlBody
+                    : options.AddMissingControlBraces))
                     continue;
                     // Preserve the conventional else-if chain; nested
                     // then-controls are wrapped together, with closes ordered
@@ -622,8 +622,8 @@ StructuralPlan PlanStructuralEdits(
                 }
                 auto action =
                     null
-                        ? StructuralAction::EmptyControlBody
-                        : StructuralAction::AddMissingControlBraces;
+                    ? StructuralAction::EmptyControlBody
+                    : StructuralAction::AddMissingControlBraces;
                 auto range = Range(tree, tokens);
                 if (status != RegionStatus::Complete) {
                     Skip(plan, action, tokens, StructuralSkip::Incomplete);
@@ -641,16 +641,16 @@ StructuralPlan PlanStructuralEdits(
                         tokens,
                         StructuralSkip::DirectiveBoundary);
                 } else if (barriers[node.Tokens.End] !=
-                        barriers[node.Tokens.Begin] ||
+                    barriers[node.Tokens.Begin] ||
                     AdjacentComment(tree, tokens))
                 {
                     Skip(plan, action, tokens, StructuralSkip::CommentAttached);
                 } else if (safety.IntersectsImmutable(range) ||
                     safety.IntersectsImmutable({range.End, range.End}) ||
                     (safety.Gaps()[tokens.Begin].Preserve &&
-                            safety.Gaps()[tokens.Begin].Source.Empty()) ||
+                    safety.Gaps()[tokens.Begin].Source.Empty()) ||
                     (!null && safety.Gaps()[tokens.End].Preserve &&
-                            safety.Gaps()[tokens.End].Source.Empty()))
+                    safety.Gaps()[tokens.End].Source.Empty()))
                 {
                     Skip(plan, action, tokens, StructuralSkip::Protected);
                 } else {
@@ -678,19 +678,19 @@ StructuralPlan PlanStructuralEdits(
         }
         bool nullStatement =
             options.RemoveNullStatements && parent == NK::CompoundStatement &&
-                node.Kind == NK::ExpressionStatement && node.Tokens.Size() == 1;
+            node.Kind == NK::ExpressionStatement && node.Tokens.Size() == 1;
         bool declarationParent =
             parent == NK::TranslationUnit ||
-                parent == NK::NamespaceDeclaration ||
-                parent == NK::LinkageSpecification ||
-                parent == NK::ExportDeclaration;
+            parent == NK::NamespaceDeclaration ||
+            parent == NK::LinkageSpecification ||
+            parent == NK::ExportDeclaration;
         bool nullDeclaration =
             options.RemoveNullDeclarations && declarationParent &&
-                node.Kind == NK::EmptyDeclaration && node.Tokens.Size() == 1;
+            node.Kind == NK::EmptyDeclaration && node.Tokens.Size() == 1;
         bool functionSuffix =
             options.RemoveNullDeclarations &&
-                node.Kind == NK::FunctionDefinition && !node.Tokens.Empty() &&
-                tree.Kind(node.Tokens.End - 1) == TK::Operator_Semicolon;
+            node.Kind == NK::FunctionDefinition && !node.Tokens.Empty() &&
+            tree.Kind(node.Tokens.End - 1) == TK::Operator_Semicolon;
         if (!(nullStatement || nullDeclaration || functionSuffix))
             return;
             TI token = functionSuffix ? node.Tokens.End - 1 : node.Tokens.Begin;
@@ -699,15 +699,15 @@ StructuralPlan PlanStructuralEdits(
         }
         auto action =
             nullStatement
-                ? StructuralAction::RemoveNullStatements
-                : StructuralAction::RemoveNullDeclarations;
+            ? StructuralAction::RemoveNullStatements
+            : StructuralAction::RemoveNullDeclarations;
             parser::TokenRange tokens{token, token + 1};
             if (status != RegionStatus::Complete) {
             Skip(plan, action, tokens, StructuralSkip::Incomplete);
         } else if ((nullDeclaration && !declarationSequence) ||
             (nullStatement &&
-                    (grandparent == NK::Argument ||
-                            grandparent == NK::StatementExpression)))
+            (grandparent == NK::Argument ||
+            grandparent == NK::StatementExpression)))
         {
             // GNU statement expressions can change from void to a value if
             // their final null statement disappears. Macro braced arguments
@@ -716,16 +716,16 @@ StructuralPlan PlanStructuralEdits(
             Skip(plan, action, tokens, StructuralSkip::RequiredBody);
         } else if (nullStatement &&
             (previousTrailingLabel || previous == NK::CaseLabel ||
-                    previous == NK::LabelStatement))
+            previous == NK::LabelStatement))
         {
             Skip(plan, action, tokens, StructuralSkip::LabelBody);
         } else if (AdjacentComment(tree, tokens)) {
             Skip(plan, action, tokens, StructuralSkip::CommentAttached);
         } else if (safety.IntersectsImmutable(Range(tree, tokens)) ||
             (safety.Gaps()[tokens.Begin].Preserve &&
-                    safety.Gaps()[tokens.Begin].Source.Empty()) ||
+            safety.Gaps()[tokens.Begin].Source.Empty()) ||
             (safety.Gaps()[tokens.End].Preserve &&
-                    safety.Gaps()[tokens.End].Source.Empty()))
+            safety.Gaps()[tokens.End].Source.Empty()))
         {
             Skip(plan, action, tokens, StructuralSkip::Protected);
         } else if (options.PreserveBareCR && safety.Gaps()[token].HasBareCR &&
@@ -786,15 +786,12 @@ StructuralMaterialization MaterializeStructuralEdits(
         result.Text.append(tree.SourceText(source));
         result.Provenance
             .push_back(
-                {
-                    {
-                        begin,
-                        static_cast<parser::SourceOffset>(result.Text.size()),
-                    },
-                    source,
-                    operation,
-                    false,
-                });
+            {
+                {begin, static_cast<parser::SourceOffset>(result.Text.size())},
+                source,
+                operation,
+                false,
+            });
         for (TI i = FirstBeginningAt(tree, source.Begin); i < tree.TokenCount();
              ++i) {
             auto token = tree.Token(i).Text;
@@ -828,27 +825,24 @@ StructuralMaterialization MaterializeStructuralEdits(
                 result.Text.append(piece.Literal);
                 result.Provenance
                     .push_back(
+                    {
                         {
-                            {
-                                start,
-                                static_cast<parser::SourceOffset>(result.Text
-                                    .size()),
-                            },
-                            edit.Source,
-                            edit.Operation,
-                            true,
-                        });
+                            start,
+                            static_cast<parser::SourceOffset>(result.Text
+                                .size()),
+                        },
+                        edit.Source,
+                        edit.Operation,
+                        true,
+                    });
             }
         }
         result.GeneratedAdjacencies
             .push_back(
-                {
-                    {
-                        begin,
-                        static_cast<parser::SourceOffset>(result.Text.size()),
-                    },
-                    edit.Operation,
-                });
+            {
+                {begin, static_cast<parser::SourceOffset>(result.Text.size())},
+                edit.Operation,
+            });
         cursor = edit.Source.End;
     }
     copy(
@@ -923,17 +917,17 @@ NamespaceCommentPlan PlanNamespaceComments(
             // never permission to invent a namespace identity or inspect
             // its text.
             if ((node.Kind == NK::Declaration ||
-                        node.Kind == NK::UnparsedSyntax) &&
+                node.Kind == NK::UnparsedSyntax) &&
                 namespaceKeywords[node.Tokens.End] !=
-                    namespaceKeywords[node.Tokens.Begin])
+                namespaceKeywords[node.Tokens.Begin])
             {
                 plan.Skipped
                     .push_back(
-                        {
-                            StructuralAction::NamespaceComments,
-                            node.Tokens,
-                            StructuralSkip::Incomplete,
-                        });
+                    {
+                        StructuralAction::NamespaceComments,
+                        node.Tokens,
+                        StructuralSkip::Incomplete,
+                    });
             }
             return;
         }
@@ -943,7 +937,7 @@ NamespaceCommentPlan PlanNamespaceComments(
         auto fail = [&] (StructuralSkip reason) {
             plan.Skipped
                 .push_back(
-                    {StructuralAction::NamespaceComments, node.Tokens, reason});
+                {StructuralAction::NamespaceComments, node.Tokens, reason});
         };
             TI open = original.TokenCount();
             bool expectName = true, named = false, valid = true;
@@ -988,8 +982,8 @@ NamespaceCommentPlan PlanNamespaceComments(
                                  ? begin
                                  : original.Token(comment).Text.End};
             if (safety
-                .IntersectsImmutable(
-                    Range(original, {node.Tokens.Begin, open + 1})) ||
+            .IntersectsImmutable(
+            Range(original, {node.Tokens.Begin, open + 1})) ||
             safety.IntersectsImmutable(Range(original, {close, close + 1})) ||
             safety.IntersectsImmutable(window))
         {
@@ -998,7 +992,7 @@ NamespaceCommentPlan PlanNamespaceComments(
         }
         plan.Namespaces
             .push_back(
-                {node.Tokens, {node.Tokens.Begin, open}, open, close, comment});
+            {node.Tokens, {node.Tokens.Begin, open}, open, close, comment});
     });
     return plan;
 }
@@ -1047,9 +1041,9 @@ StructuralPlan ResolveNamespaceComments(
         auto r = mapping[token].Output;
         mappedValid[token] =
             mapping[token].Present && r.Begin <= r.End &&
-                r.End <= output.size() &&
-                output.substr(r.Begin, r.End - r.Begin) ==
-                    original.TokenText(token);
+            r.End <= output.size() &&
+            output.substr(r.Begin, r.End - r.Begin) ==
+            original.TokenText(token);
         before[token + 1] = mapping[token].Present ? token : before[token];
     }
     for (TI token = count; token > 0; --token) {
@@ -1100,7 +1094,7 @@ StructuralPlan ResolveNamespaceComments(
             if (ns.Close <= token || ns.Close >= count ||
                 ns.Header.Begin >= ns.Header.End || ns.Header.End != token ||
                 (!active.empty() &&
-                        ns.Close >= plan.Namespaces[active.back()].Close))
+                ns.Close >= plan.Namespaces[active.back()].Close))
             {
                 throw std::invalid_argument(
                     "invalid original namespace identity");
@@ -1144,16 +1138,15 @@ StructuralPlan ResolveNamespaceComments(
         auto following = after[ns.Close + 1];
         if (interior.Invalid ||
             (interior.Begin != UINT32_MAX &&
-                    (interior.Begin < mapping[ns.Open].Output.End ||
-                            interior.End > mapping[ns.Close].Output.Begin)) ||
+            (interior.Begin < mapping[ns.Open].Output.End ||
+            interior.End > mapping[ns.Close].Output.Begin)) ||
             (previous != count &&
-                    (!valid(previous) ||
-                            mapping[previous].Output.End >
-                                mapping[ns.Header.Begin].Output.Begin)) ||
+            (!valid(previous) ||
+            mapping[previous].Output.End >
+            mapping[ns.Header.Begin].Output.Begin)) ||
             (following != count &&
-                    (!valid(following) ||
-                            mapping[following].Output.Begin <
-                                mapping[ns.Close].Output.End)))
+            (!valid(following) ||
+            mapping[following].Output.Begin < mapping[ns.Close].Output.End)))
         {
             skip(StructuralSkip::InvalidMapping);
             continue;
@@ -1193,12 +1186,12 @@ StructuralPlan ResolveNamespaceComments(
             }
             auto lineEnd =
                 closeLine + 1 < lines.size()
-                    ? lines[closeLine + 1] - 1
-                    : static_cast<parser::SourceOffset>(output.size());
+                ? lines[closeLine + 1] - 1
+                : static_cast<parser::SourceOffset>(output.size());
             auto suffix = output.substr(begin, lineEnd - begin);
             if (suffix.ends_with('\r') &&
                 (!plan.Options.PreserveBareCR ||
-                        (lineEnd < output.size() && output[lineEnd] == '\n')))
+                (lineEnd < output.size() && output[lineEnd] == '\n')))
             {
                 suffix.remove_suffix(1);
             }
@@ -1229,7 +1222,7 @@ StructuralPlan ResolveNamespaceComments(
             if (plan.Options.Spaces) {
                 resolved.Pieces
                     .push_back(
-                        {{}, Spaces.substr(0, plan.Options.Spaces), false});
+                    {{}, Spaces.substr(0, plan.Options.Spaces), false});
             }
             resolved.Pieces.push_back({{}, "// namespace", false});
             bool firstName = true;
@@ -1265,12 +1258,12 @@ StructuralPlan ResolveNamespaceComments(
         } else {
             resolved.Edits
                 .push_back(
-                    {
-                        {begin, end},
-                        pieceBegin,
-                        static_cast<uint32_t>(resolved.Pieces.size()),
-                        id,
-                    });
+                {
+                    {begin, end},
+                    pieceBegin,
+                    static_cast<uint32_t>(resolved.Pieces.size()),
+                    id,
+                });
         }
     }
     Sort(resolved);

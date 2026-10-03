@@ -4,14 +4,14 @@ void EmitRecords()
         .BeginMap()
         .Item("routes")
         .DoMapFor(
-            routesWithMetrics,
-            [] (auto fluent, const auto& routeWithMetrics) {
-                auto [route, metrics] = routeWithMetrics;
-                fluent
-                    .Item("key")
-                    .Value(
-                        route
-                            .GetKey());
-            })
+        routesWithMetrics,
+        [] (auto fluent, const auto& routeWithMetrics) {
+            auto [route, metrics] = routeWithMetrics;
+            fluent
+                .Item("key")
+                .Value(
+                route
+                .GetKey());
+        })
         .EndMap();
 }

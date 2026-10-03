@@ -7,7 +7,7 @@ void f() {
         .Finish();
     auto nested = outer(
         inner(
-            engine()
-                .Open()
-                .Finish()));
+        engine()
+        .Open()
+        .Finish()));
 }

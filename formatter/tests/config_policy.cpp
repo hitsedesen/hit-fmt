@@ -27,10 +27,10 @@ struct TemporaryConfig
 {
     std::filesystem::path Path =
         std::filesystem::temp_directory_path() /
-            ("hit-fmt-policy-" +
-                    std::to_string(
-                        std::chrono::steady_clock::now().time_since_epoch()
-                            .count()) + ".hit-fmt");
+        ("hit-fmt-policy-" +
+        std::to_string(
+        std::chrono::steady_clock::now().time_since_epoch().count()) +
+        ".hit-fmt");
 
     explicit TemporaryConfig(std::string_view contents)
     {
@@ -47,6 +47,36 @@ struct TemporaryConfig
         std::filesystem::remove(Path, error);
     }
 };
+
+TEST(ConfigPolicy, ContinuationNestingDefaultsOverridesAndValidation)
+{
+    EXPECT_EQ(formatter::Style{}.ContinuationNesting,
+        formatter::ContinuationNesting::Shared);
+    TemporaryConfig config(
+        "ContinuationNesting = Additive\n"
+        "CallsContinuationNesting = Shared\n"
+        "ExpressionsContinuationNesting = Inherit\n"
+        "ControlHeadersContinuationNesting = Shared\n"
+        "ControlBodiesContinuationNesting = Additive\n"
+        "ChainsContinuationNesting = Shared\n");
+    const auto style = formatter::LoadConfigFile(config.Path).FormattingStyle;
+    const auto policies = formatter::CompilePolicies(style);
+    EXPECT_EQ(policies.ContinuationNesting,
+        formatter::ContinuationNesting::Additive);
+    EXPECT_EQ(policies.Calls.Indent.Nesting,
+        formatter::ContinuationNesting::Shared);
+    EXPECT_FALSE(policies.Expressions.Indent.Nesting);
+    EXPECT_EQ(policies.ControlBodiesContinuationNesting,
+        formatter::ContinuationNesting::Additive);
+    EXPECT_EQ(policies.Chains.Indent.Nesting,
+        formatter::ContinuationNesting::Shared);
+    TemporaryConfig invalid("CallsContinuationNesting = Unknown\n");
+    EXPECT_THROW(formatter::LoadConfigFile(invalid.Path), std::runtime_error);
+    auto bad = formatter::Style{};
+    bad.ExpressionsContinuationNesting =
+        static_cast<formatter::ContinuationNesting>(255);
+    EXPECT_THROW(formatter::CompilePolicies(bad), std::invalid_argument);
+}
 
 TEST(ConfigPolicy, CompilesCategoryInheritanceWithoutSourceOwnedSentinels)
 {

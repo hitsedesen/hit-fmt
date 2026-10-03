@@ -232,7 +232,7 @@ void CheckFunction(
             }
             if (significant == begin + 1 &&
                 (tree.Kind(begin) == TK::Identifier ||
-                        tree.Kind(begin) == TK::Keyword_void))
+                tree.Kind(begin) == TK::Keyword_void))
             {
                 continue;
             }
@@ -249,7 +249,7 @@ void CheckFunction(
                 continue;
             }
             const bool allowCommentedName = definitionPolicy ==
-                    FunctionDefinitionParameterNames::
+                FunctionDefinitionParameterNames::
                     NameOrCommentedNameRequired;
             if (function.Kind == NK::FunctionDefinition && allowCommentedName) {
                 // A comment naming an unused parameter must end the type,
@@ -269,18 +269,18 @@ void CheckFunction(
                 }
             }
             diagnostics.push_back(
-                    {
-                        .Position = NamePosition(tree, *parameter, *specifiers),
-                        .Signature = signatureRange,
-                        .SignatureBeginLine = beginLine,
-                        .SignatureEndLine = endLine,
-                        .Function = functionName,
-                        .ParameterNumber = number,
-                        .AllowCommentedName = function.Kind ==
-                                NK::FunctionDefinition && definitionPolicy ==
-                                FunctionDefinitionParameterNames::
+                {
+                    .Position = NamePosition(tree, *parameter, *specifiers),
+                    .Signature = signatureRange,
+                    .SignatureBeginLine = beginLine,
+                    .SignatureEndLine = endLine,
+                    .Function = functionName,
+                    .ParameterNumber = number,
+                    .AllowCommentedName = function.Kind ==
+                        NK::FunctionDefinition && definitionPolicy ==
+                        FunctionDefinitionParameterNames::
                         NameOrCommentedNameRequired,
-                    });
+                });
         }
     }
 }
@@ -297,11 +297,11 @@ std::vector<ParameterNameDiagnostic> CheckParameterNames(
         auto* node = stack.back();
         stack.pop_back();
         if ((node->Kind == NK::FunctionDeclaration &&
-                    config.FunctionDeclarationParameterNames ==
-                        FunctionDeclarationParameterNames::Required) ||
+            config.FunctionDeclarationParameterNames ==
+            FunctionDeclarationParameterNames::Required) ||
             (node->Kind == NK::FunctionDefinition &&
-                    config.FunctionDefinitionParameterNames !=
-                        FunctionDefinitionParameterNames::Unchecked))
+            config.FunctionDefinitionParameterNames !=
+            FunctionDefinitionParameterNames::Unchecked))
         {
             CheckFunction(
                 tree,
@@ -318,7 +318,7 @@ std::vector<ParameterNameDiagnostic> CheckParameterNames(
         [] (const auto& a, const auto& b) {
             return a.Position.Line < b.Position.Line ||
                 (a.Position.Line == b.Position.Line &&
-                        a.Position.Column < b.Position.Column);
+                a.Position.Column < b.Position.Column);
         });
     return diagnostics;
 }

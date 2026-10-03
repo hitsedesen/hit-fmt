@@ -91,8 +91,8 @@ void AppendTriviaList(
         AppendIndent(output, depth + 1);
         output +=
             item->Kind == parser::TriviaKind::Comment
-                ? "(comment "
-                : "(whitespace ";
+            ? "(comment "
+            : "(whitespace ";
         AppendQuoted(output, tree.SourceText(item->Source));
         output += ")\n";
     }
@@ -235,10 +235,10 @@ std::string SerializePunctuationRoles(const parser::SyntaxTree& tree)
         }
         output +=
             std::format(
-                "{}: {} {}\n",
-                index,
-                tree.TokenText(index),
-                RoleName(role));
+            "{}: {} {}\n",
+            index,
+            tree.TokenText(index),
+            RoleName(role));
     }
     return output;
 }

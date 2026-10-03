@@ -20,10 +20,10 @@ std::string ReadEntireFile(
     if (size > maxSize) {
         throw FileTooLargeError(
             std::format(
-                "File {} is too large: {} > {}",
-                filePath,
-                size,
-                maxSize));
+            "File {} is too large: {} > {}",
+            filePath,
+            size,
+            maxSize));
     }
     std::string buffer(size + padding, '\0');
     ifs.seekg(0);

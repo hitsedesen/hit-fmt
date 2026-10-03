@@ -70,9 +70,9 @@ public:
         const auto line = [&] (parser::SourceOffset offset) {
             return size_t(
                 std::upper_bound(
-                    Boundaries_.begin(),
-                    Boundaries_.end(),
-                    offset) - Boundaries_.begin());
+                Boundaries_.begin(),
+                Boundaries_.end(),
+                offset) - Boundaries_.begin());
         };
         return {line(source.Begin), line(source.End - 1)};
     }
@@ -97,10 +97,10 @@ inline bool HunkScopeContains(
 {
     const auto it =
         std::upper_bound(
-            scope.begin(),
-            scope.end(),
-            source.Begin,
-            [] (auto begin, const auto range) { return begin < range.Begin; });
+        scope.begin(),
+        scope.end(),
+        source.Begin,
+        [] (auto begin, const auto range) { return begin < range.Begin; });
     if (it == scope.begin()) {
         return false;
     }
@@ -118,10 +118,10 @@ inline bool HunkScopeIntersects(
     }
     const auto it =
         std::lower_bound(
-            scope.begin(),
-            scope.end(),
-            source.Begin,
-            [] (const auto range, auto begin) { return range.End <= begin; });
+        scope.begin(),
+        scope.end(),
+        source.Begin,
+        [] (const auto range, auto begin) { return range.End <= begin; });
     return it != scope.end() && it->Begin < source.End;
 }
 

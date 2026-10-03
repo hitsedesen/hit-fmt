@@ -33,6 +33,12 @@ enum class GroupMode : std::uint8_t
     Fill
 };
 
+enum class ContinuationNesting : std::uint8_t
+{
+    Shared,
+    Additive
+};
+
 enum class GapKind : std::uint8_t
 {
     Flat,
@@ -100,6 +106,9 @@ struct AnchorSpec
     // Capture the enclosing base without unrealized expression continuation.
     // DelimiterColumn still captures the unchanged physical output column.
     bool StructuralBase = false;
+    // Match the following continuation group's base and effective offset.
+    bool Continuation = false;
+    ContinuationNesting Nesting = ContinuationNesting::Shared;
 };
 
 struct GroupSpec
@@ -113,6 +122,11 @@ struct GroupSpec
     bool ExpressionContinuation = false;
     // Independent child layout uses only realized enclosing continuation.
     bool StructuralBase = false;
+    // Shared reuses an active continuation level (including its offset).
+    // Additive adds Indent; a first continuation uses Indent in either mode.
+    // Non-continuation structural bodies fence the active continuation.
+    bool Continuation = false;
+    ContinuationNesting Nesting = ContinuationNesting::Shared;
 };
 
 enum class Error : std::uint8_t
@@ -309,6 +323,8 @@ private:
         bool ForceBreak = false;
         bool ExpressionContinuation = false;
         bool StructuralBase = false;
+        bool Continuation = false;
+        ContinuationNesting Nesting = ContinuationNesting::Shared;
     };
 
     std::uint32_t Add(Node node);

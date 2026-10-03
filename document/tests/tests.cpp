@@ -31,6 +31,69 @@ void ExpectText(
     EXPECT_EQ(repeated.Broken, output.Broken);
 }
 
+TEST(GroupLayout, SharedContinuationReusesBaseWithoutFlatteningBodies)
+{
+    for (const auto nesting : {ContinuationNesting::Shared,
+             ContinuationNesting::Additive})
+    {
+        Document document("");
+        const auto block = document.BeginGroup({GroupMode::Fill, 4});
+        document.Gap({GapKind::Hard, 0});
+        document.Text("value =");
+        const auto assignment = document.BeginGroup({
+            .Mode = GroupMode::Fill, .Indent = 4,
+            .ExpressionContinuation = true, .Continuation = true});
+        document.Gap({GapKind::Hard, 0});
+        document.Text("first ||");
+        const auto anchor = document.MarkAnchor({
+            .Offset = 8, .Continuation = true, .Nesting = nesting});
+        const auto binary = document.BeginGroup({
+            .Mode = GroupMode::Fill, .Indent = 8,
+            .ExpressionContinuation = true, .Continuation = true,
+            .Nesting = nesting});
+        document.Gap({GapKind::Hard, 0}, anchor);
+        document.Text("second {");
+        const auto body = document.BeginGroup({
+            .Indent = 4, .StructuralBase = true});
+        document.Gap({GapKind::Hard, 0});
+        document.Text("nested =");
+        const auto expression = document.BeginGroup({
+            .Indent = 4, .ExpressionContinuation = true,
+            .Continuation = true});
+        document.Gap({GapKind::Hard, 0});
+        document.Text("leaf;");
+        document.EndGroup(expression);
+        document.EndGroup(body);
+        document.EndGroup(binary);
+        document.EndGroup(assignment);
+        document.EndGroup(block);
+        ASSERT_TRUE(document.Seal());
+        const auto level = nesting == ContinuationNesting::Shared ? 8 : 16;
+        ExpectText(document, 80, "\n    value =\n        first ||\n" +
+            std::string(level, ' ') + "second {\n" +
+            std::string(level + 4, ' ') + "nested =\n" +
+            std::string(level + 8, ' ') + "leaf;");
+    }
+}
+
+TEST(GroupLayout, SharedContinuationRejectsAnUnrecoverableBase)
+{
+    Document document("");
+    const auto body = document.BeginGroup({.Indent = 4, .StructuralBase = true});
+    const auto outer = document.BeginGroup({.Indent = 4, .Continuation = true});
+    const auto shifted = document.BeginGroup({.Indent = -8});
+    const auto inner = document.BeginGroup({.Indent = 4, .Continuation = true});
+    document.EndGroup(inner);
+    document.EndGroup(shifted);
+    document.EndGroup(outer);
+    document.EndGroup(body);
+    ASSERT_TRUE(document.Seal());
+    const auto result = document.Render({.Width = 80});
+    EXPECT_EQ(result.State.Code, Error::IndentationOverflow);
+    EXPECT_TRUE(result.Text.empty());
+    EXPECT_TRUE(result.Map.empty());
+}
+
 TEST(GroupLayout, StructuralBaseDistinguishesProspectiveAndRealizedContinuation)
 {
     for (const bool rhsLine : {false, true}) {

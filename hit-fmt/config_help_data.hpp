@@ -37,6 +37,13 @@ ListFirstItem = InlineIfFits
 ListCloser = SameLine
 ListAlignment = Delimiter
 ContinuationOffset = 4
+ContinuationNesting = Shared
+# Explicit category overrides beat the nearest control-header/body context.
+ControlHeadersContinuationNesting = Shared
+ControlBodiesContinuationNesting = Shared
+CallsContinuationNesting = Inherit
+ExpressionsContinuationNesting = Inherit
+ChainsContinuationNesting = Inherit
 AlignmentFallbackOffset = 4
 # Under IfNeeded, broken calls are vertical and fitting calls stay flat.
 CallsPacking = VerticalWhenBroken
@@ -185,7 +192,17 @@ constexpr HelpSection HelpSections[] = {
         "Delimiter alignment uses the column after "
             "the opener; Block uses the block "
         "column plus offset. Zero offsets use "
-            "IndentWidth. Delimiter alignment falls "
+            "IndentWidth. ContinuationNesting defaults to Shared: nested "
+        "continuations use the enclosing continuation's base rather than "
+        "adding another offset. Additive retains separate levels. "
+        "Calls, Parameters, Captures, ControlHeaders, BaseLists, "
+        "ConstructorLists, Expressions and Chains accept nesting overrides. "
+        "Explicit category overrides beat the nearest "
+        "ControlHeadersContinuationNesting or ControlBodiesContinuationNesting "
+        "context, then the global default. Structural bodies establish a "
+        "fresh base, as do braced initializer and enum lists. "
+        "Delimiter columns remain aligned; nesting controls "
+        "their block-relative floor and fallback. Delimiter alignment falls "
         "back when the next atom plus suffix cannot fit.\n", ListExamples},
     {"Expressions and chains", "TernaryLayout is Flexible or ThreePart; "
         "ThreePart "

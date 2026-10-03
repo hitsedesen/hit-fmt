@@ -59,6 +59,8 @@ struct IndentationPolicy
     // This is the lowering contract; anchor>=Width alone is insufficient.
     std::size_t ContinuationOffset;
     std::size_t FallbackOffset;
+    // Omission inherits the nearest syntax context, then the global default.
+    std::optional<ContinuationNesting> Nesting = std::nullopt;
 };
 
 struct ListPolicy
@@ -195,6 +197,9 @@ struct CompiledPolicies
     const formatter::PointerReferenceDeclaratorLocation
         PointerReferenceDeclaratorLocation;
     const IndentationControls Indentation;
+    const formatter::ContinuationNesting ContinuationNesting;
+    const std::optional<formatter::ContinuationNesting>
+        ControlBodiesContinuationNesting;
     const ListPolicy Calls;
     const ListPolicy Parameters;
     const ListPolicy Initializers;

@@ -115,8 +115,8 @@ void PrintOption(std::ostream& output, std::string_view name, const T& value)
         } else {
             output
                 << (value.Mode == formatter::BlankLineMode::Inherit
-                        ? "Inherit"
-                        : "Preserve");
+                ? "Inherit"
+                : "Preserve");
         }
     } else if constexpr (OptionalValue<T>::IsOptional &&
         !std::is_same_v<T, std::optional<formatter::TrailingCommentSpaceSetting>>)
@@ -171,27 +171,27 @@ void PrintPreserveConfig(std::ostream& output)
 {
     output
         << "# Preserve source break topology by "
-            "default. Set Layout = Canonical\n"
-            "# to normalize groups. Category Inherit values resolve once.\n"
-            "# Generated* applies to properties rebuilt "
-            "by their owning canonical\n"
-            "# combinator (also inserted gaps), not unrelated nested edits.\n"
-            "# Break = Always requires a legal owned "
-            "break; Preserve/protection win.\n"
-            "# EmptyBodyShape is independent of nonempty BodyShape.\n"
-            "# Blank counts measure empty lines; zero "
-            "retains boundary topology.\n" "# Exact counts above an explicit "
-            "MaxEmptyLines cap are invalid.\n"
-            "# Public preparation rejects template breaks, Operand alignment,\n"
-            "# matching-header selection, regrouping and constructor overrides.\n"
-            "# Inactive include prefixes validate but do not activate regrouping.\n"
-            "# Regroup conflicts with MaxEmptyLines = 0.\n"
-            "# LineEnding Preserve uses the first newline for generated endings\n"
-            "# and retains copied gap bytes, not uniform per-edge preservation.\n"
-            "# LF/CRLF spell only authorized whole whitespace newline atoms;\n"
-            "# no final newline insertion, token/directive conversion or cleanup.\n"
-            "# Directives and protected regions remain byte-exact.\n"
-            "# Option guidance: --help-config\n\n" "# Formatting options\n\n";
+        "default. Set Layout = Canonical\n"
+        "# to normalize groups. Category Inherit values resolve once.\n"
+        "# Generated* applies to properties rebuilt "
+        "by their owning canonical\n"
+        "# combinator (also inserted gaps), not unrelated nested edits.\n"
+        "# Break = Always requires a legal owned "
+        "break; Preserve/protection win.\n"
+        "# EmptyBodyShape is independent of nonempty BodyShape.\n"
+        "# Blank counts measure empty lines; zero "
+        "retains boundary topology.\n" "# Exact counts above an explicit "
+        "MaxEmptyLines cap are invalid.\n"
+        "# Public preparation rejects template breaks, Operand alignment,\n"
+        "# matching-header selection, regrouping and constructor overrides.\n"
+        "# Inactive include prefixes validate but do not activate regrouping.\n"
+        "# Regroup conflicts with MaxEmptyLines = 0.\n"
+        "# LineEnding Preserve uses the first newline for generated endings\n"
+        "# and retains copied gap bytes, not uniform per-edge preservation.\n"
+        "# LF/CRLF spell only authorized whole whitespace newline atoms;\n"
+        "# no final newline insertion, token/directive conversion or cleanup.\n"
+        "# Directives and protected regions remain byte-exact.\n"
+        "# Option guidance: --help-config\n\n" "# Formatting options\n\n";
     const formatter::Style style;
 #define PRINT_STYLE_OPTION(type, name, initial) \
     PrintOption(output, #name, style.name);

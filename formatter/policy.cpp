@@ -110,6 +110,27 @@ void ValidatePolicyStyle(const Style& style)
     if (style.ColumnLimit == 0 || style.ColumnLimit > 10000) {
         throw std::invalid_argument("ColumnLimit must be between 1 and 10000");
     }
+    const auto checkNesting = [] (ContinuationNesting nesting) {
+        if (nesting != ContinuationNesting::Shared &&
+            nesting != ContinuationNesting::Additive)
+        {
+            throw std::invalid_argument(
+                "ContinuationNesting has invalid value");
+        }
+    };
+    checkNesting(style.ContinuationNesting);
+    const auto checkOptionalNesting = [&] (auto nesting) {
+        if (nesting) {
+            checkNesting(*nesting);
+        }
+    };
+    checkOptionalNesting(style.ExpressionsContinuationNesting);
+    checkOptionalNesting(style.ChainsContinuationNesting);
+    checkOptionalNesting(style.ControlBodiesContinuationNesting);
+#define CHECK_LIST_NESTING(category) \
+    checkOptionalNesting(style.category##ContinuationNesting);
+    FORMATTER_CONTINUATION_LIST_CATEGORIES(CHECK_LIST_NESTING)
+#undef CHECK_LIST_NESTING
     CheckOffset(style.ContinuationOffset, "ContinuationOffset");
     CheckOffset(style.AlignmentFallbackOffset, "AlignmentFallbackOffset");
 #define CHECK_LIST_OFFSETS(category)                                        \
@@ -182,14 +203,14 @@ void ValidatePolicyStyle(const Style& style)
         ResolveMemberDeclarationBlankLines(style),
         style.MaxEmptyLines,
         style.MemberDeclarationBlankLines.Mode == BlankLineMode::Inherit
-            ? "MemberDeclarationBlankLines (inherited from DeclarationBlankLines)"
-            : "MemberDeclarationBlankLines");
+        ? "MemberDeclarationBlankLines (inherited from DeclarationBlankLines)"
+        : "MemberDeclarationBlankLines");
     CheckBlankCap(
         ResolveMemberBlankLines(style),
         style.MaxEmptyLines,
         style.MemberDefinitionBlankLines.Mode == BlankLineMode::Inherit
-            ? "MemberDefinitionBlankLines (inherited from DefinitionBlankLines)"
-            : "MemberDefinitionBlankLines");
+        ? "MemberDefinitionBlankLines (inherited from DefinitionBlankLines)"
+        : "MemberDefinitionBlankLines");
     CheckBlankCap(
         style.DefinitionBlankLines,
         style.MaxEmptyLines,
@@ -207,7 +228,7 @@ void ValidatePolicyStyle(const Style& style)
     {
         throw std::invalid_argument(
             "IncludeGrouping = Regroup requires one empty line, exceeding "
-                "MaxEmptyLines = 0");
+            "MaxEmptyLines = 0");
     }
     ValidateIncludeGroupPrefixes(style.IncludeGroupPrefixes);
     if (style.ExpressionsAlignment != ExpressionAlignment::Block &&
@@ -229,7 +250,7 @@ void ValidatePolicyStyle(const Style& style)
         *style.ConstructorBracePlacement != BracePlacement::Attached &&
         *style.ConstructorBracePlacement != BracePlacement::NextLine &&
         *style.ConstructorBracePlacement !=
-            BracePlacement::NextLineIfHeaderBroken)
+        BracePlacement::NextLineIfHeaderBroken)
     {
         throw std::invalid_argument(
             "ConstructorBracePlacement has invalid value");
@@ -258,6 +279,12 @@ CompiledPolicies CompilePolicies(const Style& style)
         ResolveOffset(style.ContinuationOffset, style.IndentWidth);
     const auto fallback =
         ResolveOffset(style.AlignmentFallbackOffset, style.IndentWidth);
+#define CAPTURE_LIST_NESTING(category) \
+    const auto category##Nesting = style.category##ContinuationNesting;
+    FORMATTER_CONTINUATION_LIST_CATEGORIES(CAPTURE_LIST_NESTING)
+#undef CAPTURE_LIST_NESTING
+    const std::optional<ContinuationNesting> InitializersNesting;
+    const std::optional<ContinuationNesting> EnumeratorsNesting;
 #define COMPILE_LIST(category, closer)                                      \
     const ListPolicy category{                                              \
         ResolveLayout(style.category##Layout, style.Layout),                 \
@@ -268,7 +295,8 @@ CompiledPolicies CompilePolicies(const Style& style)
             ResolveOffset(style.category##ContinuationOffset.value_or(      \
                 style.ContinuationOffset), style.IndentWidth),              \
             ResolveOffset(style.category##AlignmentFallbackOffset.value_or( \
-                style.AlignmentFallbackOffset), style.IndentWidth)},        \
+                style.AlignmentFallbackOffset), style.IndentWidth), \
+            category##Nesting},        \
         style.category##Break.value_or(style.ListBreak)};
 #define COMPILE_DELIMITED_LIST(category)                                     \
     COMPILE_LIST(category, style.category##Closer.value_or(style.ListCloser))
@@ -309,6 +337,9 @@ CompiledPolicies CompilePolicies(const Style& style)
                     style.IndentWidth))},
             {style.IndentNamespaces, static_cast<std::uint8_t>(
                 ResolveOffset(style.NamespaceIndentWidth, style.IndentWidth))}},
+        .ContinuationNesting = style.ContinuationNesting,
+        .ControlBodiesContinuationNesting =
+            style.ControlBodiesContinuationNesting,
         .Calls = Calls,
         .Parameters = Parameters,
         .Initializers = Initializers,
@@ -323,12 +354,14 @@ CompiledPolicies CompilePolicies(const Style& style)
             style.BinaryOperatorSide, style.AssignmentOperatorSide,
             style.ShiftOperatorSide, style.TernaryOperatorSide,
             style.TernaryLayout,
-            {ContinuationAlignment::Block, continuation, fallback},
+            {ContinuationAlignment::Block, continuation, fallback,
+                style.ExpressionsContinuationNesting},
             style.ExpressionsBreak, style.ExpressionsPacking,
             style.ExpressionsAlignment},
         .Chains = {ResolveLayout(style.ChainsLayout, style.Layout),
             style.ChainsPacking,
-            {style.ChainsAlignment, continuation, fallback}, style.ChainsBreak},
+            {style.ChainsAlignment, continuation, fallback,
+                style.ChainsContinuationNesting}, style.ChainsBreak},
         .DeclarationHeaders =
             ResolveLayout(style.DeclarationHeadersLayout, style.Layout),
         .Bodies = {bodiesLayout, style.BodyShape,

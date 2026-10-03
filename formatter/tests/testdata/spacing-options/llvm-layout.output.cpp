@@ -4,7 +4,7 @@ void render(bool Alpha, bool Beta, bool Gamma, bool Delta, bool Epsilon, bool Ze
     wrong();
     assert(
            Alpha && Beta && Gamma && Delta &&
-        Epsilon && Zeta);
+           Epsilon && Zeta);
     record->longMemberFieldName =
       calculateValue();
     switch (0) {

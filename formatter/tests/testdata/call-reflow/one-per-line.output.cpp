@@ -15,9 +15,9 @@ void demo() {
     auto x = nested(
         alpha,
         nested(
-            beta,
-            gamma,
-            delta),
+        beta,
+        gamma,
+        delta),
         epsilon);
     MACRO(
         alpha,

@@ -1,12 +1,12 @@
 auto x =
     Make({firstValue, secondValue}) +
-        trailingValue;
+    trailingValue;
 auto y =
     Make({.first = one, .second = two}) +
-        trailingValue;
+    trailingValue;
 auto z =
     Make({firstValue, secondValue,
-            thirdValue}) + trailingValue;
+        thirdValue}) + trailingValue;
 Data data{.firstField = firstValue,
     .secondField = secondValue};
 int indexed[] =

@@ -6,8 +6,8 @@ const Registry entry(7, [] {
         return 2;
     });
 Registry wrapped(wrap([] {
-            return 3;
-        }));
+        return 3;
+    }));
 APPLY(7, ::ops::combine(::ops::make()), [](const auto& value) -> std::string {
         return value;
     });
