@@ -936,7 +936,7 @@ TEST(PublicPipeline, RepositoryAndYtsaurusControlHeadersFitWithoutTokenChanges)
         const auto result = FormatInput(source, prepared);
         EXPECT_TRUE(result.Diagnostics.empty());
         EXPECT_NE(result.Text.find("if ((value"), std::string::npos);
-        EXPECT_NE(result.Text.find("if (HasPreviousProcessingState"),
+        EXPECT_NE(result.Text.find("else if (HasPreviousProcessingState"),
             std::string::npos);
         CheckIdentities(source, result);
         EXPECT_EQ(FormatInput(result.Text, prepared).Text, result.Text);

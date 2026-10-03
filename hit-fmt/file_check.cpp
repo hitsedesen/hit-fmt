@@ -176,7 +176,7 @@ CheckedFile CheckFile(
                 });
     }
     for (const auto& diagnostic :
-         formatter::CheckParameterNames(tree, configuration.Settings))
+        formatter::CheckParameterNames(tree, configuration.Settings))
     {
         auto message =
             "parameter #" + std::to_string(diagnostic.ParameterNumber) +

@@ -14,7 +14,9 @@ unsigned Combine(unsigned value)
     {
         Update(value);
     }
-    if (HasPreviousProcessingStateForCurrentRequest() && HasCurrentProcessingStateForCurrentRequest() &&
+    if (ShortCheck()) {
+        Update(value);
+    } else if (HasPreviousProcessingStateForCurrentRequest() && HasCurrentProcessingStateForCurrentRequest() &&
         HasPendingProcessingStateForCurrentRequest())
     {
         return value;

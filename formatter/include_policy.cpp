@@ -83,7 +83,7 @@ PreparedIncludePrefixes::PreparedIncludePrefixes(
         const std::string_view prefix = Prefixes_[rule];
         std::size_t common = 0;
         while (common < std::min(previous.size(), prefix.size()) &&
-               previous[common] == prefix[common])
+            previous[common] == prefix[common])
         {
             ++common;
         }
@@ -115,7 +115,7 @@ PreparedIncludePrefixes::PreparedIncludePrefixes(
         const std::string_view prefix = Prefixes_[rule];
         std::size_t common = 0;
         while (common < std::min(previous.size(), prefix.size()) &&
-               previous[common] == prefix[common])
+            previous[common] == prefix[common])
         {
             ++common;
         }

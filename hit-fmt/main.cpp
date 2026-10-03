@@ -131,7 +131,7 @@ RenderedLine RenderLine(
         }
         auto start = i++;
         while (i < text.size() &&
-               (static_cast<unsigned char>(text[i]) & 0xc0) == 0x80)
+            (static_cast<unsigned char>(text[i]) & 0xc0) == 0x80)
         {
             ++i;
         }
@@ -229,7 +229,7 @@ void PrintWrappedMessage(
             }
         }
         while (length && length < message.size() &&
-               (static_cast<unsigned char>(message[length]) & 0xc0) == 0x80)
+            (static_cast<unsigned char>(message[length]) & 0xc0) == 0x80)
         {
             --length;
         }
@@ -337,12 +337,12 @@ size_t DifferenceColumn(std::string_view actual, std::string_view expected)
 {
     size_t byte = 0;
     while (byte < actual.size() && byte < expected.size() &&
-           actual[byte] == expected[byte])
+        actual[byte] == expected[byte])
     {
         ++byte;
     }
     while (byte < actual.size() &&
-           std::isspace(static_cast<unsigned char>(actual[byte])))
+        std::isspace(static_cast<unsigned char>(actual[byte])))
     {
         ++byte;
     }
@@ -399,7 +399,7 @@ std::string TokenAt(std::string_view text, size_t offset)
         }
         ++end;
         while (end < text.size() &&
-               (static_cast<unsigned char>(text[end]) & 0xc0) == 0x80)
+            (static_cast<unsigned char>(text[end]) & 0xc0) == 0x80)
         {
             ++end;
         }
@@ -439,12 +439,12 @@ std::vector<Violation> SpacingViolations(
     while (a < actual.size() || b < expected.size()) {
         auto startA = a, startB = b;
         while (a < actual.size() &&
-               std::isspace(static_cast<unsigned char>(actual[a])))
+            std::isspace(static_cast<unsigned char>(actual[a])))
         {
             ++a;
         }
         while (b < expected.size() &&
-               std::isspace(static_cast<unsigned char>(expected[b])))
+            std::isspace(static_cast<unsigned char>(expected[b])))
         {
             ++b;
         }
@@ -477,7 +477,7 @@ std::string QuoteSnippet(std::string_view text)
     while (i < text.size() && i < 48) {
         auto start = i++;
         while (i < text.size() &&
-               (static_cast<unsigned char>(text[i]) & 0xc0) == 0x80)
+            (static_cast<unsigned char>(text[i]) & 0xc0) == 0x80)
         {
             ++i;
         }
@@ -513,12 +513,12 @@ std::string ContentChange(std::string_view actual, std::string_view expected)
 {
     size_t prefix = 0;
     while (prefix < actual.size() && prefix < expected.size() &&
-           actual[prefix] == expected[prefix])
+        actual[prefix] == expected[prefix])
     {
         ++prefix;
     }
     while (prefix &&
-           ((prefix < actual.size() &&
+        ((prefix < actual.size() &&
                         (static_cast<unsigned char>(actual[prefix]) & 0xc0) ==
                             0x80) ||
                 (prefix < expected.size() &&
@@ -529,15 +529,15 @@ std::string ContentChange(std::string_view actual, std::string_view expected)
     }
     size_t suffix = 0;
     while (suffix < actual.size() - prefix &&
-           suffix < expected.size() - prefix &&
-           actual[actual.size() - suffix - 1] ==
+        suffix < expected.size() - prefix &&
+        actual[actual.size() - suffix - 1] ==
             expected[expected.size() - suffix - 1])
     {
         ++suffix;
     }
     while (suffix &&
-           ((static_cast<unsigned char>(actual[actual.size() - suffix]) &
-                            0xc0) == 0x80 ||
+        ((static_cast<unsigned char>(actual[actual.size() - suffix]) & 0xc0) ==
+                    0x80 ||
                 (static_cast<unsigned char>(expected[expected.size() -
                                         suffix]) & 0xc0) == 0x80))
     {
@@ -558,7 +558,7 @@ bool SameNonWhitespace(std::string_view a, std::string_view b)
 {
     auto skip = [] (std::string_view text, size_t& i) {
         while (i < text.size() &&
-               std::isspace(static_cast<unsigned char>(text[i])))
+            std::isspace(static_cast<unsigned char>(text[i])))
         {
             ++i;
         }
@@ -608,12 +608,12 @@ std::optional<std::vector<Violation>> ReflowViolations(
     while (a < original.size() || b < replacement.size()) {
         auto startA = a, startB = b;
         while (a < original.size() &&
-               std::isspace(static_cast<unsigned char>(original[a])))
+            std::isspace(static_cast<unsigned char>(original[a])))
         {
             ++a;
         }
         while (b < replacement.size() &&
-               std::isspace(static_cast<unsigned char>(replacement[b])))
+            std::isspace(static_cast<unsigned char>(replacement[b])))
         {
             ++b;
         }
@@ -731,12 +731,12 @@ std::vector<Chunk> FormattingChunks(
             IsIncludeLine(formatted[formattedIndex]))
         {
             while (sourceIndex + sourceCount < source.size() &&
-                   IsIncludeLine(source[sourceIndex + sourceCount]))
+                IsIncludeLine(source[sourceIndex + sourceCount]))
             {
                 ++sourceCount;
             }
             while (formattedIndex + formattedCount < formatted.size() &&
-                   IsIncludeLine(formatted[formattedIndex + formattedCount]))
+                IsIncludeLine(formatted[formattedIndex + formattedCount]))
             {
                 ++formattedCount;
             }
@@ -749,12 +749,12 @@ std::vector<Chunk> FormattingChunks(
             auto formattedLimit =
                 std::min(formatted.size(), formattedIndex + DiffLookahead + 1);
             for (auto nextSource = sourceIndex;
-                 nextSource < sourceLimit;
-                 ++nextSource)
+                nextSource < sourceLimit;
+                ++nextSource)
             {
                 for (auto nextFormatted = formattedIndex;
-                     nextFormatted < formattedLimit;
-                     ++nextFormatted)
+                    nextFormatted < formattedLimit;
+                    ++nextFormatted)
                 {
                     if (nextSource == sourceIndex &&
                         nextFormatted == formattedIndex)
@@ -844,13 +844,12 @@ std::vector<Chunk> FormattingChunks(
             {
                 message = "missing final newline";
             } else if (line.Text == replacement && line.HasNewline &&
-                       i < formattedCount &&
-                       !formatted[formattedIndex + i].HasNewline)
+                i < formattedCount && !formatted[formattedIndex + i].HasNewline)
             {
                 message = "unexpected final newline";
             } else if (sourceCount == formattedCount && i < formattedCount &&
-                       IsIncludeLine(line) &&
-                       IsIncludeLine(formatted[formattedIndex + i]))
+                IsIncludeLine(line) &&
+                IsIncludeLine(formatted[formattedIndex + i]))
             {
                 message =
                     "include order: expected " + QuoteSnippet(replacement) +
@@ -985,8 +984,8 @@ void PrintFormattingDiagnostics(
         output << gutter.substr(0, gutter.size() - 1) << '\n';
         size_t violationIndex = 0;
         for (auto lineNumber = chunk.Begin;
-             lineNumber < chunk.End;
-             ++lineNumber)
+            lineNumber < chunk.End;
+            ++lineNumber)
         {
             auto text = lineNumber <= sourceLines.size()
                 ? sourceLines[lineNumber - 1].Text
@@ -1013,7 +1012,7 @@ void PrintFormattingDiagnostics(
                 printLine(0);
             }
             while (violationIndex < chunk.Violations.size() &&
-                   chunk.Violations[violationIndex].Line == lineNumber)
+                chunk.Violations[violationIndex].Line == lineNumber)
             {
                 const auto& violation = chunk.Violations[violationIndex++];
                 auto excerpt = printLine(violation.Column);
@@ -1120,8 +1119,8 @@ bool ForEachFile(
         }
         auto iterator = std::filesystem::recursive_directory_iterator(path);
         for (const auto end = std::filesystem::recursive_directory_iterator();
-             iterator != end;
-             ++iterator)
+            iterator != end;
+            ++iterator)
         {
             const auto& entry = *iterator;
             bool directory = entry.is_directory();
@@ -1188,8 +1187,8 @@ Options ParseOptions(int argc, char* argv[])
         } else if (argument == "--no-config") {
             options.DisableConfig = true;
         } else if (argument == "-j" || argument == "--threads" ||
-                   argument.starts_with("--threads=") ||
-                   (argument.starts_with("-j") && argument.size() > 2))
+            argument.starts_with("--threads=") ||
+            (argument.starts_with("-j") && argument.size() > 2))
         {
             std::string_view value;
             if (argument == "-j") {
@@ -1240,7 +1239,7 @@ Options ParseOptions(int argc, char* argv[])
         } else if (argument.starts_with("--config=")) {
             options.ConfigPath = std::string(argument.substr(9));
         } else if (argument == "--exclude" ||
-                   argument.starts_with("--exclude="))
+            argument.starts_with("--exclude="))
         {
             std::string pattern;
             if (argument == "--exclude") {
@@ -1441,7 +1440,7 @@ void PrintHelp(std::ostream& output, std::string_view executable, bool useColor)
     highlight("Examples:", BoldCyan);
     output << '\n';
     for (auto example :
-         {
+        {
             " source.cpp",
             " --fix source.cpp include/",
             " --summary src/ include/",

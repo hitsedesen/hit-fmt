@@ -185,7 +185,7 @@ void Walk(
                 node->Tokens.Begin +
                     (node->Kind == NK::ExportDeclaration ? 1 : 2);
             while (header < node->Tokens.End &&
-                   tree.Kind(header) == TK::Comment)
+                tree.Kind(header) == TK::Comment)
             {
                 ++header;
             }
@@ -332,8 +332,8 @@ void ScanIncludeGroups(
         TI end = i + 1;
         Include next;
         while (end < tree.TokenCount() && ParseInclude(tree, end, next) &&
-               group.back().Atom.End == next.Atom.Begin &&
-               tree.TokenText(i).ends_with('\r') ==
+            group.back().Atom.End == next.Atom.Begin &&
+            tree.TokenText(i).ends_with('\r') ==
                 tree.TokenText(end).ends_with('\r'))
         {
             group.push_back(next);
@@ -630,8 +630,8 @@ StructuralPlan PlanStructuralEdits(
                 } else if (attributes) {
                     Skip(plan, action, tokens, StructuralSkip::Attributes);
                 } else if (trailingLabel || labels ||
-                           body->Kind == NK::LabelStatement ||
-                           body->Kind == NK::CaseLabel)
+                    body->Kind == NK::LabelStatement ||
+                    body->Kind == NK::CaseLabel)
                 {
                     Skip(plan, action, tokens, StructuralSkip::LabelBody);
                 } else if (directives) {
@@ -642,14 +642,14 @@ StructuralPlan PlanStructuralEdits(
                         StructuralSkip::DirectiveBoundary);
                 } else if (barriers[node.Tokens.End] !=
                         barriers[node.Tokens.Begin] ||
-                           AdjacentComment(tree, tokens))
+                    AdjacentComment(tree, tokens))
                 {
                     Skip(plan, action, tokens, StructuralSkip::CommentAttached);
                 } else if (safety.IntersectsImmutable(range) ||
-                           safety.IntersectsImmutable({range.End, range.End}) ||
-                           (safety.Gaps()[tokens.Begin].Preserve &&
+                    safety.IntersectsImmutable({range.End, range.End}) ||
+                    (safety.Gaps()[tokens.Begin].Preserve &&
                             safety.Gaps()[tokens.Begin].Source.Empty()) ||
-                           (!null && safety.Gaps()[tokens.End].Preserve &&
+                    (!null && safety.Gaps()[tokens.End].Preserve &&
                             safety.Gaps()[tokens.End].Source.Empty()))
                 {
                     Skip(plan, action, tokens, StructuralSkip::Protected);
@@ -705,7 +705,7 @@ StructuralPlan PlanStructuralEdits(
             if (status != RegionStatus::Complete) {
             Skip(plan, action, tokens, StructuralSkip::Incomplete);
         } else if ((nullDeclaration && !declarationSequence) ||
-                   (nullStatement &&
+            (nullStatement &&
                     (grandparent == NK::Argument ||
                             grandparent == NK::StatementExpression)))
         {
@@ -715,21 +715,21 @@ StructuralPlan PlanStructuralEdits(
             // bodies.
             Skip(plan, action, tokens, StructuralSkip::RequiredBody);
         } else if (nullStatement &&
-                   (previousTrailingLabel || previous == NK::CaseLabel ||
+            (previousTrailingLabel || previous == NK::CaseLabel ||
                     previous == NK::LabelStatement))
         {
             Skip(plan, action, tokens, StructuralSkip::LabelBody);
         } else if (AdjacentComment(tree, tokens)) {
             Skip(plan, action, tokens, StructuralSkip::CommentAttached);
         } else if (safety.IntersectsImmutable(Range(tree, tokens)) ||
-                   (safety.Gaps()[tokens.Begin].Preserve &&
+            (safety.Gaps()[tokens.Begin].Preserve &&
                     safety.Gaps()[tokens.Begin].Source.Empty()) ||
-                   (safety.Gaps()[tokens.End].Preserve &&
+            (safety.Gaps()[tokens.End].Preserve &&
                     safety.Gaps()[tokens.End].Source.Empty()))
         {
             Skip(plan, action, tokens, StructuralSkip::Protected);
         } else if (options.PreserveBareCR && safety.Gaps()[token].HasBareCR &&
-                   safety.Gaps()[token].Original.ends_with('\r'))
+            safety.Gaps()[token].Original.ends_with('\r'))
         {
             // Retain the first original separator of a zero-gap deletion
             // chain before admission: no cancellation or ID remapping.
@@ -990,9 +990,8 @@ NamespaceCommentPlan PlanNamespaceComments(
             if (safety
                 .IntersectsImmutable(
                     Range(original, {node.Tokens.Begin, open + 1})) ||
-                safety
-                .IntersectsImmutable(Range(original, {close, close + 1})) ||
-                safety.IntersectsImmutable(window))
+            safety.IntersectsImmutable(Range(original, {close, close + 1})) ||
+            safety.IntersectsImmutable(window))
         {
             fail(StructuralSkip::Protected);
             return;
@@ -1095,7 +1094,7 @@ StructuralPlan ResolveNamespaceComments(
             interiors[active.back()].Merge({r.Begin, r.End, !valid(token)});
         }
         while (nextNamespace < plan.Namespaces.size() &&
-               plan.Namespaces[nextNamespace].Open == token)
+            plan.Namespaces[nextNamespace].Open == token)
         {
             const auto& ns = plan.Namespaces[nextNamespace];
             if (ns.Close <= token || ns.Close >= count ||

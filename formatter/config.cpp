@@ -20,12 +20,12 @@ namespace {
 std::string_view Trim(std::string_view text)
 {
     while (!text.empty() &&
-           std::isspace(static_cast<unsigned char>(text.front())))
+        std::isspace(static_cast<unsigned char>(text.front())))
     {
         text.remove_prefix(1);
     }
     while (!text.empty() &&
-           std::isspace(static_cast<unsigned char>(text.back())))
+        std::isspace(static_cast<unsigned char>(text.back())))
     {
         text.remove_suffix(1);
     }
@@ -392,8 +392,8 @@ void AssignStyle(
             std::vector<std::string>>)
     {
         if constexpr (Member == &Style::ChainedCallRootNames ||
-                      Member == &Style::IndentedCallScopePairs ||
-                      Member == &Style::IncludeGroupPrefixes)
+            Member == &Style::IndentedCallScopePairs ||
+            Member == &Style::IncludeGroupPrefixes)
         {
             config.FormattingStyle.*Member = ParseStringList(value, path, line);
         } else {
@@ -413,7 +413,7 @@ void AssignStyle(
             config.FormattingStyle.*Member = {};
         } else if (value == "Inherit") {
             if constexpr (Member == &Style::MemberDefinitionBlankLines ||
-                          Member == &Style::MemberDeclarationBlankLines)
+                Member == &Style::MemberDeclarationBlankLines)
             {
                 config.FormattingStyle.*Member = BlankLineSetting::Inherited();
             } else {

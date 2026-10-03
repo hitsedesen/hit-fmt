@@ -106,8 +106,8 @@ std::pmr::vector<ProtectedSourceRange> ProjectProtection(
                     const auto& range,
                     Offset begin) { return range.Source.End <= begin; });
         for (;
-             it != original.end() && it->Source.Begin < piece.Original.End;
-             ++it)
+            it != original.end() && it->Source.Begin < piece.Original.End;
+            ++it)
         {
             const auto begin = std::max(it->Source.Begin, piece.Original.Begin);
             const auto end = std::min(it->Source.End, piece.Original.End);
@@ -230,7 +230,7 @@ std::pmr::vector<GapId> GeneratedGaps(
             // larger structural replacement still has authored line breaks;
             // whitespace joined across a deletion does not.
             while (piece < provenance.size() &&
-                   provenance[piece].Output.End <= range.Begin)
+                provenance[piece].Output.End <= range.Begin)
             {
                 ++piece;
             }
@@ -372,9 +372,9 @@ void ComposeMaps(
                         const auto& range,
                         Offset begin) { return range.Source.End <= begin; });
             for (;
-                 it != safety.Protection().end() &&
-                 it->Source.Begin < source.End;
-                 ++it)
+                it != safety.Protection().end() &&
+                it->Source.Begin < source.End;
+                ++it)
             {
                 const auto begin = std::max(source.Begin, it->Source.Begin);
                 const auto end = std::min(source.End, it->Source.End);
@@ -403,10 +403,10 @@ void ComposeMaps(
             });
         bool added = false;
         for (;
-             it != provenance.end() &&
-             (it->Output.Begin < source.End ||
+            it != provenance.end() &&
+            (it->Output.Begin < source.End ||
                     (source.Empty() && it->Output.Begin <= source.Begin));
-             ++it)
+            ++it)
         {
             const auto begin = std::max(source.Begin, it->Output.Begin);
             const auto end = std::min(source.End, it->Output.End);

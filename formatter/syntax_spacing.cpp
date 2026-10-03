@@ -216,8 +216,8 @@ public:
         }
         if (kind == NK::NewExpression) {
             for (const auto* child = node.Child();
-                 child;
-                 child = child->NextSibling)
+                child;
+                child = child->NextSibling)
             {
                 if (child->Kind == NK::NewTypeId && child->Tokens.Size() == 1 &&
                     Tree_.Kind(child->Tokens.Begin) == TK::Keyword_decltype)
@@ -308,7 +308,7 @@ public:
                                                                 .Begin) ==
                                                         TK::Operator_Ampersand)));
                 } else if (callee && callee->Kind == NK::Expression &&
-                           !state.KeywordOperands)
+                    !state.KeywordOperands)
                 {
                     state.UncertainOperands = true;
                 }
@@ -864,7 +864,7 @@ public:
                         3,
                         true);
                 } else if (parent &&
-                           (parent->Kind == NK::FunctionDefinition ||
+                    (parent->Kind == NK::FunctionDefinition ||
                             parent->Kind == NK::FunctionTryBlock))
                 {
                     Mark(
@@ -948,14 +948,11 @@ public:
                     C::DeclarationHeaders,
                     3);
             } else if (kind == NK::ExpressionStatement ||
-                       kind == NK::DeclarationStatement ||
-                       kind == NK::ReturnStatement ||
-                       kind == NK::ThrowStatement ||
-                       kind == NK::BreakStatement ||
-                       kind == NK::ContinueStatement ||
-                       kind == NK::GotoStatement ||
-                       kind == NK::CoYieldStatement ||
-                       kind == NK::DoWhileStatement)
+                kind == NK::DeclarationStatement ||
+                kind == NK::ReturnStatement || kind == NK::ThrowStatement ||
+                kind == NK::BreakStatement || kind == NK::ContinueStatement ||
+                kind == NK::GotoStatement || kind == NK::CoYieldStatement ||
+                kind == NK::DoWhileStatement)
             {
                 Mark(
                     end - 1,
@@ -1028,7 +1025,7 @@ public:
                         true);
                 }
             } else if (kind == TK::Operator_Semicolon &&
-                       state.ListCategory == C::ControlHeaders)
+                state.ListCategory == C::ControlHeaders)
             {
                 // Header separators override a declaration init-statement's ;.
                 Mark(i, F::None, *state.ListOwner, C::ControlHeaders, 4);
@@ -1047,9 +1044,8 @@ public:
                         true);
                 }
             } else if (role == PR::BinaryOperator ||
-                       role == PR::ComparisonOperator ||
-                       role == PR::ShiftOperator ||
-                       node.Kind == NK::FoldOperator)
+                role == PR::ComparisonOperator || role == PR::ShiftOperator ||
+                node.Kind == NK::FoldOperator)
             {
                 Pair(
                     i,
@@ -1059,7 +1055,7 @@ public:
                     C::Expressions,
                     1);
             } else if (role == PR::AssignmentOperator ||
-                       ((node.Kind == NK::Initializer ||
+                ((node.Kind == NK::Initializer ||
                                 node.Kind == NK::Enumerator) &&
                         kind == TK::Operator_Assign))
             {
@@ -1092,8 +1088,8 @@ public:
                     C::Expressions,
                     1);
             } else if (kind == TK::Operator_ScopeResolution &&
-                       role != PR::AmbiguousOperator &&
-                       node.Kind != NK::OperatorFunctionName)
+                role != PR::AmbiguousOperator &&
+                node.Kind != NK::OperatorFunctionName)
             {
                 // Leading global qualification has no left qualifier edge.
                 if (i > node.Tokens.Begin) {
@@ -1111,7 +1107,7 @@ public:
                     state.Category,
                     1);
             } else if (node.Kind == NK::MemberExpression &&
-                       (kind == TK::Operator_ClassMemberAccess ||
+                (kind == TK::Operator_ClassMemberAccess ||
                         kind == TK::Operator_IndirectClassMemberAccess ||
                         kind == TK::Operator_PointerToMemberDereference ||
                         kind ==
@@ -1431,8 +1427,8 @@ private:
                 // first initializer token is unparsed, including later '='.
                 unknown = cursor + 2;
             } else if (cursor < end &&
-                       Tree_.Kind(cursor) == TK::Operator_Ellipsis &&
-                       next(cursor + 1) == end)
+                Tree_.Kind(cursor) == TK::Operator_Ellipsis &&
+                next(cursor + 1) == end)
             {
                 // A simple pack capture has a suffix, not an initializer.
                 unknown = end;
@@ -1478,7 +1474,7 @@ private:
         }
         TI previous = open;
         while (previous > parent->Tokens.Begin &&
-               Tree_.Kind(previous - 1) == TK::Comment)
+            Tree_.Kind(previous - 1) == TK::Comment)
         {
             --previous;
         }
@@ -1556,11 +1552,11 @@ private:
                 field = F::NoexceptSpaceBeforeParentheses;
             }
         } else if (node.Kind == NK::DeclarationSpecifiers ||
-                   node.Kind == NK::TypeId || node.Kind == NK::NewTypeId ||
-                   node.Kind == NK::UsingDeclaration ||
-                   node.Kind == NK::TrailingReturnType ||
-                   node.Kind == NK::RecordDeclaration ||
-                   node.Kind == NK::EnumDeclaration)
+            node.Kind == NK::TypeId || node.Kind == NK::NewTypeId ||
+            node.Kind == NK::UsingDeclaration ||
+            node.Kind == NK::TrailingReturnType ||
+            node.Kind == NK::RecordDeclaration ||
+            node.Kind == NK::EnumDeclaration)
         {
             if (kind == TK::Keyword_decltype) {
                 field = F::DecltypeSpaceBeforeParentheses;
@@ -1654,8 +1650,7 @@ private:
                 Mark(close + 1, F::CastSpacing, node, C::Expressions, 3);
             }
         } else if (node.FirstChild && node.FirstChild->Kind == NK::TypeId &&
-                   begin + 1 < end &&
-                   Tree_.Kind(begin + 1) == TK::Operator_Less)
+            begin + 1 < end && Tree_.Kind(begin + 1) == TK::Operator_Less)
         {
             Mark(
                 begin + 1,

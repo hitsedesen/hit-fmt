@@ -94,10 +94,10 @@ bool SemanticProtection(const SourceAnalysis& safety, Range source)
         });
     constexpr auto outside = uint16_t(ProtectionReason::OutsideEditScope);
     for (;
-         it != ranges.end() &&
-         (it->Source.Begin < source.End ||
+        it != ranges.end() &&
+        (it->Source.Begin < source.End ||
                 (source.Empty() && it->Source.Begin <= source.Begin));
-         ++it)
+        ++it)
     {
         if (uint16_t(it->Reasons) & ~outside) {
             return true;
@@ -149,7 +149,7 @@ std::vector<HunkCoverage> FinishCoverage(
             reason = record.Reason;
         }
         while (next < selected.size() &&
-               selected[next].End <= record.Original.Begin)
+            selected[next].End <= record.Original.Begin)
         {
             ++next;
         }
@@ -160,8 +160,8 @@ std::vector<HunkCoverage> FinishCoverage(
             continue;
         }
         for (auto i = next;
-             i < selected.size() && selected[i].Begin < record.Original.End;
-             ++i)
+            i < selected.size() && selected[i].Begin < record.Original.End;
+            ++i)
         {
             result
                 .push_back(
@@ -256,7 +256,7 @@ ChangedFormatResult FormatChanged(
         if (spillover && safe && unit.End - unit.Begin < 200) {
             windows.push_back(unit);
         } else if (!safe ||
-                   !detail::HunkScopeContains(selectedBytes, region.Source))
+            !detail::HunkScopeContains(selectedBytes, region.Source))
         {
             coverage.push_back({region.Source, Reason::LimitedLayout});
         }
@@ -273,7 +273,7 @@ ChangedFormatResult FormatChanged(
             if (spillover && unit.End - unit.Begin < 200) {
                 windows.push_back(unit);
             } else if (prepared.Structural.SortIncludes &&
-                       !detail::HunkScopeContains(selectedBytes, group.Source))
+                !detail::HunkScopeContains(selectedBytes, group.Source))
             {
                 coverage
                     .push_back({group.Source, Reason::StructuralEligibility});

@@ -113,8 +113,8 @@ util::Position NamePosition(
                     return tree.TokenPosition(nested->Tokens.End - 1);
                 }
                 for (auto* child = abstract->Child();
-                     child;
-                     child = child->NextSibling)
+                    child;
+                    child = child->NextSibling)
                 {
                     if (child->Kind == NK::ArrayDeclarator ||
                         child->Kind == NK::FunctionDeclarator)
@@ -208,8 +208,8 @@ void CheckFunction(
         const auto endLine = tree.TokenPosition(signature->Tokens.End - 1).Line;
         size_t number = 0;
         for (auto* parameter = parameters->Child();
-             parameter;
-             parameter = parameter->NextSibling)
+            parameter;
+            parameter = parameter->NextSibling)
         {
             if (parameter->Kind != NK::ParameterDeclaration) {
                 continue;

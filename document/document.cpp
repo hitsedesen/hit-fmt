@@ -662,9 +662,9 @@ const
             summary = summaries.back();
             summaries.pop_back();
         } else if (node.Type == Kind::Text || node.Type == Kind::Verbatim ||
-                   node.Type == Kind::ConditionalText ||
-                   node.Type == Kind::SourceLineIndent ||
-                   node.Type == Kind::SourceWhitespace)
+            node.Type == Kind::ConditionalText ||
+            node.Type == Kind::SourceLineIndent ||
+            node.Type == Kind::SourceWhitespace)
         {
             // Fixed prefixes establish shape like Verbatim, but never publish
             // lastBreak/ownedBreak. Their indentation follows a guaranteed

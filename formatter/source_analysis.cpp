@@ -64,9 +64,9 @@ void MergeProtection(std::pmr::vector<ProtectedSourceRange>& protection)
             previous.Reasons = previous.Reasons | range.Reasons;
             // A true overlap can make the union equal to its touching neighbor.
             while (merged > 1 &&
-                   protection[merged - 2].Source.End ==
+                protection[merged - 2].Source.End ==
                     protection[merged - 1].Source.Begin &&
-                   protection[merged - 2].Reasons ==
+                protection[merged - 2].Reasons ==
                     protection[merged - 1].Reasons)
             {
                 protection[merged - 2].Source.End =
@@ -529,12 +529,12 @@ SourceAnalysis BuildSourceAnalysis(
         const auto token = tree.Token(i);
         const auto text = tree.TokenText(i);
         while (lineIndex + 1 < lines.size() &&
-               lines[lineIndex + 1].Begin <= token.Text.Begin)
+            lines[lineIndex + 1].Begin <= token.Text.Begin)
         {
             ++lineIndex;
         }
         while (endLineIndex + 1 < lines.size() &&
-               lines[endLineIndex + 1].Begin <= token.Text.End)
+            lines[endLineIndex + 1].Begin <= token.Text.End)
         {
             ++endLineIndex;
         }
@@ -571,7 +571,7 @@ SourceAnalysis BuildSourceAnalysis(
             auto marker = text;
             if (marker.starts_with("//")) {
                 while (!marker.empty() &&
-                       (marker.back() == ' ' || marker.back() == '\t' ||
+                    (marker.back() == ' ' || marker.back() == '\t' ||
                             marker.back() == '\r'))
                 {
                     marker.remove_suffix(1);
@@ -730,7 +730,7 @@ SourceAnalysis BuildSourceAnalysis(
         gap.IntrinsicPreserve = gap.Preserve;
         gap.IntrinsicContextSensitive = gap.ContextSensitive;
         while (interval < result.Protection_.size() &&
-               result.Protection_[interval].Source.End <= gap.Source.Begin)
+            result.Protection_[interval].Source.End <= gap.Source.Begin)
         {
             ++interval;
         }

@@ -354,8 +354,8 @@ private:
                     parser::SourceOffset point) { return range.Source.End <=
                         point; });
         for (;
-             first != protection.end() && first->Source.Begin < source.End;
-             ++first)
+            first != protection.end() && first->Source.Begin < source.End;
+            ++first)
         {
             if ((uint16_t(first->Reasons) &
                         ~uint16_t(ProtectionReason::OutsideEditScope)) != 0)
@@ -453,8 +453,8 @@ private:
                         PrefixProtection_[node.Tokens.End];
             }
             for (auto child = entry.FirstChild;
-                 child != None;
-                 child = Syntax_[child].NextSibling)
+                child != None;
+                child = Syntax_[child].NextSibling)
             {
                 entry.Safe = entry.Safe && Syntax_[child].Safe;
             }
@@ -475,7 +475,7 @@ private:
                             {
                                 opening = token;
                             } else if (Tree_.Kind(token) ==
-                                       TokenKind::Operator_CloseBrace)
+                                TokenKind::Operator_CloseBrace)
                             {
                                 closing = token;
                             }
@@ -508,15 +508,15 @@ private:
             entry.Attached = node.Tokens;
             if (const auto *trivia = Tree_.AssociatedTrivia(node)) {
                 for (auto* item = trivia->Leading.First;
-                     item;
-                     item = item->Next)
+                    item;
+                    item = item->Next)
                 {
                     entry.Attached.Begin =
                         std::min(entry.Attached.Begin, item->Tokens.Begin);
                 }
                 for (auto* item = trivia->Trailing.First;
-                     item;
-                     item = item->Next)
+                    item;
+                    item = item->Next)
                 {
                     entry.Attached.End =
                         std::max(entry.Attached.End, item->Tokens.End);
@@ -537,8 +537,8 @@ private:
                                     TokenKind::Operator_OpenBrace;
                     });
                 for (auto child = entry.FirstChild;
-                     child != None;
-                     child = Syntax_[child].NextSibling)
+                    child != None;
+                    child = Syntax_[child].NextSibling)
                 {
                     entry.Definition =
                         entry.Definition ||
@@ -550,8 +550,8 @@ private:
                 node.Kind == NodeKind::ExportDeclaration)
             {
                 for (auto child = entry.FirstChild;
-                     child != None;
-                     child = Syntax_[child].NextSibling)
+                    child != None;
+                    child = Syntax_[child].NextSibling)
                 {
                     entry.Definition =
                         entry.Definition || Syntax_[child].Definition;
@@ -750,8 +750,8 @@ private:
             preserve(node.Tokens.End - 1);
         }
         for (auto child = entry.FirstChild;
-             child != None;
-             child = Syntax_[child].NextSibling)
+            child != None;
+            child = Syntax_[child].NextSibling)
         {
             const auto& part = *Syntax_[child].TreeNode;
             if (part.Kind == NodeKind::ListSeparator ||
@@ -885,8 +885,8 @@ private:
         Index lastItem = None;
         Index lastSeparator = None;
         for (auto child = Syntax_[id].FirstChild;
-             child != None;
-             child = Syntax_[child].NextSibling)
+            child != None;
+            child = Syntax_[child].NextSibling)
         {
             const auto& part = *Syntax_[child].TreeNode;
             const auto t = part.Tokens.Begin;
@@ -1035,8 +1035,8 @@ private:
         const auto& node = *Syntax_[id].TreeNode;
         auto cursor = node.Tokens.Begin;
         for (auto child = Syntax_[id].FirstChild;
-             child != None;
-             child = Syntax_[child].NextSibling)
+            child != None;
+            child = Syntax_[child].NextSibling)
         {
             const auto range = Syntax_[child].TreeNode->Tokens;
             for (; cursor < std::min(range.Begin, node.Tokens.End); ++cursor) {
@@ -1400,8 +1400,8 @@ private:
                     }
                 });
             for (auto child = Syntax_[current].FirstChild;
-                 child != None;
-                 child = Syntax_[child].NextSibling)
+                child != None;
+                child = Syntax_[child].NextSibling)
             {
                 const auto& node = *Syntax_[child].TreeNode;
                 if (!Syntax_[child].Safe || node.Tokens.End <= begin ||
@@ -1427,8 +1427,7 @@ private:
                 } else if ((node.Kind == NodeKind::ParameterList ||
                             node.Kind == NodeKind::Condition ||
                             node.Kind == NodeKind::ForHeader) &&
-                           node.Tokens.Begin > begin &&
-                           GapMutable(node.Tokens.Begin))
+                    node.Tokens.Begin > begin && GapMutable(node.Tokens.Begin))
                 {
                     // Its opener belongs to the declarator; the independently
                     // selected parameter topology starts after that opener.
@@ -1471,8 +1470,8 @@ private:
         bool first = true;
         Index compactSeparators = None;
         for (auto child = Syntax_[id].FirstChild;
-             child != None;
-             child = Syntax_[child].NextSibling)
+            child != None;
+            child = Syntax_[child].NextSibling)
         {
             const auto& body = *Syntax_[child].TreeNode;
             const bool suffix =
@@ -1490,7 +1489,7 @@ private:
                 const auto end = std::min(body.Tokens.Begin, node.Tokens.End);
                 for (Index t = previousEnd; t < end;) {
                     while (part != None && part != child &&
-                           Syntax_[part].TreeNode->Tokens.End <= t)
+                        Syntax_[part].TreeNode->Tokens.End <= t)
                     {
                         part = Syntax_[part].NextSibling;
                     }
@@ -1530,8 +1529,8 @@ private:
                         PrefixProtection_[opening + (braced ? 1 : 0)] &&
                     (!suffix || Syntax_[child].Safe);
             for (auto part = Syntax_[id].FirstChild;
-                 part != None;
-                 part = Syntax_[part].NextSibling)
+                part != None;
+                part = Syntax_[part].NextSibling)
             {
                 const auto range = Syntax_[part].TreeNode->Tokens;
                 if (range.Begin >= begin && range.End <= opening &&
@@ -1760,8 +1759,8 @@ private:
             });
         bool bodyChild = false;
         for (auto child = Syntax_[id].FirstChild;
-             child != None;
-             child = Syntax_[child].NextSibling)
+            child != None;
+            child = Syntax_[child].NextSibling)
         {
             const auto& part = *Syntax_[child].TreeNode;
             if (part.Kind == NodeKind::FunctionTryBlock &&
@@ -1812,8 +1811,8 @@ private:
             PrefixProtection_[node.Tokens.Begin] ==
                 PrefixProtection_[opening + 1];
         for (auto child = Syntax_[id].FirstChild;
-             child != None;
-             child = Syntax_[child].NextSibling)
+            child != None;
+            child = Syntax_[child].NextSibling)
         {
             if (Syntax_[child].TreeNode->Tokens.End <= opening &&
                 !Syntax_[child].Safe)
@@ -1968,8 +1967,8 @@ private:
         bool inCase = false;
         Index contents = None;
         for (auto child = Syntax_[id].FirstChild;
-             child != None;
-             child = Syntax_[child].NextSibling)
+            child != None;
+            child = Syntax_[child].NextSibling)
         {
             const auto& part = *Syntax_[child].TreeNode;
             if (part.Tokens.Empty() || part.Tokens.Begin <= opening ||
@@ -2225,8 +2224,8 @@ private:
                 node.Kind == NodeKind::ParenthesizedExpression)
             {
                 for (auto child = Syntax_[expression].FirstChild;
-                     child != None;
-                     child = Syntax_[child].NextSibling)
+                    child != None;
+                    child = Syntax_[child].NextSibling)
                 {
                     Stack_.push_back(child);
                 }
@@ -2280,8 +2279,8 @@ private:
                 continue;
             }
             for (auto arg = Syntax_[args].FirstChild;
-                 arg != None;
-                 arg = Syntax_[arg].NextSibling)
+                arg != None;
+                arg = Syntax_[arg].NextSibling)
             {
                 if (Syntax_[arg].TreeNode->Kind == NodeKind::Argument) {
                     Stack_.push_back(arg);
@@ -2370,8 +2369,8 @@ private:
             }
             pairs.clear();
             for (auto child = Syntax_[id].FirstChild;
-                 child != None;
-                 child = Syntax_[child].NextSibling)
+                child != None;
+                child = Syntax_[child].NextSibling)
             {
                 if (!Syntax_[child].Safe ||
                     Syntax_[child].TreeNode->Kind ==
@@ -2493,8 +2492,8 @@ private:
                     document::GroupMode::Consistent,
                     int32_t(Policies_.IndentWidth));
             for (auto interior = range.First;
-                 interior != range.End;
-                 interior = Syntax_[interior].NextSibling)
+                interior != range.End;
+                interior = Syntax_[interior].NextSibling)
             {
                 auto& gap = Gaps_[Syntax_[interior].TreeNode->Tokens.Begin];
                 if (gap.Owner == owner) {
@@ -2577,11 +2576,11 @@ private:
             auto end = entry.TreeNode->Tokens.End;
             child = entry.NextSibling;
             while (child != None && Syntax_[child].Safe &&
-                   Syntax_[child].TreeNode->Kind == NodeKind::Comment &&
-                   Syntax_[child].TreeNode->Tokens.Begin == end &&
-                   Syntax_[child].TreeNode->Tokens.End <=
+                Syntax_[child].TreeNode->Kind == NodeKind::Comment &&
+                Syntax_[child].TreeNode->Tokens.Begin == end &&
+                Syntax_[child].TreeNode->Tokens.End <=
                     Syntax_[id].SequenceBody.End && !Gaps_[end].Frozen &&
-                   !ContextProtected(Safety_.Gaps()[end].Source))
+                !ContextProtected(Safety_.Gaps()[end].Source))
             {
                 end = Syntax_[child].TreeNode->Tokens.End;
                 child = Syntax_[child].NextSibling;
@@ -2683,8 +2682,8 @@ private:
                 }
                 children.clear();
                 for (auto child = Syntax_[id].FirstChild;
-                     child != None;
-                     child = Syntax_[child].NextSibling)
+                    child != None;
+                    child = Syntax_[child].NextSibling)
                 {
                     children.push_back(child);
                 }
@@ -3171,7 +3170,7 @@ private:
             }
             auto space = newline;
             while (space > run &&
-                   (source[space - 1] == ' ' || source[space - 1] == '\t'))
+                (source[space - 1] == ' ' || source[space - 1] == '\t'))
             {
                 --space;
             }
@@ -3185,7 +3184,7 @@ private:
         if (trimTail) {
             const auto originalEnd = end;
             while (end > run &&
-                   (source[end - 1] == ' ' || source[end - 1] == '\t'))
+                (source[end - 1] == ' ' || source[end - 1] == '\t'))
             {
                 --end;
             }
@@ -3396,7 +3395,7 @@ private:
         const auto permissions = Safety_.PartialGapPermissions();
         const auto begin = NextPermission_;
         while (NextPermission_ < permissions.size() &&
-               permissions[NextPermission_].Gap == i)
+            permissions[NextPermission_].Gap == i)
         {
             ++NextPermission_;
         }
