@@ -633,7 +633,7 @@ TEST(HunkAdapter, OptionalCommaInsertionAndRemovalHaveOriginalAuthority)
         inserted.Result.Map.end(),
         [&] (const auto& map) {
             return map.Generated && map.OriginalToken ==
-                formatter::layout::NoIdentity &&
+                document::NoIdentity &&
                 std::string_view(inserted.Result.Text).substr(
                     map.Output.Begin,
                     map.Output.End - map.Output.Begin) == ",";

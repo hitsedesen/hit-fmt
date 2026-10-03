@@ -88,7 +88,7 @@ void CheckIdentities(
                 result.StructuralOperations[map.Action].Owner.End,
                 tree.TokenCount());
         }
-        if (map.OriginalToken != formatter::layout::NoIdentity) {
+        if (map.OriginalToken != document::NoIdentity) {
             ASSERT_LT(map.OriginalToken, result.OriginalTokens.size());
             EXPECT_TRUE(result.OriginalTokens[map.OriginalToken].Present);
             EXPECT_FALSE(map.Generated);
@@ -1348,7 +1348,7 @@ TEST(PublicPipeline,
             found = true;
             EXPECT_TRUE(map.Generated);
             EXPECT_FALSE(map.Exact);
-            EXPECT_EQ(map.OriginalToken, formatter::layout::NoIdentity);
+            EXPECT_EQ(map.OriginalToken, document::NoIdentity);
             EXPECT_TRUE(map.HasOriginal);
             EXPECT_EQ(map.Original.Begin, source.find("beta") + 4);
             EXPECT_EQ(map.Original.End, map.Original.Begin);
@@ -1578,7 +1578,7 @@ TEST(PublicPipeline, EditScopeProjectsPermutationGeneratedBytesAndReasonUnions)
         literal |= kind == formatter::StructuralAction::
             AddMissingControlBraces &&
             map.Generated && !map.Exact &&
-            map.OriginalToken == formatter::layout::NoIdentity;
+            map.OriginalToken == document::NoIdentity;
     }
     for (const auto& range : result.OutputProtection)
     {
@@ -1667,7 +1667,7 @@ TEST(PublicPipeline, EditScopeBraceInsertionRequiresBothOriginalPoints)
             {
                 if (map.Action != action || !map.Generated || map.Exact ||
                     !map.HasOriginal || !map.Original.Empty() ||
-                    map.OriginalToken != formatter::layout::NoIdentity)
+                    map.OriginalToken != document::NoIdentity)
                     continue;
                 const auto text = std::string_view(formatted.Text).substr(
                     map.Output.Begin, map.Output.End - map.Output.Begin);
@@ -2248,7 +2248,7 @@ TEST(PublicPipeline, LineEndingOwningMapsRetainedPrefixesAndIdempotence)
     for (const auto& map : result.Map)
     {
         if (!map.Exact && map.HasOriginal && map.OriginalToken ==
-                formatter::layout::NoIdentity &&
+                document::NoIdentity &&
             source.substr(map.Original.Begin,
                 map.Original.End - map.Original.Begin) == "\n")
         {
@@ -2707,7 +2707,7 @@ TEST(PublicPipeline, TrailingCommentSpacesLexicalSafetyOwnsTokensAndMaps)
     bool changedGap = false;
     for (const auto& map : result.Map)
         changedGap |= !map.Exact && map.HasOriginal &&
-            map.OriginalToken == formatter::layout::NoIdentity;
+            map.OriginalToken == document::NoIdentity;
     EXPECT_TRUE(changedGap);
 }
 

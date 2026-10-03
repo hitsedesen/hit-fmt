@@ -49,7 +49,7 @@ struct Gap
 {
     Index Owner = None;
     Boundary Shape = Boundary::Preserve;
-    layout::GapKind Broken = layout::GapKind::Flat;
+    document::GapKind Broken = document::GapKind::Flat;
     bool Closing = false;
     bool Generated = false;
     bool Reindent = false;
@@ -78,12 +78,12 @@ struct Group
 {
     Position Begin;
     Position End;
-    layout::GroupSpec Spec;
+    document::GroupSpec Spec;
     IndentationPolicy Indent;
     bool HasAnchor = false;
-    layout::GroupId Id = layout::InvalidId;
-    layout::AnchorId Anchor = layout::InvalidId;
-    layout::AnchorId Block = layout::InvalidId;
+    document::GroupId Id = document::InvalidId;
+    document::AnchorId Anchor = document::InvalidId;
+    document::AnchorId Block = document::InvalidId;
     Index PrefixGap = None;
     bool AnchorAfterGap = false;
     uint32_t LogicalIndent = 0;
@@ -199,7 +199,7 @@ public:
         const LibraryAnnotations& annotations,
         const SourceAnalysis& safety,
         const SyntaxSpacing& spacing,
-        layout::Document& document,
+        document::Document& document,
         std::pmr::memory_resource& scratch,
         const SyntaxLayoutOptions& options)
         : Tree_(tree)
@@ -320,7 +320,7 @@ private:
     const LibraryAnnotations& Annotations_;
     const SourceAnalysis& Safety_;
     const SyntaxSpacing& Spacing_;
-    layout::Document& Document_;
+    document::Document& Document_;
     const SyntaxLayoutOptions& Options_;
     std::pmr::vector<Syntax> Syntax_;
     std::pmr::vector<Group> Groups_;
@@ -603,7 +603,7 @@ private:
     Index GroupAt(
         Position begin,
         Position end,
-        layout::GroupMode mode,
+        document::GroupMode mode,
         int32_t indent = 0,
         std::optional<IndentationPolicy> anchor = {})
     {
@@ -624,7 +624,7 @@ private:
         Index gap,
         Index owner,
         Boundary shape,
-        layout::GapKind broken = layout::GapKind::Flat,
+        document::GapKind broken = document::GapKind::Flat,
         bool closing = false)
     {
         if (gap >= Gaps_.size() || owner == None) {
@@ -805,7 +805,7 @@ private:
             GroupAt(
                 prefixed ? GapPosition(begin) : GapPosition(begin + 1),
                 GapPosition(end),
-                layout::GroupMode::Fill,
+                document::GroupMode::Fill,
                 int32_t(policy.Indent.ContinuationOffset),
                 policy.Indent);
         if (group == None) {
@@ -816,7 +816,7 @@ private:
         Groups_[group].Spec.ForceBreak =
             canonical && !empty && policy.Break == BreakRequirement::Always;
         if (empty && canonical) {
-            Own(closer, group, Boundary::Flat, layout::GapKind::Flat, true);
+            Own(closer, group, Boundary::Flat, document::GapKind::Flat, true);
             return;
         }
         if (canonical) {
@@ -826,8 +826,8 @@ private:
             auto firstKind =
                 policy.FirstItem == FirstItemPlacement::NextLine &&
                         !PinFirst(id)
-                    ? layout::GapKind::Hard
-                    : layout::GapKind::Soft;
+                    ? document::GapKind::Hard
+                    : document::GapKind::Soft;
             Own(begin + 1, group, Boundary::Conditional, firstKind);
             if (!prefixed) {
                 Own(
@@ -835,8 +835,8 @@ private:
                     group,
                     Boundary::Conditional,
                     policy.Closer == CloserPlacement::OwnLine
-                        ? layout::GapKind::Hard
-                        : layout::GapKind::Flat,
+                        ? document::GapKind::Hard
+                        : document::GapKind::Flat,
                     true);
             }
         } else {
@@ -847,7 +847,7 @@ private:
                     closer,
                     group,
                     Boundary::Preserve,
-                    layout::GapKind::Flat,
+                    document::GapKind::Flat,
                     true);
                 Reindent(closer, group, true);
             }
@@ -881,14 +881,14 @@ private:
                 Boundary::Conditional,
                 header->Colon == OperatorSide::Leading
                     ? firstKindFor(policy)
-                    : layout::GapKind::Flat);
+                    : document::GapKind::Flat);
             Own(
                 begin + 1,
                 group,
                 Boundary::Conditional,
                 header->Colon == OperatorSide::Trailing
                     ? firstKindFor(policy)
-                    : layout::GapKind::Flat);
+                    : document::GapKind::Flat);
         }
         Index lastItem = None;
         Index lastSeparator = None;
@@ -921,8 +921,8 @@ private:
                         group,
                         Boundary::Conditional,
                         policy.Packing == ListPacking::VerticalWhenBroken
-                            ? layout::GapKind::Hard
-                            : layout::GapKind::Soft);
+                            ? document::GapKind::Hard
+                            : document::GapKind::Soft);
                 }
                 Own(
                     side == OperatorSide::Leading ? t + 1 : t,
@@ -955,8 +955,8 @@ private:
                                 Boundary::Conditional,
                                 policy.Packing ==
                                         ListPacking::VerticalWhenBroken
-                                    ? layout::GapKind::Hard
-                                    : layout::GapKind::Soft);
+                                    ? document::GapKind::Hard
+                                    : document::GapKind::Soft);
                         } else {
                             Reindent(t + 1, group);
                         }
@@ -1037,11 +1037,11 @@ private:
         }
     }
 
-    static layout::GapKind firstKindFor(const ListPolicy& policy)
+    static document::GapKind firstKindFor(const ListPolicy& policy)
     {
         return policy.FirstItem == FirstItemPlacement::NextLine
-            ? layout::GapKind::Hard
-            : layout::GapKind::Soft;
+            ? document::GapKind::Hard
+            : document::GapKind::Soft;
     }
 
     template <class Function>
@@ -1127,8 +1127,8 @@ private:
                     : TokenPosition(node.Tokens.Begin),
                 GapPosition(node.Tokens.End),
                 threePart
-                    ? layout::GroupMode::Consistent
-                    : layout::GroupMode::Fill,
+                    ? document::GroupMode::Consistent
+                    : document::GroupMode::Fill,
                 int32_t(policy.Indent.ContinuationOffset),
                 policy.Indent);
         Groups_[group].Spec.ExpressionContinuation = true;
@@ -1185,7 +1185,7 @@ private:
                         side == OperatorSide::Leading ? t : t + 1,
                         group,
                         boundary,
-                        layout::GapKind::Hard);
+                        document::GapKind::Hard);
                     Own(
                         side == OperatorSide::Leading ? t + 1 : t,
                         group,
@@ -1202,7 +1202,7 @@ private:
                     Tree_.Kind(t) == TokenKind::Literal_String)
             {
                 if (canonical) {
-                    Own(t, group, boundary, layout::GapKind::Hard);
+                    Own(t, group, boundary, document::GapKind::Hard);
                 } else {
                     Reindent(t, group);
                 }
@@ -1238,7 +1238,12 @@ private:
             (force || Policies_.IndentationKind != IndentationKind::Preserve) &&
                 HasLine(Safety_.Gaps()[gap].Original))
         {
-            Own(gap, owner, Boundary::Preserve, layout::GapKind::Flat, closing);
+            Own(
+                gap,
+                owner,
+                Boundary::Preserve,
+                document::GapKind::Flat,
+                closing);
             Gaps_[gap].Reindent = true;
         }
     }
@@ -1495,7 +1500,7 @@ private:
                             GroupAt(
                                 TokenPosition(node.Tokens.Begin),
                                 GapPosition(node.Tokens.End),
-                                layout::GroupMode::Consistent);
+                                document::GroupMode::Consistent);
                         Groups_[compactSeparators].Spec.StructuralBase = true;
                     }
                     prefix = compactSeparators;
@@ -1504,7 +1509,7 @@ private:
                         GroupAt(
                             GapPosition(begin),
                             TokenPosition(begin),
-                            layout::GroupMode::Consistent);
+                            document::GroupMode::Consistent);
                 }
                 Own(begin, prefix, boundary);
                 if (boundary == Boundary::Preserve) {
@@ -1521,7 +1526,7 @@ private:
                     GroupAt(
                         TokenPosition(begin),
                         GapPosition(node.Tokens.End),
-                        layout::GroupMode::Fill);
+                        document::GroupMode::Fill);
                 Groups_[header].Spec.StructuralBase = true;
                 if (canonical) {
                     ProjectHeaderGaps(id, begin, node.Tokens.End, header);
@@ -1536,7 +1541,7 @@ private:
                         : elseIf
                             ? TokenPosition(opening)
                             : GapPosition(opening),
-                    layout::GroupMode::Fill);
+                    document::GroupMode::Fill);
             Groups_[header].Spec.StructuralBase = true;
             if (canonical) {
                 ProjectHeaderGaps(id, begin, opening, header);
@@ -1552,7 +1557,7 @@ private:
                             : brace == BracePlacement::Attached
                                 ? Boundary::Flat
                                 : Boundary::Conditional,
-                    layout::GapKind::Hard,
+                    document::GapKind::Hard,
                     true);
                 if (!canonical) {
                     Reindent(opening, header, true);
@@ -1567,7 +1572,7 @@ private:
                     GroupAt(
                         GapPosition(opening),
                         GapPosition(body.Tokens.End),
-                        layout::GroupMode::Consistent,
+                        document::GroupMode::Consistent,
                         int32_t(Policies_.Bodies.IndentWidth));
                 Groups_[group].Spec.StructuralBase = true;
                 if (Policies_.Bodies.Layout == LayoutMode::Canonical) {
@@ -1617,7 +1622,7 @@ private:
                     GroupAt(
                         GapPosition(node.Tokens.Begin),
                         GapPosition(node.Tokens.End),
-                        layout::GroupMode::Consistent,
+                        document::GroupMode::Consistent,
                         Policies_.Indentation.StandaloneBraces.Offset);
                 auto& gap = Gaps_[node.Tokens.Begin];
                 gap.Owner = scope;
@@ -1749,7 +1754,7 @@ private:
             GroupAt(
                 TokenPosition(node.Tokens.Begin),
                 GapPosition(opening + 1),
-                layout::GroupMode::Fill);
+                document::GroupMode::Fill);
         Groups_[group].Spec.StructuralBase = true;
         if (canonical) {
             Own(
@@ -1760,7 +1765,7 @@ private:
                     : *brace == BracePlacement::Attached
                         ? Boundary::Flat
                         : Boundary::Conditional,
-                layout::GapKind::Hard,
+                document::GapKind::Hard,
                 true);
             ProjectHeaderGaps(id, node.Tokens.Begin, opening, group);
         }
@@ -1769,7 +1774,7 @@ private:
                 opening,
                 group,
                 Boundary::Preserve,
-                layout::GapKind::Flat,
+                document::GapKind::Flat,
                 true);
             Reindent(opening, group, true);
         }
@@ -1861,7 +1866,7 @@ private:
                         BodyIndentation::Preserve;
         const auto group =
             GroupAt(GapPosition(opening + 1), GapPosition(close + 1),
-                    layout::GroupMode::Consistent, offset,
+                    document::GroupMode::Consistent, offset,
                     IndentationPolicy{ContinuationAlignment::Block,
                                       size_t(offset), size_t(offset)});
         Groups_[group].Spec.StructuralBase = true;
@@ -1876,11 +1881,16 @@ private:
                 close,
                 group,
                 expanded ? Boundary::Hard : Boundary::Soft,
-                layout::GapKind::Flat,
+                document::GapKind::Flat,
                 true);
         } else {
             Own(opening + 1, group, Boundary::Preserve);
-            Own(close, group, Boundary::Preserve, layout::GapKind::Flat, true);
+            Own(
+                close,
+                group,
+                Boundary::Preserve,
+                document::GapKind::Flat,
+                true);
             Reindent(opening + 1, group, false, independentIndent);
             Reindent(close, group, true);
         }
@@ -1910,7 +1920,7 @@ private:
                         GroupAt(
                             GapPosition(part.Tokens.Begin),
                             GapPosition(part.Tokens.End),
-                            layout::GroupMode::Consistent,
+                            document::GroupMode::Consistent,
                             int32_t(policy.IndentWidth));
                     Groups_[contents].Spec.StructuralBase = true;
                 } else {
@@ -2073,7 +2083,7 @@ private:
             GroupAt(
                 TokenPosition(entry.TreeNode->Tokens.Begin),
                 GapPosition(entry.TreeNode->Tokens.End),
-                layout::GroupMode::Fill,
+                document::GroupMode::Fill,
                 int32_t(policy.Indent.ContinuationOffset),
                 policy.Indent);
         // A chain owns continuation independently of pending expression
@@ -2102,8 +2112,8 @@ private:
                     group,
                     Boundary::Conditional,
                     policy.Packing == ListPacking::VerticalWhenBroken
-                        ? layout::GapKind::Hard
-                        : layout::GapKind::Soft);
+                        ? document::GapKind::Hard
+                        : document::GapKind::Soft);
             }
             spine = callee;
         }
@@ -2432,7 +2442,7 @@ private:
                 GroupAt(
                     GapPosition(beginToken),
                     GapPosition(endToken),
-                    layout::GroupMode::Consistent,
+                    document::GroupMode::Consistent,
                     int32_t(Policies_.IndentWidth));
             for (auto interior = range.First;
                 interior != range.End;
@@ -2834,12 +2844,12 @@ private:
                                     gap.Shape == Boundary::Soft ||
                                     (gap.Shape == Boundary::Conditional &&
                                             gap.Broken !=
-                                                layout::GapKind::Flat)));
+                                                document::GapKind::Flat)));
             if (gap.Shape == Boundary::Preserve) {
                 continue;
             }
-            const bool flat = Allows(i, layout::GapKind::Flat);
-            const bool line = Allows(i, layout::GapKind::Hard);
+            const bool flat = Allows(i, document::GapKind::Flat);
+            const bool line = Allows(i, document::GapKind::Hard);
             if (!flat && !line) {
                 gap.Shape = Boundary::Preserve;
             } else if (!flat) {
@@ -2871,7 +2881,7 @@ private:
             const bool boundary =
                 gap.Shape == Boundary::Soft || gap.Shape == Boundary::Hard ||
                     (gap.Shape == Boundary::Conditional &&
-                            gap.Broken != layout::GapKind::Flat) ||
+                            gap.Broken != document::GapKind::Flat) ||
                     (gap.Shape == Boundary::Preserve &&
                             HasLine(Safety_.Gaps()[i].Original));
             if (boundary) {
@@ -2900,7 +2910,7 @@ private:
         return gap.CanonicalFlat || gap.Shape == Boundary::Soft ||
             gap.Shape == Boundary::Hard ||
             (gap.Shape == Boundary::Conditional &&
-                    gap.Broken != layout::GapKind::Flat);
+                    gap.Broken != document::GapKind::Flat);
     }
 
     Index FlatWidth(Index i) const
@@ -2984,12 +2994,12 @@ private:
         Stack_.clear();
     }
 
-    layout::GapSpec Spec(
+    document::GapSpec Spec(
         Index i,
-        layout::GapKind kind,
+        document::GapKind kind,
         bool sourceHorizontal = true) const
     {
-        layout::GapSpec spec;
+        document::GapSpec spec;
         spec.Kind = kind;
         spec.Spaces = uint16_t(std::min<Index>(FlatWidth(i), UINT16_MAX));
         spec.RequiredWidth = Gaps_[i].RequiredWidth;
@@ -3007,7 +3017,7 @@ private:
             }
         }
         if (Safety_.Gaps()[i].MustStartWithLineFeed) {
-            spec.LineEnding = layout::GapNewline::LF;
+            spec.LineEnding = document::GapNewline::LF;
         }
         const auto context = ContextFor(i);
         if (
@@ -3023,13 +3033,13 @@ private:
         return spec;
     }
 
-    layout::Provenance GapOrigin(Index i) const
+    document::Provenance GapOrigin(Index i) const
     {
         const auto range = Safety_.Gaps()[i].Source;
-        return {range.Begin, range.End, layout::NoIdentity};
+        return {range.Begin, range.End, document::NoIdentity};
     }
 
-    bool Allows(Index i, layout::GapKind kind) const
+    bool Allows(Index i, document::GapKind kind) const
     {
         const auto& gap = Safety_.Gaps()[i];
         if (
@@ -3038,13 +3048,13 @@ private:
         {
             return false;
         }
-        if (kind == layout::GapKind::Flat) {
+        if (kind == document::GapKind::Flat) {
             const bool space = FlatWidth(i) != 0;
             return Safety_.CanReplaceGap(i, space ? " " : "");
         }
         const auto line =
             gap.MustStartWithLineFeed ||
-                    Options_.LineEnding == layout::Newline::LF
+                    Options_.LineEnding == document::Newline::LF
                 ? "\n"
                 : "\r\n";
         return Safety_.CanReplaceGap(i, line);
@@ -3078,7 +3088,7 @@ private:
 
     void FixedGapSlice(Index i, Index begin, Index end)
     {
-        Document_.SourceText(begin, end, layout::NoIdentity, true);
+        Document_.SourceText(begin, end, document::NoIdentity, true);
         RecordFixedExpressionLine(i, begin, end);
     }
 
@@ -3195,10 +3205,10 @@ private:
         }
         const auto lf = source.Original.rfind('\n');
         if (lf != std::string_view::npos) {
-            if (plan.Vertical && Allows(i, layout::GapKind::Hard)) {
+            if (plan.Vertical && Allows(i, document::GapKind::Hard)) {
                 auto anchor =
                     plan.Owner == None
-                        ? layout::InvalidId
+                        ? document::InvalidId
                         : plan.Closing
                             ? Groups_[plan.Owner].Block
                             : Groups_[plan.Owner].Anchor;
@@ -3207,13 +3217,16 @@ private:
                         Document_
                             .MarkAnchor(
                                 {
-                                    layout::AnchorKind::BlockRelative,
+                                    document::AnchorKind::BlockRelative,
                                     plan.ExtraIndent,
                                 });
                 }
                 Document_
-                    .Gap(Spec(i, layout::GapKind::Hard), anchor, GapOrigin(i));
-            } else if (plan.Reindent && Allows(i, layout::GapKind::Hard)) {
+                    .Gap(
+                        Spec(i, document::GapKind::Hard),
+                        anchor,
+                        GapOrigin(i));
+            } else if (plan.Reindent && Allows(i, document::GapKind::Hard)) {
                 const bool crlf = lf > 0 && source.Original[lf - 1] == '\r';
                 const auto newlineBegin =
                     source.Source.Begin + Index(lf) - (crlf ? 1 : 0);
@@ -3222,18 +3235,18 @@ private:
                     source.Source.Begin,
                     newlineBegin,
                     Policies_.TrailingWhitespace == TrailingWhitespace::Trim);
-                auto spec = Spec(i, layout::GapKind::Hard, false);
+                auto spec = Spec(i, document::GapKind::Hard, false);
                 if (Policies_.LineEnding == LineEnding::Preserve) {
                     spec.LineEnding =
                         crlf
-                            ? layout::GapNewline::CRLF
-                            : layout::GapNewline::LF;
+                            ? document::GapNewline::CRLF
+                            : document::GapNewline::LF;
                 } else if (!source.MustStartWithLineFeed || lf != 0) {
-                    spec.LineEnding = layout::GapNewline::Inherit;
+                    spec.LineEnding = document::GapNewline::Inherit;
                 }
                 auto anchor =
                     plan.Owner == None
-                        ? layout::InvalidId
+                        ? document::InvalidId
                         : plan.Closing
                             ? Groups_[plan.Owner].Block
                             : Groups_[plan.Owner].Anchor;
@@ -3242,7 +3255,7 @@ private:
                         Document_
                             .MarkAnchor(
                                 {
-                                    layout::AnchorKind::BlockRelative,
+                                    document::AnchorKind::BlockRelative,
                                     plan.ExtraIndent,
                                 });
                 }
@@ -3250,7 +3263,11 @@ private:
                     .Gap(
                         spec,
                         anchor,
-                        {newlineBegin, source.Source.End, layout::NoIdentity});
+                        {
+                            newlineBegin,
+                            source.Source.End,
+                            document::NoIdentity,
+                        });
             } else {
                 PreservedSlice(
                     i,
@@ -3276,8 +3293,8 @@ private:
         const bool space = count ? *count != 0 : preference.value_or(false);
         if ((count || preference) && Safety_.CanReplaceGap(i, space ? " " : ""))
         {
-            auto spec = Spec(i, layout::GapKind::Flat, false);
-            Document_.Gap(spec, layout::InvalidId, GapOrigin(i));
+            auto spec = Spec(i, document::GapKind::Flat, false);
+            Document_.Gap(spec, document::InvalidId, GapOrigin(i));
         } else {
             FixedGapSlice(i, source.Source.Begin, source.Source.End);
         }
@@ -3317,7 +3334,7 @@ private:
             } else if (plan.PartialIndent) {
                 auto anchor =
                     plan.Owner == None
-                        ? layout::InvalidId
+                        ? document::InvalidId
                         : plan.Closing
                             ? Groups_[plan.Owner].Block
                             : Groups_[plan.Owner].Anchor;
@@ -3326,7 +3343,7 @@ private:
                         Document_
                             .MarkAnchor(
                                 {
-                                    layout::AnchorKind::BlockRelative,
+                                    document::AnchorKind::BlockRelative,
                                     plan.ExtraIndent,
                                 });
                 }
@@ -3385,7 +3402,7 @@ private:
         }
         auto anchor =
             gap.Owner == None
-                ? layout::InvalidId
+                ? document::InvalidId
                 : gap.Closing
                     ? Groups_[gap.Owner].Block
                     : Groups_[gap.Owner].Anchor;
@@ -3393,11 +3410,11 @@ private:
             anchor =
                 Document_
                     .MarkAnchor(
-                        {layout::AnchorKind::BlockRelative, gap.ExtraIndent});
+                        {document::AnchorKind::BlockRelative, gap.ExtraIndent});
         }
-        const auto flat = Spec(i, layout::GapKind::Flat);
-        const bool flatOK = Allows(i, layout::GapKind::Flat);
-        const bool lineOK = Allows(i, layout::GapKind::Hard);
+        const auto flat = Spec(i, document::GapKind::Flat);
+        const bool flatOK = Allows(i, document::GapKind::Flat);
+        const bool lineOK = Allows(i, document::GapKind::Hard);
         if (!flatOK && !lineOK) {
             PreserveGap(i);
             return;
@@ -3405,7 +3422,8 @@ private:
         // Safety converts required/forbidden boundaries before shape selection.
         // This is not byte-diff activation and never weakens topology barriers.
         if (!flatOK) {
-            Document_.Gap(Spec(i, layout::GapKind::Hard), anchor, GapOrigin(i));
+            Document_
+                .Gap(Spec(i, document::GapKind::Hard), anchor, GapOrigin(i));
         } else if (!lineOK || gap.Shape == Boundary::Flat) {
             Document_.Gap(flat, anchor, GapOrigin(i));
         } else if (gap.Shape == Boundary::Conditional) {
@@ -3426,8 +3444,8 @@ private:
                     Spec(
                         i,
                         gap.Shape == Boundary::Hard
-                            ? layout::GapKind::Hard
-                            : layout::GapKind::Soft),
+                            ? document::GapKind::Hard
+                            : document::GapKind::Soft),
                     anchor,
                     GapOrigin(i));
         }
@@ -3452,7 +3470,7 @@ private:
             Document_
                 .MarkAnchor(
                     {
-                        layout::AnchorKind::DelimiterColumn,
+                        document::AnchorKind::DelimiterColumn,
                         offset,
                         int32_t(fallback),
                         0,
@@ -3479,7 +3497,7 @@ private:
                     Document_
                         .MarkAnchor(
                             {
-                                layout::AnchorKind::BlockRelative,
+                                document::AnchorKind::BlockRelative,
                                 0,
                                 0,
                                 0,
@@ -3490,7 +3508,7 @@ private:
                         Document_
                             .MarkAnchor(
                                 {
-                                    layout::AnchorKind::BlockRelative,
+                                    document::AnchorKind::BlockRelative,
                                     int32_t(group.Indent.ContinuationOffset),
                                     0,
                                     0,
@@ -3503,8 +3521,8 @@ private:
                                 {
                                     group.Indent.Alignment ==
                                             ContinuationAlignment::Delimiter
-                                        ? layout::AnchorKind::DelimiterColumn
-                                        : layout::AnchorKind::BlockRelative,
+                                        ? document::AnchorKind::DelimiterColumn
+                                        : document::AnchorKind::BlockRelative,
                                     group.Indent.Alignment ==
                                             ContinuationAlignment::Delimiter
                                         ? 0
@@ -3540,7 +3558,7 @@ private:
                             Groups_[owner].Id,
                             "",
                             ",",
-                            {end, end, layout::NoIdentity});
+                            {end, end, document::NoIdentity});
                 }
                 const auto delayed = Gaps_[i].MarkDelimiter;
                 if (delayed != None && !Groups_[delayed].AnchorAfterGap) {
@@ -3578,7 +3596,7 @@ SyntaxLayoutStatus BuildSyntaxDocument(
     const LibraryAnnotations& annotations,
     const SourceAnalysis& safety,
     const SyntaxSpacing& spacing,
-    layout::Document& document,
+    document::Document& document,
     std::pmr::memory_resource& scratch,
     const SyntaxLayoutOptions& options)
 {
@@ -3596,18 +3614,18 @@ SyntaxLayoutStatus BuildSyntaxDocument(
             options).Build();
 }
 
-layout::Policy SyntaxRenderPolicy(
+document::Policy SyntaxRenderPolicy(
     const CompiledPolicies& policies,
     const SyntaxLayoutOptions& options)
 {
-    layout::Policy result;
+    document::Policy result;
     result.Width = uint32_t(policies.ColumnLimit);
     result.TabWidth = options.TabWidth;
     result.LineEnding = options.LineEnding;
     result.Indentation =
         policies.IndentationKind == IndentationKind::Tabs
-            ? layout::IndentationKind::Tabs
-            : layout::IndentationKind::Spaces;
+            ? document::IndentationKind::Tabs
+            : document::IndentationKind::Spaces;
     return result;
 }
 

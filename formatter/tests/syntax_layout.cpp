@@ -15,7 +15,7 @@ namespace {
 struct Output
 {
     std::string Text;
-    std::vector<formatter::layout::Mapping> Map;
+    std::vector<document::Mapping> Map;
     std::vector<uint8_t> Broken;
 };
 Output Lower(
@@ -38,7 +38,7 @@ Output Lower(
         formatter::BuildSourceAnalysis(tree, protection, file, scratch);
     auto spacing =
         formatter::BuildSyntaxSpacing(tree, safety, policies, file, scratch);
-    formatter::layout::Document document(tree.Source(), &file);
+    document::Document document(tree.Source(), &file);
     const auto status =
         formatter::BuildSyntaxDocument(
             tree,
@@ -64,7 +64,7 @@ Output Lower(
     }
     std::vector<bool> seen(tree.TokenCount());
     for (const auto& map : rendered.Map) {
-        if (map.Source.Identity == formatter::layout::NoIdentity) {
+        if (map.Source.Identity == document::NoIdentity) {
             continue;
         }
         EXPECT_LT(map.Source.Identity, tree.TokenCount());
@@ -106,7 +106,7 @@ void ExpectSplitGapMap(
         const auto& generated = output.Map[i];
         const auto& borrowed = output.Map[i + 1];
         if (
-            generated.Source.Identity != formatter::layout::NoIdentity ||
+            generated.Source.Identity != document::NoIdentity ||
                 generated.Exact || generated.Source.Begin != sourceBegin ||
                 generated.Source.End != sourceEnd)
         {
@@ -119,7 +119,7 @@ void ExpectSplitGapMap(
                     generated.OutputEnd - generated.OutputBegin),
             prefix);
         EXPECT_TRUE(borrowed.Exact);
-        EXPECT_EQ(borrowed.Source.Identity, formatter::layout::NoIdentity);
+        EXPECT_EQ(borrowed.Source.Identity, document::NoIdentity);
         EXPECT_EQ(borrowed.Source.Begin, indentBegin);
         EXPECT_EQ(borrowed.Source.End, sourceEnd);
         EXPECT_EQ(generated.OutputEnd, borrowed.OutputBegin);
@@ -187,7 +187,7 @@ TEST(SyntaxLayout, PartialIndentationRetainsFixedTopologyAndSplitMaps)
         bool generatedIndent = false;
         for (const auto &map : output.Map)
         {
-            if (map.Source.Identity != formatter::layout::NoIdentity)
+            if (map.Source.Identity != document::NoIdentity)
             {
                 continue;
             }
@@ -241,7 +241,7 @@ TEST(SyntaxLayout, PartialCRLFIndentationMapsBorrowedTerminatorExactly)
             EXPECT_FALSE(indent.Exact);
             EXPECT_FALSE(indent.Protected);
             EXPECT_EQ(indent.Source.Identity,
-                      formatter::layout::NoIdentity);
+                      document::NoIdentity);
             EXPECT_EQ(indent.Source.Begin, begin);
             EXPECT_EQ(indent.Source.End, begin + 6);
             EXPECT_EQ(prefix.OutputEnd, indent.OutputBegin);
@@ -313,7 +313,7 @@ TEST(SyntaxLayout, PartialGapPoliciesAndAnchorsGolden)
     style.MaxEmptyLines =
         0; // Partial permissions cannot collapse topology.
     formatter::SyntaxLayoutOptions crlf;
-    crlf.LineEnding = formatter::layout::Newline::CRLF;
+    crlf.LineEnding = document::Newline::CRLF;
     record("mixed trim plus indentation", mixed, style, selected, crlf);
     style.TrailingWhitespace = formatter::TrailingWhitespace::Preserve;
     record("mixed whitespace preserve", mixed, style, selected);
@@ -443,7 +443,7 @@ TEST(SyntaxLayout, PartialInsertionPointsCutsAndTailRemainFenced)
         if (!map.Exact && map.Source.Begin == point &&
             map.Source.End == point)
         {
-            EXPECT_EQ(map.Source.Identity, formatter::layout::NoIdentity);
+            EXPECT_EQ(map.Source.Identity, document::NoIdentity);
             EXPECT_EQ(map.OutputEnd - map.OutputBegin, 2u);
             generatedPoint = true;
         }
@@ -582,7 +582,7 @@ TEST(SyntaxLayout, ScopedSyntaxContextCannotAuthorizeExcludedCommaRemoval)
                     return map.Exact && map.Source.Begin == comma &&
                            map.Source.End == comma + 1 &&
                            map.Source.Identity !=
-                               formatter::layout::NoIdentity;
+                               document::NoIdentity;
                 }));
         };
         expectIdentity(Lower(input, style, {}, scope));
@@ -648,7 +648,7 @@ TEST(SyntaxLayout, ScopedCloserDoesNotAuthorizeCommaInsertionBeforeComment)
             allowed.Map.begin(), allowed.Map.end(), [&](const auto &map)
             {
                 return !map.Exact && !map.Protected &&
-                       map.Source.Identity == formatter::layout::NoIdentity &&
+                       map.Source.Identity == document::NoIdentity &&
                        map.Source.Begin == itemEnd &&
                        map.Source.End == itemEnd &&
                        std::string_view(allowed.Text).substr(
@@ -683,7 +683,7 @@ TEST(SyntaxLayout, ScopedCloserDoesNotAuthorizeCommaInsertionBeforeComment)
         {
             return map.Exact && map.Source.Begin == comma &&
                    map.Source.End == comma + 1 &&
-                   map.Source.Identity != formatter::layout::NoIdentity;
+                   map.Source.Identity != document::NoIdentity;
         }));
     const parser::SourceRange relocate[] = {
         {itemEnd, itemEnd + 1}, {commentEnd, closer + 1}};
@@ -696,7 +696,7 @@ TEST(SyntaxLayout, ScopedCloserDoesNotAuthorizeCommaInsertionBeforeComment)
         {
             return map.Exact && map.Source.Begin == comma &&
                    map.Source.End == comma + 1 &&
-                   map.Source.Identity != formatter::layout::NoIdentity;
+                   map.Source.Identity != document::NoIdentity;
         }));
     // Never only deletes; it does not need ownership of the earlier point.
     style.InitializersTrailingComma = formatter::TrailingCommaPolicy::Never;
@@ -1202,7 +1202,7 @@ TEST(SyntaxLayout, CRLFCommentOwnsCRAndGapStartsWithLF)
 {
     auto style = Canonical(18);
     formatter::SyntaxLayoutOptions options;
-    options.LineEnding = formatter::layout::Newline::CRLF;
+    options.LineEnding = document::Newline::CRLF;
     const auto output =
         Lower("void f(){ call(alpha, // note\r\n beta, gamma); }\r\n", style,
               options);
@@ -1210,7 +1210,7 @@ TEST(SyntaxLayout, CRLFCommentOwnsCRAndGapStartsWithLF)
     EXPECT_NE(output.Text.find("// note\r\n"), std::string::npos);
     for (const auto &map : output.Map)
     {
-        if (map.Source.Identity != formatter::layout::NoIdentity && map.Exact &&
+        if (map.Source.Identity != document::NoIdentity && map.Exact &&
             output.Text.substr(map.OutputBegin, map.OutputEnd - map.OutputBegin)
                 .starts_with("//"))
         {
@@ -1272,7 +1272,7 @@ TEST(SyntaxLayout, InitializerCommaFollowsOutputShapeNotInputComma)
             found = true;
             EXPECT_EQ(map.Source.Begin, source.find("beta") + 4);
             EXPECT_EQ(map.Source.End, map.Source.Begin);
-            EXPECT_EQ(map.Source.Identity, formatter::layout::NoIdentity);
+            EXPECT_EQ(map.Source.Identity, document::NoIdentity);
             EXPECT_FALSE(map.Exact);
         }
     }
@@ -1297,7 +1297,7 @@ TEST(SyntaxLayout, InitializerCommaFollowsOutputShapeNotInputComma)
             broken.Map.begin(), broken.Map.end(), [&](const auto &map)
             {
                 return !map.Exact &&
-                       map.Source.Identity == formatter::layout::NoIdentity &&
+                       map.Source.Identity == document::NoIdentity &&
                        map.Source.Begin == endpoint &&
                        map.Source.End == endpoint &&
                        std::string_view(broken.Text).substr(
@@ -1344,7 +1344,7 @@ TEST(SyntaxLayout, IncompleteInitializerTailCannotAuthorizeCommaEdits)
                     continue;
                 }
                 EXPECT_TRUE(map.Exact);
-                EXPECT_NE(map.Source.Identity, formatter::layout::NoIdentity);
+                EXPECT_NE(map.Source.Identity, document::NoIdentity);
                 ++retained;
             }
             EXPECT_EQ(retained, std::count(input.begin(), input.end(), ','));
@@ -1365,7 +1365,7 @@ TEST(SyntaxLayout, NestedInitializerCommaUsesCompleteElementEndpoint)
     size_t generated = 0;
     for (const auto &map : output.Map)
     {
-        if (map.Source.Identity == formatter::layout::NoIdentity &&
+        if (map.Source.Identity == document::NoIdentity &&
             std::string_view(output.Text).substr(
                 map.OutputBegin, map.OutputEnd - map.OutputBegin) == ",")
         {
@@ -1387,7 +1387,7 @@ TEST(SyntaxLayout, NestedInitializerCommaUsesCompleteElementEndpoint)
     {
         for (const auto &map : denied.Map)
         {
-            if (map.Source.Identity == formatter::layout::NoIdentity &&
+            if (map.Source.Identity == document::NoIdentity &&
                 map.Source.Begin == endpoint && map.Source.End == endpoint)
             {
                 EXPECT_NE(std::string_view(denied.Text).substr(
@@ -1413,7 +1413,7 @@ TEST(SyntaxLayout, CommaDeletionRetainsIncompatibleGapUnits)
     auto style = Canonical(24);
     style.InitializersTrailingComma = formatter::TrailingCommaPolicy::Never;
     formatter::SyntaxLayoutOptions options;
-    options.LineEnding = formatter::layout::Newline::CRLF;
+    options.LineEnding = document::Newline::CRLF;
     const auto comment =
         Lower("int values[] = {alpha // note\r\n,};\r\n", style, options).Text;
     EXPECT_NE(comment.find("// note\r\n"), std::string::npos) << comment;
@@ -1628,7 +1628,7 @@ TEST(SyntaxLayout, RealizedExpressionLineRetainsChildContinuationBase)
                     EXPECT_GE(map.Source.Begin, begin);
                     EXPECT_LE(map.Source.End, begin + 12);
                 }
-                if (map.Source.Identity != formatter::layout::NoIdentity)
+                if (map.Source.Identity != document::NoIdentity)
                 {
                     continue;
                 }
@@ -1741,7 +1741,7 @@ TEST(SyntaxLayout, RealizedExpressionLineRetainsChildContinuationBase)
                                        map.Source.End <= range.End;
                             }));
                     }
-                    if (map.Source.Identity != formatter::layout::NoIdentity)
+                    if (map.Source.Identity != document::NoIdentity)
                     {
                         continue;
                     }
@@ -2237,7 +2237,7 @@ TEST(SyntaxLayout, ExactVerticalGapsCapAndPreservedIndentation)
             "complete\r\n\t[[nodiscard]] int g(){return "
             "0;}\r\n}\r\n";
     formatter::SyntaxLayoutOptions options;
-    options.LineEnding = formatter::layout::Newline::CRLF;
+    options.LineEnding = document::Newline::CRLF;
     const auto mapped = Lower(source, style, options);
     const auto &output = mapped.Text;
     const auto firstIndent = source.find('\t');
@@ -2691,7 +2691,7 @@ TEST(SyntaxLayout, VerticalCountsAfterCommentCRAndDirectiveBarriersStaySafe)
     style.DefinitionBlankLines = {formatter::BlankLineMode::Exact, 1};
     style.MaxEmptyLines = 1;
     formatter::SyntaxLayoutOptions options;
-    options.LineEnding = formatter::layout::Newline::CRLF;
+    options.LineEnding = document::Newline::CRLF;
     const std::string source =
         "void first(){} // note\r\nvoid "
             "second(){}\r\n#define RAW(x) x ## x\r\nvoid "

@@ -2,7 +2,7 @@ add_executable(tests
     ../tokenizer/tests/tests.cpp
     ../parser/tests/tests.cpp
     ../formatter/tests/hunks.cpp
-    ../formatter/tests/layout.cpp
+    ../document/tests/tests.cpp
     ../formatter/tests/source_analysis_tests.cpp
     ../formatter/tests/structural_edits_tests.cpp
     ../formatter/tests/tests.cpp
@@ -17,7 +17,7 @@ target_compile_definitions(tests PRIVATE
     TOKENIZER_TESTDATA_DIR="${CMAKE_SOURCE_DIR}/tokenizer/tests/testdata"
     PARSER_TESTDATA_DIR="${CMAKE_SOURCE_DIR}/parser/tests/testdata"
     FORMATTER_TESTDATA_DIR="${CMAKE_SOURCE_DIR}/formatter/tests/testdata/style"
-    GROUP_LAYOUT_TESTDATA_DIR="${CMAKE_SOURCE_DIR}/formatter/tests/testdata/group-layout"
+    DOCUMENT_TESTDATA_DIR="${CMAKE_SOURCE_DIR}/document/tests/testdata/group-layout"
     BRACE_TESTDATA_DIR="${CMAKE_SOURCE_DIR}/formatter/tests/testdata/brace-placement"
     BRACE_SPACING_TESTDATA_DIR="${CMAKE_SOURCE_DIR}/formatter/tests/testdata/brace-spacing"
     LAMBDA_SPACING_TESTDATA_DIR="${CMAKE_SOURCE_DIR}/formatter/tests/testdata/lambda-spacing"
@@ -37,6 +37,11 @@ add_executable(allocation_tests
     ../tokenizer/tests/allocation_test.cpp)
 target_link_libraries(allocation_tests PRIVATE lib-tokenizer)
 
+add_executable(document_checks ../document/tests/tests.cpp)
+target_link_libraries(document_checks PRIVATE GTest::gtest_main lib-document)
+target_compile_definitions(document_checks PRIVATE
+    DOCUMENT_TESTDATA_DIR="${CMAKE_SOURCE_DIR}/document/tests/testdata/group-layout")
+
 set(public_pipeline_sources
     ../formatter/tests/config_policy.cpp
     ../formatter/tests/public_pipeline.cpp
@@ -46,7 +51,7 @@ set(public_pipeline_sources
 target_sources(tests PRIVATE ${public_pipeline_sources})
 add_executable(pipeline_checks
     ../parser/tests/tests.cpp
-    ../formatter/tests/layout.cpp
+    ../document/tests/tests.cpp
     ../formatter/tests/source_analysis_tests.cpp
     ../formatter/tests/structural_edits_tests.cpp
     ${public_pipeline_sources})
@@ -55,7 +60,7 @@ target_compile_definitions(pipeline_checks PRIVATE
     HIT_FMT_PIPELINE_CHECKS=1
     PARSER_TESTDATA_DIR="${CMAKE_SOURCE_DIR}/parser/tests/testdata"
     FORMATTER_TESTDATA_DIR="${CMAKE_SOURCE_DIR}/formatter/tests/testdata/style"
-    GROUP_LAYOUT_TESTDATA_DIR="${CMAKE_SOURCE_DIR}/formatter/tests/testdata/group-layout")
+    DOCUMENT_TESTDATA_DIR="${CMAKE_SOURCE_DIR}/document/tests/testdata/group-layout")
 
 # CLI checks exercise the library without launching the executable.
 add_executable(cli_checks

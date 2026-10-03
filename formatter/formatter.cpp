@@ -254,7 +254,7 @@ std::pmr::vector<GapId> GeneratedGaps(
 struct CurrentIdentity
 {
     Range Source;
-    uint64_t Original = layout::NoIdentity;
+    uint64_t Original = document::NoIdentity;
 };
 
 std::pmr::vector<uint64_t> OriginalIdentities(
@@ -263,7 +263,7 @@ std::pmr::vector<uint64_t> OriginalIdentities(
     std::pmr::memory_resource& scratch)
 {
     std::pmr::vector<uint64_t> identities(
-        tree.TokenCount(), layout::NoIdentity, &scratch);
+        tree.TokenCount(), document::NoIdentity, &scratch);
     if (!normalized) {
         for (parser::TokenIndex i = 0; i < tree.TokenCount(); ++i)
             identities[i] = i;
@@ -330,7 +330,7 @@ void MergeProtection(std::vector<ProtectedSourceRange>& ranges)
 
 void ComposeMaps(
     FormatResult& result,
-    const layout::Result& rendered,
+    const document::Result& rendered,
     const SourceAnalysis& safety,
     std::span<const uint64_t> identities,
     std::span<const StructuralProvenance> provenance)
@@ -339,17 +339,17 @@ void ComposeMaps(
     for (const auto& map : rendered.Map) {
         const auto output = Range { CheckedSourceAnalysisSize(map.OutputBegin),
             CheckedSourceAnalysisSize(map.OutputEnd) };
-        uint64_t original = layout::NoIdentity;
-        if (map.Source.Identity != layout::NoIdentity) {
+        uint64_t original = document::NoIdentity;
+        if (map.Source.Identity != document::NoIdentity) {
             if (map.Source.Identity >= identities.size()) {
                 throw std::runtime_error("invalid rendered token identity");
             }
             original = identities[map.Source.Identity];
-            if (original != layout::NoIdentity) {
+            if (original != document::NoIdentity) {
                 result.OriginalTokens[original] ={output, true};
             }
         }
-        if (map.Source.Begin == layout::InvalidId) {
+        if (map.Source.Begin == document::InvalidId) {
             result.Map
                 .push_back(
                     {
@@ -535,7 +535,7 @@ void ApplyComments(
                     {
                         {begin, output},
                         {anchor, anchor},
-                        layout::NoIdentity,
+                        document::NoIdentity,
                         StructuralActionId(actionBase + edit.Operation),
                         true,
                         false,
@@ -619,10 +619,10 @@ void ApplyComments(
             // A comment edit may retain token-owned CR while consuming
             // the rest of that token. The byte remains exact, not the ID.
             if (
-                next.OriginalToken != layout::NoIdentity &&
+                next.OriginalToken != document::NoIdentity &&
                     !result.OriginalTokens[next.OriginalToken].Present)
             {
-                next.OriginalToken = layout::NoIdentity;
+                next.OriginalToken = document::NoIdentity;
             }
             maps.push_back(next);
         }
@@ -831,14 +831,14 @@ FormatResult detail::FormatWithAnalysis(
     scratch.release();
     SyntaxLayoutOptions options;
     if (prepared.Policies.LineEnding == LineEnding::CRLF) {
-        options.LineEnding = layout::Newline::CRLF;
+        options.LineEnding = document::Newline::CRLF;
     } else if (prepared.Policies.LineEnding == LineEnding::Preserve) {
         const auto lf = original.Source().find('\n');
         if (
             lf != std::string_view::npos && lf &&
                 original.Source()[lf - 1] == '\r')
         {
-            options.LineEnding = layout::Newline::CRLF;
+            options.LineEnding = document::Newline::CRLF;
         }
     }
     std::pmr::vector<GapId> reassembled(&scratch);
@@ -850,7 +850,7 @@ FormatResult detail::FormatWithAnalysis(
         provenance, reassembled, scratch);
     options.GeneratedAdjacencies = gaps;
     options.ReassembledGaps = reassembled;
-    layout::Document document(tree->Source(), &file);
+    document::Document document(tree->Source(), &file);
     const auto built =
         BuildSyntaxDocument(
             *tree,

@@ -28,6 +28,7 @@ add_subdirectory(util)
 add_subdirectory(unicode)
 add_subdirectory(tokenizer)
 add_subdirectory(parser)
+add_subdirectory(document)
 add_subdirectory(formatter)
 add_subdirectory(hit-fmt)
 

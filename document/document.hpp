@@ -7,7 +7,7 @@
 #include <string_view>
 #include <vector>
 
-namespace formatter::layout {
+namespace document {
 
 using GroupId = std::uint32_t;
 
@@ -325,4 +325,4 @@ private:
     bool Sealed_ = false;
 };
 
-} // namespace formatter::layout
+} // namespace document

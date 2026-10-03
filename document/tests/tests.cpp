@@ -1,4 +1,4 @@
-#include <formatter/layout.hpp>
+#include <document/document.hpp>
 #include <tests/golden.hpp>
 
 #include <gtest/gtest.h>
@@ -10,13 +10,13 @@
 #include <string>
 #include <vector>
 
-#ifndef GROUP_LAYOUT_TESTDATA_DIR
-#define GROUP_LAYOUT_TESTDATA_DIR "formatter/tests/testdata/group-layout"
+#ifndef DOCUMENT_TESTDATA_DIR
+#define DOCUMENT_TESTDATA_DIR "document/tests/testdata/group-layout"
 #endif
 
 namespace {
 
-using namespace formatter::layout;
+using namespace document;
 
 void ExpectText(
     const Document& document,
@@ -281,7 +281,7 @@ TEST(GroupLayout, ForcedMultilineChildPrefixGolden)
         }
     }
     test::golden::ExpectGolden(
-        std::filesystem::path(GROUP_LAYOUT_TESTDATA_DIR) /
+        std::filesystem::path(DOCUMENT_TESTDATA_DIR) /
             "forced-child-prefix.output.txt",
         actual);
 }
@@ -330,7 +330,7 @@ TEST(GroupLayout, NestedHeaderAndOwnListPunctuationGolden)
     auto output = document.Render({.Width = 24});
     ASSERT_TRUE(output.State);
     test::golden::ExpectGolden(
-        std::filesystem::path(GROUP_LAYOUT_TESTDATA_DIR) /
+        std::filesystem::path(DOCUMENT_TESTDATA_DIR) /
             "nested-header.output.txt",
         output.Text);
     EXPECT_EQ(document.Render({.Width = 24}).Text, output.Text);
@@ -388,7 +388,7 @@ TEST(GroupLayout, DelimiterRequirementsAndAnchorReuseGolden)
     auto output = document.Render({.Width = 8});
     ASSERT_TRUE(output.State);
     test::golden::ExpectGolden(
-        std::filesystem::path(GROUP_LAYOUT_TESTDATA_DIR) /
+        std::filesystem::path(DOCUMENT_TESTDATA_DIR) /
             "alignment-requirements.output.txt",
         output.Text);
     EXPECT_EQ(document.Render({.Width = 8}).Text, output.Text);
@@ -500,7 +500,7 @@ TEST(GroupLayout, BlockAnchorsFollowGeneratedIndentNotSourceColumns)
 
 TEST(GroupLayout, ProtectedSourceAndEditProvenanceGolden)
 {
-    const auto directory = std::filesystem::path(GROUP_LAYOUT_TESTDATA_DIR);
+    const auto directory = std::filesystem::path(DOCUMENT_TESTDATA_DIR);
     const auto source =
         test::golden::ReadFile(directory / "protected.source.txt");
     Document document(source);
@@ -545,7 +545,7 @@ std::string ExpandTabs(std::string_view text, std::uint8_t tabWidth)
 TEST(GroupLayout, GeneratedTabsPreserveVisualLayoutAndOpaqueSource)
 {
     const auto source = test::golden::ReadFile(
-        std::filesystem::path(GROUP_LAYOUT_TESTDATA_DIR) /
+        std::filesystem::path(DOCUMENT_TESTDATA_DIR) /
         "protected.source.txt");
     Document document(source);
     document.SourceText(0, static_cast<std::uint32_t>(source.size()), 99, true);
@@ -718,7 +718,7 @@ TEST(GroupLayout, SourceCarriageReturnAndLocalGapNewlinesGolden)
         }
     }
     test::golden::ExpectGolden(
-        std::filesystem::path(GROUP_LAYOUT_TESTDATA_DIR) /
+        std::filesystem::path(DOCUMENT_TESTDATA_DIR) /
             "source-cr-gap-newlines.output.txt",
         actual);
 }
@@ -792,7 +792,7 @@ TEST(GroupLayout, VerticalGapCountUsesFirstOverrideAndNoBlankLineIndent)
     }
     EXPECT_EQ(end, output.Text.size());
     test::golden::ExpectGolden(
-        std::filesystem::path(GROUP_LAYOUT_TESTDATA_DIR) /
+        std::filesystem::path(DOCUMENT_TESTDATA_DIR) /
             "vertical-gap.output.txt",
         output.Text);
 }
@@ -1135,7 +1135,7 @@ TEST(GroupLayout, SourceLineIndentPrefixesAndMappingsGolden)
         }
     }
     test::golden::ExpectGolden(
-        std::filesystem::path(GROUP_LAYOUT_TESTDATA_DIR) /
+        std::filesystem::path(DOCUMENT_TESTDATA_DIR) /
             "source-line-indent.output.txt",
         actual);
 }
@@ -1629,7 +1629,7 @@ TEST(GroupLayout, ForceBreakUsesEditableSitesAndPublishesChildShapeGolden)
     EXPECT_TRUE(output.Text.empty());
     actual += "empty:\n";
     test::golden::ExpectGolden(
-        std::filesystem::path(GROUP_LAYOUT_TESTDATA_DIR) /
+        std::filesystem::path(DOCUMENT_TESTDATA_DIR) /
             "force-break.output.txt",
         actual);
 }

@@ -5,6 +5,14 @@ policies. The shipped repository profile uses canonical YTsaurus-inspired
 layout with 80 columns and block continuation indentation. Spacing and
 structural rules are independent. Use an explicit configuration as shown below.
 
+## Modules
+
+- `tokenizer` groups input characters into tokens.
+- `parser` builds the lossless syntax tree.
+- `formatter` lowers syntax and formatting policies to the document algebra.
+- `document` applies document algebra rules and renders text and source maps.
+  It is independent of the tokenizer, parser, and formatter.
+
 ## Build
 
 Run these commands from the repository root. CMake 3.20+ and a C++20
@@ -36,7 +44,13 @@ build-checks/tests/cli_checks
 
 Run GoogleTest binaries directly, not through CTest. The separate tokenizer
 allocation check is available as the `allocation_tests` target; it is not
-whole-pipeline allocation certification.
+whole-pipeline allocation certification. The `document_checks` target tests
+only the document algebra, linked independently of the formatter:
+
+```sh
+cmake --build build-checks --target document_checks -j1
+build-checks/tests/document_checks
+```
 
 Benchmarks can be built separately with
 `-DHIT_FMT_BENCHMARK=ON`; they require Google Benchmark.

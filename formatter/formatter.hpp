@@ -3,10 +3,10 @@
 #include "config_annotations.hpp"
 #include "config_enum.hpp"
 #include "config_options.hpp"
-#include "layout.hpp"
 #include "policy.hpp"
 #include "structural_edits.hpp"
 
+#include <document/document.hpp>
 #include <parser/parser.hpp>
 #include <util/input.hpp>
 
@@ -80,7 +80,7 @@ struct FormatMapping
     // Exact copied range, or a non-exact source association/insertion anchor.
     // Zero-width syntax anchors have affinity to the preceding source piece.
     parser::SourceRange Original;
-    uint64_t OriginalToken = layout::NoIdentity;
+    uint64_t OriginalToken = document::NoIdentity;
     // Index into FormatResult::StructuralOperations for normalization/comment
     // associations, including exact moved include bytes.
     StructuralActionId Action = NoStructuralAction;

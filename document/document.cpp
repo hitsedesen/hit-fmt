@@ -1,9 +1,9 @@
-#include <formatter/layout.hpp>
+#include <document/document.hpp>
 
 #include <algorithm>
 #include <limits>
 
-namespace formatter::layout {
+namespace document {
 
 namespace {
 
@@ -1178,4 +1178,4 @@ Result Document::Render(
     return result;
 }
 
-} // namespace formatter::layout
+} // namespace document
