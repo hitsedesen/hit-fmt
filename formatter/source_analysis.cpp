@@ -53,8 +53,7 @@ void MergeProtection(std::pmr::vector<ProtectedSourceRange>& protection)
         });
     size_t merged = 0;
     for (const auto range : protection) {
-        if (
-            merged &&
+        if (merged &&
             (range.Source.Begin < protection[merged - 1].Source.End ||
                     (range.Source.Begin == protection[merged - 1].Source.End &&
                             range.Reasons == protection[merged - 1].Reasons)))
@@ -64,11 +63,10 @@ void MergeProtection(std::pmr::vector<ProtectedSourceRange>& protection)
                 std::max(previous.Source.End, range.Source.End);
             previous.Reasons = previous.Reasons | range.Reasons;
             // A true overlap can make the union equal to its touching neighbor.
-            while (
-                merged > 1 &&
-                protection[merged - 2].Source.End ==
+            while (merged > 1 &&
+                   protection[merged - 2].Source.End ==
                     protection[merged - 1].Source.Begin &&
-                protection[merged - 2].Reasons ==
+                   protection[merged - 2].Reasons ==
                     protection[merged - 1].Reasons)
             {
                 protection[merged - 2].Source.End =
@@ -126,8 +124,7 @@ bool NeedsSeparation(const parser::SyntaxTree& tree, parser::TokenIndex right)
     if ((Word(a, first) || Literal(a)) && (Word(b, second) || Literal(b))) {
         return true;
     }
-    if (
-        (Number(a) &&
+    if ((Number(a) &&
                 (second.starts_with(".") || second.starts_with("+") ||
                         second.starts_with("-"))) ||
         (first.ends_with(".") && Number(b)))
@@ -217,8 +214,7 @@ bool SourceAnalysis::CanReplaceGap(GapId id, std::string_view replacement) const
     if (replacement == gap.Original) {
         return true;
     }
-    if (
-        gap.Preserve || !Whitespace(replacement) ||
+    if (gap.Preserve || !Whitespace(replacement) ||
         (gap.Separation == GapSeparation::Required && replacement.empty()))
     {
         return false;
@@ -251,8 +247,7 @@ void SourceAnalysis::RestrictEditScope(
     // Validate before allocating or changing any analysis facts.
     Offset previousEnd = 0;
     for (const auto range : ranges) {
-        if (
-            range.Begin >= range.End || range.End > size ||
+        if (range.Begin >= range.End || range.End > size ||
             range.Begin < previousEnd)
         {
             throw std::invalid_argument("invalid source edit scope");
@@ -274,8 +269,7 @@ void SourceAnalysis::RestrictEditScope(
     std::pmr::vector<PartialGapPermission> permissions(allocator);
     for (GapId id = 0; id < Gaps_.size(); ++id) {
         const auto& gap = Gaps_[id];
-        if (
-            !WholeGapCovered(scope, gap) && !gap.IntrinsicPreserve &&
+        if (!WholeGapCovered(scope, gap) && !gap.IntrinsicPreserve &&
             !gap.IntrinsicContextSensitive &&
             (!gap.MustStartWithLineFeed || gap.Original.starts_with('\n')) &&
             gap.Original.find_first_not_of(" \t\r\n") == std::string_view::npos)
@@ -283,8 +277,7 @@ void SourceAnalysis::RestrictEditScope(
             // Lone CR is not a supported horizontal slice or LF-ended prefix.
             bool supported = true;
             for (size_t i = 0; i < gap.Original.size(); ++i) {
-                if (
-                    gap.Original[i] == '\r' &&
+                if (gap.Original[i] == '\r' &&
                     (i + 1 == gap.Original.size() ||
                             gap.Original[i + 1] != '\n'))
                 {
@@ -309,8 +302,7 @@ void SourceAnalysis::RestrictEditScope(
                         first != Protection_.end() && slice.Empty() &&
                             slice.Begin == first->Source.Begin &&
                             first->Reasons == ProtectionReason::HeaderName;
-                    if (
-                        first != Protection_.end() && !beforeHeader &&
+                    if (first != Protection_.end() && !beforeHeader &&
                         (slice.Empty()
                                 ? first->Source.Begin <= slice.Begin
                                 : first->Source.Begin < slice.End))
@@ -412,8 +404,7 @@ SourceAnalysis BuildSourceAnalysis(
             // Matches Tokenizer::TrySkipNewline's horizontal whitespace.
             // Cache both marker boundaries once; candidate comments must not
             // rescan a shared, arbitrarily long physical-line prefix/suffix.
-            if (
-                std::string_view(" \t\r\f\v").find(source[i]) ==
+            if (std::string_view(" \t\r\f\v").find(source[i]) ==
                 std::string_view::npos)
             {
                 if (line.FirstContent == size) {
@@ -480,8 +471,7 @@ SourceAnalysis BuildSourceAnalysis(
             return tree.Kind(index) == TK::Comment ||
                 tree.Kind(index) == TK::PreprocessingDirective;
         };
-        if (
-            (i && commentOrDirective(i - 1)) ||
+        if ((i && commentOrDirective(i - 1)) ||
             (i < count && commentOrDirective(i)))
         {
             gap.LineBoundary =
@@ -489,8 +479,7 @@ SourceAnalysis BuildSourceAnalysis(
                     ? GapLineBoundary::Forbidden
                     : GapLineBoundary::Required;
         }
-        if (
-            i &&
+        if (i &&
             (tree.Kind(i - 1) == TK::PreprocessingDirective ||
                     (tree.Kind(i - 1) == TK::Comment &&
                             tree.TokenText(i - 1).starts_with("//"))))
@@ -517,8 +506,7 @@ SourceAnalysis BuildSourceAnalysis(
             gap.ContextSensitive = true;
             gap.Preserve = true;
         }
-        if (
-            i &&
+        if (i &&
             (tree.TokenText(i - 1).ends_with("\\") ||
                     tree.TokenText(i - 1).ends_with("\\\r")))
         {
@@ -540,15 +528,13 @@ SourceAnalysis BuildSourceAnalysis(
         }
         const auto token = tree.Token(i);
         const auto text = tree.TokenText(i);
-        while (
-            lineIndex + 1 < lines.size() &&
-            lines[lineIndex + 1].Begin <= token.Text.Begin)
+        while (lineIndex + 1 < lines.size() &&
+               lines[lineIndex + 1].Begin <= token.Text.Begin)
         {
             ++lineIndex;
         }
-        while (
-            endLineIndex + 1 < lines.size() &&
-            lines[endLineIndex + 1].Begin <= token.Text.End)
+        while (endLineIndex + 1 < lines.size() &&
+               lines[endLineIndex + 1].Begin <= token.Text.End)
         {
             ++endLineIndex;
         }
@@ -571,8 +557,7 @@ SourceAnalysis BuildSourceAnalysis(
                 tokenLine.End,
                 ProtectionReason::Directive);
         }
-        if (
-            token.Kind == TK::Invalid ||
+        if (token.Kind == TK::Invalid ||
             tree.Role(i) == parser::PunctuationRole::AmbiguousOperator)
         {
             protect(
@@ -585,9 +570,8 @@ SourceAnalysis BuildSourceAnalysis(
         if (token.Kind == TK::Comment) {
             auto marker = text;
             if (marker.starts_with("//")) {
-                while (
-                    !marker.empty() &&
-                    (marker.back() == ' ' || marker.back() == '\t' ||
+                while (!marker.empty() &&
+                       (marker.back() == ' ' || marker.back() == '\t' ||
                             marker.back() == '\r'))
                 {
                     marker.remove_suffix(1);
@@ -605,8 +589,7 @@ SourceAnalysis BuildSourceAnalysis(
                                     marker == "/* clang-format on */"));
             if (off || on) {
                 const auto range = tokenLine;
-                if (
-                    lineIndex == endLineIndex && !lines[lineIndex].Continued &&
+                if (lineIndex == endLineIndex && !lines[lineIndex].Continued &&
                     token.Text.Begin == lines[lineIndex].FirstContent &&
                     token.Text.End >= lines[lineIndex].ContentEnd)
                 {
@@ -621,8 +604,7 @@ SourceAnalysis BuildSourceAnalysis(
                 }
             }
         }
-        if (
-            i >= macroEnd && token.Kind == TK::Operator_OpenParenthesis &&
+        if (i >= macroEnd && token.Kind == TK::Operator_OpenParenthesis &&
             pendingMacro != NoToken)
         {
             const auto close = tree.MatchingDelimiter(i);
@@ -747,9 +729,8 @@ SourceAnalysis BuildSourceAnalysis(
         // horizontal slice.
         gap.IntrinsicPreserve = gap.Preserve;
         gap.IntrinsicContextSensitive = gap.ContextSensitive;
-        while (
-            interval < result.Protection_.size() &&
-            result.Protection_[interval].Source.End <= gap.Source.Begin)
+        while (interval < result.Protection_.size() &&
+               result.Protection_[interval].Source.End <= gap.Source.Begin)
         {
             ++interval;
         }
@@ -761,16 +742,14 @@ SourceAnalysis BuildSourceAnalysis(
             const bool beforeHeader =
                 gap.Source.Empty() && gap.Source.Begin == range.Source.Begin &&
                     range.Reasons == ProtectionReason::HeaderName;
-            if (
-                !beforeHeader &&
+            if (!beforeHeader &&
                 (gap.Source.Empty()
                         ? range.Source.Begin <= gap.Source.Begin
                         : range.Source.Begin < gap.Source.End))
             {
                 gap.Preserve = true;
                 gap.Reasons = gap.Reasons | range.Reasons;
-                if (
-                    (static_cast<uint16_t>(range.Reasons) &
+                if ((static_cast<uint16_t>(range.Reasons) &
                             static_cast<uint16_t>(ProtectionReason::HeaderName)) !=
                     0)
                 {

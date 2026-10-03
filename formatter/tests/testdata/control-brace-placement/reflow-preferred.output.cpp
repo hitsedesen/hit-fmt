@@ -1,6 +1,5 @@
 void f() {
-    if (
-        check(alpha, beta, gamma,
+    if (check(alpha, beta, gamma,
             delta))
     {
         run();

@@ -50,8 +50,7 @@ void CheckBlankSetting(
         throw std::invalid_argument(
             std::string(key) + " does not accept Inherit");
     }
-    if (
-        setting.Mode != BlankLineMode::Preserve &&
+    if (setting.Mode != BlankLineMode::Preserve &&
         setting.Mode != BlankLineMode::Inherit &&
         setting.Mode != BlankLineMode::Exact)
     {
@@ -79,8 +78,7 @@ void CheckBlankCap(
     std::optional<std::size_t> cap,
     std::string_view key)
 {
-    if (
-        cap && setting.Mode == BlankLineMode::Exact &&
+    if (cap && setting.Mode == BlankLineMode::Exact &&
         setting.EmptyLines > *cap)
     {
         throw std::invalid_argument(
@@ -103,8 +101,7 @@ void ValidatePolicyStyle(const Style& style)
     if (style.IndentWidth == 0 || style.IndentWidth > 32) {
         throw std::invalid_argument("IndentWidth must be between 1 and 32");
     }
-    if (
-        style.LineEnding != LineEnding::Preserve &&
+    if (style.LineEnding != LineEnding::Preserve &&
         style.LineEnding != LineEnding::LF &&
         style.LineEnding != LineEnding::CRLF)
     {
@@ -205,8 +202,7 @@ void ValidatePolicyStyle(const Style& style)
         style.StandaloneCommentBlankLinesAfter,
         style.MaxEmptyLines,
         "StandaloneCommentBlankLinesAfter");
-    if (
-        style.IncludeGrouping == IncludeGrouping::Regroup &&
+    if (style.IncludeGrouping == IncludeGrouping::Regroup &&
         style.MaxEmptyLines && *style.MaxEmptyLines == 0)
     {
         throw std::invalid_argument(
@@ -214,26 +210,22 @@ void ValidatePolicyStyle(const Style& style)
                 "MaxEmptyLines = 0");
     }
     ValidateIncludeGroupPrefixes(style.IncludeGroupPrefixes);
-    if (
-        style.ExpressionsAlignment != ExpressionAlignment::Block &&
+    if (style.ExpressionsAlignment != ExpressionAlignment::Block &&
         style.ExpressionsAlignment != ExpressionAlignment::Operand)
     {
         throw std::invalid_argument("ExpressionsAlignment has invalid value");
     }
-    if (
-        style.IncludeMatchingHeader != IncludeMatchingHeader::Off &&
+    if (style.IncludeMatchingHeader != IncludeMatchingHeader::Off &&
         style.IncludeMatchingHeader != IncludeMatchingHeader::First)
     {
         throw std::invalid_argument("IncludeMatchingHeader has invalid value");
     }
-    if (
-        style.IncludeGrouping != IncludeGrouping::Preserve &&
+    if (style.IncludeGrouping != IncludeGrouping::Preserve &&
         style.IncludeGrouping != IncludeGrouping::Regroup)
     {
         throw std::invalid_argument("IncludeGrouping has invalid value");
     }
-    if (
-        style.ConstructorBracePlacement &&
+    if (style.ConstructorBracePlacement &&
         *style.ConstructorBracePlacement != BracePlacement::Attached &&
         *style.ConstructorBracePlacement != BracePlacement::NextLine &&
         *style.ConstructorBracePlacement !=
@@ -246,8 +238,7 @@ void ValidatePolicyStyle(const Style& style)
         throw std::invalid_argument(
             "ShortNamespaceLines must not exceed 10000");
     }
-    if (
-        style.TrailingCommentSpaces && style.TrailingCommentSpaces->Count &&
+    if (style.TrailingCommentSpaces && style.TrailingCommentSpaces->Count &&
         *style.TrailingCommentSpaces->Count > 10000)
     {
         throw std::invalid_argument(

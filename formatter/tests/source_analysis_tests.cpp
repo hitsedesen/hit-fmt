@@ -58,7 +58,7 @@ void ExpectSameAnalysis(
             bool(a.IntrinsicContextSensitive),
             bool(b.IntrinsicContextSensitive));
         for (auto replacement :
-            {"", " ", "\t", "\n  ", "\r\n", " \n", "/* no */"})
+             {"", " ", "\t", "\n  ", "\r\n", " \n", "/* no */"})
         {
             EXPECT_EQ(
                 direct.CanReplaceGap(i, replacement),

@@ -98,8 +98,7 @@ std::string Dump(const Analysis& analysis)
     std::ostringstream output;
     for (GapId i = 0; i < analysis.Tree.TokenCount(); ++i) {
         const auto& gap = analysis.Spacing.Gaps()[i];
-        if (
-            gap.Field == F::None && gap.Constraint == SpacingConstraint::None &&
+        if (gap.Field == F::None && gap.Constraint == SpacingConstraint::None &&
             gap.Priority == 0)
         {
             continue;

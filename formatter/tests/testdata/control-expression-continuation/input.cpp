@@ -12,6 +12,9 @@ unsigned Combine(unsigned value)
     for (int index = 0; (value == 0xe0 && ReadUnit(index) < 0xa0) || (value == 0xed && ReadUnit(index) > 0x9f); ++index) {
         Update(value);
     }
+    if (HasPreviousProcessingStateForCurrentRequest() && HasCurrentProcessingStateForCurrentRequest() && HasPendingProcessingStateForCurrentRequest()) {
+        return value;
+    }
     if (ShortCheck() || AnotherShortCheck()) {
         return value;
     }

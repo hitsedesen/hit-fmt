@@ -52,17 +52,15 @@ GetFirstCodePointFromPaddedInput(const char* str)
         size = 1;
     } else if (first >= 0xc2 && first <= 0xdf && isContinuation(1)) {
         size = 2;
-    } else if (
-        first >= 0xe0 && first <= 0xef && isContinuation(1) &&
-        isContinuation(2) && !(first == 0xe0 && byte(1) < 0xa0) &&
-        !(first == 0xed && byte(1) > 0x9f))
+    } else if (first >= 0xe0 && first <= 0xef && isContinuation(1) &&
+               isContinuation(2) && !(first == 0xe0 && byte(1) < 0xa0) &&
+               !(first == 0xed && byte(1) > 0x9f))
     {
         size = 3;
-    } else if (
-        first >= 0xf0 && first <= 0xf4 && isContinuation(1) &&
-        isContinuation(2) && isContinuation(3) &&
-        !(first == 0xf0 && byte(1) < 0x90) &&
-        !(first == 0xf4 && byte(1) > 0x8f))
+    } else if (first >= 0xf0 && first <= 0xf4 && isContinuation(1) &&
+               isContinuation(2) && isContinuation(3) &&
+               !(first == 0xf0 && byte(1) < 0x90) &&
+               !(first == 0xf4 && byte(1) > 0x8f))
     {
         size = 4;
     } else {
@@ -123,8 +121,7 @@ constexpr std::optional<short> GetFirstCodePointSize(std::string_view str)
         if (!isContinuation(1) || !isContinuation(2)) {
             return std::nullopt;
         }
-        if (
-            (first == 0xe0 && byte(1) < 0xa0) ||
+        if ((first == 0xe0 && byte(1) < 0xa0) ||
             (first == 0xed && byte(1) > 0x9f))
         {
             return std::nullopt;
@@ -135,8 +132,7 @@ constexpr std::optional<short> GetFirstCodePointSize(std::string_view str)
         if (!isContinuation(1) || !isContinuation(2) || !isContinuation(3)) {
             return std::nullopt;
         }
-        if (
-            (first == 0xf0 && byte(1) < 0x90) ||
+        if ((first == 0xf0 && byte(1) < 0x90) ||
             (first == 0xf4 && byte(1) > 0x8f))
         {
             return std::nullopt;

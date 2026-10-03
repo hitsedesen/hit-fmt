@@ -79,8 +79,7 @@ public:
 private:
     void Validate(Hunk hunk) const
     {
-        if (
-            !hunk.Begin || hunk.Begin > hunk.End ||
+        if (!hunk.Begin || hunk.Begin > hunk.End ||
             hunk.End >= Boundaries_.size())
         {
             throw std::invalid_argument("invalid original physical hunk lines");

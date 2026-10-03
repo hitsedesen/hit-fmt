@@ -1,8 +1,8 @@
 void Drain()
 {
     for (auto permitted = CheckCurrentQuota();
-        permitted || CanBorrowFromNextWindowAfterExpiration();
-        permitted = CheckCurrentQuota())
+         permitted || CanBorrowFromNextWindowAfterExpiration();
+         permitted = CheckCurrentQuota())
     {
         ProcessOne();
     }

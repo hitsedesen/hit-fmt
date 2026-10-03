@@ -5,8 +5,8 @@ void f(bool alpha, bool beta, bool gamma) {
     } else {
         stop();
     }
-    while (
-        alpha && beta && gamma)
+    while (alpha && beta &&
+        gamma)
     {
         run();
     }

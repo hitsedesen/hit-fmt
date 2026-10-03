@@ -19,13 +19,13 @@ namespace {
 
 std::string_view Trim(std::string_view text)
 {
-    while (
-        !text.empty() && std::isspace(static_cast<unsigned char>(text.front())))
+    while (!text.empty() &&
+           std::isspace(static_cast<unsigned char>(text.front())))
     {
         text.remove_prefix(1);
     }
-    while (
-        !text.empty() && std::isspace(static_cast<unsigned char>(text.back())))
+    while (!text.empty() &&
+           std::isspace(static_cast<unsigned char>(text.back())))
     {
         text.remove_suffix(1);
     }
@@ -236,8 +236,7 @@ std::vector<std::string> ParseNamespaceExemptions(
                 end = name.size();
             }
             auto part = std::string_view(name).substr(start, end - start);
-            if (
-                part.empty() ||
+            if (part.empty() ||
                 !(std::isalpha(static_cast<unsigned char>(part.front())) ||
                         part.front() == '_') ||
                 part
@@ -267,8 +266,7 @@ std::vector<std::string> ParseCallNames(
 {
     auto names = ParseStringList(value, path, line);
     for (const auto& name : names) {
-        if (
-            name.empty() ||
+        if (name.empty() ||
             !(std::isalpha(static_cast<unsigned char>(name.front())) ||
                     name.front() == '_') ||
             name
@@ -293,8 +291,7 @@ std::optional<std::vector<std::string>> ParseNamePrefixes(
         return std::nullopt;
     }
     for (const auto& prefix : prefixes) {
-        if (
-            prefix
+        if (prefix
                 .find_first_not_of(
                     "abcdefghijklmnopqrstuvwxyz"
                         "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_") !=
@@ -394,10 +391,9 @@ void AssignStyle(
             decltype(config.FormattingStyle.*Member)>,
             std::vector<std::string>>)
     {
-        if constexpr (
-            Member == &Style::ChainedCallRootNames ||
-            Member == &Style::IndentedCallScopePairs ||
-            Member == &Style::IncludeGroupPrefixes)
+        if constexpr (Member == &Style::ChainedCallRootNames ||
+                      Member == &Style::IndentedCallScopePairs ||
+                      Member == &Style::IncludeGroupPrefixes)
         {
             config.FormattingStyle.*Member = ParseStringList(value, path, line);
         } else {
@@ -416,9 +412,8 @@ void AssignStyle(
         if (value == "Preserve") {
             config.FormattingStyle.*Member = {};
         } else if (value == "Inherit") {
-            if constexpr (
-                Member == &Style::MemberDefinitionBlankLines ||
-                Member == &Style::MemberDeclarationBlankLines)
+            if constexpr (Member == &Style::MemberDefinitionBlankLines ||
+                          Member == &Style::MemberDeclarationBlankLines)
             {
                 config.FormattingStyle.*Member = BlankLineSetting::Inherited();
             } else {
@@ -524,8 +519,7 @@ void ValidateStyleLimits(
                     return std::isalnum(static_cast<unsigned char>(value)) ||
                         value == '_';
                 };
-                if (
-                    (at == 0 || !identifier(reason[at - 1])) &&
+                if ((at == 0 || !identifier(reason[at - 1])) &&
                     (at + key.size() == reason.size() ||
                             !identifier(reason[at + key.size()])))
                 {
@@ -612,8 +606,7 @@ void ValidateAnnotationNames(
 {
     scratch.clear();
     for (const auto& name : input) {
-        if (
-            !(qualified
+        if (!(qualified
                     ? AnnotationQualifiedName(name)
                     : AnnotationIdentifier(name)))
         {
@@ -635,8 +628,7 @@ std::pair<std::string_view, std::string_view> AnnotationScopePair(
     }
     const auto begin = pair.substr(0, colon);
     const auto end = pair.substr(colon + 1);
-    if (
-        !AnnotationIdentifier(begin) || !AnnotationIdentifier(end) ||
+    if (!AnnotationIdentifier(begin) || !AnnotationIdentifier(end) ||
         begin == end)
     {
         throw std::invalid_argument(

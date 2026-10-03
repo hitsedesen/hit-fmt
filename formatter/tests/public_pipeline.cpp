@@ -921,6 +921,28 @@ TEST(PublicPipeline, DeclarationHeaderBreaksRespectWidthAndByteAuthority)
     EXPECT_NE(preserved.Text.find("> ReadFirstResult"), std::string::npos);
 }
 
+TEST(PublicPipeline, RepositoryAndYtsaurusControlHeadersFitWithoutTokenChanges)
+{
+    const auto directory = std::filesystem::path(FORMATTER_TESTDATA_DIR) /
+        "../control-expression-continuation";
+    const auto source = test::golden::ReadFile(directory / "input.cpp");
+    for (const auto* config : {"../../../../.hit-fmt",
+             "../../../../hit-fmt/examples/ytsaurus.hit-fmt"})
+    {
+        SCOPED_TRACE(config);
+        const auto style = formatter::LoadConfigFile(
+            directory / config).FormattingStyle;
+        const formatter::PreparedFormat prepared(style);
+        const auto result = FormatInput(source, prepared);
+        EXPECT_TRUE(result.Diagnostics.empty());
+        EXPECT_NE(result.Text.find("if ((value"), std::string::npos);
+        EXPECT_NE(result.Text.find("if (HasPreviousProcessingState"),
+            std::string::npos);
+        CheckIdentities(source, result);
+        EXPECT_EQ(FormatInput(result.Text, prepared).Text, result.Text);
+    }
+}
+
 TEST(PublicPipeline, NoEditTreeSourceParityAndResultLifetime)
 {
     const std::string source = "void f(){ invoke(left,right); }\n";
@@ -2421,16 +2443,14 @@ void CheckBareCRCopies(
     CheckIdentities(source, result);
     for (size_t i = 0; i < source.size(); ++i)
     {
-        if (
-            source[i] != '\r' ||
+        if (source[i] != '\r' ||
             (i + 1 < source.size() && source[i + 1] == '\n'))
         {
             continue;
         }
         unsigned copies = 0;
         for (const auto& map : result.Map) {
-            if (
-                !map.Exact || !map.HasOriginal || map.Original.Begin > i ||
+            if (!map.Exact || !map.HasOriginal || map.Original.Begin > i ||
                 map.Original.End <= i)
             {
                 continue;

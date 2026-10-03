@@ -81,8 +81,7 @@ bool ValidCase(std::string_view name, NameCase casing)
         return true;
     }
     if (casing == NameCase::CamelCase || casing == NameCase::PascalCase) {
-        if (
-            !(casing == NameCase::CamelCase
+        if (!(casing == NameCase::CamelCase
                     ? Lower(name.front())
                     : Upper(name.front())))
         {
@@ -94,8 +93,7 @@ bool ValidCase(std::string_view name, NameCase casing)
                 return Lower(c) || Upper(c) || Digit(c);
             });
     }
-    if (
-        name.front() == '_' || name.back() == '_' ||
+    if (name.front() == '_' || name.back() == '_' ||
         name.find("__") != std::string_view::npos)
     {
         return false;
@@ -144,8 +142,7 @@ public:
                 continue;
             }
             const auto& node = *frame.Node;
-            if (
-                node.Kind == NK::FunctionDeclaration ||
+            if (node.Kind == NK::FunctionDeclaration ||
                 (node.Kind == NK::RecordDeclaration && !HasRecordBody(node)) ||
                 (node.Kind == NK::EnumDeclaration &&
                         !Child(node, NK::EnumeratorList)) ||
@@ -288,8 +285,7 @@ private:
     bool HasRecordBody(const parser::Node& node) const
     {
         for (auto i = node.Tokens.Begin; i < node.Tokens.End; ++i) {
-            if (
-                Tree.Kind(i) == TK::Operator_OpenBrace &&
+            if (Tree.Kind(i) == TK::Operator_OpenBrace &&
                 Tree.Role(i) == parser::PunctuationRole::RecordDelimiter)
             {
                 return true;
@@ -304,8 +300,7 @@ private:
         if (start >= node.Tokens.End) {
             return false;
         }
-        if (
-            node.Kind == NK::TemplateDeclaration &&
+        if (node.Kind == NK::TemplateDeclaration &&
             Tree.Kind(start) == TK::Keyword_template)
         {
             auto next = Next(start + 1, node.Tokens.End);
@@ -314,8 +309,7 @@ private:
         }
         // Extern explicit instantiations can be recovered as a general
         // declaration rather than a template-declaration.
-        if (
-            node.Kind == NK::Declaration &&
+        if (node.Kind == NK::Declaration &&
             Tree.Kind(start) == TK::Keyword_extern)
         {
             auto next = Next(start + 1, node.Tokens.End);
@@ -351,8 +345,7 @@ private:
     bool IsExempt() const
     {
         for (const auto& name : ExemptNamespaces) {
-            if (
-                Scope == name ||
+            if (Scope == name ||
                 (Scope.starts_with(name) && Scope.size() > name.size() + 1 &&
                         Scope.compare(name.size(), 2, "::") == 0))
             {
@@ -397,8 +390,7 @@ private:
                 // guessing which token is declared.
                 if (name < end && Tree.Kind(name) == TK::Identifier) {
                     auto after = Next(name + 1, end);
-                    if (
-                        after < end &&
+                    if (after < end &&
                         (Tree.Kind(after) == TK::Operator_OpenBrace ||
                                 Tree.Kind(after) == TK::Operator_Semicolon ||
                                 Tree.Kind(after) == TK::Operator_Colon ||
@@ -411,8 +403,7 @@ private:
             }
             case NK::EnumDeclaration: {
                 auto name = Next(begin + 1, end);
-                if (
-                    name < end &&
+                if (name < end &&
                     (Tree.Kind(name) == TK::Keyword_class ||
                             Tree.Kind(name) == TK::Keyword_struct))
                 {
@@ -420,8 +411,7 @@ private:
                 }
                 if (name < end && Tree.Kind(name) == TK::Identifier) {
                     auto after = Next(name + 1, end);
-                    if (
-                        after < end &&
+                    if (after < end &&
                         (Tree.Kind(after) == TK::Operator_OpenBrace ||
                                 Tree.Kind(after) == TK::Operator_Semicolon ||
                                 Tree.Kind(after) == TK::Operator_Colon))
@@ -473,8 +463,7 @@ std::vector<NameDiagnostic> CheckNames(
     auto enabled = [] (const NameRule& rule) {
         return rule.Case != NameCase::Unchecked || rule.Prefixes.has_value();
     };
-    if (
-        !enabled(style.Class) && !enabled(style.Enum) &&
+    if (!enabled(style.Class) && !enabled(style.Enum) &&
         !enabled(style.Union) && !enabled(style.Struct) &&
         !enabled(style.Function) && !enabled(style.Concept) &&
         !enabled(style.Variable) && !enabled(style.Namespace))

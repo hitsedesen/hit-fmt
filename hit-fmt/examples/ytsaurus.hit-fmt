@@ -31,7 +31,11 @@ BaseListsCommaSide = Leading
 ConstructorListsBreak = Always
 ConstructorListsColonSide = Leading
 ConstructorListsCommaSide = Leading
+# Keep the first control clause inline; align continuations after the opener.
+ControlHeadersBreak = IfNeeded
 ControlHeadersFirstItem = InlineIfFits
+ControlHeadersAlignment = Delimiter
+ControlHeadersCloser = SameLine
 ChainsBreak = Always
 ChainsPacking = VerticalWhenBroken
 ChainsAlignment = Block

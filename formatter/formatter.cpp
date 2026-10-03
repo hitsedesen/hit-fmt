@@ -106,8 +106,8 @@ std::pmr::vector<ProtectedSourceRange> ProjectProtection(
                     const auto& range,
                     Offset begin) { return range.Source.End <= begin; });
         for (;
-            it != original.end() && it->Source.Begin < piece.Original.End;
-            ++it)
+             it != original.end() && it->Source.Begin < piece.Original.End;
+             ++it)
         {
             const auto begin = std::max(it->Source.Begin, piece.Original.Begin);
             const auto end = std::min(it->Source.End, piece.Original.End);
@@ -143,8 +143,7 @@ std::pmr::vector<Range> ProjectEditScope(
             // insertions. Replacement literals inherit only its byte authority;
             // their output End is still excluded unless selected copied bytes
             // follow. A deletion emits no literal and grants no new authority.
-            if (
-                piece.Operation == NoStructuralAction ||
+            if (piece.Operation == NoStructuralAction ||
                 safety.IntersectsImmutable(piece.Original))
             {
                 throw std::runtime_error("unauthorized structural literal");
@@ -223,22 +222,19 @@ std::pmr::vector<GapId> GeneratedGaps(
         }
         // Inclusive touching is intentional, especially at zero-width
         // deletion.
-        if (
-            interval < ranges.size() && ranges[interval].Begin <= range.End &&
+        if (interval < ranges.size() && ranges[interval].Begin <= range.End &&
             !safety.Gaps()[i].Preserve)
         {
             result.push_back(i);
             // Provenance is emitted in output order. A copied gap inside a
             // larger structural replacement still has authored line breaks;
             // whitespace joined across a deletion does not.
-            while (
-                piece < provenance.size() &&
-                provenance[piece].Output.End <= range.Begin)
+            while (piece < provenance.size() &&
+                   provenance[piece].Output.End <= range.Begin)
             {
                 ++piece;
             }
-            if (
-                range.Begin < range.End &&
+            if (range.Begin < range.End &&
                 (piece == provenance.size() || provenance[piece].Generated ||
                         range.Begin < provenance[piece].Output.Begin ||
                         range.End > provenance[piece].Output.End))
@@ -288,8 +284,7 @@ std::pmr::vector<uint64_t> OriginalIdentities(
          i < tree.TokenCount() && next < surviving.size(); ++i)
     {
         const auto range = tree.Token(i).Text;
-        if (
-            range.Begin == surviving[next].Source.Begin &&
+        if (range.Begin == surviving[next].Source.Begin &&
             range.End == surviving[next].Source.End)
         {
             identities[i] = surviving[next++].Original;
@@ -377,9 +372,9 @@ void ComposeMaps(
                         const auto& range,
                         Offset begin) { return range.Source.End <= begin; });
             for (;
-                it != safety.Protection().end() &&
-                it->Source.Begin < source.End;
-                ++it)
+                 it != safety.Protection().end() &&
+                 it->Source.Begin < source.End;
+                 ++it)
             {
                 const auto begin = std::max(source.Begin, it->Source.Begin);
                 const auto end = std::min(source.End, it->Source.End);
@@ -408,10 +403,10 @@ void ComposeMaps(
             });
         bool added = false;
         for (;
-            it != provenance.end() &&
-            (it->Output.Begin < source.End ||
+             it != provenance.end() &&
+             (it->Output.Begin < source.End ||
                     (source.Empty() && it->Output.Begin <= source.Begin));
-            ++it)
+             ++it)
         {
             const auto begin = std::max(source.Begin, it->Output.Begin);
             const auto end = std::min(source.End, it->Output.End);
@@ -522,8 +517,7 @@ void ApplyComments(
                         const auto& ns,
                         parser::TokenIndex token) { return ns.Owner.Begin <
                             token; });
-            if (
-                identity == namespaces.end() ||
+            if (identity == namespaces.end() ||
                 identity->Owner.Begin != owner.Begin)
             {
                 throw std::runtime_error("missing namespace action identity");
@@ -555,8 +549,7 @@ void ApplyComments(
                 [] (
                     const auto& copy,
                     Offset begin) { return copy.Before.End <= begin; });
-        if (
-            it != copies.end() && it->Before.Begin <= range.Begin &&
+        if (it != copies.end() && it->Before.Begin <= range.Begin &&
             range.End <= it->Before.End)
         {
             return &*it;
@@ -617,8 +610,7 @@ void ApplyComments(
                     };
             // A comment edit may retain token-owned CR while consuming
             // the rest of that token. The byte remains exact, not the ID.
-            if (
-                next.OriginalToken != document::NoIdentity &&
+            if (next.OriginalToken != document::NoIdentity &&
                 !result.OriginalTokens[next.OriginalToken].Present)
             {
                 next.OriginalToken = document::NoIdentity;
@@ -666,8 +658,7 @@ void WidthDiagnostics(
             report();
             ++line;
             width = 0;
-            if (
-                c == '\r' && i + 1 < result.Text.size() &&
+            if (c == '\r' && i + 1 < result.Text.size() &&
                 result.Text[i + 1] == '\n')
             {
                 ++i;
@@ -833,8 +824,7 @@ FormatResult detail::FormatWithAnalysis(
         options.LineEnding = document::Newline::CRLF;
     } else if (prepared.Policies.LineEnding == LineEnding::Preserve) {
         const auto lf = original.Source().find('\n');
-        if (
-            lf != std::string_view::npos && lf &&
+        if (lf != std::string_view::npos && lf &&
             original.Source()[lf - 1] == '\r')
         {
             options.LineEnding = document::Newline::CRLF;

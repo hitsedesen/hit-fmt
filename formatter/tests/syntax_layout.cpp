@@ -105,8 +105,7 @@ void ExpectSplitGapMap(
     {
         const auto& generated = output.Map[i];
         const auto& borrowed = output.Map[i + 1];
-        if (
-            generated.Source.Identity != document::NoIdentity ||
+        if (generated.Source.Identity != document::NoIdentity ||
             generated.Exact || generated.Source.Begin != sourceBegin ||
             generated.Source.End != sourceEnd)
         {
@@ -1597,6 +1596,46 @@ TEST(SyntaxLayout, ControlRootSharesAnchorWithoutCancelingReturnContinuation)
             EXPECT_EQ(Lower(output, style).Text, output);
         }
     }
+}
+
+TEST(SyntaxLayout, InlineControlPrefixFitsBeforeIndependentExpressionBreaks)
+{
+    auto style = Canonical(80);
+    style.IndentWidth = 4;
+    style.ControlHeadersLayout = formatter::CategoryLayout::Canonical;
+    style.ControlHeadersFirstItem = formatter::FirstItemPlacement::InlineIfFits;
+    style.ControlHeadersAlignment = formatter::ContinuationAlignment::Delimiter;
+    style.ControlBlockKeywordSpacing = formatter::GapPolicy::Space;
+    style.ControlBlockConditionSpacing = formatter::GapPolicy::NoSpace;
+    style.ControlBracePlacement = formatter::BracePlacement::NextLineIfHeaderBroken;
+    style.ExpressionsBreak = formatter::BreakRequirement::Always;
+    const std::string input =
+        "void f(){ if(alpha || beta){ return left | right; } }\n";
+    for (const auto side : {formatter::OperatorSide::Leading,
+             formatter::OperatorSide::Trailing})
+    {
+        style.BinaryOperatorSide = side;
+        const auto output = Lower(input, style).Text;
+        EXPECT_NE(output.find("if (alpha"), std::string::npos) << output;
+        EXPECT_NE(output.find(")\n    {"), std::string::npos) << output;
+        EXPECT_NE(output.find(side == formatter::OperatorSide::Leading
+                ? "\n        || beta" : "\n        beta"),
+            std::string::npos) << output;
+        EXPECT_NE(output.find(side == formatter::OperatorSide::Leading
+                ? "\n            | right" : "\n            right"),
+            std::string::npos) << output;
+        EXPECT_EQ(Lower(output, style).Text, output);
+    }
+
+    style.ColumnLimit = 42;
+    style.BinaryOperatorSide = formatter::OperatorSide::Trailing;
+    const auto fallback = Lower(
+        "void f(){ if(ready){} else if(LongConditionRequiresFallback || other){} }\n",
+        style).Text;
+    EXPECT_NE(fallback.find("else if (\n"), std::string::npos) << fallback;
+    EXPECT_NE(fallback.find("\n        LongConditionRequiresFallback"),
+        std::string::npos) << fallback;
+    EXPECT_EQ(Lower(fallback, style).Text, fallback);
 }
 
 TEST(SyntaxLayout, RealizedExpressionLineRetainsChildContinuationBase)

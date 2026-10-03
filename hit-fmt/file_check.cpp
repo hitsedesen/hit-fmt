@@ -32,8 +32,7 @@ public:
         while (Before(Current_, position) && Cursor_ < Text_.size()) {
             Advance();
         }
-        if (
-            Current_.Line != position.Line ||
+        if (Current_.Line != position.Line ||
             Current_.Column != position.Column)
         {
             throw std::runtime_error("invalid original diagnostic position");
@@ -109,8 +108,7 @@ void MapSemanticPositions(const parser::SyntaxTree& tree, CheckedFile& checked)
             }
         }
         auto token = low;
-        if (
-            token == tree.TokenCount() ||
+        if (token == tree.TokenCount() ||
             tree.Token(token).Text.Begin != offset)
         {
             if (token == 0) {
@@ -121,8 +119,7 @@ void MapSemanticPositions(const parser::SyntaxTree& tree, CheckedFile& checked)
         }
         const auto range = tree.Token(token).Text;
         const auto& mapped = checked.Formatting.OriginalTokens.at(token);
-        if (
-            offset < range.Begin || offset > range.End || !mapped.Present ||
+        if (offset < range.Begin || offset > range.End || !mapped.Present ||
             mapped.Output.End - mapped.Output.Begin != range.End - range.Begin)
         {
             throw std::runtime_error(
@@ -179,7 +176,7 @@ CheckedFile CheckFile(
                 });
     }
     for (const auto& diagnostic :
-        formatter::CheckParameterNames(tree, configuration.Settings))
+         formatter::CheckParameterNames(tree, configuration.Settings))
     {
         auto message =
             "parameter #" + std::to_string(diagnostic.ParameterNumber) +
@@ -241,8 +238,7 @@ void PrintFileSummaryIssues(
 
 void ValidatePreviewOption(std::string_view argument)
 {
-    if (
-        argument == "--changed-hunks" ||
+    if (argument == "--changed-hunks" ||
         argument.starts_with("--changed-hunks=") ||
         argument == "--changed-ranges" ||
         argument.starts_with("--changed-ranges=") ||

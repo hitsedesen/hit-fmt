@@ -25,8 +25,7 @@ void Compare()
     {
         Retry();
     }
-    if (
-        Any(previousChannelStatus & ~EChannelStatus::CurrentlyProcessing) &&
+    if (Any(previousChannelStatus & ~EChannelStatus::CurrentlyProcessing) &&
         None(previousChannelStatus & EChannelStatus::PendingShutdown))
     {
         Handle();

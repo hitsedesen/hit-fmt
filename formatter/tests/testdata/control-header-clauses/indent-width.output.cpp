@@ -23,8 +23,7 @@ void Process()
     for (auto item : ItemsWithAnExtremelyLongExpression()) {
         Use(item);
     }
-    for (
-        auto ready =
+    for (auto ready =
             ReadNext(); /* keep */ ready ||
         CanProceedAfterDelay(); ready = ReadNext())
     {

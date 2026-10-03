@@ -68,8 +68,7 @@ bool HasName(const Node& node)
 
 const Node* FunctionName(const Node& node)
 {
-    if (
-        node.Kind == NK::DeclaratorName || node.Kind == NK::DestructorName ||
+    if (node.Kind == NK::DeclaratorName || node.Kind == NK::DestructorName ||
         node.Kind == NK::OperatorFunctionName)
     {
         return &node;
@@ -114,11 +113,10 @@ util::Position NamePosition(
                     return tree.TokenPosition(nested->Tokens.End - 1);
                 }
                 for (auto* child = abstract->Child();
-                    child;
-                    child = child->NextSibling)
+                     child;
+                     child = child->NextSibling)
                 {
-                    if (
-                        child->Kind == NK::ArrayDeclarator ||
+                    if (child->Kind == NK::ArrayDeclarator ||
                         child->Kind == NK::FunctionDeclarator)
                     {
                         return tree.TokenPosition(child->Tokens.Begin);
@@ -210,8 +208,8 @@ void CheckFunction(
         const auto endLine = tree.TokenPosition(signature->Tokens.End - 1).Line;
         size_t number = 0;
         for (auto* parameter = parameters->Child();
-            parameter;
-            parameter = parameter->NextSibling)
+             parameter;
+             parameter = parameter->NextSibling)
         {
             if (parameter->Kind != NK::ParameterDeclaration) {
                 continue;
@@ -232,8 +230,7 @@ void CheckFunction(
             for (auto i = begin; i < end; ++i) {
                 significant += tree.Kind(i) != TK::Comment;
             }
-            if (
-                significant == begin + 1 &&
+            if (significant == begin + 1 &&
                 (tree.Kind(begin) == TK::Identifier ||
                         tree.Kind(begin) == TK::Keyword_void))
             {
@@ -241,8 +238,7 @@ void CheckFunction(
             }
             bool unsafe = false;
             for (auto i = begin; i < end; ++i) {
-                if (
-                    tree.Kind(i) == TK::PreprocessingDirective ||
+                if (tree.Kind(i) == TK::PreprocessingDirective ||
                     tree.Kind(i) == TK::Operator_Ellipsis)
                 {
                     unsafe = true;
@@ -266,8 +262,7 @@ void CheckFunction(
                 for (auto i = begin; i < last; ++i) {
                     hasDefault |= tree.Kind(i) == TK::Operator_Assign;
                 }
-                if (
-                    !hasDefault && last < end &&
+                if (!hasDefault && last < end &&
                     IsCommentedName(tree.TokenText(end - 1)))
                 {
                     continue;
@@ -301,8 +296,7 @@ std::vector<ParameterNameDiagnostic> CheckParameterNames(
     while (!stack.empty()) {
         auto* node = stack.back();
         stack.pop_back();
-        if (
-            (node->Kind == NK::FunctionDeclaration &&
+        if ((node->Kind == NK::FunctionDeclaration &&
                     config.FunctionDeclarationParameterNames ==
                         FunctionDeclarationParameterNames::Required) ||
             (node->Kind == NK::FunctionDefinition &&

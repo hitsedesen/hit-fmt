@@ -44,8 +44,7 @@ std::vector<std::size_t> SortedRules(std::span<const std::string> prefixes)
 std::vector<std::size_t> ValidateAndSort(std::span<const std::string> prefixes)
 {
     for (const auto& prefix : prefixes) {
-        if (
-            prefix.empty() || prefix.back() != '/' ||
+        if (prefix.empty() || prefix.back() != '/' ||
             prefix.find('\\') != std::string_view::npos ||
             !NormalizedRelativePath(prefix))
         {
@@ -83,9 +82,8 @@ PreparedIncludePrefixes::PreparedIncludePrefixes(
     for (const auto rule : order) {
         const std::string_view prefix = Prefixes_[rule];
         std::size_t common = 0;
-        while (
-            common < std::min(previous.size(), prefix.size()) &&
-            previous[common] == prefix[common])
+        while (common < std::min(previous.size(), prefix.size()) &&
+               previous[common] == prefix[common])
         {
             ++common;
         }
@@ -116,9 +114,8 @@ PreparedIncludePrefixes::PreparedIncludePrefixes(
     for (const auto rule : order) {
         const std::string_view prefix = Prefixes_[rule];
         std::size_t common = 0;
-        while (
-            common < std::min(previous.size(), prefix.size()) &&
-            previous[common] == prefix[common])
+        while (common < std::min(previous.size(), prefix.size()) &&
+               previous[common] == prefix[common])
         {
             ++common;
         }

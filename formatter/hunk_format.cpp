@@ -53,8 +53,7 @@ std::pmr::vector<Range> NarrowScope(
         return {scope.begin(), scope.end(), &memory};
     parser::SourceOffset previous = 0;
     for (const auto range : *caller) {
-        if (
-            range.Begin >= range.End || range.End > size ||
+        if (range.Begin >= range.End || range.End > size ||
             range.Begin < previous)
         {
             throw std::invalid_argument("invalid original hunk edit scope");
@@ -95,10 +94,10 @@ bool SemanticProtection(const SourceAnalysis& safety, Range source)
         });
     constexpr auto outside = uint16_t(ProtectionReason::OutsideEditScope);
     for (;
-        it != ranges.end() &&
-        (it->Source.Begin < source.End ||
+         it != ranges.end() &&
+         (it->Source.Begin < source.End ||
                 (source.Empty() && it->Source.Begin <= source.Begin));
-        ++it)
+         ++it)
     {
         if (uint16_t(it->Reasons) & ~outside) {
             return true;
@@ -149,9 +148,8 @@ std::vector<HunkCoverage> FinishCoverage(
             next = 0;
             reason = record.Reason;
         }
-        while (
-            next < selected.size() &&
-            selected[next].End <= record.Original.Begin)
+        while (next < selected.size() &&
+               selected[next].End <= record.Original.Begin)
         {
             ++next;
         }
@@ -162,8 +160,8 @@ std::vector<HunkCoverage> FinishCoverage(
             continue;
         }
         for (auto i = next;
-            i < selected.size() && selected[i].Begin < record.Original.End;
-            ++i)
+             i < selected.size() && selected[i].Begin < record.Original.End;
+             ++i)
         {
             result
                 .push_back(
@@ -223,8 +221,7 @@ ChangedFormatResult FormatChanged(
         if (region.Tokens.Empty()) {
             continue;
         }
-        if (
-            prepared.NamespaceComments.Policy !=
+        if (prepared.NamespaceComments.Policy !=
                 NamespaceCommentPolicy::Preserve &&
             region.Kind == parser::NodeKind::NamespaceDeclaration)
         {
@@ -247,8 +244,7 @@ ChangedFormatResult FormatChanged(
                 }
             }
         }
-        if (
-            !SpillList(region.Kind) ||
+        if (!SpillList(region.Kind) ||
             !detail::HunkScopeIntersects(selectedBytes, region.Source))
         {
             continue;
@@ -259,8 +255,8 @@ ChangedFormatResult FormatChanged(
                 !safety.IntersectsImmutable(region.Source);
         if (spillover && safe && unit.End - unit.Begin < 200) {
             windows.push_back(unit);
-        } else if (
-            !safe || !detail::HunkScopeContains(selectedBytes, region.Source))
+        } else if (!safe ||
+                   !detail::HunkScopeContains(selectedBytes, region.Source))
         {
             coverage.push_back({region.Source, Reason::LimitedLayout});
         }
@@ -276,9 +272,8 @@ ChangedFormatResult FormatChanged(
             const auto unit = lines.Cover(group.Source);
             if (spillover && unit.End - unit.Begin < 200) {
                 windows.push_back(unit);
-            } else if (
-                prepared.Structural.SortIncludes &&
-                !detail::HunkScopeContains(selectedBytes, group.Source))
+            } else if (prepared.Structural.SortIncludes &&
+                       !detail::HunkScopeContains(selectedBytes, group.Source))
             {
                 coverage
                     .push_back({group.Source, Reason::StructuralEligibility});
@@ -301,8 +296,7 @@ ChangedFormatResult FormatChanged(
     }
     safety.RestrictEditScope(scope);
     for (const auto& gap : safety.Gaps())
-        if (
-            gap.Preserve &&
+        if (gap.Preserve &&
             detail::HunkScopeIntersects(selectedBytes, gap.Source))
             coverage.push_back({gap.Source, Reason::LimitedLayout});
     // EOF is never an owned insertion point, even with the last line selected.
@@ -329,8 +323,7 @@ ChangedFormatResult FormatChanged(
         if (diagnostic.Tokens.Empty())
             continue;
         // Proven policy exemptions are neither violations nor missing checks.
-        if (
-            diagnostic.Reason == StructuralSkip::ShortNamespace ||
+        if (diagnostic.Reason == StructuralSkip::ShortNamespace ||
             (diagnostic.Reason == StructuralSkip::RequiredBody &&
                     (diagnostic.Action ==
                                 StructuralAction::RemoveNullStatements ||
@@ -364,8 +357,7 @@ ChangedFormatResult FormatChanged(
         // These planner skips occur only AFTER action-specific requiredness,
         // completeness, attachment and semantic eligibility checks. Only a pure
         // selection fence can be promoted to a definite required-action skip.
-        if (
-            requiredCandidate && !SemanticProtection(safety, footprint) &&
+        if (requiredCandidate && !SemanticProtection(safety, footprint) &&
             !SemanticProtection(safety, {footprint.End, footprint.End}) &&
             !safety.Gaps()[beginGap].IntrinsicPreserve &&
             !safety.Gaps()[endGap].IntrinsicPreserve &&

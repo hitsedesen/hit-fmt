@@ -48,11 +48,10 @@ std::vector<PreserveCase> DiscoverCases()
 {
     std::vector<PreserveCase> cases;
     for (const auto& entry :
-        std::filesystem::directory_iterator(FORMATTER_TESTDATA_DIR))
+         std::filesystem::directory_iterator(FORMATTER_TESTDATA_DIR))
     {
         auto filename = entry.path().filename().string();
-        if (
-            filename.ends_with(".input.cpp") ||
+        if (filename.ends_with(".input.cpp") ||
             filename.ends_with(".output.cpp"))
         {
             cases.push_back({filename});
@@ -207,6 +206,15 @@ std::vector<FormatCase> FormatCases()
                 "input.cpp",
                 "../../../../",
             });
+    cases
+        .push_back(
+            {
+                std::filesystem::path(FORMATTER_TESTDATA_DIR) /
+                    "../control-expression-continuation",
+                "ytsaurus",
+                "input.cpp",
+                "../../../../hit-fmt/examples/ytsaurus",
+            });
     // Bind to the root configuration, not a fixture-local copy of its settings.
     for (const auto* name : {"repository-lf", "repository-crlf"}) {
         cases
@@ -220,7 +228,7 @@ std::vector<FormatCase> FormatCases()
                 });
     }
     for (const auto* name :
-        {
+         {
             "lf",
             "crlf",
             "legacy",
@@ -384,7 +392,7 @@ std::vector<FormatCase> FormatCases()
         std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../null-statements";
     AddCases(cases, nullStatements, {"preserve", "remove"});
     for (const auto& [name, config] :
-        {
+         {
             std::pair{"decl-preserve", "preserve"},
         std::pair{"decl-statements", "remove"},
         std::pair{"decl-only", "declarations"},
@@ -453,7 +461,7 @@ std::vector<FormatCase> FormatCases()
             "generated-preserve",
         });
     for (const auto* profile :
-        {
+         {
             "space",
             "no-space",
             "preserve",
@@ -525,7 +533,7 @@ std::vector<FormatCase> FormatCases()
                 });
     };
     for (const auto* name :
-        {
+         {
             "constructor-lists",
             "chains",
             "namespace-comments",
@@ -768,7 +776,7 @@ std::vector<FormatCase> FormatCases()
         },
         "split.input.cpp");
     for (const auto* name :
-        {"parsed-operators", "outer-conditional", "control-braces-after-wrap"})
+         {"parsed-operators", "outer-conditional", "control-braces-after-wrap"})
     {
         cases
             .push_back(
@@ -831,7 +839,7 @@ std::vector<FormatCase> FormatCases()
     }
     const auto data = std::filesystem::path(FORMATTER_TESTDATA_DIR) / "..";
     for (const auto* name :
-        {
+         {
             "layout",
             "structural",
             "comments",
@@ -1732,8 +1740,7 @@ void ExpectEmittedWidthDiagnostics(
             overflows.emplace_back(line, width);
         }
         begin = end;
-        if (
-            begin < text.size() && text[begin++] == '\r' &&
+        if (begin < text.size() && text[begin++] == '\r' &&
             begin < text.size() && text[begin] == '\n')
         {
             ++begin;

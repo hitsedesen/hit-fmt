@@ -104,8 +104,7 @@ void PrintOption(std::ostream& output, std::string_view name, const T& value)
         output << "false | true\n" << name << " = "
             << (value ? "true" : "false");
     } else if constexpr (std::is_same_v<T, formatter::BlankLineSetting>) {
-        if (
-            name == "MemberDefinitionBlankLines" ||
+        if (name == "MemberDefinitionBlankLines" ||
             name == "MemberDeclarationBlankLines")
         {
             output << "Inherit | ";
@@ -147,8 +146,7 @@ void PrintOption(std::ostream& output, std::string_view name, const T& value)
     } else if constexpr (std::is_same_v<T, std::size_t>) {
         output << IntegerValues(name) << '\n' << name << " = " << value;
     } else if constexpr (std::is_same_v<T, std::vector<std::string>>) {
-        if (
-            name == "NamingNamespaceExemptions" ||
+        if (name == "NamingNamespaceExemptions" ||
             name == "ChainedCallRootNames")
         {
             output << "[] or [\"qualified::name\", ...]";

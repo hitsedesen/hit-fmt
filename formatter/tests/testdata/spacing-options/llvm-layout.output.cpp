@@ -1,6 +1,5 @@
 void render(bool Alpha, bool Beta, bool Gamma, bool Delta, bool Epsilon, bool Zeta) {
-  while (
-         Alpha && Beta && Gamma && Delta &&
+  while (Alpha && Beta && Gamma && Delta &&
          Epsilon && Zeta) {
     wrong();
     assert(

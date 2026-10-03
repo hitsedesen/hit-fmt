@@ -72,7 +72,7 @@ struct Gap
     // Preserve spelling must use the same safe fallback before fitting.
     bool CanonicalFlat = false;
     bool ControlSeparator = false;
-    bool HeaderBreak = false;
+    bool FitNextSegment = false;
     bool KeepFlatSpacing = false;
 };
 
@@ -230,8 +230,7 @@ public:
     SyntaxLayoutStatus Build()
     {
         const auto count = Tree_.TokenCount();
-        if (
-            Safety_.Gaps().size() != size_t(count) + 1 ||
+        if (Safety_.Gaps().size() != size_t(count) + 1 ||
             Spacing_.Gaps().size() != size_t(count) + 1)
         {
             return {SyntaxLayoutError::MismatchedInputs};
@@ -263,8 +262,7 @@ public:
         for (Index i = 0; i < Syntax_.size(); ++i) {
             const auto& entry = Syntax_[i];
             const auto& node = *entry.TreeNode;
-            if (
-                entry.ItemSequence &&
+            if (entry.ItemSequence &&
                 entry.SequenceBody.Begin < entry.SequenceBody.End)
             {
                 Gaps_[entry.SequenceBody.Begin].ParagraphBoundary = true;
@@ -272,8 +270,7 @@ public:
             }
             if (entry.Parent != None) {
                 const auto& parent = Syntax_[entry.Parent];
-                if (
-                    parent.ItemSequence && !node.Tokens.Empty() &&
+                if (parent.ItemSequence && !node.Tokens.Empty() &&
                     node.Tokens.Begin >= parent.SequenceBody.Begin &&
                     node.Tokens.End <= parent.SequenceBody.End)
                 {
@@ -357,11 +354,10 @@ private:
                     parser::SourceOffset point) { return range.Source.End <=
                         point; });
         for (;
-            first != protection.end() && first->Source.Begin < source.End;
-            ++first)
+             first != protection.end() && first->Source.Begin < source.End;
+             ++first)
         {
-            if (
-                (uint16_t(first->Reasons) &
+            if ((uint16_t(first->Reasons) &
                         ~uint16_t(ProtectionReason::OutsideEditScope)) != 0)
             {
                 return true;
@@ -457,15 +453,14 @@ private:
                         PrefixProtection_[node.Tokens.End];
             }
             for (auto child = entry.FirstChild;
-                child != None;
-                child = Syntax_[child].NextSibling)
+                 child != None;
+                 child = Syntax_[child].NextSibling)
             {
                 entry.Safe = entry.Safe && Syntax_[child].Safe;
             }
             if (entry.ItemSequence) {
                 entry.SequenceBody = node.Tokens;
-                if (
-                    node.Kind != NodeKind::TranslationUnit &&
+                if (node.Kind != NodeKind::TranslationUnit &&
                     node.Kind != NodeKind::PreprocessingConditional &&
                     node.Kind != NodeKind::PreprocessingBranch)
                 {
@@ -474,15 +469,13 @@ private:
                     DirectTokens(
                         i,
                         [&] (Index token) {
-                            if (
-                                opening == None &&
+                            if (opening == None &&
                                 Tree_.Kind(token) ==
                                     TokenKind::Operator_OpenBrace)
                             {
                                 opening = token;
-                            } else if (
-                                Tree_.Kind(token) ==
-                                TokenKind::Operator_CloseBrace)
+                            } else if (Tree_.Kind(token) ==
+                                       TokenKind::Operator_CloseBrace)
                             {
                                 closing = token;
                             }
@@ -496,16 +489,14 @@ private:
                     }
                 }
             }
-            if (
-                node.Kind == NodeKind::BinaryExpression ||
+            if (node.Kind == NodeKind::BinaryExpression ||
                 node.Kind == NodeKind::AssignmentExpression)
             {
                 DirectTokens(
                     i,
                     [&] (Index token) {
                         const auto role = Tree_.Role(token);
-                        if (
-                            role == PunctuationRole::BinaryOperator ||
+                        if (role == PunctuationRole::BinaryOperator ||
                             role == PunctuationRole::ComparisonOperator ||
                             role == PunctuationRole::ShiftOperator ||
                             role == PunctuationRole::AssignmentOperator)
@@ -517,15 +508,15 @@ private:
             entry.Attached = node.Tokens;
             if (const auto *trivia = Tree_.AssociatedTrivia(node)) {
                 for (auto* item = trivia->Leading.First;
-                    item;
-                    item = item->Next)
+                     item;
+                     item = item->Next)
                 {
                     entry.Attached.Begin =
                         std::min(entry.Attached.Begin, item->Tokens.Begin);
                 }
                 for (auto* item = trivia->Trailing.First;
-                    item;
-                    item = item->Next)
+                     item;
+                     item = item->Next)
                 {
                     entry.Attached.End =
                         std::max(entry.Attached.End, item->Tokens.End);
@@ -534,8 +525,7 @@ private:
             entry.Definition =
                 node.Kind == NodeKind::FunctionDefinition ||
                     node.Kind == NodeKind::FunctionTryBlock;
-            if (
-                node.Kind == NodeKind::RecordDeclaration ||
+            if (node.Kind == NodeKind::RecordDeclaration ||
                 node.Kind == NodeKind::EnumDeclaration)
             {
                 DirectTokens(
@@ -547,8 +537,8 @@ private:
                                     TokenKind::Operator_OpenBrace;
                     });
                 for (auto child = entry.FirstChild;
-                    child != None;
-                    child = Syntax_[child].NextSibling)
+                     child != None;
+                     child = Syntax_[child].NextSibling)
                 {
                     entry.Definition =
                         entry.Definition ||
@@ -556,13 +546,12 @@ private:
                                 NodeKind::EnumeratorList;
                 }
             }
-            if (
-                node.Kind == NodeKind::TemplateDeclaration ||
+            if (node.Kind == NodeKind::TemplateDeclaration ||
                 node.Kind == NodeKind::ExportDeclaration)
             {
                 for (auto child = entry.FirstChild;
-                    child != None;
-                    child = Syntax_[child].NextSibling)
+                     child != None;
+                     child = Syntax_[child].NextSibling)
                 {
                     entry.Definition =
                         entry.Definition || Syntax_[child].Definition;
@@ -578,8 +567,7 @@ private:
                     if (second != None) {
                         const auto op =
                             Syntax_[entry.FirstChild].TreeNode->Tokens.End;
-                        if (
-                            op < node.Tokens.End &&
+                        if (op < node.Tokens.End &&
                             Tree_.Kind(op) ==
                                 TokenKind::Operator_ScopeResolution)
                         {
@@ -588,8 +576,7 @@ private:
                     }
                 }
             }
-            if (
-                node.Kind == NodeKind::LiteralExpression &&
+            if (node.Kind == NodeKind::LiteralExpression &&
                 !node.Tokens.Empty())
             {
                 entry.String = true;
@@ -696,8 +683,7 @@ private:
     bool PinFirst(Index id) const
     {
         const auto parent = Syntax_[id].Parent;
-        if (
-            parent == None ||
+        if (parent == None ||
             Syntax_[parent].TreeNode->Kind != NodeKind::CallExpression)
         {
             return false;
@@ -710,15 +696,13 @@ private:
             callee = LastChild_[callee];
         }
         const auto name = Syntax_[callee].TreeNode->Tokens;
-        if (
-            name.Size() != 1 ||
+        if (name.Size() != 1 ||
             !Annotations_.FindMessagePin(Tree_.TokenText(name.Begin)))
         {
             return false;
         }
         auto first = Syntax_[id].FirstChild;
-        if (
-            first == None ||
+        if (first == None ||
             Syntax_[first].TreeNode->Kind != NodeKind::Argument)
         {
             return false;
@@ -747,8 +731,7 @@ private:
                 return;
             }
             const auto* owner = Spacing_.Gaps()[gap].Owner;
-            if (
-                (owner == &node ||
+            if ((owner == &node ||
                         (entry.Parent != None &&
                                 owner == Syntax_[entry.Parent].TreeNode)) &&
                 !Gaps_[gap].ContextKnown)
@@ -767,12 +750,11 @@ private:
             preserve(node.Tokens.End - 1);
         }
         for (auto child = entry.FirstChild;
-            child != None;
-            child = Syntax_[child].NextSibling)
+             child != None;
+             child = Syntax_[child].NextSibling)
         {
             const auto& part = *Syntax_[child].TreeNode;
-            if (
-                part.Kind == NodeKind::ListSeparator ||
+            if (part.Kind == NodeKind::ListSeparator ||
                 part.Kind == NodeKind::RangeForSeparator)
             {
                 preserve(part.Tokens.Begin);
@@ -832,6 +814,14 @@ private:
                     ? document::GapKind::Hard
                     : document::GapKind::Soft;
             Own(begin + 1, group, Boundary::Conditional, firstKind);
+            if (firstKind == document::GapKind::Soft &&
+                (node.Kind == NodeKind::Condition ||
+                        node.Kind == NodeKind::ForHeader))
+            {
+                // Let the expression select its own breaks. A fitting first
+                // segment need not move just because the whole header breaks.
+                Gaps_[begin + 1].FitNextSegment = true;
+            }
             if (!prefixed) {
                 Own(
                     closer,
@@ -859,8 +849,7 @@ private:
             node.Kind == NodeKind::BaseClause
                 ? &Policies_.BaseLists
                 : &Policies_.ConstructorLists;
-        if (
-            prefixed &&
+        if (prefixed &&
             policy.Indent.Alignment == ContinuationAlignment::Delimiter)
         {
             Groups_[group].PrefixGap = begin + 1;
@@ -896,8 +885,8 @@ private:
         Index lastItem = None;
         Index lastSeparator = None;
         for (auto child = Syntax_[id].FirstChild;
-            child != None;
-            child = Syntax_[child].NextSibling)
+             child != None;
+             child = Syntax_[child].NextSibling)
         {
             const auto& part = *Syntax_[child].TreeNode;
             const auto t = part.Tokens.Begin;
@@ -905,8 +894,7 @@ private:
                 part.Kind == NodeKind::ListSeparator ||
                     part.Kind == NodeKind::RangeForSeparator;
             if (!separator) {
-                if (
-                    part.Kind != NodeKind::Comment &&
+                if (part.Kind != NodeKind::Comment &&
                     part.Kind != NodeKind::PreprocessingDirective &&
                     part.Tokens.Begin > begin && part.Tokens.End <= closer)
                 {
@@ -946,8 +934,7 @@ private:
             DirectTokens(
                 id,
                 [&] (Index t) {
-                    if (
-                        Tree_.Kind(t) == TokenKind::Operator_Semicolon &&
+                    if (Tree_.Kind(t) == TokenKind::Operator_Semicolon &&
                         t + 1 < closer)
                     {
                         if (canonical) {
@@ -966,8 +953,7 @@ private:
                     }
                 });
         }
-        if (
-            node.Kind == NodeKind::InitializerList && lastItem != None &&
+        if (node.Kind == NodeKind::InitializerList && lastItem != None &&
             Policies_.InitializersTrailingComma !=
                 TrailingCommaPolicy::Preserve)
         {
@@ -977,8 +963,7 @@ private:
             // element (for example, a type name before an unparsed braced
             // expression). Only a complete element followed by comments and
             // an optional owned trailing comma authorizes punctuation edits.
-            if (
-                item.Kind != NodeKind::InitializerElement ||
+            if (item.Kind != NodeKind::InitializerElement ||
                 item.Tokens.Empty())
             {
                 return;
@@ -988,8 +973,7 @@ private:
                 if (Tree_.Kind(t) == TokenKind::Comment) {
                     continue;
                 }
-                if (
-                    t == lastSeparator &&
+                if (t == lastSeparator &&
                     Tree_.Kind(t) == TokenKind::Operator_Comma && !existing)
                 {
                     existing = true;
@@ -1030,8 +1014,7 @@ private:
                 Gaps_[lastSeparator].Owner = group;
                 Gaps_[lastSeparator].Shape = Boundary::Flat;
             }
-            if (
-                Policies_.InitializersTrailingComma ==
+            if (Policies_.InitializersTrailingComma ==
                 TrailingCommaPolicy::WhenMultiline)
             {
                 Commas_[after] ={group, existing ? lastSeparator : None};
@@ -1052,8 +1035,8 @@ private:
         const auto& node = *Syntax_[id].TreeNode;
         auto cursor = node.Tokens.Begin;
         for (auto child = Syntax_[id].FirstChild;
-            child != None;
-            child = Syntax_[child].NextSibling)
+             child != None;
+             child = Syntax_[child].NextSibling)
         {
             const auto range = Syntax_[child].TreeNode->Tokens;
             for (; cursor < std::min(range.Begin, node.Tokens.End); ++cursor) {
@@ -1070,8 +1053,7 @@ private:
     {
         const auto& a = Syntax_[parent];
         const auto& b = Syntax_[child];
-        if (
-            !a.Safe || !b.Safe || a.Operator == None || b.Operator == None ||
+        if (!a.Safe || !b.Safe || a.Operator == None || b.Operator == None ||
             a.TreeNode->Kind != b.TreeNode->Kind)
         {
             return false;
@@ -1099,8 +1081,7 @@ private:
                                 LastChild_[id] != None &&
                                 Syntax_[LastChild_[id]].TreeNode->Kind ==
                                     NodeKind::EnumeratorValue));
-        if (
-            !declarationAssignment && kind != NodeKind::BinaryExpression &&
+        if (!declarationAssignment && kind != NodeKind::BinaryExpression &&
             kind != NodeKind::AssignmentExpression &&
             kind != NodeKind::ConditionalExpression &&
             kind != NodeKind::ParenthesizedExpression &&
@@ -1123,16 +1104,14 @@ private:
         if (parent != None) {
             auto header = parent;
             const auto parentKind = Syntax_[parent].TreeNode->Kind;
-            if (
-                parentKind == NodeKind::ForInitStatement ||
+            if (parentKind == NodeKind::ForInitStatement ||
                 parentKind == NodeKind::ForCondition ||
                 parentKind == NodeKind::ForIteration ||
                 parentKind == NodeKind::RangeForExpression)
             {
                 header = Syntax_[parent].Parent;
             }
-            if (
-                header != None && Syntax_[header].Safe &&
+            if (header != None && Syntax_[header].Safe &&
                 (Syntax_[header].TreeNode->Kind == NodeKind::Condition ||
                         Syntax_[header].TreeNode->Kind == NodeKind::ForHeader))
             {
@@ -1180,8 +1159,7 @@ private:
                         Tree_.Kind(t) == TokenKind::Operator_Assign
                     ? PunctuationRole::AssignmentOperator
                     : Tree_.Role(t);
-            if (
-                canonical &&
+            if (canonical &&
                 (kind == NodeKind::ParenthesizedExpression ||
                         kind == NodeKind::SubscriptExpression ||
                         kind == NodeKind::CastExpression) &&
@@ -1200,8 +1178,7 @@ private:
                     role == PunctuationRole::ShiftOperator ||
                     role == PunctuationRole::AssignmentOperator ||
                     role == PunctuationRole::ConditionalDelimiter;
-            if (
-                op && (t > node.Tokens.Begin || declarationAssignment) &&
+            if (op && (t > node.Tokens.Begin || declarationAssignment) &&
                 t + 1 < node.Tokens.End)
             {
                 const auto side =
@@ -1229,8 +1206,7 @@ private:
                     Reindent(t + 1, group);
                 }
             }
-            if (
-                Syntax_[id].String && t > node.Tokens.Begin &&
+            if (Syntax_[id].String && t > node.Tokens.Begin &&
                 Tree_.Kind(t) == TokenKind::Literal_String)
             {
                 if (canonical) {
@@ -1266,8 +1242,7 @@ private:
         bool closing = false,
         bool force = false)
     {
-        if (
-            (force || Policies_.IndentationKind != IndentationKind::Preserve) &&
+        if ((force || Policies_.IndentationKind != IndentationKind::Preserve) &&
             HasLine(Safety_.Gaps()[gap].Original))
         {
             Own(
@@ -1377,8 +1352,7 @@ private:
                         Tree_.Kind(t) == TokenKind::Operator_OpenParenthesis ||
                             Tree_.Kind(t) == TokenKind::Operator_OpenBracket;
                     const bool operand = t < operandEnd || operandOpening;
-                    if (
-                        node.Kind == NodeKind::DeclarationSpecifiers &&
+                    if (node.Kind == NodeKind::DeclarationSpecifiers &&
                         operandOpening)
                     {
                         const auto close = Tree_.MatchingDelimiter(t);
@@ -1389,8 +1363,7 @@ private:
                     const bool opaqueExceptionOperand =
                         node.Kind == NodeKind::ExceptionSpecification &&
                             t > node.Tokens.Begin + 1;
-                    if (
-                        !opaqueExceptionOperand && t > begin && t < end &&
+                    if (!opaqueExceptionOperand && t > begin && t < end &&
                         GapMutable(t) && Tree_.Kind(t) != TokenKind::Comment &&
                         (Spacing_.Gaps()[t].Category ==
                                     SpacingOwner::DeclarationHeaders ||
@@ -1421,24 +1394,22 @@ private:
                             group,
                             breakable ? Boundary::Soft : Boundary::Flat);
                         Gaps_[t].CanonicalFlat = true;
-                        Gaps_[t].HeaderBreak = breakable;
+                        Gaps_[t].FitNextSegment = breakable;
                         Gaps_[t].KeepFlatSpacing =
                             kind == NodeKind::FunctionDeclaration;
                     }
                 });
             for (auto child = Syntax_[current].FirstChild;
-                child != None;
-                child = Syntax_[child].NextSibling)
+                 child != None;
+                 child = Syntax_[child].NextSibling)
             {
                 const auto& node = *Syntax_[child].TreeNode;
-                if (
-                    !Syntax_[child].Safe || node.Tokens.End <= begin ||
+                if (!Syntax_[child].Safe || node.Tokens.End <= begin ||
                     node.Tokens.Begin >= end)
                 {
                     continue;
                 }
-                if (
-                    function &&
+                if (function &&
                     (node.Kind == NodeKind::AttributeSpecifier ||
                             node.Kind ==
                                 NodeKind::ExtensionAttributeSpecifier) &&
@@ -1448,16 +1419,16 @@ private:
                 {
                     Own(node.Tokens.Begin, group, Boundary::Soft);
                     Gaps_[node.Tokens.Begin].CanonicalFlat = true;
-                    Gaps_[node.Tokens.Begin].HeaderBreak = true;
+                    Gaps_[node.Tokens.Begin].FitNextSegment = true;
                     Gaps_[node.Tokens.Begin].KeepFlatSpacing = true;
                 }
                 if (TransparentHeader(node.Kind)) {
                     Stack_.push_back(child);
-                } else if (
-                    (node.Kind == NodeKind::ParameterList ||
+                } else if ((node.Kind == NodeKind::ParameterList ||
                             node.Kind == NodeKind::Condition ||
                             node.Kind == NodeKind::ForHeader) &&
-                    node.Tokens.Begin > begin && GapMutable(node.Tokens.Begin))
+                           node.Tokens.Begin > begin &&
+                           GapMutable(node.Tokens.Begin))
                 {
                     // Its opener belongs to the declarator; the independently
                     // selected parameter topology starts after that opener.
@@ -1500,8 +1471,8 @@ private:
         bool first = true;
         Index compactSeparators = None;
         for (auto child = Syntax_[id].FirstChild;
-            child != None;
-            child = Syntax_[child].NextSibling)
+             child != None;
+             child = Syntax_[child].NextSibling)
         {
             const auto& body = *Syntax_[child].TreeNode;
             const bool suffix =
@@ -1518,14 +1489,12 @@ private:
                 auto part = Syntax_[previousBody].NextSibling;
                 const auto end = std::min(body.Tokens.Begin, node.Tokens.End);
                 for (Index t = previousEnd; t < end;) {
-                    while (
-                        part != None && part != child &&
-                        Syntax_[part].TreeNode->Tokens.End <= t)
+                    while (part != None && part != child &&
+                           Syntax_[part].TreeNode->Tokens.End <= t)
                     {
                         part = Syntax_[part].NextSibling;
                     }
-                    if (
-                        part != None && part != child &&
+                    if (part != None && part != child &&
                         Syntax_[part].TreeNode->Tokens.Begin <= t)
                     {
                         // A descendant's else belongs to that child, not this
@@ -1534,8 +1503,7 @@ private:
                         part = Syntax_[part].NextSibling;
                         continue;
                     }
-                    if (
-                        Tree_.Kind(t) ==
+                    if (Tree_.Kind(t) ==
                         (suffix
                                 ? TokenKind::Keyword_while
                                 : TokenKind::Keyword_else))
@@ -1562,12 +1530,11 @@ private:
                         PrefixProtection_[opening + (braced ? 1 : 0)] &&
                     (!suffix || Syntax_[child].Safe);
             for (auto part = Syntax_[id].FirstChild;
-                part != None;
-                part = Syntax_[part].NextSibling)
+                 part != None;
+                 part = Syntax_[part].NextSibling)
             {
                 const auto range = Syntax_[part].TreeNode->Tokens;
-                if (
-                    range.Begin >= begin && range.End <= opening &&
+                if (range.Begin >= begin && range.End <= opening &&
                     !Syntax_[part].Safe)
                 {
                     safeHeader = false;
@@ -1697,8 +1664,7 @@ private:
     {
         const auto& node = *Syntax_[id].TreeNode;
         if (node.Kind == NodeKind::FunctionDeclaration) {
-            if (
-                !node.Tokens.Empty() && Syntax_[id].Safe &&
+            if (!node.Tokens.Empty() && Syntax_[id].Safe &&
                 Policies_.DeclarationHeaders == LayoutMode::Canonical &&
                 PrefixProtection_[node.Tokens.Begin] ==
                     PrefixProtection_[node.Tokens.End])
@@ -1717,8 +1683,7 @@ private:
             }
             return;
         }
-        if (
-            node.Kind == NodeKind::CompoundStatement ||
+        if (node.Kind == NodeKind::CompoundStatement ||
             node.Kind == NodeKind::LambdaBody)
         {
             const auto parent = Syntax_[id].Parent;
@@ -1734,8 +1699,7 @@ private:
                             Syntax_[previous].TreeNode->Kind ==
                                 NodeKind::LabelStatement) &&
                     Syntax_[previous].TreeNode->Tokens.End == node.Tokens.Begin;
-            if (
-                !lambda && !labeled &&
+            if (!lambda && !labeled &&
                 (parent == None ||
                         (!BraceFor(parent) &&
                                 Syntax_[parent].TreeNode->Kind !=
@@ -1763,8 +1727,7 @@ private:
         }
         // The parser stores a function-try body in a separate child. Its
         // enclosing definition owns the complete declaration header once.
-        if (
-            node.Kind == NodeKind::FunctionTryBlock &&
+        if (node.Kind == NodeKind::FunctionTryBlock &&
             Syntax_[id].Parent != None &&
             Syntax_[Syntax_[id].Parent].TreeNode->Kind ==
                 NodeKind::FunctionDefinition)
@@ -1785,8 +1748,7 @@ private:
         DirectTokens(
             id,
             [&] (Index t) {
-                if (
-                    opening == None &&
+                if (opening == None &&
                     Tree_.Kind(t) == TokenKind::Operator_OpenBrace &&
                     (node.Kind == NodeKind::NamespaceDeclaration ||
                             Tree_.Role(t) == PunctuationRole::RecordDelimiter ||
@@ -1798,17 +1760,15 @@ private:
             });
         bool bodyChild = false;
         for (auto child = Syntax_[id].FirstChild;
-            child != None;
-            child = Syntax_[child].NextSibling)
+             child != None;
+             child = Syntax_[child].NextSibling)
         {
             const auto& part = *Syntax_[child].TreeNode;
-            if (
-                part.Kind == NodeKind::FunctionTryBlock &&
+            if (part.Kind == NodeKind::FunctionTryBlock &&
                 node.Kind == NodeKind::FunctionDefinition)
             {
                 const auto body = Syntax_[child].FirstChild;
-                if (
-                    body != None &&
+                if (body != None &&
                     Syntax_[body].TreeNode->Kind == NodeKind::CompoundStatement)
                 {
                     opening = Syntax_[body].TreeNode->Tokens.Begin;
@@ -1816,8 +1776,7 @@ private:
                     break;
                 }
             }
-            if (
-                part.Kind == NodeKind::CompoundStatement ||
+            if (part.Kind == NodeKind::CompoundStatement ||
                 part.Kind == NodeKind::LambdaBody ||
                 (node.Kind == NodeKind::EnumDeclaration &&
                         part.Kind == NodeKind::EnumeratorList))
@@ -1827,14 +1786,12 @@ private:
                 break;
             }
         }
-        if (
-            opening == None && node.Kind == NodeKind::CaseLabel &&
+        if (opening == None && node.Kind == NodeKind::CaseLabel &&
             Syntax_[id].NextSibling != None)
         {
             const auto next = Syntax_[id].NextSibling;
             const auto& body = *Syntax_[next].TreeNode;
-            if (
-                body.Kind == NodeKind::CompoundStatement &&
+            if (body.Kind == NodeKind::CompoundStatement &&
                 Syntax_[next].Safe && node.Tokens.End == body.Tokens.Begin)
             {
                 opening = body.Tokens.Begin;
@@ -1855,11 +1812,10 @@ private:
             PrefixProtection_[node.Tokens.Begin] ==
                 PrefixProtection_[opening + 1];
         for (auto child = Syntax_[id].FirstChild;
-            child != None;
-            child = Syntax_[child].NextSibling)
+             child != None;
+             child = Syntax_[child].NextSibling)
         {
-            if (
-                Syntax_[child].TreeNode->Tokens.End <= opening &&
+            if (Syntax_[child].TreeNode->Tokens.End <= opening &&
                 !Syntax_[child].Safe)
             {
                 safeHeader = false;
@@ -1930,8 +1886,7 @@ private:
         const BodyPolicy& policy,
         bool record)
     {
-        if (
-            opening >= close || close >= Tree_.TokenCount() ||
+        if (opening >= close || close >= Tree_.TokenCount() ||
             Tree_.Kind(opening) != TokenKind::Operator_OpenBrace ||
             Tree_.Kind(close) != TokenKind::Operator_CloseBrace ||
             Tree_.MatchingDelimiter(opening) != close)
@@ -1946,15 +1901,13 @@ private:
                                 : int32_t(policy.IndentWidth);
         if (namespaced) {
             offset = BodyOffset(Policies_.Indentation.Namespaces, 0);
-            if (
-                Policies_.Indentation.Namespaces.Mode ==
+            if (Policies_.Indentation.Namespaces.Mode ==
                 BodyIndentation::Preserve)
             {
                 const auto outer =
                     SourceIndent(Syntax_[id].TreeNode->Tokens.Begin);
                 const auto inner = SourceIndent(opening + 1);
-                if (
-                    inner != None && inner >= (outer == None ? 0 : outer) &&
+                if (inner != None && inner >= (outer == None ? 0 : outer) &&
                     inner - (outer == None ? 0 : outer) <= uint32_t(INT32_MAX))
                 {
                     offset = int32_t(inner - (outer == None ? 0 : outer));
@@ -1966,8 +1919,7 @@ private:
             previous != None &&
                 Syntax_[previous].TreeNode->Kind == NodeKind::CaseLabel &&
                 Syntax_[previous].TreeNode->Tokens.End == opening;
-        if (
-            caseBody &&
+        if (caseBody &&
             Policies_.Indentation.CaseLabels.Mode != BodyIndentation::Preserve)
         {
             // Explicit case indentation also reindents the compound opener
@@ -2016,12 +1968,11 @@ private:
         bool inCase = false;
         Index contents = None;
         for (auto child = Syntax_[id].FirstChild;
-            child != None;
-            child = Syntax_[child].NextSibling)
+             child != None;
+             child = Syntax_[child].NextSibling)
         {
             const auto& part = *Syntax_[child].TreeNode;
-            if (
-                part.Tokens.Empty() || part.Tokens.Begin <= opening ||
+            if (part.Tokens.Empty() || part.Tokens.Begin <= opening ||
                 part.Tokens.End > close)
             {
                 continue;
@@ -2069,8 +2020,7 @@ private:
                     : part.Kind == NodeKind::CaseLabel
                         ? &Policies_.Indentation.CaseLabels
                         : nullptr;
-            if (
-                part.Kind == NodeKind::CaseLabel && special &&
+            if (part.Kind == NodeKind::CaseLabel && special &&
                 special->Mode == BodyIndentation::Preserve &&
                 SourceIndent(part.Tokens.Begin) != None)
             {
@@ -2093,8 +2043,7 @@ private:
     {
         const auto& node = *Syntax_[id].TreeNode;
         const auto& control = Policies_.Indentation.StatementAttributes;
-        if (
-            node.Kind != NodeKind::AttributeSpecifier || node.Tokens.Empty() ||
+        if (node.Kind != NodeKind::AttributeSpecifier || node.Tokens.Empty() ||
             control.Mode == StatementAttributeIndent::Preserve)
         {
             return;
@@ -2107,8 +2056,7 @@ private:
         auto block = None;
         if (kind == NodeKind::DeclarationSpecifiers) {
             const auto declaration = Syntax_[parent].Parent;
-            if (
-                declaration == None ||
+            if (declaration == None ||
                 Syntax_[declaration].TreeNode->Kind !=
                     NodeKind::DeclarationStatement ||
                 Syntax_[declaration].TreeNode->Tokens.Begin !=
@@ -2117,8 +2065,7 @@ private:
                 return;
             }
             const auto blockParent = Syntax_[declaration].Parent;
-            if (
-                blockParent == None ||
+            if (blockParent == None ||
                 (Syntax_[blockParent].TreeNode->Kind !=
                             NodeKind::CompoundStatement &&
                         Syntax_[blockParent].TreeNode->Kind !=
@@ -2147,14 +2094,12 @@ private:
     void PlanChain(Index id)
     {
         const auto& entry = Syntax_[id];
-        if (
-            !IsSpine(entry.TreeNode->Kind) ||
+        if (!IsSpine(entry.TreeNode->Kind) ||
             Policies_.Chains.Layout != LayoutMode::Canonical)
         {
             return;
         }
-        if (
-            entry.Parent != None &&
+        if (entry.Parent != None &&
             IsSpine(Syntax_[entry.Parent].TreeNode->Kind) &&
             Syntax_[entry.Parent].FirstChild == id)
         {
@@ -2181,8 +2126,7 @@ private:
             }
             const auto& part = *Syntax_[spine].TreeNode;
             const auto t = Syntax_[callee].TreeNode->Tokens.End;
-            if (
-                t < part.Tokens.End &&
+            if (t < part.Tokens.End &&
                 ((part.Kind == NodeKind::MemberExpression &&
                                 Tree_.Kind(t) !=
                                     TokenKind::Operator_ScopeResolution) ||
@@ -2217,8 +2161,7 @@ private:
             }
             const auto& part = *Syntax_[spine].TreeNode;
             const auto t = Syntax_[callee].TreeNode->Tokens.End;
-            if (
-                t < part.Tokens.End &&
+            if (t < part.Tokens.End &&
                 ((part.Kind == NodeKind::MemberExpression &&
                                 Tree_.Kind(t) !=
                                     TokenKind::Operator_ScopeResolution) ||
@@ -2261,8 +2204,7 @@ private:
 
     DiscoveredEndpoint ScopeEndpoint(Index statement)
     {
-        if (
-            !Syntax_[statement].Safe ||
+        if (!Syntax_[statement].Safe ||
             Syntax_[statement].TreeNode->Kind != NodeKind::ExpressionStatement)
         {
             return {};
@@ -2279,13 +2221,12 @@ private:
             if (!Syntax_[expression].Safe) {
                 continue;
             }
-            if (
-                node.Kind == NodeKind::Argument ||
+            if (node.Kind == NodeKind::Argument ||
                 node.Kind == NodeKind::ParenthesizedExpression)
             {
                 for (auto child = Syntax_[expression].FirstChild;
-                    child != None;
-                    child = Syntax_[child].NextSibling)
+                     child != None;
+                     child = Syntax_[child].NextSibling)
                 {
                     Stack_.push_back(child);
                 }
@@ -2298,8 +2239,7 @@ private:
                 continue;
             }
             const auto callee = Syntax_[expression].FirstChild;
-            if (
-                callee == None ||
+            if (callee == None ||
                 Syntax_[callee].TreeNode->Kind == NodeKind::Expression ||
                 Syntax_[callee].TreeNode->Kind == NodeKind::LambdaExpression ||
                 Syntax_[callee].TreeNode->Kind == NodeKind::StatementExpression)
@@ -2334,15 +2274,14 @@ private:
                 }
             }
             const auto args = Syntax_[callee].NextSibling;
-            if (
-                args == None ||
+            if (args == None ||
                 Syntax_[args].TreeNode->Kind != NodeKind::ArgumentList)
             {
                 continue;
             }
             for (auto arg = Syntax_[args].FirstChild;
-                arg != None;
-                arg = Syntax_[arg].NextSibling)
+                 arg != None;
+                 arg = Syntax_[arg].NextSibling)
             {
                 if (Syntax_[arg].TreeNode->Kind == NodeKind::Argument) {
                     Stack_.push_back(arg);
@@ -2364,8 +2303,7 @@ private:
             if (a.Begin + i == begin.Name) {
                 continue;
             }
-            if (
-                Tree_.Kind(a.Begin + i) != Tree_.Kind(b.Begin + i) ||
+            if (Tree_.Kind(a.Begin + i) != Tree_.Kind(b.Begin + i) ||
                 Tree_.TokenText(a.Begin + i) != Tree_.TokenText(b.Begin + i))
             {
                 return false;
@@ -2425,19 +2363,17 @@ private:
         };
         for (Index id = 0; id < Syntax_.size(); ++id) {
             const auto kind = Syntax_[id].TreeNode->Kind;
-            if (
-                kind != NodeKind::CompoundStatement &&
+            if (kind != NodeKind::CompoundStatement &&
                 kind != NodeKind::LambdaBody)
             {
                 continue;
             }
             pairs.clear();
             for (auto child = Syntax_[id].FirstChild;
-                child != None;
-                child = Syntax_[child].NextSibling)
+                 child != None;
+                 child = Syntax_[child].NextSibling)
             {
-                if (
-                    !Syntax_[child].Safe ||
+                if (!Syntax_[child].Safe ||
                     Syntax_[child].TreeNode->Kind ==
                         NodeKind::PreprocessingDirective ||
                     Syntax_[child].TreeNode->Kind ==
@@ -2476,8 +2412,7 @@ private:
                     pairs.push_back(*endpoint);
                     continue;
                 }
-                if (
-                    pairs.empty() || pairs.back().Pair != endpoint->Pair ||
+                if (pairs.empty() || pairs.back().Pair != endpoint->Pair ||
                     !SameContext(pairs.back(), *endpoint))
                 {
                     freeze(
@@ -2500,8 +2435,7 @@ private:
                         Syntax_[begin.Statement].TreeNode->Tokens.Begin);
                 const auto interiorIndent =
                     SourceIndent(Syntax_[first].TreeNode->Tokens.Begin);
-                if (
-                    beginIndent == None || interiorIndent == None ||
+                if (beginIndent == None || interiorIndent == None ||
                     interiorIndent <= beginIndent)
                 {
                     continue; // Flat nested pairs never invent an extra level.
@@ -2559,8 +2493,8 @@ private:
                     document::GroupMode::Consistent,
                     int32_t(Policies_.IndentWidth));
             for (auto interior = range.First;
-                interior != range.End;
-                interior = Syntax_[interior].NextSibling)
+                 interior != range.End;
+                 interior = Syntax_[interior].NextSibling)
             {
                 auto& gap = Gaps_[Syntax_[interior].TreeNode->Tokens.Begin];
                 if (gap.Owner == owner) {
@@ -2603,8 +2537,7 @@ private:
         VerticalGapPolicy policy,
         uint8_t priority = 0)
     {
-        if (
-            policy.Mode != VerticalGapMode::Exact || !GapMutable(gap) ||
+        if (policy.Mode != VerticalGapMode::Exact || !GapMutable(gap) ||
             Gaps_[gap].VerticalPriority > priority)
         {
             return;
@@ -2633,8 +2566,7 @@ private:
         const auto& policy = Policies_.VerticalGaps;
         for (auto child = Syntax_[id].FirstChild; child != None;) {
             const auto& entry = Syntax_[child];
-            if (
-                entry.TreeNode->Kind != NodeKind::Comment || !entry.Safe ||
+            if (entry.TreeNode->Kind != NodeKind::Comment || !entry.Safe ||
                 entry.TreeNode->Tokens.Begin < Syntax_[id].SequenceBody.Begin ||
                 entry.TreeNode->Tokens.End > Syntax_[id].SequenceBody.End)
             {
@@ -2644,13 +2576,12 @@ private:
             auto begin = entry.TreeNode->Tokens.Begin;
             auto end = entry.TreeNode->Tokens.End;
             child = entry.NextSibling;
-            while (
-                child != None && Syntax_[child].Safe &&
-                Syntax_[child].TreeNode->Kind == NodeKind::Comment &&
-                Syntax_[child].TreeNode->Tokens.Begin == end &&
-                Syntax_[child].TreeNode->Tokens.End <=
+            while (child != None && Syntax_[child].Safe &&
+                   Syntax_[child].TreeNode->Kind == NodeKind::Comment &&
+                   Syntax_[child].TreeNode->Tokens.Begin == end &&
+                   Syntax_[child].TreeNode->Tokens.End <=
                     Syntax_[id].SequenceBody.End && !Gaps_[end].Frozen &&
-                !ContextProtected(Safety_.Gaps()[end].Source))
+                   !ContextProtected(Safety_.Gaps()[end].Source))
             {
                 end = Syntax_[child].TreeNode->Tokens.End;
                 child = Syntax_[child].NextSibling;
@@ -2724,8 +2655,7 @@ private:
             for (Index id = 0; id < Syntax_.size(); ++id) {
                 const auto& node = *Syntax_[id].TreeNode;
                 if (commentRules) {
-                    if (
-                        node.Kind == NodeKind::PreprocessingConditional ||
+                    if (node.Kind == NodeKind::PreprocessingConditional ||
                         node.Kind == NodeKind::PreprocessingBranch)
                     {
                         auto& entry = Syntax_[id];
@@ -2745,8 +2675,7 @@ private:
                     }
                     PlanStandaloneCommentGaps(id);
                 }
-                if (
-                    node.Kind != NodeKind::TranslationUnit &&
+                if (node.Kind != NodeKind::TranslationUnit &&
                     node.Kind != NodeKind::NamespaceDeclaration &&
                     node.Kind != NodeKind::RecordDeclaration)
                 {
@@ -2754,8 +2683,8 @@ private:
                 }
                 children.clear();
                 for (auto child = Syntax_[id].FirstChild;
-                    child != None;
-                    child = Syntax_[child].NextSibling)
+                     child != None;
+                     child = Syntax_[child].NextSibling)
                 {
                     children.push_back(child);
                 }
@@ -2764,8 +2693,7 @@ private:
                 for (size_t p = children.size(); p-- > 0;)
                 {
                     following[p] = nextItem;
-                    if (
-                        Syntax_[children[p]].TreeNode->Kind !=
+                    if (Syntax_[children[p]].TreeNode->Kind !=
                         NodeKind::Comment)
                     {
                         nextItem =
@@ -2788,15 +2716,13 @@ private:
                     const auto child = children[p];
                     const auto& entry = Syntax_[child];
                     const auto& part = *entry.TreeNode;
-                    if (
-                        body != None &&
+                    if (body != None &&
                         (part.Tokens.Begin <= opening ||
                                 part.Tokens.End > close))
                     {
                         continue;
                     }
-                    if (
-                        !content &&
+                    if (!content &&
                         node.Kind == NodeKind::NamespaceDeclaration &&
                         !part.Tokens.Empty())
                     {
@@ -2805,8 +2731,7 @@ private:
                             policy.NamespaceBlankLinesAfterOpen);
                     }
                     content = content || !part.Tokens.Empty();
-                    if (
-                        !entry.Safe ||
+                    if (!entry.Safe ||
                         part.Kind == NodeKind::PreprocessingDirective ||
                         part.Kind == NodeKind::PreprocessingConditional)
                     {
@@ -2833,8 +2758,7 @@ private:
                         }
                         continue;
                     }
-                    if (
-                        part.Kind == NodeKind::AccessSpecifier &&
+                    if (part.Kind == NodeKind::AccessSpecifier &&
                         node.Kind == NodeKind::RecordDeclaration)
                     {
                         if (seenAccess) {
@@ -2875,8 +2799,7 @@ private:
                     }
                     previous = child;
                 }
-                if (
-                    content && node.Kind == NodeKind::NamespaceDeclaration &&
+                if (content && node.Kind == NodeKind::NamespaceDeclaration &&
                     close != None)
                 {
                     ExactVertical(close, policy.NamespaceBlankLinesBeforeClose);
@@ -2931,14 +2854,12 @@ private:
             // Canonical layout may reflow ordinary line breaks, not erase
             // authored paragraphs. Exact counts/caps have already won; retain
             // original newline spellings while allowing owned indentation.
-            if (
-                gap.ParagraphBoundary && !gap.Vertical && !gap.Reassembled &&
+            if (gap.ParagraphBoundary && !gap.Vertical && !gap.Reassembled &&
                 gap.Shape != Boundary::Flat && GapMutable(i))
             {
                 const auto original = Safety_.Gaps()[i].Original;
                 const auto first = original.find('\n');
-                if (
-                    first != std::string_view::npos &&
+                if (first != std::string_view::npos &&
                     original.find('\n', first + 1) != std::string_view::npos)
                 {
                     gap.Reindent |=
@@ -3047,8 +2968,7 @@ private:
             return *preference ? 1 : 0;
         }
         const auto& source = Safety_.Gaps()[i];
-        if (
-            (!RebuildsTopology(i) || Gaps_[i].KeepFlatSpacing) &&
+        if ((!RebuildsTopology(i) || Gaps_[i].KeepFlatSpacing) &&
             !HasLine(source.Original))
         {
             return HorizontalColumns(source.Original, Options_.TabWidth);
@@ -3118,13 +3038,12 @@ private:
         spec.Kind = kind;
         spec.Spaces = uint16_t(std::min<Index>(FlatWidth(i), UINT16_MAX));
         spec.RequiredWidth = Gaps_[i].RequiredWidth;
-        spec.FitNextSegment = Gaps_[i].HeaderBreak;
+        spec.FitNextSegment = Gaps_[i].FitNextSegment;
         spec.NewlineCount = Gaps_[i].NewlineCount;
         if (Gaps_[i].PreserveIndent && !Gaps_[i].Reindent) {
             const auto& source = Safety_.Gaps()[i];
             const auto lf = source.Original.rfind('\n');
-            if (
-                lf != std::string_view::npos &&
+            if (lf != std::string_view::npos &&
                 source.Original.substr(lf + 1).find_first_not_of(" \t") ==
                     std::string_view::npos)
             {
@@ -3136,8 +3055,7 @@ private:
             spec.LineEnding = document::GapNewline::LF;
         }
         const auto context = ContextFor(i);
-        if (
-            sourceHorizontal &&
+        if (sourceHorizontal &&
             (!RebuildsTopology(i) || Gaps_[i].KeepFlatSpacing) &&
             Safety_.Gaps()[i].Original.find_first_not_of(" \t") ==
                 std::string_view::npos &&
@@ -3159,8 +3077,7 @@ private:
     bool Allows(Index i, document::GapKind kind) const
     {
         const auto& gap = Safety_.Gaps()[i];
-        if (
-            Gaps_[i].Frozen || Uncertain(i) || gap.Preserve ||
+        if (Gaps_[i].Frozen || Uncertain(i) || gap.Preserve ||
             gap.ContextSensitive || RetainsBareCR(i))
         {
             return false;
@@ -3188,15 +3105,13 @@ private:
     {
         // Protection retains bytes, not the fact that a safe current-expression
         // whitespace line realized continuation. Tokens never enter this path.
-        if (
-            Gaps_[i].Frozen || Uncertain(i) ||
+        if (Gaps_[i].Frozen || Uncertain(i) ||
             Safety_.Gaps()[i].ContextSensitive || !ExpressionGap(i))
         {
             return;
         }
         const auto text = Tree_.Source().substr(begin, end - begin);
-        if (
-            HasLine(text) &&
+        if (HasLine(text) &&
             text.find_first_not_of(" \t\r\n") == std::string_view::npos)
         {
             Document_.ExpressionLine();
@@ -3218,8 +3133,7 @@ private:
         // A CR belonging to the previous token and this gap's first LF form
         // one ineligible atom. The existing line-comment LF guard also prevents
         // inserting CR into that token on retokenization. No atom is split.
-        if (
-            begin == Safety_.Gaps()[i].Source.Begin && begin &&
+        if (begin == Safety_.Gaps()[i].Source.Begin && begin &&
             Tree_.Source()[begin] == '\n' &&
             (Tree_.Source()[begin - 1] == '\r' ||
                     (Safety_.Gaps()[i].MustStartWithLineFeed &&
@@ -3256,14 +3170,12 @@ private:
                 --newline;
             }
             auto space = newline;
-            while (
-                space > run &&
-                (source[space - 1] == ' ' || source[space - 1] == '\t'))
+            while (space > run &&
+                   (source[space - 1] == ' ' || source[space - 1] == '\t'))
             {
                 --space;
             }
-            if (
-                RetainsBareCR(i) && space < newline &&
+            if (RetainsBareCR(i) && space < newline &&
                 space > Safety_.Gaps()[i].Source.Begin &&
                 source[space - 1] == '\r')
                 space = newline; // Keep the complete original separator run.
@@ -3272,14 +3184,12 @@ private:
         }
         if (trimTail) {
             const auto originalEnd = end;
-            while (
-                end > run &&
-                (source[end - 1] == ' ' || source[end - 1] == '\t'))
+            while (end > run &&
+                   (source[end - 1] == ' ' || source[end - 1] == '\t'))
             {
                 --end;
             }
-            if (
-                RetainsBareCR(i) && end < originalEnd &&
+            if (RetainsBareCR(i) && end < originalEnd &&
                 end > Safety_.Gaps()[i].Source.Begin && source[end - 1] == '\r')
             {
                 end = originalEnd;
@@ -3299,8 +3209,7 @@ private:
         if (source.Preserve) {
             // Full existing bytes need no authority to insert indentation at
             // End/EOF. This grants spelling only; generic gap guards stay put.
-            if (
-                Policies_.LineEnding != LineEnding::Preserve &&
+            if (Policies_.LineEnding != LineEnding::Preserve &&
                 Safety_.CanSpellGapNewlines(i))
             {
                 EditableGapSlice(i, source.Source.Begin, source.Source.End);
@@ -3395,8 +3304,7 @@ private:
             }
             return;
         }
-        if (
-            i == Tree_.TokenCount() &&
+        if (i == Tree_.TokenCount() &&
             Policies_.TrailingWhitespace == TrailingWhitespace::Trim &&
             Safety_.CanReplaceGap(i, ""))
         {
@@ -3487,9 +3395,8 @@ private:
     {
         const auto permissions = Safety_.PartialGapPermissions();
         const auto begin = NextPermission_;
-        while (
-            NextPermission_ < permissions.size() &&
-            permissions[NextPermission_].Gap == i)
+        while (NextPermission_ < permissions.size() &&
+               permissions[NextPermission_].Gap == i)
         {
             ++NextPermission_;
         }
@@ -3508,8 +3415,7 @@ private:
             return;
         }
         const auto original = Safety_.Gaps()[i].Original;
-        if (
-            !RebuildsTopology(i) && !HasLine(original) &&
+        if (!RebuildsTopology(i) && !HasLine(original) &&
             original.find_first_not_of(" \t") != std::string_view::npos &&
             !Spacing_.SpacePreference(i, GapContext::Rebuilt, Safety_))
         {
