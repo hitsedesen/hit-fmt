@@ -1,183 +1,121 @@
-# Repository style: YTsaurus-inspired, with an 80-column hard limit.
-# Continuations use one indentation level, never opening-delimiter alignment.
+# Repository style: YTsaurus-inspired, with an 80-column limit.
+# Comment separator rewriting and ambiguous template spacing are unsupported.
+# Directives remain protected; no preprocessor indentation rewrite is selected.
+Layout = Canonical
 IndentWidth = 4
 ColumnLimit = 80
-LineLengthCheck = Strict
+WidthDiagnostics = Report
 IndentationKind = Spaces
 TrailingWhitespace = Trim
+LineEnding = Preserve
+# Leave TrailingCommentSpaces omitted; do not impose a two-space comment gap.
 
-# Includes, directives, and comments
-PreprocessorIndentation = Preserve
-IncludeOrder = Preserve
-SeparatorLength = 80
+ListBreak = IfNeeded
+ListPacking = VerticalWhenBroken
+ListFirstItem = NextLine
+ListCloser = SameLine
+ListAlignment = Block
+ContinuationOffset = 4
+AlignmentFallbackOffset = 4
+BaseListsBreak = Always
+BaseListsPacking = VerticalWhenBroken
+BaseListsFirstItem = NextLine
+BaseListsColonSide = Leading
+BaseListsCommaSide = Leading
+ControlHeadersFirstItem = InlineIfFits
+ChainsBreak = IfNeeded
+ChainsPacking = Fill
+ChainsAlignment = Block
+InitializersCloser = OwnLine
+InitializersTrailingComma = WhenMultiline
 
-# Templates and attributes
-AmbiguousTemplateDeclarationSpacing = Space
-TemplateKeywordSpacing = Space
-TemplateTypeArgumentSpacing = NoSpace
-TemplateTypeArgumentInteriorSpacing = NoSpace
-
-# Records, namespaces, and declarators
+ClassBracePlacement = NextLine
+StructBracePlacement = NextLine
+UnionBracePlacement = NextLine
+FunctionBracePlacement = NextLine
+NamespaceBracePlacement = Attached
+LambdaBracePlacement = Attached
+ControlBracePlacement = NextLineIfHeaderBroken
+BodyShape = Expanded
+EmptyBodyShape = CompactIfFits
+LambdaBodiesLayout = Preserve
 PointerReferenceDeclaratorLocation = Left
 IndentAccessModifiers = NoIndent
 IndentMembers = Indent
-ClassBracePlacement = NewLine
-EnforceClassBracePlacement = true
-StructBracePlacement = NewLine
-EnforceStructBracePlacement = true
-UnionBracePlacement = NewLine
-EnforceUnionBracePlacement = true
-NamespaceBracePlacement = Attach
-EnforceNamespaceBracePlacement = true
-NamespaceBraceSpacing = SingleSpace
-EnforceNamespaceBraceSpacing = true
-EnumBraceSpacing = SingleSpace
+IndentNamespaces = NoIndent
+IndentCaseLabels = Indent
+StatementAttributeIndent = Block
+
+IncludeOrder = Preserve
 NamespaceComments = AddMissing
-InheritanceList = Format
-InheritanceListColonPlacement = AttachToBase
-InheritanceListCommaPlacement = AttachToNext
-InheritanceListSplit = OnePerLine
-InheritanceListIndent = 4
+AddMissingControlBraces = true
+EmptyControlBody = EmptyBlock
+# Standalone semicolons can carry fallthrough attributes.
+RemoveNullStatements = false
+RemoveNullDeclarations = false
+
+TemplateKeywordSpacing = Space
+TemplateTypeArgumentSpacing = NoSpace
+TemplateTypeArgumentInteriorSpacing = NoSpace
 ArrayDeclarationSpacing = NoSpace
 ArrayDeclarationInteriorSpacing = NoSpace
 StructuredBindingBracketSpacing = NoSpace
-
-# Functions and parameters
-FunctionBracePlacement = NewLine
-EnforceFunctionBracePlacement = true
-FunctionParameterSplit = OnePerLine
-EnforceFunctionParameterSplit = true
-FunctionParameterIndent = IndentWidth
-FunctionParameterClosingParenthesis = SameLine
-EnforceFunctionParameterClosingParenthesis = true
-FirstFunctionParameterPosition = NewLine
-EnforceFirstFunctionParameterPosition = true
-FunctionParameterNewLineIndent = 4
 FunctionSpaceBeforeParameters = NoSpace
 SpaceInsideFunctionParameters = NoSpace
-EnforceSpaceInsideFunctionParameters = true
 EmptyFunctionParametersSpacing = NoSpace
-ReturnArrowSpacing = LeftAndRight
+ReturnArrowSpaceBefore = Space
+ReturnArrowSpaceAfter = Space
 FunctionQualifierSpacing = Space
 NoexceptSpaceBeforeSpecifier = Space
 NoexceptSpaceBeforeParentheses = NoSpace
-
-# Lambdas
-LambdaBracePlacement = Attach
-EnforceLambdaBracePlacement = true
-LambdaBraceSpacing = SingleSpace
-EnforceLambdaBraceSpacing = true
-LambdaCallSpaceBeforeArguments = NoSpace
 LambdaSpaceBeforeParameters = Space
+LambdaCallSpaceBeforeArguments = NoSpace
 SpaceInsideLambdaParameters = NoSpace
 SpaceAroundCaptureList = NoSpace
 SpaceAroundCaptureAssignment = Space
-LambdaCaptureSplit = OnePerLineOnOverflow
 EmptyLambdaCaptureSpacing = NoSpace
 EmptyLambdaParametersSpacing = NoSpace
-EmptyLambdaBodySpacing = Preserve
-SingleStatementLambdaBodyLayout = Preserve
-
-# Calls and chains
-CallArgumentSplit = OnePerLine
-EnforceCallArgumentSplit = true
-FunctionCallArgumentClosingParenthesis = SameLine
-EnforceFunctionCallArgumentClosingParenthesis = true
-FirstCallArgumentPosition = NewLine
-MultilineSingleCallArgumentPosition = NewLine
-EnforceFirstCallArgumentPosition = true
-CallArgumentIndent = IndentWidth
-ChainedCallSplitCondition = Overflow
-ChainedCallLayout = Pack
-ChainedCallIndent = IndentWidth
 FunctionCallSpaceBeforeParameters = NoSpace
 SpaceInsideCallArguments = NoSpace
-EnforceSpaceInsideCallArguments = true
 EmptyFunctionCallArgumentsSpacing = NoSpace
-
-# Control flow
-IndentCaseLabels = Indent
-AddMissingControlBraces = true
-EmptyControlBody = EmptyBlock
-ControlBlockBracePlacement = AttachUnlessMultiline
-EnforceControlBlockBracePlacement = true
 ControlBlockSpaceBeforeBrace = Space
-EnforceControlBlockSpaceBeforeBrace = true
 ControlBlockKeywordSpacing = Space
-ControlHeaderClauseSplit = WhenNeeded
-ControlConditionIndent = IndentWidth
-ForHeaderClauseIndent = IndentWidth
-MultilineControlBlockFirstConditionPosition = HeaderLine
-EnforceMultilineControlBlockFirstConditionPosition = true
-MultilineControlBlockClosingDelimiterPlacement = SameLine
-EnforceMultilineControlBlockClosingDelimiterPlacement = true
 ControlBlockConditionSpacing = NoSpace
 LoopSemicolonSpacing = Space
 ConditionInitSemicolonSpacing = Space
 RangeBasedForColonSpacing = Space
-
-# Blocks and statements
-IndentBlockBodies = true
-# Standalone semicolons can carry fallthrough attributes.
-RemoveNullStatements = false
-RemoveNullDeclarations = false
-IndentLeadingStatementComments = true
-StandaloneBlockBraceIndentation = Preserve
-CollapseEmptyFunctionBodies = true
-NonEmptyBlockBodyLayout = Multiline
-StatementAttributeIndent = Block
 EmptyBlockInteriorSpacing = Space
-EnforceEmptyBlockInteriorSpacing = true
 BlockInteriorSpacing = Space
 StatementSemicolonSpacing = NoSpace
 DeclarationSemicolonSpacing = NoSpace
-
-# Initializers, new, and delete
-ConstructorInitializerList = Format
-ConstructorInitializerListColonPlacement = AttachToInitializer
-ConstructorInitializerListCommaPlacement = AttachToNext
-ConstructorInitializerListSplit = OnePerLine
-
-InitializerListSplit = OnePerLine
-EnforceInitializerListSplit = true
-FirstInitializerElementPosition = NewLine
-InitializerListIndent = IndentWidth
-MergeInitializerList = false
-InitializerListClosingBrace = SameLineUnlessTrailingComma
-EnforceInitializerListClosingBrace = true
-InitializerListTrailingComma = Remove
-EnforceInitializerListTrailingComma = true
-MultilineInitializerListTrailingComma = Add
-EnforceMultilineInitializerListTrailingComma = true
-EnforceInitializerBracesSpacing = false
 BraceInitializerSpacing = NoSpace
 NewArraySpaceBeforeBrackets = NoSpace
 
-# Expressions and operators
-ExpressionLayoutCondition = Overflow
-BinaryOperatorPlacement = Trailing
-LeadingBinaryOperatorList = ["<<"]
-AssignmentOperatorPlacement = Trailing
-TernaryOperatorPlacement = Leading
-EnforceTernaryOperatorPlacement = true
-TernarySplit = ThreeLines
-EnforceTernarySplit = true
+ExpressionsBreak = IfNeeded
+ExpressionsPacking = Fill
+BinaryOperatorSide = Trailing
+ShiftOperatorSide = Leading
+AssignmentOperatorSide = Trailing
+TernaryOperatorSide = Leading
+TernaryLayout = ThreePart
 GroupingInteriorSpacing = NoSpace
 CastArgumentSpacing = NoSpace
 CastSpacing = NoSpace
-CommaSpacing = Space
-EnforceCommaSpacing = true
+CommaSpaceBefore = NoSpace
+CommaSpaceAfter = Space
 MemberAccessOperatorsSpacing = NoSpace
+# An identifier before :: can be an unexpanded export macro.
 ScopeResolutionSpacing = Preserve
 UnaryOperatorSpacing = NoSpace
 PostfixOperatorSpacing = NoSpace
 BinaryOperatorSpacing = Space
 AssignmentOperatorSpacing = Space
-OperatorOverloadOperatorSpacing = NoSpace
+OperatorOverloadOperatorSpaceBefore = NoSpace
+OperatorOverloadOperatorSpaceAfter = NoSpace
 SubscriptOperatorSpacing = NoSpace
 SubscriptOperatorInteriorSpacing = NoSpace
 
-# Do not scan generated outputs, golden fixtures, or benchmarks.
+# Do not scan generated outputs, goldens or benchmarks.
 Exclude = [
     "(^|/)build[^/]*(/|$)", "(^|/)testdata(/|$)", "(^|/)benchmarks(/|$)",
     "^unicode/unicode_data\\.cpp$"

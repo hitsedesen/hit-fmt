@@ -56,18 +56,18 @@ build outputs, golden test fixtures, benchmarks, and generated Unicode data.
 Check files or directories without modifying them (the default):
 
 ```sh
-build-cli/hit-fmt/hit-fmt --config hit-fmt/examples/repository.hit-fmt \
-    src/ include/
+build-cli/hit-fmt/hit-fmt src/ include/
 ```
 
 Format files or directories in place:
 
 ```sh
-build-cli/hit-fmt/hit-fmt --fix \
-    --config hit-fmt/examples/repository.hit-fmt source.cpp include/
+build-cli/hit-fmt/hit-fmt --fix source.cpp include/
 ```
 
-`--check` may be given explicitly when desired.
+`--check` may be given explicitly when desired. Configuration is discovered
+from `.hit-fmt` files; this repository uses its root `.hit-fmt`. Use
+`--config .hit-fmt` to select it explicitly.
 
 Use `-j N` or `--threads N` to process up to N files concurrently (default 1).
 Bare `-j` uses the available hardware concurrency (or 1 if unknown).
@@ -89,7 +89,6 @@ Skip files or whole subdirectories while formatting or checking a folder:
 
 ```sh
 build-cli/hit-fmt/hit-fmt --fix \
-    --config hit-fmt/examples/repository.hit-fmt \
     --exclude '(^|/)generated(/|$)' \
     --exclude '(^|/)legacy\.cpp$' src/
 ```
@@ -121,9 +120,9 @@ uses four-space continuations for all safely parsed chains, and repairs
 namespace closing names. It remains a guide approximation for `yt/yt`,
 `yt/chyt`, `yt/yql` and `library/cpp/yt`, not `yt/cpp` or unrelated libraries;
 namespace rulers and include regrouping remain unsupported. For repository
-runs, always pass `--config hit-fmt/examples/repository.hit-fmt`; Google and
-LLVM are alternative explicit profiles. The checked-in root `.hit-fmt`
-is not accepted by this CLI. Self-format width and anchor limitations remain.
+runs, the root `.hit-fmt` supplies the repository configuration; Google and
+LLVM are alternative explicit profiles. Self-format width and anchor
+limitations remain.
 
 `--changed-hunks` and `--no-spillover` are explicitly unsupported. Non-Preserve
 `AmbiguousTemplateDeclarationSpacing` is also rejected. Incompletely parsed

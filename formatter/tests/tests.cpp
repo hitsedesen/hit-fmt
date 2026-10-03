@@ -170,7 +170,7 @@ std::vector<FormatCase> FormatCases()
                     llvmProfile,
                 });
     }
-    // Bind to the shipped example, not a fixture-local copy of its settings.
+    // Bind to the root configuration, not a fixture-local copy of its settings.
     for (const auto* name : {"repository-lf", "repository-crlf"}) {
         cases
             .push_back(
@@ -179,7 +179,7 @@ std::vector<FormatCase> FormatCases()
                         "../example-repository",
                     name,
                     std::string(name) + ".input.cpp",
-                    "../../../../hit-fmt/examples/repository",
+                    "../../../../",
                 });
     }
     for (const auto* name :
