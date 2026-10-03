@@ -50,7 +50,7 @@ struct Scope::Box::Item {
 template<class T> struct Family {
     struct Child;
 };
-template<class T> struct Family<T> ::Child {
+template<class T> struct Family<T>::Child {
     Child(T* v) {
     }
     Child* next;
@@ -66,7 +66,7 @@ template<> struct Spec<int> {
 template<class T> struct Container {
     template<class U> struct Entry;
 };
-template<class T> template<class U> struct Container<T> ::Entry {
+template<class T> template<class U> struct Container<T>::Entry {
     Entry(U&& v) {
     }
 };
@@ -98,7 +98,7 @@ class Vessel::Leaf: public Plain {
     ~Leaf() {
     }
 };
-template<> struct Family<Spec<int>> ::Child {
+template<> struct Family<Spec<int>>::Child {
     Child(int* v) {
     }
 };
@@ -115,7 +115,7 @@ int EntryCount = 0;
 template<class T> struct Shelf {
     struct EntryCount;
 };
-template<class T> struct Shelf<T> ::EntryCount {
+template<class T> struct Shelf<T>::EntryCount {
     EntryCount(T* v) {
     }
     EntryCount* next;
@@ -138,7 +138,7 @@ int Entry = 0;
 template<class T> struct Owner {
     struct Entry;
 };
-template<class T> struct Owner<T> ::Entry {
+template<class T> struct Owner<T>::Entry {
 };
 void update() {
     Entry += 1;

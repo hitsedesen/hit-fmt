@@ -19,3 +19,12 @@ class Reader {
     return 1;
 }
 [[nodiscard]] constexpr std::optional<ResultWithSize> ReadFirstResult(const char* input);
+template <>
+text::CodePoint detail::Cursor<Reader>::Read() {
+    return {};
+}
+template <class T>
+text::CodePoint detail::Cursor<Box<T>>::Read() {
+    return {};
+}
+text::CodePoint detail::Cursor<Reader>::Read();

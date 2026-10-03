@@ -88,7 +88,7 @@
 106 before=; field=DeclarationSemicolonSpacing owner=declaration category=10 priority=3 fallback=0 protected=0 constraint=0
 107 before=int field=None owner=translation-unit category=11 priority=1 fallback=1 protected=0 constraint=0
 109 before=:: field=ScopeResolutionSpacing owner=declaration category=10 priority=1 fallback=0 protected=0 constraint=0
-110 before=* field=ScopeResolutionSpacing owner=declaration category=10 priority=1 fallback=1 protected=0 constraint=0
+110 before=* field=ScopeResolutionSpacing owner=declaration category=10 priority=1 fallback=0 protected=0 constraint=0
 111 before=member field=MemberPointerDeclaratorSpacing owner=member-pointer-operator category=10 priority=4 fallback=0 protected=0 constraint=0
 112 before=; field=DeclarationSemicolonSpacing owner=declaration category=10 priority=3 fallback=0 protected=0 constraint=0
 113 before=using field=None owner=translation-unit category=11 priority=1 fallback=1 protected=0 constraint=0

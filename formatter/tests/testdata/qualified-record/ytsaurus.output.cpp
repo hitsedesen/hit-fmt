@@ -61,7 +61,7 @@ template <class T> struct Family
 {
     struct Child;
 };
-template <class T> struct Family<T> ::Child
+template <class T> struct Family<T>::Child
 {
     Child(T* v)
     { }
@@ -81,7 +81,7 @@ template <class T> struct Container
 {
     template <class U> struct Entry;
 };
-template <class T> template <class U> struct Container<T> ::Entry
+template <class T> template <class U> struct Container<T>::Entry
 {
     Entry(U&& v)
     { }
@@ -121,7 +121,7 @@ public:
     ~Leaf()
     { }
 };
-template <> struct Family<Spec<int>> ::Child
+template <> struct Family<Spec<int>>::Child
 {
     Child(int* v)
     { }
@@ -142,7 +142,7 @@ template <class T> struct Shelf
 {
     struct EntryCount;
 };
-template <class T> struct Shelf<T> ::EntryCount
+template <class T> struct Shelf<T>::EntryCount
 {
     EntryCount(T* v)
     { }
@@ -170,7 +170,7 @@ template <class T> struct Owner
 {
     struct Entry;
 };
-template <class T> struct Owner<T> ::Entry
+template <class T> struct Owner<T>::Entry
 { };
 void update()
 {

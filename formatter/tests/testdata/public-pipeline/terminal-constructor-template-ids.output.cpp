@@ -9,7 +9,7 @@ template<class T> struct Parcel
         use(value, 2);
     }
 };
-template<class T> Parcel<T> ::Parcel(Item<T>* value)
+template<class T> Parcel<T>::Parcel(Item<T>* value)
 {
     use(value, 3);
 }

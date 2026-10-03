@@ -102,16 +102,60 @@ bool Punctuation(TK kind)
     return kind >= TK::Operator_OpenBrace && kind <= TK::Operator_Comma;
 }
 
-bool PlainDelimiter(std::string_view text)
+bool PunctuationNeedsSeparation(std::string_view first, std::string_view second)
 {
-    return text.size() == 1 &&
-        std::string_view("{}[]();,").find(text[0]) != std::string_view::npos;
+    const auto next = second.front();
+    if (first.size() == 1) {
+        switch (first.front()) {
+            case ':':
+                return next == ':' || next == '>';
+            case '.':
+                // Even two dots are consumed as an unfinished ellipsis.
+                return next == '.' || next == '*';
+            case '-':
+                return next == '-' || next == '=' || next == '>';
+            case '+':
+                return next == '+' || next == '=';
+            case '/':
+                return next == '/' || next == '*' || next == '=';
+            case '%':
+                return next == ':' || next == '>' || next == '=';
+            case '&':
+                return next == '&' || next == '=';
+            case '|':
+                return next == '|' || next == '=';
+            case '<':
+                // Keep < :: separated regardless of the following token:
+                // the maximal-munch exception depends on further lookahead.
+                return next == '<' || next == '=' || next == ':' || next == '%';
+            case '>':
+                return next == '>' || next == '=';
+            case '*':
+            case '^':
+            case '!':
+            case '=':
+                return next == '=';
+            default:
+                return false;
+        }
+    }
+    if (first == "->") {
+        return next == '*';
+    }
+    if (first == "<<" || first == ">>") {
+        return next == '=';
+    }
+    if (first == "<=") {
+        return next == '>';
+    }
+    // Joining <: and : can invoke the <:: exception and split the digraph.
+    return first == "<:" && next == ':';
 }
 
 // Conservative maximal-munch constraints, based on the tokenizer's categories
-// and spellings. Extra separation is intentional: it handles comments,
-// digraphs, <:: lookahead, ellipses spanning three tokens, literal prefixes and
-// suffixes without allocating/retokenizing each pair. Template > > still needs
+// and spellings. Only punctuation that can extend or change the left token
+// needs separation. Comments, digraphs, <:: lookahead and ellipses are handled
+// without allocating/retokenizing each pair. Template > > still needs
 // separation: accepting >> would relax exact lexical identity, even if C++ can
 // split that token contextually. Roles are used separately for grammar safety.
 bool NeedsSeparation(const parser::SyntaxTree& tree, parser::TokenIndex right)
@@ -132,7 +176,7 @@ bool NeedsSeparation(const parser::SyntaxTree& tree, parser::TokenIndex right)
         return true;
     }
     if (Punctuation(a) && Punctuation(b)) {
-        return !PlainDelimiter(first) && !PlainDelimiter(second);
+        return PunctuationNeedsSeparation(first, second);
     }
     // A slash before a comment can turn a block comment into a line comment.
     return a == TK::Operator_Divide && b == TK::Comment;

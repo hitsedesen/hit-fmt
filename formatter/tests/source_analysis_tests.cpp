@@ -10,6 +10,7 @@
 #include <limits>
 #include <stdexcept>
 #include <string>
+#include <tuple>
 #include <vector>
 namespace {
 
@@ -617,6 +618,21 @@ TEST(SourceAnalysis, ContextSensitivePunctuationIsNotJustTokenization)
 }
 TEST(SourceAnalysis, LexicalConstraintsCoverPunctuationAndLiteralBoundaries)
 {
+    for (const auto& [first, second, required] :
+        {std::tuple{">", "::", false}, {">>", "::", false},
+            {"::", "*", false}, {"+", "*", false}, {"&&", "!", false},
+            {"+", "+", true}, {"/", "*", true}, {"/", "/", true},
+            {">", ">", true}, {"<", "::", true}, {"<:", ":", true},
+            {"<", "%", true}, {"%", ">", true}, {":", ">", true},
+            {"-", ">", true}, {"->", "*", true}, {"<<", "=", true},
+            {">>", "=", true}, {"<=", ">", true}, {".", ".", true}})
+    {
+        Input input(std::string(first) + " " + second);
+        auto tree = parser::SyntaxTree::TokenizeOnly(input.View());
+        ASSERT_EQ(tree.TokenCount(), 2u);
+        EXPECT_EQ(formatter::TokenGapNeedsSeparation(tree, 1), required)
+            << first << ' ' << second;
+    }
     const std::array spellings{"alpha",
         "1",
         "1.0",
@@ -708,7 +724,7 @@ TEST(SourceAnalysis, LexicalConstraintsCoverPunctuationAndLiteralBoundaries)
         }
     }
     EXPECT_GT(removable, 1000u); // This is not an always-preserve oracle.
-    Input input(". . . < :: > / * > >");
+    Input input(". . . < :: > / * > > <: : name < :: : name");
     auto tree = parser::SyntaxTree::TokenizeOnly(input.View());
     std::string changed;
     for (parser::TokenIndex i = 0; i < tree.TokenCount(); ++i) {
