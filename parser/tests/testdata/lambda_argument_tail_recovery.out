@@ -1,0 +1,704 @@
+(translation-unit
+  (expression-statement
+    (call-expression
+      (identifier-expression "APPLY")
+      (argument-list
+        "("
+        (argument
+          (expression "char")
+          (unparsed-syntax "*" "*")
+        )
+        (list-separator ",")
+        (argument
+          (lambda-expression
+            (lambda-capture-list "[" "]")
+            (lambda-body
+              "{"
+              (return-statement
+                "return"
+                (literal-expression "2")
+                ";"
+              )
+              "}"
+            )
+          )
+        )
+        ")"
+      )
+    )
+    ";"
+  )
+  (expression-statement
+    (call-expression
+      (identifier-expression "APPLY")
+      (argument-list
+        "("
+        (argument
+          (unparsed-syntax "*")
+        )
+        (list-separator ",")
+        (argument
+          (lambda-expression
+            (lambda-capture-list "[" "]")
+            (lambda-body
+              "{"
+              (return-statement
+                "return"
+                (literal-expression "2")
+                ";"
+              )
+              "}"
+            )
+          )
+        )
+        ")"
+      )
+    )
+    ";"
+  )
+  (expression-statement
+    (call-expression
+      (identifier-expression "APPLY")
+      (argument-list
+        "("
+        (argument
+          (identifier-expression "value")
+          (unparsed-syntax "+" "*")
+        )
+        (list-separator ",")
+        (argument
+          (lambda-expression
+            (lambda-capture-list "[" "]")
+            (lambda-body
+              "{"
+              (return-statement
+                "return"
+                (literal-expression "2")
+                ";"
+              )
+              "}"
+            )
+          )
+        )
+        ")"
+      )
+    )
+    ";"
+  )
+  (expression-statement
+    (call-expression
+      (identifier-expression "APPLY")
+      (argument-list
+        "("
+        (argument
+          (literal-expression
+            "\"head\"" "/* join */" "\"tail\""
+            (dangling-trivia
+              (comment "/* join */")
+            )
+          )
+          (trailing-trivia
+            (comment "/* trailing */")
+          )
+        )
+        "/* trailing */"
+        (list-separator ",")
+        (argument
+          (lambda-expression
+            (lambda-capture-list "[" "]")
+            (lambda-body
+              "{"
+              (return-statement
+                "return"
+                (literal-expression "2")
+                ";"
+              )
+              "}"
+            )
+          )
+        )
+        ")"
+      )
+    )
+    ";"
+  )
+  (expression-statement
+    (call-expression
+      (identifier-expression "APPLY")
+      (argument-list
+        "("
+        (argument
+          (lambda-expression
+            (lambda-capture-list "[" "]")
+            (template-parameter-list
+              "<"
+              (template-parameter "class" "T")
+              (list-separator ",")
+              (template-parameter "class" "U")
+              ">"
+            )
+            (parameter-list
+              "("
+              (parameter-declaration
+                (declaration-specifiers "T")
+                (init-declarator-list
+                  (init-declarator
+                    (declarator
+                      (declarator-name "left")
+                    )
+                  )
+                )
+              )
+              (list-separator ",")
+              (parameter-declaration
+                (declaration-specifiers "U")
+                (init-declarator-list
+                  (init-declarator
+                    (declarator
+                      (declarator-name "right")
+                    )
+                  )
+                )
+              )
+              ")"
+            )
+            (lambda-body
+              "{"
+              (return-statement
+                "return"
+                (identifier-expression "left")
+                ";"
+              )
+              "}"
+            )
+          )
+        )
+        (list-separator ",")
+        (argument
+          (literal-expression "7")
+        )
+        ")"
+      )
+    )
+    ";"
+  )
+  (expression-statement
+    (call-expression
+      (identifier-expression "APPLY")
+      (argument-list
+        "("
+        (argument
+          (literal-expression "7")
+        )
+        (list-separator ",")
+        (argument
+          (lambda-expression
+            (lambda-capture-list "[" "]")
+            (template-parameter-list
+              "<"
+              (template-parameter "class" "T")
+              (list-separator ",")
+              (template-parameter "class" "U")
+              ">"
+            )
+            (parameter-list
+              "("
+              (parameter-declaration
+                (declaration-specifiers "T")
+                (init-declarator-list
+                  (init-declarator
+                    (declarator
+                      (declarator-name "left")
+                    )
+                  )
+                )
+              )
+              (list-separator ",")
+              (parameter-declaration
+                (declaration-specifiers "U")
+                (init-declarator-list
+                  (init-declarator
+                    (declarator
+                      (declarator-name "right")
+                    )
+                  )
+                )
+              )
+              ")"
+            )
+            (lambda-body
+              "{"
+              (return-statement
+                "return"
+                (identifier-expression "left")
+                ";"
+              )
+              "}"
+            )
+          )
+        )
+        (list-separator ",")
+        (argument
+          (literal-expression "8")
+        )
+        ")"
+      )
+    )
+    ";"
+  )
+  (expression-statement
+    (call-expression
+      (identifier-expression "APPLY")
+      (argument-list
+        "("
+        (argument
+          (literal-expression "7")
+        )
+        (list-separator ",")
+        (argument
+          (lambda-expression
+            (lambda-capture-list "[" "]")
+            (template-parameter-list
+              "<"
+              (template-parameter "class" "T")
+              (list-separator ",")
+              (template-parameter "class" "U")
+              ">"
+            )
+            (parameter-list
+              "("
+              (parameter-declaration
+                (declaration-specifiers "T")
+                (init-declarator-list
+                  (init-declarator
+                    (declarator
+                      (declarator-name "left")
+                    )
+                  )
+                )
+              )
+              (list-separator ",")
+              (parameter-declaration
+                (declaration-specifiers "U")
+                (init-declarator-list
+                  (init-declarator
+                    (declarator
+                      (declarator-name "right")
+                    )
+                  )
+                )
+              )
+              ")"
+            )
+            (lambda-body
+              "{"
+              (return-statement
+                "return"
+                (identifier-expression "left")
+                ";"
+              )
+              "}"
+            )
+          )
+        )
+        ")"
+      )
+    )
+    ";"
+  )
+  (function-declaration
+    (declaration-specifiers "void")
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (declarator-name "declared")
+          (function-declarator
+            (parameter-list
+              "("
+              (parameter-declaration
+                (declaration-specifiers "int")
+                (init-declarator-list
+                  (init-declarator
+                    (declarator
+                      (declarator-name "value")
+                    )
+                    (initializer
+                      "="
+                      (call-expression
+                        (lambda-expression
+                          (lambda-capture-list "[" "]")
+                          (template-parameter-list
+                            "<"
+                            (template-parameter "class" "T")
+                            (list-separator ",")
+                            (template-parameter "class" "U")
+                            ">"
+                          )
+                          (parameter-list
+                            "("
+                            (parameter-declaration
+                              (declaration-specifiers "T")
+                              (init-declarator-list
+                                (init-declarator
+                                  (declarator
+                                    (declarator-name "left")
+                                  )
+                                )
+                              )
+                            )
+                            (list-separator ",")
+                            (parameter-declaration
+                              (declaration-specifiers "U")
+                              (init-declarator-list
+                                (init-declarator
+                                  (declarator
+                                    (declarator-name "right")
+                                  )
+                                )
+                              )
+                            )
+                            ")"
+                          )
+                          (lambda-body
+                            "{"
+                            (return-statement
+                              "return"
+                              (identifier-expression "left")
+                              ";"
+                            )
+                            "}"
+                          )
+                        )
+                        (argument-list
+                          "("
+                          (argument
+                            (literal-expression "1")
+                          )
+                          (list-separator ",")
+                          (argument
+                            (literal-expression "2")
+                          )
+                          ")"
+                        )
+                      )
+                    )
+                  )
+                )
+              )
+              (list-separator ",")
+              (parameter-declaration
+                (declaration-specifiers "int")
+                (init-declarator-list
+                  (init-declarator
+                    (declarator
+                      (declarator-name "other")
+                    )
+                    (initializer
+                      "="
+                      (literal-expression "0")
+                    )
+                  )
+                )
+              )
+              ")"
+            )
+          )
+        )
+      )
+    )
+    ";"
+  )
+  (function-declaration
+    (declaration-specifiers "void")
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (declarator-name "declared")
+          (function-declarator
+            (parameter-list
+              "("
+              (parameter-declaration
+                (declaration-specifiers "int")
+                (init-declarator-list
+                  (init-declarator
+                    (declarator
+                      (declarator-name "value")
+                    )
+                    (initializer
+                      "="
+                      (call-expression
+                        (identifier-expression "wrap")
+                        (argument-list
+                          "("
+                          (argument
+                            (lambda-expression
+                              (lambda-capture-list "[" "]")
+                              (template-parameter-list
+                                "<"
+                                (template-parameter "class" "T")
+                                (list-separator ",")
+                                (template-parameter "class" "U")
+                                ">"
+                              )
+                              (parameter-list
+                                "("
+                                (parameter-declaration
+                                  (declaration-specifiers "T")
+                                  (init-declarator-list
+                                    (init-declarator
+                                      (declarator
+                                        (declarator-name "left")
+                                      )
+                                    )
+                                  )
+                                )
+                                (list-separator ",")
+                                (parameter-declaration
+                                  (declaration-specifiers "U")
+                                  (init-declarator-list
+                                    (init-declarator
+                                      (declarator
+                                        (declarator-name "right")
+                                      )
+                                    )
+                                  )
+                                )
+                                ")"
+                              )
+                              (lambda-body
+                                "{"
+                                (return-statement
+                                  "return"
+                                  (identifier-expression "left")
+                                  ";"
+                                )
+                                "}"
+                              )
+                            )
+                          )
+                          ")"
+                        )
+                      )
+                    )
+                  )
+                )
+              )
+              (list-separator ",")
+              (parameter-declaration
+                (declaration-specifiers "int")
+                (init-declarator-list
+                  (init-declarator
+                    (declarator
+                      (declarator-name "other")
+                    )
+                    (initializer
+                      "="
+                      (literal-expression "0")
+                    )
+                  )
+                )
+              )
+              ")"
+            )
+          )
+        )
+      )
+    )
+    ";"
+  )
+  (expression-statement
+    (call-expression
+      (identifier-expression "APPLY")
+      (argument-list
+        "("
+        (argument
+          (literal-expression "7")
+        )
+        (list-separator ",")
+        (argument
+          (call-expression
+            (member-expression
+              (identifier-expression "::" "ops")
+              "::" "template"
+              (template-id-expression
+                (identifier-expression "make")
+                (template-argument-list
+                  "<"
+                  (template-argument "int")
+                  ">"
+                )
+              )
+            )
+            (argument-list
+              "("
+              (argument
+                (identifier-expression "value")
+              )
+              ")"
+            )
+          )
+        )
+        (list-separator ",")
+        (argument
+          (lambda-expression
+            (lambda-capture-list "[" "]")
+            (lambda-body
+              "{"
+              (return-statement
+                "return"
+                (literal-expression "2")
+                ";"
+              )
+              "}"
+            )
+          )
+        )
+        ")"
+      )
+    )
+    ";"
+  )
+  (expression-statement
+    (call-expression
+      (identifier-expression "APPLY")
+      (argument-list
+        "("
+        (argument
+          (literal-expression "7")
+        )
+        (list-separator ",")
+        (argument
+          (call-expression
+            (member-expression
+              (identifier-expression "object")
+              "." "template"
+              (template-id-expression
+                (identifier-expression "make")
+                (template-argument-list
+                  "<"
+                  (template-argument "int")
+                  ">"
+                )
+              )
+            )
+            (argument-list
+              "("
+              (argument
+                (identifier-expression "value")
+              )
+              ")"
+            )
+          )
+        )
+        (list-separator ",")
+        (argument
+          (lambda-expression
+            (lambda-capture-list "[" "]")
+            (lambda-body
+              "{"
+              (return-statement
+                "return"
+                (literal-expression "2")
+                ";"
+              )
+              "}"
+            )
+          )
+        )
+        ")"
+      )
+    )
+    ";"
+  )
+  (function-declaration
+    (declaration-specifiers "void")
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (declarator-name "declared")
+          (function-declarator
+            (parameter-list
+              "("
+              (parameter-declaration
+                (declaration-specifiers "int")
+                (init-declarator-list
+                  (init-declarator
+                    (declarator
+                      (declarator-name "value")
+                    )
+                    (initializer
+                      "="
+                      (call-expression
+                        (member-expression
+                          (identifier-expression "::" "ops")
+                          "::" "template"
+                          (template-id-expression
+                            (identifier-expression "make")
+                            (template-argument-list
+                              "<"
+                              (template-argument "int")
+                              ">"
+                            )
+                          )
+                        )
+                        (argument-list
+                          "("
+                          (argument
+                            (identifier-expression "other")
+                          )
+                          ")"
+                        )
+                      )
+                    )
+                  )
+                )
+              )
+              (list-separator ",")
+              (parameter-declaration
+                (declaration-specifiers "int")
+                (init-declarator-list
+                  (init-declarator
+                    (declarator
+                      (declarator-name "second")
+                    )
+                    (initializer
+                      "="
+                      (call-expression
+                        (lambda-expression
+                          (lambda-capture-list "[" "]")
+                          (lambda-body
+                            "{"
+                            (return-statement
+                              "return"
+                              (literal-expression "1")
+                              ";"
+                            )
+                            "}"
+                          )
+                        )
+                        (argument-list "(" ")")
+                      )
+                    )
+                  )
+                )
+              )
+              ")"
+            )
+          )
+        )
+      )
+    )
+    ";"
+  )
+  (declaration
+    (declaration-specifiers "int")
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (declarator-name "following")
+        )
+      )
+    )
+    ";"
+  )
+)

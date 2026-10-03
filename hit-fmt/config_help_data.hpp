@@ -321,11 +321,9 @@ constexpr HelpSection HelpSections[] = {
             "not cross protected spans. Naming "
         "and parameter checks never rename code. "
             "Profiles approximate styles, not "
-        "clang-format compatibility. See "
-            "docs/config-migration.md for removed "
-            "options "
-        "and unsupported comment/directive rewrites "
-            "and named widths.\n", SafetyExamples},
+        "clang-format compatibility. Removed options have no aliases. "
+        "Comment/directive rewrites and named widths "
+            "remain unsupported.\n", SafetyExamples},
 };
 // hit-fmt on
 

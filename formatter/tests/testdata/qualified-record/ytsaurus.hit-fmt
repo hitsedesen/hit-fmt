@@ -2,7 +2,7 @@
 # Macro syntax hints are unsupported by this executable. The affected macro is
 # protected byte-for-byte below instead of being reformatted through that hint.
 # YTsaurus-inspired approximation for yt/yt, yt/chyt, yt/yql and library/cpp/yt.
-# Not intended for yt/cpp, util or other library/cpp. See docs/config-migration.md.
+# Not intended for yt/cpp, util or other library/cpp. See --help-config.
 # Canonical fitting lists flatten; library annotations select generic policies.
 # Exactly messages, fluent chains and paired visual scopes; no named widths.
 # Fluent chains include . / -> members and repeated invocation factory()(arg)(next).

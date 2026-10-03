@@ -188,7 +188,7 @@ void PrintPreserveConfig(std::ostream& output)
               "# LF/CRLF spell only authorized whole whitespace newline atoms;\n"
               "# no final newline insertion, token/directive conversion or cleanup.\n"
               "# Directives and protected regions remain byte-exact.\n"
-              "# Migration: docs/config-migration.md\n\n"
+              "# Option guidance: --help-config\n\n"
               "# Formatting options\n\n";
     const formatter::Style style;
 #define PRINT_STYLE_OPTION(type, name, initial) \

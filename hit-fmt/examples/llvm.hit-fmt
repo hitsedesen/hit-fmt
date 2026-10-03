@@ -1,6 +1,6 @@
 # LLVM-inspired approximation, not clang-format compatibility.
 # Canonical groups flatten fitting lists; delimiter alignment has a fixed fallback.
-# Directives/protected regions are byte-exact. See docs/config-migration.md.
+# Directives/protected regions are byte-exact. See --help-config.
 # Include categories, contextual lambda indentation and brace removal remain unsupported.
 # Comments/literals are not reflowed to guarantee the column limit.
 Layout = Canonical

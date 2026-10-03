@@ -546,7 +546,7 @@ void ApplySetting(
     ThrowConfigError(path, line,
         "unknown or removed setting '" + std::string(key) + "'; " +
         std::string(ConfigMigrationHint(key)) +
-        " See docs/config-migration.md or --help-config.");
+        " See --help-config.");
 }
 
 } // namespace

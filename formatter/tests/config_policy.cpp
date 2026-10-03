@@ -748,7 +748,7 @@ TEST(ConfigPolicy, RemovedOptionsFailWithMigrationAdviceInsteadOfAliases)
                 message.find("unknown or removed setting"),
                 std::string::npos);
             EXPECT_NE(
-                message.find("docs/config-migration.md"),
+                message.find("--help-config"),
                 std::string::npos);
             EXPECT_NE(message.find(value.Advice), std::string::npos);
         }

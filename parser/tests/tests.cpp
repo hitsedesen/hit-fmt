@@ -296,6 +296,610 @@ TEST_P(FileTest, Golden)
     fixture.Expect(actual, ".out");
 }
 
+// Inspect only the real owning subtree; full-file serialization is golden-tested.
+std::vector<const Node*> LambdaOwnershipNodes(const Node& root, parser::NodeKind kind)
+{
+    std::vector<const Node*> found;
+    std::vector<const Node*> pending{&root};
+    while (!pending.empty()) {
+        const auto* node = pending.back();
+        pending.pop_back();
+        if (node->Kind == kind) found.push_back(node);
+        for (auto* child = node->FirstChild; child; child = child->NextSibling)
+            pending.push_back(child);
+    }
+    return found;
+}
+
+TEST(Parser, DirectLambdaArgumentsHaveOneExpressionOwner)
+{
+    using enum parser::NodeKind;
+    for (const auto candidate : {
+             "APPLY([] { return 1; }, 7);",
+             "RENAMED(7, [](int v) -> int { return v; }, 8);",
+             "APPLY(7, ::ops::combine(::ops::make()), [](const auto& v) -> std::string { return v; });",
+             "APPLY([seed = 2](int v) mutable noexcept(true) -> int { return v + seed; });",
+             "APPLY([] -> int { return 1; });",
+             "APPLY([]<class T, class U>(T left, U right) { return left; }, 7);",
+             "APPLY(7, []<class T, class U>(T left, U right) { return left; }, 8);",
+             "APPLY(7, []<class T, class U>(T left, U right) { return left; });",
+             "APPLY(7, ::ops::template make<int>(value), [] { return 2; });",
+             "APPLY(7, object.template make<int>(value), [] { return 2; });",
+             "APPLY(7, object.template operator()<int>(value), [] { return 2; });",
+             "APPLY(7, object.template operator+<int>(value), [] { return 2; });",
+             "APPLY(7, object.template operator[]<int>(value), [] { return 2; });" }) {
+        SCOPED_TRACE(candidate);
+        PaddedInput input(std::string(candidate) + "\nint following;\n");
+        size_t errors = 0;
+        auto tree = parser::Parse(input.View(), [&](parser::ParseError) { ++errors; });
+        EXPECT_EQ(errors, 0u);
+        const auto* owner = tree.Root().FirstChild;
+        ASSERT_NE(owner, nullptr);
+        EXPECT_EQ(owner->Kind, ExpressionStatement);
+        EXPECT_EQ(LambdaOwnershipNodes(*owner, LambdaExpression).size(), 1u);
+        EXPECT_EQ(LambdaOwnershipNodes(*owner, LambdaBody).size(), 1u);
+        EXPECT_EQ(LambdaOwnershipNodes(*owner, StructuredBinding).size(), 0u);
+        EXPECT_EQ(LambdaOwnershipNodes(*owner, CastExpression).size(), 0u);
+        const auto lambdas = LambdaOwnershipNodes(*owner, LambdaExpression);
+        if (!lambdas.empty()) {
+            const auto source = std::string_view(candidate);
+            size_t expectedBegin = std::string_view::npos;
+            for (const auto spelling : {"[seed = 2]", "[]<class T", "[](int v)",
+                     "[](const auto& v)", "[] -> int", "[] { return"}) {
+                const auto found = source.find(spelling);
+                if (found != std::string_view::npos) {
+                    ASSERT_EQ(expectedBegin, std::string_view::npos);
+                    EXPECT_EQ(source.find(spelling, found + 1), std::string_view::npos);
+                    expectedBegin = found;
+                }
+            }
+            ASSERT_NE(expectedBegin, std::string_view::npos);
+            const auto expectedClose = source.rfind('}');
+            EXPECT_EQ(tree.SourceText(lambdas[0]->Tokens),
+                std::string_view(candidate).substr(expectedBegin, expectedClose - expectedBegin + 1));
+            EXPECT_EQ(tree.Token(lambdas[0]->Tokens.End - 1).Text.Begin, expectedClose);
+            EXPECT_LT(lambdas[0]->Tokens.End, tree.Root().LastChild->Tokens.Begin);
+        }
+        EXPECT_EQ(tree.SourceText(tree.Root().LastChild->Tokens), "int following;");
+        for (const auto* list : LambdaOwnershipNodes(*owner, ArgumentList)) {
+            for (auto* child = list->FirstChild; child; child = child->NextSibling)
+                EXPECT_TRUE(child->Kind == Argument || child->Kind == ListSeparator);
+            EXPECT_EQ(list->LastChild ? list->LastChild->Tokens.End : list->Tokens.Begin + 1,
+                list->Tokens.End - 1);
+        }
+    }
+    for (const auto operand : {
+             "flag ? first, second : third",
+             "flag ? other ? first, second : third, fourth : fifth",
+             "flag ? first : other ? second, third : fourth",
+             "(flag ? first, second : third)",
+             "flag ? [] { return 1; }, second : third" }) {
+        SCOPED_TRACE(operand);
+        PaddedInput input("void use() { consume(" + std::string(operand) +
+            ", [] { return 2; }); }\nint following;");
+        size_t errors = 0;
+        auto tree = parser::Parse(input.View(), [&](parser::ParseError) { ++errors; });
+        EXPECT_EQ(errors, 0u);
+        const auto lists = LambdaOwnershipNodes(tree.Root(), ArgumentList);
+        ASSERT_EQ(lists.size(), 1u);
+        std::vector<const Node*> arguments;
+        for (auto* child = lists[0]->FirstChild; child; child = child->NextSibling)
+            if (child->Kind == Argument) arguments.push_back(child);
+        EXPECT_EQ(arguments.size(), 2u);
+        if (arguments.size() != 2) continue;
+        EXPECT_EQ(tree.SourceText(arguments[0]->Tokens), operand);
+        EXPECT_EQ(tree.SourceText(arguments[1]->Tokens), "[] { return 2; }");
+        EXPECT_TRUE(LambdaOwnershipNodes(*arguments[0], UnparsedSyntax).empty());
+        const auto conditionals = LambdaOwnershipNodes(*arguments[0], ConditionalExpression);
+        ASSERT_FALSE(conditionals.empty());
+        bool commaMiddle = false;
+        for (const auto* conditional : conditionals) {
+            ASSERT_NE(conditional->FirstChild, nullptr);
+            const auto* middle = conditional->FirstChild->NextSibling;
+            ASSERT_NE(middle, nullptr);
+            if (middle->Kind == BinaryExpression && tree.SourceText(middle->Tokens).find(',') != std::string_view::npos)
+                commaMiddle = true;
+        }
+        EXPECT_TRUE(commaMiddle);
+        EXPECT_EQ(LambdaOwnershipNodes(*arguments[1], LambdaBody).size(), 1u);
+        EXPECT_EQ(tree.SourceText(tree.Root().LastChild->Tokens), "int following;");
+    }
+    for (const auto operand : {"flag ? first, second", "flag ? other ? first, second : third"}) {
+        SCOPED_TRACE(operand);
+        PaddedInput input("void use() { consume(" + std::string(operand) +
+            ", [] { return 2; }); }\nint following;");
+        auto tree = parser::Parse(input.View(), [](parser::ParseError) {});
+        EXPECT_FALSE(LambdaOwnershipNodes(tree.Root(), UnparsedSyntax).empty());
+        EXPECT_TRUE(LambdaOwnershipNodes(tree.Root(), LambdaBody).empty());
+        EXPECT_EQ(tree.SourceText(tree.Root().LastChild->Tokens), "int following;");
+    }
+}
+
+TEST(Parser, TypedLambdaDirectInitializersRetainNamedDeclarations)
+{
+    using enum parser::NodeKind;
+    for (const auto candidate : {
+             "const Registry entry(7, [] { return 2; });",
+             "Registry entry(7, [seed = 2](int v) noexcept -> int { return v + seed; });",
+             "Registry entry(wrap([] { return 2; }));" }) {
+        SCOPED_TRACE(candidate);
+        PaddedInput input("struct Registry {};\n" + std::string(candidate) + "\nint following;\n");
+        auto tree = parser::Parse(input.View(), [](parser::ParseError) {});
+        const auto* owner = tree.Root().FirstChild->NextSibling;
+        ASSERT_NE(owner, nullptr);
+        EXPECT_EQ(owner->Kind, Declaration);
+        ASSERT_NE(owner->FirstChild, nullptr);
+        EXPECT_EQ(owner->FirstChild->Kind, DeclarationSpecifiers);
+        EXPECT_EQ(tree.SourceText(owner->FirstChild->Tokens),
+            std::string_view(candidate).starts_with("const") ? "const Registry" : "Registry");
+        const auto* outerList = owner->FirstChild->NextSibling;
+        ASSERT_NE(outerList, nullptr);
+        ASSERT_EQ(outerList->Kind, InitDeclaratorList);
+        const auto* init = outerList->FirstChild;
+        ASSERT_NE(init, nullptr);
+        ASSERT_EQ(init->Kind, InitDeclarator);
+        const auto* declarator = init->FirstChild;
+        ASSERT_NE(declarator, nullptr);
+        ASSERT_EQ(declarator->Kind, Declarator);
+        ASSERT_NE(declarator->FirstChild, nullptr);
+        EXPECT_EQ(declarator->FirstChild->Kind, DeclaratorName);
+        EXPECT_EQ(tree.SourceText(declarator->FirstChild->Tokens), "entry");
+        ASSERT_NE(declarator->NextSibling, nullptr);
+        EXPECT_EQ(declarator->NextSibling->Kind, Initializer);
+        EXPECT_LE(declarator->Tokens.End, declarator->NextSibling->Tokens.Begin);
+        const auto lambdas = LambdaOwnershipNodes(*owner, LambdaExpression);
+        ASSERT_EQ(lambdas.size(), 1u);
+        EXPECT_EQ(LambdaOwnershipNodes(*lambdas[0], ParameterDeclaration).size(),
+            std::string_view(candidate).find("int v") != std::string_view::npos ? 1u : 0u);
+        EXPECT_EQ(LambdaOwnershipNodes(*owner, Initializer).size(), 1u);
+        EXPECT_GE(LambdaOwnershipNodes(*owner, ArgumentList).size(), 1u);
+        EXPECT_EQ(LambdaOwnershipNodes(*owner, LambdaExpression).size(), 1u);
+        EXPECT_EQ(LambdaOwnershipNodes(*owner, LambdaBody).size(), 1u);
+        EXPECT_EQ(LambdaOwnershipNodes(*owner, StructuredBinding).size(), 0u);
+        EXPECT_EQ(LambdaOwnershipNodes(*owner, UnparsedSyntax).size(), 0u);
+        EXPECT_EQ(tree.SourceText(tree.Root().LastChild->Tokens), "int following;");
+    }
+}
+
+TEST(Parser, NestedTemplateLambdaCommasDoNotRetireDeclarations)
+{
+    using enum parser::NodeKind;
+    for (const auto candidate : {
+             "void declared(Box<int, []() -> int { return 1; }, int> value);",
+             "void declared(Box<int, int, []() -> int { return 1; }> value);",
+             "void declared(int value = make<int, []() -> int { return 1; }, int>());",
+             "void declared(int value = make<int, int, []() -> int { return 1; }>());",
+             "void declared(int value = make<int, []() -> int { return 1; }, int>(7));",
+             "void declared(int value = ::ops::template make<int>(other), int second = [] { return 1; }());",
+             "void declared(Foreign<int, []() -> int { return 1; }, int> value);",
+             "void declared(bool value = 1 < 2, int other = [] { return 1; }());",
+             "void declared(int value = flag ? first, [] { return 1; } : third, int other = 0);",
+             "void declared(int value = []() -> int { return 1; }());",
+             "void declared(int value = []<class T, class U>(T left, U right) { return left; }(1, 2), int other = 0);",
+             "void declared(int value = wrap([]<class T, class U>(T left, U right) { return left; }), int other = 0);",
+             "void declared(void (*callback)(int));",
+             "void declared([[maybe_unused]] int value);",
+             "void declared([ /* attribute */ [maybe_unused]] int value);" }) {
+        SCOPED_TRACE(candidate);
+        PaddedInput input("template<class, auto, class> struct Box {};\n"
+            "template<class, auto, class> int make();\n" + std::string(candidate) + "\nint following;\n");
+        auto tree = parser::Parse(input.View(), [](parser::ParseError) {});
+        const auto* owner = tree.Root().LastChild;
+        ASSERT_NE(owner, nullptr);
+        EXPECT_EQ(tree.SourceText(owner->Tokens), "int following;");
+        owner = tree.Root().FirstChild->NextSibling->NextSibling;
+        ASSERT_NE(owner, nullptr);
+        EXPECT_EQ(owner->Kind, FunctionDeclaration);
+        EXPECT_GE(LambdaOwnershipNodes(*owner, ParameterList).size(), 1u);
+        for (auto* child = owner->FirstChild; child; child = child->NextSibling)
+            EXPECT_NE(child->Kind, LambdaExpression);
+    }
+}
+
+TEST(Parser, LambdaSuffixOperandsAreNotBodiesAndParametersRestore)
+{
+    using enum parser::NodeKind;
+    PaddedInput input("struct Item {}; using Type = int;\n"
+        "APPLY([](int Type) noexcept(noexcept(Item{})) -> decltype(Item{}) { Type * item; return Item{}; });\n"
+        "Type following;\n");
+    auto tree = parser::Parse(input.View(), [](parser::ParseError) {});
+    const auto bodies = LambdaOwnershipNodes(tree.Root(), LambdaBody);
+    ASSERT_EQ(bodies.size(), 1u);
+    EXPECT_EQ(tree.SourceText(bodies[0]->Tokens), "{ Type * item; return Item{}; }");
+    ASSERT_NE(bodies[0]->FirstChild, nullptr);
+    EXPECT_EQ(bodies[0]->FirstChild->Kind, ExpressionStatement);
+    EXPECT_EQ(tree.Root().LastChild->Kind, Declaration);
+    EXPECT_EQ(tree.SourceText(tree.Root().LastChild->Tokens), "Type following;");
+    for (const auto constraint : {"Check<T{}>", "Check<Box<T{}>>",
+             "ops::template Check<T{}>", "Ready", "noexcept(T{})"}) {
+        SCOPED_TRACE(constraint);
+        const std::string source = "APPLY([]<class T, class U>(T value) requires " +
+            std::string(constraint) + " { return value; });\nint following;";
+        PaddedInput constrained(source);
+        auto parsed = parser::Parse(constrained.View(), [](parser::ParseError) {});
+        const auto actualBodies = LambdaOwnershipNodes(parsed.Root(), LambdaBody);
+        EXPECT_EQ(actualBodies.size(), 1u);
+        if (actualBodies.size() != 1) continue;
+        EXPECT_EQ(parsed.SourceText(actualBodies[0]->Tokens), "{ return value; }");
+        EXPECT_EQ(parsed.Token(actualBodies[0]->Tokens.Begin).Text.Begin, source.find("{ return value; }"));
+        EXPECT_EQ(parsed.Token(actualBodies[0]->Tokens.End - 1).Text.End,
+            source.find("{ return value; }") + std::string_view("{ return value; }").size());
+        EXPECT_EQ(parsed.SourceText(parsed.Root().LastChild->Tokens), "int following;");
+    }
+    for (const auto constraint : {"Check<T{}", "Check<T{} + marker", "ops::template <T{}>"}) {
+        SCOPED_TRACE(constraint);
+        PaddedInput uncertain("APPLY([]<class T, class U>(T value) requires " +
+            std::string(constraint) + " { return value; });\nint following;");
+        auto parsed = parser::Parse(uncertain.View(), [](parser::ParseError) {});
+        EXPECT_TRUE(LambdaOwnershipNodes(parsed.Root(), LambdaBody).empty());
+        EXPECT_FALSE(LambdaOwnershipNodes(parsed.Root(), UnparsedSyntax).empty());
+        EXPECT_EQ(parsed.SourceText(parsed.Root().LastChild->Tokens), "int following;");
+    }
+}
+
+TEST(Parser, UncertainLambdaSuffixCannotDiscoverDownstreamBody)
+{
+    using enum parser::NodeKind;
+    for (const auto candidate : {
+             "APPLY([] marker(int hidden) { return hidden; });",
+             "APPLY([]);",
+             "APPLY([]() -> { return 1; });",
+             "APPLY([]() noexcept(1) marker { return 1; }, [] { return 2; });",
+             "APPLY([]<class T, class U(int hidden) { return hidden; }, 7);" }) {
+        SCOPED_TRACE(candidate);
+        PaddedInput input(std::string(candidate) + "\nint following;\n");
+        size_t errors = 0;
+        auto tree = parser::Parse(input.View(), [&](parser::ParseError) { ++errors; });
+        const auto* owner = tree.Root().FirstChild;
+        ASSERT_NE(owner, nullptr);
+        EXPECT_EQ(owner->Kind, ExpressionStatement);
+        EXPECT_GT(errors, 0u);
+        EXPECT_GT(LambdaOwnershipNodes(*owner, UnparsedSyntax).size() +
+            LambdaOwnershipNodes(*owner, MissingToken).size(), 0u);
+        const auto bodies = LambdaOwnershipNodes(*owner, LambdaBody);
+        EXPECT_EQ(bodies.size(), std::string_view(candidate).find("return 2") != std::string_view::npos ? 1u : 0u);
+        EXPECT_EQ(LambdaOwnershipNodes(*owner, StructuredBinding).size(), 0u);
+        EXPECT_EQ(tree.SourceText(tree.Root().LastChild->Tokens), "int following;");
+    }
+}
+
+TEST(Parser, LeadingGlobalArgumentsRetainMalformedLocalTails)
+{
+    using enum parser::NodeKind;
+    for (const auto operand : {"::ops::make()", "::ops::combine(::ops::make())", "::", "::ops::"}) {
+        SCOPED_TRACE(operand);
+        const std::string source = "APPLY(" + std::string(operand) + ", [] { return 2; });\nint following;";
+        PaddedInput input(source);
+        auto tree = parser::Parse(input.View(), [](parser::ParseError) {});
+        const auto* owner = tree.Root().FirstChild;
+        ASSERT_NE(owner, nullptr);
+        EXPECT_EQ(owner->Kind, ExpressionStatement);
+        EXPECT_EQ(LambdaOwnershipNodes(*owner, LambdaBody).size(), 1u);
+        const auto lists = LambdaOwnershipNodes(*owner, ArgumentList);
+        ASSERT_FALSE(lists.empty());
+        const auto outer = std::ranges::find_if(lists, [](const Node* list) { return list->Tokens.Begin == 1; });
+        ASSERT_NE(outer, lists.end());
+        unsigned directArguments = 0;
+        for (auto* child = (*outer)->FirstChild; child; child = child->NextSibling)
+            directArguments += child->Kind == Argument;
+        EXPECT_EQ(directArguments, 2u);
+        EXPECT_EQ(LambdaOwnershipNodes(*owner, UnparsedSyntax).empty(),
+            std::string_view(operand).ends_with(')'));
+        EXPECT_EQ(tree.SourceText(tree.Root().LastChild->Tokens), "int following;");
+    }
+}
+
+TEST(Parser, TypedInitializerProofExhaustionCannotRetireDefaultParameters)
+{
+    using enum parser::NodeKind;
+    for (const auto count : {4094u, 4096u, 4100u}) {
+        std::string source = "void declared(int value = make<";
+        for (unsigned i = 0; i < count; ++i) source += "int,";
+        source += "[]() -> int { return 1; }, int>());\nint following;";
+        PaddedInput input(source);
+        auto tree = parser::Parse(input.View(), [](parser::ParseError) {});
+        const auto* owner = tree.Root().FirstChild;
+        ASSERT_NE(owner, nullptr);
+        EXPECT_EQ(owner->Kind, FunctionDeclaration);
+        for (auto* child = owner->FirstChild; child; child = child->NextSibling)
+            EXPECT_NE(child->Kind, LambdaExpression);
+        EXPECT_EQ(tree.SourceText(tree.Root().LastChild->Tokens), "int following;");
+    }
+}
+
+TEST(Parser, ArgumentRecoveryOwnsConsumedSemanticTailsAndKeepsLaterLambda)
+{
+    using enum parser::NodeKind;
+    for (const auto [operand, expectedTail] : {
+             std::pair<std::string_view, std::string_view>{"char**", "**"},
+             {"*", "*"}, {"value + *", "+ *"} }) {
+        SCOPED_TRACE(operand);
+        const std::string source = "APPLY(" + std::string(operand) + ", [] { return 2; });\nint following;";
+        PaddedInput input(source);
+        auto tree = parser::Parse(input.View(), [](parser::ParseError) {});
+        const auto* owner = tree.Root().FirstChild;
+        ASSERT_NE(owner, nullptr);
+        ASSERT_EQ(owner->Kind, ExpressionStatement);
+        const auto lists = LambdaOwnershipNodes(*owner, ArgumentList);
+        ASSERT_EQ(lists.size(), 1u);
+        const auto* first = lists[0]->FirstChild;
+        ASSERT_NE(first, nullptr);
+        ASSERT_EQ(first->Kind, Argument);
+        ASSERT_NE(first->LastChild, nullptr);
+        EXPECT_EQ(first->LastChild->Kind, UnparsedSyntax);
+        EXPECT_EQ(tree.SourceText(first->LastChild->Tokens), expectedTail);
+        EXPECT_EQ(first->LastChild->Tokens.End, first->Tokens.End);
+        auto cursor = first->Tokens.Begin;
+        for (auto* child = first->FirstChild; child; child = child->NextSibling) {
+            EXPECT_LE(cursor, child->Tokens.Begin);
+            EXPECT_LE(child->Tokens.End, first->Tokens.End);
+            cursor = child->Tokens.End;
+        }
+        ASSERT_NE(first->NextSibling, nullptr);
+        ASSERT_EQ(first->NextSibling->Kind, ListSeparator);
+        ASSERT_NE(first->NextSibling->NextSibling, nullptr);
+        const auto* next = first->NextSibling->NextSibling;
+        ASSERT_EQ(next->Kind, Argument);
+        const auto lambdas = LambdaOwnershipNodes(*next, LambdaExpression);
+        ASSERT_EQ(lambdas.size(), 1u);
+        EXPECT_EQ(tree.SourceText(lambdas[0]->Tokens), "[] { return 2; }");
+        EXPECT_EQ(LambdaOwnershipNodes(*next, LambdaBody).size(), 1u);
+        EXPECT_EQ(tree.SourceText(tree.Root().LastChild->Tokens), "int following;");
+    }
+}
+
+TEST(Parser, CompleteArgumentRangesExcludeOnlyTrailingCommentTrivia)
+{
+    using enum parser::NodeKind;
+    PaddedInput input("APPLY(\"head\" /* join */ \"tail\" /* trailing */, [] { return 2; });\nint following;");
+    auto tree = parser::Parse(input.View(), [](parser::ParseError) {});
+    const auto lists = LambdaOwnershipNodes(*tree.Root().FirstChild, ArgumentList);
+    ASSERT_EQ(lists.size(), 1u);
+    const auto* first = lists[0]->FirstChild;
+    ASSERT_NE(first, nullptr);
+    ASSERT_NE(first->FirstChild, nullptr);
+    EXPECT_EQ(first->FirstChild->Kind, LiteralExpression);
+    EXPECT_EQ(first->Tokens.End, first->FirstChild->Tokens.End);
+    EXPECT_EQ(tree.SourceText(first->Tokens), "\"head\" /* join */ \"tail\"");
+    EXPECT_TRUE(LambdaOwnershipNodes(*first, UnparsedSyntax).empty());
+    EXPECT_EQ(LambdaOwnershipNodes(*lists[0], LambdaBody).size(), 1u);
+    EXPECT_EQ(tree.SourceText(tree.Root().LastChild->Tokens), "int following;");
+}
+
+TEST(Parser, LambdaArgumentFactsStayWithinConditionalAndMalformedLimits)
+{
+    using enum parser::NodeKind;
+    PaddedInput branches("#if CHOICE\nAPPLY([](int value) -> int { return value; });\n"
+        "#else\nvoid declared(int value = [] { return 1; }());\n#endif\nint following;");
+    auto branchTree = parser::Parse(branches.View(), [](parser::ParseError) {});
+    EXPECT_EQ(LambdaOwnershipNodes(branchTree.Root(), LambdaBody).size(), 2u);
+    EXPECT_EQ(LambdaOwnershipNodes(branchTree.Root(), ExpressionStatement).size(), 1u);
+    EXPECT_EQ(LambdaOwnershipNodes(branchTree.Root(), FunctionDeclaration).size(), 1u);
+    EXPECT_EQ(branchTree.SourceText(branchTree.Root().LastChild->Tokens), "int following;");
+    for (const auto source : {
+             "APPLY([](int value) -> int { return value; );\nint following;",
+             "#if CHOICE\nAPPLY([\n#else\n] { return 1; });\n#endif\nint following;" }) {
+        SCOPED_TRACE(source);
+        PaddedInput input(source);
+        size_t errors = 0;
+        auto tree = parser::Parse(input.View(), [&](parser::ParseError) { ++errors; });
+        if (!std::string_view(source).starts_with("#if")) EXPECT_GT(errors, 0u);
+        // Malformed-delimiter Recovery is lexical, not necessarily an AST
+        // marker; the public-pipeline property checks its protected copies.
+        EXPECT_TRUE(LambdaOwnershipNodes(tree.Root(), LambdaBody).empty());
+        EXPECT_TRUE(LambdaOwnershipNodes(tree.Root(), LambdaExpression).empty());
+        for (const auto* branch : LambdaOwnershipNodes(tree.Root(), PreprocessingBranch))
+            for (auto* child = branch->FirstChild; child; child = child->NextSibling) {
+                EXPECT_LE(branch->Tokens.Begin, child->Tokens.Begin);
+                EXPECT_LE(child->Tokens.End, branch->Tokens.End);
+            }
+        EXPECT_LE(tree.Root().Tokens.End, tree.TokenCount());
+    }
+}
+
+TEST(Parser, RecoveredLambdaParametersNeverBindOutsideTheLambda)
+{
+    using enum parser::NodeKind;
+    PaddedInput input("using Type = int; APPLY([](int Type) marker { Type * hidden; }); Type following;");
+    size_t errors = 0;
+    auto tree = parser::Parse(input.View(), [&](parser::ParseError) { ++errors; });
+    EXPECT_GT(errors, 0u);
+    EXPECT_TRUE(LambdaOwnershipNodes(tree.Root(), LambdaBody).empty());
+    EXPECT_EQ(LambdaOwnershipNodes(tree.Root(), ParameterDeclaration).size(), 1u);
+    EXPECT_GT(LambdaOwnershipNodes(tree.Root(), UnparsedSyntax).size(), 0u);
+    EXPECT_EQ(tree.Root().LastChild->Kind, Declaration);
+    EXPECT_EQ(tree.SourceText(tree.Root().LastChild->Tokens), "Type following;");
+}
+
+TEST(Parser, ExplicitTemplateLambdaDefaultsKeepNonfinalOuterParameters)
+{
+    using enum parser::NodeKind;
+    for (const auto expression : {
+             "[]<class T, class U>(T left, U right) { return left; }(1, 2)",
+             "wrap([]<class T, class U>(T left, U right) { return left; })" }) {
+        PaddedInput input("void declared(int value = " + std::string(expression) + ", int other = 0);\nint following;");
+        auto tree = parser::Parse(input.View(), [](parser::ParseError) {});
+        const auto* owner = tree.Root().FirstChild;
+        ASSERT_NE(owner, nullptr);
+        EXPECT_EQ(owner->Kind, FunctionDeclaration);
+        const auto lists = LambdaOwnershipNodes(*owner, ParameterList);
+        const auto outer = std::ranges::find_if(lists, [](const Node* list) { return list->Tokens.Begin == 2; });
+        ASSERT_NE(outer, lists.end());
+        unsigned parameters = 0;
+        for (auto* child = (*outer)->FirstChild; child; child = child->NextSibling)
+            parameters += child->Kind == ParameterDeclaration;
+        EXPECT_EQ(parameters, 2u);
+        EXPECT_EQ(LambdaOwnershipNodes(*owner, LambdaExpression).size(), 1u);
+        EXPECT_EQ(LambdaOwnershipNodes(*owner, LambdaBody).size(), 1u);
+        EXPECT_EQ(LambdaOwnershipNodes(*owner, TemplateParameterList).size(), 1u);
+        for (auto* child = owner->FirstChild; child; child = child->NextSibling)
+            EXPECT_NE(child->Kind, LambdaExpression);
+        EXPECT_EQ(tree.SourceText(tree.Root().LastChild->Tokens), "int following;");
+    }
+}
+
+TEST(Parser, MalformedExplicitTemplatePrefixesStayLocallyUncertain)
+{
+    using enum parser::NodeKind;
+    for (const auto operand : {"::template make<int>(value)", "::ops::template <int>(value)",
+             "::ops::template make<int(value)", "::ops::template", "::ops::template operator"}) {
+        SCOPED_TRACE(operand);
+        PaddedInput input("void use() { APPLY(" + std::string(operand) + ", [] { return 2; }); }\nint following;");
+        auto tree = parser::Parse(input.View(), [](parser::ParseError) {});
+        EXPECT_GT(LambdaOwnershipNodes(tree.Root(), UnparsedSyntax).size(), 0u);
+        EXPECT_EQ(tree.SourceText(tree.Root().LastChild->Tokens), "int following;");
+    }
+}
+
+TEST(Parser, LambdaBodyBindingsUseOnlyDirectParametersNotRequiresLocals)
+{
+    using enum parser::NodeKind;
+    for (const bool actualParameter : {false, true}) {
+        const std::string signature = actualParameter ? "(int Type)" : "";
+        PaddedInput input("using Type = int; using Other = int; APPLY([]<class T>" + signature +
+            " requires requires(int Other) { Other + 1; } { Type * item; Other * local; });\n"
+            "Type following; Other followingOther;");
+        auto tree = parser::Parse(input.View(), [](parser::ParseError) {});
+        const auto lambdas = LambdaOwnershipNodes(tree.Root(), LambdaExpression);
+        ASSERT_EQ(lambdas.size(), 1u);
+        const auto bodies = LambdaOwnershipNodes(*lambdas[0], LambdaBody);
+        ASSERT_EQ(bodies.size(), 1u);
+        const auto* first = bodies[0]->FirstChild;
+        ASSERT_NE(first, nullptr);
+        EXPECT_EQ(first->Kind, actualParameter ? ExpressionStatement : DeclarationStatement);
+        ASSERT_NE(first->NextSibling, nullptr);
+        EXPECT_EQ(first->NextSibling->Kind, DeclarationStatement);
+        EXPECT_EQ(tree.SourceText(first->NextSibling->Tokens), "Other * local;");
+        const auto* outside = tree.Root().LastChild;
+        ASSERT_NE(outside, nullptr);
+        EXPECT_EQ(outside->Kind, Declaration);
+        EXPECT_EQ(tree.SourceText(outside->Tokens), "Other followingOther;");
+        const Node* previous = nullptr;
+        for (auto* child = tree.Root().FirstChild; child && child != outside; child = child->NextSibling)
+            previous = child;
+        ASSERT_NE(previous, nullptr);
+        EXPECT_EQ(previous->Kind, Declaration);
+        EXPECT_EQ(tree.SourceText(previous->Tokens), "Type following;");
+    }
+}
+
+TEST(Parser, ExplicitOperatorTemplateNamesPreserveArgumentAndDefaultBoundaries)
+{
+    using enum parser::NodeKind;
+    const auto checkOuterParameters = [](const parser::SyntaxTree& tree, const std::string& call) {
+        const auto functions = LambdaOwnershipNodes(*tree.Root().FirstChild, FunctionDeclarator);
+        const Node* outer = nullptr;
+        for (const auto* function : functions)
+            if (function->Tokens.Begin == 2) {
+                ASSERT_EQ(outer, nullptr);
+                outer = function->FirstChild;
+            }
+        ASSERT_NE(outer, nullptr);
+        ASSERT_EQ(outer->Kind, ParameterList);
+        std::vector<const Node*> parameters;
+        for (auto* child = outer->FirstChild; child; child = child->NextSibling)
+            if (child->Kind == ParameterDeclaration) parameters.push_back(child);
+        ASSERT_EQ(parameters.size(), 2u);
+        const std::string first = "int value = " + call;
+        constexpr std::string_view second = "int other = [] { return 1; }()";
+        EXPECT_EQ(tree.SourceText(parameters[0]->Tokens), first);
+        EXPECT_EQ(tree.SourceText(parameters[1]->Tokens), second);
+        EXPECT_EQ(parameters[0]->Tokens.Begin, outer->Tokens.Begin + 1);
+        EXPECT_EQ(tree.Token(parameters[0]->Tokens.Begin).Text.Begin, std::string_view("void declared(").size());
+        EXPECT_EQ(tree.Token(parameters[0]->Tokens.End - 1).Text.End, std::string_view("void declared(").size() + first.size());
+        EXPECT_EQ(tree.Token(parameters[1]->Tokens.Begin).Text.Begin, std::string_view("void declared(").size() + first.size() + 2);
+        EXPECT_EQ(parameters[1]->Tokens.End, outer->Tokens.End - 1);
+        EXPECT_EQ(tree.Token(parameters[1]->Tokens.End - 1).Text.End,
+            std::string_view("void declared(").size() + first.size() + 2 + second.size());
+    };
+    for (const auto operand : {"flag ? first, second : third",
+             "flag ? other ? first, second : third, fourth : fifth",
+             "flag ? first : other ? second, third : fourth"}) {
+        SCOPED_TRACE(operand);
+        PaddedInput input("void declared(int value = " + std::string(operand) +
+            ", int other = [] { return 1; }());\nint following;");
+        auto tree = parser::Parse(input.View(), [](parser::ParseError) {});
+        EXPECT_EQ(tree.Root().FirstChild->Kind, FunctionDeclaration);
+        checkOuterParameters(tree, operand);
+    }
+    for (const auto spelling : {"()", "[]", "+", "!", ",", "<<", "<", "->", "->*", "co_await", "new", "new[]", "delete", "delete[]"}) {
+        SCOPED_TRACE(spelling);
+        const std::string call = "object.template operator " + std::string(spelling) + " <int, short>(value)";
+        PaddedInput input("APPLY(7, " + call + ", [] { return 2; });\nint following;");
+        auto tree = parser::Parse(input.View(), [](parser::ParseError) {});
+        const auto* owner = tree.Root().FirstChild;
+        ASSERT_NE(owner, nullptr);
+        ASSERT_EQ(owner->Kind, ExpressionStatement);
+        const auto* expression = owner->FirstChild;
+        ASSERT_NE(expression, nullptr);
+        const Node* list = nullptr;
+        for (auto* child = expression->FirstChild; child; child = child->NextSibling)
+            if (child->Kind == ArgumentList) list = child;
+        ASSERT_NE(list, nullptr);
+        unsigned arguments = 0;
+        const Node* qualified = nullptr;
+        for (auto* child = list->FirstChild; child; child = child->NextSibling)
+            if (child->Kind == Argument) {
+                if (++arguments == 2) qualified = child;
+            }
+        EXPECT_EQ(arguments, 3u);
+        ASSERT_NE(qualified, nullptr);
+        EXPECT_TRUE(LambdaOwnershipNodes(*qualified, UnparsedSyntax).empty());
+        ASSERT_NE(qualified->FirstChild, nullptr);
+        EXPECT_EQ(qualified->FirstChild->Kind, CallExpression);
+        EXPECT_EQ(qualified->FirstChild->Tokens.End, qualified->Tokens.End);
+        EXPECT_EQ(LambdaOwnershipNodes(*owner, LambdaBody).size(), 1u);
+        EXPECT_TRUE(LambdaOwnershipNodes(*owner, StructuredBinding).empty());
+        EXPECT_TRUE(LambdaOwnershipNodes(*owner, CastExpression).empty());
+        EXPECT_EQ(tree.SourceText(tree.Root().LastChild->Tokens), "int following;");
+
+        PaddedInput declaration("void declared(int value = " + call + ", int other = [] { return 1; }());\nint following;");
+        auto declared = parser::Parse(declaration.View(), [](parser::ParseError) {});
+        EXPECT_EQ(declared.Root().FirstChild->Kind, FunctionDeclaration);
+        checkOuterParameters(declared, call);
+        EXPECT_EQ(LambdaOwnershipNodes(*declared.Root().FirstChild, LambdaBody).size(), 1u);
+        EXPECT_TRUE(LambdaOwnershipNodes(*declared.Root().FirstChild, StructuredBinding).empty());
+        EXPECT_EQ(declared.SourceText(declared.Root().LastChild->Tokens), "int following;");
+    }
+    for (const auto spelling : {",", "<"}) {
+        SCOPED_TRACE(spelling);
+        const std::string call = "make<Box<object.template operator " +
+            std::string(spelling) + " <int>(value), int>, int>()";
+        PaddedInput input("APPLY(" + call + ", [] { return 2; });\nint following;");
+        auto tree = parser::Parse(input.View(), [](parser::ParseError) {});
+        EXPECT_EQ(tree.Root().FirstChild->Kind, ExpressionStatement);
+        EXPECT_EQ(LambdaOwnershipNodes(*tree.Root().FirstChild, LambdaBody).size(), 1u);
+        EXPECT_TRUE(LambdaOwnershipNodes(*tree.Root().FirstChild, StructuredBinding).empty());
+        EXPECT_EQ(tree.SourceText(tree.Root().LastChild->Tokens), "int following;");
+        PaddedInput declaration("void declared(int value = " + call +
+            ", int other = [] { return 1; }());\nint following;");
+        auto declared = parser::Parse(declaration.View(), [](parser::ParseError) {});
+        EXPECT_EQ(declared.Root().FirstChild->Kind, FunctionDeclaration);
+        checkOuterParameters(declared, call);
+        EXPECT_EQ(LambdaOwnershipNodes(*declared.Root().FirstChild, LambdaBody).size(), 1u);
+        EXPECT_EQ(declared.SourceText(declared.Root().LastChild->Tokens), "int following;");
+    }
+    {
+        PaddedInput input("void use() { APPLY(make<Box<object.template operator ? <int>(value), int>, int>(), [] { return 2; }); }\nint following;");
+        auto tree = parser::Parse(input.View(), [](parser::ParseError) {});
+        EXPECT_FALSE(LambdaOwnershipNodes(tree.Root(), UnparsedSyntax).empty());
+        EXPECT_TRUE(LambdaOwnershipNodes(tree.Root(), StructuredBinding).empty());
+        EXPECT_LE(LambdaOwnershipNodes(tree.Root(), LambdaBody).size(), 1u);
+        EXPECT_EQ(tree.SourceText(tree.Root().LastChild->Tokens), "int following;");
+    }
+    for (const auto spelling : {"(int)", "[index]", "?", ".", ".*", "sizeof", ""}) {
+        SCOPED_TRACE(spelling);
+        PaddedInput input("void use() { APPLY(object.template operator " + std::string(spelling) +
+            " <int>(value), [] { return 2; }); }\nint following;");
+        auto tree = parser::Parse(input.View(), [](parser::ParseError) {});
+        EXPECT_GT(LambdaOwnershipNodes(tree.Root(), UnparsedSyntax).size(), 0u);
+        const auto bodies = LambdaOwnershipNodes(tree.Root(), LambdaBody);
+        EXPECT_LE(bodies.size(), 1u);
+        for (const auto* body : bodies) EXPECT_EQ(tree.SourceText(body->Tokens), "{ return 2; }");
+        EXPECT_EQ(tree.SourceText(tree.Root().LastChild->Tokens), "int following;");
+    }
+}
+
 TEST(Parser, NamelessDirectBodyIsBoundedRecoveryWithoutInventedScope)
 {
     for (const auto candidate : {
@@ -1032,6 +1636,8 @@ INSTANTIATE_TEST_SUITE_P(
         GoldenCase{"requires_clause_boundaries"},
         GoldenCase{"requires_return_boundaries"},
         GoldenCase{"unhinted_body_recovery"},
+        GoldenCase{"lambda_argument_ownership"},
+        GoldenCase{"lambda_argument_tail_recovery"},
         GoldenCase{"statements"},
         GoldenCase{"name_classification"},
         GoldenCase{"ambiguity"},

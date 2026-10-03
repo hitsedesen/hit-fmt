@@ -573,6 +573,8 @@ std::vector<FormatCase> FormatCases()
         "composes-spacing.input.cpp"});
     AddCases(cases, data / "qualified-record", {"canonical", "ytsaurus"});
     AddCases(cases, data / "unhinted-body-recovery", {"canonical"});
+    AddCases(cases, data / "lambda-argument-ownership", {"canonical", "preserve"});
+    AddCases(cases, data / "lambda-argument-tail-recovery", {"canonical"});
     const auto hunks = data / "changed-hunks";
     cases.push_back({hunks / "basic", "call", "input.cpp",
         "style", {{8, 8}}});

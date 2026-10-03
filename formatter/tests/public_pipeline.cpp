@@ -210,6 +210,100 @@ TEST(PublicPipeline, StyleCheckpointKeepsIndependentGapPermissions)
     }
 }
 
+TEST(PublicPipeline, LambdaArgumentOwnershipMapsProtectionAndIdempotence)
+{
+    for (const auto source : {
+             "struct Registry {}; const Registry entry(7, [] { return 2; });\nint   following;\n",
+             "APPLY(7, ::ops::combine(::ops::make()), [](const auto& v) -> std::string { return v; });\nint   following;\n",
+             "APPLY([]() -> decltype(Item{}) { return Item{}; });\nint   following;\n",
+             "void use() { consume(flag ? first, second : third, [] { return 2; }); }\nint   following;\n",
+             "void use() { consume(flag ? other ? first, second : third, fourth : fifth, [] { return 2; }); }\nint   following;\n",
+             "APPLY([]<class T, class U>(T value) requires Check<T{}> { return value; });\nint   following;\n",
+             "APPLY([] marker(int hidden) { return hidden; }, [] { return 2; });\nint   following;\n",
+             "APPLY([]);\nint   following;\n" }) {
+        SCOPED_TRACE(source);
+        for (const auto bodies : {formatter::CategoryLayout::Canonical, formatter::CategoryLayout::Preserve}) {
+            auto style = Canonical();
+            style.LambdaBodiesLayout = bodies;
+            const formatter::PreparedFormat prepared(style);
+            ASSERT_NO_THROW(([&] {
+                const auto result = FormatInput(source, prepared);
+                CheckIdentities(source, result);
+                EXPECT_EQ(FormatInput(result.Text, prepared).Text, result.Text);
+                const auto end = std::string_view(source).find("\n");
+                const std::array<parser::SourceRange, 1> scope{{{0, static_cast<parser::SourceOffset>(end)}}};
+                formatter::FormatRequest request{.SourceMap = true};
+                request.EditScope = scope;
+                const auto limited = FormatInput(source, prepared, request);
+                CheckExcludedCopies(source, limited, scope);
+                EXPECT_TRUE(limited.Text.ends_with("\nint   following;\n"));
+            }()));
+        }
+    }
+}
+
+TEST(PublicPipeline, UncertainLambdaArgumentsRetainRecoveryProtection)
+{
+    for (const auto source : {
+             "APPLY([] marker(int hidden) { return hidden; }, [] { return 2; });\nint following;\n",
+             "APPLY([]);\nint following;\n",
+             "APPLY(::ops::, [] { return 2; });\nint following;\n",
+             "APPLY(char**, [] { return 2; });\nint following;\n",
+             "APPLY(*, [] { return 2; });\nint following;\n",
+             "APPLY(value + *, [] { return 2; });\nint following;\n",
+             "void use() { consume(flag ? first, second, [] { return 2; }); }\nint following;\n",
+             "APPLY([]<class T, class U>(T value) requires Check<T{} { return value; });\nint following;\n",
+             "#if CHOICE\nAPPLY([\n#else\n] { return 1; });\n#endif\nint following;\n" }) {
+        SCOPED_TRACE(source);
+        Input input(source);
+        const auto tree = parser::Parse(input.View(), [](parser::ParseError) {});
+        std::pmr::monotonic_buffer_resource memory;
+        std::pmr::monotonic_buffer_resource scratch;
+        const auto analysis = formatter::BuildSourceAnalysis(tree, {}, memory, scratch);
+        bool recovered = false;
+        for (const auto& region : analysis.Regions())
+            recovered |= region.Status == formatter::RegionStatus::Recovery ||
+                region.Status == formatter::RegionStatus::RecoveryAndAmbiguous;
+        EXPECT_TRUE(recovered);
+        const formatter::PreparedFormat prepared(Canonical());
+        const auto result = FormatInput(source, prepared);
+        CheckIdentities(source, result);
+        std::vector<unsigned> copies(std::string_view(source).size(), 0);
+        for (const auto& map : result.Map)
+            if (map.Exact && map.HasOriginal)
+                for (auto i = map.Original.Begin; i < map.Original.End; ++i) ++copies[i];
+        size_t protectedRecoveryBytes = 0;
+        for (const auto& range : analysis.Protection()) {
+            const auto mask = static_cast<unsigned>(range.Reasons);
+            if ((mask & static_cast<unsigned>(formatter::ProtectionReason::Recovery)) != 0)
+                for (auto i = range.Source.Begin; i < range.Source.End; ++i) {
+                    ++protectedRecoveryBytes;
+                    EXPECT_EQ(copies[i], 1u) << i;
+                }
+        }
+        if (std::string_view(source) == "APPLY([]);\nint following;\n") {
+            std::vector<const parser::Node*> pending{&tree.Root()};
+            unsigned missing = 0;
+            while (!pending.empty()) {
+                const auto* node = pending.back();
+                pending.pop_back();
+                if (node->Kind == parser::NodeKind::MissingToken) {
+                    ++missing;
+                    EXPECT_TRUE(node->Tokens.Empty());
+                }
+                EXPECT_NE(node->Kind, parser::NodeKind::LambdaBody);
+                EXPECT_NE(node->Kind, parser::NodeKind::ParameterList);
+                EXPECT_NE(node->Kind, parser::NodeKind::ParameterDeclaration);
+                for (auto* child = node->FirstChild; child; child = child->NextSibling)
+                    pending.push_back(child);
+            }
+            EXPECT_GT(missing, 0u);
+        } else {
+            EXPECT_GT(protectedRecoveryBytes, 0u);
+        }
+    }
+}
+
 TEST(PublicPipeline, ControlSeparatorsRespectIndependentBodyAndHeaderPolicies)
 {
     for (auto headers : {formatter::CategoryLayout::Preserve,

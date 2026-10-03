@@ -109,7 +109,7 @@ to avoid matching similarly named files or directories.
 ### Experimental configs and limitations
 
 Use explicit migrated configurations; legacy keys have no compatibility
-aliases. See [the migration guide](docs/config-migration.md). Google and
+aliases. Use `--help-config` for option guidance. Google and
 LLVM examples use the migrated schema. Use the canonical YTsaurus example:
 
 ```sh
