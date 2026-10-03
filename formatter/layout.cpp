@@ -76,6 +76,16 @@ bool Multiline(std::string_view text)
     return text.find_first_of("\r\n") != std::string_view::npos;
 }
 
+// LF offsets identify complete authorized atoms. Contracting CRLF must not
+// pair its original bare-CR predecessor with the surviving LF.
+bool ChangesWhitespaceAtom(std::string_view source, std::size_t lf,
+    bool targetCRLF)
+{
+    const bool crlf = lf && source[lf - 1] == '\r';
+    return crlf != targetCRLF &&
+        (!crlf || lf < 2 || source[lf - 2] != '\r');
+}
+
 bool ValidGapNewline(GapNewline value)
 {
     return value == GapNewline::Inherit || value == GapNewline::LF ||
@@ -272,6 +282,48 @@ void Document::SourceText(std::uint32_t begin,
     Add(node);
 }
 
+void Document::SourceWhitespace(std::uint32_t begin, std::uint32_t end,
+    Newline ending)
+{
+    if (ending != Newline::LF && ending != Newline::CRLF) {
+        Fail(Error::InvalidPolicy);
+        return;
+    }
+    if (begin == InvalidId || end == InvalidId ||
+        !CheckOrigin({begin, end, NoIdentity})) {
+        Fail(Error::InvalidSourceRange);
+        return;
+    }
+    const auto text = Source_.substr(begin, end - begin);
+    if (text.find_first_not_of(" \t\r\n\f\v") != std::string_view::npos ||
+        (begin && begin < end && Source_[begin - 1] == '\r' &&
+            Source_[begin] == '\n') ||
+        (begin < end && end < Source_.size() && Source_[end - 1] == '\r' &&
+            Source_[end] == '\n')) {
+        Fail(Error::InvalidSourceRange);
+        return;
+    }
+    std::uint32_t changed = 0;
+    for (std::size_t i = 0; i < text.size(); ++i) {
+        if (text[i] == '\n') {
+            changed += ChangesWhitespaceAtom(Source_, begin + i,
+                ending == Newline::CRLF);
+        }
+    }
+    if (text.empty()) {
+        SourceText(begin, end, NoIdentity, true);
+        return;
+    }
+    Node node;
+    node.Type = Kind::SourceWhitespace;
+    node.FlatText = text;
+    node.Origin = {begin, end, NoIdentity};
+    node.FlatGap.LineEnding = ending == Newline::LF
+        ? GapNewline::LF : GapNewline::CRLF;
+    node.ChangedNewlines = changed;
+    Add(node);
+}
+
 void Document::Verbatim(std::string_view borrowed, Provenance origin)
 {
     if (!CheckOrigin(origin)) {
@@ -387,6 +439,7 @@ void Document::ExpressionLine()
     }
     const auto &previous = Nodes_.back();
     if ((previous.Type != Kind::Verbatim &&
+         previous.Type != Kind::SourceWhitespace &&
          previous.Type != Kind::SourceLineIndent) ||
         previous.Owner != Open_.back() ||
         previous.Origin.Identity != NoIdentity ||
@@ -524,6 +577,16 @@ Result Document::Render(
             node.Type != Kind::Anchor && node.Type != Kind::ExpressionLine)
         {
             ++mappingCount;
+            if (node.Type == Kind::SourceWhitespace) {
+                // At most one copied run on either side of each changed atom.
+                if (mappingCount > result.Map.max_size() ||
+                    node.ChangedNewlines >
+                        (result.Map.max_size() - mappingCount) / 2) {
+                    result.State = {Error::TooLarge, static_cast<std::uint32_t>(i)};
+                    return result;
+                }
+                mappingCount += std::size_t(node.ChangedNewlines) * 2;
+            }
             if (node.Type == Kind::SourceLineIndent ||
                 ((node.Type == Kind::Gap || node.Type == Kind::
                     ConditionalGap) &&
@@ -571,7 +634,8 @@ Result Document::Render(
             summaries.pop_back();
         } else if (node.Type == Kind::Text || node.Type == Kind::Verbatim ||
                    node.Type == Kind::ConditionalText ||
-                   node.Type == Kind::SourceLineIndent)
+                   node.Type == Kind::SourceLineIndent ||
+                   node.Type == Kind::SourceWhitespace)
         {
             // Fixed prefixes establish shape like Verbatim, but never publish
             // lastBreak/ownedBreak. Their indentation follows a guaranteed
@@ -812,6 +876,67 @@ Result Document::Render(
         bool exact = node.Exact;
         const bool ownerBroken =
             node.Owner != InvalidId && result.Broken[node.Owner];
+        if (node.Type == Kind::SourceWhitespace) {
+            const bool targetCRLF = node.FlatGap.LineEnding == GapNewline::CRLF;
+            const auto text = node.FlatText;
+            if (text.size() > result.Text.max_size() ||
+                (targetCRLF && node.ChangedNewlines >
+                    result.Text.max_size() - text.size())) {
+                result.State = {Error::TooLarge, static_cast<std::uint32_t>(i)};
+                return result;
+            }
+            const auto size = targetCRLF
+                ? text.size() + std::size_t(node.ChangedNewlines)
+                : text.size(); // Incoming boundaries may suppress contractions.
+            if (size > result.Text.max_size() - result.Text.size()) {
+                result.State = {Error::TooLarge, static_cast<std::uint32_t>(i)};
+                return result;
+            }
+            std::size_t run = 0;
+            const auto copy = [&](std::size_t end) {
+                if (run == end) return;
+                const auto begin = result.Text.size();
+                result.Text.append(text.substr(run, end - run));
+                if (policy.SourceMap) {
+                    result.Map.push_back({begin, result.Text.size(),
+                        {node.Origin.Begin + static_cast<std::uint32_t>(run),
+                         node.Origin.Begin + static_cast<std::uint32_t>(end),
+                         NoIdentity}, true, true});
+                }
+            };
+            for (std::size_t cursor = 0; cursor < text.size(); ++cursor) {
+                if (text[cursor] != '\n') continue;
+                const bool crlf = cursor && text[cursor - 1] == '\r';
+                const auto atom = cursor - (crlf ? 1 : 0);
+                const bool incomingCR = atom > run
+                    ? text[atom - 1] == '\r'
+                    : !result.Text.empty() && result.Text.back() == '\r';
+                if (!crlf && !targetCRLF && incomingCR) {
+                    // The producer omitted a necessary original separator.
+                    // This slice has no authority to invent or recover it.
+                    result.State = {Error::InvalidSourceRange,
+                        static_cast<std::uint32_t>(i)};
+                    return result;
+                }
+                if (!ChangesWhitespaceAtom(Source_, node.Origin.Begin + cursor,
+                        targetCRLF) || (crlf && incomingCR)) continue;
+                copy(atom);
+                const auto begin = result.Text.size();
+                result.Text.append(targetCRLF ? "\r\n" : "\n");
+                if (policy.SourceMap) {
+                    result.Map.push_back({begin, result.Text.size(),
+                        {node.Origin.Begin + static_cast<std::uint32_t>(atom),
+                         node.Origin.Begin + static_cast<std::uint32_t>(cursor + 1),
+                         NoIdentity}, false, false});
+                }
+                run = cursor + 1;
+            }
+            copy(text.size());
+            // Preserve the source geometry used by fixed-prefix summaries;
+            // spelling is not a new layout or owned-break decision.
+            advance(text);
+            continue;
+        }
         if (node.Type == Kind::Text || node.Type == Kind::Verbatim ||
             node.Type == Kind::ConditionalText)
         {

@@ -2003,4 +2003,136 @@ TEST(GroupLayout, SaturatesWidthsWithoutRescanningExponentialFlatExpansion)
     EXPECT_TRUE(output.Text.ends_with("leaf"));
 }
 
+TEST(GroupLayout, SourceWhitespaceStreamsAtomsWithoutOwningTopologyOrTokenRights)
+{
+    const std::string source = " \n\t\r\n\r \n";
+    Document document(source);
+    const auto group = document.BeginGroup({GroupMode::Fill, 0, true});
+    document.SourceWhitespace(0, source.size(), Newline::CRLF);
+    document.EndGroup(group);
+    ASSERT_TRUE(document.Seal());
+    const auto result = document.Render();
+    ASSERT_TRUE(result.State);
+    EXPECT_EQ(result.Text, " \r\n\t\r\n\r \r\n");
+    EXPECT_EQ(result.Broken[group], 1u); // fixed multiline, not an owned break.
+    unsigned changed = 0;
+    for (const auto& map : result.Map) {
+        const auto before = std::string_view(source).substr(map.Source.Begin,
+            map.Source.End - map.Source.Begin);
+        const auto after = std::string_view(result.Text).substr(map.OutputBegin,
+            map.OutputEnd - map.OutputBegin);
+        if (map.Exact) EXPECT_EQ(before, after);
+        else {
+            EXPECT_EQ(before, "\n");
+            EXPECT_EQ(after, "\r\n");
+            EXPECT_FALSE(map.Protected);
+            ++changed;
+        }
+    }
+    EXPECT_EQ(changed, 2u);
+    // Exercise output expansion and reservation past uint16 bounds without
+    // atom nodes, per-atom strings or indentation/topology rebuilding.
+    const std::string many(70000, '\n');
+    Document expanded(many);
+    expanded.SourceWhitespace(0, many.size(), Newline::CRLF);
+    ASSERT_TRUE(expanded.Seal());
+    const auto large = expanded.Render();
+    ASSERT_TRUE(large.State);
+    ASSERT_EQ(large.Text.size(), 140000u);
+    ASSERT_EQ(large.Map.size(), 70000u);
+    EXPECT_EQ(large.Map.back().OutputEnd, 140000u);
+    EXPECT_EQ(large.Map.back().Source.End, 70000u);
+    for (const auto range : {std::pair{0u, 1u}, std::pair{1u, 2u}}) {
+        Document half("\r\n");
+        half.SourceWhitespace(range.first, range.second, Newline::LF);
+        EXPECT_EQ(half.Seal().Code, Error::InvalidSourceRange);
+    }
+    Document token("text\n");
+    token.SourceWhitespace(0, 5, Newline::CRLF);
+    EXPECT_EQ(token.Seal().Code, Error::InvalidSourceRange);
+}
+
+TEST(GroupLayout, SourceWhitespaceRetainsBareCRAtSourceAndEmittedBoundaries)
+{
+    for (const std::string source : {"\r\r\n", "\r \r\n"}) {
+        Document document(source);
+        document.SourceText(0, 1, NoIdentity, true);
+        // Second case counts N=1 from source but emits M=0 after omitted space.
+        document.SourceWhitespace(source.size() - 2, source.size(), Newline::LF);
+        ASSERT_TRUE(document.Seal());
+        for (const bool maps : {false, true}) {
+            const auto result = document.Render({.SourceMap = maps});
+            ASSERT_TRUE(result.State);
+            EXPECT_EQ(result.Text, "\r\r\n");
+            if (maps) {
+                ASSERT_EQ(result.Map.size(), 2u);
+                EXPECT_TRUE(result.Map[1].Exact);
+                EXPECT_EQ(result.Map[1].Source.Begin, source.size() - 2);
+                EXPECT_EQ(result.Map[1].Source.End, source.size());
+                EXPECT_EQ(result.Map[1].OutputEnd, 3u);
+            }
+        }
+    }
+    Document separated("\r \r\n");
+    separated.SourceText(0, 2, NoIdentity, true);
+    separated.SourceWhitespace(2, 4, Newline::LF);
+    ASSERT_TRUE(separated.Seal());
+    const auto converted = separated.Render();
+    ASSERT_TRUE(converted.State);
+    EXPECT_EQ(converted.Text, "\r \n");
+    ASSERT_EQ(converted.Map.size(), 2u);
+    EXPECT_FALSE(converted.Map[1].Exact);
+}
+
+TEST(GroupLayout, SourceWhitespaceZeroChangeLFStillRequiresSafeIncomingBoundary)
+{
+    for (const bool copySeparator : {false, true}) {
+        Document document("\r \n");
+        document.SourceText(0, copySeparator ? 2 : 1, NoIdentity, true);
+        document.SourceWhitespace(2, 3, Newline::LF);
+        ASSERT_TRUE(document.Seal());
+        const auto result = document.Render();
+        if (copySeparator) {
+            ASSERT_TRUE(result.State);
+            EXPECT_EQ(result.Text, "\r \n");
+            ASSERT_EQ(result.Map.size(), 2u);
+            EXPECT_TRUE(result.Map[1].Exact);
+        } else {
+            EXPECT_EQ(result.State.Code, Error::InvalidSourceRange);
+        }
+    }
+}
+
+TEST(GroupLayout, SourceWhitespaceAlternatingRetentionKeepsLargeBoundsAndExactMaps)
+{
+    std::string source;
+    for (unsigned i = 0; i < 35000; ++i) source += "\r\r\n \r\n";
+    Document document(source);
+    document.SourceWhitespace(0, source.size(), Newline::LF);
+    ASSERT_TRUE(document.Seal());
+    for (const bool maps : {false, true}) {
+        const auto result = document.Render({.SourceMap = maps});
+        ASSERT_TRUE(result.State);
+        EXPECT_EQ(result.Text.size(), 175000u);
+        if (maps) {
+            ASSERT_EQ(result.Map.size(), 70000u);
+            unsigned changed = 0;
+            for (const auto& map : result.Map) {
+                EXPECT_LE(map.OutputEnd, result.Text.size());
+                const auto before = std::string_view(source).substr(
+                    map.Source.Begin, map.Source.End - map.Source.Begin);
+                const auto after = std::string_view(result.Text).substr(
+                    map.OutputBegin, map.OutputEnd - map.OutputBegin);
+                if (map.Exact) EXPECT_EQ(before, after);
+                else {
+                    EXPECT_EQ(before, "\r\n");
+                    EXPECT_EQ(after, "\n");
+                    ++changed;
+                }
+            }
+            EXPECT_EQ(changed, 35000u);
+        }
+    }
+}
+
 } // namespace

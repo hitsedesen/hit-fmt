@@ -161,6 +161,14 @@ struct IncludePolicy
     IncludeGrouping Grouping;
 };
 
+// An engaged outer option with no Count means explicit Preserve, not omission.
+struct TrailingCommentSpaceSetting
+{
+    std::optional<std::size_t> Count;
+    friend bool operator==(const TrailingCommentSpaceSetting&,
+        const TrailingCommentSpaceSetting&) = default;
+};
+
 struct GapPolicies
 {
 #define FORMATTER_GAP_FIELD(type, name, initial) type name = initial;
@@ -177,6 +185,7 @@ struct CompiledPolicies
     const std::size_t ColumnLimit;
     const WidthDiagnosticPolicy WidthDiagnostics;
     const formatter::IndentationKind IndentationKind;
+    const formatter::LineEnding LineEnding;
     const formatter::TrailingWhitespace TrailingWhitespace;
     const formatter::PointerReferenceDeclaratorLocation
         PointerReferenceDeclaratorLocation;
@@ -199,6 +208,7 @@ struct CompiledPolicies
     // brokenness or closer placement from source comma presence.
     const TrailingCommaPolicy InitializersTrailingComma;
     const GapPolicies Spacing;
+    const std::optional<TrailingCommentSpaceSetting> TrailingCommentSpaces;
     // Enum commas are unchanged; InitializersTrailingComma never applies here.
     const ListPolicy Enumerators;
     // Syntax-owned exact counts/cap, not a post-layout cleanup stage.

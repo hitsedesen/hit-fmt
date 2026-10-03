@@ -389,7 +389,7 @@ independent safety contract, not a fourth layout annotation feature.
   it never accepts an old option.
 
 `CompiledPolicies` exposes const Layout, IndentWidth, ColumnLimit,
-WidthDiagnostics, IndentationKind, TrailingWhitespace,
+WidthDiagnostics, IndentationKind, LineEnding, TrailingWhitespace,
 PointerReferenceDeclaratorLocation; IndentationControls Indentation;
 ListPolicy Calls/Parameters/Initializers/Captures/ControlHeaders;
 HeaderListPolicy BaseLists/ConstructorLists; ExpressionPolicy Expressions;
@@ -497,3 +497,54 @@ IntegerValues("ColumnLimit") help to `0 (unlimited) or 1..10000`, and document i
 no-width-driven-wrap/no-width-diagnostic meaning. Only then apply the separately
 approved zero-invalid witness disposition (10001) and real mandatory-break,
 saturation and finite/zero behavior coverage. This stage does not implement 18.
+
+### Whitespace newline spelling
+
+`LineEnding = Preserve | LF | CRLF` defaults to `Preserve`, the exact legacy
+convention: generated endings follow the first original LF (CRLF if preceded
+by CR; LF if absent), while copied gaps retain their spelling. It is not a
+uniformity guarantee. Explicit LF/CRLF selects only whole editable whitespace
+newline atoms, including retained prefixes and authorized existing EOF atoms,
+independently of layout. It never adds a missing final newline or changes
+newline count. Bare CR is not an ending. In explicit modes, original gap-owned
+bare CR stays exact and cannot become paired with LF on repeated formatting.
+Necessary original horizontal separators and unsafe-to-contract CRLF atoms are
+retained. Such gaps keep their source topology and indentation ahead of spacing,
+blank-line caps or canonical layout demands; safe later atoms can still convert.
+Null removal retains an original immediately following separator, and NEW
+namespace comments do not capture whitespace bare CR at EOF. Existing comment
+body ownership and default Preserve behavior are unchanged.
+
+Tokens, literals, comments, directive physical atoms (even moved includes),
+off/recovery/protected bytes and inaccessible parts of gaps stay exact. A
+token-owned CR and its following gap LF are an indivisible ineligible boundary.
+The existing line-comment LF guard also retains an initial LF when selecting
+CRLF, avoiding a newly token-owned CR. Later authorized blank-line atoms can
+still change. Existing partial-gap permissions grant only their original
+horizontal rights, not newline conversion. Mixed output is therefore possible;
+this is not a whole-file Unix-ending conformance check or output cleanup.
+
+When every existing byte of a nonempty safe gap is selected, newline spelling
+can replace an atom ending at scope End/EOF without owning an insertion there.
+That distinction grants no trimming, indentation, topology or empty-edge rights;
+partly selected gaps still receive only their existing horizontal permissions.
+
+### Ordinary trailing-comment counts
+
+`TrailingCommentSpaces` is optional. Omission retains `TrailingCommentSpacing`
+(including Generated* owning-category behavior) and its historical coupling to
+namespace comment generation. Explicit `Preserve` masks that ordinary spacing
+preference; an integer `0..10000` instead requests exactly that many ASCII
+spaces in an eligible same-line horizontal gap before ordinary `//`.
+Lexical separation, protection, uncertainty and whole-gap scope authority win;
+zero therefore cannot join a division slash to a comment. Preserve retains
+source horizontal spelling where topology permits, with existing safe fallback.
+
+Either explicit form excludes actual namespace-owned closing-comment gaps,
+including when `NamespaceComments = Preserve`. Namespace generation/fix uses
+`NamespaceCommentSpaces` independently. Comment prose containing `namespace`
+is not namespace ownership. Own-line comments, block comments, directives and
+consecutive comments are outside this option. It does not align, wrap, move or
+rewrite any comment/token, change line endings, or silently clamp overwidth.
+Generated default configuration comments out this key rather than activating
+Preserve.

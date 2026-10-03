@@ -142,6 +142,20 @@ void AddCases(
 std::vector<FormatCase> FormatCases()
 {
     std::vector<FormatCase> cases;
+    for (const auto* name : {"lf", "crlf", "legacy", "canonical-lf",
+                            "canonical-crlf", "opaque-lf", "boundary-lf", "boundary-crlf",
+                            "boundary-nulls", "boundary-namespace-lf",
+                            "boundary-namespace-crlf", "composition-control-lf"})
+        cases.push_back({std::filesystem::path(FORMATTER_TESTDATA_DIR) /
+            "../line-endings", name, std::string(name) + ".input.cpp"});
+    AddCases(cases,
+        std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../style-checkpoint",
+        {"lf", "crlf"});
+    AddCases(cases,
+        std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../trailing-comment-count",
+        {"preserve", "zero", "one", "two"});
+    cases.push_back({std::filesystem::path(FORMATTER_TESTDATA_DIR) /
+        "../trailing-comment-count", "independent", "namespace.input.cpp"});
     AddCases(cases,
         std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../standalone-comment-gaps",
         {"preserve", "before", "after", "zero", "canonical"});
@@ -263,6 +277,7 @@ std::vector<FormatCase> FormatCases()
         "../chained-calls";
     AddCases(cases, chains, {"always", "continuation", "preserve"});
     cases.push_back({chains, "overflow", "overflow.input.cpp"});
+    cases.push_back({chains, "structural-base", "structural-base.input.cpp"});
     AddCases(cases, std::filesystem::path(FORMATTER_TESTDATA_DIR) /
         "../separator-length", {"normalize", "preserve"});
     AddCases(cases, std::filesystem::path(FORMATTER_TESTDATA_DIR) /

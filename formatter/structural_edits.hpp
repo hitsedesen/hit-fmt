@@ -47,6 +47,8 @@ struct StructuralOptions
     bool RemoveNullStatements = false;
     bool RemoveNullDeclarations = false;
     bool SortIncludes = false;
+    // Explicit ending selection retains original whitespace bare-CR membership.
+    bool PreserveBareCR = false;
 };
 using StructuralActionId = uint32_t;
 inline constexpr StructuralActionId NoStructuralAction = UINT32_MAX;
@@ -176,6 +178,7 @@ struct NamespaceCommentOptions
     // Zero disables exemption. Fix/Remove of existing comments ignores it.
     size_t ShortNamespaceLines = 0;
     size_t Spaces = 1; // 0..32, after the caller resolves trailing gap policy
+    bool PreserveBareCR = false; // Do not capture EOF whitespace in a NEW comment.
 };
 struct NamespaceIdentity
 {

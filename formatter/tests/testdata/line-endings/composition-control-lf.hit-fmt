@@ -1,0 +1,5 @@
+LineEnding = LF
+Layout = Preserve
+ControlHeadersLayout = Canonical
+ControlBracePlacement = Attached
+ColumnLimit = 10000

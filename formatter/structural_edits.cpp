@@ -581,6 +581,12 @@ StructuralPlan PlanStructuralEdits(const parser::SyntaxTree& tree,
                        (safety.Gaps()[tokens.End].Preserve &&
                            safety.Gaps()[tokens.End].Source.Empty())) {
                 Skip(plan, action, tokens, StructuralSkip::Protected);
+            } else if (options.PreserveBareCR &&
+                safety.Gaps()[token].HasBareCR &&
+                safety.Gaps()[token].Original.ends_with('\r')) {
+                // Retain the first original separator of a zero-gap deletion
+                // chain before admission: no cancellation or ID remapping.
+                Skip(plan, action, tokens, StructuralSkip::RequiredBody);
             } else {
                 auto id = Operation(plan, action, tokens);
                 // Token-only removal cannot take neighboring comments or gaps.
@@ -960,7 +966,9 @@ StructuralPlan ResolveNamespaceComments(const parser::SyntaxTree& original,
                     ? lines[closeLine + 1] - 1
                     : static_cast<parser::SourceOffset>(output.size());
             auto suffix = output.substr(begin, lineEnd - begin);
-            if (suffix.ends_with('\r'))
+            if (suffix.ends_with('\r') &&
+                (!plan.Options.PreserveBareCR ||
+                    (lineEnd < output.size() && output[lineEnd] == '\n')))
                 suffix.remove_suffix(1);
             if (!Horizontal(suffix)) {
                 skip(StructuralSkip::FollowingText);

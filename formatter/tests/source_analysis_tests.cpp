@@ -1296,4 +1296,61 @@ TEST(SourceAnalysis, IterativeClassificationAndScratchLifetime)
     }
     EXPECT_EQ(scopedFile.Calls + scopedScratch.Calls, calls);
 }
+TEST(SourceAnalysis, NewlineSpellingOwnsFullExistingBytesNotEndInsertions)
+{
+    Input input("int a;\r\nint b;\r\n");
+    auto tree = Parse(input);
+    std::pmr::monotonic_buffer_resource memory;
+    const std::array selected{parser::SourceRange{6, 8}, parser::SourceRange{14, 16}};
+    auto safety = Analyze(tree, memory, {.EditScope = selected});
+    for (formatter::GapId i = 0; i < safety.Gaps().size(); ++i) {
+        const auto& gap = safety.Gaps()[i];
+        if (gap.Original == "\r\n") {
+            EXPECT_TRUE(safety.CanSpellGapNewlines(i));
+            EXPECT_TRUE(gap.Preserve);
+            EXPECT_FALSE(safety.CanReplaceGap(i, "\n"));
+            EXPECT_TRUE(safety.IntersectsImmutable({gap.Source.End, gap.Source.End}));
+        } else EXPECT_FALSE(safety.CanSpellGapNewlines(i));
+    }
+    EXPECT_FALSE(safety.CanSpellGapNewlines(UINT32_MAX));
+    const std::array half{parser::SourceRange{6, 7}, parser::SourceRange{15, 16}};
+    auto partial = Analyze(tree, memory, {.EditScope = half});
+    for (formatter::GapId i = 0; i < partial.Gaps().size(); ++i)
+        EXPECT_FALSE(partial.CanSpellGapNewlines(i));
+    const std::array immutable{parser::SourceRange{7, 8}};
+    auto protectedGap = Analyze(tree, memory,
+        {.ImmutableRanges = immutable, .EditScope = selected});
+    EXPECT_FALSE(protectedGap.CanSpellGapNewlines(3));
+    auto empty = Analyze(tree, memory,
+        {.EditScope = std::span<const parser::SourceRange>{}});
+    for (formatter::GapId i = 0; i < empty.Gaps().size(); ++i)
+        EXPECT_FALSE(empty.CanSpellGapNewlines(i));
+    Input splice("int x=1+\\\r\n 2;\n");
+    auto spliceTree = Parse(splice);
+    auto intrinsic = Analyze(spliceTree, memory);
+    for (formatter::GapId i = 0; i < intrinsic.Gaps().size(); ++i)
+        if (intrinsic.Gaps()[i].IntrinsicPreserve)
+            EXPECT_FALSE(intrinsic.CanSpellGapNewlines(i));
+    const std::string recoverySource =
+        "template<class T> requires requires(T v) { v.touch(); } @\r\n"
+        "int inspect(T value) { return 1; }\r\n";
+    Input recovery(recoverySource);
+    auto recoveryTree = Parse(recovery);
+    auto recovered = Analyze(recoveryTree, memory);
+    const auto newline = Before(recoveryTree, "int");
+    const auto invalid = parser::SourceOffset(recoverySource.find('@'));
+    ASSERT_EQ(recovered.Gaps()[newline].Original, "\r\n");
+    EXPECT_EQ(recovered.Gaps()[newline].Source.Begin, invalid + 1);
+    EXPECT_EQ(recovered.Gaps()[newline].Source.End, invalid + 3);
+    bool recoveryOwnsAtom = false;
+    for (const auto& range : recovered.Protection())
+        recoveryOwnsAtom |= Has(range.Reasons, formatter::ProtectionReason::Recovery) &&
+            range.Source.Begin <= invalid + 1 && range.Source.End >= invalid + 3;
+    EXPECT_TRUE(recoveryOwnsAtom);
+    EXPECT_FALSE(recovered.CanSpellGapNewlines(newline));
+    ASSERT_EQ(recovered.Gaps().back().Original, "\r\n");
+    EXPECT_TRUE(recovered.CanSpellGapNewlines(recoveryTree.TokenCount()));
+
+}
+
 } // namespace

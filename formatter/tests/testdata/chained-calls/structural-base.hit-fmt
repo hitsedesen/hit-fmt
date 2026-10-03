@@ -1,0 +1,15 @@
+Layout = Canonical
+ColumnLimit = 10000
+IndentWidth = 4
+IndentationKind = Spaces
+ContinuationOffset = 4
+ChainsBreak = Always
+ChainsPacking = VerticalWhenBroken
+ChainsAlignment = Block
+CallsBreak = Always
+CallsFirstItem = NextLine
+CallsCloser = SameLine
+AssignmentOperatorSpacing = GeneratedSpace
+MemberAccessOperatorsSpacing = GeneratedNoSpace
+FunctionCallSpaceBeforeParameters = GeneratedNoSpace
+FunctionSpaceBeforeParameters = GeneratedNoSpace

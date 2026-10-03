@@ -1,0 +1,6 @@
+LineEnding = CRLF
+Layout = Canonical
+BodyShape = Expanded
+IndentationKind = Spaces
+IndentWidth = 2
+ColumnLimit = 10000

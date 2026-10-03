@@ -69,6 +69,23 @@ template <typename T> struct OptionalValue<std::optional<T>>
 template <typename T>
 void PrintOption(std::ostream& output, std::string_view name, const T& value)
 {
+    if constexpr (std::is_same_v<T,
+        std::optional<formatter::TrailingCommentSpaceSetting>>)
+    {
+        output << "# Values: Preserve | 0..10000 (omitted: legacy spacing)\n";
+        if (!value) {
+            output << "# " << name << " = Preserve\n\n";
+        } else {
+            output << name << " = ";
+            if (value->Count) {
+                output << *value->Count;
+            } else {
+                output << "Preserve";
+            }
+            output << "\n\n";
+        }
+        return;
+    }
     output << "# Values: ";
     if constexpr (std::is_enum_v<T>) {
         bool first = true;
@@ -96,7 +113,9 @@ void PrintOption(std::ostream& output, std::string_view name, const T& value)
                 ? "Inherit"
                 : "Preserve");
         }
-    } else if constexpr (OptionalValue<T>::IsOptional) {
+    } else if constexpr (OptionalValue<T>::IsOptional &&
+        !std::is_same_v<T, std::optional<formatter::TrailingCommentSpaceSetting>>)
+    {
         using Item = typename OptionalValue<T>::Type;
         output << (name == "MaxEmptyLines" ? "Preserve | " : "Inherit | ");
         if constexpr (std::is_enum_v<Item>) {
@@ -164,6 +183,10 @@ void PrintPreserveConfig(std::ostream& output)
               "# Public preparation rejects enabled staged behavior; inactive\n"
               "# include prefixes validate but do not activate regrouping.\n"
               "# Regroup conflicts with MaxEmptyLines = 0.\n"
+              "# LineEnding Preserve retains legacy first-LF generated endings\n"
+              "# and copied gap bytes, not uniform per-edge preservation.\n"
+              "# LF/CRLF spell only authorized whole whitespace newline atoms;\n"
+              "# no final newline insertion, token/directive conversion or cleanup.\n"
               "# Directives and protected regions remain byte-exact.\n"
               "# Migration: docs/config-migration.md\n\n"
               "# Formatting options\n\n";

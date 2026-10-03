@@ -93,6 +93,11 @@ void ValidatePolicyStyle(const Style& style)
     if (style.IndentWidth == 0 || style.IndentWidth > 32) {
         throw std::invalid_argument("IndentWidth must be between 1 and 32");
     }
+    if (style.LineEnding != LineEnding::Preserve &&
+        style.LineEnding != LineEnding::LF && style.LineEnding != LineEnding::CRLF)
+    {
+        throw std::invalid_argument("LineEnding has invalid value");
+    }
     if (style.ColumnLimit == 0 || style.ColumnLimit > 10000) {
         throw std::invalid_argument("ColumnLimit must be between 1 and 10000");
     }
@@ -201,6 +206,12 @@ void ValidatePolicyStyle(const Style& style)
         throw std::invalid_argument(
             "ShortNamespaceLines must not exceed 10000");
     }
+    if (style.TrailingCommentSpaces && style.TrailingCommentSpaces->Count &&
+        *style.TrailingCommentSpaces->Count > 10000)
+    {
+        throw std::invalid_argument(
+            "TrailingCommentSpaces must be between 0 and 10000");
+    }
     if (style.NamespaceCommentSpaces ==
         0 || style.NamespaceCommentSpaces > 32)
     {
@@ -248,6 +259,7 @@ CompiledPolicies CompilePolicies(const Style& style)
         .ColumnLimit = style.ColumnLimit,
         .WidthDiagnostics = style.WidthDiagnostics,
         .IndentationKind = style.IndentationKind,
+        .LineEnding = style.LineEnding,
         .TrailingWhitespace = style.TrailingWhitespace,
         .PointerReferenceDeclaratorLocation =
             style.PointerReferenceDeclaratorLocation,
@@ -304,6 +316,7 @@ CompiledPolicies CompilePolicies(const Style& style)
                 style.FunctionBracePlacement)},
         .InitializersTrailingComma = style.InitializersTrailingComma,
         .Spacing = spacing,
+        .TrailingCommentSpaces = style.TrailingCommentSpaces,
         .Enumerators = Enumerators,
         .VerticalGaps = {
             CompileBlankLines(style.NamespaceBlankLinesAfterOpen),

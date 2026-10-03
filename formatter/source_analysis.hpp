@@ -66,6 +66,9 @@ struct SourceGap
     // growth.
     bool IntrinsicPreserve : 1 = false;
     bool IntrinsicContextSensitive : 1 = false;
+    // Original gap-owned CR not immediately followed by LF. Classification
+    // only: this grants no replacement, protection or partial-gap rights.
+    bool HasBareCR : 1 = false;
 };
 
 enum class RegionStatus : uint8_t
@@ -86,7 +89,9 @@ struct SourceRegion
 };
 
 // Only these complete horizontal slices may change in a partly selected gap.
-// Everything else in the gap, including every LF/CRLF byte, must stay exact.
+// In genuinely partly selected/protected gaps, every other byte, including
+// LF/CRLF, stays exact. Fully byte-covered but insertion-fenced gaps may use
+// CanSpellGapNewlines independently; these descriptors grant no such rights.
 // These are properties, not edit instructions or editable owned line breaks.
 enum class PartialGapPermissionKind : uint8_t
 {
@@ -198,6 +203,13 @@ public:
     [[nodiscard]] bool CanReplaceGap(
         GapId gap,
         std::string_view replacement) const;
+    // Spelling-only authority for the ENTIRE nonempty original whitespace gap.
+    // Full byte coverage can permit existing atom replacement at scope End/EOF
+    // even when generic replacement lacks insertion-point ownership. No empty
+    // edge, trim, indentation, topology or partial-gap permission is granted.
+    // Intrinsic fences and any immutable or unselected byte reject the gap;
+    // emission must also retain MustStartWithLineFeed/token-owned CR boundaries.
+    [[nodiscard]] bool CanSpellGapNewlines(GapId gap) const;
 
 private:
     std::pmr::vector<SourceGap> Gaps_;

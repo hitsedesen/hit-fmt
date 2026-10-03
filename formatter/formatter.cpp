@@ -80,10 +80,12 @@ NamespaceCommentOptions CommentOptions(const Style& style)
         policy = NamespaceCommentPolicy::Remove;
         break;
     }
-    const auto space
-        = GapUsesSpace(style.TrailingCommentSpacing, GapContext::Rebuilt);
+    const auto space = style.TrailingCommentSpaces
+        ? std::nullopt
+        : GapUsesSpace(style.TrailingCommentSpacing, GapContext::Rebuilt);
     return { policy, style.ShortNamespaceLines,
-        space ? (*space ? 1u : 0u) : style.NamespaceCommentSpaces };
+        space ? (*space ? 1u : 0u) : style.NamespaceCommentSpaces,
+        style.LineEnding != LineEnding::Preserve };
 }
 
 // Normalized copied pieces can be permuted. Each lookup starts with the
@@ -530,7 +532,8 @@ PreparedFormat::PreparedFormat(const Style& style)
     , Structural { style.AddMissingControlBraces,
         style.EmptyControlBody == EmptyControlBody::EmptyBlock,
         style.RemoveNullStatements, style.RemoveNullDeclarations,
-        style.IncludeOrder == IncludeOrder::Sort }
+        style.IncludeOrder == IncludeOrder::Sort,
+        style.LineEnding != LineEnding::Preserve }
     , NamespaceComments(CommentOptions(style))
     , HonorClangFormatDirectives(style.HonorClangFormatDirectives)
     , WhitespaceSensitiveMacros(style.WhitespaceSensitiveMacros)
@@ -620,9 +623,14 @@ FormatResult detail::FormatWithAnalysis(const parser::SyntaxTree& original,
         *tree, *currentSafety, prepared.Policies, file, scratch);
     scratch.release();
     SyntaxLayoutOptions options;
-    const auto lf = original.Source().find('\n');
-    if (lf != std::string_view::npos && lf && original.Source()[lf - 1] == '\r')
+    if (prepared.Policies.LineEnding == LineEnding::CRLF)
         options.LineEnding = layout::Newline::CRLF;
+    else if (prepared.Policies.LineEnding == LineEnding::Preserve)
+    {
+        const auto lf = original.Source().find('\n');
+        if (lf != std::string_view::npos && lf && original.Source()[lf - 1] == '\r')
+            options.LineEnding = layout::Newline::CRLF;
+    }
     auto gaps = GeneratedGaps(*currentSafety,
         normalized
             ? std::span<const GeneratedAdjacency>(
@@ -683,6 +691,8 @@ FormatResult detail::FormatWithAnalysis(const parser::SyntaxTree& original,
             result.Text.assign(text);
         }
     }
+    if (prepared.Policies.LineEnding != LineEnding::Preserve)
+        (void)CheckedSourceAnalysisSize(result.Text.size());
     WidthDiagnostics(result, prepared.Policies, options.TabWidth);
     if (!request.SourceMap)
     {

@@ -531,7 +531,10 @@ TEST(ConfigPolicy, PreserveTemplateRoundTripsEveryRegisteredStyleDefault)
     const formatter::Style defaults;
 #define CHECK_DEFAULT(type, name, initial)                                  \
     EXPECT_EQ(parsed.FormattingStyle.name, defaults.name) << #name;          \
-    EXPECT_NE(text.find("\n" #name " = "), std::string::npos) << #name;
+    if constexpr (!std::is_same_v<type, \
+        std::optional<formatter::TrailingCommentSpaceSetting>>) { \
+        EXPECT_NE(text.find("\n" #name " = "), std::string::npos) << #name; \
+    }
     FORMATTER_STYLE_OPTIONS(CHECK_DEFAULT)
 #undef CHECK_DEFAULT
     EXPECT_NE(text.find("Preserve | 0..10000\nMaxEmptyLines = Preserve"),
@@ -1114,3 +1117,69 @@ TEST(ConfigPolicy, PrefixValidationIsFinalOrderedAndCannotBeBypassed)
 }
 
 } // namespace
+
+TEST(ConfigPolicy, LineEndingPreparationValidationAndDefaultSerialization)
+{
+    formatter::Style style;
+    EXPECT_EQ(style.LineEnding, formatter::LineEnding::Preserve);
+    for (const auto ending : {formatter::LineEnding::Preserve,
+                             formatter::LineEnding::LF, formatter::LineEnding::CRLF})
+    {
+        style.LineEnding = ending;
+        const formatter::PreparedFormat prepared(style);
+        style.LineEnding = formatter::LineEnding::Preserve;
+        EXPECT_EQ(prepared.Policies.LineEnding, ending);
+        TemporaryConfig config("LineEnding = " + std::string(
+            formatter::SerializeConfigEnum(ending)) + "\n");
+        EXPECT_EQ(formatter::LoadConfigFile(config.Path).FormattingStyle.LineEnding,
+            ending);
+    }
+    style.LineEnding = static_cast<formatter::LineEnding>(255);
+    EXPECT_THROW((void)formatter::PreparedFormat(style), std::invalid_argument);
+    TemporaryConfig bad("LineEnding = Native\n");
+    EXPECT_THROW((void)formatter::LoadConfigFile(bad.Path), std::runtime_error);
+    std::ostringstream output;
+    hit_fmt::PrintPreserveConfig(output);
+    EXPECT_NE(output.str().find("LineEnding = Preserve\n"), std::string::npos);
+    EXPECT_NE(output.str().find("legacy first-LF"), std::string::npos);
+}
+
+namespace {
+TEST(ConfigPolicy, TrailingCommentSpacesPreserveOmissionBoundsAndSnapshot)
+{
+    std::ostringstream output;
+    hit_fmt::PrintPreserveConfig(output);
+    EXPECT_EQ(output.str().find("\nTrailingCommentSpaces = "), std::string::npos);
+    EXPECT_NE(output.str().find("# TrailingCommentSpaces = Preserve"),
+        std::string::npos);
+    const TemporaryConfig defaults(output.str());
+    EXPECT_FALSE(formatter::LoadConfigFile(defaults.Path)
+        .FormattingStyle.TrailingCommentSpaces);
+    const TemporaryConfig preserve("TrailingCommentSpaces = Preserve\n");
+    const auto preserved = formatter::LoadConfigFile(preserve.Path).FormattingStyle;
+    ASSERT_TRUE(preserved.TrailingCommentSpaces);
+    EXPECT_FALSE(preserved.TrailingCommentSpaces->Count);
+    for (const auto count : {0u, 1u, 2u, 10000u}) {
+        const TemporaryConfig config("TrailingCommentSpaces = " +
+            std::to_string(count) + "\nMaxEmptyLines = 0\n");
+        auto style = formatter::LoadConfigFile(config.Path).FormattingStyle;
+        const formatter::PreparedFormat prepared(style);
+        style.TrailingCommentSpaces = formatter::TrailingCommentSpaceSetting{};
+        ASSERT_TRUE(prepared.Policies.TrailingCommentSpaces);
+        EXPECT_EQ(prepared.Policies.TrailingCommentSpaces->Count, count);
+        EXPECT_EQ(prepared.Policies.Spacing.TrailingCommentSpacing,
+            formatter::GapPolicy::Preserve);
+    }
+    for (const auto value : {"10001", "-1", "+2", "Inherit", "Space", "1.5",
+        "999999999999999999999999999999"}) {
+        const TemporaryConfig invalid(std::string("TrailingCommentSpaces = ") +
+            value + "\n");
+        EXPECT_THROW((void)formatter::LoadConfigFile(invalid.Path), std::runtime_error);
+    }
+    formatter::Style invalid;
+    invalid.TrailingCommentSpaces = formatter::TrailingCommentSpaceSetting{10001};
+    EXPECT_THROW((void)formatter::PreparedFormat(invalid), std::invalid_argument);
+    invalid.TrailingCommentSpaces = formatter::TrailingCommentSpaceSetting{10000};
+    EXPECT_NO_THROW((void)formatter::PreparedFormat(invalid));
+}
+}

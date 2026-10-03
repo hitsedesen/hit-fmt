@@ -1,5 +1,6 @@
 #include <formatter/config.hpp>
 #include <formatter/formatter.hpp>
+#include <formatter/source_analysis.hpp>
 #include <tests/golden.hpp>
 
 #include <gtest/gtest.h>
@@ -7,6 +8,7 @@
 #include <algorithm>
 #include <array>
 #include <filesystem>
+#include <memory_resource>
 #include <stdexcept>
 #include <string>
 
@@ -107,6 +109,104 @@ void CheckExcludedCopies(std::string_view source,
             ++range;
         if (range == selected.size() || i < selected[range].Begin)
             EXPECT_EQ(copies[i], 1u) << "excluded original byte " << i;
+    }
+}
+
+TEST(PublicPipeline, ChainStructuralBaseHonorsGapScopeAndProtection)
+{
+    auto style = Canonical();
+    style.IndentWidth = 4;
+    style.ContinuationOffset = 4;
+    style.Layout = formatter::LayoutMode::Preserve;
+    style.ExpressionsLayout = formatter::CategoryLayout::Canonical;
+    style.ChainsLayout = formatter::CategoryLayout::Canonical;
+    style.ChainsBreak = formatter::BreakRequirement::Always;
+    style.ChainsPacking = formatter::ListPacking::VerticalWhenBroken;
+    const formatter::PreparedFormat preserveIndent(style);
+    const std::string source =
+        "void f() {\n    auto value = engine()\n"
+        "            .Open()\n            .Finish();\n}\n";
+    const auto begin = parser::SourceOffset(source.find("            .Open"));
+    const parser::SourceRange selected[] = {{begin, begin + 12}};
+    formatter::FormatRequest request{.SourceMap = true, .EditScope = selected};
+    const auto preserved = FormatInput(source, preserveIndent, request);
+    EXPECT_EQ(preserved.Text, source);
+    CheckIdentities(source, preserved);
+    CheckExcludedCopies(source, preserved, selected);
+    Input input(source);
+    const auto tree = parser::Parse(input.View(), [](parser::ParseError) {});
+    std::pmr::monotonic_buffer_resource file;
+    std::pmr::monotonic_buffer_resource scratch;
+    formatter::SourceAnalysisOptions options;
+    options.EditScope = selected;
+    const auto safety = formatter::BuildSourceAnalysis(tree, options, file, scratch);
+    ASSERT_EQ(safety.PartialGapPermissions().size(), 1u);
+    const auto permission = safety.PartialGapPermissions().front();
+    EXPECT_EQ(permission.Kind, formatter::PartialGapPermissionKind::FinalIndentation);
+    EXPECT_EQ(permission.Source.Begin, begin);
+    EXPECT_EQ(permission.Source.End, begin + 12);
+    const auto& gap = safety.Gaps()[permission.Gap];
+    EXPECT_EQ(gap.Source.Begin, begin - 1);
+    EXPECT_EQ(gap.Source.End, begin + 12);
+    EXPECT_EQ(gap.Original, "\n            ");
+    EXPECT_TRUE(gap.Preserve);
+    EXPECT_NE(static_cast<uint16_t>(gap.Reasons) &
+        static_cast<uint16_t>(formatter::ProtectionReason::OutsideEditScope), 0u);
+    // A permission is not a style demand. Only explicit Spaces selects the
+    // narrow final-indent edit, leaving the LF and excluded endpoint exact.
+    style.IndentationKind = formatter::IndentationKind::Spaces;
+    const formatter::PreparedFormat prepared(style);
+    const auto partial = FormatInput(source, prepared, request);
+    auto expected = source;
+    expected.replace(begin, 12, "        ");
+    EXPECT_EQ(partial.Text, expected);
+    CheckIdentities(source, partial);
+    CheckExcludedCopies(source, partial, selected);
+    request.EditScope = std::span<const parser::SourceRange>{};
+    const auto denied = FormatInput(source, prepared, request);
+    EXPECT_EQ(denied.Text, source);
+    CheckExcludedCopies(source, denied, {});
+    request.EditScope = std::nullopt;
+    request.ImmutableRanges = selected;
+    const auto immutable = FormatInput(source, prepared, request);
+    EXPECT_NE(immutable.Text.find("\n            .Open()"), std::string::npos);
+    CheckIdentities(source, immutable);
+    const std::string protectedSource = "// clang-format off\n" + source +
+        "// clang-format on\n";
+    request.ImmutableRanges = {};
+    EXPECT_EQ(FormatInput(protectedSource, prepared, request).Text, protectedSource);
+}
+
+TEST(PublicPipeline, StyleCheckpointKeepsIndependentGapPermissions)
+{
+    const std::string source =
+        "void f() {\r\n    auto value = engine()\r\n"
+        "            .Open()\r\n            .Finish(); \t// note\n}\r\n";
+    auto style = Canonical();
+    style.Layout = formatter::LayoutMode::Preserve;
+    style.ExpressionsLayout = formatter::CategoryLayout::Canonical;
+    style.ChainsLayout = formatter::CategoryLayout::Canonical;
+    style.ChainsBreak = formatter::BreakRequirement::Always;
+    style.ChainsPacking = formatter::ListPacking::VerticalWhenBroken;
+    style.IndentWidth = 4;
+    style.ContinuationOffset = 4;
+    style.IndentationKind = formatter::IndentationKind::Spaces;
+    style.LineEnding = formatter::LineEnding::LF;
+    style.TrailingCommentSpaces = formatter::TrailingCommentSpaceSetting{2};
+    const formatter::PreparedFormat prepared(style);
+    const auto indent = parser::SourceOffset(source.find("            .Open"));
+    const auto comment = parser::SourceOffset(source.find(';') + 1);
+    for (const auto begin : {indent, comment})
+    {
+        const auto size = begin == indent ? 12u : 2u;
+        const std::array selected{parser::SourceRange{begin, begin + size}};
+        const auto result = FormatInput(source, prepared,
+            {.SourceMap = true, .EditScope = selected});
+        auto expected = source;
+        expected.replace(begin, size, begin == indent ? "        " : "  ");
+        EXPECT_EQ(result.Text, expected);
+        CheckIdentities(source, result);
+        CheckExcludedCopies(source, result, selected);
     }
 }
 
@@ -533,7 +633,14 @@ TEST_P(FormatTest, Golden)
     EXPECT_EQ(FormatInput(result.Text, prepared).Text, result.Text);
 }
 INSTANTIATE_TEST_SUITE_P(Formatter, FormatTest,
-    testing::Values("public-pipeline/layout", "public-pipeline/structural",
+    testing::Values("line-endings/lf", "line-endings/crlf",
+        "line-endings/legacy", "line-endings/canonical-lf",
+        "line-endings/canonical-crlf", "line-endings/opaque-lf",
+        "line-endings/boundary-lf", "line-endings/boundary-crlf",
+        "line-endings/boundary-nulls", "line-endings/boundary-namespace-lf",
+        "line-endings/boundary-namespace-crlf",
+        "line-endings/composition-control-lf",
+        "public-pipeline/layout", "public-pipeline/structural",
         "public-pipeline/comments", "public-pipeline/enumerator-assignment",
         "public-pipeline/opaque-record-owners",
         "public-pipeline/control-ownership",
@@ -1920,5 +2027,623 @@ TEST(PublicPipeline, TerminalConstructorBoundariesKeepOwningMapsAndStatementScop
     EXPECT_EQ(frozen.Text, source);
     CheckIdentities(source, frozen);
 }
+formatter::Style EndingStyle(std::string_view name)
+{
+    return formatter::LoadConfigFile(std::filesystem::path(__FILE__).parent_path() /
+        "testdata/line-endings" / (std::string(name) + ".hit-fmt")).FormattingStyle;
+}
+
+TEST(PublicPipeline, LineEndingWholeAtomsScopeAndExistingEOFReplacement)
+{
+    const std::string source = "int a;\r\nint b;\r\n";
+    const formatter::PreparedFormat prepared(EndingStyle("lf"));
+    const auto first = parser::SourceOffset(source.find('\r'));
+    for (const auto range : {parser::SourceRange{first, first + 1},
+                             parser::SourceRange{first + 1, first + 2}})
+    {
+        const std::array selected{range};
+        const auto result = FormatInput(source, prepared,
+            {.SourceMap = true, .EditScope = selected});
+        EXPECT_EQ(result.Text, source);
+        CheckExcludedCopies(source, result, selected);
+    }
+    const std::array selected{parser::SourceRange{first, first + 2},
+        parser::SourceRange{parser::SourceOffset(source.size() - 2),
+                            parser::SourceOffset(source.size())}};
+    const auto result = FormatInput(source, prepared,
+        {.SourceMap = true, .EditScope = selected});
+    EXPECT_EQ(result.Text, "int a;\nint b;\n");
+    CheckIdentities(source, result);
+    CheckExcludedCopies(source, result, selected);
+    const std::array<parser::SourceRange, 0> none{};
+    EXPECT_EQ(FormatInput(source, prepared,
+        {.SourceMap = true, .EditScope = none}).Text, source);
+    const std::array immutable{selected[1]};
+    EXPECT_EQ(FormatInput(source, prepared,
+        {.ImmutableRanges = immutable, .SourceMap = true}).Text,
+        "int a;\nint b;\r\n");
+    for (const auto name : {"lf", "crlf", "legacy"})
+    {
+        const formatter::PreparedFormat mode(EndingStyle(name));
+        for (const auto text : {"", "int a;", "int a;\r"})
+            EXPECT_EQ(FormatInput(text, mode).Text, text);
+        const std::string noFinal = "int a;";
+        const std::array whole{parser::SourceRange{0, 6}};
+        EXPECT_EQ(FormatInput(noFinal, mode,
+            {.SourceMap = true, .EditScope = whole}).Text, noFinal);
+    }
+}
+
+TEST(PublicPipeline, LineEndingOwningMapsRetainedPrefixesAndIdempotence)
+{
+    const std::string source = "void f(){\n \t\n  return;\n}\n";
+    formatter::FormatResult result;
+    {
+        auto style = EndingStyle("crlf");
+        style.IndentationKind = formatter::IndentationKind::Spaces;
+        style.IndentWidth = 2;
+        const formatter::PreparedFormat prepared(style);
+        result = FormatInput(source, prepared);
+        EXPECT_EQ(result.Text, "void f(){\r\n \t\r\n  return;\r\n}\r\n");
+        EXPECT_EQ(FormatInput(result.Text, prepared).Text, result.Text);
+        EXPECT_EQ(FormatInput(source, prepared, {}).Text, result.Text);
+    }
+    CheckIdentities(source, result);
+    unsigned changed = 0;
+    for (const auto& map : result.Map)
+    {
+        if (!map.Exact && map.HasOriginal && map.OriginalToken ==
+                formatter::layout::NoIdentity &&
+            source.substr(map.Original.Begin,
+                map.Original.End - map.Original.Begin) == "\n")
+        {
+            EXPECT_EQ(result.Text.substr(map.Output.Begin,
+                map.Output.End - map.Output.Begin), "\r\n");
+            EXPECT_FALSE(map.Protected);
+            ++changed;
+        }
+    }
+    EXPECT_GE(changed, 2u); // EOF and retained prefix, not just regenerated gaps.
+}
+
+TEST(PublicPipeline, LineEndingTokenOwnedCRBareCRProtectionAndIncludeMovement)
+{
+    const std::string source = "#define VALUE 1\r\n// note\r\n\r\n"
+        "int a;\r \n/* block\r\ntext */\n"
+        "const char* s=R\"(one\r\ntwo)\";\n"
+        "// clang-format off\r\nint   b;\r\n// clang-format on\r\n"
+        "int c;\n";
+    for (const auto name : {"lf", "crlf"})
+    {
+        const formatter::PreparedFormat prepared(EndingStyle(name));
+        const auto result = FormatInput(source, prepared);
+        CheckIdentities(source, result);
+        EXPECT_NE(result.Text.find("#define VALUE 1\r\n"), std::string::npos);
+        EXPECT_NE(result.Text.find("// note\r\n"), std::string::npos);
+        EXPECT_NE(result.Text.find("a;\r "), std::string::npos);
+        EXPECT_NE(result.Text.find("int   b;\r\n// clang-format on\r\n"),
+            std::string::npos);
+        EXPECT_EQ(result.Text.find("\r\r\n"), std::string::npos);
+        EXPECT_EQ(FormatInput(result.Text, prepared).Text, result.Text);
+    }
+    auto style = EndingStyle("lf");
+    style.IncludeOrder = formatter::IncludeOrder::Sort;
+    const formatter::PreparedFormat prepared(style);
+    // Mixed physical ending islands do not acquire movement rights.
+    const std::string mixed = "#include \"z.h\"\r\n#include \"a.h\"\n\nint x;\r\n";
+    const auto nonmoving = FormatInput(mixed, prepared);
+    EXPECT_TRUE(nonmoving.Text.starts_with(mixed.substr(0, mixed.find("int x"))));
+    CheckIdentities(mixed, nonmoving);
+    const std::string includes = "#include \"z.h\"\r\n#include \"a.h\"\r\n\nint x;\r\n";
+    const auto moved = FormatInput(includes, prepared);
+    EXPECT_NE(moved.Text.find("#include \"a.h\"\r\n#include \"z.h\"\r\n"),
+        std::string::npos);
+    EXPECT_TRUE(moved.Text.ends_with("int x;\n"));
+    CheckIdentities(includes, moved);
+    EXPECT_EQ(FormatInput(moved.Text, prepared).Text, moved.Text);
+}
+
+TEST(PublicPipeline, LineEndingPreserveRetainsLegacyMixedGeneratedDecisions)
+{
+    const std::string source = "int a;\r\nvoid f(){return;}\n";
+    auto omitted = Canonical();
+    omitted.ColumnLimit = 10000;
+    auto explicitPreserve = EndingStyle("legacy");
+    explicitPreserve.Layout = formatter::LayoutMode::Canonical;
+    const auto before = FormatInput(source, formatter::PreparedFormat(omitted));
+    const auto after = FormatInput(source, formatter::PreparedFormat(explicitPreserve));
+    EXPECT_EQ(after.Text, before.Text);
+    EXPECT_NE(after.Text.find("{\r\n"), std::string::npos);
+    EXPECT_TRUE(after.Text.ends_with("}\n"));
+    CheckIdentities(source, after);
+}
+
+TEST(PublicPipeline, LineEndingCommentGuardDoesNotGrantPartialNewlineRights)
+{
+    const std::string source = "// lf\n\nint a;\n// crlf\r\n\nint b;\n";
+    const formatter::PreparedFormat prepared(EndingStyle("crlf"));
+    const auto result = FormatInput(source, prepared);
+    EXPECT_EQ(result.Text, "// lf\n\r\nint a;\r\n// crlf\r\n\r\nint b;\r\n");
+    CheckIdentities(source, result);
+    EXPECT_EQ(FormatInput(result.Text, prepared).Text, result.Text);
+    for (const auto boundary : {source.find("lf") + 2, source.find("crlf") + 4})
+    {
+        unsigned copies = 0;
+        for (const auto& map : result.Map)
+            if (map.Exact && map.HasOriginal && map.Original.Begin <= boundary &&
+                boundary < map.Original.End)
+                ++copies;
+        EXPECT_EQ(copies, 1u);
+    }
+    auto style = EndingStyle("lf");
+    style.TrailingWhitespace = formatter::TrailingWhitespace::Trim;
+    const std::string partialSource = "int a; \r\n  int b;\r\n";
+    const std::array selected{parser::SourceRange{6, 7}};
+    const auto partial = FormatInput(partialSource, formatter::PreparedFormat(style),
+        {.SourceMap = true, .EditScope = selected});
+    EXPECT_EQ(partial.Text, "int a;\r\n  int b;\r\n");
+    CheckExcludedCopies(partialSource, partial, selected);
+    CheckIdentities(partialSource, partial);
+}
+
+TEST(PublicPipeline, LineEndingFullBytesAtEndKeepHorizontalAndPartialFences)
+{
+    const formatter::PreparedFormat prepared(EndingStyle("lf"));
+    const std::string source = "int a; \r\nint b;\r\n";
+    const std::array selected{parser::SourceRange{6, 9},
+        parser::SourceRange{parser::SourceOffset(source.size() - 2),
+                            parser::SourceOffset(source.size())}};
+    const auto result = FormatInput(source, prepared,
+        {.SourceMap = true, .EditScope = selected});
+    EXPECT_EQ(result.Text, "int a; \nint b;\n");
+    CheckIdentities(source, result);
+    CheckExcludedCopies(source, result, selected);
+    EXPECT_EQ(FormatInput(result.Text, prepared).Text, result.Text);
+    const std::array atomOnly{parser::SourceRange{7, 9}};
+    const auto partial = FormatInput(source, prepared,
+        {.SourceMap = true, .EditScope = atomOnly});
+    EXPECT_EQ(partial.Text, source); // no right to evade the unselected prefix.
+    CheckExcludedCopies(source, partial, atomOnly);
+    const std::array immutable{parser::SourceRange{8, 9}};
+    EXPECT_EQ(FormatInput(source, prepared,
+        {.ImmutableRanges = immutable, .SourceMap = true, .EditScope = selected}).Text,
+        "int a; \r\nint b;\n");
+}
+
+void CheckBareCRCopies(std::string_view source,
+    const formatter::FormatResult& result)
+{
+    CheckIdentities(source, result);
+    for (size_t i = 0; i < source.size(); ++i)
+    {
+        if (source[i] != '\r' || (i + 1 < source.size() && source[i + 1] == '\n'))
+            continue;
+        unsigned copies = 0;
+        for (const auto& map : result.Map)
+        {
+            if (!map.Exact || !map.HasOriginal || map.Original.Begin > i ||
+                map.Original.End <= i)
+                continue;
+            ++copies;
+            const auto output = map.Output.Begin + i - map.Original.Begin;
+            ASSERT_LT(output, result.Text.size());
+            EXPECT_EQ(result.Text[output], '\r');
+            if (output + 1 < result.Text.size())
+                EXPECT_NE(result.Text[output + 1], '\n');
+        }
+        EXPECT_EQ(copies, 1u) << "original bare CR " << i;
+    }
+}
+
+TEST(PublicPipeline, LineEndingBareCRMembershipMapsAndRepeatedSelection)
+{
+    for (const auto name : {"lf", "crlf"})
+    {
+        auto style = EndingStyle(name);
+        style.TrailingWhitespace = formatter::TrailingWhitespace::Trim;
+        const formatter::PreparedFormat prepared(style);
+        for (unsigned count : {1u, 2u, 3u, 8u})
+        {
+            for (const std::string tail : {std::string(count, '\r') + "\n",
+                     std::string(count, '\r') + " \t\r\n \t\n",
+                     std::string(count, '\r') + " \t"})
+            {
+                const auto source = "int a;" + tail;
+                const auto first = FormatInput(source, prepared);
+                CheckBareCRCopies(source, first);
+                const auto second = FormatInput(first.Text, prepared);
+                EXPECT_EQ(second.Text, first.Text);
+                CheckBareCRCopies(first.Text, second);
+                EXPECT_EQ(FormatInput(second.Text, prepared).Text, second.Text);
+                style.LineEnding = name == std::string_view("lf")
+                    ? formatter::LineEnding::CRLF : formatter::LineEnding::LF;
+                const formatter::PreparedFormat opposite(style);
+                const auto changed = FormatInput(first.Text, opposite);
+                CheckBareCRCopies(first.Text, changed);
+                EXPECT_EQ(FormatInput(changed.Text, opposite).Text, changed.Text);
+            }
+        }
+    }
+}
+
+TEST(PublicPipeline, LineEndingBareCRScopeProtectionAndOwningGeometry)
+{
+    const std::string source = "int a;\r\r\nint b;\r \n";
+    auto style = EndingStyle("lf");
+    style.TrailingWhitespace = formatter::TrailingWhitespace::Trim;
+    const formatter::PreparedFormat prepared(style);
+    for (const auto range : {parser::SourceRange{6, 9},
+             parser::SourceRange{7, 9}, parser::SourceRange{7, 8},
+             parser::SourceRange{8, 9}, parser::SourceRange{16, 17}})
+    {
+        const std::array selected{range};
+        const auto result = FormatInput(source, prepared,
+            {.SourceMap = true, .EditScope = selected});
+        EXPECT_EQ(result.Text, source);
+        CheckExcludedCopies(source, result, selected);
+        CheckBareCRCopies(source, result);
+    }
+    const std::array immutable{parser::SourceRange{6, 9}};
+    const auto protectedResult = FormatInput(source, prepared,
+        {.ImmutableRanges = immutable, .SourceMap = true});
+    EXPECT_EQ(protectedResult.Text, source);
+    CheckBareCRCopies(source, protectedResult);
+    const std::string function = "void f(){\r\r\n    return;\n}\n";
+    formatter::FormatResult owned;
+    {
+        auto local = EndingStyle("lf");
+        local.IndentationKind = formatter::IndentationKind::Spaces;
+        local.IndentWidth = 2;
+        const formatter::PreparedFormat localPrepared(local);
+        Input input(function);
+        auto tree = parser::Parse(input.View(), [](parser::ParseError) {});
+        owned = formatter::Format(tree, localPrepared, {.SourceMap = true});
+        EXPECT_EQ(owned.Text, FormatInput(function, localPrepared).Text);
+        EXPECT_NE(owned.Text.find("{\r\r\n    return;"), std::string::npos);
+        EXPECT_EQ(FormatInput(owned.Text, localPrepared).Text, owned.Text);
+    }
+    CheckBareCRCopies(function, owned);
+}
+
+TEST(PublicPipeline, LineEndingBareCRNullAdmissionRetainsFirstOriginalIdentity)
+{
+    for (const bool compound : {false, true})
+    {
+        auto style = EndingStyle("lf");
+        style.RemoveNullDeclarations = true;
+        style.RemoveNullStatements = true;
+        const formatter::PreparedFormat prepared(style);
+        const std::string source = compound
+            ? "void f(){int a;\r;;;;\nint b;\n}\n"
+            : "int a;\r;;;;\nint b;\n";
+        const auto result = FormatInput(source, prepared);
+        CheckBareCRCopies(source, result);
+        EXPECT_NE(result.Text.find("a;\r;\n"), std::string::npos);
+        Input input(source);
+        auto tree = parser::Parse(input.View(), [](parser::ParseError) {});
+        const auto first = source.find("\r;") + 1;
+        for (parser::TokenIndex i = 0; i < tree.TokenCount(); ++i)
+            if (tree.Token(i).Text.Begin >= first && tree.Token(i).Text.Begin < first + 4)
+                EXPECT_EQ(result.OriginalTokens[i].Present,
+                    tree.Token(i).Text.Begin == first);
+        EXPECT_EQ(FormatInput(result.Text, prepared).Text, result.Text);
+    }
+}
+
+TEST(PublicPipeline, LineEndingBareCRPlanningFencesDoNotSuppressSafeNeighbors)
+{
+    for (const auto name : {"lf", "crlf"})
+    {
+        auto style = EndingStyle(name);
+        style.Layout = formatter::LayoutMode::Canonical;
+        style.IndentationKind = formatter::IndentationKind::Spaces;
+        style.BodyShape = formatter::BodyShape::Expanded;
+        style.InitializersTrailingComma = formatter::TrailingCommaPolicy::Never;
+        style.MaxEmptyLines = 0;
+        const formatter::PreparedFormat prepared(style);
+        const std::string source = "void f(){\r \n\n    return;}\nint a[]={1\r,\n};\nint b[]={2,};\n";
+        const auto result = FormatInput(source, prepared);
+        CheckBareCRCopies(source, result);
+        EXPECT_NE(result.Text.find(name == std::string_view("lf")
+            ? "{\r \n\n    return;" : "{\r \r\n\r\n    return;"), std::string::npos);
+        EXPECT_NE(result.Text.find("1\r,"), std::string::npos);
+        EXPECT_EQ(result.Text.find("2,"), std::string::npos);
+        EXPECT_EQ(FormatInput(result.Text, prepared).Text, result.Text);
+    }
+    auto legacy = EndingStyle("legacy");
+    legacy.TrailingWhitespace = formatter::TrailingWhitespace::Trim;
+    auto omitted = legacy;
+    omitted.LineEnding = formatter::LineEnding::Preserve;
+    const std::string source = "int a;\r \nint b;\r\r\n";
+    EXPECT_EQ(FormatInput(source, formatter::PreparedFormat(legacy)).Text,
+        FormatInput(source, formatter::PreparedFormat(omitted)).Text);
+}
+
+TEST(PublicPipeline, LineEndingBareCRNewNamespaceEOFDoesNotCaptureWhitespace)
+{
+    for (const auto name : {"lf", "crlf"})
+    {
+        auto style = EndingStyle(name);
+        style.NamespaceComments = formatter::NamespaceComments::Fix;
+        style.ShortNamespaceLines = 0;
+        const formatter::PreparedFormat prepared(style);
+        const std::string source = "namespace N {\nint x;\n}\r";
+        const auto result = FormatInput(source, prepared);
+        EXPECT_EQ(result.Text.find("// namespace"), std::string::npos);
+        CheckBareCRCopies(source, result);
+        EXPECT_EQ(FormatInput(result.Text, prepared).Text, result.Text);
+        const auto paired = FormatInput("namespace N {\nint x;\n}\r\n", prepared);
+        EXPECT_NE(paired.Text.find("// namespace N"), std::string::npos);
+        const auto interior = FormatInput("namespace N {\r \nint x;\n}\n", prepared);
+        EXPECT_NE(interior.Text.find("// namespace N"), std::string::npos);
+    }
+}
+
+
+TEST(PublicPipeline, LineEndingCompositionControlSeparatorGeometryAndDefaults)
+{
+    const std::string source =
+        "void flow(bool ready) {\r\n  if (ready) {\r\n    left();\r\n  }\r\n"
+        "  else {\r\n    right();\r\n  }\r\n  do {\r\n    tick();\r\n  }\r \n"
+        "  while (ready);\r\n  do {\r\n    next();\r\n  }\r\n  while (ready);\r\n}\r\n";
+    for (const auto ending : {formatter::LineEnding::LF, formatter::LineEnding::CRLF})
+    {
+        auto style = Canonical();
+        style.LineEnding = ending;
+        style.IndentWidth = 2;
+        style.BodiesLayout = formatter::CategoryLayout::Preserve;
+        const formatter::PreparedFormat prepared(style);
+        const auto result = FormatInput(source, prepared);
+        EXPECT_NE(result.Text.find("} else {"), std::string::npos);
+        EXPECT_NE(result.Text.find("} while (ready);"), std::string::npos);
+        EXPECT_NE(result.Text.find(ending == formatter::LineEnding::LF
+            ? "}\r \n  while (ready);" : "}\r \r\n  while (ready);"), std::string::npos);
+        CheckBareCRCopies(source, result);
+        EXPECT_EQ(FormatInput(result.Text, prepared).Text, result.Text);
+        const auto begin = source.find("}\r \n") + 1;
+        const std::array selected{parser::SourceRange{begin, begin + 3}};
+        const auto partial = FormatInput(source, prepared,
+            {.SourceMap = true, .EditScope = selected});
+        EXPECT_EQ(partial.Text, source);
+        CheckExcludedCopies(source, partial, selected);
+        CheckBareCRCopies(source, partial);
+    }
+    auto omitted = Canonical();
+    omitted.BodiesLayout = formatter::CategoryLayout::Preserve;
+    auto explicitPreserve = omitted;
+    explicitPreserve.LineEnding = formatter::LineEnding::Preserve;
+    const auto original = FormatInput(source, formatter::PreparedFormat(omitted));
+    const auto explicitResult = FormatInput(source, formatter::PreparedFormat(explicitPreserve));
+    EXPECT_EQ(explicitResult.Text, original.Text);
+    EXPECT_NE(original.Text.find("} else {"), std::string::npos);
+    CheckIdentities(source, explicitResult);
+}
+
+TEST(PublicPipeline, LineEndingCompositionRecoveryCloneAndScopedTail)
+{
+    const std::string candidate =
+        "static Vec NOTE(0) load(int Type) {\r\n Type * value; ;\r\n }";
+    const std::string source = "using Type = int;\r\n" + candidate +
+        "\r\n;\r\nint tail(){ ; return 1; ; }\r\n";
+    for (const auto ending : {formatter::LineEnding::LF, formatter::LineEnding::CRLF})
+    {
+        auto style = Canonical();
+        style.LineEnding = ending;
+        style.BodyShape = formatter::BodyShape::Expanded;
+        style.RemoveNullStatements = true;
+        style.RemoveNullDeclarations = true;
+        const formatter::PreparedFormat prepared(style);
+        const auto result = FormatInput(source, prepared);
+        EXPECT_FALSE(result.StructuralOperations.empty());
+        const auto begin = result.Text.find(candidate);
+        ASSERT_NE(begin, std::string::npos);
+        bool recovered = false;
+        for (const auto& protection : result.OutputProtection)
+            recovered |= protection.Source.Begin <= begin &&
+                protection.Source.End >= begin + candidate.size() &&
+                (static_cast<uint16_t>(protection.Reasons) &
+                 static_cast<uint16_t>(formatter::ProtectionReason::Recovery)) != 0;
+        EXPECT_TRUE(recovered);
+        EXPECT_TRUE(result.Text.ends_with(ending == formatter::LineEnding::LF ? "}\n" : "}\r\n"));
+        CheckIdentities(source, result);
+        EXPECT_EQ(FormatInput(result.Text, prepared).Text, result.Text);
+        const std::array selected{parser::SourceRange{source.find("int tail"), source.size()}};
+        const auto scoped = FormatInput(source, prepared,
+            {.SourceMap = true, .EditScope = selected});
+        EXPECT_NE(scoped.Text, source);
+        EXPECT_NE(scoped.Text.find(candidate), std::string::npos);
+        CheckExcludedCopies(source, scoped, selected);
+        CheckIdentities(source, scoped);
+        const std::array<parser::SourceRange, 0> none{};
+        EXPECT_EQ(FormatInput(source, prepared,
+            {.SourceMap = true, .EditScope = none}).Text, source);
+    }
+}
+
 } // namespace
 } // namespace public_pipeline
+
+namespace public_pipeline {
+namespace {
+TEST(PublicPipeline, TrailingCommentSpacesNamespaceOwnershipAndLegacyCoupling)
+{
+    using formatter::GapPolicy;
+    using formatter::NamespaceComments;
+    const std::string source = "int amount;\t// namespace is ordinary prose\n"
+        "namespace N {\nint local;\n}\t// arbitrary closer prose\n";
+    for (const auto old : {GapPolicy::Preserve, GapPolicy::Space,
+        GapPolicy::NoSpace, GapPolicy::GeneratedSpace,
+        GapPolicy::GeneratedNoSpace}) {
+        for (const auto policy : {NamespaceComments::Preserve,
+            NamespaceComments::AddMissing, NamespaceComments::Fix}) {
+            formatter::Style style;
+            style.TrailingCommentSpacing = old;
+            style.TrailingCommentSpaces = formatter::TrailingCommentSpaceSetting{2};
+            style.NamespaceComments = policy;
+            style.NamespaceCommentSpaces = 4;
+            const formatter::PreparedFormat prepared(style);
+            const auto result = FormatInput(source, prepared);
+            EXPECT_TRUE(result.Text.starts_with("int amount;  // namespace"));
+            EXPECT_TRUE(result.Text.ends_with(policy == NamespaceComments::Fix
+                ? "}    // namespace N\n" : "}\t// arbitrary closer prose\n"));
+            EXPECT_EQ(FormatInput(result.Text, prepared).Text, result.Text);
+            if (policy != NamespaceComments::Fix)
+                CheckIdentities(source, result);
+        }
+    }
+    formatter::Style style;
+    style.TrailingCommentSpacing = GapPolicy::Space;
+    style.NamespaceComments = NamespaceComments::Fix;
+    style.NamespaceCommentSpaces = 4;
+    const auto legacy = FormatInput(source, formatter::PreparedFormat(style));
+    EXPECT_TRUE(legacy.Text.starts_with("int amount; // namespace"));
+    EXPECT_TRUE(legacy.Text.ends_with("} // namespace N\n"));
+    style.TrailingCommentSpaces = formatter::TrailingCommentSpaceSetting{};
+    const auto preserve = FormatInput(source, formatter::PreparedFormat(style));
+    EXPECT_TRUE(preserve.Text.starts_with("int amount;\t// namespace"));
+    EXPECT_TRUE(preserve.Text.ends_with("}    // namespace N\n"));
+    style.NamespaceComments = NamespaceComments::AddMissing;
+    const auto missing = FormatInput("namespace N {\nint local;\n}\n",
+        formatter::PreparedFormat(style));
+    EXPECT_TRUE(missing.Text.ends_with("}    // namespace N\n"));
+}
+
+TEST(PublicPipeline, TrailingCommentSpacesLexicalSafetyOwnsTokensAndMaps)
+{
+    const std::string source = "int quotient=8 / \t// divisor\n2;\n"
+        "int product=8 * \t// factor\n2;\n"
+        "int task(){ int value=1; value /= \t// divisor\n2; "
+        "return 4 \t// integer\n; }\n"
+        "const char* text(){return \"/\" \t// literal\n;}\n"
+        "/**/ \t// consecutive comments\n";
+    formatter::FormatResult result;
+    {
+        formatter::Style style;
+        style.TrailingCommentSpaces = formatter::TrailingCommentSpaceSetting{0};
+        const formatter::PreparedFormat prepared(style);
+        result = FormatInput(source, prepared);
+        EXPECT_NE(result.Text.find("8 / // divisor"), std::string::npos);
+        EXPECT_NE(result.Text.find("8 *// factor"), std::string::npos);
+        EXPECT_NE(result.Text.find("/=// divisor"), std::string::npos);
+        EXPECT_NE(result.Text.find("4// integer"), std::string::npos);
+        EXPECT_NE(result.Text.find("\"/\"// literal"), std::string::npos);
+        EXPECT_NE(result.Text.find("/**/ \t// consecutive"), std::string::npos);
+        EXPECT_EQ(FormatInput(result.Text, prepared).Text, result.Text);
+    }
+    CheckIdentities(source, result);
+    Input before(source), after(result.Text);
+    auto original = parser::Parse(before.View(), [](parser::ParseError) {});
+    auto rendered = parser::Parse(after.View(), [](parser::ParseError) {});
+    ASSERT_EQ(original.TokenCount(), rendered.TokenCount());
+    for (parser::TokenIndex i = 0; i < original.TokenCount(); ++i) {
+        EXPECT_EQ(original.Kind(i), rendered.Kind(i)) << i;
+        EXPECT_EQ(original.TokenText(i), rendered.TokenText(i)) << i;
+    }
+    bool changedGap = false;
+    for (const auto& map : result.Map)
+        changedGap |= !map.Exact && map.HasOriginal &&
+            map.OriginalToken == formatter::layout::NoIdentity;
+    EXPECT_TRUE(changedGap);
+}
+
+TEST(PublicPipeline, TrailingCommentSpacesWholeGapScopesProtectionAndOwningResult)
+{
+    const std::string source = "int amount; \t// memo\r\n";
+    const auto begin = parser::SourceOffset(source.find(';') + 1);
+    const auto end = parser::SourceOffset(source.find("//"));
+    formatter::FormatResult result;
+    {
+        formatter::Style style;
+        style.TrailingCommentSpaces = formatter::TrailingCommentSpaceSetting{2};
+        const formatter::PreparedFormat prepared(style);
+        const std::array whole{parser::SourceRange{begin, end}};
+        formatter::FormatRequest request{.SourceMap = true};
+        request.EditScope = whole;
+        result = FormatInput(source, prepared, request);
+        EXPECT_EQ(result.Text, "int amount;  // memo\r\n");
+        CheckExcludedCopies(source, result, whole);
+        for (const auto range : {parser::SourceRange{begin + 1, end},
+            parser::SourceRange{0, begin}, parser::SourceRange{end,
+                parser::SourceOffset(source.size())}}) {
+            const std::array selected{range};
+            request.EditScope = selected;
+            const auto limited = FormatInput(source, prepared, request);
+            EXPECT_EQ(limited.Text, source);
+            CheckExcludedCopies(source, limited, selected);
+        }
+        request.EditScope = std::span<const parser::SourceRange>{};
+        EXPECT_EQ(FormatInput(source, prepared, request).Text, source);
+        request.EditScope = std::nullopt;
+        const std::array immutable{parser::SourceRange{begin + 1, end}};
+        request.ImmutableRanges = immutable;
+        EXPECT_EQ(FormatInput(source, prepared, request).Text, source);
+        request.ImmutableRanges = {};
+        const std::string adjacent = "int item;// memo\n";
+        const std::array endOnly{parser::SourceRange{0,
+            parser::SourceOffset(adjacent.find("//"))}};
+        request.EditScope = endOnly;
+        EXPECT_EQ(FormatInput(adjacent, prepared, request).Text, adjacent);
+    }
+    CheckIdentities(source, result);
+}
+
+TEST(PublicPipeline, TrailingCommentSpacesBoundedScalarReportsHonestWidth)
+{
+    formatter::Style style;
+    style.ColumnLimit = 10000;
+    style.WidthDiagnostics = formatter::WidthDiagnosticPolicy::Report;
+    style.MaxEmptyLines = 0;
+    style.TrailingCommentSpaces = formatter::TrailingCommentSpaceSetting{10000};
+    const formatter::PreparedFormat prepared(style);
+    const auto result = FormatInput("int item;\t// memo\n", prepared);
+    const auto comment = result.Text.find("// memo");
+    ASSERT_EQ(comment, std::string("int item;").size() + 10000);
+    EXPECT_EQ(result.Text.substr(9, 10000).find_first_not_of(' '), std::string::npos);
+    EXPECT_FALSE(result.Diagnostics.empty());
+    CheckIdentities("int item;\t// memo\n", result);
+    EXPECT_EQ(FormatInput(result.Text, prepared).Text, result.Text);
+}
+}
+}
+
+namespace public_pipeline {
+namespace {
+TEST(PublicPipeline, TrailingCommentSpacesCompositionRetainsScopedProducerBoundaries)
+{
+    // These prefixes exercise the integrated separator, annotation and terminal
+    // producers. A comment-count demand cannot grant authority over any prefix.
+    for (const std::string_view prefix : {
+        "void work(bool ready){if(ready){tick();}\nelse{wait();}}\n",
+        "using Type = int;\nstatic Vec NOTE(0) load(int Type) { Type * value; }\n",
+        "template<class T> struct Owner { Owner() {} void inspect(T seed) { "
+        "Owner<T>(slot); Owner<T>* pointer = &slot; } };\n"})
+    {
+        const auto source = std::string(prefix) + "int tail; \t// scoped memo\n";
+        const auto begin = parser::SourceOffset(source.rfind(';') + 1);
+        const auto end = parser::SourceOffset(source.find("// scoped"));
+        const std::array selected{parser::SourceRange{begin, end}};
+        auto style = Canonical();
+        style.ColumnLimit = 10000;
+        style.TrailingCommentSpaces = formatter::TrailingCommentSpaceSetting{2};
+        const formatter::PreparedFormat prepared(style);
+        formatter::FormatResult owned;
+        {
+            Input input(source);
+            const auto tree = parser::Parse(input.View(), [](parser::ParseError) {});
+            owned = formatter::Format(tree, prepared,
+                {.SourceMap = true, .EditScope = selected});
+        }
+        EXPECT_EQ(owned.Text.substr(0, prefix.size()), prefix);
+        EXPECT_TRUE(owned.Text.ends_with("int tail;  // scoped memo\n"));
+        EXPECT_TRUE(owned.StructuralOperations.empty());
+        CheckIdentities(source, owned);
+        CheckExcludedCopies(source, owned, selected);
+        EXPECT_EQ(FormatInput(owned.Text, prepared,
+            {.SourceMap = true, .EditScope = selected}).Text, owned.Text);
+        const std::array partial{parser::SourceRange{begin + 1, end}};
+        EXPECT_EQ(FormatInput(source, prepared,
+            {.SourceMap = true, .EditScope = partial}).Text, source);
+    }
+}
+}
+}

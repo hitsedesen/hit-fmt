@@ -1023,6 +1023,100 @@ TEST(SyntaxLayout, FluentCalleeSpineIncludesRepeatedInvocation)
     EXPECT_NE(Lower("void f(){ factory()(alpha)(beta); }\n", style).Text,
               Lower("void f(){ factory()(alpha)(beta); }\n", ordinary).Text);
 }
+TEST(SyntaxLayout, ChainStructuralBaseDropsOnlyPendingExpressionIndent)
+{
+    // YT's explicit Block4 chain continuation is independent of RHS prefix
+    // width. Enclosing call-list frames remain structural indentation.
+    for (const auto expressions : {formatter::CategoryLayout::Canonical,
+                                   formatter::CategoryLayout::Preserve})
+    {
+        for (const size_t offset : {size_t(4), size_t(6)})
+        {
+            auto style = Canonical(10000);
+            style.IndentWidth = 4;
+            style.ContinuationOffset = offset;
+            style.ExpressionsLayout = expressions;
+            style.ChainsBreak = formatter::BreakRequirement::Always;
+            style.ChainsPacking = formatter::ListPacking::VerticalWhenBroken;
+            style.ChainsAlignment = formatter::ContinuationAlignment::Block;
+            for (const std::string prefix : {"", "auto result = ",
+                     "auto considerablyLongerResult = ", "result = ",
+                     "result = first + "})
+            {
+                for (const std::string receiver : {"engine", "longerReceiver"})
+                {
+                    SCOPED_TRACE(prefix + receiver);
+                    SCOPED_TRACE(int(expressions));
+                    SCOPED_TRACE(offset);
+                    const auto output = Lower("void f() { " + prefix + receiver +
+                        "().Open().Finish(); }\n", style).Text;
+                    const auto continuation = "\n" + std::string(4 + offset, ' ');
+                    EXPECT_NE(output.find(continuation + ".Open()"),
+                              std::string::npos) << output;
+                    EXPECT_NE(output.find(continuation + ".Finish()"),
+                              std::string::npos) << output;
+                    EXPECT_EQ(Lower(output, style).Text, output);
+                }
+            }
+            style.CallsBreak = formatter::BreakRequirement::Always;
+            style.CallsFirstItem = formatter::FirstItemPlacement::NextLine;
+            for (const std::string prefix : {"", "auto result = "})
+            {
+                for (const std::string argumentPrefix : {"", "first + "})
+                {
+                    SCOPED_TRACE(prefix + argumentPrefix);
+                    const auto nested = Lower("void f() { " + prefix +
+                        "outer(inner(" + argumentPrefix +
+                        "engine().Open().Finish())); }\n", style).Text;
+                    const auto continuation = "\n" +
+                        std::string(4 + 3 * offset, ' ');
+                    EXPECT_NE(nested.find(continuation + ".Open()"),
+                              std::string::npos) << nested;
+                    EXPECT_NE(nested.find(continuation + ".Finish()"),
+                              std::string::npos) << nested;
+                    EXPECT_EQ(Lower(nested, style).Text, nested);
+                }
+            }
+        }
+    }
+}
+TEST(SyntaxLayout, ChainStructuralBaseRespectsPoliciesAndRealizedRhsLines)
+{
+    auto style = Canonical(10000);
+    style.IndentWidth = 4;
+    style.ContinuationOffset = 4;
+    style.ChainsBreak = formatter::BreakRequirement::IfNeeded;
+    style.ChainsPacking = formatter::ListPacking::VerticalWhenBroken;
+    const std::string flat = "void f() { auto value = engine().Open().Finish(); }\n";
+    EXPECT_NE(Lower(flat, style).Text.find("engine().Open().Finish()"),
+              std::string::npos);
+    style.Layout = formatter::LayoutMode::Preserve;
+    style.ChainsLayout = formatter::CategoryLayout::Preserve;
+    const std::string authored =
+        "void f() {\n    auto value = engine()\n"
+        "            .Open()\n            .Finish();\n}\n";
+    EXPECT_EQ(Lower(authored, style).Text, authored);
+    style.ChainsLayout = formatter::CategoryLayout::Canonical;
+    style.ChainsBreak = formatter::BreakRequirement::Always;
+    const std::string realized =
+        "void f() {\n    auto value =\n        engine()\n"
+        "            .Open()\n            .Finish();\n}\n";
+    EXPECT_EQ(Lower(realized, style).Text, realized);
+    style.ExpressionsLayout = formatter::CategoryLayout::Canonical;
+    style.ExpressionsBreak = formatter::BreakRequirement::Always;
+    const auto broken = Lower(flat, style).Text;
+    EXPECT_NE(broken.find("=\n        engine()\n            .Open()"),
+              std::string::npos) << broken;
+    EXPECT_EQ(Lower(broken, style).Text, broken);
+    style.ExpressionsLayout = formatter::CategoryLayout::Preserve;
+    style.ChainsAlignment = formatter::ContinuationAlignment::Delimiter;
+    const auto aligned = Lower(authored, style).Text;
+    EXPECT_NE(aligned.find("\n                 .Open()"), std::string::npos)
+        << aligned;
+    style.ColumnLimit = 20;
+    const auto fallback = Lower(authored, style).Text;
+    EXPECT_NE(fallback.find("\n        .Open()"), std::string::npos) << fallback;
+}
 TEST(SyntaxLayout, MessagePinAcceptsOnlyCompleteStringLiteralSequence)
 {
     auto style = Canonical(32);

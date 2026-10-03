@@ -1201,3 +1201,46 @@ TEST(SyntaxSpacing, IrrelevantContextsAndRecoveryStayUnnormalized)
 }
 
 } // namespace
+
+namespace {
+TEST(SyntaxSpacing, TrailingCommentSpacesUsesActualNamespaceOwnersAndScalarSafety)
+{
+    const std::string source = "namespace Outer {\nnamespace Inner {\nint local;\n} \t// arbitrary\n"
+        "} \t// arbitrary\nint item; \t// namespace Outer\n"
+        "void task(){} \t// namespace task\nint quotient=8 / \t// divisor\n2;\n";
+    Analysis legacy(source);
+    GapPolicies policies;
+    std::pmr::monotonic_buffer_resource file;
+    SyntaxSpacing spacing = [&] {
+        std::pmr::monotonic_buffer_resource scratch;
+        return BuildSyntaxSpacing(legacy.Tree, legacy.Safety, policies,
+            PointerReferenceDeclaratorLocation::Preserve, file, scratch,
+            TrailingCommentSpaceSetting{0});
+    }();
+    for (const auto occurrence : {0u, 1u}) {
+        const auto gap = legacy.Before("// arbitrary", occurrence);
+        EXPECT_TRUE(spacing.Gaps()[gap].NamespaceClosingComment);
+        EXPECT_FALSE(spacing.TrailingCommentCount(gap, legacy.Safety));
+    }
+    for (const auto text : {"// namespace Outer", "// namespace task"}) {
+        const auto gap = legacy.Before(text);
+        EXPECT_FALSE(spacing.Gaps()[gap].NamespaceClosingComment);
+        EXPECT_EQ(spacing.TrailingCommentCount(gap, legacy.Safety), 0);
+    }
+    const auto slash = legacy.Before("// divisor");
+    EXPECT_EQ(legacy.Safety.Gaps()[slash].Separation, GapSeparation::Required);
+    EXPECT_EQ(spacing.TrailingCommentCount(slash, legacy.Safety), 1);
+    ASSERT_EQ(spacing.Gaps().size(), legacy.Spacing.Gaps().size());
+    for (size_t i = 0; i < spacing.Gaps().size(); ++i) {
+        EXPECT_EQ(spacing.Gaps()[i].Owner, legacy.Spacing.Gaps()[i].Owner);
+        EXPECT_EQ(spacing.Gaps()[i].Category, legacy.Spacing.Gaps()[i].Category);
+        EXPECT_EQ(spacing.Gaps()[i].Field, legacy.Spacing.Gaps()[i].Field);
+        EXPECT_EQ(spacing.Gaps()[i].Priority, legacy.Spacing.Gaps()[i].Priority);
+        EXPECT_EQ(spacing.Gaps()[i].Constraint, legacy.Spacing.Gaps()[i].Constraint);
+    }
+    RecordProperty("syntax_gap_preference_bytes", int(sizeof(SyntaxGapPreference)));
+    RecordProperty("syntax_spacing_bytes", int(sizeof(SyntaxSpacing)));
+    RecordProperty("trailing_comment_option_bytes",
+        int(sizeof(std::optional<TrailingCommentSpaceSetting>)));
+}
+}

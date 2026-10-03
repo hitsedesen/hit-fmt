@@ -128,6 +128,8 @@ public:
             PolicyFor(Policies_, field),
             fallback,
             priority,
+            SpacingConstraint::None,
+            Gaps_[gap].NamespaceClosingComment,
         };
     }
 
@@ -141,6 +143,7 @@ public:
                 false,
                 255,
                 SpacingConstraint::UncertainSyntax,
+                Gaps_[gap].NamespaceClosingComment,
             };
         }
     }
@@ -1078,6 +1081,15 @@ public:
                 kind == TK::Operator_OpenBrace)
             {
                 const auto close = Tree_.MatchingDelimiter(i);
+                if (close != NoToken && close < node.Tokens.End &&
+                    close + 1 < Tree_.TokenCount() &&
+                    Tree_.Kind(close + 1) == TK::Comment &&
+                    Tree_.TokenText(close + 1).starts_with("//") &&
+                    Tree_.WhitespaceBefore(close + 1).find_first_not_of(" \t") ==
+                        std::string_view::npos)
+                {
+                    Gaps_[close + 1].NamespaceClosingComment = true;
+                }
                 Interior(
                     i,
                     close == NoToken ? i : close + 1,
@@ -1599,6 +1611,11 @@ std::optional<bool> SyntaxSpacing::SpacePreference(
     {
         return std::nullopt;
     }
+    if (TrailingCommentSpaces_ &&
+        Gaps_[gap].Field == F::TrailingCommentSpacing)
+    {
+        return std::nullopt;
+    }
     auto preference = GapUsesSpace(Gaps_[gap].Policy, ownerContext);
     if (preference && source.Separation == GapSeparation::Required &&
         !source.Original.empty())
@@ -1608,14 +1625,51 @@ std::optional<bool> SyntaxSpacing::SpacePreference(
     return preference;
 }
 
+std::optional<std::uint16_t> SyntaxSpacing::TrailingCommentCount(
+    GapId gap, const SourceAnalysis& safety) const
+{
+    if (!TrailingCommentSpaces_ || !TrailingCommentSpaces_->Count ||
+        gap >= Gaps_.size() || gap >= safety.Gaps().size())
+    {
+        return std::nullopt;
+    }
+    const auto& preference = Gaps_[gap];
+    const auto& source = safety.Gaps()[gap];
+    if (preference.Field != F::TrailingCommentSpacing ||
+        preference.NamespaceClosingComment ||
+        (static_cast<uint8_t>(preference.Constraint) &
+            static_cast<uint8_t>(SpacingConstraint::UncertainSyntax)) != 0 ||
+        source.Preserve || source.ContextSensitive ||
+        source.LineBoundary == GapLineBoundary::Required ||
+        source.MustStartWithLineFeed ||
+        source.Original.find_first_not_of(" \t") != std::string_view::npos)
+    {
+        return std::nullopt;
+    }
+    auto count = *TrailingCommentSpaces_->Count;
+    if (source.Separation == GapSeparation::Required &&
+        !source.Original.empty())
+    {
+        count = std::max<std::size_t>(count, 1);
+    }
+    return static_cast<std::uint16_t>(count);
+}
+
 SyntaxSpacing BuildSyntaxSpacing(
     const parser::SyntaxTree& tree,
     const SourceAnalysis& safety,
     const GapPolicies& spacing,
     PointerReferenceDeclaratorLocation pointerBinding,
     std::pmr::memory_resource& fileMemory,
-    std::pmr::memory_resource& scratchMemory)
+    std::pmr::memory_resource& scratchMemory,
+    std::optional<TrailingCommentSpaceSetting> trailingCommentSpaces)
 {
+    if (trailingCommentSpaces && trailingCommentSpaces->Count &&
+        *trailingCommentSpaces->Count > 10000)
+    {
+        throw std::invalid_argument(
+            "TrailingCommentSpaces must be between 0 and 10000");
+    }
     if (safety.Gaps().size() != static_cast<size_t>(tree.TokenCount()) + 1) {
         throw std::invalid_argument(
             "syntax spacing requires matching source analysis");
@@ -1626,6 +1680,7 @@ SyntaxSpacing BuildSyntaxSpacing(
             "ambiguous syntax is preserved");
     }
     SyntaxSpacing result(fileMemory);
+    result.TrailingCommentSpaces_ = trailingCommentSpaces;
     result.Gaps_.resize(safety.Gaps().size());
     Classifier classifier(tree, spacing, pointerBinding, result.Gaps_);
     std::pmr::vector<Frame> stack(&scratchMemory);

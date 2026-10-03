@@ -200,6 +200,13 @@ bool SourceAnalysis::CanReplaceGap(GapId id, std::string_view replacement) const
     return (gap.LineBoundary != GapLineBoundary::Required || newline) &&
         (gap.LineBoundary != GapLineBoundary::Forbidden || !newline);
 }
+bool SourceAnalysis::CanSpellGapNewlines(GapId id) const
+{
+    if (!Built_ || id >= Gaps_.size()) return false;
+    const auto& gap = Gaps_[id];
+    return !gap.Source.Empty() && !gap.IntrinsicPreserve &&
+        !gap.IntrinsicContextSensitive && !IntersectsImmutable(gap.Source);
+}
 void SourceAnalysis::RestrictEditScope(
     std::span<const parser::SourceRange> ranges)
 {
@@ -411,7 +418,14 @@ SourceAnalysis BuildSourceAnalysis(
         const auto end = i < count ? tree.Token(i).Text.Begin : size;
         const auto original = source.substr(begin, end - begin);
         SourceGap gap{.Source = {begin, end}, .Original = original};
-        gap.Preserve = !Whitespace(original);
+        // Classify bare CR in the existing whitespace validation walk.
+        for (size_t offset = begin; offset < end; ++offset) {
+            const auto c = source[offset];
+            gap.Preserve |= c != ' ' && c != '\t' && c != '\r' &&
+                c != '\n' && c != '\f' && c != '\v';
+            gap.HasBareCR |= c == '\r' &&
+                (offset + 1 == source.size() || source[offset + 1] != '\n');
+        }
         if (i && i < count && TokenGapNeedsSeparation(tree, i)) {
             gap.Separation = GapSeparation::Required;
         }

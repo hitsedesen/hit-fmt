@@ -53,8 +53,9 @@ struct SyntaxLayoutStatus
 // current-source insertion anchor at its syntax item's end (never Exact).
 // Protected/recovery bytes always win. OutsideEditScope-only bytes retain
 // syntax context, not edit authority. Sparse partial-gap permissions permit
-// only policy-requested horizontal trim/indentation; fixed newline bytes are
-// borrowed exactly and never count as editable owned breaks.
+// only policy-requested horizontal trim/indentation, never newline rights.
+// Fully byte-covered but insertion-fenced gaps may spell existing atoms via
+// CanSpellGapNewlines; neither fixed nor respelled atoms become owned breaks.
 // Groups form a laminar token/gap event
 // forest; crossing intervals and competing explicit gap owners are errors,
 // never a request to invoke a legacy formatter or retry a reparse.

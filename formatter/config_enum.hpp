@@ -97,6 +97,10 @@ DEFINE_CONFIG_ENUM(PointerReferenceDeclaratorLocation, POINTER_LOCATION_VALUES);
 #define INDENTATION_KIND_VALUES(X) X(Preserve) X(Spaces) X(Tabs)
 DEFINE_CONFIG_ENUM(IndentationKind, INDENTATION_KIND_VALUES);
 #undef INDENTATION_KIND_VALUES
+// Preserve retains the legacy first-original-LF/generated/copied convention.
+#define LINE_ENDING_VALUES(X) X(Preserve) X(LF) X(CRLF)
+DEFINE_CONFIG_ENUM(LineEnding, LINE_ENDING_VALUES);
+#undef LINE_ENDING_VALUES
 #define TRAILING_WHITESPACE_VALUES(X) X(Preserve) X(Trim)
 DEFINE_CONFIG_ENUM(TrailingWhitespace, TRAILING_WHITESPACE_VALUES);
 #undef TRAILING_WHITESPACE_VALUES

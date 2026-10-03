@@ -158,6 +158,14 @@ public:
         std::uint32_t end,
         std::uint64_t identity = NoIdentity,
         bool verbatim = false);
+    // Producer must authorize the entire whitespace slice, including whole
+    // CRLF atoms; a token-owned CR plus following gap LF must be excluded.
+    // Changes spelling only, never topology/indentation/owned-break rights.
+    // Retains CRLF if contraction would pair a retained bare CR with LF.
+    // Even unchanged LF requires a safe incoming boundary: a producer that
+    // omits its necessary separator receives InvalidSourceRange at Render.
+    // Borrowed source and resource survive rendering, like SourceText.
+    void SourceWhitespace(std::uint32_t begin, std::uint32_t end, Newline ending);
     void Verbatim(std::string_view borrowed, Provenance origin = {});
     void Gap(
         GapSpec spec = {},
@@ -220,6 +228,7 @@ private:
         ConditionalText,
         ConditionalGap,
         SourceLineIndent,
+        SourceWhitespace,
         ExpressionLine
     };
     struct Node
@@ -234,7 +243,14 @@ private:
         std::int32_t Indent = 0;
         std::int32_t Fallback = 0;
         std::uint32_t Minimum = 0;
-        std::uint32_t FitWidthFloor = 0;
+        // Kind-tagged, mutually exclusive leaf data. ConditionalText uses
+        // FitWidthFloor; SourceWhitespace initializes/reads ChangedNewlines.
+        // Both members are trivial scalars, copied with Node's active member.
+        union
+        {
+            std::uint32_t FitWidthFloor = 0;
+            std::uint32_t ChangedNewlines;
+        };
         // SourceLineIndent stores its horizontal association in FlatGap's
         // IndentSource offsets and its delimiter demand in RequiredWidth.
         GapSpec FlatGap;

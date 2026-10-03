@@ -60,6 +60,8 @@ struct SyntaxGapPreference
     // requires retaining the separate SourceAnalysis constraints. Priority 255
     // is reserved for an uncertain-role Preserve boundary.
     SpacingConstraint Constraint = SpacingConstraint::None;
+    // Actual namespace matching closer followed by a same-line // token.
+    bool NamespaceClosingComment = false;
 };
 static_assert(sizeof(SyntaxGapPreference) <= 16);
 
@@ -98,15 +100,22 @@ public:
         GapContext ownerContext,
         const SourceAnalysis& safety) const;
 
+    // Scalar demand only for ordinary trailing horizontal // gaps. Safety
+    // resolves count zero to one where changing adjacency needs separation.
+    [[nodiscard]] std::optional<std::uint16_t> TrailingCommentCount(
+        GapId gap, const SourceAnalysis& safety) const;
+
 private:
     std::pmr::vector<SyntaxGapPreference> Gaps_;
+    std::optional<TrailingCommentSpaceSetting> TrailingCommentSpaces_;
     friend SyntaxSpacing BuildSyntaxSpacing(
         const parser::SyntaxTree&,
         const SourceAnalysis&,
         const GapPolicies&,
         PointerReferenceDeclaratorLocation,
         std::pmr::memory_resource&,
-        std::pmr::memory_resource&);
+        std::pmr::memory_resource&,
+        std::optional<TrailingCommentSpaceSetting>);
 };
 
 // One explicit-stack tree traversal of nodes/direct-token spans, followed by
@@ -126,7 +135,8 @@ private:
     const GapPolicies& spacing,
     PointerReferenceDeclaratorLocation pointerBinding,
     std::pmr::memory_resource& fileMemory,
-    std::pmr::memory_resource& scratchMemory);
+    std::pmr::memory_resource& scratchMemory,
+    std::optional<TrailingCommentSpaceSetting> trailingCommentSpaces = std::nullopt);
 
 [[nodiscard]] inline SyntaxSpacing BuildSyntaxSpacing(
     const parser::SyntaxTree& tree,
@@ -141,7 +151,8 @@ private:
         policies.Spacing,
         policies.PointerReferenceDeclaratorLocation,
         fileMemory,
-        scratchMemory);
+        scratchMemory,
+        policies.TrailingCommentSpaces);
 }
 
 } // namespace formatter

@@ -1,0 +1,3 @@
+LineEnding = LF
+RemoveNullDeclarations = true
+ColumnLimit = 10000

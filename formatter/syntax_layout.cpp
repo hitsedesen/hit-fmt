@@ -597,9 +597,16 @@ class Planner
                 uint8_t(SpacingConstraint::UncertainSyntax)) != 0;
     }
 
+    bool RetainsBareCR(Index gap) const
+    {
+        return Policies_.LineEnding != LineEnding::Preserve &&
+               Safety_.Gaps()[gap].HasBareCR;
+    }
+
     bool GapMutable(Index gap) const
     {
-        return gap < Gaps_.size() && !Uncertain(gap) && !Gaps_[gap].Frozen &&
+        return gap < Gaps_.size() && !RetainsBareCR(gap) &&
+               !Uncertain(gap) && !Gaps_[gap].Frozen &&
                !Safety_.Gaps()[gap].Preserve &&
                !Safety_.Gaps()[gap].ContextSensitive;
     }
@@ -1898,6 +1905,9 @@ class Planner
             TokenPosition(entry.TreeNode->Tokens.Begin),
             GapPosition(entry.TreeNode->Tokens.End), layout::GroupMode::Fill,
             int32_t(policy.Indent.ContinuationOffset), policy.Indent);
+        // A chain owns continuation independently of pending expression
+        // offsets, but retains enclosing list and realized-line indentation.
+        Groups_[group].Spec.StructuralBase = true;
         Groups_[group].Spec.ForceBreak =
             policy.Break == BreakRequirement::Always;
         for (Index spine = id; spine != entry.Root;)
@@ -2584,6 +2594,20 @@ class Planner
         for (Index i = 0; i < Gaps_.size(); ++i)
         {
             auto &gap = Gaps_[i];
+            if (RetainsBareCR(i))
+            {
+                // Retain source topology before summaries or emission; do not
+                // freeze safe atom spelling or invent an owned break.
+                gap.Shape = Boundary::Preserve;
+                gap.Reindent = false;
+                gap.Vertical = false;
+                gap.PartialIndent = false;
+                gap.CanonicalFlat = false;
+                gap.PreserveIndent = true;
+                if (gap.MarkDelimiter != None)
+                    Groups_[gap.MarkDelimiter].AnchorAfterGap = true;
+                continue;
+            }
             gap.PartialIndent =
                 gap.Reindent ||
                 (!gap.PreserveIndent &&
@@ -2679,9 +2703,16 @@ class Planner
         {
             return 0;
         }
+        if (RetainsBareCR(i))
+            return HorizontalColumns(Safety_.Gaps()[i].Original,
+                                     Options_.TabWidth);
         if (Gaps_[i].ControlSeparator)
         {
             return 1;
+        }
+        if (const auto count = Spacing_.TrailingCommentCount(i, Safety_))
+        {
+            return *count;
         }
         const auto preference =
             Spacing_.SpacePreference(i, ContextFor(i), Safety_);
@@ -2782,6 +2813,7 @@ class Planner
         if (sourceHorizontal && !RebuildsTopology(i) &&
             Safety_.Gaps()[i].Original.find_first_not_of(" \t") ==
                 std::string_view::npos &&
+            !Spacing_.TrailingCommentCount(i, Safety_) &&
             !Spacing_.SpacePreference(i, context, Safety_))
         {
             spec.FlatSourceBegin = Safety_.Gaps()[i].Source.Begin;
@@ -2800,7 +2832,7 @@ class Planner
     {
         const auto &gap = Safety_.Gaps()[i];
         if (Gaps_[i].Frozen || Uncertain(i) || gap.Preserve ||
-            gap.ContextSensitive)
+            gap.ContextSensitive || RetainsBareCR(i))
         {
             return false;
         }
@@ -2846,12 +2878,38 @@ class Planner
         RecordFixedExpressionLine(i, begin, end);
     }
 
+    void EditableGapSlice(Index i, Index begin, Index end)
+    {
+        if (Policies_.LineEnding == LineEnding::Preserve || begin == end)
+        {
+            FixedGapSlice(i, begin, end);
+            return;
+        }
+        // A CR belonging to the previous token and this gap's first LF form
+        // one ineligible atom. The existing line-comment LF guard also prevents
+        // inserting CR into that token on retokenization. No atom is split.
+        if (begin == Safety_.Gaps()[i].Source.Begin && begin &&
+            Tree_.Source()[begin] == '\n' &&
+            (Tree_.Source()[begin - 1] == '\r' ||
+             (Safety_.Gaps()[i].MustStartWithLineFeed &&
+              Policies_.LineEnding == LineEnding::CRLF)))
+        {
+            FixedGapSlice(i, begin, begin + 1);
+            ++begin;
+        }
+        if (begin < end)
+        {
+            Document_.SourceWhitespace(begin, end, Options_.LineEnding);
+            RecordFixedExpressionLine(i, begin, end);
+        }
+    }
+
     void PreservedSlice(Index i, Index begin, Index end, bool trim,
                         bool trimTail = false)
     {
         if (!trim)
         {
-            FixedGapSlice(i, begin, end);
+            EditableGapSlice(i, begin, end);
             return;
         }
         const auto source = Tree_.Source();
@@ -2873,28 +2931,53 @@ class Planner
             {
                 --space;
             }
-            FixedGapSlice(i, run, space);
+            if (RetainsBareCR(i) && space < newline &&
+                space > Safety_.Gaps()[i].Source.Begin && source[space - 1] == '\r')
+                space = newline; // Keep the complete original separator run.
+            EditableGapSlice(i, run, space);
             run = newline;
         }
         if (trimTail)
         {
+            const auto originalEnd = end;
             while (end > run &&
                    (source[end - 1] == ' ' || source[end - 1] == '\t'))
             {
                 --end;
             }
+            if (RetainsBareCR(i) && end < originalEnd &&
+                end > Safety_.Gaps()[i].Source.Begin && source[end - 1] == '\r')
+                end = originalEnd;
         }
-        FixedGapSlice(i, run, end);
+        EditableGapSlice(i, run, end);
     }
 
     void PreserveGap(Index i)
     {
         const auto &source = Safety_.Gaps()[i];
         const auto &plan = Gaps_[i];
-        if (plan.Frozen || Uncertain(i) || source.Preserve ||
-            source.ContextSensitive)
+        if (plan.Frozen || Uncertain(i) || source.ContextSensitive)
         {
             FixedGapSlice(i, source.Source.Begin, source.Source.End);
+            return;
+        }
+        if (source.Preserve)
+        {
+            // Full existing bytes need no authority to insert indentation at
+            // End/EOF. This grants spelling only; generic gap guards stay put.
+            if (Policies_.LineEnding != LineEnding::Preserve &&
+                Safety_.CanSpellGapNewlines(i))
+                EditableGapSlice(i, source.Source.Begin, source.Source.End);
+            else
+                FixedGapSlice(i, source.Source.Begin, source.Source.End);
+            return;
+        }
+        if (RetainsBareCR(i))
+        {
+            PreservedSlice(i, source.Source.Begin, source.Source.End,
+                           Policies_.TrailingWhitespace == TrailingWhitespace::Trim &&
+                               Safety_.CanReplaceGap(i, source.Original),
+                           i == Tree_.TokenCount());
             return;
         }
         const auto lf = source.Original.rfind('\n');
@@ -2924,8 +3007,11 @@ class Planner
                                Policies_.TrailingWhitespace ==
                                    TrailingWhitespace::Trim);
                 auto spec = Spec(i, layout::GapKind::Hard, false);
-                spec.LineEnding =
-                    crlf ? layout::GapNewline::CRLF : layout::GapNewline::LF;
+                if (Policies_.LineEnding == LineEnding::Preserve)
+                    spec.LineEnding = crlf
+                        ? layout::GapNewline::CRLF : layout::GapNewline::LF;
+                else if (!source.MustStartWithLineFeed || lf != 0)
+                    spec.LineEnding = layout::GapNewline::Inherit;
                 auto anchor = plan.Owner == None
                     ? layout::InvalidId
                     : plan.Closing
@@ -2959,7 +3045,9 @@ class Planner
         }
         const auto context = ContextFor(i);
         const auto preference = Spacing_.SpacePreference(i, context, Safety_);
-        if (preference && Safety_.CanReplaceGap(i, *preference ? " " : ""))
+        const auto count = Spacing_.TrailingCommentCount(i, Safety_);
+        const bool space = count ? *count != 0 : preference.value_or(false);
+        if ((count || preference) && Safety_.CanReplaceGap(i, space ? " " : ""))
         {
             auto spec = Spec(i, layout::GapKind::Flat, false);
             Document_.Gap(spec, layout::InvalidId, GapOrigin(i));
@@ -2982,6 +3070,13 @@ class Planner
             FixedGapSlice(i, source.Source.Begin, source.Source.End);
             return;
         }
+        const bool spelling = Policies_.LineEnding != LineEnding::Preserve &&
+                              Safety_.CanSpellGapNewlines(i);
+        const auto copied = [&](Index begin, Index end)
+        {
+            if (spelling) EditableGapSlice(i, begin, end);
+            else FixedGapSlice(i, begin, end);
+        };
         auto cursor = source.Source.Begin;
         for (const auto &permission : permissions)
         {
@@ -2991,7 +3086,7 @@ class Planner
                 {
                     if (cursor < permission.Source.Begin)
                     {
-                        FixedGapSlice(i, cursor, permission.Source.Begin);
+                        copied(cursor, permission.Source.Begin);
                     }
                     cursor = permission.Source.End;
                 }
@@ -3020,7 +3115,7 @@ class Planner
         }
         if (cursor < source.Source.End)
         {
-            FixedGapSlice(i, cursor, source.Source.End);
+            copied(cursor, source.Source.End);
         }
     }
 

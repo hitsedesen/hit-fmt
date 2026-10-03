@@ -272,6 +272,7 @@
     OPT(bool, HonorClangFormatDirectives, true)                               \
     OPT(formatter::IndentationKind, IndentationKind, \
         formatter::IndentationKind::Preserve) \
+    OPT(formatter::LineEnding, LineEnding, formatter::LineEnding::Preserve) \
     OPT(formatter::TrailingWhitespace, TrailingWhitespace, \
         formatter::TrailingWhitespace::Preserve) \
     OPT(formatter::BreakRequirement, ListBreak,                              \
@@ -414,6 +415,8 @@
         formatter::EmptyControlBody::Preserve) \
     OPT(formatter::NamespaceComments, NamespaceComments, \
         formatter::NamespaceComments::Preserve) \
+    OPT(std::optional<formatter::TrailingCommentSpaceSetting>, \
+        TrailingCommentSpaces, std::nullopt) \
     OPT(std::size_t, NamespaceCommentSpaces, 1)                              \
     OPT(std::size_t, ShortNamespaceLines, 0)                                 \
     FORMATTER_GAP_OPTIONS(OPT)
