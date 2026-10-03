@@ -1,0 +1,16 @@
+Layout = Canonical
+IndentWidth = 4
+ColumnLimit = 100
+BodyShape = Expanded
+EmptyBodyShape = Expanded
+FunctionBracePlacement = NextLine
+StructBracePlacement = NextLine
+FunctionSpaceBeforeParameters = NoSpace
+SpaceInsideFunctionParameters = NoSpace
+FunctionCallSpaceBeforeParameters = NoSpace
+SpaceInsideCallArguments = NoSpace
+TemplateTypeArgumentSpacing = NoSpace
+TemplateTypeArgumentInteriorSpacing = NoSpace
+CommaSpaceBefore = NoSpace
+CommaSpaceAfter = Space
+PointerReferenceDeclaratorLocation = Left

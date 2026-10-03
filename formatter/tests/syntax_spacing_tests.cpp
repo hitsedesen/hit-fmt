@@ -579,6 +579,17 @@ TEST(SyntaxSpacing, CompleteSpecifierToDirectNamedDeclaratorFallback)
         EXPECT_EQ(analysis.Spacing.SpacePreference(
             id, GapContext::Rebuilt, analysis.Safety), std::nullopt) << name;
     }
+
+    Analysis decltypeDefinition("decltype(value)  incomplete(){}");
+    const auto id = decltypeDefinition.Before("incomplete");
+    const auto& gap = decltypeDefinition.Spacing.Gaps()[id];
+    ASSERT_NE(gap.Owner, nullptr);
+    EXPECT_EQ(gap.Category, C::DeclarationHeaders);
+    EXPECT_EQ(gap.Field, F::None);
+    EXPECT_TRUE(gap.FallbackSpace);
+    EXPECT_EQ(gap.Policy, GapPolicy::Preserve);
+    EXPECT_EQ(decltypeDefinition.Spacing.SpacePreference(
+        id, GapContext::Rebuilt, decltypeDefinition.Safety), std::nullopt);
 }
 
 TEST(SyntaxSpacing, DeclarationFallbackDoesNotGuessPunctuationBoundaries)
@@ -610,12 +621,6 @@ TEST(SyntaxSpacing, DeclarationFallbackDoesNotGuessPunctuationBoundaries)
     // boundary. Its owner category must remain independent of this rule.
     EXPECT_NE(analysis.Spacing.Gaps()[analysis.Before("C", 1)].Category,
         C::DeclarationHeaders);
-
-    Analysis uncertain("decltype(value)  incomplete(){}");
-    const auto id = uncertain.Before("incomplete");
-    EXPECT_FALSE(uncertain.Spacing.Gaps()[id].FallbackSpace);
-    EXPECT_EQ(uncertain.Spacing.SpacePreference(
-        id, GapContext::Rebuilt, uncertain.Safety), std::nullopt);
 }
 
 TEST(SyntaxSpacing, PointerBindingAndNestedMemberOverrides)

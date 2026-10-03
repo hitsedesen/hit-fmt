@@ -205,6 +205,14 @@ static_assert(static_cast<size_t>(NodeKind::Error) < 256);
     return Names[static_cast<size_t>(kind)];
 }
 
+enum class FunctionKind : uint8_t
+{
+    Unknown,
+    Ordinary,
+    Constructor,
+    Destructor,
+};
+
 struct SourceRange
 {
     SourceOffset Begin = 0;
@@ -291,7 +299,16 @@ struct Node
         return FirstChild;
     }
 
+    // Only positive function heads carry a kind. A FunctionDefinition owns
+    // its FunctionTryBlock child; the wrapper and catches remain Unknown.
+    [[nodiscard]] FunctionKind GetFunctionKind() const noexcept
+    {
+        return FunctionKind_;
+    }
+
 private:
+    FunctionKind FunctionKind_ = FunctionKind::Unknown;
+
     // Sparse trivia metadata is resolved through SyntaxTree so nodes do not
     // each carry another pointer.
     uint32_t TriviaIndex_ = std::numeric_limits<uint32_t>::max();

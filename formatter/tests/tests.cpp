@@ -431,6 +431,8 @@ std::vector<FormatCase> FormatCases()
     cases.push_back({disabled, "regions-no-clang", "regions.input.cpp"});
     cases.push_back({disabled, "unclosed", "unclosed.input.cpp", "regions"});
     cases.push_back({disabled, "crlf", "crlf.input.cpp", "regions"});
+    cases.push_back({std::filesystem::path(FORMATTER_TESTDATA_DIR) /
+        "../constructor-initializer-ranges", "canonical", "input.cpp"});
     const auto newArrays = std::filesystem::path(FORMATTER_TESTDATA_DIR) /
         "../new-array-declarators";
     AddCases(cases, newArrays, {"left", "array-space", "array-preserve"});
@@ -511,7 +513,7 @@ std::vector<FormatCase> FormatCases()
     }
     const auto data = std::filesystem::path(FORMATTER_TESTDATA_DIR) / "..";
     for (const auto* name : {"layout", "structural", "comments",
-        "enumerator-assignment"}) {
+        "enumerator-assignment", "opaque-record-owners", "control-ownership", "control-separators-braced", "control-separators-unbraced", "control-separators-nested", "declaration-operands", "declaration-operands-recovery", "annotation-boundaries", "annotation-constructors", "annotation-suffixes", "annotation-constraints", "terminal-constructor-template-ids"}) {
         cases.push_back({data / "public-pipeline", name,
             std::string(name) + ".input.cpp"});
     }
@@ -534,6 +536,7 @@ std::vector<FormatCase> FormatCases()
     cases.push_back({data / "namespace_comments", "composes-spacing",
         "composes-spacing.input.cpp"});
     AddCases(cases, data / "qualified-record", {"canonical", "ytsaurus"});
+    AddCases(cases, data / "unhinted-body-recovery", {"canonical"});
     const auto hunks = data / "changed-hunks";
     cases.push_back({hunks / "basic", "call", "input.cpp",
         "style", {{8, 8}}});

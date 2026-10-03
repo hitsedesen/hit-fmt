@@ -1,0 +1,47 @@
+(translation-unit
+  (template-declaration
+    "template"
+    (template-parameter-list
+      "<"
+      (template-parameter "class" "T")
+      ">"
+    )
+    (record-declaration
+      "struct" "Parcel" "{"
+      (function-definition
+        (declaration-specifiers "explicit")
+        (init-declarator-list
+          (init-declarator
+            (declarator
+              (declarator-name "Parcel")
+              (template-argument-list
+                "<"
+                (template-argument "T")
+                ">"
+              )
+              (function-declarator
+                (parameter-list
+                  "("
+                  (parameter-declaration
+                    (declaration-specifiers "T")
+                    (init-declarator-list
+                      (init-declarator
+                        (declarator
+                          (pointer-operator "*")
+                          (declarator-name "value")
+                        )
+                      )
+                    )
+                  )
+                  ")"
+                )
+              )
+            )
+          )
+        )
+        (compound-statement "{" "}")
+      )
+      "}" ";"
+    )
+  )
+)

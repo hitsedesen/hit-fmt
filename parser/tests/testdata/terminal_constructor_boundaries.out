@@ -1,0 +1,318 @@
+(translation-unit
+  (template-declaration
+    "template"
+    (template-parameter-list
+      "<"
+      (template-parameter "class" "T")
+      ">"
+    )
+    (record-declaration
+      "struct" "Owner" "{"
+      (function-declaration
+        (declaration-specifiers
+          "Owner"
+          (template-argument-list
+            "<"
+            (template-argument "T")
+            ">"
+          )
+        )
+        (init-declarator-list
+          (init-declarator
+            (abstract-declarator
+              (function-declarator
+                (parameter-list
+                  "("
+                  (parameter-declaration
+                    (declaration-specifiers "make")
+                  )
+                  ")"
+                )
+                "(" ")"
+              )
+            )
+          )
+        )
+        ";"
+      )
+      (function-definition
+        (declaration-specifiers
+          "Owner"
+          (template-argument-list
+            "<"
+            (template-argument "T")
+            ">"
+          )
+        )
+        (init-declarator-list
+          (init-declarator
+            (abstract-declarator
+              (function-declarator
+                (parameter-list
+                  "("
+                  (parameter-declaration
+                    (init-declarator-list
+                      (init-declarator
+                        (declarator
+                          (nested-declarator
+                            "("
+                            (declarator-name "create")
+                            ")"
+                          )
+                        )
+                      )
+                    )
+                  )
+                  ")"
+                )
+                "(" ")"
+              )
+            )
+          )
+        )
+        (compound-statement
+          "{"
+          (return-statement
+            "return"
+            (braced-initializer
+              (initializer-list "{" "}")
+            )
+            ";"
+          )
+          "}"
+        )
+      )
+      (function-declaration
+        (declaration-specifiers
+          "Owner"
+          (template-argument-list
+            "<"
+            (template-argument "T")
+            ">"
+          )
+        )
+        (init-declarator-list
+          (init-declarator
+            (abstract-declarator
+              "(" "items" ")"
+              (attribute-specifier "[" "[" "]" "(" ")" "{" "return" "4" ";" "}" "(" ")" "]")
+              (function-declarator
+                (parameter-list
+                  "("
+                  (parameter-declaration
+                    (declaration-specifiers "items")
+                  )
+                  ")"
+                )
+                (attribute-specifier "[" "[" "]" "(" ")" "{" "return" "4" ";" "}" "(" ")" "]")
+              )
+            )
+          )
+        )
+        ";"
+      )
+      (function-declaration
+        (declaration-specifiers
+          "Owner"
+          (template-argument-list
+            "<"
+            (template-argument "T")
+            ">"
+          )
+        )
+        (init-declarator-list
+          (init-declarator
+            (abstract-declarator
+              (nested-declarator
+                "(" "T"
+                (pointer-operator "*")
+                "p" ")"
+              )
+              (function-declarator
+                (parameter-list
+                  "("
+                  (parameter-declaration
+                    (declaration-specifiers "T")
+                    (init-declarator-list
+                      (init-declarator
+                        (declarator
+                          (pointer-operator "*")
+                          (declarator-name "p")
+                        )
+                      )
+                    )
+                  )
+                  ")"
+                )
+                (exception-specification "noexcept" "(" "check" "(" "p" ")" ")")
+                "(" ")"
+              )
+            )
+          )
+        )
+        ";"
+      )
+      (function-declaration
+        (declaration-specifiers
+          "Owner"
+          (template-argument-list
+            "<"
+            (template-argument "T")
+            ">"
+          )
+        )
+        (init-declarator-list
+          (init-declarator
+            (abstract-declarator
+              (nested-declarator
+                "(" "T"
+                (pointer-operator "*")
+                "p" ")"
+              )
+              (function-declarator
+                (parameter-list
+                  "("
+                  (parameter-declaration
+                    (declaration-specifiers "T")
+                    (init-declarator-list
+                      (init-declarator
+                        (declarator
+                          (pointer-operator "*")
+                          (declarator-name "p")
+                        )
+                      )
+                    )
+                  )
+                  ")"
+                )
+                (requires-clause
+                  "requires"
+                  (constraint-expression
+                    (literal-expression "true")
+                  )
+                )
+              )
+            )
+          )
+        )
+        ";"
+      )
+      (function-declaration
+        (declaration-specifiers
+          "Owner"
+          (template-argument-list
+            "<"
+            (template-argument "T")
+            ">"
+          )
+        )
+        (init-declarator-list
+          (init-declarator
+            (abstract-declarator
+              (nested-declarator
+                "(" "T"
+                (pointer-operator "*")
+                "p" ")"
+              )
+              (function-declarator
+                (parameter-list
+                  "("
+                  (parameter-declaration
+                    (declaration-specifiers "T")
+                    (init-declarator-list
+                      (init-declarator
+                        (declarator
+                          (pointer-operator "*")
+                          (declarator-name "p")
+                        )
+                      )
+                    )
+                  )
+                  ")"
+                )
+              )
+            )
+            (initializer
+              "="
+              (call-expression
+                (identifier-expression "opaque")
+                (argument-list "(" ")")
+              )
+            )
+          )
+        )
+        ";"
+      )
+      (function-declaration
+        (init-declarator-list
+          (init-declarator
+            (declarator
+              (declarator-name "Owner")
+              (template-argument-list
+                "<"
+                (template-argument "T")
+                ">"
+              )
+              (function-declarator
+                (parameter-list
+                  "("
+                  (parameter-declaration
+                    (declaration-specifiers "T")
+                    (init-declarator-list
+                      (init-declarator
+                        (declarator
+                          (pointer-operator "*")
+                          (declarator-name "p")
+                        )
+                      )
+                    )
+                  )
+                  ")"
+                )
+              )
+            )
+            (initializer
+              "="
+              (expression "default")
+            )
+          )
+        )
+        ";"
+      )
+      (function-definition
+        (init-declarator-list
+          (init-declarator
+            (declarator
+              (declarator-name "Owner")
+              (template-argument-list
+                "<"
+                (template-argument "T")
+                ">"
+              )
+              (function-declarator
+                (parameter-list
+                  "("
+                  (parameter-declaration
+                    (declaration-specifiers "T")
+                    (init-declarator-list
+                      (init-declarator
+                        (declarator
+                          (pointer-operator "*")
+                          (declarator-name "p")
+                        )
+                      )
+                    )
+                  )
+                  ")"
+                )
+                (exception-specification "noexcept" "(" "check" "(" "p" ")" ")")
+              )
+            )
+          )
+        )
+        (compound-statement "{" "}")
+      )
+      "}" ";"
+    )
+  )
+)

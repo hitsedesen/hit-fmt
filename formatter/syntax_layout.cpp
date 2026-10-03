@@ -61,6 +61,7 @@ struct Gap
     // A flat header boundary still rebuilds source topology, so horizontal
     // Preserve spelling must use the same safe fallback before fitting.
     bool CanonicalFlat = false;
+    bool ControlSeparator = false;
 };
 struct Group
 {
@@ -1304,50 +1305,68 @@ class Planner
     {
         const auto &node = *Syntax_[id].TreeNode;
         Index previousEnd = node.Tokens.Begin;
+        Index previousBody = None;
         bool first = true;
+        Index compactSeparators = None;
         for (auto child = Syntax_[id].FirstChild; child != None;
              child = Syntax_[child].NextSibling)
         {
             const auto &body = *Syntax_[child].TreeNode;
-            if (!ControlledBody(body.Kind) || body.Tokens.Empty())
+            const bool suffix = node.Kind == NodeKind::DoWhileStatement &&
+                                previousBody != None &&
+                                body.Kind == NodeKind::Condition;
+            if ((!ControlledBody(body.Kind) && !suffix) || body.Tokens.Empty())
             {
                 continue;
             }
+            const auto precedingBody = previousBody;
             Index begin = node.Tokens.Begin;
             if (!first)
             {
                 begin = None;
-                for (Index t = previousEnd; t < body.Tokens.Begin; ++t)
+                auto part = Syntax_[previousBody].NextSibling;
+                const auto end = std::min(body.Tokens.Begin, node.Tokens.End);
+                for (Index t = previousEnd; t < end;)
                 {
-                    if (Tree_.Kind(t) == TokenKind::Keyword_else)
+                    while (part != None && part != child &&
+                           Syntax_[part].TreeNode->Tokens.End <= t)
+                    {
+                        part = Syntax_[part].NextSibling;
+                    }
+                    if (part != None && part != child &&
+                        Syntax_[part].TreeNode->Tokens.Begin <= t)
+                    {
+                        // A descendant's else belongs to that child, not this
+                        // arm. Half-open ranges retain a direct else at End.
+                        t = std::min(Syntax_[part].TreeNode->Tokens.End, end);
+                        part = Syntax_[part].NextSibling;
+                        continue;
+                    }
+                    if (Tree_.Kind(t) == (suffix ? TokenKind::Keyword_while
+                                                : TokenKind::Keyword_else))
                     {
                         begin = t;
                         break;
                     }
+                    ++t;
                 }
             }
             const bool elseIf = !first && body.Kind == NodeKind::IfStatement;
             first = false;
-            previousEnd = body.Tokens.End;
+            if (!suffix)
+            {
+                previousEnd = body.Tokens.End;
+                previousBody = child;
+            }
             if (begin == None || begin >= body.Tokens.Begin)
             {
                 continue;
             }
-            if (begin != node.Tokens.Begin && GapMutable(begin))
-            {
-                // Source attachment is independent of the local header shape.
-                // Reindent an existing else-leading line outside that header,
-                // so it cannot falsely mark a fitting else header broken.
-                const auto prefix =
-                    GroupAt(GapPosition(begin), TokenPosition(begin),
-                            layout::GroupMode::Consistent);
-                Own(begin, prefix, Boundary::Preserve);
-                Reindent(begin, prefix);
-            }
             const bool braced = body.Kind == NodeKind::CompoundStatement;
             const auto opening = body.Tokens.Begin;
             bool safeHeader = PrefixProtection_[begin] ==
-                              PrefixProtection_[opening + (braced ? 1 : 0)];
+                              PrefixProtection_[opening + (braced ? 1 : 0)] &&
+                              (!suffix || Syntax_[child].Safe);
             for (auto part = Syntax_[id].FirstChild; part != None;
                  part = Syntax_[part].NextSibling)
             {
@@ -1361,6 +1380,60 @@ class Planner
             const bool canonical =
                 safeHeader &&
                 Policies_.ControlHeaders.Layout == LayoutMode::Canonical;
+            if (begin != node.Tokens.Begin && GapMutable(begin))
+            {
+                const auto &preceding = *Syntax_[precedingBody].TreeNode;
+                // Only an adjacent, editable direct-parent boundary may join.
+                // Trivia children and protected headers retain their topology.
+                const bool adjacent = preceding.Tokens.End == begin &&
+                                      Tree_.Kind(begin - 1) != TokenKind::Comment;
+                const bool precedingBraced =
+                    preceding.Kind == NodeKind::CompoundStatement;
+                Boundary boundary = Boundary::Preserve;
+                if (canonical && adjacent)
+                {
+                    if (precedingBraced)
+                        boundary = Boundary::Flat;
+                    else if (Policies_.Bodies.Layout == LayoutMode::Canonical)
+                        boundary = Policies_.Bodies.Shape == BodyShape::Expanded
+                            ? Boundary::Hard : Boundary::Soft;
+                }
+                Index prefix;
+                if (boundary == Boundary::Soft)
+                {
+                    if (compactSeparators == None)
+                    {
+                        compactSeparators = GroupAt(
+                            TokenPosition(node.Tokens.Begin),
+                            GapPosition(node.Tokens.End),
+                            layout::GroupMode::Consistent);
+                        Groups_[compactSeparators].Spec.StructuralBase = true;
+                    }
+                    prefix = compactSeparators;
+                }
+                else
+                    prefix = GroupAt(GapPosition(begin), TokenPosition(begin),
+                                     layout::GroupMode::Consistent);
+                Own(begin, prefix, boundary);
+                if (boundary == Boundary::Preserve)
+                    Reindent(begin, prefix);
+                else
+                {
+                    Gaps_[begin].CanonicalFlat = true;
+                    Gaps_[begin].ControlSeparator = true;
+                }
+            }
+            // A do-while Condition is the real direct suffix, not another arm.
+            // Opening brace placement has no authority over this header.
+            if (suffix)
+            {
+                const auto header = GroupAt(TokenPosition(begin),
+                    GapPosition(node.Tokens.End), layout::GroupMode::Fill);
+                Groups_[header].Spec.StructuralBase = true;
+                if (canonical)
+                    ProjectHeaderGaps(id, begin, node.Tokens.End, header);
+                continue;
+            }
             const auto header = GroupAt(TokenPosition(begin),
                                         braced
                                             ? GapPosition(opening + 1)
@@ -2605,6 +2678,10 @@ class Planner
         if (Removed_.size() > i && Removed_[i])
         {
             return 0;
+        }
+        if (Gaps_[i].ControlSeparator)
+        {
+            return 1;
         }
         const auto preference =
             Spacing_.SpacePreference(i, ContextFor(i), Safety_);

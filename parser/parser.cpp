@@ -434,6 +434,7 @@ std::optional<SyntaxTree> SyntaxTree::RebindReorderedComments(
     }
     auto* root = detail::Make<Node>(*rebound.Memory_);
     root->Kind = Root().Kind;
+    root->FunctionKind_ = Root().FunctionKind_;
     root->Tokens = {0, TokenCount()};
     std::byte buffer[1024];
     std::pmr::monotonic_buffer_resource scratch(buffer, sizeof(buffer));
@@ -449,6 +450,7 @@ std::optional<SyntaxTree> SyntaxTree::RebindReorderedComments(
         {
             auto* copy = detail::Make<Node>(*rebound.Memory_);
             copy->Kind = child->Kind;
+            copy->FunctionKind_ = child->FunctionKind_;
             if (child->Tokens.Empty()) {
                 const auto index = child->Tokens.Begin;
                 auto position = index < TokenCount()
@@ -919,6 +921,7 @@ std::optional<SyntaxTree> SyntaxTree::RebindRemovedNullStatements(
 
     auto* root = detail::Make<Node>(*rebound.Memory_);
     root->Kind = Root().Kind;
+    root->FunctionKind_ = Root().FunctionKind_;
     root->Tokens = {mapped[Root().Tokens.Begin],
         mapped[Root().Tokens.End]};
     std::byte buffer[1024];
@@ -948,6 +951,7 @@ std::optional<SyntaxTree> SyntaxTree::RebindRemovedNullStatements(
             }
             auto* copy = detail::Make<Node>(*rebound.Memory_);
             copy->Kind = child->Kind;
+            copy->FunctionKind_ = child->FunctionKind_;
             copy->Tokens = {mapped[first], mapped[last]};
             if (clone->LastChild) {
                 clone->LastChild->NextSibling = copy;
@@ -1101,6 +1105,7 @@ std::optional<SyntaxTree> SyntaxTree::RebindControlBraces(
 
     auto* root = detail::Make<Node>(*rebound.Memory_);
     root->Kind = Root().Kind;
+    root->FunctionKind_ = Root().FunctionKind_;
     root->Tokens = {begins[Root().Tokens.Begin],
         ends[Root().Tokens.End]};
     std::byte buffer[1024];
@@ -1142,6 +1147,7 @@ std::optional<SyntaxTree> SyntaxTree::RebindControlBraces(
             }
             auto* copy = detail::Make<Node>(*rebound.Memory_);
             copy->Kind = child->Kind;
+            copy->FunctionKind_ = child->FunctionKind_;
             copy->Tokens = {begins[child->Tokens.Begin],
                 block < blocks.size()
                     ? closings[block]
@@ -1188,6 +1194,7 @@ SyntaxTree SyntaxTree::CloneSyntax(util::PaddedSourceView source) const
     }
     auto* root = detail::Make<Node>(*clone.Memory_);
     root->Kind = Root().Kind;
+    root->FunctionKind_ = Root().FunctionKind_;
     root->Tokens = Root().Tokens;
     std::byte buffer[1024];
     std::pmr::monotonic_buffer_resource scratch(buffer, sizeof(buffer));
@@ -1202,6 +1209,7 @@ SyntaxTree SyntaxTree::CloneSyntax(util::PaddedSourceView source) const
         {
             auto* next = detail::Make<Node>(*clone.Memory_);
             next->Kind = child->Kind;
+            next->FunctionKind_ = child->FunctionKind_;
             next->Tokens = child->Tokens;
             if (copy->LastChild) {
                 copy->LastChild->NextSibling = next;
@@ -2555,7 +2563,10 @@ private:
                 : RecordHeadName{
                     FindDeclaredTypeName(declaration->Tokens.Begin, true),
                     false};
-            if (!name.IsQualified && name.Token < Tree_.Tokens_.Size()) {
+            if (!name.IsQualified && name.Token < Tree_.Tokens_.Size() &&
+                (declaration->Kind != NodeKind::RecordDeclaration ||
+                    (name.HasTerminalName && !name.HasOpaquePrefix)))
+            {
                 AddName(Text(name.Token), NameKind::Type);
             }
         } else if (declaration &&
@@ -2751,58 +2762,84 @@ private:
     {
         size_t Token;
         bool IsQualified;
+        bool HasOpaquePrefix = false;
+        bool HasTerminalName = false;
     };
 
     [[nodiscard]] RecordHeadName FindDeclaredRecordName(size_t start) const
     {
         const auto end = Tree_.Tokens_.Size();
-        auto name = NextSignificant(start + 1);
-        // Attributes belong to the record head, not its qualified name.
-        while (name < end) {
-            if (IsExtensionAttribute(name)) {
-                name = NextSignificant(FindExtensionAttributeEnd(name, end));
-            } else if (Kind(name) == TK::Operator_OpenBracket ||
-                Kind(name) == TK::Keyword_alignas)
-            {
-                auto opening = Kind(name) == TK::Keyword_alignas
-                    ? NextSignificant(name + 1)
-                    : name;
-                auto attributeEnd = FindBalancedEnd(opening);
-                if (attributeEnd == std::numeric_limits<TokenIndex>::max()) {
-                    return {end, false};
+        auto skipAttributes = [&](size_t index) -> size_t {
+            while (index < end) {
+                auto after = index;
+                if (IsExtensionAttribute(index)) {
+                    after = FindExtensionAttributeEnd(index, end);
+                } else if ((Kind(index) == TK::Operator_OpenBracket &&
+                        Kind(index + 1) == TK::Operator_OpenBracket) ||
+                    Kind(index) == TK::Keyword_alignas)
+                {
+                    auto opening = Kind(index) == TK::Keyword_alignas
+                        ? NextSignificant(index + 1) : index;
+                    after = FindBalancedEnd(opening);
+                } else {
+                    break;
                 }
-                name = NextSignificant(attributeEnd);
-            } else {
-                break;
+                if (after == std::numeric_limits<TokenIndex>::max() ||
+                    after <= index || after >= end)
+                {
+                    return end;
+                }
+                index = NextSignificant(after);
             }
-        }
+            return index;
+        };
+        auto name = skipAttributes(NextSignificant(start + 1));
         bool isQualified = false;
+        bool opaquePrefix = false;
         if (Kind(name) == TK::Operator_ScopeResolution) {
             isQualified = true;
             name = NextSignificant(name + 1);
         }
-        if (Kind(name) != TK::Identifier) {
-            return {end, isQualified};
-        }
-        while (name < end) {
+        while (name < end && Kind(name) == TK::Identifier) {
             auto next = NextSignificant(name + 1);
-            if (Kind(next) == TK::Operator_Less) {
+            bool templateId = Kind(next) == TK::Operator_Less;
+            if (templateId) {
                 next = NextSignificant(SkipTemplateArguments(next, end));
+                if (next >= end) {
+                    break;
+                }
             }
-            if (Kind(next) != TK::Operator_ScopeResolution) {
-                break;
+            if (Kind(next) == TK::Operator_ScopeResolution) {
+                auto component = NextSignificant(next + 1);
+                if (Kind(component) == TK::Keyword_template) {
+                    component = NextSignificant(component + 1);
+                }
+                if (Kind(component) != TK::Identifier) {
+                    break;
+                }
+                isQualified = true;
+                name = component;
+                continue;
             }
-            auto component = NextSignificant(next + 1);
-            if (Kind(component) == TK::Keyword_template) {
-                component = NextSignificant(component + 1);
+            next = skipAttributes(next);
+            if (!isQualified && !templateId && Kind(next) == TK::Identifier &&
+                Text(next) != "final")
+            {
+                // Only bare prefix components can be opaque decorations.
+                // The terminal record-id must still meet a head boundary.
+                opaquePrefix = true;
+                name = next;
+                continue;
             }
-            if (Kind(component) != TK::Identifier) {
-                break;
+            if (Kind(next) == TK::Identifier && Text(next) == "final") {
+                next = skipAttributes(NextSignificant(next + 1));
             }
-            isQualified = true;
-            name = component;
+            const auto kind = Kind(next);
+            const bool terminal = kind == TK::Operator_OpenBrace ||
+                kind == TK::Operator_Colon || kind == TK::Operator_Semicolon;
+            return {name, isQualified, opaquePrefix, terminal};
         }
-        return {name, isQualified};
+        return {end, isQualified, opaquePrefix, false};
     }
 
     Node* ParseNamespaceDeclaration()
@@ -2840,7 +2877,10 @@ private:
         const auto typeName = recordName.Token;
         auto* node = MakeNode(NodeKind::RecordDeclaration, start);
         bool sawBaseClause = false;
-        bool unknownHeader = false;
+        bool unknownHeader = recordName.HasOpaquePrefix ||
+            !recordName.HasTerminalName;
+        bool ambiguousRecordForm = recordName.HasOpaquePrefix;
+        bool invalidHeadAngles = false;
         size_t baseClauseBegin = Tree_.Tokens_.Size();
         int angleDepth = 0;
         while (!AtEnd() && CurrentKind() != TK::Operator_Semicolon &&
@@ -2855,9 +2895,11 @@ private:
                 ++angleDepth;
                 ++Cursor_;
             } else if (CurrentKind() == TK::Operator_Greater) {
+                invalidHeadAngles |= angleDepth == 0;
                 angleDepth = std::max(0, angleDepth - 1);
                 ++Cursor_;
             } else if (CurrentKind() == TK::Operator_RightShift) {
+                invalidHeadAngles |= angleDepth < 2;
                 angleDepth = std::max(0, angleDepth - 2);
                 ++Cursor_;
             } else if (CurrentKind() == TK::Operator_Colon && angleDepth == 0) {
@@ -2871,6 +2913,7 @@ private:
                 // A macro may appear between `class` and its name. Do not
                 // parse the following `{...}` as a variable initializer.
                 unknownHeader = true;
+                ambiguousRecordForm = true;
                 ++Cursor_;
             } else if (CurrentKind() == TK::Operator_OpenParenthesis) {
                 auto previous = PreviousSignificant(Cursor_);
@@ -2890,7 +2933,8 @@ private:
             }
         }
         const auto headEnd = sawBaseClause ? baseClauseBegin : Cursor_;
-        if (unknownHeader && CurrentKind() != TK::Operator_OpenBrace) {
+        unknownHeader |= invalidHeadAngles || angleDepth != 0;
+        if (ambiguousRecordForm && CurrentKind() != TK::Operator_OpenBrace) {
             Cursor_ = start;
             return ParseGeneralDeclaration();
         }
@@ -2921,8 +2965,11 @@ private:
             if (record) {
                 record->Members = CurrentScope_;
             }
+            // Opaque decorations do not prove a type binding. A structurally
+            // delimited record-id can still identify this local owner only.
             RecordNames_.push_back(
-                !unknownHeader && typeName < Tree_.Tokens_.Size()
+                recordName.HasTerminalName && !invalidHeadAngles &&
+                    angleDepth == 0 && typeName < Tree_.Tokens_.Size()
                     ? Text(typeName)
                     : std::string_view{});
             if (!unknownHeader && typeName < Tree_.Tokens_.Size()) {
@@ -3158,8 +3205,12 @@ private:
     [[nodiscard]] size_t SkipTemplateArguments(
         size_t index,
         size_t end,
-        bool requireComplete = false) const
+        bool requireComplete = false,
+        bool* exactClosing = nullptr) const
     {
+        if (exactClosing) {
+            *exactClosing = false;
+        }
         if (Kind(index) != TK::Operator_Less) {
             return index;
         }
@@ -3169,11 +3220,17 @@ private:
                 ++depth;
             } else if (Kind(index) == TK::Operator_Greater) {
                 if (--depth == 0) {
+                    if (exactClosing) {
+                        *exactClosing = true;
+                    }
                     return index + 1;
                 }
             } else if (Kind(index) == TK::Operator_RightShift) {
                 depth -= 2;
                 if (depth <= 0) {
+                    if (exactClosing) {
+                        *exactClosing = depth == 0;
+                    }
                     return requireComplete && depth < 0 ? end : index + 1;
                 }
             } else if (IsOpenDelimiter(Kind(index))) {
@@ -3190,34 +3247,94 @@ private:
     }
 
     [[nodiscard]] bool
-    LooksLikeConstructorDeclarator(size_t index, size_t end) const
+    LooksLikeConstructorDeclarator(
+        size_t index,
+        size_t end,
+        FunctionKind* functionKind = nullptr,
+        std::optional<TokenRange> constructorParameters = std::nullopt) const
     {
-        if (Kind(index) != TK::Identifier) {
-            return false;
+        bool localOwner = Kind(index) != TK::Operator_ScopeResolution;
+        if (!localOwner) {
+            index = NextSignificant(index + 1);
         }
-        auto firstName = Text(index);
-        auto next = NextSignificant(index + 1);
-        if (Kind(next) == TK::Operator_OpenParenthesis) {
-            return !RecordNames_.empty() && Text(index) == RecordNames_.back();
+        std::string_view owner = RecordNames_.empty()
+            ? std::string_view{} : RecordNames_.back();
+        bool exactOwner = true;
+        while (index < end) {
+            bool destructor = Kind(index) == TK::Operator_Complement;
+            auto name = destructor ? NextSignificant(index + 1) : index;
+            if (name >= end || Kind(name) != TK::Identifier) {
+                return false;
+            }
+            auto next = NextSignificant(name + 1);
+            const bool templateId = !destructor && Kind(next) == TK::Operator_Less;
+            if (templateId) {
+                bool exactClosing = false;
+                auto after = SkipTemplateArguments(next, end, false, &exactClosing);
+                exactOwner &= exactClosing;
+                if (after >= end || (Kind(after - 1) != TK::Operator_Greater &&
+                        Kind(after - 1) != TK::Operator_RightShift))
+                {
+                    return false;
+                }
+                next = NextSignificant(after);
+            }
+            if (Kind(next) == TK::Operator_OpenParenthesis) {
+                size_t after;
+                if (templateId) {
+                    // The declaration owner selected this delimiter-inclusive
+                    // range before head classification. End is one past ')',
+                    // not the end of the inner parameter payload. A grouped
+                    // declarator's earlier pair must not become parameters.
+                    if (!localOwner || !exactOwner || !constructorParameters ||
+                        constructorParameters->Begin != next ||
+                        constructorParameters->End <= next + 1 ||
+                        constructorParameters->End > end)
+                    {
+                        return false;
+                    }
+                    auto closing = constructorParameters->End - 1;
+                    if (Kind(closing) != TK::Operator_CloseParenthesis ||
+                        Tree_.Tokens_.MatchingDelimiter(next) != closing ||
+                        Tree_.Tokens_.MatchingDelimiter(closing) != next)
+                    {
+                        return false;
+                    }
+                    after = constructorParameters->End;
+                } else {
+                    after = FindBalancedEnd(next);
+                }
+                bool matches = !owner.empty() && Text(name) == owner &&
+                    after != std::numeric_limits<TokenIndex>::max() &&
+                    after <= end;
+                if (matches && exactOwner && functionKind) {
+                    *functionKind = destructor
+                        ? FunctionKind::Destructor : FunctionKind::Constructor;
+                }
+                return matches;
+            }
+            if (destructor || next >= end ||
+                Kind(next) != TK::Operator_ScopeResolution)
+            {
+                return false;
+            }
+            localOwner = false;
+            owner = Text(name);
+            index = NextSignificant(next + 1);
+            if (Kind(index) == TK::Keyword_template) {
+                index = NextSignificant(index + 1);
+            }
         }
-        if (Kind(next) != TK::Operator_ScopeResolution) {
-            return false;
-        }
-        auto name = NextSignificant(next + 1);
-        if (Kind(name) == TK::Operator_Complement) {
-            name = NextSignificant(name + 1);
-        }
-        auto opening = NextSignificant(name + 1);
-        return name < end && Kind(name) == TK::Identifier &&
-            Text(name) == firstName &&
-            Kind(opening) == TK::Operator_OpenParenthesis;
+        return false;
     }
 
     [[nodiscard]] size_t
     FindDeclarationSpecifiersEnd(
         size_t begin,
         size_t end,
-        bool requireComplete = false) const
+        bool requireComplete = false,
+        FunctionKind* functionKind = nullptr,
+        std::optional<TokenRange> constructorParameters = std::nullopt) const
     {
         auto index = NextSignificant(begin);
         bool foundType = false;
@@ -3259,10 +3376,17 @@ private:
             break;
         }
 
-        if (index >= end || foundType ||
-            LooksLikeConstructorDeclarator(index, end) ||
-            Kind(index) == TK::Keyword_operator ||
-            Kind(index) == TK::Operator_Complement)
+        if (index >= end) {
+            return index;
+        }
+        if (foundType || Kind(index) == TK::Keyword_operator) {
+            if (functionKind) {
+                *functionKind = FunctionKind::Ordinary;
+            }
+            return index;
+        }
+        if (LooksLikeConstructorDeclarator(index, end, functionKind,
+                constructorParameters) || Kind(index) == TK::Operator_Complement)
         {
             return index;
         }
@@ -3279,9 +3403,16 @@ private:
 
         // Consume a user-defined, qualified type name and optional template
         // arguments. The following token begins the declarator.
+        if (functionKind) {
+            *functionKind = FunctionKind::Ordinary;
+        }
         index = NextSignificant(index + 1);
         if (Kind(index) == TK::Operator_Less) {
-            index = NextSignificant(SkipTemplateArguments(index, end, requireComplete));
+            bool exactClosing = false;
+            index = NextSignificant(SkipTemplateArguments(index, end, requireComplete, &exactClosing));
+            if (functionKind && !exactClosing) {
+                *functionKind = FunctionKind::Unknown;
+            }
         }
         while (Kind(index) == TK::Operator_ScopeResolution) {
             auto component = NextSignificant(index + 1);
@@ -3290,7 +3421,11 @@ private:
             }
             index = NextSignificant(component + 1);
             if (Kind(index) == TK::Operator_Less) {
-                index = NextSignificant(SkipTemplateArguments(index, end, requireComplete));
+                bool exactClosing = false;
+                index = NextSignificant(SkipTemplateArguments(index, end, requireComplete, &exactClosing));
+                if (functionKind && !exactClosing) {
+                    *functionKind = FunctionKind::Unknown;
+                }
             }
         }
         return index;
@@ -3422,11 +3557,15 @@ private:
         return end;
     }
 
-    void AddParameterDeclarations(Node& list, TokenRange parameters)
+    // Returns absence of empty parameter slots, not full grammar validity.
+    bool AddParameterDeclarations(Node& list, TokenRange parameters)
     {
         size_t segmentBegin = parameters.Begin + 1;
         int delimiterDepth = 0;
         int angleDepth = 0;
+        bool hasParameterToken = false;
+        bool sawSeparator = false;
+        bool noEmptyParameterSlots = true;
         for (auto i = segmentBegin; i + 1 <= parameters.End; ++i) {
             bool atEnd = i + 1 == parameters.End;
             auto kind = Kind(i);
@@ -3453,9 +3592,11 @@ private:
             if (!atEnd && (kind != TK::Operator_Comma || delimiterDepth != 0 ||
                     angleDepth != 0))
             {
+                hasParameterToken |= kind != TK::Comment;
                 continue;
             }
 
+            noEmptyParameterSlots &= hasParameterToken || (atEnd && !sawSeparator);
             if (segmentBegin < i) {
                 auto* parameter =
                     MakeNode(NodeKind::ParameterDeclaration, segmentBegin);
@@ -3467,9 +3608,12 @@ private:
                 auto* comma = MakeNode(NodeKind::ListSeparator, i);
                 comma->Tokens.End = i + 1;
                 Append(list, *comma);
+                sawSeparator = true;
             }
             segmentBegin = i + 1;
+            hasParameterToken = false;
         }
+        return noEmptyParameterSlots;
     }
 
     [[nodiscard]] bool HasEmptyArgumentSlot(
@@ -3819,7 +3963,8 @@ private:
         }
     }
 
-    void AddFunctionSuffixSyntax(Node& function, size_t begin, size_t end)
+    [[nodiscard]] std::optional<TokenIndex> AddFunctionSuffixSyntax(
+        Node& function, size_t begin, size_t end)
     {
         auto index = NextSignificant(begin);
         while (index < end) {
@@ -3928,10 +4073,11 @@ private:
             }
             if (kind == TK::Operator_Colon) {
                 AddConstructorInitializers(function, index, end);
-                break;
+                return index;
             }
             index = NextSignificant(index + 1);
         }
+        return std::nullopt;
     }
 
     void AddTypeSyntaxChildren(Node& node, size_t begin, size_t end)
@@ -4041,14 +4187,16 @@ private:
         return false;
     }
 
-    void AddDeclaratorSyntax(
+    FunctionKind AddDeclaratorSyntax(
         Node& initDeclarator,
         size_t begin,
         size_t end,
         std::optional<TokenRange> parameters,
         bool ambiguousSuffix = false,
-        bool inferNestedParameters = true)
+        bool inferNestedParameters = true,
+        FunctionKind functionKind = FunctionKind::Unknown)
     {
+        const bool hasExplicitParameters = parameters.has_value();
         if (parameters && !(
                 begin <= parameters->Begin &&
                 parameters->Begin < parameters->End &&
@@ -4063,7 +4211,7 @@ private:
         if (!isFunction &&
             AddStructuredBindingSyntax(initDeclarator, begin, end))
         {
-            return;
+            return FunctionKind::Unknown;
         }
 
         // Most declarators are a name, optionally preceded by one pointer
@@ -4119,18 +4267,39 @@ private:
                         }
                         Append(initDeclarator, *initializer);
                     }
-                    return;
+                    return FunctionKind::Unknown;
                 }
             }
         }
 
-        auto name = FindDeclaratorName(begin, end, parameters);
+        auto name = end;
+        auto nameArgumentsBegin = begin;
+        auto nameArgumentsEnd = begin;
+        if (isFunction && functionKind == FunctionKind::Constructor &&
+            Kind(begin) == TK::Identifier)
+        {
+            auto next = NextSignificant(begin + 1);
+            if (Kind(next) == TK::Operator_Less) {
+                bool exactClosing = false;
+                auto after = SkipTemplateArguments(next, parameters->Begin,
+                    false, &exactClosing);
+                if (exactClosing && NextSignificant(after) == parameters->Begin) {
+                    name = begin;
+                    nameArgumentsBegin = next;
+                    nameArgumentsEnd = after;
+                }
+            }
+        }
+        if (name == end) {
+            name = FindDeclaratorName(begin, end, parameters);
+        }
         auto initializerStart =
             FindInitializerStart(begin, end, name, isFunction);
         auto declaratorEnd = initializerStart;
         if (isFunction && parameters->End > declaratorEnd) {
             parameters.reset();
             isFunction = false;
+            nameArgumentsEnd = begin;
             name = FindDeclaratorName(begin, end, std::nullopt);
             initializerStart =
                 FindInitializerStart(begin, end, name, isFunction);
@@ -4187,6 +4356,9 @@ private:
             }
         }
 
+        bool knownHead = hasExplicitParameters && isFunction &&
+            name < parameters->Begin &&
+            Kind(parameters->End - 1) == TK::Operator_CloseParenthesis;
         if (name < declaratorEnd) {
             auto memberPointerEnd =
                 FindMemberPointerEnd(coreBegin, declaratorEnd);
@@ -4197,7 +4369,11 @@ private:
                 Append(*core, *memberPointer);
                 coreBegin = memberPointerEnd;
             }
+            size_t qualifiedArgumentsEnd = coreBegin;
             for (auto i = coreBegin; i < name; ++i) {
+                if (i < qualifiedArgumentsEnd) {
+                    continue;
+                }
                 auto kind = Kind(i);
                 if (kind == TK::Operator_Star || kind ==
                     TK::Operator_Ampersand ||
@@ -4226,12 +4402,31 @@ private:
                         std::numeric_limits<TokenIndex>::max() ||
                         attributeEnd > name)
                     {
+                        knownHead = false;
                         break;
                     }
                     auto* attribute = MakeNode(NodeKind::AttributeSpecifier, i);
                     attribute->Tokens.End = attributeEnd;
                     Append(*core, *attribute);
                     i = attributeEnd - 1;
+                } else if (kind == TK::Identifier) {
+                    auto next = NextSignificant(i + 1);
+                    if (Kind(next) == TK::Operator_Less) {
+                        bool exactClosing = false;
+                        qualifiedArgumentsEnd = SkipTemplateArguments(
+                            next, name, false, &exactClosing);
+                        knownHead &= exactClosing;
+                        next = NextSignificant(qualifiedArgumentsEnd);
+                    }
+                    knownHead &= next < name &&
+                        Kind(next) == TK::Operator_ScopeResolution;
+                } else if (kind != TK::Operator_ScopeResolution &&
+                    kind != TK::Operator_Complement &&
+                    kind != TK::Keyword_template &&
+                    kind != TK::Keyword_const && kind != TK::Keyword_volatile &&
+                    kind != TK::Comment)
+                {
+                    knownHead = false;
                 }
             }
             auto nameBegin = name;
@@ -4251,14 +4446,49 @@ private:
             auto* nameNode = MakeNode(nameKind, nameBegin);
             nameNode->Tokens.End = nameEnd;
             Append(*core, *nameNode);
+            if (nameArgumentsEnd != begin) {
+                Append(*core, *MakeTemplateArgumentList(
+                    nameArgumentsBegin, nameArgumentsEnd));
+            }
+            if (isFunction && nameKind != NodeKind::OperatorFunctionName) {
+                knownHead &= NextSignificant(nameArgumentsEnd != begin
+                    ? nameArgumentsEnd : name + 1) == parameters->Begin;
+            }
+            if (nameKind == NodeKind::DestructorName) {
+                knownHead &= functionKind == FunctionKind::Destructor;
+            }
+        }
+
+        Node* function = nullptr;
+        auto suffixScanEnd = declaratorEnd;
+        if (isFunction) {
+            function = MakeNode(NodeKind::FunctionDeclarator, parameters->Begin);
+            function->Tokens.End = declaratorEnd;
+            auto* parameterList =
+                MakeNode(NodeKind::ParameterList, parameters->Begin);
+            parameterList->Tokens.End = parameters->End;
+            knownHead &= AddParameterDeclarations(*parameterList, *parameters);
+            AddDirectiveChildrenInGap(
+                *parameterList,
+                parameters->Begin,
+                parameters->End);
+            Append(*function, *parameterList);
+            if (auto initializerColon = AddFunctionSuffixSyntax(
+                    *function, parameters->End, declaratorEnd))
+            {
+                // Initializer expressions belong to the function's existing
+                // constructor-initializer subtree, not outer array suffixes.
+                suffixScanEnd = *initializerColon;
+            }
         }
 
         {
             int delimiterDepth = 0;
-            auto suffixBegin = name < declaratorEnd
-                ? name + 1
-                : (nestedEnd != begin ? nestedEnd : begin);
-            for (auto i = suffixBegin; i < declaratorEnd; ++i) {
+            auto suffixBegin = nameArgumentsEnd != begin
+                ? nameArgumentsEnd
+                : (name < declaratorEnd ? name + 1
+                    : (nestedEnd != begin ? nestedEnd : begin));
+            for (auto i = suffixBegin; i < suffixScanEnd; ++i) {
                 if (isFunction && i == parameters->Begin) {
                     i = parameters->End - 1;
                     continue;
@@ -4318,20 +4548,7 @@ private:
             }
         }
 
-        if (isFunction) {
-            auto* function =
-                MakeNode(NodeKind::FunctionDeclarator, parameters->Begin);
-            function->Tokens.End = declaratorEnd;
-            auto* parameterList =
-                MakeNode(NodeKind::ParameterList, parameters->Begin);
-            parameterList->Tokens.End = parameters->End;
-            AddParameterDeclarations(*parameterList, *parameters);
-            AddDirectiveChildrenInGap(
-                *parameterList,
-                parameters->Begin,
-                parameters->End);
-            Append(*function, *parameterList);
-            AddFunctionSuffixSyntax(*function, parameters->End, declaratorEnd);
+        if (function) {
             Append(*declarator, *function);
         }
 
@@ -4349,6 +4566,7 @@ private:
             }
             Append(initDeclarator, *initializer);
         }
+        return knownHead ? functionKind : FunctionKind::Unknown;
     }
 
     enum class ParameterTypeEvidence
@@ -4630,14 +4848,29 @@ private:
         Node& declaration,
         size_t begin,
         size_t end,
-        std::optional<TokenRange> parameters = std::nullopt)
+        std::optional<TokenRange> parameters = std::nullopt,
+        bool ungroupedConstructorInitializer = false,
+        bool terminalConstructorEligible = false)
     {
         while (end > begin && (Kind(end - 1) == TK::Operator_Semicolon ||
                 Kind(end - 1) == TK::Operator_OpenBrace))
         {
             --end;
         }
-        auto specifiersEnd = FindDeclarationSpecifiersEnd(begin, end);
+        FunctionKind functionKind = FunctionKind::Unknown;
+        const auto constructorParameters = terminalConstructorEligible &&
+            (declaration.Kind == NodeKind::FunctionDeclaration ||
+                declaration.Kind == NodeKind::FunctionDefinition)
+            ? parameters : std::nullopt;
+        auto specifiersEnd = FindDeclarationSpecifiersEnd(begin, end,
+            false, &functionKind, constructorParameters);
+        if (ungroupedConstructorInitializer && parameters &&
+            !RecordNames_.empty() && RecordNames_.back().empty() &&
+            specifiersEnd == parameters->Begin)
+        {
+            AddUnparsedSyntax(declaration, begin, end);
+            return;
+        }
         if (specifiersEnd > begin) {
             auto* specifiers = MakeNode(NodeKind::DeclarationSpecifiers, begin);
             specifiers->Tokens.End = specifiersEnd;
@@ -4665,11 +4898,15 @@ private:
                     kind == TK::Operator_CloseBrace)
                 {
                     --delimiterDepth;
-                } else if (kind == TK::Operator_Less) {
+                } else if (delimiterDepth == 0 && kind == TK::Operator_Less) {
                     ++angleDepth;
-                } else if (kind == TK::Operator_Greater && angleDepth > 0) {
+                } else if (delimiterDepth == 0 &&
+                    kind == TK::Operator_Greater && angleDepth > 0)
+                {
                     --angleDepth;
-                } else if (kind == TK::Operator_RightShift && angleDepth > 0) {
+                } else if (delimiterDepth == 0 &&
+                    kind == TK::Operator_RightShift && angleDepth > 0)
+                {
                     angleDepth = std::max(0, angleDepth - 2);
                 }
             }
@@ -4700,13 +4937,20 @@ private:
                         segmentEnd,
                         ambiguousSuffix);
                 }
-                AddDeclaratorSyntax(
+                auto kind = AddDeclaratorSyntax(
                     *init,
                     segmentBegin,
                     segmentEnd,
                     segmentParameters,
                     ambiguousSuffix,
-                    declaration.Kind != NodeKind::DeclarationStatement);
+                    declaration.Kind != NodeKind::DeclarationStatement,
+                    functionKind);
+                if (segmentBegin == specifiersEnd && i == end &&
+                    (declaration.Kind == NodeKind::FunctionDeclaration ||
+                        declaration.Kind == NodeKind::FunctionDefinition))
+                {
+                    declaration.FunctionKind_ = kind;
+                }
             }
             if (i != end) {
                 auto* comma = MakeNode(NodeKind::ListSeparator, i);
@@ -4721,9 +4965,21 @@ private:
         Node& declaration,
         size_t begin,
         size_t end,
-        TokenRange parameters)
+        TokenRange parameters,
+        bool ungroupedConstructorInitializer,
+        bool terminalConstructorEligible = false)
     {
-        auto specifiersEnd = FindDeclarationSpecifiersEnd(begin, end);
+        FunctionKind functionKind = FunctionKind::Unknown;
+        auto specifiersEnd = FindDeclarationSpecifiersEnd(begin, end,
+            false, &functionKind, terminalConstructorEligible &&
+                declaration.Kind == NodeKind::FunctionDefinition
+                ? std::optional<TokenRange>(parameters) : std::nullopt);
+        if (ungroupedConstructorInitializer && !RecordNames_.empty() &&
+            RecordNames_.back().empty() && specifiersEnd == parameters.Begin)
+        {
+            AddUnparsedSyntax(declaration, begin, end);
+            return;
+        }
         if (specifiersEnd > begin) {
             auto* specifiers = MakeNode(NodeKind::DeclarationSpecifiers, begin);
             specifiers->Tokens.End = specifiersEnd;
@@ -4739,7 +4995,11 @@ private:
         auto* init = MakeNode(NodeKind::InitDeclarator, specifiersEnd);
         init->Tokens.End = end;
         Append(*list, *init);
-        AddDeclaratorSyntax(*init, specifiersEnd, end, parameters);
+        auto kind = AddDeclaratorSyntax(
+            *init, specifiersEnd, end, parameters, false, true, functionKind);
+        if (declaration.Kind == NodeKind::FunctionDefinition) {
+            declaration.FunctionKind_ = kind;
+        }
     }
 
     [[nodiscard]] bool IsParenthesizedDeclarator(size_t begin, size_t end) const
@@ -4776,6 +5036,42 @@ private:
         return bodyEnd == std::numeric_limits<TokenIndex>::max()
             ? start + 1
             : bodyEnd;
+    }
+
+    [[nodiscard]] TokenIndex SkipRecoveredRequiresExpression(TokenIndex start) const
+    {
+        // Mismatched interiors can leave populated outer pairs. A valid map
+        // is required so cached advancement cannot hide their diagnostics.
+        if (!HasDelimiterMap_) {
+            return start + 1;
+        }
+        const auto limit = std::min(ParseLimit_, Tree_.Tokens_.Size());
+        auto pairedEnd = [&](TokenIndex opening, TK closing) -> TokenIndex {
+            if (opening >= limit) {
+                return std::numeric_limits<TokenIndex>::max();
+            }
+            const auto matching = Tree_.Tokens_.MatchingDelimiter(opening);
+            if (matching <= opening || matching >= limit ||
+                Kind(matching) != closing ||
+                Tree_.Tokens_.MatchingDelimiter(matching) != opening)
+            {
+                return std::numeric_limits<TokenIndex>::max();
+            }
+            return matching + 1;
+        };
+        auto cursor = NextSignificant(start + 1);
+        if (Kind(cursor) == TK::Operator_OpenParenthesis) {
+            cursor = pairedEnd(cursor, TK::Operator_CloseParenthesis);
+            if (cursor == std::numeric_limits<TokenIndex>::max()) {
+                return start + 1;
+            }
+            cursor = NextSignificant(cursor);
+        }
+        if (Kind(cursor) != TK::Operator_OpenBrace) {
+            return start + 1;
+        }
+        const auto end = pairedEnd(cursor, TK::Operator_CloseBrace);
+        return end == std::numeric_limits<TokenIndex>::max() ? start + 1 : end;
     }
 
     [[nodiscard]] bool IsFunctionSuffixStart(TokenIndex index) const
@@ -4857,9 +5153,61 @@ private:
         return false;
     }
 
+    // NEW terminal-ID permission uses cached facts only. Generic balanced
+    // consumption/recovery remains independent and may not certify permission.
+    [[nodiscard]] std::optional<TokenIndex> TerminalCachedPairEnd(
+        TokenIndex opening, TK closing) const
+    {
+        if (!HasDelimiterMap_ || opening >= ParseLimit_ ||
+            opening >= Tree_.Tokens_.Size() || !IsOpenDelimiter(Kind(opening)) ||
+            ClosingDelimiter(Kind(opening)) != closing)
+        {
+            return std::nullopt;
+        }
+        const auto match = Tree_.Tokens_.MatchingDelimiter(opening);
+        if (match <= opening || match >= ParseLimit_ ||
+            match >= Tree_.Tokens_.Size() || Kind(match) != closing ||
+            Tree_.Tokens_.MatchingDelimiter(match) != opening)
+        {
+            return std::nullopt;
+        }
+        return match + 1;
+    }
+
+    [[nodiscard]] bool TerminalImmediateOperand(
+        TokenIndex introducer, TokenIndex opening, TokenIndex consumedEnd,
+        std::optional<TokenIndex> cachedEnd) const
+    {
+        // The loop's one-use pending state proves significant-token adjacency.
+        return introducer < opening && cachedEnd && *cachedEnd == consumedEnd &&
+            (Kind(introducer) == TK::Keyword_noexcept ||
+                Kind(introducer) == TK::Keyword_throw ||
+                IsExtensionAttribute(introducer));
+    }
+
+    [[nodiscard]] bool TerminalBracketAttribute(
+        TokenIndex opening, std::optional<TokenIndex> outerEnd) const
+    {
+        if (!outerEnd || opening + 1 >= *outerEnd ||
+            Kind(opening + 1) != TK::Operator_OpenBracket)
+        {
+            return false;
+        }
+        const auto innerEnd = TerminalCachedPairEnd(opening + 1,
+            TK::Operator_CloseBracket);
+        return innerEnd && *innerEnd == *outerEnd - 1;
+    }
+
     Node* ParseGeneralDeclaration()
     {
         auto start = Cursor_;
+        TokenIndex declaratorOrigin = std::numeric_limits<TokenIndex>::max();
+        TokenIndex bareInvocationName = std::numeric_limits<TokenIndex>::max();
+        bool recoveredHeader = false;
+        // Structural closure inside the current opaque header, not accepted
+        // parameter syntax, function classification, or binding authority.
+        bool opaqueHeaderParentheses = false;
+        bool opaqueRequiresClause = false;
         TokenIndex parameterBegin = std::numeric_limits<TokenIndex>::max();
         TokenIndex parameterEnd = parameterBegin;
         bool sawTopLevelParameters = false;
@@ -4869,23 +5217,104 @@ private:
         bool invalidFunctionSuffix = false;
         bool sawTrailingReturnType = false;
         TokenIndex functionTry = std::numeric_limits<TokenIndex>::max();
+        enum class TerminalPending
+        {
+            None, OptionalException, RequiredOperand, DefaultDelete, Semicolon
+        };
+        bool terminalEligible = false;
+        bool terminalDenied = false;
+        auto terminalPending = TerminalPending::None;
+        TokenIndex terminalIntroducer = std::numeric_limits<TokenIndex>::max();
+
+        auto retireParameters = [&] {
+            sawTopLevelParameters = false;
+            sawParenthesizedDeclarator = false;
+            parameterBegin = std::numeric_limits<TokenIndex>::max();
+            parameterEnd = parameterBegin;
+            terminalDenied = true;
+            terminalEligible = false;
+            terminalPending = TerminalPending::None;
+            terminalIntroducer = std::numeric_limits<TokenIndex>::max();
+        };
 
         while (!AtEnd()) {
             auto kind = CurrentKind();
-            if (kind == TK::Keyword_requires && Cursor_ != start &&
-                Kind(PreviousSignificant(Cursor_)) == TK::Keyword_requires)
+            TokenIndex immediateOperand = std::numeric_limits<TokenIndex>::max();
+            if (sawTopLevelParameters && !constructorInitializer &&
+                !terminalDenied && kind != TK::Comment)
             {
-                auto requiresEnd = SkipRequiresExpression(Cursor_);
-                if (requiresEnd != Cursor_ + 1) {
-                    Cursor_ = requiresEnd;
-                    continue;
+                bool reservationToken = false;
+                if (terminalPending == TerminalPending::DefaultDelete) {
+                    terminalDenied = kind != TK::Keyword_default && kind != TK::Keyword_delete;
+                    terminalPending = TerminalPending::Semicolon;
+                    reservationToken = true;
+                } else if (terminalPending == TerminalPending::Semicolon) {
+                    terminalDenied = kind != TK::Operator_Semicolon;
+                    reservationToken = true;
+                } else if (terminalPending != TerminalPending::None) {
+                    if (kind == TK::Operator_OpenParenthesis) {
+                        immediateOperand = terminalIntroducer;
+                    } else if (terminalPending == TerminalPending::RequiredOperand) {
+                        terminalDenied = true;
+                    }
+                    // Optional bare noexcept cannot claim a later pair.
+                    terminalPending = TerminalPending::None;
+                    terminalIntroducer = std::numeric_limits<TokenIndex>::max();
+                }
+                if (!terminalDenied && !reservationToken) {
+                    if (kind == TK::Keyword_requires ||
+                        kind == TK::Operator_IndirectClassMemberAccess)
+                    {
+                        terminalDenied = true;
+                    } else if (kind == TK::Operator_Assign) {
+                        terminalDenied = functionTry != std::numeric_limits<TokenIndex>::max();
+                        if (!terminalDenied) {
+                            terminalPending = TerminalPending::DefaultDelete;
+                        }
+                    } else if (kind == TK::Keyword_noexcept || kind == TK::Keyword_throw ||
+                        IsExtensionAttribute(Cursor_))
+                    {
+                        terminalIntroducer = Cursor_;
+                        terminalPending = kind == TK::Keyword_noexcept
+                            ? TerminalPending::OptionalException : TerminalPending::RequiredOperand;
+                    } else if (kind != TK::Operator_OpenParenthesis &&
+                        kind != TK::Operator_OpenBracket && kind != TK::Operator_OpenBrace &&
+                        kind != TK::Operator_Semicolon && kind != TK::Operator_Colon &&
+                        kind != TK::Keyword_try && kind != TK::Keyword_const &&
+                        kind != TK::Keyword_volatile && kind != TK::Operator_Ampersand &&
+                        kind != TK::Operator_And && !IsCallingConvention(Cursor_) &&
+                        !(kind == TK::Identifier && (Text(Cursor_) == "final" || Text(Cursor_) == "override")))
+                    {
+                        terminalDenied = true;
+                    }
+                }
+            }
+            if (kind == TK::Keyword_requires && Cursor_ != start) {
+                const bool opaqueSuffix = recoveredHeader &&
+                    opaqueHeaderParentheses && !constructorInitializer &&
+                    !sawAssignmentBeforeParameters;
+                const bool requiresExpression =
+                    Kind(PreviousSignificant(Cursor_)) == TK::Keyword_requires ||
+                    (opaqueSuffix && opaqueRequiresClause);
+                // The first suffix requires introduces the clause. Its
+                // parenthesized constraint must not swallow the actual body.
+                opaqueRequiresClause |= opaqueSuffix;
+                if (requiresExpression) {
+                    const auto requiresEnd = recoveredHeader
+                        ? opaqueSuffix ? SkipRecoveredRequiresExpression(Cursor_)
+                                       : Cursor_ + 1
+                        : SkipRequiresExpression(Cursor_);
+                    if (requiresEnd != Cursor_ + 1) {
+                        Cursor_ = requiresEnd;
+                        continue;
+                    }
                 }
             }
             // Parentheses inside a return type's template arguments (for
             // example a pointer-to-member-function type) are not the
             // function's parameter list.
-            if (kind == TK::Operator_Less && !sawTopLevelParameters &&
-                !sawAssignmentBeforeParameters && Cursor_ > start &&
+            if (!recoveredHeader && kind == TK::Operator_Less &&
+                !sawTopLevelParameters && !sawAssignmentBeforeParameters && Cursor_ > start &&
                 Kind(PreviousSignificant(Cursor_)) == TK::Identifier)
             {
                 auto after = SkipTemplateArguments(
@@ -4899,7 +5328,9 @@ private:
                     continue;
                 }
             }
-            if (kind == TK::Operator_Assign && !sawTopLevelParameters) {
+            if (!recoveredHeader && kind == TK::Operator_Assign &&
+                !sawTopLevelParameters)
+            {
                 auto previous = PreviousSignificant(Cursor_);
                 if (Kind(previous) != TK::Keyword_operator) {
                     sawAssignmentBeforeParameters = true;
@@ -4910,7 +5341,105 @@ private:
             if (kind == TK::Operator_OpenParenthesis) {
                 auto begin = Cursor_;
                 auto previous = PreviousSignificant(Cursor_);
+                const auto cachedEnd = TerminalCachedPairEnd(begin, TK::Operator_CloseParenthesis);
                 ConsumeBalanced();
+                if (sawTopLevelParameters && !constructorInitializer && !terminalDenied &&
+                    !TerminalImmediateOperand(immediateOperand, begin, Cursor_, cachedEnd))
+                {
+                    terminalDenied = true;
+                }
+                if (recoveredHeader && constructorInitializer &&
+                    (AtEnd() || (Cursor_ > begin &&
+                        Tree_.Tokens_.MatchingDelimiter(begin) == Cursor_ - 1)))
+                {
+                    // An opaque initializer operand is not a parameter list.
+                    // Diagnosed exhaustion grants no closure or binding facts.
+                    continue;
+                }
+                if (!recoveredHeader && !sawAssignmentBeforeParameters &&
+                    !sawTopLevelParameters && !sawParenthesizedDeclarator &&
+                    Kind(previous) == TK::Identifier &&
+                    declaratorOrigin == std::numeric_limits<TokenIndex>::max())
+                {
+                    declaratorOrigin = FindDeclarationSpecifiersEnd(
+                        start, Tree_.Tokens_.Size());
+                }
+                if (!sawAssignmentBeforeParameters && !sawTopLevelParameters &&
+                    !sawParenthesizedDeclarator && Kind(previous) == TK::Identifier &&
+                    (begin == declaratorOrigin || previous == bareInvocationName))
+                {
+                    const auto following = NextSignificant(Cursor_);
+                    const auto suffix = Kind(following);
+                    if (suffix == TK::Identifier && !IsFunctionSuffixStart(following)) {
+                        // Adjacent bare invocations retain the unknown origin;
+                        // they provide neither type nor parameter bindings.
+                        bareInvocationName = SignificantKind(following + 1) ==
+                            TK::Operator_OpenParenthesis
+                            ? following
+                            : std::numeric_limits<TokenIndex>::max();
+                        recoveredHeader = true;
+                        opaqueHeaderParentheses = Cursor_ > begin &&
+                            Tree_.Tokens_.MatchingDelimiter(begin) == Cursor_ - 1;
+                        opaqueRequiresClause = false;
+                        retireParameters();
+                        continue;
+                    }
+                    if (IsFunctionSuffixStart(following) &&
+                        suffix != TK::Operator_Semicolon &&
+                        suffix != TK::Operator_OpenBrace &&
+                        suffix != TK::Operator_Colon &&
+                        suffix != TK::Operator_Assign &&
+                        suffix != TK::Operator_IndirectClassMemberAccess &&
+                        suffix != TK::Operator_OpenParenthesis &&
+                        suffix != TK::Keyword_try)
+                    {
+                        if (suffix == TK::Keyword_const ||
+                            (suffix == TK::Operator_OpenBracket &&
+                                Kind(following + 1) == TK::Operator_OpenBracket))
+                        {
+                            const auto followingOrigin = FindDeclarationSpecifiersEnd(
+                                following, Tree_.Tokens_.Size());
+                            const auto type = PreviousSignificant(followingOrigin);
+                            auto name = followingOrigin;
+                            if (Kind(name) == TK::Operator_Star ||
+                                Kind(name) == TK::Operator_Ampersand ||
+                                Kind(name) == TK::Operator_And)
+                            {
+                                name = NextSignificant(name + 1);
+                            }
+                            if (followingOrigin > following &&
+                                (IsFundamentalTypeKeyword(Kind(type)) ||
+                                    Kind(type) == TK::Identifier) &&
+                                Kind(name) == TK::Identifier &&
+                                !IsFunctionSuffixStart(name))
+                            {
+                                auto* node = MakeNode(NodeKind::UnparsedSyntax, start);
+                                node->Tokens.End = Cursor_;
+                                AddDirectiveChildrenInGap(*node, start, Cursor_);
+                                return node;
+                            }
+                        }
+                        // A bare invocation provides no parameter bindings.
+                        // Retain uncertain suffixes with it, not as functions.
+                        recoveredHeader = true;
+                        opaqueHeaderParentheses = Cursor_ > begin &&
+                            Tree_.Tokens_.MatchingDelimiter(begin) == Cursor_ - 1;
+                        opaqueRequiresClause = false;
+                        retireParameters();
+                        continue;
+                    }
+                }
+                if (recoveredHeader) {
+                    // Balanced opaque operands never reacquire parameters or
+                    // grouped-declarator authority. Header selectors above
+                    // retain only their original absolute token indices.
+                    continue;
+                }
+                // A decltype operand belongs to the type specifier, even
+                // when its expression resembles a grouped declarator.
+                if (Kind(previous) == TK::Keyword_decltype) {
+                    continue;
+                }
                 if (!sawTopLevelParameters && !sawParenthesizedDeclarator &&
                     IsParenthesizedDeclarator(begin, Cursor_))
                 {
@@ -4935,6 +5464,9 @@ private:
                         parameterBegin = nested;
                         parameterEnd = nestedEnd;
                         sawTopLevelParameters = true;
+                        const auto nestedCachedEnd = TerminalCachedPairEnd(nested, TK::Operator_CloseParenthesis);
+                        terminalEligible = nestedCachedEnd && *nestedCachedEnd == nestedEnd;
+                        terminalDenied |= !terminalEligible;
                         break;
                     }
                     continue;
@@ -4950,23 +5482,50 @@ private:
                     parameterEnd = Cursor_;
                     if (!sawParenthesizedDeclarator) {
                         sawTopLevelParameters = true;
+                        terminalEligible = cachedEnd && *cachedEnd == Cursor_;
+                        terminalDenied |= !terminalEligible;
                     }
                 }
                 continue;
             }
             if (kind == TK::Operator_OpenBracket) {
+                const auto cachedEnd = TerminalCachedPairEnd(Cursor_, TK::Operator_CloseBracket);
+                if (sawTopLevelParameters && !constructorInitializer && !terminalDenied &&
+                    !TerminalBracketAttribute(Cursor_, cachedEnd))
+                {
+                    terminalDenied = true;
+                }
                 ConsumeBalanced();
+                if (sawTopLevelParameters && !constructorInitializer &&
+                    (!cachedEnd || *cachedEnd != Cursor_))
+                {
+                    terminalDenied = true;
+                }
                 continue;
             }
-            if (sawTopLevelParameters && !sawTrailingReturnType &&
+            if (!recoveredHeader && sawTopLevelParameters && !sawTrailingReturnType &&
                 Cursor_ == NextSignificant(parameterEnd) &&
                 !IsFunctionSuffixStart(Cursor_))
             {
+                if (kind == TK::Identifier &&
+                    Kind(PreviousSignificant(parameterBegin)) == TK::Identifier)
+                {
+                    // An unknown function-like header component is not a
+                    // parameter list. Keep its return/header context opaque;
+                    // no body may use bindings from these provisional tokens.
+                    recoveredHeader = true;
+                    opaqueHeaderParentheses = parameterEnd > parameterBegin &&
+                        Tree_.Tokens_.MatchingDelimiter(parameterBegin) ==
+                            parameterEnd - 1;
+                    opaqueRequiresClause = false;
+                    retireParameters();
+                    continue;
+                }
                 auto* node = MakeNode(NodeKind::UnparsedSyntax, start);
                 node->Tokens.End = Cursor_;
                 return node;
             }
-            if (sawTopLevelParameters &&
+            if (!recoveredHeader && sawTopLevelParameters &&
                 kind == TK::Operator_IndirectClassMemberAccess)
             {
                 bool hasPlaceholderAuto = false;
@@ -4976,40 +5535,100 @@ private:
                 invalidFunctionSuffix |= !hasPlaceholderAuto;
                 sawTrailingReturnType |= hasPlaceholderAuto;
             }
-            if (kind == TK::Keyword_try && sawTopLevelParameters) {
+            if (kind == TK::Keyword_try &&
+                (sawTopLevelParameters || recoveredHeader))
+            {
                 functionTry = Cursor_++;
                 continue;
             }
-            if (kind == TK::Operator_Colon && sawTopLevelParameters) {
+            if (kind == TK::Operator_Colon &&
+                (sawTopLevelParameters ||
+                    (recoveredHeader && opaqueHeaderParentheses)))
+            {
                 constructorInitializer = true;
                 ++Cursor_;
                 continue;
             }
             if (kind == TK::Operator_OpenBrace) {
-                if (sawTopLevelParameters && !sawAssignmentBeforeParameters) {
-                    // A braced member initializer follows an identifier.  The
-                    // function body after it follows '}' or ')'.
-                    auto previous = PreviousSignificant(Cursor_);
-                    if (constructorInitializer && (Kind(
-                        previous) == TK::Identifier ||
-                            Kind(previous) == TK::Operator_Greater ||
-                            Kind(previous) == TK::Operator_RightShift))
+                if ((sawTopLevelParameters ||
+                        (recoveredHeader && opaqueHeaderParentheses)) &&
+                    !sawAssignmentBeforeParameters && constructorInitializer)
+                {
+                    // Apply the initializer/body distinction before either
+                    // parsed or opaque body handling. Recovery must not end at
+                    // a braced member initializer.
+                    const auto previous = Kind(PreviousSignificant(Cursor_));
+                    if (previous == TK::Identifier ||
+                        previous == TK::Operator_Greater ||
+                        previous == TK::Operator_RightShift)
                     {
                         ConsumeBalanced();
                         continue;
+                    }
+                }
+                if (recoveredHeader) {
+                    ConsumeBalanced();
+                    auto* node = MakeNode(NodeKind::UnparsedSyntax, start);
+                    if (functionTry != std::numeric_limits<TokenIndex>::max()) {
+                        while (SignificantKind(Cursor_) == TK::Keyword_catch) {
+                            Cursor_ = NextSignificant(Cursor_);
+                            Append(*node, *ParseCatchClause(true));
+                        }
+                    }
+                    node->Tokens.End = Cursor_;
+                    AddDirectiveChildrenInGap(*node, start, Cursor_);
+                    return node;
+                }
+                if (sawTopLevelParameters && !sawAssignmentBeforeParameters) {
+                    // A sole type-like identifier followed by parentheses
+                    // has no function declarator name, unless the current
+                    // record establishes a constructor. An opaque header
+                    // cannot establish the body's bindings or scope either.
+                    if (!constructorInitializer &&
+                        functionTry == std::numeric_limits<TokenIndex>::max() &&
+                        Kind(start) == TK::Identifier &&
+                        NextSignificant(start + 1) == parameterBegin &&
+                        NextSignificant(parameterEnd) == Cursor_ &&
+                        Kind(parameterEnd - 1) == TK::Operator_CloseParenthesis &&
+                        FindDeclarationSpecifiersEnd(start, Cursor_) ==
+                            parameterBegin)
+                    {
+                        auto* node = MakeNode(NodeKind::Declaration, start);
+                        ConsumeBalanced();
+                        if (CurrentKind() == TK::Operator_Semicolon) {
+                            ++Cursor_;
+                        }
+                        node->Tokens.End = Cursor_;
+                        AddUnparsedSyntax(*node, start, Cursor_);
+                        return node;
                     }
                     return ParseFunctionDefinition(
                         start,
                         parameterBegin,
                         parameterEnd,
                         constructorInitializer,
-                        functionTry);
+                        functionTry,
+                        !sawParenthesizedDeclarator,
+                        terminalEligible && !terminalDenied && !invalidFunctionSuffix &&
+                            terminalPending == TerminalPending::None);
                 }
                 ConsumeBalanced();
                 continue;
             }
             if (kind == TK::Operator_Semicolon) {
+                // Complete the reservation only at this visited, in-limit
+                // semicolon, before cursor advancement or syntax-end trimming.
+                const bool terminalConstructorEligible = terminalEligible &&
+                    !terminalDenied && !invalidFunctionSuffix &&
+                    (terminalPending == TerminalPending::None ||
+                        terminalPending == TerminalPending::Semicolon);
                 ++Cursor_;
+                if (recoveredHeader) {
+                    auto* node = MakeNode(NodeKind::UnparsedSyntax, start);
+                    node->Tokens.End = Cursor_;
+                    AddDirectiveChildrenInGap(*node, start, Cursor_);
+                    return node;
+                }
                 // A top-level lambda argument or an empty argument slot
                 // cannot be a function parameter declaration. At namespace
                 // scope these are typically macro invocations: parse a call
@@ -5056,7 +5675,9 @@ private:
                         parameters->Begin,
                         parameters->End);
                 }
-                AddDeclarationSyntax(*node, start, Cursor_, parameters);
+                AddDeclarationSyntax(*node, start, Cursor_, parameters,
+                    constructorInitializer && !sawParenthesizedDeclarator,
+                    terminalConstructorEligible);
                 AddDirectiveChildrenInGap(*node, start, Cursor_);
                 return node;
             }
@@ -5071,9 +5692,13 @@ private:
             ++Cursor_;
         }
 
-        auto* node = MakeNode(NodeKind::Declaration, start);
+        auto* node = MakeNode(recoveredHeader
+                ? NodeKind::UnparsedSyntax
+                : NodeKind::Declaration, start);
         node->Tokens.End = Cursor_;
-        AddDeclarationSyntax(*node, start, Cursor_);
+        if (!recoveredHeader) {
+            AddDeclarationSyntax(*node, start, Cursor_);
+        }
         AddDirectiveChildrenInGap(*node, start, Cursor_);
         return node;
     }
@@ -5094,7 +5719,9 @@ private:
         TokenIndex parameterBegin,
         TokenIndex parameterEnd,
         bool constructorInitializer,
-        TokenIndex functionTry)
+        TokenIndex functionTry,
+        bool ungroupedParameters,
+        bool terminalConstructorEligible)
     {
         auto* node = MakeNode(NodeKind::FunctionDefinition, start);
         auto parameters = TokenRange{
@@ -5106,9 +5733,12 @@ private:
                 *node,
                 start,
                 Cursor_,
-                parameters);
+                parameters,
+                ungroupedParameters,
+                terminalConstructorEligible);
         } else {
-            AddDeclarationSyntax(*node, start, Cursor_, parameters);
+            AddDeclarationSyntax(*node, start, Cursor_, parameters, false,
+                terminalConstructorEligible);
         }
         AddDirectiveChildrenInGap(*node, start, Cursor_);
         Node* bodyParent = node;
@@ -5490,15 +6120,34 @@ private:
         return node;
     }
 
-    Node* ParseCatchClause()
+    Node* ParseCatchClause(bool recovered = false)
     {
         auto start = Cursor_;
-        auto* node = MakeNode(NodeKind::CatchClause, start);
+        auto* node = MakeNode(recovered
+                ? NodeKind::UnparsedSyntax
+                : NodeKind::CatchClause, start);
         ++Cursor_;
-        ParseControlHeader(*node, NodeKind::Condition);
-        bool conditionalBody = ParseTriviaBeforeChild(*node);
+        bool conditionalBody = false;
+        if (recovered) {
+            Cursor_ = NextSignificant(Cursor_);
+            if (CurrentKind() == TK::Operator_OpenParenthesis) {
+                ConsumeBalanced();
+            } else {
+                ErrorAt(Cursor_, "expected catch parameter list");
+            }
+            while (CurrentKind() == TK::Comment) {
+                ParseTrivia(*node, false);
+            }
+        } else {
+            ParseControlHeader(*node, NodeKind::Condition);
+            conditionalBody = ParseTriviaBeforeChild(*node);
+        }
         if (CurrentKind() == TK::Operator_OpenBrace) {
-            Append(*node, *ParseCompoundStatement());
+            if (recovered) {
+                ConsumeBalanced();
+            } else {
+                Append(*node, *ParseCompoundStatement());
+            }
         } else if (!conditionalBody) {
             ErrorAt(Cursor_, "expected catch compound statement");
         }

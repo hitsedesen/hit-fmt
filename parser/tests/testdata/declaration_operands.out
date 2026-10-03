@@ -1,0 +1,497 @@
+(translation-unit
+  (function-definition
+    (declaration-specifiers "decltype" "(" "0" ")")
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (declarator-name "extract")
+          (function-declarator
+            (parameter-list
+              "("
+              (parameter-declaration
+                (declaration-specifiers "const" "int")
+                (init-declarator-list
+                  (init-declarator
+                    (declarator
+                      (pointer-operator "&")
+                      (declarator-name "value")
+                    )
+                  )
+                )
+              )
+              ")"
+            )
+          )
+        )
+      )
+    )
+    (compound-statement
+      "{"
+      (return-statement
+        "return"
+        (identifier-expression "value")
+        ";"
+      )
+      "}"
+    )
+  )
+  (function-definition
+    (declaration-specifiers "static" "decltype" "(" "auto" ")")
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (declarator-name "forward")
+          (function-declarator
+            (parameter-list
+              "("
+              (parameter-declaration
+                (declaration-specifiers "int")
+                (init-declarator-list
+                  (init-declarator
+                    (declarator
+                      (pointer-operator "&&")
+                      (declarator-name "value")
+                    )
+                  )
+                )
+              )
+              ")"
+            )
+          )
+        )
+      )
+    )
+    (compound-statement
+      "{"
+      (return-statement
+        "return"
+        (identifier-expression "value")
+        ";"
+      )
+      "}"
+    )
+  )
+  (function-declaration
+    (declaration-specifiers "decltype" "(" "*" "source" ")")
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (declarator-name "dereference")
+          (function-declarator
+            (parameter-list
+              "("
+              (parameter-declaration
+                (declaration-specifiers "const" "int")
+                (init-declarator-list
+                  (init-declarator
+                    (declarator
+                      (pointer-operator "*")
+                      (declarator-name "value")
+                    )
+                  )
+                )
+              )
+              ")"
+            )
+          )
+        )
+      )
+    )
+    ";"
+  )
+  (function-declaration
+    (declaration-specifiers "decltype" "(" "(" "source" ")" ")")
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (declarator-name "nested")
+          (function-declarator
+            (parameter-list
+              "("
+              (parameter-declaration
+                (declaration-specifiers "const" "int")
+                (init-declarator-list
+                  (init-declarator
+                    (declarator
+                      (pointer-operator "&")
+                      (declarator-name "value")
+                    )
+                  )
+                )
+              )
+              ")"
+            )
+          )
+        )
+      )
+    )
+    ";"
+  )
+  (function-declaration
+    (declaration-specifiers "decltype" "(" "combine" "(" "(" "source" ")" "," "0" ")" ")")
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (declarator-name "expression")
+          (function-declarator
+            (parameter-list
+              "("
+              (parameter-declaration
+                (declaration-specifiers "const" "int")
+                (init-declarator-list
+                  (init-declarator
+                    (declarator
+                      (pointer-operator "&")
+                      (declarator-name "value")
+                    )
+                  )
+                )
+              )
+              ")"
+            )
+          )
+        )
+      )
+    )
+    ";"
+  )
+  (function-declaration
+    (declaration-specifiers
+      "decltype" "(" "factory"
+      (template-argument-list
+        "<"
+        (template-argument "int")
+        ">"
+      )
+      "(" "0" ")" ")"
+    )
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (declarator-name "templated")
+          (function-declarator
+            (parameter-list
+              "("
+              (parameter-declaration
+                (declaration-specifiers "const" "int")
+                (init-declarator-list
+                  (init-declarator
+                    (declarator
+                      (pointer-operator "&")
+                      (declarator-name "value")
+                    )
+                  )
+                )
+              )
+              ")"
+            )
+          )
+        )
+      )
+    )
+    ";"
+  )
+  (function-declaration
+    (declaration-specifiers "decltype" "(" "[" "]" "(" "int" "item" ")" "{" "return" "item" ";" "}" "(" "0" ")" ")")
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (declarator-name "lambda")
+          (function-declarator
+            (parameter-list
+              "("
+              (parameter-declaration
+                (declaration-specifiers "const" "int")
+                (init-declarator-list
+                  (init-declarator
+                    (declarator
+                      (pointer-operator "&")
+                      (declarator-name "value")
+                    )
+                  )
+                )
+              )
+              ")"
+            )
+          )
+        )
+      )
+    )
+    ";"
+  )
+  (function-declaration
+    (declaration-specifiers
+      "decltype" "/* operand */" "(" "0" ")"
+      (dangling-trivia
+        (comment "/* operand */")
+      )
+    )
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (declarator-name "commented")
+          (function-declarator
+            (parameter-list
+              "("
+              (parameter-declaration
+                (declaration-specifiers "const" "int")
+                (init-declarator-list
+                  (init-declarator
+                    (declarator
+                      (pointer-operator "&")
+                      (declarator-name "value")
+                    )
+                  )
+                )
+              )
+              ")"
+            )
+          )
+        )
+      )
+    )
+    ";"
+  )
+  (function-declaration
+    (declaration-specifiers "decltype" "(" "0" ")")
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (declarator-name "scalar")
+          (function-declarator
+            (parameter-list
+              "("
+              (parameter-declaration
+                (declaration-specifiers "int")
+                (init-declarator-list
+                  (init-declarator
+                    (declarator
+                      (declarator-name "value")
+                    )
+                  )
+                )
+              )
+              ")"
+            )
+          )
+        )
+      )
+    )
+    ";"
+  )
+  (declaration
+    (declaration-specifiers "decltype" "(" "0" ")")
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (declarator-name "stored")
+        )
+        (initializer
+          "="
+          (literal-expression "0")
+        )
+      )
+    )
+    ";"
+  )
+  (declaration
+    (declaration-specifiers "decltype" "(" "*" "source" ")")
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (nested-declarator
+            "("
+            (pointer-operator "*")
+            (declarator-name "callback")
+            ")"
+          )
+          (function-declarator
+            (parameter-list
+              "("
+              (parameter-declaration
+                (declaration-specifiers "const" "int")
+                (init-declarator-list
+                  (init-declarator
+                    (declarator
+                      (pointer-operator "&")
+                      (declarator-name "value")
+                    )
+                  )
+                )
+              )
+              ")"
+            )
+          )
+        )
+      )
+    )
+    ";"
+  )
+  (function-declaration
+    (declaration-specifiers "decltype" "(" "0" ")")
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (nested-declarator
+            "("
+            (pointer-operator "*")
+            (declarator-name "select")
+            "(" "const" "int" "&" "value" ")" ")"
+          )
+          (function-declarator
+            (parameter-list
+              "("
+              (parameter-declaration
+                (declaration-specifiers "const" "int")
+                (init-declarator-list
+                  (init-declarator
+                    (declarator
+                      (pointer-operator "&")
+                      (declarator-name "value")
+                    )
+                  )
+                )
+              )
+              ")"
+            )
+            ")" "(" "int" ")"
+          )
+        )
+      )
+    )
+    ";"
+  )
+  (declaration
+    (declaration-specifiers "int")
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (nested-declarator
+            "("
+            (pointer-operator "*")
+            (declarator-name "ordinary")
+            ")"
+          )
+          (function-declarator
+            (parameter-list
+              "("
+              (parameter-declaration
+                (declaration-specifiers "const" "int")
+                (init-declarator-list
+                  (init-declarator
+                    (declarator
+                      (pointer-operator "&")
+                      (declarator-name "value")
+                    )
+                  )
+                )
+              )
+              ")"
+            )
+          )
+        )
+      )
+    )
+    ";"
+  )
+  (function-declaration
+    (declaration-specifiers "auto")
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (declarator-name "trailing")
+          (function-declarator
+            (parameter-list
+              "("
+              (parameter-declaration
+                (declaration-specifiers "const" "int")
+                (init-declarator-list
+                  (init-declarator
+                    (declarator
+                      (pointer-operator "&")
+                      (declarator-name "value")
+                    )
+                  )
+                )
+              )
+              ")"
+            )
+            (trailing-return-type "->" "decltype" "(" "(" "value" ")" ")")
+          )
+        )
+      )
+    )
+    ";"
+  )
+  (record-declaration
+    "struct" "Callable" "{"
+    (function-declaration
+      (declaration-specifiers "int")
+      (init-declarator-list
+        (init-declarator
+          (declarator
+            (operator-function-name "operator" "(" ")")
+            (function-declarator
+              (parameter-list
+                "("
+                (parameter-declaration
+                  (declaration-specifiers "const" "int")
+                  (init-declarator-list
+                    (init-declarator
+                      (declarator
+                        (pointer-operator "&")
+                        (declarator-name "value")
+                      )
+                    )
+                  )
+                )
+                ")"
+              )
+            )
+          )
+        )
+      )
+      ";"
+    )
+    "}" ";"
+  )
+  (declaration
+    (declaration-specifiers "alignas" "(" "16" ")" "int")
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (declarator-name "aligned")
+        )
+      )
+    )
+    ";"
+  )
+  (function-declaration
+    (declaration-specifiers "int")
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (declarator-name "plain")
+          (function-declarator
+            (parameter-list
+              "("
+              (parameter-declaration
+                (declaration-specifiers "const" "int")
+                (init-declarator-list
+                  (init-declarator
+                    (declarator
+                      (pointer-operator "&")
+                      (declarator-name "value")
+                    )
+                  )
+                )
+              )
+              ")"
+            )
+          )
+        )
+      )
+    )
+    ";"
+  )
+)

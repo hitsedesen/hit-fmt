@@ -1,0 +1,487 @@
+(translation-unit
+  (unparsed-syntax "META" "(" "Key" "," "const" "Item" "*" "," "const" "Value" "*" ")")
+  (function-definition
+    (declaration-specifiers "const" "Item")
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (pointer-operator "*")
+          "Factory" "::"
+          (declarator-name "build")
+          (function-declarator
+            (parameter-list
+              "("
+              (parameter-declaration
+                (declaration-specifiers "int")
+                (init-declarator-list
+                  (init-declarator
+                    (declarator
+                      (declarator-name "n")
+                    )
+                  )
+                )
+              )
+              ")"
+            )
+            (function-qualifier "const")
+          )
+        )
+      )
+    )
+    (compound-statement
+      "{"
+      (return-statement
+        "return"
+        (literal-expression "nullptr")
+        ";"
+      )
+      "}"
+    )
+  )
+  (unparsed-syntax "META" "(" "Key" "," "const" "Item" "*" "," "const" "Value" "*" ")")
+  (function-definition
+    (declaration-specifiers
+      (attribute-specifier "[" "[" "maybe_unused" "]" "]")
+      "static" "bool"
+    )
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (declarator-name "check")
+          (function-declarator
+            (parameter-list
+              "("
+              (parameter-declaration
+                (declaration-specifiers "const" "Item")
+                (init-declarator-list
+                  (init-declarator
+                    (declarator
+                      (pointer-operator "*")
+                      (declarator-name "p")
+                    )
+                  )
+                )
+              )
+              ")"
+            )
+          )
+        )
+      )
+    )
+    (compound-statement
+      "{"
+      (return-statement
+        "return"
+        (identifier-expression "p")
+        ";"
+      )
+      "}"
+    )
+  )
+  (unparsed-syntax "BIND" "(" "Key" "," "const" "Item" "*" ")" "TRACK" "(" "Group" "," "const" "Item" "*" ")" "MAP" "(" "Key" "," "const" "Item" "*" "," "const" "Value" "*" ")")
+  (function-definition
+    (declaration-specifiers "const" "Item")
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (pointer-operator "*")
+          "Factory" "::"
+          (declarator-name "sequence")
+          (function-declarator
+            (parameter-list
+              "("
+              (parameter-declaration
+                (declaration-specifiers "int")
+                (init-declarator-list
+                  (init-declarator
+                    (declarator
+                      (declarator-name "n")
+                    )
+                  )
+                )
+              )
+              ")"
+            )
+            (function-qualifier "const")
+          )
+        )
+      )
+    )
+    (compound-statement
+      "{"
+      (return-statement
+        "return"
+        (literal-expression "nullptr")
+        ";"
+      )
+      "}"
+    )
+  )
+  (unparsed-syntax "NOTE" "(" "0" ")" "NOTE2" "(" "1" ")" "Vec" "annotated" "(" "int" "n" ")" "{" "return" "n" ";" "}")
+  (unparsed-syntax "static" "inline" "Vec" "NOTE" "(" "\"legacy\"" ")" "load" "(" "const" "void" "*" "p" ")" "{" "return" "make" "(" "p" ")" ";" "}")
+  (unparsed-syntax "Vec" "NOTE" "(" "0" ")" "declaration" "(" "int" "n" ")" ";")
+  (unparsed-syntax "RAW" "(" "int" "n" ")" "const" "volatile" "&" "noexcept" "(" "true" ")" "{" "return" "n" ";" "}")
+  (unparsed-syntax "RAW" "(" "int" "n" ")" "&&" "noexcept" "(" "true" ")" "{" "return" "n" ";" "}")
+  (unparsed-syntax "RAW" "(" "int" "n" ")" "[" "[" "maybe_unused" "]" "]" ";")
+  (unparsed-syntax "RAW" "(" "int" "n" ")" "__attribute__" "(" "(" "unused" ")" ")" "{" "return" "n" ";" "}")
+  (unparsed-syntax "RAW" "(" "int" "n" ")" "requires" "Ready" "<" "int" ">" "{" "return" "n" ";" "}")
+  (unparsed-syntax "RAW" "(" "int" "n" ")" "override" "final" "{" "return" "n" ";" "}")
+  (unparsed-syntax "RAW" "(" "int" "n" ")" "const" "*" "next" ";")
+  (record-declaration
+    "struct" "C" "{"
+    (function-definition
+      (init-declarator-list
+        (init-declarator
+          (declarator
+            (declarator-name "C")
+            (function-declarator
+              (parameter-list
+                "("
+                (parameter-declaration
+                  (declaration-specifiers "int")
+                  (init-declarator-list
+                    (init-declarator
+                      (declarator
+                        (declarator-name "n")
+                      )
+                    )
+                  )
+                )
+                ")"
+              )
+              (exception-specification "noexcept")
+            )
+          )
+        )
+      )
+      (compound-statement "{" "}")
+    )
+    (function-definition
+      (init-declarator-list
+        (init-declarator
+          (declarator
+            (destructor-name "~" "C")
+            (function-declarator
+              (parameter-list "(" ")")
+              (exception-specification "noexcept")
+            )
+          )
+        )
+      )
+      (compound-statement "{" "}")
+    )
+    (function-definition
+      (init-declarator-list
+        (init-declarator
+          (declarator
+            (operator-function-name "operator" "int")
+            (function-declarator
+              (parameter-list "(" ")")
+              (function-qualifier "const")
+            )
+          )
+        )
+      )
+      (compound-statement
+        "{"
+        (return-statement
+          "return"
+          (literal-expression "0")
+          ";"
+        )
+        "}"
+      )
+    )
+    (function-definition
+      (declaration-specifiers "virtual" "int")
+      (init-declarator-list
+        (init-declarator
+          (declarator
+            (declarator-name "f")
+            "(" "int" "n" ")" "const" "volatile" "&" "noexcept" "(" "true" ")"
+            (extension-attribute-specifier "__attribute__" "(" "(" "unused" ")" ")")
+            (function-declarator
+              (parameter-list
+                "("
+                (parameter-declaration
+                  (declaration-specifiers "int")
+                  (init-declarator-list
+                    (init-declarator
+                      (declarator
+                        (declarator-name "n")
+                      )
+                    )
+                  )
+                )
+                ")"
+              )
+              (function-qualifier "const")
+              (function-qualifier "volatile")
+              (function-qualifier "&")
+              (exception-specification "noexcept" "(" "true" ")")
+              (extension-attribute-specifier "__attribute__" "(" "(" "unused" ")" ")")
+              (function-qualifier "override")
+            )
+          )
+        )
+      )
+      (compound-statement
+        "{"
+        (return-statement
+          "return"
+          (identifier-expression "n")
+          ";"
+        )
+        "}"
+      )
+    )
+    (function-declaration
+      (declaration-specifiers "int")
+      (init-declarator-list
+        (init-declarator
+          (declarator
+            (declarator-name "g")
+            "(" "int" "n" ")"
+            (attribute-specifier "[" "[" "maybe_unused" "]" "]")
+            (function-declarator
+              (parameter-list
+                "("
+                (parameter-declaration
+                  (declaration-specifiers "int")
+                  (init-declarator-list
+                    (init-declarator
+                      (declarator
+                        (declarator-name "n")
+                      )
+                    )
+                  )
+                )
+                ")"
+              )
+              (attribute-specifier "[" "[" "maybe_unused" "]" "]")
+            )
+          )
+        )
+      )
+      ";"
+    )
+    "}" ";"
+  )
+  (function-definition
+    (declaration-specifiers "int")
+    (init-declarator-list
+      (init-declarator
+        (abstract-declarator
+          (function-declarator
+            (parameter-list
+              "("
+              (parameter-declaration
+                (declaration-specifiers "grouped")
+              )
+              ")"
+            )
+            "(" "int" "n" ")"
+          )
+        )
+      )
+    )
+    (compound-statement
+      "{"
+      (return-statement
+        "return"
+        (identifier-expression "n")
+        ";"
+      )
+      "}"
+    )
+  )
+  (function-declaration
+    (declaration-specifiers "int")
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (nested-declarator
+            "("
+            (pointer-operator "*")
+            (declarator-name "pointer")
+            "(" "int" "n" ")" ")"
+          )
+          (function-declarator
+            (parameter-list
+              "("
+              (parameter-declaration
+                (declaration-specifiers "int")
+                (init-declarator-list
+                  (init-declarator
+                    (declarator
+                      (declarator-name "n")
+                    )
+                  )
+                )
+              )
+              ")"
+            )
+            ")" "(" "int" ")"
+          )
+        )
+      )
+    )
+    ";"
+  )
+  (function-definition
+    (declaration-specifiers
+      (extension-attribute-specifier "__attribute__" "(" "(" "unused" ")" ")")
+      "static" "int"
+    )
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (declarator-name "extension")
+          (function-declarator
+            (parameter-list
+              "("
+              (parameter-declaration
+                (declaration-specifiers "int")
+                (init-declarator-list
+                  (init-declarator
+                    (declarator
+                      (declarator-name "n")
+                    )
+                  )
+                )
+              )
+              ")"
+            )
+          )
+        )
+      )
+    )
+    (compound-statement
+      "{"
+      (return-statement
+        "return"
+        (identifier-expression "n")
+        ";"
+      )
+      "}"
+    )
+  )
+  (unparsed-syntax
+    (declaration-specifiers "Vec")
+    (init-declarator-list
+      (init-declarator
+        (abstract-declarator
+          (function-declarator
+            (parameter-list
+              "("
+              (parameter-declaration
+                (declaration-specifiers "int")
+              )
+              ")"
+            )
+            (trailing-return-type "->" "Vec" "<" "int" ">")
+          )
+        )
+      )
+    )
+    ";"
+  )
+  (unparsed-syntax
+    "Vec" "NOTE" "(" "0" ")" "load" "(" "int" "n" ")" "noexcept" "(" "true" ")" "try" "{" "return" "n" ";" "}" "/* first */"
+    (unparsed-syntax
+      (leading-trivia
+        (comment "/* first */")
+      )
+      "catch" "(" "int" "Type" ")" "{" "Type" "*" "value" ";" "}"
+      (trailing-trivia
+        (comment "/* between */")
+      )
+    )
+    "/* between */"
+    (unparsed-syntax "catch" "(" "..." ")" "{" "return" "0" ";" "}")
+  )
+  (unparsed-syntax
+    "RAW" "(" "int" "n" ")" "&" "noexcept" "try" "{" "return" "n" ";" "}"
+    (unparsed-syntax "catch" "(" "..." ")" "{" "return" "0" ";" "}")
+  )
+  (function-definition
+    (declaration-specifiers "int")
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (declarator-name "genuine")
+          (function-declarator
+            (parameter-list
+              "("
+              (parameter-declaration
+                (declaration-specifiers "int")
+                (init-declarator-list
+                  (init-declarator
+                    (declarator
+                      (declarator-name "n")
+                    )
+                  )
+                )
+              )
+              ")"
+            )
+            "try"
+          )
+        )
+      )
+    )
+    (function-try-block
+      "try"
+      (compound-statement
+        "{"
+        (return-statement
+          "return"
+          (identifier-expression "n")
+          ";"
+        )
+        "}"
+      )
+      (catch-clause
+        "catch"
+        (condition "(" "int" "code" ")")
+        (compound-statement
+          "{"
+          (return-statement
+            "return"
+            (identifier-expression "code")
+            ";"
+          )
+          "}"
+        )
+      )
+      (catch-clause
+        "catch"
+        (condition
+          "("
+          (expression "...")
+          ")"
+        )
+        (compound-statement
+          "{"
+          (return-statement
+            "return"
+            (literal-expression "0")
+            ";"
+          )
+          "}"
+        )
+      )
+    )
+  )
+  (declaration
+    (declaration-specifiers "int")
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (declarator-name "tail")
+        )
+      )
+    )
+    ";"
+  )
+)

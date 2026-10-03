@@ -1,0 +1,12 @@
+struct API Parcel { Parcel(Item *p, Item &r, Item &&v) {} };
+struct api [[nodiscard]] Box { Box(void (*callback)(int)) {} };
+struct API Owner<int>::Entry<long> { Entry(int p) : value(p) {} int value; };
+struct API Broken + token { Broken(Item &p) : Base(p) { invoke(a,b); } };
+struct API Incomplete:: { Incomplete(Item *p) : Base(p) {} };
+struct API Grouped {
+  void (*callback)(int);
+  int (*factory())(double);
+  int (ordinary)(double);
+  int [[nodiscard]] explicit_return(Item *p);
+};
+void outside() { Parcel*marker; Box*other; }

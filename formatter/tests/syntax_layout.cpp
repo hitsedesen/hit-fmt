@@ -135,6 +135,22 @@ formatter::Style Canonical(size_t width = 40)
     style.DeclarationSemicolonSpacing = formatter::GapPolicy::GeneratedNoSpace;
     return style;
 }
+TEST(SyntaxLayout, ControlSeparatorsWideFiniteRenderingOwnsOnlyDirectBoundaries)
+{
+    auto style = Canonical(10000);
+    style.BodyShape = formatter::BodyShape::CompactIfFits;
+    style.ControlBlockKeywordSpacing = formatter::GapPolicy::Space;
+    const std::string source =
+        "void f(){if(a)if(b)left();else right();else last();"
+        "do tick();while(a);while(b)other();}\n";
+    const auto output = Lower(source, style);
+    EXPECT_NE(output.Text.find("left(); else right(); else last();"),
+        std::string::npos);
+    EXPECT_NE(output.Text.find("tick(); while (a); while (b)"),
+        std::string::npos);
+    EXPECT_EQ(Lower(output.Text, style).Text, output.Text);
+}
+
 TEST(SyntaxLayout, PartialIndentationRetainsFixedTopologyAndSplitMaps)
 {
     const std::string input = "void f() {\n      work();\n}\n";
@@ -877,6 +893,82 @@ TEST(SyntaxLayout, EachControlledArmOwnsItsOpeningAndBody)
     const auto protectedArm = Lower(protectedInput, style, {}, safety).Text;
     EXPECT_NE(protectedArm.find("if (ready)\n  {"), std::string::npos);
     EXPECT_NE(protectedArm.find("else {"), std::string::npos) << protectedArm;
+}
+TEST(SyntaxLayout, ControlledArmsSkipDescendantElseSeparators)
+{
+    for (const bool outerBraced : {false, true})
+    {
+        for (const bool innerBraced : {false, true})
+        {
+            for (const bool innerElse : {false, true})
+            {
+                const std::string outer = outerBraced ? "{}" : "work();";
+                const std::string inner = innerBraced ? "{}" : "act();";
+                const std::string source =
+                    "void run() {\n if (outer) " + outer +
+                    "\n#if FEATURE\n if (first) " + inner +
+                    "\n#else\n if (second) " + inner +
+                    (innerElse ? " else /* inner */ if (third) " + inner : "") +
+                    "\n#endif\n /* parent */ else " + outer + "\n}\n";
+                SCOPED_TRACE(source);
+                for (const auto placement :
+                     {formatter::BracePlacement::Attached,
+                      formatter::BracePlacement::NextLine,
+                      formatter::BracePlacement::NextLineIfHeaderBroken})
+                {
+                    auto style = Canonical(80);
+                    style.ControlBracePlacement = placement;
+                    const auto output = Lower(source, style);
+                    EXPECT_EQ(Lower(output.Text, style).Text, output.Text);
+                    EXPECT_NE(output.Text.find("/* parent */ else"),
+                              std::string::npos);
+                    EXPECT_NE(output.Text.find("#endif"), std::string::npos);
+                }
+            }
+        }
+    }
+}
+TEST(SyntaxLayout, DanglingElseRemainsOwnedByNearestIf)
+{
+    const std::string source =
+        "void run(){ if (outer) if (inner) act(); else recover(); }\n";
+    std::string storage = source;
+    storage.append(util::SourcePaddingSize, '\0');
+    size_t errors = 0;
+    const auto tree = parser::Parse({storage.data(), source.size()},
+                                   [&](parser::ParseError) { ++errors; });
+    EXPECT_EQ(errors, 0u);
+    const parser::Node *outer = nullptr;
+    const parser::Node *inner = nullptr;
+    std::vector<const parser::Node *> pending{&tree.Root()};
+    while (!pending.empty())
+    {
+        const auto *node = pending.back();
+        pending.pop_back();
+        if (node->Kind == parser::NodeKind::IfStatement)
+        {
+            if (!outer)
+                outer = node;
+            else
+                inner = node;
+        }
+        for (auto *child = node->FirstChild; child; child = child->NextSibling)
+            pending.push_back(child);
+    }
+    ASSERT_NE(outer, nullptr);
+    ASSERT_NE(inner, nullptr);
+    EXPECT_EQ(inner->Tokens.End, outer->Tokens.End);
+    bool containsElse = false;
+    for (auto t = inner->Tokens.Begin; t < inner->Tokens.End; ++t)
+        containsElse |= tree.Kind(t) == tokenizer::TokenKind::Keyword_else;
+    EXPECT_TRUE(containsElse);
+    for (const auto *child = outer->FirstChild; child;
+         child = child->NextSibling)
+        if (child->Kind == parser::NodeKind::IfStatement)
+            EXPECT_EQ(child, inner);
+    auto style = Canonical(80);
+    const auto output = Lower(source, style);
+    EXPECT_EQ(Lower(output.Text, style).Text, output.Text);
 }
 TEST(SyntaxLayout, MixedPreserveDoesNotActivateOuterGeneratedGaps)
 {
