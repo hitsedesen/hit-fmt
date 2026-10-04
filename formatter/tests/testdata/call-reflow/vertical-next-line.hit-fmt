@@ -1,5 +1,0 @@
-ColumnLimit = 34
-CallsPacking = VerticalWhenBroken
-CallsLayout = Canonical
-CallsBreak = Always
-CallsFirstItem = NextLine

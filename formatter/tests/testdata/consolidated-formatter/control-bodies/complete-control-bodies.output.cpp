@@ -16,3 +16,8 @@ void f(bool a)
     }
     Other();
 }
+
+void g(int x) {
+    switch (x) case 0:
+    Go();
+}

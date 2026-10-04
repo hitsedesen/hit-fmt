@@ -1,8 +1,0 @@
-Layout = Canonical
-IndentationKind = Spaces
-IndentWidth = 4
-ColumnLimit = 40
-TernaryLayout = ThreePart
-TernaryOperatorSide = Leading
-BinaryOperatorSide = Trailing
-ExpressionsPacking = Fill

@@ -1,8 +1,0 @@
-Layout = Canonical
-ColumnLimit = 80
-IndentWidth = 4
-IndentationKind = Spaces
-CallsPacking = VerticalWhenBroken
-CallsFirstItem = InlineIfFits
-CallsSoleArgumentFirstItem = NextLine
-LambdaBodiesLayout = Preserve

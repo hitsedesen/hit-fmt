@@ -1,9 +1,0 @@
-Layout = Canonical
-IndentWidth = 4
-IndentationKind = Spaces
-ColumnLimit = 100
-FunctionQualifierSpacing = Space
-NoexceptSpaceBeforeSpecifier = Space
-PointerReferenceDeclaratorLocation = Left
-FunctionRefQualifierSpacing = Space
-FunctionCvRefQualifierSpacing = NoSpace

@@ -1,8 +1,0 @@
-ColumnLimit = 32
-CallsPacking = VerticalWhenBroken
-CallsLayout = Canonical
-CallsBreak = IfNeeded
-CallsAlignment = Block
-ControlBracePlacement = NextLineIfHeaderBroken
-ControlHeadersLayout = Canonical
-SpaceInsideCallArguments = Preserve

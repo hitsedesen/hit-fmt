@@ -1,6 +1,0 @@
-ControlBlockConditionSpacing = Space
-SpaceInsideFunctionParameters = Space
-SpaceInsideLambdaParameters = Space
-AttributeSpaceBeforeSpecifier = NoSpace
-AttributeSpaceAfterSpecifier = NoSpace
-AttributeInteriorSpacing = NoSpace

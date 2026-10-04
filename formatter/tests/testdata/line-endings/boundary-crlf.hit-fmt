@@ -1,3 +1,0 @@
-LineEnding = CRLF
-TrailingWhitespace = Trim
-ColumnLimit = 10000

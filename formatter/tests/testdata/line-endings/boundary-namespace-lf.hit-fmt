@@ -1,4 +1,0 @@
-LineEnding = LF
-NamespaceComments = Fix
-ShortNamespaceLines = 0
-ColumnLimit = 10000

@@ -1,3 +1,2 @@
-# MemberExpression gaps use this policy; binary .* and ->* remain source-owned.
 MemberAccessOperatorsSpacing = NoSpace
 ScopeResolutionSpacing = Preserve

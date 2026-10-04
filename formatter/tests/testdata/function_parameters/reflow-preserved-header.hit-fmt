@@ -1,5 +1,0 @@
-ColumnLimit = 40
-ParametersPacking = Fill
-FunctionBracePlacement = NextLine
-DeclarationHeadersLayout = Preserve
-ParametersLayout = Canonical

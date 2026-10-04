@@ -1,7 +1,0 @@
-Layout = Canonical
-IndentationKind = Spaces
-IndentWidth = 4
-ContinuationOffset = 4
-ColumnLimit = 80
-ExpressionsPacking = VerticalWhenBroken
-ExpressionsBreak = Always

@@ -1,5 +1,0 @@
-ExpressionsLayout = Preserve
-ExpressionsBreak = Always
-ColumnLimit = 80
-TernaryOperatorSide = Trailing
-TernaryLayout = ThreePart

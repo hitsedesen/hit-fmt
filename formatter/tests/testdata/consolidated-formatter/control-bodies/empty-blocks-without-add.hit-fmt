@@ -1,7 +1,0 @@
-AddMissingControlBraces = false
-BodiesLayout = Canonical
-ControlBracePlacement = NextLineIfHeaderBroken
-ControlHeadersLayout = Canonical
-EmptyControlBody = EmptyBlock
-EmptyBodyShape = CompactIfFits
-EmptyBlockInteriorSpacing = Space

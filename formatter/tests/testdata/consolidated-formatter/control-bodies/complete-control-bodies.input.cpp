@@ -9,3 +9,5 @@ void f(bool a)
 {
     if (a) Go(); Other();
 }
+
+void g(int x) { switch (x) case 0: Go(); }

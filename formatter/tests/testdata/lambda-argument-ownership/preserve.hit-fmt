@@ -1,5 +1,0 @@
-Layout = Canonical
-CallLikeMacroNames = []
-CommaSpaceBefore = GeneratedNoSpace
-CommaSpaceAfter = GeneratedSpace
-LambdaBodiesLayout = Preserve

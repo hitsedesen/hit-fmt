@@ -18,6 +18,47 @@
 namespace {
 
 using test::golden::ReadFile;
+
+using formatter::BlankLineMode;
+
+using formatter::BodyShape;
+
+using formatter::BracePlacement;
+
+using formatter::BreakRequirement;
+
+using formatter::CategoryLayout;
+
+using formatter::CloserPlacement;
+
+using formatter::ContinuationAlignment;
+
+using formatter::EmptyControlBody;
+
+using formatter::FirstItemPlacement;
+
+using formatter::GapPolicy;
+
+using formatter::IndentationKind;
+
+using formatter::LayoutMode;
+
+using formatter::LineEnding;
+
+using formatter::ListPacking;
+
+using formatter::NamespaceComments;
+
+using formatter::OperatorSide;
+
+using formatter::TernaryLayout;
+
+using formatter::TernaryOperatorIndentation;
+
+using formatter::TrailingCommaPolicy;
+
+using formatter::TrailingWhitespace;
+
 void ExpectUnchanged(std::string_view source, const formatter::Style& style)
 {
     std::string storage(source);
@@ -52,6 +93,20 @@ std::vector<PreserveCase> DiscoverCases()
         std::filesystem::directory_iterator(FORMATTER_TESTDATA_DIR))
     {
         auto filename = entry.path().filename().string();
+        if (filename.ends_with(".output.cpp")) {
+            const auto input = entry.path().parent_path() /
+                (filename
+                    .substr(
+                        0,
+                        filename.size() -
+                        std::string_view(".output.cpp").size()) + ".input.cpp");
+            // Equal input/output bytes have one default-preservation contract.
+            if (std::filesystem::exists(input) &&
+                ReadFile(input) == ReadFile(entry.path()))
+            {
+                continue;
+            }
+        }
         if (filename.ends_with(".input.cpp") ||
             filename.ends_with(".output.cpp"))
         {
@@ -133,6 +188,7 @@ struct FormatCase
     bool Spillover;
     std::string Expected;
     bool CheckOwningMaps;
+    std::optional<formatter::Style> Style;
 
     FormatCase(
         std::filesystem::path directory,
@@ -173,6 +229,57 @@ void AddCases(
         cases.push_back({directory, name, input, {}});
     }
 }
+
+// Profile stems select styles for every input/context that uses that policy.
+void ApplyProfile(
+    std::vector<FormatCase>& cases,
+    const std::filesystem::path& directory,
+    std::string_view profile,
+    const formatter::Style& style)
+{
+    for (auto& value : cases) {
+        if (value.Directory.lexically_normal() ==
+            directory.lexically_normal() &&
+            (value.Config.empty() ? value.Name : value.Config) == profile)
+        {
+            value.Style = style;
+        }
+    }
+}
+
+void ShareConfig(
+    std::vector<FormatCase>& cases,
+    const std::filesystem::path& directory,
+    std::string_view profile,
+    std::string_view shared)
+{
+    for (auto& value : cases) {
+        if (value.Directory.lexically_normal() ==
+            directory.lexically_normal() &&
+            (value.Config.empty() ? value.Name : value.Config) == profile)
+        {
+            value.Config = shared;
+        }
+    }
+}
+
+void ShareExpected(
+    std::vector<FormatCase>& cases,
+    const std::filesystem::path& directory,
+    std::string_view original,
+    std::string_view shared)
+{
+    for (auto& value : cases) {
+        if (value.Directory.lexically_normal() ==
+            directory.lexically_normal() &&
+            (value.Expected.empty()
+                ? value.Name + ".output.cpp"
+                : value.Expected) == original)
+        {
+            value.Expected = shared;
+        }
+    }
+}
 std::vector<FormatCase> FormatCases()
 {
     std::vector<FormatCase> cases;
@@ -190,6 +297,65 @@ std::vector<FormatCase> FormatCases()
         std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../vertical-grouping",
         {"structural"},
         "structural.input.cpp");
+    {
+        // vertical-grouping policies and shared oracles.
+        const auto directory = std::filesystem::path(FORMATTER_TESTDATA_DIR) /
+            "../vertical-grouping";
+        {
+            const auto base = formatter::LoadConfigFile(
+                directory / "preserve.hit-fmt").FormattingStyle;
+            struct Policy
+            {
+                const char* Profile;
+                formatter::BlankLineSetting NamespaceBlankLinesAfterOpen;
+                formatter::BlankLineSetting NamespaceBlankLinesBeforeClose;
+                formatter::BlankLineSetting DeclarationBlankLines;
+                formatter::BlankLineSetting MemberDeclarationBlankLines;
+                formatter::BlankLineSetting DefinitionBlankLines;
+                std::optional<std::size_t> MaxEmptyLines;
+            };
+            for (const auto& policy : std::array<Policy, 3>{{
+                {
+                    "capped",
+                    formatter::BlankLineSetting{BlankLineMode::Preserve, 0},
+                    formatter::BlankLineSetting{BlankLineMode::Preserve, 0},
+                    formatter::BlankLineSetting{BlankLineMode::Preserve, 0},
+                    formatter::BlankLineSetting{BlankLineMode::Inherit, 0},
+                    formatter::BlankLineSetting{BlankLineMode::Preserve, 0}, 1,
+                },
+                {
+                    "declarations",
+                    formatter::BlankLineSetting{BlankLineMode::Exact, 1},
+                    formatter::BlankLineSetting{BlankLineMode::Exact, 1},
+                    formatter::BlankLineSetting{BlankLineMode::Exact, 1},
+                    formatter::BlankLineSetting{BlankLineMode::Inherit, 0},
+                    formatter::BlankLineSetting{BlankLineMode::Preserve, 0},
+                    std::nullopt,
+                },
+                {
+                    "overrides",
+                    formatter::BlankLineSetting{BlankLineMode::Exact, 1},
+                    formatter::BlankLineSetting{BlankLineMode::Exact, 1},
+                    formatter::BlankLineSetting{BlankLineMode::Exact, 1},
+                    formatter::BlankLineSetting{BlankLineMode::Exact, 0},
+                    formatter::BlankLineSetting{BlankLineMode::Exact, 2},
+                    std::nullopt,
+                },
+            }}) {
+                auto style = base;
+                style.NamespaceBlankLinesAfterOpen =
+                    policy.NamespaceBlankLinesAfterOpen;
+                style.NamespaceBlankLinesBeforeClose =
+                    policy.NamespaceBlankLinesBeforeClose;
+                style.DeclarationBlankLines = policy.DeclarationBlankLines;
+                style.MemberDeclarationBlankLines =
+                    policy.MemberDeclarationBlankLines;
+                style.DefinitionBlankLines = policy.DefinitionBlankLines;
+                style.MaxEmptyLines = policy.MaxEmptyLines;
+                ApplyProfile(cases, directory, policy.Profile, style);
+            }
+        }
+    }
     AddCases(
         cases,
         std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../group-fit-boundary",
@@ -204,6 +370,37 @@ std::vector<FormatCase> FormatCases()
         std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../group-fit-boundary",
         {"call-fit"},
         "call.input.cpp");
+    {
+        // group-fit-boundary policies and shared oracles.
+        const auto directory = std::filesystem::path(FORMATTER_TESTDATA_DIR) /
+            "../group-fit-boundary";
+        {
+            const auto base = formatter::LoadConfigFile(
+                directory / "fit.hit-fmt").FormattingStyle;
+            struct Policy
+            {
+                const char* Profile;
+                std::size_t ColumnLimit;
+                formatter::BreakRequirement ChainsBreak;
+            };
+            for (const auto& policy : std::array<Policy, 3>{{
+                {"call-fit", 24, BreakRequirement::IfNeeded},
+                {"forced", 80, BreakRequirement::Always},
+                {"overflow", 32, BreakRequirement::IfNeeded},
+            }}) {
+                auto style = base;
+                style.ColumnLimit = policy.ColumnLimit;
+                style.ChainsBreak = policy.ChainsBreak;
+                ApplyProfile(cases, directory, policy.Profile, style);
+            }
+        }
+        ShareExpected(
+            cases,
+            directory,
+            "call-fit.output.cpp",
+            "call.input.cpp");
+        ShareExpected(cases, directory, "fit.output.cpp", "input.cpp");
+    }
     cases.push_back({
         std::filesystem::path(FORMATTER_TESTDATA_DIR) /
             "../control-expression-continuation",
@@ -241,10 +438,115 @@ std::vector<FormatCase> FormatCases()
         });
         cases.back().CheckOwningMaps = true;
     }
+    {
+        // line-endings policies and shared oracles.
+        const auto directory =
+            std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../line-endings";
+        {
+            const auto base = formatter::LoadConfigFile(
+                directory / "lf.hit-fmt").FormattingStyle;
+            struct Policy
+            {
+                const char* Profile;
+                formatter::LayoutMode Layout;
+                std::size_t IndentWidth;
+                formatter::IndentationKind IndentationKind;
+                formatter::LineEnding LineEnding;
+                formatter::TrailingWhitespace TrailingWhitespace;
+                formatter::CategoryLayout ControlHeadersLayout;
+                bool RemoveNullDeclarations;
+                formatter::NamespaceComments NamespaceComments;
+            };
+            for (const auto& policy : std::array<Policy, 9>{{
+                {
+                    "boundary-crlf", LayoutMode::Preserve, 4,
+                    IndentationKind::Preserve, LineEnding::CRLF,
+                    TrailingWhitespace::Trim, CategoryLayout::Inherit, false,
+                    NamespaceComments::Preserve,
+                },
+                {
+                    "boundary-lf", LayoutMode::Preserve, 4,
+                    IndentationKind::Preserve, LineEnding::LF,
+                    TrailingWhitespace::Trim, CategoryLayout::Inherit, false,
+                    NamespaceComments::Preserve,
+                },
+                {
+                    "boundary-namespace-crlf", LayoutMode::Preserve, 4,
+                    IndentationKind::Preserve, LineEnding::CRLF,
+                    TrailingWhitespace::Preserve, CategoryLayout::Inherit,
+                    false, NamespaceComments::Fix,
+                },
+                {
+                    "boundary-namespace-lf", LayoutMode::Preserve, 4,
+                    IndentationKind::Preserve, LineEnding::LF,
+                    TrailingWhitespace::Preserve, CategoryLayout::Inherit,
+                    false, NamespaceComments::Fix,
+                },
+                {
+                    "boundary-nulls", LayoutMode::Preserve, 4,
+                    IndentationKind::Preserve, LineEnding::LF,
+                    TrailingWhitespace::Preserve, CategoryLayout::Inherit,
+                    true, NamespaceComments::Preserve,
+                },
+                {
+                    "canonical-crlf", LayoutMode::Canonical, 2,
+                    IndentationKind::Spaces, LineEnding::CRLF,
+                    TrailingWhitespace::Preserve, CategoryLayout::Inherit,
+                    false, NamespaceComments::Preserve,
+                },
+                {
+                    "canonical-lf", LayoutMode::Canonical, 2,
+                    IndentationKind::Spaces, LineEnding::LF,
+                    TrailingWhitespace::Preserve, CategoryLayout::Inherit,
+                    false, NamespaceComments::Preserve,
+                },
+                {
+                    "composition-control-lf", LayoutMode::Preserve, 4,
+                    IndentationKind::Preserve, LineEnding::LF,
+                    TrailingWhitespace::Preserve, CategoryLayout::Canonical,
+                    false, NamespaceComments::Preserve,
+                },
+                {
+                    "opaque-lf", LayoutMode::Preserve, 4,
+                    IndentationKind::Preserve, LineEnding::LF,
+                    TrailingWhitespace::Preserve, CategoryLayout::Inherit,
+                    false, NamespaceComments::Preserve,
+                },
+            }}) {
+                auto style = base;
+                style.Layout = policy.Layout;
+                style.IndentWidth = policy.IndentWidth;
+                style.IndentationKind = policy.IndentationKind;
+                style.LineEnding = policy.LineEnding;
+                style.TrailingWhitespace = policy.TrailingWhitespace;
+                style.ControlHeadersLayout = policy.ControlHeadersLayout;
+                style.RemoveNullDeclarations = policy.RemoveNullDeclarations;
+                style.NamespaceComments = policy.NamespaceComments;
+                ApplyProfile(cases, directory, policy.Profile, style);
+            }
+        }
+        ShareExpected(
+            cases,
+            directory,
+            "boundary-namespace-lf.output.cpp",
+            "boundary-namespace-crlf.input.cpp");
+        ShareExpected(cases, directory, "legacy.output.cpp", "crlf.input.cpp");
+    }
     AddCases(
         cases,
         std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../style-checkpoint",
         {"lf", "crlf"});
+    {
+        // style-checkpoint policies and shared oracles.
+        const auto directory = std::filesystem::path(FORMATTER_TESTDATA_DIR) /
+            "../style-checkpoint";
+        {
+            auto style = formatter::LoadConfigFile(directory / "lf.hit-fmt")
+                .FormattingStyle;
+            style.LineEnding = LineEnding::CRLF;
+            ApplyProfile(cases, directory, "crlf", style);
+        }
+    }
     AddCases(
         cases,
         std::filesystem::path(FORMATTER_TESTDATA_DIR) /
@@ -256,11 +558,100 @@ std::vector<FormatCase> FormatCases()
         "independent",
         "namespace.input.cpp",
     });
+    {
+        // trailing-comment-count policies and shared oracles.
+        const auto directory = std::filesystem::path(FORMATTER_TESTDATA_DIR) /
+            "../trailing-comment-count";
+        {
+            const auto base = formatter::LoadConfigFile(
+                directory / "one.hit-fmt").FormattingStyle;
+            struct Policy
+            {
+                const char* Profile;
+                formatter::NamespaceComments NamespaceComments;
+                std::optional<formatter::TrailingCommentSpaceSetting>
+                    TrailingCommentSpaces;
+                std::size_t NamespaceCommentSpaces;
+                formatter::GapPolicy TrailingCommentSpacing;
+            };
+            for (const auto& policy : std::array<Policy, 4>{{
+                {
+                    "independent", NamespaceComments::Fix,
+                    formatter::TrailingCommentSpaceSetting{2}, 4,
+                    GapPolicy::NoSpace,
+                },
+                {
+                    "preserve", NamespaceComments::Preserve,
+                    formatter::TrailingCommentSpaceSetting{std::nullopt}, 1,
+                    GapPolicy::Space,
+                },
+                {
+                    "two", NamespaceComments::Preserve,
+                    formatter::TrailingCommentSpaceSetting{2}, 1,
+                    GapPolicy::Space,
+                },
+                {
+                    "zero", NamespaceComments::Preserve,
+                    formatter::TrailingCommentSpaceSetting{0}, 1,
+                    GapPolicy::Space,
+                },
+            }}) {
+                auto style = base;
+                style.NamespaceComments = policy.NamespaceComments;
+                style.TrailingCommentSpaces = policy.TrailingCommentSpaces;
+                style.NamespaceCommentSpaces = policy.NamespaceCommentSpaces;
+                style.TrailingCommentSpacing = policy.TrailingCommentSpacing;
+                ApplyProfile(cases, directory, policy.Profile, style);
+            }
+        }
+        ShareExpected(cases, directory, "preserve.output.cpp", "input.cpp");
+    }
     AddCases(
         cases,
         std::filesystem::path(FORMATTER_TESTDATA_DIR) /
         "../standalone-comment-gaps",
         {"preserve", "before", "after", "zero", "canonical"});
+    {
+        // standalone-comment-gaps policies and shared oracles.
+        const auto directory = std::filesystem::path(FORMATTER_TESTDATA_DIR) /
+            "../standalone-comment-gaps";
+        {
+            const auto base = formatter::LoadConfigFile(
+                directory / "zero.hit-fmt").FormattingStyle;
+            struct Policy
+            {
+                const char* Profile;
+                formatter::BlankLineSetting StandaloneCommentBlankLinesBefore;
+                formatter::BlankLineSetting StandaloneCommentBlankLinesAfter;
+            };
+            for (const auto& policy : std::array<Policy, 2>{{
+                {
+                    "before",
+                    formatter::BlankLineSetting{BlankLineMode::Exact, 1},
+                    formatter::BlankLineSetting{BlankLineMode::Preserve, 0},
+                },
+                {
+                    "after",
+                    formatter::BlankLineSetting{BlankLineMode::Preserve, 0},
+                    formatter::BlankLineSetting{BlankLineMode::Exact, 2},
+                },
+            }}) {
+                auto style = base;
+                style.StandaloneCommentBlankLinesBefore =
+                    policy.StandaloneCommentBlankLinesBefore;
+                style.StandaloneCommentBlankLinesAfter =
+                    policy.StandaloneCommentBlankLinesAfter;
+                ApplyProfile(cases, directory, policy.Profile, style);
+            }
+        }
+        ShareConfig(
+            cases,
+            directory,
+            "preserve",
+            "../closing-delimiters/preserve");
+        ShareExpected(cases, directory, "preserve.output.cpp", "input.cpp");
+        ShareExpected(cases, directory, "zero.output.cpp", "input.cpp");
+    }
     AddCases(
         cases,
         BRACE_TESTDATA_DIR,
@@ -434,10 +825,39 @@ std::vector<FormatCase> FormatCases()
     const auto initializerSafety =
         std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../initializer-safety";
     AddCases(cases, initializerSafety, {"conditional", "never", "preserve"});
+    {
+        // initializer-safety policies and shared oracles.
+        const auto directory = std::filesystem::path(FORMATTER_TESTDATA_DIR) /
+            "../initializer-safety";
+        {
+            const auto base = formatter::LoadConfigFile(
+                directory / "conditional.hit-fmt").FormattingStyle;
+            struct Policy
+            {
+                const char* Profile;
+                formatter::TrailingCommaPolicy InitializersTrailingComma;
+            };
+            for (const auto& policy : std::array<Policy, 2>{{
+                {"never", TrailingCommaPolicy::Never},
+                {"preserve", TrailingCommaPolicy::Preserve},
+            }}) {
+                auto style = base;
+                style.InitializersTrailingComma =
+                    policy.InitializersTrailingComma;
+                ApplyProfile(cases, directory, policy.Profile, style);
+            }
+        }
+    }
     AddCases(
         cases,
         std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../declaration-gap",
         {"canonical", "preserve"});
+    {
+        // declaration-gap policies and shared oracles.
+        const auto directory = std::filesystem::path(FORMATTER_TESTDATA_DIR) /
+            "../declaration-gap";
+        ShareExpected(cases, directory, "preserve.output.cpp", "input.cpp");
+    }
     const auto ownerContext =
         std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../owner-context";
     AddCases(
@@ -449,6 +869,55 @@ std::vector<FormatCase> FormatCases()
             "canonical-safe",
             "explicit-protected",
         });
+    {
+        // owner-context policies and shared oracles.
+        const auto directory =
+            std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../owner-context";
+        {
+            const auto base = formatter::LoadConfigFile(
+                directory / "canonical-protected.hit-fmt").FormattingStyle;
+            struct Policy
+            {
+                const char* Profile;
+                formatter::CategoryLayout CallsLayout;
+                std::vector<std::string> WhitespaceSensitiveMacros;
+                formatter::GapPolicy SpaceInsideCallArguments;
+                formatter::GapPolicy CommaSpaceBefore;
+                formatter::GapPolicy CommaSpaceAfter;
+            };
+            for (const auto& policy : std::array<Policy, 3>{{
+                {
+                    "canonical-safe", CategoryLayout::Canonical, {},
+                    GapPolicy::GeneratedNoSpace, GapPolicy::GeneratedNoSpace,
+                    GapPolicy::GeneratedSpace,
+                },
+                {
+                    "explicit-protected", CategoryLayout::Canonical, {"KEEP"},
+                    GapPolicy::Space, GapPolicy::NoSpace, GapPolicy::Space,
+                },
+                {
+                    "preserve-protected", CategoryLayout::Preserve, {"KEEP"},
+                    GapPolicy::GeneratedNoSpace, GapPolicy::GeneratedNoSpace,
+                    GapPolicy::GeneratedSpace,
+                },
+            }}) {
+                auto style = base;
+                style.CallsLayout = policy.CallsLayout;
+                style.WhitespaceSensitiveMacros =
+                    policy.WhitespaceSensitiveMacros;
+                style.SpaceInsideCallArguments =
+                    policy.SpaceInsideCallArguments;
+                style.CommaSpaceBefore = policy.CommaSpaceBefore;
+                style.CommaSpaceAfter = policy.CommaSpaceAfter;
+                ApplyProfile(cases, directory, policy.Profile, style);
+            }
+        }
+        ShareExpected(
+            cases,
+            directory,
+            "preserve-protected.output.cpp",
+            "input.cpp");
+    }
     const auto recordHead =
         std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../record-head-commas";
     AddCases(
@@ -484,6 +953,63 @@ std::vector<FormatCase> FormatCases()
             "constructor-composition.input.cpp",
             profile,
         });
+    }
+    {
+        // record-head-commas policies and shared oracles.
+        const auto directory = std::filesystem::path(FORMATTER_TESTDATA_DIR) /
+            "../record-head-commas";
+        {
+            const auto base = formatter::LoadConfigFile(
+                directory / "space.hit-fmt").FormattingStyle;
+            struct Policy
+            {
+                const char* Profile;
+                formatter::LayoutMode Layout;
+                formatter::GapPolicy CommaSpaceAfter;
+            };
+            for (const auto& policy : std::array<Policy, 4>{{
+                {
+                    "generated-canonical", LayoutMode::Canonical,
+                    GapPolicy::GeneratedSpace,
+                },
+                {
+                    "generated-preserve", LayoutMode::Preserve,
+                    GapPolicy::GeneratedSpace,
+                },
+                {"no-space", LayoutMode::Canonical, GapPolicy::NoSpace},
+                {"preserve", LayoutMode::Canonical, GapPolicy::Preserve},
+            }}) {
+                auto style = base;
+                style.Layout = policy.Layout;
+                style.CommaSpaceAfter = policy.CommaSpaceAfter;
+                ApplyProfile(cases, directory, policy.Profile, style);
+            }
+        }
+        ShareExpected(
+            cases,
+            directory,
+            "comparisons-space.output.cpp",
+            "comparisons-generated-canonical.output.cpp");
+        ShareExpected(
+            cases,
+            directory,
+            "space.output.cpp",
+            "generated-canonical.output.cpp");
+        ShareExpected(
+            cases,
+            directory,
+            "constructor-composition-generated-preserve.output.cpp",
+            "constructor-composition.input.cpp");
+        ShareExpected(
+            cases,
+            directory,
+            "generated-preserve.output.cpp",
+            "input.cpp");
+        ShareExpected(
+            cases,
+            directory,
+            "comparisons-generated-preserve.output.cpp",
+            "comparisons.input.cpp");
     }
     cases.push_back(
         {closings, "reflow-preferred", "reflow-preferred.input.cpp"});
@@ -533,6 +1059,40 @@ std::vector<FormatCase> FormatCases()
             "function-cv-ref-inherit",
         },
         "profile-ref-qualifiers.input.cpp");
+    {
+        // spacing-options policies and shared oracles.
+        const auto directory = std::filesystem::path(FORMATTER_TESTDATA_DIR) /
+            "../spacing-options";
+        {
+            const auto base = formatter::LoadConfigFile(
+                directory / "function-cv-ref-space.hit-fmt").FormattingStyle;
+            struct Policy
+            {
+                const char* Profile;
+                formatter::GapPolicy FunctionRefQualifierSpacing;
+                std::optional<formatter::GapPolicy>
+                    FunctionCvRefQualifierSpacing;
+            };
+            for (const auto& policy : std::array<Policy, 3>{{
+                {"function-cv-ref-inherit", GapPolicy::Space, std::nullopt},
+                {
+                    "function-cv-ref-no-space", GapPolicy::Space,
+                    GapPolicy::NoSpace,
+                },
+                {
+                    "function-cv-ref-preserve", GapPolicy::Space,
+                    GapPolicy::Preserve,
+                },
+            }}) {
+                auto style = base;
+                style.FunctionRefQualifierSpacing =
+                    policy.FunctionRefQualifierSpacing;
+                style.FunctionCvRefQualifierSpacing =
+                    policy.FunctionCvRefQualifierSpacing;
+                ApplyProfile(cases, directory, policy.Profile, style);
+            }
+        }
+    }
     cases.push_back({
         std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../spacing-options",
         "initializer-overflow-one-per-line",
@@ -681,17 +1241,132 @@ std::vector<FormatCase> FormatCases()
     });
     addProfileCase("../call-reflow", "profile-nested");
     addProfileCase("../chained-calls", "profile-multiline-lambda");
-    addProfileCase("../chained-calls", "profile-scoped-sticky");
-    addProfileCase("../chained-calls", "profile-comments");
-    addProfileCase("../chained-calls", "profile-mixed-links");
-    addProfileCase("../chained-calls", "profile-capture-body");
-    addProfileCase("../chained-calls", "profile-conventional");
+    {
+        // chained-calls policies and shared oracles.
+        const auto directory =
+            std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../chained-calls";
+        {
+            const auto base = formatter::LoadConfigFile(
+                directory / "scoped-sticky.hit-fmt").FormattingStyle;
+            struct Policy
+            {
+                const char* Profile;
+                formatter::LayoutMode Layout;
+                std::size_t ColumnLimit;
+                formatter::BreakRequirement ChainsBreak;
+                formatter::ContinuationAlignment ChainsAlignment;
+                std::vector<std::string> ChainedCallRootNames;
+            };
+            for (const auto& policy : std::array<Policy, 5>{{
+                {
+                    "annotations-delimiter", LayoutMode::Canonical, 80,
+                    BreakRequirement::Always, ContinuationAlignment::Delimiter,
+                    {},
+                },
+                {
+                    "annotations-filtered", LayoutMode::Canonical, 80,
+                    BreakRequirement::Always, ContinuationAlignment::Block,
+                    {"Builder"},
+                },
+                {
+                    "annotations-fitting", LayoutMode::Canonical, 80,
+                    BreakRequirement::IfNeeded, ContinuationAlignment::Block,
+                    {},
+                },
+                {
+                    "annotations-narrow", LayoutMode::Canonical, 40,
+                    BreakRequirement::Always, ContinuationAlignment::Block, {},
+                },
+                {
+                    "annotations-preserve", LayoutMode::Preserve, 80,
+                    BreakRequirement::Always, ContinuationAlignment::Block, {},
+                },
+            }}) {
+                auto style = base;
+                style.Layout = policy.Layout;
+                style.ColumnLimit = policy.ColumnLimit;
+                style.ChainsBreak = policy.ChainsBreak;
+                style.ChainsAlignment = policy.ChainsAlignment;
+                style.ChainedCallRootNames = policy.ChainedCallRootNames;
+                ApplyProfile(cases, directory, policy.Profile, style);
+            }
+            auto scoped = base;
+            scoped.StickyChainCallPairs.clear();
+            ApplyProfile(cases, directory, "scoped-only", scoped);
+            auto sticky = base;
+            sticky.IndentedChainScopePairs.clear();
+            ApplyProfile(cases, directory, "sticky-only", sticky);
+        }
+        {
+            const auto base = formatter::LoadConfigFile(
+                directory / "conventional.hit-fmt").FormattingStyle;
+            struct Policy
+            {
+                const char* Profile;
+                formatter::CategoryLayout ChainsLayout;
+                std::vector<std::string> ChainedCallRootNames;
+            };
+            for (const auto& policy : std::array<Policy, 2>{{
+                {"conventional-preserve", CategoryLayout::Preserve, {}},
+                {
+                    "conventional-selected", CategoryLayout::Inherit,
+                    {"READ_EVENT"},
+                },
+            }}) {
+                auto style = base;
+                style.ChainsLayout = policy.ChainsLayout;
+                style.ChainedCallRootNames = policy.ChainedCallRootNames;
+                ApplyProfile(cases, directory, policy.Profile, style);
+            }
+        }
+        ShareExpected(
+            cases,
+            directory,
+            "conventional-selected.output.cpp",
+            "conventional-preserve.output.cpp");
+    }
     addProfileCase("../keyword-expressions", "profile");
     AddCases(
         cases,
         std::filesystem::path(FORMATTER_TESTDATA_DIR) /
         "../keyword-expressions",
         {"canonical", "preserve", "narrow", "always"});
+    {
+        // keyword-expressions policies and shared oracles.
+        const auto directory = std::filesystem::path(FORMATTER_TESTDATA_DIR) /
+            "../keyword-expressions";
+        {
+            const auto base = formatter::LoadConfigFile(
+                directory / "canonical.hit-fmt").FormattingStyle;
+            struct Policy
+            {
+                const char* Profile;
+                std::size_t ColumnLimit;
+                formatter::BreakRequirement ExpressionsBreak;
+                formatter::CategoryLayout ExpressionsLayout;
+            };
+            for (const auto& policy : std::array<Policy, 3>{{
+                {
+                    "always", 80, BreakRequirement::Always,
+                    CategoryLayout::Inherit,
+                },
+                {
+                    "narrow", 40, BreakRequirement::IfNeeded,
+                    CategoryLayout::Inherit,
+                },
+                {
+                    "preserve", 80, BreakRequirement::IfNeeded,
+                    CategoryLayout::Preserve,
+                },
+            }}) {
+                auto style = base;
+                style.ColumnLimit = policy.ColumnLimit;
+                style.ExpressionsBreak = policy.ExpressionsBreak;
+                style.ExpressionsLayout = policy.ExpressionsLayout;
+                ApplyProfile(cases, directory, policy.Profile, style);
+            }
+        }
+    }
     const auto google = std::filesystem::path(FORMATTER_TESTDATA_DIR) /
         "../google-style-regressions";
     const auto googleProfile = (std::filesystem::path(FORMATTER_TESTDATA_DIR) /
@@ -743,6 +1418,16 @@ std::vector<FormatCase> FormatCases()
     cases.push_back({attribute, "block-only", "block-only.input.cpp"});
     cases.push_back(
         {attribute, "independent-widths", "independent-widths.input.cpp"});
+    {
+        // attribute-indent policies and shared oracles.
+        const auto directory = std::filesystem::path(FORMATTER_TESTDATA_DIR) /
+            "../attribute-indent";
+        ShareConfig(
+            cases,
+            directory,
+            "independent-widths",
+            "../google-style-regressions/widths");
+    }
     AddCases(
         cases,
         std::filesystem::path(FORMATTER_TESTDATA_DIR) /
@@ -850,6 +1535,60 @@ std::vector<FormatCase> FormatCases()
         data / "continuation-nesting",
         {"line-scopes"},
         "line-scopes.input.cpp");
+    {
+        // continuation-nesting policies and shared oracles.
+        const auto directory = std::filesystem::path(FORMATTER_TESTDATA_DIR) /
+            "../continuation-nesting";
+        {
+            auto style = formatter::LoadConfigFile(directory / "shared.hit-fmt")
+                .FormattingStyle;
+            style.IndentationKind = IndentationKind::Tabs;
+            ApplyProfile(cases, directory, "tabs", style);
+        }
+        {
+            const auto base = formatter::LoadConfigFile(
+                directory / "argument-precedence.hit-fmt").FormattingStyle;
+            struct Policy
+            {
+                const char* Profile;
+                formatter::CategoryLayout CallsLayout;
+                std::optional<formatter::BreakRequirement> CallsBreak;
+                std::optional<formatter::FirstItemPlacement> CallsFirstItem;
+                std::optional<formatter::ContinuationAlignment> CallsAlignment;
+                formatter::OperatorSide BinaryOperatorSide;
+            };
+            for (const auto& policy : std::array<Policy, 2>{{
+                {
+                    "argument-precedence-delimiter", CategoryLayout::Preserve,
+                    std::nullopt, std::nullopt,
+                    ContinuationAlignment::Delimiter, OperatorSide::Trailing,
+                },
+                {
+                    "argument-precedence-leading", CategoryLayout::Inherit,
+                    BreakRequirement::Always, FirstItemPlacement::NextLine,
+                    std::nullopt, OperatorSide::Leading,
+                },
+            }}) {
+                auto style = base;
+                style.CallsLayout = policy.CallsLayout;
+                style.CallsBreak = policy.CallsBreak;
+                style.CallsFirstItem = policy.CallsFirstItem;
+                style.CallsAlignment = policy.CallsAlignment;
+                style.BinaryOperatorSide = policy.BinaryOperatorSide;
+                ApplyProfile(cases, directory, policy.Profile, style);
+            }
+        }
+        ShareConfig(
+            cases,
+            directory,
+            "line-scopes",
+            "../ternary-layout/branches-preserve");
+        ShareExpected(
+            cases,
+            directory,
+            "argument-precedence.output.cpp",
+            "argument-precedence-delimiter.output.cpp");
+    }
     // Preserve the original owning-source contracts without a second registry.
     for (const auto& [name, owningMaps] :
         {
@@ -875,6 +1614,54 @@ std::vector<FormatCase> FormatCases()
             {data / "public-pipeline", name, std::string(name) + ".input.cpp"});
         cases.back().CheckOwningMaps = owningMaps;
     }
+    {
+        // public-pipeline policies and shared oracles.
+        const auto directory = std::filesystem::path(FORMATTER_TESTDATA_DIR) /
+            "../public-pipeline";
+        {
+            const auto base = formatter::LoadConfigFile(
+                directory / "annotation-boundaries.hit-fmt").FormattingStyle;
+            struct Policy
+            {
+                const char* Profile;
+                std::size_t ColumnLimit;
+            };
+            for (const auto& policy : std::array<Policy, 3>{{
+                {"annotation-constraints", 10000},
+                {"annotation-constructors", 100},
+                {"annotation-suffixes", 100},
+            }}) {
+                auto style = base;
+                style.ColumnLimit = policy.ColumnLimit;
+                ApplyProfile(cases, directory, policy.Profile, style);
+            }
+        }
+        ShareConfig(
+            cases,
+            directory,
+            "control-separators-nested",
+            "control-separators-braced");
+        ShareConfig(
+            cases,
+            directory,
+            "control-separators-unbraced",
+            "control-separators-braced");
+        ShareConfig(
+            cases,
+            directory,
+            "declaration-operands-recovery",
+            "declaration-operands");
+        ShareConfig(
+            cases,
+            directory,
+            "opaque-record-owners",
+            "../record-head-commas/space");
+        ShareExpected(
+            cases,
+            directory,
+            "declaration-operands-recovery.output.cpp",
+            "declaration-operands-recovery.input.cpp");
+    }
     for (const auto* name : {"nested", "messages"}) {
         cases.push_back(
             {data / "group-syntax", name, std::string(name) + ".input.cpp"});
@@ -884,6 +1671,22 @@ std::vector<FormatCase> FormatCases()
         cases,
         data / "structural-expression-base",
         {"canonical", "preserved"});
+    {
+        // structural-expression-base policies and shared oracles.
+        const auto directory = std::filesystem::path(FORMATTER_TESTDATA_DIR) /
+            "../structural-expression-base";
+        {
+            auto style = formatter::LoadConfigFile(
+                directory / "canonical.hit-fmt").FormattingStyle;
+            style.Layout = LayoutMode::Preserve;
+            ApplyProfile(cases, directory, "preserved", style);
+        }
+        ShareExpected(
+            cases,
+            directory,
+            "preserved.output.cpp",
+            "canonical.output.cpp");
+    }
     cases.push_back({
         data / "initializer-trailing-comma",
         "conditional-closer",
@@ -915,6 +1718,52 @@ std::vector<FormatCase> FormatCases()
         cases,
         data / "attribute-parenthesis-interiors",
         {"compact", "spaced", "preserve"});
+    {
+        // attribute-parenthesis-interiors policies and shared oracles.
+        const auto directory = std::filesystem::path(FORMATTER_TESTDATA_DIR) /
+            "../attribute-parenthesis-interiors";
+        {
+            const auto base = formatter::LoadConfigFile(
+                directory / "preserve.hit-fmt").FormattingStyle;
+            struct Policy
+            {
+                const char* Profile;
+                formatter::GapPolicy AttributeInteriorSpacing;
+                formatter::GapPolicy AttributeSpaceAfterSpecifier;
+                formatter::GapPolicy AttributeSpaceBeforeSpecifier;
+                formatter::GapPolicy ControlBlockConditionSpacing;
+                formatter::GapPolicy SpaceInsideFunctionParameters;
+                formatter::GapPolicy SpaceInsideLambdaParameters;
+            };
+            for (const auto& policy : std::array<Policy, 2>{{
+                {
+                    "compact", GapPolicy::Space, GapPolicy::Space,
+                    GapPolicy::Space, GapPolicy::NoSpace, GapPolicy::NoSpace,
+                    GapPolicy::NoSpace,
+                },
+                {
+                    "spaced", GapPolicy::NoSpace, GapPolicy::NoSpace,
+                    GapPolicy::NoSpace, GapPolicy::Space, GapPolicy::Space,
+                    GapPolicy::Space,
+                },
+            }}) {
+                auto style = base;
+                style.AttributeInteriorSpacing =
+                    policy.AttributeInteriorSpacing;
+                style.AttributeSpaceAfterSpecifier =
+                    policy.AttributeSpaceAfterSpecifier;
+                style.AttributeSpaceBeforeSpecifier =
+                    policy.AttributeSpaceBeforeSpecifier;
+                style.ControlBlockConditionSpacing =
+                    policy.ControlBlockConditionSpacing;
+                style.SpaceInsideFunctionParameters =
+                    policy.SpaceInsideFunctionParameters;
+                style.SpaceInsideLambdaParameters =
+                    policy.SpaceInsideLambdaParameters;
+                ApplyProfile(cases, directory, policy.Profile, style);
+            }
+        }
+    }
     AddCases(cases, data / "qualified-record", {"canonical", "ytsaurus"});
     AddCases(cases, data / "unhinted-body-recovery", {"canonical"});
     AddCases(
@@ -922,6 +1771,27 @@ std::vector<FormatCase> FormatCases()
         data / "lambda-argument-ownership",
         {"canonical", "preserve"});
     AddCases(cases, data / "lambda-argument-tail-recovery", {"canonical"});
+    {
+        // lambda-argument-ownership policies and shared oracles.
+        const auto directory = std::filesystem::path(FORMATTER_TESTDATA_DIR) /
+            "../lambda-argument-ownership";
+        {
+            auto style = formatter::LoadConfigFile(
+                directory / "canonical.hit-fmt").FormattingStyle;
+            style.LambdaBodiesLayout = CategoryLayout::Preserve;
+            ApplyProfile(cases, directory, "preserve", style);
+        }
+    }
+    {
+        // lambda-argument-tail-recovery policies and shared oracles.
+        const auto directory = std::filesystem::path(FORMATTER_TESTDATA_DIR) /
+            "../lambda-argument-tail-recovery";
+        ShareConfig(
+            cases,
+            directory,
+            "canonical",
+            "../lambda-argument-ownership/canonical");
+    }
     const auto hunks = data / "changed-hunks";
     cases.push_back({hunks / "basic", "call", "input.cpp", "style", {{8, 8}}});
     cases.push_back(
@@ -1028,6 +1898,157 @@ std::vector<FormatCase> FormatCases()
         cases.push_back(
             {parsedOperators, name, input, config, {}, true, expected});
     }
+    {
+        // parsed-operators policies and shared oracles.
+        const auto directory = std::filesystem::path(FORMATTER_TESTDATA_DIR) /
+            "../parsed-operators";
+        {
+            const auto base = formatter::LoadConfigFile(
+                directory / "greedy-trailing.hit-fmt").FormattingStyle;
+            struct Policy
+            {
+                const char* Profile;
+                std::size_t ColumnLimit;
+                formatter::BreakRequirement ExpressionsBreak;
+                formatter::CategoryLayout ExpressionsLayout;
+                formatter::OperatorSide BinaryOperatorSide;
+                formatter::GapPolicy BinaryOperatorSpacing;
+                formatter::GapPolicy AssignmentOperatorSpacing;
+            };
+            for (const auto& policy : std::array<Policy, 15>{{
+                {
+                    "always-leading", 30, BreakRequirement::Always,
+                    CategoryLayout::Canonical, OperatorSide::Leading,
+                    GapPolicy::Space, GapPolicy::Space,
+                },
+                {
+                    "always-trailing", 30, BreakRequirement::Always,
+                    CategoryLayout::Canonical, OperatorSide::Trailing,
+                    GapPolicy::Space, GapPolicy::Space,
+                },
+                {
+                    "ambiguous-always", 32, BreakRequirement::Always,
+                    CategoryLayout::Canonical, OperatorSide::Leading,
+                    GapPolicy::Space, GapPolicy::Space,
+                },
+                {
+                    "ambiguous-if-needed", 32, BreakRequirement::IfNeeded,
+                    CategoryLayout::Canonical, OperatorSide::Leading,
+                    GapPolicy::Space, GapPolicy::Space,
+                },
+                {
+                    "call-preserve", 80, BreakRequirement::Always,
+                    CategoryLayout::Canonical, OperatorSide::Leading,
+                    GapPolicy::Space, GapPolicy::Space,
+                },
+                {
+                    "compact-comparison", 20, BreakRequirement::Always,
+                    CategoryLayout::Canonical, OperatorSide::Trailing,
+                    GapPolicy::Preserve, GapPolicy::Preserve,
+                },
+                {
+                    "compact-return", 25, BreakRequirement::IfNeeded,
+                    CategoryLayout::Canonical, OperatorSide::Trailing,
+                    GapPolicy::NoSpace, GapPolicy::Preserve,
+                },
+                {
+                    "crlf-return", 25, BreakRequirement::IfNeeded,
+                    CategoryLayout::Canonical, OperatorSide::Trailing,
+                    GapPolicy::Preserve, GapPolicy::Preserve,
+                },
+                {
+                    "greedy-leading", 40, BreakRequirement::IfNeeded,
+                    CategoryLayout::Canonical, OperatorSide::Leading,
+                    GapPolicy::Preserve, GapPolicy::Preserve,
+                },
+                {
+                    "horizontal-and-topology", 80, BreakRequirement::IfNeeded,
+                    CategoryLayout::Canonical, OperatorSide::Trailing,
+                    GapPolicy::Space, GapPolicy::Space,
+                },
+                {
+                    "leading-fitting", 40, BreakRequirement::IfNeeded,
+                    CategoryLayout::Canonical, OperatorSide::Leading,
+                    GapPolicy::Space, GapPolicy::Space,
+                },
+                {
+                    "leading-narrow", 30, BreakRequirement::IfNeeded,
+                    CategoryLayout::Canonical, OperatorSide::Leading,
+                    GapPolicy::Space, GapPolicy::Space,
+                },
+                {
+                    "preserve", 40, BreakRequirement::IfNeeded,
+                    CategoryLayout::Preserve, OperatorSide::Trailing,
+                    GapPolicy::Preserve, GapPolicy::Preserve,
+                },
+                {
+                    "return-trailing", 32, BreakRequirement::IfNeeded,
+                    CategoryLayout::Canonical, OperatorSide::Trailing,
+                    GapPolicy::Preserve, GapPolicy::Preserve,
+                },
+                {
+                    "trailing-fitting", 40, BreakRequirement::IfNeeded,
+                    CategoryLayout::Canonical, OperatorSide::Trailing,
+                    GapPolicy::Space, GapPolicy::Space,
+                },
+            }}) {
+                auto style = base;
+                style.ColumnLimit = policy.ColumnLimit;
+                style.ExpressionsBreak = policy.ExpressionsBreak;
+                style.ExpressionsLayout = policy.ExpressionsLayout;
+                style.BinaryOperatorSide = policy.BinaryOperatorSide;
+                style.BinaryOperatorSpacing = policy.BinaryOperatorSpacing;
+                style.AssignmentOperatorSpacing =
+                    policy.AssignmentOperatorSpacing;
+                ApplyProfile(cases, directory, policy.Profile, style);
+            }
+        }
+        ShareConfig(
+            cases,
+            directory,
+            "default-preserve",
+            "../closing-delimiters/preserve");
+        ShareExpected(
+            cases,
+            directory,
+            "call-preserve.output.cpp",
+            "call-preserve.input.cpp");
+        ShareExpected(
+            cases,
+            directory,
+            "preserve.output.cpp",
+            "greedy-trailing.input.cpp");
+        ShareExpected(
+            cases,
+            directory,
+            "template-argument-preserve.output.cpp",
+            "template-argument-preserve.input.cpp");
+        ShareExpected(
+            cases,
+            directory,
+            "leading-narrow.output.cpp",
+            "always-leading.output.cpp");
+        ShareExpected(
+            cases,
+            directory,
+            "ambiguous-always.output.cpp",
+            "ambiguous-if-needed.input.cpp");
+        ShareExpected(
+            cases,
+            directory,
+            "ambiguous-if-needed.output.cpp",
+            "ambiguous-if-needed.input.cpp");
+        ShareExpected(
+            cases,
+            directory,
+            "trailing-fitting.output.cpp",
+            "leading-fitting.output.cpp");
+        ShareExpected(
+            cases,
+            directory,
+            "macro-preserve.output.cpp",
+            "macro-preserve.input.cpp");
+    }
     const auto functionParameters = data / "function_parameters";
     for (const auto* name :
         {"preserve-header", "attached-spacing", "detached-spacing"})
@@ -1049,6 +2070,81 @@ std::vector<FormatCase> FormatCases()
         cases.push_back(
             {functionParameters, name, input, config, {}, true, expected});
     }
+    {
+        // function_parameters policies and shared oracles.
+        const auto directory = std::filesystem::path(FORMATTER_TESTDATA_DIR) /
+            "../function_parameters";
+        {
+            const auto base = formatter::LoadConfigFile(
+                directory / "attached-spacing.hit-fmt").FormattingStyle;
+            struct Policy
+            {
+                const char* Profile;
+                std::size_t ColumnLimit;
+                formatter::CategoryLayout DeclarationHeadersLayout;
+                formatter::GapPolicy FunctionBraceSpacing;
+            };
+            for (const auto& policy : std::array<Policy, 2>{{
+                {
+                    "detached-spacing", 40, CategoryLayout::Canonical,
+                    GapPolicy::Space,
+                },
+                {
+                    "crlf", 25, CategoryLayout::Inherit,
+                    GapPolicy::GeneratedSpace,
+                },
+            }}) {
+                auto style = base;
+                style.ColumnLimit = policy.ColumnLimit;
+                style.DeclarationHeadersLayout =
+                    policy.DeclarationHeadersLayout;
+                style.FunctionBraceSpacing = policy.FunctionBraceSpacing;
+                ApplyProfile(cases, directory, policy.Profile, style);
+            }
+        }
+        {
+            const auto base = formatter::LoadConfigFile(
+                directory / "preserve-header.hit-fmt").FormattingStyle;
+            struct Policy
+            {
+                const char* Profile;
+                formatter::IndentationKind IndentationKind;
+                formatter::CategoryLayout ParametersLayout;
+                std::optional<std::size_t> ParametersContinuationOffset;
+                formatter::CategoryLayout DeclarationHeadersLayout;
+            };
+            for (const auto& policy : std::array<Policy, 2>{{
+                {
+                    "reflow-preserved-header", IndentationKind::Preserve,
+                    CategoryLayout::Canonical, std::nullopt,
+                    CategoryLayout::Preserve,
+                },
+                {
+                    "tabs-next-line", IndentationKind::Tabs,
+                    CategoryLayout::Canonical, 8, CategoryLayout::Canonical,
+                },
+            }}) {
+                auto style = base;
+                style.IndentationKind = policy.IndentationKind;
+                style.ParametersLayout = policy.ParametersLayout;
+                style.ParametersContinuationOffset =
+                    policy.ParametersContinuationOffset;
+                style.DeclarationHeadersLayout =
+                    policy.DeclarationHeadersLayout;
+                ApplyProfile(cases, directory, policy.Profile, style);
+            }
+        }
+        ShareExpected(
+            cases,
+            directory,
+            "preserve-header.output.cpp",
+            "preserve-header.input.cpp");
+        ShareExpected(
+            cases,
+            directory,
+            "detached-spacing.output.cpp",
+            "attached-spacing.output.cpp");
+    }
     const auto lambdaAnchors = data / "consolidated-formatter/lambda-anchor";
     cases.push_back(
         {lambdaAnchors, "authored-anchor", "authored-anchor.input.cpp"});
@@ -1062,6 +2158,27 @@ std::vector<FormatCase> FormatCases()
         cases.push_back(
             {lambdaAnchors, name, input, config, {}, true, expected});
     }
+    {
+        // consolidated-formatter/lambda-anchor policies and shared oracles.
+        const auto directory = std::filesystem::path(FORMATTER_TESTDATA_DIR) /
+            "../consolidated-formatter/lambda-anchor";
+        {
+            auto style = formatter::LoadConfigFile(
+                directory / "authored-anchor.hit-fmt").FormattingStyle;
+            style.BlockBodyIndentWidth = 2;
+            ApplyProfile(cases, directory, "narrow-body", style);
+        }
+        ShareExpected(
+            cases,
+            directory,
+            "correct-anchor.output.cpp",
+            "authored-anchor.input.cpp");
+        ShareExpected(
+            cases,
+            directory,
+            "authored-anchor.output.cpp",
+            "authored-anchor.input.cpp");
+    }
     const auto controlBodies = data / "consolidated-formatter/control-bodies";
     for (const auto* name :
         {"nested-unbraced", "empty-blocks", "empty-blocks-without-add"})
@@ -1073,13 +2190,51 @@ std::vector<FormatCase> FormatCases()
     for (const auto& [name, input, config, expected] : {
         std::array<const char*, 4>{"crlf", "crlf.input.cpp",
             "comment-barrier", ""},
-        {"labeled-body", "labeled-body.input.cpp", "comment-barrier", ""},
         {"complete-control-bodies", "complete-control-bodies.input.cpp",
             "comment-barrier", ""},
     })
     {
         cases.push_back(
             {controlBodies, name, input, config, {}, true, expected});
+    }
+    {
+        // consolidated-formatter/control-bodies policies and shared oracles.
+        const auto directory = std::filesystem::path(FORMATTER_TESTDATA_DIR) /
+            "../consolidated-formatter/control-bodies";
+        {
+            const auto base = formatter::LoadConfigFile(
+                directory / "comment-barrier.hit-fmt").FormattingStyle;
+            struct Policy
+            {
+                const char* Profile;
+                formatter::BodyShape EmptyBodyShape;
+                bool AddMissingControlBraces;
+                formatter::EmptyControlBody EmptyControlBody;
+                formatter::GapPolicy EmptyBlockInteriorSpacing;
+            };
+            for (const auto& policy : std::array<Policy, 3>{{
+                {
+                    "empty-blocks-without-add", BodyShape::CompactIfFits,
+                    false, EmptyControlBody::EmptyBlock, GapPolicy::Space,
+                },
+                {
+                    "empty-blocks", BodyShape::CompactIfFits, true,
+                    EmptyControlBody::EmptyBlock, GapPolicy::Space,
+                },
+                {
+                    "nested-unbraced", BodyShape::Expanded, true,
+                    EmptyControlBody::Preserve, GapPolicy::GeneratedNoSpace,
+                },
+            }}) {
+                auto style = base;
+                style.EmptyBodyShape = policy.EmptyBodyShape;
+                style.AddMissingControlBraces = policy.AddMissingControlBraces;
+                style.EmptyControlBody = policy.EmptyControlBody;
+                style.EmptyBlockInteriorSpacing =
+                    policy.EmptyBlockInteriorSpacing;
+                ApplyProfile(cases, directory, policy.Profile, style);
+            }
+        }
     }
     for (const auto* name :
         {
@@ -1107,9 +2262,6 @@ std::vector<FormatCase> FormatCases()
             "input.cpp"},
         {"always-fill", "long.input.cpp", "", "long-packed.output.cpp"},
         {"vertical-next-line", "input.cpp", "", "one-per-line.output.cpp"},
-        {"cast-preserve", "cast-preserve.input.cpp", "unsafe-continuation", ""},
-        {"comment-gap", "comment-gap.input.cpp", "unsafe-continuation",
-            "comment.output.cpp"},
         {"crlf-call", "crlf-call.input.cpp", "unsafe-continuation",
             "crlf.output.cpp"},
         {"sole-fitting", "sole-fitting.input.cpp", "",
@@ -1120,6 +2272,192 @@ std::vector<FormatCase> FormatCases()
     })
     {
         cases.push_back({callReflow, name, input, config, {}, true, expected});
+    }
+    {
+        // call-reflow policies and shared oracles.
+        const auto directory =
+            std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../call-reflow";
+        {
+            const auto base = formatter::LoadConfigFile(
+                directory / "sole-argument.hit-fmt").FormattingStyle;
+            struct Policy
+            {
+                const char* Profile;
+                std::optional<formatter::BreakRequirement> CallsBreak;
+                std::optional<formatter::FirstItemPlacement> CallsFirstItem;
+                std::optional<formatter::FirstItemPlacement>
+                    CallsSoleArgumentFirstItem;
+            };
+            for (const auto& policy : std::array<Policy, 3>{{
+                {
+                    "sole-argument-always", BreakRequirement::Always,
+                    FirstItemPlacement::NextLine,
+                    FirstItemPlacement::InlineIfFits,
+                },
+                {
+                    "sole-argument-inherit", std::nullopt,
+                    FirstItemPlacement::NextLine, std::nullopt,
+                },
+                {
+                    "sole-argument-next-line", std::nullopt,
+                    FirstItemPlacement::InlineIfFits,
+                    FirstItemPlacement::NextLine,
+                },
+            }}) {
+                auto style = base;
+                style.CallsBreak = policy.CallsBreak;
+                style.CallsFirstItem = policy.CallsFirstItem;
+                style.CallsSoleArgumentFirstItem =
+                    policy.CallsSoleArgumentFirstItem;
+                ApplyProfile(cases, directory, policy.Profile, style);
+            }
+        }
+        {
+            const auto base = formatter::LoadConfigFile(
+                directory / "unsafe-continuation.hit-fmt").FormattingStyle;
+            struct Policy
+            {
+                const char* Profile;
+                std::size_t ColumnLimit;
+                formatter::CategoryLayout CallsLayout;
+                std::optional<formatter::BreakRequirement> CallsBreak;
+                std::optional<formatter::ListPacking> CallsPacking;
+                std::optional<formatter::FirstItemPlacement> CallsFirstItem;
+                std::optional<formatter::ContinuationAlignment> CallsAlignment;
+                formatter::CategoryLayout ControlHeadersLayout;
+                formatter::BracePlacement ControlBracePlacement;
+                formatter::GapPolicy SpaceInsideCallArguments;
+            };
+            for (const auto& policy : std::array<Policy, 7>{{
+                {
+                    "balanced-fill", 32, CategoryLayout::Canonical,
+                    BreakRequirement::IfNeeded, ListPacking::Fill,
+                    std::nullopt, ContinuationAlignment::Block,
+                    CategoryLayout::Canonical,
+                    BracePlacement::NextLineIfHeaderBroken,
+                    GapPolicy::Preserve,
+                },
+                {
+                    "balanced-preserve", 32, CategoryLayout::Preserve,
+                    BreakRequirement::IfNeeded,
+                    ListPacking::VerticalWhenBroken, std::nullopt,
+                    ContinuationAlignment::Block, CategoryLayout::Canonical,
+                    BracePlacement::NextLineIfHeaderBroken,
+                    GapPolicy::Preserve,
+                },
+                {
+                    "balanced-vertical", 32, CategoryLayout::Canonical,
+                    BreakRequirement::IfNeeded,
+                    ListPacking::VerticalWhenBroken, std::nullopt,
+                    ContinuationAlignment::Block, CategoryLayout::Canonical,
+                    BracePlacement::NextLineIfHeaderBroken,
+                    GapPolicy::Preserve,
+                },
+                {
+                    "control-header-composition", 32,
+                    CategoryLayout::Canonical, BreakRequirement::Always,
+                    ListPacking::Fill, std::nullopt,
+                    ContinuationAlignment::Block, CategoryLayout::Canonical,
+                    BracePlacement::NextLineIfHeaderBroken,
+                    GapPolicy::GeneratedNoSpace,
+                },
+                {
+                    "delimiter-alignment", 32, CategoryLayout::Canonical,
+                    BreakRequirement::Always, ListPacking::Fill, std::nullopt,
+                    ContinuationAlignment::Delimiter, CategoryLayout::Inherit,
+                    BracePlacement::Attached, GapPolicy::GeneratedNoSpace,
+                },
+                {
+                    "next-line-reposition", 25, CategoryLayout::Canonical,
+                    BreakRequirement::Always, ListPacking::Fill,
+                    FirstItemPlacement::NextLine,
+                    ContinuationAlignment::Delimiter, CategoryLayout::Inherit,
+                    BracePlacement::Attached, GapPolicy::GeneratedNoSpace,
+                },
+                {
+                    "spaced-vertical", 25, CategoryLayout::Canonical,
+                    BreakRequirement::Always, ListPacking::VerticalWhenBroken,
+                    std::nullopt, ContinuationAlignment::Block,
+                    CategoryLayout::Canonical,
+                    BracePlacement::NextLineIfHeaderBroken, GapPolicy::Space,
+                },
+            }}) {
+                auto style = base;
+                style.ColumnLimit = policy.ColumnLimit;
+                style.CallsLayout = policy.CallsLayout;
+                style.CallsBreak = policy.CallsBreak;
+                style.CallsPacking = policy.CallsPacking;
+                style.CallsFirstItem = policy.CallsFirstItem;
+                style.CallsAlignment = policy.CallsAlignment;
+                style.ControlHeadersLayout = policy.ControlHeadersLayout;
+                style.ControlBracePlacement = policy.ControlBracePlacement;
+                style.SpaceInsideCallArguments =
+                    policy.SpaceInsideCallArguments;
+                ApplyProfile(cases, directory, policy.Profile, style);
+            }
+        }
+        {
+            const auto base = formatter::LoadConfigFile(
+                directory / "packed.hit-fmt").FormattingStyle;
+            struct Policy
+            {
+                const char* Profile;
+                formatter::CategoryLayout CallsLayout;
+                std::optional<formatter::BreakRequirement> CallsBreak;
+                std::optional<formatter::ListPacking> CallsPacking;
+                std::optional<formatter::FirstItemPlacement> CallsFirstItem;
+            };
+            for (const auto& policy : std::array<Policy, 3>{{
+                {
+                    "default-preserve", CategoryLayout::Inherit, std::nullopt,
+                    std::nullopt, std::nullopt,
+                },
+                {
+                    "always-fill", CategoryLayout::Canonical,
+                    BreakRequirement::Always, ListPacking::Fill, std::nullopt,
+                },
+                {
+                    "vertical-next-line", CategoryLayout::Canonical,
+                    BreakRequirement::Always, ListPacking::VerticalWhenBroken,
+                    FirstItemPlacement::NextLine,
+                },
+            }}) {
+                auto style = base;
+                style.CallsLayout = policy.CallsLayout;
+                style.CallsBreak = policy.CallsBreak;
+                style.CallsPacking = policy.CallsPacking;
+                style.CallsFirstItem = policy.CallsFirstItem;
+                ApplyProfile(cases, directory, policy.Profile, style);
+            }
+        }
+        {
+            auto style = formatter::LoadConfigFile(
+                directory / "nested-candidate.hit-fmt").FormattingStyle;
+            style.CallsPacking = ListPacking::VerticalWhenBroken;
+            ApplyProfile(cases, directory, "opaque-macro", style);
+        }
+        {
+            auto style = formatter::LoadConfigFile(
+                directory / "sole-fitting.hit-fmt").FormattingStyle;
+            style.CallsFirstItem = FirstItemPlacement::NextLine;
+            style.BodiesLayout = CategoryLayout::Canonical;
+            ApplyProfile(cases, directory, "sole-separated", style);
+        }
+        ShareExpected(
+            cases,
+            directory,
+            "sole-argument-preserve.output.cpp",
+            "sole-argument.input.cpp");
+        ShareExpected(
+            cases,
+            directory,
+            "balanced-preserve.output.cpp",
+            "balanced-fill.input.cpp");
+        ShareExpected(
+            cases,
+            directory,
+            "opaque-macro.output.cpp",
+            "opaque-macro.input.cpp");
     }
     const auto ternaryLayout = data / "ternary-layout";
     cases.push_back({
@@ -1159,6 +2497,203 @@ std::vector<FormatCase> FormatCases()
     {
         cases.push_back(
             {ternaryLayout, name, input, config, {}, true, expected});
+    }
+    {
+        // ternary-layout policies and shared oracles.
+        const auto directory =
+            std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../ternary-layout";
+        {
+            const auto base = formatter::LoadConfigFile(
+                directory / "two-leading.hit-fmt").FormattingStyle;
+            struct Policy
+            {
+                const char* Profile;
+                std::size_t ColumnLimit;
+                formatter::BreakRequirement ExpressionsBreak;
+                formatter::CategoryLayout ExpressionsLayout;
+                formatter::OperatorSide TernaryOperatorSide;
+                formatter::TernaryLayout TernaryLayout;
+            };
+            for (const auto& policy : std::array<Policy, 13>{{
+                {
+                    "always-leading", 80, BreakRequirement::Always,
+                    CategoryLayout::Canonical, OperatorSide::Leading,
+                    TernaryLayout::ThreePart,
+                },
+                {
+                    "always-trailing", 80, BreakRequirement::Always,
+                    CategoryLayout::Canonical, OperatorSide::Trailing,
+                    TernaryLayout::ThreePart,
+                },
+                {
+                    "authored-fitting", 80, BreakRequirement::IfNeeded,
+                    CategoryLayout::Canonical, OperatorSide::Leading,
+                    TernaryLayout::Flexible,
+                },
+                {
+                    "flat-trailing-fitting", 80, BreakRequirement::IfNeeded,
+                    CategoryLayout::Canonical, OperatorSide::Trailing,
+                    TernaryLayout::ThreePart,
+                },
+                {
+                    "preserve-always-narrow", 20, BreakRequirement::Always,
+                    CategoryLayout::Preserve, OperatorSide::Leading,
+                    TernaryLayout::Flexible,
+                },
+                {
+                    "preserve-always-trailing", 80, BreakRequirement::Always,
+                    CategoryLayout::Preserve, OperatorSide::Trailing,
+                    TernaryLayout::ThreePart,
+                },
+                {
+                    "preserve-authored-flexible", 80,
+                    BreakRequirement::IfNeeded, CategoryLayout::Preserve,
+                    OperatorSide::Trailing, TernaryLayout::Flexible,
+                },
+                {
+                    "preserve-leading", 40, BreakRequirement::IfNeeded,
+                    CategoryLayout::Preserve, OperatorSide::Leading,
+                    TernaryLayout::Flexible,
+                },
+                {
+                    "preserve-trailing", 40, BreakRequirement::IfNeeded,
+                    CategoryLayout::Preserve, OperatorSide::Trailing,
+                    TernaryLayout::Flexible,
+                },
+                {
+                    "three-leading", 40, BreakRequirement::IfNeeded,
+                    CategoryLayout::Canonical, OperatorSide::Leading,
+                    TernaryLayout::ThreePart,
+                },
+                {
+                    "three-part-fitting", 80, BreakRequirement::IfNeeded,
+                    CategoryLayout::Canonical, OperatorSide::Leading,
+                    TernaryLayout::ThreePart,
+                },
+                {
+                    "three-trailing", 40, BreakRequirement::IfNeeded,
+                    CategoryLayout::Canonical, OperatorSide::Trailing,
+                    TernaryLayout::ThreePart,
+                },
+                {
+                    "two-trailing", 40, BreakRequirement::IfNeeded,
+                    CategoryLayout::Canonical, OperatorSide::Trailing,
+                    TernaryLayout::Flexible,
+                },
+            }}) {
+                auto style = base;
+                style.ColumnLimit = policy.ColumnLimit;
+                style.ExpressionsBreak = policy.ExpressionsBreak;
+                style.ExpressionsLayout = policy.ExpressionsLayout;
+                style.TernaryOperatorSide = policy.TernaryOperatorSide;
+                style.TernaryLayout = policy.TernaryLayout;
+                ApplyProfile(cases, directory, policy.Profile, style);
+            }
+        }
+        {
+            const auto base = formatter::LoadConfigFile(
+                directory / "branches-preserve.hit-fmt").FormattingStyle;
+            struct Policy
+            {
+                const char* Profile;
+                formatter::LayoutMode Layout;
+                std::size_t ColumnLimit;
+                formatter::OperatorSide TernaryOperatorSide;
+                formatter::TernaryLayout TernaryLayout;
+                formatter::TernaryOperatorIndentation OperatorIndentation;
+            };
+            for (const auto& policy : std::array<Policy, 4>{{
+                {
+                    "branches-indent-narrow", LayoutMode::Canonical, 40,
+                    OperatorSide::Leading, TernaryLayout::ThreePart,
+                    TernaryOperatorIndentation::Indent,
+                },
+                {
+                    "branches-indent-preserve", LayoutMode::Preserve, 80,
+                    OperatorSide::Leading, TernaryLayout::Flexible,
+                    TernaryOperatorIndentation::Indent,
+                },
+                {
+                    "branches-indent-trailing", LayoutMode::Canonical, 40,
+                    OperatorSide::Trailing, TernaryLayout::ThreePart,
+                    TernaryOperatorIndentation::Indent,
+                },
+                {
+                    "branches-narrow", LayoutMode::Canonical, 40,
+                    OperatorSide::Leading, TernaryLayout::ThreePart,
+                    TernaryOperatorIndentation::Align,
+                },
+            }}) {
+                auto style = base;
+                style.Layout = policy.Layout;
+                style.ColumnLimit = policy.ColumnLimit;
+                style.TernaryOperatorSide = policy.TernaryOperatorSide;
+                style.TernaryLayout = policy.TernaryLayout;
+                style.TernaryOperatorIndentation = policy.OperatorIndentation;
+                ApplyProfile(cases, directory, policy.Profile, style);
+            }
+        }
+        {
+            auto style = formatter::LoadConfigFile(
+                directory / "operators-align.hit-fmt").FormattingStyle;
+            style.TernaryOperatorIndentation =
+                TernaryOperatorIndentation::Indent;
+            ApplyProfile(cases, directory, "operators-indent", style);
+        }
+        {
+            const auto base = formatter::LoadConfigFile(
+                directory / "initializer-shape.hit-fmt").FormattingStyle;
+            struct Policy
+            {
+                const char* Profile;
+                std::size_t ColumnLimit;
+                formatter::TernaryLayout TernaryLayout;
+            };
+            for (const auto& policy : std::array<Policy, 2>{{
+                {"initializer-shape-flexible", 72, TernaryLayout::Flexible},
+                {"initializer-shape-narrow", 40, TernaryLayout::ThreePart},
+            }}) {
+                auto style = base;
+                style.ColumnLimit = policy.ColumnLimit;
+                style.TernaryLayout = policy.TernaryLayout;
+                ApplyProfile(cases, directory, policy.Profile, style);
+            }
+        }
+        ShareExpected(
+            cases,
+            directory,
+            "branches-narrow.output.cpp",
+            "branches-indent-narrow.output.cpp");
+        ShareExpected(
+            cases,
+            directory,
+            "preserve-always-narrow.output.cpp",
+            "preserve-always-narrow.input.cpp");
+        ShareExpected(
+            cases,
+            directory,
+            "fitting-leading.output.cpp",
+            "fitting-leading.input.cpp");
+        ShareExpected(
+            cases,
+            directory,
+            "fitting-trailing.output.cpp",
+            "fitting-leading.input.cpp");
+        ShareExpected(
+            cases,
+            directory,
+            "preserve-always-trailing.output.cpp",
+            "authored-fitting.input.cpp");
+        ShareExpected(
+            cases,
+            directory,
+            "preserve-authored-flexible.output.cpp",
+            "authored-fitting.input.cpp");
+        ShareExpected(
+            cases,
+            directory,
+            "branches-preserve.output.cpp",
+            "branches-indent-preserve.output.cpp");
     }
     const auto emptyFunctions = data / "consolidated-formatter/empty-functions";
     cases.push_back({
@@ -1217,16 +2752,175 @@ std::vector<FormatCase> FormatCases()
             "comment-external.input.cpp", "", ""},
         {"comment-sequence-zero", "comment-sequence-zero.input.cpp",
             "../standalone-comment-gaps/zero", ""},
-        {"control-commented-else", "control-commented-else.input.cpp",
-            "control-new-line", ""},
-        {"control-unbraced-else", "control-unbraced-else.input.cpp",
-            "control-new-line", ""},
-        {"control-unbraced-if", "control-unbraced-if.input.cpp",
-            "control-new-line", ""},
     })
     {
         cases.push_back(
             {consolidatedLayout, name, input, config, {}, true, expected});
+    }
+    {
+        // consolidated-layout policies and shared oracles.
+        const auto directory = std::filesystem::path(FORMATTER_TESTDATA_DIR) /
+            "../consolidated-layout";
+        {
+            const auto base = formatter::LoadConfigFile(directory /
+                "record-head-space-canonical.hit-fmt").FormattingStyle;
+            struct Policy
+            {
+                const char* Profile;
+                formatter::LayoutMode Layout;
+                formatter::GapPolicy CommaSpaceAfter;
+            };
+            for (const auto& policy : std::array<Policy, 10>{{
+                {
+                    "record-head-boundaries", LayoutMode::Canonical,
+                    GapPolicy::Space,
+                },
+                {
+                    "record-head-generated-no-space-canonical",
+                    LayoutMode::Canonical, GapPolicy::GeneratedNoSpace,
+                },
+                {
+                    "record-head-generated-no-space-preserved",
+                    LayoutMode::Preserve, GapPolicy::GeneratedNoSpace,
+                },
+                {
+                    "record-head-generated-space-canonical",
+                    LayoutMode::Canonical, GapPolicy::GeneratedSpace,
+                },
+                {
+                    "record-head-generated-space-preserved",
+                    LayoutMode::Preserve, GapPolicy::GeneratedSpace,
+                },
+                {
+                    "record-head-no-space-canonical", LayoutMode::Canonical,
+                    GapPolicy::NoSpace,
+                },
+                {
+                    "record-head-no-space-preserved", LayoutMode::Preserve,
+                    GapPolicy::NoSpace,
+                },
+                {
+                    "record-head-preserve-canonical", LayoutMode::Canonical,
+                    GapPolicy::Preserve,
+                },
+                {
+                    "record-head-preserved", LayoutMode::Preserve,
+                    GapPolicy::Preserve,
+                },
+                {
+                    "record-head-space-preserved", LayoutMode::Preserve,
+                    GapPolicy::Space,
+                },
+            }}) {
+                auto style = base;
+                style.Layout = policy.Layout;
+                style.CommaSpaceAfter = policy.CommaSpaceAfter;
+                ApplyProfile(cases, directory, policy.Profile, style);
+            }
+        }
+        {
+            const auto base = formatter::LoadConfigFile(
+                directory / "control-new-line.hit-fmt").FormattingStyle;
+            struct Policy
+            {
+                const char* Profile;
+                std::optional<formatter::BreakRequirement> ControlHeadersBreak;
+                std::optional<formatter::FirstItemPlacement>
+                    ControlHeadersFirstItem;
+                std::optional<formatter::CloserPlacement> ControlHeadersCloser;
+                formatter::CategoryLayout BodiesLayout;
+                formatter::BodyShape BodyShape;
+                formatter::BracePlacement ControlBracePlacement;
+            };
+            for (const auto& policy : std::array<Policy, 5>{{
+                {
+                    "control-attached", std::nullopt, std::nullopt,
+                    std::nullopt, CategoryLayout::Inherit, BodyShape::Expanded,
+                    BracePlacement::Attached,
+                },
+                {
+                    "control-compact", std::nullopt, std::nullopt,
+                    std::nullopt, CategoryLayout::Inherit,
+                    BodyShape::CompactIfFits, BracePlacement::NextLine,
+                },
+                {
+                    "control-forced-header", BreakRequirement::Always,
+                    FirstItemPlacement::NextLine, CloserPlacement::OwnLine,
+                    CategoryLayout::Inherit, BodyShape::Expanded,
+                    BracePlacement::NextLineIfHeaderBroken,
+                },
+                {
+                    "control-header-broken", std::nullopt, std::nullopt,
+                    std::nullopt, CategoryLayout::Inherit, BodyShape::Expanded,
+                    BracePlacement::NextLineIfHeaderBroken,
+                },
+                {
+                    "control-preserved-body", std::nullopt, std::nullopt,
+                    std::nullopt, CategoryLayout::Preserve,
+                    BodyShape::Expanded, BracePlacement::NextLine,
+                },
+            }}) {
+                auto style = base;
+                style.ControlHeadersBreak = policy.ControlHeadersBreak;
+                style.ControlHeadersFirstItem = policy.ControlHeadersFirstItem;
+                style.ControlHeadersCloser = policy.ControlHeadersCloser;
+                style.BodiesLayout = policy.BodiesLayout;
+                style.BodyShape = policy.BodyShape;
+                style.ControlBracePlacement = policy.ControlBracePlacement;
+                ApplyProfile(cases, directory, policy.Profile, style);
+            }
+        }
+        ShareConfig(cases, directory, "comment-sequence", "comment-directives");
+        ShareConfig(
+            cases,
+            directory,
+            "preserve-crlf-recovery",
+            "../closing-delimiters/preserve");
+        ShareExpected(
+            cases,
+            directory,
+            "record-head-generated-space-preserved.output.cpp",
+            "record-head-policies.input.cpp");
+        ShareExpected(
+            cases,
+            directory,
+            "record-head-preserved.output.cpp",
+            "record-head-policies.input.cpp");
+        ShareExpected(
+            cases,
+            directory,
+            "record-head-generated-no-space-preserved.output.cpp",
+            "record-head-policies.input.cpp");
+        ShareExpected(
+            cases,
+            directory,
+            "comment-sequence-zero.output.cpp",
+            "comment-sequence.input.cpp");
+        ShareExpected(
+            cases,
+            directory,
+            "comment-sequence.output.cpp",
+            "comment-sequence-zero.input.cpp");
+        ShareExpected(
+            cases,
+            directory,
+            "record-head-no-space-canonical.output.cpp",
+            "record-head-generated-no-space-canonical.output.cpp");
+        ShareExpected(
+            cases,
+            directory,
+            "control-header-broken.output.cpp",
+            "control-attached.output.cpp");
+        ShareExpected(
+            cases,
+            directory,
+            "preserve-crlf-recovery.output.cpp",
+            "preserve-crlf-recovery.input.cpp");
+        ShareExpected(
+            cases,
+            directory,
+            "record-head-space-canonical.output.cpp",
+            "record-head-generated-space-canonical.output.cpp");
     }
     AddCases(
         cases,
@@ -1238,6 +2932,22 @@ std::vector<FormatCase> FormatCases()
             "generated-space",
             "generated-no-space",
         });
+    {
+        // Enumerator assignment shares oracles, not decoded policy configs.
+        const auto directory = std::filesystem::path(FORMATTER_TESTDATA_DIR) /
+            "../consolidated-pipeline/enumerator-assignment";
+        ShareExpected(
+            cases,
+            directory,
+            "generated-space.output.cpp",
+            "input.cpp");
+        ShareExpected(cases, directory, "preserve.output.cpp", "input.cpp");
+        ShareExpected(
+            cases,
+            directory,
+            "generated-no-space.output.cpp",
+            "input.cpp");
+    }
     cases.push_back({
         data / "consolidated-pipeline",
         "enumerator-assignment-comments",
@@ -1248,6 +2958,16 @@ std::vector<FormatCase> FormatCases()
         "null-removal",
         "null-removal.input.cpp",
     });
+    {
+        // consolidated-edits policies and shared oracles.
+        const auto directory = std::filesystem::path(FORMATTER_TESTDATA_DIR) /
+            "../consolidated-edits";
+        ShareConfig(
+            cases,
+            directory,
+            "null-removal",
+            "../null-statements/both");
+    }
     std::ranges::sort(
         cases,
         {},
@@ -1264,7 +2984,7 @@ TEST_P(FormatTest, Golden)
     const auto& value = GetParam();
     const test::golden::Fixture fixture{value.Directory, value.Name};
     const auto config = value.Config.empty() ? value.Name : value.Config;
-    const auto style = formatter::LoadConfigFile(
+    const auto style = value.Style ? *value.Style : formatter::LoadConfigFile(
         fixture.Directory / (config + ".hit-fmt")).FormattingStyle;
     const auto input = fixture.Input(value.Input);
     if (value.Hunks.empty()) {

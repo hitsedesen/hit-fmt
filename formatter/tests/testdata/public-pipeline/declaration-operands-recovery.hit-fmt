@@ -1,4 +1,0 @@
-Layout = Canonical
-ColumnLimit = 100
-CommaSpaceAfter = GeneratedSpace
-CommaSpaceBefore = GeneratedNoSpace

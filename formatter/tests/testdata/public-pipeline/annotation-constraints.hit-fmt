@@ -1,7 +1,0 @@
-Layout = Canonical
-IndentationKind = Spaces
-IndentWidth = 2
-BodyShape = Expanded
-EmptyBodyShape = Expanded
-ColumnLimit = 10000
-PointerReferenceDeclaratorLocation = Right

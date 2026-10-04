@@ -1,4 +1,0 @@
-ExpressionsLayout = Canonical
-ColumnLimit = 80
-TernaryOperatorSide = Trailing
-TernaryLayout = ThreePart

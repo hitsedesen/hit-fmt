@@ -1,6 +1,0 @@
-CallsLayout = Canonical
-FunctionCallSpaceBeforeParameters = GeneratedNoSpace
-SpaceInsideCallArguments = Space
-CommaSpaceBefore = NoSpace
-CommaSpaceAfter = Space
-WhitespaceSensitiveMacros = ["KEEP"]
