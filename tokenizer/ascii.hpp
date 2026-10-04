@@ -1,5 +1,7 @@
 #pragma once
 
+#include "token.hpp"
+
 #include <array>
 #include <cstdint>
 
@@ -112,5 +114,32 @@ enum class ByteAction : uint8_t
 
 template <AsciiState State>
 inline constexpr auto ByteActions = MakeByteActions(State);
+
+[[nodiscard]] constexpr bool IsAsciiIdentifierStart(unsigned char byte) noexcept
+{
+    return (byte | 0x20u) - 'a' < 26 || byte == '_';
+}
+
+// Literal kinds select scanners; operator kinds are complete one-byte tokens.
+// Invalid selects the ambiguous-operator, invalid-byte, or Unicode path.
+inline constexpr auto AsciiTokenKinds = [] {
+    std::array<TokenKind, 256> kinds{};
+    for (unsigned byte = '0'; byte <= '9'; ++byte) {
+        kinds[byte] = TokenKind::Literal_DecimalInteger;
+    }
+    kinds['\''] = TokenKind::Literal_Character;
+    kinds['"'] = TokenKind::Literal_String;
+    kinds['{'] = TokenKind::Operator_OpenBrace;
+    kinds['}'] = TokenKind::Operator_CloseBrace;
+    kinds['['] = TokenKind::Operator_OpenBracket;
+    kinds[']'] = TokenKind::Operator_CloseBracket;
+    kinds['('] = TokenKind::Operator_OpenParenthesis;
+    kinds[')'] = TokenKind::Operator_CloseParenthesis;
+    kinds[';'] = TokenKind::Operator_Semicolon;
+    kinds['?'] = TokenKind::Operator_Conditional;
+    kinds['~'] = TokenKind::Operator_Complement;
+    kinds[','] = TokenKind::Operator_Comma;
+    return kinds;
+}();
 
 } // namespace tokenizer::detail

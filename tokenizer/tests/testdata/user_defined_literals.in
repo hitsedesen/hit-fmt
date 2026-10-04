@@ -5,3 +5,8 @@
 1.0q
 "hello"cow
 'S'mychar
+0 00 07 08.5 09e2
+0b0 0B1'0u 0XCA'FEuLl 0xAp-2 0x.8p+1
+1'234ULL 1'23.4'5e-6'7F 0x1'2.A'Bp+3'4
+1suffix0'2 1_suffix2'3 1_α42'3
+1.0_α42 0x1p0_SUFFIX

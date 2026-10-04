@@ -332,14 +332,15 @@ private:
 
     void SkipWhitespace();
     bool TrySkipNewline();
+    Token ParseAsciiOperator(unsigned char byte);
     Token ParseIdentifier();
     bool ConsumeEscapeSequence();
     Token ParseCharacterLiteral();
     Token ParseStringLiteral();
     Token ParseRawStringLiteral();
     Token ParseNumber();
-    Token ParseInteger();
-    Token ParseFloatingPoint();
+    Token DiagnoseInteger();
+    Token DiagnoseFloatingPoint();
     Token ParseInlineComment();
     Token ParseMultilineComment();
     Token ParsePreprocessingDirective();

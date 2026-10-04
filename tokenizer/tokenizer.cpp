@@ -181,46 +181,61 @@ Token Tokenizer::Get()
     CurrentTokenOffset_ = CurrentCodePointOffset_;
     CurrentTokenSize_ = 0;
 
-    auto cur = byte < 0x80
-        ? unicode::CodePoint(byte)
-        : CurrentCodePoint();
     if (AtEnd()) [[unlikely]] {
         return FinishToken(TokenKind::EndOfFile);
     }
-    switch (cur) {
+    if (detail::IsAsciiIdentifierStart(byte)) {
+        return ParseIdentifier();
+    }
+    auto kind = detail::AsciiTokenKinds[byte];
+    switch (kind) {
+        case TokenKind::Literal_DecimalInteger:
+            return ParseNumber();
+        case TokenKind::Literal_Character:
+            return ParseCharacterLiteral();
+        case TokenKind::Literal_String:
+            return ParseStringLiteral();
+        case TokenKind::Invalid:
+        {
+            if (byte < 0x80) {
+                return ParseAsciiOperator(byte);
+            }
+            auto cur = CurrentUnicodeCodePoint();
+            if (unicode::IsXIDStart(cur)) {
+                return ParseIdentifier();
+            }
+            ConsumeUnicodeCodePoint();
+            if (cur != InvalidCodePoint) {
+                OnError(TokenizationErrorKind::UnexpectedToken);
+            }
+            return FinishToken(TokenKind::Invalid);
+        }
+        default:
+            // The table selects only non-whitespace, one-byte operators here.
+            ++CurrentCodePointOffset_;
+            ++CurrentCodePointPosition_.Column;
+            CurrentTokenSize_ = 1;
+            IsNewLine_ = false;
+            return FinishToken(kind);
+    }
+}
+
+Token Tokenizer::ParseAsciiOperator(unsigned char byte)
+{
+    unicode::CodePoint cur = byte;
+    switch (byte) {
         case '#':
         {
             if (!IsNewLine_) {
-                ConsumeCodePoint();
+                ConsumeAsciiByte(byte);
                 OnError(TokenizationErrorKind::UnexpectedToken);
                 return FinishToken(TokenKind::Invalid);
             }
             return ParsePreprocessingDirective();
         }
-        case '{':
-            ConsumeCodePoint();
-            return FinishToken(TokenKind::Operator_OpenBrace);
-        case '}':
-            ConsumeCodePoint();
-            return FinishToken(TokenKind::Operator_CloseBrace);
-        case '[':
-            ConsumeCodePoint();
-            return FinishToken(TokenKind::Operator_OpenBracket);
-        case ']':
-            ConsumeCodePoint();
-            return FinishToken(TokenKind::Operator_CloseBracket);
-        case '(':
-            ConsumeCodePoint();
-            return FinishToken(TokenKind::Operator_OpenParenthesis);
-        case ')':
-            ConsumeCodePoint();
-            return FinishToken(TokenKind::Operator_CloseParenthesis);
-        case ';':
-            ConsumeCodePoint();
-            return FinishToken(TokenKind::Operator_Semicolon);
         case ':':
         {
-            ConsumeCodePoint();
+            ConsumeAsciiByte(byte);
             cur = CurrentCodePoint();
             switch (cur) {
                 case ':':
@@ -235,10 +250,10 @@ Token Tokenizer::Get()
         }
         case '.':
         {
-            if (IsDigit(PeekByte(1))) [[unlikely]] {
+            if (IsAsciiDigit(PeekByte(1))) [[unlikely]] {
                 return ParseNumber();
             }
-            ConsumeCodePoint();
+            ConsumeAsciiByte(byte);
             cur = CurrentCodePoint();
             switch (cur) {
                 case '.':
@@ -262,7 +277,7 @@ Token Tokenizer::Get()
         }
         case '-':
         {
-            ConsumeCodePoint();
+            ConsumeAsciiByte(byte);
             cur = CurrentCodePoint();
             switch (cur) {
                 case '>':
@@ -287,15 +302,9 @@ Token Tokenizer::Get()
                     return FinishToken(TokenKind::Operator_Minus);
             }
         }
-        case '?':
-            ConsumeCodePoint();
-            return FinishToken(TokenKind::Operator_Conditional);
-        case '~':
-            ConsumeCodePoint();
-            return FinishToken(TokenKind::Operator_Complement);
         case '!':
         {
-            ConsumeCodePoint();
+            ConsumeAsciiByte(byte);
             cur = CurrentCodePoint();
             if (cur == '=') {
                 ConsumeCodePoint();
@@ -305,7 +314,7 @@ Token Tokenizer::Get()
         }
         case '+':
         {
-            ConsumeCodePoint();
+            ConsumeAsciiByte(byte);
             cur = CurrentCodePoint();
             if (cur == '=') {
                 ConsumeCodePoint();
@@ -319,7 +328,7 @@ Token Tokenizer::Get()
         }
         case '*':
         {
-            ConsumeCodePoint();
+            ConsumeAsciiByte(byte);
             cur = CurrentCodePoint();
             if (cur == '=') {
                 ConsumeCodePoint();
@@ -329,7 +338,7 @@ Token Tokenizer::Get()
         }
         case '/':
         {
-            ConsumeCodePoint();
+            ConsumeAsciiByte(byte);
             cur = CurrentCodePoint();
             switch (cur) {
                 case '=':
@@ -346,7 +355,7 @@ Token Tokenizer::Get()
         case '%':
         {
             const bool startsLine = IsNewLine_;
-            ConsumeCodePoint();
+            ConsumeAsciiByte(byte);
             cur = CurrentCodePoint();
             if (cur == '=') {
                 ConsumeCodePoint();
@@ -362,7 +371,7 @@ Token Tokenizer::Get()
         }
         case '^':
         {
-            ConsumeCodePoint();
+            ConsumeAsciiByte(byte);
             cur = CurrentCodePoint();
             if (cur == '=') {
                 ConsumeCodePoint();
@@ -372,7 +381,7 @@ Token Tokenizer::Get()
         }
         case '&':
         {
-            ConsumeCodePoint();
+            ConsumeAsciiByte(byte);
             cur = CurrentCodePoint();
             switch (cur) {
                 case '=':
@@ -387,7 +396,7 @@ Token Tokenizer::Get()
         }
         case '|':
         {
-            ConsumeCodePoint();
+            ConsumeAsciiByte(byte);
             cur = CurrentCodePoint();
             switch (cur) {
                 case '=':
@@ -402,7 +411,7 @@ Token Tokenizer::Get()
         }
         case '=':
         {
-            ConsumeCodePoint();
+            ConsumeAsciiByte(byte);
             cur = CurrentCodePoint();
             if (cur == '=') {
                 ConsumeCodePoint();
@@ -412,7 +421,7 @@ Token Tokenizer::Get()
         }
         case '<':
         {
-            ConsumeCodePoint();
+            ConsumeAsciiByte(byte);
             cur = CurrentCodePoint();
             switch (cur) {
                 case ':':
@@ -457,7 +466,7 @@ Token Tokenizer::Get()
         }
         case '>':
         {
-            ConsumeCodePoint();
+            ConsumeAsciiByte(byte);
             cur = CurrentCodePoint();
             switch (cur) {
                 case '=':
@@ -478,29 +487,10 @@ Token Tokenizer::Get()
                     return FinishToken(TokenKind::Operator_Greater);
             }
         }
-        case ',':
-            ConsumeCodePoint();
-            return FinishToken(TokenKind::Operator_Comma);
-        case '\'':
-            return ParseCharacterLiteral();
-        case '"':
-            return ParseStringLiteral();
         default:
-        {
-            if (IsIdStart(cur)) {
-                return ParseIdentifier();
-            }
-            if (IsDigit(cur)) {
-                return ParseNumber();
-            }
-            {
-                ConsumeCodePoint(cur);
-                if (cur != InvalidCodePoint) {
-                    OnError(TokenizationErrorKind::UnexpectedToken);
-                }
-                return FinishToken(TokenKind::Invalid);
-            }
-        }
+            ConsumeAsciiByte(byte);
+            OnError(TokenizationErrorKind::UnexpectedToken);
+            return FinishToken(TokenKind::Invalid);
     }
 }
 
@@ -970,40 +960,131 @@ Token Tokenizer::ParseRawStringLiteral()
 
 Token Tokenizer::ParseNumber()
 {
-    size_t offset = CurrentCodePointOffset_;
-    auto byte = [&] (size_t position) {
-        return ByteAt(position);
+    const auto* begin = CurrentByteAddress();
+    const auto* cursor = begin;
+    bool hexadecimal = *cursor == '0' &&
+        (cursor[1] == 'x' || cursor[1] == 'X');
+    bool binary = *cursor == '0' &&
+        (cursor[1] == 'b' || cursor[1] == 'B');
+    bool leadingZero = *cursor == '0';
+    if (hexadecimal || binary) {
+        cursor += 2;
+    }
+    bool valid = true;
+    unsigned char digitBits = 0;
+    auto parseDigits = [&] (auto isDigit) {
+        size_t count = 0;
+        bool separator = false;
+        while (true) {
+            auto byte = *cursor;
+            if (isDigit(byte)) {
+                digitBits |= byte;
+                ++count;
+                separator = false;
+            } else if (byte == '\'') {
+                valid &= count != 0 && !separator;
+                separator = true;
+            } else {
+                break;
+            }
+            ++cursor;
+        }
+        valid &= !separator;
+        return count;
     };
-
-    if (byte(offset) == '.') {
-        return ParseFloatingPoint();
+    auto digits = hexadecimal
+        ? parseDigits(IsHexDigit)
+        : parseDigits(IsAsciiDigit);
+    bool floating = !binary &&
+        (*cursor == '.' || (hexadecimal
+            ? *cursor == 'p' || *cursor == 'P'
+            : *cursor == 'e' || *cursor == 'E'));
+    TokenKind kind;
+    if (floating) {
+        kind = hexadecimal
+            ? TokenKind::Literal_HexadecimalFloatingPoint
+            : TokenKind::Literal_DecimalFloatingPoint;
+        if (*cursor == '.') {
+            ++cursor;
+            digits += hexadecimal
+                ? parseDigits(IsHexDigit)
+                : parseDigits(IsAsciiDigit);
+        }
+        valid &= digits != 0;
+        bool exponent = hexadecimal
+            ? *cursor == 'p' || *cursor == 'P'
+            : *cursor == 'e' || *cursor == 'E';
+        if (exponent) {
+            ++cursor;
+            if (*cursor == '+' || *cursor == '-') {
+                ++cursor;
+            }
+            valid &= parseDigits(IsAsciiDigit) != 0;
+        } else if (hexadecimal) {
+            valid = false;
+        }
+    } else if (hexadecimal) {
+        kind = TokenKind::Literal_HexadecimalInteger;
+        valid &= digits != 0;
+    } else if (binary) {
+        kind = TokenKind::Literal_BinaryInteger;
+        valid &= digits != 0 && (digitBits & 0x0e) == 0;
+    } else if (leadingZero) {
+        kind = TokenKind::Literal_OctalInteger;
+        valid &= (digitBits & 0x08) == 0;
+    } else {
+        kind = TokenKind::Literal_DecimalInteger;
     }
-    if (byte(offset) == '0' &&
-        (byte(offset + 1) == 'x' || byte(offset + 1) == 'X'))
+    if (!valid) [[unlikely]] {
+        // A later dot/exponent selects the separator diagnostic kind. Keep
+        // exact streaming diagnostics without buffering arbitrary errors:
+        // only malformed bodies use the validating, code-point-based path.
+        return floating ? DiagnoseFloatingPoint() : DiagnoseInteger();
+    }
+
+    auto size = static_cast<size_t>(cursor - begin);
+    CurrentCodePointOffset_ += size;
+    CurrentCodePointPosition_.Column += size;
+    CurrentTokenSize_ += size;
+    IsNewLine_ = false;
+    size_t suffixStart = CurrentTokenSize_;
+    auto cur = CurrentCodePoint();
+    if (IsIdStart(cur)) {
+        while (true) {
+            auto byte = ScanAsciiRun<detail::AsciiState::Identifier>();
+            if (byte >= 0x80) {
+                if (IsIdContinuation(CurrentUnicodeCodePoint())) {
+                    ConsumeUnicodeCodePoint();
+                    continue;
+                }
+            } else if (!floating && byte == '\'' &&
+                IsAsciiDigit(ByteAt(CurrentCodePointOffset_ - 1)) &&
+                IsAsciiDigit(PeekByte(1)))
+            {
+                ConsumeAsciiByte(byte);
+                continue;
+            }
+            break;
+        }
+    }
+    auto suffix = CurrentTokenText().substr(suffixStart);
+    if (floating) {
+        if (!std::ranges::any_of(FloatingPointSuffixes, [&] (auto candidate) {
+            return EqualsIgnoringAsciiCase(suffix, candidate);
+        }))
+        {
+            return FinishToken(TokenKind::Literal_UserDefinedFloatingPoint);
+        }
+    } else if (!std::ranges::any_of(IntegerSuffixes, [&] (auto candidate) {
+        return EqualsIgnoringAsciiCase(suffix, candidate);
+    }))
     {
-        offset += 2;
-        while (IsHexDigit(byte(offset)) || byte(offset) == '\'') {
-            ++offset;
-        }
-        if (byte(offset) == '.') {
-            return ParseFloatingPoint();
-        }
-        if (byte(offset) == 'p' || byte(offset) == 'P') {
-            return ParseFloatingPoint();
-        }
-        return ParseInteger();
+        return FinishToken(TokenKind::Literal_UserDefinedInteger);
     }
-
-    while (IsDigit(byte(offset)) || byte(offset) == '\'') {
-        ++offset;
-    }
-    if (byte(offset) == '.' || byte(offset) == 'e' || byte(offset) == 'E') {
-        return ParseFloatingPoint();
-    }
-    return ParseInteger();
+    return FinishToken(kind);
 }
 
-Token Tokenizer::ParseFloatingPoint()
+Token Tokenizer::DiagnoseFloatingPoint()
 {
     auto cur = CurrentCodePoint();
     ASSERT(cur == '.' || IsDigit(cur));
@@ -1110,7 +1191,7 @@ Token Tokenizer::ParseFloatingPoint()
     return FinishToken(kind);
 }
 
-Token Tokenizer::ParseInteger()
+Token Tokenizer::DiagnoseInteger()
 {
     TokenKind kind = TokenKind::Invalid;
     auto cur = CurrentCodePoint();
