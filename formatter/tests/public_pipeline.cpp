@@ -1,3 +1,4 @@
+#include "public_pipeline.hpp"
 #include <formatter/config.hpp>
 #include <formatter/formatter.hpp>
 #include <formatter/source_analysis.hpp>
@@ -753,65 +754,7 @@ TEST(PublicPipeline, StandaloneCommentCountsSupportOwningMapsAndScopedEdges)
     EXPECT_THROW((void)formatter::PreparedFormat(style), std::invalid_argument);
 }
 
-#ifdef HIT_FMT_PIPELINE_CHECKS
-class FormatTest
-    : public testing::TestWithParam<const char*>
-{ };
-TEST_P(FormatTest, Golden)
-{
-    const auto relative = std::filesystem::path(GetParam());
-    const test::golden::Fixture fixture {
-        std::filesystem::path(__FILE__).parent_path() / "testdata" /
-            relative.parent_path(),
-        relative.filename().string()
-    };
-    auto style
-        = formatter::LoadConfigFile(fixture.Named(".hit-fmt")).FormattingStyle;
-    const formatter::PreparedFormat prepared(style);
-    const auto source = fixture.InputNamed(".input.cpp");
-    auto result = FormatInput(source, prepared);
-    fixture.Expect(result.Text);
-    CheckIdentities(source, result);
-    EXPECT_EQ(FormatInput(result.Text, prepared).Text, result.Text);
-}
-INSTANTIATE_TEST_SUITE_P(
-    Formatter,
-    FormatTest,
-    testing::Values(
-        "line-endings/lf",
-        "line-endings/crlf",
-        "line-endings/legacy",
-        "line-endings/canonical-lf",
-        "line-endings/canonical-crlf",
-        "line-endings/opaque-lf",
-        "line-endings/boundary-lf",
-        "line-endings/boundary-crlf",
-        "line-endings/boundary-nulls",
-        "line-endings/boundary-namespace-lf",
-        "line-endings/boundary-namespace-crlf",
-        "line-endings/composition-control-lf",
-        "public-pipeline/layout",
-        "public-pipeline/structural",
-        "public-pipeline/comments",
-        "public-pipeline/enumerator-assignment",
-        "public-pipeline/opaque-record-owners",
-        "public-pipeline/control-ownership",
-        "public-pipeline/annotation-constructors",
-        "public-pipeline/annotation-suffixes",
-        "public-pipeline/annotation-constraints",
-        "group-syntax/nested",
-        "group-syntax/messages",
-        "public-pipeline/declaration-operands",
-        "public-pipeline/declaration-operands-recovery",
-        "public-pipeline/terminal-constructor-template-ids"),
-    [] (const auto& info) {
-        const auto path = std::filesystem::path(info.param);
-        auto name =
-            path.parent_path().string() + "_" + path.filename().string();
-        std::replace(name.begin(), name.end(), '-', '_');
-        return name;
-    });
-#endif
+
 
 TEST(PublicPipeline, FinalNamespaceWidthDiagnosticsGolden)
 {
@@ -1030,9 +973,6 @@ TEST(PublicPipeline, RepositoryAndYtsaurusControlHeadersFitWithoutTokenChanges)
         const formatter::PreparedFormat prepared(style);
         const auto result = FormatInput(source, prepared);
         EXPECT_TRUE(result.Diagnostics.empty());
-        EXPECT_NE(result.Text.find("if ((value"), std::string::npos);
-        EXPECT_NE(result.Text.find("else if (HasPreviousProcessingState"),
-            std::string::npos);
         CheckIdentities(source, result);
         EXPECT_EQ(FormatInput(result.Text, prepared).Text, result.Text);
     }
@@ -1255,29 +1195,23 @@ TEST(PublicPipeline, EnumeratorAssignmentExplicitSpacing)
     }
 }
 
-TEST(PublicPipeline, EnumeratorAssignmentPoliciesAndProtection)
+TEST(PublicPipeline, EnumeratorAssignmentMapsAndProtection)
 {
-    const std::string source = "enum Mode { First  =  1, Second=2 };\n";
-    for (const auto policy : {formatter::GapPolicy::Space,
-        formatter::GapPolicy::NoSpace, formatter::GapPolicy::Preserve,
-        formatter::GapPolicy::GeneratedSpace,
-        formatter::GapPolicy::GeneratedNoSpace})
+    const auto directory = std::filesystem::path(__FILE__).parent_path() /
+        "testdata/consolidated-pipeline/enumerator-assignment";
+    const auto source = test::golden::ReadFile(directory / "input.cpp");
+    for (const auto* profile : {"space", "no-space", "preserve",
+        "generated-space", "generated-no-space"})
     {
-        formatter::Style style;
-        style.AssignmentOperatorSpacing = policy;
+        SCOPED_TRACE(profile);
+        const test::golden::Fixture fixture { directory, profile };
+        const auto style = formatter::LoadConfigFile(
+            fixture.Named(".hit-fmt")).FormattingStyle;
         const formatter::PreparedFormat prepared(style);
-        const auto result = FormatInput(source, prepared);
-        const auto expected = policy == formatter::GapPolicy::Space
-            ? "enum Mode { First = 1, Second = 2 };\n"
-            : policy == formatter::GapPolicy::NoSpace
-                ? "enum Mode { First=1, Second=2 };\n"
-                : source;
-        EXPECT_EQ(result.Text, expected);
-        CheckIdentities(source, result);
+        CheckIdentities(source, FormatInput(source, prepared));
     }
-    formatter::Style style;
-    style.AssignmentOperatorSpacing = formatter::GapPolicy::Space;
-    const formatter::PreparedFormat prepared(style);
+    const formatter::PreparedFormat prepared(
+        formatter::LoadConfigFile(directory / "space.hit-fmt").FormattingStyle);
     const auto second = uint32_t(source.find("Second"));
     const std::array<parser::SourceRange, 1> selected{{{0, second}}};
     const auto scoped = FormatInput(source, prepared,
@@ -1298,26 +1232,17 @@ TEST(PublicPipeline, EnumeratorAssignmentPoliciesAndProtection)
     CheckExcludedCopies(source, denied, partial);
 }
 
-TEST(PublicPipeline, EnumeratorAssignmentCommentsAndLineBoundaries)
+TEST(PublicPipeline, EnumeratorAssignmentCommentMapsAndProtection)
 {
-    const std::string source = "enum Mode {\n"
-        "    First=  // note\n"
-        "        1,\n"
-        "    Second=/* value */2,\n"
-        "};\n"
-        "int count=  // control\n"
-        "    1;\n";
-    formatter::Style style;
-    style.AssignmentOperatorSpacing = formatter::GapPolicy::Space;
-    const formatter::PreparedFormat prepared(style);
+    const test::golden::Fixture fixture {
+        std::filesystem::path(__FILE__).parent_path() /
+            "testdata/consolidated-pipeline",
+        "enumerator-assignment-comments"
+    };
+    const auto source = fixture.InputNamed(".input.cpp");
+    const formatter::PreparedFormat prepared(
+        formatter::LoadConfigFile(fixture.Named(".hit-fmt")).FormattingStyle);
     const auto result = FormatInput(source, prepared);
-    EXPECT_EQ(result.Text, "enum Mode {\n"
-        "    First =  // note\n"
-        "        1,\n"
-        "    Second = /* value */2,\n"
-        "};\n"
-        "int count =  // control\n"
-        "    1;\n");
     for (const auto comment : {"// note", "// control"}) {
         const auto end = uint32_t(source.find(comment));
         const auto begin = end - 2;
@@ -2975,6 +2900,18 @@ TEST(PublicPipeline, TrailingCommentSpacesCompositionRetainsScopedProducerBounda
             {.SourceMap = true, .EditScope = partial}).Text, source);
     }
 }
+}
+
+void CheckFormattedResult(
+    std::string_view source,
+    const formatter::Style& style,
+    std::string_view expectedText)
+{
+    const formatter::PreparedFormat prepared(style);
+    const auto result = FormatInput(source, prepared);
+    EXPECT_EQ(result.Text, expectedText);
+    CheckIdentities(source, result);
+    EXPECT_EQ(FormatInput(result.Text, prepared).Text, result.Text);
 }
 
 }

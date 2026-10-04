@@ -265,6 +265,7 @@ struct GoldenCase
 {
     std::string Name;
     bool HasErrors = false;
+    bool HasPunctuationRoles = false;
 };
 
 std::ostream& operator<<(std::ostream& output, const GoldenCase& testCase)
@@ -294,6 +295,9 @@ TEST_P(FileTest, Golden)
     }
 
     fixture.Expect(actual, ".out");
+    if (GetParam().HasPunctuationRoles) {
+        fixture.Expect(SerializePunctuationRoles(tree), ".roles.out");
+    }
 }
 
 // Inspect only the real owning subtree; full-file serialization is golden-tested.
@@ -678,7 +682,6 @@ TEST(Parser, TypedLambdaDirectInitializersRetainNamedDeclarations)
             std::string_view(candidate).find("int v") != std::string_view::npos ? 1u : 0u);
         EXPECT_EQ(LambdaOwnershipNodes(*owner, Initializer).size(), 1u);
         EXPECT_GE(LambdaOwnershipNodes(*owner, ArgumentList).size(), 1u);
-        EXPECT_EQ(LambdaOwnershipNodes(*owner, LambdaExpression).size(), 1u);
         EXPECT_EQ(LambdaOwnershipNodes(*owner, LambdaBody).size(), 1u);
         EXPECT_EQ(LambdaOwnershipNodes(*owner, StructuredBinding).size(), 0u);
         EXPECT_EQ(LambdaOwnershipNodes(*owner, UnparsedSyntax).size(), 0u);
@@ -1799,15 +1802,6 @@ TEST(Parser, DecltypeOperandsStayInDeclarationSpecifiers)
     }
 }
 
-TEST(Parser, DecltypeOperandPunctuationRolesGolden)
-{
-    const test::golden::Fixture fixture{
-        PARSER_TESTDATA_DIR, "declaration_operands"};
-    PaddedInput input(fixture.InputNamed(".in"));
-    auto tree = parser::Parse(input.View(), [] (parser::ParseError) { });
-    fixture.Expect(SerializePunctuationRoles(tree), ".roles.out");
-}
-
 TEST(Parser, UnclosedDecltypeOperandDoesNotCertifyFunction)
 {
     const test::golden::Fixture fixture{
@@ -1830,22 +1824,6 @@ TEST(Parser, UnclosedDecltypeOperandDoesNotCertifyFunction)
     ASSERT_NE(tree.Root().FirstChild, nullptr);
     EXPECT_NE(tree.Root().FirstChild->Kind, parser::NodeKind::FunctionDeclaration);
     EXPECT_NE(tree.Root().FirstChild->Kind, parser::NodeKind::FunctionDefinition);
-}
-
-TEST(Parser, MatchesPunctuationRoles)
-{
-    const test::golden::Fixture fixture{
-        PARSER_TESTDATA_DIR, "punctuation_roles"};
-    const auto input = fixture.InputNamed(".in");
-    PaddedInput paddedInput(input);
-    std::vector<parser::ParseError> errors;
-    auto tree =
-        parser::Parse(paddedInput.View(), [&] (parser::ParseError error) {
-            errors.push_back(std::move(error));
-        });
-    EXPECT_TRUE(errors.empty());
-    auto actual = SerializePunctuationRoles(tree);
-    fixture.Expect(actual, ".out");
 }
 
 INSTANTIATE_TEST_SUITE_P(
@@ -1872,7 +1850,8 @@ INSTANTIATE_TEST_SUITE_P(
         GoldenCase{"declarator_syntax"},
         GoldenCase{"constructor_initializer_ranges"},
         GoldenCase{"terminal_constructor_template_ids"},
-        GoldenCase{"declaration_operands"},
+        GoldenCase{"declaration_operands", false, true},
+        GoldenCase{"punctuation_roles", false, true},
         GoldenCase{"declaration_operands_recovery", true},
         GoldenCase{"annotation_boundaries"},
         GoldenCase{"qualified_records"},

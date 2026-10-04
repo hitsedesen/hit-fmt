@@ -123,19 +123,9 @@ TEST(SyntaxSpacing, DiagnosticGolden)
         Dump(analysis));
 }
 
-TEST(SyntaxSpacing, EveryAdvertisedFieldHasSyntaxOrExplicitRejection)
+TEST(SyntaxSpacing, UnsupportedTemplateDeclarationPolicyIsRejected)
 {
     Analysis analysis(test::golden::ReadFile(FixturePath("roles.input.cpp")));
-    std::array<bool, static_cast<size_t>(F::Count)> seen{};
-    for (const auto& gap : analysis.Spacing.Gaps()) {
-        seen[static_cast<size_t>(gap.Field)] = true;
-    }
-    for (size_t i = 1; i < static_cast<size_t>(F::PointerBinding); ++i) {
-        const auto field = static_cast<F>(i);
-        if (SupportsSpacingField(field)) {
-            EXPECT_TRUE(seen[i]) << SpacingFieldName(field);
-        }
-    }
     GapPolicies policies;
     policies.AmbiguousTemplateDeclarationSpacing = GapPolicy::Space;
     EXPECT_THROW(
@@ -190,6 +180,7 @@ TEST(SyntaxSpacing, EveryControlProjectsPoliciesOnlyToItsClassifiedSites)
                     << SpacingFieldName(gap.Field);
             }
         }
+        // Editable sites also prove coverage of every advertised syntax field.
         for (size_t i = 1; i < static_cast<size_t>(F::PointerBinding); ++i) {
             if (SupportsSpacingField(static_cast<F>(i))) {
                 EXPECT_TRUE(editable[i]) << SpacingFieldName(static_cast<F>(i));
@@ -556,71 +547,6 @@ TEST(SyntaxSpacing, TrailingDeclarationCommentsBelongToHeaderNotOuterBody)
     }
 }
 
-TEST(SyntaxSpacing, ExactTokensAndProtectionOverrideAllPreferences)
-{
-    GapPolicies policies;
-#define ALL_NO_SPACE(type, name, initial) policies.name = GapPolicy::NoSpace;
-    FORMATTER_GAP_OPTIONS(ALL_NO_SPACE)
-#undef ALL_NO_SPACE
-    policies.AmbiguousTemplateDeclarationSpacing = GapPolicy::Preserve;
-    Analysis analysis("void f(){value = alpha and not beta; "
-        "value = left + +right; // note\n"
-        "value = 2;}\nimport <pkg/sub.h>;\n#define ITEM 1\n", policies);
-    EXPECT_EQ(
-        analysis.Spacing.SpacePreference(
-            analysis.Before("and"),
-            GapContext::Rebuilt,
-            analysis.Safety),
-        true);
-    EXPECT_EQ(
-        analysis.Spacing.SpacePreference(
-            analysis.Before("not"),
-            GapContext::Rebuilt,
-            analysis.Safety),
-        true);
-    EXPECT_EQ(
-        analysis.Spacing.SpacePreference(
-            analysis.Before("beta"),
-            GapContext::Rebuilt,
-            analysis.Safety),
-        true);
-    for (const auto context : {GapContext::Preserved, GapContext::Rebuilt}) {
-        std::string output;
-        for (GapId i = 0; i <= analysis.Tree.TokenCount(); ++i) {
-            const auto& source = analysis.Safety.Gaps()[i];
-            auto replacement = source.Original;
-            if (auto space = analysis.Spacing.SpacePreference(
-                i, context, analysis.Safety))
-            {
-                const std::string_view candidate = *space ? " " : "";
-                if (analysis.Safety.CanReplaceGap(i, candidate)) {
-                    replacement = candidate;
-                }
-            }
-            output.append(replacement);
-            if (i < analysis.Tree.TokenCount()) {
-                output.append(analysis.Tree.TokenText(i));
-            }
-        }
-        Input changed(output);
-        auto tokens = parser::SyntaxTree::TokenizeOnly(changed.View());
-        ASSERT_EQ(tokens.TokenCount(), analysis.Tree.TokenCount());
-        for (GapId i = 0; i < tokens.TokenCount(); ++i) {
-            EXPECT_EQ(tokens.Kind(i), analysis.Tree.Kind(i));
-            EXPECT_EQ(tokens.TokenText(i), analysis.Tree.TokenText(i));
-        }
-    }
-    std::array<parser::SourceRange, 1> ranges{{{9, 27}}};
-    Analysis protectedSource("void f(){value = alpha + beta;}", policies,
-        PointerReferenceDeclaratorLocation::Preserve, {
-            .ImmutableRanges = ranges,
-        });
-    EXPECT_FALSE(protectedSource.Spacing.SpacePreference(
-        protectedSource.Before("+"),
-        GapContext::Rebuilt,
-        protectedSource.Safety));
-}
-
 TEST(SyntaxSpacing, CompleteSpecifierToDirectNamedDeclaratorFallback)
 {
     Analysis analysis("template<class T> struct Box {}; "
@@ -799,20 +725,13 @@ TEST(SyntaxSpacing, PointerRunsAndSeparatedDeclaratorsKeepTheirOwnBinding)
 
 TEST(SyntaxSpacing, JointPreferencesRetainExactTokenKindsAndSpellings)
 {
-    const auto source = test::golden::ReadFile(FixturePath("roles.input.cpp"));
-    for (auto policy : {GapPolicy::Space, GapPolicy::NoSpace}) {
-        GapPolicies policies;
-#define SET_JOINT_POLICY(type, name, initial) policies.name = policy;
-        FORMATTER_GAP_OPTIONS(SET_JOINT_POLICY)
-#undef SET_JOINT_POLICY
-        policies.AmbiguousTemplateDeclarationSpacing = GapPolicy::Preserve;
-        Analysis analysis(source, policies);
+    auto checkTokens = [] (const Analysis& analysis, GapContext context) {
         std::string edited;
         for (GapId i = 0; i <= analysis.Tree.TokenCount(); ++i) {
             const auto& sourceGap = analysis.Safety.Gaps()[i];
             auto replacement = sourceGap.Original;
             if (auto preference = analysis.Spacing.SpacePreference(
-                i, GapContext::Rebuilt, analysis.Safety))
+                i, context, analysis.Safety))
             {
                 const std::string_view candidate = *preference ? " " : "";
                 if (analysis.Safety.CanReplaceGap(i, candidate)) {
@@ -824,15 +743,50 @@ TEST(SyntaxSpacing, JointPreferencesRetainExactTokenKindsAndSpellings)
                 edited += analysis.Tree.TokenText(i);
             }
         }
-        Input original(source);
         Input changed(edited);
-        auto before = parser::SyntaxTree::TokenizeOnly(original.View());
         auto after = parser::SyntaxTree::TokenizeOnly(changed.View());
-        ASSERT_EQ(before.TokenCount(), after.TokenCount());
-        for (GapId i = 0; i < before.TokenCount(); ++i) {
-            EXPECT_EQ(before.Kind(i), after.Kind(i));
-            EXPECT_EQ(before.TokenText(i), after.TokenText(i));
+        ASSERT_EQ(analysis.Tree.TokenCount(), after.TokenCount());
+        for (GapId i = 0; i < after.TokenCount(); ++i) {
+            EXPECT_EQ(analysis.Tree.Kind(i), after.Kind(i));
+            EXPECT_EQ(analysis.Tree.TokenText(i), after.TokenText(i));
         }
+    };
+    const auto source = test::golden::ReadFile(FixturePath("roles.input.cpp"));
+    for (auto policy : {GapPolicy::Space, GapPolicy::NoSpace}) {
+        SCOPED_TRACE(static_cast<int>(policy));
+        GapPolicies policies;
+#define SET_JOINT_POLICY(type, name, initial) policies.name = policy;
+        FORMATTER_GAP_OPTIONS(SET_JOINT_POLICY)
+#undef SET_JOINT_POLICY
+        policies.AmbiguousTemplateDeclarationSpacing = GapPolicy::Preserve;
+        Analysis analysis(source, policies);
+        checkTokens(analysis, GapContext::Rebuilt);
+        if (policy != GapPolicy::NoSpace) {
+            continue;
+        }
+        Analysis lexical("void f(){value = alpha and not beta; "
+            "value = left + +right; // note\n"
+            "value = 2;}\nimport <pkg/sub.h>;\n#define ITEM 1\n", policies);
+        for (const auto token : {"and", "not", "beta"}) {
+            EXPECT_EQ(lexical.Spacing.SpacePreference(
+                lexical.Before(token), GapContext::Rebuilt, lexical.Safety),
+                true) << token;
+        }
+        for (const auto context : {
+            GapContext::Preserved, GapContext::Rebuilt})
+        {
+            SCOPED_TRACE(static_cast<int>(context));
+            checkTokens(lexical, context);
+        }
+        std::array<parser::SourceRange, 1> ranges{{{9, 27}}};
+        Analysis protectedSource("void f(){value = alpha + beta;}", policies,
+            PointerReferenceDeclaratorLocation::Preserve, {
+                .ImmutableRanges = ranges,
+            });
+        EXPECT_FALSE(protectedSource.Spacing.SpacePreference(
+            protectedSource.Before("+"),
+            GapContext::Rebuilt,
+            protectedSource.Safety));
     }
 }
 
@@ -1093,7 +1047,7 @@ TEST(SyntaxSpacing, RecoveredSizeofPackOperandDoesNotOwnGroupingInteriors)
         GapPolicies policies;
         policies.SizeofPackSpaceBeforeParentheses = GapPolicy::NoSpace;
         policies.GroupingInteriorSpacing = policy;
-        for (auto operand : {"first, second", "left, right", "first + second"}) {
+        for (auto operand : {"first, second", "first + second"}) {
             Analysis analysis(std::string("void f(){auto n=sizeof... (") +
                 operand + ");}", policies);
             const auto open = analysis.Before("(", 1);

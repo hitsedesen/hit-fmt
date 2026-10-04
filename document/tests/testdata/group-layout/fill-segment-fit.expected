@@ -1,3 +1,15 @@
+consistent closer and root suffix width=18:
+call(alpha, beta);$
+consistent closer and root suffix width=17:
+call(
+  alpha,
+  beta
+);$
+packed fill segments and closer width=10:
+[aa, bb,
+ cc, dd];$
+packed fill segments and closer width=20:
+[aa, bb, cc, dd];$
 whole child:
 void
 Many(int a,
@@ -6,3 +18,18 @@ segment:
 void Many(
   int a,
   int b);
+broken owner conditional comma width=6:
+
+aa bb,$
+broken owner conditional comma width=5:
+
+aa
+  bb,$
+actual tab-stop alignment tab=4 width=80:
+a	x
+    y$
+conservative tab fit tab=4 width=8:
+a	b c$
+conservative tab fit tab=4 width=7:
+a	b
+c$

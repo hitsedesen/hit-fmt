@@ -100,17 +100,15 @@ TEST(FileCheck, DiagnosticGoldenUsesOriginalCheckAndFinalFixCoordinates)
                   checked.Formatting.Text.begin(),
                   checked.Formatting.Text.begin() + close,
                   '\n'));
-    std::ostringstream check, fix;
-    hit_fmt::PrintFileIssues(check, "sample.cpp", checked, false);
-    hit_fmt::PrintFileIssues(fix, "sample.cpp", checked, true);
-    check << "summary: ";
-    hit_fmt::PrintFileSummaryIssues(check, checked, false);
-    check << '\n';
-    fix << "summary: ";
-    hit_fmt::PrintFileSummaryIssues(fix, checked, true);
-    fix << '\n';
-    fixture.Expect(check.str(), ".check.txt");
-    fixture.Expect(fix.str(), ".fix.txt");
+    for (const auto fix : {false, true}) {
+        SCOPED_TRACE(fix ? "fix" : "check");
+        std::ostringstream output;
+        hit_fmt::PrintFileIssues(output, "sample.cpp", checked, fix);
+        output << "summary: ";
+        hit_fmt::PrintFileSummaryIssues(output, checked, fix);
+        output << '\n';
+        fixture.Expect(output.str(), fix ? ".fix.txt" : ".check.txt");
+    }
 }
 
 TEST(FileCheck, PreparedConfigurationOwnsSettingsAndResultsOutliveInputs)
@@ -242,6 +240,7 @@ TEST(FileCheck, PreviewHunkModesAndUnsupportedPreparationFailClosed)
              "--no-spillover",
          })
     {
+        SCOPED_TRACE(option);
         EXPECT_THROW(
             hit_fmt::ValidatePreviewOption(option),
             std::invalid_argument);

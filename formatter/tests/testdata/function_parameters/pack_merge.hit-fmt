@@ -1,9 +1,0 @@
-# Shape preferences apply when broken; fitting canonical groups flatten.
-IndentWidth = 4
-ColumnLimit = 40
-ParametersLayout = Canonical
-ParametersPacking = Fill
-FunctionBracePlacement = NextLine
-DeclarationHeadersLayout = Canonical
-ParametersFirstItem = InlineIfFits
-ParametersAlignment = Block

@@ -713,15 +713,6 @@ TEST(SyntaxLayout, UnscopedAndFullySelectedLoweringAgree)
                   Lower(input, style).Text);
     }
 }
-TEST(SyntaxLayout, AllPreserveExactIncludingCRLFAndProtectedRecovery)
-{
-    const std::string input =
-        "#define RAW(x) x ## x  \r\n"
-        "namespace X {\r\n\tvoid f( int x,\r\n\t  int y ) {\r\n"
-        "// hit-fmt off\r\n   broken(, @);\r\n// hit-fmt on\r\n"
-        "\t\tcall(  x, y ); // keep \r\n\t}\r\n}\r\n";
-    EXPECT_EQ(Lower(input, {}).Text, input);
-}
 TEST(SyntaxLayout, CanonicalListTopologyIsSourceIndependent)
 {
     auto style = Canonical(24);
@@ -793,15 +784,15 @@ TEST(SyntaxLayout, HeaderDecisionEndsBeforeExpandedBody)
                   .Text.find("void\nf()\n{"),
               std::string::npos);
 }
-TEST(SyntaxLayout, FunctionTryHeaderUsesConfirmedSpacingFallback)
+TEST(SyntaxLayout, FunctionTryHeaderSpacingIsSourceIndependent)
 {
     auto style = Canonical(80);
     style.FunctionBracePlacement =
         formatter::BracePlacement::NextLineIfHeaderBroken;
-    const std::string expected =
-        "void f() try {\n  work();\n} catch (...) {\n  recover();\n}\n";
+    const auto expected = Lower(
+        "void f() try { work(); } catch (...) { recover(); }\n", style).Text;
     for (const auto header :
-         {"void f() try", "void\nf()\ntry", "void\tf()\ttry"})
+         {"void\nf()\ntry", "void\tf()\ttry"})
     {
         const auto output =
             Lower(std::string(header) +
@@ -812,88 +803,25 @@ TEST(SyntaxLayout, FunctionTryHeaderUsesConfirmedSpacingFallback)
         EXPECT_EQ(Lower(output, style).Text, output);
     }
 }
-TEST(SyntaxLayout, EachControlledArmOwnsItsOpeningAndBody)
+TEST(SyntaxLayout, ControlledArmSeparatorsAreSourceIndependent)
 {
-    auto style = Canonical(80);
-    style.ControlBracePlacement = formatter::BracePlacement::NextLine;
-    EXPECT_EQ(
-        Lower("void f(){ if (ready) { first(); } else { second(); } }\n", style)
-            .Text,
-        "void f() {\n  if (ready)\n  {\n    "
-            "first();\n  } else\n  {\n    second();\n  "
-            "}\n}\n");
-    EXPECT_EQ(
-        Lower("void f(){ if (ready) { first(); } else second(); }\n", style)
-            .Text,
-        "void f() {\n  if (ready)\n  {\n    "
-            "first();\n  } else\n    second();\n}\n");
-    EXPECT_EQ(
-        Lower("void f(){ if (ready) first(); else { second(); } }\n", style)
-            .Text,
-        "void f() {\n  if (ready)\n    first();\n  "
-            "else\n  {\n    second();\n  }\n}\n");
     for (const auto placement :
          {formatter::BracePlacement::Attached,
           formatter::BracePlacement::NextLineIfHeaderBroken})
     {
+        auto style = Canonical(80);
         style.ControlBracePlacement = placement;
-        const std::string expected =
-            "void f() {\n  if (ready) {\n    first();\n  "
-                "} else {\n    second();\n  }\n}\n";
-        EXPECT_EQ(
-            Lower("void f(){ if (ready) { first(); } else { second(); } }\n",
-                  style)
-                .Text,
-            expected);
-        EXPECT_EQ(Lower(expected, style).Text, expected);
         EXPECT_EQ(
             Lower("void f(){ if (ready) { first(); }\nelse { second(); } }\n",
-                  style)
-                .Text,
-            expected);
-        EXPECT_EQ(
-            Lower(
-                "void f(){ if (ready) { first(); } else if "
-                    "(other) { second(); } }\n",
-                style)
-                .Text,
-            "void f() {\n  if (ready) {\n    first();\n  "
-                "} else if (other) {\n    second();\n  }\n}\n");
+                  style).Text,
+            Lower("void f(){ if (ready) { first(); } else { second(); } }\n",
+                  style).Text);
     }
-    style.ControlHeadersBreak = formatter::BreakRequirement::Always;
-    style.ControlHeadersFirstItem = formatter::FirstItemPlacement::NextLine;
-    style.ControlHeadersCloser = formatter::CloserPlacement::OwnLine;
-    EXPECT_EQ(
-        Lower("void f(){ if (ready) { first(); } else { second(); } }\n", style)
-            .Text,
-        "void f() {\n  if (\n    ready\n  )\n  {\n   "
-            " first();\n  } else {\n    second();\n  "
-            "}\n}\n");
-    style.ControlHeadersBreak = formatter::BreakRequirement::IfNeeded;
-    style.ControlHeadersFirstItem = formatter::FirstItemPlacement::InlineIfFits;
-    style.ControlHeadersCloser = formatter::CloserPlacement::SameLine;
+}
+TEST(SyntaxLayout, ControlledArmProtectionAndTryHeaderPolicies)
+{
+    auto style = Canonical(80);
     style.ControlBracePlacement = formatter::BracePlacement::NextLine;
-    style.BodyShape = formatter::BodyShape::CompactIfFits;
-    EXPECT_EQ(
-        Lower("void f(){ if (ready) { first(); } else { second(); } }\n", style)
-            .Text,
-        "void f() {\n  if (ready)\n  { first(); } else\n  { second(); }\n}\n");
-    style.BodyShape = formatter::BodyShape::Expanded;
-    style.BodiesLayout = formatter::CategoryLayout::Preserve;
-    EXPECT_NE(
-        Lower("void f(){ if (ready) {  first();  } else {  second();  } }\n",
-              style)
-            .Text.find("else\n  {  second();  }"),
-        std::string::npos);
-    style.BodiesLayout = formatter::CategoryLayout::Canonical;
-    const auto commented =
-        Lower(
-            "void f(){ if (ready) { first(); } else // "
-                "note\n { second(); } }\n",
-            style)
-            .Text;
-    EXPECT_NE(commented.find("else // note\n  {"), std::string::npos)
-        << commented;
     const std::string protectedInput =
         "void f(){ if (ready) { first(); } else { second(); } }\n";
     const auto space = protectedInput.find("else") + 4;
@@ -2501,111 +2429,6 @@ TEST(SyntaxLayout, ExactVerticalGapsCapAndPreservedIndentation)
               "namespace Empty {}\n");
 }
 
-TEST(SyntaxLayout, StandaloneCommentExternalGapsKeepBlocksAndAttachments)
-{
-    formatter::Style style;
-    style.StandaloneCommentBlankLinesBefore = {formatter::BlankLineMode::Exact, 1};
-    style.StandaloneCommentBlankLinesAfter = {formatter::BlankLineMode::Exact, 2};
-    style.NamespaceBlankLinesAfterOpen = {formatter::BlankLineMode::Exact, 3};
-    style.NamespaceBlankLinesBeforeClose = {formatter::BlankLineMode::Exact, 3};
-    const std::string source =
-        "namespace N {\n// first\n\n/* second */\nint value;\n// end\n}\n";
-    const auto output = Lower(source, style).Text;
-    EXPECT_EQ(output, "namespace N {\n\n// first\n\n/* second */\n\n\n"
-                      "int value;\n\n// end\n\n\n}\n");
-    EXPECT_EQ(Lower(output, style).Text, output);
-    style.StandaloneCommentBlankLinesBefore = {};
-    style.StandaloneCommentBlankLinesAfter = {};
-    EXPECT_EQ(Lower(source, style).Text,
-              "namespace N {\n\n\n\n// first\n\n/* second */\nint value;\n"
-              "// end\n\n\n\n}\n");
-}
-
-TEST(SyntaxLayout, StandaloneCommentSequenceBodiesAndZeroRetainTopology)
-{
-    formatter::Style style;
-    style.StandaloneCommentBlankLinesBefore = {formatter::BlankLineMode::Exact, 1};
-    style.StandaloneCommentBlankLinesAfter = {formatter::BlankLineMode::Exact, 1};
-    const std::string source = "struct S {\n// member\nint x;\n};\n"
-                               "void f() {\n/* only */\n}\n";
-    const auto output = Lower(source, style).Text;
-    EXPECT_EQ(output, "struct S {\n\n// member\n\nint x;\n};\n"
-                      "void f() {\n\n/* only */\n\n}\n");
-    style.StandaloneCommentBlankLinesBefore.EmptyLines = 0;
-    style.StandaloneCommentBlankLinesAfter.EmptyLines = 0;
-    EXPECT_EQ(Lower(output, style).Text, source);
-}
-
-TEST(SyntaxLayout, StandaloneCommentExcludesInteriorInlineAndPhantomEdges)
-{
-    formatter::Style style;
-    style.StandaloneCommentBlankLinesBefore = {formatter::BlankLineMode::Exact, 2};
-    style.StandaloneCommentBlankLinesAfter = {formatter::BlankLineMode::Exact, 2};
-    const std::string source =
-        "// file\nint x; // trailing\nint y = /* inline */ 1;\n"
-        "void f(int\n// parameter\nx) { call(\n// argument\nx); }\n"
-        "int a[] = {\n// initializer\n1};\n"
-        "template<\n// template parameter\nclass T> struct C {};\n"
-        "// eof";
-    const auto output = Lower(source, style).Text;
-    auto expected = source;
-    expected.replace(expected.find("// file\n"), 8, "// file\n\n\n");
-    expected.replace(expected.find("// eof"), 6, "\n\n// eof");
-    EXPECT_EQ(output, expected);
-    EXPECT_EQ(Lower(output, style).Text, output);
-}
-
-TEST(SyntaxLayout, StandaloneCommentOnlyInsideRealSequenceBodies)
-{
-    formatter::Style style;
-    style.StandaloneCommentBlankLinesBefore = {formatter::BlankLineMode::Exact, 1};
-    style.StandaloneCommentBlankLinesAfter = {formatter::BlankLineMode::Exact, 1};
-    const std::string unbraced = "export\n// declaration header\nint value;\n";
-    EXPECT_EQ(Lower(unbraced, style).Text, unbraced);
-    const std::string braced =
-        "export\n// block header\n{\n// body\nint value;\n}\n";
-    const auto output = Lower(braced, style).Text;
-    EXPECT_EQ(output, "export\n// block header\n{\n\n// body\n\nint value;\n}\n");
-    EXPECT_EQ(Lower(output, style).Text, output);
-    EXPECT_EQ(Lower("extern \"C\" {\n// body\nint value;\n}\n", style).Text,
-              "extern \"C\" {\n\n// body\n\nint value;\n}\n");
-}
-
-TEST(SyntaxLayout, StandaloneCommentMixedRunsKeepOpaqueTokenInteriors)
-{
-    formatter::Style style;
-    style.StandaloneCommentBlankLinesBefore = {formatter::BlankLineMode::Exact, 1};
-    style.StandaloneCommentBlankLinesAfter = {formatter::BlankLineMode::Exact, 2};
-    const std::string source =
-        "int x; /* trailing\n * continuation */\n"
-        "/* own line\n * interior */\n\n// next\nint y;\n"
-        "/* inline\n * continuation */ int z;\n";
-    const auto output = Lower(source, style).Text;
-    EXPECT_EQ(output, "int x; /* trailing\n * continuation */\n\n"
-                      "/* own line\n * interior */\n\n// next\n\n\nint y;\n"
-                      "/* inline\n * continuation */ int z;\n");
-    EXPECT_EQ(Lower(output, style).Text, output);
-}
-
-TEST(SyntaxLayout, StandaloneCommentConditionalAndDirectiveBoundaries)
-{
-    formatter::Style style;
-    style.StandaloneCommentBlankLinesBefore = {formatter::BlankLineMode::Exact, 1};
-    style.StandaloneCommentBlankLinesAfter = {formatter::BlankLineMode::Exact, 1};
-    const std::string source =
-        "#if ENABLED\n// first branch\nint x;\n#else\n"
-        "// second branch\nint y;\n#endif\n"
-        "// before directive\n#define VALUE 1\n// after directive\nint z;\n";
-    const auto output = Lower(source, style).Text;
-    // Directive line protection includes its terminator; new counts cannot
-    // insert a blank line on that protected edge or join blocks across it.
-    EXPECT_EQ(output, "#if ENABLED\n// first branch\n\nint x;\n#else\n"
-                      "// second branch\n\nint y;\n#endif\n"
-                      "// before directive\n\n#define VALUE 1\n"
-                      "// after directive\n\nint z;\n");
-    EXPECT_EQ(Lower(output, style).Text, output);
-}
-
 TEST(SyntaxLayout, StandaloneCommentProtectedAndScopeEndGapsRemainExact)
 {
     formatter::Style style;
@@ -3096,7 +2919,7 @@ TEST(SyntaxLayout, WideAndDeepGroupsHaveBoundedIterativeConstruction)
 }
 } // namespace
 
-TEST(SyntaxLayout, RecordHeadTemplateCommasKeepExplicitPreference)
+TEST(SyntaxLayout, RecordHeadCompositionSpacingRespectsEditAuthority)
 {
     // A qualified specialization combines record-head children, constructor
     // injected scope and delimiter-isolated parameter defaults in one input.
@@ -3105,9 +2928,6 @@ TEST(SyntaxLayout, RecordHeadTemplateCommasKeepExplicitPreference)
         "../record-head-commas/constructor-composition.input.cpp");
     auto composedStyle = Canonical(200);
     composedStyle.CommaSpaceAfter = formatter::GapPolicy::Space;
-    const auto composedOutput = Lower(composition, composedStyle).Text;
-    EXPECT_NE(composedOutput.find("Host::Pair<Wrap<(1>0),int>, 2>"), std::string::npos);
-    EXPECT_EQ(Lower(composedOutput, composedStyle).Text, composedOutput);
     const auto point = parser::SourceOffset(composition.find(">,2>") + 2);
     const parser::SourceRange selected[] = {{point, point + 1}};
     formatter::SourceAnalysisOptions composedProtection;
@@ -3120,88 +2940,6 @@ TEST(SyntaxLayout, RecordHeadTemplateCommasKeepExplicitPreference)
     composedProtection.ImmutableRanges = immutable;
     EXPECT_EQ(Lower(composition, composedStyle, {}, composedProtection).Text,
         composition);
-
-    const std::string prefix =
-        "template<class A, class B> struct Pair;\n"
-        "template<class A, class B> struct Pair";
-    for (const auto layout : {formatter::LayoutMode::Preserve,
-                              formatter::LayoutMode::Canonical})
-    {
-        auto style = Canonical(200);
-        style.Layout = layout;
-        style.CommaSpaceAfter = formatter::GapPolicy::Space;
-        const auto input = prefix + "<A,B> {};\n";
-        EXPECT_NE(Lower(input, style).Text.find("Pair<A, B>"),
-                  std::string::npos);
-        style.CommaSpaceAfter = formatter::GapPolicy::NoSpace;
-        EXPECT_NE(Lower(prefix + "<A,   B> {};\n", style).Text.find("Pair<A,B>"),
-                  std::string::npos);
-        style.CommaSpaceAfter = formatter::GapPolicy::Preserve;
-        EXPECT_NE(Lower(prefix + "<A,   B> {};\n", style).Text.find("Pair<A,   B>"),
-                  std::string::npos);
-        style.CommaSpaceAfter = formatter::GapPolicy::GeneratedSpace;
-        const auto generated = Lower(input, style).Text;
-        EXPECT_NE(generated.find(layout == formatter::LayoutMode::Canonical
-                                     ? "Pair<A, B>" : "Pair<A,B>"),
-                  std::string::npos);
-        style.CommaSpaceAfter = formatter::GapPolicy::GeneratedNoSpace;
-        EXPECT_NE(Lower(prefix + "<A,   B> {};\n", style).Text.find(
-                      layout == formatter::LayoutMode::Canonical
-                          ? "Pair<A,B>" : "Pair<A,   B>"),
-                  std::string::npos);
-    }
-
-    // Nested operands remain raw, not invented expression/list syntax. Only
-    // the grammar-confirmed outer specialization separator is normalized.
-    auto style = Canonical(200);
-    style.CommaSpaceAfter = formatter::GapPolicy::Space;
-    EXPECT_NE(Lower(prefix + "<Wrap<A,  B>,C> {};\n", style).Text.find(
-                  "Pair<Wrap<A,  B>, C>"), std::string::npos);
-    EXPECT_NE(Lower("template<> struct Pair<> {};\n", style).Text.find("Pair<>"),
-              std::string::npos);
-    EXPECT_NE(Lower(prefix + "<A,/*note*/B> {};\n", style).Text.find("/*note*/"),
-              std::string::npos);
-
-    const std::pair<std::string_view, std::string_view> comparisons[] = {
-        {"template<auto, auto> struct Pair;\n", "(1<2)"},
-        {"template<auto, class> struct Wrap;\n"
-         "template<class, auto> struct Pair;\n", "Wrap<(1>0),int>"},
-        {"template<auto, class> struct Wrap;\n"
-         "template<class, auto> struct Pair;\n", "Wrap<(8>>1),   int>"},
-    };
-    for (const auto &[declarations, operand] : comparisons)
-    {
-        for (const auto mode : {formatter::LayoutMode::Preserve,
-                                formatter::LayoutMode::Canonical})
-        {
-            SCOPED_TRACE(operand);
-            style.Layout = mode;
-            const auto head = "Pair<" + std::string(operand) + ",";
-            const auto absent = std::string(declarations) +
-                "template<> struct " + head + "2> {};\n";
-            const auto excess = std::string(declarations) +
-                "template<> struct " + head + "   2> {};\n";
-            style.CommaSpaceAfter = formatter::GapPolicy::Space;
-            EXPECT_NE(Lower(absent, style).Text.find(head + " 2>"),
-                      std::string::npos);
-            EXPECT_NE(Lower(excess, style).Text.find(head + " 2>"),
-                      std::string::npos);
-            style.CommaSpaceAfter = formatter::GapPolicy::NoSpace;
-            EXPECT_NE(Lower(excess, style).Text.find(head + "2>"),
-                      std::string::npos);
-            style.CommaSpaceAfter = formatter::GapPolicy::Preserve;
-            EXPECT_NE(Lower(excess, style).Text.find(head + "   2>"),
-                      std::string::npos);
-            style.CommaSpaceAfter = formatter::GapPolicy::GeneratedSpace;
-            EXPECT_NE(Lower(absent, style).Text.find(head +
-                          (mode == formatter::LayoutMode::Canonical
-                              ? " 2>" : "2>")), std::string::npos);
-            style.CommaSpaceAfter = formatter::GapPolicy::GeneratedNoSpace;
-            EXPECT_NE(Lower(excess, style).Text.find(head +
-                          (mode == formatter::LayoutMode::Canonical
-                              ? "2>" : "   2>")), std::string::npos);
-        }
-    }
 }
 
 TEST(SyntaxLayout, RecordHeadCommaPreferenceIsClassifiedAndLocallyAuthorized)

@@ -265,17 +265,6 @@ TEST(StructuralEdits, LabelsAttributesAndAttachedCommentsAreLocalSkips)
         CheckMapping(controlled, changed);
     }
 }
-TEST(StructuralEdits, NullDeclarationsAndStandaloneStatementsOnly)
-{
-    File file("; namespace n {; struct A{}; ;} void f(){;; while(a);}");
-    auto plan = file.Plan({
-        .RemoveNullStatements = true,
-        .RemoveNullDeclarations = true,
-    });
-    EXPECT_EQ(
-        file.Apply(plan).Text,
-        " namespace n { struct A{}; } void f(){ while(a);}");
-}
 TEST(StructuralEdits,
     NullRemovalPreservesRequiredExportAndStatementExpressionBodies)
 {
@@ -369,22 +358,6 @@ TEST(StructuralEdits, IncludeIndentationAndDigraphMarkersStayWithExactAtoms)
     auto result = file.Apply(plan);
     EXPECT_EQ(result.Text, "\t# include \"a.h\"\r\n  %:include <z.h>\r\n");
     CheckMapping(file, result);
-}
-TEST(StructuralEdits, IncludesCannotBypassExplicitDisabledOrSpliceProtection)
-{
-    std::string text = "#include <z.h>\n#include <a.h>\n";
-    std::array<parser::SourceRange, 1> excluded{{{0, 1}}};
-    File explicitFile(text, {.ImmutableRanges = excluded});
-    EXPECT_TRUE(explicitFile.Plan({.SortIncludes = true}).Edits.empty());
-    File disabled("// clang-format off\n" + text + "// clang-format on\n",
-        {
-            .HonorClangFormatDirectives = true,
-        });
-    EXPECT_TRUE(disabled.Plan({.SortIncludes = true}).Edits.empty());
-    File continued("#include \\\n<z.h>\n#include <a.h>\n");
-    EXPECT_TRUE(continued.Plan({.SortIncludes = true}).Edits.empty());
-    File commented("#include <z.h> // comment\n#include <a.h>\n");
-    EXPECT_TRUE(commented.Plan({.SortIncludes = true}).Edits.empty());
 }
 TEST(StructuralEdits, IncludeDiscoveryContainsSortedGroupsAndExactPermutations)
 {
@@ -505,6 +478,8 @@ TEST(StructuralEdits, IncludeDiscoveryRespectsCompleteGroupBoundaries)
         "#include <a.h>\n",
         "#include <b.h>\n#include <a.h>",
         "#include <b.h>\r\n#include <a.h>\n",
+        "#include \\\n<z.h>\n#include <a.h>\n",
+        "#include <z.h> // comment\n#include <a.h>\n",
     })
     {
         File file(text);
@@ -651,6 +626,7 @@ TEST(StructuralEdits, IncludeDiscoveryNeverWeakensProtectionOrScope)
         disabled.Safety,
         disabled.Memory,
         disabled.Scratch).empty());
+    EXPECT_TRUE(disabled.Plan({.SortIncludes = true}).Edits.empty());
     File other(text);
     EXPECT_THROW((void)DiscoverIncludeGroups(
         original.Tree,

@@ -11,3 +11,8 @@ void demo() {
     MACRO(alpha, beta, gamma,
         delta);
 }
+
+void f() {
+    use(alpha, beta, gamma,
+        delta);
+}

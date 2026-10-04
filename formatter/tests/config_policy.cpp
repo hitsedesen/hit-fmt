@@ -14,6 +14,7 @@
 #include <string>
 #include <string_view>
 #include <type_traits>
+#include <utility>
 
 namespace {
 
@@ -22,6 +23,45 @@ std::filesystem::path ConfigData(std::string_view name)
     return std::filesystem::path(FORMATTER_TESTDATA_DIR).parent_path() /
         "config-policy" / (std::string(name) + ".hit-fmt");
 }
+
+constexpr std::pair<std::string_view,
+    formatter::BlankLineSetting formatter::Style::*> VerticalCountSettings[] =
+    {
+        {
+            "NamespaceBlankLinesAfterOpen",
+            &formatter::Style::NamespaceBlankLinesAfterOpen,
+        },
+        {
+            "NamespaceBlankLinesBeforeClose",
+            &formatter::Style::NamespaceBlankLinesBeforeClose,
+        },
+        {
+            "AccessSectionBlankLinesBefore",
+            &formatter::Style::AccessSectionBlankLinesBefore,
+        },
+        {
+            "AccessSectionBlankLinesAfterLabel",
+            &formatter::Style::AccessSectionBlankLinesAfterLabel,
+        },
+        {"DeclarationBlankLines", &formatter::Style::DeclarationBlankLines},
+        {
+            "MemberDeclarationBlankLines",
+            &formatter::Style::MemberDeclarationBlankLines,
+        },
+        {"DefinitionBlankLines", &formatter::Style::DefinitionBlankLines},
+        {
+            "MemberDefinitionBlankLines",
+            &formatter::Style::MemberDefinitionBlankLines,
+        },
+        {
+            "StandaloneCommentBlankLinesBefore",
+            &formatter::Style::StandaloneCommentBlankLinesBefore,
+        },
+        {
+            "StandaloneCommentBlankLinesAfter",
+            &formatter::Style::StandaloneCommentBlankLinesAfter,
+        },
+    };
 
 struct TemporaryConfig
 {
@@ -248,6 +288,11 @@ TEST(ConfigPolicy, PreserveDefaultAndExplicitCanonicalOverrideAreDistinct)
     style.ExpressionsLayout = formatter::CategoryLayout::Canonical;
     const auto policies = formatter::CompilePolicies(style);
     EXPECT_EQ(policies.Calls.Layout, formatter::LayoutMode::Preserve);
+    // Explicit packing is still only a shape preference, not layout activation.
+    style.CallsPacking = formatter::ListPacking::Fill;
+    const auto explicitPacking = formatter::CompilePolicies(style);
+    EXPECT_EQ(explicitPacking.Calls.Layout, policies.Calls.Layout);
+    EXPECT_EQ(explicitPacking.Calls.Packing, formatter::ListPacking::Fill);
     EXPECT_EQ(policies.Bodies.Layout, formatter::LayoutMode::Preserve);
     EXPECT_EQ(policies.DeclarationHeaders, formatter::LayoutMode::Preserve);
     EXPECT_EQ(policies.Calls.Break, formatter::BreakRequirement::IfNeeded);
@@ -423,19 +468,8 @@ TEST(ConfigPolicy, VerticalCountsResolveZeroAndMemberOverrides)
 
 TEST(ConfigPolicy, VerticalBoundsCannotBeBypassedByProgrammaticStyles)
 {
-    for (const auto member : {
-        &formatter::Style::NamespaceBlankLinesAfterOpen,
-        &formatter::Style::NamespaceBlankLinesBeforeClose,
-        &formatter::Style::AccessSectionBlankLinesBefore,
-        &formatter::Style::AccessSectionBlankLinesAfterLabel,
-        &formatter::Style::DeclarationBlankLines,
-        &formatter::Style::MemberDeclarationBlankLines,
-        &formatter::Style::DefinitionBlankLines,
-        &formatter::Style::MemberDefinitionBlankLines,
-        &formatter::Style::StandaloneCommentBlankLinesBefore,
-        &formatter::Style::StandaloneCommentBlankLinesAfter,
-    })
-    {
+    for (const auto& [key, member] : VerticalCountSettings) {
+        SCOPED_TRACE(key);
         formatter::Style style;
         style.*member = {formatter::BlankLineMode::Exact, 10001};
         EXPECT_THROW(
@@ -501,18 +535,8 @@ TEST(ConfigPolicy, CapConflictsUseFinalOverridesAndReportSettingLocations)
             "2\nMaxEmptyLines = 1\n"
         "MemberDefinitionBlankLines = Preserve\n");
     EXPECT_NO_THROW((void)formatter::LoadConfigFile(replaced.Path));
-    for (const auto key : {"NamespaceBlankLinesAfterOpen",
-        "NamespaceBlankLinesBeforeClose",
-        "AccessSectionBlankLinesBefore",
-        "AccessSectionBlankLinesAfterLabel",
-        "DeclarationBlankLines",
-        "MemberDeclarationBlankLines",
-        "DefinitionBlankLines",
-        "MemberDefinitionBlankLines",
-        "StandaloneCommentBlankLinesBefore",
-        "StandaloneCommentBlankLinesAfter",
-    })
-    {
+    for (const auto& setting : VerticalCountSettings) {
+        const auto key = setting.first;
         SCOPED_TRACE(key);
         const TemporaryConfig invalid(
             std::string(key) + " = 2\nMaxEmptyLines = 1\n");
@@ -592,14 +616,18 @@ TEST(ConfigPolicy, PreserveTemplateRoundTripsEveryRegisteredStyleDefault)
     }
     FORMATTER_STYLE_OPTIONS(CHECK_DEFAULT)
 #undef CHECK_DEFAULT
-    EXPECT_NE(text.find("Preserve | 0..10000\nMaxEmptyLines = Preserve"),
-        std::string::npos);
-    const auto snapshot = formatter::CompilePolicies(parsed.FormattingStyle);
-    EXPECT_EQ(snapshot.Enumerators.Layout, formatter::LayoutMode::Preserve);
-    EXPECT_EQ(snapshot.Indentation.Namespaces.Offset, defaults.IndentWidth);
-    EXPECT_EQ(
-        snapshot.VerticalGaps.MemberDefinitionBlankLines.Mode,
-        formatter::VerticalGapMode::Preserve);
+    for (const auto expected : {
+        "Preserve | 0..10000\nMaxEmptyLines = Preserve",
+        "FunctionCvRefQualifierSpacing = Inherit\n",
+        "TernaryOperatorIndentation = Align\n",
+        "LineEnding = Preserve\n",
+        "first newline",
+        "# TrailingCommentSpaces = Preserve",
+    })
+    {
+        EXPECT_NE(text.find(expected), std::string::npos) << expected;
+    }
+    EXPECT_EQ(text.find("\nTrailingCommentSpaces = "), std::string::npos);
 }
 
 TEST(ConfigPolicy, CvRefQualifierSpacingSeparatesInheritanceAndPreservation)
@@ -618,6 +646,7 @@ TEST(ConfigPolicy, CvRefQualifierSpacingSeparatesInheritanceAndPreservation)
         GapPolicy::Preserve, GapPolicy::GeneratedSpace,
         GapPolicy::GeneratedNoSpace})
     {
+        SCOPED_TRACE(formatter::SerializeConfigEnum(policy));
         const TemporaryConfig config(
             "FunctionRefQualifierSpacing = Space\n"
             "FunctionCvRefQualifierSpacing = " + std::string(
@@ -639,13 +668,6 @@ TEST(ConfigPolicy, CvRefQualifierSpacingSeparatesInheritanceAndPreservation)
     EXPECT_EQ(formatter::CompilePolicies(resetStyle).Spacing
         .FunctionCvRefQualifierSpacing, GapPolicy::NoSpace);
 
-    std::ostringstream output;
-    hit_fmt::PrintPreserveConfig(output);
-    EXPECT_NE(output.str().find("FunctionCvRefQualifierSpacing = Inherit\n"),
-        std::string::npos);
-    const TemporaryConfig defaults(output.str());
-    EXPECT_FALSE(formatter::LoadConfigFile(defaults.Path).FormattingStyle
-        .FunctionCvRefQualifierSpacing);
     const TemporaryConfig invalid("FunctionCvRefQualifierSpacing = Compact\n");
     EXPECT_THROW((void)formatter::LoadConfigFile(invalid.Path), std::runtime_error);
     style.FunctionCvRefQualifierSpacing = static_cast<GapPolicy>(255);
@@ -1220,11 +1242,10 @@ TEST(ConfigPolicy, PrefixValidationIsFinalOrderedAndCannotBeBypassed)
 TEST(ConfigPolicy, TernaryOperatorIndentationRoundTripsAndValidates)
 {
     formatter::Style style;
-    EXPECT_EQ(style.TernaryOperatorIndentation,
-        formatter::TernaryOperatorIndentation::Align);
     for (const auto indentation : {formatter::TernaryOperatorIndentation::Align,
         formatter::TernaryOperatorIndentation::Indent})
     {
+        SCOPED_TRACE(formatter::SerializeConfigEnum(indentation));
         const TemporaryConfig config("TernaryOperatorIndentation = " +
             std::string(formatter::SerializeConfigEnum(indentation)) + "\n");
         auto loaded = formatter::LoadConfigFile(config.Path).FormattingStyle;
@@ -1232,10 +1253,6 @@ TEST(ConfigPolicy, TernaryOperatorIndentationRoundTripsAndValidates)
         loaded.TernaryOperatorIndentation = formatter::TernaryOperatorIndentation::Align;
         EXPECT_EQ(prepared.Policies.Expressions.TernaryIndentation, indentation);
     }
-    std::ostringstream output;
-    hit_fmt::PrintPreserveConfig(output);
-    EXPECT_NE(output.str().find("TernaryOperatorIndentation = Align\n"),
-        std::string::npos);
     const TemporaryConfig invalid("TernaryOperatorIndentation = Shared\n");
     EXPECT_THROW((void)formatter::LoadConfigFile(invalid.Path), std::runtime_error);
     style.TernaryOperatorIndentation =
@@ -1243,13 +1260,13 @@ TEST(ConfigPolicy, TernaryOperatorIndentationRoundTripsAndValidates)
     EXPECT_THROW((void)formatter::PreparedFormat(style), std::invalid_argument);
 }
 
-TEST(ConfigPolicy, LineEndingPreparationValidationAndDefaultSerialization)
+TEST(ConfigPolicy, LineEndingRoundTripsAndValidatesPreparedSnapshot)
 {
     formatter::Style style;
-    EXPECT_EQ(style.LineEnding, formatter::LineEnding::Preserve);
     for (const auto ending : {formatter::LineEnding::Preserve,
                              formatter::LineEnding::LF, formatter::LineEnding::CRLF})
     {
+        SCOPED_TRACE(formatter::SerializeConfigEnum(ending));
         style.LineEnding = ending;
         const formatter::PreparedFormat prepared(style);
         style.LineEnding = formatter::LineEnding::Preserve;
@@ -1263,28 +1280,17 @@ TEST(ConfigPolicy, LineEndingPreparationValidationAndDefaultSerialization)
     EXPECT_THROW((void)formatter::PreparedFormat(style), std::invalid_argument);
     TemporaryConfig bad("LineEnding = Native\n");
     EXPECT_THROW((void)formatter::LoadConfigFile(bad.Path), std::runtime_error);
-    std::ostringstream output;
-    hit_fmt::PrintPreserveConfig(output);
-    EXPECT_NE(output.str().find("LineEnding = Preserve\n"), std::string::npos);
-    EXPECT_NE(output.str().find("first newline"), std::string::npos);
 }
 
 namespace {
-TEST(ConfigPolicy, TrailingCommentSpacesPreserveOmissionBoundsAndSnapshot)
+TEST(ConfigPolicy, TrailingCommentSpacesPreserveBoundsAndOwnSnapshot)
 {
-    std::ostringstream output;
-    hit_fmt::PrintPreserveConfig(output);
-    EXPECT_EQ(output.str().find("\nTrailingCommentSpaces = "), std::string::npos);
-    EXPECT_NE(output.str().find("# TrailingCommentSpaces = Preserve"),
-        std::string::npos);
-    const TemporaryConfig defaults(output.str());
-    EXPECT_FALSE(formatter::LoadConfigFile(defaults.Path)
-        .FormattingStyle.TrailingCommentSpaces);
     const TemporaryConfig preserve("TrailingCommentSpaces = Preserve\n");
     const auto preserved = formatter::LoadConfigFile(preserve.Path).FormattingStyle;
     ASSERT_TRUE(preserved.TrailingCommentSpaces);
     EXPECT_FALSE(preserved.TrailingCommentSpaces->Count);
     for (const auto count : {0u, 1u, 2u, 10000u}) {
+        SCOPED_TRACE(count);
         const TemporaryConfig config("TrailingCommentSpaces = " +
             std::to_string(count) + "\nMaxEmptyLines = 0\n");
         auto style = formatter::LoadConfigFile(config.Path).FormattingStyle;
@@ -1297,6 +1303,7 @@ TEST(ConfigPolicy, TrailingCommentSpacesPreserveOmissionBoundsAndSnapshot)
     }
     for (const auto value : {"10001", "-1", "+2", "Inherit", "Space", "1.5",
         "999999999999999999999999999999"}) {
+        SCOPED_TRACE(value);
         const TemporaryConfig invalid(std::string("TrailingCommentSpaces = ") +
             value + "\n");
         EXPECT_THROW((void)formatter::LoadConfigFile(invalid.Path), std::runtime_error);

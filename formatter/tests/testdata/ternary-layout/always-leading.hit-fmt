@@ -1,0 +1,4 @@
+ExpressionsLayout = Canonical
+ExpressionsBreak = Always
+ColumnLimit = 80
+TernaryLayout = ThreePart

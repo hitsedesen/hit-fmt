@@ -5,3 +5,102 @@ new line
 value = first ||
     lhs !=
         rhs;
+shared continuation with body width=80:
+
+    value =
+        first ||
+        second {
+            nested =
+                leaf;$
+structural prospective shared lists width=80:
+
+    if (wrap(
+        nested(
+            left ||
+            right)))$
+structural realized shared lists width=80:
+
+    if (
+        wrap(
+            nested(
+                left ||
+                right)))$
+expression prospective shared lists width=80:
+
+    value = wrap(
+        nested(
+            left ||
+            right)))$
+expression realized shared lists width=80:
+
+    value =
+        wrap(
+            nested(
+                left ||
+                right)))$
+realized delimiter with item width=80:
+
+    wrap(
+         nested(
+             item))$
+realized delimiter with item width=9:
+
+    wrap(
+        nested(
+            item))$
+realized delimiter with lambda width=80:
+
+    wrap(
+         nested([&] {
+             leaf;
+         }))$
+realized delimiter with lambda width=9:
+
+    wrap(
+        nested([&] {
+            leaf;
+        }))$
+prospective block base width=80:
+
+    x = f(
+        item)$
+prospective block base width=13:
+
+    x = f(
+        item)$
+prospective delimiter base width=80:
+
+    x = f(
+          item)$
+prospective delimiter base width=13:
+
+    x = f(
+        item)$
+realized block base width=80:
+
+    x =
+        f(
+            item)$
+realized block base width=13:
+
+    x =
+        f(
+            item)$
+realized delimiter base width=80:
+
+    x =
+        f(
+            item)$
+realized delimiter base width=13:
+
+    x =
+        f(
+            item)$
+propagated expression line width=80:
+
+            first
+        sibling$
+fenced consumer line width=80:
+
+        first
+    sibling$

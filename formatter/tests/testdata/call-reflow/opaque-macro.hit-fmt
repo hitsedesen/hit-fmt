@@ -1,0 +1,4 @@
+CallsPacking = VerticalWhenBroken
+CallsLayout = Canonical
+CallsBreak = IfNeeded
+ColumnLimit = 48

@@ -1,0 +1,3 @@
+ExpressionsLayout = Preserve
+ExpressionsBreak = Always
+ColumnLimit = 20

@@ -1,0 +1,3 @@
+ExpressionsLayout = Canonical
+ColumnLimit = 40
+TernaryLayout = ThreePart

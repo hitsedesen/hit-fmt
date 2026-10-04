@@ -1,3 +1,4 @@
+#include "public_pipeline.hpp"
 #include <formatter/config.hpp>
 #include <formatter/formatter.hpp>
 #include <formatter/hunks.hpp>
@@ -98,17 +99,28 @@ std::string FormatWithStyle(
     util::PaddedSourceView padded{.Data = storage.data(),
         .Size = source.size()};
     auto tree = parser::Parse(padded, [] (parser::ParseError) { });
-    EXPECT_EQ(formatter::Format(tree, style), formatter::Format(padded, style));
-    return formatter::Format(tree, style);
+    const auto actual = formatter::Format(tree, style);
+    EXPECT_EQ(actual, formatter::Format(padded, style));
+    return actual;
 }
 void ExpectFormattedGolden(
     const std::filesystem::path& path,
     std::string_view input,
-    const formatter::Style& style)
+    const formatter::Style& style,
+    bool checkOwningMaps,
+    bool readOnlyExpected)
 {
     const auto actual = FormatWithStyle(input, style);
-    test::golden::ExpectGolden(path, actual);
+    if (readOnlyExpected) {
+        // Shared oracles, including inputs, must never be regenerated here.
+        EXPECT_EQ(actual, ReadFile(path)) << path;
+    } else {
+        test::golden::ExpectGolden(path, actual);
+    }
     EXPECT_EQ(FormatWithStyle(actual, style), actual);
+    if (checkOwningMaps) {
+        public_pipeline::CheckFormattedResult(input, style, actual);
+    }
 }
 
 struct FormatCase
@@ -119,6 +131,8 @@ struct FormatCase
     std::string Config;
     std::vector<formatter::Hunk> Hunks;
     bool Spillover;
+    std::string Expected;
+    bool CheckOwningMaps;
 
     FormatCase(
         std::filesystem::path directory,
@@ -126,13 +140,17 @@ struct FormatCase
         std::string input,
         std::string config = {},
         std::vector<formatter::Hunk> hunks = {},
-        bool spillover = true)
+        bool spillover = true,
+        std::string expected = {},
+        bool checkOwningMaps = false)
         : Directory(std::move(directory))
         , Name(std::move(name))
         , Input(std::move(input))
         , Config(std::move(config))
         , Hunks(std::move(hunks))
         , Spillover(spillover)
+        , Expected(std::move(expected))
+        , CheckOwningMaps(checkOwningMaps)
     { }
 };
 
@@ -241,6 +259,7 @@ std::vector<FormatCase> FormatCases()
             name,
             std::string(name) + ".input.cpp",
         });
+        cases.back().CheckOwningMaps = true;
     }
     AddCases(
         cases,
@@ -862,32 +881,35 @@ std::vector<FormatCase> FormatCases()
         data / "continuation-nesting",
         {"line-scopes"},
         "line-scopes.input.cpp");
-    for (const auto* name :
+    // Preserve the original owning-source contracts without a second registry.
+    for (const auto& [name, owningMaps] :
         {
-            "layout",
-            "structural",
-            "comments",
-            "enumerator-assignment",
-            "opaque-record-owners",
-            "control-ownership",
-            "control-separators-braced",
-            "control-separators-unbraced",
-            "control-separators-nested",
-            "declaration-operands",
-            "declaration-operands-recovery",
-            "annotation-boundaries",
-            "annotation-constructors",
-            "annotation-suffixes",
-            "annotation-constraints",
-            "terminal-constructor-template-ids",
+            std::pair{"layout", true},
+        {"structural", true},
+        {"comments", true},
+        {"enumerator-assignment", true},
+        {"opaque-record-owners", true},
+        {"control-ownership", true},
+        {"control-separators-braced", false},
+        {"control-separators-unbraced", false},
+        {"control-separators-nested", false},
+        {"declaration-operands", true},
+        {"declaration-operands-recovery", true},
+        {"annotation-boundaries", false},
+        {"annotation-constructors", true},
+        {"annotation-suffixes", true},
+        {"annotation-constraints", true},
+        {"terminal-constructor-template-ids", true},
         })
     {
         cases.push_back(
             {data / "public-pipeline", name, std::string(name) + ".input.cpp"});
+        cases.back().CheckOwningMaps = owningMaps;
     }
     for (const auto* name : {"nested", "messages"}) {
         cases.push_back(
             {data / "group-syntax", name, std::string(name) + ".input.cpp"});
+        cases.back().CheckOwningMaps = true;
     }
     AddCases(
         cases,
@@ -901,14 +923,7 @@ std::vector<FormatCase> FormatCases()
     AddCases(
         cases,
         data / "function_parameters",
-        {
-            "preserve",
-            "pack_name",
-            "pack_new",
-            "one_name",
-            "one_new",
-            "pack_merge",
-        });
+        {"preserve", "pack_name", "pack_new", "one_name", "one_new"});
     AddCases(
         cases,
         data / "namespace_comments",
@@ -988,6 +1003,282 @@ std::vector<FormatCase> FormatCases()
         {{2, 5}},
         false,
     });
+    for (const auto* name :
+        {
+            "greedy-trailing",
+            "compact-comparison",
+            "compact-return",
+            "crlf-return",
+            "horizontal-and-topology",
+            "leading-narrow",
+            "call-preserve",
+            "ambiguous-if-needed",
+        })
+    {
+        cases.push_back(
+            {parsedOperators, name, std::string(name) + ".input.cpp"});
+    }
+    AddCases(
+        cases,
+        parsedOperators,
+        {"greedy-leading", "preserve"},
+        "greedy-trailing.input.cpp");
+    AddCases(
+        cases,
+        parsedOperators,
+        {"always-trailing", "always-leading"},
+        "leading-narrow.input.cpp");
+    AddCases(
+        cases,
+        parsedOperators,
+        {"leading-fitting", "trailing-fitting"},
+        "fitting-topologies.input.cpp");
+    // Name, input, config override, read-only expectation alias.
+    for (const auto& [name, input, config, expected] : {
+        std::array<const char*, 4>{"macro-preserve",
+            "macro-preserve.input.cpp", "crlf-return", ""},
+        {"boundary-comment-tail", "comment-tail.input.cpp", "crlf-return", ""},
+        {"recovered-tail", "recovered-tail.input.cpp", "crlf-return", ""},
+        {"template-argument-preserve", "template-argument-preserve.input.cpp",
+            "crlf-return", ""},
+        {"default-preserve", "input.cpp", "", "input.cpp"},
+        {"partial-join", "partial-join.input.cpp", "leading-narrow", ""},
+        {"always-space", "always-space.input.cpp", "always-trailing", ""},
+        {"continuation-comment-tail", "continuation-comment-tail.input.cpp",
+            "call-preserve", ""},
+        {"crlf", "crlf.input.cpp", "call-preserve", ""},
+        {"comparison-if-needed", "comparison-if-needed.input.cpp",
+            "ambiguous-if-needed", ""},
+        {"ambiguous-always", "ambiguous-if-needed.input.cpp", "", ""},
+        {"comparison-always", "comparison-if-needed.input.cpp",
+            "ambiguous-always", ""},
+        {"trailing-statements", "trailing-statements.input.cpp",
+            "return-trailing", ""},
+    })
+    {
+        cases.push_back(
+            {parsedOperators, name, input, config, {}, true, expected});
+    }
+    const auto functionParameters = data / "function_parameters";
+    for (const auto* name :
+        {"preserve-header", "attached-spacing", "detached-spacing"})
+    {
+        cases.push_back(
+            {functionParameters, name, std::string(name) + ".input.cpp"});
+    }
+    // Name, input, config override, read-only expectation alias.
+    for (const auto& [name, input, config, expected] : {
+        std::array<const char*, 4>{"short-next-line",
+            "short-preserved-header.input.cpp", "pack_name", ""},
+        {"tabs-next-line", "preserve-header.input.cpp", "", ""},
+        {"crlf", "crlf.input.cpp", "", "crlf.output.cpp"},
+        {"preserved-header-definitions",
+            "preserved-header-definitions.input.cpp",
+            "reflow-preserved-header", ""},
+    })
+    {
+        cases.push_back(
+            {functionParameters, name, input, config, {}, true, expected});
+    }
+    const auto lambdaAnchors = data / "consolidated-formatter/lambda-anchor";
+    cases.push_back(
+        {lambdaAnchors, "authored-anchor", "authored-anchor.input.cpp"});
+    // Name, input, config override, read-only expectation alias.
+    for (const auto& [name, input, config, expected] : {
+        std::array<const char*, 4>{"correct-anchor",
+            "correct-anchor.input.cpp", "authored-anchor", ""},
+        {"narrow-body", "correct-anchor.input.cpp", "", ""},
+    })
+    {
+        cases.push_back(
+            {lambdaAnchors, name, input, config, {}, true, expected});
+    }
+    const auto controlBodies = data / "consolidated-formatter/control-bodies";
+    for (const auto* name :
+        {"nested-unbraced", "empty-blocks", "empty-blocks-without-add"})
+    {
+        cases
+            .push_back({controlBodies, name, std::string(name) + ".input.cpp"});
+    }
+    // Name, input, config override, read-only expectation alias.
+    for (const auto& [name, input, config, expected] : {
+        std::array<const char*, 4>{"crlf", "crlf.input.cpp",
+            "comment-barrier", ""},
+        {"labeled-body", "labeled-body.input.cpp", "comment-barrier", ""},
+        {"complete-control-bodies", "complete-control-bodies.input.cpp",
+            "comment-barrier", ""},
+    })
+    {
+        cases.push_back(
+            {controlBodies, name, input, config, {}, true, expected});
+    }
+    for (const auto* name :
+        {
+            "next-line-reposition",
+            "delimiter-alignment",
+            "control-header-composition",
+            "unsafe-continuation",
+            "spaced-vertical",
+            "balanced-fill",
+            "nested-candidate",
+            "opaque-macro",
+            "packed",
+        })
+    {
+        cases.push_back({callReflow, name, std::string(name) + ".input.cpp"});
+    }
+    AddCases(
+        cases,
+        callReflow,
+        {"balanced-vertical", "balanced-preserve"},
+        "balanced-fill.input.cpp");
+    // Name, input, config override, read-only expectation alias.
+    for (const auto& [name, input, config, expected] : {
+        std::array<const char*, 4>{"default-preserve", "input.cpp", "",
+            "input.cpp"},
+        {"always-fill", "long.input.cpp", "", "long-packed.output.cpp"},
+        {"vertical-next-line", "input.cpp", "", "one-per-line.output.cpp"},
+        {"cast-preserve", "cast-preserve.input.cpp", "unsafe-continuation", ""},
+        {"comment-gap", "comment-gap.input.cpp", "unsafe-continuation",
+            "comment.output.cpp"},
+        {"crlf-call", "crlf-call.input.cpp", "unsafe-continuation",
+            "crlf.output.cpp"},
+        {"sole-fitting", "sole-fitting.input.cpp", "",
+            "sole-fitting.output.cpp"},
+        {"sole-separated", "sole-fitting.input.cpp", "",
+            "sole-separated.output.cpp"},
+        {"lambda-capture", "lambda-capture.input.cpp", "lambda-position", ""},
+    })
+    {
+        cases.push_back({callReflow, name, input, config, {}, true, expected});
+    }
+    const auto ternaryLayout = data / "ternary-layout";
+    cases.push_back({
+        ternaryLayout,
+        "preserve-always-narrow",
+        "preserve-always-narrow.input.cpp",
+    });
+    AddCases(
+        cases,
+        ternaryLayout,
+        {"preserve-always-trailing", "preserve-authored-flexible"},
+        "authored-fitting.input.cpp");
+    // Name, input, config override, read-only expectation alias.
+    for (const auto& [name, input, config, expected] : {
+        std::array<const char*, 4>{"two-leading", "input.cpp", "",
+            "two-leading.output.cpp"},
+        {"three-leading", "input.cpp", "", "three-leading.output.cpp"},
+        {"preserve-leading", "input.cpp", "", "input.cpp"},
+        {"fitting-leading", "fitting-leading.input.cpp", "three-leading", ""},
+        {"two-trailing", "input.cpp", "", "two-trailing.output.cpp"},
+        {"three-trailing", "input.cpp", "", "three-trailing.output.cpp"},
+        {"preserve-trailing", "input.cpp", "", "input.cpp"},
+        {"fitting-trailing", "fitting-leading.input.cpp", "three-trailing", ""},
+        {"always-leading", "authored-fitting.input.cpp", "",
+            "three-leading.output.cpp"},
+        {"always-trailing", "authored-fitting.input.cpp", "",
+            "three-trailing.output.cpp"},
+        {"crlf-fitting", "crlf-fitting.input.cpp", "flat-trailing-fitting", ""},
+        {"authored-ternary-topologies",
+            "authored-ternary-topologies.input.cpp", "authored-fitting", ""},
+        {"fitting-three-part", "fitting-three-part.input.cpp",
+            "three-part-fitting", ""},
+        {"trailing-ternary-topologies",
+            "trailing-ternary-topologies.input.cpp", "flat-trailing-fitting",
+            ""},
+    })
+    {
+        cases.push_back(
+            {ternaryLayout, name, input, config, {}, true, expected});
+    }
+    const auto emptyFunctions = data / "consolidated-formatter/empty-functions";
+    cases.push_back({
+        emptyFunctions,
+        "empty-function-bodies",
+        "empty-function-bodies.input.cpp",
+        "whitespace-only",
+    });
+    const auto consolidatedLayout = data / "consolidated-layout";
+    for (const auto* name :
+        {
+            "comment-directives",
+            "comment-external",
+            "comment-interiors",
+            "comment-mixed-runs",
+            "comment-sequence",
+            "control-new-line",
+            "control-preserved-body",
+            "function-try",
+            "preserve-crlf-recovery",
+            "record-head-boundaries",
+        })
+    {
+        cases.push_back(
+            {consolidatedLayout, name, std::string(name) + ".input.cpp"});
+    }
+    AddCases(
+        cases,
+        consolidatedLayout,
+        {"control-attached", "control-header-broken"},
+        "control-arms.input.cpp");
+    AddCases(
+        cases,
+        consolidatedLayout,
+        {"control-compact", "control-forced-header"},
+        "control-new-line.input.cpp");
+    AddCases(
+        cases,
+        consolidatedLayout,
+        {
+            "record-head-generated-no-space-canonical",
+            "record-head-generated-no-space-preserved",
+            "record-head-generated-space-canonical",
+            "record-head-generated-space-preserved",
+            "record-head-no-space-canonical",
+            "record-head-no-space-preserved",
+            "record-head-preserve-canonical",
+            "record-head-preserved",
+            "record-head-space-canonical",
+            "record-head-space-preserved",
+        },
+        "record-head-policies.input.cpp");
+    // Name, input, config override, read-only expectation alias.
+    for (const auto& [name, input, config, expected] : {
+        std::array<const char*, 4>{"comment-namespace-only",
+            "comment-external.input.cpp", "", ""},
+        {"comment-sequence-zero", "comment-sequence-zero.input.cpp",
+            "../standalone-comment-gaps/zero", ""},
+        {"control-commented-else", "control-commented-else.input.cpp",
+            "control-new-line", ""},
+        {"control-unbraced-else", "control-unbraced-else.input.cpp",
+            "control-new-line", ""},
+        {"control-unbraced-if", "control-unbraced-if.input.cpp",
+            "control-new-line", ""},
+    })
+    {
+        cases.push_back(
+            {consolidatedLayout, name, input, config, {}, true, expected});
+    }
+    AddCases(
+        cases,
+        data / "consolidated-pipeline/enumerator-assignment",
+        {
+            "space",
+            "no-space",
+            "preserve",
+            "generated-space",
+            "generated-no-space",
+        });
+    cases.push_back({
+        data / "consolidated-pipeline",
+        "enumerator-assignment-comments",
+        "enumerator-assignment-comments.input.cpp",
+    });
+    cases.push_back({
+        data / "consolidated-edits",
+        "null-removal",
+        "null-removal.input.cpp",
+    });
     std::ranges::sort(
         cases,
         {},
@@ -1008,7 +1299,11 @@ TEST_P(FormatTest, Golden)
         fixture.Directory / (config + ".hit-fmt")).FormattingStyle;
     const auto input = fixture.Input(value.Input);
     if (value.Hunks.empty()) {
-        ExpectFormattedGolden(fixture.Named(".output.cpp"), input, style);
+        const auto expected = value.Expected.empty()
+            ? fixture.Named(".output.cpp")
+            : fixture.Directory / value.Expected;
+        ExpectFormattedGolden(expected, input, style,
+            value.CheckOwningMaps, !value.Expected.empty());
     } else {
         std::string storage(input);
         storage.append(util::SourcePaddingSize, '\0');
@@ -1104,217 +1399,11 @@ TEST(Formatter, CallArgument_RejectsUnsupportedSyntaxHints)
         }
     }
 }
-TEST(Formatter, CallArgument_ReflowsOnlySafeParsedCalls)
-{
-    formatter::Style style;
-    style.ColumnLimit = 34;
-    const auto directory = std::filesystem::path(FORMATTER_TESTDATA_DIR) /
-        "../call-reflow";
-    const auto input = ReadFile(directory / "input.cpp");
-    EXPECT_EQ(FormatWithStyle(input, style), input);
-    style.CallsPacking = formatter::ListPacking::Fill;
-    EXPECT_EQ(FormatWithStyle(input, style), input);
-    style.CallsLayout = formatter::CategoryLayout::Canonical;
-    style.CallsBreak = formatter::BreakRequirement::IfNeeded;
-    const auto packed = FormatWithStyle(input, style);
-    test::golden::ExpectGolden(directory / "packed.output.cpp", packed);
-    EXPECT_EQ(FormatWithStyle(packed, style), packed);
-    style.CallsLayout = formatter::CategoryLayout::Canonical;
-    style.CallsBreak = formatter::BreakRequirement::IfNeeded;
-    const auto merged = FormatWithStyle(packed, style);
-    test::golden::ExpectGolden(directory / "merged.output.cpp", merged);
-    EXPECT_EQ(FormatWithStyle(merged, style), merged);
-    const auto longMultiline = ReadFile(directory / "long.input.cpp");
-    // Canonical Fill repacks authored breaks; Preserve above retains them.
-    ExpectFormattedGolden(directory / "long-packed.output.cpp",
-        longMultiline, style);
-    style.CallsLayout = formatter::CategoryLayout::Canonical;
-    style.CallsBreak = formatter::BreakRequirement::Always;
-    const auto repacked = FormatWithStyle(longMultiline, style);
-    test::golden::ExpectGolden(directory / "repacked.output.cpp", repacked);
-    EXPECT_EQ(FormatWithStyle(repacked, style), repacked);
-    style.CallsPacking = formatter::ListPacking::VerticalWhenBroken;
-    style.CallsLayout = formatter::CategoryLayout::Canonical;
-    style.CallsFirstItem =
-        formatter::FirstItemPlacement::NextLine;
-    const auto onePerLine = FormatWithStyle(input, style);
-    test::golden::ExpectGolden(
-        directory / "one-per-line.output.cpp",
-        onePerLine);
-    EXPECT_EQ(FormatWithStyle(onePerLine, style), onePerLine);
-    style.CallsPacking = formatter::ListPacking::Fill;
-    style.CallsLayout = formatter::CategoryLayout::Canonical;
-    style.CallsAlignment = formatter::ContinuationAlignment::Delimiter;
-    style.ColumnLimit = 25;
-    const auto repositioned =
-        "void f() {\n"
-        "    use(alpha,\n"
-        "        beta, gamma);\n"
-        "}\n";
-    const auto repositionedExpected =
-        "void f() {\n"
-        "    use(\n"
-        "        alpha, beta,\n"
-        "        gamma);\n"
-        "}\n";
-    EXPECT_EQ(FormatWithStyle(repositioned, style), repositionedExpected);
-    EXPECT_EQ(
-        FormatWithStyle(repositionedExpected, style),
-        repositionedExpected);
-    style.CallsFirstItem =
-        formatter::FirstItemPlacement::InlineIfFits;
-    style.ColumnLimit = 32;
-    const auto aligned =
-        "void f() {\n"
-        "    longCall(alpha, beta, gamma, delta);\n"
-        "}\n";
-    const auto alignedExpected =
-        "void f() {\n"
-        "    longCall(alpha, beta, gamma,\n"
-        "             delta);\n"
-        "}\n";
-    EXPECT_EQ(FormatWithStyle(aligned, style), alignedExpected);
-    EXPECT_EQ(FormatWithStyle(alignedExpected, style), alignedExpected);
-    style.CallsAlignment = formatter::ContinuationAlignment::Block;
-    style.ControlBracePlacement =
-        formatter::BracePlacement::NextLineIfHeaderBroken;
-    style.ControlHeadersLayout = formatter::CategoryLayout::Canonical;
-    const auto control =
-        "void f() {\n"
-        "    if (check(alpha, beta, gamma, delta)) {\n"
-        "        run();\n"
-        "    }\n"
-        "}\n";
-    const auto controlExpected =
-        "void f() {\n"
-        "    if (check(alpha, beta,\n"
-        "        gamma, delta))\n"
-        "    {\n"
-        "        run();\n"
-        "    }\n"
-        "}\n";
-    EXPECT_EQ(FormatWithStyle(control, style), controlExpected);
-    EXPECT_EQ(FormatWithStyle(controlExpected, style), controlExpected);
-    style.CallsLayout = formatter::CategoryLayout::Canonical;
-    style.CallsBreak = formatter::BreakRequirement::IfNeeded;
-    ExpectUnchanged(
-        "void f() { use(alpha +\n        beta, gamma, delta); }\n",
-        style);
-    ExpectUnchanged(
-        "void f() { auto x = (Type)(alpha, beta, gamma, delta); }\n",
-        style);
-    // Comments and CRLF constrain the affected gaps, not the whole call.
-    ExpectFormattedGolden(directory / "comment.output.cpp",
-        "void f() { use(alpha, /* note */ beta, gamma); }\n", style);
-    ExpectFormattedGolden(directory / "crlf.output.cpp",
-        "void f() { use(alpha, beta, gamma, delta); }\r\n", style);
-    style.CallsPacking = formatter::ListPacking::VerticalWhenBroken;
-    style.CallsLayout = formatter::CategoryLayout::Canonical;
-    style.CallsBreak = formatter::BreakRequirement::Always;
-    style.SpaceInsideCallArguments = formatter::GapPolicy::Space;
-    style.ColumnLimit = 25;
-    const auto spaced = "void f() { use(alpha, beta, gamma, delta); }\n";
-    const auto spacedExpected =
-        "void f() { use( alpha,\n"
-        "        beta,\n"
-        "        gamma,\n"
-        "        delta ); }\n";
-    EXPECT_EQ(FormatWithStyle(spaced, style), spacedExpected);
-    EXPECT_EQ(FormatWithStyle(spacedExpected, style), spacedExpected);
-    const auto balancedInput =
-        "void f() {\n"
-        "    use(a, bb, ccc, dddd, eeeee, ffffff);\n"
-        "}\n";
-    const auto packedBalanced =
-        "void f() {\n"
-        "    use(a, bb, ccc, dddd, eeeee,\n"
-        "        ffffff);\n"
-        "}\n";
-    style.ColumnLimit = 32;
-    style.CallsLayout = formatter::CategoryLayout::Canonical;
-    style.CallsBreak = formatter::BreakRequirement::IfNeeded;
-    style.CallsPacking = formatter::ListPacking::Fill;
-    style.CallsLayout = formatter::CategoryLayout::Canonical;
-    style.SpaceInsideCallArguments =
-        formatter::GapPolicy::Preserve;
-    EXPECT_EQ(FormatWithStyle(balancedInput, style), packedBalanced);
-    EXPECT_EQ(FormatWithStyle(packedBalanced, style), packedBalanced);
-    style.CallsPacking = formatter::ListPacking::VerticalWhenBroken;
-    style.CallsLayout = formatter::CategoryLayout::Canonical;
-    const auto onePerLineBalanced =
-        "void f() {\n"
-        "    use(a,\n"
-        "        bb,\n"
-        "        ccc,\n"
-        "        dddd,\n"
-        "        eeeee,\n"
-        "        ffffff);\n"
-        "}\n";
-    EXPECT_EQ(FormatWithStyle(balancedInput, style), onePerLineBalanced);
-    style.CallsLayout = formatter::CategoryLayout::Preserve;
-    ExpectUnchanged(balancedInput, style);
-    formatter::Style sole;
-    sole.CallsPacking = formatter::ListPacking::VerticalWhenBroken;
-    sole.CallsLayout = formatter::CategoryLayout::Canonical;
-    sole.CallsBreak = formatter::BreakRequirement::IfNeeded;
-    sole.TernaryLayout = formatter::TernaryLayout::ThreePart;
-    sole.ExpressionsLayout = formatter::CategoryLayout::Canonical;
-    sole.TernaryOperatorSide =
-        formatter::OperatorSide::Leading;
-    const auto multiline =
-        "void f() {\n"
-        "    auto result = Select(status\n"
-        "        ? first\n"
-        "        : second);\n"
-        "    auto callback = MakeCallback([&] {\n"
-        "        Run();\n"
-        "    });\n"
-        "}\n";
-    // ThreePart is a broken-expression shape, not an unconditional break.
-    ExpectFormattedGolden(directory / "sole-fitting.output.cpp", multiline, sole);
-    sole.CallsFirstItem =
-        formatter::FirstItemPlacement::InlineIfFits;
-    ExpectFormattedGolden(directory / "sole-fitting.output.cpp", multiline, sole);
-    sole.CallsFirstItem =
-        formatter::FirstItemPlacement::NextLine;
-    // A multiline child makes the call broken; NextLine then applies to
-    // its first item. Canonical body layout follows the emitted call position.
-    sole.BodiesLayout = formatter::CategoryLayout::Canonical;
-    ExpectFormattedGolden(directory / "sole-separated.output.cpp", multiline, sole);
-    formatter::Style lambdaStyle;
-    lambdaStyle.ColumnLimit = 32;
-    lambdaStyle.CallsPacking = formatter::ListPacking::VerticalWhenBroken;
-    lambdaStyle.CallsLayout = formatter::CategoryLayout::Canonical;
-    lambdaStyle.BodiesLayout = formatter::CategoryLayout::Canonical;
-    const auto lambdaInput =
-        "void f() {\n"
-        "    CallWithLongName([first, second] {\n"
-        "        Process();\n"
-        "    });\n"
-        "}\n";
-    const auto lambdaExpected =
-        "void f() {\n"
-        "    CallWithLongName(\n"
-        "        [first, second] {\n"
-        "            Process();\n"
-        "        });\n"
-        "}\n";
-    EXPECT_EQ(FormatWithStyle(lambdaInput, lambdaStyle), lambdaExpected);
-    EXPECT_EQ(FormatWithStyle(lambdaExpected, lambdaStyle), lambdaExpected);
-    ExpectFormattedGolden(directory / "lambda-capture.output.cpp",
-        "void f() {\n"
-        "    CallWithLongName([first = MakeVeryLongValue(), second] {\n"
-        "        Process();\n"
-        "    });\n"
-        "}\n", lambdaStyle);
-}
-TEST(Formatter, CallArgument_LaysOutEnclosingMacroAndNestedCalls)
+TEST(Formatter, CallArgument_RequiresOwnedBreaksAcrossArities)
 {
     formatter::Style style;
     style.CallsLayout = formatter::CategoryLayout::Canonical;
-    style.CallsBreak = formatter::BreakRequirement::Always;
     style.CallsPacking = formatter::ListPacking::Fill;
-    style.CallsLayout = formatter::CategoryLayout::Canonical;
     style.ColumnLimit = 100;
     const test::golden::Fixture fixture{
         std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../macro-nested-calls",
@@ -1342,258 +1431,8 @@ TEST(Formatter, CallArgument_LaysOutEnclosingMacroAndNestedCalls)
         style.CallsLayout = formatter::CategoryLayout::Canonical;
     }
     ExpectUnchanged("void f() { Probe(); }\n", style);
-    style.CallsFirstItem = formatter::FirstItemPlacement::InlineIfFits;
-    // An unchanged outer call must not hide a deeper candidate.
-    style.CallsLayout = formatter::CategoryLayout::Canonical;
-    style.CallsBreak = formatter::BreakRequirement::IfNeeded;
-    style.ColumnLimit = 48;
-    const auto nested =
-        "void f() {\n"
-        "    Outer(Middle(Inner(alpha, beta, gamma, delta, epsilon)));\n"
-        "}\n";
-    const auto nestedExpected =
-        "void f() {\n"
-        "    Outer(Middle(Inner(alpha, beta, gamma,\n"
-        "        delta, epsilon)));\n"
-        "}\n";
-    EXPECT_EQ(FormatWithStyle(nested, style), nestedExpected);
-    EXPECT_EQ(FormatWithStyle(nestedExpected, style), nestedExpected);
-    style.CallsPacking = formatter::ListPacking::VerticalWhenBroken;
-    style.CallsLayout = formatter::CategoryLayout::Canonical;
-    ExpectUnchanged("void f() { EXPECT_EQ(a, b); }\n", style);
 }
-TEST(Formatter, ExpressionLayout_WrapsParsedOperatorsAndPreservesUnsafeLines)
-{
-    formatter::Style style;
-    style.ExpressionsLayout = formatter::CategoryLayout::Canonical;
-    style.ExpressionsBreak = formatter::BreakRequirement::IfNeeded;
-    style.TernaryLayout = formatter::TernaryLayout::Flexible;
-    style.TernaryOperatorSide =
-        formatter::OperatorSide::Leading;
-    style.BinaryOperatorSide = formatter::OperatorSide::Leading;
-    style.ColumnLimit = 32;
-    const test::golden::Fixture fixture{
-        std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../parsed-operators",
-        "configured"};
-    ExpectUnchanged(fixture.Input(), formatter::Style{});
-    style.BinaryOperatorSide =
-        formatter::OperatorSide::Trailing;
-    const auto trailingInput =
-        "int sum(int alpha, int beta) {\n"
-        "    return alpha + beta + alpha + beta;\n"
-        "}\n";
-    const auto trailingExpected =
-        "int sum(int alpha, int beta) {\n"
-        "    return alpha + beta +\n"
-        "        alpha + beta;\n"
-        "}\n";
-    EXPECT_EQ(FormatWithStyle(trailingInput, style), trailingExpected);
-    EXPECT_EQ(FormatWithStyle(trailingExpected, style), trailingExpected);
-    const auto assigned =
-        "void f(int alpha, int beta, int& result) {\n"
-        "    result = alpha + beta + alpha + beta;\n"
-        "}\n";
-    const auto assignedExpected =
-        "void f(int alpha, int beta, int& result) {\n"
-        "    result = alpha + beta +\n"
-        "        alpha + beta;\n"
-        "}\n";
-    EXPECT_EQ(FormatWithStyle(assigned, style), assignedExpected);
-    EXPECT_EQ(FormatWithStyle(assignedExpected, style), assignedExpected);
-    style.ColumnLimit = 25;
-    // Canonical topology uses safe spacing fallback; request compact spelling
-    // explicitly rather than relying on Preserve at rebuilt operator gaps.
-    style.BinaryOperatorSpacing = formatter::GapPolicy::NoSpace;
-    const auto compact =
-        "int sum(int alpha, int beta) {\n"
-        "    return alpha+beta+alpha+beta;\n"
-        "}\n";
-    const auto compactExpected =
-        "int sum(int alpha, int beta) {\n"
-        "    return alpha+beta+\n"
-        "        alpha+beta;\n"
-        "}\n";
-    EXPECT_EQ(FormatWithStyle(compact, style), compactExpected);
-    EXPECT_EQ(FormatWithStyle(compactExpected, style), compactExpected);
-    style.BinaryOperatorSpacing = formatter::GapPolicy::Preserve;
-    // Canonical expressions may reflow; CRLF, comments and recovered tails
-    // remain byte-exact even when an adjacent complete prefix is formatted.
-    const auto expectReflow = [&](std::string_view source,
-                                  std::string_view expected) {
-        EXPECT_EQ(FormatWithStyle(source, style), expected);
-        EXPECT_EQ(FormatWithStyle(expected, style), expected);
-    };
-    expectReflow("int f(int a, int b) { return a + b + a + b; }\r\n",
-        "int f(int a, int b) { return\r\n"
-        "        a + b + a + b; }\r\n");
-    ExpectUnchanged("#define SUM(a, b) ((a) + (b) + (a) + (b))\n", style);
-    expectReflow(
-        "int compute(int a, int b) { return a + b + a + b; // keep\n}\n",
-        "int compute(int a, int b) { return\n"
-        "        a + b + a +\n        b; // keep\n}\n");
-    expectReflow(
-        "int compute(int a, int b) { return a + b @ broken; }\n",
-        "int compute(int a, int b) { return a +\n"
-        "        b @ broken; }\n");
-    ExpectUnchanged("template <int N> struct Array {};\n"
-        "Array<1 + 2 + 3 + 4 + 5 + 6> value;\n", style);
-}
-TEST(Formatter, ExpressionLayout_PlacesAndGroupsTernaryBreaks)
-{
-    formatter::Style style;
-    style.ExpressionsLayout = formatter::CategoryLayout::Canonical;
-    style.ExpressionsBreak = formatter::BreakRequirement::IfNeeded;
-    style.ColumnLimit = 40;
-    const auto directory = std::filesystem::path(FORMATTER_TESTDATA_DIR) /
-        "../ternary-layout";
-    const auto input = ReadFile(directory / "input.cpp");
-    for (auto placement : {formatter::OperatorSide::Leading,
-        formatter::OperatorSide::Trailing})
-    {
-        style.TernaryOperatorSide = placement;
-        style.TernaryLayout = formatter::TernaryLayout::Flexible;
-        style.ExpressionsLayout = formatter::CategoryLayout::Canonical;
-        const bool leading =
-            placement == formatter::OperatorSide::Leading;
-        const auto two = FormatWithStyle(input, style);
-        test::golden::ExpectGolden(directory /
-            (leading ? "two-leading.output.cpp" : "two-trailing.output.cpp"),
-            two);
-        EXPECT_EQ(FormatWithStyle(two, style), two);
-        style.ExpressionsLayout = formatter::CategoryLayout::Preserve;
-        EXPECT_EQ(FormatWithStyle(input, style), input);
-        style.ExpressionsLayout = formatter::CategoryLayout::Canonical;
-        style.TernaryLayout = formatter::TernaryLayout::ThreePart;
-        const auto three = FormatWithStyle(input, style);
-        test::golden::ExpectGolden(directory /
-            (leading
-                ? "three-leading.output.cpp"
-                : "three-trailing.output.cpp"),
-            three);
-        EXPECT_EQ(FormatWithStyle(three, style), three);
-        ExpectUnchanged("int f() { return flag ? a : b; }\n", style);
-    }
-    const auto threeLeading = ReadFile(directory / "three-leading.output.cpp");
-    const auto threeTrailing = ReadFile(directory /
-        "three-trailing.output.cpp");
-    style.ColumnLimit = 80;
-    style.TernaryOperatorSide =
-        formatter::OperatorSide::Leading;
-    style.TernaryLayout = formatter::TernaryLayout::Flexible;
-    style.ExpressionsLayout = formatter::CategoryLayout::Canonical;
-    const auto existing =
-        "int f(bool condition) {\n"
-        "    return condition ?\n"
-        "        alphaValue : betaValue;\n"
-        "}\n";
-    // Shape and operator-side preferences apply only when broken. Canonical
-    // IfNeeded disregards old breaks when the entire group fits.
-    const auto canonical =
-        "int f(bool condition) {\n"
-        "    return condition ? alphaValue : betaValue;\n"
-        "}\n";
-    EXPECT_EQ(FormatWithStyle(existing, style), canonical);
-    const auto bothSides =
-        "int f(bool condition) {\n"
-        "    return condition\n"
-        "        ?\n"
-        "        alphaValue : betaValue;\n"
-        "}\n";
-    EXPECT_EQ(FormatWithStyle(bothSides, style), canonical);
-    style.TernaryLayout = formatter::TernaryLayout::ThreePart;
-    style.ExpressionsLayout = formatter::CategoryLayout::Canonical;
-    EXPECT_EQ(FormatWithStyle(existing, style), input);
-    EXPECT_EQ(FormatWithStyle(bothSides, style), input);
-    EXPECT_EQ(FormatWithStyle(threeLeading, style), input);
-    const auto chain =
-        "int f() {\n"
-        "    return one ? a :\n"
-        "        two ? b :\n"
-        "        three ? c : d;\n"
-        "}\n";
-    const auto flatChain =
-        "int f() {\n"
-        "    return one ? a : two ? b : three ? c : d;\n"
-        "}\n";
-    EXPECT_EQ(FormatWithStyle(chain, style), flatChain);
-    EXPECT_EQ(FormatWithStyle(flatChain, style), flatChain);
-    style.ExpressionsBreak = formatter::BreakRequirement::Always;
-    EXPECT_EQ(FormatWithStyle(existing, style), threeLeading);
-    EXPECT_EQ(FormatWithStyle(threeLeading, style), threeLeading);
-    style.ExpressionsBreak = formatter::BreakRequirement::IfNeeded;
-    style.TernaryOperatorSide =
-        formatter::OperatorSide::Trailing;
-    EXPECT_EQ(FormatWithStyle(canonical, style), input);
-    for (auto mode : {formatter::BreakRequirement::IfNeeded,
-        formatter::BreakRequirement::Always})
-    {
-        style.ExpressionsBreak = mode;
-        EXPECT_EQ(FormatWithStyle(existing, style),
-            mode == formatter::BreakRequirement::Always
-                ? threeTrailing : input);
-    }
-    style.ExpressionsLayout = formatter::CategoryLayout::Preserve;
-    ExpectUnchanged(existing, style);
-    style.ExpressionsLayout = formatter::CategoryLayout::Canonical;
-    EXPECT_EQ(FormatWithStyle(existing, style), threeTrailing);
-    EXPECT_EQ(FormatWithStyle(threeTrailing, style), threeTrailing);
-    style.ExpressionsLayout = formatter::CategoryLayout::Canonical;
-    style.ExpressionsBreak = formatter::BreakRequirement::IfNeeded;
-    const auto crlf = "int f() {\r\n"
-        "    return condition ? alphaValue : betaValue;\r\n}\r\n";
-    EXPECT_EQ(FormatWithStyle("int f() {\r\n    return condition ?\r\n"
-        "        alphaValue : betaValue;\r\n}\r\n", style), crlf);
-    EXPECT_EQ(FormatWithStyle(crlf, style), crlf);
-    style.TernaryOperatorSide =
-        formatter::OperatorSide::Trailing;
-    style.TernaryLayout = formatter::TernaryLayout::ThreePart;
-    style.ExpressionsLayout = formatter::CategoryLayout::Canonical;
-    const auto commented = "int f() {\n"
-        "    return condition ?\n"
-        "        alphaValue /* keep */\n"
-        "        :\n"
-        "        betaValue;\n"
-        "}\n";
-    EXPECT_EQ(FormatWithStyle("int f() {\n"
-        "    return condition ? alphaValue /* keep */\n"
-        "        : betaValue;\n"
-        "}\n", style), commented);
-    EXPECT_EQ(FormatWithStyle(commented, style), commented);
-    const auto nested =
-        "int f() {\n"
-        "    return outer ? inner ? alpha\n"
-        "        : beta : gamma;\n"
-        "}\n";
-    const auto nestedExpected =
-        "int f() {\n"
-        "    return outer ? inner ? alpha : beta : gamma;\n"
-        "}\n";
-    EXPECT_EQ(FormatWithStyle(nested, style), nestedExpected);
-    EXPECT_EQ(FormatWithStyle(nestedExpected, style), nestedExpected);
-    formatter::Style preserve;
-    // Explicit topology retention wins even over an Always requirement.
-    preserve.ExpressionsLayout = formatter::CategoryLayout::Preserve;
-    preserve.ExpressionsBreak = formatter::BreakRequirement::Always;
-    preserve.ColumnLimit = 20;
-    ExpectUnchanged(input, preserve);
-    ExpectUnchanged(existing, preserve);
-    preserve.ExpressionsLayout = formatter::CategoryLayout::Canonical;
-    preserve.ExpressionsBreak = formatter::BreakRequirement::IfNeeded;
-    preserve.ColumnLimit = 80;
-    preserve.TernaryOperatorSide =
-        formatter::OperatorSide::Leading;
-    preserve.ExpressionsLayout = formatter::CategoryLayout::Canonical;
-    EXPECT_EQ(FormatWithStyle(existing, preserve), canonical);
-    // Retain topology explicitly; operator-side choices do not activate it.
-    preserve.ExpressionsLayout = formatter::CategoryLayout::Preserve;
-    preserve.TernaryOperatorSide =
-        formatter::OperatorSide::Trailing;
-    preserve.TernaryLayout = formatter::TernaryLayout::Flexible;
-    ExpectUnchanged(existing, preserve);
-    preserve.TernaryLayout = formatter::TernaryLayout::ThreePart;
-    preserve.ExpressionsLayout = formatter::CategoryLayout::Canonical;
-    EXPECT_EQ(FormatWithStyle(existing, preserve), input);
-}
+
 TEST(Formatter, ExpressionLayout_ChecksPipelineMismatchAndEmittedWidth)
 {
     const auto input =
@@ -1833,413 +1672,6 @@ TEST(Formatter, ExpressionLayout_ReportsUnavoidableWidthWithoutReflowing)
     EXPECT_EQ(quiet.Text, input);
     EXPECT_TRUE(quiet.Diagnostics.empty());
 }
-TEST(Formatter, ExpressionLayout_WrapsLongBinaryExpressions)
-{
-    formatter::Style style;
-    style.ExpressionsLayout = formatter::CategoryLayout::Canonical;
-    style.ExpressionsBreak = formatter::BreakRequirement::IfNeeded;
-    style.ColumnLimit = 40;
-    const auto input =
-        "void f() {\n"
-        "    return a + bb + ccc + dddd + eeeee + ffffff;\n"
-        "}\n";
-    const auto greedy =
-        "void f() {\n"
-        "    return a + bb + ccc + dddd + eeeee +\n"
-        "        ffffff;\n"
-        "}\n";
-    EXPECT_EQ(FormatWithStyle(input, style), greedy);
-    EXPECT_EQ(FormatWithStyle(greedy, style), greedy);
-    style.BinaryOperatorSide = formatter::OperatorSide::Leading;
-    const auto leading =
-        "void f() {\n"
-        "    return a + bb + ccc + dddd + eeeee\n"
-        "        + ffffff;\n"
-        "}\n";
-    EXPECT_EQ(FormatWithStyle(input, style), leading);
-    style.BinaryOperatorSide =
-        formatter::OperatorSide::Trailing;
-    style.ExpressionsLayout = formatter::CategoryLayout::Preserve;
-    ExpectUnchanged(input, style);
-    style.ExpressionsLayout = formatter::CategoryLayout::Canonical;
-    style.ExpressionsBreak = formatter::BreakRequirement::Always;
-    style.ColumnLimit = 20;
-    const auto comparison = "void f() { bool v =\n"
-        "        alpha<\n"
-        "            beta; }\n";
-    EXPECT_EQ(FormatWithStyle("void f() { bool v = alpha<beta; }\n",
-        style), comparison);
-    EXPECT_EQ(FormatWithStyle(comparison, style), comparison);
-}
-TEST(Formatter, ExpressionLayout_ReflowsSafeOperatorContinuationsByPolicy)
-{
-    formatter::Style style;
-    style.ExpressionsLayout = formatter::CategoryLayout::Canonical;
-    style.ExpressionsBreak = formatter::BreakRequirement::IfNeeded;
-    style.TernaryLayout = formatter::TernaryLayout::Flexible;
-    style.ExpressionsLayout = formatter::CategoryLayout::Canonical;
-    style.TernaryOperatorSide =
-        formatter::OperatorSide::Leading;
-    style.ColumnLimit = 80;
-    // Reflow and horizontal spacing are separate policy axes.
-    style.BinaryOperatorSpacing = formatter::GapPolicy::Space;
-    style.AssignmentOperatorSpacing = formatter::GapPolicy::Space;
-    const auto input =
-        "void f() {\n"
-        "    a=b+c;\n"
-        "    return flag\n"
-        "        ? a + b\n"
-        "        : a * c;\n"
-        "}\n";
-    const auto flat =
-        "void f() {\n"
-        "    a = b + c;\n"
-        "    return flag ? a + b : a * c;\n"
-        "}\n";
-    EXPECT_EQ(FormatWithStyle(input, style), flat);
-    EXPECT_EQ(FormatWithStyle(flat, style), flat);
-    const auto wrapped =
-        "int f(int alpha, int beta, int gamma) {\n"
-        "    return alpha\n"
-        "        + beta\n"
-        "        + gamma;\n"
-        "}\n";
-    style.ColumnLimit = 30;
-    style.BinaryOperatorSide = formatter::OperatorSide::Leading;
-    style.ExpressionsLayout = formatter::CategoryLayout::Canonical;
-    style.ExpressionsBreak = formatter::BreakRequirement::IfNeeded;
-    const auto leading =
-        "int f(int alpha, int beta, int gamma) {\n"
-        "    return alpha + beta\n"
-        "        + gamma;\n"
-        "}\n";
-    EXPECT_EQ(FormatWithStyle(wrapped, style), leading);
-    EXPECT_EQ(FormatWithStyle(leading, style), leading);
-    const auto mixed =
-        "void f(int alpha, int beta, int gamma) {\n"
-        "    int result = alpha\n"
-        "        + beta;\n"
-        "    result = alpha\n"
-        "        + beta\n"
-        "        + gamma;\n"
-        "}\n";
-    const auto partiallyJoined =
-        "void f(int alpha, int beta, int gamma) {\n"
-        "    int result = alpha + beta;\n"
-        "    result =\n"
-        "        alpha + beta + gamma;\n"
-        "}\n";
-    EXPECT_EQ(FormatWithStyle(mixed, style), partiallyJoined);
-    EXPECT_EQ(FormatWithStyle(partiallyJoined, style), partiallyJoined);
-    style.ColumnLimit = 40;
-    const auto joined =
-        "int f(int alpha, int beta, int gamma) {\n"
-        "    return alpha + beta + gamma;\n"
-        "}\n";
-    EXPECT_EQ(FormatWithStyle(wrapped, style), joined);
-    EXPECT_EQ(FormatWithStyle(joined, style), joined);
-    style.ExpressionsLayout = formatter::CategoryLayout::Canonical;
-    style.ExpressionsBreak = formatter::BreakRequirement::IfNeeded;
-    EXPECT_EQ(FormatWithStyle(wrapped, style), joined);
-    style.BinaryOperatorSide =
-        formatter::OperatorSide::Trailing;
-    const auto repositioned =
-        "int f(int alpha, int beta, int gamma) {\n"
-        "    return alpha +\n"
-        "        beta +\n"
-        "        gamma;\n"
-        "}\n";
-    EXPECT_EQ(FormatWithStyle(wrapped, style), joined);
-    EXPECT_EQ(FormatWithStyle(repositioned, style), joined);
-    style.BinaryOperatorSide = formatter::OperatorSide::Leading;
-    EXPECT_EQ(FormatWithStyle(repositioned, style), joined);
-    style.BinaryOperatorSide =
-        formatter::OperatorSide::Trailing;
-    style.ColumnLimit = 30;
-    style.ExpressionsLayout = formatter::CategoryLayout::Canonical;
-    style.ExpressionsBreak = formatter::BreakRequirement::Always;
-    const auto trailing =
-        "int f(int alpha, int beta, int gamma) {\n"
-        "    return alpha + beta +\n"
-        "        gamma;\n"
-        "}\n";
-    EXPECT_EQ(FormatWithStyle(wrapped, style), trailing);
-    EXPECT_EQ(FormatWithStyle(trailing, style), trailing);
-    const auto compact =
-        "int f(int alpha, int beta, int gamma) {\n"
-        "    return alpha+beta+gamma+alpha;\n"
-        "}\n";
-    const auto spaced =
-        "int f(int alpha, int beta, int gamma) {\n"
-        "    return alpha + beta +\n"
-        "        gamma + alpha;\n"
-        "}\n";
-    EXPECT_EQ(FormatWithStyle(compact, style), spaced);
-    EXPECT_EQ(FormatWithStyle(spaced, style), spaced);
-    style.BinaryOperatorSide = formatter::OperatorSide::Leading;
-    EXPECT_EQ(FormatWithStyle(wrapped, style), leading);
-    EXPECT_EQ(FormatWithStyle(leading, style), leading);
-    style.ColumnLimit = 80;
-    ExpectUnchanged("void f() { call(alpha, beta, gamma); }\n", style);
-    const auto commented = "void f() { int x =\n"
-        "        a\n            + b; // keep\n}\n";
-    EXPECT_EQ(FormatWithStyle("void f() { int x = a + b; // keep\n}\n",
-        style), commented);
-    EXPECT_EQ(FormatWithStyle(commented, style), commented);
-    const auto crlf = "void f() { int x =\r\n"
-        "        a\r\n            + b; }\r\n";
-    EXPECT_EQ(FormatWithStyle("void f() { int x = a + b; }\r\n", style), crlf);
-    EXPECT_EQ(FormatWithStyle(crlf, style), crlf);
-    const auto ambiguous =
-        "template<class... Args> void f() {\n"
-        "    static_assert(TDependentFalse<Args...>, "
-        "\"Wrong number of arguments\");\n"
-        "}\n";
-    for (auto mode : {formatter::BreakRequirement::IfNeeded,
-        formatter::BreakRequirement::Always})
-    {
-        style.ExpressionsBreak = mode;
-        style.ColumnLimit = 32;
-        ExpectUnchanged(ambiguous, style);
-        // The parser identifies this as a comparison, not an uncertain
-        // template-id. Preserve spacing is not a veto on its topology.
-        const auto comparison = mode == formatter::BreakRequirement::Always
-            ? "void f() { bool v =\n        alpha\n            < beta; }\n"
-            : "void f() { bool v =\n        alpha < beta; }\n";
-        EXPECT_EQ(FormatWithStyle("void f() { bool v = alpha<beta; }\n",
-            style), comparison);
-        EXPECT_EQ(FormatWithStyle(comparison, style), comparison);
-    }
-}
-TEST(Formatter, FunctionParameterSafety_ComposesWithBracePlacement)
-{
-    formatter::Style style;
-    style.ColumnLimit = 40;
-    style.ParametersPacking = formatter::ListPacking::Fill;
-    style.FunctionBracePlacement = formatter::BracePlacement::NextLine;
-    // Explicitly retain brace topology independently of parameter reflow.
-    style.DeclarationHeadersLayout = formatter::CategoryLayout::Preserve;
-    const auto format = [&] (std::string_view source) {
-        std::string storage(source);
-        storage.append(util::SourcePaddingSize, '\0');
-        return formatter::Format(
-            {.Data = storage.data(), .Size = source.size()},
-            style);
-    };
-    const auto original =
-        "void Many(int alpha, int beta, int gamma, int delta) {}\n";
-    EXPECT_EQ(format(original), original);
-    style.ParametersLayout = formatter::CategoryLayout::Canonical;
-    const std::string expected =
-        "void Many(int alpha, int beta,\n"
-        "    int gamma, int delta) {}\n";
-    EXPECT_EQ(
-        format("void Many(int alpha, int beta, int gamma, int delta) {}\n"),
-        expected);
-    EXPECT_EQ(format(expected), expected);
-    EXPECT_EQ(format("void Short() {}\n"), "void Short() {}\n");
-    style.DeclarationHeadersLayout = formatter::CategoryLayout::Canonical;
-    EXPECT_EQ(format("void Short() {}\n"), "void Short()\n{}\n");
-    // The public pipeline uses eight-column tab stops. Request an eight-column
-    // continuation so this case exercises an emitted tab, not four spaces.
-    style.IndentationKind = formatter::IndentationKind::Tabs;
-    style.ParametersContinuationOffset = 8;
-    const std::string tabbed =
-        "void Many(int alpha, int beta,\n"
-        "\tint gamma, int delta)\n"
-        "{}\n";
-    EXPECT_EQ(
-        format("void Many(int alpha, int beta, int gamma, int delta) {}\n"),
-        tabbed);
-    EXPECT_EQ(format(tabbed), tabbed);
-}
-TEST(Formatter, FunctionParameterSafety_KeepsCrlfListsAndCalls)
-{
-    formatter::Style style;
-    style.ParametersPacking = formatter::ListPacking::Fill;
-    style.ParametersLayout = formatter::CategoryLayout::Canonical;
-    style.ColumnLimit = 25;
-    const auto directory = std::filesystem::path(FORMATTER_TESTDATA_DIR) /
-        "../function_parameters";
-    ExpectFormattedGolden(directory / "crlf.output.cpp",
-        "void f(int alpha, int beta, int gamma);\r\n"
-        "void g() { Use(very_long_argument, another_long_argument); }\r\n",
-        style);
-}
-TEST(Formatter, BlockIndentation_AnchorsInlineLambdaToItsCallLine)
-{
-    formatter::Style style;
-    style.BodiesLayout = formatter::CategoryLayout::Canonical;
-    // The lambda body uses its opening line's base, without an unrealized
-    // argument continuation from the inline call.
-    const std::string source =
-        "void f()\n"
-        "{\n"
-        "    Visit(\n"
-        "        MakeCallback([&] (auto value) {\n"
-        "            if (value) {\n"
-        "                Use(value);\n"
-        "            }\n"
-        "        }),\n"
-        "        other);\n"
-        "}\n";
-    ExpectUnchanged(source, style);
-    const std::string incorrect =
-        "void f()\n"
-        "{\n"
-        "    Visit(\n"
-        "        MakeCallback([&] (auto value) {\n"
-        "        if (value) {\n"
-        "            Use(value);\n"
-        "        }\n"
-        "    }),\n"
-        "        other);\n"
-        "}\n";
-    EXPECT_EQ(FormatWithStyle(incorrect, style), source);
-    style.BlockBodyIndentWidth = 2;
-    const std::string narrowBody =
-        "void f()\n"
-        "{\n"
-        "  Visit(\n"
-        "        MakeCallback([&] (auto value) {\n"
-        "          if (value) {\n"
-        "            Use(value);\n"
-        "          }\n"
-        "        }),\n"
-        "        other);\n"
-        "}\n";
-    EXPECT_EQ(FormatWithStyle(incorrect, style), narrowBody);
-    ExpectUnchanged(narrowBody, style);
-}
-TEST(Formatter, ControlBrace_WrapsOnlyCompleteUnbracedBodies)
-{
-    formatter::Style style;
-    style.AddMissingControlBraces = true;
-    style.BodiesLayout = formatter::CategoryLayout::Canonical;
-    style.ControlBracePlacement =
-        formatter::BracePlacement::NextLineIfHeaderBroken;
-    style.ControlHeadersLayout = formatter::CategoryLayout::Canonical;
-    const std::string input =
-        "void f(bool a, bool b) {\n"
-        "    if (a) if (b) Go(); else Stop();\n"
-        "    for (;;) Go();\n"
-        "    while (a) Go();\n"
-        "    while (a);\n"
-        "    do Go(); while (a);\n"
-        "}\n";
-    const std::string expected =
-        "void f(bool a, bool b) {\n"
-        "    if (a) {\n"
-        "        if (b) {\n"
-        "            Go();\n"
-        "        } else {\n"
-        "            Stop();\n"
-        "        }\n"
-        "    }\n"
-        "    for (;;) {\n"
-        "        Go();\n"
-        "    }\n"
-        "    while (a) {\n"
-        "        Go();\n"
-        "    }\n"
-        "    while (a)\n"
-        "        ;\n"
-        "    do {\n"
-        "        Go();\n"
-        "    } while (a);\n"
-        "}\n";
-    EXPECT_EQ(FormatWithStyle(input, style), expected);
-    EXPECT_EQ(FormatWithStyle(expected, style), expected);
-    style.EmptyControlBody = formatter::EmptyControlBody::EmptyBlock;
-    style.EmptyBodyShape = formatter::BodyShape::CompactIfFits;
-    style.EmptyBlockInteriorSpacing = formatter::GapPolicy::Space;
-    const std::string emptyInput =
-        "void spin(bool a) {\n"
-        "    while (a);\n"
-        "    while (\n        a);\n"
-        "    for (; a; );\n"
-        "    do; while (a);\n"
-        "    if (a); else Stop();\n"
-        "    if (a) /* keep */ ;\n"
-        "}\n";
-    const std::string emptyExpected =
-        "void spin(bool a) {\n"
-        "    while (a) { }\n"
-        "    while (a) { }\n"
-        "    for (; a; ) { }\n"
-        "    do { } while (a);\n"
-        "    if (a) { } else {\n"
-        "        Stop();\n"
-        "    }\n"
-        "    if (a) /* keep */ ;\n"
-        "}\n";
-    EXPECT_EQ(FormatWithStyle(emptyInput, style), emptyExpected);
-    EXPECT_EQ(FormatWithStyle(emptyExpected, style), emptyExpected);
-    style.AddMissingControlBraces = false;
-    EXPECT_EQ(FormatWithStyle(
-        "void f() {\n    if (a);\n    if (b) Go();\n}\n",
-        style),
-        "void f() {\n    if (a) { }\n    if (b)\n        Go();\n}\n");
-    style.EmptyControlBody = formatter::EmptyControlBody::Preserve;
-    style.AddMissingControlBraces = true;
-    const std::string commentedExpected =
-        "void f(bool a) {\n    if (a) /* keep */ Go();\n}\n";
-    EXPECT_EQ(FormatWithStyle(
-        "void f(bool a) { if (a) /* keep */ Go(); }\n", style),
-        commentedExpected);
-    ExpectUnchanged(commentedExpected, style);
-    EXPECT_EQ(FormatWithStyle(
-        "void f(bool a) { if (a)\r\n    Go(); }\r\n",
-        style),
-        "void f(bool a) {\r\n    if (a) {\r\n"
-        "        Go();\r\n    }\r\n}\r\n");
-    ExpectUnchanged(
-        "void f(bool a) {\r\n    if (a) {\r\n"
-        "        Go();\r\n    }\r\n}\r\n", style);
-    const std::string labeledExpected =
-        "void f(int x) {\n    switch (x) case 0:\n    Go();\n}\n";
-    EXPECT_EQ(FormatWithStyle(
-        "void f(int x) { switch (x) case 0: Go(); }\n", style),
-        labeledExpected);
-    ExpectUnchanged(labeledExpected, style);
-    EXPECT_EQ(FormatWithStyle(
-        "void f(int x)\n{\n    switch (x) Go();\n}\n",
-        style),
-        "void f(int x)\n{\n    switch (x) {\n"
-        "        Go();\n"
-        "    }\n}\n");
-    EXPECT_EQ(FormatWithStyle(
-        "void f(bool a)\n{\n    if (a) Go(); Other();\n}\n",
-        style),
-        "void f(bool a)\n{\n"
-        "    if (a) {\n"
-        "        Go();\n"
-        "    }\n"
-        "    Other();\n"
-        "}\n");
-}
-TEST(Formatter, EmptyFunctionBody_CollapsesWhitespaceOnlyBody)
-{
-    formatter::Style style;
-    style.BodiesLayout = formatter::CategoryLayout::Canonical;
-    style.EmptyBodyShape = formatter::BodyShape::CompactIfFits;
-    style.EmptyBlockInteriorSpacing = formatter::GapPolicy::Space;
-    style.FunctionBracePlacement = formatter::BracePlacement::NextLine;
-    style.DeclarationHeadersLayout = formatter::CategoryLayout::Canonical;
-    const std::string input =
-        "void Empty()\n{\n}\n"
-        "void WithComment()\n{\n    // Keep this.\n}\n";
-    const std::string expected =
-        "void Empty()\n{ }\n"
-        "void WithComment()\n{\n    // Keep this.\n}\n";
-    EXPECT_EQ(FormatWithStyle(input, style), expected);
-    EXPECT_EQ(FormatWithStyle(expected, style), expected);
-    style.BodyShape = formatter::BodyShape::Expanded;
-    EXPECT_EQ(FormatWithStyle(
-        "void Annotated() { /* keep */ Act(); }\n",
-        style),
-        "void Annotated()\n{ /* keep */ Act();\n}\n");
-}
 TEST(Formatter, OperatorSpacing_PreservesUnknownCastOrBinaryOperator)
 {
     formatter::Style style;
@@ -2315,27 +1747,6 @@ TEST(Formatter, SpacingOptions_ProfileOverflowReportsWidthAndKeepsTokens)
     }
 }
 
-TEST(Formatter, BraceSpacing_ComposesWithParameterReflow)
-{
-    formatter::Style style;
-    style.ColumnLimit = 40;
-    style.ParametersPacking = formatter::ListPacking::Fill;
-    style.ParametersLayout = formatter::CategoryLayout::Canonical;
-    style.FunctionBraceSpacing = formatter::GapPolicy::Space;
-    // Explicit spacing applies independently of preserved header topology.
-    const std::string input =
-        "void Many(int alpha, int beta, int gamma, int delta){}\n";
-    const std::string expected =
-        "void Many(int alpha, int beta,\n"
-        "    int gamma, int delta) {}\n";
-    EXPECT_EQ(FormatWithStyle(input, style), expected);
-    EXPECT_EQ(FormatWithStyle(expected, style), expected);
-    style.FunctionBracePlacement = formatter::BracePlacement::Attached;
-    style.DeclarationHeadersLayout = formatter::CategoryLayout::Canonical;
-    const std::string detached =
-        "void Many(int alpha, int beta, int gamma, int delta)\n{}\n";
-    EXPECT_EQ(FormatWithStyle(detached, style), expected);
-}
 class NamingTest
     : public testing::TestWithParam<std::string>
 { };

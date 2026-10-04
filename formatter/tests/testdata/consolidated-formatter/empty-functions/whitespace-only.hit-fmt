@@ -1,0 +1,5 @@
+BodiesLayout = Canonical
+EmptyBodyShape = CompactIfFits
+EmptyBlockInteriorSpacing = Space
+FunctionBracePlacement = NextLine
+DeclarationHeadersLayout = Canonical

@@ -1,0 +1,4 @@
+StandaloneCommentBlankLinesBefore = 1
+StandaloneCommentBlankLinesAfter = 2
+NamespaceBlankLinesAfterOpen = 3
+NamespaceBlankLinesBeforeClose = 3

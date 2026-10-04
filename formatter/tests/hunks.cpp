@@ -1,6 +1,4 @@
 #include <formatter/hunks.hpp>
-#include <formatter/config.hpp>
-#include <tests/golden.hpp>
 #include <gtest/gtest.h>
 #include <algorithm>
 #include <filesystem>
@@ -680,43 +678,4 @@ TEST(HunkAdapter,
     const auto second = Changed(first.Result.Text, remapped, false, style);
     EXPECT_EQ(second.Result.Text, first.Result.Text);
 }
-#ifdef HIT_FMT_HUNK_CHECKS
-struct HunkGoldenCase
-{
-    std::string Name;
-    std::vector<formatter::Hunk> Hunks;
-    bool Spillover;
-    std::string Config = "style";
-};
-class FormatTest
-    : public testing::TestWithParam<HunkGoldenCase>
-{ };
-TEST_P(FormatTest, Golden)
-{
-    const auto& value = GetParam();
-    const test::golden::Fixture fixture{
-        std::filesystem::path(HUNK_TESTDATA_DIR) / "planned",
-        value.Name,
-    };
-    const auto source = fixture.InputNamed(".input.cpp");
-    HunkInput input(source);
-    auto tree = input.Tree();
-    const auto style = formatter::LoadConfigFile(
-        fixture.Directory / (value.Config + ".hit-fmt")).FormattingStyle;
-    fixture.Expect(formatter::FormatChanged(
-        tree,
-        style,
-        value.Hunks,
-        value.Spillover));
-}
-INSTANTIATE_TEST_SUITE_P(Formatter, FormatTest, testing::Values(
-    HunkGoldenCase{"strict-independent", {{3, 3}, {6, 6}}, false},
-    HunkGoldenCase{"nested", {{3, 3}}, true},
-    HunkGoldenCase{"atomic", {{2, 5}}, false, "structural"}),
-    [] (const auto& info) {
-        auto name = info.param.Name;
-        std::replace(name.begin(), name.end(), '-', '_');
-        return name;
-    });
-#endif
 } // namespace

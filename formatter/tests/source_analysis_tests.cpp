@@ -423,16 +423,6 @@ void ExpectSameTokens(
         EXPECT_EQ(original.TokenText(i), result.TokenText(i)) << changed;
     }
 }
-TEST(SourceAnalysis, AlphabeticOperatorsRequireWordSeparation)
-{
-    Input input("bool value = alpha and not beta;\n");
-    auto tree = Parse(input);
-    std::pmr::monotonic_buffer_resource memory;
-    auto analysis = Analyze(tree, memory);
-    for (auto name : {"and", "not", "beta"}) {
-        EXPECT_FALSE(analysis.CanReplaceGap(Before(tree, name), "")) << name;
-    }
-}
 TEST(SourceAnalysis, LineTokenTerminationAndEofKeepExactSpelling)
 {
     for (auto source : {"// note\nint x;\n", "// note\r\nint x;\r\n",
@@ -598,6 +588,9 @@ TEST(SourceAnalysis, AcceptedGapEditsKeepExactTokensIndividuallyAndTogether)
         }
     }
     ExpectSameTokens(tree, together);
+    for (auto name : {"and", "not", "done"}) {
+        EXPECT_FALSE(analysis.CanReplaceGap(Before(tree, name), "")) << name;
+    }
     EXPECT_FALSE(analysis.CanReplaceGap(Before(tree, "beta"), ""));
     EXPECT_FALSE(analysis.CanReplaceGap(Before(tree, "*"), ""));
     EXPECT_FALSE(analysis.CanReplaceGap(Before(tree, "+", 1), ""));

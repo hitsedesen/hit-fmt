@@ -54,3 +54,8 @@ c
 gap shrink opaque nested:
 aa b
 c
+opaque multiline bytes width=200:
+before
+  raw\r
+	bytes
+broken$

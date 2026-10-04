@@ -1,0 +1,5 @@
+ExpressionsLayout = Canonical
+ColumnLimit = 32
+BinaryOperatorSpacing = Space
+AssignmentOperatorSpacing = Space
+BinaryOperatorSide = Leading

@@ -57,7 +57,6 @@ add_executable(pipeline_checks
     ${public_pipeline_sources})
 target_link_libraries(pipeline_checks PRIVATE GTest::gtest_main lib-formatter)
 target_compile_definitions(pipeline_checks PRIVATE
-    HIT_FMT_PIPELINE_CHECKS=1
     PARSER_TESTDATA_DIR="${CMAKE_SOURCE_DIR}/parser/tests/testdata"
     FORMATTER_TESTDATA_DIR="${CMAKE_SOURCE_DIR}/formatter/tests/testdata/style"
     DOCUMENT_TESTDATA_DIR="${CMAKE_SOURCE_DIR}/document/tests/testdata/group-layout")
@@ -74,9 +73,6 @@ add_executable(hunk_checks
     ../formatter/tests/hunk_scope.cpp)
 target_sources(tests PRIVATE ../formatter/tests/hunk_scope.cpp)
 target_link_libraries(hunk_checks PRIVATE GTest::gtest_main lib-formatter)
-target_compile_definitions(hunk_checks PRIVATE
-    HIT_FMT_HUNK_CHECKS=1
-    HUNK_TESTDATA_DIR="${CMAKE_SOURCE_DIR}/formatter/tests/testdata/changed-hunks")
 
 add_executable(hunk_scope_checks ../formatter/tests/hunk_scope.cpp)
 target_link_libraries(hunk_scope_checks PRIVATE GTest::gtest_main lib-formatter)

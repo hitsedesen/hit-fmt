@@ -1,5 +1,80 @@
+delimiter alignment width=12:
+call(alpha,
+     beta)$
+delimiter alignment width=5:
+call(alpha,
+  beta)$
+anchor reuse requirements width=8:
 call(
   beta,
      xy,
   abc,
-  beta)
+  beta)$
+generated captured block width=9:
+outer{
+   c(
+       x;
+     abc;
+   z$
+borrowed captured block width=9:
+outer{
+   c(
+       x;
+     abc;
+   z
+    q$
+borrowed captured block width=8:
+outer{
+   c(
+     x;
+     abc;
+   z
+    q$
+generated saturated demand width=8:
+(
+  x
+  y
+z$
+generated saturated demand width=4294967294:
+(
+  x
+  y
+z$
+borrowed saturated demand width=8:
+(
+  x
+  y
+z$
+borrowed saturated demand width=4294967294:
+(
+  x
+  y
+z$
+generated unbreakable atom width=8:
+call(
+  very_long_atom)$
+generated unbreakable atom width=20:
+call(
+     very_long_atom)$
+borrowed unbreakable atom width=8:
+call(
+  very_long_atom)$
+borrowed unbreakable atom width=20:
+call(
+     very_long_atom)$
+generated block anchor width=80:
+a
+    bb
+     cc$
+generated zero demand width=5:
+call(
+  $
+generated zero demand width=6:
+call(
+     $
+borrowed zero demand width=5:
+call(
+  $
+borrowed zero demand width=6:
+call(
+     $

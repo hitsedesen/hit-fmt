@@ -1,0 +1,7 @@
+ColumnLimit = 40
+ParametersPacking = Fill
+FunctionBracePlacement = NextLine
+DeclarationHeadersLayout = Canonical
+ParametersLayout = Canonical
+IndentationKind = Tabs
+ParametersContinuationOffset = 8
