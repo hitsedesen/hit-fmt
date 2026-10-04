@@ -2118,7 +2118,7 @@ TEST(SyntaxLayout, CaseBraceAndLabelIndentAreIndependentOfFollowingBody)
     // A real body supplies its own level; unbraced siblings need one too.
     EXPECT_NE(output.find("\n      first();\n      second();"),
               std::string::npos) << output;
-    EXPECT_NE(output.find("default:\n      break;"),
+    EXPECT_NE(output.find("default:\n    break;"),
               std::string::npos) << output;
     for (const auto label : {formatter::BodyIndentation::Indent,
                             formatter::BodyIndentation::NoIndent})
@@ -2131,16 +2131,21 @@ TEST(SyntaxLayout, CaseBraceAndLabelIndentAreIndependentOfFollowingBody)
             "void f(){ switch(value){ case 0: case 1: first(); second(); "
             "break; case 2: { third(); } fourth(); break; default: } }\n",
             style).Text;
-        // Function and switch content each resolve width3; contents are9.
+        // Unbraced contents follow the label's base plus one body width.
         const std::string labelIndent = label == formatter::BodyIndentation::Indent
                                             ? "    " : "   ";
+        const std::string contentIndent = labelIndent + "   ";
         EXPECT_NE(contents.find("\n" + labelIndent + "case 0:"),
                   std::string::npos) << contents;
-        EXPECT_NE(contents.find("case 1:\n         first();\n         second();"
-                                "\n         break;"), std::string::npos) << contents;
-        EXPECT_NE(contents.find("case 2:\n      {\n         third();\n      }"
-                                "\n         fourth();\n         break;"),
+        EXPECT_NE(contents.find("case 1:\n" + contentIndent + "first();\n" +
+                                contentIndent + "second();\n" +
+                                contentIndent + "break;"),
                   std::string::npos) << contents;
+        EXPECT_NE(
+            contents.find("case 2:\n      {\n         third();\n      }\n" +
+                          contentIndent + "fourth();\n" +
+                          contentIndent + "break;"),
+            std::string::npos) << contents;
         EXPECT_EQ(Lower(contents, style).Text, contents);
     }
 
@@ -2150,11 +2155,11 @@ TEST(SyntaxLayout, CaseBraceAndLabelIndentAreIndependentOfFollowingBody)
     const auto nested = Lower(
         "void f(int value){ switch(value){ case 1: while(value){ "
         "case 2: third(); } break; } }\n", style).Text;
-    // Bases: switch content8, case content12, real while content16,
-    // direct unbraced contents20. The local NoIndent label is12, not a base.
-    EXPECT_NE(nested.find("case 1:\n            while (value) {\n"
-                         "            case 2:\n                    third();\n"
-                         "            }\n            break;"),
+    // NoIndent labels stay at their containing statement's base. Each
+    // following unbraced statement adds just one body level.
+    EXPECT_NE(nested.find("case 1:\n        while (value) {\n"
+                         "        case 2:\n            third();\n"
+                         "        }\n        break;"),
               std::string::npos) << nested;
     EXPECT_EQ(Lower(nested, style).Text, nested);
 
@@ -2792,8 +2797,8 @@ private:
         std::pmr::new_delete_resource()->deallocate(pointer, bytes, alignment);
     }
 
-    bool do_is_equal(const std::pmr::memory_resource& other) const noexcept
-    override
+    bool do_is_equal(
+        const std::pmr::memory_resource& other) const noexcept override
     {
         return this == &other;
     }

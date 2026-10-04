@@ -5,8 +5,8 @@ void Process()
     {
         Use(ready);
     }
-    if (
-        auto value = ReadNext(); value && PassesLongPredicate(value))
+    if (auto value = ReadNext();
+        value && PassesLongPredicate(value))
     {
         Use(value);
     }

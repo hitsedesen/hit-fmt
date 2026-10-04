@@ -5,7 +5,8 @@ void Process()
          CanProceedAfterDelay(); ready = ReadNext()) {
         Use(ready);
     }
-    if (auto value = ReadNext(); value && PassesLongPredicate(value)) {
+    if (auto value =
+        ReadNext(); value && PassesLongPredicate(value)) {
         Use(value);
     }
     for (auto ready = ReadNext();

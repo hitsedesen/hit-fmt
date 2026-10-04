@@ -1408,11 +1408,17 @@ public:
         const auto* name = declarator ? Child(*declarator) : nullptr;
         if (!init || init->Kind != NK::InitDeclarator || !declarator ||
             declarator->Kind != NK::Declarator || !name ||
-            name->Kind != NK::DeclaratorName || name->Tokens.Empty())
+            (name->Kind != NK::DeclaratorName &&
+                name->Kind != NK::OperatorFunctionName) || name->Tokens.Empty())
         {
-            // Pointer/nested/member-pointer/operator/attribute entries are
+            // Pointer/nested/member-pointer/attribute entries are
             // distinct boundaries. Their specific rules, including Preserve,
             // must not acquire a direct-name fallback.
+            return;
+        }
+        if (Tree_.Kind(list.Tokens.Begin) == TK::Operator_ScopeResolution) {
+            // A qualified conversion operator can follow specifiers containing
+            // its class name. This is not a return-type/name boundary.
             return;
         }
         // A qualified declarator starts before its terminal name child.
@@ -1497,8 +1503,9 @@ private:
         }
     }
 
-    bool SizeofPackOperand(const SourceRegion& node, const SourceRegion* parent)
-    const
+    bool SizeofPackOperand(
+        const SourceRegion& node,
+        const SourceRegion* parent) const
     {
         if (!parent || parent->Kind != NK::UnaryExpression ||
             Tree_.Kind(parent->Tokens.Begin) != TK::Keyword_sizeof)

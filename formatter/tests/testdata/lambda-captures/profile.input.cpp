@@ -16,6 +16,18 @@ void Make()
     }));
 }
 
+void BuildSelector()
+{
+    auto selector = BindSelector(
+        [
+        firstCount, secondCount, thirdCount
+        ] {
+            return firstCount + secondCount + thirdCount;
+        })
+    .WithShelf()
+        .WithPrice();
+}
+
 void Schedule()
 {
     auto handler = MakeHandler([

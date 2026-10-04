@@ -2,10 +2,15 @@ void choose() {
     auto value =
           LeftCondition() &&
                 RightCondition()
-                ? left +
-                      right
-                : otherLeft +
-                      otherRight;
+          ? left +
+                right
+          : otherLeft +
+                otherRight;
+
+    auto singleCondition =
+          condition
+          ? firstValue
+          : fallbackValue;
 
     auto inlineValue = condition ? left + right : up + down;
     auto firstLine = condition
@@ -16,10 +21,10 @@ void choose() {
 
     auto calls =
           condition
-                ? outer(inner(
-                      argument))
-                : other(
-                      otherArgument);
+          ? outer(inner(
+                argument))
+          : other(
+                otherArgument);
 
     auto arguments = select(
           condition
@@ -28,18 +33,18 @@ void choose() {
 
     auto nested =
           firstCondition
-                ? firstValue
-                : secondCondition
-                      ? left +
-                            right
-                      : fallback;
+          ? firstValue
+          : secondCondition
+                ? left +
+                      right
+                : fallback;
 
     auto body =
           condition
-                ? []() {
-                    work();
-                }
-                : []() {
-                    other();
-                };
+          ? []() {
+              work();
+          }
+          : []() {
+              other();
+          };
 }

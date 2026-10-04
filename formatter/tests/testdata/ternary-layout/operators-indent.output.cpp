@@ -7,6 +7,11 @@ void choose() {
                 : otherLeft +
                       otherRight;
 
+    auto singleCondition =
+          condition
+                ? firstValue
+                : fallbackValue;
+
     auto inlineValue = condition ? left + right : up + down;
     auto firstLine = condition
           ? left +

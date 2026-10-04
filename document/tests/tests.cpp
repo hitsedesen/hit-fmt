@@ -307,6 +307,47 @@ TEST(GroupLayout, PhysicalLineBasesGolden)
             }
         }
     }
+    for (const bool broken : {false, true}) {
+        const std::string source = "\n        opaque;";
+        Document document(source);
+        const auto outer = document.BeginGroup({.Indent = 4});
+        document.Text("prefix");
+        document.Gap({GapKind::Hard, 0});
+        const auto base = document.MarkAnchor({
+            .StructuralBase = true,
+            .FixedBase = 4,
+        });
+        const auto header = document.BeginGroup({.Mode = GroupMode::Fill,
+            .StructuralBase = true, .FixedBase = 4});
+        document.Text("lambda[");
+        const auto capture = document.BeginGroup({
+            .Indent = 4,
+            .ForceBreak = broken,
+            .StructuralBase = true,
+            .Continuation = true,
+        });
+        document.Gap({GapKind::Soft, 0});
+        document.Text("state]");
+        document.EndGroup(capture);
+        document.ConditionalGap(
+            header, {GapKind::Flat, 1}, {GapKind::Hard, 0}, base);
+        document.Text("{");
+        document.EndGroup(header);
+        const auto body = document.BeginGroup({.Indent = 4,
+            .StructuralBase = true, .FixedBase = 4});
+        document.SourceText(0, source.size(), NoIdentity, true);
+        document.Gap({GapKind::Hard, 0});
+        document.Text("safe;");
+        document.EndGroup(body);
+        document.Gap({GapKind::Hard, 0}, base);
+        document.Text("}");
+        document.EndGroup(outer);
+        ASSERT_TRUE(document.Seal());
+        AppendRender(actual, document, 80,
+            broken
+                ? "fixed body with broken captures"
+                : "fixed body with flat captures");
+    }
     test::golden::ExpectGolden(std::filesystem::path(DOCUMENT_TESTDATA_DIR) /
         "physical-line-base.expected", actual);
 }
@@ -2480,15 +2521,17 @@ private:
         return std::pmr::new_delete_resource()->allocate(bytes, alignment);
     }
 
-    void do_deallocate(void* pointer, std::size_t bytes, std::size_t alignment)
-    override
+    void do_deallocate(
+        void* pointer,
+        std::size_t bytes,
+        std::size_t alignment) override
     {
         Bytes -= bytes;
         std::pmr::new_delete_resource()->deallocate(pointer, bytes, alignment);
     }
 
-    bool do_is_equal(const std::pmr::memory_resource& other) const noexcept
-    override
+    bool do_is_equal(
+        const std::pmr::memory_resource& other) const noexcept override
     {
         return this == &other;
     }

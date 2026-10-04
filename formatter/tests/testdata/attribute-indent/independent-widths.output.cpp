@@ -7,7 +7,7 @@ void f() {
          Use();
       }
     default:
-         break;
+       break;
    }
     [[maybe_unused]] int value = 0;
     [[maybe_unused]][[deprecated]] int other = 1;

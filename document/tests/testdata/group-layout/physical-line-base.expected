@@ -62,3 +62,17 @@ wrap(\r
 			leaf;\r
 		    });
 ---
+fixed body with flat captures width=80:
+prefix
+    lambda[state] {
+        opaque;
+        safe;
+    }$
+fixed body with broken captures width=80:
+prefix
+    lambda[
+        state]
+    {
+        opaque;
+        safe;
+    }$

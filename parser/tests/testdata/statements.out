@@ -1331,6 +1331,215 @@
           (whitespace "\n\n    ")
         )
         "if"
+        (condition
+          "("
+          (declaration-statement
+            (declaration-specifiers "auto")
+            (init-declarator-list
+              (init-declarator
+                (declarator
+                  (declarator-name "item")
+                )
+                (initializer
+                  "="
+                  (call-expression
+                    (member-expression
+                      (identifier-expression "entries")
+                      "."
+                      (identifier-expression "find")
+                    )
+                    (argument-list
+                      "("
+                      (argument
+                        (literal-expression "\"key\"")
+                      )
+                      ")"
+                    )
+                  )
+                )
+              )
+            )
+          )
+          ";"
+          (binary-expression
+            (binary-expression
+              (binary-expression
+                (identifier-expression "item")
+                "!="
+                (call-expression
+                  (member-expression
+                    (identifier-expression "entries")
+                    "."
+                    (identifier-expression "end")
+                  )
+                  (argument-list "(" ")")
+                )
+              )
+              "&&"
+              (call-expression
+                (identifier-expression "IsReady")
+                (argument-list "(" ")")
+              )
+            )
+            "&&"
+            (call-expression
+              (identifier-expression "HasCapacity")
+              (argument-list "(" ")")
+            )
+          )
+          ")"
+        )
+        (compound-statement
+          "{"
+          (expression-statement
+            (call-expression
+              (identifier-expression "use")
+              (argument-list
+                "("
+                (argument
+                  (identifier-expression "item")
+                )
+                ")"
+              )
+            )
+            ";"
+          )
+          "}"
+        )
+      )
+      (if-statement
+        "if"
+        (condition
+          "("
+          (expression-statement
+            (call-expression
+              (identifier-expression "update")
+              (argument-list
+                "("
+                (argument
+                  (lambda-expression
+                    (lambda-capture-list "[" "]")
+                    (lambda-body
+                      "{"
+                      (expression-statement
+                        (call-expression
+                          (identifier-expression "touch")
+                          (argument-list "(" ")")
+                        )
+                        ";"
+                      )
+                      (return-statement
+                        "return"
+                        (literal-expression "1")
+                        ";"
+                      )
+                      "}"
+                    )
+                  )
+                )
+                ")"
+              )
+            )
+          )
+          ";"
+          (binary-expression
+            (identifier-expression "ready")
+            "&&"
+            (binary-expression
+              (identifier-expression "count")
+              ">"
+              (literal-expression "0")
+            )
+          )
+          ")"
+        )
+        (compound-statement
+          "{"
+          (expression-statement
+            (call-expression
+              (identifier-expression "use")
+              (argument-list
+                "("
+                (argument
+                  (identifier-expression "count")
+                )
+                ")"
+              )
+            )
+            ";"
+          )
+          "}"
+        )
+      )
+      (switch-statement
+        "switch"
+        (condition
+          "("
+          (declaration-statement
+            (declaration-specifiers "int")
+            (init-declarator-list
+              (init-declarator
+                (declarator
+                  (declarator-name "index")
+                )
+                (initializer
+                  "="
+                  (binary-expression
+                    (identifier-expression "count")
+                    "+"
+                    (literal-expression "1")
+                  )
+                )
+              )
+            )
+          )
+          ";"
+          (binary-expression
+            (identifier-expression "index")
+            "+"
+            (call-expression
+              (identifier-expression "ExtraCapacity")
+              (argument-list "(" ")")
+            )
+          )
+          ")"
+        )
+        (compound-statement
+          "{"
+          (case-label "case" "0" ":")
+          (break-statement "break" ";")
+          "}"
+        )
+      )
+      (if-statement
+        "if"
+        (condition
+          "("
+          (expression-statement)
+          ";"
+          (identifier-expression "ready")
+          ")"
+        )
+        (compound-statement
+          "{"
+          (expression-statement
+            (call-expression
+              (identifier-expression "use")
+              (argument-list
+                "("
+                (argument
+                  (identifier-expression "count")
+                )
+                ")"
+              )
+            )
+            ";"
+          )
+          "}"
+        )
+      )
+      (if-statement
+        "if"
         (condition "(" "ready" "&&" "count" ">" "0" ")")
         (compound-statement
           "{"

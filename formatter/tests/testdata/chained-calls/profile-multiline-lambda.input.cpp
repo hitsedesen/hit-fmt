@@ -97,6 +97,10 @@ void Run()
     receiver.First().Second()->Third();
     receiver->First()->Second().Third();
     receiver.First()->Second().Third()->Fourth();
+    return Factory()
+        .Open()
+        ->Close()
+        .Finish();
     receiver.First().Field.Second();
     receiver.First().Second()(argument);
     Receiver()

@@ -8,19 +8,19 @@ void render(bool Alpha, bool Beta, bool Gamma, bool Delta, bool Epsilon, bool Ze
       calculateValue();
     switch (0) {
     case 1:
-        work();
-        break;
+      work();
+      break;
     case 2: {
         if (!Alpha)
           fail();
         break;
       }
     case 3:
-        if (Beta)
-          return;
+      if (Beta)
+        return;
           [[fallthrough]];
     default:
-        break;
+      break;
     }
   }
 }

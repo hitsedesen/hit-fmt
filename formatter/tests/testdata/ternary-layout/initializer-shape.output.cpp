@@ -8,8 +8,8 @@ void read() {
         : fallbackValue;
     auto longCondition =
         leftCondition && middleCondition && rightCondition
-            ? firstValue
-            : secondValue;
+        ? firstValue
+        : secondValue;
     auto longBranch = flag
         ? process(firstArgument, secondArgument, thirdArgument)
         : fallbackValue;

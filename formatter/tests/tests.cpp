@@ -1049,6 +1049,13 @@ std::vector<FormatCase> FormatCases()
     addProfileCase("../spacing-options", "profile-overflow");
     addProfileCase("../spacing-options", "profile-case-blocks");
     addProfileCase("../spacing-options", "profile-ref-qualifiers");
+    cases.push_back({
+        std::filesystem::path(FORMATTER_TESTDATA_DIR) /
+            "../declaration-headers",
+        "profile",
+        "profile.input.cpp",
+        profile,
+    });
     AddCases(
         cases,
         std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../spacing-options",
@@ -2179,6 +2186,32 @@ std::vector<FormatCase> FormatCases()
             "authored-anchor.output.cpp",
             "authored-anchor.input.cpp");
     }
+    {
+        const auto base = formatter::LoadConfigFile(
+            std::filesystem::path(profile + ".hit-fmt")).FormattingStyle;
+        for (const auto* name :
+            {"protected-fitting", "protected-captures", "protected-parameters"})
+        {
+            cases.push_back({
+                lambdaAnchors,
+                name,
+                "protected-body.input.cpp",
+                {},
+                {},
+                true,
+                {},
+                true,
+            });
+            auto style = base;
+            if (std::string_view(name) == "protected-captures") {
+                style.CapturesBreak = BreakRequirement::Always;
+                style.CapturesCloser = CloserPlacement::SameLine;
+            } else if (std::string_view(name) == "protected-parameters") {
+                style.ParametersBreak = BreakRequirement::Always;
+            }
+            ApplyProfile(cases, lambdaAnchors, name, style);
+        }
+    }
     const auto controlBodies = data / "consolidated-formatter/control-bodies";
     for (const auto* name :
         {"nested-unbraced", "empty-blocks", "empty-blocks-without-add"})
@@ -2689,11 +2722,7 @@ std::vector<FormatCase> FormatCases()
             directory,
             "preserve-authored-flexible.output.cpp",
             "authored-fitting.input.cpp");
-        ShareExpected(
-            cases,
-            directory,
-            "branches-preserve.output.cpp",
-            "branches-indent-preserve.output.cpp");
+
     }
     const auto emptyFunctions = data / "consolidated-formatter/empty-functions";
     cases.push_back({

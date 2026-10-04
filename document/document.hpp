@@ -110,6 +110,9 @@ struct AnchorSpec
     // Capture physical leading indentation, even across preserved layout gaps.
     // Requires StructuralBase and excludes continuation sharing.
     bool LineBase = false;
+    // Immutable layout can constrain the structural base to a known column.
+    // Requires StructuralBase; excludes LineBase and continuation sharing.
+    std::uint32_t FixedBase = InvalidId;
 };
 
 struct GroupSpec
@@ -142,6 +145,9 @@ struct GroupSpec
     // Extra cost for staying flat inside a multiline direct parent (0..3).
     // A soft shape preference, without forcing breaks in fitting layouts.
     std::uint8_t FlatInBrokenParentPenalty = 0;
+    // Same fixed structural-base contract as AnchorSpec. Indent remains a
+    // relative offset from this base, not an absolute contents column.
+    std::uint32_t FixedBase = InvalidId;
 };
 
 enum class Error : std::uint8_t
@@ -302,8 +308,8 @@ public:
     Status Seal();
     Result Render(
         Policy policy = {},
-        std::pmr::memory_resource* resource = std::pmr::get_default_resource())
-    const;
+        std::pmr::memory_resource* resource =
+        std::pmr::get_default_resource()) const;
 
 private:
     enum class Kind : std::uint8_t
@@ -364,6 +370,7 @@ private:
         std::int32_t Indent = 0;
         std::int32_t Fallback = 0;
         std::uint32_t Minimum = 0;
+        std::uint32_t FixedBase = InvalidId;
         GroupMode Mode = GroupMode::Consistent;
         AnchorKind Alignment = AnchorKind::BlockRelative;
         bool ForceBreak : 1 = false;

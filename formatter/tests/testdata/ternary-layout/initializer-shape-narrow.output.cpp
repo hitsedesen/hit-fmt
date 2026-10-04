@@ -14,8 +14,8 @@ void read() {
         leftCondition &&
             middleCondition &&
             rightCondition
-            ? firstValue
-            : secondValue;
+        ? firstValue
+        : secondValue;
     auto longBranch = flag
         ? process(firstArgument,
             secondArgument,

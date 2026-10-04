@@ -385,6 +385,9 @@
 432 before=if field=None owner=compound-statement category=11 priority=1 fallback=1 protected=0 constraint=0
 433 before=( field=ControlBlockKeywordSpacing owner=if-statement category=5 priority=3 fallback=1 protected=0 constraint=0
 434 before=int field=ControlBlockConditionSpacing owner=if-statement category=5 priority=2 fallback=0 protected=0 constraint=0
+435 before=condition field=None owner=declaration-statement category=10 priority=1 fallback=1 protected=0 constraint=0
+436 before== field=AssignmentOperatorSpacing owner=declaration-statement category=10 priority=1 fallback=1 protected=0 constraint=0
+437 before=first field=AssignmentOperatorSpacing owner=declaration-statement category=10 priority=1 fallback=1 protected=0 constraint=0
 438 before=; field=None owner=if-statement category=5 priority=4 fallback=0 protected=0 constraint=0
 439 before=condition field=ConditionInitSemicolonSpacing owner=if-statement category=5 priority=4 fallback=1 protected=0 constraint=0
 440 before=) field=ControlBlockConditionSpacing owner=if-statement category=5 priority=2 fallback=0 protected=0 constraint=0
@@ -443,6 +446,7 @@
 495 before=; field=StatementSemicolonSpacing owner=expression-statement category=11 priority=2 fallback=0 protected=0 constraint=0
 496 before=// trailing field=TrailingCommentSpacing owner=compound-statement category=11 priority=3 fallback=1 protected=0 constraint=0
 497 before=} field=BlockInteriorSpacing owner=compound-statement category=11 priority=2 fallback=1 protected=0 constraint=2
+499 before=operator field=None owner=function-declaration category=10 priority=1 fallback=1 protected=0 constraint=0
 500 before=+ field=OperatorOverloadOperatorSpaceBefore owner=declarator category=10 priority=4 fallback=0 protected=0 constraint=0
 501 before=( field=OperatorOverloadOperatorSpaceAfter owner=declarator category=10 priority=4 fallback=0 protected=0 constraint=0
 502 before=int field=SpaceInsideFunctionParameters owner=function-declarator category=2 priority=2 fallback=0 protected=0 constraint=0
@@ -453,6 +457,7 @@
 509 before=struct field=None owner=translation-unit category=11 priority=1 fallback=1 protected=0 constraint=0
 511 before={ field=StructBraceSpacing owner=record-declaration category=10 priority=3 fallback=1 protected=0 constraint=0
 512 before=int field=RecordBodyInteriorSpacing owner=record-declaration category=11 priority=3 fallback=1 protected=0 constraint=0
+513 before=operator field=None owner=function-declaration category=10 priority=1 fallback=1 protected=0 constraint=0
 514 before=( field=OperatorOverloadOperatorSpaceBefore owner=declarator category=10 priority=4 fallback=0 protected=0 constraint=0
 516 before=( field=OperatorOverloadOperatorSpaceAfter owner=declarator category=10 priority=4 fallback=0 protected=0 constraint=0
 517 before=int field=SpaceInsideFunctionParameters owner=function-declarator category=2 priority=2 fallback=0 protected=0 constraint=0

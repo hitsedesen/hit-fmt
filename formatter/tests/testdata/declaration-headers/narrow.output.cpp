@@ -28,8 +28,8 @@ class Reader {
     public:
     [[nodiscard]] virtual const
     ResultWithSize&
-    ReadResultFromCurrentStorage() const
-    noexcept = 0;
+    ReadResultFromCurrentStorage()
+    const noexcept = 0;
     [[nodiscard]] static auto
     GetResultFromCurrentStorage()
     noexcept
@@ -60,8 +60,8 @@ detail::Cursor<Reader>::Read();
 template<class Signature> struct Signal;
 template<class Result, class... Items>
 struct Signal<Result(Items...)> {
-    Signal Route(ExecutorPtr executor)
-    const &;
+    Signal Route(
+        ExecutorPtr executor) const &;
 };
 template<class Result, class... Items>
 Signal<Result(Items...)>

@@ -139,8 +139,8 @@ YTsaurus profile nests `BeginMap`, `BeginList`, and `BeginAttributes` scopes
 and keeps `Item` beside its value or nested builder. A sticky pair may also
 start with a simple root receiver or factory name; `registrar:Parameter`
 keeps `registrar.Parameter(...)` together without flattening `.Default()`.
-Generic forced chains count suffix calls only in consecutive same-kind link
-runs. `AlwaysBreakChainRootNames` is a separate, empty-by-default convention
+Generic forced chains count suffix calls across mixed member and invocation
+links. `AlwaysBreakChainRootNames` is a separate, empty-by-default convention
 list: the YTsaurus profile lists logging/error builders so a single `.With`
 still starts a new line, without expanding ordinary single-call expressions.
 Multiline captures use `CapturesCloser = OwnLine`; this keeps the lambda's

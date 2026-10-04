@@ -15,3 +15,15 @@ auto trailing(const int& value) -> decltype((value));
 struct Callable { int operator()(const int& value); };
 alignas(16) int aligned;
 int plain(const int& value);
+
+template<class Store>
+    requires requires(Store store) {
+    store.Count();
+    { store.Read() } noexcept;
+    typename Store::value_type;
+    requires requires { typename Store::key_type; };
+    }
+struct CheckedStore {};
+
+template<class Store>
+concept Readable = requires(Store store) { store.Count(); store.Read(); };

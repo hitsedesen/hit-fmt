@@ -314,6 +314,12 @@ GroupId Document::BeginGroup(GroupSpec spec)
     if (spec.LineBase && (!spec.StructuralBase || spec.Continuation)) {
         Fail(Error::InvalidPolicy);
     }
+    node.Group.FixedBase = spec.FixedBase;
+    if (spec.FixedBase != InvalidId &&
+        (!spec.StructuralBase || spec.Continuation || spec.LineBase))
+    {
+        Fail(Error::InvalidPolicy);
+    }
     node.Group.ChildBreaks = spec.ChildBreaks;
     if (spec.BreakPenalty > 3 || spec.FlatInBrokenParentPenalty > 3) {
         Fail(Error::InvalidPolicy);
@@ -567,6 +573,13 @@ AnchorId Document::MarkAnchor(AnchorSpec spec)
     if (spec.LineBase && (!spec.StructuralBase || spec.Continuation)) {
         Fail(Error::InvalidPolicy);
     }
+    node.Group.FixedBase = spec.FixedBase;
+    if (spec.FixedBase != InvalidId &&
+        (!spec.StructuralBase || spec.Continuation || spec.LineBase ||
+            spec.Kind != AnchorKind::BlockRelative))
+    {
+        Fail(Error::InvalidPolicy);
+    }
     if (spec.Continuation && spec.Offset < 0) {
         Fail(Error::InvalidPolicy);
     }
@@ -674,8 +687,9 @@ Status Document::Seal()
     return State_;
 }
 
-Result Document::Render(Policy policy, std::pmr::memory_resource* resource)
-const
+Result Document::Render(
+    Policy policy,
+    std::pmr::memory_resource* resource) const
 {
     Result result(resource);
     if (!State_) {
@@ -966,6 +980,9 @@ const
         }
     };
     auto structuralBase = [&] (const Node& node) {
+        if (node.Group.FixedBase != InvalidId) {
+            return node.Group.FixedBase;
+        }
         if (node.Group.LineBase) {
             return lineIndent;
         }

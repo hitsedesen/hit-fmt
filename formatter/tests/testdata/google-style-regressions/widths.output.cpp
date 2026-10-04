@@ -3,6 +3,6 @@ void f() {
     case 1:
 [[fallthrough]];
     default:
-         break;
+       break;
    }
 }

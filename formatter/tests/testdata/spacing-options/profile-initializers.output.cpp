@@ -22,7 +22,7 @@ decltype(value) Current();
 
 template <typename T, int Steps>
     requires std::is_arithmetic_v<T>
-TRollingGauge<T, Steps>operator+(const TRollingGauge<T, Steps>& left, const TRollingGauge<T, Steps>& right)
+TRollingGauge<T, Steps> operator+(const TRollingGauge<T, Steps>& left, const TRollingGauge<T, Steps>& right)
 {
     return left;
 }

@@ -8,7 +8,7 @@ void read() {
         rightCondition ? firstValue : secondValue;
     auto longBranch =
         flag ? process(firstArgument, secondArgument, thirdArgument)
-            : fallbackValue;
+        : fallbackValue;
     auto call = transform(firstArgument, secondArgument, thirdArgument);
     target = flag ? firstValue : secondValue;
 }

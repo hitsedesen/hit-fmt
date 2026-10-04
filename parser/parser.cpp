@@ -43,8 +43,9 @@ TokenIndex detail::TokenPool::FindPreprocessingDirective(
     return end;
 }
 
-TokenIndex detail::TokenPool::FindComment(TokenIndex begin, TokenIndex end)
-const
+TokenIndex detail::TokenPool::FindComment(
+    TokenIndex begin,
+    TokenIndex end) const
 {
     ASSERT(begin <= end && end <= Storage_.Size())
     while (begin < end) {
@@ -1367,8 +1368,8 @@ private:
         return nullptr;
     }
 
-    [[nodiscard]] std::optional<NameKind> LookupName(std::string_view name)
-    const
+    [[nodiscard]] std::optional<NameKind> LookupName(
+        std::string_view name) const
     {
         if (auto* binding = LookupBinding(name)) {
             return binding->Kind;
@@ -1376,8 +1377,9 @@ private:
         return std::nullopt;
     }
 
-    [[nodiscard]] bool IsKnownQualifiedType(TokenIndex first, TokenIndex end)
-    const
+    [[nodiscard]] bool IsKnownQualifiedType(
+        TokenIndex first,
+        TokenIndex end) const
     {
         auto* binding = LookupBinding(Text(first));
         auto scope = NextSignificant(first + 1);
@@ -2679,8 +2681,9 @@ private:
         return node;
     }
 
-    [[nodiscard]] size_t FindDeclaredTypeName(size_t start, bool isEnum = false)
-    const
+    [[nodiscard]] size_t FindDeclaredTypeName(
+        size_t start,
+        bool isEnum = false) const
     {
         auto index = NextSignificant(start) + 1;
         if (isEnum &&
@@ -3154,8 +3157,9 @@ private:
             text == "__clrcall";
     }
 
-    [[nodiscard]] size_t FindExtensionAttributeEnd(size_t index, size_t end)
-    const
+    [[nodiscard]] size_t FindExtensionAttributeEnd(
+        size_t index,
+        size_t end) const
     {
         if (!IsExtensionAttribute(index)) {
             return index;
@@ -5677,8 +5681,8 @@ private:
             : bodyEnd;
     }
 
-    [[nodiscard]] TokenIndex SkipRecoveredRequiresExpression(TokenIndex start)
-    const
+    [[nodiscard]] TokenIndex SkipRecoveredRequiresExpression(
+        TokenIndex start) const
     {
         // Mismatched interiors can leave populated outer pairs. A valid map
         // is required so cached advancement cannot hide their diagnostics.
@@ -7094,6 +7098,55 @@ private:
         Append(header, *iteration);
     }
 
+    bool AddConditionInitSyntax(Node& header, size_t begin, size_t end)
+    {
+        size_t separator = end;
+        unsigned depth = 0;
+        for (auto i = begin; i < end; ++i) {
+            const auto kind = Kind(i);
+            if (IsOpenDelimiter(kind)) {
+                ++depth;
+            } else if (kind == TK::Operator_CloseParenthesis ||
+                kind == TK::Operator_CloseBracket ||
+                kind == TK::Operator_CloseBrace)
+            {
+                if (depth == 0) {
+                    return false;
+                }
+                --depth;
+            } else if (depth == 0 && kind == TK::Operator_Semicolon) {
+                if (separator != end) {
+                    return false;
+                }
+                separator = i;
+            }
+        }
+        if (separator == end || separator + 1 == end) {
+            return false;
+        }
+        const auto first = NextSignificant(begin);
+        const auto kind = first == separator
+            ? NodeKind::ExpressionStatement
+            : ClassifySimpleStatement(first);
+        if (kind != NodeKind::DeclarationStatement &&
+            kind != NodeKind::ExpressionStatement)
+        {
+            return false;
+        }
+        auto* initializer = MakeNode(kind, begin);
+        initializer->Tokens.End = separator;
+        if (kind == NodeKind::DeclarationStatement) {
+            AddDeclarationSyntax(*initializer, begin, separator);
+        } else {
+            AddExpressionRange(*initializer, begin, separator);
+        }
+        Append(header, *initializer);
+        // The semicolon stays a direct header token, with header-owned spacing
+        // and a separate list boundary before the condition expression.
+        AddExpressionRange(header, separator + 1, end);
+        return true;
+    }
+
     void ParseControlHeader(Node& parent, NodeKind kind)
     {
         ParseTriviaBeforeChild(parent);
@@ -7120,6 +7173,12 @@ private:
         header->Tokens.End = Cursor_;
         if (kind == NodeKind::ForHeader) {
             AddForHeaderSyntax(*header, begin + 1, Cursor_ - 1);
+            AddDirectiveChildrenInGap(*header, begin, Cursor_);
+        } else if (kind == NodeKind::Condition &&
+            (parent.Kind == NodeKind::IfStatement ||
+                parent.Kind == NodeKind::SwitchStatement) &&
+            AddConditionInitSyntax(*header, begin + 1, Cursor_ - 1))
+        {
             AddDirectiveChildrenInGap(*header, begin, Cursor_);
         } else if (kind == NodeKind::Condition && begin + 1 < Cursor_ - 1 &&
             ClassifySimpleStatement(begin + 1) == NodeKind::ExpressionStatement)
@@ -8505,8 +8564,9 @@ private:
         return left;
     }
 
-    [[nodiscard]] bool LooksLikeUnknownTypeDeclaration(size_t first, size_t end)
-    const
+    [[nodiscard]] bool LooksLikeUnknownTypeDeclaration(
+        size_t first,
+        size_t end) const
     {
         auto cursor = NextSignificant(first + 1);
         bool hasQualifiedType = false;

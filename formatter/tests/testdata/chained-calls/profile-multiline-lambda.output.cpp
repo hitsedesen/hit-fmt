@@ -94,12 +94,26 @@ void Finalize()
 
 void Run()
 {
-    state.DeferredCallbacks->front()();
-    state.DeferredCallbacks->front()(argument);
-    Receiver().Open()->Close();
-    Receiver()->Open().Close();
-    Receiver().Open()();
-    Receiver()->Open()();
+    state
+        .DeferredCallbacks
+        ->front()
+        ();
+    state
+        .DeferredCallbacks
+        ->front()
+        (argument);
+    Receiver()
+        .Open()
+        ->Close();
+    Receiver()
+        ->Open()
+        .Close();
+    Receiver()
+        .Open()
+        ();
+    Receiver()
+        ->Open()
+        ();
     receiver
         .Open()
         .Close();
@@ -120,7 +134,15 @@ void Run()
         ->First()
         ->Second()
         .Third();
-    receiver.First()->Second().Third()->Fourth();
+    receiver
+        .First()
+        ->Second()
+        .Third()
+        ->Fourth();
+    return Factory()
+        .Open()
+        ->Close()
+        .Finish();
     receiver
         .First()
         .Field
@@ -136,7 +158,10 @@ void Run()
     namespace_name /* Keep this qualifier comment. */ :: Factory()
         .First()
         .Second();
-    state.aVeryLongDescriptiveFieldNameWithCallbacks->front()(aVeryLongDescriptiveArgumentName);
+    state
+        .aVeryLongDescriptiveFieldNameWithCallbacks
+        ->front()
+        (aVeryLongDescriptiveArgumentName);
 }
 
 void Receive()
@@ -148,7 +173,8 @@ void Receive()
             prefix = std::move(prefix),
             channel = std::move(channel),
             requestId
-        ] (TErrorOr<std::vector<TSharedRef>>&& result) mutable {
+        ] (TErrorOr<std::vector<TSharedRef>>&& result) mutable
+        {
             if (!result.IsOK()) {
                 // A failed transfer has nothing to send.
                 return;

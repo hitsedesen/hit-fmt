@@ -18,8 +18,8 @@ class Reader {
     public:
     [[nodiscard]] virtual const ResultWithSize& ReadResultFromCurrentStorage()
     const noexcept = 0;
-    [[nodiscard]] static auto GetResultFromCurrentStorage() noexcept
-    -> std::optional<ResultWithSize>;
+    [[nodiscard]] static auto GetResultFromCurrentStorage()
+    noexcept -> std::optional<ResultWithSize>;
     Reader() noexcept;
     operator bool() const noexcept;
 };
@@ -43,8 +43,8 @@ struct Signal<Result(Items...)> {
     Signal Route(ExecutorPtr executor) const &;
 };
 template<class Result, class... Items>
-Signal<Result(Items...)> Signal<Result(Items...)>::Route(ExecutorPtr executor)
-const &
+Signal<Result(Items...)> Signal<Result(Items...)>::Route(
+    ExecutorPtr executor) const &
 {
     return {};
 }
