@@ -404,9 +404,8 @@ public:
         if (ChunkCount_ == 0) {
             return;
         }
-        Chunks_ = static_cast<Chunk**>(Memory_->allocate(
-            sizeof(Chunk*) * ChunkCount_,
-            alignof(Chunk*)));
+        Chunks_ = static_cast<Chunk**>(Memory_
+            ->allocate(sizeof(Chunk*) * ChunkCount_, alignof(Chunk*)));
         auto* chunk = First_;
         for (uint32_t i = 0; i < ChunkCount_; ++i) {
             Chunks_[i] = chunk;
@@ -504,15 +503,15 @@ public:
     [[nodiscard]] TriviaAttachments& operator[](uint32_t index)
     {
         assert(index < Storage_.Size());
-        return Storage_.ResolveChunk(
-            index / AttachmentsPerChunk)->Items[index % AttachmentsPerChunk];
+        return Storage_.ResolveChunk(index / AttachmentsPerChunk)
+            ->Items[index % AttachmentsPerChunk];
     }
 
     [[nodiscard]] const TriviaAttachments& operator[](uint32_t index) const
     {
         assert(index < Storage_.Size());
-        return Storage_.ResolveChunk(
-            index / AttachmentsPerChunk)->Items[index % AttachmentsPerChunk];
+        return Storage_.ResolveChunk(index / AttachmentsPerChunk)
+            ->Items[index % AttachmentsPerChunk];
     }
 
 private:
@@ -582,8 +581,8 @@ public:
     [[nodiscard]] const StoredToken& operator[](TokenIndex index) const
     {
         assert(index < Storage_.Size());
-        return Storage_.ChunkAt(
-            index / TokensPerChunk)->Tokens[index % TokensPerChunk];
+        return Storage_.ChunkAt(index / TokensPerChunk)
+            ->Tokens[index % TokensPerChunk];
     }
 
     [[nodiscard]] TokenIndex Size() const
@@ -594,29 +593,29 @@ public:
     [[nodiscard]] tokenizer::TokenKind Kind(TokenIndex index) const
     {
         assert(index < Storage_.Size());
-        return Storage_.ChunkAt(
-            index / TokensPerChunk)->Kinds[index % TokensPerChunk];
+        return Storage_.ChunkAt(index / TokensPerChunk)
+            ->Kinds[index % TokensPerChunk];
     }
 
     [[nodiscard]] PunctuationRole Role(TokenIndex index) const
     {
         assert(index < Storage_.Size());
-        return Storage_.ChunkAt(
-            index / TokensPerChunk)->Roles[index % TokensPerChunk];
+        return Storage_.ChunkAt(index / TokensPerChunk)
+            ->Roles[index % TokensPerChunk];
     }
 
     void SetRole(TokenIndex index, PunctuationRole role)
     {
         assert(index < Storage_.Size());
-        Storage_.ChunkAt(
-            index / TokensPerChunk)->Roles[index % TokensPerChunk] = role;
+        Storage_.ChunkAt(index / TokensPerChunk)
+            ->Roles[index % TokensPerChunk] = role;
     }
 
     [[nodiscard]] TokenIndex MatchingDelimiter(TokenIndex index) const
     {
         assert(index < Storage_.Size());
-        return Storage_.ChunkAt(
-            index / TokensPerChunk)->MatchingDelimiters[index % TokensPerChunk];
+        return Storage_.ChunkAt(index / TokensPerChunk)
+            ->MatchingDelimiters[index % TokensPerChunk];
     }
 
     void SetMatchingDelimiter(TokenIndex index, TokenIndex matching)

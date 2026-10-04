@@ -76,7 +76,7 @@ std::vector<TokenizationErrorKind> TokenizeErrors(std::string_view input)
         [&](TokenizationError error) {
             errors.push_back(error.Kind);
         });
-    for ( [[maybe_unused]] const auto& token : tokenizer) { }
+    for ([[maybe_unused]] const auto& token : tokenizer) { }
     return errors;
 }
 

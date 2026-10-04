@@ -918,6 +918,10 @@ std::vector<FormatCase> FormatCases()
         "composes-spacing",
         "composes-spacing.input.cpp",
     });
+    AddCases(
+        cases,
+        data / "attribute-parenthesis-interiors",
+        {"compact", "spaced", "preserve"});
     AddCases(cases, data / "qualified-record", {"canonical", "ytsaurus"});
     AddCases(cases, data / "unhinted-body-recovery", {"canonical"});
     AddCases(

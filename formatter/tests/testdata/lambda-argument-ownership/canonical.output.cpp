@@ -38,7 +38,7 @@ void declared(int value = make<int, int, []() -> int { return 1; }>());
 void declared(Foreign<int, []() -> int { return 1; }, int> value);
 void declared(bool value = 1 < 2, int other = [] { return 1; }());
 void declared(void (*callback)(int));
-void declared( [[maybe_unused]] int value);
+void declared([[maybe_unused]] int value);
 void declared([ /* attribute */ [maybe_unused]] int value);
 auto [left, right] = pair;
 int following;

@@ -2475,9 +2475,11 @@ private:
             document::GroupMode::Fill,
             int32_t(policy.Indent.ContinuationOffset),
             policy.Indent);
-        // Breaking a member/call spine disrupts a tightly coupled expression.
-        // Prefer operator/list boundaries even when a link saves one line.
-        Groups_[group].Spec.BreakPenalty = 2;
+        // Prefer operator/list boundaries over splitting multi-call chains
+        // or multi-member field paths. A single member or suffix call should
+        // not force its arguments to break instead of a member boundary.
+        Groups_[group].Spec.BreakPenalty =
+            links > 1 && packingCalls != 1 ? 2 : 0;
         // A chain owns continuation independently of pending expression
         // offsets, but retains enclosing list and realized-line indentation.
         Groups_[group].Spec.StructuralBase = true;

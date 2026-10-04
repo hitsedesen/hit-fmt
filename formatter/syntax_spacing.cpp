@@ -615,20 +615,32 @@ public:
                     Tree_.Kind(begin + 1) == TK::Operator_OpenBracket &&
                     Tree_.MatchingDelimiter(begin + 1) == end - 2)
                 {
-                    Mark(
-                        begin,
-                        F::AttributeSpaceBeforeSpecifier,
-                        state.Owner ? *state.Owner : node,
-                        state.Category,
-                        3,
-                        true);
-                    Mark(
-                        end,
-                        F::AttributeSpaceAfterSpecifier,
-                        state.Owner ? *state.Owner : node,
-                        state.Category,
-                        3,
-                        true);
+                    // An attribute at a confirmed parenthesis edge does not
+                    // own that gap; retain the enclosing interior policy.
+                    if (begin == 0 ||
+                        Tree_.Kind(begin - 1) != TK::Operator_OpenParenthesis ||
+                        Gaps_[begin].Priority == 0)
+                    {
+                        Mark(
+                            begin,
+                            F::AttributeSpaceBeforeSpecifier,
+                            state.Owner ? *state.Owner : node,
+                            state.Category,
+                            3,
+                            true);
+                    }
+                    if (end == Tree_.TokenCount() ||
+                        Tree_.Kind(end) != TK::Operator_CloseParenthesis ||
+                        Gaps_[end].Priority == 0)
+                    {
+                        Mark(
+                            end,
+                            F::AttributeSpaceAfterSpecifier,
+                            state.Owner ? *state.Owner : node,
+                            state.Category,
+                            3,
+                            true);
+                    }
                     Interior(
                         begin + 1,
                         end - 1,

@@ -938,6 +938,58 @@ TEST(SyntaxSpacing, HeaderCastNewAndAttributeBoundariesHaveDistinctOwners)
     }
 }
 
+TEST(SyntaxSpacing, ParenthesisInteriorsTakePrecedenceOverAttributeSpacing)
+{
+    struct Case
+    {
+        std::string_view Source;
+        F Field;
+        C Category;
+        bool Trailing = false;
+    };
+    for (const auto& test : {
+        Case{"void f(){for([[tag]] const auto& token : tokens){}}",
+            F::ControlBlockConditionSpacing, C::ControlHeaders},
+        Case{"void f(){for([[tag]] int i = 0; i < 2; ++i){}}",
+            F::ControlBlockConditionSpacing, C::ControlHeaders},
+        Case{"void f([[tag]] int value);",
+            F::SpaceInsideFunctionParameters, C::Parameters},
+        Case{"void f(int value [[tag]]);",
+            F::SpaceInsideFunctionParameters, C::Parameters, true},
+        Case{"auto f = []([[tag]] int value) {};",
+            F::SpaceInsideLambdaParameters, C::Parameters},
+    }) {
+        for (auto policy : {GapPolicy::Space, GapPolicy::NoSpace,
+            GapPolicy::GeneratedSpace, GapPolicy::GeneratedNoSpace,
+            GapPolicy::Preserve})
+        {
+            SCOPED_TRACE(test.Source);
+            GapPolicies policies;
+            policies.ControlBlockConditionSpacing = policy;
+            policies.SpaceInsideFunctionParameters = policy;
+            policies.SpaceInsideLambdaParameters = policy;
+            policies.AttributeSpaceBeforeSpecifier = GapPolicy::Space;
+            policies.AttributeSpaceAfterSpecifier = GapPolicy::Space;
+            policies.AttributeInteriorSpacing = GapPolicy::NoSpace;
+            Analysis analysis(test.Source, policies);
+            const auto boundary = test.Trailing
+                ? analysis.Before(")")
+                : analysis.Before("tag") - 2;
+            const auto& gap = analysis.Spacing.Gaps()[boundary];
+            EXPECT_EQ(gap.Field, test.Field);
+            EXPECT_EQ(gap.Category, test.Category);
+            EXPECT_EQ(gap.Policy, policy);
+            EXPECT_EQ(analysis.Spacing.Gaps()[analysis.Before("tag")].Field,
+                F::AttributeInteriorSpacing);
+            if (!test.Trailing) {
+                EXPECT_EQ(analysis.Spacing.Gaps()[
+                    analysis.Before("tag") + 3].Field,
+                    F::AttributeSpaceAfterSpecifier);
+            }
+        }
+    }
+}
+
 class CountingResource
     : public std::pmr::memory_resource
 {

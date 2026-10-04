@@ -96,9 +96,8 @@ void Write() {
       .Default();
   Builder()
       .BeginMap()
-        .Item(
-            "argument").Value(
-                Other().EndMap())
+        .Item("argument").Value(Other()
+            .EndMap())
       .EndMap();
     // hit-fmt off
     Builder().BeginMap().Item("protected").Value(value).EndMap();
