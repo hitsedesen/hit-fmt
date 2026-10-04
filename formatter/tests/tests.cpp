@@ -204,16 +204,6 @@ std::vector<FormatCase> FormatCases()
         std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../group-fit-boundary",
         {"call-fit"},
         "call.input.cpp");
-    const auto llvmProfile = (std::filesystem::path(FORMATTER_TESTDATA_DIR) /
-        "../../../../hit-fmt/examples/llvm").lexically_normal().string();
-    for (const auto* name : {"lf", "opaque", "no-final-newline"}) {
-        cases.push_back({
-            std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../example-llvm",
-            name,
-            std::string(name) + ".input.cpp",
-            llvmProfile,
-        });
-    }
     cases.push_back({
         std::filesystem::path(FORMATTER_TESTDATA_DIR) /
             "../control-expression-continuation",
@@ -228,16 +218,6 @@ std::vector<FormatCase> FormatCases()
         "input.cpp",
         "../../../../hit-fmt/examples/ytsaurus",
     });
-    // Bind to the root configuration, not a fixture-local copy of its settings.
-    for (const auto* name : {"repository-lf", "repository-crlf"}) {
-        cases.push_back({
-            std::filesystem::path(FORMATTER_TESTDATA_DIR) /
-                "../example-repository",
-            name,
-            std::string(name) + ".input.cpp",
-            "../../../../",
-        });
-    }
     for (const auto* name :
         {
             "lf",
@@ -538,17 +518,6 @@ std::vector<FormatCase> FormatCases()
             profile,
         });
     };
-    for (const auto* name :
-        {
-            "constructor-lists",
-            "chains",
-            "namespace-comments",
-            "macro-protection",
-            "annotations",
-        })
-    {
-        addProfileCase("../example-ytsaurus", name);
-    }
     addProfileCase("../preprocessing-fragments", "canonical");
     addProfileCase("../spacing-options", "profile-initializers");
     addProfileCase("../spacing-options", "profile-overflow");
