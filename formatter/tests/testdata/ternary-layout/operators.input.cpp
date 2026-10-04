@@ -14,6 +14,13 @@ void choose() {
         : otherLeft +
         otherRight;
 
+    auto calls =
+        condition
+        ? outer(inner(
+        argument))
+        : other(
+        otherArgument);
+
     auto arguments = select(
         condition
         ? first

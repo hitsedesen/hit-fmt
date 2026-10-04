@@ -662,7 +662,7 @@ SourceAnalysis BuildSourceAnalysis(
                 balanced
                     ? ProtectionReason::SensitiveMacro
                     : ProtectionReason::SensitiveMacro |
-                        ProtectionReason::Recovery);
+                    ProtectionReason::Recovery);
         }
         if (token.Kind != TK::Comment) {
             // Comments are preprocessing whitespace between a macro name and

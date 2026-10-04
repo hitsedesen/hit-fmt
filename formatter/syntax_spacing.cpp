@@ -735,7 +735,7 @@ public:
                     Tree_.Kind(begin) == TK::Keyword_volatile
                         ? F::FunctionQualifierSpacing
                         : Tree_.Kind(begin) == TK::Operator_Ampersand ||
-                            Tree_.Kind(begin) == TK::Operator_And
+                        Tree_.Kind(begin) == TK::Operator_And
                             ? F::FunctionRefQualifierSpacing
                             : F::FunctionSuffixSpecifierSpacing,
                     parent ? *parent : node,

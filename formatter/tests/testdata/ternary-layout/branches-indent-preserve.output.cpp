@@ -2,17 +2,17 @@ void choose() {
     value =
         condition
             ? trueFirst +
-                trueSecond
+            trueSecond
             : falseFirst +
-                falseSecond;
+            falseSecond;
 
     value =
         guard
             ? width * factor +
-                (IsDecimal(digit)
-                    ? Convert(digit) - zero
-                    : Normalize(digit) - base +
-                        bias)
+            (IsDecimal(digit)
+                ? Convert(digit) - zero
+                : Normalize(digit) - base +
+                bias)
             : fallback;
 
     auto nested = condition ?
@@ -30,7 +30,7 @@ void choose() {
     auto result = LeftCondition() &&
         RightCondition()
         ? left +
-            right
+        right
         : otherLeft +
-            otherRight;
+        otherRight;
 }

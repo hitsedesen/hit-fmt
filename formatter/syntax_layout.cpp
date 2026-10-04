@@ -88,6 +88,7 @@ struct Group
     // Delimiter placement may differ from the level shared by the condition.
     document::AnchorId ContinuationAnchor = document::InvalidId;
     bool IndentTernaryOperators = false;
+    bool ShareBranchContinuation = false;
     document::AnchorId Block = document::InvalidId;
     Index PrefixGap = None;
     bool AnchorAfterGap = false;
@@ -1128,10 +1129,9 @@ private:
         if (kind == NodeKind::ConditionalExpression) {
             Groups_[group].IndentTernaryOperators =
                 policy.TernaryIndentation == TernaryOperatorIndentation::Indent;
-            // Each arm has its own continuation scope, beginning after the
-            // delimiter's gap so the first operand stays on the branch line.
-            // Descendants opened inline share that prospective level; any
-            // wrapped branch content is indented from the branch's base.
+            // Arms share the delimiter's realized continuation, rather than
+            // adding another level. Capture after its gap so protected or
+            // trailing delimiters contribute their actual emitted indentation.
             const auto condition = Syntax_[id].FirstChild;
             for (auto branch =
                 condition == None ? None : Syntax_[condition].NextSibling;
@@ -1152,8 +1152,9 @@ private:
                         document::GroupMode::Fill,
                         int32_t(indentation.ContinuationOffset),
                         indentation);
-                Groups_[scope].Spec.StructuralBase = true;
+                Groups_[scope].Spec.ExpressionContinuation = true;
                 Groups_[scope].Spec.Continuation = true;
+                Groups_[scope].ShareBranchContinuation = true;
             }
         }
         const auto boundary =
@@ -1932,10 +1933,10 @@ private:
         const bool independentIndent =
             record
                 ? Policies_.Indentation.Members.Mode !=
-                    BodyIndentation::Preserve
+                BodyIndentation::Preserve
                 : namespaced &&
-                    Policies_.Indentation.Namespaces.Mode !=
-                    BodyIndentation::Preserve;
+                Policies_.Indentation.Namespaces.Mode !=
+                BodyIndentation::Preserve;
         const auto group =
             GroupAt(GapPosition(opening + 1), GapPosition(close + 1),
                     document::GroupMode::Consistent, offset,
@@ -3561,6 +3562,24 @@ private:
                                         ? Groups_[continuation]
                                             .ContinuationAnchor
                                         : document::InvalidId,
+                                });
+                }
+                if (group.ShareBranchContinuation) {
+                    // Reuse the prospective anchor while inline, or the actual
+                    // delimiter line's indentation once it has been emitted.
+                    // Keep the shared frame's realization state so a call on
+                    // this continued line can still indent its own arguments.
+                    group.Anchor =
+                        Document_
+                            .MarkAnchor(
+                                {
+                                    document::AnchorKind::BlockRelative,
+                                    0,
+                                    0,
+                                    0,
+                                    true,
+                                    true,
+                                    group.Anchor,
                                 });
                 }
                 group.ContinuationAnchor = group.Anchor;

@@ -3,16 +3,23 @@ void choose() {
           LeftCondition() &&
           RightCondition()
                 ? left +
-                      right
+                right
                 : otherLeft +
-                      otherRight;
+                otherRight;
 
     auto inlineValue = condition ? left + right : up + down;
     auto firstLine = condition
           ? left +
-                right
+          right
           : otherLeft +
-                otherRight;
+          otherRight;
+
+    auto calls =
+          condition
+                ? outer(inner(
+                      argument))
+                : other(
+                      otherArgument);
 
     auto arguments = select(
           condition
@@ -24,7 +31,7 @@ void choose() {
                 ? firstValue
                 : secondCondition
                       ? left +
-                            right
+                      right
                       : fallback;
 
     auto body =

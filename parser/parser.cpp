@@ -1021,9 +1021,9 @@ std::optional<SyntaxTree>SyntaxTree::RebindControlBraces(
             }
             return left.Closing
                 ? blocks[left.Block].Body->Tokens.Begin >
-                    blocks[right.Block].Body->Tokens.Begin
+                blocks[right.Block].Body->Tokens.Begin
                 : blocks[left.Block].Body->Tokens.End >
-                    blocks[right.Block].Body->Tokens.End;
+                blocks[right.Block].Body->Tokens.End;
         });
     // Node beginnings exclude injected opening braces; node endings include
     // closing braces belonging to the surrounding control statement.
@@ -6423,7 +6423,7 @@ private:
                     invalidFunctionSuffix
                         ? NodeKind::UnparsedSyntax
                         : sawTopLevelParameters &&
-                            !sawAssignmentBeforeParameters
+                        !sawAssignmentBeforeParameters
                             ? NodeKind::FunctionDeclaration
                             : NodeKind::Declaration;
                 auto* node = MakeNode(nodeKind, start);

@@ -7,11 +7,10 @@ void choose() {
     value =
         guard ?
             width * factor +
-                (IsDecimal(digit) ?
-                    Convert(digit) -
-                        zero :
-                    Normalize(digit) -
-                        base + bias) :
+            (IsDecimal(digit) ?
+                Convert(digit) - zero :
+                Normalize(digit) -
+                base + bias) :
             fallback;
 
     auto nested =

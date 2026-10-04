@@ -142,8 +142,9 @@ Continuation indentation is line-based, not syntax-depth-based. Scopes
 opened on the same line share one prospective continuation offset. Once a
 callee or another list owner starts on a continued line, its contents
 establish a new level; expressions still share the surrounding continuation.
-Ternary branches establish their own continuation scopes, so wrapped
-branch expressions indent relative to the branch line.
+Wrapped ternary branch expressions share the delimiter line's
+continuation instead of adding another level. Calls within a branch
+still establish a new level when their owner starts on a continued line.
 `TernaryOperatorIndentation = Align` (the default) shares the surrounding
 continuation for `?` and `:`. `Indent` adds one continuation offset when
 the condition starts on an already-continued line; it does not alter

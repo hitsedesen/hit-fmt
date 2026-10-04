@@ -2020,18 +2020,18 @@ TEST(SyntaxLayout, ContinuationScopesReindentOnlySelectedHorizontalBytes)
             const auto ternaryInput = "void f() {" + newline +
                 "    auto result =" + newline +
                 "        condition" + newline + "        ? left +" + newline +
-                "        right" + newline + "        : otherLeft +" + newline +
+                "                right" + newline + "        : otherLeft +" + newline +
                 "        otherRight;" + newline + "}" + newline;
             const auto branchBegin = parser::SourceOffset(
-                ternaryInput.find("        right"));
+                ternaryInput.find("                right"));
             const std::array branchScope{
-                parser::SourceRange{branchBegin, branchBegin + 8}};
+                parser::SourceRange{branchBegin, branchBegin + 16}};
             protection.EditScope = branchScope;
             const auto branchOutput = Lower(ternaryInput, style, options, protection);
             const auto branchIndent = indentation == formatter::IndentationKind::Tabs
-                ? std::string(3, '\t') : std::string(12, ' ');
+                ? std::string(2, '\t') : std::string(8, ' ');
             auto branchExpected = ternaryInput;
-            branchExpected.replace(branchBegin, 8, branchIndent);
+            branchExpected.replace(branchBegin, 16, branchIndent);
             EXPECT_EQ(branchOutput.Text, branchExpected);
             const std::array repeatedBranchScope{parser::SourceRange{
                 branchBegin, branchBegin + parser::SourceOffset(branchIndent.size())}};
@@ -2041,7 +2041,7 @@ TEST(SyntaxLayout, ContinuationScopesReindentOnlySelectedHorizontalBytes)
             for (const auto& map : branchOutput.Map) {
                 if (!map.Exact) {
                     EXPECT_GE(map.Source.Begin, branchBegin);
-                    EXPECT_LE(map.Source.End, branchBegin + 8);
+                    EXPECT_LE(map.Source.End, branchBegin + 16);
                 }
             }
             style.TernaryOperatorIndentation =
@@ -2057,30 +2057,30 @@ TEST(SyntaxLayout, ContinuationScopesReindentOnlySelectedHorizontalBytes)
                 ternaryInput.find("        : otherLeft"));
             const std::array operatorScope{
                 parser::SourceRange{questionBegin, questionBegin + 8},
-                parser::SourceRange{branchBegin, branchBegin + 8},
+                parser::SourceRange{branchBegin, branchBegin + 16},
                 parser::SourceRange{colonBegin, colonBegin + 8}};
             protection.EditScope = operatorScope;
             const auto indentedOutput = Lower(ternaryInput, style, options, protection);
             const auto armIndent = indentation == formatter::IndentationKind::Tabs
-                ? std::string(4, '\t') : std::string(16, ' ');
+                ? std::string(3, '\t') : std::string(12, ' ');
             auto indentedExpected = ternaryInput;
-            indentedExpected.replace(colonBegin, 8, branchIndent);
-            indentedExpected.replace(branchBegin, 8, armIndent);
-            indentedExpected.replace(questionBegin, 8, branchIndent);
+            indentedExpected.replace(colonBegin, 8, armIndent);
+            indentedExpected.replace(branchBegin, 16, armIndent);
+            indentedExpected.replace(questionBegin, 8, armIndent);
             EXPECT_EQ(indentedOutput.Text, indentedExpected);
             const auto repeatedQuestion = parser::SourceOffset(
-                indentedExpected.find(branchIndent + "? left"));
+                indentedExpected.find(armIndent + "? left"));
             const auto repeatedArm = parser::SourceOffset(
                 indentedExpected.find(armIndent + "right"));
             const auto repeatedColon = parser::SourceOffset(
-                indentedExpected.find(branchIndent + ": otherLeft"));
+                indentedExpected.find(armIndent + ": otherLeft"));
             const std::array repeatedOperatorScope{
                 parser::SourceRange{repeatedQuestion,
-                    repeatedQuestion + parser::SourceOffset(branchIndent.size())},
+                    repeatedQuestion + parser::SourceOffset(armIndent.size())},
                 parser::SourceRange{repeatedArm,
                     repeatedArm + parser::SourceOffset(armIndent.size())},
                 parser::SourceRange{repeatedColon,
-                    repeatedColon + parser::SourceOffset(branchIndent.size())}};
+                    repeatedColon + parser::SourceOffset(armIndent.size())}};
             protection.EditScope = repeatedOperatorScope;
             EXPECT_EQ(Lower(indentedOutput.Text, style, options, protection).Text,
                 indentedOutput.Text);
