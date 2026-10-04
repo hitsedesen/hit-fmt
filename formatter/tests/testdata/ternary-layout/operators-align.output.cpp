@@ -23,8 +23,8 @@ void choose() {
 
     auto arguments = select(
           condition
-                ? first
-                : second);
+          ? first
+          : second);
 
     auto nested =
           firstCondition

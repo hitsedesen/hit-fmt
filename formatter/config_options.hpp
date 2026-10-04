@@ -76,6 +76,8 @@
         formatter::GapPolicy::Preserve) \
     OPT(formatter::GapPolicy, FunctionRefQualifierSpacing, \
         formatter::GapPolicy::Preserve) \
+    OPT(std::optional<formatter::GapPolicy>, FunctionCvRefQualifierSpacing, \
+        std::nullopt) \
     OPT(formatter::GapPolicy, NestedDeclaratorInteriorSpacing, \
         formatter::GapPolicy::Preserve) \
     OPT(formatter::GapPolicy, NestedDeclaratorPointerSpacing, \
@@ -287,6 +289,8 @@
     OPT(std::size_t, ContinuationOffset, 0)                                   \
     OPT(std::size_t, AlignmentFallbackOffset, 0)                              \
     FORMATTER_DELIMITED_LIST_CATEGORY_OPTIONS(OPT, Calls)                     \
+    OPT(std::optional<formatter::FirstItemPlacement>,                        \
+        CallsSoleArgumentFirstItem, std::nullopt)                            \
     FORMATTER_DELIMITED_LIST_CATEGORY_OPTIONS(OPT, Parameters)                \
     FORMATTER_DELIMITED_LIST_CATEGORY_OPTIONS(OPT, Initializers)              \
     FORMATTER_DELIMITED_LIST_CATEGORY_OPTIONS(OPT, Captures)                   \
@@ -402,7 +406,10 @@
     OPT(std::optional<std::size_t>, MaxEmptyLines, std::nullopt)              \
     OPT(std::vector<std::string>, CallLineFirstStringNames, {})               \
     OPT(std::vector<std::string>, ChainedCallRootNames, {})                   \
+    OPT(std::vector<std::string>, AlwaysBreakChainRootNames, {})              \
     OPT(std::vector<std::string>, IndentedCallScopePairs, {})                 \
+    OPT(std::vector<std::string>, IndentedChainScopePairs, {})                \
+    OPT(std::vector<std::string>, StickyChainCallPairs, {})                    \
     OPT(std::vector<std::string>, CallLikeMacroNames, {})                     \
     OPT(std::vector<std::string>, WhitespaceSensitiveMacros, {})              \
     OPT(formatter::IncludeOrder, IncludeOrder, \

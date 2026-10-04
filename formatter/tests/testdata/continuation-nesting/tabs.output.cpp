@@ -49,7 +49,7 @@ void inspect() {
     for (int index =
 	initial() +
 	    adjustment(); index <
-		bound(); ++index)
+	    bound(); ++index)
     {
 	bool remaining =
 	    first() ||

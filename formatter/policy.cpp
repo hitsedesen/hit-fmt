@@ -119,6 +119,13 @@ void ValidatePolicyStyle(const Style& style)
         #category "AlignmentFallbackOffset");
     FORMATTER_LIST_CATEGORIES(CHECK_LIST_OFFSETS)
 #undef CHECK_LIST_OFFSETS
+    if (style.CallsSoleArgumentFirstItem &&
+        *style.CallsSoleArgumentFirstItem != FirstItemPlacement::InlineIfFits &&
+        *style.CallsSoleArgumentFirstItem != FirstItemPlacement::NextLine)
+    {
+        throw std::invalid_argument(
+            "CallsSoleArgumentFirstItem has invalid value");
+    }
     CheckOffset(style.AccessModifierIndentWidth, "AccessModifierIndentWidth");
     CheckOffset(style.MemberIndentWidth, "MemberIndentWidth");
     CheckOffset(style.CaseLabelIndentWidth, "CaseLabelIndentWidth");
@@ -207,7 +214,7 @@ void ValidatePolicyStyle(const Style& style)
     {
         throw std::invalid_argument(
             "IncludeGrouping = Regroup requires one empty line, exceeding "
-                "MaxEmptyLines = 0");
+            "MaxEmptyLines = 0");
     }
     ValidateIncludeGroupPrefixes(style.IncludeGroupPrefixes);
     if (style.ExpressionsAlignment != ExpressionAlignment::Block &&
@@ -239,6 +246,13 @@ void ValidatePolicyStyle(const Style& style)
     {
         throw std::invalid_argument(
             "ConstructorBracePlacement has invalid value");
+    }
+    if (style.FunctionCvRefQualifierSpacing &&
+        static_cast<std::size_t>(*style.FunctionCvRefQualifierSpacing) >=
+            ConfigEnumNames<GapPolicy>::Values.size())
+    {
+        throw std::invalid_argument(
+            "FunctionCvRefQualifierSpacing has invalid value");
     }
     if (style.ShortNamespaceLines > 10000) {
         throw std::invalid_argument(
@@ -287,7 +301,9 @@ CompiledPolicies CompilePolicies(const Style& style)
 #undef COMPILE_LIST
     const auto bodiesLayout = ResolveLayout(style.BodiesLayout, style.Layout);
     GapPolicies spacing;
-#define COPY_GAP(type, name, initial) spacing.name = style.name;
+#define COPY_GAP(type, name, initial) \
+    spacing.name = ResolveGapPolicy( \
+        style.name, style.FunctionRefQualifierSpacing);
     FORMATTER_GAP_OPTIONS(COPY_GAP)
 #undef COPY_GAP
     return {
@@ -316,6 +332,8 @@ CompiledPolicies CompilePolicies(const Style& style)
             {style.IndentNamespaces, static_cast<std::uint8_t>(
                 ResolveOffset(style.NamespaceIndentWidth, style.IndentWidth))}},
         .Calls = Calls,
+        .CallsSoleArgumentFirstItem =
+            style.CallsSoleArgumentFirstItem.value_or(Calls.FirstItem),
         .Parameters = Parameters,
         .Initializers = Initializers,
         .Captures = Captures,

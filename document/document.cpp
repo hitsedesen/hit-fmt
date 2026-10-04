@@ -819,10 +819,18 @@ const
         }
         return frame.Indent - frame.PendingExpressionIndent;
     };
+    auto sharesRealizedContinuation = [&] (const Node& node) {
+        return !node.StructuralBase && frame.StructuralBase &&
+            frame.RealizedContinuationLine;
+    };
     auto sharesContinuation = [&] (const Node& node) {
+        // A structural consumer already indented its contents. Contributors
+        // reuse that realized level; another contributor starting on a later
+        // line still creates a level, preserving expression precedence.
         return node.Continuation && frame.HasContinuation &&
-            lines == frame.ContinuationStartLine &&
-            !(node.StructuralBase && frame.RealizedContinuationLine);
+            ((lines == frame.ContinuationStartLine &&
+                !(node.StructuralBase && frame.RealizedContinuationLine)) ||
+                sharesRealizedContinuation(node));
     };
     auto advance = [&] (std::string_view text) {
         for (char c : text) {
@@ -966,7 +974,7 @@ const
             }
             auto indent = node.Indent;
             const bool shared = sharesContinuation(node);
-            const bool newLineBase = node.Continuation &&
+            const bool newLineBase = node.Continuation && !shared &&
                 frame.HasContinuation && lines != frame.ContinuationStartLine;
             if (newLineBase) {
                 // A new starter uses this physical line, not an unrealized
@@ -975,14 +983,19 @@ const
                 pending = 0;
             }
             if (shared) {
-                base = frame.ContinuationBase;
-                if (frame.Indent < base ||
-                    frame.Indent - base > uint32_t(INT32_MAX))
+                const bool realized = sharesRealizedContinuation(node);
+                const auto continuationIndent =
+                    realized ? frame.RealizedContinuationIndent : frame.Indent;
+                base = realized
+                    ? std::min(frame.ContinuationBase, continuationIndent)
+                    : frame.ContinuationBase;
+                if (continuationIndent < base ||
+                    continuationIndent - base > uint32_t(INT32_MAX))
                 {
                     indentationError(i);
                     return false;
                 }
-                indent = int32_t(frame.Indent - base);
+                indent = int32_t(continuationIndent - base);
             }
             const auto logical = std::int64_t(base) + indent;
             if (node.ExpressionContinuation) {
@@ -1087,25 +1100,32 @@ const
             }
             auto offset = node.Indent;
             auto sharedOffset = InvalidId;
-            if (node.Continuation && frame.HasContinuation &&
+            if (node.Continuation && !shared && frame.HasContinuation &&
                 lines != frame.ContinuationStartLine)
             {
                 base = lineIndent;
             }
             if (shared) {
-                base = frame.ContinuationBase;
-                if (frame.Indent < base ||
-                    frame.Indent - base > uint32_t(INT32_MAX))
+                const bool realized = sharesRealizedContinuation(node);
+                const auto continuationIndent =
+                    realized ? frame.RealizedContinuationIndent : frame.Indent;
+                base = realized
+                    ? std::min(frame.ContinuationBase, continuationIndent)
+                    : frame.ContinuationBase;
+                if (continuationIndent < base ||
+                    continuationIndent - base > uint32_t(INT32_MAX))
                 {
                     indentationError(i);
                     return false;
                 }
-                sharedOffset = frame.Indent - base;
+                sharedOffset = continuationIndent - base;
                 if (offset != 0) {
                     offset = int32_t(sharedOffset);
                 }
             }
-            if (shared && node.Reference != InvalidId) {
+            if (shared && !sharesRealizedContinuation(node) &&
+                node.Reference != InvalidId)
+            {
                 anchors[node.Anchor] = anchors[node.Reference];
                 return true;
             }

@@ -177,9 +177,24 @@ struct TrailingCommentSpaceSetting
         const TrailingCommentSpaceSetting&) = default;
 };
 
+[[nodiscard]] constexpr GapPolicy ResolveGapPolicy(GapPolicy policy, GapPolicy)
+noexcept
+{
+    return policy;
+}
+
+[[nodiscard]] constexpr GapPolicy ResolveGapPolicy(
+    std::optional<GapPolicy> policy,
+    GapPolicy fallback) noexcept
+{
+    return policy.value_or(fallback);
+}
+
 struct GapPolicies
 {
-    #define FORMATTER_GAP_FIELD(type, name, initial) type name = initial;
+    // Raw-style optional overrides are resolved before syntax lowering.
+    #define FORMATTER_GAP_FIELD(type, name, initial) \
+        GapPolicy name = ResolveGapPolicy(type(initial), GapPolicy::Preserve);
     FORMATTER_GAP_OPTIONS(FORMATTER_GAP_FIELD)
 #undef FORMATTER_GAP_FIELD
 };
@@ -199,6 +214,9 @@ struct CompiledPolicies
         PointerReferenceDeclaratorLocation;
     const IndentationControls Indentation;
     const ListPolicy Calls;
+    // Resolved from Calls.FirstItem unless explicitly overridden. Applies to
+    // exactly one parsed argument, independently of its expression kind.
+    const FirstItemPlacement CallsSoleArgumentFirstItem;
     const ListPolicy Parameters;
     const ListPolicy Initializers;
     const ListPolicy Captures;

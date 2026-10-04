@@ -46,6 +46,12 @@ CallsFirstItem = NextLine
 CallsCloser = OwnLine
 CallsAlignment = Block
 )"},
+    {"Keep a sole argument's opening inline when it fits:",
+        R"(CallsFirstItem = NextLine
+CallsSoleArgumentFirstItem = InlineIfFits
+# Use Inherit to follow CallsFirstItem (or its shared default).
+# Multiple arguments retain CallsFirstItem; Always still requires an owned break.
+)"},
 };
 constexpr HelpExample ExpressionExamples[] = {
     {"Syntax-based expressions and all safely "
@@ -111,16 +117,21 @@ CommaSpaceBefore = NoSpace
 CommaSpaceAfter = Space
 EmptyBlockInteriorSpacing = GeneratedNoSpace
 ScopeResolutionSpacing = Preserve
+FunctionRefQualifierSpacing = Space
+FunctionCvRefQualifierSpacing = NoSpace
+# CV/ref spacing defaults to Inherit; Preserve uses usual preservation rules.
 # Generated* applies to properties rebuilt by their canonical owner.
 # Existing adjacencies qualify; unrelated nested edits do not rebuild an owner.
 )"},
 };
 constexpr HelpExample AnnotationExamples[] = {
-    {"Exactly three explicit library layout "
-        "annotations:",
+    {"Explicit library layout annotations:",
         R"CONFIG(CallLineFirstStringNames = ["WRITE_MESSAGE"]
 ChainedCallRootNames = ["factory", "pipeline::Builder"]
+AlwaysBreakChainRootNames = ["WRITE_EVENT", "logging::Event"]
 IndentedCallScopePairs = ["OpenItems:CloseItems"]
+IndentedChainScopePairs = ["BeginMap:EndMap", "BeginList:EndList"]
+StickyChainCallPairs = ["Item:Value", "Item:BeginMap", "registrar:Parameter"]
 # Every call uses global ColumnLimit; there are no named-width overrides.
 # Lowering selects generic policies; the renderer never matches identifiers.
 )CONFIG"},
@@ -182,6 +193,13 @@ constexpr HelpSection HelpSections[] = {
         "Closer is available only for delimiter-bearing categories, not "
         "BaseLists/ConstructorLists. Optional values default to Inherit. "
         "First/Closer apply only when broken. "
+        "CallsSoleArgumentFirstItem overrides first-item placement for exactly "
+        "one parsed argument, irrespective of expression kind; Inherit follows "
+        "CallsFirstItem. Empty and multiple-argument calls are unaffected. "
+        "InlineIfFits respects width, required breaks and preservation. "
+        "Lambda bodies indent from their opening line's leading indentation, "
+        "with the closing brace returning to that base; following arguments "
+        "use the call's continuation alignment independently. "
         "Fill packs items; VerticalWhenBroken splits at item boundaries. "
         "Delimiter alignment uses the column after "
             "the opener; Block uses the block "
@@ -208,9 +226,12 @@ constexpr HelpSection HelpSections[] = {
         "Wrapped branch expressions share the delimiter line's continuation; "
         "calls in a branch still establish their own argument indentation. "
         "ExpressionsBreak and ChainsBreak default independently to IfNeeded. "
-        "ChainsBreak = Always forces spines with multiple suffix calls; "
-        "receiver construction and argument calls do not count. Field paths "
-        "and single-call chains still break only when needed. "
+        "ChainsBreak = Always requires multiple suffix calls in a consecutive "
+        "same-kind link run (. / -> / repeated invocation); switching kind "
+        "resets the count. Receiver construction and argument calls do not "
+        "count. Field paths and ordinary single-call chains break only when "
+        "needed. AlwaysBreakChainRootNames can explicitly force conventional "
+        "roots with even one suffix call, independently of ChainsBreak. "
         "ExpressionsPacking uses Fill or "
             "VerticalWhenBroken on precedence-aware "
             "owned "
@@ -304,7 +325,12 @@ constexpr HelpSection HelpSections[] = {
             "override spacing. Use --generate-config "
         "for the complete option list and defaults, "
             "including indentation, declarators "
-        "and keyword/delimiter spacing.\n", GapExamples},
+        "and keyword/delimiter spacing. FunctionCvRefQualifierSpacing controls "
+        "the gap between const/volatile and a function's &/&& ref qualifier, "
+        "not type references. It defaults to Inherit from "
+        "FunctionRefQualifierSpacing; explicit Preserve uses ordinary "
+        "gap-preservation rules rather than inheriting the generic policy.\n",
+        GapExamples},
     {"Library layout annotations",
         "CallLineFirstStringNames softly pins only a "
         "complete "
@@ -313,12 +339,23 @@ constexpr HelpSection HelpSections[] = {
             "is needed. Empty ChainedCallRootNames means "
             "AllSafe; "
         "nonempty means AnnotatedRoots, independently gated by ChainsLayout. "
+        "AlwaysBreakChainRootNames is an independent exact-name convention list, "
+        "not a message-pin side effect or a replacement for root selection. "
+        "It obeys ChainsLayout, root selection and protection. "
         "IndentedCallScopePairs preserves an "
             "existing visual extra level only for "
         "matched pairs in the same statement "
             "sequence/receiver/wrapper context; "
         "uncertain, unmatched and PP-crossing "
-            "regions remain unchanged. Names/pairs "
+            "regions remain unchanged. IndentedChainScopePairs adds one "
+        "IndentWidth inside matched, properly nested suffix-call pairs. "
+        "StickyChainCallPairs keeps consecutive named suffix calls together "
+        "when they fit, independently of ChainsBreak/ChainsPacking. "
+        "Its first name may also match a simple root receiver or factory, "
+        "so registrar:Parameter keeps registrar.Parameter together. "
+        "Both use First:Second identifier pairs, default to empty, and obey "
+        "ChainsLayout and ChainedCallRootNames; scopes require distinct, "
+        "unambiguous endpoints, while sticky pairs may share names. Names/pairs "
         "are exact validated metadata, not "
             "heuristics or a matcher DSL. All calls "
         "use global ColumnLimit. Macro safety hints "

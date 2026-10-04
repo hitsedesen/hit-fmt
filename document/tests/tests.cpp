@@ -149,7 +149,7 @@ TEST(GroupLayout, SharedListsDistinguishProspectiveAndRealizedContinuations)
             ExpectText(document, 80, "\n    " + prefix + "wrap(\n" +
                 std::string(level, ' ') + "nested(\n" +
                 std::string(level + 4, ' ') + "left ||\n" +
-                std::string(level + 8, ' ') + "right)))");
+                std::string(level + 4, ' ') + "right)))");
         }
     }
 }

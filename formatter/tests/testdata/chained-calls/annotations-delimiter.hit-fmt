@@ -1,0 +1,10 @@
+Layout = Canonical
+IndentationKind = Spaces
+IndentWidth = 2
+ContinuationOffset = 4
+ColumnLimit = 80
+ChainsBreak = Always
+ChainsPacking = VerticalWhenBroken
+ChainsAlignment = Delimiter
+IndentedChainScopePairs = ["BeginMap:EndMap", "BeginList:EndList", "BeginAttributes:EndAttributes"]
+StickyChainCallPairs = ["Item:Value", "Item:BeginMap", "Item:BeginList", "Append:Append", "registrar:Parameter", "Maker:Parameter"]

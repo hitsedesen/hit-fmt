@@ -2,6 +2,7 @@
 # Not intended for yt/cpp, util or other library/cpp. See --help-config.
 # Fitting calls/parameters flatten; base/constructor lists and call chains break.
 # Field paths and single-call chains wrap only when they do not fit.
+# Only consecutive same-kind links (. / -> / invocation) count as a call chain.
 # Receiver construction does not count as a chained call.
 # Message pins and paired visual scopes remain explicit library annotations.
 # Chains use general AllSafe selection, including . / -> and repeated invocation.
@@ -19,7 +20,11 @@ TrailingWhitespace = Trim
 ListBreak = IfNeeded
 ListPacking = VerticalWhenBroken
 ListFirstItem = NextLine
+CallsFirstItem = NextLine
+CallsSoleArgumentFirstItem = InlineIfFits
 ListCloser = SameLine
+# Multiline captures close before the parameter/header line, not the last item.
+CapturesCloser = OwnLine
 ListAlignment = Block
 ContinuationOffset = 4
 AlignmentFallbackOffset = 4
@@ -93,6 +98,8 @@ EmptyFunctionParametersSpacing = NoSpace
 ReturnArrowSpaceBefore = Space
 ReturnArrowSpaceAfter = Space
 FunctionQualifierSpacing = Space
+FunctionRefQualifierSpacing = Space
+FunctionCvRefQualifierSpacing = Space
 NoexceptSpaceBeforeSpecifier = Space
 NoexceptSpaceBeforeParentheses = NoSpace
 DecltypeSpaceBeforeParentheses = NoSpace
@@ -173,6 +180,50 @@ CallLineFirstStringNames = [
 ]
 # Empty annotations select AllSafe, not disabled: the guide's chain rule is generic.
 ChainedCallRootNames = []
+# Logging/error builders conventionally break even with one suffix call.
+# This is independent of pinning their first message argument.
+AlwaysBreakChainRootNames = [
+    "THROW_ERROR_EXCEPTION",
+    "YT_LOG_TRACE",
+    "YT_LOG_DEBUG",
+    "YT_LOG_INFO",
+    "YT_LOG_WARNING",
+    "YT_LOG_ERROR",
+    "YT_LOG_ALERT",
+    "YT_LOG_FATAL",
+    "YT_LOG_ALERT_AND_THROW",
+    "YT_TLOG_TRACE",
+    "YT_TLOG_DEBUG",
+    "YT_TLOG_INFO",
+    "YT_TLOG_WARNING",
+    "YT_TLOG_ERROR",
+    "YT_TLOG_ALERT",
+    "YT_TLOG_FATAL",
+    "YT_TLOG_ALERT_AND_THROW",
+    "TError",
+    "BIND",
+    "BIND_NO_PROPAGATE",
+]
+# Fluent YSON scopes nest; an item selector stays beside its value builder.
+IndentedChainScopePairs = [
+    "BeginList:EndList",
+    "BeginMap:EndMap",
+    "BeginAttributes:EndAttributes",
+]
+StickyChainCallPairs = [
+    "Item:Value",
+    "Item:BeginList",
+    "Item:BeginMap",
+    "Item:BeginAttributes",
+    "Item:Do",
+    "Item:DoList",
+    "Item:DoMap",
+    "Item:DoListFor",
+    "Item:DoMapFor",
+    "Item:Entity",
+    "registrar:Parameter",
+    "registrar:ExternalClassParameter",
+]
 IndentedCallScopePairs = [
     "OnBeginList:OnEndList",
     "OnBeginMap:OnEndMap",

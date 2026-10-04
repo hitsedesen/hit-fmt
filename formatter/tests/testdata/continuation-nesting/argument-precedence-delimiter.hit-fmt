@@ -1,0 +1,9 @@
+Layout = Canonical
+ColumnLimit = 80
+IndentWidth = 4
+ContinuationOffset = 4
+CallsLayout = Preserve
+CallsAlignment = Delimiter
+ExpressionsBreak = Always
+ExpressionsPacking = VerticalWhenBroken
+BinaryOperatorSide = Trailing

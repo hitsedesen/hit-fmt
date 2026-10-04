@@ -18,6 +18,6 @@ void Report() {
     gamma);
   message(
     "an indivisible literal which exceeds the global width"
-      " tail",
+    " tail",
     extra);
 }

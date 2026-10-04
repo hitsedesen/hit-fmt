@@ -728,21 +728,37 @@ public:
                         true);
                 }
                 break;
-            case NK::FunctionQualifier:
+            case NK::FunctionQualifier: {
+                const auto token = Tree_.Kind(begin);
+                auto field = F::FunctionSuffixSpecifierSpacing;
+                if (token == TK::Keyword_const || token == TK::Keyword_volatile)
+                {
+                    field = F::FunctionQualifierSpacing;
+                } else if (token == TK::Operator_Ampersand ||
+                    token == TK::Operator_And)
+                {
+                    auto previous = begin;
+                    while (previous > 0 &&
+                        Tree_.Kind(previous - 1) == TK::Comment)
+                    {
+                        --previous;
+                    }
+                    const bool cv = previous > 0 &&
+                        (Tree_.Kind(previous - 1) == TK::Keyword_const ||
+                            Tree_.Kind(previous - 1) == TK::Keyword_volatile);
+                    field = cv
+                        ? F::FunctionCvRefQualifierSpacing
+                        : F::FunctionRefQualifierSpacing;
+                }
                 Mark(
                     begin,
-                    Tree_.Kind(begin) == TK::Keyword_const ||
-                        Tree_.Kind(begin) == TK::Keyword_volatile
-                        ? F::FunctionQualifierSpacing
-                        : Tree_.Kind(begin) == TK::Operator_Ampersand ||
-                            Tree_.Kind(begin) == TK::Operator_And
-                            ? F::FunctionRefQualifierSpacing
-                            : F::FunctionSuffixSpecifierSpacing,
+                    field,
                     parent ? *parent : node,
                     C::DeclarationHeaders,
                     3,
                     true);
                 break;
+            }
             case NK::ExceptionSpecification:
                 Mark(
                     begin,
@@ -1192,8 +1208,9 @@ public:
                     close + 1 < Tree_.TokenCount() &&
                     Tree_.Kind(close + 1) == TK::Comment &&
                     Tree_.TokenText(close + 1).starts_with("//") &&
-                    Tree_.WhitespaceBefore(close + 1)
-                        .find_first_not_of(" \t") == std::string_view::npos)
+                    Tree_.WhitespaceBefore(
+                        close +
+                        1).find_first_not_of(" \t") == std::string_view::npos)
                 {
                     Gaps_[close + 1].NamespaceClosingComment = true;
                 }
@@ -1855,21 +1872,20 @@ SyntaxSpacing BuildSyntaxSpacing(
     if (spacing.AmbiguousTemplateDeclarationSpacing != GapPolicy::Preserve) {
         throw std::invalid_argument(
             "AmbiguousTemplateDeclarationSpacing is unsupported: "
-                "ambiguous syntax is preserved");
+            "ambiguous syntax is preserved");
     }
     SyntaxSpacing result(fileMemory);
     result.TrailingCommentSpaces_ = trailingCommentSpaces;
     result.Gaps_.resize(safety.Gaps().size());
     Classifier classifier(tree, spacing, pointerBinding, result.Gaps_);
     std::pmr::vector<Frame> stack(&scratchMemory);
-    stack.push_back(
-        {
-            &tree.Root(),
-            nullptr,
-            tree.Root().Child(),
-            {},
-            tree.Root().Tokens.Begin,
-        });
+    stack.push_back({
+        &tree.Root(),
+        nullptr,
+        tree.Root().Child(),
+        {},
+        tree.Root().Tokens.Begin,
+    });
     RegionId nextRegion = 0;
     while (!stack.empty()) {
         auto& frame = stack.back();

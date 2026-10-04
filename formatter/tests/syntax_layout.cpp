@@ -25,7 +25,7 @@ Output Lower(
     const formatter::SourceAnalysisOptions& protection = {},
     std::pmr::memory_resource* fileUpstream = std::pmr::get_default_resource(),
     std::pmr::memory_resource* scratchUpstream =
-        std::pmr::get_default_resource())
+    std::pmr::get_default_resource())
 {
     const auto size = input.size();
     input.append(util::SourcePaddingSize, '\0');
@@ -1562,7 +1562,7 @@ TEST(SyntaxLayout, ExpressionContinuationDoesNotBecomeChildBlockBase)
     }
 }
 
-TEST(SyntaxLayout, ControlRootStartsNewExpressionLevelAfterHeaderBreak)
+TEST(SyntaxLayout, ExpressionsShareRealizedStructuralContinuation)
 {
     auto style = Canonical(80);
     style.IndentWidth = 4;
@@ -1592,7 +1592,7 @@ TEST(SyntaxLayout, ControlRootStartsNewExpressionLevelAfterHeaderBreak)
             const auto headerIndent = alignment ==
                     formatter::ContinuationAlignment::Block ? 7u : 8u;
             EXPECT_EQ(lineIndent("alpha"), headerIndent) << output;
-            EXPECT_EQ(lineIndent("beta"), headerIndent + 7) << output;
+            EXPECT_EQ(lineIndent("beta"), headerIndent) << output;
             EXPECT_EQ(lineIndent("right"), 15u) << output;
             EXPECT_EQ(Lower(output, style).Text, output);
         }

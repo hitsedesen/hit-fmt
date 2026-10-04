@@ -161,7 +161,7 @@ std::vector<FormatCase> FormatCases()
     AddCases(
         cases,
         std::filesystem::path(FORMATTER_TESTDATA_DIR) /
-            "../declaration-headers",
+        "../declaration-headers",
         {"wrap", "narrow", "wide"});
     AddCases(
         cases,
@@ -189,41 +189,36 @@ std::vector<FormatCase> FormatCases()
     const auto llvmProfile = (std::filesystem::path(FORMATTER_TESTDATA_DIR) /
         "../../../../hit-fmt/examples/llvm").lexically_normal().string();
     for (const auto* name : {"lf", "opaque", "no-final-newline"}) {
-        cases.push_back(
-            {
-                std::filesystem::path(FORMATTER_TESTDATA_DIR) /
-                    "../example-llvm",
-                name,
-                std::string(name) + ".input.cpp",
-                llvmProfile,
-            });
+        cases.push_back({
+            std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../example-llvm",
+            name,
+            std::string(name) + ".input.cpp",
+            llvmProfile,
+        });
     }
-    cases.push_back(
-        {
-            std::filesystem::path(FORMATTER_TESTDATA_DIR) /
-                "../control-expression-continuation",
-            "repository",
-            "input.cpp",
-            "../../../../",
-        });
-    cases.push_back(
-        {
-            std::filesystem::path(FORMATTER_TESTDATA_DIR) /
-                "../control-expression-continuation",
-            "ytsaurus",
-            "input.cpp",
-            "../../../../hit-fmt/examples/ytsaurus",
-        });
+    cases.push_back({
+        std::filesystem::path(FORMATTER_TESTDATA_DIR) /
+            "../control-expression-continuation",
+        "repository",
+        "input.cpp",
+        "../../../../",
+    });
+    cases.push_back({
+        std::filesystem::path(FORMATTER_TESTDATA_DIR) /
+            "../control-expression-continuation",
+        "ytsaurus",
+        "input.cpp",
+        "../../../../hit-fmt/examples/ytsaurus",
+    });
     // Bind to the root configuration, not a fixture-local copy of its settings.
     for (const auto* name : {"repository-lf", "repository-crlf"}) {
-        cases.push_back(
-            {
-                std::filesystem::path(FORMATTER_TESTDATA_DIR) /
-                    "../example-repository",
-                name,
-                std::string(name) + ".input.cpp",
-                "../../../../",
-            });
+        cases.push_back({
+            std::filesystem::path(FORMATTER_TESTDATA_DIR) /
+                "../example-repository",
+            name,
+            std::string(name) + ".input.cpp",
+            "../../../../",
+        });
     }
     for (const auto* name :
         {
@@ -241,13 +236,11 @@ std::vector<FormatCase> FormatCases()
             "composition-control-lf",
         })
     {
-        cases.push_back(
-            {
-                std::filesystem::path(FORMATTER_TESTDATA_DIR) /
-                    "../line-endings",
-                name,
-                std::string(name) + ".input.cpp",
-            });
+        cases.push_back({
+            std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../line-endings",
+            name,
+            std::string(name) + ".input.cpp",
+        });
     }
     AddCases(
         cases,
@@ -256,19 +249,18 @@ std::vector<FormatCase> FormatCases()
     AddCases(
         cases,
         std::filesystem::path(FORMATTER_TESTDATA_DIR) /
-            "../trailing-comment-count",
+        "../trailing-comment-count",
         {"preserve", "zero", "one", "two"});
-    cases.push_back(
-        {
-            std::filesystem::path(FORMATTER_TESTDATA_DIR) /
-                "../trailing-comment-count",
-            "independent",
-            "namespace.input.cpp",
-        });
+    cases.push_back({
+        std::filesystem::path(FORMATTER_TESTDATA_DIR) /
+            "../trailing-comment-count",
+        "independent",
+        "namespace.input.cpp",
+    });
     AddCases(
         cases,
         std::filesystem::path(FORMATTER_TESTDATA_DIR) /
-            "../standalone-comment-gaps",
+        "../standalone-comment-gaps",
         {"preserve", "before", "after", "zero", "canonical"});
     AddCases(
         cases,
@@ -278,13 +270,12 @@ std::vector<FormatCase> FormatCases()
         cases,
         std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../include-order",
         {"sort", "composed"});
-    cases.push_back(
-        {
-            std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../include-order",
-            "crlf",
-            "crlf.input.cpp",
-            "sort",
-        });
+    cases.push_back({
+        std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../include-order",
+        "crlf",
+        "crlf.input.cpp",
+        "sort",
+    });
     AddCases(
         cases,
         BRACE_SPACING_TESTDATA_DIR,
@@ -301,12 +292,11 @@ std::vector<FormatCase> FormatCases()
         cases,
         CONTROL_BRACE_TESTDATA_DIR,
         {"preserve", "same-line", "new-line", "attach-unless-multiline"});
-    cases.push_back(
-        {
-            CONTROL_BRACE_TESTDATA_DIR,
-            "reflow-preferred",
-            "reflow-preferred.input.cpp",
-        });
+    cases.push_back({
+        CONTROL_BRACE_TESTDATA_DIR,
+        "reflow-preferred",
+        "reflow-preferred.input.cpp",
+    });
     AddCases(
         cases,
         CONTROL_BRACE_TESTDATA_DIR,
@@ -343,18 +333,16 @@ std::vector<FormatCase> FormatCases()
         cases,
         CALL_INNER_SPACING_TESTDATA_DIR,
         {"preserve", "space", "no-space"});
-    cases.push_back(
-        {
-            CALL_INNER_SPACING_TESTDATA_DIR,
-            "reflow-preferred",
-            "reflow-preferred.input.cpp",
-        });
-    cases.push_back(
-        {
-            CALL_INNER_SPACING_TESTDATA_DIR,
-            "comma-preferred",
-            "comma-preferred.input.cpp",
-        });
+    cases.push_back({
+        CALL_INNER_SPACING_TESTDATA_DIR,
+        "reflow-preferred",
+        "reflow-preferred.input.cpp",
+    });
+    cases.push_back({
+        CALL_INNER_SPACING_TESTDATA_DIR,
+        "comma-preferred",
+        "comma-preferred.input.cpp",
+    });
     AddCases(
         cases,
         CALL_INNER_SPACING_TESTDATA_DIR,
@@ -372,12 +360,11 @@ std::vector<FormatCase> FormatCases()
         cases,
         BODY_INDENT_TESTDATA_DIR,
         {"preserve", "indent", "no-indent", "mixed"});
-    cases.push_back(
-        {
-            BODY_INDENT_TESTDATA_DIR,
-            "reindented-call",
-            "reindented-call.input.cpp",
-        });
+    cases.push_back({
+        BODY_INDENT_TESTDATA_DIR,
+        "reindented-call",
+        "reindented-call.input.cpp",
+    });
     const auto nullStatements =
         std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../null-statements";
     AddCases(cases, nullStatements, {"preserve", "remove"});
@@ -407,14 +394,32 @@ std::vector<FormatCase> FormatCases()
     AddCases(cases, chains, {"always", "continuation", "preserve"});
     cases.push_back({chains, "overflow", "overflow.input.cpp"});
     cases.push_back({chains, "child-fitting", "child-fitting.input.cpp"});
-    cases.push_back(
-        {
-            chains,
-            "comparison-fitting",
-            "comparison-fitting.input.cpp",
-            "child-fitting",
-        });
+    cases.push_back({
+        chains,
+        "comparison-fitting",
+        "comparison-fitting.input.cpp",
+        "child-fitting",
+    });
     cases.push_back({chains, "structural-base", "structural-base.input.cpp"});
+    AddCases(
+        cases,
+        chains,
+        {"conventional", "conventional-preserve", "conventional-selected"},
+        "conventional.input.cpp");
+    AddCases(
+        cases,
+        chains,
+        {
+            "scoped-sticky",
+            "scoped-only",
+            "sticky-only",
+            "annotations-preserve",
+            "annotations-filtered",
+            "annotations-narrow",
+            "annotations-fitting",
+            "annotations-delimiter",
+        },
+        "annotations.input.cpp");
     AddCases(
         cases,
         std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../separator-length",
@@ -422,7 +427,7 @@ std::vector<FormatCase> FormatCases()
     AddCases(
         cases,
         std::filesystem::path(FORMATTER_TESTDATA_DIR) /
-            "../standalone-block-indent",
+        "../standalone-block-indent",
         {"preserve", "indent"});
     const auto closings =
         std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../closing-delimiters";
@@ -466,22 +471,20 @@ std::vector<FormatCase> FormatCases()
             "generated-preserve",
         })
     {
-        cases.push_back(
-            {
-                recordHead,
-                std::string("comparisons-") + profile,
-                "comparisons.input.cpp",
-                profile,
-            });
+        cases.push_back({
+            recordHead,
+            std::string("comparisons-") + profile,
+            "comparisons.input.cpp",
+            profile,
+        });
     }
     for (const auto* profile : {"space", "generated-preserve"}) {
-        cases.push_back(
-            {
-                recordHead,
-                std::string("constructor-composition-") + profile,
-                "constructor-composition.input.cpp",
-                profile,
-            });
+        cases.push_back({
+            recordHead,
+            std::string("constructor-composition-") + profile,
+            "constructor-composition.input.cpp",
+            profile,
+        });
     }
     cases.push_back(
         {closings, "reflow-preferred", "reflow-preferred.input.cpp"});
@@ -509,13 +512,12 @@ std::vector<FormatCase> FormatCases()
     const auto profile = (std::filesystem::path(FORMATTER_TESTDATA_DIR) /
         "../../../../hit-fmt/examples/ytsaurus").lexically_normal().string();
     auto addProfileCase = [&] (const char* directory, const char* name) {
-        cases.push_back(
-            {
-                std::filesystem::path(FORMATTER_TESTDATA_DIR) / directory,
-                name,
-                std::string(name) + ".input.cpp",
-                profile,
-            });
+        cases.push_back({
+            std::filesystem::path(FORMATTER_TESTDATA_DIR) / directory,
+            name,
+            std::string(name) + ".input.cpp",
+            profile,
+        });
     };
     for (const auto* name :
         {
@@ -532,13 +534,22 @@ std::vector<FormatCase> FormatCases()
     addProfileCase("../spacing-options", "profile-initializers");
     addProfileCase("../spacing-options", "profile-overflow");
     addProfileCase("../spacing-options", "profile-case-blocks");
-    cases.push_back(
+    addProfileCase("../spacing-options", "profile-ref-qualifiers");
+    AddCases(
+        cases,
+        std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../spacing-options",
         {
-            std::filesystem::path(FORMATTER_TESTDATA_DIR) /
-                "../spacing-options",
-            "initializer-overflow-one-per-line",
-            "initializer-overflow-one-per-line.input.cpp",
-        });
+            "function-cv-ref-space",
+            "function-cv-ref-no-space",
+            "function-cv-ref-preserve",
+            "function-cv-ref-inherit",
+        },
+        "profile-ref-qualifiers.input.cpp");
+    cases.push_back({
+        std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../spacing-options",
+        "initializer-overflow-one-per-line",
+        "initializer-overflow-one-per-line.input.cpp",
+    });
     addProfileCase("../ternary-layout", "profile");
     AddCases(
         cases,
@@ -556,44 +567,38 @@ std::vector<FormatCase> FormatCases()
         std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../ternary-layout",
         {"operators-align", "operators-indent"},
         "operators.input.cpp");
-    cases.push_back(
-        {
-            std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../ternary-layout",
-            "reflow-preferred",
-            "reflow-preferred.input.cpp",
-        });
+    cases.push_back({
+        std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../ternary-layout",
+        "reflow-preferred",
+        "reflow-preferred.input.cpp",
+    });
     addProfileCase("../assignment-location", "profile");
     addProfileCase("../function_parameters", "profile");
     addProfileCase("../body-indent", "profile-control-local");
     addProfileCase("../body-indent", "profile-direct-initializer");
-    cases.push_back(
-        {
-            std::filesystem::path(FORMATTER_TESTDATA_DIR) /
-                "../null-statements",
-            "profile",
-            "input.cpp",
-            profile,
-        });
-    cases.push_back(
-        {
-            BODY_INDENT_TESTDATA_DIR,
-            "grouped-profile",
-            "grouped-statements.input.cpp",
-            profile,
-        });
-    cases.push_back(
-        {
-            BODY_INDENT_TESTDATA_DIR,
-            "lambda-comments-profile",
-            "lambda-leading-comments.input.cpp",
-            profile,
-        });
-    cases.push_back(
-        {
-            BODY_INDENT_TESTDATA_DIR,
-            "lambda-trailing-return",
-            "lambda-trailing-return.input.cpp",
-        });
+    cases.push_back({
+        std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../null-statements",
+        "profile",
+        "input.cpp",
+        profile,
+    });
+    cases.push_back({
+        BODY_INDENT_TESTDATA_DIR,
+        "grouped-profile",
+        "grouped-statements.input.cpp",
+        profile,
+    });
+    cases.push_back({
+        BODY_INDENT_TESTDATA_DIR,
+        "lambda-comments-profile",
+        "lambda-leading-comments.input.cpp",
+        profile,
+    });
+    cases.push_back({
+        BODY_INDENT_TESTDATA_DIR,
+        "lambda-trailing-return",
+        "lambda-trailing-return.input.cpp",
+    });
     addProfileCase("../lambda-captures", "profile");
     addProfileCase("../call-reflow", "profile-tabbed-log");
     const auto callReflow =
@@ -603,22 +608,43 @@ std::vector<FormatCase> FormatCases()
         callReflow,
         {"sole-call-line", "sole-new-line"},
         "sole-position.input.cpp");
-    cases.push_back({callReflow, "sole-preferred", "sole-preferred.input.cpp"});
-    cases.push_back(
+    AddCases(
+        cases,
+        callReflow,
         {
-            callReflow,
-            "first-position-reflow",
-            "first-position-reflow.input.cpp",
-        });
+            "sole-argument",
+            "sole-argument-inherit",
+            "sole-argument-next-line",
+            "sole-argument-always",
+            "sole-argument-preserve",
+        },
+        "sole-argument.input.cpp");
+    cases.push_back({
+        callReflow,
+        "sole-argument-ytsaurus",
+        "sole-argument.input.cpp",
+        profile,
+    });
+    cases.push_back({
+        callReflow,
+        "sole-argument-repository",
+        "sole-argument.input.cpp",
+        "../../../../",
+    });
+    cases.push_back({callReflow, "sole-preferred", "sole-preferred.input.cpp"});
+    cases.push_back({
+        callReflow,
+        "first-position-reflow",
+        "first-position-reflow.input.cpp",
+    });
     cases.push_back(
         {callReflow, "first-string-inline", "first-string-inline.input.cpp"});
-    cases.push_back(
-        {
-            std::filesystem::path(FORMATTER_TESTDATA_DIR) /
-                "../function_parameters",
-            "first-position-reflow",
-            "first-position-reflow.input.cpp",
-        });
+    cases.push_back({
+        std::filesystem::path(FORMATTER_TESTDATA_DIR) /
+            "../function_parameters",
+        "first-position-reflow",
+        "first-position-reflow.input.cpp",
+    });
     AddCases(
         cases,
         std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../macro-nested-calls",
@@ -630,7 +656,7 @@ std::vector<FormatCase> FormatCases()
     AddCases(
         cases,
         std::filesystem::path(FORMATTER_TESTDATA_DIR) /
-            "../control-header-clauses",
+        "../control-header-clauses",
         {"preserve", "split", "indent-width"});
     const auto controlPlacement = std::filesystem::path(
         FORMATTER_TESTDATA_DIR) / "../control-header-placement";
@@ -641,36 +667,44 @@ std::vector<FormatCase> FormatCases()
     cases.push_back({controlPlacement, "reflow", "reflow.input.cpp"});
     cases.push_back({controlPlacement, "reverse", "reverse.input.cpp"});
     cases.push_back({controlPlacement, "crlf", "crlf.input.cpp"});
-    cases.push_back(
-        {
-            std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../lambda-body",
-            "profile",
-            "input.cpp",
-            profile,
-        });
+    cases.push_back({
+        std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../lambda-body",
+        "profile",
+        "input.cpp",
+        profile,
+    });
     addProfileCase("../control-header-clauses", "profile");
     addProfileCase("../whitespace-sensitive-macros", "profile");
     addProfileCase("../call-reflow", "balanced-expressions");
     addProfileCase("../call-reflow", "nested-operator-choice");
-    cases.push_back(
-        {
-            callReflow,
-            "balanced-initializers",
-            "balanced-initializers.input.cpp",
-        });
+    cases.push_back({
+        callReflow,
+        "balanced-initializers",
+        "balanced-initializers.input.cpp",
+    });
     addProfileCase("../call-reflow", "profile-nested");
     addProfileCase("../chained-calls", "profile-multiline-lambda");
+    addProfileCase("../chained-calls", "profile-scoped-sticky");
+    addProfileCase("../chained-calls", "profile-comments");
+    addProfileCase("../chained-calls", "profile-mixed-links");
+    addProfileCase("../chained-calls", "profile-capture-body");
+    addProfileCase("../chained-calls", "profile-conventional");
+    addProfileCase("../keyword-expressions", "profile");
+    AddCases(
+        cases,
+        std::filesystem::path(FORMATTER_TESTDATA_DIR) /
+        "../keyword-expressions",
+        {"canonical", "preserve", "narrow", "always"});
     const auto google = std::filesystem::path(FORMATTER_TESTDATA_DIR) /
         "../google-style-regressions";
     const auto googleProfile = (std::filesystem::path(FORMATTER_TESTDATA_DIR) /
         "../../../../hit-fmt/examples/google").lexically_normal().string();
-    cases.push_back(
-        {
-            google,
-            "profile-trailing-comments",
-            "profile-trailing-comments.input.cpp",
-            googleProfile,
-        });
+    cases.push_back({
+        google,
+        "profile-trailing-comments",
+        "profile-trailing-comments.input.cpp",
+        googleProfile,
+    });
     cases.push_back({google, "inline-record", "inline-record.input.cpp"});
     cases.push_back({google, "widths", "widths.input.cpp"});
     cases.push_back({google, "operator-spacing", "operator-spacing.input.cpp"});
@@ -679,25 +713,23 @@ std::vector<FormatCase> FormatCases()
         {google, "namespace-comments", "namespace-comments.input.cpp"});
     cases.push_back(
         {google, "syntax-boundaries", "syntax-boundaries.input.cpp"});
-    cases.push_back(
-        {
-            google,
-            "declarator-and-macro-safety",
-            "declarator-and-macro-safety.input.cpp",
-        });
+    cases.push_back({
+        google,
+        "declarator-and-macro-safety",
+        "declarator-and-macro-safety.input.cpp",
+    });
     const auto disabled =
         std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../format-disabled";
     cases.push_back({disabled, "regions", "regions.input.cpp"});
     cases.push_back({disabled, "regions-no-clang", "regions.input.cpp"});
     cases.push_back({disabled, "unclosed", "unclosed.input.cpp", "regions"});
     cases.push_back({disabled, "crlf", "crlf.input.cpp", "regions"});
-    cases.push_back(
-        {
-            std::filesystem::path(FORMATTER_TESTDATA_DIR) /
-                "../constructor-initializer-ranges",
-            "canonical",
-            "input.cpp",
-        });
+    cases.push_back({
+        std::filesystem::path(FORMATTER_TESTDATA_DIR) /
+            "../constructor-initializer-ranges",
+        "canonical",
+        "input.cpp",
+    });
     const auto newArrays = std::filesystem::path(FORMATTER_TESTDATA_DIR) /
         "../new-array-declarators";
     AddCases(cases, newArrays, {"left", "array-space", "array-preserve"});
@@ -717,12 +749,12 @@ std::vector<FormatCase> FormatCases()
     AddCases(
         cases,
         std::filesystem::path(FORMATTER_TESTDATA_DIR) /
-            "../assignment-location",
+        "../assignment-location",
         {"leading", "trailing"});
     AddCases(
         cases,
         std::filesystem::path(FORMATTER_TESTDATA_DIR) /
-            "../call-expression-indent",
+        "../call-expression-indent",
         {"aligned", "aligned-no-call-reflow", "indent-width", "preserve"});
     AddCases(
         cases,
@@ -752,20 +784,18 @@ std::vector<FormatCase> FormatCases()
     for (const auto* name :
         {"parsed-operators", "outer-conditional", "control-braces-after-wrap"})
     {
-        cases.push_back(
-            {
-                std::filesystem::path(FORMATTER_TESTDATA_DIR) / ".." / name,
-                "configured",
-                "input.cpp",
-            });
-    }
-    cases.push_back(
-        {
-            std::filesystem::path(FORMATTER_TESTDATA_DIR) /
-                "../control-braces-after-wrap",
-            "reflow",
-            "reflow.input.cpp",
+        cases.push_back({
+            std::filesystem::path(FORMATTER_TESTDATA_DIR) / ".." / name,
+            "configured",
+            "input.cpp",
         });
+    }
+    cases.push_back({
+        std::filesystem::path(FORMATTER_TESTDATA_DIR) /
+            "../control-braces-after-wrap",
+        "reflow",
+        "reflow.input.cpp",
+    });
     const auto strings =
         std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../concat-strings";
     AddCases(cases, strings, {"overflow", "preserve"});
@@ -779,13 +809,12 @@ std::vector<FormatCase> FormatCases()
     // Keep safety and recovered-syntax examples in separate parse units.
     const auto spacing = std::filesystem::path(FORMATTER_TESTDATA_DIR) / ".." /
         "spacing-options";
-    cases.push_back(
-        {
-            spacing,
-            "cases-preserved",
-            "indented-cases.input.cpp",
-            "cases-preserved",
-        });
+    cases.push_back({
+        spacing,
+        "cases-preserved",
+        "indented-cases.input.cpp",
+        "cases-preserved",
+    });
     for (const auto& entry : std::filesystem::directory_iterator(spacing)) {
         const auto filename = entry.path().filename().string();
         if (filename.ends_with(".input.cpp")) {
@@ -805,12 +834,20 @@ std::vector<FormatCase> FormatCases()
     }
     const auto data = std::filesystem::path(FORMATTER_TESTDATA_DIR) / "..";
     AddCases(cases, data / "continuation-nesting", {"shared", "tabs"});
-    cases.push_back(
+    AddCases(
+        cases,
+        data / "continuation-nesting",
         {
-            data / "continuation-nesting",
-            "starter-lines",
-            "starter-lines.input.cpp",
-        });
+            "argument-precedence",
+            "argument-precedence-leading",
+            "argument-precedence-delimiter",
+        },
+        "argument-precedence.input.cpp");
+    cases.push_back({
+        data / "continuation-nesting",
+        "starter-lines",
+        "starter-lines.input.cpp",
+    });
     AddCases(
         cases,
         data / "continuation-nesting",
@@ -847,12 +884,11 @@ std::vector<FormatCase> FormatCases()
         cases,
         data / "structural-expression-base",
         {"canonical", "preserved"});
-    cases.push_back(
-        {
-            data / "initializer-trailing-comma",
-            "conditional-closer",
-            "input.cpp",
-        });
+    cases.push_back({
+        data / "initializer-trailing-comma",
+        "conditional-closer",
+        "input.cpp",
+    });
     AddCases(
         cases,
         data / "function_parameters",
@@ -877,12 +913,11 @@ std::vector<FormatCase> FormatCases()
         });
     cases.push_back(
         {data / "namespace_comments", "crlf_fix", "crlf.input.cpp"});
-    cases.push_back(
-        {
-            data / "namespace_comments",
-            "composes-spacing",
-            "composes-spacing.input.cpp",
-        });
+    cases.push_back({
+        data / "namespace_comments",
+        "composes-spacing",
+        "composes-spacing.input.cpp",
+    });
     AddCases(cases, data / "qualified-record", {"canonical", "ytsaurus"});
     AddCases(cases, data / "unhinted-body-recovery", {"canonical"});
     AddCases(
@@ -894,57 +929,52 @@ std::vector<FormatCase> FormatCases()
     cases.push_back({hunks / "basic", "call", "input.cpp", "style", {{8, 8}}});
     cases.push_back(
         {hunks / "basic", "includes", "input.cpp", "style", {{1, 1}}});
-    cases.push_back(
-        {
-            hunks / "basic",
-            "includes-strict",
-            "input.cpp",
-            "style",
-            {{1, 1}},
-            false,
-        });
+    cases.push_back({
+        hunks / "basic",
+        "includes-strict",
+        "input.cpp",
+        "style",
+        {{1, 1}},
+        false,
+    });
     cases.push_back(
         {hunks / "basic", "function", "input.cpp", "style", {{4, 4}}});
     cases.push_back(
         {hunks / "spill", "default", "input.cpp", "style", {{3, 3}, {5, 5}}});
-    cases.push_back(
-        {
-            hunks / "spill",
-            "strict",
-            "input.cpp",
-            "style",
-            {{3, 3}, {5, 5}},
-            false,
-        });
+    cases.push_back({
+        hunks / "spill",
+        "strict",
+        "input.cpp",
+        "style",
+        {{3, 3}, {5, 5}},
+        false,
+    });
     cases.push_back(
         {hunks / "structural", "unsupported", "input.cpp", "style", {{2, 2}}});
-    cases.push_back(
-        {
-            hunks / "planned",
-            "strict-independent",
-            "strict-independent.input.cpp",
-            "style",
-            {{3, 3}, {6, 6}},
-            false,
-        });
-    cases.push_back(
-        {
-            hunks / "planned",
-            "nested",
-            "nested.input.cpp",
-            "style",
-            {{3, 3}},
-            true,
-        });
-    cases.push_back(
-        {
-            hunks / "planned",
-            "atomic",
-            "atomic.input.cpp",
-            "structural",
-            {{2, 5}},
-            false,
-        });
+    cases.push_back({
+        hunks / "planned",
+        "strict-independent",
+        "strict-independent.input.cpp",
+        "style",
+        {{3, 3}, {6, 6}},
+        false,
+    });
+    cases.push_back({
+        hunks / "planned",
+        "nested",
+        "nested.input.cpp",
+        "style",
+        {{3, 3}},
+        true,
+    });
+    cases.push_back({
+        hunks / "planned",
+        "atomic",
+        "atomic.input.cpp",
+        "structural",
+        {{2, 5}},
+        false,
+    });
     std::ranges::sort(
         cases,
         {},
@@ -1381,13 +1411,13 @@ TEST(Formatter, ExpressionLayout_WrapsParsedOperatorsAndPreservesUnsafeLines)
         EXPECT_EQ(FormatWithStyle(expected, style), expected);
     };
     expectReflow("int f(int a, int b) { return a + b + a + b; }\r\n",
-        "int f(int a, int b) { return a +\r\n"
-        "        b + a + b; }\r\n");
+        "int f(int a, int b) { return\r\n"
+        "        a + b + a + b; }\r\n");
     ExpectUnchanged("#define SUM(a, b) ((a) + (b) + (a) + (b))\n", style);
     expectReflow(
         "int compute(int a, int b) { return a + b + a + b; // keep\n}\n",
-        "int compute(int a, int b) { return a +\n"
-        "        b + a +\n        b; // keep\n}\n");
+        "int compute(int a, int b) { return\n"
+        "        a + b + a +\n        b; // keep\n}\n");
     expectReflow(
         "int compute(int a, int b) { return a + b @ broken; }\n",
         "int compute(int a, int b) { return a +\n"
@@ -1699,7 +1729,7 @@ void ExpectEmittedWidthDiagnostics(
         EXPECT_EQ(
             diagnostic.Message,
             "emitted line width " + std::to_string(overflows[i].second) +
-                " exceeds ColumnLimit " + std::to_string(columnLimit));
+            " exceeds ColumnLimit " + std::to_string(columnLimit));
     }
 }
 TEST_P(LayoutDiagnosticTest, ReportsEmittedWidths)

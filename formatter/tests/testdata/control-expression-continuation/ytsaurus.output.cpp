@@ -24,5 +24,7 @@ unsigned Combine(unsigned value)
     if (ShortCheck() || AnotherShortCheck()) {
         return value;
     }
+    CheckState(responseCount != std::ssize(pendingItems) ||
+        std::ranges::all_of(results, [] (const auto& item) { return item.has_value(); }));
     return 0;
 }

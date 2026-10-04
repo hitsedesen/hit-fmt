@@ -2,7 +2,7 @@ void Process()
 {
     for (auto ready =
          ReadNext(); ready ||
-             CanProceedAfterDelay(); ready = ReadNext()) {
+         CanProceedAfterDelay(); ready = ReadNext()) {
         Use(ready);
     }
     if (auto value = ReadNext(); value && PassesLongPredicate(value)) {
@@ -21,7 +21,7 @@ void Process()
     }
     for (auto ready =
          ReadNext(); /* keep */ ready ||
-             CanProceedAfterDelay(); ready = ReadNext()) {
+         CanProceedAfterDelay(); ready = ReadNext()) {
         Use(ready);
     }
     for (; ExpensiveLongConditionCheckWithContext(context, scheduler); ) {

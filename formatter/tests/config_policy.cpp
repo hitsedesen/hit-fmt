@@ -59,6 +59,9 @@ TEST(ConfigPolicy, CompilesCategoryInheritanceWithoutSourceOwnedSentinels)
         policies.Calls.Packing,
         formatter::ListPacking::VerticalWhenBroken);
     EXPECT_EQ(policies.Parameters.Packing, formatter::ListPacking::Fill);
+    EXPECT_EQ(policies.Calls.FirstItem, formatter::FirstItemPlacement::NextLine);
+    EXPECT_EQ(policies.CallsSoleArgumentFirstItem,
+        formatter::FirstItemPlacement::InlineIfFits);
     EXPECT_EQ(
         policies.Calls.Indent.Alignment,
         formatter::ContinuationAlignment::Delimiter);
@@ -160,6 +163,7 @@ TEST(ConfigPolicy, CompilesCategoryInheritanceWithoutSourceOwnedSentinels)
     style.IndentationKind = formatter::IndentationKind::Spaces;
     style.TrailingWhitespace = formatter::TrailingWhitespace::Preserve;
     style.ListBreak = formatter::BreakRequirement::IfNeeded;
+    style.CallsSoleArgumentFirstItem = formatter::FirstItemPlacement::NextLine;
     style.IndentNamespaces = formatter::BodyIndentation::Indent;
     style.NamespaceIndentWidth = 3;
     style.EmptyBodyShape = formatter::BodyShape::Expanded;
@@ -167,6 +171,10 @@ TEST(ConfigPolicy, CompilesCategoryInheritanceWithoutSourceOwnedSentinels)
     style.DefinitionBlankLines = {formatter::BlankLineMode::Exact, 1};
     const auto changed = formatter::CompilePolicies(style);
     EXPECT_EQ(changed.Parameters.Break, formatter::BreakRequirement::IfNeeded);
+    EXPECT_EQ(changed.CallsSoleArgumentFirstItem,
+        formatter::FirstItemPlacement::NextLine);
+    EXPECT_EQ(policies.CallsSoleArgumentFirstItem,
+        formatter::FirstItemPlacement::InlineIfFits);
     EXPECT_EQ(changed.Indentation.Namespaces.Offset, 3u);
     EXPECT_EQ(changed.Bodies.EmptyShape, formatter::BodyShape::Expanded);
     EXPECT_EQ(changed.LambdaBodies.EmptyShape, formatter::BodyShape::Expanded);
@@ -330,6 +338,31 @@ TEST(ConfigPolicy, IndependentFamiliesDoNotCrossInherit)
     EXPECT_EQ(
         overridden.LambdaBodies.EmptyShape,
         formatter::BodyShape::Expanded);
+}
+
+TEST(ConfigPolicy, SoleArgumentPlacementInheritsFinalCallsFirstItem)
+{
+    for (const auto firstItem : {"InlineIfFits", "NextLine"}) {
+        SCOPED_TRACE(firstItem);
+        for (const auto inherited : {
+            "",
+            "CallsSoleArgumentFirstItem = InlineIfFits\n"
+            "CallsSoleArgumentFirstItem = Inherit\n",
+        })
+        {
+            const TemporaryConfig config(
+                std::string("ListFirstItem = NextLine\nCallsFirstItem = ") +
+                firstItem + "\n" + inherited);
+            const auto style =
+                formatter::LoadConfigFile(config.Path).FormattingStyle;
+            EXPECT_FALSE(style.CallsSoleArgumentFirstItem);
+            const auto policies = formatter::CompilePolicies(style);
+            EXPECT_EQ(policies.CallsSoleArgumentFirstItem,
+                policies.Calls.FirstItem);
+            EXPECT_EQ(policies.Parameters.FirstItem,
+                formatter::FirstItemPlacement::NextLine);
+        }
+    }
 }
 
 TEST(ConfigPolicy, VerticalCountsResolveZeroAndMemberOverrides)
@@ -569,6 +602,56 @@ TEST(ConfigPolicy, PreserveTemplateRoundTripsEveryRegisteredStyleDefault)
         formatter::VerticalGapMode::Preserve);
 }
 
+TEST(ConfigPolicy, CvRefQualifierSpacingSeparatesInheritanceAndPreservation)
+{
+    using formatter::GapPolicy;
+    formatter::Style style;
+    style.FunctionRefQualifierSpacing = GapPolicy::Space;
+    const auto inherited = formatter::CompilePolicies(style);
+    EXPECT_EQ(inherited.Spacing.FunctionCvRefQualifierSpacing, GapPolicy::Space);
+    style.FunctionRefQualifierSpacing = GapPolicy::NoSpace;
+    EXPECT_EQ(formatter::CompilePolicies(style).Spacing
+        .FunctionCvRefQualifierSpacing, GapPolicy::NoSpace);
+    EXPECT_EQ(inherited.Spacing.FunctionCvRefQualifierSpacing, GapPolicy::Space);
+
+    for (const auto policy : {GapPolicy::Space, GapPolicy::NoSpace,
+        GapPolicy::Preserve, GapPolicy::GeneratedSpace,
+        GapPolicy::GeneratedNoSpace})
+    {
+        const TemporaryConfig config(
+            "FunctionRefQualifierSpacing = Space\n"
+            "FunctionCvRefQualifierSpacing = " + std::string(
+                formatter::SerializeConfigEnum(policy)) + "\n");
+        auto loaded = formatter::LoadConfigFile(config.Path).FormattingStyle;
+        ASSERT_EQ(loaded.FunctionCvRefQualifierSpacing, policy);
+        const auto compiled = formatter::CompilePolicies(loaded);
+        loaded.FunctionRefQualifierSpacing = GapPolicy::NoSpace;
+        loaded.FunctionCvRefQualifierSpacing.reset();
+        EXPECT_EQ(compiled.Spacing.FunctionCvRefQualifierSpacing, policy);
+        EXPECT_EQ(compiled.Spacing.FunctionRefQualifierSpacing, GapPolicy::Space);
+    }
+    const TemporaryConfig reset(
+        "FunctionRefQualifierSpacing = NoSpace\n"
+        "FunctionCvRefQualifierSpacing = Space\n"
+        "FunctionCvRefQualifierSpacing = Inherit\n");
+    const auto resetStyle = formatter::LoadConfigFile(reset.Path).FormattingStyle;
+    EXPECT_FALSE(resetStyle.FunctionCvRefQualifierSpacing);
+    EXPECT_EQ(formatter::CompilePolicies(resetStyle).Spacing
+        .FunctionCvRefQualifierSpacing, GapPolicy::NoSpace);
+
+    std::ostringstream output;
+    hit_fmt::PrintPreserveConfig(output);
+    EXPECT_NE(output.str().find("FunctionCvRefQualifierSpacing = Inherit\n"),
+        std::string::npos);
+    const TemporaryConfig defaults(output.str());
+    EXPECT_FALSE(formatter::LoadConfigFile(defaults.Path).FormattingStyle
+        .FunctionCvRefQualifierSpacing);
+    const TemporaryConfig invalid("FunctionCvRefQualifierSpacing = Compact\n");
+    EXPECT_THROW((void)formatter::LoadConfigFile(invalid.Path), std::runtime_error);
+    style.FunctionCvRefQualifierSpacing = static_cast<GapPolicy>(255);
+    EXPECT_THROW((void)formatter::CompilePolicies(style), std::invalid_argument);
+}
+
 TEST(ConfigPolicy, GeneratedGapsFollowOwningCombinatorNotTokenProvenance)
 {
     using formatter::GapContext;
@@ -638,6 +721,10 @@ TEST(ConfigPolicy, ProgrammaticStylesCannotBypassWidthAndOffsetLimits)
         (void)formatter::CompilePolicies(style),
         std::invalid_argument);
     style.EnumeratorsContinuationOffset = 0;
+    style.CallsSoleArgumentFirstItem =
+        static_cast<formatter::FirstItemPlacement>(255);
+    EXPECT_THROW((void)formatter::CompilePolicies(style), std::invalid_argument);
+    style.CallsSoleArgumentFirstItem.reset();
     const auto bounded = formatter::CompilePolicies(style);
     EXPECT_EQ(bounded.Indentation.Namespaces.Offset, 32u);
     EXPECT_EQ(bounded.Enumerators.Indent.ContinuationOffset, 32u);
@@ -678,6 +765,10 @@ TEST(ConfigPolicy, SchemaCompilesOwnedAnnotationsAndIndependentMetadata)
         formatter::ChainParticipation::AnnotatedRoots);
     EXPECT_TRUE(annotations.IsAnnotatedChainRoot("ns::BuildPipeline"));
     EXPECT_FALSE(annotations.IsAnnotatedChainRoot("BuildPipeline"));
+    EXPECT_TRUE(annotations.AlwaysBreakChainRoot("WRITE_EVENT"));
+    EXPECT_TRUE(annotations.AlwaysBreakChainRoot("ns::BuildPipeline"));
+    EXPECT_FALSE(annotations.AlwaysBreakChainRoot("BuildPipeline"));
+    EXPECT_FALSE(annotations.AlwaysBreakChainRoot("WRITE_EVENT_IF"));
     ASSERT_EQ(annotations.VisualScopes().size(), 2u);
     EXPECT_EQ(annotations.VisualScopes()[0].Begin, "StartList");
     EXPECT_EQ(annotations.VisualScopes()[0].End, "FinishSequence");
@@ -689,28 +780,59 @@ TEST(ConfigPolicy, SchemaCompilesOwnedAnnotationsAndIndependentMetadata)
     EXPECT_EQ(
         annotations.VisualScopes()[0].Layout,
         formatter::VisualScopeLayout::PreserveExistingExtraLevel);
+    ASSERT_EQ(annotations.ChainScopes().size(), 2u);
+    EXPECT_EQ(annotations.ChainScopes()[0].First, "OpenChain");
+    EXPECT_EQ(annotations.ChainScopes()[0].Second, "CloseChain");
+    EXPECT_TRUE(annotations.IsStickyChainPair("Choose", "Write"));
+    EXPECT_TRUE(annotations.IsStickyChainPair("Choose", "OpenChain"));
+    EXPECT_TRUE(annotations.IsStickyChainPair("Append", "Append"));
+    EXPECT_FALSE(annotations.IsStickyChainPair("Write", "Choose"));
+    EXPECT_FALSE(annotations.IsStickyChainPair("Choose", "Writes"));
     style.CallLineFirstStringNames.clear();
     style.ChainedCallRootNames.clear();
+    style.AlwaysBreakChainRootNames.clear();
     style.IndentedCallScopePairs.clear();
+    style.IndentedChainScopePairs.clear();
+    style.StickyChainCallPairs.clear();
     const auto empty = formatter::CompileLibraryAnnotations(style);
     EXPECT_EQ(empty.Chains(), formatter::ChainParticipation::AllSafe);
     EXPECT_TRUE(empty.MessagePins().empty());
+    EXPECT_TRUE(empty.AlwaysBreakChainRoots().empty());
+    EXPECT_TRUE(annotations.AlwaysBreakChainRoot("WRITE_EVENT"));
     EXPECT_TRUE(empty.VisualScopes().empty());
+    EXPECT_TRUE(empty.ChainScopes().empty());
+    EXPECT_TRUE(empty.StickyChainPairs().empty());
+    EXPECT_EQ(annotations.ChainScopes()[0].Second, "CloseChain");
+    EXPECT_TRUE(annotations.IsStickyChainPair("Choose", "Write"));
     EXPECT_NE(annotations.FindMessagePin("WRITE_MESSAGE"), nullptr);
     EXPECT_TRUE(annotations.IsAnnotatedChainRoot("ns::BuildPipeline"));
     EXPECT_EQ(annotations.VisualScopes()[0].End, "FinishSequence");
     const auto copy = annotations;
     ASSERT_NE(copy.FindScopeEnd("FinishSequence"), nullptr);
     EXPECT_EQ(copy.FindScopeEnd("FinishSequence")->Begin, "StartList");
+    EXPECT_EQ(copy.ChainScopes()[0].Second, "CloseChain");
+    EXPECT_TRUE(copy.IsStickyChainPair("Choose", "Write"));
+    EXPECT_TRUE(copy.AlwaysBreakChainRoot("WRITE_EVENT"));
 
     for (const auto text : {
         "CallLineFirstStringNames = [\"Trace\", \"Trace\"]\n",
         "ChainedCallRootNames = [\"ns::Root\", \"ns::Root\"]\n",
         "ChainedCallRootNames = [\"ns::\"]\n",
+        "AlwaysBreakChainRootNames = [\"Trace\", \"Trace\"]\n",
+        "AlwaysBreakChainRootNames = [\"ns::\"]\n",
         "IndentedCallScopePairs = [\"Start:End\", \"Start:Other\"]\n",
         "IndentedCallScopePairs = [\"Start:End\", \"End:Other\"]\n",
         "IndentedCallScopePairs = [\"Start:Start\"]\n",
         "IndentedCallScopePairs = [\"Start::End\"]\n",
+        "IndentedChainScopePairs = [\"Start:End\", \"Start:Other\"]\n",
+        "IndentedChainScopePairs = [\"Start:End\", \"Other:End\"]\n",
+        "IndentedChainScopePairs = [\"Start:End\", \"End:Other\"]\n",
+        "IndentedChainScopePairs = [\"Start:Start\"]\n",
+        "IndentedChainScopePairs = [\"Start::End\"]\n",
+        "StickyChainCallPairs = [\"Item:Value\", \"Item:Value\"]\n",
+        "StickyChainCallPairs = [\"Item\"]\n",
+        "StickyChainCallPairs = [\"Item:ns::Value\"]\n",
+        "StickyChainCallPairs = [\":Value\"]\n",
     })
     {
         SCOPED_TRACE(text);
@@ -722,6 +844,18 @@ TEST(ConfigPolicy, SchemaCompilesOwnedAnnotationsAndIndependentMetadata)
     EXPECT_THROW(
         (void)formatter::LoadConfigFile(ConfigData("invalid-annotation")),
         std::runtime_error);
+    style.AlwaysBreakChainRootNames = {"ns::"};
+    EXPECT_THROW((void)formatter::CompileLibraryAnnotations(style),
+        std::invalid_argument);
+    style.AlwaysBreakChainRootNames.clear();
+    style.IndentedChainScopePairs = {"Start:Start"};
+    EXPECT_THROW((void)formatter::CompileLibraryAnnotations(style),
+        std::invalid_argument);
+    style.IndentedChainScopePairs.clear();
+    style.StickyChainCallPairs = {"Item:Value", "Item:Value"};
+    EXPECT_THROW((void)formatter::CompileLibraryAnnotations(style),
+        std::invalid_argument);
+    style.StickyChainCallPairs.clear();
     style.CallLineFirstStringNames = {"Trace", "Trace"};
     EXPECT_THROW(
         (void)formatter::CompileLibraryAnnotations(style),
@@ -732,10 +866,23 @@ TEST(ConfigPolicy, SchemaCompilesOwnedAnnotationsAndIndependentMetadata)
         "../../../../hit-fmt/examples/ytsaurus.hit-fmt");
     const auto ytAnnotations =
         formatter::CompileLibraryAnnotations(yt.FormattingStyle);
+    EXPECT_EQ(yt.FormattingStyle.FunctionRefQualifierSpacing,
+        formatter::GapPolicy::Space);
+    EXPECT_EQ(yt.FormattingStyle.FunctionCvRefQualifierSpacing,
+        formatter::GapPolicy::Space);
+    EXPECT_EQ(yt.FormattingStyle.CapturesCloser,
+        formatter::CloserPlacement::OwnLine);
     EXPECT_EQ(ytAnnotations.MessagePins().size(), 17u);
     EXPECT_TRUE(ytAnnotations.ChainRoots().empty());
     EXPECT_EQ(ytAnnotations.Chains(), formatter::ChainParticipation::AllSafe);
     EXPECT_EQ(ytAnnotations.VisualScopes().size(), 3u);
+    EXPECT_TRUE(ytAnnotations.AlwaysBreakChainRoot("TError"));
+    EXPECT_TRUE(ytAnnotations.AlwaysBreakChainRoot("YT_TLOG_TRACE"));
+    EXPECT_FALSE(ytAnnotations.AlwaysBreakChainRoot("YT_TLOG_TRACE_IF"));
+    EXPECT_EQ(ytAnnotations.ChainScopes().size(), 3u);
+    EXPECT_TRUE(ytAnnotations.IsStickyChainPair("Item", "Value"));
+    EXPECT_TRUE(ytAnnotations.IsStickyChainPair("Item", "BeginMap"));
+    EXPECT_TRUE(ytAnnotations.IsStickyChainPair("registrar", "Parameter"));
     EXPECT_NE(ytAnnotations.FindMessagePin("THROW_ERROR_EXCEPTION"), nullptr);
     EXPECT_EQ(
         ytAnnotations.FindMessagePin("THROW_ERROR_EXCEPTION_IF"),

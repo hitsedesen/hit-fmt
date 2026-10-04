@@ -56,9 +56,8 @@ std::string_view StripComment(std::string_view line)
     size_t line,
     std::string_view message)
 {
-    throw std::runtime_error(
-        path.string() + ":" + std::to_string(line) + ": " +
-            std::string(message));
+    throw std::runtime_error(path.string() + ":" + std::to_string(line) + ": " +
+        std::string(message));
 }
 
 // A closing bracket inside a quoted item does not terminate an array.
@@ -242,7 +241,7 @@ std::vector<std::string> ParseNamespaceExemptions(
                 part
                     .find_first_not_of(
                         "abcdefghijklmnopqrstuvwxyz"
-                            "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_") !=
+                        "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_") !=
                     std::string_view::npos)
             {
                 ThrowConfigError(
@@ -269,11 +268,9 @@ std::vector<std::string> ParseCallNames(
         if (name.empty() ||
             !(std::isalpha(static_cast<unsigned char>(name.front())) ||
                 name.front() == '_') ||
-            name
-                .find_first_not_of(
-                    "abcdefghijklmnopqrstuvwxyz"
-                        "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_") !=
-                std::string::npos)
+            name.find_first_not_of(
+                "abcdefghijklmnopqrstuvwxyz"
+                "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_") != std::string::npos)
         {
             ThrowConfigError(path, line, "expected call identifier names");
         }
@@ -291,9 +288,8 @@ std::optional<std::vector<std::string>> ParseNamePrefixes(
         return std::nullopt;
     }
     for (const auto& prefix : prefixes) {
-        if (prefix.find_first_not_of(
-            "abcdefghijklmnopqrstuvwxyz"
-                "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_") != std::string::npos)
+        if (prefix.find_first_not_of("abcdefghijklmnopqrstuvwxyz"
+            "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_") != std::string::npos)
         {
             ThrowConfigError(
                 path,
@@ -390,7 +386,10 @@ void AssignStyle(
             std::vector<std::string>>)
     {
         if constexpr (Member == &Style::ChainedCallRootNames ||
+            Member == &Style::AlwaysBreakChainRootNames ||
             Member == &Style::IndentedCallScopePairs ||
+            Member == &Style::IndentedChainScopePairs ||
+            Member == &Style::StickyChainCallPairs ||
             Member == &Style::IncludeGroupPrefixes)
         {
             config.FormattingStyle.*Member = ParseStringList(value, path, line);
@@ -590,9 +589,8 @@ void RejectDuplicateAnnotations(
 {
     std::sort(names.begin(), names.end());
     if (std::adjacent_find(names.begin(), names.end()) != names.end()) {
-        throw std::invalid_argument(
-            "duplicate " + std::string(key) +
-                " annotation name or scope endpoint");
+        throw std::invalid_argument("duplicate " + std::string(key) +
+            " annotation name or scope endpoint");
     }
 }
 
@@ -617,22 +615,45 @@ void ValidateAnnotationNames(
 }
 
 std::pair<std::string_view, std::string_view> AnnotationScopePair(
-    std::string_view pair)
+    std::string_view pair,
+    std::string_view key = "IndentedCallScopePairs",
+    bool distinct = true)
 {
     const auto colon = pair.find(':');
     if (colon == std::string_view::npos) {
         throw std::invalid_argument(
-            "IndentedCallScopePairs expects Begin:End identifier pairs");
+            std::string(key) + " expects First:Second identifier pairs");
     }
     const auto begin = pair.substr(0, colon);
     const auto end = pair.substr(colon + 1);
     if (!AnnotationIdentifier(begin) || !AnnotationIdentifier(end) ||
-        begin == end)
+        (distinct && begin == end))
     {
         throw std::invalid_argument(
-            "IndentedCallScopePairs expects distinct Begin:End identifiers");
+            std::string(key) + " expects valid identifier pairs");
     }
     return {begin, end};
+}
+
+std::vector<ChainCallPairAnnotation> CompileChainPairs(
+    std::span<const std::string> input,
+    std::string_view key,
+    bool distinct)
+{
+    std::vector<ChainCallPairAnnotation> result;
+    result.reserve(input.size());
+    for (const auto& pair : input) {
+        const auto [first, second] = AnnotationScopePair(pair, key, distinct);
+        result.push_back({std::string(first), std::string(second)});
+    }
+    std::sort(
+        result.begin(),
+        result.end(),
+        [] (const auto& a, const auto& b) {
+            return a.First < b.First ||
+                (a.First == b.First && a.Second < b.Second);
+        });
+    return result;
 }
 
 } // namespace
@@ -640,13 +661,14 @@ std::pair<std::string_view, std::string_view> AnnotationScopePair(
 void ValidateLibraryAnnotationStyle(const Style& style)
 {
     std::vector<std::string_view> scratch;
-    scratch.reserve(
-        std::max(
-            {
-                style.CallLineFirstStringNames.size(),
-                style.ChainedCallRootNames.size(),
-                style.IndentedCallScopePairs.size() * 2,
-            }));
+    scratch.reserve(std::max({
+        style.CallLineFirstStringNames.size(),
+        style.ChainedCallRootNames.size(),
+        style.AlwaysBreakChainRootNames.size(),
+        style.IndentedCallScopePairs.size() * 2,
+        style.IndentedChainScopePairs.size() * 2,
+        style.StickyChainCallPairs.size(),
+    }));
     ValidateAnnotationNames(
         style.CallLineFirstStringNames,
         scratch,
@@ -657,6 +679,11 @@ void ValidateLibraryAnnotationStyle(const Style& style)
         scratch,
         "ChainedCallRootNames",
         true);
+    ValidateAnnotationNames(
+        style.AlwaysBreakChainRootNames,
+        scratch,
+        "AlwaysBreakChainRootNames",
+        true);
     scratch.clear();
     for (const auto& pair : style.IndentedCallScopePairs) {
         const auto [begin, end] = AnnotationScopePair(pair);
@@ -664,6 +691,20 @@ void ValidateLibraryAnnotationStyle(const Style& style)
         scratch.push_back(end);
     }
     RejectDuplicateAnnotations(scratch, "IndentedCallScopePairs");
+    scratch.clear();
+    for (const auto& pair : style.IndentedChainScopePairs) {
+        const auto [begin, end] =
+            AnnotationScopePair(pair, "IndentedChainScopePairs");
+        scratch.push_back(begin);
+        scratch.push_back(end);
+    }
+    RejectDuplicateAnnotations(scratch, "IndentedChainScopePairs");
+    scratch.clear();
+    for (const auto& pair : style.StickyChainCallPairs) {
+        (void)AnnotationScopePair(pair, "StickyChainCallPairs", false);
+        scratch.push_back(pair);
+    }
+    RejectDuplicateAnnotations(scratch, "StickyChainCallPairs");
 }
 
 LibraryAnnotations CompileLibraryAnnotations(const Style& style)
@@ -682,6 +723,10 @@ LibraryAnnotations CompileLibraryAnnotations(const Style& style)
         });
     result.ChainRoots_ = style.ChainedCallRootNames;
     std::sort(result.ChainRoots_.begin(), result.ChainRoots_.end());
+    result.AlwaysBreakChainRoots_ = style.AlwaysBreakChainRootNames;
+    std::sort(
+        result.AlwaysBreakChainRoots_.begin(),
+        result.AlwaysBreakChainRoots_.end());
     result.VisualScopes_.reserve(style.IndentedCallScopePairs.size());
     for (const auto& pair : style.IndentedCallScopePairs) {
         const auto [begin, end] = AnnotationScopePair(pair);
@@ -704,7 +749,41 @@ LibraryAnnotations CompileLibraryAnnotations(const Style& style)
             return result.VisualScopes_[left].End <
                 result.VisualScopes_[right].End;
         });
+    result.ChainScopes_ = CompileChainPairs(
+        style.IndentedChainScopePairs,
+        "IndentedChainScopePairs",
+        true);
+    result.StickyChainPairs_ = CompileChainPairs(
+        style.StickyChainCallPairs,
+        "StickyChainCallPairs",
+        false);
     return result;
+}
+
+std::span<const ChainCallPairAnnotation> LibraryAnnotations::ChainScopes() const
+{
+    return ChainScopes_;
+}
+
+std::span<const ChainCallPairAnnotation> LibraryAnnotations::StickyChainPairs()
+const
+{
+    return StickyChainPairs_;
+}
+
+bool LibraryAnnotations::IsStickyChainPair(
+    std::string_view first,
+    std::string_view second) const noexcept
+{
+    const auto key = std::pair{first, second};
+    const auto found = std::lower_bound(
+        StickyChainPairs_.begin(), StickyChainPairs_.end(), key,
+        [] (const auto& pair, const auto& value) {
+            return std::pair<std::string_view, std::string_view>{
+                pair.First, pair.Second} < value;
+        });
+    return found != StickyChainPairs_.end() && found->First == first &&
+        found->Second == second;
 }
 
 std::span<const MessagePinAnnotation> LibraryAnnotations::MessagePins() const
@@ -736,6 +815,20 @@ bool LibraryAnnotations::IsAnnotatedChainRoot(std::string_view name) const
 noexcept
 {
     return std::binary_search(ChainRoots_.begin(), ChainRoots_.end(), name);
+}
+
+std::span<const std::string> LibraryAnnotations::AlwaysBreakChainRoots() const
+{
+    return AlwaysBreakChainRoots_;
+}
+
+bool LibraryAnnotations::AlwaysBreakChainRoot(std::string_view name) const
+noexcept
+{
+    return std::binary_search(
+        AlwaysBreakChainRoots_.begin(),
+        AlwaysBreakChainRoots_.end(),
+        name);
 }
 
 std::span<const std::string> LibraryAnnotations::ChainRoots() const
@@ -813,7 +906,7 @@ Configuration LoadConfigFile(const std::filesystem::path& path)
                     if (!input.eof()) {
                         throw std::runtime_error(
                             "failed to read configuration file: " +
-                                path.string());
+                            path.string());
                     }
                     ThrowConfigError(path, settingLine, "unterminated array");
                 }

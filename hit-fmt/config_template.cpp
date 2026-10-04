@@ -147,13 +147,18 @@ void PrintOption(std::ostream& output, std::string_view name, const T& value)
         output << IntegerValues(name) << '\n' << name << " = " << value;
     } else if constexpr (std::is_same_v<T, std::vector<std::string>>) {
         if (name == "NamingNamespaceExemptions" ||
-            name == "ChainedCallRootNames")
+            name == "ChainedCallRootNames" ||
+            name == "AlwaysBreakChainRootNames")
         {
             output << "[] or [\"qualified::name\", ...]";
         } else if (name == "IncludeGroupPrefixes") {
             output << "[] or [\"directory/\", ...] (ordered literal prefixes)";
-        } else if (name == "IndentedCallScopePairs") {
+        } else if (name == "IndentedCallScopePairs" ||
+            name == "IndentedChainScopePairs")
+        {
             output << "[] or [\"Begin:End\", ...]";
+        } else if (name == "StickyChainCallPairs") {
+            output << "[] or [\"First:Second\", ...]";
         } else {
             output << "[] or [\"name\", ...]";
         }

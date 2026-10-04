@@ -17,7 +17,7 @@ unsigned Combine(unsigned value)
         (value == 0xed && ReadUnit(1) > 0x9f));
     for (int index = 0;
         (value == 0xe0 && ReadUnit(index) < 0xa0) ||
-            (value == 0xed && ReadUnit(index) > 0x9f);
+        (value == 0xed && ReadUnit(index) > 0x9f);
         ++index)
     {
         Update(value);
@@ -33,5 +33,9 @@ unsigned Combine(unsigned value)
     if (ShortCheck() || AnotherShortCheck()) {
         return value;
     }
+    CheckState(responseCount != std::ssize(pendingItems) ||
+        std::ranges::all_of(
+            results,
+            [] (const auto& item) { return item.has_value(); }));
     return 0;
 }

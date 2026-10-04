@@ -1,0 +1,10 @@
+Layout = Canonical
+IndentationKind = Spaces
+IndentWidth = 4
+ColumnLimit = 100
+ChainsBreak = IfNeeded
+ChainsPacking = VerticalWhenBroken
+AlwaysBreakChainRootNames = ["WRITE_EVENT", "logging::Event"]
+# Pins do not imply a forced single-call convention.
+CallLineFirstStringNames = ["READ_EVENT"]
+ChainedCallRootNames = ["READ_EVENT"]

@@ -64,7 +64,7 @@
 74 before=int field=CommaSpaceAfter owner=function-declarator category=2 priority=3 fallback=1 protected=0 constraint=0
 77 before=) field=SpaceInsideFunctionParameters owner=function-declarator category=2 priority=2 fallback=0 protected=0 constraint=0
 78 before=const field=FunctionQualifierSpacing owner=function-declarator category=10 priority=3 fallback=1 protected=0 constraint=0
-79 before=& field=FunctionRefQualifierSpacing owner=function-declarator category=10 priority=3 fallback=1 protected=0 constraint=0
+79 before=& field=FunctionCvRefQualifierSpacing owner=function-declarator category=10 priority=3 fallback=1 protected=0 constraint=0
 80 before=noexcept field=NoexceptSpaceBeforeSpecifier owner=function-declarator category=10 priority=3 fallback=1 protected=0 constraint=0
 81 before=( field=NoexceptSpaceBeforeParentheses owner=exception-specification category=10 priority=4 fallback=1 protected=0 constraint=0
 87 before=override field=FunctionSuffixSpecifierSpacing owner=function-declarator category=10 priority=3 fallback=1 protected=0 constraint=0
@@ -624,3 +624,13 @@
 709 before=; field=DeclarationSemicolonSpacing owner=declaration category=10 priority=3 fallback=0 protected=0 constraint=0
 710 before=} field=RecordBodyInteriorSpacing owner=record-declaration category=11 priority=3 fallback=1 protected=0 constraint=0
 711 before=; field=DeclarationSemicolonSpacing owner=record-declaration category=10 priority=3 fallback=0 protected=0 constraint=0
+712 before=struct field=None owner=translation-unit category=11 priority=1 fallback=1 protected=0 constraint=0
+714 before={ field=StructBraceSpacing owner=record-declaration category=10 priority=3 fallback=1 protected=0 constraint=0
+715 before=void field=RecordBodyInteriorSpacing owner=record-declaration category=11 priority=3 fallback=1 protected=0 constraint=0
+716 before=run field=None owner=function-declaration category=10 priority=1 fallback=1 protected=0 constraint=0
+717 before=( field=FunctionSpaceBeforeParameters owner=function-declarator category=2 priority=2 fallback=0 protected=0 constraint=0
+718 before=) field=EmptyFunctionParametersSpacing owner=function-declarator category=2 priority=3 fallback=0 protected=0 constraint=0
+719 before=& field=FunctionRefQualifierSpacing owner=function-declarator category=10 priority=3 fallback=1 protected=0 constraint=0
+720 before=; field=DeclarationSemicolonSpacing owner=function-declaration category=10 priority=3 fallback=0 protected=0 constraint=0
+721 before=} field=RecordBodyInteriorSpacing owner=record-declaration category=11 priority=3 fallback=1 protected=0 constraint=0
+722 before=; field=DeclarationSemicolonSpacing owner=record-declaration category=10 priority=3 fallback=0 protected=0 constraint=0

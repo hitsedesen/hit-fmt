@@ -121,7 +121,9 @@ struct GroupSpec
     // Independent child layout uses only realized enclosing continuation.
     bool StructuralBase = false;
     // Starters on the same physical line share the first continuation offset.
-    // A starter reached after a newline begins a new continuation level.
+    // Expression contributors also share a structural consumer's realized
+    // continuation. Otherwise a new-line starter begins a new level, retaining
+    // distinct expression precedence and nested structural consumer scopes.
     // Structural bodies exclude still-prospective levels and fence sharing.
     bool Continuation = false;
     // Fill may keep owned gaps flat while descendants break. Syntax can

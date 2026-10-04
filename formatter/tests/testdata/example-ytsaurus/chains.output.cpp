@@ -6,9 +6,7 @@ void Run()
     auto result = Source()
         .Begin()
         .End();
-    Source()
-        ->Open()
-        .Close();
+    Source()->Open().Close();
     Source()
         (1)
         (2);
@@ -28,9 +26,8 @@ void Run()
     Factory().Open().Value = nullptr;
     Factory().Open(Compute().Read());
     Factory()(argument);
-    Inspect(
-        receiver.primarySectionWithLongDescriptiveName.secondarySectionWithLongDescriptiveName
-            .finalPropertyWithLongDescriptiveName);
+    Inspect(receiver.primarySectionWithLongDescriptiveName.secondarySectionWithLongDescriptiveName
+        .finalPropertyWithLongDescriptiveName);
     auto nested = Wrap( // Outer argument.
         Wrap( // Inner argument.
             Source()

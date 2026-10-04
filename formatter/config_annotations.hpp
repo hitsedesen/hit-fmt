@@ -43,6 +43,12 @@ struct VisualScopeAnnotation
     VisualScopeLayout Layout = VisualScopeLayout::PreserveExistingExtraLevel;
 };
 
+struct ChainCallPairAnnotation
+{
+    std::string First;
+    std::string Second;
+};
+
 // Configuration-lifetime metadata for syntax lowering, never for the renderer.
 // Owns sorted contiguous records; no views into raw Style. Publish as const and
 // reuse across files. Spans/pointers survive raw-Style mutation but not
@@ -57,7 +63,16 @@ public:
     [[nodiscard]] bool IsAnnotatedChainRoot(std::string_view name) const
     noexcept;
     [[nodiscard]] std::span<const std::string> ChainRoots() const;
+    [[nodiscard]] std::span<const std::string> AlwaysBreakChainRoots() const;
+    [[nodiscard]] bool AlwaysBreakChainRoot(std::string_view name) const
+    noexcept;
     [[nodiscard]] std::span<const VisualScopeAnnotation> VisualScopes() const;
+    [[nodiscard]] std::span<const ChainCallPairAnnotation> ChainScopes() const;
+    [[nodiscard]] std::span<const ChainCallPairAnnotation> StickyChainPairs()
+    const;
+    [[nodiscard]] bool IsStickyChainPair(
+        std::string_view first,
+        std::string_view second) const noexcept;
     [[nodiscard]] const VisualScopeAnnotation* FindScopeBegin(
         std::string_view name) const noexcept;
     [[nodiscard]] const VisualScopeAnnotation* FindScopeEnd(
@@ -66,7 +81,10 @@ public:
 private:
     std::vector<MessagePinAnnotation> MessagePins_;
     std::vector<std::string> ChainRoots_;
+    std::vector<std::string> AlwaysBreakChainRoots_;
     std::vector<VisualScopeAnnotation> VisualScopes_;
+    std::vector<ChainCallPairAnnotation> ChainScopes_;
+    std::vector<ChainCallPairAnnotation> StickyChainPairs_;
     // Integer indices remain valid across snapshot copies/moves; no self-views.
     std::vector<std::size_t> ScopeEndOrder_;
     friend LibraryAnnotations CompileLibraryAnnotations(const Style&);

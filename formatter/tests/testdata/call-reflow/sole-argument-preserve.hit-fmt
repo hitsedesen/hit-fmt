@@ -1,0 +1,3 @@
+Layout = Preserve
+ColumnLimit = 80
+CallsSoleArgumentFirstItem = InlineIfFits

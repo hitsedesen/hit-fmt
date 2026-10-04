@@ -29,7 +29,7 @@ void compareViews() {
         expectedView != source.slice(
             span.InitialSourceOffset,
             span.FinalSourceOffset - span.InitialSourceOffset) ||
-            retryRequested) {
+        retryRequested) {
         reportMismatch();
     }
 }

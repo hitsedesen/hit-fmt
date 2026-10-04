@@ -131,17 +131,48 @@ The YTsaurus example clears that hint and conservatively byte-protects
 Byte protection is not equivalent macro formatting. The profile forces
 base and constructor lists onto new lines with leading colons and commas,
 uses four-space continuations for all safely parsed chains, and repairs
-namespace closing names. It remains a guide approximation for `yt/yt`,
+namespace closing names. `IndentedChainScopePairs` adds one `IndentWidth`
+inside matched, nested fluent scopes; `StickyChainCallPairs` keeps consecutive
+call pairs together when they fit, even with forced vertical chains. Both
+accept exact `First:Second` identifier pairs and default to empty. The
+YTsaurus profile nests `BeginMap`, `BeginList`, and `BeginAttributes` scopes
+and keeps `Item` beside its value or nested builder. A sticky pair may also
+start with a simple root receiver or factory name; `registrar:Parameter`
+keeps `registrar.Parameter(...)` together without flattening `.Default()`.
+Generic forced chains count suffix calls only in consecutive same-kind link
+runs. `AlwaysBreakChainRootNames` is a separate, empty-by-default convention
+list: the YTsaurus profile lists logging/error builders so a single `.With`
+still starts a new line, without expanding ordinary single-call expressions.
+Multiline captures use `CapturesCloser = OwnLine`; this keeps the lambda's
+parameter/header line and preserved body on a consistent indentation base.
+The profile sets `FunctionRefQualifierSpacing = Space` for `f() &`/`f() &&`
+and `FunctionCvRefQualifierSpacing = Space` for `f() const &`/`const &&` and
+volatile-qualified equivalents, independently of left-bound type references
+such as `const T&`. The CV-specific setting defaults to `Inherit` from
+`FunctionRefQualifierSpacing`; explicit `Preserve` uses normal gap-preservation
+rules instead of inheriting the generic setting.
+Use `FunctionCvRefQualifierSpacing = NoSpace` for `f() const&`/`const&&`
+without changing bare ref qualifiers. Each setting covers both `&` and `&&`. It remains a guide approximation for `yt/yt`,
 `yt/chyt`, `yt/yql` and `library/cpp/yt`, not `yt/cpp` or unrelated libraries;
-namespace rulers and include regrouping remain unsupported. For repository
-runs, the root `.hit-fmt` supplies the repository configuration; Google and
-LLVM are alternative explicit profiles. Self-format width and anchor
+namespace rulers and include regrouping remain unsupported. Calls use
+`CallsFirstItem = NextLine` with
+`CallsSoleArgumentFirstItem = InlineIfFits`: a sole argument's opening can
+stay beside the caller when it fits, including a multiline lambda. Calls
+with multiple arguments keep the normal first-item policy. The sole-argument
+option defaults to `Inherit` and does not override preservation or required
+breaks. Lambda body indentation and its closing brace follow the actual
+opening line's leading indentation, independently of subsequent arguments.
+For repository runs, the root `.hit-fmt` supplies the repository configuration;
+Google and LLVM are alternative explicit profiles. Self-format width and anchor
 limitations remain.
 
 Continuation indentation is line-based, not syntax-depth-based. Scopes
-opened on the same line share one prospective continuation offset. Once a
-callee or another list owner starts on a continued line, its contents
-establish a new level; expressions still share the surrounding continuation.
+opened on the same line share one prospective continuation offset.
+Expressions also reuse the realized continuation of an enclosing list or
+control header. A nested expression starting on a later line establishes
+another level, keeping distinct operator precedence visible. Once a callee
+or another list owner starts on a continued line, its contents establish
+a new level.
 Wrapped ternary branch expressions share the delimiter line's
 continuation instead of adding another level. Calls within a branch
 still establish a new level when their owner starts on a continued line.
