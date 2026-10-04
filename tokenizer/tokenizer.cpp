@@ -140,11 +140,10 @@ Tokenizer::Tokenizer(
 }
 
 template <>
-unicode::CodePoint
-detail::TokenizerCursor<Tokenizer>::LoadCurrentUnicodeCodePoint()
+void detail::TokenizerCursor<Tokenizer>::DecodeCurrentUnicodeCodePoint()
 {
-    auto first =
-        unicode::utf8::GetFirstCodePointFromPaddedInput(CurrentByteAddress());
+    auto first = unicode::utf8::GetFirstCodePointFromPaddedInput(
+        GetOwner().Input_.data() + CurrentCodePointOffset_);
     if (!first) {
         GetOwner().OnError(TokenizationErrorKind::InvalidUtf8CodePoint);
         ++EncodingErrorCount_;
@@ -155,7 +154,6 @@ detail::TokenizerCursor<Tokenizer>::LoadCurrentUnicodeCodePoint()
         CachedUnicodeSize_ = static_cast<uint8_t>(first->Size);
     }
     CachedUnicodeOffset_ = CurrentCodePointOffset_;
-    return CachedUnicodeValue_;
 }
 
 Token Tokenizer::FinishToken(TokenKind kind) const noexcept
@@ -173,10 +171,10 @@ Token Tokenizer::FinishToken(TokenKind kind) const noexcept
 
 Token Tokenizer::Get()
 {
-    auto byte = static_cast<unsigned char>(PeekByte());
+    auto byte = PeekByte();
     if (byte <= 0x20 || byte >= 0x80 || byte == '\\') {
         SkipWhitespace();
-        byte = static_cast<unsigned char>(PeekByte());
+        byte = PeekByte();
     }
 
     CurrentTokenPosition_ = CurrentCodePointPosition_;
@@ -184,7 +182,7 @@ Token Tokenizer::Get()
     CurrentTokenSize_ = 0;
 
     auto cur = byte < 0x80
-        ? unicode::CodePoint(static_cast<char32_t>(byte))
+        ? unicode::CodePoint(byte)
         : CurrentCodePoint();
     if (AtEnd()) [[unlikely]] {
         return FinishToken(TokenKind::EndOfFile);
@@ -514,7 +512,7 @@ unsigned char Tokenizer::ScanAsciiRun()
     unsigned char nonSpace = 0;
     unsigned char byte;
     while (true) {
-        byte = static_cast<unsigned char>(*cursor);
+        byte = *cursor;
         auto action = detail::ByteActions<State>[byte];
         if ((static_cast<unsigned char>(action) & 1) == 0) {
             break;
@@ -567,7 +565,7 @@ bool Tokenizer::TrySkipNewline()
         return true;
     }
     if (byte >= 0x80) {
-        (void)CurrentUnicodeCodePoint();
+        LoadCurrentUnicodeCodePoint();
     }
     return false;
 }
@@ -620,7 +618,7 @@ Token Tokenizer::ParseIdentifier()
         ConsumeUnicodeCodePoint();
     }
     auto cur = byte < 0x80
-        ? unicode::CodePoint(static_cast<char32_t>(byte))
+        ? unicode::CodePoint(byte)
         : CurrentUnicodeCodePoint();
 
     if (cur == '\'') {
@@ -819,7 +817,7 @@ Token Tokenizer::ParseCharacterLiteral()
         characterCount += CurrentCodePointOffset_ - start;
         switch (detail::ByteActions<detail::AsciiState::Character>[byte]) {
             case detail::ByteAction::Unicode:
-                (void)CurrentUnicodeCodePoint();
+                LoadCurrentUnicodeCodePoint();
                 ConsumeUnicodeCodePoint();
                 ++characterCount;
                 continue;
@@ -867,7 +865,7 @@ Token Tokenizer::ParseStringLiteral()
         byte = ScanAsciiRun<detail::AsciiState::String>();
         switch (detail::ByteActions<detail::AsciiState::String>[byte]) {
             case detail::ByteAction::Unicode:
-                (void)CurrentUnicodeCodePoint();
+                LoadCurrentUnicodeCodePoint();
                 ConsumeUnicodeCodePoint();
                 continue;
             case detail::ByteAction::Escape:
@@ -937,7 +935,7 @@ Token Tokenizer::ParseRawStringLiteral()
         }
         switch (detail::ByteActions<detail::AsciiState::RawString>[byte]) {
             case detail::ByteAction::Unicode:
-                (void)CurrentUnicodeCodePoint();
+                LoadCurrentUnicodeCodePoint();
                 ConsumeUnicodeCodePoint();
                 break;
             case detail::ByteAction::Delimiter:
@@ -1265,10 +1263,8 @@ Token Tokenizer::ParseInteger()
     if (IsIdStart(cur)) {
         auto isDigitSeparator = [&] {
             return cur == '\'' && CurrentCodePointOffset_ != 0 &&
-                IsAsciiDigit(
-                    static_cast<unsigned char>(
-                        ByteAt(CurrentCodePointOffset_ - 1))) &&
-                IsAsciiDigit(static_cast<unsigned char>(PeekByte(1)));
+                IsAsciiDigit(ByteAt(CurrentCodePointOffset_ - 1)) &&
+                IsAsciiDigit(PeekByte(1));
         };
         do {
             next();
@@ -1300,7 +1296,7 @@ Token Tokenizer::ParseInlineComment()
         if (byte < 0x80) {
             break;
         }
-        (void)CurrentUnicodeCodePoint();
+        LoadCurrentUnicodeCodePoint();
         ConsumeUnicodeCodePoint();
     }
     return FinishToken(TokenKind::Comment);
@@ -1314,7 +1310,7 @@ Token Tokenizer::ParseMultilineComment()
         auto byte = ScanAsciiRun<detail::AsciiState::BlockComment>();
         switch (detail::ByteActions<detail::AsciiState::BlockComment>[byte]) {
             case detail::ByteAction::Unicode:
-                (void)CurrentUnicodeCodePoint();
+                LoadCurrentUnicodeCodePoint();
                 ConsumeUnicodeCodePoint();
                 break;
             case detail::ByteAction::Newline:
@@ -1345,7 +1341,7 @@ Token Tokenizer::ParsePreprocessingDirective()
             ? ScanAsciiRun<detail::AsciiState::BlockComment>()
             : ScanAsciiRun<detail::AsciiState::Directive>();
         cur = byte < 0x80
-            ? unicode::CodePoint(static_cast<char32_t>(byte))
+            ? unicode::CodePoint(byte)
             : CurrentUnicodeCodePoint();
         if (cur == '\0') {
             break;
@@ -1387,7 +1383,7 @@ Token Tokenizer::ParsePreprocessingDirective()
                     auto byte = ScanAsciiRun<
                         detail::AsciiState::DirectiveLineComment>();
                     cur = byte < 0x80
-                        ? unicode::CodePoint(static_cast<char32_t>(byte))
+                        ? unicode::CodePoint(byte)
                         : CurrentUnicodeCodePoint();
                     if (cur == '\n' || cur == '\0') {
                         break;
@@ -1421,7 +1417,7 @@ Token Tokenizer::ParsePreprocessingDirective()
             while (cur != '\0') {
                 auto byte = ScanAsciiRun<detail::AsciiState::RawString>();
                 cur = byte < 0x80
-                    ? unicode::CodePoint(static_cast<char32_t>(byte))
+                    ? unicode::CodePoint(byte)
                     : CurrentUnicodeCodePoint();
                 if (cur == '\0') {
                     break;
@@ -1447,10 +1443,8 @@ Token Tokenizer::ParsePreprocessingDirective()
         }
         bool digitSeparator =
             cur == '\'' && CurrentCodePointOffset_ != 0 &&
-            IsAsciiAlphaNumeric(
-                static_cast<unsigned char>(ByteAt(CurrentCodePointOffset_ -
-                    1))) &&
-            IsAsciiAlphaNumeric(static_cast<unsigned char>(PeekByte(1)));
+            IsAsciiAlphaNumeric(ByteAt(CurrentCodePointOffset_ - 1)) &&
+            IsAsciiAlphaNumeric(PeekByte(1));
         if ((cur == '\'' && !digitSeparator) || cur == '"') {
             auto quote = cur;
             ConsumeCodePoint();
@@ -1460,7 +1454,7 @@ Token Tokenizer::ParsePreprocessingDirective()
                     ? ScanAsciiRun<detail::AsciiState::String>()
                     : ScanAsciiRun<detail::AsciiState::Character>();
                 cur = byte < 0x80
-                    ? unicode::CodePoint(static_cast<char32_t>(byte))
+                    ? unicode::CodePoint(byte)
                     : CurrentUnicodeCodePoint();
                 if (AtEnd() || cur == quote || cur == '\n') {
                     break;

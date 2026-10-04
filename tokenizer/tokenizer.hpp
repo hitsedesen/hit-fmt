@@ -119,19 +119,24 @@ protected:
 
     [[nodiscard]] unicode::CodePoint CurrentCodePoint()
     {
-        auto byte = static_cast<unsigned char>(PeekByte());
+        auto byte = PeekByte();
         if (byte < 0x80) [[likely]] {
-            return static_cast<char32_t>(byte);
+            return byte;
         }
         return CurrentUnicodeCodePoint();
     }
 
     [[nodiscard]] unicode::CodePoint CurrentUnicodeCodePoint()
     {
-        if (CachedUnicodeOffset_ == CurrentCodePointOffset_) {
-            return CachedUnicodeValue_;
+        LoadCurrentUnicodeCodePoint();
+        return CachedUnicodeValue_;
+    }
+
+    void LoadCurrentUnicodeCodePoint()
+    {
+        if (CachedUnicodeOffset_ != CurrentCodePointOffset_) {
+            DecodeCurrentUnicodeCodePoint();
         }
-        return LoadCurrentUnicodeCodePoint();
     }
 
     [[nodiscard]] bool AtEnd() const noexcept
@@ -139,19 +144,19 @@ protected:
         return CurrentCodePointOffset_ == GetOwner().Input_.size();
     }
 
-    [[nodiscard]] char ByteAt(size_t offset) const noexcept
+    [[nodiscard]] unsigned char ByteAt(size_t offset) const noexcept
     {
-        return GetOwner().Input_.data()[offset];
+        return ByteData()[offset];
     }
 
-    [[nodiscard]] char PeekByte(size_t lookahead = 0) const noexcept
+    [[nodiscard]] unsigned char PeekByte(size_t lookahead = 0) const noexcept
     {
         return ByteAt(CurrentCodePointOffset_ + lookahead);
     }
 
-    [[nodiscard]] const char* CurrentByteAddress() const noexcept
+    [[nodiscard]] const unsigned char* CurrentByteAddress() const noexcept
     {
-        return GetOwner().Input_.data() + CurrentCodePointOffset_;
+        return ByteData() + CurrentCodePointOffset_;
     }
 
     void ConsumeAsciiByte(
@@ -177,9 +182,10 @@ protected:
         }
     }
 
+    // Requires the non-ASCII character at the current offset to have been
+    // decoded by LoadCurrentUnicodeCodePoint() before this call.
     void ConsumeUnicodeCodePoint()
     {
-        // The caller has decoded the character at this offset.
         auto& owner = GetOwner();
         owner.CurrentTokenSize_ += CachedUnicodeSize_;
         CurrentCodePointOffset_ += CachedUnicodeSize_;
@@ -192,8 +198,9 @@ protected:
         NewlineHandling newlineHandling = NewlineHandling::Track)
     {
         if (value < 0x80) [[likely]] {
-            ConsumeAsciiByte(static_cast<unsigned char>(
-                static_cast<uint32_t>(value)), newlineHandling);
+            ConsumeAsciiByte(
+                static_cast<unsigned char>(value),
+                newlineHandling);
         } else {
             ConsumeUnicodeCodePoint();
         }
@@ -217,6 +224,11 @@ protected:
     util::Position CurrentCodePointPosition_ = {.Line = 1, .Column = 1};
 
 private:
+    [[nodiscard]] const unsigned char* ByteData() const noexcept
+    {
+        return reinterpret_cast<const unsigned char*>(GetOwner().Input_.data());
+    }
+
     [[nodiscard]] Owner& GetOwner() noexcept
     {
         return static_cast<Owner&>(*this);
@@ -227,7 +239,7 @@ private:
         return static_cast<const Owner&>(*this);
     }
 
-    [[nodiscard]] unicode::CodePoint LoadCurrentUnicodeCodePoint();
+    void DecodeCurrentUnicodeCodePoint();
 };
 
 } // namespace detail

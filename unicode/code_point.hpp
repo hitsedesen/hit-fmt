@@ -10,6 +10,10 @@ namespace unicode {
 class CodePoint
 {
 public:
+    constexpr CodePoint(unsigned char cp)
+        : Value_(cp)
+    { }
+
     constexpr CodePoint(char cp)
         : Value_(cp)
     { }
