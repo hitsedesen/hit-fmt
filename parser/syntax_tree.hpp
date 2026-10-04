@@ -406,7 +406,7 @@ public:
         }
         Chunks_ =
             static_cast<Chunk**>(Memory_
-            ->allocate(sizeof(Chunk*) * ChunkCount_, alignof(Chunk*)));
+                ->allocate(sizeof(Chunk*) * ChunkCount_, alignof(Chunk*)));
         auto* chunk = First_;
         for (uint32_t i = 0; i < ChunkCount_; ++i) {
             Chunks_[i] = chunk;

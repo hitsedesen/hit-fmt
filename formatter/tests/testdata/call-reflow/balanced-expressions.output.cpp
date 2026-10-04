@@ -4,7 +4,7 @@ void Compare()
         .fetch_and(~static_cast<uint64_t>(EChannelMode::Sleeping)));
     auto inner =
         static_cast<Tiny>(CalculateLongReachableIdentifierStateFromCachedValue(
-        LongArgumentRepresentingCurrentEnvironmentAndScheduler));
+            LongArgumentRepresentingCurrentEnvironmentAndScheduler));
     auto mustStay =
         static_cast<ELarge>(Make(/* preserve */ VeryLongArgumentRepresentingTheEntireSchedulerStateAndCurrentWorker));
     auto withTernary =
@@ -13,15 +13,15 @@ void Compare()
         : FetchValueFromSecondaryProcessorWithLongName());
     if (!channelControl
         .compare_exchange_weak(
-        previousObservedControl,
-        static_cast<unsigned long long>(pendingStatusBits | receivedControlSignals)))
+            previousObservedControl,
+            static_cast<unsigned long long>(pendingStatusBits | receivedControlSignals)))
     {
         Retry();
     }
     if (!channelControl
         .compare_exchange_weak(
-        previousObservedControl, /* keep */ static_cast<unsigned long long>(pendingStatusBits |
-        receivedControlSignals)))
+            previousObservedControl, /* keep */ static_cast<unsigned long long>(pendingStatusBits |
+            receivedControlSignals)))
     {
         Retry();
     }
@@ -45,15 +45,15 @@ void StoreRecord()
 {
     Values_.push_back(std::string(
         Options_
-        ->Lead,
+            ->Lead,
         '.') + std::string(DescribeArchivedRecordPayload(DecodeRecordVariant<TSubstantialRecordPayload>(
         record
-        .Payload))));
+            .Payload))));
     auto product = ComputeLedgerWeight(
         factors
-        .Base,
+            .Base,
         factors
-        .Limit) * ConvertTokenizedMetric(ExtractValueFromIndexedPayload<TStoredMetric>(
+            .Limit) * ConvertTokenizedMetric(ExtractValueFromIndexedPayload<TStoredMetric>(
         record
-        .Payload));
+            .Payload));
 }

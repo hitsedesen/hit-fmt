@@ -126,7 +126,6 @@ struct Syntax
     bool String = false;
     bool Definition = false;
     bool ItemSequence = false;
-    ContinuationNesting Nesting = ContinuationNesting::Shared;
     parser::TokenRange SequenceBody = {};
     parser::TokenRange Attached = {};
 };
@@ -347,13 +346,13 @@ private:
         const auto protection = Safety_.Protection();
         auto first =
             std::lower_bound(
-            protection.begin(),
-            protection.end(),
-            source.Begin,
-            [] (
-                const ProtectedSourceRange& range,
-                parser::SourceOffset point) { return range.Source.End <=
-                    point; });
+                protection.begin(),
+                protection.end(),
+                source.Begin,
+                [] (
+                    const ProtectedSourceRange& range,
+                    parser::SourceOffset point) { return range.Source.End <=
+                        point; });
         for (;
             first != protection.end() && first->Source.Begin < source.End;
             ++first)
@@ -390,23 +389,6 @@ private:
             pending.pop_back();
             const auto id = Index(Syntax_.size());
             Syntax_.push_back({item.NodePtr, item.Parent});
-            auto& context = Syntax_[id].Nesting;
-            context =
-                item.Parent == None
-                ? Policies_.ContinuationNesting
-                : Syntax_[item.Parent].Nesting;
-            if (item.NodePtr->Kind == NodeKind::Condition ||
-                item.NodePtr->Kind == NodeKind::ForHeader)
-            {
-                context =
-                    Policies_.ControlHeaders.Indent.Nesting.value_or(context);
-            } else if (item.Parent != None &&
-                IsControl(Syntax_[item.Parent].TreeNode->Kind))
-            {
-                context =
-                    Policies_.ControlBodiesContinuationNesting
-                    .value_or(context);
-            }
             LastChild_.push_back(None);
             BlockOf_.push_back(None);
             switch (item.NodePtr->Kind) {
@@ -790,18 +772,6 @@ private:
         }
     }
 
-    void PlanContinuation(Index group, Index syntax)
-    {
-        auto& entry = Groups_[group];
-        const auto nesting =
-            entry.Indent.Nesting.value_or(Syntax_[syntax].Nesting);
-        entry.Spec.Continuation = true;
-        entry.Spec.Nesting =
-            nesting == ContinuationNesting::Shared
-            ? document::ContinuationNesting::Shared
-            : document::ContinuationNesting::Additive;
-    }
-
     void PlanList(Index id, const ListPolicy& policy)
     {
         const auto& node = *Syntax_[id].TreeNode;
@@ -817,11 +787,11 @@ private:
         const bool canonical = policy.Layout == LayoutMode::Canonical;
         const auto group =
             GroupAt(
-            prefixed ? GapPosition(begin) : GapPosition(begin + 1),
-            GapPosition(end),
-            document::GroupMode::Fill,
-            int32_t(policy.Indent.ContinuationOffset),
-            policy.Indent);
+                prefixed ? GapPosition(begin) : GapPosition(begin + 1),
+                GapPosition(end),
+                document::GroupMode::Fill,
+                int32_t(policy.Indent.ContinuationOffset),
+                policy.Indent);
         if (group == None) {
             return;
         }
@@ -829,7 +799,7 @@ private:
         if (node.Kind != NodeKind::InitializerList &&
             node.Kind != NodeKind::EnumeratorList)
         {
-            PlanContinuation(group, id);
+            Groups_[group].Spec.Continuation = true;
         }
         const bool empty = !prefixed && node.Tokens.Size() == 2;
         Groups_[group].Spec.ForceBreak =
@@ -1024,11 +994,11 @@ private:
                 Safety_.IntersectsImmutable({insertion, insertion})) ||
                 (existing &&
                 (Safety_
-                .IntersectsImmutable(
-                {
-                    Tree_.Token(lastSeparator).Text.Begin,
-                    Tree_.Token(lastSeparator).Text.End,
-                }) || !GapMutable(lastSeparator) ||
+                    .IntersectsImmutable(
+                        {
+                            Tree_.Token(lastSeparator).Text.Begin,
+                            Tree_.Token(lastSeparator).Text.End,
+                        }) || !GapMutable(lastSeparator) ||
                 !Safety_.CanReplaceGap(lastSeparator, "") ||
                 (!canonical &&
                 HasLine(Safety_.Gaps()[lastSeparator].Original)))))
@@ -1136,17 +1106,17 @@ private:
             policy.TernaryShape == TernaryLayout::ThreePart;
         const auto group =
             GroupAt(
-            kind == NodeKind::Initializer
-            ? GapPosition(node.Tokens.Begin)
-            : TokenPosition(node.Tokens.Begin),
-            GapPosition(node.Tokens.End),
-            threePart
-            ? document::GroupMode::Consistent
-            : document::GroupMode::Fill,
-            int32_t(indentation.ContinuationOffset),
-            indentation);
+                kind == NodeKind::Initializer
+                ? GapPosition(node.Tokens.Begin)
+                : TokenPosition(node.Tokens.Begin),
+                GapPosition(node.Tokens.End),
+                threePart
+                ? document::GroupMode::Consistent
+                : document::GroupMode::Fill,
+                int32_t(indentation.ContinuationOffset),
+                indentation);
         Groups_[group].Spec.ExpressionContinuation = true;
-        PlanContinuation(group, id);
+        Groups_[group].Spec.Continuation = true;
         Groups_[group].Spec.ForceBreak =
             canonical && policy.Break == BreakRequirement::Always &&
             (declarationAssignment || kind == NodeKind::BinaryExpression ||
@@ -1227,7 +1197,7 @@ private:
             }
             const auto info =
                 parser::GetBinaryOperatorInfo(
-                Tree_.Kind(Syntax_[segment].Operator));
+                    Tree_.Kind(Syntax_[segment].Operator));
             const auto next =
                 info.RightAssociative
                 ? LastChild_[segment]
@@ -1569,18 +1539,18 @@ private:
                     if (compactSeparators == None) {
                         compactSeparators =
                             GroupAt(
-                            TokenPosition(node.Tokens.Begin),
-                            GapPosition(node.Tokens.End),
-                            document::GroupMode::Consistent);
+                                TokenPosition(node.Tokens.Begin),
+                                GapPosition(node.Tokens.End),
+                                document::GroupMode::Consistent);
                         Groups_[compactSeparators].Spec.StructuralBase = true;
                     }
                     prefix = compactSeparators;
                 } else {
                     prefix =
                         GroupAt(
-                        GapPosition(begin),
-                        TokenPosition(begin),
-                        document::GroupMode::Consistent);
+                            GapPosition(begin),
+                            TokenPosition(begin),
+                            document::GroupMode::Consistent);
                 }
                 Own(begin, prefix, boundary);
                 if (boundary == Boundary::Preserve) {
@@ -1595,9 +1565,9 @@ private:
             if (suffix) {
                 const auto header =
                     GroupAt(
-                    TokenPosition(begin),
-                    GapPosition(node.Tokens.End),
-                    document::GroupMode::Fill);
+                        TokenPosition(begin),
+                        GapPosition(node.Tokens.End),
+                        document::GroupMode::Fill);
                 Groups_[header].Spec.StructuralBase = true;
                 if (canonical) {
                     ProjectHeaderGaps(id, begin, node.Tokens.End, header);
@@ -1606,11 +1576,11 @@ private:
             }
             const auto header =
                 GroupAt(
-                TokenPosition(begin),
-                braced
-                ? GapPosition(opening + 1)
-                : elseIf ? TokenPosition(opening) : GapPosition(opening),
-                document::GroupMode::Fill);
+                    TokenPosition(begin),
+                    braced
+                    ? GapPosition(opening + 1)
+                    : elseIf ? TokenPosition(opening) : GapPosition(opening),
+                    document::GroupMode::Fill);
             Groups_[header].Spec.StructuralBase = true;
             if (canonical) {
                 ProjectHeaderGaps(id, begin, opening, header);
@@ -1639,10 +1609,10 @@ private:
             } else {
                 const auto group =
                     GroupAt(
-                    GapPosition(opening),
-                    GapPosition(body.Tokens.End),
-                    document::GroupMode::Consistent,
-                    int32_t(Policies_.Bodies.IndentWidth));
+                        GapPosition(opening),
+                        GapPosition(body.Tokens.End),
+                        document::GroupMode::Consistent,
+                        int32_t(Policies_.Bodies.IndentWidth));
                 Groups_[group].Spec.StructuralBase = true;
                 if (Policies_.Bodies.Layout == LayoutMode::Canonical) {
                     Own(
@@ -1669,9 +1639,9 @@ private:
             {
                 const auto group =
                     GroupAt(
-                    TokenPosition(node.Tokens.Begin),
-                    GapPosition(node.Tokens.End),
-                    document::GroupMode::Fill);
+                        TokenPosition(node.Tokens.Begin),
+                        GapPosition(node.Tokens.End),
+                        document::GroupMode::Fill);
                 Groups_[group].Spec.StructuralBase = true;
                 ProjectHeaderGaps(
                     id,
@@ -1705,10 +1675,10 @@ private:
             {
                 const auto scope =
                     GroupAt(
-                    GapPosition(node.Tokens.Begin),
-                    GapPosition(node.Tokens.End),
-                    document::GroupMode::Consistent,
-                    Policies_.Indentation.StandaloneBraces.Offset);
+                        GapPosition(node.Tokens.Begin),
+                        GapPosition(node.Tokens.End),
+                        document::GroupMode::Consistent,
+                        Policies_.Indentation.StandaloneBraces.Offset);
                 auto& gap = Gaps_[node.Tokens.Begin];
                 gap.Owner = scope;
                 gap.Reindent = true;
@@ -1824,9 +1794,9 @@ private:
             : Policies_.DeclarationHeaders) == LayoutMode::Canonical;
         const auto group =
             GroupAt(
-            TokenPosition(node.Tokens.Begin),
-            GapPosition(opening + 1),
-            document::GroupMode::Fill);
+                TokenPosition(node.Tokens.Begin),
+                GapPosition(opening + 1),
+                document::GroupMode::Fill);
         Groups_[group].Spec.StructuralBase = true;
         if (canonical) {
             Own(
@@ -1981,10 +1951,10 @@ private:
                 if (contents == None) {
                     contents =
                         GroupAt(
-                        GapPosition(part.Tokens.Begin),
-                        GapPosition(part.Tokens.End),
-                        document::GroupMode::Consistent,
-                        int32_t(policy.IndentWidth));
+                            GapPosition(part.Tokens.Begin),
+                            GapPosition(part.Tokens.End),
+                            document::GroupMode::Consistent,
+                            int32_t(policy.IndentWidth));
                     Groups_[contents].Spec.StructuralBase = true;
                 } else {
                     Groups_[contents].End = GapPosition(part.Tokens.End);
@@ -2134,15 +2104,15 @@ private:
         const auto& policy = Policies_.Chains;
         const auto group =
             GroupAt(
-            TokenPosition(entry.TreeNode->Tokens.Begin),
-            GapPosition(entry.TreeNode->Tokens.End),
-            document::GroupMode::Fill,
-            int32_t(policy.Indent.ContinuationOffset),
-            policy.Indent);
+                TokenPosition(entry.TreeNode->Tokens.Begin),
+                GapPosition(entry.TreeNode->Tokens.End),
+                document::GroupMode::Fill,
+                int32_t(policy.Indent.ContinuationOffset),
+                policy.Indent);
         // A chain owns continuation independently of pending expression
         // offsets, but retains enclosing list and realized-line indentation.
         Groups_[group].Spec.StructuralBase = true;
-        PlanContinuation(group, id);
+        Groups_[group].Spec.Continuation = true;
         Groups_[group].Spec.ForceBreak =
             policy.Break == BreakRequirement::Always;
         for (Index spine = id; spine != entry.Root;) {
@@ -2245,12 +2215,12 @@ private:
                 const auto spelling = Tree_.TokenText(token);
                 const auto found =
                     std::lower_bound(
-                    ScopeNames_.begin(),
-                    ScopeNames_.end(),
-                    spelling,
-                    [] (
-                        const ScopeName& item,
-                        std::string_view key) { return item.Name < key; });
+                        ScopeNames_.begin(),
+                        ScopeNames_.end(),
+                        spelling,
+                        [] (
+                            const ScopeName& item,
+                            std::string_view key) { return item.Name < key; });
                 if (found != ScopeNames_.end() && found->Name == spelling) {
                     if (result.Kind != Discovery::None) {
                         return {Discovery::Ambiguous, {}};
@@ -2313,8 +2283,8 @@ private:
             if (c == '\t') {
                 column =
                     AddWidth(
-                    column,
-                    Options_.TabWidth - column % Options_.TabWidth);
+                        column,
+                        Options_.TabWidth - column % Options_.TabWidth);
             } else if (c == ' ') {
                 column = AddWidth(column, 1);
             } else {
@@ -2373,7 +2343,7 @@ private:
                     if (!pairs.empty()) {
                         freeze(
                             Syntax_[pairs.front().Statement].TreeNode->Tokens
-                            .Begin,
+                                .Begin,
                             Syntax_[id].TreeNode->Tokens.End - 1);
                     }
                     pairs.clear();
@@ -2388,7 +2358,7 @@ private:
                         pairs.empty()
                         ? Syntax_[child].TreeNode->Tokens.Begin
                         : Syntax_[pairs.front().Statement].TreeNode->Tokens
-                        .Begin,
+                            .Begin,
                         Syntax_[id].TreeNode->Tokens.End - 1);
                     pairs.clear();
                     continue;
@@ -2408,7 +2378,7 @@ private:
                         pairs.empty()
                         ? Syntax_[id].TreeNode->Tokens.Begin + 1
                         : Syntax_[pairs.front().Statement].TreeNode->Tokens
-                        .Begin,
+                            .Begin,
                         Syntax_[child].TreeNode->Tokens.End);
                     pairs.clear();
                     continue;
@@ -2421,7 +2391,7 @@ private:
                 }
                 const auto beginIndent =
                     SourceIndent(
-                    Syntax_[begin.Statement].TreeNode->Tokens.Begin);
+                        Syntax_[begin.Statement].TreeNode->Tokens.Begin);
                 const auto interiorIndent =
                     SourceIndent(Syntax_[first].TreeNode->Tokens.Begin);
                 if (beginIndent == None || interiorIndent == None ||
@@ -2476,10 +2446,10 @@ private:
             const auto owner = BlockOf_[Syntax_[range.First].Parent];
             const auto group =
                 GroupAt(
-                GapPosition(beginToken),
-                GapPosition(endToken),
-                document::GroupMode::Consistent,
-                int32_t(Policies_.IndentWidth));
+                    GapPosition(beginToken),
+                    GapPosition(endToken),
+                    document::GroupMode::Consistent,
+                    int32_t(Policies_.IndentWidth));
             for (auto interior = range.First;
                 interior != range.End;
                 interior = Syntax_[interior].NextSibling)
@@ -2651,12 +2621,12 @@ private:
                         if (entry.ItemSequence) {
                             entry.SequenceBody.Begin =
                                 std::max(
-                                entry.SequenceBody.Begin,
-                                Syntax_[parent].SequenceBody.Begin);
+                                    entry.SequenceBody.Begin,
+                                    Syntax_[parent].SequenceBody.Begin);
                             entry.SequenceBody.End =
                                 std::min(
-                                entry.SequenceBody.End,
-                                Syntax_[parent].SequenceBody.End);
+                                    entry.SequenceBody.End,
+                                    Syntax_[parent].SequenceBody.End);
                         }
                     }
                     PlanStandaloneCommentGaps(id);
@@ -2798,9 +2768,9 @@ private:
                 }
                 const auto lines =
                     std::count(
-                    Safety_.Gaps()[i].Original.begin(),
-                    Safety_.Gaps()[i].Original.end(),
-                    '\n');
+                        Safety_.Gaps()[i].Original.begin(),
+                        Safety_.Gaps()[i].Original.end(),
+                        '\n');
                 if (lines > policy.MaxEmptyLines.EmptyLines + 1) {
                     auto& gap = Gaps_[i];
                     gap.PreserveIndent |=
@@ -3222,17 +3192,17 @@ private:
                 if (plan.OverrideIndent) {
                     anchor =
                         Document_
-                        .MarkAnchor(
-                        {
-                            document::AnchorKind::BlockRelative,
-                            plan.ExtraIndent,
-                        });
+                            .MarkAnchor(
+                                {
+                                    document::AnchorKind::BlockRelative,
+                                    plan.ExtraIndent,
+                                });
                 }
                 Document_
                     .Gap(
-                    Spec(i, document::GapKind::Hard),
-                    anchor,
-                    GapOrigin(i));
+                        Spec(i, document::GapKind::Hard),
+                        anchor,
+                        GapOrigin(i));
             } else if (plan.Reindent && Allows(i, document::GapKind::Hard)) {
                 const bool crlf = lf > 0 && source.Original[lf - 1] == '\r';
                 const auto newlineBegin =
@@ -3260,17 +3230,21 @@ private:
                 if (plan.OverrideIndent) {
                     anchor =
                         Document_
-                        .MarkAnchor(
-                        {
-                            document::AnchorKind::BlockRelative,
-                            plan.ExtraIndent,
-                        });
+                            .MarkAnchor(
+                                {
+                                    document::AnchorKind::BlockRelative,
+                                    plan.ExtraIndent,
+                                });
                 }
                 Document_
                     .Gap(
-                    spec,
-                    anchor,
-                    {newlineBegin, source.Source.End, document::NoIdentity});
+                        spec,
+                        anchor,
+                        {
+                            newlineBegin,
+                            source.Source.End,
+                            document::NoIdentity,
+                        });
             } else {
                 PreservedSlice(
                     i,
@@ -3343,23 +3317,23 @@ private:
                 if (plan.OverrideIndent) {
                     anchor =
                         Document_
-                        .MarkAnchor(
-                        {
-                            document::AnchorKind::BlockRelative,
-                            plan.ExtraIndent,
-                        });
+                            .MarkAnchor(
+                                {
+                                    document::AnchorKind::BlockRelative,
+                                    plan.ExtraIndent,
+                                });
                 }
                 // Any trimmed runs were before terminators. The remaining
                 // contiguous prefix still ends in the original final LF.
                 // No fixed newline becomes an editable owned boundary.
                 Document_
                     .SourceLineIndent(
-                    cursor,
-                    permission.Source.Begin,
-                    permission.Source.Begin,
-                    permission.Source.End,
-                    anchor,
-                    plan.RequiredWidth);
+                        cursor,
+                        permission.Source.Begin,
+                        permission.Source.Begin,
+                        permission.Source.End,
+                        anchor,
+                        plan.RequiredWidth);
                 RecordFixedExpressionLine(i, cursor, permission.Source.Begin);
                 cursor = permission.Source.End;
             }
@@ -3409,8 +3383,8 @@ private:
         if (gap.OverrideIndent) {
             anchor =
                 Document_
-                .MarkAnchor(
-                {document::AnchorKind::BlockRelative, gap.ExtraIndent});
+                    .MarkAnchor(
+                        {document::AnchorKind::BlockRelative, gap.ExtraIndent});
         }
         const auto flat = Spec(i, document::GapKind::Flat);
         const bool flatOK = Allows(i, document::GapKind::Flat);
@@ -3433,21 +3407,21 @@ private:
             }
             Document_
                 .ConditionalGap(
-                Groups_[gap.Owner].Id,
-                flat,
-                Spec(i, gap.Broken),
-                anchor,
-                GapOrigin(i));
+                    Groups_[gap.Owner].Id,
+                    flat,
+                    Spec(i, gap.Broken),
+                    anchor,
+                    GapOrigin(i));
         } else {
             Document_
                 .Gap(
-                Spec(
-                i,
-                gap.Shape == Boundary::Hard
-                ? document::GapKind::Hard
-                : document::GapKind::Soft),
-                anchor,
-                GapOrigin(i));
+                    Spec(
+                        i,
+                        gap.Shape == Boundary::Hard
+                        ? document::GapKind::Hard
+                        : document::GapKind::Soft),
+                    anchor,
+                    GapOrigin(i));
         }
     }
 
@@ -3468,13 +3442,13 @@ private:
             group.AnchorAfterGap ? 0 : int32_t(FlatWidth(group.PrefixGap));
         group.Anchor =
             Document_
-            .MarkAnchor(
-            {
-                document::AnchorKind::DelimiterColumn,
-                offset,
-                int32_t(fallback),
-                0,
-            });
+                .MarkAnchor(
+                    {
+                        document::AnchorKind::DelimiterColumn,
+                        offset,
+                        int32_t(fallback),
+                        0,
+                    });
     }
 
     void Emit()
@@ -3497,57 +3471,57 @@ private:
                 auto& group = Groups_[id];
                 group.PreviousContinuation = continuation;
                 const bool sharedAnchor =
-                    group.Spec.Continuation &&
-                    group.Spec.Nesting ==
-                    document::ContinuationNesting::Shared &&
-                    continuation != None &&
+                    group.Spec.Continuation && continuation != None &&
                     group.Indent.Alignment == ContinuationAlignment::Block;
                 group.Block =
                     Document_
-                    .MarkAnchor(
-                    {
-                        document::AnchorKind::BlockRelative,
-                        0,
-                        0,
-                        0,
-                        group.Spec.StructuralBase,
-                        group.Spec.Continuation,
-                        group.Spec.Nesting,
-                    });
+                        .MarkAnchor(
+                            {
+                                document::AnchorKind::BlockRelative,
+                                0,
+                                0,
+                                0,
+                                group.Spec.StructuralBase,
+                                group.Spec.Continuation,
+                            });
                 if (group.PrefixGap != None) {
                     group.Anchor =
                         Document_
-                        .MarkAnchor(
-                        {
-                            document::AnchorKind::BlockRelative,
-                            int32_t(group.Indent.ContinuationOffset),
-                            0,
-                            0,
-                            group.Spec.StructuralBase,
-                            group.Spec.Continuation,
-                            group.Spec.Nesting,
-                        });
-                } else if (sharedAnchor) {
+                            .MarkAnchor(
+                                {
+                                    document::AnchorKind::BlockRelative,
+                                    int32_t(group.Indent.ContinuationOffset),
+                                    0,
+                                    0,
+                                    group.Spec.StructuralBase,
+                                    group.Spec.Continuation,
+                                });
+                } else if (sharedAnchor && !group.Spec.StructuralBase) {
+                    // Expression scopes always share this level; only list
+                    // consumers need a render-time choice of continuation.
                     group.Anchor = Groups_[continuation].Anchor;
                 } else if (group.HasAnchor) {
                     group.Anchor =
                         Document_
-                        .MarkAnchor(
-                        {
-                            group.Indent.Alignment ==
-                                ContinuationAlignment::Delimiter
-                                ? document::AnchorKind::DelimiterColumn
-                                : document::AnchorKind::BlockRelative,
-                            group.Indent.Alignment ==
-                                ContinuationAlignment::Delimiter
-                                ? 0
-                                : int32_t(group.Indent.ContinuationOffset),
-                            int32_t(group.Indent.FallbackOffset),
-                            uint32_t(group.Indent.ContinuationOffset),
-                            group.Spec.StructuralBase,
-                            group.Spec.Continuation,
-                            group.Spec.Nesting,
-                        });
+                            .MarkAnchor(
+                                {
+                                    group.Indent.Alignment ==
+                                        ContinuationAlignment::Delimiter
+                                        ? document::AnchorKind::DelimiterColumn
+                                        : document::AnchorKind::BlockRelative,
+                                    group.Indent.Alignment ==
+                                        ContinuationAlignment::Delimiter
+                                        ? 0
+                                        : int32_t(
+                                            group.Indent.ContinuationOffset),
+                                    int32_t(group.Indent.FallbackOffset),
+                                    uint32_t(group.Indent.ContinuationOffset),
+                                    group.Spec.StructuralBase,
+                                    group.Spec.Continuation,
+                                    sharedAnchor
+                                        ? Groups_[continuation].Anchor
+                                        : document::InvalidId,
+                                });
                 }
                 group.Id = Document_.BeginGroup(group.Spec);
                 if (group.Spec.Continuation) {
@@ -3576,10 +3550,10 @@ private:
                     const auto end = Tree_.Token(i - 1).Text.End;
                     Document_
                         .ConditionalText(
-                        Groups_[owner].Id,
-                        "",
-                        ",",
-                        {end, end, document::NoIdentity});
+                            Groups_[owner].Id,
+                            "",
+                            ",",
+                            {end, end, document::NoIdentity});
                 }
                 const auto delayed = Gaps_[i].MarkDelimiter;
                 if (delayed != None && !Groups_[delayed].AnchorAfterGap) {

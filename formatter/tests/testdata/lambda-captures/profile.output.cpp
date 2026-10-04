@@ -10,19 +10,19 @@ void Make()
         2);
     GetDispatcher()
         .Subscribe(
-        MakeCallback(
-        [this, observer = MakeObserver(this)] (const VeryLongResponseType<SharedPointer<Message>>& response) {
-            Observe(response);
-        }));
+            MakeCallback(
+                [this, observer = MakeObserver(this)] (const VeryLongResponseType<SharedPointer<Message>>& response) {
+                    Observe(response);
+                }));
     auto cancel = RegisterHandler(
         BIND_NO_PROPAGATE(
-        [
-            weakRequest = MakeWeak(request),
-            ticket = MakeTicketForRequest(request),
-            this,
-            weakHandler = MakeWeak(handler)] (const TError& error) {
-            Notify(error);
-        }));
+            [
+                weakRequest = MakeWeak(request),
+                ticket = MakeTicketForRequest(request),
+                this,
+                weakHandler = MakeWeak(handler)] (const TError& error) {
+                Notify(error);
+            }));
 }
 
 void Schedule()
@@ -33,13 +33,13 @@ void Schedule()
                 ->Prepare();
             connection
                 ->Subscribe(
-                MakeCallback(
-                [state, guard = std::move(guard)] (const TResult&) mutable {
-                    state
-                        ->Finish();
-                    guard
-                        ->Notify();
-                }));
+                    MakeCallback(
+                        [state, guard = std::move(guard)] (const TResult&) mutable {
+                            state
+                                ->Finish();
+                            guard
+                                ->Notify();
+                        }));
         });
 }
 
@@ -47,11 +47,11 @@ auto AdjustLater()
 {
     return WhenAllComplete(workItems)
         .Apply(
-        BIND(
-        [this, weakHandle = MakeWeak(this), count] (const TError& /*ignored*/) {
-            if (auto current = weakHandle.Lock()) {
-                current
-                    ->Adjust(count);
-            }
-        }));
+            BIND(
+                [this, weakHandle = MakeWeak(this), count] (const TError& /*ignored*/) {
+                    if (auto current = weakHandle.Lock()) {
+                        current
+                            ->Adjust(count);
+                    }
+                }));
 }

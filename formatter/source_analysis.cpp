@@ -591,8 +591,8 @@ SourceAnalysis BuildSourceAnalysis(
             .push_back(recoveryPrefix.back() + (token.Kind == TK::Invalid));
         ambiguousPrefix
             .push_back(
-            ambiguousPrefix.back() +
-            (tree.Role(i) == parser::PunctuationRole::AmbiguousOperator));
+                ambiguousPrefix.back() +
+                (tree.Role(i) == parser::PunctuationRole::AmbiguousOperator));
         if (token.Kind == TK::PreprocessingDirective) {
             protect(
                 tokenLine.Begin,
@@ -711,8 +711,10 @@ SourceAnalysis BuildSourceAnalysis(
             ambiguousPrefix[tokens.End] != ambiguousPrefix[tokens.Begin];
         const auto status =
             Combine(
-            hasRecovery ? RegionStatus::Recovery : RegionStatus::Complete,
-            hasAmbiguity ? RegionStatus::Ambiguous : RegionStatus::Complete);
+                hasRecovery ? RegionStatus::Recovery : RegionStatus::Complete,
+                hasAmbiguity
+                ? RegionStatus::Ambiguous
+                : RegionStatus::Complete);
         result.Regions_
             .push_back({tokens, {begin, end}, node.Kind, parent, status});
         if (node.Kind == parser::NodeKind::HeaderName) {

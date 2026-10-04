@@ -80,14 +80,14 @@ void Literal(
     }
     plan.Edits
         .push_back(
-        {
-            source,
-            begin,
-            static_cast<uint32_t>(plan.Pieces.size()),
-            id,
-            depth,
-            edge,
-        });
+            {
+                source,
+                begin,
+                static_cast<uint32_t>(plan.Pieces.size()),
+                id,
+                depth,
+                edge,
+            });
 }
 
 void Sort(StructuralPlan& plan)
@@ -301,10 +301,10 @@ bool DirectiveOnly(const SourceAnalysis& safety, SR range)
     auto intervals = safety.Protection();
     auto it =
         std::lower_bound(
-        intervals.begin(),
-        intervals.end(),
-        range.Begin,
-        [] (const auto& r, auto offset) { return r.Source.End <= offset; });
+            intervals.begin(),
+            intervals.end(),
+            range.Begin,
+            [] (const auto& r, auto offset) { return r.Source.End <= offset; });
     for (; it != intervals.end() && it->Source.Begin < range.End; ++it) {
         if (it->Reasons != ProtectionReason::Directive) {
             return false;
@@ -375,21 +375,21 @@ void Includes(
                 std::sort(group.begin(), group.end(), compare);
                 auto id =
                     Operation(
-                    plan,
-                    StructuralAction::IncludeOrder,
-                    descriptor.Tokens);
+                        plan,
+                        StructuralAction::IncludeOrder,
+                        descriptor.Tokens);
                 auto start = static_cast<uint32_t>(plan.Pieces.size());
                 for (const auto& atom : group) {
                     plan.Pieces.push_back({atom.Atom, {}, true});
                 }
                 plan.Edits
                     .push_back(
-                    {
-                        descriptor.Source,
-                        start,
-                        static_cast<uint32_t>(plan.Pieces.size()),
-                        id,
-                    });
+                        {
+                            descriptor.Source,
+                            start,
+                            static_cast<uint32_t>(plan.Pieces.size()),
+                            id,
+                        });
             }
         },
         [&] (parser::TokenRange tokens, StructuralSkip reason) {
@@ -488,10 +488,10 @@ bool Intersects(std::span<const SR> ranges, SR query)
 {
     auto it =
         std::lower_bound(
-        ranges.begin(),
-        ranges.end(),
-        query.Begin,
-        [] (SR r, auto offset) { return r.End <= offset; });
+            ranges.begin(),
+            ranges.end(),
+            query.Begin,
+            [] (SR r, auto offset) { return r.End <= offset; });
     return it != ranges.end() &&
         (query.Empty() ? it->Begin <= query.Begin : it->Begin < query.End);
 }
@@ -786,12 +786,15 @@ StructuralMaterialization MaterializeStructuralEdits(
         result.Text.append(tree.SourceText(source));
         result.Provenance
             .push_back(
-            {
-                {begin, static_cast<parser::SourceOffset>(result.Text.size())},
-                source,
-                operation,
-                false,
-            });
+                {
+                    {
+                        begin,
+                        static_cast<parser::SourceOffset>(result.Text.size()),
+                    },
+                    source,
+                    operation,
+                    false,
+                });
         for (TI i = FirstBeginningAt(tree, source.Begin); i < tree.TokenCount();
              ++i) {
             auto token = tree.Token(i).Text;
@@ -825,24 +828,27 @@ StructuralMaterialization MaterializeStructuralEdits(
                 result.Text.append(piece.Literal);
                 result.Provenance
                     .push_back(
-                    {
                         {
-                            start,
-                            static_cast<parser::SourceOffset>(result.Text
-                                .size()),
-                        },
-                        edit.Source,
-                        edit.Operation,
-                        true,
-                    });
+                            {
+                                start,
+                                static_cast<parser::SourceOffset>(result.Text
+                                    .size()),
+                            },
+                            edit.Source,
+                            edit.Operation,
+                            true,
+                        });
             }
         }
         result.GeneratedAdjacencies
             .push_back(
-            {
-                {begin, static_cast<parser::SourceOffset>(result.Text.size())},
-                edit.Operation,
-            });
+                {
+                    {
+                        begin,
+                        static_cast<parser::SourceOffset>(result.Text.size()),
+                    },
+                    edit.Operation,
+                });
         cursor = edit.Source.End;
     }
     copy(
@@ -923,11 +929,11 @@ NamespaceCommentPlan PlanNamespaceComments(
             {
                 plan.Skipped
                     .push_back(
-                    {
-                        StructuralAction::NamespaceComments,
-                        node.Tokens,
-                        StructuralSkip::Incomplete,
-                    });
+                        {
+                            StructuralAction::NamespaceComments,
+                            node.Tokens,
+                            StructuralSkip::Incomplete,
+                        });
             }
             return;
         }
@@ -937,7 +943,7 @@ NamespaceCommentPlan PlanNamespaceComments(
         auto fail = [&] (StructuralSkip reason) {
             plan.Skipped
                 .push_back(
-                {StructuralAction::NamespaceComments, node.Tokens, reason});
+                    {StructuralAction::NamespaceComments, node.Tokens, reason});
         };
             TI open = original.TokenCount();
             bool expectName = true, named = false, valid = true;
@@ -983,7 +989,7 @@ NamespaceCommentPlan PlanNamespaceComments(
                                  : original.Token(comment).Text.End};
             if (safety
             .IntersectsImmutable(
-            Range(original, {node.Tokens.Begin, open + 1})) ||
+                Range(original, {node.Tokens.Begin, open + 1})) ||
             safety.IntersectsImmutable(Range(original, {close, close + 1})) ||
             safety.IntersectsImmutable(window))
         {
@@ -992,7 +998,7 @@ NamespaceCommentPlan PlanNamespaceComments(
         }
         plan.Namespaces
             .push_back(
-            {node.Tokens, {node.Tokens.Begin, open}, open, close, comment});
+                {node.Tokens, {node.Tokens.Begin, open}, open, close, comment});
     });
     return plan;
 }
@@ -1222,7 +1228,7 @@ StructuralPlan ResolveNamespaceComments(
             if (plan.Options.Spaces) {
                 resolved.Pieces
                     .push_back(
-                    {{}, Spaces.substr(0, plan.Options.Spaces), false});
+                        {{}, Spaces.substr(0, plan.Options.Spaces), false});
             }
             resolved.Pieces.push_back({{}, "// namespace", false});
             bool firstName = true;
@@ -1258,12 +1264,12 @@ StructuralPlan ResolveNamespaceComments(
         } else {
             resolved.Edits
                 .push_back(
-                {
-                    {begin, end},
-                    pieceBegin,
-                    static_cast<uint32_t>(resolved.Pieces.size()),
-                    id,
-                });
+                    {
+                        {begin, end},
+                        pieceBegin,
+                        static_cast<uint32_t>(resolved.Pieces.size()),
+                        id,
+                    });
         }
     }
     Sort(resolved);

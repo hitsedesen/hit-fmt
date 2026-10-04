@@ -138,18 +138,16 @@ runs, the root `.hit-fmt` supplies the repository configuration; Google and
 LLVM are alternative explicit profiles. Self-format width and anchor
 limitations remain.
 
-`ContinuationNesting` defaults to `Shared`: nested continuation groups
-reuse the active continuation level. `Additive` adds each group's offset.
-`Calls`, `Parameters`, `Captures`, `ControlHeaders`, `BaseLists`,
-`ConstructorLists`, `Expressions`, and `Chains` accept optional
-`<Category>ContinuationNesting` overrides. An explicit category value wins
-over the nearest `ControlHeadersContinuationNesting` or
-`ControlBodiesContinuationNesting` context, then the global default.
-Omitted overrides (or `Inherit`) preserve that resolution order. Structural
-control and lambda bodies, braced initializer lists, and enum lists
-establish fresh bases rather than sharing their structural indentation.
-Block-aligned shared continuations reuse the enclosing anchor. Delimiter
-alignment still uses physical columns, with shared continuation floors
+Continuation indentation is line-based, not syntax-depth-based. Scopes
+opened on the same line share one prospective continuation offset. Once a
+callee or another list owner starts on a continued line, its contents
+establish a new level; expressions still share the surrounding continuation.
+This rule applies uniformly to calls, assignments, and control headers,
+without nesting or context options. Structural control and lambda bodies,
+braced initializer lists, and enum lists establish fresh indentation bases.
+Continuation offsets and block/delimiter alignment remain configurable.
+Block-aligned continuations reuse the enclosing anchor while sharing a
+level. Delimiter alignment uses physical columns, with continuation floors
 and fallback offsets.
 
 `--changed-hunks` and `--no-spillover` are explicitly unsupported. Non-Preserve

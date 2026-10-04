@@ -33,12 +33,6 @@ enum class GroupMode : std::uint8_t
     Fill
 };
 
-enum class ContinuationNesting : std::uint8_t
-{
-    Shared,
-    Additive
-};
-
 enum class GapKind : std::uint8_t
 {
     Flat,
@@ -108,7 +102,8 @@ struct AnchorSpec
     bool StructuralBase = false;
     // Match the following continuation group's base and effective offset.
     bool Continuation = false;
-    ContinuationNesting Nesting = ContinuationNesting::Shared;
+    // Reuse this captured anchor only while sharing the enclosing level.
+    AnchorId SharedWith = InvalidId;
 };
 
 struct GroupSpec
@@ -122,11 +117,10 @@ struct GroupSpec
     bool ExpressionContinuation = false;
     // Independent child layout uses only realized enclosing continuation.
     bool StructuralBase = false;
-    // Shared reuses an active continuation level (including its offset).
-    // Additive adds Indent; a first continuation uses Indent in either mode.
-    // Non-continuation structural bodies fence the active continuation.
+    // Same-line scopes share the first continuation offset. Structural
+    // consumers start a new level after an enclosing continuation line.
+    // Structural bodies exclude still-prospective levels and fence sharing.
     bool Continuation = false;
-    ContinuationNesting Nesting = ContinuationNesting::Shared;
 };
 
 enum class Error : std::uint8_t
@@ -297,6 +291,7 @@ private:
         Provenance Origin;
         std::uint32_t Match = InvalidId;
         std::uint32_t Owner = InvalidId;
+        // Group reference, or an Anchor's optional SharedWith reference.
         std::uint32_t Reference = InvalidId;
         std::uint32_t Anchor = InvalidId;
         std::int32_t Indent = 0;
@@ -324,7 +319,6 @@ private:
         bool ExpressionContinuation = false;
         bool StructuralBase = false;
         bool Continuation = false;
-        ContinuationNesting Nesting = ContinuationNesting::Shared;
     };
 
     std::uint32_t Add(Node node);

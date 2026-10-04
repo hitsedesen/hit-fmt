@@ -5,8 +5,8 @@ void inspect() {
 	third());
     auto result =
 	outer(
-	inner(
-	alpha, beta), gamma);
+	    inner(
+		alpha, beta), gamma);
     int values[][2] =
 	{
 	    {
@@ -15,6 +15,11 @@ void inspect() {
 		gamma, delta
 	    }
 	};
+    if (tooLarge) {
+	throw LimitError(
+	    renderMessage(
+		"Size {} exceeds {}", value, limit));
+    }
     if (!allMatch(
 	items, [&](auto item) {
 	    bool valid =
@@ -30,15 +35,15 @@ void inspect() {
 	    third());
 	auto bodyResult =
 	    outer(
-	    inner(
-	    alpha, beta), gamma);
+		inner(
+		    alpha, beta), gamma);
 	if (ready &&
 	    joined)
 	{
 	    auto nestedResult =
 		outer(
-		inner(
-		alpha, beta), gamma);
+		    inner(
+			alpha, beta), gamma);
 	}
     }
     for (int index =

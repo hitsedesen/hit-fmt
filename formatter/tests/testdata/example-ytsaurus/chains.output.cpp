@@ -16,6 +16,6 @@ void Run()
     auto nested = Wrap( // Outer argument.
         Wrap( // Inner argument.
             Source()
-        .Begin()
-        .End()));
+                .Begin()
+                .End()));
 }

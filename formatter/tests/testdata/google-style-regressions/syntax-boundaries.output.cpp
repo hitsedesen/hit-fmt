@@ -8,12 +8,12 @@ select(Result (Owner::*member)() const,
 void f() {
   ASSERT_SAME(kTag, MACRO_TYPE_(char**));
   VERIFY_FAILS({
-      invoke();
-    }, "");
+    invoke();
+  }, "");
   CHECK_BLOCK(
       {  // block argument
-      invoke();
-    },
+        invoke();
+      },
       "");
   int product = a * *p;
   T value {1, 2};

@@ -235,10 +235,10 @@ std::string SerializePunctuationRoles(const parser::SyntaxTree& tree)
         }
         output +=
             std::format(
-            "{}: {} {}\n",
-            index,
-            tree.TokenText(index),
-            RoleName(role));
+                "{}: {} {}\n",
+                index,
+                tree.TokenText(index),
+                RoleName(role));
     }
     return output;
 }

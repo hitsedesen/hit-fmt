@@ -7,7 +7,7 @@ void demo() {
     use(alpha, beta, gamma);
     auto x = nested(alpha,
         nested(beta, gamma,
-        delta), epsilon);
+            delta), epsilon);
     MACRO(alpha, beta, gamma,
         delta);
 }

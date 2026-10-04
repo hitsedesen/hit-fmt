@@ -5,9 +5,9 @@ void Report() {
     gamma);
   receiver
     .message("value",
-    alpha,
-    beta,
-    gamma);
+      alpha,
+      beta,
+      gamma);
   message(
     "literal" + suffix,
     alpha,

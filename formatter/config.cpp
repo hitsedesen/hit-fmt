@@ -240,9 +240,9 @@ std::vector<std::string> ParseNamespaceExemptions(
                 !(std::isalpha(static_cast<unsigned char>(part.front())) ||
                 part.front() == '_') ||
                 part
-                .find_first_not_of(
-                "abcdefghijklmnopqrstuvwxyz"
-                "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_") !=
+                    .find_first_not_of(
+                        "abcdefghijklmnopqrstuvwxyz"
+                        "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_") !=
                 std::string_view::npos)
             {
                 ThrowConfigError(
@@ -270,9 +270,10 @@ std::vector<std::string> ParseCallNames(
             !(std::isalpha(static_cast<unsigned char>(name.front())) ||
             name.front() == '_') ||
             name
-            .find_first_not_of(
-            "abcdefghijklmnopqrstuvwxyz"
-            "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_") != std::string::npos)
+                .find_first_not_of(
+                    "abcdefghijklmnopqrstuvwxyz"
+                    "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_") !=
+            std::string::npos)
         {
             ThrowConfigError(path, line, "expected call identifier names");
         }
@@ -292,8 +293,8 @@ std::optional<std::vector<std::string>> ParseNamePrefixes(
     for (const auto& prefix : prefixes) {
         if (prefix
             .find_first_not_of(
-            "abcdefghijklmnopqrstuvwxyz"
-            "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_") != std::string::npos)
+                "abcdefghijklmnopqrstuvwxyz"
+                "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_") != std::string::npos)
         {
             ThrowConfigError(
                 path,
@@ -642,12 +643,12 @@ void ValidateLibraryAnnotationStyle(const Style& style)
     std::vector<std::string_view> scratch;
     scratch
         .reserve(
-        std::max(
-        {
-            style.CallLineFirstStringNames.size(),
-            style.ChainedCallRootNames.size(),
-            style.IndentedCallScopePairs.size() * 2,
-        }));
+            std::max(
+                {
+                    style.CallLineFirstStringNames.size(),
+                    style.ChainedCallRootNames.size(),
+                    style.IndentedCallScopePairs.size() * 2,
+                }));
     ValidateAnnotationNames(
         style.CallLineFirstStringNames,
         scratch,
@@ -718,10 +719,10 @@ const MessagePinAnnotation* LibraryAnnotations::FindMessagePin(
 {
     const auto found =
         std::lower_bound(
-        MessagePins_.begin(),
-        MessagePins_.end(),
-        name,
-        [] (const auto& value, auto key) { return value.Name < key; });
+            MessagePins_.begin(),
+            MessagePins_.end(),
+            name,
+            [] (const auto& value, auto key) { return value.Name < key; });
     return found != MessagePins_.end() && found->Name == name
         ? &*found
         : nullptr;
@@ -755,10 +756,10 @@ const VisualScopeAnnotation* LibraryAnnotations::FindScopeBegin(
 {
     const auto found =
         std::lower_bound(
-        VisualScopes_.begin(),
-        VisualScopes_.end(),
-        name,
-        [] (const auto& value, auto key) { return value.Begin < key; });
+            VisualScopes_.begin(),
+            VisualScopes_.end(),
+            name,
+            [] (const auto& value, auto key) { return value.Begin < key; });
     return found != VisualScopes_.end() && found->Begin == name
         ? &*found
         : nullptr;
@@ -769,10 +770,13 @@ const VisualScopeAnnotation* LibraryAnnotations::FindScopeEnd(
 {
     const auto found =
         std::lower_bound(
-        ScopeEndOrder_.begin(),
-        ScopeEndOrder_.end(),
-        name,
-        [&] (auto index, auto key) { return VisualScopes_[index].End < key; });
+            ScopeEndOrder_.begin(),
+            ScopeEndOrder_.end(),
+            name,
+            [
+                &] (
+                auto index,
+                auto key) { return VisualScopes_[index].End < key; });
     return found != ScopeEndOrder_.end() && VisualScopes_[*found].End == name
         ? &VisualScopes_[*found]
         : nullptr;

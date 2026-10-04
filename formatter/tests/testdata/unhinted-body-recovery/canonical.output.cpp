@@ -18,6 +18,6 @@ struct Record {
 Record::Record() {
 }
 void defaults(int value = [] {
-        return 1;
-    }()) {
+    return 1;
+}()) {
 }

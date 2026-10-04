@@ -126,7 +126,10 @@ PreparedIncludePrefixes::PreparedIncludePrefixes(
             Nodes_.push_back({0, 0, RuleCount()});
             pending
                 .push_back(
-                {parent, {static_cast<unsigned char>(prefix[index]), child}});
+                    {
+                        parent,
+                        {static_cast<unsigned char>(prefix[index]), child},
+                    });
             ++Nodes_[parent].EdgeCount;
             ancestors.push_back(child);
         }

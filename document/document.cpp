@@ -68,11 +68,11 @@ Measure MeasureFlatGap(
     if (gap.FlatSourceBegin != InvalidId) {
         auto measured =
             MeasureText(
-            source
-            .substr(
-            gap.FlatSourceBegin,
-            gap.FlatSourceEnd - gap.FlatSourceBegin),
-            tabWidth);
+                source
+                    .substr(
+                        gap.FlatSourceBegin,
+                        gap.FlatSourceEnd - gap.FlatSourceBegin),
+                tabWidth);
         measured.CanBreak = gap.Kind == GapKind::Soft;
         return measured;
     }
@@ -225,11 +225,7 @@ GroupId Document::BeginGroup(GroupSpec spec)
     node.ExpressionContinuation = spec.ExpressionContinuation;
     node.StructuralBase = spec.StructuralBase;
     node.Continuation = spec.Continuation;
-    node.Nesting = spec.Nesting;
-    if ((spec.Continuation && spec.Indent < 0) ||
-        (spec.Nesting != ContinuationNesting::Shared &&
-        spec.Nesting != ContinuationNesting::Additive))
-    {
+    if (spec.Continuation && spec.Indent < 0) {
         Fail(Error::InvalidPolicy);
     }
     node.Reference = static_cast<GroupId>(Groups_.size());
@@ -334,9 +330,9 @@ void Document::SourceWhitespace(
         if (text[i] == '\n') {
             changed +=
                 ChangesWhitespaceAtom(
-                Source_,
-                begin + i,
-                ending == Newline::CRLF);
+                    Source_,
+                    begin + i,
+                    ending == Newline::CRLF);
         }
     }
     if (text.empty()) {
@@ -444,17 +440,17 @@ AnchorId Document::MarkAnchor(AnchorSpec spec)
     Node node;
     node.Type = Kind::Anchor;
     node.Anchor = Anchors_;
+    node.Reference = spec.SharedWith;
+    if (spec.SharedWith != InvalidId && spec.SharedWith >= Anchors_) {
+        Fail(Error::InvalidAnchor);
+    }
     node.Alignment = spec.Kind;
     node.Indent = spec.Offset;
     node.Fallback = spec.Fallback;
     node.Minimum = spec.Minimum;
     node.StructuralBase = spec.StructuralBase;
     node.Continuation = spec.Continuation;
-    node.Nesting = spec.Nesting;
-    if ((spec.Continuation && spec.Offset < 0) ||
-        (spec.Nesting != ContinuationNesting::Shared &&
-        spec.Nesting != ContinuationNesting::Additive))
-    {
+    if (spec.Continuation && spec.Offset < 0) {
         Fail(Error::InvalidPolicy);
     }
     if (Add(node) == InvalidId) {
@@ -483,9 +479,9 @@ void Document::ExpressionLine()
         previous.Origin.Begin == InvalidId ||
         previous.FlatText !=
         Source_
-        .substr(
-        previous.Origin.Begin,
-        previous.Origin.End - previous.Origin.Begin) ||
+            .substr(
+                previous.Origin.Begin,
+                previous.Origin.End - previous.Origin.Begin) ||
         previous.FlatText.find('\n') == std::string_view::npos ||
         previous.FlatText.find_first_not_of(" \t\r\n") !=
         std::string_view::npos)
@@ -762,12 +758,35 @@ const
         bool ReversibleIndent = true;
         std::uint32_t ContinuationBase = 0;
         bool HasContinuation = false;
+        bool RealizedContinuationLine = false;
+        std::uint32_t RealizedContinuationIndent = 0;
     };
     std::pmr::vector<Frame> frames(resource);
     frames.reserve(Depth_);
     Frame frame;
     std::uint32_t column = 0;
     std::uint64_t lines = 0;
+    auto realizeContinuation = [&] {
+        if (frame.HasContinuation) {
+            frame.RealizedContinuationLine = true;
+            frame.RealizedContinuationIndent = column;
+        }
+    };
+    auto structuralBase = [&] (const Node& node) {
+        if (frame.HasContinuation) {
+            if (frame.RealizedContinuationLine) {
+                return frame.RealizedContinuationIndent;
+            }
+            if (!node.Continuation) {
+                return frame.ContinuationBase;
+            }
+        }
+        return frame.Indent - frame.PendingExpressionIndent;
+    };
+    auto sharesContinuation = [&] (const Node& node) {
+        return node.Continuation && frame.HasContinuation &&
+            !(node.StructuralBase && frame.RealizedContinuationLine);
+    };
     auto advance = [&] (std::string_view text) {
         for (char c : text) {
             if (c == '\r' || c == '\n') {
@@ -776,8 +795,8 @@ const
             } else if (c == '\t') {
                 column =
                     AddWidth(
-                    column,
-                    policy.TabWidth - column % policy.TabWidth);
+                        column,
+                        policy.TabWidth - column % policy.TabWidth);
             } else {
                 column = AddWidth(column, 1);
             }
@@ -799,23 +818,23 @@ const
             if (spec.Alignment == AnchorKind::DelimiterColumn) {
                 const auto minimum =
                     std::min(
-                    AddWidth(
-                    anchor.Block,
-                    anchor.SharedOffset != InvalidId && spec.Minimum
-                    ? anchor.SharedOffset
-                    : spec.Minimum),
-                    Infinity - 1);
+                        AddWidth(
+                            anchor.Block,
+                            anchor.SharedOffset != InvalidId && spec.Minimum
+                            ? anchor.SharedOffset
+                            : spec.Minimum),
+                        Infinity - 1);
                 indent = std::max(indent, minimum);
                 if (indent >= policy.Width ||
                     requiredWidth > policy.Width - indent)
                 {
                     indent =
                         Offset(
-                        anchor.Block,
-                        anchor.SharedOffset != InvalidId &&
-                        spec.Fallback == int32_t(spec.Minimum)
-                        ? int32_t(anchor.SharedOffset)
-                        : spec.Fallback);
+                            anchor.Block,
+                            anchor.SharedOffset != InvalidId &&
+                            spec.Fallback == int32_t(spec.Minimum)
+                            ? int32_t(anchor.SharedOffset)
+                            : spec.Fallback);
                 }
             }
         }
@@ -862,14 +881,13 @@ const
                     indentationError(i);
                     return result;
                 }
-                base -= pending;
+                base = structuralBase(node);
                 pending = 0;
                 reversible = true;
             }
             auto indent = node.Indent;
-            if (node.Continuation && frame.HasContinuation &&
-                node.Nesting == ContinuationNesting::Shared)
-            {
+            const bool shared = sharesContinuation(node);
+            if (shared) {
                 base = frame.ContinuationBase;
                 if (frame.Indent < base ||
                     frame.Indent - base > uint32_t(INT32_MAX))
@@ -923,14 +941,24 @@ const
                     node.Continuation ? base : frame.ContinuationBase,
                     node.Continuation ||
                         (!node.StructuralBase && frame.HasContinuation),
+                    (shared || (!node.Continuation && !node.StructuralBase)) &&
+                        frame.RealizedContinuationLine,
+                    frame.RealizedContinuationIndent,
                 };
             continue;
         }
         if (node.Type == Kind::End) {
             const bool realized =
                 frame.RealizedExpressionLine && !frame.StructuralBase;
+            const bool continuationRealized =
+                frame.RealizedContinuationLine && !frame.StructuralBase;
+            const auto continuationIndent = frame.RealizedContinuationIndent;
             frame = frames.back();
             frames.pop_back();
+            if (continuationRealized) {
+                frame.RealizedContinuationLine = true;
+                frame.RealizedContinuationIndent = continuationIndent;
+            }
             if (realized) {
                 // Realize inherited contributions, not the closed child's
                 // additional offset. Independent child consumers fence this.
@@ -941,6 +969,7 @@ const
             continue;
         }
         if (node.Type == Kind::Anchor) {
+            const bool shared = sharesContinuation(node);
             auto base = frame.Indent;
             if (node.StructuralBase) {
                 if (!frame.ReversibleIndent ||
@@ -949,13 +978,11 @@ const
                     indentationError(i);
                     return result;
                 }
-                base -= frame.PendingExpressionIndent;
+                base = structuralBase(node);
             }
             auto offset = node.Indent;
             auto sharedOffset = InvalidId;
-            if (node.Continuation && frame.HasContinuation &&
-                node.Nesting == ContinuationNesting::Shared)
-            {
+            if (shared) {
                 base = frame.ContinuationBase;
                 if (frame.Indent < base ||
                     frame.Indent - base > uint32_t(INT32_MAX))
@@ -968,10 +995,14 @@ const
                     offset = int32_t(sharedOffset);
                 }
             }
+            if (shared && node.Reference != InvalidId) {
+                anchors[node.Anchor] = anchors[node.Reference];
+                continue;
+            }
             const auto target =
                 Offset(
-                node.Alignment == AnchorKind::BlockRelative ? base : column,
-                offset);
+                    node.Alignment == AnchorKind::BlockRelative ? base : column,
+                    offset);
             anchors[node.Anchor] =
                 {target, base, static_cast<std::uint32_t>(i), sharedOffset};
             continue;
@@ -983,6 +1014,7 @@ const
             }
             frame.PendingExpressionIndent = 0;
             frame.RealizedExpressionLine = true;
+            realizeContinuation();
             continue;
         }
         auto outputBegin = result.Text.size();
@@ -1018,19 +1050,19 @@ const
                 if (policy.SourceMap) {
                     result.Map
                         .push_back(
-                        {
-                            begin,
-                            result.Text.size(),
                             {
-                                node.Origin.Begin +
-                                    static_cast<std::uint32_t>(run),
-                                node.Origin.Begin +
-                                    static_cast<std::uint32_t>(end),
-                                NoIdentity,
-                            },
-                            true,
-                            true,
-                        });
+                                begin,
+                                result.Text.size(),
+                                {
+                                    node.Origin.Begin +
+                                        static_cast<std::uint32_t>(run),
+                                    node.Origin.Begin +
+                                        static_cast<std::uint32_t>(end),
+                                    NoIdentity,
+                                },
+                                true,
+                                true,
+                            });
                 }
             };
             for (std::size_t cursor = 0; cursor < text.size(); ++cursor) {
@@ -1066,26 +1098,32 @@ const
                 if (policy.SourceMap) {
                     result.Map
                         .push_back(
-                        {
-                            begin,
-                            result.Text.size(),
                             {
-                                node.Origin.Begin +
-                                    static_cast<std::uint32_t>(atom),
-                                node.Origin.Begin +
-                                    static_cast<std::uint32_t>(cursor + 1),
-                                NoIdentity,
-                            },
-                            false,
-                            false,
-                        });
+                                begin,
+                                result.Text.size(),
+                                {
+                                    node.Origin.Begin +
+                                        static_cast<std::uint32_t>(atom),
+                                    node.Origin.Begin +
+                                        static_cast<std::uint32_t>(cursor + 1),
+                                    NoIdentity,
+                                },
+                                false,
+                                false,
+                            });
                 }
                 run = cursor + 1;
             }
             copy(text.size());
             // Preserve the source geometry used by fixed-prefix summaries;
             // spelling is not a new layout or owned-break decision.
+            const bool continuingIndent =
+                frame.RealizedContinuationLine &&
+                column == frame.RealizedContinuationIndent;
             advance(text);
+            if (entry.Flat.Line || continuingIndent) {
+                realizeContinuation();
+            }
             continue;
         }
         if (node.Type == Kind::Text || node.Type == Kind::Verbatim ||
@@ -1095,15 +1133,31 @@ const
                 node.Type == Kind::ConditionalText && ownerBroken
                 ? node.BrokenText
                 : node.FlatText;
+            const bool continuingIndent =
+                frame.RealizedContinuationLine &&
+                column == frame.RealizedContinuationIndent;
             result.Text.append(text);
             advance(text);
+            if (frame.HasContinuation && node.Type == Kind::Verbatim &&
+                node.Origin.Identity == NoIdentity &&
+                (entry.Flat.Line || continuingIndent) &&
+                text.find_first_not_of(" \t\r\n") == std::string_view::npos)
+            {
+                realizeContinuation();
+            }
         } else if (node.Type == Kind::SourceLineIndent) {
             result.Text.append(node.FlatText);
             advance(node.FlatText);
             if (policy.SourceMap) {
                 result.Map
                     .push_back(
-                    {outputBegin, result.Text.size(), node.Origin, true, true});
+                        {
+                            outputBegin,
+                            result.Text.size(),
+                            node.Origin,
+                            true,
+                            true,
+                        });
             }
             outputBegin = result.Text.size();
             emittedOrigin =
@@ -1113,6 +1167,7 @@ const
                     NoIdentity,
                 };
             emitIndent(resolveIndent(node.Anchor, node.FlatGap.RequiredWidth));
+            realizeContinuation();
             // Do not set frame.OwnedLine: only editable gaps satisfy
             // ForceOwned.
         } else {
@@ -1120,6 +1175,9 @@ const
                 node.Type == Kind::ConditionalGap && ownerBroken
                 ? node.BrokenGap
                 : node.FlatGap;
+            const bool continuingIndent =
+                frame.RealizedContinuationLine &&
+                column == frame.RealizedContinuationIndent;
             bool line = gap.Kind == GapKind::Hard;
             if (gap.Kind == GapKind::Soft && ownerBroken) {
                 if (Nodes_[Groups_[node.Owner]].Mode == GroupMode::Consistent) {
@@ -1127,11 +1185,11 @@ const
                 } else {
                     line =
                         !fits(
-                        AddWidth(
-                        entry.ExpandedGapWidth,
-                        gap.FitNextSegment
-                        ? gap.RequiredWidth
-                        : tailWidth(entry.BrokenTail))) ||
+                            AddWidth(
+                                entry.ExpandedGapWidth,
+                                gap.FitNextSegment
+                                ? gap.RequiredWidth
+                                : tailWidth(entry.BrokenTail))) ||
                         (frame.Mandatory == i &&
                         (frame.ForceOwned
                         ? !frame.OwnedLine
@@ -1147,7 +1205,7 @@ const
                 for (std::uint32_t n = 1; n < gap.NewlineCount; ++n) {
                     result.Text
                         .append(
-                        policy.LineEnding == Newline::LF ? "\n" : "\r\n");
+                            policy.LineEnding == Newline::LF ? "\n" : "\r\n");
                 }
                 lines += gap.NewlineCount;
                 frame.OwnedLine = true;
@@ -1163,20 +1221,20 @@ const
                     if (policy.SourceMap) {
                         result.Map
                             .push_back(
-                            {
-                                outputBegin,
-                                result.Text.size(),
-                                node.Origin,
-                                false,
-                                false,
-                            });
+                                {
+                                    outputBegin,
+                                    result.Text.size(),
+                                    node.Origin,
+                                    false,
+                                    false,
+                                });
                     }
                     outputBegin = result.Text.size();
                     auto text =
                         Source_
-                        .substr(
-                        gap.IndentSourceBegin,
-                        gap.IndentSourceEnd - gap.IndentSourceBegin);
+                            .substr(
+                                gap.IndentSourceBegin,
+                                gap.IndentSourceEnd - gap.IndentSourceBegin);
                     result.Text.append(text);
                     column = 0;
                     advance(text);
@@ -1189,9 +1247,9 @@ const
             } else if (gap.FlatSourceBegin != InvalidId) {
                 auto text =
                     Source_
-                    .substr(
-                    gap.FlatSourceBegin,
-                    gap.FlatSourceEnd - gap.FlatSourceBegin);
+                        .substr(
+                            gap.FlatSourceBegin,
+                            gap.FlatSourceEnd - gap.FlatSourceBegin);
                 result.Text.append(text);
                 advance(text);
                 emittedOrigin.Begin = gap.FlatSourceBegin;
@@ -1201,17 +1259,20 @@ const
                 result.Text.append(gap.Spaces, ' ');
                 column = AddWidth(column, gap.Spaces);
             }
+            if (line || continuingIndent) {
+                realizeContinuation();
+            }
         }
         if (policy.SourceMap) {
             result.Map
                 .push_back(
-                {
-                    outputBegin,
-                    result.Text.size(),
-                    emittedOrigin,
-                    exact,
-                    node.Type == Kind::Verbatim,
-                });
+                    {
+                        outputBegin,
+                        result.Text.size(),
+                        emittedOrigin,
+                        exact,
+                        node.Type == Kind::Verbatim,
+                    });
         }
     }
     return result;

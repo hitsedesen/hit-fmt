@@ -37,9 +37,11 @@ void PrintCode(std::ostream& output, std::string_view code, bool color)
         auto end = code.find('\n', start);
         auto line =
             code
-            .substr(
-            start,
-            end == std::string_view::npos ? code.size() - start : end - start);
+                .substr(
+                    start,
+                    end == std::string_view::npos
+                    ? code.size() - start
+                    : end - start);
         start = end == std::string_view::npos ? code.size() : end + 1;
         if (line.empty()) {
             output << '\n';

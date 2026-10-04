@@ -215,12 +215,12 @@ public:
             message += issue;
             Results
                 .push_back(
-                {
-                    Tree.TokenPosition(index),
-                    std::move(message),
-                    issue,
-                    ExpectedName(rule, prefixOK, caseOK),
-                });
+                    {
+                        Tree.TokenPosition(index),
+                        std::move(message),
+                        issue,
+                        ExpectedName(rule, prefixOK, caseOK),
+                    });
         }
     }
 

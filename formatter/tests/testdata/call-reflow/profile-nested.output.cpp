@@ -3,32 +3,32 @@ void Execute()
     auto callback = [&] {
         Schedule(
             BIND(
-            [&] {
-                auto nested = [&] {
-                    auto guard = Guard(lock);
-                    EXPECT_THROW(
-                        WaitFor(
-                        pipelineReady
-                        .ToFuture())
-                        .ThrowOnError(),
-                        TQuotaExpiredException);
-                    EXPECT_THROW(CheckQuota(), TQuotaExpiredException);
-                    OTHER_ASSERT(
-                        WaitFor(
-                        pipelineReady
-                        .ToFuture())
-                        .ThrowOnError(),
-                        TQuotaExpiredException);
-                    auto outstanding = started - completed;
-                    THROW_ERROR_EXCEPTION_UNLESS(
-                        outstanding <= configuredLimit,
-                        "Processing window %v cannot accept an additional allocation when quota %v has already been reached",
-                        outstanding,
-                        configuredLimit);
-                };
-            })
-            .AsyncVia(invoker)
-            .Run());
+                [&] {
+                    auto nested = [&] {
+                        auto guard = Guard(lock);
+                        EXPECT_THROW(
+                            WaitFor(
+                                pipelineReady
+                                    .ToFuture())
+                                .ThrowOnError(),
+                            TQuotaExpiredException);
+                        EXPECT_THROW(CheckQuota(), TQuotaExpiredException);
+                        OTHER_ASSERT(
+                            WaitFor(
+                                pipelineReady
+                                    .ToFuture())
+                                .ThrowOnError(),
+                            TQuotaExpiredException);
+                        auto outstanding = started - completed;
+                        THROW_ERROR_EXCEPTION_UNLESS(
+                            outstanding <= configuredLimit,
+                            "Processing window %v cannot accept an additional allocation when quota %v has already been reached",
+                            outstanding,
+                            configuredLimit);
+                    };
+                })
+                .AsyncVia(invoker)
+                .Run());
     };
 }
 
@@ -36,11 +36,11 @@ struct DeferredState
 {
     DeferredState(const Options& options)
         : token(
-        (options
-        .Enabled || options
-        .WaitForReply)
-        ? MakeToken()
-        : EmptyToken())
+            (options
+                .Enabled || options
+                .WaitForReply)
+            ? MakeToken()
+            : EmptyToken())
     { }
 };
 
@@ -50,7 +50,7 @@ void CheckCredentials()
         if (!CredentialsMatch()) {
             Abort(
                 ReadFailure(
-                "The selected channel profile cannot be loaded while endpoint handshakes are still pending"));
+                    "The selected channel profile cannot be loaded while endpoint handshakes are still pending"));
         }
     }
 }
@@ -70,9 +70,9 @@ void CheckFlag(bool flagged)
     YT_VERIFY(
         flagged,
         Explain(
-        "The synthetic telemetry sample was rejected because its status did not match the registered channel description (Flag: %v, State: %v)",
-        LabelOf<int>(),
-        LabelOf<char>()));
+            "The synthetic telemetry sample was rejected because its status did not match the registered channel description (Flag: %v, State: %v)",
+            LabelOf<int>(),
+            LabelOf<char>()));
 }
 
 void CheckSignal(bool active)

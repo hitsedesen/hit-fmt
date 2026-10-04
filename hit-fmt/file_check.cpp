@@ -63,7 +63,7 @@ private:
             c < 0x80
             ? 1
             : unicode::utf8::GetFirstCodePointSize(Text_.substr(Cursor_))
-            .value_or(1);
+                .value_or(1);
         if (c == '\n') {
             ++Current_.Line;
             Current_.Column = 1;
@@ -161,19 +161,19 @@ CheckedFile CheckFile(
     CheckedFile checked;
     checked.Formatting =
         formatter::Format(
-        tree,
-        configuration.Formatting,
-        {.SourceMap = true, .InputFilePath = inputFilePath});
+            tree,
+            configuration.Formatting,
+            {.SourceMap = true, .InputFilePath = inputFilePath});
     checked.FormattingMismatch = checked.Formatting.Text != tree.Source();
     for (auto& diagnostic : formatter::CheckNames(tree, configuration.Settings))
     {
         checked.Semantic
             .push_back(
-            {
-                diagnostic.Position,
-                {},
-                diagnostic.Message + "; " + diagnostic.Expected,
-            });
+                {
+                    diagnostic.Position,
+                    {},
+                    diagnostic.Message + "; " + diagnostic.Expected,
+                });
     }
     for (const auto& diagnostic :
         formatter::CheckParameterNames(tree, configuration.Settings))

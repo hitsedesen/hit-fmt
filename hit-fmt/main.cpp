@@ -78,10 +78,10 @@ std::vector<Line> SplitLines(std::string_view text)
         auto end = hasNewline ? newline : text.size();
         lines
             .push_back(
-            {
-                .Text = text.substr(begin, end - begin),
-                .HasNewline = hasNewline,
-            });
+                {
+                    .Text = text.substr(begin, end - begin),
+                    .HasNewline = hasNewline,
+                });
         begin = hasNewline ? end + 1 : text.size();
     }
     return lines;
@@ -188,8 +188,8 @@ Excerpt PrintSourceExcerpt(
     if (cells.size() > available && !fromStart) {
         begin =
             std::min(
-            cells.size() - window,
-            rendered.Caret > window / 2 ? rendered.Caret - window / 2 : 0);
+                cells.size() - window,
+                rendered.Caret > window / 2 ? rendered.Caret - window / 2 : 0);
     }
     auto count =
         cells.size() > available
@@ -328,9 +328,9 @@ size_t ColumnAt(std::string_view text, size_t byte)
 {
     return 1 +
         std::count_if(
-        text.begin(),
-        text.begin() + byte,
-        [] (unsigned char c) { return (c & 0xc0) != 0x80; });
+            text.begin(),
+            text.begin() + byte,
+            [] (unsigned char c) { return (c & 0xc0) != 0x80; });
 }
 
 size_t DifferenceColumn(std::string_view actual, std::string_view expected)
@@ -418,7 +418,7 @@ std::string SpacingMessage(
     auto found = DescribeWhitespace(actual.substr(begin, end - begin));
     auto wanted =
         DescribeWhitespace(
-        expected.substr(expectedBegin, expectedEnd - expectedBegin));
+            expected.substr(expectedBegin, expectedEnd - expectedBegin));
     if (begin == 0) {
         return "indentation: expected " + wanted + ", found " + found;
     }
@@ -453,11 +453,11 @@ std::vector<Violation> SpacingViolations(
         {
             violations
                 .push_back(
-                {
-                    line,
-                    ColumnAt(actual, a),
-                    SpacingMessage(actual, expected, startA, a, startB, b),
-                });
+                    {
+                        line,
+                        ColumnAt(actual, a),
+                        SpacingMessage(actual, expected, startA, a, startB, b),
+                    });
         }
         if (a == actual.size() || b == expected.size()) {
             break;
@@ -620,13 +620,13 @@ std::optional<std::vector<Violation>> ReflowViolations(
         if (gapA != gapB) {
             auto lineIndex =
                 static_cast<size_t>(std::upper_bound(
-                lineStarts.begin(),
-                lineStarts.end(),
-                a) - lineStarts.begin() - 1);
+                    lineStarts.begin(),
+                    lineStarts.end(),
+                    a) - lineStarts.begin() - 1);
             auto byte =
                 std::min(
-                a - lineStarts[lineIndex],
-                source[lineIndex].Text.size());
+                    a - lineStarts[lineIndex],
+                    source[lineIndex].Text.size());
             auto token = TokenAt(original, a);
             std::string message;
             auto oldBreaks = std::count(gapA.begin(), gapA.end(), '\n');
@@ -664,12 +664,12 @@ std::optional<std::vector<Violation>> ReflowViolations(
             }
             violations
                 .push_back(
-                {
-                    firstLine + lineIndex,
-                    ColumnAt(source[lineIndex].Text, byte),
-                    std::move(message),
-                    ViolationKind::Reflow,
-                });
+                    {
+                        firstLine + lineIndex,
+                        ColumnAt(source[lineIndex].Text, byte),
+                        std::move(message),
+                        ViolationKind::Reflow,
+                    });
         }
         if (a == original.size() || b == replacement.size()) {
             break;
@@ -775,9 +775,9 @@ std::vector<Chunk> FormattingChunks(
                     bool preservesTokens =
                         sourceSkip && formattedSkip &&
                         SameNonWhitespaceLines(
-                        std::span(source).subspan(sourceIndex, sourceSkip),
-                        std::span(formatted)
-                        .subspan(formattedIndex, formattedSkip));
+                            std::span(source).subspan(sourceIndex, sourceSkip),
+                            std::span(formatted)
+                                .subspan(formattedIndex, formattedSkip));
                     if ((preservesTokens && !bestPreservesTokens) ||
                         (preservesTokens == bestPreservesTokens &&
                         (distance < bestDistance ||
@@ -815,9 +815,10 @@ std::vector<Chunk> FormattingChunks(
         {
             auto reflow =
                 ReflowViolations(
-                std::span(source).subspan(sourceIndex, sourceCount),
-                std::span(formatted).subspan(formattedIndex, formattedCount),
-                sourceIndex + 1);
+                    std::span(source).subspan(sourceIndex, sourceCount),
+                    std::span(formatted)
+                        .subspan(formattedIndex, formattedCount),
+                    sourceIndex + 1);
             if (reflow && !reflow->empty()) {
                 chunk.Violations = std::move(*reflow);
                 alignedReflow = true;
@@ -869,21 +870,21 @@ std::vector<Chunk> FormattingChunks(
             } else if (SameNonWhitespace(line.Text, replacement)) {
                 auto spacing =
                     SpacingViolations(
-                    sourceIndex + i + 1,
-                    line.Text,
-                    replacement);
+                        sourceIndex + i + 1,
+                        line.Text,
+                        replacement);
                 chunk.Violations
                     .insert(
-                    chunk.Violations.end(),
-                    spacing.begin(),
-                    spacing.end());
+                        chunk.Violations.end(),
+                        spacing.begin(),
+                        spacing.end());
                 continue;
             } else {
                 message = ContentChange(line.Text, replacement);
             }
             chunk.Violations
                 .push_back(
-                {sourceIndex + i + 1, column, std::move(message), kind});
+                    {sourceIndex + i + 1, column, std::move(message), kind});
         }
         if (sourceCount == 0) {
             auto column = sourceIndex < source.size() || source.empty()
@@ -907,22 +908,22 @@ std::vector<Chunk> FormattingChunks(
             auto number = sourceIndex + sourceCount;
             auto column =
                 ColumnAt(
-                source[number - 1].Text,
-                source[number - 1].Text.size());
+                    source[number - 1].Text,
+                    source[number - 1].Text.size());
             auto inserted = formattedCount > sourceCount
                 ? formattedCount - sourceCount
                 : size_t{0};
             chunk.Violations
                 .push_back(
-                {
-                    number,
-                    column,
-                    inserted
-                        ? "insert " + std::to_string(inserted) +
-                        " formatted lines after this line"
-                        : "replace lines following this line with "
-                        "formatted output",
-                });
+                    {
+                        number,
+                        column,
+                        inserted
+                            ? "insert " + std::to_string(inserted) +
+                            " formatted lines after this line"
+                            : "replace lines following this line with "
+                            "formatted output",
+                    });
         }
         for (size_t i = 0; i < formattedCount; ++i) {
             chunk.Fix.push_back(formatted[formattedIndex + i]);
@@ -1193,8 +1194,8 @@ Options ParseOptions(int argc, char* argv[])
                     std::string_view next(argv[index + 1]);
                     if (!next.empty() &&
                         std::ranges::all_of(
-                        next,
-                        [] (char c) { return c >= '0' && c <= '9'; }))
+                            next,
+                            [] (char c) { return c >= '0' && c <= '9'; }))
                     {
                         value = argv[++index];
                     }
@@ -1216,9 +1217,9 @@ Options ParseOptions(int argc, char* argv[])
             size_t threads = 0;
             auto [end, error] =
                 std::from_chars(
-                value.data(),
-                value.data() + value.size(),
-                threads);
+                    value.data(),
+                    value.data() + value.size(),
+                    threads);
             if (error != std::errc{} || end != value.data() + value.size() ||
                 threads == 0)
             {
@@ -1299,7 +1300,7 @@ public:
         }
         auto relative =
             std::filesystem::absolute(path).lexically_normal()
-            .lexically_relative(config.Directory);
+                .lexically_relative(config.Directory);
         return ::IsExcluded(relative, config.Settings->Settings.Exclude);
     }
 
@@ -1495,9 +1496,9 @@ int main(int argc, char* argv[])
         try {
             auto sourceStorage =
                 util::ReadEntireFile(
-                filePath,
-                MaxSourceFileSize,
-                util::SourcePaddingSize);
+                    filePath,
+                    MaxSourceFileSize,
+                    util::SourcePaddingSize);
             util::PaddedSourceView paddedSource{
                 .Data = sourceStorage.data(),
                 .Size = sourceStorage.size() - util::SourcePaddingSize,

@@ -64,7 +64,9 @@ void CheckIdentities(
         if (map.Present) {
             EXPECT_EQ(
                 std::string_view(result.Text)
-                .substr(map.Output.Begin, map.Output.End - map.Output.Begin),
+                    .substr(
+                        map.Output.Begin,
+                        map.Output.End - map.Output.Begin),
                 tree.TokenText(i)) << i;
         }
     }
@@ -74,11 +76,13 @@ void CheckIdentities(
         if (map.Exact && map.HasOriginal) {
             EXPECT_EQ(
                 std::string_view(result.Text)
-                .substr(map.Output.Begin, map.Output.End - map.Output.Begin),
+                    .substr(
+                        map.Output.Begin,
+                        map.Output.End - map.Output.Begin),
                 source
-                .substr(
-                map.Original.Begin,
-                map.Original.End - map.Original.Begin));
+                    .substr(
+                        map.Original.Begin,
+                        map.Original.End - map.Original.Begin));
         }
         if (map.Action != formatter::NoStructuralAction) {
             ASSERT_LT(map.Action, result.StructuralOperations.size());
@@ -777,32 +781,32 @@ INSTANTIATE_TEST_SUITE_P(
     Formatter,
     FormatTest,
     testing::Values(
-    "line-endings/lf",
-    "line-endings/crlf",
-    "line-endings/legacy",
-    "line-endings/canonical-lf",
-    "line-endings/canonical-crlf",
-    "line-endings/opaque-lf",
-    "line-endings/boundary-lf",
-    "line-endings/boundary-crlf",
-    "line-endings/boundary-nulls",
-    "line-endings/boundary-namespace-lf",
-    "line-endings/boundary-namespace-crlf",
-    "line-endings/composition-control-lf",
-    "public-pipeline/layout",
-    "public-pipeline/structural",
-    "public-pipeline/comments",
-    "public-pipeline/enumerator-assignment",
-    "public-pipeline/opaque-record-owners",
-    "public-pipeline/control-ownership",
-    "public-pipeline/annotation-constructors",
-    "public-pipeline/annotation-suffixes",
-    "public-pipeline/annotation-constraints",
-    "group-syntax/nested",
-    "group-syntax/messages",
-    "public-pipeline/declaration-operands",
-    "public-pipeline/declaration-operands-recovery",
-    "public-pipeline/terminal-constructor-template-ids"),
+        "line-endings/lf",
+        "line-endings/crlf",
+        "line-endings/legacy",
+        "line-endings/canonical-lf",
+        "line-endings/canonical-crlf",
+        "line-endings/opaque-lf",
+        "line-endings/boundary-lf",
+        "line-endings/boundary-crlf",
+        "line-endings/boundary-nulls",
+        "line-endings/boundary-namespace-lf",
+        "line-endings/boundary-namespace-crlf",
+        "line-endings/composition-control-lf",
+        "public-pipeline/layout",
+        "public-pipeline/structural",
+        "public-pipeline/comments",
+        "public-pipeline/enumerator-assignment",
+        "public-pipeline/opaque-record-owners",
+        "public-pipeline/control-ownership",
+        "public-pipeline/annotation-constructors",
+        "public-pipeline/annotation-suffixes",
+        "public-pipeline/annotation-constraints",
+        "group-syntax/nested",
+        "group-syntax/messages",
+        "public-pipeline/declaration-operands",
+        "public-pipeline/declaration-operands-recovery",
+        "public-pipeline/terminal-constructor-template-ids"),
     [] (const auto& info) {
         const auto path = std::filesystem::path(info.param);
         auto name =

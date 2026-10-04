@@ -240,14 +240,6 @@
     FORMATTER_DELIMITED_LIST_CATEGORIES(X)                                    \
     FORMATTER_HEADER_LIST_CATEGORIES(X)
 
-// Braced initializer and enum lists establish structural indentation bases.
-#define FORMATTER_CONTINUATION_LIST_CATEGORIES(X) \
-    X(Calls) X(Parameters) X(Captures) X(ControlHeaders) \
-    X(BaseLists) X(ConstructorLists)
-#define FORMATTER_CONTINUATION_CATEGORY_OPTION(OPT, category) \
-    OPT(std::optional<formatter::ContinuationNesting>, \
-        category##ContinuationNesting, std::nullopt)
-
 // Optional category values spell their disengaged state Inherit on disk.
 #define FORMATTER_LIST_CATEGORY_OPTIONS(OPT, category)                        \
     OPT(formatter::CategoryLayout, category##Layout, \
@@ -291,16 +283,6 @@
         formatter::CloserPlacement::SameLine) \
     OPT(formatter::ContinuationAlignment, ListAlignment, \
         formatter::ContinuationAlignment::Block) \
-    OPT(formatter::ContinuationNesting, ContinuationNesting, \
-        formatter::ContinuationNesting::Shared) \
-    OPT(std::optional<formatter::ContinuationNesting>, \
-        ControlBodiesContinuationNesting, std::nullopt) \
-    FORMATTER_CONTINUATION_CATEGORY_OPTION(OPT, Calls) \
-    FORMATTER_CONTINUATION_CATEGORY_OPTION(OPT, Parameters) \
-    FORMATTER_CONTINUATION_CATEGORY_OPTION(OPT, Captures) \
-    FORMATTER_CONTINUATION_CATEGORY_OPTION(OPT, ControlHeaders) \
-    FORMATTER_CONTINUATION_CATEGORY_OPTION(OPT, BaseLists) \
-    FORMATTER_CONTINUATION_CATEGORY_OPTION(OPT, ConstructorLists) \
     /* Zero resolves to IndentWidth, including category overrides. */         \
     OPT(std::size_t, ContinuationOffset, 0)                                   \
     OPT(std::size_t, AlignmentFallbackOffset, 0)                              \
@@ -316,8 +298,6 @@
         formatter::BreakRequirement::IfNeeded)                               \
     OPT(formatter::ListPacking, ExpressionsPacking, \
         formatter::ListPacking::Fill) \
-    OPT(std::optional<formatter::ContinuationNesting>, \
-        ExpressionsContinuationNesting, std::nullopt) \
     OPT(formatter::ExpressionAlignment, ExpressionsAlignment, \
         formatter::ExpressionAlignment::Block) \
     OPT(formatter::CategoryLayout, ExpressionsLayout, \
@@ -337,8 +317,6 @@
     OPT(formatter::BreakRequirement, ChainsBreak,                            \
         formatter::BreakRequirement::IfNeeded)                               \
     OPT(formatter::ListPacking, ChainsPacking, formatter::ListPacking::Fill)  \
-    OPT(std::optional<formatter::ContinuationNesting>, \
-        ChainsContinuationNesting, std::nullopt) \
     OPT(formatter::ContinuationAlignment, ChainsAlignment, \
         formatter::ContinuationAlignment::Block) \
     OPT(formatter::CategoryLayout, DeclarationHeadersLayout, \

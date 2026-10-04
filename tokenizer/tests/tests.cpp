@@ -47,10 +47,10 @@ std::pair<std::string, std::vector<std::string>> TokenizeAndSerialize(
     for (const auto& token : tokenizer) {
         result +=
             std::format(
-            "{}: {} {}\n",
-            token.Position,
-            token.Kind,
-            token.Text.View(input));
+                "{}: {} {}\n",
+                token.Position,
+                token.Kind,
+                token.Text.View(input));
     }
     return {std::move(result), std::move(errors)};
 }

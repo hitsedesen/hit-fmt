@@ -33,46 +33,136 @@ void ExpectText(
 
 TEST(GroupLayout, SharedContinuationReusesBaseWithoutFlatteningBodies)
 {
-    for (const auto nesting : {ContinuationNesting::Shared,
-             ContinuationNesting::Additive})
-    {
+    Document document("");
+    const auto block = document.BeginGroup({GroupMode::Fill, 4});
+    document.Gap({GapKind::Hard, 0});
+    document.Text("value =");
+    const auto assignment = document.BeginGroup({
+        .Mode = GroupMode::Fill, .Indent = 4,
+        .ExpressionContinuation = true, .Continuation = true});
+    document.Gap({GapKind::Hard, 0});
+    document.Text("first ||");
+    const auto anchor = document.MarkAnchor({
+        .Offset = 8, .Continuation = true});
+    const auto binary = document.BeginGroup({
+        .Mode = GroupMode::Fill, .Indent = 8,
+        .ExpressionContinuation = true, .Continuation = true});
+    document.Gap({GapKind::Hard, 0}, anchor);
+    document.Text("second {");
+    const auto body = document.BeginGroup({
+        .Indent = 4, .StructuralBase = true});
+    document.Gap({GapKind::Hard, 0});
+    document.Text("nested =");
+    const auto expression = document.BeginGroup({
+        .Indent = 4, .ExpressionContinuation = true, .Continuation = true});
+    document.Gap({GapKind::Hard, 0});
+    document.Text("leaf;");
+    document.EndGroup(expression);
+    document.EndGroup(body);
+    document.EndGroup(binary);
+    document.EndGroup(assignment);
+    document.EndGroup(block);
+    ASSERT_TRUE(document.Seal());
+    ExpectText(document, 80,
+        "\n    value =\n        first ||\n        second {\n"
+        "            nested =\n                leaf;");
+}
+
+TEST(GroupLayout, SharedListsDistinguishProspectiveAndRealizedContinuations)
+{
+    for (const bool expression : {false, true}) {
+        for (const bool realized : {false, true}) {
+            Document document("");
+            const auto body = document.BeginGroup({.Indent = 4});
+            document.Gap({GapKind::Hard, 0});
+            document.Text(expression ? "value =" : "if (");
+            const auto parentAnchor = document.MarkAnchor({
+                .Offset = 4, .Continuation = true});
+            const auto parent = document.BeginGroup({
+                .Indent = 4, .ExpressionContinuation = expression,
+                .StructuralBase = !expression, .Continuation = true});
+            document.Gap({realized ? GapKind::Hard : GapKind::Flat,
+                std::uint16_t(expression ? 1 : 0)});
+            document.Text("wrap(");
+            const auto callAnchor = document.MarkAnchor({
+                .Offset = 4, .StructuralBase = true, .Continuation = true,
+                .SharedWith = parentAnchor});
+            const auto call = document.BeginGroup({
+                .Indent = 4, .StructuralBase = true, .Continuation = true});
+            document.Gap({GapKind::Hard, 0}, callAnchor);
+            document.Text("nested(");
+            const auto nestedAnchor = document.MarkAnchor({
+                .Offset = 4, .StructuralBase = true, .Continuation = true,
+                .SharedWith = callAnchor});
+            const auto nested = document.BeginGroup({
+                .Indent = 4, .StructuralBase = true, .Continuation = true});
+            document.Gap({GapKind::Hard, 0}, nestedAnchor);
+            document.Text("left ||");
+            const auto binaryAnchor = document.MarkAnchor({
+                .Offset = 4, .Continuation = true, .SharedWith = nestedAnchor});
+            const auto binary = document.BeginGroup({
+                .Indent = 4, .ExpressionContinuation = true, .Continuation = true});
+            document.Gap({GapKind::Hard, 0}, binaryAnchor);
+            document.Text("right)))");
+            document.EndGroup(binary);
+            document.EndGroup(nested);
+            document.EndGroup(call);
+            document.EndGroup(parent);
+            document.EndGroup(body);
+            ASSERT_TRUE(document.Seal());
+            const auto level = realized ? 12u : 8u;
+            const auto prefix = std::string(expression ? "value =" : "if (") +
+                (realized ? "\n        " : expression ? " " : "");
+            ExpectText(document, 80, "\n    " + prefix + "wrap(\n" +
+                std::string(level, ' ') + "nested(\n" +
+                std::string(level + 4, ' ') + "left ||\n" +
+                std::string(level + 4, ' ') + "right)))");
+        }
+    }
+}
+
+TEST(GroupLayout, SharedListsUseRealizedAnchorColumns)
+{
+    for (const bool inlineLambda : {false, true}) {
         Document document("");
-        const auto block = document.BeginGroup({GroupMode::Fill, 4});
+        const auto body = document.BeginGroup({.Indent = 4});
         document.Gap({GapKind::Hard, 0});
-        document.Text("value =");
-        const auto assignment = document.BeginGroup({
-            .Mode = GroupMode::Fill, .Indent = 4,
-            .ExpressionContinuation = true, .Continuation = true});
-        document.Gap({GapKind::Hard, 0});
-        document.Text("first ||");
-        const auto anchor = document.MarkAnchor({
-            .Offset = 8, .Continuation = true, .Nesting = nesting});
-        const auto binary = document.BeginGroup({
-            .Mode = GroupMode::Fill, .Indent = 8,
-            .ExpressionContinuation = true, .Continuation = true,
-            .Nesting = nesting});
-        document.Gap({GapKind::Hard, 0}, anchor);
-        document.Text("second {");
-        const auto body = document.BeginGroup({
-            .Indent = 4, .StructuralBase = true});
-        document.Gap({GapKind::Hard, 0});
-        document.Text("nested =");
-        const auto expression = document.BeginGroup({
-            .Indent = 4, .ExpressionContinuation = true,
-            .Continuation = true});
-        document.Gap({GapKind::Hard, 0});
-        document.Text("leaf;");
-        document.EndGroup(expression);
+        document.Text("wrap(");
+        const auto outerAnchor = document.MarkAnchor({
+            .Kind = AnchorKind::DelimiterColumn, .Fallback = 4, .Minimum = 4,
+            .StructuralBase = true, .Continuation = true});
+        const auto outer = document.BeginGroup({
+            .Indent = 4, .StructuralBase = true, .Continuation = true});
+        document.Gap({GapKind::Hard, 0}, outerAnchor);
+        document.Text("nested(");
+        const auto innerAnchor = document.MarkAnchor({
+            .Offset = 4, .StructuralBase = true, .Continuation = true,
+            .SharedWith = outerAnchor});
+        const auto inner = document.BeginGroup({
+            .Indent = 4, .StructuralBase = true, .Continuation = true});
+        if (inlineLambda) {
+            document.Text("[&] {");
+            const auto closer = document.MarkAnchor({.StructuralBase = true});
+            const auto lambda = document.BeginGroup({.Indent = 4, .StructuralBase = true});
+            document.Gap({GapKind::Hard, 0});
+            document.Text("leaf;");
+            document.EndGroup(lambda);
+            document.Gap({GapKind::Hard, 0}, closer);
+            document.Text("}))");
+        } else {
+            document.Gap({GapKind::Hard, 0}, innerAnchor);
+            document.Text("item))");
+        }
+        document.EndGroup(inner);
+        document.EndGroup(outer);
         document.EndGroup(body);
-        document.EndGroup(binary);
-        document.EndGroup(assignment);
-        document.EndGroup(block);
         ASSERT_TRUE(document.Seal());
-        const auto level = nesting == ContinuationNesting::Shared ? 8 : 16;
-        ExpectText(document, 80, "\n    value =\n        first ||\n" +
-            std::string(level, ' ') + "second {\n" +
-            std::string(level + 4, ' ') + "nested =\n" +
-            std::string(level + 8, ' ') + "leaf;");
+        ExpectText(document, 80, inlineLambda
+            ? "\n    wrap(\n         nested([&] {\n             leaf;\n         }))"
+            : "\n    wrap(\n         nested(\n             item))");
+        ExpectText(document, 9, inlineLambda
+            ? "\n    wrap(\n        nested([&] {\n            leaf;\n        }))"
+            : "\n    wrap(\n        nested(\n            item))");
     }
 }
 
@@ -1859,6 +1949,9 @@ TEST(GroupLayout, RejectsMalformedDocumentsAndDependencyCycles)
     Document anchor("");
     anchor.Gap({}, 42);
     EXPECT_EQ(anchor.Seal().Code, Error::InvalidAnchor);
+    Document sharedAnchor("");
+    sharedAnchor.MarkAnchor({.SharedWith = 0});
+    EXPECT_EQ(sharedAnchor.Seal().Code, Error::InvalidAnchor);
     Document range("abc");
     range.SourceText(0, 4);
     EXPECT_EQ(range.Seal().Code, Error::InvalidSourceRange);

@@ -34,7 +34,7 @@ struct Derived: Base {
         first,
         callback(second),
         factory()(first)
-        .finish()
+          .finish()
       );
     }
     return value;

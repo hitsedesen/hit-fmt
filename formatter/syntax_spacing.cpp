@@ -1193,7 +1193,7 @@ public:
                     Tree_.Kind(close + 1) == TK::Comment &&
                     Tree_.TokenText(close + 1).starts_with("//") &&
                     Tree_.WhitespaceBefore(close + 1)
-                    .find_first_not_of(" \t") == std::string_view::npos)
+                        .find_first_not_of(" \t") == std::string_view::npos)
                 {
                     Gaps_[close + 1].NamespaceClosingComment = true;
                 }
@@ -1857,13 +1857,13 @@ SyntaxSpacing BuildSyntaxSpacing(
     std::pmr::vector<Frame> stack(&scratchMemory);
     stack
         .push_back(
-        {
-            &tree.Root(),
-            nullptr,
-            tree.Root().Child(),
-            {},
-            tree.Root().Tokens.Begin,
-        });
+            {
+                &tree.Root(),
+                nullptr,
+                tree.Root().Child(),
+                {},
+                tree.Root().Tokens.Begin,
+            });
     RegionId nextRegion = 0;
     while (!stack.empty()) {
         auto& frame = stack.back();
@@ -1886,7 +1886,7 @@ SyntaxSpacing BuildSyntaxSpacing(
             }
             frame.State =
                 classifier
-                .Enter(node, frame.Parent, frame.State, region.Status);
+                    .Enter(node, frame.Parent, frame.State, region.Status);
             frame.Complete =
                 region.Status == RegionStatus::Complete &&
                 !frame.State.UncertainSyntax && !frame.State.UncertainOperands;
@@ -1913,7 +1913,13 @@ SyntaxSpacing BuildSyntaxSpacing(
             const auto* parent = frame.Node;
             stack
                 .push_back(
-                {child, parent, child->Child(), state, child->Tokens.Begin});
+                    {
+                        child,
+                        parent,
+                        child->Child(),
+                        state,
+                        child->Tokens.Begin,
+                    });
             stack.back().PreviousSibling = previous;
             stack.back().PreviousSiblingComplete = previousComplete;
         } else {
@@ -1927,14 +1933,14 @@ SyntaxSpacing BuildSyntaxSpacing(
             {
                 classifier
                     .SequenceBoundary(
-                    *frame.Parent,
-                    *frame.PreviousSibling,
-                    node);
+                        *frame.Parent,
+                        *frame.PreviousSibling,
+                        node);
                 classifier
                     .DeclarationBoundary(
-                    *frame.Parent,
-                    *frame.PreviousSibling,
-                    node);
+                        *frame.Parent,
+                        *frame.PreviousSibling,
+                        node);
             }
             if (stack.size() > 1) {
                 auto& parent = stack[stack.size() - 2];
@@ -1955,7 +1961,7 @@ SyntaxSpacing BuildSyntaxSpacing(
             gap.Policy = GapPolicy::Preserve;
             gap.Constraint =
                 static_cast<SpacingConstraint>(static_cast<uint8_t>(gap
-                .Constraint) |
+                    .Constraint) |
                 static_cast<uint8_t>(SpacingConstraint::SourceSafety));
         }
     }
