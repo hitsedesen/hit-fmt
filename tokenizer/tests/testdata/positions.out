@@ -1,6 +1,51 @@
-Ln 1, Col 1: identifier α
-Ln 1, Col 3: identifier beta
-Ln 2, Col 3: identifier gamma
-Ln 3, Col 1: identifier ֋a
-Ln 3, Col 4: identifier a׈
-Ln 3, Col 7: identifier 𽀀b
+Ln 1, Col 2: identifier alpha
+Ln 1, Col 7: op( (
+Ln 1, Col 8: identifier beta
+Ln 1, Col 12: op) )
+Ln 1, Col 13: op; ;
+Ln 2, Col 1: identifier α
+Ln 2, Col 3: identifier beta
+Ln 3, Col 3: identifier gamma
+Ln 4, Col 1: identifier ֋a
+Ln 4, Col 4: identifier a׈
+Ln 4, Col 7: identifier 𽀀b
+Ln 5, Col 2: identifier delta
+Ln 6, Col 1: op+ +
+Ln 6, Col 3: identifier epsilon
+Ln 6, Col 10: op; ;
+Ln 7, Col 1: identifier zeta
+Ln 7, Col 6: op+ +
+Ln 7, Col 8: identifier eta
+Ln 7, Col 11: op; ;
+Ln 8, Col 1: identifier theta
+Ln 9, Col 3: identifier iota
+Ln 9, Col 7: op; ;
+Ln 10, Col 1: str "literal"
+Ln 10, Col 10: op+ +
+Ln 10, Col 11: str R"(raw)"
+Ln 10, Col 19: op; ;
+Ln 11, Col 1: identifier last
+Ln 11, Col 5: op; ;
+Ln 12, Col 1: identifier _lowerUPPER09
+Ln 12, Col 15: identifier αASCII׈
+Ln 12, Col 23: identifier λ
+Ln 12, Col 24: op; ;
+Ln 13, Col 1: str "letters digits 123 _ spaces\t escaped\" quote"
+Ln 13, Col 49: char 'abc'
+Ln 13, Col 55: char u'β'
+Ln 13, Col 59: op; ;
+Ln 14, Col 1: comment /* first line
+	   α
+   letters 0123 _ α then more ** not closed yet
+*/
+Ln 18, Col 1: pp #define VALUE 12'345 + "quoted // text" /* multi
+   line */ + R"tag(raw
+with ) wrong close and α)tag" // comment \
+    continued
+Ln 22, Col 1: comment // plain ASCII then α after it
+Ln 23, Col 1: str R"tag(raw ASCII
+	   α
+nul-like \0 and ) partial close α)tag"
+Ln 25, Col 39: op; ;
+Ln 26, Col 1: identifier final
+Ln 26, Col 6: op; ;

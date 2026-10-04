@@ -1,3 +1,26 @@
+﻿alpha(beta);
 α beta
   gamma
 ֋a a׈ 𽀀b
+	delta
++ epsilon;
+zeta+eta;
+theta\
+  iota;
+"literal"+R"(raw)";
+last;
+_lowerUPPER09 αASCII׈ λ;
+"letters digits 123 _ spaces\t escaped\" quote" 'abc' u'β';
+/* first line
+	   α
+   letters 0123 _ α then more ** not closed yet
+*/
+#define VALUE 12'345 + "quoted // text" /* multi
+   line */ + R"tag(raw
+with ) wrong close and α)tag" // comment \
+    continued
+// plain ASCII then α after it
+R"tag(raw ASCII
+	   α
+nul-like \0 and ) partial close α)tag";
+final;
