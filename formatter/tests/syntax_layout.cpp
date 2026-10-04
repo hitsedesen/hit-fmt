@@ -2017,6 +2017,33 @@ TEST(SyntaxLayout, ContinuationScopesReindentOnlySelectedHorizontalBytes)
                         map.Source.End <= second + 12));
                 }
             }
+            const auto ternaryInput = "void f() {" + newline +
+                "    auto result =" + newline +
+                "        condition" + newline + "        ? left +" + newline +
+                "        right" + newline + "        : otherLeft +" + newline +
+                "        otherRight;" + newline + "}" + newline;
+            const auto branchBegin = parser::SourceOffset(
+                ternaryInput.find("        right"));
+            const std::array branchScope{
+                parser::SourceRange{branchBegin, branchBegin + 8}};
+            protection.EditScope = branchScope;
+            const auto branchOutput = Lower(ternaryInput, style, options, protection);
+            const auto branchIndent = indentation == formatter::IndentationKind::Tabs
+                ? std::string(3, '\t') : std::string(12, ' ');
+            auto branchExpected = ternaryInput;
+            branchExpected.replace(branchBegin, 8, branchIndent);
+            EXPECT_EQ(branchOutput.Text, branchExpected);
+            const std::array repeatedBranchScope{parser::SourceRange{
+                branchBegin, branchBegin + parser::SourceOffset(branchIndent.size())}};
+            protection.EditScope = repeatedBranchScope;
+            EXPECT_EQ(Lower(branchOutput.Text, style, options, protection).Text,
+                branchOutput.Text);
+            for (const auto& map : branchOutput.Map) {
+                if (!map.Exact) {
+                    EXPECT_GE(map.Source.Begin, branchBegin);
+                    EXPECT_LE(map.Source.End, branchBegin + 8);
+                }
+            }
         }
     }
 }

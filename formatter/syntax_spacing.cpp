@@ -735,9 +735,9 @@ public:
                     Tree_.Kind(begin) == TK::Keyword_volatile
                     ? F::FunctionQualifierSpacing
                     : Tree_.Kind(begin) == TK::Operator_Ampersand ||
-                    Tree_.Kind(begin) == TK::Operator_And
-                    ? F::FunctionRefQualifierSpacing
-                    : F::FunctionSuffixSpecifierSpacing,
+                        Tree_.Kind(begin) == TK::Operator_And
+                        ? F::FunctionRefQualifierSpacing
+                        : F::FunctionSuffixSpecifierSpacing,
                     parent ? *parent : node,
                     C::DeclarationHeaders,
                     3,
@@ -843,8 +843,8 @@ public:
                     kind == NK::LambdaBody
                     ? F::EmptyLambdaBodySpacing
                     : kind == NK::RequirementBody
-                    ? F::RequirementBodyInteriorSpacing
-                    : F::EmptyBlockInteriorSpacing,
+                        ? F::RequirementBodyInteriorSpacing
+                        : F::EmptyBlockInteriorSpacing,
                     node,
                     state.Category,
                     2,
@@ -909,8 +909,8 @@ public:
                         kind == NK::ThrowStatement
                         ? F::ThrowSpaceBeforeParentheses
                         : Tree_.Kind(begin) == TK::Keyword_co_return
-                        ? F::CoReturnSpaceBeforeParentheses
-                        : F::ReturnSpaceBeforeParentheses,
+                            ? F::CoReturnSpaceBeforeParentheses
+                            : F::ReturnSpaceBeforeParentheses,
                         node,
                         C::Expressions,
                         3,

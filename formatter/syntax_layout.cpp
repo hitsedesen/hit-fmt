@@ -1122,6 +1122,35 @@ private:
             (declarationAssignment || kind == NodeKind::BinaryExpression ||
             kind == NodeKind::AssignmentExpression ||
             kind == NodeKind::ConditionalExpression || Syntax_[id].String);
+        if (kind == NodeKind::ConditionalExpression) {
+            // Each arm has its own continuation scope, beginning after the
+            // delimiter's gap so the first operand stays on the branch line.
+            // Descendants opened inline share that prospective level; any
+            // wrapped branch content is indented from the branch's base.
+            const auto condition = Syntax_[id].FirstChild;
+            for (auto branch =
+                condition == None ? None : Syntax_[condition].NextSibling;
+                branch != None;
+                branch = Syntax_[branch].NextSibling)
+            {
+                const auto& arm = Syntax_[branch];
+                if (!arm.Safe || arm.TreeNode->Kind == NodeKind::Comment ||
+                    arm.TreeNode->Kind == NodeKind::PreprocessingDirective ||
+                    arm.TreeNode->Tokens.Size() < 2)
+                {
+                    continue;
+                }
+                const auto scope =
+                    GroupAt(
+                        TokenPosition(arm.TreeNode->Tokens.Begin),
+                        GapPosition(arm.TreeNode->Tokens.End),
+                        document::GroupMode::Fill,
+                        int32_t(indentation.ContinuationOffset),
+                        indentation);
+                Groups_[scope].Spec.StructuralBase = true;
+                Groups_[scope].Spec.Continuation = true;
+            }
+        }
         const auto boundary =
             policy.Packing == ListPacking::VerticalWhenBroken && !threePart
             ? Boundary::Conditional
@@ -1158,10 +1187,10 @@ private:
                     role == PunctuationRole::AssignmentOperator
                     ? policy.Assignment
                     : role == PunctuationRole::ShiftOperator
-                    ? policy.Shift
-                    : role == PunctuationRole::ConditionalDelimiter
-                    ? policy.Ternary
-                    : policy.Binary;
+                        ? policy.Shift
+                        : role == PunctuationRole::ConditionalDelimiter
+                            ? policy.Ternary
+                            : policy.Binary;
                 if (canonical) {
                     Own(
                         side == OperatorSide::Leading ? t : t + 1,
@@ -1592,10 +1621,10 @@ private:
                     !canonical
                     ? Boundary::Preserve
                     : brace == BracePlacement::NextLine
-                    ? Boundary::Hard
-                    : brace == BracePlacement::Attached
-                    ? Boundary::Flat
-                    : Boundary::Conditional,
+                        ? Boundary::Hard
+                        : brace == BracePlacement::Attached
+                            ? Boundary::Flat
+                            : Boundary::Conditional,
                     document::GapKind::Hard,
                     true);
                 if (!canonical) {
@@ -1805,8 +1834,8 @@ private:
                 *brace == BracePlacement::NextLine
                 ? Boundary::Hard
                 : *brace == BracePlacement::Attached
-                ? Boundary::Flat
-                : Boundary::Conditional,
+                    ? Boundary::Flat
+                    : Boundary::Conditional,
                 document::GapKind::Hard,
                 true);
             ProjectHeaderGaps(id, node.Tokens.Begin, opening, group);
@@ -1897,7 +1926,8 @@ private:
             record
             ? Policies_.Indentation.Members.Mode != BodyIndentation::Preserve
             : namespaced &&
-            Policies_.Indentation.Namespaces.Mode != BodyIndentation::Preserve;
+                Policies_.Indentation.Namespaces.Mode !=
+                BodyIndentation::Preserve;
         const auto group =
             GroupAt(GapPosition(opening + 1), GapPosition(close + 1),
                     document::GroupMode::Consistent, offset,
@@ -1981,8 +2011,8 @@ private:
                 part.Kind == NodeKind::AccessSpecifier
                 ? &Policies_.Indentation.AccessModifiers
                 : part.Kind == NodeKind::CaseLabel
-                ? &Policies_.Indentation.CaseLabels
-                : nullptr;
+                    ? &Policies_.Indentation.CaseLabels
+                    : nullptr;
             if (part.Kind == NodeKind::CaseLabel && special &&
                 special->Mode == BodyIndentation::Preserve &&
                 SourceIndent(part.Tokens.Begin) != None)
@@ -3187,8 +3217,8 @@ private:
                     plan.Owner == None
                     ? document::InvalidId
                     : plan.Closing
-                    ? Groups_[plan.Owner].Block
-                    : Groups_[plan.Owner].Anchor;
+                        ? Groups_[plan.Owner].Block
+                        : Groups_[plan.Owner].Anchor;
                 if (plan.OverrideIndent) {
                     anchor =
                         Document_
@@ -3225,8 +3255,8 @@ private:
                     plan.Owner == None
                     ? document::InvalidId
                     : plan.Closing
-                    ? Groups_[plan.Owner].Block
-                    : Groups_[plan.Owner].Anchor;
+                        ? Groups_[plan.Owner].Block
+                        : Groups_[plan.Owner].Anchor;
                 if (plan.OverrideIndent) {
                     anchor =
                         Document_
@@ -3312,8 +3342,8 @@ private:
                     plan.Owner == None
                     ? document::InvalidId
                     : plan.Closing
-                    ? Groups_[plan.Owner].Block
-                    : Groups_[plan.Owner].Anchor;
+                        ? Groups_[plan.Owner].Block
+                        : Groups_[plan.Owner].Anchor;
                 if (plan.OverrideIndent) {
                     anchor =
                         Document_
@@ -3378,8 +3408,8 @@ private:
             gap.Owner == None
             ? document::InvalidId
             : gap.Closing
-            ? Groups_[gap.Owner].Block
-            : Groups_[gap.Owner].Anchor;
+                ? Groups_[gap.Owner].Block
+                : Groups_[gap.Owner].Anchor;
         if (gap.OverrideIndent) {
             anchor =
                 Document_

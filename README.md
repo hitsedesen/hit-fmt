@@ -142,7 +142,8 @@ Continuation indentation is line-based, not syntax-depth-based. Scopes
 opened on the same line share one prospective continuation offset. Once a
 callee or another list owner starts on a continued line, its contents
 establish a new level; expressions still share the surrounding continuation.
-This rule applies uniformly to calls, assignments, and control headers,
+Ternary branches establish their own continuation scopes, so wrapped
+branch expressions indent relative to the branch line. These rules apply
 without nesting or context options. Structural control and lambda bodies,
 braced initializer lists, and enum lists establish fresh indentation bases.
 Continuation offsets and block/delimiter alignment remain configurable.

@@ -897,10 +897,10 @@ std::vector<Chunk> FormattingChunks(
             auto message =
                 formattedCount == 1
                 ? "insert " + QuoteSnippet(formatted[formattedIndex].Text) +
-                location
+                    location
                 : "insert " + std::to_string(formattedCount) + " lines" +
-                location + ", starting with " +
-                QuoteSnippet(formatted[formattedIndex].Text);
+                    location + ", starting with " +
+                    QuoteSnippet(formatted[formattedIndex].Text);
             chunk.Violations.push_back({begin, column, std::move(message)});
         }
         if (chunk.Violations.empty()) {
@@ -920,9 +920,9 @@ std::vector<Chunk> FormattingChunks(
                         column,
                         inserted
                             ? "insert " + std::to_string(inserted) +
-                            " formatted lines after this line"
+                                " formatted lines after this line"
                             : "replace lines following this line with "
-                            "formatted output",
+                                "formatted output",
                     });
         }
         for (size_t i = 0; i < formattedCount; ++i) {

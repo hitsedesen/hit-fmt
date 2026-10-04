@@ -927,8 +927,8 @@ const
                     forceOwned
                         ? entry.OwnedLastBreak
                         : broken && !entry.GuaranteedLine
-                        ? entry.LastBreak
-                        : InvalidId,
+                            ? entry.LastBreak
+                            : InvalidId,
                     lines,
                     !broken,
                     forceOwned,

@@ -554,6 +554,11 @@ std::vector<FormatCase> FormatCases()
                 "initializer-overflow-one-per-line.input.cpp",
             });
     addProfileCase("../ternary-layout", "profile");
+    AddCases(
+        cases,
+        std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../ternary-layout",
+        {"branches-preserve", "branches-narrow"},
+        "branches.input.cpp");
     cases
         .push_back(
             {
@@ -836,14 +841,11 @@ std::vector<FormatCase> FormatCases()
         }
     }
     const auto data = std::filesystem::path(FORMATTER_TESTDATA_DIR) / "..";
+    AddCases(cases, data / "continuation-nesting", {"shared", "tabs"});
     AddCases(
         cases,
         data / "continuation-nesting",
-        {
-            "shared",
-            "tabs",
-        });
-    AddCases(cases, data / "continuation-nesting", {"line-scopes"},
+        {"line-scopes"},
         "line-scopes.input.cpp");
     for (const auto* name :
         {

@@ -1021,9 +1021,9 @@ std::optional<SyntaxTree>SyntaxTree::RebindControlBraces(
             }
             return left.Closing
                 ? blocks[left.Block].Body->Tokens.Begin >
-                blocks[right.Block].Body->Tokens.Begin
+                    blocks[right.Block].Body->Tokens.Begin
                 : blocks[left.Block].Body->Tokens.End >
-                blocks[right.Block].Body->Tokens.End;
+                    blocks[right.Block].Body->Tokens.End;
         });
     // Node beginnings exclude injected opening braces; node endings include
     // closing braces belonging to the surrounding control statement.
@@ -4637,8 +4637,8 @@ private:
                 nameArgumentsEnd != begin
                 ? nameArgumentsEnd
                 : (name < declaratorEnd
-                ? name + 1
-                : (nestedEnd != begin ? nestedEnd : begin));
+                    ? name + 1
+                    : (nestedEnd != begin ? nestedEnd : begin));
             for (auto i = suffixBegin; i < suffixScanEnd; ++i) {
                 if (isFunction && i == parameters->Begin) {
                     i = parameters->End - 1;
@@ -6005,8 +6005,8 @@ private:
                     const auto requiresEnd =
                         recoveredHeader
                         ? opaqueSuffix
-                        ? SkipRecoveredRequiresExpression(Cursor_)
-                        : Cursor_ + 1
+                            ? SkipRecoveredRequiresExpression(Cursor_)
+                            : Cursor_ + 1
                         : SkipRequiresExpression(Cursor_);
                     if (requiresEnd != Cursor_ + 1) {
                         Cursor_ = requiresEnd;
@@ -6423,8 +6423,8 @@ private:
                     invalidFunctionSuffix
                     ? NodeKind::UnparsedSyntax
                     : sawTopLevelParameters && !sawAssignmentBeforeParameters
-                    ? NodeKind::FunctionDeclaration
-                    : NodeKind::Declaration;
+                        ? NodeKind::FunctionDeclaration
+                        : NodeKind::Declaration;
                 auto* node = MakeNode(nodeKind, start);
                 node->Tokens.End = Cursor_;
                 std::optional<TokenRange> parameters;
@@ -8055,8 +8055,8 @@ private:
                 IsLiteralExpressionToken(kind)
                 ? NodeKind::LiteralExpression
                 : (kind == TK::Identifier || kind == TK::Keyword_this
-                ? NodeKind::IdentifierExpression
-                : NodeKind::Expression);
+                    ? NodeKind::IdentifierExpression
+                    : NodeKind::Expression);
             left = MakeNode(nodeKind, cursor);
             left->Tokens.End = ++cursor;
             if (kind == TK::Literal_String) {
