@@ -117,7 +117,8 @@ inline constexpr auto ByteActions = MakeByteActions(State);
 
 [[nodiscard]] constexpr bool IsAsciiIdentifierStart(unsigned char byte) noexcept
 {
-    return (byte | 0x20u) - 'a' < 26 || byte == '_';
+    return (byte >= 'a' && byte <= 'z') ||
+        (byte >= 'A' && byte <= 'Z') || byte == '_';
 }
 
 // Literal kinds select scanners; operator kinds are complete one-byte tokens.
