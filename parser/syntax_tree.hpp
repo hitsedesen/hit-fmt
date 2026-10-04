@@ -628,8 +628,9 @@ public:
     [[nodiscard]] TokenIndex FindPreprocessingDirective(
         TokenIndex begin,
         TokenIndex end) const;
-    [[nodiscard]] TokenIndex FindComment(TokenIndex begin, TokenIndex end)
-    const;
+    [[nodiscard]] TokenIndex FindComment(
+        TokenIndex begin,
+        TokenIndex end) const;
 
 private:
     SegmentedStorage<Chunk, TokensPerChunk> Storage_;
@@ -751,8 +752,8 @@ public:
         return Tokens_.MatchingDelimiter(index);
     }
 
-    [[nodiscard]] const TriviaAttachments* AssociatedTrivia(const Node& node)
-    const;
+    [[nodiscard]] const TriviaAttachments* AssociatedTrivia(
+        const Node& node) const;
     [[nodiscard]] std::string_view SourceText(TokenRange range) const;
     [[nodiscard]] std::string_view SourceText(SourceRange range) const;
 

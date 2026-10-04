@@ -131,8 +131,8 @@ private:
         std::pmr::new_delete_resource()->deallocate(pointer, bytes, alignment);
     }
 
-    bool do_is_equal(const std::pmr::memory_resource& other) const noexcept
-    override
+    bool do_is_equal(
+        const std::pmr::memory_resource& other) const noexcept override
     {
         return this == &other;
     }

@@ -182,8 +182,9 @@ struct TrailingCommentSpaceSetting
         const TrailingCommentSpaceSetting&) = default;
 };
 
-[[nodiscard]] constexpr GapPolicy ResolveGapPolicy(GapPolicy policy, GapPolicy)
-noexcept
+[[nodiscard]] constexpr GapPolicy ResolveGapPolicy(
+    GapPolicy policy,
+    GapPolicy) noexcept
 {
     return policy;
 }
