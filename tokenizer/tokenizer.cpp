@@ -13,6 +13,120 @@
 namespace tokenizer {
 namespace {
 
+using detail::AsciiState;
+using detail::IsAsciiSpace;
+
+// The low bit marks bytes handled by the state's uninterrupted ASCII loop.
+// Space is also continuable, but preserves the logical-line-start flag.
+enum class ByteAction : uint8_t
+{
+    Finish = 0,
+    Continue = 1,
+    Space = 3,
+    Unicode = 4,
+    Newline = 6,
+    Escape = 8,
+    Delimiter = 10,
+    Quote = 12,
+    RawPrefix = 14,
+};
+
+[[nodiscard]] constexpr auto MakeByteActions(AsciiState state) noexcept
+{
+    std::array<ByteAction, 256> actions{};
+    for (unsigned byte = 0; byte < actions.size(); ++byte) {
+        auto action = ByteAction::Continue;
+        if (byte >= 0x80) {
+            action = ByteAction::Unicode;
+        } else if (byte == 0) {
+            action = ByteAction::Finish;
+        } else if (byte == '\n') {
+            action = ByteAction::Newline;
+        } else if (IsAsciiSpace(static_cast<unsigned char>(byte))) {
+            action = ByteAction::Space;
+        }
+        switch (state) {
+            case AsciiState::Identifier:
+                if (byte < 0x80) {
+                    action = ((byte >= 'a' && byte <= 'z') ||
+                        (byte >= 'A' && byte <= 'Z') ||
+                        (byte >= '0' && byte <= '9') || byte == '_')
+                        ? ByteAction::Continue
+                        : ByteAction::Finish;
+                }
+                break;
+            case AsciiState::Whitespace:
+                if (action == ByteAction::Continue) {
+                    action = ByteAction::Finish;
+                }
+                break;
+            case AsciiState::String:
+            case AsciiState::Character:
+                if (byte == '\\') {
+                    action = ByteAction::Escape;
+                } else if (byte == (state == AsciiState::String ? '"' : '\'')) {
+                    action = ByteAction::Delimiter;
+                }
+                break;
+            case AsciiState::BlockComment:
+                if (byte == '*') {
+                    action = ByteAction::Delimiter;
+                }
+                break;
+            case AsciiState::RawString:
+                if (byte == ')') {
+                    action = ByteAction::Delimiter;
+                }
+                break;
+            case AsciiState::Directive:
+                if (byte == '\\') {
+                    action = ByteAction::Escape;
+                } else if (byte == '/') {
+                    action = ByteAction::Delimiter;
+                } else if (byte == '"' || byte == '\'') {
+                    action = ByteAction::Quote;
+                } else if (byte == 'R') {
+                    action = ByteAction::RawPrefix;
+                }
+                break;
+            case AsciiState::DirectiveLineComment:
+                if (byte == '\\') {
+                    action = ByteAction::Escape;
+                }
+                break;
+            case AsciiState::LineComment:
+                break;
+        }
+        actions[byte] = action;
+    }
+    return actions;
+}
+
+template <AsciiState State>
+inline constexpr auto ByteActions = MakeByteActions(State);
+
+// Literal kinds select scanners; operator kinds are complete one-byte tokens.
+// Invalid selects the ambiguous-operator, invalid-byte, or Unicode path.
+inline constexpr auto AsciiTokenKinds = [] {
+    std::array<TokenKind, 256> kinds{};
+    for (unsigned byte = '0'; byte <= '9'; ++byte) {
+        kinds[byte] = TokenKind::Literal_DecimalInteger;
+    }
+    kinds['\''] = TokenKind::Literal_Character;
+    kinds['"'] = TokenKind::Literal_String;
+    kinds['{'] = TokenKind::Operator_OpenBrace;
+    kinds['}'] = TokenKind::Operator_CloseBrace;
+    kinds['['] = TokenKind::Operator_OpenBracket;
+    kinds[']'] = TokenKind::Operator_CloseBracket;
+    kinds['('] = TokenKind::Operator_OpenParenthesis;
+    kinds[')'] = TokenKind::Operator_CloseParenthesis;
+    kinds[';'] = TokenKind::Operator_Semicolon;
+    kinds['?'] = TokenKind::Operator_Conditional;
+    kinds['~'] = TokenKind::Operator_Complement;
+    kinds[','] = TokenKind::Operator_Comma;
+    return kinds;
+}();
+
 [[nodiscard]] constexpr bool IsOctalDigit(unicode::CodePoint cp) noexcept
 {
     return cp >= '0' && cp <= '7';
@@ -36,6 +150,12 @@ namespace {
 [[nodiscard]] constexpr bool IsAsciiDigit(unsigned char value) noexcept
 {
     return value >= '0' && value <= '9';
+}
+
+[[nodiscard]] constexpr bool IsAsciiIdentifierStart(unsigned char byte) noexcept
+{
+    return (byte >= 'a' && byte <= 'z') ||
+        (byte >= 'A' && byte <= 'Z') || byte == '_';
 }
 
 [[nodiscard]] constexpr bool IsAsciiAlphaNumeric(unsigned char value) noexcept
@@ -181,46 +301,61 @@ Token Tokenizer::Get()
     CurrentTokenOffset_ = CurrentCodePointOffset_;
     CurrentTokenSize_ = 0;
 
-    auto cur = byte < 0x80
-        ? unicode::CodePoint(byte)
-        : CurrentCodePoint();
     if (AtEnd()) [[unlikely]] {
         return FinishToken(TokenKind::EndOfFile);
     }
-    switch (cur) {
+    if (IsAsciiIdentifierStart(byte)) {
+        return ParseIdentifier();
+    }
+    auto kind = AsciiTokenKinds[byte];
+    switch (kind) {
+        case TokenKind::Literal_DecimalInteger:
+            return ParseNumber();
+        case TokenKind::Literal_Character:
+            return ParseCharacterLiteral();
+        case TokenKind::Literal_String:
+            return ParseStringLiteral();
+        case TokenKind::Invalid:
+        {
+            if (byte < 0x80) {
+                return ParseAsciiOperator(byte);
+            }
+            auto cur = CurrentUnicodeCodePoint();
+            if (unicode::IsXIDStart(cur)) {
+                return ParseIdentifier();
+            }
+            ConsumeUnicodeCodePoint();
+            if (cur != InvalidCodePoint) {
+                OnError(TokenizationErrorKind::UnexpectedToken);
+            }
+            return FinishToken(TokenKind::Invalid);
+        }
+        default:
+            // The table selects only non-whitespace, one-byte operators here.
+            ++CurrentCodePointOffset_;
+            ++CurrentCodePointPosition_.Column;
+            CurrentTokenSize_ = 1;
+            IsNewLine_ = false;
+            return FinishToken(kind);
+    }
+}
+
+Token Tokenizer::ParseAsciiOperator(unsigned char byte)
+{
+    unicode::CodePoint cur = byte;
+    switch (byte) {
         case '#':
         {
             if (!IsNewLine_) {
-                ConsumeCodePoint();
+                ConsumeAsciiByte(byte);
                 OnError(TokenizationErrorKind::UnexpectedToken);
                 return FinishToken(TokenKind::Invalid);
             }
             return ParsePreprocessingDirective();
         }
-        case '{':
-            ConsumeCodePoint();
-            return FinishToken(TokenKind::Operator_OpenBrace);
-        case '}':
-            ConsumeCodePoint();
-            return FinishToken(TokenKind::Operator_CloseBrace);
-        case '[':
-            ConsumeCodePoint();
-            return FinishToken(TokenKind::Operator_OpenBracket);
-        case ']':
-            ConsumeCodePoint();
-            return FinishToken(TokenKind::Operator_CloseBracket);
-        case '(':
-            ConsumeCodePoint();
-            return FinishToken(TokenKind::Operator_OpenParenthesis);
-        case ')':
-            ConsumeCodePoint();
-            return FinishToken(TokenKind::Operator_CloseParenthesis);
-        case ';':
-            ConsumeCodePoint();
-            return FinishToken(TokenKind::Operator_Semicolon);
         case ':':
         {
-            ConsumeCodePoint();
+            ConsumeAsciiByte(byte);
             cur = CurrentCodePoint();
             switch (cur) {
                 case ':':
@@ -235,10 +370,10 @@ Token Tokenizer::Get()
         }
         case '.':
         {
-            if (IsDigit(PeekByte(1))) [[unlikely]] {
+            if (IsAsciiDigit(PeekByte(1))) [[unlikely]] {
                 return ParseNumber();
             }
-            ConsumeCodePoint();
+            ConsumeAsciiByte(byte);
             cur = CurrentCodePoint();
             switch (cur) {
                 case '.':
@@ -262,7 +397,7 @@ Token Tokenizer::Get()
         }
         case '-':
         {
-            ConsumeCodePoint();
+            ConsumeAsciiByte(byte);
             cur = CurrentCodePoint();
             switch (cur) {
                 case '>':
@@ -287,15 +422,9 @@ Token Tokenizer::Get()
                     return FinishToken(TokenKind::Operator_Minus);
             }
         }
-        case '?':
-            ConsumeCodePoint();
-            return FinishToken(TokenKind::Operator_Conditional);
-        case '~':
-            ConsumeCodePoint();
-            return FinishToken(TokenKind::Operator_Complement);
         case '!':
         {
-            ConsumeCodePoint();
+            ConsumeAsciiByte(byte);
             cur = CurrentCodePoint();
             if (cur == '=') {
                 ConsumeCodePoint();
@@ -305,7 +434,7 @@ Token Tokenizer::Get()
         }
         case '+':
         {
-            ConsumeCodePoint();
+            ConsumeAsciiByte(byte);
             cur = CurrentCodePoint();
             if (cur == '=') {
                 ConsumeCodePoint();
@@ -319,7 +448,7 @@ Token Tokenizer::Get()
         }
         case '*':
         {
-            ConsumeCodePoint();
+            ConsumeAsciiByte(byte);
             cur = CurrentCodePoint();
             if (cur == '=') {
                 ConsumeCodePoint();
@@ -329,7 +458,7 @@ Token Tokenizer::Get()
         }
         case '/':
         {
-            ConsumeCodePoint();
+            ConsumeAsciiByte(byte);
             cur = CurrentCodePoint();
             switch (cur) {
                 case '=':
@@ -346,7 +475,7 @@ Token Tokenizer::Get()
         case '%':
         {
             const bool startsLine = IsNewLine_;
-            ConsumeCodePoint();
+            ConsumeAsciiByte(byte);
             cur = CurrentCodePoint();
             if (cur == '=') {
                 ConsumeCodePoint();
@@ -362,7 +491,7 @@ Token Tokenizer::Get()
         }
         case '^':
         {
-            ConsumeCodePoint();
+            ConsumeAsciiByte(byte);
             cur = CurrentCodePoint();
             if (cur == '=') {
                 ConsumeCodePoint();
@@ -372,7 +501,7 @@ Token Tokenizer::Get()
         }
         case '&':
         {
-            ConsumeCodePoint();
+            ConsumeAsciiByte(byte);
             cur = CurrentCodePoint();
             switch (cur) {
                 case '=':
@@ -387,7 +516,7 @@ Token Tokenizer::Get()
         }
         case '|':
         {
-            ConsumeCodePoint();
+            ConsumeAsciiByte(byte);
             cur = CurrentCodePoint();
             switch (cur) {
                 case '=':
@@ -402,7 +531,7 @@ Token Tokenizer::Get()
         }
         case '=':
         {
-            ConsumeCodePoint();
+            ConsumeAsciiByte(byte);
             cur = CurrentCodePoint();
             if (cur == '=') {
                 ConsumeCodePoint();
@@ -412,7 +541,7 @@ Token Tokenizer::Get()
         }
         case '<':
         {
-            ConsumeCodePoint();
+            ConsumeAsciiByte(byte);
             cur = CurrentCodePoint();
             switch (cur) {
                 case ':':
@@ -457,7 +586,7 @@ Token Tokenizer::Get()
         }
         case '>':
         {
-            ConsumeCodePoint();
+            ConsumeAsciiByte(byte);
             cur = CurrentCodePoint();
             switch (cur) {
                 case '=':
@@ -478,29 +607,10 @@ Token Tokenizer::Get()
                     return FinishToken(TokenKind::Operator_Greater);
             }
         }
-        case ',':
-            ConsumeCodePoint();
-            return FinishToken(TokenKind::Operator_Comma);
-        case '\'':
-            return ParseCharacterLiteral();
-        case '"':
-            return ParseStringLiteral();
         default:
-        {
-            if (IsIdStart(cur)) {
-                return ParseIdentifier();
-            }
-            if (IsDigit(cur)) {
-                return ParseNumber();
-            }
-            {
-                ConsumeCodePoint(cur);
-                if (cur != InvalidCodePoint) {
-                    OnError(TokenizationErrorKind::UnexpectedToken);
-                }
-                return FinishToken(TokenKind::Invalid);
-            }
-        }
+            ConsumeAsciiByte(byte);
+            OnError(TokenizationErrorKind::UnexpectedToken);
+            return FinishToken(TokenKind::Invalid);
     }
 }
 
@@ -513,7 +623,7 @@ unsigned char Tokenizer::ScanAsciiRun()
     unsigned char byte;
     while (true) {
         byte = *cursor;
-        auto action = detail::ByteActions<State>[byte];
+        auto action = ByteActions<State>[byte];
         if ((static_cast<unsigned char>(action) & 1) == 0) {
             break;
         }
@@ -523,7 +633,7 @@ unsigned char Tokenizer::ScanAsciiRun()
             State == detail::AsciiState::DirectiveLineComment)
         {
             nonSpace |= static_cast<unsigned char>(action) ^
-                static_cast<unsigned char>(detail::ByteAction::Space);
+                static_cast<unsigned char>(ByteAction::Space);
         }
         ++cursor;
     }
@@ -815,13 +925,13 @@ Token Tokenizer::ParseCharacterLiteral()
         auto start = CurrentCodePointOffset_;
         byte = ScanAsciiRun<detail::AsciiState::Character>();
         characterCount += CurrentCodePointOffset_ - start;
-        switch (detail::ByteActions<detail::AsciiState::Character>[byte]) {
-            case detail::ByteAction::Unicode:
+        switch (ByteActions<detail::AsciiState::Character>[byte]) {
+            case ByteAction::Unicode:
                 LoadCurrentUnicodeCodePoint();
                 ConsumeUnicodeCodePoint();
                 ++characterCount;
                 continue;
-            case detail::ByteAction::Escape:
+            case ByteAction::Escape:
             {
                 bool lineSplice = PeekByte(1) == '\n' ||
                     (PeekByte(1) == '\r' && PeekByte(2) == '\n');
@@ -863,12 +973,12 @@ Token Tokenizer::ParseStringLiteral()
     unsigned char byte;
     while (true) {
         byte = ScanAsciiRun<detail::AsciiState::String>();
-        switch (detail::ByteActions<detail::AsciiState::String>[byte]) {
-            case detail::ByteAction::Unicode:
+        switch (ByteActions<detail::AsciiState::String>[byte]) {
+            case ByteAction::Unicode:
                 LoadCurrentUnicodeCodePoint();
                 ConsumeUnicodeCodePoint();
                 continue;
-            case detail::ByteAction::Escape:
+            case ByteAction::Escape:
                 valid &= ConsumeEscapeSequence();
                 continue;
             default:
@@ -933,12 +1043,12 @@ Token Tokenizer::ParseRawStringLiteral()
         if (AtEnd()) {
             break;
         }
-        switch (detail::ByteActions<detail::AsciiState::RawString>[byte]) {
-            case detail::ByteAction::Unicode:
+        switch (ByteActions<detail::AsciiState::RawString>[byte]) {
+            case ByteAction::Unicode:
                 LoadCurrentUnicodeCodePoint();
                 ConsumeUnicodeCodePoint();
                 break;
-            case detail::ByteAction::Delimiter:
+            case ByteAction::Delimiter:
             {
                 auto suffix = Input_.substr(CurrentCodePointOffset_ + 1);
                 if (suffix.starts_with(delimiter) &&
@@ -970,40 +1080,131 @@ Token Tokenizer::ParseRawStringLiteral()
 
 Token Tokenizer::ParseNumber()
 {
-    size_t offset = CurrentCodePointOffset_;
-    auto byte = [&] (size_t position) {
-        return ByteAt(position);
+    const auto* begin = CurrentByteAddress();
+    const auto* cursor = begin;
+    bool hexadecimal = *cursor == '0' &&
+        (cursor[1] == 'x' || cursor[1] == 'X');
+    bool binary = *cursor == '0' &&
+        (cursor[1] == 'b' || cursor[1] == 'B');
+    bool leadingZero = *cursor == '0';
+    if (hexadecimal || binary) {
+        cursor += 2;
+    }
+    bool valid = true;
+    unsigned char digitBits = 0;
+    auto parseDigits = [&] (auto isDigit) {
+        size_t count = 0;
+        bool separator = false;
+        while (true) {
+            auto byte = *cursor;
+            if (isDigit(byte)) {
+                digitBits |= byte;
+                ++count;
+                separator = false;
+            } else if (byte == '\'') {
+                valid &= count != 0 && !separator;
+                separator = true;
+            } else {
+                break;
+            }
+            ++cursor;
+        }
+        valid &= !separator;
+        return count;
     };
-
-    if (byte(offset) == '.') {
-        return ParseFloatingPoint();
+    auto digits = hexadecimal
+        ? parseDigits(IsHexDigit)
+        : parseDigits(IsAsciiDigit);
+    bool floating = !binary &&
+        (*cursor == '.' || (hexadecimal
+            ? *cursor == 'p' || *cursor == 'P'
+            : *cursor == 'e' || *cursor == 'E'));
+    TokenKind kind;
+    if (floating) {
+        kind = hexadecimal
+            ? TokenKind::Literal_HexadecimalFloatingPoint
+            : TokenKind::Literal_DecimalFloatingPoint;
+        if (*cursor == '.') {
+            ++cursor;
+            digits += hexadecimal
+                ? parseDigits(IsHexDigit)
+                : parseDigits(IsAsciiDigit);
+        }
+        valid &= digits != 0;
+        bool exponent = hexadecimal
+            ? *cursor == 'p' || *cursor == 'P'
+            : *cursor == 'e' || *cursor == 'E';
+        if (exponent) {
+            ++cursor;
+            if (*cursor == '+' || *cursor == '-') {
+                ++cursor;
+            }
+            valid &= parseDigits(IsAsciiDigit) != 0;
+        } else if (hexadecimal) {
+            valid = false;
+        }
+    } else if (hexadecimal) {
+        kind = TokenKind::Literal_HexadecimalInteger;
+        valid &= digits != 0;
+    } else if (binary) {
+        kind = TokenKind::Literal_BinaryInteger;
+        valid &= digits != 0 && (digitBits & 0x0e) == 0;
+    } else if (leadingZero) {
+        kind = TokenKind::Literal_OctalInteger;
+        valid &= (digitBits & 0x08) == 0;
+    } else {
+        kind = TokenKind::Literal_DecimalInteger;
     }
-    if (byte(offset) == '0' &&
-        (byte(offset + 1) == 'x' || byte(offset + 1) == 'X'))
+    if (!valid) [[unlikely]] {
+        // A later dot/exponent selects the separator diagnostic kind. Keep
+        // exact streaming diagnostics without buffering arbitrary errors:
+        // only malformed bodies use the validating, code-point-based path.
+        return floating ? DiagnoseFloatingPoint() : DiagnoseInteger();
+    }
+
+    auto size = static_cast<size_t>(cursor - begin);
+    CurrentCodePointOffset_ += size;
+    CurrentCodePointPosition_.Column += size;
+    CurrentTokenSize_ += size;
+    IsNewLine_ = false;
+    size_t suffixStart = CurrentTokenSize_;
+    auto cur = CurrentCodePoint();
+    if (IsIdStart(cur)) {
+        while (true) {
+            auto byte = ScanAsciiRun<detail::AsciiState::Identifier>();
+            if (byte >= 0x80) {
+                if (IsIdContinuation(CurrentUnicodeCodePoint())) {
+                    ConsumeUnicodeCodePoint();
+                    continue;
+                }
+            } else if (!floating && byte == '\'' &&
+                IsAsciiDigit(ByteAt(CurrentCodePointOffset_ - 1)) &&
+                IsAsciiDigit(PeekByte(1)))
+            {
+                ConsumeAsciiByte(byte);
+                continue;
+            }
+            break;
+        }
+    }
+    auto suffix = CurrentTokenText().substr(suffixStart);
+    if (floating) {
+        if (!std::ranges::any_of(FloatingPointSuffixes, [&] (auto candidate) {
+            return EqualsIgnoringAsciiCase(suffix, candidate);
+        }))
+        {
+            return FinishToken(TokenKind::Literal_UserDefinedFloatingPoint);
+        }
+    } else if (!std::ranges::any_of(IntegerSuffixes, [&] (auto candidate) {
+        return EqualsIgnoringAsciiCase(suffix, candidate);
+    }))
     {
-        offset += 2;
-        while (IsHexDigit(byte(offset)) || byte(offset) == '\'') {
-            ++offset;
-        }
-        if (byte(offset) == '.') {
-            return ParseFloatingPoint();
-        }
-        if (byte(offset) == 'p' || byte(offset) == 'P') {
-            return ParseFloatingPoint();
-        }
-        return ParseInteger();
+        return FinishToken(TokenKind::Literal_UserDefinedInteger);
     }
-
-    while (IsDigit(byte(offset)) || byte(offset) == '\'') {
-        ++offset;
-    }
-    if (byte(offset) == '.' || byte(offset) == 'e' || byte(offset) == 'E') {
-        return ParseFloatingPoint();
-    }
-    return ParseInteger();
+    return FinishToken(kind);
 }
 
-Token Tokenizer::ParseFloatingPoint()
+Token Tokenizer::DiagnoseFloatingPoint()
 {
     auto cur = CurrentCodePoint();
     ASSERT(cur == '.' || IsDigit(cur));
@@ -1110,7 +1311,7 @@ Token Tokenizer::ParseFloatingPoint()
     return FinishToken(kind);
 }
 
-Token Tokenizer::ParseInteger()
+Token Tokenizer::DiagnoseInteger()
 {
     TokenKind kind = TokenKind::Invalid;
     auto cur = CurrentCodePoint();
@@ -1308,15 +1509,15 @@ Token Tokenizer::ParseMultilineComment()
     ConsumeAsciiByte('*');
     while (true) {
         auto byte = ScanAsciiRun<detail::AsciiState::BlockComment>();
-        switch (detail::ByteActions<detail::AsciiState::BlockComment>[byte]) {
-            case detail::ByteAction::Unicode:
+        switch (ByteActions<detail::AsciiState::BlockComment>[byte]) {
+            case ByteAction::Unicode:
                 LoadCurrentUnicodeCodePoint();
                 ConsumeUnicodeCodePoint();
                 break;
-            case detail::ByteAction::Newline:
+            case ByteAction::Newline:
                 ConsumeAsciiByte(byte);
                 break;
-            case detail::ByteAction::Delimiter:
+            case ByteAction::Delimiter:
                 ConsumeAsciiByte(byte);
                 if (PeekByte() == '/') {
                     ConsumeAsciiByte('/');

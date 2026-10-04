@@ -20,6 +20,9 @@ inline TokenKind ClassifyIdentifier(std::string_view identifier)
     if (identifier.size() < 2 || identifier.size() > 16) {
         return TokenKind::Identifier;
     }
+    if (identifier.front() < 'a' || identifier.front() > 'z') {
+        return TokenKind::Identifier;
+    }
 
 #define TOKENIZER_KEYWORD(text, kind)                                          \
     case IdentifierKey(text):                                                  \

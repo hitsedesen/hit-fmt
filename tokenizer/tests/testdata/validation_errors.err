@@ -14,3 +14,35 @@ Ln 5, Col 19 error: Hexadecimal floating-point literal requires an exponent
 Ln 5, Col 23 error: No digits in hexadecimal integer
 Ln 5, Col 28 error: Invalid digit separator
 Ln 5, Col 33 error: Invalid digit separator
+Ln 6, Col 3 error: No digits in binary integer
+Ln 6, Col 6 error: Digit separator at the start of a binary integer
+Ln 6, Col 7 error: No digits in binary integer
+Ln 6, Col 10 error: Digit separator at the start of a binary integer
+Ln 6, Col 11 error: No digits between digit separators
+Ln 6, Col 16 error: Invalid digit in binary integer
+Ln 6, Col 19 error: No digits in binary integer
+Ln 6, Col 24 error: No digits between digit separators
+Ln 6, Col 31 error: Digit separator at the end of a binary integer
+Ln 7, Col 3 error: No digits in hexadecimal integer
+Ln 7, Col 6 error: Digit separator at the start of a hexadecimal integer
+Ln 7, Col 13 error: No digits between digit separators
+Ln 7, Col 20 error: Digit separator at the end of a hexadecimal integer
+Ln 7, Col 28 error: No digits in hexadecimal integer
+Ln 7, Col 29 error: No digits in floating-point exponent
+Ln 7, Col 34 error: Invalid digit separator
+Ln 7, Col 36 error: No digits in floating-point exponent
+Ln 7, Col 41 error: Invalid digit separator
+Ln 8, Col 7 error: No digits between digit separators
+Ln 8, Col 11 error: Invalid digit in octal integer
+Ln 8, Col 14 error: Invalid digit in octal integer
+Ln 8, Col 16 error: Digit separator at the end of an octal integer
+Ln 8, Col 19 error: Digit separator cannot appear at the end of decimal integer literal
+Ln 8, Col 26 error: No digits between digit separators
+Ln 8, Col 31 error: Invalid digit separator
+Ln 8, Col 32 error: Invalid digit separator
+Ln 9, Col 3 error: Invalid digit separator
+Ln 9, Col 9 error: No digits in floating-point exponent
+Ln 9, Col 14 error: Invalid digit separator
+Ln 9, Col 21 error: Invalid digit separator
+Ln 9, Col 28 error: Invalid digit separator
+Ln 9, Col 29 error: Invalid digit separator
