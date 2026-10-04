@@ -147,7 +147,8 @@ INSTANTIATE_TEST_SUITE_P(
     testing::Values(
         GoldenCase{"bad_tokens"},
         GoldenCase{"unterminated_raw_string"},
-        GoldenCase{"validation_errors"}),
+        GoldenCase{"validation_errors"},
+        GoldenCase{"cursor_utf8"}),
     [] (const auto& info) {
         return info.param.Name;
     });
@@ -165,6 +166,50 @@ TEST(Tokenizer, KeepsEmbeddedNullInRawStringLiteral)
     EXPECT_EQ(tokens[0].Kind, TokenKind::Literal_String);
     EXPECT_EQ(tokens[0].Text.View(source).size(), 17);
     EXPECT_EQ(tokens[1].Text.View(source), "identifier");
+}
+
+TEST(Tokenizer, KeepsEofStableAfterAsciiUnicodeAndInvalidUtf8)
+{
+    constexpr std::array<std::string_view, 4> Inputs{
+        "",
+        "ascii",
+        "α",
+        std::string_view("\x80", 1),
+    };
+    for (auto input : Inputs) {
+        SCOPED_TRACE(input);
+        std::string storage(input);
+        storage.append(util::SourcePaddingSize, '\0');
+        size_t errors = 0;
+        Tokenizer tokenizer(
+            {.Data = storage.data(), .Size = input.size()},
+            [&](TokenizationError error) {
+                ++errors;
+                EXPECT_EQ(
+                    error.Kind,
+                    TokenizationErrorKind::InvalidUtf8CodePoint);
+                EXPECT_EQ(error.TokenStart.Line, 1);
+                EXPECT_EQ(error.TokenStart.Column, 1);
+                EXPECT_EQ(error.ErrorPosition.Line, 1);
+                EXPECT_EQ(error.ErrorPosition.Column, 1);
+            });
+        Token eof{};
+        for (size_t i = 0; i <= input.size(); ++i) {
+            eof = tokenizer.Get();
+            if (eof.Kind == TokenKind::EndOfFile) {
+                break;
+            }
+        }
+        ASSERT_EQ(eof.Kind, TokenKind::EndOfFile);
+        EXPECT_EQ(eof.Text.Begin, input.size());
+        EXPECT_EQ(eof.Text.End, input.size());
+        auto repeated = tokenizer.Get();
+        EXPECT_EQ(repeated.Kind, TokenKind::EndOfFile);
+        EXPECT_EQ(repeated.Position.Line, eof.Position.Line);
+        EXPECT_EQ(repeated.Position.Column, eof.Position.Column);
+        EXPECT_EQ(repeated.Text, eof.Text);
+        EXPECT_EQ(errors, input == std::string_view("\x80", 1) ? 1 : 0);
+    }
 }
 
 TEST(Unicode, UsesUnicode18IdentifierProperties)
@@ -215,12 +260,23 @@ TEST(Tokenizer, RejectsMalformedUtf8)
         static_cast<char>(0x8c),
         static_cast<char>(0x28),
     };
-    auto errors =
-        TokenizeErrors(std::string_view(Source.data(), Source.size()));
-
-    EXPECT_EQ(
-        errors,
-        (std::vector{
-            TokenizationErrorKind::InvalidUtf8CodePoint,
-            TokenizationErrorKind::InvalidUtf8CodePoint}));
+    // Both cached and uncached ASCII boundaries must retain UTF-8 errors.
+    constexpr std::array<std::string_view, 5> Prefixes{
+        "",
+        "a;",
+        "a; ",
+        "a;\n",
+        "a;\\\n",
+    };
+    for (auto prefix : Prefixes) {
+        SCOPED_TRACE(prefix);
+        std::string source(prefix);
+        source.append(Source.data(), Source.size());
+        auto errors = TokenizeErrors(source);
+        EXPECT_EQ(
+            errors,
+            (std::vector{
+                TokenizationErrorKind::InvalidUtf8CodePoint,
+                TokenizationErrorKind::InvalidUtf8CodePoint}));
+    }
 }
