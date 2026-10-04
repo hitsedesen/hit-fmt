@@ -506,6 +506,8 @@ SourceAnalysis BuildSourceAnalysis(
                 c != '\f' && c != '\v';
             gap.HasBareCR |= c == '\r' &&
                 (offset + 1 == source.size() || source[offset + 1] != '\n');
+            gap.HasLineFeed |= c == '\n';
+            gap.Horizontal &= c == ' ' || c == '\t';
         }
         if (i && i < count && TokenGapNeedsSeparation(tree, i)) {
             gap.Separation = GapSeparation::Required;
@@ -519,9 +521,9 @@ SourceAnalysis BuildSourceAnalysis(
         if ((i && commentOrDirective(i - 1)) ||
             (i < count && commentOrDirective(i)))
         {
-            gap.LineBoundary = original.find('\n') == std::string_view::npos
-                ? GapLineBoundary::Forbidden
-                : GapLineBoundary::Required;
+            gap.LineBoundary = gap.HasLineFeed
+                ? GapLineBoundary::Required
+                : GapLineBoundary::Forbidden;
         }
         if (i &&
             (tree.Kind(i - 1) == TK::PreprocessingDirective ||
@@ -537,9 +539,9 @@ SourceAnalysis BuildSourceAnalysis(
         }
         if (i < count && tree.Kind(i) == TK::Operator_Remainder) {
             // %: is a directive only at the beginning of a line in our lexer.
-            gap.LineBoundary = original.find('\n') == std::string_view::npos
-                ? GapLineBoundary::Forbidden
-                : GapLineBoundary::Required;
+            gap.LineBoundary = gap.HasLineFeed
+                ? GapLineBoundary::Required
+                : GapLineBoundary::Forbidden;
         }
         if (i && i < count && Literal(tree.Kind(i - 1)) &&
             Word(tree.Kind(i), tree.TokenText(i)) && original.empty())

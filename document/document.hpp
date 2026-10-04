@@ -238,12 +238,26 @@ public:
     Document& operator=(const Document&) = delete;
 
     // Optional capacity hint avoids geometric-growth retention in arenas.
-    void Reserve(std::uint32_t nodes, std::uint32_t groups = 0);
-    GroupId BeginGroup(GroupSpec spec = {});
+    void Reserve(
+        std::uint32_t nodes,
+        std::uint32_t groups = 0,
+        std::uint32_t sourceParts = 0);
+    // Preserve search distance for unused pre-group markers omitted by a
+    // producer. This grants no edit or validation authority; the producer must
+    // prove that the omitted markers have no observable effects.
+    GroupId BeginGroup(GroupSpec spec = {}, std::uint32_t elidedMarkers = 0);
     void EndGroup(GroupId group);
     void Text(std::string_view generated, Provenance origin = {});
     // Source slices require real offsets, never generated-provenance sentinels.
     void SourceText(
+        std::uint32_t begin,
+        std::uint32_t end,
+        Identity identity = NoIdentity,
+        bool verbatim = false);
+    // Equivalent source emission with compact adjacent single-line slices and
+    // flat gaps. Groups, anchors, conditional output and multiline text fence
+    // runs. Every original piece retains its provenance and probe boundary.
+    void AppendSourceText(
         std::uint32_t begin,
         std::uint32_t end,
         Identity identity = NoIdentity,
@@ -324,7 +338,8 @@ private:
         ConditionalGap,
         SourceLineIndent,
         SourceWhitespace,
-        ExpressionLine
+        ExpressionLine,
+        SourceRun
     };
 
     // Source atoms use Origin offsets directly. Only external borrowed text
@@ -350,6 +365,28 @@ private:
     {
         GapSpec Gap;
         Provenance Origin;
+    };
+
+    enum class RunKind : std::uint8_t
+    {
+        Text,
+        Verbatim,
+        SourceGap,
+        Spaces
+    };
+
+    struct RunPart
+    {
+        Provenance Origin;
+        std::uint16_t Spaces = 0;
+        RunKind Type = RunKind::Text;
+    };
+
+    struct RunData
+    {
+        std::uint32_t Begin = 0;
+        std::uint32_t End = 0;
+        std::uint32_t MaxText = 0;
     };
 
     struct GapData
@@ -391,6 +428,7 @@ private:
         Kind Type;
         bool Exact : 1 = false;
         bool HasPrefix : 1 = false;
+        bool Compact : 1 = false;
 
         // The constructor activates the kind's payload. All alternatives are
         // trivially copyable; SourceLineIndent uses GapData plus Origin.
@@ -400,17 +438,28 @@ private:
             PrefixedTextData Prefix;
             GapData Gaps;
             GroupData Group;
+            RunData Run;
         };
     };
 
     static_assert(sizeof(Node) <= 80);
     static_assert(sizeof(Mapping) <= 24);
+    static_assert(sizeof(RunPart) <= 16);
 
     std::uint32_t BorrowText(std::string_view text);
     std::string_view TextView(std::uint32_t id, Provenance origin) const;
     std::string_view FlatText(const Node& node) const;
     std::string_view BrokenText(const Node& node) const;
 
+    void EmitSourceText(
+        std::uint32_t begin,
+        std::uint32_t end,
+        Identity identity,
+        bool verbatim,
+        bool compact);
+    void StartSourceRun();
+    void AppendRunPart(RunPart part, bool logical = true);
+    static RunPart FlatRunPart(GapSpec gap, Provenance origin);
     std::uint32_t Add(Node node);
     bool CheckOrigin(Provenance origin);
     bool CheckGapData(GapSpec spec);
@@ -421,6 +470,7 @@ private:
     std::string_view Source_;
     std::pmr::vector<Node> Nodes_;
     std::pmr::vector<BorrowedText> BorrowedTexts_;
+    std::pmr::vector<RunPart> RunParts_;
     std::pmr::vector<std::uint32_t> Groups_;
     std::pmr::vector<std::uint32_t> Open_;
     std::uint32_t LogicalNodes_ = 0;

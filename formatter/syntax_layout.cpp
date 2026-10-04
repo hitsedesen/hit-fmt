@@ -58,7 +58,6 @@ struct Gap
     bool PartialIndent = false;
     bool ParagraphBoundary = false;
     bool Reassembled = false;
-    Index RequiredWidth = 0;
     int32_t ExtraIndent = 0;
     bool OverrideIndent = false;
     bool Frozen = false;
@@ -76,17 +75,27 @@ struct Gap
     bool FitNextSegment = false;
     bool KeepFlatSpacing = false;
     bool KeywordPrefix = false;
-    // File-local memoization. Preferences depend only on immutable spacing and
-    // source analysis; widths/permissions are cached after safety fixes shape.
+};
+
+// Compact, densely accessed finalized facts, separate from planning metadata.
+// Preferences depend only on immutable spacing/source analysis; widths and
+// permissions are cached only after safety fixes the gap shape.
+struct GapFacts
+{
+    Index RequiredWidth = 0;
     mutable Index CachedWidth = 0;
     mutable uint16_t CachedCommentCount = UINT16_MAX;
-    mutable int8_t CachedPreference[2] = {-2, -2};
-    mutable bool WidthKnown : 1 = false;
-    mutable bool FlatKnown : 1 = false;
-    mutable bool LineKnown : 1 = false;
-    mutable bool FlatAllowed : 1 = false;
-    mutable bool LineAllowed : 1 = false;
+    // 0 unknown, 1 preserve, 2 no space, 3 space.
+    mutable uint16_t PreservedPreference : 2 = 0;
+    mutable uint16_t RebuiltPreference : 2 = 0;
+    mutable uint16_t WidthKnown : 1 = false;
+    mutable uint16_t FlatKnown : 1 = false;
+    mutable uint16_t LineKnown : 1 = false;
+    mutable uint16_t FlatAllowed : 1 = false;
+    mutable uint16_t LineAllowed : 1 = false;
 };
+
+static_assert(sizeof(GapFacts) <= 12);
 
 // Style offsets fit in a byte, but preserved source indentation can be much
 // wider. Keep that distinct from the validated compiled policy representation.
@@ -132,6 +141,7 @@ struct Group
     uint32_t LogicalIndent = 0;
     bool SaturatedIndent = false;
     Index PreviousContinuation = None;
+    bool NeedsBlock = false;
 };
 
 struct IndentBasis
@@ -264,6 +274,7 @@ public:
         , Syntax_(&scratch)
         , Groups_(&scratch)
         , Gaps_(&scratch)
+        , Facts_(&scratch)
         , Commas_(&scratch)
         , Removed_(&scratch)
         , Order_(&scratch)
@@ -289,6 +300,7 @@ public:
             return {SyntaxLayoutError::MismatchedInputs};
         }
         Gaps_.resize(size_t(count) + 1);
+        Facts_.resize(size_t(count) + 1);
         Commas_.resize(size_t(count) + 1);
         Removed_.resize(count);
         PrefixProtection_.resize(size_t(count) + 1);
@@ -341,7 +353,30 @@ public:
                     Gaps_[node.Tokens.End].ParagraphBoundary = true;
                 }
             }
-            PlanHeaderAndBody(i);
+            switch (node.Kind) {
+                case NodeKind::FunctionDeclaration:
+                case NodeKind::FunctionDefinition:
+                case NodeKind::FunctionTryBlock:
+                case NodeKind::CompoundStatement:
+                case NodeKind::LambdaBody:
+                case NodeKind::RequirementBody:
+                case NodeKind::NamespaceDeclaration:
+                case NodeKind::RecordDeclaration:
+                case NodeKind::EnumDeclaration:
+                case NodeKind::LambdaExpression:
+                case NodeKind::IfStatement:
+                case NodeKind::ForStatement:
+                case NodeKind::WhileStatement:
+                case NodeKind::DoWhileStatement:
+                case NodeKind::SwitchStatement:
+                case NodeKind::TryStatement:
+                case NodeKind::CatchClause:
+                case NodeKind::CaseLabel:
+                    PlanHeaderAndBody(i);
+                    break;
+                default:
+                    break;
+            }
             if (!Syntax_[i].Safe) {
                 if (ListFor(node.Kind)) {
                     PreserveUnplannedListContext(i);
@@ -351,10 +386,37 @@ public:
             if (const auto *list = ListFor(node.Kind)) {
                 PlanList(i, *list);
             }
-            PlanKeywordExpression(i);
-            PlanExpression(i);
-            PlanChain(i);
-            PlanAttribute(i);
+            switch (node.Kind) {
+                case NodeKind::ReturnStatement:
+                case NodeKind::ThrowStatement:
+                case NodeKind::CoYieldStatement:
+                    PlanKeywordExpression(i);
+                    break;
+                case NodeKind::Initializer:
+                case NodeKind::Enumerator:
+                case NodeKind::BinaryExpression:
+                case NodeKind::AssignmentExpression:
+                case NodeKind::ConditionalExpression:
+                case NodeKind::ParenthesizedExpression:
+                case NodeKind::SubscriptExpression:
+                case NodeKind::CastExpression:
+                    PlanExpression(i);
+                    break;
+                case NodeKind::LiteralExpression:
+                    if (entry.String) {
+                        PlanExpression(i);
+                    }
+                    break;
+                case NodeKind::CallExpression:
+                case NodeKind::MemberExpression:
+                    PlanChain(i);
+                    break;
+                case NodeKind::AttributeSpecifier:
+                    PlanAttribute(i);
+                    break;
+                default:
+                    break;
+            }
         }
         PlanVisualScopes();
         PlanVerticalGaps();
@@ -390,6 +452,7 @@ private:
     std::pmr::vector<Syntax> Syntax_;
     std::pmr::vector<Group> Groups_;
     std::pmr::vector<Gap> Gaps_;
+    std::pmr::vector<GapFacts> Facts_;
     std::pmr::vector<Comma> Commas_;
     std::pmr::vector<uint8_t> Removed_;
     std::pmr::vector<Index> Order_;
@@ -908,7 +971,7 @@ private:
             Groups_[group].PrefixGap = begin + 1;
             Groups_[group].AnchorAfterGap = canonical
                 ? header->Colon == OperatorSide::Leading
-                : !HasLine(Safety_.Original(begin + 1));
+                : !Safety_.Gaps()[begin + 1].HasLineFeed;
             Gaps_[begin + 1].MarkDelimiter = group;
         }
         if (prefixed && !canonical) {
@@ -1048,7 +1111,7 @@ private:
                     }) || !GapMutable(lastSeparator) ||
                         !Safety_.CanReplaceGap(lastSeparator, "") ||
                         (!canonical &&
-                            HasLine(Safety_.Original(lastSeparator))))))
+                            Safety_.Gaps()[lastSeparator].HasLineFeed))))
             {
                 // This atomic punctuation edit also suppresses its preceding
                 // gap. Until merged-gap transfer is available, keep the comma
@@ -1131,10 +1194,7 @@ private:
     {
         const auto& entry = Syntax_[id];
         const auto& node = Region(entry);
-        if ((node.Kind != NodeKind::ReturnStatement &&
-            node.Kind != NodeKind::ThrowStatement &&
-            node.Kind != NodeKind::CoYieldStatement) ||
-            Region(entry).FirstChild == None ||
+        if (Region(entry).FirstChild == None ||
             Policies_.Expressions.Layout != LayoutMode::Canonical)
         {
             return;
@@ -1189,13 +1249,10 @@ private:
                 (kind == NodeKind::Enumerator && LastChild_[id] != None &&
                     Region(Syntax_[LastChild_[id]]).Kind ==
                         NodeKind::EnumeratorValue));
-        if (!declarationAssignment && kind != NodeKind::BinaryExpression &&
-            kind != NodeKind::AssignmentExpression &&
-            kind != NodeKind::ConditionalExpression &&
-            kind != NodeKind::ParenthesizedExpression &&
-            kind != NodeKind::SubscriptExpression &&
-            kind != NodeKind::CastExpression &&
-            !(kind == NodeKind::LiteralExpression && Syntax_[id].String))
+        // Build dispatches expression kinds and string sequences directly;
+        // initializers/enumerators participate only through actual assignment.
+        if ((kind == NodeKind::Initializer || kind == NodeKind::Enumerator) &&
+            !declarationAssignment)
         {
             return;
         }
@@ -1372,7 +1429,7 @@ private:
         bool force = false)
     {
         if ((force || Policies_.IndentationKind != IndentationKind::Preserve) &&
-            HasLine(Safety_.Original(gap)))
+            Safety_.Gaps()[gap].HasLineFeed)
         {
             Own(
                 gap,
@@ -2250,7 +2307,7 @@ private:
     {
         const auto& node = Region(Syntax_[id]);
         const auto& control = Policies_.Indentation.StatementAttributes;
-        if (node.Kind != NodeKind::AttributeSpecifier || node.Tokens.Empty() ||
+        if (node.Tokens.Empty() ||
             control.Mode == StatementAttributeIndent::Preserve)
         {
             return;
@@ -2483,9 +2540,7 @@ private:
     void PlanChain(Index id)
     {
         const auto& entry = Syntax_[id];
-        if (!IsSpine(Region(entry).Kind) ||
-            Policies_.Chains.Layout != LayoutMode::Canonical)
-        {
+        if (Policies_.Chains.Layout != LayoutMode::Canonical) {
             return;
         }
         if (Region(entry).Parent != None &&
@@ -3009,19 +3064,19 @@ private:
             }
             // Trim comments sharing a physical line with noncomment syntax.
             // Internal comment newlines are token bytes, never owned gaps.
-            bool line = begin == 0 || HasLine(Safety_.Original(begin));
+            bool line = begin == 0 || Safety_.Gaps()[begin].HasLineFeed;
             auto first = end;
             for (auto token = begin; token < end; ++token) {
-                line = line || HasLine(Safety_.Original(token));
+                line = line || Safety_.Gaps()[token].HasLineFeed;
                 if (line && first == end) {
                     first = token;
                 }
                 line = line || HasLine(Tree_.TokenText(token));
             }
-            line = end == Tree_.TokenCount() || HasLine(Safety_.Original(end));
+            line = end == Tree_.TokenCount() || Safety_.Gaps()[end].HasLineFeed;
             auto last = begin;
             for (auto token = end; token-- > begin;) {
-                line = line || HasLine(Safety_.Original(token + 1));
+                line = line || Safety_.Gaps()[token + 1].HasLineFeed;
                 if (line && last == begin) {
                     last = token + 1;
                 }
@@ -3312,6 +3367,23 @@ private:
         }
     }
 
+    void RequireBlockAnchor(Index i)
+    {
+        const auto& gap = Gaps_[i];
+        if (gap.Owner == None || !gap.Closing || gap.OverrideIndent) {
+            return;
+        }
+        // Keep all potential partial-indent consumers conservatively. Fixed
+        // horizontal copies and flat generated gaps cannot resolve an anchor.
+        const bool lines = gap.Shape == Boundary::Hard ||
+            gap.Shape == Boundary::Soft ||
+            (gap.Shape == Boundary::Conditional &&
+                gap.Broken != document::GapKind::Flat) ||
+            (gap.Shape == Boundary::Preserve && Safety_.Gaps()[i].HasLineFeed &&
+                (gap.Reindent || gap.Vertical));
+        Groups_[gap.Owner].NeedsBlock |= lines || gap.PartialIndent;
+    }
+
     void SummarizeSegments()
     {
         // One reverse pass computes next indivisible segment plus mandatory
@@ -3319,6 +3391,7 @@ private:
         // actual token widths; optional commas contribute one independent of
         // source comma presence. A future break boundary terminates a segment.
         Index width = 0;
+        RequireBlockAnchor(Tree_.TokenCount());
         for (Index i = Tree_.TokenCount(); i-- > 0;) {
             if (!Removed_[i]) {
                 const auto tokenWidth =
@@ -3328,14 +3401,15 @@ private:
             if (Commas_[i + 1].Owner != None) {
                 width = AddWidth(width, 1);
             }
-            Gaps_[i].RequiredWidth = width;
+            Facts_[i].RequiredWidth = width;
+            RequireBlockAnchor(i);
             const auto& gap = Gaps_[i];
             const bool boundary =
                 gap.Shape == Boundary::Soft || gap.Shape == Boundary::Hard ||
                     (gap.Shape == Boundary::Conditional &&
                         gap.Broken != document::GapKind::Flat) ||
                     (gap.Shape == Boundary::Preserve &&
-                        HasLine(Safety_.Original(i)));
+                        Safety_.Gaps()[i].HasLineFeed);
             if (boundary) {
                 width = 0;
             } else {
@@ -3367,18 +3441,26 @@ private:
 
     std::optional<bool> SpacePreference(Index i, GapContext context) const
     {
-        auto& cached = Gaps_[i].CachedPreference[static_cast<uint8_t>(context)];
-        if (cached == -2) {
+        auto& facts = Facts_[i];
+        auto cached = context == GapContext::Preserved
+            ? facts.PreservedPreference
+            : facts.RebuiltPreference;
+        if (cached == 0) {
             const auto preference =
                 Spacing_.SpacePreference(i, context, Safety_);
-            cached = preference ? (*preference ? 1 : 0) : -1;
+            cached = preference ? (*preference ? 3 : 2) : 1;
+            if (context == GapContext::Preserved) {
+                facts.PreservedPreference = cached;
+            } else {
+                facts.RebuiltPreference = cached;
+            }
         }
-        return cached < 0 ? std::nullopt : std::optional<bool>{cached != 0};
+        return cached < 2 ? std::nullopt : std::optional<bool>{cached == 3};
     }
 
     std::optional<uint16_t> TrailingCommentCount(Index i) const
     {
-        auto& cached = Gaps_[i].CachedCommentCount;
+        auto& cached = Facts_[i].CachedCommentCount;
         if (cached == UINT16_MAX) {
             // BuildSyntaxSpacing validates counts at most 10000.
             cached = Spacing_.TrailingCommentCount(
@@ -3391,7 +3473,7 @@ private:
 
     Index FlatWidth(Index i) const
     {
-        auto& gap = Gaps_[i];
+        auto& gap = Facts_[i];
         if (!GapCacheReady_) {
             return ComputeFlatWidth(i);
         }
@@ -3425,7 +3507,7 @@ private:
         }
         const auto& source = Safety_.Gaps()[i];
         if ((!RebuildsTopology(i) || Gaps_[i].KeepFlatSpacing) &&
-            !HasLine(Safety_.Original(source)))
+            !source.HasLineFeed)
         {
             return HorizontalColumns(
                 Safety_.Original(source),
@@ -3496,7 +3578,7 @@ private:
         document::GapSpec spec;
         spec.Kind = kind;
         spec.Spaces = uint16_t(std::min<Index>(FlatWidth(i), UINT16_MAX));
-        spec.RequiredWidth = Gaps_[i].RequiredWidth;
+        spec.RequiredWidth = Facts_[i].RequiredWidth;
         spec.FitNextSegment = Gaps_[i].FitNextSegment;
         spec.NewlineCount = Gaps_[i].NewlineCount;
         if (Gaps_[i].PreserveIndent && !Gaps_[i].Reindent) {
@@ -3516,8 +3598,7 @@ private:
         const auto context = ContextFor(i);
         if (sourceHorizontal &&
             (!RebuildsTopology(i) || Gaps_[i].KeepFlatSpacing) &&
-            Safety_.Original(i).find_first_not_of(" \t") ==
-                std::string_view::npos && !TrailingCommentCount(i) &&
+            Safety_.Gaps()[i].Horizontal && !TrailingCommentCount(i) &&
             !SpacePreference(i, context))
         {
             spec.FlatSourceBegin = Safety_.Gaps()[i].Source.Begin;
@@ -3537,7 +3618,7 @@ private:
         if (!GapCacheReady_) {
             return ComputeAllows(i, kind);
         }
-        auto& gap = Gaps_[i];
+        auto& gap = Facts_[i];
         if (kind == document::GapKind::Flat) {
             if (!gap.FlatKnown) {
                 gap.FlatAllowed = ComputeAllows(i, kind);
@@ -3597,7 +3678,7 @@ private:
 
     void FixedGapSlice(Index i, Index begin, Index end)
     {
-        Document_.SourceText(begin, end, document::NoIdentity, true);
+        Document_.AppendSourceText(begin, end, document::NoIdentity, true);
         RecordFixedExpressionLine(i, begin, end);
     }
 
@@ -3838,7 +3919,7 @@ private:
                     permission.Source.Begin,
                     permission.Source.End,
                     anchor,
-                    plan.RequiredWidth);
+                    Facts_[i].RequiredWidth);
                 RecordFixedExpressionLine(i, cursor, permission.Source.Begin);
                 cursor = permission.Source.End;
             }
@@ -3871,9 +3952,8 @@ private:
             PreserveGap(i);
             return;
         }
-        const auto original = Safety_.Original(i);
-        if (!RebuildsTopology(i) && !HasLine(original) &&
-            original.find_first_not_of(" \t") != std::string_view::npos &&
+        const auto& source = Safety_.Gaps()[i];
+        if (!RebuildsTopology(i) && !source.HasLineFeed && !source.Horizontal &&
             !SpacePreference(i, GapContext::Rebuilt))
         {
             PreserveGap(i);
@@ -3955,7 +4035,10 @@ private:
             None,
             uint64_t(Tree_.TokenCount()) * 2 + uint64_t(Groups_.size()) * 5 +
             1)),
-                          Index(Groups_.size()));
+                          Index(Groups_.size()),
+                          uint32_t(std::min<uint64_t>(
+            None,
+            uint64_t(Tree_.TokenCount()) * 2 + 1)));
         size_t next = 0;
         Index continuation = None;
         for (Position p = 0; p <= GapPosition(Tree_.TokenCount()); ++p) {
@@ -3971,17 +4054,22 @@ private:
                 const bool sharedAnchor =
                     group.Spec.Continuation && continuation != None &&
                         group.Indent.Alignment == ContinuationAlignment::Block;
-                group.Block = Document_.MarkAnchor({
-                    document::AnchorKind::BlockRelative,
-                    0,
-                    0,
-                    0,
-                    group.Spec.StructuralBase,
-                    group.Spec.Continuation,
-                    document::InvalidId,
-                    group.Spec.LineBase,
-                    group.Spec.FixedBase,
-                });
+                if (group.NeedsBlock) {
+                    group.Block = Document_.MarkAnchor({
+                        document::AnchorKind::BlockRelative,
+                        0,
+                        0,
+                        0,
+                        group.Spec.StructuralBase,
+                        group.Spec.Continuation,
+                        document::InvalidId,
+                        group.Spec.LineBase,
+                        group.Spec.FixedBase,
+                    });
+                }
+                // An unused block marker precedes this group's Begin. Its
+                // structural/continuation checks are repeated by Begin before
+                // any contents are emitted; preserve only its search weight.
                 if (group.PrefixGap != None) {
                     group.Anchor = Document_.MarkAnchor({
                         document::AnchorKind::BlockRelative,
@@ -4059,7 +4147,7 @@ private:
                         group.ContinuationAnchor,
                     });
                 }
-                group.Id = Document_.BeginGroup(group.Spec);
+                group.Id = Document_.BeginGroup(group.Spec, !group.NeedsBlock);
                 if (group.Spec.Continuation) {
                     continuation = id;
                 } else if (group.Spec.StructuralBase) {
@@ -4104,7 +4192,7 @@ private:
                     Tree_.Kind(i) == TokenKind::PreprocessingDirective ||
                     HasLine(Tree_.TokenText(i)) ||
                     Safety_.IntersectsImmutable({token.Begin, token.End});
-                Document_.SourceText(token.Begin, token.End, i, opaque);
+                Document_.AppendSourceText(token.Begin, token.End, i, opaque);
             }
             if (!State_) {
                 return;

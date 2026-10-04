@@ -112,6 +112,7 @@ Document::Document(std::string_view source, std::pmr::memory_resource* resource)
     : Source_(source)
     , Nodes_(resource)
     , BorrowedTexts_(resource)
+    , RunParts_(resource)
     , Groups_(resource)
     , Open_(resource)
 {
@@ -134,6 +135,9 @@ Document::Node::Node(Kind kind, bool prefixed)
         case Kind::ConditionalGap:
         case Kind::SourceLineIndent:
             std::construct_at(&Gaps);
+            break;
+        case Kind::SourceRun:
+            std::construct_at(&Run);
             break;
         default:
             if (HasPrefix) {
@@ -204,17 +208,21 @@ std::string_view Document::BrokenText(const Node& node) const
 
 Document::~Document() = default;
 
-void Document::Reserve(std::uint32_t nodes, std::uint32_t groups)
+void Document::Reserve(
+    std::uint32_t nodes,
+    std::uint32_t groups,
+    std::uint32_t sourceParts)
 {
     if (Sealed_) {
         Fail(Error::Sealed);
     }
-    if (nodes == InvalidId || groups == InvalidId) {
+    if (nodes == InvalidId || groups == InvalidId || sourceParts == InvalidId) {
         Fail(Error::TooLarge);
     }
     if (State_) {
         Nodes_.reserve(nodes);
         Groups_.reserve(groups);
+        RunParts_.reserve(sourceParts);
     }
 }
 
@@ -294,7 +302,7 @@ bool Document::CheckReference(GroupId reference)
     return static_cast<bool>(State_);
 }
 
-GroupId Document::BeginGroup(GroupSpec spec)
+GroupId Document::BeginGroup(GroupSpec spec, std::uint32_t elidedMarkers)
 {
     if (spec.Mode != GroupMode::Consistent && spec.Mode != GroupMode::Fill) {
         Fail(Error::InvalidPolicy);
@@ -330,6 +338,13 @@ GroupId Document::BeginGroup(GroupSpec spec)
         Fail(Error::InvalidPolicy);
     }
     node.Group.Reference = static_cast<GroupId>(Groups_.size());
+    if (State_ && !Sealed_) {
+        if (elidedMarkers > InvalidId - LogicalNodes_) {
+            Fail(Error::TooLarge);
+        } else {
+            LogicalNodes_ += elidedMarkers;
+        }
+    }
     auto index = Add(node);
     if (index == InvalidId) {
         return InvalidId;
@@ -380,6 +395,74 @@ void Document::SourceText(
     Identity identity,
     bool verbatim)
 {
+    EmitSourceText(begin, end, identity, verbatim, false);
+}
+
+void Document::AppendSourceText(
+    std::uint32_t begin,
+    std::uint32_t end,
+    Identity identity,
+    bool verbatim)
+{
+    EmitSourceText(begin, end, identity, verbatim, true);
+}
+
+Document::RunPart Document::FlatRunPart(GapSpec gap, Provenance origin)
+{
+    if (gap.FlatSourceBegin != InvalidId) {
+        origin.Begin = gap.FlatSourceBegin;
+        origin.End = gap.FlatSourceEnd;
+        return {origin, 0, RunKind::SourceGap};
+    }
+    return {origin, gap.Spaces, RunKind::Spaces};
+}
+
+void Document::StartSourceRun()
+{
+    const auto previous = Nodes_.back();
+    Node run(Kind::SourceRun);
+    run.Owner = previous.Owner;
+    run.Run.Begin = run.Run.End = static_cast<std::uint32_t>(RunParts_.size());
+    Nodes_.back() = run;
+    if (previous.HasPrefix) {
+        AppendRunPart(
+            FlatRunPart(previous.Prefix.Gap, previous.Prefix.Origin),
+            false);
+    }
+    AppendRunPart(
+        {
+            previous.Origin,
+            0,
+            previous.Type == Kind::Verbatim ? RunKind::Verbatim : RunKind::Text,
+        },
+        false);
+}
+
+void Document::AppendRunPart(RunPart part, bool logical)
+{
+    if (RunParts_.size() >= InvalidId ||
+        (logical && LogicalNodes_ >= InvalidId))
+    {
+        Fail(Error::TooLarge);
+        return;
+    }
+    RunParts_.push_back(part);
+    auto& run = Nodes_.back().Run;
+    run.End = static_cast<std::uint32_t>(RunParts_.size());
+    if (part.Type == RunKind::Text || part.Type == RunKind::Verbatim) {
+        run.MaxText =
+            std::max(run.MaxText, part.Origin.End - part.Origin.Begin);
+    }
+    LogicalNodes_ += logical;
+}
+
+void Document::EmitSourceText(
+    std::uint32_t begin,
+    std::uint32_t end,
+    Identity identity,
+    bool verbatim,
+    bool compact)
+{
     // Generated provenance permits paired sentinels, but a source slice must
     // always have real offsets before calling string_view::substr.
     if (begin == InvalidId || end == InvalidId) {
@@ -391,11 +474,53 @@ void Document::SourceText(
         return;
     }
     auto text = Source_.substr(begin, end - begin);
-    if (!verbatim && Multiline(text)) {
+    const bool multiline = Multiline(text);
+    if (!verbatim && multiline) {
         Fail(Error::MultilineText);
         return;
     }
     const auto owner = Open_.empty() ? InvalidId : Open_.back();
+    if (compact && !multiline && !Sealed_ && !Nodes_.empty() &&
+        Nodes_.back().Owner == owner)
+    {
+        const RunPart part{
+            origin,
+            0,
+            verbatim ? RunKind::Verbatim : RunKind::Text,
+        };
+        if (Nodes_.back().Type == Kind::SourceRun) {
+            AppendRunPart(part);
+            return;
+        }
+        const bool gap = Nodes_.back().Type == Kind::Gap &&
+            Nodes_.back().Gaps.Flat.Kind == GapKind::Flat;
+        const auto first = Nodes_.size() - 1 - gap;
+        if ((!gap || Nodes_.size() > 1) && Nodes_[first].Owner == owner &&
+            (Nodes_[first].Type == Kind::Text ||
+                Nodes_[first].Type == Kind::Verbatim) &&
+            (Nodes_[first].HasPrefix ||
+                Nodes_[first].Text.Flat == SourceTextId) &&
+            !Multiline(FlatText(Nodes_[first])))
+        {
+            if (LogicalNodes_ >= InvalidId || RunParts_.size() > InvalidId - 5)
+            {
+                Fail(Error::TooLarge);
+                return;
+            }
+            const auto prefix = gap
+                ? FlatRunPart(Nodes_.back().Gaps.Flat, Nodes_.back().Origin)
+                : RunPart{};
+            if (gap) {
+                Nodes_.pop_back();
+            }
+            StartSourceRun();
+            if (gap) {
+                AppendRunPart(prefix, false);
+            }
+            AppendRunPart(part);
+            return;
+        }
+    }
     if (!Sealed_ && !Nodes_.empty() && Nodes_.back().Type == Kind::Gap &&
         Nodes_.back().Gaps.Flat.Kind == GapKind::Flat &&
         Nodes_.back().Owner == owner)
@@ -411,6 +536,7 @@ void Document::SourceText(
         node.Origin = origin;
         node.Owner = owner;
         node.Exact = true;
+        node.Compact = compact && !multiline;
         Nodes_.back() = node;
         ++LogicalNodes_;
     } else {
@@ -418,6 +544,7 @@ void Document::SourceText(
         node.Text.Flat = SourceTextId;
         node.Origin = origin;
         node.Exact = true;
+        node.Compact = compact && !multiline;
         Add(node);
     }
 }
@@ -503,6 +630,20 @@ void Document::Gap(GapSpec spec, AnchorId anchor, Provenance origin)
         Fail(Error::InvalidAnchor);
     }
     if (!CheckOrigin(origin)) {
+        return;
+    }
+    if (!Sealed_ && State_ && !Nodes_.empty() && spec.Kind == GapKind::Flat &&
+        Nodes_.back().Owner == (Open_.empty() ? InvalidId : Open_.back()) &&
+        (Nodes_.back().Type == Kind::SourceRun || Nodes_.back().Compact))
+    {
+        if (LogicalNodes_ >= InvalidId || RunParts_.size() > InvalidId - 4) {
+            Fail(Error::TooLarge);
+            return;
+        }
+        if (Nodes_.back().Type != Kind::SourceRun) {
+            StartSourceRun();
+        }
+        AppendRunPart(FlatRunPart(spec, origin));
         return;
     }
     Node node(Kind::Gap);
@@ -786,7 +927,8 @@ Result Document::Render(
             (policy.SourceMap || !policy.TrackSource.empty() ||
                 node.Origin.Identity != NoIdentity) &&
             node.Type != Kind::Begin && node.Type != Kind::End &&
-            node.Type != Kind::Anchor && node.Type != Kind::ExpressionLine)
+            node.Type != Kind::Anchor && node.Type != Kind::ExpressionLine &&
+            node.Type != Kind::SourceRun)
         {
             mappingCount += node.HasPrefix &&
                 (policy.SourceMap || !policy.TrackSource.empty() ||
@@ -857,6 +999,22 @@ Result Document::Render(
             }
             summary = summaries.back();
             summaries.pop_back();
+        } else if (node.Type == Kind::SourceRun) {
+            for (auto p = node.Run.Begin; p < node.Run.End; ++p) {
+                const auto& part = RunParts_[p];
+                const auto measured = part.Type == RunKind::Spaces
+                    ? Measure{part.Spaces, part.Spaces, false, false}
+                    : MeasureText(Source_.substr(part.Origin.Begin,
+                        part.Origin.End - part.Origin.Begin), policy.TabWidth);
+                flat = Join(flat, measured);
+                if (mappingRequested &&
+                    (policy.SourceMap || !policy.TrackSource.empty() ||
+                        part.Origin.Identity != NoIdentity))
+                {
+                    ++mappingCount;
+                }
+            }
+            broken = flat;
         } else if (node.Type == Kind::Text || node.Type == Kind::Verbatim ||
             node.Type == Kind::ConditionalText ||
             node.Type == Kind::SourceLineIndent ||
@@ -1358,6 +1516,55 @@ Result Document::Render(
             realizeContinuation();
             return true;
         }
+        if (node.Type == Kind::SourceRun) {
+            for (auto p = node.Run.Begin; p < node.Run.End; ++p) {
+                const auto& part = RunParts_[p];
+                const auto begin =
+                    static_cast<std::uint32_t>(result.Text.size());
+                const bool continuingIndent = frame.RealizedContinuationLine &&
+                    column == frame.RealizedContinuationIndent;
+                if (part.Type == RunKind::Spaces) {
+                    if (!probing && outputRoom(part.Spaces)) {
+                        result.Text.append(part.Spaces, ' ');
+                    }
+                    column = AddWidth(column, part.Spaces);
+                    if (linePrefix) {
+                        lineIndent = column;
+                    }
+                    if (continuingIndent) {
+                        realizeContinuation();
+                    }
+                } else {
+                    const auto text = Source_.substr(
+                        part.Origin.Begin,
+                        part.Origin.End - part.Origin.Begin);
+                    append(text);
+                    advance(text);
+                    if (continuingIndent &&
+                        (part.Type == RunKind::SourceGap ||
+                            (part.Type == RunKind::Verbatim &&
+                                part.Origin.Identity == NoIdentity &&
+                                text.find_first_not_of(" \t\r\n") ==
+                                    std::string_view::npos)))
+                    {
+                        realizeContinuation();
+                    }
+                }
+                if (!result.State || (probing && column > policy.Width)) {
+                    return false;
+                }
+                if (mappingRequested && !probing) {
+                    recordMapping({
+                        begin,
+                        static_cast<std::uint32_t>(result.Text.size()),
+                        part.Origin,
+                        part.Type != RunKind::Spaces,
+                        part.Type == RunKind::Verbatim,
+                    });
+                }
+            }
+            return true;
+        }
         auto outputBegin = static_cast<std::uint32_t>(result.Text.size());
         auto emittedOrigin = node.Origin;
         bool exact = node.Exact;
@@ -1701,7 +1908,9 @@ Result Document::Render(
                         part.Type == Kind::SourceLineIndent ||
                         (part.Type != Kind::Begin && cache[j].Flat.Line) ||
                         FlatText(part).size() > 4096 ||
-                        BrokenText(part).size() > 4096)
+                        BrokenText(part).size() > 4096 ||
+                        (part.Type == Kind::SourceRun &&
+                            part.Run.MaxText > 4096))
                     {
                         eligible = false;
                         break;

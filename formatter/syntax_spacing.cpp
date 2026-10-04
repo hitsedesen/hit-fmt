@@ -1891,9 +1891,7 @@ std::optional<std::uint16_t> SyntaxSpacing::TrailingCommentCount(
             static_cast<uint8_t>(SpacingConstraint::UncertainSyntax)) != 0 ||
         source.Preserve || source.ContextSensitive ||
         source.LineBoundary == GapLineBoundary::Required ||
-        source.MustStartWithLineFeed ||
-        safety.Original(source).find_first_not_of(" \t") !=
-            std::string_view::npos)
+        source.MustStartWithLineFeed || !source.Horizontal)
     {
         return std::nullopt;
     }

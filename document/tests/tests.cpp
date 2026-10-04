@@ -448,6 +448,28 @@ TEST(GroupLayout, GroupMetadataRejectsInvalidOwnersPrefixesAndOverflow)
     overflow.EndGroup(first);
     ASSERT_TRUE(overflow.Seal());
     EXPECT_EQ(overflow.Render().State.Code, Error::IndentationOverflow);
+    for (const bool elided : {false, true}) {
+        Document validation("");
+        const auto a = validation.BeginGroup({.Indent = INT32_MAX,
+            .ExpressionContinuation = true});
+        const auto b = validation.BeginGroup({.Indent = INT32_MAX});
+        const auto c = validation.BeginGroup({.Indent = 4});
+        // Saturation invalidates the prospective base. An unused structural
+        // marker and its following Begin must reject exactly the same state.
+        if (!elided) {
+            validation.MarkAnchor({.StructuralBase = true});
+        }
+        const auto d = validation.BeginGroup({.StructuralBase = true}, elided);
+        validation.EndGroup(d);
+        validation.EndGroup(c);
+        validation.EndGroup(b);
+        validation.EndGroup(a);
+        ASSERT_TRUE(validation.Seal());
+        EXPECT_EQ(validation.Render().State.Code, Error::IndentationOverflow);
+    }
+    Document logicalOverflow("");
+    logicalOverflow.BeginGroup({}, InvalidId);
+    EXPECT_EQ(logicalOverflow.Seal().Code, Error::TooLarge);
     // Exercise the checked output-position domain without a multi-GiB buffer.
     constexpr std::size_t maximum = InvalidId - 1;
     EXPECT_TRUE(detail::FitsOutput(0, maximum));
@@ -1499,6 +1521,101 @@ TEST(GroupLayout, VerticalGapCountUsesFirstOverrideAndNoBlankLineIndent)
         output.Text);
 }
 
+TEST(GroupLayout, SourceRunsMatchIndividualAtoms)
+{
+    const std::string source = "\ta+b /*x*/\tq\nnext";
+    const std::array<Provenance, 2> tracked{{{0, 1}, {5, 12}}};
+    for (auto mode : {GroupMode::Consistent, GroupMode::Fill}) {
+        // These lengths cross the original 256-logical-node search boundary.
+        for (auto repetitions : {0u, 36u, 37u, 38u, 39u, 40u, 41u, 60u}) {
+            Document packed(source);
+            Document separate(source);
+            const auto fill = [&] (Document& document, bool compact) {
+                const auto text = [&] (std::uint32_t begin, std::uint32_t end,
+                                      Identity id, bool verbatim = false) {
+                    if (compact) {
+                        document.AppendSourceText(begin, end, id, verbatim);
+                    } else {
+                        document.SourceText(begin, end, id, verbatim);
+                    }
+                };
+                const auto begin = [&] (GroupSpec spec) {
+                    if (!compact) {
+                        document.MarkAnchor({.StructuralBase = spec.StructuralBase,
+                            .Continuation = spec.Continuation,
+                            .LineBase = spec.LineBase});
+                    }
+                    return document.BeginGroup(spec, compact);
+                };
+                const auto owner = begin({.Mode = mode,
+                    .Indent = 2, .ExpressionContinuation = true,
+                    .Continuation = true});
+                GapSpec prefix{GapKind::Flat, 0};
+                prefix.FlatSourceBegin = 0;
+                prefix.FlatSourceEnd = 1;
+                document.Gap(prefix, InvalidId, {0, 0, 90});
+                text(1, 2, 100);
+                document.Gap({GapKind::Flat, 0}, InvalidId, {2, 2, 91});
+                text(2, 3, 101);
+                text(3, 4, 102);
+                for (auto i = 0u; i < repetitions; ++i) {
+                    for (auto t = 1u; t < 4u; ++t) {
+                        document.Gap({GapKind::Flat,
+                            static_cast<std::uint16_t>(t == 1)}, InvalidId,
+                            {4, 5});
+                        text(t, t + 1, 103 + i * 3 + t);
+                    }
+                }
+                document.Gap({GapKind::Soft, 1}, InvalidId, {4, 5});
+                document.ConditionalText(owner, "", ",", {5, 5});
+                const auto child = begin({.Mode = GroupMode::Fill,
+                    .Indent = 4, .StructuralBase = true, .Continuation = true});
+                text(5, 10, 200, true);
+                text(10, 11, NoIdentity, true);
+                text(11, 12, 201);
+                document.EndGroup(child);
+                document.Gap({GapKind::Soft, 1}, InvalidId, {12, 13});
+                text(13, 17, 202);
+                document.EndGroup(owner);
+                // A multiline source atom must remain a run boundary.
+                text(12, 13, NoIdentity, true);
+            };
+            fill(packed, true);
+            fill(separate, false);
+            ASSERT_TRUE(packed.Seal());
+            ASSERT_TRUE(separate.Seal());
+            for (auto tab : {1u, 4u, 8u}) {
+                for (auto width : {3u, 10u, 40u, 80u}) {
+                    for (auto maps = 0; maps < 4; ++maps) {
+                        const Policy policy{.Width = width,
+                            .TabWidth = static_cast<std::uint8_t>(tab),
+                            .SourceMap = maps == 0, .TokenMap = maps == 2,
+                            .TrackSource = maps == 3
+                                ? std::span<const Provenance>(tracked)
+                                : std::span<const Provenance>()};
+                        const auto a = packed.Render(policy);
+                        const auto b = separate.Render(policy);
+                        ASSERT_TRUE(a.State);
+                        ASSERT_TRUE(b.State);
+                        EXPECT_EQ(a.Text, b.Text);
+                        EXPECT_EQ(a.Broken, b.Broken);
+                        ASSERT_EQ(a.Map.size(), b.Map.size());
+                        for (std::size_t i = 0; i < a.Map.size(); ++i) {
+                            EXPECT_EQ(a.Map[i].OutputBegin, b.Map[i].OutputBegin);
+                            EXPECT_EQ(a.Map[i].OutputEnd, b.Map[i].OutputEnd);
+                            EXPECT_EQ(a.Map[i].Source.Begin, b.Map[i].Source.Begin);
+                            EXPECT_EQ(a.Map[i].Source.End, b.Map[i].Source.End);
+                            EXPECT_EQ(a.Map[i].Source.Identity, b.Map[i].Source.Identity);
+                            EXPECT_EQ(a.Map[i].Exact, b.Map[i].Exact);
+                            EXPECT_EQ(a.Map[i].Protected, b.Map[i].Protected);
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
 TEST(GroupLayout, BorrowedFlatWhitespaceSelectionMeasurementAndMapping)
 {
     auto borrowed = [] (GapKind kind, std::uint32_t begin, std::uint32_t end) {
@@ -2453,18 +2570,17 @@ TEST(GroupLayout, SourceTextRejectsSentinelOffsetsWithoutThrowing)
     };
     for (auto source : {std::string_view{}, std::string_view{"abc"}}) {
         for (bool verbatim : {false, true}) {
-            for (auto range : ranges) {
-                Document document(source);
-                EXPECT_NO_THROW(document.SourceText(
-                    range.Begin,
-                    range.End,
-                    NoIdentity,
-                    verbatim));
-                document.Text("later");
-                EXPECT_EQ(document.Seal().Code, Error::InvalidSourceRange);
-                auto output = document.Render();
-                EXPECT_EQ(output.State.Code, Error::InvalidSourceRange);
-                EXPECT_TRUE(output.Text.empty());
+            for (auto emit : {&Document::SourceText, &Document::AppendSourceText}) {
+                for (auto range : ranges) {
+                    Document document(source);
+                    EXPECT_NO_THROW((document.*emit)(
+                        range.Begin, range.End, NoIdentity, verbatim));
+                    document.Text("later");
+                    EXPECT_EQ(document.Seal().Code, Error::InvalidSourceRange);
+                    auto output = document.Render();
+                    EXPECT_EQ(output.State.Code, Error::InvalidSourceRange);
+                    EXPECT_TRUE(output.Text.empty());
+                }
             }
         }
     }

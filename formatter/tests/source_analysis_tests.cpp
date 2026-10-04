@@ -55,6 +55,8 @@ void ExpectSameAnalysis(
         EXPECT_EQ(a.Preserve, b.Preserve);
         EXPECT_EQ(a.MustStartWithLineFeed, b.MustStartWithLineFeed);
         EXPECT_EQ(a.ContextSensitive, b.ContextSensitive);
+        EXPECT_EQ(bool(a.HasLineFeed), bool(b.HasLineFeed));
+        EXPECT_EQ(bool(a.Horizontal), bool(b.Horizontal));
         EXPECT_EQ(bool(a.IntrinsicPreserve), bool(b.IntrinsicPreserve));
         EXPECT_EQ(
             bool(a.IntrinsicContextSensitive),
@@ -128,6 +130,17 @@ formatter::SourceAnalysis Analyze(
     std::pmr::monotonic_buffer_resource scratch;
     auto direct =
         formatter::BuildSourceAnalysis(tree, options, memory, scratch);
+    // Byte facts stay valid across protection and deferred scope changes,
+    // including empty, CRLF, bare-CR and non-horizontal whitespace gaps.
+    for (const auto& gap : direct.Gaps()) {
+        const auto original = direct.Original(gap);
+        EXPECT_EQ(
+            bool(gap.HasLineFeed),
+            original.find('\n') != std::string_view::npos);
+        EXPECT_EQ(
+            bool(gap.Horizontal),
+            original.find_first_not_of(" \t") == std::string_view::npos);
+    }
     if (options.EditScope) {
         const auto scope = *options.EditScope;
         options.EditScope.reset();

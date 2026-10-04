@@ -80,6 +80,9 @@ struct SourceGap
     // Original gap-owned CR not immediately followed by LF. Classification
     // only: this grants no replacement, protection or partial-gap rights.
     bool HasBareCR : 1 = false;
+    // Immutable byte facts shared by spacing and layout, not edit authority.
+    bool HasLineFeed : 1 = false;
+    bool Horizontal : 1 = true;
 };
 
 static_assert(sizeof(SourceGap) <= 16);
