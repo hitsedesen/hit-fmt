@@ -244,8 +244,8 @@ bool SourceAnalysis::IntersectsImmutable(parser::SourceRange source) const
         });
     return first != Protection_.end() &&
         (source.Empty()
-        ? first->Source.Begin <= source.Begin
-        : first->Source.Begin < source.End);
+            ? first->Source.Begin <= source.Begin
+            : first->Source.Begin < source.End);
 }
 
 bool SourceAnalysis::CanReplaceGap(GapId id, std::string_view replacement) const
@@ -347,8 +347,8 @@ void SourceAnalysis::RestrictEditScope(
                         first->Reasons == ProtectionReason::HeaderName;
                     if (first != Protection_.end() && !beforeHeader &&
                         (slice.Empty()
-                        ? first->Source.Begin <= slice.Begin
-                        : first->Source.Begin < slice.End))
+                            ? first->Source.Begin <= slice.Begin
+                            : first->Source.Begin < slice.End))
                     {
                         return;
                     }
@@ -519,8 +519,8 @@ SourceAnalysis BuildSourceAnalysis(
         {
             gap.LineBoundary =
                 original.find('\n') == std::string_view::npos
-                ? GapLineBoundary::Forbidden
-                : GapLineBoundary::Required;
+                    ? GapLineBoundary::Forbidden
+                    : GapLineBoundary::Required;
         }
         if (i &&
             (tree.Kind(i - 1) == TK::PreprocessingDirective ||
@@ -538,8 +538,8 @@ SourceAnalysis BuildSourceAnalysis(
             // %: is a directive only at the beginning of a line in our lexer.
             gap.LineBoundary =
                 original.find('\n') == std::string_view::npos
-                ? GapLineBoundary::Forbidden
-                : GapLineBoundary::Required;
+                    ? GapLineBoundary::Forbidden
+                    : GapLineBoundary::Required;
         }
         if (i && i < count && Literal(tree.Kind(i - 1)) &&
             Word(tree.Kind(i), tree.TokenText(i)) && original.empty())
@@ -606,8 +606,8 @@ SourceAnalysis BuildSourceAnalysis(
                 begin,
                 i + 1 < count ? tree.Token(i + 1).Text.Begin : size,
                 token.Kind == TK::Invalid
-                ? ProtectionReason::Recovery
-                : ProtectionReason::Ambiguous);
+                    ? ProtectionReason::Recovery
+                    : ProtectionReason::Ambiguous);
         }
         if (token.Kind == TK::Comment) {
             auto marker = text;
@@ -660,9 +660,9 @@ SourceAnalysis BuildSourceAnalysis(
                 tree.Token(pendingMacro).Text.Begin,
                 balanced ? tree.Token(close).Text.End : size,
                 balanced
-                ? ProtectionReason::SensitiveMacro
-                : ProtectionReason::SensitiveMacro |
-                    ProtectionReason::Recovery);
+                    ? ProtectionReason::SensitiveMacro
+                    : ProtectionReason::SensitiveMacro |
+                        ProtectionReason::Recovery);
         }
         if (token.Kind != TK::Comment) {
             // Comments are preprocessing whitespace between a macro name and
@@ -670,8 +670,8 @@ SourceAnalysis BuildSourceAnalysis(
             pendingMacro =
                 i >= macroEnd && token.Kind == TK::Identifier &&
                 std::binary_search(names.begin(), names.end(), text)
-                ? i
-                : NoToken;
+                    ? i
+                    : NoToken;
         }
     }
     if (disabledDepth) {
@@ -713,8 +713,8 @@ SourceAnalysis BuildSourceAnalysis(
             Combine(
                 hasRecovery ? RegionStatus::Recovery : RegionStatus::Complete,
                 hasAmbiguity
-                ? RegionStatus::Ambiguous
-                : RegionStatus::Complete);
+                    ? RegionStatus::Ambiguous
+                    : RegionStatus::Complete);
         result.Regions_
             .push_back({tokens, {begin, end}, node.Kind, parent, status});
         if (node.Kind == parser::NodeKind::HeaderName) {
@@ -735,14 +735,14 @@ SourceAnalysis BuildSourceAnalysis(
                 before,
                 after,
                 recovery
-                ? ProtectionReason::Recovery
-                : ProtectionReason::Ambiguous);
+                    ? ProtectionReason::Recovery
+                    : ProtectionReason::Ambiguous);
             if (before == after && tokens.Begin < result.Gaps_.size()) {
                 result.Gaps_[tokens.Begin].Preserve = true;
                 result.Gaps_[tokens.Begin].Reasons =
                     recovery
-                    ? ProtectionReason::Recovery
-                    : ProtectionReason::Ambiguous;
+                        ? ProtectionReason::Recovery
+                        : ProtectionReason::Ambiguous;
             }
         }
         stack.push_back({node.Child(), id});
@@ -786,8 +786,8 @@ SourceAnalysis BuildSourceAnalysis(
                 range.Reasons == ProtectionReason::HeaderName;
             if (!beforeHeader &&
                 (gap.Source.Empty()
-                ? range.Source.Begin <= gap.Source.Begin
-                : range.Source.Begin < gap.Source.End))
+                    ? range.Source.Begin <= gap.Source.Begin
+                    : range.Source.Begin < gap.Source.End))
             {
                 gap.Preserve = true;
                 gap.Reasons = gap.Reasons | range.Reasons;

@@ -40,8 +40,8 @@ void PrintCode(std::ostream& output, std::string_view code, bool color)
                 .substr(
                     start,
                     end == std::string_view::npos
-                    ? code.size() - start
-                    : end - start);
+                        ? code.size() - start
+                        : end - start);
         start = end == std::string_view::npos ? code.size() : end + 1;
         if (line.empty()) {
             output << '\n';
@@ -50,8 +50,8 @@ void PrintCode(std::ostream& output, std::string_view code, bool color)
         if (color) {
             output
                 << (line.starts_with("//") || line.starts_with("#")
-                ? Comment
-                : Example);
+                    ? Comment
+                    : Example);
         }
         output << "    " << line;
         if (color) {

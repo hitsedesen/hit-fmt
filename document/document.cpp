@@ -688,16 +688,16 @@ const
             }
             broken =
                 node.Type == Kind::ConditionalText
-                ? MeasureText(node.BrokenText, policy.TabWidth)
-                : flat;
+                    ? MeasureText(node.BrokenText, policy.TabWidth)
+                    : flat;
             guaranteedLine = flat.Line;
         } else if (node.Type == Kind::Gap || node.Type == Kind::ConditionalGap)
         {
             flat = MeasureFlatGap(node.FlatGap, Source_, policy.TabWidth);
             const auto expandedFlat =
                 node.Type == Kind::Gap
-                ? flat
-                : MeasureFlatGap(node.BrokenGap, Source_, policy.TabWidth);
+                    ? flat
+                    : MeasureFlatGap(node.BrokenGap, Source_, policy.TabWidth);
             // Reuse each flat whitespace measurement for fill and summaries.
             broken =
                 node.Owner != InvalidId && node.BrokenGap.Kind == GapKind::Soft
@@ -821,8 +821,8 @@ const
                         AddWidth(
                             anchor.Block,
                             anchor.SharedOffset != InvalidId && spec.Minimum
-                            ? anchor.SharedOffset
-                            : spec.Minimum),
+                                ? anchor.SharedOffset
+                                : spec.Minimum),
                         Infinity - 1);
                 indent = std::max(indent, minimum);
                 if (indent >= policy.Width ||
@@ -833,8 +833,8 @@ const
                             anchor.Block,
                             anchor.SharedOffset != InvalidId &&
                             spec.Fallback == int32_t(spec.Minimum)
-                            ? int32_t(anchor.SharedOffset)
-                            : spec.Fallback);
+                                ? int32_t(anchor.SharedOffset)
+                                : spec.Fallback);
                 }
             }
         }
@@ -911,8 +911,8 @@ const
                         frame.Indent - frame.PendingExpressionIndent;
                     pending =
                         logical > realizedBase
-                        ? static_cast<std::uint32_t>(logical - realizedBase)
-                        : 0;
+                            ? static_cast<std::uint32_t>(logical - realizedBase)
+                            : 0;
                 } else {
                     pending = static_cast<std::uint32_t>(bias);
                 }
@@ -1034,8 +1034,9 @@ const
             }
             const auto size =
                 targetCRLF
-                ? text.size() + std::size_t(node.ChangedNewlines)
-                : text.size(); // Incoming boundaries may suppress contractions.
+                    ? text.size() + std::size_t(node.ChangedNewlines)
+                    : text
+                        .size(); // Incoming boundaries may suppress contractions.
             if (size > result.Text.max_size() - result.Text.size()) {
                 result.State ={Error::TooLarge, static_cast<std::uint32_t>(i)};
                 return result;
@@ -1073,8 +1074,8 @@ const
                 const auto atom = cursor - (crlf ? 1 : 0);
                 const bool incomingCR =
                     atom > run
-                    ? text[atom - 1] == '\r'
-                    : !result.Text.empty() && result.Text.back() == '\r';
+                        ? text[atom - 1] == '\r'
+                        : !result.Text.empty() && result.Text.back() == '\r';
                 if (!crlf && !targetCRLF && incomingCR) {
                     // The producer omitted a necessary original separator.
                     // This slice has no authority to invent or recover it.
@@ -1131,8 +1132,8 @@ const
         {
             auto text =
                 node.Type == Kind::ConditionalText && ownerBroken
-                ? node.BrokenText
-                : node.FlatText;
+                    ? node.BrokenText
+                    : node.FlatText;
             const bool continuingIndent =
                 frame.RealizedContinuationLine &&
                 column == frame.RealizedContinuationIndent;
@@ -1173,8 +1174,8 @@ const
         } else {
             auto gap =
                 node.Type == Kind::ConditionalGap && ownerBroken
-                ? node.BrokenGap
-                : node.FlatGap;
+                    ? node.BrokenGap
+                    : node.FlatGap;
             const bool continuingIndent =
                 frame.RealizedContinuationLine &&
                 column == frame.RealizedContinuationIndent;
@@ -1188,12 +1189,12 @@ const
                             AddWidth(
                                 entry.ExpandedGapWidth,
                                 gap.FitNextSegment
-                                ? gap.RequiredWidth
-                                : tailWidth(entry.BrokenTail))) ||
+                                    ? gap.RequiredWidth
+                                    : tailWidth(entry.BrokenTail))) ||
                         (frame.Mandatory == i &&
                         (frame.ForceOwned
-                        ? !frame.OwnedLine
-                        : lines == frame.StartLine));
+                            ? !frame.OwnedLine
+                            : lines == frame.StartLine));
                 }
             }
             if (line) {

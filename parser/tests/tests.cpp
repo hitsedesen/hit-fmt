@@ -91,8 +91,8 @@ void AppendTriviaList(
         AppendIndent(output, depth + 1);
         output +=
             item->Kind == parser::TriviaKind::Comment
-            ? "(comment "
-            : "(whitespace ";
+                ? "(comment "
+                : "(whitespace ";
         AppendQuoted(output, tree.SourceText(item->Source));
         output += ")\n";
     }

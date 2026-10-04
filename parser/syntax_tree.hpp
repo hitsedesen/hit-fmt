@@ -569,8 +569,8 @@ public:
         chunk->Roles[slot.Offset] =
             token.Kind >= tokenizer::TokenKind::Operator_OpenBrace &&
             token.Kind <= tokenizer::TokenKind::Operator_Comma
-            ? PunctuationRole::Generic
-            : PunctuationRole::None;
+                ? PunctuationRole::Generic
+                : PunctuationRole::None;
         chunk->MatchingDelimiters[slot.Offset] =
             std::numeric_limits<TokenIndex>::max();
     }
@@ -763,8 +763,8 @@ public:
         assert(token < TokenCount());
         auto* begin =
             token == 0
-            ? Input_.data()
-            : Input_.data() + Tokens_[token - 1].Text.End;
+                ? Input_.data()
+                : Input_.data() + Tokens_[token - 1].Text.End;
         auto* end = Input_.data() + Tokens_[token].Text.Begin;
         return {begin, static_cast<size_t>(end - begin)};
     }
@@ -775,8 +775,8 @@ public:
         auto* begin = Input_.data() + Tokens_[token].Text.End;
         auto* end =
             token + 1 == TokenCount()
-            ? Input_.data() + Input_.size()
-            : Input_.data() + Tokens_[token + 1].Text.Begin;
+                ? Input_.data() + Input_.size()
+                : Input_.data() + Tokens_[token + 1].Text.Begin;
         return {begin, static_cast<size_t>(end - begin)};
     }
 

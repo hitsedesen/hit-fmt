@@ -115,8 +115,8 @@ void PrintOption(std::ostream& output, std::string_view name, const T& value)
         } else {
             output
                 << (value.Mode == formatter::BlankLineMode::Inherit
-                ? "Inherit"
-                : "Preserve");
+                    ? "Inherit"
+                    : "Preserve");
         }
     } else if constexpr (OptionalValue<T>::IsOptional &&
         !std::is_same_v<T, std::optional<formatter::TrailingCommentSpaceSetting>>)

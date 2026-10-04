@@ -81,11 +81,11 @@ std::string Dump(const StructuralPlan& plan)
             const auto& piece = plan.Pieces[i];
             result +=
                 piece.FromSource
-                ? std::format(
-                    "source[{},{}) ",
-                    piece.Source.Begin,
-                    piece.Source.End)
-                : std::format("'{}' ", piece.Literal);
+                    ? std::format(
+                        "source[{},{}) ",
+                        piece.Source.Begin,
+                        piece.Source.End)
+                    : std::format("'{}' ", piece.Literal);
         }
         if (result.ends_with(' ')) {
             result.pop_back();

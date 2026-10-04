@@ -61,9 +61,9 @@ private:
         // Match tokenizer coordinates: each invalid UTF8 byte is one column.
         Cursor_ +=
             c < 0x80
-            ? 1
-            : unicode::utf8::GetFirstCodePointSize(Text_.substr(Cursor_))
-                .value_or(1);
+                ? 1
+                : unicode::utf8::GetFirstCodePointSize(Text_.substr(Cursor_))
+                    .value_or(1);
         if (c == '\n') {
             ++Current_.Line;
             Current_.Column = 1;
@@ -207,8 +207,8 @@ void PrintFileIssues(
         output << "fail: " << diagnostic.Message << "\n  --> " << path << ':'
             << diagnostic.Position.Line << ':' << diagnostic.Position.Column
             << (fix
-            ? " [written output]"
-            : " [formatted output; not original source]") << '\n';
+                ? " [written output]"
+                : " [formatted output; not original source]") << '\n';
     }
 }
 

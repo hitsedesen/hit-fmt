@@ -419,8 +419,8 @@ size_t Validate(std::string_view source, const StructuralPlan& plan)
             (previous->Boundary > edit.Boundary ||
             (previous->Boundary == edit.Boundary &&
             (edit.Boundary == StructuralEdit::Edge::Close
-            ? previous->Depth <= edit.Depth
-            : previous->Depth >= edit.Depth))))
+                ? previous->Depth <= edit.Depth
+                : previous->Depth >= edit.Depth))))
         {
             throw std::invalid_argument(
                 "unordered/co-owned structural insertion");
@@ -428,12 +428,12 @@ size_t Validate(std::string_view source, const StructuralPlan& plan)
         auto kind = plan.Operations[edit.Operation].Kind;
         auto bit =
             edit.Boundary == StructuralEdit::Edge::Open
-            ? 1u
-            : edit.Boundary == StructuralEdit::Edge::Close ? 2u : 4u;
+                ? 1u
+                : edit.Boundary == StructuralEdit::Edge::Close ? 2u : 4u;
         if ((ownership[edit.Operation] & bit) != 0 ||
             (kind == StructuralAction::AddMissingControlBraces
-            ? !edit.Source.Empty() || bit == 4u
-            : bit != 4u))
+                ? !edit.Source.Empty() || bit == 4u
+                : bit != 4u))
         {
             throw std::invalid_argument("non-atomic structural operation");
         }
@@ -449,8 +449,8 @@ size_t Validate(std::string_view source, const StructuralPlan& plan)
             }
             auto extra =
                 piece.FromSource
-                ? piece.Source.End - piece.Source.Begin
-                : piece.Literal.size();
+                    ? piece.Source.End - piece.Source.Begin
+                    : piece.Literal.size();
             if (extra > util::MaxSourceSize - size) {
                 throw std::length_error("structural output too large");
             }
@@ -462,8 +462,8 @@ size_t Validate(std::string_view source, const StructuralPlan& plan)
     for (size_t i = 0; i < ownership.size(); ++i) {
         auto required =
             plan.Operations[i].Kind == StructuralAction::AddMissingControlBraces
-            ? 3u
-            : 4u;
+                ? 3u
+                : 4u;
         if (ownership[i] != required) {
             throw std::invalid_argument("incomplete structural operation");
         }
@@ -622,8 +622,8 @@ StructuralPlan PlanStructuralEdits(
                 }
                 auto action =
                     null
-                    ? StructuralAction::EmptyControlBody
-                    : StructuralAction::AddMissingControlBraces;
+                        ? StructuralAction::EmptyControlBody
+                        : StructuralAction::AddMissingControlBraces;
                 auto range = Range(tree, tokens);
                 if (status != RegionStatus::Complete) {
                     Skip(plan, action, tokens, StructuralSkip::Incomplete);
@@ -699,8 +699,8 @@ StructuralPlan PlanStructuralEdits(
         }
         auto action =
             nullStatement
-            ? StructuralAction::RemoveNullStatements
-            : StructuralAction::RemoveNullDeclarations;
+                ? StructuralAction::RemoveNullStatements
+                : StructuralAction::RemoveNullDeclarations;
             parser::TokenRange tokens{token, token + 1};
             if (status != RegionStatus::Complete) {
             Skip(plan, action, tokens, StructuralSkip::Incomplete);
@@ -1192,8 +1192,8 @@ StructuralPlan ResolveNamespaceComments(
             }
             auto lineEnd =
                 closeLine + 1 < lines.size()
-                ? lines[closeLine + 1] - 1
-                : static_cast<parser::SourceOffset>(output.size());
+                    ? lines[closeLine + 1] - 1
+                    : static_cast<parser::SourceOffset>(output.size());
             auto suffix = output.substr(begin, lineEnd - begin);
             if (suffix.ends_with('\r') &&
                 (!plan.Options.PreserveBareCR ||

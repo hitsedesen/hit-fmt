@@ -210,8 +210,8 @@ public:
             message += "' has invalid ";
             auto issue =
                 !prefixOK && !caseOK
-                ? "prefix and case"
-                : !prefixOK ? "prefix" : "case";
+                    ? "prefix and case"
+                    : !prefixOK ? "prefix" : "case";
             message += issue;
             Results
                 .push_back(

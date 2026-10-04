@@ -193,8 +193,8 @@ Excerpt PrintSourceExcerpt(
     }
     auto count =
         cells.size() > available
-        ? (fromStart ? available - 3 : window)
-        : available;
+            ? (fromStart ? available - 3 : window)
+            : available;
     auto end = std::min(cells.size(), begin + count);
     if (begin) {
         output << "...";
@@ -644,8 +644,8 @@ std::optional<std::vector<Violation>> ReflowViolations(
             } else if (oldBreaks != newBreaks) {
                 auto difference =
                     oldBreaks > newBreaks
-                    ? oldBreaks - newBreaks
-                    : newBreaks - oldBreaks;
+                        ? oldBreaks - newBreaks
+                        : newBreaks - oldBreaks;
                 message =
                     (oldBreaks > newBreaks ? "remove " : "insert ") +
                     std::to_string(difference) +
@@ -767,8 +767,8 @@ std::vector<Chunk> FormattingChunks(
                     auto distance = sourceSkip + formattedSkip;
                     auto skew =
                         sourceSkip > formattedSkip
-                        ? sourceSkip - formattedSkip
-                        : formattedSkip - sourceSkip;
+                            ? sourceSkip - formattedSkip
+                            : formattedSkip - sourceSkip;
                     // An unchanged line inside a repeated block can look
                     // closer than the actual end of a whitespace-only edit.
                     // Prefer an anchor that keeps all intervening tokens.
@@ -892,15 +892,15 @@ std::vector<Chunk> FormattingChunks(
                 : ColumnAt(source.back().Text, source.back().Text.size());
             auto location =
                 sourceIndex == source.size()
-                ? " at end of file"
-                : " before this line";
+                    ? " at end of file"
+                    : " before this line";
             auto message =
                 formattedCount == 1
-                ? "insert " + QuoteSnippet(formatted[formattedIndex].Text) +
-                    location
-                : "insert " + std::to_string(formattedCount) + " lines" +
-                    location + ", starting with " +
-                    QuoteSnippet(formatted[formattedIndex].Text);
+                    ? "insert " + QuoteSnippet(formatted[formattedIndex].Text) +
+                        location
+                    : "insert " + std::to_string(formattedCount) + " lines" +
+                        location + ", starting with " +
+                        QuoteSnippet(formatted[formattedIndex].Text);
             chunk.Violations.push_back({begin, column, std::move(message)});
         }
         if (chunk.Violations.empty()) {
@@ -1041,8 +1041,8 @@ void PrintFormattingDiagnostics(
         if (chunk.HasFix) {
             output
                 << (fixed
-                ? "  applied formatting:\n"
-                : "  suggested formatting:\n");
+                    ? "  applied formatting:\n"
+                    : "  suggested formatting:\n");
             const auto& fix = chunk.Fix;
             for (const auto& line : fix) {
                 PrintSuggestedLine(
@@ -1344,8 +1344,8 @@ private:
         std::error_code error;
         directory =
             directory.empty()
-            ? std::filesystem::current_path(error)
-            : std::filesystem::absolute(directory, error);
+                ? std::filesystem::current_path(error)
+                : std::filesystem::absolute(directory, error);
         if (error) {
             return DefaultConfig();
         }

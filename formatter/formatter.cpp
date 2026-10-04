@@ -74,8 +74,8 @@ NamespaceCommentOptions CommentOptions(const Style& style)
     }
     const auto space =
         style.TrailingCommentSpaces
-        ? std::nullopt
-        : GapUsesSpace(style.TrailingCommentSpacing, GapContext::Rebuilt);
+            ? std::nullopt
+            : GapUsesSpace(style.TrailingCommentSpacing, GapContext::Rebuilt);
     return {
         policy,
         style.ShortNamespaceLines,

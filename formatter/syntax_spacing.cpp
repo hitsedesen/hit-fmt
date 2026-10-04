@@ -355,8 +355,8 @@ public:
                 list(
                     C::Calls,
                     parent && parent->Kind == NK::CallExpression
-                    ? parent
-                    : &node);
+                        ? parent
+                        : &node);
                 bool lambda =
                     parent && parent->Kind == NK::CallExpression &&
                     parent->FirstChild &&
@@ -368,8 +368,8 @@ public:
                 Mark(
                     begin,
                     lambda
-                    ? F::LambdaCallSpaceBeforeArguments
-                    : F::FunctionCallSpaceBeforeParameters,
+                        ? F::LambdaCallSpaceBeforeArguments
+                        : F::FunctionCallSpaceBeforeParameters,
                     *state.Owner,
                     C::Calls);
                 Interior(
@@ -388,19 +388,19 @@ public:
                 Mark(
                     begin,
                     lambda
-                    ? F::LambdaSpaceBeforeParameters
-                    : F::FunctionSpaceBeforeParameters,
+                        ? F::LambdaSpaceBeforeParameters
+                        : F::FunctionSpaceBeforeParameters,
                     *state.Owner,
                     C::Parameters);
                 Interior(
                     begin,
                     end,
                     lambda
-                    ? F::SpaceInsideLambdaParameters
-                    : F::SpaceInsideFunctionParameters,
+                        ? F::SpaceInsideLambdaParameters
+                        : F::SpaceInsideFunctionParameters,
                     lambda
-                    ? F::EmptyLambdaParametersSpacing
-                    : F::EmptyFunctionParametersSpacing,
+                        ? F::EmptyLambdaParametersSpacing
+                        : F::EmptyFunctionParametersSpacing,
                     *state.Owner,
                     C::Parameters);
                 break;
@@ -592,8 +592,8 @@ public:
                     Mark(
                         begin,
                         kind == NK::TemplateParameterList
-                        ? F::TemplateKeywordSpacing
-                        : F::TemplateTypeArgumentSpacing,
+                            ? F::TemplateKeywordSpacing
+                            : F::TemplateTypeArgumentSpacing,
                         node,
                         state.Category);
                     // Template delimiters can be contextually split >>; require
@@ -670,8 +670,8 @@ public:
                 Mark(
                     begin,
                     brace
-                    ? F::NewInitializerSpaceBeforeBraces
-                    : F::NewInitializerSpaceBeforeParentheses,
+                        ? F::NewInitializerSpaceBeforeBraces
+                        : F::NewInitializerSpaceBeforeParentheses,
                     node,
                     C::Initializers,
                     4);
@@ -679,11 +679,11 @@ public:
                     begin,
                     end,
                     brace
-                    ? F::NewInitializerBraceInteriorSpacing
-                    : F::NewInitializerParenthesisInteriorSpacing,
+                        ? F::NewInitializerBraceInteriorSpacing
+                        : F::NewInitializerParenthesisInteriorSpacing,
                     brace
-                    ? F::NewInitializerBraceInteriorSpacing
-                    : F::NewInitializerParenthesisInteriorSpacing,
+                        ? F::NewInitializerBraceInteriorSpacing
+                        : F::NewInitializerParenthesisInteriorSpacing,
                     node,
                     C::Initializers,
                     4);
@@ -733,11 +733,11 @@ public:
                     begin,
                     Tree_.Kind(begin) == TK::Keyword_const ||
                     Tree_.Kind(begin) == TK::Keyword_volatile
-                    ? F::FunctionQualifierSpacing
-                    : Tree_.Kind(begin) == TK::Operator_Ampersand ||
-                        Tree_.Kind(begin) == TK::Operator_And
-                        ? F::FunctionRefQualifierSpacing
-                        : F::FunctionSuffixSpecifierSpacing,
+                        ? F::FunctionQualifierSpacing
+                        : Tree_.Kind(begin) == TK::Operator_Ampersand ||
+                            Tree_.Kind(begin) == TK::Operator_And
+                            ? F::FunctionRefQualifierSpacing
+                            : F::FunctionSuffixSpecifierSpacing,
                     parent ? *parent : node,
                     C::DeclarationHeaders,
                     3,
@@ -838,13 +838,13 @@ public:
                     begin,
                     end,
                     kind == NK::RequirementBody
-                    ? F::RequirementBodyInteriorSpacing
-                    : F::BlockInteriorSpacing,
-                    kind == NK::LambdaBody
-                    ? F::EmptyLambdaBodySpacing
-                    : kind == NK::RequirementBody
                         ? F::RequirementBodyInteriorSpacing
-                        : F::EmptyBlockInteriorSpacing,
+                        : F::BlockInteriorSpacing,
+                    kind == NK::LambdaBody
+                        ? F::EmptyLambdaBodySpacing
+                        : kind == NK::RequirementBody
+                            ? F::RequirementBodyInteriorSpacing
+                            : F::EmptyBlockInteriorSpacing,
                     node,
                     state.Category,
                     2,
@@ -907,10 +907,10 @@ public:
                     Mark(
                         begin + 1,
                         kind == NK::ThrowStatement
-                        ? F::ThrowSpaceBeforeParentheses
-                        : Tree_.Kind(begin) == TK::Keyword_co_return
-                            ? F::CoReturnSpaceBeforeParentheses
-                            : F::ReturnSpaceBeforeParentheses,
+                            ? F::ThrowSpaceBeforeParentheses
+                            : Tree_.Kind(begin) == TK::Keyword_co_return
+                                ? F::CoReturnSpaceBeforeParentheses
+                                : F::ReturnSpaceBeforeParentheses,
                         node,
                         C::Expressions,
                         3,
@@ -1030,8 +1030,8 @@ public:
                     Mark(
                         i + 1,
                         state.ListOwner->Kind == NK::ForStatement
-                        ? F::LoopSemicolonSpacing
-                        : F::ConditionInitSemicolonSpacing,
+                            ? F::LoopSemicolonSpacing
+                            : F::ConditionInitSemicolonSpacing,
                         *state.ListOwner,
                         C::ControlHeaders,
                         4,
@@ -1075,8 +1075,8 @@ public:
                 Mark(
                     postfix ? i : i + 1,
                     postfix
-                    ? F::PostfixOperatorSpacing
-                    : F::UnaryOperatorSpacing,
+                        ? F::PostfixOperatorSpacing
+                        : F::UnaryOperatorSpacing,
                     owner,
                     C::Expressions,
                     1);
@@ -1583,8 +1583,8 @@ private:
                 before.Policy =
                     previousPointer ||
                     Binding_ == PointerReferenceDeclaratorLocation::Left
-                    ? GapPolicy::NoSpace
-                    : GapPolicy::Space;
+                        ? GapPolicy::NoSpace
+                        : GapPolicy::Space;
                 // Each comma-separated declarator has its own pointer, not a
                 // shared type-bound pointer. Do not attach it to the comma.
                 if (begin > 0 && Tree_.Kind(begin - 1) == TK::Operator_Comma) {
