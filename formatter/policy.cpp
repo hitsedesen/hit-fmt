@@ -215,6 +215,12 @@ void ValidatePolicyStyle(const Style& style)
     {
         throw std::invalid_argument("ExpressionsAlignment has invalid value");
     }
+    if (style.TernaryOperatorIndentation != TernaryOperatorIndentation::Align &&
+        style.TernaryOperatorIndentation != TernaryOperatorIndentation::Indent)
+    {
+        throw std::invalid_argument(
+            "TernaryOperatorIndentation has invalid value");
+    }
     if (style.IncludeMatchingHeader != IncludeMatchingHeader::Off &&
         style.IncludeMatchingHeader != IncludeMatchingHeader::First)
     {
@@ -322,7 +328,7 @@ CompiledPolicies CompilePolicies(const Style& style)
             ResolveLayout(style.ExpressionsLayout, style.Layout),
             style.BinaryOperatorSide, style.AssignmentOperatorSide,
             style.ShiftOperatorSide, style.TernaryOperatorSide,
-            style.TernaryLayout,
+            style.TernaryLayout, style.TernaryOperatorIndentation,
             {ContinuationAlignment::Block, continuation, fallback},
             style.ExpressionsBreak, style.ExpressionsPacking,
             style.ExpressionsAlignment},

@@ -2044,6 +2044,55 @@ TEST(SyntaxLayout, ContinuationScopesReindentOnlySelectedHorizontalBytes)
                     EXPECT_LE(map.Source.End, branchBegin + 8);
                 }
             }
+            style.TernaryOperatorIndentation =
+                formatter::TernaryOperatorIndentation::Indent;
+            protection.EditScope = branchScope;
+            // Protected markers keep their actual column, even when a new
+            // operator level was requested but could not be realized.
+            EXPECT_EQ(Lower(ternaryInput, style, options, protection).Text,
+                branchExpected);
+            const auto questionBegin = parser::SourceOffset(
+                ternaryInput.find("        ? left"));
+            const auto colonBegin = parser::SourceOffset(
+                ternaryInput.find("        : otherLeft"));
+            const std::array operatorScope{
+                parser::SourceRange{questionBegin, questionBegin + 8},
+                parser::SourceRange{branchBegin, branchBegin + 8},
+                parser::SourceRange{colonBegin, colonBegin + 8}};
+            protection.EditScope = operatorScope;
+            const auto indentedOutput = Lower(ternaryInput, style, options, protection);
+            const auto armIndent = indentation == formatter::IndentationKind::Tabs
+                ? std::string(4, '\t') : std::string(16, ' ');
+            auto indentedExpected = ternaryInput;
+            indentedExpected.replace(colonBegin, 8, branchIndent);
+            indentedExpected.replace(branchBegin, 8, armIndent);
+            indentedExpected.replace(questionBegin, 8, branchIndent);
+            EXPECT_EQ(indentedOutput.Text, indentedExpected);
+            const auto repeatedQuestion = parser::SourceOffset(
+                indentedExpected.find(branchIndent + "? left"));
+            const auto repeatedArm = parser::SourceOffset(
+                indentedExpected.find(armIndent + "right"));
+            const auto repeatedColon = parser::SourceOffset(
+                indentedExpected.find(branchIndent + ": otherLeft"));
+            const std::array repeatedOperatorScope{
+                parser::SourceRange{repeatedQuestion,
+                    repeatedQuestion + parser::SourceOffset(branchIndent.size())},
+                parser::SourceRange{repeatedArm,
+                    repeatedArm + parser::SourceOffset(armIndent.size())},
+                parser::SourceRange{repeatedColon,
+                    repeatedColon + parser::SourceOffset(branchIndent.size())}};
+            protection.EditScope = repeatedOperatorScope;
+            EXPECT_EQ(Lower(indentedOutput.Text, style, options, protection).Text,
+                indentedOutput.Text);
+            for (const auto& map : indentedOutput.Map) {
+                if (!map.Exact) {
+                    EXPECT_TRUE(std::any_of(operatorScope.begin(), operatorScope.end(),
+                        [&] (const auto range) {
+                            return map.Source.Begin >= range.Begin &&
+                                map.Source.End <= range.End;
+                        }));
+                }
+            }
         }
     }
 }

@@ -85,6 +85,9 @@ struct ExpressionPolicy
     // ThreePart couples both ternary breaks when the group breaks; it alone
     // never forces a fitting flat expression to split (Break remains separate).
     TernaryLayout TernaryShape;
+    // Indent adds a level for the delimiters when their condition starts on
+    // an already-continued line; the condition keeps its ordinary anchors.
+    TernaryOperatorIndentation TernaryIndentation;
     IndentationPolicy Indent;
     BreakRequirement Break = BreakRequirement::IfNeeded;
     ListPacking Packing = ListPacking::Fill;

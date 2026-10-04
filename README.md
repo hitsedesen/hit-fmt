@@ -143,8 +143,14 @@ opened on the same line share one prospective continuation offset. Once a
 callee or another list owner starts on a continued line, its contents
 establish a new level; expressions still share the surrounding continuation.
 Ternary branches establish their own continuation scopes, so wrapped
-branch expressions indent relative to the branch line. These rules apply
-without nesting or context options. Structural control and lambda bodies,
+branch expressions indent relative to the branch line.
+`TernaryOperatorIndentation = Align` (the default) shares the surrounding
+continuation for `?` and `:`. `Indent` adds one continuation offset when
+the condition starts on an already-continued line; it does not alter
+continuations within the condition. With trailing operators, the setting
+controls the following branch lines instead. Fitting inline ternaries
+remain unchanged. These rules apply without general nesting or context
+options. Structural control and lambda bodies,
 braced initializer lists, and enum lists establish fresh indentation bases.
 Continuation offsets and block/delimiter alignment remain configurable.
 Block-aligned continuations reuse the enclosing anchor while sharing a

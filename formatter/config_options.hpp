@@ -312,6 +312,8 @@
         formatter::OperatorSide::Leading) \
     OPT(formatter::TernaryLayout, TernaryLayout, \
         formatter::TernaryLayout::Flexible) \
+    OPT(formatter::TernaryOperatorIndentation, TernaryOperatorIndentation, \
+        formatter::TernaryOperatorIndentation::Align) \
     OPT(formatter::CategoryLayout, ChainsLayout, \
         formatter::CategoryLayout::Inherit) \
     OPT(formatter::BreakRequirement, ChainsBreak,                            \

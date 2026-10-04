@@ -58,6 +58,7 @@ ShiftOperatorSide = Leading
 AssignmentOperatorSide = Trailing
 TernaryOperatorSide = Leading
 TernaryLayout = ThreePart
+TernaryOperatorIndentation = Align
 ChainsLayout = Canonical
 ChainsBreak = IfNeeded
 ChainsPacking = Fill
@@ -199,6 +200,12 @@ constexpr HelpSection HelpSections[] = {
         "ThreePart "
         "couples both breaks in a broken ternary; it "
             "alone does not force a fitting expression. "
+        "TernaryOperatorIndentation is Align (default) or Indent. Align shares "
+        "the surrounding continuation; Indent adds a continuation offset "
+        "when the condition starts on an already-continued line. Condition "
+        "continuations stay unchanged. For trailing operators it controls "
+        "the following branch lines. Inline ternaries remain unchanged. "
+        "Each branch has its own continuation scope for wrapped contents. "
         "ExpressionsBreak and ChainsBreak default independently to IfNeeded. "
         "ExpressionsPacking uses Fill or "
             "VerticalWhenBroken on precedence-aware "

@@ -1,0 +1,5 @@
+Layout = Preserve
+IndentationKind = Spaces
+IndentWidth = 4
+ContinuationOffset = 6
+TernaryOperatorIndentation = Indent

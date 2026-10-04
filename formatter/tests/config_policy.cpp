@@ -1071,6 +1071,32 @@ TEST(ConfigPolicy, PrefixValidationIsFinalOrderedAndCannotBeBypassed)
 
 } // namespace
 
+TEST(ConfigPolicy, TernaryOperatorIndentationRoundTripsAndValidates)
+{
+    formatter::Style style;
+    EXPECT_EQ(style.TernaryOperatorIndentation,
+        formatter::TernaryOperatorIndentation::Align);
+    for (const auto indentation : {formatter::TernaryOperatorIndentation::Align,
+        formatter::TernaryOperatorIndentation::Indent})
+    {
+        const TemporaryConfig config("TernaryOperatorIndentation = " +
+            std::string(formatter::SerializeConfigEnum(indentation)) + "\n");
+        auto loaded = formatter::LoadConfigFile(config.Path).FormattingStyle;
+        const formatter::PreparedFormat prepared(loaded);
+        loaded.TernaryOperatorIndentation = formatter::TernaryOperatorIndentation::Align;
+        EXPECT_EQ(prepared.Policies.Expressions.TernaryIndentation, indentation);
+    }
+    std::ostringstream output;
+    hit_fmt::PrintPreserveConfig(output);
+    EXPECT_NE(output.str().find("TernaryOperatorIndentation = Align\n"),
+        std::string::npos);
+    const TemporaryConfig invalid("TernaryOperatorIndentation = Shared\n");
+    EXPECT_THROW((void)formatter::LoadConfigFile(invalid.Path), std::runtime_error);
+    style.TernaryOperatorIndentation =
+        static_cast<formatter::TernaryOperatorIndentation>(255);
+    EXPECT_THROW((void)formatter::PreparedFormat(style), std::invalid_argument);
+}
+
 TEST(ConfigPolicy, LineEndingPreparationValidationAndDefaultSerialization)
 {
     formatter::Style style;

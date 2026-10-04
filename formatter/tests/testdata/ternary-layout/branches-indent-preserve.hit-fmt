@@ -1,0 +1,5 @@
+Layout = Preserve
+IndentationKind = Spaces
+IndentWidth = 4
+ColumnLimit = 80
+TernaryOperatorIndentation = Indent

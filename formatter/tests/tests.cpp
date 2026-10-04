@@ -557,8 +557,19 @@ std::vector<FormatCase> FormatCases()
     AddCases(
         cases,
         std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../ternary-layout",
-        {"branches-preserve", "branches-narrow"},
+        {
+            "branches-preserve",
+            "branches-narrow",
+            "branches-indent-preserve",
+            "branches-indent-narrow",
+            "branches-indent-trailing",
+        },
         "branches.input.cpp");
+    AddCases(
+        cases,
+        std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../ternary-layout",
+        {"operators-align", "operators-indent"},
+        "operators.input.cpp");
     cases
         .push_back(
             {

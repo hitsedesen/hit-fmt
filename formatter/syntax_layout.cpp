@@ -85,6 +85,9 @@ struct Group
     bool HasAnchor = false;
     document::GroupId Id = document::InvalidId;
     document::AnchorId Anchor = document::InvalidId;
+    // Delimiter placement may differ from the level shared by the condition.
+    document::AnchorId ContinuationAnchor = document::InvalidId;
+    bool IndentTernaryOperators = false;
     document::AnchorId Block = document::InvalidId;
     Index PrefixGap = None;
     bool AnchorAfterGap = false;
@@ -1123,6 +1126,8 @@ private:
             kind == NodeKind::AssignmentExpression ||
             kind == NodeKind::ConditionalExpression || Syntax_[id].String);
         if (kind == NodeKind::ConditionalExpression) {
+            Groups_[group].IndentTernaryOperators =
+                policy.TernaryIndentation == TernaryOperatorIndentation::Indent;
             // Each arm has its own continuation scope, beginning after the
             // delimiter's gap so the first operand stays on the branch line.
             // Descendants opened inline share that prospective level; any
@@ -3479,6 +3484,7 @@ private:
                         int32_t(fallback),
                         0,
                     });
+        group.ContinuationAnchor = group.Anchor;
     }
 
     void Emit()
@@ -3527,9 +3533,9 @@ private:
                                     group.Spec.Continuation,
                                 });
                 } else if (sharedAnchor && !group.Spec.StructuralBase) {
-                    // Expression scopes always share this level; only list
-                    // consumers need a render-time choice of continuation.
-                    group.Anchor = Groups_[continuation].Anchor;
+                    // Conditions and other expression scopes keep the shared
+                    // continuation; delimiter-specific indentation is separate.
+                    group.Anchor = Groups_[continuation].ContinuationAnchor;
                 } else if (group.HasAnchor) {
                     group.Anchor =
                         Document_
@@ -3549,8 +3555,27 @@ private:
                                     group.Spec.StructuralBase,
                                     group.Spec.Continuation,
                                     sharedAnchor
-                                        ? Groups_[continuation].Anchor
+                                        ? Groups_[continuation]
+                                            .ContinuationAnchor
                                         : document::InvalidId,
+                                });
+                }
+                group.ContinuationAnchor = group.Anchor;
+                if (group.IndentTernaryOperators) {
+                    // Capture at the condition's start, not after its wrapped
+                    // operands. Only the delimiter gaps use this new level;
+                    // condition descendants keep the shared continuation.
+                    group.Anchor =
+                        Document_
+                            .MarkAnchor(
+                                {
+                                    document::AnchorKind::BlockRelative,
+                                    int32_t(group.Indent.ContinuationOffset),
+                                    0,
+                                    0,
+                                    true,
+                                    true,
+                                    group.ContinuationAnchor,
                                 });
                 }
                 group.Id = Document_.BeginGroup(group.Spec);

@@ -113,6 +113,7 @@ ShiftOperatorSide = Leading
 AssignmentOperatorSide = Trailing
 TernaryOperatorSide = Leading
 TernaryLayout = ThreePart
+TernaryOperatorIndentation = Align
 GroupingInteriorSpacing = NoSpace
 CastArgumentSpacing = NoSpace
 CastSpacing = NoSpace
