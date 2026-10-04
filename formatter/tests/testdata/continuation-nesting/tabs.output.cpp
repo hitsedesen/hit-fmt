@@ -1,8 +1,8 @@
 void inspect() {
     bool joined =
 	first() ||
-	(second() &&
-	third());
+	    (second() &&
+		third());
     auto result =
 	outer(
 	    inner(
@@ -24,15 +24,15 @@ void inspect() {
 	items, [&](auto item) {
 	    bool valid =
 		first() ||
-		second();
+		    second();
 	    return accept(
 		item, valid);
 	}))
     {
 	bool ready =
 	    first() ||
-	    (second() &&
-	    third());
+		(second() &&
+		    third());
 	auto bodyResult =
 	    outer(
 		inner(
@@ -48,11 +48,11 @@ void inspect() {
     }
     for (int index =
 	initial() +
-	adjustment(); index <
-	bound(); ++index)
+	    adjustment(); index <
+		bound(); ++index)
     {
 	bool remaining =
 	    first() ||
-	    second();
+		second();
     }
 }

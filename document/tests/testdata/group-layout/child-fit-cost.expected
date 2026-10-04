@@ -1,0 +1,14 @@
+short call
+lhs !=
+    lookup(tiny);
+long call
+lhs != lookup(
+    firstLongArg,
+    secondLongArg);
+chain penalty=0
+lhs != object
+    .lookup(first, second);
+chain penalty=2
+lhs != object.lookup(
+    first,
+    second);

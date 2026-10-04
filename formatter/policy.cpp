@@ -207,7 +207,7 @@ void ValidatePolicyStyle(const Style& style)
     {
         throw std::invalid_argument(
             "IncludeGrouping = Regroup requires one empty line, exceeding "
-            "MaxEmptyLines = 0");
+                "MaxEmptyLines = 0");
     }
     ValidateIncludeGroupPrefixes(style.IncludeGroupPrefixes);
     if (style.ExpressionsAlignment != ExpressionAlignment::Block &&
@@ -235,7 +235,7 @@ void ValidatePolicyStyle(const Style& style)
         *style.ConstructorBracePlacement != BracePlacement::Attached &&
         *style.ConstructorBracePlacement != BracePlacement::NextLine &&
         *style.ConstructorBracePlacement !=
-        BracePlacement::NextLineIfHeaderBroken)
+            BracePlacement::NextLineIfHeaderBroken)
     {
         throw std::invalid_argument(
             "ConstructorBracePlacement has invalid value");

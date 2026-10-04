@@ -1,5 +1,5 @@
 void f()
 {
-    values
+    Values().prepare()
         .push_back({one, two});
 }

@@ -1,0 +1,64 @@
+flat captures
+spaces
+wrap(
+            [first, second] {
+                leaf;
+            });
+---
+flat captures
+tabs
+wrap(
+            [first, second] {
+		leaf;
+	    });
+---
+broken captures
+spaces
+wrap(
+            [
+                first,
+                second] {
+                    leaf;
+                });
+---
+broken captures
+tabs
+wrap(
+            [
+		first,
+		second] {
+		    leaf;
+		});
+---
+flat captures
+spaces
+wrap(\r
+		[first, second] {\r
+                    leaf;\r
+                });
+---
+flat captures
+tabs
+wrap(\r
+		[first, second] {\r
+		    leaf;\r
+		});
+---
+broken captures
+spaces
+wrap(\r
+		[\r
+                    first,\r
+                    second] {\r
+                        leaf;\r
+                    });
+---
+broken captures
+tabs
+wrap(\r
+		[\r
+		    first,\r
+		    second] {\r
+			leaf;\r
+		    });
+---

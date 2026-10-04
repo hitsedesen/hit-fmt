@@ -28,3 +28,12 @@ text::CodePoint detail::Cursor<Box<T>>::Read() {
     return {};
 }
 text::CodePoint detail::Cursor<Reader>::Read();
+template<class Signature> struct Signal;
+template<class Result, class... Items>
+struct Signal<Result(Items...)> {
+    Signal Route(ExecutorPtr executor) const &;
+};
+template<class Result, class... Items>
+Signal<Result(Items...)> Signal<Result(Items...)>::Route(ExecutorPtr executor) const & {
+    return {};
+}

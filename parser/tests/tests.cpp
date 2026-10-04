@@ -89,10 +89,9 @@ void AppendTriviaList(
     output.push_back('\n');
     for (auto* item = trivia.First; item; item = item->Next) {
         AppendIndent(output, depth + 1);
-        output +=
-            item->Kind == parser::TriviaKind::Comment
-                ? "(comment "
-                : "(whitespace ";
+        output += item->Kind == parser::TriviaKind::Comment
+            ? "(comment "
+            : "(whitespace ";
         AppendQuoted(output, tree.SourceText(item->Source));
         output += ")\n";
     }
@@ -233,12 +232,11 @@ std::string SerializePunctuationRoles(const parser::SyntaxTree& tree)
         if (role == parser::PunctuationRole::None) {
             continue;
         }
-        output +=
-            std::format(
-                "{}: {} {}\n",
-                index,
-                tree.TokenText(index),
-                RoleName(role));
+        output += std::format(
+            "{}: {} {}\n",
+            index,
+            tree.TokenText(index),
+            RoleName(role));
     }
     return output;
 }
@@ -317,6 +315,73 @@ std::vector<const Node*> LambdaOwnershipNodes(
         }
     }
     return found;
+}
+
+TEST(Parser, ConditionalFragmentsKeepRolesAndBodies)
+{
+    const test::golden::Fixture fixture{
+        PARSER_TESTDATA_DIR,
+        "preprocessing_fragments"};
+    PaddedInput input(fixture.InputNamed(".in"));
+    auto tree = parser::Parse(input.View(), [](parser::ParseError) {});
+    const auto expressions = LambdaOwnershipNodes(
+        tree.Root(), parser::NodeKind::Expression);
+    for (const auto* expression : expressions) {
+        EXPECT_NE(tree.Kind(expression->Tokens.Begin),
+            tokenizer::TokenKind::PreprocessingDirective);
+    }
+    const auto constructors = LambdaOwnershipNodes(
+        tree.Root(), parser::NodeKind::FunctionDefinition);
+    size_t constructorCount = 0;
+    for (const auto* function : constructors) {
+        if (function->GetFunctionKind() == parser::FunctionKind::Constructor) {
+            ++constructorCount;
+            const auto bodies = LambdaOwnershipNodes(
+                *function, parser::NodeKind::CompoundStatement);
+            ASSERT_EQ(bodies.size(), 1u);
+            EXPECT_EQ(bodies[0]->Tokens.End, function->Tokens.End);
+        }
+    }
+    EXPECT_EQ(constructorCount, 3u);
+    for (parser::TokenIndex token = 0; token + 1 < tree.TokenCount(); ++token) {
+        if (tree.TokenText(token) == "*" && tree.TokenText(token + 1) == "this") {
+            EXPECT_EQ(tree.Role(token), parser::PunctuationRole::UnaryOperator);
+        }
+    }
+}
+
+TEST(Parser, ConditionalFragmentProofIsBounded)
+{
+    for (const bool nesting : {false, true}) {
+        std::string source = "void f(){consume(\n";
+        const size_t levels = nesting ? 40 : 1;
+        for (size_t i = 0; i < levels; ++i) {
+            source += "#if FLAG\n";
+        }
+        source += "value";
+        if (!nesting) {
+            for (size_t i = 0; i < 2200; ++i) {
+                source += "+value";
+            }
+        }
+        source += ",\n";
+        for (size_t i = 0; i < levels; ++i) {
+            source += "#endif\n";
+        }
+        source += "*this); auto following=left*right;}\n";
+        PaddedInput input(source);
+        auto tree = parser::Parse(input.View(), [](parser::ParseError) {});
+        EXPECT_FALSE(LambdaOwnershipNodes(
+            tree.Root(), parser::NodeKind::UnparsedSyntax).empty());
+        bool following = false;
+        for (parser::TokenIndex t = 0; t + 1 < tree.TokenCount(); ++t) {
+            if (tree.TokenText(t) == "*" && tree.TokenText(t + 1) == "right") {
+                EXPECT_EQ(tree.Role(t), parser::PunctuationRole::BinaryOperator);
+                following = true;
+            }
+        }
+        EXPECT_TRUE(following);
+    }
 }
 
 TEST(Parser, MacroShapedControlHeaderRetainsRecoveryAndIndependentBody)
@@ -1792,6 +1857,7 @@ INSTANTIATE_TEST_SUITE_P(
         GoldenCase{"expressions"},
         GoldenCase{"separated_lists"},
         GoldenCase{"preprocessing"},
+        GoldenCase{"preprocessing_fragments"},
         GoldenCase{"modules_and_concepts"},
         GoldenCase{"requires_clause_boundaries"},
         GoldenCase{"requires_return_boundaries"},
@@ -1814,8 +1880,8 @@ INSTANTIATE_TEST_SUITE_P(
         GoldenCase{"extensions"},
         GoldenCase{"recovery", true}, GoldenCase{"terminal_constructor_boundaries"}),
     [] (const auto& info) {
-    return info.param.Name;
-});
+        return info.param.Name;
+    });
 
 TEST(Parser, RebindsWhitespaceWithoutReclassifyingTokens)
 {

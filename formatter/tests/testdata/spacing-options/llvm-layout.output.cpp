@@ -2,8 +2,7 @@ void render(bool Alpha, bool Beta, bool Gamma, bool Delta, bool Epsilon, bool Ze
   while (Alpha && Beta && Gamma && Delta &&
          Epsilon && Zeta) {
     wrong();
-    assert(
-           Alpha && Beta && Gamma && Delta &&
+    assert(Alpha && Beta && Gamma && Delta &&
            Epsilon && Zeta);
     record->longMemberFieldName =
       calculateValue();
@@ -25,9 +24,8 @@ void render(bool Alpha, bool Beta, bool Gamma, bool Delta, bool Epsilon, bool Ze
     }
   }
 }
-int Values[] =
-  {100000000, 200000000, 300000000, 400000000,
-    500000000, 600000000};
+int Values[] = {100000000, 200000000, 300000000,
+                400000000, 500000000, 600000000};
 namespace small {
 int X;
 }

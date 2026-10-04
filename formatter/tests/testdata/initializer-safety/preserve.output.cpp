@@ -26,17 +26,15 @@ void inspect()
         {
             entry{"initial-key", "initial-value"}, entry{"terminal-key", "terminal-value"},
         });
-    int rows[][2] =
-        {
-            {firstLongElement, secondLongElement},
-            {thirdLongElement, fourthLongElement}
-        };
-    int existing[] =
-        {
-            firstLongElement,
-            secondLongElement,
-            thirdLongElement,
-            fourthLongElement,
-        };
+    int rows[][2] = {
+        {firstLongElement, secondLongElement},
+        {thirdLongElement, fourthLongElement}
+    };
+    int existing[] = {
+        firstLongElement,
+        secondLongElement,
+        thirdLongElement,
+        fourthLongElement,
+    };
     int compact[] = {1, 2,};
 }

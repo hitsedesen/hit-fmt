@@ -1,6 +1,5 @@
 void f() {
-    assert(
-           check(alpha) &&
+    assert(check(alpha) &&
            verify(beta) &&
            confirm(gamma));
 }

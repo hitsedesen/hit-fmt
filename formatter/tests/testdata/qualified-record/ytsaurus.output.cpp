@@ -8,12 +8,17 @@ struct Host
     struct Aligned;
     struct Extended;
 };
-struct[[nodiscard]]Host::Value
+struct [[nodiscard]] Host::Value
 {
     int stored;
     Value(int v): stored(v)
     { }
 };
+template <class T> class Deferred;
+template <> class [[nodiscard]] Deferred<void>
+{ };
+struct [[maybe_unused]] [[deprecated("legacy")]] Decorated
+{ };
 struct Host::Pointer
 {
     int* stored;

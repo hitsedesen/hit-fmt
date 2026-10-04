@@ -29,5 +29,5 @@ void inspect() {
 
     bool ready =
         Left() ||
-        Right();
+            Right();
 }

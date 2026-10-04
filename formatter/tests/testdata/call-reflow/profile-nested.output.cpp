@@ -6,19 +6,9 @@ void Execute()
                 [&] {
                     auto nested = [&] {
                         auto guard = Guard(lock);
-                        EXPECT_THROW(
-                            WaitFor(
-                                pipelineReady
-                                    .ToFuture())
-                                .ThrowOnError(),
-                            TQuotaExpiredException);
+                        EXPECT_THROW(WaitFor(pipelineReady.ToFuture()).ThrowOnError(), TQuotaExpiredException);
                         EXPECT_THROW(CheckQuota(), TQuotaExpiredException);
-                        OTHER_ASSERT(
-                            WaitFor(
-                                pipelineReady
-                                    .ToFuture())
-                                .ThrowOnError(),
-                            TQuotaExpiredException);
+                        OTHER_ASSERT(WaitFor(pipelineReady.ToFuture()).ThrowOnError(), TQuotaExpiredException);
                         auto outstanding = started - completed;
                         THROW_ERROR_EXCEPTION_UNLESS(
                             outstanding <= configuredLimit,
@@ -35,12 +25,7 @@ void Execute()
 struct DeferredState
 {
     DeferredState(const Options& options)
-        : token(
-            (options
-                .Enabled || options
-                .WaitForReply)
-            ? MakeToken()
-            : EmptyToken())
+        : token((options.Enabled || options.WaitForReply) ? MakeToken() : EmptyToken())
     { }
 };
 

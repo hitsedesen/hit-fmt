@@ -15,13 +15,12 @@ int mixed(int alpha, int beta) {
         + alpha * beta;
 }
 void update(int& result, int alpha, int beta) {
-    result =
-        alpha + beta + alpha
-        + beta;
-    result =
-        alpha + beta + alpha
+    result = alpha + beta
+        + alpha + beta;
+    result = alpha + beta
+        + alpha
         + beta; // keep comment
     result =
         alpha + beta + alpha
-        + beta; /* keep comment */
+            + beta; /* keep comment */
 }

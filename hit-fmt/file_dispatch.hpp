@@ -76,8 +76,7 @@ bool RunParallelFiles(
                         ready.wait(
                             lock,
                             [&] {
-                                bool canClaim =
-                                    !pending.empty() &&
+                                bool canClaim = !pending.empty() &&
                                     bufferedBytes < BufferedOutputLimit;
                                 return stop || canClaim ||
                                     (discoveryDone && pending.empty());
@@ -132,7 +131,7 @@ bool RunParallelFiles(
                             [&] {
                                 return stop ||
                                     results.size() + batch.Paths.size() <=
-                                    pendingFileLimit;
+                                        pendingFileLimit;
                             });
                         if (stop) {
                             return false;
@@ -221,8 +220,7 @@ bool RunParallelFiles(
                 if (results.empty()) {
                     break;
                 }
-                bufferedBytes -=
-                    results.front()->Output.size() +
+                bufferedBytes -= results.front()->Output.size() +
                     results.front()->Error.size();
                 result = std::move(*results.front());
                 results.pop_front();

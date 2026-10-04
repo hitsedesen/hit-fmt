@@ -11,7 +11,9 @@
     "}" ";"
   )
   (record-declaration
-    "struct" "[" "[" "nodiscard" "]" "]" "Host" "::" "Value" "{"
+    "struct"
+    (attribute-specifier "[" "[" "nodiscard" "]" "]")
+    "Host" "::" "Value" "{"
     (declaration
       (declaration-specifiers "int")
       (init-declarator-list
@@ -65,6 +67,36 @@
       (compound-statement "{" "}")
     )
     "}" ";"
+  )
+  (template-declaration
+    "template"
+    (template-parameter-list
+      "<"
+      (template-parameter "class" "T")
+      ">"
+    )
+    (record-declaration "class" "Deferred" ";")
+  )
+  (template-declaration
+    "template"
+    (template-parameter-list "<" ">")
+    (record-declaration
+      "class"
+      (attribute-specifier "[" "[" "nodiscard" "]" "]")
+      "Deferred"
+      (template-argument-list
+        "<"
+        (template-argument "void")
+        ">"
+      )
+      "{" "}" ";"
+    )
+  )
+  (record-declaration
+    "struct"
+    (attribute-specifier "[" "[" "maybe_unused" "]" "]")
+    (attribute-specifier "[" "[" "deprecated" "(" "\"legacy\"" ")" "]" "]")
+    "Decorated" "{" "}" ";"
   )
   (record-declaration
     "struct" "Host" "::" "Pointer" "{"

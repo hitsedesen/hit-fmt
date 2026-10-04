@@ -28,10 +28,9 @@ enum class Mode
 void Run(int item)
 {
     auto total = Collect(item, 2); 	// retain the ordinary comment gap
-    auto result =
-        BuildSessionForRequest()
-            .SelectUnusuallyLongProcessingModeForCurrentRequest()
-            .FinalizeUnusuallyLongOutputForCurrentRequest();
+    auto result = BuildSessionForRequest()
+        .SelectUnusuallyLongProcessingModeForCurrentRequest()
+        .FinalizeUnusuallyLongOutputForCurrentRequest();
     if (item) {
         Collect(item, 3);
     }

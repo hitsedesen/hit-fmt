@@ -104,6 +104,9 @@ struct AnchorSpec
     bool Continuation = false;
     // Reuse this captured anchor only while sharing the enclosing level.
     AnchorId SharedWith = InvalidId;
+    // Capture physical leading indentation, even across preserved layout gaps.
+    // Requires StructuralBase and excludes continuation sharing.
+    bool LineBase = false;
 };
 
 struct GroupSpec
@@ -117,10 +120,20 @@ struct GroupSpec
     bool ExpressionContinuation = false;
     // Independent child layout uses only realized enclosing continuation.
     bool StructuralBase = false;
-    // Same-line scopes share the first continuation offset. Structural
-    // consumers start a new level after an enclosing continuation line.
+    // Starters on the same physical line share the first continuation offset.
+    // A starter reached after a newline begins a new continuation level.
     // Structural bodies exclude still-prospective levels and fence sharing.
     bool Continuation = false;
+    // Fill may keep owned gaps flat while descendants break. Syntax can
+    // disable this when the owner's breaks express a precedence-level choice.
+    // Consistent groups always retain their coupled topology.
+    bool ChildBreaks = true;
+    // Extra cost per owned newline in bounded layout selection (0..3).
+    // Syntax can discourage breaks through tightly coupled constructs.
+    std::uint8_t BreakPenalty = 0;
+    // Use this physical line's indentation as an independent structural base.
+    // Requires StructuralBase and excludes continuation sharing.
+    bool LineBase = false;
 };
 
 enum class Error : std::uint8_t
@@ -318,7 +331,12 @@ private:
         bool ForceBreak = false;
         bool ExpressionContinuation = false;
         bool StructuralBase = false;
-        bool Continuation = false;
+        // Share the original continuation flag byte; child fitting must not
+        // enlarge every document atom.
+        bool Continuation : 1 = false;
+        bool ChildBreaks : 1 = true;
+        std::uint8_t BreakPenalty : 2 = 0;
+        bool LineBase : 1 = false;
     };
 
     std::uint32_t Add(Node node);

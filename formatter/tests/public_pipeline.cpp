@@ -63,8 +63,8 @@ void CheckIdentities(
         const auto map = result.OriginalTokens[i];
         if (map.Present) {
             EXPECT_EQ(
-                std::string_view(result.Text)
-                    .substr(
+                std::string_view(
+                    result.Text).substr(
                         map.Output.Begin,
                         map.Output.End - map.Output.Begin),
                 tree.TokenText(i)) << i;
@@ -75,14 +75,13 @@ void CheckIdentities(
         EXPECT_LE(map.Output.End, result.Text.size());
         if (map.Exact && map.HasOriginal) {
             EXPECT_EQ(
-                std::string_view(result.Text)
-                    .substr(
+                std::string_view(
+                    result.Text).substr(
                         map.Output.Begin,
                         map.Output.End - map.Output.Begin),
-                source
-                    .substr(
-                        map.Original.Begin,
-                        map.Original.End - map.Original.Begin));
+                source.substr(
+                    map.Original.Begin,
+                    map.Original.End - map.Original.Begin));
         }
         if (map.Action != formatter::NoStructuralAction) {
             ASSERT_LT(map.Action, result.StructuralOperations.size());
@@ -840,7 +839,8 @@ TEST(PublicPipeline, DeclarationFallbackRequiresRebuiltOwnerAndEditableGap)
 {
     const std::string source = "template<class T> struct Box {};\n"
         "Box<int>  make(){return {};}\n"
-        "Box<int>  flat();\n";
+        "Box<int>  flat();\n"
+        "Box<int>\nOwner<int>::method(){return {};}\n";
     auto style = formatter::Style{};
     style.DeclarationHeadersLayout = formatter::CategoryLayout::Canonical;
     const formatter::PreparedFormat prepared(style);
@@ -849,6 +849,8 @@ TEST(PublicPipeline, DeclarationFallbackRequiresRebuiltOwnerAndEditableGap)
     const auto result = FormatInput(source, prepared);
     EXPECT_NE(result.Text.find("Box<int> make()"), std::string::npos);
     EXPECT_NE(result.Text.find("Box<int>  flat()"), std::string::npos);
+    EXPECT_NE(result.Text.find("Box<int> Owner<int>::method()"),
+        std::string::npos);
     CheckIdentities(source, result);
     EXPECT_EQ(FormatInput(result.Text, prepared).Text, result.Text);
 
@@ -868,10 +870,31 @@ TEST(PublicPipeline, DeclarationFallbackRequiresRebuiltOwnerAndEditableGap)
     EXPECT_NE(protectedGap.Text.find("Box<int>  make()"), std::string::npos);
     CheckIdentities(source, protectedGap);
 
+    const auto qualifiedGap = uint32_t(source.find("\nOwner"));
+    const auto qualifiedBegin = uint32_t(source.rfind("Box<int>", qualifiedGap));
+    const auto qualifiedEnd = uint32_t(source.size());
+    const std::array qualifiedScope{
+        parser::SourceRange{qualifiedBegin, qualifiedEnd}};
+    const std::array immutableQualifiedGap{
+        parser::SourceRange{qualifiedGap, qualifiedGap + 1}};
+    const auto qualified = FormatInput(source, prepared,
+        {.SourceMap = true, .EditScope = qualifiedScope});
+    EXPECT_NE(qualified.Text.find("Box<int> Owner<int>::method()"),
+        std::string::npos) << qualified.Text;
+    CheckIdentities(source, qualified);
+    CheckExcludedCopies(source, qualified, qualifiedScope);
+    const auto qualifiedProtected = FormatInput(source, prepared,
+        {.ImmutableRanges = immutableQualifiedGap, .SourceMap = true});
+    EXPECT_NE(qualifiedProtected.Text.find("Box<int>\nOwner<int>::method()"),
+        std::string::npos);
+    CheckIdentities(source, qualifiedProtected);
+
     style.DeclarationHeadersLayout = formatter::CategoryLayout::Preserve;
     style.Layout = formatter::LayoutMode::Canonical;
     const auto preserved = FormatInput(source, formatter::PreparedFormat(style));
     EXPECT_NE(preserved.Text.find("Box<int>  make()"), std::string::npos);
+    EXPECT_NE(preserved.Text.find("Box<int>\nOwner<int>::method()"),
+        std::string::npos);
 }
 
 TEST(PublicPipeline, DeclarationHeaderBreaksRespectWidthAndByteAuthority)
@@ -919,6 +942,80 @@ TEST(PublicPipeline, DeclarationHeaderBreaksRespectWidthAndByteAuthority)
     const auto preserved = FormatInput(firstLine,
         formatter::PreparedFormat(style));
     EXPECT_NE(preserved.Text.find("> ReadFirstResult"), std::string::npos);
+}
+
+TEST(PublicPipeline, LambdaLineBasesKeepSourceAuthority)
+{
+    const auto directory = std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../lambda-captures";
+    const auto input = test::golden::ReadFile(directory / "profile.input.cpp");
+    const auto style = formatter::LoadConfigFile(directory / "../../../../hit-fmt/examples/ytsaurus.hit-fmt").FormattingStyle;
+    const formatter::PreparedFormat prepared(style);
+    for (const bool crlf : {false, true}) {
+        std::string source;
+        source.reserve(input.size() * (crlf ? 2 : 1));
+        for (const char c : input) {
+            if (crlf && c == '\n') {
+                source += '\r';
+            }
+            source += c;
+        }
+        const auto result = FormatInput(source, prepared, {.SourceMap = true});
+        CheckIdentities(source, result);
+        EXPECT_TRUE(result.Diagnostics.empty());
+        EXPECT_EQ(FormatInput(result.Text, prepared).Text, result.Text);
+        EXPECT_NE(result.Text.find("                auto guard ="), std::string::npos);
+        const auto begin = uint32_t(source.find("class Adapter"));
+        const std::array scope{parser::SourceRange{begin, uint32_t(source.size())}};
+        const auto scoped = FormatInput(source, prepared, {.SourceMap = true, .EditScope = scope});
+        CheckExcludedCopies(source, scoped, scope);
+        CheckIdentities(source, scoped);
+        EXPECT_NE(scoped.Text.find("                auto guard ="), std::string::npos);
+        const auto guardBegin = uint32_t(source.find("                    InvokerGuard", begin));
+        const auto guardEnd = uint32_t(source.find("                    callback();", guardBegin));
+        const std::array immutable{parser::SourceRange{guardBegin, guardEnd}};
+        const auto frozen = FormatInput(source, prepared,
+            {.ImmutableRanges = immutable, .SourceMap = true});
+        CheckIdentities(source, frozen);
+        EXPECT_NE(frozen.Text.find(source.substr(guardBegin, guardEnd - guardBegin)), std::string::npos);
+    }
+}
+
+TEST(PublicPipeline, ConditionalFragmentsKeepSourceAuthority)
+{
+    const auto directory = std::filesystem::path(FORMATTER_TESTDATA_DIR) /
+        "../preprocessing-fragments";
+    const auto source = test::golden::ReadFile(directory / "canonical.input.cpp");
+    const auto style = formatter::LoadConfigFile(
+        directory / "../../../../hit-fmt/examples/ytsaurus.hit-fmt").FormattingStyle;
+    const formatter::PreparedFormat prepared(style);
+    const auto result = FormatInput(source, prepared, {.SourceMap = true});
+    CheckIdentities(source, result);
+    EXPECT_EQ(FormatInput(result.Text, prepared).Text, result.Text);
+
+    const auto splitBegin = source.find("    auto a =\n");
+    const auto splitEnd = source.find("\n}", splitBegin);
+    ASSERT_NE(splitBegin, std::string::npos);
+    EXPECT_NE(result.Text.find(source.substr(splitBegin, splitEnd - splitBegin)),
+        std::string::npos);
+
+    const auto begin = uint32_t(source.find("void Arguments()"));
+    const auto end = uint32_t(source.find("void Parameters(", begin));
+    const std::array scope{parser::SourceRange{begin, end}};
+    const auto scoped = FormatInput(
+        source, prepared, {.SourceMap = true, .EditScope = scope});
+    CheckIdentities(source, scoped);
+    CheckExcludedCopies(source, scoped, scope);
+    EXPECT_NE(scoped.Text.find("left + delta"), std::string::npos);
+
+    const auto immutableBegin = uint32_t(source.find("    Consume(first,\n"));
+    const auto immutableEnd = uint32_t(source.find(
+        "    Consume(\n", immutableBegin));
+    const std::array immutable{parser::SourceRange{immutableBegin, immutableEnd}};
+    const auto protectedResult = FormatInput(
+        source, prepared, {.ImmutableRanges = immutable, .SourceMap = true});
+    EXPECT_NE(protectedResult.Text.find(source.substr(
+        immutableBegin, immutableEnd - immutableBegin)), std::string::npos);
+    CheckIdentities(source, protectedResult);
 }
 
 TEST(PublicPipeline, RepositoryAndYtsaurusControlHeadersFitWithoutTokenChanges)
@@ -2255,8 +2352,8 @@ formatter::Style EndingStyle(std::string_view name)
 {
     return formatter::LoadConfigFile(
         std::filesystem::path(__FILE__).parent_path() /
-        "testdata/line-endings" / (std::string(name) + ".hit-fmt"))
-        .FormattingStyle;
+            "testdata/line-endings" /
+            (std::string(name) + ".hit-fmt")).FormattingStyle;
 }
 
 TEST(PublicPipeline, LineEndingWholeAtomsScopeAndExistingEOFReplacement)

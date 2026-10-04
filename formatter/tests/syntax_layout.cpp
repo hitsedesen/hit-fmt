@@ -25,7 +25,7 @@ Output Lower(
     const formatter::SourceAnalysisOptions& protection = {},
     std::pmr::memory_resource* fileUpstream = std::pmr::get_default_resource(),
     std::pmr::memory_resource* scratchUpstream =
-    std::pmr::get_default_resource())
+        std::pmr::get_default_resource())
 {
     const auto size = input.size();
     input.append(util::SourcePaddingSize, '\0');
@@ -39,25 +39,24 @@ Output Lower(
     auto spacing =
         formatter::BuildSyntaxSpacing(tree, safety, policies, file, scratch);
     document::Document document(tree.Source(), &file);
-    const auto status =
-        formatter::BuildSyntaxDocument(
-            tree,
-            policies,
-            annotations,
-            safety,
-            spacing,
-            document,
-            scratch,
-            options);
+    const auto status = formatter::BuildSyntaxDocument(
+        tree,
+        policies,
+        annotations,
+        safety,
+        spacing,
+        document,
+        scratch,
+        options);
     EXPECT_TRUE(status) << "lowering error " << int(status.Code) << " token "
         << status.Token << " core " << int(status.Core.Code);
     if (!status) {
         throw std::runtime_error("failed syntax lowering");
     }
     scratch.release(); // The document must not retain planner storage.
-    const auto rendered =
-        document
-            .Render(formatter::SyntaxRenderPolicy(policies, options), &file);
+    const auto rendered = document.Render(
+        formatter::SyntaxRenderPolicy(policies, options),
+        &file);
     EXPECT_TRUE(rendered.State) << "core " << int(rendered.State.Code);
     if (!rendered.State) {
         throw std::runtime_error("failed rendering");
@@ -112,8 +111,8 @@ void ExpectSplitGapMap(
             continue;
         }
         EXPECT_EQ(
-            std::string_view(output.Text)
-                .substr(
+            std::string_view(
+                output.Text).substr(
                     generated.OutputBegin,
                     generated.OutputEnd - generated.OutputBegin),
             prefix);
@@ -123,8 +122,8 @@ void ExpectSplitGapMap(
         EXPECT_EQ(borrowed.Source.End, sourceEnd);
         EXPECT_EQ(generated.OutputEnd, borrowed.OutputBegin);
         EXPECT_EQ(
-            std::string_view(output.Text)
-                .substr(
+            std::string_view(
+                output.Text).substr(
                     borrowed.OutputBegin,
                     borrowed.OutputEnd - borrowed.OutputBegin),
             indent);
@@ -776,7 +775,7 @@ TEST(SyntaxLayout, HeaderDecisionEndsBeforeExpandedBody)
             .Text;
     EXPECT_NE(preserved.find("void f(int x,\n"), std::string::npos)
         << preserved;
-    EXPECT_NE(preserved.find("alpha\n  + beta"), std::string::npos)
+    EXPECT_NE(preserved.find("alpha\n    + beta"), std::string::npos)
         << preserved;
     EXPECT_NE(preserved.find(")\n{"), std::string::npos);
     EXPECT_EQ(Lower(preserved, style).Text, preserved);
@@ -1253,6 +1252,8 @@ TEST(SyntaxLayout, InitializerCommaFollowsOutputShapeNotInputComma)
     EXPECT_EQ(a.find("beta,"), std::string::npos);
     style.ColumnLimit = 16;
     const auto fitting = Lower("int values[] = {alpha, beta,};\n", style).Text;
+    // Breaking the assignment keeps the list flat at the same line cost,
+    // so fewer multiline groups win and the conditional comma disappears.
     EXPECT_EQ(fitting.find("beta,"), std::string::npos);
     EXPECT_EQ(Lower(fitting, style).Text, fitting);
     style.ColumnLimit = 15;
@@ -1561,7 +1562,7 @@ TEST(SyntaxLayout, ExpressionContinuationDoesNotBecomeChildBlockBase)
     }
 }
 
-TEST(SyntaxLayout, ControlRootSharesAnchorWithoutCancelingReturnContinuation)
+TEST(SyntaxLayout, ControlRootStartsNewExpressionLevelAfterHeaderBreak)
 {
     auto style = Canonical(80);
     style.IndentWidth = 4;
@@ -1591,7 +1592,7 @@ TEST(SyntaxLayout, ControlRootSharesAnchorWithoutCancelingReturnContinuation)
             const auto headerIndent = alignment ==
                     formatter::ContinuationAlignment::Block ? 7u : 8u;
             EXPECT_EQ(lineIndent("alpha"), headerIndent) << output;
-            EXPECT_EQ(lineIndent("beta"), headerIndent) << output;
+            EXPECT_EQ(lineIndent("beta"), headerIndent + 7) << output;
             EXPECT_EQ(lineIndent("right"), 15u) << output;
             EXPECT_EQ(Lower(output, style).Text, output);
         }
@@ -1951,10 +1952,10 @@ TEST(SyntaxLayout, ContinuationScopesReindentOnlySelectedHorizontalBytes)
         {
             const auto input = "void f() {" + newline +
                 "    bool ready =" + newline + "        left ||" + newline +
-                "            right;" + newline + "}" + newline;
+                "                right;" + newline + "}" + newline;
             const auto begin = parser::SourceOffset(
-                input.find("            right"));
-            const std::array scope{parser::SourceRange{begin, begin + 12}};
+                input.find("                right"));
+            const std::array scope{parser::SourceRange{begin, begin + 16}};
             formatter::SourceAnalysisOptions protection;
             protection.EditScope = scope;
             formatter::SyntaxLayoutOptions options;
@@ -1963,9 +1964,9 @@ TEST(SyntaxLayout, ContinuationScopesReindentOnlySelectedHorizontalBytes)
             style.IndentationKind = indentation;
             const auto output = Lower(input, style, options, protection);
             const auto indent = indentation == formatter::IndentationKind::Tabs
-                ? std::string(2, '\t') : std::string(8, ' ');
+                ? std::string(3, '\t') : std::string(12, ' ');
             auto expected = input;
-            expected.replace(begin, 12, indent);
+            expected.replace(begin, 16, indent);
             EXPECT_EQ(output.Text, expected);
             const std::array repeatedScope{parser::SourceRange{
                 begin, begin + parser::SourceOffset(indent.size())}};
@@ -1975,7 +1976,7 @@ TEST(SyntaxLayout, ContinuationScopesReindentOnlySelectedHorizontalBytes)
             for (const auto& map : output.Map) {
                 if (!map.Exact) {
                     EXPECT_GE(map.Source.Begin, begin);
-                    EXPECT_LE(map.Source.End, begin + 12);
+                    EXPECT_LE(map.Source.End, begin + 16);
                 }
             }
             const auto callInput = "void f() {" + newline +
@@ -2029,7 +2030,7 @@ TEST(SyntaxLayout, ContinuationScopesReindentOnlySelectedHorizontalBytes)
             protection.EditScope = branchScope;
             const auto branchOutput = Lower(ternaryInput, style, options, protection);
             const auto branchIndent = indentation == formatter::IndentationKind::Tabs
-                ? std::string(2, '\t') : std::string(8, ' ');
+                ? std::string(3, '\t') : std::string(12, ' ');
             auto branchExpected = ternaryInput;
             branchExpected.replace(branchBegin, 16, branchIndent);
             EXPECT_EQ(branchOutput.Text, branchExpected);
@@ -2063,22 +2064,24 @@ TEST(SyntaxLayout, ContinuationScopesReindentOnlySelectedHorizontalBytes)
             const auto indentedOutput = Lower(ternaryInput, style, options, protection);
             const auto armIndent = indentation == formatter::IndentationKind::Tabs
                 ? std::string(3, '\t') : std::string(12, ' ');
+            const auto valueIndent = indentation == formatter::IndentationKind::Tabs
+                ? std::string(4, '\t') : std::string(16, ' ');
             auto indentedExpected = ternaryInput;
             indentedExpected.replace(colonBegin, 8, armIndent);
-            indentedExpected.replace(branchBegin, 16, armIndent);
+            indentedExpected.replace(branchBegin, 16, valueIndent);
             indentedExpected.replace(questionBegin, 8, armIndent);
             EXPECT_EQ(indentedOutput.Text, indentedExpected);
             const auto repeatedQuestion = parser::SourceOffset(
                 indentedExpected.find(armIndent + "? left"));
             const auto repeatedArm = parser::SourceOffset(
-                indentedExpected.find(armIndent + "right"));
+                indentedExpected.find(valueIndent + "right"));
             const auto repeatedColon = parser::SourceOffset(
                 indentedExpected.find(armIndent + ": otherLeft"));
             const std::array repeatedOperatorScope{
                 parser::SourceRange{repeatedQuestion,
                     repeatedQuestion + parser::SourceOffset(armIndent.size())},
                 parser::SourceRange{repeatedArm,
-                    repeatedArm + parser::SourceOffset(armIndent.size())},
+                    repeatedArm + parser::SourceOffset(valueIndent.size())},
                 parser::SourceRange{repeatedColon,
                     repeatedColon + parser::SourceOffset(armIndent.size())}};
             protection.EditScope = repeatedOperatorScope;
@@ -2358,10 +2361,11 @@ TEST(SyntaxLayout, AlwaysRequiresOwnedBoundariesButPreserveAndEmptyWin)
     style.ChainsBreak = formatter::BreakRequirement::Always;
     style.ExpressionsBreak = formatter::BreakRequirement::Always;
     style.CallLineFirstStringNames = {"message"};
+    style.ChainsPacking = formatter::ListPacking::VerticalWhenBroken;
     const auto output =
         Lower(
             "void f(){ call(item); empty(); "
-                "message(\"literal\"); factory()(item); "
+                "message(\"literal\"); factory()(item)(other); "
                 "x=first+second; }\n",
             style)
             .Text;

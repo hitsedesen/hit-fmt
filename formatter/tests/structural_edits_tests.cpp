@@ -60,32 +60,29 @@ std::string Dump(const StructuralPlan& plan)
     std::string result;
     for (size_t i = 0; i < plan.Operations.size(); ++i) {
         auto op = plan.Operations[i];
-        result +=
-            std::format(
-                "action {} kind={} tokens=[{},{})\n",
-                i,
-                static_cast<unsigned>(op.Kind),
-                op.Owner.Begin,
-                op.Owner.End);
+        result += std::format(
+            "action {} kind={} tokens=[{},{})\n",
+            i,
+            static_cast<unsigned>(op.Kind),
+            op.Owner.Begin,
+            op.Owner.End);
     }
     for (auto edit : plan.Edits) {
-        result +=
-            std::format(
-                "edit action={} source=[{},{}) edge={} depth={} pieces=",
-                edit.Operation,
-                edit.Source.Begin,
-                edit.Source.End,
-                static_cast<unsigned>(edit.Boundary),
-                edit.Depth);
+        result += std::format(
+            "edit action={} source=[{},{}) edge={} depth={} pieces=",
+            edit.Operation,
+            edit.Source.Begin,
+            edit.Source.End,
+            static_cast<unsigned>(edit.Boundary),
+            edit.Depth);
         for (auto i = edit.PieceBegin; i < edit.PieceEnd; ++i) {
             const auto& piece = plan.Pieces[i];
-            result +=
-                piece.FromSource
-                    ? std::format(
-                        "source[{},{}) ",
-                        piece.Source.Begin,
-                        piece.Source.End)
-                    : std::format("'{}' ", piece.Literal);
+            result += piece.FromSource
+                ? std::format(
+                    "source[{},{}) ",
+                    piece.Source.Begin,
+                    piece.Source.End)
+                : std::format("'{}' ", piece.Literal);
         }
         if (result.ends_with(' ')) {
             result.pop_back();
@@ -93,13 +90,12 @@ std::string Dump(const StructuralPlan& plan)
         result += "\n";
     }
     for (auto skip : plan.Skipped) {
-        result +=
-            std::format(
-                "skip kind={} tokens=[{},{}) reason={}\n",
-                static_cast<unsigned>(skip.Action),
-                skip.Tokens.Begin,
-                skip.Tokens.End,
-                static_cast<unsigned>(skip.Reason));
+        result += std::format(
+            "skip kind={} tokens=[{},{}) reason={}\n",
+            static_cast<unsigned>(skip.Action),
+            skip.Tokens.Begin,
+            skip.Tokens.End,
+            static_cast<unsigned>(skip.Reason));
     }
     return result;
 }
@@ -109,8 +105,8 @@ void CheckMapping(File& file, const StructuralMaterialization& result)
         auto map = result.OriginalTokens[i];
         if (map.Present) {
             EXPECT_EQ(
-                std::string_view(result.Text)
-                    .substr(
+                std::string_view(
+                    result.Text).substr(
                         map.Output.Begin,
                         map.Output.End - map.Output.Begin),
                 file.Tree.TokenText(i));
@@ -126,8 +122,8 @@ void CheckMapping(File& file, const StructuralMaterialization& result)
         cursor = span.Output.End;
         if (!span.Generated) {
             EXPECT_EQ(
-                std::string_view(result.Text)
-                    .substr(
+                std::string_view(
+                    result.Text).substr(
                         span.Output.Begin,
                         span.Output.End - span.Output.Begin),
                 file.Tree.SourceText(span.Original));
@@ -153,7 +149,7 @@ std::vector<TokenOutputOffset> MapOutput(
     {
         EXPECT_EQ(tokens.TokenText(i), original.TokenText(i));
         auto r = tokens.Token(i).Text;
-        map[i] ={{r.Begin, r.End}, true};
+        map[i] = {{r.Begin, r.End}, true};
     }
     return map;
 }

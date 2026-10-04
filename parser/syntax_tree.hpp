@@ -331,7 +331,7 @@ namespace detail {
 inline constexpr size_t InitialMemoryResourceSize = 64 * 1024;
 
 template <class T, class... Args>
-[[nodiscard]] T* Make(std::pmr::memory_resource& memory, Args&& ... args)
+[[nodiscard]] T* Make(std::pmr::memory_resource& memory, Args&&... args)
 {
     static_assert(std::is_trivially_destructible_v<T>);
     return ::new (memory.allocate(sizeof(T), alignof(T)))
@@ -404,9 +404,9 @@ public:
         if (ChunkCount_ == 0) {
             return;
         }
-        Chunks_ =
-            static_cast<Chunk**>(Memory_
-                ->allocate(sizeof(Chunk*) * ChunkCount_, alignof(Chunk*)));
+        Chunks_ = static_cast<Chunk**>(Memory_->allocate(
+            sizeof(Chunk*) * ChunkCount_,
+            alignof(Chunk*)));
         auto* chunk = First_;
         for (uint32_t i = 0; i < ChunkCount_; ++i) {
             Chunks_[i] = chunk;
@@ -492,7 +492,7 @@ public:
     [[nodiscard]] uint32_t Add()
     {
         auto slot = Storage_.Append();
-        slot.ChunkPtr->Items[slot.Offset] ={};
+        slot.ChunkPtr->Items[slot.Offset] = {};
         return slot.Index;
     }
 
@@ -504,15 +504,15 @@ public:
     [[nodiscard]] TriviaAttachments& operator[](uint32_t index)
     {
         assert(index < Storage_.Size());
-        return Storage_.ResolveChunk(index / AttachmentsPerChunk)
-            ->Items[index % AttachmentsPerChunk];
+        return Storage_.ResolveChunk(
+            index / AttachmentsPerChunk)->Items[index % AttachmentsPerChunk];
     }
 
     [[nodiscard]] const TriviaAttachments& operator[](uint32_t index) const
     {
         assert(index < Storage_.Size());
-        return Storage_.ResolveChunk(index / AttachmentsPerChunk)
-            ->Items[index % AttachmentsPerChunk];
+        return Storage_.ResolveChunk(
+            index / AttachmentsPerChunk)->Items[index % AttachmentsPerChunk];
     }
 
 private:
@@ -559,16 +559,15 @@ public:
         chunk->HasPreprocessingDirective |=
             token.Kind == tokenizer::TokenKind::PreprocessingDirective;
         chunk->HasComment |= token.Kind == tokenizer::TokenKind::Comment;
-        chunk->Tokens[slot.Offset] =
-            {
-                .Text = token.Text,
-                .Line = token.Position.Line,
-                .Column = token.Position.Column,
-            };
+        chunk->Tokens[slot.Offset] = {
+            .Text = token.Text,
+            .Line = token.Position.Line,
+            .Column = token.Position.Column,
+        };
         chunk->Kinds[slot.Offset] = token.Kind;
         chunk->Roles[slot.Offset] =
             token.Kind >= tokenizer::TokenKind::Operator_OpenBrace &&
-            token.Kind <= tokenizer::TokenKind::Operator_Comma
+                token.Kind <= tokenizer::TokenKind::Operator_Comma
                 ? PunctuationRole::Generic
                 : PunctuationRole::None;
         chunk->MatchingDelimiters[slot.Offset] =
@@ -583,8 +582,8 @@ public:
     [[nodiscard]] const StoredToken& operator[](TokenIndex index) const
     {
         assert(index < Storage_.Size());
-        return Storage_.ChunkAt(index / TokensPerChunk)
-            ->Tokens[index % TokensPerChunk];
+        return Storage_.ChunkAt(
+            index / TokensPerChunk)->Tokens[index % TokensPerChunk];
     }
 
     [[nodiscard]] TokenIndex Size() const
@@ -595,29 +594,29 @@ public:
     [[nodiscard]] tokenizer::TokenKind Kind(TokenIndex index) const
     {
         assert(index < Storage_.Size());
-        return Storage_.ChunkAt(index / TokensPerChunk)
-            ->Kinds[index % TokensPerChunk];
+        return Storage_.ChunkAt(
+            index / TokensPerChunk)->Kinds[index % TokensPerChunk];
     }
 
     [[nodiscard]] PunctuationRole Role(TokenIndex index) const
     {
         assert(index < Storage_.Size());
-        return Storage_.ChunkAt(index / TokensPerChunk)
-            ->Roles[index % TokensPerChunk];
+        return Storage_.ChunkAt(
+            index / TokensPerChunk)->Roles[index % TokensPerChunk];
     }
 
     void SetRole(TokenIndex index, PunctuationRole role)
     {
         assert(index < Storage_.Size());
-        Storage_.ChunkAt(index / TokensPerChunk)
-            ->Roles[index % TokensPerChunk] = role;
+        Storage_.ChunkAt(
+            index / TokensPerChunk)->Roles[index % TokensPerChunk] = role;
     }
 
     [[nodiscard]] TokenIndex MatchingDelimiter(TokenIndex index) const
     {
         assert(index < Storage_.Size());
-        return Storage_.ChunkAt(index / TokensPerChunk)
-            ->MatchingDelimiters[index % TokensPerChunk];
+        return Storage_.ChunkAt(
+            index / TokensPerChunk)->MatchingDelimiters[index % TokensPerChunk];
     }
 
     void SetMatchingDelimiter(TokenIndex index, TokenIndex matching)
@@ -761,10 +760,9 @@ public:
     [[nodiscard]] std::string_view WhitespaceBefore(TokenIndex token) const
     {
         assert(token < TokenCount());
-        auto* begin =
-            token == 0
-                ? Input_.data()
-                : Input_.data() + Tokens_[token - 1].Text.End;
+        auto* begin = token == 0
+            ? Input_.data()
+            : Input_.data() + Tokens_[token - 1].Text.End;
         auto* end = Input_.data() + Tokens_[token].Text.Begin;
         return {begin, static_cast<size_t>(end - begin)};
     }
@@ -773,10 +771,9 @@ public:
     {
         assert(token < TokenCount());
         auto* begin = Input_.data() + Tokens_[token].Text.End;
-        auto* end =
-            token + 1 == TokenCount()
-                ? Input_.data() + Input_.size()
-                : Input_.data() + Tokens_[token + 1].Text.Begin;
+        auto* end = token + 1 == TokenCount()
+            ? Input_.data() + Input_.size()
+            : Input_.data() + Tokens_[token + 1].Text.Begin;
         return {begin, static_cast<size_t>(end - begin)};
     }
 

@@ -1,45 +1,45 @@
 void choose() {
     auto value =
           LeftCondition() &&
-          RightCondition()
-          ? left +
-          right
-          : otherLeft +
-          otherRight;
+                RightCondition()
+                ? left +
+                      right
+                : otherLeft +
+                      otherRight;
 
     auto inlineValue = condition ? left + right : up + down;
     auto firstLine = condition
           ? left +
-          right
+                right
           : otherLeft +
-          otherRight;
+                otherRight;
 
     auto calls =
           condition
-          ? outer(inner(
-                argument))
-          : other(
-                otherArgument);
+                ? outer(inner(
+                      argument))
+                : other(
+                      otherArgument);
 
     auto arguments = select(
           condition
-          ? first
-          : second);
+                ? first
+                : second);
 
     auto nested =
           firstCondition
-          ? firstValue
-          : secondCondition
-          ? left +
-          right
-          : fallback;
+                ? firstValue
+                : secondCondition
+                      ? left +
+                            right
+                      : fallback;
 
     auto body =
           condition
-          ? []() {
-              work();
-          }
-          : []() {
-              other();
-          };
+                ? []() {
+                    work();
+                }
+                : []() {
+                    other();
+                };
 }

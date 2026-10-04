@@ -35,13 +35,9 @@ void PrintCode(std::ostream& output, std::string_view code, bool color)
     size_t start = 0;
     while (start < code.size()) {
         auto end = code.find('\n', start);
-        auto line =
-            code
-                .substr(
-                    start,
-                    end == std::string_view::npos
-                        ? code.size() - start
-                        : end - start);
+        auto line = code.substr(
+            start,
+            end == std::string_view::npos ? code.size() - start : end - start);
         start = end == std::string_view::npos ? code.size() : end + 1;
         if (line.empty()) {
             output << '\n';
@@ -68,9 +64,9 @@ void PrintConfigHelp(std::ostream& output, bool useColor)
     PrintHeading(output, "Configuration options", useColor);
     output
         << "Flat Key = Value syntax; # comments and quoted-string arrays.\n"
-        "Defaults preserve source break topology. "
-        "Canonical layout is opt-in.\n"
-        "Unknown option names and invalid values are errors.\n\n";
+            "Defaults preserve source break topology. "
+            "Canonical layout is opt-in.\n"
+            "Unknown option names and invalid values are errors.\n\n";
     for (const auto& section : HelpSections) {
         PrintHeading(output, section.Title, useColor);
         output << section.Description;

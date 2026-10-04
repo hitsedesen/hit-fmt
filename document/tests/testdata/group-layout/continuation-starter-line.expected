@@ -1,0 +1,7 @@
+same line
+value = first || lhs !=
+    rhs;
+new line
+value = first ||
+    lhs !=
+        rhs;

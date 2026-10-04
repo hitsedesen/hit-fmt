@@ -1,5 +1,5 @@
 void f(bool ready) {
-  #if FEATURE
+#if FEATURE
 wrong();
 #else
    other();

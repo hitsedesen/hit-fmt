@@ -145,7 +145,7 @@ public:
             if (node.Kind == NK::FunctionDeclaration ||
                 (node.Kind == NK::RecordDeclaration && !HasRecordBody(node)) ||
                 (node.Kind == NK::EnumDeclaration &&
-                !Child(node, NK::EnumeratorList)) ||
+                    !Child(node, NK::EnumeratorList)) ||
                 IsExplicitInstantiation(node))
             {
                 continue;
@@ -176,7 +176,7 @@ public:
             [] (const auto& a, const auto& b) {
                 return a.Position.Line < b.Position.Line ||
                     (a.Position.Line == b.Position.Line &&
-                    a.Position.Column < b.Position.Column);
+                        a.Position.Column < b.Position.Column);
             });
         return std::move(Results);
     }
@@ -208,19 +208,17 @@ public:
             message += " name '";
             message += name;
             message += "' has invalid ";
-            auto issue =
-                !prefixOK && !caseOK
-                    ? "prefix and case"
-                    : !prefixOK ? "prefix" : "case";
+            auto issue = !prefixOK && !caseOK
+                ? "prefix and case"
+                : !prefixOK ? "prefix" : "case";
             message += issue;
-            Results
-                .push_back(
-                    {
-                        Tree.TokenPosition(index),
-                        std::move(message),
-                        issue,
-                        ExpectedName(rule, prefixOK, caseOK),
-                    });
+            Results.push_back(
+                {
+                    Tree.TokenPosition(index),
+                    std::move(message),
+                    issue,
+                    ExpectedName(rule, prefixOK, caseOK),
+                });
         }
     }
 
@@ -347,7 +345,7 @@ private:
         for (const auto& name : ExemptNamespaces) {
             if (Scope == name ||
                 (Scope.starts_with(name) && Scope.size() > name.size() + 1 &&
-                Scope.compare(name.size(), 2, "::") == 0))
+                    Scope.compare(name.size(), 2, "::") == 0))
             {
                 return true;
             }
@@ -392,9 +390,9 @@ private:
                     auto after = Next(name + 1, end);
                     if (after < end &&
                         (Tree.Kind(after) == TK::Operator_OpenBrace ||
-                        Tree.Kind(after) == TK::Operator_Semicolon ||
-                        Tree.Kind(after) == TK::Operator_Colon ||
-                        Tree.TokenText(after) == "final"))
+                            Tree.Kind(after) == TK::Operator_Semicolon ||
+                            Tree.Kind(after) == TK::Operator_Colon ||
+                            Tree.TokenText(after) == "final"))
                     {
                         Check(name, *rule, category);
                     }
@@ -405,7 +403,7 @@ private:
                 auto name = Next(begin + 1, end);
                 if (name < end &&
                     (Tree.Kind(name) == TK::Keyword_class ||
-                    Tree.Kind(name) == TK::Keyword_struct))
+                        Tree.Kind(name) == TK::Keyword_struct))
                 {
                     name = Next(name + 1, end);
                 }
@@ -413,8 +411,8 @@ private:
                     auto after = Next(name + 1, end);
                     if (after < end &&
                         (Tree.Kind(after) == TK::Operator_OpenBrace ||
-                        Tree.Kind(after) == TK::Operator_Semicolon ||
-                        Tree.Kind(after) == TK::Operator_Colon))
+                            Tree.Kind(after) == TK::Operator_Semicolon ||
+                            Tree.Kind(after) == TK::Operator_Colon))
                     {
                         Check(name, Style.Enum, "enum");
                     }

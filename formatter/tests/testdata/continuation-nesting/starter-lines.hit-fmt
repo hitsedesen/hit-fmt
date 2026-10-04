@@ -1,0 +1,10 @@
+Layout = Canonical
+IndentWidth = 4
+ColumnLimit = 40
+ContinuationOffset = 4
+ExpressionsBreak = IfNeeded
+ExpressionsPacking = Fill
+BinaryOperatorSide = Trailing
+ControlHeadersFirstItem = InlineIfFits
+ControlHeadersAlignment = Block
+ControlBracePlacement = NextLineIfHeaderBroken

@@ -1,5 +1,8 @@
 struct Host { struct Value; struct Pointer; struct Lvalue; struct Rvalue; struct Callback; struct Aligned; struct Extended; };
 struct [[nodiscard]] Host::Value { int stored; Value(int v) : stored(v) {} };
+template<class T> class Deferred;
+template<> class [[nodiscard]] Deferred<void> {};
+struct [[maybe_unused]] [[deprecated("legacy")]] Decorated {};
 struct Host::Pointer { int* stored; Pointer(int* v) : stored(v) {} };
 struct Host::Lvalue { const int& stored; Lvalue(const int& v) : stored(v) {} };
 struct Host::Rvalue { int stored; Rvalue(int&& v) : stored(v) {} };

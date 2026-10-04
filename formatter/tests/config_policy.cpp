@@ -25,12 +25,11 @@ std::filesystem::path ConfigData(std::string_view name)
 
 struct TemporaryConfig
 {
-    std::filesystem::path Path =
-        std::filesystem::temp_directory_path() /
+    std::filesystem::path Path = std::filesystem::temp_directory_path() /
         ("hit-fmt-policy-" +
-        std::to_string(
-            std::chrono::steady_clock::now().time_since_epoch().count()) +
-        ".hit-fmt");
+            std::to_string(
+                std::chrono::steady_clock::now().time_since_epoch().count()) +
+            ".hit-fmt");
 
     explicit TemporaryConfig(std::string_view contents)
     {

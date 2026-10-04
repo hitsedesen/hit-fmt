@@ -1,18 +1,18 @@
 void choose() {
     auto value =
           LeftCondition() &&
-          RightCondition()
+                RightCondition()
                 ? left +
-                right
+                      right
                 : otherLeft +
-                otherRight;
+                      otherRight;
 
     auto inlineValue = condition ? left + right : up + down;
     auto firstLine = condition
           ? left +
-          right
+                right
           : otherLeft +
-          otherRight;
+                otherRight;
 
     auto calls =
           condition
@@ -31,7 +31,7 @@ void choose() {
                 ? firstValue
                 : secondCondition
                       ? left +
-                      right
+                            right
                       : fallback;
 
     auto body =

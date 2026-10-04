@@ -3,11 +3,10 @@ void Report() {
     alpha,
     beta,
     gamma);
-  receiver
-    .message("value",
-      alpha,
-      beta,
-      gamma);
+  receiver.message("value",
+    alpha,
+    beta,
+    gamma);
   message(
     "literal" + suffix,
     alpha,
@@ -19,6 +18,6 @@ void Report() {
     gamma);
   message(
     "an indivisible literal which exceeds the global width"
-    " tail",
+      " tail",
     extra);
 }

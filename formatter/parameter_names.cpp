@@ -232,7 +232,7 @@ void CheckFunction(
             }
             if (significant == begin + 1 &&
                 (tree.Kind(begin) == TK::Identifier ||
-                tree.Kind(begin) == TK::Keyword_void))
+                    tree.Kind(begin) == TK::Keyword_void))
             {
                 continue;
             }
@@ -278,7 +278,7 @@ void CheckFunction(
                     .ParameterNumber = number,
                     .AllowCommentedName = function.Kind ==
                         NK::FunctionDefinition && definitionPolicy ==
-                        FunctionDefinitionParameterNames::
+                            FunctionDefinitionParameterNames::
                         NameOrCommentedNameRequired,
                 });
         }
@@ -298,10 +298,10 @@ std::vector<ParameterNameDiagnostic> CheckParameterNames(
         stack.pop_back();
         if ((node->Kind == NK::FunctionDeclaration &&
             config.FunctionDeclarationParameterNames ==
-            FunctionDeclarationParameterNames::Required) ||
+                FunctionDeclarationParameterNames::Required) ||
             (node->Kind == NK::FunctionDefinition &&
-            config.FunctionDefinitionParameterNames !=
-            FunctionDefinitionParameterNames::Unchecked))
+                config.FunctionDefinitionParameterNames !=
+                    FunctionDefinitionParameterNames::Unchecked))
         {
             CheckFunction(
                 tree,
@@ -318,7 +318,7 @@ std::vector<ParameterNameDiagnostic> CheckParameterNames(
         [] (const auto& a, const auto& b) {
             return a.Position.Line < b.Position.Line ||
                 (a.Position.Line == b.Position.Line &&
-                a.Position.Column < b.Position.Column);
+                    a.Position.Column < b.Position.Column);
         });
     return diagnostics;
 }

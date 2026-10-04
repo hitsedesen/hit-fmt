@@ -44,16 +44,29 @@ class Reader {
 std::optional<ResultWithSize>
 ReadFirstResult(const char* input);
 template <>
-text::CodePoint detail::Cursor<Reader>::
-Read()
+text::CodePoint
+detail::Cursor<Reader>::Read()
 {
     return {};
 }
 template <class T>
-text::CodePoint detail::Cursor<Box<T>>::
-Read()
+text::CodePoint
+detail::Cursor<Box<T>>::Read()
 {
     return {};
 }
-text::CodePoint detail::Cursor<Reader>::
-Read();
+text::CodePoint
+detail::Cursor<Reader>::Read();
+template<class Signature> struct Signal;
+template<class Result, class... Items>
+struct Signal<Result(Items...)> {
+    Signal Route(ExecutorPtr executor)
+    const &;
+};
+template<class Result, class... Items>
+Signal<Result(Items...)>
+Signal<Result(Items...)>::Route(
+    ExecutorPtr executor) const &
+{
+    return {};
+}

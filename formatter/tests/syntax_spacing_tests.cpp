@@ -49,7 +49,7 @@ struct Analysis
         std::string_view text,
         GapPolicies policies = {},
         PointerReferenceDeclaratorLocation binding =
-        PointerReferenceDeclaratorLocation::Preserve,
+            PointerReferenceDeclaratorLocation::Preserve,
         SourceAnalysisOptions options = {})
         : Source(text)
         , Tree(parser::Parse(Source.View(), [] (parser::ParseError) {}))
@@ -407,6 +407,22 @@ TEST(SyntaxSpacing, DoWhileOwnTerminatorIsNotAHeaderSeparator)
         C::LambdaBodies);
 }
 
+TEST(SyntaxSpacing, BracedAssignmentKeepsItsOperatorGap)
+{
+    for (auto policy : {GapPolicy::Space, GapPolicy::NoSpace}) {
+        GapPolicies policies;
+        policies.AssignmentOperatorSpacing = policy;
+        policies.BraceInitializerSpacing = GapPolicy::NoSpace;
+        Analysis analysis("void f(){ value = {}; value = {one, two}; int named = {}; }", policies);
+        for (size_t occurrence = 1; occurrence <= 3; ++occurrence) {
+            const auto open = analysis.Before("{", occurrence);
+            EXPECT_EQ(analysis.Spacing.Gaps()[open].Field, F::AssignmentOperatorSpacing);
+            EXPECT_EQ(analysis.Spacing.SpacePreference(open, GapContext::Rebuilt, analysis.Safety),
+                policy == GapPolicy::Space);
+        }
+    }
+}
+
 TEST(SyntaxSpacing, CaptureAssignmentDoesNotOwnRawInitializerInternals)
 {
     GapPolicies policies;
@@ -625,6 +641,23 @@ TEST(SyntaxSpacing, CompleteSpecifierToDirectNamedDeclaratorFallback)
             id, GapContext::Rebuilt, analysis.Safety), std::nullopt) << name;
     }
 
+    Analysis qualified("template<class T> struct Box {}; "
+        "Box<int> Owner<int>::method() const & {} "
+        "Box<int> Owner<int>::method(); "
+        "Box<int> space::method(){}");
+    for (const auto id : {qualified.Before("Owner"),
+        qualified.Before("Owner", 1), qualified.Before("space")})
+    {
+        const auto& gap = qualified.Spacing.Gaps()[id];
+        ASSERT_NE(gap.Owner, nullptr);
+        EXPECT_EQ(gap.Category, C::DeclarationHeaders);
+        EXPECT_EQ(gap.Field, F::None);
+        EXPECT_TRUE(gap.FallbackSpace);
+        EXPECT_EQ(gap.Policy, GapPolicy::Preserve);
+        EXPECT_EQ(qualified.Spacing.SpacePreference(
+            id, GapContext::Rebuilt, qualified.Safety), std::nullopt);
+    }
+
     Analysis decltypeDefinition("decltype(value)  incomplete(){}");
     const auto id = decltypeDefinition.Before("incomplete");
     const auto& gap = decltypeDefinition.Spacing.Gaps()[id];
@@ -680,7 +713,10 @@ TEST(SyntaxSpacing, PointerBindingAndNestedMemberOverrides)
     })
     {
         Analysis analysis("int *pointer; int &reference = value; "
-            "int (*function)(int); int Holder::*member;", policies, binding);
+            "int (*function)(int); int Holder::*member; "
+            "template<class... Items> void pack("
+            "Items (*... callbacks)(int), Items Holder::*... members);",
+            policies, binding);
         const auto beforePointer = analysis.Before("*");
         const auto afterPointer = analysis.Before("pointer");
         EXPECT_EQ(
@@ -701,6 +737,12 @@ TEST(SyntaxSpacing, PointerBindingAndNestedMemberOverrides)
         EXPECT_EQ(
             analysis.Spacing.Gaps()[analysis.Before("member")].Field,
             F::MemberPointerDeclaratorSpacing);
+        for (size_t pack = 1; pack <= 2; ++pack) {
+            EXPECT_EQ(analysis.Spacing.SpacePreference(
+                analysis.Before("...", pack),
+                GapContext::Rebuilt,
+                analysis.Safety), false);
+        }
     }
 }
 
@@ -726,7 +768,9 @@ TEST(SyntaxSpacing, PointerRunsAndSeparatedDeclaratorsKeepTheirOwnBinding)
     })
     {
         Analysis analysis("int **first, **second; "
-            "int * const qualified = value;", {}, binding);
+            "int * const qualified = value; "
+            "template<class... Items> void pack(Items*... pointers, "
+            "Items&... refs, Items&&... values);", {}, binding);
         EXPECT_EQ(analysis.Spacing.SpacePreference(
             analysis.Before("*", 1),
             GapContext::Rebuilt,
@@ -744,6 +788,12 @@ TEST(SyntaxSpacing, PointerRunsAndSeparatedDeclaratorsKeepTheirOwnBinding)
             analysis.Before("qualified"),
             GapContext::Rebuilt,
             analysis.Safety), std::nullopt);
+        for (size_t pack = 1; pack <= 3; ++pack) {
+            EXPECT_EQ(analysis.Spacing.SpacePreference(
+                analysis.Before("...", pack),
+                GapContext::Rebuilt,
+                analysis.Safety), false);
+        }
     }
 }
 

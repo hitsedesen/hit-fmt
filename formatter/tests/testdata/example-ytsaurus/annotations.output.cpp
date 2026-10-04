@@ -7,16 +7,10 @@ void Emit()
         "Packet " + suffix,
         firstLongArgumentForTheCurrentEmissionContext,
         secondLongArgumentForTheCurrentEmissionContext);
-    writer
-        .OnBeginList();
-        writer
-            .Item(1);
-    writer
-        .OnEndList();
-    writer
-        .OnBeginMap();
-    writer
-        .Item(2);
-    writer
-        .OnEndMap();
+    writer.OnBeginList();
+        writer.Item(1);
+    writer.OnEndList();
+    writer.OnBeginMap();
+    writer.Item(2);
+    writer.OnEndMap();
 }

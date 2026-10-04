@@ -1,33 +1,20 @@
 void WritePacket()
 {
     Encoder encoder;
-    encoder
-        .OnBeginList();
-        encoder
-            .Item(1);
-        encoder
-            .Item(2);
-        encoder
-            .Item(3);
-    encoder
-        .OnEndList();
+    encoder.OnBeginList();
+        encoder.Item(1);
+        encoder.Item(2);
+        encoder.Item(3);
+    encoder.OnEndList();
     auto* sink = GetSink();
-    sink
-        ->OnBeginAttributes();
-        sink
-            ->WriteKey("metadata");
-        sink
-            ->OnBeginMap();
-            sink
-                ->WriteKey("id");
-            sink
-                ->WriteValue(7);
-        sink
-            ->OnEndMap();
-        sink
-            ->WriteValue(8);
-    sink
-        ->OnEndAttributes();
+    sink->OnBeginAttributes();
+        sink->WriteKey("metadata");
+        sink->OnBeginMap();
+            sink->WriteKey("id");
+            sink->WriteValue(7);
+        sink->OnEndMap();
+        sink->WriteValue(8);
+    sink->OnEndAttributes();
     Notify();
     Log();
     Trace();

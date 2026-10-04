@@ -714,9 +714,9 @@ INSTANTIATE_TEST_SUITE_P(Formatter, FormatTest, testing::Values(
     HunkGoldenCase{"nested", {{3, 3}}, true},
     HunkGoldenCase{"atomic", {{2, 5}}, false, "structural"}),
     [] (const auto& info) {
-    auto name = info.param.Name;
-    std::replace(name.begin(), name.end(), '-', '_');
-    return name;
-});
+        auto name = info.param.Name;
+        std::replace(name.begin(), name.end(), '-', '_');
+        return name;
+    });
 #endif
 } // namespace

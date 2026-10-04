@@ -9,9 +9,7 @@ void EmitRecords()
                 auto [route, metrics] = routeWithMetrics;
                 fluent
                     .Item("key")
-                    .Value(
-                        route
-                            .GetKey());
+                    .Value(route.GetKey());
             })
         .EndMap();
 }

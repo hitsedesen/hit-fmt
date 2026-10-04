@@ -45,12 +45,11 @@ std::pair<std::string, std::vector<std::string>> TokenizeAndSerialize(
         });
     std::string result;
     for (const auto& token : tokenizer) {
-        result +=
-            std::format(
-                "{}: {} {}\n",
-                token.Position,
-                token.Kind,
-                token.Text.View(input));
+        result += std::format(
+            "{}: {} {}\n",
+            token.Position,
+            token.Kind,
+            token.Text.View(input));
     }
     return {std::move(result), std::move(errors)};
 }
@@ -138,8 +137,8 @@ INSTANTIATE_TEST_SUITE_P(
         GoldenCase{"operators"},
         GoldenCase{"positions"}),
     [] (const auto& info) {
-    return info.param.Name;
-});
+        return info.param.Name;
+    });
 
 INSTANTIATE_TEST_SUITE_P(
     Tokenizer,
@@ -150,8 +149,8 @@ INSTANTIATE_TEST_SUITE_P(
         GoldenCase{"validation_errors"},
         GoldenCase{"cursor_utf8"}),
     [] (const auto& info) {
-    return info.param.Name;
-});
+        return info.param.Name;
+    });
 
 TEST(Tokenizer, KeepsEmbeddedNullInRawStringLiteral)
 {
