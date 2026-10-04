@@ -63,10 +63,9 @@ void CheckIdentities(
         const auto map = result.OriginalTokens[i];
         if (map.Present) {
             EXPECT_EQ(
-                std::string_view(
-                    result.Text).substr(
-                        map.Output.Begin,
-                        map.Output.End - map.Output.Begin),
+                std::string_view(result.Text).substr(
+                    map.Output.Begin,
+                    map.Output.End - map.Output.Begin),
                 tree.TokenText(i)) << i;
         }
     }
@@ -75,10 +74,9 @@ void CheckIdentities(
         EXPECT_LE(map.Output.End, result.Text.size());
         if (map.Exact && map.HasOriginal) {
             EXPECT_EQ(
-                std::string_view(
-                    result.Text).substr(
-                        map.Output.Begin,
-                        map.Output.End - map.Output.Begin),
+                std::string_view(result.Text).substr(
+                    map.Output.Begin,
+                    map.Output.End - map.Output.Begin),
                 source.substr(
                     map.Original.Begin,
                     map.Original.End - map.Original.Begin));
@@ -2350,10 +2348,9 @@ TEST(PublicPipeline, TerminalConstructorBoundariesKeepOwningMapsAndStatementScop
 }
 formatter::Style EndingStyle(std::string_view name)
 {
-    return formatter::LoadConfigFile(
-        std::filesystem::path(__FILE__).parent_path() /
-            "testdata/line-endings" /
-            (std::string(name) + ".hit-fmt")).FormattingStyle;
+    return formatter::LoadConfigFile(std::filesystem::path(__FILE__)
+        .parent_path() / "testdata/line-endings" /
+        (std::string(name) + ".hit-fmt")).FormattingStyle;
 }
 
 TEST(PublicPipeline, LineEndingWholeAtomsScopeAndExistingEOFReplacement)

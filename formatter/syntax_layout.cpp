@@ -1215,6 +1215,15 @@ private:
             indentation);
         Groups_[group].Spec.ExpressionContinuation = true;
         Groups_[group].Spec.Continuation = true;
+        if (canonical && threePart && parent != None &&
+            Syntax_[parent].TreeNode->Kind == NodeKind::Initializer &&
+            Tree_.Kind(Syntax_[parent].TreeNode->Tokens.Begin) ==
+                TokenKind::Operator_Assign)
+        {
+            // Prefer the requested branch shape when an initializer wraps,
+            // but let cheaper layouts win and keep fitting ternaries flat.
+            Groups_[group].Spec.FlatInBrokenParentPenalty = 2;
+        }
         // Comparisons may keep their operand/operator prefix while call or
         // list operands break. Other binary sequences retain their own
         // precedence-level breaks; conditionals retain their branch layout.
@@ -1240,8 +1249,9 @@ private:
             // adding another level. Capture after its gap so protected or
             // trailing delimiters contribute their actual emitted indentation.
             const auto condition = Syntax_[id].FirstChild;
-            for (auto branch =
-                condition == None ? None : Syntax_[condition].NextSibling;
+            for (auto branch = condition == None
+                ? None
+                : Syntax_[condition].NextSibling;
                 branch != None;
                 branch = Syntax_[branch].NextSibling)
             {
@@ -2017,8 +2027,9 @@ private:
             // to its structural base, as its closing brace already does.
             Gaps_[opening].Reindent = true;
         }
-        const auto shape =
-            opening + 1 == close ? policy.EmptyShape : policy.Shape;
+        const auto shape = opening + 1 == close
+            ? policy.EmptyShape
+            : policy.Shape;
         const bool independentIndent = record
             ? Policies_.Indentation.Members.Mode != BodyIndentation::Preserve
             : namespaced &&
@@ -2218,8 +2229,9 @@ private:
             return {};
         }
         const auto receiver = Syntax_[member].FirstChild;
-        const auto name =
-            receiver == None ? None : Syntax_[receiver].NextSibling;
+        const auto name = receiver == None
+            ? None
+            : Syntax_[receiver].NextSibling;
         if (name == None || Syntax_[name].TreeNode->Tokens.Size() != 1) {
             return {};
         }
@@ -2466,8 +2478,9 @@ private:
             Annotations_.AlwaysBreakChainRoot(RootName_);
         // Conventional roots are an explicit exception to the generic
         // two-call threshold, not an implicit message-pin side effect.
-        const auto packingCalls =
-            conventional ? std::max(calls, Index(2)) : calls;
+        const auto packingCalls = conventional
+            ? std::max(calls, Index(2))
+            : calls;
         const auto& policy = Policies_.Chains;
         const auto group = GroupAt(
             TokenPosition(entry.TreeNode->Tokens.Begin),
@@ -2710,8 +2723,8 @@ private:
                 {
                     if (!pairs.empty()) {
                         freeze(
-                            Syntax_[pairs.front().Statement].TreeNode->Tokens
-                                .Begin,
+                            Syntax_[pairs.front()
+                                .Statement].TreeNode->Tokens.Begin,
                             Syntax_[id].TreeNode->Tokens.End - 1);
                     }
                     pairs.clear();
@@ -2725,8 +2738,8 @@ private:
                     freeze(
                         pairs.empty()
                             ? Syntax_[child].TreeNode->Tokens.Begin
-                            : Syntax_[pairs.front().Statement].TreeNode->Tokens
-                                .Begin,
+                            : Syntax_[pairs.front()
+                                .Statement].TreeNode->Tokens.Begin,
                         Syntax_[id].TreeNode->Tokens.End - 1);
                     pairs.clear();
                     continue;
@@ -2745,8 +2758,8 @@ private:
                     freeze(
                         pairs.empty()
                             ? Syntax_[id].TreeNode->Tokens.Begin + 1
-                            : Syntax_[pairs.front().Statement].TreeNode->Tokens
-                                .Begin,
+                            : Syntax_[pairs.front()
+                                .Statement].TreeNode->Tokens.Begin,
                         Syntax_[child].TreeNode->Tokens.End);
                     pairs.clear();
                     continue;
@@ -3019,10 +3032,12 @@ private:
                     }
                 }
                 const auto body = BlockOf_[id];
-                const auto opening =
-                    body == None ? None : Index(Groups_[body].Begin / 2) - 1;
-                const auto close =
-                    body == None ? None : Index(Groups_[body].End / 2) - 1;
+                const auto opening = body == None
+                    ? None
+                    : Index(Groups_[body].Begin / 2) - 1;
+                const auto close = body == None
+                    ? None
+                    : Index(Groups_[body].End / 2) - 1;
                 Index previous = None;
                 Index access = None;
                 bool seenAccess = false;
@@ -3059,8 +3074,9 @@ private:
                         // genuinely unattached comment is a barrier, never
                         // moved to invent declaration adjacency or an
                         // access-content boundary.
-                        const auto preceding =
-                            access != None ? access : previous;
+                        const auto preceding = access != None
+                            ? access
+                            : previous;
                         const bool trailing = preceding != None &&
                             part.Tokens.End <= Syntax_[preceding].Attached.End;
                         const bool leading = following[p] != None &&
@@ -3779,8 +3795,9 @@ private:
         // B+C has not saturated. The closer's original B anchor is unchanged.
         const auto fallback = int64_t(group.Indent.FallbackOffset) -
             int64_t(group.Indent.ContinuationOffset);
-        const auto offset =
-            group.AnchorAfterGap ? 0 : int32_t(FlatWidth(group.PrefixGap));
+        const auto offset = group.AnchorAfterGap
+            ? 0
+            : int32_t(FlatWidth(group.PrefixGap));
         group.Anchor = Document_.MarkAnchor({
             document::AnchorKind::DelimiterColumn,
             offset,

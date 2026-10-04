@@ -105,10 +105,9 @@ void CheckMapping(File& file, const StructuralMaterialization& result)
         auto map = result.OriginalTokens[i];
         if (map.Present) {
             EXPECT_EQ(
-                std::string_view(
-                    result.Text).substr(
-                        map.Output.Begin,
-                        map.Output.End - map.Output.Begin),
+                std::string_view(result.Text).substr(
+                    map.Output.Begin,
+                    map.Output.End - map.Output.Begin),
                 file.Tree.TokenText(i));
         } else {
             EXPECT_EQ(
@@ -122,10 +121,9 @@ void CheckMapping(File& file, const StructuralMaterialization& result)
         cursor = span.Output.End;
         if (!span.Generated) {
             EXPECT_EQ(
-                std::string_view(
-                    result.Text).substr(
-                        span.Output.Begin,
-                        span.Output.End - span.Output.Begin),
+                std::string_view(result.Text).substr(
+                    span.Output.Begin,
+                    span.Output.End - span.Output.Begin),
                 file.Tree.SourceText(span.Original));
         }
     }

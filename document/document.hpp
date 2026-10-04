@@ -136,6 +136,9 @@ struct GroupSpec
     // Use this physical line's indentation as an independent structural base.
     // Requires StructuralBase and excludes continuation sharing.
     bool LineBase = false;
+    // Extra cost for staying flat inside a multiline direct parent (0..3).
+    // A soft shape preference, without forcing breaks in fitting layouts.
+    std::uint8_t FlatInBrokenParentPenalty = 0;
 };
 
 enum class Error : std::uint8_t
@@ -339,6 +342,7 @@ private:
         bool ChildBreaks : 1 = true;
         std::uint8_t BreakPenalty : 2 = 0;
         bool LineBase : 1 = false;
+        std::uint8_t FlatInBrokenParentPenalty : 2 = 0;
     };
 
     std::uint32_t Add(Node node);

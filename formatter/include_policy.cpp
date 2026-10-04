@@ -50,8 +50,8 @@ std::vector<std::size_t> ValidateAndSort(std::span<const std::string> prefixes)
         {
             throw std::invalid_argument(
                 "IncludeGroupPrefixes requires nonempty normalized relative "
-                    "directory prefixes ending in / (no empty, . or .. "
-                    "components or backslashes)");
+                "directory prefixes ending in / (no empty, . or .. "
+                "components or backslashes)");
         }
     }
     auto order = SortedRules(prefixes);

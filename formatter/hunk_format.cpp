@@ -95,8 +95,8 @@ bool SemanticProtection(const SourceAnalysis& safety, Range source)
     constexpr auto outside = uint16_t(ProtectionReason::OutsideEditScope);
     for (;
         it != ranges.end() &&
-            (it->Source.Begin < source.End ||
-                (source.Empty() && it->Source.Begin <= source.Begin));
+        (it->Source.Begin < source.End ||
+            (source.Empty() && it->Source.Begin <= source.Begin));
         ++it)
     {
         if (uint16_t(it->Reasons) & ~outside) {
@@ -163,14 +163,13 @@ std::vector<HunkCoverage> FinishCoverage(
             i < selected.size() && selected[i].Begin < record.Original.End;
             ++i)
         {
-            result.push_back(
+            result.push_back({
                 {
-                    {
-                        std::max(record.Original.Begin, selected[i].Begin),
-                        std::min(record.Original.End, selected[i].End),
-                    },
-                    record.Reason,
-                });
+                    std::max(record.Original.Begin, selected[i].Begin),
+                    std::min(record.Original.End, selected[i].End),
+                },
+                record.Reason,
+            });
         }
     }
     std::sort(
@@ -227,14 +226,13 @@ ChangedFormatResult FormatChanged(
                 if (tree.Kind(i) == tokenizer::TokenKind::Operator_OpenBrace) {
                     const auto close = tree.MatchingDelimiter(i);
                     if (close < region.Tokens.End) {
-                        namespaces.push_back(
+                        namespaces.push_back({
+                            region.Tokens.Begin,
                             {
-                                region.Tokens.Begin,
-                                {
-                                    tree.Token(close).Text.Begin,
-                                    tree.Token(close).Text.End,
-                                },
-                            });
+                                tree.Token(close).Text.Begin,
+                                tree.Token(close).Text.End,
+                            },
+                        });
                     }
                     break;
                 }
@@ -270,8 +268,8 @@ ChangedFormatResult FormatChanged(
             } else if (prepared.Structural.SortIncludes &&
                 !detail::HunkScopeContains(selectedBytes, group.Source))
             {
-                coverage.push_back(
-                    {group.Source, Reason::StructuralEligibility});
+                coverage
+                    .push_back({group.Source, Reason::StructuralEligibility});
             }
         }
     }

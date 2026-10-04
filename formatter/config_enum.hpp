@@ -135,14 +135,13 @@ enum class NameCase : std::uint8_t
 };
 template <> struct ConfigEnumNames<NameCase>
 {
-    static constexpr auto Values = std::to_array<std::string_view>(
-        {
-            "Unchecked",
-            "camelCase",
-            "PascalCase",
-            "snake_case",
-            "SCREAMING_SNAKE_CASE",
-        });
+    static constexpr auto Values = std::to_array<std::string_view>({
+        "Unchecked",
+        "camelCase",
+        "PascalCase",
+        "snake_case",
+        "SCREAMING_SNAKE_CASE",
+    });
 };
 
 #undef DEFINE_CONFIG_ENUM

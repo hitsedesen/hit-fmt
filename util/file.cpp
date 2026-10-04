@@ -18,12 +18,11 @@ std::string ReadEntireFile(
     ifs.seekg(0, std::ios::end);
     size_t size = ifs.tellg();
     if (size > maxSize) {
-        throw FileTooLargeError(
-            std::format(
-                "File {} is too large: {} > {}",
-                filePath,
-                size,
-                maxSize));
+        throw FileTooLargeError(std::format(
+            "File {} is too large: {} > {}",
+            filePath,
+            size,
+            maxSize));
     }
     std::string buffer(size + padding, '\0');
     ifs.seekg(0);

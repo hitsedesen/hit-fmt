@@ -713,8 +713,9 @@ Token Tokenizer::ParseIdentifier()
         }
         ConsumeUnicodeCodePoint();
     }
-    auto cur =
-        byte < 0x80 ? unicode::CodePoint(byte) : CurrentUnicodeCodePoint();
+    auto cur = byte < 0x80
+        ? unicode::CodePoint(byte)
+        : CurrentUnicodeCodePoint();
 
     if (cur == '\'') {
         if (std::ranges::find(EncodingPrefixes, CurrentTokenText()) !=
@@ -1091,8 +1092,9 @@ Token Tokenizer::ParseNumber()
         valid &= !separator;
         return count;
     };
-    auto digits =
-        hexadecimal ? parseDigits(IsHexDigit) : parseDigits(IsAsciiDigit);
+    auto digits = hexadecimal
+        ? parseDigits(IsHexDigit)
+        : parseDigits(IsAsciiDigit);
     bool floating = !binary &&
         (*cursor == '.' ||
             (hexadecimal
@@ -1250,8 +1252,7 @@ Token Tokenizer::DiagnoseFloatingPoint()
         if (cur == 'p' || cur == 'P') {
             parseExponent();
         } else {
-            OnError(
-                TokenizationErrorKind::
+            OnError(TokenizationErrorKind::
                     HexadecimalFloatingPointRequiresExponent);
             valid = false;
         }
@@ -1318,13 +1319,11 @@ Token Tokenizer::DiagnoseInteger()
                 while (cur == '0' || cur == '1' || cur == '\'') {
                     if (cur == '\'') {
                         if (prev == '\'') {
-                            OnError(
-                                TokenizationErrorKind::
+                            OnError(TokenizationErrorKind::
                                     NoDigitsBetweenDigitSeparators);
                             kind = TokenKind::Invalid;
                         } else if (parsedDigits == 0) {
-                            OnError(
-                                TokenizationErrorKind::
+                            OnError(TokenizationErrorKind::
                                     DigitSeparatorAtStartOfBinaryInteger);
                             kind = TokenKind::Invalid;
                         }
@@ -1344,8 +1343,7 @@ Token Tokenizer::DiagnoseInteger()
                     OnError(TokenizationErrorKind::NoDigitsInBinaryInteger);
                     kind = TokenKind::Invalid;
                 } else if (prev == '\'') {
-                    OnError(
-                        TokenizationErrorKind::
+                    OnError(TokenizationErrorKind::
                             DigitSeparatorAtEndOfBinaryInteger);
                     kind = TokenKind::Invalid;
                 }
@@ -1359,13 +1357,11 @@ Token Tokenizer::DiagnoseInteger()
                 while (IsHexDigit(cur) || cur == '\'') {
                     if (cur == '\'') {
                         if (prev == '\'') {
-                            OnError(
-                                TokenizationErrorKind::
+                            OnError(TokenizationErrorKind::
                                     NoDigitsBetweenDigitSeparators);
                             kind = TokenKind::Invalid;
                         } else if (parsedDigits == 0) {
-                            OnError(
-                                TokenizationErrorKind::
+                            OnError(TokenizationErrorKind::
                                     DigitSeparatorAtStartOfHexadecimalInteger);
                             kind = TokenKind::Invalid;
                         }
@@ -1379,8 +1375,7 @@ Token Tokenizer::DiagnoseInteger()
                         TokenizationErrorKind::NoDigitsInHexadecimalInteger);
                     kind = TokenKind::Invalid;
                 } else if (prev == '\'') {
-                    OnError(
-                        TokenizationErrorKind::
+                    OnError(TokenizationErrorKind::
                             DigitSeparatorAtEndOfHexadecimalInteger);
                     kind = TokenKind::Invalid;
                 }
@@ -1391,8 +1386,7 @@ Token Tokenizer::DiagnoseInteger()
                 while (IsOctalDigit(cur) || cur == '\'') {
                     if (cur == '\'') {
                         if (prev == '\'') {
-                            OnError(
-                                TokenizationErrorKind::
+                            OnError(TokenizationErrorKind::
                                     NoDigitsBetweenDigitSeparators);
                             kind = TokenKind::Invalid;
                         }
@@ -1409,8 +1403,7 @@ Token Tokenizer::DiagnoseInteger()
                     }
                 }
                 if (prev == '\'') {
-                    OnError(
-                        TokenizationErrorKind::
+                    OnError(TokenizationErrorKind::
                             DigitSeparatorAtEndOfOctalInteger);
                     kind = TokenKind::Invalid;
                 }
@@ -1674,13 +1667,12 @@ void Tokenizer::OnError(TokenizationError error)
 
 void Tokenizer::OnError(TokenizationErrorKind error)
 {
-    OnError(
-        {
-            .Kind = error,
-            .TokenStart = CurrentTokenPosition_,
-            .ErrorPosition = CurrentCodePointPosition_,
-            .TokenEnd = CurrentCodePointPosition_,
-        });
+    OnError({
+        .Kind = error,
+        .TokenStart = CurrentTokenPosition_,
+        .ErrorPosition = CurrentCodePointPosition_,
+        .TokenEnd = CurrentCodePointPosition_,
+    });
 }
 
 } // namespace tokenizer

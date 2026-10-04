@@ -232,8 +232,9 @@ public:
             state.Category = C::None;
             return state;
         }
-        const auto statementCategory =
-            state.Category == C::LambdaBodies ? C::LambdaBodies : C::Bodies;
+        const auto statementCategory = state.Category == C::LambdaBodies
+            ? C::LambdaBodies
+            : C::Bodies;
         if (IsDeclaration(kind) || kind == NK::FunctionDefinition ||
             kind == NK::LambdaExpression || kind == NK::NamespaceDeclaration ||
             kind == NK::DeclarationSpecifiers || kind == NK::TypeId)
@@ -1028,8 +1029,9 @@ public:
                 const bool separator =
                     role == PR::ListSeparator && state.ListOwner;
                 const auto& listOwner = separator ? *state.ListOwner : owner;
-                const auto category =
-                    separator ? state.ListCategory : state.Category;
+                const auto category = separator
+                    ? state.ListCategory
+                    : state.Category;
                 Mark(i, F::CommaSpaceBefore, listOwner, category, 3);
                 // A trailing comma's right gap is a closer edge.
                 if (i + 1 < Tree_.TokenCount() &&

@@ -283,8 +283,8 @@ void SourceAnalysis::RestrictEditScope(
     std::span<const parser::SourceRange> ranges)
 {
     if (!Built_ || Gaps_.empty() || HasEditScope_) {
-        throw
-            std::logic_error("edit scope requires built unrestricted analysis");
+        throw std::logic_error(
+            "edit scope requires built unrestricted analysis");
     }
     const auto size = Gaps_.back().Source.End;
     // Validate before allocating or changing any analysis facts.
@@ -359,8 +359,9 @@ void SourceAnalysis::RestrictEditScope(
                     if (gap.Original[i] != '\n') {
                         continue;
                     }
-                    const auto end =
-                        i && gap.Original[i - 1] == '\r' ? i - 1 : i;
+                    const auto end = i && gap.Original[i - 1] == '\r'
+                        ? i - 1
+                        : i;
                     if (lineBegin < end) {
                         permit(
                             {
@@ -389,8 +390,8 @@ void SourceAnalysis::RestrictEditScope(
     Offset begin = 0;
     auto outside = [&] (Offset end) {
         if (begin < end) {
-            protection.push_back(
-                {{begin, end}, ProtectionReason::OutsideEditScope});
+            protection
+                .push_back({{begin, end}, ProtectionReason::OutsideEditScope});
         }
     };
     for (const auto range : scope) {
@@ -582,11 +583,10 @@ SourceAnalysis BuildSourceAnalysis(
                 ? lines[endLineIndex + 1].Begin
                 : size,
         };
-        recoveryPrefix.push_back(
-            recoveryPrefix.back() + (token.Kind == TK::Invalid));
-        ambiguousPrefix.push_back(
-            ambiguousPrefix.back() +
-                (tree.Role(i) == parser::PunctuationRole::AmbiguousOperator));
+        recoveryPrefix
+            .push_back(recoveryPrefix.back() + (token.Kind == TK::Invalid));
+        ambiguousPrefix.push_back(ambiguousPrefix.back() +
+            (tree.Role(i) == parser::PunctuationRole::AmbiguousOperator));
         if (token.Kind == TK::PreprocessingDirective) {
             protect(
                 tokenLine.Begin,
@@ -688,10 +688,12 @@ SourceAnalysis BuildSourceAnalysis(
     auto visit = [&] (const parser::Node& node, RegionId parent) {
         const auto id = static_cast<RegionId>(result.Regions_.size());
         const auto tokens = node.Tokens;
-        const auto begin =
-            tokens.Begin < count ? tree.Token(tokens.Begin).Text.Begin : size;
-        const auto end =
-            tokens.Empty() ? begin : tree.Token(tokens.End - 1).Text.End;
+        const auto begin = tokens.Begin < count
+            ? tree.Token(tokens.Begin).Text.Begin
+            : size;
+        const auto end = tokens.Empty()
+            ? begin
+            : tree.Token(tokens.End - 1).Text.End;
         const bool recovery = Recovery(node.Kind);
         const bool ambiguous =
             node.Kind == parser::NodeKind::AmbiguousStatement;
@@ -702,8 +704,8 @@ SourceAnalysis BuildSourceAnalysis(
         const auto status = Combine(
             hasRecovery ? RegionStatus::Recovery : RegionStatus::Complete,
             hasAmbiguity ? RegionStatus::Ambiguous : RegionStatus::Complete);
-        result.Regions_.push_back(
-            {tokens, {begin, end}, node.Kind, parent, status});
+        result.Regions_
+            .push_back({tokens, {begin, end}, node.Kind, parent, status});
         if (node.Kind == parser::NodeKind::HeaderName) {
             // Header spelling includes internal whitespace. Ordinary
             // lexical
@@ -714,10 +716,12 @@ SourceAnalysis BuildSourceAnalysis(
         if (recovery || ambiguous) {
             // Own the adjacent trivia too. Empty missing-token nodes still
             // fence the insertion point; parents report incomplete status.
-            const auto before =
-                tokens.Begin ? tree.Token(tokens.Begin - 1).Text.End : 0;
-            const auto after =
-                tokens.End < count ? tree.Token(tokens.End).Text.Begin : size;
+            const auto before = tokens.Begin
+                ? tree.Token(tokens.Begin - 1).Text.End
+                : 0;
+            const auto after = tokens.End < count
+                ? tree.Token(tokens.End).Text.Begin
+                : size;
             protect(
                 before,
                 after,

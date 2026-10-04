@@ -54,9 +54,8 @@ Output Lower(
         throw std::runtime_error("failed syntax lowering");
     }
     scratch.release(); // The document must not retain planner storage.
-    const auto rendered = document.Render(
-        formatter::SyntaxRenderPolicy(policies, options),
-        &file);
+    const auto rendered = document
+        .Render(formatter::SyntaxRenderPolicy(policies, options), &file);
     EXPECT_TRUE(rendered.State) << "core " << int(rendered.State.Code);
     if (!rendered.State) {
         throw std::runtime_error("failed rendering");
@@ -111,10 +110,9 @@ void ExpectSplitGapMap(
             continue;
         }
         EXPECT_EQ(
-            std::string_view(
-                output.Text).substr(
-                    generated.OutputBegin,
-                    generated.OutputEnd - generated.OutputBegin),
+            std::string_view(output.Text).substr(
+                generated.OutputBegin,
+                generated.OutputEnd - generated.OutputBegin),
             prefix);
         EXPECT_TRUE(borrowed.Exact);
         EXPECT_EQ(borrowed.Source.Identity, document::NoIdentity);
@@ -122,10 +120,9 @@ void ExpectSplitGapMap(
         EXPECT_EQ(borrowed.Source.End, sourceEnd);
         EXPECT_EQ(generated.OutputEnd, borrowed.OutputBegin);
         EXPECT_EQ(
-            std::string_view(
-                output.Text).substr(
-                    borrowed.OutputBegin,
-                    borrowed.OutputEnd - borrowed.OutputBegin),
+            std::string_view(output.Text).substr(
+                borrowed.OutputBegin,
+                borrowed.OutputEnd - borrowed.OutputBegin),
             indent);
         found = true;
     }

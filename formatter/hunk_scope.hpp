@@ -68,11 +68,10 @@ public:
             throw std::invalid_argument("invalid original hunk unit range");
         }
         const auto line = [&] (parser::SourceOffset offset) {
-            return size_t(
-                std::upper_bound(
-                    Boundaries_.begin(),
-                    Boundaries_.end(),
-                    offset) - Boundaries_.begin());
+            return size_t(std::upper_bound(
+                Boundaries_.begin(),
+                Boundaries_.end(),
+                offset) - Boundaries_.begin());
         };
         return {line(source.Begin), line(source.End - 1)};
     }

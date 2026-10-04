@@ -12,3 +12,19 @@ chain penalty=2
 lhs != object.lookup(
     first,
     second);
+flat-child penalty=0 width=40
+auto value =
+    cond ? firstBranch : secondBranch;
+flat-child penalty=1 width=40
+auto value =
+    cond ? firstBranch : secondBranch;
+flat-child penalty=2 width=40
+auto value = cond
+    ? firstBranch
+    : secondBranch;
+flat-child penalty=0 width=80
+auto value = cond ? firstBranch : secondBranch;
+flat-child penalty=1 width=80
+auto value = cond ? firstBranch : secondBranch;
+flat-child penalty=2 width=80
+auto value = cond ? firstBranch : secondBranch;

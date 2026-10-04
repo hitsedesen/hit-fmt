@@ -446,8 +446,9 @@ std::optional<SyntaxTree> SyntaxTree::RebindReorderedComments(
             copy->FunctionKind_ = child->FunctionKind_;
             if (child->Tokens.Empty()) {
                 const auto index = child->Tokens.Begin;
-                auto position =
-                    index < TokenCount() ? mapped[index] : TokenCount();
+                auto position = index < TokenCount()
+                    ? mapped[index]
+                    : TokenCount();
                 copy->Tokens = {position, position};
             } else {
                 copy->Tokens = {
@@ -586,10 +587,9 @@ std::optional<SyntaxTree> SyntaxTree::RebindSortedIncludes(
             tokens[end].Kind == Kind(end))
         {
             before.push_back(TokenText(end));
-            after.push_back(
-                source.View().substr(
-                    tokens[end].Text.Begin,
-                    tokens[end].Text.Size()));
+            after.push_back(source.View().substr(
+                tokens[end].Text.Begin,
+                tokens[end].Text.Size()));
             ++end;
         }
         auto sortedBefore = before;
@@ -790,18 +790,17 @@ std::optional<SyntaxTree> SyntaxTree::RebindWhitespaceEdits(
         {
             return std::nullopt;
         }
-        rebound.Tokens_.Add(
-            {
-                .Kind = token.Kind,
-                .Position ={
-                    .Line = static_cast<uint32_t>(line),
-                    .Column = static_cast<uint32_t>(column),
-                },
-                .Text ={
-                    .Begin = static_cast<util::SourceOffset>(newBegin),
-                    .End = static_cast<util::SourceOffset>(newBegin + size),
-                },
-            });
+        rebound.Tokens_.Add({
+            .Kind = token.Kind,
+            .Position ={
+                .Line = static_cast<uint32_t>(line),
+                .Column = static_cast<uint32_t>(column),
+            },
+            .Text ={
+                .Begin = static_cast<util::SourceOffset>(newBegin),
+                .End = static_cast<util::SourceOffset>(newBegin + size),
+            },
+        });
         previousNewPosition = {
             .Line = static_cast<uint32_t>(line),
             .Column = static_cast<uint32_t>(column),
@@ -1467,9 +1466,8 @@ private:
     {
         constexpr size_t NodesPerBlock = 256;
         if (RemainingNodes_ == 0) {
-            NextNode_ = static_cast<Node*>(Tree_.Memory_->allocate(
-                sizeof(Node) * NodesPerBlock,
-                alignof(Node)));
+            NextNode_ = static_cast<Node*>(Tree_.Memory_
+                ->allocate(sizeof(Node) * NodesPerBlock, alignof(Node)));
             RemainingNodes_ = NodesPerBlock;
         }
         auto* node = ::new (NextNode_++) Node;
@@ -2625,11 +2623,10 @@ private:
                     while (Kind(declarator) == TK::Identifier) {
                         auto suffix = NextSignificant(declarator + 1);
                         if (Kind(suffix) == TK::Operator_Less) {
-                            suffix = NextSignificant(
-                                SkipTemplateArguments(
-                                    suffix,
-                                    ParseLimit_,
-                                    true));
+                            suffix = NextSignificant(SkipTemplateArguments(
+                                suffix,
+                                ParseLimit_,
+                                true));
                         }
                         if (Kind(suffix) != TK::Operator_ScopeResolution) {
                             startsDeclaration =
@@ -3393,12 +3390,11 @@ private:
         index = NextSignificant(index + 1);
         if (Kind(index) == TK::Operator_Less) {
             bool exactClosing = false;
-            index = NextSignificant(
-                SkipTemplateArguments(
-                    index,
-                    end,
-                    requireComplete,
-                    &exactClosing));
+            index = NextSignificant(SkipTemplateArguments(
+                index,
+                end,
+                requireComplete,
+                &exactClosing));
             if (functionKind && !exactClosing) {
                 *functionKind = FunctionKind::Unknown;
             }
@@ -3411,12 +3407,11 @@ private:
             index = NextSignificant(component + 1);
             if (Kind(index) == TK::Operator_Less) {
                 bool exactClosing = false;
-                index = NextSignificant(
-                    SkipTemplateArguments(
-                        index,
-                        end,
-                        requireComplete,
-                        &exactClosing));
+                index = NextSignificant(SkipTemplateArguments(
+                    index,
+                    end,
+                    requireComplete,
+                    &exactClosing));
                 if (functionKind && !exactClosing) {
                     *functionKind = FunctionKind::Unknown;
                 }
@@ -4044,9 +4039,9 @@ private:
     {
         auto* arguments = MakeNode(NodeKind::ArgumentList, opening);
         arguments->Tokens.End = closingEnd;
-        if (Tree_.Tokens_.FindPreprocessingDirective(
-            opening + 1,
-            closingEnd - 1) < closingEnd - 1)
+        if (Tree_.Tokens_
+            .FindPreprocessingDirective(opening + 1, closingEnd - 1) <
+            closingEnd - 1)
         {
             AddConditionalListFragments(
                 *arguments,
@@ -5050,8 +5045,9 @@ private:
             typeKind == TK::Keyword_typename ||
             typeKind == TK::Keyword_struct || typeKind == TK::Keyword_class ||
             typeKind == TK::Keyword_union || typeKind == TK::Keyword_enum;
-        auto binding =
-            typeKind == TK::Identifier ? LookupName(Text(type)) : std::nullopt;
+        auto binding = typeKind == TK::Identifier
+            ? LookupName(Text(type))
+            : std::nullopt;
         if (!explicitType && (!binding || *binding != NameKind::Type)) {
             return typeKind == TK::Identifier && !binding
                 ? ParameterTypeEvidence::Unknown
@@ -5299,7 +5295,7 @@ private:
                             ? ArgumentPairEnd(
                             cursor,
                             closing -
-                                1).value_or(std::numeric_limits<TokenIndex>::max())
+                            1).value_or(std::numeric_limits<TokenIndex>::max())
                             : FindBalancedEnd(cursor);
                         if (nested == std::numeric_limits<TokenIndex>::max() ||
                             nested >= closing)
@@ -5345,7 +5341,7 @@ private:
                         ? ArgumentPairEnd(
                         ArgumentSignificant(cursor + 1, closing - 1),
                         closing -
-                            1).value_or(std::numeric_limits<TokenIndex>::max())
+                        1).value_or(std::numeric_limits<TokenIndex>::max())
                         : FindBalancedEnd(NextSignificant(cursor + 1));
                     if (nested == std::numeric_limits<TokenIndex>::max() ||
                         nested >= closing)
@@ -5362,7 +5358,7 @@ private:
                         ? ArgumentPairEnd(
                         ArgumentSignificant(cursor + 1, closing - 1),
                         closing -
-                            1).value_or(std::numeric_limits<TokenIndex>::max())
+                        1).value_or(std::numeric_limits<TokenIndex>::max())
                         : FindBalancedEnd(NextSignificant(cursor + 1));
                     if (nested == std::numeric_limits<TokenIndex>::max() ||
                         nested >= closing)
@@ -5397,7 +5393,7 @@ private:
                             ? ArgumentPairEnd(
                         cursor,
                         closing -
-                            1).value_or(std::numeric_limits<TokenIndex>::max())
+                        1).value_or(std::numeric_limits<TokenIndex>::max())
                             : FindBalancedEnd(cursor);
                     if (nested == std::numeric_limits<TokenIndex>::max() ||
                         nested >= closing)
@@ -6643,8 +6639,8 @@ private:
                         functionTry,
                         !sawParenthesizedDeclarator,
                         terminalEligible && !terminalDenied &&
-                            !invalidFunctionSuffix &&
-                            terminalPending == TerminalPending::None);
+                        !invalidFunctionSuffix &&
+                        terminalPending == TerminalPending::None);
                 }
                 ConsumeBalanced();
                 continue;
@@ -8014,10 +8010,9 @@ private:
             const auto nameKind = Kind(cursor);
             bool supportedName = nameKind == TK::Identifier;
             if (nameKind == TK::Keyword_operator) {
-                supportedName = ArgumentOperatorNameEnd(
-                    cursor,
-                    end,
-                    templateWork).has_value();
+                supportedName =
+                    ArgumentOperatorNameEnd(cursor, end, templateWork)
+                        .has_value();
                 const auto symbol = ArgumentSignificant(cursor + 1, end);
                 if (symbol < end) {
                     supportedName =
@@ -8098,8 +8093,9 @@ private:
         auto templateEnd = explicitTemplate
             ? ArgumentTemplateEnd(cursor, end, templateWork).value_or(cursor)
             : SkipTemplateArguments(cursor, end);
-        auto closingKind =
-            templateEnd > cursor ? Kind(templateEnd - 1) : TK::Invalid;
+        auto closingKind = templateEnd > cursor
+            ? Kind(templateEnd - 1)
+            : TK::Invalid;
         auto following = NextSignificant(templateEnd);
         bool hasClosing = templateEnd <= end &&
             (closingKind == TK::Operator_Greater ||
@@ -8360,8 +8356,9 @@ private:
             kind = Kind(cursor);
             if (kind == TK::Operator_Less) {
                 auto templateEnd = SkipTemplateArguments(cursor, end);
-                auto closingKind =
-                    templateEnd > cursor ? Kind(templateEnd - 1) : TK::Invalid;
+                auto closingKind = templateEnd > cursor
+                    ? Kind(templateEnd - 1)
+                    : TK::Invalid;
                 auto following = NextSignificant(templateEnd);
                 bool hasClosing = templateEnd <= end &&
                     (closingKind == TK::Operator_Greater ||
@@ -8516,8 +8513,9 @@ private:
         while (cursor < end) {
             if (Kind(cursor) == TK::Operator_Less) {
                 auto templateEnd = SkipTemplateArguments(cursor, end);
-                auto closingKind =
-                    templateEnd > cursor ? Kind(templateEnd - 1) : TK::Invalid;
+                auto closingKind = templateEnd > cursor
+                    ? Kind(templateEnd - 1)
+                    : TK::Invalid;
                 if (templateEnd <= cursor || templateEnd > end ||
                     (closingKind != TK::Operator_Greater &&
                         closingKind != TK::Operator_RightShift))
@@ -9049,15 +9047,13 @@ private:
             case NodeKind::MemberPointerOperator:
                 for (auto i = node.Tokens.Begin; i < node.Tokens.End; ++i) {
                     if (Kind(i) == TK::Operator_Star) {
-                        Tree_.Tokens_.SetRole(
-                            i,
-                            PunctuationRole::PointerDeclarator);
+                        Tree_.Tokens_
+                            .SetRole(i, PunctuationRole::PointerDeclarator);
                     } else if (Kind(i) == TK::Operator_Ampersand ||
                         Kind(i) == TK::Operator_And)
                     {
-                        Tree_.Tokens_.SetRole(
-                            i,
-                            PunctuationRole::ReferenceDeclarator);
+                        Tree_.Tokens_
+                            .SetRole(i, PunctuationRole::ReferenceDeclarator);
                     }
                 }
                 break;
@@ -9112,9 +9108,8 @@ private:
                     if (Kind(i) == TK::Operator_Conditional ||
                         Kind(i) == TK::Operator_Colon)
                     {
-                        Tree_.Tokens_.SetRole(
-                            i,
-                            PunctuationRole::ConditionalDelimiter);
+                        Tree_.Tokens_
+                            .SetRole(i, PunctuationRole::ConditionalDelimiter);
                     }
                 }
                 break;
@@ -9168,9 +9163,8 @@ private:
             case NodeKind::AccessSpecifier:
                 for (auto i = node.Tokens.Begin; i < node.Tokens.End; ++i) {
                     if (Kind(i) == TK::Operator_Colon) {
-                        Tree_.Tokens_.SetRole(
-                            i,
-                            PunctuationRole::LabelDelimiter);
+                        Tree_.Tokens_
+                            .SetRole(i, PunctuationRole::LabelDelimiter);
                     }
                 }
                 break;

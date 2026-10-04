@@ -61,8 +61,8 @@ private:
         // Match tokenizer coordinates: each invalid UTF8 byte is one column.
         Cursor_ += c < 0x80
             ? 1
-            : unicode::utf8::GetFirstCodePointSize(
-                Text_.substr(Cursor_)).value_or(1);
+            : unicode::utf8::GetFirstCodePointSize(Text_.substr(Cursor_))
+                .value_or(1);
         if (c == '\n') {
             ++Current_.Line;
             Current_.Column = 1;
@@ -165,12 +165,11 @@ CheckedFile CheckFile(
     checked.FormattingMismatch = checked.Formatting.Text != tree.Source();
     for (auto& diagnostic : formatter::CheckNames(tree, configuration.Settings))
     {
-        checked.Semantic.push_back(
-            {
-                diagnostic.Position,
-                {},
-                diagnostic.Message + "; " + diagnostic.Expected,
-            });
+        checked.Semantic.push_back({
+            diagnostic.Position,
+            {},
+            diagnostic.Message + "; " + diagnostic.Expected,
+        });
     }
     for (const auto& diagnostic :
         formatter::CheckParameterNames(tree, configuration.Settings))
@@ -181,8 +180,8 @@ CheckedFile CheckFile(
         if (diagnostic.AllowCommentedName) {
             message += " or /*name*/ comment";
         }
-        checked.Semantic.push_back(
-            {diagnostic.Position, {}, std::move(message)});
+        checked.Semantic
+            .push_back({diagnostic.Position, {}, std::move(message)});
     }
     MapSemanticPositions(tree, checked);
     return checked;
@@ -243,8 +242,8 @@ void ValidatePreviewOption(std::string_view argument)
     {
         throw std::invalid_argument(
             "--changed-hunks/--changed-ranges and --no-spillover are "
-                "unsupported in this whole-file preview; constrained-hunk "
-                "integration is blocked");
+            "unsupported in this whole-file preview; constrained-hunk "
+            "integration is blocked");
     }
 }
 

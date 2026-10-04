@@ -76,11 +76,10 @@ std::vector<Line> SplitLines(std::string_view text)
         auto newline = text.find('\n', begin);
         bool hasNewline = newline != std::string_view::npos;
         auto end = hasNewline ? newline : text.size();
-        lines.push_back(
-            {
-                .Text = text.substr(begin, end - begin),
-                .HasNewline = hasNewline,
-            });
+        lines.push_back({
+            .Text = text.substr(begin, end - begin),
+            .HasNewline = hasNewline,
+        });
         begin = hasNewline ? end + 1 : text.size();
     }
     return lines;
@@ -447,12 +446,11 @@ std::vector<Violation> SpacingViolations(
         if (actual.substr(startA, a - startA) !=
             expected.substr(startB, b - startB))
         {
-            violations.push_back(
-                {
-                    line,
-                    ColumnAt(actual, a),
-                    SpacingMessage(actual, expected, startA, a, startB, b),
-                });
+            violations.push_back({
+                line,
+                ColumnAt(actual, a),
+                SpacingMessage(actual, expected, startA, a, startB, b),
+            });
         }
         if (a == actual.size() || b == expected.size()) {
             break;
@@ -651,13 +649,12 @@ std::optional<std::vector<Violation>> ReflowViolations(
                 message =
                     SpacingMessage(original, replacement, startA, a, startB, b);
             }
-            violations.push_back(
-                {
-                    firstLine + lineIndex,
-                    ColumnAt(source[lineIndex].Text, byte),
-                    std::move(message),
-                    ViolationKind::Reflow,
-                });
+            violations.push_back({
+                firstLine + lineIndex,
+                ColumnAt(source[lineIndex].Text, byte),
+                std::move(message),
+                ViolationKind::Reflow,
+            });
         }
         if (a == original.size() || b == replacement.size()) {
             break;
@@ -888,16 +885,15 @@ std::vector<Chunk> FormattingChunks(
             auto inserted = formattedCount > sourceCount
                 ? formattedCount - sourceCount
                 : size_t{0};
-            chunk.Violations.push_back(
-                {
-                    number,
-                    column,
-                    inserted
-                        ? "insert " + std::to_string(inserted) +
-                            " formatted lines after this line"
-                        : "replace lines following this line with "
-                            "formatted output",
-                });
+            chunk.Violations.push_back({
+                number,
+                column,
+                inserted
+                    ? "insert " + std::to_string(inserted) +
+                        " formatted lines after this line"
+                    : "replace lines following this line with "
+                        "formatted output",
+            });
         }
         for (size_t i = 0; i < formattedCount; ++i) {
             chunk.Fix.push_back(formatted[formattedIndex + i]);
@@ -1224,9 +1220,8 @@ Options ParseOptions(int argc, char* argv[])
             try {
                 options.Exclusions.emplace_back(pattern);
             } catch (const std::regex_error& error) {
-                throw std::runtime_error(
-                    "invalid --exclude regex: " + pattern + ": " +
-                        error.what());
+                throw std::runtime_error("invalid --exclude regex: " + pattern +
+                    ": " + error.what());
             }
         } else {
             throw std::runtime_error(
@@ -1557,9 +1552,8 @@ int main(int argc, char* argv[])
                 [
                     &] (
                     const auto& path,
-                    bool directory) { return styleResolver->IsExcluded(
-                            path,
-                            directory); },
+                    bool directory) { return styleResolver
+                            ->IsExcluded(path, directory); },
                 [&] (const auto& path) {
                     bool failed =
                         printResult(processFile(path, *styleResolver));
@@ -1583,9 +1577,8 @@ int main(int argc, char* argv[])
                     [
                         &] (
                         const auto& path,
-                        bool directory) { return styleResolver->IsExcluded(
-                                path,
-                                directory); },
+                        bool directory) { return styleResolver
+                                ->IsExcluded(path, directory); },
                     visit);
             },
             [&] { return StyleResolver(options); },

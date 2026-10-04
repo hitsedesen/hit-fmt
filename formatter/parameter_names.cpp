@@ -185,10 +185,12 @@ void CheckFunction(
             continue;
         }
         auto* declarator = Child(*init, NK::Declarator);
-        auto* signature =
-            declarator ? Child(*declarator, NK::FunctionDeclarator) : nullptr;
-        auto* parameters =
-            signature ? Child(*signature, NK::ParameterList) : nullptr;
+        auto* signature = declarator
+            ? Child(*declarator, NK::FunctionDeclarator)
+            : nullptr;
+        auto* parameters = signature
+            ? Child(*signature, NK::ParameterList)
+            : nullptr;
         if (!parameters || UnsafeSyntax(*declarator)) {
             continue;
         }
@@ -268,19 +270,17 @@ void CheckFunction(
                     continue;
                 }
             }
-            diagnostics.push_back(
-                {
-                    .Position = NamePosition(tree, *parameter, *specifiers),
-                    .Signature = signatureRange,
-                    .SignatureBeginLine = beginLine,
-                    .SignatureEndLine = endLine,
-                    .Function = functionName,
-                    .ParameterNumber = number,
-                    .AllowCommentedName = function.Kind ==
-                        NK::FunctionDefinition && definitionPolicy ==
-                            FunctionDefinitionParameterNames::
+            diagnostics.push_back({
+                .Position = NamePosition(tree, *parameter, *specifiers),
+                .Signature = signatureRange,
+                .SignatureBeginLine = beginLine,
+                .SignatureEndLine = endLine,
+                .Function = functionName,
+                .ParameterNumber = number,
+                .AllowCommentedName = function.Kind == NK::FunctionDefinition &&
+                    definitionPolicy == FunctionDefinitionParameterNames::
                         NameOrCommentedNameRequired,
-                });
+            });
         }
     }
 }

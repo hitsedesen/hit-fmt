@@ -138,8 +138,8 @@ struct FormatCase
 
 void PrintTo(const FormatCase& value, std::ostream* output)
 {
-    const auto root = (std::filesystem::path(FORMATTER_TESTDATA_DIR) /
-        "..").lexically_normal();
+    const auto root = (std::filesystem::path(FORMATTER_TESTDATA_DIR) / "..")
+        .lexically_normal();
     *output
         << value.Directory.lexically_normal().lexically_relative(
             root).generic_string() << '/' << value.Name;
@@ -572,6 +572,15 @@ std::vector<FormatCase> FormatCases()
         "reflow-preferred",
         "reflow-preferred.input.cpp",
     });
+    AddCases(
+        cases,
+        std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../ternary-layout",
+        {
+            "initializer-shape",
+            "initializer-shape-flexible",
+            "initializer-shape-narrow",
+        },
+        "initializer-shape.input.cpp");
     addProfileCase("../assignment-location", "profile");
     addProfileCase("../function_parameters", "profile");
     addProfileCase("../body-indent", "profile-control-local");
@@ -911,8 +920,8 @@ std::vector<FormatCase> FormatCases()
             "fix_spaced",
             "fix_newline",
         });
-    cases.push_back(
-        {data / "namespace_comments", "crlf_fix", "crlf.input.cpp"});
+    cases
+        .push_back({data / "namespace_comments", "crlf_fix", "crlf.input.cpp"});
     cases.push_back({
         data / "namespace_comments",
         "composes-spacing",
@@ -1015,8 +1024,8 @@ INSTANTIATE_TEST_SUITE_P(
     FormatTest,
     testing::ValuesIn(FormatCases()),
     [] (const auto& info) {
-        const auto root = (std::filesystem::path(FORMATTER_TESTDATA_DIR) /
-            "..").lexically_normal();
+        const auto root = (std::filesystem::path(FORMATTER_TESTDATA_DIR) / "..")
+            .lexically_normal();
         auto name =
             (info.param.Directory.lexically_normal().lexically_relative(root) /
                 info.param.Name).string();

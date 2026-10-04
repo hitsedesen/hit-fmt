@@ -228,10 +228,11 @@ GroupId Document::BeginGroup(GroupSpec spec)
         Fail(Error::InvalidPolicy);
     }
     node.ChildBreaks = spec.ChildBreaks;
-    if (spec.BreakPenalty > 3) {
+    if (spec.BreakPenalty > 3 || spec.FlatInBrokenParentPenalty > 3) {
         Fail(Error::InvalidPolicy);
     }
     node.BreakPenalty = spec.BreakPenalty;
+    node.FlatInBrokenParentPenalty = spec.FlatInBrokenParentPenalty;
     if (spec.Continuation && spec.Indent < 0) {
         Fail(Error::InvalidPolicy);
     }
@@ -791,6 +792,7 @@ const
         bool RealizedContinuationLine = false;
         std::uint32_t RealizedContinuationIndent = 0;
         std::uint64_t ContinuationStartLine = 0;
+        std::size_t FlatChildPenalty = 0;
     };
     std::pmr::vector<Frame> frames(resource);
     frames.reserve(Depth_);
@@ -984,8 +986,9 @@ const
             }
             if (shared) {
                 const bool realized = sharesRealizedContinuation(node);
-                const auto continuationIndent =
-                    realized ? frame.RealizedContinuationIndent : frame.Indent;
+                const auto continuationIndent = realized
+                    ? frame.RealizedContinuationIndent
+                    : frame.Indent;
                 base = realized
                     ? std::min(frame.ContinuationBase, continuationIndent)
                     : frame.ContinuationBase;
@@ -1063,8 +1066,18 @@ const
                 return false;
             }
             result.Broken[node.Reference] = multiline;
-            if (probing && multiline) {
-                ++probeBrokenGroups;
+            if (probing) {
+                if (multiline) {
+                    ++probeBrokenGroups;
+                    probeBreakPenalty += frame.FlatChildPenalty;
+                } else if (const auto penalty =
+                    Nodes_[node.Match].FlatInBrokenParentPenalty;
+                    penalty != 0)
+                {
+                    // Defer this cost until the direct parent's shape is
+                    // known; a wholly flat parent has no shape deviation.
+                    frames.back().FlatChildPenalty += penalty;
+                }
             }
             const bool realized =
                 frame.RealizedExpressionLine && !frame.StructuralBase;
@@ -1107,8 +1120,9 @@ const
             }
             if (shared) {
                 const bool realized = sharesRealizedContinuation(node);
-                const auto continuationIndent =
-                    realized ? frame.RealizedContinuationIndent : frame.Indent;
+                const auto continuationIndent = realized
+                    ? frame.RealizedContinuationIndent
+                    : frame.Indent;
                 base = realized
                     ? std::min(frame.ContinuationBase, continuationIndent)
                     : frame.ContinuationBase;
@@ -1177,20 +1191,17 @@ const
                 const auto begin = result.Text.size();
                 result.Text.append(text.substr(run, end - run));
                 if (policy.SourceMap) {
-                    result.Map.push_back(
+                    result.Map.push_back({
+                        begin,
+                        result.Text.size(),
                         {
-                            begin,
-                            result.Text.size(),
-                            {
-                                node.Origin.Begin +
-                                    static_cast<std::uint32_t>(run),
-                                node.Origin.Begin +
-                                    static_cast<std::uint32_t>(end),
-                                NoIdentity,
-                            },
-                            true,
-                            true,
-                        });
+                            node.Origin.Begin + static_cast<std::uint32_t>(run),
+                            node.Origin.Begin + static_cast<std::uint32_t>(end),
+                            NoIdentity,
+                        },
+                        true,
+                        true,
+                    });
                 }
             };
             for (std::size_t cursor = 0; cursor < text.size(); ++cursor) {
@@ -1222,20 +1233,19 @@ const
                 const auto begin = result.Text.size();
                 result.Text.append(targetCRLF ? "\r\n" : "\n");
                 if (policy.SourceMap) {
-                    result.Map.push_back(
+                    result.Map.push_back({
+                        begin,
+                        result.Text.size(),
                         {
-                            begin,
-                            result.Text.size(),
-                            {
-                                node.Origin.Begin +
-                                    static_cast<std::uint32_t>(atom),
-                                node.Origin.Begin +
-                                    static_cast<std::uint32_t>(cursor + 1),
-                                NoIdentity,
-                            },
-                            false,
-                            false,
-                        });
+                            node.Origin.Begin +
+                                static_cast<std::uint32_t>(atom),
+                            node.Origin.Begin +
+                                static_cast<std::uint32_t>(cursor + 1),
+                            NoIdentity,
+                        },
+                        false,
+                        false,
+                    });
                 }
                 run = cursor + 1;
             }
@@ -1303,12 +1313,11 @@ const
                 if (Nodes_[Groups_[node.Owner]].Mode == GroupMode::Consistent) {
                     line = true;
                 } else {
-                    line = !fits(
-                        AddWidth(
-                            entry.ExpandedGapWidth,
-                            gap.FitNextSegment
-                                ? gap.RequiredWidth
-                                : tailWidth(entry.BrokenTail))) ||
+                    line = !fits(AddWidth(
+                        entry.ExpandedGapWidth,
+                        gap.FitNextSegment
+                            ? gap.RequiredWidth
+                            : tailWidth(entry.BrokenTail))) ||
                         (frame.Mandatory == i &&
                             (frame.ForceOwned
                                 ? !frame.OwnedLine
@@ -1339,14 +1348,13 @@ const
                 }
                 if (gap.IndentSourceBegin != InvalidId) {
                     if (policy.SourceMap && !probing) {
-                        result.Map.push_back(
-                            {
-                                outputBegin,
-                                result.Text.size(),
-                                node.Origin,
-                                false,
-                                false,
-                            });
+                        result.Map.push_back({
+                            outputBegin,
+                            result.Text.size(),
+                            node.Origin,
+                            false,
+                            false,
+                        });
                     }
                     outputBegin = result.Text.size();
                     auto text = Source_.substr(
@@ -1384,14 +1392,13 @@ const
             }
         }
         if (policy.SourceMap && !probing) {
-            result.Map.push_back(
-                {
-                    outputBegin,
-                    result.Text.size(),
-                    emittedOrigin,
-                    exact,
-                    node.Type == Kind::Verbatim,
-                });
+            result.Map.push_back({
+                outputBegin,
+                result.Text.size(),
+                emittedOrigin,
+                exact,
+                node.Type == Kind::Verbatim,
+            });
         }
         return !probing || column <= policy.Width;
     };
@@ -1410,7 +1417,7 @@ const
             // Groups without owned breaks have no parent/child choice; their
             // children plan independently rather than spending this budget.
             // A parent layout plus four child depths, at most 256 nodes each.
-            // Minimize newlines plus syntax penalties, then lines, then
+            // Minimize newlines plus break/shape penalties, then lines, then
             // multiline groups; retain the parent layout on a tie. Large/protected
             // multiline regions keep the existing conservative layout. No
             // recursive search, trial output, or per-candidate allocations.
@@ -1462,8 +1469,9 @@ const
                 // Trial zero is the normal parent-breaking layout. The other
                 // trials retain successively shallower owned-flat prefixes.
                 for (std::size_t trial = 0; trial <= candidateDepth; ++trial) {
-                    const auto depth =
-                        trial == 0 ? 0 : candidateDepth - trial + 1;
+                    const auto depth = trial == 0
+                        ? 0
+                        : candidateDepth - trial + 1;
                     childLayoutDepth = depth;
                     probeBrokenGroups = 0;
                     probeBreakPenalty = 0;

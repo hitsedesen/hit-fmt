@@ -381,6 +381,10 @@ TEST(GroupLayout, GroupMetadataRejectsInvalidOwnersPrefixesAndOverflow)
             .BreakPenalty = static_cast<std::uint8_t>(penalty)});
         invalid.EndGroup(group);
         EXPECT_EQ(invalid.Seal().Code, Error::InvalidPolicy);
+        Document invalidShape("");
+        invalidShape.BeginGroup({
+            .FlatInBrokenParentPenalty = static_cast<std::uint8_t>(penalty)});
+        EXPECT_EQ(invalidShape.Seal().Code, Error::InvalidPolicy);
     }
     for (const bool structural : {false, true}) {
         Document invalidGroup("");
@@ -643,6 +647,39 @@ TEST(GroupLayout, ChildFittingCostGolden)
         actual += "chain penalty=" + std::to_string(penalty) + "\n";
         actual.append(output.Text);
         actual += '\n';
+    }
+    for (const auto width : {40u, 80u}) {
+        for (const auto penalty : {0u, 1u, 2u}) {
+            Document document("");
+            document.Text("auto value");
+            const auto initializer = document.BeginGroup({
+                .Mode = GroupMode::Fill, .Indent = 4, .Continuation = true});
+            document.Text(" =");
+            document.Gap();
+            const auto ternary = document.BeginGroup({
+                .Mode = GroupMode::Consistent, .Indent = 4,
+                .Continuation = true,
+                .FlatInBrokenParentPenalty =
+                    static_cast<std::uint8_t>(penalty)});
+            document.Text("cond");
+            document.Gap();
+            document.Text("? firstBranch");
+            document.Gap();
+            document.Text(": secondBranch");
+            document.EndGroup(ternary);
+            document.EndGroup(initializer);
+            document.Text(";");
+            ASSERT_TRUE(document.Seal());
+            const auto output = document.Render({.Width = width});
+            ASSERT_TRUE(output.State);
+            EXPECT_EQ(output.Broken[initializer] != 0, width == 40);
+            EXPECT_EQ(output.Broken[ternary] != 0,
+                width == 40 && penalty > 1);
+            actual += "flat-child penalty=" + std::to_string(penalty) +
+                " width=" + std::to_string(width) + "\n";
+            actual.append(output.Text);
+            actual += '\n';
+        }
     }
     test::golden::ExpectGolden(
         std::filesystem::path(DOCUMENT_TESTDATA_DIR) /

@@ -216,8 +216,9 @@ constexpr HelpSection HelpSections[] = {
         "back when the next atom plus suffix cannot fit.\n", ListExamples},
     {"Expressions and chains", "TernaryLayout is Flexible or ThreePart; "
         "ThreePart "
-        "couples both breaks in a broken ternary; it "
-            "alone does not force a fitting expression. "
+        "couples both breaks in a broken ternary and softly prefers that "
+        "shape when an assignment initializer wraps. It "
+        "alone does not force a fitting expression. "
         "TernaryOperatorIndentation is Align (default) or Indent. Align shares "
         "the surrounding continuation; Indent adds a continuation offset "
         "when the condition starts on an already-continued line. Condition "

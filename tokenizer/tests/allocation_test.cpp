@@ -79,7 +79,7 @@ auto broken = R"missing(raw contents;
                 tokenizer::GetTokenizationErrorDescription(error.Kind).size();
         });
     size_t tokenCount = 0;
-    for ( [[maybe_unused]] const auto& token : tokenizer) {
+    for ([[maybe_unused]] const auto& token : tokenizer) {
         ++tokenCount;
     }
     TrackAllocations = false;
