@@ -13,6 +13,120 @@
 namespace tokenizer {
 namespace {
 
+using detail::AsciiState;
+using detail::IsAsciiSpace;
+
+// The low bit marks bytes handled by the state's uninterrupted ASCII loop.
+// Space is also continuable, but preserves the logical-line-start flag.
+enum class ByteAction : uint8_t
+{
+    Finish = 0,
+    Continue = 1,
+    Space = 3,
+    Unicode = 4,
+    Newline = 6,
+    Escape = 8,
+    Delimiter = 10,
+    Quote = 12,
+    RawPrefix = 14,
+};
+
+[[nodiscard]] constexpr auto MakeByteActions(AsciiState state) noexcept
+{
+    std::array<ByteAction, 256> actions{};
+    for (unsigned byte = 0; byte < actions.size(); ++byte) {
+        auto action = ByteAction::Continue;
+        if (byte >= 0x80) {
+            action = ByteAction::Unicode;
+        } else if (byte == 0) {
+            action = ByteAction::Finish;
+        } else if (byte == '\n') {
+            action = ByteAction::Newline;
+        } else if (IsAsciiSpace(static_cast<unsigned char>(byte))) {
+            action = ByteAction::Space;
+        }
+        switch (state) {
+            case AsciiState::Identifier:
+                if (byte < 0x80) {
+                    action = ((byte >= 'a' && byte <= 'z') ||
+                        (byte >= 'A' && byte <= 'Z') ||
+                        (byte >= '0' && byte <= '9') || byte == '_')
+                        ? ByteAction::Continue
+                        : ByteAction::Finish;
+                }
+                break;
+            case AsciiState::Whitespace:
+                if (action == ByteAction::Continue) {
+                    action = ByteAction::Finish;
+                }
+                break;
+            case AsciiState::String:
+            case AsciiState::Character:
+                if (byte == '\\') {
+                    action = ByteAction::Escape;
+                } else if (byte == (state == AsciiState::String ? '"' : '\'')) {
+                    action = ByteAction::Delimiter;
+                }
+                break;
+            case AsciiState::BlockComment:
+                if (byte == '*') {
+                    action = ByteAction::Delimiter;
+                }
+                break;
+            case AsciiState::RawString:
+                if (byte == ')') {
+                    action = ByteAction::Delimiter;
+                }
+                break;
+            case AsciiState::Directive:
+                if (byte == '\\') {
+                    action = ByteAction::Escape;
+                } else if (byte == '/') {
+                    action = ByteAction::Delimiter;
+                } else if (byte == '"' || byte == '\'') {
+                    action = ByteAction::Quote;
+                } else if (byte == 'R') {
+                    action = ByteAction::RawPrefix;
+                }
+                break;
+            case AsciiState::DirectiveLineComment:
+                if (byte == '\\') {
+                    action = ByteAction::Escape;
+                }
+                break;
+            case AsciiState::LineComment:
+                break;
+        }
+        actions[byte] = action;
+    }
+    return actions;
+}
+
+template <AsciiState State>
+inline constexpr auto ByteActions = MakeByteActions(State);
+
+// Literal kinds select scanners; operator kinds are complete one-byte tokens.
+// Invalid selects the ambiguous-operator, invalid-byte, or Unicode path.
+inline constexpr auto AsciiTokenKinds = [] {
+    std::array<TokenKind, 256> kinds{};
+    for (unsigned byte = '0'; byte <= '9'; ++byte) {
+        kinds[byte] = TokenKind::Literal_DecimalInteger;
+    }
+    kinds['\''] = TokenKind::Literal_Character;
+    kinds['"'] = TokenKind::Literal_String;
+    kinds['{'] = TokenKind::Operator_OpenBrace;
+    kinds['}'] = TokenKind::Operator_CloseBrace;
+    kinds['['] = TokenKind::Operator_OpenBracket;
+    kinds[']'] = TokenKind::Operator_CloseBracket;
+    kinds['('] = TokenKind::Operator_OpenParenthesis;
+    kinds[')'] = TokenKind::Operator_CloseParenthesis;
+    kinds[';'] = TokenKind::Operator_Semicolon;
+    kinds['?'] = TokenKind::Operator_Conditional;
+    kinds['~'] = TokenKind::Operator_Complement;
+    kinds[','] = TokenKind::Operator_Comma;
+    return kinds;
+}();
+
 [[nodiscard]] constexpr bool IsOctalDigit(unicode::CodePoint cp) noexcept
 {
     return cp >= '0' && cp <= '7';
@@ -36,6 +150,12 @@ namespace {
 [[nodiscard]] constexpr bool IsAsciiDigit(unsigned char value) noexcept
 {
     return value >= '0' && value <= '9';
+}
+
+[[nodiscard]] constexpr bool IsAsciiIdentifierStart(unsigned char byte) noexcept
+{
+    return (byte >= 'a' && byte <= 'z') ||
+        (byte >= 'A' && byte <= 'Z') || byte == '_';
 }
 
 [[nodiscard]] constexpr bool IsAsciiAlphaNumeric(unsigned char value) noexcept
@@ -184,10 +304,10 @@ Token Tokenizer::Get()
     if (AtEnd()) [[unlikely]] {
         return FinishToken(TokenKind::EndOfFile);
     }
-    if (detail::IsAsciiIdentifierStart(byte)) {
+    if (IsAsciiIdentifierStart(byte)) {
         return ParseIdentifier();
     }
-    auto kind = detail::AsciiTokenKinds[byte];
+    auto kind = AsciiTokenKinds[byte];
     switch (kind) {
         case TokenKind::Literal_DecimalInteger:
             return ParseNumber();
@@ -503,7 +623,7 @@ unsigned char Tokenizer::ScanAsciiRun()
     unsigned char byte;
     while (true) {
         byte = *cursor;
-        auto action = detail::ByteActions<State>[byte];
+        auto action = ByteActions<State>[byte];
         if ((static_cast<unsigned char>(action) & 1) == 0) {
             break;
         }
@@ -513,7 +633,7 @@ unsigned char Tokenizer::ScanAsciiRun()
             State == detail::AsciiState::DirectiveLineComment)
         {
             nonSpace |= static_cast<unsigned char>(action) ^
-                static_cast<unsigned char>(detail::ByteAction::Space);
+                static_cast<unsigned char>(ByteAction::Space);
         }
         ++cursor;
     }
@@ -805,13 +925,13 @@ Token Tokenizer::ParseCharacterLiteral()
         auto start = CurrentCodePointOffset_;
         byte = ScanAsciiRun<detail::AsciiState::Character>();
         characterCount += CurrentCodePointOffset_ - start;
-        switch (detail::ByteActions<detail::AsciiState::Character>[byte]) {
-            case detail::ByteAction::Unicode:
+        switch (ByteActions<detail::AsciiState::Character>[byte]) {
+            case ByteAction::Unicode:
                 LoadCurrentUnicodeCodePoint();
                 ConsumeUnicodeCodePoint();
                 ++characterCount;
                 continue;
-            case detail::ByteAction::Escape:
+            case ByteAction::Escape:
             {
                 bool lineSplice = PeekByte(1) == '\n' ||
                     (PeekByte(1) == '\r' && PeekByte(2) == '\n');
@@ -853,12 +973,12 @@ Token Tokenizer::ParseStringLiteral()
     unsigned char byte;
     while (true) {
         byte = ScanAsciiRun<detail::AsciiState::String>();
-        switch (detail::ByteActions<detail::AsciiState::String>[byte]) {
-            case detail::ByteAction::Unicode:
+        switch (ByteActions<detail::AsciiState::String>[byte]) {
+            case ByteAction::Unicode:
                 LoadCurrentUnicodeCodePoint();
                 ConsumeUnicodeCodePoint();
                 continue;
-            case detail::ByteAction::Escape:
+            case ByteAction::Escape:
                 valid &= ConsumeEscapeSequence();
                 continue;
             default:
@@ -923,12 +1043,12 @@ Token Tokenizer::ParseRawStringLiteral()
         if (AtEnd()) {
             break;
         }
-        switch (detail::ByteActions<detail::AsciiState::RawString>[byte]) {
-            case detail::ByteAction::Unicode:
+        switch (ByteActions<detail::AsciiState::RawString>[byte]) {
+            case ByteAction::Unicode:
                 LoadCurrentUnicodeCodePoint();
                 ConsumeUnicodeCodePoint();
                 break;
-            case detail::ByteAction::Delimiter:
+            case ByteAction::Delimiter:
             {
                 auto suffix = Input_.substr(CurrentCodePointOffset_ + 1);
                 if (suffix.starts_with(delimiter) &&
@@ -1389,15 +1509,15 @@ Token Tokenizer::ParseMultilineComment()
     ConsumeAsciiByte('*');
     while (true) {
         auto byte = ScanAsciiRun<detail::AsciiState::BlockComment>();
-        switch (detail::ByteActions<detail::AsciiState::BlockComment>[byte]) {
-            case detail::ByteAction::Unicode:
+        switch (ByteActions<detail::AsciiState::BlockComment>[byte]) {
+            case ByteAction::Unicode:
                 LoadCurrentUnicodeCodePoint();
                 ConsumeUnicodeCodePoint();
                 break;
-            case detail::ByteAction::Newline:
+            case ByteAction::Newline:
                 ConsumeAsciiByte(byte);
                 break;
-            case detail::ByteAction::Delimiter:
+            case ByteAction::Delimiter:
                 ConsumeAsciiByte(byte);
                 if (PeekByte() == '/') {
                     ConsumeAsciiByte('/');
