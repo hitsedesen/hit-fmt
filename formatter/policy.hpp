@@ -57,9 +57,12 @@ struct IndentationPolicy
     // a minimum relative to the block column. If this leaves no room for the
     // next indivisible atom and required suffix, use block + FallbackOffset.
     // This is the lowering contract; anchor>=Width alone is insufficient.
-    std::size_t ContinuationOffset;
-    std::size_t FallbackOffset;
+    // Validated/resolved offsets are 1..32.
+    std::uint8_t ContinuationOffset;
+    std::uint8_t FallbackOffset;
 };
+
+static_assert(sizeof(IndentationPolicy) == 3);
 
 struct ListPolicy
 {
@@ -106,10 +109,12 @@ struct BodyPolicy
 {
     LayoutMode Layout;
     BodyShape Shape;
-    std::size_t IndentWidth;
+    std::uint8_t IndentWidth;
     // Separate from nonempty Shape; excludes enums/lists/requirement bodies.
     BodyShape EmptyShape = BodyShape::Expanded;
 };
+
+static_assert(sizeof(BodyPolicy) == 4);
 
 // Offsets are 1..32 after validation/resolution and fit in one byte. The mode
 // decides whether to apply the offset, align to the block, or retain source.
@@ -204,8 +209,8 @@ struct GapPolicies
 struct CompiledPolicies
 {
     const LayoutMode Layout;
-    const std::size_t IndentWidth;
-    const std::size_t ColumnLimit;
+    const std::uint8_t IndentWidth;
+    const std::uint16_t ColumnLimit;
     const WidthDiagnosticPolicy WidthDiagnostics;
     const formatter::IndentationKind IndentationKind;
     const formatter::LineEnding LineEnding;

@@ -80,7 +80,7 @@ struct FormatMapping
     // Exact copied range, or a non-exact source association/insertion anchor.
     // Zero-width syntax anchors have affinity to the preceding source piece.
     parser::SourceRange Original;
-    uint64_t OriginalToken = document::NoIdentity;
+    document::Identity OriginalToken = document::NoIdentity;
     // Index into FormatResult::StructuralOperations for normalization/comment
     // associations, including exact moved include bytes.
     StructuralActionId Action = NoStructuralAction;
@@ -93,6 +93,8 @@ struct FormatMapping
     // ID.
     bool Generated = false;
 };
+
+static_assert(sizeof(FormatMapping) <= 28);
 
 struct FormatResult
 {

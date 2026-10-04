@@ -3,6 +3,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <memory_resource>
+#include <span>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -15,7 +16,9 @@ using AnchorId = std::uint32_t;
 
 inline constexpr std::uint32_t InvalidId = UINT32_MAX;
 
-inline constexpr std::uint64_t NoIdentity = UINT64_MAX;
+using Identity = std::uint32_t;
+
+inline constexpr Identity NoIdentity = UINT32_MAX;
 
 // Half-open original byte offsets and immutable caller-assigned token/range ID.
 // InvalidId offsets denote generated text. Borrowed text must outlive
@@ -24,7 +27,7 @@ struct Provenance
 {
     std::uint32_t Begin = InvalidId;
     std::uint32_t End = InvalidId;
-    std::uint64_t Identity = NoIdentity;
+    document::Identity Identity = NoIdentity;
 };
 
 enum class GroupMode : std::uint8_t
@@ -177,12 +180,28 @@ struct Policy
     Newline LineEnding = Newline::LF;
     bool SourceMap = true;
     IndentationKind Indentation = IndentationKind::Spaces;
+    // When a full map is not requested, retain only supplied identities and
+    // exact copies intersecting these sorted, disjoint source ranges. Views
+    // are borrowed for this Render call only; they grant no edit authority.
+    bool TokenMap = false;
+    std::span<const Provenance> TrackSource = {};
 };
+
+namespace detail {
+
+// Output positions use the same bounded 32-bit domain as source positions.
+// Check in size_t before narrowing, without overflowing the addition.
+[[nodiscard]] constexpr bool FitsOutput(std::size_t size, std::size_t added)
+{
+    return size < InvalidId && added < InvalidId - size;
+}
+
+} // namespace detail
 
 struct Mapping
 {
-    std::size_t OutputBegin = 0;
-    std::size_t OutputEnd = 0;
+    std::uint32_t OutputBegin = 0;
+    std::uint32_t OutputEnd = 0;
     Provenance Source;
     // Exact means borrowed source bytes, including protected verbatim atoms.
     bool Exact = false;
@@ -221,7 +240,7 @@ public:
     void SourceText(
         std::uint32_t begin,
         std::uint32_t end,
-        std::uint64_t identity = NoIdentity,
+        Identity identity = NoIdentity,
         bool verbatim = false);
     // Producer must authorize the entire whitespace slice, including whole
     // CRLF atoms; a token-owned CR plus following gap LF must be excluded.
@@ -259,7 +278,7 @@ public:
         std::uint32_t indentEnd,
         AnchorId anchor = InvalidId,
         std::uint32_t requiredWidth = 0,
-        std::uint64_t identity = NoIdentity);
+        Identity identity = NoIdentity);
     AnchorId MarkAnchor(AnchorSpec spec);
     // Record a fixed source GAP line for the current expression contributor.
     // The preceding node must be exact source whitespace containing LF, or a
@@ -302,48 +321,88 @@ private:
         ExpressionLine
     };
 
-    struct Node
+    // Source atoms use Origin offsets directly. Only external borrowed text
+    // needs a file-scoped table entry; no pointer or size_t lives in an atom.
+    inline static constexpr std::uint32_t SourceTextId = InvalidId - 1;
+
+    struct BorrowedText
     {
-        std::string_view FlatText;
-        std::string_view BrokenText;
+        const char* Data;
+        std::uint32_t Size;
+    };
+
+    struct TextData
+    {
+        std::uint32_t Flat = InvalidId;
+        std::uint32_t Broken = InvalidId;
+        // ConditionalText: width floor; SourceWhitespace: changed LF count.
+        std::uint32_t Detail = 0;
+        GapNewline LineEnding = GapNewline::Inherit;
+    };
+
+    struct PrefixedTextData
+    {
+        GapSpec Gap;
         Provenance Origin;
+    };
+
+    struct GapData
+    {
+        GapSpec Flat;
+        GapSpec Broken;
+        AnchorId Anchor = InvalidId;
+    };
+
+    struct GroupData
+    {
         std::uint32_t Match = InvalidId;
-        std::uint32_t Owner = InvalidId;
-        // Group reference, or an Anchor's optional SharedWith reference.
+        // Logical (unfused) position keeps bounded layout search unchanged.
+        std::uint32_t LogicalPosition = 0;
+        // Group identity, or an Anchor's optional SharedWith identity.
         std::uint32_t Reference = InvalidId;
-        std::uint32_t Anchor = InvalidId;
+        AnchorId Anchor = InvalidId;
         std::int32_t Indent = 0;
         std::int32_t Fallback = 0;
         std::uint32_t Minimum = 0;
-
-        // Kind-tagged, mutually exclusive leaf data. ConditionalText uses
-        // FitWidthFloor; SourceWhitespace initializes/reads ChangedNewlines.
-        // Both members are trivial scalars, copied with Node's active member.
-        union
-        {
-            std::uint32_t FitWidthFloor = 0;
-            std::uint32_t ChangedNewlines;
-        };
-
-        // SourceLineIndent stores its horizontal association in FlatGap's
-        // IndentSource offsets and its delimiter demand in RequiredWidth.
-        GapSpec FlatGap;
-        GapSpec BrokenGap;
-        Kind Type = Kind::Text;
         GroupMode Mode = GroupMode::Consistent;
         AnchorKind Alignment = AnchorKind::BlockRelative;
-        bool Exact = false;
-        bool ForceBreak = false;
-        bool ExpressionContinuation = false;
-        bool StructuralBase = false;
-        // Share the original continuation flag byte; child fitting must not
-        // enlarge every document atom.
+        bool ForceBreak : 1 = false;
+        bool ExpressionContinuation : 1 = false;
+        bool StructuralBase : 1 = false;
         bool Continuation : 1 = false;
         bool ChildBreaks : 1 = true;
-        std::uint8_t BreakPenalty : 2 = 0;
         bool LineBase : 1 = false;
+        std::uint8_t BreakPenalty : 2 = 0;
         std::uint8_t FlatInBrokenParentPenalty : 2 = 0;
     };
+
+    struct Node
+    {
+        explicit Node(Kind kind, bool prefixed = false);
+        Provenance Origin;
+        GroupId Owner = InvalidId;
+        Kind Type;
+        bool Exact : 1 = false;
+        bool HasPrefix : 1 = false;
+
+        // The constructor activates the kind's payload. All alternatives are
+        // trivially copyable; SourceLineIndent uses GapData plus Origin.
+        union
+        {
+            TextData Text;
+            PrefixedTextData Prefix;
+            GapData Gaps;
+            GroupData Group;
+        };
+    };
+
+    static_assert(sizeof(Node) <= 80);
+    static_assert(sizeof(Mapping) <= 24);
+
+    std::uint32_t BorrowText(std::string_view text);
+    std::string_view TextView(std::uint32_t id, Provenance origin) const;
+    std::string_view FlatText(const Node& node) const;
+    std::string_view BrokenText(const Node& node) const;
 
     std::uint32_t Add(Node node);
     bool CheckOrigin(Provenance origin);
@@ -354,8 +413,10 @@ private:
 
     std::string_view Source_;
     std::pmr::vector<Node> Nodes_;
+    std::pmr::vector<BorrowedText> BorrowedTexts_;
     std::pmr::vector<std::uint32_t> Groups_;
     std::pmr::vector<std::uint32_t> Open_;
+    std::uint32_t LogicalNodes_ = 0;
     std::uint32_t Anchors_ = 0;
     std::uint32_t Depth_ = 0;
     Status State_;

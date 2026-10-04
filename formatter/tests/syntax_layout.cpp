@@ -2346,6 +2346,15 @@ TEST(SyntaxLayout, EmptyShapeNamespaceIndentAndEnumListAreIndependent)
     EXPECT_NE(Lower("namespace A::B {\nvoid work(){ task(); }\n}\n", style)
                   .Text.find("\n   void"),
               std::string::npos);
+    // Preserved source geometry is not a validated 1..32 style offset.
+    style.IndentNamespaces = formatter::BodyIndentation::Preserve;
+    style.BodiesLayout = formatter::CategoryLayout::Canonical;
+    const std::string wide = "namespace Wide {\n" + std::string(300, ' ') +
+        "void work(){ task(); }\n}\n";
+    const auto kept = Lower(wide, style).Text;
+    EXPECT_NE(kept.find("\n" + std::string(300, ' ') + "void"),
+        std::string::npos) << kept;
+    EXPECT_EQ(Lower(kept, style).Text, kept);
 }
 TEST(SyntaxLayout, ExpressionPackingCoOwnsOnlySamePrecedenceSpine)
 {
@@ -2974,7 +2983,11 @@ TEST(SyntaxLayout, RecordHeadCommaPreferenceIsClassifiedAndLocallyAuthorized)
         EXPECT_EQ(gap.Field, formatter::SpacingField::CommaSpaceAfter);
         EXPECT_EQ(gap.Policy, formatter::GapPolicy::Space);
         EXPECT_EQ(gap.Category, formatter::SpacingOwner::DeclarationHeaders);
-        EXPECT_EQ(gap.Owner, record);
+        ASSERT_NE(gap.Owner, formatter::NoRegion);
+        const auto &owner = safety.Regions()[gap.Owner];
+        EXPECT_EQ(owner.Kind, record->Kind);
+        EXPECT_EQ(owner.Tokens.Begin, record->Tokens.Begin);
+        EXPECT_EQ(owner.Tokens.End, record->Tokens.End);
         EXPECT_EQ(gap.Priority, 3);
         EXPECT_EQ(spacing.SpacePreference(i + 1, formatter::GapContext::Preserved,
                                          safety), true);

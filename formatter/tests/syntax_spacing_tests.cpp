@@ -105,9 +105,11 @@ std::string Dump(const Analysis& analysis)
         }
         output << i << " before=" << analysis.Tree.TokenText(i) << " field="
             << SpacingFieldName(gap.Field) << " owner="
-            << (gap.Owner ? parser::GetNodeKindName(gap.Owner->Kind) : "none")
-            << " category=" << static_cast<int>(gap.Category) << " priority="
-            << static_cast<int>(gap.Priority) << " fallback="
+            << (gap.Owner != NoRegion
+                ? parser::GetNodeKindName(
+                    analysis.Safety.Regions()[gap.Owner].Kind)
+                : "none") << " category=" << static_cast<int>(gap.Category)
+            << " priority=" << static_cast<int>(gap.Priority) << " fallback="
             << gap.FallbackSpace << " protected="
             << analysis.Safety.Gaps()[i].Preserve << " constraint="
             << static_cast<int>(gap.Constraint) << '\n';
@@ -167,7 +169,7 @@ TEST(SyntaxSpacing, EveryControlProjectsPoliciesOnlyToItsClassifiedSites)
             for (auto context : {GapContext::Preserved, GapContext::Rebuilt}) {
                 auto expected = GapUsesSpace(policy, context);
                 if (expected && safety.Separation == GapSeparation::Required &&
-                    !safety.Original.empty())
+                    !analysis.Safety.Original(safety).empty())
                 {
                     expected = true;
                 }
@@ -306,7 +308,7 @@ TEST(SyntaxSpacing, TrailingCommentPolicyOverridesAssignmentGap)
             F::TrailingCommentSpacing);
         EXPECT_EQ(analysis.Spacing.Gaps()[gap].Policy, GapPolicy::Preserve);
         EXPECT_EQ(analysis.Spacing.Gaps()[gap].Priority, 3);
-        EXPECT_EQ(analysis.Safety.Gaps()[gap].Original, "  ");
+        EXPECT_EQ(analysis.Safety.Original(gap), "  ");
         EXPECT_EQ(analysis.Safety.Gaps()[gap].Reasons, ProtectionReason::None);
         EXPECT_FALSE(analysis.Safety.Gaps()[gap].Preserve);
         EXPECT_TRUE(analysis.Safety.CanReplaceGap(gap, " "));
@@ -343,7 +345,7 @@ TEST(SyntaxSpacing, SpecificAndEmptyRulesOverrideGeneralRulesEvenWhenPreserved)
         analysis.Spacing.Gaps()[statement].Field,
         F::StatementSemicolonSpacing);
     auto empty = analysis.Before(")", 1);
-    EXPECT_EQ(analysis.Safety.Gaps()[empty].Original, "  ");
+    EXPECT_EQ(analysis.Safety.Original(empty), "  ");
     EXPECT_EQ(
         analysis.Spacing.Gaps()[empty].Field,
         F::EmptyFunctionCallArgumentsSpacing);
@@ -370,8 +372,8 @@ TEST(SyntaxSpacing, DoWhileOwnTerminatorIsNotAHeaderSeparator)
         const auto id = analysis.Before(";", occurrence);
         const auto& gap = analysis.Spacing.Gaps()[id];
         EXPECT_EQ(gap.Field, F::StatementSemicolonSpacing);
-        ASSERT_NE(gap.Owner, nullptr);
-        EXPECT_EQ(gap.Owner->Kind, parser::NodeKind::DoWhileStatement);
+        ASSERT_NE(gap.Owner, NoRegion);
+        EXPECT_EQ(analysis.Safety.Regions()[gap.Owner].Kind, parser::NodeKind::DoWhileStatement);
         EXPECT_EQ(gap.Category, C::Bodies);
         EXPECT_EQ(analysis.Spacing.SpacePreference(
             id,
@@ -383,8 +385,8 @@ TEST(SyntaxSpacing, DoWhileOwnTerminatorIsNotAHeaderSeparator)
         const auto& gap = analysis.Spacing.Gaps()[
             analysis.Before(";", occurrence)];
         EXPECT_EQ(gap.Field, F::StatementSemicolonSpacing);
-        ASSERT_NE(gap.Owner, nullptr);
-        EXPECT_EQ(gap.Owner->Kind, parser::NodeKind::ExpressionStatement);
+        ASSERT_NE(gap.Owner, NoRegion);
+        EXPECT_EQ(analysis.Safety.Regions()[gap.Owner].Kind, parser::NodeKind::ExpressionStatement);
     }
     EXPECT_EQ(
         analysis.Spacing.Gaps()[analysis.Before(";", 4)].Field,
@@ -432,8 +434,8 @@ TEST(SyntaxSpacing, CaptureAssignmentDoesNotOwnRawInitializerInternals)
         const auto separator = analysis.Before("=", 1);
         const auto inner = analysis.Before("=", 2);
         const auto& own = analysis.Spacing.Gaps()[separator];
-        ASSERT_NE(own.Owner, nullptr) << capture;
-        EXPECT_EQ(own.Owner->Kind, parser::NodeKind::LambdaCaptureList);
+        ASSERT_NE(own.Owner, NoRegion) << capture;
+        EXPECT_EQ(analysis.Safety.Regions()[own.Owner].Kind, parser::NodeKind::LambdaCaptureList);
         for (auto id : {separator, separator + 1}) {
             EXPECT_EQ(
                 analysis.Spacing.Gaps()[id].Field,
@@ -500,8 +502,8 @@ TEST(SyntaxSpacing, GeneratedPoliciesObserveOwnerNotDescendantEdits)
     const auto binaryBefore = analysis.Before("+");
     const auto& comma = analysis.Spacing.Gaps()[commaAfter];
     const auto& binary = analysis.Spacing.Gaps()[binaryBefore];
-    ASSERT_NE(comma.Owner, nullptr);
-    ASSERT_NE(binary.Owner, nullptr);
+    ASSERT_NE(comma.Owner, NoRegion);
+    ASSERT_NE(binary.Owner, NoRegion);
     EXPECT_EQ(comma.Category, C::Calls);
     EXPECT_EQ(binary.Category, C::Expressions);
     EXPECT_NE(comma.Owner, binary.Owner);
@@ -532,10 +534,10 @@ TEST(SyntaxSpacing, TrailingDeclarationCommentsBelongToHeaderNotOuterBody)
     for (auto text : {"// root", "// local"}) {
         const auto id = analysis.Before(text);
         const auto& gap = analysis.Spacing.Gaps()[id];
-        ASSERT_NE(gap.Owner, nullptr);
+        ASSERT_NE(gap.Owner, NoRegion);
         EXPECT_EQ(gap.Category, C::DeclarationHeaders);
-        EXPECT_TRUE(gap.Owner->Kind == parser::NodeKind::Declaration ||
-            gap.Owner->Kind == parser::NodeKind::DeclarationStatement);
+        EXPECT_TRUE(analysis.Safety.Regions()[gap.Owner].Kind == parser::NodeKind::Declaration ||
+            analysis.Safety.Regions()[gap.Owner].Kind == parser::NodeKind::DeclarationStatement);
         EXPECT_FALSE(analysis.Spacing.SpacePreference(
             id,
             GapContext::Preserved,
@@ -557,7 +559,7 @@ TEST(SyntaxSpacing, CompleteSpecifierToDirectNamedDeclaratorFallback)
     for (const auto name : {"make", "nested", "flat", "scalar", "qualified"}) {
         const auto id = analysis.Before(name);
         const auto& gap = analysis.Spacing.Gaps()[id];
-        ASSERT_NE(gap.Owner, nullptr) << name;
+        ASSERT_NE(gap.Owner, NoRegion) << name;
         EXPECT_EQ(gap.Category, C::DeclarationHeaders) << name;
         EXPECT_EQ(gap.Field, F::None) << name;
         EXPECT_TRUE(gap.FallbackSpace) << name;
@@ -575,7 +577,7 @@ TEST(SyntaxSpacing, CompleteSpecifierToDirectNamedDeclaratorFallback)
         qualified.Before("Owner", 1), qualified.Before("space")})
     {
         const auto& gap = qualified.Spacing.Gaps()[id];
-        ASSERT_NE(gap.Owner, nullptr);
+        ASSERT_NE(gap.Owner, NoRegion);
         EXPECT_EQ(gap.Category, C::DeclarationHeaders);
         EXPECT_EQ(gap.Field, F::None);
         EXPECT_TRUE(gap.FallbackSpace);
@@ -587,7 +589,7 @@ TEST(SyntaxSpacing, CompleteSpecifierToDirectNamedDeclaratorFallback)
     Analysis decltypeDefinition("decltype(value)  incomplete(){}");
     const auto id = decltypeDefinition.Before("incomplete");
     const auto& gap = decltypeDefinition.Spacing.Gaps()[id];
-    ASSERT_NE(gap.Owner, nullptr);
+    ASSERT_NE(gap.Owner, NoRegion);
     EXPECT_EQ(gap.Category, C::DeclarationHeaders);
     EXPECT_EQ(gap.Field, F::None);
     EXPECT_TRUE(gap.FallbackSpace);
@@ -678,7 +680,7 @@ TEST(SyntaxSpacing, PreservedNestedPointerRuleOverridesScalarBinding)
         PointerReferenceDeclaratorLocation::Right);
     for (auto name : {"function", "member"}) {
         const auto id = analysis.Before(name);
-        EXPECT_EQ(analysis.Safety.Gaps()[id].Original, "  ");
+        EXPECT_EQ(analysis.Safety.Original(id), "  ");
         EXPECT_FALSE(analysis.Spacing.SpacePreference(
             id,
             GapContext::Rebuilt,
@@ -729,7 +731,7 @@ TEST(SyntaxSpacing, JointPreferencesRetainExactTokenKindsAndSpellings)
         std::string edited;
         for (GapId i = 0; i <= analysis.Tree.TokenCount(); ++i) {
             const auto& sourceGap = analysis.Safety.Gaps()[i];
-            auto replacement = sourceGap.Original;
+            auto replacement = analysis.Safety.Original(sourceGap);
             if (auto preference = analysis.Spacing.SpacePreference(
                 i, context, analysis.Safety))
             {
@@ -806,8 +808,8 @@ TEST(SyntaxSpacing, HeaderCastNewAndAttributeBoundariesHaveDistinctOwners)
         Analysis functionTry(source, headerPolicies);
         const auto id = functionTry.Before("try");
         const auto& gap = functionTry.Spacing.Gaps()[id];
-        ASSERT_NE(gap.Owner, nullptr) << source;
-        EXPECT_EQ(gap.Owner->Kind, parser::NodeKind::FunctionDefinition)
+        ASSERT_NE(gap.Owner, NoRegion) << source;
+        EXPECT_EQ(functionTry.Safety.Regions()[gap.Owner].Kind, parser::NodeKind::FunctionDefinition)
             << source;
         EXPECT_EQ(gap.Category, C::DeclarationHeaders) << source;
         EXPECT_EQ(gap.Field, F::None) << source;
@@ -840,7 +842,7 @@ TEST(SyntaxSpacing, HeaderCastNewAndAttributeBoundariesHaveDistinctOwners)
     const auto standaloneTry = standalone.Before("try");
     EXPECT_EQ(standalone.Spacing.Gaps()[standaloneTry].Category, C::Bodies);
     EXPECT_EQ(
-        standalone.Spacing.Gaps()[standaloneTry].Owner->Kind,
+        standalone.Safety.Regions()[standalone.Spacing.Gaps()[standaloneTry].Owner].Kind,
         parser::NodeKind::CompoundStatement);
     Analysis unconfirmed("void f()try;", headerPolicies);
     EXPECT_EQ(
@@ -987,13 +989,13 @@ TEST(SyntaxSpacing, MalformedPrefixesKeepOnlyIndependentlyProvenLocalGaps)
         RegionStatus status) {
         const auto& gap = analysis.Spacing.Gaps()[id];
         EXPECT_EQ(gap.Field, field);
-        ASSERT_NE(gap.Owner, nullptr);
-        EXPECT_EQ(gap.Owner->Kind, kind);
+        ASSERT_NE(gap.Owner, NoRegion);
+        EXPECT_EQ(analysis.Safety.Regions()[gap.Owner].Kind, kind);
         bool found = false;
         for (const auto& region : analysis.Safety.Regions()) {
             if (region.Kind == kind &&
-                region.Tokens.Begin == gap.Owner->Tokens.Begin &&
-                region.Tokens.End == gap.Owner->Tokens.End)
+                region.Tokens.Begin == analysis.Safety.Regions()[gap.Owner].Tokens.Begin &&
+                region.Tokens.End == analysis.Safety.Regions()[gap.Owner].Tokens.End)
             {
                 EXPECT_EQ(region.Status, status);
                 found = true;
@@ -1054,21 +1056,21 @@ TEST(SyntaxSpacing, RecoveredSizeofPackOperandDoesNotOwnGroupingInteriors)
             const auto close = analysis.Before(")", 1);
             const auto& prefix = analysis.Spacing.Gaps()[open];
             EXPECT_EQ(prefix.Field, F::SizeofPackSpaceBeforeParentheses);
-            ASSERT_NE(prefix.Owner, nullptr);
-            EXPECT_EQ(prefix.Owner->Kind, parser::NodeKind::UnaryExpression);
+            ASSERT_NE(prefix.Owner, NoRegion);
+            EXPECT_EQ(analysis.Safety.Regions()[prefix.Owner].Kind, parser::NodeKind::UnaryExpression);
             EXPECT_TRUE(analysis.Safety.CanReplaceGap(open, ""));
             EXPECT_EQ(analysis.Spacing.SpacePreference(
                 open, GapContext::Rebuilt, analysis.Safety), false);
             // The empty closer gap sits at the recovery range's exclusive
             // end. It permits insertion lexically, but lacks syntax authority.
-            EXPECT_TRUE(analysis.Safety.Gaps()[close].Original.empty());
+            EXPECT_TRUE(analysis.Safety.Original(close).empty());
             EXPECT_TRUE(analysis.Safety.CanReplaceGap(close, " "));
             for (auto id : {open + 1, close}) {
                 const auto& gap = analysis.Spacing.Gaps()[id];
                 EXPECT_EQ(gap.Field, F::None);
                 EXPECT_EQ(gap.Category, C::None);
-                ASSERT_NE(gap.Owner, nullptr);
-                EXPECT_EQ(gap.Owner->Kind,
+                ASSERT_NE(gap.Owner, NoRegion);
+                EXPECT_EQ(analysis.Safety.Regions()[gap.Owner].Kind,
                     parser::NodeKind::ParenthesizedExpression);
                 EXPECT_NE(static_cast<uint8_t>(gap.Constraint) &
                     static_cast<uint8_t>(SpacingConstraint::UncertainSyntax), 0);
@@ -1107,8 +1109,8 @@ TEST(SyntaxSpacing, RecoveredSizeofPackOperandDoesNotOwnGroupingInteriors)
         {
             const auto& gap = valid.Spacing.Gaps()[id];
             EXPECT_EQ(gap.Field, F::GroupingInteriorSpacing);
-            ASSERT_NE(gap.Owner, nullptr);
-            EXPECT_EQ(gap.Owner->Kind,
+            ASSERT_NE(gap.Owner, NoRegion);
+            EXPECT_EQ(valid.Safety.Regions()[gap.Owner].Kind,
                 parser::NodeKind::ParenthesizedExpression);
             EXPECT_EQ(valid.Spacing.SpacePreference(
                 id, GapContext::Rebuilt, valid.Safety),
@@ -1285,8 +1287,8 @@ TEST(SyntaxSpacing, CompleteDirectSequenceBoundariesHaveFlatSpaceFallback)
         Analysis analysis(item.Source);
         const auto id = analysis.Before(item.Right, item.Occurrence);
         const auto& gap = analysis.Spacing.Gaps()[id];
-        ASSERT_NE(gap.Owner, nullptr) << item.Source;
-        EXPECT_EQ(gap.Owner->Kind, item.Owner) << item.Source;
+        ASSERT_NE(gap.Owner, NoRegion) << item.Source;
+        EXPECT_EQ(analysis.Safety.Regions()[gap.Owner].Kind, item.Owner) << item.Source;
         EXPECT_EQ(gap.Category, item.Category) << item.Source;
         EXPECT_TRUE(gap.FallbackSpace) << item.Source;
         // nullopt is no explicit preference, not permission to borrow bytes.

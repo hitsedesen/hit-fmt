@@ -111,7 +111,7 @@ void CheckAnalysisSource(
     const SourceAnalysis& safety)
 {
     if (safety.Gaps().size() != static_cast<size_t>(tree.TokenCount()) + 1 ||
-        safety.Gaps().front().Original.data() != tree.Source().data())
+        safety.Source().data() != tree.Source().data())
     {
         throw std::invalid_argument("analysis is not from original source");
     }
@@ -744,7 +744,7 @@ StructuralPlan PlanStructuralEdits(
                     Skip(plan, action, tokens, StructuralSkip::Protected);
                 } else if (options.PreserveBareCR &&
                     safety.Gaps()[token].HasBareCR &&
-                    safety.Gaps()[token].Original.ends_with('\r'))
+                    safety.Original(token).ends_with('\r'))
                 {
                     // Retain the first original separator of a zero-gap
                     // deletion chain before admission: no cancellation or ID

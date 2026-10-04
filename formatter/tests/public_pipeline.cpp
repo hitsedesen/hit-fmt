@@ -35,13 +35,54 @@ struct Input
     }
 };
 
+void CheckVisibleResults(
+    const formatter::FormatResult& mapped,
+    const formatter::FormatResult& plain)
+{
+    EXPECT_EQ(plain.Text, mapped.Text);
+    EXPECT_TRUE(plain.Map.empty());
+    EXPECT_TRUE(plain.OriginalTokens.empty());
+    EXPECT_TRUE(plain.OutputProtection.empty());
+    EXPECT_TRUE(plain.StructuralOperations.empty());
+    ASSERT_EQ(
+        plain.StructuralDiagnostics.size(),
+        mapped.StructuralDiagnostics.size());
+    for (size_t i = 0; i < mapped.StructuralDiagnostics.size(); ++i) {
+        const auto& a = mapped.StructuralDiagnostics[i];
+        const auto& b = plain.StructuralDiagnostics[i];
+        EXPECT_EQ(a.Action, b.Action);
+        EXPECT_EQ(a.Tokens.Begin, b.Tokens.Begin);
+        EXPECT_EQ(a.Tokens.End, b.Tokens.End);
+        EXPECT_EQ(a.Reason, b.Reason);
+    }
+    ASSERT_EQ(plain.Diagnostics.size(), mapped.Diagnostics.size());
+    for (size_t i = 0; i < mapped.Diagnostics.size(); ++i) {
+        EXPECT_EQ(
+            plain.Diagnostics[i].Position.Line,
+            mapped.Diagnostics[i].Position.Line);
+        EXPECT_EQ(
+            plain.Diagnostics[i].Position.Column,
+            mapped.Diagnostics[i].Position.Column);
+        EXPECT_EQ(plain.Diagnostics[i].Message, mapped.Diagnostics[i].Message);
+        EXPECT_EQ(plain.Diagnostics[i].Kind, mapped.Diagnostics[i].Kind);
+    }
+}
+
 formatter::FormatResult FormatInput(
     std::string_view source,
     const formatter::PreparedFormat& prepared,
     formatter::FormatRequest request = {.SourceMap = true})
 {
     Input input(source);
-    return formatter::Format(input.View(), prepared, request);
+    auto result = formatter::Format(input.View(), prepared, request);
+    if (request.SourceMap) {
+        // The metadata-free path must retain the same namespace edits, scope
+        // and protection decisions, and final diagnostics across these cases.
+        request.SourceMap = false;
+        const auto plain = formatter::Format(input.View(), prepared, request);
+        CheckVisibleResults(result, plain);
+    }
+    return result;
 }
 formatter::Style Canonical()
 {
@@ -158,7 +199,7 @@ TEST(PublicPipeline, ChainStructuralBaseHonorsGapScopeAndProtection)
     const auto& gap = safety.Gaps()[permission.Gap];
     EXPECT_EQ(gap.Source.Begin, begin - 1);
     EXPECT_EQ(gap.Source.End, begin + 12);
-    EXPECT_EQ(gap.Original, "\n            ");
+    EXPECT_EQ(safety.Original(gap), "\n            ");
     EXPECT_TRUE(gap.Preserve);
     EXPECT_NE(static_cast<uint16_t>(gap.Reasons) &
         static_cast<uint16_t>(formatter::ProtectionReason::OutsideEditScope), 0u);

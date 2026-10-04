@@ -57,34 +57,35 @@ enum class SpacingConstraint : uint8_t
 };
 
 // Owner is the combinator whose own edge/separator/operator is being rebuilt,
-// not necessarily the deepest node at this offset. The tree must outlive it.
+// not necessarily the deepest node at this offset. Owner indexes the matching
+// SourceAnalysis::Regions(), so no parser-arena pointer is retained.
 // Priority makes precedence inspectable: generic punctuation/scalar binding 1,
 // edges 2, specific edges 3, overriding syntax 4. Empty interiors use their
 // base rule's priority + 1. At equal priority the later/more local rule wins.
 struct SyntaxGapPreference
 {
-    const parser::Node* Owner = nullptr;
+    RegionId Owner = NoRegion;
     SpacingField Field = SpacingField::None;
-    SpacingOwner Category = SpacingOwner::None;
-    GapPolicy Policy = GapPolicy::Preserve;
-    bool FallbackSpace = false;
+    SpacingOwner Category : 4 = SpacingOwner::None;
+    GapPolicy Policy : 3 = GapPolicy::Preserve;
+    bool FallbackSpace : 1 = false;
     uint8_t Priority = 0;
     // Bit flags. Uncertain syntax has no generated flat fallback; SourceSafety
     // requires retaining the separate SourceAnalysis constraints. Priority 255
     // is reserved for an uncertain-role Preserve boundary.
-    SpacingConstraint Constraint = SpacingConstraint::None;
+    SpacingConstraint Constraint : 2 = SpacingConstraint::None;
     // Actual namespace matching closer followed by a same-line // token.
-    bool NamespaceClosingComment = false;
+    bool NamespaceClosingComment : 1 = false;
 };
 
-static_assert(sizeof(SyntaxGapPreference) <= 16);
+static_assert(sizeof(SyntaxGapPreference) <= 8);
 
 [[nodiscard]] GapContext SpacingOwnerContext(
     SpacingOwner owner,
     const CompiledPolicies& policies);
 
 // File-arena storage; gap i precedes token i, including the tail. No source,
-// policy or scratch references are retained; Owner borrows the parsed tree.
+// policy or scratch references are retained; Owner indexes source regions.
 class SyntaxSpacing
 {
 public:

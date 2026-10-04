@@ -241,15 +241,15 @@ std::pmr::vector<GapId> GeneratedGaps(
 struct CurrentIdentity
 {
     Range Source;
-    uint64_t Original = document::NoIdentity;
+    document::Identity Original = document::NoIdentity;
 };
 
-std::pmr::vector<uint64_t> OriginalIdentities(
+std::pmr::vector<document::Identity> OriginalIdentities(
     const parser::SyntaxTree& tree,
     const StructuralMaterialization* normalized,
     std::pmr::memory_resource& scratch)
 {
-    std::pmr::vector<uint64_t> identities(
+    std::pmr::vector<document::Identity> identities(
         tree.TokenCount(), document::NoIdentity, &scratch);
     if (!normalized) {
         for (parser::TokenIndex i = 0; i < tree.TokenCount(); ++i)
@@ -258,7 +258,7 @@ std::pmr::vector<uint64_t> OriginalIdentities(
     }
     std::pmr::vector<CurrentIdentity> surviving(&scratch);
     surviving.reserve(normalized->OriginalTokens.size());
-    for (size_t i = 0; i < normalized->OriginalTokens.size(); ++i)
+    for (parser::TokenIndex i = 0; i < normalized->OriginalTokens.size(); ++i)
     {
         const auto& token = normalized->OriginalTokens[i];
         if (token.Present) {
@@ -314,27 +314,80 @@ void MergeProtection(std::vector<ProtectedSourceRange>& ranges)
     ranges.resize(count);
 }
 
+document::Identity RecordRenderAnchors(
+    FormatResult& result,
+    const document::Mapping& map,
+    Range output,
+    const SourceAnalysis& safety,
+    std::span<const document::Identity> identities)
+{
+    document::Identity original = document::NoIdentity;
+    if (map.Source.Identity != document::NoIdentity) {
+        if (map.Source.Identity >= identities.size()) {
+            throw std::runtime_error("invalid rendered token identity");
+        }
+        original = identities[map.Source.Identity];
+        if (original != document::NoIdentity) {
+            result.OriginalTokens[original] = {output, true};
+        }
+    }
+    if (map.Exact && map.Source.Begin != document::InvalidId) {
+        const auto source = Range{map.Source.Begin, map.Source.End};
+        if (output.End - output.Begin != source.End - source.Begin) {
+            throw std::runtime_error("invalid exact render mapping");
+        }
+        auto it = std::lower_bound(
+            safety.Protection().begin(),
+            safety.Protection().end(),
+            source.Begin,
+            [] (const auto& range, Offset begin) {
+                return range.Source.End <= begin;
+            });
+        for (;
+            it != safety.Protection().end() && it->Source.Begin < source.End;
+            ++it)
+        {
+            const auto begin = std::max(source.Begin, it->Source.Begin);
+            const auto end = std::min(source.End, it->Source.End);
+            result.OutputProtection.push_back({
+                {
+                    output.Begin + begin - source.Begin,
+                    output.Begin + end - source.Begin,
+                },
+                it->Reasons,
+            });
+        }
+    }
+    return original;
+}
+
+void ComposeNamespaceAnchors(
+    FormatResult& result,
+    const document::Result& rendered,
+    const SourceAnalysis& safety,
+    std::span<const document::Identity> identities)
+{
+    for (const auto& map : rendered.Map) {
+        const auto output = Range{CheckedSourceAnalysisSize(map.OutputBegin),
+            CheckedSourceAnalysisSize(map.OutputEnd)};
+        (void)RecordRenderAnchors(result, map, output, safety, identities);
+    }
+    MergeProtection(result.OutputProtection);
+}
+
 void ComposeMaps(
     FormatResult& result,
     const document::Result& rendered,
     const SourceAnalysis& safety,
-    std::span<const uint64_t> identities,
+    std::span<const document::Identity> identities,
     std::span<const StructuralProvenance> provenance)
 {
     result.Map.reserve(rendered.Map.size());
     for (const auto& map : rendered.Map) {
         const auto output = Range { CheckedSourceAnalysisSize(map.OutputBegin),
             CheckedSourceAnalysisSize(map.OutputEnd) };
-        uint64_t original = document::NoIdentity;
-        if (map.Source.Identity != document::NoIdentity) {
-            if (map.Source.Identity >= identities.size()) {
-                throw std::runtime_error("invalid rendered token identity");
-            }
-            original = identities[map.Source.Identity];
-            if (original != document::NoIdentity) {
-                result.OriginalTokens[original] = {output, true};
-            }
-        }
+        const auto original =
+            RecordRenderAnchors(result, map, output, safety, identities);
         if (map.Source.Begin == document::InvalidId) {
             result.Map.push_back({
                 output,
@@ -349,33 +402,6 @@ void ComposeMaps(
             continue;
         }
         const auto source = Range { map.Source.Begin, map.Source.End };
-        if (map.Exact) {
-            if (output.End - output.Begin != source.End - source.Begin) {
-                throw std::runtime_error("invalid exact render mapping");
-            }
-            auto it = std::lower_bound(
-                safety.Protection().begin(),
-                safety.Protection().end(),
-                source.Begin,
-                [] (
-                    const auto& range,
-                    Offset begin) { return range.Source.End <= begin; });
-            for (;
-                it != safety.Protection().end() &&
-                it->Source.Begin < source.End;
-                ++it)
-            {
-                const auto begin = std::max(source.Begin, it->Source.Begin);
-                const auto end = std::min(source.End, it->Source.End);
-                result.OutputProtection.push_back({
-                    {
-                        output.Begin + begin - source.Begin,
-                        output.Begin + end - source.Begin,
-                    },
-                    it->Reasons,
-                });
-            }
-        }
         // A zero-width syntax insertion anchor belongs to the preceding
         // piece, including at a copied/generated boundary or after a moved
         // include.
@@ -814,11 +840,24 @@ FormatResult detail::FormatWithAnalysis(
     options.GeneratedAdjacencies = {};
     options.ReassembledGaps = {};
     scratch.release();
-    const bool needMaps = request.SourceMap ||
-        prepared.NamespaceComments.Policy != NamespaceCommentPolicy::Preserve;
+    const bool needNamespaceAnchors = !namespacePlan.Namespaces.empty();
+    const bool needMaps = request.SourceMap || needNamespaceAnchors;
     auto renderPolicy = SyntaxRenderPolicy(prepared.Policies, options);
-    renderPolicy.SourceMap = needMaps;
-    auto rendered = document.Render(renderPolicy, &file);
+    renderPolicy.SourceMap = request.SourceMap;
+    auto rendered = [&] {
+        std::pmr::vector<document::Provenance> tracked(&scratch);
+        if (needNamespaceAnchors && !request.SourceMap) {
+            renderPolicy.TokenMap = true;
+            tracked.reserve(currentSafety->Protection().size());
+            for (const auto& range : currentSafety->Protection()) {
+                tracked.push_back({range.Source.Begin, range.Source.End});
+            }
+            renderPolicy.TrackSource = tracked;
+        }
+        auto output = document.Render(renderPolicy, &file);
+        renderPolicy.TrackSource = {};
+        return output;
+    }();
     if (!rendered.State) {
         throw std::runtime_error(std::format(
             "layout rendering failed: code {} node {}",
@@ -826,15 +865,33 @@ FormatResult detail::FormatWithAnalysis(
             rendered.State.Node));
     }
     result.Text.assign(rendered.Text);
+    if (prepared.NamespaceComments.Policy != NamespaceCommentPolicy::Preserve) {
+        (void)CheckedSourceAnalysisSize(result.Text.size());
+    }
     if (needMaps) {
-        result.StructuralOperations
-            .assign(plan.Operations.begin(), plan.Operations.end());
+        if (request.SourceMap) {
+            result.StructuralOperations
+                .assign(plan.Operations.begin(), plan.Operations.end());
+        }
         result.OriginalTokens.resize(original.TokenCount());
         auto identities = OriginalIdentities(
             *tree,
             normalized ? &*normalized : nullptr,
             scratch);
-        ComposeMaps(result, rendered, *currentSafety, identities, provenance);
+        if (request.SourceMap) {
+            ComposeMaps(
+                result,
+                rendered,
+                *currentSafety,
+                identities,
+                provenance);
+        } else {
+            ComposeNamespaceAnchors(
+                result,
+                rendered,
+                *currentSafety,
+                identities);
+        }
         scratch.release();
         std::pmr::vector<Range> outputProtection(&scratch);
         for (const auto& range : result.OutputProtection) {
@@ -861,10 +918,24 @@ FormatResult detail::FormatWithAnalysis(
         if (!comments.Edits.empty()) {
             auto text =
                 MaterializeNamespaceComments(result.Text, comments, file);
-            ApplyComments(result, comments, original, namespacePlan, scratch);
-            scratch.release();
+            if (request.SourceMap || !result.OutputProtection.empty()) {
+                // Retain the existing protection-copy validation where there
+                // are protected ranges, even though public maps are discarded.
+                ApplyComments(
+                    result,
+                    comments,
+                    original,
+                    namespacePlan,
+                    scratch);
+                scratch.release();
+            }
             result.Text.assign(text);
         }
+    } else {
+        result.StructuralDiagnostics.insert(
+            result.StructuralDiagnostics.end(),
+            namespacePlan.Skipped.begin(),
+            namespacePlan.Skipped.end());
     }
     if (prepared.Policies.LineEnding != LineEnding::Preserve) {
         (void)CheckedSourceAnalysisSize(result.Text.size());

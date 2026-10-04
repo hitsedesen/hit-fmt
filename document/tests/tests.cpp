@@ -407,6 +407,14 @@ TEST(GroupLayout, GroupMetadataRejectsInvalidOwnersPrefixesAndOverflow)
     overflow.EndGroup(first);
     ASSERT_TRUE(overflow.Seal());
     EXPECT_EQ(overflow.Render().State.Code, Error::IndentationOverflow);
+    // Exercise the checked output-position domain without a multi-GiB buffer.
+    constexpr std::size_t maximum = InvalidId - 1;
+    EXPECT_TRUE(detail::FitsOutput(0, maximum));
+    EXPECT_TRUE(detail::FitsOutput(maximum - 1, 1));
+    EXPECT_TRUE(detail::FitsOutput(maximum, 0));
+    EXPECT_FALSE(detail::FitsOutput(maximum, 1));
+    EXPECT_FALSE(detail::FitsOutput(InvalidId, 0));
+    EXPECT_FALSE(detail::FitsOutput(1, std::numeric_limits<std::size_t>::max()));
 }
 
 TEST(GroupLayout, FillSegmentDemandKeepsIndependentChildBreaks)
@@ -1136,7 +1144,8 @@ TEST(GroupLayout, ProtectedSourceAndEditProvenanceGolden)
     const auto source =
         test::golden::ReadFile(directory / "protected.source.txt");
     Document document(source);
-    document.SourceText(0, static_cast<std::uint32_t>(source.size()), 7, true);
+    document.SourceText(0, static_cast<std::uint32_t>(source.size()),
+        NoIdentity - 1, true);
     const auto end = static_cast<std::uint32_t>(source.size());
     document.Gap({GapKind::Hard, 0}, InvalidId, {end, end, 8});
     document.Text("after;");
@@ -1147,7 +1156,7 @@ TEST(GroupLayout, ProtectedSourceAndEditProvenanceGolden)
     ASSERT_EQ(output.Map.size(), 3u);
     EXPECT_TRUE(output.Map[0].Protected);
     EXPECT_TRUE(output.Map[0].Exact);
-    EXPECT_EQ(output.Map[0].Source.Identity, 7u);
+    EXPECT_EQ(output.Map[0].Source.Identity, NoIdentity - 1);
     EXPECT_EQ(output.Text.substr(
         output.Map[0].OutputBegin,
         output.Map[0].OutputEnd - output.Map[0].OutputBegin),
@@ -1155,6 +1164,25 @@ TEST(GroupLayout, ProtectedSourceAndEditProvenanceGolden)
     EXPECT_FALSE(output.Map[1].Exact);
     EXPECT_EQ(output.Map[1].Source.Identity, 8u);
     EXPECT_EQ(output.Map[2].Source.Begin, InvalidId);
+    const auto tokens = document.Render({.Width = 4, .LineEnding = Newline::CRLF,
+        .SourceMap = false, .TokenMap = true});
+    ASSERT_TRUE(tokens.State);
+    EXPECT_EQ(tokens.Text, output.Text);
+    ASSERT_EQ(tokens.Map.size(), 2u);
+    EXPECT_EQ(tokens.Map[0].Source.Identity, NoIdentity - 1);
+    EXPECT_EQ(tokens.Map[1].Source.Identity, 8u);
+    const std::array tracked{Provenance{0, 1}};
+    const auto protection = document.Render({.Width = 4,
+        .LineEnding = Newline::CRLF, .SourceMap = false, .TrackSource = tracked});
+    ASSERT_TRUE(protection.State);
+    EXPECT_EQ(protection.Text, output.Text);
+    ASSERT_EQ(protection.Map.size(), 1u);
+    EXPECT_TRUE(protection.Map[0].Exact);
+    EXPECT_TRUE(protection.Map[0].Protected);
+    EXPECT_EQ(protection.Map[0].OutputEnd, output.Map[0].OutputEnd);
+    const std::array invalidTracked{Provenance{2, 1}};
+    EXPECT_EQ(document.Render({.SourceMap = false,
+        .TrackSource = invalidTracked}).State.Code, Error::InvalidPolicy);
 }
 
 std::string ExpandTabs(std::string_view text, std::uint8_t tabWidth)
@@ -1438,6 +1466,50 @@ TEST(GroupLayout, BorrowedFlatWhitespaceSelectionMeasurementAndMapping)
         spec.FlatSourceEnd = end;
         return spec;
     };
+    // Packing a flat gap with its source token must retain both provenance
+    // records, tab geometry and protection independently. An unused anchor
+    // prevents packing, providing the equivalent two-node representation.
+    for (auto tab : {1u, 4u, 8u}) {
+        for (auto width : {3u, 10u, 40u}) {
+            const std::string source = "\tword\nnext";
+            Document packed(source);
+            Document separate(source);
+            const auto fill = [&] (Document& document, bool barrier) {
+                const auto owner = document.BeginGroup({GroupMode::Fill, 2});
+                document.Gap(borrowed(GapKind::Flat, 0, 1), InvalidId,
+                    {0, 1, 9});
+                if (barrier) {
+                    document.MarkAnchor({});
+                }
+                document.SourceText(1, 5, 7);
+                document.Gap({GapKind::Soft, 1}, InvalidId, {5, 6});
+                document.SourceText(6, 10, 8, true);
+                document.EndGroup(owner);
+            };
+            fill(packed, false);
+            fill(separate, true);
+            ASSERT_TRUE(packed.Seal());
+            ASSERT_TRUE(separate.Seal());
+            const Policy policy{.Width = width,
+                .TabWidth = static_cast<uint8_t>(tab)};
+            const auto a = packed.Render(policy);
+            const auto b = separate.Render(policy);
+            ASSERT_TRUE(a.State);
+            ASSERT_TRUE(b.State);
+            EXPECT_EQ(a.Text, b.Text);
+            EXPECT_EQ(a.Broken, b.Broken);
+            ASSERT_EQ(a.Map.size(), b.Map.size());
+            for (size_t i = 0; i < a.Map.size(); ++i) {
+                EXPECT_EQ(a.Map[i].OutputBegin, b.Map[i].OutputBegin);
+                EXPECT_EQ(a.Map[i].OutputEnd, b.Map[i].OutputEnd);
+                EXPECT_EQ(a.Map[i].Source.Begin, b.Map[i].Source.Begin);
+                EXPECT_EQ(a.Map[i].Source.End, b.Map[i].Source.End);
+                EXPECT_EQ(a.Map[i].Source.Identity, b.Map[i].Source.Identity);
+                EXPECT_EQ(a.Map[i].Exact, b.Map[i].Exact);
+                EXPECT_EQ(a.Map[i].Protected, b.Map[i].Protected);
+            }
+        }
+    }
     Document mixed(" \t ");
     auto group = mixed.BeginGroup();
     mixed.Text("ab");

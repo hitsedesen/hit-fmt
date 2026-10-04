@@ -34,13 +34,14 @@ bool Covered(
 
 bool WholeGapCovered(
     std::span<const parser::SourceRange> ranges,
-    const SourceGap& gap)
+    const SourceGap& gap,
+    std::string_view original)
 {
     // Replacing an LF-ended gap can synthesize indentation at the following
     // line's zero-width point. Owning the preceding LF is not
     // owning that point.
     return Covered(ranges, gap.Source) &&
-        (!gap.Original.ends_with('\n') ||
+        (!original.ends_with('\n') ||
             Covered(ranges, {gap.Source.End, gap.Source.End}));
 }
 void MergeProtection(std::pmr::vector<ProtectedSourceRange>& protection)
@@ -220,7 +221,8 @@ SourceAnalysis::SourceAnalysis(std::pmr::memory_resource& fileMemory)
 { }
 
 SourceAnalysis::SourceAnalysis(SourceAnalysis&& other) noexcept
-    : Gaps_(std::move(other.Gaps_))
+    : Source_(std::exchange(other.Source_, {}))
+    , Gaps_(std::move(other.Gaps_))
     , Protection_(std::move(other.Protection_))
     , Regions_(std::move(other.Regions_))
     , EditScope_(std::move(other.EditScope_))
@@ -254,7 +256,7 @@ bool SourceAnalysis::CanReplaceGap(GapId id, std::string_view replacement) const
         return false;
     }
     const auto& gap = Gaps_[id];
-    if (replacement == gap.Original) {
+    if (replacement == Original(gap)) {
         return true;
     }
     if (gap.Preserve || !Whitespace(replacement) ||
@@ -312,17 +314,18 @@ void SourceAnalysis::RestrictEditScope(
     std::pmr::vector<PartialGapPermission> permissions(allocator);
     for (GapId id = 0; id < Gaps_.size(); ++id) {
         const auto& gap = Gaps_[id];
-        if (!WholeGapCovered(scope, gap) && !gap.IntrinsicPreserve &&
-            !gap.IntrinsicContextSensitive &&
-            (!gap.MustStartWithLineFeed || gap.Original.starts_with('\n')) &&
-            gap.Original.find_first_not_of(" \t\r\n") == std::string_view::npos)
+        if (!WholeGapCovered(scope, gap, Original(gap)) &&
+            !gap.IntrinsicPreserve && !gap.IntrinsicContextSensitive &&
+            (!gap.MustStartWithLineFeed || Original(gap).starts_with('\n')) &&
+            Original(gap).find_first_not_of(" \t\r\n") ==
+                std::string_view::npos)
         {
             // Lone CR is not a supported horizontal slice or LF-ended prefix.
             bool supported = true;
-            for (size_t i = 0; i < gap.Original.size(); ++i) {
-                if (gap.Original[i] == '\r' &&
-                    (i + 1 == gap.Original.size() ||
-                        gap.Original[i + 1] != '\n'))
+            for (size_t i = 0; i < Original(gap).size(); ++i) {
+                if (Original(gap)[i] == '\r' &&
+                    (i + 1 == Original(gap).size() ||
+                        Original(gap)[i + 1] != '\n'))
                 {
                     supported = false;
                     break;
@@ -355,11 +358,11 @@ void SourceAnalysis::RestrictEditScope(
                 };
             if (supported) {
                 size_t lineBegin = 0;
-                for (size_t i = 0; i < gap.Original.size(); ++i) {
-                    if (gap.Original[i] != '\n') {
+                for (size_t i = 0; i < Original(gap).size(); ++i) {
+                    if (Original(gap)[i] != '\n') {
                         continue;
                     }
-                    const auto end = i && gap.Original[i - 1] == '\r'
+                    const auto end = i && Original(gap)[i - 1] == '\r'
                         ? i - 1
                         : i;
                     if (lineBegin < end) {
@@ -401,7 +404,7 @@ void SourceAnalysis::RestrictEditScope(
     outside(size);
     MergeProtection(protection);
     for (auto& gap : Gaps_) {
-        if (!WholeGapCovered(scope, gap)) {
+        if (!WholeGapCovered(scope, gap, Original(gap))) {
             gap.Preserve = true;
             gap.Reasons = gap.Reasons | ProtectionReason::OutsideEditScope;
         }
@@ -420,6 +423,7 @@ SourceAnalysis BuildSourceAnalysis(
     const auto source = tree.Source();
     const auto size = CheckedSourceAnalysisSize(source.size());
     SourceAnalysis result(fileMemory);
+    result.Source_ = source;
     const auto count = tree.TokenCount();
     result.Gaps_.reserve(static_cast<size_t>(count) + 1);
     auto protect = [&] (Offset begin, Offset end, ProtectionReason reason) {
@@ -494,7 +498,7 @@ SourceAnalysis BuildSourceAnalysis(
         const auto begin = i ? tree.Token(i - 1).Text.End : 0;
         const auto end = i < count ? tree.Token(i).Text.Begin : size;
         const auto original = source.substr(begin, end - begin);
-        SourceGap gap{.Source = {begin, end}, .Original = original};
+        SourceGap gap{.Source = {begin, end}};
         // Classify bare CR in the existing whitespace validation walk.
         for (size_t offset = begin; offset < end; ++offset) {
             const auto c = source[offset];
@@ -683,9 +687,13 @@ SourceAnalysis BuildSourceAnalysis(
     {
         const parser::Node* Next;
         RegionId Id;
+        RegionId LastChild = NoRegion;
     };
     std::pmr::vector<Frame> stack(&scratchMemory);
     auto visit = [&] (const parser::Node& node, RegionId parent) {
+        if (result.Regions_.size() >= NoRegion) {
+            throw std::length_error("too many source regions");
+        }
         const auto id = static_cast<RegionId>(result.Regions_.size());
         const auto tokens = node.Tokens;
         const auto begin = tokens.Begin < count
@@ -704,8 +712,34 @@ SourceAnalysis BuildSourceAnalysis(
         const auto status = Combine(
             hasRecovery ? RegionStatus::Recovery : RegionStatus::Complete,
             hasAmbiguity ? RegionStatus::Ambiguous : RegionStatus::Complete);
-        result.Regions_
-            .push_back({tokens, {begin, end}, node.Kind, parent, status});
+        auto attached = tokens;
+        if (const auto* trivia = tree.AssociatedTrivia(node)) {
+            for (auto* item = trivia->Leading.First; item; item = item->Next) {
+                attached.Begin = std::min(attached.Begin, item->Tokens.Begin);
+            }
+            for (auto* item = trivia->Trailing.First; item; item = item->Next) {
+                attached.End = std::max(attached.End, item->Tokens.End);
+            }
+        }
+        result.Regions_.push_back({
+            tokens,
+            {begin, end},
+            attached,
+            parent,
+            NoRegion,
+            NoRegion,
+            node.Kind,
+            status,
+        });
+        if (parent != NoRegion) {
+            auto& frame = stack.back();
+            if (frame.LastChild == NoRegion) {
+                result.Regions_[parent].FirstChild = id;
+            } else {
+                result.Regions_[frame.LastChild].NextSibling = id;
+            }
+            frame.LastChild = id;
+        }
         if (node.Kind == parser::NodeKind::HeaderName) {
             // Header spelling includes internal whitespace. Ordinary
             // lexical

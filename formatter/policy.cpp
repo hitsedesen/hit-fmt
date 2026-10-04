@@ -24,9 +24,10 @@ LayoutMode ResolveLayout(CategoryLayout category, LayoutMode parent)
     throw std::invalid_argument("invalid category layout");
 }
 
-std::size_t ResolveOffset(std::size_t offset, std::size_t indentWidth)
+std::uint8_t ResolveOffset(std::size_t offset, std::size_t indentWidth)
 {
-    return offset == 0 ? indentWidth : offset;
+    // CompilePolicies validates the raw size_t values before resolution.
+    return static_cast<std::uint8_t>(offset == 0 ? indentWidth : offset);
 }
 
 void CheckOffset(std::size_t offset, std::string_view key)
@@ -308,8 +309,8 @@ CompiledPolicies CompilePolicies(const Style& style)
 #undef COPY_GAP
     return {
         .Layout = style.Layout,
-        .IndentWidth = style.IndentWidth,
-        .ColumnLimit = style.ColumnLimit,
+        .IndentWidth = static_cast<std::uint8_t>(style.IndentWidth),
+        .ColumnLimit = static_cast<std::uint16_t>(style.ColumnLimit),
         .WidthDiagnostics = style.WidthDiagnostics,
         .IndentationKind = style.IndentationKind,
         .LineEnding = style.LineEnding,

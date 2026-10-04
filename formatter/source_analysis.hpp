@@ -61,7 +61,6 @@ enum class GapLineBoundary : uint8_t
 struct SourceGap
 {
     parser::SourceRange Source;
-    std::string_view Original;
     GapSeparation Separation = GapSeparation::Optional;
     GapLineBoundary LineBoundary = GapLineBoundary::Any;
     ProtectionReason Reasons = ProtectionReason::None;
@@ -83,6 +82,8 @@ struct SourceGap
     bool HasBareCR : 1 = false;
 };
 
+static_assert(sizeof(SourceGap) <= 16);
+
 enum class RegionStatus : uint8_t
 {
     Complete,
@@ -95,10 +96,17 @@ struct SourceRegion
 {
     parser::TokenRange Tokens;
     parser::SourceRange Source;
-    parser::NodeKind Kind;
+    // Shared compact syntax topology; IDs are preorder indices, not pointers
+    // into the parser arena. Attached includes leading/trailing trivia.
+    parser::TokenRange Attached;
     RegionId Parent = NoRegion;
+    RegionId FirstChild = NoRegion;
+    RegionId NextSibling = NoRegion;
+    parser::NodeKind Kind;
     RegionStatus Status = RegionStatus::Complete;
 };
+
+static_assert(sizeof(SourceRegion) <= 40);
 
 // Only these complete horizontal slices may change in a partly selected gap.
 // In genuinely partly selected/protected gaps, every other byte, including
@@ -173,6 +181,23 @@ public:
         return Gaps_;
     }
 
+    [[nodiscard]] std::string_view Source() const
+    {
+        return Source_;
+    }
+
+    // Resolve compact source offsets against this file's borrowed input.
+    [[nodiscard]] std::string_view Original(const SourceGap& gap) const
+    {
+        return Source_
+            .substr(gap.Source.Begin, gap.Source.End - gap.Source.Begin);
+    }
+
+    [[nodiscard]] std::string_view Original(GapId gap) const
+    {
+        return Original(Gaps_[gap]);
+    }
+
     [[nodiscard]] std::span<const ProtectedSourceRange> Protection() const
     {
         return Protection_;
@@ -227,6 +252,7 @@ public:
     [[nodiscard]] bool CanSpellGapNewlines(GapId gap) const;
 
 private:
+    std::string_view Source_;
     std::pmr::vector<SourceGap> Gaps_;
     std::pmr::vector<ProtectedSourceRange> Protection_;
     std::pmr::vector<SourceRegion> Regions_;
