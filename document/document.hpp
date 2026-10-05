@@ -403,6 +403,7 @@ private:
         Provenance Origin;
         std::uint16_t Spaces = 0;
         RunKind Type = RunKind::Text;
+        bool Plain = false;
     };
 
     struct RunData
@@ -452,6 +453,7 @@ private:
         bool Exact : 1 = false;
         bool HasPrefix : 1 = false;
         bool Compact : 1 = false;
+        bool Plain : 1 = false;
 
         // The constructor activates the kind's payload. All alternatives are
         // trivially copyable; SourceLineIndent uses GapData plus Origin.
@@ -507,6 +509,7 @@ private:
         bool ComplexGap : 1 = false;
         bool FitNextSegment : 1 = false;
         bool FitFlatTail : 1 = false;
+        bool Plain : 1 = false;
 
         union
         {

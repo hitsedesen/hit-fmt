@@ -5,6 +5,7 @@
 #include <parser/operator_info.hpp>
 
 #include <unicode/utf8.hpp>
+#include <util/ascii.hpp>
 
 #include <algorithm>
 #include <limits>
@@ -230,8 +231,14 @@ bool HasLine(std::string_view text)
 
 Index HorizontalColumns(std::string_view text, uint8_t tabWidth)
 {
-    Index width = 0;
-    for (std::size_t i = 0; i < text.size(); ++i) {
+    // Tree source ranges have 32-bit byte offsets, so even all tabs fit
+    // this accumulator. Clamp the complete width rather than each byte.
+    const auto ascii = util::PlainAsciiPrefix(text);
+    if (ascii == text.size()) {
+        return Index(ascii);
+    }
+    uint64_t width = ascii;
+    for (std::size_t i = ascii; i < text.size(); ++i) {
         const auto c = static_cast<unsigned char>(text[i]);
         if (c >= 0x80) {
             i += unicode::utf8::GetFirstCodePointSize(text.substr(i))
@@ -240,9 +247,9 @@ Index HorizontalColumns(std::string_view text, uint8_t tabWidth)
         if (c == '\n' || c == '\r') {
             return None;
         }
-        width = AddWidth(width, c == '\t' ? tabWidth : 1);
+        width += c == '\t' ? tabWidth : 1;
     }
-    return width;
+    return Index(std::min<uint64_t>(width, None));
 }
 
 bool IsControl(NodeKind kind)

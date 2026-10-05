@@ -1667,12 +1667,22 @@ TEST(GroupLayout, GeneratedTabsPreserveVisualLayoutAndOpaqueSource)
     auto wideSpaces = wideIndent.Render({.Width = 40, .TabWidth = 32});
     EXPECT_EQ(ExpandTabs(wideTabs.Text, 32), std::string_view(wideSpaces.Text));
 
-    // Leaf facts are local to a render policy. Exact-width fitting and output
-    // advancement must agree on ASCII, opaque UTF8/invalid bytes, tabs and
-    // multiline protected text without changing its provenance.
+    // Plain-byte facts are reusable, but widths remain local to the render
+    // policy. Fitting and advancement must agree on ASCII, UTF8/invalid bytes,
+    // tabs and multiline protected text without changing its provenance.
     for (const auto& [value, columns] :
         std::initializer_list<std::pair<std::string, std::uint32_t>>{
             {"abc", 3},
+            {"1234567", 7},
+            {"12345678", 8},
+            {"123456789", 9},
+            {"123456789abcdef0", 16},
+            {"1234567\tz", 8},
+            {"12345678\xc3\xa9", 9},
+            {"1234567\xff", 8},
+            {"12345678\r\nz", 11},
+            {"a\v\f b", 5},
+            {std::string("12345678\0z", 10), 10},
             {"\xc3\xa9", 1},
             {"\xff", 1},
             {"a\tb", 2},
@@ -2038,9 +2048,8 @@ TEST(GroupLayout, InvalidUTF8ColumnsMatchIndividualBytes)
     }
 }
 
-TEST(GroupLayout, SourceRunsMatchIndividualAtoms)
+void ExpectSourceRunsMatchIndividualAtoms(std::string_view source)
 {
-    const std::string source = "\ta+b /*x*/\tq\nnext";
     const std::array<Provenance, 2> tracked{{{0, 1}, {5, 12}}};
     for (auto mode : {GroupMode::Consistent, GroupMode::Fill}) {
         // These lengths cross the original 256-logical-node search boundary.
@@ -2199,6 +2208,13 @@ TEST(GroupLayout, SourceRunsMatchIndividualAtoms)
             }
         }
     }
+}
+
+TEST(GroupLayout, SourceRunsMatchIndividualAtoms)
+{
+    ExpectSourceRunsMatchIndividualAtoms("\ta+b /*x*/\tq\nnext");
+    ExpectSourceRunsMatchIndividualAtoms("\ta+b \xc3\xa9xyz\tq\nnext");
+    ExpectSourceRunsMatchIndividualAtoms("\ta+b \xff" "1234\tq\nnext");
 }
 
 TEST(GroupLayout, BorrowedFlatWhitespaceSelectionMeasurementAndMapping)

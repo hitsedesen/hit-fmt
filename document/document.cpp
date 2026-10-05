@@ -1,6 +1,7 @@
 #include <document/document.hpp>
 
 #include <unicode/utf8.hpp>
+#include <util/ascii.hpp>
 
 #include <algorithm>
 #include <limits>
@@ -54,7 +55,14 @@ Measure Join(Measure a, Measure b)
 Measure MeasureText(std::string_view text, std::uint8_t tabWidth)
 {
     Measure result;
-    for (std::size_t i = 0; i < text.size(); ++i) {
+    // Source ranges and borrowed text are bounded by 32-bit byte offsets.
+    // Even all tabs fit a 64-bit sum; saturate once, not per code point.
+    const auto ascii = util::PlainAsciiPrefix(text);
+    if (ascii == text.size()) {
+        return {static_cast<std::uint32_t>(ascii), false, false};
+    }
+    std::uint64_t prefix = ascii;
+    for (std::size_t i = ascii; i < text.size(); ++i) {
         const auto c = static_cast<unsigned char>(text[i]);
         if (c >= 0x80) {
             i += unicode::utf8::GetFirstCodePointSize(text.substr(i))
@@ -65,15 +73,19 @@ Measure MeasureText(std::string_view text, std::uint8_t tabWidth)
             result.CanBreak = true;
             result.Plain = false;
             // No suffix fact is consumed after the first physical boundary.
+            result.Prefix = static_cast<std::uint32_t>(
+                std::min<std::uint64_t>(prefix, Infinity));
             return result;
         } else {
             result.Plain = result.Plain && c != '\t' &&
                 static_cast<unsigned char>(c) < 0x80;
             // Conservative only for literal/source tabs: actual emission uses
             // tab stops. This summary never underestimates flat width.
-            result.Prefix = AddWidth(result.Prefix, c == '\t' ? tabWidth : 1);
+            prefix += c == '\t' ? tabWidth : 1;
         }
     }
+    result.Prefix = static_cast<std::uint32_t>(
+        std::min<std::uint64_t>(prefix, Infinity));
     return result;
 }
 
@@ -113,7 +125,12 @@ std::uint32_t SourceColumn(std::string_view text, std::uint8_t tabWidth)
 
 bool Multiline(std::string_view text)
 {
-    return text.find_first_of("\r\n") != std::string_view::npos;
+    for (const auto c : text) {
+        if (c == '\r' || c == '\n') {
+            return true;
+        }
+    }
+    return false;
 }
 
 // LF offsets identify complete authorized atoms. Contracting CRLF must not
@@ -195,6 +212,7 @@ inline Document::Atom Document::Pack(const Node& node)
     atom.Exact = node.Exact;
     atom.HasPrefix = node.HasPrefix;
     atom.Compact = node.Compact;
+    atom.Plain = node.Plain;
     if (node.HasPrefix) {
         if (PrefixPayloads_.empty()) {
             PrefixPayloads_.reserve(Nodes_.capacity() / 16);
@@ -582,6 +600,7 @@ void Document::StartSourceRun()
             previous.Origin,
             0,
             previous.Type == Kind::Verbatim ? RunKind::Verbatim : RunKind::Text,
+            previous.Plain,
         },
         false);
 }
@@ -622,7 +641,9 @@ void Document::EmitSourceText(
         return;
     }
     auto text = Source_.substr(begin, end - begin);
-    const bool multiline = Multiline(text);
+    const auto ascii = util::PlainAsciiPrefix(text);
+    const bool plain = ascii == text.size();
+    const bool multiline = !plain && Multiline(text.substr(ascii));
     if (!verbatim && multiline) {
         Fail(Error::MultilineText);
         return;
@@ -635,6 +656,7 @@ void Document::EmitSourceText(
             origin,
             0,
             verbatim ? RunKind::Verbatim : RunKind::Text,
+            plain,
         };
         if (Nodes_.back().Type == Kind::SourceRun) {
             AppendRunPart(part);
@@ -648,7 +670,7 @@ void Document::EmitSourceText(
                 Nodes_[first].Type == Kind::Verbatim) &&
             (Nodes_[first].HasPrefix ||
                 Nodes_[first].Text.Flat == SourceTextId) &&
-            !Multiline(FlatText(Nodes_[first])))
+            (Nodes_[first].Plain || !Multiline(FlatText(Nodes_[first]))))
         {
             if (LogicalNodes_ >= InvalidId || RunParts_.size() > InvalidId - 5)
             {
@@ -686,6 +708,7 @@ void Document::EmitSourceText(
         node.Owner = owner;
         node.Exact = true;
         node.Compact = compact && !multiline;
+        node.Plain = plain;
         --RenderGaps_;
         Nodes_.back() = Pack(node);
         ++LogicalNodes_;
@@ -695,6 +718,7 @@ void Document::EmitSourceText(
         node.Origin = origin;
         node.Exact = true;
         node.Compact = compact && !multiline;
+        node.Plain = plain;
         Add(node);
     }
 }
@@ -1221,12 +1245,18 @@ Result Document::Render(
                 const auto& part = RunParts_[p];
                 const auto measured = part.Type == RunKind::Spaces
                     ? Measure{part.Spaces, false, false}
-                    : MeasureText(
-                        Source_
-                            .substr(
-                                part.Origin.Begin,
-                                part.Origin.End - part.Origin.Begin),
-                        policy.TabWidth);
+                    : part.Plain
+                        ? Measure{
+                            part.Origin.End - part.Origin.Begin,
+                            false,
+                            false,
+                        }
+                        : MeasureText(
+                            Source_
+                                .substr(
+                                    part.Origin.Begin,
+                                    part.Origin.End - part.Origin.Begin),
+                            policy.TabWidth);
                 flat = Join(flat, measured);
                 if (mappingRequested &&
                     (policy.SourceMap || !policy.TrackSource.empty() ||
@@ -1245,7 +1275,9 @@ Result Document::Render(
             // Fixed prefixes establish shape like Verbatim, but never publish
             // lastBreak/ownedBreak. Their indentation follows a guaranteed
             // line, and emission counts it before any following child fit.
-            flat = MeasureText(FlatText(node), policy.TabWidth);
+            flat = node.Plain
+                ? Measure{node.Origin.End - node.Origin.Begin, false, false}
+                : MeasureText(FlatText(node), policy.TabWidth);
             if (node.Type == Kind::ConditionalText) {
                 summary.OwnedShapeChoice = summary.OwnedShapeChoice ||
                     FlatText(node) != BrokenText(node);
@@ -1822,7 +1854,7 @@ Result Document::Render(
                         part.Origin.Begin,
                         part.Origin.End - part.Origin.Begin);
                     append(text);
-                    advance(text, entry.Flat.Plain);
+                    advance(text, part.Plain || entry.Flat.Plain);
                     if (continuingIndent &&
                         (part.Type == RunKind::SourceGap ||
                             (part.Type == RunKind::Verbatim &&
