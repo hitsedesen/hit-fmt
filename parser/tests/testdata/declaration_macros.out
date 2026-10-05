@@ -1,0 +1,216 @@
+(translation-unit
+  (namespace-declaration
+    "namespace" "Example" "{"
+    (unparsed-syntax "DECLARE" "(" "First" ")" "Declare" "(" "Second" ")")
+    (record-declaration
+      "struct" "Third" "{"
+      (declaration
+        (declaration-specifiers "int")
+        (init-declarator-list
+          (init-declarator
+            (declarator
+              (declarator-name "value")
+            )
+          )
+        )
+        ";"
+      )
+      "}" ";"
+    )
+    (unparsed-syntax
+      (leading-trivia
+        (whitespace "\n\n")
+      )
+      "announce" "(" "One" ")" "REGISTER" "(" "Two" ")" "Describe" "(" "Three" ")"
+    )
+    (record-declaration
+      "class" "Fourth" "{"
+      (declaration
+        (declaration-specifiers "int")
+        (init-declarator-list
+          (init-declarator
+            (declarator
+              (declarator-name "member")
+            )
+          )
+        )
+        ";"
+      )
+      "}" "instance" ";"
+    )
+    (unparsed-syntax
+      (leading-trivia
+        (whitespace "\n\n")
+      )
+      "Declare" "(" "First" ")" "Declare" "(" "Second" ")"
+    )
+    (record-declaration
+      "union" "Fifth" "{"
+      (declaration
+        (declaration-specifiers "int")
+        (init-declarator-list
+          (init-declarator
+            (declarator
+              (declarator-name "number")
+            )
+          )
+        )
+        ";"
+      )
+      (declaration
+        (declaration-specifiers "float")
+        (init-declarator-list
+          (init-declarator
+            (declarator
+              (declarator-name "fraction")
+            )
+          )
+        )
+        ";"
+      )
+      "}" ";"
+    )
+    (unparsed-syntax
+      (leading-trivia
+        (whitespace "\n\n")
+      )
+      "Declare" "(" "First" ")" "/* between invocations */" "Declare" "(" "Second" ")"
+      (dangling-trivia
+        (comment "/* between invocations */")
+      )
+      (trailing-trivia
+        (comment "// before declaration")
+      )
+    )
+    (comment "// before declaration")
+    (record-declaration "struct" "Forward" ";")
+    (unparsed-syntax
+      (leading-trivia
+        (whitespace "\n\n")
+      )
+      "Declare" "(" "First" ")" "Declare" "(" "Second" ")"
+    )
+    (enum-declaration
+      "enum" "class" "Choice"
+      (enumerator-list
+        "{"
+        (enumerator
+          (enumerator-name "One")
+        )
+        (list-separator ",")
+        (enumerator
+          (enumerator-name "Two")
+        )
+        "}"
+      )
+      ";"
+    )
+    (unparsed-syntax
+      (leading-trivia
+        (whitespace "\n\n")
+      )
+      "Declare" "(" "Only" ")"
+    )
+    (record-declaration
+      "struct" "Single" "{"
+      (declaration
+        (declaration-specifiers "int")
+        (init-declarator-list
+          (init-declarator
+            (declarator
+              (declarator-name "value")
+            )
+          )
+        )
+        ";"
+      )
+      "}" ";"
+    )
+    (function-declaration
+      (leading-trivia
+        (whitespace "\n\n")
+      )
+      (declaration-specifiers "Declare")
+      (init-declarator-list
+        (init-declarator
+          (abstract-declarator
+            (function-declarator
+              (parameter-list
+                "("
+                (parameter-declaration
+                  (declaration-specifiers "First")
+                )
+                ")"
+              )
+            )
+          )
+        )
+      )
+      ";"
+    )
+    (function-declaration
+      (declaration-specifiers "Declare")
+      (init-declarator-list
+        (init-declarator
+          (abstract-declarator
+            (function-declarator
+              (parameter-list
+                "("
+                (parameter-declaration
+                  (declaration-specifiers "Second")
+                )
+                ")"
+              )
+            )
+          )
+        )
+      )
+      ";"
+    )
+    (record-declaration
+      "struct" "Terminated" "{"
+      (declaration
+        (declaration-specifiers "int")
+        (init-declarator-list
+          (init-declarator
+            (declarator
+              (declarator-name "value")
+            )
+          )
+        )
+        ";"
+      )
+      "}" ";"
+    )
+    (unparsed-syntax
+      (leading-trivia
+        (whitespace "\n\n")
+      )
+      "Declare" "(" "First" ")" "Declare" "(" "Second" ")"
+    )
+    (declaration
+      (declaration-specifiers "int")
+      (init-declarator-list
+        (init-declarator
+          (declarator
+            (declarator-name "variable")
+          )
+        )
+      )
+      ";"
+    )
+    (unparsed-syntax
+      (leading-trivia
+        (whitespace "\n\n")
+      )
+      "Declare" "(" "First" ")" "Declare" "(" "Second" ")" "Result" "annotated" "(" "int" "value" ")" "{" "return" "value" ";" "}"
+    )
+    (unparsed-syntax
+      (leading-trivia
+        (whitespace "\n\n")
+      )
+      "Declare" "(" "First" ")" "Declare" "(" "Second" ")" "{" "opaque" "(" ")" ";" "}"
+    )
+    "}"
+  )
+)

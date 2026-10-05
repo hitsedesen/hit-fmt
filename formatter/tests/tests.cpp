@@ -304,6 +304,16 @@ std::vector<FormatCase> FormatCases()
         std::filesystem::path(FORMATTER_TESTDATA_DIR) /
         "../function-body-macros",
         {"hinted", "unhinted"});
+    {
+        const auto directory = std::filesystem::path(FORMATTER_TESTDATA_DIR) /
+            "../declaration-macros";
+        AddCases(cases, directory, {"canonical", "remove-null"});
+        auto style = formatter::LoadConfigFile(directory / "canonical.hit-fmt")
+            .FormattingStyle;
+        style.RemoveNullDeclarations = true;
+        cases.back().Style = style;
+        cases.back().Expected = "canonical.output.cpp";
+    }
     AddCases(
         cases,
         std::filesystem::path(FORMATTER_TESTDATA_DIR) /
