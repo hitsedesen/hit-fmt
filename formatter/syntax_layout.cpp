@@ -1820,8 +1820,11 @@ private:
         }
         // A case consisting solely of one block can attach it to the label.
         // Mixed cases instead give every statement the same body level.
+        // An opaque run may introduce new labels, so it cannot establish
+        // that the preceding block belongs to a mixed case.
         return next == None ||
-            Region(Syntax_[next]).Kind == NodeKind::CaseLabel;
+            Region(Syntax_[next]).Kind == NodeKind::CaseLabel ||
+            Region(Syntax_[next]).Kind == NodeKind::UnparsedSyntax;
     }
 
     std::optional<BracePlacement> BraceFor(Index id) const

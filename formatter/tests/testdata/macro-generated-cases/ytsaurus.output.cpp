@@ -63,6 +63,57 @@ void ExplicitBoundary(int value)
     }
 }
 
+Handler* BlocksBeforeMacros(int value)
+{
+#define LOCAL_ENTRY(tag) case tag: Consume(tag); break;
+    switch (value) {
+        case 0: {
+            Consume(0);
+            break;
+        }
+        case 1: {
+            static Handler handler(true);
+            return &handler;
+        }
+        LOCAL_ENTRY( 2 )
+        LOCAL_ENTRY( 3 )
+        case 4: {
+            Consume(4);
+            break;
+        } // The opaque run can introduce new labels.
+        LOCAL_ENTRY( 5 )
+        case 6:
+            {
+                Consume(6);
+            }
+            Finish();
+            break;
+        case 7:
+            Prepare();
+            {
+                Consume(7);
+            }
+        LOCAL_ENTRY( 8 )
+        default: {
+            Consume(-1);
+            break;
+        }
+    }
+    return nullptr;
+#undef LOCAL_ENTRY
+}
+
+void BlockBeforeOpaqueTail(int value)
+{
+    switch (value) {
+        case 0: {
+            Consume(0);
+            break;
+        }
+        SELECT_CASE( 1, Byte)
+    }
+}
+
 void OrdinaryCalls()
 {
     Consume(1);
