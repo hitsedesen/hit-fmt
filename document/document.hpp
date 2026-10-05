@@ -531,7 +531,7 @@ private:
     void StartSourceRun();
     void AppendRunPart(RunPart part, bool logical = true);
     static RunPart FlatRunPart(GapSpec gap, Provenance origin);
-    std::uint32_t Add(Node node);
+    std::uint32_t Add(const Node& node);
     bool CheckOrigin(Provenance origin);
     bool CheckGapData(GapSpec spec);
     bool CheckHorizontalSource(std::uint32_t begin, std::uint32_t end);

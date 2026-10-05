@@ -374,7 +374,7 @@ void Document::Fail(Error error)
     }
 }
 
-std::uint32_t Document::Add(Node node)
+std::uint32_t Document::Add(const Node& node)
 {
     if (Sealed_) {
         Fail(Error::Sealed);
@@ -386,13 +386,16 @@ std::uint32_t Document::Add(Node node)
         Fail(Error::TooLarge);
         return InvalidId;
     }
-    node.Owner = Open_.empty() ? InvalidId : Open_.back();
-    if (node.Type == Kind::Begin || node.Type == Kind::End) {
-        node.Group.LogicalPosition = LogicalNodes_;
+    const auto position = LogicalNodes_++;
+    auto atom = Pack(node);
+    atom.Owner = Open_.empty() ? InvalidId : Open_.back();
+    if (node.Type == Kind::Begin) {
+        GroupPayloads_[atom.Payload].LogicalPosition = position;
+    } else if (node.Type == Kind::End) {
+        atom.End.LogicalPosition = position;
     }
-    ++LogicalNodes_;
     const auto id = static_cast<std::uint32_t>(Nodes_.size());
-    Nodes_.push_back(Pack(node));
+    Nodes_.push_back(atom);
     return id;
 }
 
