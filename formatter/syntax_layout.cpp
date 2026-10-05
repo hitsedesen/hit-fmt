@@ -1155,9 +1155,11 @@ private:
         // Arguments still continue from the call's physical opening line.
         Groups_[group].Spec.LineBase = node.Kind == NodeKind::ArgumentList;
         if (node.Kind == NodeKind::TemplateParameterList ||
-            node.Kind == NodeKind::TemplateArgumentList)
+            node.Kind == NodeKind::TemplateArgumentList ||
+            node.Kind == NodeKind::LambdaCaptureList)
         {
-            // Prefer surrounding declaration, call or initializer breaks.
+            // Prefer surrounding declaration, call or initializer breaks,
+            // including the lambda's independent parameter list.
             Groups_[group].Spec.BreakPenalty = 3;
         }
         // Semicolon-separated control clauses choose their own boundaries,

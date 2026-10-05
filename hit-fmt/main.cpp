@@ -1451,9 +1451,7 @@ int main(int argc, char* argv[])
                 return ForEachFile(
                     options.Paths,
                     options.Exclusions,
-                    [
-                        &
-                    ] (
+                    [&] (
                         const auto& path,
                         bool directory) { return styleResolver
                                 ->IsExcluded(path, directory); },

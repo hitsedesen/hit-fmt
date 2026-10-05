@@ -376,9 +376,7 @@ void MapWidthPositions(const parser::SyntaxTree& tree, CheckedFile& checked)
             tokens.begin(),
             tokens.end(),
             offset,
-            [
-                &
-            ] (
+            [&] (
                 size_t point,
                 auto id) { return point < mapped[id].Output.Begin; });
         if (token != tokens.begin()) {

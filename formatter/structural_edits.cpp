@@ -141,9 +141,7 @@ void Walk(
     }
     std::pmr::vector<Frame> stack(&scratch);
     size_t region = 0;
-    auto enter = [
-        &
-    ] (
+    auto enter = [&] (
         const parser::Node* node,
         NK parent,
         NK previous,
@@ -839,9 +837,7 @@ StructuralPlan PlanStructuralEdits(
         }
     }
     Walk(tree, &safety, scratchMemory,
-        [
-            &
-        ] (
+        [&] (
             const parser::Node& node,
             NK parent,
             NK previous,
@@ -1204,9 +1200,7 @@ NamespaceCommentPlan PlanNamespaceComments(
             namespaceKeywords[i] + (original.Kind(i) == TK::Keyword_namespace);
     }
     Walk(original, &safety, scratchMemory,
-        [
-            &
-        ] (
+        [&] (
             const parser::Node& node,
             NK,
             NK,

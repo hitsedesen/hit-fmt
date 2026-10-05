@@ -272,9 +272,7 @@ TEST(SyntaxLayout, PartialGapPoliciesAndAnchorsGolden)
 {
     std::string records;
     const auto record =
-        [
-            &
-        ] (
+        [&] (
             std::string_view name,
             const std::string& input,
             const formatter::Style& style,
