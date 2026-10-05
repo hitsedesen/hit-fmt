@@ -3164,6 +3164,14 @@ private:
                     break;
                 }
                 ConsumeBalanced();
+            } else if (CurrentKind() == TK::Operator_Assign &&
+                angleDepth == 0 && !sawBaseClause)
+            {
+                // A top-level assignment cannot belong to a record head.
+                // Parse the elaborated type and its variable initializer
+                // as a general declaration, not a record body.
+                Cursor_ = start;
+                return ParseGeneralDeclaration();
             } else if (CurrentKind() == TK::Operator_Less) {
                 ++angleDepth;
                 ++Cursor_;

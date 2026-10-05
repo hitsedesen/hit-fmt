@@ -1,0 +1,457 @@
+(translation-unit
+  (declaration
+    (declaration-specifiers "struct" "Packet")
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (declarator-name "first")
+        )
+        (initializer
+          "="
+          (braced-initializer
+            (initializer-list "{" "}")
+          )
+        )
+      )
+    )
+    ";"
+  )
+  (declaration
+    (declaration-specifiers "Packet")
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (declarator-name "second")
+        )
+        (initializer
+          "="
+          (braced-initializer
+            (initializer-list "{" "}")
+          )
+        )
+      )
+    )
+    ";"
+  )
+  (declaration
+    (declaration-specifiers "struct" "Packet")
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (declarator-name "third")
+        )
+        (initializer
+          "="
+          (braced-initializer
+            (initializer-list
+              "{"
+              (initializer-element
+                (literal-expression "1")
+              )
+              "}"
+            )
+          )
+        )
+      )
+    )
+    ";"
+  )
+  (declaration
+    (declaration-specifiers "Packet")
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (declarator-name "fourth")
+        )
+        (initializer
+          "="
+          (braced-initializer
+            (initializer-list
+              "{"
+              (initializer-element
+                (literal-expression "1")
+              )
+              "}"
+            )
+          )
+        )
+      )
+    )
+    ";"
+  )
+  (declaration
+    (declaration-specifiers "class" "Message")
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (declarator-name "message")
+        )
+        (initializer
+          "="
+          (braced-initializer
+            (initializer-list
+              "{"
+              (initializer-element
+                (literal-expression "2")
+              )
+              "}"
+            )
+          )
+        )
+      )
+    )
+    ";"
+  )
+  (declaration
+    (declaration-specifiers "union" "Payload")
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (declarator-name "payload")
+        )
+        (initializer
+          "="
+          (braced-initializer
+            (initializer-list
+              "{"
+              (initializer-element
+                (literal-expression "3")
+              )
+              "}"
+            )
+          )
+        )
+      )
+    )
+    ";"
+  )
+  (declaration
+    (declaration-specifiers "struct" "Scope" "::" "Packet")
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (declarator-name "qualified")
+        )
+        (initializer
+          "="
+          (braced-initializer
+            (initializer-list
+              "{"
+              (initializer-element
+                (literal-expression "4")
+              )
+              "}"
+            )
+          )
+        )
+      )
+    )
+    ";"
+  )
+  (declaration
+    (declaration-specifiers
+      "struct" "Batch"
+      (template-argument-list
+        "<"
+        (template-argument "int")
+        ">"
+      )
+    )
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (declarator-name "batch")
+        )
+        (initializer
+          "="
+          (braced-initializer
+            (initializer-list
+              "{"
+              (initializer-element
+                (literal-expression "5")
+              )
+              "}"
+            )
+          )
+        )
+      )
+    )
+    ";"
+  )
+  (declaration
+    (declaration-specifiers "struct" "Packet")
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (declarator-name "pair")
+          (array-declarator "[" "]")
+        )
+        (initializer
+          "="
+          (braced-initializer
+            (initializer-list
+              "{"
+              (initializer-element
+                (braced-initializer
+                  (initializer-list
+                    "{"
+                    (initializer-element
+                      (literal-expression "1")
+                    )
+                    "}"
+                  )
+                )
+              )
+              (list-separator ",")
+              (initializer-element
+                (braced-initializer
+                  (initializer-list
+                    "{"
+                    (initializer-element
+                      (literal-expression "2")
+                    )
+                    "}"
+                  )
+                )
+              )
+              "}"
+            )
+          )
+        )
+      )
+    )
+    ";"
+  )
+  (declaration
+    (declaration-specifiers "struct" "Packet")
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (pointer-operator "*")
+          (declarator-name "pointer")
+        )
+        (initializer
+          "="
+          (literal-expression "nullptr")
+        )
+      )
+    )
+    ";"
+  )
+  (function-definition
+    (declaration-specifiers "struct" "Packet")
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (declarator-name "make")
+          (function-declarator
+            (parameter-list "(" ")")
+          )
+        )
+      )
+    )
+    (compound-statement
+      "{"
+      (return-statement
+        "return"
+        (braced-initializer
+          (initializer-list "{" "}")
+        )
+        ";"
+      )
+      "}"
+    )
+  )
+  (record-declaration
+    "struct" "Holder" "{"
+    (declaration
+      (declaration-specifiers "struct" "Packet")
+      (init-declarator-list
+        (init-declarator
+          (declarator
+            (declarator-name "member")
+          )
+          (initializer
+            "="
+            (braced-initializer
+              (initializer-list
+                "{"
+                (initializer-element
+                  (literal-expression "6")
+                )
+                "}"
+              )
+            )
+          )
+        )
+      )
+      ";"
+    )
+    "}" ";"
+  )
+  (function-definition
+    (declaration-specifiers "void")
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (declarator-name "use")
+          (function-declarator
+            (parameter-list "(" ")")
+          )
+        )
+      )
+    )
+    (compound-statement
+      "{"
+      (declaration
+        (declaration-specifiers "struct" "Packet")
+        (init-declarator-list
+          (init-declarator
+            (declarator
+              (declarator-name "localEmpty")
+            )
+            (initializer
+              "="
+              (braced-initializer
+                (initializer-list "{" "}")
+              )
+            )
+          )
+        )
+        ";"
+      )
+      (ambiguous-statement
+        (unknown-type-name "Packet")
+        "plainEmpty" "=" "{" "}" ";"
+      )
+      (declaration
+        (declaration-specifiers "struct" "Packet")
+        (init-declarator-list
+          (init-declarator
+            (declarator
+              (declarator-name "localValue")
+            )
+            (initializer
+              "="
+              (braced-initializer
+                (initializer-list
+                  "{"
+                  (initializer-element
+                    (literal-expression "7")
+                  )
+                  "}"
+                )
+              )
+            )
+          )
+        )
+        ";"
+      )
+      (ambiguous-statement
+        (unknown-type-name "Packet")
+        "plainValue" "=" "{" "7" "}" ";"
+      )
+      (declaration
+        (declaration-specifiers "class" "Message")
+        (init-declarator-list
+          (init-declarator
+            (declarator
+              (declarator-name "localMessage")
+            )
+            (initializer
+              "="
+              (braced-initializer
+                (initializer-list
+                  "{"
+                  (initializer-element
+                    (literal-expression "8")
+                  )
+                  "}"
+                )
+              )
+            )
+          )
+        )
+        ";"
+      )
+      (declaration
+        (declaration-specifiers "union" "Payload")
+        (init-declarator-list
+          (init-declarator
+            (declarator
+              (declarator-name "localPayload")
+            )
+            (initializer
+              "="
+              (braced-initializer
+                (initializer-list
+                  "{"
+                  (initializer-element
+                    (literal-expression "9")
+                  )
+                  "}"
+                )
+              )
+            )
+          )
+        )
+        ";"
+      )
+      "}"
+    )
+  )
+  (record-declaration
+    "struct"
+    (unparsed-syntax "Exported" "Record")
+    "{"
+    (declaration
+      (declaration-specifiers "int")
+      (init-declarator-list
+        (init-declarator
+          (declarator
+            (declarator-name "value")
+          )
+        )
+      )
+      ";"
+    )
+    "}" ";"
+  )
+  (template-declaration
+    "template"
+    (template-parameter-list
+      "<"
+      (template-parameter "int" "N")
+      ">"
+    )
+    (record-declaration
+      "struct" "Derived"
+      (base-clause
+        ":"
+        (base-specifier
+          (base-type
+            "Base"
+            (template-argument-list
+              "<"
+              (template-argument "N" "==" "1")
+              ">"
+            )
+          )
+        )
+      )
+      "{"
+      (declaration
+        (declaration-specifiers "int")
+        (init-declarator-list
+          (init-declarator
+            (declarator
+              (declarator-name "value")
+            )
+          )
+        )
+        ";"
+      )
+      "}" ";"
+    )
+  )
+)
