@@ -1691,19 +1691,27 @@ private:
                 field = F::AlignasSpaceBeforeParentheses;
             }
         }
-        if (field != F::None &&
-            Tree_.Kind(i + 1) == TK::Operator_OpenParenthesis &&
-            Tree_.MatchingDelimiter(i + 1) < node.Tokens.End)
+        if (field == F::None) {
+            return;
+        }
+        auto opening = i + 1;
+        while (opening < node.Tokens.End && Tree_.Kind(opening) == TK::Comment)
+        {
+            ++opening;
+        }
+        if (opening < node.Tokens.End &&
+            Tree_.Kind(opening) == TK::Operator_OpenParenthesis &&
+            Tree_.MatchingDelimiter(opening) < node.Tokens.End)
         {
             Mark(
-                i + 1,
+                opening,
                 field,
                 state.Owner != NoRegion ? Regions_[state.Owner] : node,
                 state.Category,
                 4,
                 true);
             if (kind == TK::Keyword_alignas) {
-                auto after = Tree_.MatchingDelimiter(i + 1) + 1;
+                auto after = Tree_.MatchingDelimiter(opening) + 1;
                 // An alignment specifier ends before the next header
                 // component. Specific attribute/brace policies still win.
                 while (after < node.Tokens.End) {

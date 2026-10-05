@@ -102,25 +102,42 @@ void invoke(int& value)
     ordinary(nullptr, value);
 }
 constexpr int Alignment = 16;
-struct alignas (Alignment) Host::Aligned
+struct alignas(Alignment) Host::Aligned
 {
     Aligned(int& v)
     { }
 };
-struct alignas (16) NoGap
+struct alignas(16) NoGap
 { };
-class alignas (alignof(NoGap)) Nested
+class alignas(alignof(NoGap)) Nested
 { };
-union alignas (16) alignas (32) Repeated
+union alignas(16) alignas(32) Repeated
 {
     int value;
 };
-template <class T> struct alignas (T) Typed
+template <class T> struct alignas(T) Typed
 { };
 struct alignas(16) Forward;
-struct alignas (16) [[nodiscard]] Attributed
+struct alignas(16) [[nodiscard]] Attributed
 { };
-struct alignas (16) /* alignment */ Commented
+struct alignas(16) /* alignment */ Commented
+{ };
+struct alignas(1 << 4) Shifted
+{ };
+class alignas((1 < 2) ?16 :32) Selected
+{ };
+union alignas(alignof(int) + sizeof(long)) alignas(combine(8, 16)) RepeatedExpressions
+{
+    int value;
+};
+struct alignas(factory<int, long>(1 + 2)) Templated;
+struct alignas /* operand */ (1 + 15) CommentedExpression
+{ };
+template <class... Types> struct alignas(Types...) TypePack
+{ };
+template <int... Values> struct alignas((Values + 16)...) ValuePack
+{ };
+struct alignas(int*) PointerType
 { };
 struct __attribute__((aligned(16)))Host::Extended
 {

@@ -636,7 +636,15 @@
     "}" ";"
   )
   (declaration
-    (declaration-specifiers "alignas" "(" "16" ")" "int")
+    (declaration-specifiers
+      "alignas"
+      (parenthesized-expression
+        "("
+        (literal-expression "16")
+        ")"
+      )
+      "int"
+    )
     (init-declarator-list
       (init-declarator
         (declarator
@@ -645,6 +653,292 @@
       )
     )
     ";"
+  )
+  (declaration
+    (declaration-specifiers
+      "alignas"
+      (parenthesized-expression
+        "("
+        (binary-expression
+          (literal-expression "1")
+          "<<"
+          (literal-expression "4")
+        )
+        ")"
+      )
+      "int"
+    )
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (declarator-name "shifted")
+        )
+      )
+    )
+    ";"
+  )
+  (declaration
+    (declaration-specifiers
+      "alignas"
+      (parenthesized-expression
+        "("
+        (conditional-expression
+          (parenthesized-expression
+            "("
+            (binary-expression
+              (literal-expression "1")
+              "<"
+              (literal-expression "2")
+            )
+            ")"
+          )
+          "?"
+          (literal-expression "16")
+          ":"
+          (literal-expression "32")
+        )
+        ")"
+      )
+      "int"
+    )
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (declarator-name "selected")
+        )
+      )
+    )
+    ";"
+  )
+  (declaration
+    (declaration-specifiers
+      "alignas"
+      (parenthesized-expression
+        "("
+        (call-expression
+          (identifier-expression "combine")
+          (argument-list
+            "("
+            (argument
+              (literal-expression "8")
+            )
+            (list-separator ",")
+            (argument
+              (literal-expression "16")
+            )
+            ")"
+          )
+        )
+        ")"
+      )
+      "int"
+    )
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (declarator-name "called")
+        )
+      )
+    )
+    ";"
+  )
+  (declaration
+    (declaration-specifiers
+      "alignas"
+      (parenthesized-expression
+        "("
+        (call-expression
+          (template-id-expression
+            (identifier-expression "factory")
+            (template-argument-list
+              "<"
+              (template-argument "int")
+              (list-separator ",")
+              (template-argument "long")
+              ">"
+            )
+          )
+          (argument-list
+            "("
+            (argument
+              (binary-expression
+                (literal-expression "1")
+                "+"
+                (literal-expression "2")
+              )
+            )
+            ")"
+          )
+        )
+        ")"
+      )
+      "int"
+    )
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (declarator-name "templated_alignment")
+        )
+      )
+    )
+    ";"
+  )
+  (declaration
+    (declaration-specifiers
+      "alignas"
+      (parenthesized-expression
+        "("
+        (binary-expression
+          (unary-expression
+            "alignof"
+            (parenthesized-expression
+              "("
+              (expression "int")
+              ")"
+            )
+          )
+          "+"
+          (unary-expression
+            "sizeof"
+            (parenthesized-expression
+              "("
+              (expression "long")
+              ")"
+            )
+          )
+        )
+        ")"
+      )
+      "int"
+    )
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (declarator-name "builtin_alignment")
+        )
+      )
+    )
+    ";"
+  )
+  (declaration
+    (declaration-specifiers
+      "alignas" "/* operand */"
+      (parenthesized-expression
+        (leading-trivia
+          (comment "/* operand */")
+        )
+        "("
+        (binary-expression
+          (literal-expression "1")
+          "+"
+          (literal-expression "15")
+        )
+        ")"
+      )
+      "int"
+    )
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (declarator-name "commented_alignment")
+        )
+      )
+    )
+    ";"
+  )
+  (declaration
+    (declaration-specifiers
+      "alignas"
+      (parenthesized-expression
+        "("
+        (type-id "int" "*")
+        ")"
+      )
+      "int"
+    )
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (declarator-name "pointer_alignment")
+        )
+      )
+    )
+    ";"
+  )
+  (declaration
+    (declaration-specifiers
+      "alignas"
+      (parenthesized-expression
+        "("
+        (binary-expression
+          (binary-expression
+            (binary-expression
+              (binary-expression
+                (identifier-expression "first_alignment")
+                "+"
+                (identifier-expression "second_alignment")
+              )
+              "+"
+              (identifier-expression "third_alignment")
+            )
+            "+"
+            (identifier-expression "fourth_alignment")
+          )
+          "+"
+          (identifier-expression "fifth_alignment")
+        )
+        ")"
+      )
+      "int"
+    )
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (declarator-name "combined_alignment")
+        )
+      )
+    )
+    ";"
+  )
+  (function-definition
+    (declaration-specifiers "void")
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (declarator-name "local_alignment")
+          (function-declarator
+            (parameter-list "(" ")")
+          )
+        )
+      )
+    )
+    (compound-statement
+      "{"
+      (declaration-statement
+        (declaration-specifiers
+          "alignas"
+          (parenthesized-expression
+            "("
+            (binary-expression
+              (literal-expression "1")
+              "<<"
+              (literal-expression "4")
+            )
+            ")"
+          )
+          "int"
+        )
+        (init-declarator-list
+          (init-declarator
+            (declarator
+              (declarator-name "local")
+            )
+          )
+        )
+        ";"
+      )
+      "}"
+    )
   )
   (function-declaration
     (declaration-specifiers "int")

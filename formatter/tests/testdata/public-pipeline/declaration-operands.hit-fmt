@@ -2,3 +2,7 @@ Layout = Canonical
 ColumnLimit = 100
 CommaSpaceAfter = GeneratedSpace
 CommaSpaceBefore = GeneratedNoSpace
+GroupingInteriorSpacing = NoSpace
+BinaryOperatorSpacing = Space
+TernaryOperatorSpacing = Space
+AlignofSpaceBeforeParentheses = Space

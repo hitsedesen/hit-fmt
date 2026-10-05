@@ -3168,7 +3168,12 @@ private:
         if (!unknownHeader && angleDepth == 0) {
             Node head;
             for (auto i = start + 1; i < headEnd; ++i) {
-                if (IsOpenDelimiter(Kind(i))) {
+                if (Kind(i) == TK::Keyword_alignas) {
+                    if (auto* operand = MakeAlignmentOperand(i, headEnd)) {
+                        Append(head, *operand);
+                        i = operand->Tokens.End - 1;
+                    }
+                } else if (IsOpenDelimiter(Kind(i))) {
                     auto balancedEnd = FindBalancedEnd(i);
                     if (balancedEnd > headEnd) {
                         break;
@@ -4779,10 +4784,47 @@ private:
         return std::nullopt;
     }
 
+    Node* MakeAlignmentOperand(size_t keyword, size_t end)
+    {
+        const auto opening = NextSignificant(keyword + 1);
+        const auto after = Kind(opening) == TK::Operator_OpenParenthesis
+            ? FindBalancedEnd(opening)
+            : std::numeric_limits<TokenIndex>::max();
+        if (after > end || after > ParseLimit_) {
+            return nullptr;
+        }
+        auto* operand = MakeNode(NodeKind::ParenthesizedExpression, opening);
+        operand->Tokens.End = after;
+        const auto begin = NextSignificant(opening + 1);
+        auto operandEnd = after - 1;
+        const auto last = PreviousSignificant(operandEnd);
+        if (Kind(last) == TK::Operator_Ellipsis) {
+            operandEnd = last;
+        }
+        // Alignment accepts a type-id or a constant expression, optionally
+        // followed by a pack ellipsis. Do not scan expression angles as types.
+        if (LooksLikeTypeId(begin, operandEnd)) {
+            auto* type = MakeNode(NodeKind::TypeId, begin);
+            type->Tokens.End = operandEnd;
+            AddTypeSyntaxChildren(*type, begin, operandEnd);
+            Append(*operand, *type);
+        } else {
+            AddExpressionRange(*operand, begin, operandEnd);
+        }
+        return operand;
+    }
+
     void AddTypeSyntaxChildren(Node& node, size_t begin, size_t end)
     {
         std::optional<bool> knownType;
         for (auto i = begin; i < end; ++i) {
+            if (Kind(i) == TK::Keyword_alignas) {
+                if (auto* operand = MakeAlignmentOperand(i, end)) {
+                    Append(node, *operand);
+                    i = operand->Tokens.End - 1;
+                    continue;
+                }
+            }
             if (Kind(i) == TK::Keyword_decltype) {
                 const auto opening = NextSignificant(i + 1);
                 const auto after = Kind(opening) == TK::Operator_OpenParenthesis
@@ -6832,9 +6874,11 @@ private:
                     // retain only their original absolute token indices.
                     continue;
                 }
-                // A decltype operand belongs to the type specifier, even
-                // when its expression resembles a grouped declarator.
-                if (Kind(previous) == TK::Keyword_decltype) {
+                // Specifier operands cannot introduce grouped declarators
+                // or function parameters, even when their syntax resembles one.
+                if (Kind(previous) == TK::Keyword_decltype ||
+                    Kind(previous) == TK::Keyword_alignas)
+                {
                     continue;
                 }
                 if (!sawTopLevelParameters && !sawParenthesizedDeclarator &&
@@ -6871,8 +6915,7 @@ private:
                     continue;
                 }
                 bool isOperatorName = Kind(previous) == TK::Keyword_operator;
-                bool isAttribute = Kind(previous) == TK::Keyword_alignas ||
-                    Text(previous) == "__attribute__" ||
+                bool isAttribute = Text(previous) == "__attribute__" ||
                     Text(previous) == "__declspec";
                 if (!sawAssignmentBeforeParameters && !sawTopLevelParameters &&
                     !isOperatorName && !isAttribute)

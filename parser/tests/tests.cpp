@@ -3277,22 +3277,26 @@ TEST(Parser, RecordHeadTemplateArgumentsOwnTheirSeparators)
 
 TEST(Parser, RecordHeadChildrenAreBoundedWithoutGuessingOperands)
 {
-    const std::pair<std::string_view, size_t> cases[] = {
-        {"struct Plain {};", 0},
-        {"struct Outer::Inner {};", 0},
-        {"template<> struct Outer<int>::Inner<long,char> {};", 2},
-        {"template<> struct Pair<> {};", 1},
-        {"template<> struct Pair<Wrap<int,long>, char> {};", 2},
-        {"template<> struct Pair<(a < b), 2> {};", 1},
-        {"template<> struct Pair<Value{1,2}, 3> {};", 1},
-        {"template<> struct Pair<decltype(auto), 2> {};", 1},
-        {"template<> struct Pair<decltype(call(a,b)), 2> {};", 1},
-        {"struct alignas(alignof(int)) Pair<int,long> {};", 1},
-        {"struct API Pair<int,long> {};", 0},
-        {"struct Pair<int, Wrap<long> {};", 0},
-        {"struct Pair<(1<2],0> {};", 0},
-        {"struct Pair<Value{1>0],0> {};", 0},
-    };
+    const std::pair<std::string_view, size_t> cases[] =
+        {
+            {"struct Plain {};", 0},
+            {"struct Outer::Inner {};", 0},
+            {"template<> struct Outer<int>::Inner<long,char> {};", 2},
+            {"template<> struct Pair<> {};", 1},
+            {"template<> struct Pair<Wrap<int,long>, char> {};", 2},
+            {"template<> struct Pair<(a < b), 2> {};", 1},
+            {"template<> struct Pair<Value{1,2}, 3> {};", 1},
+            {"template<> struct Pair<decltype(auto), 2> {};", 1},
+            {"template<> struct Pair<decltype(call(a,b)), 2> {};", 1},
+            {"struct alignas(alignof(int)) Pair<int,long> {};", 1},
+            {"struct alignas(1<<4) Pair<int,long> {};", 1},
+            {"struct API alignas(1<<4) Pair<int,long> {};", 0},
+            {"struct alignas((1<2],0) Pair<int,long> {};", 0},
+            {"struct API Pair<int,long> {};", 0},
+            {"struct Pair<int, Wrap<long> {};", 0},
+            {"struct Pair<(1<2],0> {};", 0},
+            {"struct Pair<Value{1>0],0> {};", 0},
+        };
     for (const auto& [source, expectedLists] : cases) {
         SCOPED_TRACE(source);
         PaddedInput input(source);
