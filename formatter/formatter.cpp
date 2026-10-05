@@ -593,11 +593,12 @@ void ApplyComments(
                 it->After.Begin + begin - it->Before.Begin,
                 it->After.Begin + end - it->Before.Begin,
             };
-            if (map.Exact && map.HasOriginal)
+            if (map.Exact && map.HasOriginal) {
                 next.Original = {
                     map.Original.Begin + begin - map.Output.Begin,
                     map.Original.Begin + end - map.Output.Begin,
                 };
+            }
             // A comment edit may retain token-owned CR while consuming
             // the rest of that token. The byte remains exact, not the ID.
             if (next.OriginalToken != document::NoIdentity &&

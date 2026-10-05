@@ -1197,8 +1197,9 @@ TEST(Parser, LambdaArgumentFactsStayWithinConditionalAndMalformedLimits)
         size_t errors = 0;
         auto tree =
             parser::Parse(input.View(), [&] (parser::ParseError) { ++errors; });
-        if (!std::string_view(source).starts_with("#if"))
+        if (!std::string_view(source).starts_with("#if")) {
             EXPECT_GT(errors, 0u);
+        }
         // Malformed-delimiter Recovery is lexical, not necessarily an AST
         // marker; the public-pipeline property checks its protected copies.
         EXPECT_TRUE(LambdaOwnershipNodes(tree.Root(), LambdaBody).empty());

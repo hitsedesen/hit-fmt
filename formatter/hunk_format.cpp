@@ -298,10 +298,13 @@ ChangedFormatResult FormatChanged(
         }
     }
     safety.RestrictEditScope(scope);
-    for (const auto& gap : safety.Gaps())
+    for (const auto& gap : safety.Gaps()) {
         if (gap.Preserve &&
             detail::HunkScopeIntersects(selectedBytes, gap.Source))
+        {
             coverage.push_back({gap.Source, Reason::LimitedLayout});
+        }
+    }
     // EOF is never an owned insertion point, even with the last line selected.
     // That limits layout-check coverage; it is not evidence of a missing LF.
     const auto size = CheckedSourceAnalysisSize(tree
@@ -325,8 +328,9 @@ ChangedFormatResult FormatChanged(
         file,
         scratch);
     for (const auto& diagnostic : result.Result.StructuralDiagnostics) {
-        if (diagnostic.Tokens.Empty())
+        if (diagnostic.Tokens.Empty()) {
             continue;
+        }
         // Proven policy exemptions are neither violations nor missing checks.
         if (diagnostic.Reason == StructuralSkip::ShortNamespace ||
             (diagnostic.Reason == StructuralSkip::RequiredBody &&

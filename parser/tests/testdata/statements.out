@@ -1771,6 +1771,228 @@
       "}"
     )
   )
+  (function-definition
+    (leading-trivia
+      (whitespace "\n\n")
+    )
+    (declaration-specifiers "void")
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (declarator-name "comment_boundaries")
+          (function-declarator
+            (parameter-list
+              "("
+              (parameter-declaration
+                (declaration-specifiers "bool")
+                (init-declarator-list
+                  (init-declarator
+                    (declarator
+                      (declarator-name "ready")
+                    )
+                  )
+                )
+              )
+              (list-separator ",")
+              (parameter-declaration
+                (declaration-specifiers "bool")
+                (init-declarator-list
+                  (init-declarator
+                    (declarator
+                      (declarator-name "fallback")
+                    )
+                  )
+                )
+              )
+              ")"
+            )
+          )
+        )
+      )
+    )
+    (compound-statement
+      "{"
+      (if-statement
+        "if"
+        (condition
+          "("
+          (identifier-expression "ready")
+          ")"
+        )
+        (goto-statement "goto" "finish" ";")
+      )
+      (if-statement
+        "if"
+        (condition
+          "("
+          (identifier-expression "fallback")
+          ")"
+        )
+        (goto-statement "goto" "finish" ";")
+      )
+      (comment "// Start the next phase.")
+      (expression-statement
+        (leading-trivia
+          (whitespace "\n\n    ")
+          (comment "// Start the next phase.")
+        )
+        (call-expression
+          (identifier-expression "Work")
+          (argument-list "(" ")")
+        )
+        ";"
+      )
+      (if-statement
+        "if"
+        (condition
+          "("
+          (identifier-expression "ready")
+          ")"
+        )
+        (if-statement
+          "if"
+          (condition
+            "("
+            (identifier-expression "fallback")
+            ")"
+          )
+          (expression-statement
+            (call-expression
+              (identifier-expression "Work")
+              (argument-list "(" ")")
+            )
+            ";"
+          )
+        )
+      )
+      (comment "// Outside both controls.")
+      (expression-statement
+        (leading-trivia
+          (comment "// Outside both controls.")
+        )
+        (call-expression
+          (identifier-expression "Work")
+          (argument-list "(" ")")
+        )
+        ";"
+      )
+      (if-statement
+        "if"
+        (condition
+          "("
+          (identifier-expression "ready")
+          ")"
+        )
+        (expression-statement
+          (call-expression
+            (identifier-expression "Work")
+            (argument-list "(" ")")
+          )
+          ";"
+        )
+        (trailing-trivia
+          (comment "// attached")
+        )
+      )
+      (comment "// attached")
+      (expression-statement
+        (call-expression
+          (identifier-expression "Work")
+          (argument-list "(" ")")
+        )
+        ";"
+      )
+      (if-statement
+        "if"
+        (condition
+          "("
+          (identifier-expression "ready")
+          ")"
+          (trailing-trivia
+            (comment "/* body comment */")
+          )
+        )
+        (comment "/* body comment */")
+        (expression-statement
+          (call-expression
+            (identifier-expression "Work")
+            (argument-list "(" ")")
+          )
+          ";"
+        )
+      )
+      (if-statement
+        "if"
+        (condition
+          "("
+          (identifier-expression "ready")
+          ")"
+        )
+        (expression-statement
+          (call-expression
+            (identifier-expression "Work")
+            (argument-list "(" ")")
+          )
+          ";"
+        )
+        (comment "// Explain the alternative.")
+        "else"
+        (expression-statement
+          (leading-trivia
+            (comment "// Explain the alternative.")
+          )
+          (call-expression
+            (identifier-expression "Work")
+            (argument-list "(" ")")
+          )
+          ";"
+        )
+      )
+      (if-statement
+        "if"
+        (condition
+          "("
+          (identifier-expression "ready")
+          ")"
+        )
+        (expression-statement
+          (call-expression
+            (identifier-expression "Work")
+            (argument-list "(" ")")
+          )
+          ";"
+        )
+        "else"
+        (expression-statement
+          (call-expression
+            (identifier-expression "Work")
+            (argument-list "(" ")")
+          )
+          ";"
+        )
+      )
+      (comment "/* Start another phase. */")
+      (expression-statement
+        (leading-trivia
+          (comment "/* Start another phase. */")
+        )
+        (call-expression
+          (identifier-expression "Work")
+          (argument-list "(" ")")
+        )
+        ";"
+      )
+      (label-statement "finish" ":")
+      (expression-statement
+        (call-expression
+          (identifier-expression "Work")
+          (argument-list "(" ")")
+        )
+        ";"
+      )
+      "}"
+    )
+  )
   (template-declaration
     (leading-trivia
       (whitespace "\n\n")

@@ -105,6 +105,28 @@ void argument(int n) {
     int value(n);
 }
 
+void comment_boundaries(bool ready, bool fallback) {
+    if (ready) goto finish;
+    if (fallback) goto finish;
+
+    // Start the next phase.
+    Work();
+    if (ready) if (fallback) Work();
+    // Outside both controls.
+    Work();
+    if (ready) Work(); // attached
+    Work();
+    if (ready) /* body comment */ Work();
+    if (ready) Work();
+    // Explain the alternative.
+    else Work();
+    if (ready) Work(); else Work();
+    /* Start another phase. */
+    Work();
+finish:
+    Work();
+}
+
 template<class T> void conditions(int count) {
     if constexpr (Box<T>::value && !traits::same<T, T>) {
         use(count);

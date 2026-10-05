@@ -2080,8 +2080,8 @@ std::vector<FormatCase> FormatCases()
             },
         })
     {
-        auto style = formatter::LoadConfigFile(spacing / "case-regions.hit-fmt")
-            .FormattingStyle;
+        auto style = formatter::LoadConfigFile(
+            spacing / "case-regions.hit-fmt").FormattingStyle;
         style.IndentCaseLabels = indentation;
         style.CaseLabelIndentWidth = 1;
         cases.push_back(
