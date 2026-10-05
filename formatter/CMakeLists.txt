@@ -10,7 +10,8 @@ add_library(lib-formatter STATIC
     source_analysis.cpp
     structural_edits.cpp
     syntax_layout.cpp
-    syntax_spacing.cpp)
+    syntax_spacing.cpp
+    text_policies.cpp)
 target_include_directories(lib-formatter
     PUBLIC ${CMAKE_SOURCE_DIR})
 target_include_directories(lib-formatter

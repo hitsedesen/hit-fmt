@@ -1,0 +1,10 @@
+Layout = Preserve
+IndentationKind = Preserve
+ColumnLimit = 0
+BreakAfterTemplateHeader = true
+ExpressionsAlignment = Operand
+AssignmentRhsPlacement = NextLine
+ConstructorBracePlacement = NextLine
+DestructorBracePlacement = NextLine
+IndentedCallScopePairs = ["Open:Close"]
+GenerateCallScopeIndentation = true

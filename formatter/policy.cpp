@@ -110,8 +110,36 @@ void ValidatePolicyStyle(const Style& style)
     {
         throw std::invalid_argument("LineEnding has invalid value");
     }
-    if (style.ColumnLimit == 0 || style.ColumnLimit > 10000) {
-        throw std::invalid_argument("ColumnLimit must be between 1 and 10000");
+    if (style.ColumnLimit > 10000) {
+        throw std::invalid_argument("ColumnLimit must be between 0 and 10000");
+    }
+    if (style.RulerLength != 0 &&
+        (style.RulerLength < 3 || style.RulerLength > 10000))
+    {
+        throw std::invalid_argument(
+            "RulerLength must be 0 or between 3 and 10000");
+    }
+    CheckBlankSetting(style.RulerBlankLinesBefore, "RulerBlankLinesBefore");
+    CheckBlankSetting(style.RulerBlankLinesAfter, "RulerBlankLinesAfter");
+    CheckBlankCap(
+        style.RulerBlankLinesBefore,
+        style.MaxEmptyLines,
+        "RulerBlankLinesBefore");
+    CheckBlankCap(
+        style.RulerBlankLinesAfter,
+        style.MaxEmptyLines,
+        "RulerBlankLinesAfter");
+    if (static_cast<std::size_t>(style.AssignmentRhsPlacement) >=
+        ConfigEnumNames<FirstItemPlacement>::Values.size())
+    {
+        throw std::invalid_argument("AssignmentRhsPlacement has invalid value");
+    }
+    if (style.DestructorBracePlacement &&
+        static_cast<std::size_t>(*style.DestructorBracePlacement) >=
+            ConfigEnumNames<BracePlacement>::Values.size())
+    {
+        throw std::invalid_argument(
+            "DestructorBracePlacement has invalid value");
     }
     CheckOffset(style.ContinuationOffset, "ContinuationOffset");
     CheckOffset(style.AlignmentFallbackOffset, "AlignmentFallbackOffset");
@@ -355,7 +383,7 @@ CompiledPolicies CompilePolicies(const Style& style)
             style.TernaryLayout, style.TernaryOperatorIndentation,
             {ContinuationAlignment::Block, continuation, fallback},
             style.ExpressionsBreak, style.ExpressionsPacking,
-            style.ExpressionsAlignment},
+            style.ExpressionsAlignment, style.AssignmentRhsPlacement},
         .Chains = {ResolveLayout(style.ChainsLayout, style.Layout),
             style.ChainsPacking,
             {style.ChainsAlignment, continuation, fallback}, style.ChainsBreak},
@@ -374,6 +402,8 @@ CompiledPolicies CompilePolicies(const Style& style)
             style.ControlBracePlacement, style.CaseBlockBracePlacement,
             style.EnumBracePlacement,
             style.ConstructorBracePlacement.value_or(
+                style.FunctionBracePlacement),
+            style.DestructorBracePlacement.value_or(
                 style.FunctionBracePlacement)},
         .InitializersTrailingComma = style.InitializersTrailingComma,
         .Spacing = spacing,
@@ -393,6 +423,9 @@ CompiledPolicies CompilePolicies(const Style& style)
             CompileBlankLines(style.StandaloneCommentBlankLinesBefore),
             CompileBlankLines(style.StandaloneCommentBlankLinesAfter)},
         .BreakAfterTemplateHeader = style.BreakAfterTemplateHeader,
+        .GenerateCallScopeIndentation = style.GenerateCallScopeIndentation,
+        .RulerBlankLinesBefore = CompileBlankLines(style.RulerBlankLinesBefore),
+        .RulerBlankLinesAfter = CompileBlankLines(style.RulerBlankLinesAfter),
         .Includes = {style.IncludeMatchingHeader, style.IncludeGrouping},
     };
 }

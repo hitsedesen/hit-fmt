@@ -10,8 +10,9 @@
 
 namespace formatter {
 
-// Independent of spacing, width and configuration storage. Sort authorizes
-// moving exact directive atoms, not rewriting their protected interiors.
+// Independent of renderer fitting and configuration storage. Include sorting
+// moves exact directive atoms unless opt-in directive whitespace also applies.
+// Text policies never grant authority over other protected interiors.
 enum class StructuralAction : uint8_t
 {
     AddMissingControlBraces,
@@ -20,6 +21,8 @@ enum class StructuralAction : uint8_t
     RemoveNullDeclarations,
     IncludeOrder,
     NamespaceComments,
+    DirectiveWhitespace,
+    RulerLength,
 };
 
 enum class StructuralSkip : uint8_t
@@ -52,6 +55,10 @@ struct StructuralOptions
     bool SortIncludes = false;
     // Explicit ending selection retains original whitespace bare-CR membership.
     bool PreserveBareCR = false;
+    bool IndentPreprocessingDirectives = false;
+    bool AlignMacroBackslashes = false;
+    std::size_t RulerLength = 0;
+    std::uint8_t IndentWidth = 4;
 };
 
 using StructuralActionId = uint32_t;

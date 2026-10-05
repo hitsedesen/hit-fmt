@@ -1,6 +1,7 @@
 #include "formatter.hpp"
 #include "format_pipeline.hpp"
 #include "syntax_layout.hpp"
+#include "text_policies.hpp"
 
 #include <algorithm>
 #include <format>
@@ -31,20 +32,11 @@ CompiledPolicies PreparePolicies(const Style& style)
     // Reject unsupported behavior rather than silently accepting inert
     // settings.
     const auto pending = [&] () -> std::string_view {
-        if (style.BreakAfterTemplateHeader) {
-            return "BreakAfterTemplateHeader";
-        }
-        if (style.ExpressionsAlignment != ExpressionAlignment::Block) {
-            return "ExpressionsAlignment";
-        }
         if (style.IncludeMatchingHeader != IncludeMatchingHeader::Off) {
             return "IncludeMatchingHeader";
         }
         if (style.IncludeGrouping != IncludeGrouping::Preserve) {
             return "IncludeGrouping";
-        }
-        if (style.ConstructorBracePlacement) {
-            return "ConstructorBracePlacement";
         }
         return {};
     }();
@@ -129,6 +121,7 @@ std::pmr::vector<ProtectedSourceRange> ProjectProtection(
 std::pmr::vector<Range> ProjectEditScope(
     std::span<const Range> original,
     const SourceAnalysis& safety,
+    const StructuralPlan& plan,
     std::span<const StructuralProvenance> provenance,
     std::pmr::memory_resource& scratch)
 {
@@ -140,7 +133,12 @@ std::pmr::vector<Range> ProjectEditScope(
             // their output End is still excluded unless selected copied bytes
             // follow. A deletion emits no literal and grants no new authority.
             if (piece.Operation == NoStructuralAction ||
-                safety.IntersectsImmutable(piece.Original))
+                ((plan.Operations[piece.Operation].Kind ==
+                    StructuralAction::DirectiveWhitespace ||
+                    plan.Operations[piece.Operation].Kind ==
+                        StructuralAction::IncludeOrder)
+                    ? !CanRewriteTextAtom(safety, piece.Original, true)
+                    : safety.IntersectsImmutable(piece.Original)))
             {
                 throw std::runtime_error("unauthorized structural literal");
             }
@@ -644,7 +642,8 @@ void WidthDiagnostics(
     const CompiledPolicies& policies,
     uint8_t tabWidth)
 {
-    if (policies.WidthDiagnostics != WidthDiagnosticPolicy::Report)
+    if (policies.ColumnLimit == 0 ||
+        policies.WidthDiagnostics != WidthDiagnosticPolicy::Report)
         return;
     uint32_t line = 1;
     size_t width = 0;
@@ -693,6 +692,10 @@ PreparedFormat::PreparedFormat(const Style& style)
         style.RemoveNullDeclarations,
         style.IncludeOrder == IncludeOrder::Sort,
         style.LineEnding != LineEnding::Preserve,
+        style.IndentPreprocessingDirectives,
+        style.AlignMacroBackslashes,
+        style.RulerLength,
+        static_cast<std::uint8_t>(style.IndentWidth),
     }
     , NamespaceComments(CommentOptions(style))
     , HonorClangFormatDirectives(style.HonorClangFormatDirectives)
@@ -786,6 +789,7 @@ FormatResult detail::FormatWithAnalysis(
             selected = ProjectEditScope(
                 *request.EditScope,
                 safety,
+                plan,
                 normalized->Provenance,
                 scratch);
             currentScope = selected;

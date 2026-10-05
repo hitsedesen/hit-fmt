@@ -1,0 +1,10 @@
+Layout = Preserve
+ColumnLimit = 0
+IndentPreprocessingDirectives = true
+AlignMacroBackslashes = true
+IncludeOrder = Sort
+RulerLength = 16
+RulerBlankLinesBefore = 1
+RulerBlankLinesAfter = 1
+StandaloneCommentBlankLinesBefore = 0
+StandaloneCommentBlankLinesAfter = 0

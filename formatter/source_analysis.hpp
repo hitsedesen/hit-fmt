@@ -104,6 +104,7 @@ struct SourceRegion
     RegionId NextSibling = NoRegion;
     parser::NodeKind Kind;
     RegionStatus Status = RegionStatus::Complete;
+    parser::FunctionKind Function = parser::FunctionKind::Unknown;
 };
 
 static_assert(sizeof(SourceRegion) <= 40);
@@ -216,6 +217,9 @@ public:
     void RestrictEditScope(std::span<const parser::SourceRange> ranges);
 
     [[nodiscard]] bool IntersectsImmutable(parser::SourceRange source) const;
+    // Specialized opt-in directive whitespace authority. Ignores only native
+    // Directive/LineSplice protection, never real fences or edit-scope bytes.
+    [[nodiscard]] bool CanRewriteDirective(parser::SourceRange source) const;
     [[nodiscard]] bool CanReplaceGap(
         GapId gap,
         std::string_view replacement) const;
@@ -232,6 +236,8 @@ private:
     std::string_view Source_;
     std::pmr::vector<SourceGap> Gaps_;
     std::pmr::vector<ProtectedSourceRange> Protection_;
+    // Retain precise exceptional fences before directive line coalescing.
+    std::pmr::vector<ProtectedSourceRange> DirectiveFences_;
     std::pmr::vector<SourceRegion> Regions_;
     std::pmr::vector<parser::SourceRange> EditScope_;
     std::pmr::vector<PartialGapPermission> PartialGapPermissions_;

@@ -21,7 +21,10 @@ std::string_view IntegerValues(std::string_view name)
         return "1..32";
     }
     if (name == "ColumnLimit") {
-        return "1..10000";
+        return "0 (unlimited) or 1..10000";
+    }
+    if (name == "RulerLength") {
+        return "0 (preserve) or 3..10000";
     }
     if (name == "NamespaceCommentSpaces") {
         return "1..32";
@@ -191,9 +194,8 @@ void PrintPreserveConfig(std::ostream& output)
             "# Blank counts measure empty lines; zero "
             "retains boundary topology.\n" "# Exact counts above an explicit "
             "MaxEmptyLines cap are invalid.\n"
-            "# Public preparation rejects template breaks, Operand alignment,\n"
-            "# matching-header selection, regrouping and "
-            "constructor overrides.\n"
+            "# Public preparation rejects matching-header "
+            "selection and regrouping.\n"
             "# Inactive include prefixes validate but do not "
             "activate regrouping.\n"
             "# Regroup conflicts with MaxEmptyLines = 0.\n"
@@ -203,8 +205,8 @@ void PrintPreserveConfig(std::ostream& output)
             "per-edge preservation.\n"
             "# LF/CRLF spell only authorized whole whitespace newline atoms;\n"
             "# no final newline insertion, token/directive "
-            "conversion or cleanup.\n"
-            "# Directives and protected regions remain byte-exact.\n"
+            "conversion or cleanup.\n" "# Protected regions remain byte-exact. "
+            "Directive whitespace is opt-in.\n"
             "# Option guidance: --help-config\n\n" "# Formatting options\n\n";
     const formatter::Style style;
 #define PRINT_STYLE_OPTION(type, name, initial) \

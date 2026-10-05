@@ -1,0 +1,8 @@
+Layout = Canonical
+IndentationKind = Spaces
+ColumnLimit = 0
+ExpressionsBreak = Always
+BreakAfterTemplateHeader = true
+FunctionBracePlacement = Attached
+ConstructorBracePlacement = NextLine
+DestructorBracePlacement = NextLine

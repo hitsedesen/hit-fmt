@@ -1758,7 +1758,11 @@ TEST(PublicPipeline, InvalidPreparedRequestsAndActualEmittedWidthDiagnostics)
 {
     auto style = Canonical();
     style.ColumnLimit = 0;
-    EXPECT_THROW(formatter::PreparedFormat{style}, std::invalid_argument);
+    style.WidthDiagnostics = formatter::WidthDiagnosticPolicy::Report;
+    const auto unlimited = FormatInput(
+        "int extremely_long_variable_name;\n",
+        formatter::PreparedFormat{style});
+    EXPECT_TRUE(unlimited.Diagnostics.empty());
     style = Canonical();
     style.CallLikeMacroNames = {"CALL_HINT"};
     EXPECT_THROW(formatter::PreparedFormat{style}, std::invalid_argument);
@@ -3635,6 +3639,84 @@ TEST(PublicPipeline, FunctionBodyMacrosRetainHeadersThroughNormalization)
         std::string::npos);
     EXPECT_FALSE(result.StructuralOperations.empty());
     EXPECT_EQ(FormatInput(result.Text, prepared).Text, result.Text);
+    CheckIdentities(source, result);
+}
+
+TEST(PublicPipeline, TextPoliciesRespectOriginalScopeAndProtection)
+{
+    formatter::Style style;
+    style.IndentPreprocessingDirectives = true;
+    style.AlignMacroBackslashes = true;
+    style.RulerLength = 16;
+    style.RulerBlankLinesBefore = {formatter::BlankLineMode::Exact, 1};
+    style.RulerBlankLinesAfter = {formatter::BlankLineMode::Exact, 1};
+    const formatter::PreparedFormat prepared(style);
+    const std::string source = "#if OUTER\n# if INNER\n"
+        "#define VALUE first \\\n    second    \\\n    third\n"
+        "# endif\n# endif\n/////\nint item;\n";
+    const auto begin = parser::SourceOffset(source.find("# if INNER"));
+    const auto end = parser::SourceOffset(source.find('\n', begin));
+    const std::array selected{parser::SourceRange{begin, end}};
+    const auto limited = FormatInput(
+        source,
+        prepared,
+        {.SourceMap = true, .EditScope = selected});
+    EXPECT_NE(limited.Text.find("#    if INNER"), std::string::npos);
+    CheckIdentities(source, limited);
+    CheckExcludedCopies(source, limited, selected);
+    const std::array partial{parser::SourceRange{begin + 1, end}};
+    const auto denied = FormatInput(
+        source,
+        prepared,
+        {.SourceMap = true, .EditScope = partial});
+    EXPECT_EQ(denied.Text, source);
+    CheckExcludedCopies(source, denied, partial);
+    const std::array immutable{
+        parser::SourceRange{0, parser::SourceOffset(source.size())},
+    };
+    EXPECT_EQ(
+        FormatInput(source, prepared, {.ImmutableRanges = immutable}).Text,
+        source);
+    const auto disabled = "// hit-fmt off\n" + source + "// hit-fmt on\n";
+    EXPECT_EQ(FormatInput(disabled, prepared).Text, disabled);
+    const auto result = FormatInput(source, prepared);
+    CheckIdentities(source, result);
+    EXPECT_EQ(FormatInput(result.Text, prepared).Text, result.Text);
+    EXPECT_FALSE(result.StructuralOperations.empty());
+}
+
+TEST(PublicPipeline, SortedDirectiveWhitespaceProjectsSelectedIncludeAtoms)
+{
+    formatter::Style style;
+    style.IndentPreprocessingDirectives = true;
+    style.IncludeOrder = formatter::IncludeOrder::Sort;
+    const formatter::PreparedFormat prepared(style);
+    const std::string source = "#if OUTER\n#include \"zeta.h\"\n"
+        "#include \"alpha.h\"\n#endif\nint tail;\n";
+    const auto begin = parser::SourceOffset(source.find("#include"));
+    const auto end = parser::SourceOffset(source.find("#endif"));
+    const std::array selected{parser::SourceRange{begin, end}};
+    const auto result = FormatInput(
+        source,
+        prepared,
+        {.SourceMap = true, .EditScope = selected});
+    EXPECT_LT(result.Text.find("alpha.h"), result.Text.find("zeta.h"));
+    EXPECT_NE(result.Text.find("#    include"), std::string::npos);
+    CheckIdentities(source, result);
+    CheckExcludedCopies(source, result, selected);
+    EXPECT_EQ(FormatInput(result.Text, prepared).Text, result.Text);
+}
+
+TEST(PublicPipeline, UnlimitedWidthHasNoHiddenTenThousandColumnLimit)
+{
+    auto style = Canonical();
+    style.ColumnLimit = 0;
+    style.WidthDiagnostics = formatter::WidthDiagnosticPolicy::Report;
+    const formatter::PreparedFormat prepared(style);
+    const auto source = "auto value = \"" + std::string(10050, 'x') + "\";\n";
+    const auto result = FormatInput(source, prepared);
+    EXPECT_EQ(result.Text, source);
+    EXPECT_TRUE(result.Diagnostics.empty());
     CheckIdentities(source, result);
 }
 

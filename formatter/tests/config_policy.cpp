@@ -62,6 +62,8 @@ constexpr std::pair<
             "StandaloneCommentBlankLinesAfter",
             &formatter::Style::StandaloneCommentBlankLinesAfter,
         },
+        {"RulerBlankLinesBefore", &formatter::Style::RulerBlankLinesBefore},
+        {"RulerBlankLinesAfter", &formatter::Style::RulerBlankLinesAfter},
     };
 
 struct TemporaryConfig
@@ -519,6 +521,12 @@ TEST(ConfigPolicy, VerticalBoundsCannotBeBypassedByProgrammaticStyles)
             "MemberDeclarationBlankLines = 10001\n",
             "DefinitionBlankLines = 10001\n",
             "MemberDefinitionBlankLines = 10001\n",
+            "RulerBlankLinesBefore = Inherit\n",
+            "RulerBlankLinesAfter = 10001\n",
+            "RulerLength = 2\n",
+            "RulerLength = 10001\n",
+            "AssignmentRhsPlacement = Unsupported\n",
+            "DestructorBracePlacement = Unsupported\n",
             "MaxEmptyLines = 10001\n",
             "MaxEmptyLines = Inherit\n",
             "MaxEmptyLines = 9999999999999999999999999\n",
@@ -1167,7 +1175,7 @@ TEST(ConfigPolicy, PendingConsumersFailClosedWithoutChangingExistingRejections)
         const TemporaryConfig config(text);
         auto style = formatter::LoadConfigFile(config.Path).FormattingStyle;
         EXPECT_NO_THROW((void)formatter::CompilePolicies(style));
-        if (std::string_view(text).starts_with("StandaloneComment")) {
+        if (!std::string_view(text).starts_with("Include")) {
             EXPECT_NO_THROW((void)formatter::PreparedFormat(style));
         } else {
             try {
@@ -1207,7 +1215,7 @@ TEST(ConfigPolicy, PendingConsumersFailClosedWithoutChangingExistingRejections)
     }
     formatter::Style style;
     style.ColumnLimit = 0;
-    EXPECT_THROW((void)formatter::PreparedFormat(style), std::invalid_argument);
+    EXPECT_NO_THROW((void)formatter::PreparedFormat(style));
     for (const auto key :
         {
             "StandaloneCommentBlankLinesBefore",

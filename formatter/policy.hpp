@@ -91,6 +91,7 @@ struct ExpressionPolicy
     BreakRequirement Break = BreakRequirement::IfNeeded;
     ListPacking Packing = ListPacking::Fill;
     ExpressionAlignment Alignment = ExpressionAlignment::Block;
+    FirstItemPlacement AssignmentRhs = FirstItemPlacement::InlineIfFits;
 };
 
 struct ChainPolicy
@@ -154,6 +155,7 @@ struct BracePolicy
     BracePlacement Case;
     BracePlacement Enum = BracePlacement::Attached;
     BracePlacement Constructor = BracePlacement::Attached;
+    BracePlacement Destructor = BracePlacement::Attached;
 };
 
 struct HeaderListPolicy
@@ -243,8 +245,10 @@ struct CompiledPolicies
     const ListPolicy Enumerators;
     // Syntax-owned exact counts/cap, not a post-layout cleanup stage.
     const VerticalGapPolicies VerticalGaps;
-    // Scalar metadata does not enable unsupported public-pipeline behavior.
     const bool BreakAfterTemplateHeader;
+    const bool GenerateCallScopeIndentation;
+    const VerticalGapPolicy RulerBlankLinesBefore;
+    const VerticalGapPolicy RulerBlankLinesAfter;
     const IncludePolicy Includes;
 };
 
