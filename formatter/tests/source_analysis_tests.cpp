@@ -820,6 +820,29 @@ TEST(SourceAnalysis, ContextSensitivePunctuationIsNotJustTokenization)
     const auto suffix = Before(tree, "_suffix");
     EXPECT_TRUE(analysis.Gaps()[suffix].ContextSensitive);
     EXPECT_FALSE(analysis.CanReplaceGap(suffix, " "));
+    const auto closing = Before(tree, "]", 1);
+    EXPECT_TRUE(analysis.Gaps()[closing].ContextSensitive);
+    EXPECT_FALSE(analysis.CanReplaceGap(closing, "\n    "));
+
+    for (const auto& [source, attribute] :
+        {
+            std::tuple{
+                "auto callback = [value = values[index]\n] { return value; };",
+                false,
+            },
+            {"auto value = rows[columns[index]\n];", false},
+            {"[[deprecated]\n] void Function();", true},
+        })
+    {
+        Input nested(source);
+        auto nestedTree = Parse(nested);
+        auto nestedAnalysis = Analyze(nestedTree, memory);
+        const auto gap = Before(nestedTree, "]", 1);
+        EXPECT_EQ(nestedAnalysis.Gaps()[gap].ContextSensitive, attribute)
+            << source;
+        EXPECT_EQ(nestedAnalysis.CanReplaceGap(gap, "\n    "), !attribute)
+            << source;
+    }
 }
 
 TEST(SourceAnalysis, LexicalConstraintsCoverPunctuationAndLiteralBoundaries)

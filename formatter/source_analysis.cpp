@@ -99,6 +99,13 @@ bool Number(TK kind)
     return Literal(kind) && kind < TK::Literal_Character;
 }
 
+bool OrdinaryBracket(parser::PunctuationRole role)
+{
+    using enum parser::PunctuationRole;
+    return role == LambdaDelimiter || role == DeclarationDelimiter ||
+        role == CallDelimiter;
+}
+
 bool Punctuation(TK kind)
 {
     return kind >= TK::Operator_OpenBrace && kind <= TK::Operator_Comma;
@@ -609,8 +616,13 @@ SourceAnalysis BuildSourceAnalysis(
             ((tree.Kind(i - 1) == TK::Operator_OpenBracket &&
                 tree.Kind(i) == TK::Operator_OpenBracket) ||
                 (tree.Kind(i - 1) == TK::Operator_CloseBracket &&
-                    tree.Kind(i) == TK::Operator_CloseBracket)))
+                    tree.Kind(i) == TK::Operator_CloseBracket &&
+                    !OrdinaryBracket(tree.Role(i - 1)) &&
+                    !OrdinaryBracket(tree.Role(i)))))
         {
+            // Uncertain bracket pairs may belong to attribute syntax. A
+            // proven ordinary closer, such as a capture after a subscript,
+            // leaves this gap available to its normal layout owner.
             gap.ContextSensitive = true;
             gap.Preserve = true;
         }
