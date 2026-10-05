@@ -856,8 +856,18 @@
               (argument-list
                 "("
                 (argument
-                  (identifier-expression "Number")
-                  (unparsed-syntax "{" "2" "}")
+                  (type-construction-expression
+                    (identifier-expression "Number")
+                    (braced-initializer
+                      (initializer-list
+                        "{"
+                        (initializer-element
+                          (literal-expression "2")
+                        )
+                        "}"
+                      )
+                    )
+                  )
                 )
                 ")"
               )
@@ -1203,8 +1213,18 @@
                         )
                         (initializer
                           "="
-                          (identifier-expression "Number")
-                          (unparsed-syntax "{" "1" "}")
+                          (type-construction-expression
+                            (identifier-expression "Number")
+                            (braced-initializer
+                              (initializer-list
+                                "{"
+                                (initializer-element
+                                  (literal-expression "1")
+                                )
+                                "}"
+                              )
+                            )
+                          )
                         )
                       )
                     )
@@ -1540,7 +1560,19 @@
       )
       (if-statement
         "if"
-        (condition "(" "ready" "&&" "count" ">" "0" ")")
+        (condition
+          "("
+          (binary-expression
+            (identifier-expression "ready")
+            "&&"
+            (binary-expression
+              (identifier-expression "count")
+              ">"
+              (literal-expression "0")
+            )
+          )
+          ")"
+        )
         (compound-statement
           "{"
           (return-statement
@@ -1570,8 +1602,13 @@
             "{"
             (throw-statement
               "throw"
-              (identifier-expression "Error")
-              "{" "}" ";"
+              (type-construction-expression
+                (identifier-expression "Error")
+                (braced-initializer
+                  (initializer-list "{" "}")
+                )
+              )
+              ";"
             )
             "}"
           )
@@ -1716,6 +1753,546 @@
         ";"
       )
       "}"
+    )
+  )
+  (template-declaration
+    (leading-trivia
+      (whitespace "\n\n")
+    )
+    "template"
+    (template-parameter-list
+      "<"
+      (template-parameter "class" "T")
+      ">"
+    )
+    (function-definition
+      (declaration-specifiers "void")
+      (init-declarator-list
+        (init-declarator
+          (declarator
+            (declarator-name "conditions")
+            (function-declarator
+              (parameter-list
+                "("
+                (parameter-declaration
+                  (declaration-specifiers "int")
+                  (init-declarator-list
+                    (init-declarator
+                      (declarator
+                        (declarator-name "count")
+                      )
+                    )
+                  )
+                )
+                ")"
+              )
+            )
+          )
+        )
+      )
+      (compound-statement
+        "{"
+        (if-statement
+          "if" "constexpr"
+          (condition
+            "("
+            (binary-expression
+              (member-expression
+                (unparsed-syntax "Box" "<" "T" ">")
+                "::"
+                (identifier-expression "value")
+              )
+              "&&"
+              (unary-expression
+                "!"
+                (member-expression
+                  (identifier-expression "traits")
+                  "::"
+                  (unparsed-syntax "same" "<" "T" "," "T" ">")
+                )
+              )
+            )
+            ")"
+          )
+          (compound-statement
+            "{"
+            (expression-statement
+              (call-expression
+                (identifier-expression "use")
+                (argument-list
+                  "("
+                  (argument
+                    (identifier-expression "count")
+                  )
+                  ")"
+                )
+              )
+              ";"
+            )
+            "}"
+          )
+        )
+        (if-statement
+          "if"
+          (condition
+            "("
+            (binary-expression
+              (member-expression
+                (unparsed-syntax "Box" "<" "T" ">")
+                "::"
+                (identifier-expression "value")
+              )
+              "&&"
+              (identifier-expression "enabled")
+            )
+            ")"
+          )
+          (compound-statement
+            "{"
+            (expression-statement
+              (call-expression
+                (identifier-expression "use")
+                (argument-list
+                  "("
+                  (argument
+                    (identifier-expression "count")
+                  )
+                  ")"
+                )
+              )
+              ";"
+            )
+            "}"
+          )
+        )
+        (if-statement
+          "if"
+          (condition
+            "("
+            (declaration-statement
+              (declaration-specifiers "int")
+              (init-declarator-list
+                (init-declarator
+                  (declarator
+                    (declarator-name "value")
+                  )
+                  (initializer
+                    "="
+                    (identifier-expression "count")
+                  )
+                )
+              )
+            )
+            ")"
+          )
+          (compound-statement
+            "{"
+            (expression-statement
+              (call-expression
+                (identifier-expression "use")
+                (argument-list
+                  "("
+                  (argument
+                    (identifier-expression "value")
+                  )
+                  ")"
+                )
+              )
+              ";"
+            )
+            "}"
+          )
+        )
+        (if-statement
+          "if"
+          (condition
+            "("
+            (declaration-statement
+              (declaration-specifiers "int")
+              (init-declarator-list
+                (init-declarator
+                  (declarator
+                    (nested-declarator
+                      "("
+                      (declarator-name "value")
+                      ")"
+                    )
+                  )
+                  (initializer
+                    "="
+                    (identifier-expression "count")
+                  )
+                )
+              )
+            )
+            ")"
+          )
+          (compound-statement
+            "{"
+            (expression-statement
+              (call-expression
+                (identifier-expression "use")
+                (argument-list
+                  "("
+                  (argument
+                    (identifier-expression "value")
+                  )
+                  ")"
+                )
+              )
+              ";"
+            )
+            "}"
+          )
+        )
+        (if-statement
+          "if"
+          (condition
+            "("
+            (declaration-statement
+              (declaration-specifiers "auto")
+              (init-declarator-list
+                (init-declarator
+                  (declarator
+                    (pointer-operator "*")
+                    (declarator-name "value")
+                  )
+                  (initializer
+                    "="
+                    (call-expression
+                      (identifier-expression "Acquire")
+                      (argument-list "(" ")")
+                    )
+                  )
+                )
+              )
+            )
+            ")"
+          )
+          (compound-statement
+            "{"
+            (expression-statement
+              (call-expression
+                (identifier-expression "use")
+                (argument-list
+                  "("
+                  (argument
+                    (identifier-expression "value")
+                  )
+                  ")"
+                )
+              )
+              ";"
+            )
+            "}"
+          )
+        )
+        (if-statement
+          "if"
+          (condition
+            "("
+            (ambiguous-statement "ExternalType" "value" "=" "Acquire" "(" ")")
+            ")"
+          )
+          (compound-statement
+            "{"
+            (expression-statement
+              (call-expression
+                (identifier-expression "use")
+                (argument-list
+                  "("
+                  (argument
+                    (identifier-expression "value")
+                  )
+                  ")"
+                )
+              )
+              ";"
+            )
+            "}"
+          )
+        )
+        (if-statement
+          "if"
+          (condition
+            "("
+            (declaration-statement
+              (declaration-specifiers "int")
+              (init-declarator-list
+                (init-declarator
+                  (declarator
+                    (declarator-name "previous")
+                  )
+                  (initializer
+                    "="
+                    (identifier-expression "count")
+                  )
+                )
+              )
+            )
+            ";"
+            (declaration-statement
+              (declaration-specifiers "int")
+              (init-declarator-list
+                (init-declarator
+                  (declarator
+                    (declarator-name "next")
+                  )
+                  (initializer
+                    "="
+                    (identifier-expression "previous")
+                  )
+                )
+              )
+            )
+            ")"
+          )
+          (compound-statement
+            "{"
+            (expression-statement
+              (call-expression
+                (identifier-expression "use")
+                (argument-list
+                  "("
+                  (argument
+                    (identifier-expression "next")
+                  )
+                  ")"
+                )
+              )
+              ";"
+            )
+            "}"
+          )
+        )
+        (while-statement
+          "while"
+          (condition
+            "("
+            (declaration-statement
+              (declaration-specifiers "int")
+              (init-declarator-list
+                (init-declarator
+                  (declarator
+                    (declarator-name "value")
+                  )
+                  (initializer
+                    (braced-initializer
+                      (initializer-list
+                        "{"
+                        (initializer-element
+                          (call-expression
+                            (identifier-expression "ReadValue")
+                            (argument-list "(" ")")
+                          )
+                        )
+                        "}"
+                      )
+                    )
+                  )
+                )
+              )
+            )
+            ")"
+          )
+          (compound-statement
+            "{"
+            (expression-statement
+              (call-expression
+                (identifier-expression "use")
+                (argument-list
+                  "("
+                  (argument
+                    (identifier-expression "value")
+                  )
+                  ")"
+                )
+              )
+              ";"
+            )
+            "}"
+          )
+        )
+        (expression-statement
+          (call-expression
+            (identifier-expression "compare")
+            (argument-list
+              "("
+              (argument
+                (identifier-expression "count")
+              )
+              (list-separator ",")
+              (argument
+                (parenthesized-expression
+                  "("
+                  (type-construction-expression
+                    (template-id-expression
+                      (identifier-expression "Box")
+                      (template-argument-list
+                        "<"
+                        (template-argument "T")
+                        ">"
+                      )
+                    )
+                    (braced-initializer
+                      (initializer-list
+                        "{"
+                        (initializer-element
+                          (identifier-expression "first")
+                        )
+                        (list-separator ",")
+                        (initializer-element
+                          (identifier-expression "second")
+                        )
+                        "}"
+                      )
+                    )
+                  )
+                  ")"
+                )
+              )
+              ")"
+            )
+          )
+          ";"
+        )
+        (expression-statement
+          (call-expression
+            (identifier-expression "compare")
+            (argument-list
+              "("
+              (argument
+                (identifier-expression "count")
+              )
+              (list-separator ",")
+              (argument
+                (parenthesized-expression
+                  "("
+                  (type-construction-expression
+                    (member-expression
+                      (identifier-expression "types")
+                      "::"
+                      (identifier-expression "collection")
+                    )
+                    (braced-initializer
+                      (initializer-list
+                        "{"
+                        (initializer-element
+                          (identifier-expression "first")
+                        )
+                        (list-separator ",")
+                        (initializer-element
+                          (identifier-expression "second")
+                        )
+                        "}"
+                      )
+                    )
+                  )
+                  ")"
+                )
+              )
+              ")"
+            )
+          )
+          ";"
+        )
+        (expression-statement
+          (call-expression
+            (identifier-expression "compare")
+            (argument-list
+              "("
+              (argument
+                (identifier-expression "count")
+              )
+              (list-separator ",")
+              (argument
+                (parenthesized-expression
+                  "("
+                  (type-construction-expression
+                    (member-expression
+                      (identifier-expression "types")
+                      "::"
+                      (template-id-expression
+                        (identifier-expression "collection")
+                        (template-argument-list
+                          "<"
+                          (template-argument "int")
+                          ">"
+                        )
+                      )
+                    )
+                    (braced-initializer
+                      (initializer-list
+                        "{"
+                        (initializer-element
+                          (identifier-expression "first")
+                        )
+                        (list-separator ",")
+                        (initializer-element
+                          (identifier-expression "second")
+                        )
+                        "}"
+                      )
+                    )
+                  )
+                  ")"
+                )
+              )
+              ")"
+            )
+          )
+          ";"
+        )
+        (expression-statement
+          (call-expression
+            (identifier-expression "compare")
+            (argument-list
+              "("
+              (argument
+                (identifier-expression "count")
+              )
+              (list-separator ",")
+              (argument
+                (call-expression
+                  (member-expression
+                    (unparsed-syntax "Limits" "<" "ExternalType" ">")
+                    "::"
+                    (identifier-expression "max")
+                  )
+                  (argument-list "(" ")")
+                )
+              )
+              ")"
+            )
+          )
+          ";"
+        )
+        (expression-statement
+          (call-expression
+            (identifier-expression "compare")
+            (argument-list
+              "("
+              (argument
+                (identifier-expression "count")
+              )
+              (list-separator ",")
+              (argument
+                (call-expression
+                  (member-expression
+                    (unparsed-syntax "left" "<" "limit" ">")
+                    "::"
+                    (identifier-expression "Result")
+                  )
+                  (argument-list "(" ")")
+                )
+              )
+              ")"
+            )
+          )
+          ";"
+        )
+        "}"
+      )
     )
   )
 )

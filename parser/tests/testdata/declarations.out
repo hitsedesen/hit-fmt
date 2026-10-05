@@ -69,7 +69,20 @@
                   )
                   (constructor-initializer-list
                     ":"
-                    (constructor-initializer "bits" "{" "value" "}")
+                    (constructor-initializer
+                      (type-construction-expression
+                        (identifier-expression "bits")
+                        (braced-initializer
+                          (initializer-list
+                            "{"
+                            (initializer-element
+                              (identifier-expression "value")
+                            )
+                            "}"
+                          )
+                        )
+                      )
+                    )
                     (list-separator ",")
                     (constructor-initializer
                       (call-expression
@@ -207,8 +220,13 @@
               "else"
               (return-statement
                 "return"
-                (identifier-expression "T")
-                "{" "}" ";"
+                (type-construction-expression
+                  (identifier-expression "T")
+                  (braced-initializer
+                    (initializer-list "{" "}")
+                  )
+                )
+                ";"
               )
             )
             "}"

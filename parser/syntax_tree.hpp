@@ -113,6 +113,8 @@ struct TokenRange
     SYNTAX_NODE_KIND(LiteralExpression, "literal-expression")                  \
     SYNTAX_NODE_KIND(UnaryExpression, "unary-expression")                      \
     SYNTAX_NODE_KIND(CastExpression, "cast-expression")                        \
+    SYNTAX_NODE_KIND(                                                          \
+        TypeConstructionExpression, "type-construction-expression")            \
     SYNTAX_NODE_KIND(TypeId, "type-id")                                        \
     SYNTAX_NODE_KIND(FoldExpression, "fold-expression")                        \
     SYNTAX_NODE_KIND(FoldOperand, "fold-operand")                              \
@@ -320,6 +322,7 @@ private:
 };
 
 static_assert(sizeof(Node) == 40);
+
 static_assert(std::is_trivially_destructible_v<Node>);
 
 struct InsertedControlBlock

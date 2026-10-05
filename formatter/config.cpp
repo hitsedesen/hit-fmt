@@ -777,10 +777,14 @@ bool LibraryAnnotations::IsStickyChainPair(
 {
     const auto key = std::pair{first, second};
     const auto found = std::lower_bound(
-        StickyChainPairs_.begin(), StickyChainPairs_.end(), key,
+        StickyChainPairs_.begin(),
+        StickyChainPairs_.end(),
+        key,
         [] (const auto& pair, const auto& value) {
             return std::pair<std::string_view, std::string_view>{
-                pair.First, pair.Second} < value;
+                pair.First,
+                pair.Second,
+            } < value;
         });
     return found != StickyChainPairs_.end() && found->First == first &&
         found->Second == second;

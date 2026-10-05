@@ -39,15 +39,16 @@ TEST(HunkParser, EmptyInputSelectsNoFiles)
 }
 TEST(HunkParser, RejectsMalformedRecordsWithLineNumbers)
 {
-    for (auto [text, line] : {
-        std::pair<std::string_view, size_t>{"hunk 1:2\n", 1},
-        {"file a.cpp\nfile b.cpp\nhunk 1:1\n", 2},
-        {"file a.cpp\nhunk 0:1\n", 2},
-        {"file a.cpp\nhunk 4:2\n", 2},
-        {"file a.cpp\nhunk 2:x\n", 2},
-        {"file a.cpp\nhunk 1:2:3\n", 2},
-        {"file a.cpp\nline 1:2\n", 2},
-    })
+    for (auto [text, line] :
+        {
+            std::pair<std::string_view, size_t>{"hunk 1:2\n", 1},
+            {"file a.cpp\nfile b.cpp\nhunk 1:1\n", 2},
+            {"file a.cpp\nhunk 0:1\n", 2},
+            {"file a.cpp\nhunk 4:2\n", 2},
+            {"file a.cpp\nhunk 2:x\n", 2},
+            {"file a.cpp\nhunk 1:2:3\n", 2},
+            {"file a.cpp\nline 1:2\n", 2},
+        })
     {
         std::istringstream input{std::string(text)};
         try {
@@ -95,14 +96,22 @@ TEST(HunkAdapter, RejectsInvalidOriginalPhysicalLines)
         HunkInput input(text);
         auto tree = input.Tree();
         for (formatter::Hunk hunk : {formatter::Hunk{0, 1}, {2, 1}, {2, 2}}) {
-            EXPECT_THROW((void)formatter::FormatChanged(tree,
-                formatter::Style{}, std::span(&hunk, 1), false),
+            EXPECT_THROW(
+                (void)formatter::FormatChanged(
+                    tree,
+                    formatter::Style{},
+                    std::span(&hunk, 1),
+                    false),
                 std::invalid_argument) << text;
         }
         if (text.empty()) {
             formatter::Hunk hunk{1, 1};
-            EXPECT_THROW((void)formatter::FormatChanged(tree,
-                formatter::Style{}, std::span(&hunk, 1), false),
+            EXPECT_THROW(
+                (void)formatter::FormatChanged(
+                    tree,
+                    formatter::Style{},
+                    std::span(&hunk, 1),
+                    false),
                 std::invalid_argument);
         }
     }
@@ -388,9 +397,11 @@ TEST(HunkAdapter, BoundedNestedListsNeverPromoteFunctionOrOverTwoHundredLines)
         }
         source += "    2);\n  untouched(  );\n}\n";
         const auto bounded = Changed(source, selected, true, HunkStyle());
-        EXPECT_EQ(bounded.PermittedLines, count == 200
-            ? (std::vector<formatter::Hunk>{{2, 201}})
-            : (std::vector<formatter::Hunk>{{3, 3}}));
+        EXPECT_EQ(
+            bounded.PermittedLines,
+            count == 200
+                ? (std::vector<formatter::Hunk>{{2, 201}})
+                : (std::vector<formatter::Hunk>{{3, 3}}));
         EXPECT_TRUE(
             bounded.Result.Text.find("  untouched(  );") != std::string::npos);
         if (count == 201) {

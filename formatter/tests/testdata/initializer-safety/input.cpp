@@ -14,4 +14,8 @@ void inspect() {
     int rows[][2] = {{firstLongElement, secondLongElement}, {thirdLongElement, fourthLongElement}};
     int existing[] = {firstLongElement, secondLongElement, thirdLongElement, fourthLongElement,};
     int compact[] = {1, 2,};
+    record(actual, (types::collection{firstLongElement, secondLongElement, thirdLongElement}));
+    record(actual, (types::collection<int>{firstLongElement, secondLongElement, thirdLongElement}));
+    record(ReadCurrentCapacityForActiveEndpoint(), std::numeric_limits<ExternalType>::max());
+    auto available = ReadCurrentCapacityForActiveEndpoint() != std::numeric_limits<ExternalType>::max();
 }

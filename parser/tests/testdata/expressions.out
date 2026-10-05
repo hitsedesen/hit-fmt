@@ -176,6 +176,115 @@
           (init-declarator-list
             (init-declarator
               (declarator
+                (declarator-name "external")
+              )
+              (initializer
+                "="
+                (cast-expression
+                  "static_cast" "<"
+                  (type-id "ExternalType")
+                  ">" "("
+                  (identifier-expression "value")
+                  ")"
+                )
+              )
+            )
+          )
+          ";"
+        )
+        (declaration-statement
+          (declaration-specifiers "auto")
+          (init-declarator-list
+            (init-declarator
+              (declarator
+                (declarator-name "external_pointer")
+              )
+              (initializer
+                "="
+                (cast-expression
+                  "const_cast" "<"
+                  (type-id "ExternalType" "*")
+                  ">" "("
+                  (identifier-expression "pointer")
+                  ")"
+                )
+              )
+            )
+          )
+          ";"
+        )
+        (declaration-statement
+          (declaration-specifiers "auto")
+          (init-declarator-list
+            (init-declarator
+              (declarator
+                (declarator-name "external_bits")
+              )
+              (initializer
+                "="
+                (cast-expression
+                  "reinterpret_cast" "<"
+                  (type-id "ExternalType" "*")
+                  ">" "("
+                  (identifier-expression "pointer")
+                  ")"
+                )
+              )
+            )
+          )
+          ";"
+        )
+        (declaration-statement
+          (declaration-specifiers "auto")
+          (init-declarator-list
+            (init-declarator
+              (declarator
+                (declarator-name "external_object")
+              )
+              (initializer
+                "="
+                (cast-expression
+                  "dynamic_cast" "<"
+                  (type-id "ExternalType" "*")
+                  ">" "("
+                  (identifier-expression "base")
+                  ")"
+                )
+              )
+            )
+          )
+          ";"
+        )
+        (declaration-statement
+          (declaration-specifiers "auto")
+          (init-declarator-list
+            (init-declarator
+              (declarator
+                (declarator-name "cast_comparison")
+              )
+              (initializer
+                "="
+                (binary-expression
+                  (cast-expression
+                    "static_cast" "<"
+                    (type-id "types" "::" "Box" "<" "ExternalType")
+                    ">>" "("
+                    (identifier-expression "value")
+                    ")"
+                  )
+                  ">"
+                  (identifier-expression "limit")
+                )
+              )
+            )
+          )
+          ";"
+        )
+        (declaration-statement
+          (declaration-specifiers "auto")
+          (init-declarator-list
+            (init-declarator
+              (declarator
                 (declarator-name "lambda")
               )
               (initializer

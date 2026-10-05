@@ -455,11 +455,7 @@
         (compound-statement "{" "}")
         (catch-clause
           "catch"
-          (condition
-            "("
-            (expression "...")
-            ")"
-          )
+          (condition "(" "..." ")")
           (compound-statement "{" "}")
         )
       )

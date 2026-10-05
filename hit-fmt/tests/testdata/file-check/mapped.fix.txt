@@ -6,6 +6,6 @@ fail: function name 'later_bad' has invalid case; expected PascalCase
   --> sample.cpp:8:6 [written output]
 fail: parameter #1 in function definition 'later_bad': expected a name
   --> sample.cpp:8:19 [written output]
-fail: emitted line width 25 exceeds ColumnLimit 24
+fail: cannot format this line automatically within ColumnLimit 24
   --> sample.cpp:7:25 [written output]
-summary: fail: naming or parameter-name violation; fail: emitted width violation
+summary: fail: naming or parameter-name violation; fail: cannot format automatically within column limit

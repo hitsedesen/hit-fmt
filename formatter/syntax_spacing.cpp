@@ -266,8 +266,10 @@ public:
         }
         if (kind == NK::BinaryExpression || kind == NK::AssignmentExpression ||
             kind == NK::ConditionalExpression || kind == NK::UnaryExpression ||
-            kind == NK::CastExpression || kind == NK::FoldExpression ||
-            kind == NK::NewExpression || kind == NK::DeleteExpression ||
+            kind == NK::CastExpression ||
+            kind == NK::TypeConstructionExpression ||
+            kind == NK::FoldExpression || kind == NK::NewExpression ||
+            kind == NK::DeleteExpression ||
             kind == NK::ParenthesizedExpression ||
             kind == NK::StatementExpression)
         {
@@ -436,7 +438,19 @@ public:
                 break;
             case NK::BracedInitializer:
                 list(C::Initializers);
-                if ((!parent || parent->Kind != NK::Initializer ||
+                if (parent && parent->Kind == NK::InitializerElement &&
+                    parent->Tokens.Begin < begin)
+                {
+                    Mark(
+                        begin,
+                        F::AssignmentOperatorSpacing,
+                        *parent,
+                        C::Initializers,
+                        3);
+                }
+                if ((!parent ||
+                    (parent->Kind != NK::Initializer &&
+                        parent->Kind != NK::InitializerElement) ||
                     parent->Tokens.Begin == begin) &&
                     (!parent ||
                         (parent->Kind != NK::ReturnStatement &&
@@ -1860,8 +1874,7 @@ std::optional<bool> SyntaxSpacing::SpacePreference(
     {
         return std::nullopt;
     }
-    if (TrailingCommentSpaces_ &&
-        Gaps_[gap].Field == F::TrailingCommentSpacing)
+    if (TrailingCommentSpaces_ && Gaps_[gap].Field == F::TrailingCommentSpacing)
     {
         return std::nullopt;
     }

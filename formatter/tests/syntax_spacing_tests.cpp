@@ -801,8 +801,8 @@ TEST(SyntaxSpacing, JointPreferencesRetainExactTokenKindsAndSpellings)
         for (GapId i = 0; i <= analysis.Tree.TokenCount(); ++i) {
             const auto& sourceGap = analysis.Safety.Gaps()[i];
             auto replacement = analysis.Safety.Original(sourceGap);
-            if (auto preference = analysis.Spacing.SpacePreference(
-                i, context, analysis.Safety))
+            if (auto preference =
+                analysis.Spacing.SpacePreference(i, context, analysis.Safety))
             {
                 const std::string_view candidate = *preference ? " " : "";
                 if (analysis.Safety.CanReplaceGap(i, candidate)) {
@@ -982,16 +982,32 @@ TEST(SyntaxSpacing, ParenthesisInteriorsTakePrecedenceOverAttributeSpacing)
     };
     for (const auto& test :
         {
-            Case{"void f(){for([[tag]] const auto& token : tokens){}}",
-            F::ControlBlockConditionSpacing, C::ControlHeaders},
-        Case{"void f(){for([[tag]] int i = 0; i < 2; ++i){}}",
-            F::ControlBlockConditionSpacing, C::ControlHeaders},
-        Case{"void f([[tag]] int value);",
-            F::SpaceInsideFunctionParameters, C::Parameters},
-        Case{"void f(int value [[tag]]);",
-            F::SpaceInsideFunctionParameters, C::Parameters, true},
-        Case{"auto f = []([[tag]] int value) {};",
-            F::SpaceInsideLambdaParameters, C::Parameters},
+            Case{
+                "void f(){for([[tag]] const auto& token : tokens){}}",
+                F::ControlBlockConditionSpacing,
+                C::ControlHeaders,
+            },
+            Case{
+                "void f(){for([[tag]] int i = 0; i < 2; ++i){}}",
+                F::ControlBlockConditionSpacing,
+                C::ControlHeaders,
+            },
+            Case{
+                "void f([[tag]] int value);",
+                F::SpaceInsideFunctionParameters,
+                C::Parameters,
+            },
+            Case{
+                "void f(int value [[tag]]);",
+                F::SpaceInsideFunctionParameters,
+                C::Parameters,
+                true,
+            },
+            Case{
+                "auto f = []([[tag]] int value) {};",
+                F::SpaceInsideLambdaParameters,
+                C::Parameters,
+            },
         })
     {
         for (auto policy :
@@ -1568,8 +1584,12 @@ TEST(SyntaxSpacing, ArenaStorageScalesWithGapsNotOptionsOrNodeWidth)
         CountingResource file;
         CountingResource scratch;
         auto spacing = BuildSyntaxSpacing(
-            analysis.Tree, analysis.Safety, GapPolicies{},
-            PointerReferenceDeclaratorLocation::Preserve, file, scratch);
+            analysis.Tree,
+            analysis.Safety,
+            GapPolicies{},
+            PointerReferenceDeclaratorLocation::Preserve,
+            file,
+            scratch);
         EXPECT_EQ(file.Calls, 1u);
         EXPECT_EQ(
             file.Bytes,
@@ -1662,7 +1682,8 @@ TEST(SyntaxSpacing, TrailingCommentSpacesUsesActualNamespaceOwnersAndScalarSafet
         "syntax_gap_preference_bytes",
         int(sizeof(SyntaxGapPreference)));
     RecordProperty("syntax_spacing_bytes", int(sizeof(SyntaxSpacing)));
-    RecordProperty("trailing_comment_option_bytes",
+    RecordProperty(
+        "trailing_comment_option_bytes",
         int(sizeof(std::optional<TrailingCommentSpaceSetting>)));
 }
 

@@ -90,8 +90,10 @@ void CheckBlankCap(
 VerticalGapPolicy CompileBlankLines(BlankLineSetting setting)
 {
     return setting.Mode == BlankLineMode::Exact
-        ? VerticalGapPolicy{VerticalGapMode::Exact,
-            static_cast<std::uint16_t>(setting.EmptyLines)}
+        ? VerticalGapPolicy{
+            VerticalGapMode::Exact,
+            static_cast<std::uint16_t>(setting.EmptyLines),
+        }
         : VerticalGapPolicy{};
 }
 

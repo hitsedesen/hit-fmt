@@ -59,10 +59,10 @@ public:
                 std::cerr << ':' << key.second;
             }
             std::cerr << " calls=" << value.Calls << " inclusive="
-                      << std::chrono::duration<double>(value.Inclusive).count()
-                      << " exclusive="
-                      << std::chrono::duration<double>(value.Exclusive).count()
-                      << '\n';
+                << std::chrono::duration<double>(value.Inclusive).count()
+                << " exclusive="
+                << std::chrono::duration<double>(value.Exclusive).count()
+                << '\n';
         }
     }
 

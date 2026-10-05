@@ -3,6 +3,7 @@
 #include <formatter/config.hpp>
 #include <formatter/formatter.hpp>
 
+#include <cstdint>
 #include <ostream>
 #include <string>
 #include <string_view>
@@ -30,6 +31,9 @@ struct CheckedFile
 {
     formatter::FormatResult Formatting;
     std::vector<SemanticDiagnostic> Semantic;
+    // Original token anchors, indexed like Formatting.Diagnostics.
+    std::vector<util::Position> OriginalWidthPositions;
+    std::uint16_t ColumnLimit = 0;
     bool FormattingMismatch = false;
 
     // Applied formatting is not a remaining failure in fix mode. Naming,
@@ -45,9 +49,9 @@ struct CheckedFile
     const PreparedFileConfiguration& configuration,
     std::string_view inputFilePath = {});
 
-// Width locations are explicitly emitted-output coordinates even in check
-// mode. Semantic locations use original source in check, final mapped output
-// in fix. This printer has no layout/feasibility logic or parser invocation.
+// Check diagnostics point into the original source. Fix diagnostics point
+// into the written output. Width failures state that automatic formatting
+// cannot satisfy the limit. Printing does not parse or run the formatter.
 void PrintFileIssues(
     std::ostream& output,
     std::string_view path,

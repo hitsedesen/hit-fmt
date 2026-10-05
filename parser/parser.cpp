@@ -166,8 +166,7 @@ bool IsTypeKeyword(TK kind)
 } // namespace
 
 SyntaxTree::SyntaxTree(std::string_view input)
-    : Memory_(
-        std::make_unique<std::pmr::monotonic_buffer_resource>(
+    : Memory_(std::make_unique<std::pmr::monotonic_buffer_resource>(
     detail::InitialMemoryResourceSize))
     , Input_(input)
     , Tokens_(*Memory_)
@@ -793,11 +792,11 @@ std::optional<SyntaxTree> SyntaxTree::RebindWhitespaceEdits(
         }
         rebound.Tokens_.Add({
             .Kind = token.Kind,
-            .Position ={
+            .Position = {
                 .Line = static_cast<uint32_t>(line),
                 .Column = static_cast<uint32_t>(column),
             },
-            .Text ={
+            .Text = {
                 .Begin = static_cast<util::SourceOffset>(newBegin),
                 .End = static_cast<util::SourceOffset>(newBegin + size),
             },
@@ -915,7 +914,8 @@ std::optional<SyntaxTree> SyntaxTree::RebindRemovedNullStatements(
         {
             return std::nullopt;
         }
-        rebound.Tokens_.SetMatchingDelimiter(index,
+        rebound.Tokens_.SetMatchingDelimiter(
+            index,
             match == std::numeric_limits<TokenIndex>::max()
                 ? match
                 : mapped[match]);
@@ -1333,9 +1333,7 @@ private:
     {
         CurrentScope_ = detail::Make<NameScope>(
             ScratchMemory_,
-            NameScope{
-                .Parent = CurrentScope_,
-            });
+            NameScope{.Parent = CurrentScope_});
     }
 
     void PopScope()
@@ -2264,8 +2262,8 @@ private:
             }
             if (expressionBegin < expressionEnd) {
                 auto expressionCursor = expressionBegin;
-                if (auto* expression = ParseExpressionSyntax(
-                    expressionCursor, expressionEnd))
+                if (auto* expression =
+                    ParseExpressionSyntax(expressionCursor, expressionEnd))
                 {
                     Append(*node, *expression);
                 }
@@ -2443,7 +2441,7 @@ private:
         }
         auto expressionCursor = NextSignificant(start + 1);
         if (auto* expression =
-                ParseExpressionSyntax(expressionCursor, expressionEnd))
+            ParseExpressionSyntax(expressionCursor, expressionEnd))
         {
             Append(*node, *expression);
         }
@@ -2580,7 +2578,8 @@ private:
                 ? FindDeclaredRecordName(declaration->Tokens.Begin)
                 : RecordHeadName{
                     FindDeclaredTypeName(declaration->Tokens.Begin, true),
-                    false};
+                    false,
+                };
             if (!name.IsQualified && name.Token < Tree_.Tokens_.Size() &&
                 (declaration->Kind != NodeKind::RecordDeclaration ||
                     (name.HasTerminalName && !name.HasOpaquePrefix)))
@@ -3003,9 +3002,9 @@ private:
             }
             // Opaque decorations do not prove a type binding. A structurally
             // delimited record-id can still identify this local owner only.
-            RecordNames_.push_back(
-                recordName.HasTerminalName && !invalidHeadAngles &&
-                angleDepth == 0 && typeName < Tree_.Tokens_.Size()
+            RecordNames_.push_back(recordName.HasTerminalName &&
+                !invalidHeadAngles && angleDepth == 0 &&
+                typeName < Tree_.Tokens_.Size()
                 ? Text(typeName)
                 : std::string_view{});
             if (!unknownHeader && typeName < Tree_.Tokens_.Size()) {
@@ -3865,7 +3864,9 @@ private:
                 } else {
                     if (expressionCursor != itemEnd ||
                         (kind == ListFragmentKind::Initializers &&
-                            expression->Kind != NodeKind::CallExpression))
+                            expression->Kind != NodeKind::CallExpression &&
+                            expression->Kind !=
+                                NodeKind::TypeConstructionExpression))
                     {
                         return false;
                     }
@@ -4263,6 +4264,10 @@ private:
                 break;
             }
         }
+        const auto modeledEnd = list->LastChild
+            ? list->LastChild->Tokens.End
+            : opening + 1;
+        AddUnparsedSyntax(*list, modeledEnd, closingEnd - 1);
         AddDirectiveChildrenInGap(*list, opening, closingEnd);
         Append(braced, *list);
     }
@@ -4683,10 +4688,7 @@ private:
         {
             return std::nullopt;
         }
-        return TokenRange{
-            .Begin = suffixBegin,
-            .End = suffixEnd,
-        };
+        return TokenRange{.Begin = suffixBegin, .End = suffixEnd};
     }
 
     [[nodiscard]] bool ContainsPointerOperator(size_t begin, size_t end) const
@@ -4836,9 +4838,9 @@ private:
         if (Kind(begin) == TK::Operator_OpenParenthesis) {
             auto balancedEnd = FindBalancedEnd(begin);
             if (balancedEnd != std::numeric_limits<TokenIndex>::max() &&
-                balancedEnd <=
-                declaratorEnd && ((begin < name && name < balancedEnd) ||
-                ContainsPointerOperator(begin + 1, balancedEnd - 1)))
+                balancedEnd <= declaratorEnd &&
+                ((begin < name && name < balancedEnd) ||
+                    ContainsPointerOperator(begin + 1, balancedEnd - 1)))
             {
                 auto* nested = MakeNode(NodeKind::NestedDeclarator, begin);
                 nested->Tokens.End = balancedEnd;
@@ -4997,8 +4999,10 @@ private:
                 parameters->End);
             Append(*function, *parameterList);
             if (auto initializerColon = AddFunctionSuffixSyntax(
-                    *function, parameters->End, declaratorEnd,
-                    functionKind == FunctionKind::Constructor))
+                *function,
+                parameters->End,
+                declaratorEnd,
+                functionKind == FunctionKind::Constructor))
             {
                 // Initializer expressions belong to the function's existing
                 // constructor-initializer subtree, not outer array suffixes.
@@ -5212,11 +5216,10 @@ private:
         }
         auto closing = proveDirectInitializer
             ? ArgumentPairEnd(
-            opening,
-            end).value_or(std::numeric_limits<TokenIndex>::max())
+                opening,
+                end).value_or(std::numeric_limits<TokenIndex>::max())
             : FindBalancedEnd(opening);
-        if (closing == std::numeric_limits<TokenIndex>::max() ||
-            closing > end)
+        if (closing == std::numeric_limits<TokenIndex>::max() || closing > end)
         {
             return proveDirectInitializer ? uncertain() : std::nullopt;
         }
@@ -5237,10 +5240,8 @@ private:
             ambiguous = evidence == ParameterTypeEvidence::Unknown;
             return ambiguous
                 ? std::nullopt
-                : std::optional<TokenRange>(TokenRange{
-                      .Begin = opening,
-                      .End = closing,
-                  });
+                : std::optional<TokenRange>(
+                    TokenRange{.Begin = opening, .End = closing});
         }
 
         // A parenthesized initializer can also start with an identifier.
@@ -5253,10 +5254,8 @@ private:
                 }
                 return ambiguous
                     ? std::nullopt
-                    : std::optional<TokenRange>(TokenRange{
-                          .Begin = opening,
-                          .End = closing,
-                      });
+                    : std::optional<TokenRange>(
+                        TokenRange{.Begin = opening, .End = closing});
             }
             auto evidence = proveDirectInitializer
                 ? proofParameterType(first, closing - 1)
@@ -5364,9 +5363,10 @@ private:
                     } else if (IsOpenDelimiter(kind)) {
                         auto nested = proveDirectInitializer
                             ? ArgumentPairEnd(
-                            cursor,
-                            closing -
-                            1).value_or(std::numeric_limits<TokenIndex>::max())
+                                cursor,
+                                closing -
+                                1).value_or(
+                                    std::numeric_limits<TokenIndex>::max())
                             : FindBalancedEnd(cursor);
                         if (nested == std::numeric_limits<TokenIndex>::max() ||
                             nested >= closing)
@@ -5410,9 +5410,9 @@ private:
                     // a parameter list, even when it contains commas.
                     auto nested = proveDirectInitializer
                         ? ArgumentPairEnd(
-                        ArgumentSignificant(cursor + 1, closing - 1),
-                        closing -
-                        1).value_or(std::numeric_limits<TokenIndex>::max())
+                            ArgumentSignificant(cursor + 1, closing - 1),
+                            closing -
+                            1).value_or(std::numeric_limits<TokenIndex>::max())
                         : FindBalancedEnd(NextSignificant(cursor + 1));
                     if (nested == std::numeric_limits<TokenIndex>::max() ||
                         nested >= closing)
@@ -5427,9 +5427,9 @@ private:
                 {
                     auto nested = proveDirectInitializer
                         ? ArgumentPairEnd(
-                        ArgumentSignificant(cursor + 1, closing - 1),
-                        closing -
-                        1).value_or(std::numeric_limits<TokenIndex>::max())
+                            ArgumentSignificant(cursor + 1, closing - 1),
+                            closing -
+                            1).value_or(std::numeric_limits<TokenIndex>::max())
                         : FindBalancedEnd(NextSignificant(cursor + 1));
                     if (nested == std::numeric_limits<TokenIndex>::max() ||
                         nested >= closing)
@@ -5461,11 +5461,11 @@ private:
                     }
                 } else if (kind == TK::Operator_OpenBracket) {
                     auto nested = proveDirectInitializer
-                            ? ArgumentPairEnd(
-                        cursor,
-                        closing -
-                        1).value_or(std::numeric_limits<TokenIndex>::max())
-                            : FindBalancedEnd(cursor);
+                        ? ArgumentPairEnd(
+                            cursor,
+                            closing -
+                            1).value_or(std::numeric_limits<TokenIndex>::max())
+                        : FindBalancedEnd(cursor);
                     if (nested == std::numeric_limits<TokenIndex>::max() ||
                         nested >= closing)
                     {
@@ -5674,10 +5674,15 @@ private:
         bool terminalConstructorEligible = false)
     {
         FunctionKind functionKind = FunctionKind::Unknown;
-        auto specifiersEnd = FindDeclarationSpecifiersEnd(begin, end,
-            false, &functionKind, terminalConstructorEligible &&
-            declaration.Kind == NodeKind::FunctionDefinition
-                ? std::optional<TokenRange>(parameters) : std::nullopt);
+        auto specifiersEnd = FindDeclarationSpecifiersEnd(
+            begin,
+            end,
+            false,
+            &functionKind,
+            terminalConstructorEligible &&
+                declaration.Kind == NodeKind::FunctionDefinition
+                ? std::optional<TokenRange>(parameters)
+                : std::nullopt);
         if (ungroupedConstructorInitializer && !RecordNames_.empty() &&
             RecordNames_.back().empty() && specifiersEnd == parameters.Begin)
         {
@@ -6329,7 +6334,8 @@ private:
                     {
                         terminalDenied = true;
                     } else if (kind == TK::Operator_Assign) {
-                        terminalDenied = functionTry != std::numeric_limits<TokenIndex>::max();
+                        terminalDenied = functionTry !=
+                            std::numeric_limits<TokenIndex>::max();
                         if (!terminalDenied) {
                             terminalPending = TerminalPending::DefaultDelete;
                         }
@@ -6689,9 +6695,9 @@ private:
                         NextSignificant(start + 1) == parameterBegin &&
                         NextSignificant(parameterEnd) == Cursor_ &&
                         Kind(parameterEnd - 1) ==
-                        TK::Operator_CloseParenthesis &&
+                            TK::Operator_CloseParenthesis &&
                         FindDeclarationSpecifiersEnd(start, Cursor_) ==
-                        parameterBegin)
+                            parameterBegin)
                     {
                         auto* node = MakeNode(NodeKind::Declaration, start);
                         ConsumeBalanced();
@@ -6845,10 +6851,8 @@ private:
         bool terminalConstructorEligible)
     {
         auto* node = MakeNode(NodeKind::FunctionDefinition, start);
-        auto parameters = TokenRange{
-            .Begin = parameterBegin,
-            .End = parameterEnd,
-        };
+        auto parameters =
+            TokenRange{.Begin = parameterBegin, .End = parameterEnd};
         if (constructorInitializer) {
             AddSingleDeclaratorDeclarationSyntax(
                 *node,
@@ -7210,8 +7214,72 @@ private:
         Append(header, *initializer);
         // The semicolon stays a direct header token, with header-owned spacing
         // and a separate list boundary before the condition expression.
-        AddExpressionRange(header, separator + 1, end);
+        AddConditionSyntax(header, separator + 1, end);
         return true;
+    }
+
+    [[nodiscard]] bool IsDeclarationCondition(size_t begin, size_t end) const
+    {
+        auto cursor = FindDeclarationSpecifiersEnd(begin, end, true);
+        // A type-shaped prefix is not a declaration by itself: qualified
+        // constants and template-id operands also start with known types.
+        unsigned nested = 0;
+        while (cursor < end) {
+            cursor = SkipAttributeSpecifiers(cursor);
+            const auto memberPointerEnd = FindMemberPointerEnd(cursor, end);
+            if (memberPointerEnd > cursor) {
+                cursor = NextSignificant(memberPointerEnd);
+                continue;
+            }
+            const auto kind = Kind(cursor);
+            if (kind == TK::Operator_OpenParenthesis) {
+                const auto closingEnd = FindBalancedEnd(cursor);
+                if (closingEnd > end) {
+                    return false;
+                }
+                ++nested;
+            } else if (kind != TK::Operator_Star &&
+                kind != TK::Operator_Ampersand && kind != TK::Operator_And &&
+                kind != TK::Keyword_const && kind != TK::Keyword_volatile)
+            {
+                break;
+            }
+            cursor = NextSignificant(cursor + 1);
+        }
+        if (cursor >= end || Kind(cursor) != TK::Identifier) {
+            return false;
+        }
+        cursor = SkipAttributeSpecifiers(NextSignificant(cursor + 1));
+        while (nested > 0 && Kind(cursor) == TK::Operator_CloseParenthesis) {
+            --nested;
+            cursor = NextSignificant(cursor + 1);
+        }
+        return nested == 0 && cursor < end &&
+            (Kind(cursor) == TK::Operator_Assign ||
+                Kind(cursor) == TK::Operator_OpenBrace);
+    }
+
+    void AddConditionSyntax(Node& header, size_t begin, size_t end)
+    {
+        if (!IsDeclarationCondition(begin, end)) {
+            AddExpressionRange(header, begin, end);
+            return;
+        }
+        const auto kind = ClassifySimpleStatement(begin);
+        if (kind == NodeKind::ExpressionStatement) {
+            AddExpressionRange(header, begin, end);
+            return;
+        }
+        auto* declaration = MakeNode(kind, begin);
+        declaration->Tokens.End = end;
+        if (kind == NodeKind::DeclarationStatement) {
+            AddDeclarationSyntax(*declaration, begin, end);
+            RegisterDeclaredValues(*declaration);
+        } else {
+            // Unavailable type bindings remain ambiguous, not invented.
+            declaration->Kind = NodeKind::AmbiguousStatement;
+        }
+        Append(header, *declaration);
     }
 
     void ParseControlHeader(Node& parent, NodeKind kind)
@@ -7238,7 +7306,13 @@ private:
         ConsumeBalanced();
         auto* header = MakeNode(kind, begin);
         header->Tokens.End = Cursor_;
-        if (kind == NodeKind::ForHeader) {
+        if (parent.Kind == NodeKind::CatchClause) {
+            if (Kind(NextSignificant(begin + 1)) != TK::Operator_Ellipsis) {
+                AddDeclarationSyntax(*header, begin + 1, Cursor_ - 1);
+                RegisterDeclaredValues(*header);
+            }
+            AddDirectiveChildrenInGap(*header, begin, Cursor_);
+        } else if (kind == NodeKind::ForHeader) {
             AddForHeaderSyntax(*header, begin + 1, Cursor_ - 1);
             AddDirectiveChildrenInGap(*header, begin, Cursor_);
         } else if (kind == NodeKind::Condition &&
@@ -7247,15 +7321,8 @@ private:
             AddConditionInitSyntax(*header, begin + 1, Cursor_ - 1))
         {
             AddDirectiveChildrenInGap(*header, begin, Cursor_);
-        } else if (kind == NodeKind::Condition && begin + 1 < Cursor_ - 1 &&
-            ClassifySimpleStatement(begin + 1) == NodeKind::ExpressionStatement)
-        {
-            auto expressionCursor = begin + 1;
-            if (auto* expression =
-                    ParseExpressionSyntax(expressionCursor, Cursor_ - 1))
-            {
-                Append(*header, *expression);
-            }
+        } else if (kind == NodeKind::Condition && begin + 1 < Cursor_ - 1) {
+            AddConditionSyntax(*header, begin + 1, Cursor_ - 1);
             AddDirectiveChildrenInGap(*header, begin, Cursor_);
         } else {
             AddDirectiveChildren(*header, begin, Cursor_);
@@ -7455,7 +7522,8 @@ private:
         end = std::min(end, ParseLimit_);
         auto start = cursor;
         auto capture = ArgumentPairEnd(cursor, end);
-        auto captureEnd = capture.value_or(std::numeric_limits<TokenIndex>::max());
+        auto captureEnd =
+            capture.value_or(std::numeric_limits<TokenIndex>::max());
         if (captureEnd == std::numeric_limits<TokenIndex>::max() ||
             captureEnd > end)
         {
@@ -7896,8 +7964,7 @@ private:
             return expression;
         }
         auto bodyEnd = FindBalancedEnd(cursor);
-        if (bodyEnd ==
-            std::numeric_limits<TokenIndex>::max() || bodyEnd > end)
+        if (bodyEnd == std::numeric_limits<TokenIndex>::max() || bodyEnd > end)
         {
             expression->Tokens.End = cursor;
             return expression;
@@ -7951,11 +8018,10 @@ private:
             auto parenthesizedEnd = FindBalancedEnd(cursor);
             auto following = NextSignificant(parenthesizedEnd);
             if (parenthesizedEnd != std::numeric_limits<TokenIndex>::max() &&
-                parenthesizedEnd <=
-                end && following <
-                end && (IsTypeKeyword(Kind(following)) ||
-                Kind(following) == TK::Identifier ||
-                Kind(following) == TK::Operator_ScopeResolution))
+                parenthesizedEnd <= end && following < end &&
+                (IsTypeKeyword(Kind(following)) ||
+                    Kind(following) == TK::Identifier ||
+                    Kind(following) == TK::Operator_ScopeResolution))
             {
                 auto* placement = MakeNode(NodeKind::NewPlacement, cursor);
                 placement->Tokens.End = parenthesizedEnd;
@@ -8029,7 +8095,8 @@ private:
                             Kind(suffix) == TK::Operator_OpenBrace))
                     {
                         auto suffixEnd = FindBalancedEnd(suffix);
-                        if (suffixEnd != std::numeric_limits<TokenIndex>::max() &&
+                        if (suffixEnd !=
+                            std::numeric_limits<TokenIndex>::max() &&
                             suffixEnd <= end)
                         {
                             recoveryEnd = suffixEnd;
@@ -8107,6 +8174,11 @@ private:
         {
             return true;
         }
+        if (Kind(following) == TK::Operator_OpenBrace) {
+            // A braced initializer cannot be a comparison's right operand;
+            // it proves the preceding balanced angle list is a template-id.
+            return FindBalancedEnd(following) <= end;
+        }
         if (Kind(following) != TK::Operator_OpenParenthesis) {
             return false;
         }
@@ -8164,8 +8236,7 @@ private:
             {
                 auto operatorEnd = FindBalancedEnd(cursor);
                 cursor = operatorEnd !=
-                    std::numeric_limits<TokenIndex>::max() &&
-                    operatorEnd <= end
+                    std::numeric_limits<TokenIndex>::max() && operatorEnd <= end
                     ? NextSignificant(operatorEnd)
                     : NextSignificant(cursor + 1);
             } else if (Kind(cursor) == TK::Keyword_new ||
@@ -8257,6 +8328,37 @@ private:
         return templateId;
     }
 
+    [[nodiscard]] bool IsTypeConstructionName(const Node& name) const
+    {
+        const auto* node = &name;
+        while (node) {
+            if (node->Kind == NodeKind::IdentifierExpression) {
+                return Kind(node->Tokens.Begin) == TK::Identifier ||
+                    Kind(node->Tokens.Begin) == TK::Operator_ScopeResolution;
+            }
+            if (node->Kind == NodeKind::Expression) {
+                return node->Tokens.Size() == 1 &&
+                    IsFundamentalTypeKeyword(Kind(node->Tokens.Begin));
+            }
+            if (node->Kind == NodeKind::CallExpression) {
+                return Kind(node->Tokens.Begin) == TK::Keyword_decltype;
+            }
+            if (node->Kind == NodeKind::TemplateIdExpression) {
+                node = node->FirstChild;
+                continue;
+            }
+            if (node->Kind == NodeKind::MemberExpression && node->FirstChild &&
+                Kind(NextSignificant(node->FirstChild->Tokens.End)) ==
+                    TK::Operator_ScopeResolution)
+            {
+                node = node->FirstChild;
+                continue;
+            }
+            return false;
+        }
+        return false;
+    }
+
     Node* ParseExpressionSyntax(
         TokenIndex& cursor,
         TokenIndex end,
@@ -8297,8 +8399,8 @@ private:
                     AddTypeSyntaxChildren(*type, angleBegin + 1, angleEnd - 1);
                     Append(*cast, *type);
                     auto operandCursor = opening + 1;
-                    if (auto* operand = ParseExpressionSyntax(
-                        operandCursor, closingEnd - 1))
+                    if (auto* operand =
+                        ParseExpressionSyntax(operandCursor, closingEnd - 1))
                     {
                         Append(*cast, *operand);
                     }
@@ -8430,6 +8532,7 @@ private:
                 if (inner) {
                     Append(*left, *inner);
                 }
+                AddUnparsedSyntax(*left, innerCursor, closing);
             }
         } else if (kind == TK::Operator_ScopeResolution) {
             const auto name = NextSignificant(cursor + 1);
@@ -8512,6 +8615,27 @@ private:
                     left = ambiguous;
                     continue;
                 }
+            }
+            if (kind == TK::Operator_OpenBrace && IsTypeConstructionName(*left))
+            {
+                const auto closingEnd = FindBalancedEnd(cursor);
+                if (closingEnd == std::numeric_limits<TokenIndex>::max() ||
+                    closingEnd > end)
+                {
+                    break;
+                }
+                auto* construction =
+                    MakeNode(NodeKind::TypeConstructionExpression, start);
+                construction->Tokens.End = closingEnd;
+                Append(*construction, *left);
+                auto* initializer =
+                    MakeNode(NodeKind::BracedInitializer, cursor);
+                initializer->Tokens.End = closingEnd;
+                AddBracedInitializerElements(*initializer, cursor, closingEnd);
+                Append(*construction, *initializer);
+                cursor = closingEnd;
+                left = construction;
+                continue;
             }
             if (kind == TK::Operator_OpenParenthesis) {
                 auto closingEnd = FindBalancedEnd(cursor);
@@ -8807,7 +8931,7 @@ private:
             }
             auto expressionCursor = start;
             if (auto* expression =
-                    ParseExpressionSyntax(expressionCursor, expressionEnd))
+                ParseExpressionSyntax(expressionCursor, expressionEnd))
             {
                 Append(*node, *expression);
             }
@@ -8945,8 +9069,7 @@ private:
                 .Tokens = {.Begin = token, .End = token + 1},
                 .Source = {
                     .Begin = sourceBegin,
-                    .End = sourceBegin
-                            + static_cast<SourceOffset>(text.size()),
+                    .End = sourceBegin + static_cast<SourceOffset>(text.size()),
                 },
             });
         InsertTrivia(*list, *trivia);
@@ -8983,8 +9106,8 @@ private:
                 .Tokens = {.Begin = token, .End = token},
                 .Source = {
                     .Begin = sourceBegin,
-                    .End = sourceBegin
-                            + static_cast<SourceOffset>(whitespace.size()),
+                    .End = sourceBegin +
+                        static_cast<SourceOffset>(whitespace.size()),
                 },
             });
         InsertTrivia(*list, *trivia);

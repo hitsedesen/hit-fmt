@@ -15,6 +15,11 @@ auto evaluate(Values... values) {
     converted = static_cast<long>(value)
         + reinterpret_cast<Type*>(pointer)
         + (int)*pointer;
+    auto external = static_cast<ExternalType>(value);
+    auto external_pointer = const_cast<ExternalType*>(pointer);
+    auto external_bits = reinterpret_cast<ExternalType*>(pointer);
+    auto external_object = dynamic_cast<ExternalType*>(base);
+    auto cast_comparison = static_cast<types::Box<ExternalType>>(value) > limit;
     auto lambda = [value, &reference]<typename Element>(Element argument)
         mutable noexcept -> Element { return argument + value; };
     auto nested = [value] {

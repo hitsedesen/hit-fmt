@@ -1004,8 +1004,12 @@ Result Document::Render(
                 const auto& part = RunParts_[p];
                 const auto measured = part.Type == RunKind::Spaces
                     ? Measure{part.Spaces, part.Spaces, false, false}
-                    : MeasureText(Source_.substr(part.Origin.Begin,
-                        part.Origin.End - part.Origin.Begin), policy.TabWidth);
+                    : MeasureText(
+                        Source_
+                            .substr(
+                                part.Origin.Begin,
+                                part.Origin.End - part.Origin.Begin),
+                        policy.TabWidth);
                 flat = Join(flat, measured);
                 if (mappingRequested &&
                     (policy.SourceMap || !policy.TrackSource.empty() ||
@@ -1049,8 +1053,8 @@ Result Document::Render(
             // Reuse each flat whitespace measurement for fill and summaries.
             broken = node.Owner != InvalidId &&
                 node.Gaps.Broken.Kind == GapKind::Soft
-                    ? Measure{Infinity, 0, true, true}
-                    : expandedFlat;
+                ? Measure{Infinity, 0, true, true}
+                : expandedFlat;
             entry.ExpandedGapWidth = expandedFlat.Width;
             if (node.Owner != InvalidId &&
                 node.Gaps.Broken.Kind != GapKind::Flat)

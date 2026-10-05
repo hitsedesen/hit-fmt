@@ -39,11 +39,8 @@ void Compare()
 
 void StoreRecord()
 {
-    Values_.push_back(std::string(
-        Options_->Lead,
-        '.') + std::string(DescribeArchivedRecordPayload(DecodeRecordVariant<TSubstantialRecordPayload>(
-        record.Payload))));
-    auto product = ComputeLedgerWeight(
-        factors.Base,
-        factors.Limit) * ConvertTokenizedMetric(ExtractValueFromIndexedPayload<TStoredMetric>(record.Payload));
+    Values_.push_back(std::string(Options_->Lead, '.') +
+        std::string(DescribeArchivedRecordPayload(DecodeRecordVariant<TSubstantialRecordPayload>(record.Payload))));
+    auto product = ComputeLedgerWeight(factors.Base, factors.Limit) *
+        ConvertTokenizedMetric(ExtractValueFromIndexedPayload<TStoredMetric>(record.Payload));
 }

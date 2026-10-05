@@ -99,8 +99,7 @@ size_t TerminalWidth()
         size_t width = 0;
         auto end = value + std::char_traits<char>::length(value);
         auto [next, error] = std::from_chars(value, end, width);
-        if (error == std::errc{} && next == end && width >= 24 &&
-            width <= 1000)
+        if (error == std::errc{} && next == end && width >= 24 && width <= 1000)
         {
             return width;
         }
@@ -780,9 +779,8 @@ std::vector<Chunk> FormattingChunks(
             }
         }
 
-        auto begin = std::min(
-            sourceIndex + 1,
-            std::max(size_t{1}, source.size()));
+        auto begin =
+            std::min(sourceIndex + 1, std::max(size_t{1}, source.size()));
         Chunk chunk{
             .Begin = begin,
             .End = std::max(begin + 1, sourceIndex + sourceCount + 1),
@@ -1242,9 +1240,8 @@ public:
     {
         if (options.ConfigPath) {
             ExplicitConfig_ = ConfigEntry{
-                .Directory = std::filesystem::absolute(*options.ConfigPath)
-                                 .parent_path()
-                                 .lexically_normal(),
+                .Directory = std::filesystem::absolute(
+                    *options.ConfigPath).parent_path().lexically_normal(),
                 .Settings = LoadPreparedConfig(*options.ConfigPath),
             };
         }
@@ -1284,7 +1281,7 @@ private:
             return std::make_unique<const hit_fmt::PreparedFileConfiguration>(
                 formatter::LoadConfigFile(path));
         }
-        catch (const std::exception &error) {
+        catch (const std::exception& error) {
             throw std::runtime_error(path.string() + ": " + error.what());
         }
     }
@@ -1444,7 +1441,7 @@ int main(int argc, char* argv[])
         }
         styleResolver.emplace(options);
     }
-    catch (const std::exception &error) {
+    catch (const std::exception& error) {
         std::cerr << error.what() << '\n';
         return 1;
     }
@@ -1521,10 +1518,10 @@ int main(int argc, char* argv[])
             }
             result.Mismatches += failed;
         }
-        catch (const util::FileTooLargeError &error) {
+        catch (const util::FileTooLargeError& error) {
             errors << "warning: " << error.what() << "; skipping\n";
         }
-        catch (const std::exception &error) {
+        catch (const std::exception& error) {
             errors << filePath << ": " << error.what() << '\n';
             result.Failed = true;
         }
@@ -1560,7 +1557,7 @@ int main(int argc, char* argv[])
                 return 1;
             }
         }
-        catch (const std::exception &error) {
+        catch (const std::exception& error) {
             std::cerr << error.what() << '\n';
             return 1;
         }

@@ -40,12 +40,15 @@ public:
         return Cursor_;
     }
 
-    util::Position Position(size_t offset)
+    util::Position Position(size_t offset, bool containing = false)
     {
         if (offset < Cursor_ || offset > Text_.size()) {
             throw std::runtime_error("invalid emitted diagnostic offset");
         }
         while (Cursor_ < offset) {
+            if (containing && NextOffset() > offset) {
+                return Current_;
+            }
             Advance();
         }
         if (Cursor_ != offset) {
@@ -55,14 +58,21 @@ public:
     }
 
 private:
-    void Advance()
+    size_t NextOffset() const
     {
         const auto c = static_cast<unsigned char>(Text_[Cursor_]);
         // Match tokenizer coordinates: each invalid UTF8 byte is one column.
-        Cursor_ += c < 0x80
-            ? 1
-            : unicode::utf8::GetFirstCodePointSize(Text_.substr(Cursor_))
-                .value_or(1);
+        return Cursor_ +
+            (c < 0x80
+                ? 1
+                : unicode::utf8::GetFirstCodePointSize(Text_.substr(Cursor_))
+                    .value_or(1));
+    }
+
+    void Advance()
+    {
+        const auto c = static_cast<unsigned char>(Text_[Cursor_]);
+        Cursor_ = NextOffset();
         if (c == '\n') {
             ++Current_.Line;
             Current_.Column = 1;
@@ -137,6 +147,95 @@ void MapSemanticPositions(const parser::SyntaxTree& tree, CheckedFile& checked)
     }
 }
 
+void MapWidthPositions(const parser::SyntaxTree& tree, CheckedFile& checked)
+{
+    if (checked.Formatting.Diagnostics.empty()) {
+        return;
+    }
+    std::pmr::monotonic_buffer_resource scratch;
+    std::pmr::vector<parser::TokenIndex> tokens(&scratch);
+    tokens.reserve(tree.TokenCount());
+    const auto& mapped = checked.Formatting.OriginalTokens;
+    for (parser::TokenIndex token = 0; token < tree.TokenCount(); ++token) {
+        if (mapped[token].Present) {
+            tokens.push_back(token);
+        }
+    }
+    std::sort(
+        tokens.begin(),
+        tokens.end(),
+        [&] (auto a, auto b) {
+            return mapped[a].Output.Begin < mapped[b].Output.Begin;
+        });
+    const auto& text = checked.Formatting.Text;
+    size_t offset = 0, column = 1;
+    uint32_t line = 1;
+    struct Point
+    {
+        size_t Offset;
+        size_t Diagnostic;
+    };
+    std::pmr::vector<Point> points(&scratch);
+    points.reserve(checked.Formatting.Diagnostics.size());
+    for (const auto& diagnostic : checked.Formatting.Diagnostics) {
+        // Match the formatter's byte-width/tab-stop coordinates, including
+        // CRLF and standalone CR. Translate the offending byte inside a
+        // surviving token; generated text uses an original token anchor.
+        while (offset < text.size() &&
+            (line < diagnostic.Position.Line ||
+                column < diagnostic.Position.Column))
+        {
+            const auto c = text[offset++];
+            if (c == '\r' || c == '\n') {
+                if (c == '\r' && offset < text.size() && text[offset] == '\n') {
+                    ++offset;
+                }
+                ++line;
+                column = 1;
+            } else {
+                column += c == '\t' ? 8 - (column - 1) % 8 : 1;
+            }
+        }
+        auto token = std::upper_bound(
+            tokens.begin(),
+            tokens.end(),
+            offset,
+            [
+                &] (
+                size_t point,
+                auto id) { return point < mapped[id].Output.Begin; });
+        if (token != tokens.begin()) {
+            --token;
+        }
+        // Generated text, such as a namespace comment, uses the preceding
+        // original token as its source anchor.
+        size_t original = 0;
+        if (token != tokens.end()) {
+            const auto source = tree.Token(*token).Text;
+            const auto output = mapped[*token].Output;
+            original = source.Begin;
+            if (offset >= output.Begin && offset < output.End &&
+                output.End - output.Begin == source.End - source.Begin)
+            {
+                original += offset - output.Begin;
+            }
+        }
+        points.push_back({original, points.size()});
+    }
+    std::sort(
+        points.begin(),
+        points.end(),
+        [] (auto a, auto b) {
+            return a.Offset < b.Offset;
+        });
+    checked.OriginalWidthPositions.resize(points.size());
+    PositionSweep original(tree.Source());
+    for (const auto point : points) {
+        checked.OriginalWidthPositions[point.Diagnostic] =
+            original.Position(point.Offset, true);
+    }
+}
+
 } // namespace
 
 PreparedFileConfiguration::PreparedFileConfiguration(
@@ -161,6 +260,7 @@ CheckedFile CheckFile(
         [] (parser::ParseError) {},
         configuration.Formatting.ParsingOptions());
     CheckedFile checked;
+    checked.ColumnLimit = configuration.Formatting.Policies.ColumnLimit;
     checked.Formatting = formatter::Format(
         tree,
         configuration.Formatting,
@@ -187,6 +287,7 @@ CheckedFile CheckFile(
             .push_back({diagnostic.Position, {}, std::move(message)});
     }
     MapSemanticPositions(tree, checked);
+    MapWidthPositions(tree, checked);
     return checked;
 }
 
@@ -202,12 +303,16 @@ void PrintFileIssues(
             << position.Line << ':' << position.Column
             << (fix ? " [written output]" : " [original source]") << '\n';
     }
-    for (const auto& diagnostic : checked.Formatting.Diagnostics) {
-        output << "fail: " << diagnostic.Message << "\n  --> " << path << ':'
-            << diagnostic.Position.Line << ':' << diagnostic.Position.Column
-            << (fix
-                ? " [written output]"
-                : " [formatted output; not original source]") << '\n';
+    for (size_t i = 0; i < checked.Formatting.Diagnostics.size(); ++i) {
+        const auto& diagnostic = checked.Formatting.Diagnostics[i];
+        const auto position = fix
+            ? diagnostic.Position
+            : checked.OriginalWidthPositions.at(i);
+        output
+            << "fail: cannot format this line automatically "
+                "within ColumnLimit " << checked.ColumnLimit << "\n  --> "
+            << path << ':' << position.Line << ':' << position.Column
+            << (fix ? " [written output]" : " [original source]") << '\n';
     }
 }
 
@@ -231,7 +336,7 @@ void PrintFileSummaryIssues(
         issue("fail: naming or parameter-name violation");
     }
     if (!checked.Formatting.Diagnostics.empty()) {
-        issue("fail: emitted width violation");
+        issue("fail: cannot format automatically within column limit");
     }
 }
 

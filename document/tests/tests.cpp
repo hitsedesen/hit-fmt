@@ -564,7 +564,8 @@ TEST(GroupLayout, GroupMetadataRejectsInvalidOwnersPrefixesAndOverflow)
     EXPECT_TRUE(detail::FitsOutput(maximum, 0));
     EXPECT_FALSE(detail::FitsOutput(maximum, 1));
     EXPECT_FALSE(detail::FitsOutput(InvalidId, 0));
-    EXPECT_FALSE(detail::FitsOutput(1, std::numeric_limits<std::size_t>::max()));
+    EXPECT_FALSE(
+        detail::FitsOutput(1, std::numeric_limits<std::size_t>::max()));
 }
 
 TEST(GroupLayout, FillSegmentDemandKeepsIndependentChildBreaks)
@@ -1787,8 +1788,8 @@ TEST(GroupLayout, SourceRunsMatchIndividualAtoms)
                             .TabWidth = static_cast<std::uint8_t>(tab),
                             .SourceMap = maps == 0, .TokenMap = maps == 2,
                             .TrackSource = maps == 3
-                                ? std::span<const Provenance>(tracked)
-                                : std::span<const Provenance>()};
+                            ? std::span<const Provenance>(tracked)
+                            : std::span<const Provenance>()};
                         const auto a = packed.Render(policy);
                         const auto b = separate.Render(policy);
                         ASSERT_TRUE(a.State);

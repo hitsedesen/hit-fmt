@@ -40,11 +40,13 @@ enum class GapContext : std::uint8_t
         case GapPolicy::NoSpace:
             return false;
         case GapPolicy::GeneratedSpace:
-            return context == GapContext::Rebuilt ? std::optional<bool>{true}
-                                                  : std::nullopt;
+            return context == GapContext::Rebuilt
+                ? std::optional<bool>{true}
+                : std::nullopt;
         case GapPolicy::GeneratedNoSpace:
-            return context == GapContext::Rebuilt ? std::optional<bool>{false}
-                                                  : std::nullopt;
+            return context == GapContext::Rebuilt
+                ? std::optional<bool>{false}
+                : std::nullopt;
     }
     return std::nullopt;
 }

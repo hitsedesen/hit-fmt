@@ -255,13 +255,12 @@ Tokenizer::Tokenizer(
 {
     if (Input_.size() > util::MaxSourceSize) {
         Input_ = std::string_view("\0\0\0", 0);
-        OnError(
-            TokenizationError{
-                .Kind = TokenizationErrorKind::InputTooLarge,
-                .TokenStart = {.Line = 1, .Column = 1},
-                .ErrorPosition = {.Line = 1, .Column = 1},
-                .TokenEnd = {.Line = 1, .Column = 1},
-            });
+        OnError(TokenizationError{
+            .Kind = TokenizationErrorKind::InputTooLarge,
+            .TokenStart = {.Line = 1, .Column = 1},
+            .ErrorPosition = {.Line = 1, .Column = 1},
+            .TokenEnd = {.Line = 1, .Column = 1},
+        });
     }
 }
 
@@ -289,8 +288,8 @@ Token Tokenizer::FinishToken(TokenKind kind) const noexcept
         .Position = CurrentTokenPosition_,
         .Text = {
             .Begin = static_cast<util::SourceOffset>(CurrentTokenOffset_),
-            .End = static_cast<util::SourceOffset>(
-                CurrentTokenOffset_ + CurrentTokenSize_),
+            .End = static_cast<util::SourceOffset>(CurrentTokenOffset_ +
+                CurrentTokenSize_),
         },
     };
 }

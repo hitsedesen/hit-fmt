@@ -176,7 +176,7 @@ TEST(SourceAnalysis, TouchingDifferentProtectionReasonsKeepTheirByteLocations)
     using R = formatter::ProtectionReason;
     const std::array different{
         formatter::ProtectedSourceRange{{0, 3}, R::Explicit},
-        formatter::ProtectedSourceRange{{3, 6}, R::Disabled}
+        formatter::ProtectedSourceRange{{3, 6}, R::Disabled},
     };
     const std::array scope{parser::SourceRange{0, uint32_t(input.Size)}};
     auto distinct = Analyze(
@@ -193,14 +193,14 @@ TEST(SourceAnalysis, TouchingDifferentProtectionReasonsKeepTheirByteLocations)
         .IntersectsImmutable({uint32_t(input.Size), uint32_t(input.Size)}));
     const std::array same{
         formatter::ProtectedSourceRange{{0, 3}, R::Explicit},
-        formatter::ProtectedSourceRange{{3, 6}, R::Explicit}
+        formatter::ProtectedSourceRange{{3, 6}, R::Explicit},
     };
     auto coalesced = Analyze(tree, memory, {.InheritedProtection = same});
     ASSERT_EQ(coalesced.Protection().size(), 1);
     EXPECT_EQ(coalesced.Protection()[0].Source.End, 6);
     const std::array overlap{
         formatter::ProtectedSourceRange{{0, 4}, R::Explicit},
-        formatter::ProtectedSourceRange{{3, 6}, R::Disabled}
+        formatter::ProtectedSourceRange{{3, 6}, R::Disabled},
     };
     auto unioned = Analyze(tree, memory, {.InheritedProtection = overlap});
     ASSERT_EQ(unioned.Protection().size(), 1);
@@ -647,7 +647,8 @@ TEST(SourceAnalysis, AcceptedGapEditsKeepExactTokensIndividuallyAndTogether)
             }
         }
         together += analysis.CanReplaceGap(i, "")
-            ? std::string_view{} : analysis.Original(gap);
+            ? std::string_view{}
+            : analysis.Original(gap);
         if (i < tree.TokenCount()) {
             together += tree.TokenText(i);
         }
@@ -678,13 +679,26 @@ TEST(SourceAnalysis, LexicalConstraintsCoverPunctuationAndLiteralBoundaries)
 {
     for (const auto& [first, second, required] :
         {
-            std::tuple{">", "::", false}, {">>", "::", false},
-            {"::", "*", false}, {"+", "*", false}, {"&&", "!", false},
-            {"+", "+", true}, {"/", "*", true}, {"/", "/", true},
-            {">", ">", true}, {"<", "::", true}, {"<:", ":", true},
-            {"<", "%", true}, {"%", ">", true}, {":", ">", true},
-            {"-", ">", true}, {"->", "*", true}, {"<<", "=", true},
-            {">>", "=", true}, {"<=", ">", true}, {".", ".", true}
+            std::tuple{">", "::", false},
+            {">>", "::", false},
+            {"::", "*", false},
+            {"+", "*", false},
+            {"&&", "!", false},
+            {"+", "+", true},
+            {"/", "*", true},
+            {"/", "/", true},
+            {">", ">", true},
+            {"<", "::", true},
+            {"<:", ":", true},
+            {"<", "%", true},
+            {"%", ">", true},
+            {":", ">", true},
+            {"-", ">", true},
+            {"->", "*", true},
+            {"<<", "=", true},
+            {">>", "=", true},
+            {"<=", ">", true},
+            {".", ".", true},
         })
     {
         Input input(std::string(first) + " " + second);
@@ -806,11 +820,15 @@ TEST(SourceAnalysis, SourceSizeIsCheckedBeforeOffsetNarrowing)
         static_cast<void>(formatter::CheckedSourceAnalysisSize(
             util::MaxSourceSize + 1)),
         std::length_error);
-    EXPECT_THROW(static_cast<void>(formatter::CheckedSourceAnalysisSize(
-        std::numeric_limits<size_t>::max())), std::length_error);
+    EXPECT_THROW(
+        static_cast<void>(formatter::CheckedSourceAnalysisSize(
+            std::numeric_limits<size_t>::max())),
+        std::length_error);
     if constexpr (sizeof(size_t) > sizeof(parser::SourceOffset)) {
-        EXPECT_THROW(static_cast<void>(formatter::CheckedSourceAnalysisSize(
-            uint64_t{1} << 32)), std::length_error);
+        EXPECT_THROW(
+            static_cast<void>(formatter::CheckedSourceAnalysisSize(
+                uint64_t{1} << 32)),
+            std::length_error);
     }
 }
 using PermissionKind = formatter::PartialGapPermissionKind;
@@ -835,7 +853,9 @@ TEST(SourceAnalysis, EditScopeUnrestrictedFullAndEmpty)
     auto normal = Analyze(tree, memory);
     const std::array<parser::SourceRange, 1> all{{{0, uint32_t(input.Size)}}};
     auto full = Analyze(tree, memory, {.EditScope = all});
-    auto empty = Analyze(tree, memory,
+    auto empty = Analyze(
+        tree,
+        memory,
         {.EditScope = std::span<const parser::SourceRange>{}});
     EXPECT_TRUE(normal.PartialGapPermissions().empty());
     EXPECT_TRUE(full.PartialGapPermissions().empty());
@@ -866,7 +886,9 @@ TEST(SourceAnalysis, EditScopeUnrestrictedFullAndEmpty)
     EXPECT_FALSE(full.CanReplaceGap(tree.TokenCount(), "\n    "));
     Input zero("");
     auto zeroTree = Parse(zero);
-    auto zeroScope = Analyze(zeroTree, memory,
+    auto zeroScope = Analyze(
+        zeroTree,
+        memory,
         {.EditScope = std::span<const parser::SourceRange>{}});
     EXPECT_FALSE(zeroScope.CanReplaceGap(0, " "));
     EXPECT_TRUE(zeroScope.IntersectsImmutable({0, 0}));
@@ -884,12 +906,14 @@ TEST(SourceAnalysis, EditScopeValidationAndTouchingOwnership)
     Input input("int a;\nint b;\n");
     auto tree = Parse(input);
     std::pmr::monotonic_buffer_resource memory;
-    for (const auto& ranges : {
-        std::vector<parser::SourceRange>{{2, 1}},
-        std::vector<parser::SourceRange>{{1, 1}},
-        std::vector<parser::SourceRange>{{0, uint32_t(input.Size + 1)}},
-        std::vector<parser::SourceRange>{{0, 5}, {4, 7}},
-        std::vector<parser::SourceRange>{{7, 9}, {0, 4}}})
+    for (const auto& ranges :
+        {
+            std::vector<parser::SourceRange>{{2, 1}},
+            std::vector<parser::SourceRange>{{1, 1}},
+            std::vector<parser::SourceRange>{{0, uint32_t(input.Size + 1)}},
+            std::vector<parser::SourceRange>{{0, 5}, {4, 7}},
+            std::vector<parser::SourceRange>{{7, 9}, {0, 4}},
+        })
     {
         EXPECT_THROW(
             Analyze(tree, memory, {.EditScope = ranges}),
@@ -1315,8 +1339,13 @@ TEST(SourceAnalysis, DeferredRestrictionRequiresBuiltUnrestrictedAnalysis)
     EXPECT_THROW(moved.RestrictEditScope(scope), std::logic_error);
     EXPECT_THROW(restrictedMove.RestrictEditScope(scope), std::logic_error);
     ExpectSameAnalysis(direct, restrictedMove);
-    auto empty = Analyze(tree, memory, {.EditScope = std::span<const
-        parser::SourceRange>{}});
+    auto empty = Analyze(
+        tree,
+        memory,
+        {
+            .EditScope = std::span<const
+        parser::SourceRange>{},
+        });
     EXPECT_THROW(empty.RestrictEditScope(scope), std::logic_error);
     EXPECT_FALSE(empty.CanReplaceGap(Before(tree, "invoke"), "\n    "));
 }
@@ -1334,9 +1363,12 @@ TEST(SourceAnalysis, DeferredRestrictionOutlivesTreeScopeAndScratch)
         auto safety = Analyze(tree, memory);
         std::pmr::monotonic_buffer_resource scratch;
         spacing.emplace(formatter::BuildSyntaxSpacing(
-            tree, safety, formatter::GapPolicies{},
+            tree,
+            safety,
+            formatter::GapPolicies{},
             formatter::PointerReferenceDeclaratorLocation::Preserve,
-            memory, scratch));
+            memory,
+            scratch));
         return safety;
     }(); // Both tree and build scratch have died; source/file memory remain.
     EXPECT_EQ(analysis.Original(indent), "\n  ");
@@ -1539,7 +1571,8 @@ TEST(SourceAnalysis, NewlineSpellingOwnsFullExistingBytesNotEndInsertions)
     auto tree = Parse(input);
     std::pmr::monotonic_buffer_resource memory;
     const std::array selected{
-        parser::SourceRange{6, 8}, parser::SourceRange{14, 16}
+        parser::SourceRange{6, 8},
+        parser::SourceRange{14, 16},
     };
     auto safety = Analyze(tree, memory, {.EditScope = selected});
     for (formatter::GapId i = 0; i < safety.Gaps().size(); ++i) {
@@ -1556,7 +1589,8 @@ TEST(SourceAnalysis, NewlineSpellingOwnsFullExistingBytesNotEndInsertions)
     }
     EXPECT_FALSE(safety.CanSpellGapNewlines(UINT32_MAX));
     const std::array half{
-        parser::SourceRange{6, 7}, parser::SourceRange{15, 16}
+        parser::SourceRange{6, 7},
+        parser::SourceRange{15, 16},
     };
     auto partial = Analyze(tree, memory, {.EditScope = half});
     for (formatter::GapId i = 0; i < partial.Gaps().size(); ++i)
@@ -1567,7 +1601,9 @@ TEST(SourceAnalysis, NewlineSpellingOwnsFullExistingBytesNotEndInsertions)
         memory,
         {.ImmutableRanges = immutable, .EditScope = selected});
     EXPECT_FALSE(protectedGap.CanSpellGapNewlines(3));
-    auto empty = Analyze(tree, memory,
+    auto empty = Analyze(
+        tree,
+        memory,
         {.EditScope = std::span<const parser::SourceRange>{}});
     for (formatter::GapId i = 0; i < empty.Gaps().size(); ++i)
         EXPECT_FALSE(empty.CanSpellGapNewlines(i));

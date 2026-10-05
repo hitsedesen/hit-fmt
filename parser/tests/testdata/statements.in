@@ -104,3 +104,35 @@ label:
 void argument(int n) {
     int value(n);
 }
+
+template<class T> void conditions(int count) {
+    if constexpr (Box<T>::value && !traits::same<T, T>) {
+        use(count);
+    }
+    if (Box<T>::value && enabled) {
+        use(count);
+    }
+    if (int value = count) {
+        use(value);
+    }
+    if (int (value) = count) {
+        use(value);
+    }
+    if (auto* value = Acquire()) {
+        use(value);
+    }
+    if (ExternalType value = Acquire()) {
+        use(value);
+    }
+    if (int previous = count; int next = previous) {
+        use(next);
+    }
+    while (int value{ReadValue()}) {
+        use(value);
+    }
+    compare(count, (Box<T>{first, second}));
+    compare(count, (types::collection{first, second}));
+    compare(count, (types::collection<int>{first, second}));
+    compare(count, Limits<ExternalType>::max());
+    compare(count, left < limit > ::Result());
+}

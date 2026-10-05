@@ -1074,7 +1074,7 @@ TEST(ConfigPolicy, StagedCapsValidateBeforePublicPendingConsumerGuard)
             try {
                 (void)formatter::PreparedFormat(style);
                 FAIL() << "Regroup cap zero was accepted";
-            } catch (const std::invalid_argument &error) {
+            } catch (const std::invalid_argument& error) {
                 const std::string message = error.what();
                 EXPECT_NE(
                     message.find("IncludeGrouping = Regroup"),
@@ -1103,7 +1103,7 @@ TEST(ConfigPolicy, StagedCapsValidateBeforePublicPendingConsumerGuard)
     try {
         (void)formatter::LoadConfigFile(invalid.Path);
         FAIL() << "Regroup cap conflict was accepted";
-    } catch (const std::runtime_error &error) {
+    } catch (const std::runtime_error& error) {
         const std::string message = error.what();
         EXPECT_NE(
             message.find("IncludeGrouping at " + invalid.Path.string() + ":1"),
@@ -1138,7 +1138,7 @@ TEST(ConfigPolicy, PendingConsumersFailClosedWithoutChangingExistingRejections)
             try {
                 (void)formatter::PreparedFormat(style);
                 FAIL() << "unsupported behavior was silently accepted";
-            } catch (const std::invalid_argument &error) {
+            } catch (const std::invalid_argument& error) {
                 const std::string message = error.what();
                 const std::string_view setting(text);
                 EXPECT_NE(
@@ -1153,7 +1153,7 @@ TEST(ConfigPolicy, PendingConsumersFailClosedWithoutChangingExistingRejections)
         try {
             (void)formatter::PreparedFormat(style);
             FAIL() << "existing CallLike rejection disappeared";
-        } catch (const std::invalid_argument &error) {
+        } catch (const std::invalid_argument& error) {
             EXPECT_NE(
                 std::string(error.what())
                     .find("CallLikeMacroNames syntax hints"),
@@ -1164,7 +1164,7 @@ TEST(ConfigPolicy, PendingConsumersFailClosedWithoutChangingExistingRejections)
         try {
             (void)formatter::PreparedFormat(style);
             FAIL() << "existing ambiguous-template rejection disappeared";
-        } catch (const std::invalid_argument &error) {
+        } catch (const std::invalid_argument& error) {
             EXPECT_EQ(
                 std::string(error.what()),
                 "AmbiguousTemplateDeclarationSpacing is unsupported");
@@ -1257,16 +1257,17 @@ TEST(ConfigPolicy, OrderedPrefixIndexPreservesEarliestRuleAcrossOwningLifetimes)
 
 TEST(ConfigPolicy, PrefixValidationIsFinalOrderedAndCannotBeBypassed)
 {
-    for (const auto prefixes : {
-             std::vector<std::string>{""},
-             {"engine"},
-             {"/engine/"},
-             {"engine//"},
-             {"./engine/"},
-             {"engine/../"},
-             {"engine\\detail/"},
-             {"engine/", "engine/"},
-         })
+    for (const auto prefixes :
+        {
+            std::vector<std::string>{""},
+            {"engine"},
+            {"/engine/"},
+            {"engine//"},
+            {"./engine/"},
+            {"engine/../"},
+            {"engine\\detail/"},
+            {"engine/", "engine/"},
+        })
     {
         formatter::Style style;
         style.IncludeGroupPrefixes = prefixes;
@@ -1288,7 +1289,7 @@ TEST(ConfigPolicy, PrefixValidationIsFinalOrderedAndCannotBeBypassed)
     try {
         (void)formatter::LoadConfigFile(duplicate.Path);
         FAIL() << "duplicate prefixes were accepted";
-    } catch (const std::runtime_error &error) {
+    } catch (const std::runtime_error& error) {
         EXPECT_NE(
             std::string(error.what()).find("IncludeGroupPrefixes at " +
                 duplicate.Path.string() + ":1"),

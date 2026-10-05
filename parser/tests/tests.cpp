@@ -404,9 +404,9 @@ TEST(Parser, MacroShapedControlHeaderRetainsRecoveryAndIndependentBody)
     for (const auto& [candidate, kind] :
         {
             std::pair{"if CHECK(n) { use(); }", IfStatement},
-             std::pair{"while CHECK(n) { use(); }", WhileStatement},
-             std::pair{"for CHECK(n) { use(); }", ForStatement},
-             std::pair{"if CHECK(n) use(); else other();", IfStatement}
+            std::pair{"while CHECK(n) { use(); }", WhileStatement},
+            std::pair{"for CHECK(n) { use(); }", ForStatement},
+            std::pair{"if CHECK(n) use(); else other();", IfStatement},
         })
     {
         SCOPED_TRACE(candidate);
@@ -1055,9 +1055,13 @@ TEST(Parser, TypedInitializerProofExhaustionCannotRetireDefaultParameters)
 TEST(Parser, ArgumentRecoveryOwnsConsumedSemanticTailsAndKeepsLaterLambda)
 {
     using enum parser::NodeKind;
-    for (const auto [operand, expectedTail] : {
-             std::pair<std::string_view, std::string_view>{"char**", "**"},
-             {"*", "*"}, {"value + *", "+ *"} }) {
+    for (const auto [operand, expectedTail] :
+        {
+            std::pair<std::string_view, std::string_view>{"char**", "**"},
+            {"*", "*"},
+            {"value + *", "+ *"},
+        })
+    {
         SCOPED_TRACE(operand);
         const std::string source = "APPLY(" + std::string(operand) +
             ", [] { return 2; });\nint following;";
@@ -2341,10 +2345,18 @@ INSTANTIATE_TEST_SUITE_P(
         GoldenCase{"requires_clause_boundaries"},
         GoldenCase{"requires_return_boundaries"},
         GoldenCase{"unhinted_body_recovery"},
-        GoldenCase{"function_body_macros", false, true,
-            {"DEFINE_METHOD", "DEFINE_CASE", "DEFINE_CASE"}},
-        GoldenCase{"function_body_macros_recovery", true, false,
-            {"DEFINE_CASE"}},
+        GoldenCase{
+            "function_body_macros",
+            false,
+            true,
+            {"DEFINE_METHOD", "DEFINE_CASE", "DEFINE_CASE"},
+        },
+        GoldenCase{
+            "function_body_macros_recovery",
+            true,
+            false,
+            {"DEFINE_CASE"},
+        },
         GoldenCase{"lambda_argument_ownership"},
         GoldenCase{"lambda_argument_tail_recovery"},
         GoldenCase{"statements"},
@@ -2362,7 +2374,8 @@ INSTANTIATE_TEST_SUITE_P(
         GoldenCase{"qualified_records"},
         GoldenCase{"opaque_record_owners"},
         GoldenCase{"extensions"},
-        GoldenCase{"recovery", true}, GoldenCase{"terminal_constructor_boundaries"}),
+        GoldenCase{"recovery", true},
+        GoldenCase{"terminal_constructor_boundaries"}),
     [] (const auto& info) {
         return info.param.Name;
     });
@@ -3755,7 +3768,7 @@ TEST(Parser, RequiresClausePreservesOperatorAndUnknownConstraints)
         {"requires(T v) { v.touch(); } && !enabled", false, false},
         {"requires(T v) { v.touch(); } && unresolved", false, false},
         {"requires(T v) { v.touch(); } @ discarded", true, true},
-        {"requires(T v) { v.touch(); } && (unresolved @ tail)", false, true},
+        {"requires(T v) { v.touch(); } && (unresolved @ tail)", true, true},
     };
     for (const auto& constraint : constraints) {
         const auto source =
@@ -4455,8 +4468,10 @@ TEST(Parser, FunctionKindsSurviveOwningCopiesMovesAndRebinds)
     check(*gaps);
     const std::array edits{
         parser::WhitespaceEdit{
-        static_cast<util::SourceOffset>(source.size()),
-        static_cast<util::SourceOffset>(source.size()), "\n"}
+            static_cast<util::SourceOffset>(source.size()),
+            static_cast<util::SourceOffset>(source.size()),
+            "\n",
+        },
     };
     auto fromEdits = original.RebindWhitespaceEdits(spaced.View(), edits);
     ASSERT_TRUE(fromEdits);

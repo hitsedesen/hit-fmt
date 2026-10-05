@@ -1264,12 +1264,13 @@ TEST(SyntaxLayout, IncompleteInitializerTailCannotAuthorizeCommaEdits)
     style.InitializersCloser = formatter::CloserPlacement::OwnLine;
     for (const std::string input :
         {
-            "void f() { for (auto value : {box{1, 2}}) use(value); }\n",
-            "void f() { for (auto value : {types::box{1, 2}, "
-                "types::box{3, 4},}) use(value); }\n",
-            "auto values = {box{1, 2}, box{3, 4} /*tail*/};\n",
-            "void f() { use({types::box{1, 2}, types::box{3, 4},}); }\n",
-            "auto values = {box{inner{1, 2}}, box{inner{3, 4}},};\n",
+            "void f() { for (auto value : {box.member{1, 2}}) use(value); }\n",
+            "void f() { for (auto value : {box.member{1, 2}, "
+                "box.member{3, 4},}) use(value); }\n",
+            "auto values = {box.member{1, 2}, box.member{3, 4} /*tail*/};\n",
+            "void f() { use({box.member{1, 2}, box.member{3, 4},}); }\n",
+            "auto values = {box.member{inner{1, 2}}, "
+                "box.member{inner{3, 4}},};\n",
         })
     {
         SCOPED_TRACE(input);
@@ -1737,7 +1738,7 @@ TEST(SyntaxLayout, RealizedExpressionLineRetainsChildContinuationBase)
                     selectParentIndent
                         ? parser::SourceRange{parentEnd - 8, parentEnd}
                         : parser::SourceRange{childBegin, childBegin + 12},
-                    parser::SourceRange{childBegin, childBegin + 12}
+                    parser::SourceRange{childBegin, childBegin + 12},
                 };
                 formatter::SourceAnalysisOptions protection;
                 protection.EditScope =
@@ -1941,7 +1942,9 @@ TEST(SyntaxLayout, ContinuationScopesReindentOnlySelectedHorizontalBytes)
             EXPECT_EQ(output.Text, expected);
             const std::array repeatedScope{
                 parser::SourceRange{
-                begin, begin + parser::SourceOffset(indent.size())}
+                    begin,
+                    begin + parser::SourceOffset(indent.size()),
+                },
             };
             protection.EditScope = repeatedScope;
             EXPECT_EQ(
@@ -1964,7 +1967,7 @@ TEST(SyntaxLayout, ContinuationScopesReindentOnlySelectedHorizontalBytes)
                 parser::SourceOffset(callInput.find("            second"));
             const std::array callScope{
                 parser::SourceRange{first, first + 12},
-                parser::SourceRange{second, second + 12}
+                parser::SourceRange{second, second + 12},
             };
             protection.EditScope = callScope;
             const auto callOutput =
@@ -1982,7 +1985,10 @@ TEST(SyntaxLayout, ContinuationScopesReindentOnlySelectedHorizontalBytes)
             const auto indentSize = parser::SourceOffset(callIndent.size());
             const std::array repeatedCallScope{
                 parser::SourceRange{first, first + indentSize},
-                parser::SourceRange{repeatedSecond, repeatedSecond + indentSize}
+                parser::SourceRange{
+                    repeatedSecond,
+                    repeatedSecond + indentSize,
+                },
             };
             protection.EditScope = repeatedCallScope;
             EXPECT_EQ(
@@ -2004,7 +2010,7 @@ TEST(SyntaxLayout, ContinuationScopesReindentOnlySelectedHorizontalBytes)
             const auto branchBegin = parser::SourceOffset(
                 ternaryInput.find("                right"));
             const std::array branchScope{
-                parser::SourceRange{branchBegin, branchBegin + 16}
+                parser::SourceRange{branchBegin, branchBegin + 16},
             };
             protection.EditScope = branchScope;
             const auto branchOutput =
@@ -2018,7 +2024,9 @@ TEST(SyntaxLayout, ContinuationScopesReindentOnlySelectedHorizontalBytes)
             EXPECT_EQ(branchOutput.Text, branchExpected);
             const std::array repeatedBranchScope{
                 parser::SourceRange{
-                branchBegin, branchBegin + parser::SourceOffset(branchIndent.size())}
+                    branchBegin,
+                    branchBegin + parser::SourceOffset(branchIndent.size()),
+                },
             };
             protection.EditScope = repeatedBranchScope;
             EXPECT_EQ(
@@ -2045,7 +2053,7 @@ TEST(SyntaxLayout, ContinuationScopesReindentOnlySelectedHorizontalBytes)
             const std::array operatorScope{
                 parser::SourceRange{questionBegin, questionBegin + 8},
                 parser::SourceRange{branchBegin, branchBegin + 16},
-                parser::SourceRange{colonBegin, colonBegin + 8}
+                parser::SourceRange{colonBegin, colonBegin + 8},
             };
             protection.EditScope = operatorScope;
             const auto indentedOutput =
@@ -2070,12 +2078,18 @@ TEST(SyntaxLayout, ContinuationScopesReindentOnlySelectedHorizontalBytes)
             const auto repeatedColon = parser::SourceOffset(
                 indentedExpected.find(armIndent + ": otherLeft"));
             const std::array repeatedOperatorScope{
-                parser::SourceRange{repeatedQuestion,
-                    repeatedQuestion + parser::SourceOffset(armIndent.size())},
-                parser::SourceRange{repeatedArm,
-                    repeatedArm + parser::SourceOffset(valueIndent.size())},
-                parser::SourceRange{repeatedColon,
-                    repeatedColon + parser::SourceOffset(armIndent.size())}
+                parser::SourceRange{
+                    repeatedQuestion,
+                    repeatedQuestion + parser::SourceOffset(armIndent.size()),
+                },
+                parser::SourceRange{
+                    repeatedArm,
+                    repeatedArm + parser::SourceOffset(valueIndent.size()),
+                },
+                parser::SourceRange{
+                    repeatedColon,
+                    repeatedColon + parser::SourceOffset(armIndent.size()),
+                },
             };
             protection.EditScope = repeatedOperatorScope;
             EXPECT_EQ(
@@ -2628,12 +2642,16 @@ TEST(SyntaxLayout, NestedVisualScopesAndWrapperContextRespectBarriers)
         "void f() {\n  wrap(tag, flow.Begin());\n    "
         "work();\n  wrap(tag, flow.End());\n}\n");
     EXPECT_EQ(Lower(multi, style).Text, multi);
-    for (const auto& context : std::vector<std::pair<std::string, std::string>>{
-             {"wrap(flow.Begin(), tag)", "wrap(flow.End(), tag)"},
-             {"wrap(tag, flow.Begin(), tail)", "wrap(tag, flow.End(), tail)"},
-             {"outer(tag, inner(left, flow.Begin(), right), tail)",
-              "outer(tag, inner(left, flow.End(), right), tail)"},
-             {"wrap(tag, (flow.Begin()))", "wrap(tag, (flow.End()))"}})
+    for (const auto& context :
+        std::vector<std::pair<std::string, std::string>>{
+            {"wrap(flow.Begin(), tag)", "wrap(flow.End(), tag)"},
+            {"wrap(tag, flow.Begin(), tail)", "wrap(tag, flow.End(), tail)"},
+            {
+                "outer(tag, inner(left, flow.Begin(), right), tail)",
+                "outer(tag, inner(left, flow.End(), right), tail)",
+            },
+            {"wrap(tag, (flow.Begin()))", "wrap(tag, (flow.End()))"},
+        })
     {
         const std::string input = "void f(){\n  " + context.first +
             ";\n    work();\n  " + context.second + ";\n}\n";
@@ -2647,13 +2665,17 @@ TEST(SyntaxLayout, NestedVisualScopesAndWrapperContextRespectBarriers)
             style).Text;
         EXPECT_NE(flat.find("\n  work();"), std::string::npos) << flat;
     }
-    for (const auto& context : std::vector<std::pair<std::string, std::string>>{
-             {"wrap(tag, flow.Begin())", "wrap(other, flow.End())"},
-             {"wrap(tag, flow.Begin())", "wrap(tag, other.End())"},
-             {"wrap(tag, flow.Begin())", "other(tag, flow.End())"},
-             {"wrap(flow.Begin(), tag)", "wrap(tag, flow.End())"},
-             {"wrap(flow.Begin(), other.Begin())",
-              "wrap(flow.End(), other.End())"}})
+    for (const auto& context :
+        std::vector<std::pair<std::string, std::string>>{
+            {"wrap(tag, flow.Begin())", "wrap(other, flow.End())"},
+            {"wrap(tag, flow.Begin())", "wrap(tag, other.End())"},
+            {"wrap(tag, flow.Begin())", "other(tag, flow.End())"},
+            {"wrap(flow.Begin(), tag)", "wrap(tag, flow.End())"},
+            {
+                "wrap(flow.Begin(), other.Begin())",
+                "wrap(flow.End(), other.End())",
+            },
+        })
     {
         const auto uncertainRegion = Lower(
             "void f(){\n " + context.first + ";\n     work(  item );\n " +
@@ -2667,10 +2689,12 @@ TEST(SyntaxLayout, NestedVisualScopesAndWrapperContextRespectBarriers)
             std::string::npos) << uncertainRegion;
         EXPECT_EQ(Lower(uncertainRegion, style).Text, uncertainRegion);
     }
-    for (const auto& context : std::vector<std::pair<std::string, std::string>>{
-             {"wrap([](){ flow.Begin(); })", "wrap([](){ flow.End(); })"},
-             {"wrap(sizeof(flow.Begin()))", "wrap(sizeof(flow.End()))"},
-             {"wrap(noexcept(flow.Begin()))", "wrap(noexcept(flow.End()))"}})
+    for (const auto& context :
+        std::vector<std::pair<std::string, std::string>>{
+            {"wrap([](){ flow.Begin(); })", "wrap([](){ flow.End(); })"},
+            {"wrap(sizeof(flow.Begin()))", "wrap(sizeof(flow.End()))"},
+            {"wrap(noexcept(flow.Begin()))", "wrap(noexcept(flow.End()))"},
+        })
     {
         const auto excluded = Lower(
             "void f(){\n  " + context.first + ";\n    work();\n  " +

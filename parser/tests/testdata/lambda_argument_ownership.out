@@ -244,8 +244,13 @@
               "{"
               (return-statement
                 "return"
-                (identifier-expression "Item")
-                "{" "}" ";"
+                (type-construction-expression
+                  (identifier-expression "Item")
+                  (braced-initializer
+                    (initializer-list "{" "}")
+                  )
+                )
+                ";"
               )
               "}"
             )

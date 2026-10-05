@@ -339,13 +339,15 @@ void ScanIncludeGroups(
         if (group.size() > 1) {
             SR range{group.front().Atom.Begin, group.back().Atom.End};
             if (AdjacentComment(tree, {i, end})) {
-                reject(parser::TokenRange{i, end},
+                reject(
+                    parser::TokenRange{i, end},
                     StructuralSkip::CommentAttached);
             } else if (!DirectiveOnly(safety, range)) {
                 reject(parser::TokenRange{i, end}, StructuralSkip::Protected);
             } else {
                 accept(
-                    IncludeGroup{{i, end}, range}, std::span<Include>(group));
+                    IncludeGroup{{i, end}, range},
+                    std::span<Include>(group));
             }
         }
         i = end;

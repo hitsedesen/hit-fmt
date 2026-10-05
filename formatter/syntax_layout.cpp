@@ -282,6 +282,7 @@ public:
         , LastChild_(&scratch)
         , BlockOf_(&scratch)
         , PrefixProtection_(&scratch)
+        , PrefixOpaqueFences_(&scratch)
         , Visual_(&scratch)
         , RootName_(&scratch)
         , ScopeNames_(&scratch)
@@ -304,11 +305,37 @@ public:
         Commas_.resize(size_t(count) + 1);
         Removed_.resize(count);
         PrefixProtection_.resize(size_t(count) + 1);
+        PrefixOpaqueFences_.resize(size_t(count) + 1);
+        const auto protection = Safety_.Protection();
+        std::pmr::vector<uint8_t> opaqueFences(
+            PrefixOpaqueFences_.get_allocator().resource());
+        opaqueFences.reserve(protection.size());
+        for (const auto& range : protection) {
+            const auto reasons = uint16_t(range.Reasons) &
+                ~uint16_t(ProtectionReason::OutsideEditScope);
+            opaqueFences.push_back(reasons != 0 &&
+                (reasons != uint16_t(ProtectionReason::Recovery) ||
+                    HasLine(Tree_.SourceText(range.Source))));
+        }
+        size_t firstProtection = 0;
         for (Index i = 0; i < count; ++i) {
             const auto token = Tree_.Token(i).Text;
             PrefixProtection_[i + 1] =
                 PrefixProtection_[i] +
                     (ContextProtected({token.Begin, token.End}) ? 1 : 0);
+            while (firstProtection < protection.size() &&
+                protection[firstProtection].Source.End <= token.Begin)
+            {
+                ++firstProtection;
+            }
+            bool fenced = false;
+            for (auto p = firstProtection;
+                p < protection.size() && protection[p].Source.Begin < token.End;
+                ++p)
+            {
+                fenced |= opaqueFences[p] != 0;
+            }
+            PrefixOpaqueFences_[i + 1] = PrefixOpaqueFences_[i] + fenced;
         }
         for (auto id : Options_.GeneratedAdjacencies) {
             if (id > count) {
@@ -378,13 +405,13 @@ public:
                 default:
                     break;
             }
-            if (!Syntax_[i].Safe) {
+            if (!Syntax_[i].Safe && !CanPlanAroundOpaqueChildren(i)) {
                 if (ListFor(node.Kind)) {
                     PreserveUnplannedListContext(i);
                 }
                 continue;
             }
-            if (const auto *list = ListFor(node.Kind)) {
+            if (const auto* list = ListFor(node.Kind)) {
                 PlanList(i, *list);
             }
             switch (node.Kind) {
@@ -401,6 +428,7 @@ public:
                 case NodeKind::ParenthesizedExpression:
                 case NodeKind::SubscriptExpression:
                 case NodeKind::CastExpression:
+                case NodeKind::TypeConstructionExpression:
                     PlanExpression(i);
                     break;
                 case NodeKind::LiteralExpression:
@@ -461,6 +489,7 @@ private:
     std::pmr::vector<Index> LastChild_;
     std::pmr::vector<Index> BlockOf_;
     std::pmr::vector<Index> PrefixProtection_;
+    std::pmr::vector<Index> PrefixOpaqueFences_;
     std::pmr::vector<VisualRange> Visual_;
     std::pmr::string RootName_;
     std::pmr::vector<ScopeName> ScopeNames_;
@@ -695,12 +724,14 @@ private:
             return None;
         }
         const auto id = Index(Groups_.size());
-        Groups_.push_back({begin,
-                           end,
-                           {mode, indent},
-                           anchor.value_or(LayoutIndentation{
-                               ContinuationAlignment::Block, 0, 0}),
-                           anchor.has_value()});
+        Groups_.push_back({
+            begin,
+            end,
+            {mode, indent},
+            anchor.value_or(
+                LayoutIndentation{ContinuationAlignment::Block, 0, 0}),
+            anchor.has_value(),
+        });
         return id;
     }
 
@@ -771,6 +802,66 @@ private:
             default:
                 return nullptr;
         }
+    }
+
+    bool CanPlanAroundOpaqueChildren(Index id) const
+    {
+        const auto& node = Region(Syntax_[id]);
+        switch (node.Kind) {
+            case NodeKind::ArgumentList:
+            case NodeKind::Condition:
+                if (node.Tokens.Size() < 2 ||
+                    Tree_.Kind(node.Tokens.Begin) !=
+                        TokenKind::Operator_OpenParenthesis ||
+                    Tree_.MatchingDelimiter(node.Tokens.Begin) !=
+                        node.Tokens.End - 1)
+                {
+                    return false;
+                }
+                break;
+            case NodeKind::Initializer:
+            case NodeKind::BinaryExpression:
+            case NodeKind::AssignmentExpression:
+            case NodeKind::ConditionalExpression:
+            case NodeKind::ParenthesizedExpression:
+                break;
+            default:
+                return false;
+        }
+        if (node.FirstChild == None) {
+            return false;
+        }
+        if (PrefixOpaqueFences_[node.Tokens.Begin] !=
+            PrefixOpaqueFences_[node.Tokens.End])
+        {
+            return false;
+        }
+        for (auto child = node.FirstChild;
+            child != None;
+            child = Region(Syntax_[child]).NextSibling)
+        {
+            const auto& part = Region(Syntax_[child]);
+            if (part.Kind == NodeKind::UnparsedSyntax ||
+                part.Kind == NodeKind::MissingToken ||
+                part.Kind == NodeKind::UnexpectedToken ||
+                part.Kind == NodeKind::AmbiguousStatement ||
+                part.Kind == NodeKind::PreprocessingDirective ||
+                part.Kind == NodeKind::PreprocessingConditional)
+            {
+                return false;
+            }
+        }
+        // Only the proven enclosing syntax owns breaks. Recovered descendants
+        // remain exact atoms; their adjacent protected gaps remain fenced by
+        // the normal edit-permission checks. Do not plan recovered punctuation.
+        bool directSafe = true;
+        DirectTokens(
+            id,
+            [&] (Index token) {
+                directSafe &=
+                    PrefixProtection_[token] == PrefixProtection_[token + 1];
+            });
+        return directSafe;
     }
 
     bool PinFirst(Index id) const
@@ -1354,7 +1445,8 @@ private:
             if (canonical &&
                 (kind == NodeKind::ParenthesizedExpression ||
                     kind == NodeKind::SubscriptExpression ||
-                    kind == NodeKind::CastExpression) &&
+                    kind == NodeKind::CastExpression ||
+                    kind == NodeKind::TypeConstructionExpression) &&
                 Tree_.Kind(t) != TokenKind::Comment)
             {
                 if (t > node.Tokens.Begin) {
@@ -2184,11 +2276,16 @@ private:
             : namespaced &&
                 Policies_.Indentation.Namespaces.Mode !=
                     BodyIndentation::Preserve;
-        const auto group =
-            GroupAt(GapPosition(opening + 1), GapPosition(close + 1),
-                    document::GroupMode::Consistent, offset,
-                    LayoutIndentation{ContinuationAlignment::Block,
-                                      uint32_t(offset), uint32_t(offset)});
+        const auto group = GroupAt(
+            GapPosition(opening + 1),
+            GapPosition(close + 1),
+            document::GroupMode::Consistent,
+            offset,
+            LayoutIndentation{
+                ContinuationAlignment::Block,
+                uint32_t(offset),
+                uint32_t(offset),
+            });
         Groups_[group].Spec.StructuralBase = true;
         // Calls containing uncertain children preserve their argument gaps and
         // may have no continuation frame. Lambda bodies still use the actual
@@ -3478,7 +3575,8 @@ private:
                 Safety_).value_or(UINT16_MAX - 1);
         }
         return cached == UINT16_MAX - 1
-            ? std::nullopt : std::optional<uint16_t>{cached};
+            ? std::nullopt
+            : std::optional<uint16_t>{cached};
     }
 
     Index FlatWidth(Index i) const
@@ -3562,8 +3660,10 @@ private:
                 ? IndentBasis{group.Spec.FixedBase, false}
                 : Stack_.empty()
                     ? IndentBasis{0, false}
-                    : IndentBasis{Groups_[Stack_.back()].LogicalIndent,
-                                  Groups_[Stack_.back()].SaturatedIndent};
+                    : IndentBasis{
+                        Groups_[Stack_.back()].LogicalIndent,
+                        Groups_[Stack_.back()].SaturatedIndent,
+                    };
             const auto basis = AccumulateIndent(parent, group.Spec.Indent);
             group.LogicalIndent = basis.Column;
             group.SaturatedIndent = basis.Saturated;
@@ -4041,14 +4141,15 @@ private:
 
     void Emit()
     {
-        Document_.Reserve(uint32_t(std::min<uint64_t>(
-            None,
-            uint64_t(Tree_.TokenCount()) * 2 + uint64_t(Groups_.size()) * 5 +
-            1)),
-                          Index(Groups_.size()),
-                          uint32_t(std::min<uint64_t>(
-            None,
-            uint64_t(Tree_.TokenCount()) * 2 + 1)));
+        Document_.Reserve(
+            uint32_t(std::min<uint64_t>(
+                None,
+                uint64_t(Tree_.TokenCount()) * 2 +
+                uint64_t(Groups_.size()) * 5 + 1)),
+            Index(Groups_.size()),
+            uint32_t(std::min<uint64_t>(
+                None,
+                uint64_t(Tree_.TokenCount()) * 2 + 1)));
         size_t next = 0;
         Index continuation = None;
         for (Position p = 0; p <= GapPosition(Tree_.TokenCount()); ++p) {

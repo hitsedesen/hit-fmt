@@ -566,10 +566,16 @@ TEST(StructuralEdits, IncludeDiscoveryNeverWeakensProtectionOrScope)
         1u);
     for (parser::SourceRange scope :
         {
-            parser::SourceRange{0, static_cast<parser::SourceOffset>(text.size())},
-        parser::SourceRange{0, static_cast<parser::SourceOffset>(text.size() -
-            1)},
-        parser::SourceRange{0, 1}, parser::SourceRange{1, 2},
+            parser::SourceRange{
+                0,
+                static_cast<parser::SourceOffset>(text.size()),
+            },
+            parser::SourceRange{
+                0,
+                static_cast<parser::SourceOffset>(text.size() - 1),
+            },
+            parser::SourceRange{0, 1},
+            parser::SourceRange{1, 2},
         })
     {
         std::array selection{scope};

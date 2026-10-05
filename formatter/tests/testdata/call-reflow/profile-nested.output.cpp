@@ -40,11 +40,12 @@ void CheckCredentials()
 template <class TArchive, class TTag>
 void ValidateUpdate(TArchive&& archive, const TTag& tag)
 {
-    YT_VERIFY(QueryIndex(std::forward<TArchive>(
-        archive), tag) != 0, Explain(
-        "A synthetic archive update could not locate the indexed record while validating its state (Archive: %v, Tag: %v)",
-        LabelOf<TArchive>(),
-        LabelOf<TTag>()));
+    YT_VERIFY(
+        QueryIndex(std::forward<TArchive>(archive), tag) != 0,
+        Explain(
+            "A synthetic archive update could not locate the indexed record while validating its state (Archive: %v, Tag: %v)",
+            LabelOf<TArchive>(),
+            LabelOf<TTag>()));
 }
 
 void CheckFlag(bool flagged)

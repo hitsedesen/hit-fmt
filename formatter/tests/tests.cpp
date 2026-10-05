@@ -123,11 +123,8 @@ TEST_P(PreserveTest, KeepsUnchanged)
 {
     const auto input = ReadFile(
         std::filesystem::path(FORMATTER_TESTDATA_DIR) / GetParam().Name);
-    for (auto [indent, column] : {
-        std::pair<size_t, size_t>{4, 10000},
-        {1, 10000},
-        {32, 10000},
-    })
+    for (auto [indent, column] :
+        {std::pair<size_t, size_t>{4, 10000}, {1, 10000}, {32, 10000}})
     {
         formatter::Style style;
         style.IndentWidth = indent;
@@ -323,34 +320,84 @@ std::vector<FormatCase> FormatCases()
                 formatter::BlankLineSetting DefinitionBlankLines;
                 std::optional<std::size_t> MaxEmptyLines;
             };
-            for (const auto& policy : std::array<Policy, 3>{{
-                {
-                    "capped",
-                    formatter::BlankLineSetting{BlankLineMode::Preserve, 0},
-                    formatter::BlankLineSetting{BlankLineMode::Preserve, 0},
-                    formatter::BlankLineSetting{BlankLineMode::Preserve, 0},
-                    formatter::BlankLineSetting{BlankLineMode::Inherit, 0},
-                    formatter::BlankLineSetting{BlankLineMode::Preserve, 0}, 1,
-                },
-                {
-                    "declarations",
-                    formatter::BlankLineSetting{BlankLineMode::Exact, 1},
-                    formatter::BlankLineSetting{BlankLineMode::Exact, 1},
-                    formatter::BlankLineSetting{BlankLineMode::Exact, 1},
-                    formatter::BlankLineSetting{BlankLineMode::Inherit, 0},
-                    formatter::BlankLineSetting{BlankLineMode::Preserve, 0},
-                    std::nullopt,
-                },
-                {
-                    "overrides",
-                    formatter::BlankLineSetting{BlankLineMode::Exact, 1},
-                    formatter::BlankLineSetting{BlankLineMode::Exact, 1},
-                    formatter::BlankLineSetting{BlankLineMode::Exact, 1},
-                    formatter::BlankLineSetting{BlankLineMode::Exact, 0},
-                    formatter::BlankLineSetting{BlankLineMode::Exact, 2},
-                    std::nullopt,
-                },
-            }}) {
+            for (const auto& policy :
+                std::array<Policy, 3>{
+                    {
+                        {
+                            "capped",
+                            formatter::BlankLineSetting{
+                                BlankLineMode::Preserve,
+                                0,
+                            },
+                            formatter::BlankLineSetting{
+                                BlankLineMode::Preserve,
+                                0,
+                            },
+                            formatter::BlankLineSetting{
+                                BlankLineMode::Preserve,
+                                0,
+                            },
+                            formatter::BlankLineSetting{
+                                BlankLineMode::Inherit,
+                                0,
+                            },
+                            formatter::BlankLineSetting{
+                                BlankLineMode::Preserve,
+                                0,
+                            },
+                            1,
+                        },
+                        {
+                            "declarations",
+                            formatter::BlankLineSetting{
+                                BlankLineMode::Exact,
+                                1,
+                            },
+                            formatter::BlankLineSetting{
+                                BlankLineMode::Exact,
+                                1,
+                            },
+                            formatter::BlankLineSetting{
+                                BlankLineMode::Exact,
+                                1,
+                            },
+                            formatter::BlankLineSetting{
+                                BlankLineMode::Inherit,
+                                0,
+                            },
+                            formatter::BlankLineSetting{
+                                BlankLineMode::Preserve,
+                                0,
+                            },
+                            std::nullopt,
+                        },
+                        {
+                            "overrides",
+                            formatter::BlankLineSetting{
+                                BlankLineMode::Exact,
+                                1,
+                            },
+                            formatter::BlankLineSetting{
+                                BlankLineMode::Exact,
+                                1,
+                            },
+                            formatter::BlankLineSetting{
+                                BlankLineMode::Exact,
+                                1,
+                            },
+                            formatter::BlankLineSetting{
+                                BlankLineMode::Exact,
+                                0,
+                            },
+                            formatter::BlankLineSetting{
+                                BlankLineMode::Exact,
+                                2,
+                            },
+                            std::nullopt,
+                        },
+                    },
+                })
+            {
                 auto style = base;
                 style.NamespaceBlankLinesAfterOpen =
                     policy.NamespaceBlankLinesAfterOpen;
@@ -392,11 +439,15 @@ std::vector<FormatCase> FormatCases()
                 std::size_t ColumnLimit;
                 formatter::BreakRequirement ChainsBreak;
             };
-            for (const auto& policy : std::array<Policy, 3>{{
-                {"call-fit", 24, BreakRequirement::IfNeeded},
-                {"forced", 80, BreakRequirement::Always},
-                {"overflow", 32, BreakRequirement::IfNeeded},
-            }}) {
+            for (const auto& policy :
+                std::array<Policy, 3>{
+                    {
+                        {"call-fit", 24, BreakRequirement::IfNeeded},
+                        {"forced", 80, BreakRequirement::Always},
+                        {"overflow", 32, BreakRequirement::IfNeeded},
+                    },
+                })
+            {
                 auto style = base;
                 style.ColumnLimit = policy.ColumnLimit;
                 style.ChainsBreak = policy.ChainsBreak;
@@ -466,62 +517,111 @@ std::vector<FormatCase> FormatCases()
                 bool RemoveNullDeclarations;
                 formatter::NamespaceComments NamespaceComments;
             };
-            for (const auto& policy : std::array<Policy, 9>{{
-                {
-                    "boundary-crlf", LayoutMode::Preserve, 4,
-                    IndentationKind::Preserve, LineEnding::CRLF,
-                    TrailingWhitespace::Trim, CategoryLayout::Inherit, false,
-                    NamespaceComments::Preserve,
-                },
-                {
-                    "boundary-lf", LayoutMode::Preserve, 4,
-                    IndentationKind::Preserve, LineEnding::LF,
-                    TrailingWhitespace::Trim, CategoryLayout::Inherit, false,
-                    NamespaceComments::Preserve,
-                },
-                {
-                    "boundary-namespace-crlf", LayoutMode::Preserve, 4,
-                    IndentationKind::Preserve, LineEnding::CRLF,
-                    TrailingWhitespace::Preserve, CategoryLayout::Inherit,
-                    false, NamespaceComments::Fix,
-                },
-                {
-                    "boundary-namespace-lf", LayoutMode::Preserve, 4,
-                    IndentationKind::Preserve, LineEnding::LF,
-                    TrailingWhitespace::Preserve, CategoryLayout::Inherit,
-                    false, NamespaceComments::Fix,
-                },
-                {
-                    "boundary-nulls", LayoutMode::Preserve, 4,
-                    IndentationKind::Preserve, LineEnding::LF,
-                    TrailingWhitespace::Preserve, CategoryLayout::Inherit,
-                    true, NamespaceComments::Preserve,
-                },
-                {
-                    "canonical-crlf", LayoutMode::Canonical, 2,
-                    IndentationKind::Spaces, LineEnding::CRLF,
-                    TrailingWhitespace::Preserve, CategoryLayout::Inherit,
-                    false, NamespaceComments::Preserve,
-                },
-                {
-                    "canonical-lf", LayoutMode::Canonical, 2,
-                    IndentationKind::Spaces, LineEnding::LF,
-                    TrailingWhitespace::Preserve, CategoryLayout::Inherit,
-                    false, NamespaceComments::Preserve,
-                },
-                {
-                    "composition-control-lf", LayoutMode::Preserve, 4,
-                    IndentationKind::Preserve, LineEnding::LF,
-                    TrailingWhitespace::Preserve, CategoryLayout::Canonical,
-                    false, NamespaceComments::Preserve,
-                },
-                {
-                    "opaque-lf", LayoutMode::Preserve, 4,
-                    IndentationKind::Preserve, LineEnding::LF,
-                    TrailingWhitespace::Preserve, CategoryLayout::Inherit,
-                    false, NamespaceComments::Preserve,
-                },
-            }}) {
+            for (const auto& policy :
+                std::array<Policy, 9>{
+                    {
+                        {
+                            "boundary-crlf",
+                            LayoutMode::Preserve,
+                            4,
+                            IndentationKind::Preserve,
+                            LineEnding::CRLF,
+                            TrailingWhitespace::Trim,
+                            CategoryLayout::Inherit,
+                            false,
+                            NamespaceComments::Preserve,
+                        },
+                        {
+                            "boundary-lf",
+                            LayoutMode::Preserve,
+                            4,
+                            IndentationKind::Preserve,
+                            LineEnding::LF,
+                            TrailingWhitespace::Trim,
+                            CategoryLayout::Inherit,
+                            false,
+                            NamespaceComments::Preserve,
+                        },
+                        {
+                            "boundary-namespace-crlf",
+                            LayoutMode::Preserve,
+                            4,
+                            IndentationKind::Preserve,
+                            LineEnding::CRLF,
+                            TrailingWhitespace::Preserve,
+                            CategoryLayout::Inherit,
+                            false,
+                            NamespaceComments::Fix,
+                        },
+                        {
+                            "boundary-namespace-lf",
+                            LayoutMode::Preserve,
+                            4,
+                            IndentationKind::Preserve,
+                            LineEnding::LF,
+                            TrailingWhitespace::Preserve,
+                            CategoryLayout::Inherit,
+                            false,
+                            NamespaceComments::Fix,
+                        },
+                        {
+                            "boundary-nulls",
+                            LayoutMode::Preserve,
+                            4,
+                            IndentationKind::Preserve,
+                            LineEnding::LF,
+                            TrailingWhitespace::Preserve,
+                            CategoryLayout::Inherit,
+                            true,
+                            NamespaceComments::Preserve,
+                        },
+                        {
+                            "canonical-crlf",
+                            LayoutMode::Canonical,
+                            2,
+                            IndentationKind::Spaces,
+                            LineEnding::CRLF,
+                            TrailingWhitespace::Preserve,
+                            CategoryLayout::Inherit,
+                            false,
+                            NamespaceComments::Preserve,
+                        },
+                        {
+                            "canonical-lf",
+                            LayoutMode::Canonical,
+                            2,
+                            IndentationKind::Spaces,
+                            LineEnding::LF,
+                            TrailingWhitespace::Preserve,
+                            CategoryLayout::Inherit,
+                            false,
+                            NamespaceComments::Preserve,
+                        },
+                        {
+                            "composition-control-lf",
+                            LayoutMode::Preserve,
+                            4,
+                            IndentationKind::Preserve,
+                            LineEnding::LF,
+                            TrailingWhitespace::Preserve,
+                            CategoryLayout::Canonical,
+                            false,
+                            NamespaceComments::Preserve,
+                        },
+                        {
+                            "opaque-lf",
+                            LayoutMode::Preserve,
+                            4,
+                            IndentationKind::Preserve,
+                            LineEnding::LF,
+                            TrailingWhitespace::Preserve,
+                            CategoryLayout::Inherit,
+                            false,
+                            NamespaceComments::Preserve,
+                        },
+                    },
+                })
+            {
                 auto style = base;
                 style.Layout = policy.Layout;
                 style.IndentWidth = policy.IndentWidth;
@@ -583,28 +683,42 @@ std::vector<FormatCase> FormatCases()
                 std::size_t NamespaceCommentSpaces;
                 formatter::GapPolicy TrailingCommentSpacing;
             };
-            for (const auto& policy : std::array<Policy, 4>{{
-                {
-                    "independent", NamespaceComments::Fix,
-                    formatter::TrailingCommentSpaceSetting{2}, 4,
-                    GapPolicy::NoSpace,
-                },
-                {
-                    "preserve", NamespaceComments::Preserve,
-                    formatter::TrailingCommentSpaceSetting{std::nullopt}, 1,
-                    GapPolicy::Space,
-                },
-                {
-                    "two", NamespaceComments::Preserve,
-                    formatter::TrailingCommentSpaceSetting{2}, 1,
-                    GapPolicy::Space,
-                },
-                {
-                    "zero", NamespaceComments::Preserve,
-                    formatter::TrailingCommentSpaceSetting{0}, 1,
-                    GapPolicy::Space,
-                },
-            }}) {
+            for (const auto& policy :
+                std::array<Policy, 4>{
+                    {
+                        {
+                            "independent",
+                            NamespaceComments::Fix,
+                            formatter::TrailingCommentSpaceSetting{2},
+                            4,
+                            GapPolicy::NoSpace,
+                        },
+                        {
+                            "preserve",
+                            NamespaceComments::Preserve,
+                            formatter::TrailingCommentSpaceSetting{
+                                std::nullopt,
+                            },
+                            1,
+                            GapPolicy::Space,
+                        },
+                        {
+                            "two",
+                            NamespaceComments::Preserve,
+                            formatter::TrailingCommentSpaceSetting{2},
+                            1,
+                            GapPolicy::Space,
+                        },
+                        {
+                            "zero",
+                            NamespaceComments::Preserve,
+                            formatter::TrailingCommentSpaceSetting{0},
+                            1,
+                            GapPolicy::Space,
+                        },
+                    },
+                })
+            {
                 auto style = base;
                 style.NamespaceComments = policy.NamespaceComments;
                 style.TrailingCommentSpaces = policy.TrailingCommentSpaces;
@@ -633,18 +747,34 @@ std::vector<FormatCase> FormatCases()
                 formatter::BlankLineSetting StandaloneCommentBlankLinesBefore;
                 formatter::BlankLineSetting StandaloneCommentBlankLinesAfter;
             };
-            for (const auto& policy : std::array<Policy, 2>{{
-                {
-                    "before",
-                    formatter::BlankLineSetting{BlankLineMode::Exact, 1},
-                    formatter::BlankLineSetting{BlankLineMode::Preserve, 0},
-                },
-                {
-                    "after",
-                    formatter::BlankLineSetting{BlankLineMode::Preserve, 0},
-                    formatter::BlankLineSetting{BlankLineMode::Exact, 2},
-                },
-            }}) {
+            for (const auto& policy :
+                std::array<Policy, 2>{
+                    {
+                        {
+                            "before",
+                            formatter::BlankLineSetting{
+                                BlankLineMode::Exact,
+                                1,
+                            },
+                            formatter::BlankLineSetting{
+                                BlankLineMode::Preserve,
+                                0,
+                            },
+                        },
+                        {
+                            "after",
+                            formatter::BlankLineSetting{
+                                BlankLineMode::Preserve,
+                                0,
+                            },
+                            formatter::BlankLineSetting{
+                                BlankLineMode::Exact,
+                                2,
+                            },
+                        },
+                    },
+                })
+            {
                 auto style = base;
                 style.StandaloneCommentBlankLinesBefore =
                     policy.StandaloneCommentBlankLinesBefore;
@@ -770,9 +900,9 @@ std::vector<FormatCase> FormatCases()
     for (const auto& [name, config] :
         {
             std::pair{"decl-preserve", "preserve"},
-        std::pair{"decl-statements", "remove"},
-        std::pair{"decl-only", "declarations"},
-        std::pair{"decl-both", "both"}
+            std::pair{"decl-statements", "remove"},
+            std::pair{"decl-only", "declarations"},
+            std::pair{"decl-both", "both"},
         })
     {
         cases.push_back(
@@ -846,10 +976,14 @@ std::vector<FormatCase> FormatCases()
                 const char* Profile;
                 formatter::TrailingCommaPolicy InitializersTrailingComma;
             };
-            for (const auto& policy : std::array<Policy, 2>{{
-                {"never", TrailingCommaPolicy::Never},
-                {"preserve", TrailingCommaPolicy::Preserve},
-            }}) {
+            for (const auto& policy :
+                std::array<Policy, 2>{
+                    {
+                        {"never", TrailingCommaPolicy::Never},
+                        {"preserve", TrailingCommaPolicy::Preserve},
+                    },
+                })
+            {
                 auto style = base;
                 style.InitializersTrailingComma =
                     policy.InitializersTrailingComma;
@@ -894,22 +1028,36 @@ std::vector<FormatCase> FormatCases()
                 formatter::GapPolicy CommaSpaceBefore;
                 formatter::GapPolicy CommaSpaceAfter;
             };
-            for (const auto& policy : std::array<Policy, 3>{{
-                {
-                    "canonical-safe", CategoryLayout::Canonical, {},
-                    GapPolicy::GeneratedNoSpace, GapPolicy::GeneratedNoSpace,
-                    GapPolicy::GeneratedSpace,
-                },
-                {
-                    "explicit-protected", CategoryLayout::Canonical, {"KEEP"},
-                    GapPolicy::Space, GapPolicy::NoSpace, GapPolicy::Space,
-                },
-                {
-                    "preserve-protected", CategoryLayout::Preserve, {"KEEP"},
-                    GapPolicy::GeneratedNoSpace, GapPolicy::GeneratedNoSpace,
-                    GapPolicy::GeneratedSpace,
-                },
-            }}) {
+            for (const auto& policy :
+                std::array<Policy, 3>{
+                    {
+                        {
+                            "canonical-safe",
+                            CategoryLayout::Canonical,
+                            {},
+                            GapPolicy::GeneratedNoSpace,
+                            GapPolicy::GeneratedNoSpace,
+                            GapPolicy::GeneratedSpace,
+                        },
+                        {
+                            "explicit-protected",
+                            CategoryLayout::Canonical,
+                            {"KEEP"},
+                            GapPolicy::Space,
+                            GapPolicy::NoSpace,
+                            GapPolicy::Space,
+                        },
+                        {
+                            "preserve-protected",
+                            CategoryLayout::Preserve,
+                            {"KEEP"},
+                            GapPolicy::GeneratedNoSpace,
+                            GapPolicy::GeneratedNoSpace,
+                            GapPolicy::GeneratedSpace,
+                        },
+                    },
+                })
+            {
                 auto style = base;
                 style.CallsLayout = policy.CallsLayout;
                 style.WhitespaceSensitiveMacros =
@@ -976,18 +1124,28 @@ std::vector<FormatCase> FormatCases()
                 formatter::LayoutMode Layout;
                 formatter::GapPolicy CommaSpaceAfter;
             };
-            for (const auto& policy : std::array<Policy, 4>{{
-                {
-                    "generated-canonical", LayoutMode::Canonical,
-                    GapPolicy::GeneratedSpace,
-                },
-                {
-                    "generated-preserve", LayoutMode::Preserve,
-                    GapPolicy::GeneratedSpace,
-                },
-                {"no-space", LayoutMode::Canonical, GapPolicy::NoSpace},
-                {"preserve", LayoutMode::Canonical, GapPolicy::Preserve},
-            }}) {
+            for (const auto& policy :
+                std::array<Policy, 4>{
+                    {
+                        {
+                            "generated-canonical",
+                            LayoutMode::Canonical,
+                            GapPolicy::GeneratedSpace,
+                        },
+                        {
+                            "generated-preserve",
+                            LayoutMode::Preserve,
+                            GapPolicy::GeneratedSpace,
+                        },
+                        {"no-space", LayoutMode::Canonical, GapPolicy::NoSpace},
+                        {
+                            "preserve",
+                            LayoutMode::Canonical,
+                            GapPolicy::Preserve,
+                        },
+                    },
+                })
+            {
                 auto style = base;
                 style.Layout = policy.Layout;
                 style.CommaSpaceAfter = policy.CommaSpaceAfter;
@@ -1089,17 +1247,27 @@ std::vector<FormatCase> FormatCases()
                 std::optional<formatter::GapPolicy>
                     FunctionCvRefQualifierSpacing;
             };
-            for (const auto& policy : std::array<Policy, 3>{{
-                {"function-cv-ref-inherit", GapPolicy::Space, std::nullopt},
-                {
-                    "function-cv-ref-no-space", GapPolicy::Space,
-                    GapPolicy::NoSpace,
-                },
-                {
-                    "function-cv-ref-preserve", GapPolicy::Space,
-                    GapPolicy::Preserve,
-                },
-            }}) {
+            for (const auto& policy :
+                std::array<Policy, 3>{
+                    {
+                        {
+                            "function-cv-ref-inherit",
+                            GapPolicy::Space,
+                            std::nullopt,
+                        },
+                        {
+                            "function-cv-ref-no-space",
+                            GapPolicy::Space,
+                            GapPolicy::NoSpace,
+                        },
+                        {
+                            "function-cv-ref-preserve",
+                            GapPolicy::Space,
+                            GapPolicy::Preserve,
+                        },
+                    },
+                })
+            {
                 auto style = base;
                 style.FunctionRefQualifierSpacing =
                     policy.FunctionRefQualifierSpacing;
@@ -1273,31 +1441,52 @@ std::vector<FormatCase> FormatCases()
                 formatter::ContinuationAlignment ChainsAlignment;
                 std::vector<std::string> ChainedCallRootNames;
             };
-            for (const auto& policy : std::array<Policy, 5>{{
-                {
-                    "annotations-delimiter", LayoutMode::Canonical, 80,
-                    BreakRequirement::Always, ContinuationAlignment::Delimiter,
-                    {},
-                },
-                {
-                    "annotations-filtered", LayoutMode::Canonical, 80,
-                    BreakRequirement::Always, ContinuationAlignment::Block,
-                    {"Builder"},
-                },
-                {
-                    "annotations-fitting", LayoutMode::Canonical, 80,
-                    BreakRequirement::IfNeeded, ContinuationAlignment::Block,
-                    {},
-                },
-                {
-                    "annotations-narrow", LayoutMode::Canonical, 40,
-                    BreakRequirement::Always, ContinuationAlignment::Block, {},
-                },
-                {
-                    "annotations-preserve", LayoutMode::Preserve, 80,
-                    BreakRequirement::Always, ContinuationAlignment::Block, {},
-                },
-            }}) {
+            for (const auto& policy :
+                std::array<Policy, 5>{
+                    {
+                        {
+                            "annotations-delimiter",
+                            LayoutMode::Canonical,
+                            80,
+                            BreakRequirement::Always,
+                            ContinuationAlignment::Delimiter,
+                            {},
+                        },
+                        {
+                            "annotations-filtered",
+                            LayoutMode::Canonical,
+                            80,
+                            BreakRequirement::Always,
+                            ContinuationAlignment::Block,
+                            {"Builder"},
+                        },
+                        {
+                            "annotations-fitting",
+                            LayoutMode::Canonical,
+                            80,
+                            BreakRequirement::IfNeeded,
+                            ContinuationAlignment::Block,
+                            {},
+                        },
+                        {
+                            "annotations-narrow",
+                            LayoutMode::Canonical,
+                            40,
+                            BreakRequirement::Always,
+                            ContinuationAlignment::Block,
+                            {},
+                        },
+                        {
+                            "annotations-preserve",
+                            LayoutMode::Preserve,
+                            80,
+                            BreakRequirement::Always,
+                            ContinuationAlignment::Block,
+                            {},
+                        },
+                    },
+                })
+            {
                 auto style = base;
                 style.Layout = policy.Layout;
                 style.ColumnLimit = policy.ColumnLimit;
@@ -1322,13 +1511,18 @@ std::vector<FormatCase> FormatCases()
                 formatter::CategoryLayout ChainsLayout;
                 std::vector<std::string> ChainedCallRootNames;
             };
-            for (const auto& policy : std::array<Policy, 2>{{
-                {"conventional-preserve", CategoryLayout::Preserve, {}},
-                {
-                    "conventional-selected", CategoryLayout::Inherit,
-                    {"READ_EVENT"},
-                },
-            }}) {
+            for (const auto& policy :
+                std::array<Policy, 2>{
+                    {
+                        {"conventional-preserve", CategoryLayout::Preserve, {}},
+                        {
+                            "conventional-selected",
+                            CategoryLayout::Inherit,
+                            {"READ_EVENT"},
+                        },
+                    },
+                })
+            {
                 auto style = base;
                 style.ChainsLayout = policy.ChainsLayout;
                 style.ChainedCallRootNames = policy.ChainedCallRootNames;
@@ -1361,20 +1555,30 @@ std::vector<FormatCase> FormatCases()
                 formatter::BreakRequirement ExpressionsBreak;
                 formatter::CategoryLayout ExpressionsLayout;
             };
-            for (const auto& policy : std::array<Policy, 3>{{
-                {
-                    "always", 80, BreakRequirement::Always,
-                    CategoryLayout::Inherit,
-                },
-                {
-                    "narrow", 40, BreakRequirement::IfNeeded,
-                    CategoryLayout::Inherit,
-                },
-                {
-                    "preserve", 80, BreakRequirement::IfNeeded,
-                    CategoryLayout::Preserve,
-                },
-            }}) {
+            for (const auto& policy :
+                std::array<Policy, 3>{
+                    {
+                        {
+                            "always",
+                            80,
+                            BreakRequirement::Always,
+                            CategoryLayout::Inherit,
+                        },
+                        {
+                            "narrow",
+                            40,
+                            BreakRequirement::IfNeeded,
+                            CategoryLayout::Inherit,
+                        },
+                        {
+                            "preserve",
+                            80,
+                            BreakRequirement::IfNeeded,
+                            CategoryLayout::Preserve,
+                        },
+                    },
+                })
+            {
                 auto style = base;
                 style.ColumnLimit = policy.ColumnLimit;
                 style.ExpressionsBreak = policy.ExpressionsBreak;
@@ -1573,18 +1777,28 @@ std::vector<FormatCase> FormatCases()
                 std::optional<formatter::ContinuationAlignment> CallsAlignment;
                 formatter::OperatorSide BinaryOperatorSide;
             };
-            for (const auto& policy : std::array<Policy, 2>{{
-                {
-                    "argument-precedence-delimiter", CategoryLayout::Preserve,
-                    std::nullopt, std::nullopt,
-                    ContinuationAlignment::Delimiter, OperatorSide::Trailing,
-                },
-                {
-                    "argument-precedence-leading", CategoryLayout::Inherit,
-                    BreakRequirement::Always, FirstItemPlacement::NextLine,
-                    std::nullopt, OperatorSide::Leading,
-                },
-            }}) {
+            for (const auto& policy :
+                std::array<Policy, 2>{
+                    {
+                        {
+                            "argument-precedence-delimiter",
+                            CategoryLayout::Preserve,
+                            std::nullopt,
+                            std::nullopt,
+                            ContinuationAlignment::Delimiter,
+                            OperatorSide::Trailing,
+                        },
+                        {
+                            "argument-precedence-leading",
+                            CategoryLayout::Inherit,
+                            BreakRequirement::Always,
+                            FirstItemPlacement::NextLine,
+                            std::nullopt,
+                            OperatorSide::Leading,
+                        },
+                    },
+                })
+            {
                 auto style = base;
                 style.CallsLayout = policy.CallsLayout;
                 style.CallsBreak = policy.CallsBreak;
@@ -1609,21 +1823,21 @@ std::vector<FormatCase> FormatCases()
     for (const auto& [name, owningMaps] :
         {
             std::pair{"layout", true},
-        {"structural", true},
-        {"comments", true},
-        {"enumerator-assignment", true},
-        {"opaque-record-owners", true},
-        {"control-ownership", true},
-        {"control-separators-braced", false},
-        {"control-separators-unbraced", false},
-        {"control-separators-nested", false},
-        {"declaration-operands", true},
-        {"declaration-operands-recovery", true},
-        {"annotation-boundaries", false},
-        {"annotation-constructors", true},
-        {"annotation-suffixes", true},
-        {"annotation-constraints", true},
-        {"terminal-constructor-template-ids", true},
+            {"structural", true},
+            {"comments", true},
+            {"enumerator-assignment", true},
+            {"opaque-record-owners", true},
+            {"control-ownership", true},
+            {"control-separators-braced", false},
+            {"control-separators-unbraced", false},
+            {"control-separators-nested", false},
+            {"declaration-operands", true},
+            {"declaration-operands-recovery", true},
+            {"annotation-boundaries", false},
+            {"annotation-constructors", true},
+            {"annotation-suffixes", true},
+            {"annotation-constraints", true},
+            {"terminal-constructor-template-ids", true},
         })
     {
         cases.push_back(
@@ -1642,11 +1856,15 @@ std::vector<FormatCase> FormatCases()
                 const char* Profile;
                 std::size_t ColumnLimit;
             };
-            for (const auto& policy : std::array<Policy, 3>{{
-                {"annotation-constraints", 10000},
-                {"annotation-constructors", 100},
-                {"annotation-suffixes", 100},
-            }}) {
+            for (const auto& policy :
+                std::array<Policy, 3>{
+                    {
+                        {"annotation-constraints", 10000},
+                        {"annotation-constructors", 100},
+                        {"annotation-suffixes", 100},
+                    },
+                })
+            {
                 auto style = base;
                 style.ColumnLimit = policy.ColumnLimit;
                 ApplyProfile(cases, directory, policy.Profile, style);
@@ -1751,18 +1969,30 @@ std::vector<FormatCase> FormatCases()
                 formatter::GapPolicy SpaceInsideFunctionParameters;
                 formatter::GapPolicy SpaceInsideLambdaParameters;
             };
-            for (const auto& policy : std::array<Policy, 2>{{
-                {
-                    "compact", GapPolicy::Space, GapPolicy::Space,
-                    GapPolicy::Space, GapPolicy::NoSpace, GapPolicy::NoSpace,
-                    GapPolicy::NoSpace,
-                },
-                {
-                    "spaced", GapPolicy::NoSpace, GapPolicy::NoSpace,
-                    GapPolicy::NoSpace, GapPolicy::Space, GapPolicy::Space,
-                    GapPolicy::Space,
-                },
-            }}) {
+            for (const auto& policy :
+                std::array<Policy, 2>{
+                    {
+                        {
+                            "compact",
+                            GapPolicy::Space,
+                            GapPolicy::Space,
+                            GapPolicy::Space,
+                            GapPolicy::NoSpace,
+                            GapPolicy::NoSpace,
+                            GapPolicy::NoSpace,
+                        },
+                        {
+                            "spaced",
+                            GapPolicy::NoSpace,
+                            GapPolicy::NoSpace,
+                            GapPolicy::NoSpace,
+                            GapPolicy::Space,
+                            GapPolicy::Space,
+                            GapPolicy::Space,
+                        },
+                    },
+                })
+            {
                 auto style = base;
                 style.AttributeInteriorSpacing =
                     policy.AttributeInteriorSpacing;
@@ -1889,27 +2119,57 @@ std::vector<FormatCase> FormatCases()
         {"leading-fitting", "trailing-fitting"},
         "fitting-topologies.input.cpp");
     // Name, input, config override, read-only expectation alias.
-    for (const auto& [name, input, config, expected] : {
-        std::array<const char*, 4>{"macro-preserve",
-            "macro-preserve.input.cpp", "crlf-return", ""},
-        {"boundary-comment-tail", "comment-tail.input.cpp", "crlf-return", ""},
-        {"recovered-tail", "recovered-tail.input.cpp", "crlf-return", ""},
-        {"template-argument-preserve", "template-argument-preserve.input.cpp",
-            "crlf-return", ""},
-        {"default-preserve", "input.cpp", "", "input.cpp"},
-        {"partial-join", "partial-join.input.cpp", "leading-narrow", ""},
-        {"always-space", "always-space.input.cpp", "always-trailing", ""},
-        {"continuation-comment-tail", "continuation-comment-tail.input.cpp",
-            "call-preserve", ""},
-        {"crlf", "crlf.input.cpp", "call-preserve", ""},
-        {"comparison-if-needed", "comparison-if-needed.input.cpp",
-            "ambiguous-if-needed", ""},
-        {"ambiguous-always", "ambiguous-if-needed.input.cpp", "", ""},
-        {"comparison-always", "comparison-if-needed.input.cpp",
-            "ambiguous-always", ""},
-        {"trailing-statements", "trailing-statements.input.cpp",
-            "return-trailing", ""},
-    })
+    for (const auto& [name, input, config, expected] :
+        {
+            std::array<const char*, 4>{
+                "macro-preserve",
+                "macro-preserve.input.cpp",
+                "crlf-return",
+                "",
+            },
+            {
+                "boundary-comment-tail",
+                "comment-tail.input.cpp",
+                "crlf-return",
+                "",
+            },
+            {"recovered-tail", "recovered-tail.input.cpp", "crlf-return", ""},
+            {
+                "template-argument-preserve",
+                "template-argument-preserve.input.cpp",
+                "crlf-return",
+                "",
+            },
+            {"default-preserve", "input.cpp", "", "input.cpp"},
+            {"partial-join", "partial-join.input.cpp", "leading-narrow", ""},
+            {"always-space", "always-space.input.cpp", "always-trailing", ""},
+            {
+                "continuation-comment-tail",
+                "continuation-comment-tail.input.cpp",
+                "call-preserve",
+                "",
+            },
+            {"crlf", "crlf.input.cpp", "call-preserve", ""},
+            {
+                "comparison-if-needed",
+                "comparison-if-needed.input.cpp",
+                "ambiguous-if-needed",
+                "",
+            },
+            {"ambiguous-always", "ambiguous-if-needed.input.cpp", "", ""},
+            {
+                "comparison-always",
+                "comparison-if-needed.input.cpp",
+                "ambiguous-always",
+                "",
+            },
+            {
+                "trailing-statements",
+                "trailing-statements.input.cpp",
+                "return-trailing",
+                "",
+            },
+        })
     {
         cases.push_back(
             {parsedOperators, name, input, config, {}, true, expected});
@@ -1931,83 +2191,147 @@ std::vector<FormatCase> FormatCases()
                 formatter::GapPolicy BinaryOperatorSpacing;
                 formatter::GapPolicy AssignmentOperatorSpacing;
             };
-            for (const auto& policy : std::array<Policy, 15>{{
-                {
-                    "always-leading", 30, BreakRequirement::Always,
-                    CategoryLayout::Canonical, OperatorSide::Leading,
-                    GapPolicy::Space, GapPolicy::Space,
-                },
-                {
-                    "always-trailing", 30, BreakRequirement::Always,
-                    CategoryLayout::Canonical, OperatorSide::Trailing,
-                    GapPolicy::Space, GapPolicy::Space,
-                },
-                {
-                    "ambiguous-always", 32, BreakRequirement::Always,
-                    CategoryLayout::Canonical, OperatorSide::Leading,
-                    GapPolicy::Space, GapPolicy::Space,
-                },
-                {
-                    "ambiguous-if-needed", 32, BreakRequirement::IfNeeded,
-                    CategoryLayout::Canonical, OperatorSide::Leading,
-                    GapPolicy::Space, GapPolicy::Space,
-                },
-                {
-                    "call-preserve", 80, BreakRequirement::Always,
-                    CategoryLayout::Canonical, OperatorSide::Leading,
-                    GapPolicy::Space, GapPolicy::Space,
-                },
-                {
-                    "compact-comparison", 20, BreakRequirement::Always,
-                    CategoryLayout::Canonical, OperatorSide::Trailing,
-                    GapPolicy::Preserve, GapPolicy::Preserve,
-                },
-                {
-                    "compact-return", 25, BreakRequirement::IfNeeded,
-                    CategoryLayout::Canonical, OperatorSide::Trailing,
-                    GapPolicy::NoSpace, GapPolicy::Preserve,
-                },
-                {
-                    "crlf-return", 25, BreakRequirement::IfNeeded,
-                    CategoryLayout::Canonical, OperatorSide::Trailing,
-                    GapPolicy::Preserve, GapPolicy::Preserve,
-                },
-                {
-                    "greedy-leading", 40, BreakRequirement::IfNeeded,
-                    CategoryLayout::Canonical, OperatorSide::Leading,
-                    GapPolicy::Preserve, GapPolicy::Preserve,
-                },
-                {
-                    "horizontal-and-topology", 80, BreakRequirement::IfNeeded,
-                    CategoryLayout::Canonical, OperatorSide::Trailing,
-                    GapPolicy::Space, GapPolicy::Space,
-                },
-                {
-                    "leading-fitting", 40, BreakRequirement::IfNeeded,
-                    CategoryLayout::Canonical, OperatorSide::Leading,
-                    GapPolicy::Space, GapPolicy::Space,
-                },
-                {
-                    "leading-narrow", 30, BreakRequirement::IfNeeded,
-                    CategoryLayout::Canonical, OperatorSide::Leading,
-                    GapPolicy::Space, GapPolicy::Space,
-                },
-                {
-                    "preserve", 40, BreakRequirement::IfNeeded,
-                    CategoryLayout::Preserve, OperatorSide::Trailing,
-                    GapPolicy::Preserve, GapPolicy::Preserve,
-                },
-                {
-                    "return-trailing", 32, BreakRequirement::IfNeeded,
-                    CategoryLayout::Canonical, OperatorSide::Trailing,
-                    GapPolicy::Preserve, GapPolicy::Preserve,
-                },
-                {
-                    "trailing-fitting", 40, BreakRequirement::IfNeeded,
-                    CategoryLayout::Canonical, OperatorSide::Trailing,
-                    GapPolicy::Space, GapPolicy::Space,
-                },
-            }}) {
+            for (const auto& policy :
+                std::array<Policy, 15>{
+                    {
+                        {
+                            "always-leading",
+                            30,
+                            BreakRequirement::Always,
+                            CategoryLayout::Canonical,
+                            OperatorSide::Leading,
+                            GapPolicy::Space,
+                            GapPolicy::Space,
+                        },
+                        {
+                            "always-trailing",
+                            30,
+                            BreakRequirement::Always,
+                            CategoryLayout::Canonical,
+                            OperatorSide::Trailing,
+                            GapPolicy::Space,
+                            GapPolicy::Space,
+                        },
+                        {
+                            "ambiguous-always",
+                            32,
+                            BreakRequirement::Always,
+                            CategoryLayout::Canonical,
+                            OperatorSide::Leading,
+                            GapPolicy::Space,
+                            GapPolicy::Space,
+                        },
+                        {
+                            "ambiguous-if-needed",
+                            32,
+                            BreakRequirement::IfNeeded,
+                            CategoryLayout::Canonical,
+                            OperatorSide::Leading,
+                            GapPolicy::Space,
+                            GapPolicy::Space,
+                        },
+                        {
+                            "call-preserve",
+                            80,
+                            BreakRequirement::Always,
+                            CategoryLayout::Canonical,
+                            OperatorSide::Leading,
+                            GapPolicy::Space,
+                            GapPolicy::Space,
+                        },
+                        {
+                            "compact-comparison",
+                            20,
+                            BreakRequirement::Always,
+                            CategoryLayout::Canonical,
+                            OperatorSide::Trailing,
+                            GapPolicy::Preserve,
+                            GapPolicy::Preserve,
+                        },
+                        {
+                            "compact-return",
+                            25,
+                            BreakRequirement::IfNeeded,
+                            CategoryLayout::Canonical,
+                            OperatorSide::Trailing,
+                            GapPolicy::NoSpace,
+                            GapPolicy::Preserve,
+                        },
+                        {
+                            "crlf-return",
+                            25,
+                            BreakRequirement::IfNeeded,
+                            CategoryLayout::Canonical,
+                            OperatorSide::Trailing,
+                            GapPolicy::Preserve,
+                            GapPolicy::Preserve,
+                        },
+                        {
+                            "greedy-leading",
+                            40,
+                            BreakRequirement::IfNeeded,
+                            CategoryLayout::Canonical,
+                            OperatorSide::Leading,
+                            GapPolicy::Preserve,
+                            GapPolicy::Preserve,
+                        },
+                        {
+                            "horizontal-and-topology",
+                            80,
+                            BreakRequirement::IfNeeded,
+                            CategoryLayout::Canonical,
+                            OperatorSide::Trailing,
+                            GapPolicy::Space,
+                            GapPolicy::Space,
+                        },
+                        {
+                            "leading-fitting",
+                            40,
+                            BreakRequirement::IfNeeded,
+                            CategoryLayout::Canonical,
+                            OperatorSide::Leading,
+                            GapPolicy::Space,
+                            GapPolicy::Space,
+                        },
+                        {
+                            "leading-narrow",
+                            30,
+                            BreakRequirement::IfNeeded,
+                            CategoryLayout::Canonical,
+                            OperatorSide::Leading,
+                            GapPolicy::Space,
+                            GapPolicy::Space,
+                        },
+                        {
+                            "preserve",
+                            40,
+                            BreakRequirement::IfNeeded,
+                            CategoryLayout::Preserve,
+                            OperatorSide::Trailing,
+                            GapPolicy::Preserve,
+                            GapPolicy::Preserve,
+                        },
+                        {
+                            "return-trailing",
+                            32,
+                            BreakRequirement::IfNeeded,
+                            CategoryLayout::Canonical,
+                            OperatorSide::Trailing,
+                            GapPolicy::Preserve,
+                            GapPolicy::Preserve,
+                        },
+                        {
+                            "trailing-fitting",
+                            40,
+                            BreakRequirement::IfNeeded,
+                            CategoryLayout::Canonical,
+                            OperatorSide::Trailing,
+                            GapPolicy::Space,
+                            GapPolicy::Space,
+                        },
+                    },
+                })
+            {
                 auto style = base;
                 style.ColumnLimit = policy.ColumnLimit;
                 style.ExpressionsBreak = policy.ExpressionsBreak;
@@ -2073,15 +2397,23 @@ std::vector<FormatCase> FormatCases()
             {functionParameters, name, std::string(name) + ".input.cpp"});
     }
     // Name, input, config override, read-only expectation alias.
-    for (const auto& [name, input, config, expected] : {
-        std::array<const char*, 4>{"short-next-line",
-            "short-preserved-header.input.cpp", "pack_name", ""},
-        {"tabs-next-line", "preserve-header.input.cpp", "", ""},
-        {"crlf", "crlf.input.cpp", "", "crlf.output.cpp"},
-        {"preserved-header-definitions",
-            "preserved-header-definitions.input.cpp",
-            "reflow-preserved-header", ""},
-    })
+    for (const auto& [name, input, config, expected] :
+        {
+            std::array<const char*, 4>{
+                "short-next-line",
+                "short-preserved-header.input.cpp",
+                "pack_name",
+                "",
+            },
+            {"tabs-next-line", "preserve-header.input.cpp", "", ""},
+            {"crlf", "crlf.input.cpp", "", "crlf.output.cpp"},
+            {
+                "preserved-header-definitions",
+                "preserved-header-definitions.input.cpp",
+                "reflow-preserved-header",
+                "",
+            },
+        })
     {
         cases.push_back(
             {functionParameters, name, input, config, {}, true, expected});
@@ -2100,16 +2432,24 @@ std::vector<FormatCase> FormatCases()
                 formatter::CategoryLayout DeclarationHeadersLayout;
                 formatter::GapPolicy FunctionBraceSpacing;
             };
-            for (const auto& policy : std::array<Policy, 2>{{
-                {
-                    "detached-spacing", 40, CategoryLayout::Canonical,
-                    GapPolicy::Space,
-                },
-                {
-                    "crlf", 25, CategoryLayout::Inherit,
-                    GapPolicy::GeneratedSpace,
-                },
-            }}) {
+            for (const auto& policy :
+                std::array<Policy, 2>{
+                    {
+                        {
+                            "detached-spacing",
+                            40,
+                            CategoryLayout::Canonical,
+                            GapPolicy::Space,
+                        },
+                        {
+                            "crlf",
+                            25,
+                            CategoryLayout::Inherit,
+                            GapPolicy::GeneratedSpace,
+                        },
+                    },
+                })
+            {
                 auto style = base;
                 style.ColumnLimit = policy.ColumnLimit;
                 style.DeclarationHeadersLayout =
@@ -2129,17 +2469,26 @@ std::vector<FormatCase> FormatCases()
                 std::optional<std::size_t> ParametersContinuationOffset;
                 formatter::CategoryLayout DeclarationHeadersLayout;
             };
-            for (const auto& policy : std::array<Policy, 2>{{
-                {
-                    "reflow-preserved-header", IndentationKind::Preserve,
-                    CategoryLayout::Canonical, std::nullopt,
-                    CategoryLayout::Preserve,
-                },
-                {
-                    "tabs-next-line", IndentationKind::Tabs,
-                    CategoryLayout::Canonical, 8, CategoryLayout::Canonical,
-                },
-            }}) {
+            for (const auto& policy :
+                std::array<Policy, 2>{
+                    {
+                        {
+                            "reflow-preserved-header",
+                            IndentationKind::Preserve,
+                            CategoryLayout::Canonical,
+                            std::nullopt,
+                            CategoryLayout::Preserve,
+                        },
+                        {
+                            "tabs-next-line",
+                            IndentationKind::Tabs,
+                            CategoryLayout::Canonical,
+                            8,
+                            CategoryLayout::Canonical,
+                        },
+                    },
+                })
+            {
                 auto style = base;
                 style.IndentationKind = policy.IndentationKind;
                 style.ParametersLayout = policy.ParametersLayout;
@@ -2165,11 +2514,16 @@ std::vector<FormatCase> FormatCases()
     cases.push_back(
         {lambdaAnchors, "authored-anchor", "authored-anchor.input.cpp"});
     // Name, input, config override, read-only expectation alias.
-    for (const auto& [name, input, config, expected] : {
-        std::array<const char*, 4>{"correct-anchor",
-            "correct-anchor.input.cpp", "authored-anchor", ""},
-        {"narrow-body", "correct-anchor.input.cpp", "", ""},
-    })
+    for (const auto& [name, input, config, expected] :
+        {
+            std::array<const char*, 4>{
+                "correct-anchor",
+                "correct-anchor.input.cpp",
+                "authored-anchor",
+                "",
+            },
+            {"narrow-body", "correct-anchor.input.cpp", "", ""},
+        })
     {
         cases.push_back(
             {lambdaAnchors, name, input, config, {}, true, expected});
@@ -2229,12 +2583,21 @@ std::vector<FormatCase> FormatCases()
             .push_back({controlBodies, name, std::string(name) + ".input.cpp"});
     }
     // Name, input, config override, read-only expectation alias.
-    for (const auto& [name, input, config, expected] : {
-        std::array<const char*, 4>{"crlf", "crlf.input.cpp",
-            "comment-barrier", ""},
-        {"complete-control-bodies", "complete-control-bodies.input.cpp",
-            "comment-barrier", ""},
-    })
+    for (const auto& [name, input, config, expected] :
+        {
+            std::array<const char*, 4>{
+                "crlf",
+                "crlf.input.cpp",
+                "comment-barrier",
+                "",
+            },
+            {
+                "complete-control-bodies",
+                "complete-control-bodies.input.cpp",
+                "comment-barrier",
+                "",
+            },
+        })
     {
         cases.push_back(
             {controlBodies, name, input, config, {}, true, expected});
@@ -2254,20 +2617,33 @@ std::vector<FormatCase> FormatCases()
                 formatter::EmptyControlBody EmptyControlBody;
                 formatter::GapPolicy EmptyBlockInteriorSpacing;
             };
-            for (const auto& policy : std::array<Policy, 3>{{
-                {
-                    "empty-blocks-without-add", BodyShape::CompactIfFits,
-                    false, EmptyControlBody::EmptyBlock, GapPolicy::Space,
-                },
-                {
-                    "empty-blocks", BodyShape::CompactIfFits, true,
-                    EmptyControlBody::EmptyBlock, GapPolicy::Space,
-                },
-                {
-                    "nested-unbraced", BodyShape::Expanded, true,
-                    EmptyControlBody::Preserve, GapPolicy::GeneratedNoSpace,
-                },
-            }}) {
+            for (const auto& policy :
+                std::array<Policy, 3>{
+                    {
+                        {
+                            "empty-blocks-without-add",
+                            BodyShape::CompactIfFits,
+                            false,
+                            EmptyControlBody::EmptyBlock,
+                            GapPolicy::Space,
+                        },
+                        {
+                            "empty-blocks",
+                            BodyShape::CompactIfFits,
+                            true,
+                            EmptyControlBody::EmptyBlock,
+                            GapPolicy::Space,
+                        },
+                        {
+                            "nested-unbraced",
+                            BodyShape::Expanded,
+                            true,
+                            EmptyControlBody::Preserve,
+                            GapPolicy::GeneratedNoSpace,
+                        },
+                    },
+                })
+            {
                 auto style = base;
                 style.EmptyBodyShape = policy.EmptyBodyShape;
                 style.AddMissingControlBraces = policy.AddMissingControlBraces;
@@ -2299,19 +2675,41 @@ std::vector<FormatCase> FormatCases()
         {"balanced-vertical", "balanced-preserve"},
         "balanced-fill.input.cpp");
     // Name, input, config override, read-only expectation alias.
-    for (const auto& [name, input, config, expected] : {
-        std::array<const char*, 4>{"default-preserve", "input.cpp", "",
-            "input.cpp"},
-        {"always-fill", "long.input.cpp", "", "long-packed.output.cpp"},
-        {"vertical-next-line", "input.cpp", "", "one-per-line.output.cpp"},
-        {"crlf-call", "crlf-call.input.cpp", "unsafe-continuation",
-            "crlf.output.cpp"},
-        {"sole-fitting", "sole-fitting.input.cpp", "",
-            "sole-fitting.output.cpp"},
-        {"sole-separated", "sole-fitting.input.cpp", "",
-            "sole-separated.output.cpp"},
-        {"lambda-capture", "lambda-capture.input.cpp", "lambda-position", ""},
-    })
+    for (const auto& [name, input, config, expected] :
+        {
+            std::array<const char*, 4>{
+                "default-preserve",
+                "input.cpp",
+                "",
+                "input.cpp",
+            },
+            {"always-fill", "long.input.cpp", "", "long-packed.output.cpp"},
+            {"vertical-next-line", "input.cpp", "", "one-per-line.output.cpp"},
+            {
+                "crlf-call",
+                "crlf-call.input.cpp",
+                "unsafe-continuation",
+                "crlf.output.cpp",
+            },
+            {
+                "sole-fitting",
+                "sole-fitting.input.cpp",
+                "",
+                "sole-fitting.output.cpp",
+            },
+            {
+                "sole-separated",
+                "sole-fitting.input.cpp",
+                "",
+                "sole-separated.output.cpp",
+            },
+            {
+                "lambda-capture",
+                "lambda-capture.input.cpp",
+                "lambda-position",
+                "",
+            },
+        })
     {
         cases.push_back({callReflow, name, input, config, {}, true, expected});
     }
@@ -2330,22 +2728,30 @@ std::vector<FormatCase> FormatCases()
                 std::optional<formatter::FirstItemPlacement>
                     CallsSoleArgumentFirstItem;
             };
-            for (const auto& policy : std::array<Policy, 3>{{
-                {
-                    "sole-argument-always", BreakRequirement::Always,
-                    FirstItemPlacement::NextLine,
-                    FirstItemPlacement::InlineIfFits,
-                },
-                {
-                    "sole-argument-inherit", std::nullopt,
-                    FirstItemPlacement::NextLine, std::nullopt,
-                },
-                {
-                    "sole-argument-next-line", std::nullopt,
-                    FirstItemPlacement::InlineIfFits,
-                    FirstItemPlacement::NextLine,
-                },
-            }}) {
+            for (const auto& policy :
+                std::array<Policy, 3>{
+                    {
+                        {
+                            "sole-argument-always",
+                            BreakRequirement::Always,
+                            FirstItemPlacement::NextLine,
+                            FirstItemPlacement::InlineIfFits,
+                        },
+                        {
+                            "sole-argument-inherit",
+                            std::nullopt,
+                            FirstItemPlacement::NextLine,
+                            std::nullopt,
+                        },
+                        {
+                            "sole-argument-next-line",
+                            std::nullopt,
+                            FirstItemPlacement::InlineIfFits,
+                            FirstItemPlacement::NextLine,
+                        },
+                    },
+                })
+            {
                 auto style = base;
                 style.CallsBreak = policy.CallsBreak;
                 style.CallsFirstItem = policy.CallsFirstItem;
@@ -2370,60 +2776,96 @@ std::vector<FormatCase> FormatCases()
                 formatter::BracePlacement ControlBracePlacement;
                 formatter::GapPolicy SpaceInsideCallArguments;
             };
-            for (const auto& policy : std::array<Policy, 7>{{
-                {
-                    "balanced-fill", 32, CategoryLayout::Canonical,
-                    BreakRequirement::IfNeeded, ListPacking::Fill,
-                    std::nullopt, ContinuationAlignment::Block,
-                    CategoryLayout::Canonical,
-                    BracePlacement::NextLineIfHeaderBroken,
-                    GapPolicy::Preserve,
-                },
-                {
-                    "balanced-preserve", 32, CategoryLayout::Preserve,
-                    BreakRequirement::IfNeeded,
-                    ListPacking::VerticalWhenBroken, std::nullopt,
-                    ContinuationAlignment::Block, CategoryLayout::Canonical,
-                    BracePlacement::NextLineIfHeaderBroken,
-                    GapPolicy::Preserve,
-                },
-                {
-                    "balanced-vertical", 32, CategoryLayout::Canonical,
-                    BreakRequirement::IfNeeded,
-                    ListPacking::VerticalWhenBroken, std::nullopt,
-                    ContinuationAlignment::Block, CategoryLayout::Canonical,
-                    BracePlacement::NextLineIfHeaderBroken,
-                    GapPolicy::Preserve,
-                },
-                {
-                    "control-header-composition", 32,
-                    CategoryLayout::Canonical, BreakRequirement::Always,
-                    ListPacking::Fill, std::nullopt,
-                    ContinuationAlignment::Block, CategoryLayout::Canonical,
-                    BracePlacement::NextLineIfHeaderBroken,
-                    GapPolicy::GeneratedNoSpace,
-                },
-                {
-                    "delimiter-alignment", 32, CategoryLayout::Canonical,
-                    BreakRequirement::Always, ListPacking::Fill, std::nullopt,
-                    ContinuationAlignment::Delimiter, CategoryLayout::Inherit,
-                    BracePlacement::Attached, GapPolicy::GeneratedNoSpace,
-                },
-                {
-                    "next-line-reposition", 25, CategoryLayout::Canonical,
-                    BreakRequirement::Always, ListPacking::Fill,
-                    FirstItemPlacement::NextLine,
-                    ContinuationAlignment::Delimiter, CategoryLayout::Inherit,
-                    BracePlacement::Attached, GapPolicy::GeneratedNoSpace,
-                },
-                {
-                    "spaced-vertical", 25, CategoryLayout::Canonical,
-                    BreakRequirement::Always, ListPacking::VerticalWhenBroken,
-                    std::nullopt, ContinuationAlignment::Block,
-                    CategoryLayout::Canonical,
-                    BracePlacement::NextLineIfHeaderBroken, GapPolicy::Space,
-                },
-            }}) {
+            for (const auto& policy :
+                std::array<Policy, 7>{
+                    {
+                        {
+                            "balanced-fill",
+                            32,
+                            CategoryLayout::Canonical,
+                            BreakRequirement::IfNeeded,
+                            ListPacking::Fill,
+                            std::nullopt,
+                            ContinuationAlignment::Block,
+                            CategoryLayout::Canonical,
+                            BracePlacement::NextLineIfHeaderBroken,
+                            GapPolicy::Preserve,
+                        },
+                        {
+                            "balanced-preserve",
+                            32,
+                            CategoryLayout::Preserve,
+                            BreakRequirement::IfNeeded,
+                            ListPacking::VerticalWhenBroken,
+                            std::nullopt,
+                            ContinuationAlignment::Block,
+                            CategoryLayout::Canonical,
+                            BracePlacement::NextLineIfHeaderBroken,
+                            GapPolicy::Preserve,
+                        },
+                        {
+                            "balanced-vertical",
+                            32,
+                            CategoryLayout::Canonical,
+                            BreakRequirement::IfNeeded,
+                            ListPacking::VerticalWhenBroken,
+                            std::nullopt,
+                            ContinuationAlignment::Block,
+                            CategoryLayout::Canonical,
+                            BracePlacement::NextLineIfHeaderBroken,
+                            GapPolicy::Preserve,
+                        },
+                        {
+                            "control-header-composition",
+                            32,
+                            CategoryLayout::Canonical,
+                            BreakRequirement::Always,
+                            ListPacking::Fill,
+                            std::nullopt,
+                            ContinuationAlignment::Block,
+                            CategoryLayout::Canonical,
+                            BracePlacement::NextLineIfHeaderBroken,
+                            GapPolicy::GeneratedNoSpace,
+                        },
+                        {
+                            "delimiter-alignment",
+                            32,
+                            CategoryLayout::Canonical,
+                            BreakRequirement::Always,
+                            ListPacking::Fill,
+                            std::nullopt,
+                            ContinuationAlignment::Delimiter,
+                            CategoryLayout::Inherit,
+                            BracePlacement::Attached,
+                            GapPolicy::GeneratedNoSpace,
+                        },
+                        {
+                            "next-line-reposition",
+                            25,
+                            CategoryLayout::Canonical,
+                            BreakRequirement::Always,
+                            ListPacking::Fill,
+                            FirstItemPlacement::NextLine,
+                            ContinuationAlignment::Delimiter,
+                            CategoryLayout::Inherit,
+                            BracePlacement::Attached,
+                            GapPolicy::GeneratedNoSpace,
+                        },
+                        {
+                            "spaced-vertical",
+                            25,
+                            CategoryLayout::Canonical,
+                            BreakRequirement::Always,
+                            ListPacking::VerticalWhenBroken,
+                            std::nullopt,
+                            ContinuationAlignment::Block,
+                            CategoryLayout::Canonical,
+                            BracePlacement::NextLineIfHeaderBroken,
+                            GapPolicy::Space,
+                        },
+                    },
+                })
+            {
                 auto style = base;
                 style.ColumnLimit = policy.ColumnLimit;
                 style.CallsLayout = policy.CallsLayout;
@@ -2449,21 +2891,33 @@ std::vector<FormatCase> FormatCases()
                 std::optional<formatter::ListPacking> CallsPacking;
                 std::optional<formatter::FirstItemPlacement> CallsFirstItem;
             };
-            for (const auto& policy : std::array<Policy, 3>{{
-                {
-                    "default-preserve", CategoryLayout::Inherit, std::nullopt,
-                    std::nullopt, std::nullopt,
-                },
-                {
-                    "always-fill", CategoryLayout::Canonical,
-                    BreakRequirement::Always, ListPacking::Fill, std::nullopt,
-                },
-                {
-                    "vertical-next-line", CategoryLayout::Canonical,
-                    BreakRequirement::Always, ListPacking::VerticalWhenBroken,
-                    FirstItemPlacement::NextLine,
-                },
-            }}) {
+            for (const auto& policy :
+                std::array<Policy, 3>{
+                    {
+                        {
+                            "default-preserve",
+                            CategoryLayout::Inherit,
+                            std::nullopt,
+                            std::nullopt,
+                            std::nullopt,
+                        },
+                        {
+                            "always-fill",
+                            CategoryLayout::Canonical,
+                            BreakRequirement::Always,
+                            ListPacking::Fill,
+                            std::nullopt,
+                        },
+                        {
+                            "vertical-next-line",
+                            CategoryLayout::Canonical,
+                            BreakRequirement::Always,
+                            ListPacking::VerticalWhenBroken,
+                            FirstItemPlacement::NextLine,
+                        },
+                    },
+                })
+            {
                 auto style = base;
                 style.CallsLayout = policy.CallsLayout;
                 style.CallsBreak = policy.CallsBreak;
@@ -2513,29 +2967,68 @@ std::vector<FormatCase> FormatCases()
         {"preserve-always-trailing", "preserve-authored-flexible"},
         "authored-fitting.input.cpp");
     // Name, input, config override, read-only expectation alias.
-    for (const auto& [name, input, config, expected] : {
-        std::array<const char*, 4>{"two-leading", "input.cpp", "",
-            "two-leading.output.cpp"},
-        {"three-leading", "input.cpp", "", "three-leading.output.cpp"},
-        {"preserve-leading", "input.cpp", "", "input.cpp"},
-        {"fitting-leading", "fitting-leading.input.cpp", "three-leading", ""},
-        {"two-trailing", "input.cpp", "", "two-trailing.output.cpp"},
-        {"three-trailing", "input.cpp", "", "three-trailing.output.cpp"},
-        {"preserve-trailing", "input.cpp", "", "input.cpp"},
-        {"fitting-trailing", "fitting-leading.input.cpp", "three-trailing", ""},
-        {"always-leading", "authored-fitting.input.cpp", "",
-            "three-leading.output.cpp"},
-        {"always-trailing", "authored-fitting.input.cpp", "",
-            "three-trailing.output.cpp"},
-        {"crlf-fitting", "crlf-fitting.input.cpp", "flat-trailing-fitting", ""},
-        {"authored-ternary-topologies",
-            "authored-ternary-topologies.input.cpp", "authored-fitting", ""},
-        {"fitting-three-part", "fitting-three-part.input.cpp",
-            "three-part-fitting", ""},
-        {"trailing-ternary-topologies",
-            "trailing-ternary-topologies.input.cpp", "flat-trailing-fitting",
-            ""},
-    })
+    for (const auto& [name, input, config, expected] :
+        {
+            std::array<const char*, 4>{
+                "two-leading",
+                "input.cpp",
+                "",
+                "two-leading.output.cpp",
+            },
+            {"three-leading", "input.cpp", "", "three-leading.output.cpp"},
+            {"preserve-leading", "input.cpp", "", "input.cpp"},
+            {
+                "fitting-leading",
+                "fitting-leading.input.cpp",
+                "three-leading",
+                "",
+            },
+            {"two-trailing", "input.cpp", "", "two-trailing.output.cpp"},
+            {"three-trailing", "input.cpp", "", "three-trailing.output.cpp"},
+            {"preserve-trailing", "input.cpp", "", "input.cpp"},
+            {
+                "fitting-trailing",
+                "fitting-leading.input.cpp",
+                "three-trailing",
+                "",
+            },
+            {
+                "always-leading",
+                "authored-fitting.input.cpp",
+                "",
+                "three-leading.output.cpp",
+            },
+            {
+                "always-trailing",
+                "authored-fitting.input.cpp",
+                "",
+                "three-trailing.output.cpp",
+            },
+            {
+                "crlf-fitting",
+                "crlf-fitting.input.cpp",
+                "flat-trailing-fitting",
+                "",
+            },
+            {
+                "authored-ternary-topologies",
+                "authored-ternary-topologies.input.cpp",
+                "authored-fitting",
+                "",
+            },
+            {
+                "fitting-three-part",
+                "fitting-three-part.input.cpp",
+                "three-part-fitting",
+                "",
+            },
+            {
+                "trailing-ternary-topologies",
+                "trailing-ternary-topologies.input.cpp",
+                "flat-trailing-fitting",
+                "",
+            },
+        })
     {
         cases.push_back(
             {ternaryLayout, name, input, config, {}, true, expected});
@@ -2556,73 +3049,116 @@ std::vector<FormatCase> FormatCases()
                 formatter::OperatorSide TernaryOperatorSide;
                 formatter::TernaryLayout TernaryLayout;
             };
-            for (const auto& policy : std::array<Policy, 13>{{
-                {
-                    "always-leading", 80, BreakRequirement::Always,
-                    CategoryLayout::Canonical, OperatorSide::Leading,
-                    TernaryLayout::ThreePart,
-                },
-                {
-                    "always-trailing", 80, BreakRequirement::Always,
-                    CategoryLayout::Canonical, OperatorSide::Trailing,
-                    TernaryLayout::ThreePart,
-                },
-                {
-                    "authored-fitting", 80, BreakRequirement::IfNeeded,
-                    CategoryLayout::Canonical, OperatorSide::Leading,
-                    TernaryLayout::Flexible,
-                },
-                {
-                    "flat-trailing-fitting", 80, BreakRequirement::IfNeeded,
-                    CategoryLayout::Canonical, OperatorSide::Trailing,
-                    TernaryLayout::ThreePart,
-                },
-                {
-                    "preserve-always-narrow", 20, BreakRequirement::Always,
-                    CategoryLayout::Preserve, OperatorSide::Leading,
-                    TernaryLayout::Flexible,
-                },
-                {
-                    "preserve-always-trailing", 80, BreakRequirement::Always,
-                    CategoryLayout::Preserve, OperatorSide::Trailing,
-                    TernaryLayout::ThreePart,
-                },
-                {
-                    "preserve-authored-flexible", 80,
-                    BreakRequirement::IfNeeded, CategoryLayout::Preserve,
-                    OperatorSide::Trailing, TernaryLayout::Flexible,
-                },
-                {
-                    "preserve-leading", 40, BreakRequirement::IfNeeded,
-                    CategoryLayout::Preserve, OperatorSide::Leading,
-                    TernaryLayout::Flexible,
-                },
-                {
-                    "preserve-trailing", 40, BreakRequirement::IfNeeded,
-                    CategoryLayout::Preserve, OperatorSide::Trailing,
-                    TernaryLayout::Flexible,
-                },
-                {
-                    "three-leading", 40, BreakRequirement::IfNeeded,
-                    CategoryLayout::Canonical, OperatorSide::Leading,
-                    TernaryLayout::ThreePart,
-                },
-                {
-                    "three-part-fitting", 80, BreakRequirement::IfNeeded,
-                    CategoryLayout::Canonical, OperatorSide::Leading,
-                    TernaryLayout::ThreePart,
-                },
-                {
-                    "three-trailing", 40, BreakRequirement::IfNeeded,
-                    CategoryLayout::Canonical, OperatorSide::Trailing,
-                    TernaryLayout::ThreePart,
-                },
-                {
-                    "two-trailing", 40, BreakRequirement::IfNeeded,
-                    CategoryLayout::Canonical, OperatorSide::Trailing,
-                    TernaryLayout::Flexible,
-                },
-            }}) {
+            for (const auto& policy :
+                std::array<Policy, 13>{
+                    {
+                        {
+                            "always-leading",
+                            80,
+                            BreakRequirement::Always,
+                            CategoryLayout::Canonical,
+                            OperatorSide::Leading,
+                            TernaryLayout::ThreePart,
+                        },
+                        {
+                            "always-trailing",
+                            80,
+                            BreakRequirement::Always,
+                            CategoryLayout::Canonical,
+                            OperatorSide::Trailing,
+                            TernaryLayout::ThreePart,
+                        },
+                        {
+                            "authored-fitting",
+                            80,
+                            BreakRequirement::IfNeeded,
+                            CategoryLayout::Canonical,
+                            OperatorSide::Leading,
+                            TernaryLayout::Flexible,
+                        },
+                        {
+                            "flat-trailing-fitting",
+                            80,
+                            BreakRequirement::IfNeeded,
+                            CategoryLayout::Canonical,
+                            OperatorSide::Trailing,
+                            TernaryLayout::ThreePart,
+                        },
+                        {
+                            "preserve-always-narrow",
+                            20,
+                            BreakRequirement::Always,
+                            CategoryLayout::Preserve,
+                            OperatorSide::Leading,
+                            TernaryLayout::Flexible,
+                        },
+                        {
+                            "preserve-always-trailing",
+                            80,
+                            BreakRequirement::Always,
+                            CategoryLayout::Preserve,
+                            OperatorSide::Trailing,
+                            TernaryLayout::ThreePart,
+                        },
+                        {
+                            "preserve-authored-flexible",
+                            80,
+                            BreakRequirement::IfNeeded,
+                            CategoryLayout::Preserve,
+                            OperatorSide::Trailing,
+                            TernaryLayout::Flexible,
+                        },
+                        {
+                            "preserve-leading",
+                            40,
+                            BreakRequirement::IfNeeded,
+                            CategoryLayout::Preserve,
+                            OperatorSide::Leading,
+                            TernaryLayout::Flexible,
+                        },
+                        {
+                            "preserve-trailing",
+                            40,
+                            BreakRequirement::IfNeeded,
+                            CategoryLayout::Preserve,
+                            OperatorSide::Trailing,
+                            TernaryLayout::Flexible,
+                        },
+                        {
+                            "three-leading",
+                            40,
+                            BreakRequirement::IfNeeded,
+                            CategoryLayout::Canonical,
+                            OperatorSide::Leading,
+                            TernaryLayout::ThreePart,
+                        },
+                        {
+                            "three-part-fitting",
+                            80,
+                            BreakRequirement::IfNeeded,
+                            CategoryLayout::Canonical,
+                            OperatorSide::Leading,
+                            TernaryLayout::ThreePart,
+                        },
+                        {
+                            "three-trailing",
+                            40,
+                            BreakRequirement::IfNeeded,
+                            CategoryLayout::Canonical,
+                            OperatorSide::Trailing,
+                            TernaryLayout::ThreePart,
+                        },
+                        {
+                            "two-trailing",
+                            40,
+                            BreakRequirement::IfNeeded,
+                            CategoryLayout::Canonical,
+                            OperatorSide::Trailing,
+                            TernaryLayout::Flexible,
+                        },
+                    },
+                })
+            {
                 auto style = base;
                 style.ColumnLimit = policy.ColumnLimit;
                 style.ExpressionsBreak = policy.ExpressionsBreak;
@@ -2644,28 +3180,44 @@ std::vector<FormatCase> FormatCases()
                 formatter::TernaryLayout TernaryLayout;
                 formatter::TernaryOperatorIndentation OperatorIndentation;
             };
-            for (const auto& policy : std::array<Policy, 4>{{
-                {
-                    "branches-indent-narrow", LayoutMode::Canonical, 40,
-                    OperatorSide::Leading, TernaryLayout::ThreePart,
-                    TernaryOperatorIndentation::Indent,
-                },
-                {
-                    "branches-indent-preserve", LayoutMode::Preserve, 80,
-                    OperatorSide::Leading, TernaryLayout::Flexible,
-                    TernaryOperatorIndentation::Indent,
-                },
-                {
-                    "branches-indent-trailing", LayoutMode::Canonical, 40,
-                    OperatorSide::Trailing, TernaryLayout::ThreePart,
-                    TernaryOperatorIndentation::Indent,
-                },
-                {
-                    "branches-narrow", LayoutMode::Canonical, 40,
-                    OperatorSide::Leading, TernaryLayout::ThreePart,
-                    TernaryOperatorIndentation::Align,
-                },
-            }}) {
+            for (const auto& policy :
+                std::array<Policy, 4>{
+                    {
+                        {
+                            "branches-indent-narrow",
+                            LayoutMode::Canonical,
+                            40,
+                            OperatorSide::Leading,
+                            TernaryLayout::ThreePart,
+                            TernaryOperatorIndentation::Indent,
+                        },
+                        {
+                            "branches-indent-preserve",
+                            LayoutMode::Preserve,
+                            80,
+                            OperatorSide::Leading,
+                            TernaryLayout::Flexible,
+                            TernaryOperatorIndentation::Indent,
+                        },
+                        {
+                            "branches-indent-trailing",
+                            LayoutMode::Canonical,
+                            40,
+                            OperatorSide::Trailing,
+                            TernaryLayout::ThreePart,
+                            TernaryOperatorIndentation::Indent,
+                        },
+                        {
+                            "branches-narrow",
+                            LayoutMode::Canonical,
+                            40,
+                            OperatorSide::Leading,
+                            TernaryLayout::ThreePart,
+                            TernaryOperatorIndentation::Align,
+                        },
+                    },
+                })
+            {
                 auto style = base;
                 style.Layout = policy.Layout;
                 style.ColumnLimit = policy.ColumnLimit;
@@ -2691,10 +3243,22 @@ std::vector<FormatCase> FormatCases()
                 std::size_t ColumnLimit;
                 formatter::TernaryLayout TernaryLayout;
             };
-            for (const auto& policy : std::array<Policy, 2>{{
-                {"initializer-shape-flexible", 72, TernaryLayout::Flexible},
-                {"initializer-shape-narrow", 40, TernaryLayout::ThreePart},
-            }}) {
+            for (const auto& policy :
+                std::array<Policy, 2>{
+                    {
+                        {
+                            "initializer-shape-flexible",
+                            72,
+                            TernaryLayout::Flexible,
+                        },
+                        {
+                            "initializer-shape-narrow",
+                            40,
+                            TernaryLayout::ThreePart,
+                        },
+                    },
+                })
+            {
                 auto style = base;
                 style.ColumnLimit = policy.ColumnLimit;
                 style.TernaryLayout = policy.TernaryLayout;
@@ -2785,12 +3349,21 @@ std::vector<FormatCase> FormatCases()
         },
         "record-head-policies.input.cpp");
     // Name, input, config override, read-only expectation alias.
-    for (const auto& [name, input, config, expected] : {
-        std::array<const char*, 4>{"comment-namespace-only",
-            "comment-external.input.cpp", "", ""},
-        {"comment-sequence-zero", "comment-sequence-zero.input.cpp",
-            "../standalone-comment-gaps/zero", ""},
-    })
+    for (const auto& [name, input, config, expected] :
+        {
+            std::array<const char*, 4>{
+                "comment-namespace-only",
+                "comment-external.input.cpp",
+                "",
+                "",
+            },
+            {
+                "comment-sequence-zero",
+                "comment-sequence-zero.input.cpp",
+                "../standalone-comment-gaps/zero",
+                "",
+            },
+        })
     {
         cases.push_back(
             {consolidatedLayout, name, input, config, {}, true, expected});
@@ -2808,48 +3381,62 @@ std::vector<FormatCase> FormatCases()
                 formatter::LayoutMode Layout;
                 formatter::GapPolicy CommaSpaceAfter;
             };
-            for (const auto& policy : std::array<Policy, 10>{{
-                {
-                    "record-head-boundaries", LayoutMode::Canonical,
-                    GapPolicy::Space,
-                },
-                {
-                    "record-head-generated-no-space-canonical",
-                    LayoutMode::Canonical, GapPolicy::GeneratedNoSpace,
-                },
-                {
-                    "record-head-generated-no-space-preserved",
-                    LayoutMode::Preserve, GapPolicy::GeneratedNoSpace,
-                },
-                {
-                    "record-head-generated-space-canonical",
-                    LayoutMode::Canonical, GapPolicy::GeneratedSpace,
-                },
-                {
-                    "record-head-generated-space-preserved",
-                    LayoutMode::Preserve, GapPolicy::GeneratedSpace,
-                },
-                {
-                    "record-head-no-space-canonical", LayoutMode::Canonical,
-                    GapPolicy::NoSpace,
-                },
-                {
-                    "record-head-no-space-preserved", LayoutMode::Preserve,
-                    GapPolicy::NoSpace,
-                },
-                {
-                    "record-head-preserve-canonical", LayoutMode::Canonical,
-                    GapPolicy::Preserve,
-                },
-                {
-                    "record-head-preserved", LayoutMode::Preserve,
-                    GapPolicy::Preserve,
-                },
-                {
-                    "record-head-space-preserved", LayoutMode::Preserve,
-                    GapPolicy::Space,
-                },
-            }}) {
+            for (const auto& policy :
+                std::array<Policy, 10>{
+                    {
+                        {
+                            "record-head-boundaries",
+                            LayoutMode::Canonical,
+                            GapPolicy::Space,
+                        },
+                        {
+                            "record-head-generated-no-space-canonical",
+                            LayoutMode::Canonical,
+                            GapPolicy::GeneratedNoSpace,
+                        },
+                        {
+                            "record-head-generated-no-space-preserved",
+                            LayoutMode::Preserve,
+                            GapPolicy::GeneratedNoSpace,
+                        },
+                        {
+                            "record-head-generated-space-canonical",
+                            LayoutMode::Canonical,
+                            GapPolicy::GeneratedSpace,
+                        },
+                        {
+                            "record-head-generated-space-preserved",
+                            LayoutMode::Preserve,
+                            GapPolicy::GeneratedSpace,
+                        },
+                        {
+                            "record-head-no-space-canonical",
+                            LayoutMode::Canonical,
+                            GapPolicy::NoSpace,
+                        },
+                        {
+                            "record-head-no-space-preserved",
+                            LayoutMode::Preserve,
+                            GapPolicy::NoSpace,
+                        },
+                        {
+                            "record-head-preserve-canonical",
+                            LayoutMode::Canonical,
+                            GapPolicy::Preserve,
+                        },
+                        {
+                            "record-head-preserved",
+                            LayoutMode::Preserve,
+                            GapPolicy::Preserve,
+                        },
+                        {
+                            "record-head-space-preserved",
+                            LayoutMode::Preserve,
+                            GapPolicy::Space,
+                        },
+                    },
+                })
+            {
                 auto style = base;
                 style.Layout = policy.Layout;
                 style.CommaSpaceAfter = policy.CommaSpaceAfter;
@@ -2870,34 +3457,57 @@ std::vector<FormatCase> FormatCases()
                 formatter::BodyShape BodyShape;
                 formatter::BracePlacement ControlBracePlacement;
             };
-            for (const auto& policy : std::array<Policy, 5>{{
-                {
-                    "control-attached", std::nullopt, std::nullopt,
-                    std::nullopt, CategoryLayout::Inherit, BodyShape::Expanded,
-                    BracePlacement::Attached,
-                },
-                {
-                    "control-compact", std::nullopt, std::nullopt,
-                    std::nullopt, CategoryLayout::Inherit,
-                    BodyShape::CompactIfFits, BracePlacement::NextLine,
-                },
-                {
-                    "control-forced-header", BreakRequirement::Always,
-                    FirstItemPlacement::NextLine, CloserPlacement::OwnLine,
-                    CategoryLayout::Inherit, BodyShape::Expanded,
-                    BracePlacement::NextLineIfHeaderBroken,
-                },
-                {
-                    "control-header-broken", std::nullopt, std::nullopt,
-                    std::nullopt, CategoryLayout::Inherit, BodyShape::Expanded,
-                    BracePlacement::NextLineIfHeaderBroken,
-                },
-                {
-                    "control-preserved-body", std::nullopt, std::nullopt,
-                    std::nullopt, CategoryLayout::Preserve,
-                    BodyShape::Expanded, BracePlacement::NextLine,
-                },
-            }}) {
+            for (const auto& policy :
+                std::array<Policy, 5>{
+                    {
+                        {
+                            "control-attached",
+                            std::nullopt,
+                            std::nullopt,
+                            std::nullopt,
+                            CategoryLayout::Inherit,
+                            BodyShape::Expanded,
+                            BracePlacement::Attached,
+                        },
+                        {
+                            "control-compact",
+                            std::nullopt,
+                            std::nullopt,
+                            std::nullopt,
+                            CategoryLayout::Inherit,
+                            BodyShape::CompactIfFits,
+                            BracePlacement::NextLine,
+                        },
+                        {
+                            "control-forced-header",
+                            BreakRequirement::Always,
+                            FirstItemPlacement::NextLine,
+                            CloserPlacement::OwnLine,
+                            CategoryLayout::Inherit,
+                            BodyShape::Expanded,
+                            BracePlacement::NextLineIfHeaderBroken,
+                        },
+                        {
+                            "control-header-broken",
+                            std::nullopt,
+                            std::nullopt,
+                            std::nullopt,
+                            CategoryLayout::Inherit,
+                            BodyShape::Expanded,
+                            BracePlacement::NextLineIfHeaderBroken,
+                        },
+                        {
+                            "control-preserved-body",
+                            std::nullopt,
+                            std::nullopt,
+                            std::nullopt,
+                            CategoryLayout::Preserve,
+                            BodyShape::Expanded,
+                            BracePlacement::NextLine,
+                        },
+                    },
+                })
+            {
                 auto style = base;
                 style.ControlHeadersBreak = policy.ControlHeadersBreak;
                 style.ControlHeadersFirstItem = policy.ControlHeadersFirstItem;
@@ -3370,15 +3980,34 @@ TEST(Formatter, WidthDiagnostics_CountsProtectedTabsAndMixedTerminators)
     ExpectEmittedWidthDiagnostics(result, style);
     EXPECT_EQ(FormatWithStyle(result.Text, style), result.Text);
 }
-INSTANTIATE_TEST_SUITE_P(Formatter, LayoutDiagnosticTest,
+INSTANTIATE_TEST_SUITE_P(
+    Formatter,
+    LayoutDiagnosticTest,
     testing::Values(
-        LayoutDiagnosticCase{"format-disabled", "regions",
-            "regions.input.cpp", {}, false, ".layout.expected"},
-        LayoutDiagnosticCase{"format-disabled", "regions-no-clang",
-            "regions.input.cpp", {}, false, ".layout.expected"},
+        LayoutDiagnosticCase{
+            "format-disabled",
+            "regions",
+            "regions.input.cpp",
+            {},
+            false,
+            ".layout.expected",
+        },
+        LayoutDiagnosticCase{
+            "format-disabled",
+            "regions-no-clang",
+            "regions.input.cpp",
+            {},
+            false,
+            ".layout.expected",
+        },
         LayoutDiagnosticCase{"line-length", "soft"},
-        LayoutDiagnosticCase{"line-length", "strict", "input.cpp",
-            "soft", true},
+        LayoutDiagnosticCase{
+            "line-length",
+            "strict",
+            "input.cpp",
+            "soft",
+            true,
+        },
         LayoutDiagnosticCase{"assignment-location", "leading"},
         LayoutDiagnosticCase{"assignment-location", "trailing"}),
     [] (const auto& info) {
@@ -3448,7 +4077,7 @@ TEST(Formatter, OperatorSpacing_PreservesUnknownCastOrBinaryOperator)
         "(int) & a");
     EXPECT_EQ(FormatWithStyle(separatedCast, style), certain);
 }
-TEST(Formatter, SpacingOptions_ProfileOverflowReportsWidthAndKeepsTokens)
+TEST(Formatter, SpacingOptions_ProfileOverflowWrapsAroundRecoveryAndKeepsTokens)
 {
     const auto directory =
         std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../spacing-options";
@@ -3463,22 +4092,10 @@ TEST(Formatter, SpacingOptions_ProfileOverflowReportsWidthAndKeepsTokens)
         [] (parser::ParseError) { });
     const auto result =
         formatter::Format(tree, formatter::PreparedFormat(config));
-    // Width is a soft limit, not a promise to lower unsupported declaration
-    // internals. A retained overflowing static_assert must still be diagnosed.
-    const auto staticAssert = result.Text.find("    static_assert(!");
-    ASSERT_NE(staticAssert, std::string::npos);
-    const auto line = std::count(
-        result.Text.begin(),
-        result.Text.begin() + staticAssert,
-        '\n') + 1;
-    EXPECT_TRUE(std::ranges::any_of(
-        result.Diagnostics,
-        [&] (const auto& diagnostic) {
-            return diagnostic.Kind ==
-                formatter::LayoutDiagnosticKind::LineWidth &&
-                diagnostic.Position.Line == line &&
-                diagnostic.Position.Column == config.ColumnLimit + 1;
-        }));
+    // Proven argument boundaries can move recovered operands intact without
+    // interpreting their template spelling or changing any original token.
+    EXPECT_NE(result.Text.find("    static_assert(!"), std::string::npos);
+    EXPECT_TRUE(result.Diagnostics.empty());
     std::string output(result.Text);
     output.append(util::SourcePaddingSize, '\0');
     const auto tokens = parser::SyntaxTree::TokenizeOnly(
@@ -3525,10 +4142,10 @@ TEST(Formatter, Preserve_KeepsEmptyRecoveryAndBinarySource)
     for (const std::string source :
         {
             std::string{},
-        std::string{" \t\r\n\r\n"},
-        std::string{"#define STR(x) #x\r\nSTR(a+b);\r\n"},
-        std::string{"int f(\n  /* unfinished"},
-        std::string{"int x;\0int y;\n", 14},
+            std::string{" \t\r\n\r\n"},
+            std::string{"#define STR(x) #x\r\nSTR(a+b);\r\n"},
+            std::string{"int f(\n  /* unfinished"},
+            std::string{"int x;\0int y;\n", 14},
         })
     {
         ExpectUnchanged(source, formatter::Style{});
@@ -3588,15 +4205,18 @@ TEST(Formatter, PreserveConfig_ParsesSettings)
         style.CallsAlignment,
         formatter::ContinuationAlignment::
         Delimiter);
-    EXPECT_EQ(style.CallLineFirstStringNames,
+    EXPECT_EQ(
+        style.CallLineFirstStringNames,
         (std::vector<std::string>{"YT_LOG_INFO", "YT_LOG_ERROR"}));
-    EXPECT_EQ(style.IndentedCallScopePairs,
+    EXPECT_EQ(
+        style.IndentedCallScopePairs,
         (std::vector<std::string>{"OnBeginList:OnEndList"}));
     ASSERT_EQ(config.Exclude.size(), 2u);
     EXPECT_TRUE(std::regex_search("x]y", config.Exclude[0]));
     EXPECT_TRUE(std::regex_search("generated/source.cpp", config.Exclude[1]));
     ASSERT_TRUE(config.Naming.Class.Prefixes.has_value());
-    EXPECT_EQ(*config.Naming.Class.Prefixes,
+    EXPECT_EQ(
+        *config.Naming.Class.Prefixes,
         (std::vector<std::string>{"S", "C"}));
     save("ClassNameCase = Unchecked\nClassNamePrefixes = []\n"
         "BaseListsContinuationOffset = 0\n"

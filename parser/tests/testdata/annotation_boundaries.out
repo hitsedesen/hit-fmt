@@ -443,7 +443,18 @@
       )
       (catch-clause
         "catch"
-        (condition "(" "int" "code" ")")
+        (condition
+          "("
+          (declaration-specifiers "int")
+          (init-declarator-list
+            (init-declarator
+              (declarator
+                (declarator-name "code")
+              )
+            )
+          )
+          ")"
+        )
         (compound-statement
           "{"
           (return-statement
@@ -456,11 +467,7 @@
       )
       (catch-clause
         "catch"
-        (condition
-          "("
-          (expression "...")
-          ")"
-        )
+        (condition "(" "..." ")")
         (compound-statement
           "{"
           (return-statement

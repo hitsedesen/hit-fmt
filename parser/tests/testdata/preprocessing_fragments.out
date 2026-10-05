@@ -206,14 +206,16 @@
                 (constructor-initializer-list
                   ":"
                   (constructor-initializer
-                    (identifier-expression "Right_")
-                    (braced-initializer
-                      (initializer-list
-                        "{"
-                        (initializer-element
-                          (identifier-expression "value")
+                    (type-construction-expression
+                      (identifier-expression "Right_")
+                      (braced-initializer
+                        (initializer-list
+                          "{"
+                          (initializer-element
+                            (identifier-expression "value")
+                          )
+                          "}"
                         )
-                        "}"
                       )
                     )
                   )
@@ -268,14 +270,16 @@
                 (preprocessing-branch
                   (preprocessing-directive "#if EXTRA_MEMBER")
                   (constructor-initializer
-                    (identifier-expression "Extra_")
-                    (braced-initializer
-                      (initializer-list
-                        "{"
-                        (initializer-element
-                          (identifier-expression "value")
+                    (type-construction-expression
+                      (identifier-expression "Extra_")
+                      (braced-initializer
+                        (initializer-list
+                          "{"
+                          (initializer-element
+                            (identifier-expression "value")
+                          )
+                          "}"
                         )
-                        "}"
                       )
                     )
                   )

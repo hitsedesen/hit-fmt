@@ -368,8 +368,10 @@ void ComposeNamespaceAnchors(
     std::span<const document::Identity> identities)
 {
     for (const auto& map : rendered.Map) {
-        const auto output = Range{CheckedSourceAnalysisSize(map.OutputBegin),
-            CheckedSourceAnalysisSize(map.OutputEnd)};
+        const auto output = Range{
+            CheckedSourceAnalysisSize(map.OutputBegin),
+            CheckedSourceAnalysisSize(map.OutputEnd),
+        };
         (void)RecordRenderAnchors(result, map, output, safety, identities);
     }
     MergeProtection(result.OutputProtection);
@@ -384,8 +386,10 @@ void ComposeMaps(
 {
     result.Map.reserve(rendered.Map.size());
     for (const auto& map : rendered.Map) {
-        const auto output = Range { CheckedSourceAnalysisSize(map.OutputBegin),
-            CheckedSourceAnalysisSize(map.OutputEnd) };
+        const auto output = Range{
+            CheckedSourceAnalysisSize(map.OutputBegin),
+            CheckedSourceAnalysisSize(map.OutputEnd),
+        };
         const auto original =
             RecordRenderAnchors(result, map, output, safety, identities);
         if (map.Source.Begin == document::InvalidId) {
@@ -401,7 +405,7 @@ void ComposeMaps(
             });
             continue;
         }
-        const auto source = Range { map.Source.Begin, map.Source.End };
+        const auto source = Range{map.Source.Begin, map.Source.End};
         // A zero-width syntax insertion anchor belongs to the preceding
         // piece, including at a copied/generated boundary or after a moved
         // include.
@@ -432,8 +436,10 @@ void ComposeMaps(
             }
             const auto origin = it->Generated
                 ? it->Original
-                : Range { it->Original.Begin + begin - it->Output.Begin,
-                      it->Original.Begin + end - it->Output.Begin };
+                : Range{
+                    it->Original.Begin + begin - it->Output.Begin,
+                    it->Original.Begin + end - it->Output.Begin,
+                };
             result.Map.push_back({
                 mappedOutput,
                 origin,
@@ -671,11 +677,14 @@ void WidthDiagnostics(
 PreparedFormat::PreparedFormat(const Style& style)
     : Policies(PreparePolicies(style))
     , Annotations(CompileLibraryAnnotations(style))
-    , Structural { style.AddMissingControlBraces,
+    , Structural{
+        style.AddMissingControlBraces,
         style.EmptyControlBody == EmptyControlBody::EmptyBlock,
-        style.RemoveNullStatements, style.RemoveNullDeclarations,
+        style.RemoveNullStatements,
+        style.RemoveNullDeclarations,
         style.IncludeOrder == IncludeOrder::Sort,
-        style.LineEnding != LineEnding::Preserve }
+        style.LineEnding != LineEnding::Preserve,
+    }
     , NamespaceComments(CommentOptions(style))
     , HonorClangFormatDirectives(style.HonorClangFormatDirectives)
     , WhitespaceSensitiveMacros(style.WhitespaceSensitiveMacros)
@@ -816,9 +825,8 @@ FormatResult detail::FormatWithAnalysis(
     std::pmr::vector<GapId> reassembled(&scratch);
     auto gaps = GeneratedGaps(*currentSafety,
         normalized
-            ? std::span<const GeneratedAdjacency>(
-        normalized->GeneratedAdjacencies)
-            : std::span<const GeneratedAdjacency> {},
+        ? std::span<const GeneratedAdjacency>(normalized->GeneratedAdjacencies)
+        : std::span<const GeneratedAdjacency>{},
         provenance, reassembled, scratch);
     options.GeneratedAdjacencies = gaps;
     options.ReassembledGaps = reassembled;
@@ -944,10 +952,10 @@ FormatResult detail::FormatWithAnalysis(
     }
     WidthDiagnostics(result, prepared.Policies, options.TabWidth);
     if (!request.SourceMap) {
-        result.Map = std::vector<FormatMapping> {};
-        result.StructuralOperations = std::vector<StructuralOperation> {};
-        result.OriginalTokens = std::vector<TokenOutputOffset> {};
-        result.OutputProtection = std::vector<ProtectedSourceRange> {};
+        result.Map = std::vector<FormatMapping>{};
+        result.StructuralOperations = std::vector<StructuralOperation>{};
+        result.OriginalTokens = std::vector<TokenOutputOffset>{};
+        result.OutputProtection = std::vector<ProtectedSourceRange>{};
     }
     return result;
 }
@@ -968,17 +976,20 @@ std::string Format(const parser::SyntaxTree& tree, const Style& style)
 {
     return Format(tree, PreparedFormat(style)).Text;
 }
+
 std::string Format(const parser::SyntaxTree& tree)
 {
-    return Format(tree, Style {});
+    return Format(tree, Style{});
 }
+
 std::string Format(util::PaddedSourceView source, const Style& style)
 {
     return Format(source, PreparedFormat(style)).Text;
 }
+
 std::string Format(util::PaddedSourceView source)
 {
-    return Format(source, Style {});
+    return Format(source, Style{});
 }
 
 } // namespace formatter
