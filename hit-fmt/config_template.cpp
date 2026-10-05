@@ -118,6 +118,14 @@ void PrintOption(std::ostream& output, std::string_view name, const T& value)
         output
             << "# Qualified :: edges, not the gap before leading global ::.\n";
     }
+    if (name == "ClassMacroNames") {
+        output
+            << "# Begin:End pairs of unqualified function-like macro names.\n"
+                "# Endpoints must be distinct and unique across pairs.\n"
+                "# Nested classes close with their configured matching end.\n"
+                "# Arguments stay intact; no expanded types are inferred.\n"
+                "# Example: ClassMacroNames = [\"BEGIN_SETTER:END_SETTER\"]\n";
+    }
     output << "# Values: ";
     if constexpr (std::is_enum_v<T>) {
         bool first = true;
@@ -186,7 +194,7 @@ void PrintOption(std::ostream& output, std::string_view name, const T& value)
         } else if (name == "IncludeGroupPrefixes") {
             output << "[] or [\"directory/\", ...] (ordered literal prefixes)";
         } else if (name == "IndentedCallScopePairs" ||
-            name == "IndentedChainScopePairs")
+            name == "IndentedChainScopePairs" || name == "ClassMacroNames")
         {
             output << "[] or [\"Begin:End\", ...]";
         } else if (name == "StickyChainCallPairs") {

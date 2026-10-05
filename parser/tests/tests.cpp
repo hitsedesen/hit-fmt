@@ -268,6 +268,7 @@ struct GoldenCase
     bool HasErrors = false;
     bool HasPunctuationRoles = false;
     std::vector<std::string> FunctionBodyMacroNames;
+    std::vector<std::string> ClassMacroNames;
 };
 
 std::ostream& operator<<(std::ostream& output, const GoldenCase& testCase)
@@ -290,7 +291,10 @@ TEST_P(FileTest, Golden)
         [&] (parser::ParseError error) {
             errors.push_back(std::move(error));
         },
-        {.FunctionBodyMacroNames = GetParam().FunctionBodyMacroNames});
+        {
+            .FunctionBodyMacroNames = GetParam().FunctionBodyMacroNames,
+            .ClassMacroNames = GetParam().ClassMacroNames,
+        });
     auto actual = Serialize(tree);
     if (GetParam().HasErrors) {
         EXPECT_FALSE(errors.empty());
@@ -302,6 +306,30 @@ TEST_P(FileTest, Golden)
     if (GetParam().HasPunctuationRoles) {
         fixture.Expect(SerializePunctuationRoles(tree), ".roles.out");
     }
+}
+
+TEST(Parser, ClassMacroNestingHasABoundedRecoveryDepth)
+{
+    std::string source;
+    for (size_t i = 0; i < 1024; ++i) {
+        source += "OPEN_CLASS(Name)\n";
+    }
+    for (size_t i = 0; i < 1024; ++i) {
+        source += "CLOSE_CLASS()\n";
+    }
+    const std::vector<std::string> pairs{"OPEN_CLASS:CLOSE_CLASS"};
+    PaddedInput input(source);
+    bool reportedDepth = false;
+    const auto tree = parser::Parse(
+        input.View(),
+        [&] (parser::ParseError error) {
+            reportedDepth |= error.Message == "macro class nesting is too deep";
+        },
+        {.ClassMacroNames = pairs});
+    EXPECT_TRUE(reportedDepth);
+    EXPECT_EQ(
+        tree.SourceText(tree.Root().Tokens),
+        std::string_view(source).substr(0, source.size() - 1));
 }
 
 // Inspect only the real owning subtree; full-file serialization is
@@ -2390,6 +2418,20 @@ INSTANTIATE_TEST_SUITE_P(
         GoldenCase{"requires_clause_boundaries"},
         GoldenCase{"requires_return_boundaries"},
         GoldenCase{"unhinted_body_recovery"},
+        GoldenCase{
+            "class_body_macros",
+            false,
+            true,
+            {"DEFINE_METHOD"},
+            {"BEGIN_SETTER:END_SETTER", "OPEN_RECORD:CLOSE_RECORD"},
+        },
+        GoldenCase{
+            "class_body_macros_recovery",
+            true,
+            false,
+            {},
+            {"BEGIN_SETTER:END_SETTER", "OPEN_RECORD:CLOSE_RECORD"},
+        },
         GoldenCase{
             "function_body_macros",
             false,

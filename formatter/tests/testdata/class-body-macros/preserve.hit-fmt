@@ -1,0 +1,2 @@
+ClassMacroNames = ["BEGIN_SETTER:END_SETTER", "OPEN_RECORD:CLOSE_RECORD"]
+FunctionBodyMacroNames = ["DEFINE_METHOD"]

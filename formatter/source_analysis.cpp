@@ -816,9 +816,12 @@ SourceAnalysis BuildSourceAnalysis(
             // Whitespace inside header delimiters is part of the filename.
             protect(begin, end, ProtectionReason::HeaderName);
         }
-        if (node.Kind == parser::NodeKind::MacroFunctionHeader) {
-            // The hint describes only the body grammar. Macro arguments can
-            // be stringified or token-pasted; preserve the complete header.
+        if (node.Kind == parser::NodeKind::MacroFunctionHeader ||
+            node.Kind == parser::NodeKind::MacroRecordBegin ||
+            node.Kind == parser::NodeKind::MacroRecordEnd)
+        {
+            // Hints describe only the enclosed grammar. Macro arguments can
+            // be stringified or token-pasted; preserve complete invocations.
             protect(begin, end, ProtectionReason::SensitiveMacro);
         }
         if (recovery || ambiguous) {

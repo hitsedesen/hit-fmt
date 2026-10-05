@@ -56,10 +56,14 @@ public:
     const bool HonorClangFormatDirectives;
     const std::vector<std::string> WhitespaceSensitiveMacros;
     const std::vector<std::string> FunctionBodyMacroNames;
+    const std::vector<std::string> ClassMacroNames;
 
     [[nodiscard]] parser::ParseOptions ParsingOptions() const
     {
-        return {.FunctionBodyMacroNames = FunctionBodyMacroNames};
+        return {
+            .FunctionBodyMacroNames = FunctionBodyMacroNames,
+            .ClassMacroNames = ClassMacroNames,
+        };
     }
 };
 
@@ -123,8 +127,8 @@ struct FormatResult
 };
 
 // Normalize, lower and render once; failures throw without returning source.
-// Tree overloads require parsing with prepared.ParsingOptions() for macro-body
-// hints; source overloads apply them automatically. Inputs must survive this
+// For macro syntax hints, parse tree inputs with prepared.ParsingOptions().
+// Source overloads apply hints automatically. Inputs must survive this
 // call; results own their storage.
 [[nodiscard]] FormatResult Format(
     const parser::SyntaxTree& tree,

@@ -421,6 +421,7 @@
     OPT(std::vector<std::string>, StickyChainCallPairs, {})                    \
     OPT(std::vector<std::string>, CallLikeMacroNames, {})                     \
     OPT(std::vector<std::string>, FunctionBodyMacroNames, {})                 \
+    OPT(std::vector<std::string>, ClassMacroNames, {})                        \
     OPT(std::vector<std::string>, WhitespaceSensitiveMacros, {})              \
     OPT(bool, IndentPreprocessingDirectives, false) \
     OPT(bool, AlignMacroBackslashes, false) \

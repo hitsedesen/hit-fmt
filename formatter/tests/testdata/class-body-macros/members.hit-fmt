@@ -1,0 +1,14 @@
+Layout = Canonical
+IndentationKind = Spaces
+FunctionBracePlacement = NextLine
+BodyShape = Expanded
+FunctionCallSpaceBeforeParameters = NoSpace
+AssignmentOperatorSpacing = Space
+ClassMacroNames = ["BEGIN_SETTER:END_SETTER", "OPEN_RECORD:CLOSE_RECORD"]
+FunctionBodyMacroNames = ["DEFINE_METHOD"]
+IndentMembers = Indent
+MemberIndentWidth = 6
+IndentAccessModifiers = NoIndent
+MemberDeclarationBlankLines = 1
+MemberDefinitionBlankLines = 1
+AccessSectionBlankLinesAfterLabel = 1

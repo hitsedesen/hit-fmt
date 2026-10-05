@@ -25,6 +25,11 @@ struct ParseOptions
     // balanced brace body introduces function-body grammar, not a signature.
     // Borrowed for Parse only; the resulting tree retains no configuration.
     std::span<const std::string> FunctionBodyMacroNames = {};
+    // Exact Begin:End identifier pairs with distinct, unique endpoints.
+    // Balanced function-like invocations delimit a class-member sequence;
+    // nested classes must close with their configured matching end macro.
+    // Arguments stay opaque; no expanded class/type bindings are inferred.
+    std::span<const std::string> ClassMacroNames = {};
 };
 
 // Build a recovery-oriented, lossless C++ syntax tree. The parser recognizes

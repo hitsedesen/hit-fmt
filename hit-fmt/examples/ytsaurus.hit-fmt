@@ -100,6 +100,8 @@ RemoveNullDeclarations = true
 # affected invocation byte-for-byte instead; this is NOT macro-language formatting.
 # Other semantic macro protection remains intact (not aesthetic name exceptions).
 CallLikeMacroNames = []
+# These invocations open/close generated classes, rather than function calls.
+ClassMacroNames = ["BEGIN_SETTER:END_SETTER"]
 WhitespaceSensitiveMacros = [
     "REGISTER_DERIVED_EXTERNALIZED_YSON_STRUCT",
     "PP_STRINGIZE", "DEFINE_ENUM", "DEFINE_BIT_ENUM",

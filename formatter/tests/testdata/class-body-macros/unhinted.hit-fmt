@@ -1,0 +1,7 @@
+Layout = Canonical
+IndentationKind = Spaces
+FunctionBracePlacement = NextLine
+BodyShape = Expanded
+FunctionCallSpaceBeforeParameters = NoSpace
+AssignmentOperatorSpacing = Space
+FunctionBodyMacroNames = ["DEFINE_METHOD"]

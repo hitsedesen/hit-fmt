@@ -3812,6 +3812,49 @@ TEST(PublicPipeline, FunctionBodyMacrosRetainHeadersThroughNormalization)
     CheckIdentities(source, result);
 }
 
+TEST(PublicPipeline, ClassMacroHintsSurviveNormalizationAndScopedFormatting)
+{
+    auto style = Canonical();
+    style.IndentationKind = formatter::IndentationKind::Spaces;
+    style.FunctionBracePlacement = formatter::BracePlacement::NextLine;
+    style.ClassMacroNames = {"OPEN_CLASS:CLOSE_CLASS"};
+    style.AddMissingControlBraces = true;
+    style.RemoveNullStatements = true;
+    const formatter::PreparedFormat prepared(style);
+    style.ClassMacroNames.clear();
+    const std::string begin = "OPEN_CLASS(Name, Helper(alpha   +  beta))";
+    const std::string end = "CLOSE_CLASS(Helper(gamma   +  delta))";
+    const std::string source = begin +
+        "\nvoid Run(int value) {; if(value) Use(value);}\n" + end + "\n";
+    Input input(source);
+    auto tree = parser::Parse(input.View(), {}, prepared.ParsingOptions());
+    ASSERT_EQ(
+        tree.Root().FirstChild->Kind,
+        parser::NodeKind::MacroRecordDeclaration);
+    const auto result = formatter::Format(tree, prepared, {.SourceMap = true});
+    EXPECT_EQ(result.Text, FormatInput(source, prepared).Text);
+    EXPECT_TRUE(result.Text.starts_with(begin + "\n"));
+    EXPECT_TRUE(result.Text.ends_with(end + "\n"));
+    EXPECT_FALSE(result.StructuralOperations.empty());
+    EXPECT_EQ(FormatInput(result.Text, prepared).Text, result.Text);
+    CheckIdentities(source, result);
+
+    // Excluding both delimiters must not discard the enclosing class context.
+    const std::array selected{
+        parser::SourceRange{
+            parser::SourceOffset(begin.size()),
+            parser::SourceOffset(source.find(end)),
+        },
+    };
+    const auto scoped = FormatInput(
+        source,
+        prepared,
+        {.SourceMap = true, .EditScope = selected});
+    EXPECT_EQ(scoped.Text, result.Text);
+    CheckExcludedCopies(source, scoped, selected);
+    CheckIdentities(source, scoped);
+}
+
 TEST(PublicPipeline, TextPoliciesRespectOriginalScopeAndProtection)
 {
     formatter::Style style;

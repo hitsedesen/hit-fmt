@@ -703,6 +703,7 @@ PreparedFormat::PreparedFormat(const Style& style)
     , HonorClangFormatDirectives(style.HonorClangFormatDirectives)
     , WhitespaceSensitiveMacros(style.WhitespaceSensitiveMacros)
     , FunctionBodyMacroNames(style.FunctionBodyMacroNames)
+    , ClassMacroNames(style.ClassMacroNames)
 { }
 
 FormatResult Format(

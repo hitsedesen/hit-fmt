@@ -325,6 +325,20 @@ std::vector<FormatCase> FormatCases()
     }
     AddCases(
         cases,
+        std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../class-body-macros",
+        {"hinted", "preserve", "unhinted"});
+    AddCases(
+        cases,
+        std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../class-body-macros",
+        {"members"},
+        "members.input.cpp");
+    for (auto& value : cases) {
+        if (value.Directory.filename() == "class-body-macros") {
+            value.CheckOwningMaps = true;
+        }
+    }
+    AddCases(
+        cases,
         std::filesystem::path(FORMATTER_TESTDATA_DIR) /
         "../declaration-headers",
         {"wrap", "narrow", "wide"});

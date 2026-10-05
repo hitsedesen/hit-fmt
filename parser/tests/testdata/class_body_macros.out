@@ -1,0 +1,607 @@
+(translation-unit
+  (macro-record-declaration
+    (macro-record-begin "BEGIN_SETTER" "(" "String" "," "std" "::" "string" ")")
+    (function-definition
+      (declaration-specifiers "void")
+      (init-declarator-list
+        (init-declarator
+          (declarator
+            (declarator-name "OnStringScalar")
+            (function-declarator
+              (parameter-list
+                "("
+                (parameter-declaration
+                  (declaration-specifiers "const" "char")
+                  (init-declarator-list
+                    (init-declarator
+                      (declarator
+                        (pointer-operator "*")
+                        (declarator-name "value")
+                      )
+                    )
+                  )
+                )
+                ")"
+              )
+              (function-qualifier "override")
+            )
+          )
+        )
+      )
+      (compound-statement
+        "{"
+        (expression-statement
+          (call-expression
+            (member-expression
+              (identifier-expression "Node_")
+              "->"
+              (identifier-expression "SetValue")
+            )
+            (argument-list
+              "("
+              (argument
+                (call-expression
+                  (member-expression
+                    (identifier-expression "std")
+                    "::"
+                    (identifier-expression "string")
+                  )
+                  (argument-list
+                    "("
+                    (argument
+                      (identifier-expression "value")
+                    )
+                    ")"
+                  )
+                )
+              )
+              ")"
+            )
+          )
+          ";"
+        )
+        "}"
+      )
+    )
+    (macro-record-end "END_SETTER" "(" ")")
+  )
+  (macro-record-declaration
+    (leading-trivia
+      (whitespace "\n\n")
+    )
+    (macro-record-begin
+      (leading-trivia
+        (whitespace "\n\n")
+      )
+      "BEGIN_SETTER" "(" "Integer" "," "int" ")"
+    )
+    (function-definition
+      (declaration-specifiers "void")
+      (init-declarator-list
+        (init-declarator
+          (declarator
+            (declarator-name "OnIntegerScalar")
+            (function-declarator
+              (parameter-list
+                "("
+                (parameter-declaration
+                  (declaration-specifiers "int")
+                  (init-declarator-list
+                    (init-declarator
+                      (declarator
+                        (declarator-name "value")
+                      )
+                    )
+                  )
+                )
+                ")"
+              )
+              (function-qualifier "override")
+            )
+          )
+        )
+      )
+      (compound-statement
+        "{"
+        (expression-statement
+          (call-expression
+            (member-expression
+              (identifier-expression "Node_")
+              "->"
+              (identifier-expression "SetValue")
+            )
+            (argument-list
+              "("
+              (argument
+                (identifier-expression "value")
+              )
+              ")"
+            )
+          )
+          ";"
+        )
+        "}"
+      )
+    )
+    (function-definition
+      (declaration-specifiers "void")
+      (init-declarator-list
+        (init-declarator
+          (declarator
+            (declarator-name "Reset")
+            (function-declarator
+              (parameter-list "(" ")")
+              (function-qualifier "override")
+            )
+          )
+        )
+      )
+      (compound-statement
+        "{"
+        (expression-statement
+          (call-expression
+            (member-expression
+              (identifier-expression "Node_")
+              "->"
+              (identifier-expression "SetValue")
+            )
+            (argument-list
+              "("
+              (argument
+                (literal-expression "0")
+              )
+              ")"
+            )
+          )
+          ";"
+        )
+        "}"
+      )
+    )
+    (macro-record-end "END_SETTER" "(" ")")
+  )
+  (namespace-declaration
+    (leading-trivia
+      (whitespace "\n\n")
+    )
+    "namespace" "Detail" "{"
+    (macro-record-declaration
+      (macro-record-begin "OPEN_RECORD" "(" "Outer" "," "Helper" "(" "alpha" "+" "beta" ")" ")")
+      (access-specifier "public" ":")
+      (function-definition
+        (declaration-specifiers "int")
+        (init-declarator-list
+          (init-declarator
+            (declarator
+              (declarator-name "Read")
+              (function-declarator
+                (parameter-list "(" ")")
+                (function-qualifier "const")
+              )
+            )
+          )
+        )
+        (compound-statement
+          "{"
+          (return-statement
+            "return"
+            (identifier-expression "value_")
+            ";"
+          )
+          "}"
+        )
+      )
+      (macro-record-declaration
+        (macro-record-begin "BEGIN_SETTER" "(" "Inner" "," "int" ")")
+        (function-definition
+          (declaration-specifiers "void")
+          (init-declarator-list
+            (init-declarator
+              (declarator
+                (declarator-name "Update")
+                (function-declarator
+                  (parameter-list
+                    "("
+                    (parameter-declaration
+                      (declaration-specifiers "int")
+                      (init-declarator-list
+                        (init-declarator
+                          (declarator
+                            (declarator-name "value")
+                          )
+                        )
+                      )
+                    )
+                    ")"
+                  )
+                )
+              )
+            )
+          )
+          (compound-statement
+            "{"
+            (expression-statement
+              (assignment-expression
+                (identifier-expression "value_")
+                "="
+                (identifier-expression "value")
+              )
+              ";"
+            )
+            "}"
+          )
+        )
+        (macro-record-end "END_SETTER" "(" ")" ";")
+      )
+      (access-specifier "private" ":")
+      (declaration
+        (declaration-specifiers "int")
+        (init-declarator-list
+          (init-declarator
+            (declarator
+              (declarator-name "value_")
+            )
+          )
+        )
+        ";"
+      )
+      (macro-record-end "CLOSE_RECORD" "(" ")")
+    )
+    (function-definition
+      (leading-trivia
+        (whitespace "\n\n")
+      )
+      (declaration-specifiers "void")
+      (init-declarator-list
+        (init-declarator
+          (declarator
+            (declarator-name "Neighbor")
+            (function-declarator
+              (parameter-list
+                "("
+                (parameter-declaration
+                  (declaration-specifiers "int")
+                  (init-declarator-list
+                    (init-declarator
+                      (declarator
+                        (declarator-name "value")
+                      )
+                    )
+                  )
+                )
+                ")"
+              )
+            )
+          )
+        )
+      )
+      (compound-statement
+        "{"
+        (expression-statement
+          (call-expression
+            (identifier-expression "Use")
+            (argument-list
+              "("
+              (argument
+                (identifier-expression "value")
+              )
+              ")"
+            )
+          )
+          ";"
+        )
+        "}"
+      )
+    )
+    "}"
+  )
+  (macro-record-declaration
+    (leading-trivia
+      (whitespace "\n\n")
+    )
+    (macro-record-begin
+      (leading-trivia
+        (whitespace "\n\n")
+      )
+      "OPEN_RECORD" "(" "Empty" "," "int" ")"
+    )
+    (macro-record-end "CLOSE_RECORD" "(" ")")
+  )
+  (macro-record-declaration
+    (leading-trivia
+      (whitespace "\n\n")
+    )
+    (macro-record-begin
+      (leading-trivia
+        (whitespace "\n\n")
+      )
+      "OPEN_RECORD" "(" "Conditional" "," "int" ")"
+    )
+    (preprocessing-conditional
+      (preprocessing-branch
+        (preprocessing-directive "#if FEATURE")
+        (function-definition
+          (declaration-specifiers "void")
+          (init-declarator-list
+            (init-declarator
+              (declarator
+                (declarator-name "Enabled")
+                (function-declarator
+                  (parameter-list "(" ")")
+                )
+              )
+            )
+          )
+          (compound-statement
+            "{"
+            (expression-statement
+              (call-expression
+                (identifier-expression "Use")
+                (argument-list
+                  "("
+                  (argument
+                    (literal-expression "1")
+                  )
+                  ")"
+                )
+              )
+              ";"
+            )
+            "}"
+          )
+        )
+      )
+      (preprocessing-branch
+        (preprocessing-directive "#else")
+        (function-definition
+          (declaration-specifiers "void")
+          (init-declarator-list
+            (init-declarator
+              (declarator
+                (declarator-name "Disabled")
+                (function-declarator
+                  (parameter-list "(" ")")
+                )
+              )
+            )
+          )
+          (compound-statement
+            "{"
+            (expression-statement
+              (call-expression
+                (identifier-expression "Use")
+                (argument-list
+                  "("
+                  (argument
+                    (literal-expression "0")
+                  )
+                  ")"
+                )
+              )
+              ";"
+            )
+            "}"
+          )
+        )
+      )
+      (preprocessing-directive "#endif")
+    )
+    (macro-function-definition
+      (macro-function-header "DEFINE_METHOD" "(" "Reset" "," "void" ")")
+      (compound-statement
+        "{"
+        (expression-statement
+          (call-expression
+            (identifier-expression "Use")
+            (argument-list
+              "("
+              (argument
+                (literal-expression "2")
+              )
+              ")"
+            )
+          )
+          ";"
+        )
+        "}"
+      )
+    )
+    (macro-record-end "CLOSE_RECORD" "(" ")")
+  )
+  (macro-record-declaration
+    (leading-trivia
+      (whitespace "\n\n")
+    )
+    (macro-record-begin
+      (leading-trivia
+        (whitespace "\n\n")
+      )
+      "OPEN_RECORD" "(" "Protected" "," "int" ")"
+    )
+    (comment "// hit-fmt off")
+    (function-definition
+      (leading-trivia
+        (comment "// hit-fmt off")
+      )
+      (declaration-specifiers "void")
+      (init-declarator-list
+        (init-declarator
+          (declarator
+            (declarator-name "Untouched")
+            (function-declarator
+              (parameter-list "(" ")")
+            )
+          )
+        )
+      )
+      (compound-statement
+        "{"
+        (expression-statement
+          (call-expression
+            (identifier-expression "Use")
+            (argument-list
+              "("
+              (argument
+                (literal-expression "3")
+              )
+              ")"
+            )
+          )
+          ";"
+        )
+        "}"
+      )
+    )
+    (comment "// hit-fmt on")
+    (function-definition
+      (leading-trivia
+        (comment "// hit-fmt on")
+      )
+      (declaration-specifiers "void")
+      (init-declarator-list
+        (init-declarator
+          (declarator
+            (declarator-name "Editable")
+            (function-declarator
+              (parameter-list "(" ")")
+            )
+          )
+        )
+      )
+      (compound-statement
+        "{"
+        (expression-statement
+          (call-expression
+            (identifier-expression "Use")
+            (argument-list
+              "("
+              (argument
+                (literal-expression "4")
+              )
+              ")"
+            )
+          )
+          ";"
+        )
+        "}"
+      )
+    )
+    (macro-record-end "CLOSE_RECORD" "(" ")")
+  )
+  (record-declaration
+    (leading-trivia
+      (whitespace "\n\n")
+    )
+    "struct" "Ordinary" "{"
+    (function-definition
+      (declaration-specifiers "void")
+      (init-declarator-list
+        (init-declarator
+          (declarator
+            (declarator-name "Neighbor")
+            (function-declarator
+              (parameter-list "(" ")")
+            )
+          )
+        )
+      )
+      (compound-statement
+        "{"
+        (expression-statement
+          (call-expression
+            (identifier-expression "Use")
+            (argument-list
+              "("
+              (argument
+                (literal-expression "5")
+              )
+              ")"
+            )
+          )
+          ";"
+        )
+        "}"
+      )
+    )
+    "}" ";"
+  )
+  (function-definition
+    (declaration-specifiers "void")
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (declarator-name "Calls")
+          (function-declarator
+            (parameter-list "(" ")")
+          )
+        )
+      )
+    )
+    (compound-statement
+      "{"
+      (expression-statement
+        (call-expression
+          (identifier-expression "BEGIN_SETTER")
+          (argument-list
+            "("
+            (argument
+              (literal-expression "1")
+            )
+            (list-separator ",")
+            (argument
+              (literal-expression "2")
+            )
+            ")"
+          )
+        )
+        ";"
+      )
+      (expression-statement
+        (call-expression
+          (identifier-expression "END_SETTER")
+          (argument-list "(" ")")
+        )
+        ";"
+      )
+      "}"
+    )
+  )
+  (function-definition
+    (declaration-specifiers "void")
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (declarator-name "Qualified")
+          (function-declarator
+            (parameter-list "(" ")")
+          )
+        )
+      )
+    )
+    (compound-statement
+      "{"
+      (expression-statement
+        (call-expression
+          (member-expression
+            (identifier-expression "detail")
+            "::"
+            (identifier-expression "OPEN_RECORD")
+          )
+          (argument-list
+            "("
+            (argument
+              (literal-expression "1")
+            )
+            (list-separator ",")
+            (argument
+              (literal-expression "2")
+            )
+            ")"
+          )
+        )
+        ";"
+      )
+      "}"
+    )
+  )
+)

@@ -1290,6 +1290,23 @@ public:
         std::sort(
             FunctionBodyMacroNames_.begin(),
             FunctionBodyMacroNames_.end());
+        ClassMacroPairs_.reserve(options.ClassMacroNames.size());
+        ClassEndMacroNames_.reserve(options.ClassMacroNames.size());
+        for (std::string_view pair : options.ClassMacroNames) {
+            const auto colon = pair.find(':');
+            // Public preparation validates pairs. Do not infer a class from
+            // incomplete metadata supplied directly to the parser.
+            if (colon == std::string_view::npos || colon == 0 ||
+                colon + 1 == pair.size())
+            {
+                continue;
+            }
+            ClassMacroPairs_
+                .push_back({pair.substr(0, colon), pair.substr(colon + 1)});
+            ClassEndMacroNames_.push_back(pair.substr(colon + 1));
+        }
+        std::sort(ClassMacroPairs_.begin(), ClassMacroPairs_.end());
+        std::sort(ClassEndMacroNames_.begin(), ClassEndMacroNames_.end());
     }
 
     void Build()
@@ -1722,10 +1739,23 @@ private:
         return Cursor_;
     }
 
-    void ParseDeclarationSequence(Node& parent, TK closing)
+    void ParseDeclarationSequence(
+        Node& parent,
+        TK closing,
+        bool macroRecord = false)
     {
         PushConditionalBraceScope();
         while (!AtEnd()) {
+            if (macroRecord && CurrentKind() == TK::Identifier &&
+                std::binary_search(
+                    ClassEndMacroNames_.begin(),
+                    ClassEndMacroNames_.end(),
+                    Text(Cursor_)) &&
+                ClassMacroInvocationEnd(Cursor_, Text(Cursor_)) !=
+                    std::numeric_limits<TokenIndex>::max())
+            {
+                break;
+            }
             if (CurrentKind() == closing) {
                 if (closing == TK::Operator_CloseBrace &&
                     ConsumeConditionalClosingBrace(parent))
@@ -1745,7 +1775,7 @@ private:
             }
         }
         PopConditionalBraceScope();
-        if (closing != TK::EndOfFile && AtEnd()) {
+        if (!macroRecord && closing != TK::EndOfFile && AtEnd()) {
             ErrorAt(Cursor_, "expected closing brace");
         }
     }
@@ -1991,6 +2021,92 @@ private:
         return true;
     }
 
+    [[nodiscard]] TokenIndex ClassMacroInvocationEnd(
+        TokenIndex first,
+        std::string_view name) const
+    {
+        constexpr auto none = std::numeric_limits<TokenIndex>::max();
+        if (Kind(first) != TK::Identifier || Text(first) != name) {
+            return none;
+        }
+        const auto arguments = NextSignificant(first + 1);
+        if (Kind(arguments) != TK::Operator_OpenParenthesis) {
+            return none;
+        }
+        const auto end = FindBalancedEnd(arguments);
+        if (end == none || end > ParseLimit_) {
+            return none;
+        }
+        for (auto token = first + 1; token < end; ++token) {
+            if (Kind(token) == TK::PreprocessingDirective) {
+                return none;
+            }
+        }
+        return end;
+    }
+
+    Node* TryParseClassMacro()
+    {
+        if (ClassMacroPairs_.empty()) {
+            return nullptr;
+        }
+        const auto first = NextSignificant(Cursor_);
+        if (Kind(first) != TK::Identifier) {
+            return nullptr;
+        }
+        const auto pair = std::lower_bound(
+            ClassMacroPairs_.begin(),
+            ClassMacroPairs_.end(),
+            Text(first),
+            [] (const auto& pair, std::string_view name) {
+                return pair.first < name;
+            });
+        if (pair == ClassMacroPairs_.end() || pair->first != Text(first)) {
+            return nullptr;
+        }
+        const auto beginEnd = ClassMacroInvocationEnd(first, pair->first);
+        if (beginEnd == std::numeric_limits<TokenIndex>::max()) {
+            return nullptr;
+        }
+        // Macro nesting is independent of physical delimiter nesting. Bound
+        // it explicitly rather than allowing input-dependent stack growth.
+        if (MacroRecordDepth_ == MaximumParseDepth) {
+            auto* node = MakeNode(NodeKind::UnparsedSyntax, Cursor_);
+            ErrorAt(first, "macro class nesting is too deep");
+            node->Tokens.End = Cursor_ = beginEnd;
+            return node;
+        }
+        auto* node = MakeNode(NodeKind::MacroRecordDeclaration, Cursor_);
+        auto* header = MakeNode(NodeKind::MacroRecordBegin, first);
+        header->Tokens.End = beginEnd;
+        Append(*node, *header);
+        Cursor_ = beginEnd;
+        PushScope();
+        // No expanded class identity is known. Hide an enclosing record name
+        // and keep member bindings local to this generated class.
+        RecordNames_.push_back({});
+        ++MacroRecordDepth_;
+        ParseDeclarationSequence(*node, TK::Operator_CloseBrace, true);
+        --MacroRecordDepth_;
+        RecordNames_.pop_back();
+        PopScope();
+        const auto end = ClassMacroInvocationEnd(Cursor_, pair->second);
+        if (end == std::numeric_limits<TokenIndex>::max()) {
+            ErrorAt(first, "expected matching class end macro");
+            AddMissingToken(*node, Cursor_);
+        } else {
+            auto* footer = MakeNode(NodeKind::MacroRecordEnd, Cursor_);
+            Cursor_ = end;
+            if (CurrentKind() == TK::Operator_Semicolon) {
+                ++Cursor_;
+            }
+            footer->Tokens.End = Cursor_;
+            Append(*node, *footer);
+        }
+        node->Tokens.End = Cursor_;
+        return node;
+    }
+
     Node* TryParseFunctionBodyMacro()
     {
         if (FunctionBodyMacroNames_.empty()) {
@@ -2057,6 +2173,9 @@ private:
 
     Node* ParseDeclaration()
     {
+        if (auto* macro = TryParseClassMacro()) {
+            return macro;
+        }
         if (auto* macro = TryParseFunctionBodyMacro()) {
             return macro;
         }
@@ -9754,6 +9873,7 @@ private:
         return kind == NodeKind::TranslationUnit ||
             kind == NodeKind::NamespaceDeclaration ||
             kind == NodeKind::RecordDeclaration ||
+            kind == NodeKind::MacroRecordDeclaration ||
             kind == NodeKind::EnumDeclaration ||
             kind == NodeKind::CompoundStatement ||
             kind == NodeKind::PreprocessingBranch ||
@@ -10085,6 +10205,7 @@ private:
             case NodeKind::PreprocessingBranch:
             case NodeKind::NamespaceDeclaration:
             case NodeKind::RecordDeclaration:
+            case NodeKind::MacroRecordDeclaration:
             case NodeKind::EnumDeclaration:
             case NodeKind::TemplateDeclaration:
             case NodeKind::ExportDeclaration:
@@ -10181,6 +10302,10 @@ private:
     };
     std::pmr::vector<std::string_view> RecordNames_{&ScratchMemory_};
     std::pmr::vector<std::string_view> FunctionBodyMacroNames_{&ScratchMemory_};
+    std::pmr::vector<std::pair<std::string_view, std::string_view>>
+        ClassMacroPairs_{&ScratchMemory_};
+    std::pmr::vector<std::string_view> ClassEndMacroNames_{&ScratchMemory_};
+    size_t MacroRecordDepth_ = 0;
     NameScope* CurrentScope_ = nullptr;
     Node* NextNode_ = nullptr;
     size_t RemainingNodes_ = 0;
