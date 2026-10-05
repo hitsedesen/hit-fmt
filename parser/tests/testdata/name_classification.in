@@ -15,14 +15,38 @@ void typedef_names() {
     B * second_alias;
 }
 
+int factor;
+void global_values() {
+    using factor = int;
+    ::factor* operand;
+    ::factor& mask;
+    ::factor&& condition;
+    ::factor*2;
+    ::factor&7;
+    ::factor&&true;
+    ::factor(value);
+}
+
 void classify() {
     Type* first;
+    ::Type * global_alias;
+    ::Record * global_record;
+    ::Record ** global_nested_pointer;
+    ::Record & global_reference;
+    ::Record && global_rvalue;
+    ::Type const * global_const;
+    [[maybe_unused]] ::Record /* type */ * attributed;
+    int catalog;
+    ::catalog::Entry* qualified_unknown;
+    ::External* unknown_global;
     Record& second;
     unknown * ambiguous;
     int Type;
     Type * multiplication;
+    ::Type * shadowed_global_type;
     {
         using Local = long;
         Local* nested;
+        ::Local* unknown_outside_scope;
     }
 }
