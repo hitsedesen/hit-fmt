@@ -114,6 +114,39 @@ External evidence: main-current-batch-* preserves all six complete rounds
 and per-batch observations; main-current-hardware-* preserves three counter
 pairs per corpus; main-current-total-summary.json preserves the aggregation.
 
+## Entire YTsaurus yt/ subtree
+
+A separately requested full-subtree comparison uses the same YTsaurus
+revision `d7aff49` and unchanged shipped configuration. It includes every
+CLI-supported C/C++ file under yt/: tests, benchmarks, examples, generated
+code, calendar lookup tables and yt/cpp. It excludes library/cpp/yt. Only
+the configuration's moody_camel_concurrent_queue.h exclusion is applied:
+10,330 files, 85,731,256 bytes, one excluded file. No curated-corpus filters
+are reused. The configuration is applied uniformly; its documented style
+approximation is not intended for yt/cpp, so this is not a style-conformance
+claim for that subtree.
+
+Six complete closer-interleaved pairs and three separate hardware pairs give:
+
+| Metric | Main | Current | Reduction |
+| --- | ---: | ---: | ---: |
+| CheckFile wall seconds | 13.9983 | 12.1134 | 13.47% |
+| Batch CPU seconds | 14.4472 | 12.5406 | 13.20% |
+| Instructions/B | 1098.15 | 958.50 | 12.72% |
+| Cycles/B | 593.73 | 521.97 | 12.09% |
+
+The wall reduction represents about 1.156x throughput. Measurement scopes
+and aggregation follow the direct-main comparison above. Every timing run
+processes all selected files with zero failures/skips. Separate full-map
+correctness streams have identical SHA256, including output, diagnostics,
+identities, structural data and protection. Semantic/width totals match at
+1,256 / 3,921. No upstream source files are modified.
+
+External evidence: yt-full-selection.json records all paths, lengths,
+Git blobs and SHA256; yt-full-batch-* and yt-full-hardware-* preserve paired
+observations; yt-full-summary.json preserves aggregation; yt-full-validation-*
+and yt-full-evidence-*.sha256 preserve streamed full-map validation.
+
 ## Rejected work and validation
 
 A compact sort-key table saved only about 0.1% of whole-pipeline instructions
