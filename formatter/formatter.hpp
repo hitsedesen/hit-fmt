@@ -86,6 +86,10 @@ struct FormatRequest
     // an empty source directory; ProjectRoot paths must share the same root
     // as include paths (normally a project-relative input filename).
     std::string_view InputFilePath = {};
+    // Retain final original-token offsets for diagnostic consumers without
+    // composing full source associations. SourceMap includes these offsets.
+    // No full Map, StructuralOperations or OutputProtection is returned.
+    bool TokenMap = false;
 };
 
 struct FormatMapping

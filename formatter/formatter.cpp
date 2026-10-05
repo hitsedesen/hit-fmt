@@ -470,13 +470,16 @@ void ApplyComments(
     const StructuralPlan& comments,
     const parser::SyntaxTree& original,
     const NamespaceCommentPlan& namespacePlan,
+    bool sourceMap,
     std::pmr::memory_resource& scratch)
 {
     const auto actionBase = result.StructuralOperations.size();
-    result.StructuralOperations.insert(
-        result.StructuralOperations.end(),
-        comments.Operations.begin(),
-        comments.Operations.end());
+    if (sourceMap) {
+        result.StructuralOperations.insert(
+            result.StructuralOperations.end(),
+            comments.Operations.begin(),
+            comments.Operations.end());
+    }
     std::pmr::vector<NamespaceIdentity> namespaces(
         namespacePlan.Namespaces.begin(), namespacePlan.Namespaces.end(),
         &scratch);
@@ -494,7 +497,9 @@ void ApplyComments(
     std::pmr::vector<Copy> copies(&scratch);
     std::pmr::vector<FormatMapping> generated(&scratch);
     copies.reserve(comments.Edits.size() + 1);
-    generated.reserve(comments.Edits.size());
+    if (sourceMap) {
+        generated.reserve(comments.Edits.size());
+    }
     Offset cursor = 0;
     Offset output = 0;
     for (const auto& edit : comments.Edits) {
@@ -524,16 +529,18 @@ void ApplyComments(
                 throw std::runtime_error("missing namespace action identity");
             }
             const auto anchor = original.Token(identity->Close).Text.End;
-            generated.push_back({
-                {begin, output},
-                {anchor, anchor},
-                document::NoIdentity,
-                StructuralActionId(actionBase + edit.Operation),
-                true,
-                false,
-                false,
-                true,
-            });
+            if (sourceMap) {
+                generated.push_back({
+                    {begin, output},
+                    {anchor, anchor},
+                    document::NoIdentity,
+                    StructuralActionId(actionBase + edit.Operation),
+                    true,
+                    false,
+                    false,
+                    true,
+                });
+            }
         }
         cursor = edit.Source.End;
     }
@@ -577,6 +584,9 @@ void ApplyComments(
             copy->After.Begin + range.Source.Begin - copy->Before.Begin,
             copy->After.Begin + range.Source.End - copy->Before.Begin,
         };
+    }
+    if (!sourceMap) {
+        return;
     }
     std::vector<FormatMapping> maps;
     maps.reserve(result.Map.size() + generated.size());
@@ -877,13 +887,14 @@ FormatResult detail::FormatWithAnalysis(
     options.ReassembledGaps = {};
     scratch.release();
     const bool needNamespaceAnchors = !namespacePlan.Namespaces.empty();
-    const bool needMaps = request.SourceMap || needNamespaceAnchors;
+    const bool needMaps =
+        request.SourceMap || request.TokenMap || needNamespaceAnchors;
     auto renderPolicy = SyntaxRenderPolicy(prepared.Policies, options);
     renderPolicy.SourceMap = request.SourceMap;
     auto rendered = [&] {
         std::pmr::vector<document::Provenance> tracked(&scratch);
+        renderPolicy.TokenMap = !request.SourceMap && needMaps;
         if (needNamespaceAnchors && !request.SourceMap) {
-            renderPolicy.TokenMap = true;
             tracked.reserve(currentSafety
                 ->Protection()
                 .size());
@@ -956,13 +967,16 @@ FormatResult detail::FormatWithAnalysis(
         if (!comments.Edits.empty()) {
             auto text =
                 MaterializeNamespaceComments(result.Text, comments, file);
-            if (request.SourceMap || !result.OutputProtection.empty()) {
+            if (request.SourceMap || request.TokenMap ||
+                !result.OutputProtection.empty())
+            {
                 // Validate protected copies even without output maps.
                 ApplyComments(
                     result,
                     comments,
                     original,
                     namespacePlan,
+                    request.SourceMap,
                     scratch);
                 scratch.release();
             }
@@ -981,7 +995,9 @@ FormatResult detail::FormatWithAnalysis(
     if (!request.SourceMap) {
         result.Map = std::vector<FormatMapping>{};
         result.StructuralOperations = std::vector<StructuralOperation>{};
-        result.OriginalTokens = std::vector<TokenOutputOffset>{};
+        if (!request.TokenMap) {
+            result.OriginalTokens = std::vector<TokenOutputOffset>{};
+        }
         result.OutputProtection = std::vector<ProtectedSourceRange>{};
     }
     return result;
