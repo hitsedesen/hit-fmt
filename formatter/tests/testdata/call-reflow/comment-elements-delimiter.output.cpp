@@ -37,7 +37,7 @@ void demo() {
                    consume( // nested argument
                            x,
                            y
-        ), // nested element
+                   ), // nested element
                    z
     };
     // clang-format off
