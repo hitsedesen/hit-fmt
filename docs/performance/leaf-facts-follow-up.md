@@ -1,5 +1,9 @@
 # Lowering and rendering leaf-fact reuse
 
+For a subsequent pinned main integration checkpoint, see
+[rebased runtime validation](rebased-runtime-validation.md).
+Historical measurements below retain their original revisions and scopes.
+
 Implementation `c1d1dde` follows the [exclusive phase profile](phase-profile.md).
 The comparison here is against the preceding branch `5c4a3bc`, not main.
 
