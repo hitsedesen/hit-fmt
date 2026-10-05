@@ -79,7 +79,10 @@ struct GapSpec
     GapNewline LineEnding = GapNewline::Inherit;
     // Fill may keep independently breakable children on this line. Fit the
     // supplied segment instead of charging their complete flat alternatives.
-    bool FitNextSegment = false;
+    bool FitNextSegment : 1 = false;
+    // Fit the flat suffix instead of a prefix shortened by child breaks.
+    // Unconditional lines still terminate that suffix demand.
+    bool FitFlatTail : 1 = false;
     // First newline honors LineEnding; remaining newlines inherit Policy.
     std::uint16_t NewlineCount = 1;
     // Optional exact horizontal source slice used instead of Spaces when flat.
