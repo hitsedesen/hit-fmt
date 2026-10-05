@@ -1,12 +1,12 @@
-[[nodiscard]] constexpr
-std::optional<ResultWithSize>
+[[nodiscard]] constexpr std::optional<
+    ResultWithSize>
 ReadFirstResultFromPaddedStorage(
     const char* input)
 {
     return {};
 }
-[[nodiscard]] constexpr
-std::optional<ResultWithSize>
+[[nodiscard]] constexpr std::optional<
+    ResultWithSize>
 ReadFirstResultFromPaddedStorage(
     const char* input);
 [[nodiscard]] [[deprecated("use Read")]]
@@ -17,8 +17,8 @@ constexpr
 decltype(Probe(First{}, Second{}))
 ReadComputedResultFromInput();
 template <class Element>
-[[nodiscard]] constexpr
-Container<Element>
+[[nodiscard]] constexpr Container<
+    Element>
 ConstructOneContainerForInput(
     Element element)
 {
@@ -40,9 +40,9 @@ class Reader {
 [[nodiscard]] constexpr int Read() {
     return 1;
 }
-[[nodiscard]] constexpr
-std::optional<ResultWithSize>
-ReadFirstResult(const char* input);
+[[nodiscard]] constexpr std::optional<
+    ResultWithSize> ReadFirstResult(
+    const char* input);
 template <>
 text::CodePoint
 detail::Cursor<Reader>::Read()

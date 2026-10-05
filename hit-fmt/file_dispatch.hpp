@@ -31,7 +31,10 @@ struct FileResult
 
 // Discovery yields file paths through visit(path). Each worker owns a
 // resolver; only the caller prints results, in discovery order.
-template <typename Discover, typename MakeResolver, typename Process,
+template <
+    typename Discover,
+    typename MakeResolver,
+    typename Process,
     typename Print>
 bool RunParallelFiles(
     size_t threadCount,

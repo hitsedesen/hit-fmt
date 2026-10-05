@@ -682,7 +682,14 @@
             (member-expression
               (identifier-expression "std")
               "::"
-              (unparsed-syntax "is_arithmetic_v" "<" "T" ">")
+              (template-id-expression
+                (identifier-expression "is_arithmetic_v")
+                (template-argument-list
+                  "<"
+                  (template-argument "T")
+                  ">"
+                )
+              )
             )
             ")"
           )
@@ -1008,7 +1015,14 @@
         (member-expression
           (identifier-expression "std")
           "::"
-          (unparsed-syntax "is_arithmetic_v" "<" "T" ">")
+          (template-id-expression
+            (identifier-expression "is_arithmetic_v")
+            (template-argument-list
+              "<"
+              (template-argument "T")
+              ">"
+            )
+          )
         )
       )
     )
@@ -1098,7 +1112,14 @@
         (member-expression
           (identifier-expression "std")
           "::"
-          (unparsed-syntax "is_arithmetic_v" "<" "T" ">")
+          (template-id-expression
+            (identifier-expression "is_arithmetic_v")
+            (template-argument-list
+              "<"
+              (template-argument "T")
+              ">"
+            )
+          )
         )
       )
     )

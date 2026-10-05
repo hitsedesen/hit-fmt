@@ -1326,7 +1326,7 @@ TEST(SyntaxSpacing, KeywordOperandsAndTemplatesUseTheirOwnLayoutContexts)
         "auto fold = (value + ...); auto lambda = []{return 1;}; }");
     EXPECT_EQ(
         analysis.Spacing.Gaps()[analysis.Before("<")].Category,
-        C::DeclarationHeaders);
+        C::TemplateParameters);
     for (auto operand : {"T", "value"}) {
         const auto index = operand == std::string_view("T")
             ? analysis.Before(operand, 1)

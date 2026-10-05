@@ -19,6 +19,24 @@ ListCloser = SameLine
 ListAlignment = Delimiter
 ContinuationOffset = 4
 AlignmentFallbackOffset = 4
+# Template parameters and arguments pack and align like calls.
+TemplateParametersLayout = Canonical
+TemplateParametersBreak = IfNeeded
+TemplateParametersPacking = Fill
+TemplateParametersFirstItem = InlineIfFits
+TemplateParametersCloser = SameLine
+TemplateParametersAlignment = Delimiter
+TemplateParametersContinuationOffset = 4
+TemplateParametersAlignmentFallbackOffset = 4
+# Argument overrides also apply to named-cast type brackets.
+TemplateArgumentsLayout = Canonical
+TemplateArgumentsBreak = IfNeeded
+TemplateArgumentsPacking = Fill
+TemplateArgumentsFirstItem = InlineIfFits
+TemplateArgumentsCloser = SameLine
+TemplateArgumentsAlignment = Delimiter
+TemplateArgumentsContinuationOffset = 4
+TemplateArgumentsAlignmentFallbackOffset = 4
 # Context-dependent header lists remain source-owned explicitly.
 BaseListsLayout = Preserve
 ConstructorListsLayout = Preserve

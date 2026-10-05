@@ -1,0 +1,16 @@
+Layout = Canonical
+IndentationKind = Spaces
+ColumnLimit = 64
+IndentWidth = 4
+TemplateParametersBreak = Always
+TemplateParametersPacking = Fill
+TemplateParametersFirstItem = InlineIfFits
+TemplateParametersCloser = SameLine
+TemplateParametersAlignment = Block
+TemplateParametersContinuationOffset = 2
+TemplateParametersAlignmentFallbackOffset = 2
+TemplateArgumentsLayout = Preserve
+TemplateKeywordSpacing = Space
+TemplateTypeArgumentInteriorSpacing = NoSpace
+CommaSpaceAfter = Space
+WhitespaceSensitiveMacros = ["OPAQUE"]

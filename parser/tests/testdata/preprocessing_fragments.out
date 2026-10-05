@@ -149,9 +149,13 @@
       (return-statement
         "return"
         (cast-expression
-          "static_cast" "<"
-          (type-id "bool")
-          ">" "("
+          "static_cast"
+          (template-argument-list
+            "<"
+            (type-id "bool")
+            ">"
+          )
+          "("
           (identifier-expression "State_")
           ")"
         )

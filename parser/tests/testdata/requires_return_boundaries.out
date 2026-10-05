@@ -12,7 +12,14 @@
         (member-expression
           (identifier-expression "library")
           "::"
-          (unparsed-syntax "Ready" "<" "T" ">")
+          (template-id-expression
+            (identifier-expression "Ready")
+            (template-argument-list
+              "<"
+              (template-argument "T")
+              ">"
+            )
+          )
         )
       )
     )
@@ -77,11 +84,25 @@
         (parenthesized-expression
           "("
           (binary-expression
-            (unparsed-syntax "Ready" "<" "T" ">")
+            (template-id-expression
+              (identifier-expression "Ready")
+              (template-argument-list
+                "<"
+                (template-argument "T")
+                ">"
+              )
+            )
             "&&"
             (unary-expression
               "!"
-              (unparsed-syntax "Blocked" "<" "T" ">")
+              (template-id-expression
+                (identifier-expression "Blocked")
+                (template-argument-list
+                  "<"
+                  (template-argument "T")
+                  ">"
+                )
+              )
             )
           )
           ")"
@@ -189,8 +210,14 @@
         "Envelope"
         (template-argument-list
           "<"
-          (template-argument "Envelope" "<" "T")
-          ">>"
+          (template-argument
+            "Envelope"
+            (template-argument-list
+              "<"
+              (template-argument "T")
+              ">>"
+            )
+          )
         )
       )
       (init-declarator-list
@@ -244,23 +271,31 @@
       "requires"
       (constraint-expression
         (binary-expression
-          (unparsed-syntax
-            "Ready" "<" "T" ">"
+          (template-id-expression
+            (identifier-expression "Ready")
+            (template-argument-list
+              "<"
+              (template-argument "T")
+              ">"
+            )
             (trailing-trivia
               (comment "/* operand */")
             )
           )
           "and" "/* operand */"
-          (binary-expression
+          (template-id-expression
             (identifier-expression "Enabled")
-            "<"
-            (identifier-expression "T")
+            (template-argument-list
+              "<"
+              (template-argument "T")
+              ">"
+            )
           )
           (trailing-trivia
             (comment "/* boundary */")
           )
         )
-        ">" "/* boundary */"
+        "/* boundary */"
       )
     )
     (function-definition

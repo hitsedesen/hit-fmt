@@ -617,6 +617,9 @@ public:
                 break;
             case NK::TemplateParameterList:
             case NK::TemplateArgumentList:
+                list(kind == NK::TemplateParameterList
+                    ? C::TemplateParameters
+                    : C::TemplateArguments);
                 if (Tree_.Role(begin) == PR::TemplateDelimiter &&
                     Tree_.Role(end - 1) == PR::TemplateDelimiter)
                 {
@@ -1729,8 +1732,9 @@ private:
                     3);
                 Mark(close + 1, F::CastSpacing, node, C::Expressions, 3);
             }
-        } else if (Child(node) && Child(node)->Kind == NK::TypeId &&
-            begin + 1 < end && Tree_.Kind(begin + 1) == TK::Operator_Less)
+        } else if (Child(node) &&
+            Child(node)->Kind == NK::TemplateArgumentList && begin + 1 < end &&
+            Tree_.Kind(begin + 1) == TK::Operator_Less)
         {
             Mark(
                 begin + 1,
@@ -1738,19 +1742,7 @@ private:
                 node,
                 C::Expressions,
                 4);
-            Mark(
-                begin + 2,
-                F::TemplateTypeArgumentInteriorSpacing,
-                node,
-                C::Expressions,
-                3);
-            const auto typeEnd = Child(node)->Tokens.End;
-            Mark(
-                typeEnd,
-                F::TemplateTypeArgumentInteriorSpacing,
-                node,
-                C::Expressions,
-                3);
+            const auto typeEnd = Child(node)->Tokens.End - 1;
             if (typeEnd + 1 < end &&
                 Tree_.Kind(typeEnd + 1) == TK::Operator_OpenParenthesis)
             {
@@ -1811,6 +1803,12 @@ GapContext SpacingOwnerContext(
             break;
         case C::Parameters:
             mode = policies.Parameters.Layout;
+            break;
+        case C::TemplateParameters:
+            mode = policies.TemplateParameters.Layout;
+            break;
+        case C::TemplateArguments:
+            mode = policies.TemplateArguments.Layout;
             break;
         case C::Initializers:
             mode = policies.Initializers.Layout;
@@ -2029,9 +2027,8 @@ SyntaxSpacing BuildSyntaxSpacing(
             source.MustStartWithLineFeed)
         {
             gap.Policy = GapPolicy::Preserve;
-            gap.Constraint =
-                static_cast<SpacingConstraint>(static_cast<uint8_t>(gap
-                    .Constraint) |
+            gap.Constraint = static_cast<
+                SpacingConstraint>(static_cast<uint8_t>(gap.Constraint) |
                     static_cast<uint8_t>(SpacingConstraint::SourceSafety));
         }
     }

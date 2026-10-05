@@ -41,8 +41,8 @@
 74: ) grouping-delimiter
 75: ; generic
 76: } block-delimiter
-79: < generic
-81: > generic
+79: < template-delimiter
+81: > template-delimiter
 82: ( cast-delimiter
 84: ) cast-delimiter
 85: ; generic

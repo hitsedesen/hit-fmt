@@ -45,6 +45,18 @@ CallsBreak = Always
 CallsFirstItem = NextLine
 CallsCloser = OwnLine
 CallsAlignment = Block
+# Template headers and argument lists have independent overrides.
+TemplateParametersBreak = IfNeeded
+TemplateParametersPacking = VerticalWhenBroken
+TemplateParametersFirstItem = NextLine
+TemplateParametersCloser = SameLine
+TemplateParametersAlignment = Block
+# Type and expression template arguments have their own list overrides.
+TemplateArgumentsBreak = IfNeeded
+TemplateArgumentsPacking = VerticalWhenBroken
+TemplateArgumentsFirstItem = NextLine
+TemplateArgumentsCloser = SameLine
+TemplateArgumentsAlignment = Block
 )"},
     {"Keep a sole argument's opening inline when it fits:",
         R"(CallsFirstItem = NextLine
@@ -188,7 +200,7 @@ constexpr HelpSection HelpSections[] = {
         "Report checks emitted line widths without a "
             "feasibility-format probe.\n", LayoutExamples},
     {"Lists and alignment", "Categories: Calls, Parameters, "
-        "Initializers, Captures, "
+        "TemplateParameters, TemplateArguments, Initializers, Captures, "
         "ControlHeaders, BaseLists, "
             "ConstructorLists, Enumerators. Each accepts "
             "Layout, Break, Packing, "
@@ -196,6 +208,12 @@ constexpr HelpSection HelpSections[] = {
         "Closer is available only for delimiter-bearing categories, not "
         "BaseLists/ConstructorLists. Optional values default to Inherit. "
         "First/Closer apply only when broken. "
+        "Parameters governs function parameters; TemplateParameters governs "
+        "template declarations and explicit generic-lambda template headers. "
+        "TemplateArguments also governs named-cast type brackets. "
+        "Neither template category selects the following declaration's line. "
+        "Nested lists keep shared >> closers as one unchanged token; "
+        "the outer list owns placement of a shared closer. "
         "CallsSoleArgumentFirstItem overrides first-item placement for exactly "
         "one parsed argument, irrespective of expression kind; Inherit follows "
         "CallsFirstItem. Empty and multiple-argument calls are unaffected. "

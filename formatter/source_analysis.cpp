@@ -191,8 +191,8 @@ bool Recovery(parser::NodeKind kind)
 
 RegionStatus Combine(RegionStatus a, RegionStatus b)
 {
-    return static_cast<RegionStatus>(static_cast<uint8_t>(a) |
-        static_cast<uint8_t>(b));
+    return static_cast<
+        RegionStatus>(static_cast<uint8_t>(a) | static_cast<uint8_t>(b));
 }
 
 } // namespace

@@ -47,7 +47,8 @@ template<class T> void InspectConditions(int count)
 {
     if constexpr (Gate<T>::Enabled &&
                   HasCapacityForCurrentEndpoint() &&
-                  !traits::same<T, T>) {
+                  !traits::same<T, T>)
+    {
         Use(count);
     }
     if (Gate<T>::Enabled && HasCapacityForCurrentEndpoint()) {

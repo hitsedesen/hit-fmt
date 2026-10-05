@@ -233,7 +233,8 @@
         formatter::GapPolicy::GeneratedSpace)
 
 #define FORMATTER_DELIMITED_LIST_CATEGORIES(X)                               \
-    X(Calls) X(Parameters) X(Initializers) X(Captures) \
+    X(Calls) X(Parameters) X(TemplateParameters) X(TemplateArguments) \
+    X(Initializers) X(Captures) \
     X(ControlHeaders) \
     X(Enumerators)
 #define FORMATTER_HEADER_LIST_CATEGORIES(X)                                  \
@@ -292,6 +293,8 @@
     OPT(std::optional<formatter::FirstItemPlacement>,                        \
         CallsSoleArgumentFirstItem, std::nullopt)                            \
     FORMATTER_DELIMITED_LIST_CATEGORY_OPTIONS(OPT, Parameters)                \
+    FORMATTER_DELIMITED_LIST_CATEGORY_OPTIONS(OPT, TemplateParameters)        \
+    FORMATTER_DELIMITED_LIST_CATEGORY_OPTIONS(OPT, TemplateArguments)         \
     FORMATTER_DELIMITED_LIST_CATEGORY_OPTIONS(OPT, Initializers)              \
     FORMATTER_DELIMITED_LIST_CATEGORY_OPTIONS(OPT, Captures)                   \
     FORMATTER_DELIMITED_LIST_CATEGORY_OPTIONS(OPT, ControlHeaders)             \

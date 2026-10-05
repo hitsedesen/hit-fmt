@@ -134,6 +134,22 @@ Source formatting and CLI checks apply it automatically. Tree-based library
 calls must parse using `PreparedFormat::ParsingOptions()`; normalization
 reparses use the same hints. The repository opts in for its test declarations.
 
+`TemplateArguments` uses the shared list defaults and supports the
+`Layout`, `Break`, `Packing`, `FirstItem`, `Closer`, `Alignment`,
+`ContinuationOffset`, and `AlignmentFallbackOffset` overrides. These apply
+only to proven template argument lists and named-cast type brackets, not
+comparison or shift operators. Nested lists retain shared `>>` closers as
+one unchanged token; the outer list owns their closing placement. Argument
+expressions remain intact unless their own syntax supplies safe breaks.
+`TemplateParameters` independently provides the same overrides for
+`template<class T, int N>` headers, nested template-template parameters,
+and explicit generic-lambda template headers. Defaults containing template
+arguments use `TemplateArguments` for their nested lists. Shared `>>` tokens
+remain intact, with placement controlled by the outer list's policy.
+`Parameters` continues to control function and lambda function parameters,
+not template parameters. Neither template list family controls the break
+between a template header and its following declaration.
+
 Nonempty `CallLikeMacroNames` is currently rejected by the public pipeline.
 The YTsaurus example clears that hint and conservatively byte-protects
 `REGISTER_DERIVED_EXTERNALIZED_YSON_STRUCT` via `WhitespaceSensitiveMacros`.

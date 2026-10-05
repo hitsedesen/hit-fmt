@@ -5,7 +5,7 @@ int marker= 1;
 struct Host {
     template<class, auto> struct Pair;
 };
-template<> struct Host::Pair<Wrap<(1>0),int>, 2> {
+template<> struct Host::Pair<Wrap<(1>0), int>, 2> {
     int stored;
     Pair(int first= (1< 2), int second= (3> 2)): stored(first+ second) {
     }

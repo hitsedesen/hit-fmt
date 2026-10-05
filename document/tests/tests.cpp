@@ -1975,9 +1975,9 @@ TEST(GroupLayout, BorrowedFlatWhitespaceSelectionMeasurementAndMapping)
 
 TEST(GroupLayout, RejectsMalformedGapSourcesAndZeroNewlineCounts)
 {
-    constexpr std::array<Provenance, 5> badRanges{
-        {{InvalidId, 0}, {0, InvalidId}, {4, 3}, {0, 8}, {8, 8}},
-    };
+    constexpr std::array<
+        Provenance,
+        5> badRanges{{{InvalidId, 0}, {0, InvalidId}, {4, 3}, {0, 8}, {8, 8}}};
     for (auto range : badRanges) {
         Document document(" \t ");
         GapSpec spec{GapKind::Flat, 0};
@@ -2091,12 +2091,9 @@ TEST(GroupLayout, BorrowedIndentAfterBlankLinesPreservesBytesAndBlockBase)
 
 TEST(GroupLayout, SourceLineIndentPrefixesAndMappingsGolden)
 {
-    constexpr std::array<std::string_view, 4> prefixes{
-        "\n",
-        "\r\n",
-        " \t\r\n\t\n\n",
-        "\n",
-    };
+    constexpr std::array<
+        std::string_view,
+        4> prefixes{"\n", "\r\n", " \t\r\n\t\n\n", "\n"};
     std::string actual;
     for (std::size_t index = 0; index < prefixes.size(); ++index) {
         const bool commentCR = index == prefixes.size() - 1;
@@ -2362,7 +2359,9 @@ TEST(GroupLayout, SourceLineIndentCannotInventEditableBreakWithoutOwnedSite)
 
 TEST(GroupLayout, SourceLineIndentRejectsMalformedRangesPrefixesAndAnchors)
 {
-    constexpr std::array<Provenance, 6> badRanges{
+    constexpr std::array<
+        Provenance,
+        6> badRanges{
         {
             {InvalidId, InvalidId},
             {InvalidId, 0},
@@ -2420,9 +2419,9 @@ TEST(GroupLayout, SourceLineIndentRejectsMalformedRangesPrefixesAndAnchors)
 
 TEST(GroupLayout, RejectsMalformedBorrowedIndentEvenWhenFlat)
 {
-    constexpr std::array<Provenance, 5> ranges{
-        {{InvalidId, 0}, {0, InvalidId}, {2, 1}, {0, 4}, {4, 4}},
-    };
+    constexpr std::array<
+        Provenance,
+        5> ranges{{{InvalidId, 0}, {0, InvalidId}, {2, 1}, {0, 4}, {4, 4}}};
     for (auto range : ranges) {
         Document document(" \t ");
         GapSpec spec{GapKind::Flat, 0};
@@ -2759,9 +2758,9 @@ TEST(GroupLayout, RejectsMalformedDocumentsAndDependencyCycles)
 
 TEST(GroupLayout, SourceTextRejectsSentinelOffsetsWithoutThrowing)
 {
-    constexpr std::array<Provenance, 3> ranges{
-        {{InvalidId, InvalidId}, {InvalidId, 0}, {0, InvalidId}},
-    };
+    constexpr std::array<
+        Provenance,
+        3> ranges{{{InvalidId, InvalidId}, {InvalidId, 0}, {0, InvalidId}}};
     for (auto source : {std::string_view{}, std::string_view{"abc"}}) {
         for (bool verbatim : {false, true}) {
             for (auto emit :

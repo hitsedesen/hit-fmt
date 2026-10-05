@@ -226,6 +226,8 @@ struct CompiledPolicies
     // exactly one parsed argument, independently of its expression kind.
     const FirstItemPlacement CallsSoleArgumentFirstItem;
     const ListPolicy Parameters;
+    const ListPolicy TemplateParameters;
+    const ListPolicy TemplateArguments;
     const ListPolicy Initializers;
     const ListPolicy Captures;
     const ListPolicy ControlHeaders;

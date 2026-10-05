@@ -15,7 +15,7 @@ template<auto,class> struct Wrap;
 template<class,auto> struct TypePair;
 template<> struct TypePair<Wrap<(1>0),int>,2> {
 };
-template<> struct TypePair<Wrap<(8>>1),   int>,2> {
+template<> struct TypePair<Wrap<(8>>1),int>,2> {
 };
 template<> struct TypePair<Wrap<(1<<2),Wrap<(3>2),int>>,0> {
 };

@@ -1138,8 +1138,14 @@
       "struct" "Family"
       (template-argument-list
         "<"
-        (template-argument "Spec" "<" "int")
-        ">>"
+        (template-argument
+          "Spec"
+          (template-argument-list
+            "<"
+            (template-argument "int")
+            ">>"
+          )
+        )
       )
       "::" "Child" "{"
       (function-definition

@@ -1798,7 +1798,14 @@
             "("
             (binary-expression
               (member-expression
-                (unparsed-syntax "Box" "<" "T" ">")
+                (template-id-expression
+                  (identifier-expression "Box")
+                  (template-argument-list
+                    "<"
+                    (template-argument "T")
+                    ">"
+                  )
+                )
                 "::"
                 (identifier-expression "value")
               )
@@ -1808,7 +1815,16 @@
                 (member-expression
                   (identifier-expression "traits")
                   "::"
-                  (unparsed-syntax "same" "<" "T" "," "T" ">")
+                  (template-id-expression
+                    (identifier-expression "same")
+                    (template-argument-list
+                      "<"
+                      (template-argument "T")
+                      (list-separator ",")
+                      (template-argument "T")
+                      ">"
+                    )
+                  )
                 )
               )
             )
@@ -1838,7 +1854,14 @@
             "("
             (binary-expression
               (member-expression
-                (unparsed-syntax "Box" "<" "T" ">")
+                (template-id-expression
+                  (identifier-expression "Box")
+                  (template-argument-list
+                    "<"
+                    (template-argument "T")
+                    ">"
+                  )
+                )
                 "::"
                 (identifier-expression "value")
               )

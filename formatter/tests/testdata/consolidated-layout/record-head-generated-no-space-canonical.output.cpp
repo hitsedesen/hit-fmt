@@ -14,7 +14,7 @@ template<> struct TypePair<Wrap<(1>0),int>,2> {
 };
 template<> struct TypePair<Wrap<(1>0),int>,2> {
 };
-template<> struct TypePair<Wrap<(8>>1),   int>,2> {
+template<> struct TypePair<Wrap<(8>>1),int>,2> {
 };
-template<> struct TypePair<Wrap<(8>>1),   int>,2> {
+template<> struct TypePair<Wrap<(8>>1),int>,2> {
 };

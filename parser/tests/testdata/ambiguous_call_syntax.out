@@ -61,8 +61,18 @@
         "inline" "Adapter"
         (template-argument-list
           "<"
-          (template-argument "detail" "::" "MethodRule" "<" "Owner" "," "Result" "," "Result" "(" "Owner" "::" "*" ")" "(" ")" "const")
-          ">>"
+          (template-argument
+            "detail" "::" "MethodRule"
+            (template-argument-list
+              "<"
+              (template-argument "Owner")
+              (list-separator ",")
+              (template-argument "Result")
+              (list-separator ",")
+              (template-argument "Result" "(" "Owner" "::" "*" ")" "(" ")" "const")
+              ">>"
+            )
+          )
         )
       )
       (init-declarator-list

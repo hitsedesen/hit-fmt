@@ -610,10 +610,11 @@ std::optional<std::vector<Violation>> ReflowViolations(
         auto gapA = std::string_view(original).substr(startA, a - startA);
         auto gapB = std::string_view(replacement).substr(startB, b - startB);
         if (gapA != gapB) {
-            auto lineIndex = static_cast<size_t>(std::upper_bound(
-                lineStarts.begin(),
-                lineStarts.end(),
-                a) - lineStarts.begin() - 1);
+            auto lineIndex = static_cast<
+                size_t>(std::upper_bound(
+                    lineStarts.begin(),
+                    lineStarts.end(),
+                    a) - lineStarts.begin() - 1);
             auto byte = std::min(
                 a - lineStarts[lineIndex],
                 source[lineIndex].Text.size());

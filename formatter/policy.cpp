@@ -338,6 +338,8 @@ CompiledPolicies CompilePolicies(const Style& style)
         .CallsSoleArgumentFirstItem =
             style.CallsSoleArgumentFirstItem.value_or(Calls.FirstItem),
         .Parameters = Parameters,
+        .TemplateParameters = TemplateParameters,
+        .TemplateArguments = TemplateArguments,
         .Initializers = Initializers,
         .Captures = Captures,
         .ControlHeaders = ControlHeaders,

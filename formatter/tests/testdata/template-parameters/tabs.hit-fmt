@@ -1,0 +1,17 @@
+Layout = Canonical
+IndentationKind = Tabs
+ColumnLimit = 64
+IndentWidth = 4
+TemplateParametersLayout = Canonical
+TemplateParametersBreak = IfNeeded
+TemplateParametersPacking = VerticalWhenBroken
+TemplateParametersFirstItem = NextLine
+TemplateParametersCloser = OwnLine
+TemplateParametersAlignment = Delimiter
+TemplateParametersContinuationOffset = 0
+TemplateParametersAlignmentFallbackOffset = 0
+TemplateArgumentsLayout = Preserve
+TemplateKeywordSpacing = Space
+TemplateTypeArgumentInteriorSpacing = Space
+CommaSpaceAfter = Space
+WhitespaceSensitiveMacros = ["OPAQUE"]

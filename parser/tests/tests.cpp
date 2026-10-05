@@ -2339,6 +2339,7 @@ INSTANTIATE_TEST_SUITE_P(
         GoldenCase{"declarations"},
         GoldenCase{"expressions"},
         GoldenCase{"separated_lists"},
+        GoldenCase{"template_parameters_recovery", true},
         GoldenCase{"preprocessing"},
         GoldenCase{"preprocessing_fragments"},
         GoldenCase{"modules_and_concepts"},
@@ -2409,7 +2410,9 @@ TEST(Parser, RebindsWhitespaceWithoutReclassifyingTokens)
     const auto beforeBrace = source.find(" {");
     const auto beforeReturn = source.find(" return");
     const auto beforeClose = source.find(" }");
-    const std::array<parser::WhitespaceEdit, 3> edits{
+    const std::array<
+        parser::WhitespaceEdit,
+        3> edits{
         {
             {
                 static_cast<util::SourceOffset>(beforeBrace),
@@ -2454,7 +2457,9 @@ TEST(Parser, RebindsWhitespaceWithoutReclassifyingTokens)
     const auto beforeOpen = expanded.find(")\n{") + 1;
     const auto beforeBody = expanded.find("{\n  return") + 1;
     const auto beforeEnd = expanded.find(";\n}") + 1;
-    const std::array<parser::WhitespaceEdit, 3> mergedEdits{
+    const std::array<
+        parser::WhitespaceEdit,
+        3> mergedEdits{
         {
             {
                 static_cast<util::SourceOffset>(beforeOpen),
@@ -2484,7 +2489,9 @@ TEST(Parser, RebindsWhitespaceWithoutReclassifyingTokens)
             original.TokenPosition(i).Column);
     }
     PaddedInput joined("int f() { returnvalue + 1; }\n");
-    const std::array<parser::WhitespaceEdit, 1> unsafe{
+    const std::array<
+        parser::WhitespaceEdit,
+        1> unsafe{
         {
             {
                 static_cast<util::SourceOffset>(source.find(" value")),
@@ -2496,7 +2503,9 @@ TEST(Parser, RebindsWhitespaceWithoutReclassifyingTokens)
     EXPECT_FALSE(original.RebindWhitespaceEdits(joined.View(), unsafe));
     EXPECT_FALSE(original.RebindWhitespaceGaps(joined.View()));
     PaddedInput tight("int f() { return value+ 1; }\n");
-    const std::array<parser::WhitespaceEdit, 1> safe{
+    const std::array<
+        parser::WhitespaceEdit,
+        1> safe{
         {
             {
                 static_cast<util::SourceOffset>(source.find(" + ")),
@@ -2523,7 +2532,9 @@ TEST(Parser, RebindsWhitespaceWithoutReclassifyingTokens)
         parser::Parse(unicode.View(), [] (parser::ParseError) { });
     auto unicodeSource = unicode.View().View();
     auto gap = unicodeSource.find(" x;");
-    const std::array<parser::WhitespaceEdit, 1> unicodeEdit{
+    const std::array<
+        parser::WhitespaceEdit,
+        1> unicodeEdit{
         {
             {
                 static_cast<util::SourceOffset>(gap),
@@ -2969,11 +2980,16 @@ TEST(Parser, RecordHeadTemplateArgumentsOwnTheirSeparators)
         EXPECT_EQ(parsed.SourceText(second->Tokens), value.Second);
         EXPECT_EQ(separator->Tokens.Begin, tokenAt(outerComma));
         EXPECT_EQ(separator->Tokens.End, tokenAt(outerComma) + 1);
+        const auto separators =
+            LambdaOwnershipNodes(*list, parser::NodeKind::ListSeparator);
         for (auto i = list->Tokens.Begin; i < list->Tokens.End; ++i) {
             if (parsed.Kind(i) == tokenizer::TokenKind::Operator_Comma) {
+                const auto owned = std::ranges::any_of(
+                    separators,
+                    [i] (const auto* item) { return item->Tokens.Begin == i; });
                 EXPECT_EQ(
                     parsed.Role(i),
-                    i == tokenAt(outerComma)
+                    owned
                         ? parser::PunctuationRole::ListSeparator
                         : parser::PunctuationRole::Generic);
             }
@@ -3063,7 +3079,7 @@ TEST(Parser, RecordHeadTemplateArgumentsOwnTheirSeparators)
     EXPECT_EQ(second->NextSibling, nullptr);
     for (auto i = first->Tokens.Begin; i < first->Tokens.End; ++i) {
         if (composed.Kind(i) == tokenizer::TokenKind::Operator_Comma) {
-            EXPECT_EQ(composed.Role(i), parser::PunctuationRole::Generic);
+            EXPECT_EQ(composed.Role(i), parser::PunctuationRole::ListSeparator);
         }
     }
     ASSERT_NE(constructor, nullptr);
@@ -3223,12 +3239,14 @@ TEST(Parser, RecordHeadTemplateArgumentsOwnTheirSeparators)
 
 TEST(Parser, RecordHeadChildrenAreBoundedWithoutGuessingOperands)
 {
-    const std::pair<std::string_view, size_t> cases[] = {
+    const std::pair<
+        std::string_view,
+        size_t> cases[] = {
         {"struct Plain {};", 0},
         {"struct Outer::Inner {};", 0},
         {"template<> struct Outer<int>::Inner<long,char> {};", 2},
         {"template<> struct Pair<> {};", 1},
-        {"template<> struct Pair<Wrap<int,long>, char> {};", 1},
+        {"template<> struct Pair<Wrap<int,long>, char> {};", 2},
         {"template<> struct Pair<(a < b), 2> {};", 1},
         {"template<> struct Pair<Value{1,2}, 3> {};", 1},
         {"template<> struct Pair<decltype(auto), 2> {};", 1},
@@ -3263,16 +3281,15 @@ TEST(Parser, RecordHeadChildrenAreBoundedWithoutGuessingOperands)
                 pending.push_back(child);
             }
             if (node->Kind == parser::NodeKind::TemplateArgument) {
-                // Head-list syntax does not resolve the
-                // type/expression operands. In particular, nested commas
-                // must not be mistaken for the head's list separators.
-                EXPECT_EQ(node->FirstChild, nullptr);
-                for (auto i = node->Tokens.Begin; i < node->Tokens.End; ++i) {
-                    if (tree.Kind(i) == tokenizer::TokenKind::Operator_Comma) {
-                        EXPECT_NE(
-                            tree.Role(i),
-                            parser::PunctuationRole::ListSeparator);
-                    }
+                // Nested angle lists own their own commas; other operands
+                // are not guessed as calls or general expressions here.
+                for (auto* child = node->FirstChild;
+                    child;
+                    child = child->NextSibling)
+                {
+                    EXPECT_EQ(
+                        child->Kind,
+                        parser::NodeKind::TemplateArgumentList);
                 }
             }
         }
@@ -3303,7 +3320,9 @@ TEST(Parser, RecordHeadChildrenAreBoundedWithoutGuessingOperands)
         ordinaryInput.View(),
         [&] (parser::ParseError error) { errors.push_back(std::move(error)); });
     EXPECT_TRUE(errors.empty());
-    const std::pair<parser::NodeKind, std::string_view> expected[] = {
+    const std::pair<
+        parser::NodeKind,
+        std::string_view> expected[] = {
         {parser::NodeKind::ParameterList, "int first=(1<2)"},
         {parser::NodeKind::ArgumentList, "(1<2)"},
         {parser::NodeKind::InitializerList, "(1<2)"},
@@ -3515,7 +3534,7 @@ TEST(Parser, RequiresClauseOwnsDependentFunctionReturnPrefix)
         {"enabled && requires(T v) { v.touch(); }", false},
         {"(requires(T v) { v.touch(); })", false},
         {"requires(T v) { v.touch(); } || (limit * scale > 0)", false},
-        {"Valid<T>", true},
+        {"Valid<T>", false},
     };
     for (const auto& declaration : declarations) {
         for (const auto& constraint : constraints) {
@@ -4194,7 +4213,9 @@ TEST(Parser, QualifiedConstructorHeadsKeepTerminalDeclaratorNames)
     const auto tree =
         parser::Parse(input.View(), [&] (parser::ParseError) { ++errors; });
     EXPECT_EQ(errors, 0);
-    const std::array<std::pair<std::string_view, std::string_view>, 9> cases{
+    const std::array<
+        std::pair<std::string_view, std::string_view>,
+        9> cases{
         {
             {"Meter::Meter()", "Meter"},
             {"Meter::Meter(int", "Meter"},
@@ -4338,7 +4359,9 @@ TEST(Parser, FunctionKindsClassifyOnlyActualFunctionOwners)
 
 TEST(Parser, FunctionKindsLeaveUncertainHeadsAndNonfunctionsUnknown)
 {
-    const std::array<std::string_view, 30> cases{
+    const std::array<
+        std::string_view,
+        30> cases{
         {
             "Loose();",
             "Owner::Other();",
@@ -4554,7 +4577,9 @@ TEST(Parser, FunctionKindsRetainBalancedQualifiedAndExplicitReturnEvidence)
         std::string_view Name;
         size_t OuterPointers;
     };
-    const std::array<Case, 28> cases{
+    const std::array<
+        Case,
+        28> cases{
         {
             {
                 "Owner<Pair<int, long>>::Owner() {}",

@@ -166,8 +166,8 @@ template <typename T>
 template <typename T>
 [[nodiscard]] constexpr std::string_view SerializeConfigEnum(T value)
 {
-    return ConfigEnumNames<T>::Values[
-        static_cast<std::underlying_type_t<T>>(value)];
+    return ConfigEnumNames<
+        T>::Values[static_cast<std::underlying_type_t<T>>(value)];
 }
 
 } // namespace formatter

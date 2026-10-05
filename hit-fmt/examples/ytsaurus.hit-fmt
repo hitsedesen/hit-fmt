@@ -28,6 +28,23 @@ CapturesCloser = OwnLine
 ListAlignment = Block
 ContinuationOffset = 4
 AlignmentFallbackOffset = 4
+# Broken template headers and uses have independent vertical list policies.
+TemplateParametersLayout = Canonical
+TemplateParametersBreak = IfNeeded
+TemplateParametersPacking = VerticalWhenBroken
+TemplateParametersFirstItem = NextLine
+TemplateParametersCloser = SameLine
+TemplateParametersAlignment = Block
+TemplateParametersContinuationOffset = 4
+TemplateParametersAlignmentFallbackOffset = 4
+TemplateArgumentsLayout = Canonical
+TemplateArgumentsBreak = IfNeeded
+TemplateArgumentsPacking = VerticalWhenBroken
+TemplateArgumentsFirstItem = NextLine
+TemplateArgumentsCloser = SameLine
+TemplateArgumentsAlignment = Block
+TemplateArgumentsContinuationOffset = 4
+TemplateArgumentsAlignmentFallbackOffset = 4
 # Base lists always start on a new line, with leading colon/comma punctuation.
 BaseListsBreak = Always
 BaseListsPacking = VerticalWhenBroken

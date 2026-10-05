@@ -49,11 +49,8 @@ void inspect()
         }));
     record(
         actual,
-        (types::collection<int>{
-            firstLongElement,
-            secondLongElement,
-            thirdLongElement
-        }));
+        (types::collection<
+            int>{firstLongElement, secondLongElement, thirdLongElement}));
     record(
         ReadCurrentCapacityForActiveEndpoint(),
         std::numeric_limits<ExternalType>::max());

@@ -1016,10 +1016,9 @@ StructuralPlan ResolveNamespaceComments(
             lines.push_back(static_cast<parser::SourceOffset>(i + 1));
         }
     auto line = [&] (parser::SourceOffset offset) {
-        return static_cast<size_t>(std::upper_bound(
-            lines.begin(),
-            lines.end(),
-            offset) - lines.begin() - 1);
+        return static_cast<
+            size_t>(std::upper_bound(lines.begin(), lines.end(), offset) -
+                lines.begin() - 1);
     };
     const auto count = original.TokenCount();
     std::pmr::vector<uint8_t> mappedValid(count, 0, &scratchMemory);

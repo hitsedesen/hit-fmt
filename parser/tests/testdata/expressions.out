@@ -142,17 +142,25 @@
             (binary-expression
               (binary-expression
                 (cast-expression
-                  "static_cast" "<"
-                  (type-id "long")
-                  ">" "("
+                  "static_cast"
+                  (template-argument-list
+                    "<"
+                    (type-id "long")
+                    ">"
+                  )
+                  "("
                   (identifier-expression "value")
                   ")"
                 )
                 "+"
                 (cast-expression
-                  "reinterpret_cast" "<"
-                  (type-id "Type" "*")
-                  ">" "("
+                  "reinterpret_cast"
+                  (template-argument-list
+                    "<"
+                    (type-id "Type" "*")
+                    ">"
+                  )
+                  "("
                   (identifier-expression "pointer")
                   ")"
                 )
@@ -181,9 +189,13 @@
               (initializer
                 "="
                 (cast-expression
-                  "static_cast" "<"
-                  (type-id "ExternalType")
-                  ">" "("
+                  "static_cast"
+                  (template-argument-list
+                    "<"
+                    (type-id "ExternalType")
+                    ">"
+                  )
+                  "("
                   (identifier-expression "value")
                   ")"
                 )
@@ -202,9 +214,13 @@
               (initializer
                 "="
                 (cast-expression
-                  "const_cast" "<"
-                  (type-id "ExternalType" "*")
-                  ">" "("
+                  "const_cast"
+                  (template-argument-list
+                    "<"
+                    (type-id "ExternalType" "*")
+                    ">"
+                  )
+                  "("
                   (identifier-expression "pointer")
                   ")"
                 )
@@ -223,9 +239,13 @@
               (initializer
                 "="
                 (cast-expression
-                  "reinterpret_cast" "<"
-                  (type-id "ExternalType" "*")
-                  ">" "("
+                  "reinterpret_cast"
+                  (template-argument-list
+                    "<"
+                    (type-id "ExternalType" "*")
+                    ">"
+                  )
+                  "("
                   (identifier-expression "pointer")
                   ")"
                 )
@@ -244,9 +264,13 @@
               (initializer
                 "="
                 (cast-expression
-                  "dynamic_cast" "<"
-                  (type-id "ExternalType" "*")
-                  ">" "("
+                  "dynamic_cast"
+                  (template-argument-list
+                    "<"
+                    (type-id "ExternalType" "*")
+                    ">"
+                  )
+                  "("
                   (identifier-expression "base")
                   ")"
                 )
@@ -266,9 +290,19 @@
                 "="
                 (binary-expression
                   (cast-expression
-                    "static_cast" "<"
-                    (type-id "types" "::" "Box" "<" "ExternalType")
-                    ">>" "("
+                    "static_cast"
+                    (template-argument-list
+                      "<"
+                      (type-id
+                        "types" "::" "Box"
+                        (template-argument-list
+                          "<"
+                          (template-argument "ExternalType")
+                          ">>"
+                        )
+                      )
+                    )
+                    "("
                     (identifier-expression "value")
                     ")"
                   )

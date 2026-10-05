@@ -786,6 +786,10 @@ private:
                 return &Policies_.Calls;
             case NodeKind::ParameterList:
                 return &Policies_.Parameters;
+            case NodeKind::TemplateParameterList:
+                return &Policies_.TemplateParameters;
+            case NodeKind::TemplateArgumentList:
+                return &Policies_.TemplateArguments;
             case NodeKind::InitializerList:
                 return &Policies_.Initializers;
             case NodeKind::LambdaCaptureList:
@@ -808,6 +812,10 @@ private:
     {
         const auto& node = Region(Syntax_[id]);
         switch (node.Kind) {
+            case NodeKind::TemplateParameterList:
+            case NodeKind::TemplateArgumentList:
+                // An incomplete template grammar must not acquire new breaks.
+                return false;
             case NodeKind::ArgumentList:
             case NodeKind::Condition:
                 if (node.Tokens.Size() < 2 ||
@@ -967,10 +975,32 @@ private:
         const auto begin = node.Tokens.Begin;
         const auto end = node.Tokens.End;
         const auto closer = prefixed ? end : end - 1;
+        bool sharedCloser = false;
+        if ((node.Kind == NodeKind::TemplateArgumentList ||
+            node.Kind == NodeKind::TemplateParameterList) &&
+            Tree_.Kind(closer) == TokenKind::Operator_RightShift)
+        {
+            for (auto parent = node.Parent;
+                parent != None;
+                parent = Region(Syntax_[parent]).Parent)
+            {
+                const auto& outer = Region(Syntax_[parent]);
+                if ((outer.Kind == NodeKind::TemplateArgumentList ||
+                    outer.Kind == NodeKind::TemplateParameterList) &&
+                    outer.Tokens.End == end)
+                {
+                    sharedCloser = true;
+                    break;
+                }
+            }
+        }
         const bool canonical = policy.Layout == LayoutMode::Canonical;
+        if (sharedCloser && node.Tokens.Size() == 2) {
+            return;
+        }
         const auto group = GroupAt(
             prefixed ? GapPosition(begin) : GapPosition(begin + 1),
-            GapPosition(end),
+            GapPosition(sharedCloser ? closer : end),
             document::GroupMode::Fill,
             int32_t(policy.Indent.ContinuationOffset),
             policy.Indent);
@@ -1032,7 +1062,7 @@ private:
                 // segment need not move just because the whole header breaks.
                 Gaps_[begin + 1].FitNextSegment = true;
             }
-            if (!prefixed) {
+            if (!prefixed && !sharedCloser) {
                 Own(
                     closer,
                     group,
@@ -1045,7 +1075,7 @@ private:
         } else {
             Own(begin + 1, group, Boundary::Preserve);
             Reindent(begin + 1, group);
-            if (!prefixed) {
+            if (!prefixed && !sharedCloser) {
                 Own(
                     closer,
                     group,

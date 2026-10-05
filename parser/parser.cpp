@@ -756,8 +756,9 @@ std::optional<SyntaxTree> SyntaxTree::RebindWhitespaceEdits(
             const auto newLines = std::ranges::count(newGap, '\n');
             lineDelta += newLines - oldLines;
             if (newLines) {
-                columnDelta = static_cast<int64_t>(newGap.size() -
-                    newGap.rfind('\n')) - oldPosition.Column;
+                columnDelta =
+                    static_cast<int64_t>(newGap.size() - newGap.rfind('\n')) -
+                        oldPosition.Column;
             } else if (oldLines) {
                 int64_t previousEndColumn = 1;
                 if (index) {
@@ -1331,9 +1332,8 @@ private:
 
     void PushScope()
     {
-        CurrentScope_ = detail::Make<NameScope>(
-            ScratchMemory_,
-            NameScope{.Parent = CurrentScope_});
+        CurrentScope_ = detail::Make<
+            NameScope>(ScratchMemory_, NameScope{.Parent = CurrentScope_});
     }
 
     void PopScope()
@@ -1478,8 +1478,9 @@ private:
     {
         constexpr size_t NodesPerBlock = 256;
         if (RemainingNodes_ == 0) {
-            NextNode_ = static_cast<Node*>(Tree_.Memory_
-                ->allocate(sizeof(Node) * NodesPerBlock, alignof(Node)));
+            NextNode_ = static_cast<
+                Node*>(Tree_.Memory_
+                    ->allocate(sizeof(Node) * NodesPerBlock, alignof(Node)));
             RemainingNodes_ = NodesPerBlock;
         }
         auto* node = ::new (NextNode_++) Node;
@@ -2297,6 +2298,12 @@ private:
             }
             return;
         }
+        if (kind == NodeKind::TemplateArgument ||
+            kind == NodeKind::TemplateParameter)
+        {
+            AddTypeSyntaxChildren(element, begin, end);
+            return;
+        }
         if (kind != NodeKind::Enumerator) {
             return;
         }
@@ -2379,7 +2386,16 @@ private:
             }
             if (elementBegin < i) {
                 auto* element = MakeNode(elementKind, elementBegin);
-                element->Tokens.End = i;
+                // Nested template lists may share one indivisible >> token.
+                // Include it in the last element so its nested list can own
+                // the complete token; the outer list shares that closer.
+                const auto elementEnd = (elementKind ==
+                    NodeKind::TemplateArgument ||
+                    elementKind == NodeKind::TemplateParameter) && i == end &&
+                    Kind(i) == TK::Operator_RightShift && angleDepth > 0
+                    ? i + 1
+                    : i;
+                element->Tokens.End = elementEnd;
                 if (conditionalMiddle != 0) {
                     AddUnparsedSyntax(*element, elementBegin, i);
                 } else {
@@ -2387,7 +2403,7 @@ private:
                         *element,
                         elementKind,
                         elementBegin,
-                        i);
+                        elementEnd);
                 }
                 Append(list, *element);
             }
@@ -2400,19 +2416,61 @@ private:
         }
     }
 
-    Node* MakeTemplateArgumentList(size_t opening, size_t end)
+    Node* MakeTemplateList(NodeKind kind, size_t opening, size_t end)
     {
-        auto* arguments = MakeNode(NodeKind::TemplateArgumentList, opening);
+        auto* arguments = MakeNode(kind, opening);
         arguments->Tokens.End = end;
+        if (end <= opening + 1 ||
+            (Kind(end - 1) != TK::Operator_Greater &&
+                Kind(end - 1) != TK::Operator_RightShift))
+        {
+            AddUnparsedSyntax(*arguments, opening + 1, end);
+            return arguments;
+        }
+        if (TemplateListDepth_ >= 64) {
+            AddUnparsedSyntax(*arguments, opening + 1, end - 1);
+            return arguments;
+        }
+        ++TemplateListDepth_;
         if (opening + 1 < end - 1) {
             AddSeparatedElements(
                 *arguments,
                 opening + 1,
                 end - 1,
-                NodeKind::TemplateArgument);
+                kind == NodeKind::TemplateParameterList
+                    ? NodeKind::TemplateParameter
+                    : NodeKind::TemplateArgument);
+        }
+        bool expectingArgument = true;
+        bool malformed = false;
+        for (auto* child = arguments->FirstChild;
+            child;
+            child = child->NextSibling)
+        {
+            if (child->Kind == NodeKind::ListSeparator) {
+                malformed |= expectingArgument;
+                expectingArgument = true;
+            } else {
+                expectingArgument = false;
+            }
+        }
+        if (malformed || (arguments->FirstChild && expectingArgument)) {
+            arguments->FirstChild = arguments->LastChild = nullptr;
+            AddUnparsedSyntax(*arguments, opening + 1, end - 1);
         }
         AddDirectiveChildrenInGap(*arguments, opening, end);
+        --TemplateListDepth_;
         return arguments;
+    }
+
+    Node* MakeTemplateArgumentList(size_t opening, size_t end)
+    {
+        return MakeTemplateList(NodeKind::TemplateArgumentList, opening, end);
+    }
+
+    Node* MakeTemplateParameterList(size_t opening, size_t end)
+    {
+        return MakeTemplateList(NodeKind::TemplateParameterList, opening, end);
     }
 
     Node* ParseExpressionKeywordStatement(NodeKind kind)
@@ -2513,6 +2571,7 @@ private:
         auto* node = MakeNode(NodeKind::TemplateDeclaration, start);
         Cursor_ = NextSignificant(Cursor_) + 1;
         auto parametersBegin = Cursor_;
+        bool closedHeader = false;
 
         if (CurrentKind() == TK::Operator_Less) {
             int depth = 0;
@@ -2536,6 +2595,7 @@ private:
                 }
                 ++Cursor_;
             } while (!AtEnd() && depth > 0);
+            closedHeader = depth == 0;
             if (depth > 0) {
                 ErrorAt(start, "unterminated template parameter list");
             }
@@ -2545,17 +2605,20 @@ private:
         if (parametersBegin < parametersEnd &&
             Kind(parametersBegin) == TK::Operator_Less)
         {
-            auto* parameters =
-                MakeNode(NodeKind::TemplateParameterList, parametersBegin);
-            parameters->Tokens.End = parametersEnd;
-            if (parametersBegin + 1 < parametersEnd) {
-                AddSeparatedElements(
+            if (closedHeader) {
+                Append(
+                    *node,
+                    *MakeTemplateParameterList(parametersBegin, parametersEnd));
+            } else {
+                auto* parameters =
+                    MakeNode(NodeKind::TemplateParameterList, parametersBegin);
+                parameters->Tokens.End = parametersEnd;
+                AddUnparsedSyntax(
                     *parameters,
                     parametersBegin + 1,
-                    parametersEnd - 1,
-                    NodeKind::TemplateParameter);
+                    parametersEnd);
+                Append(*node, *parameters);
             }
-            Append(*node, *parameters);
         }
         PushScope();
         RegisterTemplateTypeParameters(parametersBegin, parametersEnd);
@@ -4606,6 +4669,19 @@ private:
     void AddTypeSyntaxChildren(Node& node, size_t begin, size_t end)
     {
         for (auto i = begin; i < end; ++i) {
+            if ((node.Kind == NodeKind::TemplateArgument ||
+                node.Kind == NodeKind::TemplateParameter) &&
+                IsOpenDelimiter(Kind(i)))
+            {
+                // Non-type argument interiors are opaque here. Comparisons
+                // and shifts in parentheses must not become nested type lists.
+                const auto closingEnd = FindBalancedEnd(i);
+                if (closingEnd > end) {
+                    break;
+                }
+                i = closingEnd - 1;
+                continue;
+            }
             if (Kind(i) == TK::Operator_OpenBracket &&
                 Kind(i + 1) == TK::Operator_OpenBracket)
             {
@@ -4658,7 +4734,17 @@ private:
                     (Kind(templateEnd - 1) == TK::Operator_Greater ||
                         Kind(templateEnd - 1) == TK::Operator_RightShift))
                 {
-                    Append(node, *MakeTemplateArgumentList(i, templateEnd));
+                    const bool templateParameters = node.Kind ==
+                        NodeKind::TemplateParameter &&
+                        Kind(PreviousSignificant(i)) == TK::Keyword_template;
+                    Append(
+                        node,
+                        *MakeTemplateList(
+                            templateParameters
+                                ? NodeKind::TemplateParameterList
+                                : NodeKind::TemplateArgumentList,
+                            i,
+                            templateEnd));
                     i = templateEnd - 1;
                 }
             }
@@ -7548,17 +7634,9 @@ private:
             auto templateAfter = ArgumentTemplateEnd(cursor, end, suffixWork);
             auto templateEnd = templateAfter.value_or(cursor);
             if (templateEnd > cursor) {
-                auto* parameters =
-                    MakeNode(NodeKind::TemplateParameterList, cursor);
-                parameters->Tokens.End = templateEnd;
-                if (cursor + 1 < templateEnd - 1) {
-                    AddSeparatedElements(
-                        *parameters,
-                        cursor + 1,
-                        templateEnd - 1,
-                        NodeKind::TemplateParameter);
-                }
-                Append(*lambda, *parameters);
+                Append(
+                    *lambda,
+                    *MakeTemplateParameterList(cursor, templateEnd));
                 cursor = ArgumentSignificant(templateEnd, end);
             }
         }
@@ -8166,9 +8244,22 @@ private:
     [[nodiscard]] bool IsUnambiguousTemplateUse(
         TokenIndex following,
         TokenIndex end,
-        bool explicitTemplate) const
+        bool explicitTemplate,
+        TokenIndex name,
+        TokenIndex opening) const
     {
-        if (explicitTemplate ||
+        const auto firstArgument = NextSignificant(opening + 1);
+        const auto afterArgument = NextSignificant(firstArgument + 1);
+        const bool typeArgument = (IsKnownType(firstArgument) ||
+            IsFundamentalTypeKeyword(Kind(firstArgument))) &&
+            (Kind(afterArgument) == TK::Operator_Comma ||
+                Kind(afterArgument) == TK::Operator_Greater ||
+                Kind(afterArgument) == TK::Operator_RightShift);
+        // Local type bindings rule out the competing comparison expression.
+        // Included or dependent names alone still do not prove template use.
+        const bool unqualifiedTypeName =
+            NextSignificant(name + 1) == opening && IsKnownType(name);
+        if (explicitTemplate || unqualifiedTypeName || typeArgument ||
             Kind(following) == TK::Operator_ClassMemberAccess ||
             Kind(following) == TK::Operator_IndirectClassMemberAccess)
         {
@@ -8297,8 +8388,12 @@ private:
         bool hasClosing = templateEnd <= end &&
             (closingKind == TK::Operator_Greater ||
                 closingKind == TK::Operator_RightShift);
-        bool hasTemplateUse =
-            IsUnambiguousTemplateUse(following, end, explicitTemplate);
+        bool hasTemplateUse = IsUnambiguousTemplateUse(
+            following,
+            end,
+            explicitTemplate,
+            nameBegin,
+            cursor);
         if (!hasClosing) {
             if (explicitTemplate) {
                 ErrorAt(memberBegin, "unterminated member template arguments");
@@ -8394,10 +8489,24 @@ private:
                 {
                     auto* cast = MakeNode(NodeKind::CastExpression, start);
                     cast->Tokens.End = closingEnd;
+                    auto* typeArguments =
+                        MakeNode(NodeKind::TemplateArgumentList, angleBegin);
+                    typeArguments->Tokens.End = angleEnd;
                     auto* type = MakeNode(NodeKind::TypeId, angleBegin + 1);
-                    type->Tokens.End = angleEnd - 1;
-                    AddTypeSyntaxChildren(*type, angleBegin + 1, angleEnd - 1);
-                    Append(*cast, *type);
+                    type->Tokens.End =
+                        Kind(angleEnd - 1) == TK::Operator_RightShift
+                            ? angleEnd
+                            : angleEnd - 1;
+                    if (type->Tokens.Empty()) {
+                        AddMissingToken(*type, type->Tokens.Begin);
+                    } else {
+                        AddTypeSyntaxChildren(
+                            *type,
+                            angleBegin + 1,
+                            type->Tokens.End);
+                    }
+                    Append(*typeArguments, *type);
+                    Append(*cast, *typeArguments);
                     auto operandCursor = opening + 1;
                     if (auto* operand =
                         ParseExpressionSyntax(operandCursor, closingEnd - 1))
@@ -8593,7 +8702,12 @@ private:
                     (closingKind == TK::Operator_Greater ||
                         closingKind == TK::Operator_RightShift);
                 if (hasClosing &&
-                    IsUnambiguousTemplateUse(following, end, false))
+                    IsUnambiguousTemplateUse(
+                        following,
+                        end,
+                        false,
+                        start,
+                        cursor))
                 {
                     auto* templateId =
                         MakeNode(NodeKind::TemplateIdExpression, start);
@@ -9647,6 +9761,7 @@ private:
     TokenIndex Cursor_ = 0;
     TokenIndex ParseLimit_ = 0;
     size_t BranchParseDepth_ = 0;
+    unsigned TemplateListDepth_ = 0;
     static constexpr size_t MaximumParseDepth = 256;
     std::array<size_t, MaximumParseDepth> ConditionalOpenBraces_{};
     size_t ConditionalBraceScopeDepth_ = 0;

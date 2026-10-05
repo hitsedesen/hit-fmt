@@ -13,11 +13,11 @@ template<Key, int> struct KeyPair;
 template<> struct KeyPair<Key{1<2,2}, 0> {};
 template<auto, class> struct Wrap;
 template<class, auto> struct TypePair;
-template<> struct TypePair<Wrap<(1>0),int>, 2> {
+template<> struct TypePair<Wrap<(1>0), int>, 2> {
 };
-template<> struct TypePair<Wrap<(8>>1),   int>, 2> {
+template<> struct TypePair<Wrap<(8>>1), int>, 2> {
 };
-template<> struct TypePair<Wrap<(1<<2),Wrap<(3>2),int>>, 0> {
+template<> struct TypePair<Wrap<(1<<2), Wrap<(3>2), int>>, 0> {
 };
 void call(int left= (1< 2), int right= (2> 1));
 int rows[][2] = {{1< 2, 0}, {3> 2, 0}};

@@ -142,12 +142,9 @@ INSTANTIATE_TEST_SUITE_P(
 
 TEST(Tokenizer, KeepsEofStableAfterAsciiUnicodeAndInvalidUtf8)
 {
-    constexpr std::array<std::string_view, 4> Inputs{
-        "",
-        "ascii",
-        "α",
-        std::string_view("\x80", 1),
-    };
+    constexpr std::array<
+        std::string_view,
+        4> Inputs{"", "ascii", "α", std::string_view("\x80", 1)};
     for (auto input : Inputs) {
         SCOPED_TRACE(input);
         std::string storage(input);
@@ -233,13 +230,9 @@ TEST(Tokenizer, RejectsMalformedUtf8)
         static_cast<char>(0x28),
     };
     // Both cached and uncached ASCII boundaries must retain UTF-8 errors.
-    constexpr std::array<std::string_view, 5> Prefixes{
-        "",
-        "a;",
-        "a; ",
-        "a;\n",
-        "a;\\\n",
-    };
+    constexpr std::array<
+        std::string_view,
+        5> Prefixes{"", "a;", "a; ", "a;\n", "a;\\\n"};
     for (auto prefix : Prefixes) {
         SCOPED_TRACE(prefix);
         std::string source(prefix);

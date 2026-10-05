@@ -175,9 +175,13 @@
           (return-statement
             "return"
             (cast-expression
-              "static_cast" "<"
-              (type-id "int")
-              ">" "("
+              "static_cast"
+              (template-argument-list
+                "<"
+                (type-id "int")
+                ">"
+              )
+              "("
               (identifier-expression "value")
               ")"
             )

@@ -13,9 +13,8 @@ using SourceOffset = uint32_t;
 
 inline constexpr size_t SourcePaddingSize = 4;
 
-inline constexpr size_t MaxSourceSize =
-    static_cast<size_t>(std::numeric_limits<SourceOffset>::max()) -
-        SourcePaddingSize;
+inline constexpr size_t MaxSourceSize = static_cast<
+    size_t>(std::numeric_limits<SourceOffset>::max()) - SourcePaddingSize;
 
 // A non-owning source buffer with safe lookahead. Data points to Size source
 // bytes followed by SourcePaddingSize zero bytes.

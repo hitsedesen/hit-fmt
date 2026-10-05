@@ -70,7 +70,8 @@ template <typename T> struct OptionalValue<std::optional<T>>
 template <typename T>
 void PrintOption(std::ostream& output, std::string_view name, const T& value)
 {
-    if constexpr (std::is_same_v<T,
+    if constexpr (std::is_same_v<
+        T,
         std::optional<formatter::TrailingCommentSpaceSetting>>)
     {
         output
@@ -119,7 +120,9 @@ void PrintOption(std::ostream& output, std::string_view name, const T& value)
                     : "Preserve");
         }
     } else if constexpr (OptionalValue<T>::IsOptional &&
-        !std::is_same_v<T, std::optional<formatter::TrailingCommentSpaceSetting>>)
+        !std::is_same_v<
+            T,
+            std::optional<formatter::TrailingCommentSpaceSetting>>)
     {
         using Item = typename OptionalValue<T>::Type;
         output << (name == "MaxEmptyLines" ? "Preserve | " : "Inherit | ");

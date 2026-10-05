@@ -523,7 +523,8 @@ TEST(SyntaxLayout, PartialPermissionsDoNotBypassRealOrUncertainProtection)
     scope.ImmutableRanges = immutable;
     EXPECT_EQ(Lower(input, style, {}, scope).Text, input);
     const std::string_view macros[] = {"VERBATIM"};
-    const std::vector<std::string> protectedInputs = {
+    const std::vector<
+        std::string> protectedInputs = {
         "void f() {\n// hit-fmt off\n      work();\n// hit-fmt on\n}\n",
         "void f() { VERBATIM(\n      work()); }\n",
         "void f() { broken(,\n      @); }\n",
@@ -1733,7 +1734,9 @@ TEST(SyntaxLayout, RealizedExpressionLineRetainsChildContinuationBase)
                     parser::SourceOffset(continued.find("take("));
                 const auto childBegin =
                     parser::SourceOffset(continued.find("            item"));
-                const std::array<parser::SourceRange, 3> ranges = {
+                const std::array<
+                    parser::SourceRange,
+                    3> ranges = {
                     parser::SourceRange{trimBegin, trimBegin + 2},
                     selectParentIndent
                         ? parser::SourceRange{parentEnd - 8, parentEnd}
@@ -2643,7 +2646,10 @@ TEST(SyntaxLayout, NestedVisualScopesAndWrapperContextRespectBarriers)
         "work();\n  wrap(tag, flow.End());\n}\n");
     EXPECT_EQ(Lower(multi, style).Text, multi);
     for (const auto& context :
-        std::vector<std::pair<std::string, std::string>>{
+        std::vector<
+            std::pair<
+                std::string,
+                std::string>>{
             {"wrap(flow.Begin(), tag)", "wrap(flow.End(), tag)"},
             {"wrap(tag, flow.Begin(), tail)", "wrap(tag, flow.End(), tail)"},
             {
@@ -2666,7 +2672,10 @@ TEST(SyntaxLayout, NestedVisualScopesAndWrapperContextRespectBarriers)
         EXPECT_NE(flat.find("\n  work();"), std::string::npos) << flat;
     }
     for (const auto& context :
-        std::vector<std::pair<std::string, std::string>>{
+        std::vector<
+            std::pair<
+                std::string,
+                std::string>>{
             {"wrap(tag, flow.Begin())", "wrap(other, flow.End())"},
             {"wrap(tag, flow.Begin())", "wrap(tag, other.End())"},
             {"wrap(tag, flow.Begin())", "other(tag, flow.End())"},
@@ -2690,7 +2699,10 @@ TEST(SyntaxLayout, NestedVisualScopesAndWrapperContextRespectBarriers)
         EXPECT_EQ(Lower(uncertainRegion, style).Text, uncertainRegion);
     }
     for (const auto& context :
-        std::vector<std::pair<std::string, std::string>>{
+        std::vector<
+            std::pair<
+                std::string,
+                std::string>>{
             {"wrap([](){ flow.Begin(); })", "wrap([](){ flow.End(); })"},
             {"wrap(sizeof(flow.Begin()))", "wrap(sizeof(flow.End()))"},
             {"wrap(noexcept(flow.Begin()))", "wrap(noexcept(flow.End()))"},
@@ -3074,12 +3086,12 @@ TEST(SyntaxLayout, RecordHeadCommaPreferenceIsClassifiedAndLocallyAuthorized)
         const auto& gap = spacing.Gaps()[i + 1];
         EXPECT_EQ(gap.Field, formatter::SpacingField::CommaSpaceAfter);
         EXPECT_EQ(gap.Policy, formatter::GapPolicy::Space);
-        EXPECT_EQ(gap.Category, formatter::SpacingOwner::DeclarationHeaders);
+        EXPECT_EQ(gap.Category, formatter::SpacingOwner::TemplateArguments);
         ASSERT_NE(gap.Owner, formatter::NoRegion);
         const auto& owner = safety.Regions()[gap.Owner];
-        EXPECT_EQ(owner.Kind, record->Kind);
-        EXPECT_EQ(owner.Tokens.Begin, record->Tokens.Begin);
-        EXPECT_EQ(owner.Tokens.End, record->Tokens.End);
+        EXPECT_EQ(owner.Kind, parser::NodeKind::TemplateArgumentList);
+        EXPECT_EQ(owner.Tokens.Begin, record->FirstChild->Tokens.Begin);
+        EXPECT_EQ(owner.Tokens.End, record->FirstChild->Tokens.End);
         EXPECT_EQ(gap.Priority, 3);
         EXPECT_EQ(
             spacing.SpacePreference(
@@ -3140,7 +3152,9 @@ TEST(SyntaxLayout, RecordHeadCommaPreferenceIsClassifiedAndLocallyAuthorized)
     EXPECT_EQ(protectedBytes, end - begin);
 
     style.Layout = formatter::LayoutMode::Preserve;
-    const std::pair<std::string_view, std::string_view> operands[] = {
+    const std::pair<
+        std::string_view,
+        std::string_view> operands[] = {
         {"template<auto, auto> struct Pair;\n", "(1<2)"},
         {
             "template<auto, class> struct Wrap;\n"
@@ -3168,7 +3182,12 @@ TEST(SyntaxLayout, RecordHeadCommaPreferenceIsClassifiedAndLocallyAuthorized)
         protection.EditScope = {};
         const parser::SourceRange blocked[] = {{outer, outer + 2}};
         protection.ImmutableRanges = blocked;
-        EXPECT_EQ(Lower(input, style, {}, protection).Text, input);
+        auto expected = input;
+        const auto nestedComma = expected.find(",int>");
+        if (nestedComma != std::string::npos) {
+            expected.insert(nestedComma + 1, " ");
+        }
+        EXPECT_EQ(Lower(input, style, {}, protection).Text, expected);
     }
 
     protection = {};
@@ -3180,7 +3199,7 @@ TEST(SyntaxLayout, RecordHeadCommaPreferenceIsClassifiedAndLocallyAuthorized)
         Lower(comparisonMacro, style, {}, protection).Text,
         "template<auto, class> struct Wrap;\n"
         "template<class, auto> struct Pair;\n"
-        "template<> struct Pair<Wrap<(OPAQUE(1>0)),int>, 0> {};\n");
+        "template<> struct Pair<Wrap<(OPAQUE(1>0)), int>, 0> {};\n");
 
     protection = {};
     const std::string malformed = "template<auto,auto> struct Pair;\n"

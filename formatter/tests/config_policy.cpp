@@ -24,7 +24,8 @@ std::filesystem::path ConfigData(std::string_view name)
         "config-policy" / (std::string(name) + ".hit-fmt");
 }
 
-constexpr std::pair<std::string_view,
+constexpr std::pair<
+    std::string_view,
     formatter::BlankLineSetting formatter::Style::*> VerticalCountSettings[] =
     {
         {
