@@ -893,7 +893,8 @@ FormatResult detail::FormatWithAnalysis(
     renderPolicy.SourceMap = request.SourceMap;
     auto rendered = [&] {
         std::pmr::vector<document::Provenance> tracked(&scratch);
-        renderPolicy.TokenMap = !request.SourceMap && needMaps;
+        renderPolicy.IndexedTokenMap = !request.SourceMap && needMaps;
+        renderPolicy.TokenCount = tree->TokenCount();
         if (needNamespaceAnchors && !request.SourceMap) {
             tracked.reserve(currentSafety
                 ->Protection()
@@ -935,6 +936,16 @@ FormatResult detail::FormatWithAnalysis(
                 identities,
                 provenance);
         } else {
+            for (parser::TokenIndex id = 0; id < rendered.Tokens.size(); ++id) {
+                const auto& token = rendered.Tokens[id];
+                const auto originalId = identities[id];
+                if (token.Present && originalId != document::NoIdentity) {
+                    result.OriginalTokens[originalId] =
+                        {{token.Begin, token.End}, true};
+                }
+            }
+            // Remaining mappings are precisely the tracked exact copies used
+            // for protection validation, not a full per-token map vector.
             ComposeNamespaceAnchors(
                 result,
                 rendered,

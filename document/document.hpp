@@ -198,6 +198,10 @@ struct Policy
     // are borrowed for this Render call only; they grant no edit authority.
     bool TokenMap = false;
     std::span<const Provenance> TrackSource = {};
+    // Store identity-indexed output positions directly, without intermediate
+    // Mapping records. Full maps and tracked exact copies remain independent.
+    bool IndexedTokenMap = false;
+    std::uint32_t TokenCount = 0;
 };
 
 namespace detail {
@@ -221,12 +225,20 @@ struct Mapping
     bool Protected = false;
 };
 
+struct TokenPosition
+{
+    std::uint32_t Begin = 0;
+    std::uint32_t End = 0;
+    bool Present = false;
+};
+
 struct Result
 {
     explicit Result(std::pmr::memory_resource* resource);
     Status State;
     std::pmr::string Text;
     std::pmr::vector<Mapping> Map;
+    std::pmr::vector<TokenPosition> Tokens;
     // A broken decision denotes output shape, never input whitespace history.
     std::pmr::vector<std::uint8_t> Broken;
 };

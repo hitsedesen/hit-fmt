@@ -2149,6 +2149,35 @@ TEST(GroupLayout, SourceRunsMatchIndividualAtoms)
                         ASSERT_TRUE(b.State);
                         EXPECT_EQ(a.Text, b.Text);
                         EXPECT_EQ(a.Broken, b.Broken);
+                        if (maps == 2) {
+                            auto indexedPolicy = policy;
+                            indexedPolicy.TokenMap = false;
+                            indexedPolicy.IndexedTokenMap = true;
+                            indexedPolicy.TokenCount = 1000;
+                            const auto indexed = packed.Render(indexedPolicy);
+                            ASSERT_TRUE(indexed.State);
+                            EXPECT_EQ(a.Text, indexed.Text);
+                            EXPECT_EQ(a.Broken, indexed.Broken);
+                            EXPECT_TRUE(indexed.Map.empty());
+                            std::vector<TokenPosition> expected(1000);
+                            for (const auto& map : a.Map) {
+                                ASSERT_LT(map.Source.Identity, expected.size());
+                                expected[map.Source.Identity] =
+                                    {map.OutputBegin, map.OutputEnd, true};
+                            }
+                            ASSERT_EQ(indexed.Tokens.size(), expected.size());
+                            for (size_t id = 0; id < expected.size(); ++id) {
+                                EXPECT_EQ(
+                                    indexed.Tokens[id].Begin,
+                                    expected[id].Begin);
+                                EXPECT_EQ(
+                                    indexed.Tokens[id].End,
+                                    expected[id].End);
+                                EXPECT_EQ(
+                                    indexed.Tokens[id].Present,
+                                    expected[id].Present);
+                            }
+                        }
                         ASSERT_EQ(a.Map.size(), b.Map.size());
                         for (std::size_t i = 0; i < a.Map.size(); ++i) {
                             EXPECT_EQ(

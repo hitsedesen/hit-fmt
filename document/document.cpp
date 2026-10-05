@@ -137,6 +137,7 @@ bool ValidGapNewline(GapNewline value)
 Result::Result(std::pmr::memory_resource* resource)
     : Text(resource)
     , Map(resource)
+    , Tokens(resource)
     , Broken(resource)
 { }
 
@@ -1033,8 +1034,11 @@ Result Document::Render(
         }
         previousEnd = range.End;
     }
-    const bool mappingRequested =
-        policy.SourceMap || policy.TokenMap || !policy.TrackSource.empty();
+    const bool mappingRequested = policy.SourceMap || policy.TokenMap ||
+        policy.IndexedTokenMap || !policy.TrackSource.empty();
+    if (policy.IndexedTokenMap) {
+        result.Tokens.resize(policy.TokenCount);
+    }
     const auto wantsMapping = [&] (Provenance origin, bool exact) {
         if (policy.SourceMap ||
             (policy.TokenMap && origin.Identity != NoIdentity))
@@ -1054,6 +1058,14 @@ Result Document::Render(
         return first != policy.TrackSource.end() && first->Begin < origin.End;
     };
     const auto recordMapping = [&] (Mapping map) {
+        if (policy.IndexedTokenMap && map.Source.Identity != NoIdentity) {
+            if (map.Source.Identity >= result.Tokens.size()) {
+                result.State = {Error::InvalidSourceRange};
+                return;
+            }
+            result.Tokens[map.Source.Identity] =
+                {map.OutputBegin, map.OutputEnd, true};
+        }
         if (wantsMapping(map.Source, map.Exact)) {
             result.Map.push_back(map);
         }
@@ -1325,7 +1337,10 @@ Result Document::Render(
 
     result.Broken.resize(Groups_.size(), 0);
     if (mappingRequested) {
-        result.Map.reserve(mappingCount);
+        result.Map.reserve(
+            policy.IndexedTokenMap && !policy.SourceMap && !policy.TokenMap
+            ? policy.TrackSource.size()
+            : mappingCount);
     }
     struct CapturedAnchor
     {
