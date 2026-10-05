@@ -3913,6 +3913,28 @@ std::vector<FormatCase> FormatCases()
         "whitespace-only",
     });
     const auto consolidatedLayout = data / "consolidated-layout";
+    for (const auto* name : {"multiline-comments", "multiline-comments-tabs"}) {
+        cases.push_back({
+            consolidatedLayout,
+            name,
+            "multiline-comments.input.cpp",
+            {},
+            {},
+            true,
+            {},
+            true,
+        });
+    }
+    cases.push_back({
+        consolidatedLayout,
+        "multiline-comments-crlf",
+        "multiline-comments-crlf.input.cpp",
+        "multiline-comments",
+        {},
+        true,
+        {},
+        true,
+    });
     for (const auto* name :
         {
             "comment-directives",

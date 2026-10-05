@@ -97,6 +97,20 @@ formatter::Style Canonical()
     return style;
 }
 
+std::string CommentContent(std::string_view text)
+{
+    std::string content;
+    bool leading = false;
+    for (const char c : text) {
+        if (leading && (c == ' ' || c == '\t')) {
+            continue;
+        }
+        content += c;
+        leading = c == '\r' || c == '\n';
+    }
+    return content;
+}
+
 void CheckIdentities(
     std::string_view source,
     const formatter::FormatResult& result)
@@ -107,11 +121,17 @@ void CheckIdentities(
     for (parser::TokenIndex i = 0; i < tree.TokenCount(); ++i) {
         const auto map = result.OriginalTokens[i];
         if (map.Present) {
-            EXPECT_EQ(
-                std::string_view(result.Text).substr(
-                    map.Output.Begin,
-                    map.Output.End - map.Output.Begin),
-                tree.TokenText(i)) << i;
+            const auto output = std::string_view(result.Text)
+                .substr(map.Output.Begin, map.Output.End - map.Output.Begin);
+            const auto original = tree.TokenText(i);
+            if (tree.Kind(i) == tokenizer::TokenKind::Comment &&
+                original.starts_with("/*"))
+            {
+                EXPECT_EQ(CommentContent(output), CommentContent(original))
+                    << i;
+            } else {
+                EXPECT_EQ(output, original) << i;
+            }
         }
     }
     for (const auto& map : result.Map) {
@@ -165,6 +185,57 @@ void CheckExcludedCopies(
             EXPECT_EQ(copies[i], 1u) << "excluded original byte " << i;
         }
     }
+}
+
+TEST(PublicPipeline, MultilineCommentIndentationHonorsWholeTokenAuthority)
+{
+    auto style = Canonical();
+    style.IndentWidth = 4;
+    style.IndentationKind = formatter::IndentationKind::Spaces;
+    const formatter::PreparedFormat prepared(style);
+    const std::string source = "void f() {\n/* note\n * body\n */\n}\n";
+    const auto begin = parser::SourceOffset(source.find("/*"));
+    const auto end = parser::SourceOffset(source.find("*/") + 2);
+    const std::array full{parser::SourceRange{begin - 1, end}};
+    const auto changed =
+        FormatInput(source, prepared, {.SourceMap = true, .EditScope = full});
+    CheckIdentities(source, changed);
+    CheckExcludedCopies(source, changed, full);
+    bool changedComment = false;
+    for (const auto& map : changed.Map) {
+        if (map.HasOriginal && map.Original.Begin == begin &&
+            map.Original.End == end)
+        {
+            EXPECT_FALSE(map.Exact);
+            EXPECT_FALSE(map.Generated);
+            EXPECT_FALSE(map.Protected);
+            ASSERT_NE(map.OriginalToken, document::NoIdentity);
+            EXPECT_EQ(
+                std::string_view(changed.Text).substr(
+                    map.Output.Begin,
+                    map.Output.End - map.Output.Begin),
+                "/* note\n     * body\n     */");
+            changedComment = true;
+        }
+    }
+    EXPECT_TRUE(changedComment);
+    const std::array partial{parser::SourceRange{begin - 1, begin + 1}};
+    const auto scoped = FormatInput(
+        source,
+        prepared,
+        {.SourceMap = true, .EditScope = partial});
+    CheckIdentities(source, scoped);
+    CheckExcludedCopies(source, scoped, partial);
+    EXPECT_NE(scoped.Text.find("/* note\n * body\n */"), std::string::npos);
+    const std::array immutable{parser::SourceRange{begin + 8, begin + 9}};
+    const auto protectedResult = FormatInput(
+        source,
+        prepared,
+        {.ImmutableRanges = immutable, .SourceMap = true});
+    CheckIdentities(source, protectedResult);
+    EXPECT_NE(
+        protectedResult.Text.find("/* note\n * body\n */"),
+        std::string::npos);
 }
 
 TEST(PublicPipeline, ChainStructuralBaseHonorsGapScopeAndProtection)

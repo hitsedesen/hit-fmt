@@ -85,6 +85,20 @@ Measure MeasureFlatGap(
     return {gap.Spaces, gap.Spaces, false, gap.Kind == GapKind::Soft};
 }
 
+std::uint32_t SourceColumn(std::string_view text, std::uint8_t tabWidth)
+{
+    std::uint32_t column = 0;
+    for (std::size_t i = 0; i < text.size(); ++i) {
+        const auto c = static_cast<unsigned char>(text[i]);
+        if (c >= 0x80) {
+            i += unicode::utf8::GetFirstCodePointSize(text.substr(i))
+                .value_or(1) - 1;
+        }
+        column = AddWidth(column, c == '\t' ? tabWidth - column % tabWidth : 1);
+    }
+    return column;
+}
+
 bool Multiline(std::string_view text)
 {
     return text.find_first_of("\r\n") != std::string_view::npos;
@@ -198,6 +212,7 @@ std::string_view Document::FlatText(const Node& node) const
         case Kind::Verbatim:
         case Kind::ConditionalText:
         case Kind::SourceWhitespace:
+        case Kind::ReindentedText:
             return TextView(
                 node.HasPrefix ? SourceTextId : node.Text.Flat,
                 node.Origin);
@@ -554,6 +569,28 @@ void Document::EmitSourceText(
         node.Compact = compact && !multiline;
         Add(node);
     }
+}
+
+void Document::ReindentedSourceText(
+    std::uint32_t begin,
+    std::uint32_t end,
+    Identity identity)
+{
+    if (begin == InvalidId || end == InvalidId ||
+        !CheckOrigin({begin, end, identity}))
+    {
+        Fail(Error::InvalidSourceRange);
+        return;
+    }
+    const auto newline = begin
+        ? Source_.find_last_of("\r\n", begin - 1)
+        : std::string_view::npos;
+    Node node(Kind::ReindentedText);
+    node.Text.Flat = SourceTextId;
+    node.Text.Detail = newline == std::string_view::npos ? 0 : newline + 1;
+    node.Origin = {begin, end, identity};
+    node.Exact = true;
+    Add(node);
 }
 
 void Document::SourceWhitespace(
@@ -1040,7 +1077,8 @@ Result Document::Render(
         } else if (node.Type == Kind::Text || node.Type == Kind::Verbatim ||
             node.Type == Kind::ConditionalText ||
             node.Type == Kind::SourceLineIndent ||
-            node.Type == Kind::SourceWhitespace)
+            node.Type == Kind::SourceWhitespace ||
+            node.Type == Kind::ReindentedText)
         {
             // Fixed prefixes establish shape like Verbatim, but never publish
             // lastBreak/ownedBreak. Their indentation follows a guaranteed
@@ -1760,7 +1798,65 @@ Result Document::Render(
             }
             return true;
         }
-        if (node.Type == Kind::Text || node.Type == Kind::Verbatim ||
+        if (node.Type == Kind::ReindentedText) {
+            const auto text = FlatText(node);
+            const auto originalColumn = SourceColumn(
+                Source_.substr(
+                    node.Text.Detail,
+                    node.Origin.Begin - node.Text.Detail),
+                policy.TabWidth);
+            const auto shift = std::int64_t(column) - originalColumn;
+            if (shift == 0) {
+                append(text);
+                advance(text);
+            } else {
+                // Scan once, emitting borrowed runs between indentation edits.
+                // Newline atoms and blank lines remain untouched, including
+                // CRLF and bare CR. No temporary string is needed per line.
+                std::size_t run = 0;
+                for (std::size_t cursor = 0; cursor < text.size(); ++cursor) {
+                    if (text[cursor] != '\r' && text[cursor] != '\n') {
+                        continue;
+                    }
+                    if (text[cursor] == '\r' && cursor + 1 < text.size() &&
+                        text[cursor + 1] == '\n')
+                    {
+                        ++cursor;
+                    }
+                    const auto begin = cursor + 1;
+                    auto end = begin;
+                    while (end < text.size() &&
+                        (text[end] == ' ' || text[end] == '\t'))
+                    {
+                        ++end;
+                    }
+                    if (end == text.size() || text[end] == '\r' ||
+                        text[end] == '\n')
+                    {
+                        cursor = end - 1;
+                        continue;
+                    }
+                    const auto indent = SourceColumn(
+                        text.substr(begin, end - begin),
+                        policy.TabWidth);
+                    const auto shifted = std::clamp<std::int64_t>(
+                        std::int64_t(indent) + shift,
+                        0,
+                        Infinity - 1);
+                    if (shifted != indent) {
+                        const auto copied = text.substr(run, begin - run);
+                        append(copied);
+                        advance(copied);
+                        emitIndent(static_cast<std::uint32_t>(shifted));
+                        exact = false;
+                        run = end;
+                    }
+                    cursor = end - 1;
+                }
+                append(text.substr(run));
+                advance(text.substr(run));
+            }
+        } else if (node.Type == Kind::Text || node.Type == Kind::Verbatim ||
             node.Type == Kind::ConditionalText)
         {
             auto text = node.Type == Kind::ConditionalText && ownerBroken

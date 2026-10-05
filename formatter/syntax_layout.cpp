@@ -4867,11 +4867,20 @@ private:
                 }
             } else if (!Removed_[i]) {
                 const auto token = Tree_.Token(i).Text;
-                const bool opaque = Tree_.Kind(i) == TokenKind::Comment ||
-                    Tree_.Kind(i) == TokenKind::PreprocessingDirective ||
-                    HasLine(Tree_.TokenText(i)) ||
+                const auto text = Tree_.TokenText(i);
+                const bool immutable =
                     Safety_.IntersectsImmutable({token.Begin, token.End});
-                Document_.AppendSourceText(token.Begin, token.End, i, opaque);
+                if (Tree_.Kind(i) == TokenKind::Comment &&
+                    text.starts_with("/*") && HasLine(text) && !immutable)
+                {
+                    Document_.ReindentedSourceText(token.Begin, token.End, i);
+                } else {
+                    const bool opaque = Tree_.Kind(i) == TokenKind::Comment ||
+                        Tree_.Kind(i) == TokenKind::PreprocessingDirective ||
+                        HasLine(text) || immutable;
+                    Document_
+                        .AppendSourceText(token.Begin, token.End, i, opaque);
+                }
             }
             if (!State_) {
                 return;

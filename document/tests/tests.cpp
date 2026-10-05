@@ -58,6 +58,58 @@ void AppendRender(
     actual += "$\n";
 }
 
+TEST(GroupLayout, ReindentedSourceColumnsGolden)
+{
+    const std::string prefix = "\té中";
+    const std::string source = prefix +
+        "/* first\r\n\t * stars\routdented\n\n \t\n\t\tbody\ttext\n\t */";
+    std::string actual;
+    for (const auto outputPrefix :
+        std::array<std::string_view, 4>{
+            "",
+            "  é中",
+            "\té中",
+            "                    ",
+        })
+    {
+        Document document(source);
+        document.Text(outputPrefix);
+        document.ReindentedSourceText(
+            std::uint32_t(prefix.size()),
+            std::uint32_t(source.size()),
+            42);
+        ASSERT_TRUE(document.Seal());
+        AppendRender(actual, document, 100, "shifted source columns");
+        const auto output = document.Render({.Width = 100});
+        ASSERT_TRUE(output.State);
+        ASSERT_FALSE(output.Map.empty());
+        const auto& map = output.Map.back();
+        EXPECT_EQ(map.Source.Identity, 42u);
+        EXPECT_EQ(map.Source.Begin, prefix.size());
+        EXPECT_EQ(map.Source.End, source.size());
+        EXPECT_EQ(map.OutputBegin, outputPrefix.size());
+        EXPECT_EQ(map.OutputEnd, output.Text.size());
+        EXPECT_FALSE(map.Protected);
+        EXPECT_EQ(map.Exact, outputPrefix == prefix);
+        const auto plain = document.Render({.Width = 100, .SourceMap = false});
+        EXPECT_EQ(plain.Text, output.Text);
+        EXPECT_TRUE(plain.Map.empty());
+    }
+    // Make retained blank-line whitespace visible in the golden.
+    std::string visible;
+    for (const char c : actual) {
+        if (c == '\t') {
+            visible += "\\t";
+        } else {
+            visible += c;
+        }
+    }
+    test::golden::ExpectGolden(
+        std::filesystem::path(DOCUMENT_TESTDATA_DIR) /
+        "reindented-source-columns.golden.txt",
+        visible);
+}
+
 TEST(GroupLayout, ContinuationStarterLineGolden)
 {
     std::string actual;

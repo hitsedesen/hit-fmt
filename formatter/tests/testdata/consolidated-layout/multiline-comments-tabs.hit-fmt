@@ -1,0 +1,4 @@
+Layout = Canonical
+ColumnLimit = 100
+IndentWidth = 8
+IndentationKind = Tabs
