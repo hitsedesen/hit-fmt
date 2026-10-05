@@ -1589,10 +1589,10 @@ TEST(SyntaxLayout, InlineControlPrefixFitsBeforeIndependentExpressionBreaks)
 
     style.ColumnLimit = 42;
     style.BinaryOperatorSide = formatter::OperatorSide::Trailing;
-    const auto fallback =
-        Lower(
-            "void f(){ if(ready){} else if(LongConditionRequiresFallback || other){} }\n",
-            style).Text;
+    const auto fallback = Lower(
+        "void f(){ if(ready){} else if("
+        "LongConditionRequiresFallback || other){} }\n",
+        style).Text;
     EXPECT_NE(fallback.find("else if (\n"), std::string::npos) << fallback;
     EXPECT_NE(
         fallback.find("\n        LongConditionRequiresFallback"),
@@ -1840,7 +1840,8 @@ TEST(SyntaxLayout, RealizedExpressionLineRetainsChildContinuationBase)
     // A retained prefix before a selected trim already contains an owned LF;
     // the final indentation can remain borrowed rather than generated.
     const std::string blankLine =
-        "void f() {\n    auto value =\n  \n        take(\n            item);\n}\n";
+        "void f() {\n    auto value =\n  \n        take(\n"
+            "            item);\n}\n";
     const auto blankBegin = parser::SourceOffset(blankLine.find("  \n"));
     const auto itemBegin =
         parser::SourceOffset(blankLine.find("            item"));
@@ -1875,7 +1876,8 @@ TEST(SyntaxLayout, RealizedExpressionLineRetainsChildContinuationBase)
     }
     // An opaque comment LF is not a current-expression whitespace gap line.
     const std::string comment =
-        "void f() {\n    auto value = /*\n    opaque */ take(\n            item);\n}\n";
+        "void f() {\n    auto value = /*\n    opaque */ take(\n"
+            "            item);\n}\n";
     const auto commentItem =
         parser::SourceOffset(comment.find("            item"));
     const parser::SourceRange commentRanges[] =
@@ -2113,7 +2115,8 @@ TEST(SyntaxLayout, ContinuationScopesReindentOnlySelectedHorizontalBytes)
     }
 }
 
-TEST(SyntaxLayout, StructuralBaseHandlesDelimiterFallbackTabsAndScopedProtection)
+TEST(SyntaxLayout,
+    StructuralBaseHandlesDelimiterFallbackTabsAndScopedProtection)
 {
     auto style = Canonical(80);
     style.Layout = formatter::LayoutMode::Preserve;
@@ -2341,7 +2344,8 @@ TEST(SyntaxLayout, CaseLabelPreserveRetainsOnlyExistingIndentation)
     }
 
     style.BodyShape = formatter::BodyShape::Expanded;
-    // Token-internal LF and an inline token column are not indentation evidence.
+    // Token-internal LF and an inline token column are not indentation
+    // evidence.
     for (const std::string_view comment : {"/* note */", "/* note\n */"}) {
         const auto inlineLabel = Lower(
             "void f(){ switch(value){ " + std::string(comment) +

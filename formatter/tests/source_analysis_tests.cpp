@@ -353,7 +353,8 @@ TEST(SourceAnalysis, CommentsDirectivesSplicesAndCrLf)
     }
 }
 
-TEST(SourceAnalysis, RequiresTerminalRecoveryProtectsConstraintNotFollowingFunction)
+TEST(SourceAnalysis,
+    RequiresTerminalRecoveryProtectsConstraintNotFollowingFunction)
 {
     const std::string_view declarations[] = {
         "int inspect(T value) { return 1; }",

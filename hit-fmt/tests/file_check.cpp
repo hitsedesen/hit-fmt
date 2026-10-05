@@ -122,14 +122,27 @@ TEST(FileCheck, DiagnosticGoldenUsesOriginalCheckAndFinalFixCoordinates)
             checked.Formatting.Text.begin(),
             checked.Formatting.Text.begin() + close,
             '\n'));
-    for (const auto fix : {false, true}) {
-        SCOPED_TRACE(fix ? "fix" : "check");
-        std::ostringstream output;
-        hit_fmt::PrintFileIssues(output, "sample.cpp", checked, fix);
-        output << "summary: ";
-        hit_fmt::PrintFileSummaryIssues(output, checked, fix);
-        output << '\n';
-        fixture.Expect(output.str(), fix ? ".fix.txt" : ".check.txt");
+    for (const auto terminalWidth : {size_t(80), size_t(32)}) {
+        for (const auto fix : {false, true}) {
+            SCOPED_TRACE(fix ? "fix" : "check");
+            SCOPED_TRACE(terminalWidth);
+            std::ostringstream output;
+            hit_fmt::PrintFileIssues(
+                output,
+                "sample.cpp",
+                input.View().View(),
+                checked,
+                fix,
+                terminalWidth);
+            output << "summary: ";
+            hit_fmt::PrintFileSummaryIssues(output, checked, fix);
+            output << '\n';
+            fixture.Expect(
+                output.str(),
+                terminalWidth == 80
+                    ? (fix ? ".fix.txt" : ".check.txt")
+                    : (fix ? ".fix-narrow.txt" : ".check-narrow.txt"));
+        }
     }
 }
 

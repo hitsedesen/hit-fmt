@@ -2,6 +2,7 @@
 #include "config_template.hpp"
 #include "file_dispatch.hpp"
 #include "file_check.hpp"
+#include "source_excerpt.hpp"
 #include "version.hpp"
 
 #include <formatter/config.hpp>
@@ -41,6 +42,12 @@
 #endif
 
 namespace {
+
+using hit_fmt::PrintCells;
+
+using hit_fmt::PrintSourceExcerpt;
+
+using hit_fmt::RenderLine;
 
 constexpr size_t MaxSourceFileSize = 4 * 1024 * 1024;
 
@@ -105,105 +112,6 @@ size_t TerminalWidth()
         }
     }
     return 80;
-}
-
-// Tokenizer columns count Unicode code points. Render a display cell per
-// code point, expanding tabs so both the excerpt and caret use cell offsets.
-struct RenderedLine
-{
-    std::vector<std::string_view> Cells;
-    size_t Caret = 0;
-};
-
-RenderedLine RenderLine(
-    std::string_view text,
-    size_t column,
-    size_t prefixWidth)
-{
-    RenderedLine rendered;
-    size_t codePoint = 1;
-    for (size_t i = 0; i < text.size(); ++codePoint) {
-        if (codePoint == column) {
-            rendered.Caret = rendered.Cells.size();
-        }
-        auto start = i++;
-        while (i < text.size() &&
-            (static_cast<unsigned char>(text[i]) & 0xc0) == 0x80)
-        {
-            ++i;
-        }
-        if (text[start] == '\t') {
-            auto spaces = 8 - (prefixWidth + rendered.Cells.size()) % 8;
-            while (spaces--) {
-                rendered.Cells.push_back(" ");
-            }
-        } else if (text[start] == '\r') {
-            // CRLF lines are trimmed before reaching this function.
-            continue;
-        } else {
-            rendered.Cells.push_back(text.substr(start, i - start));
-        }
-    }
-    if (column >= codePoint) {
-        rendered.Caret = rendered.Cells.size();
-    }
-    return rendered;
-}
-
-void PrintCells(
-    std::ostream& output,
-    const std::vector<std::string_view>& cells,
-    size_t begin,
-    size_t end)
-{
-    for (auto i = begin; i < end; ++i) {
-        output << cells[i];
-    }
-}
-
-struct Excerpt
-{
-    size_t CaretOffset;
-    bool CaretVisible;
-};
-
-Excerpt PrintSourceExcerpt(
-    std::ostream& output,
-    std::string_view text,
-    size_t column,
-    size_t prefixWidth,
-    size_t terminalWidth,
-    bool fromStart = false)
-{
-    auto rendered = RenderLine(text, column, prefixWidth);
-    const auto& cells = rendered.Cells;
-    auto available = terminalWidth > prefixWidth + 1
-        ? terminalWidth - prefixWidth - 1
-        : size_t{16};
-    auto window = available > 6 ? available - 6 : size_t{1};
-    size_t begin = 0;
-    if (cells.size() > available && !fromStart) {
-        begin = std::min(
-            cells.size() - window,
-            rendered.Caret > window / 2 ? rendered.Caret - window / 2 : 0);
-    }
-    auto count = cells.size() > available
-        ? (fromStart ? available - 3 : window)
-        : available;
-    auto end = std::min(cells.size(), begin + count);
-    if (begin) {
-        output << "...";
-    }
-    PrintCells(output, cells, begin, end);
-    if (end < cells.size()) {
-        output << "...";
-    }
-    output << '\n';
-    return {
-        .CaretOffset = (begin ? 3 : 0) + std::min(rendered.Caret, end) - begin,
-        .CaretVisible = rendered.Caret < end ||
-            (rendered.Caret == end && end == cells.size()),
-    };
 }
 
 void PrintWrappedMessage(
@@ -1514,8 +1422,10 @@ int main(int argc, char* argv[])
                 hit_fmt::PrintFileIssues(
                     output,
                     filePath,
+                    source,
                     checked,
-                    options.Fix);
+                    options.Fix,
+                    TerminalWidth());
             }
             result.Mismatches += failed;
         }

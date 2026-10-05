@@ -526,7 +526,8 @@ public:
                         true);
                 } else {
                     // A skipped macro-shaped identifier is not the control
-                    // keyword. Its invocation boundary has no control authority.
+                    // keyword. Its invocation boundary has no control
+                    // authority.
                     PreserveUncertain(begin, node);
                 }
                 Interior(

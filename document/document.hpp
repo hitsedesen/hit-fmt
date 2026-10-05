@@ -122,7 +122,8 @@ struct GroupSpec
     // Require an editable owned break, not merely a multiline child.
     bool ForceBreak = false;
     // Prospective visual continuation, realized only by this group's line gaps.
-    // Contributors require nonnegative Indent and cannot be structural consumers.
+    // Contributors require nonnegative Indent and cannot be structural
+    // consumers.
     bool ExpressionContinuation = false;
     // Independent child layout uses only realized enclosing continuation.
     bool StructuralBase = false;
@@ -302,7 +303,8 @@ public:
     AnchorId MarkAnchor(AnchorSpec spec);
     // Record a fixed source GAP line for the current expression contributor.
     // The preceding node must be exact source whitespace containing LF, or a
-    // SourceLineIndent prefix. This is provenance, never an editable break site.
+    // SourceLineIndent prefix. This is provenance, never an editable break
+    // site.
     void ExpressionLine();
     // reference must be the current owning group. No external, forward,
     // ancestor/descendant or mutually dependent shape references are accepted.

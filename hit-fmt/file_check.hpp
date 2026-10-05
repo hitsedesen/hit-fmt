@@ -43,7 +43,8 @@ struct CheckedFile
 
 // One original parse and one public pipeline invocation, mode-independent.
 // Original slash-separated inputFilePath is borrowed only during this call.
-// Result owns all data; no references into input/path/configuration/parser arenas.
+// Result owns all data; no references into input/path/configuration/parser
+// arenas.
 [[nodiscard]] CheckedFile CheckFile(
     util::PaddedSourceView source,
     const PreparedFileConfiguration& configuration,
@@ -51,12 +52,16 @@ struct CheckedFile
 
 // Check diagnostics point into the original source. Fix diagnostics point
 // into the written output. Width failures state that automatic formatting
-// cannot satisfy the limit. Printing does not parse or run the formatter.
+// cannot satisfy the limit and show the offending line. originalSource is
+// borrowed only while printing; fix excerpts use Formatting.Text instead.
+// Printing does not parse or run the formatter.
 void PrintFileIssues(
     std::ostream& output,
     std::string_view path,
+    std::string_view originalSource,
     const CheckedFile& checked,
-    bool fix);
+    bool fix,
+    size_t terminalWidth = 80);
 
 // Summary preserves all failure categories, not only the first one.
 void PrintFileSummaryIssues(

@@ -252,7 +252,8 @@ public:
     // even when generic replacement lacks insertion-point ownership. No empty
     // edge, trim, indentation, topology or partial-gap permission is granted.
     // Intrinsic fences and any immutable or unselected byte reject the gap;
-    // emission must also retain MustStartWithLineFeed/token-owned CR boundaries.
+    // emission must also retain MustStartWithLineFeed/token-owned CR
+    // boundaries.
     [[nodiscard]] bool CanSpellGapNewlines(GapId gap) const;
 
 private:

@@ -28,7 +28,8 @@ CompiledPolicies PreparePolicies(const Style& style)
         throw std::invalid_argument(
             "AmbiguousTemplateDeclarationSpacing is unsupported");
     }
-    // Reject unsupported behavior rather than silently accepting inert settings.
+    // Reject unsupported behavior rather than silently accepting inert
+    // settings.
     const auto pending = [&] () -> std::string_view {
         if (style.BreakAfterTemplateHeader) {
             return "BreakAfterTemplateHeader";

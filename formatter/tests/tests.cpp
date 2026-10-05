@@ -3815,7 +3815,8 @@ TEST(Formatter, CallArgument_RejectsUnsupportedSyntaxHints)
         } catch (const std::invalid_argument& error) {
             EXPECT_EQ(
                 std::string_view(error.what()),
-                "CallLikeMacroNames syntax hints are not yet supported by the public pipeline");
+                "CallLikeMacroNames syntax hints are not yet supported "
+                "by the public pipeline");
         }
     }
 }

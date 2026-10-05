@@ -2669,14 +2669,16 @@ private:
         ++Cursor_;
 
         int angleDepth = 0;
-        // Boundary eligibility is not proof of valid constraint syntax. Recovery
-        // permits only strong declaration prefixes, not identifier-pair guesses.
+        // Boundary eligibility is not proof of valid constraint syntax.
+        // Recovery permits only strong declaration prefixes, not
+        // identifier-pair guesses.
         bool constraintMayEnd = false;
         bool recoveredBoundary = false;
         while (!AtEnd()) {
             auto kind = CurrentKind();
             if (kind == TK::Comment || kind == TK::Invalid) {
-                // Comments preserve operand state. Invalid bytes permit a recovery
+                // Comments preserve operand state. Invalid bytes permit
+                // a recovery
                 // boundary but stay in the constraint for AddExpressionRange.
                 if (kind == TK::Invalid) {
                     constraintMayEnd = false;
@@ -6384,12 +6386,14 @@ private:
         while (!AtEnd()) {
             auto kind = CurrentKind();
             // Directives delimit header fragments; they are never suffix
-            // operands. The suffix builder proves conditional initializer lists.
+            // operands. The suffix builder proves conditional initializer
+            // lists.
             if (kind == TK::PreprocessingDirective && sawTopLevelParameters) {
                 ++Cursor_;
                 continue;
             }
-            TokenIndex immediateOperand = std::numeric_limits<TokenIndex>::max();
+            TokenIndex immediateOperand =
+                std::numeric_limits<TokenIndex>::max();
             if (sawTopLevelParameters && !constructorInitializer &&
                 !terminalDenied && kind != TK::Comment)
             {

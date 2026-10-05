@@ -1,0 +1,19 @@
+fail: function name 'bad_name' has invalid case; expected PascalCase
+  --> sample.cpp:4:6 [written output]
+fail: parameter #1 in function definition 'bad_name': expected a name
+  --> sample.cpp:4:18 [written output]
+fail: function name 'later_bad' has invalid case; expected PascalCase
+  --> sample.cpp:10:6 [written output]
+fail: parameter #1 in function definition 'later_bad': expected a name
+  --> sample.cpp:10:19 [written output]
+fail: cannot format this line automatically within ColumnLimit 24
+  --> sample.cpp:2:25 [written output]
+  |
+2 | ...  abcdefghijklmnopqrs...
+  |              ^
+fail: cannot format this line automatically within ColumnLimit 24
+  --> sample.cpp:9:25 [written output]
+  |
+9 | }       // namespace test
+  |                         ^
+summary: fail: naming or parameter-name violation; fail: cannot format automatically within column limit

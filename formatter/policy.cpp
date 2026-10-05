@@ -192,7 +192,8 @@ void ValidatePolicyStyle(const Style& style)
         ResolveMemberDeclarationBlankLines(style),
         style.MaxEmptyLines,
         style.MemberDeclarationBlankLines.Mode == BlankLineMode::Inherit
-            ? "MemberDeclarationBlankLines (inherited from DeclarationBlankLines)"
+            ? "MemberDeclarationBlankLines "
+                "(inherited from DeclarationBlankLines)"
             : "MemberDeclarationBlankLines");
     CheckBlankCap(
         ResolveMemberBlankLines(style),

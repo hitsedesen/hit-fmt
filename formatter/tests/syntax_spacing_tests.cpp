@@ -1636,12 +1636,14 @@ TEST(SyntaxSpacing, IrrelevantContextsAndRecoveryStayUnnormalized)
 
 namespace {
 
-TEST(SyntaxSpacing, TrailingCommentSpacesUsesActualNamespaceOwnersAndScalarSafety)
+TEST(SyntaxSpacing,
+    TrailingCommentSpacesUsesActualNamespaceOwnersAndScalarSafety)
 {
     const std::string source =
         "namespace Outer {\nnamespace Inner {\nint local;\n} \t// arbitrary\n"
             "} \t// arbitrary\nint item; \t// namespace Outer\n"
-            "void task(){} \t// namespace task\nint quotient=8 / \t// divisor\n2;\n";
+            "void task(){} \t// namespace task\n"
+            "int quotient=8 / \t// divisor\n2;\n";
     Analysis legacy(source);
     GapPolicies policies;
     std::pmr::monotonic_buffer_resource file;

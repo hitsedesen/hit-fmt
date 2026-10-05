@@ -1,4 +1,5 @@
 #include "file_check.hpp"
+#include "source_excerpt.hpp"
 
 #include <formatter/naming.hpp>
 #include <formatter/parameter_names.hpp>
@@ -12,6 +13,26 @@
 namespace hit_fmt {
 
 namespace {
+
+// Emitted widths count bytes and tab stops, not tokenizer code points.
+size_t WidthCaretColumn(std::string_view text, size_t target)
+{
+    size_t width = 1, column = 1;
+    for (size_t offset = 0; offset < text.size() && width < target; ++column) {
+        const auto c = static_cast<unsigned char>(text[offset]);
+        const auto size = c < 0x80
+            ? 1
+            : unicode::utf8::GetFirstCodePointSize(text.substr(offset))
+                .value_or(1);
+        const auto nextWidth = width + (c == '\t' ? 8 - (width - 1) % 8 : size);
+        if (nextWidth > target) {
+            break;
+        }
+        width = nextWidth;
+        offset += size;
+    }
+    return column;
+}
 
 bool Before(util::Position a, util::Position b)
 {
@@ -294,14 +315,45 @@ CheckedFile CheckFile(
 void PrintFileIssues(
     std::ostream& output,
     std::string_view path,
+    std::string_view originalSource,
     const CheckedFile& checked,
-    bool fix)
+    bool fix,
+    size_t terminalWidth)
 {
     for (const auto& diagnostic : checked.Semantic) {
         const auto position = fix ? diagnostic.Emitted : diagnostic.Original;
         output << "fail: " << diagnostic.Message << "\n  --> " << path << ':'
             << position.Line << ':' << position.Column
             << (fix ? " [written output]" : " [original source]") << '\n';
+    }
+    if (checked.Formatting.Diagnostics.empty()) {
+        return;
+    }
+    const std::string_view source = fix
+        ? checked.Formatting.Text
+        : originalSource;
+    // One scan indexes borrowed line views, regardless of diagnostic order.
+    std::vector<std::string_view> lines;
+    lines.reserve(std::count(source.begin(), source.end(), '\n') + 1);
+    for (size_t begin = 0; begin <= source.size();) {
+        const auto newline = fix
+            ? source.find_first_of("\r\n", begin)
+            : source.find('\n', begin);
+        const auto end = newline == source.npos ? source.size() : newline;
+        auto text = source.substr(begin, end - begin);
+        if (text.ends_with('\r')) {
+            text.remove_suffix(1);
+        }
+        lines.push_back(text);
+        if (newline == source.npos) {
+            break;
+        }
+        begin = end + 1;
+        if (fix && source[end] == '\r' && begin < source.size() &&
+            source[begin] == '\n')
+        {
+            ++begin;
+        }
     }
     for (size_t i = 0; i < checked.Formatting.Diagnostics.size(); ++i) {
         const auto& diagnostic = checked.Formatting.Diagnostics[i];
@@ -313,6 +365,23 @@ void PrintFileIssues(
                 "within ColumnLimit " << checked.ColumnLimit << "\n  --> "
             << path << ':' << position.Line << ':' << position.Column
             << (fix ? " [written output]" : " [original source]") << '\n';
+        const auto number = std::to_string(position.Line);
+        const auto gutter = std::string(number.size() + 1, ' ') + "| ";
+        const auto prefix = number + " | ";
+        const auto text = lines.at(position.Line - 1);
+        const auto column = fix
+            ? WidthCaretColumn(text, position.Column)
+            : position.Column;
+        output << gutter.substr(0, gutter.size() - 1) << '\n' << prefix;
+        const auto excerpt = PrintSourceExcerpt(
+            output,
+            text,
+            column,
+            prefix.size(),
+            terminalWidth);
+        if (excerpt.CaretVisible) {
+            output << gutter << std::string(excerpt.CaretOffset, ' ') << "^\n";
+        }
     }
 }
 

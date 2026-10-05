@@ -62,7 +62,8 @@ TemplateArgumentsAlignment = Block
         R"(CallsFirstItem = NextLine
 CallsSoleArgumentFirstItem = InlineIfFits
 # Use Inherit to follow CallsFirstItem (or its shared default).
-# Multiple arguments retain CallsFirstItem; Always still requires an owned break.
+# Multiple arguments retain CallsFirstItem.
+# Always still requires an owned break.
 )"},
 };
 constexpr HelpExample ExpressionExamples[] = {
@@ -361,7 +362,8 @@ constexpr HelpSection HelpSections[] = {
             "is needed. Empty ChainedCallRootNames means "
             "AllSafe; "
         "nonempty means AnnotatedRoots, independently gated by ChainsLayout. "
-        "AlwaysBreakChainRootNames is an independent exact-name convention list, "
+        "AlwaysBreakChainRootNames is an independent exact-name "
+        "convention list, "
         "not a message-pin side effect or a replacement for root selection. "
         "It obeys ChainsLayout, root selection and protection. "
         "IndentedCallScopePairs preserves an "
@@ -377,7 +379,8 @@ constexpr HelpSection HelpSections[] = {
         "so registrar:Parameter keeps registrar.Parameter together. "
         "Both use First:Second identifier pairs, default to empty, and obey "
         "ChainsLayout and ChainedCallRootNames; scopes require distinct, "
-        "unambiguous endpoints, while sticky pairs may share names. Names/pairs "
+        "unambiguous endpoints, while sticky pairs may share names. "
+        "Names/pairs "
         "are exact validated metadata, not "
             "heuristics or a matcher DSL. All calls "
         "use global ColumnLimit. Macro safety hints "
@@ -388,11 +391,13 @@ constexpr HelpSection HelpSections[] = {
         "Low-level scalar compilation "
         "and owning prefix metadata may be used separately. Comment counts "
         "accept Preserve or 0..10000 and must fit MaxEmptyLines. Constructor "
-        "Inherit resolves final FunctionBracePlacement once. IncludeGroupPrefixes "
+        "Inherit resolves final FunctionBracePlacement once. "
+        "IncludeGroupPrefixes "
         "is an ordered quoted array of normalized relative directory prefixes "
         "ending in /; duplicates, absolute paths, backslashes, empty, . and .. "
         "components are invalid. Earliest rule wins, not longest match. "
-        "Regroup conflicts with explicit MaxEmptyLines=0 before unsupported-feature "
+        "Regroup conflicts with explicit MaxEmptyLines=0 "
+        "before unsupported-feature "
         "rejection. IncludeOrder defaults to Preserve. ColumnLimit "
         "accepts 1..10000; zero is invalid.\n",
         StagedExamples},

@@ -75,7 +75,8 @@ void PrintOption(std::ostream& output, std::string_view name, const T& value)
         std::optional<formatter::TrailingCommentSpaceSetting>>)
     {
         output
-            << "# Values: Preserve | 0..10000 (omitted: TrailingCommentSpacing)\n";
+            << "# Values: Preserve | 0..10000 "
+                "(omitted: TrailingCommentSpacing)\n";
         if (!value) {
             output << "# " << name << " = Preserve\n\n";
         } else {
@@ -191,13 +192,18 @@ void PrintPreserveConfig(std::ostream& output)
             "retains boundary topology.\n" "# Exact counts above an explicit "
             "MaxEmptyLines cap are invalid.\n"
             "# Public preparation rejects template breaks, Operand alignment,\n"
-            "# matching-header selection, regrouping and constructor overrides.\n"
-            "# Inactive include prefixes validate but do not activate regrouping.\n"
+            "# matching-header selection, regrouping and "
+            "constructor overrides.\n"
+            "# Inactive include prefixes validate but do not "
+            "activate regrouping.\n"
             "# Regroup conflicts with MaxEmptyLines = 0.\n"
-            "# LineEnding Preserve uses the first newline for generated endings\n"
-            "# and retains copied gap bytes, not uniform per-edge preservation.\n"
+            "# LineEnding Preserve uses the first newline "
+            "for generated endings\n"
+            "# and retains copied gap bytes, not uniform "
+            "per-edge preservation.\n"
             "# LF/CRLF spell only authorized whole whitespace newline atoms;\n"
-            "# no final newline insertion, token/directive conversion or cleanup.\n"
+            "# no final newline insertion, token/directive "
+            "conversion or cleanup.\n"
             "# Directives and protected regions remain byte-exact.\n"
             "# Option guidance: --help-config\n\n" "# Formatting options\n\n";
     const formatter::Style style;

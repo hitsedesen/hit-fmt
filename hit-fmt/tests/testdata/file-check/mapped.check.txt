@@ -1,11 +1,19 @@
 fail: function name 'bad_name' has invalid case; expected PascalCase
-  --> sample.cpp:1:23 [original source]
+  --> sample.cpp:2:23 [original source]
 fail: parameter #1 in function definition 'bad_name': expected a name
-  --> sample.cpp:1:35 [original source]
+  --> sample.cpp:2:35 [original source]
 fail: function name 'later_bad' has invalid case; expected PascalCase
-  --> sample.cpp:2:6 [original source]
+  --> sample.cpp:3:6 [original source]
 fail: parameter #1 in function definition 'later_bad': expected a name
-  --> sample.cpp:2:19 [original source]
+  --> sample.cpp:3:19 [original source]
 fail: cannot format this line automatically within ColumnLimit 24
-  --> sample.cpp:1:57 [original source]
+  --> sample.cpp:1:33 [original source]
+  |
+1 | const char* text = "αβγ     abcdefghijklmnopqrstuvwxyz";
+  |                                     ^
+fail: cannot format this line automatically within ColumnLimit 24
+  --> sample.cpp:2:57 [original source]
+  |
+2 | namespace test { void bad_name(int){if(ok)invoke(a,b);} }
+  |                                                         ^
 summary: formatting mismatch; fail: naming or parameter-name violation; fail: cannot format automatically within column limit

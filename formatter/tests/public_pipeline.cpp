@@ -271,13 +271,21 @@ TEST(PublicPipeline, LambdaArgumentOwnershipMapsProtectionAndIdempotence)
 {
     for (const auto source :
         {
-            "struct Registry {}; const Registry entry(7, [] { return 2; });\nint   following;\n",
-            "APPLY(7, ::ops::combine(::ops::make()), [](const auto& v) -> std::string { return v; });\nint   following;\n",
-            "APPLY([]() -> decltype(Item{}) { return Item{}; });\nint   following;\n",
-            "void use() { consume(flag ? first, second : third, [] { return 2; }); }\nint   following;\n",
-            "void use() { consume(flag ? other ? first, second : third, fourth : fifth, [] { return 2; }); }\nint   following;\n",
-            "APPLY([]<class T, class U>(T value) requires Check<T{}> { return value; });\nint   following;\n",
-            "APPLY([] marker(int hidden) { return hidden; }, [] { return 2; });\nint   following;\n",
+            "struct Registry {}; const Registry entry(7, [] { return 2; });\n"
+                "int   following;\n",
+            "APPLY(7, ::ops::combine(::ops::make()), "
+                "[](const auto& v) -> std::string { return v; });\n"
+                "int   following;\n",
+            "APPLY([]() -> decltype(Item{}) { return Item{}; });\n"
+                "int   following;\n",
+            "void use() { consume(flag ? first, second : third, "
+                "[] { return 2; }); }\nint   following;\n",
+            "void use() { consume(flag ? other ? first, second : third, "
+                "fourth : fifth, [] { return 2; }); }\nint   following;\n",
+            "APPLY([]<class T, class U>(T value) requires Check<T{}> "
+                "{ return value; });\nint   following;\n",
+            "APPLY([] marker(int hidden) { return hidden; }, "
+                "[] { return 2; });\nint   following;\n",
             "APPLY([]);\nint   following;\n",
         })
     {
@@ -313,15 +321,19 @@ TEST(PublicPipeline, UncertainLambdaArgumentsRetainRecoveryProtection)
 {
     for (const auto source :
         {
-            "APPLY([] marker(int hidden) { return hidden; }, [] { return 2; });\nint following;\n",
+            "APPLY([] marker(int hidden) { return hidden; }, "
+                "[] { return 2; });\nint following;\n",
             "APPLY([]);\nint following;\n",
             "APPLY(::ops::, [] { return 2; });\nint following;\n",
             "APPLY(char**, [] { return 2; });\nint following;\n",
             "APPLY(*, [] { return 2; });\nint following;\n",
             "APPLY(value + *, [] { return 2; });\nint following;\n",
-            "void use() { consume(flag ? first, second, [] { return 2; }); }\nint following;\n",
-            "APPLY([]<class T, class U>(T value) requires Check<T{} { return value; });\nint following;\n",
-            "#if CHOICE\nAPPLY([\n#else\n] { return 1; });\n#endif\nint following;\n",
+            "void use() { consume(flag ? first, second, "
+                "[] { return 2; }); }\nint following;\n",
+            "APPLY([]<class T, class U>(T value) requires Check<T{} "
+                "{ return value; });\nint following;\n",
+            "#if CHOICE\nAPPLY([\n#else\n] { return 1; });\n#endif\n"
+                "int following;\n",
         })
     {
         SCOPED_TRACE(source);
@@ -402,8 +414,9 @@ TEST(PublicPipeline, IfElseLookaheadPreservesFollowingAttributedNullStatement)
             SCOPED_TRACE(candidate);
             SCOPED_TRACE(braces);
             const std::string source =
-                "void sample(int n, bool ready, bool outer) { switch(n) { case 1: " +
-                    std::string(candidate) + " case 2: break; } }\n";
+                "void sample(int n, bool ready, bool outer) { "
+                    "switch(n) { case 1: " + std::string(candidate) +
+                    " case 2: break; } }\n";
             const auto result = FormatInput(source, prepared);
             const auto attribute = source.find("[[fallthrough]]");
             const auto semicolon = source.find(';', attribute);
@@ -595,11 +608,19 @@ TEST(PublicPipeline, UnknownAnnotationBoundariesPreserveRecoveryAndMaps)
     const formatter::PreparedFormat prepared(style);
     for (const std::string_view source :
         {
-            "META(Key, const Item *, const Value *)\nconst Item *Factory::build(int n) const { return nullptr; }\nint tail;\n",
-            "BIND(Key, const Item *) TRACK(Group, const Item *) MAP(Key, const Item *, const Value *)\nconst Item *Factory::build(int n) const { return nullptr; }\nint tail;\n",
-            "NOTE(0) NOTE2(1) Vec load(int Type) { Type * value; }\nint tail;\n",
-            "META(Key, const Item *, const Value *) [[maybe_unused]] static bool check(const Item *p) { return p; }\nint tail;\n",
-            "using Type = int;\nstatic inline Vec NOTE(\"legacy\") load(int Type) { Type * value; }\nint tail;\n",
+            "META(Key, const Item *, const Value *)\n"
+                "const Item *Factory::build(int n) const { return nullptr; }\n"
+                "int tail;\n",
+            "BIND(Key, const Item *) TRACK(Group, const Item *) "
+                "MAP(Key, const Item *, const Value *)\n"
+                "const Item *Factory::build(int n) const { return nullptr; }\n"
+                "int tail;\n",
+            "NOTE(0) NOTE2(1) Vec load(int Type) { Type * value; }\n"
+                "int tail;\n",
+            "META(Key, const Item *, const Value *) [[maybe_unused]] "
+                "static bool check(const Item *p) { return p; }\nint tail;\n",
+            "using Type = int;\nstatic inline Vec NOTE(\"legacy\") "
+                "load(int Type) { Type * value; }\nint tail;\n",
             "RAW(int n) & noexcept { return n; }\nint tail;\n",
             "RAW(int n) noexcept(true) { return n; }\nint tail;\n",
             "RAW(int n) override final { return n; }\nint tail;\n",
@@ -697,7 +718,8 @@ TEST(PublicPipeline, RecoveredFunctionTryHandlersHaveNoEditAuthority)
             "RAW(int n) & noexcept",
             "Vec NOTE(0) load(int n) const volatile & noexcept",
             "Vec NOTE(0) load(int n) && noexcept(true) [[maybe_unused]]",
-            "Vec NOTE(0) load(int n) requires Ready<int> && requires(int x) { x; }",
+            "Vec NOTE(0) load(int n) requires Ready<int> && "
+                "requires(int x) { x; }",
             "Vec NOTE(0) load(int n) requires (Ready<int>)",
             "Vec NOTE(0) load(int n) requires (Ready<int> && requires { 1; })",
         })
@@ -746,7 +768,8 @@ TEST(PublicPipeline, RecoveredFunctionTryHandlersHaveNoEditAuthority)
     }
 }
 
-TEST(PublicPipeline, RecoveredConstructorInitializersAndHandlersHaveNoEditAuthority)
+TEST(PublicPipeline,
+    RecoveredConstructorInitializersAndHandlersHaveNoEditAuthority)
 {
     auto style = Canonical();
     style.BodyShape = formatter::BodyShape::Expanded;
@@ -799,21 +822,21 @@ TEST(PublicPipeline, RecoveredConstructorInitializersAndHandlersHaveNoEditAuthor
                     "using Type = int;\nstruct C {\n" + candidate +
                         "\nint member;\n};\n;\nint tail(){ ; return 1; }\n";
                 SCOPED_TRACE(source);
-                // FormatInput's input/tree lifetimes have ended before these owning
-                // output, map and protection checks; normalization must clone safely.
+                // FormatInput's input/tree lifetimes have ended before
+                // these owning output, map and protection checks;
+                // normalization must clone safely.
                 const auto result = FormatInput(source, prepared);
                 EXPECT_FALSE(result.StructuralOperations.empty());
                 const auto begin = result.Text.find(candidate);
                 ASSERT_NE(begin, std::string::npos);
+                const auto recoveryReason = static_cast<
+                    uint16_t>(formatter::ProtectionReason::Recovery);
                 bool recovered = false;
                 for (const auto& protection : result.OutputProtection) {
-                    recovered |=
-                        protection.Source.Begin <= begin &&
-                            protection.Source.End >= begin + candidate.size() &&
-                            (static_cast<uint16_t>(protection.Reasons) &
-                                static_cast<
-                                    uint16_t>(formatter::ProtectionReason::Recovery)) !=
-                                0;
+                    recovered |= protection.Source.Begin <= begin &&
+                        protection.Source.End >= begin + candidate.size() &&
+                        (static_cast<uint16_t>(protection.Reasons) &
+                            recoveryReason) != 0;
                 }
                 EXPECT_TRUE(recovered);
                 CheckIdentities(source, result);
@@ -878,9 +901,9 @@ TEST(PublicPipeline, RecoveredConstraintOperandsKeepOwningMapsAndScopedTail)
     {
         const auto candidate = "Vec NOTE(0) load(int Type)" +
             std::string(suffix) + " { Type * value; ; }";
-        const auto source =
-            "using Type = int;\n" + candidate +
-                "\n;\nType * kept;\nint tail(){ ; return 1; }\nbool later = a > b;\n";
+        const auto source = "using Type = int;\n" + candidate +
+            "\n;\nType * kept;\nint tail(){ ; return 1; }\n"
+                "bool later = a > b;\n";
         SCOPED_TRACE(source);
         const auto result = FormatInput(source, prepared);
         ASSERT_NE(result.Text.find(candidate), std::string::npos);
@@ -2400,8 +2423,10 @@ TEST(PublicPipeline, NamelessBodyRecoveryPreservesCandidateAndIndependentEdits)
     const formatter::PreparedFormat prepared(style);
     for (const auto candidate :
         {
-            "HEADER_BLOCK(Thing, test, const Item *, input) { if(input){return input;} return 0; }",
-            "OPAQUE_BODY(Label, char*(Box<char*>, Box<bool>)) { int value=1+2; return value; };",
+            "HEADER_BLOCK(Thing, test, const Item *, input) "
+                "{ if(input){return input;} return 0; }",
+            "OPAQUE_BODY(Label, char*(Box<char*>, Box<bool>)) "
+                "{ int value=1+2; return value; };",
             "HEADER_BLOCK(Type) { Type * item; }",
             "HEADER_BLOCK(Tag) { using Hidden=int; int member; }",
         })
@@ -2459,7 +2484,8 @@ TEST(PublicPipeline, NamelessBodyRecoveryPreservesCandidateAndIndependentEdits)
                 std::string::npos);
             CheckIdentities(source, frozen);
         }
-        // Returned text/maps/protection own their memory beyond source/tree/request lifetime.
+        // Returned text/maps/protection own their memory beyond
+        // source/tree/request lifetime.
         const auto outputStart = result.Text.find(candidate);
         ASSERT_NE(outputStart, std::string::npos);
         EXPECT_NE(result.Text.find("x = 1"), std::string::npos);
@@ -2534,7 +2560,8 @@ TEST(PublicPipeline, RequiresRecoveryScopeAndMapsPreserveInvalidBytes)
                 }
                 EXPECT_EQ(invalidCount, 1u);
             }
-            // Result maps/protection remain owning after source/tree/scope storage dies.
+            // Result maps/protection remain owning after
+            // source/tree/scope storage dies.
             const auto invalidOutput =
                 result.OriginalTokens[invalidToken].Output;
             EXPECT_EQ(
@@ -2635,13 +2662,16 @@ TEST(PublicPipeline, OpaqueRecordOwnerPreservesHeadAndFormatsSafeBodies)
 
 TEST(PublicPipeline, ConstructorInitializerLambdasPreserveMapsAndProtection)
 {
-    const std::string_view sources[] =
-        {
-            "struct Task { Task() : callback([this] { stop(); }, [this] { start(); }) {} };\n",
-            "struct Task { Task() noexcept : first([] { return 1; }), second([]() noexcept { return 2; }) {} };\n",
-            "struct Task { Task() : first(0), callback(wrap([id = 1](int* value) { consume(value, id); })) {} };\n",
-            "struct Task { Task() try : first([] { return 1; }), second([] { return 2; }) {} catch (...) {} };\n",
-        };
+    const std::string_view sources[] = {
+        "struct Task { Task() : callback([this] { stop(); }, "
+            "[this] { start(); }) {} };\n",
+        "struct Task { Task() noexcept : first([] { return 1; }), "
+            "second([]() noexcept { return 2; }) {} };\n",
+        "struct Task { Task() : first(0), callback(wrap("
+            "[id = 1](int* value) { consume(value, id); })) {} };\n",
+        "struct Task { Task() try : first([] { return 1; }), "
+            "second([] { return 2; }) {} catch (...) {} };\n",
+    };
     const formatter::PreparedFormat prepared(Canonical());
     for (const auto source : sources) {
         SCOPED_TRACE(source);
@@ -2769,11 +2799,13 @@ TEST(PublicPipeline, TerminalConstructorSelfTypeStatementsKeepMapsAndEditScopes)
         CheckIdentities(source, frozen);
     }
 }
-TEST(PublicPipeline, TerminalConstructorBoundariesKeepOwningMapsAndStatementScopes)
+TEST(PublicPipeline,
+    TerminalConstructorBoundariesKeepOwningMapsAndStatementScopes)
 {
-    const std::string source =
-        "template<class E> struct Chest { Chest<E>(E* value) noexcept(check(value)) {} "
-            "void inspect(E seed) { Chest<E>(slot); Chest<E>* pointer = &slot; invoke(seed,seed); } };\n";
+    const std::string source = "template<class E> struct Chest { "
+        "Chest<E>(E* value) noexcept(check(value)) {} "
+        "void inspect(E seed) { Chest<E>(slot); "
+        "Chest<E>* pointer = &slot; invoke(seed,seed); } };\n";
     auto style = Canonical();
     style.ColumnLimit = 10000;
     style.CommaSpaceAfter = formatter::GapPolicy::Space;
@@ -3245,8 +3277,10 @@ TEST(PublicPipeline, LineEndingCompositionControlSeparatorGeometryAndDefaults)
 {
     const std::string source =
         "void flow(bool ready) {\r\n  if (ready) {\r\n    left();\r\n  }\r\n"
-            "  else {\r\n    right();\r\n  }\r\n  do {\r\n    tick();\r\n  }\r \n"
-            "  while (ready);\r\n  do {\r\n    next();\r\n  }\r\n  while (ready);\r\n}\r\n";
+            "  else {\r\n    right();\r\n  }\r\n"
+            "  do {\r\n    tick();\r\n  }\r \n"
+            "  while (ready);\r\n  do {\r\n    next();\r\n  }\r\n"
+            "  while (ready);\r\n}\r\n";
     for (const auto ending :
         {formatter::LineEnding::LF, formatter::LineEnding::CRLF})
     {
@@ -3446,7 +3480,8 @@ TEST(PublicPipeline, TrailingCommentSpacesLexicalSafetyOwnsTokensAndMaps)
     EXPECT_TRUE(changedGap);
 }
 
-TEST(PublicPipeline, TrailingCommentSpacesWholeGapScopesProtectionAndOwningResult)
+TEST(PublicPipeline,
+    TrailingCommentSpacesWholeGapScopesProtectionAndOwningResult)
 {
     const std::string source = "int amount; \t// memo\r\n";
     const auto begin = parser::SourceOffset(source.find(';') + 1);
@@ -3519,15 +3554,18 @@ namespace public_pipeline {
 
 namespace {
 
-TEST(PublicPipeline, TrailingCommentSpacesCompositionRetainsScopedProducerBoundaries)
+TEST(PublicPipeline,
+    TrailingCommentSpacesCompositionRetainsScopedProducerBoundaries)
 {
     // These prefixes exercise the integrated separator, annotation and terminal
     // producers. A comment-count demand cannot grant authority over any prefix.
     for (const std::string_view prefix :
         {
             "void work(bool ready){if(ready){tick();}\nelse{wait();}}\n",
-            "using Type = int;\nstatic Vec NOTE(0) load(int Type) { Type * value; }\n",
-            "template<class T> struct Owner { Owner() {} void inspect(T seed) { "
+            "using Type = int;\n"
+                "static Vec NOTE(0) load(int Type) { Type * value; }\n",
+            "template<class T> struct Owner { Owner() {} "
+                "void inspect(T seed) { "
                 "Owner<T>(slot); Owner<T>* pointer = &slot; } };\n",
         })
     {

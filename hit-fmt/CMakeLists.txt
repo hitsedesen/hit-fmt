@@ -1,6 +1,6 @@
 find_package(Threads REQUIRED)
 
-add_library(lib-file-check STATIC file_check.cpp)
+add_library(lib-file-check STATIC file_check.cpp source_excerpt.cpp)
 target_link_libraries(lib-file-check PUBLIC lib-formatter)
 
 add_executable(hit-fmt

@@ -474,7 +474,8 @@ TEST(GroupLayout, FixedExpressionGapRealizesWithoutBecomingEditableBreak)
         ASSERT_TRUE(document.Seal());
         ExpectText(document, 80, "\n    f(item)\n    tail");
         auto result = document.Render({.Width = 80});
-        // Fixed prefix/marker cannot satisfy ForceBreak at the child's flat gap.
+        // Fixed prefix/marker cannot satisfy ForceBreak at the child's flat
+        // gap.
         EXPECT_EQ(result.Broken[child], 0);
         EXPECT_EQ(result.Map.size(), split ? 7 : 6);
     }
@@ -1248,7 +1249,8 @@ TEST(GroupLayout, DelimiterRequirementsAndAnchorReuseGolden)
         document.EndGroup(continuation);
         document.EndGroup(block);
         ASSERT_TRUE(document.Seal());
-        // Minimum gives 3+4=7; fallback gives 3+2=5; default Minimum floors at 3.
+        // Minimum gives 3+4=7; fallback gives 3+2=5; default Minimum floors
+        // at 3.
         // Width 9 permits Minimum + demand 2 exactly, but 8 needs fallback.
         // None uses the continuation group's indentation (3+6=9) as its block.
         AppendRender(
@@ -1325,7 +1327,8 @@ TEST(GroupLayout, DelimiterRequirementsAndAnchorReuseGolden)
         auto anchor = document
             .MarkAnchor({AnchorKind::BlockRelative, 1, INT32_MAX, UINT32_MAX});
         document.Text("a");
-        // Block-relative anchors ignore delimiter Minimum/RequiredWidth/fallback.
+        // Block-relative anchors ignore delimiter
+        // Minimum/RequiredWidth/fallback.
         document.Gap({GapKind::Hard, 0, UINT32_MAX}, anchor);
         auto nested = document.BeginGroup({GroupMode::Consistent, 2});
         document.Text("bb");
@@ -2975,7 +2978,8 @@ TEST(GroupLayout, SaturatesWidthsWithoutRescanningExponentialFlatExpansion)
     EXPECT_TRUE(output.Text.ends_with("leaf"));
 }
 
-TEST(GroupLayout, SourceWhitespaceStreamsAtomsWithoutOwningTopologyOrTokenRights)
+TEST(GroupLayout,
+    SourceWhitespaceStreamsAtomsWithoutOwningTopologyOrTokenRights)
 {
     const std::string source = " \n\t\r\n\r \n";
     Document document(source);
@@ -3077,7 +3081,8 @@ TEST(GroupLayout, SourceWhitespaceZeroChangeLFStillRequiresSafeIncomingBoundary)
     }
 }
 
-TEST(GroupLayout, SourceWhitespaceAlternatingRetentionKeepsLargeBoundsAndExactMaps)
+TEST(GroupLayout,
+    SourceWhitespaceAlternatingRetentionKeepsLargeBoundsAndExactMaps)
 {
     std::string source;
     for (unsigned i = 0; i < 35000; ++i)
