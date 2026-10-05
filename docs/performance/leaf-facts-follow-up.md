@@ -84,6 +84,36 @@ Other phase instruction costs remain effectively unchanged. Scoped wall and
 cycle observations are preserved, but broad changes in even untouched phases
 show environmental drift; they are not independent phase-speedup claims.
 
+## Fresh total comparison against main
+
+A subsequent six-round comparison directly measures main `e102de7` against
+implementation `c1d1dde`, using the same closer-interleaved persistent batches.
+All 18 pairs favor the branch. This is a fresh measurement, not a compound
+estimate from earlier percentages.
+
+| Corpus | Main CheckFile seconds | Current seconds | Reduction |
+| --- | ---: | ---: | ---: |
+| YTsaurus | 10.6102 | 9.3787 | 11.61% |
+| LLVM/Clang | 13.5178 | 11.6738 | 13.64% |
+| TensorFlow | 7.2319 | 6.3748 | 11.85% |
+| Sum of corpus medians | 31.3599 | 27.4273 | 12.54% |
+
+This saves 3.9326 seconds of formatting wall time, or approximately 1.143x
+throughput. Summed batch CPU medians are 32.2474 -> 28.2112 seconds (-12.52%).
+Batch CPU excludes startup/configuration preparation; CheckFile wall excludes
+input reading and outer result destruction. These totals are not end-to-end
+CLI timings and are not directly interchangeable with the earlier whole-
+process measurements or the noisier whole-corpus interleaving.
+
+Three fresh interleaved hardware counter runs against main give combined
+instructions/B 1098.83 -> 961.53 (-12.49%) and cycles/B 775.54 -> 656.43
+(-15.36%). These counters retain their user-space CheckFile-only scope;
+cycles remain substantially less stable than instruction counts.
+
+External evidence: main-current-batch-* preserves all six complete rounds
+and per-batch observations; main-current-hardware-* preserves three counter
+pairs per corpus; main-current-total-summary.json preserves the aggregation.
+
 ## Rejected work and validation
 
 A compact sort-key table saved only about 0.1% of whole-pipeline instructions
