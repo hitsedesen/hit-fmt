@@ -1,6 +1,8 @@
 #pragma once
 
 #include <formatter/source_analysis.hpp>
+#include <formatter/config_enum.hpp>
+#include <formatter/include_policy.hpp>
 
 #include <memory_resource>
 #include <span>
@@ -59,6 +61,16 @@ struct StructuralOptions
     bool AlignMacroBackslashes = false;
     std::size_t RulerLength = 0;
     std::uint8_t IndentWidth = 4;
+    IncludeMatchingHeader MatchingHeader = IncludeMatchingHeader::Off;
+    IncludeGrouping Grouping = IncludeGrouping::Preserve;
+    IncludeDirectoryOrder DirectoryOrder = IncludeDirectoryOrder::NearestFirst;
+    IncludePathBase PathBase = IncludePathBase::SourceDirectory;
+};
+
+struct IncludeSortContext
+{
+    std::string_view InputFilePath;
+    const PreparedIncludePrefixes* Prefixes = nullptr;
 };
 
 using StructuralActionId = uint32_t;
@@ -150,8 +162,9 @@ struct IncludeGroup
     parser::SourceRange Source;
 };
 
-// Discover maximal adjacent safe include groups in source order, including
-// sorted groups; omit singletons. Uses planner attachment/line-ending rules;
+// Discover maximal safe include blocks in source order, including sorted
+// blocks; omit singletons. Regroup/Directory also span blank lines.
+// Uses planner attachment/line-ending rules;
 // additional protection excludes the whole group. For hunk eligibility, use
 // unrestricted original analysis; scoped planning still authorizes each edit.
 // Tree/analysis must match, otherwise throws invalid_argument. Results retain
@@ -160,7 +173,8 @@ struct IncludeGroup
     const parser::SyntaxTree& tree,
     const SourceAnalysis& safety,
     std::pmr::memory_resource& fileMemory,
-    std::pmr::memory_resource& scratchMemory);
+    std::pmr::memory_resource& scratchMemory,
+    IncludeGrouping grouping = IncludeGrouping::Preserve);
 
 // One iterative traversal of original parsed syntax, with a single postorder
 // completeness annotation for colon-only labels and their enclosing controls.
@@ -171,7 +185,8 @@ struct IncludeGroup
     const SourceAnalysis& safety,
     StructuralOptions options,
     std::pmr::memory_resource& fileMemory,
-    std::pmr::memory_resource& scratchMemory);
+    std::pmr::memory_resource& scratchMemory,
+    IncludeSortContext includes = {});
 
 // Validates ownership/overlaps before emission, reserves then copies once.
 // Throws invalid_argument for malformed plans; length_error for oversized

@@ -43,8 +43,12 @@ IndentMembers = Indent
 IndentNamespaces = NoIndent
 IndentCaseLabels = Indent
 StatementAttributeIndent = Block
-# Include categories/main-header precedence are not modeled.
-IncludeOrder = Preserve
+# Paired header first, then nearest directories; upstream categories differ.
+IncludeOrder = Sort
+IncludeMatchingHeader = First
+IncludeGrouping = Directory
+IncludeDirectoryOrder = NearestFirst
+IncludePathBase = SourceDirectory
 # Ordinary trailing // gaps; comment alignment and prose wrapping are not modeled.
 TrailingCommentSpaces = 2
 NamespaceComments = AddMissing

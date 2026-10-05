@@ -435,6 +435,10 @@
     OPT(formatter::IncludeGrouping, IncludeGrouping, \
         formatter::IncludeGrouping::Preserve) \
     OPT(std::vector<std::string>, IncludeGroupPrefixes, {}) \
+    OPT(formatter::IncludeDirectoryOrder, IncludeDirectoryOrder, \
+        formatter::IncludeDirectoryOrder::NearestFirst) \
+    OPT(formatter::IncludePathBase, IncludePathBase, \
+        formatter::IncludePathBase::SourceDirectory) \
     OPT(bool, AddMissingControlBraces, false)                                \
     OPT(bool, RemoveNullStatements, false)                                  \
     OPT(bool, RemoveNullDeclarations, false)                                \

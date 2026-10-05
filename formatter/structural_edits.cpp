@@ -248,6 +248,15 @@ struct Include
     bool Angled;
 };
 
+struct IncludeKey
+{
+    std::size_t DirectoryOffset = 0;
+    std::size_t DirectoryLength = 0;
+    std::size_t Distance = 0;
+    std::size_t Rule = 0;
+    bool Matching = false;
+};
+
 bool ParseInclude(const parser::SyntaxTree& tree, TI token, Include& result)
 {
     if (tree.Kind(token) != TK::PreprocessingDirective) {
@@ -315,11 +324,28 @@ bool DirectiveOnly(const SourceAnalysis& safety, SR range)
 {
     return safety.CanRewriteDirective(range);
 }
+bool IncludeGap(std::string_view gap, bool crlf)
+{
+    for (std::size_t i = 0; i < gap.size(); ++i) {
+        if (gap[i] == ' ' || gap[i] == '\t') {
+            continue;
+        }
+        if (crlf && gap[i] == '\r' && i + 1 < gap.size() && gap[i + 1] == '\n')
+        {
+            ++i;
+        } else if (crlf || gap[i] != '\n') {
+            return false;
+        }
+    }
+    return true;
+}
+
 template <class Accept, class Reject>
 void ScanIncludeGroups(
     const parser::SyntaxTree& tree,
     const SourceAnalysis& safety,
     std::pmr::memory_resource& scratch,
+    IncludeGrouping grouping,
     Accept accept,
     Reject reject)
 {
@@ -335,11 +361,20 @@ void ScanIncludeGroups(
         TI end = i + 1;
         Include next;
         while (end < tree.TokenCount() && ParseInclude(tree, end, next) &&
-            group.back().Atom.End == next.Atom.Begin && tree
-                .TokenText(i)
-                .ends_with('\r') == tree
-                    .TokenText(end)
-                    .ends_with('\r'))
+            (group.back().Atom.End == next.Atom.Begin ||
+                (grouping != IncludeGrouping::Preserve && IncludeGap(
+                    tree
+                        .Source()
+                        .substr(
+                            group.back().Atom.End,
+                            next.Atom.Begin - group.back().Atom.End),
+                    tree
+                        .TokenText(i)
+                        .ends_with('\r')))) && tree
+                            .TokenText(i)
+                            .ends_with('\r') == tree
+                                .TokenText(end)
+                                .ends_with('\r'))
         {
             group.push_back(next);
             ++end;
@@ -361,40 +396,262 @@ void ScanIncludeGroups(
         i = end;
     }
 }
+std::string_view Directory(std::string_view path)
+{
+    const auto slash = path.rfind('/');
+    return slash == std::string_view::npos
+        ? std::string_view{}
+        : path.substr(0, slash + 1);
+}
+
+std::string_view Filename(std::string_view path)
+{
+    return path.substr(Directory(path).size());
+}
+
+std::string_view Stem(std::string_view name)
+{
+    const auto dot = name.rfind('.');
+    return dot == std::string_view::npos ? name : name.substr(0, dot);
+}
+
+bool HeaderFilename(std::string_view name)
+{
+    const auto dot = name.rfind('.');
+    const auto extension = dot == std::string_view::npos
+        ? std::string_view{}
+        : name.substr(dot);
+    return extension == ".h" || extension == ".hh" || extension == ".hpp" ||
+        extension == ".hxx" || extension == ".h++";
+}
+
+// Reuse component storage for lexical normalization; no filesystem queries or
+// per-include owning paths. Unknown leading parents remain explicit.
+void AppendComponents(
+    std::pmr::vector<std::string_view>& parts,
+    std::string_view path,
+    bool absolute)
+{
+    while (!path.empty()) {
+        const auto slash = path.find('/');
+        const auto part = path.substr(0, slash);
+        if (part == "..") {
+            if (!parts.empty() && parts.back() != "..") {
+                parts.pop_back();
+            } else if (!absolute) {
+                parts.push_back(part);
+            }
+        } else if (!part.empty() && part != ".") {
+            parts.push_back(part);
+        }
+        if (slash == std::string_view::npos) {
+            break;
+        }
+        path.remove_prefix(slash + 1);
+    }
+}
+
 void Includes(
     const parser::SyntaxTree& tree,
     const SourceAnalysis& safety,
     StructuralPlan& plan,
-    std::pmr::memory_resource& scratch)
+    std::pmr::memory_resource& scratch,
+    StructuralOptions options,
+    IncludeSortContext context)
 {
+    std::pmr::vector<std::string_view> current(&scratch), parts(&scratch);
+    const auto inputDirectory = Directory(context.InputFilePath);
+    const bool inputAbsolute = inputDirectory.starts_with('/');
+    const bool needPaths = options.Grouping == IncludeGrouping::Directory ||
+        options.MatchingHeader == IncludeMatchingHeader::First;
+    if (needPaths) {
+        AppendComponents(current, inputDirectory, inputAbsolute);
+    }
+    const auto sourceName = Filename(context.InputFilePath);
+    std::pmr::string directories(&scratch);
+    std::pmr::vector<StructuralPiece> pieces(&scratch);
+    std::pmr::vector<IncludeKey> keys(&scratch);
     ScanIncludeGroups(
         tree,
         safety,
         scratch,
+        options.Grouping,
         [&] (IncludeGroup descriptor, std::span<Include> group) {
-            auto compare = [] (const Include& a, const Include& b) {
+            directories.clear();
+            pieces.clear();
+            if (needPaths || options.Grouping == IncludeGrouping::Regroup) {
+                keys.clear();
+                keys.resize(group.size());
+            }
+            for (std::size_t i = 0; i < group.size() && !keys.empty(); ++i) {
+                const auto& atom = group[i];
+                auto& key = keys[i];
+                if (options.Grouping == IncludeGrouping::Regroup &&
+                    context.Prefixes)
+                {
+                    key.Rule = context.Prefixes->ClassifyNormalizedRelativePath(
+                        atom.Path);
+                }
+                if (!needPaths) {
+                    continue;
+                }
+                parts.clear();
+                // Bare quoted names are local even with root-based project
+                // includes. Explicit ./ and ../ spell source-relative paths.
+                const bool local = !atom.Angled &&
+                    (atom.Path.find('/') == std::string_view::npos ||
+                        atom.Path.starts_with("./") ||
+                        atom.Path.starts_with("../"));
+                const bool relative = !atom.Path.starts_with('/') &&
+                    (local ||
+                        options.PathBase == IncludePathBase::SourceDirectory);
+                const bool absolute = relative
+                    ? inputAbsolute
+                    : atom.Path.starts_with('/');
+                if (relative) {
+                    parts.assign(current.begin(), current.end());
+                }
+                AppendComponents(parts, Directory(atom.Path), absolute);
+                std::size_t common = 0;
+                if (absolute == inputAbsolute) {
+                    while (common < std::min(current.size(), parts.size()) &&
+                        current[common] == parts[common])
+                    {
+                        ++common;
+                    }
+                    key.Distance =
+                        current.size() - common + parts.size() - common;
+                } else {
+                    key.Distance = std::numeric_limits<std::size_t>::max();
+                }
+                key.DirectoryOffset = directories.size();
+                if (absolute) {
+                    directories.push_back('/');
+                }
+                for (std::size_t index = 0; index < parts.size(); ++index) {
+                    if (index) {
+                        directories.push_back('/');
+                    }
+                    directories.append(parts[index]);
+                }
+                key.DirectoryLength = directories.size() - key.DirectoryOffset;
+                const auto name = Filename(atom.Path);
+                key.Matching = options.MatchingHeader ==
+                    IncludeMatchingHeader::First && !atom.Angled &&
+                    !sourceName.empty() && !HeaderFilename(sourceName) &&
+                    HeaderFilename(name) && Stem(name) == Stem(sourceName) &&
+                    absolute == inputAbsolute && parts == current;
+            }
+            auto key = [&] (const Include& atom) -> const IncludeKey& {
+                return keys[atom.Token - descriptor.Tokens.Begin];
+            };
+            auto matching = [&] (const Include& atom) {
+                return needPaths && key(atom).Matching;
+            };
+            auto directory = [&] (const Include& atom) {
+                return std::string_view(directories).substr(
+                    key(atom).DirectoryOffset,
+                    key(atom).DirectoryLength);
+            };
+            auto sameGroup = [&] (const Include& a, const Include& b) {
+                if (matching(a) != matching(b)) {
+                    return false;
+                }
+                if (matching(a) && matching(b)) {
+                    return true;
+                }
+                return a.Angled == b.Angled &&
+                    (options.Grouping == IncludeGrouping::Directory
+                        ? directory(a) == directory(b)
+                        : key(a).Rule == key(b).Rule);
+            };
+            auto compare = [&] (const Include& a, const Include& b) {
+                if (matching(a) != matching(b)) {
+                    return matching(a);
+                }
                 if (a.Angled != b.Angled) {
                     return !a.Angled;
                 }
+                if (options.Grouping == IncludeGrouping::Directory &&
+                    !matching(a))
+                {
+                    if (options.DirectoryOrder ==
+                        IncludeDirectoryOrder::NearestFirst &&
+                        key(a).Distance != key(b).Distance)
+                    {
+                        return key(a).Distance < key(b).Distance;
+                    }
+                    if (directory(a) != directory(b)) {
+                        return directory(a) < directory(b);
+                    }
+                    if (Filename(a.Path) != Filename(b.Path)) {
+                        return Filename(a.Path) < Filename(b.Path);
+                    }
+                } else if (options.Grouping == IncludeGrouping::Regroup &&
+                    key(a).Rule != key(b).Rule)
+                {
+                    return key(a).Rule < key(b).Rule;
+                }
                 return a.Path != b.Path ? a.Path < b.Path : a.Token < b.Token;
             };
-            if (!std::is_sorted(group.begin(), group.end(), compare)) {
-                std::sort(group.begin(), group.end(), compare);
-                auto id = Operation(
-                    plan,
-                    StructuralAction::IncludeOrder,
-                    descriptor.Tokens);
-                auto start = static_cast<uint32_t>(plan.Pieces.size());
-                for (const auto& atom : group) {
-                    plan.Pieces.push_back({atom.Atom, {}, true});
-                }
-                plan.Edits.push_back({
-                    descriptor.Source,
-                    start,
-                    static_cast<uint32_t>(plan.Pieces.size()),
-                    id,
-                });
+            const bool sorted =
+                std::is_sorted(group.begin(), group.end(), compare);
+            if (sorted && options.Grouping == IncludeGrouping::Preserve) {
+                return;
             }
+            if (!sorted) {
+                std::sort(group.begin(), group.end(), compare);
+            }
+            const auto ending = tree
+                .TokenText(group.front().Token)
+                .ends_with('\r')
+                ? std::string_view("\r\n")
+                : std::string_view("\n");
+            for (std::size_t i = 0; i < group.size(); ++i) {
+                if (i && options.Grouping != IncludeGrouping::Preserve &&
+                    !sameGroup(group[i - 1], group[i]))
+                {
+                    pieces.push_back({{}, ending, false});
+                }
+                pieces.push_back({group[i].Atom, {}, true});
+            }
+            // Sorted blocks with canonical separators are no-ops, preserving
+            // operation identities and avoiding reparsing on repeat runs.
+            auto original = tree
+                .Source()
+                .substr(
+                    descriptor.Source.Begin,
+                    descriptor.Source.End - descriptor.Source.Begin);
+            bool unchanged = true;
+            for (const auto& piece : pieces) {
+                const auto text = piece.FromSource
+                    ? tree
+                        .Source()
+                        .substr(
+                            piece.Source.Begin,
+                            piece.Source.End - piece.Source.Begin)
+                    : piece.Literal;
+                if (!original.starts_with(text)) {
+                    unchanged = false;
+                    break;
+                }
+                original.remove_prefix(text.size());
+            }
+            if (unchanged && original.empty()) {
+                return;
+            }
+            auto id = Operation(
+                plan,
+                StructuralAction::IncludeOrder,
+                descriptor.Tokens);
+            auto start = static_cast<uint32_t>(plan.Pieces.size());
+            plan.Pieces.insert(plan.Pieces.end(), pieces.begin(), pieces.end());
+            plan.Edits.push_back({
+                descriptor.Source,
+                start,
+                static_cast<uint32_t>(plan.Pieces.size()),
+                id,
+            });
         },
         [&] (parser::TokenRange tokens, StructuralSkip reason) {
             Skip(plan, StructuralAction::IncludeOrder, tokens, reason);
@@ -523,7 +780,8 @@ std::pmr::vector<IncludeGroup> DiscoverIncludeGroups(
     const parser::SyntaxTree& tree,
     const SourceAnalysis& safety,
     std::pmr::memory_resource& fileMemory,
-    std::pmr::memory_resource& scratchMemory)
+    std::pmr::memory_resource& scratchMemory,
+    IncludeGrouping grouping)
 {
     CheckAnalysisSource(tree, safety);
     std::pmr::vector<IncludeGroup> result(&fileMemory);
@@ -531,6 +789,7 @@ std::pmr::vector<IncludeGroup> DiscoverIncludeGroups(
         tree,
         safety,
         scratchMemory,
+        grouping,
         [&] (IncludeGroup group, std::span<Include>) {
             result.push_back(group);
         },
@@ -543,7 +802,8 @@ StructuralPlan PlanStructuralEdits(
     const SourceAnalysis& safety,
     StructuralOptions options,
     std::pmr::memory_resource& fileMemory,
-    std::pmr::memory_resource& scratchMemory)
+    std::pmr::memory_resource& scratchMemory,
+    IncludeSortContext includes)
 {
     StructuralPlan plan(fileMemory);
     // Prefix summaries avoid rescanning nested control bodies.
@@ -748,7 +1008,7 @@ StructuralPlan PlanStructuralEdits(
             }
         }, trailingLabels);
     if (options.SortIncludes) {
-        Includes(tree, safety, plan, scratchMemory);
+        Includes(tree, safety, plan, scratchMemory, options, includes);
     }
     PlanTextPolicyEdits(tree, safety, options, plan, fileMemory, scratchMemory);
     Sort(plan);

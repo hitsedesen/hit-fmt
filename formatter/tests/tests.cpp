@@ -149,7 +149,8 @@ INSTANTIATE_TEST_SUITE_P(
     });
 std::string FormatWithStyle(
     std::string_view source,
-    const formatter::Style& style)
+    const formatter::Style& style,
+    std::string_view inputFilePath = {})
 {
     std::string storage(source);
     storage.append(util::SourcePaddingSize, '\0');
@@ -160,8 +161,9 @@ std::string FormatWithStyle(
         padded,
         [] (parser::ParseError) {},
         prepared.ParsingOptions());
-    const auto actual = formatter::Format(tree, prepared).Text;
-    EXPECT_EQ(actual, formatter::Format(padded, prepared).Text);
+    const formatter::FormatRequest request{.InputFilePath = inputFilePath};
+    const auto actual = formatter::Format(tree, prepared, request).Text;
+    EXPECT_EQ(actual, formatter::Format(padded, prepared, request).Text);
     return actual;
 }
 void ExpectFormattedGolden(
@@ -169,16 +171,17 @@ void ExpectFormattedGolden(
     std::string_view input,
     const formatter::Style& style,
     bool checkOwningMaps,
-    bool readOnlyExpected)
+    bool readOnlyExpected,
+    std::string_view inputFilePath = {})
 {
-    const auto actual = FormatWithStyle(input, style);
+    const auto actual = FormatWithStyle(input, style, inputFilePath);
     if (readOnlyExpected) {
         // Shared oracles, including inputs, must never be regenerated here.
         EXPECT_EQ(actual, ReadFile(path)) << path;
     } else {
         test::golden::ExpectGolden(path, actual);
     }
-    EXPECT_EQ(FormatWithStyle(actual, style), actual);
+    EXPECT_EQ(FormatWithStyle(actual, style, inputFilePath), actual);
     if (checkOwningMaps) {
         public_pipeline::CheckFormattedResult(input, style, actual);
     }
@@ -195,6 +198,7 @@ struct FormatCase
     std::string Expected;
     bool CheckOwningMaps;
     std::optional<formatter::Style> Style;
+    std::string InputFilePath;
 
     FormatCase(
         std::filesystem::path directory,
@@ -825,6 +829,81 @@ std::vector<FormatCase> FormatCases()
         "crlf.input.cpp",
         "sort",
     });
+    {
+        const auto directory =
+            std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../include-order";
+        for (const auto name :
+            {
+                "directory",
+                "directory-alphabetical",
+                "directory-preserve",
+                "matching",
+                "prefixes",
+            })
+        {
+            FormatCase value{directory, name, "directory.input.cpp"};
+            value.InputFilePath = "project/engine/widget.cpp";
+            if (std::string_view(name) == "directory-preserve") {
+                value.Expected = "directory.input.cpp";
+            }
+            cases.push_back(std::move(value));
+        }
+        FormatCase relative{
+            directory,
+            "directory-relative",
+            "relative.input.cpp",
+        };
+        relative.InputFilePath = "/project/engine/widget.cpp";
+        cases.push_back(std::move(relative));
+        for (const auto profile : {"google", "llvm", "ytsaurus"}) {
+            const bool rootRelative = std::string_view(profile) == "ytsaurus";
+            FormatCase value{
+                directory,
+                "profile-" + std::string(profile),
+                rootRelative ? "directory.input.cpp" : "relative.input.cpp",
+                "../../../../hit-fmt/examples/" + std::string(profile),
+            };
+            value.InputFilePath = rootRelative
+                ? "project/engine/widget.cpp"
+                : "/project/engine/widget.cpp";
+            value.Expected = rootRelative
+                ? "directory.output.cpp"
+                : "directory-relative.output.cpp";
+            cases.push_back(std::move(value));
+        }
+        cases.push_back({
+            directory,
+            "directory-no-path",
+            "directory.input.cpp",
+            "directory",
+        });
+        cases.push_back({
+            directory,
+            "directory-crlf",
+            "crlf.input.cpp",
+            "directory-relative",
+        });
+        FormatCase header{
+            directory,
+            "directory-header",
+            "directory.input.cpp",
+            "directory",
+        };
+        header.InputFilePath = "project/engine/widget.hpp";
+        cases.push_back(std::move(header));
+        for (const bool spill : {false, true}) {
+            FormatCase value{
+                directory,
+                spill ? "directory-spill" : "directory-strict",
+                "relative.input.cpp",
+                "directory-relative",
+                {{1, 1}},
+                spill,
+            };
+            value.InputFilePath = "/project/engine/widget.cpp";
+            cases.push_back(std::move(value));
+        }
+    }
     AddCases(
         cases,
         BRACE_SPACING_TESTDATA_DIR,
@@ -3876,7 +3955,8 @@ TEST_P(FormatTest, Golden)
             input,
             style,
             value.CheckOwningMaps,
-            !value.Expected.empty());
+            !value.Expected.empty(),
+            value.InputFilePath);
     } else {
         std::string storage(input);
         storage.append(util::SourcePaddingSize, '\0');
@@ -3885,9 +3965,10 @@ TEST_P(FormatTest, Golden)
             [] (parser::ParseError) { });
         fixture.Expect(formatter::FormatChanged(
             tree,
-            style,
+            formatter::PreparedFormat(style),
             value.Hunks,
-            value.Spillover));
+            value.Spillover,
+            {.InputFilePath = value.InputFilePath}).Result.Text);
     }
 }
 INSTANTIATE_TEST_SUITE_P(

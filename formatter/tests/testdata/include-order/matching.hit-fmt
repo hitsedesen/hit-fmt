@@ -1,0 +1,4 @@
+IncludeOrder = Sort
+IncludeMatchingHeader = First
+IncludeGrouping = Preserve
+IncludePathBase = ProjectRoot

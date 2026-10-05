@@ -6,7 +6,7 @@
 # Receiver construction does not count as a chained call.
 # Message pins and paired visual scopes remain explicit library annotations.
 # Chains use general AllSafe selection, including . / -> and repeated invocation.
-# Approximation: no namespace rulers, include regrouping or naming-role enforcement;
+# Approximation: no namespace rulers or naming-role enforcement;
 # protected macro bytes and preserved lambda bodies are not style conformance.
 Layout = Canonical
 IndentWidth = 4
@@ -83,7 +83,13 @@ IndentNamespaces = NoIndent
 IndentCaseLabels = Indent
 StatementAttributeIndent = Block
 NamespaceComments = Fix
-IncludeOrder = Preserve
+# Paired header first, then root-relative directories nearest to the input file.
+# Pass project-relative input filenames so directory distances share that root.
+IncludeOrder = Sort
+IncludeMatchingHeader = First
+IncludeGrouping = Directory
+IncludeDirectoryOrder = NearestFirst
+IncludePathBase = ProjectRoot
 AddMissingControlBraces = true
 EmptyControlBody = EmptyBlock
 RemoveNullStatements = true

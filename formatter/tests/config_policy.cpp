@@ -1045,7 +1045,9 @@ TEST(ConfigPolicy, StagedOptionsResolveFinalInheritanceAndOwnScalarSnapshot)
         "StandaloneCommentBlankLinesAfter = 2\n" "MaxEmptyLines = 2\n"
         "BreakAfterTemplateHeader = true\n" "ExpressionsAlignment = Operand\n"
         "IncludeMatchingHeader = First\n" "IncludeGrouping = Regroup\n"
-        "IncludeGroupPrefixes = [\"engine/\", \"engine/detail/\"]\n");
+        "IncludeGroupPrefixes = [\"engine/\", \"engine/detail/\"]\n"
+        "IncludeDirectoryOrder = Alphabetical\n"
+        "IncludePathBase = ProjectRoot\n");
     auto style = formatter::LoadConfigFile(config.Path).FormattingStyle;
     const auto policies = formatter::CompilePolicies(style);
     EXPECT_EQ(
@@ -1074,6 +1076,22 @@ TEST(ConfigPolicy, StagedOptionsResolveFinalInheritanceAndOwnScalarSnapshot)
         policies.Includes.MatchingHeader,
         formatter::IncludeMatchingHeader::First);
     EXPECT_EQ(policies.Includes.Grouping, formatter::IncludeGrouping::Regroup);
+    const formatter::PreparedFormat prepared(style);
+    style.IncludeGroupPrefixes.clear();
+    style.IncludeDirectoryOrder =
+        formatter::IncludeDirectoryOrder::NearestFirst;
+    style.IncludePathBase = formatter::IncludePathBase::SourceDirectory;
+    EXPECT_EQ(
+        prepared.Structural.DirectoryOrder,
+        formatter::IncludeDirectoryOrder::Alphabetical);
+    EXPECT_EQ(
+        prepared.Structural.PathBase,
+        formatter::IncludePathBase::ProjectRoot);
+    EXPECT_EQ(
+        prepared.IncludePrefixes
+            .ClassifyNormalizedRelativePath("engine/part.h"),
+        0u);
+    EXPECT_EQ(prepared.IncludePrefixes.RuleCount(), 2u);
     style.FunctionBracePlacement = formatter::BracePlacement::Attached;
     style.ConstructorBracePlacement = formatter::BracePlacement::NextLine;
     style.StandaloneCommentBlankLinesAfter = {};
@@ -1101,7 +1119,7 @@ TEST(ConfigPolicy, StagedOptionsResolveFinalInheritanceAndOwnScalarSnapshot)
     }
 }
 
-TEST(ConfigPolicy, StagedCapsValidateBeforePublicPendingConsumerGuard)
+TEST(ConfigPolicy, IncludeGroupingCapsValidateBeforePreparation)
 {
     for (const auto layout :
         {formatter::LayoutMode::Preserve, formatter::LayoutMode::Canonical})
@@ -1109,35 +1127,64 @@ TEST(ConfigPolicy, StagedCapsValidateBeforePublicPendingConsumerGuard)
         for (const auto order :
             {formatter::IncludeOrder::Preserve, formatter::IncludeOrder::Sort})
         {
-            formatter::Style style;
-            style.Layout = layout;
-            style.IncludeOrder = order;
-            style.IncludeGrouping = formatter::IncludeGrouping::Regroup;
-            style.MaxEmptyLines = 0;
-            try {
-                (void)formatter::PreparedFormat(style);
-                FAIL() << "Regroup cap zero was accepted";
-            } catch (const std::invalid_argument& error) {
-                const std::string message = error.what();
-                EXPECT_NE(
-                    message.find("IncludeGrouping = Regroup"),
-                    std::string::npos);
-                EXPECT_NE(message.find("MaxEmptyLines = 0"), std::string::npos);
-                EXPECT_EQ(message.find("staged"), std::string::npos);
+            for (const auto grouping :
+                {
+                    formatter::IncludeGrouping::Regroup,
+                    formatter::IncludeGrouping::Directory,
+                })
+            {
+                formatter::Style style;
+                style.Layout = layout;
+                style.IncludeOrder = order;
+                style.IncludeGrouping = grouping;
+                style.MaxEmptyLines = 0;
+                try {
+                    (void)formatter::PreparedFormat(style);
+                    FAIL() << "Grouping cap zero was accepted";
+                } catch (const std::invalid_argument& error) {
+                    const std::string message = error.what();
+                    const auto spelling =
+                        formatter::SerializeConfigEnum(grouping);
+                    EXPECT_NE(
+                        message
+                            .find("IncludeGrouping = " + std::string(spelling)),
+                        std::string::npos);
+                    EXPECT_NE(
+                        message.find("MaxEmptyLines = 0"),
+                        std::string::npos);
+                    EXPECT_EQ(message.find("staged"), std::string::npos);
+                }
+                style.MaxEmptyLines = 1;
+                EXPECT_NO_THROW((void)formatter::CompilePolicies(style));
+                EXPECT_NO_THROW((void)formatter::PreparedFormat(style));
+                style.MaxEmptyLines.reset();
+                EXPECT_NO_THROW((void)formatter::CompilePolicies(style));
+                style.IncludeGrouping = formatter::IncludeGrouping::Preserve;
+                style.MaxEmptyLines = 0;
+                style.IncludeGroupPrefixes = {"engine/"};
+                EXPECT_NO_THROW((void)formatter::PreparedFormat(style));
             }
-            style.MaxEmptyLines = 1;
-            EXPECT_NO_THROW((void)formatter::CompilePolicies(style));
-            EXPECT_THROW(
-                (void)formatter::PreparedFormat(style),
-                std::invalid_argument);
-            style.MaxEmptyLines.reset();
-            EXPECT_NO_THROW((void)formatter::CompilePolicies(style));
-            style.IncludeGrouping = formatter::IncludeGrouping::Preserve;
-            style.MaxEmptyLines = 0;
-            style.IncludeGroupPrefixes = {"engine/"};
-            EXPECT_NO_THROW((void)formatter::PreparedFormat(style));
         }
     }
+    formatter::Style invalidOrder;
+    invalidOrder.IncludeDirectoryOrder =
+        static_cast<formatter::IncludeDirectoryOrder>(255);
+    EXPECT_THROW(
+        (void)formatter::PreparedFormat(invalidOrder),
+        std::invalid_argument);
+    formatter::Style invalidBase;
+    invalidBase.IncludePathBase = static_cast<formatter::IncludePathBase>(255);
+    EXPECT_THROW(
+        (void)formatter::PreparedFormat(invalidBase),
+        std::invalid_argument);
+    const TemporaryConfig badOrder("IncludeDirectoryOrder = Reverse\n");
+    EXPECT_THROW(
+        (void)formatter::LoadConfigFile(badOrder.Path),
+        std::runtime_error);
+    const TemporaryConfig badBase("IncludePathBase = Guess\n");
+    EXPECT_THROW(
+        (void)formatter::LoadConfigFile(badBase.Path),
+        std::runtime_error);
     const TemporaryConfig finalGood(
         "IncludeGrouping = Regroup\nMaxEmptyLines = 0\nMaxEmptyLines = 1\n");
     EXPECT_NO_THROW((void)formatter::LoadConfigFile(finalGood.Path));
@@ -1157,7 +1204,7 @@ TEST(ConfigPolicy, StagedCapsValidateBeforePublicPendingConsumerGuard)
     }
 }
 
-TEST(ConfigPolicy, PendingConsumersFailClosedWithoutChangingExistingRejections)
+TEST(ConfigPolicy, SupportedOptionsKeepExistingRejections)
 {
     for (const auto text :
         {
@@ -1175,23 +1222,7 @@ TEST(ConfigPolicy, PendingConsumersFailClosedWithoutChangingExistingRejections)
         const TemporaryConfig config(text);
         auto style = formatter::LoadConfigFile(config.Path).FormattingStyle;
         EXPECT_NO_THROW((void)formatter::CompilePolicies(style));
-        if (!std::string_view(text).starts_with("Include")) {
-            EXPECT_NO_THROW((void)formatter::PreparedFormat(style));
-        } else {
-            try {
-                (void)formatter::PreparedFormat(style);
-                FAIL() << "unsupported behavior was silently accepted";
-            } catch (const std::invalid_argument& error) {
-                const std::string message = error.what();
-                const std::string_view setting(text);
-                EXPECT_NE(
-                    message.find(setting.substr(0, setting.find(' '))),
-                    std::string::npos);
-                EXPECT_NE(
-                    message.find("staged configuration"),
-                    std::string::npos);
-            }
-        }
+        EXPECT_NO_THROW((void)formatter::PreparedFormat(style));
         style.CallLikeMacroNames = {"REGISTER_ITEM"};
         try {
             (void)formatter::PreparedFormat(style);

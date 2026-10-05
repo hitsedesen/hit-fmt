@@ -48,6 +48,7 @@ public:
     explicit PreparedFormat(const Style& style);
     const CompiledPolicies Policies;
     const LibraryAnnotations Annotations;
+    const PreparedIncludePrefixes IncludePrefixes;
     const StructuralOptions Structural;
     const NamespaceCommentOptions NamespaceComments;
     const bool HonorClangFormatDirectives;
@@ -75,7 +76,9 @@ struct FormatRequest
     // Original input file, not normalized text or a temporary filename.
     // Slash-separated lexical path; borrowed for this synchronous Format or
     // FormatChanged call only. Never retained by prepared metadata or results.
-    // Empty preserves existing behavior when matching-header selection is Off.
+    // Empty disables matching-header selection. Directory distances then use
+    // an empty source directory; ProjectRoot paths must share the same root
+    // as include paths (normally a project-relative input filename).
     std::string_view InputFilePath = {};
 };
 

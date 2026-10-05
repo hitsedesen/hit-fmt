@@ -177,6 +177,18 @@ Exclude = ["(^|/)generated(/|$)"]
 )CONFIG"},
 };
 
+constexpr HelpExample IncludeExamples[] = {
+    {"Paired header, nearest directory groups, alphabetical filenames:",
+        R"(IncludeOrder = Sort
+IncludeMatchingHeader = First
+IncludeGrouping = Directory
+IncludeDirectoryOrder = NearestFirst
+IncludePathBase = SourceDirectory
+# For root-relative project includes and input filenames:
+# IncludePathBase = ProjectRoot
+)"},
+};
+
 constexpr HelpExample StagedExamples[] = {
     {"Defaults for configuration with limited public-pipeline support:",
         R"(StandaloneCommentBlankLinesBefore = Preserve
@@ -186,6 +198,8 @@ ExpressionsAlignment = Block
 IncludeMatchingHeader = Off
 IncludeGrouping = Preserve
 IncludeGroupPrefixes = []
+IncludeDirectoryOrder = NearestFirst
+IncludePathBase = SourceDirectory
 ConstructorBracePlacement = Inherit
 DestructorBracePlacement = Inherit
 AssignmentRhsPlacement = InlineIfFits
@@ -194,8 +208,8 @@ AlignMacroBackslashes = false
 RulerLength = 0
 RulerBlankLinesBefore = Preserve
 RulerBlankLinesAfter = Preserve
-# Matching/regrouping are rejected by public preparation.
-# Inactive prefixes do not enable grouping.
+# Include options are inactive unless IncludeOrder = Sort.
+# Prefixes apply only to IncludeGrouping = Regroup.
 )"},
 };
 
@@ -407,8 +421,41 @@ constexpr HelpSection HelpSections[] = {
             "heuristics or a matcher DSL. All calls "
         "use global ColumnLimit. Macro safety hints "
             "are separate.\n", AnnotationExamples},
+    {"Include sorting",
+        "IncludeOrder = Preserve (default) disables all include transforms. "
+        "Sort moves exact include lines within safe blocks, quoted before "
+        "angled, alphabetically and stably for duplicate paths. "
+        "IncludeMatchingHeader = First puts quoted headers with the input "
+        "file's stem in its own directory first (.h, .hh, .hpp, .hxx, .h++). "
+        "Header inputs and missing input filenames disable pairing. "
+        "IncludeGrouping = Preserve sorts each adjacent block without "
+        "changing blank lines. Regroup spans blank lines and groups by "
+        "IncludeGroupPrefixes; Directory instead groups by lexically "
+        "normalized containing directory and sorts filenames within groups. "
+        "Both insert one empty line between groups, including the paired "
+        "header group, and conflict with MaxEmptyLines = 0. "
+        "IncludeDirectoryOrder = NearestFirst (default) orders Directory "
+        "groups by directory-tree distance: parent steps plus child steps "
+        "from the input directory, then alphabetical directory on ties. "
+        "Alphabetical orders directories without distance. Quoted groups "
+        "precede angled groups in either mode. "
+        "IncludePathBase = SourceDirectory (default) resolves include paths "
+        "against the input directory. ProjectRoot uses root-relative paths; "
+        "the input filename must use the same root (normally pass a "
+        "project-relative filename). Bare quoted names and quoted ./ or ../ "
+        "paths remain source-relative. Absolute paths remain absolute and "
+        "incompatible roots sort last. No filesystem lookup, header search "
+        "path inference, or include spelling rewrite occurs. "
+        "Comments, macros, conditional directives, protected regions and "
+        "mixed line endings stop blocks; attached-comment blocks stay exact. "
+        "Hunk selection authorizes each entire block atomically. "
+        "IncludeGroupPrefixes is an ordered quoted array of normalized "
+        "relative directory prefixes ending in /; duplicate or absolute "
+        "paths, backslashes, empty, . and .. components are invalid. "
+        "Earliest matching prefix wins, not longest; unmatched paths are "
+        "last. Prefix matching uses literal include spelling.\n",
+        IncludeExamples},
     {"Configuration limits",
-        "Public preparation rejects matching First and Regroup. "
         "BreakAfterTemplateHeader always breaks after a template declaration "
         "header in canonical DeclarationHeadersLayout. "
         "ExpressionsAlignment = Operand aligns continuations to the first "
@@ -421,13 +468,7 @@ constexpr HelpSection HelpSections[] = {
         "and owning prefix metadata may be used separately. Comment counts "
         "accept Preserve or 0..10000 and must fit MaxEmptyLines. Constructor "
         "and Destructor Inherit resolve final FunctionBracePlacement once. "
-        "IncludeGroupPrefixes "
-        "is an ordered quoted array of normalized relative directory prefixes "
-        "ending in /; duplicates, absolute paths, backslashes, empty, . and .. "
-        "components are invalid. Earliest rule wins, not longest match. "
-        "Regroup conflicts with explicit MaxEmptyLines=0 "
-        "before unsupported-feature "
-        "rejection. IncludeOrder defaults to Preserve. ColumnLimit "
+        "ColumnLimit "
         "accepts 0 (unlimited) or 1..10000.\n",
         StagedExamples},
     {"Safety, transforms and checks",

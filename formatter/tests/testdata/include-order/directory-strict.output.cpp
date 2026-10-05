@@ -1,0 +1,19 @@
+#include "../../external/z.hpp"
+#include "child/z.hpp"
+#include "../sibling/z.hpp"
+#include "../root.hpp"
+#include "../engine/widget.h"
+#include "./z.hpp"
+#include "child/deep/a.hpp"
+#include "../sibling/a.hpp"
+
+#include "./widget.hpp"
+#include "child/../a.hpp"
+#include "child/a.hpp"
+#include "../../external/a.hpp"
+#include "./child/b.hpp"
+#include "child/widget.hpp"
+#include "widget.txt"
+#include <system/z.hpp>
+#include <system/a.hpp>
+#include <vector>

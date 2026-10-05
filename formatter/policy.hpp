@@ -169,6 +169,8 @@ struct IncludePolicy
 {
     IncludeMatchingHeader MatchingHeader;
     IncludeGrouping Grouping;
+    IncludeDirectoryOrder DirectoryOrder;
+    IncludePathBase PathBase;
 };
 
 // An engaged outer option with no Count means explicit Preserve, not omission.
