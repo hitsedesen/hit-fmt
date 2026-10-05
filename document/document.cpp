@@ -252,10 +252,11 @@ inline Document::Atom Document::Pack(const Node& node)
     return atom;
 }
 
-inline GapSpec Document::FlatGap(const Atom& atom) const
+inline GapSpec Document::GapFor(const Atom& atom, bool broken) const
 {
     if (atom.ComplexGap) {
-        return GapPayloads_[atom.Payload].Flat;
+        const auto& gaps = GapPayloads_[atom.Payload];
+        return broken ? gaps.Broken : gaps.Flat;
     }
     GapSpec gap;
     gap.Kind = atom.GapType;
@@ -268,13 +269,11 @@ inline GapSpec Document::FlatGap(const Atom& atom) const
     return gap;
 }
 
-inline Document::GapData Document::Gaps(const Atom& atom) const
+inline AnchorId Document::GapAnchor(const Atom& atom) const
 {
-    if (atom.ComplexGap) {
-        return GapPayloads_[atom.Payload];
-    }
-    const auto gap = FlatGap(atom);
-    return {gap, gap, atom.Gap.Anchor};
+    return atom.ComplexGap
+        ? GapPayloads_[atom.Payload].Anchor
+        : atom.Gap.Anchor;
 }
 
 const Document::GroupData& Document::Group(const Atom& atom) const
@@ -642,7 +641,7 @@ void Document::EmitSourceText(
             return;
         }
         const bool gap = Nodes_.back().Type == Kind::Gap &&
-            FlatGap(Nodes_.back()).Kind == GapKind::Flat;
+            GapFor(Nodes_.back()).Kind == GapKind::Flat;
         const auto first = Nodes_.size() - 1 - gap;
         if ((!gap || Nodes_.size() > 1) && Nodes_[first].Owner == owner &&
             (Nodes_[first].Type == Kind::Text ||
@@ -657,7 +656,7 @@ void Document::EmitSourceText(
                 return;
             }
             const auto prefix = gap
-                ? FlatRunPart(FlatGap(Nodes_.back()), Nodes_.back().Origin)
+                ? FlatRunPart(GapFor(Nodes_.back()), Nodes_.back().Origin)
                 : RunPart{};
             if (gap) {
                 Nodes_.pop_back();
@@ -672,14 +671,14 @@ void Document::EmitSourceText(
         }
     }
     if (!Sealed_ && !Nodes_.empty() && Nodes_.back().Type == Kind::Gap &&
-        FlatGap(Nodes_.back()).Kind == GapKind::Flat &&
+        GapFor(Nodes_.back()).Kind == GapKind::Flat &&
         Nodes_.back().Owner == owner)
     {
         if (LogicalNodes_ >= InvalidId) {
             Fail(Error::TooLarge);
             return;
         }
-        const auto prefix = FlatGap(Nodes_.back());
+        const auto prefix = GapFor(Nodes_.back());
         const auto prefixOrigin = Nodes_.back().Origin;
         Node node(verbatim ? Kind::Verbatim : Kind::Text, true);
         node.Prefix = {prefix, prefixOrigin};
@@ -1157,8 +1156,10 @@ Result Document::Render(
             if (node.Type == Kind::SourceLineIndent ||
                 ((node.Type == Kind::Gap || node.Type == Kind::
                     ConditionalGap) && node.ComplexGap &&
-                    (Gaps(node).Flat.IndentSourceBegin != InvalidId ||
-                        Gaps(node).Broken.IndentSourceBegin != InvalidId)))
+                    (GapPayloads_[node.Payload].Flat.IndentSourceBegin !=
+                        InvalidId ||
+                        GapPayloads_[node.Payload].Broken.IndentSourceBegin !=
+                            InvalidId)))
             {
                 ++mappingCount;
             }
@@ -1263,31 +1264,33 @@ Result Document::Render(
             guaranteedLine = flat.Line;
         } else if (node.Type == Kind::Gap || node.Type == Kind::ConditionalGap)
         {
-            const auto gaps = Gaps(node);
-            flat = MeasureFlatGap(gaps.Flat, Source_, policy.TabWidth);
+            const auto flatSpec = GapFor(node);
+            const auto& brokenSpec = node.Type == Kind::ConditionalGap
+                ? GapPayloads_[node.Payload].Broken
+                : flatSpec;
+            flat = MeasureFlatGap(flatSpec, Source_, policy.TabWidth);
             const auto expandedFlat = node.Type == Kind::Gap
                 ? flat
-                : MeasureFlatGap(gaps.Broken, Source_, policy.TabWidth);
+                : MeasureFlatGap(brokenSpec, Source_, policy.TabWidth);
             // Reuse each flat whitespace measurement for fill and summaries.
-            broken =
-                node.Owner != InvalidId && gaps.Broken.Kind == GapKind::Soft
+            broken = node.Owner != InvalidId && brokenSpec.Kind == GapKind::Soft
                 ? Measure{0, true, true}
                 : expandedFlat;
             expandedGapWidth = expandedFlat.Width();
-            if (node.Owner != InvalidId && gaps.Broken.Kind != GapKind::Flat) {
+            if (node.Owner != InvalidId && brokenSpec.Kind != GapKind::Flat) {
                 ownedBreak = static_cast<std::uint32_t>(i);
             }
-            guaranteedLine = gaps.Broken.Kind == GapKind::Hard;
+            guaranteedLine = brokenSpec.Kind == GapKind::Hard;
             if (node.Type == Kind::ConditionalGap) {
                 summary.OwnedConditionalLine =
                     summary.OwnedConditionalLine || guaranteedLine;
                 summary.OwnedShapeChoice = summary.OwnedShapeChoice ||
-                    gaps.Flat.Spaces != gaps.Broken.Spaces ||
-                    gaps.Flat.FlatSourceBegin != gaps.Broken.FlatSourceBegin ||
-                    gaps.Flat.FlatSourceEnd != gaps.Broken.FlatSourceEnd;
+                    flatSpec.Spaces != brokenSpec.Spaces ||
+                    flatSpec.FlatSourceBegin != brokenSpec.FlatSourceBegin ||
+                    flatSpec.FlatSourceEnd != brokenSpec.FlatSourceEnd;
             }
             if (node.Owner != InvalidId &&
-                (gaps.Broken.Kind == GapKind::Soft ||
+                (brokenSpec.Kind == GapKind::Soft ||
                     (node.Type == Kind::ConditionalGap && guaranteedLine)))
             {
                 lastBreak = static_cast<std::uint32_t>(i);
@@ -2065,7 +2068,7 @@ Result Document::Render(
                 realizeContinuation();
             }
         } else if (node.Type == Kind::SourceLineIndent) {
-            const auto gaps = Gaps(node);
+            const auto& gaps = GapPayloads_[node.Payload];
             append(FlatText(node));
             advance(FlatText(node));
             if (mappingRequested && !probing) {
@@ -2088,19 +2091,17 @@ Result Document::Render(
             // Do not set frame.OwnedLine: only editable gaps satisfy
             // ForceOwned.
         } else {
-            const auto gaps = Gaps(node);
+            const auto gap =
+                GapFor(node, node.Type == Kind::ConditionalGap && ownerBroken);
+            const auto anchor = GapAnchor(node);
             const auto& gapEntry = gapCache[entry.Gap];
             if (frame.OwnedFlat && ownerBroken &&
-                node.Type == Kind::ConditionalGap &&
-                gaps.Broken.Kind == GapKind::Hard)
+                node.Type == Kind::ConditionalGap && gap.Kind == GapKind::Hard)
             {
                 // Conditional topology belongs to the owner's broken shape;
                 // it cannot be suppressed by a child-only alternative.
                 return false;
             }
-            auto gap = node.Type == Kind::ConditionalGap && ownerBroken
-                ? gaps.Broken
-                : gaps.Flat;
             const bool continuingIndent = frame.RealizedContinuationLine &&
                 column == frame.RealizedContinuationIndent;
             bool line = gap.Kind == GapKind::Hard;
@@ -2165,7 +2166,7 @@ Result Document::Render(
                     emittedOrigin.End = gap.IndentSourceEnd;
                     exact = true;
                 } else {
-                    emitIndent(resolveIndent(gaps.Anchor, gap.RequiredWidth));
+                    emitIndent(resolveIndent(anchor, gap.RequiredWidth));
                 }
             } else if (gap.FlatSourceBegin != InvalidId) {
                 auto text = Source_.substr(

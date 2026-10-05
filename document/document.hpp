@@ -525,8 +525,8 @@ private:
     static_assert(sizeof(RunPart) <= 16);
 
     Atom Pack(const Node& node);
-    GapSpec FlatGap(const Atom& atom) const;
-    GapData Gaps(const Atom& atom) const;
+    GapSpec GapFor(const Atom& atom, bool broken = false) const;
+    AnchorId GapAnchor(const Atom& atom) const;
     const GroupData& Group(const Atom& atom) const;
     const PrefixedTextData& Prefix(const Atom& atom) const;
     std::uint32_t BorrowText(std::string_view text);
