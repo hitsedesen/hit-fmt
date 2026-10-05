@@ -1,5 +1,8 @@
 # Instruction-hotspot follow-up
 
+[Direct phase measurements](phase-profile.md) separately break down
+instructions, cycles and wall time with nested costs removed.
+
 This follow-up targets the costs found in
 [instruction sampling](instruction-profile.md). The pinned corpora,
 unchanged shipped configurations, GCC 13.3 Release settings, CPU 2 affinity,
