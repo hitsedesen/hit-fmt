@@ -36,7 +36,7 @@ struct CheckedFile
     std::vector<SemanticDiagnostic> Semantic;
     // Definite required edits blocked by the original hunk boundary.
     std::vector<SemanticDiagnostic> RequiredChanges;
-    // Missing check coverage is not proof of a violation or verified-clean.
+    // Internal coverage metadata, not a violation or printed diagnostic.
     std::vector<formatter::HunkCoverage> Incomplete;
     // Original token anchors, indexed like Formatting.Diagnostics.
     std::vector<util::Position> OriginalWidthPositions;
@@ -70,10 +70,11 @@ struct ChangedFileScope
     std::optional<ChangedFileScope> changed = std::nullopt);
 
 // Check diagnostics point into the original source. Fix diagnostics point
-// into the written output. Incomplete coverage notes always refer to the
-// original source. Width failures state that automatic formatting
-// cannot satisfy the limit and show the offending line. originalSource is
-// borrowed only while printing; fix excerpts use Formatting.Text instead.
+// into the written output. Only violations are printed, not coverage notes.
+// Width violations show the offending line. Fix diagnostics also explain
+// when automatic formatting cannot satisfy the style or hunk scope.
+// originalSource is borrowed only while printing; fix excerpts use
+// Formatting.Text instead.
 // Printing does not parse or run the formatter.
 void PrintFileIssues(
     std::ostream& output,

@@ -117,6 +117,28 @@ bool InLines(size_t line, std::span<const formatter::Hunk> hunks)
     return it != hunks.end() && it->Begin <= line;
 }
 
+std::string_view RequiredChangeMessage(formatter::StructuralAction action)
+{
+    using Action = formatter::StructuralAction;
+    switch (action) {
+        case Action::AddMissingControlBraces:
+            return "control body requires braces";
+        case Action::EmptyControlBody:
+            return "empty control body must use an empty block";
+        case Action::RemoveNullStatements:
+            return "redundant null statement must be removed";
+        case Action::RemoveNullDeclarations:
+            return "redundant null declaration must be removed";
+        case Action::IncludeOrder:
+        case Action::NamespaceComments:
+            break; // These skips are not proof of a required edit.
+    }
+    throw std::logic_error("unexpected required hunk edit");
+}
+
+constexpr std::string_view BlockedHunkFix =
+    "; cannot automatically fix within selected hunks or allowed spillover";
+
 void MapSemanticPositions(
     const parser::SyntaxTree& tree,
     const formatter::FormatResult& formatting,
@@ -315,7 +337,7 @@ CheckedFile CheckFile(
             checked.RequiredChanges.push_back({
                 tree.TokenPosition(skip.Tokens.Begin),
                 {},
-                "required structural edit crosses the hunk boundary",
+                std::string(RequiredChangeMessage(skip.Action)),
             });
         }
         checked.Formatting = std::move(result.Result);
@@ -388,27 +410,13 @@ void PrintFileIssues(
     }
     for (const auto& diagnostic : checked.RequiredChanges) {
         const auto position = fix ? diagnostic.Emitted : diagnostic.Original;
-        output << "fail: " << diagnostic.Message << "\n  --> " << path << ':'
-            << position.Line << ':' << position.Column
-            << (fix ? " [written output]" : " [original source]") << '\n';
-    }
-    PositionSweep original(originalSource);
-    for (const auto& coverage : checked.Incomplete) {
-        const auto position = original.Position(coverage.Original.Begin, true);
-        output << "note: hunk check incomplete: ";
-        switch (coverage.Reason) {
-            case formatter::HunkCoverageReason::LimitedLayout:
-                output << "layout is constrained";
-                break;
-            case formatter::HunkCoverageReason::SemanticProtection:
-                output << "source is protected";
-                break;
-            case formatter::HunkCoverageReason::StructuralEligibility:
-                output << "structural eligibility is unverified";
-                break;
+        output << "fail: " << diagnostic.Message;
+        if (fix) {
+            output << BlockedHunkFix;
         }
         output << "\n  --> " << path << ':' << position.Line << ':'
-            << position.Column << " [original source]\n";
+            << position.Column
+            << (fix ? " [written output]" : " [original source]") << '\n';
     }
     if (checked.Formatting.Diagnostics.empty()) {
         return;
@@ -444,10 +452,12 @@ void PrintFileIssues(
         const auto position = fix
             ? diagnostic.Position
             : checked.OriginalWidthPositions.at(i);
-        output
-            << "fail: cannot format this line automatically "
-                "within ColumnLimit " << checked.ColumnLimit << "\n  --> "
-            << path << ':' << position.Line << ':' << position.Column
+        output << "fail: "
+            << (fix
+                ? "cannot format this line automatically within ColumnLimit "
+                : "line exceeds ColumnLimit ") << checked.ColumnLimit
+            << "\n  --> " << path << ':' << position.Line << ':'
+            << position.Column
             << (fix ? " [written output]" : " [original source]") << '\n';
         const auto number = std::to_string(position.Line);
         const auto gutter = std::string(number.size() + 1, ' ') + "| ";
@@ -475,9 +485,12 @@ void PrintFileSummaryIssues(
     bool fix)
 {
     bool separated = false;
-    auto issue = [&] (std::string_view message) {
+    auto issue = [&] (std::string_view message, bool failure = false) {
         if (separated) {
             output << "; ";
+        }
+        if (failure) {
+            output << "fail: ";
         }
         output << message;
         separated = true;
@@ -488,14 +501,16 @@ void PrintFileSummaryIssues(
     if (!checked.Semantic.empty()) {
         issue("fail: naming or parameter-name violation");
     }
-    if (!checked.RequiredChanges.empty()) {
-        issue("fail: required structural edit crosses the hunk boundary");
+    for (const auto& diagnostic : checked.RequiredChanges) {
+        issue(diagnostic.Message, true);
+        if (fix) {
+            output << BlockedHunkFix;
+        }
     }
     if (!checked.Formatting.Diagnostics.empty()) {
-        issue("fail: cannot format automatically within column limit");
-    }
-    if (!checked.Incomplete.empty()) {
-        issue("note: hunk checks incomplete");
+        issue(fix
+            ? "fail: cannot format automatically within column limit"
+            : "fail: column-limit violation");
     }
 }
 

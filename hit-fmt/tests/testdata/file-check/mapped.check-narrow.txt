@@ -6,14 +6,14 @@ fail: function name 'later_bad' has invalid case; expected PascalCase
   --> sample.cpp:3:6 [original source]
 fail: parameter #1 in function definition 'later_bad': expected a name
   --> sample.cpp:3:19 [original source]
-fail: cannot format this line automatically within ColumnLimit 24
+fail: line exceeds ColumnLimit 24
   --> sample.cpp:1:33 [original source]
   |
 1 | ...  abcdefghijklmnopqrs...
   |              ^
-fail: cannot format this line automatically within ColumnLimit 24
+fail: line exceeds ColumnLimit 24
   --> sample.cpp:2:57 [original source]
   |
 2 | ...if(ok)invoke(a,b);} }
   |                        ^
-summary: formatting mismatch; fail: naming or parameter-name violation; fail: cannot format automatically within column limit
+summary: formatting mismatch; fail: naming or parameter-name violation; fail: column-limit violation

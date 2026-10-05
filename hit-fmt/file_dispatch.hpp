@@ -27,7 +27,6 @@ struct FileResult
     std::string Error;
     size_t Mismatches = 0;
     bool Failed = false;
-    bool Incomplete = false;
 };
 
 // Discovery yields file paths through visit(path). Each worker owns a

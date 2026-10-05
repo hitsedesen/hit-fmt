@@ -1197,7 +1197,6 @@ void PrintHelp(std::ostream& output, std::string_view executable, bool useColor)
         << "Hunk lines are one-based and inclusive in the original source.\n"
         << "Hunk paths are relative to the working directory. Safe enclosing "
             "lists and include groups may spill up to 200 lines.\n"
-        << "Incomplete hunk checks are reported separately from violations.\n"
         << "Nonempty CallLikeMacroNames are currently unsupported.\n"
         << "Output is colorized when written to a terminal; set "
             "NO_COLOR to disable it.\n\n";
@@ -1324,10 +1323,9 @@ int main(int argc, char* argv[])
                 }
             }
             const auto failed = checked.HasFailures(options.Fix);
-            result.Incomplete = !checked.Incomplete.empty();
-            if (summaryOnly && (failed || result.Incomplete)) {
+            if (summaryOnly && failed) {
                 if (useColor) {
-                    output << (failed ? BoldRed : BoldYellow);
+                    output << BoldRed;
                 }
                 output << filePath << ": ";
                 hit_fmt::PrintFileSummaryIssues(output, checked, options.Fix);
@@ -1367,13 +1365,11 @@ int main(int argc, char* argv[])
     };
 
     size_t mismatchCount = 0;
-    bool incomplete = false;
     auto printResult = [&] (const FileResult& result) {
         std::cout << result.Output;
         std::cout.flush();
         std::cerr << result.Error;
         mismatchCount += result.Mismatches;
-        incomplete = incomplete || result.Incomplete;
         return result.Failed;
     };
     if (options.Threads == 1) {
@@ -1425,9 +1421,9 @@ int main(int argc, char* argv[])
     }
     if (useColor) {
         if (mismatchCount == 0) {
-            std::cout << (incomplete ? BoldYellow : BoldGreen)
-                << (incomplete
-                    ? "No definite violations; some hunk checks are incomplete."
+            std::cout << BoldGreen
+                << (options.HunkInput
+                    ? "No hunk or spillover violations found."
                     : "All checked files are formatted.") << ResetColor << '\n';
         } else {
             std::cout << BoldRed << mismatchCount << " file"

@@ -6,31 +6,11 @@ fail: function name 'bad_after' has invalid case; expected PascalCase
   --> sample.cpp:13:6 [original source]
 fail: parameter #1 in function definition 'bad_after': expected a name
   --> sample.cpp:13:19 [original source]
-fail: required structural edit crosses the hunk boundary
+fail: control body requires braces
   --> sample.cpp:9:5 [original source]
-note: hunk check incomplete: layout is constrained
-  --> sample.cpp:1:1 [original source]
-note: hunk check incomplete: source is protected
-  --> sample.cpp:1:1 [original source]
-note: hunk check incomplete: structural eligibility is unverified
-  --> sample.cpp:1:1 [original source]
-note: hunk check incomplete: layout is constrained
-  --> sample.cpp:1:15 [original source]
-note: hunk check incomplete: layout is constrained
-  --> sample.cpp:4:18 [original source]
-note: hunk check incomplete: layout is constrained
-  --> sample.cpp:9:1 [original source]
-note: hunk check incomplete: layout is constrained
-  --> sample.cpp:9:12 [original source]
-note: hunk check incomplete: layout is constrained
-  --> sample.cpp:11:1 [original source]
-note: hunk check incomplete: layout is constrained
-  --> sample.cpp:11:63 [original source]
-note: hunk check incomplete: layout is constrained
-  --> sample.cpp:13:23 [original source]
-fail: cannot format this line automatically within ColumnLimit 40
+fail: line exceeds ColumnLimit 40
   --> sample.cpp:11:42 [original source]
    |
 11 |   invoke("unavoidable_selected_literal_over_the_limit",right);
    |                                          ^
-summary: formatting mismatch; fail: naming or parameter-name violation; fail: required structural edit crosses the hunk boundary; fail: cannot format automatically within column limit; note: hunk checks incomplete
+summary: formatting mismatch; fail: naming or parameter-name violation; fail: control body requires braces; fail: column-limit violation

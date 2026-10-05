@@ -448,6 +448,18 @@ TEST(FileCheck, HunkDiagnosticGoldenUsesOriginalSelectionAndMappedOutput)
             output << "summary: ";
             hit_fmt::PrintFileSummaryIssues(output, checked, fix);
             output << '\n';
+            EXPECT_EQ(
+                output
+                    .str()
+                    .find("note:"),
+                std::string::npos);
+            if (!fix) {
+                EXPECT_EQ(
+                    output
+                        .str()
+                        .find("cannot"),
+                    std::string::npos);
+            }
             fixture.Expect(
                 output.str(),
                 spillover
@@ -473,9 +485,24 @@ TEST(FileCheck, IncompleteHunkCoverageAndRequiredChangesStayDistinct)
     EXPECT_FALSE(checked.HasFailures(false));
     EXPECT_FALSE(checked.HasFailures(true));
     EXPECT_FALSE(checked.Incomplete.empty());
-    std::ostringstream output;
-    hit_fmt::PrintFileSummaryIssues(output, checked, false);
-    EXPECT_EQ(output.str(), "note: hunk checks incomplete");
+    for (const bool fix : {false, true}) {
+        std::ostringstream output, summary;
+        hit_fmt::PrintFileIssues(
+            output,
+            "sample.cpp",
+            input
+                .View()
+                .View(),
+            checked,
+            fix);
+        hit_fmt::PrintFileSummaryIssues(summary, checked, fix);
+        EXPECT_TRUE(output
+            .str()
+            .empty());
+        EXPECT_TRUE(summary
+            .str()
+            .empty());
+    }
 
     raw.FormattingStyle.AddMissingControlBraces = true;
     const hit_fmt::PreparedFileConfiguration braces(raw);
@@ -491,13 +518,27 @@ TEST(FileCheck, IncompleteHunkCoverageAndRequiredChangesStayDistinct)
     EXPECT_TRUE(required.Formatting.Diagnostics.empty());
     EXPECT_TRUE(required.HasFailures(false));
     EXPECT_TRUE(required.HasFailures(true));
-    std::ostringstream summary;
-    hit_fmt::PrintFileSummaryIssues(summary, required, true);
-    EXPECT_NE(
-        summary
-            .str()
-            .find("fail: required structural edit"),
-        std::string::npos);
+    for (const bool fix : {false, true}) {
+        std::ostringstream output, summary;
+        hit_fmt::PrintFileIssues(
+            output,
+            "sample.cpp",
+            blocked
+                .View()
+                .View(),
+            required,
+            fix);
+        hit_fmt::PrintFileSummaryIssues(summary, required, fix);
+        for (const auto& text : {output.str(), summary.str()}) {
+            EXPECT_NE(
+                text.find("fail: control body requires braces"),
+                std::string::npos);
+            EXPECT_EQ(
+                text.find("cannot automatically fix") != std::string::npos,
+                fix);
+            EXPECT_EQ(text.find("note:"), std::string::npos);
+        }
+    }
 }
 
 TEST(FileCheck, UnsupportedPreparationFailsClosed)
