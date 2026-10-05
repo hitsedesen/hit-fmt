@@ -950,8 +950,12 @@ StructuralPlan PlanStructuralEdits(
                                 tokens,
                                 StructuralSkip::CommentAttached);
                         } else if (safety.IntersectsImmutable(range) ||
-                            safety
-                                .IntersectsImmutable({range.End, range.End}) ||
+                            // Null bodies replace only the semicolon.
+                            // A protected following gap fences inserted
+                            // closes, not replacements ending at its boundary.
+                            (!null &&
+                                safety.IntersectsImmutable(
+                                    {range.End, range.End})) ||
                             (safety.Gaps()[tokens.Begin].Preserve &&
                                 safety.Gaps()[tokens.Begin].Source.Empty()) ||
                             (!null && safety.Gaps()[tokens.End].Preserve &&
