@@ -2456,6 +2456,7 @@ INSTANTIATE_TEST_SUITE_P(
         GoldenCase{"constructor_initializer_ranges"},
         GoldenCase{"terminal_constructor_template_ids"},
         GoldenCase{"template_type_aliases"},
+        GoldenCase{"template_function_arguments", false, true},
         GoldenCase{"layout_reproductions"},
         GoldenCase{"declaration_operands", false, true},
         GoldenCase{"punctuation_roles", false, true},

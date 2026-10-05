@@ -1,0 +1,547 @@
+(translation-unit
+  (template-declaration
+    "template"
+    (template-parameter-list
+      "<"
+      (template-parameter "class" "Value")
+      (list-separator ",")
+      (template-parameter "class" "Signature")
+      ">"
+    )
+    (record-declaration "struct" "Setter" ";")
+  )
+  (record-declaration
+    "struct" "Owner" "{"
+    (using-declaration
+      "using" "Type" "="
+      (type-id "int")
+      ";"
+    )
+    (function-declaration
+      (declaration-specifiers "static" "void")
+      (init-declarator-list
+        (init-declarator
+          (declarator
+            (declarator-name "Run")
+            (function-declarator
+              (parameter-list
+                "("
+                (parameter-declaration
+                  (declaration-specifiers "int")
+                )
+                ")"
+              )
+            )
+          )
+        )
+      )
+      ";"
+    )
+    "}" ";"
+  )
+  (template-declaration
+    "template"
+    (template-parameter-list
+      "<"
+      (template-parameter "class" "T")
+      (list-separator ",")
+      (template-parameter "class" "R")
+      (list-separator ",")
+      (template-parameter "class" "U")
+      ">"
+    )
+    (function-definition
+      (declaration-specifiers "void")
+      (init-declarator-list
+        (init-declarator
+          (declarator
+            (declarator-name "dispatch")
+            (function-declarator
+              (parameter-list "(" ")")
+            )
+          )
+        )
+      )
+      (compound-statement
+        "{"
+        (expression-statement
+          (call-expression
+            (member-expression
+              (template-id-expression
+                (identifier-expression "Setter")
+                (template-argument-list
+                  "<"
+                  (template-argument "T")
+                  (list-separator ",")
+                  (template-argument
+                    "R" "(" "ErrorOr"
+                    (template-argument-list
+                      "<"
+                      (template-argument "U")
+                      ">"
+                    )
+                    "&&" ")"
+                  )
+                  ">"
+                )
+              )
+              "::"
+              (identifier-expression "Run")
+            )
+            (argument-list
+              "("
+              (argument
+                (identifier-expression "promise")
+              )
+              (list-separator ",")
+              (argument
+                (identifier-expression "callback")
+              )
+              (list-separator ",")
+              (argument
+                (call-expression
+                  (identifier-expression "move")
+                  (argument-list
+                    "("
+                    (argument
+                      (identifier-expression "value")
+                    )
+                    ")"
+                  )
+                )
+              )
+              ")"
+            )
+          )
+          ";"
+        )
+        (expression-statement
+          (call-expression
+            (member-expression
+              (template-id-expression
+                (identifier-expression "Setter")
+                (template-argument-list
+                  "<"
+                  (template-argument "T")
+                  (list-separator ",")
+                  (template-argument "R" "(" ")")
+                  ">"
+                )
+              )
+              "::"
+              (identifier-expression "Run")
+            )
+            (argument-list
+              "("
+              (argument
+                (identifier-expression "promise")
+              )
+              (list-separator ",")
+              (argument
+                (identifier-expression "callback")
+              )
+              ")"
+            )
+          )
+          ";"
+        )
+        (expression-statement
+          (call-expression
+            (member-expression
+              (member-expression
+                (identifier-expression "scope")
+                "::"
+                (template-id-expression
+                  (identifier-expression "Setter")
+                  (template-argument-list
+                    "<"
+                    (template-argument "T")
+                    (list-separator ",")
+                    (template-argument
+                      "R" "(" "ErrorOr"
+                      (template-argument-list
+                        "<"
+                        (template-argument "U")
+                        ">"
+                      )
+                      "&&" ")"
+                    )
+                    ">"
+                  )
+                )
+              )
+              "::"
+              (identifier-expression "Run")
+            )
+            (argument-list
+              "("
+              (argument
+                (identifier-expression "promise")
+              )
+              (list-separator ",")
+              (argument
+                (identifier-expression "callback")
+              )
+              (list-separator ",")
+              (argument
+                (call-expression
+                  (identifier-expression "move")
+                  (argument-list
+                    "("
+                    (argument
+                      (identifier-expression "value")
+                    )
+                    ")"
+                  )
+                )
+              )
+              ")"
+            )
+          )
+          ";"
+        )
+        (expression-statement
+          (call-expression
+            (member-expression
+              (template-id-expression
+                (identifier-expression "::" "Setter")
+                (template-argument-list
+                  "<"
+                  (template-argument "T")
+                  (list-separator ",")
+                  (template-argument
+                    "R" "(" "ErrorOr"
+                    (template-argument-list
+                      "<"
+                      (template-argument "U")
+                      ">"
+                    )
+                    "&&" ")"
+                  )
+                  ">"
+                )
+              )
+              "::"
+              (identifier-expression "Run")
+            )
+            (argument-list
+              "("
+              (argument
+                (identifier-expression "promise")
+              )
+              (list-separator ",")
+              (argument
+                (identifier-expression "callback")
+              )
+              (list-separator ",")
+              (argument
+                (call-expression
+                  (identifier-expression "move")
+                  (argument-list
+                    "("
+                    (argument
+                      (identifier-expression "value")
+                    )
+                    ")"
+                  )
+                )
+              )
+              ")"
+            )
+          )
+          ";"
+        )
+        (expression-statement
+          (call-expression
+            (member-expression
+              (template-id-expression
+                (identifier-expression "Setter")
+                (template-argument-list
+                  "<"
+                  (template-argument "T")
+                  (list-separator ",")
+                  (template-argument
+                    "R" "(" "Pair"
+                    (template-argument-list
+                      "<"
+                      (template-argument "U")
+                      (list-separator ",")
+                      (template-argument "T")
+                      ">"
+                    )
+                    "&&" "," "Box"
+                    (template-argument-list
+                      "<"
+                      (template-argument
+                        "Box"
+                        (template-argument-list
+                          "<"
+                          (template-argument "U")
+                          ">>"
+                        )
+                      )
+                    )
+                    ")"
+                  )
+                  ">"
+                )
+              )
+              "::"
+              (identifier-expression "Run")
+            )
+            (argument-list
+              "("
+              (argument
+                (identifier-expression "promise")
+              )
+              (list-separator ",")
+              (argument
+                (identifier-expression "callback")
+              )
+              ")"
+            )
+          )
+          ";"
+        )
+        (expression-statement
+          (call-expression
+            (member-expression
+              (template-id-expression
+                (identifier-expression "Setter")
+                (template-argument-list
+                  "<"
+                  (template-argument "T")
+                  (list-separator ",")
+                  (template-argument "R" "(" ")")
+                  ">"
+                )
+              )
+              "::"
+              (identifier-expression "Run")
+            )
+            (argument-list
+              "("
+              (argument
+                (identifier-expression "promise")
+              )
+              (list-separator ",")
+              (argument
+                (identifier-expression "callback")
+              )
+              ")"
+            )
+          )
+          ";"
+        )
+        (declaration-statement
+          (declaration-specifiers
+            "Setter"
+            (template-argument-list
+              "<"
+              (template-argument "T")
+              (list-separator ",")
+              (template-argument
+                "R" "(" "ErrorOr"
+                (template-argument-list
+                  "<"
+                  (template-argument "U")
+                  ">"
+                )
+                "&&" ")"
+              )
+              ">"
+            )
+          )
+          (init-declarator-list
+            (init-declarator
+              (declarator
+                (declarator-name "local")
+              )
+            )
+          )
+          ";"
+        )
+        (expression-statement
+          (call-expression
+            (member-expression
+              (identifier-expression "Owner")
+              "::"
+              (identifier-expression "Run")
+            )
+            (argument-list
+              "("
+              (argument
+                (literal-expression "1")
+              )
+              ")"
+            )
+          )
+          ";"
+        )
+        (declaration-statement
+          (init-declarator-list
+            (init-declarator
+              (declarator
+                (declarator-name "Owner")
+                "::" "Type"
+              )
+              (initializer
+                (argument-list
+                  "("
+                  (argument
+                    (identifier-expression "number")
+                  )
+                  ")"
+                )
+              )
+            )
+          )
+          ";"
+        )
+        (declaration-statement
+          (declaration-specifiers "auto")
+          (init-declarator-list
+            (init-declarator
+              (declarator
+                (declarator-name "comparison")
+              )
+              (initializer
+                "="
+                (call-expression
+                  (member-expression
+                    (unparsed-syntax "left" "<" "right" ">")
+                    "::"
+                    (identifier-expression "Run")
+                  )
+                  (argument-list "(" ")")
+                )
+              )
+            )
+          )
+          ";"
+        )
+        (expression-statement
+          (call-expression
+            (member-expression
+              (template-id-expression
+                (identifier-expression "Setter")
+                (template-argument-list
+                  "<"
+                  (template-argument "T")
+                  (list-separator ",")
+                  (template-argument "(" "left" "<" "right" ")")
+                  ">"
+                )
+              )
+              "::"
+              (identifier-expression "Run")
+            )
+            (argument-list
+              "("
+              (argument
+                (identifier-expression "promise")
+              )
+              (list-separator ",")
+              (argument
+                (identifier-expression "callback")
+              )
+              ")"
+            )
+          )
+          ";"
+        )
+        "}"
+      )
+    )
+  )
+  (function-definition
+    (declaration-specifiers "void")
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (declarator-name "external_types")
+          (function-declarator
+            (parameter-list "(" ")")
+          )
+        )
+      )
+    )
+    (compound-statement
+      "{"
+      (expression-statement
+        (call-expression
+          (member-expression
+            (template-id-expression
+              (identifier-expression "Setter")
+              (template-argument-list
+                "<"
+                (template-argument "T")
+                (list-separator ",")
+                (template-argument "R" "(" ")")
+                ">"
+              )
+            )
+            "::"
+            (identifier-expression "Run")
+          )
+          (argument-list
+            "("
+            (argument
+              (identifier-expression "promise")
+            )
+            (list-separator ",")
+            (argument
+              (identifier-expression "callback")
+            )
+            ")"
+          )
+        )
+        ";"
+      )
+      (expression-statement
+        (call-expression
+          (member-expression
+            (template-id-expression
+              (identifier-expression "Setter")
+              (template-argument-list
+                "<"
+                (template-argument "T")
+                (list-separator ",")
+                (template-argument "R" "(" "ErrorOr" "<" "U" ">" "&&" ")")
+                ">"
+              )
+            )
+            "::"
+            (identifier-expression "Run")
+          )
+          (argument-list
+            "("
+            (argument
+              (identifier-expression "promise")
+            )
+            (list-separator ",")
+            (argument
+              (identifier-expression "callback")
+            )
+            (list-separator ",")
+            (argument
+              (call-expression
+                (identifier-expression "move")
+                (argument-list
+                  "("
+                  (argument
+                    (identifier-expression "value")
+                  )
+                  ")"
+                )
+              )
+            )
+            ")"
+          )
+        )
+        ";"
+      )
+      "}"
+    )
+  )
+)
