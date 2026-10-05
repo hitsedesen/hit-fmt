@@ -326,7 +326,8 @@ TEST(SourceAnalysis, StandaloneNestedOptionalAndUnclosedMarkers)
         "/* hit-fmt off */ int not_a_marker;\n"
         "#define LOOK \"// hit-fmt off\"\n"
         "// clang-format off\nint clang_only;\n// clang-format on\n"
-        "  // hit-fmt off  \r\nint frozen;\n/* hit-fmt off */\n"
+        "  // hit-fmt off  \r\nint frozen;\n"
+        " \t\r\f\v/* hit-fmt off */ \t\r\f\v\n"
         "int nested;\n// hit-fmt on\nint still_frozen;\n// hit-fmt on\n"
         "int editable;\n// hit-fmt off\nint suffix;\n");
     auto tree = Parse(input);
