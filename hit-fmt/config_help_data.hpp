@@ -85,6 +85,8 @@ ChainsLayout = Canonical
 ChainsBreak = IfNeeded
 ChainsPacking = Fill
 ChainsAlignment = Block
+# Even with ChainsBreak = Always, control headers prefer non-chain breaks.
+# Fitting header chains stay inline; other chains retain Always.
 )"},
 };
 constexpr HelpExample ShapeExamples[] = {
@@ -297,7 +299,10 @@ constexpr HelpSection HelpSections[] = {
         "ChainsBreak = Always requires multiple suffix calls across member "
         "and repeated invocation links, including mixed . / -> links. "
         "Receiver construction and argument calls do not "
-        "count. Field paths and ordinary single-call chains break only when "
+        "count. In control headers, ordinary chains break only when needed, "
+        "even with ChainsBreak = Always; operator, clause and argument breaks "
+        "are preferred. Nested lambda bodies retain the ordinary chain policy. "
+        "Field paths and ordinary single-call chains break only when "
         "needed. AlwaysBreakChainRootNames can explicitly force conventional "
         "roots with even one suffix call, independently of ChainsBreak. "
         "ExpressionsPacking uses Fill or "

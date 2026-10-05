@@ -50,6 +50,7 @@ ControlHeadersBreak = IfNeeded
 ControlHeadersFirstItem = InlineIfFits
 ControlHeadersAlignment = Block
 ControlHeadersCloser = SameLine
+# Control headers retain fitting chains and prefer non-chain breaks.
 ChainsBreak = Always
 ChainsPacking = VerticalWhenBroken
 ChainsAlignment = Block

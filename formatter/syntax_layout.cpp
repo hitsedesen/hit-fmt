@@ -181,7 +181,8 @@ struct Syntax
     bool ChainSafe = true;
     bool String = false;
     bool Definition = false;
-    bool ItemSequence = false;
+    bool ItemSequence : 1 = false;
+    bool ControlHeader : 1 = false;
     parser::TokenRange SequenceBody = {};
 };
 
@@ -599,6 +600,12 @@ private:
                 default:
                     break;
             }
+            // Carry header context through expressions and arguments, but
+            // never into a lambda or other independently formatted body.
+            entry.ControlHeader = region.Kind == NodeKind::Condition ||
+                region.Kind == NodeKind::ForHeader ||
+                (!entry.ItemSequence && region.Parent != None &&
+                    Syntax_[region.Parent].ControlHeader);
             if (region.Parent != None) {
                 entry.PreviousSibling = LastChild_[region.Parent];
                 LastChild_[region.Parent] = id;
@@ -2213,10 +2220,14 @@ private:
                 ProjectHeaderGaps(id, begin, opening, header);
             }
             if (braced) {
+                // Opaque header descendants prevent reflow, not placement of
+                // a separately proven, editable body delimiter boundary.
+                const bool canonicalBrace = Policies_.ControlHeaders.Layout ==
+                    LayoutMode::Canonical && GapMutable(opening);
                 Own(
                     opening,
                     header,
-                    !canonical
+                    !canonicalBrace
                     ? Boundary::Preserve
                     : brace == BracePlacement::NextLine
                         ? Boundary::Hard
@@ -2225,7 +2236,7 @@ private:
                             : Boundary::Conditional,
                     document::GapKind::Hard,
                     true);
-                if (!canonical) {
+                if (!canonicalBrace) {
                     Reindent(opening, header, true);
                 }
             } else if (elseIf) {
@@ -3112,18 +3123,22 @@ private:
             int32_t(policy.Indent.ContinuationOffset),
             policy.Indent);
         // Prefer operator/list boundaries over splitting multi-call chains
-        // or multi-member field paths. A single member or suffix call should
-        // not force its arguments to break instead of a member boundary.
-        Groups_[group].Spec.BreakPenalty =
-            links > 1 && packingCalls != 1 ? 2 : 0;
+        // or multi-member field paths. Outside control headers, a single
+        // member or suffix call may split before its arguments; header chains
+        // prefer argument breaks as well as operator and clause boundaries.
+        Groups_[group].Spec.BreakPenalty = entry.ControlHeader
+            ? 3
+            : links > 1 && packingCalls != 1 ? 2 : 0;
         // A chain owns continuation independently of pending expression
         // offsets, but retains enclosing list and realized-line indentation.
         Groups_[group].Spec.StructuralBase = true;
         Groups_[group].Spec.Continuation = true;
         // Always counts suffix calls, not fields or receiver construction.
-        // Configured roots may also force a single-call break.
+        // Control headers keep fitting chains inline and prefer other breaks.
+        // Explicit conventional roots still require their annotated shape.
         Groups_[group].Spec.ForceBreak = conventional ||
-            (policy.Break == BreakRequirement::Always && calls > 1);
+            (!entry.ControlHeader && policy.Break == BreakRequirement::Always &&
+                calls > 1);
         if (PlanAnnotatedChain(id, group, packingCalls)) {
             return;
         }

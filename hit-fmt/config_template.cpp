@@ -93,6 +93,13 @@ void PrintOption(std::ostream& output, std::string_view name, const T& value)
         }
         return;
     }
+    if (name == "ChainsBreak") {
+        output
+            << "# In control headers, chains break only when needed.\n"
+                "# Even with Always, prefer non-chain breaks.\n"
+                "# Lambda bodies and explicit AlwaysBreakChainRootNames keep\n"
+                "# their ordinary chain policy.\n";
+    }
     if (name == "IndentPreprocessingDirectives") {
         output
             << "# Indent the whole directive "

@@ -832,16 +832,32 @@ TEST(SyntaxLayout, ControlledArmProtectionAndTryHeaderPolicies)
 {
     auto style = Canonical(80);
     style.ControlBracePlacement = formatter::BracePlacement::NextLine;
-    const std::string protectedInput =
-        "void f(){ if (ready) { first(); } else { second(); } }\n";
-    const auto space = protectedInput.find("else") + 4;
-    const parser::SourceRange immutable[] =
-        {{uint32_t(space), uint32_t(space + 1)}};
-    formatter::SourceAnalysisOptions safety;
-    safety.ImmutableRanges = immutable;
-    const auto protectedArm = Lower(protectedInput, style, {}, safety).Text;
-    EXPECT_NE(protectedArm.find("if (ready)\n  {"), std::string::npos);
-    EXPECT_NE(protectedArm.find("else {"), std::string::npos) << protectedArm;
+    for (const auto condition : {"ready", "meta::matches<Tag>(entry)"}) {
+        const std::string header = "if (" + std::string(condition) + ")";
+        const std::string protectedInput = "void f(){ " + header +
+            " { first(); } else { second(); } }\n";
+        for (const bool protectOpening : {false, true}) {
+            const auto space = protectOpening
+                ? protectedInput.find(" { first")
+                : protectedInput.find("else") + 4;
+            const parser::SourceRange immutable[] = {
+                {uint32_t(space), uint32_t(space + 1)},
+            };
+            formatter::SourceAnalysisOptions safety;
+            safety.ImmutableRanges = immutable;
+            const auto protectedArm = Lower(
+                protectedInput,
+                style,
+                {},
+                safety).Text;
+            EXPECT_NE(
+                protectedArm.find(header + (protectOpening ? " {" : "\n  {")),
+                std::string::npos) << protectedArm;
+            EXPECT_NE(
+                protectedArm.find(protectOpening ? "else\n  {" : "else {"),
+                std::string::npos) << protectedArm;
+        }
+    }
 
     // A statement try header follows control policy, not declaration policy.
     style.DeclarationHeadersLayout = formatter::CategoryLayout::Preserve;
