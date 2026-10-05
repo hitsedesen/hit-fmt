@@ -76,3 +76,21 @@ prefix
         opaque;
         safe;
     }$
+standalone call line base width=80:
+body{.call(
+        first,
+        second)$
+nested call line base width=80:
+body{.call(
+        first,
+        second)$
+standalone call line base width=80:
+body{
+            .call(
+                first,
+                second)$
+nested call line base width=80:
+body{
+            .call(
+                first,
+                second)$
