@@ -30,6 +30,7 @@ Range Source(const parser::SyntaxTree& tree, Tokens tokens)
         tree.Token(tokens.End - 1).Text.End,
     };
 }
+
 std::pmr::vector<Range> ByteScope(
     const detail::OriginalHunkLines& lines,
     std::span<const Hunk> hunks,

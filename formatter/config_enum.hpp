@@ -163,7 +163,7 @@ template <typename T>
     std::string_view spelling)
 {
     for (std::size_t index = 0;
-         index < ConfigEnumNames<T>::Values.size();
+        index < ConfigEnumNames<T>::Values.size();
         ++index)
     {
         if (ConfigEnumNames<T>::Values[index] == spelling) {

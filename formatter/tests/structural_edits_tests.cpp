@@ -146,7 +146,7 @@ std::vector<TokenOutputOffset> MapOutput(
     EXPECT_EQ(tokens.TokenCount(), original.TokenCount());
     std::vector<TokenOutputOffset> map(original.TokenCount());
     for (parser::TokenIndex i = 0;
-         i < std::min(tokens.TokenCount(), original.TokenCount());
+        i < std::min(tokens.TokenCount(), original.TokenCount());
         ++i)
     {
         EXPECT_EQ(tokens.TokenText(i), original.TokenText(i));
@@ -258,8 +258,8 @@ TEST(StructuralEdits, LabelsAttributesAndAttachedCommentsAreLocalSkips)
             "if(a) first: second: ; work();",
         })
     {
-        std::string source = "void f(){" + std::string(body) +
-            " while(c) safe(); ;}";
+        std::string source =
+            "void f(){" + std::string(body) + " while(c) safe(); ;}";
         File controlled(source);
         auto edits = controlled.Plan(All);
         auto changed = controlled.Apply(edits);
@@ -645,8 +645,9 @@ TEST(StructuralEdits, IncludeDiscoveryNeverWeakensProtectionOrScope)
     // Exact atom authority excludes the separating blank LF. Touching different
     // reason masks keep their locations; real overlapping protection
     // still wins.
-    std::array firstGroupOnly{parser::SourceRange{
-        0, static_cast<parser::SourceOffset>(text.size())}};
+    std::array firstGroupOnly{
+        parser::SourceRange{0, static_cast<parser::SourceOffset>(text.size())},
+    };
     File disjoint(text + "\n" + text, {.EditScope = firstGroupOnly});
     auto selected = DiscoverIncludeGroups(
         disjoint.Tree,
@@ -993,7 +994,8 @@ TEST(StructuralEdits, NamespaceCannotSwallowFollowingCodeCommentsOrProtection)
     auto map = MapOutput(file.Tree, file.Tree.Source());
     auto close = plan.Namespaces.front().Close;
     std::array protection{
-        parser::SourceRange{map[close].Output.End, map[close].Output.End + 1}};
+        parser::SourceRange{map[close].Output.End, map[close].Output.End + 1},
+    };
     auto resolved = ResolveNamespaceComments(
         file.Tree,
         plan,

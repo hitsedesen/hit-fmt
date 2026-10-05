@@ -209,8 +209,9 @@ std::optional<SyntaxTree> SyntaxTree::RebindWhitespace(
 {
     HIT_FMT_PROFILE_PHASE("parser.rebind");
     bool error = false;
-    tokenizer::Tokenizer tokenizer(source,
-        [&](tokenizer::TokenizationError) { error = true; });
+    tokenizer::Tokenizer tokenizer(
+        source,
+        [&] (tokenizer::TokenizationError) { error = true; });
     SyntaxTree rebound(source.View());
     TokenIndex index = 0;
     size_t previousEnd = 0;
@@ -336,7 +337,8 @@ std::optional<SyntaxTree> SyntaxTree::RebindMatchingTokens(
     }
     SyntaxTree rebound(source.View());
     bool error = false;
-    tokenizer::Tokenizer lexer(source,
+    tokenizer::Tokenizer lexer(
+        source,
         [&] (tokenizer::TokenizationError) { error = true; });
     TokenIndex index = 0;
     for (auto token : lexer) {
@@ -371,7 +373,8 @@ std::optional<SyntaxTree> SyntaxTree::RebindReorderedComments(
         return std::nullopt;
     }
     bool error = false;
-    tokenizer::Tokenizer lexer(source,
+    tokenizer::Tokenizer lexer(
+        source,
         [&] (tokenizer::TokenizationError) { error = true; });
     std::vector<tokenizer::Token> tokens;
     for (auto token : lexer) {
@@ -561,7 +564,8 @@ std::optional<SyntaxTree> SyntaxTree::RebindSortedIncludes(
         return std::nullopt;
     }
     bool error = false;
-    tokenizer::Tokenizer lexer(source,
+    tokenizer::Tokenizer lexer(
+        source,
         [&] (tokenizer::TokenizationError) { error = true; });
     std::vector<tokenizer::Token> tokens;
     for (auto token : lexer) {
@@ -652,7 +656,8 @@ std::optional<SyntaxTree> SyntaxTree::RebindWhitespaceEdits(
         auto length = joined.size();
         joined.append(util::SourcePaddingSize, '\0');
         bool error = false;
-        tokenizer::Tokenizer lexer({.Data = joined.data(), .Size = length},
+        tokenizer::Tokenizer lexer(
+            {.Data = joined.data(), .Size = length},
             [&] (tokenizer::TokenizationError) { error = true; });
         const auto a = lexer.Get();
         const auto b = lexer.Get();
@@ -890,7 +895,8 @@ std::optional<SyntaxTree> SyntaxTree::RebindRemovedNullStatements(
     mapped[TokenCount()] = remaining;
 
     bool error = false;
-    tokenizer::Tokenizer lexer(source,
+    tokenizer::Tokenizer lexer(
+        source,
         [&] (tokenizer::TokenizationError) { error = true; });
     SyntaxTree rebound(source.View());
     std::vector<TokenIndex> originals;
@@ -1034,7 +1040,8 @@ std::optional<SyntaxTree> SyntaxTree::RebindControlBraces(
     std::vector<TokenIndex> closings(blocks.size());
     SyntaxTree rebound(source.View());
     bool error = false;
-    tokenizer::Tokenizer lexer(source,
+    tokenizer::Tokenizer lexer(
+        source,
         [&] (tokenizer::TokenizationError) { error = true; });
     size_t nextInsertion = 0;
     for (TokenIndex i = 0; i <= TokenCount(); ++i) {
@@ -1175,8 +1182,7 @@ std::optional<SyntaxTree> SyntaxTree::RebindControlBraces(
 SyntaxTree SyntaxTree::TokenizeOnly(util::PaddedSourceView source)
 {
     SyntaxTree tree(source.View());
-    tokenizer::Tokenizer lexer(source,
-        [] (tokenizer::TokenizationError) { });
+    tokenizer::Tokenizer lexer(source, [] (tokenizer::TokenizationError) { });
     for (auto token : lexer) {
         tree.Tokens_.Add(token);
     }
@@ -1469,14 +1475,12 @@ private:
     {
         tokenizer::Tokenizer tokenizer(
             {.Data = Tree_.Input_.data(), .Size = Tree_.Input_.size()},
-            [this](tokenizer::TokenizationError error) {
-                OnError(
-                    ParseError{
-                        .Message = std::string(
-                            tokenizer::GetTokenizationErrorDescription(
-                                error.Kind)),
-                        .Position = error.ErrorPosition,
-                    });
+            [this] (tokenizer::TokenizationError error) {
+                OnError(ParseError{
+                    .Message = std::string(
+                        tokenizer::GetTokenizationErrorDescription(error.Kind)),
+                    .Position = error.ErrorPosition,
+                });
             });
 
         struct Delimiter
@@ -3552,7 +3556,8 @@ private:
             index = NextSignificant(index + 1);
         }
         std::string_view owner = RecordNames_.empty()
-            ? std::string_view{} : RecordNames_.back();
+            ? std::string_view{}
+            : RecordNames_.back();
         bool exactOwner = true;
         while (index < end) {
             bool destructor = Kind(index) == TK::Operator_Complement;
@@ -9399,8 +9404,12 @@ private:
 
     [[nodiscard]] bool LooksLikeUnknownTypeDeclaration(
         size_t first,
-        size_t end) const
+        size_t end,
+        bool& unambiguous) const
     {
+        unambiguous = false;
+        bool hasTemplateArguments = false;
+        bool typeEvidence = false;
         bool hasQualifiedType = Kind(first) == TK::Operator_ScopeResolution;
         if (hasQualifiedType) {
             first = NextSignificant(first + 1);
@@ -9411,16 +9420,21 @@ private:
         auto cursor = NextSignificant(first + 1);
         while (cursor < end) {
             if (Kind(cursor) == TK::Operator_Less) {
-                auto templateEnd = SkipTemplateArguments(cursor, end);
+                bool exactClosing = false;
+                auto templateEnd =
+                    SkipTemplateArguments(cursor, end, true, &exactClosing);
                 auto closingKind = templateEnd > cursor
                     ? Kind(templateEnd - 1)
                     : TK::Invalid;
-                if (templateEnd <= cursor || templateEnd > end ||
+                if (!exactClosing || templateEnd <= cursor ||
+                    templateEnd > end ||
                     (closingKind != TK::Operator_Greater &&
                         closingKind != TK::Operator_RightShift))
                 {
                     break;
                 }
+                hasTemplateArguments = true;
+                typeEvidence |= HasTypeTemplateArgument(cursor, templateEnd);
                 cursor = NextSignificant(templateEnd);
                 hasQualifiedType = true;
                 continue;
@@ -9441,6 +9455,7 @@ private:
         if (!hasQualifiedType) {
             return false;
         }
+        bool pointerOrReference = false;
         while (cursor < end &&
             (Kind(cursor) == TK::Keyword_const ||
                 Kind(cursor) == TK::Keyword_volatile ||
@@ -9448,8 +9463,16 @@ private:
                 Kind(cursor) == TK::Operator_Ampersand ||
                 Kind(cursor) == TK::Operator_And))
         {
+            pointerOrReference |= Kind(cursor) == TK::Operator_Star ||
+                Kind(cursor) == TK::Operator_Ampersand ||
+                Kind(cursor) == TK::Operator_And;
             cursor = NextSignificant(cursor + 1);
         }
+        // Definite type arguments rule out comparison syntax, not value
+        // template-ids. Only adjacent type-shaped and declarator names prove
+        // a declaration: *, & and && can still be expression operators.
+        unambiguous =
+            (typeEvidence || !hasTemplateArguments) && !pointerOrReference;
         return cursor < end && Kind(cursor) == TK::Identifier;
     }
 
@@ -9503,8 +9526,15 @@ private:
         if (Kind(next) == TK::Identifier) {
             return NodeKind::AmbiguousStatement;
         }
-        if (LooksLikeUnknownTypeDeclaration(first, Tree_.Tokens_.Size())) {
-            return NodeKind::AmbiguousStatement;
+        bool unambiguous = false;
+        if (LooksLikeUnknownTypeDeclaration(
+            first,
+            Tree_.Tokens_.Size(),
+            unambiguous))
+        {
+            return unambiguous
+                ? NodeKind::DeclarationStatement
+                : NodeKind::AmbiguousStatement;
         }
         if (Kind(next) == TK::Operator_Star ||
             Kind(next) == TK::Operator_Ampersand ||

@@ -3448,7 +3448,9 @@ private:
             [] (
                 const ScopeName& a,
                 const ScopeName& b) { return a.Name < b.Name; });
-        std::pmr::vector<Endpoint> pairs(Syntax_.get_allocator().resource());
+        std::pmr::vector<Endpoint> pairs(Syntax_
+            .get_allocator()
+            .resource());
         std::pmr::vector<int64_t> frozen(Tree_.TokenCount() + size_t(2), 0,
                                          Syntax_.get_allocator().resource());
         const auto freeze = [&] (Index begin, Index end) {
@@ -3765,10 +3767,12 @@ private:
             policy.AccessSectionBlankLinesAfterLabel.Mode ==
                 VerticalGapMode::Exact;
         if (sequenceRules) {
-            std::pmr::vector<Index> children(
-                Syntax_.get_allocator().resource());
-            std::pmr::vector<Index> following(
-                Syntax_.get_allocator().resource());
+            std::pmr::vector<Index> children(Syntax_
+                .get_allocator()
+                .resource());
+            std::pmr::vector<Index> following(Syntax_
+                .get_allocator()
+                .resource());
             for (Index id = 0; id < Syntax_.size(); ++id) {
                 const auto& node = Region(Syntax_[id]);
                 if (commentRules) {

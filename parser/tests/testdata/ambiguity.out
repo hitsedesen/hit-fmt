@@ -288,21 +288,318 @@
           (unknown-type-name "Dictionary")
           "<" "Key" "," "Payload" ">" "result" ";"
         )
-        (ambiguous-statement
-          (unknown-type-name "catalog")
-          "::" "Sequence" "<" "Element" ">" "values" ";"
+        (declaration-statement
+          (declaration-specifiers
+            "catalog" "::" "Sequence"
+            (template-argument-list
+              "<"
+              (template-argument "Element")
+              ">"
+            )
+          )
+          (init-declarator-list
+            (init-declarator
+              (declarator
+                (declarator-name "values")
+              )
+            )
+          )
+          ";"
         )
-        (ambiguous-statement
-          (unknown-type-name "Sequence")
-          "<" "Element" ">" "::" "Cursor" "position" ";"
+        (declaration-statement
+          (declaration-specifiers
+            "Sequence"
+            (template-argument-list
+              "<"
+              (template-argument "Element")
+              ">"
+            )
+            "::" "Cursor"
+          )
+          (init-declarator-list
+            (init-declarator
+              (declarator
+                (declarator-name "position")
+              )
+            )
+          )
+          ";"
         )
-        (ambiguous-statement
-          (unknown-type-name "catalog")
-          "::" "Buffer" "<" "int" "," "extent" "+" "1" ">" "buffer" ";"
+        (declaration-statement
+          (declaration-specifiers
+            "catalog" "::" "Buffer"
+            (template-argument-list
+              "<"
+              (template-argument "int")
+              (list-separator ",")
+              (template-argument "extent" "+" "1")
+              ">"
+            )
+          )
+          (init-declarator-list
+            (init-declarator
+              (declarator
+                (declarator-name "buffer")
+              )
+            )
+          )
+          ";"
         )
         (ambiguous-statement
           (unknown-type-name "Storage")
           "<" "extent" "+" "1" ">" "storage" ";"
+        )
+        (declaration-statement
+          (declaration-specifiers "external" "::" "Range")
+          (init-declarator-list
+            (init-declarator
+              (declarator
+                (declarator-name "bounds")
+              )
+              (initializer
+                (argument-list
+                  "("
+                  (argument
+                    (literal-expression "1")
+                  )
+                  (list-separator ",")
+                  (argument
+                    (literal-expression "2")
+                  )
+                  ")"
+                )
+              )
+            )
+          )
+          ";"
+        )
+        (declaration-statement
+          (declaration-specifiers
+            "Distribution"
+            (template-argument-list
+              "<"
+              (template-argument "int")
+              ">"
+            )
+          )
+          (init-declarator-list
+            (init-declarator
+              (declarator
+                (declarator-name "samples")
+              )
+              (initializer
+                (argument-list
+                  "("
+                  (argument
+                    (literal-expression "1")
+                  )
+                  (list-separator ",")
+                  (argument
+                    (literal-expression "2")
+                  )
+                  ")"
+                )
+              )
+            )
+          )
+          ";"
+        )
+        (declaration-statement
+          (declaration-specifiers
+            "external" "::" "Distribution"
+            (template-argument-list
+              "<"
+              (template-argument "int")
+              ">"
+            )
+          )
+          (init-declarator-list
+            (init-declarator
+              (declarator
+                (declarator-name "qualified")
+              )
+              (initializer
+                (argument-list
+                  "("
+                  (argument
+                    (cast-expression
+                      "static_cast"
+                      (template-argument-list
+                        "<"
+                        (type-id "int")
+                        ">"
+                      )
+                      "("
+                      (binary-expression
+                        (identifier-expression "extent")
+                        "*"
+                        (expression "0.5")
+                      )
+                      ")"
+                    )
+                  )
+                  (list-separator ",")
+                  (argument
+                    (cast-expression
+                      "static_cast"
+                      (template-argument-list
+                        "<"
+                        (type-id "int")
+                        ">"
+                      )
+                      "("
+                      (binary-expression
+                        (identifier-expression "extent")
+                        "*"
+                        (expression "1.5")
+                      )
+                      ")"
+                    )
+                  )
+                  ")"
+                )
+              )
+            )
+          )
+          ";"
+        )
+        (declaration-statement
+          (declaration-specifiers
+            "::" "external" "::" "Distribution"
+            (template-argument-list
+              "<"
+              (template-argument "long")
+              ">"
+            )
+          )
+          (init-declarator-list
+            (init-declarator
+              (declarator
+                (declarator-name "global")
+              )
+              (initializer
+                (argument-list
+                  "("
+                  (argument
+                    (literal-expression "1")
+                  )
+                  (list-separator ",")
+                  (argument
+                    (literal-expression "2")
+                  )
+                  ")"
+                )
+              )
+            )
+          )
+          ";"
+        )
+        (declaration-statement
+          (declaration-specifiers
+            "external" "::" "Distribution"
+            (template-argument-list
+              "<"
+              (template-argument "Element")
+              ">"
+            )
+          )
+          (init-declarator-list
+            (init-declarator
+              (declarator
+                (declarator-name "dependent")
+              )
+              (initializer
+                (argument-list
+                  "("
+                  (argument
+                    (literal-expression "1")
+                  )
+                  (list-separator ",")
+                  (argument
+                    (literal-expression "2")
+                  )
+                  ")"
+                )
+              )
+            )
+          )
+          ";"
+        )
+        (ambiguous-statement
+          (unknown-type-name "external")
+          "::" "Distribution" "<" "int" ">" "*" "pointer" "=" "make" "(" "1" "," "2" ")" ";"
+        )
+        (ambiguous-statement
+          (unknown-type-name "external")
+          "::" "Distribution" "<" "int" ">" "&" "reference" "=" "sample" ";"
+        )
+        (declaration-statement
+          (declaration-specifiers "external" "::" "Range")
+          (init-declarator-list
+            (init-declarator
+              (declarator
+                (declarator-name "parameters")
+                (function-declarator
+                  (parameter-list
+                    "("
+                    (parameter-declaration
+                      (declaration-specifiers "int")
+                    )
+                    (list-separator ",")
+                    (parameter-declaration
+                      (declaration-specifiers "int")
+                    )
+                    ")"
+                  )
+                )
+              )
+            )
+          )
+          ";"
+        )
+        (declaration-statement
+          (declaration-specifiers "external" "::" "Range")
+          (init-declarator-list
+            (init-declarator
+              (declarator
+                (declarator-name "unresolved")
+              )
+              (ambiguous-declarator-suffix "(" "Unknown" ")")
+            )
+          )
+          ";"
+        )
+        (ambiguous-statement
+          (unknown-type-name "left")
+          "<" "middle" ">" "right" "(" "1" "," "2" ")" ";"
+        )
+        (ambiguous-statement
+          (unknown-type-name "external")
+          "::" "left" "<" "middle" ">" "right" "(" "1" "," "2" ")" ";"
+        )
+        (ambiguous-statement
+          (unknown-type-name "external")
+          "::" "value" "*" "factor" ";"
+        )
+        (ambiguous-statement
+          (unknown-type-name "external")
+          "::" "value" "&" "mask" ";"
+        )
+        (ambiguous-statement
+          (unknown-type-name "external")
+          "::" "value" "&&" "enabled" ";"
+        )
+        (ambiguous-statement
+          (unknown-type-name "external")
+          "::" "value" "<" "int" ">" "*" "factor" ";"
+        )
+        (ambiguous-statement
+          (unknown-type-name "external")
+          "::" "value" "<" "int" ">" "&" "mask" ";"
+        )
+        (ambiguous-statement
+          (unknown-type-name "external")
+          "::" "value" "<" "int" ">" "&&" "enabled" ";"
         )
         (declaration-statement
           (declaration-specifiers "auto")

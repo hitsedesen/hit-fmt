@@ -73,7 +73,8 @@ auto broken = R"missing(raw contents;
     size_t descriptionSize = 0;
     TrackAllocations = true;
     tokenizer::Tokenizer tokenizer(
-        SourceView, [&](tokenizer::TokenizationError error) {
+        SourceView,
+        [&] (tokenizer::TokenizationError error) {
             ++errorCount;
             descriptionSize +=
                 tokenizer::GetTokenizationErrorDescription(error.Kind).size();

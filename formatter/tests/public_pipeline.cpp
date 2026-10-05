@@ -86,6 +86,7 @@ formatter::FormatResult FormatInput(
     }
     return result;
 }
+
 formatter::Style Canonical()
 {
     formatter::Style style;
@@ -95,6 +96,7 @@ formatter::Style Canonical()
     style.ControlBlockKeywordSpacing = formatter::GapPolicy::Space;
     return style;
 }
+
 void CheckIdentities(
     std::string_view source,
     const formatter::FormatResult& result)
@@ -2109,7 +2111,8 @@ TEST(PublicPipeline, IncludeRegroupingOwnsBlankLinesAndPreservesMovedIdentities)
             style.IncludeGroupPrefixes.clear();
             style.IncludeStandardHeaders =
                 formatter::IncludeStandardHeaders::Preserve;
-            std::string path = priorities ? "library/unit/widget.cpp"
+            std::string path = priorities
+                ? "library/unit/widget.cpp"
                 : "/project/engine/widget.cpp";
             owned = FormatInput(
                 source,
@@ -2667,8 +2670,9 @@ TEST(PublicPipeline, RequiresRecoveryScopeAndMapsPreserveInvalidBytes)
                     {.SourceMap = true, .EditScope = selected});
                 ASSERT_EQ(result.OriginalTokens.size(), tree.TokenCount());
                 size_t invalidCount = 0;
-                for (parser::TokenIndex token = 0; token <
-                    tree.TokenCount(); ++token)
+                for (parser::TokenIndex token = 0;
+                    token < tree.TokenCount();
+                    ++token)
                 {
                     const auto map = result.OriginalTokens[token];
                     ASSERT_TRUE(map.Present);
@@ -3368,7 +3372,7 @@ TEST(PublicPipeline, LineEndingBareCRNullAdmissionRetainsFirstOriginalIdentity)
         Input input(source);
         auto tree = parser::Parse(input.View(), [] (parser::ParseError) {});
         const auto first = source.find("\r;") + 1;
-        for (parser::TokenIndex i = 0; i < tree.TokenCount(); ++i)
+        for (parser::TokenIndex i = 0; i < tree.TokenCount(); ++i) {
             if (tree.Token(i).Text.Begin >= first &&
                 tree.Token(i).Text.Begin < first + 4)
             {
@@ -3376,6 +3380,7 @@ TEST(PublicPipeline, LineEndingBareCRNullAdmissionRetainsFirstOriginalIdentity)
                     result.OriginalTokens[i].Present,
                     tree.Token(i).Text.Begin == first);
             }
+        }
         EXPECT_EQ(FormatInput(result.Text, prepared).Text, result.Text);
     }
 }

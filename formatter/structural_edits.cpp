@@ -312,6 +312,7 @@ bool DirectiveOnly(const SourceAnalysis& safety, SR range)
 {
     return safety.CanRewriteDirective(range);
 }
+
 bool IncludeGap(std::string_view gap, bool crlf)
 {
     for (std::size_t i = 0; i < gap.size(); ++i) {
@@ -381,6 +382,7 @@ void ScanIncludeGroups(
         i = end;
     }
 }
+
 std::string_view Directory(std::string_view path)
 {
     const auto slash = path.rfind('/');
@@ -1374,7 +1376,8 @@ StructuralPlan ResolveNamespaceComments(
         }
     };
     std::pmr::vector<Interior> interiors(
-        plan.Namespaces.size(), &scratchMemory);
+        plan.Namespaces.size(),
+        &scratchMemory);
     std::pmr::vector<size_t> active(&scratchMemory);
     size_t nextNamespace = 0;
     // Namespace intervals are nested/disjoint in original-token preorder.
