@@ -1,0 +1,12 @@
+void Test()
+{
+    auto result = APPLY(key, factory<Accessor<Base, Value>>(field), fieldIndex, typeid(Record));
+    result = APPLY(first, object.Make<Left, Right>(value), index, last);
+    result = APPLY(first, Make<int>(value, other), index, last);
+    result = APPLY(first, helpers::Make<Left, Right>(value).Get(index), index, last);
+    result = APPLY(first, helpers::Make<Left, Right> /* keep */ (value), index, last);
+    result = APPLY(first, left < right, limit > (value), index, last);
+    result = APPLY(first, left < right ? value, limit > (other), next : fallback, last);
+    result = APPLY(first, helpers::Make<flag ? left, right : other>(value), index, last);
+    result = APPLY(first, left < right, limit > value, index, last);
+}

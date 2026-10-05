@@ -2404,6 +2404,7 @@ INSTANTIATE_TEST_SUITE_P(
         },
         GoldenCase{"lambda_argument_ownership"},
         GoldenCase{"lambda_argument_tail_recovery"},
+        GoldenCase{"template_argument_tail"},
         GoldenCase{"statements"},
         GoldenCase{"name_classification"},
         GoldenCase{"ambiguity"},

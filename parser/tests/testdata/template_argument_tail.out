@@ -1,0 +1,406 @@
+(translation-unit
+  (function-definition
+    (declaration-specifiers "void")
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (declarator-name "Test")
+          (function-declarator
+            (parameter-list "(" ")")
+          )
+        )
+      )
+    )
+    (compound-statement
+      "{"
+      (declaration-statement
+        (declaration-specifiers "auto")
+        (init-declarator-list
+          (init-declarator
+            (declarator
+              (declarator-name "result")
+            )
+            (initializer
+              "="
+              (call-expression
+                (identifier-expression "APPLY")
+                (argument-list
+                  "("
+                  (argument
+                    (identifier-expression "key")
+                  )
+                  (list-separator ",")
+                  (argument
+                    (call-expression
+                      (unparsed-syntax "factory" "<" "Accessor" "<" "Base" "," "Value" ">>")
+                      (argument-list
+                        "("
+                        (argument
+                          (identifier-expression "field")
+                        )
+                        ")"
+                      )
+                    )
+                  )
+                  (list-separator ",")
+                  (argument
+                    (identifier-expression "fieldIndex")
+                  )
+                  (list-separator ",")
+                  (argument
+                    (call-expression
+                      (expression "typeid")
+                      (argument-list
+                        "("
+                        (argument
+                          (identifier-expression "Record")
+                        )
+                        ")"
+                      )
+                    )
+                  )
+                  ")"
+                )
+              )
+            )
+          )
+        )
+        ";"
+      )
+      (expression-statement
+        (assignment-expression
+          (identifier-expression "result")
+          "="
+          (call-expression
+            (identifier-expression "APPLY")
+            (argument-list
+              "("
+              (argument
+                (identifier-expression "first")
+              )
+              (list-separator ",")
+              (argument
+                (call-expression
+                  (member-expression
+                    (identifier-expression "object")
+                    "."
+                    (unparsed-syntax "Make" "<" "Left" "," "Right" ">")
+                  )
+                  (argument-list
+                    "("
+                    (argument
+                      (identifier-expression "value")
+                    )
+                    ")"
+                  )
+                )
+              )
+              (list-separator ",")
+              (argument
+                (identifier-expression "index")
+              )
+              (list-separator ",")
+              (argument
+                (identifier-expression "last")
+              )
+              ")"
+            )
+          )
+        )
+        ";"
+      )
+      (expression-statement
+        (assignment-expression
+          (identifier-expression "result")
+          "="
+          (call-expression
+            (identifier-expression "APPLY")
+            (argument-list
+              "("
+              (argument
+                (identifier-expression "first")
+              )
+              (list-separator ",")
+              (argument
+                (call-expression
+                  (template-id-expression
+                    (identifier-expression "Make")
+                    (template-argument-list
+                      "<"
+                      (template-argument "int")
+                      ">"
+                    )
+                  )
+                  (argument-list
+                    "("
+                    (argument
+                      (identifier-expression "value")
+                    )
+                    (list-separator ",")
+                    (argument
+                      (identifier-expression "other")
+                    )
+                    ")"
+                  )
+                )
+              )
+              (list-separator ",")
+              (argument
+                (identifier-expression "index")
+              )
+              (list-separator ",")
+              (argument
+                (identifier-expression "last")
+              )
+              ")"
+            )
+          )
+        )
+        ";"
+      )
+      (expression-statement
+        (assignment-expression
+          (identifier-expression "result")
+          "="
+          (call-expression
+            (identifier-expression "APPLY")
+            (argument-list
+              "("
+              (argument
+                (identifier-expression "first")
+              )
+              (list-separator ",")
+              (argument
+                (call-expression
+                  (member-expression
+                    (call-expression
+                      (member-expression
+                        (identifier-expression "helpers")
+                        "::"
+                        (unparsed-syntax "Make" "<" "Left" "," "Right" ">")
+                      )
+                      (argument-list
+                        "("
+                        (argument
+                          (identifier-expression "value")
+                        )
+                        ")"
+                      )
+                    )
+                    "."
+                    (identifier-expression "Get")
+                  )
+                  (argument-list
+                    "("
+                    (argument
+                      (identifier-expression "index")
+                    )
+                    ")"
+                  )
+                )
+              )
+              (list-separator ",")
+              (argument
+                (identifier-expression "index")
+              )
+              (list-separator ",")
+              (argument
+                (identifier-expression "last")
+              )
+              ")"
+            )
+          )
+        )
+        ";"
+      )
+      (expression-statement
+        (assignment-expression
+          (identifier-expression "result")
+          "="
+          (call-expression
+            (identifier-expression "APPLY")
+            (argument-list
+              "("
+              (argument
+                (identifier-expression "first")
+              )
+              (list-separator ",")
+              (argument
+                (call-expression
+                  (member-expression
+                    (identifier-expression "helpers")
+                    "::"
+                    (unparsed-syntax "Make" "<" "Left" "," "Right" ">")
+                    (trailing-trivia
+                      (comment "/* keep */")
+                    )
+                  )
+                  "/* keep */"
+                  (argument-list
+                    "("
+                    (argument
+                      (identifier-expression "value")
+                    )
+                    ")"
+                  )
+                )
+              )
+              (list-separator ",")
+              (argument
+                (identifier-expression "index")
+              )
+              (list-separator ",")
+              (argument
+                (identifier-expression "last")
+              )
+              ")"
+            )
+          )
+        )
+        ";"
+      )
+      (expression-statement
+        (assignment-expression
+          (identifier-expression "result")
+          "="
+          (call-expression
+            (identifier-expression "APPLY")
+            (argument-list
+              "("
+              (argument
+                (identifier-expression "first")
+              )
+              (list-separator ",")
+              (argument
+                (call-expression
+                  (unparsed-syntax "left" "<" "right" "," "limit" ">")
+                  (argument-list
+                    "("
+                    (argument
+                      (identifier-expression "value")
+                    )
+                    ")"
+                  )
+                )
+              )
+              (list-separator ",")
+              (argument
+                (identifier-expression "index")
+              )
+              (list-separator ",")
+              (argument
+                (identifier-expression "last")
+              )
+              ")"
+            )
+          )
+        )
+        ";"
+      )
+      (expression-statement
+        (assignment-expression
+          (identifier-expression "result")
+          "="
+          (call-expression
+            (identifier-expression "APPLY")
+            (argument-list
+              "("
+              (argument
+                (identifier-expression "first")
+              )
+              (list-separator ",")
+              (argument
+                (call-expression
+                  (unparsed-syntax "left" "<" "right" "?" "value" "," "limit" ">")
+                  (argument-list
+                    "("
+                    (argument
+                      (identifier-expression "other")
+                    )
+                    ")"
+                  )
+                )
+                (unparsed-syntax "," "next" ":" "fallback")
+              )
+              (list-separator ",")
+              (argument
+                (identifier-expression "last")
+              )
+              ")"
+            )
+          )
+        )
+        ";"
+      )
+      (expression-statement
+        (assignment-expression
+          (identifier-expression "result")
+          "="
+          (call-expression
+            (identifier-expression "APPLY")
+            (argument-list
+              "("
+              (argument
+                (identifier-expression "first")
+              )
+              (list-separator ",")
+              (argument
+                (call-expression
+                  (member-expression
+                    (identifier-expression "helpers")
+                    "::"
+                    (unparsed-syntax "Make" "<" "flag" "?" "left" "," "right" ":" "other" ">")
+                  )
+                  (argument-list
+                    "("
+                    (argument
+                      (identifier-expression "value")
+                    )
+                    ")"
+                  )
+                )
+              )
+              (list-separator ",")
+              (argument
+                (identifier-expression "index")
+              )
+              (list-separator ",")
+              (argument
+                (identifier-expression "last")
+              )
+              ")"
+            )
+          )
+        )
+        ";"
+      )
+      (expression-statement
+        (assignment-expression
+          (identifier-expression "result")
+          "="
+          (call-expression
+            (identifier-expression "APPLY")
+            (argument-list
+              "("
+              (argument
+                (identifier-expression "first")
+              )
+              (list-separator ",")
+              (argument
+                (binary-expression
+                  (identifier-expression "left")
+                  "<"
+                  (identifier-expression "right")
+                )
+                (unparsed-syntax "," "limit" ">" "value" "," "index" "," "last")
+              )
+              ")"
+            )
+          )
+        )
+        ";"
+      )
+      "}"
+    )
+  )
+)

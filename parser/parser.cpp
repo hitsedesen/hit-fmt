@@ -6255,6 +6255,7 @@ private:
     {
         end = std::min(end, ParseLimit_);
         unsigned depth = 0;
+        unsigned conditionalMiddle = 0;
         TokenIndex explicitOpening = end;
         for (auto i = opening; i < end && work != 0; ++i) {
             --work;
@@ -6267,6 +6268,9 @@ private:
                     i = *nameEnd - 1;
                     continue;
                 }
+            }
+            if (!AdvanceConditionalMiddle(kind, conditionalMiddle)) {
+                return std::nullopt;
             }
             if (kind == TK::Operator_Less) {
                 if (i != opening && i != explicitOpening &&
@@ -6286,7 +6290,11 @@ private:
                 }
                 depth -= count;
                 if (depth == 0) {
-                    return i + 1;
+                    // A template argument cannot end inside a conditional
+                    // middle. Such angles belong to a comparison expression.
+                    return conditionalMiddle == 0
+                        ? std::optional<TokenIndex>{i + 1}
+                        : std::nullopt;
                 }
             } else if (IsOpenDelimiter(kind)) {
                 const auto after = ArgumentPairEnd(i, end);
@@ -6572,14 +6580,24 @@ private:
                 Kind(PreviousSignificant(i)) == TK::Identifier)
             {
                 const auto after = ArgumentTemplateEnd(i, end, work);
-                if (after &&
-                    ArgumentTemplateUse(ArgumentSignificant(*after, end), end))
-                {
-                    i = *after - 1;
-                } else if (after) {
-                    // Ambiguous template/comparison commas have no proven
-                    // argument boundary. Keep the remainder protected.
-                    return end;
+                if (after) {
+                    const auto following = ArgumentSignificant(*after, end);
+                    const bool parenthesizedSuffix = following < end &&
+                        Kind(following) == TK::Operator_OpenParenthesis &&
+                        ArgumentPairEnd(following, end).has_value();
+                    if (ArgumentTemplateUse(following, end) ||
+                        parenthesizedSuffix)
+                    {
+                        // A nonempty suffix can still be a comparison operand,
+                        // so expression parsing retains the ambiguous angles.
+                        // Either interpretation ends before the comma after
+                        // the paired suffix; do not recover the whole tail.
+                        i = *after - 1;
+                    } else {
+                        // Ambiguous template/comparison commas have no proven
+                        // argument boundary. Keep the remainder protected.
+                        return end;
+                    }
                 }
             }
         }
