@@ -437,6 +437,9 @@ public:
                 PlanList(i, *list);
             }
             switch (node.Kind) {
+                case NodeKind::RequiresClause:
+                    PlanConstraintHeader(i);
+                    break;
                 case NodeKind::ReturnStatement:
                 case NodeKind::ThrowStatement:
                 case NodeKind::CoYieldStatement:
@@ -1514,6 +1517,20 @@ private:
             Groups_[group].Spec.StructuralBase = true;
             Own(gap, group, Boundary::Hard);
         }
+    }
+
+    void PlanConstraintHeader(Index id)
+    {
+        const auto& node = Region(Syntax_[id]);
+        const auto group = GroupAt(
+            TokenPosition(node.Tokens.Begin),
+            GapPosition(node.Tokens.End),
+            document::GroupMode::Fill);
+        // A requires-clause can start on its own indented line without an
+        // enclosing list or expression continuation. Its operands continue
+        // from that header line, not the enclosing declaration's block.
+        Groups_[group].Spec.StructuralBase = true;
+        Groups_[group].Spec.LineBase = true;
     }
 
     void PlanKeywordExpression(Index id)

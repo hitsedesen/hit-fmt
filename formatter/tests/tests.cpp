@@ -1392,6 +1392,23 @@ std::vector<FormatCase> FormatCases()
         }
         cases.push_back(std::move(value));
     }
+    addProfileCase("../spacing-options", "profile-constraints");
+    cases.back().CheckOwningMaps = true;
+    for (const auto* name :
+        {"profile-constraints-leading", "profile-constraints-preserve"})
+    {
+        auto value = cases.back();
+        value.Name = name;
+        value.Style =
+            formatter::LoadConfigFile(profile + ".hit-fmt").FormattingStyle;
+        if (value.Name == "profile-constraints-leading") {
+            value.Style->BinaryOperatorSide = OperatorSide::Leading;
+        } else {
+            value.Style = formatter::Style{};
+            value.Expected = "profile-constraints.input.cpp";
+        }
+        cases.push_back(std::move(value));
+    }
     addProfileCase("../spacing-options", "profile-initializers");
     addProfileCase("../spacing-options", "profile-overflow");
     addProfileCase("../spacing-options", "profile-case-blocks");
