@@ -6798,6 +6798,19 @@ private:
                 {
                     const auto following = NextSignificant(Cursor_);
                     const auto suffix = Kind(following);
+                    if (cachedEnd && *cachedEnd == Cursor_ &&
+                        suffix != TK::Identifier &&
+                        !IsFunctionSuffixStart(following))
+                    {
+                        // A closed bare invocation cannot own the next
+                        // declaration prefix, even after adjacent invocations
+                        // made the header opaque. Keep identifier-led headers
+                        // and possible function suffixes conservatively opaque.
+                        auto* node = MakeNode(NodeKind::UnparsedSyntax, start);
+                        node->Tokens.End = Cursor_;
+                        AddDirectiveChildrenInGap(*node, start, Cursor_);
+                        return node;
+                    }
                     if (suffix == TK::Identifier &&
                         !IsFunctionSuffixStart(following))
                     {

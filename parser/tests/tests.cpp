@@ -2409,6 +2409,7 @@ INSTANTIATE_TEST_SUITE_P(
         GoldenCase{"punctuation_roles", false, true},
         GoldenCase{"declaration_operands_recovery", true},
         GoldenCase{"annotation_boundaries"},
+        GoldenCase{"declaration_macros", false, true},
         GoldenCase{"qualified_records"},
         GoldenCase{"opaque_record_owners"},
         GoldenCase{"extensions"},

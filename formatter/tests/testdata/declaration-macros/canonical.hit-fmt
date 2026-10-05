@@ -1,0 +1,8 @@
+Layout = Canonical
+IndentationKind = Spaces
+IndentWidth = 4
+ClassBracePlacement = NextLine
+StructBracePlacement = NextLine
+UnionBracePlacement = NextLine
+EnumBracePlacement = NextLine
+BodyShape = Expanded
