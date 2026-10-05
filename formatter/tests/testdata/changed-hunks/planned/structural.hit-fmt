@@ -1,0 +1,6 @@
+Layout = Canonical
+IndentationKind = Spaces
+IndentWidth = 4
+SpaceInsideFunctionParameters = NoSpace
+AddMissingControlBraces = true
+RemoveNullStatements = true

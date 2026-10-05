@@ -11,10 +11,8 @@ namespace {
 size_t ParseHunkLine(std::string_view text, size_t record)
 {
     size_t result = 0;
-    auto [end, error] = std::from_chars(
-        text.data(),
-        text.data() + text.size(),
-        result);
+    auto [end, error] =
+        std::from_chars(text.data(), text.data() + text.size(), result);
     if (text.empty() || error != std::errc{} ||
         end != text.data() + text.size() || result == 0)
     {
@@ -53,8 +51,8 @@ ChangedHunkFiles ParseChangedHunks(
                 throw std::runtime_error("changed ranges line " +
                     std::to_string(line) + ": empty file path");
             }
-            auto absolute = std::filesystem::absolute(directory / path)
-                .lexically_normal();
+            auto absolute =
+                std::filesystem::absolute(directory / path).lexically_normal();
             current = absolute.string();
             files.Paths.emplace_back(absolute);
             groupHunks = 0;

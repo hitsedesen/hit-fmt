@@ -4,9 +4,7 @@ void Execute()
         Schedule(BIND([&] {
             auto nested = [&] {
                 auto guard = Guard(lock);
-                EXPECT_THROW(
-                    WaitFor(pipelineReady.ToFuture()).ThrowOnError(),
-                    TQuotaExpiredException);
+                EXPECT_THROW(WaitFor(pipelineReady.ToFuture()).ThrowOnError(), TQuotaExpiredException);
                 EXPECT_THROW(CheckQuota(), TQuotaExpiredException);
                 OTHER_ASSERT(WaitFor(pipelineReady.ToFuture()).ThrowOnError(), TQuotaExpiredException);
                 auto outstanding = started - completed;
@@ -16,16 +14,16 @@ void Execute()
                     outstanding,
                     configuredLimit);
             };
-        }).AsyncVia(invoker).Run());
+        })
+            .AsyncVia(invoker)
+            .Run());
     };
 }
 
 struct DeferredState
 {
     DeferredState(const Options& options)
-        : token((options.Enabled || options.WaitForReply)
-            ? MakeToken()
-            : EmptyToken())
+        : token((options.Enabled || options.WaitForReply) ? MakeToken() : EmptyToken())
     { }
 };
 
@@ -64,15 +62,13 @@ void CheckSignal(bool active)
 {
     YT_VERIFY(
         ValidateSignalPath(active, ReadConfiguredSignalSource()),
-        Explain(
-            "The synthetic signal did not match its destination (%v, %v)",
-            LabelOf<int>(),
-            LabelOf<char>()));
+        Explain("The synthetic signal did not match its destination (%v, %v)", LabelOf<int>(), LabelOf<char>()));
 }
 
 void RejectMissing()
 {
-    THROW_ERROR_EXCEPTION("A synthetic archive lookup could not locate the requested segment at revision %v for channel %v",
+    THROW_ERROR_EXCEPTION(
+        "A synthetic archive lookup could not locate the requested segment at revision %v for channel %v",
         revision,
         channel);
 }

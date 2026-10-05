@@ -1,0 +1,679 @@
+(translation-unit
+  (record-declaration
+    "struct" "Callback" "{"
+    (function-definition
+      (declaration-specifiers "void")
+      (init-declarator-list
+        (init-declarator
+          (declarator
+            (declarator-name "Run")
+            (function-declarator
+              (parameter-list "(" ")")
+              (function-qualifier "const")
+            )
+          )
+        )
+      )
+      (compound-statement
+        "{"
+        (expression-statement
+          (call-expression
+            (identifier-expression "Consume")
+            (argument-list
+              "("
+              (argument
+                (call-expression
+                  (identifier-expression "Create")
+                  (argument-list
+                    "("
+                    (preprocessing-conditional
+                      (preprocessing-branch
+                        (preprocessing-directive "#ifdef TRACK_LOCATION")
+                        (argument
+                          (member-expression
+                            (identifier-expression "State_")
+                            "->"
+                            (identifier-expression "Location")
+                          )
+                        )
+                        (list-separator ",")
+                      )
+                      (preprocessing-directive "#endif")
+                    )
+                    (argument
+                      (unary-expression
+                        "*"
+                        (identifier-expression "this")
+                      )
+                    )
+                    ")"
+                  )
+                )
+              )
+              (list-separator ",")
+              (argument
+                (unary-expression
+                  "&"
+                  (member-expression
+                    (identifier-expression "State")
+                    "::"
+                    (identifier-expression "Invoke")
+                  )
+                )
+              )
+              ")"
+            )
+          )
+          ";"
+        )
+        "}"
+      )
+    )
+    "}" ";"
+  )
+  (function-definition
+    (declaration-specifiers "inline")
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          "Record" "::"
+          (declarator-name "Record")
+          (function-declarator
+            (parameter-list
+              "("
+              (preprocessing-conditional
+                (preprocessing-branch
+                  (preprocessing-directive "#ifdef TRACK_LOCATION")
+                  (parameter-declaration
+                    (declaration-specifiers "const" "Point")
+                    (init-declarator-list
+                      (init-declarator
+                        (declarator
+                          (pointer-operator "&")
+                          (declarator-name "point")
+                        )
+                      )
+                    )
+                  )
+                )
+                (preprocessing-directive "#endif")
+              )
+              ")"
+            )
+            (preprocessing-conditional
+              (preprocessing-branch
+                (preprocessing-directive "#ifdef TRACK_LOCATION")
+                (constructor-initializer-list
+                  ":"
+                  (constructor-initializer
+                    (call-expression
+                      (identifier-expression "Point_")
+                      (argument-list
+                        "("
+                        (argument
+                          (identifier-expression "point")
+                        )
+                        ")"
+                      )
+                    )
+                  )
+                )
+              )
+              (preprocessing-directive "#endif")
+            )
+          )
+        )
+      )
+    )
+    (compound-statement "{" "}")
+  )
+  (function-definition
+    (leading-trivia
+      (whitespace "\n\n")
+    )
+    (declaration-specifiers "inline" "Callback")
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          "::"
+          (operator-function-name "operator" "bool")
+          (function-declarator
+            (parameter-list "(" ")")
+            (function-qualifier "const")
+          )
+        )
+      )
+    )
+    (compound-statement
+      "{"
+      (return-statement
+        "return"
+        (cast-expression
+          "static_cast"
+          (template-argument-list
+            "<"
+            (type-id "bool")
+            ">"
+          )
+          "("
+          (identifier-expression "State_")
+          ")"
+        )
+        ";"
+      )
+      "}"
+    )
+  )
+  (function-definition
+    (declaration-specifiers "inline")
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          "Record" "::"
+          (declarator-name "Record")
+          (function-declarator
+            (parameter-list
+              "("
+              (parameter-declaration
+                (declaration-specifiers "int")
+                (init-declarator-list
+                  (init-declarator
+                    (declarator
+                      (declarator-name "value")
+                    )
+                  )
+                )
+              )
+              ")"
+            )
+            (preprocessing-conditional
+              (preprocessing-branch
+                (preprocessing-directive "#if LEFT_SIDE")
+                (constructor-initializer-list
+                  ":"
+                  (constructor-initializer
+                    (call-expression
+                      (identifier-expression "Left_")
+                      (argument-list
+                        "("
+                        (argument
+                          (identifier-expression "value")
+                        )
+                        ")"
+                      )
+                    )
+                  )
+                )
+              )
+              (preprocessing-branch
+                (preprocessing-directive "#else")
+                (constructor-initializer-list
+                  ":"
+                  (constructor-initializer
+                    (type-construction-expression
+                      (identifier-expression "Right_")
+                      (braced-initializer
+                        (initializer-list
+                          "{"
+                          (initializer-element
+                            (identifier-expression "value")
+                          )
+                          "}"
+                        )
+                      )
+                    )
+                  )
+                )
+              )
+              (preprocessing-directive "#endif")
+            )
+          )
+        )
+      )
+    )
+    (compound-statement "{" "}")
+  )
+  (function-definition
+    (declaration-specifiers "inline")
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          "Record" "::"
+          (declarator-name "Record")
+          (function-declarator
+            (parameter-list
+              "("
+              (parameter-declaration
+                (declaration-specifiers "int")
+                (init-declarator-list
+                  (init-declarator
+                    (declarator
+                      (declarator-name "value")
+                    )
+                  )
+                )
+              )
+              ")"
+            )
+            (constructor-initializer-list
+              ":"
+              (constructor-initializer
+                (call-expression
+                  (identifier-expression "Base")
+                  (argument-list
+                    "("
+                    (argument
+                      (identifier-expression "value")
+                    )
+                    ")"
+                  )
+                )
+              )
+              (list-separator ",")
+              (preprocessing-conditional
+                (preprocessing-branch
+                  (preprocessing-directive "#if EXTRA_MEMBER")
+                  (constructor-initializer
+                    (type-construction-expression
+                      (identifier-expression "Extra_")
+                      (braced-initializer
+                        (initializer-list
+                          "{"
+                          (initializer-element
+                            (identifier-expression "value")
+                          )
+                          "}"
+                        )
+                      )
+                    )
+                  )
+                  (list-separator ",")
+                )
+                (preprocessing-directive "#endif")
+              )
+              (constructor-initializer
+                (call-expression
+                  (identifier-expression "Last_")
+                  (argument-list
+                    "("
+                    (argument
+                      (identifier-expression "value")
+                    )
+                    ")"
+                  )
+                )
+              )
+            )
+          )
+        )
+      )
+    )
+    (compound-statement "{" "}")
+  )
+  (function-definition
+    (declaration-specifiers "void")
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (declarator-name "Branches")
+          (function-declarator
+            (parameter-list "(" ")")
+          )
+        )
+      )
+    )
+    (compound-statement
+      "{"
+      (preprocessing-conditional
+        (preprocessing-branch
+          (preprocessing-directive "#if 0")
+          (declaration-statement
+            (declaration-specifiers "auto")
+            (init-declarator-list
+              (init-declarator
+                (declarator
+                  (declarator-name "a")
+                )
+                (initializer
+                  "="
+                  (binary-expression
+                    (identifier-expression "b")
+                    "*"
+                    (identifier-expression "d")
+                  )
+                )
+              )
+            )
+            ";"
+          )
+        )
+        (preprocessing-branch
+          (preprocessing-directive "#else")
+          (declaration-statement
+            (declaration-specifiers "auto")
+            (init-declarator-list
+              (init-declarator
+                (declarator
+                  (declarator-name "a")
+                )
+                (initializer
+                  "="
+                  (binary-expression
+                    (identifier-expression "c")
+                    "*"
+                    (identifier-expression "d")
+                  )
+                )
+              )
+            )
+            ";"
+          )
+        )
+        (preprocessing-directive "#endif")
+      )
+      "}"
+    )
+  )
+  (function-definition
+    (declaration-specifiers "void")
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (declarator-name "Arguments")
+          (function-declarator
+            (parameter-list "(" ")")
+          )
+        )
+      )
+    )
+    (compound-statement
+      "{"
+      (expression-statement
+        (call-expression
+          (identifier-expression "Consume")
+          (argument-list
+            "("
+            (argument
+              (identifier-expression "first")
+            )
+            (list-separator ",")
+            (preprocessing-conditional
+              (preprocessing-branch
+                (preprocessing-directive "#if PICK_LEFT")
+                (argument
+                  (identifier-expression "left")
+                )
+                (list-separator ",")
+              )
+              (preprocessing-branch
+                (preprocessing-directive "#elif PICK_MIDDLE")
+                (argument
+                  (identifier-expression "middle")
+                )
+                (list-separator ",")
+              )
+              (preprocessing-branch
+                (preprocessing-directive "#else")
+                (argument
+                  (identifier-expression "right")
+                )
+                (list-separator ",")
+              )
+              (preprocessing-directive "#endif")
+            )
+            (argument
+              (unary-expression
+                "*"
+                (identifier-expression "last")
+              )
+            )
+            ")"
+          )
+        )
+        ";"
+      )
+      (expression-statement
+        (call-expression
+          (identifier-expression "Consume")
+          (argument-list
+            "("
+            (preprocessing-conditional
+              (preprocessing-branch
+                (preprocessing-directive "#if OPTIONAL")
+                (preprocessing-conditional
+                  (preprocessing-branch
+                    (preprocessing-directive "#if INNER")
+                    (argument
+                      (call-expression
+                        (identifier-expression "Extra")
+                        (argument-list
+                          "("
+                          (argument
+                            (identifier-expression "left")
+                          )
+                          ")"
+                        )
+                      )
+                    )
+                    (list-separator ",")
+                  )
+                  (preprocessing-branch
+                    (preprocessing-directive "#else")
+                    (argument
+                      (call-expression
+                        (identifier-expression "Extra")
+                        (argument-list
+                          "("
+                          (argument
+                            (identifier-expression "right")
+                          )
+                          ")"
+                        )
+                      )
+                    )
+                    (list-separator ",")
+                  )
+                  (preprocessing-directive "#endif")
+                )
+              )
+              (preprocessing-directive "#endif")
+            )
+            (argument
+              (unary-expression
+                "&"
+                (identifier-expression "last")
+              )
+            )
+            ")"
+          )
+        )
+        ";"
+      )
+      (expression-statement
+        (call-expression
+          (identifier-expression "Consume")
+          (argument-list
+            "("
+            (argument
+              (identifier-expression "first")
+            )
+            (preprocessing-conditional
+              (preprocessing-branch
+                (preprocessing-directive "#ifdef OPTIONAL")
+                (list-separator ",")
+                (argument
+                  (call-expression
+                    (identifier-expression "Extra")
+                    (argument-list
+                      "("
+                      (argument
+                        (identifier-expression "value")
+                      )
+                      ")"
+                    )
+                  )
+                )
+              )
+              (preprocessing-directive "#endif")
+            )
+            ")"
+          )
+        )
+        ";"
+      )
+      (expression-statement
+        (call-expression
+          (identifier-expression "Consume")
+          (argument-list
+            "("
+            (preprocessing-conditional
+              (preprocessing-branch
+                (preprocessing-directive "#if PICK_LEFT")
+                (argument
+                  (identifier-expression "left")
+                )
+              )
+              (preprocessing-branch
+                (preprocessing-directive "#else")
+                (argument
+                  (identifier-expression "right")
+                )
+              )
+              (preprocessing-directive "#endif")
+            )
+            ")"
+          )
+        )
+        ";"
+      )
+      "}"
+    )
+  )
+  (function-definition
+    (declaration-specifiers "void")
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (declarator-name "Parameters")
+          (function-declarator
+            (parameter-list
+              "("
+              (preprocessing-conditional
+                (preprocessing-branch
+                  (preprocessing-directive "#if PICK_LEFT")
+                  (parameter-declaration
+                    (declaration-specifiers "int")
+                    (init-declarator-list
+                      (init-declarator
+                        (declarator
+                          (declarator-name "left")
+                        )
+                      )
+                    )
+                  )
+                  (list-separator ",")
+                )
+                (preprocessing-branch
+                  (preprocessing-directive "#else")
+                  (parameter-declaration
+                    (declaration-specifiers "double")
+                    (init-declarator-list
+                      (init-declarator
+                        (declarator
+                          (declarator-name "right")
+                        )
+                      )
+                    )
+                  )
+                  (list-separator ",")
+                )
+                (preprocessing-directive "#endif")
+              )
+              (parameter-declaration
+                (declaration-specifiers "int")
+                (init-declarator-list
+                  (init-declarator
+                    (declarator
+                      (declarator-name "common")
+                    )
+                  )
+                )
+              )
+              ")"
+            )
+          )
+        )
+      )
+    )
+    (compound-statement "{" "}")
+  )
+  (function-definition
+    (declaration-specifiers "void")
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (declarator-name "PreserveSplitExpressions")
+          (function-declarator
+            (parameter-list "(" ")")
+          )
+        )
+      )
+    )
+    (compound-statement
+      "{"
+      (declaration-statement
+        (declaration-specifiers "auto")
+        (init-declarator-list
+          (init-declarator
+            (declarator
+              (declarator-name "a")
+            )
+            (initializer
+              "="
+              (unparsed-syntax "#if 0" "b" "#else" "c" "#endif" "*" "d")
+            )
+          )
+        )
+        ";"
+      )
+      (declaration-statement
+        (declaration-specifiers "auto")
+        (init-declarator-list
+          (init-declarator
+            (declarator
+              (declarator-name "ambiguous")
+            )
+            (initializer
+              "="
+              (unparsed-syntax "#if OPTIONAL" "b" "#endif" "*" "d")
+            )
+          )
+        )
+        ";"
+      )
+      (expression-statement
+        (call-expression
+          (identifier-expression "Consume")
+          (argument-list
+            "("
+            (unparsed-syntax "#if OPTIONAL" "b" "#endif" "*" "d")
+            ")"
+          )
+        )
+        ";"
+      )
+      (expression-statement
+        (call-expression
+          (identifier-expression "Consume")
+          (argument-list
+            "("
+            (unparsed-syntax "first" "+" "#if PICK_LEFT" "left" "#else" "right" "#endif")
+            ")"
+          )
+        )
+        ";"
+      )
+      "}"
+    )
+  )
+)

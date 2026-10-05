@@ -1,174 +1,123 @@
-# Approximation of the Google C++ style / clang-format's Google preset.
-# Use with --config, or copy to .hit-fmt in a source tree.
-
-# Indentation and limits
+# Google-inspired approximation, not clang-format compatibility.
+# Fitting canonical lists flatten; manual columns require explicit preservation.
+# Directives remain byte-exact, rather than rewriting preprocessor indentation.
+Layout = Canonical
 IndentWidth = 2
 ColumnLimit = 80
-LineLengthCheck = Strict
+WidthDiagnostics = Report
 IndentationKind = Spaces
 TrailingWhitespace = Trim
-
-# Includes, directives, and comments
-PreprocessorIndentation = LineStart
-# Google include categories, main-header precedence and regrouping cannot
-# be expressed by Sort's simple quoted-before-angled lexicographic order.
-IncludeOrder = Preserve
-
-# Templates and attributes
-TemplateKeywordSpacing = Space
-TemplateTypeArgumentSpacing = NoSpace
-TemplateTypeArgumentInteriorSpacing = NoSpace
-
-# Records, namespaces, and declarators
+ListBreak = IfNeeded
+ListPacking = Fill
+ListFirstItem = InlineIfFits
+ListCloser = SameLine
+ListAlignment = Delimiter
+ContinuationOffset = 4
+AlignmentFallbackOffset = 4
+# Template parameters and arguments pack and align like calls.
+TemplateParametersLayout = Canonical
+TemplateParametersBreak = IfNeeded
+TemplateParametersPacking = Fill
+TemplateParametersFirstItem = InlineIfFits
+TemplateParametersCloser = SameLine
+TemplateParametersAlignment = Delimiter
+TemplateParametersContinuationOffset = 4
+TemplateParametersAlignmentFallbackOffset = 4
+# Argument overrides also apply to named-cast type brackets.
+TemplateArgumentsLayout = Canonical
+TemplateArgumentsBreak = IfNeeded
+TemplateArgumentsPacking = Fill
+TemplateArgumentsFirstItem = InlineIfFits
+TemplateArgumentsCloser = SameLine
+TemplateArgumentsAlignment = Delimiter
+TemplateArgumentsContinuationOffset = 4
+TemplateArgumentsAlignmentFallbackOffset = 4
+BaseListsLayout = Preserve
+ConstructorListsLayout = Preserve
+BodyShape = CompactIfFits
+EmptyBodyShape = CompactIfFits
 PointerReferenceDeclaratorLocation = Left
 IndentAccessModifiers = Indent
 AccessModifierIndentWidth = 1
 IndentMembers = Indent
-ClassBracePlacement = Attach
-EnforceClassBracePlacement = true
-ClassBraceSpacing = SingleSpace
-EnforceClassBraceSpacing = true
-StructBracePlacement = Attach
-EnforceStructBracePlacement = true
-StructBraceSpacing = SingleSpace
-EnforceStructBraceSpacing = true
-UnionBracePlacement = Attach
-EnforceUnionBracePlacement = true
-UnionBraceSpacing = SingleSpace
-EnforceUnionBraceSpacing = true
-EnumBraceSpacing = SingleSpace
-NamespaceBracePlacement = Attach
-EnforceNamespaceBracePlacement = true
-NamespaceBraceSpacing = SingleSpace
-EnforceNamespaceBraceSpacing = true
+IndentNamespaces = NoIndent
+IndentCaseLabels = Indent
+StatementAttributeIndent = Block
+# Include categories/main-header precedence are not modeled.
+IncludeOrder = Preserve
+# Ordinary trailing // gaps; comment alignment and prose wrapping are not modeled.
+TrailingCommentSpaces = 2
 NamespaceComments = AddMissing
 NamespaceCommentSpaces = 2
 ShortNamespaceLines = 1
+RemoveNullDeclarations = true
+InitializersTrailingComma = Preserve
+InitializersCloser = SameLine
+
+TemplateKeywordSpacing = Space
+TemplateTypeArgumentSpacing = NoSpace
+TemplateTypeArgumentInteriorSpacing = NoSpace
+ClassBraceSpacing = Space
+StructBraceSpacing = Space
+UnionBraceSpacing = Space
+EnumBraceSpacing = Space
+FunctionBraceSpacing = Space
+LambdaBraceSpacing = Space
+NamespaceBraceSpacing = Space
 ArrayDeclarationSpacing = NoSpace
 ArrayDeclarationInteriorSpacing = NoSpace
 StructuredBindingBracketSpacing = NoSpace
-# Leave context-sensitive base lists source-owned.
-InheritanceList = Preserve
-
-# Functions and parameters
-FunctionBracePlacement = Attach
-EnforceFunctionBracePlacement = true
-FunctionBraceSpacing = SingleSpace
-EnforceFunctionBraceSpacing = true
-FunctionParameterSplit = Pack
-EnforceFunctionParameterSplit = true
-FirstFunctionParameterPosition = NameLineIfFits
-FunctionParameterIndent = Continuation
-FunctionParameterNewLineIndent = 4
-MergeFunctionParameters = true
 FunctionSpaceBeforeParameters = NoSpace
 SpaceInsideFunctionParameters = NoSpace
-EnforceSpaceInsideFunctionParameters = true
 EmptyFunctionParametersSpacing = NoSpace
-ReturnArrowSpacing = LeftAndRight
+ReturnArrowSpaceBefore = Space
+ReturnArrowSpaceAfter = Space
 FunctionQualifierSpacing = Space
 NoexceptSpaceBeforeSpecifier = Space
 NoexceptSpaceBeforeParentheses = NoSpace
-
-# Lambdas
-LambdaBracePlacement = Attach
-EnforceLambdaBracePlacement = true
-LambdaBraceSpacing = SingleSpace
-EnforceLambdaBraceSpacing = true
 LambdaSpaceBeforeParameters = NoSpace
 SpaceInsideLambdaParameters = NoSpace
 SpaceAroundCaptureList = NoSpace
 SpaceAroundCaptureAssignment = Space
 EmptyLambdaCaptureSpacing = NoSpace
 EmptyLambdaParametersSpacing = NoSpace
-
-# Calls and chains
-CallArgumentSplit = Pack
-EnforceCallArgumentSplit = true
-FirstCallArgumentPosition = CallLine
-CallArgumentIndent = Continuation
 FunctionCallSpaceBeforeParameters = NoSpace
 SpaceInsideCallArguments = NoSpace
-EnforceSpaceInsideCallArguments = true
 EmptyFunctionCallArgumentsSpacing = NoSpace
-
-# Control flow
-IndentCaseLabels = Indent
-ControlBlockBracePlacement = SameLine
-EnforceControlBlockBracePlacement = true
 ControlBlockSpaceBeforeBrace = Space
-EnforceControlBlockSpaceBeforeBrace = true
 ControlBlockKeywordSpacing = Space
-ControlConditionIndent = Continuation
-MultilineControlBlockFirstConditionPosition = HeaderLine
-EnforceMultilineControlBlockFirstConditionPosition = false
-MultilineControlBlockClosingDelimiterPlacement = SameLine
-EnforceMultilineControlBlockClosingDelimiterPlacement = false
 ControlBlockConditionSpacing = NoSpace
 LoopSemicolonSpacing = Space
 ConditionInitSemicolonSpacing = Space
 RangeBasedForColonSpacing = Space
-
-# Blocks and statements
-IndentBlockBodies = true
-RemoveNullDeclarations = true
-StatementAttributeIndent = Block
 EmptyBlockInteriorSpacing = NoSpace
-EnforceEmptyBlockInteriorSpacing = true
 BlockInteriorSpacing = Space
 StatementSemicolonSpacing = NoSpace
 DeclarationSemicolonSpacing = NoSpace
-
-# Initializers, new, and delete
-# Google-style aggregates pack elements beside { and align continuations.
-# Reflow safe overflowing lists, but leave fitting existing layouts alone.
-# Nested or multiline elements remain source-owned.
-InitializerListSplit = Pack
-EnforceInitializerListSplit = false
-FirstInitializerElementPosition = BraceLine
-InitializerListIndent = Continuation
-MergeInitializerList = true
-InitializerListClosingBrace = SameLineUnlessTrailingComma
-EnforceInitializerListClosingBrace = false
-InitializerListTrailingComma = Remove
-EnforceInitializerListTrailingComma = false
-MultilineInitializerListTrailingComma = Inherit
-EnforceMultilineInitializerListTrailingComma = inherit
 EmptyBraceInitializerInteriorSpacing = NoSpace
 InitializerBracesSpacing = NoSpace
-EnforceInitializerBracesSpacing = true
 BraceInitializerSpacing = NoSpace
 NewArraySpaceBeforeBrackets = NoSpace
-# Leave context-sensitive constructor lists source-owned.
-ConstructorInitializerList = Preserve
 
-# Expressions and operators
-ExpressionLayoutCondition = Overflow
-BinaryOperatorPlacement = Trailing
-AssignmentOperatorPlacement = Trailing
-TernaryOperatorPlacement = Leading
-EnforceTernaryOperatorPlacement = true
-TernarySplit = AsNeeded
-EnforceTernarySplit = true
+ExpressionsBreak = IfNeeded
+ExpressionsPacking = Fill
+BinaryOperatorSide = Trailing
+AssignmentOperatorSide = Trailing
+TernaryOperatorSide = Leading
+TernaryLayout = Flexible
 GroupingInteriorSpacing = NoSpace
 CastArgumentSpacing = NoSpace
 CastSpacing = NoSpace
-CommaSpacing = Space
-EnforceCommaSpacing = true
+CommaSpaceBefore = NoSpace
+CommaSpaceAfter = Space
 MemberAccessOperatorsSpacing = NoSpace
-# Prefer Preserve for :: without name lookup or macro expansion: an
-# identifier before :: could be an export macro, not a qualifier.
-# NoSpace could turn GTEST_API_ ::std::string into GTEST_API_::std::string.
+# Export macros before :: cannot be resolved without preprocessing/name lookup.
 ScopeResolutionSpacing = Preserve
 UnaryOperatorSpacing = NoSpace
 PostfixOperatorSpacing = NoSpace
-# Space collapses manually aligned multiline conditional columns.
 TernaryOperatorSpacing = Preserve
 BinaryOperatorSpacing = Space
 AssignmentOperatorSpacing = Space
 SubscriptOperatorSpacing = NoSpace
 SubscriptOperatorInteriorSpacing = NoSpace
-
-# Naming checks
-# Google naming depends on role (e.g. kConstant vs variable vs field);
-# the available per-kind checks cannot distinguish these roles.
+# Role-sensitive naming rules (constants vs fields etc.) are out of scope.

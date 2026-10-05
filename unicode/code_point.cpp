@@ -6,6 +6,7 @@
 namespace unicode {
 
 extern const std::vector<std::pair<char32_t, char32_t>> XIDStartRanges;
+
 extern const std::vector<std::pair<char32_t, char32_t>> XIDContinueRanges;
 
 namespace {

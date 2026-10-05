@@ -1,6 +1,6 @@
+# Shape preferences apply when broken; fitting canonical groups flatten.
 IndentWidth = 2
 ColumnLimit = 80
-InitializerListSplit = Pack
-EnforceInitializerListSplit = true
-MergeInitializerList = true
-InitializerListClosingBrace = SameLine
+InitializersLayout = Canonical
+InitializersPacking = Fill
+InitializersCloser = SameLine

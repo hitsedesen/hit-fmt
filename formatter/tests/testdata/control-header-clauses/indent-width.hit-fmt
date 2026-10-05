@@ -1,7 +1,6 @@
+# Shape preferences apply when broken; fitting canonical groups flatten.
 ColumnLimit = 66
-ControlHeaderClauseSplit = WhenNeeded
-ControlConditionIndent = Continuation
-ForHeaderClauseIndent = IndentWidth
-ExpressionLayoutCondition = Overflow
-ControlBlockBracePlacement = AttachUnlessMultiline
-EnforceControlBlockBracePlacement = true
+ControlHeadersLayout = Canonical
+ControlHeadersAlignment = Block
+ExpressionsLayout = Canonical
+ControlBracePlacement = NextLineIfHeaderBroken

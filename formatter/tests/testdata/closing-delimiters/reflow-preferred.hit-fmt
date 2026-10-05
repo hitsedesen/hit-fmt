@@ -1,9 +1,8 @@
+# Shape preferences apply when broken; fitting canonical groups flatten.
 ColumnLimit = 32
-FunctionParameterSplit = OnePerLine
-EnforceFunctionParameterSplit = true
-CallArgumentSplit = OnePerLine
-EnforceCallArgumentSplit = true
-FunctionParameterClosingParenthesis = NewLine
-FunctionCallArgumentClosingParenthesis = NewLine
-EnforceFunctionParameterClosingParenthesis = false
-EnforceFunctionCallArgumentClosingParenthesis = false
+ParametersLayout = Canonical
+ParametersPacking = VerticalWhenBroken
+CallsLayout = Canonical
+CallsPacking = VerticalWhenBroken
+ParametersCloser = OwnLine
+CallsCloser = OwnLine

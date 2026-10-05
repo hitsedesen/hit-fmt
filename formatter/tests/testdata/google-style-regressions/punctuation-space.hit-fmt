@@ -1,5 +1,6 @@
+# Shape preferences apply when broken; fitting canonical groups flatten.
 BinaryOperatorSpacing = Space
-CommaSpacing = Space
-EnforceCommaSpacing = true
+CommaSpaceBefore = NoSpace
+CommaSpaceAfter = Space
 NamespaceComments = AddMissing
 NamespaceCommentSpaces = 2

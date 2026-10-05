@@ -1,8 +1,9 @@
 #pragma once
 
+#include "config_annotations.hpp"
 #include "formatter.hpp"
+#include "policy.hpp"
 
-#include <array>
 #include <filesystem>
 #include <optional>
 #include <regex>
@@ -14,42 +15,6 @@ namespace formatter {
 
 inline constexpr std::string_view DefaultConfigFileName = ".hit-fmt";
 
-// These preferences use Enforce* flags instead of a Preserve config value.
-inline constexpr auto EnforcedPreferences =
-    std::to_array<std::string_view>({
-        "SpaceInsideFunctionParameters",
-        "SpaceInsideCallArguments",
-        "InitializerBracesSpacing",
-        "EmptyBlockInteriorSpacing",
-        "ControlBlockSpaceBeforeBrace",
-        "ClassBraceSpacing",
-        "StructBraceSpacing",
-        "UnionBraceSpacing",
-        "FunctionBraceSpacing",
-        "LambdaBraceSpacing",
-        "NamespaceBraceSpacing",
-        "ClassBracePlacement",
-        "StructBracePlacement",
-        "UnionBracePlacement",
-        "FunctionBracePlacement",
-        "LambdaBracePlacement",
-        "NamespaceBracePlacement",
-        "FunctionParameterSplit",
-        "CallArgumentSplit",
-        "InitializerListSplit",
-        "TernarySplit",
-    });
-
-[[nodiscard]] constexpr bool AllowsPreserveConfigValue(std::string_view key)
-{
-    for (auto preference : EnforcedPreferences) {
-        if (preference == key) {
-            return false;
-        }
-    }
-    return true;
-}
-
 struct NameRule
 {
     NameCase Case = NameCase::Unchecked;
@@ -59,7 +24,7 @@ struct NameRule
 
 struct NamingStyle
 {
-#define FORMATTER_NAMING_FIELD(category) NameRule category;
+    #define FORMATTER_NAMING_FIELD(category) NameRule category;
     FORMATTER_NAMING_CATEGORIES(FORMATTER_NAMING_FIELD)
 #undef FORMATTER_NAMING_FIELD
 };

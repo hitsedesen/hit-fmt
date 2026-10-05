@@ -1,4 +1,3 @@
-3:56: line exceeds ColumnLimit (86 > 55)
-4:56: line exceeds ColumnLimit (82 > 55)
-5:56: line exceeds ColumnLimit (101 > 55)
-6:56: line exceeds ColumnLimit (95 > 55)
+6:56: emitted line width 67 exceeds ColumnLimit 55
+9:56: emitted line width 71 exceeds ColumnLimit 55
+10:56: emitted line width 95 exceeds ColumnLimit 55

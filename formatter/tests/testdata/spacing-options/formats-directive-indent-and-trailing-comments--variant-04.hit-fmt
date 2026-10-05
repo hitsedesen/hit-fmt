@@ -1,4 +1,4 @@
+# Directive indentation and CRLF line endings remain byte-exact.
 IndentWidth = 4
 IndentationKind = Tabs
-PreprocessorIndentation = LineStart
 TrailingCommentSpacing = Space

@@ -1,12 +1,8 @@
-ClassBracePlacement = Attach
-EnforceClassBracePlacement = true
-StructBracePlacement = Attach
-EnforceStructBracePlacement = true
-UnionBracePlacement = Attach
-EnforceUnionBracePlacement = true
-FunctionBracePlacement = Attach
-EnforceFunctionBracePlacement = true
-LambdaBracePlacement = Attach
-EnforceLambdaBracePlacement = true
-NamespaceBracePlacement = Attach
-EnforceNamespaceBracePlacement = true
+# Shape preferences apply when broken; fitting canonical groups flatten.
+ClassBracePlacement = Attached
+DeclarationHeadersLayout = Canonical
+StructBracePlacement = Attached
+UnionBracePlacement = Attached
+FunctionBracePlacement = Attached
+LambdaBracePlacement = Attached
+NamespaceBracePlacement = Attached

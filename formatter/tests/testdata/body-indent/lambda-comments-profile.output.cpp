@@ -8,10 +8,10 @@ void RunTask()
         // Keep the explanation with its statement.
         Dispatch(state);
 
-            // Detached explanation.
+        // Detached explanation.
 
         Finish();
-            /* A block comment is source-owned. */
+        /* A block comment is source-owned. */
         Reset();
     });
 }

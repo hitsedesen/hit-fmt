@@ -1,2 +1,4 @@
+# Shape preferences apply when broken; fitting canonical groups flatten.
+ChainsLayout = Preserve
+# Explicit library annotations; no renderer identifier checks.
 ChainedCallRootNames = ["MAKE_TASK"]
-ChainedCallSplitCondition = Preserve

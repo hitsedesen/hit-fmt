@@ -10,5 +10,5 @@ struct Outer {
   struct Nested: public Alpha ,Beta {};
 };
 enum class Flag : unsigned { On };
-struct Incomplete : public {};
-union NotDerived : Base {};
+struct Incomplete: public {};
+union NotDerived: Base {};

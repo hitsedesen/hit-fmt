@@ -1,13 +1,14 @@
+# Shape preferences apply when broken; fitting canonical groups flatten.
 IndentWidth = 2
-IndentBlockBodies = true
+BodiesLayout = Canonical
+BodyShape = Expanded
 BinaryOperatorSpacing = Space
-CommaSpacing = Space
-EnforceCommaSpacing = true
+CommaSpaceBefore = NoSpace
+CommaSpaceAfter = Space
 ControlBlockKeywordSpacing = Space
 ControlBlockSpaceBeforeBrace = Space
-EnforceControlBlockSpaceBeforeBrace = true
 TrailingWhitespace = Trim
 ColumnLimit = 40
-LineLengthCheck = Strict
-ExpressionLayoutCondition = Overflow
+WidthDiagnostics = Report
+ExpressionsLayout = Canonical
 HonorClangFormatDirectives = false

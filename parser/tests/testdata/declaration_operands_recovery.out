@@ -1,0 +1,6 @@
+(translation-unit
+  (declaration
+    (declaration-specifiers "decltype" "(" "(" "0" "]" "broken" "(" "const" "int" "&" "value" ")")
+    ";"
+  )
+)

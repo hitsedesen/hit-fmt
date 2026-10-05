@@ -1,4 +1,6 @@
 void f() {
-    if (alpha &&
-        beta) { run(); }
+    if (
+        alpha &&
+        beta
+    ) { run(); }
 }

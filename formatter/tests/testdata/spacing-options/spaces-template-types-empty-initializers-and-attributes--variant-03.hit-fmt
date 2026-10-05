@@ -1,5 +1,7 @@
+# Shape preferences apply when broken; fitting canonical groups flatten.
 TemplateTypeArgumentInteriorSpacing = NoSpace
 TemplateTypeArgumentSpacing = Space
 EmptyBraceInitializerInteriorSpacing = Space
-OperatorOverloadOperatorSpacing = LeftAndRight
+OperatorOverloadOperatorSpaceBefore = Space
+OperatorOverloadOperatorSpaceAfter = Space
 AttributeInteriorSpacing = Space

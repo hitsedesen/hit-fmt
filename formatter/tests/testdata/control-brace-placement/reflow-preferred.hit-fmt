@@ -1,5 +1,6 @@
+# Shape preferences apply when broken; fitting canonical groups flatten.
 ColumnLimit = 34
-CallArgumentSplit = Pack
-EnforceCallArgumentSplit = true
-ControlBlockBracePlacement = AttachUnlessMultiline
-EnforceControlBlockBracePlacement = false
+CallsLayout = Canonical
+CallsPacking = Fill
+ControlHeadersLayout = Canonical
+ControlBracePlacement = NextLineIfHeaderBroken

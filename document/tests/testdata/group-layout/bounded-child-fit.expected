@@ -1,0 +1,254 @@
+width=80 padding=0 mode=0
+value = source.slice({startingOffset, endingOffset});
+width=80 padding=0 mode=1
+value =
+    source.slice({startingOffset, endingOffset});
+width=80 padding=0 mode=2
+value = source.slice({startingOffset, endingOffset});
+width=80 padding=0 mode=3
+value = consume(source.slice({startingOffset, endingOffset}), tabWidth);
+width=80 padding=0 mode=4
+value = consume(source.slice({startingOffset, endingOffset}), tabWidth);
+width=80 padding=300 mode=0
+value = source.slice({startingOffset, endingOffset});
+width=80 padding=300 mode=1
+value =
+    source.slice({startingOffset, endingOffset});
+width=80 padding=300 mode=2
+value = source.slice({startingOffset, endingOffset});
+width=80 padding=300 mode=3
+value = consume(source.slice({startingOffset, endingOffset}), tabWidth);
+width=80 padding=300 mode=4
+value = consume(source.slice({startingOffset, endingOffset}), tabWidth);
+width=40 padding=0 mode=0
+value = source.slice({
+    startingOffset,
+    endingOffset,});
+width=40 padding=0 mode=1
+value =
+    source.slice({
+        startingOffset,
+        endingOffset,});
+width=40 padding=0 mode=2
+value = source.slice({
+                      startingOffset,
+                      endingOffset,});
+width=40 padding=0 mode=3
+value = consume(
+    source.slice({
+        startingOffset,
+        endingOffset,}),
+    tabWidth);
+width=40 padding=0 mode=4
+value = consume(
+    source.slice({
+        startingOffset,
+        endingOffset,}),
+    tabWidth);
+width=40 padding=300 mode=0
+value =
+    source.slice({
+        startingOffset,
+        endingOffset,});
+width=40 padding=300 mode=1
+value =
+    source.slice({
+        startingOffset,
+        endingOffset,});
+width=40 padding=300 mode=2
+value =
+    source.slice({
+                  startingOffset,
+                  endingOffset,});
+width=40 padding=300 mode=3
+value =
+    consume(
+        source.slice({
+            startingOffset,
+            endingOffset,}),
+        tabWidth);
+width=40 padding=300 mode=4
+value =
+    consume(
+        source.slice({
+            startingOffset,
+            endingOffset,}),
+        tabWidth);
+width=36 padding=0 mode=0
+value = source.slice({
+    startingOffset,
+    endingOffset,});
+width=36 padding=0 mode=1
+value =
+    source.slice({
+        startingOffset,
+        endingOffset,});
+width=36 padding=0 mode=2
+value = source.slice({
+    startingOffset,
+    endingOffset,});
+width=36 padding=0 mode=3
+value = consume(
+    source.slice({
+        startingOffset,
+        endingOffset,}),
+    tabWidth);
+width=36 padding=0 mode=4
+value = consume(
+    source.slice({
+        startingOffset,
+        endingOffset,}),
+    tabWidth);
+width=36 padding=300 mode=0
+value =
+    source.slice({
+        startingOffset,
+        endingOffset,});
+width=36 padding=300 mode=1
+value =
+    source.slice({
+        startingOffset,
+        endingOffset,});
+width=36 padding=300 mode=2
+value =
+    source.slice({
+                  startingOffset,
+                  endingOffset,});
+width=36 padding=300 mode=3
+value =
+    consume(
+        source.slice({
+            startingOffset,
+            endingOffset,}),
+        tabWidth);
+width=36 padding=300 mode=4
+value =
+    consume(
+        source.slice({
+            startingOffset,
+            endingOffset,}),
+        tabWidth);
+width=25 padding=0 mode=0
+value = source.slice({
+    startingOffset,
+    endingOffset,});
+width=25 padding=0 mode=1
+value =
+    source.slice({
+        startingOffset,
+        endingOffset,});
+width=25 padding=0 mode=2
+value = source.slice({
+    startingOffset,
+    endingOffset,});
+width=25 padding=0 mode=3
+value = consume(
+    source.slice({
+        startingOffset,
+        endingOffset,}),
+    tabWidth);
+width=25 padding=0 mode=4
+value = consume(
+    source.slice({
+        startingOffset,
+        endingOffset,}),
+    tabWidth);
+width=25 padding=300 mode=0
+value =
+    source.slice({
+        startingOffset,
+        endingOffset,});
+width=25 padding=300 mode=1
+value =
+    source.slice({
+        startingOffset,
+        endingOffset,});
+width=25 padding=300 mode=2
+value =
+    source.slice({
+        startingOffset,
+        endingOffset,});
+width=25 padding=300 mode=3
+value =
+    consume(
+        source
+            .slice({
+                startingOffset,
+                endingOffset,}),
+        tabWidth);
+width=25 padding=300 mode=4
+value =
+    consume(
+        source
+            .slice({
+                startingOffset,
+                endingOffset,}),
+        tabWidth);
+width=18 padding=0 mode=0
+value =
+    source
+        .slice({
+            startingOffset,
+            endingOffset,});
+width=18 padding=0 mode=1
+value =
+    source
+        .slice({
+            startingOffset,
+            endingOffset,});
+width=18 padding=0 mode=2
+value =
+    source
+        .slice({
+            startingOffset,
+            endingOffset,});
+width=18 padding=0 mode=3
+value =
+    consume(
+        source
+            .slice({
+                startingOffset,
+                endingOffset,}),
+        tabWidth);
+width=18 padding=0 mode=4
+value =
+    consume(
+        source
+            .slice({
+                startingOffset,
+                endingOffset,}),
+        tabWidth);
+width=18 padding=300 mode=0
+value =
+    source
+        .slice({
+            startingOffset,
+            endingOffset,});
+width=18 padding=300 mode=1
+value =
+    source
+        .slice({
+            startingOffset,
+            endingOffset,});
+width=18 padding=300 mode=2
+value =
+    source
+        .slice({
+            startingOffset,
+            endingOffset,});
+width=18 padding=300 mode=3
+value =
+    consume(
+        source
+            .slice({
+                startingOffset,
+                endingOffset,}),
+        tabWidth);
+width=18 padding=300 mode=4
+value =
+    consume(
+        source
+            .slice({
+                startingOffset,
+                endingOffset,}),
+        tabWidth);

@@ -1,0 +1,17 @@
+Layout = Canonical
+IndentWidth = 2
+IndentationKind = Spaces
+ColumnLimit = 32
+ListPacking = VerticalWhenBroken
+ListFirstItem = NextLine
+ListCloser = OwnLine
+ClassBracePlacement = NextLineIfHeaderBroken
+FunctionBracePlacement = NextLineIfHeaderBroken
+LambdaBracePlacement = NextLineIfHeaderBroken
+ControlBracePlacement = NextLineIfHeaderBroken
+BinaryOperatorSpacing = GeneratedSpace
+AssignmentOperatorSpacing = GeneratedSpace
+TernaryOperatorSpacing = GeneratedSpace
+MemberAccessOperatorsSpacing = GeneratedNoSpace
+FunctionCallSpaceBeforeParameters = GeneratedNoSpace
+FunctionSpaceBeforeParameters = GeneratedNoSpace

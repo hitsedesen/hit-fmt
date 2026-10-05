@@ -1,4 +1,5 @@
-ExpressionLayoutCondition = Overflow
-CallArgumentSplit = Pack
-EnforceCallArgumentSplit = true
+# Shape preferences apply when broken; fitting canonical groups flatten.
+ExpressionsLayout = Canonical
+CallsLayout = Canonical
+CallsPacking = Fill
 ColumnLimit = 100

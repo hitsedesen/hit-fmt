@@ -11,14 +11,14 @@ void render(bool Alpha, bool Beta, bool Gamma, bool Delta, bool Epsilon, bool Ze
       work();
       break;
     case 2: {
-      if (!Alpha)
-        fail();
-      break;
-    }
+        if (!Alpha)
+          fail();
+        break;
+      }
     case 3:
       if (Beta)
         return;
-      [[fallthrough]];
+          [[fallthrough]];
     default:
       break;
     }
@@ -29,7 +29,8 @@ int Values[] = {100000000, 200000000, 300000000,
 namespace small {
 int X;
 }
-namespace empty {}
+namespace empty {
+}
 namespace withComment {
 int X;
 } // namespace withComment

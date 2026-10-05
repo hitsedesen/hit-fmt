@@ -1,1 +1,3 @@
-OperatorOverloadOperatorSpacing = Right
+# Shape preferences apply when broken; fitting canonical groups flatten.
+OperatorOverloadOperatorSpaceBefore = NoSpace
+OperatorOverloadOperatorSpaceAfter = Space

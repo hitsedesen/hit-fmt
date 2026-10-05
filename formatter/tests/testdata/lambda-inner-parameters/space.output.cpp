@@ -5,7 +5,7 @@ void sample() {
     auto many = [] ( int x, int y ) { return x + y; };
     auto generic = []<class T> ( T value ) { return value; };
     auto empty = [] (  ) { return 0; };
-    auto commentedFirst = [] (/* keep */ int x ) { return x; };
+    auto commentedFirst = [] ( /* keep */ int x ) { return x; };
     auto commentedLast = [] ( int x /* keep */ ) { return x; };
     auto commentedName = [] ( int /*token*/ ) { return 1; };
     auto multiline = [] (

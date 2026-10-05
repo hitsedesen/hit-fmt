@@ -1,6 +1,7 @@
-InheritanceList = Format
-InheritanceListStart = NewLine
-InheritanceListColonPlacement = AttachToBase
-InheritanceListSplit = OnePerLine
-InheritanceListCommaPlacement = AttachToPrevious
-InheritanceListIndent = 2
+# Shape preferences apply when broken; fitting canonical groups flatten.
+BaseListsLayout = Canonical
+BaseListsFirstItem = NextLine
+BaseListsColonSide = Leading
+BaseListsPacking = VerticalWhenBroken
+BaseListsCommaSide = Trailing
+BaseListsContinuationOffset = 2

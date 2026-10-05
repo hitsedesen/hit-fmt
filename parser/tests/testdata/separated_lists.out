@@ -3,6 +3,115 @@
     "template"
     (template-parameter-list
       "<"
+      (template-parameter
+        "template"
+        (template-parameter-list
+          "<"
+          (template-parameter "class" "Left")
+          (list-separator ",")
+          (template-parameter "class" "Right")
+          ">"
+        )
+        "class" "Container"
+      )
+      (list-separator ",")
+      (template-parameter
+        "class" "Value" "=" "types" "::" "Pair"
+        (template-argument-list
+          "<"
+          (template-argument
+            "types" "::" "Box"
+            (template-argument-list
+              "<"
+              (template-argument "int")
+              ">"
+            )
+          )
+          (list-separator ",")
+          (template-argument
+            "types" "::" "Box"
+            (template-argument-list
+              "<"
+              (template-argument "char")
+              ">>"
+            )
+          )
+        )
+      )
+      ">"
+    )
+    (record-declaration "struct" "WithTemplateDefaults" "{" "}" ";")
+  )
+  (template-declaration
+    "template"
+    (template-parameter-list
+      "<"
+      (template-parameter
+        "template"
+        (template-parameter-list
+          "<"
+          (template-parameter
+            "class" "Left" "=" "Box"
+            (template-argument-list
+              "<"
+              (template-argument "int")
+              ">"
+            )
+          )
+          (list-separator ",")
+          (template-parameter
+            "class" "Right" "=" "Box"
+            (template-argument-list
+              "<"
+              (template-argument "char")
+              ">>"
+            )
+          )
+        )
+        "class" "Container"
+      )
+      ">"
+    )
+    (record-declaration "struct" "WithSharedParameterCloser" "{" "}" ";")
+  )
+  (template-declaration
+    "template"
+    (template-parameter-list
+      "<"
+      (template-parameter "int" "Count" "=" "(" "8" ">>" "1" ")")
+      (list-separator ",")
+      (template-parameter "bool" "Enabled" "=" "(" "left" "<" "right" ">" "tail" ")")
+      (list-separator ",")
+      (template-parameter "class" "..." "Types")
+      ">"
+    )
+    (record-declaration "struct" "WithNonTypeDefaults" "{" "}" ";")
+  )
+  (template-declaration
+    "template"
+    (template-parameter-list
+      "<"
+      (unparsed-syntax "class" "First" "," "," "class" "Second")
+      ">"
+    )
+    (record-declaration "struct" "MissingTemplateParameter" "{" "}" ";")
+  )
+  (template-declaration
+    "template"
+    (template-parameter-list
+      "<"
+      (unparsed-syntax "class" "First" ",")
+      ">"
+    )
+    (record-declaration "struct" "TrailingTemplateParameter" "{" "}" ";")
+  )
+  (template-declaration
+    (leading-trivia
+      (whitespace "\n\n")
+    )
+    "template"
+    (template-parameter-list
+      "<"
       (template-parameter "class" "First")
       (list-separator ",")
       (template-parameter "class" "Second" "=" "int")
@@ -140,7 +249,16 @@
           "{"
           (expression-statement
             (call-expression
-              (unparsed-syntax "target" "<" "First" "," "Second" ">")
+              (template-id-expression
+                (identifier-expression "target")
+                (template-argument-list
+                  "<"
+                  (template-argument "First")
+                  (list-separator ",")
+                  (template-argument "Second")
+                  ">"
+                )
+              )
               (argument-list
                 "("
                 (argument
@@ -253,6 +371,150 @@
                     )
                   )
                 )
+              )
+            )
+            ";"
+          )
+          (ambiguous-statement
+            (unknown-type-name "storage")
+            "::" "Map" "<" "types" "::" "Box" "<" "int" ">" "," "types" "::" "Pair" "<" "types" "::" "Box" "<" "char" ">" "," "double" ">>" "nested" ";"
+          )
+          (ambiguous-statement
+            (unknown-type-name "Fixed")
+            "<" "(" "1" "<<" "2" ")" "," "(" "bits" ">>" "1" ")" "," "(" "left" "<" "right" ">" "tail" ")" "," "7" ">" "numbers" ";"
+          )
+          (declaration-statement
+            (declaration-specifiers "auto")
+            (init-declarator-list
+              (init-declarator
+                (declarator
+                  (declarator-name "cast")
+                )
+                (initializer
+                  "="
+                  (cast-expression
+                    "static_cast"
+                    (template-argument-list
+                      "<"
+                      (type-id
+                        "types" "::" "Box"
+                        (template-argument-list
+                          "<"
+                          (template-argument "First")
+                          ">>"
+                        )
+                      )
+                    )
+                    "("
+                    (identifier-expression "value")
+                    ")"
+                  )
+                )
+              )
+            )
+            ";"
+          )
+          (declaration-statement
+            (declaration-specifiers "auto")
+            (init-declarator-list
+              (init-declarator
+                (declarator
+                  (declarator-name "pointer")
+                )
+                (initializer
+                  "="
+                  (cast-expression
+                    "reinterpret_cast"
+                    (template-argument-list
+                      "<"
+                      (type-id "UnknownType" "*")
+                      ">"
+                    )
+                    "("
+                    (identifier-expression "address")
+                    ")"
+                  )
+                )
+              )
+            )
+            ";"
+          )
+          (declaration-statement
+            (declaration-specifiers "auto")
+            (init-declarator-list
+              (init-declarator
+                (declarator
+                  (declarator-name "typed")
+                )
+                (initializer
+                  "="
+                  (member-expression
+                    (identifier-expression "traits")
+                    "::"
+                    (template-id-expression
+                      (identifier-expression "same")
+                      (template-argument-list
+                        "<"
+                        (template-argument "First")
+                        (list-separator ",")
+                        (template-argument
+                          "types" "::" "Box"
+                          (template-argument-list
+                            "<"
+                            (template-argument "Second")
+                            ">>"
+                          )
+                        )
+                      )
+                    )
+                  )
+                )
+              )
+            )
+            ";"
+          )
+          (expression-statement
+            (call-expression
+              (identifier-expression "compare")
+              (argument-list
+                "("
+                (argument
+                  (call-expression
+                    (member-expression
+                      (unparsed-syntax "left" "<" "right" ">")
+                      "::"
+                      (identifier-expression "Result")
+                    )
+                    (argument-list "(" ")")
+                  )
+                  (unparsed-syntax "," "typed")
+                )
+                ")"
+              )
+            )
+            ";"
+          )
+          (expression-statement
+            (call-expression
+              (identifier-expression "compare")
+              (argument-list
+                "("
+                (argument
+                  (call-expression
+                    (member-expression
+                      (member-expression
+                        (identifier-expression "Derived")
+                        "::"
+                        (unparsed-syntax "value" "<" "right" ">")
+                      )
+                      "::"
+                      (identifier-expression "Result")
+                    )
+                    (argument-list "(" ")")
+                  )
+                  (unparsed-syntax "," "typed")
+                )
+                ")"
               )
             )
             ";"

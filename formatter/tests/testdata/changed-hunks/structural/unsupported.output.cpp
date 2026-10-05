@@ -1,3 +1,3 @@
 void f(bool x) {
-  if (x) g();
+  if (x) {g();}
 }

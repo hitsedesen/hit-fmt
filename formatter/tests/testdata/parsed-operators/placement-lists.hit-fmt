@@ -1,5 +1,5 @@
+# Shape preferences apply when broken; fitting canonical groups flatten.
 ColumnLimit = 44
-ExpressionLayoutCondition = Overflow
-DefaultBinaryOperatorPlacement = Leading
-TrailingBinaryOperatorList = ["+", "<<"]
-LeadingBinaryOperatorList = ["||"]
+ExpressionsLayout = Canonical
+BinaryOperatorSide = Leading
+ShiftOperatorSide = Trailing

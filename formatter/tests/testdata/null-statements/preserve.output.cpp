@@ -9,13 +9,18 @@ void Process(bool ready, int mode)
             break;
         default:
             break;
-    };
-    Emit();;
+    }
     ;
-    if (ready);
-    while (ready);
-    for (;;);
-label:
+    Emit();
+    ;
+    ;
+    if (ready)
+        ;
+    while (ready)
+        ;
+    for (;;)
+        ;
+    label:
     ;
     ; // Deliberate placeholder.
 }

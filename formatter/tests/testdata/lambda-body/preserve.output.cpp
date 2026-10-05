@@ -2,7 +2,7 @@ void Example()
 {
     auto compact = [] {};
     auto padded = [] { };
-    auto tight = [] {return 1;};
+    auto tight = [] { return 1; };
     auto spaced = [] { return 2; };
     auto multiline = [] {
         return 3;

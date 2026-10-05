@@ -1,0 +1,3 @@
+# Directive protection owns its terminator; counts cannot insert on that edge.
+StandaloneCommentBlankLinesBefore = 1
+StandaloneCommentBlankLinesAfter = 1

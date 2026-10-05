@@ -1,1 +1,2 @@
-InheritanceList = Format
+# Shape preferences apply when broken; fitting canonical groups flatten.
+BaseListsLayout = Canonical

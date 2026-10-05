@@ -1,0 +1,125 @@
+=== expanded ===
+void f() {
+  work();
+}
+=== compact fixed topology ===
+void f() {
+  work();
+}
+=== indent preserve canonical ===
+void f() {
+      work();
+}
+=== indent preserve body preserve ===
+void f() {
+      work();
+}
+=== body preserve explicit indentation ===
+void f() {
+  work();
+}
+=== all preserve ===
+void f() {
+      work();
+}
+=== mixed trim plus indentation ===
+void f() {
+ 
+
+  work();
+}
+=== mixed whitespace preserve ===
+void f() {  
+ 
+	 
+  work();
+}
+=== mixed indentation preserve ===
+void f() {
+ 
+
+      work();
+}
+=== comment owns spaces and CR ===
+void f() {
+  // note  
+  work();
+}
+=== delimiter equality fits suffix ===
+void f() {
+  call(alpha,
+       beta);
+}
+=== delimiter suffix fallback ===
+void f() {
+  call(alpha,
+    beta);
+}
+=== tabs fallback ===
+void f() {
+  call(alpha,
+	beta);
+}
+=== closing block anchor ===
+void f() {
+  work();
+}
+=== override access anchor ===
+class C {
+public:
+  int value;
+};
+=== explicit member control ===
+class C {
+    int value;
+};
+=== canonical members general preserve ===
+class C {
+      int first;
+      int second;
+};
+=== canonical namespace general preserve ===
+namespace N {
+      int first;
+      int second;
+}
+=== canonical member indent ===
+class C {
+    int first;
+    int second;
+};
+=== canonical namespace indent ===
+namespace N {
+   int first;
+   int second;
+}
+=== canonical member no indent ===
+class C {
+int first;
+int second;
+};
+=== canonical namespace no indent ===
+namespace N {
+int first;
+int second;
+}
+=== compact canonical member no indent ===
+class C {
+int first;
+int second;
+};
+=== compact canonical namespace no indent ===
+namespace N {
+int first;
+int second;
+}
+=== compact canonical member indent ===
+class C {
+    int first;
+    int second;
+};
+=== compact canonical namespace indent ===
+namespace N {
+   int first;
+   int second;
+}

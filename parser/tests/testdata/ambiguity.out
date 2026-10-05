@@ -309,8 +309,18 @@
               )
               (initializer
                 "="
-                (identifier-expression "CONSTRUCT")
-                (unparsed-syntax "{" "item" "}")
+                (type-construction-expression
+                  (identifier-expression "CONSTRUCT")
+                  (braced-initializer
+                    (initializer-list
+                      "{"
+                      (initializer-element
+                        (identifier-expression "item")
+                      )
+                      "}"
+                    )
+                  )
+                )
               )
             )
           )
@@ -325,8 +335,18 @@
               )
               (initializer
                 "="
-                (identifier-expression "construct")
-                (unparsed-syntax "{" "item" "}")
+                (type-construction-expression
+                  (identifier-expression "construct")
+                  (braced-initializer
+                    (initializer-list
+                      "{"
+                      (initializer-element
+                        (identifier-expression "item")
+                      )
+                      "}"
+                    )
+                  )
+                )
               )
             )
           )

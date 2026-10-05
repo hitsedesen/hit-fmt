@@ -1,18 +1,18 @@
+# Shape preferences apply when broken; fitting canonical groups flatten.
 IndentWidth = 2
 ColumnLimit = 80
-CallArgumentSplit = Pack
-EnforceCallArgumentSplit = true
-ExpressionLayoutCondition = Overflow
+CallsLayout = Canonical
+CallsPacking = Fill
+ExpressionsLayout = Canonical
 PointerReferenceDeclaratorLocation = Left
 BinaryOperatorSpacing = Space
 UnaryOperatorSpacing = NoSpace
-CommaSpacing = Space
-EnforceCommaSpacing = true
+CommaSpaceBefore = NoSpace
+CommaSpaceAfter = Space
 SpaceInsideCallArguments = NoSpace
-EnforceSpaceInsideCallArguments = true
 FunctionCallSpaceBeforeParameters = NoSpace
-LambdaBraceSpacing = SingleSpace
-EnforceLambdaBraceSpacing = true
-IndentBlockBodies = true
+LambdaBraceSpacing = Space
+BodiesLayout = Canonical
+BodyShape = Expanded
 BraceInitializerSpacing = NoSpace
 CastSpacing = NoSpace

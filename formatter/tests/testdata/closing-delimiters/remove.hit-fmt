@@ -1,5 +1,4 @@
-InitializerListClosingBrace = SameLineUnlessTrailingComma
-EnforceInitializerListClosingBrace = true
-InitializerListTrailingComma = Remove
-EnforceInitializerListTrailingComma = true
-EnforceMultilineInitializerListTrailingComma = inherit
+# Shape preferences apply when broken; fitting canonical groups flatten.
+InitializersLayout = Canonical
+InitializersCloser = SameLine
+InitializersTrailingComma = Never

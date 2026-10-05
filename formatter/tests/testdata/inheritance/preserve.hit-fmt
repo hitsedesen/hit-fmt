@@ -1,4 +1,5 @@
-InheritanceList = Preserve
-InheritanceListColonPlacement = AttachToBase
-InheritanceListStart = NewLine
-InheritanceListSplit = OnePerLine
+# Shape preferences apply when broken; fitting canonical groups flatten.
+BaseListsLayout = Preserve
+BaseListsColonSide = Leading
+BaseListsFirstItem = NextLine
+BaseListsPacking = VerticalWhenBroken

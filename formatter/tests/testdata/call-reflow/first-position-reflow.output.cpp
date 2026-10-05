@@ -4,6 +4,5 @@ void f()
         firstArgument,
         secondArgumentWithLongerName,
         thirdArgumentWithLongerName);
-    Send(firstArgument,
-        secondArgument);
+    Send(firstArgument, secondArgument);
 }

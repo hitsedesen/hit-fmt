@@ -1,4 +1,7 @@
+# Always requires a legal owned break; Preserve/protection still win.
+ChainsLayout = Canonical
+ChainsBreak = Always
+ChainsPacking = VerticalWhenBroken
+ChainsAlignment = Block
+# Explicit library annotations; no renderer identifier checks.
 ChainedCallRootNames = ["MAKE_TASK"]
-ChainedCallSplitCondition = Always
-ChainedCallLayout = OnePerLine
-ChainedCallIndent = IndentWidth

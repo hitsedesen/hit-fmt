@@ -1,72 +1,299 @@
-1: < template-delimiter
-4: > template-delimiter
-7: : base-delimiter
-9: < template-delimiter
-11: > template-delimiter
-12: { record-delimiter
-13: [ attribute-delimiter
-14: [ generic
-16: ] generic
-17: ] attribute-delimiter
-19: * pointer-declarator
-21: ( declaration-delimiter
-23: & reference-declarator
-25: , list-separator
-28: ) declaration-delimiter
-29: { block-delimiter
-32: : bit-field-delimiter
-34: ; generic
-37: = generic
-38: [ lambda-delimiter
-39: & generic
-41: ] lambda-delimiter
-42: ( declaration-delimiter
-45: ) declaration-delimiter
-46: { lambda-delimiter
-49: ; generic
-50: } lambda-delimiter
-51: ; generic
-53: ( condition-delimiter
-55: < comparison-operator
-57: ) condition-delimiter
-58: { block-delimiter
-60: ( grouping-delimiter
-62: ? conditional-delimiter
-63: * unary-operator
-65: ( call-delimiter
-67: , list-separator
-69: ) call-delimiter
-70: : conditional-delimiter
-72: >> shift-operator
-74: ) grouping-delimiter
-75: ; generic
-76: } block-delimiter
-79: < generic
-81: > generic
-82: ( cast-delimiter
-84: ) cast-delimiter
-85: ; generic
-86: } block-delimiter
-87: } record-delimiter
-88: ; generic
-91: ( declaration-delimiter
-93: :: generic
-95: :: generic
-97: :: generic
-99: < template-delimiter
-101: , list-separator
-103: > template-delimiter
-104: & reference-declarator
-106: ) declaration-delimiter
-107: ; generic
-110: ( declaration-delimiter
-113: , list-separator
-116: ) declaration-delimiter
-117: { block-delimiter
-120: [ call-delimiter
-122: ] call-delimiter
-123: [ call-delimiter
-125: & binary-operator
-127: ] call-delimiter
-128: ; generic
-129: } block-delimiter
+(translation-unit
+  (template-declaration
+    "template"
+    (template-parameter-list
+      "<"
+      (template-parameter "class" "Element")
+      ">"
+    )
+    (record-declaration
+      "struct" "Derived"
+      (base-clause
+        ":"
+        (base-specifier
+          (base-type
+            "Base"
+            (template-argument-list
+              "<"
+              (template-argument "Element")
+              ">"
+            )
+          )
+        )
+      )
+      "{"
+      (function-definition
+        (declaration-specifiers
+          (attribute-specifier "[" "[" "nodiscard" "]" "]")
+          "int"
+        )
+        (init-declarator-list
+          (init-declarator
+            (declarator
+              (pointer-operator "*")
+              (declarator-name "transform")
+              (function-declarator
+                (parameter-list
+                  "("
+                  (parameter-declaration
+                    (declaration-specifiers "int")
+                    (init-declarator-list
+                      (init-declarator
+                        (declarator
+                          (pointer-operator "&")
+                          (declarator-name "value")
+                        )
+                      )
+                    )
+                  )
+                  (list-separator ",")
+                  (parameter-declaration
+                    (declaration-specifiers "int")
+                    (init-declarator-list
+                      (init-declarator
+                        (declarator
+                          (declarator-name "shift")
+                        )
+                      )
+                    )
+                  )
+                  ")"
+                )
+              )
+            )
+          )
+        )
+        (compound-statement
+          "{"
+          (declaration-statement
+            (declaration-specifiers "int")
+            (init-declarator-list
+              (init-declarator
+                (declarator
+                  (declarator-name "bits")
+                  (bit-field ":" "3")
+                )
+              )
+            )
+            ";"
+          )
+          (declaration-statement
+            (declaration-specifiers "auto")
+            (init-declarator-list
+              (init-declarator
+                (declarator
+                  (declarator-name "lambda")
+                )
+                (initializer
+                  "="
+                  (lambda-expression
+                    (lambda-capture-list
+                      "["
+                      (lambda-capture "&" "value")
+                      "]"
+                    )
+                    (parameter-list
+                      "("
+                      (parameter-declaration
+                        (declaration-specifiers "int")
+                        (init-declarator-list
+                          (init-declarator
+                            (declarator
+                              (declarator-name "item")
+                            )
+                          )
+                        )
+                      )
+                      ")"
+                    )
+                    (lambda-body
+                      "{"
+                      (return-statement
+                        "return"
+                        (identifier-expression "item")
+                        ";"
+                      )
+                      "}"
+                    )
+                  )
+                )
+              )
+            )
+            ";"
+          )
+          (if-statement
+            "if"
+            (condition
+              "("
+              (binary-expression
+                (identifier-expression "value")
+                "<"
+                (literal-expression "2")
+              )
+              ")"
+            )
+            (compound-statement
+              "{"
+              (return-statement
+                "return"
+                (parenthesized-expression
+                  "("
+                  (conditional-expression
+                    (identifier-expression "value")
+                    "?"
+                    (unary-expression
+                      "*"
+                      (call-expression
+                        (identifier-expression "transform")
+                        (argument-list
+                          "("
+                          (argument
+                            (identifier-expression "value")
+                          )
+                          (list-separator ",")
+                          (argument
+                            (identifier-expression "shift")
+                          )
+                          ")"
+                        )
+                      )
+                    )
+                    ":"
+                    (binary-expression
+                      (identifier-expression "value")
+                      ">>"
+                      (identifier-expression "shift")
+                    )
+                  )
+                  ")"
+                )
+                ";"
+              )
+              "}"
+            )
+          )
+          (return-statement
+            "return"
+            (cast-expression
+              "static_cast"
+              (template-argument-list
+                "<"
+                (type-id "int")
+                ">"
+              )
+              "("
+              (identifier-expression "value")
+              ")"
+            )
+            ";"
+          )
+          "}"
+        )
+      )
+      "}" ";"
+    )
+  )
+  (function-declaration
+    (leading-trivia
+      (whitespace "\n\n")
+    )
+    (declaration-specifiers "void")
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (declarator-name "Compare")
+          (function-declarator
+            (parameter-list
+              "("
+              (parameter-declaration
+                (declaration-specifiers
+                  "const" "::" "google" "::" "protobuf" "::" "Map"
+                  (template-argument-list
+                    "<"
+                    (template-argument "TKey")
+                    (list-separator ",")
+                    (template-argument "TValue")
+                    ">"
+                  )
+                )
+                (init-declarator-list
+                  (init-declarator
+                    (declarator
+                      (pointer-operator "&")
+                      (declarator-name "value")
+                    )
+                  )
+                )
+              )
+              ")"
+            )
+          )
+        )
+      )
+    )
+    ";"
+  )
+  (function-definition
+    (leading-trivia
+      (whitespace "\n\n")
+    )
+    (declaration-specifiers "int")
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (declarator-name "Select")
+          (function-declarator
+            (parameter-list
+              "("
+              (parameter-declaration
+                (declaration-specifiers "int")
+                (init-declarator-list
+                  (init-declarator
+                    (declarator
+                      (declarator-name "row")
+                    )
+                  )
+                )
+              )
+              (list-separator ",")
+              (parameter-declaration
+                (declaration-specifiers "int")
+                (init-declarator-list
+                  (init-declarator
+                    (declarator
+                      (declarator-name "offset")
+                    )
+                  )
+                )
+              )
+              ")"
+            )
+          )
+        )
+      )
+    )
+    (compound-statement
+      "{"
+      (return-statement
+        "return"
+        (subscript-expression
+          (subscript-expression
+            (identifier-expression "cells")
+            "["
+            (identifier-expression "row")
+            "]"
+          )
+          "["
+          (binary-expression
+            (identifier-expression "offset")
+            "&"
+            (literal-expression "0xff")
+          )
+          "]"
+        )
+        ";"
+      )
+      "}"
+    )
+  )
+)

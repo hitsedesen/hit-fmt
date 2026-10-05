@@ -8,7 +8,10 @@ void demo() {
     use(
         veryLongFirst,
         veryLongSecond);
-    use(alpha, beta, gamma);
+    use(
+        alpha,
+        beta,
+        gamma);
     auto x = nested(
         alpha,
         nested(

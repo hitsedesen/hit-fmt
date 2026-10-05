@@ -1,0 +1,594 @@
+(translation-unit
+  (record-declaration
+    "struct" "PairCallbacks" "{"
+    (function-definition
+      (init-declarator-list
+        (init-declarator
+          (declarator
+            (declarator-name "PairCallbacks")
+            (function-declarator
+              (parameter-list "(" ")")
+              (constructor-initializer-list
+                ":"
+                (constructor-initializer
+                  (call-expression
+                    (identifier-expression "callback")
+                    (argument-list
+                      "("
+                      (argument
+                        (lambda-expression
+                          (lambda-capture-list
+                            "["
+                            (lambda-capture "this")
+                            "]"
+                          )
+                          (lambda-body
+                            "{"
+                            (expression-statement
+                              (call-expression
+                                (identifier-expression "stop")
+                                (argument-list "(" ")")
+                              )
+                              ";"
+                            )
+                            "}"
+                          )
+                        )
+                      )
+                      (list-separator ",")
+                      (argument
+                        (lambda-expression
+                          (lambda-capture-list
+                            "["
+                            (lambda-capture "this")
+                            "]"
+                          )
+                          (lambda-body
+                            "{"
+                            (expression-statement
+                              (call-expression
+                                (identifier-expression "start")
+                                (argument-list "(" ")")
+                              )
+                              ";"
+                            )
+                            "}"
+                          )
+                        )
+                      )
+                      ")"
+                    )
+                  )
+                )
+              )
+            )
+          )
+        )
+      )
+      (compound-statement "{" "}")
+    )
+    "}" ";"
+  )
+  (record-declaration
+    "struct" "SeparateMembers" "{"
+    (function-definition
+      (init-declarator-list
+        (init-declarator
+          (declarator
+            (declarator-name "SeparateMembers")
+            (function-declarator
+              (parameter-list "(" ")")
+              (constructor-initializer-list
+                ":"
+                (constructor-initializer
+                  (call-expression
+                    (identifier-expression "first")
+                    (argument-list
+                      "("
+                      (argument
+                        (lambda-expression
+                          (lambda-capture-list "[" "]")
+                          (lambda-body
+                            "{"
+                            (return-statement
+                              "return"
+                              (literal-expression "1")
+                              ";"
+                            )
+                            "}"
+                          )
+                        )
+                      )
+                      ")"
+                    )
+                  )
+                )
+                (list-separator ",")
+                (constructor-initializer
+                  (call-expression
+                    (identifier-expression "second")
+                    (argument-list
+                      "("
+                      (argument
+                        (lambda-expression
+                          (lambda-capture-list "[" "]")
+                          (lambda-body
+                            "{"
+                            (return-statement
+                              "return"
+                              (literal-expression "2")
+                              ";"
+                            )
+                            "}"
+                          )
+                        )
+                      )
+                      ")"
+                    )
+                  )
+                )
+              )
+            )
+          )
+        )
+      )
+      (compound-statement "{" "}")
+    )
+    "}" ";"
+  )
+  (record-declaration
+    "struct" "NoexceptCallbacks" "{"
+    (function-definition
+      (init-declarator-list
+        (init-declarator
+          (declarator
+            (declarator-name "NoexceptCallbacks")
+            (function-declarator
+              (parameter-list "(" ")")
+              (exception-specification "noexcept")
+              (constructor-initializer-list
+                ":"
+                (constructor-initializer
+                  (call-expression
+                    (identifier-expression "callback")
+                    (argument-list
+                      "("
+                      (argument
+                        (lambda-expression
+                          (lambda-capture-list
+                            "["
+                            (lambda-capture "this")
+                            "]"
+                          )
+                          (parameter-list "(" ")")
+                          (exception-specification "noexcept")
+                          (lambda-body
+                            "{"
+                            (expression-statement
+                              (call-expression
+                                (identifier-expression "stop")
+                                (argument-list "(" ")")
+                              )
+                              ";"
+                            )
+                            "}"
+                          )
+                        )
+                      )
+                      (list-separator ",")
+                      (argument
+                        (lambda-expression
+                          (lambda-capture-list
+                            "["
+                            (lambda-capture "this")
+                            "]"
+                          )
+                          (parameter-list "(" ")")
+                          (exception-specification "noexcept")
+                          (lambda-body
+                            "{"
+                            (expression-statement
+                              (call-expression
+                                (identifier-expression "start")
+                                (argument-list "(" ")")
+                              )
+                              ";"
+                            )
+                            "}"
+                          )
+                        )
+                      )
+                      ")"
+                    )
+                  )
+                )
+              )
+            )
+          )
+        )
+      )
+      (compound-statement "{" "}")
+    )
+    "}" ";"
+  )
+  (record-declaration
+    "struct" "NestedCallback" "{"
+    (function-definition
+      (init-declarator-list
+        (init-declarator
+          (declarator
+            (declarator-name "NestedCallback")
+            (function-declarator
+              (parameter-list "(" ")")
+              (constructor-initializer-list
+                ":"
+                (constructor-initializer
+                  (call-expression
+                    (identifier-expression "first")
+                    (argument-list
+                      "("
+                      (argument
+                        (literal-expression "0")
+                      )
+                      ")"
+                    )
+                  )
+                )
+                (list-separator ",")
+                (constructor-initializer
+                  (call-expression
+                    (identifier-expression "callback")
+                    (argument-list
+                      "("
+                      (argument
+                        (call-expression
+                          (identifier-expression "wrap")
+                          (argument-list
+                            "("
+                            (argument
+                              (call-expression
+                                (identifier-expression "bind")
+                                (argument-list
+                                  "("
+                                  (argument
+                                    (lambda-expression
+                                      (lambda-capture-list
+                                        "["
+                                        (lambda-capture "id" "=" "1")
+                                        "]"
+                                      )
+                                      (parameter-list
+                                        "("
+                                        (parameter-declaration
+                                          (declaration-specifiers "int")
+                                          (init-declarator-list
+                                            (init-declarator
+                                              (declarator
+                                                (pointer-operator "*")
+                                                (declarator-name "value")
+                                              )
+                                            )
+                                          )
+                                        )
+                                        ")"
+                                      )
+                                      (lambda-body
+                                        "{"
+                                        (expression-statement
+                                          (call-expression
+                                            (identifier-expression "consume")
+                                            (argument-list
+                                              "("
+                                              (argument
+                                                (identifier-expression "value")
+                                              )
+                                              (list-separator ",")
+                                              (argument
+                                                (identifier-expression "id")
+                                              )
+                                              ")"
+                                            )
+                                          )
+                                          ";"
+                                        )
+                                        "}"
+                                      )
+                                    )
+                                  )
+                                  ")"
+                                )
+                              )
+                            )
+                            ")"
+                          )
+                        )
+                      )
+                      ")"
+                    )
+                  )
+                )
+              )
+            )
+          )
+        )
+      )
+      (compound-statement "{" "}")
+    )
+    "}" ";"
+  )
+  (record-declaration
+    "struct" "QualifiedCallback" "{"
+    (function-definition
+      (init-declarator-list
+        (init-declarator
+          (declarator
+            (declarator-name "QualifiedCallback")
+            "(" ")" "noexcept" "(" "noexcept" "("
+            (array-declarator "[" "]")
+            (function-declarator
+              (parameter-list "(" ")")
+              (exception-specification "noexcept" "(" "noexcept" "(" "[" "]" "{" "return" "1" ";" "}" "(" ")" ")" ")")
+              (constructor-initializer-list
+                ":"
+                (constructor-initializer
+                  (call-expression
+                    (identifier-expression "first")
+                    (argument-list
+                      "("
+                      (argument
+                        (lambda-expression
+                          (lambda-capture-list "[" "]")
+                          (lambda-body
+                            "{"
+                            (return-statement
+                              "return"
+                              (literal-expression "1")
+                              ";"
+                            )
+                            "}"
+                          )
+                        )
+                      )
+                      ")"
+                    )
+                  )
+                )
+                (list-separator ",")
+                (constructor-initializer
+                  (call-expression
+                    (identifier-expression "second")
+                    (argument-list
+                      "("
+                      (argument
+                        (lambda-expression
+                          (lambda-capture-list "[" "]")
+                          (lambda-body
+                            "{"
+                            (return-statement
+                              "return"
+                              (literal-expression "2")
+                              ";"
+                            )
+                            "}"
+                          )
+                        )
+                      )
+                      ")"
+                    )
+                  )
+                )
+              )
+            )
+          )
+        )
+      )
+      (compound-statement "{" "}")
+    )
+    "}" ";"
+  )
+  (record-declaration
+    "struct" "TryCallbacks" "{"
+    (function-definition
+      (init-declarator-list
+        (init-declarator
+          (declarator
+            (declarator-name "TryCallbacks")
+            (function-declarator
+              (parameter-list "(" ")")
+              "try"
+              (constructor-initializer-list
+                ":"
+                (constructor-initializer
+                  (call-expression
+                    (identifier-expression "first")
+                    (argument-list
+                      "("
+                      (argument
+                        (lambda-expression
+                          (lambda-capture-list "[" "]")
+                          (lambda-body
+                            "{"
+                            (return-statement
+                              "return"
+                              (literal-expression "1")
+                              ";"
+                            )
+                            "}"
+                          )
+                        )
+                      )
+                      ")"
+                    )
+                  )
+                )
+                (list-separator ",")
+                (constructor-initializer
+                  (call-expression
+                    (identifier-expression "second")
+                    (argument-list
+                      "("
+                      (argument
+                        (lambda-expression
+                          (lambda-capture-list "[" "]")
+                          (lambda-body
+                            "{"
+                            (return-statement
+                              "return"
+                              (literal-expression "2")
+                              ";"
+                            )
+                            "}"
+                          )
+                        )
+                      )
+                      ")"
+                    )
+                  )
+                )
+              )
+            )
+          )
+        )
+      )
+      (function-try-block
+        "try" ":" "first" "(" "[" "]" "{" "return" "1" ";" "}" ")" "," "second" "(" "[" "]" "{" "return" "2" ";" "}" ")"
+        (compound-statement "{" "}")
+        (catch-clause
+          "catch"
+          (condition "(" "..." ")")
+          (compound-statement "{" "}")
+        )
+      )
+    )
+    "}" ";"
+  )
+  (record-declaration
+    "struct" "Controls" "{"
+    (declaration
+      (declaration-specifiers "int")
+      (init-declarator-list
+        (init-declarator
+          (declarator
+            (declarator-name "values")
+            (array-declarator "[" "3" "]")
+          )
+        )
+      )
+      ";"
+    )
+    (declaration
+      (declaration-specifiers "int")
+      (init-declarator-list
+        (init-declarator
+          (declarator
+            (nested-declarator
+              "("
+              (pointer-operator "*")
+              (declarator-name "routes")
+              (array-declarator "[" "2" "]")
+              ")"
+            )
+            (function-declarator
+              (parameter-list
+                "("
+                (parameter-declaration
+                  (declaration-specifiers "int")
+                )
+                ")"
+              )
+            )
+          )
+        )
+      )
+      ";"
+    )
+    (declaration
+      (declaration-specifiers "unsigned")
+      (init-declarator-list
+        (init-declarator
+          (declarator
+            (declarator-name "flags")
+            (bit-field ":" "2")
+          )
+        )
+      )
+      ";"
+    )
+    "}" ";"
+  )
+  (function-declaration
+    (declaration-specifiers "auto")
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (declarator-name "query")
+          (function-declarator
+            (parameter-list "(" ")")
+            (exception-specification "noexcept" "(" "noexcept" "(" "check" "(" "1" "?" "2" ":" "3" ")" ")" ")")
+            (trailing-return-type "->" "int")
+          )
+        )
+      )
+    )
+    ";"
+  )
+  (function-declaration
+    (declaration-specifiers "void")
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (declarator-name "attributed")
+          "(" ")"
+          (attribute-specifier "[" "[" "tag" "]" "]")
+          (function-declarator
+            (parameter-list "(" ")")
+            (attribute-specifier "[" "[" "tag" "]" "]")
+          )
+        )
+      )
+    )
+    ";"
+  )
+  (template-declaration
+    "template"
+    (template-parameter-list
+      "<"
+      (template-parameter "class" "T")
+      ">"
+    )
+    (function-definition
+      (declaration-specifiers "void")
+      (init-declarator-list
+        (init-declarator
+          (declarator
+            (declarator-name "constrained")
+            (function-declarator
+              (parameter-list "(" ")")
+              (requires-clause
+                "requires"
+                (constraint-expression
+                  (parenthesized-expression
+                    "("
+                    (conditional-expression
+                      (member-expression
+                        (identifier-expression "T")
+                        "::"
+                        (identifier-expression "flag")
+                      )
+                      "?"
+                      (literal-expression "true")
+                      ":"
+                      (literal-expression "false")
+                    )
+                    ")"
+                  )
+                )
+              )
+            )
+          )
+        )
+      )
+      (compound-statement "{" "}")
+    )
+  )
+)

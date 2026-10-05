@@ -2,17 +2,22 @@ add_executable(tests
     ../tokenizer/tests/tests.cpp
     ../parser/tests/tests.cpp
     ../formatter/tests/hunks.cpp
+    ../document/tests/tests.cpp
+    ../formatter/tests/source_analysis_tests.cpp
+    ../formatter/tests/structural_edits_tests.cpp
     ../formatter/tests/tests.cpp
     ../hit-fmt/tests/file_batch.cpp
-    ../hit-fmt/tests/file_dispatch.cpp)
+    ../hit-fmt/tests/file_dispatch.cpp
+    ../hit-fmt/tests/file_check.cpp)
 target_link_libraries(tests PRIVATE
     GTest::gtest_main
-    lib-formatter
+    lib-file-check
     Threads::Threads)
 target_compile_definitions(tests PRIVATE
     TOKENIZER_TESTDATA_DIR="${CMAKE_SOURCE_DIR}/tokenizer/tests/testdata"
     PARSER_TESTDATA_DIR="${CMAKE_SOURCE_DIR}/parser/tests/testdata"
     FORMATTER_TESTDATA_DIR="${CMAKE_SOURCE_DIR}/formatter/tests/testdata/style"
+    DOCUMENT_TESTDATA_DIR="${CMAKE_SOURCE_DIR}/document/tests/testdata/group-layout"
     BRACE_TESTDATA_DIR="${CMAKE_SOURCE_DIR}/formatter/tests/testdata/brace-placement"
     BRACE_SPACING_TESTDATA_DIR="${CMAKE_SOURCE_DIR}/formatter/tests/testdata/brace-spacing"
     LAMBDA_SPACING_TESTDATA_DIR="${CMAKE_SOURCE_DIR}/formatter/tests/testdata/lambda-spacing"
@@ -31,3 +36,43 @@ target_compile_definitions(tests PRIVATE
 add_executable(allocation_tests
     ../tokenizer/tests/allocation_test.cpp)
 target_link_libraries(allocation_tests PRIVATE lib-tokenizer)
+
+add_executable(document_checks ../document/tests/tests.cpp)
+target_link_libraries(document_checks PRIVATE GTest::gtest_main lib-document)
+target_compile_definitions(document_checks PRIVATE
+    DOCUMENT_TESTDATA_DIR="${CMAKE_SOURCE_DIR}/document/tests/testdata/group-layout")
+
+set(public_pipeline_sources
+    ../formatter/tests/config_policy.cpp
+    ../formatter/tests/public_pipeline.cpp
+    ../formatter/tests/syntax_layout.cpp
+    ../formatter/tests/syntax_spacing_tests.cpp
+    ../hit-fmt/config_template.cpp)
+target_sources(tests PRIVATE ${public_pipeline_sources})
+add_executable(pipeline_checks
+    ../parser/tests/tests.cpp
+    ../document/tests/tests.cpp
+    ../formatter/tests/source_analysis_tests.cpp
+    ../formatter/tests/structural_edits_tests.cpp
+    ${public_pipeline_sources})
+target_link_libraries(pipeline_checks PRIVATE GTest::gtest_main lib-formatter)
+target_compile_definitions(pipeline_checks PRIVATE
+    PARSER_TESTDATA_DIR="${CMAKE_SOURCE_DIR}/parser/tests/testdata"
+    FORMATTER_TESTDATA_DIR="${CMAKE_SOURCE_DIR}/formatter/tests/testdata/style"
+    DOCUMENT_TESTDATA_DIR="${CMAKE_SOURCE_DIR}/document/tests/testdata/group-layout")
+
+# CLI checks exercise the library without launching the executable.
+add_executable(cli_checks
+    ../hit-fmt/tests/file_batch.cpp
+    ../hit-fmt/tests/file_dispatch.cpp
+    ../hit-fmt/tests/file_check.cpp)
+target_link_libraries(cli_checks PRIVATE GTest::gtest_main lib-file-check Threads::Threads)
+
+add_executable(hunk_checks
+    ../formatter/tests/hunks.cpp
+    ../formatter/tests/hunk_scope.cpp)
+target_sources(tests PRIVATE ../formatter/tests/hunk_scope.cpp)
+target_link_libraries(hunk_checks PRIVATE GTest::gtest_main lib-formatter)
+
+add_executable(hunk_scope_checks ../formatter/tests/hunk_scope.cpp)
+target_link_libraries(hunk_scope_checks PRIVATE GTest::gtest_main lib-formatter)

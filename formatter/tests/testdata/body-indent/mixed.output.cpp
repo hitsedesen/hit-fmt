@@ -3,7 +3,7 @@ public:
   int a;
 private:
   int b;
-    // Keep this comment at its source indentation.
+  // Keep this comment at its source indentation.
   int c;
 #ifdef OPTIONAL_MEMBER
   int d;
@@ -23,7 +23,7 @@ union Value {
 };
 enum class Shade : unsigned {
   Light,
-  Dark = 2,
+    Dark = 2,
 };
 struct Forward;
 struct Inline { int member; };

@@ -1,2 +1,4 @@
-ExpressionLayoutCondition = Overflow
-AssignmentOperatorPlacement = Leading
+# Shape preferences apply when broken; fitting canonical groups flatten.
+ExpressionsLayout = Canonical
+AssignmentOperatorSide = Leading
+ColumnLimit = 70

@@ -8,7 +8,7 @@ void sample(int value, int& source) {
     auto valueAndRef = [value, &source] { return source; };
     auto init = [value=&source] { return value; };
     auto nested = [value=(source = value)] { return value; };
-    auto commentedAssignment = [value /* keep */ = /* keep */ &source] {
+    auto commentedAssignment = [value /* keep */=/* keep */ &source] {
         return value;
     };
     auto area = [height=value, width=source] (int n) {

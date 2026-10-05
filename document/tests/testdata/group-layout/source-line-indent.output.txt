@@ -1,0 +1,168 @@
+prefix=0 indent=0 tab=1 spaces:
+head
+x
+prefix=0 indent=0 tab=1 tabs:
+head
+x
+prefix=0 indent=0 tab=4 spaces:
+head
+x
+prefix=0 indent=0 tab=4 tabs:
+head
+x
+prefix=0 indent=0 tab=32 spaces:
+head
+x
+prefix=0 indent=0 tab=32 tabs:
+head
+x
+prefix=0 indent=6 tab=1 spaces:
+head
+      x
+prefix=0 indent=6 tab=1 tabs:
+head
+						x
+prefix=0 indent=6 tab=4 spaces:
+head
+      x
+prefix=0 indent=6 tab=4 tabs:
+head
+	  x
+prefix=0 indent=6 tab=32 spaces:
+head
+      x
+prefix=0 indent=6 tab=32 tabs:
+head
+      x
+prefix=1 indent=0 tab=1 spaces:
+head
+x
+prefix=1 indent=0 tab=1 tabs:
+head
+x
+prefix=1 indent=0 tab=4 spaces:
+head
+x
+prefix=1 indent=0 tab=4 tabs:
+head
+x
+prefix=1 indent=0 tab=32 spaces:
+head
+x
+prefix=1 indent=0 tab=32 tabs:
+head
+x
+prefix=1 indent=6 tab=1 spaces:
+head
+      x
+prefix=1 indent=6 tab=1 tabs:
+head
+						x
+prefix=1 indent=6 tab=4 spaces:
+head
+      x
+prefix=1 indent=6 tab=4 tabs:
+head
+	  x
+prefix=1 indent=6 tab=32 spaces:
+head
+      x
+prefix=1 indent=6 tab=32 tabs:
+head
+      x
+prefix=2 indent=0 tab=1 spaces:
+head 	
+	
+
+x
+prefix=2 indent=0 tab=1 tabs:
+head 	
+	
+
+x
+prefix=2 indent=0 tab=4 spaces:
+head 	
+	
+
+x
+prefix=2 indent=0 tab=4 tabs:
+head 	
+	
+
+x
+prefix=2 indent=0 tab=32 spaces:
+head 	
+	
+
+x
+prefix=2 indent=0 tab=32 tabs:
+head 	
+	
+
+x
+prefix=2 indent=6 tab=1 spaces:
+head 	
+	
+
+      x
+prefix=2 indent=6 tab=1 tabs:
+head 	
+	
+
+						x
+prefix=2 indent=6 tab=4 spaces:
+head 	
+	
+
+      x
+prefix=2 indent=6 tab=4 tabs:
+head 	
+	
+
+	  x
+prefix=2 indent=6 tab=32 spaces:
+head 	
+	
+
+      x
+prefix=2 indent=6 tab=32 tabs:
+head 	
+	
+
+      x
+prefix=3 indent=0 tab=1 spaces:
+// note
+x
+prefix=3 indent=0 tab=1 tabs:
+// note
+x
+prefix=3 indent=0 tab=4 spaces:
+// note
+x
+prefix=3 indent=0 tab=4 tabs:
+// note
+x
+prefix=3 indent=0 tab=32 spaces:
+// note
+x
+prefix=3 indent=0 tab=32 tabs:
+// note
+x
+prefix=3 indent=6 tab=1 spaces:
+// note
+      x
+prefix=3 indent=6 tab=1 tabs:
+// note
+						x
+prefix=3 indent=6 tab=4 spaces:
+// note
+      x
+prefix=3 indent=6 tab=4 tabs:
+// note
+	  x
+prefix=3 indent=6 tab=32 spaces:
+// note
+      x
+prefix=3 indent=6 tab=32 tabs:
+// note
+      x

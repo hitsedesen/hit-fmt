@@ -4,8 +4,7 @@ void f() {
     {
         run();
     }
-    if (ok)
-    {
+    if (ok) {
         stay();
     }
 }

@@ -61,8 +61,18 @@
         "inline" "Adapter"
         (template-argument-list
           "<"
-          (template-argument "detail" "::" "MethodRule" "<" "Owner" "," "Result" "," "Result" "(" "Owner" "::" "*" ")" "(" ")" "const")
-          ">>"
+          (template-argument
+            "detail" "::" "MethodRule"
+            (template-argument-list
+              "<"
+              (template-argument "Owner")
+              (list-separator ",")
+              (template-argument "Result")
+              (list-separator ",")
+              (template-argument "Result" "(" "Owner" "::" "*" ")" "(" ")" "const")
+              ">>"
+            )
+          )
         )
       )
       (init-declarator-list
@@ -179,8 +189,9 @@
                   "("
                   (argument
                     (expression "char")
+                    (unparsed-syntax "*" "*")
                   )
-                  "*" "*" ")"
+                  ")"
                 )
               )
             )
@@ -207,6 +218,60 @@
                 )
               )
             )
+          )
+        )
+        ";"
+      )
+      (expression-statement
+        (call-expression
+          (identifier-expression "invoke")
+          (argument-list
+            "("
+            (argument
+              (literal-expression "'x'")
+              (unparsed-syntax "\"not concatenated\"")
+            )
+            (list-separator ",")
+            (argument
+              (identifier-expression "next")
+            )
+            ")"
+          )
+        )
+        ";"
+      )
+      (expression-statement
+        (call-expression
+          (identifier-expression "invoke")
+          (argument-list
+            "("
+            (argument
+              (literal-expression "\"not concatenated\"")
+              (unparsed-syntax "'x'")
+            )
+            (list-separator ",")
+            (argument
+              (identifier-expression "next")
+            )
+            ")"
+          )
+        )
+        ";"
+      )
+      (expression-statement
+        (call-expression
+          (identifier-expression "invoke")
+          (argument-list
+            "("
+            (argument
+              (literal-expression "\"head\"" "\"tail\"")
+              (unparsed-syntax "_label")
+            )
+            (list-separator ",")
+            (argument
+              (identifier-expression "next")
+            )
+            ")"
           )
         )
         ";"

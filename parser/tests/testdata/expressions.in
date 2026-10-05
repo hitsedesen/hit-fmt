@@ -15,6 +15,11 @@ auto evaluate(Values... values) {
     converted = static_cast<long>(value)
         + reinterpret_cast<Type*>(pointer)
         + (int)*pointer;
+    auto external = static_cast<ExternalType>(value);
+    auto external_pointer = const_cast<ExternalType*>(pointer);
+    auto external_bits = reinterpret_cast<ExternalType*>(pointer);
+    auto external_object = dynamic_cast<ExternalType*>(base);
+    auto cast_comparison = static_cast<types::Box<ExternalType>>(value) > limit;
     auto lambda = [value, &reference]<typename Element>(Element argument)
         mutable noexcept -> Element { return argument + value; };
     auto nested = [value] {
@@ -36,5 +41,27 @@ auto evaluate(Values... values) {
     auto shifted = (Type(1) << offset) - 1;
     auto summed = (Type(2) + offset) - 1;
     int braced{1};
+    auto mixed = a + b * c + d;
+    auto equal = a - b + c;
+    auto assigned = a = b += c;
+    auto grouped = (a + b) * c;
+    auto alternatives = a bitand b xor c bitor d and e or f;
+    a and_eq b or_eq c xor_eq d;
+    auto unequal = a not_eq b;
+    auto negated = not a;
+    auto complemented = compl a;
+    auto text = "first" /* join */ "second" /* again */ "third";
+    auto raw_text = R"tag(raw)tag" " tail";
+    auto wide_text = L"wide" LR"tag( tail)tag";
+    auto utf8_text = u8"head" u8R"(tail)";
+    auto utf16_text = u"head" uR"(tail)";
+    auto utf32_text = U"head" UR"(tail)";
+    invoke("first" " argument" " end", value, "middle" " argument", last);
+    invoke("line" // join on the next line
+        " continued" /* trailing */, "separate", "argument");
+    auto sum = "left" " part" + "right" " part" * scale;
+    auto character = "indexed" " text"[index];
+    auto size = ("member" " text").size();
+    auto called = ("callee" " text")(value);
     return lambda(initialized);
 }

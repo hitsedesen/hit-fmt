@@ -1,240 +1,248 @@
-# Approximation of the YTsaurus C++ style for yt/yt, yt/chyt, yt/yql,
-# and library/cpp/yt. Not intended for yt/cpp, util, or other library/cpp.
-
-# Indentation and limits
+# YTsaurus-inspired approximation for yt/yt, yt/chyt, yt/yql and library/cpp/yt.
+# Not intended for yt/cpp, util or other library/cpp. See --help-config.
+# Fitting calls/parameters flatten; base/constructor lists and call chains break.
+# Field paths and single-call chains wrap only when they do not fit.
+# Mixed links (. / -> / invocation) participate in the same call chain.
+# Receiver construction does not count as a chained call.
+# Message pins and paired visual scopes remain explicit library annotations.
+# Chains use general AllSafe selection, including . / -> and repeated invocation.
+# Approximation: no namespace rulers, include regrouping or naming-role enforcement;
+# protected macro bytes and preserved lambda bodies are not style conformance.
+Layout = Canonical
 IndentWidth = 4
 ColumnLimit = 120
-LineLengthCheck = Soft
+WidthDiagnostics = Report
 IndentationKind = Spaces
+# The guide mandates neither newline spelling nor an ordinary comment-space count.
+LineEnding = Preserve
+# TrailingCommentSpaces stays omitted: retain existing ordinary comment gaps.
 TrailingWhitespace = Trim
-
-# Includes, directives, and comments
-# Header guards and conditional includes use different directive indents.
-PreprocessorIndentation = Preserve
-SeparatorLength = 80
-# Include grouping is deliberately out of scope.
-IncludeOrder = Preserve
-
-# Templates and attributes
-AmbiguousTemplateDeclarationSpacing = Space
-TemplateKeywordSpacing = Space
-TemplateTypeArgumentSpacing = NoSpace
-TemplateTypeArgumentInteriorSpacing = NoSpace
-
-# Records, namespaces, and declarators
+ListBreak = IfNeeded
+ListPacking = VerticalWhenBroken
+ListFirstItem = NextLine
+CallsFirstItem = NextLine
+CallsSoleArgumentFirstItem = InlineIfFits
+ListCloser = SameLine
+# Multiline captures close before the parameter/header line, not the last item.
+CapturesCloser = OwnLine
+ListAlignment = Block
+ContinuationOffset = 4
+AlignmentFallbackOffset = 4
+# Broken template headers and uses have independent vertical list policies.
+TemplateParametersLayout = Canonical
+TemplateParametersBreak = IfNeeded
+TemplateParametersPacking = VerticalWhenBroken
+TemplateParametersFirstItem = NextLine
+TemplateParametersCloser = SameLine
+TemplateParametersAlignment = Block
+TemplateParametersContinuationOffset = 4
+TemplateParametersAlignmentFallbackOffset = 4
+TemplateArgumentsLayout = Canonical
+TemplateArgumentsBreak = IfNeeded
+TemplateArgumentsPacking = VerticalWhenBroken
+TemplateArgumentsFirstItem = NextLine
+TemplateArgumentsCloser = SameLine
+TemplateArgumentsAlignment = Block
+TemplateArgumentsContinuationOffset = 4
+TemplateArgumentsAlignmentFallbackOffset = 4
+# Base lists always start on a new line, with leading colon/comma punctuation.
+BaseListsBreak = Always
+BaseListsPacking = VerticalWhenBroken
+BaseListsFirstItem = NextLine
+BaseListsColonSide = Leading
+BaseListsCommaSide = Leading
+# Even fitting constructor entries break, inheriting vertical/next-line/block + 4.
+ConstructorListsBreak = Always
+ConstructorListsColonSide = Leading
+ConstructorListsCommaSide = Leading
+# Keep the first control clause inline; use one normal indent for continuations.
+ControlHeadersBreak = IfNeeded
+ControlHeadersFirstItem = InlineIfFits
+ControlHeadersAlignment = Block
+ControlHeadersCloser = SameLine
+ChainsBreak = Always
+ChainsPacking = VerticalWhenBroken
+ChainsAlignment = Block
+InitializersCloser = OwnLine
+InitializersTrailingComma = WhenMultiline
+# Every broken initializer owns its closer, independently of trailing commas.
+ClassBracePlacement = NextLine
+StructBracePlacement = NextLine
+UnionBracePlacement = NextLine
+FunctionBracePlacement = NextLine
+ControlBracePlacement = NextLineIfHeaderBroken
+CaseBlockBracePlacement = Attached
+BodyShape = Expanded
+EmptyBodyShape = CompactIfFits
+# Empty and single-statement lambdas vary; preserve body topology explicitly.
+LambdaBodiesLayout = Preserve
 PointerReferenceDeclaratorLocation = Left
 IndentAccessModifiers = NoIndent
 IndentMembers = Indent
-ClassBracePlacement = NewLine
-EnforceClassBracePlacement = true
-StructBracePlacement = NewLine
-EnforceStructBracePlacement = true
-UnionBracePlacement = NewLine
-EnforceUnionBracePlacement = true
-NamespaceBracePlacement = Attach
-EnforceNamespaceBracePlacement = true
-NamespaceBraceSpacing = SingleSpace
-EnforceNamespaceBraceSpacing = true
-EnumBraceSpacing = SingleSpace
-NamespaceComments = AddMissing
-InheritanceList = Format
-InheritanceListColonPlacement = AttachToBase
-InheritanceListCommaPlacement = AttachToNext
-InheritanceListSplit = OnePerLine
-ArrayDeclarationSpacing = NoSpace
-ArrayDeclarationInteriorSpacing = NoSpace
-StructuredBindingBracketSpacing = NoSpace
+IndentNamespaces = NoIndent
+IndentCaseLabels = Indent
+StatementAttributeIndent = Block
+NamespaceComments = Fix
+IncludeOrder = Preserve
+AddMissingControlBraces = true
+EmptyControlBody = EmptyBlock
+RemoveNullStatements = true
+RemoveNullDeclarations = true
 
-# Functions and parameters
-FunctionBracePlacement = NewLine
-EnforceFunctionBracePlacement = true
-FunctionParameterSplit = OnePerLine
-EnforceFunctionParameterSplit = true
-FunctionParameterClosingParenthesis = SameLine
-EnforceFunctionParameterClosingParenthesis = true
-FirstFunctionParameterPosition = NewLine
-EnforceFirstFunctionParameterPosition = true
-FunctionParameterNewLineIndent = 4
-FunctionSpaceBeforeParameters = NoSpace
-SpaceInsideFunctionParameters = NoSpace
-EnforceSpaceInsideFunctionParameters = true
-EmptyFunctionParametersSpacing = NoSpace
-ReturnArrowSpacing = LeftAndRight
-FunctionQualifierSpacing = Space
-NoexceptSpaceBeforeSpecifier = Space
-NoexceptSpaceBeforeParentheses = NoSpace
-
-# Lambdas
-LambdaBracePlacement = Attach
-EnforceLambdaBracePlacement = true
-LambdaBraceSpacing = SingleSpace
-EnforceLambdaBraceSpacing = true
-# An immediately invoked lambda is still a call: attach its ().
-LambdaCallSpaceBeforeArguments = NoSpace
-LambdaSpaceBeforeParameters = Space
-SpaceInsideLambdaParameters = NoSpace
-SpaceAroundCaptureList = NoSpace
-SpaceAroundCaptureAssignment = Space
-LambdaCaptureSplit = OnePerLineOnOverflow
-EmptyLambdaCaptureSpacing = NoSpace
-EmptyLambdaParametersSpacing = NoSpace
-# Empty and single-statement lambdas vary in YT; keep their source layout.
-EmptyLambdaBodySpacing = Preserve
-SingleStatementLambdaBodyLayout = Preserve
-
-# Calls and chains
-# This declaration-like macro parses as an abstract function declarator.
-CallLikeMacroNames = ["REGISTER_DERIVED_EXTERNALIZED_YSON_STRUCT"]
-# Do not alter macro arguments or their closing-delimiter layout.
+# Nonempty CallLikeMacroNames is rejected by the public pipeline. Protect the
+# affected invocation byte-for-byte instead; this is NOT macro-language formatting.
+# Other semantic macro protection remains intact (not aesthetic name exceptions).
+CallLikeMacroNames = []
 WhitespaceSensitiveMacros = [
-    "PP_STRINGIZE", # Preserve whitespace passed to stringization.
-    "DEFINE_ENUM", "DEFINE_BIT_ENUM",
+    "REGISTER_DERIVED_EXTERNALIZED_YSON_STRUCT",
+    "PP_STRINGIZE", "DEFINE_ENUM", "DEFINE_BIT_ENUM",
     "DEFINE_BIT_ENUM_WITH_UNDERLYING_TYPE",
     "DEFINE_ENUM_WITH_UNDERLYING_TYPE",
     "DEFINE_AMBIGUOUS_ENUM_WITH_UNDERLYING_TYPE", "YT_DEFINE_ERROR_ENUM"
 ]
-CallArgumentSplit = OnePerLine
-EnforceCallArgumentSplit = true
-# Keep short EXPECT_THROW calls inline; split its longer two-argument calls.
-CallArgumentSplitColumnLimit = 90
-CallArgumentSplitColumnLimitNames = ["EXPECT_THROW"]
-FunctionCallArgumentClosingParenthesis = SameLine
-EnforceFunctionCallArgumentClosingParenthesis = true
-FirstCallArgumentPosition = NewLine
-# Prefer a new line for overflowing multiline sole arguments, but keep
-# their existing position when it fits.
-MultilineSingleCallArgumentPosition = NewLine
-EnforceMultilineSingleCallArgumentPosition = false
-EnforceFirstCallArgumentPosition = true
-CallArgumentIndent = IndentWidth
-# Direct log calls and THROW_ERROR_EXCEPTION start with a message string.
-# _IF and _UNLESS variants have a condition first.
-CallLineFirstStringNames = [
-    "THROW_ERROR_EXCEPTION",
-    "YT_LOG_TRACE", "YT_LOG_DEBUG", "YT_LOG_INFO", "YT_LOG_WARNING",
-    "YT_LOG_ERROR", "YT_LOG_ALERT", "YT_LOG_FATAL",
-    "YT_LOG_ALERT_AND_THROW",
-    "YT_TLOG_TRACE", "YT_TLOG_DEBUG", "YT_TLOG_INFO", "YT_TLOG_WARNING",
-    "YT_TLOG_ERROR", "YT_TLOG_ALERT", "YT_TLOG_FATAL",
-    "YT_TLOG_ALERT_AND_THROW"
-]
-# Opt in only known YT fluent roots; ordinary method chains stay source-owned.
-ChainedCallRootNames = [
-    "BIND", "BIND_NO_PROPAGATE", "THROW_ERROR_EXCEPTION",
-    "TError", "BuildYsonFluently",
-    "WaitFor", "WaitForFast",
-    "YT_TLOG_TRACE", "YT_TLOG_DEBUG", "YT_TLOG_INFO",
-    "YT_TLOG_WARNING", "YT_TLOG_ERROR", "YT_TLOG_ALERT",
-    "YT_TLOG_FATAL", "YT_TLOG_ALERT_AND_THROW"
-]
-# Preserve short fluent chains such as .Item(...).Value(...).
-ChainedCallSplitCondition = Overflow
-ChainedCallLayout = Pack
-ChainedCallIndent = IndentWidth
+
+TemplateKeywordSpacing = Space
+TemplateTypeArgumentSpacing = NoSpace
+TemplateTypeArgumentInteriorSpacing = NoSpace
+NamespaceBraceSpacing = Space
+EnumBraceSpacing = Space
+ArrayDeclarationSpacing = NoSpace
+ArrayDeclarationInteriorSpacing = NoSpace
+StructuredBindingBracketSpacing = NoSpace
+FunctionSpaceBeforeParameters = NoSpace
+SpaceInsideFunctionParameters = NoSpace
+EmptyFunctionParametersSpacing = NoSpace
+ReturnArrowSpaceBefore = Space
+ReturnArrowSpaceAfter = Space
+FunctionQualifierSpacing = Space
+FunctionRefQualifierSpacing = Space
+FunctionCvRefQualifierSpacing = Space
+NoexceptSpaceBeforeSpecifier = Space
+NoexceptSpaceBeforeParentheses = NoSpace
+DecltypeSpaceBeforeParentheses = NoSpace
+LambdaSpaceBeforeParameters = Space
+LambdaCallSpaceBeforeArguments = NoSpace
+LambdaBraceSpacing = Space
+SpaceInsideLambdaParameters = NoSpace
+SpaceAroundCaptureList = NoSpace
+SpaceAroundCaptureAssignment = Space
+EmptyLambdaCaptureSpacing = NoSpace
+EmptyLambdaParametersSpacing = NoSpace
+EmptyLambdaBodySpacing = Preserve
 FunctionCallSpaceBeforeParameters = NoSpace
 SpaceInsideCallArguments = NoSpace
-EnforceSpaceInsideCallArguments = true
 EmptyFunctionCallArgumentsSpacing = NoSpace
-
-# Control flow
-IndentCaseLabels = Indent
-CaseBlockBracePlacement = Attach
-AddMissingControlBraces = true
-EmptyControlBody = EmptyBlock
-ControlBlockBracePlacement = AttachUnlessMultiline
-EnforceControlBlockBracePlacement = true
 ControlBlockSpaceBeforeBrace = Space
-EnforceControlBlockSpaceBeforeBrace = true
 ControlBlockKeywordSpacing = Space
-ControlHeaderClauseSplit = WhenNeeded
-ControlConditionIndent = IndentWidth
-ForHeaderClauseIndent = Continuation
-MultilineControlBlockFirstConditionPosition = HeaderLine
-EnforceMultilineControlBlockFirstConditionPosition = true
-MultilineControlBlockClosingDelimiterPlacement = SameLine
-EnforceMultilineControlBlockClosingDelimiterPlacement = true
 ControlBlockConditionSpacing = NoSpace
 LoopSemicolonSpacing = Space
 ConditionInitSemicolonSpacing = Space
 RangeBasedForColonSpacing = Space
-
-# Blocks and statements
-IndentBlockBodies = true
-RemoveNullStatements = true
-RemoveNullDeclarations = true
-IndentLeadingStatementComments = true
-# YSON writer calls open and close visual scopes without C++ braces.
-IndentedCallScopePairs = ["OnBeginList:OnEndList", "OnBeginMap:OnEndMap", "OnBeginAttributes:OnEndAttributes"]
-# Standalone scope braces can be aligned with their enclosing block.
-StandaloneBlockBraceIndentation = Preserve
-CollapseEmptyFunctionBodies = true
-# Nonempty function and control bodies occupy separate lines; lambdas do not.
-NonEmptyBlockBodyLayout = Multiline
-StatementAttributeIndent = Block
 EmptyBlockInteriorSpacing = Space
-EnforceEmptyBlockInteriorSpacing = true
 BlockInteriorSpacing = Space
 StatementSemicolonSpacing = NoSpace
 DeclarationSemicolonSpacing = NoSpace
-
-# Initializers, new, and delete
-ConstructorInitializerList = Format
-ConstructorInitializerListColonPlacement = AttachToInitializer
-ConstructorInitializerListCommaPlacement = AttachToNext
-ConstructorInitializerListSplit = OnePerLine
-# YT's multiline designated aggregates start each member on a new line.
-# Reflow safe overflowing lists, but retain fitting existing layouts;
-# nested or multiline elements and macro trivia remain source-owned.
-InitializerListSplit = OnePerLine
-EnforceInitializerListSplit = false
-FirstInitializerElementPosition = NewLine
-InitializerListIndent = IndentWidth
-MergeInitializerList = false
-InitializerListClosingBrace = SameLineUnlessTrailingComma
-EnforceInitializerListClosingBrace = true
-# Reflowed single-line lists have no trailing comma; multiline lists do.
-# Existing lists retain their commas unless another rule reflows them.
-InitializerListTrailingComma = Remove
-EnforceInitializerListTrailingComma = false
-MultilineInitializerListTrailingComma = Add
-EnforceMultilineInitializerListTrailingComma = false
-# Both {x, y} and { x, y } occur; do not normalize initializer interiors.
-EnforceInitializerBracesSpacing = false
+InitializerBracesSpacing = Preserve
 BraceInitializerSpacing = NoSpace
 NewArraySpaceBeforeBrackets = NoSpace
 
-# Expressions and operators
-ExpressionLayoutCondition = Overflow
-DefaultBinaryOperatorPlacement = Trailing
-LeadingBinaryOperatorList = ["<<"]
-AssignmentOperatorPlacement = Trailing
-# Overlong ternaries split at both leading ? and : operators.
-TernaryOperatorPlacement = Leading
-EnforceTernaryOperatorPlacement = true
-TernarySplit = ThreeLines
-EnforceTernarySplit = true
+ExpressionsBreak = IfNeeded
+ExpressionsPacking = Fill
+BinaryOperatorSide = Trailing
+ShiftOperatorSide = Leading
+AssignmentOperatorSide = Trailing
+TernaryOperatorSide = Leading
+TernaryLayout = ThreePart
+TernaryOperatorIndentation = Align
 GroupingInteriorSpacing = NoSpace
 CastArgumentSpacing = NoSpace
 CastSpacing = NoSpace
-CommaSpacing = Space
-EnforceCommaSpacing = true
+CommaSpaceBefore = NoSpace
+CommaSpaceAfter = Space
 MemberAccessOperatorsSpacing = NoSpace
-# Preserve :: near unexpanded macros (e.g. an export macro before ::NYT).
 ScopeResolutionSpacing = Preserve
 UnaryOperatorSpacing = NoSpace
 PostfixOperatorSpacing = NoSpace
 BinaryOperatorSpacing = Space
 AssignmentOperatorSpacing = Space
-OperatorOverloadOperatorSpacing = NoSpace
+OperatorOverloadOperatorSpaceBefore = NoSpace
+OperatorOverloadOperatorSpaceAfter = NoSpace
 SubscriptOperatorSpacing = NoSpace
 SubscriptOperatorInteriorSpacing = NoSpace
 
-# Naming checks
-# Parameter-name presence is checkable without scope-aware naming rules.
 FunctionDeclarationParameterNames = Required
 FunctionDefinitionParameterNames = NameOrCommentedNameRequired
-# General name checks remain off until scope-aware rules exist.
-
-# Path exclusions
-# This vendored queue header does not follow the YTsaurus style.
+# General naming checks remain off until role-aware rules exist.
 Exclude = ["(^|/)moody_camel_concurrent_queue\\.h$"]
+
+# Explicit YTsaurus library annotations; syntax lowering owns contextual guards.
+CallLineFirstStringNames = [
+    "THROW_ERROR_EXCEPTION",
+    "YT_LOG_TRACE",
+    "YT_LOG_DEBUG",
+    "YT_LOG_INFO",
+    "YT_LOG_WARNING",
+    "YT_LOG_ERROR",
+    "YT_LOG_ALERT",
+    "YT_LOG_FATAL",
+    "YT_LOG_ALERT_AND_THROW",
+    "YT_TLOG_TRACE",
+    "YT_TLOG_DEBUG",
+    "YT_TLOG_INFO",
+    "YT_TLOG_WARNING",
+    "YT_TLOG_ERROR",
+    "YT_TLOG_ALERT",
+    "YT_TLOG_FATAL",
+    "YT_TLOG_ALERT_AND_THROW",
+]
+# Empty annotations select AllSafe, not disabled: the guide's chain rule is generic.
+ChainedCallRootNames = []
+# Logging/error builders conventionally break even with one suffix call.
+# This is independent of pinning their first message argument.
+AlwaysBreakChainRootNames = [
+    "THROW_ERROR_EXCEPTION",
+    "YT_LOG_TRACE",
+    "YT_LOG_DEBUG",
+    "YT_LOG_INFO",
+    "YT_LOG_WARNING",
+    "YT_LOG_ERROR",
+    "YT_LOG_ALERT",
+    "YT_LOG_FATAL",
+    "YT_LOG_ALERT_AND_THROW",
+    "YT_TLOG_TRACE",
+    "YT_TLOG_DEBUG",
+    "YT_TLOG_INFO",
+    "YT_TLOG_WARNING",
+    "YT_TLOG_ERROR",
+    "YT_TLOG_ALERT",
+    "YT_TLOG_FATAL",
+    "YT_TLOG_ALERT_AND_THROW",
+    "TError",
+    "BIND",
+    "BIND_NO_PROPAGATE",
+]
+# Fluent YSON scopes nest; an item selector stays beside its value builder.
+IndentedChainScopePairs = [
+    "BeginList:EndList",
+    "BeginMap:EndMap",
+    "BeginAttributes:EndAttributes",
+]
+StickyChainCallPairs = [
+    "Item:Value",
+    "Item:BeginList",
+    "Item:BeginMap",
+    "Item:BeginAttributes",
+    "Item:Do",
+    "Item:DoList",
+    "Item:DoMap",
+    "Item:DoListFor",
+    "Item:DoMapFor",
+    "Item:Entity",
+    "registrar:Parameter",
+    "registrar:ExternalClassParameter",
+]
+IndentedCallScopePairs = [
+    "OnBeginList:OnEndList",
+    "OnBeginMap:OnEndMap",
+    "OnBeginAttributes:OnEndAttributes",
+]

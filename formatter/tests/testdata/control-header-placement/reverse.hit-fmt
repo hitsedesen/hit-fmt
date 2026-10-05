@@ -1,4 +1,4 @@
-MultilineControlBlockFirstConditionPosition = HeaderLine
-EnforceMultilineControlBlockFirstConditionPosition = true
-MultilineControlBlockClosingDelimiterPlacement = SameLine
-EnforceMultilineControlBlockClosingDelimiterPlacement = true
+# Shape preferences apply when broken; fitting canonical groups flatten.
+ControlHeadersLayout = Canonical
+ControlHeadersFirstItem = InlineIfFits
+ControlHeadersCloser = SameLine

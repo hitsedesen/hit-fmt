@@ -5,8 +5,10 @@
 
 namespace util {
 
-std::string
-ReadEntireFile(const std::string& filePath, size_t maxSize, size_t padding)
+std::string ReadEntireFile(
+    const std::string& filePath,
+    size_t maxSize,
+    size_t padding)
 {
     std::ifstream ifs{filePath, std::ios::in | std::ios::binary};
     if (!ifs.good()) {
@@ -16,12 +18,11 @@ ReadEntireFile(const std::string& filePath, size_t maxSize, size_t padding)
     ifs.seekg(0, std::ios::end);
     size_t size = ifs.tellg();
     if (size > maxSize) {
-        throw FileTooLargeError(
-            std::format(
-                "File {} is too large: {} > {}",
-                filePath,
-                size,
-                maxSize));
+        throw FileTooLargeError(std::format(
+            "File {} is too large: {} > {}",
+            filePath,
+            size,
+            maxSize));
     }
     std::string buffer(size + padding, '\0');
     ifs.seekg(0);

@@ -1,2 +1,3 @@
-MultilineSingleCallArgumentPosition = NewLine
-EnforceMultilineSingleCallArgumentPosition = true
+# Shape preferences apply when broken; fitting canonical groups flatten.
+CallsLayout = Canonical
+CallsFirstItem = NextLine

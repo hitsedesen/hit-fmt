@@ -1,2 +1,4 @@
-IndentBlockBodies = true
-IndentLeadingStatementComments = true
+# Shape preferences apply when broken; fitting canonical groups flatten.
+# Comments follow syntax attachment, not a separate indentation pass.
+BodiesLayout = Canonical
+BodyShape = Expanded

@@ -19,6 +19,7 @@
 namespace parser {
 
 using TokenIndex = uint32_t;
+
 using SourceOffset = util::SourceOffset;
 
 // A half-open token range. The tree is lossless: every source token belongs
@@ -49,6 +50,8 @@ struct TokenRange
     SYNTAX_NODE_KIND(Declaration, "declaration")                               \
     SYNTAX_NODE_KIND(FunctionDeclaration, "function-declaration")              \
     SYNTAX_NODE_KIND(FunctionDefinition, "function-definition")                \
+    SYNTAX_NODE_KIND(MacroFunctionDefinition, "macro-function-definition")    \
+    SYNTAX_NODE_KIND(MacroFunctionHeader, "macro-function-header")            \
     SYNTAX_NODE_KIND(FunctionTryBlock, "function-try-block")                   \
     SYNTAX_NODE_KIND(NamespaceDeclaration, "namespace-declaration")            \
     SYNTAX_NODE_KIND(RecordDeclaration, "record-declaration")                  \
@@ -110,6 +113,8 @@ struct TokenRange
     SYNTAX_NODE_KIND(LiteralExpression, "literal-expression")                  \
     SYNTAX_NODE_KIND(UnaryExpression, "unary-expression")                      \
     SYNTAX_NODE_KIND(CastExpression, "cast-expression")                        \
+    SYNTAX_NODE_KIND(                                                          \
+        TypeConstructionExpression, "type-construction-expression")            \
     SYNTAX_NODE_KIND(TypeId, "type-id")                                        \
     SYNTAX_NODE_KIND(FoldExpression, "fold-expression")                        \
     SYNTAX_NODE_KIND(FoldOperand, "fold-operand")                              \
@@ -205,6 +210,14 @@ static_assert(static_cast<size_t>(NodeKind::Error) < 256);
     return Names[static_cast<size_t>(kind)];
 }
 
+enum class FunctionKind : uint8_t
+{
+    Unknown,
+    Ordinary,
+    Constructor,
+    Destructor,
+};
+
 struct SourceRange
 {
     SourceOffset Begin = 0;
@@ -291,7 +304,16 @@ struct Node
         return FirstChild;
     }
 
+    // Only positive function heads carry a kind. A FunctionDefinition owns
+    // its FunctionTryBlock child; the wrapper and catches remain Unknown.
+    [[nodiscard]] FunctionKind GetFunctionKind() const noexcept
+    {
+        return FunctionKind_;
+    }
+
 private:
+    FunctionKind FunctionKind_ = FunctionKind::Unknown;
+
     // Sparse trivia metadata is resolved through SyntaxTree so nodes do not
     // each carry another pointer.
     uint32_t TriviaIndex_ = std::numeric_limits<uint32_t>::max();
@@ -301,6 +323,7 @@ private:
 };
 
 static_assert(sizeof(Node) == 40);
+
 static_assert(std::is_trivially_destructible_v<Node>);
 
 struct InsertedControlBlock
@@ -387,8 +410,8 @@ public:
         if (ChunkCount_ == 0) {
             return;
         }
-        Chunks_ = static_cast<Chunk**>(
-            Memory_->allocate(sizeof(Chunk*) * ChunkCount_, alignof(Chunk*)));
+        Chunks_ = static_cast<Chunk**>(Memory_
+            ->allocate(sizeof(Chunk*) * ChunkCount_, alignof(Chunk*)));
         auto* chunk = First_;
         for (uint32_t i = 0; i < ChunkCount_; ++i) {
             Chunks_[i] = chunk;
@@ -549,9 +572,9 @@ public:
         chunk->Kinds[slot.Offset] = token.Kind;
         chunk->Roles[slot.Offset] =
             token.Kind >= tokenizer::TokenKind::Operator_OpenBrace &&
-            token.Kind <= tokenizer::TokenKind::Operator_Comma
-                ? PunctuationRole::Generic
-                : PunctuationRole::None;
+                token.Kind <= tokenizer::TokenKind::Operator_Comma
+            ? PunctuationRole::Generic
+            : PunctuationRole::None;
         chunk->MatchingDelimiters[slot.Offset] =
             std::numeric_limits<TokenIndex>::max();
     }
@@ -608,10 +631,12 @@ public:
             ->MatchingDelimiters[index % TokensPerChunk] = matching;
     }
 
-    [[nodiscard]] TokenIndex
-    FindPreprocessingDirective(TokenIndex begin, TokenIndex end) const;
-    [[nodiscard]] TokenIndex
-    FindComment(TokenIndex begin, TokenIndex end) const;
+    [[nodiscard]] TokenIndex FindPreprocessingDirective(
+        TokenIndex begin,
+        TokenIndex end) const;
+    [[nodiscard]] TokenIndex FindComment(
+        TokenIndex begin,
+        TokenIndex end) const;
 
 private:
     SegmentedStorage<Chunk, TokensPerChunk> Storage_;
@@ -647,26 +672,26 @@ public:
     // Borrow syntax for whitespace-only edits when tokens remain identical.
     // This view is for formatting: trivia attachments are unavailable.
     // The original tree and padded new source must outlive the result.
-    [[nodiscard]] std::optional<SyntaxTree>
-    RebindWhitespace(util::PaddedSourceView source) const;
+    [[nodiscard]] std::optional<SyntaxTree> RebindWhitespace(
+        util::PaddedSourceView source) const;
 
     // Find whitespace-only gaps in an edited source without lexing it.
     // Return no tree if any token spelling or non-whitespace gap changes.
-    [[nodiscard]] std::optional<SyntaxTree>
-    RebindWhitespaceGaps(util::PaddedSourceView source) const;
+    [[nodiscard]] std::optional<SyntaxTree> RebindWhitespaceGaps(
+        util::PaddedSourceView source) const;
 
     // A lexical check also accepts gap edits the local edit verifier cannot
     // express. Identical token kinds and spellings retain the same syntax.
-    [[nodiscard]] std::optional<SyntaxTree>
-    RebindMatchingTokens(util::PaddedSourceView source) const;
+    [[nodiscard]] std::optional<SyntaxTree> RebindMatchingTokens(
+        util::PaddedSourceView source) const;
 
     // Track an adjacent brace/comment move while retaining all other syntax.
-    [[nodiscard]] std::optional<SyntaxTree>
-    RebindReorderedComments(util::PaddedSourceView source) const;
+    [[nodiscard]] std::optional<SyntaxTree> RebindReorderedComments(
+        util::PaddedSourceView source) const;
 
     // Reorder verified runs of directive tokens without changing their nodes.
-    [[nodiscard]] std::optional<SyntaxTree>
-    RebindSortedIncludes(util::PaddedSourceView source) const;
+    [[nodiscard]] std::optional<SyntaxTree> RebindSortedIncludes(
+        util::PaddedSourceView source) const;
 
     // Reuse syntax for verified gap-only edits without lexing every token.
     // The original tree and padded edited source must outlive the result.
@@ -733,8 +758,8 @@ public:
         return Tokens_.MatchingDelimiter(index);
     }
 
-    [[nodiscard]] const TriviaAttachments*
-    AssociatedTrivia(const Node& node) const;
+    [[nodiscard]] const TriviaAttachments* AssociatedTrivia(
+        const Node& node) const;
     [[nodiscard]] std::string_view SourceText(TokenRange range) const;
     [[nodiscard]] std::string_view SourceText(SourceRange range) const;
 

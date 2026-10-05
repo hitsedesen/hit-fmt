@@ -1,6 +1,5 @@
+# Shape preferences apply when broken; fitting canonical groups flatten.
 ColumnLimit = 42
-ExpressionLayoutCondition = Overflow
-TernarySplit = AsNeeded
-EnforceTernarySplit = true
-TernaryOperatorPlacement = Trailing
-EnforceTernaryOperatorPlacement = false
+ExpressionsLayout = Canonical
+TernaryLayout = Flexible
+TernaryOperatorSide = Trailing

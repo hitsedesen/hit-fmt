@@ -1,0 +1,7 @@
+Layout = Canonical
+BodyShape = Expanded
+EmptyBodyShape = Expanded
+FunctionBraceSpacing = Space
+AssignmentOperatorSpacing = Space
+CommaSpaceBefore = NoSpace
+CommaSpaceAfter = Space

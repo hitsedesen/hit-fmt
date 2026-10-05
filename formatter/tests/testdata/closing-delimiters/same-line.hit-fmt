@@ -1,7 +1,7 @@
-FunctionParameterClosingParenthesis = SameLine
-EnforceFunctionParameterClosingParenthesis = true
-FunctionCallArgumentClosingParenthesis = SameLine
-EnforceFunctionCallArgumentClosingParenthesis = true
-InitializerListClosingBrace = SameLine
-EnforceInitializerListClosingBrace = true
-EnforceBlockClosingBrace = false
+# Shape preferences apply when broken; fitting canonical groups flatten.
+ParametersLayout = Canonical
+ParametersCloser = SameLine
+CallsLayout = Canonical
+CallsCloser = SameLine
+InitializersLayout = Canonical
+InitializersCloser = SameLine

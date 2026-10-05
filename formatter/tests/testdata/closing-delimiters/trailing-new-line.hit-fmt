@@ -1,2 +1,3 @@
-InitializerListClosingBrace = NewLine
-EnforceInitializerListClosingBrace = true
+# Shape preferences apply when broken; fitting canonical groups flatten.
+InitializersLayout = Canonical
+InitializersCloser = OwnLine

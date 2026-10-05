@@ -1,2 +1,4 @@
+# Shape preferences apply when broken; fitting canonical groups flatten.
 RemoveNullStatements = true
-NonEmptyBlockBodyLayout = Multiline
+BodiesLayout = Canonical
+BodyShape = Expanded

@@ -8,10 +8,13 @@
 #include <vector>
 
 namespace formatter {
+
 namespace {
 
 using NK = parser::NodeKind;
+
 using TK = tokenizer::TokenKind;
+
 using Node = parser::Node;
 
 const Node* Child(const Node& node, NK kind)
@@ -65,8 +68,7 @@ bool HasName(const Node& node)
 
 const Node* FunctionName(const Node& node)
 {
-    if (node.Kind == NK::DeclaratorName ||
-        node.Kind == NK::DestructorName ||
+    if (node.Kind == NK::DeclaratorName || node.Kind == NK::DestructorName ||
         node.Kind == NK::OperatorFunctionName)
     {
         return &node;
@@ -127,8 +129,7 @@ util::Position NamePosition(
         }
     }
     auto last = specifiers.Tokens.End;
-    while (last > specifiers.Tokens.Begin && tree.Kind(last -
-        1) == TK::Comment)
+    while (last > specifiers.Tokens.Begin && tree.Kind(last - 1) == TK::Comment)
     {
         --last;
     }
@@ -196,8 +197,8 @@ void CheckFunction(
         std::string functionName = function.Kind == NK::FunctionDefinition
             ? "function definition" : "function declaration";
         if (auto* name = FunctionName(*declarator)) {
-            functionName += " '" +
-                std::string(tree.SourceText(name->Tokens)) + "'";
+            functionName +=
+                " '" + std::string(tree.SourceText(name->Tokens)) + "'";
         }
         const auto first = tree.Token(function.Tokens.Begin);
         const auto last = tree.Token(signature->Tokens.End - 1);
@@ -250,10 +251,9 @@ void CheckFunction(
                 continue;
             }
             const bool allowCommentedName = definitionPolicy ==
-                FunctionDefinitionParameterNames::NameOrCommentedNameRequired;
-            if (function.Kind == NK::FunctionDefinition &&
-                allowCommentedName)
-            {
+                FunctionDefinitionParameterNames::
+                    NameOrCommentedNameRequired;
+            if (function.Kind == NK::FunctionDefinition && allowCommentedName) {
                 // A comment naming an unused parameter must end the type,
                 // not be a note inside it or inside a default expression.
                 auto last = end;
@@ -287,8 +287,7 @@ void CheckFunction(
 
 } // namespace
 
-std::vector<ParameterNameDiagnostic>
-CheckParameterNames(
+std::vector<ParameterNameDiagnostic> CheckParameterNames(
     const parser::SyntaxTree& tree,
     const Configuration& config)
 {
@@ -298,8 +297,8 @@ CheckParameterNames(
         auto* node = stack.back();
         stack.pop_back();
         if ((node->Kind == NK::FunctionDeclaration &&
-                config.FunctionDeclarationParameterNames ==
-                    FunctionDeclarationParameterNames::Required) ||
+            config.FunctionDeclarationParameterNames ==
+                FunctionDeclarationParameterNames::Required) ||
             (node->Kind == NK::FunctionDefinition &&
                 config.FunctionDefinitionParameterNames !=
                     FunctionDefinitionParameterNames::Unchecked))
@@ -314,11 +313,13 @@ CheckParameterNames(
             stack.push_back(child);
         }
     }
-    std::ranges::sort(diagnostics, [] (const auto& a, const auto& b) {
-        return a.Position.Line < b.Position.Line ||
-            (a.Position.Line == b.Position.Line &&
-                a.Position.Column < b.Position.Column);
-    });
+    std::ranges::sort(
+        diagnostics,
+        [] (const auto& a, const auto& b) {
+            return a.Position.Line < b.Position.Line ||
+                (a.Position.Line == b.Position.Line &&
+                    a.Position.Column < b.Position.Column);
+        });
     return diagnostics;
 }
 

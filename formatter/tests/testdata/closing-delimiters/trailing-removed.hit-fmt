@@ -1,4 +1,5 @@
+# Shape preferences apply when broken; fitting canonical groups flatten.
 ColumnLimit = 48
-InitializerListTrailingComma = Remove
-EnforceInitializerListTrailingComma = false
-InitializerListClosingBrace = SameLine
+InitializersTrailingComma = Preserve
+InitializersLayout = Canonical
+InitializersCloser = SameLine

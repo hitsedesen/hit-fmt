@@ -1,0 +1,330 @@
+(translation-unit
+  (record-declaration
+    "struct"
+    (unparsed-syntax "API" "Parcel")
+    "{"
+    (function-definition
+      (init-declarator-list
+        (init-declarator
+          (declarator
+            (declarator-name "Parcel")
+            (function-declarator
+              (parameter-list
+                "("
+                (parameter-declaration
+                  (declaration-specifiers "Item")
+                  (init-declarator-list
+                    (init-declarator
+                      (declarator
+                        (pointer-operator "*")
+                        (declarator-name "p")
+                      )
+                    )
+                  )
+                )
+                (list-separator ",")
+                (parameter-declaration
+                  (declaration-specifiers "Item")
+                  (init-declarator-list
+                    (init-declarator
+                      (declarator
+                        (pointer-operator "&")
+                        (declarator-name "r")
+                      )
+                    )
+                  )
+                )
+                (list-separator ",")
+                (parameter-declaration
+                  (declaration-specifiers "Item")
+                  (init-declarator-list
+                    (init-declarator
+                      (declarator
+                        (pointer-operator "&&")
+                        (declarator-name "v")
+                      )
+                    )
+                  )
+                )
+                ")"
+              )
+            )
+          )
+        )
+      )
+      (compound-statement "{" "}")
+    )
+    "}" ";"
+  )
+  (record-declaration
+    "struct"
+    (unparsed-syntax "api" "[" "[" "nodiscard" "]" "]" "Box")
+    "{"
+    (function-definition
+      (init-declarator-list
+        (init-declarator
+          (declarator
+            (declarator-name "Box")
+            (function-declarator
+              (parameter-list
+                "("
+                (parameter-declaration
+                  (declaration-specifiers "void")
+                  (init-declarator-list
+                    (init-declarator
+                      (declarator
+                        (nested-declarator
+                          "("
+                          (pointer-operator "*")
+                          (declarator-name "callback")
+                          ")"
+                        )
+                        (function-declarator
+                          (parameter-list
+                            "("
+                            (parameter-declaration
+                              (declaration-specifiers "int")
+                            )
+                            ")"
+                          )
+                        )
+                      )
+                    )
+                  )
+                )
+                ")"
+              )
+            )
+          )
+        )
+      )
+      (compound-statement "{" "}")
+    )
+    "}" ";"
+  )
+  (record-declaration
+    "struct"
+    (unparsed-syntax "API" "Owner" "<" "int" ">" "::" "Entry" "<" "long" ">")
+    "{"
+    (function-definition
+      (init-declarator-list
+        (init-declarator
+          (declarator
+            (declarator-name "Entry")
+            (function-declarator
+              (parameter-list
+                "("
+                (parameter-declaration
+                  (declaration-specifiers "int")
+                  (init-declarator-list
+                    (init-declarator
+                      (declarator
+                        (declarator-name "p")
+                      )
+                    )
+                  )
+                )
+                ")"
+              )
+              (constructor-initializer-list
+                ":"
+                (constructor-initializer
+                  (call-expression
+                    (identifier-expression "value")
+                    (argument-list
+                      "("
+                      (argument
+                        (identifier-expression "p")
+                      )
+                      ")"
+                    )
+                  )
+                )
+              )
+            )
+          )
+        )
+      )
+      (compound-statement "{" "}")
+    )
+    (declaration
+      (declaration-specifiers "int")
+      (init-declarator-list
+        (init-declarator
+          (declarator
+            (declarator-name "value")
+          )
+        )
+      )
+      ";"
+    )
+    "}" ";"
+  )
+  (record-declaration
+    "struct"
+    (unparsed-syntax "API" "Broken" "+" "token")
+    "{"
+    (function-definition
+      (unparsed-syntax "Broken" "(" "Item" "&" "p" ")" ":" "Base" "(" "p" ")")
+      (compound-statement
+        "{"
+        (expression-statement
+          (call-expression
+            (identifier-expression "invoke")
+            (argument-list
+              "("
+              (argument
+                (identifier-expression "a")
+              )
+              (list-separator ",")
+              (argument
+                (identifier-expression "b")
+              )
+              ")"
+            )
+          )
+          ";"
+        )
+        "}"
+      )
+    )
+    "}" ";"
+  )
+  (record-declaration
+    "struct"
+    (unparsed-syntax "API" "Incomplete" "::")
+    "{"
+    (function-definition
+      (unparsed-syntax "Incomplete" "(" "Item" "*" "p" ")" ":" "Base" "(" "p" ")")
+      (compound-statement "{" "}")
+    )
+    "}" ";"
+  )
+  (record-declaration
+    "struct"
+    (unparsed-syntax "API" "Grouped")
+    "{"
+    (declaration
+      (declaration-specifiers "void")
+      (init-declarator-list
+        (init-declarator
+          (declarator
+            (nested-declarator
+              "("
+              (pointer-operator "*")
+              (declarator-name "callback")
+              ")"
+            )
+            (function-declarator
+              (parameter-list
+                "("
+                (parameter-declaration
+                  (declaration-specifiers "int")
+                )
+                ")"
+              )
+            )
+          )
+        )
+      )
+      ";"
+    )
+    (function-declaration
+      (declaration-specifiers "int")
+      (init-declarator-list
+        (init-declarator
+          (declarator
+            (nested-declarator
+              "("
+              (pointer-operator "*")
+              (declarator-name "factory")
+              "(" ")" ")"
+            )
+            (function-declarator
+              (parameter-list "(" ")")
+              ")" "(" "double" ")"
+            )
+          )
+        )
+      )
+      ";"
+    )
+    (function-declaration
+      (declaration-specifiers "int")
+      (init-declarator-list
+        (init-declarator
+          (abstract-declarator
+            (function-declarator
+              (parameter-list
+                "("
+                (parameter-declaration
+                  (declaration-specifiers "ordinary")
+                )
+                ")"
+              )
+              "(" "double" ")"
+            )
+          )
+        )
+      )
+      ";"
+    )
+    (function-declaration
+      (declaration-specifiers
+        "int"
+        (attribute-specifier "[" "[" "nodiscard" "]" "]")
+      )
+      (init-declarator-list
+        (init-declarator
+          (declarator
+            (declarator-name "explicit_return")
+            (function-declarator
+              (parameter-list
+                "("
+                (parameter-declaration
+                  (declaration-specifiers "Item")
+                  (init-declarator-list
+                    (init-declarator
+                      (declarator
+                        (pointer-operator "*")
+                        (declarator-name "p")
+                      )
+                    )
+                  )
+                )
+                ")"
+              )
+            )
+          )
+        )
+      )
+      ";"
+    )
+    "}" ";"
+  )
+  (function-definition
+    (declaration-specifiers "void")
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (declarator-name "outside")
+          (function-declarator
+            (parameter-list "(" ")")
+          )
+        )
+      )
+    )
+    (compound-statement
+      "{"
+      (ambiguous-statement
+        (unknown-type-name "Parcel")
+        "*" "marker" ";"
+      )
+      (ambiguous-statement
+        (unknown-type-name "Box")
+        "*" "other" ";"
+      )
+      "}"
+    )
+  )
+)

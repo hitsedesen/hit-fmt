@@ -1,6 +1,7 @@
-InheritanceList = Format
-InheritanceListStart = NewLineOnOverflow
-InheritanceListSplit = OnePerLineOnOverflow
-InheritanceListIndent = 2
+# Shape preferences apply when broken; fitting canonical groups flatten.
+BaseListsLayout = Canonical
+BaseListsFirstItem = InlineIfFits
+BaseListsPacking = VerticalWhenBroken
+BaseListsContinuationOffset = 2
 IndentMembers = Indent
 ColumnLimit = 34

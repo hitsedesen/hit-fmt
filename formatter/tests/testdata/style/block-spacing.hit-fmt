@@ -1,7 +1,6 @@
+# Shape preferences apply when broken; fitting canonical groups flatten.
 BlockInteriorSpacing = NoSpace
 EmptyBlockInteriorSpacing = Space
-EnforceEmptyBlockInteriorSpacing = true
 ControlBlockSpaceBeforeBrace = Space
-EnforceControlBlockSpaceBeforeBrace = true
 DeclarationSemicolonSpacing = NoSpace
 StatementSemicolonSpacing = NoSpace

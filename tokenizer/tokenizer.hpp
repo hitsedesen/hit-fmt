@@ -84,8 +84,8 @@ enum class TokenizationErrorKind : uint8_t
 #undef TOKENIZATION_ERROR_KIND
 };
 
-[[nodiscard]] constexpr std::string_view
-GetTokenizationErrorDescription(TokenizationErrorKind kind)
+[[nodiscard]] constexpr std::string_view GetTokenizationErrorDescription(
+    TokenizationErrorKind kind)
 {
     constexpr auto Descriptions = std::to_array<std::string_view>({
 #define TOKENIZATION_ERROR_KIND(value, description) {description},
@@ -206,8 +206,8 @@ protected:
         }
     }
 
-    void
-    ConsumeCodePoint(NewlineHandling newlineHandling = NewlineHandling::Track)
+    void ConsumeCodePoint(
+        NewlineHandling newlineHandling = NewlineHandling::Track)
     {
         ConsumeCodePoint(CurrentCodePoint(), newlineHandling);
     }

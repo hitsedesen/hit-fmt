@@ -1,0 +1,156 @@
+(translation-unit
+  (record-declaration "struct" "Type" "{" "}" ";")
+  (declaration
+    (unparsed-syntax "HEADER_BLOCK" "(" "Thing" "," "inspect" "," "const" "Item" "*" "," "input" ")" "{" "if" "(" "input" ")" "{" "return" "input" ";" "}" "return" "0" ";" "}")
+  )
+  (declaration
+    (unparsed-syntax "OPAQUE_BODY" "(" "Label" "," "char" "*" "(" "Box" "<" "char" "*" ">" "," "Box" "<" "bool" ">" ")" ")" "{" "int" "value" "=" "1" "+" "2" ";" "return" "value" ";" "}" ";")
+  )
+  (declaration
+    (unparsed-syntax "HEADER_BLOCK" "(" "Type" ")" "{" "Type" "*" "item" ";" "}")
+  )
+  (declaration
+    (unparsed-syntax "HEADER_BLOCK" "(" "Tag" ")" "{" "using" "Hidden" "=" "int" ";" "int" "member" ";" "}")
+  )
+  (comment "// independent")
+  (function-definition
+    (leading-trivia
+      (comment "// independent")
+    )
+    (declaration-specifiers "int")
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (declarator-name "following")
+          (function-declarator
+            (parameter-list
+              "("
+              (parameter-declaration
+                (declaration-specifiers "int")
+                (init-declarator-list
+                  (init-declarator
+                    (declarator
+                      (declarator-name "value")
+                    )
+                  )
+                )
+              )
+              ")"
+            )
+          )
+        )
+      )
+    )
+    (compound-statement
+      "{"
+      (return-statement
+        "return"
+        (binary-expression
+          (identifier-expression "value")
+          "+"
+          (literal-expression "1")
+        )
+        ";"
+      )
+      "}"
+    )
+  )
+  (record-declaration
+    "struct" "Record" "{"
+    (function-definition
+      (init-declarator-list
+        (init-declarator
+          (declarator
+            (declarator-name "Record")
+            (function-declarator
+              (parameter-list "(" ")")
+            )
+          )
+        )
+      )
+      (compound-statement "{" "}")
+    )
+    (function-definition
+      (init-declarator-list
+        (init-declarator
+          (declarator
+            (operator-function-name "operator" "bool")
+            (function-declarator
+              (parameter-list "(" ")")
+              (function-qualifier "const")
+            )
+          )
+        )
+      )
+      (compound-statement
+        "{"
+        (return-statement
+          "return"
+          (literal-expression "true")
+          ";"
+        )
+        "}"
+      )
+    )
+    "}" ";"
+  )
+  (function-definition
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          "Record" "::"
+          (declarator-name "Record")
+          (function-declarator
+            (parameter-list "(" ")")
+          )
+        )
+      )
+    )
+    (compound-statement "{" "}")
+  )
+  (function-definition
+    (declaration-specifiers "void")
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (declarator-name "defaults")
+          (function-declarator
+            (parameter-list
+              "("
+              (parameter-declaration
+                (declaration-specifiers "int")
+                (init-declarator-list
+                  (init-declarator
+                    (declarator
+                      (declarator-name "value")
+                    )
+                    (initializer
+                      "="
+                      (call-expression
+                        (lambda-expression
+                          (lambda-capture-list "[" "]")
+                          (lambda-body
+                            "{"
+                            (return-statement
+                              "return"
+                              (literal-expression "1")
+                              ";"
+                            )
+                            "}"
+                          )
+                        )
+                        (argument-list "(" ")")
+                      )
+                    )
+                  )
+                )
+              )
+              ")"
+            )
+          )
+        )
+      )
+    )
+    (compound-statement "{" "}")
+  )
+)

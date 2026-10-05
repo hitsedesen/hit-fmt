@@ -1,5 +1,4 @@
+# Shape preferences apply when broken; fitting canonical groups flatten.
 SpaceInsideFunctionParameters = Space
-EnforceSpaceInsideFunctionParameters = true
 FunctionCallSpaceBeforeParameters = Space
 SpaceInsideCallArguments = NoSpace
-EnforceSpaceInsideCallArguments = true

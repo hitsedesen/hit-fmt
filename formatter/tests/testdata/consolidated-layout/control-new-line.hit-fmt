@@ -1,0 +1,13 @@
+Layout = Canonical
+ColumnLimit = 80
+IndentWidth = 2
+IndentationKind = Spaces
+BinaryOperatorSpacing = GeneratedSpace
+AssignmentOperatorSpacing = GeneratedSpace
+TernaryOperatorSpacing = GeneratedSpace
+MemberAccessOperatorsSpacing = GeneratedNoSpace
+FunctionCallSpaceBeforeParameters = GeneratedNoSpace
+FunctionSpaceBeforeParameters = GeneratedNoSpace
+StatementSemicolonSpacing = GeneratedNoSpace
+DeclarationSemicolonSpacing = GeneratedNoSpace
+ControlBracePlacement = NextLine

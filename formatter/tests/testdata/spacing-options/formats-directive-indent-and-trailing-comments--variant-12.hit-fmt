@@ -1,5 +1,5 @@
+# Member and closer indentation use the structural record base, not its source column.
 IndentWidth = 4
 IndentationKind = Tabs
-PreprocessorIndentation = PreprocessorIndented
 TrailingCommentSpacing = NoSpace
 IndentMembers = Indent

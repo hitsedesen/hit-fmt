@@ -1,4 +1,4 @@
+# All directive bytes, including continuation lines, remain protected.
 IndentWidth = 4
 IndentationKind = Tabs
-PreprocessorIndentation = PreprocessorIndented
 TrailingCommentSpacing = NoSpace

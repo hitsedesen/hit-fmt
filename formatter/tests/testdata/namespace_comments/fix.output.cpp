@@ -14,8 +14,7 @@ namespace done {
 } // namespace done
 namespace scoped::inner {
 } // namespace scoped::inner
-namespace inlineSpace { } // namespace inlineSpace
-int after = 1;
+namespace inlineSpace { } int after = 1;
 namespace withBlock {
 } /* preserve this block */
 namespace alias = alpha;

@@ -1,6 +1,6 @@
 void f() {
-    if (alpha){
-        Work(); }
-    if (beta){ }
-    if (gamma) { Work(); }
+    if (alpha){ Work(); }
+    if (beta){
+    }
+    if (gamma){ Work(); }
 }

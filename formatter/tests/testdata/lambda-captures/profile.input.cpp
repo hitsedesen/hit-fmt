@@ -16,6 +16,18 @@ void Make()
     }));
 }
 
+void BuildSelector()
+{
+    auto selector = BindSelector(
+        [
+        firstCount, secondCount, thirdCount
+        ] {
+            return firstCount + secondCount + thirdCount;
+        })
+    .WithShelf()
+        .WithPrice();
+}
+
 void Schedule()
 {
     auto handler = MakeHandler([
@@ -41,3 +53,32 @@ auto AdjustLater()
         }
     }));
 }
+
+class Adapter : public Wrapper<false> {
+public:
+    void Invoke(Closure callback) override {
+        if (Closed_) {
+            callback.Reset();
+            return;
+        }
+        return Target_->Invoke(BIND_WRAPPED(
+            [
+                this,
+                keep = Hold(this),
+                callback = std::move(callback)
+            ] () mutable {
+                auto guard = Detail::MakeGuard(Context_);
+
+                if (Context_->Closed_) {
+                    callback.Reset();
+                    return;
+                }
+
+                {
+                    InvokerGuard invokerGuard(this);
+                    ContextGuard contextGuard(Context_);
+                    callback();
+                }
+            }));
+    }
+};

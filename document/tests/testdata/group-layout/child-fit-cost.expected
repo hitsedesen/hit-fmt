@@ -1,0 +1,147 @@
+short call
+lhs !=
+    lookup(tiny);
+long call
+lhs != lookup(
+    firstLongArg,
+    secondLongArg);
+chain penalty=0
+lhs != object
+    .lookup(first, second);
+chain penalty=2
+lhs != object.lookup(
+    first,
+    second);
+flat-child penalty=0 width=40
+auto value =
+    cond ? firstBranch : secondBranch;
+flat-child penalty=1 width=40
+auto value =
+    cond ? firstBranch : secondBranch;
+flat-child penalty=2 width=40
+auto value = cond
+    ? firstBranch
+    : secondBranch;
+flat-child penalty=0 width=80
+auto value = cond ? firstBranch : secondBranch;
+flat-child penalty=1 width=80
+auto value = cond ? firstBranch : secondBranch;
+flat-child penalty=2 width=80
+auto value = cond ? firstBranch : secondBranch;
+sibling penalties=0,0 width=18 breakable=0
+Map<
+    Key,
+    Value> value{one, two, three};
+sibling penalties=0,0 width=18 breakable=1
+Map<
+    Key,
+    Value> value{
+    one,
+    two,
+    three};
+sibling penalties=3,0 width=18 breakable=0
+Map<
+    Key,
+    Value> value{one, two, three};
+sibling penalties=3,0 width=18 breakable=1
+Map<
+    Key,
+    Value> value{
+    one,
+    two,
+    three};
+sibling penalties=3,2 width=18 breakable=0
+Map<
+    Key,
+    Value> value{one, two, three};
+sibling penalties=3,2 width=18 breakable=1
+Map<
+    Key,
+    Value> value{
+    one,
+    two,
+    three};
+sibling penalties=2,3 width=18 breakable=0
+Map<
+    Key,
+    Value> value{one, two, three};
+sibling penalties=2,3 width=18 breakable=1
+Map<
+    Key,
+    Value> value{
+    one,
+    two,
+    three};
+sibling penalties=3,3 width=18 breakable=0
+Map<
+    Key,
+    Value> value{one, two, three};
+sibling penalties=3,3 width=18 breakable=1
+Map<
+    Key,
+    Value> value{
+    one,
+    two,
+    three};
+sibling penalties=0,0 width=34 breakable=0
+Map<
+    Key,
+    Value> value{one, two, three};
+sibling penalties=0,0 width=34 breakable=1
+Map<
+    Key,
+    Value> value{one, two, three};
+sibling penalties=3,0 width=34 breakable=0
+Map<
+    Key,
+    Value> value{one, two, three};
+sibling penalties=3,0 width=34 breakable=1
+Map<Key, Value> value{
+    one,
+    two,
+    three};
+sibling penalties=3,2 width=34 breakable=0
+Map<
+    Key,
+    Value> value{one, two, three};
+sibling penalties=3,2 width=34 breakable=1
+Map<Key, Value> value{
+    one,
+    two,
+    three};
+sibling penalties=2,3 width=34 breakable=0
+Map<
+    Key,
+    Value> value{one, two, three};
+sibling penalties=2,3 width=34 breakable=1
+Map<
+    Key,
+    Value> value{one, two, three};
+sibling penalties=3,3 width=34 breakable=0
+Map<
+    Key,
+    Value> value{one, two, three};
+sibling penalties=3,3 width=34 breakable=1
+Map<
+    Key,
+    Value> value{one, two, three};
+sibling penalties=0,0 width=80 breakable=0
+Map<Key, Value> value{one, two, three};
+sibling penalties=0,0 width=80 breakable=1
+Map<Key, Value> value{one, two, three};
+sibling penalties=3,0 width=80 breakable=0
+Map<Key, Value> value{one, two, three};
+sibling penalties=3,0 width=80 breakable=1
+Map<Key, Value> value{one, two, three};
+sibling penalties=3,2 width=80 breakable=0
+Map<Key, Value> value{one, two, three};
+sibling penalties=3,2 width=80 breakable=1
+Map<Key, Value> value{one, two, three};
+sibling penalties=2,3 width=80 breakable=0
+Map<Key, Value> value{one, two, three};
+sibling penalties=2,3 width=80 breakable=1
+Map<Key, Value> value{one, two, three};
+sibling penalties=3,3 width=80 breakable=0
+Map<Key, Value> value{one, two, three};
+sibling penalties=3,3 width=80 breakable=1
+Map<Key, Value> value{one, two, three};

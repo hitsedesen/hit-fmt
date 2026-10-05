@@ -1,6 +1,6 @@
 void f() {
-    first =
-        alpha;
-    second =
-        beta;
+    first = alpha;
+    second = beta;
+    resultWithAnExtendedAssignmentName =
+        operandWithAnExtendedAssignmentNameThatForcesWrapping;
 }

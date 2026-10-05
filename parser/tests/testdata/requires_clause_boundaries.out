@@ -1,0 +1,141 @@
+(translation-unit
+  (template-declaration
+    "template"
+    (template-parameter-list
+      "<"
+      (template-parameter "class" "T")
+      ">"
+    )
+    (requires-clause
+      "requires"
+      (constraint-expression
+        (requires-expression
+          "requires"
+          (parameter-list
+            "("
+            (parameter-declaration
+              (declaration-specifiers "T")
+              (init-declarator-list
+                (init-declarator
+                  (declarator
+                    (declarator-name "value")
+                  )
+                )
+              )
+            )
+            ")"
+          )
+          (requirement-body
+            "{"
+            (requirement "value" "." "touch" "(" ")")
+            (list-separator ";")
+            (requirement "{" "value" "." "touch" "(" ")" "}" "noexcept")
+            (list-separator ";")
+            (requirement "typename" "T" "::" "value_type")
+            (list-separator ";")
+            (requirement "requires" "requires" "{" "typename" "T" "::" "other_type" ";" "}")
+            (list-separator ";")
+            "}"
+          )
+        )
+      )
+    )
+    (record-declaration
+      "struct" "Container" "{"
+      (declaration
+        (declaration-specifiers "T")
+        (init-declarator-list
+          (init-declarator
+            (declarator
+              (declarator-name "member")
+            )
+          )
+        )
+        ";"
+      )
+      "}" ";"
+    )
+  )
+  (template-declaration
+    (leading-trivia
+      (whitespace "\n\n")
+    )
+    "template"
+    (template-parameter-list
+      "<"
+      (template-parameter "class" "T")
+      ">"
+    )
+    (requires-clause
+      "requires"
+      (constraint-expression
+        (binary-expression
+          (parenthesized-expression
+            "("
+            (requires-expression
+              "requires"
+              (requirement-body
+                "{"
+                (requirement "typename" "T" "::" "value_type")
+                (list-separator ";")
+                "}"
+              )
+            )
+            ")"
+          )
+          "&&"
+          (literal-expression "true")
+        )
+      )
+    )
+    (function-definition
+      (declaration-specifiers "int")
+      (init-declarator-list
+        (init-declarator
+          (declarator
+            (declarator-name "inspect")
+            (function-declarator
+              (parameter-list
+                "("
+                (parameter-declaration
+                  (declaration-specifiers "T")
+                  (init-declarator-list
+                    (init-declarator
+                      (declarator
+                        (declarator-name "value")
+                      )
+                    )
+                  )
+                )
+                ")"
+              )
+            )
+          )
+        )
+      )
+      (compound-statement
+        "{"
+        (return-statement
+          "return"
+          (literal-expression "1")
+          ";"
+        )
+        "}"
+      )
+    )
+  )
+  (declaration
+    (leading-trivia
+      (whitespace "\n\n")
+    )
+    (declaration-specifiers "int")
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (declarator-name "outside")
+        )
+      )
+    )
+    ";"
+  )
+)

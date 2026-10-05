@@ -1,0 +1,16 @@
+Layout = Canonical
+IndentationKind = Spaces
+ColumnLimit = 56
+IndentWidth = 4
+TemplateArgumentsLayout = Preserve
+TemplateArgumentsBreak = Always
+TemplateArgumentsPacking = VerticalWhenBroken
+TemplateArgumentsFirstItem = NextLine
+TemplateArgumentsCloser = OwnLine
+TemplateArgumentsAlignment = Block
+TemplateArgumentsContinuationOffset = 4
+TemplateArgumentsAlignmentFallbackOffset = 4
+TemplateTypeArgumentSpacing = GeneratedNoSpace
+TemplateTypeArgumentInteriorSpacing = GeneratedNoSpace
+CommaSpaceAfter = GeneratedSpace
+WhitespaceSensitiveMacros = ["VERBATIM"]

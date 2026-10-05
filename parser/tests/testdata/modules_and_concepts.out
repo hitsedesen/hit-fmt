@@ -285,12 +285,8 @@
     (compound-statement
       "{"
       (if-statement
-        "if" "likely"
-        (condition
-          "("
-          (literal-expression "true")
-          ")"
-        )
+        "if"
+        (unparsed-syntax "likely" "(" "true" ")")
         (co-yield-statement
           "co_yield"
           (literal-expression "1")

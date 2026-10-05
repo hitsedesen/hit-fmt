@@ -1,2 +1,3 @@
-ExpressionLayoutCondition = Overflow
+# Shape preferences apply when broken; fitting canonical groups flatten.
+ExpressionsLayout = Canonical
 ColumnLimit = 24

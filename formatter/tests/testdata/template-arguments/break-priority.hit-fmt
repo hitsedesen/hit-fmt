@@ -1,0 +1,16 @@
+Layout = Canonical
+IndentationKind = Spaces
+IndentWidth = 4
+ColumnLimit = 80
+ListPacking = VerticalWhenBroken
+ListFirstItem = NextLine
+ListCloser = SameLine
+ListAlignment = Block
+InitializersCloser = OwnLine
+InitializersTrailingComma = WhenMultiline
+TemplateTypeArgumentSpacing = NoSpace
+TemplateTypeArgumentInteriorSpacing = NoSpace
+TemplateKeywordSpacing = Space
+CommaSpaceAfter = Space
+SpaceInsideFunctionParameters = NoSpace
+SpaceInsideCallArguments = NoSpace

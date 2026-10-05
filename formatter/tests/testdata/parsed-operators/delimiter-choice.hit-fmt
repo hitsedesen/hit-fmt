@@ -1,3 +1,4 @@
+# Shape preferences apply when broken; fitting canonical groups flatten.
 ColumnLimit = 85
-ExpressionLayoutCondition = Overflow
-DefaultBinaryOperatorPlacement = Leading
+ExpressionsLayout = Canonical
+BinaryOperatorSide = Leading

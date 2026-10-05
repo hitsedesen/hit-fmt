@@ -1,2 +1,3 @@
-ExpressionLayoutCondition = Preserve
+# Shape preferences apply when broken; fitting canonical groups flatten.
+ExpressionsLayout = Preserve
 ColumnLimit = 24

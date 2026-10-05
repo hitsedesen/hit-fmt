@@ -1,8 +1,9 @@
-InheritanceList = Format
-InheritanceListStart = ClassLine
-InheritanceListSplit = Pack
-InheritanceListCommaPlacement = AttachToPrevious
-InheritanceListColonSpaceBefore = NoSpace
-InheritanceListColonSpaceAfter = NoSpace
-InheritanceListCommaSpaceBefore = NoSpace
-InheritanceListCommaSpaceAfter = NoSpace
+# Shape preferences apply when broken; fitting canonical groups flatten.
+BaseListsLayout = Canonical
+BaseListsFirstItem = InlineIfFits
+BaseListsPacking = Fill
+BaseListsCommaSide = Trailing
+BaseListsColonSpaceBefore = NoSpace
+BaseListsColonSpaceAfter = NoSpace
+CommaSpaceBefore = NoSpace
+CommaSpaceAfter = NoSpace

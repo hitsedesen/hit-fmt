@@ -71,6 +71,7 @@ constexpr bool operator==(CodePoint lhs, char32_t rhs)
 
 // Test the Unicode properties used to form C++ identifiers.
 [[nodiscard]] bool IsXIDStart(CodePoint cp);
+
 [[nodiscard]] bool IsXIDContinue(CodePoint cp);
 
 } // namespace unicode

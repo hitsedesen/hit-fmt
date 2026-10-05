@@ -1,1 +1,3 @@
-IndentBlockBodies = true
+# Shape preferences apply when broken; fitting canonical groups flatten.
+BodiesLayout = Canonical
+BodyShape = Expanded

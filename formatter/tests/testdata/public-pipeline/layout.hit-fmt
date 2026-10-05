@@ -1,0 +1,6 @@
+Layout = Canonical
+ColumnLimit = 32
+CallsPacking = VerticalWhenBroken
+CommaSpaceAfter = GeneratedSpace
+CommaSpaceBefore = GeneratedNoSpace
+CallLineFirstStringNames = ["Message"]

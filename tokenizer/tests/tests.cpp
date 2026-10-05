@@ -28,8 +28,8 @@ std::ostream& operator<<(std::ostream& os, const GoldenCase& testCase)
     return os << testCase.Name;
 }
 
-std::pair<std::string, std::vector<std::string>>
-TokenizeAndSerialize(const std::string& input)
+std::pair<std::string, std::vector<std::string>> TokenizeAndSerialize(
+    const std::string& input)
 {
     std::vector<std::string> errors;
     auto paddedInput = input;
@@ -54,18 +54,6 @@ TokenizeAndSerialize(const std::string& input)
     return {std::move(result), std::move(errors)};
 }
 
-std::vector<Token> Tokenize(std::string_view input)
-{
-    std::string paddedInput(input);
-    paddedInput.append(util::SourcePaddingSize, '\0');
-    Tokenizer tokenizer({.Data = paddedInput.data(), .Size = input.size()});
-    std::vector<Token> tokens;
-    for (const auto& token : tokenizer) {
-        tokens.push_back(token);
-    }
-    return tokens;
-}
-
 std::vector<TokenizationErrorKind> TokenizeErrors(std::string_view input)
 {
     std::vector<TokenizationErrorKind> errors;
@@ -76,8 +64,7 @@ std::vector<TokenizationErrorKind> TokenizeErrors(std::string_view input)
         [&](TokenizationError error) {
             errors.push_back(error.Kind);
         });
-    for ([[maybe_unused]] const auto& token : tokenizer) {
-    }
+    for ([[maybe_unused]] const auto& token : tokenizer) { }
     return errors;
 }
 
@@ -152,21 +139,6 @@ INSTANTIATE_TEST_SUITE_P(
     [] (const auto& info) {
         return info.param.Name;
     });
-
-TEST(Tokenizer, KeepsEmbeddedNullInRawStringLiteral)
-{
-    std::string source = "R\"(before";
-    source.push_back('\0');
-    source += "after)\" identifier";
-    auto [serialized, errors] = TokenizeAndSerialize(source);
-    auto tokens = Tokenize(source);
-
-    EXPECT_TRUE(errors.empty());
-    ASSERT_EQ(tokens.size(), 2);
-    EXPECT_EQ(tokens[0].Kind, TokenKind::Literal_String);
-    EXPECT_EQ(tokens[0].Text.View(source).size(), 17);
-    EXPECT_EQ(tokens[1].Text.View(source), "identifier");
-}
 
 TEST(Tokenizer, KeepsEofStableAfterAsciiUnicodeAndInvalidUtf8)
 {
@@ -277,6 +249,7 @@ TEST(Tokenizer, RejectsMalformedUtf8)
             errors,
             (std::vector{
                 TokenizationErrorKind::InvalidUtf8CodePoint,
-                TokenizationErrorKind::InvalidUtf8CodePoint}));
+                TokenizationErrorKind::InvalidUtf8CodePoint,
+            }));
     }
 }

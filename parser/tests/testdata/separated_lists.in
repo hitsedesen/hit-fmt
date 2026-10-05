@@ -1,3 +1,13 @@
+template<template<class Left, class Right> class Container,
+    class Value = types::Pair<types::Box<int>, types::Box<char>>>
+struct WithTemplateDefaults {};
+template<template<class Left = Box<int>, class Right = Box<char>> class Container>
+struct WithSharedParameterCloser {};
+template<int Count = (8 >> 1), bool Enabled = (left < right > tail), class... Types>
+struct WithNonTypeDefaults {};
+template<class First,, class Second> struct MissingTemplateParameter {};
+template<class First,> struct TrailingTemplateParameter {};
+
 template<class First, class Second = int>
 struct Derived : public Base<First, Second>, virtual Other {
     enum class Kind { One, Two = 2, Three, };
@@ -9,5 +19,12 @@ struct Derived : public Base<First, Second>, virtual Other {
         int values[]{1, 2, 3};
         auto [left, right] = pair;
         auto capture = [left, &right](int value) { return value; };
+        storage::Map<types::Box<int>, types::Pair<types::Box<char>, double>> nested;
+        Fixed<(1 << 2), (bits >> 1), (left < right > tail), 7> numbers;
+        auto cast = static_cast<types::Box<First>>(value);
+        auto pointer = reinterpret_cast<UnknownType*>(address);
+        auto typed = traits::same<First, types::Box<Second>>;
+        compare(left < right > ::Result(), typed);
+        compare(Derived::value < right > ::Result(), typed);
     }
 };

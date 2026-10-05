@@ -1,4 +1,5 @@
-ExpressionLayoutCondition = Overflow
-ControlBlockBracePlacement = AttachUnlessMultiline
-EnforceControlBlockBracePlacement = true
+# Shape preferences apply when broken; fitting canonical groups flatten.
+ExpressionsLayout = Canonical
+ControlHeadersLayout = Canonical
+ControlBracePlacement = NextLineIfHeaderBroken
 ColumnLimit = 120

@@ -23,8 +23,8 @@ using Clock = std::chrono::steady_clock;
 
 inline bool Enabled()
 {
-    static const bool enabled = std::getenv(
-        "HIT_FMT_PROFILE_PHASES") != nullptr;
+    static const bool enabled =
+        std::getenv("HIT_FMT_PROFILE_PHASES") != nullptr;
     return enabled;
 }
 
@@ -47,9 +47,11 @@ public:
         }
         std::vector<std::pair<Key, Summary>> phases(
             Phases_.begin(), Phases_.end());
-        std::ranges::sort(phases, [] (const auto& left, const auto& right) {
-            return left.second.Exclusive > right.second.Exclusive;
-        });
+        std::ranges::sort(
+            phases,
+            [] (const auto& left, const auto& right) {
+                return left.second.Exclusive > right.second.Exclusive;
+            });
         std::cerr << std::fixed << std::setprecision(6);
         for (const auto& [key, value] : phases) {
             std::cerr << "phase=" << key.first;
@@ -57,10 +59,10 @@ public:
                 std::cerr << ':' << key.second;
             }
             std::cerr << " calls=" << value.Calls << " inclusive="
-                      << std::chrono::duration<double>(value.Inclusive).count()
-                      << " exclusive="
-                      << std::chrono::duration<double>(value.Exclusive).count()
-                      << '\n';
+                << std::chrono::duration<double>(value.Inclusive).count()
+                << " exclusive="
+                << std::chrono::duration<double>(value.Exclusive).count()
+                << '\n';
         }
     }
 

@@ -1,4 +1,4 @@
+# Shape preferences apply when broken; fitting canonical groups flatten.
 IndentWidth = 4
 IndentationKind = Tabs
-PreprocessorIndentation = PreprocessorIndented
 TrailingCommentSpacing = NoSpace

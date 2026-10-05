@@ -1,8 +1,10 @@
+# Shape preferences apply when broken; fitting canonical groups flatten.
 EmptyFunctionCallArgumentsSpacing = NoSpace
 EmptyFunctionParametersSpacing = NoSpace
 EmptyLambdaParametersSpacing = NoSpace
 EmptyLambdaCaptureSpacing = NoSpace
-ReturnArrowSpacing = NoSpace
+ReturnArrowSpaceBefore = NoSpace
+ReturnArrowSpaceAfter = NoSpace
 SubscriptOperatorSpacing = NoSpace
 SubscriptOperatorInteriorSpacing = NoSpace
 ArrayDeclarationSpacing = NoSpace

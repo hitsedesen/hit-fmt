@@ -1,5 +1,6 @@
+# Shape preferences apply when broken; fitting canonical groups flatten.
 ColumnLimit = 23
-CallArgumentSplit = Pack
-EnforceCallArgumentSplit = true
-CommaSpacing = NoSpace
-EnforceCommaSpacing = false
+CallsLayout = Canonical
+CallsPacking = Fill
+CommaSpaceBefore = GeneratedNoSpace
+CommaSpaceAfter = GeneratedNoSpace

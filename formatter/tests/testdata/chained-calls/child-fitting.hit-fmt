@@ -1,0 +1,15 @@
+Layout = Canonical
+IndentWidth = 4
+ColumnLimit = 80
+ContinuationOffset = 4
+ListBreak = IfNeeded
+ListPacking = VerticalWhenBroken
+ListFirstItem = NextLine
+ListCloser = SameLine
+ListAlignment = Block
+ChainsBreak = IfNeeded
+ChainsPacking = Fill
+ChainsAlignment = Block
+ExpressionsBreak = IfNeeded
+ExpressionsPacking = Fill
+AssignmentOperatorSide = Trailing

@@ -1,0 +1,30 @@
+(translation-unit
+  (declaration
+    (declaration-specifiers "DEFINE_CASE")
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          "("
+          (declarator-name "Suite")
+          "," "BadArguments" "[" ")" "{" "int" "value" ";" "}" "DEFINE_CASE" "(" "Suite" "," "BadBody" ")" "{" "if" "(" "ready" "]" ")"
+        )
+        (initializer
+          (braced-initializer
+            (initializer-list
+              "{"
+              (initializer-element
+                (call-expression
+                  (identifier-expression "Work")
+                  (argument-list "(" ")")
+                )
+              )
+              (unparsed-syntax ";" "}" "}" "DEFINE_CASE" "(" "Suite" "," "MissingBody" ")" "{" "int")
+              "value"
+            )
+          )
+        )
+      )
+    )
+    ";"
+  )
+)

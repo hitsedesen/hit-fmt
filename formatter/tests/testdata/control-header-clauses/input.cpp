@@ -26,3 +26,29 @@ void Process()
         Use(1);
     }
 }
+
+template<class T> struct Gate {
+    static constexpr bool Enabled = true;
+};
+
+template<class T> void InspectConditions(int count)
+{
+    if constexpr (Gate<T>::Enabled && HasCapacityForCurrentEndpoint() && !traits::same<T, T>) {
+        Use(count);
+    }
+    if (Gate<T>::Enabled && HasCapacityForCurrentEndpoint()) {
+        Use(count);
+    }
+    if (int (value) = ReadCapacityForCurrentEndpoint()) {
+        Use(value);
+    }
+    if (auto item = ReadNext(); int value = item.Count()) {
+        Use(value);
+    }
+    if (ExternalType value = ReadCapacityForCurrentEndpoint()) {
+        Use(value);
+    }
+    if (std::numeric_limits<ExternalType>::max() != count && HasCapacityForCurrentEndpoint()) {
+        Use(count);
+    }
+}

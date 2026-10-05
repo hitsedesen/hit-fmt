@@ -1,18 +1,18 @@
-namespace alpha // namespace inline comment
-{
+namespace alpha
+{ // namespace inline comment
 class Forward;
 class C
 {
     int value;
 };
-class InlineClass // class comment
-{
+class InlineClass
+{ // class comment
     int value;
 };
 struct S
 { int value; };
-struct InlineComment // opening comment
-{
+struct InlineComment
+{ // opening comment
     int value;
 };
 struct CommentedStruct // struct comment
@@ -28,8 +28,8 @@ union U
 {
     int value;
 };
-union InlineUnion // union comment
-{
+union InlineUnion
+{ // union comment
     int value;
 };
 union CommentedUnion // union comment
@@ -40,14 +40,13 @@ class Commented // keep this comment
 
 int attached(int x)
 { return x; }
-int preceded() /* header */
-{ return 2; }
-int trailing() // function comment
-{
+int preceded() /* header */ { return 2; }
+int trailing()
+{ // function comment
     return 3;
 }
-int blockTrailing() /* function block comment */
-{
+int blockTrailing()
+{ /* function block comment */
     return 4;
 }
 int detached(int x)
@@ -66,8 +65,8 @@ auto withParams = [](int n)
 { return n; };
 auto notedLambda = [] // lambda comment
 { return 4; };
-auto inlineLambda = [] // lambda inline comment
-{
+auto inlineLambda = []
+{ // lambda inline comment
     return 5;
 };
 auto first = []

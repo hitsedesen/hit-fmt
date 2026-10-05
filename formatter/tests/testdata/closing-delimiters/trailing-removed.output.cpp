@@ -1,3 +1,3 @@
 int longTrailing[] = {firstLongValue,
-    secondLongValue, thirdLongValue};
+    secondLongValue, thirdLongValue,};
 int shortTrailing[] = {first, second,};

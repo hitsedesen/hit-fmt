@@ -7,8 +7,8 @@ void openLine(
     int value );
 void closeLine( int value
     );
-void leading(/* keep */ int value );
-void trailing( int value /* keep */);
+void leading( /* keep */ int value );
+void trailing( int value /* keep */ );
 template<class T> void generic( T value );
 struct Widget {
     Widget( int value );
@@ -17,7 +17,7 @@ struct Widget {
     int method( int value ) { return value; }
 };
 void (*callback)( int value );
-template<class T> concept HasValue = requires (const T& value) {
+template<class T> concept HasValue = requires ( const T& value ) {
     value();
 };
 void use( int value ) {

@@ -1,5 +1,5 @@
+# Member indentation does not authorize edits inside directives.
 IndentWidth = 4
 IndentationKind = Spaces
-PreprocessorIndentation = PreprocessorIndented
 TrailingCommentSpacing = NoSpace
 IndentMembers = Indent

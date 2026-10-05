@@ -1,0 +1,3 @@
+template<class T> struct Parcel {
+explicit Parcel<T>(T* value) {}
+};

@@ -1,4 +1,4 @@
+# Directives remain byte-exact; ordinary trailing-comment spacing still applies.
 IndentWidth = 4
 IndentationKind = Tabs
-PreprocessorIndentation = PreprocessorIndented
 TrailingCommentSpacing = Space

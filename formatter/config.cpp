@@ -5,10 +5,11 @@
 #include <charconv>
 #include <cctype>
 #include <fstream>
+#include <span>
 #include <stdexcept>
-#include <type_traits>
 #include <string>
 #include <string_view>
+#include <type_traits>
 #include <utility>
 #include <vector>
 
@@ -55,8 +56,7 @@ std::string_view StripComment(std::string_view line)
     size_t line,
     std::string_view message)
 {
-    throw std::runtime_error(
-        path.string() + ":" + std::to_string(line) + ": " +
+    throw std::runtime_error(path.string() + ":" + std::to_string(line) + ": " +
         std::string(message));
 }
 
@@ -238,9 +238,10 @@ std::vector<std::string> ParseNamespaceExemptions(
             if (part.empty() ||
                 !(std::isalpha(static_cast<unsigned char>(part.front())) ||
                     part.front() == '_') ||
-                part.find_first_not_of(
-                    "abcdefghijklmnopqrstuvwxyz"
-                    "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_") !=
+                part
+                    .find_first_not_of(
+                        "abcdefghijklmnopqrstuvwxyz"
+                        "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_") !=
                     std::string_view::npos)
             {
                 ThrowConfigError(
@@ -277,71 +278,6 @@ std::vector<std::string> ParseCallNames(
     return names;
 }
 
-std::vector<std::string> ParseBinaryOperators(
-    std::string_view value,
-    const std::filesystem::path& path,
-    size_t line)
-{
-    auto names = ParseStringList(value, path, line);
-    constexpr std::array<std::string_view, 19> operators{
-        "||",
-        "&&",
-        "|",
-        "^",
-        "&",
-        "==",
-        "!=",
-        "<",
-        ">",
-        "<=",
-        ">=",
-        "<=>",
-        "<<",
-        ">>",
-        "+",
-        "-",
-        "*",
-        "/",
-        "%",
-    };
-    for (const auto& name : names) {
-        if (std::ranges::find(operators, name) == operators.end()) {
-            ThrowConfigError(path, line, "expected a binary operator spelling");
-        }
-    }
-    return names;
-}
-
-std::vector<std::string> ParseCallPairs(
-    std::string_view value,
-    const std::filesystem::path& path,
-    size_t line)
-{
-    auto pairs = ParseStringList(value, path, line);
-    auto validName = [] (std::string_view name) {
-        return !name.empty() &&
-            (std::isalpha(static_cast<unsigned char>(name.front())) ||
-                name.front() == '_') &&
-            name.find_first_not_of(
-                "abcdefghijklmnopqrstuvwxyz"
-                "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_") ==
-                std::string_view::npos;
-    };
-    for (const auto& pair : pairs) {
-        auto colon = pair.find(':');
-        if (colon == std::string::npos ||
-            !validName(std::string_view(pair).substr(0, colon)) ||
-            !validName(std::string_view(pair).substr(colon + 1)))
-        {
-            ThrowConfigError(
-                path,
-                line,
-                "expected begin:end call identifier pairs");
-        }
-    }
-    return pairs;
-}
-
 std::optional<std::vector<std::string>> ParseNamePrefixes(
     std::string_view value,
     const std::filesystem::path& path,
@@ -352,9 +288,8 @@ std::optional<std::vector<std::string>> ParseNamePrefixes(
         return std::nullopt;
     }
     for (const auto& prefix : prefixes) {
-        if (prefix.find_first_not_of(
-                "abcdefghijklmnopqrstuvwxyz"
-                "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_") != std::string::npos)
+        if (prefix.find_first_not_of("abcdefghijklmnopqrstuvwxyz"
+            "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_") != std::string::npos)
         {
             ThrowConfigError(
                 path,
@@ -383,15 +318,20 @@ void ParseField(
     }
 }
 
+template <typename T>
 void ParseField(
-    std::optional<bool>& field,
+    std::optional<T>& field,
     std::string_view value,
     const std::filesystem::path& path,
     size_t line)
 {
-    field = value == "inherit"
-        ? std::nullopt
-        : std::optional<bool>{ParseBoolean(value, path, line)};
+    if (value == "Inherit") {
+        field.reset();
+        return;
+    }
+    T parsed{};
+    ParseField(parsed, value, path, line);
+    field = parsed;
 }
 
 void ParseField(
@@ -434,76 +374,6 @@ void ParseField(
     }
 }
 
-void ValidateStyleLimits(
-    const Style& style,
-    const std::filesystem::path& path,
-    size_t line)
-{
-    for (const auto& op : style.LeadingBinaryOperatorList) {
-        if (std::ranges::find(style.TrailingBinaryOperatorList, op) !=
-            style.TrailingBinaryOperatorList.end())
-        {
-            ThrowConfigError(
-                path,
-                line,
-                "binary operator cannot be both leading and trailing");
-        }
-    }
-    if (style.IndentWidth == 0 || style.IndentWidth > 32) {
-        ThrowConfigError(path, line, "IndentWidth must be between 1 and 32");
-    }
-    if (style.ColumnLimit == 0 || style.ColumnLimit > 10000) {
-        ThrowConfigError(path, line, "ColumnLimit must be between 1 and 10000");
-    }
-    if (style.ShortNamespaceLines > 10000) {
-        ThrowConfigError(
-            path,
-            line,
-            "ShortNamespaceLines must not exceed 10000");
-    }
-    if (style.SeparatorLength != 0 &&
-        (style.SeparatorLength < 8 || style.SeparatorLength > 10000))
-    {
-        ThrowConfigError(
-            path,
-            line,
-            "SeparatorLength must be between 8 and 10000");
-    }
-    if (style.NamespaceCommentSpaces == 0 ||
-        style.NamespaceCommentSpaces > 32)
-    {
-        ThrowConfigError(
-            path,
-            line,
-            "NamespaceCommentSpaces must be between 1 and 32");
-    }
-    if (style.AccessModifierIndentWidth > 32 ||
-        style.MemberIndentWidth > 32 || style.BlockBodyIndentWidth > 32 ||
-        style.CaseLabelIndentWidth > 32 ||
-        style.StatementAttributeIndentWidth > 32)
-    {
-        ThrowConfigError(path, line, "indent width must not exceed 32");
-    }
-    if (style.FunctionParameterNewLineIndent > 32) {
-        ThrowConfigError(
-            path,
-            line,
-            "FunctionParameterNewLineIndent must not exceed 32");
-    }
-    if (style.InheritanceListIndent > 32) {
-        ThrowConfigError(
-            path,
-            line,
-            "InheritanceListIndent must not exceed 32");
-    }
-    if (style.ConstructorInitializerListIndent > 32) {
-        ThrowConfigError(
-            path,
-            line,
-            "ConstructorInitializerListIndent must not exceed 32");
-    }
-}
-
 template <auto Member>
 void AssignStyle(
     Configuration& config,
@@ -515,35 +385,57 @@ void AssignStyle(
             decltype(config.FormattingStyle.*Member)>,
             std::vector<std::string>>)
     {
-        if constexpr (Member == &Style::ChainedCallRootNames) {
-            config.FormattingStyle.*Member =
-                ParseNamespaceExemptions(value, path, line);
-        } else if constexpr (Member == &Style::IndentedCallScopePairs) {
-            config.FormattingStyle.*Member = ParseCallPairs(value, path, line);
-        } else if constexpr (Member == &Style::LeadingBinaryOperatorList ||
-            Member == &Style::TrailingBinaryOperatorList)
+        if constexpr (Member == &Style::ChainedCallRootNames ||
+            Member == &Style::AlwaysBreakChainRootNames ||
+            Member == &Style::IndentedCallScopePairs ||
+            Member == &Style::IndentedChainScopePairs ||
+            Member == &Style::StickyChainCallPairs ||
+            Member == &Style::IncludeGroupPrefixes)
         {
-            config.FormattingStyle.*Member =
-                ParseBinaryOperators(value, path, line);
+            config.FormattingStyle.*Member = ParseStringList(value, path, line);
         } else {
             config.FormattingStyle.*Member = ParseCallNames(value, path, line);
         }
+    } else if constexpr (std::is_same_v<std::remove_cvref_t<
+            decltype(config.FormattingStyle.*Member)>,
+            std::optional<TrailingCommentSpaceSetting>>)
+    {
+        config.FormattingStyle.*Member = TrailingCommentSpaceSetting{
+            value == "Preserve" ? std::nullopt : std::optional<std::size_t>{
+                ParseNonnegativeInteger(value, path, line)}};
+    } else if constexpr (std::is_same_v<std::remove_cvref_t<
+            decltype(config.FormattingStyle.*Member)>, BlankLineSetting>)
+    {
+        if (value == "Preserve") {
+            config.FormattingStyle.*Member = {};
+        } else if (value == "Inherit") {
+            if constexpr (Member == &Style::MemberDefinitionBlankLines ||
+                Member == &Style::MemberDeclarationBlankLines)
+            {
+                config.FormattingStyle.*Member = BlankLineSetting::Inherited();
+            } else {
+                ThrowConfigError(
+                    path,
+                    line,
+                    "Inherit is only valid for member blank-line settings");
+            }
+        } else {
+            config.FormattingStyle.*Member = {BlankLineMode::Exact,
+                ParseNonnegativeInteger(value, path, line)};
+        }
+    } else if constexpr (std::is_same_v<std::remove_cvref_t<
+            decltype(config.FormattingStyle.*Member)>, std::optional<std::
+                size_t>>)
+    {
+        if constexpr (Member == &Style::MaxEmptyLines) {
+            config.FormattingStyle.*Member = value == "Preserve"
+                ? std::nullopt : std::optional<std::size_t>{
+                    ParseNonnegativeInteger(value, path, line)};
+        } else {
+            ParseField(config.FormattingStyle.*Member, value, path, line);
+        }
     } else {
         ParseField(config.FormattingStyle.*Member, value, path, line);
-        if constexpr (std::is_same_v<std::remove_cvref_t<
-                decltype(config.FormattingStyle.*Member)>,
-                BinaryOperatorPlacement>)
-        {
-            if constexpr (Member == &Style::BinaryOperatorPlacement) {
-                config.FormattingStyle.DefaultBinaryOperatorPlacement =
-                    config.FormattingStyle.BinaryOperatorPlacement;
-            } else if constexpr (Member ==
-                &Style::DefaultBinaryOperatorPlacement)
-            {
-                config.FormattingStyle.BinaryOperatorPlacement =
-                    config.FormattingStyle.DefaultBinaryOperatorPlacement;
-            }
-        }
     }
 }
 
@@ -579,6 +471,7 @@ void AssignNamingPrefixes(
 
 using OptionHandler = void (*)(Configuration&, std::string_view,
     const std::filesystem::path&, size_t);
+
 struct OptionBinding
 {
     std::string_view Name;
@@ -601,40 +494,393 @@ constexpr auto Options = std::to_array<OptionBinding>({
 #undef CONFIG_BINDING
 });
 
+void ValidateStyleLimits(
+    const Style& style,
+    const std::filesystem::path& path,
+    size_t line,
+    std::span<const std::size_t> settingLines)
+{
+    try {
+        ValidatePolicyStyle(style);
+    } catch (const std::invalid_argument& error) {
+        const std::string_view reason = error.what();
+        std::string message(reason);
+        for (std::size_t index = 0; index < Options.size(); ++index) {
+            if (settingLines[index] == 0) {
+                continue;
+            }
+            const auto key = Options[index].Name;
+            auto at = reason.find(key);
+            while (at != std::string_view::npos) {
+                const auto identifier = [] (char value) {
+                    return std::isalnum(static_cast<unsigned char>(value)) ||
+                        value == '_';
+                };
+                if ((at == 0 || !identifier(reason[at - 1])) &&
+                    (at + key.size() == reason.size() ||
+                        !identifier(reason[at + key.size()])))
+                {
+                    message +=
+                        " [" + std::string(key) + " at " + path.string() + ":" +
+                            std::to_string(settingLines[index]) + "]";
+                    break;
+                }
+                at = reason.find(key, at + key.size());
+            }
+        }
+        ThrowConfigError(path, line, message);
+    }
+}
+
 void ApplySetting(
     Configuration& config,
     std::string_view key,
     std::string_view value,
     const std::filesystem::path& path,
-    size_t line)
+    size_t line,
+    std::span<std::size_t> settingLines)
 {
-    for (const auto& option : Options) {
+    for (std::size_t index = 0; index < Options.size(); ++index) {
+        const auto& option = Options[index];
         if (option.Name == key) {
-            if (value == "Preserve" && !AllowsPreserveConfigValue(key)) {
-                ThrowConfigError(
-                    path,
-                    line,
-                    "use the corresponding Enforce option instead of Preserve");
-            }
             option.Assign(config, value, path, line);
-            ValidateStyleLimits(config.FormattingStyle, path, line);
+            settingLines[index] = line;
             return;
         }
     }
-    ThrowConfigError(path, line, "unknown setting '" + std::string(key) + "'");
+    ThrowConfigError(
+        path,
+        line,
+        "unknown setting '" + std::string(key) + "'; see --help-config.");
 }
 
 } // namespace
+
+namespace {
+
+bool AnnotationIdentifier(std::string_view name)
+{
+    constexpr std::string_view first =
+        "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_";
+    constexpr std::string_view rest =
+        "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_0123456789";
+    return !name.empty() &&
+        first.find(name.front()) != std::string_view::npos &&
+        name.find_first_not_of(rest) == std::string_view::npos;
+}
+
+bool AnnotationQualifiedName(std::string_view name)
+{
+    while (true) {
+        const auto separator = name.find("::");
+        if (!AnnotationIdentifier(name.substr(0, separator))) {
+            return false;
+        }
+        if (separator == std::string_view::npos) {
+            return true;
+        }
+        name.remove_prefix(separator + 2);
+    }
+}
+
+void RejectDuplicateAnnotations(
+    std::vector<std::string_view>& names,
+    std::string_view key)
+{
+    std::sort(names.begin(), names.end());
+    if (std::adjacent_find(names.begin(), names.end()) != names.end()) {
+        throw std::invalid_argument("duplicate " + std::string(key) +
+            " annotation name or scope endpoint");
+    }
+}
+
+void ValidateAnnotationNames(
+    std::span<const std::string> input,
+    std::vector<std::string_view>& scratch,
+    std::string_view key,
+    bool qualified)
+{
+    scratch.clear();
+    for (const auto& name : input) {
+        if (!(qualified
+            ? AnnotationQualifiedName(name)
+            : AnnotationIdentifier(name)))
+        {
+            throw std::invalid_argument(
+                "invalid " + std::string(key) + " annotation name");
+        }
+        scratch.push_back(name);
+    }
+    RejectDuplicateAnnotations(scratch, key);
+}
+
+std::pair<std::string_view, std::string_view> AnnotationScopePair(
+    std::string_view pair,
+    std::string_view key = "IndentedCallScopePairs",
+    bool distinct = true)
+{
+    const auto colon = pair.find(':');
+    if (colon == std::string_view::npos) {
+        throw std::invalid_argument(
+            std::string(key) + " expects First:Second identifier pairs");
+    }
+    const auto begin = pair.substr(0, colon);
+    const auto end = pair.substr(colon + 1);
+    if (!AnnotationIdentifier(begin) || !AnnotationIdentifier(end) ||
+        (distinct && begin == end))
+    {
+        throw std::invalid_argument(
+            std::string(key) + " expects valid identifier pairs");
+    }
+    return {begin, end};
+}
+
+std::vector<ChainCallPairAnnotation> CompileChainPairs(
+    std::span<const std::string> input,
+    std::string_view key,
+    bool distinct)
+{
+    std::vector<ChainCallPairAnnotation> result;
+    result.reserve(input.size());
+    for (const auto& pair : input) {
+        const auto [first, second] = AnnotationScopePair(pair, key, distinct);
+        result.push_back({std::string(first), std::string(second)});
+    }
+    std::sort(
+        result.begin(),
+        result.end(),
+        [] (const auto& a, const auto& b) {
+            return a.First < b.First ||
+                (a.First == b.First && a.Second < b.Second);
+        });
+    return result;
+}
+
+} // namespace
+
+void ValidateLibraryAnnotationStyle(const Style& style)
+{
+    std::vector<std::string_view> scratch;
+    scratch.reserve(std::max({
+        style.CallLineFirstStringNames.size(),
+        style.ChainedCallRootNames.size(),
+        style.AlwaysBreakChainRootNames.size(),
+        style.IndentedCallScopePairs.size() * 2,
+        style.IndentedChainScopePairs.size() * 2,
+        style.StickyChainCallPairs.size(),
+    }));
+    ValidateAnnotationNames(
+        style.CallLineFirstStringNames,
+        scratch,
+        "CallLineFirstStringNames",
+        false);
+    ValidateAnnotationNames(
+        style.ChainedCallRootNames,
+        scratch,
+        "ChainedCallRootNames",
+        true);
+    ValidateAnnotationNames(
+        style.AlwaysBreakChainRootNames,
+        scratch,
+        "AlwaysBreakChainRootNames",
+        true);
+    scratch.clear();
+    for (const auto& pair : style.IndentedCallScopePairs) {
+        const auto [begin, end] = AnnotationScopePair(pair);
+        scratch.push_back(begin);
+        scratch.push_back(end);
+    }
+    RejectDuplicateAnnotations(scratch, "IndentedCallScopePairs");
+    scratch.clear();
+    for (const auto& pair : style.IndentedChainScopePairs) {
+        const auto [begin, end] =
+            AnnotationScopePair(pair, "IndentedChainScopePairs");
+        scratch.push_back(begin);
+        scratch.push_back(end);
+    }
+    RejectDuplicateAnnotations(scratch, "IndentedChainScopePairs");
+    scratch.clear();
+    for (const auto& pair : style.StickyChainCallPairs) {
+        (void)AnnotationScopePair(pair, "StickyChainCallPairs", false);
+        scratch.push_back(pair);
+    }
+    RejectDuplicateAnnotations(scratch, "StickyChainCallPairs");
+}
+
+LibraryAnnotations CompileLibraryAnnotations(const Style& style)
+{
+    ValidateLibraryAnnotationStyle(style);
+    LibraryAnnotations result;
+    result.MessagePins_.reserve(style.CallLineFirstStringNames.size());
+    for (const auto& name : style.CallLineFirstStringNames) {
+        result.MessagePins_.push_back({name});
+    }
+    std::sort(
+        result.MessagePins_.begin(),
+        result.MessagePins_.end(),
+        [] (const auto& left, const auto& right) {
+            return left.Name < right.Name;
+        });
+    result.ChainRoots_ = style.ChainedCallRootNames;
+    std::sort(result.ChainRoots_.begin(), result.ChainRoots_.end());
+    result.AlwaysBreakChainRoots_ = style.AlwaysBreakChainRootNames;
+    std::sort(
+        result.AlwaysBreakChainRoots_.begin(),
+        result.AlwaysBreakChainRoots_.end());
+    result.VisualScopes_.reserve(style.IndentedCallScopePairs.size());
+    for (const auto& pair : style.IndentedCallScopePairs) {
+        const auto [begin, end] = AnnotationScopePair(pair);
+        result.VisualScopes_.push_back({std::string(begin), std::string(end)});
+    }
+    std::sort(
+        result.VisualScopes_.begin(),
+        result.VisualScopes_.end(),
+        [] (const auto& left, const auto& right) {
+            return left.Begin < right.Begin;
+        });
+    result.ScopeEndOrder_.reserve(result.VisualScopes_.size());
+    for (std::size_t index = 0; index < result.VisualScopes_.size(); ++index) {
+        result.ScopeEndOrder_.push_back(index);
+    }
+    std::sort(
+        result.ScopeEndOrder_.begin(),
+        result.ScopeEndOrder_.end(),
+        [&] (auto left, auto right) {
+            return result.VisualScopes_[left].End <
+                result.VisualScopes_[right].End;
+        });
+    result.ChainScopes_ = CompileChainPairs(
+        style.IndentedChainScopePairs,
+        "IndentedChainScopePairs",
+        true);
+    result.StickyChainPairs_ = CompileChainPairs(
+        style.StickyChainCallPairs,
+        "StickyChainCallPairs",
+        false);
+    return result;
+}
+
+std::span<const ChainCallPairAnnotation> LibraryAnnotations::ChainScopes() const
+{
+    return ChainScopes_;
+}
+
+std::span<const ChainCallPairAnnotation> LibraryAnnotations::StickyChainPairs()
+const
+{
+    return StickyChainPairs_;
+}
+
+bool LibraryAnnotations::IsStickyChainPair(
+    std::string_view first,
+    std::string_view second) const noexcept
+{
+    const auto key = std::pair{first, second};
+    const auto found = std::lower_bound(
+        StickyChainPairs_.begin(),
+        StickyChainPairs_.end(),
+        key,
+        [] (const auto& pair, const auto& value) {
+            return std::pair<std::string_view, std::string_view>{
+                pair.First,
+                pair.Second,
+            } < value;
+        });
+    return found != StickyChainPairs_.end() && found->First == first &&
+        found->Second == second;
+}
+
+std::span<const MessagePinAnnotation> LibraryAnnotations::MessagePins() const
+{
+    return MessagePins_;
+}
+
+const MessagePinAnnotation* LibraryAnnotations::FindMessagePin(
+    std::string_view name) const noexcept
+{
+    const auto found = std::lower_bound(
+        MessagePins_.begin(),
+        MessagePins_.end(),
+        name,
+        [] (const auto& value, auto key) { return value.Name < key; });
+    return found != MessagePins_.end() && found->Name == name
+        ? &*found
+        : nullptr;
+}
+
+ChainParticipation LibraryAnnotations::Chains() const noexcept
+{
+    return ChainRoots_.empty()
+        ? ChainParticipation::AllSafe
+        : ChainParticipation::AnnotatedRoots;
+}
+
+bool LibraryAnnotations::IsAnnotatedChainRoot(
+    std::string_view name) const noexcept
+{
+    return std::binary_search(ChainRoots_.begin(), ChainRoots_.end(), name);
+}
+
+std::span<const std::string> LibraryAnnotations::AlwaysBreakChainRoots() const
+{
+    return AlwaysBreakChainRoots_;
+}
+
+bool LibraryAnnotations::AlwaysBreakChainRoot(
+    std::string_view name) const noexcept
+{
+    return std::binary_search(
+        AlwaysBreakChainRoots_.begin(),
+        AlwaysBreakChainRoots_.end(),
+        name);
+}
+
+std::span<const std::string> LibraryAnnotations::ChainRoots() const
+{
+    return ChainRoots_;
+}
+
+std::span<const VisualScopeAnnotation> LibraryAnnotations::VisualScopes() const
+{
+    return VisualScopes_;
+}
+
+const VisualScopeAnnotation* LibraryAnnotations::FindScopeBegin(
+    std::string_view name) const noexcept
+{
+    const auto found = std::lower_bound(
+        VisualScopes_.begin(),
+        VisualScopes_.end(),
+        name,
+        [] (const auto& value, auto key) { return value.Begin < key; });
+    return found != VisualScopes_.end() && found->Begin == name
+        ? &*found
+        : nullptr;
+}
+
+const VisualScopeAnnotation* LibraryAnnotations::FindScopeEnd(
+    std::string_view name) const noexcept
+{
+    const auto found = std::lower_bound(
+        ScopeEndOrder_.begin(),
+        ScopeEndOrder_.end(),
+        name,
+        [&] (auto index, auto key) { return VisualScopes_[index].End < key; });
+    return found != ScopeEndOrder_.end() && VisualScopes_[*found].End == name
+        ? &VisualScopes_[*found]
+        : nullptr;
+}
 
 Configuration LoadConfigFile(const std::filesystem::path& path)
 {
     std::ifstream input(path);
     if (!input.is_open()) {
-        throw std::runtime_error("cannot open configuration file: " +
-            path.string());
+        throw std::runtime_error(
+            "cannot open configuration file: " + path.string());
     }
 
     Configuration config;
+    std::array<std::size_t, Options.size()> settingLines{};
     std::string lineText;
     size_t lineNumber = 0;
     while (std::getline(input, lineText)) {
@@ -664,7 +910,7 @@ Configuration LoadConfigFile(const std::filesystem::path& path)
                     if (!input.eof()) {
                         throw std::runtime_error(
                             "failed to read configuration file: " +
-                                path.string());
+                            path.string());
                     }
                     ThrowConfigError(path, settingLine, "unterminated array");
                 }
@@ -679,11 +925,17 @@ Configuration LoadConfigFile(const std::filesystem::path& path)
             key = arrayKey;
             value = arrayValue;
         }
-        ApplySetting(config, key, value, path, settingLine);
+        ApplySetting(config, key, value, path, settingLine, settingLines);
     }
     if (!input.eof()) {
-        throw std::runtime_error("failed to read configuration file: " +
-            path.string());
+        throw std::runtime_error(
+            "failed to read configuration file: " + path.string());
+    }
+    ValidateStyleLimits(config.FormattingStyle, path, lineNumber, settingLines);
+    try {
+        ValidateLibraryAnnotationStyle(config.FormattingStyle);
+    } catch (const std::invalid_argument& error) {
+        ThrowConfigError(path, lineNumber, error.what());
     }
     return config;
 }

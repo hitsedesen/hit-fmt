@@ -1,0 +1,20 @@
+namespace Samples {
+using Shared = int;
+DEFINE_CASE /* header */ (Shared, Nested(1, (2 + 3))) {
+    Shared* pointer;
+    auto sum = ReadFirst() + ReadSecond();
+    if (sum > 0) {
+        Write(sum);
+    }
+}
+DEFINE_CASE() { return; }
+struct Holder {
+    DEFINE_METHOD(Member, Case) {
+        int count = 1;
+        while (count > 0) { --count; }
+    }
+};
+DEFINE_CASE(Suite, DeclarationOnly);
+UNLISTED_CASE(Suite, Opaque) { untouched = left+right; }
+int tail;
+}

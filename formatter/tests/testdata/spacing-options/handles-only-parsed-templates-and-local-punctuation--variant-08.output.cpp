@@ -1,1 +1,1 @@
-int values[]={{1}, {2}};
+int values[]={ {1}, {2}};

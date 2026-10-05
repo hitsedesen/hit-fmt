@@ -1,5 +1,5 @@
+# Four-column member indentation is narrower than an eight-column tab.
 IndentWidth = 4
 IndentationKind = Tabs
-PreprocessorIndentation = PreprocessorIndented
 TrailingCommentSpacing = NoSpace
 IndentMembers = Indent

@@ -1,6 +1,6 @@
+# Shape preferences apply when broken; fitting canonical groups flatten.
 ColumnLimit = 50
 EmptyBlockInteriorSpacing = Space
-EnforceEmptyBlockInteriorSpacing = true
 BlockInteriorSpacing = Space
 EmptyLambdaBodySpacing = Preserve
-SingleStatementLambdaBodyLayout = Preserve
+LambdaBodiesLayout = Preserve

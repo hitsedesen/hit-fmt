@@ -1,0 +1,10 @@
+template<class T> struct Owner {
+    Owner<T> (make)();
+    Owner<T> ((create))() { return {}; }
+    Owner<T> (items)[[](){ return 4; }()];
+    Owner<T>(T* p) noexcept(check(p)) ();
+    Owner<T>(T* p) requires true;
+    Owner<T>(T* p) = opaque();
+    Owner<T>(T* p) = default;
+    Owner<T>(T* p) noexcept(check(p)) {}
+};

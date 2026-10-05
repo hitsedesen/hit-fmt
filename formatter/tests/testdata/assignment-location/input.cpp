@@ -3,4 +3,5 @@ void f() {
         = alpha;
     second =
         beta;
+    resultWithAnExtendedAssignmentName = operandWithAnExtendedAssignmentNameThatForcesWrapping;
 }

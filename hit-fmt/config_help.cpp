@@ -5,12 +5,17 @@
 #include <string_view>
 
 namespace hit_fmt {
+
 namespace {
 
 constexpr std::string_view Reset = "\033[0m";
+
 constexpr std::string_view Heading = "\033[1;36m";
+
 constexpr std::string_view Setting = "\033[1;33m";
+
 constexpr std::string_view Example = "\033[36m";
+
 constexpr std::string_view Comment = "\033[2m";
 
 void PrintHeading(std::ostream& output, std::string_view title, bool color)
@@ -30,16 +35,17 @@ void PrintCode(std::ostream& output, std::string_view code, bool color)
     size_t start = 0;
     while (start < code.size()) {
         auto end = code.find('\n', start);
-        auto line = code.substr(start, end == std::string_view::npos
-                ? code.size() - start
-                : end - start);
+        auto line = code.substr(
+            start,
+            end == std::string_view::npos ? code.size() - start : end - start);
         start = end == std::string_view::npos ? code.size() : end + 1;
         if (line.empty()) {
             output << '\n';
             continue;
         }
         if (color) {
-            output << (line.starts_with("//") || line.starts_with("#")
+            output
+                << (line.starts_with("//") || line.starts_with("#")
                     ? Comment
                     : Example);
         }
@@ -56,10 +62,11 @@ void PrintCode(std::ostream& output, std::string_view code, bool color)
 void PrintConfigHelp(std::ostream& output, bool useColor)
 {
     PrintHeading(output, "Configuration options", useColor);
-    output << "Examples show the effect of each setting on C or C++ code. "
-              "Other settings named in an example are assumed to be enabled.\n"
-              "Preserve leaves source layout unchanged and is not shown. "
-              "Naming checks report violations; they never rename code.\n\n";
+    output
+        << "Flat Key = Value syntax; # comments and quoted-string arrays.\n"
+            "Defaults preserve source break topology. "
+            "Canonical layout is opt-in.\n"
+            "Unknown option names and invalid values are errors.\n\n";
     for (const auto& section : HelpSections) {
         PrintHeading(output, section.Title, useColor);
         output << section.Description;

@@ -152,11 +152,7 @@
         (compound-statement "{" "}")
         (catch-clause
           "catch"
-          (condition
-            "("
-            (expression "...")
-            ")"
-          )
+          (condition "(" "..." ")")
           (compound-statement "{" "}")
         )
       )
@@ -247,24 +243,26 @@
               (declarator-name "variable")
             )
             (initializer
-              (parenthesized-expression
+              (argument-list
                 "("
-                (braced-initializer
-                  (initializer-list
-                    "{"
-                    (initializer-element
-                      (literal-expression "\"foo\"")
+                (argument
+                  (braced-initializer
+                    (initializer-list
+                      "{"
+                      (initializer-element
+                        (literal-expression "\"foo\"")
+                      )
+                      (list-separator ",")
+                      (initializer-element
+                        (literal-expression "\"bar\"")
+                      )
+                      (list-separator ",")
+                      (initializer-element
+                        (literal-expression "\"baz\"")
+                      )
+                      (list-separator ",")
+                      "}"
                     )
-                    (list-separator ",")
-                    (initializer-element
-                      (literal-expression "\"bar\"")
-                    )
-                    (list-separator ",")
-                    (initializer-element
-                      (literal-expression "\"baz\"")
-                    )
-                    (list-separator ",")
-                    "}"
                   )
                 )
                 ")"

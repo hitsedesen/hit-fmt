@@ -1,6 +1,9 @@
+# Shape preferences apply when broken; fitting canonical groups flatten.
 ColumnLimit = 50
 EmptyBlockInteriorSpacing = Space
-EnforceEmptyBlockInteriorSpacing = true
 BlockInteriorSpacing = Space
 EmptyLambdaBodySpacing = NoSpace
-SingleStatementLambdaBodyLayout = OneLineIfFits
+LambdaBodiesLayout = Canonical
+LambdaBodyShape = CompactIfFits
+# Empty and nonempty lambda shapes are independent.
+LambdaEmptyBodyShape = CompactIfFits

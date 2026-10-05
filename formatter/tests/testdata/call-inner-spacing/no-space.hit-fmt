@@ -1,2 +1,2 @@
+# Shape preferences apply when broken; fitting canonical groups flatten.
 SpaceInsideCallArguments = NoSpace
-EnforceSpaceInsideCallArguments = true

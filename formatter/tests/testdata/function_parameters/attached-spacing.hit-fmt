@@ -1,0 +1,4 @@
+ColumnLimit = 40
+ParametersPacking = Fill
+ParametersLayout = Canonical
+FunctionBraceSpacing = Space

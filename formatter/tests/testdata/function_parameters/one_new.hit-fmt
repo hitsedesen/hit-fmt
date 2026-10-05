@@ -1,9 +1,9 @@
+# Shape preferences apply when broken; fitting canonical groups flatten.
 IndentWidth = 4
 ColumnLimit = 40
-FunctionParameterSplit = OnePerLine
-EnforceFunctionParameterSplit = true
-FunctionBracePlacement = NewLine
-FirstFunctionParameterPosition = NewLine
-EnforceFirstFunctionParameterPosition = true
-FunctionParameterIndent = Continuation
-MergeFunctionParameters = false
+ParametersLayout = Canonical
+ParametersPacking = VerticalWhenBroken
+FunctionBracePlacement = NextLine
+DeclarationHeadersLayout = Canonical
+ParametersFirstItem = NextLine
+ParametersAlignment = Delimiter

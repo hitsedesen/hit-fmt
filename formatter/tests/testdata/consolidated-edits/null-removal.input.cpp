@@ -1,0 +1,1 @@
+; namespace n {; struct A{}; ;} void f(){;; while(a);}

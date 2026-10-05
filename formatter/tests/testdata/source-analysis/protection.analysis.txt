@@ -1,0 +1,56 @@
+immutable [52,163) reasons=3
+immutable [203,228) reasons=48
+immutable [228,244) reasons=2
+immutable [297,308) reasons=128
+immutable [334,353) reasons=16
+gap 1 [5,6) preserve=false separation=1 line=0 lf-first=false context=false
+gap 7 [36,37) preserve=false separation=0 line=2 lf-first=false context=false
+gap 8 [51,54) preserve=true separation=0 line=1 lf-first=true context=false
+gap 9 [68,69) preserve=true separation=0 line=1 lf-first=true context=false
+gap 10 [73,73) preserve=true separation=0 line=0 lf-first=false context=false
+gap 11 [74,75) preserve=true separation=0 line=0 lf-first=false context=false
+gap 12 [76,76) preserve=true separation=0 line=0 lf-first=false context=false
+gap 13 [77,78) preserve=true separation=0 line=0 lf-first=false context=false
+gap 14 [84,84) preserve=true separation=0 line=0 lf-first=false context=false
+gap 15 [85,86) preserve=true separation=0 line=0 lf-first=false context=false
+gap 16 [87,88) preserve=true separation=0 line=0 lf-first=false context=false
+gap 17 [89,90) preserve=true separation=0 line=0 lf-first=false context=false
+gap 18 [91,91) preserve=true separation=0 line=0 lf-first=false context=false
+gap 19 [92,93) preserve=true separation=0 line=1 lf-first=false context=false
+gap 20 [110,111) preserve=true separation=0 line=1 lf-first=false context=false
+gap 21 [114,115) preserve=true separation=1 line=0 lf-first=false context=false
+gap 22 [121,121) preserve=true separation=0 line=0 lf-first=false context=false
+gap 23 [122,123) preserve=true separation=0 line=1 lf-first=false context=false
+gap 24 [136,137) preserve=true separation=0 line=1 lf-first=true context=false
+gap 25 [140,141) preserve=true separation=1 line=0 lf-first=false context=false
+gap 26 [147,147) preserve=true separation=0 line=0 lf-first=false context=false
+gap 27 [148,149) preserve=true separation=0 line=1 lf-first=false context=false
+gap 28 [162,163) preserve=true separation=0 line=1 lf-first=true context=false
+gap 29 [166,167) preserve=false separation=1 line=0 lf-first=false context=false
+gap 33 [180,181) preserve=false separation=0 line=2 lf-first=false context=false
+gap 34 [188,189) preserve=false separation=0 line=1 lf-first=true context=false
+gap 35 [192,193) preserve=false separation=1 line=0 lf-first=false context=false
+gap 39 [202,203) preserve=false separation=0 line=1 lf-first=false context=false
+gap 40 [227,228) preserve=true separation=0 line=1 lf-first=true context=false
+gap 41 [232,232) preserve=true separation=0 line=0 lf-first=false context=false
+gap 42 [233,234) preserve=true separation=0 line=0 lf-first=false context=false
+gap 43 [235,235) preserve=true separation=0 line=0 lf-first=false context=false
+gap 44 [236,237) preserve=true separation=0 line=0 lf-first=false context=false
+gap 45 [238,239) preserve=true separation=0 line=0 lf-first=false context=false
+gap 46 [240,241) preserve=true separation=0 line=0 lf-first=false context=false
+gap 47 [242,243) preserve=true separation=0 line=0 lf-first=false context=false
+gap 55 [261,262) preserve=false separation=1 line=0 lf-first=false context=false
+gap 58 [274,275) preserve=false separation=1 line=0 lf-first=false context=false
+gap 59 [278,279) preserve=false separation=1 line=0 lf-first=false context=false
+gap 60 [282,283) preserve=false separation=1 line=0 lf-first=false context=false
+gap 64 [298,298) preserve=true separation=0 line=0 lf-first=false context=true
+gap 65 [301,301) preserve=true separation=0 line=0 lf-first=false context=true
+gap 66 [302,302) preserve=true separation=0 line=0 lf-first=false context=true
+gap 67 [305,305) preserve=true separation=0 line=0 lf-first=false context=true
+gap 68 [306,306) preserve=true separation=0 line=0 lf-first=false context=true
+gap 69 [307,307) preserve=true separation=0 line=0 lf-first=false context=true
+gap 71 [309,310) preserve=false separation=0 line=1 lf-first=false context=false
+gap 72 [323,324) preserve=false separation=0 line=1 lf-first=true context=false
+gap 73 [327,328) preserve=false separation=1 line=0 lf-first=false context=false
+gap 75 [333,334) preserve=false separation=0 line=1 lf-first=false context=false
+gap 76 [353,353) preserve=true separation=0 line=2 lf-first=true context=false

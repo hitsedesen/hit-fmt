@@ -23,7 +23,8 @@ void sample(int foo, int bar) {
     try {} catch (int error) {
     }
     if (bar) bar++;
-    if (foo) { // keep
+    if (foo) // keep
+    {
     }
     auto lambda = [] {
     };

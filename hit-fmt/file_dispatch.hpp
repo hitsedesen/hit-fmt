@@ -31,7 +31,10 @@ struct FileResult
 
 // Discovery yields file paths through visit(path). Each worker owns a
 // resolver; only the caller prints results, in discovery order.
-template <typename Discover, typename MakeResolver, typename Process,
+template <
+    typename Discover,
+    typename MakeResolver,
+    typename Process,
     typename Print>
 bool RunParallelFiles(
     size_t threadCount,
@@ -73,12 +76,14 @@ bool RunParallelFiles(
                     FileBatch batch;
                     {
                         std::unique_lock lock(mutex);
-                        ready.wait(lock, [&] {
-                            bool canClaim = !pending.empty() &&
-                                bufferedBytes < BufferedOutputLimit;
-                            return stop || canClaim ||
-                                (discoveryDone && pending.empty());
-                        });
+                        ready.wait(
+                            lock,
+                            [&] {
+                                bool canClaim = !pending.empty() &&
+                                    bufferedBytes < BufferedOutputLimit;
+                                return stop || canClaim ||
+                                    (discoveryDone && pending.empty());
+                            });
                         if (stop || (discoveryDone && pending.empty())) {
                             return;
                         }
@@ -97,9 +102,10 @@ bool RunParallelFiles(
                             ++index)
                         {
                             auto& result = completed[index];
-                            bufferedBytes += result.Output.size() +
-                                result.Error.size();
-                            // Already printed results left the deque.
+                            bufferedBytes +=
+                                result.Output.size() + result.Error.size();
+                            // Batch indices are global; printed results have
+                            // already left this deque.
                             results[batch.FirstIndex + index - printed] =
                                 std::move(result);
                         }
@@ -123,10 +129,13 @@ bool RunParallelFiles(
                             return true;
                         }
                         std::unique_lock lock(mutex);
-                        ready.wait(lock, [&] {
-                            return stop || results.size() +
-                                batch.Paths.size() <= pendingFileLimit;
-                        });
+                        ready.wait(
+                            lock,
+                            [&] {
+                                return stop ||
+                                    results.size() + batch.Paths.size() <=
+                                        pendingFileLimit;
+                            });
                         if (stop) {
                             return false;
                         }
@@ -177,8 +186,7 @@ bool RunParallelFiles(
             return false;
         }
         auto canLaunch = [&] {
-            return !pending.empty() &&
-                bufferedBytes < BufferedOutputLimit &&
+            return !pending.empty() && bufferedBytes < BufferedOutputLimit &&
                 workers.size() < threadCount &&
                 workers.size() < pending.size() + processing;
         };
@@ -186,11 +194,14 @@ bool RunParallelFiles(
             FileResult result;
             {
                 std::unique_lock lock(mutex);
-                ready.wait(lock, [&] {
-                    return discoveryError ||
-                        (!results.empty() && results.front().has_value()) ||
-                        (discoveryDone && results.empty()) || canLaunch();
-                });
+                ready.wait(
+                    lock,
+                    [&] {
+                        return discoveryError || (!results.empty() && results
+                            .front()
+                            .has_value()) ||
+                            (discoveryDone && results.empty()) || canLaunch();
+                    });
                 if (discoveryError) {
                     errors << *discoveryError << '\n';
                     return false;
@@ -213,8 +224,13 @@ bool RunParallelFiles(
                 if (results.empty()) {
                     break;
                 }
-                bufferedBytes -= results.front()->Output.size() +
-                    results.front()->Error.size();
+                bufferedBytes -= results
+                    .front()
+                    ->Output
+                    .size() + results
+                        .front()
+                        ->Error
+                        .size();
                 result = std::move(*results.front());
                 results.pop_front();
                 ++printed;

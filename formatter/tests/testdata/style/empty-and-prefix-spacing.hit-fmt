@@ -1,8 +1,10 @@
+# Shape preferences apply when broken; fitting canonical groups flatten.
 EmptyFunctionCallArgumentsSpacing = Space
 EmptyFunctionParametersSpacing = Space
 EmptyLambdaParametersSpacing = Space
 EmptyLambdaCaptureSpacing = Space
-ReturnArrowSpacing = LeftAndRight
+ReturnArrowSpaceBefore = Space
+ReturnArrowSpaceAfter = Space
 SubscriptOperatorSpacing = Space
 SubscriptOperatorInteriorSpacing = NoSpace
 ArrayDeclarationSpacing = Space

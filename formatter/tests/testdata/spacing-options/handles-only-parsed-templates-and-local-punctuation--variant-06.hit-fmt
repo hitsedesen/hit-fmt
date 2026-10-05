@@ -1,7 +1,7 @@
+# Shape preferences apply when broken; fitting canonical groups flatten.
 TrailingWhitespace = Trim
 TemplateKeywordSpacing = Space
 TemplateTypeArgumentInteriorSpacing = NoSpace
 StatementSemicolonSpacing = NoSpace
 MemberAccessOperatorsSpacing = NoSpace
 InitializerBracesSpacing = Space
-EnforceInitializerBracesSpacing = true

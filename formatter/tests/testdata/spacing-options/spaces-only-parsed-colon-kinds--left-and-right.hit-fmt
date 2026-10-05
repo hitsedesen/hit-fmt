@@ -1,3 +1,7 @@
-BitFieldColonSpacing = LeftAndRight
-EnumUnderlyingTypeColonSpacing = LeftAndRight
-LabelColonSpacing = LeftAndRight
+# Shape preferences apply when broken; fitting canonical groups flatten.
+BitFieldColonSpaceBefore = Space
+BitFieldColonSpaceAfter = Space
+EnumUnderlyingTypeColonSpaceBefore = Space
+EnumUnderlyingTypeColonSpaceAfter = Space
+LabelColonSpaceBefore = Space
+LabelColonSpaceAfter = Space

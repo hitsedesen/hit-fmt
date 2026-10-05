@@ -1,7 +1,7 @@
 void f()
 {
-    auto sum = firstValue + secondValue +
-        thirdValue;
+    auto sum = firstValue + secondValue
+        + thirdValue;
     auto value = firstValue || secondValue
         || thirdValue;
     auto result = firstValue <<

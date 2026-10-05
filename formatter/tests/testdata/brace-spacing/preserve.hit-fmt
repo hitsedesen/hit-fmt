@@ -1,7 +1,8 @@
-EnforceClassBraceSpacing = false
-EnforceLambdaBraceSpacing = false
-EnforceStructBraceSpacing = false
+# Shape preferences apply when broken; fitting canonical groups flatten.
+ClassBraceSpacing = GeneratedSpace
+LambdaBraceSpacing = GeneratedSpace
+StructBraceSpacing = GeneratedSpace
 EnumBraceSpacing = Preserve
-EnforceUnionBraceSpacing = false
-EnforceFunctionBraceSpacing = false
-EnforceNamespaceBraceSpacing = false
+UnionBraceSpacing = GeneratedSpace
+FunctionBraceSpacing = GeneratedSpace
+NamespaceBraceSpacing = GeneratedSpace

@@ -6,7 +6,7 @@ int g( int a, int b );
 
 void x() {
   f(first,
-      second,
-      third);
+        second,
+        third);
   g(first, second, third);
 }

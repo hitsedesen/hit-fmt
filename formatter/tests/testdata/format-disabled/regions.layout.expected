@@ -1,1 +1,2 @@
-17:41: line exceeds ColumnLimit (70 > 40)
+12:41: emitted line width 75 exceeds ColumnLimit 40
+18:41: emitted line width 70 exceeds ColumnLimit 40

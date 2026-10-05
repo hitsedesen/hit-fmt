@@ -1,0 +1,61 @@
+text grow hard direct:
+aa
+xxxxb
+c
+text grow hard nested:
+aa
+xxxxb
+c
+text grow opaque direct:
+aa
+xxxxb
+c
+text grow opaque nested:
+aa
+xxxxb
+c
+text shrink hard direct:
+aa b
+c
+text shrink hard nested:
+aa b
+c
+text shrink opaque direct:
+aa b
+c
+text shrink opaque nested:
+aa b
+c
+gap grow hard direct:
+aa
+    b
+c
+gap grow hard nested:
+aa
+    b
+c
+gap grow opaque direct:
+aa
+    b
+c
+gap grow opaque nested:
+aa
+    b
+c
+gap shrink hard direct:
+aa b
+c
+gap shrink hard nested:
+aa b
+c
+gap shrink opaque direct:
+aa b
+c
+gap shrink opaque nested:
+aa b
+c
+opaque multiline bytes width=200:
+before
+  raw\r
+	bytes
+broken$

@@ -1,2 +1,2 @@
-MultilineControlBlockFirstConditionPosition = NewLine
-MultilineControlBlockClosingDelimiterPlacement = NewLine
+# Preserve source-owned control header topology.
+ControlHeadersLayout = Preserve

@@ -1,0 +1,2 @@
+LineEnding = CRLF
+ColumnLimit = 10000

@@ -1,0 +1,5 @@
+Layout = Canonical
+ColumnLimit = 80
+IndentWidth = 2
+ControlBlockKeywordSpacing = Space
+ControlBracePlacement = NextLine

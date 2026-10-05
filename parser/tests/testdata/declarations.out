@@ -69,7 +69,20 @@
                   )
                   (constructor-initializer-list
                     ":"
-                    (constructor-initializer "bits" "{" "value" "}")
+                    (constructor-initializer
+                      (type-construction-expression
+                        (identifier-expression "bits")
+                        (braced-initializer
+                          (initializer-list
+                            "{"
+                            (initializer-element
+                              (identifier-expression "value")
+                            )
+                            "}"
+                          )
+                        )
+                      )
+                    )
                     (list-separator ",")
                     (constructor-initializer
                       (call-expression
@@ -207,8 +220,13 @@
               "else"
               (return-statement
                 "return"
-                (identifier-expression "T")
-                "{" "}" ";"
+                (type-construction-expression
+                  (identifier-expression "T")
+                  (braced-initializer
+                    (initializer-list "{" "}")
+                  )
+                )
+                ";"
               )
             )
             "}"
@@ -627,7 +645,15 @@
   (template-declaration
     "template"
     (template-parameter-list "<" ">")
-    (record-declaration "struct" "Versioned" "<" "Version" "{" "1" "," "0" "}" ">" "{" "}" ";")
+    (record-declaration
+      "struct" "Versioned"
+      (template-argument-list
+        "<"
+        (template-argument "Version" "{" "1" "," "0" "}")
+        ">"
+      )
+      "{" "}" ";"
+    )
   )
   (template-declaration
     (leading-trivia
@@ -656,7 +682,14 @@
             (member-expression
               (identifier-expression "std")
               "::"
-              (unparsed-syntax "is_arithmetic_v" "<" "T" ">")
+              (template-id-expression
+                (identifier-expression "is_arithmetic_v")
+                (template-argument-list
+                  "<"
+                  (template-argument "T")
+                  ">"
+                )
+              )
             )
             ")"
           )
@@ -982,7 +1015,14 @@
         (member-expression
           (identifier-expression "std")
           "::"
-          (unparsed-syntax "is_arithmetic_v" "<" "T" ">")
+          (template-id-expression
+            (identifier-expression "is_arithmetic_v")
+            (template-argument-list
+              "<"
+              (template-argument "T")
+              ">"
+            )
+          )
         )
       )
     )
@@ -1072,7 +1112,14 @@
         (member-expression
           (identifier-expression "std")
           "::"
-          (unparsed-syntax "is_arithmetic_v" "<" "T" ">")
+          (template-id-expression
+            (identifier-expression "is_arithmetic_v")
+            (template-argument-list
+              "<"
+              (template-argument "T")
+              ">"
+            )
+          )
         )
       )
     )

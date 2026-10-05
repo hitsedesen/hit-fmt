@@ -1,15 +1,15 @@
 void f(bool ready) {
   switch (0) {
 case 0:
-    work();
-    break;
+      work();
+      break;
   case 1:
   {
-    if (ready)
-      work();
-    break;
-  }
+      if (ready)
+        work();
+      break;
+    }
   default:
-    work();
+      work();
   }
 }

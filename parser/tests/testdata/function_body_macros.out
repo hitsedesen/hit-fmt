@@ -1,0 +1,179 @@
+(translation-unit
+  (namespace-declaration
+    "namespace" "Samples" "{"
+    (using-declaration "using" "Shared" "=" "int" ";")
+    (macro-function-definition
+      (macro-function-header
+        "DEFINE_CASE" "/* header */" "(" "Shared" "," "Nested" "(" "1" "," "(" "2" "+" "3" ")" ")" ")"
+        (dangling-trivia
+          (comment "/* header */")
+        )
+      )
+      (compound-statement
+        "{"
+        (declaration-statement
+          (declaration-specifiers "Shared")
+          (init-declarator-list
+            (init-declarator
+              (declarator
+                (pointer-operator "*")
+                (declarator-name "pointer")
+              )
+            )
+          )
+          ";"
+        )
+        (declaration-statement
+          (declaration-specifiers "auto")
+          (init-declarator-list
+            (init-declarator
+              (declarator
+                (declarator-name "sum")
+              )
+              (initializer
+                "="
+                (binary-expression
+                  (call-expression
+                    (identifier-expression "ReadFirst")
+                    (argument-list "(" ")")
+                  )
+                  "+"
+                  (call-expression
+                    (identifier-expression "ReadSecond")
+                    (argument-list "(" ")")
+                  )
+                )
+              )
+            )
+          )
+          ";"
+        )
+        (if-statement
+          "if"
+          (condition
+            "("
+            (binary-expression
+              (identifier-expression "sum")
+              ">"
+              (literal-expression "0")
+            )
+            ")"
+          )
+          (compound-statement
+            "{"
+            (expression-statement
+              (call-expression
+                (identifier-expression "Write")
+                (argument-list
+                  "("
+                  (argument
+                    (identifier-expression "sum")
+                  )
+                  ")"
+                )
+              )
+              ";"
+            )
+            "}"
+          )
+        )
+        "}"
+      )
+    )
+    (macro-function-definition
+      (macro-function-header "DEFINE_CASE" "(" ")")
+      (compound-statement
+        "{"
+        (return-statement "return" ";")
+        "}"
+      )
+    )
+    (record-declaration
+      "struct" "Holder" "{"
+      (macro-function-definition
+        (macro-function-header "DEFINE_METHOD" "(" "Member" "," "Case" ")")
+        (compound-statement
+          "{"
+          (declaration-statement
+            (declaration-specifiers "int")
+            (init-declarator-list
+              (init-declarator
+                (declarator
+                  (declarator-name "count")
+                )
+                (initializer
+                  "="
+                  (literal-expression "1")
+                )
+              )
+            )
+            ";"
+          )
+          (while-statement
+            "while"
+            (condition
+              "("
+              (binary-expression
+                (identifier-expression "count")
+                ">"
+                (literal-expression "0")
+              )
+              ")"
+            )
+            (compound-statement
+              "{"
+              (expression-statement
+                (unary-expression
+                  "--"
+                  (identifier-expression "count")
+                )
+                ";"
+              )
+              "}"
+            )
+          )
+          "}"
+        )
+      )
+      "}" ";"
+    )
+    (function-declaration
+      (declaration-specifiers "DEFINE_CASE")
+      (init-declarator-list
+        (init-declarator
+          (abstract-declarator
+            (function-declarator
+              (parameter-list
+                "("
+                (parameter-declaration
+                  (declaration-specifiers "Suite")
+                )
+                (list-separator ",")
+                (parameter-declaration
+                  (declaration-specifiers "DeclarationOnly")
+                )
+                ")"
+              )
+            )
+          )
+        )
+      )
+      ";"
+    )
+    (declaration
+      (unparsed-syntax "UNLISTED_CASE" "(" "Suite" "," "Opaque" ")" "{" "untouched" "=" "left" "+" "right" ";" "}")
+    )
+    (declaration
+      (declaration-specifiers "int")
+      (init-declarator-list
+        (init-declarator
+          (declarator
+            (declarator-name "tail")
+          )
+        )
+      )
+      ";"
+    )
+    "}"
+  )
+)

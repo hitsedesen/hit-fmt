@@ -9,6 +9,7 @@
 namespace {
 
 thread_local bool TrackAllocations = false;
+
 thread_local size_t AllocationCount = 0;
 
 } // namespace
@@ -62,8 +63,7 @@ auto invalid_integer = 0b102;
 auto invalid_escape = "\q";
 @
 auto broken = R"missing(raw contents;
-)cpp"
-                                     "\0\0\0";
+)cpp" "\0\0\0";
     static constexpr util::PaddedSourceView SourceView{
         .Data = Source,
         .Size = sizeof(Source) - util::SourcePaddingSize,

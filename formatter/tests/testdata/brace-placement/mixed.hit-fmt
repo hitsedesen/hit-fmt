@@ -1,9 +1,6 @@
-ClassBracePlacement = NewLine
-EnforceClassBracePlacement = true
-StructBracePlacement = Attach
-EnforceStructBracePlacement = true
-
-FunctionBracePlacement = Attach
-EnforceFunctionBracePlacement = true
-LambdaBracePlacement = NewLine
-EnforceLambdaBracePlacement = true
+# Shape preferences apply when broken; fitting canonical groups flatten.
+ClassBracePlacement = NextLine
+DeclarationHeadersLayout = Canonical
+StructBracePlacement = Attached
+FunctionBracePlacement = Attached
+LambdaBracePlacement = NextLine

@@ -1,0 +1,9 @@
+(translation-unit
+  (template-declaration
+    "template"
+    (template-parameter-list
+      "<"
+      (unparsed-syntax "class" "Value" "=" "Box" "<" "int" ">")
+    )
+  )
+)

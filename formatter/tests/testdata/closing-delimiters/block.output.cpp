@@ -15,11 +15,10 @@ void Example(
         first,
         second
     };
-    if (first) {
-        Use(second); }
-    auto lambda = [] {
-        return first; };
+    if (first) { Use(second); }
+    auto lambda = [] { return first; };
     Use(
         first, // keep this comment
         second // keep this one too
-    ); }
+    );
+}

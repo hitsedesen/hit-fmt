@@ -7,8 +7,8 @@ void use(int n) {
     target(  );
     target( // keep
         n );
-    target(/* keep */ n );
-    target( n /* keep */);
+    target( /* keep */ n );
+    target( n /* keep */ );
     target(
         n );
     target( n
@@ -25,9 +25,9 @@ void use(int n) {
     auto lambda = []( int x ) { return x; };
 #define CALL(x) x
     CALL( n );
-    target(  n  ) broken(  n  );
+    target( n ) broken(  n  );
     switch (n) {
-        UNROLLED( 1)
+        UNROLLED( 1 )
         UNROLLED( 2)
         UNROLLED( 3);
     }

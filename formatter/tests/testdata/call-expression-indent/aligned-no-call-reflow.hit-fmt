@@ -1,3 +1,5 @@
+# Shape preferences apply when broken; fitting canonical groups flatten.
 ColumnLimit = 32
-ExpressionLayoutCondition = Overflow
-CallArgumentIndent = Continuation
+ExpressionsLayout = Canonical
+CallsLayout = Preserve
+CallsAlignment = Delimiter

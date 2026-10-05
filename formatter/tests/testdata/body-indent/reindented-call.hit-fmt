@@ -1,8 +1,10 @@
+# Shape preferences apply when broken; fitting canonical groups flatten.
 IndentWidth = 4
 IndentationKind = Spaces
-IndentBlockBodies = true
+BodiesLayout = Canonical
+BodyShape = Expanded
 ColumnLimit = 72
-ExpressionLayoutCondition = Overflow
-CallArgumentSplit = OnePerLine
-EnforceCallArgumentSplit = true
-FirstCallArgumentPosition = NewLine
+ExpressionsLayout = Canonical
+CallsLayout = Canonical
+CallsPacking = VerticalWhenBroken
+CallsFirstItem = NextLine

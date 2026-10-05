@@ -1,0 +1,361 @@
+(translation-unit
+  (template-declaration
+    "template"
+    (template-parameter-list
+      "<"
+      (template-parameter "class" "T")
+      ">"
+    )
+    (requires-clause
+      "requires"
+      (constraint-expression
+        (member-expression
+          (identifier-expression "library")
+          "::"
+          (template-id-expression
+            (identifier-expression "Ready")
+            (template-argument-list
+              "<"
+              (template-argument "T")
+              ">"
+            )
+          )
+        )
+      )
+    )
+    (function-definition
+      (declaration-specifiers
+        "Envelope"
+        (template-argument-list
+          "<"
+          (template-argument "T")
+          ">"
+        )
+      )
+      (init-declarator-list
+        (init-declarator
+          (declarator
+            (declarator-name "inspect")
+            (function-declarator
+              (parameter-list
+                "("
+                (parameter-declaration
+                  (declaration-specifiers "T")
+                  (init-declarator-list
+                    (init-declarator
+                      (declarator
+                        (declarator-name "value")
+                      )
+                    )
+                  )
+                )
+                ")"
+              )
+            )
+          )
+        )
+      )
+      (compound-statement
+        "{"
+        (return-statement
+          "return"
+          (braced-initializer
+            (initializer-list "{" "}")
+          )
+          ";"
+        )
+        "}"
+      )
+    )
+  )
+  (template-declaration
+    (leading-trivia
+      (whitespace "\n\n")
+    )
+    "template"
+    (template-parameter-list
+      "<"
+      (template-parameter "class" "T")
+      ">"
+    )
+    (requires-clause
+      "requires"
+      (constraint-expression
+        (parenthesized-expression
+          "("
+          (binary-expression
+            (template-id-expression
+              (identifier-expression "Ready")
+              (template-argument-list
+                "<"
+                (template-argument "T")
+                ">"
+              )
+            )
+            "&&"
+            (unary-expression
+              "!"
+              (template-id-expression
+                (identifier-expression "Blocked")
+                (template-argument-list
+                  "<"
+                  (template-argument "T")
+                  ">"
+                )
+              )
+            )
+          )
+          ")"
+        )
+      )
+    )
+    (function-definition
+      (declaration-specifiers
+        "library" "::" "Envelope"
+        (template-argument-list
+          "<"
+          (template-argument "T")
+          ">"
+        )
+      )
+      (init-declarator-list
+        (init-declarator
+          (declarator
+            (declarator-name "collect")
+            (function-declarator
+              (parameter-list
+                "("
+                (parameter-declaration
+                  (declaration-specifiers "const" "T")
+                  (init-declarator-list
+                    (init-declarator
+                      (declarator
+                        (pointer-operator "&")
+                        (declarator-name "value")
+                      )
+                    )
+                  )
+                )
+                ")"
+              )
+            )
+          )
+        )
+      )
+      (compound-statement
+        "{"
+        (return-statement
+          "return"
+          (braced-initializer
+            (initializer-list "{" "}")
+          )
+          ";"
+        )
+        "}"
+      )
+    )
+  )
+  (template-declaration
+    (leading-trivia
+      (whitespace "\n\n")
+    )
+    "template"
+    (template-parameter-list
+      "<"
+      (template-parameter "class" "T")
+      ">"
+    )
+    (requires-clause
+      "requires"
+      (constraint-expression
+        (binary-expression
+          (requires-expression
+            "requires"
+            (parameter-list
+              "("
+              (parameter-declaration
+                (declaration-specifiers "T")
+                (init-declarator-list
+                  (init-declarator
+                    (declarator
+                      (declarator-name "value")
+                    )
+                  )
+                )
+              )
+              ")"
+            )
+            (requirement-body
+              "{"
+              (requirement "value" "." "touch" "(" ")")
+              (list-separator ";")
+              "}"
+            )
+          )
+          "or"
+          (parenthesized-expression
+            "("
+            (binary-expression
+              (identifier-expression "left")
+              "&"
+              (identifier-expression "mask")
+            )
+            ")"
+          )
+        )
+      )
+    )
+    (function-definition
+      (declaration-specifiers
+        "Envelope"
+        (template-argument-list
+          "<"
+          (template-argument
+            "Envelope"
+            (template-argument-list
+              "<"
+              (template-argument "T")
+              ">>"
+            )
+          )
+        )
+      )
+      (init-declarator-list
+        (init-declarator
+          (declarator
+            "Owner" "::"
+            (declarator-name "inspect")
+            (function-declarator
+              (parameter-list
+                "("
+                (parameter-declaration
+                  (declaration-specifiers "T")
+                  (init-declarator-list
+                    (init-declarator
+                      (declarator
+                        (declarator-name "value")
+                      )
+                    )
+                  )
+                )
+                ")"
+              )
+            )
+          )
+        )
+      )
+      (compound-statement
+        "{"
+        (return-statement
+          "return"
+          (braced-initializer
+            (initializer-list "{" "}")
+          )
+          ";"
+        )
+        "}"
+      )
+    )
+  )
+  (template-declaration
+    (leading-trivia
+      (whitespace "\n\n")
+    )
+    "template"
+    (template-parameter-list
+      "<"
+      (template-parameter "class" "T")
+      ">"
+    )
+    (requires-clause
+      "requires"
+      (constraint-expression
+        (binary-expression
+          (template-id-expression
+            (identifier-expression "Ready")
+            (template-argument-list
+              "<"
+              (template-argument "T")
+              ">"
+            )
+            (trailing-trivia
+              (comment "/* operand */")
+            )
+          )
+          "and" "/* operand */"
+          (template-id-expression
+            (identifier-expression "Enabled")
+            (template-argument-list
+              "<"
+              (template-argument "T")
+              ">"
+            )
+          )
+          (trailing-trivia
+            (comment "/* boundary */")
+          )
+        )
+        "/* boundary */"
+      )
+    )
+    (function-definition
+      (declaration-specifiers
+        "Envelope"
+        (template-argument-list
+          "<"
+          (template-argument "T")
+          ">"
+        )
+      )
+      (init-declarator-list
+        (init-declarator
+          (declarator
+            "Owner" "::"
+            (operator-function-name "operator" "(" ")")
+            (function-declarator
+              (parameter-list
+                "("
+                (parameter-declaration
+                  (declaration-specifiers "T")
+                  (init-declarator-list
+                    (init-declarator
+                      (declarator
+                        (declarator-name "value")
+                      )
+                    )
+                  )
+                )
+                ")"
+              )
+            )
+          )
+        )
+      )
+      (compound-statement
+        "{"
+        (return-statement
+          "return"
+          (braced-initializer
+            (initializer-list "{" "}")
+          )
+          ";"
+        )
+        "}"
+      )
+    )
+  )
+  (declaration
+    (leading-trivia
+      (whitespace "\n\n")
+    )
+    (declaration-specifiers "int")
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (declarator-name "outside")
+        )
+      )
+    )
+    ";"
+  )
+)

@@ -1,13 +1,8 @@
-ClassBraceSpacing = SingleSpace
-EnforceClassBraceSpacing = true
-LambdaBraceSpacing = SingleSpace
-EnforceLambdaBraceSpacing = true
-StructBraceSpacing = SingleSpace
-EnforceStructBraceSpacing = true
-EnumBraceSpacing = SingleSpace
-UnionBraceSpacing = SingleSpace
-EnforceUnionBraceSpacing = true
-FunctionBraceSpacing = SingleSpace
-EnforceFunctionBraceSpacing = true
-NamespaceBraceSpacing = SingleSpace
-EnforceNamespaceBraceSpacing = true
+# Shape preferences apply when broken; fitting canonical groups flatten.
+ClassBraceSpacing = Space
+LambdaBraceSpacing = Space
+StructBraceSpacing = Space
+EnumBraceSpacing = Space
+UnionBraceSpacing = Space
+FunctionBraceSpacing = Space
+NamespaceBraceSpacing = Space

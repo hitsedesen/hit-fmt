@@ -1,4 +1,6 @@
+# Shape preferences apply when broken; fitting canonical groups flatten.
 ColumnLimit = 24
+ChainsLayout = Canonical
+ChainsPacking = Fill
+# Explicit library annotations; no renderer identifier checks.
 ChainedCallRootNames = ["MAKE_TASK"]
-ChainedCallSplitCondition = Overflow
-ChainedCallLayout = Pack

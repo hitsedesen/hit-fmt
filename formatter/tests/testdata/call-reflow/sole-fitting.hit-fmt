@@ -1,0 +1,5 @@
+CallsPacking = VerticalWhenBroken
+CallsLayout = Canonical
+CallsBreak = IfNeeded
+TernaryLayout = ThreePart
+ExpressionsLayout = Canonical

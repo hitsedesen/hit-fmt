@@ -1,4 +1,5 @@
+# Shape preferences apply when broken; fitting canonical groups flatten.
 ColumnLimit = 35
-InitializerListSplit = Pack
-EnforceInitializerListSplit = true
-InitializerListIndent = Continuation
+InitializersLayout = Canonical
+InitializersPacking = Fill
+InitializersAlignment = Delimiter

@@ -1,7 +1,1 @@
-void f() {
-    if (alpha) {
-        Work();
-        More(); }
-    if (beta) {
-        Work(); }
-}
+void f() { if (alpha) { Work(); More(); } if (beta) { Work(); } }

@@ -1,5 +1,6 @@
+# Shape preferences apply when broken; fitting canonical groups flatten.
 ColumnLimit = 55
-ExpressionLayoutCondition = Overflow
-BinaryOperatorPlacement = Trailing
-LineLengthCheck = Soft
+ExpressionsLayout = Canonical
+BinaryOperatorSide = Trailing
+WidthDiagnostics = Report
 RemoveNullStatements = true
