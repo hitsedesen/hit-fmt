@@ -112,10 +112,10 @@
 203: & reference-declarator
 205: ) declaration-delimiter
 206: -> generic
-208: ( generic
-209: ( generic
-211: ) generic
-212: ) generic
+208: ( grouping-delimiter
+209: ( grouping-delimiter
+211: ) grouping-delimiter
+212: ) grouping-delimiter
 213: ; generic
 216: { record-delimiter
 219: ( generic

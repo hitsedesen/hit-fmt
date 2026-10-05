@@ -2115,6 +2115,69 @@ std::vector<FormatCase> FormatCases()
     forcedTemplates.TemplateParametersBreak =
         formatter::BreakRequirement::Always;
     cases.back().Style = std::move(forcedTemplates);
+    {
+        const auto directory = data / "template-arguments";
+        const auto base = formatter::LoadConfigFile(
+            directory / "trailing-return-space.hit-fmt").FormattingStyle;
+        struct Policy
+        {
+            const char* Name;
+            LayoutMode Layout;
+            GapPolicy Comma;
+            const char* Expected;
+        };
+        for (const auto& policy :
+            std::array<Policy, 5>{
+                {
+                    {
+                        "space",
+                        LayoutMode::Canonical,
+                        GapPolicy::Space,
+                        "trailing-return-space.output.cpp",
+                    },
+                    {
+                        "no-space",
+                        LayoutMode::Canonical,
+                        GapPolicy::NoSpace,
+                        "trailing-return-no-space.output.cpp",
+                    },
+                    {
+                        "preserve",
+                        LayoutMode::Preserve,
+                        GapPolicy::Preserve,
+                        "trailing-return.input.cpp",
+                    },
+                    {
+                        "generated",
+                        LayoutMode::Canonical,
+                        GapPolicy::GeneratedSpace,
+                        "trailing-return-space.output.cpp",
+                    },
+                    {
+                        "generated-preserve",
+                        LayoutMode::Preserve,
+                        GapPolicy::GeneratedSpace,
+                        "trailing-return.input.cpp",
+                    },
+                },
+            })
+        {
+            cases.push_back({
+                directory,
+                std::string("trailing-return-") + policy.Name,
+                "trailing-return.input.cpp",
+                "trailing-return-space",
+                {},
+                true,
+                policy.Expected,
+                true,
+            });
+            auto style = base;
+            style.Layout = policy.Layout;
+            style.CommaSpaceAfter = policy.Comma;
+            cases.back().Style = std::move(style);
+        }
+    }
     AddCases(
         cases,
         data / "template-parameters",

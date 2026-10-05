@@ -17,7 +17,7 @@ APPLY([] {
 RENAMED(7, [seed = 2](int value) mutable noexcept (true) -> int {
     return value + seed;
 }, 8);
-APPLY([]() noexcept (noexcept(Item{})) -> decltype (Item{}) {
+APPLY([]() noexcept (noexcept(Item{})) -> decltype(Item{}) {
     return Item{};
 });
 void local() {

@@ -239,7 +239,22 @@
             (lambda-capture-list "[" "]")
             (parameter-list "(" ")")
             (exception-specification "noexcept" "(" "noexcept" "(" "Item" "{" "}" ")" ")")
-            (trailing-return-type "->" "decltype" "(" "Item" "{" "}" ")")
+            (trailing-return-type
+              "->"
+              (type-id
+                "decltype"
+                (parenthesized-expression
+                  "("
+                  (type-construction-expression
+                    (identifier-expression "Item")
+                    (braced-initializer
+                      (initializer-list "{" "}")
+                    )
+                  )
+                  ")"
+                )
+              )
+            )
             (lambda-body
               "{"
               (return-statement

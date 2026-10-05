@@ -32,8 +32,8 @@ class Reader {
     const noexcept = 0;
     [[nodiscard]] static auto
     GetResultFromCurrentStorage()
-    noexcept
-    -> std::optional<ResultWithSize>;
+    noexcept -> std::optional<
+        ResultWithSize>;
     Reader() noexcept;
     operator bool() const noexcept;
 };
