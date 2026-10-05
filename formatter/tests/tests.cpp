@@ -931,6 +931,11 @@ std::vector<FormatCase> FormatCases()
         std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../chained-calls";
     AddCases(cases, chains, {"always", "continuation", "preserve"});
     cases.push_back({chains, "overflow", "overflow.input.cpp"});
+    AddCases(
+        cases,
+        chains,
+        {"moved-root", "moved-root-preserve", "moved-root-tabs"},
+        "moved-root.input.cpp");
     cases.push_back({chains, "child-fitting", "child-fitting.input.cpp"});
     cases.push_back({
         chains,

@@ -2803,17 +2803,65 @@ private:
         return true;
     }
 
+    // Unselected chains keep their breaks and relative indentation, but
+    // their source-owned continuation lines still follow the realized root.
+    void PlanPreservedChain(Index id)
+    {
+        if (Policies_.IndentationKind == IndentationKind::Preserve) {
+            return;
+        }
+        const auto& entry = Syntax_[id];
+        const auto begin = Region(entry).Tokens.Begin;
+        const auto source = Tree_.Source();
+        const auto offset = Tree_.Token(begin).Text.Begin;
+        auto line = source.rfind('\n', offset);
+        line = line == std::string_view::npos ? 0 : line + 1;
+        const auto prefix = source.substr(line, offset - line);
+        const auto base = HorizontalColumns(
+            prefix.substr(0, prefix.find_first_not_of(" \t")),
+            Options_.TabWidth);
+        Index group = None;
+        for (Index spine = id; spine != entry.Root;) {
+            const auto callee = Region(Syntax_[spine]).FirstChild;
+            if (callee == None) {
+                break;
+            }
+            const auto gap = Region(Syntax_[callee]).Tokens.End;
+            const auto indent = SourceIndent(gap);
+            if (IsChainLink(spine) && GapMutable(gap) && indent != None &&
+                Gaps_[gap].Owner == None)
+            {
+                const auto delta = int64_t(indent) - int64_t(base);
+                if (delta >= INT32_MIN && delta <= INT32_MAX) {
+                    if (group == None) {
+                        group = GroupAt(
+                            TokenPosition(begin),
+                            GapPosition(Region(entry).Tokens.End),
+                            document::GroupMode::Fill);
+                        Groups_[group].Spec.StructuralBase = true;
+                        Groups_[group].Spec.LineBase = true;
+                    }
+                    Reindent(gap, group);
+                    Gaps_[gap].OverrideIndent = true;
+                    Gaps_[gap].ExtraIndent = int32_t(delta);
+                }
+            }
+            spine = callee;
+        }
+    }
+
     void PlanChain(Index id)
     {
         const auto& entry = Syntax_[id];
-        if (Policies_.Chains.Layout != LayoutMode::Canonical) {
-            return;
-        }
         if (Region(entry).Parent != None &&
             IsSpine(Region(Syntax_[Region(entry).Parent]).Kind) &&
             Region(Syntax_[Region(entry).Parent]).FirstChild == id)
         {
             return; // Only the maximal callee/member spine owns link gaps.
+        }
+        if (Policies_.Chains.Layout != LayoutMode::Canonical) {
+            PlanPreservedChain(id);
+            return;
         }
         const auto& rootNode = Region(Syntax_[entry.Root]);
         const auto root = rootNode.Tokens;
@@ -2823,6 +2871,7 @@ private:
         const bool selectedRoots =
             Annotations_.Chains() == ChainParticipation::AnnotatedRoots;
         if (selectedRoots && !namedRoot) {
+            PlanPreservedChain(id);
             return;
         }
         const bool conventionalRoots = namedRoot && !Annotations_
@@ -2850,6 +2899,7 @@ private:
             }
             if (selectedRoots && !Annotations_.IsAnnotatedChainRoot(RootName_))
             {
+                PlanPreservedChain(id);
                 return;
             }
         }

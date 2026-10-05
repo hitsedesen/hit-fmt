@@ -1,0 +1,4 @@
+IndentWidth = 4
+IndentationKind = Spaces
+BodiesLayout = Canonical
+ChainsLayout = Preserve
