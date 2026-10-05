@@ -1,5 +1,8 @@
 # Integrated runtime validation
 
+The [instruction-hotspot follow-up](hotspot-follow-up.md) records the next
+retained changes and supersedes the aggregate timings below.
+
 This report supersedes the runtime conclusions in
 [the initial measurements](compact-pipeline.md) and
 [the first follow-up](runtime-follow-up.md). Their corpus-selection audit
