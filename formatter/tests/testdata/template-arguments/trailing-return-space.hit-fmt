@@ -1,0 +1,6 @@
+Layout = Canonical
+ColumnLimit = 120
+TemplateTypeArgumentSpacing = NoSpace
+TemplateTypeArgumentInteriorSpacing = NoSpace
+CommaSpaceBefore = NoSpace
+CommaSpaceAfter = Space

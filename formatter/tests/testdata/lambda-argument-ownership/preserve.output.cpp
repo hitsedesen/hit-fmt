@@ -7,7 +7,7 @@ Registry wrapped(wrap([] { return 3; }));
 APPLY(7, ::ops::combine(::ops::make()), [](const auto& value) -> std::string { return value; });
 APPLY([] { return 1; }, 7);
 RENAMED(7, [seed = 2](int value) mutable noexcept (true) -> int { return value + seed; }, 8);
-APPLY([]() noexcept (noexcept(Item{})) -> decltype (Item{}) { return Item{}; });
+APPLY([]() noexcept (noexcept(Item{})) -> decltype(Item{}) { return Item{}; });
 void local() {
     Registry entry(7, [] { return 2; });
     install([](int value) -> int { return value; });

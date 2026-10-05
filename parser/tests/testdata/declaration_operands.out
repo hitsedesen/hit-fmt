@@ -582,7 +582,21 @@
               )
               ")"
             )
-            (trailing-return-type "->" "decltype" "(" "(" "value" ")" ")")
+            (trailing-return-type
+              "->"
+              (type-id
+                "decltype"
+                (parenthesized-expression
+                  "("
+                  (parenthesized-expression
+                    "("
+                    (identifier-expression "value")
+                    ")"
+                  )
+                  ")"
+                )
+              )
+            )
           )
         )
       )

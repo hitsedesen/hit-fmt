@@ -390,7 +390,14 @@
               )
               ")"
             )
-            (trailing-return-type "->" "Vec" "<" "int" ">")
+            (trailing-return-type
+              "->" "Vec"
+              (template-argument-list
+                "<"
+                (template-argument "int")
+                ">"
+              )
+            )
           )
         )
       )

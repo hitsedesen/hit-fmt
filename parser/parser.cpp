@@ -4705,6 +4705,7 @@ private:
                 }
                 auto* trailing = MakeNode(NodeKind::TrailingReturnType, index);
                 trailing->Tokens.End = trailingEnd;
+                AddTypeSyntaxChildren(*trailing, index + 1, trailingEnd);
                 Append(function, *trailing);
                 index = NextSignificant(trailingEnd);
                 continue;
@@ -7969,6 +7970,7 @@ private:
                 }
                 auto* trailing = MakeNode(NodeKind::TrailingReturnType, cursor);
                 trailing->Tokens.End = trailingEnd;
+                AddTypeSyntaxChildren(*trailing, cursor + 1, trailingEnd);
                 Append(*lambda, *trailing);
                 cursor = ArgumentSignificant(trailingEnd, end);
                 continue;
