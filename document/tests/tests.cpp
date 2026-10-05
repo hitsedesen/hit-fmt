@@ -2050,7 +2050,22 @@ TEST(GroupLayout, SourceRunsMatchIndividualAtoms)
                 text(10, 11, NoIdentity, true);
                 text(11, 12, 201);
                 document.EndGroup(child);
-                document.Gap({GapKind::Soft, 1}, InvalidId, {12, 13});
+                // Exercise inline gap flags/counts alongside indexed text,
+                // group and prefix payloads, including source-run boundaries.
+                document.Gap(
+                    {
+                        .Kind = GapKind::Soft,
+                        .Spaces = 1,
+                        .RequiredWidth = 4,
+                        .LineEnding = repetitions % 2
+                            ? GapNewline::LF
+                            : GapNewline::CRLF,
+                        .FitNextSegment = repetitions % 2 != 0,
+                        .NewlineCount = static_cast<std::uint16_t>(1 +
+                            repetitions % 3),
+                    },
+                    InvalidId,
+                    {12, 13});
                 text(13, 17, 202);
                 document.EndGroup(owner);
                 // A multiline source atom must remain a run boundary.

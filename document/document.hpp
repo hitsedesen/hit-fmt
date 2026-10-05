@@ -453,14 +453,73 @@ private:
         };
     };
 
-    static_assert(sizeof(Node) <= 80);
+    // Construction drafts keep the public specifications convenient on the
+    // stack. Only compact atoms are retained in the file-scoped document.
+    struct SimpleGapData
+    {
+        std::uint32_t RequiredWidth;
+        AnchorId Anchor;
+        std::uint16_t Spaces;
+        std::uint16_t NewlineCount;
+    };
+
+    struct CompactTextData
+    {
+        std::uint32_t Flat;
+        std::uint32_t Broken;
+        std::uint32_t Detail;
+    };
+
+    struct EndData
+    {
+        std::uint32_t Match;
+        std::uint32_t LogicalPosition;
+        GroupId Reference;
+    };
+
+    struct Atom
+    {
+        explicit Atom(Kind kind)
+            : Type(kind)
+            , Text{}
+        { }
+
+        Provenance Origin;
+        GroupId Owner = InvalidId;
+        Kind Type;
+        GapKind GapType = GapKind::Flat;
+        GapNewline LineEnding = GapNewline::Inherit;
+        bool Exact : 1 = false;
+        bool HasPrefix : 1 = false;
+        bool Compact : 1 = false;
+        bool ComplexGap : 1 = false;
+        bool FitNextSegment : 1 = false;
+
+        union
+        {
+            CompactTextData Text;
+            SimpleGapData Gap;
+            RunData Run;
+            EndData End;
+            std::uint32_t Payload;
+        };
+    };
+
+    static_assert(sizeof(Atom) <= 32);
+    static_assert(sizeof(SimpleGapData) <= 12);
+    static_assert(sizeof(CompactTextData) <= 12);
     static_assert(sizeof(Mapping) <= 24);
     static_assert(sizeof(RunPart) <= 16);
 
+    Atom Pack(const Node& node);
+    GapSpec FlatGap(const Atom& atom) const;
+    GapData Gaps(const Atom& atom) const;
+    const GroupData& Group(const Atom& atom) const;
+    const PrefixedTextData& Prefix(const Atom& atom) const;
     std::uint32_t BorrowText(std::string_view text);
     std::string_view TextView(std::uint32_t id, Provenance origin) const;
-    std::string_view FlatText(const Node& node) const;
-    std::string_view BrokenText(const Node& node) const;
+    std::string_view FlatText(const Atom& node) const;
+    std::string_view BrokenText(const Atom& node) const;
 
     void EmitSourceText(
         std::uint32_t begin,
@@ -479,7 +538,11 @@ private:
     void Fail(Error error);
 
     std::string_view Source_;
-    std::pmr::vector<Node> Nodes_;
+    std::pmr::vector<Atom> Nodes_;
+    std::pmr::vector<CompactTextData> TextPayloads_;
+    std::pmr::vector<GroupData> GroupPayloads_;
+    std::pmr::vector<GapData> GapPayloads_;
+    std::pmr::vector<PrefixedTextData> PrefixPayloads_;
     std::pmr::vector<BorrowedText> BorrowedTexts_;
     std::pmr::vector<RunPart> RunParts_;
     std::pmr::vector<std::uint32_t> Groups_;

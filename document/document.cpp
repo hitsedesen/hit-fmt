@@ -132,6 +132,10 @@ Result::Result(std::pmr::memory_resource* resource)
 Document::Document(std::string_view source, std::pmr::memory_resource* resource)
     : Source_(source)
     , Nodes_(resource)
+    , TextPayloads_(resource)
+    , GroupPayloads_(resource)
+    , GapPayloads_(resource)
+    , PrefixPayloads_(resource)
     , BorrowedTexts_(resource)
     , RunParts_(resource)
     , Groups_(resource)
@@ -170,6 +174,103 @@ Document::Node::Node(Kind kind, bool prefixed)
     }
 }
 
+inline Document::Atom Document::Pack(const Node& node)
+{
+    Atom atom(node.Type);
+    atom.Origin = node.Origin;
+    atom.Owner = node.Owner;
+    atom.Exact = node.Exact;
+    atom.HasPrefix = node.HasPrefix;
+    atom.Compact = node.Compact;
+    if (node.HasPrefix) {
+        if (PrefixPayloads_.empty()) {
+            PrefixPayloads_.reserve(Nodes_.capacity() / 16);
+        }
+        atom.Payload = static_cast<std::uint32_t>(PrefixPayloads_.size());
+        PrefixPayloads_.push_back(node.Prefix);
+    } else if (node.Type == Kind::Begin || node.Type == Kind::Anchor) {
+        atom.Payload = static_cast<std::uint32_t>(GroupPayloads_.size());
+        GroupPayloads_.push_back(node.Group);
+    } else if (node.Type == Kind::End) {
+        atom.End = {
+            node.Group.Match,
+            node.Group.LogicalPosition,
+            node.Group.Reference,
+        };
+    } else if (node.Type == Kind::SourceRun) {
+        std::construct_at(&atom.Run, node.Run);
+    } else if (node.Type == Kind::ConditionalText) {
+        if (TextPayloads_.empty()) {
+            TextPayloads_.reserve(Nodes_.capacity() / 32);
+        }
+        atom.Payload = static_cast<std::uint32_t>(TextPayloads_.size());
+        TextPayloads_
+            .push_back({node.Text.Flat, node.Text.Broken, node.Text.Detail});
+    } else if (node.Type == Kind::Gap || node.Type == Kind::ConditionalGap ||
+        node.Type == Kind::SourceLineIndent)
+    {
+        const auto& gap = node.Gaps.Flat;
+        atom.ComplexGap =
+            node.Type != Kind::Gap || gap.FlatSourceBegin != InvalidId ||
+                gap.IndentSourceBegin != InvalidId;
+        if (atom.ComplexGap) {
+            if (GapPayloads_.empty()) {
+                GapPayloads_.reserve(Nodes_.capacity() / 8);
+            }
+            atom.Payload = static_cast<std::uint32_t>(GapPayloads_.size());
+            GapPayloads_.push_back(node.Gaps);
+        } else {
+            atom.GapType = gap.Kind;
+            atom.LineEnding = gap.LineEnding;
+            atom.FitNextSegment = gap.FitNextSegment;
+            atom.Gap = {
+                gap.RequiredWidth,
+                node.Gaps.Anchor,
+                gap.Spaces,
+                gap.NewlineCount,
+            };
+        }
+    } else {
+        atom.Text = {node.Text.Flat, node.Text.Broken, node.Text.Detail};
+        atom.LineEnding = node.Text.LineEnding;
+    }
+    return atom;
+}
+
+inline GapSpec Document::FlatGap(const Atom& atom) const
+{
+    if (atom.ComplexGap) {
+        return GapPayloads_[atom.Payload].Flat;
+    }
+    GapSpec gap;
+    gap.Kind = atom.GapType;
+    gap.Spaces = atom.Gap.Spaces;
+    gap.RequiredWidth = atom.Gap.RequiredWidth;
+    gap.LineEnding = atom.LineEnding;
+    gap.FitNextSegment = atom.FitNextSegment;
+    gap.NewlineCount = atom.Gap.NewlineCount;
+    return gap;
+}
+
+inline Document::GapData Document::Gaps(const Atom& atom) const
+{
+    if (atom.ComplexGap) {
+        return GapPayloads_[atom.Payload];
+    }
+    const auto gap = FlatGap(atom);
+    return {gap, gap, atom.Gap.Anchor};
+}
+
+const Document::GroupData& Document::Group(const Atom& atom) const
+{
+    return GroupPayloads_[atom.Payload];
+}
+
+const Document::PrefixedTextData& Document::Prefix(const Atom& atom) const
+{
+    return PrefixPayloads_[atom.Payload];
+}
+
 std::uint32_t Document::BorrowText(std::string_view text)
 {
     if (text.empty()) {
@@ -203,14 +304,15 @@ std::string_view Document::TextView(std::uint32_t id, Provenance origin) const
     return {text.Data, text.Size};
 }
 
-std::string_view Document::FlatText(const Node& node) const
+std::string_view Document::FlatText(const Atom& node) const
 {
     switch (node.Type) {
         case Kind::SourceLineIndent:
             return TextView(SourceTextId, node.Origin);
+        case Kind::ConditionalText:
+            return TextView(TextPayloads_[node.Payload].Flat, node.Origin);
         case Kind::Text:
         case Kind::Verbatim:
-        case Kind::ConditionalText:
         case Kind::SourceWhitespace:
         case Kind::ReindentedText:
             return TextView(
@@ -221,10 +323,10 @@ std::string_view Document::FlatText(const Node& node) const
     }
 }
 
-std::string_view Document::BrokenText(const Node& node) const
+std::string_view Document::BrokenText(const Atom& node) const
 {
     return node.Type == Kind::ConditionalText
-        ? TextView(node.Text.Broken, node.Origin)
+        ? TextView(TextPayloads_[node.Payload].Broken, node.Origin)
         : std::string_view{};
 }
 
@@ -244,6 +346,9 @@ void Document::Reserve(
     if (State_) {
         Nodes_.reserve(nodes);
         Groups_.reserve(groups);
+        // A lowering group commonly has both a block and a continuation
+        // anchor. Avoid retaining successive payload capacities in the arena.
+        GroupPayloads_.reserve(std::size_t(groups) * 3);
         RunParts_.reserve(sourceParts);
     }
 }
@@ -273,7 +378,7 @@ std::uint32_t Document::Add(Node node)
     }
     ++LogicalNodes_;
     const auto id = static_cast<std::uint32_t>(Nodes_.size());
-    Nodes_.push_back(node);
+    Nodes_.push_back(Pack(node));
     return id;
 }
 
@@ -388,7 +493,7 @@ void Document::EndGroup(GroupId group)
     node.Group.Match = Groups_[group];
     auto index = Add(node);
     if (index != InvalidId) {
-        Nodes_[node.Group.Match].Group.Match = index;
+        GroupPayloads_[Nodes_[node.Group.Match].Payload].Match = index;
         Open_.pop_back();
     }
 }
@@ -445,11 +550,14 @@ void Document::StartSourceRun()
     Node run(Kind::SourceRun);
     run.Owner = previous.Owner;
     run.Run.Begin = run.Run.End = static_cast<std::uint32_t>(RunParts_.size());
-    Nodes_.back() = run;
+    Nodes_.back() = Pack(run);
     if (previous.HasPrefix) {
         AppendRunPart(
-            FlatRunPart(previous.Prefix.Gap, previous.Prefix.Origin),
+            FlatRunPart(Prefix(previous).Gap, Prefix(previous).Origin),
             false);
+        if (previous.Payload + 1 == PrefixPayloads_.size()) {
+            PrefixPayloads_.pop_back();
+        }
     }
     AppendRunPart(
         {
@@ -515,7 +623,7 @@ void Document::EmitSourceText(
             return;
         }
         const bool gap = Nodes_.back().Type == Kind::Gap &&
-            Nodes_.back().Gaps.Flat.Kind == GapKind::Flat;
+            FlatGap(Nodes_.back()).Kind == GapKind::Flat;
         const auto first = Nodes_.size() - 1 - gap;
         if ((!gap || Nodes_.size() > 1) && Nodes_[first].Owner == owner &&
             (Nodes_[first].Type == Kind::Text ||
@@ -530,7 +638,7 @@ void Document::EmitSourceText(
                 return;
             }
             const auto prefix = gap
-                ? FlatRunPart(Nodes_.back().Gaps.Flat, Nodes_.back().Origin)
+                ? FlatRunPart(FlatGap(Nodes_.back()), Nodes_.back().Origin)
                 : RunPart{};
             if (gap) {
                 Nodes_.pop_back();
@@ -544,14 +652,14 @@ void Document::EmitSourceText(
         }
     }
     if (!Sealed_ && !Nodes_.empty() && Nodes_.back().Type == Kind::Gap &&
-        Nodes_.back().Gaps.Flat.Kind == GapKind::Flat &&
+        FlatGap(Nodes_.back()).Kind == GapKind::Flat &&
         Nodes_.back().Owner == owner)
     {
         if (LogicalNodes_ >= InvalidId) {
             Fail(Error::TooLarge);
             return;
         }
-        const auto prefix = Nodes_.back().Gaps.Flat;
+        const auto prefix = FlatGap(Nodes_.back());
         const auto prefixOrigin = Nodes_.back().Origin;
         Node node(verbatim ? Kind::Verbatim : Kind::Text, true);
         node.Prefix = {prefix, prefixOrigin};
@@ -559,7 +667,7 @@ void Document::EmitSourceText(
         node.Owner = owner;
         node.Exact = true;
         node.Compact = compact && !multiline;
-        Nodes_.back() = node;
+        Nodes_.back() = Pack(node);
         ++LogicalNodes_;
     } else {
         Node node(verbatim ? Kind::Verbatim : Kind::Text);
@@ -777,7 +885,7 @@ AnchorId Document::MarkAnchor(AnchorSpec spec)
 void Document::ExpressionLine()
 {
     if (Open_.empty() ||
-        !Nodes_[Groups_[Open_.back()]].Group.ExpressionContinuation)
+        !Group(Nodes_[Groups_[Open_.back()]]).ExpressionContinuation)
     {
         Fail(Error::InvalidGroup);
         return;
@@ -980,7 +1088,7 @@ Result Document::Render(
         {
             mappingCount += node.HasPrefix &&
                 (policy.SourceMap || !policy.TrackSource.empty() ||
-                    node.Prefix.Origin.Identity != NoIdentity)
+                    Prefix(node).Origin.Identity != NoIdentity)
                 ? 2
                 : 1;
             if (node.Type == Kind::SourceWhitespace) {
@@ -997,9 +1105,9 @@ Result Document::Render(
             }
             if (node.Type == Kind::SourceLineIndent ||
                 ((node.Type == Kind::Gap || node.Type == Kind::
-                    ConditionalGap) &&
-                    (node.Gaps.Flat.IndentSourceBegin != InvalidId ||
-                        node.Gaps.Broken.IndentSourceBegin != InvalidId)))
+                    ConditionalGap) && node.ComplexGap &&
+                    (Gaps(node).Flat.IndentSourceBegin != InvalidId ||
+                        Gaps(node).Broken.IndentSourceBegin != InvalidId)))
             {
                 ++mappingCount;
             }
@@ -1033,13 +1141,13 @@ Result Document::Render(
             // inevitable. Fold that prefix into enclosing fit obligations;
             // a potentially flat child still contributes its flat summary.
             const bool forced =
-                node.Group.ForceBreak && entry.OwnedLastBreak != InvalidId;
+                Group(node).ForceBreak && entry.OwnedLastBreak != InvalidId;
             // Decide eligibility per owner, not for its entire subtree. An
             // outer list can require owned lines while an inner chain keeps
             // its links flat and lets a deeper argument list break.
-            entry.ChildLayoutAllowed =
-                node.Group.Mode == GroupMode::Fill && node.Group.ChildBreaks &&
-                    !forced && !summary.OwnedConditionalLine;
+            entry.ChildLayoutAllowed = Group(node).Mode == GroupMode::Fill &&
+                Group(node).ChildBreaks && !forced &&
+                !summary.OwnedConditionalLine;
             broken = flat.Line || forced ? summary.Broken : flat;
             if (forced) {
                 flat = broken;
@@ -1050,7 +1158,7 @@ Result Document::Render(
             flexible = broken;
             if (!flat.Line && !forced && entry.OwnedLastBreak != InvalidId) {
                 flexible = summary.Broken;
-                firstBreakPenalty = node.Group.BreakPenalty;
+                firstBreakPenalty = Group(node).BreakPenalty;
             }
             summary = summaries.back();
             summaries.pop_back();
@@ -1088,48 +1196,45 @@ Result Document::Render(
                 summary.OwnedShapeChoice = summary.OwnedShapeChoice ||
                     FlatText(node) != BrokenText(node);
                 flat.Width = flat.Prefix =
-                    std::max(flat.Width, node.Text.Detail);
+                    std::max(flat.Width, TextPayloads_[node.Payload].Detail);
             }
             broken = node.Type == Kind::ConditionalText
                 ? MeasureText(BrokenText(node), policy.TabWidth)
                 : flat;
             if (node.HasPrefix) {
                 const auto prefix =
-                    MeasureFlatGap(node.Prefix.Gap, Source_, policy.TabWidth);
+                    MeasureFlatGap(Prefix(node).Gap, Source_, policy.TabWidth);
                 flat = Join(prefix, flat);
                 broken = Join(prefix, broken);
             }
             guaranteedLine = flat.Line;
         } else if (node.Type == Kind::Gap || node.Type == Kind::ConditionalGap)
         {
-            flat = MeasureFlatGap(node.Gaps.Flat, Source_, policy.TabWidth);
+            const auto gaps = Gaps(node);
+            flat = MeasureFlatGap(gaps.Flat, Source_, policy.TabWidth);
             const auto expandedFlat = node.Type == Kind::Gap
                 ? flat
-                : MeasureFlatGap(node.Gaps.Broken, Source_, policy.TabWidth);
+                : MeasureFlatGap(gaps.Broken, Source_, policy.TabWidth);
             // Reuse each flat whitespace measurement for fill and summaries.
-            broken = node.Owner != InvalidId &&
-                node.Gaps.Broken.Kind == GapKind::Soft
+            broken =
+                node.Owner != InvalidId && gaps.Broken.Kind == GapKind::Soft
                 ? Measure{Infinity, 0, true, true}
                 : expandedFlat;
             entry.ExpandedGapWidth = expandedFlat.Width;
-            if (node.Owner != InvalidId &&
-                node.Gaps.Broken.Kind != GapKind::Flat)
-            {
+            if (node.Owner != InvalidId && gaps.Broken.Kind != GapKind::Flat) {
                 ownedBreak = static_cast<std::uint32_t>(i);
             }
-            guaranteedLine = node.Gaps.Broken.Kind == GapKind::Hard;
+            guaranteedLine = gaps.Broken.Kind == GapKind::Hard;
             if (node.Type == Kind::ConditionalGap) {
                 summary.OwnedConditionalLine =
                     summary.OwnedConditionalLine || guaranteedLine;
                 summary.OwnedShapeChoice = summary.OwnedShapeChoice ||
-                    node.Gaps.Flat.Spaces != node.Gaps.Broken.Spaces ||
-                    node.Gaps.Flat.FlatSourceBegin !=
-                        node.Gaps.Broken.FlatSourceBegin ||
-                    node.Gaps.Flat.FlatSourceEnd !=
-                        node.Gaps.Broken.FlatSourceEnd;
+                    gaps.Flat.Spaces != gaps.Broken.Spaces ||
+                    gaps.Flat.FlatSourceBegin != gaps.Broken.FlatSourceBegin ||
+                    gaps.Flat.FlatSourceEnd != gaps.Broken.FlatSourceEnd;
             }
             if (node.Owner != InvalidId &&
-                (node.Gaps.Broken.Kind == GapKind::Soft ||
+                (gaps.Broken.Kind == GapKind::Soft ||
                     (node.Type == Kind::ConditionalGap && guaranteedLine)))
             {
                 lastBreak = static_cast<std::uint32_t>(i);
@@ -1139,7 +1244,7 @@ Result Document::Render(
             flexible = broken;
             if (!flat.Line && node.Owner != InvalidId) {
                 firstBreakPenalty =
-                    Nodes_[Groups_[node.Owner]].Group.BreakPenalty;
+                    Group(Nodes_[Groups_[node.Owner]]).BreakPenalty;
             }
         }
         entry.Flat = flat;
@@ -1212,7 +1317,11 @@ Result Document::Render(
             frame.RealizedContinuationIndent = column;
         }
     };
-    auto structuralBase = [&] (const Node& node) {
+    struct GroupNode
+    {
+        const GroupData& Group;
+    };
+    auto structuralBase = [&] (const GroupNode& node) {
         if (node.Group.FixedBase != InvalidId) {
             return node.Group.FixedBase;
         }
@@ -1237,11 +1346,11 @@ Result Document::Render(
         }
         return frame.Indent - frame.PendingExpressionIndent;
     };
-    auto sharesRealizedContinuation = [&] (const Node& node) {
+    auto sharesRealizedContinuation = [&] (const GroupNode& node) {
         return !node.Group.StructuralBase && frame.StructuralBase &&
             frame.RealizedContinuationLine;
     };
-    auto sharesContinuation = [&] (const Node& node) {
+    auto sharesContinuation = [&] (const GroupNode& node) {
         // A structural consumer already indented its contents. Contributors
         // reuse that realized level; another contributor starting on a later
         // line still creates a level, preserving expression precedence.
@@ -1303,7 +1412,7 @@ Result Document::Render(
         auto indent = frame.Indent;
         if (id != InvalidId) {
             const auto& anchor = anchors[id];
-            const auto& spec = Nodes_[anchor.Node];
+            const GroupNode spec{Group(Nodes_[anchor.Node])};
             indent = anchor.Column;
             if (spec.Group.Alignment == AnchorKind::DelimiterColumn) {
                 const auto minimum = std::min(
@@ -1391,6 +1500,7 @@ Result Document::Render(
         const auto& node = Nodes_[i];
         const auto& entry = cache[i];
         if (node.Type == Kind::Begin) {
+            const GroupNode node{Group(Nodes_[i])};
             const auto tail = groupTail(entry, node.Group.BreakPenalty);
             const bool mandatory = frame.Mandatory != InvalidId &&
                 frame.Mandatory >= i && frame.Mandatory <= node.Group.Match &&
@@ -1499,6 +1609,10 @@ Result Document::Render(
             return true;
         }
         if (node.Type == Kind::End) {
+            GroupData end;
+            end.Match = node.End.Match;
+            end.Reference = node.End.Reference;
+            const GroupNode node{end};
             // Shape consumers still observe multiline descendants, even when
             // this group keeps every owned gap flat.
             const bool multiline = lines != frame.StartLine;
@@ -1516,7 +1630,7 @@ Result Document::Render(
                     ++probeBrokenGroups;
                     probeBreakPenalty += frame.FlatChildPenalty;
                 } else if (const auto penalty =
-                    Nodes_[node.Group.Match].Group.FlatInBrokenParentPenalty;
+                    Group(Nodes_[node.Group.Match]).FlatInBrokenParentPenalty;
                     penalty != 0)
                 {
                     // Defer this cost until the direct parent's shape is
@@ -1545,6 +1659,7 @@ Result Document::Render(
             return true;
         }
         if (node.Type == Kind::Anchor) {
+            const GroupNode node{Group(Nodes_[i])};
             const bool shared = sharesContinuation(node);
             auto base = frame.Indent;
             if (node.Group.StructuralBase) {
@@ -1662,8 +1777,8 @@ Result Document::Render(
         const bool ownerBroken =
             node.Owner != InvalidId && result.Broken[node.Owner];
         if (node.HasPrefix) {
-            const auto& gap = node.Prefix.Gap;
-            auto prefixOrigin = node.Prefix.Origin;
+            const auto& gap = Prefix(node).Gap;
+            auto prefixOrigin = Prefix(node).Origin;
             const bool continuingIndent = frame.RealizedContinuationLine &&
                 column == frame.RealizedContinuationIndent;
             const bool prefixExact = gap.FlatSourceBegin != InvalidId;
@@ -1703,7 +1818,7 @@ Result Document::Render(
             outputBegin = static_cast<std::uint32_t>(result.Text.size());
         }
         if (node.Type == Kind::SourceWhitespace) {
-            const bool targetCRLF = node.Text.LineEnding == GapNewline::CRLF;
+            const bool targetCRLF = node.LineEnding == GapNewline::CRLF;
             const auto text = FlatText(node);
             if (text.size() > result.Text.max_size() ||
                 (targetCRLF &&
@@ -1874,6 +1989,7 @@ Result Document::Render(
                 realizeContinuation();
             }
         } else if (node.Type == Kind::SourceLineIndent) {
+            const auto gaps = Gaps(node);
             append(FlatText(node));
             advance(FlatText(node));
             if (mappingRequested && !probing) {
@@ -1887,32 +2003,32 @@ Result Document::Render(
             }
             outputBegin = static_cast<std::uint32_t>(result.Text.size());
             emittedOrigin = {
-                node.Gaps.Flat.IndentSourceBegin,
-                node.Gaps.Flat.IndentSourceEnd,
+                gaps.Flat.IndentSourceBegin,
+                gaps.Flat.IndentSourceEnd,
                 NoIdentity,
             };
-            emitIndent(
-                resolveIndent(node.Gaps.Anchor, node.Gaps.Flat.RequiredWidth));
+            emitIndent(resolveIndent(gaps.Anchor, gaps.Flat.RequiredWidth));
             realizeContinuation();
             // Do not set frame.OwnedLine: only editable gaps satisfy
             // ForceOwned.
         } else {
+            const auto gaps = Gaps(node);
             if (frame.OwnedFlat && ownerBroken &&
                 node.Type == Kind::ConditionalGap &&
-                node.Gaps.Broken.Kind == GapKind::Hard)
+                gaps.Broken.Kind == GapKind::Hard)
             {
                 // Conditional topology belongs to the owner's broken shape;
                 // it cannot be suppressed by a child-only alternative.
                 return false;
             }
             auto gap = node.Type == Kind::ConditionalGap && ownerBroken
-                ? node.Gaps.Broken
-                : node.Gaps.Flat;
+                ? gaps.Broken
+                : gaps.Flat;
             const bool continuingIndent = frame.RealizedContinuationLine &&
                 column == frame.RealizedContinuationIndent;
             bool line = gap.Kind == GapKind::Hard;
             if (gap.Kind == GapKind::Soft && ownerBroken && !frame.OwnedFlat) {
-                if (Nodes_[Groups_[node.Owner]].Group.Mode ==
+                if (Group(Nodes_[Groups_[node.Owner]]).Mode ==
                     GroupMode::Consistent)
                 {
                     line = true;
@@ -1934,7 +2050,7 @@ Result Document::Render(
             if (line) {
                 if (probing && node.Owner != InvalidId) {
                     probeBreakPenalty += std::size_t(gap.NewlineCount) *
-                        Nodes_[Groups_[node.Owner]].Group.BreakPenalty;
+                        Group(Nodes_[Groups_[node.Owner]]).BreakPenalty;
                 }
                 const bool lf = gap.LineEnding == GapNewline::LF ||
                     (gap.LineEnding == GapNewline::Inherit &&
@@ -1975,8 +2091,7 @@ Result Document::Render(
                     emittedOrigin.End = gap.IndentSourceEnd;
                     exact = true;
                 } else {
-                    emitIndent(
-                        resolveIndent(node.Gaps.Anchor, gap.RequiredWidth));
+                    emitIndent(resolveIndent(gaps.Anchor, gap.RequiredWidth));
                 }
             } else if (gap.FlatSourceBegin != InvalidId) {
                 auto text = Source_.substr(
@@ -2028,14 +2143,15 @@ Result Document::Render(
             !frame.Flat && !entry.Flat.Line && entry.Flat.CanBreak &&
             !fits(AddWidth(
                 entry.Flat.Width,
-                groupTail(entry, node.Group.BreakPenalty))))
+                groupTail(entry, Group(node).BreakPenalty))))
         {
+            const GroupNode node{Group(Nodes_[i])};
             // Compare parent breaks with bounded child-only layouts. Minimize
             // penalized newlines, then lines, then multiline groups; ties keep
             // the parent layout. Oversized groups use ordinary group fitting.
             constexpr std::size_t MaxProbeNodes = 256;
             constexpr std::size_t MaxProbeDepth = 4;
-            bool eligible = Nodes_[node.Group.Match].Group.LogicalPosition -
+            bool eligible = Nodes_[node.Group.Match].End.LogicalPosition -
                 node.Group.LogicalPosition < MaxProbeNodes;
             bool child = false;
             std::size_t candidateDepth = 1;
@@ -2126,9 +2242,9 @@ Result Document::Render(
                     for (std::size_t j = i; j <= node.Group.Match; ++j) {
                         const auto& part = Nodes_[j];
                         if (part.Type == Kind::Begin) {
-                            result.Broken[part.Group.Reference] = 0;
+                            result.Broken[Group(part).Reference] = 0;
                         } else if (part.Type == Kind::Anchor) {
-                            anchors[part.Group.Anchor] = {};
+                            anchors[Group(part).Anchor] = {};
                         }
                     }
                     frames.resize(savedDepth);
