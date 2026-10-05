@@ -2049,6 +2049,26 @@ std::vector<FormatCase> FormatCases()
         "indented-cases.input.cpp",
         "cases-preserved",
     });
+    for (const auto& [name, indentation] :
+        {
+            std::pair{
+                "case-regions-indent",
+                formatter::BodyIndentation::Indent,
+            },
+            std::pair{
+                "case-regions-no-indent",
+                formatter::BodyIndentation::NoIndent,
+            },
+        })
+    {
+        auto style = formatter::LoadConfigFile(spacing / "case-regions.hit-fmt")
+            .FormattingStyle;
+        style.IndentCaseLabels = indentation;
+        style.CaseLabelIndentWidth = 1;
+        cases.push_back(
+            {spacing, name, "case-regions.input.cpp", "case-regions"});
+        cases.back().Style = std::move(style);
+    }
     for (const auto& entry : std::filesystem::directory_iterator(spacing)) {
         const auto filename = entry
             .path()

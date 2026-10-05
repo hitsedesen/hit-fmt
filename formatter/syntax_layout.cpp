@@ -1803,6 +1803,27 @@ private:
         }
     }
 
+    bool IsSoleCaseBlock(Index id) const
+    {
+        const auto& block = Region(Syntax_[id]);
+        const auto previous = Syntax_[id].PreviousSibling;
+        if (block.Kind != NodeKind::CompoundStatement || previous == None ||
+            Region(Syntax_[previous]).Kind != NodeKind::CaseLabel ||
+            Region(Syntax_[previous]).Tokens.End != block.Tokens.Begin)
+        {
+            return false;
+        }
+        auto next = block.NextSibling;
+        while (next != None && Region(Syntax_[next]).Kind == NodeKind::Comment)
+        {
+            next = Region(Syntax_[next]).NextSibling;
+        }
+        // A case consisting solely of one block can attach it to the label.
+        // Mixed cases instead give every statement the same body level.
+        return next == None ||
+            Region(Syntax_[next]).Kind == NodeKind::CaseLabel;
+    }
+
     std::optional<BracePlacement> BraceFor(Index id) const
     {
         const auto& node = Region(Syntax_[id]);
@@ -2359,11 +2380,11 @@ private:
                 (parent != None &&
                     Region(Syntax_[parent]).Kind == NodeKind::LambdaExpression);
             const auto previous = Syntax_[id].PreviousSibling;
-            const bool labeled = previous != None &&
-                (Region(Syntax_[previous]).Kind == NodeKind::CaseLabel ||
+            const bool labeled = IsSoleCaseBlock(id) ||
+                (previous != None &&
                     Region(Syntax_[previous]).Kind ==
-                        NodeKind::LabelStatement) &&
-                Region(Syntax_[previous]).Tokens.End == node.Tokens.Begin;
+                        NodeKind::LabelStatement &&
+                    Region(Syntax_[previous]).Tokens.End == node.Tokens.Begin);
             if (!lambda && !labeled &&
                 (parent == None ||
                     (!BraceFor(parent) &&
@@ -2455,9 +2476,7 @@ private:
         {
             const auto next = Region(Syntax_[id]).NextSibling;
             const auto& body = Region(Syntax_[next]);
-            if (body.Kind == NodeKind::CompoundStatement &&
-                Syntax_[next].Safe && node.Tokens.End == body.Tokens.Begin)
-            {
+            if (IsSoleCaseBlock(next) && Syntax_[next].Safe) {
                 opening = body.Tokens.Begin;
                 bodyChild = next;
                 const auto parent = Region(Syntax_[id]).Parent;
@@ -2604,11 +2623,7 @@ private:
         if (contentIndent != None) {
             offset = std::min(offset, int32_t(contentIndent));
         }
-        const auto previous = Syntax_[id].PreviousSibling;
-        const bool caseBody = previous != None &&
-            Region(Syntax_[previous]).Kind == NodeKind::CaseLabel &&
-            Region(Syntax_[previous]).Tokens.End == opening;
-        if (caseBody &&
+        if (IsSoleCaseBlock(id) &&
             Policies_.Indentation.CaseLabels.Mode != BodyIndentation::Preserve)
         {
             // Explicit case indentation also reindents the compound opener
@@ -2696,12 +2711,13 @@ private:
                 }
                 continue;
             }
-            // Labels delimit direct-child case regions. A real compound body
-            // supplies its own level; statements after it start another region.
+            // Labels delimit direct-child case regions. A sole compound
+            // supplies the case's body level; mixed cases share one level
+            // across all their statements, including the first block.
             if (part.Kind == NodeKind::CaseLabel) {
                 inCase = true;
                 contents = None;
-            } else if (part.Kind == NodeKind::CompoundStatement) {
+            } else if (IsSoleCaseBlock(child)) {
                 contents = None;
             } else if (inCase) {
                 if (contents == None) {

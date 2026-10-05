@@ -100,6 +100,13 @@ void PrintOption(std::ostream& output, std::string_view name, const T& value)
                 "# Lambda bodies and explicit AlwaysBreakChainRootNames keep\n"
                 "# their ordinary chain policy.\n";
     }
+    if (name == "CaseBlockBracePlacement") {
+        output
+            << "# Applies when a case contains only one compound block.\n"
+                "# Mixed cases align all statements and standalone blocks.\n"
+                "# Example: case 1: { work(); break; } uses this placement;\n"
+                "# In case 2: { work(); } break;, braces align with break.\n";
+    }
     if (name == "IndentPreprocessingDirectives") {
         output
             << "# Indent the whole directive "

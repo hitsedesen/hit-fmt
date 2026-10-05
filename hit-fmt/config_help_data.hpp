@@ -93,6 +93,13 @@ constexpr HelpExample ShapeExamples[] = {
     {"Independent brace, body and comma decisions:",
         R"(FunctionBracePlacement = NextLine
 ControlBracePlacement = NextLineIfHeaderBroken
+# CaseBlockBracePlacement applies when a case contains only one block.
+CaseBlockBracePlacement = Attached
+# Mixed cases keep all statements and standalone blocks at one body level:
+# case 1:
+#     { first(); }
+#     { second(); }
+#     break;
 BodiesLayout = Canonical
 BodyShape = Expanded
 EmptyBodyShape = CompactIfFits

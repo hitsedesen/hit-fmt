@@ -9,9 +9,9 @@ case 0:
          b();
          break;
   case 2:
-      {
-         c();
-      }
+         {
+            c();
+         }
          a();
          break;
     case 3:
@@ -19,6 +19,28 @@ case 0:
  case 4:
                c();
          }
+         break;
+  case 5:
+         a();
+         {
+            b();
+            {
+               c();
+            }
+         }
+         a();
+         {
+            c();
+         }
+         break;
+   case 6:
+         {
+            a();
+         }
+         {
+            b();
+         }
+         c();
          break;
 default:
          break;

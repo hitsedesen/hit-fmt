@@ -2249,7 +2249,7 @@ TEST(SyntaxLayout, CaseBraceAndLabelIndentAreIndependentOfFollowingBody)
     EXPECT_NE(output.find("\n  case 1:\n    {"), std::string::npos) << output;
     EXPECT_EQ(Lower(output, style).Text, output);
 
-    // A real body supplies its own level; unbraced siblings need one too.
+    // A sole block supplies its own level; unbraced cases need one too.
     EXPECT_NE(
         output.find("\n      first();\n      second();"),
         std::string::npos) << output;
@@ -2268,7 +2268,7 @@ TEST(SyntaxLayout, CaseBraceAndLabelIndentAreIndependentOfFollowingBody)
             "void f(){ switch(value){ case 0: case 1: first(); second(); "
             "break; case 2: { third(); } fourth(); break; default: } }\n",
             style).Text;
-        // Unbraced contents follow the label's base plus one body width.
+        // Mixed and unbraced contents use the label base plus one body width.
         const std::string labelIndent =
             label == formatter::BodyIndentation::Indent ? "    " : "   ";
         const std::string contentIndent = labelIndent + "   ";
@@ -2280,8 +2280,9 @@ TEST(SyntaxLayout, CaseBraceAndLabelIndentAreIndependentOfFollowingBody)
                 contentIndent + "second();\n" + contentIndent + "break;"),
             std::string::npos) << contents;
         EXPECT_NE(
-            contents.find("case 2:\n      {\n         third();\n      }\n" +
-                contentIndent + "fourth();\n" + contentIndent + "break;"),
+            contents.find("case 2:\n" + contentIndent + "{\n" + contentIndent +
+                "   third();\n" + contentIndent + "}\n" + contentIndent +
+                "fourth();\n" + contentIndent + "break;"),
             std::string::npos) << contents;
         EXPECT_EQ(Lower(contents, style).Text, contents);
     }
