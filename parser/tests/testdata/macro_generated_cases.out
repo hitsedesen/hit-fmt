@@ -1,0 +1,389 @@
+(translation-unit
+  (function-definition
+    (declaration-specifiers "const" "char")
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (pointer-operator "*")
+          (declarator-name "Describe")
+          (function-declarator
+            (parameter-list
+              "("
+              (parameter-declaration
+                (declaration-specifiers "int")
+                (init-declarator-list
+                  (init-declarator
+                    (declarator
+                      (declarator-name "group")
+                    )
+                  )
+                )
+              )
+              (list-separator ",")
+              (parameter-declaration
+                (declaration-specifiers "int")
+                (init-declarator-list
+                  (init-declarator
+                    (declarator
+                      (declarator-name "value")
+                    )
+                  )
+                )
+              )
+              ")"
+            )
+          )
+        )
+      )
+    )
+    (compound-statement
+      "{"
+      (preprocessing-directive "#define ENTRY(tag, text) case tag: return text;")
+      (switch-statement
+        "switch"
+        (condition
+          "("
+          (identifier-expression "group")
+          ")"
+        )
+        (compound-statement
+          "{"
+          (case-label "case" "1" ":")
+          (switch-statement
+            "switch"
+            (condition
+              "("
+              (identifier-expression "value")
+              ")"
+            )
+            (compound-statement
+              "{"
+              (unparsed-syntax
+                "ENTRY" "(" "11" "," "\"first\"" ")" "ENTRY" "(" "12" "," "\"second\"" ")" "// Generated entries are not C++ call statements." "ENTRY" "(" "13" "," "\"third\"" ")"
+                (dangling-trivia
+                  (comment "// Generated entries are not C++ call statements.")
+                )
+              )
+              (case-label "default" ":")
+              (return-statement
+                "return"
+                (literal-expression "nullptr")
+                ";"
+              )
+              "}"
+            )
+          )
+          (case-label "case" "2" ":")
+          (switch-statement
+            "switch"
+            (condition
+              "("
+              (identifier-expression "value")
+              ")"
+            )
+            (compound-statement
+              "{"
+              (unparsed-syntax
+                "ENTRY" "(" "21" "," "\"one\"" ")"
+                (preprocessing-directive "#if EXTRA_ENTRY")
+                "ENTRY" "(" "22" "," "\"two\"" ")"
+                (preprocessing-directive "#endif")
+              )
+              (case-label "default" ":")
+              (return-statement
+                "return"
+                (literal-expression "nullptr")
+                ";"
+              )
+              "}"
+            )
+          )
+          (case-label "default" ":")
+          (return-statement
+            "return"
+            (literal-expression "nullptr")
+            ";"
+          )
+          "}"
+        )
+      )
+      (preprocessing-directive "#undef ENTRY")
+      "}"
+    )
+  )
+  (function-definition
+    (leading-trivia
+      (whitespace "\n\n")
+    )
+    (declaration-specifiers "void")
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (declarator-name "Dispatch")
+          (function-declarator
+            (parameter-list
+              "("
+              (parameter-declaration
+                (declaration-specifiers "int")
+                (init-declarator-list
+                  (init-declarator
+                    (declarator
+                      (declarator-name "value")
+                    )
+                  )
+                )
+              )
+              ")"
+            )
+          )
+        )
+      )
+    )
+    (compound-statement
+      "{"
+      (switch-statement
+        "switch"
+        (condition
+          "("
+          (identifier-expression "value")
+          ")"
+        )
+        (compound-statement
+          "{"
+          (case-label "case" "0" ":")
+          (expression-statement
+            (call-expression
+              (identifier-expression "Consume")
+              (argument-list
+                "("
+                (argument
+                  (literal-expression "0")
+                )
+                ")"
+              )
+            )
+            ";"
+          )
+          (break-statement "break" ";")
+          (preprocessing-directive "#define SELECT_CASE(tag, type) case tag: Consume<type>(); break;")
+          (unparsed-syntax
+            "SELECT_CASE" "(" "1" "," "Byte" ")" "SELECT_CASE" "(" "2" "," "Byte" ")" "SELECT_CASE" "(" "3" "," "Word" ")"
+            (preprocessing-directive "#undef SELECT_CASE")
+          )
+          (case-label "default" ":")
+          (expression-statement
+            (call-expression
+              (identifier-expression "Consume")
+              (argument-list
+                "("
+                (argument
+                  (literal-expression "4")
+                )
+                ")"
+              )
+            )
+            ";"
+          )
+          (break-statement "break" ";")
+          "}"
+        )
+      )
+      "}"
+    )
+  )
+  (function-definition
+    (leading-trivia
+      (whitespace "\n\n")
+    )
+    (declaration-specifiers "void")
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (declarator-name "OpaqueTail")
+          (function-declarator
+            (parameter-list
+              "("
+              (parameter-declaration
+                (declaration-specifiers "int")
+                (init-declarator-list
+                  (init-declarator
+                    (declarator
+                      (declarator-name "value")
+                    )
+                  )
+                )
+              )
+              ")"
+            )
+          )
+        )
+      )
+    )
+    (compound-statement
+      "{"
+      (switch-statement
+        "switch"
+        (condition
+          "("
+          (identifier-expression "value")
+          ")"
+        )
+        (compound-statement
+          "{"
+          (unparsed-syntax "SELECT_CASE" "(" "5" "," "Byte" ")" "SELECT_CASE" "(" "6" "," "Word" ")")
+          "}"
+        )
+      )
+      "}"
+    )
+  )
+  (function-definition
+    (leading-trivia
+      (whitespace "\n\n")
+    )
+    (declaration-specifiers "void")
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (declarator-name "ExplicitBoundary")
+          (function-declarator
+            (parameter-list
+              "("
+              (parameter-declaration
+                (declaration-specifiers "int")
+                (init-declarator-list
+                  (init-declarator
+                    (declarator
+                      (declarator-name "value")
+                    )
+                  )
+                )
+              )
+              ")"
+            )
+          )
+        )
+      )
+    )
+    (compound-statement
+      "{"
+      (switch-statement
+        "switch"
+        (condition
+          "("
+          (identifier-expression "value")
+          ")"
+        )
+        (compound-statement
+          "{"
+          (unparsed-syntax "SELECT_CASE" "(" "7" "," "Byte" ")")
+          (case-label "case" "8" ":")
+          (expression-statement
+            (call-expression
+              (identifier-expression "Consume")
+              (argument-list
+                "("
+                (argument
+                  (literal-expression "8")
+                )
+                ")"
+              )
+            )
+            ";"
+          )
+          (break-statement "break" ";")
+          (unparsed-syntax "TOKENS" "(" "case" "9" ":" "break" ";" ")")
+          (case-label "default" ":")
+          (expression-statement
+            (call-expression
+              (identifier-expression "Consume")
+              (argument-list
+                "("
+                (argument
+                  (literal-expression "10")
+                )
+                ")"
+              )
+            )
+            ";"
+          )
+          (break-statement "break" ";")
+          "}"
+        )
+      )
+      "}"
+    )
+  )
+  (function-definition
+    (leading-trivia
+      (whitespace "\n\n")
+    )
+    (declaration-specifiers "void")
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (declarator-name "OrdinaryCalls")
+          (function-declarator
+            (parameter-list "(" ")")
+          )
+        )
+      )
+    )
+    (compound-statement
+      "{"
+      (expression-statement
+        (call-expression
+          (identifier-expression "Consume")
+          (argument-list
+            "("
+            (argument
+              (literal-expression "1")
+            )
+            ")"
+          )
+        )
+        ";"
+      )
+      (expression-statement
+        (call-expression
+          (identifier-expression "Consume")
+          (argument-list
+            "("
+            (argument
+              (literal-expression "2")
+            )
+            (list-separator ",")
+            (argument
+              (literal-expression "3")
+            )
+            ")"
+          )
+        )
+        ";"
+      )
+      (expression-statement
+        (call-expression
+          (call-expression
+            (identifier-expression "Factory")
+            (argument-list
+              "("
+              (argument
+                (literal-expression "4")
+              )
+              ")"
+            )
+          )
+          (argument-list
+            "("
+            (argument
+              (literal-expression "5")
+            )
+            ")"
+          )
+        )
+        ";"
+      )
+      "}"
+    )
+  )
+)

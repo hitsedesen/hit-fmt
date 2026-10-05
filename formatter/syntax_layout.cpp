@@ -2306,16 +2306,22 @@ private:
 
     Index PreservedBodyIndent(Index id, Index opening, Index close) const
     {
-        if ((uint8_t(Region(Syntax_[id]).Status) &
-            uint8_t(RegionStatus::Ambiguous)) == 0)
-        {
+        constexpr auto uncertain =
+            uint8_t(RegionStatus::Ambiguous) | uint8_t(RegionStatus::Recovery);
+        if ((uint8_t(Region(Syntax_[id]).Status) & uncertain) == 0) {
             return None;
         }
+        const auto parent = Region(Syntax_[id]).Parent;
+        const bool switchBody = parent != None &&
+            Region(Syntax_[parent]).Kind == NodeKind::SwitchStatement;
+        bool labeled = false;
         for (auto child = Region(Syntax_[id]).FirstChild;
             child != None;
             child = Region(Syntax_[child]).NextSibling)
         {
             const auto& part = Region(Syntax_[child]);
+            labeled |= part.Kind == NodeKind::CaseLabel ||
+                part.Kind == NodeKind::LabelStatement;
             if (Syntax_[child].Safe || part.Tokens.Empty() ||
                 part.Tokens.Begin <= opening || part.Tokens.End > close)
             {
@@ -2332,9 +2338,18 @@ private:
             const bool nestedBody =
                 IsControl(part.Kind) || part.Kind == NodeKind::TryStatement ||
                     part.Kind == NodeKind::CompoundStatement;
-            if ((uint16_t(Safety_.Gaps()[part.Tokens.Begin].Reasons) &
-                uint16_t(ProtectionReason::Ambiguous)) != 0 ||
-                (nestedBody && !Syntax_[child].IndentSafe))
+            const auto reasons =
+                uint16_t(Safety_.Gaps()[part.Tokens.Begin].Reasons);
+            // An opaque switch run before any explicit label may contain
+            // generated labels. Its fixed indentation anchors this body, not
+            // an inferred case-content level. Recovery inside a known labeled
+            // region or another body does not establish this level.
+            if ((reasons & uint16_t(ProtectionReason::Ambiguous)) != 0 ||
+                (switchBody && !labeled &&
+                    (reasons & uint16_t(ProtectionReason::Recovery)) != 0) ||
+                (nestedBody && !Syntax_[child].IndentSafe &&
+                    (uint8_t(part.Status) & uint8_t(RegionStatus::Ambiguous)) !=
+                        0))
             {
                 return indent;
             }
