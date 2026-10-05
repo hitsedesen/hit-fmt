@@ -1702,6 +1702,18 @@ private:
                 state.Category,
                 4,
                 true);
+            if (kind == TK::Keyword_alignas) {
+                auto after = Tree_.MatchingDelimiter(i + 1) + 1;
+                // An alignment specifier ends before the next header
+                // component. Specific attribute/brace policies still win.
+                while (after < node.Tokens.End) {
+                    Mark(after, F::None, node, state.Category, 1, true);
+                    if (Tree_.Kind(after) != TK::Comment) {
+                        break;
+                    }
+                    ++after;
+                }
+            }
         }
     }
 

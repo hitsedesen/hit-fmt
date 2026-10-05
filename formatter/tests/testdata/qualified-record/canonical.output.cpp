@@ -84,9 +84,23 @@ void invoke(int& value) {
     ordinary(nullptr, value);
 }
 constexpr int Alignment = 16;
-struct alignas (Alignment)Host::Aligned {
+struct alignas (Alignment) Host::Aligned {
     Aligned(int& v) {
     }
+};
+struct alignas (16) NoGap {
+};
+class alignas (alignof(NoGap)) Nested {
+};
+union alignas (16) alignas (32) Repeated {
+    int value;
+};
+template<class T> struct alignas (T) Typed {
+};
+struct alignas(16) Forward;
+struct alignas (16) [[nodiscard]] Attributed {
+};
+struct alignas (16) /* alignment */ Commented {
 };
 struct __attribute__((aligned(16)))Host::Extended {
     Extended(int* v) {
