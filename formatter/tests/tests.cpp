@@ -1643,8 +1643,8 @@ std::vector<FormatCase> FormatCases()
     {
         const auto directory = std::filesystem::path(FORMATTER_TESTDATA_DIR) /
             "../control-braces-after-wrap";
-        const auto base = formatter::LoadConfigFile(directory /
-            (profile + ".hit-fmt")).FormattingStyle;
+        const auto base = formatter::LoadConfigFile(
+            directory / (profile + ".hit-fmt")).FormattingStyle;
         auto narrow = base;
         narrow.ColumnLimit = 80;
         narrow.AlwaysBreakChainRootNames.push_back("event");
@@ -4394,8 +4394,7 @@ void ExpectEmittedWidthDiagnostics(
         ++line;
     }
     ASSERT_EQ(result.Diagnostics.size(), overflows.size());
-    for (size_t i = 0; i < overflows.size(); ++i)
-    {
+    for (size_t i = 0; i < overflows.size(); ++i) {
         SCOPED_TRACE(i);
         const auto& diagnostic = result.Diagnostics[i];
         EXPECT_EQ(diagnostic.Kind, formatter::LayoutDiagnosticKind::LineWidth);

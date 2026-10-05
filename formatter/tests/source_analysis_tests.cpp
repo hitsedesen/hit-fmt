@@ -52,9 +52,7 @@ void ExpectSameAnalysis(
         deferred
             .Gaps()
             .size());
-    for (formatter::GapId i = 0; i < direct
-        .Gaps()
-        .size(); ++i) {
+    for (formatter::GapId i = 0; i < direct.Gaps().size(); ++i) {
         SCOPED_TRACE(i);
         const auto& a = direct.Gaps()[i];
         const auto& b = deferred.Gaps()[i];
@@ -94,9 +92,7 @@ void ExpectSameAnalysis(
         deferred
             .Protection()
             .size());
-    for (size_t i = 0; i < direct
-        .Protection()
-        .size(); ++i) {
+    for (size_t i = 0; i < direct.Protection().size(); ++i) {
         const auto& a = direct.Protection()[i];
         const auto& b = deferred.Protection()[i];
         EXPECT_EQ(a.Source.Begin, b.Source.Begin);
@@ -110,9 +106,7 @@ void ExpectSameAnalysis(
         deferred
             .Regions()
             .size());
-    for (size_t i = 0; i < direct
-        .Regions()
-        .size(); ++i) {
+    for (size_t i = 0; i < direct.Regions().size(); ++i) {
         const auto& a = direct.Regions()[i];
         const auto& b = deferred.Regions()[i];
         EXPECT_EQ(a.Tokens.Begin, b.Tokens.Begin);
@@ -134,9 +128,7 @@ void ExpectSameAnalysis(
         deferred
             .PartialGapPermissions()
             .size());
-    for (size_t i = 0; i < direct
-        .PartialGapPermissions()
-        .size(); ++i) {
+    for (size_t i = 0; i < direct.PartialGapPermissions().size(); ++i) {
         const auto& a = direct.PartialGapPermissions()[i];
         const auto& b = deferred.PartialGapPermissions()[i];
         EXPECT_EQ(a.Gap, b.Gap);
@@ -301,9 +293,7 @@ TEST(SourceAnalysis, DiagnosticGolden)
             interval.Source.End,
             static_cast<uint16_t>(interval.Reasons));
     }
-    for (formatter::GapId i = 0; i < analysis
-        .Gaps()
-        .size(); ++i) {
+    for (formatter::GapId i = 0; i < analysis.Gaps().size(); ++i) {
         const auto& gap = analysis.Gaps()[i];
         if (gap.Preserve ||
             gap.LineBoundary != formatter::GapLineBoundary::Any ||
@@ -538,14 +528,10 @@ TEST(SourceAnalysis, RecoverySummariesAndMergedExplicitRanges)
     EXPECT_FALSE(analysis.IntersectsImmutable({11, 11}));
     EXPECT_EQ(analysis.Protection()[0].Source.Begin, 4u);
     EXPECT_EQ(analysis.Protection()[0].Source.End, 11u);
-    for (formatter::RegionId i = 1; i < analysis
-        .Regions()
-        .size(); ++i) {
+    for (formatter::RegionId i = 1; i < analysis.Regions().size(); ++i) {
         EXPECT_LT(analysis.Regions()[i].Parent, i);
     }
-    for (size_t i = 1; i < analysis
-        .Protection()
-        .size(); ++i) {
+    for (size_t i = 1; i < analysis.Protection().size(); ++i) {
         EXPECT_LT(
             analysis.Protection()[i - 1].Source.End,
             analysis.Protection()[i].Source.Begin);
@@ -739,9 +725,7 @@ TEST(SourceAnalysis, AcceptedGapEditsKeepExactTokensIndividuallyAndTogether)
     std::pmr::monotonic_buffer_resource memory;
     auto analysis = Analyze(tree, memory);
     std::string together;
-    for (formatter::GapId i = 0; i < analysis
-        .Gaps()
-        .size(); ++i) {
+    for (formatter::GapId i = 0; i < analysis.Gaps().size(); ++i) {
         const auto& gap = analysis.Gaps()[i];
         for (auto replacement :
             {
@@ -985,14 +969,9 @@ TEST(SourceAnalysis, EditScopeUnrestrictedFullAndEmpty)
     EXPECT_TRUE(empty
         .PartialGapPermissions()
         .empty());
-    for (formatter::GapId i = 0; i < normal
-        .Gaps()
-        .size(); ++i) {
+    for (formatter::GapId i = 0; i < normal.Gaps().size(); ++i) {
         for (auto replacement : {"", " ", "\n  ", "\r\n"}) {
-            if (i + 1 < normal
-                .Gaps()
-                .size())
-            {
+            if (i + 1 < normal.Gaps().size()) {
                 EXPECT_EQ(
                     normal.CanReplaceGap(i, replacement),
                     full.CanReplaceGap(i, replacement));
@@ -1421,13 +1400,10 @@ TEST(SourceAnalysis, PartialUnsafeRealSyntaxAndUnsupportedWhitespace)
                 base.Gaps()[permission.Gap].Reasons == formatter::
                     ProtectionReason::None) << source;
         }
-        for (formatter::GapId gap = 0; gap < base
-            .Gaps()
-            .size(); ++gap) {
+        for (formatter::GapId gap = 0; gap < base.Gaps().size(); ++gap) {
             if (base.Gaps()[gap].Preserve ||
-                base.Gaps()[gap].ContextSensitive || base
-                    .Original(gap)
-                    .find_first_of("\f\v") != std::
+                base.Gaps()[gap].ContextSensitive ||
+                base.Original(gap).find_first_of("\f\v") != std::
                     string_view::npos)
             {
                 EXPECT_EQ(
@@ -1539,9 +1515,7 @@ TEST(SourceAnalysis, DeferredRestrictionOutlivesTreeScopeAndScratch)
             .Regions()
             .size());
     EXPECT_EQ(analysis.Regions()[owner].Kind, parser::NodeKind::CallExpression);
-    for (formatter::RegionId id = 0; id < analysis
-        .Regions()
-        .size(); ++id) {
+    for (formatter::RegionId id = 0; id < analysis.Regions().size(); ++id) {
         const auto& region = analysis.Regions()[id];
         for (auto child = region.FirstChild;
             child != formatter::NoRegion;
@@ -1719,9 +1693,7 @@ TEST(SourceAnalysis, IterativeClassificationAndScratchLifetime)
             4 * sizeof(formatter::PartialGapPermission) +
             2 * sizeof(formatter::ProtectedSourceRange)));
     EXPECT_LE(deferredFile.Calls - beforeCalls, 16u);
-    for (size_t i = 1; i < deferred
-        .PartialGapPermissions()
-        .size(); ++i) {
+    for (size_t i = 1; i < deferred.PartialGapPermissions().size(); ++i) {
         EXPECT_LT(
             deferred.PartialGapPermissions()[i - 1].Source.Begin,
             deferred.PartialGapPermissions()[i].Source.Begin);
@@ -1762,9 +1734,7 @@ TEST(SourceAnalysis, NewlineSpellingOwnsFullExistingBytesNotEndInsertions)
         parser::SourceRange{14, 16},
     };
     auto safety = Analyze(tree, memory, {.EditScope = selected});
-    for (formatter::GapId i = 0; i < safety
-        .Gaps()
-        .size(); ++i) {
+    for (formatter::GapId i = 0; i < safety.Gaps().size(); ++i) {
         const auto& gap = safety.Gaps()[i];
         if (safety.Original(gap) == "\r\n") {
             EXPECT_TRUE(safety.CanSpellGapNewlines(i));
@@ -1782,9 +1752,7 @@ TEST(SourceAnalysis, NewlineSpellingOwnsFullExistingBytesNotEndInsertions)
         parser::SourceRange{15, 16},
     };
     auto partial = Analyze(tree, memory, {.EditScope = half});
-    for (formatter::GapId i = 0; i < partial
-        .Gaps()
-        .size(); ++i)
+    for (formatter::GapId i = 0; i < partial.Gaps().size(); ++i)
         EXPECT_FALSE(partial.CanSpellGapNewlines(i));
     const std::array immutable{parser::SourceRange{7, 8}};
     auto protectedGap = Analyze(
@@ -1796,16 +1764,12 @@ TEST(SourceAnalysis, NewlineSpellingOwnsFullExistingBytesNotEndInsertions)
         tree,
         memory,
         {.EditScope = std::span<const parser::SourceRange>{}});
-    for (formatter::GapId i = 0; i < empty
-        .Gaps()
-        .size(); ++i)
+    for (formatter::GapId i = 0; i < empty.Gaps().size(); ++i)
         EXPECT_FALSE(empty.CanSpellGapNewlines(i));
     Input splice("int x=1+\\\r\n 2;\n");
     auto spliceTree = Parse(splice);
     auto intrinsic = Analyze(spliceTree, memory);
-    for (formatter::GapId i = 0; i < intrinsic
-        .Gaps()
-        .size(); ++i)
+    for (formatter::GapId i = 0; i < intrinsic.Gaps().size(); ++i)
         if (intrinsic.Gaps()[i].IntrinsicPreserve) {
             EXPECT_FALSE(intrinsic.CanSpellGapNewlines(i));
         }

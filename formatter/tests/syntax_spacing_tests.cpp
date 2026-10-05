@@ -248,10 +248,7 @@ TEST(SyntaxSpacing, EveryControlProjectsPoliciesOnlyToItsClassifiedSites)
             for (auto context : {GapContext::Preserved, GapContext::Rebuilt}) {
                 auto expected = GapUsesSpace(policy, context);
                 if (expected && safety.Separation == GapSeparation::Required &&
-                    !analysis
-                        .Safety
-                        .Original(safety)
-                        .empty())
+                    !analysis.Safety.Original(safety).empty())
                 {
                     expected = true;
                 }
@@ -1775,9 +1772,7 @@ TEST(SyntaxSpacing,
             .Spacing
             .Gaps()
             .size());
-    for (size_t i = 0; i < spacing
-        .Gaps()
-        .size(); ++i) {
+    for (size_t i = 0; i < spacing.Gaps().size(); ++i) {
         EXPECT_EQ(spacing.Gaps()[i].Owner, legacy.Spacing.Gaps()[i].Owner);
         EXPECT_EQ(
             spacing.Gaps()[i].Category,

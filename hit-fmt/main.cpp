@@ -1050,11 +1050,8 @@ bool ForEachFile(
         {
             const auto& entry = *iterator;
             bool directory = entry.is_directory();
-            if (IsExcluded(
-                entry
-                    .path()
-                    .lexically_relative(path),
-                exclusions) || configExcludes(entry.path(), directory))
+            if (IsExcluded(entry.path().lexically_relative(path), exclusions) ||
+                configExcludes(entry.path(), directory))
             {
                 if (directory) {
                     iterator.disable_recursion_pending();

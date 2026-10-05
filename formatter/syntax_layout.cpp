@@ -307,19 +307,10 @@ public:
     SyntaxLayoutStatus Build()
     {
         const auto count = Tree_.TokenCount();
-        if (Safety_
-            .Gaps()
-            .size() != size_t(count) + 1 || Spacing_
-                .Gaps()
-                .size() != size_t(count) + 1 || Safety_
-                    .Source()
-                    .data() != Tree_
-                        .Source()
-                        .data() || Safety_
-                            .Source()
-                            .size() != Tree_
-                                .Source()
-                                .size())
+        if (Safety_.Gaps().size() != size_t(count) + 1 ||
+            Spacing_.Gaps().size() != size_t(count) + 1 ||
+            Safety_.Source().data() != Tree_.Source().data() ||
+            Safety_.Source().size() != Tree_.Source().size())
         {
             return {SyntaxLayoutError::MismatchedInputs};
         }
@@ -2835,9 +2826,7 @@ private:
 
     bool PlanAnnotatedChain(Index id, Index group, Index calls)
     {
-        if (ChainScopeNames_.empty() && Annotations_
-            .StickyChainPairs()
-            .empty())
+        if (ChainScopeNames_.empty() && Annotations_.StickyChainPairs().empty())
         {
             return false;
         }
@@ -3126,9 +3115,8 @@ private:
         // or multi-member field paths. Outside control headers, a single
         // member or suffix call may split before its arguments; header chains
         // prefer argument breaks as well as operator and clause boundaries.
-        Groups_[group].Spec.BreakPenalty = entry.ControlHeader
-            ? 3
-            : links > 1 && packingCalls != 1 ? 2 : 0;
+        Groups_[group].Spec.BreakPenalty =
+            entry.ControlHeader ? 3 : links > 1 && packingCalls != 1 ? 2 : 0;
         // A chain owns continuation independently of pending expression
         // offsets, but retains enclosing list and realized-line indentation.
         Groups_[group].Spec.StructuralBase = true;
@@ -3302,11 +3290,7 @@ private:
             return None;
         }
         Index column = 0;
-        for (const char c :
-            Safety_
-                .Original(gap)
-                .substr(lf + 1))
-        {
+        for (const char c : Safety_.Original(gap).substr(lf + 1)) {
             if (c == '\t') {
                 column = AddWidth(
                     column,
@@ -3322,10 +3306,7 @@ private:
 
     void AnalyzeVisualScopes()
     {
-        if (Annotations_
-            .VisualScopes()
-            .empty())
-        {
+        if (Annotations_.VisualScopes().empty()) {
             return;
         }
         const auto annotations = Annotations_.VisualScopes();
@@ -3696,8 +3677,7 @@ private:
                 }
                 following.resize(children.size());
                 Index nextItem = None;
-                for (size_t p = children.size(); p-- > 0;)
-                {
+                for (size_t p = children.size(); p-- > 0;) {
                     following[p] = nextItem;
                     if (Region(Syntax_[children[p]]).Kind != NodeKind::Comment)
                     {
@@ -3718,8 +3698,7 @@ private:
                 Index access = None;
                 bool seenAccess = false;
                 bool content = false;
-                for (size_t p = 0; p < children.size(); ++p)
-                {
+                for (size_t p = 0; p < children.size(); ++p) {
                     const auto child = children[p];
                     const auto& entry = Syntax_[child];
                     const auto& part = Region(entry);
@@ -4130,10 +4109,11 @@ private:
             const auto lf = Safety_
                 .Original(source)
                 .rfind('\n');
-            if (lf != std::string_view::npos && Safety_
-                .Original(source)
-                .substr(lf + 1)
-                .find_first_not_of(" \t") == std::string_view::npos)
+            if (lf != std::string_view::npos &&
+                Safety_
+                    .Original(source)
+                    .substr(lf + 1)
+                    .find_first_not_of(" \t") == std::string_view::npos)
             {
                 spec.IndentSourceBegin = source.Source.Begin + Index(lf + 1);
                 spec.IndentSourceEnd = source.Source.End;

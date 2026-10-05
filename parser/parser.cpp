@@ -218,10 +218,12 @@ std::optional<SyntaxTree> SyntaxTree::RebindWhitespace(
     {
         HIT_FMT_PROFILE_PHASE("parser.rebind.scan_verify");
         for (auto token : tokenizer) {
-            if (index >= TokenCount() || token.Kind != Kind(index) || source
-                .View()
-                .substr(token.Text.Begin, token.Text.End - token.Text.Begin) !=
-                TokenText(index))
+            if (index >= TokenCount() || token.Kind != Kind(index) ||
+                source
+                    .View()
+                    .substr(
+                        token.Text.Begin,
+                        token.Text.End - token.Text.Begin) != TokenText(index))
             {
                 return std::nullopt;
             }
@@ -339,10 +341,9 @@ std::optional<SyntaxTree> SyntaxTree::RebindMatchingTokens(
     TokenIndex index = 0;
     for (auto token : lexer) {
         if (index >= TokenCount() || token.Kind != Kind(index) ||
-            (token.Kind != tokenizer::TokenKind::Comment && source
-                .View()
-                .substr(token.Text.Begin, token.Text.Size()) !=
-                TokenText(index)))
+            (token.Kind != tokenizer::TokenKind::Comment &&
+                source.View().substr(token.Text.Begin, token.Text.Size()) !=
+                    TokenText(index)))
         {
             return std::nullopt;
         }
@@ -672,25 +673,21 @@ std::optional<SyntaxTree> SyntaxTree::RebindWhitespaceEdits(
         }
         auto unchanged = Input_.substr(oldSpan, edit.Begin - oldSpan);
         if (newSpan > source.Size || unchanged.size() > source.Size - newSpan ||
-            source
-                .View()
-                .substr(newSpan, unchanged.size()) != unchanged)
+            source.View().substr(newSpan, unchanged.size()) != unchanged)
         {
             return std::nullopt;
         }
         newSpan += unchanged.size();
-        if (edit.Text.size() > source.Size - newSpan || source
-            .View()
-            .substr(newSpan, edit.Text.size()) != edit.Text)
+        if (edit.Text.size() > source.Size - newSpan ||
+            source.View().substr(newSpan, edit.Text.size()) != edit.Text)
         {
             return std::nullopt;
         }
         newSpan += edit.Text.size();
         oldSpan = edit.End;
     }
-    if (newSpan > source.Size || source
-        .View()
-        .substr(newSpan) != Input_.substr(oldSpan))
+    if (newSpan > source.Size ||
+        source.View().substr(newSpan) != Input_.substr(oldSpan))
     {
         return std::nullopt;
     }
@@ -903,9 +900,9 @@ std::optional<SyntaxTree> SyntaxTree::RebindRemovedNullStatements(
         while (oldIndex < TokenCount() && deleted[oldIndex]) {
             ++oldIndex;
         }
-        if (oldIndex == TokenCount() || token.Kind != Kind(oldIndex) || source
-            .View()
-            .substr(token.Text.Begin, token.Text.Size()) != TokenText(oldIndex))
+        if (oldIndex == TokenCount() || token.Kind != Kind(oldIndex) ||
+            source.View().substr(token.Text.Begin, token.Text.Size()) !=
+                TokenText(oldIndex))
         {
             return std::nullopt;
         }
@@ -1076,9 +1073,9 @@ std::optional<SyntaxTree> SyntaxTree::RebindControlBraces(
         }
         originalTokens[i] = rebound.Tokens_.Size();
         auto token = lexer.Get();
-        if (token.Kind != Kind(i) || source
-            .View()
-            .substr(token.Text.Begin, token.Text.Size()) != TokenText(i))
+        if (token.Kind != Kind(i) ||
+            source.View().substr(token.Text.Begin, token.Text.Size()) !=
+                TokenText(i))
         {
             return std::nullopt;
         }
@@ -4292,9 +4289,9 @@ private:
     {
         auto* arguments = MakeNode(NodeKind::ArgumentList, opening);
         arguments->Tokens.End = closingEnd;
-        if (Tree_.Tokens_
-            .FindPreprocessingDirective(opening + 1, closingEnd - 1) <
-            closingEnd - 1)
+        if (Tree_.Tokens_.FindPreprocessingDirective(
+            opening + 1,
+            closingEnd - 1) < closingEnd - 1)
         {
             AddConditionalListFragments(
                 *arguments,
@@ -5945,9 +5942,8 @@ private:
             &functionKind,
             constructorParameters);
         if (ungroupedConstructorInitializer && parameters &&
-            !RecordNames_.empty() && RecordNames_
-                .back()
-                .empty() && specifiersEnd == parameters->Begin)
+            !RecordNames_.empty() && RecordNames_.back().empty() &&
+            specifiersEnd == parameters->Begin)
         {
             AddUnparsedSyntax(declaration, begin, end);
             return;
@@ -6061,9 +6057,7 @@ private:
             ? std::optional<TokenRange>(parameters)
             : std::nullopt);
         if (ungroupedConstructorInitializer && !RecordNames_.empty() &&
-            RecordNames_
-                .back()
-                .empty() && specifiersEnd == parameters.Begin)
+            RecordNames_.back().empty() && specifiersEnd == parameters.Begin)
         {
             AddUnparsedSyntax(declaration, begin, end);
             return;

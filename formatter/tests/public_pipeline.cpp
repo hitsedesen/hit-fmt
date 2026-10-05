@@ -102,8 +102,7 @@ void CheckIdentities(
     Input input(source);
     auto tree = parser::Parse(input.View(), [] (parser::ParseError) {});
     ASSERT_EQ(result.OriginalTokens.size(), tree.TokenCount());
-    for (parser::TokenIndex i = 0; i < tree.TokenCount(); ++i)
-    {
+    for (parser::TokenIndex i = 0; i < tree.TokenCount(); ++i) {
         const auto map = result.OriginalTokens[i];
         if (map.Present) {
             EXPECT_EQ(
@@ -156,8 +155,7 @@ void CheckExcludedCopies(
         }
     }
     size_t range = 0;
-    for (size_t i = 0; i < source.size(); ++i)
-    {
+    for (size_t i = 0; i < source.size(); ++i) {
         while (range < selected.size() && selected[range].End <= i) {
             ++range;
         }
@@ -1833,8 +1831,7 @@ TEST(PublicPipeline,
         formatter::Format(tree, prepared, {.SourceMap = true});
     EXPECT_EQ(treeResult.Text, result.Text);
     ASSERT_EQ(treeResult.Map.size(), result.Map.size());
-    for (size_t i = 0; i < result.Map.size(); ++i)
-    {
+    for (size_t i = 0; i < result.Map.size(); ++i) {
         EXPECT_EQ(treeResult.Map[i].Output.Begin, result.Map[i].Output.Begin);
         EXPECT_EQ(
             treeResult.Map[i].Original.Begin,
@@ -1854,8 +1851,7 @@ TEST(PublicPipeline, BorrowedIndentMappingIsAnAssociationNotAnEdit)
     CheckIdentities(source, result);
     const auto indent = uint32_t(source.find('\t'));
     bool split = false;
-    for (size_t i = 0; i + 1 < result.Map.size(); ++i)
-    {
+    for (size_t i = 0; i + 1 < result.Map.size(); ++i) {
         const auto& prefix = result.Map[i];
         const auto& borrowed = result.Map[i + 1];
         if (prefix.HasOriginal && prefix.Original.Begin == indent - 2 &&
@@ -3243,8 +3239,7 @@ void CheckBareCRCopies(
     const formatter::FormatResult& result)
 {
     CheckIdentities(source, result);
-    for (size_t i = 0; i < source.size(); ++i)
-    {
+    for (size_t i = 0; i < source.size(); ++i) {
         if (source[i] != '\r' ||
             (i + 1 < source.size() && source[i + 1] == '\n'))
         {

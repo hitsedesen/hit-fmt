@@ -559,10 +559,10 @@ SourceAnalysis BuildSourceAnalysis(
                 ? GapLineBoundary::Required
                 : GapLineBoundary::Forbidden;
         }
-        if (i && (tree.Kind(i - 1) == TK::PreprocessingDirective ||
-            (tree.Kind(i - 1) == TK::Comment && tree
-                .TokenText(i - 1)
-                .starts_with("//"))))
+        if (i &&
+            (tree.Kind(i - 1) == TK::PreprocessingDirective ||
+                (tree.Kind(i - 1) == TK::Comment &&
+                    tree.TokenText(i - 1).starts_with("//"))))
         {
             gap.MustStartWithLineFeed = true;
             // No terminator at EOF: insertion could extend the line token,
@@ -585,11 +585,9 @@ SourceAnalysis BuildSourceAnalysis(
             gap.ContextSensitive = true;
             gap.Preserve = true;
         }
-        if (i && (tree
-            .TokenText(i - 1)
-            .ends_with("\\") || tree
-                .TokenText(i - 1)
-                .ends_with("\\\r")))
+        if (i &&
+            (tree.TokenText(i - 1).ends_with("\\") ||
+                tree.TokenText(i - 1).ends_with("\\\r")))
         {
             gap.Preserve = true;
             gap.Reasons = ProtectionReason::LineSplice;
@@ -786,9 +784,8 @@ SourceAnalysis BuildSourceAnalysis(
         }
         if (node.Kind == parser::NodeKind::ListSeparator &&
             tokens.Size() == 1 && tokens.End < count &&
-            tree.Kind(tokens.End) == TK::Comment && tree
-                .TokenText(tokens.End)
-                .starts_with("/*"))
+            tree.Kind(tokens.End) == TK::Comment &&
+            tree.TokenText(tokens.End).starts_with("/*"))
         {
             auto* next = node.NextSibling;
             while (next && next->Kind == parser::NodeKind::Comment) {
@@ -797,9 +794,8 @@ SourceAnalysis BuildSourceAnalysis(
             if (next && tokens.End < next->Tokens.Begin) {
                 auto afterComments = tokens.End;
                 while (afterComments < next->Tokens.Begin &&
-                    tree.Kind(afterComments) == TK::Comment && tree
-                        .TokenText(afterComments)
-                        .starts_with("/*"))
+                    tree.Kind(afterComments) == TK::Comment &&
+                    tree.TokenText(afterComments).starts_with("/*"))
                 {
                     ++afterComments;
                 }
