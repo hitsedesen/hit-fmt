@@ -1,0 +1,13 @@
+Layout = Canonical
+IndentationKind = Spaces
+IndentWidth = 4
+ColumnLimit = 80
+ListBreak = Always
+ListFirstItem = NextLine
+ListPacking = VerticalWhenBroken
+ListCloser = OwnLine
+ListAlignment = Block
+ContinuationOffset = 4
+BodyShape = Expanded
+CommaSpaceAfter = Space
+SpaceInsideCallArguments = NoSpace
