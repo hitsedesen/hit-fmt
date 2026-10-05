@@ -54,6 +54,7 @@ IncludeMatchingHeader = First
 IncludeGrouping = Directory
 IncludeDirectoryOrder = NearestFirst
 IncludePathBase = SourceDirectory
+IncludeStandardHeaders = Last
 NamespaceComments = Fix
 ShortNamespaceLines = 1
 RemoveNullDeclarations = true

@@ -2,15 +2,15 @@
 
 #include "text_policies.hpp"
 
+#include <parser/operator_info.hpp>
+
+#include <unicode/utf8.hpp>
+
 #include <algorithm>
 #include <limits>
 #include <numeric>
 #include <optional>
 #include <stdexcept>
-
-#include <parser/operator_info.hpp>
-
-#include <unicode/utf8.hpp>
 
 namespace formatter {
 

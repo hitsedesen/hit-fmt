@@ -18,11 +18,11 @@
 #include "project/engine/detail/a.hpp"
 #include "project/engine/detail/z.hpp"
 
-#include <algorithm>
-#include <vector>
-
 #include <system/a.hpp>
 #include <system/z.hpp>
+
+#include <algorithm>
+#include <vector>
 
 #if FEATURE
 #include "widget.hpp"

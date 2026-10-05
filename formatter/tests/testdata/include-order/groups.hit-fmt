@@ -1,0 +1,7 @@
+IncludeOrder = Sort
+IncludeMatchingHeader = First
+IncludeGrouping = Directory
+IncludeDirectoryOrder = NearestFirst
+IncludePathBase = ProjectRoot
+IncludeStandardHeaders = Last
+IncludeGroupPrefixes = ["library/", "gtest/"]

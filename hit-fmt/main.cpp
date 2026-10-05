@@ -6,6 +6,11 @@
 #include "source_excerpt.hpp"
 #include "version.hpp"
 
+#include <formatter/config.hpp>
+#include <formatter/formatter.hpp>
+
+#include <util/file.hpp>
+
 #include <algorithm>
 #include <cctype>
 #include <charconv>
@@ -30,11 +35,6 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
-
-#include <formatter/config.hpp>
-#include <formatter/formatter.hpp>
-
-#include <util/file.hpp>
 
 #ifdef _WIN32
 #include <io.h>

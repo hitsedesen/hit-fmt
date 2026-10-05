@@ -1,15 +1,15 @@
 #include <hit-fmt/file_check.hpp>
 #include <hit-fmt/options.hpp>
 
+#include <gtest/gtest.h>
+
+#include <tests/golden.hpp>
+
 #include <algorithm>
 #include <filesystem>
 #include <sstream>
 #include <stdexcept>
 #include <string>
-
-#include <gtest/gtest.h>
-
-#include <tests/golden.hpp>
 
 namespace {
 

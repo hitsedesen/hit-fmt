@@ -2,12 +2,12 @@
 
 #include "code_point.hpp"
 
+#include <util/input.hpp>
+
 #include <cstddef>
 #include <format>
 #include <optional>
 #include <string_view>
-
-#include <util/input.hpp>
 
 namespace unicode::utf8 {
 

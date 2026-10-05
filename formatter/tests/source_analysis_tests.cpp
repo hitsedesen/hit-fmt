@@ -1,6 +1,12 @@
 #include <formatter/source_analysis.hpp>
 #include <formatter/syntax_spacing.hpp>
 
+#include <gtest/gtest.h>
+
+#include <parser/parser.hpp>
+
+#include <tests/golden.hpp>
+
 #include <algorithm>
 #include <array>
 #include <filesystem>
@@ -11,12 +17,6 @@
 #include <string>
 #include <tuple>
 #include <vector>
-
-#include <gtest/gtest.h>
-
-#include <parser/parser.hpp>
-
-#include <tests/golden.hpp>
 namespace {
 
 struct Input

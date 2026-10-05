@@ -1,12 +1,12 @@
 #include <hit-fmt/file_batch.hpp>
 
+#include <gtest/gtest.h>
+
 #include <cstddef>
 #include <filesystem>
 #include <initializer_list>
 #include <string>
 #include <vector>
-
-#include <gtest/gtest.h>
 
 TEST(FileBatch, FlushesOnCountOrEstimatedBytes)
 {

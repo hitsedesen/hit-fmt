@@ -1,6 +1,12 @@
 #include <formatter/config.hpp>
 #include <formatter/syntax_layout.hpp>
 
+#include <gtest/gtest.h>
+
+#include <parser/parser.hpp>
+
+#include <tests/golden.hpp>
+
 #include <algorithm>
 #include <array>
 #include <memory_resource>
@@ -8,12 +14,6 @@
 #include <string>
 #include <utility>
 #include <vector>
-
-#include <gtest/gtest.h>
-
-#include <parser/parser.hpp>
-
-#include <tests/golden.hpp>
 namespace {
 
 struct Output

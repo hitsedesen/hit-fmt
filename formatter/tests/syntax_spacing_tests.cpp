@@ -1,17 +1,17 @@
 #include <formatter/syntax_spacing.hpp>
 
+#include <gtest/gtest.h>
+
+#include <parser/parser.hpp>
+
+#include <tests/golden.hpp>
+
 #include <array>
 #include <filesystem>
 #include <memory_resource>
 #include <sstream>
 #include <stdexcept>
 #include <string>
-
-#include <gtest/gtest.h>
-
-#include <parser/parser.hpp>
-
-#include <tests/golden.hpp>
 
 namespace {
 

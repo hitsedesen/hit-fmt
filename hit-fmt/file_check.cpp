@@ -2,15 +2,15 @@
 
 #include "source_excerpt.hpp"
 
-#include <algorithm>
-#include <memory_resource>
-#include <stdexcept>
-#include <utility>
-
 #include <formatter/naming.hpp>
 #include <formatter/parameter_names.hpp>
 
 #include <unicode/utf8.hpp>
+
+#include <algorithm>
+#include <memory_resource>
+#include <stdexcept>
+#include <utility>
 
 namespace hit_fmt {
 

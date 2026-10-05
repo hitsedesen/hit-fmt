@@ -1,5 +1,7 @@
 #include "config_template.hpp"
 
+#include <formatter/config.hpp>
+
 #include <cstddef>
 #include <optional>
 #include <ostream>
@@ -8,8 +10,6 @@
 #include <string_view>
 #include <type_traits>
 #include <vector>
-
-#include <formatter/config.hpp>
 
 namespace hit_fmt {
 
@@ -215,12 +215,17 @@ void PrintPreserveConfig(std::ostream& output)
             "# IncludeGrouping = Preserve retains existing blank boundaries;\n"
             "# Regroup uses ordered literal IncludeGroupPrefixes; Directory\n"
             "# groups normalized directories and sorts filenames in each.\n"
+            "# Both honor ordered prefix buckets before quote/angle and "
+            "distance.\n"
+            "# Example: IncludeGroupPrefixes = [\"library/\", \"gtest/\"]\n"
+            "# Unmatched headers follow configured buckets. Preserve "
+            "ignores them.\n"
             "# Regroup/Directory span blank lines and insert one empty line\n"
             "# between groups; both conflict with MaxEmptyLines = 0.\n"
             "# IncludeDirectoryOrder = NearestFirst uses parent + child steps\n"
             "# from the input directory; ties sort by directory spelling.\n"
-            "# Alphabetical omits distance. Quoted groups precede angled "
-            "ones.\n"
+            "# Alphabetical omits distance. Within each prefix bucket, "
+            "quoted\n" "# groups precede angled ones.\n"
             "# IncludePathBase = SourceDirectory resolves source-relative "
             "paths.\n"
             "# ProjectRoot requires input and include paths with the same "
@@ -228,6 +233,16 @@ void PrintPreserveConfig(std::ostream& output)
             "source-relative.\n"
             "# Paths normalize lexically only; no file lookup or spelling "
             "edit.\n"
+            "# IncludeStandardHeaders = Last uses a lexical heuristic: "
+            "angled\n"
+            "# names containing neither / nor .h go in a final alphabetical "
+            "group.\n"
+            "# It is case-sensitive, not ISO detection: extensionless "
+            "vendor\n"
+            "# names qualify; quoted names and stdio.h do not. Preserve "
+            "keeps\n"
+            "# ordinary sorting. The final group follows even unmatched "
+            "headers.\n"
             "# Prefixes are validated even when inactive; earliest match "
             "wins.\n"
             "# Comments, macros, conditionals, protection and mixed line "

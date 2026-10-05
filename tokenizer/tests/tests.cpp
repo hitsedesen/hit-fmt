@@ -1,11 +1,5 @@
 #include <tokenizer/tokenizer.hpp>
 
-#include <array>
-#include <format>
-#include <ranges>
-#include <string_view>
-#include <vector>
-
 #include <gtest/gtest.h>
 
 #include <tests/golden.hpp>
@@ -15,6 +9,12 @@
 
 #include <util/file.hpp>
 #include <util/input.hpp>
+
+#include <array>
+#include <format>
+#include <ranges>
+#include <string_view>
+#include <vector>
 
 using namespace tokenizer;
 

@@ -184,6 +184,10 @@ IncludeMatchingHeader = First
 IncludeGrouping = Directory
 IncludeDirectoryOrder = NearestFirst
 IncludePathBase = SourceDirectory
+IncludeStandardHeaders = Last
+# Ordered priority buckets, with nearest directory groups inside each:
+IncludeGroupPrefixes = ["library/", "gtest/"]
+# Unmatched headers follow these buckets; heuristic standard headers are last.
 # For root-relative project includes and input filenames:
 # IncludePathBase = ProjectRoot
 )"},
@@ -200,6 +204,7 @@ IncludeGrouping = Preserve
 IncludeGroupPrefixes = []
 IncludeDirectoryOrder = NearestFirst
 IncludePathBase = SourceDirectory
+IncludeStandardHeaders = Preserve
 ConstructorBracePlacement = Inherit
 DestructorBracePlacement = Inherit
 AssignmentRhsPlacement = InlineIfFits
@@ -209,7 +214,7 @@ RulerLength = 0
 RulerBlankLinesBefore = Preserve
 RulerBlankLinesAfter = Preserve
 # Include options are inactive unless IncludeOrder = Sort.
-# Prefixes apply only to IncludeGrouping = Regroup.
+# Prefixes apply to Regroup and Directory; Preserve leaves them inactive.
 )"},
 };
 
@@ -424,27 +429,38 @@ constexpr HelpSection HelpSections[] = {
     {"Include sorting",
         "IncludeOrder = Preserve (default) disables all include transforms. "
         "Sort moves exact include lines within safe blocks, quoted before "
-        "angled, alphabetically and stably for duplicate paths. "
+        "angled within each configured bucket, alphabetically and stably "
+        "for duplicate paths. "
         "IncludeMatchingHeader = First puts quoted headers with the input "
         "file's stem in its own directory first (.h, .hh, .hpp, .hxx, .h++). "
         "Header inputs and missing input filenames disable pairing. "
         "IncludeGrouping = Preserve sorts each adjacent block without "
         "changing blank lines. Regroup spans blank lines and groups by "
-        "IncludeGroupPrefixes; Directory instead groups by lexically "
-        "normalized containing directory and sorts filenames within groups. "
+        "IncludeGroupPrefixes; Directory groups by lexically normalized "
+        "containing directory and sorts filenames within groups. Both honor "
+        "ordered prefix buckets before quote/angle and directory ordering. "
         "Both insert one empty line between groups, including the paired "
         "header group, and conflict with MaxEmptyLines = 0. "
         "IncludeDirectoryOrder = NearestFirst (default) orders Directory "
         "groups by directory-tree distance: parent steps plus child steps "
         "from the input directory, then alphabetical directory on ties. "
-        "Alphabetical orders directories without distance. Quoted groups "
-        "precede angled groups in either mode. "
+        "Alphabetical orders directories without distance. Within each "
+        "prefix bucket, quoted groups precede angled groups in either mode. "
         "IncludePathBase = SourceDirectory (default) resolves include paths "
         "against the input directory. ProjectRoot uses root-relative paths; "
         "the input filename must use the same root (normally pass a "
         "project-relative filename). Bare quoted names and quoted ./ or ../ "
         "paths remain source-relative. Absolute paths remain absolute and "
-        "incompatible roots sort last. No filesystem lookup, header search "
+        "incompatible roots sort last. IncludeStandardHeaders = Last "
+        "uses a heuristic: angled includes whose literal names contain "
+        "neither / nor the case-sensitive substring .h form a final "
+        "alphabetical group, after all other headers regardless of directory "
+        "distance or prefix priority. This is not ISO-header detection: "
+        "extensionless third-party names qualify, while C headers such as "
+        "stdio.h do not. Quoted names never qualify. Preserve (default) "
+        "keeps ordinary include sorting. IncludeGrouping = Preserve still "
+        "retains blank-line boundaries. "
+        "No filesystem lookup, header search "
         "path inference, or include spelling rewrite occurs. "
         "Comments, macros, conditional directives, protected regions and "
         "mixed line endings stop blocks; attached-comment blocks stay exact. "
@@ -452,8 +468,12 @@ constexpr HelpSection HelpSections[] = {
         "IncludeGroupPrefixes is an ordered quoted array of normalized "
         "relative directory prefixes ending in /; duplicate or absolute "
         "paths, backslashes, empty, . and .. components are invalid. "
-        "Earliest matching prefix wins, not longest; unmatched paths are "
-        "last. Prefix matching uses literal include spelling.\n",
+        "Earliest matching prefix wins, not longest; unmatched paths follow "
+        "configured buckets but precede the final heuristic standard group. "
+        "For example [\"library/\", \"gtest/\"] puts library headers before "
+        "GoogleTest even if their quote styles or distances differ. "
+        "Preserve leaves prefixes inactive. Prefix matching uses literal "
+        "include spelling.\n",
         IncludeExamples},
     {"Configuration limits",
         "BreakAfterTemplateHeader always breaks after a template declaration "

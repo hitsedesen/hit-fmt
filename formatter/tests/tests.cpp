@@ -6,6 +6,12 @@
 #include <formatter/naming.hpp>
 #include <formatter/parameter_names.hpp>
 
+#include <gtest/gtest.h>
+
+#include <tests/golden.hpp>
+
+#include <unicode/utf8.hpp>
+
 #include <algorithm>
 #include <array>
 #include <filesystem>
@@ -15,12 +21,6 @@
 #include <string_view>
 #include <utility>
 #include <vector>
-
-#include <gtest/gtest.h>
-
-#include <tests/golden.hpp>
-
-#include <unicode/utf8.hpp>
 namespace {
 
 using test::golden::ReadFile;
@@ -851,6 +851,17 @@ std::vector<FormatCase> FormatCases()
             if (std::string_view(name) == "directory-preserve") {
                 value.Expected = "directory.input.cpp";
             }
+            cases.push_back(std::move(value));
+        }
+        AddCases(
+            cases,
+            directory,
+            {"standard", "standard-preserve", "standard-adjacent"},
+            "standard.input.cpp");
+        for (const auto name : {"groups", "groups-reversed", "groups-regroup"})
+        {
+            FormatCase value{directory, name, "groups.input.cpp"};
+            value.InputFilePath = "library/unit/widget.cpp";
             cases.push_back(std::move(value));
         }
         FormatCase relative{

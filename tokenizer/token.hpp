@@ -1,12 +1,12 @@
 #pragma once
 
+#include <util/input.hpp>
+
 #include <array>
 #include <cstdint>
 #include <format>
 #include <string_view>
 #include <utility>
-
-#include <util/input.hpp>
 
 namespace tokenizer {
 

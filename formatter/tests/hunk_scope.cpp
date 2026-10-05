@@ -1,11 +1,11 @@
 #include <formatter/hunk_scope.hpp>
 
+#include <gtest/gtest.h>
+
 #include <array>
 #include <limits>
 #include <memory_resource>
 #include <string>
-
-#include <gtest/gtest.h>
 
 namespace {
 

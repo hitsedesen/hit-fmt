@@ -49,6 +49,7 @@ IncludeMatchingHeader = First
 IncludeGrouping = Directory
 IncludeDirectoryOrder = NearestFirst
 IncludePathBase = SourceDirectory
+IncludeStandardHeaders = Last
 # Ordinary trailing // gaps; comment alignment and prose wrapping are not modeled.
 TrailingCommentSpaces = 2
 NamespaceComments = AddMissing

@@ -1,16 +1,16 @@
 #include <formatter/structural_edits.hpp>
 
-#include <array>
-#include <filesystem>
-#include <format>
-#include <memory_resource>
-#include <string>
-
 #include <gtest/gtest.h>
 
 #include <parser/parser.hpp>
 
 #include <tests/golden.hpp>
+
+#include <array>
+#include <filesystem>
+#include <format>
+#include <memory_resource>
+#include <string>
 namespace {
 
 using namespace formatter;

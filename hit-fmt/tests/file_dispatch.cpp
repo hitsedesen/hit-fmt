@@ -1,5 +1,9 @@
 #include <hit-fmt/file_dispatch.hpp>
 
+#include <gtest/gtest.h>
+
+#include <util/file.hpp>
+
 #include <atomic>
 #include <chrono>
 #include <filesystem>
@@ -9,10 +13,6 @@
 #include <string>
 #include <thread>
 #include <vector>
-
-#include <gtest/gtest.h>
-
-#include <util/file.hpp>
 
 namespace {
 

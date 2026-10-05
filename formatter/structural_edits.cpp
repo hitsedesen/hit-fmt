@@ -256,6 +256,7 @@ struct IncludeKey
     std::size_t Distance = 0;
     std::size_t Rule = 0;
     bool Matching = false;
+    bool Standard = false;
 };
 
 bool ParseInclude(const parser::SyntaxTree& tree, TI token, Include& result)
@@ -480,14 +481,21 @@ void Includes(
         [&] (IncludeGroup descriptor, std::span<Include> group) {
             directories.clear();
             pieces.clear();
-            if (needPaths || options.Grouping == IncludeGrouping::Regroup) {
+            if (needPaths || options.Grouping == IncludeGrouping::Regroup ||
+                options.StandardHeaders == IncludeStandardHeaders::Last)
+            {
                 keys.clear();
                 keys.resize(group.size());
             }
             for (std::size_t i = 0; i < group.size() && !keys.empty(); ++i) {
                 const auto& atom = group[i];
                 auto& key = keys[i];
-                if (options.Grouping == IncludeGrouping::Regroup &&
+                // Deliberately lexical: no catalog or filesystem inference.
+                key.Standard = options.StandardHeaders ==
+                    IncludeStandardHeaders::Last && atom.Angled &&
+                    atom.Path.find('/') == std::string_view::npos &&
+                    atom.Path.find(".h") == std::string_view::npos;
+                if (options.Grouping != IncludeGrouping::Preserve &&
                     context.Prefixes)
                 {
                     key.Rule = context.Prefixes->ClassifyNormalizedRelativePath(
@@ -549,6 +557,10 @@ void Includes(
             auto matching = [&] (const Include& atom) {
                 return needPaths && key(atom).Matching;
             };
+            auto standard = [&] (const Include& atom) {
+                return options.StandardHeaders ==
+                    IncludeStandardHeaders::Last && key(atom).Standard;
+            };
             auto directory = [&] (const Include& atom) {
                 return std::string_view(directories).substr(
                     key(atom).DirectoryOffset,
@@ -561,20 +573,33 @@ void Includes(
                 if (matching(a) && matching(b)) {
                     return true;
                 }
-                return a.Angled == b.Angled &&
-                    (options.Grouping == IncludeGrouping::Directory
-                        ? directory(a) == directory(b)
-                        : key(a).Rule == key(b).Rule);
+                if (standard(a) != standard(b)) {
+                    return false;
+                }
+                if (standard(a) && standard(b)) {
+                    return true;
+                }
+                return key(a).Rule == key(b).Rule && a.Angled == b.Angled &&
+                    (options.Grouping != IncludeGrouping::Directory ||
+                        directory(a) == directory(b));
             };
             auto compare = [&] (const Include& a, const Include& b) {
                 if (matching(a) != matching(b)) {
                     return matching(a);
                 }
+                if (standard(a) != standard(b)) {
+                    return !standard(a);
+                }
+                if (options.Grouping != IncludeGrouping::Preserve &&
+                    !matching(a) && !standard(a) && key(a).Rule != key(b).Rule)
+                {
+                    return key(a).Rule < key(b).Rule;
+                }
                 if (a.Angled != b.Angled) {
                     return !a.Angled;
                 }
                 if (options.Grouping == IncludeGrouping::Directory &&
-                    !matching(a))
+                    !matching(a) && !standard(a))
                 {
                     if (options.DirectoryOrder ==
                         IncludeDirectoryOrder::NearestFirst &&
@@ -588,10 +613,6 @@ void Includes(
                     if (Filename(a.Path) != Filename(b.Path)) {
                         return Filename(a.Path) < Filename(b.Path);
                     }
-                } else if (options.Grouping == IncludeGrouping::Regroup &&
-                    key(a).Rule != key(b).Rule)
-                {
-                    return key(a).Rule < key(b).Rule;
                 }
                 return a.Path != b.Path ? a.Path < b.Path : a.Token < b.Token;
             };

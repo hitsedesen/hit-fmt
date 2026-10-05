@@ -2,12 +2,12 @@
 
 #include "config.hpp"
 
+#include <parser/syntax_tree.hpp>
+
 #include <cstddef>
 #include <cstdint>
 #include <string>
 #include <vector>
-
-#include <parser/syntax_tree.hpp>
 
 namespace formatter {
 

@@ -280,6 +280,11 @@ void ValidatePolicyStyle(const Style& style)
     {
         throw std::invalid_argument("IncludePathBase has invalid value");
     }
+    if (static_cast<std::size_t>(style.IncludeStandardHeaders) >=
+        ConfigEnumNames<IncludeStandardHeaders>::Values.size())
+    {
+        throw std::invalid_argument("IncludeStandardHeaders has invalid value");
+    }
     if (style.ConstructorBracePlacement &&
         *style.ConstructorBracePlacement != BracePlacement::Attached &&
         *style.ConstructorBracePlacement != BracePlacement::NextLine &&
@@ -437,7 +442,8 @@ CompiledPolicies CompilePolicies(const Style& style)
         .RulerBlankLinesBefore = CompileBlankLines(style.RulerBlankLinesBefore),
         .RulerBlankLinesAfter = CompileBlankLines(style.RulerBlankLinesAfter),
         .Includes = {style.IncludeMatchingHeader, style.IncludeGrouping,
-            style.IncludeDirectoryOrder, style.IncludePathBase},
+            style.IncludeDirectoryOrder, style.IncludePathBase,
+            style.IncludeStandardHeaders},
     };
 }
 

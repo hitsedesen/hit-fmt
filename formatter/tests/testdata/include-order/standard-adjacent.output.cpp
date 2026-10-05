@@ -1,0 +1,18 @@
+#include "library/a.h"
+#include "vector"
+#include <gtest/gtest.h>
+#include <helper.header>
+#include <implementation.hpp>
+#include <library/api.h>
+#include <library/vector>
+#include <stdio.h>
+#include <sys/types.h>
+#include <unistd.h>
+#include <vector.h>
+#include <Vector>
+#include <custom.inc>
+#include <iostream>
+%:include <memory>
+#include <vector>
+ #include <vector>
+#include <vendor_api>

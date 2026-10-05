@@ -17,11 +17,11 @@
 
 #include "other/widget.hpp"
 
-#include <algorithm>
-#include <vector>
-
 #include <system/a.hpp>
 #include <system/z.hpp>
+
+#include <algorithm>
+#include <vector>
 
 #if FEATURE
 #include "widget.hpp"

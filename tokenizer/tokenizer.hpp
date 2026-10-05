@@ -3,15 +3,15 @@
 #include "ascii.hpp"
 #include "token.hpp"
 
-#include <functional>
-#include <iterator>
-#include <limits>
-#include <utility>
-
 #include <unicode/code_point.hpp>
 #include <unicode/utf8.hpp>
 
 #include <util/input.hpp>
+
+#include <functional>
+#include <iterator>
+#include <limits>
+#include <utility>
 
 namespace tokenizer {
 

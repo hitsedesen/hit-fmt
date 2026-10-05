@@ -1,5 +1,7 @@
 #pragma once
 
+#include <tokenizer/token.hpp>
+
 #include <array>
 #include <cassert>
 #include <cstddef>
@@ -13,8 +15,6 @@
 #include <string_view>
 #include <type_traits>
 #include <utility>
-
-#include <tokenizer/token.hpp>
 
 namespace parser {
 

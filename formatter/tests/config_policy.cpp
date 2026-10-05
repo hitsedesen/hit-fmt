@@ -2,6 +2,10 @@
 #include <formatter/include_policy.hpp>
 #include <formatter/policy.hpp>
 
+#include <gtest/gtest.h>
+
+#include <hit-fmt/config_template.hpp>
+
 #include <chrono>
 #include <filesystem>
 #include <fstream>
@@ -12,10 +16,6 @@
 #include <string_view>
 #include <type_traits>
 #include <utility>
-
-#include <gtest/gtest.h>
-
-#include <hit-fmt/config_template.hpp>
 
 namespace {
 
@@ -1048,7 +1048,7 @@ TEST(ConfigPolicy, StagedOptionsResolveFinalInheritanceAndOwnScalarSnapshot)
         "IncludeMatchingHeader = First\n" "IncludeGrouping = Regroup\n"
         "IncludeGroupPrefixes = [\"engine/\", \"engine/detail/\"]\n"
         "IncludeDirectoryOrder = Alphabetical\n"
-        "IncludePathBase = ProjectRoot\n");
+        "IncludePathBase = ProjectRoot\n" "IncludeStandardHeaders = Last\n");
     auto style = formatter::LoadConfigFile(config.Path).FormattingStyle;
     const auto policies = formatter::CompilePolicies(style);
     EXPECT_EQ(
@@ -1082,6 +1082,13 @@ TEST(ConfigPolicy, StagedOptionsResolveFinalInheritanceAndOwnScalarSnapshot)
     style.IncludeDirectoryOrder =
         formatter::IncludeDirectoryOrder::NearestFirst;
     style.IncludePathBase = formatter::IncludePathBase::SourceDirectory;
+    style.IncludeStandardHeaders = formatter::IncludeStandardHeaders::Preserve;
+    EXPECT_EQ(
+        prepared.Structural.StandardHeaders,
+        formatter::IncludeStandardHeaders::Last);
+    EXPECT_EQ(
+        policies.Includes.StandardHeaders,
+        formatter::IncludeStandardHeaders::Last);
     EXPECT_EQ(
         prepared.Structural.DirectoryOrder,
         formatter::IncludeDirectoryOrder::Alphabetical);
@@ -1185,6 +1192,16 @@ TEST(ConfigPolicy, IncludeGroupingCapsValidateBeforePreparation)
     const TemporaryConfig badBase("IncludePathBase = Guess\n");
     EXPECT_THROW(
         (void)formatter::LoadConfigFile(badBase.Path),
+        std::runtime_error);
+    formatter::Style invalidStandard;
+    invalidStandard.IncludeStandardHeaders =
+        static_cast<formatter::IncludeStandardHeaders>(255);
+    EXPECT_THROW(
+        (void)formatter::PreparedFormat(invalidStandard),
+        std::invalid_argument);
+    const TemporaryConfig badStandard("IncludeStandardHeaders = First\n");
+    EXPECT_THROW(
+        (void)formatter::LoadConfigFile(badStandard.Path),
         std::runtime_error);
     const TemporaryConfig finalGood(
         "IncludeGrouping = Regroup\nMaxEmptyLines = 0\nMaxEmptyLines = 1\n");

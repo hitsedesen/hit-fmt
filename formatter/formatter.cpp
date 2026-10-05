@@ -4,13 +4,13 @@
 #include "syntax_layout.hpp"
 #include "text_policies.hpp"
 
+#include <unicode/utf8.hpp>
+
 #include <algorithm>
 #include <format>
 #include <memory_resource>
 #include <optional>
 #include <stdexcept>
-
-#include <unicode/utf8.hpp>
 
 namespace formatter {
 
@@ -677,7 +677,7 @@ void WidthDiagnostics(
 PreparedFormat::PreparedFormat(const Style& style)
     : Policies(PreparePolicies(style))
     , Annotations(CompileLibraryAnnotations(style))
-    , IncludePrefixes(style.IncludeGrouping == IncludeGrouping::Regroup
+    , IncludePrefixes(style.IncludeGrouping != IncludeGrouping::Preserve
         ? std::span<const std::string>(style.IncludeGroupPrefixes)
         : std::span<const std::string>{})
     , Structural{
@@ -695,6 +695,7 @@ PreparedFormat::PreparedFormat(const Style& style)
         style.IncludeGrouping,
         style.IncludeDirectoryOrder,
         style.IncludePathBase,
+        style.IncludeStandardHeaders,
     }
     , NamespaceComments(CommentOptions(style))
     , HonorClangFormatDirectives(style.HonorClangFormatDirectives)

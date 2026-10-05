@@ -90,6 +90,7 @@ IncludeMatchingHeader = First
 IncludeGrouping = Directory
 IncludeDirectoryOrder = NearestFirst
 IncludePathBase = ProjectRoot
+IncludeStandardHeaders = Last
 AddMissingControlBraces = true
 EmptyControlBody = EmptyBlock
 RemoveNullStatements = true

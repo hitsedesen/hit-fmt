@@ -1,5 +1,7 @@
 #pragma once
 
+#include <gtest/gtest.h>
+
 #include <cstdlib>
 #include <filesystem>
 #include <fstream>
@@ -9,8 +11,6 @@
 #include <string>
 #include <string_view>
 #include <utility>
-
-#include <gtest/gtest.h>
 
 namespace test::golden {
 

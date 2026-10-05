@@ -439,6 +439,8 @@
         formatter::IncludeDirectoryOrder::NearestFirst) \
     OPT(formatter::IncludePathBase, IncludePathBase, \
         formatter::IncludePathBase::SourceDirectory) \
+    OPT(formatter::IncludeStandardHeaders, IncludeStandardHeaders, \
+        formatter::IncludeStandardHeaders::Preserve) \
     OPT(bool, AddMissingControlBraces, false)                                \
     OPT(bool, RemoveNullStatements, false)                                  \
     OPT(bool, RemoveNullDeclarations, false)                                \

@@ -65,6 +65,7 @@ struct StructuralOptions
     IncludeGrouping Grouping = IncludeGrouping::Preserve;
     IncludeDirectoryOrder DirectoryOrder = IncludeDirectoryOrder::NearestFirst;
     IncludePathBase PathBase = IncludePathBase::SourceDirectory;
+    IncludeStandardHeaders StandardHeaders = IncludeStandardHeaders::Preserve;
 };
 
 struct IncludeSortContext

@@ -16,9 +16,10 @@
 #include "other/widget.hpp"
 #include "widget.txt"
 
-#include <algorithm>
 #include <system/a.hpp>
 #include <system/z.hpp>
+
+#include <algorithm>
 #include <vector>
 
 #if FEATURE

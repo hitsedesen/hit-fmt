@@ -4,16 +4,16 @@
 #include <formatter/formatter.hpp>
 #include <formatter/source_analysis.hpp>
 
+#include <gtest/gtest.h>
+
+#include <tests/golden.hpp>
+
 #include <algorithm>
 #include <array>
 #include <filesystem>
 #include <memory_resource>
 #include <stdexcept>
 #include <string>
-
-#include <gtest/gtest.h>
-
-#include <tests/golden.hpp>
 
 namespace public_pipeline {
 
@@ -2095,72 +2095,81 @@ TEST(PublicPipeline, IncludeRegroupingOwnsBlankLinesAndPreservesMovedIdentities)
 {
     const auto directory = std::filesystem::path(__FILE__).parent_path() /
         "testdata/include-order";
-    const auto source =
-        test::golden::ReadFile(directory / "relative.input.cpp");
-    auto style = formatter::LoadConfigFile(
-        directory / "directory-relative.hit-fmt").FormattingStyle;
-    formatter::FormatResult owned;
-    {
-        const formatter::PreparedFormat prepared(style);
-        style.IncludeGrouping = formatter::IncludeGrouping::Preserve;
-        std::string path = "/project/engine/widget.cpp";
-        owned = FormatInput(
-            source,
-            prepared,
-            {.SourceMap = true, .InputFilePath = path});
-        Input input(source);
-        auto tree = parser::Parse(input.View(), [] (parser::ParseError) {});
-        EXPECT_EQ(
-            owned.Text,
-            formatter::Format(tree, prepared, {.InputFilePath = path}).Text);
-        EXPECT_NE(owned.Text, source);
-        const auto repeated = FormatInput(
-            owned.Text,
-            prepared,
-            {.SourceMap = true, .InputFilePath = path});
-        EXPECT_EQ(repeated.Text, owned.Text);
-        EXPECT_TRUE(repeated.StructuralOperations.empty());
-        const auto blank = parser::SourceOffset(source.find("\n\n") + 1);
-        // Even a one-byte hole in blank-line authority blocks the entire move.
-        const std::array<parser::SourceRange, 2> scope{
-            {{0, blank}, {blank + 1, parser::SourceOffset(source.size())}},
-        };
-        const auto partial = FormatInput(
-            source,
-            prepared,
-            {.SourceMap = true, .EditScope = scope, .InputFilePath = path});
-        EXPECT_EQ(partial.Text, source);
-        EXPECT_TRUE(partial.StructuralOperations.empty());
-        CheckIdentities(source, partial);
-        CheckExcludedCopies(source, partial, scope);
-        const std::array<parser::SourceRange, 1> immutable{
-            {{blank, blank + 1}},
-        };
-        const auto protectedResult = FormatInput(
-            source,
-            prepared,
-            {
-                .ImmutableRanges = immutable,
-                .SourceMap = true,
-                .InputFilePath = path,
-            });
-        EXPECT_EQ(protectedResult.Text, source);
-        CheckIdentities(source, protectedResult);
-        path.assign(path.size(), '?');
+    for (const bool priorities : {false, true}) {
+        const auto source = test::golden::ReadFile(directory /
+            (priorities ? "groups.input.cpp" : "relative.input.cpp"));
+        auto style = formatter::LoadConfigFile(
+            directory /
+            (priorities ? "groups.hit-fmt" : "directory-relative.hit-fmt"))
+            .FormattingStyle;
+        formatter::FormatResult owned;
+        {
+            const formatter::PreparedFormat prepared(style);
+            style.IncludeGrouping = formatter::IncludeGrouping::Preserve;
+            style.IncludeGroupPrefixes.clear();
+            style.IncludeStandardHeaders =
+                formatter::IncludeStandardHeaders::Preserve;
+            std::string path = priorities ? "library/unit/widget.cpp"
+                : "/project/engine/widget.cpp";
+            owned = FormatInput(
+                source,
+                prepared,
+                {.SourceMap = true, .InputFilePath = path});
+            Input input(source);
+            auto tree = parser::Parse(input.View(), [] (parser::ParseError) {});
+            EXPECT_EQ(
+                owned.Text,
+                formatter::Format(tree, prepared, {.InputFilePath = path})
+                    .Text);
+            EXPECT_NE(owned.Text, source);
+            const auto repeated = FormatInput(
+                owned.Text,
+                prepared,
+                {.SourceMap = true, .InputFilePath = path});
+            EXPECT_EQ(repeated.Text, owned.Text);
+            EXPECT_TRUE(repeated.StructuralOperations.empty());
+            const auto blank = parser::SourceOffset(source.find("\n\n") + 1);
+            // A one-byte hole in blank-line authority blocks the entire move.
+            const std::array<parser::SourceRange, 2> scope{
+                {{0, blank}, {blank + 1, parser::SourceOffset(source.size())}},
+            };
+            const auto partial = FormatInput(
+                source,
+                prepared,
+                {.SourceMap = true, .EditScope = scope, .InputFilePath = path});
+            EXPECT_EQ(partial.Text, source);
+            EXPECT_TRUE(partial.StructuralOperations.empty());
+            CheckIdentities(source, partial);
+            CheckExcludedCopies(source, partial, scope);
+            const std::array<parser::SourceRange, 1> immutable{
+                {{blank, blank + 1}},
+            };
+            const auto protectedResult = FormatInput(
+                source,
+                prepared,
+                {
+                    .ImmutableRanges = immutable,
+                    .SourceMap = true,
+                    .InputFilePath = path,
+                });
+            EXPECT_EQ(protectedResult.Text, source);
+            CheckIdentities(source, protectedResult);
+            path.assign(path.size(), '?');
+        }
+        CheckIdentities(source, owned);
+        for (const auto& token : owned.OriginalTokens) {
+            EXPECT_TRUE(token.Present);
+        }
+        EXPECT_TRUE(std::any_of(
+            owned.Map.begin(),
+            owned.Map.end(),
+            [&] (const auto& map) {
+                return map.Generated &&
+                    map.Action != formatter::NoStructuralAction &&
+                    owned.StructuralOperations[map.Action].Kind ==
+                        formatter::StructuralAction::IncludeOrder;
+            }));
     }
-    CheckIdentities(source, owned);
-    for (const auto& token : owned.OriginalTokens) {
-        EXPECT_TRUE(token.Present);
-    }
-    EXPECT_TRUE(std::any_of(
-        owned.Map.begin(),
-        owned.Map.end(),
-        [&] (const auto& map) {
-            return map.Generated &&
-                map.Action != formatter::NoStructuralAction &&
-                owned.StructuralOperations[map.Action].Kind ==
-                    formatter::StructuralAction::IncludeOrder;
-        }));
 }
 
 TEST(PublicPipeline, IncludeRegroupingRetainsLineEndingsAndIncompleteAtoms)
