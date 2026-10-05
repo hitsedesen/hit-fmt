@@ -465,8 +465,7 @@ CheckedFile CheckFile(
     std::vector<formatter::Hunk> selected, permitted;
     const formatter::FormatRequest request{
         .SourceMap = changed.has_value() ||
-            configuration.Formatting.Policies.IncludeOrder !=
-                formatter::IncludeOrder::Preserve,
+            configuration.Formatting.Structural.SortIncludes,
         .InputFilePath = inputFilePath,
         .TokenMap = tokenMap,
     };

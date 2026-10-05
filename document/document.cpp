@@ -31,7 +31,7 @@ struct Measure
     bool Line = false;
     bool CanBreak = false;
     // ASCII bytes without tabs/newlines advance by their length. Leading
-    // indentation still needs inspection; Unicode retains byte-width rules.
+    // indentation still needs inspection; Unicode retains code-point rules.
     bool Plain = true;
 
     std::uint32_t Width() const
