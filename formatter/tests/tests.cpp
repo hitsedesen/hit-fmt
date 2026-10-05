@@ -1483,6 +1483,35 @@ std::vector<FormatCase> FormatCases()
     addProfileCase("../control-header-clauses", "profile");
     addProfileCase("../whitespace-sensitive-macros", "profile");
     addProfileCase("../call-reflow", "balanced-expressions");
+    cases.push_back(
+        {callReflow, "nested-casts-preserve", "nested-casts.input.cpp"});
+    cases.back().CheckOwningMaps = true;
+    cases.push_back({
+        callReflow,
+        "nested-casts-canonical",
+        "nested-casts.input.cpp",
+        "../../../../",
+        {},
+        true,
+        "nested-casts-preserve.output.cpp",
+        true,
+    });
+    cases.back().Style = formatter::LoadConfigFile(
+        callReflow / "../../../../.hit-fmt").FormattingStyle;
+    cases.back().Style->CallsSoleArgumentFirstItem =
+        FirstItemPlacement::NextLine;
+    cases.push_back({
+        callReflow,
+        "nested-casts-preserve-indent",
+        "nested-casts.input.cpp",
+        "nested-casts-preserve",
+        {},
+        true,
+        "nested-casts.input.cpp",
+    });
+    cases.back().Style = formatter::LoadConfigFile(
+        callReflow / "nested-casts-preserve.hit-fmt").FormattingStyle;
+    cases.back().Style->IndentationKind = IndentationKind::Preserve;
     addProfileCase("../call-reflow", "nested-operator-choice");
     cases.push_back({
         callReflow,

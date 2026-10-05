@@ -865,6 +865,14 @@ private:
             case NodeKind::ConditionalExpression:
             case NodeKind::ParenthesizedExpression:
                 break;
+            case NodeKind::CastExpression: {
+                const auto opening = NamedCastOpening(id);
+                if (opening == None || !Safety_.Gaps()[opening + 1].HasLineFeed)
+                {
+                    return false;
+                }
+                break;
+            }
             default:
                 return false;
         }
@@ -994,6 +1002,26 @@ private:
                     }
                 });
         }
+    }
+
+    // Named casts have a single operand rather than an ArgumentList node.
+    // Its parentheses still own an independent delimiter continuation.
+    Index NamedCastOpening(Index id) const
+    {
+        const auto& node = Region(Syntax_[id]);
+        if (node.Kind != NodeKind::CastExpression || node.FirstChild == None ||
+            Region(Syntax_[node.FirstChild]).Kind !=
+                NodeKind::TemplateArgumentList)
+        {
+            return None;
+        }
+        const auto opening =
+            NextNonComment(Region(Syntax_[node.FirstChild]).Tokens.End);
+        return opening < node.Tokens.End &&
+            Tree_.Kind(opening) == TokenKind::Operator_OpenParenthesis &&
+            Tree_.MatchingDelimiter(opening) == node.Tokens.End - 1
+            ? opening
+            : None;
     }
 
     void PlanList(Index id, const ListPolicy& policy)
@@ -1460,6 +1488,28 @@ private:
     void PlanExpression(Index id)
     {
         const auto& node = Region(Syntax_[id]);
+        if (const auto opening = NamedCastOpening(id);
+            opening != None && Safety_.Gaps()[opening + 1].HasLineFeed)
+        {
+            // Keep an existing operand line, but give it its own structural
+            // level instead of sharing the enclosing call's continuation.
+            const auto& indent = Policies_.Expressions.Indent;
+            const auto group = GroupAt(
+                GapPosition(opening + 1),
+                GapPosition(node.Tokens.End),
+                document::GroupMode::Fill,
+                int32_t(indent.ContinuationOffset),
+                indent);
+            if (group != None) {
+                Groups_[group].Spec.StructuralBase = true;
+                Groups_[group].Spec.LineBase = true;
+                Groups_[group].Spec.Continuation = true;
+                Reindent(opening + 1, group);
+                Reindent(node.Tokens.End - 1, group, true);
+                OwnCommentLinks(opening + 1, group, node.Tokens.End - 1);
+            }
+            return;
+        }
         const auto kind = node.Kind;
         const bool declarationAssignment = !node.Tokens.Empty() &&
             ((kind == NodeKind::Initializer &&
