@@ -2384,6 +2384,14 @@ std::vector<FormatCase> FormatCases()
         {"inherit", "vertical", "fill", "delimiter", "preserve", "tabs"});
     cases.push_back({
         data / "template-arguments",
+        "function-types",
+        "function-types.input.cpp",
+        "../../../../",
+        {},
+        true,
+    });
+    cases.push_back({
+        data / "template-arguments",
         "break-priority",
         "break-priority.input.cpp",
         {},

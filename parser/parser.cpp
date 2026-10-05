@@ -9461,6 +9461,25 @@ private:
             ? LookupBinding(Text(name), global)
             : nullptr;
         if (binding && binding->Kind == NameKind::Type) {
+            auto afterName = NextSignificant(name + 1);
+            if (Kind(afterName) == TK::Operator_Less) {
+                afterName = NextSignificant(SkipTemplateArguments(
+                    afterName,
+                    Tree_.Tokens_.Size(),
+                    true));
+            }
+            if (Kind(afterName) == TK::Operator_ScopeResolution &&
+                !IsKnownQualifiedType(name, Tree_.Tokens_.Size()) &&
+                Kind(SkipDeclarationTypeName(
+                    name,
+                    Tree_.Tokens_.Size(),
+                    true)) == TK::Operator_OpenParenthesis)
+            {
+                // A known qualifier does not make its terminal member a
+                // type. Parse qualified calls as expressions instead of
+                // exposing template-argument parentheses as initializers.
+                return NodeKind::ExpressionStatement;
+            }
             return NodeKind::DeclarationStatement;
         }
         if (Kind(name) != TK::Identifier || binding) {
