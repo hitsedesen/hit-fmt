@@ -516,6 +516,369 @@
     )
     "}" ";"
   )
+  (record-declaration
+    "struct" "TemplateBases" "{"
+    (function-definition
+      (init-declarator-list
+        (init-declarator
+          (declarator
+            (declarator-name "TemplateBases")
+            (function-declarator
+              (parameter-list "(" ")")
+              (constructor-initializer-list
+                ":"
+                (constructor-initializer
+                  (call-expression
+                    (type-id
+                      "State"
+                      (template-argument-list
+                        "<"
+                        (template-argument "void")
+                        ">"
+                      )
+                    )
+                    (argument-list
+                      "("
+                      (argument
+                        (identifier-expression "first")
+                      )
+                      (list-separator ",")
+                      (argument
+                        (identifier-expression "second")
+                      )
+                      (list-separator ",")
+                      (argument
+                        (call-expression
+                          (identifier-expression "convert")
+                          (argument-list
+                            "("
+                            (argument
+                              (identifier-expression "value")
+                            )
+                            ")"
+                          )
+                        )
+                      )
+                      ")"
+                    )
+                  )
+                )
+                (list-separator ",")
+                (constructor-initializer
+                  (call-expression
+                    (identifier-expression "member")
+                    (argument-list
+                      "("
+                      (argument
+                        (literal-expression "1")
+                      )
+                      ")"
+                    )
+                  )
+                )
+              )
+            )
+          )
+        )
+      )
+      (compound-statement "{" "}")
+    )
+    (function-definition
+      (init-declarator-list
+        (init-declarator
+          (declarator
+            (declarator-name "TemplateBases")
+            (function-declarator
+              (parameter-list
+                "("
+                (parameter-declaration
+                  (declaration-specifiers "int")
+                  (init-declarator-list
+                    (init-declarator
+                      (declarator
+                        (declarator-name "tag")
+                      )
+                    )
+                  )
+                )
+                ")"
+              )
+              (constructor-initializer-list
+                ":"
+                (constructor-initializer
+                  (call-expression
+                    (type-id
+                      "State"
+                      (template-argument-list
+                        "<"
+                        (template-argument "7")
+                        ">"
+                      )
+                    )
+                    (argument-list
+                      "("
+                      (argument
+                        (identifier-expression "first")
+                      )
+                      (list-separator ",")
+                      (argument
+                        (identifier-expression "second")
+                      )
+                      ")"
+                    )
+                  )
+                )
+              )
+            )
+          )
+        )
+      )
+      (compound-statement "{" "}")
+    )
+    (function-definition
+      (init-declarator-list
+        (init-declarator
+          (declarator
+            (declarator-name "TemplateBases")
+            (function-declarator
+              (parameter-list
+                "("
+                (parameter-declaration
+                  (declaration-specifiers "short")
+                  (init-declarator-list
+                    (init-declarator
+                      (declarator
+                        (declarator-name "tag")
+                      )
+                    )
+                  )
+                )
+                ")"
+              )
+              (constructor-initializer-list
+                ":"
+                (constructor-initializer
+                  (call-expression
+                    (type-id
+                      "detail" "::" "State"
+                      (template-argument-list
+                        "<"
+                        (template-argument
+                          "Item"
+                          (template-argument-list
+                            "<"
+                            (template-argument "Key")
+                            (list-separator ",")
+                            (template-argument "Value")
+                            ">>"
+                          )
+                        )
+                      )
+                    )
+                    (argument-list
+                      "("
+                      (argument
+                        (identifier-expression "first")
+                      )
+                      (list-separator ",")
+                      (argument
+                        (identifier-expression "second")
+                      )
+                      ")"
+                    )
+                  )
+                )
+              )
+            )
+          )
+        )
+      )
+      (compound-statement "{" "}")
+    )
+    (function-definition
+      (init-declarator-list
+        (init-declarator
+          (declarator
+            (declarator-name "TemplateBases")
+            (function-declarator
+              (parameter-list
+                "("
+                (parameter-declaration
+                  (declaration-specifiers "long")
+                  (init-declarator-list
+                    (init-declarator
+                      (declarator
+                        (declarator-name "tag")
+                      )
+                    )
+                  )
+                )
+                ")"
+              )
+              (constructor-initializer-list
+                ":"
+                (constructor-initializer
+                  (call-expression
+                    (type-id
+                      "Envelope"
+                      (template-argument-list
+                        "<"
+                        (template-argument "Key")
+                        (list-separator ",")
+                        (template-argument "Value")
+                        ">"
+                      )
+                      "::" "State"
+                      (template-argument-list
+                        "<"
+                        (template-argument "7")
+                        ">"
+                      )
+                    )
+                    (argument-list
+                      "("
+                      (argument
+                        (identifier-expression "first")
+                      )
+                      (list-separator ",")
+                      (argument
+                        (identifier-expression "second")
+                      )
+                      ")"
+                    )
+                  )
+                )
+              )
+            )
+          )
+        )
+      )
+      (compound-statement "{" "}")
+    )
+    (function-definition
+      (init-declarator-list
+        (init-declarator
+          (declarator
+            (declarator-name "TemplateBases")
+            (function-declarator
+              (parameter-list
+                "("
+                (parameter-declaration
+                  (declaration-specifiers "char")
+                  (init-declarator-list
+                    (init-declarator
+                      (declarator
+                        (declarator-name "tag")
+                      )
+                    )
+                  )
+                )
+                ")"
+              )
+              (constructor-initializer-list
+                ":"
+                (constructor-initializer
+                  (type-construction-expression
+                    (type-id
+                      "State"
+                      (template-argument-list
+                        "<"
+                        (template-argument "void")
+                        ">"
+                      )
+                    )
+                    (braced-initializer
+                      (initializer-list
+                        "{"
+                        (initializer-element
+                          (identifier-expression "first")
+                        )
+                        (list-separator ",")
+                        (initializer-element
+                          (identifier-expression "second")
+                        )
+                        "}"
+                      )
+                    )
+                  )
+                )
+                (list-separator ",")
+                (constructor-initializer
+                  (type-construction-expression
+                    (identifier-expression "member")
+                    (braced-initializer
+                      (initializer-list
+                        "{"
+                        (initializer-element
+                          (literal-expression "1")
+                        )
+                        "}"
+                      )
+                    )
+                  )
+                )
+              )
+            )
+          )
+        )
+      )
+      (compound-statement "{" "}")
+    )
+    (function-definition
+      (init-declarator-list
+        (init-declarator
+          (declarator
+            (declarator-name "TemplateBases")
+            (function-declarator
+              (parameter-list
+                "("
+                (parameter-declaration
+                  (declaration-specifiers "unsigned")
+                  (init-declarator-list
+                    (init-declarator
+                      (declarator
+                        (declarator-name "tag")
+                      )
+                    )
+                  )
+                )
+                ")"
+              )
+              (constructor-initializer-list
+                ":"
+                (constructor-initializer
+                  (call-expression
+                    (type-id
+                      "State"
+                      (template-argument-list
+                        "<"
+                        (template-argument "7")
+                        ">"
+                      )
+                    )
+                    (argument-list
+                      "("
+                      (argument
+                        (identifier-expression "first")
+                      )
+                      (list-separator ",")
+                      (argument
+                        (identifier-expression "second")
+                      )
+                      ")"
+                    )
+                  )
+                  "..."
+                )
+              )
+            )
+          )
+        )
+      )
+      (compound-statement "{" "}")
+    )
+    "}" ";"
+  )
   (function-declaration
     (declaration-specifiers "auto")
     (init-declarator-list

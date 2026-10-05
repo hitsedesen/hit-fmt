@@ -21,6 +21,14 @@ struct Controls {
     int (*routes[2])(int);
     unsigned flags : 2;
 };
+struct TemplateBases {
+    TemplateBases() : State<void>(first, second, convert(value)), member(1) {}
+    TemplateBases(int tag) : State<7>(first, second) {}
+    TemplateBases(short tag) : detail::State<Item<Key, Value>>(first, second) {}
+    TemplateBases(long tag) : Envelope<Key, Value>::State<7>(first, second) {}
+    TemplateBases(char tag) : State<void>{first, second}, member{1} {}
+    TemplateBases(unsigned tag) : State<7>(first, second)... {}
+};
 auto query() noexcept(noexcept(check(1 ? 2 : 3))) -> int;
 void attributed() [[tag]];
 template<class T> void constrained() requires (T::flag ? true : false) {}

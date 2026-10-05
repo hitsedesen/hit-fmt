@@ -4568,7 +4568,8 @@ private:
                 auto afterTemplate = NextSignificant(templateEnd);
                 if (templateEnd > i + 1 && afterTemplate < end &&
                     (Kind(afterTemplate) == TK::Operator_OpenParenthesis ||
-                        Kind(afterTemplate) == TK::Operator_OpenBrace))
+                        Kind(afterTemplate) == TK::Operator_OpenBrace ||
+                        Kind(afterTemplate) == TK::Operator_ScopeResolution))
                 {
                     i = templateEnd - 1;
                     continue;
@@ -4612,21 +4613,66 @@ private:
                         static_cast<TokenIndex>(i));
                 if (expression && NextSignificant(expressionCursor) >= i) {
                     Append(*initializer, *expression);
-                } else {
-                    for (auto cursor = initializerBegin; cursor < i; ++cursor) {
-                        if (Kind(cursor) != TK::Operator_Less) {
-                            if (IsOpenDelimiter(Kind(cursor))) {
+                } else if (hasTemplateName) {
+                    // A mem-initializer-id is a type/member name, not a
+                    // comparison expression. Model its initializer separately
+                    // so argument breaks can take priority over type breaks.
+                    auto opening = initializerBegin;
+                    while (opening < i && !IsOpenDelimiter(Kind(opening))) {
+                        if (Kind(opening) == TK::Operator_Less) {
+                            const auto templateEnd =
+                                SkipTemplateArguments(opening, i);
+                            if (templateEnd <= opening + 1 || templateEnd > i) {
                                 break;
                             }
-                            continue;
+                            opening = templateEnd;
+                        } else {
+                            ++opening;
                         }
-                        auto templateEnd = SkipTemplateArguments(cursor, i);
-                        if (templateEnd > cursor + 1 && templateEnd <= i) {
-                            Append(
-                                *initializer,
-                                *MakeTemplateArgumentList(cursor, templateEnd));
+                    }
+                    const auto openingKind = Kind(opening);
+                    const auto closingEnd = IsOpenDelimiter(openingKind)
+                        ? FindBalancedEnd(opening)
+                        : std::numeric_limits<TokenIndex>::max();
+                    const auto suffix = closingEnd <= i
+                        ? NextSignificant(closingEnd)
+                        : i;
+                    const bool complete = suffix >= i ||
+                        (Kind(suffix) == TK::Operator_Ellipsis &&
+                            NextSignificant(suffix + 1) >= i);
+                    if ((openingKind == TK::Operator_OpenParenthesis ||
+                        openingKind == TK::Operator_OpenBrace) &&
+                        closingEnd <= i && complete)
+                    {
+                        auto* construction = MakeNode(
+                            openingKind == TK::Operator_OpenParenthesis
+                            ? NodeKind::CallExpression
+                            : NodeKind::TypeConstructionExpression,
+                            initializerBegin);
+                        construction->Tokens.End = closingEnd;
+                        auto* name =
+                            MakeNode(NodeKind::TypeId, initializerBegin);
+                        name->Tokens.End = opening;
+                        AddTypeSyntaxChildren(*name, initializerBegin, opening);
+                        Append(*construction, *name);
+                        if (openingKind == TK::Operator_OpenParenthesis) {
+                            AddArgumentList(*construction, opening, closingEnd);
+                        } else {
+                            auto* braced =
+                                MakeNode(NodeKind::BracedInitializer, opening);
+                            braced->Tokens.End = closingEnd;
+                            AddBracedInitializerElements(
+                                *braced,
+                                opening,
+                                closingEnd);
+                            Append(*construction, *braced);
                         }
-                        break;
+                        Append(*initializer, *construction);
+                    } else {
+                        AddTypeSyntaxChildren(
+                            *initializer,
+                            initializerBegin,
+                            opening);
                     }
                 }
                 Append(*list, *initializer);
