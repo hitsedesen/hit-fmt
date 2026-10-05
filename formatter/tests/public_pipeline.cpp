@@ -2233,20 +2233,33 @@ TEST(PublicPipeline, EditScopeDeletionAndReplacementDoNotOwnTheirEnds)
     const std::array<parser::SourceRange, 1> endpoint{
         {{semicolon, semicolon + 1}},
     };
-    EXPECT_EQ(
-        FormatInput(control, prepared, {.EditScope = endpoint}).Text,
-        control);
     const std::array<parser::SourceRange, 1> replacement{
         {{semicolon, semicolon + 2}},
     };
-    const auto replaced = FormatInput(
+    // Replacing the semicolon needs its bytes, not the insertion point at End.
+    for (const auto& scope : {endpoint, replacement}) {
+        const auto replaced = FormatInput(
+            control,
+            prepared,
+            {.SourceMap = true, .EditScope = scope});
+        EXPECT_NE(replaced.Text.find("{}"), std::string::npos);
+        EXPECT_TRUE(replaced.Text.ends_with("int x; }\n"));
+        CheckIdentities(control, replaced);
+        CheckExcludedCopies(control, replaced, scope);
+    }
+    const std::array<parser::SourceRange, 1> tail{
+        {{semicolon + 1, uint32_t(control.size())}},
+    };
+    const auto protectedTail = FormatInput(
         control,
         prepared,
-        {.SourceMap = true, .EditScope = replacement});
-    EXPECT_NE(replaced.Text.find("{}"), std::string::npos);
-    EXPECT_TRUE(replaced.Text.ends_with("int x; }\n"));
-    CheckIdentities(control, replaced);
-    CheckExcludedCopies(control, replaced, replacement);
+        {.ImmutableRanges = tail, .SourceMap = true});
+    EXPECT_NE(protectedTail.Text.find("{}"), std::string::npos);
+    CheckIdentities(control, protectedTail);
+    CheckExcludedCopies(control, protectedTail, endpoint);
+    EXPECT_EQ(
+        FormatInput(control, prepared, {.ImmutableRanges = endpoint}).Text,
+        control);
 }
 
 TEST(PublicPipeline, EditScopeBraceInsertionRequiresBothOriginalPoints)
