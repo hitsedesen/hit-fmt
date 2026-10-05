@@ -257,6 +257,7 @@ TEST(SourceAnalysis, TouchingDifferentProtectionReasonsKeepTheirByteLocations)
     EXPECT_EQ(unioned.Protection()[0].Source.End, 6);
     EXPECT_EQ(unioned.Protection()[0].Reasons, R::Explicit | R::Disabled);
 }
+
 TEST(SourceAnalysis, ScopedIncludeBoundaryDoesNotAbsorbExcludedSeparator)
 {
     Input input("#include \"z.h\"\n#include \"a.h\"\n\nint value;\n");
@@ -282,6 +283,7 @@ TEST(SourceAnalysis, ScopedIncludeBoundaryDoesNotAbsorbExcludedSeparator)
         .IntersectsImmutable({uint32_t(input.Size), uint32_t(input.Size)}));
     EXPECT_FALSE(scoped.CanReplaceGap(2, "\n"));
 }
+
 TEST(SourceAnalysis, DiagnosticGolden)
 {
     const auto directory = std::filesystem::path(__FILE__).parent_path() /
@@ -324,6 +326,7 @@ TEST(SourceAnalysis, DiagnosticGolden)
     }
     test::golden::ExpectGolden(directory / "protection.analysis.txt", dump);
 }
+
 TEST(SourceAnalysis, StandaloneNestedOptionalAndUnclosedMarkers)
 {
     Input input("const char* s = \"// hit-fmt off\"; // hit-fmt off\n"
@@ -364,6 +367,7 @@ TEST(SourceAnalysis, StandaloneNestedOptionalAndUnclosedMarkers)
             .End,
         input.Size);
 }
+
 TEST(SourceAnalysis, SensitiveInvocationsAreExplicitAndLocal)
 {
     Input input("int prefix = 1;\nKEEP( a, KEEP( b ) );\n"
@@ -400,6 +404,7 @@ TEST(SourceAnalysis, SensitiveInvocationsAreExplicitAndLocal)
             .Reasons,
         formatter::ProtectionReason::Recovery));
 }
+
 TEST(SourceAnalysis, CommentsDirectivesSplicesAndCrLf)
 {
     Input input("int a = 1; // note\r\nint b = 2;\r\n"
@@ -597,6 +602,7 @@ TEST(SourceAnalysis, LineTokenTerminationAndEofKeepExactSpelling)
         }
     }
 }
+
 TEST(SourceAnalysis, HeaderNameInternalGapsAreContextSensitive)
 {
     Input input("import<pkg/sub.h>;\nexport import < other / unit . h >;\n"
@@ -684,6 +690,7 @@ TEST(SourceAnalysis, HeaderNameInternalGapsAreContextSensitive)
         Analyze(tree, memory, {.InheritedProtection = invalid}),
         std::invalid_argument);
 }
+
 TEST(SourceAnalysis, SplicedMarkerLookalikesDoNotDisableFollowingLines)
 {
     for (auto horizontal : {"", " ", "\t\r", "\f\v \t\r"}) {
@@ -709,6 +716,7 @@ TEST(SourceAnalysis, SplicedMarkerLookalikesDoNotDisableFollowingLines)
         ExpectSameTokens(tree, source); // Includes the tokenizer's skipped gap.
     }
 }
+
 TEST(SourceAnalysis, AmbiguousAndInvalidTokensAreLocalNotWholeFileRollback)
 {
     Input input(
@@ -727,6 +735,7 @@ TEST(SourceAnalysis, AmbiguousAndInvalidTokensAreLocalNotWholeFileRollback)
     EXPECT_TRUE(analysis.CanReplaceGap(Before(tree, "good"), "  "));
     EXPECT_TRUE(analysis.CanReplaceGap(Before(tree, "tail"), "  "));
 }
+
 TEST(SourceAnalysis, AcceptedGapEditsKeepExactTokensIndividuallyAndTogether)
 {
     Input input(
@@ -782,6 +791,7 @@ TEST(SourceAnalysis, AcceptedGapEditsKeepExactTokensIndividuallyAndTogether)
     EXPECT_FALSE(analysis.CanReplaceGap(0, "\\\n"));
     EXPECT_FALSE(analysis.CanReplaceGap(0, "/* injected */"));
 }
+
 TEST(SourceAnalysis, ContextSensitivePunctuationIsNotJustTokenization)
 {
     Input input("[ [ x ] ] \"x\"_suffix");
@@ -794,6 +804,7 @@ TEST(SourceAnalysis, ContextSensitivePunctuationIsNotJustTokenization)
     EXPECT_TRUE(analysis.Gaps()[suffix].ContextSensitive);
     EXPECT_FALSE(analysis.CanReplaceGap(suffix, " "));
 }
+
 TEST(SourceAnalysis, LexicalConstraintsCoverPunctuationAndLiteralBoundaries)
 {
     for (const auto& [first, second, required] :
@@ -929,6 +940,7 @@ TEST(SourceAnalysis, LexicalConstraintsCoverPunctuationAndLiteralBoundaries)
     }
     ExpectSameTokens(tree, changed);
 }
+
 TEST(SourceAnalysis, SourceSizeIsCheckedBeforeOffsetNarrowing)
 {
     EXPECT_EQ(formatter::CheckedSourceAnalysisSize(0), 0u);
@@ -950,6 +962,7 @@ TEST(SourceAnalysis, SourceSizeIsCheckedBeforeOffsetNarrowing)
             std::length_error);
     }
 }
+
 using PermissionKind = formatter::PartialGapPermissionKind;
 
 const formatter::PartialGapPermission* Permission(
@@ -964,6 +977,7 @@ const formatter::PartialGapPermission* Permission(
     }
     return nullptr;
 }
+
 TEST(SourceAnalysis, EditScopeUnrestrictedFullAndEmpty)
 {
     Input input("void f() {\ninvoke(a,b);\n}\n");
@@ -1031,6 +1045,7 @@ TEST(SourceAnalysis, EditScopeUnrestrictedFullAndEmpty)
     EXPECT_FALSE(noFinalLf.CanReplaceGap(eofTree.TokenCount(), " "));
     EXPECT_TRUE(noFinalLf.IntersectsImmutable({6, 6}));
 }
+
 TEST(SourceAnalysis, EditScopeValidationAndTouchingOwnership)
 {
     Input input("int a;\nint b;\n");
@@ -1066,6 +1081,7 @@ TEST(SourceAnalysis, EditScopeValidationAndTouchingOwnership)
     EXPECT_FALSE(analysis.IntersectsImmutable({7, 7}));
     EXPECT_TRUE(analysis.IntersectsImmutable({14, 14}));
 }
+
 TEST(SourceAnalysis, PartialFinalIndentationFencesExactTopology)
 {
     for (auto prefix : {"\n", "\r\n", "\n \t\r\n", "\r\n\n"}) {
@@ -1105,6 +1121,7 @@ TEST(SourceAnalysis, PartialFinalIndentationFencesExactTopology)
             nullptr);
     }
 }
+
 TEST(SourceAnalysis, ZeroWidthIndentUsesStrictHalfOpenInsertionOwnership)
 {
     Input input("void f() {\ninvoke();\n}\n");
@@ -1149,6 +1166,7 @@ TEST(SourceAnalysis, ZeroWidthIndentUsesStrictHalfOpenInsertionOwnership)
     EXPECT_FALSE(following.Gaps()[closing].Preserve);
     EXPECT_TRUE(following.CanReplaceGap(closing, "\n    "));
 }
+
 TEST(SourceAnalysis, PartialTrailingAndBlankHorizontalTrimKeepsSuffix)
 {
     Input input("void f() {\ninvoke(); \t\r\n \t\n  \r\n}\n");
@@ -1185,6 +1203,7 @@ TEST(SourceAnalysis, PartialTrailingAndBlankHorizontalTrimKeepsSuffix)
         .PartialGapPermissions()
         .empty());
 }
+
 TEST(SourceAnalysis,
     PartialPermissionsDoNotOverrideExplicitSlicesOrSemanticConstraints)
 {
@@ -1303,6 +1322,7 @@ TEST(SourceAnalysis,
             formatter::ProtectionReason::OutsideEditScope);
     }
 }
+
 TEST(SourceAnalysis, PartialCommentOwnedCrAndDirectivePrefix)
 {
     for (auto prefix : {"// note\r\n", "#define VALUE 1\r\n"}) {
@@ -1333,6 +1353,7 @@ TEST(SourceAnalysis, PartialCommentOwnedCrAndDirectivePrefix)
         EXPECT_FALSE(analysis.CanReplaceGap(gap, "\r\n\t"));
     }
 }
+
 TEST(SourceAnalysis, PartialHeaderOpeningPointAndTokenOwnedTrailingWhitespace)
 {
     Input input("import\n<pkg/sub.h>;\n// note  \r\nint tail;\n");
@@ -1370,6 +1391,7 @@ TEST(SourceAnalysis, PartialHeaderOpeningPointAndTokenOwnedTrailingWhitespace)
         Permission(denied, opener, PermissionKind::FinalIndentation),
         nullptr);
 }
+
 TEST(SourceAnalysis, PartialUnsafeRealSyntaxAndUnsupportedWhitespace)
 {
     for (auto source :
@@ -1448,6 +1470,7 @@ TEST(SourceAnalysis, PartialUnsafeRealSyntaxAndUnsupportedWhitespace)
         }
     }
 }
+
 TEST(SourceAnalysis, EditScopeAndScratchStorageMayDieAfterBuild)
 {
     Input input("void f() {\n  invoke(); \t\n}\n");
@@ -1477,6 +1500,7 @@ TEST(SourceAnalysis, EditScopeAndScratchStorageMayDieAfterBuild)
     EXPECT_FALSE(analysis.IntersectsImmutable({11, 13}));
     EXPECT_TRUE(analysis.IntersectsImmutable({24, 24}));
 }
+
 TEST(SourceAnalysis, DeferredRestrictionRequiresBuiltUnrestrictedAnalysis)
 {
     Input input("void f() {\n  invoke(); \t\n}\n");
@@ -1508,6 +1532,7 @@ TEST(SourceAnalysis, DeferredRestrictionRequiresBuiltUnrestrictedAnalysis)
     EXPECT_THROW(empty.RestrictEditScope(scope), std::logic_error);
     EXPECT_FALSE(empty.CanReplaceGap(Before(tree, "invoke"), "\n    "));
 }
+
 TEST(SourceAnalysis, DeferredRestrictionOutlivesTreeScopeAndScratch)
 {
     Input input("void f() {\n  invoke(); \t\n}\n");
@@ -1576,6 +1601,7 @@ TEST(SourceAnalysis, DeferredRestrictionOutlivesTreeScopeAndScratch)
     EXPECT_FALSE(analysis.IntersectsImmutable({11, 13}));
     EXPECT_TRUE(analysis.IntersectsImmutable({24, 24}));
 }
+
 class CountingResource
     : public std::pmr::memory_resource
 {
@@ -1608,6 +1634,7 @@ private:
         return this == &other;
     }
 };
+
 TEST(SourceAnalysis,
     DeferredRestrictionAllocationFailureLeavesAnalysisUnchanged)
 {
@@ -1637,6 +1664,7 @@ TEST(SourceAnalysis,
     // Exercise scope, both sparse permission growth allocations and protection.
     EXPECT_EQ(failures, 4u);
 }
+
 TEST(SourceAnalysis, AdversarialMarkersHaveLinearStorage)
 {
     // Grow both shared whitespace and marker count to check linear storage.
@@ -1672,6 +1700,7 @@ TEST(SourceAnalysis, AdversarialMarkersHaveLinearStorage)
         EXPECT_EQ(file.Calls + scratch.Calls, calls);
     }
 }
+
 TEST(SourceAnalysis, IterativeClassificationAndScratchLifetime)
 {
     std::string text;
@@ -1752,6 +1781,7 @@ TEST(SourceAnalysis, IterativeClassificationAndScratchLifetime)
     }
     EXPECT_EQ(scopedFile.Calls + scopedScratch.Calls, calls);
 }
+
 TEST(SourceAnalysis, NewlineSpellingOwnsFullExistingBytesNotEndInsertions)
 {
     Input input("int a;\r\nint b;\r\n");

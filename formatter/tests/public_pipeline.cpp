@@ -1023,8 +1023,6 @@ TEST(PublicPipeline, StandaloneCommentCountsSupportOwningMapsAndScopedEdges)
     EXPECT_THROW((void)formatter::PreparedFormat(style), std::invalid_argument);
 }
 
-
-
 TEST(PublicPipeline, FinalNamespaceWidthDiagnosticsGolden)
 {
     const test::golden::Fixture fixture{
@@ -1796,6 +1794,7 @@ TEST(PublicPipeline, InvalidPreparedRequestsAndActualEmittedWidthDiagnostics)
     EXPECT_TRUE(noMap.Map.empty());
     EXPECT_TRUE(noMap.OriginalTokens.empty());
 }
+
 TEST(PublicPipeline,
     LayoutGeneratedCommaAnchorComposesThroughStructuralNormalization)
 {
@@ -2492,6 +2491,7 @@ TEST(PublicPipeline, EditScopeInvalidRangesAndProtectionRemainStronger)
             std::invalid_argument);
     }
 }
+
 TEST(PublicPipeline, RequiresOrdinaryReturnBoundaryPreservesScopeAndOwningMaps)
 {
     const formatter::PreparedFormat prepared(Canonical());
@@ -2740,6 +2740,7 @@ TEST(PublicPipeline, RequiresRecoveryScopeAndMapsPreserveInvalidBytes)
         }
     }
 }
+
 TEST(PublicPipeline, OpaqueRecordOwnerPreservesHeadAndFormatsSafeBodies)
 {
     for (const auto head :
@@ -2823,6 +2824,7 @@ TEST(PublicPipeline, ConstructorInitializerLambdasPreserveMapsAndProtection)
         EXPECT_FALSE(protectedResult.OutputProtection.empty());
     }
 }
+
 TEST(PublicPipeline, TerminalConstructorTemplateIdsKeepMapsProtectionAndScopes)
 {
     const test::golden::Fixture fixture{
@@ -2878,6 +2880,7 @@ TEST(PublicPipeline, TerminalConstructorTemplateIdsKeepMapsProtectionAndScopes)
     EXPECT_EQ(frozen.Text, source);
     CheckIdentities(source, frozen);
 }
+
 TEST(PublicPipeline, JoinedTemplateClosersKeepMapsAndEditScopes)
 {
     const std::string source =
@@ -2961,6 +2964,7 @@ TEST(PublicPipeline, TerminalConstructorSelfTypeStatementsKeepMapsAndEditScopes)
         CheckIdentities(source, frozen);
     }
 }
+
 TEST(PublicPipeline,
     TerminalConstructorBoundariesKeepOwningMapsAndStatementScopes)
 {
@@ -3008,6 +3012,7 @@ TEST(PublicPipeline,
     EXPECT_EQ(frozen.Text, source);
     CheckIdentities(source, frozen);
 }
+
 formatter::Style EndingStyle(std::string_view name)
 {
     return formatter::LoadConfigFile(std::filesystem::path(__FILE__)
@@ -3433,7 +3438,6 @@ TEST(PublicPipeline, LineEndingBareCRNewNamespaceEOFDoesNotCaptureWhitespace)
         EXPECT_NE(interior.Text.find("// namespace N"), std::string::npos);
     }
 }
-
 
 TEST(PublicPipeline, LineEndingCompositionControlSeparatorGeometryAndDefaults)
 {

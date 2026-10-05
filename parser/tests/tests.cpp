@@ -4379,7 +4379,6 @@ TEST(Parser, QualifiedConstructorHeadsKeepTerminalDeclaratorNames)
     }
 }
 
-
 TEST(Parser, FunctionKindsClassifyOnlyActualFunctionOwners)
 {
     const test::golden::Fixture fixture{PARSER_TESTDATA_DIR, "function-kind"};
@@ -4677,7 +4676,6 @@ TEST(Parser, FunctionKindsSurviveOwningCopiesMovesAndRebinds)
     ASSERT_TRUE(controlled);
     check(*controlled);
 }
-
 
 TEST(Parser, FunctionKindsRetainBalancedQualifiedAndExplicitReturnEvidence)
 {

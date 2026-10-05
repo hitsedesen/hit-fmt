@@ -129,6 +129,7 @@ std::vector<PreserveCase> DiscoverCases()
 class PreserveTest
     : public testing::TestWithParam<PreserveCase>
 { };
+
 TEST_P(PreserveTest, KeepsUnchanged)
 {
     const auto input = ReadFile(
@@ -4067,6 +4068,7 @@ std::vector<FormatCase> FormatCases()
 class FormatTest
     : public testing::TestWithParam<FormatCase>
 { };
+
 TEST_P(FormatTest, Golden)
 {
     const auto& value = GetParam();
@@ -4126,6 +4128,7 @@ std::string ConfigName(const testing::TestParamInfo<std::string>& info)
 class ParameterNameTest
     : public testing::TestWithParam<std::string>
 { };
+
 TEST_P(ParameterNameTest, Golden)
 {
     const auto directory =
@@ -4157,6 +4160,7 @@ TEST_P(ParameterNameTest, Golden)
         directory / (ytsaurus ? "enabled.expected" : GetParam() + ".expected"),
         actual);
 }
+
 INSTANTIATE_TEST_SUITE_P(
     Formatter,
     ParameterNameTest,
@@ -4168,6 +4172,7 @@ INSTANTIATE_TEST_SUITE_P(
         "names_only",
         "ytsaurus"),
     ConfigName);
+
 TEST(Formatter, CallArgument_RejectsUnsupportedSyntaxHints)
 {
     const test::golden::Fixture fixture{
@@ -4199,6 +4204,7 @@ TEST(Formatter, CallArgument_RejectsUnsupportedSyntaxHints)
         }
     }
 }
+
 TEST(Formatter, CallArgument_RequiresOwnedBreaksAcrossArities)
 {
     formatter::Style style;
@@ -4286,6 +4292,7 @@ TEST(Formatter, ExpressionLayout_ChecksPipelineMismatchAndEmittedWidth)
     EXPECT_EQ(mismatchOnly.Text, result.Text);
     EXPECT_TRUE(mismatchOnly.Diagnostics.empty());
 }
+
 struct LayoutDiagnosticCase
 {
     std::string Directory;
@@ -4304,6 +4311,7 @@ void PrintTo(const LayoutDiagnosticCase& value, std::ostream* output)
 class LayoutDiagnosticTest
     : public testing::TestWithParam<LayoutDiagnosticCase>
 { };
+
 TEST_P(LayoutDiagnosticTest, Golden)
 {
     const auto& value = GetParam();
@@ -4408,6 +4416,7 @@ TEST_P(LayoutDiagnosticTest, ReportsEmittedWidths)
         formatter::Format(tree, formatter::PreparedFormat(style));
     ExpectEmittedWidthDiagnostics(result, style);
 }
+
 TEST(Formatter, WidthDiagnostics_CountsProtectedTabsAndMixedTerminators)
 {
     const std::string input = "// hit-fmt off\r\nint\tlong_name;\r\n"
@@ -4512,6 +4521,7 @@ TEST(Formatter, ExpressionLayout_ReportsUnavoidableWidthWithoutReflowing)
     EXPECT_EQ(quiet.Text, input);
     EXPECT_TRUE(quiet.Diagnostics.empty());
 }
+
 TEST(Formatter, OperatorSpacing_PreservesUnknownCastOrBinaryOperator)
 {
     formatter::Style style;
@@ -4546,6 +4556,7 @@ TEST(Formatter, OperatorSpacing_PreservesUnknownCastOrBinaryOperator)
         "(int) & a");
     EXPECT_EQ(FormatWithStyle(separatedCast, style), certain);
 }
+
 TEST(Formatter, SpacingOptions_ProfileOverflowWrapsAroundRecoveryAndKeepsTokens)
 {
     const auto directory =
@@ -4579,6 +4590,7 @@ TEST(Formatter, SpacingOptions_ProfileOverflowWrapsAroundRecoveryAndKeepsTokens)
 class NamingTest
     : public testing::TestWithParam<std::string>
 { };
+
 TEST_P(NamingTest, Golden)
 {
     const auto dir = std::filesystem::path(NAMING_TESTDATA_DIR);
@@ -4601,11 +4613,13 @@ TEST_P(NamingTest, Golden)
     EXPECT_EQ(formatter::Format(tree, config.FormattingStyle), input);
     EXPECT_TRUE(formatter::CheckNames(tree, {}).empty());
 }
+
 INSTANTIATE_TEST_SUITE_P(
     Formatter,
     NamingTest,
     testing::Values("rules", "alternate", "no_exempt"),
     ConfigName);
+
 TEST(Formatter, Preserve_KeepsEmptyRecoveryAndBinarySource)
 {
     for (const std::string source :
@@ -4620,6 +4634,7 @@ TEST(Formatter, Preserve_KeepsEmptyRecoveryAndBinarySource)
         ExpectUnchanged(source, formatter::Style{});
     }
 }
+
 TEST(Formatter, PreserveConfig_ParsesSettings)
 {
     const auto path = std::filesystem::temp_directory_path() /
