@@ -1,0 +1,5 @@
+Layout = Canonical
+BodyShape = Expanded
+EmptyBodyShape = CompactIfFits
+EmptyBlockInteriorSpacing = Space
+BraceInitializerSpacing = NoSpace

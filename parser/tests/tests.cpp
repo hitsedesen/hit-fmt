@@ -2453,6 +2453,7 @@ INSTANTIATE_TEST_SUITE_P(
         GoldenCase{"name_classification"},
         GoldenCase{"ambiguity"},
         GoldenCase{"unknown_record"},
+        GoldenCase{"elaborated_initializers", false, true},
         GoldenCase{"ambiguous_call_syntax"},
         GoldenCase{"declarator_syntax"},
         GoldenCase{"constructor_initializer_ranges"},
