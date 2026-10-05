@@ -228,7 +228,7 @@ void PlanTextPolicyEdits(
     for (parser::TokenIndex token = 0; token < tree.TokenCount(); ++token) {
         const auto text = tree.TokenText(token);
         const auto atom = tree.Token(token).Text;
-        const parser::SourceRange source{atom.Begin, atom.End};
+        parser::SourceRange source{atom.Begin, atom.End};
         if (tree.Kind(token) == tokenizer::TokenKind::Comment) {
             if (options.RulerLength && IsRuler(text) &&
                 (token == 0 || safety.Gaps()[token].HasLineFeed) &&
@@ -264,21 +264,35 @@ void PlanTextPolicyEdits(
             --depth;
         }
         const auto level = branch && depth ? depth - 1 : depth;
+        bool indent = false;
+        if (options.IndentPreprocessingDirectives &&
+            level <= 10000 / options.IndentWidth)
+        {
+            // Own only the horizontal prefix, never the preceding newline.
+            // Replacing it with the token keeps the marker and directive at
+            // the same nesting level, including in sorted include atoms.
+            const auto before = tree.WhitespaceBefore(token);
+            const auto lf = before.rfind('\n');
+            const auto leading = lf == std::string_view::npos
+                ? before
+                : before.substr(lf + 1);
+            indent = (token == 0 || lf != std::string_view::npos) &&
+                leading.find_first_not_of(" \t") == std::string_view::npos;
+            if (indent) {
+                source.Begin -=
+                    static_cast<parser::SourceOffset>(leading.size());
+            }
+        }
         if (!name.empty() && CanRewriteTextAtom(safety, source, true)) {
             replacement.assign(text);
-            if (options.IndentPreprocessingDirectives &&
-                level <= 10000 / options.IndentWidth)
-            {
-                replacement.replace(
-                    marker,
-                    begin - marker,
-                    level * options.IndentWidth,
-                    ' ');
+            if (indent) {
+                replacement.erase(marker, begin - marker);
+                replacement.insert(0, level * options.IndentWidth, ' ');
             }
             if (options.AlignMacroBackslashes && name == "define") {
                 AlignContinuations(replacement, scratchMemory);
             }
-            if (replacement != text) {
+            if (replacement != tree.SourceText(source)) {
                 // A sorted include owns its full line. Rewrite that borrowed
                 // piece instead of adding an overlapping token operation.
                 const auto found = std::lower_bound(

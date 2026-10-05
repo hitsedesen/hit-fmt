@@ -1,10 +1,10 @@
 #if OUTER
-#    if INNER
-#        define MULTI(x) do { \
-    short_call(x);            \
-    much_longer_call(x);      \
+  #if INNER
+    #define MULTI(x) do { \
+    short_call(x);        \
+    much_longer_call(x);  \
 } while (false)
-#    endif
+  #endif
 #endif
 // heading
 

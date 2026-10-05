@@ -1,27 +1,29 @@
 #if OUTER
-#    if INNER
-#        include "alpha.h"
-#        include "zeta.h"
-#        define MULTI(x) do { \
+    #if INNER
+        #include "alpha.h"
+        #include "zeta.h"
+        #define MULTI(x) do { \
     short_call(x);            \
     much_longer_call(x);      \
 } while (false)
-#        define JOIN alpha\
+        #define JOIN alpha\
 beta
-#        define STRING "inside \
+        #define STRING "inside \
 continued"
-#        define COMMENT value // note \
+        #define COMMENT value // note \
 continued
-#    else
+    #elif SECOND
+int second;
+    #else
 int other;
-#    endif
+    #endif
 #endif
 #if DIGRAPH
-%:    if INNER
-%:        define VALUE first \
+    %:if INNER
+        %:define VALUE first \
     second                   \
     third
-%:    endif
+    %:endif
 #endif
 // heading
 
