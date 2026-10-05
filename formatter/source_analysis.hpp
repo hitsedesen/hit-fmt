@@ -1,7 +1,5 @@
 #pragma once
 
-#include <parser/syntax_tree.hpp>
-
 #include <cstddef>
 #include <cstdint>
 #include <memory_resource>
@@ -9,6 +7,8 @@
 #include <span>
 #include <string_view>
 #include <vector>
+
+#include <parser/syntax_tree.hpp>
 
 namespace formatter {
 

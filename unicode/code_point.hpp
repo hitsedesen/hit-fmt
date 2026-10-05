@@ -1,9 +1,9 @@
 #pragma once
 
-#include <util/assert.hpp>
-
 #include <cstdint>
 #include <string>
+
+#include <util/assert.hpp>
 
 namespace unicode {
 

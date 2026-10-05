@@ -1,11 +1,13 @@
 #include <formatter/hunks.hpp>
-#include <gtest/gtest.h>
+
 #include <algorithm>
 #include <filesystem>
 #include <sstream>
 #include <stdexcept>
 #include <string>
 #include <string_view>
+
+#include <gtest/gtest.h>
 namespace {
 
 TEST(HunkParser, GroupsFilesAndResolvesPathsAgainstGivenDirectory)

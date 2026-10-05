@@ -1,17 +1,20 @@
-#include <tests/golden.hpp>
 #include <tokenizer/tokenizer.hpp>
-#include <unicode/code_point.hpp>
-#include <unicode/utf8.hpp>
-#include <util/file.hpp>
-#include <util/input.hpp>
-
-#include <gtest/gtest.h>
 
 #include <array>
 #include <format>
 #include <ranges>
 #include <string_view>
 #include <vector>
+
+#include <gtest/gtest.h>
+
+#include <tests/golden.hpp>
+
+#include <unicode/code_point.hpp>
+#include <unicode/utf8.hpp>
+
+#include <util/file.hpp>
+#include <util/input.hpp>
 
 using namespace tokenizer;
 

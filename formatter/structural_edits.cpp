@@ -1,4 +1,5 @@
 #include "structural_edits.hpp"
+
 #include "text_policies.hpp"
 
 #include <algorithm>

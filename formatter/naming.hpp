@@ -2,10 +2,10 @@
 
 #include "config.hpp"
 
-#include <parser/syntax_tree.hpp>
-
 #include <string>
 #include <vector>
+
+#include <parser/syntax_tree.hpp>
 
 namespace formatter {
 

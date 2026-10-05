@@ -1,9 +1,6 @@
 #include <formatter/config.hpp>
-#include <formatter/policy.hpp>
 #include <formatter/include_policy.hpp>
-#include <hit-fmt/config_template.hpp>
-
-#include <gtest/gtest.h>
+#include <formatter/policy.hpp>
 
 #include <chrono>
 #include <filesystem>
@@ -15,6 +12,10 @@
 #include <string_view>
 #include <type_traits>
 #include <utility>
+
+#include <gtest/gtest.h>
+
+#include <hit-fmt/config_template.hpp>
 
 namespace {
 

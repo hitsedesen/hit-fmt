@@ -1,7 +1,4 @@
 #include <document/document.hpp>
-#include <tests/golden.hpp>
-
-#include <gtest/gtest.h>
 
 #include <algorithm>
 #include <array>
@@ -9,6 +6,10 @@
 #include <memory_resource>
 #include <string>
 #include <vector>
+
+#include <gtest/gtest.h>
+
+#include <tests/golden.hpp>
 
 #ifndef DOCUMENT_TESTDATA_DIR
 #define DOCUMENT_TESTDATA_DIR "document/tests/testdata/group-layout"

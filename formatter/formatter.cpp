@@ -1,15 +1,16 @@
 #include "formatter.hpp"
+
 #include "format_pipeline.hpp"
 #include "syntax_layout.hpp"
 #include "text_policies.hpp"
-
-#include <unicode/utf8.hpp>
 
 #include <algorithm>
 #include <format>
 #include <memory_resource>
 #include <optional>
 #include <stdexcept>
+
+#include <unicode/utf8.hpp>
 
 namespace formatter {
 

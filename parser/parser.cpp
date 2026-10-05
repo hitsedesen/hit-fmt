@@ -2,10 +2,6 @@
 
 #include "operator_info.hpp"
 
-#include <tokenizer/tokenizer.hpp>
-#include <util/assert.hpp>
-#include <util/phase_profiler.hpp>
-
 #include <algorithm>
 #include <array>
 #include <cstddef>
@@ -16,6 +12,11 @@
 #include <new>
 #include <utility>
 #include <vector>
+
+#include <tokenizer/tokenizer.hpp>
+
+#include <util/assert.hpp>
+#include <util/phase_profiler.hpp>
 
 namespace parser {
 

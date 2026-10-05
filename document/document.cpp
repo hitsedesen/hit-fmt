@@ -1,9 +1,10 @@
 #include <document/document.hpp>
-#include <unicode/utf8.hpp>
 
 #include <algorithm>
 #include <limits>
 #include <memory>
+
+#include <unicode/utf8.hpp>
 
 namespace document {
 

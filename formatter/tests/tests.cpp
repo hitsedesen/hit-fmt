@@ -1,12 +1,11 @@
 #include "public_pipeline.hpp"
+
 #include <formatter/config.hpp>
 #include <formatter/formatter.hpp>
 #include <formatter/hunks.hpp>
 #include <formatter/naming.hpp>
 #include <formatter/parameter_names.hpp>
-#include <tests/golden.hpp>
-#include <unicode/utf8.hpp>
-#include <gtest/gtest.h>
+
 #include <algorithm>
 #include <array>
 #include <filesystem>
@@ -16,6 +15,12 @@
 #include <string_view>
 #include <utility>
 #include <vector>
+
+#include <gtest/gtest.h>
+
+#include <tests/golden.hpp>
+
+#include <unicode/utf8.hpp>
 namespace {
 
 using test::golden::ReadFile;

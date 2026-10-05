@@ -2,12 +2,12 @@
 
 #include "syntax_tree.hpp"
 
-#include <util/input.hpp>
-
 #include <functional>
 #include <span>
 #include <string>
 #include <string_view>
+
+#include <util/input.hpp>
 
 namespace parser {
 

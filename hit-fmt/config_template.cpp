@@ -1,7 +1,5 @@
 #include "config_template.hpp"
 
-#include <formatter/config.hpp>
-
 #include <cstddef>
 #include <optional>
 #include <ostream>
@@ -10,6 +8,8 @@
 #include <string_view>
 #include <type_traits>
 #include <vector>
+
+#include <formatter/config.hpp>
 
 namespace hit_fmt {
 

@@ -3,12 +3,12 @@
 #include "identifier_kind.hpp"
 #include "token.hpp"
 
-#include <unicode/code_point.hpp>
-#include <unicode/utf8.hpp>
-
 #include <algorithm>
 #include <array>
 #include <utility>
+
+#include <unicode/code_point.hpp>
+#include <unicode/utf8.hpp>
 
 namespace tokenizer {
 

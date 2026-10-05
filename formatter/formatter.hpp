@@ -6,15 +6,17 @@
 #include "policy.hpp"
 #include "structural_edits.hpp"
 
-#include <document/document.hpp>
-#include <parser/parser.hpp>
-#include <util/input.hpp>
-
 #include <optional>
 #include <span>
 #include <string>
 #include <string_view>
 #include <vector>
+
+#include <document/document.hpp>
+
+#include <parser/parser.hpp>
+
+#include <util/input.hpp>
 
 namespace formatter {
 

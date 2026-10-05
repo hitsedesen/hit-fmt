@@ -1,6 +1,7 @@
-#include "hunks.hpp"
-#include "hunk_scope.hpp"
 #include "format_pipeline.hpp"
+#include "hunk_scope.hpp"
+#include "hunks.hpp"
+
 #include <algorithm>
 #include <memory_resource>
 #include <stdexcept>

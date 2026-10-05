@@ -1,9 +1,5 @@
 #pragma once
 
-#include <formatter/config.hpp>
-#include <formatter/formatter.hpp>
-#include <formatter/hunks.hpp>
-
 #include <cstdint>
 #include <optional>
 #include <ostream>
@@ -11,6 +7,10 @@
 #include <string>
 #include <string_view>
 #include <vector>
+
+#include <formatter/config.hpp>
+#include <formatter/formatter.hpp>
+#include <formatter/hunks.hpp>
 
 namespace hit_fmt {
 

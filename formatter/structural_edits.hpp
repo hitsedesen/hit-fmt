@@ -1,8 +1,8 @@
 #pragma once
 
-#include <formatter/source_analysis.hpp>
 #include <formatter/config_enum.hpp>
 #include <formatter/include_policy.hpp>
+#include <formatter/source_analysis.hpp>
 
 #include <memory_resource>
 #include <span>

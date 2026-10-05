@@ -1,8 +1,4 @@
 #include <formatter/syntax_spacing.hpp>
-#include <parser/parser.hpp>
-#include <tests/golden.hpp>
-
-#include <gtest/gtest.h>
 
 #include <array>
 #include <filesystem>
@@ -10,6 +6,12 @@
 #include <sstream>
 #include <stdexcept>
 #include <string>
+
+#include <gtest/gtest.h>
+
+#include <parser/parser.hpp>
+
+#include <tests/golden.hpp>
 
 namespace {
 

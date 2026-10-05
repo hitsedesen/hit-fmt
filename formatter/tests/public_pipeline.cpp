@@ -1,10 +1,8 @@
 #include "public_pipeline.hpp"
+
 #include <formatter/config.hpp>
 #include <formatter/formatter.hpp>
 #include <formatter/source_analysis.hpp>
-#include <tests/golden.hpp>
-
-#include <gtest/gtest.h>
 
 #include <algorithm>
 #include <array>
@@ -12,6 +10,10 @@
 #include <memory_resource>
 #include <stdexcept>
 #include <string>
+
+#include <gtest/gtest.h>
+
+#include <tests/golden.hpp>
 
 namespace public_pipeline {
 

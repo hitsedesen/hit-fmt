@@ -1,8 +1,5 @@
 #include <parser/operator_info.hpp>
 #include <parser/parser.hpp>
-#include <tests/golden.hpp>
-
-#include <gtest/gtest.h>
 
 #include <algorithm>
 #include <array>
@@ -12,6 +9,10 @@
 #include <string_view>
 #include <utility>
 #include <vector>
+
+#include <gtest/gtest.h>
+
+#include <tests/golden.hpp>
 
 namespace {
 

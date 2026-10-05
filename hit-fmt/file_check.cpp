@@ -1,14 +1,16 @@
 #include "file_check.hpp"
-#include "source_excerpt.hpp"
 
-#include <formatter/naming.hpp>
-#include <formatter/parameter_names.hpp>
-#include <unicode/utf8.hpp>
+#include "source_excerpt.hpp"
 
 #include <algorithm>
 #include <memory_resource>
 #include <stdexcept>
 #include <utility>
+
+#include <formatter/naming.hpp>
+#include <formatter/parameter_names.hpp>
+
+#include <unicode/utf8.hpp>
 
 namespace hit_fmt {
 

@@ -1,11 +1,11 @@
 #include "parameter_names.hpp"
 
-#include <tokenizer/token.hpp>
-
 #include <algorithm>
 #include <string>
 #include <string_view>
 #include <vector>
+
+#include <tokenizer/token.hpp>
 
 namespace formatter {
 

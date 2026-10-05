@@ -1,9 +1,9 @@
 #include "source_excerpt.hpp"
 
-#include <unicode/utf8.hpp>
-
 #include <algorithm>
 #include <ostream>
+
+#include <unicode/utf8.hpp>
 
 namespace hit_fmt {
 

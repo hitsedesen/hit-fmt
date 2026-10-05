@@ -1,18 +1,14 @@
 #include "config_help.hpp"
 #include "config_template.hpp"
-#include "file_dispatch.hpp"
 #include "file_check.hpp"
+#include "file_dispatch.hpp"
 #include "options.hpp"
 #include "source_excerpt.hpp"
 #include "version.hpp"
 
-#include <formatter/config.hpp>
-#include <formatter/formatter.hpp>
-#include <util/file.hpp>
-
 #include <algorithm>
-#include <charconv>
 #include <cctype>
+#include <charconv>
 #include <cstddef>
 #include <cstdio>
 #include <cstdlib>
@@ -25,8 +21,8 @@
 #include <memory>
 #include <optional>
 #include <regex>
-#include <sstream>
 #include <span>
+#include <sstream>
 #include <stdexcept>
 #include <string>
 #include <string_view>
@@ -35,11 +31,17 @@
 #include <unordered_set>
 #include <vector>
 
+#include <formatter/config.hpp>
+#include <formatter/formatter.hpp>
+
+#include <util/file.hpp>
+
 #ifdef _WIN32
 #include <io.h>
 #else
-#include <sys/ioctl.h>
 #include <unistd.h>
+
+#include <sys/ioctl.h>
 #endif
 
 namespace {
