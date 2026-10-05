@@ -11,3 +11,21 @@ using Compared = decltype(left < right > tail);
 using Type = decltype(auto);
 using namespace samples;
 using samples::Value;
+
+template<class T> struct Box {};
+void nested_first()
+{
+    Select<Box<int>, Second>(first, second);
+    Select<Box<int>>(first, second);
+    Select<Box<Box<int>>>(first, second);
+    Select<Box<int> >(first, second);
+    object.Select<Box<int>, Second>(first, second);
+    scope::Select<Box<int>, Second>(first, second);
+    unknown<External<int>, Second>(first, second);
+    auto comparison = left < right > tail;
+}
+void shadowed()
+{
+    int Box = 1;
+    Select<Box<int>, Second>(first, second);
+}

@@ -8357,10 +8357,29 @@ private:
         TokenIndex opening) const
     {
         const auto firstArgument = NextSignificant(opening + 1);
-        const auto afterArgument = NextSignificant(firstArgument + 1);
-        const bool typeArgument = (IsKnownType(firstArgument) ||
+        auto afterArgument = NextSignificant(firstArgument + 1);
+        const bool knownTypeArgument = IsKnownType(firstArgument);
+        bool sharedCloser = false;
+        if (knownTypeArgument && Kind(afterArgument) == TK::Operator_Less) {
+            // A locally known type remains a type when specialized. Do not
+            // mistake its nested angles for a competing comparison, and keep
+            // a shared >> available as the enclosing argument's terminator.
+            bool exactClosing = false;
+            const auto nestedEnd = SkipTemplateArguments(
+                afterArgument,
+                following,
+                false,
+                &exactClosing);
+            sharedCloser = nestedEnd > afterArgument &&
+                Kind(nestedEnd - 1) == TK::Operator_RightShift &&
+                NextSignificant(nestedEnd) == following && !exactClosing;
+            if (exactClosing || sharedCloser) {
+                afterArgument = NextSignificant(nestedEnd);
+            }
+        }
+        const bool typeArgument = (knownTypeArgument ||
             IsFundamentalTypeKeyword(Kind(firstArgument))) &&
-            (Kind(afterArgument) == TK::Operator_Comma ||
+            (sharedCloser || Kind(afterArgument) == TK::Operator_Comma ||
                 Kind(afterArgument) == TK::Operator_Greater ||
                 Kind(afterArgument) == TK::Operator_RightShift);
         // Local type bindings rule out the competing comparison expression.

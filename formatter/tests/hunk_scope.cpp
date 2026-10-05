@@ -25,9 +25,11 @@ TEST(HunkScope, OriginalPhysicalLinesRejectInvalidAndHaveNoPhantomEOFLine)
             .empty());
         for (const Hunk bad :
             {
-                Hunk{0, 1}, {2, 1}, {2, 2},
-            {1, std::numeric_limits<size_t>::max()}
-            })
+            Hunk{0, 1},
+            {2, 1},
+            {2, 2},
+            {1, std::numeric_limits<size_t>::max()},
+        })
         {
             EXPECT_THROW((void)lines.Bytes(bad), std::invalid_argument);
             EXPECT_THROW(

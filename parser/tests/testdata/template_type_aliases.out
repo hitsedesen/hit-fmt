@@ -228,4 +228,327 @@
   )
   (using-declaration "using" "namespace" "samples" ";")
   (using-declaration "using" "samples" "::" "Value" ";")
+  (template-declaration
+    (leading-trivia
+      (whitespace "\n\n")
+    )
+    "template"
+    (template-parameter-list
+      "<"
+      (template-parameter "class" "T")
+      ">"
+    )
+    (record-declaration "struct" "Box" "{" "}" ";")
+  )
+  (function-definition
+    (declaration-specifiers "void")
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (declarator-name "nested_first")
+          (function-declarator
+            (parameter-list "(" ")")
+          )
+        )
+      )
+    )
+    (compound-statement
+      "{"
+      (expression-statement
+        (call-expression
+          (template-id-expression
+            (identifier-expression "Select")
+            (template-argument-list
+              "<"
+              (template-argument
+                "Box"
+                (template-argument-list
+                  "<"
+                  (template-argument "int")
+                  ">"
+                )
+              )
+              (list-separator ",")
+              (template-argument "Second")
+              ">"
+            )
+          )
+          (argument-list
+            "("
+            (argument
+              (identifier-expression "first")
+            )
+            (list-separator ",")
+            (argument
+              (identifier-expression "second")
+            )
+            ")"
+          )
+        )
+        ";"
+      )
+      (expression-statement
+        (call-expression
+          (template-id-expression
+            (identifier-expression "Select")
+            (template-argument-list
+              "<"
+              (template-argument
+                "Box"
+                (template-argument-list
+                  "<"
+                  (template-argument "int")
+                  ">>"
+                )
+              )
+            )
+          )
+          (argument-list
+            "("
+            (argument
+              (identifier-expression "first")
+            )
+            (list-separator ",")
+            (argument
+              (identifier-expression "second")
+            )
+            ")"
+          )
+        )
+        ";"
+      )
+      (expression-statement
+        (call-expression
+          (template-id-expression
+            (identifier-expression "Select")
+            (template-argument-list
+              "<"
+              (template-argument
+                "Box"
+                (template-argument-list
+                  "<"
+                  (template-argument
+                    "Box"
+                    (template-argument-list
+                      "<"
+                      (template-argument "int")
+                      ">>"
+                    )
+                  )
+                )
+              )
+              ">"
+            )
+          )
+          (argument-list
+            "("
+            (argument
+              (identifier-expression "first")
+            )
+            (list-separator ",")
+            (argument
+              (identifier-expression "second")
+            )
+            ")"
+          )
+        )
+        ";"
+      )
+      (expression-statement
+        (call-expression
+          (template-id-expression
+            (identifier-expression "Select")
+            (template-argument-list
+              "<"
+              (template-argument
+                "Box"
+                (template-argument-list
+                  "<"
+                  (template-argument "int")
+                  ">"
+                )
+              )
+              ">"
+            )
+          )
+          (argument-list
+            "("
+            (argument
+              (identifier-expression "first")
+            )
+            (list-separator ",")
+            (argument
+              (identifier-expression "second")
+            )
+            ")"
+          )
+        )
+        ";"
+      )
+      (expression-statement
+        (call-expression
+          (member-expression
+            (identifier-expression "object")
+            "."
+            (template-id-expression
+              (identifier-expression "Select")
+              (template-argument-list
+                "<"
+                (template-argument
+                  "Box"
+                  (template-argument-list
+                    "<"
+                    (template-argument "int")
+                    ">"
+                  )
+                )
+                (list-separator ",")
+                (template-argument "Second")
+                ">"
+              )
+            )
+          )
+          (argument-list
+            "("
+            (argument
+              (identifier-expression "first")
+            )
+            (list-separator ",")
+            (argument
+              (identifier-expression "second")
+            )
+            ")"
+          )
+        )
+        ";"
+      )
+      (expression-statement
+        (call-expression
+          (member-expression
+            (identifier-expression "scope")
+            "::"
+            (template-id-expression
+              (identifier-expression "Select")
+              (template-argument-list
+                "<"
+                (template-argument
+                  "Box"
+                  (template-argument-list
+                    "<"
+                    (template-argument "int")
+                    ">"
+                  )
+                )
+                (list-separator ",")
+                (template-argument "Second")
+                ">"
+              )
+            )
+          )
+          (argument-list
+            "("
+            (argument
+              (identifier-expression "first")
+            )
+            (list-separator ",")
+            (argument
+              (identifier-expression "second")
+            )
+            ")"
+          )
+        )
+        ";"
+      )
+      (expression-statement
+        (call-expression
+          (unparsed-syntax "unknown" "<" "External" "<" "int" ">" "," "Second" ">")
+          (argument-list
+            "("
+            (argument
+              (identifier-expression "first")
+            )
+            (list-separator ",")
+            (argument
+              (identifier-expression "second")
+            )
+            ")"
+          )
+        )
+        ";"
+      )
+      (declaration-statement
+        (declaration-specifiers "auto")
+        (init-declarator-list
+          (init-declarator
+            (declarator
+              (declarator-name "comparison")
+            )
+            (initializer
+              "="
+              (binary-expression
+                (binary-expression
+                  (identifier-expression "left")
+                  "<"
+                  (identifier-expression "right")
+                )
+                ">"
+                (identifier-expression "tail")
+              )
+            )
+          )
+        )
+        ";"
+      )
+      "}"
+    )
+  )
+  (function-definition
+    (declaration-specifiers "void")
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (declarator-name "shadowed")
+          (function-declarator
+            (parameter-list "(" ")")
+          )
+        )
+      )
+    )
+    (compound-statement
+      "{"
+      (declaration-statement
+        (declaration-specifiers "int")
+        (init-declarator-list
+          (init-declarator
+            (declarator
+              (declarator-name "Box")
+            )
+            (initializer
+              "="
+              (literal-expression "1")
+            )
+          )
+        )
+        ";"
+      )
+      (expression-statement
+        (call-expression
+          (unparsed-syntax "Select" "<" "Box" "<" "int" ">" "," "Second" ">")
+          (argument-list
+            "("
+            (argument
+              (identifier-expression "first")
+            )
+            (list-separator ",")
+            (argument
+              (identifier-expression "second")
+            )
+            ")"
+          )
+        )
+        ";"
+      )
+      "}"
+    )
+  )
 )

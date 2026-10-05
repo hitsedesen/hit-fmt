@@ -2036,6 +2036,17 @@ std::vector<FormatCase> FormatCases()
         }
     }
     AddCases(cases, data / "qualified-record", {"canonical", "ytsaurus"});
+    AddCases(cases, data / "uncertain-layout", {"canonical", "preserve"});
+    for (auto& value : cases) {
+        if (value.Directory == data / "uncertain-layout") {
+            value.CheckOwningMaps = true;
+        }
+    }
+    ShareExpected(
+        cases,
+        data / "uncertain-layout",
+        "preserve.output.cpp",
+        "input.cpp");
     AddCases(
         cases,
         data / "template-arguments",

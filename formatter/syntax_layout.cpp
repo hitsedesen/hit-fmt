@@ -155,8 +155,10 @@ struct IndentBasis
 constexpr IndentBasis AccumulateIndent(IndentBasis parent, int32_t delta)
 {
     const auto logical = int64_t(parent.Column) + delta;
-    return {uint32_t(std::clamp<int64_t>(logical, 0, int64_t(UINT32_MAX) - 1)),
-            parent.Saturated || logical >= int64_t(UINT32_MAX)};
+    return {
+        uint32_t(std::clamp<int64_t>(logical, 0, int64_t(UINT32_MAX) - 1)),
+        parent.Saturated || logical >= int64_t(UINT32_MAX),
+    };
 }
 
 // A later negative offset cannot undo information lost by an ancestor clamp.
@@ -838,9 +840,12 @@ private:
                 return false;
             case NodeKind::ArgumentList:
             case NodeKind::Condition:
+            case NodeKind::InitializerList:
                 if (node.Tokens.Size() < 2 ||
                     Tree_.Kind(node.Tokens.Begin) !=
-                        TokenKind::Operator_OpenParenthesis ||
+                        (node.Kind == NodeKind::InitializerList
+                            ? TokenKind::Operator_OpenBrace
+                            : TokenKind::Operator_OpenParenthesis) ||
                     Tree_.MatchingDelimiter(node.Tokens.Begin) !=
                         node.Tokens.End - 1)
                 {
@@ -2487,6 +2492,19 @@ private:
             }
             const auto owner = contents == None ? group : contents;
             if (!Syntax_[child].Safe) {
+                // Uncertain interiors do not own an editable statement's
+                // leading indentation. Retain its topology and leave actual
+                // protected gaps untouched, just as for a preserved body.
+                if (GapMutable(part.Tokens.Begin) &&
+                    PrefixOpaqueFences_[part.Tokens.Begin] ==
+                        PrefixOpaqueFences_[part.Tokens.End])
+                {
+                    Reindent(
+                        part.Tokens.Begin,
+                        owner,
+                        false,
+                        independentIndent);
+                }
                 continue;
             }
             if (canonical) {
