@@ -1382,8 +1382,17 @@ private:
         return nullptr;
     }
 
-    [[nodiscard]] const NameBinding* LookupBinding(std::string_view name) const
+    [[nodiscard]] const NameBinding* LookupBinding(
+        std::string_view name,
+        bool global = false) const
     {
+        if (global) {
+            auto* scope = CurrentScope_;
+            while (scope->Parent) {
+                scope = scope->Parent;
+            }
+            return FindName(*scope, name);
+        }
         for (auto* scope = CurrentScope_; scope; scope = scope->Parent) {
             if (auto* binding = FindName(*scope, name)) {
                 return binding;
@@ -9115,8 +9124,14 @@ private:
         size_t first,
         size_t end) const
     {
+        bool hasQualifiedType = Kind(first) == TK::Operator_ScopeResolution;
+        if (hasQualifiedType) {
+            first = NextSignificant(first + 1);
+            if (first >= end || Kind(first) != TK::Identifier) {
+                return false;
+            }
+        }
         auto cursor = NextSignificant(first + 1);
-        bool hasQualifiedType = false;
         while (cursor < end) {
             if (Kind(cursor) == TK::Operator_Less) {
                 auto templateEnd = SkipTemplateArguments(cursor, end);
@@ -9173,14 +9188,22 @@ private:
             }
             first = SkipAttributeSpecifiers(end);
         }
-        if (IsTypeKeyword(Kind(first)) || IsKnownType(first)) {
+        if (IsTypeKeyword(Kind(first))) {
             return NodeKind::DeclarationStatement;
         }
-        if (Kind(first) != TK::Identifier || LookupName(Text(first))) {
+        const bool global = Kind(first) == TK::Operator_ScopeResolution;
+        const auto name = global ? NextSignificant(first + 1) : first;
+        const auto* binding = Kind(name) == TK::Identifier
+            ? LookupBinding(Text(name), global)
+            : nullptr;
+        if (binding && binding->Kind == NameKind::Type) {
+            return NodeKind::DeclarationStatement;
+        }
+        if (Kind(name) != TK::Identifier || binding) {
             return NodeKind::ExpressionStatement;
         }
 
-        auto next = NextSignificant(first + 1);
+        auto next = NextSignificant(name + 1);
         if (Kind(next) == TK::Identifier) {
             return NodeKind::AmbiguousStatement;
         }
@@ -9296,6 +9319,9 @@ private:
         } else {
             if (nodeKind == NodeKind::AmbiguousStatement) {
                 auto unknown = SkipAttributeSpecifiers(start);
+                if (Kind(unknown) == TK::Operator_ScopeResolution) {
+                    unknown = NextSignificant(unknown + 1);
+                }
                 if (Kind(unknown) == TK::Identifier) {
                     auto* name = MakeNode(NodeKind::UnknownTypeName, unknown);
                     name->Tokens.End = unknown + 1;

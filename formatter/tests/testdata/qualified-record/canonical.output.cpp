@@ -171,4 +171,24 @@ void keep_exports() {
     ExportedForward* forward;
     ExportedTemplateEmpty<int>* template_empty;
     ExportedTemplateForward<int>* template_forward;
+    ::ExportedEmpty * global_empty;
+    ::ExportedForward ** global_forward;
+    ::ExportedEmpty & global_reference;
+    ::ExportedEmpty && global_rvalue;
+    ::ExportedTemplateEmpty<int> * global_template;
+    ::Scope::Box::Item* qualified_unknown;
+    ::External* unknown_global;
+    int ExportedEmpty;
+    ::ExportedEmpty * shadowed_global_type;
+}
+int factor;
+void global_values(int operand, int mask, bool condition) {
+    using factor = int;
+    ::factor*operand;
+    ::factor&mask;
+    ::factor&&condition;
+    ::factor* 2;
+    ::factor& 7;
+    ::factor&& true;
+    ::invoke(operand);
 }
