@@ -460,4 +460,272 @@
     )
     ";"
   )
+  (function-definition
+    (declaration-specifiers
+      "NO_INLINE" "std" "::" "tuple"
+      (template-argument-list
+        "<"
+        (template-argument "int")
+        (list-separator ",")
+        (template-argument "int")
+        ">"
+      )
+    )
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (declarator-name "Serve")
+          (function-declarator
+            (parameter-list
+              "("
+              (parameter-declaration
+                (declaration-specifiers "int")
+                (init-declarator-list
+                  (init-declarator
+                    (declarator
+                      (declarator-name "value")
+                    )
+                  )
+                )
+              )
+              ")"
+            )
+          )
+        )
+      )
+    )
+    (compound-statement
+      "{"
+      (return-statement
+        "return"
+        (braced-initializer
+          (initializer-list "{" "}")
+        )
+        ";"
+      )
+      "}"
+    )
+  )
+  (function-definition
+    (declaration-specifiers
+      "EXPORT" "HOT" "Box"
+      (template-argument-list
+        "<"
+        (template-argument
+          "Box"
+          (template-argument-list
+            "<"
+            (template-argument "int")
+            ">>"
+          )
+        )
+      )
+    )
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (declarator-name "chained")
+          (function-declarator
+            (parameter-list "(" ")")
+          )
+        )
+      )
+    )
+    (compound-statement
+      "{"
+      (return-statement
+        "return"
+        (braced-initializer
+          (initializer-list "{" "}")
+        )
+        ";"
+      )
+      "}"
+    )
+  )
+  (function-definition
+    (declaration-specifiers
+      "static" "EXPORT" "Box"
+      (template-argument-list
+        "<"
+        (template-argument "int")
+        ">"
+      )
+    )
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (declarator-name "qualified_prefix")
+          (function-declarator
+            (parameter-list "(" ")")
+          )
+        )
+      )
+    )
+    (compound-statement
+      "{"
+      (return-statement
+        "return"
+        (braced-initializer
+          (initializer-list "{" "}")
+        )
+        ";"
+      )
+      "}"
+    )
+  )
+  (function-definition
+    (declaration-specifiers "EXPORT" "int")
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (declarator-name "builtin")
+          (function-declarator
+            (parameter-list "(" ")")
+          )
+        )
+      )
+    )
+    (compound-statement
+      "{"
+      (return-statement
+        "return"
+        (literal-expression "0")
+        ";"
+      )
+      "}"
+    )
+  )
+  (function-declaration
+    (declaration-specifiers
+      "EXPORT" "Box"
+      (template-argument-list
+        "<"
+        (template-argument "int")
+        ">"
+      )
+    )
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (declarator-name "declared")
+          (function-declarator
+            (parameter-list "(" ")")
+          )
+        )
+      )
+    )
+    ";"
+  )
+  (function-definition
+    (declaration-specifiers
+      "EXPORT" "Box"
+      (template-argument-list
+        "<"
+        (template-argument "int")
+        ">"
+      )
+    )
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          "Owner"
+          (template-argument-list
+            "<"
+            (template-argument "int")
+            ">"
+          )
+          "::"
+          (declarator-name "method")
+          (function-declarator
+            (parameter-list "(" ")")
+          )
+        )
+      )
+    )
+    (compound-statement
+      "{"
+      (return-statement
+        "return"
+        (braced-initializer
+          (initializer-list "{" "}")
+        )
+        ";"
+      )
+      "}"
+    )
+  )
+  (function-definition
+    (declaration-specifiers "Value")
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          "Owner"
+          (template-argument-list
+            "<"
+            (template-argument "int")
+            ">"
+          )
+          "::"
+          (declarator-name "unprefixed")
+          (function-declarator
+            (parameter-list "(" ")")
+          )
+        )
+      )
+    )
+    (compound-statement
+      "{"
+      (return-statement
+        "return"
+        (braced-initializer
+          (initializer-list "{" "}")
+        )
+        ";"
+      )
+      "}"
+    )
+  )
+  (declaration
+    (declaration-specifiers "Value")
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (member-pointer-operator "Owner" "::" "*")
+          (declarator-name "member")
+        )
+      )
+    )
+    ";"
+  )
+  (function-definition
+    (declaration-specifiers
+      "EXPORT" "Box"
+      (template-argument-list
+        "<"
+        (template-argument "int")
+        ">"
+      )
+    )
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (pointer-operator "*")
+          (declarator-name "pointer")
+          (function-declarator
+            (parameter-list "(" ")")
+          )
+        )
+      )
+    )
+    (compound-statement
+      "{"
+      (return-statement
+        "return"
+        (literal-expression "nullptr")
+        ";"
+      )
+      "}"
+    )
+  )
 )
