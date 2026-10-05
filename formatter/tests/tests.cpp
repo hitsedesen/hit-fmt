@@ -1498,6 +1498,30 @@ std::vector<FormatCase> FormatCases()
     addProfileCase("../call-reflow", "profile-tabbed-log");
     const auto callReflow =
         std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../call-reflow";
+    cases.push_back({
+        callReflow,
+        "template-argument-tail",
+        "template-argument-tail.input.cpp",
+        "../../../../",
+        {},
+        true,
+        {},
+        true,
+    });
+    cases.push_back({
+        callReflow,
+        "template-argument-tail-fill",
+        "template-argument-tail.input.cpp",
+        "../../../../",
+        {},
+        true,
+        {},
+        true,
+    });
+    auto templateTailStyle = formatter::LoadConfigFile(
+        callReflow / "../../../../.hit-fmt").FormattingStyle;
+    templateTailStyle.CallsPacking = ListPacking::Fill;
+    cases.back().Style = templateTailStyle;
     AddCases(
         cases,
         callReflow,

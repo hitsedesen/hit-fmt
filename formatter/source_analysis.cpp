@@ -773,6 +773,34 @@ SourceAnalysis BuildSourceAnalysis(
             }
             frame.LastChild = id;
         }
+        if (node.Kind == parser::NodeKind::ListSeparator &&
+            tokens.Size() == 1 && tokens.End < count &&
+            tree.Kind(tokens.End) == TK::Comment && tree
+                .TokenText(tokens.End)
+                .starts_with("/*"))
+        {
+            auto* next = node.NextSibling;
+            while (next && next->Kind == parser::NodeKind::Comment) {
+                next = next->NextSibling;
+            }
+            if (next && tokens.End < next->Tokens.Begin) {
+                auto afterComments = tokens.End;
+                while (afterComments < next->Tokens.Begin &&
+                    tree.Kind(afterComments) == TK::Comment && tree
+                        .TokenText(afterComments)
+                        .starts_with("/*"))
+                {
+                    ++afterComments;
+                }
+                if (afterComments == next->Tokens.Begin) {
+                    // Move a block-comment prefix with the next item while
+                    // preserving its internal links. Mixed prefixes stay put
+                    // so a line comment cannot move with the block comments.
+                    result.Gaps_[tokens.End].LineBoundary =
+                        GapLineBoundary::Any;
+                }
+            }
+        }
         if (node.Kind == parser::NodeKind::HeaderName) {
             // Whitespace inside header delimiters is part of the filename.
             protect(begin, end, ProtectionReason::HeaderName);

@@ -41,4 +41,255 @@
       )
     )
   )
+  (function-definition
+    (leading-trivia
+      (whitespace "\n\n")
+    )
+    (declaration-specifiers "void")
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (declarator-name "listComments")
+          (function-declarator
+            (parameter-list "(" ")")
+          )
+        )
+      )
+    )
+    (compound-statement
+      "{"
+      (declaration-statement
+        (declaration-specifiers "auto")
+        (init-declarator-list
+          (init-declarator
+            (declarator
+              (declarator-name "result")
+            )
+            (initializer
+              "="
+              (call-expression
+                (identifier-expression "consume")
+                (argument-list
+                  "("
+                  (argument
+                    (identifier-expression "alpha")
+                  )
+                  (list-separator ",")
+                  "/* next argument */"
+                  (argument
+                    (leading-trivia
+                      (comment "/* next argument */")
+                    )
+                    (identifier-expression "beta")
+                  )
+                  (list-separator ",")
+                  (argument
+                    (identifier-expression "gamma")
+                  )
+                  ")"
+                )
+              )
+            )
+          )
+        )
+        ";"
+      )
+      (expression-statement
+        (assignment-expression
+          (identifier-expression "result")
+          "="
+          (call-expression
+            (identifier-expression "consume")
+            (argument-list
+              "("
+              (argument
+                (identifier-expression "alpha")
+              )
+              (list-separator ",")
+              "/* first */" "/* second */"
+              (argument
+                (leading-trivia
+                  (comment "/* first */")
+                  (comment "/* second */")
+                )
+                (identifier-expression "beta")
+              )
+              (list-separator ",")
+              (argument
+                (identifier-expression "gamma")
+              )
+              ")"
+            )
+          )
+        )
+        ";"
+      )
+      (expression-statement
+        (assignment-expression
+          (identifier-expression "result")
+          "="
+          (call-expression
+            (identifier-expression "consume")
+            (argument-list
+              "("
+              (argument
+                (identifier-expression "alpha")
+              )
+              (list-separator
+                ","
+                (trailing-trivia
+                  (comment "// stays with alpha")
+                )
+              )
+              "// stays with alpha"
+              (argument
+                (identifier-expression "beta")
+              )
+              (list-separator ",")
+              (argument
+                (identifier-expression "gamma")
+              )
+              ")"
+            )
+          )
+        )
+        ";"
+      )
+      (expression-statement
+        (assignment-expression
+          (identifier-expression "result")
+          "="
+          (call-expression
+            (identifier-expression "consume")
+            (argument-list
+              "("
+              (argument
+                (identifier-expression "alpha")
+              )
+              (list-separator
+                ","
+                (trailing-trivia
+                  (comment "// stays with alpha")
+                )
+              )
+              "/* prefix */" "// stays with alpha"
+              (argument
+                (leading-trivia
+                  (comment "/* prefix */")
+                )
+                (identifier-expression "beta")
+              )
+              (list-separator ",")
+              (argument
+                (identifier-expression "gamma")
+              )
+              ")"
+            )
+          )
+        )
+        ";"
+      )
+      (expression-statement
+        (assignment-expression
+          (identifier-expression "result")
+          "="
+          (call-expression
+            (identifier-expression "consume")
+            (argument-list
+              "("
+              (argument
+                (identifier-expression "alpha")
+                (trailing-trivia
+                  (comment "/* previous argument */")
+                )
+              )
+              "/* previous argument */"
+              (list-separator ",")
+              (argument
+                (identifier-expression "beta")
+              )
+              (list-separator ",")
+              (argument
+                (identifier-expression "gamma")
+              )
+              ")"
+            )
+          )
+        )
+        ";"
+      )
+      (expression-statement
+        (assignment-expression
+          (identifier-expression "result")
+          "="
+          (call-expression
+            (identifier-expression "consume")
+            (argument-list
+              "("
+              (argument
+                (parenthesized-expression
+                  "("
+                  (binary-expression
+                    (identifier-expression
+                      "alpha"
+                      (trailing-trivia
+                        (comment "/* expression */")
+                      )
+                    )
+                    "," "/* expression */"
+                    (identifier-expression "beta")
+                  )
+                  ")"
+                )
+              )
+              (list-separator ",")
+              (argument
+                (identifier-expression "gamma")
+              )
+              ")"
+            )
+          )
+        )
+        ";"
+      )
+      (declaration-statement
+        (declaration-specifiers "auto")
+        (init-declarator-list
+          (init-declarator
+            (declarator
+              (declarator-name "values")
+            )
+            (initializer
+              "="
+              (braced-initializer
+                (initializer-list
+                  "{"
+                  (initializer-element
+                    (identifier-expression "alpha")
+                  )
+                  (list-separator ",")
+                  "/* next element */"
+                  (initializer-element
+                    (leading-trivia
+                      (comment "/* next element */")
+                    )
+                    (identifier-expression "beta")
+                  )
+                  (list-separator
+                    ","
+                    (trailing-trivia
+                      (comment "/* trailing */")
+                    )
+                  )
+                  "/* trailing */" "}"
+                )
+              )
+            )
+          )
+        )
+        ";"
+      )
+      "}"
+    )
+  )
 )

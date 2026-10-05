@@ -3,6 +3,6 @@ void f() { use(alpha +
 
 void g() { auto x = (Type)(alpha, beta, gamma, delta); }
 
-void h() { use(
-        alpha, /* note */ beta,
+void h() { use(alpha,
+        /* note */ beta,
         gamma); }

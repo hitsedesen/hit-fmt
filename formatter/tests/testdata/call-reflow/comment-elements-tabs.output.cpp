@@ -26,9 +26,31 @@ void demo() {
 	alpha, // trailing comma comment
     };
     consume(
-	alpha, /* inline */ beta,
+	alpha,
+	/* inline */ beta,
 	gamma
     );
+    auto prefixes = consume(
+	alpha,
+	/* first */ /* second */ beta,
+	gamma
+    );
+    auto mixed = consume(
+	alpha, /* prefix */ // stays with alpha
+	beta,
+	gamma
+    );
+    auto suffix = consume(
+	alpha /* belongs to alpha */,
+	beta,
+	gamma
+    );
+    auto nestedComma = consume(
+	(alpha, /* expression */ beta),
+	gamma
+    );
+    auto trailingBlock = {
+	alpha, /* no next item */};
     consume(
 	alpha, // trailing comment
 	beta /* closer comment */
