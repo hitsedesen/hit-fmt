@@ -92,6 +92,36 @@ check the noisier initial results. Individual pairs still vary; these are
 median comparisons, not a guarantee of a speedup on every invocation.
 Runtime gains, rather than compact record sizes, determine acceptance.
 
+## Hardware instructions and cycles per input byte
+
+A separate three-run interleaved comparison measures hardware events on
+CPU 2 with the same baseline, candidate, inputs, and configurations.
+Direct perf_event_open groups count user-space retired instructions and
+CPU cycles around each CheckFile call. Both events run simultaneously;
+all recorded enabled/running times agree, without multiplexing or scaling.
+The normal perf command fell back to software events in this environment,
+so its output is not used for these hardware measurements.
+
+Counts exclude input reading, configuration preparation, evidence/report
+writing, outer result destruction, and kernel work. They include the common
+allocation-counting instrumentation. Small counter-control overhead is
+identical on both sides. Divide median event counts by original input bytes,
+not output bytes. These differ in scope from whole-process CPU timings.
+
+| Corpus | Main instructions/B | Branch instructions/B | Main cycles/B | Branch cycles/B |
+| --- | ---: | ---: | ---: | ---: |
+| YTsaurus | 1099.4 | 1039.9 | 622.7 | 551.0 |
+| LLVM/Clang | 1160.1 | 1084.7 | 689.1 | 666.4 |
+| TensorFlow | 1002.5 | 939.9 | 604.9 | 554.0 |
+| Combined | 1098.8 | 1032.2 | 644.8 | 598.1 |
+
+The combined row divides the sum of corpus median counts by the total
+195,967,253 input bytes: 6.07% fewer instructions and 7.25% fewer user-space
+cycles per byte. Instructions are stable across repetitions. Cycle counts
+are materially noisier; for example, YTsaurus spans 590.7-750.1 cycles/B on
+main and 539.3-894.8 on the branch. Do not interpret these medians as a
+speedup on every invocation or equate them with whole-process CPU savings.
+
 ## Allocation and memory results
 
 Primary-run medians; requested bytes are cumulative allocation requests,
@@ -128,8 +158,7 @@ the integrated baseline and candidate counts agree.
 
 The original model-perf worktree and untracked repros remain untouched.
 The optimization branch contains the integrated main revisions and has no
-pending experiment. No branch push or pull-request publication is performed
-as part of this work.
+pending experiment. Runtime validation was completed before publication.
 
 ## External reproducibility artifacts
 
@@ -147,6 +176,10 @@ Artifacts remain outside Git under `/state/data/compact-pipeline/`:
   `integration-validation-*` preserve matching correctness evidence.
 - `integration-formatted-{build,tests,allocations}.log` and
   `integration-format-check.log` preserve final validation.
+- `hardware_counters.hpp`, `hardware-measure.cpp`, and
+  `hardware-{baseline,candidate}-measure` preserve the hardware-count harness.
+  `hardware-{baseline,candidate}-{corpus}-{1,2,3}.jsonl` and matching TSVs
+  preserve observations; `hardware-summary.json` aggregates their counts.
 - `bounded-final-*` preserve the preceding original-main comparison;
   `single-buffer-*`, `buffer-reuse-*`, `bounded-scratch-*`, and rejected
   patches preserve allocator investigation without adding it to Git.
