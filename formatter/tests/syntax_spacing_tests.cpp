@@ -696,6 +696,38 @@ TEST(SyntaxSpacing, CompleteSpecifierToDirectNamedDeclaratorFallback)
         std::nullopt);
 }
 
+TEST(SyntaxSpacing, DestructorSpecifierBoundary)
+{
+    Analysis analysis("struct Virtual {virtual~Virtual() = default;}; "
+        "struct Annotated {virtual NO_CACHE~Annotated() {}}; "
+        "struct Plain {~Plain();}; Plain::~Plain() {} "
+        "unsigned Complement(unsigned value) {return ~value;}");
+    for (const auto occurrence : {0u, 1u}) {
+        const auto id = analysis.Before("~", occurrence);
+        SCOPED_TRACE(occurrence);
+        const auto& gap = analysis.Spacing.Gaps()[id];
+        ASSERT_NE(gap.Owner, NoRegion);
+        EXPECT_EQ(gap.Category, C::DeclarationHeaders);
+        EXPECT_EQ(gap.Field, F::None);
+        EXPECT_TRUE(gap.FallbackSpace);
+        EXPECT_EQ(gap.Policy, GapPolicy::Preserve);
+        EXPECT_EQ(
+            analysis.Spacing
+                .SpacePreference(id, GapContext::Rebuilt, analysis.Safety),
+            std::nullopt);
+        // A destructor name is not a unary expression and owns no unary gap.
+        EXPECT_NE(
+            analysis.Spacing.Gaps()[id + 1].Field,
+            F::UnaryOperatorSpacing);
+    }
+    EXPECT_EQ(
+        analysis.Spacing.Gaps()[analysis.Before("~", 3)].Field,
+        F::ScopeResolutionSpacing);
+    EXPECT_EQ(
+        analysis.Spacing.Gaps()[analysis.Before("~", 4) + 1].Field,
+        F::UnaryOperatorSpacing);
+}
+
 TEST(SyntaxSpacing, DeclarationFallbackDoesNotGuessPunctuationBoundaries)
 {
     Analysis analysis("template<class T> struct Box {}; "

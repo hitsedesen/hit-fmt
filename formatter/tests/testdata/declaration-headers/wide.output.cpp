@@ -14,7 +14,23 @@ class Reader {
     [[nodiscard]] static auto GetResultFromCurrentStorage() noexcept -> std::optional<ResultWithSize>;
     Reader() noexcept;
     operator bool() const noexcept;
+    virtual ~Reader() = default;
 };
+struct Reclaimer {
+    NO_CACHE ~Reclaimer() {
+    }
+};
+struct Annotated {
+    virtual NO_CACHE ~Annotated() noexcept;
+};
+struct Plain {
+    ~Plain();
+};
+Plain::~Plain() {
+}
+unsigned Complement(unsigned value) {
+    return ~value;
+}
 [[nodiscard]] constexpr int Read() {
     return 1;
 }
