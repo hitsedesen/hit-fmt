@@ -5596,9 +5596,8 @@ private:
             return proveDirectInitializer ? uncertain() : std::nullopt;
         }
         auto closing = proveDirectInitializer
-            ? ArgumentPairEnd(
-                opening,
-                end).value_or(std::numeric_limits<TokenIndex>::max())
+            ? ArgumentPairEnd(opening, end)
+                .value_or(std::numeric_limits<TokenIndex>::max())
             : FindBalancedEnd(opening);
         if (closing == std::numeric_limits<TokenIndex>::max() || closing > end)
         {
@@ -5743,10 +5742,8 @@ private:
                         cursor = *after - 1;
                     } else if (IsOpenDelimiter(kind)) {
                         auto nested = proveDirectInitializer
-                            ? ArgumentPairEnd(
-                                cursor,
-                                closing -
-                                1).value_or(
+                            ? ArgumentPairEnd(cursor, closing - 1)
+                                .value_or(
                                     std::numeric_limits<TokenIndex>::max())
                             : FindBalancedEnd(cursor);
                         if (nested == std::numeric_limits<TokenIndex>::max() ||
@@ -5792,8 +5789,8 @@ private:
                     auto nested = proveDirectInitializer
                         ? ArgumentPairEnd(
                             ArgumentSignificant(cursor + 1, closing - 1),
-                            closing -
-                            1).value_or(std::numeric_limits<TokenIndex>::max())
+                            closing - 1)
+                            .value_or(std::numeric_limits<TokenIndex>::max())
                         : FindBalancedEnd(NextSignificant(cursor + 1));
                     if (nested == std::numeric_limits<TokenIndex>::max() ||
                         nested >= closing)
@@ -5809,8 +5806,8 @@ private:
                     auto nested = proveDirectInitializer
                         ? ArgumentPairEnd(
                             ArgumentSignificant(cursor + 1, closing - 1),
-                            closing -
-                            1).value_or(std::numeric_limits<TokenIndex>::max())
+                            closing - 1)
+                            .value_or(std::numeric_limits<TokenIndex>::max())
                         : FindBalancedEnd(NextSignificant(cursor + 1));
                     if (nested == std::numeric_limits<TokenIndex>::max() ||
                         nested >= closing)
@@ -5842,10 +5839,8 @@ private:
                     }
                 } else if (kind == TK::Operator_OpenBracket) {
                     auto nested = proveDirectInitializer
-                        ? ArgumentPairEnd(
-                            cursor,
-                            closing -
-                            1).value_or(std::numeric_limits<TokenIndex>::max())
+                        ? ArgumentPairEnd(cursor, closing - 1)
+                            .value_or(std::numeric_limits<TokenIndex>::max())
                         : FindBalancedEnd(cursor);
                     if (nested == std::numeric_limits<TokenIndex>::max() ||
                         nested >= closing)

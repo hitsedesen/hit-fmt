@@ -140,6 +140,30 @@ void Receive()
         }));
 }
 
+void Schedule()
+{
+    return BIND([=, this, self = Hold(this), task = std::forward<Task>(task), ...items = std::move(items)] {
+        return Dispatch(std::move(task), std::forward<Items>(items)...);
+    }).AsyncVia(executor).Run();
+}
+
+void RecoveredArguments()
+{
+    Wrap([] {
+        Dispatch(items...);
+    }).First().Second();
+    Wrap([] {
+        Dispatch(items...);
+    })->First().Second();
+    Wrap([] {
+        Dispatch(items...);
+    }).First()(value);
+    Receiver(items...).First().Second();
+    Receiver(items...).Only();
+    Receiver(items...).Field.Child;
+    std::forward<Items>(items).First().Second();
+}
+
 void Events()
 {
     YT_TLOG_TRACE("Queue is active")
