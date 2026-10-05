@@ -108,7 +108,8 @@ struct AnchorSpec
     // Reuse this captured anchor only while sharing the enclosing level.
     AnchorId SharedWith = InvalidId;
     // Capture physical leading indentation, even across preserved layout gaps.
-    // Requires StructuralBase and excludes continuation sharing.
+    // Requires StructuralBase and excludes sharing an enclosing continuation.
+    // Continuation starters retain logical compact-body indentation as a floor.
     bool LineBase = false;
     // Immutable layout can constrain the structural base to a known column.
     // Requires StructuralBase; excludes LineBase and continuation sharing.
@@ -141,7 +142,8 @@ struct GroupSpec
     // Higher-cost groups may defer to a cheaper following group's break.
     std::uint8_t BreakPenalty = 0;
     // Use this physical line's indentation as an independent structural base.
-    // Requires StructuralBase and excludes continuation sharing.
+    // Requires StructuralBase and excludes sharing an enclosing continuation.
+    // Continuation starters retain logical compact-body indentation as a floor.
     bool LineBase = false;
     // Extra cost for staying flat inside a multiline direct parent (0..3).
     // A soft shape preference, without forcing breaks in fitting layouts.

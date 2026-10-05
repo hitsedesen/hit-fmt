@@ -1040,6 +1040,9 @@ private:
             return;
         }
         Groups_[group].Spec.StructuralBase = true;
+        // An opaque callee spine may have no chain group to provide its level.
+        // Arguments still continue from the call's physical opening line.
+        Groups_[group].Spec.LineBase = node.Kind == NodeKind::ArgumentList;
         if (node.Kind == NodeKind::TemplateParameterList ||
             node.Kind == NodeKind::TemplateArgumentList)
         {

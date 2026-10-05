@@ -423,6 +423,49 @@ TEST(GroupLayout, PhysicalLineBasesGolden)
             ? "fixed body with broken captures"
             : "fixed body with flat captures");
     }
+    for (const auto prefix : {std::string(), std::string("\n            ")}) {
+        for (const bool inherited : {false, true}) {
+            Document document(prefix);
+            const auto body = document.BeginGroup({.Indent = 4});
+            document.Text("body{");
+            const auto parent = document.BeginGroup({
+                .Indent = inherited ? 4 : 0,
+                .StructuralBase = inherited,
+                .Continuation = inherited,
+            });
+            if (!prefix.empty()) {
+                document.SourceText(0, prefix.size(), NoIdentity, true);
+            }
+            document.Text(".call(");
+            const auto anchor = document.MarkAnchor({
+                .Offset = 4,
+                .StructuralBase = true,
+                .Continuation = true,
+                .LineBase = true,
+            });
+            const auto arguments = document.BeginGroup({
+                .Indent = 4,
+                .StructuralBase = true,
+                .Continuation = true,
+                .LineBase = true,
+            });
+            document.Gap({GapKind::Hard, 0}, anchor);
+            document.Text("first,");
+            document.Gap({GapKind::Hard, 0});
+            document.Text("second)");
+            document.EndGroup(arguments);
+            document.EndGroup(parent);
+            document.EndGroup(body);
+            ASSERT_TRUE(document.Seal());
+            AppendRender(
+                actual,
+                document,
+                80,
+                inherited
+                ? "nested call line base"
+                : "standalone call line base");
+        }
+    }
     test::golden::ExpectGolden(
         std::filesystem::path(DOCUMENT_TESTDATA_DIR) /
         "physical-line-base.expected",
@@ -509,20 +552,14 @@ TEST(GroupLayout, GroupMetadataRejectsInvalidOwnersPrefixesAndOverflow)
             {.FlatInBrokenParentPenalty = static_cast<std::uint8_t>(penalty)});
         EXPECT_EQ(invalidShape.Seal().Code, Error::InvalidPolicy);
     }
-    for (const bool structural : {false, true}) {
+    for (const bool continuation : {false, true}) {
         Document invalidGroup("");
-        invalidGroup.BeginGroup({
-            .StructuralBase = structural,
-            .Continuation = structural,
-            .LineBase = true,
-        });
+        invalidGroup
+            .BeginGroup({.Continuation = continuation, .LineBase = true});
         EXPECT_EQ(invalidGroup.Seal().Code, Error::InvalidPolicy);
         Document invalidAnchor("");
-        invalidAnchor.MarkAnchor({
-            .StructuralBase = structural,
-            .Continuation = structural,
-            .LineBase = true,
-        });
+        invalidAnchor
+            .MarkAnchor({.Continuation = continuation, .LineBase = true});
         EXPECT_EQ(invalidAnchor.Seal().Code, Error::InvalidPolicy);
     }
     Document overflow("");

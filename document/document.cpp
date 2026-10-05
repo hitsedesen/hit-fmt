@@ -325,7 +325,7 @@ GroupId Document::BeginGroup(GroupSpec spec, std::uint32_t elidedMarkers)
     node.Group.StructuralBase = spec.StructuralBase;
     node.Group.Continuation = spec.Continuation;
     node.Group.LineBase = spec.LineBase;
-    if (spec.LineBase && (!spec.StructuralBase || spec.Continuation)) {
+    if (spec.LineBase && !spec.StructuralBase) {
         Fail(Error::InvalidPolicy);
     }
     node.Group.FixedBase = spec.FixedBase;
@@ -717,7 +717,7 @@ AnchorId Document::MarkAnchor(AnchorSpec spec)
     node.Group.StructuralBase = spec.StructuralBase;
     node.Group.Continuation = spec.Continuation;
     node.Group.LineBase = spec.LineBase;
-    if (spec.LineBase && (!spec.StructuralBase || spec.Continuation)) {
+    if (spec.LineBase && !spec.StructuralBase) {
         Fail(Error::InvalidPolicy);
     }
     node.Group.FixedBase = spec.FixedBase;
@@ -1178,7 +1178,15 @@ Result Document::Render(
             return node.Group.FixedBase;
         }
         if (node.Group.LineBase) {
-            return lineIndent;
+            // A compact body can have a logical indent before any line break.
+            // Otherwise continuation starters use the callee's physical line.
+            return node.Group.Continuation
+                ? std::max(
+                    frame.HasContinuation
+                    ? frame.ContinuationBase
+                    : frame.Indent - frame.PendingExpressionIndent,
+                    lineIndent)
+                : lineIndent;
         }
         if (frame.HasContinuation) {
             if (frame.RealizedContinuationLine) {
@@ -1198,7 +1206,8 @@ Result Document::Render(
         // A structural consumer already indented its contents. Contributors
         // reuse that realized level; another contributor starting on a later
         // line still creates a level, preserving expression precedence.
-        return node.Group.Continuation && frame.HasContinuation &&
+        return node.Group.Continuation && !node.Group.LineBase &&
+            frame.HasContinuation &&
             ((lines == frame.ContinuationStartLine &&
                 !(node.Group.StructuralBase &&
                     frame.RealizedContinuationLine)) ||
