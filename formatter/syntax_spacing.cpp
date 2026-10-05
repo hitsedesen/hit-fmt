@@ -28,7 +28,8 @@ GapPolicy PolicyFor(const GapPolicies& policies, F field)
         case F::name: return policies.name;
         FORMATTER_GAP_OPTIONS(SYNTAX_SPACING_POLICY)
 #undef SYNTAX_SPACING_POLICY
-        default: return GapPolicy::Preserve;
+        default:
+            return GapPolicy::Preserve;
     }
 }
 
