@@ -1,0 +1,4 @@
+IndentWidth = 4
+IndentationKind = Tabs
+BodiesLayout = Canonical
+ChainsLayout = Preserve

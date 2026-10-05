@@ -1,0 +1,8 @@
+IndentWidth = 4
+IndentationKind = Spaces
+BodiesLayout = Canonical
+ChainedCallRootNames = ["MAKE_TASK"]
+ChainsLayout = Canonical
+ChainsBreak = Always
+ChainsPacking = VerticalWhenBroken
+ChainsAlignment = Block
