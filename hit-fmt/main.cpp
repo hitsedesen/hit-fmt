@@ -72,8 +72,12 @@ struct Line
 {
     std::string_view Text;
     bool HasNewline;
+    size_t Offset;
 
-    bool operator==(const Line&) const = default;
+    bool operator==(const Line& other) const
+    {
+        return Text == other.Text && HasNewline == other.HasNewline;
+    }
 };
 
 std::vector<Line> SplitLines(std::string_view text)
@@ -89,6 +93,7 @@ std::vector<Line> SplitLines(std::string_view text)
         lines.push_back({
             .Text = text.substr(begin, end - begin),
             .HasNewline = hasNewline,
+            .Offset = begin,
         });
         begin = hasNewline ? end + 1 : text.size();
     }
@@ -604,32 +609,70 @@ bool IsIncludeLine(const Line& line)
 
 std::vector<Chunk> FormattingChunks(
     const std::vector<Line>& source,
-    const std::vector<Line>& formatted)
+    const std::vector<Line>& formatted,
+    std::span<const hit_fmt::IncludeOrderChange> includeChanges)
 {
     std::vector<Chunk> chunks;
-    size_t sourceIndex = 0, formattedIndex = 0;
+    size_t sourceIndex = 0, formattedIndex = 0, includeIndex = 0;
+    size_t sourceBoundary = source.size(), formattedBoundary = formatted.size();
+    size_t sourceIncludeEnd = 0, formattedIncludeEnd = 0;
+    auto lineAt = [] (const auto& lines, size_t offset) {
+        return size_t(std::lower_bound(
+            lines.begin(),
+            lines.end(),
+            offset,
+            [] (
+                const Line& line,
+                size_t value) { return line.Offset < value; }) - lines.begin());
+    };
+    auto nextBoundary = [&] {
+        if (includeIndex < includeChanges.size()) {
+            const auto& change = includeChanges[includeIndex];
+            sourceBoundary = lineAt(source, change.Original.Begin);
+            sourceIncludeEnd = lineAt(source, change.Original.End);
+            formattedBoundary = lineAt(formatted, change.Emitted.Begin);
+            formattedIncludeEnd = lineAt(formatted, change.Emitted.End);
+        } else {
+            sourceBoundary = source.size();
+            formattedBoundary = formatted.size();
+        }
+    };
+    nextBoundary();
     while (sourceIndex < source.size() || formattedIndex < formatted.size()) {
-        if (sourceIndex < source.size() && formattedIndex < formatted.size() &&
+        if (includeIndex < includeChanges.size() &&
+            sourceIndex == sourceBoundary &&
+            formattedIndex == formattedBoundary)
+        {
+            // PrintFileIssues reports include sorting once. Line-diff anchors
+            // must not split admitted permutations into per-header errors.
+            sourceIndex = sourceIncludeEnd;
+            formattedIndex = formattedIncludeEnd;
+            ++includeIndex;
+            nextBoundary();
+            continue;
+        }
+        if (sourceIndex < sourceBoundary &&
+            formattedIndex < formattedBoundary &&
             source[sourceIndex] == formatted[formattedIndex])
         {
             ++sourceIndex;
             ++formattedIndex;
             continue;
         }
-        size_t sourceCount = sourceIndex < source.size() ? 1 : 0;
-        size_t formattedCount = formattedIndex < formatted.size() ? 1 : 0;
+        size_t sourceCount = sourceIndex < sourceBoundary ? 1 : 0;
+        size_t formattedCount = formattedIndex < formattedBoundary ? 1 : 0;
         // Sorting a run of includes must not look like a series of insertions
         // and deletions just because one moved line happens to match early.
         if (sourceCount && formattedCount &&
             IsIncludeLine(source[sourceIndex]) &&
             IsIncludeLine(formatted[formattedIndex]))
         {
-            while (sourceIndex + sourceCount < source.size() &&
+            while (sourceIndex + sourceCount < sourceBoundary &&
                 IsIncludeLine(source[sourceIndex + sourceCount]))
             {
                 ++sourceCount;
             }
-            while (formattedIndex + formattedCount < formatted.size() &&
+            while (formattedIndex + formattedCount < formattedBoundary &&
                 IsIncludeLine(formatted[formattedIndex + formattedCount]))
             {
                 ++formattedCount;
@@ -639,9 +682,9 @@ std::vector<Chunk> FormattingChunks(
             size_t bestSkew = std::numeric_limits<size_t>::max();
             bool bestPreservesTokens = false;
             auto sourceLimit =
-                std::min(source.size(), sourceIndex + DiffLookahead + 1);
+                std::min(sourceBoundary, sourceIndex + DiffLookahead + 1);
             auto formattedLimit =
-                std::min(formatted.size(), formattedIndex + DiffLookahead + 1);
+                std::min(formattedBoundary, formattedIndex + DiffLookahead + 1);
             for (auto nextSource = sourceIndex;
                 nextSource < sourceLimit;
                 ++nextSource)
@@ -686,8 +729,8 @@ std::vector<Chunk> FormattingChunks(
                 }
             }
             if (bestDistance == std::numeric_limits<size_t>::max()) {
-                sourceCount = source.size() - sourceIndex;
-                formattedCount = formatted.size() - formattedIndex;
+                sourceCount = sourceBoundary - sourceIndex;
+                formattedCount = formattedBoundary - formattedIndex;
             }
         }
 
@@ -826,10 +869,12 @@ void PrintFormattingDiagnostics(
     std::string_view source,
     std::string_view formatted,
     bool useColor,
-    bool fixed = false)
+    bool fixed = false,
+    std::span<const hit_fmt::IncludeOrderChange> includeChanges = {})
 {
     const auto sourceLines = SplitLines(source);
-    auto chunks = FormattingChunks(sourceLines, SplitLines(formatted));
+    auto chunks =
+        FormattingChunks(sourceLines, SplitLines(formatted), includeChanges);
     const auto terminalWidth = TerminalWidth();
     for (auto& chunk : chunks) {
         std::ranges::stable_sort(
@@ -1342,7 +1387,9 @@ int main(int argc, char* argv[])
                         filePath,
                         source,
                         checked.Formatting.Text,
-                        useColor);
+                        useColor,
+                        false,
+                        checked.IncludeOrderChanges);
                 }
                 hit_fmt::PrintFileIssues(
                     output,

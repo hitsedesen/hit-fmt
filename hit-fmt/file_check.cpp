@@ -16,6 +16,113 @@ namespace hit_fmt {
 
 namespace {
 
+parser::SourceRange WholeLines(std::string_view text, parser::SourceRange range)
+{
+    const auto before = range.Begin
+        ? text.rfind('\n', range.Begin - 1)
+        : std::string_view::npos;
+    range.Begin = before == std::string_view::npos ? 0 : before + 1;
+    const auto after = range.End && text[range.End - 1] == '\n'
+        ? range.End - 1
+        : text.find('\n', range.End);
+    range.End = after == std::string_view::npos ? text.size() : after + 1;
+    return range;
+}
+
+std::vector<IncludeOrderChange> IncludeChanges(
+    const parser::SyntaxTree& tree,
+    const formatter::FormatResult& formatting)
+{
+    const auto count = std::count_if(
+        formatting.StructuralOperations.begin(),
+        formatting.StructuralOperations.end(),
+        [] (const auto& operation) {
+            return operation.Kind == formatter::StructuralAction::IncludeOrder;
+        });
+    if (!count) {
+        return {};
+    }
+    std::vector<IncludeOrderChange> changes;
+    changes.reserve(count);
+    std::vector<uint32_t> indices(formatting.StructuralOperations.size(),
+        formatter::NoStructuralAction);
+    for (std::size_t i = 0; i < indices.size(); ++i) {
+        const auto& operation = formatting.StructuralOperations[i];
+        if (operation.Kind != formatter::StructuralAction::IncludeOrder) {
+            continue;
+        }
+        indices[i] = changes.size();
+        auto position = tree.TokenPosition(operation.Owner.Begin);
+        position.Column = 1;
+        changes.push_back({
+            {
+                tree.Token(operation.Owner.Begin).Text.Begin,
+                tree.Token(operation.Owner.End - 1).Text.End,
+            },
+            {UINT32_MAX, 0},
+            position,
+        });
+    }
+    // Use admitted operation provenance, not textual include guesses. Restrict
+    // associations to directive interiors, excluding neighboring layout gaps.
+    for (const auto& map : formatting.Map) {
+        if (map.Action == formatter::NoStructuralAction || !map.HasOriginal ||
+            indices.at(map.Action) == formatter::NoStructuralAction)
+        {
+            continue;
+        }
+        auto& change = changes[indices[map.Action]];
+        const auto original = change.Original;
+        const bool intersects = map.Original.Empty()
+            ? original.Begin <= map.Original.Begin &&
+                map.Original.Begin < original.End
+            : map.Original.Begin < original.End &&
+                original.Begin < map.Original.End;
+        if (intersects && !map.Output.Empty()) {
+            change.Emitted.Begin =
+                std::min(change.Emitted.Begin, map.Output.Begin);
+            change.Emitted.End = std::max(change.Emitted.End, map.Output.End);
+        }
+    }
+    for (auto& change : changes) {
+        if (change.Emitted.Begin == UINT32_MAX) {
+            throw std::runtime_error("include sorting has no output mapping");
+        }
+        change.Original = WholeLines(tree.Source(), change.Original);
+        change.Emitted = WholeLines(formatting.Text, change.Emitted);
+    }
+    std::ranges::sort(
+        changes,
+        {},
+        [] (const auto& change) {
+            return change.Original.Begin;
+        });
+    return changes;
+}
+
+bool OtherFormattingChanged(
+    std::string_view original,
+    const formatter::FormatResult& formatting,
+    std::span<const IncludeOrderChange> changes)
+{
+    std::size_t source = 0, emitted = 0;
+    for (const auto& change : changes) {
+        if (change.Original.Begin < source || change.Emitted.Begin < emitted) {
+            throw std::runtime_error("overlapping include diagnostic blocks");
+        }
+        if (original.substr(source, change.Original.Begin - source) !=
+            std::string_view(formatting.Text)
+                .substr(emitted, change.Emitted.Begin - emitted))
+        {
+            return true;
+        }
+        source = change.Original.End;
+        emitted = change.Emitted.End;
+    }
+    return original.substr(source) !=
+        std::string_view(formatting.Text).substr(emitted);
+}
+
 // Convert code-point widths with tab stops to tokenizer columns.
 size_t WidthCaretColumn(std::string_view text, size_t target)
 {
@@ -360,6 +467,14 @@ CheckedFile CheckFile(
             formatter::Format(tree, configuration.Formatting, request);
     }
     checked.FormattingMismatch = checked.Formatting.Text != tree.Source();
+    if (checked.FormattingMismatch) {
+        checked.IncludeOrderChanges = IncludeChanges(tree, checked.Formatting);
+        checked.OtherFormattingMismatch = checked.IncludeOrderChanges.empty() ||
+            OtherFormattingChanged(
+                tree.Source(),
+                checked.Formatting,
+                checked.IncludeOrderChanges);
+    }
     for (auto& diagnostic : formatter::CheckNames(tree, configuration.Settings))
     {
         checked.Semantic.push_back({
@@ -416,6 +531,12 @@ void PrintFileIssues(
     bool fix,
     size_t terminalWidth)
 {
+    if (!fix && !checked.IncludeOrderChanges.empty()) {
+        const auto position = checked.IncludeOrderChanges.front().Position;
+        output << "fail: includes are not sorted\n  --> " << path << ':'
+            << position.Line << ':' << position.Column
+            << " [original source]\n";
+    }
     for (const auto& diagnostic : checked.Semantic) {
         const auto position = fix ? diagnostic.Emitted : diagnostic.Original;
         output << "fail: " << diagnostic.Message << "\n  --> " << path << ':'
@@ -509,8 +630,14 @@ void PrintFileSummaryIssues(
         output << message;
         separated = true;
     };
-    if (!fix && checked.FormattingMismatch) {
+    if (!fix && checked.FormattingMismatch &&
+        (checked.IncludeOrderChanges.empty() ||
+            checked.OtherFormattingMismatch))
+    {
         issue("formatting mismatch");
+    }
+    if (!fix && !checked.IncludeOrderChanges.empty()) {
+        issue("includes are not sorted", true);
     }
     if (!checked.Semantic.empty()) {
         issue("fail: naming or parameter-name violation");

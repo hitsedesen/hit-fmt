@@ -30,6 +30,14 @@ struct SemanticDiagnostic
     std::string Message;
 };
 
+struct IncludeOrderChange
+{
+    // Complete original/emitted line blocks, including generated separators.
+    parser::SourceRange Original;
+    parser::SourceRange Emitted;
+    util::Position Position;
+};
+
 struct CheckedFile
 {
     formatter::FormatResult Formatting;
@@ -42,6 +50,11 @@ struct CheckedFile
     std::vector<util::Position> OriginalWidthPositions;
     std::uint16_t ColumnLimit = 0;
     bool FormattingMismatch = false;
+    bool OtherFormattingMismatch = false;
+    // Accepted include-sort operations in original source order. Detailed
+    // line diffs omit these blocks; check mode reports one include-order
+    // failure for the file, not one failure for every moved directive.
+    std::vector<IncludeOrderChange> IncludeOrderChanges;
 
     // Applied formatting is not a failure in fix mode. Remaining semantic,
     // structural and width violations are failures in both modes.

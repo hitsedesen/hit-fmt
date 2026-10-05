@@ -67,6 +67,92 @@ TEST(FileCheck, OneResultServesCheckAndFixWithoutCountingAppliedFormatting)
     EXPECT_FALSE(clean.HasFailures(true));
 }
 
+TEST(FileCheck, IncludeOrderDiagnosticGoldenIsOneErrorForTheFile)
+{
+    const test::golden::Fixture fixture{
+        std::filesystem::path(__FILE__).parent_path() / "testdata/file-check",
+        "include-order",
+    };
+    const Input input(fixture.InputNamed(".input.cpp"));
+    for (const bool mixed : {false, true}) {
+        for (const bool indent : {false, true}) {
+            formatter::Configuration raw;
+            auto& style = raw.FormattingStyle;
+            style.IncludeOrder = formatter::IncludeOrder::Sort;
+            style.IncludeMatchingHeader =
+                formatter::IncludeMatchingHeader::First;
+            style.IncludeGrouping = formatter::IncludeGrouping::Directory;
+            style.IncludeStandardHeaders =
+                formatter::IncludeStandardHeaders::Last;
+            style.IndentPreprocessingDirectives = indent;
+            if (mixed) {
+                style.SpaceInsideFunctionParameters =
+                    formatter::GapPolicy::NoSpace;
+            }
+            const hit_fmt::PreparedFileConfiguration prepared(std::move(raw));
+            const auto checked = hit_fmt::CheckFile(
+                input.View(),
+                prepared,
+                "project/sample.cpp");
+            ASSERT_EQ(checked.IncludeOrderChanges.size(), 2u);
+            EXPECT_EQ(checked.OtherFormattingMismatch, mixed);
+            EXPECT_TRUE(checked.HasFailures(false));
+            EXPECT_FALSE(checked.HasFailures(true));
+            for (const auto& change : checked.IncludeOrderChanges) {
+                const auto before = input
+                    .View()
+                    .View()
+                    .substr(
+                        change.Original.Begin,
+                        change.Original.End - change.Original.Begin);
+                const auto after = std::string_view(checked.Formatting.Text)
+                    .substr(
+                        change.Emitted.Begin,
+                        change.Emitted.End - change.Emitted.Begin);
+                EXPECT_TRUE(before.ends_with('\n'));
+                EXPECT_TRUE(after.ends_with('\n'));
+                EXPECT_EQ(before.find("int "), std::string_view::npos);
+                EXPECT_EQ(after.find("int "), std::string_view::npos);
+            }
+            for (const bool fix : {false, true}) {
+                std::ostringstream output;
+                hit_fmt::PrintFileIssues(
+                    output,
+                    "sample.cpp",
+                    input
+                        .View()
+                        .View(),
+                    checked,
+                    fix);
+                output << "summary: ";
+                hit_fmt::PrintFileSummaryIssues(output, checked, fix);
+                output << '\n';
+                fixture.Expect(
+                    output.str(),
+                    fix
+                    ? ".fix.txt"
+                    : mixed ? ".mixed-check.txt" : ".check.txt");
+            }
+            const Input applied(checked.Formatting.Text);
+            const auto clean = hit_fmt::CheckFile(
+                applied.View(),
+                prepared,
+                "project/sample.cpp");
+            EXPECT_FALSE(clean.FormattingMismatch);
+            EXPECT_TRUE(clean.IncludeOrderChanges.empty());
+            const formatter::Hunk selected[] = {{1, 1}};
+            const auto strict = hit_fmt::CheckFile(
+                input.View(),
+                prepared,
+                "project/sample.cpp",
+                hit_fmt::ChangedFileScope{selected, false});
+            EXPECT_TRUE(strict.IncludeOrderChanges.empty());
+            EXPECT_FALSE(strict.HasFailures(false));
+            EXPECT_FALSE(strict.Incomplete.empty());
+        }
+    }
+}
+
 TEST(FileCheck, FunctionBodyMacroHintsApplyToTheInitialParse)
 {
     auto raw = Configuration();
