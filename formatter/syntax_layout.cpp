@@ -1139,6 +1139,7 @@ private:
                 Reindent(closer, group, true);
             }
         }
+        OwnCommentLinks(begin + 1, group, closer);
         const auto* header = node.Kind == NodeKind::BaseClause
             ? &Policies_.BaseLists
             : &Policies_.ConstructorLists;
@@ -1218,6 +1219,7 @@ private:
                 }
                 Reindent(t, group);
             }
+            OwnCommentLinks(t + 1, group, closer);
         }
         // Control headers can represent their semicolons as direct punctuation,
         // not ListSeparator children. Walk only disjoint direct-token spans.
@@ -1243,6 +1245,7 @@ private:
                         } else {
                             Reindent(t + 1, group);
                         }
+                        OwnCommentLinks(t + 1, group, closer);
                     }
                 });
         }
@@ -1355,8 +1358,15 @@ private:
         document::GapKind broken)
     {
         Own(begin, owner, Boundary::Conditional, broken);
+        OwnCommentLinks(begin, owner, Tree_.TokenCount() + 1);
+    }
+
+    // Carry the boundary's indentation through trivia without reflowing its
+    // links. The end gap belongs to the list closer, not its next item.
+    void OwnCommentLinks(Index begin, Index owner, Index end)
+    {
         for (auto token = begin;
-            token < Tree_.TokenCount() &&
+            token < Tree_.TokenCount() && token + 1 < end &&
             Tree_.Kind(token) == TokenKind::Comment;
             ++token)
         {

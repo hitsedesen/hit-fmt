@@ -1380,6 +1380,39 @@ std::vector<FormatCase> FormatCases()
         "../../../../",
     });
     cases.push_back({callReflow, "sole-preferred", "sole-preferred.input.cpp"});
+    for (const auto* name :
+        {
+            "comment-elements",
+            "comment-elements-preserve",
+            "comment-elements-tabs",
+            "comment-elements-delimiter",
+            "comment-elements-preserve-indent",
+        })
+    {
+        cases.push_back({
+            callReflow,
+            name,
+            "comment-elements.input.cpp",
+            "comment-elements",
+            {},
+            true,
+            {},
+            true,
+        });
+        auto style = formatter::LoadConfigFile(
+            callReflow / "comment-elements.hit-fmt").FormattingStyle;
+        const std::string_view profile(name);
+        if (profile == "comment-elements-preserve") {
+            style.Layout = LayoutMode::Preserve;
+        } else if (profile == "comment-elements-tabs") {
+            style.IndentationKind = IndentationKind::Tabs;
+        } else if (profile == "comment-elements-delimiter") {
+            style.ListAlignment = ContinuationAlignment::Delimiter;
+        } else if (profile == "comment-elements-preserve-indent") {
+            style.IndentationKind = IndentationKind::Preserve;
+        }
+        cases.back().Style = std::move(style);
+    }
     cases.push_back({
         callReflow,
         "first-position-reflow",
