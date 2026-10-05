@@ -1,4 +1,5 @@
 #include <hit-fmt/file_check.hpp>
+#include <hit-fmt/options.hpp>
 #include <tests/golden.hpp>
 
 #include <gtest/gtest.h>
@@ -163,8 +164,11 @@ TEST(FileCheck, PreparedConfigurationOwnsSettingsAndResultsOutliveInputs)
     {
         const Input input("void bad_name(){invoke(a,b);}\n");
         std::string path = "missing/directory with spaces/original.cpp";
-        first = hit_fmt::CheckFile(input.View(), prepared, path);
-        const auto withoutPath = hit_fmt::CheckFile(input.View(), prepared);
+        const formatter::Hunk selected[] = {{1, 1}};
+        const hit_fmt::ChangedFileScope scope{selected};
+        first = hit_fmt::CheckFile(input.View(), prepared, path, scope);
+        const auto withoutPath =
+            hit_fmt::CheckFile(input.View(), prepared, {}, scope);
         EXPECT_EQ(first.Formatting.Text, withoutPath.Formatting.Text);
         ASSERT_EQ(first.Semantic.size(), withoutPath.Semantic.size());
         for (size_t i = 0; i < first.Semantic.size(); ++i) {
@@ -285,23 +289,219 @@ TEST(FileCheck, ActualProtectedOverflowRemainsFailureInFixMode)
     EXPECT_EQ(checked.Formatting.Diagnostics[1].Position.Line, 2u);
 }
 
-TEST(FileCheck, PreviewHunkModesAndUnsupportedPreparationFailClosed)
+TEST(FileCheck, ChangedHunkOptionsSupportAliasesAndRejectMixedInputs)
 {
-    for (const auto option :
-        {
-            "--changed-hunks",
-            "--changed-hunks=-",
-            "--changed-ranges",
-            "--changed-ranges=file.txt",
+    for (const auto option : {"--changed-hunks", "--changed-ranges"}) {
+        const char* argv[] = {
+            "hit-fmt",
+            "--fix",
+            option,
+            "-",
             "--no-spillover",
+            "--threads=2",
+            "--summary",
+        };
+        const auto parsed = hit_fmt::ParseOptions(std::size(argv), argv);
+        ASSERT_TRUE(parsed.HunkInput);
+        EXPECT_EQ(*parsed.HunkInput, "-");
+        EXPECT_TRUE(parsed.Paths.empty());
+        EXPECT_FALSE(parsed.Spillover);
+        EXPECT_TRUE(parsed.Fix);
+        EXPECT_TRUE(parsed.SummaryOnly);
+        EXPECT_EQ(parsed.Threads, 2u);
+    }
+    for (const auto option :
+        {"--changed-hunks=ranges.txt", "--changed-ranges=ranges.txt"})
+    {
+        const char* argv[] = {"hit-fmt", option};
+        const auto parsed = hit_fmt::ParseOptions(std::size(argv), argv);
+        ASSERT_TRUE(parsed.HunkInput);
+        EXPECT_EQ(*parsed.HunkInput, "ranges.txt");
+        EXPECT_TRUE(parsed.Spillover);
+    }
+    for (const auto& argv :
+        std::vector<std::vector<const char*>>{
+            {"hit-fmt", "--changed-hunks"},
+            {"hit-fmt", "--changed-ranges="},
+            {"hit-fmt", "--changed-hunks=-", "source.cpp"},
+            {"hit-fmt", "--changed-hunks=-", "--changed-ranges=-"},
+            {"hit-fmt", "--no-spillover", "source.cpp"},
         })
     {
-        SCOPED_TRACE(option);
         EXPECT_THROW(
-            hit_fmt::ValidatePreviewOption(option),
-            std::invalid_argument);
+            hit_fmt::ParseOptions(argv.size(), argv.data()),
+            std::runtime_error);
     }
-    EXPECT_NO_THROW(hit_fmt::ValidatePreviewOption("--fix"));
+    const char* positional[] =
+        {"hit-fmt", "--", "--changed-hunks", "--no-spillover"};
+    const auto parsed =
+        hit_fmt::ParseOptions(std::size(positional), positional);
+    EXPECT_FALSE(parsed.HunkInput);
+    EXPECT_EQ(parsed.Paths.size(), 2u);
+}
+
+TEST(FileCheck, EmptyHunkScopeNeverFallsBackToWholeFile)
+{
+    auto raw = Configuration();
+    raw.Naming.Function.Case = formatter::NameCase::PascalCase;
+    raw.FunctionDeclarationParameterNames =
+        formatter::FunctionDeclarationParameterNames::Required;
+    raw.FormattingStyle.ColumnLimit = 10;
+    raw.FormattingStyle.WidthDiagnostics =
+        formatter::WidthDiagnosticPolicy::Report;
+    const hit_fmt::PreparedFileConfiguration prepared(raw);
+    const Input input("void bad_name(int);\n");
+    const auto empty = hit_fmt::CheckFile(
+        input.View(),
+        prepared,
+        {},
+        hit_fmt::ChangedFileScope{});
+    EXPECT_EQ(
+        empty.Formatting.Text,
+        input
+            .View()
+            .View());
+    EXPECT_FALSE(empty.HasFailures(false));
+    EXPECT_FALSE(empty.HasFailures(true));
+    EXPECT_TRUE(empty.Incomplete.empty());
+    EXPECT_TRUE(hit_fmt::CheckFile(input.View(), prepared).HasFailures(true));
+    const formatter::Hunk invalid[] = {{2, 2}};
+    EXPECT_THROW(
+        hit_fmt::CheckFile(
+            input.View(),
+            prepared,
+            {},
+            hit_fmt::ChangedFileScope{invalid}),
+        std::invalid_argument);
+}
+
+TEST(FileCheck, HunkDiagnosticGoldenUsesOriginalSelectionAndMappedOutput)
+{
+    const test::golden::Fixture fixture{
+        std::filesystem::path(__FILE__).parent_path() / "testdata/file-check",
+        "hunks",
+    };
+    auto raw = Configuration();
+    raw.Naming.Function.Case = formatter::NameCase::PascalCase;
+    raw.FunctionDeclarationParameterNames =
+        formatter::FunctionDeclarationParameterNames::Required;
+    raw.FunctionDefinitionParameterNames =
+        formatter::FunctionDefinitionParameterNames::NameRequired;
+    raw.FormattingStyle.IncludeOrder = formatter::IncludeOrder::Sort;
+    raw.FormattingStyle.AddMissingControlBraces = true;
+    raw.FormattingStyle.ColumnLimit = 40;
+    raw.FormattingStyle.WidthDiagnostics =
+        formatter::WidthDiagnosticPolicy::Report;
+    const hit_fmt::PreparedFileConfiguration prepared(raw);
+    const Input input(fixture.InputNamed(".input.cpp"));
+    // Reversed ordering and duplicates also exercise canonical selection.
+    const formatter::Hunk selected[] =
+        {{13, 13}, {11, 11}, {9, 9}, {4, 5}, {1, 1}, {5, 5}};
+    for (const bool spillover : {false, true}) {
+        const auto checked = hit_fmt::CheckFile(
+            input.View(),
+            prepared,
+            "sample.cpp",
+            hit_fmt::ChangedFileScope{selected, spillover});
+        ASSERT_EQ(checked.Semantic.size(), 4u);
+        for (const auto& diagnostic : checked.Semantic) {
+            EXPECT_NE(diagnostic.Original.Line, 3u);
+            EXPECT_NE(diagnostic.Original.Line, 6u);
+        }
+        ASSERT_FALSE(checked.Formatting.Diagnostics.empty());
+        for (const auto position : checked.OriginalWidthPositions) {
+            EXPECT_NE(position.Line, 3u);
+            EXPECT_NE(position.Line, 14u);
+        }
+        EXPECT_EQ(
+            std::any_of(
+                checked.OriginalWidthPositions.begin(),
+                checked.OriginalWidthPositions.end(),
+                [] (auto position) {
+                    return position.Line == 10;
+                }),
+            spillover);
+        EXPECT_TRUE(checked.FormattingMismatch);
+        EXPECT_TRUE(checked.HasFailures(false));
+        EXPECT_TRUE(checked.HasFailures(true));
+        EXPECT_EQ(checked.RequiredChanges.empty(), spillover);
+        EXPECT_EQ(
+            checked.Formatting.Text.starts_with("#include \"a.h\""),
+            spillover);
+        EXPECT_NE(
+            checked.Formatting.Text.find("void bad_before(int);"),
+            std::string::npos);
+        EXPECT_NE(
+            checked.Formatting.Text.find("const char* Outside = "
+                "\"unavoidable_outside_literal_over_the_limit\";"),
+            std::string::npos);
+        for (const bool fix : {false, true}) {
+            std::ostringstream output;
+            hit_fmt::PrintFileIssues(
+                output,
+                "sample.cpp",
+                input
+                    .View()
+                    .View(),
+                checked,
+                fix);
+            output << "summary: ";
+            hit_fmt::PrintFileSummaryIssues(output, checked, fix);
+            output << '\n';
+            fixture.Expect(
+                output.str(),
+                spillover
+                ? (fix ? ".spill-fix.txt" : ".spill-check.txt")
+                : (fix ? ".strict-fix.txt" : ".strict-check.txt"));
+        }
+    }
+}
+
+TEST(FileCheck, IncompleteHunkCoverageAndRequiredChangesStayDistinct)
+{
+    auto raw = Configuration();
+    raw.FormattingStyle.CallsLayout = formatter::CategoryLayout::Preserve;
+    const hit_fmt::PreparedFileConfiguration prepared(raw);
+    const Input input("void Good() {\n    call(1,\n        2);\n}\n");
+    const formatter::Hunk selected[] = {{3, 3}};
+    const auto checked = hit_fmt::CheckFile(
+        input.View(),
+        prepared,
+        {},
+        hit_fmt::ChangedFileScope{selected, false});
+    EXPECT_FALSE(checked.FormattingMismatch);
+    EXPECT_FALSE(checked.HasFailures(false));
+    EXPECT_FALSE(checked.HasFailures(true));
+    EXPECT_FALSE(checked.Incomplete.empty());
+    std::ostringstream output;
+    hit_fmt::PrintFileSummaryIssues(output, checked, false);
+    EXPECT_EQ(output.str(), "note: hunk checks incomplete");
+
+    raw.FormattingStyle.AddMissingControlBraces = true;
+    const hit_fmt::PreparedFileConfiguration braces(raw);
+    const Input blocked("void Good(bool ready) {\n  if (ready)\n"
+        "    consume(\n      ready);\n}\n");
+    const auto required = hit_fmt::CheckFile(
+        blocked.View(),
+        braces,
+        {},
+        hit_fmt::ChangedFileScope{selected, false});
+    ASSERT_EQ(required.RequiredChanges.size(), 1u);
+    EXPECT_TRUE(required.Semantic.empty());
+    EXPECT_TRUE(required.Formatting.Diagnostics.empty());
+    EXPECT_TRUE(required.HasFailures(false));
+    EXPECT_TRUE(required.HasFailures(true));
+    std::ostringstream summary;
+    hit_fmt::PrintFileSummaryIssues(summary, required, true);
+    EXPECT_NE(
+        summary
+            .str()
+            .find("fail: required structural edit"),
+        std::string::npos);
+}
+
+TEST(FileCheck, UnsupportedPreparationFailsClosed)
+{
     auto raw = Configuration();
     raw.FormattingStyle.CallLikeMacroNames = {"CALL_HINT"};
     EXPECT_THROW(

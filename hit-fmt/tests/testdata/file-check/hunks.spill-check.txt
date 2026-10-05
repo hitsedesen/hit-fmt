@@ -1,0 +1,31 @@
+fail: function name 'selected_bad' has invalid case; expected PascalCase
+  --> sample.cpp:4:6 [original source]
+fail: parameter #1 in function definition 'selected_bad': expected a name
+  --> sample.cpp:5:4 [original source]
+fail: function name 'bad_after' has invalid case; expected PascalCase
+  --> sample.cpp:13:6 [original source]
+fail: parameter #1 in function definition 'bad_after': expected a name
+  --> sample.cpp:13:19 [original source]
+note: hunk check incomplete: layout is constrained
+  --> sample.cpp:1:1 [original source]
+note: hunk check incomplete: source is protected
+  --> sample.cpp:1:1 [original source]
+note: hunk check incomplete: layout is constrained
+  --> sample.cpp:1:15 [original source]
+note: hunk check incomplete: layout is constrained
+  --> sample.cpp:9:1 [original source]
+note: hunk check incomplete: layout is constrained
+  --> sample.cpp:11:63 [original source]
+note: hunk check incomplete: layout is constrained
+  --> sample.cpp:13:23 [original source]
+fail: cannot format this line automatically within ColumnLimit 40
+  --> sample.cpp:10:35 [original source]
+   |
+10 |       "unavoidable_spilled_literal_over_the_limit");
+   |                                   ^
+fail: cannot format this line automatically within ColumnLimit 40
+  --> sample.cpp:11:42 [original source]
+   |
+11 |   invoke("unavoidable_selected_literal_over_the_limit",right);
+   |                                          ^
+summary: formatting mismatch; fail: naming or parameter-name violation; fail: cannot format automatically within column limit; note: hunk checks incomplete

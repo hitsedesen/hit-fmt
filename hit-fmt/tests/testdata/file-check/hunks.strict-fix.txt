@@ -1,0 +1,36 @@
+fail: function name 'selected_bad' has invalid case; expected PascalCase
+  --> sample.cpp:4:6 [written output]
+fail: parameter #1 in function definition 'selected_bad': expected a name
+  --> sample.cpp:4:22 [written output]
+fail: function name 'bad_after' has invalid case; expected PascalCase
+  --> sample.cpp:14:6 [written output]
+fail: parameter #1 in function definition 'bad_after': expected a name
+  --> sample.cpp:14:19 [written output]
+fail: required structural edit crosses the hunk boundary
+  --> sample.cpp:8:9 [written output]
+note: hunk check incomplete: layout is constrained
+  --> sample.cpp:1:1 [original source]
+note: hunk check incomplete: source is protected
+  --> sample.cpp:1:1 [original source]
+note: hunk check incomplete: structural eligibility is unverified
+  --> sample.cpp:1:1 [original source]
+note: hunk check incomplete: layout is constrained
+  --> sample.cpp:1:15 [original source]
+note: hunk check incomplete: layout is constrained
+  --> sample.cpp:4:18 [original source]
+note: hunk check incomplete: layout is constrained
+  --> sample.cpp:9:1 [original source]
+note: hunk check incomplete: layout is constrained
+  --> sample.cpp:9:12 [original source]
+note: hunk check incomplete: layout is constrained
+  --> sample.cpp:11:1 [original source]
+note: hunk check incomplete: layout is constrained
+  --> sample.cpp:11:63 [original source]
+note: hunk check incomplete: layout is constrained
+  --> sample.cpp:13:23 [original source]
+fail: cannot format this line automatically within ColumnLimit 40
+  --> sample.cpp:11:41 [written output]
+   |
+11 |         "unavoidable_selected_literal_over_the_limit",
+   |                                         ^
+summary: fail: naming or parameter-name violation; fail: required structural edit crosses the hunk boundary; fail: cannot format automatically within column limit; note: hunk checks incomplete
