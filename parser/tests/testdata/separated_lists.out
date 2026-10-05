@@ -178,15 +178,21 @@
                 (constructor-initializer-list
                   ":"
                   (constructor-initializer
-                    "Base"
-                    (template-argument-list
-                      "<"
-                      (template-argument "First")
-                      (list-separator ",")
-                      (template-argument "Second")
-                      ">"
+                    (type-construction-expression
+                      (type-id
+                        "Base"
+                        (template-argument-list
+                          "<"
+                          (template-argument "First")
+                          (list-separator ",")
+                          (template-argument "Second")
+                          ">"
+                        )
+                      )
+                      (braced-initializer
+                        (initializer-list "{" "}")
+                      )
                     )
-                    "{" "}"
                   )
                   (list-separator ",")
                   (constructor-initializer

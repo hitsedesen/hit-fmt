@@ -1857,6 +1857,16 @@ std::vector<FormatCase> FormatCases()
         "canonical",
         "input.cpp",
     });
+    cases.push_back({
+        std::filesystem::path(FORMATTER_TESTDATA_DIR) /
+            "../constructor-initializer-ranges",
+        "template-ytsaurus",
+        "template.input.cpp",
+        (std::filesystem::path(FORMATTER_TESTDATA_DIR) /
+            "../../../../hit-fmt/examples/ytsaurus")
+            .lexically_normal()
+            .string(),
+    });
     const auto newArrays = std::filesystem::path(FORMATTER_TESTDATA_DIR) /
         "../new-array-declarators";
     AddCases(cases, newArrays, {"left", "array-space", "array-preserve"});
