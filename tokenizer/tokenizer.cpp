@@ -190,17 +190,26 @@ inline constexpr auto AsciiTokenKinds = [] {
 
 constexpr std::array<std::string_view, 4> EncodingPrefixes{"u8", "u", "U", "L"};
 
-constexpr std::array<
-    std::string_view,
-    5> RawEncodingPrefixes{"R", "u8R", "uR", "UR", "LR"};
+constexpr std::array<std::string_view, 5> RawEncodingPrefixes{
+    "R",
+    "u8R",
+    "uR",
+    "UR",
+    "LR",
+};
 
-constexpr std::array<
-    std::string_view,
-    8> FloatingPointSuffixes{"", "f", "l", "f16", "f32", "f64", "f128", "bf16"};
+constexpr std::array<std::string_view, 8> FloatingPointSuffixes{
+    "",
+    "f",
+    "l",
+    "f16",
+    "f32",
+    "f64",
+    "f128",
+    "bf16",
+};
 
-constexpr std::array<
-    std::string_view,
-    11> IntegerSuffixes{
+constexpr std::array<std::string_view, 11> IntegerSuffixes{
     "",
     "u",
     "ul",
@@ -279,8 +288,8 @@ Token Tokenizer::FinishToken(TokenKind kind) const noexcept
         .Position = CurrentTokenPosition_,
         .Text = {
             .Begin = static_cast<util::SourceOffset>(CurrentTokenOffset_),
-            .End = static_cast<
-                util::SourceOffset>(CurrentTokenOffset_ + CurrentTokenSize_),
+            .End = static_cast<util::SourceOffset>(CurrentTokenOffset_ +
+                CurrentTokenSize_),
         },
     };
 }

@@ -191,8 +191,8 @@ bool Recovery(parser::NodeKind kind)
 
 RegionStatus Combine(RegionStatus a, RegionStatus b)
 {
-    return static_cast<
-        RegionStatus>(static_cast<uint8_t>(a) | static_cast<uint8_t>(b));
+    return static_cast<RegionStatus>(static_cast<uint8_t>(a) |
+        static_cast<uint8_t>(b));
 }
 
 } // namespace
@@ -299,7 +299,9 @@ void SourceAnalysis::RestrictEditScope(
         }
         previousEnd = range.End;
     }
-    const auto allocator = Gaps_.get_allocator().resource();
+    const auto allocator = Gaps_
+        .get_allocator()
+        .resource();
     std::pmr::vector<parser::SourceRange> scope(allocator);
     scope.reserve(ranges.size());
     for (const auto range : ranges) {
@@ -525,10 +527,10 @@ SourceAnalysis BuildSourceAnalysis(
                 ? GapLineBoundary::Required
                 : GapLineBoundary::Forbidden;
         }
-        if (i &&
-            (tree.Kind(i - 1) == TK::PreprocessingDirective ||
-                (tree.Kind(i - 1) == TK::Comment &&
-                    tree.TokenText(i - 1).starts_with("//"))))
+        if (i && (tree.Kind(i - 1) == TK::PreprocessingDirective ||
+            (tree.Kind(i - 1) == TK::Comment && tree
+                .TokenText(i - 1)
+                .starts_with("//"))))
         {
             gap.MustStartWithLineFeed = true;
             // No terminator at EOF: insertion could extend the line token,
@@ -551,9 +553,11 @@ SourceAnalysis BuildSourceAnalysis(
             gap.ContextSensitive = true;
             gap.Preserve = true;
         }
-        if (i &&
-            (tree.TokenText(i - 1).ends_with("\\") ||
-                tree.TokenText(i - 1).ends_with("\\\r")))
+        if (i && (tree
+            .TokenText(i - 1)
+            .ends_with("\\") || tree
+                .TokenText(i - 1)
+                .ends_with("\\\r")))
         {
             gap.Preserve = true;
             gap.Reasons = ProtectionReason::LineSplice;
@@ -606,8 +610,8 @@ SourceAnalysis BuildSourceAnalysis(
                 begin,
                 i + 1 < count ? tree.Token(i + 1).Text.Begin : size,
                 token.Kind == TK::Invalid
-                    ? ProtectionReason::Recovery
-                    : ProtectionReason::Ambiguous);
+                ? ProtectionReason::Recovery
+                : ProtectionReason::Ambiguous);
         }
         if (token.Kind == TK::Comment) {
             auto marker = text;
@@ -659,9 +663,9 @@ SourceAnalysis BuildSourceAnalysis(
                 tree.Token(pendingMacro).Text.Begin,
                 balanced ? tree.Token(close).Text.End : size,
                 balanced
-                    ? ProtectionReason::SensitiveMacro
-                    : ProtectionReason::SensitiveMacro |
-                        ProtectionReason::Recovery);
+                ? ProtectionReason::SensitiveMacro
+                : ProtectionReason::SensitiveMacro |
+                    ProtectionReason::Recovery);
         }
         if (token.Kind != TK::Comment) {
             // Comments are preprocessing whitespace between a macro name and
@@ -764,8 +768,8 @@ SourceAnalysis BuildSourceAnalysis(
                 before,
                 after,
                 recovery
-                    ? ProtectionReason::Recovery
-                    : ProtectionReason::Ambiguous);
+                ? ProtectionReason::Recovery
+                : ProtectionReason::Ambiguous);
             if (before == after && tokens.Begin < result.Gaps_.size()) {
                 result.Gaps_[tokens.Begin].Preserve = true;
                 result.Gaps_[tokens.Begin].Reasons = recovery

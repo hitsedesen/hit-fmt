@@ -374,8 +374,8 @@ public:
                 list(
                     C::Calls,
                     parent && parent->Kind == NK::CallExpression
-                        ? parent
-                        : &node);
+                    ? parent
+                    : &node);
                 bool lambda = parent && parent->Kind == NK::CallExpression &&
                     Child(*parent) &&
                     (Child(*parent)->Kind == NK::LambdaExpression ||
@@ -386,8 +386,8 @@ public:
                 Mark(
                     begin,
                     lambda
-                        ? F::LambdaCallSpaceBeforeArguments
-                        : F::FunctionCallSpaceBeforeParameters,
+                    ? F::LambdaCallSpaceBeforeArguments
+                    : F::FunctionCallSpaceBeforeParameters,
                     Regions_[state.Owner],
                     C::Calls);
                 Interior(
@@ -406,19 +406,19 @@ public:
                 Mark(
                     begin,
                     lambda
-                        ? F::LambdaSpaceBeforeParameters
-                        : F::FunctionSpaceBeforeParameters,
+                    ? F::LambdaSpaceBeforeParameters
+                    : F::FunctionSpaceBeforeParameters,
                     Regions_[state.Owner],
                     C::Parameters);
                 Interior(
                     begin,
                     end,
                     lambda
-                        ? F::SpaceInsideLambdaParameters
-                        : F::SpaceInsideFunctionParameters,
+                    ? F::SpaceInsideLambdaParameters
+                    : F::SpaceInsideFunctionParameters,
                     lambda
-                        ? F::EmptyLambdaParametersSpacing
-                        : F::EmptyFunctionParametersSpacing,
+                    ? F::EmptyLambdaParametersSpacing
+                    : F::EmptyFunctionParametersSpacing,
                     Regions_[state.Owner],
                     C::Parameters);
                 break;
@@ -627,8 +627,8 @@ public:
                     Mark(
                         begin,
                         kind == NK::TemplateParameterList
-                            ? F::TemplateKeywordSpacing
-                            : F::TemplateTypeArgumentSpacing,
+                        ? F::TemplateKeywordSpacing
+                        : F::TemplateTypeArgumentSpacing,
                         node,
                         state.Category);
                     // Template delimiters can be contextually split >>; require
@@ -660,8 +660,8 @@ public:
                             begin,
                             F::AttributeSpaceBeforeSpecifier,
                             state.Owner != NoRegion
-                                ? Regions_[state.Owner]
-                                : node,
+                            ? Regions_[state.Owner]
+                            : node,
                             state.Category,
                             3,
                             true);
@@ -674,8 +674,8 @@ public:
                             end,
                             F::AttributeSpaceAfterSpecifier,
                             state.Owner != NoRegion
-                                ? Regions_[state.Owner]
-                                : node,
+                            ? Regions_[state.Owner]
+                            : node,
                             state.Category,
                             3,
                             true);
@@ -721,8 +721,8 @@ public:
                 Mark(
                     begin,
                     brace
-                        ? F::NewInitializerSpaceBeforeBraces
-                        : F::NewInitializerSpaceBeforeParentheses,
+                    ? F::NewInitializerSpaceBeforeBraces
+                    : F::NewInitializerSpaceBeforeParentheses,
                     node,
                     C::Initializers,
                     4);
@@ -730,11 +730,11 @@ public:
                     begin,
                     end,
                     brace
-                        ? F::NewInitializerBraceInteriorSpacing
-                        : F::NewInitializerParenthesisInteriorSpacing,
+                    ? F::NewInitializerBraceInteriorSpacing
+                    : F::NewInitializerParenthesisInteriorSpacing,
                     brace
-                        ? F::NewInitializerBraceInteriorSpacing
-                        : F::NewInitializerParenthesisInteriorSpacing,
+                    ? F::NewInitializerBraceInteriorSpacing
+                    : F::NewInitializerParenthesisInteriorSpacing,
                     node,
                     C::Initializers,
                     4);
@@ -850,8 +850,8 @@ public:
                     F::RangeBasedForColonSpacing,
                     F::RangeBasedForColonSpacing,
                     state.ListOwner != NoRegion
-                        ? Regions_[state.ListOwner]
-                        : node,
+                    ? Regions_[state.ListOwner]
+                    : node,
                     C::ControlHeaders,
                     3);
                 break;
@@ -909,13 +909,13 @@ public:
                     begin,
                     end,
                     kind == NK::RequirementBody
-                        ? F::RequirementBodyInteriorSpacing
-                        : F::BlockInteriorSpacing,
+                    ? F::RequirementBodyInteriorSpacing
+                    : F::BlockInteriorSpacing,
                     kind == NK::LambdaBody
-                        ? F::EmptyLambdaBodySpacing
-                        : kind == NK::RequirementBody
-                            ? F::RequirementBodyInteriorSpacing
-                            : F::EmptyBlockInteriorSpacing,
+                    ? F::EmptyLambdaBodySpacing
+                    : kind == NK::RequirementBody
+                        ? F::RequirementBodyInteriorSpacing
+                        : F::EmptyBlockInteriorSpacing,
                     node,
                     state.Category,
                     2,
@@ -978,10 +978,10 @@ public:
                     Mark(
                         begin + 1,
                         kind == NK::ThrowStatement
-                            ? F::ThrowSpaceBeforeParentheses
-                            : Tree_.Kind(begin) == TK::Keyword_co_return
-                                ? F::CoReturnSpaceBeforeParentheses
-                                : F::ReturnSpaceBeforeParentheses,
+                        ? F::ThrowSpaceBeforeParentheses
+                        : Tree_.Kind(begin) == TK::Keyword_co_return
+                            ? F::CoReturnSpaceBeforeParentheses
+                            : F::ReturnSpaceBeforeParentheses,
                         node,
                         C::Expressions,
                         3,
@@ -1111,8 +1111,8 @@ public:
                     Mark(
                         i + 1,
                         Regions_[state.ListOwner].Kind == NK::ForStatement
-                            ? F::LoopSemicolonSpacing
-                            : F::ConditionInitSemicolonSpacing,
+                        ? F::LoopSemicolonSpacing
+                        : F::ConditionInitSemicolonSpacing,
                         Regions_[state.ListOwner],
                         C::ControlHeaders,
                         4,
@@ -1156,8 +1156,8 @@ public:
                 Mark(
                     postfix ? i : i + 1,
                     postfix
-                        ? F::PostfixOperatorSpacing
-                        : F::UnaryOperatorSpacing,
+                    ? F::PostfixOperatorSpacing
+                    : F::UnaryOperatorSpacing,
                     owner,
                     C::Expressions,
                     1);
@@ -1271,11 +1271,11 @@ public:
                 const auto close = Tree_.MatchingDelimiter(i);
                 if (close != NoToken && close < node.Tokens.End &&
                     close + 1 < Tree_.TokenCount() &&
-                    Tree_.Kind(close + 1) == TK::Comment &&
-                    Tree_.TokenText(close + 1).starts_with("//") &&
-                    Tree_.WhitespaceBefore(
-                        close +
-                        1).find_first_not_of(" \t") == std::string_view::npos)
+                    Tree_.Kind(close + 1) == TK::Comment && Tree_
+                        .TokenText(close + 1)
+                        .starts_with("//") && Tree_
+                            .WhitespaceBefore(close + 1)
+                            .find_first_not_of(" \t") == std::string_view::npos)
                 {
                     Gaps_[close + 1].NamespaceClosingComment = true;
                 }
@@ -1307,11 +1307,12 @@ public:
                     3);
             }
             KeywordAt(node, state, i);
-            if (kind == TK::Comment && i > 0 &&
-                Tree_.TokenText(i).starts_with("//") &&
-                Tree_.Kind(i - 1) != TK::Comment &&
-                Tree_.Kind(i - 1) != TK::PreprocessingDirective &&
-                Tree_.WhitespaceBefore(i).find('\n') == std::string_view::npos)
+            if (kind == TK::Comment && i > 0 && Tree_
+                .TokenText(i)
+                .starts_with("//") && Tree_.Kind(i - 1) != TK::Comment &&
+                Tree_.Kind(i - 1) != TK::PreprocessingDirective && Tree_
+                    .WhitespaceBefore(i)
+                    .find('\n') == std::string_view::npos)
             {
                 Mark(
                     i,
@@ -1858,7 +1859,10 @@ std::optional<bool> SyntaxSpacing::SpacePreference(
     GapContext ownerContext,
     const SourceAnalysis& safety) const
 {
-    if (gap >= Gaps_.size() || gap >= safety.Gaps().size()) {
+    if (gap >= Gaps_.size() || gap >= safety
+        .Gaps()
+        .size())
+    {
         return std::nullopt;
     }
     const auto& source = safety.Gaps()[gap];
@@ -1878,8 +1882,9 @@ std::optional<bool> SyntaxSpacing::SpacePreference(
         return std::nullopt;
     }
     auto preference = GapUsesSpace(Gaps_[gap].Policy, ownerContext);
-    if (preference && source.Separation == GapSeparation::Required &&
-        !safety.Original(source).empty())
+    if (preference && source.Separation == GapSeparation::Required && !safety
+        .Original(source)
+        .empty())
     {
         return true;
     }
@@ -1891,7 +1896,9 @@ std::optional<std::uint16_t> SyntaxSpacing::TrailingCommentCount(
     const SourceAnalysis& safety) const
 {
     if (!TrailingCommentSpaces_ || !TrailingCommentSpaces_->Count ||
-        gap >= Gaps_.size() || gap >= safety.Gaps().size())
+        gap >= Gaps_.size() || gap >= safety
+            .Gaps()
+            .size())
     {
         return std::nullopt;
     }
@@ -1908,8 +1915,9 @@ std::optional<std::uint16_t> SyntaxSpacing::TrailingCommentCount(
         return std::nullopt;
     }
     auto count = *TrailingCommentSpaces_->Count;
-    if (source.Separation == GapSeparation::Required &&
-        !safety.Original(source).empty())
+    if (source.Separation == GapSeparation::Required && !safety
+        .Original(source)
+        .empty())
     {
         count = std::max<std::size_t>(count, 1);
     }
@@ -1931,9 +1939,17 @@ SyntaxSpacing BuildSyntaxSpacing(
         throw std::invalid_argument(
             "TrailingCommentSpaces must be between 0 and 10000");
     }
-    if (safety.Gaps().size() != static_cast<size_t>(tree.TokenCount()) + 1 ||
-        safety.Source().data() != tree.Source().data() ||
-        safety.Source().size() != tree.Source().size())
+    if (safety
+        .Gaps()
+        .size() != static_cast<size_t>(tree.TokenCount()) + 1 || safety
+            .Source()
+            .data() != tree
+                .Source()
+                .data() || safety
+                    .Source()
+                    .size() != tree
+                        .Source()
+                        .size())
     {
         throw std::invalid_argument(
             "syntax spacing requires matching source analysis");
@@ -1945,7 +1961,9 @@ SyntaxSpacing BuildSyntaxSpacing(
     }
     SyntaxSpacing result(fileMemory);
     result.TrailingCommentSpaces_ = trailingCommentSpaces;
-    result.Gaps_.resize(safety.Gaps().size());
+    result.Gaps_.resize(safety
+        .Gaps()
+        .size());
     const auto regions = safety.Regions();
     if (regions.empty()) {
         throw std::invalid_argument(

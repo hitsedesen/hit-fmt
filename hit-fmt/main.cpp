@@ -771,7 +771,12 @@ std::vector<Chunk> FormattingChunks(
         if (sourceCount == 0) {
             auto column = sourceIndex < source.size() || source.empty()
                 ? size_t{1}
-                : ColumnAt(source.back().Text, source.back().Text.size());
+                : ColumnAt(
+                    source.back().Text,
+                    source
+                        .back()
+                        .Text
+                        .size());
             auto location = sourceIndex == source.size()
                 ? " at end of file"
                 : " before this line";
@@ -940,7 +945,9 @@ void PrintFormattingDiagnostics(
 
 bool IsCppSource(const std::filesystem::path& path)
 {
-    auto extension = path.extension().string();
+    auto extension = path
+        .extension()
+        .string();
     return extension == ".c" || extension == ".cc" || extension == ".cpp" ||
         extension == ".cxx" || extension == ".h" || extension == ".hh" ||
         extension == ".hpp" || extension == ".hxx" || extension == ".inl" ||
@@ -995,8 +1002,11 @@ bool ForEachFile(
         {
             const auto& entry = *iterator;
             bool directory = entry.is_directory();
-            if (IsExcluded(entry.path().lexically_relative(path), exclusions) ||
-                configExcludes(entry.path(), directory))
+            if (IsExcluded(
+                entry
+                    .path()
+                    .lexically_relative(path),
+                exclusions) || configExcludes(entry.path(), directory))
             {
                 if (directory) {
                     iterator.disable_recursion_pending();
@@ -1148,8 +1158,9 @@ public:
     {
         if (options.ConfigPath) {
             ExplicitConfig_ = ConfigEntry{
-                .Directory = std::filesystem::absolute(
-                    *options.ConfigPath).parent_path().lexically_normal(),
+                .Directory = std::filesystem::absolute(*options.ConfigPath)
+                    .parent_path()
+                    .lexically_normal(),
                 .Settings = LoadPreparedConfig(*options.ConfigPath),
             };
         }
@@ -1170,8 +1181,9 @@ public:
         if (config.Settings->Settings.Exclude.empty()) {
             return false;
         }
-        auto relative = std::filesystem::absolute(
-            path).lexically_normal().lexically_relative(config.Directory);
+        auto relative = std::filesystem::absolute(path)
+            .lexically_normal()
+            .lexically_relative(config.Directory);
         return ::IsExcluded(relative, config.Settings->Settings.Exclude);
     }
 
@@ -1219,7 +1231,9 @@ private:
         if (error) {
             return DefaultConfig();
         }
-        auto directoryKey = directory.lexically_normal().string();
+        auto directoryKey = directory
+            .lexically_normal()
+            .string();
         auto [configIterator, configInserted] =
             ConfigPaths_.try_emplace(directoryKey);
         if (configInserted) {
@@ -1229,11 +1243,14 @@ private:
         if (!config) {
             return DefaultConfig();
         }
-        auto key = config->lexically_normal().string();
+        auto key = config
+            ->lexically_normal()
+            .string();
         auto iterator = Configs_.try_emplace(key).first;
         if (!iterator->second.Settings) {
-            iterator->second.Directory =
-                config->parent_path().lexically_normal();
+            iterator->second.Directory = config
+                ->parent_path()
+                .lexically_normal();
             iterator->second.Settings = LoadPreparedConfig(*config);
         }
         return iterator->second;
@@ -1454,7 +1471,8 @@ int main(int argc, char* argv[])
                 options.Paths,
                 options.Exclusions,
                 [
-                    &] (
+                    &
+                ] (
                     const auto& path,
                     bool directory) { return styleResolver
                             ->IsExcluded(path, directory); },
@@ -1479,7 +1497,8 @@ int main(int argc, char* argv[])
                     options.Paths,
                     options.Exclusions,
                     [
-                        &] (
+                        &
+                    ] (
                         const auto& path,
                         bool directory) { return styleResolver
                                 ->IsExcluded(path, directory); },

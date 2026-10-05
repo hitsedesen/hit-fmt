@@ -269,7 +269,8 @@ TEST(SyntaxLayout, PartialGapPoliciesAndAnchorsGolden)
     std::string records;
     const auto record =
         [
-        &] (
+        &
+    ] (
         std::string_view name,
         const std::string& input,
         const formatter::Style& style,
@@ -523,8 +524,7 @@ TEST(SyntaxLayout, PartialPermissionsDoNotBypassRealOrUncertainProtection)
     scope.ImmutableRanges = immutable;
     EXPECT_EQ(Lower(input, style, {}, scope).Text, input);
     const std::string_view macros[] = {"VERBATIM"};
-    const std::vector<
-        std::string> protectedInputs = {
+    const std::vector<std::string> protectedInputs = {
         "void f() {\n// hit-fmt off\n      work();\n// hit-fmt on\n}\n",
         "void f() { VERBATIM(\n      work()); }\n",
         "void f() { broken(,\n      @); }\n",
@@ -1149,10 +1149,10 @@ TEST(SyntaxLayout, CRLFCommentOwnsCRAndGapStartsWithLF)
     EXPECT_EQ(output.Text.find("\r\r\n"), std::string::npos);
     EXPECT_NE(output.Text.find("// note\r\n"), std::string::npos);
     for (const auto& map : output.Map) {
-        if (map.Source.Identity != document::NoIdentity && map.Exact &&
-            output.Text.substr(
-                map.OutputBegin,
-                map.OutputEnd - map.OutputBegin).starts_with("//"))
+        if (map.Source.Identity != document::NoIdentity && map.Exact && output
+            .Text
+            .substr(map.OutputBegin, map.OutputEnd - map.OutputBegin)
+            .starts_with("//"))
         {
             EXPECT_EQ(
                 output.Text
@@ -1700,8 +1700,8 @@ TEST(SyntaxLayout, RealizedExpressionLineRetainsChildContinuationBase)
                     EXPECT_FALSE(map.Protected);
                     const std::string_view indent =
                         kind == formatter::IndentationKind::Tabs
-                            ? "\t\t\t"
-                            : "            ";
+                        ? "\t\t\t"
+                        : "            ";
                     EXPECT_EQ(text, indent);
                     selectedIndent = true;
                 }
@@ -1733,9 +1733,7 @@ TEST(SyntaxLayout, RealizedExpressionLineRetainsChildContinuationBase)
                     parser::SourceOffset(continued.find("take("));
                 const auto childBegin =
                     parser::SourceOffset(continued.find("            item"));
-                const std::array<
-                    parser::SourceRange,
-                    3> ranges = {
+                const std::array<parser::SourceRange, 3> ranges = {
                     parser::SourceRange{trimBegin, trimBegin + 2},
                     selectParentIndent
                         ? parser::SourceRange{parentEnd - 8, parentEnd}
@@ -1978,8 +1976,8 @@ TEST(SyntaxLayout, ContinuationScopesReindentOnlySelectedHorizontalBytes)
                 Lower(callInput, style, options, protection);
             const auto callIndent =
                 indentation == formatter::IndentationKind::Tabs
-                    ? std::string(4, '\t')
-                    : std::string(16, ' ');
+                ? std::string(4, '\t')
+                : std::string(16, ' ');
             auto callExpected = callInput;
             callExpected.replace(second, 12, callIndent);
             callExpected.replace(first, 12, callIndent);
@@ -2021,8 +2019,8 @@ TEST(SyntaxLayout, ContinuationScopesReindentOnlySelectedHorizontalBytes)
                 Lower(ternaryInput, style, options, protection);
             const auto branchIndent =
                 indentation == formatter::IndentationKind::Tabs
-                    ? std::string(3, '\t')
-                    : std::string(12, ' ');
+                ? std::string(3, '\t')
+                : std::string(12, ' ');
             auto branchExpected = ternaryInput;
             branchExpected.replace(branchBegin, 16, branchIndent);
             EXPECT_EQ(branchOutput.Text, branchExpected);
@@ -2064,12 +2062,12 @@ TEST(SyntaxLayout, ContinuationScopesReindentOnlySelectedHorizontalBytes)
                 Lower(ternaryInput, style, options, protection);
             const auto armIndent =
                 indentation == formatter::IndentationKind::Tabs
-                    ? std::string(3, '\t')
-                    : std::string(12, ' ');
+                ? std::string(3, '\t')
+                : std::string(12, ' ');
             const auto valueIndent =
                 indentation == formatter::IndentationKind::Tabs
-                    ? std::string(4, '\t')
-                    : std::string(16, ' ');
+                ? std::string(4, '\t')
+                : std::string(16, ' ');
             auto indentedExpected = ternaryInput;
             indentedExpected.replace(colonBegin, 8, armIndent);
             indentedExpected.replace(branchBegin, 16, valueIndent);
@@ -2649,10 +2647,7 @@ TEST(SyntaxLayout, NestedVisualScopesAndWrapperContextRespectBarriers)
         "work();\n  wrap(tag, flow.End());\n}\n");
     EXPECT_EQ(Lower(multi, style).Text, multi);
     for (const auto& context :
-        std::vector<
-            std::pair<
-                std::string,
-                std::string>>{
+        std::vector<std::pair<std::string, std::string>>{
             {"wrap(flow.Begin(), tag)", "wrap(flow.End(), tag)"},
             {"wrap(tag, flow.Begin(), tail)", "wrap(tag, flow.End(), tail)"},
             {
@@ -2675,10 +2670,7 @@ TEST(SyntaxLayout, NestedVisualScopesAndWrapperContextRespectBarriers)
         EXPECT_NE(flat.find("\n  work();"), std::string::npos) << flat;
     }
     for (const auto& context :
-        std::vector<
-            std::pair<
-                std::string,
-                std::string>>{
+        std::vector<std::pair<std::string, std::string>>{
             {"wrap(tag, flow.Begin())", "wrap(other, flow.End())"},
             {"wrap(tag, flow.Begin())", "wrap(tag, other.End())"},
             {"wrap(tag, flow.Begin())", "other(tag, flow.End())"},
@@ -2702,10 +2694,7 @@ TEST(SyntaxLayout, NestedVisualScopesAndWrapperContextRespectBarriers)
         EXPECT_EQ(Lower(uncertainRegion, style).Text, uncertainRegion);
     }
     for (const auto& context :
-        std::vector<
-            std::pair<
-                std::string,
-                std::string>>{
+        std::vector<std::pair<std::string, std::string>>{
             {"wrap([](){ flow.Begin(); })", "wrap([](){ flow.End(); })"},
             {"wrap(sizeof(flow.Begin()))", "wrap(sizeof(flow.End()))"},
             {"wrap(noexcept(flow.Begin()))", "wrap(noexcept(flow.End()))"},
@@ -3155,9 +3144,7 @@ TEST(SyntaxLayout, RecordHeadCommaPreferenceIsClassifiedAndLocallyAuthorized)
     EXPECT_EQ(protectedBytes, end - begin);
 
     style.Layout = formatter::LayoutMode::Preserve;
-    const std::pair<
-        std::string_view,
-        std::string_view> operands[] = {
+    const std::pair<std::string_view, std::string_view> operands[] = {
         {"template<auto, auto> struct Pair;\n", "(1<2)"},
         {
             "template<auto, class> struct Wrap;\n"

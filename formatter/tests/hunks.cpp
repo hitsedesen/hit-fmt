@@ -400,8 +400,8 @@ TEST(HunkAdapter, BoundedNestedListsNeverPromoteFunctionOrOverTwoHundredLines)
         EXPECT_EQ(
             bounded.PermittedLines,
             count == 200
-                ? (std::vector<formatter::Hunk>{{2, 201}})
-                : (std::vector<formatter::Hunk>{{3, 3}}));
+            ? (std::vector<formatter::Hunk>{{2, 201}})
+            : (std::vector<formatter::Hunk>{{3, 3}}));
         EXPECT_TRUE(
             bounded.Result.Text.find("  untouched(  );") != std::string::npos);
         if (count == 201) {

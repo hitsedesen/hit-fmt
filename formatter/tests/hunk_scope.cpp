@@ -20,7 +20,9 @@ TEST(HunkScope, OriginalPhysicalLinesRejectInvalidAndHaveNoPhantomEOFLine)
     std::pmr::monotonic_buffer_resource memory;
     for (const std::string source : {"", "x", "x\n", "x\r\n", "\n"}) {
         const OriginalHunkLines lines(source, memory);
-        EXPECT_TRUE(lines.Coalesce({}, memory).empty());
+        EXPECT_TRUE(lines
+            .Coalesce({}, memory)
+            .empty());
         for (const Hunk bad :
             {
                 Hunk{0, 1}, {2, 1}, {2, 2},

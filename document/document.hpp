@@ -138,7 +138,7 @@ struct GroupSpec
     // Consistent groups always retain their coupled topology.
     bool ChildBreaks = true;
     // Extra cost per owned newline in bounded layout selection (0..3).
-    // Syntax can discourage breaks through tightly coupled constructs.
+    // Higher-cost groups may defer to a cheaper following group's break.
     std::uint8_t BreakPenalty = 0;
     // Use this physical line's indentation as an independent structural base.
     // Requires StructuralBase and excludes continuation sharing.

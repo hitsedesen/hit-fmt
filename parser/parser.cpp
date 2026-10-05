@@ -217,16 +217,16 @@ std::optional<SyntaxTree> SyntaxTree::RebindWhitespace(
     {
         HIT_FMT_PROFILE_PHASE("parser.rebind.scan_verify");
         for (auto token : tokenizer) {
-            if (index >= TokenCount() || token.Kind != Kind(index) ||
-                source.View().substr(
-                    token.Text.Begin,
-                    token.Text.End - token.Text.Begin) != TokenText(index))
+            if (index >= TokenCount() || token.Kind != Kind(index) || source
+                .View()
+                .substr(token.Text.Begin, token.Text.End - token.Text.Begin) !=
+                TokenText(index))
             {
                 return std::nullopt;
             }
-            const auto gap = source.View().substr(
-                previousEnd,
-                token.Text.Begin - previousEnd);
+            const auto gap = source
+                .View()
+                .substr(previousEnd, token.Text.Begin - previousEnd);
             const auto oldGap = WhitespaceBefore(index);
             // Escaped newlines between tokens must stay byte-for-byte intact;
             // those inside a token are checked by comparing token spellings.
@@ -252,7 +252,9 @@ std::optional<SyntaxTree> SyntaxTree::RebindWhitespace(
             ++index;
         }
     }
-    const auto tail = source.View().substr(previousEnd);
+    const auto tail = source
+        .View()
+        .substr(previousEnd);
     const auto oldTail = index ? WhitespaceAfter(index - 1) : Input_;
     if (((tail.find("\\\n") != std::string_view::npos ||
         oldTail.find("\\\n") != std::string_view::npos) && tail != oldTail) ||
@@ -336,9 +338,10 @@ std::optional<SyntaxTree> SyntaxTree::RebindMatchingTokens(
     TokenIndex index = 0;
     for (auto token : lexer) {
         if (index >= TokenCount() || token.Kind != Kind(index) ||
-            (token.Kind != tokenizer::TokenKind::Comment &&
-                source.View().substr(token.Text.Begin, token.Text.Size()) !=
-                    TokenText(index)))
+            (token.Kind != tokenizer::TokenKind::Comment && source
+                .View()
+                .substr(token.Text.Begin, token.Text.Size()) !=
+                TokenText(index)))
         {
             return std::nullopt;
         }
@@ -378,9 +381,10 @@ std::optional<SyntaxTree> SyntaxTree::RebindReorderedComments(
     auto same = [&] (TokenIndex oldIndex, TokenIndex newIndex) {
         const auto& token = tokens[newIndex];
         return token.Kind == Kind(oldIndex) &&
-            (token.Kind == tokenizer::TokenKind::Comment ||
-                source.View().substr(token.Text.Begin, token.Text.Size()) ==
-                    TokenText(oldIndex));
+            (token.Kind == tokenizer::TokenKind::Comment || source
+                .View()
+                .substr(token.Text.Begin, token.Text.Size()) ==
+                TokenText(oldIndex));
     };
     auto brace = [] (tokenizer::TokenKind kind) {
         return kind == tokenizer::TokenKind::Operator_OpenBrace ||
@@ -570,9 +574,10 @@ std::optional<SyntaxTree> SyntaxTree::RebindSortedIncludes(
             return std::nullopt;
         }
         if (Kind(i) != tokenizer::TokenKind::PreprocessingDirective) {
-            if (source.View().substr(
-                tokens[i].Text.Begin,
-                tokens[i].Text.Size()) != TokenText(i))
+            if (source
+                .View()
+                .substr(tokens[i].Text.Begin, tokens[i].Text.Size()) !=
+                TokenText(i))
             {
                 return std::nullopt;
             }
@@ -587,9 +592,9 @@ std::optional<SyntaxTree> SyntaxTree::RebindSortedIncludes(
             tokens[end].Kind == Kind(end))
         {
             before.push_back(TokenText(end));
-            after.push_back(source.View().substr(
-                tokens[end].Text.Begin,
-                tokens[end].Text.Size()));
+            after.push_back(source
+                .View()
+                .substr(tokens[end].Text.Begin, tokens[end].Text.Size()));
             ++end;
         }
         auto sortedBefore = before;
@@ -666,21 +671,25 @@ std::optional<SyntaxTree> SyntaxTree::RebindWhitespaceEdits(
         }
         auto unchanged = Input_.substr(oldSpan, edit.Begin - oldSpan);
         if (newSpan > source.Size || unchanged.size() > source.Size - newSpan ||
-            source.View().substr(newSpan, unchanged.size()) != unchanged)
+            source
+                .View()
+                .substr(newSpan, unchanged.size()) != unchanged)
         {
             return std::nullopt;
         }
         newSpan += unchanged.size();
-        if (edit.Text.size() > source.Size - newSpan ||
-            source.View().substr(newSpan, edit.Text.size()) != edit.Text)
+        if (edit.Text.size() > source.Size - newSpan || source
+            .View()
+            .substr(newSpan, edit.Text.size()) != edit.Text)
         {
             return std::nullopt;
         }
         newSpan += edit.Text.size();
         oldSpan = edit.End;
     }
-    if (newSpan > source.Size ||
-        source.View().substr(newSpan) != Input_.substr(oldSpan))
+    if (newSpan > source.Size || source
+        .View()
+        .substr(newSpan) != Input_.substr(oldSpan))
     {
         return std::nullopt;
     }
@@ -724,7 +733,9 @@ std::optional<SyntaxTree> SyntaxTree::RebindWhitespaceEdits(
             ? Input_.substr(oldCursor, oldBegin - oldCursor)
             : std::string_view{};
         const auto newGap = gapEdited
-            ? source.View().substr(newCursor, newBegin - newCursor)
+            ? source
+                .View()
+                .substr(newCursor, newBegin - newCursor)
             : std::string_view{};
         if (oldGap != newGap &&
             (!asciiWhitespace(oldGap) || !asciiWhitespace(newGap) ||
@@ -756,9 +767,8 @@ std::optional<SyntaxTree> SyntaxTree::RebindWhitespaceEdits(
             const auto newLines = std::ranges::count(newGap, '\n');
             lineDelta += newLines - oldLines;
             if (newLines) {
-                columnDelta =
-                    static_cast<int64_t>(newGap.size() - newGap.rfind('\n')) -
-                        oldPosition.Column;
+                columnDelta = static_cast<int64_t>(newGap.size() -
+                    newGap.rfind('\n')) - oldPosition.Column;
             } else if (oldLines) {
                 int64_t previousEndColumn = 1;
                 if (index) {
@@ -831,7 +841,9 @@ std::optional<SyntaxTree> SyntaxTree::RebindWhitespaceEdits(
         return std::nullopt;
     }
     const auto oldTail = Input_.substr(oldCursor);
-    const auto newTail = source.View().substr(newCursor);
+    const auto newTail = source
+        .View()
+        .substr(newCursor);
     if (oldTail != newTail &&
         (!asciiWhitespace(oldTail) || !asciiWhitespace(newTail) ||
             oldTail.find("\\\n") != std::string_view::npos ||
@@ -890,9 +902,9 @@ std::optional<SyntaxTree> SyntaxTree::RebindRemovedNullStatements(
         while (oldIndex < TokenCount() && deleted[oldIndex]) {
             ++oldIndex;
         }
-        if (oldIndex == TokenCount() || token.Kind != Kind(oldIndex) ||
-            source.View().substr(token.Text.Begin, token.Text.Size()) !=
-                TokenText(oldIndex))
+        if (oldIndex == TokenCount() || token.Kind != Kind(oldIndex) || source
+            .View()
+            .substr(token.Text.Begin, token.Text.Size()) != TokenText(oldIndex))
         {
             return std::nullopt;
         }
@@ -918,8 +930,8 @@ std::optional<SyntaxTree> SyntaxTree::RebindRemovedNullStatements(
         rebound.Tokens_.SetMatchingDelimiter(
             index,
             match == std::numeric_limits<TokenIndex>::max()
-                ? match
-                : mapped[match]);
+            ? match
+            : mapped[match]);
     }
 
     auto* root = detail::Make<Node>(*rebound.Memory_);
@@ -1063,9 +1075,9 @@ std::optional<SyntaxTree> SyntaxTree::RebindControlBraces(
         }
         originalTokens[i] = rebound.Tokens_.Size();
         auto token = lexer.Get();
-        if (token.Kind != Kind(i) ||
-            source.View().substr(token.Text.Begin, token.Text.Size()) !=
-                TokenText(i))
+        if (token.Kind != Kind(i) || source
+            .View()
+            .substr(token.Text.Begin, token.Text.Size()) != TokenText(i))
         {
             return std::nullopt;
         }
@@ -1332,8 +1344,10 @@ private:
 
     void PushScope()
     {
-        CurrentScope_ = detail::Make<
-            NameScope>(ScratchMemory_, NameScope{.Parent = CurrentScope_});
+        CurrentScope_ =
+            detail::Make<NameScope>(
+                ScratchMemory_,
+                NameScope{.Parent = CurrentScope_});
     }
 
     void PopScope()
@@ -1478,9 +1492,8 @@ private:
     {
         constexpr size_t NodesPerBlock = 256;
         if (RemainingNodes_ == 0) {
-            NextNode_ = static_cast<
-                Node*>(Tree_.Memory_
-                    ->allocate(sizeof(Node) * NodesPerBlock, alignof(Node)));
+            NextNode_ = static_cast<Node*>(Tree_.Memory_
+                ->allocate(sizeof(Node) * NodesPerBlock, alignof(Node)));
             RemainingNodes_ = NodesPerBlock;
         }
         auto* node = ::new (NextNode_++) Node;
@@ -1841,8 +1854,8 @@ private:
                         Append(
                             *branch,
                             statementContext
-                                ? *ParseStatement()
-                                : *ParseDeclaration());
+                            ? *ParseStatement()
+                            : *ParseDeclaration());
                         if (Cursor_ == before) {
                             ++Cursor_;
                         }
@@ -2438,8 +2451,8 @@ private:
                 opening + 1,
                 end - 1,
                 kind == NodeKind::TemplateParameterList
-                    ? NodeKind::TemplateParameter
-                    : NodeKind::TemplateArgument);
+                ? NodeKind::TemplateParameter
+                : NodeKind::TemplateArgument);
         }
         bool expectingArgument = true;
         bool malformed = false;
@@ -4740,8 +4753,8 @@ private:
                         node,
                         *MakeTemplateList(
                             templateParameters
-                                ? NodeKind::TemplateParameterList
-                                : NodeKind::TemplateArgumentList,
+                            ? NodeKind::TemplateParameterList
+                            : NodeKind::TemplateArgumentList,
                             i,
                             templateEnd));
                     i = templateEnd - 1;
@@ -4851,8 +4864,8 @@ private:
                     if (afterName < end) {
                         auto* initializer = MakeNode(
                             ambiguousSuffix
-                                ? NodeKind::AmbiguousDeclaratorSuffix
-                                : NodeKind::Initializer,
+                            ? NodeKind::AmbiguousDeclaratorSuffix
+                            : NodeKind::Initializer,
                             afterName);
                         initializer->Tokens.End = end;
                         if (ambiguousSuffix) {
@@ -5139,8 +5152,8 @@ private:
                     suffix->Tokens.End = suffixEnd;
                     Append(
                         nestedEnd != begin && suffixEnd <= nestedEnd
-                            ? *core
-                            : *declarator,
+                        ? *core
+                        : *declarator,
                         *suffix);
                     i = suffixEnd - 1;
                     continue;
@@ -5169,8 +5182,8 @@ private:
         if (initializerStart < end) {
             auto* initializer = MakeNode(
                 ambiguousSuffix
-                    ? NodeKind::AmbiguousDeclaratorSuffix
-                    : NodeKind::Initializer,
+                ? NodeKind::AmbiguousDeclaratorSuffix
+                : NodeKind::Initializer,
                 initializerStart);
             initializer->Tokens.End = end;
             if (ambiguousSuffix) {
@@ -5654,8 +5667,9 @@ private:
             &functionKind,
             constructorParameters);
         if (ungroupedConstructorInitializer && parameters &&
-            !RecordNames_.empty() && RecordNames_.back().empty() &&
-            specifiersEnd == parameters->Begin)
+            !RecordNames_.empty() && RecordNames_
+                .back()
+                .empty() && specifiersEnd == parameters->Begin)
         {
             AddUnparsedSyntax(declaration, begin, end);
             return;
@@ -5766,10 +5780,12 @@ private:
             &functionKind,
             terminalConstructorEligible &&
                 declaration.Kind == NodeKind::FunctionDefinition
-                ? std::optional<TokenRange>(parameters)
-                : std::nullopt);
+            ? std::optional<TokenRange>(parameters)
+            : std::nullopt);
         if (ungroupedConstructorInitializer && !RecordNames_.empty() &&
-            RecordNames_.back().empty() && specifiersEnd == parameters.Begin)
+            RecordNames_
+                .back()
+                .empty() && specifiersEnd == parameters.Begin)
         {
             AddUnparsedSyntax(declaration, begin, end);
             return;
@@ -6861,8 +6877,8 @@ private:
                     auto* node = MakeNode(
                         expression && expressionCursor == Cursor_ - 1 &&
                             expression->Kind == NodeKind::CallExpression
-                            ? NodeKind::ExpressionStatement
-                            : NodeKind::UnparsedSyntax,
+                        ? NodeKind::ExpressionStatement
+                        : NodeKind::UnparsedSyntax,
                         start);
                     node->Tokens.End = Cursor_;
                     if (node->Kind == NodeKind::ExpressionStatement) {
@@ -7150,8 +7166,8 @@ private:
         ParseControlHeader(
             *node,
             kind == NodeKind::ForStatement
-                ? NodeKind::ForHeader
-                : NodeKind::Condition);
+            ? NodeKind::ForHeader
+            : NodeKind::Condition);
         bool conditionalBody = ParseTriviaBeforeChild(*node);
         if (!conditionalBody && !AtEnd()) {
             Append(*node, *ParseStatement());
@@ -7726,8 +7742,8 @@ private:
                             ArgumentSignificant(trailingEnd + 1, end);
                         const auto after =
                             Kind(opening) == TK::Operator_OpenParenthesis
-                                ? ArgumentPairEnd(opening, end)
-                                : std::nullopt;
+                            ? ArgumentPairEnd(opening, end)
+                            : std::nullopt;
                         if (!after) {
                             break;
                         }
@@ -8496,8 +8512,8 @@ private:
                     auto* type = MakeNode(NodeKind::TypeId, angleBegin + 1);
                     type->Tokens.End =
                         Kind(angleEnd - 1) == TK::Operator_RightShift
-                            ? angleEnd
-                            : angleEnd - 1;
+                        ? angleEnd
+                        : angleEnd - 1;
                     if (type->Tokens.Empty()) {
                         AddMissingToken(*type, type->Tokens.Begin);
                     } else {
@@ -8853,8 +8869,8 @@ private:
                 cursor,
                 end,
                 binary.RightAssociative
-                    ? binary.Precedence
-                    : binary.Precedence + 1);
+                ? binary.Precedence
+                : binary.Precedence + 1);
             if (!right) {
                 break;
             }
@@ -9426,8 +9442,8 @@ private:
                 MarkRangeRole(
                     node.Tokens.Begin,
                     node.FirstChild
-                        ? node.FirstChild->Tokens.Begin
-                        : node.Tokens.End,
+                    ? node.FirstChild->Tokens.Begin
+                    : node.Tokens.End,
                     PunctuationRole::UnaryOperator);
                 if (node.FirstChild) {
                     MarkRangeRole(
@@ -9569,11 +9585,11 @@ private:
                 MarkDelimiterRole(
                     node,
                     node.Kind == NodeKind::LambdaCaptureList
-                        ? TK::Operator_OpenBracket
-                        : TK::Operator_OpenBrace,
+                    ? TK::Operator_OpenBracket
+                    : TK::Operator_OpenBrace,
                     node.Kind == NodeKind::LambdaCaptureList
-                        ? TK::Operator_CloseBracket
-                        : TK::Operator_CloseBrace,
+                    ? TK::Operator_CloseBracket
+                    : TK::Operator_CloseBrace,
                     PunctuationRole::LambdaDelimiter);
                 break;
             case NodeKind::ArgumentList:
@@ -9592,12 +9608,12 @@ private:
                     node,
                     node.Kind == NodeKind::ArrayDeclarator ||
                         node.Kind == NodeKind::StructuredBinding
-                        ? TK::Operator_OpenBracket
-                        : TK::Operator_OpenParenthesis,
+                    ? TK::Operator_OpenBracket
+                    : TK::Operator_OpenParenthesis,
                     node.Kind == NodeKind::ArrayDeclarator ||
                         node.Kind == NodeKind::StructuredBinding
-                        ? TK::Operator_CloseBracket
-                        : TK::Operator_CloseParenthesis,
+                    ? TK::Operator_CloseBracket
+                    : TK::Operator_CloseParenthesis,
                     PunctuationRole::DeclarationDelimiter);
                 break;
             case NodeKind::Condition:

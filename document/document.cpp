@@ -900,6 +900,8 @@ Result Document::Render(
         std::uint32_t LastBreak = InvalidId;
         std::uint32_t ExpandedGapWidth = 0;
         std::uint32_t OwnedLastBreak = InvalidId;
+        std::uint32_t TailBreakPrefix = Infinity;
+        std::uint8_t TailBreakPenalty = 4;
         bool GuaranteedLine = false;
         bool ChildLayoutAllowed = false;
         bool ShapeSensitive = false;
@@ -909,6 +911,8 @@ Result Document::Render(
     {
         Measure Flat;
         Measure Broken;
+        Measure Flexible;
+        std::uint8_t FirstBreakPenalty = 4;
         std::uint32_t LastBreak = InvalidId;
         std::uint32_t OwnedLastBreak = InvalidId;
         bool GuaranteedLine = false;
@@ -963,6 +967,8 @@ Result Document::Render(
         }
         Measure flat;
         Measure broken;
+        Measure flexible;
+        std::uint8_t firstBreakPenalty = 0;
         std::uint32_t lastBreak = InvalidId;
         std::uint32_t ownedBreak = InvalidId;
         bool guaranteedLine = false;
@@ -996,6 +1002,11 @@ Result Document::Render(
                 flat.Width = Infinity;
                 flat.Line = true;
                 guaranteedLine = true;
+            }
+            flexible = broken;
+            if (!flat.Line && !forced && entry.OwnedLastBreak != InvalidId) {
+                flexible = summary.Broken;
+                firstBreakPenalty = node.Group.BreakPenalty;
             }
             summary = summaries.back();
             summaries.pop_back();
@@ -1079,11 +1090,26 @@ Result Document::Render(
                 lastBreak = static_cast<std::uint32_t>(i);
             }
         }
+        if (node.Type != Kind::Begin) {
+            flexible = broken;
+            if (!flat.Line && node.Owner != InvalidId) {
+                firstBreakPenalty =
+                    Nodes_[Groups_[node.Owner]].Group.BreakPenalty;
+            }
+        }
         entry.Flat = flat;
         entry.FlatTail = summary.Flat;
         entry.BrokenTail = summary.Broken;
+        if (summary.Flexible.Line) {
+            entry.TailBreakPrefix = summary.Flexible.Prefix;
+            entry.TailBreakPenalty = summary.FirstBreakPenalty;
+        }
         summary.Flat = Join(flat, summary.Flat);
         summary.Broken = Join(broken, summary.Broken);
+        summary.Flexible = Join(flexible, summary.Flexible);
+        if (flexible.Line) {
+            summary.FirstBreakPenalty = firstBreakPenalty;
+        }
         if (summary.LastBreak == InvalidId) {
             summary.LastBreak = lastBreak;
         }
@@ -1205,12 +1231,14 @@ Result Document::Render(
     auto tailWidth = [&] (Measure tail) {
         return tail.Line ? tail.Prefix : AddWidth(tail.Prefix, frame.Tail);
     };
-    auto groupTail = [&] (const Cache& entry) {
-        // Child-only candidates retain the owner's flat suffix demand.
-        // Conditional broken text is checked by the complete probe, so an
-        // underestimated suffix can reject a candidate but never accept an
-        // overflowing one.
-        return tailWidth(frame.OwnedFlat ? entry.FlatTail : entry.BrokenTail);
+    auto groupTail = [&] (const Cache& entry, std::uint8_t penalty) {
+        const auto width =
+            tailWidth(frame.OwnedFlat ? entry.FlatTail : entry.BrokenTail);
+        // Keep costly groups flat when a cheaper following group can break.
+        // An owned-flat parent still requires its complete flat suffix.
+        return !frame.OwnedFlat && penalty > entry.TailBreakPenalty
+            ? std::min(width, entry.TailBreakPrefix)
+            : width;
     };
     auto resolveIndent = [&] (AnchorId id, std::uint32_t requiredWidth) {
         auto indent = frame.Indent;
@@ -1223,8 +1251,8 @@ Result Document::Render(
                     AddWidth(
                         anchor.Block,
                         anchor.SharedOffset != InvalidId && spec.Group.Minimum
-                            ? anchor.SharedOffset
-                            : spec.Group.Minimum),
+                        ? anchor.SharedOffset
+                        : spec.Group.Minimum),
                     Infinity - 1);
                 indent = std::max(indent, minimum);
                 if (indent >= policy.Width ||
@@ -1234,8 +1262,8 @@ Result Document::Render(
                         anchor.Block,
                         anchor.SharedOffset != InvalidId &&
                             spec.Group.Fallback == int32_t(spec.Group.Minimum)
-                            ? int32_t(anchor.SharedOffset)
-                            : spec.Group.Fallback);
+                        ? int32_t(anchor.SharedOffset)
+                        : spec.Group.Fallback);
                 }
             }
         }
@@ -1304,7 +1332,7 @@ Result Document::Render(
         const auto& node = Nodes_[i];
         const auto& entry = cache[i];
         if (node.Type == Kind::Begin) {
-            const auto tail = groupTail(entry);
+            const auto tail = groupTail(entry, node.Group.BreakPenalty);
             const bool mandatory = frame.Mandatory != InvalidId &&
                 frame.Mandatory >= i && frame.Mandatory <= node.Group.Match &&
                 lines == frame.StartLine;
@@ -1503,8 +1531,8 @@ Result Document::Render(
             }
             const auto target = Offset(
                 node.Group.Alignment == AnchorKind::BlockRelative
-                    ? base
-                    : column,
+                ? base
+                : column,
                 offset);
             anchors[node.Group.Anchor] =
                 {target, base, static_cast<std::uint32_t>(i), sharedOffset};
@@ -1775,8 +1803,8 @@ Result Document::Render(
                     line = !fits(AddWidth(
                         entry.ExpandedGapWidth,
                         gap.FitNextSegment
-                            ? gap.RequiredWidth
-                            : tailWidth(entry.BrokenTail))) ||
+                        ? gap.RequiredWidth
+                        : tailWidth(entry.BrokenTail))) ||
                         (frame.Mandatory == i &&
                             (frame.ForceOwned
                                 ? !frame.OwnedLine
@@ -1878,7 +1906,9 @@ Result Document::Render(
         if (!layoutSelected && node.Type == Kind::Begin &&
             entry.ChildLayoutAllowed && entry.OwnedLastBreak != InvalidId &&
             !frame.Flat && !entry.Flat.Line && entry.Flat.CanBreak &&
-            !fits(AddWidth(entry.Flat.Width, groupTail(entry))))
+            !fits(AddWidth(
+                entry.Flat.Width,
+                groupTail(entry, node.Group.BreakPenalty))))
         {
             // Compare parent breaks with bounded child-only layouts. Minimize
             // penalized newlines, then lines, then multiline groups; ties keep
@@ -1924,7 +1954,7 @@ Result Document::Render(
                 const auto savedLineIndent = lineIndent;
                 const auto savedLinePrefix = linePrefix;
                 const auto savedDepth = frames.size();
-                const auto tail = groupTail(entry);
+                const auto tail = groupTail(entry, node.Group.BreakPenalty);
                 childLayoutBase = savedDepth;
                 childLayoutEnd = node.Group.Match;
                 std::size_t bestCost = 0;

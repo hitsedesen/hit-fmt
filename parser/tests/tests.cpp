@@ -709,8 +709,8 @@ TEST(Parser, DirectLambdaArgumentsHaveOneExpressionOwner)
             }
             EXPECT_EQ(
                 list->LastChild
-                    ? list->LastChild->Tokens.End
-                    : list->Tokens.Begin + 1,
+                ? list->LastChild->Tokens.End
+                : list->Tokens.Begin + 1,
                 list->Tokens.End - 1);
         }
     }
@@ -757,9 +757,9 @@ TEST(Parser, DirectLambdaArgumentsHaveOneExpressionOwner)
             ASSERT_NE(conditional->FirstChild, nullptr);
             const auto* middle = conditional->FirstChild->NextSibling;
             ASSERT_NE(middle, nullptr);
-            if (middle->Kind == BinaryExpression &&
-                tree.SourceText(middle->Tokens).find(',') !=
-                    std::string_view::npos)
+            if (middle->Kind == BinaryExpression && tree
+                .SourceText(middle->Tokens)
+                .find(',') != std::string_view::npos)
             {
                 commaMiddle = true;
             }
@@ -808,8 +808,8 @@ TEST(Parser, TypedLambdaDirectInitializersRetainNamedDeclarations)
         EXPECT_EQ(
             tree.SourceText(owner->FirstChild->Tokens),
             std::string_view(candidate).starts_with("const")
-                ? "const Registry"
-                : "Registry");
+            ? "const Registry"
+            : "Registry");
         const auto* outerList = owner->FirstChild->NextSibling;
         ASSERT_NE(outerList, nullptr);
         ASSERT_EQ(outerList->Kind, InitDeclaratorList);
@@ -832,8 +832,8 @@ TEST(Parser, TypedLambdaDirectInitializersRetainNamedDeclarations)
         EXPECT_EQ(
             LambdaOwnershipNodes(*lambdas[0], ParameterDeclaration).size(),
             std::string_view(candidate).find("int v") != std::string_view::npos
-                ? 1u
-                : 0u);
+            ? 1u
+            : 0u);
         EXPECT_EQ(LambdaOwnershipNodes(*owner, Initializer).size(), 1u);
         EXPECT_GE(LambdaOwnershipNodes(*owner, ArgumentList).size(), 1u);
         EXPECT_EQ(LambdaOwnershipNodes(*owner, LambdaBody).size(), 1u);
@@ -997,8 +997,8 @@ TEST(Parser, UncertainLambdaSuffixCannotDiscoverDownstreamBody)
             bodies.size(),
             std::string_view(candidate).find("return 2") !=
                 std::string_view::npos
-                ? 1u
-                : 0u);
+            ? 1u
+            : 0u);
         EXPECT_EQ(LambdaOwnershipNodes(*owner, StructuredBinding).size(), 0u);
         EXPECT_EQ(
             tree.SourceText(tree.Root().LastChild->Tokens),
@@ -2078,8 +2078,8 @@ TEST(Parser, RecoveredRequiresSkipNeedsValidMapDespitePopulatedOuterPairs)
             EXPECT_EQ(
                 tree.Kind(mate),
                 tree.Token(i).Text.Begin == parameter
-                    ? tokenizer::TokenKind::Operator_CloseParenthesis
-                    : tokenizer::TokenKind::Operator_CloseBrace);
+                ? tokenizer::TokenKind::Operator_CloseParenthesis
+                : tokenizer::TokenKind::Operator_CloseBrace);
         }
         ASSERT_NE(tree.Root().FirstChild, nullptr);
         EXPECT_EQ(
@@ -2440,13 +2440,13 @@ TEST(Parser, RebindsWhitespaceWithoutReclassifyingTokens)
     }
 
     // Gap edits can update positions without running the lexer again.
-    const auto source = input.View().View();
+    const auto source = input
+        .View()
+        .View();
     const auto beforeBrace = source.find(" {");
     const auto beforeReturn = source.find(" return");
     const auto beforeClose = source.find(" }");
-    const std::array<
-        parser::WhitespaceEdit,
-        3> edits{
+    const std::array<parser::WhitespaceEdit, 3> edits{
         {
             {
                 static_cast<util::SourceOffset>(beforeBrace),
@@ -2487,13 +2487,13 @@ TEST(Parser, RebindsWhitespaceWithoutReclassifyingTokens)
             fromEdits->TokenPosition(i).Column,
             reparsed.TokenPosition(i).Column);
     }
-    const auto expanded = reformatted.View().View();
+    const auto expanded = reformatted
+        .View()
+        .View();
     const auto beforeOpen = expanded.find(")\n{") + 1;
     const auto beforeBody = expanded.find("{\n  return") + 1;
     const auto beforeEnd = expanded.find(";\n}") + 1;
-    const std::array<
-        parser::WhitespaceEdit,
-        3> mergedEdits{
+    const std::array<parser::WhitespaceEdit, 3> mergedEdits{
         {
             {
                 static_cast<util::SourceOffset>(beforeOpen),
@@ -2523,9 +2523,7 @@ TEST(Parser, RebindsWhitespaceWithoutReclassifyingTokens)
             original.TokenPosition(i).Column);
     }
     PaddedInput joined("int f() { returnvalue + 1; }\n");
-    const std::array<
-        parser::WhitespaceEdit,
-        1> unsafe{
+    const std::array<parser::WhitespaceEdit, 1> unsafe{
         {
             {
                 static_cast<util::SourceOffset>(source.find(" value")),
@@ -2537,9 +2535,7 @@ TEST(Parser, RebindsWhitespaceWithoutReclassifyingTokens)
     EXPECT_FALSE(original.RebindWhitespaceEdits(joined.View(), unsafe));
     EXPECT_FALSE(original.RebindWhitespaceGaps(joined.View()));
     PaddedInput tight("int f() { return value+ 1; }\n");
-    const std::array<
-        parser::WhitespaceEdit,
-        1> safe{
+    const std::array<parser::WhitespaceEdit, 1> safe{
         {
             {
                 static_cast<util::SourceOffset>(source.find(" + ")),
@@ -2564,11 +2560,11 @@ TEST(Parser, RebindsWhitespaceWithoutReclassifyingTokens)
     PaddedInput unicodeSpaced("int f() { /* ñ */ return    x; }\n");
     auto unicodeTree =
         parser::Parse(unicode.View(), [] (parser::ParseError) { });
-    auto unicodeSource = unicode.View().View();
+    auto unicodeSource = unicode
+        .View()
+        .View();
     auto gap = unicodeSource.find(" x;");
-    const std::array<
-        parser::WhitespaceEdit,
-        1> unicodeEdit{
+    const std::array<parser::WhitespaceEdit, 1> unicodeEdit{
         {
             {
                 static_cast<util::SourceOffset>(gap),
@@ -2617,7 +2613,11 @@ TEST(Parser, RebindsMatchingTokensWithChangedComments)
     auto rebound = original.RebindMatchingTokens(changed.View());
     ASSERT_TRUE(rebound);
     EXPECT_EQ(rebound->TokenCount(), original.TokenCount());
-    EXPECT_EQ(rebound->Source(), changed.View().View());
+    EXPECT_EQ(
+        rebound->Source(),
+        changed
+            .View()
+            .View());
     EXPECT_FALSE(original.RebindMatchingTokens(unsafe.View()));
 }
 
@@ -2707,7 +2707,10 @@ TEST(Parser, RemovesNullStatementsWithoutReparsingSyntax)
     parser::TokenIndex removed = original.TokenCount();
     for (parser::TokenIndex i = 0; i < original.TokenCount(); ++i) {
         if (original.Kind(i) == tokenizer::TokenKind::Operator_Semicolon &&
-            original.Token(i).Text.Begin == input.View().View().find("{;") + 1)
+            original.Token(i).Text.Begin == input
+                .View()
+                .View()
+                .find("{;") + 1)
         {
             removed = i;
             break;
@@ -2973,7 +2976,8 @@ TEST(Parser, RecordHeadTemplateArgumentsOwnTheirSeparators)
         const auto parsed = parser::Parse(
             padded.View(),
             [
-                &] (
+                &
+            ] (
                 parser::ParseError error) { errors
                         .push_back(std::move(error)); });
         EXPECT_TRUE(errors.empty());
@@ -3024,8 +3028,8 @@ TEST(Parser, RecordHeadTemplateArgumentsOwnTheirSeparators)
                 EXPECT_EQ(
                     parsed.Role(i),
                     owned
-                        ? parser::PunctuationRole::ListSeparator
-                        : parser::PunctuationRole::Generic);
+                    ? parser::PunctuationRole::ListSeparator
+                    : parser::PunctuationRole::Generic);
             }
         }
     };
@@ -3271,9 +3275,7 @@ TEST(Parser, RecordHeadTemplateArgumentsOwnTheirSeparators)
 
 TEST(Parser, RecordHeadChildrenAreBoundedWithoutGuessingOperands)
 {
-    const std::pair<
-        std::string_view,
-        size_t> cases[] = {
+    const std::pair<std::string_view, size_t> cases[] = {
         {"struct Plain {};", 0},
         {"struct Outer::Inner {};", 0},
         {"template<> struct Outer<int>::Inner<long,char> {};", 2},
@@ -3352,9 +3354,7 @@ TEST(Parser, RecordHeadChildrenAreBoundedWithoutGuessingOperands)
         ordinaryInput.View(),
         [&] (parser::ParseError error) { errors.push_back(std::move(error)); });
     EXPECT_TRUE(errors.empty());
-    const std::pair<
-        parser::NodeKind,
-        std::string_view> expected[] = {
+    const std::pair<parser::NodeKind, std::string_view> expected[] = {
         {parser::NodeKind::ParameterList, "int first=(1<2)"},
         {parser::NodeKind::ArgumentList, "(1<2)"},
         {parser::NodeKind::InitializerList, "(1<2)"},
@@ -3426,7 +3426,8 @@ TEST(Parser, RequiresClauseOwnsNestedExpressionBeforeDeclaration)
             const auto tree = parser::Parse(
                 input.View(),
                 [
-                    &] (
+                    &
+                ] (
                     parser::ParseError error) { errors
                             .push_back(std::move(error)); });
             EXPECT_TRUE(errors.empty());
@@ -3450,8 +3451,8 @@ TEST(Parser, RequiresClauseOwnsNestedExpressionBeforeDeclaration)
             EXPECT_EQ(
                 following->Kind,
                 function
-                    ? parser::NodeKind::FunctionDefinition
-                    : parser::NodeKind::RecordDeclaration);
+                ? parser::NodeKind::FunctionDefinition
+                : parser::NodeKind::RecordDeclaration);
             EXPECT_EQ(tree.SourceText(following->Tokens), declaration);
             EXPECT_EQ(following->Tokens.Begin, clause->Tokens.End);
             EXPECT_EQ(following->NextSibling, nullptr);
@@ -3506,8 +3507,8 @@ TEST(Parser, RequiresClauseOwnsNestedExpressionBeforeDeclaration)
             EXPECT_EQ(
                 parameters,
                 constraintText.find("(T value)") != std::string_view::npos
-                    ? 1u
-                    : 0u);
+                ? 1u
+                : 0u);
             const auto* outside = owner->NextSibling;
             ASSERT_NE(outside, nullptr);
             EXPECT_EQ(outside->Kind, parser::NodeKind::Declaration);
@@ -3793,7 +3794,8 @@ TEST(Parser, RequiresClauseDoesNotCertifyMalformedTemplateReturnPrefix)
         }
         ASSERT_NE(clause, nullptr);
         ASSERT_NE(clause->FirstChild, nullptr);
-        EXPECT_TRUE(tree.SourceText(clause->FirstChild->Tokens)
+        EXPECT_TRUE(tree
+            .SourceText(clause->FirstChild->Tokens)
             .starts_with("Ready<T>\n" + std::string(prefix)));
     }
 }
@@ -3833,7 +3835,8 @@ TEST(Parser, RequiresClausePreservesOperatorAndUnknownConstraints)
         const auto tree = parser::Parse(
             input.View(),
             [
-                &] (
+                &
+            ] (
                 parser::ParseError error) { errors
                         .push_back(std::move(error)); });
         if (constraint.Invalid) {
@@ -3936,7 +3939,8 @@ TEST(Parser, RequiresClauseKeepsBoundaryCommentsAndTerminalRecovery)
             const auto tree = parser::Parse(
                 input.View(),
                 [
-                    &] (
+                    &
+                ] (
                     parser::ParseError error) { errors
                             .push_back(std::move(error)); });
             const auto invalidOffset = source.find('@');
@@ -4054,7 +4058,8 @@ TEST(Parser, RequiresClauseKeepsUnparsedSuffixAndDiagnosesMissingBody)
         const auto tree = parser::Parse(
             input.View(),
             [
-                &] (
+                &
+            ] (
                 parser::ParseError error) { errors
                         .push_back(std::move(error)); });
         if (missingBody) {
@@ -4121,8 +4126,9 @@ TEST(Parser, RequiresClauseRetainsDirectiveInsideRequirementBody)
                     tokenizer::TokenKind::PreprocessingDirective)
                 {
                     ++directives;
-                    EXPECT_TRUE(tree.TokenText(
-                        token).starts_with("#define REQUIREMENT_VALUE 1"));
+                    EXPECT_TRUE(tree
+                        .TokenText(token)
+                        .starts_with("#define REQUIREMENT_VALUE 1"));
                 }
             }
         }
@@ -4165,7 +4171,8 @@ TEST(Parser, ParameterDefaultsKeepDelimitedComparisonBoundaries)
         const auto tree = parser::Parse(
             input.View(),
             [
-                &] (
+                &
+            ] (
                 parser::ParseError error) { errors
                         .push_back(std::move(error)); });
         EXPECT_TRUE(errors.empty());
@@ -4174,9 +4181,9 @@ TEST(Parser, ParameterDefaultsKeepDelimitedComparisonBoundaries)
         while (!pending.empty()) {
             const auto* node = pending.back();
             pending.pop_back();
-            if (node->Kind == parser::NodeKind::ParameterList &&
-                tree.SourceText(
-                    node->Tokens).starts_with("(" + std::string(firstText)))
+            if (node->Kind == parser::NodeKind::ParameterList && tree
+                .SourceText(node->Tokens)
+                .starts_with("(" + std::string(firstText)))
             {
                 parameters = node;
             }
@@ -4248,9 +4255,7 @@ TEST(Parser, QualifiedConstructorHeadsKeepTerminalDeclaratorNames)
     const auto tree =
         parser::Parse(input.View(), [&] (parser::ParseError) { ++errors; });
     EXPECT_EQ(errors, 0);
-    const std::array<
-        std::pair<std::string_view, std::string_view>,
-        9> cases{
+    const std::array<std::pair<std::string_view, std::string_view>, 9> cases{
         {
             {"Meter::Meter()", "Meter"},
             {"Meter::Meter(int", "Meter"},
@@ -4394,9 +4399,7 @@ TEST(Parser, FunctionKindsClassifyOnlyActualFunctionOwners)
 
 TEST(Parser, FunctionKindsLeaveUncertainHeadsAndNonfunctionsUnknown)
 {
-    const std::array<
-        std::string_view,
-        30> cases{
+    const std::array<std::string_view, 30> cases{
         {
             "Loose();",
             "Owner::Other();",
@@ -4517,7 +4520,9 @@ TEST(Parser, FunctionKindsSurviveOwningCopiesMovesAndRebinds)
     assigned = copy;
     EXPECT_EQ(assigned.GetFunctionKind(), parser::FunctionKind::Constructor);
 
-    const auto source = std::string(input.View().View());
+    const auto source = std::string(input
+        .View()
+        .View());
     PaddedInput spaced(source + "\n");
     auto whitespace = original.RebindWhitespace(spaced.View());
     auto gaps = original.RebindWhitespaceGaps(spaced.View());
@@ -4613,9 +4618,7 @@ TEST(Parser, FunctionKindsRetainBalancedQualifiedAndExplicitReturnEvidence)
         std::string_view Name;
         size_t OuterPointers;
     };
-    const std::array<
-        Case,
-        28> cases{
+    const std::array<Case, 28> cases{
         {
             {
                 "Owner<Pair<int, long>>::Owner() {}",
@@ -4834,8 +4837,8 @@ TEST(Parser, FunctionKindsRetainBalancedQualifiedAndExplicitReturnEvidence)
                 EXPECT_EQ(
                     child->Kind,
                     item.Kind == parser::FunctionKind::Destructor
-                        ? parser::NodeKind::DestructorName
-                        : parser::NodeKind::DeclaratorName);
+                    ? parser::NodeKind::DestructorName
+                    : parser::NodeKind::DeclaratorName);
             } else {
                 EXPECT_EQ(child->Kind, parser::NodeKind::FunctionDeclarator);
                 parameterBegin = child->Tokens.Begin;
@@ -4868,8 +4871,8 @@ TEST(Parser, FunctionKindsRetainBalancedQualifiedAndExplicitReturnEvidence)
                     EXPECT_EQ(
                         role,
                         kind == tokenizer::TokenKind::Operator_Star
-                            ? parser::PunctuationRole::PointerDeclarator
-                            : parser::PunctuationRole::ReferenceDeclarator);
+                        ? parser::PunctuationRole::PointerDeclarator
+                        : parser::PunctuationRole::ReferenceDeclarator);
                 }
             }
         }
@@ -5197,8 +5200,8 @@ TEST(Parser, ConstructorInitializerCapturesAreNotOuterArrayDeclarators)
             members,
             source.find("callback") != std::string_view::npos &&
                 source.find("first(0)") == std::string_view::npos
-                ? 1u
-                : 2u);
+            ? 1u
+            : 2u);
         EXPECT_EQ(
             lambdas,
             source.find("bind") == std::string_view::npos ? 2u : 1u);

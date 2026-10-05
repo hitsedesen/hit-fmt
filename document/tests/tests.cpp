@@ -245,8 +245,8 @@ TEST(GroupLayout, ContinuationStarterLineGolden)
                 document,
                 width,
                 inlineLambda
-                    ? "realized delimiter with lambda"
-                    : "realized delimiter with item");
+                ? "realized delimiter with lambda"
+                : "realized delimiter with item");
         }
     }
     for (const bool rhsLine : {false, true}) {
@@ -420,8 +420,8 @@ TEST(GroupLayout, PhysicalLineBasesGolden)
             document,
             80,
             broken
-                ? "fixed body with broken captures"
-                : "fixed body with flat captures");
+            ? "fixed body with broken captures"
+            : "fixed body with flat captures");
     }
     test::golden::ExpectGolden(
         std::filesystem::path(DOCUMENT_TESTDATA_DIR) /
@@ -943,6 +943,65 @@ TEST(GroupLayout, ChildFittingCostGolden)
             actual += '\n';
         }
     }
+    for (const auto width : {18u, 34u, 80u}) {
+        for (const auto [typePenalty, valuePenalty] :
+            {std::pair{0u, 0u}, {3u, 0u}, {3u, 2u}, {2u, 3u}, {3u, 3u}})
+        {
+            for (const bool breakableValue : {false, true}) {
+                Document document("");
+                document.Text("Map<");
+                const auto type = document.BeginGroup({
+                    .Mode = GroupMode::Fill,
+                    .Indent = 4,
+                    .StructuralBase = true,
+                    .BreakPenalty = static_cast<std::uint8_t>(typePenalty),
+                });
+                document.ConditionalGap(
+                    type,
+                    {GapKind::Flat, 0},
+                    {GapKind::Hard, 0});
+                document.Text("Key,");
+                document.ConditionalGap(
+                    type,
+                    {GapKind::Flat, 1},
+                    {GapKind::Hard, 0});
+                document.Text("Value>");
+                document.EndGroup(type);
+                document.Text(" value{");
+                const auto value = document.BeginGroup({
+                    .Mode = GroupMode::Fill,
+                    .Indent = 4,
+                    .StructuralBase = true,
+                    .BreakPenalty = static_cast<std::uint8_t>(valuePenalty),
+                });
+                const auto broken = breakableValue
+                    ? GapKind::Hard
+                    : GapKind::Flat;
+                document.ConditionalGap(value, {GapKind::Flat, 0}, {broken, 0});
+                document.Text("one,");
+                document.ConditionalGap(value, {GapKind::Flat, 1}, {broken, 1});
+                document.Text("two,");
+                document.ConditionalGap(value, {GapKind::Flat, 1}, {broken, 1});
+                document.Text("three}");
+                document.EndGroup(value);
+                document.Text(";");
+                ASSERT_TRUE(document.Seal());
+                const auto output = document.Render({.Width = width});
+                ASSERT_TRUE(output.State);
+                EXPECT_EQ(
+                    output.Broken[type] != 0,
+                    width < 80 &&
+                    (!breakableValue || width == 18 ||
+                        typePenalty <= valuePenalty));
+                actual += "sibling penalties=" + std::to_string(typePenalty) +
+                    "," + std::to_string(valuePenalty) + " width=" +
+                    std::to_string(width) + " breakable=" +
+                    std::to_string(breakableValue) + "\n";
+                actual.append(output.Text);
+                actual += '\n';
+            }
+        }
+    }
     test::golden::ExpectGolden(
         std::filesystem::path(DOCUMENT_TESTDATA_DIR) /
         "child-fit-cost.expected",
@@ -1292,8 +1351,8 @@ TEST(GroupLayout, DelimiterRequirementsAndAnchorReuseGolden)
                 document,
                 width,
                 borrowed
-                    ? "borrowed saturated demand"
-                    : "generated saturated demand");
+                ? "borrowed saturated demand"
+                : "generated saturated demand");
         }
     }
     for (bool borrowed : {false, true}) {
@@ -1316,8 +1375,8 @@ TEST(GroupLayout, DelimiterRequirementsAndAnchorReuseGolden)
                 document,
                 width,
                 borrowed
-                    ? "borrowed unbreakable atom"
-                    : "generated unbreakable atom");
+                ? "borrowed unbreakable atom"
+                : "generated unbreakable atom");
         }
     }
     {
@@ -1716,7 +1775,8 @@ TEST(GroupLayout, SourceRunsMatchIndividualAtoms)
             const auto fill = [&] (Document& document, bool compact) {
                 const auto text =
                     [
-                        &] (
+                        &
+                    ] (
                         std::uint32_t begin,
                         std::uint32_t end,
                         Identity id,
@@ -1977,9 +2037,9 @@ TEST(GroupLayout, BorrowedFlatWhitespaceSelectionMeasurementAndMapping)
 
 TEST(GroupLayout, RejectsMalformedGapSourcesAndZeroNewlineCounts)
 {
-    constexpr std::array<
-        Provenance,
-        5> badRanges{{{InvalidId, 0}, {0, InvalidId}, {4, 3}, {0, 8}, {8, 8}}};
+    constexpr std::array<Provenance, 5> badRanges{
+        {{InvalidId, 0}, {0, InvalidId}, {4, 3}, {0, 8}, {8, 8}},
+    };
     for (auto range : badRanges) {
         Document document(" \t ");
         GapSpec spec{GapKind::Flat, 0};
@@ -2093,9 +2153,12 @@ TEST(GroupLayout, BorrowedIndentAfterBlankLinesPreservesBytesAndBlockBase)
 
 TEST(GroupLayout, SourceLineIndentPrefixesAndMappingsGolden)
 {
-    constexpr std::array<
-        std::string_view,
-        4> prefixes{"\n", "\r\n", " \t\r\n\t\n\n", "\n"};
+    constexpr std::array<std::string_view, 4> prefixes{
+        "\n",
+        "\r\n",
+        " \t\r\n\t\n\n",
+        "\n",
+    };
     std::string actual;
     for (std::size_t index = 0; index < prefixes.size(); ++index) {
         const bool commentCR = index == prefixes.size() - 1;
@@ -2277,7 +2340,12 @@ TEST(GroupLayout, SourceLineIndentForceBreakStillRequiresEditableOwnedBoundary)
     // Borrowing made the group multiline, but cannot satisfy Always. Fill must
     // use the last editable owned gap even though it would otherwise fit.
     ExpectText(document, 80, "\n  aa bb\n  cc");
-    ASSERT_EQ(document.Render().Map.size(), 7u);
+    ASSERT_EQ(
+        document
+            .Render()
+            .Map
+            .size(),
+        7u);
     EXPECT_FALSE(document.Render().Map[5].Exact);
 
     Document earlierBoundary("\n");
@@ -2355,15 +2423,16 @@ TEST(GroupLayout, SourceLineIndentCannotInventEditableBreakWithoutOwnedSite)
     parent = empty.BeginGroup({GroupMode::Fill, 0, true});
     empty.EndGroup(parent);
     ASSERT_TRUE(empty.Seal());
-    EXPECT_TRUE(empty.Render().Text.empty());
+    EXPECT_TRUE(empty
+        .Render()
+        .Text
+        .empty());
     EXPECT_FALSE(empty.Render().Broken[parent]);
 }
 
 TEST(GroupLayout, SourceLineIndentRejectsMalformedRangesPrefixesAndAnchors)
 {
-    constexpr std::array<
-        Provenance,
-        6> badRanges{
+    constexpr std::array<Provenance, 6> badRanges{
         {
             {InvalidId, InvalidId},
             {InvalidId, 0},
@@ -2382,7 +2451,10 @@ TEST(GroupLayout, SourceLineIndentRejectsMalformedRangesPrefixesAndAnchors)
                 badPrefix ? 1 : range.Begin,
                 badPrefix ? 3 : range.End));
             EXPECT_EQ(document.Seal().Code, Error::InvalidSourceRange);
-            EXPECT_TRUE(document.Render().Text.empty());
+            EXPECT_TRUE(document
+                .Render()
+                .Text
+                .empty());
         }
     }
     for (auto prefix : {"", " ", "\n\t", "\r", "\n\r", "x\n", "\v\n"}) {
@@ -2421,9 +2493,9 @@ TEST(GroupLayout, SourceLineIndentRejectsMalformedRangesPrefixesAndAnchors)
 
 TEST(GroupLayout, RejectsMalformedBorrowedIndentEvenWhenFlat)
 {
-    constexpr std::array<
-        Provenance,
-        5> ranges{{{InvalidId, 0}, {0, InvalidId}, {2, 1}, {0, 4}, {4, 4}}};
+    constexpr std::array<Provenance, 5> ranges{
+        {{InvalidId, 0}, {0, InvalidId}, {2, 1}, {0, 4}, {4, 4}},
+    };
     for (auto range : ranges) {
         Document document(" \t ");
         GapSpec spec{GapKind::Flat, 0};
@@ -2760,9 +2832,9 @@ TEST(GroupLayout, RejectsMalformedDocumentsAndDependencyCycles)
 
 TEST(GroupLayout, SourceTextRejectsSentinelOffsetsWithoutThrowing)
 {
-    constexpr std::array<
-        Provenance,
-        3> ranges{{{InvalidId, InvalidId}, {InvalidId, 0}, {0, InvalidId}}};
+    constexpr std::array<Provenance, 3> ranges{
+        {{InvalidId, InvalidId}, {InvalidId, 0}, {0, InvalidId}},
+    };
     for (auto source : {std::string_view{}, std::string_view{"abc"}}) {
         for (bool verbatim : {false, true}) {
             for (auto emit :

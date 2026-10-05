@@ -55,7 +55,9 @@ TEST(FileCheck, OneResultServesCheckAndFixWithoutCountingAppliedFormatting)
     hit_fmt::PrintFileSummaryIssues(checkSummary, checked, false);
     hit_fmt::PrintFileSummaryIssues(fixSummary, checked, true);
     EXPECT_EQ(checkSummary.str(), "formatting mismatch");
-    EXPECT_TRUE(fixSummary.str().empty());
+    EXPECT_TRUE(fixSummary
+        .str()
+        .empty());
     const Input applied(checked.Formatting.Text);
     const auto clean = hit_fmt::CheckFile(applied.View(), configuration);
     EXPECT_EQ(clean.Formatting.Text, checked.Formatting.Text);
@@ -130,7 +132,9 @@ TEST(FileCheck, DiagnosticGoldenUsesOriginalCheckAndFinalFixCoordinates)
             hit_fmt::PrintFileIssues(
                 output,
                 "sample.cpp",
-                input.View().View(),
+                input
+                    .View()
+                    .View(),
                 checked,
                 fix,
                 terminalWidth);
@@ -140,8 +144,8 @@ TEST(FileCheck, DiagnosticGoldenUsesOriginalCheckAndFinalFixCoordinates)
             fixture.Expect(
                 output.str(),
                 terminalWidth == 80
-                    ? (fix ? ".fix.txt" : ".check.txt")
-                    : (fix ? ".fix-narrow.txt" : ".check-narrow.txt"));
+                ? (fix ? ".fix.txt" : ".check.txt")
+                : (fix ? ".fix-narrow.txt" : ".check-narrow.txt"));
         }
     }
 }
@@ -211,7 +215,11 @@ TEST(FileCheck, TokenEndpointAndUnicodePositionsMapWithoutReparsingOutput)
     const auto checked = hit_fmt::CheckFile(input.View(), prepared);
     ASSERT_EQ(checked.Semantic.size(), 4u);
     EXPECT_NE(
-        checked.Semantic.back().Message.find("function declaration"),
+        checked
+            .Semantic
+            .back()
+            .Message
+            .find("function declaration"),
         std::string::npos);
     EXPECT_EQ(
         checked.Semantic[0].Original.Column,
@@ -265,7 +273,11 @@ TEST(FileCheck, ActualProtectedOverflowRemainsFailureInFixMode)
     const Input input(
         "// hit-fmt off\r\nint " "unavoidable_long_name;\r\n// hit-fmt on\r\n");
     const auto checked = hit_fmt::CheckFile(input.View(), prepared);
-    EXPECT_EQ(checked.Formatting.Text, input.View().View());
+    EXPECT_EQ(
+        checked.Formatting.Text,
+        input
+            .View()
+            .View());
     EXPECT_FALSE(checked.FormattingMismatch);
     EXPECT_TRUE(checked.HasFailures(false));
     EXPECT_TRUE(checked.HasFailures(true));

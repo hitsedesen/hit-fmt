@@ -68,8 +68,8 @@ public:
         std::string_view name) const noexcept;
     [[nodiscard]] std::span<const VisualScopeAnnotation> VisualScopes() const;
     [[nodiscard]] std::span<const ChainCallPairAnnotation> ChainScopes() const;
-    [[nodiscard]] std::span<
-        const ChainCallPairAnnotation> StickyChainPairs() const;
+    [[nodiscard]] std::span<const ChainCallPairAnnotation> StickyChainPairs()
+    const;
     [[nodiscard]] bool IsStickyChainPair(
         std::string_view first,
         std::string_view second) const noexcept;

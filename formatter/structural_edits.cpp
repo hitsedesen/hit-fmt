@@ -110,8 +110,13 @@ void CheckAnalysisSource(
     const parser::SyntaxTree& tree,
     const SourceAnalysis& safety)
 {
-    if (safety.Gaps().size() != static_cast<size_t>(tree.TokenCount()) + 1 ||
-        safety.Source().data() != tree.Source().data())
+    if (safety
+        .Gaps()
+        .size() != static_cast<size_t>(tree.TokenCount()) + 1 || safety
+            .Source()
+            .data() != tree
+                .Source()
+                .data())
     {
         throw std::invalid_argument("analysis is not from original source");
     }
@@ -139,7 +144,8 @@ void Walk(
     std::pmr::vector<Frame> stack(&scratch);
     size_t region = 0;
     auto enter = [
-        &] (
+        &
+    ] (
         const parser::Node* node,
         NK parent,
         NK previous,
@@ -148,7 +154,10 @@ void Walk(
         RegionStatus status = RegionStatus::Complete;
         bool trailingLabel = false;
         if (safety) {
-            if (region >= safety->Regions().size()) {
+            if (region >= safety
+                ->Regions()
+                .size())
+            {
                 throw std::invalid_argument("analysis/tree mismatch");
             }
             trailingLabel = !trailingLabels.empty() && trailingLabels[region];
@@ -211,7 +220,10 @@ void Walk(
             stack.pop_back();
         }
     }
-    if (safety && region != safety->Regions().size()) {
+    if (safety && region != safety
+        ->Regions()
+        .size())
+    {
         throw std::invalid_argument("analysis/tree mismatch");
     }
 }
@@ -222,8 +234,9 @@ bool AdjacentComment(const parser::SyntaxTree& tree, parser::TokenRange tokens)
         return true;
     }
     return tokens.End < tree.TokenCount() &&
-        tree.Kind(tokens.End) == TK::Comment &&
-        tree.WhitespaceBefore(tokens.End).find('\n') == std::string_view::npos;
+        tree.Kind(tokens.End) == TK::Comment && tree
+            .WhitespaceBefore(tokens.End)
+            .find('\n') == std::string_view::npos;
 }
 
 struct Include
@@ -265,14 +278,17 @@ bool ParseInclude(const parser::SyntaxTree& tree, TI token, Include& result)
     }
     bool angled = text.front() == '<';
     auto close = text.find(angled ? '>' : '"', 1);
-    if (close == std::string_view::npos || close == 1 ||
-        text.substr(close + 1).find_first_not_of(" \t\r") !=
-            std::string_view::npos)
+    if (close == std::string_view::npos || close == 1 || text
+        .substr(close + 1)
+        .find_first_not_of(" \t\r") != std::string_view::npos)
     {
         return false;
     }
     auto range = tree.Token(token).Text;
-    if (range.End >= tree.Source().size() || tree.Source()[range.End] != '\n') {
+    if (range.End >= tree
+        .Source()
+        .size() || tree.Source()[range.End] != '\n')
+    {
         return false; // Only complete line atoms may move, including their LF.
     }
     // Indentation belongs to the exact line atom too. These gap scans visit
@@ -329,9 +345,11 @@ void ScanIncludeGroups(
         TI end = i + 1;
         Include next;
         while (end < tree.TokenCount() && ParseInclude(tree, end, next) &&
-            group.back().Atom.End == next.Atom.Begin &&
-            tree.TokenText(i).ends_with('\r') ==
-                tree.TokenText(end).ends_with('\r'))
+            group.back().Atom.End == next.Atom.Begin && tree
+                .TokenText(i)
+                .ends_with('\r') == tree
+                    .TokenText(end)
+                    .ends_with('\r'))
         {
             group.push_back(next);
             ++end;
@@ -456,8 +474,8 @@ size_t Validate(std::string_view source, const StructuralPlan& plan)
     for (size_t i = 0; i < ownership.size(); ++i) {
         auto required =
             plan.Operations[i].Kind == StructuralAction::AddMissingControlBraces
-                ? 3u
-                : 4u;
+            ? 3u
+            : 4u;
         if (ownership[i] != required) {
             throw std::invalid_argument("incomplete structural operation");
         }
@@ -565,7 +583,8 @@ StructuralPlan PlanStructuralEdits(
     }
     Walk(tree, &safety, scratchMemory,
         [
-            &] (
+            &
+        ] (
             const parser::Node& node,
             NK parent,
             NK previous,
@@ -723,8 +742,9 @@ StructuralPlan PlanStructuralEdits(
             {
                 Skip(plan, action, tokens, StructuralSkip::Protected);
             } else if (options.PreserveBareCR &&
-                safety.Gaps()[token].HasBareCR &&
-                safety.Original(token).ends_with('\r'))
+                safety.Gaps()[token].HasBareCR && safety
+                    .Original(token)
+                    .ends_with('\r'))
             {
                 // Retain the first original separator of a zero-gap
                 // deletion chain before admission: no cancellation or ID
@@ -835,7 +855,12 @@ StructuralMaterialization MaterializeStructuralEdits(
         cursor = edit.Source.End;
     }
     copy(
-        {cursor, static_cast<parser::SourceOffset>(tree.Source().size())},
+        {
+            cursor,
+            static_cast<parser::SourceOffset>(tree
+                .Source()
+                .size()),
+        },
         NoStructuralAction);
     // Linear nearest-survivor tables bound chains of neighboring deletions.
     std::pmr::vector<TI> before(
@@ -891,7 +916,8 @@ NamespaceCommentPlan PlanNamespaceComments(
     }
     Walk(original, &safety, scratchMemory,
         [
-            &] (
+            &
+        ] (
             const parser::Node& node,
             NK,
             NK,
@@ -963,8 +989,9 @@ NamespaceCommentPlan PlanNamespaceComments(
             auto begin = original.Token(close).Text.End;
             auto comment = original.TokenCount();
             if (close + 1 < original.TokenCount() &&
-                original.Kind(close + 1) == TK::Comment &&
-                original.TokenText(close + 1).starts_with("//") &&
+                original.Kind(close + 1) == TK::Comment && original
+                    .TokenText(close + 1)
+                    .starts_with("//") &&
                 Horizontal(original.WhitespaceAfter(close)))
                 comment = close + 1;
             SR window{begin, comment == original.TokenCount()

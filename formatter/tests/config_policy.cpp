@@ -67,10 +67,9 @@ constexpr std::pair<
 struct TemporaryConfig
 {
     std::filesystem::path Path = std::filesystem::temp_directory_path() /
-        ("hit-fmt-policy-" +
-            std::to_string(
-                std::chrono::steady_clock::now().time_since_epoch().count()) +
-            ".hit-fmt");
+        ("hit-fmt-policy-" + std::to_string(std::chrono::steady_clock::now()
+            .time_since_epoch()
+            .count()) + ".hit-fmt");
 
     explicit TemporaryConfig(std::string_view contents)
     {
@@ -817,7 +816,11 @@ TEST(ConfigPolicy, SchemaCompilesOwnedAnnotationsAndIndependentMetadata)
 
     auto style = config.FormattingStyle;
     const auto annotations = formatter::CompileLibraryAnnotations(style);
-    ASSERT_EQ(annotations.MessagePins().size(), 2u);
+    ASSERT_EQ(
+        annotations
+            .MessagePins()
+            .size(),
+        2u);
     EXPECT_EQ(annotations.MessagePins()[0].Name, "TRACE_MESSAGE");
     ASSERT_NE(annotations.FindMessagePin("WRITE_MESSAGE"), nullptr);
     EXPECT_EQ(
@@ -833,7 +836,11 @@ TEST(ConfigPolicy, SchemaCompilesOwnedAnnotationsAndIndependentMetadata)
     EXPECT_TRUE(annotations.AlwaysBreakChainRoot("ns::BuildPipeline"));
     EXPECT_FALSE(annotations.AlwaysBreakChainRoot("BuildPipeline"));
     EXPECT_FALSE(annotations.AlwaysBreakChainRoot("WRITE_EVENT_IF"));
-    ASSERT_EQ(annotations.VisualScopes().size(), 2u);
+    ASSERT_EQ(
+        annotations
+            .VisualScopes()
+            .size(),
+        2u);
     EXPECT_EQ(annotations.VisualScopes()[0].Begin, "StartList");
     EXPECT_EQ(annotations.VisualScopes()[0].End, "FinishSequence");
     ASSERT_NE(annotations.FindScopeBegin("StartMap"), nullptr);
@@ -844,7 +851,11 @@ TEST(ConfigPolicy, SchemaCompilesOwnedAnnotationsAndIndependentMetadata)
     EXPECT_EQ(
         annotations.VisualScopes()[0].Layout,
         formatter::VisualScopeLayout::PreserveExistingExtraLevel);
-    ASSERT_EQ(annotations.ChainScopes().size(), 2u);
+    ASSERT_EQ(
+        annotations
+            .ChainScopes()
+            .size(),
+        2u);
     EXPECT_EQ(annotations.ChainScopes()[0].First, "OpenChain");
     EXPECT_EQ(annotations.ChainScopes()[0].Second, "CloseChain");
     EXPECT_TRUE(annotations.IsStickyChainPair("Choose", "Write"));
@@ -860,12 +871,22 @@ TEST(ConfigPolicy, SchemaCompilesOwnedAnnotationsAndIndependentMetadata)
     style.StickyChainCallPairs.clear();
     const auto empty = formatter::CompileLibraryAnnotations(style);
     EXPECT_EQ(empty.Chains(), formatter::ChainParticipation::AllSafe);
-    EXPECT_TRUE(empty.MessagePins().empty());
-    EXPECT_TRUE(empty.AlwaysBreakChainRoots().empty());
+    EXPECT_TRUE(empty
+        .MessagePins()
+        .empty());
+    EXPECT_TRUE(empty
+        .AlwaysBreakChainRoots()
+        .empty());
     EXPECT_TRUE(annotations.AlwaysBreakChainRoot("WRITE_EVENT"));
-    EXPECT_TRUE(empty.VisualScopes().empty());
-    EXPECT_TRUE(empty.ChainScopes().empty());
-    EXPECT_TRUE(empty.StickyChainPairs().empty());
+    EXPECT_TRUE(empty
+        .VisualScopes()
+        .empty());
+    EXPECT_TRUE(empty
+        .ChainScopes()
+        .empty());
+    EXPECT_TRUE(empty
+        .StickyChainPairs()
+        .empty());
     EXPECT_EQ(annotations.ChainScopes()[0].Second, "CloseChain");
     EXPECT_TRUE(annotations.IsStickyChainPair("Choose", "Write"));
     EXPECT_NE(annotations.FindMessagePin("WRITE_MESSAGE"), nullptr);
@@ -943,14 +964,28 @@ TEST(ConfigPolicy, SchemaCompilesOwnedAnnotationsAndIndependentMetadata)
     EXPECT_EQ(
         yt.FormattingStyle.CapturesCloser,
         formatter::CloserPlacement::OwnLine);
-    EXPECT_EQ(ytAnnotations.MessagePins().size(), 17u);
-    EXPECT_TRUE(ytAnnotations.ChainRoots().empty());
+    EXPECT_EQ(
+        ytAnnotations
+            .MessagePins()
+            .size(),
+        17u);
+    EXPECT_TRUE(ytAnnotations
+        .ChainRoots()
+        .empty());
     EXPECT_EQ(ytAnnotations.Chains(), formatter::ChainParticipation::AllSafe);
-    EXPECT_EQ(ytAnnotations.VisualScopes().size(), 3u);
+    EXPECT_EQ(
+        ytAnnotations
+            .VisualScopes()
+            .size(),
+        3u);
     EXPECT_TRUE(ytAnnotations.AlwaysBreakChainRoot("TError"));
     EXPECT_TRUE(ytAnnotations.AlwaysBreakChainRoot("YT_TLOG_TRACE"));
     EXPECT_FALSE(ytAnnotations.AlwaysBreakChainRoot("YT_TLOG_TRACE_IF"));
-    EXPECT_EQ(ytAnnotations.ChainScopes().size(), 3u);
+    EXPECT_EQ(
+        ytAnnotations
+            .ChainScopes()
+            .size(),
+        3u);
     EXPECT_TRUE(ytAnnotations.IsStickyChainPair("Item", "Value"));
     EXPECT_TRUE(ytAnnotations.IsStickyChainPair("Item", "BeginMap"));
     EXPECT_TRUE(ytAnnotations.IsStickyChainPair("registrar", "Parameter"));

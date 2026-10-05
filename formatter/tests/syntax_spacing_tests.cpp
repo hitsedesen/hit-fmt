@@ -170,7 +170,10 @@ TEST(SyntaxSpacing, EveryControlProjectsPoliciesOnlyToItsClassifiedSites)
             for (auto context : {GapContext::Preserved, GapContext::Rebuilt}) {
                 auto expected = GapUsesSpace(policy, context);
                 if (expected && safety.Separation == GapSeparation::Required &&
-                    !analysis.Safety.Original(safety).empty())
+                    !analysis
+                        .Safety
+                        .Original(safety)
+                        .empty())
                 {
                     expected = true;
                 }
@@ -1211,7 +1214,10 @@ TEST(SyntaxSpacing, RecoveredSizeofPackOperandDoesNotOwnGroupingInteriors)
                 false);
             // The empty closer gap sits at the recovery range's exclusive
             // end. It permits insertion lexically, but lacks syntax authority.
-            EXPECT_TRUE(analysis.Safety.Original(close).empty());
+            EXPECT_TRUE(analysis
+                .Safety
+                .Original(close)
+                .empty());
             EXPECT_TRUE(analysis.Safety.CanReplaceGap(close, " "));
             for (auto id : {open + 1, close}) {
                 const auto& gap = analysis.Spacing.Gaps()[id];
@@ -1593,7 +1599,9 @@ TEST(SyntaxSpacing, ArenaStorageScalesWithGapsNotOptionsOrNodeWidth)
         EXPECT_EQ(file.Calls, 1u);
         EXPECT_EQ(
             file.Bytes,
-            spacing.Gaps().size() * sizeof(SyntaxGapPreference));
+            spacing
+                .Gaps()
+                .size() * sizeof(SyntaxGapPreference));
         // Width does not collect every sibling onto the scratch stack.
         EXPECT_LT(scratch.Bytes, 4096u);
         const auto calls = file.Calls + scratch.Calls;
@@ -1666,8 +1674,17 @@ TEST(SyntaxSpacing,
     const auto slash = legacy.Before("// divisor");
     EXPECT_EQ(legacy.Safety.Gaps()[slash].Separation, GapSeparation::Required);
     EXPECT_EQ(spacing.TrailingCommentCount(slash, legacy.Safety), 1);
-    ASSERT_EQ(spacing.Gaps().size(), legacy.Spacing.Gaps().size());
-    for (size_t i = 0; i < spacing.Gaps().size(); ++i) {
+    ASSERT_EQ(
+        spacing
+            .Gaps()
+            .size(),
+        legacy
+            .Spacing
+            .Gaps()
+            .size());
+    for (size_t i = 0; i < spacing
+        .Gaps()
+        .size(); ++i) {
         EXPECT_EQ(spacing.Gaps()[i].Owner, legacy.Spacing.Gaps()[i].Owner);
         EXPECT_EQ(
             spacing.Gaps()[i].Category,

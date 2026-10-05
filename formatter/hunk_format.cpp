@@ -279,7 +279,9 @@ ChangedFormatResult FormatChanged(
     const auto scope = NarrowScope(
         permittedBytes,
         request.EditScope,
-        tree.Source().size(),
+        tree
+            .Source()
+            .size(),
         file);
     for (const auto& protection : safety.Protection()) {
         if (detail::HunkScopeIntersects(selectedBytes, protection.Source)) {
@@ -293,7 +295,9 @@ ChangedFormatResult FormatChanged(
             coverage.push_back({gap.Source, Reason::LimitedLayout});
     // EOF is never an owned insertion point, even with the last line selected.
     // That limits layout-check coverage; it is not evidence of a missing LF.
-    const auto size = CheckedSourceAnalysisSize(tree.Source().size());
+    const auto size = CheckedSourceAnalysisSize(tree
+        .Source()
+        .size());
     if (size && detail::HunkScopeContains(selectedBytes, {size - 1, size}))
         coverage.push_back({{size - 1, size}, Reason::LimitedLayout});
     ChangedFormatResult result;

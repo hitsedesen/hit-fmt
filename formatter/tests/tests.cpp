@@ -92,14 +92,18 @@ std::vector<PreserveCase> DiscoverCases()
     for (const auto& entry :
         std::filesystem::directory_iterator(FORMATTER_TESTDATA_DIR))
     {
-        auto filename = entry.path().filename().string();
+        auto filename = entry
+            .path()
+            .filename()
+            .string();
         if (filename.ends_with(".output.cpp")) {
-            const auto input = entry.path().parent_path() /
-                (filename
-                    .substr(
-                        0,
-                        filename.size() -
-                        std::string_view(".output.cpp").size()) + ".input.cpp");
+            const auto input = entry
+                .path()
+                .parent_path() /
+                (filename.substr(
+                    0,
+                    filename.size() - std::string_view(".output.cpp").size()) +
+                    ".input.cpp");
             // Equal input/output bytes have one default-preservation contract.
             if (std::filesystem::exists(input) &&
                 ReadFile(input) == ReadFile(entry.path()))
@@ -215,9 +219,11 @@ void PrintTo(const FormatCase& value, std::ostream* output)
 {
     const auto root = (std::filesystem::path(FORMATTER_TESTDATA_DIR) / "..")
         .lexically_normal();
-    *output
-        << value.Directory.lexically_normal().lexically_relative(
-            root).generic_string() << '/' << value.Name;
+    *output << value
+        .Directory
+        .lexically_normal()
+        .lexically_relative(root)
+        .generic_string() << '/' << value.Name;
 }
 
 void AddCases(
@@ -320,9 +326,7 @@ std::vector<FormatCase> FormatCases()
                 std::optional<std::size_t> MaxEmptyLines;
             };
             for (const auto& policy :
-                std::array<
-                    Policy,
-                    3>{
+                std::array<Policy, 3>{
                     {
                         {
                             "capped",
@@ -440,9 +444,7 @@ std::vector<FormatCase> FormatCases()
                 formatter::BreakRequirement ChainsBreak;
             };
             for (const auto& policy :
-                std::array<
-                    Policy,
-                    3>{
+                std::array<Policy, 3>{
                     {
                         {"call-fit", 24, BreakRequirement::IfNeeded},
                         {"forced", 80, BreakRequirement::Always},
@@ -519,9 +521,7 @@ std::vector<FormatCase> FormatCases()
                 formatter::NamespaceComments NamespaceComments;
             };
             for (const auto& policy :
-                std::array<
-                    Policy,
-                    9>{
+                std::array<Policy, 9>{
                     {
                         {
                             "boundary-crlf",
@@ -685,9 +685,7 @@ std::vector<FormatCase> FormatCases()
                 formatter::GapPolicy TrailingCommentSpacing;
             };
             for (const auto& policy :
-                std::array<
-                    Policy,
-                    4>{
+                std::array<Policy, 4>{
                     {
                         {
                             "independent",
@@ -750,9 +748,7 @@ std::vector<FormatCase> FormatCases()
                 formatter::BlankLineSetting StandaloneCommentBlankLinesAfter;
             };
             for (const auto& policy :
-                std::array<
-                    Policy,
-                    2>{
+                std::array<Policy, 2>{
                     {
                         {
                             "before",
@@ -980,9 +976,7 @@ std::vector<FormatCase> FormatCases()
                 formatter::TrailingCommaPolicy InitializersTrailingComma;
             };
             for (const auto& policy :
-                std::array<
-                    Policy,
-                    2>{
+                std::array<Policy, 2>{
                     {
                         {"never", TrailingCommaPolicy::Never},
                         {"preserve", TrailingCommaPolicy::Preserve},
@@ -1032,9 +1026,7 @@ std::vector<FormatCase> FormatCases()
                 formatter::GapPolicy CommaSpaceAfter;
             };
             for (const auto& policy :
-                std::array<
-                    Policy,
-                    3>{
+                std::array<Policy, 3>{
                     {
                         {
                             "canonical-safe",
@@ -1129,9 +1121,7 @@ std::vector<FormatCase> FormatCases()
                 formatter::GapPolicy CommaSpaceAfter;
             };
             for (const auto& policy :
-                std::array<
-                    Policy,
-                    4>{
+                std::array<Policy, 4>{
                     {
                         {
                             "generated-canonical",
@@ -1207,8 +1197,11 @@ std::vector<FormatCase> FormatCases()
         cases,
         std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../fold-spacing",
         {"yt-like", "inherited", "group-space"});
-    const auto profile = (std::filesystem::path(FORMATTER_TESTDATA_DIR) /
-        "../../../../hit-fmt/examples/ytsaurus").lexically_normal().string();
+    const auto profile =
+        (std::filesystem::path(FORMATTER_TESTDATA_DIR) /
+            "../../../../hit-fmt/examples/ytsaurus")
+            .lexically_normal()
+            .string();
     auto addProfileCase = [&] (const char* directory, const char* name) {
         cases.push_back({
             std::filesystem::path(FORMATTER_TESTDATA_DIR) / directory,
@@ -1253,9 +1246,7 @@ std::vector<FormatCase> FormatCases()
                     FunctionCvRefQualifierSpacing;
             };
             for (const auto& policy :
-                std::array<
-                    Policy,
-                    3>{
+                std::array<Policy, 3>{
                     {
                         {
                             "function-cv-ref-inherit",
@@ -1448,9 +1439,7 @@ std::vector<FormatCase> FormatCases()
                 std::vector<std::string> ChainedCallRootNames;
             };
             for (const auto& policy :
-                std::array<
-                    Policy,
-                    5>{
+                std::array<Policy, 5>{
                     {
                         {
                             "annotations-delimiter",
@@ -1520,9 +1509,7 @@ std::vector<FormatCase> FormatCases()
                 std::vector<std::string> ChainedCallRootNames;
             };
             for (const auto& policy :
-                std::array<
-                    Policy,
-                    2>{
+                std::array<Policy, 2>{
                     {
                         {"conventional-preserve", CategoryLayout::Preserve, {}},
                         {
@@ -1565,9 +1552,7 @@ std::vector<FormatCase> FormatCases()
                 formatter::CategoryLayout ExpressionsLayout;
             };
             for (const auto& policy :
-                std::array<
-                    Policy,
-                    3>{
+                std::array<Policy, 3>{
                     {
                         {
                             "always",
@@ -1600,8 +1585,11 @@ std::vector<FormatCase> FormatCases()
     }
     const auto google = std::filesystem::path(FORMATTER_TESTDATA_DIR) /
         "../google-style-regressions";
-    const auto googleProfile = (std::filesystem::path(FORMATTER_TESTDATA_DIR) /
-        "../../../../hit-fmt/examples/google").lexically_normal().string();
+    const auto googleProfile =
+        (std::filesystem::path(FORMATTER_TESTDATA_DIR) /
+            "../../../../hit-fmt/examples/google")
+            .lexically_normal()
+            .string();
     cases.push_back({
         google,
         "profile-trailing-comments",
@@ -1728,7 +1716,10 @@ std::vector<FormatCase> FormatCases()
         "cases-preserved",
     });
     for (const auto& entry : std::filesystem::directory_iterator(spacing)) {
-        const auto filename = entry.path().filename().string();
+        const auto filename = entry
+            .path()
+            .filename()
+            .string();
         if (filename.ends_with(".input.cpp")) {
             const auto name = filename.substr(
                 0,
@@ -1787,9 +1778,7 @@ std::vector<FormatCase> FormatCases()
                 formatter::OperatorSide BinaryOperatorSide;
             };
             for (const auto& policy :
-                std::array<
-                    Policy,
-                    2>{
+                std::array<Policy, 2>{
                     {
                         {
                             "argument-precedence-delimiter",
@@ -1866,9 +1855,7 @@ std::vector<FormatCase> FormatCases()
                 std::size_t ColumnLimit;
             };
             for (const auto& policy :
-                std::array<
-                    Policy,
-                    3>{
+                std::array<Policy, 3>{
                     {
                         {"annotation-constraints", 10000},
                         {"annotation-constructors", 100},
@@ -1979,9 +1966,7 @@ std::vector<FormatCase> FormatCases()
                 formatter::GapPolicy SpaceInsideLambdaParameters;
             };
             for (const auto& policy :
-                std::array<
-                    Policy,
-                    2>{
+                std::array<Policy, 2>{
                     {
                         {
                             "compact",
@@ -2026,6 +2011,43 @@ std::vector<FormatCase> FormatCases()
         cases,
         data / "template-arguments",
         {"inherit", "vertical", "fill", "delimiter", "preserve", "tabs"});
+    cases.push_back({
+        data / "template-arguments",
+        "break-priority",
+        "break-priority.input.cpp",
+        {},
+        {},
+        true,
+        {},
+        true,
+    });
+    cases.push_back({
+        data / "template-arguments",
+        "repository-priority",
+        "break-priority.input.cpp",
+        "../../../../",
+        {},
+        true,
+        {},
+        true,
+    });
+    cases.push_back({
+        data / "template-arguments",
+        "forced-priority",
+        "break-priority.input.cpp",
+        "break-priority",
+        {},
+        true,
+        {},
+        true,
+    });
+    auto forcedTemplates = formatter::LoadConfigFile(
+        data / "template-arguments/break-priority.hit-fmt").FormattingStyle;
+    forcedTemplates.TemplateArgumentsBreak =
+        formatter::BreakRequirement::Always;
+    forcedTemplates.TemplateParametersBreak =
+        formatter::BreakRequirement::Always;
+    cases.back().Style = std::move(forcedTemplates);
     AddCases(
         cases,
         data / "template-parameters",
@@ -2035,8 +2057,9 @@ std::vector<FormatCase> FormatCases()
             data / "template-parameters",
             profile,
             "input.cpp",
-            (data / "../../../hit-fmt/examples" /
-                profile).lexically_normal().string(),
+            (data / "../../../hit-fmt/examples" / profile)
+                .lexically_normal()
+                .string(),
         });
     }
     AddCases(cases, data / "unhinted-body-recovery", {"canonical"});
@@ -2147,9 +2170,7 @@ std::vector<FormatCase> FormatCases()
     // Name, input, config override, read-only expectation alias.
     for (const auto& [name, input, config, expected] :
         {
-            std::array<
-                const char*,
-                4>{
+            std::array<const char*, 4>{
                 "macro-preserve",
                 "macro-preserve.input.cpp",
                 "crlf-return",
@@ -2219,9 +2240,7 @@ std::vector<FormatCase> FormatCases()
                 formatter::GapPolicy AssignmentOperatorSpacing;
             };
             for (const auto& policy :
-                std::array<
-                    Policy,
-                    15>{
+                std::array<Policy, 15>{
                     {
                         {
                             "always-leading",
@@ -2428,9 +2447,7 @@ std::vector<FormatCase> FormatCases()
     // Name, input, config override, read-only expectation alias.
     for (const auto& [name, input, config, expected] :
         {
-            std::array<
-                const char*,
-                4>{
+            std::array<const char*, 4>{
                 "short-next-line",
                 "short-preserved-header.input.cpp",
                 "pack_name",
@@ -2463,9 +2480,7 @@ std::vector<FormatCase> FormatCases()
                 formatter::GapPolicy FunctionBraceSpacing;
             };
             for (const auto& policy :
-                std::array<
-                    Policy,
-                    2>{
+                std::array<Policy, 2>{
                     {
                         {
                             "detached-spacing",
@@ -2502,9 +2517,7 @@ std::vector<FormatCase> FormatCases()
                 formatter::CategoryLayout DeclarationHeadersLayout;
             };
             for (const auto& policy :
-                std::array<
-                    Policy,
-                    2>{
+                std::array<Policy, 2>{
                     {
                         {
                             "reflow-preserved-header",
@@ -2550,9 +2563,7 @@ std::vector<FormatCase> FormatCases()
     // Name, input, config override, read-only expectation alias.
     for (const auto& [name, input, config, expected] :
         {
-            std::array<
-                const char*,
-                4>{
+            std::array<const char*, 4>{
                 "correct-anchor",
                 "correct-anchor.input.cpp",
                 "authored-anchor",
@@ -2620,9 +2631,12 @@ std::vector<FormatCase> FormatCases()
     // Name, input, config override, read-only expectation alias.
     for (const auto& [name, input, config, expected] :
         {
-            std::array<
-                const char*,
-                4>{"crlf", "crlf.input.cpp", "comment-barrier", ""},
+            std::array<const char*, 4>{
+                "crlf",
+                "crlf.input.cpp",
+                "comment-barrier",
+                "",
+            },
             {
                 "complete-control-bodies",
                 "complete-control-bodies.input.cpp",
@@ -2649,9 +2663,7 @@ std::vector<FormatCase> FormatCases()
                 formatter::GapPolicy EmptyBlockInteriorSpacing;
             };
             for (const auto& policy :
-                std::array<
-                    Policy,
-                    3>{
+                std::array<Policy, 3>{
                     {
                         {
                             "empty-blocks-without-add",
@@ -2710,9 +2722,12 @@ std::vector<FormatCase> FormatCases()
     // Name, input, config override, read-only expectation alias.
     for (const auto& [name, input, config, expected] :
         {
-            std::array<
-                const char*,
-                4>{"default-preserve", "input.cpp", "", "input.cpp"},
+            std::array<const char*, 4>{
+                "default-preserve",
+                "input.cpp",
+                "",
+                "input.cpp",
+            },
             {"always-fill", "long.input.cpp", "", "long-packed.output.cpp"},
             {"vertical-next-line", "input.cpp", "", "one-per-line.output.cpp"},
             {
@@ -2758,9 +2773,7 @@ std::vector<FormatCase> FormatCases()
                     CallsSoleArgumentFirstItem;
             };
             for (const auto& policy :
-                std::array<
-                    Policy,
-                    3>{
+                std::array<Policy, 3>{
                     {
                         {
                             "sole-argument-always",
@@ -2808,9 +2821,7 @@ std::vector<FormatCase> FormatCases()
                 formatter::GapPolicy SpaceInsideCallArguments;
             };
             for (const auto& policy :
-                std::array<
-                    Policy,
-                    7>{
+                std::array<Policy, 7>{
                     {
                         {
                             "balanced-fill",
@@ -2925,9 +2936,7 @@ std::vector<FormatCase> FormatCases()
                 std::optional<formatter::FirstItemPlacement> CallsFirstItem;
             };
             for (const auto& policy :
-                std::array<
-                    Policy,
-                    3>{
+                std::array<Policy, 3>{
                     {
                         {
                             "default-preserve",
@@ -3004,9 +3013,12 @@ std::vector<FormatCase> FormatCases()
     // Name, input, config override, read-only expectation alias.
     for (const auto& [name, input, config, expected] :
         {
-            std::array<
-                const char*,
-                4>{"two-leading", "input.cpp", "", "two-leading.output.cpp"},
+            std::array<const char*, 4>{
+                "two-leading",
+                "input.cpp",
+                "",
+                "two-leading.output.cpp",
+            },
             {"three-leading", "input.cpp", "", "three-leading.output.cpp"},
             {"preserve-leading", "input.cpp", "", "input.cpp"},
             {
@@ -3081,9 +3093,7 @@ std::vector<FormatCase> FormatCases()
                 formatter::TernaryLayout TernaryLayout;
             };
             for (const auto& policy :
-                std::array<
-                    Policy,
-                    13>{
+                std::array<Policy, 13>{
                     {
                         {
                             "always-leading",
@@ -3214,9 +3224,7 @@ std::vector<FormatCase> FormatCases()
                 formatter::TernaryOperatorIndentation OperatorIndentation;
             };
             for (const auto& policy :
-                std::array<
-                    Policy,
-                    4>{
+                std::array<Policy, 4>{
                     {
                         {
                             "branches-indent-narrow",
@@ -3279,9 +3287,7 @@ std::vector<FormatCase> FormatCases()
                 formatter::TernaryLayout TernaryLayout;
             };
             for (const auto& policy :
-                std::array<
-                    Policy,
-                    2>{
+                std::array<Policy, 2>{
                     {
                         {
                             "initializer-shape-flexible",
@@ -3388,9 +3394,7 @@ std::vector<FormatCase> FormatCases()
     // Name, input, config override, read-only expectation alias.
     for (const auto& [name, input, config, expected] :
         {
-            std::array<
-                const char*,
-                4>{
+            std::array<const char*, 4>{
                 "comment-namespace-only",
                 "comment-external.input.cpp",
                 "",
@@ -3420,9 +3424,7 @@ std::vector<FormatCase> FormatCases()
                 formatter::GapPolicy CommaSpaceAfter;
             };
             for (const auto& policy :
-                std::array<
-                    Policy,
-                    10>{
+                std::array<Policy, 10>{
                     {
                         {
                             "record-head-boundaries",
@@ -3498,9 +3500,7 @@ std::vector<FormatCase> FormatCases()
                 formatter::BracePlacement ControlBracePlacement;
             };
             for (const auto& policy :
-                std::array<
-                    Policy,
-                    5>{
+                std::array<Policy, 5>{
                     {
                         {
                             "control-attached",
@@ -3708,9 +3708,11 @@ INSTANTIATE_TEST_SUITE_P(
     [] (const auto& info) {
         const auto root = (std::filesystem::path(FORMATTER_TESTDATA_DIR) / "..")
             .lexically_normal();
-        auto name =
-            (info.param.Directory.lexically_normal().lexically_relative(root) /
-                info.param.Name).string();
+        auto name = (info
+            .param
+            .Directory
+            .lexically_normal()
+            .lexically_relative(root) / info.param.Name).string();
         std::ranges::replace(name, '/', '_');
         std::ranges::replace(name, '-', '_');
         return name;

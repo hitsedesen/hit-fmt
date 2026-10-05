@@ -410,9 +410,8 @@ public:
         if (ChunkCount_ == 0) {
             return;
         }
-        Chunks_ = static_cast<
-            Chunk**>(Memory_
-                ->allocate(sizeof(Chunk*) * ChunkCount_, alignof(Chunk*)));
+        Chunks_ = static_cast<Chunk**>(Memory_
+            ->allocate(sizeof(Chunk*) * ChunkCount_, alignof(Chunk*)));
         auto* chunk = First_;
         for (uint32_t i = 0; i < ChunkCount_; ++i) {
             Chunks_[i] = chunk;
@@ -574,8 +573,8 @@ public:
         chunk->Roles[slot.Offset] =
             token.Kind >= tokenizer::TokenKind::Operator_OpenBrace &&
                 token.Kind <= tokenizer::TokenKind::Operator_Comma
-                ? PunctuationRole::Generic
-                : PunctuationRole::None;
+            ? PunctuationRole::Generic
+            : PunctuationRole::None;
         chunk->MatchingDelimiters[slot.Offset] =
             std::numeric_limits<TokenIndex>::max();
     }

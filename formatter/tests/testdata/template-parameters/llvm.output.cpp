@@ -4,8 +4,7 @@ template<
          template<class FirstLongInnerParameterName,
                   class SecondLongInnerParameterName> class Container,
          class Value> struct TemplateTemplate { };
-template<
-         class Value = types::Pair<FirstLongArgumentName,
+template<class Value = types::Pair<FirstLongArgumentName,
                                    SecondLongArgumentName>> struct DefaultType {
 };
 template<
@@ -24,8 +23,8 @@ template<class FirstLongParameterName,
 template<class FirstLongParameterName, class SecondLongParameterName>
 void Invoke(FirstLongParameterName first, SecondLongParameterName second);
 
-auto generic = []<class FirstLongParameterName,
-                  class SecondLongParameterName>(FirstLongParameterName first,
+auto generic = []<class FirstLongParameterName, class SecondLongParameterName>(
+    FirstLongParameterName first,
     SecondLongParameterName second) { return first; };
 
 // hit-fmt off

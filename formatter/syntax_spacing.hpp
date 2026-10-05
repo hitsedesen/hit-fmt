@@ -140,8 +140,8 @@ private:
     PointerReferenceDeclaratorLocation pointerBinding,
     std::pmr::memory_resource& fileMemory,
     std::pmr::memory_resource& scratchMemory,
-    std::optional<
-        TrailingCommentSpaceSetting> trailingCommentSpaces = std::nullopt);
+    std::optional<TrailingCommentSpaceSetting> trailingCommentSpaces =
+    std::nullopt);
 
 [[nodiscard]] inline SyntaxSpacing BuildSyntaxSpacing(
     const parser::SyntaxTree& tree,

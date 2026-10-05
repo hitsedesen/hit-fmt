@@ -207,7 +207,9 @@ std::pmr::vector<GapId> GeneratedGaps(
     std::pmr::vector<GapId> result(&scratch);
     size_t interval = 0;
     size_t piece = 0;
-    for (GapId i = 0; i < safety.Gaps().size(); ++i)
+    for (GapId i = 0; i < safety
+        .Gaps()
+        .size(); ++i)
     {
         const auto range = safety.Gaps()[i].Source;
         while (interval < ranges.size() && ranges[interval].End < range.Begin) {
@@ -338,14 +340,20 @@ document::Identity RecordRenderAnchors(
             throw std::runtime_error("invalid exact render mapping");
         }
         auto it = std::lower_bound(
-            safety.Protection().begin(),
-            safety.Protection().end(),
+            safety
+                .Protection()
+                .begin(),
+            safety
+                .Protection()
+                .end(),
             source.Begin,
             [] (const auto& range, Offset begin) {
                 return range.Source.End <= begin;
             });
         for (;
-            it != safety.Protection().end() && it->Source.Begin < source.End;
+            it != safety
+                .Protection()
+                .end() && it->Source.Begin < source.End;
             ++it)
         {
             const auto begin = std::max(source.Begin, it->Source.Begin);
@@ -797,8 +805,18 @@ FormatResult detail::FormatWithAnalysis(
         provenance = normalized->Provenance;
     } else {
         unchanged.push_back({
-            {0, CheckedSourceAnalysisSize(original.Source().size())},
-            {0, CheckedSourceAnalysisSize(original.Source().size())},
+            {
+                0,
+                CheckedSourceAnalysisSize(original
+                    .Source()
+                    .size()),
+            },
+            {
+                0,
+                CheckedSourceAnalysisSize(original
+                    .Source()
+                    .size()),
+            },
             NoStructuralAction,
             false,
         });
@@ -816,7 +834,9 @@ FormatResult detail::FormatWithAnalysis(
     if (prepared.Policies.LineEnding == LineEnding::CRLF) {
         options.LineEnding = document::Newline::CRLF;
     } else if (prepared.Policies.LineEnding == LineEnding::Preserve) {
-        const auto lf = original.Source().find('\n');
+        const auto lf = original
+            .Source()
+            .find('\n');
         if (lf != std::string_view::npos && lf &&
             original.Source()[lf - 1] == '\r')
         {
@@ -859,7 +879,9 @@ FormatResult detail::FormatWithAnalysis(
         std::pmr::vector<document::Provenance> tracked(&scratch);
         if (needNamespaceAnchors && !request.SourceMap) {
             renderPolicy.TokenMap = true;
-            tracked.reserve(currentSafety->Protection().size());
+            tracked.reserve(currentSafety
+                ->Protection()
+                .size());
             for (const auto& range : currentSafety->Protection()) {
                 tracked.push_back({range.Source.Begin, range.Source.End});
             }
