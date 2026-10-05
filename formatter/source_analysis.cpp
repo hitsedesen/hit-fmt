@@ -773,6 +773,30 @@ SourceAnalysis BuildSourceAnalysis(
             }
             frame.LastChild = id;
         }
+        if (node.Kind == parser::NodeKind::ListSeparator &&
+            tokens.Size() == 1 && tokens.End < count &&
+            tree.Kind(tokens.End) == TK::Comment)
+        {
+            auto* next = node.NextSibling;
+            while (next && next->Kind == parser::NodeKind::Comment) {
+                next = next->NextSibling;
+            }
+            if (next && tokens.End < next->Tokens.Begin) {
+                auto afterComments = tokens.End;
+                while (afterComments < next->Tokens.Begin &&
+                    tree.Kind(afterComments) == TK::Comment)
+                {
+                    ++afterComments;
+                }
+                if (afterComments == next->Tokens.Begin) {
+                    // The separator owns the boundary before the next item's
+                    // comment prefix. Preserve links within that prefix and
+                    // to the item, not its original line with the separator.
+                    result.Gaps_[tokens.End].LineBoundary =
+                        GapLineBoundary::Any;
+                }
+            }
+        }
         if (node.Kind == parser::NodeKind::HeaderName) {
             // Whitespace inside header delimiters is part of the filename.
             protect(begin, end, ProtectionReason::HeaderName);

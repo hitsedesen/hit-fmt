@@ -404,7 +404,10 @@ TEST(SourceAnalysis, CommentsDirectivesSplicesAndCrLf)
 {
     Input input("int a = 1; // note\r\nint b = 2;\r\n"
         "int c /* note */ = 3;\r\n#define F(x) x + \\\r\n  1\r\n"
-        "int d = 4;\r\nint e = \\\n  5;\nint f = 6;\n");
+        "int d = 4;\r\nint e = \\\n  5;\nint f = 6;\n"
+        "void use() { auto x = call(a, /* prefix */ b /* suffix */, c);\n"
+        "auto y = call((a, /* expression */ b), c);\n"
+        "auto z = {a, /* trailing */}; }\n");
     auto tree = Parse(input);
     std::pmr::monotonic_buffer_resource memory;
     auto analysis = Analyze(tree, memory);
@@ -420,6 +423,13 @@ TEST(SourceAnalysis, CommentsDirectivesSplicesAndCrLf)
     EXPECT_TRUE(analysis.CanReplaceGap(Before(tree, "d"), "  "));
     EXPECT_FALSE(analysis.CanReplaceGap(Before(tree, "5"), " "));
     EXPECT_TRUE(analysis.CanReplaceGap(Before(tree, "f"), "  "));
+    EXPECT_TRUE(analysis.CanReplaceGap(Before(tree, "/* prefix */"), "\n"));
+    EXPECT_FALSE(analysis.CanReplaceGap(Before(tree, "b", 1), "\n"));
+    for (const auto text :
+        {"/* suffix */", "/* expression */", "/* trailing */"})
+    {
+        EXPECT_FALSE(analysis.CanReplaceGap(Before(tree, text), "\n"));
+    }
     for (const auto& gap : analysis.Gaps()) {
         if (Has(gap.Reasons, formatter::ProtectionReason::Directive)) {
             EXPECT_TRUE(gap.Preserve);

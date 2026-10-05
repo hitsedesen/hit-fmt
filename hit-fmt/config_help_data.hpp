@@ -39,6 +39,9 @@ ListAlignment = Delimiter
 ContinuationOffset = 4
 AlignmentFallbackOffset = 4
 # Under IfNeeded, broken calls are vertical and fitting calls stay flat.
+# Comments after a separator move with the following argument:
+# consume(alpha,
+#     /* next argument */ beta);
 CallsPacking = VerticalWhenBroken
 # The Always override below requires an eligible owned break, even if fitting:
 CallsBreak = Always
@@ -259,6 +262,9 @@ constexpr HelpSection HelpSections[] = {
         "with the closing brace returning to that base; following arguments "
         "use the call's continuation alignment independently. "
         "Fill packs items; VerticalWhenBroken splits at item boundaries. "
+        "Comments after a separator belong to the following item and move "
+        "with it when the list breaks. Comments before a separator or after "
+        "a trailing separator keep their existing line attachment. "
         "Delimiter alignment uses the column after "
             "the opener; Block uses the block "
         "column plus offset. Zero offsets use "

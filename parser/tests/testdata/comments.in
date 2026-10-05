@@ -7,3 +7,14 @@ void empty()
 
     // dangling in empty body
 }
+
+void listComments()
+{
+    auto result = consume(alpha, /* next argument */ beta, gamma);
+    result = consume(alpha, /* first */ /* second */ beta, gamma);
+    result = consume(alpha, // next argument
+        beta, gamma);
+    result = consume(alpha /* previous argument */, beta, gamma);
+    result = consume((alpha, /* expression */ beta), gamma);
+    auto values = {alpha, /* next element */ beta, /* trailing */};
+}

@@ -102,6 +102,11 @@ void PrintOption(std::ostream& output, std::string_view name, const T& value)
                 "# Example with IndentWidth = 4: "
                 "a nested #if becomes \"    #if\".\n"
                 "# else/elif/endif align with their if.\n";
+    } else if (name == "ListPacking") {
+        output
+            << "# Comments after a separator move with the following item.\n"
+                "# In a broken call: consume(alpha,\n"
+                "#     /* next argument */ beta);\n";
     } else if (name == "IndentedCallScopePairs") {
         output
             << "# Uncertain scopes retain existing line-start regions.\n"

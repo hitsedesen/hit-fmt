@@ -18,6 +18,7 @@ void Register()
         firstArgument, helpers::Make<Left, Right>(value), /* tail */ fieldIndex,
         lastArgument);
     auto fitting = Consume(key, Make<Left, Right>(value), index);
+    auto fittingComment = Consume(key, /* prefix */ index);
     auto compared = Consume(
         firstArgument, left < right, limit > (value), fieldIndex, lastArgument);
     auto conditional = Consume(

@@ -9,7 +9,8 @@ int PreSplit[] = {
   200
 };
 int WithComment[] = {
-  100, /* keep */ 200,
+  100,
+  /* keep */ 200,
   300
 };
 int Nested[] = {
