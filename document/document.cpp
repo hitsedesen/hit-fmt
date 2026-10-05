@@ -1921,7 +1921,10 @@ Result Document::Render(
                         entry.ExpandedGapWidth,
                         gap.FitNextSegment
                         ? gap.RequiredWidth
-                        : tailWidth(entry.BrokenTail))) ||
+                        : tailWidth(
+                            gap.FitFlatTail
+                            ? entry.FlatTail
+                            : entry.BrokenTail))) ||
                         (frame.Mandatory == i &&
                             (frame.ForceOwned
                                 ? !frame.OwnedLine

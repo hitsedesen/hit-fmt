@@ -1591,6 +1591,32 @@ std::vector<FormatCase> FormatCases()
         "lambda-trailing-return.input.cpp",
     });
     addProfileCase("../lambda-captures", "profile");
+    {
+        const auto directory = std::filesystem::path(FORMATTER_TESTDATA_DIR) /
+            "../lambda-captures";
+        const auto base = formatter::LoadConfigFile(
+            std::filesystem::path(profile + ".hit-fmt")).FormattingStyle;
+        for (const auto* name :
+            {
+                "call-header-compact",
+                "call-header-expanded",
+                "call-header-preserve",
+            })
+        {
+            cases.push_back({directory, name, "call-header.input.cpp"});
+            auto style = base;
+            style.ColumnLimit = 80;
+            style.CapturesCloser = CloserPlacement::SameLine;
+            style.LambdaBodiesLayout = CategoryLayout::Canonical;
+            style.BodyShape = BodyShape::CompactIfFits;
+            if (std::string_view(name) == "call-header-expanded") {
+                style.BodyShape = BodyShape::Expanded;
+            } else if (std::string_view(name) == "call-header-preserve") {
+                style.CallsLayout = CategoryLayout::Preserve;
+            }
+            ApplyProfile(cases, directory, name, style);
+        }
+    }
     addProfileCase("../call-reflow", "profile-tabbed-log");
     const auto callReflow =
         std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../call-reflow";

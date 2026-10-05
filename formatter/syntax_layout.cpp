@@ -77,6 +77,7 @@ struct Gap
     bool CanonicalFlat = false;
     bool ControlSeparator = false;
     bool FitNextSegment = false;
+    bool FitFlatTail = false;
     bool KeepFlatSpacing = false;
     bool KeywordPrefix = false;
 };
@@ -1224,6 +1225,30 @@ private:
                 ? document::GapKind::Hard
                 : document::GapKind::Soft;
             Own(begin + 1, group, Boundary::Conditional, firstKind);
+            if (node.Kind == NodeKind::ArgumentList &&
+                firstKind == document::GapKind::Soft)
+            {
+                for (auto child = node.FirstChild;
+                    child != None;
+                    child = Region(Syntax_[child]).NextSibling)
+                {
+                    if (Region(Syntax_[child]).Kind != NodeKind::Argument) {
+                        continue;
+                    }
+                    const auto expression = Region(Syntax_[child]).FirstChild;
+                    if (expression != None &&
+                        Region(Syntax_[expression]).Kind ==
+                            NodeKind::LambdaExpression)
+                    {
+                        // Fit the lambda's flat header, not merely '[' before
+                        // a capture-list break. Multiline bodies still fit by
+                        // their prefix; child-only trials cannot bypass this.
+                        Gaps_[begin + 1].FitFlatTail = true;
+                        Groups_[group].Spec.ChildBreaks = false;
+                    }
+                    break;
+                }
+            }
             if (firstKind == document::GapKind::Soft &&
                 (node.Kind == NodeKind::Condition ||
                     node.Kind == NodeKind::ForHeader))
@@ -4251,6 +4276,7 @@ private:
         spec.Spaces = uint16_t(std::min<Index>(FlatWidth(i), UINT16_MAX));
         spec.RequiredWidth = Facts_[i].RequiredWidth;
         spec.FitNextSegment = Gaps_[i].FitNextSegment;
+        spec.FitFlatTail = Gaps_[i].FitFlatTail;
         spec.NewlineCount = Gaps_[i].NewlineCount;
         if (Gaps_[i].PreserveIndent && !Gaps_[i].Reindent) {
             const auto& source = Safety_.Gaps()[i];
