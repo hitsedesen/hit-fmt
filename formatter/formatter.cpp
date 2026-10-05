@@ -631,7 +631,9 @@ void WidthDiagnostics(
 {
     if (policies.ColumnLimit == 0 ||
         policies.WidthDiagnostics != WidthDiagnosticPolicy::Report)
+    {
         return;
+    }
     uint32_t line = 1;
     size_t width = 0;
     auto report = [&] {

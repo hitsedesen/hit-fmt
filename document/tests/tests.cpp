@@ -3326,8 +3326,9 @@ TEST(GroupLayout,
     SourceWhitespaceAlternatingRetentionKeepsLargeBoundsAndExactMaps)
 {
     std::string source;
-    for (unsigned i = 0; i < 35000; ++i)
+    for (unsigned i = 0; i < 35000; ++i) {
         source += "\r\r\n \r\n";
+    }
     Document document(source);
     document.SourceWhitespace(0, source.size(), Newline::LF);
     ASSERT_TRUE(document.Seal());

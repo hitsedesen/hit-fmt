@@ -173,8 +173,7 @@ void Receive()
             prefix = std::move(prefix),
             channel = std::move(channel),
             requestId
-        ] (TErrorOr<std::vector<TSharedRef>>&& result) mutable
-        {
+        ] (TErrorOr<std::vector<TSharedRef>>&& result) mutable {
             if (!result.IsOK()) {
                 // A failed transfer has nothing to send.
                 return;

@@ -147,12 +147,14 @@ void CheckExcludedCopies(
     std::span<const parser::SourceRange> selected)
 {
     std::vector<unsigned> copies(source.size(), 0);
-    for (const auto& map : result.Map)
-        if (map.Exact && map.HasOriginal)
+    for (const auto& map : result.Map) {
+        if (map.Exact && map.HasOriginal) {
             for (auto i = map.Original.Begin; i < map.Original.End; ++i) {
                 ASSERT_LT(i, copies.size());
                 ++copies[i];
             }
+        }
+    }
     size_t range = 0;
     for (size_t i = 0; i < source.size(); ++i)
     {
@@ -362,10 +364,13 @@ TEST(PublicPipeline, UncertainLambdaArgumentsRetainRecoveryProtection)
         const auto result = FormatInput(source, prepared);
         CheckIdentities(source, result);
         std::vector<unsigned> copies(std::string_view(source).size(), 0);
-        for (const auto& map : result.Map)
-            if (map.Exact && map.HasOriginal)
-                for (auto i = map.Original.Begin; i < map.Original.End; ++i)
+        for (const auto& map : result.Map) {
+            if (map.Exact && map.HasOriginal) {
+                for (auto i = map.Original.Begin; i < map.Original.End; ++i) {
                     ++copies[i];
+                }
+            }
+        }
         size_t protectedRecoveryBytes = 0;
         for (const auto& range : analysis.Protection()) {
             const auto mask = static_cast<unsigned>(range.Reasons);
@@ -2263,34 +2268,35 @@ TEST(PublicPipeline, EditScopeBraceInsertionRequiresBothOriginalPoints)
         prepared,
         {.SourceMap = true, .EditScope = ownedEnd});
     const auto hasInsertedControlPair = [&] (
-            const formatter::FormatResult&
-        formatted)
-        {
+        const formatter::FormatResult&
+        formatted) {
             for (size_t action = 0; action <
                 formatted.StructuralOperations.size();
              ++action)
             {
-            if (formatted.StructuralOperations[action].Kind !=
-                formatter::StructuralAction::AddMissingControlBraces)
-                continue;
-            size_t opens = 0, closes = 0;
-            for (const auto& map : formatted.Map) {
-                if (map.Action != action || !map.Generated || map.Exact ||
-                    !map.HasOriginal || !map.Original.Empty() ||
-                    map.OriginalToken != document::NoIdentity)
+                if (formatted.StructuralOperations[action].Kind !=
+                    formatter::StructuralAction::AddMissingControlBraces)
                 {
                     continue;
                 }
-                const auto text = std::string_view(formatted.Text).substr(
-                    map.Output.Begin,
-                    map.Output.End - map.Output.Begin);
-                opens += text == "{" && map.Original.Begin == begin;
-                closes += text == "}" && map.Original.Begin == end;
+                size_t opens = 0, closes = 0;
+                for (const auto& map : formatted.Map) {
+                    if (map.Action != action || !map.Generated || map.Exact ||
+                        !map.HasOriginal || !map.Original.Empty() ||
+                        map.OriginalToken != document::NoIdentity)
+                    {
+                        continue;
+                    }
+                    const auto text = std::string_view(formatted.Text).substr(
+                        map.Output.Begin,
+                        map.Output.End - map.Output.Begin);
+                    opens += text == "{" && map.Original.Begin == begin;
+                    closes += text == "}" && map.Original.Begin == end;
+                }
+                if (opens == 1 && closes == 1) {
+                    return true;
+                }
             }
-            if (opens == 1 && closes == 1) {
-                return true;
-            }
-        }
             return false;
         };
     EXPECT_TRUE(hasInsertedControlPair(result));

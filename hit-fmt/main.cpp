@@ -1321,97 +1321,103 @@ int main(int argc, char* argv[])
     using hit_fmt::FileResult;
     auto processFile =
         [&] (const std::filesystem::path& path, StyleResolver& resolver) {
-        FileResult result;
-        std::ostringstream output;
-        std::ostringstream errors;
-        auto filePath = path.string();
-        try {
-            auto sourceStorage = util::ReadEntireFile(
-                filePath,
-                MaxSourceFileSize,
-                util::SourcePaddingSize);
-            util::PaddedSourceView paddedSource{
+            FileResult result;
+            std::ostringstream output;
+            std::ostringstream errors;
+            auto filePath = path.string();
+            try {
+                auto sourceStorage = util::ReadEntireFile(
+                    filePath,
+                    MaxSourceFileSize,
+                    util::SourcePaddingSize);
+                util::PaddedSourceView paddedSource{
                 .Data = sourceStorage.data(),
                 .Size = sourceStorage.size() - util::SourcePaddingSize,
             };
-            auto source = paddedSource.View();
-            const auto& config = resolver.Resolve(path);
-            const auto inputFilePath = path.generic_string();
-            std::optional<hit_fmt::ChangedFileScope> scope;
-            if (options.HunkInput) {
-                const auto absolute =
-                    std::filesystem::absolute(path).lexically_normal();
-                scope = hit_fmt::ChangedFileScope{
-                    changed.Hunks.at(absolute.string()),
-                    options.Spillover,
-                };
-            }
-            const auto checked =
-                hit_fmt::CheckFile(paddedSource, config, inputFilePath, scope);
-            if (options.Fix && checked.FormattingMismatch) {
-                util::WriteEntireFile(filePath, checked.Formatting.Text);
-                if (summaryOnly) {
-                    if (useColor) {
-                        output << BoldGreen;
+                auto source = paddedSource.View();
+                const auto& config = resolver.Resolve(path);
+                const auto inputFilePath = path.generic_string();
+                std::optional<hit_fmt::ChangedFileScope> scope;
+                if (options.HunkInput) {
+                    const auto absolute =
+                        std::filesystem::absolute(path).lexically_normal();
+                    scope = hit_fmt::ChangedFileScope{
+                        changed.Hunks.at(absolute.string()),
+                        options.Spillover,
+                    };
+                }
+                const auto checked = hit_fmt::CheckFile(
+                    paddedSource,
+                    config,
+                    inputFilePath,
+                    scope);
+                if (options.Fix && checked.FormattingMismatch) {
+                    util::WriteEntireFile(filePath, checked.Formatting.Text);
+                    if (summaryOnly) {
+                        if (useColor) {
+                            output << BoldGreen;
+                        }
+                        output << filePath << ": fixed formatting";
+                        if (useColor) {
+                            output << ResetColor;
+                        }
+                        output << '\n';
+                    } else {
+                        PrintFormattingDiagnostics(
+                            output,
+                            filePath,
+                            source,
+                            checked.Formatting.Text,
+                            useColor,
+                            true);
                     }
-                    output << filePath << ": fixed formatting";
+                }
+                const auto failed = checked.HasFailures(options.Fix);
+                if (summaryOnly && failed) {
+                    if (useColor) {
+                        output << BoldRed;
+                    }
+                    output << filePath << ": ";
+                    hit_fmt::PrintFileSummaryIssues(
+                        output,
+                        checked,
+                        options.Fix);
                     if (useColor) {
                         output << ResetColor;
                     }
                     output << '\n';
-                } else {
-                    PrintFormattingDiagnostics(
+                } else if (!summaryOnly) {
+                    if (!options.Fix && checked.FormattingMismatch) {
+                        PrintFormattingDiagnostics(
+                            output,
+                            filePath,
+                            source,
+                            checked.Formatting.Text,
+                            useColor,
+                            false,
+                            checked.IncludeOrderChanges);
+                    }
+                    hit_fmt::PrintFileIssues(
                         output,
                         filePath,
                         source,
-                        checked.Formatting.Text,
-                        useColor,
-                        true);
+                        checked,
+                        options.Fix,
+                        TerminalWidth());
                 }
+                result.Mismatches += failed;
             }
-            const auto failed = checked.HasFailures(options.Fix);
-            if (summaryOnly && failed) {
-                if (useColor) {
-                    output << BoldRed;
-                }
-                output << filePath << ": ";
-                hit_fmt::PrintFileSummaryIssues(output, checked, options.Fix);
-                if (useColor) {
-                    output << ResetColor;
-                }
-                output << '\n';
-            } else if (!summaryOnly) {
-                if (!options.Fix && checked.FormattingMismatch) {
-                    PrintFormattingDiagnostics(
-                        output,
-                        filePath,
-                        source,
-                        checked.Formatting.Text,
-                        useColor,
-                        false,
-                        checked.IncludeOrderChanges);
-                }
-                hit_fmt::PrintFileIssues(
-                    output,
-                    filePath,
-                    source,
-                    checked,
-                    options.Fix,
-                    TerminalWidth());
-            }
-            result.Mismatches += failed;
-        }
         catch (const util::FileTooLargeError& error) {
-            errors << "warning: " << error.what() << "; skipping\n";
-        }
+                errors << "warning: " << error.what() << "; skipping\n";
+            }
         catch (const std::exception& error) {
-            errors << filePath << ": " << error.what() << '\n';
-            result.Failed = true;
-        }
-        result.Output = output.str();
-        result.Error = errors.str();
-        return result;
-    };
+                errors << filePath << ": " << error.what() << '\n';
+                result.Failed = true;
+            }
+            result.Output = output.str();
+            result.Error = errors.str();
+            return result;
+        };
 
     size_t mismatchCount = 0;
     auto printResult = [&] (const FileResult& result) {

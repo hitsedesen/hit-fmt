@@ -783,14 +783,19 @@ SourceAnalysis BuildSourceAnalysis(
             protect(begin, end, ProtectionReason::SensitiveMacro);
         }
         if (recovery || ambiguous) {
-            // Own the adjacent trivia too. Empty missing-token nodes still
-            // fence the insertion point; parents report incomplete status.
-            const auto before = tokens.Begin
-                ? tree.Token(tokens.Begin - 1).Text.End
-                : 0;
-            const auto after = tokens.End < count
-                ? tree.Token(tokens.End).Text.Begin
-                : size;
+            // A complete ambiguous statement has proven outer boundaries,
+            // even when its declaration/expression interpretation is unknown.
+            // Keep its interior exact, but let the body indent around it.
+            // Recovery still owns adjacent trivia and empty insertion points.
+            const bool statementBoundary =
+                ambiguous && !hasRecovery && !tokens.Empty() &&
+                    tree.Kind(tokens.End - 1) == TK::Operator_Semicolon;
+            const auto before = statementBoundary
+                ? begin
+                : tokens.Begin ? tree.Token(tokens.Begin - 1).Text.End : 0;
+            const auto after = statementBoundary
+                ? end
+                : tokens.End < count ? tree.Token(tokens.End).Text.Begin : size;
             protect(
                 before,
                 after,

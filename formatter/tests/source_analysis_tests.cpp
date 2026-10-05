@@ -701,7 +701,10 @@ TEST(SourceAnalysis, AmbiguousAndInvalidTokensAreLocalNotWholeFileRollback)
     EXPECT_EQ(
         analysis.Regions()[0].Status,
         formatter::RegionStatus::RecoveryAndAmbiguous);
+    EXPECT_TRUE(analysis.CanReplaceGap(Before(tree, "unknown"), "\n    "));
     EXPECT_FALSE(analysis.CanReplaceGap(Before(tree, "*"), ""));
+    EXPECT_FALSE(analysis.CanReplaceGap(Before(tree, "value"), ""));
+    EXPECT_TRUE(analysis.CanReplaceGap(Before(tree, "int"), "\n    "));
     EXPECT_FALSE(analysis.CanReplaceGap(Before(tree, "@"), "\n"));
     EXPECT_TRUE(analysis.CanReplaceGap(Before(tree, "good"), "  "));
     EXPECT_TRUE(analysis.CanReplaceGap(Before(tree, "tail"), "  "));

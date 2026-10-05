@@ -177,6 +177,7 @@ struct Syntax
     Index PreviousSibling = None;
     Index Operator = None;
     bool Safe = true;
+    bool IndentSafe = true;
     bool String = false;
     bool Definition = false;
     bool ItemSequence = false;
@@ -620,11 +621,30 @@ private:
                     PrefixProtection_[node.Tokens.Begin] ==
                         PrefixProtection_[node.Tokens.End];
             }
+            // Complete ambiguous statements can move as opaque units. Their
+            // parents can also follow the body's indentation if all other
+            // syntax is movable; real fences still anchor nested bodies.
+            const bool statementBoundary = HasStatementBoundary(node);
+            if (!statementBoundary &&
+                PrefixOpaqueFences_[node.Tokens.Begin] !=
+                    PrefixOpaqueFences_[node.Tokens.End])
+            {
+                DirectTokens(
+                    i,
+                    [&] (Index token) {
+                        entry.IndentSafe &=
+                            PrefixOpaqueFences_[token] ==
+                                PrefixOpaqueFences_[token + 1];
+                    });
+            }
             for (auto child = Region(entry).FirstChild;
                 child != None;
                 child = Region(Syntax_[child]).NextSibling)
             {
                 entry.Safe = entry.Safe && Syntax_[child].Safe;
+                if (!statementBoundary) {
+                    entry.IndentSafe &= Syntax_[child].IndentSafe;
+                }
             }
             if (entry.ItemSequence) {
                 entry.SequenceBody = node.Tokens;
@@ -2191,6 +2211,13 @@ private:
         }
     }
 
+    bool HasStatementBoundary(const SourceRegion& node) const
+    {
+        return node.Kind == NodeKind::AmbiguousStatement &&
+            node.Status == RegionStatus::Ambiguous && !node.Tokens.Empty() &&
+            Tree_.Kind(node.Tokens.End - 1) == TokenKind::Operator_Semicolon;
+    }
+
     Index PreservedBodyIndent(Index id, Index opening, Index close) const
     {
         if ((uint8_t(Region(Syntax_[id]).Status) &
@@ -2221,9 +2248,7 @@ private:
                     part.Kind == NodeKind::CompoundStatement;
             if ((uint16_t(Safety_.Gaps()[part.Tokens.Begin].Reasons) &
                 uint16_t(ProtectionReason::Ambiguous)) != 0 ||
-                (nestedBody &&
-                    (uint8_t(part.Status) & uint8_t(RegionStatus::Ambiguous)) !=
-                        0))
+                (nestedBody && !Syntax_[child].IndentSafe))
             {
                 return indent;
             }
@@ -2620,9 +2645,7 @@ private:
                 // Uncertain interiors do not own an editable statement's
                 // leading indentation. Retain its topology and leave actual
                 // protected gaps untouched, just as for a preserved body.
-                if (GapMutable(part.Tokens.Begin) &&
-                    PrefixOpaqueFences_[part.Tokens.Begin] ==
-                        PrefixOpaqueFences_[part.Tokens.End])
+                if (GapMutable(part.Tokens.Begin) && Syntax_[child].IndentSafe)
                 {
                     Reindent(
                         part.Tokens.Begin,
