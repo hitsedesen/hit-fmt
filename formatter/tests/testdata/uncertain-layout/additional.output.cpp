@@ -1,11 +1,10 @@
 struct Worker: public Base {
     Worker()
         : Base()
-        , Handler(
-            Create<External>(
-                std::move(value),
-                TRACE(&Pool::Release, Copy(this)),
-                Options::Timeout(Settings::Limit)))
+        , Handler(Create<External>(
+            std::move(value),
+            TRACE(&Pool::Release, Copy(this)),
+            Options::Timeout(Settings::Limit)))
     { }
 
     Worker(int)

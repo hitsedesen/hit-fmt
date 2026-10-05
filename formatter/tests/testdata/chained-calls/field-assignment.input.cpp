@@ -1,7 +1,7 @@
 void configure()
 {
     if (enabled) {
-        channel.Queue = Make<TaskQueue>(
+        channel.Queue = Make<ConcurrentTaskQueue>(
             notificationCounter,
             queueDescription.GroupTags,
             queueDescription.ProfilingTags,

@@ -828,7 +828,17 @@ SourceAnalysis BuildSourceAnalysis(
             const bool statementBoundary =
                 ambiguous && !hasRecovery && !tokens.Empty() &&
                     tree.Kind(tokens.End - 1) == TK::Operator_Semicolon;
-            const auto before = statementBoundary
+            // A recovered callee has a proven start in its enclosing call.
+            // Protect its spelling without freezing the preceding operator
+            // or keyword gap, which can break independently of the callee.
+            const bool calleeBoundary =
+                node.Kind == parser::NodeKind::UnparsedSyntax &&
+                    !tokens.Empty() && parent != NoRegion &&
+                    result.Regions_[parent].Kind ==
+                        parser::NodeKind::CallExpression &&
+                    result.Regions_[parent].FirstChild == id &&
+                    result.Regions_[parent].Tokens.Begin == tokens.Begin;
+            const auto before = statementBoundary || calleeBoundary
                 ? begin
                 : tokens.Begin ? tree.Token(tokens.Begin - 1).Text.End : 0;
             const auto after = statementBoundary
