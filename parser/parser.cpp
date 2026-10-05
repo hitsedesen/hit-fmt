@@ -167,7 +167,7 @@ bool IsTypeKeyword(TK kind)
 
 SyntaxTree::SyntaxTree(std::string_view input)
     : Memory_(std::make_unique<std::pmr::monotonic_buffer_resource>(
-    detail::InitialMemoryResourceSize))
+        detail::InitialMemoryResourceSize))
     , Input_(input)
     , Tokens_(*Memory_)
     , Trivia_(*Memory_)
@@ -3703,6 +3703,7 @@ private:
     {
         int parenthesisDepth = 0;
         int bracketDepth = 0;
+        int braceDepth = 0;
         for (auto i = begin; i < end; ++i) {
             auto kind = Kind(i);
             if (kind == TK::Operator_OpenParenthesis) {
@@ -3719,6 +3720,7 @@ private:
             } else if (kind == TK::Operator_CloseBracket) {
                 --bracketDepth;
             } else if (parenthesisDepth == 0 && bracketDepth == 0 &&
+                (!functionDeclarator || braceDepth == 0) &&
                 (kind == TK::Operator_Assign ||
                     (!functionDeclarator && kind == TK::Operator_OpenBrace)))
             {
@@ -3728,6 +3730,12 @@ private:
                     continue;
                 }
                 return i;
+            } else if (kind == TK::Operator_OpenBrace) {
+                // Assignments in a constructor's braced member initializer
+                // belong to that expression, not to the declarator suffix.
+                ++braceDepth;
+            } else if (kind == TK::Operator_CloseBrace) {
+                --braceDepth;
             }
         }
         return end;
@@ -4885,6 +4893,44 @@ private:
         return false;
     }
 
+    void AddQualifiedTemplateSyntax(Node& core, size_t begin, size_t name)
+    {
+        // Only a complete, independently proven function head reaches here.
+        // A balanced angle span followed by :: is not proof in an expression.
+        auto** link = &core.FirstChild;
+        for (auto i = begin; i < name; ++i) {
+            if (*link && i >= (*link)->Tokens.Begin) {
+                i = (*link)->Tokens.End - 1;
+                link = &(*link)->NextSibling;
+                continue;
+            }
+            if (Kind(i) != TK::Identifier) {
+                continue;
+            }
+            const auto opening = NextSignificant(i + 1);
+            if (Kind(opening) != TK::Operator_Less) {
+                continue;
+            }
+            bool exactClosing = false;
+            const auto after =
+                SkipTemplateArguments(opening, name, false, &exactClosing);
+            const auto next = NextSignificant(after);
+            if (exactClosing && next < name &&
+                Kind(next) == TK::Operator_ScopeResolution)
+            {
+                auto* arguments = MakeTemplateArgumentList(opening, after);
+                MarkPunctuationRoles(*arguments);
+                arguments->NextSibling = *link;
+                *link = arguments;
+                if (!arguments->NextSibling) {
+                    core.LastChild = arguments;
+                }
+                link = &arguments->NextSibling;
+            }
+            i = after - 1;
+        }
+    }
+
     FunctionKind AddDeclaratorSyntax(
         Node& initDeclarator,
         size_t begin,
@@ -5127,6 +5173,15 @@ private:
                             &exactClosing);
                         knownHead &= exactClosing;
                         next = NextSignificant(qualifiedArgumentsEnd);
+                        if (!exactClosing && hasExplicitParameters) {
+                            // Comparisons inside template arguments can make
+                            // a lexical angle scan inconclusive. Preserve the
+                            // qualifier instead of assigning template roles.
+                            auto* uncertain =
+                                MakeNode(NodeKind::UnparsedSyntax, i);
+                            uncertain->Tokens.End = qualifiedArgumentsEnd;
+                            Append(*core, *uncertain);
+                        }
                     }
                     knownHead &= next < name &&
                         Kind(next) == TK::Operator_ScopeResolution;
@@ -5283,6 +5338,9 @@ private:
                 AddInitializerExpression(*initializer, initializerStart, end);
             }
             Append(initDeclarator, *initializer);
+        }
+        if (knownHead && functionKind != FunctionKind::Unknown) {
+            AddQualifiedTemplateSyntax(*core, coreBegin, name);
         }
         return knownHead ? functionKind : FunctionKind::Unknown;
     }
@@ -8349,14 +8407,10 @@ private:
         return expression;
     }
 
-    [[nodiscard]] bool IsUnambiguousTemplateUse(
-        TokenIndex following,
-        TokenIndex end,
-        bool explicitTemplate,
-        TokenIndex name,
-        TokenIndex opening) const
+    [[nodiscard]] bool IsTypeTemplateArgument(
+        TokenIndex firstArgument,
+        TokenIndex following) const
     {
-        const auto firstArgument = NextSignificant(opening + 1);
         auto afterArgument = NextSignificant(firstArgument + 1);
         const bool knownTypeArgument = IsKnownType(firstArgument);
         bool sharedCloser = false;
@@ -8377,16 +8431,75 @@ private:
                 afterArgument = NextSignificant(nestedEnd);
             }
         }
-        const bool typeArgument = (knownTypeArgument ||
+        return (knownTypeArgument ||
             IsFundamentalTypeKeyword(Kind(firstArgument))) &&
             (sharedCloser || Kind(afterArgument) == TK::Operator_Comma ||
                 Kind(afterArgument) == TK::Operator_Greater ||
                 Kind(afterArgument) == TK::Operator_RightShift);
+    }
+
+    [[nodiscard]] bool HasTypeTemplateArgument(
+        TokenIndex opening,
+        TokenIndex following) const
+    {
+        auto first = NextSignificant(opening + 1);
+        if (IsTypeTemplateArgument(first, following)) {
+            return true;
+        }
+        // A definite type in any top-level argument rules out comparison
+        // syntax. Nested lists, operand delimiters, and conditional middles
+        // must not expose their commas as the enclosing list's separators.
+        size_t work = 4096;
+        unsigned depth = 1;
+        unsigned middle = 0;
+        for (auto i = first; i < following && work != 0; ++i) {
+            --work;
+            const auto kind = Kind(i);
+            if (IsOpenDelimiter(kind)) {
+                const auto after = ArgumentPairEnd(i, following);
+                if (!after) {
+                    return false;
+                }
+                i = *after - 1;
+            } else if (kind == TK::Operator_Less) {
+                if (++depth > 256) {
+                    return false;
+                }
+            } else if (kind == TK::Operator_Greater ||
+                kind == TK::Operator_RightShift)
+            {
+                const unsigned count = kind == TK::Operator_RightShift ? 2 : 1;
+                if (count >= depth) {
+                    return false;
+                }
+                depth -= count;
+            } else if (depth == 1) {
+                if (!AdvanceConditionalMiddle(kind, middle)) {
+                    return false;
+                }
+                if (kind == TK::Operator_Comma && middle == 0 &&
+                    IsTypeTemplateArgument(NextSignificant(i + 1), following))
+                {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    [[nodiscard]] bool IsUnambiguousTemplateUse(
+        TokenIndex following,
+        TokenIndex end,
+        bool explicitTemplate,
+        TokenIndex name,
+        TokenIndex opening) const
+    {
         // Local type bindings rule out the competing comparison expression.
         // Included or dependent names alone still do not prove template use.
         const bool unqualifiedTypeName =
             NextSignificant(name + 1) == opening && IsKnownType(name);
-        if (explicitTemplate || unqualifiedTypeName || typeArgument ||
+        if (explicitTemplate || unqualifiedTypeName ||
+            HasTypeTemplateArgument(opening, following) ||
             Kind(following) == TK::Operator_ClassMemberAccess ||
             Kind(following) == TK::Operator_IndirectClassMemberAccess)
         {

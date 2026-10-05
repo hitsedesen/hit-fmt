@@ -22,10 +22,12 @@ void nested_first()
     object.Select<Box<int>, Second>(first, second);
     scope::Select<Box<int>, Second>(first, second);
     unknown<External<int>, Second>(first, second);
+    unknown<External<int>, value>(first, second);
     auto comparison = left < right > tail;
 }
 void shadowed()
 {
     int Box = 1;
     Select<Box<int>, Second>(first, second);
+    Select<Box<int>, value>(first, second);
 }

@@ -852,6 +852,13 @@ private:
                     return false;
                 }
                 break;
+            case NodeKind::ConstructorInitializerList:
+                if (node.Tokens.Empty() ||
+                    Tree_.Kind(node.Tokens.Begin) != TokenKind::Operator_Colon)
+                {
+                    return false;
+                }
+                break;
             case NodeKind::Initializer:
             case NodeKind::BinaryExpression:
             case NodeKind::AssignmentExpression:
@@ -1046,6 +1053,22 @@ private:
             node.Kind != NodeKind::EnumeratorList)
         {
             Groups_[group].Spec.Continuation = true;
+        }
+        if (node.Kind == NodeKind::ArgumentList && node.Parent != None &&
+            Region(Syntax_[node.Parent]).Kind == NodeKind::CallExpression)
+        {
+            const auto callee = Region(Syntax_[node.Parent]).FirstChild;
+            if (callee != None && !Syntax_[callee].Safe) {
+                const auto& leading =
+                    Safety_.Gaps()[Region(Syntax_[callee]).Tokens.Begin];
+                if (leading.Preserve && leading.HasLineFeed) {
+                    // A protected incoming line can leave surrounding lists
+                    // unplanned. Use the actual opening line instead of the
+                    // enclosing block's unrealized continuation level.
+                    Groups_[group].Spec.LineBase = true;
+                    Groups_[group].Spec.Continuation = false;
+                }
+            }
         }
         const bool empty = !prefixed && node.Tokens.Size() == 2;
         Groups_[group].Spec.ForceBreak =

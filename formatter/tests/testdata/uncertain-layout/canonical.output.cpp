@@ -64,7 +64,11 @@ void Example()
         Box<
             int>,
         Second>(firstArgument, secondArgument);
-    unknown<External<int>, Second>(
+    unknown<
+        External<
+            int>,
+        Second>(firstArgument, secondArgument);
+    unknown<External<int>, value>(
         firstArgument,
         secondArgument);
     auto comparison = left < right > tail;

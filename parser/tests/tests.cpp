@@ -2403,6 +2403,7 @@ INSTANTIATE_TEST_SUITE_P(
         GoldenCase{"constructor_initializer_ranges"},
         GoldenCase{"terminal_constructor_template_ids"},
         GoldenCase{"template_type_aliases"},
+        GoldenCase{"layout_reproductions"},
         GoldenCase{"declaration_operands", false, true},
         GoldenCase{"punctuation_roles", false, true},
         GoldenCase{"declaration_operands_recovery", true},
@@ -4299,6 +4300,11 @@ TEST(Parser, QualifiedConstructorHeadsKeepTerminalDeclaratorNames)
                 ASSERT_NE(list->FirstChild, nullptr);
                 ASSERT_NE(list->FirstChild->FirstChild, nullptr);
                 const Node* name = list->FirstChild->FirstChild->FirstChild;
+                while (name &&
+                    name->Kind == parser::NodeKind::TemplateArgumentList)
+                {
+                    name = name->NextSibling;
+                }
                 ASSERT_NE(name, nullptr);
                 EXPECT_EQ(tree.SourceText(name->Tokens), cases[i].second);
                 EXPECT_TRUE(name->Kind == parser::NodeKind::DeclaratorName ||
@@ -4845,7 +4851,7 @@ TEST(Parser, FunctionKindsRetainBalancedQualifiedAndExplicitReturnEvidence)
                     item.Kind == parser::FunctionKind::Destructor
                     ? parser::NodeKind::DestructorName
                     : parser::NodeKind::DeclaratorName);
-            } else {
+            } else if (child->Kind != parser::NodeKind::TemplateArgumentList) {
                 EXPECT_EQ(child->Kind, parser::NodeKind::FunctionDeclarator);
                 parameterBegin = child->Tokens.Begin;
             }

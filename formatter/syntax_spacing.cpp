@@ -1465,6 +1465,11 @@ public:
         const auto* init = Child(list);
         const auto* declarator = init ? Child(*init) : nullptr;
         const auto* name = declarator ? Child(*declarator) : nullptr;
+        // Proven qualifier template lists precede the terminal name without
+        // changing the return-type / complete-qualified-name boundary.
+        while (name && name->Kind == NK::TemplateArgumentList) {
+            name = Next(*name);
+        }
         if (!init || init->Kind != NK::InitDeclarator || !declarator ||
             declarator->Kind != NK::Declarator || !name ||
             (name->Kind != NK::DeclaratorName &&

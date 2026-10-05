@@ -461,7 +461,40 @@
       )
       (expression-statement
         (call-expression
-          (unparsed-syntax "unknown" "<" "External" "<" "int" ">" "," "Second" ">")
+          (template-id-expression
+            (identifier-expression "unknown")
+            (template-argument-list
+              "<"
+              (template-argument
+                "External"
+                (template-argument-list
+                  "<"
+                  (template-argument "int")
+                  ">"
+                )
+              )
+              (list-separator ",")
+              (template-argument "Second")
+              ">"
+            )
+          )
+          (argument-list
+            "("
+            (argument
+              (identifier-expression "first")
+            )
+            (list-separator ",")
+            (argument
+              (identifier-expression "second")
+            )
+            ")"
+          )
+        )
+        ";"
+      )
+      (expression-statement
+        (call-expression
+          (unparsed-syntax "unknown" "<" "External" "<" "int" ">" "," "value" ">")
           (argument-list
             "("
             (argument
@@ -533,7 +566,40 @@
       )
       (expression-statement
         (call-expression
-          (unparsed-syntax "Select" "<" "Box" "<" "int" ">" "," "Second" ">")
+          (template-id-expression
+            (identifier-expression "Select")
+            (template-argument-list
+              "<"
+              (template-argument
+                "Box"
+                (template-argument-list
+                  "<"
+                  (template-argument "int")
+                  ">"
+                )
+              )
+              (list-separator ",")
+              (template-argument "Second")
+              ">"
+            )
+          )
+          (argument-list
+            "("
+            (argument
+              (identifier-expression "first")
+            )
+            (list-separator ",")
+            (argument
+              (identifier-expression "second")
+            )
+            ")"
+          )
+        )
+        ";"
+      )
+      (expression-statement
+        (call-expression
+          (unparsed-syntax "Select" "<" "Box" "<" "int" ">" "," "value" ">")
           (argument-list
             "("
             (argument

@@ -34,5 +34,6 @@ void Example()
     object.Select<Box<int>, Second>(firstArgument, secondArgument);
     ns::Select<Box<int>, Second>(firstArgument, secondArgument);
     unknown<External<int>, Second>(firstArgument, secondArgument);
+    unknown<External<int>, value>(firstArgument, secondArgument);
     auto comparison = left < right > tail;
 }
