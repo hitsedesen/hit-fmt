@@ -178,6 +178,7 @@ struct Syntax
     Index Operator = None;
     bool Safe = true;
     bool IndentSafe = true;
+    bool ChainSafe = true;
     bool String = false;
     bool Definition = false;
     bool ItemSequence = false;
@@ -429,7 +430,11 @@ public:
             if (node.Kind == NodeKind::TemplateDeclaration) {
                 PlanTemplateHeader(i);
             }
-            if (!Syntax_[i].Safe && !CanPlanAroundOpaqueChildren(i)) {
+            if (!entry.Safe &&
+                !(IsSpine(node.Kind)
+                    ? entry.ChainSafe
+                    : CanPlanAroundOpaqueChildren(i)))
+            {
                 if (ListFor(node.Kind)) {
                     PreserveUnplannedListContext(i);
                 }
@@ -646,6 +651,10 @@ private:
                     entry.IndentSafe &= Syntax_[child].IndentSafe;
                 }
             }
+            // Opaque arguments do not invalidate a proven callee/member spine.
+            // Cache this separately: other planners still need subtree safety.
+            entry.ChainSafe = entry.Safe ||
+                (IsSpine(node.Kind) && CanPlanAroundOpaqueChildren(i));
             if (entry.ItemSequence) {
                 entry.SequenceBody = node.Tokens;
                 if (node.Kind != NodeKind::TranslationUnit &&
@@ -856,6 +865,40 @@ private:
     {
         const auto& node = Region(Syntax_[id]);
         switch (node.Kind) {
+            case NodeKind::CallExpression:
+            case NodeKind::MemberExpression: {
+                const auto callee = node.FirstChild;
+                if (callee == None || !Syntax_[callee].ChainSafe) {
+                    return false;
+                }
+                for (auto child = Region(Syntax_[callee]).NextSibling;
+                    child != None;
+                    child = Region(Syntax_[child]).NextSibling)
+                {
+                    const auto& part = Region(Syntax_[child]);
+                    if (node.Kind == NodeKind::CallExpression &&
+                        part.Kind == NodeKind::ArgumentList)
+                    {
+                        // Recovery may live inside arguments, not in the
+                        // delimiters proving where this invocation ends.
+                        if (part.Tokens.Size() < 2 ||
+                            Tree_.Kind(part.Tokens.Begin) !=
+                                TokenKind::Operator_OpenParenthesis ||
+                            Tree_.MatchingDelimiter(part.Tokens.Begin) !=
+                                part.Tokens.End - 1 ||
+                            PrefixProtection_[part.Tokens.Begin] !=
+                                PrefixProtection_[part.Tokens.Begin + 1] ||
+                            PrefixProtection_[part.Tokens.End - 1] !=
+                                PrefixProtection_[part.Tokens.End])
+                        {
+                            return false;
+                        }
+                    } else if (!Syntax_[child].Safe) {
+                        return false;
+                    }
+                }
+                break;
+            }
             case NodeKind::TemplateParameterList:
             case NodeKind::TemplateArgumentList:
                 // An incomplete template grammar must not acquire new breaks.
