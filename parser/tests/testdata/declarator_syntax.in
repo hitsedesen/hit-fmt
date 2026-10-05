@@ -16,3 +16,12 @@ void allocate(int count) {
 static_assert(!HAS_EMPTY_ARG(, ), "");
 static_assert(!HAS_EMPTY_ARG(first, , last), "");
 static_assert(!HAS_EMPTY_ARG(first, ), "");
+NO_INLINE std::tuple<int, int> Serve(int value) { return {}; }
+EXPORT HOT Box<Box<int>> chained() { return {}; }
+static EXPORT Box<int> qualified_prefix() { return {}; }
+EXPORT int builtin() { return 0; }
+EXPORT Box<int> declared();
+EXPORT Box<int> Owner<int>::method() { return {}; }
+Value Owner<int>::unprefixed() { return {}; }
+Value Owner::*member;
+EXPORT Box<int>*pointer() { return nullptr; }

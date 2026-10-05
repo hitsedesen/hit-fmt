@@ -627,8 +627,23 @@ TEST(SyntaxSpacing, CompleteSpecifierToDirectNamedDeclaratorFallback)
         "Box<int>make(){} Box<Box<int>>nested(){} "
         "Box<int>  flat(); int scalar(){} "
         "namespace types {template<class T> struct Box {}; } "
-        "types::Box<int>qualified(){}");
-    for (const auto name : {"make", "nested", "flat", "scalar", "qualified"}) {
+        "types::Box<int>qualified(){} "
+        "NO_INLINE std::tuple<int, int> Serve(int value){} "
+        "EXPORT HOT Box<Box<int>> chained(){} "
+        "static EXPORT Box<int> prefixed(){} " "EXPORT Box<int> declared();");
+    for (const auto name :
+        {
+            "make",
+            "nested",
+            "flat",
+            "scalar",
+            "qualified",
+            "Serve",
+            "chained",
+            "prefixed",
+            "declared",
+        })
+    {
         const auto id = analysis.Before(name);
         const auto& gap = analysis.Spacing.Gaps()[id];
         ASSERT_NE(gap.Owner, NoRegion) << name;
@@ -645,7 +660,7 @@ TEST(SyntaxSpacing, CompleteSpecifierToDirectNamedDeclaratorFallback)
 
     Analysis qualified("template<class T> struct Box {}; "
         "Box<int> Owner<int>::method() const & {} "
-        "Box<int> Owner<int>::method(); " "Box<int> space::method(){}");
+        "EXPORT Box<int> Owner<int>::method(); " "Value space::method(){}");
     for (const auto id :
         {
             qualified.Before("Owner"),
@@ -684,8 +699,8 @@ TEST(SyntaxSpacing, CompleteSpecifierToDirectNamedDeclaratorFallback)
 TEST(SyntaxSpacing, DeclarationFallbackDoesNotGuessPunctuationBoundaries)
 {
     Analysis analysis("template<class T> struct Box {}; "
-        "Box<int>*pointer(){} Box<int>&reference(){} "
-        "Box<int>(*nested)(int); Box<int> Holder::*member; "
+        "EXPORT Box<int>*pointer(){} EXPORT Box<int>&reference(){} "
+        "Box<int>(*nested)(int); Value Holder::*member; "
         "struct C {C(){} ~C(){} operator int(){} }; "
         "void use(){put<int>(); value=a>b; "
         "auto cast=static_cast<int>(value);}");

@@ -3503,6 +3503,61 @@ private:
         return false;
     }
 
+    [[nodiscard]] size_t SkipDeclarationTypeName(
+        size_t index,
+        size_t end,
+        bool requireComplete,
+        FunctionKind* functionKind = nullptr) const
+    {
+        if (index >= end) {
+            return index;
+        }
+        if (Kind(index) == TK::Operator_ScopeResolution) {
+            auto component = NextSignificant(index + 1);
+            if (component >= end || Kind(component) != TK::Identifier) {
+                return index;
+            }
+            index = component;
+        }
+        if (Kind(index) != TK::Identifier) {
+            return index;
+        }
+        if (functionKind) {
+            *functionKind = FunctionKind::Ordinary;
+        }
+        index = NextSignificant(index + 1);
+        if (index < end && Kind(index) == TK::Operator_Less) {
+            bool exactClosing = false;
+            index = NextSignificant(SkipTemplateArguments(
+                index,
+                end,
+                requireComplete,
+                &exactClosing));
+            if (functionKind && !exactClosing) {
+                *functionKind = FunctionKind::Unknown;
+            }
+        }
+        while (index < end && Kind(index) == TK::Operator_ScopeResolution) {
+            auto component = NextSignificant(index + 1);
+            if (component >= end || Kind(component) != TK::Identifier) {
+                break;
+            }
+            index = NextSignificant(component + 1);
+            if (index < end && Kind(index) == TK::Operator_Less) {
+                bool exactClosing = false;
+                index = NextSignificant(SkipTemplateArguments(
+                    index,
+                    end,
+                    requireComplete,
+                    &exactClosing));
+                if (functionKind && !exactClosing) {
+                    *functionKind = FunctionKind::Unknown;
+                }
+            }
+        }
+        return index;
+    }
+
     [[nodiscard]] size_t FindDeclarationSpecifiersEnd(
         size_t begin,
         size_t end,
@@ -3547,6 +3602,26 @@ private:
                 index = NextSignificant(index + 1);
                 continue;
             }
+            if (!foundType && kind == TK::Identifier) {
+                const auto next = NextSignificant(index + 1);
+                const auto typeEnd = SkipDeclarationTypeName(next, end, true);
+                const auto afterType = Kind(typeEnd);
+                // An opaque modifier may precede a complete type followed by
+                // a declarator. A qualified function name ends at '(' and a
+                // member-pointer qualifier at '::*'; neither proves a type.
+                if (next < end &&
+                    (IsDeclarationSpecifier(Kind(next)) ||
+                        (typeEnd > next && typeEnd < end &&
+                            (afterType == TK::Identifier ||
+                                afterType == TK::Keyword_operator ||
+                                afterType == TK::Operator_Star ||
+                                afterType == TK::Operator_Ampersand ||
+                                afterType == TK::Operator_And))))
+                {
+                    index = next;
+                    continue;
+                }
+            }
             break;
         }
 
@@ -3567,53 +3642,13 @@ private:
         {
             return index;
         }
-        if (Kind(index) == TK::Operator_ScopeResolution) {
-            auto component = NextSignificant(index + 1);
-            if (Kind(component) != TK::Identifier) {
-                return index;
-            }
-            index = component;
-        }
-        if (Kind(index) != TK::Identifier) {
-            return index;
-        }
-
         // Consume a user-defined, qualified type name and optional template
         // arguments. The following token begins the declarator.
-        if (functionKind) {
-            *functionKind = FunctionKind::Ordinary;
-        }
-        index = NextSignificant(index + 1);
-        if (Kind(index) == TK::Operator_Less) {
-            bool exactClosing = false;
-            index = NextSignificant(SkipTemplateArguments(
-                index,
-                end,
-                requireComplete,
-                &exactClosing));
-            if (functionKind && !exactClosing) {
-                *functionKind = FunctionKind::Unknown;
-            }
-        }
-        while (Kind(index) == TK::Operator_ScopeResolution) {
-            auto component = NextSignificant(index + 1);
-            if (Kind(component) != TK::Identifier) {
-                break;
-            }
-            index = NextSignificant(component + 1);
-            if (Kind(index) == TK::Operator_Less) {
-                bool exactClosing = false;
-                index = NextSignificant(SkipTemplateArguments(
-                    index,
-                    end,
-                    requireComplete,
-                    &exactClosing));
-                if (functionKind && !exactClosing) {
-                    *functionKind = FunctionKind::Unknown;
-                }
-            }
-        }
-        return index;
+        return SkipDeclarationTypeName(
+            index,
+            end,
+            requireComplete,
+            functionKind);
     }
 
     [[nodiscard]] size_t FindMemberPointerEnd(size_t begin, size_t end) const
