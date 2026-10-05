@@ -318,8 +318,8 @@ std::vector<FormatCase> FormatCases()
         const auto directory = std::filesystem::path(FORMATTER_TESTDATA_DIR) /
             "../declaration-macros";
         AddCases(cases, directory, {"canonical", "remove-null"});
-        auto style = formatter::LoadConfigFile(directory / "canonical.hit-fmt")
-            .FormattingStyle;
+        auto style = formatter::LoadConfigFile(
+            directory / "canonical.hit-fmt").FormattingStyle;
         style.RemoveNullDeclarations = true;
         cases.back().Style = style;
         cases.back().Expected = "canonical.output.cpp";
@@ -706,8 +706,8 @@ std::vector<FormatCase> FormatCases()
         const auto directory = std::filesystem::path(FORMATTER_TESTDATA_DIR) /
             "../style-checkpoint";
         {
-            auto style = formatter::LoadConfigFile(directory / "lf.hit-fmt")
-                .FormattingStyle;
+            auto style = formatter::LoadConfigFile(
+                directory / "lf.hit-fmt").FormattingStyle;
             style.LineEnding = LineEnding::CRLF;
             ApplyProfile(cases, directory, "crlf", style);
         }
@@ -1068,6 +1068,25 @@ std::vector<FormatCase> FormatCases()
         {"moved-root", "moved-root-preserve", "moved-root-tabs"},
         "moved-root.input.cpp");
     cases.push_back({chains, "child-fitting", "child-fitting.input.cpp"});
+    for (const auto& [name, columns] :
+        {std::pair{"field-assignment", 120}, {"field-assignment-narrow", 40}})
+    {
+        cases.push_back({
+            chains,
+            name,
+            "field-assignment.input.cpp",
+            "child-fitting",
+            {},
+            true,
+            {},
+            true,
+        });
+        cases.back().Style = formatter::LoadConfigFile(
+            chains / "child-fitting.hit-fmt").FormattingStyle;
+        cases.back().Style->ColumnLimit = columns;
+        cases.back().Style->ChainsBreak = BreakRequirement::Always;
+        cases.back().Style->ChainsPacking = ListPacking::VerticalWhenBroken;
+    }
     cases.push_back({
         chains,
         "comparison-fitting",
@@ -1959,8 +1978,8 @@ std::vector<FormatCase> FormatCases()
         "access-scope-safe.input.cpp",
         "scope-only",
     });
-    auto scopeStyle = formatter::LoadConfigFile(google / "scope-only.hit-fmt")
-        .FormattingStyle;
+    auto scopeStyle = formatter::LoadConfigFile(
+        google / "scope-only.hit-fmt").FormattingStyle;
     scopeStyle.DeclarationHeadersLayout = CategoryLayout::Canonical;
     scopeStyle.ParametersLayout = CategoryLayout::Canonical;
     scopeStyle.ColumnLimit = 48;
@@ -2114,8 +2133,8 @@ std::vector<FormatCase> FormatCases()
         const auto directory = std::filesystem::path(FORMATTER_TESTDATA_DIR) /
             "../continuation-nesting";
         {
-            auto style = formatter::LoadConfigFile(directory / "shared.hit-fmt")
-                .FormattingStyle;
+            auto style = formatter::LoadConfigFile(
+                directory / "shared.hit-fmt").FormattingStyle;
             style.IndentationKind = IndentationKind::Tabs;
             ApplyProfile(cases, directory, "tabs", style);
         }
@@ -4139,8 +4158,8 @@ TEST_P(FormatTest, Golden)
     const auto config = value.Config.empty() ? value.Name : value.Config;
     const auto style = value.Style
         ? *value.Style
-        : formatter::LoadConfigFile(fixture.Directory / (config + ".hit-fmt"))
-            .FormattingStyle;
+        : formatter::LoadConfigFile(
+            fixture.Directory / (config + ".hit-fmt")).FormattingStyle;
     const auto input = fixture.Input(value.Input);
     if (value.Hunks.empty()) {
         const auto expected = value.Expected.empty()
@@ -4387,8 +4406,8 @@ TEST_P(LayoutDiagnosticTest, Golden)
         {.Data = source.data(), .Size = size},
         [] (parser::ParseError) { });
     const auto config = value.Config.empty() ? value.Name : value.Config;
-    auto style = formatter::LoadConfigFile(directory / (config + ".hit-fmt"))
-        .FormattingStyle;
+    auto style = formatter::LoadConfigFile(
+        directory / (config + ".hit-fmt")).FormattingStyle;
     if (value.StrictLength) {
         style.WidthDiagnostics = formatter::WidthDiagnosticPolicy::Report;
     }
@@ -4469,8 +4488,8 @@ TEST_P(LayoutDiagnosticTest, ReportsEmittedWidths)
         {.Data = source.data(), .Size = size},
         [] (parser::ParseError) { });
     const auto config = value.Config.empty() ? value.Name : value.Config;
-    auto style = formatter::LoadConfigFile(directory / (config + ".hit-fmt"))
-        .FormattingStyle;
+    auto style = formatter::LoadConfigFile(
+        directory / (config + ".hit-fmt")).FormattingStyle;
     if (value.StrictLength) {
         style.WidthDiagnostics = formatter::WidthDiagnosticPolicy::Report;
     }

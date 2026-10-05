@@ -514,6 +514,34 @@ TEST(SourceAnalysis,
     }
 }
 
+TEST(SourceAnalysis, OpaqueCalleeProtectsSpellingNotIncomingGap)
+{
+    for (const auto prefix : {"target.Field += ", "return ", "consume(first, "})
+    {
+        const auto source = std::string("void f() { ") + prefix +
+            "Factory< Unknown >(value)" +
+            (std::string_view(prefix).starts_with("consume") ? "); }" : "; }");
+        Input input(source);
+        auto tree = Parse(input);
+        std::pmr::monotonic_buffer_resource memory;
+        auto analysis = Analyze(tree, memory);
+        const auto callee = Before(tree, "Factory");
+        EXPECT_TRUE(analysis.CanReplaceGap(callee, "\n    ")) << source;
+        EXPECT_FALSE(analysis.CanReplaceGap(Before(tree, "Unknown"), ""))
+            << source;
+        EXPECT_FALSE(analysis.CanReplaceGap(Before(tree, ">"), "")) << source;
+        const std::array protectedRanges{analysis.Gaps()[callee].Source};
+        auto scoped =
+            Analyze(tree, memory, {.ImmutableRanges = protectedRanges});
+        EXPECT_FALSE(scoped.CanReplaceGap(callee, "\n    ")) << source;
+    }
+    Input input("void f() { target.Field += Factory< Unknown >; }");
+    auto tree = Parse(input);
+    std::pmr::monotonic_buffer_resource memory;
+    auto analysis = Analyze(tree, memory);
+    EXPECT_FALSE(analysis.CanReplaceGap(Before(tree, "Factory"), "\n    "));
+}
+
 TEST(SourceAnalysis, RecoverySummariesAndMergedExplicitRanges)
 {
     Input input("int good = 1;\nvoid f() { call(a,,b); }\nint tail = 2;\n");
