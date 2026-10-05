@@ -13,11 +13,7 @@
     )
     (compound-statement
       "{"
-      (expression-statement
-        (identifier-expression "unknown")
-        (unparsed-syntax "@" "tokens")
-        ";"
-      )
+      (unparsed-syntax "unknown" "@" "tokens" ";")
       "}"
     )
   )

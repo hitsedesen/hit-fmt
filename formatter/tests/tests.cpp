@@ -2497,6 +2497,19 @@ std::vector<FormatCase> FormatCases()
         });
     }
     AddCases(cases, data / "unhinted-body-recovery", {"canonical"});
+    AddCases(cases, data / "macro-generated-cases", {"canonical", "preserve"});
+    cases.push_back({
+        data / "macro-generated-cases",
+        "ytsaurus",
+        "input.cpp",
+        (data / "../../../hit-fmt/examples/ytsaurus")
+            .lexically_normal()
+            .string(),
+        {},
+        true,
+        {},
+        true,
+    });
     AddCases(
         cases,
         data / "lambda-argument-ownership",

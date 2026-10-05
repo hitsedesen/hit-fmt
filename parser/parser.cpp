@@ -9545,6 +9545,17 @@ private:
                 ++Cursor_;
                 break;
             }
+            // Unexpanded statement macros need not spell a semicolon. A
+            // following switch label is a proven boundary, not part of the
+            // preceding opaque run. Balanced macro arguments stay inside it.
+            if (Cursor_ != start &&
+                (tokenKind == TK::Keyword_case ||
+                    tokenKind == TK::Keyword_default))
+            {
+                nodeKind = NodeKind::UnparsedSyntax;
+                node->Kind = nodeKind;
+                break;
+            }
             if (tokenKind == TK::Operator_CloseBrace) {
                 if (Kind(NextSignificant(start)) == TK::Identifier) {
                     nodeKind = NodeKind::UnparsedSyntax;
@@ -9573,12 +9584,17 @@ private:
                 --expressionEnd;
             }
             auto expressionCursor = start;
-            if (auto* expression =
-                ParseExpressionSyntax(expressionCursor, expressionEnd))
-            {
+            auto* expression =
+                ParseExpressionSyntax(expressionCursor, expressionEnd);
+            if (expressionCursor != expressionEnd) {
+                // A parsed prefix does not certify a statement. In particular,
+                // adjacent macro invocations are not separate C++ calls: keep
+                // the whole run opaque instead of formatting only its first
+                // invocation and preserving the remainder.
+                node->Kind = NodeKind::UnparsedSyntax;
+            } else if (expression) {
                 Append(*node, *expression);
             }
-            AddUnparsedSyntax(*node, expressionCursor, expressionEnd);
             AddDirectiveChildrenInGap(*node, start, Cursor_);
         } else {
             if (nodeKind == NodeKind::AmbiguousStatement) {

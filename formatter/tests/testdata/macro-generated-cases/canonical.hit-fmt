@@ -1,0 +1,8 @@
+Layout = Canonical
+BodyShape = Expanded
+IndentationKind = Spaces
+IndentWidth = 4
+IndentCaseLabels = Indent
+SpaceInsideCallArguments = NoSpace
+CommaSpaceAfter = Space
+FunctionCallSpaceBeforeParameters = NoSpace
