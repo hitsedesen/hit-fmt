@@ -1941,9 +1941,7 @@ TEST(GroupLayout, SourceRunsMatchIndividualAtoms)
             Document separate(source);
             const auto fill = [&] (Document& document, bool compact) {
                 const auto text =
-                    [
-                        &
-                    ] (
+                    [&] (
                         std::uint32_t begin,
                         std::uint32_t end,
                         Identity id,

@@ -3031,9 +3031,7 @@ TEST(Parser, RecordHeadTemplateArgumentsOwnTheirSeparators)
         std::vector<parser::ParseError> errors;
         const auto parsed = parser::Parse(
             padded.View(),
-            [
-                &
-            ] (
+            [&] (
                 parser::ParseError error) { errors
                         .push_back(std::move(error)); });
         EXPECT_TRUE(errors.empty());
@@ -3490,9 +3488,7 @@ TEST(Parser, RequiresClauseOwnsNestedExpressionBeforeDeclaration)
             std::vector<parser::ParseError> errors;
             const auto tree = parser::Parse(
                 input.View(),
-                [
-                    &
-                ] (
+                [&] (
                     parser::ParseError error) { errors
                             .push_back(std::move(error)); });
             EXPECT_TRUE(errors.empty());
@@ -3899,9 +3895,7 @@ TEST(Parser, RequiresClausePreservesOperatorAndUnknownConstraints)
         std::vector<parser::ParseError> errors;
         const auto tree = parser::Parse(
             input.View(),
-            [
-                &
-            ] (
+            [&] (
                 parser::ParseError error) { errors
                         .push_back(std::move(error)); });
         if (constraint.Invalid) {
@@ -4003,9 +3997,7 @@ TEST(Parser, RequiresClauseKeepsBoundaryCommentsAndTerminalRecovery)
             std::vector<parser::ParseError> errors;
             const auto tree = parser::Parse(
                 input.View(),
-                [
-                    &
-                ] (
+                [&] (
                     parser::ParseError error) { errors
                             .push_back(std::move(error)); });
             const auto invalidOffset = source.find('@');
@@ -4122,9 +4114,7 @@ TEST(Parser, RequiresClauseKeepsUnparsedSuffixAndDiagnosesMissingBody)
         std::vector<parser::ParseError> errors;
         const auto tree = parser::Parse(
             input.View(),
-            [
-                &
-            ] (
+            [&] (
                 parser::ParseError error) { errors
                         .push_back(std::move(error)); });
         if (missingBody) {
@@ -4235,9 +4225,7 @@ TEST(Parser, ParameterDefaultsKeepDelimitedComparisonBoundaries)
         std::vector<parser::ParseError> errors;
         const auto tree = parser::Parse(
             input.View(),
-            [
-                &
-            ] (
+            [&] (
                 parser::ParseError error) { errors
                         .push_back(std::move(error)); });
         EXPECT_TRUE(errors.empty());

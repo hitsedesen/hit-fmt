@@ -21,10 +21,9 @@ struct Derived: Base {
     )
     {
       auto callback =
-        [
-          first,
-          second
-        ](int extra)
+        [first, second](
+          int extra
+        )
         {
           return first
             ? second + extra
