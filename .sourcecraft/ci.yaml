@@ -1,6 +1,10 @@
-# Pull requests get the same checks as a manually started release.
+# Pull requests and main commits get the same checks as a manual release.
 # Run the release workflow on main after updating the CMake project version.
 on:
+  push:
+    - workflows: verify
+      filter:
+        branches: main
   pull_request:
     - workflows: verify
       filter:
