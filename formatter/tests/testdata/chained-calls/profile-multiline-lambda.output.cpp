@@ -155,7 +155,7 @@ void Run()
         .First()
         // This does not change the link kind.
         .Second();
-    namespace_name /* Keep this qualifier comment. */ :: Factory()
+    namespace_name /* Keep this qualifier comment. */::Factory()
         .First()
         .Second();
     state

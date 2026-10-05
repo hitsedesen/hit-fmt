@@ -2865,6 +2865,38 @@ TEST(PublicPipeline, TerminalConstructorTemplateIdsKeepMapsProtectionAndScopes)
     EXPECT_EQ(frozen.Text, source);
     CheckIdentities(source, frozen);
 }
+TEST(PublicPipeline, JoinedTemplateClosersKeepMapsAndEditScopes)
+{
+    const std::string source =
+        "using First = Box<Box<int> >;\n" "using Second = Box<Box<int> >;\n";
+    formatter::Style style;
+    style.TemplateTypeArgumentInteriorSpacing = formatter::GapPolicy::NoSpace;
+    const formatter::PreparedFormat prepared(style);
+    const auto complete = FormatInput(source, prepared);
+    CheckIdentities(source, complete);
+    EXPECT_EQ(
+        complete.Text,
+        "using First = Box<Box<int>>;\n" "using Second = Box<Box<int>>;\n");
+    const auto point = uint32_t(source.find("> >") + 1);
+    const std::array selected{parser::SourceRange{point, point + 1}};
+    const auto scoped = FormatInput(
+        source,
+        prepared,
+        {.SourceMap = true, .EditScope = selected});
+    auto expected = source;
+    expected.erase(point, 1);
+    EXPECT_EQ(scoped.Text, expected);
+    CheckIdentities(source, scoped);
+    CheckExcludedCopies(source, scoped, selected);
+    const std::array all{parser::SourceRange{0, uint32_t(source.size())}};
+    const auto frozen = FormatInput(
+        source,
+        prepared,
+        {.ImmutableRanges = all, .SourceMap = true});
+    EXPECT_EQ(frozen.Text, source);
+    CheckIdentities(source, frozen);
+}
+
 TEST(PublicPipeline, TerminalConstructorSelfTypeStatementsKeepMapsAndEditScopes)
 {
     const std::string_view bodies[] = {

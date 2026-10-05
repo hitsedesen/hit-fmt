@@ -1345,6 +1345,8 @@ std::vector<FormatCase> FormatCases()
     addProfileCase("../spacing-options", "profile-overflow");
     addProfileCase("../spacing-options", "profile-case-blocks");
     addProfileCase("../spacing-options", "profile-ref-qualifiers");
+    addProfileCase("../spacing-options", "profile-template-punctuation");
+    cases.back().CheckOwningMaps = true;
     cases.push_back({
         std::filesystem::path(FORMATTER_TESTDATA_DIR) /
             "../declaration-headers",

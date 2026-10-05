@@ -163,6 +163,46 @@ TEST(SyntaxSpacing, GlobalScopeDoesNotOwnSpecifierBoundaries)
     }
 }
 
+TEST(SyntaxSpacing, TemplateClosersRelaxOnlyParsedLexicalSeparation)
+{
+    const std::string_view source = "using Alias = Box<Box<Box<int> > >; "
+        "void Compare(){auto value = left > > right;}";
+    for (const auto policy :
+        {
+            GapPolicy::Preserve,
+            GapPolicy::NoSpace,
+            GapPolicy::Space,
+            GapPolicy::GeneratedNoSpace,
+            GapPolicy::GeneratedSpace,
+        })
+    {
+        GapPolicies policies;
+        policies.TemplateTypeArgumentInteriorSpacing = policy;
+        Analysis analysis(source, policies);
+        for (const auto occurrence : {1u, 2u}) {
+            const auto gap = analysis.Before(">", occurrence);
+            EXPECT_TRUE(TokenGapNeedsSeparation(analysis.Tree, gap));
+            EXPECT_EQ(
+                analysis.Safety.Gaps()[gap].Separation,
+                GapSeparation::Optional);
+            EXPECT_EQ(
+                analysis.Spacing.SpacePreference(
+                    gap,
+                    GapContext::Preserved,
+                    analysis.Safety),
+                GapUsesSpace(policy, GapContext::Preserved));
+            EXPECT_EQ(
+                analysis.Spacing
+                    .SpacePreference(gap, GapContext::Rebuilt, analysis.Safety),
+                GapUsesSpace(policy, GapContext::Rebuilt));
+        }
+        const auto comparison = analysis.Before(">", 4);
+        EXPECT_EQ(
+            analysis.Safety.Gaps()[comparison].Separation,
+            GapSeparation::Required);
+    }
+}
+
 TEST(SyntaxSpacing, UnsupportedTemplateDeclarationPolicyIsRejected)
 {
     Analysis analysis(test::golden::ReadFile(FixturePath("roles.input.cpp")));

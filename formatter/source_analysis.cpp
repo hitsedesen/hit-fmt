@@ -533,7 +533,18 @@ SourceAnalysis BuildSourceAnalysis(
             gap.Horizontal &= c == ' ' || c == '\t';
         }
         if (i && i < count && TokenGapNeedsSeparation(tree, i)) {
-            gap.Separation = GapSeparation::Required;
+            // C++ permits adjacent template closers to be retokenized as >>.
+            // Only confirmed delimiters may relax maximal-munch separation;
+            // comparison/shift operators and unparsed syntax remain lexical.
+            const auto templateCloser = [&] (parser::TokenIndex index) {
+                return tree.Role(index) ==
+                    parser::PunctuationRole::TemplateDelimiter &&
+                    (tree.Kind(index) == TK::Operator_Greater ||
+                        tree.Kind(index) == TK::Operator_RightShift);
+            };
+            if (!templateCloser(i - 1) || !templateCloser(i)) {
+                gap.Separation = GapSeparation::Required;
+            }
         }
         // Preserve comment attachment topology, not its surrounding whitespace.
         // In particular a line comment must not swallow the following token.

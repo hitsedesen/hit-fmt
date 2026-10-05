@@ -112,6 +112,11 @@ void PrintOption(std::ostream& output, std::string_view name, const T& value)
         output
             << "# Uncertain scopes retain existing line-start regions.\n"
                 "# Inline endpoints do not prevent body expansion.\n";
+    } else if (name == "TemplateTypeArgumentInteriorSpacing") {
+        output << "# NoSpace may join confirmed template closers as >>.\n";
+    } else if (name == "ScopeResolutionSpacing") {
+        output
+            << "# Qualified :: edges, not the gap before leading global ::.\n";
     }
     output << "# Values: ";
     if constexpr (std::is_enum_v<T>) {

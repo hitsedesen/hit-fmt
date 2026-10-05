@@ -132,7 +132,9 @@ ControlBlockKeywordSpacing = Space
 CommaSpaceBefore = NoSpace
 CommaSpaceAfter = Space
 EmptyBlockInteriorSpacing = GeneratedNoSpace
-ScopeResolutionSpacing = Preserve
+ScopeResolutionSpacing = NoSpace
+TemplateTypeArgumentInteriorSpacing = NoSpace
+# Compact nested templates: Box<Box<int>>, Box<T>::Member.
 FunctionRefQualifierSpacing = Space
 FunctionCvRefQualifierSpacing = NoSpace
 # CV/ref spacing defaults to Inherit; Preserve uses usual preservation rules.
@@ -387,6 +389,10 @@ constexpr HelpSection HelpSections[] = {
         "not final brokenness or text-history. "
         "Before/After keys control the two sides "
             "of colons, arrows and operator-overload boundaries independently. "
+        "TemplateTypeArgumentInteriorSpacing = NoSpace may join confirmed "
+        "template closers as >>; comparison and shift operators retain "
+        "lexical separation. ScopeResolutionSpacing controls qualified :: "
+        "edges, not the gap before a leading global ::. "
         "Lexical safety and comment boundaries "
             "override spacing. Use --generate-config "
         "for the complete option list and defaults, "

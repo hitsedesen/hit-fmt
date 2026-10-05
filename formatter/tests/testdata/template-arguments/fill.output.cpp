@@ -21,7 +21,7 @@ storage::Outer<
 storage::Map<types::Box<
   FirstLongTemplateArgument>,
   types::Pair<SecondLongTemplateArgument,
-    ThirdLongTemplateArgument> > spaced;
+    ThirdLongTemplateArgument>> spaced;
 Pair<> empty;
 Fixed<(1 << 2), (bits >> 1), (left < right > tail),
   7> expressions;
