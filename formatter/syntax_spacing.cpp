@@ -1472,6 +1472,7 @@ public:
         if (!init || init->Kind != NK::InitDeclarator || !declarator ||
             declarator->Kind != NK::Declarator || !name ||
             (name->Kind != NK::DeclaratorName &&
+                name->Kind != NK::DestructorName &&
                 name->Kind != NK::OperatorFunctionName) || name->Tokens.Empty())
         {
             // Pointer/nested/member-pointer/attribute entries are
@@ -1485,8 +1486,8 @@ public:
             return;
         }
         // A qualified declarator starts before its terminal name child.
-        // Separate the complete return type from the whole qualified name,
-        // not merely from its final identifier.
+        // Separate the complete specifiers from the whole qualified name,
+        // including a destructor's '~', not merely its final identifier.
         Mark(
             list.Tokens.Begin,
             F::None,

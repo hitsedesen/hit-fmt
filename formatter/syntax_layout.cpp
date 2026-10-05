@@ -1881,6 +1881,7 @@ private:
     {
         switch (kind) {
             case NodeKind::DeclaratorName:
+            case NodeKind::DestructorName:
             case NodeKind::OperatorFunctionName:
             case NodeKind::FunctionQualifier:
             case NodeKind::ExceptionSpecification:
@@ -1945,6 +1946,7 @@ private:
                             ++prefix;
                         }
                     } else if (node.Kind == NodeKind::DeclaratorName ||
+                        node.Kind == NodeKind::DestructorName ||
                         node.Kind == NodeKind::OperatorFunctionName)
                     {
                         // Qualified prefixes are direct declarator tokens;
@@ -1991,6 +1993,7 @@ private:
                         // never between the final :: and terminal identifier.
                         const bool qualifiedTerminal =
                             (node.Kind == NodeKind::DeclaratorName ||
+                                node.Kind == NodeKind::DestructorName ||
                                 node.Kind == NodeKind::OperatorFunctionName) &&
                                 Tree_.Kind(t - 1) ==
                                     TokenKind::Operator_ScopeResolution;
