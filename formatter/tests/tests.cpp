@@ -1377,6 +1377,21 @@ std::vector<FormatCase> FormatCases()
     addProfileCase("../preprocessing-fragments", "canonical");
     cases.back().CheckOwningMaps = true;
     addProfileCase("../preprocessing-fragments", "case-comments");
+    addProfileCase("../preprocessing-fragments", "case-blocks");
+    cases.back().CheckOwningMaps = true;
+    for (const auto* name : {"case-blocks-next-line", "case-blocks-preserve"}) {
+        auto value = cases.back();
+        value.Name = name;
+        value.Style =
+            formatter::LoadConfigFile(profile + ".hit-fmt").FormattingStyle;
+        if (value.Name == "case-blocks-next-line") {
+            value.Style->CaseBlockBracePlacement = BracePlacement::NextLine;
+        } else {
+            value.Style->ControlHeadersLayout = CategoryLayout::Preserve;
+            value.Style->BodiesLayout = CategoryLayout::Preserve;
+        }
+        cases.push_back(std::move(value));
+    }
     addProfileCase("../spacing-options", "profile-initializers");
     addProfileCase("../spacing-options", "profile-overflow");
     addProfileCase("../spacing-options", "profile-case-blocks");
