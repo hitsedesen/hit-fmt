@@ -2693,12 +2693,19 @@ private:
                 }
                 continue;
             }
-            // Labels delimit direct-child case regions. A real compound body
-            // supplies its own level; statements after it start another region.
+            // Labels delimit direct-child case regions. Only a compound
+            // immediately following a label supplies the case's body level;
+            // later standalone blocks share the surrounding statement level.
             if (part.Kind == NodeKind::CaseLabel) {
                 inCase = true;
                 contents = None;
-            } else if (part.Kind == NodeKind::CompoundStatement) {
+            } else if (part.Kind == NodeKind::CompoundStatement &&
+                Syntax_[child].PreviousSibling != None &&
+                Region(Syntax_[Syntax_[child].PreviousSibling]).Kind ==
+                    NodeKind::CaseLabel &&
+                Region(Syntax_[Syntax_[child].PreviousSibling]).Tokens.End ==
+                    part.Tokens.Begin)
+            {
                 contents = None;
             } else if (inCase) {
                 if (contents == None) {

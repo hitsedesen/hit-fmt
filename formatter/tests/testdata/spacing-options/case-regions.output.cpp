@@ -20,6 +20,28 @@ case 0:
                c();
          }
          break;
+  case 5:
+         a();
+         {
+            b();
+            {
+               c();
+            }
+         }
+         a();
+         {
+            c();
+         }
+         break;
+   case 6:
+      {
+         a();
+      }
+         {
+            b();
+         }
+         c();
+         break;
 default:
          break;
    }
