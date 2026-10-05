@@ -1,0 +1,7 @@
+Layout = Canonical
+ColumnLimit = 100
+IndentationKind = Spaces
+IndentWidth = 4
+BodyShape = Expanded
+LambdaBodyShape = Expanded
+IndentedCallScopePairs = ["Begin:End"]

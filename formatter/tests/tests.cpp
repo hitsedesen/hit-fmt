@@ -1406,6 +1406,16 @@ std::vector<FormatCase> FormatCases()
         cases,
         std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../lambda-body",
         {"preserve", "inherit", "inline"});
+    cases.push_back({
+        std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../lambda-body",
+        "visual-scopes",
+        "visual-scopes.input.cpp",
+        {},
+        {},
+        true,
+        {},
+        true,
+    });
     AddCases(
         cases,
         std::filesystem::path(FORMATTER_TESTDATA_DIR) /
