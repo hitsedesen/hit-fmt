@@ -1,4 +1,5 @@
 #include <document/document.hpp>
+#include <unicode/utf8.hpp>
 
 #include <algorithm>
 #include <limits>
@@ -43,7 +44,12 @@ Measure Join(Measure a, Measure b)
 Measure MeasureText(std::string_view text, std::uint8_t tabWidth)
 {
     Measure result;
-    for (char c : text) {
+    for (std::size_t i = 0; i < text.size(); ++i) {
+        const auto c = static_cast<unsigned char>(text[i]);
+        if (c >= 0x80) {
+            i += unicode::utf8::GetFirstCodePointSize(text.substr(i))
+                .value_or(1) - 1;
+        }
         if (c == '\n' || c == '\r') {
             result.Line = true;
             result.CanBreak = true;
@@ -1199,7 +1205,12 @@ Result Document::Render(
                 sharesRealizedContinuation(node));
     };
     auto advance = [&] (std::string_view text) {
-        for (char c : text) {
+        for (std::size_t i = 0; i < text.size(); ++i) {
+            const auto c = static_cast<unsigned char>(text[i]);
+            if (c >= 0x80) {
+                i += unicode::utf8::GetFirstCodePointSize(text.substr(i))
+                    .value_or(1) - 1;
+            }
             if (c == '\r' || c == '\n') {
                 column = 0;
                 lineIndent = 0;

@@ -2,6 +2,7 @@
 #include "text_policies.hpp"
 
 #include <parser/operator_info.hpp>
+#include <unicode/utf8.hpp>
 
 #include <algorithm>
 #include <limits>
@@ -222,7 +223,12 @@ bool HasLine(std::string_view text)
 Index HorizontalColumns(std::string_view text, uint8_t tabWidth)
 {
     Index width = 0;
-    for (char c : text) {
+    for (std::size_t i = 0; i < text.size(); ++i) {
+        const auto c = static_cast<unsigned char>(text[i]);
+        if (c >= 0x80) {
+            i += unicode::utf8::GetFirstCodePointSize(text.substr(i))
+                .value_or(1) - 1;
+        }
         if (c == '\n' || c == '\r') {
             return None;
         }

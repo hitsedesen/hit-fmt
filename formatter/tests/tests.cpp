@@ -1592,6 +1592,14 @@ std::vector<FormatCase> FormatCases()
             }
         }
     }
+    const auto unicode =
+        std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../unicode-width";
+    AddCases(cases, unicode, {"fitting", "overflow"});
+    for (auto& value : cases) {
+        if (value.Directory == unicode) {
+            value.CheckOwningMaps = true;
+        }
+    }
     const auto google = std::filesystem::path(FORMATTER_TESTDATA_DIR) /
         "../google-style-regressions";
     const auto googleProfile =
@@ -4030,10 +4038,8 @@ TEST_P(LayoutDiagnosticTest, ReportsEmittedWidths)
 TEST(Formatter, WidthDiagnostics_CountsProtectedTabsAndMixedTerminators)
 {
     const std::string input = "// hit-fmt off\r\nint\tlong_name;\r\n"
-        "\tint long_name;\n" "// é界😀é界😀é界😀é界😀é\r\n"
-        "// é界😀é界😀é界😀é界😀é界\r"
-        "// é界😀\té界😀é界😀é界\n"
-        "// é界😀\té界😀é界😀é界😀\n" + std::string("// ") +
+        "\tint long_name;\n" "// é界😀é界😀é界😀é界😀é\r\n" "// é界😀é界😀é界😀é界😀é界\r"
+        "// é界😀\té界😀é界😀é界\n" "// é界😀\té界😀é界😀é界😀\n" + std::string("// ") +
         std::string(13, 'a') + "\x80\xe2\x82é\n" + "// hit-fmt on\n";
     auto source = input;
     source.append(util::SourcePaddingSize, '\0');

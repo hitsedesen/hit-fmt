@@ -205,6 +205,8 @@ constexpr HelpSection HelpSections[] = {
         "fabricate breaks in "
             "empty/indivisible/protected groups. "
             "Preserve/protection win. "
+        "Fitting and ColumnLimit count Unicode code points, not bytes "
+        "or display cells; invalid UTF-8 bytes count individually. "
         "WidthDiagnostics is Off or Report; "
         "ColumnLimit = 0 disables width wrapping and width diagnostics, "
         "but retains mandatory breaks. "
