@@ -25,7 +25,7 @@ void Dispatch(int value)
             Handle(value);
         }
             {
-                // Only the first block belongs directly to the label.
+                // Consecutive blocks share the case statement level.
                 Cleanup();
             }
             break;
@@ -36,6 +36,18 @@ void Dispatch(int value)
                 Handle(value);
             }
             break;
+        case 6:
+        {
+            Handle(value);
+            break;
+        } // Still a sole case block.
+        case 7:
+        {
+            Handle(value);
+        }
+        {
+            Cleanup();
+        }
         default:
         {
             HandleOther();
