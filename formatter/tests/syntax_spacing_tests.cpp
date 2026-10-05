@@ -1172,6 +1172,88 @@ TEST(SyntaxSpacing, ParenthesisInteriorsTakePrecedenceOverAttributeSpacing)
     }
 }
 
+TEST(SyntaxSpacing, ExtensionAttributeBoundariesRespectEnclosingSyntax)
+{
+    for (const auto source :
+        {
+            "__attribute__((destructor(101))) static void Cleanup() {}",
+            "__attribute__ /* note */ ((unused)) static int value;",
+            "__declspec(dllexport) static int value;",
+        })
+    {
+        SCOPED_TRACE(source);
+        for (const auto policy :
+            {
+                GapPolicy::Preserve,
+                GapPolicy::Space,
+                GapPolicy::NoSpace,
+                GapPolicy::GeneratedSpace,
+                GapPolicy::GeneratedNoSpace,
+            })
+        {
+            GapPolicies policies;
+            policies.AttributeSpaceAfterSpecifier = policy;
+            Analysis analysis(source, policies);
+            const auto& gap =
+                analysis.Spacing.Gaps()[analysis.Before("static")];
+            EXPECT_EQ(gap.Field, F::AttributeSpaceAfterSpecifier);
+            EXPECT_EQ(gap.Policy, policy);
+            EXPECT_EQ(gap.Category, C::DeclarationHeaders);
+            EXPECT_TRUE(gap.FallbackSpace);
+        }
+    }
+    for (const auto source :
+        {
+            "void f(__attribute__((unused)) int value);",
+            "void f(int value __attribute__((unused)));",
+            "auto f = [](__attribute__((unused)) int value) {};",
+        })
+    {
+        SCOPED_TRACE(source);
+        GapPolicies policies;
+        policies.AttributeSpaceBeforeSpecifier = GapPolicy::Space;
+        policies.AttributeSpaceAfterSpecifier = GapPolicy::Space;
+        policies.SpaceInsideFunctionParameters = GapPolicy::NoSpace;
+        policies.SpaceInsideLambdaParameters = GapPolicy::NoSpace;
+        Analysis analysis(source, policies);
+        const auto before = analysis.Before("__attribute__");
+        const auto opening = before + 1;
+        const auto after = analysis.Tree.MatchingDelimiter(opening) + 1;
+        const auto boundary = analysis.Tree.Kind(before - 1) ==
+            tokenizer::TokenKind::Operator_OpenParenthesis
+            ? before
+            : after;
+        const auto& gap = analysis.Spacing.Gaps()[boundary];
+        EXPECT_EQ(gap.Category, C::Parameters);
+        EXPECT_EQ(gap.Policy, GapPolicy::NoSpace);
+        EXPECT_TRUE(gap.Field == F::SpaceInsideFunctionParameters ||
+            gap.Field == F::SpaceInsideLambdaParameters);
+        EXPECT_NE(
+            analysis.Spacing.Gaps()[opening].Field,
+            F::AttributeInteriorSpacing);
+        EXPECT_NE(
+            analysis.Spacing.Gaps()[opening + 1].Field,
+            F::AttributeInteriorSpacing);
+    }
+    Analysis suffix("void f() __attribute__((cold));");
+    EXPECT_EQ(
+        suffix.Spacing.Gaps()[suffix.Before(";")].Field,
+        F::DeclarationSemicolonSpacing);
+    Analysis definition("void f() __attribute__((cold)) {}");
+    EXPECT_EQ(
+        definition.Spacing.Gaps()[definition.Before("{")].Field,
+        F::FunctionBraceSpacing);
+    Analysis variables("int first __attribute__((unused)), second;");
+    EXPECT_EQ(
+        variables.Spacing.Gaps()[variables.Before(",")].Field,
+        F::CommaSpaceBefore);
+    Analysis constructor(
+        "struct C { C() __attribute__((used)) : value(0) {} " "int value; };");
+    EXPECT_EQ(
+        constructor.Spacing.Gaps()[constructor.Before(":")].Field,
+        F::ConstructorListsColonSpaceBefore);
+}
+
 class CountingResource
     : public std::pmr::memory_resource
 {

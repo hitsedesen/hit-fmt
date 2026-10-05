@@ -137,6 +137,10 @@ EmptyBlockInteriorSpacing = GeneratedNoSpace
 ScopeResolutionSpacing = NoSpace
 TemplateTypeArgumentInteriorSpacing = NoSpace
 # Compact nested templates: Box<Box<int>>, Box<T>::Member.
+AttributeSpaceBeforeSpecifier = Space
+AttributeSpaceAfterSpecifier = Space
+# Boundaries of [[...]], __attribute__((...)) and __declspec(...).
+# AttributeInteriorSpacing only controls C++ [[...]] bracket interiors.
 FunctionRefQualifierSpacing = Space
 FunctionCvRefQualifierSpacing = NoSpace
 # CV/ref spacing defaults to Inherit; Preserve uses usual preservation rules.
@@ -409,7 +413,11 @@ constexpr HelpSection HelpSections[] = {
         "the gap between const/volatile and a function's &/&& ref qualifier, "
         "not type references. It defaults to Inherit from "
         "FunctionRefQualifierSpacing; explicit Preserve uses ordinary "
-        "gap-preservation rules rather than inheriting the generic policy.\n",
+        "gap-preservation rules rather than inheriting the generic policy. "
+        "AttributeSpaceBeforeSpecifier and AttributeSpaceAfterSpecifier also "
+        "control parsed GNU __attribute__ and MS __declspec boundaries; "
+        "extension payloads remain opaque. Enclosing parameter interiors "
+        "and declaration punctuation retain their own spacing policies.\n",
         GapExamples},
     {"Library layout annotations",
         "CallLineFirstStringNames softly pins only a "
