@@ -3654,17 +3654,17 @@ TEST(PublicPipeline, TextPoliciesRespectOriginalScopeAndProtection)
     style.RulerBlankLinesBefore = {formatter::BlankLineMode::Exact, 1};
     style.RulerBlankLinesAfter = {formatter::BlankLineMode::Exact, 1};
     const formatter::PreparedFormat prepared(style);
-    const std::string source = "#if OUTER\n# if INNER\n"
+    const std::string source = "#if OUTER\n\t # if INNER\n"
         "#define VALUE first \\\n    second    \\\n    third\n"
         "# endif\n# endif\n/////\nint item;\n";
-    const auto begin = parser::SourceOffset(source.find("# if INNER"));
+    const auto begin = parser::SourceOffset(source.find('\t'));
     const auto end = parser::SourceOffset(source.find('\n', begin));
     const std::array selected{parser::SourceRange{begin, end}};
     const auto limited = FormatInput(
         source,
         prepared,
         {.SourceMap = true, .EditScope = selected});
-    EXPECT_NE(limited.Text.find("#    if INNER"), std::string::npos);
+    EXPECT_NE(limited.Text.find("    #if INNER"), std::string::npos);
     CheckIdentities(source, limited);
     CheckExcludedCopies(source, limited, selected);
     const std::array partial{parser::SourceRange{begin + 1, end}};
@@ -3674,6 +3674,21 @@ TEST(PublicPipeline, TextPoliciesRespectOriginalScopeAndProtection)
         {.SourceMap = true, .EditScope = partial});
     EXPECT_EQ(denied.Text, source);
     CheckExcludedCopies(source, denied, partial);
+    // Selecting the token alone does not authorize moving its leading prefix.
+    const std::array tokenOnly{parser::SourceRange{begin + 2, end}};
+    const auto tokenDenied = FormatInput(
+        source,
+        prepared,
+        {.SourceMap = true, .EditScope = tokenOnly});
+    EXPECT_EQ(tokenDenied.Text, source);
+    CheckExcludedCopies(source, tokenDenied, tokenOnly);
+    const std::array prefix{parser::SourceRange{begin, begin + 2}};
+    const auto prefixProtected = FormatInput(
+        source,
+        prepared,
+        {.ImmutableRanges = prefix, .SourceMap = true});
+    EXPECT_NE(prefixProtected.Text.find("\t # if INNER"), std::string::npos);
+    CheckIdentities(source, prefixProtected);
     const std::array immutable{
         parser::SourceRange{0, parser::SourceOffset(source.size())},
     };
@@ -3694,9 +3709,9 @@ TEST(PublicPipeline, SortedDirectiveWhitespaceProjectsSelectedIncludeAtoms)
     style.IndentPreprocessingDirectives = true;
     style.IncludeOrder = formatter::IncludeOrder::Sort;
     const formatter::PreparedFormat prepared(style);
-    const std::string source = "#if OUTER\n#include \"zeta.h\"\n"
-        "#include \"alpha.h\"\n#endif\nint tail;\n";
-    const auto begin = parser::SourceOffset(source.find("#include"));
+    const std::string source = "#if OUTER\n\t #include \"zeta.h\"\n"
+        "  #include \"alpha.h\"\n#endif\nint tail;\n";
+    const auto begin = parser::SourceOffset(source.find('\t'));
     const auto end = parser::SourceOffset(source.find("#endif"));
     const std::array selected{parser::SourceRange{begin, end}};
     const auto result = FormatInput(
@@ -3704,7 +3719,7 @@ TEST(PublicPipeline, SortedDirectiveWhitespaceProjectsSelectedIncludeAtoms)
         prepared,
         {.SourceMap = true, .EditScope = selected});
     EXPECT_LT(result.Text.find("alpha.h"), result.Text.find("zeta.h"));
-    EXPECT_NE(result.Text.find("#    include"), std::string::npos);
+    EXPECT_NE(result.Text.find("    #include"), std::string::npos);
     CheckIdentities(source, result);
     CheckExcludedCopies(source, result, selected);
     EXPECT_EQ(FormatInput(result.Text, prepared).Text, result.Text);

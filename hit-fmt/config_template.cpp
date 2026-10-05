@@ -93,6 +93,16 @@ void PrintOption(std::ostream& output, std::string_view name, const T& value)
         }
         return;
     }
+    if (name == "IndentPreprocessingDirectives") {
+        output
+            << "# Indent the whole directive "
+                "(including # or %:) by nesting\n"
+                "# depth using IndentWidth spaces; "
+                "remove spaces after the marker.\n"
+                "# Example with IndentWidth = 4: "
+                "a nested #if becomes \"    #if\".\n"
+                "# else/elif/endif align with their if.\n";
+    }
     output << "# Values: ";
     if constexpr (std::is_enum_v<T>) {
         bool first = true;

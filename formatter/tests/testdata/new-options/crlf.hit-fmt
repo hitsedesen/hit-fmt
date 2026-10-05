@@ -1,4 +1,6 @@
-Layout = Preserve
+Layout = Canonical
+IndentWidth = 2
+IndentationKind = Tabs
 ColumnLimit = 0
 IndentPreprocessingDirectives = true
 AlignMacroBackslashes = true

@@ -1,7 +1,7 @@
-#if OUTER
-# if INNER
-# include "zeta.h"
-# include "alpha.h"
+	 #if OUTER
+  # if INNER
+	# include "zeta.h"
+ # include "alpha.h"
 #define MULTI(x) do { \
     short_call(x);\
     much_longer_call(x); \
@@ -12,17 +12,19 @@ beta
 continued"
 #define COMMENT value // note \
 continued
-# else
+  # elif SECOND
+int second;
+	# else
 int other;
-# endif
-# endif
-#if DIGRAPH
-%:if INNER
+ # endif
+   # endif
+  #if DIGRAPH
+	%: if INNER
 %:define VALUE first \
     second \
     third
-%:endif
-#endif
+  %: endif
+	#endif
 // heading
 /////
 int item;

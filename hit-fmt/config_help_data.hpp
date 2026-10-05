@@ -164,6 +164,9 @@ RemoveNullStatements = false
 RemoveNullDeclarations = false
 IncludeOrder = Preserve
 NamespaceComments = Preserve
+# When enabled, nested directives move together with their # (or %:) marker.
+# With IndentWidth = 4, a nested #define starts with "    #define".
+IndentPreprocessingDirectives = false
 FunctionDeclarationParameterNames = Required
 FunctionDefinitionParameterNames = NameOrCommentedNameRequired
 ClassNameCase = PascalCase
@@ -426,7 +429,9 @@ constexpr HelpSection HelpSections[] = {
         StagedExamples},
     {"Safety, transforms and checks",
         "Protected bytes are never rewritten. IndentPreprocessingDirectives "
-        "adds nesting spaces after #, keeping # in its original column; "
+        "indents the whole directive, including its # or %: marker, by "
+        "conditional nesting depth using IndentWidth spaces. Whitespace "
+        "between the marker and directive name is removed; "
         "else/elif/endif align with their if. AlignMacroBackslashes aligns "
         "existing whitespace-separated macro continuations one column after "
         "the longest prefix (tab stops of 8), without changing macro tokens. "
