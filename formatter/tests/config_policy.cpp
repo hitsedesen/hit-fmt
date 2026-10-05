@@ -1562,4 +1562,4 @@ TEST(ConfigPolicy, TrailingCommentSpacesPreserveBoundsAndOwnSnapshot)
     EXPECT_NO_THROW((void)formatter::PreparedFormat(invalid));
 }
 
-}
+} // namespace

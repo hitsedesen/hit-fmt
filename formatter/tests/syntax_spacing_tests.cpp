@@ -64,6 +64,7 @@ struct Analysis
         std::pmr::monotonic_buffer_resource scratch;
         return BuildSourceAnalysis(Tree, options, Memory, scratch);
     }
+
     SyntaxSpacing Classify(
         const GapPolicies& policies,
         PointerReferenceDeclaratorLocation binding)

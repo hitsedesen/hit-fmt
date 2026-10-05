@@ -1330,9 +1330,9 @@ int main(int argc, char* argv[])
                     MaxSourceFileSize,
                     util::SourcePaddingSize);
                 util::PaddedSourceView paddedSource{
-                .Data = sourceStorage.data(),
-                .Size = sourceStorage.size() - util::SourcePaddingSize,
-            };
+                    .Data = sourceStorage.data(),
+                    .Size = sourceStorage.size() - util::SourcePaddingSize,
+                };
                 auto source = paddedSource.View();
                 const auto& config = resolver.Resolve(path);
                 const auto inputFilePath = path.generic_string();

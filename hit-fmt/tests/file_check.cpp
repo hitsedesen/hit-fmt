@@ -30,6 +30,7 @@ struct Input
         return {Storage.data(), Size};
     }
 };
+
 formatter::Configuration Configuration()
 {
     formatter::Configuration configuration;

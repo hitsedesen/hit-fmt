@@ -12,8 +12,7 @@ namespace {
 
 TEST(HunkParser, GroupsFilesAndResolvesPathsAgainstGivenDirectory)
 {
-    std::istringstream input(
-        "file src/a.cpp\r\nhunk 2:4\r\nhunk 8:8\n"
+    std::istringstream input("file src/a.cpp\r\nhunk 2:4\r\nhunk 8:8\n"
         "file src/file with spaces.cpp\nhunk 1:1\n"
         "file src/../src/a.cpp\nhunk 9:10\n");
     const auto base = std::filesystem::current_path() / "hunk-test";
@@ -140,6 +139,7 @@ formatter::ChangedFormatResult Changed(
         spillover,
         request);
 }
+
 formatter::Style HunkStyle()
 {
     formatter::Style style;
@@ -149,6 +149,7 @@ formatter::Style HunkStyle()
     style.CommaSpaceAfter = formatter::GapPolicy::Space;
     return style;
 }
+
 TEST(HunkAdapter, CoalescesUnsortedAdjacentAndOverlappingOriginalLines)
 {
     const std::string source =
@@ -376,8 +377,7 @@ TEST(HunkAdapter, SafeIncludeSpillSortsAtomicallyAndStrictCoverageIsNotMismatch)
 
 TEST(HunkAdapter, BoundedNestedListsNeverPromoteFunctionOrOverTwoHundredLines)
 {
-    std::string source =
-        "void f() {\n  outer(\n    inner(1, 2),\n    3);\n"
+    std::string source = "void f() {\n  outer(\n    inner(1, 2),\n    3);\n"
         "  untouched(  );\n}\n";
     const formatter::Hunk selected[] = {{3, 3}};
     const auto nested = Changed(source, selected, true, HunkStyle());

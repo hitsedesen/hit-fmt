@@ -69,8 +69,10 @@ void ExpectUnchanged(std::string_view source, const formatter::Style& style)
 {
     std::string storage(source);
     storage.append(util::SourcePaddingSize, '\0');
-    util::PaddedSourceView padded{.Data = storage.data(),
-        .Size = source.size()};
+    util::PaddedSourceView padded{
+        .Data = storage.data(),
+        .Size = source.size(),
+    };
     auto tree = parser::Parse(padded, [] (parser::ParseError) { });
     EXPECT_EQ(formatter::Format(tree, style), source);
     const auto first = formatter::Format(padded, style);
@@ -83,6 +85,7 @@ void ExpectUnchanged(std::string_view source, const formatter::Style& style)
             style),
         first);
 }
+
 struct PreserveCase
 {
     std::string Name;
@@ -92,6 +95,7 @@ void PrintTo(const PreserveCase& value, std::ostream* output)
 {
     *output << "style/" << value.Name;
 }
+
 std::vector<PreserveCase> DiscoverCases()
 {
     std::vector<PreserveCase> cases;
@@ -126,6 +130,7 @@ std::vector<PreserveCase> DiscoverCases()
     std::ranges::sort(cases, {}, &PreserveCase::Name);
     return cases;
 }
+
 class PreserveTest
     : public testing::TestWithParam<PreserveCase>
 { };
@@ -160,8 +165,10 @@ std::string FormatWithStyle(
 {
     std::string storage(source);
     storage.append(util::SourcePaddingSize, '\0');
-    util::PaddedSourceView padded{.Data = storage.data(),
-        .Size = source.size()};
+    util::PaddedSourceView padded{
+        .Data = storage.data(),
+        .Size = source.size(),
+    };
     const formatter::PreparedFormat prepared(style);
     auto tree = parser::Parse(
         padded,
@@ -172,6 +179,7 @@ std::string FormatWithStyle(
     EXPECT_EQ(actual, formatter::Format(padded, prepared, request).Text);
     return actual;
 }
+
 void ExpectFormattedGolden(
     const std::filesystem::path& path,
     std::string_view input,
@@ -298,6 +306,7 @@ void ShareExpected(
         }
     }
 }
+
 std::vector<FormatCase> FormatCases()
 {
     std::vector<FormatCase> cases;
@@ -1690,6 +1699,16 @@ std::vector<FormatCase> FormatCases()
     }
     addProfileCase("../whitespace-sensitive-macros", "profile");
     addProfileCase("../call-reflow", "balanced-expressions");
+    cases.push_back({
+        callReflow,
+        "typed-declarations",
+        "typed-declarations.input.cpp",
+        "../../../../",
+        {},
+        true,
+        {},
+        true,
+    });
     cases.push_back(
         {callReflow, "nested-casts-preserve", "nested-casts.input.cpp"});
     cases.back().CheckOwningMaps = true;
@@ -4100,6 +4119,7 @@ std::vector<FormatCase> FormatCases()
         });
     return cases;
 }
+
 class FormatTest
     : public testing::TestWithParam<FormatCase>
 { };
@@ -4521,7 +4541,15 @@ INSTANTIATE_TEST_SUITE_P(
             true,
         },
         LayoutDiagnosticCase{"assignment-location", "leading"},
-        LayoutDiagnosticCase{"assignment-location", "trailing"}),
+        LayoutDiagnosticCase{"assignment-location", "trailing"},
+        LayoutDiagnosticCase{
+            "call-reflow",
+            "typed-declarations",
+            "typed-declarations.input.cpp",
+            "../../../../",
+            true,
+            ".layout.expected",
+        }),
     [] (const auto& info) {
         auto name = info.param.Directory + "_" + info.param.Name;
         std::ranges::replace(name, '-', '_');

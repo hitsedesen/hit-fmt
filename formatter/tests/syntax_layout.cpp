@@ -22,6 +22,7 @@ struct Output
     std::vector<document::Mapping> Map;
     std::vector<uint8_t> Broken;
 };
+
 Output Lower(
     std::string input,
     const formatter::Style& style,
@@ -149,6 +150,7 @@ formatter::Style Canonical(size_t width = 40)
     style.DeclarationSemicolonSpacing = formatter::GapPolicy::GeneratedNoSpace;
     return style;
 }
+
 TEST(SyntaxLayout, ControlSeparatorsWideFiniteRenderingOwnsOnlyDirectBoundaries)
 {
     auto style = Canonical(10000);

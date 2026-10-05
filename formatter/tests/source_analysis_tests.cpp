@@ -181,10 +181,12 @@ formatter::SourceAnalysis Analyze(
     }
     return direct;
 }
+
 bool Has(formatter::ProtectionReason value, formatter::ProtectionReason bit)
 {
     return (static_cast<uint16_t>(value) & static_cast<uint16_t>(bit)) != 0;
 }
+
 formatter::GapId Before(
     const parser::SyntaxTree& tree,
     std::string_view text,
@@ -198,6 +200,7 @@ formatter::GapId Before(
     ADD_FAILURE() << "missing token: " << text;
     return tree.TokenCount();
 }
+
 TEST(SourceAnalysis, TouchingDifferentProtectionReasonsKeepTheirByteLocations)
 {
     Input input("int value;\n");
@@ -542,6 +545,7 @@ TEST(SourceAnalysis, RecoverySummariesAndMergedExplicitRanges)
             analysis.Protection()[i].Source.Begin);
     }
 }
+
 void ExpectSameTokens(
     const parser::SyntaxTree& original,
     std::string_view changed)
@@ -554,6 +558,7 @@ void ExpectSameTokens(
         EXPECT_EQ(original.TokenText(i), result.TokenText(i)) << changed;
     }
 }
+
 TEST(SourceAnalysis, LineTokenTerminationAndEofKeepExactSpelling)
 {
     for (auto source :
@@ -1782,8 +1787,9 @@ TEST(SourceAnalysis, NewlineSpellingOwnsFullExistingBytesNotEndInsertions)
         parser::SourceRange{15, 16},
     };
     auto partial = Analyze(tree, memory, {.EditScope = half});
-    for (formatter::GapId i = 0; i < partial.Gaps().size(); ++i)
+    for (formatter::GapId i = 0; i < partial.Gaps().size(); ++i) {
         EXPECT_FALSE(partial.CanSpellGapNewlines(i));
+    }
     const std::array immutable{parser::SourceRange{7, 8}};
     auto protectedGap = Analyze(
         tree,
@@ -1794,15 +1800,17 @@ TEST(SourceAnalysis, NewlineSpellingOwnsFullExistingBytesNotEndInsertions)
         tree,
         memory,
         {.EditScope = std::span<const parser::SourceRange>{}});
-    for (formatter::GapId i = 0; i < empty.Gaps().size(); ++i)
+    for (formatter::GapId i = 0; i < empty.Gaps().size(); ++i) {
         EXPECT_FALSE(empty.CanSpellGapNewlines(i));
+    }
     Input splice("int x=1+\\\r\n 2;\n");
     auto spliceTree = Parse(splice);
     auto intrinsic = Analyze(spliceTree, memory);
-    for (formatter::GapId i = 0; i < intrinsic.Gaps().size(); ++i)
+    for (formatter::GapId i = 0; i < intrinsic.Gaps().size(); ++i) {
         if (intrinsic.Gaps()[i].IntrinsicPreserve) {
             EXPECT_FALSE(intrinsic.CanSpellGapNewlines(i));
         }
+    }
     const std::string recoverySource =
         "template<class T> requires requires(T v) { v.touch(); } @\r\n"
             "int inspect(T value) { return 1; }\r\n";

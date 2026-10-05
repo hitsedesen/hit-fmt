@@ -195,7 +195,8 @@ void CheckFunction(
             continue;
         }
         std::string functionName = function.Kind == NK::FunctionDefinition
-            ? "function definition" : "function declaration";
+            ? "function definition"
+            : "function declaration";
         if (auto* name = FunctionName(*declarator)) {
             functionName +=
                 " '" + std::string(tree.SourceText(name->Tokens)) + "'";

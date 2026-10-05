@@ -237,8 +237,9 @@ std::pmr::vector<document::Identity> OriginalIdentities(
     std::pmr::vector<document::Identity> identities(
         tree.TokenCount(), document::NoIdentity, &scratch);
     if (!normalized) {
-        for (parser::TokenIndex i = 0; i < tree.TokenCount(); ++i)
+        for (parser::TokenIndex i = 0; i < tree.TokenCount(); ++i) {
             identities[i] = i;
+        }
         return identities;
     }
     std::pmr::vector<CurrentIdentity> surviving(&scratch);
@@ -257,7 +258,8 @@ std::pmr::vector<document::Identity> OriginalIdentities(
             const auto& b) { return a.Source.Begin < b.Source.Begin; });
     size_t next = 0;
     for (parser::TokenIndex i = 0;
-         i < tree.TokenCount() && next < surviving.size(); ++i)
+        i < tree.TokenCount() && next < surviving.size();
+        ++i)
     {
         const auto range = tree.Token(i).Text;
         if (range.Begin == surviving[next].Source.Begin &&
