@@ -74,11 +74,29 @@ Output Lower(
         const auto id = parser::TokenIndex(map.Source.Identity);
         EXPECT_FALSE(seen[id]);
         seen[id] = true;
-        EXPECT_TRUE(map.Exact);
-        EXPECT_EQ(
-            std::string_view(rendered.Text)
-                .substr(map.OutputBegin, map.OutputEnd - map.OutputBegin),
-            tree.TokenText(id));
+        const auto output = std::string_view(rendered.Text)
+            .substr(map.OutputBegin, map.OutputEnd - map.OutputBegin);
+        if (map.Exact) {
+            EXPECT_EQ(output, tree.TokenText(id));
+        } else {
+            EXPECT_EQ(tree.Kind(id), tokenizer::TokenKind::Comment);
+            EXPECT_TRUE(tree
+                .TokenText(id)
+                .starts_with("/*"));
+            const auto content = [] (std::string_view text) {
+                std::string result;
+                bool leading = false;
+                for (const char c : text) {
+                    if (leading && (c == ' ' || c == '\t')) {
+                        continue;
+                    }
+                    result += c;
+                    leading = c == '\r' || c == '\n';
+                }
+                return result;
+            };
+            EXPECT_EQ(content(output), content(tree.TokenText(id)));
+        }
     }
     for (parser::TokenIndex i = 0; i < tree.TokenCount(); ++i) {
         if (!seen[i]) {
@@ -2398,8 +2416,10 @@ TEST(SyntaxLayout, CaseLabelPreserveRetainsOnlyExistingIndentation)
         // The comment attachment vetoes a new label boundary; its LF must
         // neither create indentation provenance nor leak into the body base.
         EXPECT_NE(
-            inlineLabel
-                .find(std::string(comment) + " case 0:\n            first();"),
+            inlineLabel.find(std::string(
+                comment.find('\n') == std::string_view::npos
+                ? comment
+                : "/* note\n*/") + " case 0:\n            first();"),
             std::string::npos) << inlineLabel;
         EXPECT_EQ(Lower(inlineLabel, style).Text, inlineLabel);
     }

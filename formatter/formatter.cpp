@@ -438,7 +438,8 @@ void ComposeMaps(
                 true,
                 map.Exact && !it->Generated,
                 map.Protected,
-                !map.Exact || it->Generated,
+                original == document::NoIdentity &&
+                    (!map.Exact || it->Generated),
             });
             added = true;
             if (source.Empty()) {

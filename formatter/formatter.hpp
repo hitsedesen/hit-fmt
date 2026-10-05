@@ -119,7 +119,8 @@ struct FormatResult
     // Maps describe final output, including namespace comment edits.
     // Source associations may overlap; they are not independent edits.
     // Generated commas have no identity; deleted or rewritten original atoms
-    // have Present=false.
+    // have Present=false. Reindented block comments retain their identity;
+    // their output range includes the changed continuation indentation.
     std::vector<FormatMapping> Map;
     std::vector<StructuralOperation> StructuralOperations;
     std::vector<TokenOutputOffset> OriginalTokens;

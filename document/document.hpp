@@ -266,6 +266,14 @@ public:
         std::uint32_t end,
         Identity identity = NoIdentity,
         bool verbatim = false);
+    // Shift continuation-line indentation by the change in the first source
+    // column. Preserve relative indentation, blank lines and newline spelling;
+    // clamp outdented lines at column zero. The producer must authorize the
+    // entire slice. A changed slice retains its identity but maps non-exactly.
+    void ReindentedSourceText(
+        std::uint32_t begin,
+        std::uint32_t end,
+        Identity identity = NoIdentity);
     // Producer must authorize the entire whitespace slice, including whole
     // CRLF atoms; a token-owned CR plus following gap LF must be excluded.
     // Changes spelling only, never topology/indentation/owned-break rights.
@@ -336,6 +344,7 @@ private:
         ConditionalGap,
         SourceLineIndent,
         SourceWhitespace,
+        ReindentedText,
         ExpressionLine,
         SourceRun
     };
@@ -354,7 +363,8 @@ private:
     {
         std::uint32_t Flat = InvalidId;
         std::uint32_t Broken = InvalidId;
-        // ConditionalText: width floor; SourceWhitespace: changed LF count.
+        // ConditionalText: width floor; SourceWhitespace: changed LF count;
+        // ReindentedText: first source line's beginning.
         std::uint32_t Detail = 0;
         GapNewline LineEnding = GapNewline::Inherit;
     };
