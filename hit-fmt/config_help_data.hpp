@@ -148,6 +148,7 @@ IndentedChainScopePairs = ["BeginMap:EndMap", "BeginList:EndList"]
 StickyChainCallPairs = ["Item:Value", "Item:BeginMap", "registrar:Parameter"]
 # Every call uses global ColumnLimit; there are no named-width overrides.
 # Lowering selects generic policies; the renderer never matches identifiers.
+# Inline unmatched endpoints do not prevent lambda body expansion.
 )CONFIG"},
 };
 constexpr HelpExample SafetyExamples[] = {
@@ -390,7 +391,9 @@ constexpr HelpSection HelpSections[] = {
         "matched pairs in the same statement "
             "sequence/receiver/wrapper context; "
         "uncertain, unmatched and PP-crossing "
-            "regions remain unchanged. IndentedChainScopePairs adds one "
+            "regions beginning on a source line remain unchanged. "
+        "Inline regions have no visual indentation to retain and do not "
+        "prevent body expansion. IndentedChainScopePairs adds one "
         "IndentWidth inside matched, properly nested suffix-call pairs. "
         "StickyChainCallPairs keeps consecutive named suffix calls together "
         "when they fit, independently of ChainsBreak/ChainsPacking. "

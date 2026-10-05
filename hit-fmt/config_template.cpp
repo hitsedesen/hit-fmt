@@ -102,6 +102,10 @@ void PrintOption(std::ostream& output, std::string_view name, const T& value)
                 "# Example with IndentWidth = 4: "
                 "a nested #if becomes \"    #if\".\n"
                 "# else/elif/endif align with their if.\n";
+    } else if (name == "IndentedCallScopePairs") {
+        output
+            << "# Uncertain scopes retain existing line-start regions.\n"
+                "# Inline endpoints do not prevent body expansion.\n";
     }
     output << "# Values: ";
     if constexpr (std::is_enum_v<T>) {

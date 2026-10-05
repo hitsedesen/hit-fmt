@@ -3111,7 +3111,10 @@ private:
         std::pmr::vector<int64_t> frozen(Tree_.TokenCount() + size_t(2), 0,
                                          Syntax_.get_allocator().resource());
         const auto freeze = [&] (Index begin, Index end) {
-            if (begin < end) {
+            // Inline regions have no existing visual indentation to retain.
+            // Freezing them would suppress ordinary body expansion, including
+            // lambdas containing a single unmatched scope endpoint.
+            if (begin < end && SourceIndent(begin) != None) {
                 ++frozen[begin];
                 --frozen[end];
             }
