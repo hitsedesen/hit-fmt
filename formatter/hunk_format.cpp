@@ -50,8 +50,9 @@ std::pmr::vector<Range> NarrowScope(
     size_t size,
     std::pmr::memory_resource& memory)
 {
-    if (!caller)
+    if (!caller) {
         return {scope.begin(), scope.end(), &memory};
+    }
     parser::SourceOffset previous = 0;
     for (const auto range : *caller) {
         if (range.Begin >= range.End || range.End > size ||
@@ -306,8 +307,9 @@ ChangedFormatResult FormatChanged(
     const auto size = CheckedSourceAnalysisSize(tree
         .Source()
         .size());
-    if (size && detail::HunkScopeContains(selectedBytes, {size - 1, size}))
+    if (size && detail::HunkScopeContains(selectedBytes, {size - 1, size})) {
         coverage.push_back({{size - 1, size}, Reason::LimitedLayout});
+    }
     ChangedFormatResult result;
     result.SelectedLines.assign(selected.begin(), selected.end());
     result.PermittedLines.assign(permitted.begin(), permitted.end());

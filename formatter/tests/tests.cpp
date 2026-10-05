@@ -1445,6 +1445,32 @@ std::vector<FormatCase> FormatCases()
     addProfileCase("../function_parameters", "profile");
     addProfileCase("../body-indent", "profile-control-local");
     addProfileCase("../body-indent", "profile-direct-initializer");
+    addProfileCase("../body-indent", "profile-unknown-statements");
+    cases.back().CheckOwningMaps = true;
+    {
+        const auto directory = std::filesystem::path(BODY_INDENT_TESTDATA_DIR);
+        const auto input = "profile-unknown-statements.input.cpp";
+        cases.push_back({directory, "unknown-statements-default", input});
+        cases.back().Style = formatter::Style{};
+        cases.back().Expected = input;
+        for (const auto indentation :
+            {IndentationKind::Spaces, IndentationKind::Tabs})
+        {
+            auto style =
+                formatter::LoadConfigFile(profile + ".hit-fmt").FormattingStyle;
+            style.Layout = LayoutMode::Preserve;
+            style.IndentationKind = indentation;
+            cases.push_back({
+                directory,
+                indentation == IndentationKind::Spaces
+                    ? "unknown-statements-preserved"
+                    : "unknown-statements-tabs",
+                input,
+            });
+            cases.back().Style = style;
+            cases.back().CheckOwningMaps = true;
+        }
+    }
     cases.push_back({
         std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../null-statements",
         "profile",
@@ -4274,8 +4300,9 @@ void ExpectEmittedWidthDiagnostics(
     size_t begin = 0;
     while (begin < text.size()) {
         auto end = text.find_first_of("\r\n", begin);
-        if (end == std::string_view::npos)
+        if (end == std::string_view::npos) {
             end = text.size();
+        }
         size_t width = 0;
         for (size_t offset = begin; offset < end;) {
             const auto c = static_cast<unsigned char>(text[offset]);

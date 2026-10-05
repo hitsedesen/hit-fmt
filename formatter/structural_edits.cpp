@@ -141,8 +141,9 @@ void Walk(
         bool DeclarationSequence = false;
         bool PreviousTrailingLabel = false;
     };
-    if (safety)
+    if (safety) {
         CheckAnalysisSource(tree, *safety);
+    }
     std::pmr::vector<Frame> stack(&scratch);
     size_t region = 0;
     auto enter = [
@@ -151,59 +152,60 @@ void Walk(
         const parser::Node* node,
         NK parent,
         NK previous,
-        bool previousTrailingLabel)
-    {
-        RegionStatus status = RegionStatus::Complete;
-        bool trailingLabel = false;
-        if (safety) {
-            if (region >= safety
-                ->Regions()
-                .size())
-            {
-                throw std::invalid_argument("analysis/tree mismatch");
+        bool previousTrailingLabel) {
+            RegionStatus status = RegionStatus::Complete;
+            bool trailingLabel = false;
+            if (safety) {
+                if (region >= safety
+                    ->Regions()
+                    .size())
+                {
+                    throw std::invalid_argument("analysis/tree mismatch");
+                }
+                trailingLabel =
+                    !trailingLabels.empty() && trailingLabels[region];
+                const auto& r = safety->Regions()[region++];
+                if (r.Kind != node->Kind ||
+                    r.Tokens.Begin != node->Tokens.Begin ||
+                    r.Tokens.End != node->Tokens.End)
+                {
+                    throw std::invalid_argument("analysis/tree mismatch");
+                }
+                status = r.Status;
             }
-            trailingLabel = !trailingLabels.empty() && trailingLabels[region];
-            const auto& r = safety->Regions()[region++];
-            if (r.Kind != node->Kind || r.Tokens.Begin != node->Tokens.Begin ||
-                r.Tokens.End != node->Tokens.End)
+            auto grandparent = stack.size() > 1
+                ? stack[stack.size() - 2].Node->Kind
+                : NK::Error;
+            bool parentSequence =
+                !stack.empty() && stack.back().DeclarationSequence;
+            visit(
+                *node,
+                parent,
+                previous,
+                grandparent,
+                parentSequence,
+                static_cast<uint32_t>(stack.size()),
+                status,
+                trailingLabel,
+                previousTrailingLabel);
+            bool sequence = node->Kind == NK::TranslationUnit ||
+                node->Kind == NK::NamespaceDeclaration;
+            if (node->Kind == NK::ExportDeclaration ||
+                node->Kind == NK::LinkageSpecification)
             {
-                throw std::invalid_argument("analysis/tree mismatch");
+                auto header = node->Tokens.Begin +
+                    (node->Kind == NK::ExportDeclaration ? 1 : 2);
+                while (header < node->Tokens.End &&
+                    tree.Kind(header) == TK::Comment)
+                {
+                    ++header;
+                }
+                sequence = header < node->Tokens.End &&
+                    tree.Kind(header) == TK::Operator_OpenBrace &&
+                    tree.MatchingDelimiter(header) < node->Tokens.End;
             }
-            status = r.Status;
-        }
-        auto grandparent = stack.size() > 1
-            ? stack[stack.size() - 2].Node->Kind
-            : NK::Error;
-        bool parentSequence =
-            !stack.empty() && stack.back().DeclarationSequence;
-        visit(
-            *node,
-            parent,
-            previous,
-            grandparent,
-            parentSequence,
-            static_cast<uint32_t>(stack.size()),
-            status,
-            trailingLabel,
-            previousTrailingLabel);
-        bool sequence = node->Kind == NK::TranslationUnit ||
-            node->Kind == NK::NamespaceDeclaration;
-        if (node->Kind == NK::ExportDeclaration ||
-            node->Kind == NK::LinkageSpecification)
-        {
-            auto header = node->Tokens.Begin +
-                (node->Kind == NK::ExportDeclaration ? 1 : 2);
-            while (header < node->Tokens.End &&
-                tree.Kind(header) == TK::Comment)
-            {
-                ++header;
-            }
-            sequence = header < node->Tokens.End &&
-                tree.Kind(header) == TK::Operator_OpenBrace &&
-                tree.MatchingDelimiter(header) < node->Tokens.End;
-        }
-        stack.push_back({node, node->Child(), NK::Error, sequence});
-    };
+            stack.push_back({node, node->Child(), NK::Error, sequence});
+        };
     enter(&tree.Root(), NK::Error, NK::Error, false);
     while (!stack.empty()) {
         auto& frame = stack.back();
@@ -865,170 +867,194 @@ StructuralPlan PlanStructuralEdits(
             uint32_t depth,
             RegionStatus status,
             bool trailingLabel,
-            bool previousTrailingLabel)
-        {
-            if (Control(node.Kind)) {
-                bool attributes = false, labels = false, directives = false;
-                for (auto* child = node.Child();
-                    child;
-                    child = child->NextSibling)
-                {
-                    attributes |= Attribute(child->Kind);
-                    labels |= child->Kind == NK::CaseLabel ||
-                        child->Kind == NK::LabelStatement;
-                    directives |= child->Kind == NK::PreprocessingDirective ||
-                        child->Kind == NK::PreprocessingConditional;
-                }
-                for (auto* body = node.Child(); body; body = body->NextSibling)
-                {
-                    if (Header(body->Kind) || Attribute(body->Kind) ||
-                        body->Kind == NK::CompoundStatement ||
-                        body->Kind == NK::Comment ||
-                        body->Kind == NK::PreprocessingDirective ||
-                        body->Tokens.Empty())
+            bool previousTrailingLabel) {
+                if (Control(node.Kind)) {
+                    bool attributes = false, labels = false, directives = false;
+                    for (auto* child = node.Child();
+                        child;
+                        child = child->NextSibling)
                     {
-                        continue;
+                        attributes |= Attribute(child->Kind);
+                        labels |= child->Kind == NK::CaseLabel ||
+                            child->Kind == NK::LabelStatement;
+                        directives |=
+                            child->Kind == NK::PreprocessingDirective ||
+                                child->Kind == NK::PreprocessingConditional;
                     }
-                    auto tokens = body->Tokens;
-                    bool null = body->Kind == NK::ExpressionStatement &&
-                        tokens.Size() == 1 &&
-                        tree.Kind(tokens.Begin) == TK::Operator_Semicolon;
-                    if (!(null
-                        ? options.EmptyControlBody
-                        : options.AddMissingControlBraces))
-                        continue;
+                    for (auto* body = node.Child();
+                        body;
+                        body = body->NextSibling)
+                    {
+                        if (Header(body->Kind) || Attribute(body->Kind) ||
+                            body->Kind == NK::CompoundStatement ||
+                            body->Kind == NK::Comment ||
+                            body->Kind == NK::PreprocessingDirective ||
+                            body->Tokens.Empty())
+                        {
+                            continue;
+                        }
+                        auto tokens = body->Tokens;
+                        bool null = body->Kind == NK::ExpressionStatement &&
+                            tokens.Size() == 1 &&
+                            tree.Kind(tokens.Begin) == TK::Operator_Semicolon;
+                        if (!(null
+                            ? options.EmptyControlBody
+                            : options.AddMissingControlBraces))
+                            continue;
                     // Preserve the conventional else-if chain; nested
                     // then-controls are wrapped together, with closes ordered
                     // deepest-first.
-                    if (body->Kind == NK::IfStatement && tokens.Begin &&
-                        tree.Kind(tokens.Begin - 1) == TK::Keyword_else)
-                    {
-                        continue;
-                    }
-                    auto action = null
-                        ? StructuralAction::EmptyControlBody
-                        : StructuralAction::AddMissingControlBraces;
-                    auto range = Range(tree, tokens);
-                    if (status != RegionStatus::Complete) {
-                        Skip(plan, action, tokens, StructuralSkip::Incomplete);
-                    } else if (attributes) {
-                        Skip(plan, action, tokens, StructuralSkip::Attributes);
-                    } else if (trailingLabel || labels ||
-                        body->Kind == NK::LabelStatement ||
-                        body->Kind == NK::CaseLabel)
-                    {
-                        Skip(plan, action, tokens, StructuralSkip::LabelBody);
-                    } else if (directives) {
-                        Skip(
-                            plan,
-                            action,
-                            tokens,
-                            StructuralSkip::DirectiveBoundary);
-                    } else if (barriers[node.Tokens.End] !=
-                        barriers[node.Tokens.Begin] ||
-                        AdjacentComment(tree, tokens))
-                    {
-                        Skip(
-                            plan,
-                            action,
-                            tokens,
-                            StructuralSkip::CommentAttached);
-                    } else if (safety.IntersectsImmutable(range) ||
-                        safety.IntersectsImmutable({range.End, range.End}) ||
-                        (safety.Gaps()[tokens.Begin].Preserve &&
-                            safety.Gaps()[tokens.Begin].Source.Empty()) ||
-                        (!null && safety.Gaps()[tokens.End].Preserve &&
-                            safety.Gaps()[tokens.End].Source.Empty()))
-                    {
-                        Skip(plan, action, tokens, StructuralSkip::Protected);
-                    } else {
-                        auto id = Operation(plan, action, tokens);
-                        if (null) {
-                            Literal(plan, range, "{}", id, depth);
+                        if (body->Kind == NK::IfStatement && tokens.Begin &&
+                            tree.Kind(tokens.Begin - 1) == TK::Keyword_else)
+                        {
+                            continue;
+                        }
+                        auto action = null
+                            ? StructuralAction::EmptyControlBody
+                            : StructuralAction::AddMissingControlBraces;
+                        auto range = Range(tree, tokens);
+                        if (status != RegionStatus::Complete) {
+                            Skip(
+                                plan,
+                                action,
+                                tokens,
+                                StructuralSkip::Incomplete);
+                        } else if (attributes) {
+                            Skip(
+                                plan,
+                                action,
+                                tokens,
+                                StructuralSkip::Attributes);
+                        } else if (trailingLabel || labels ||
+                            body->Kind == NK::LabelStatement ||
+                            body->Kind == NK::CaseLabel)
+                        {
+                            Skip(
+                                plan,
+                                action,
+                                tokens,
+                                StructuralSkip::LabelBody);
+                        } else if (directives) {
+                            Skip(
+                                plan,
+                                action,
+                                tokens,
+                                StructuralSkip::DirectiveBoundary);
+                        } else if (barriers[node.Tokens.End] !=
+                            barriers[node.Tokens.Begin] ||
+                            AdjacentComment(tree, tokens))
+                        {
+                            Skip(
+                                plan,
+                                action,
+                                tokens,
+                                StructuralSkip::CommentAttached);
+                        } else if (safety.IntersectsImmutable(range) ||
+                            safety
+                                .IntersectsImmutable({range.End, range.End}) ||
+                            (safety.Gaps()[tokens.Begin].Preserve &&
+                                safety.Gaps()[tokens.Begin].Source.Empty()) ||
+                            (!null && safety.Gaps()[tokens.End].Preserve &&
+                                safety.Gaps()[tokens.End].Source.Empty()))
+                        {
+                            Skip(
+                                plan,
+                                action,
+                                tokens,
+                                StructuralSkip::Protected);
                         } else {
-                            Literal(
-                                plan,
-                                {range.Begin, range.Begin},
-                                "{",
-                                id,
-                                depth,
-                                StructuralEdit::Edge::Open);
-                            Literal(
-                                plan,
-                                {range.End, range.End},
-                                "}",
-                                id,
-                                depth,
-                                StructuralEdit::Edge::Close);
+                            auto id = Operation(plan, action, tokens);
+                            if (null) {
+                                Literal(plan, range, "{}", id, depth);
+                            } else {
+                                Literal(
+                                    plan,
+                                    {range.Begin, range.Begin},
+                                    "{",
+                                    id,
+                                    depth,
+                                    StructuralEdit::Edge::Open);
+                                Literal(
+                                    plan,
+                                    {range.End, range.End},
+                                    "}",
+                                    id,
+                                    depth,
+                                    StructuralEdit::Edge::Close);
+                            }
                         }
                     }
                 }
-            }
-            bool nullStatement = options.RemoveNullStatements &&
-                parent == NK::CompoundStatement &&
-                node.Kind == NK::ExpressionStatement && node.Tokens.Size() == 1;
-            bool declarationParent = parent == NK::TranslationUnit ||
-                parent == NK::NamespaceDeclaration ||
-                parent == NK::LinkageSpecification ||
-                parent == NK::ExportDeclaration;
-            bool nullDeclaration = options.RemoveNullDeclarations &&
-                declarationParent && node.Kind == NK::EmptyDeclaration &&
-                node.Tokens.Size() == 1;
-            bool functionSuffix = options.RemoveNullDeclarations &&
-                node.Kind == NK::FunctionDefinition && !node.Tokens.Empty() &&
-                tree.Kind(node.Tokens.End - 1) == TK::Operator_Semicolon;
-            if (!(nullStatement || nullDeclaration || functionSuffix))
-                return;
-            TI token = functionSuffix ? node.Tokens.End - 1 : node.Tokens.Begin;
-            if (tree.Kind(token) != TK::Operator_Semicolon) {
-                return;
-            }
-            auto action = nullStatement
-                ? StructuralAction::RemoveNullStatements
-                : StructuralAction::RemoveNullDeclarations;
-            parser::TokenRange tokens{token, token + 1};
-            if (status != RegionStatus::Complete) {
-                Skip(plan, action, tokens, StructuralSkip::Incomplete);
-            } else if ((nullDeclaration && !declarationSequence) ||
-                (nullStatement &&
-                    (grandparent == NK::Argument ||
-                        grandparent == NK::StatementExpression)))
-            {
-                // GNU statement expressions can change from void to a
-                // value if their final null statement disappears. Macro
-                // braced arguments and non-sequence exported declarations
-                // are not redundant bodies.
-                Skip(plan, action, tokens, StructuralSkip::RequiredBody);
-            } else if (nullStatement &&
-                (previousTrailingLabel || previous == NK::CaseLabel ||
-                    previous == NK::LabelStatement))
-            {
-                Skip(plan, action, tokens, StructuralSkip::LabelBody);
-            } else if (AdjacentComment(tree, tokens)) {
-                Skip(plan, action, tokens, StructuralSkip::CommentAttached);
-            } else if (safety.IntersectsImmutable(Range(tree, tokens)) ||
-                (safety.Gaps()[tokens.Begin].Preserve &&
-                    safety.Gaps()[tokens.Begin].Source.Empty()) ||
-                (safety.Gaps()[tokens.End].Preserve &&
-                    safety.Gaps()[tokens.End].Source.Empty()))
-            {
-                Skip(plan, action, tokens, StructuralSkip::Protected);
-            } else if (options.PreserveBareCR &&
-                safety.Gaps()[token].HasBareCR && safety
-                    .Original(token)
-                    .ends_with('\r'))
-            {
-                // Retain the first original separator of a zero-gap
-                // deletion chain before admission: no cancellation or ID
-                // remapping.
-                Skip(plan, action, tokens, StructuralSkip::RequiredBody);
-            } else {
-                auto id = Operation(plan, action, tokens);
-                // Token-only removal cannot take neighboring comments
-                // or gaps.
-                Literal(plan, Range(tree, tokens), "", id);
-            }
-        }, trailingLabels);
+                bool nullStatement = options.RemoveNullStatements &&
+                    parent == NK::CompoundStatement &&
+                    node.Kind == NK::ExpressionStatement &&
+                    node.Tokens.Size() == 1;
+                bool declarationParent = parent == NK::TranslationUnit ||
+                    parent == NK::NamespaceDeclaration ||
+                    parent == NK::LinkageSpecification ||
+                    parent == NK::ExportDeclaration;
+                bool nullDeclaration = options.RemoveNullDeclarations &&
+                    declarationParent && node.Kind == NK::EmptyDeclaration &&
+                    node.Tokens.Size() == 1;
+                bool functionSuffix = options.RemoveNullDeclarations &&
+                    node.Kind == NK::FunctionDefinition &&
+                    !node.Tokens.Empty() &&
+                    tree.Kind(node.Tokens.End - 1) == TK::Operator_Semicolon;
+                if (!(nullStatement || nullDeclaration || functionSuffix)) {
+                    return;
+                }
+                TI token = functionSuffix
+                    ? node.Tokens.End - 1
+                    : node.Tokens.Begin;
+                if (tree.Kind(token) != TK::Operator_Semicolon) {
+                    return;
+                }
+                auto action = nullStatement
+                    ? StructuralAction::RemoveNullStatements
+                    : StructuralAction::RemoveNullDeclarations;
+                parser::TokenRange tokens{token, token + 1};
+                if (status != RegionStatus::Complete) {
+                    Skip(plan, action, tokens, StructuralSkip::Incomplete);
+                } else if ((nullDeclaration && !declarationSequence) ||
+                    (nullStatement &&
+                        (grandparent == NK::Argument ||
+                            grandparent == NK::StatementExpression)))
+                {
+                    // GNU statement expressions can change from void to a
+                    // value if their final null statement disappears. Macro
+                    // braced arguments and non-sequence exported declarations
+                    // are not redundant bodies.
+                    Skip(plan, action, tokens, StructuralSkip::RequiredBody);
+                } else if (nullStatement &&
+                    (previousTrailingLabel || previous == NK::CaseLabel ||
+                        previous == NK::LabelStatement))
+                {
+                    Skip(plan, action, tokens, StructuralSkip::LabelBody);
+                } else if (AdjacentComment(tree, tokens)) {
+                    Skip(plan, action, tokens, StructuralSkip::CommentAttached);
+                } else if (safety.IntersectsImmutable(Range(tree, tokens)) ||
+                    (safety.Gaps()[tokens.Begin].Preserve &&
+                        safety.Gaps()[tokens.Begin].Source.Empty()) ||
+                    (safety.Gaps()[tokens.End].Preserve &&
+                        safety.Gaps()[tokens.End].Source.Empty()))
+                {
+                    Skip(plan, action, tokens, StructuralSkip::Protected);
+                } else if (options.PreserveBareCR &&
+                    safety.Gaps()[token].HasBareCR && safety
+                        .Original(token)
+                        .ends_with('\r'))
+                {
+                    // Retain the first original separator of a zero-gap
+                    // deletion chain before admission: no cancellation or ID
+                    // remapping.
+                    Skip(plan, action, tokens, StructuralSkip::RequiredBody);
+                } else {
+                    auto id = Operation(plan, action, tokens);
+                    // Token-only removal cannot take neighboring comments
+                    // or gaps.
+                    Literal(plan, Range(tree, tokens), "", id);
+                }
+            }, trailingLabels);
     if (options.SortIncludes) {
         Includes(tree, safety, plan, scratchMemory, options, includes);
     }
@@ -1179,8 +1205,9 @@ NamespaceCommentPlan PlanNamespaceComments(
     if (options.Spaces > 32) {
         throw std::invalid_argument("namespace comment spacing exceeds 32");
     }
-    if (options.Policy == NamespaceCommentPolicy::Preserve)
+    if (options.Policy == NamespaceCommentPolicy::Preserve) {
         return plan;
+    }
     std::pmr::vector<uint32_t> namespaceKeywords(
         original.TokenCount() + 1, 0, &scratchMemory);
     for (TI i = 0; i < original.TokenCount(); ++i) {
@@ -1199,89 +1226,100 @@ NamespaceCommentPlan PlanNamespaceComments(
             uint32_t,
             RegionStatus status,
             bool,
-            bool)
-        {
-            if (node.Kind != NK::NamespaceDeclaration) {
-                // A keyword in opaque/generic grammar is evidence to SKIP,
-                // never permission to invent a namespace identity or
-                // inspect its text.
-                if ((node.Kind == NK::Declaration ||
-                    node.Kind == NK::UnparsedSyntax) &&
-                    namespaceKeywords[node.Tokens.End] !=
-                        namespaceKeywords[node.Tokens.Begin])
-                {
+            bool) {
+                if (node.Kind != NK::NamespaceDeclaration) {
+                    // A keyword in opaque/generic grammar is evidence to SKIP,
+                    // never permission to invent a namespace identity or
+                    // inspect its text.
+                    if ((node.Kind == NK::Declaration ||
+                        node.Kind == NK::UnparsedSyntax) &&
+                        namespaceKeywords[node.Tokens.End] !=
+                            namespaceKeywords[node.Tokens.Begin])
+                    {
+                        plan.Skipped.push_back({
+                            StructuralAction::NamespaceComments,
+                            node.Tokens,
+                            StructuralSkip::Incomplete,
+                        });
+                    }
+                    return;
+                }
+                if (node.Tokens.Empty()) {
+                    return;
+                }
+                auto fail = [&] (StructuralSkip reason) {
                     plan.Skipped.push_back({
                         StructuralAction::NamespaceComments,
                         node.Tokens,
-                        StructuralSkip::Incomplete,
+                        reason,
                     });
+                };
+                TI open = original.TokenCount();
+                bool expectName = true, named = false, valid = true;
+                for (TI i = node.Tokens.Begin; i < node.Tokens.End; ++i) {
+                    auto kind = original.Kind(i);
+                    if (kind == TK::Operator_OpenBrace) {
+                        open = i;
+                        break;
+                    }
+                    if ((kind == TK::Keyword_namespace && expectName &&
+                        !named) || (kind == TK::Keyword_inline && expectName))
+                    {
+                        continue;
+                    }
+                    if (kind == TK::Identifier && expectName) {
+                        expectName = false;
+                        named = true;
+                    } else if (kind == TK::Operator_ScopeResolution &&
+                        !expectName)
+                    {
+                        expectName = true;
+                    } else {
+                        valid = false;
+                        break;
+                    }
                 }
-                return;
-            }
-            if (node.Tokens.Empty()) {
-                return;
-            }
-            auto fail = [&] (StructuralSkip reason) {
-                plan.Skipped.push_back(
-                    {StructuralAction::NamespaceComments, node.Tokens, reason});
-            };
-            TI open = original.TokenCount();
-            bool expectName = true, named = false, valid = true;
-            for (TI i = node.Tokens.Begin; i < node.Tokens.End; ++i) {
-                auto kind = original.Kind(i);
-                if (kind == TK::Operator_OpenBrace) {
-                    open = i;
-                    break;
-                }
-                if ((kind == TK::Keyword_namespace && expectName && !named) ||
-                    (kind == TK::Keyword_inline && expectName))
+                if (open == original.TokenCount() || !valid ||
+                    (expectName && named))
+                    return; // alias/non-header
+                auto close = original.MatchingDelimiter(open);
+                if (status != RegionStatus::Complete ||
+                    close >= node.Tokens.End ||
+                    original.Kind(close) != TK::Operator_CloseBrace)
                 {
-                    continue;
+                    fail(StructuralSkip::Incomplete);
+                    return;
                 }
-                if (kind == TK::Identifier && expectName) {
-                    expectName = false;
-                    named = true;
-                } else if (kind == TK::Operator_ScopeResolution && !expectName)
+                auto begin = original.Token(close).Text.End;
+                auto comment = original.TokenCount();
+                if (close + 1 < original.TokenCount() &&
+                    original.Kind(close + 1) == TK::Comment && original
+                        .TokenText(close + 1)
+                        .starts_with("//") &&
+                    Horizontal(original.WhitespaceAfter(close)))
                 {
-                    expectName = true;
-                } else {
-                    valid = false;
-                    break;
+                    comment = close + 1;
                 }
-            }
-            if (open == original.TokenCount() || !valid ||
-                (expectName && named))
-                return; // alias/non-header
-            auto close = original.MatchingDelimiter(open);
-            if (status != RegionStatus::Complete || close >= node.Tokens.End ||
-                original.Kind(close) != TK::Operator_CloseBrace)
-            {
-                fail(StructuralSkip::Incomplete);
-                return;
-            }
-            auto begin = original.Token(close).Text.End;
-            auto comment = original.TokenCount();
-            if (close + 1 < original.TokenCount() &&
-                original.Kind(close + 1) == TK::Comment && original
-                    .TokenText(close + 1)
-                    .starts_with("//") &&
-                Horizontal(original.WhitespaceAfter(close)))
-                comment = close + 1;
-            SR window{begin, comment == original.TokenCount()
+                SR window{begin, comment == original.TokenCount()
                                  ? begin
                                  : original.Token(comment).Text.End};
-            if (safety.IntersectsImmutable(
-                Range(original, {node.Tokens.Begin, open + 1})) ||
-                safety.IntersectsImmutable(
-                    Range(original, {close, close + 1})) ||
-                safety.IntersectsImmutable(window))
-            {
-                fail(StructuralSkip::Protected);
-                return;
-            }
-            plan.Namespaces.push_back(
-                {node.Tokens, {node.Tokens.Begin, open}, open, close, comment});
-        });
+                if (safety.IntersectsImmutable(
+                    Range(original, {node.Tokens.Begin, open + 1})) ||
+                    safety.IntersectsImmutable(
+                        Range(original, {close, close + 1})) ||
+                    safety.IntersectsImmutable(window))
+                {
+                    fail(StructuralSkip::Protected);
+                    return;
+                }
+                plan.Namespaces.push_back({
+                    node.Tokens,
+                    {node.Tokens.Begin, open},
+                    open,
+                    close,
+                    comment,
+                });
+            });
     return plan;
 }
 
@@ -1300,8 +1338,9 @@ StructuralPlan ResolveNamespaceComments(
     if (plan.Options.Policy == NamespaceCommentPolicy::Preserve) {
         return resolved;
     }
-    if (mapping.size() != original.TokenCount())
+    if (mapping.size() != original.TokenCount()) {
         throw std::invalid_argument("original token mapping size");
+    }
     parser::SourceOffset previousEnd = 0;
     for (auto r : outputProtection) {
         if (r.Begin > r.End || r.End > output.size() || r.Begin < previousEnd) {
