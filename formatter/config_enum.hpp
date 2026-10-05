@@ -13,6 +13,7 @@ namespace formatter {
 
 template <typename T> struct ConfigEnumNames;
 
+// Expand each value list for both the enum and its on-disk spelling.
 #define CONFIG_ENUM_ITEM(value) value,
 #define CONFIG_ENUM_NAME(value) #value,
 #define DEFINE_CONFIG_ENUM(type, values)                                      \
@@ -124,7 +125,7 @@ DEFINE_CONFIG_ENUM(
     DEFINITION_PARAMETER_NAMES_VALUES);
 #undef DEFINITION_PARAMETER_NAMES_VALUES
 
-// Diagnostic spellings are intentionally independent of C++ enumerator names.
+// NameCase is the only enum whose spellings differ from its C++ members.
 enum class NameCase : std::uint8_t
 {
     Unchecked,

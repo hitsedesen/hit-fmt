@@ -812,7 +812,6 @@ std::vector<Chunk> FormattingChunks(
     return chunks;
 }
 
-// Display the one pipeline's formatting difference, without a second model.
 void PrintFormattingDiagnostics(
     std::ostream& output,
     std::string_view path,

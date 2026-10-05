@@ -70,11 +70,8 @@ struct SourceGap
     bool MustStartWithLineFeed = false;
     // Lexically identical punctuation can still change grammar (e.g. [ [).
     bool ContextSensitive = false;
-    // Facts before semantic protection is folded into
-    // Preserve/ContextSensitive.
-    // A protected exact prefix can coexist with a safe selected gap suffix.
-    // Packed into the existing trailing padding, with no per-gap storage
-    // growth.
+    // Intrinsic safety before semantic protection; a protected prefix may
+    // still leave a safe, selected horizontal suffix.
     bool IntrinsicPreserve : 1 = false;
     bool IntrinsicContextSensitive : 1 = false;
     // Original gap-owned CR not immediately followed by LF. Classification
@@ -135,43 +132,30 @@ struct SourceAnalysisOptions
     std::span<const std::string_view> WhitespaceSensitiveMacros = {};
     // Half-open, valid source offsets; insertion inside a range is immutable.
     std::span<const parser::SourceRange> ImmutableRanges = {};
-    // Reason-bearing immutable ranges in THIS input's coordinates. Used after
-    // structural normalization to retain original reasons through provenance.
-    // Rediscovered protection is merged conservatively, never substituted.
+    // Immutable ranges in the current input. Normalization carries original
+    // protection through provenance and merges it with rediscovered protection.
     std::span<const ProtectedSourceRange> InheritedProtection = {};
-    // Current-input BYTE coordinates, borrowed only during Build. Uses the same
-    // one-time restriction as SourceAnalysis::RestrictEditScope. nullopt is
-    // unrestricted; an engaged empty span permits no edits or insertions.
-    // Ranges must be nonempty, sorted, disjoint and within the source. Touching
-    // ranges are coalesced. Insertion belongs to [Begin, End), never its end
-    // (including EOF). An LF-ended gap also needs ownership of its end point
-    // for whole-gap replacement: LF ownership alone cannot authorize new
-    // indentation on an unselected following line. Otherwise topology stays
-    // fenced, even if all existing gap bytes are selected.
-    // Invalid ranges throw std::invalid_argument.
-    // After normalization the caller must project original authorization into
-    // these coordinates; source-map anchors alone do not confer permission.
+    // Current-input byte scope, borrowed during Build. nullopt is unrestricted;
+    // an empty span permits no edits. Ranges must be nonempty, sorted, disjoint
+    // and in bounds; touching ranges coalesce. Invalid ranges throw
+    // std::invalid_argument. Insertion owns [Begin, End), never End or EOF.
+    // Whole-gap replacement after LF also requires the following indent point.
+    // After normalization, project original scope into current coordinates;
+    // source-map anchors do not grant permission.
     std::optional<std::span<const parser::SourceRange>> EditScope = std::
         nullopt;
 };
 
-// Source and fileMemory must outlive this result. No tree/scratch pointers are
-// retained. Analysis queries require a successfully built, non-moved-from
-// result.
-// Gap i precedes token i; gap TokenCount() is the file tail. Region
-// IDs are preorder indices. Protection intervals are sorted/disjoint. True
-// overlaps conservatively union reasons; touching identical masks coalesce,
-// while touching different masks retain their half-open reason locations.
-// HeaderName protection owns internal gaps, not an insertion before its
-// opening token;
-// other protection reasons still own that boundary. Range queries include
-// insertion at an interval's beginning conservatively. Protection() describes
-// bytes; use IntersectsImmutable/Gaps for scoped insertion fences, including
-// EOF, which cannot be represented by a nonempty protection interval.
-// This validates whitespace edits between unchanged tokens only. It does not
-// establish semantic equivalence of token insertion/removal/reordering, macro
-// expansion, or structural edits. Complete means no known parser recovery or
-// ambiguity, not a proof that the parser understands all C++ semantics.
+// Source and fileMemory must outlive a built, non-moved-from result; no tree or
+// scratch pointers are retained. Gap i precedes token i; TokenCount() is the
+// tail gap. Region IDs are preorder indices. Protection is sorted/disjoint:
+// overlaps union reasons; touching equal reason masks coalesce.
+// HeaderName protects internal gaps, not insertion before its opener; other
+// reasons still apply there. Insertion at a protected range's beginning is
+// fenced. Use IntersectsImmutable/Gaps for insertion fences, including EOF;
+// Protection() describes bytes only.
+// Validates whitespace edits, not semantic equivalence of structural edits.
+// Complete means no known parser recovery or ambiguity.
 class SourceAnalysis
 {
 public:
@@ -211,36 +195,24 @@ public:
         return Regions_;
     }
 
-    // Sparse, source-ordered permissions only for partly selected gaps. Final
-    // indentation emits only spaces/tabs in a complete suffix after a fixed
-    // LF-ended prefix (possibly a zero-width point before a token).
-    // TrimHorizontal may only delete a complete space/tab run immediately
-    // before LF/CRLF. No token, terminator, prefix/suffix or topology edits
-    // are authorized. A cut
-    // horizontal run gets no permission. All other safety constraints win.
+    // Sparse permissions for partly selected gaps: indentation replaces a
+    // complete horizontal suffix after fixed LF (or a zero-width point);
+    // TrimHorizontal deletes a complete space/tab run before LF/CRLF.
+    // Partial runs, newline changes and token edits remain forbidden.
+    // Other safety constraints still apply.
     [[nodiscard]] std::span<const PartialGapPermission> PartialGapPermissions()
     const
     {
         return PartialGapPermissions_;
     }
 
-    // Apply an explicit current-input byte scope once, after an unrestricted
-    // Build. The intervals/endpoint rules match
-    // SourceAnalysisOptions::EditScope.
-    // No source or tree is accepted: coordinates belong to this analysis's
-    // original input (never a structurally normalized/different input).
-    // Source and fileMemory must remain live; caller range storage may die on
-    // return. No tree/scratch storage is retained and no tree is rescanned.
-    // Successful restriction invalidates previously borrowed Protection and
-    // PartialGapPermissions spans; Gaps/Regions storage stays stable, but gap
-    // flags/reasons change. Failed restriction invalidates no borrowed spans.
-    // Throws logic_error for unbuilt, moved-from or already restricted objects;
-    // invalid_argument for invalid ranges. All exceptions (including allocation
-    // failure) leave the object unchanged, so valid unrestricted objects can be
-    // retried. O(gap bytes + gaps log scope +
-    // candidates (log scope + log protection) + intervals log intervals),
-    // with O(scope + permissions + protection) bounded
-    // temporary/file-PMR storage and no per-gap allocation.
+    // Apply EditScope once after an unrestricted Build, in this input's byte
+    // coordinates. Source and fileMemory stay live; caller ranges need not.
+    // Success invalidates Protection/PartialGapPermissions views; Gaps/Regions
+    // storage stays stable, but gap flags change. Exceptions change nothing.
+    // Throws logic_error for unbuilt, moved-from or restricted objects;
+    // invalid_argument for invalid ranges. Uses bounded temporary/file storage,
+    // linear gap-byte scans and indexed scope/protection lookups.
     void RestrictEditScope(std::span<const parser::SourceRange> ranges);
 
     [[nodiscard]] bool IntersectsImmutable(parser::SourceRange source) const;

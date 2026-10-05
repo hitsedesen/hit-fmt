@@ -803,9 +803,8 @@ TEST(GroupLayout, BoundedChildFittingGolden)
                 EXPECT_EQ(output.Text, repeated.Text);
                 EXPECT_EQ(output.Broken, repeated.Broken);
                 EXPECT_EQ(output.Map.size(), repeated.Map.size());
-                // Oversized mixed groups retain the legacy fallback, which
-                // may overflow at narrow widths. Complete child-fitting
-                // candidates must fit every line, not just their prefix.
+                // Oversized groups may overflow with ordinary fitting.
+                // Child-only candidates must fit every line.
                 if (width >= 25 && (padding == 0 || mode < 3)) {
                     std::size_t begin = 0;
                     while (begin < output.Text.size()) {

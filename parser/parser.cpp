@@ -2677,9 +2677,8 @@ private:
         while (!AtEnd()) {
             auto kind = CurrentKind();
             if (kind == TK::Comment || kind == TK::Invalid) {
-                // Comments preserve operand state. Invalid bytes permit
-                // a recovery
-                // boundary but stay in the constraint for AddExpressionRange.
+                // Invalid bytes allow a recovery boundary but remain in the
+                // constraint. Comments do not change operand state.
                 if (kind == TK::Invalid) {
                     constraintMayEnd = false;
                     recoveredBoundary = true;
@@ -3110,8 +3109,6 @@ private:
         }
         node->Tokens.End = Cursor_;
         if (!unknownHeader && angleDepth == 0) {
-            // Add syntax after registration: head children must not change
-            // the existing forward-declaration name-registration condition.
             Node head;
             for (auto i = start + 1; i < headEnd; ++i) {
                 if (IsOpenDelimiter(Kind(i))) {
@@ -5092,8 +5089,8 @@ private:
                 declaratorEnd,
                 functionKind == FunctionKind::Constructor))
             {
-                // Initializer expressions belong to the function's existing
-                // constructor-initializer subtree, not outer array suffixes.
+                // Constructor initializers belong to the function, not its
+                // array declarator suffixes.
                 suffixScanEnd = *initializerColon;
             }
         }

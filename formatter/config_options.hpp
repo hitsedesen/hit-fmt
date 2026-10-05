@@ -265,6 +265,7 @@
     OPT(std::optional<formatter::CloserPlacement>, category##Closer,          \
         std::nullopt)
 
+// Each entry defines a field, its default, and its config-file binding.
 #define FORMATTER_STYLE_OPTIONS(OPT)                                         \
     OPT(formatter::LayoutMode, Layout, formatter::LayoutMode::Preserve)        \
     OPT(std::size_t, IndentWidth, 4)                                          \
@@ -436,6 +437,7 @@
     OPT(std::size_t, ShortNamespaceLines, 0)                                 \
     FORMATTER_GAP_OPTIONS(OPT)
 
+// A category supplies its name-case and prefix options together.
 #define FORMATTER_NAMING_CATEGORIES(X)                                       \
     X(Class) X(Enum) X(Union) X(Struct) X(Function) X(Concept) X(Variable)     \
     X(Namespace)

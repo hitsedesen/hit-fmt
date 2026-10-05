@@ -743,10 +743,7 @@ SourceAnalysis BuildSourceAnalysis(
             frame.LastChild = id;
         }
         if (node.Kind == parser::NodeKind::HeaderName) {
-            // Header spelling includes internal whitespace. Ordinary
-            // lexical
-            // identity alone cannot authorize edits inside angle
-            // delimiters.
+            // Whitespace inside header delimiters is part of the filename.
             protect(begin, end, ProtectionReason::HeaderName);
         }
         if (node.Kind == parser::NodeKind::MacroFunctionHeader) {

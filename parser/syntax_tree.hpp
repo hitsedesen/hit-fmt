@@ -298,6 +298,7 @@ struct Node
     TokenRange Tokens;
     NodeKind Kind = NodeKind::Error;
 
+    // Returns the first child; follow NextSibling to visit the rest.
     [[nodiscard]] const Node* Child() const
     {
         return FirstChild;

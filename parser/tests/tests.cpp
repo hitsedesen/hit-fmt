@@ -3201,9 +3201,6 @@ TEST(Parser, RecordHeadTemplateArgumentsOwnTheirSeparators)
     }
     EXPECT_EQ(declarations, 1u);
 
-    // The rebase must retain main's member-scope linkage while suppressing
-    // qualified definitions' surrounding-name export. Forward redeclarations
-    // and the local injected self-name must both preserve member type lookup.
     const std::string_view linkageCases[] = {
         "struct Catalog { using Element = int; };\n"
             "void inspect() { int consume(Catalog::Element); }\n",
@@ -4847,9 +4844,8 @@ TEST(Parser, FunctionKindsRetainBalancedQualifiedAndExplicitReturnEvidence)
         EXPECT_EQ(names, 1u);
         EXPECT_EQ(pointers, item.OuterPointers);
         ASSERT_LT(parameterBegin, declarator->Tokens.End);
-        // Owner template arguments must not acquire outer pointer/ref
-        // authority;
-        // parameter declarators may legitimately contain their own operators.
+        // Owner template arguments do not own pointer/reference declarators;
+        // parameters may contain their own operators.
         int delimiterDepth = 0;
         for (auto i = declarator->Tokens.Begin; i < parameterBegin; ++i) {
             const auto kind = tree.Kind(i);

@@ -100,18 +100,11 @@ public:
         return Gaps_;
     }
 
-    // O(1). nullopt means no explicit preference, not permission to borrow
-    // source bytes. Lowering's selected combinator owns topology and context:
-    // canonical topology-changing boundaries use syntax-safe flat fallback
-    // before fitting, even with source horizontal bytes or a flat result.
-    // Preserved topology and genuinely flat-only, non-rebuilt adjacencies
-    // retain source horizontal bytes. Uncertainty/protection prohibit
-    // unauthorized fallback; immutable, context-sensitive and hard-line
-    // constraints override every policy. Required lexical separation overrides
-    // removal, including word operators. Safety accepts unchanged empty gaps
-    // even when its conservative punctuation predicate requires changed
-    // spelling to separate. Does not authorize removing a source newline.
-    // Every actual replacement must pass SourceAnalysis::CanReplaceGap.
+    // O(1). nullopt delegates spelling to lowering. Canonical topology-changing
+    // boundaries use safe flat fallback before fitting; preserved and flat-only
+    // gaps retain source bytes. Safety and lexical separation override policy,
+    // except unchanged empty gaps remain valid. This does not remove newlines;
+    // replacements must pass SourceAnalysis::CanReplaceGap.
     [[nodiscard]] std::optional<bool> SpacePreference(
         GapId gap,
         GapContext ownerContext,
@@ -136,17 +129,10 @@ private:
         std::optional<TrailingCommentSpaceSetting>);
 };
 
-// One explicit-stack tree traversal of nodes/direct-token spans, followed by
-// one gap safety pass. No recursive walks, retokenization or per-option arrays.
-// SourceAnalysis must describe this tree. Scratch may be released on return.
-// Preserve delegates horizontal spelling to lowering, not unconditional source
-// borrowing. At canonical topology-changing boundaries lowering uses the
-// recorded syntax-safe FallbackSpace before fitting, even when horizontal
-// source bytes exist and the result stays flat. Preserved topology and
-// genuinely flat-only, non-rebuilt adjacencies retain source horizontal bytes.
-// The actual selected combinator owns topology/context. Fallback remains
-// subject to lexical/protection checks; uncertain syntax and unknown roles
-// must be preserved, not flattened using a guessed role.
+// One iterative tree traversal followed by a gap safety pass. SourceAnalysis
+// must describe this tree; scratch may be released on return. Records a safe
+// flat fallback for lowering rebuilt boundaries, including Preserve policies.
+// Uncertain syntax and unknown roles retain source bytes.
 [[nodiscard]] SyntaxSpacing BuildSyntaxSpacing(
     const parser::SyntaxTree& tree,
     const SourceAnalysis& safety,

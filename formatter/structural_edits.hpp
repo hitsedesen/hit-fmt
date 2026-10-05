@@ -143,16 +143,12 @@ struct IncludeGroup
     parser::SourceRange Source;
 };
 
-// Read-only discovery of maximal adjacent safe groups, in source order,
-// including already sorted groups. Empty/singleton groups are omitted. Uses
-// the structural planner's attachment, line-ending and Directive-only rules;
-// additional protection (including OutsideEditScope) excludes a whole group.
-// Use original unrestricted semantic analysis for hunk eligibility. Discovery
-// never authorizes edits: the planner must still check current scoped safety.
-// Tree and analysis must describe the same original input. Throws
-// invalid_argument for mismatched source identity/token count. Returned value
-// descriptors retain no source/tree/analysis/scratch references; fileMemory
-// must survive the result. No operations, sorting or output are generated.
+// Discover maximal adjacent safe include groups in source order, including
+// sorted groups; omit singletons. Uses planner attachment/line-ending rules;
+// additional protection excludes the whole group. For hunk eligibility, use
+// unrestricted original analysis; scoped planning still authorizes each edit.
+// Tree/analysis must match, otherwise throws invalid_argument. Results retain
+// no input or scratch views; fileMemory must outlive them.
 [[nodiscard]] std::pmr::vector<IncludeGroup> DiscoverIncludeGroups(
     const parser::SyntaxTree& tree,
     const SourceAnalysis& safety,

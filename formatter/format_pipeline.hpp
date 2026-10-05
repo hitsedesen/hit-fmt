@@ -6,12 +6,10 @@
 
 namespace formatter::detail {
 
-// Internal operation-only entry: analysis describes THIS original tree and
-// prepared semantic options, with request.EditScope already applied exactly
-// once. Sensitive views name that same configuration. Source/configuration and
-// file/scratch arenas remain live throughout the call; analysis and persistent
-// views live in file, never scratch (which this pipeline repeatedly releases).
-// No additional original analysis/solve. Returned FormatResult owns storage.
+// Safety describes the original tree and prepared settings, with EditScope
+// already applied. Keep source, configuration and arenas alive for this call.
+// Store persistent views in file, not scratch: scratch is reset during use.
+// The result owns its storage.
 [[nodiscard]] FormatResult FormatWithAnalysis(
     const parser::SyntaxTree& original,
     const PreparedFormat& prepared,

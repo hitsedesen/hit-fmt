@@ -10,9 +10,8 @@ namespace formatter {
 
 void ValidateIncludeGroupPrefixes(std::span<const std::string> prefixes);
 
-// Configuration-lifetime owning metadata, not a formatter feature yet. Compile
-// after final overrides, then reuse read-only. No Style/input/scratch views are
-// retained; copies and moves keep index-based edges valid.
+// Owns include-prefix metadata for read-only reuse across files.
+// Compile after configuration overrides; copies and moves preserve indices.
 class PreparedIncludePrefixes
 {
 public:

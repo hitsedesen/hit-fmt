@@ -22,12 +22,9 @@ enum class GapContext : std::uint8_t
     Rebuilt
 };
 
-// nullopt means preserve/fallback, not unconditional source spelling: lowering
-// uses syntax-safe flat fallback BEFORE fitting canonical
-// topology-changing gaps,
-// even if finally flat. Preserved/genuinely flat-only gaps retain source bytes.
-// Topology ownership is structural, not final brokenness or token provenance.
-// Layout owns newlines; hard boundaries and opaque bytes always win.
+// nullopt delegates spelling to lowering: rebuilt, topology-changing gaps use
+// syntax-safe flat fallback before fitting, even if they stay flat. Preserved
+// and flat-only gaps retain source bytes. Layout owns newlines; safety wins.
 [[nodiscard]] constexpr std::optional<bool> GapUsesSpace(
     GapPolicy policy,
     GapContext context) noexcept
@@ -54,12 +51,9 @@ enum class GapContext : std::uint8_t
 struct IndentationPolicy
 {
     ContinuationAlignment Alignment;
-    // Block alignment: block column + ContinuationOffset. Delimiter alignment:
-    // column after the opener (chain root for chains), with the same offset as
-    // a minimum relative to the block column. If this leaves no room for the
-    // next indivisible atom and required suffix, use block + FallbackOffset.
-    // This is the lowering contract; anchor>=Width alone is insufficient.
-    // Validated/resolved offsets are 1..32.
+    // Block: base + ContinuationOffset. Delimiter: column after the opener
+    // (chain root for chains), floored at base + ContinuationOffset. If an atom
+    // and suffix cannot fit, use base + FallbackOffset. Offsets are 1..32.
     std::uint8_t ContinuationOffset;
     std::uint8_t FallbackOffset;
 };

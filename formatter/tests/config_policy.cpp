@@ -993,7 +993,6 @@ TEST(ConfigPolicy, InvalidEnumValuesAndOffsetsAreRejected)
     }
 }
 
-// Scalar compilation and metadata validation do not prove formatting behavior.
 TEST(ConfigPolicy, StagedOptionsResolveFinalInheritanceAndOwnScalarSnapshot)
 {
     const TemporaryConfig config("FunctionBracePlacement = NextLine\n"
@@ -1238,8 +1237,7 @@ TEST(ConfigPolicy, OrderedPrefixIndexPreservesEarliestRuleAcrossOwningLifetimes)
     EXPECT_EQ(
         empty.ClassifyNormalizedRelativePath("engine/item.h"),
         empty.RuleCount());
-    // Many fan-out edges and long shared prefixes exercise sorted compact
-    // edges.
+    // Exercise branching and long shared prefixes in the compact index.
     std::vector<std::string> many;
     for (int index = 255; index >= 1; --index) {
         if (index == '/' || index == '\\' || index == '.') {

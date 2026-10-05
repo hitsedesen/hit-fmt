@@ -38,10 +38,9 @@ struct LayoutDiagnostic
     LayoutDiagnosticKind Kind;
 };
 
-// Immutable configuration-lifetime snapshot. Owns all metadata; no raw Style
-// views or mutable derived cache. Preparation throws invalid_argument,
-// including for currently unsupported nonempty CallLikeMacroNames and ambiguous
-// spacing.
+// Immutable, owning configuration snapshot. Preparation throws invalid_argument
+// for invalid or unsupported settings, including nonempty CallLikeMacroNames
+// and non-Preserve ambiguous template spacing.
 class PreparedFormat
 {
 public:
@@ -62,8 +61,7 @@ public:
 
 struct FormatRequest
 {
-    // Original source coordinates. Constrain planning AND layout from the
-    // start.
+    // Original source coordinates; constrain both planning and layout.
     std::span<const parser::SourceRange> ImmutableRanges = {};
     bool SourceMap = false;
     // Optional ORIGINAL-input byte authority, borrowed only during Format.
@@ -108,22 +106,19 @@ struct FormatResult
     std::vector<LayoutDiagnostic> Diagnostics;
     // Structural skip owners always refer to the original tree.
     std::vector<StructuralDiagnostic> StructuralDiagnostics;
-    // Requested maps refer to FINAL output, after namespace comment edits.
-    // Associations are NOT independent edits: generated-prefix/borrowed-indent
-    // records may overlap in their source association. Generated commas have no
-    // original identity; deleted original tokens have Present=false.
+    // Maps describe final output, including namespace comment edits.
+    // Source associations may overlap; they are not independent edits.
+    // Generated commas have no identity; deleted tokens have Present=false.
     std::vector<FormatMapping> Map;
     std::vector<StructuralOperation> StructuralOperations;
     std::vector<TokenOutputOffset> OriginalTokens;
     std::vector<ProtectedSourceRange> OutputProtection;
 };
 
-// One optional atomic normalization, one syntax document, one render. Failures
-// throw; no original-text fallback, retry, repair, or alternate pipeline.
-// Tree overloads use supplied syntax; parse with prepared.ParsingOptions() to
-// enable macro-body hints. Source overloads apply those hints automatically.
-// Tree/source need survive only this call. Results own storage independently of
-// source, configuration, tree and the operation's file/scratch arenas.
+// Normalize, lower and render once; failures throw without returning source.
+// Tree overloads require parsing with prepared.ParsingOptions() for macro-body
+// hints; source overloads apply them automatically. Inputs must survive this
+// call; results own their storage.
 [[nodiscard]] FormatResult Format(
     const parser::SyntaxTree& tree,
     const PreparedFormat& prepared,
@@ -134,7 +129,7 @@ struct FormatResult
     const PreparedFormat& prepared,
     const FormatRequest& request = {});
 
-// Convenience entrypoints compile once per call over the SAME pipeline.
+// Convenience entrypoints compile the style once per call.
 [[nodiscard]] std::string Format(
     const parser::SyntaxTree& tree,
     const Style& style);

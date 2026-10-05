@@ -304,7 +304,6 @@ std::vector<FormatCase> FormatCases()
         {"structural"},
         "structural.input.cpp");
     {
-        // vertical-grouping policies and shared oracles.
         const auto directory = std::filesystem::path(FORMATTER_TESTDATA_DIR) /
             "../vertical-grouping";
         {
@@ -429,7 +428,6 @@ std::vector<FormatCase> FormatCases()
         {"call-fit"},
         "call.input.cpp");
     {
-        // group-fit-boundary policies and shared oracles.
         const auto directory = std::filesystem::path(FORMATTER_TESTDATA_DIR) /
             "../group-fit-boundary";
         {
@@ -503,7 +501,6 @@ std::vector<FormatCase> FormatCases()
         cases.back().CheckOwningMaps = true;
     }
     {
-        // line-endings policies and shared oracles.
         const auto directory =
             std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../line-endings";
         {
@@ -652,7 +649,6 @@ std::vector<FormatCase> FormatCases()
         std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../style-checkpoint",
         {"lf", "crlf"});
     {
-        // style-checkpoint policies and shared oracles.
         const auto directory = std::filesystem::path(FORMATTER_TESTDATA_DIR) /
             "../style-checkpoint";
         {
@@ -674,7 +670,6 @@ std::vector<FormatCase> FormatCases()
         "namespace.input.cpp",
     });
     {
-        // trailing-comment-count policies and shared oracles.
         const auto directory = std::filesystem::path(FORMATTER_TESTDATA_DIR) /
             "../trailing-comment-count";
         {
@@ -743,7 +738,6 @@ std::vector<FormatCase> FormatCases()
         "../standalone-comment-gaps",
         {"preserve", "before", "after", "zero", "canonical"});
     {
-        // standalone-comment-gaps policies and shared oracles.
         const auto directory = std::filesystem::path(FORMATTER_TESTDATA_DIR) /
             "../standalone-comment-gaps";
         {
@@ -975,7 +969,6 @@ std::vector<FormatCase> FormatCases()
         std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../initializer-safety";
     AddCases(cases, initializerSafety, {"conditional", "never", "preserve"});
     {
-        // initializer-safety policies and shared oracles.
         const auto directory = std::filesystem::path(FORMATTER_TESTDATA_DIR) /
             "../initializer-safety";
         {
@@ -1008,7 +1001,6 @@ std::vector<FormatCase> FormatCases()
         std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../declaration-gap",
         {"canonical", "preserve"});
     {
-        // declaration-gap policies and shared oracles.
         const auto directory = std::filesystem::path(FORMATTER_TESTDATA_DIR) /
             "../declaration-gap";
         ShareExpected(cases, directory, "preserve.output.cpp", "input.cpp");
@@ -1025,7 +1017,6 @@ std::vector<FormatCase> FormatCases()
             "explicit-protected",
         });
     {
-        // owner-context policies and shared oracles.
         const auto directory =
             std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../owner-context";
         {
@@ -1126,7 +1117,6 @@ std::vector<FormatCase> FormatCases()
         });
     }
     {
-        // record-head-commas policies and shared oracles.
         const auto directory = std::filesystem::path(FORMATTER_TESTDATA_DIR) /
             "../record-head-commas";
         {
@@ -1250,7 +1240,6 @@ std::vector<FormatCase> FormatCases()
         },
         "profile-ref-qualifiers.input.cpp");
     {
-        // spacing-options policies and shared oracles.
         const auto directory = std::filesystem::path(FORMATTER_TESTDATA_DIR) /
             "../spacing-options";
         {
@@ -1444,7 +1433,6 @@ std::vector<FormatCase> FormatCases()
     addProfileCase("../call-reflow", "profile-nested");
     addProfileCase("../chained-calls", "profile-multiline-lambda");
     {
-        // chained-calls policies and shared oracles.
         const auto directory =
             std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../chained-calls";
         {
@@ -1564,7 +1552,6 @@ std::vector<FormatCase> FormatCases()
         "../keyword-expressions",
         {"canonical", "preserve", "narrow", "always"});
     {
-        // keyword-expressions policies and shared oracles.
         const auto directory = std::filesystem::path(FORMATTER_TESTDATA_DIR) /
             "../keyword-expressions";
         {
@@ -1663,7 +1650,6 @@ std::vector<FormatCase> FormatCases()
     cases.push_back(
         {attribute, "independent-widths", "independent-widths.input.cpp"});
     {
-        // attribute-indent policies and shared oracles.
         const auto directory = std::filesystem::path(FORMATTER_TESTDATA_DIR) /
             "../attribute-indent";
         ShareConfig(
@@ -1780,7 +1766,6 @@ std::vector<FormatCase> FormatCases()
         {"line-scopes"},
         "line-scopes.input.cpp");
     {
-        // continuation-nesting policies and shared oracles.
         const auto directory = std::filesystem::path(FORMATTER_TESTDATA_DIR) /
             "../continuation-nesting";
         {
@@ -1845,7 +1830,6 @@ std::vector<FormatCase> FormatCases()
             "argument-precedence.output.cpp",
             "argument-precedence-delimiter.output.cpp");
     }
-    // Preserve the original owning-source contracts without a second registry.
     for (const auto& [name, owningMaps] :
         {
             std::pair{"layout", true},
@@ -1871,7 +1855,6 @@ std::vector<FormatCase> FormatCases()
         cases.back().CheckOwningMaps = owningMaps;
     }
     {
-        // public-pipeline policies and shared oracles.
         const auto directory = std::filesystem::path(FORMATTER_TESTDATA_DIR) /
             "../public-pipeline";
         {
@@ -1934,7 +1917,6 @@ std::vector<FormatCase> FormatCases()
         data / "structural-expression-base",
         {"canonical", "preserved"});
     {
-        // structural-expression-base policies and shared oracles.
         const auto directory = std::filesystem::path(FORMATTER_TESTDATA_DIR) /
             "../structural-expression-base";
         {
@@ -1981,7 +1963,6 @@ std::vector<FormatCase> FormatCases()
         data / "attribute-parenthesis-interiors",
         {"compact", "spaced", "preserve"});
     {
-        // attribute-parenthesis-interiors policies and shared oracles.
         const auto directory = std::filesystem::path(FORMATTER_TESTDATA_DIR) /
             "../attribute-parenthesis-interiors";
         {
@@ -2065,7 +2046,6 @@ std::vector<FormatCase> FormatCases()
         {"canonical", "preserve"});
     AddCases(cases, data / "lambda-argument-tail-recovery", {"canonical"});
     {
-        // lambda-argument-ownership policies and shared oracles.
         const auto directory = std::filesystem::path(FORMATTER_TESTDATA_DIR) /
             "../lambda-argument-ownership";
         {
@@ -2076,7 +2056,6 @@ std::vector<FormatCase> FormatCases()
         }
     }
     {
-        // lambda-argument-tail-recovery policies and shared oracles.
         const auto directory = std::filesystem::path(FORMATTER_TESTDATA_DIR) /
             "../lambda-argument-tail-recovery";
         ShareConfig(
@@ -2224,7 +2203,6 @@ std::vector<FormatCase> FormatCases()
             {parsedOperators, name, input, config, {}, true, expected});
     }
     {
-        // parsed-operators policies and shared oracles.
         const auto directory = std::filesystem::path(FORMATTER_TESTDATA_DIR) /
             "../parsed-operators";
         {
@@ -2472,7 +2450,6 @@ std::vector<FormatCase> FormatCases()
             {functionParameters, name, input, config, {}, true, expected});
     }
     {
-        // function_parameters policies and shared oracles.
         const auto directory = std::filesystem::path(FORMATTER_TESTDATA_DIR) /
             "../function_parameters";
         {
@@ -2588,7 +2565,6 @@ std::vector<FormatCase> FormatCases()
             {lambdaAnchors, name, input, config, {}, true, expected});
     }
     {
-        // consolidated-formatter/lambda-anchor policies and shared oracles.
         const auto directory = std::filesystem::path(FORMATTER_TESTDATA_DIR) /
             "../consolidated-formatter/lambda-anchor";
         {
@@ -2659,7 +2635,6 @@ std::vector<FormatCase> FormatCases()
             {controlBodies, name, input, config, {}, true, expected});
     }
     {
-        // consolidated-formatter/control-bodies policies and shared oracles.
         const auto directory = std::filesystem::path(FORMATTER_TESTDATA_DIR) /
             "../consolidated-formatter/control-bodies";
         {
@@ -2769,7 +2744,6 @@ std::vector<FormatCase> FormatCases()
         cases.push_back({callReflow, name, input, config, {}, true, expected});
     }
     {
-        // call-reflow policies and shared oracles.
         const auto directory =
             std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../call-reflow";
         {
@@ -3092,7 +3066,6 @@ std::vector<FormatCase> FormatCases()
             {ternaryLayout, name, input, config, {}, true, expected});
     }
     {
-        // ternary-layout policies and shared oracles.
         const auto directory =
             std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../ternary-layout";
         {
@@ -3435,7 +3408,6 @@ std::vector<FormatCase> FormatCases()
             {consolidatedLayout, name, input, config, {}, true, expected});
     }
     {
-        // consolidated-layout policies and shared oracles.
         const auto directory = std::filesystem::path(FORMATTER_TESTDATA_DIR) /
             "../consolidated-layout";
         {
@@ -3677,7 +3649,6 @@ std::vector<FormatCase> FormatCases()
         "null-removal.input.cpp",
     });
     {
-        // consolidated-edits policies and shared oracles.
         const auto directory = std::filesystem::path(FORMATTER_TESTDATA_DIR) /
             "../consolidated-edits";
         ShareConfig(

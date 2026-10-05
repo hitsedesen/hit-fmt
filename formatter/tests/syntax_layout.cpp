@@ -619,8 +619,7 @@ TEST(SyntaxLayout, ScopedCloserDoesNotAuthorizeCommaInsertionBeforeComment)
         Lower(horizontal, style, {}, scope).Text.find(','),
         std::string::npos);
     EXPECT_NE(Lower(horizontal, style).Text.find(','), std::string::npos);
-    // A horizontal comment boundary cannot break, so the authorization
-    // regression needs an already-multiline boundary that renders broken.
+    // The comment boundary must already be multiline to render broken.
     for (const std::string input :
         {
             "void f() { consume({alpha /*note*/\n  }); }\n",
@@ -989,8 +988,8 @@ TEST(SyntaxLayout, FluentCalleeSpineIncludesRepeatedInvocation)
 }
 TEST(SyntaxLayout, ChainStructuralBaseDropsOnlyPendingExpressionIndent)
 {
-    // YT's explicit Block4 chain continuation is independent of RHS prefix
-    // width. Enclosing call-list frames remain structural indentation.
+    // Block-aligned chain indentation is independent of the RHS width;
+    // enclosing call lists still provide the structural base.
     for (const auto expressions :
         {
             formatter::CategoryLayout::Canonical,

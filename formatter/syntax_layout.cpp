@@ -1236,10 +1236,8 @@ private:
                         (!canonical &&
                             Safety_.Gaps()[lastSeparator].HasLineFeed))))
             {
-                // This atomic punctuation edit also suppresses its preceding
-                // gap. Until merged-gap transfer is available, keep the comma
-                // when doing so would lose a lexical line terminator or a
-                // preserved break. Other layout/indent owners remain active.
+                // Removing the comma also removes its preceding gap. Keep it
+                // if removal would discard a terminator or preserved break.
                 return;
             }
             if (existing) {
@@ -1714,9 +1712,6 @@ private:
                             ((node.Kind == NodeKind::DeclarationSpecifiers &&
                                 separated) ||
                                 (t == node.Tokens.Begin && headerPart));
-                        // Declarations without bodies previously owned only
-                        // their lists. Add header breaks without canonicalizing
-                        // opaque operands or unrelated pointer boundaries.
                         if (kind == NodeKind::FunctionDeclaration && !breakable)
                         {
                             return;
@@ -2751,8 +2746,7 @@ private:
         }
         const bool conventional = conventionalRoots && calls > 0 &&
             Annotations_.AlwaysBreakChainRoot(RootName_);
-        // Conventional roots are an explicit exception to the generic
-        // two-call threshold, not an implicit message-pin side effect.
+        // Configured roots may force a break even with only one call.
         const auto packingCalls = conventional
             ? std::max(calls, Index(2))
             : calls;
@@ -2772,9 +2766,8 @@ private:
         // offsets, but retains enclosing list and realized-line indentation.
         Groups_[group].Spec.StructuralBase = true;
         Groups_[group].Spec.Continuation = true;
-        // Generic Always counts suffix calls, not field paths or receiver
-        // construction. Explicit conventional roots may
-        // also force a single suffix call; all others wrap only when needed.
+        // Always counts suffix calls, not fields or receiver construction.
+        // Configured roots may also force a single-call break.
         Groups_[group].Spec.ForceBreak = conventional ||
             (policy.Break == BreakRequirement::Always && calls > 1);
         if (PlanAnnotatedChain(id, group, packingCalls)) {
@@ -4208,9 +4201,8 @@ private:
                         group.Spec.FixedBase,
                     });
                 }
-                // An unused block marker precedes this group's Begin. Its
-                // structural/continuation checks are repeated by Begin before
-                // any contents are emitted; preserve only its search weight.
+                // Begin repeats the unused marker's checks before emission.
+                // Retain its search weight without emitting the marker.
                 if (group.PrefixGap != None) {
                     group.Anchor = Document_.MarkAnchor({
                         document::AnchorKind::BlockRelative,

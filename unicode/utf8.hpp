@@ -73,6 +73,7 @@ GetFirstCodePointFromPaddedInput(const char* str)
     };
 }
 
+// Encodes one code point as UTF-8.
 [[nodiscard]] constexpr std::string FromCodePoint(CodePoint cp)
 {
     auto value = static_cast<uint32_t>(cp);

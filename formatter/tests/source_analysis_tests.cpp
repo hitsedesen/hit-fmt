@@ -1476,10 +1476,7 @@ TEST(SourceAnalysis,
 }
 TEST(SourceAnalysis, AdversarialMarkersHaveLinearStorage)
 {
-    // Cached first/last content offsets keep each marker lookup constant-time.
-    // Growing both the shared prefix and marker count checks correctness and
-    // linear storage without a flaky wall-clock assertion, not as a timing
-    // surrogate.
+    // Grow both shared whitespace and marker count to check linear storage.
     for (size_t count : {128u, 2048u, 32768u}) {
         std::string source(count, ' ');
         for (size_t i = 0; i < count; ++i) {

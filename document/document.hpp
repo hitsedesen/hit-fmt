@@ -279,19 +279,13 @@ public:
         GapSpec spec = {},
         AnchorId anchor = InvalidId,
         Provenance origin = {});
-    // Borrow an exact, protected whitespace/newline prefix, then generate only
-    // indentation (no new newline). The nonempty prefix must end in LF;
-    // it may contain spaces/tabs and intermediate blank lines. Keeping prefix
-    // and indentation in one node puts the fixed line inside its owning groups,
-    // so flat summaries cannot omit leading indentation. It is multiline shape,
-    // never an editable owned break, and may also be used outside a group.
-    // indentBegin/indentEnd must be a real horizontal source span or point;
-    // generated indentation maps there non-exactly with NoIdentity, even at 0
-    // width. The prefix retains identity. Source must outlive Render; anchors
-    // must already be marked and resolve at their rendered position as for Gap.
-    // requiredWidth has GapSpec::RequiredWidth's delimiter-demand semantics:
-    // positive demand equality fits, but a target at/above Width falls back
-    // even with no demand (0), as for existing gaps.
+    // Borrow an exact whitespace prefix ending in LF, then generate indentation
+    // without adding newlines. One node keeps both in the owning group's width
+    // summary; it is multiline shape, not an editable break. Valid at root too.
+    // indentBegin/indentEnd identify a horizontal source span or point.
+    // Indentation maps there non-exactly with NoIdentity, even at zero width.
+    // The prefix retains identity. Source must outlive Render. Anchors must be
+    // marked already; anchor and requiredWidth follow Gap's fit/fallback rules.
     void SourceLineIndent(
         std::uint32_t begin,
         std::uint32_t end,
@@ -301,10 +295,9 @@ public:
         std::uint32_t requiredWidth = 0,
         Identity identity = NoIdentity);
     AnchorId MarkAnchor(AnchorSpec spec);
-    // Record a fixed source GAP line for the current expression contributor.
-    // The preceding node must be exact source whitespace containing LF, or a
-    // SourceLineIndent prefix. This is provenance, never an editable break
-    // site.
+    // Record a source-whitespace line as realized expression continuation, not
+    // an editable break. Requires preceding exact whitespace containing LF or
+    // a SourceLineIndent prefix.
     void ExpressionLine();
     // reference must be the current owning group. No external, forward,
     // ancestor/descendant or mutually dependent shape references are accepted.
@@ -401,7 +394,7 @@ private:
     struct GroupData
     {
         std::uint32_t Match = InvalidId;
-        // Logical (unfused) position keeps bounded layout search unchanged.
+        // Unfused position used to bound layout search.
         std::uint32_t LogicalPosition = 0;
         // Group identity, or an Anchor's optional SharedWith identity.
         std::uint32_t Reference = InvalidId;

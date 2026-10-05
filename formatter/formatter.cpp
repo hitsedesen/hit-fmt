@@ -930,8 +930,7 @@ FormatResult detail::FormatWithAnalysis(
             auto text =
                 MaterializeNamespaceComments(result.Text, comments, file);
             if (request.SourceMap || !result.OutputProtection.empty()) {
-                // Retain the existing protection-copy validation where there
-                // are protected ranges, even though public maps are discarded.
+                // Validate protected copies even without output maps.
                 ApplyComments(
                     result,
                     comments,

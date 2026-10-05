@@ -39,6 +39,7 @@ struct Configuration
 #undef FORMATTER_CONFIG_FIELD
 };
 
+// Parses formatting settings and exclusion patterns from a config file.
 // Unknown keys and malformed values are rejected with a descriptive error.
 [[nodiscard]] Configuration LoadConfigFile(const std::filesystem::path& path);
 

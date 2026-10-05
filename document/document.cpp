@@ -1880,13 +1880,9 @@ Result Document::Render(
             !frame.Flat && !entry.Flat.Line && entry.Flat.CanBreak &&
             !fits(AddWidth(entry.Flat.Width, groupTail(entry))))
         {
-            // Groups without owned breaks have no parent/child choice; their
-            // children plan independently rather than spending this budget.
-            // A parent layout plus four child depths, at most 256 nodes each.
-            // Minimize newlines plus break/shape penalties, then lines, then
-            // multiline groups; retain the parent layout on a tie.
-            // Large/protected multiline regions keep the existing layout. No
-            // recursive search, trial output, or per-candidate allocations.
+            // Compare parent breaks with bounded child-only layouts. Minimize
+            // penalized newlines, then lines, then multiline groups; ties keep
+            // the parent layout. Oversized groups use ordinary group fitting.
             constexpr std::size_t MaxProbeNodes = 256;
             constexpr std::size_t MaxProbeDepth = 4;
             bool eligible = Nodes_[node.Group.Match].Group.LogicalPosition -
