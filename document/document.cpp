@@ -1350,7 +1350,7 @@ Result Document::Render(
             entry.Gap = static_cast<std::uint32_t>(gapCache.size());
             // Soft gaps break only in the owner's broken shape. Conditional
             // gaps therefore use the broken alternative's fitting policy.
-            const auto gap = Gaps(node).Broken;
+            const auto gap = GapFor(node, true);
             gapCache.push_back({
                 gap.FitFlatTail ? summary.Flat : summary.Broken,
                 expandedGapWidth,

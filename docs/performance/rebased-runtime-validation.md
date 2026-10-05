@@ -77,3 +77,12 @@ and build/test/format logs. One combined command reached its shell deadline
 after completing all batches and primary hardware runs; its partial full-yt
 hardware pair is excluded. The full-yt hardware pairs were rerun completely.
 No background process remains. Original worktrees and repros are unchanged.
+
+## Subsequent rebase
+
+Main advanced during measurement. The final rebase uses main `2418a87`.
+Its flat-tail fitting policy is preserved in compact gap flags; the sparse
+cache retains the selected suffix rather than growing each gap record.
+All 1,357 tests, allocation checks and repository formatting pass after this
+integration, without golden regeneration. The measurements above remain
+specific to the earlier `575510a` checkpoint, not this later main revision.
