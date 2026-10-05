@@ -718,8 +718,23 @@ FormatResult Format(
     const PreparedFormat& prepared,
     const FormatRequest& request)
 {
-    std::pmr::monotonic_buffer_resource file;
-    std::pmr::monotonic_buffer_resource scratch;
+    // Bound the initial input-local backing block. Consolidating the common
+    // case avoids repeated heap growth/trim during arena teardown; larger
+    // inputs still grow through the normal upstream resource.
+    const auto capacity = std::clamp<std::size_t>(
+        std::size_t(original.TokenCount()) * 512,
+        4096,
+        1048576);
+    auto buffer = std::make_unique_for_overwrite<std::byte[]>(capacity);
+    std::pmr::monotonic_buffer_resource file(buffer.get(), capacity);
+    // Keep only this bounded initial slice across scratch resets. Overflow
+    // blocks are released normally, and no backing memory survives the file.
+    const auto scratchCapacity = std::clamp<std::size_t>(
+        std::size_t(original.TokenCount()) * 128,
+        1024,
+        262144);
+    auto* scratchBuffer = file.allocate(scratchCapacity);
+    std::pmr::monotonic_buffer_resource scratch(scratchBuffer, scratchCapacity);
     std::pmr::vector<std::string_view> sensitive(&file);
     for (const auto& name : prepared.WhitespaceSensitiveMacros) {
         sensitive.push_back(name);
