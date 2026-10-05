@@ -21,8 +21,11 @@ TEST(HunkScope, OriginalPhysicalLinesRejectInvalidAndHaveNoPhantomEOFLine)
     for (const std::string source : {"", "x", "x\n", "x\r\n", "\n"}) {
         const OriginalHunkLines lines(source, memory);
         EXPECT_TRUE(lines.Coalesce({}, memory).empty());
-        for (const Hunk bad : {Hunk{0, 1}, {2, 1}, {2, 2},
-            {1, std::numeric_limits<size_t>::max()}})
+        for (const Hunk bad :
+            {
+                Hunk{0, 1}, {2, 1}, {2, 2},
+            {1, std::numeric_limits<size_t>::max()}
+            })
         {
             EXPECT_THROW((void)lines.Bytes(bad), std::invalid_argument);
             EXPECT_THROW(
@@ -53,18 +56,15 @@ TEST(HunkScope, CoalescesUnsortedOverlapAndAdjacencyButPreservesDisjointLines)
     EXPECT_EQ(result[1], (Hunk{6, 6}));
     const auto first = lines.Bytes(result[0]);
     const auto last = lines.Bytes(result[1]);
-    EXPECT_EQ(std::string_view(source).substr(
-        first.Begin,
-        first.End - first.Begin),
+    EXPECT_EQ(
+        std::string_view(source).substr(first.Begin, first.End - first.Begin),
         "one\ntwo\nthree\n");
     EXPECT_EQ(
         std::string_view(source).substr(last.Begin, last.End - last.Begin),
         "six");
     const Range scope[] = {first, last};
-    EXPECT_FALSE(formatter::detail::HunkScopeIntersects(scope, lines.Bytes({
-        4,
-        5,
-    })));
+    EXPECT_FALSE(
+        formatter::detail::HunkScopeIntersects(scope, lines.Bytes({4, 5})));
     EXPECT_TRUE(
         formatter::detail::HunkScopeContains(scope, lines.Bytes({2, 3})));
 }
@@ -75,9 +75,10 @@ TEST(HunkScope, SelectionOwnsCRLFAndCommentCRButExcludesNextIndentPointAndEOF)
     std::pmr::monotonic_buffer_resource memory;
     const OriginalHunkLines lines(source, memory);
     const Range scope[] = {lines.Bytes({2, 2})};
-    EXPECT_EQ(std::string_view(source).substr(
-        scope[0].Begin,
-        scope[0].End - scope[0].Begin), "\twork(); \r\n");
+    EXPECT_EQ(
+        std::string_view(source)
+            .substr(scope[0].Begin, scope[0].End - scope[0].Begin),
+        "\twork(); \r\n");
     EXPECT_FALSE(formatter::detail::HunkScopeContains(
         scope,
         {scope[0].Begin - 1, scope[0].Begin})); // previous LF
@@ -169,4 +170,5 @@ TEST(HunkScope, IndexOutlivesSourceAndScaleUsesContiguousOperationMemory)
     ASSERT_EQ(merged.size(), 1);
     EXPECT_EQ(merged[0], (Hunk{1, count}));
 }
+
 } // namespace

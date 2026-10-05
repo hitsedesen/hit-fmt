@@ -154,7 +154,7 @@ std::vector<TokenOutputOffset> MapOutput(
 TEST(StructuralEdits, DiagnosticGolden)
 {
     auto directory = std::filesystem::path(__FILE__).parent_path() /
-                     "testdata/structural-edits";
+        "testdata/structural-edits";
     auto source = test::golden::ReadFile(directory / "plans.input.cpp");
     File file(source, {.HonorClangFormatDirectives = true});
     auto plan = file.Plan(All);
@@ -165,15 +165,14 @@ TEST(StructuralEdits, DiagnosticGolden)
         {.Policy = NamespaceCommentPolicy::AddMissing},
         file.Memory,
         file.Scratch);
-    auto comments =
-        ResolveNamespaceComments(
-            file.Tree,
-            namespaces,
-            normalized.Text,
-            normalized.OriginalTokens,
-            {},
-            file.Memory,
-            file.Scratch);
+    auto comments = ResolveNamespaceComments(
+        file.Tree,
+        namespaces,
+        normalized.Text,
+        normalized.OriginalTokens,
+        {},
+        file.Memory,
+        file.Scratch);
     test::golden::ExpectGolden(
         directory / "plans.analysis.txt",
         Dump(plan) + "namespace-output-plan\n" + Dump(comments));
@@ -208,12 +207,9 @@ TEST(StructuralEdits, NullBodyIsNotRemovedAndEmptyBlockIsIndependent)
 {
     for (bool add : {false, true}) {
         File preserved(
-            "void f(){while(a); for(;;); if(a); else ; "
-                "do ; while(a);}");
-        auto keep = preserved.Plan({
-            .AddMissingControlBraces = add,
-            .RemoveNullStatements = true,
-        });
+            "void f(){while(a); for(;;); if(a); else ; " "do ; while(a);}");
+        auto keep = preserved.Plan(
+            {.AddMissingControlBraces = add, .RemoveNullStatements = true});
         EXPECT_TRUE(keep.Edits.empty());
         File file(preserved.Tree.Source());
         auto plan = file.Plan({
@@ -231,7 +227,7 @@ TEST(StructuralEdits, NullBodyIsNotRemovedAndEmptyBlockIsIndependent)
 TEST(StructuralEdits, LabelsAttributesAndAttachedCommentsAreLocalSkips)
 {
     File file("void f(){label: ; switch(a){case 1: ; ;} if(a) [[likely]] x(); "
-              "if(b) y(); // attached\nwhile(c) z();}");
+        "if(b) y(); // attached\nwhile(c) z();}");
     auto plan = file.Plan(All);
     auto result = file.Apply(plan);
     EXPECT_NE(result.Text.find("label: ;"), std::string::npos);
@@ -243,22 +239,25 @@ TEST(StructuralEdits, LabelsAttributesAndAttachedCommentsAreLocalSkips)
     CheckMapping(file, result);
     // LabelStatement ends at the colon. Its required statement can therefore
     // be a sibling of an enclosing control, not a sibling of the label.
-    for (const auto& body : {
-        "if(a) controlled: ; work();",
-        "if(a) if(b) nested: work();",
-        "while(a) if(b) nestedNull: ; work();",
-        "if(a) first: second: ; work();",
-    })
+    for (const auto& body :
+        {
+            "if(a) controlled: ; work();",
+            "if(a) if(b) nested: work();",
+            "while(a) if(b) nestedNull: ; work();",
+            "if(a) first: second: ; work();",
+        })
     {
         std::string source = "void f(){" + std::string(body) +
             " while(c) safe(); ;}";
         File controlled(source);
         auto edits = controlled.Plan(All);
         auto changed = controlled.Apply(edits);
-        EXPECT_EQ(std::string_view(changed.Text), "void f(){" +
-            std::string(body) +
-            " while(c) {safe();} }");
-        EXPECT_TRUE(std::any_of(edits.Skipped.begin(), edits.Skipped.end(),
+        EXPECT_EQ(
+            std::string_view(changed.Text),
+            "void f(){" + std::string(body) + " while(c) {safe();} }");
+        EXPECT_TRUE(std::any_of(
+            edits.Skipped.begin(),
+            edits.Skipped.end(),
             [] (auto diagnostic) {
                 return diagnostic.Reason == StructuralSkip::LabelBody;
             }));
@@ -269,26 +268,29 @@ TEST(StructuralEdits,
     NullRemovalPreservesRequiredExportAndStatementExpressionBodies)
 {
     File file("export ; export {; ;} int f(){return ({1; ;});}");
-    auto plan = file.Plan({
-        .RemoveNullStatements = true,
-        .RemoveNullDeclarations = true,
-    });
+    auto plan = file
+        .Plan({.RemoveNullStatements = true, .RemoveNullDeclarations = true});
     EXPECT_EQ(
         file.Apply(plan).Text,
         "export ; export { } int f(){return ({1; ;});}");
     EXPECT_TRUE(std::any_of(
-        plan.Skipped.begin(), plan.Skipped.end(), [] (auto diagnostic) {
+        plan.Skipped.begin(),
+        plan.Skipped.end(),
+        [] (auto diagnostic) {
             return diagnostic.Reason == StructuralSkip::RequiredBody;
         }));
 }
 TEST(StructuralEdits, ProtectedMacroDisabledRecoveryAndDirectiveBoundaries)
 {
     std::array names{std::string_view("KEEP")};
-    File file("void f(){if(a) KEEP(x);\n// clang-format off\nwhile(b) x();\n// "
-              "clang-format on\nif(c)\n#if FLAG\nx();\n#endif\nwhile(d) z(); "
-              "if( ) ;}",
-        {.HonorClangFormatDirectives = true,
-            .WhitespaceSensitiveMacros = names});
+    File file(
+        "void f(){if(a) KEEP(x);\n// clang-format off\nwhile(b) x();\n// "
+        "clang-format on\nif(c)\n#if FLAG\nx();\n#endif\nwhile(d) z(); "
+        "if( ) ;}",
+        {
+            .HonorClangFormatDirectives = true,
+            .WhitespaceSensitiveMacros = names,
+        });
     auto plan = file.Plan(All);
     auto result = file.Apply(plan);
     EXPECT_NE(result.Text.find("if(a) KEEP(x);"), std::string::npos);
@@ -310,8 +312,8 @@ TEST(StructuralEdits, ProtectedMacroDisabledRecoveryAndDirectiveBoundaries)
 TEST(StructuralEdits, ExactIncludeLineAtomsAndConditionalCommentBarriers)
 {
     File file("#include <z.h>\r\n#include \"a.h\"\r\n#if FLAG\r\n#include "
-              "<d.h>\r\n#include <c.h>\r\n#endif\r\n// belongs to "
-              "b\r\n#include <b.h>\r\n#include <a.h>\r\n");
+        "<d.h>\r\n#include <c.h>\r\n#endif\r\n// belongs to "
+        "b\r\n#include <b.h>\r\n#include <a.h>\r\n");
     auto groups = DiscoverIncludeGroups(
         file.Tree,
         file.Safety,
@@ -330,9 +332,10 @@ TEST(StructuralEdits, ExactIncludeLineAtomsAndConditionalCommentBarriers)
     }
     auto result = file.Apply(plan);
     EXPECT_EQ(
-        result.Text, "#include \"a.h\"\r\n#include <z.h>\r\n#if "
-                     "FLAG\r\n#include <c.h>\r\n#include <d.h>\r\n#endif\r\n// "
-                     "belongs to b\r\n#include <b.h>\r\n#include <a.h>\r\n");
+        result.Text,
+        "#include \"a.h\"\r\n#include <z.h>\r\n#if "
+        "FLAG\r\n#include <c.h>\r\n#include <d.h>\r\n#endif\r\n// "
+        "belongs to b\r\n#include <b.h>\r\n#include <a.h>\r\n");
     for (const auto& edit : plan.Edits) {
         EXPECT_EQ(
             plan.Operations[edit.Operation].Kind,
@@ -362,7 +365,7 @@ TEST(StructuralEdits, IncludeIndentationAndDigraphMarkersStayWithExactAtoms)
 TEST(StructuralEdits, IncludeDiscoveryContainsSortedGroupsAndExactPermutations)
 {
     File file("  #include \"a.h\"\n\t#include <z.h>\n\n"
-              " #include <z.h>\n\t#include \"a.h\"\n#include \"a.h\"\n");
+        " #include <z.h>\n\t#include \"a.h\"\n#include \"a.h\"\n");
     auto groups = DiscoverIncludeGroups(
         file.Tree,
         file.Safety,
@@ -388,9 +391,12 @@ TEST(StructuralEdits, IncludeDiscoveryContainsSortedGroupsAndExactPermutations)
         EXPECT_TRUE(piece.Literal.empty());
         atoms.push_back(piece.Source);
     }
-    std::sort(atoms.begin(), atoms.end(), [] (auto a, auto b) {
-        return a.Begin < b.Begin;
-    });
+    std::sort(
+        atoms.begin(),
+        atoms.end(),
+        [] (auto a, auto b) {
+            return a.Begin < b.Begin;
+        });
     auto cursor = groups[1].Source.Begin;
     for (auto atom : atoms) {
         EXPECT_EQ(atom.Begin, cursor);
@@ -402,27 +408,30 @@ TEST(StructuralEdits, IncludeDiscoveryContainsSortedGroupsAndExactPermutations)
     EXPECT_EQ(result.Text.size(), file.Source.Size);
     CheckMapping(file, result);
     File sorted(result.Text);
-    EXPECT_EQ(DiscoverIncludeGroups(
-        sorted.Tree,
-        sorted.Safety,
-        sorted.Memory,
-        sorted.Scratch).size(), 2u);
+    EXPECT_EQ(
+        DiscoverIncludeGroups(
+            sorted.Tree,
+            sorted.Safety,
+            sorted.Memory,
+            sorted.Scratch).size(),
+        2u);
     EXPECT_TRUE(sorted.Plan({.SortIncludes = true}).Operations.empty());
 }
 TEST(StructuralEdits, IncludeDiscoveryRespectsCompleteGroupBoundaries)
 {
     // Every separator is a fence, not a spelling-based eligibility shortcut.
-    for (auto separator : {
-        "\n",
-        "// attached\n",
-        "/* attached */\n",
-        "#define VALUE 1\n",
-        "#include HEADER\n",
-        "#include <>\n",
-        "#include <bad.h> // tail\n",
-        "#include \\\n<continued.h>\n",
-        "opaque();\n",
-    })
+    for (auto separator :
+        {
+            "\n",
+            "// attached\n",
+            "/* attached */\n",
+            "#define VALUE 1\n",
+            "#include HEADER\n",
+            "#include <>\n",
+            "#include <bad.h> // tail\n",
+            "#include \\\n<continued.h>\n",
+            "opaque();\n",
+        })
     {
         std::string first = "#include <a.h>\n#include <b.h>\n";
         std::string second = "  %:include <d.h>\n\t#include <c.h>\n";
@@ -434,8 +443,8 @@ TEST(StructuralEdits, IncludeDiscoveryRespectsCompleteGroupBoundaries)
             file.Scratch);
         bool comment = std::string_view(separator).starts_with("//") ||
             std::string_view(separator).starts_with("/*");
-        bool splice = std::string_view(separator).find('\\') !=
-            std::string_view::npos;
+        bool splice =
+            std::string_view(separator).find('\\') != std::string_view::npos;
         if (splice) {
             // The splice itself stays protected. Distinct touching reason masks
             // do not contaminate complete groups wholly on either side of it.
@@ -448,12 +457,14 @@ TEST(StructuralEdits, IncludeDiscoveryRespectsCompleteGroupBoundaries)
                 EXPECT_TRUE(
                     group.Source.End <= begin || end <= group.Source.Begin);
             }
-            EXPECT_TRUE(std::any_of(file.Safety.Protection().begin(),
-                file.Safety.Protection().end(), [&] (const auto& range) {
+            EXPECT_TRUE(std::any_of(
+                file.Safety.Protection().begin(),
+                file.Safety.Protection().end(),
+                [&] (const auto& range) {
                     return range.Source.Begin < end &&
                         begin < range.Source.End &&
-                        (uint16_t(range.Reasons) & uint16_t(
-                            ProtectionReason::LineSplice));
+                        (uint16_t(range.Reasons) &
+                            uint16_t(ProtectionReason::LineSplice));
                 }));
         }
         ASSERT_EQ(groups.size(), comment ? 1u : 2u) << separator;
@@ -474,13 +485,15 @@ TEST(StructuralEdits, IncludeDiscoveryRespectsCompleteGroupBoundaries)
                 StructuralSkip::CommentAttached);
         }
     }
-    for (auto text : {"",
-        "#include <a.h>\n",
-        "#include <b.h>\n#include <a.h>",
-        "#include <b.h>\r\n#include <a.h>\n",
-        "#include \\\n<z.h>\n#include <a.h>\n",
-        "#include <z.h> // comment\n#include <a.h>\n",
-    })
+    for (auto text :
+        {
+            "",
+            "#include <a.h>\n",
+            "#include <b.h>\n#include <a.h>",
+            "#include <b.h>\r\n#include <a.h>\n",
+            "#include \\\n<z.h>\n#include <a.h>\n",
+            "#include <z.h> // comment\n#include <a.h>\n",
+        })
     {
         File file(text);
         EXPECT_TRUE(DiscoverIncludeGroups(
@@ -491,7 +504,7 @@ TEST(StructuralEdits, IncludeDiscoveryRespectsCompleteGroupBoundaries)
         EXPECT_TRUE(file.Plan({.SortIncludes = true}).Edits.empty());
     }
     File mixed("#include <b.h>\r\n#include <a.h>\r\n"
-               "#include <b.h>\n#include <a.h>\n#include <final.h>");
+        "#include <b.h>\n#include <a.h>\n#include <final.h>");
     auto groups = DiscoverIncludeGroups(
         mixed.Tree,
         mixed.Safety,
@@ -508,17 +521,19 @@ TEST(StructuralEdits, IncludeDiscoveryRespectsCompleteGroupBoundaries)
 TEST(StructuralEdits, IncludeDiscoveryNeverWeakensProtectionOrScope)
 {
     std::string text = "#include <z.h>\n#include <a.h>\n";
-    for (auto reason : {ProtectionReason::Directive,
-        ProtectionReason::Explicit,
-        ProtectionReason::Disabled,
-        ProtectionReason::SensitiveMacro,
-        ProtectionReason::Recovery,
-        ProtectionReason::Ambiguous,
-        ProtectionReason::Recovery | ProtectionReason::Ambiguous,
-        ProtectionReason::LineSplice,
-        ProtectionReason::HeaderName,
-        ProtectionReason::OutsideEditScope,
-    })
+    for (auto reason :
+        {
+            ProtectionReason::Directive,
+            ProtectionReason::Explicit,
+            ProtectionReason::Disabled,
+            ProtectionReason::SensitiveMacro,
+            ProtectionReason::Recovery,
+            ProtectionReason::Ambiguous,
+            ProtectionReason::Recovery | ProtectionReason::Ambiguous,
+            ProtectionReason::LineSplice,
+            ProtectionReason::HeaderName,
+            ProtectionReason::OutsideEditScope,
+        })
     {
         std::array inherited{ProtectedSourceRange{{1, 2}, reason}};
         File file(text, {.InheritedProtection = inherited});
@@ -542,17 +557,20 @@ TEST(StructuralEdits, IncludeDiscoveryNeverWeakensProtectionOrScope)
         }
     }
     File original(text);
-    ASSERT_EQ(DiscoverIncludeGroups(
-        original.Tree,
-        original.Safety,
-        original.Memory,
-        original.Scratch).size(), 1u);
-    for (parser::SourceRange scope : {
-        parser::SourceRange{0, static_cast<parser::SourceOffset>(text.size())},
+    ASSERT_EQ(
+        DiscoverIncludeGroups(
+            original.Tree,
+            original.Safety,
+            original.Memory,
+            original.Scratch).size(),
+        1u);
+    for (parser::SourceRange scope :
+        {
+            parser::SourceRange{0, static_cast<parser::SourceOffset>(text.size())},
         parser::SourceRange{0, static_cast<parser::SourceOffset>(text.size() -
             1)},
         parser::SourceRange{0, 1}, parser::SourceRange{1, 2},
-    })
+        })
     {
         std::array selection{scope};
         auto safety = BuildSourceAnalysis(
@@ -602,7 +620,8 @@ TEST(StructuralEdits, IncludeDiscoveryNeverWeakensProtectionOrScope)
     EXPECT_EQ(disjointPlan.Skipped.front().Tokens.Begin, 2u);
     // Semantic exclusion can independently remove the selected group too.
     std::array excluded{parser::SourceRange{0, 1}};
-    File excludedSelection(text + "\n" + text,
+    File excludedSelection(
+        text + "\n" + text,
         {.ImmutableRanges = excluded, .EditScope = firstGroupOnly});
     EXPECT_TRUE(DiscoverIncludeGroups(
         excludedSelection.Tree,
@@ -619,7 +638,8 @@ TEST(StructuralEdits, IncludeDiscoveryNeverWeakensProtectionOrScope)
         empty.Memory,
         empty.Scratch).empty());
     EXPECT_TRUE(empty.Plan({.SortIncludes = true}).Operations.empty());
-    File disabled("// clang-format off\n" + text + "// clang-format on\n",
+    File disabled(
+        "// clang-format off\n" + text + "// clang-format on\n",
         {.HonorClangFormatDirectives = true});
     EXPECT_TRUE(DiscoverIncludeGroups(
         disabled.Tree,
@@ -628,17 +648,21 @@ TEST(StructuralEdits, IncludeDiscoveryNeverWeakensProtectionOrScope)
         disabled.Scratch).empty());
     EXPECT_TRUE(disabled.Plan({.SortIncludes = true}).Edits.empty());
     File other(text);
-    EXPECT_THROW((void)DiscoverIncludeGroups(
-        original.Tree,
-        other.Safety,
-        original.Memory,
-        original.Scratch), std::invalid_argument);
+    EXPECT_THROW(
+        (void)DiscoverIncludeGroups(
+            original.Tree,
+            other.Safety,
+            original.Memory,
+            original.Scratch),
+        std::invalid_argument);
     SourceAnalysis unbuilt(original.Memory);
-    EXPECT_THROW((void)DiscoverIncludeGroups(
-        original.Tree,
-        unbuilt,
-        original.Memory,
-        original.Scratch), std::invalid_argument);
+    EXPECT_THROW(
+        (void)DiscoverIncludeGroups(
+            original.Tree,
+            unbuilt,
+            original.Memory,
+            original.Scratch),
+        std::invalid_argument);
 }
 TEST(StructuralEdits, IncludeDiscoveryOwnsDescriptorsForManyDisjointGroups)
 {
@@ -649,15 +673,12 @@ TEST(StructuralEdits, IncludeDiscoveryOwnsDescriptorsForManyDisjointGroups)
         for (size_t i = 0; i < Count; ++i) {
             source += i % 2
                 ? "#include <z.h>\n#include <a.h>\n\n"
-                            : "#include <a.h>\n#include <z.h>\n\n";
+                : "#include <a.h>\n#include <z.h>\n\n";
         }
         File file(source);
         std::pmr::monotonic_buffer_resource scratch;
-        auto result = DiscoverIncludeGroups(
-            file.Tree,
-            file.Safety,
-            memory,
-            scratch);
+        auto result =
+            DiscoverIncludeGroups(file.Tree, file.Safety, memory, scratch);
         scratch.release();
         auto plan = file.Plan({.SortIncludes = true});
         EXPECT_EQ(plan.Operations.size(), Count / 2);
@@ -718,16 +739,21 @@ TEST(StructuralEdits, DeepNestingUsesOnePlanAndDeterministicCloseOrdering)
 TEST(StructuralEdits, NamespaceThresholdUsesFinalInteriorLinesNotSource)
 {
     File file("namespace n {int x;}");
-    auto plan = PlanNamespaceComments(file.Tree, file.Safety,
-        {.Policy = NamespaceCommentPolicy::AddMissing,
+    auto plan = PlanNamespaceComments(
+        file.Tree,
+        file.Safety,
+        {
+            .Policy = NamespaceCommentPolicy::AddMissing,
             .ShortNamespaceLines = 1,
         },
-        file.Memory, file.Scratch);
+        file.Memory,
+        file.Scratch);
     ASSERT_EQ(plan.Namespaces.size(), 1u);
-    for (const auto& output : {
-        std::string("namespace n {\nint x;\n}\n"),
-        std::string("namespace n {\n\nint x;\n}\n"),
-    })
+    for (const auto& output :
+        {
+            std::string("namespace n {\nint x;\n}\n"),
+            std::string("namespace n {\n\nint x;\n}\n"),
+        })
     {
         auto map = MapOutput(file.Tree, output);
         auto resolved = ResolveNamespaceComments(
@@ -772,7 +798,8 @@ TEST(StructuralEdits, NamespaceZeroDisablesExemptionAndNestedIdentities)
         {},
         file.Memory,
         file.Scratch);
-    EXPECT_EQ(MaterializeNamespaceComments(output, resolved, file.Memory),
+    EXPECT_EQ(
+        MaterializeNamespaceComments(output, resolved, file.Memory),
         "namespace a {\nnamespace b::c {} // namespace b::c\n} // namespace "
         "a\n");
     // The parser classifies inline namespace as a generic declaration:
@@ -791,10 +818,8 @@ TEST(StructuralEdits, NamespaceZeroDisablesExemptionAndNestedIdentities)
 }
 TEST(StructuralEdits, NamespaceFixRemoveKeepCrLfAndIgnoreThreshold)
 {
-    for (auto policy : {
-        NamespaceCommentPolicy::Fix,
-        NamespaceCommentPolicy::Remove,
-    })
+    for (auto policy :
+        {NamespaceCommentPolicy::Fix, NamespaceCommentPolicy::Remove})
     {
         File file("namespace a {} // old\r\nint x;\r\n");
         auto plan = PlanNamespaceComments(
@@ -814,7 +839,8 @@ TEST(StructuralEdits, NamespaceFixRemoveKeepCrLfAndIgnoreThreshold)
             file.Memory,
             file.Scratch);
         ASSERT_EQ(resolved.Edits.size(), 1u);
-        EXPECT_EQ(MaterializeNamespaceComments(output, resolved, file.Memory),
+        EXPECT_EQ(
+            MaterializeNamespaceComments(output, resolved, file.Memory),
             policy == NamespaceCommentPolicy::Fix
                 ? "namespace a {} // namespace a\r\nint x;\r\n"
                 : "namespace a {}\r\nint x;\r\n");
@@ -830,19 +856,19 @@ TEST(StructuralEdits, AnonymousNamespaceNoOpFixAndOriginalProtection)
         anonymous.Memory,
         anonymous.Scratch);
     auto mapping = MapOutput(anonymous.Tree, anonymous.Tree.Source());
-    auto resolved =
-        ResolveNamespaceComments(
-            anonymous.Tree,
-            plan,
-            anonymous.Tree.Source(),
-            mapping,
-            {},
-            anonymous.Memory,
-            anonymous.Scratch);
-    EXPECT_EQ(MaterializeNamespaceComments(
+    auto resolved = ResolveNamespaceComments(
+        anonymous.Tree,
+        plan,
         anonymous.Tree.Source(),
-        resolved,
-        anonymous.Memory),
+        mapping,
+        {},
+        anonymous.Memory,
+        anonymous.Scratch);
+    EXPECT_EQ(
+        MaterializeNamespaceComments(
+            anonymous.Tree.Source(),
+            resolved,
+            anonymous.Memory),
         "namespace {} // namespace\n");
     File correct("namespace n {} // namespace n\n");
     auto fix = PlanNamespaceComments(
@@ -859,14 +885,10 @@ TEST(StructuralEdits, AnonymousNamespaceNoOpFixAndOriginalProtection)
         correctMap,
         {},
         correct.Memory,
-        correct.Scratch)
-                    .Edits.empty());
+        correct.Scratch).Edits.empty());
     File disabled(
-        "// clang-format off\nnamespace n {} // "
-            "keep\n// clang-format on\n",
-        {
-            .HonorClangFormatDirectives = true,
-        });
+        "// clang-format off\nnamespace n {} // " "keep\n// clang-format on\n",
+        {.HonorClangFormatDirectives = true});
     auto blocked = PlanNamespaceComments(
         disabled.Tree,
         disabled.Safety,
@@ -879,10 +901,8 @@ TEST(StructuralEdits, AnonymousNamespaceNoOpFixAndOriginalProtection)
 }
 TEST(StructuralEdits, NamespaceCannotSwallowFollowingCodeCommentsOrProtection)
 {
-    for (const auto& text : {
-        "namespace n {} int x;\n",
-        "namespace n {} /* owner */\n",
-    })
+    for (const auto& text :
+        {"namespace n {} int x;\n", "namespace n {} /* owner */\n"})
     {
         File file(text);
         auto plan = PlanNamespaceComments(
@@ -986,10 +1006,12 @@ TEST(StructuralEdits, NamespaceCannotSwallowFollowingCodeCommentsOrProtection)
         EXPECT_EQ(
             stale.Skipped.front().Tokens.Begin,
             identities.Namespaces.front().Owner.Begin);
-        EXPECT_EQ(MaterializeNamespaceComments(
-            braces.Tree.Source(),
-            stale,
-            braces.Memory), "namespace n {\nvoid inside() {}\n}\n"
+        EXPECT_EQ(
+            MaterializeNamespaceComments(
+                braces.Tree.Source(),
+                stale,
+                braces.Memory),
+            "namespace n {\nvoid inside() {}\n}\n"
             "void after() {}\nnamespace safe {} // namespace safe\n");
     }
     File normalized("namespace n {\n#include <z.h>\n#include <a.h>\n;\n"
@@ -1000,7 +1022,8 @@ TEST(StructuralEdits, NamespaceCannotSwallowFollowingCodeCommentsOrProtection)
         {.Policy = NamespaceCommentPolicy::AddMissing},
         normalized.Memory,
         normalized.Scratch);
-    auto normalization = normalized.Plan({.RemoveNullStatements = true,
+    auto normalization = normalized.Plan({
+        .RemoveNullStatements = true,
         .RemoveNullDeclarations = true,
         .SortIncludes = true,
     });
@@ -1031,4 +1054,5 @@ TEST(StructuralEdits, NamespaceCannotSwallowFollowingCodeCommentsOrProtection)
     EXPECT_TRUE(reordered);
     CheckMapping(normalized, changed);
 }
+
 } // namespace

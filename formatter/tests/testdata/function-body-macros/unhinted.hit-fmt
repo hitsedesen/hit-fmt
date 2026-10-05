@@ -1,0 +1,14 @@
+Layout = Canonical
+ColumnLimit = 64
+IndentationKind = Spaces
+FunctionBracePlacement = NextLine
+StructBracePlacement = NextLine
+BodyShape = Expanded
+FunctionCallSpaceBeforeParameters = NoSpace
+ControlBlockKeywordSpacing = Space
+ControlBlockConditionSpacing = NoSpace
+CommaSpaceAfter = Space
+BinaryOperatorSpacing = Space
+AssignmentOperatorSpacing = Space
+WhitespaceSensitiveMacros = ["TOKEN_TEXT"]
+AddMissingControlBraces = true

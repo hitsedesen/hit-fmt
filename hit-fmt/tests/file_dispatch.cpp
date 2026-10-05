@@ -31,8 +31,8 @@ TEST(FileDispatch, ProcessesDuringDiscoveryAndPrintsInOrder)
     auto process = [&] (const std::filesystem::path& path, int&) {
         if (path == "first.cpp") {
             firstStarted.set_value();
-            auto deadline = std::chrono::steady_clock::now() +
-                std::chrono::seconds(5);
+            auto deadline =
+                std::chrono::steady_clock::now() + std::chrono::seconds(5);
             while (!secondProcessed.load() &&
                 std::chrono::steady_clock::now() < deadline)
             {

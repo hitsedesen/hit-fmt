@@ -679,6 +679,7 @@ PreparedFormat::PreparedFormat(const Style& style)
     , NamespaceComments(CommentOptions(style))
     , HonorClangFormatDirectives(style.HonorClangFormatDirectives)
     , WhitespaceSensitiveMacros(style.WhitespaceSensitiveMacros)
+    , FunctionBodyMacroNames(style.FunctionBodyMacroNames)
 { }
 
 FormatResult Format(
@@ -754,7 +755,8 @@ FormatResult detail::FormatWithAnalysis(
         normalized->Text.append(util::SourcePaddingSize, '\0');
         normalizedTree.emplace(parser::Parse(
             {normalized->Text.data(), size},
-            [] (parser::ParseError) {}));
+            [] (parser::ParseError) {},
+            prepared.ParsingOptions()));
         tree = &*normalizedTree;
         auto inherited = ProjectProtection(
             safety.Protection(),
@@ -955,7 +957,10 @@ FormatResult Format(
     const PreparedFormat& prepared,
     const FormatRequest& request)
 {
-    auto tree = parser::Parse(source, [] (parser::ParseError) {});
+    auto tree = parser::Parse(
+        source,
+        [] (parser::ParseError) {},
+        prepared.ParsingOptions());
     return Format(tree, prepared, request);
 }
 

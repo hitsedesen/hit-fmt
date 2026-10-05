@@ -1259,12 +1259,24 @@ class ParseContext
 public:
     [[nodiscard]] static SyntaxTree Run(
         util::PaddedSourceView input,
-        ErrorHandler errorHandler);
+        ErrorHandler errorHandler,
+        const ParseOptions& options);
 
-    ParseContext(SyntaxTree& tree, ErrorHandler& errorHandler)
+    ParseContext(
+        SyntaxTree& tree,
+        ErrorHandler& errorHandler,
+        const ParseOptions& options)
         : Tree_(tree)
         , ErrorHandler_(errorHandler)
-    { }
+    {
+        FunctionBodyMacroNames_.reserve(options.FunctionBodyMacroNames.size());
+        for (const auto& name : options.FunctionBodyMacroNames) {
+            FunctionBodyMacroNames_.push_back(name);
+        }
+        std::sort(
+            FunctionBodyMacroNames_.begin(),
+            FunctionBodyMacroNames_.end());
+    }
 
     void Build()
     {
@@ -1957,8 +1969,63 @@ private:
         return true;
     }
 
+    Node* TryParseFunctionBodyMacro()
+    {
+        if (FunctionBodyMacroNames_.empty()) {
+            return nullptr;
+        }
+        const auto first = NextSignificant(Cursor_);
+        if (Kind(first) != TK::Identifier ||
+            !std::binary_search(
+                FunctionBodyMacroNames_.begin(),
+                FunctionBodyMacroNames_.end(),
+                Text(first)))
+        {
+            return nullptr;
+        }
+        const auto arguments = NextSignificant(first + 1);
+        if (Kind(arguments) != TK::Operator_OpenParenthesis) {
+            return nullptr;
+        }
+        const auto headerEnd = FindBalancedEnd(arguments);
+        if (headerEnd == std::numeric_limits<TokenIndex>::max() ||
+            headerEnd > ParseLimit_)
+        {
+            return nullptr;
+        }
+        for (auto token = arguments; token < headerEnd; ++token) {
+            if (Kind(token) == TK::PreprocessingDirective) {
+                return nullptr;
+            }
+        }
+        const auto body = NextSignificant(headerEnd);
+        if (Kind(body) != TK::Operator_OpenBrace) {
+            return nullptr;
+        }
+        const auto bodyEnd = FindBalancedEnd(body);
+        if (bodyEnd == std::numeric_limits<TokenIndex>::max() ||
+            bodyEnd > ParseLimit_)
+        {
+            return nullptr;
+        }
+        auto* node = MakeNode(NodeKind::MacroFunctionDefinition, Cursor_);
+        auto* header = MakeNode(NodeKind::MacroFunctionHeader, first);
+        header->Tokens.End = headerEnd;
+        Append(*node, *header);
+        Cursor_ = headerEnd;
+        ParseTriviaBeforeChild(*node);
+        // Macro arguments are opaque, not C++ parameter declarations. Do not
+        // register their names or infer the expanded function's identity.
+        Append(*node, *ParseCompoundStatement());
+        node->Tokens.End = Cursor_;
+        return node;
+    }
+
     Node* ParseDeclaration()
     {
+        if (auto* macro = TryParseFunctionBodyMacro()) {
+            return macro;
+        }
         auto first = NextSignificant(Cursor_);
         switch (Kind(first)) {
             case TK::Operator_Semicolon:
@@ -9360,6 +9427,7 @@ private:
             case NodeKind::ExportDeclaration:
             case NodeKind::LinkageSpecification:
             case NodeKind::FunctionDefinition:
+            case NodeKind::MacroFunctionDefinition:
             case NodeKind::CompoundStatement:
             case NodeKind::IfStatement:
             case NodeKind::SwitchStatement:
@@ -9449,6 +9517,7 @@ private:
         detail::InitialMemoryResourceSize,
     };
     std::pmr::vector<std::string_view> RecordNames_{&ScratchMemory_};
+    std::pmr::vector<std::string_view> FunctionBodyMacroNames_{&ScratchMemory_};
     NameScope* CurrentScope_ = nullptr;
     Node* NextNode_ = nullptr;
     size_t RemainingNodes_ = 0;
@@ -9464,18 +9533,22 @@ private:
 
 SyntaxTree ParseContext::Run(
     util::PaddedSourceView input,
-    ErrorHandler errorHandler)
+    ErrorHandler errorHandler,
+    const ParseOptions& options)
 {
     SyntaxTree tree(input.View());
-    ParseContext context(tree, errorHandler);
+    ParseContext context(tree, errorHandler, options);
     context.Build();
     return tree;
 }
 
-SyntaxTree Parse(util::PaddedSourceView input, ErrorHandler errorHandler)
+SyntaxTree Parse(
+    util::PaddedSourceView input,
+    ErrorHandler errorHandler,
+    const ParseOptions& options)
 {
     HIT_FMT_PROFILE_PHASE("parser.total");
-    return ParseContext::Run(input, std::move(errorHandler));
+    return ParseContext::Run(input, std::move(errorHandler), options);
 }
 
 } // namespace parser

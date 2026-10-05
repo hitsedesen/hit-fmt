@@ -411,6 +411,7 @@
     OPT(std::vector<std::string>, IndentedChainScopePairs, {})                \
     OPT(std::vector<std::string>, StickyChainCallPairs, {})                    \
     OPT(std::vector<std::string>, CallLikeMacroNames, {})                     \
+    OPT(std::vector<std::string>, FunctionBodyMacroNames, {})                 \
     OPT(std::vector<std::string>, WhitespaceSensitiveMacros, {})              \
     OPT(formatter::IncludeOrder, IncludeOrder, \
         formatter::IncludeOrder::Preserve) \

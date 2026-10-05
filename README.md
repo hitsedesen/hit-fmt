@@ -125,6 +125,15 @@ build-cli/hit-fmt/hit-fmt --fix \
     --config hit-fmt/examples/ytsaurus.hit-fmt source.cpp
 ```
 
+`FunctionBodyMacroNames` defaults to empty. It lists exact, unqualified macro
+names whose balanced invocation followed by a balanced brace body introduces
+function-body grammar. Macro headers remain byte-exact; body statements use
+normal function-body policies, retaining protection for uncertain syntax.
+The hint does not infer a function name or C++ parameters from macro arguments.
+Source formatting and CLI checks apply it automatically. Tree-based library
+calls must parse using `PreparedFormat::ParsingOptions()`; normalization
+reparses use the same hints. The repository opts in for its test declarations.
+
 Nonempty `CallLikeMacroNames` is currently rejected by the public pipeline.
 The YTsaurus example clears that hint and conservatively byte-protects
 `REGISTER_DERIVED_EXTERNALIZED_YSON_STRUCT` via `WhitespaceSensitiveMacros`.

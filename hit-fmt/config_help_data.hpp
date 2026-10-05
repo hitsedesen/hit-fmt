@@ -141,6 +141,9 @@ constexpr HelpExample SafetyExamples[] = {
         "independent diagnostics:",
         R"CONFIG(HonorClangFormatDirectives = true
 CallLikeMacroNames = ["REGISTER_NODE"]
+# Exact names; a balanced invocation plus brace body uses function-body grammar.
+# Headers stay opaque; existing source protection still applies.
+FunctionBodyMacroNames = ["DEFINE_CASE", "DEFINE_METHOD"]
 WhitespaceSensitiveMacros = ["STRINGIZE_TEXT"]
 AddMissingControlBraces = false
 RemoveNullStatements = false

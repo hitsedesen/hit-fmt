@@ -176,9 +176,12 @@ TEST(SourceAnalysis, TouchingDifferentProtectionReasonsKeepTheirByteLocations)
     using R = formatter::ProtectionReason;
     const std::array different{
         formatter::ProtectedSourceRange{{0, 3}, R::Explicit},
-        formatter::ProtectedSourceRange{{3, 6}, R::Disabled}};
+        formatter::ProtectedSourceRange{{3, 6}, R::Disabled}
+    };
     const std::array scope{parser::SourceRange{0, uint32_t(input.Size)}};
-    auto distinct = Analyze(tree, memory,
+    auto distinct = Analyze(
+        tree,
+        memory,
         {.InheritedProtection = different, .EditScope = scope});
     ASSERT_EQ(distinct.Protection().size(), 2);
     EXPECT_EQ(distinct.Protection()[0].Source.End, 3);
@@ -186,17 +189,19 @@ TEST(SourceAnalysis, TouchingDifferentProtectionReasonsKeepTheirByteLocations)
     EXPECT_EQ(distinct.Protection()[1].Source.Begin, 3);
     EXPECT_EQ(distinct.Protection()[1].Reasons, R::Disabled);
     EXPECT_TRUE(distinct.IntersectsImmutable({3, 3}));
-    EXPECT_TRUE(distinct.IntersectsImmutable({uint32_t(input.Size),
-        uint32_t(input.Size)}));
+    EXPECT_TRUE(distinct
+        .IntersectsImmutable({uint32_t(input.Size), uint32_t(input.Size)}));
     const std::array same{
         formatter::ProtectedSourceRange{{0, 3}, R::Explicit},
-        formatter::ProtectedSourceRange{{3, 6}, R::Explicit}};
+        formatter::ProtectedSourceRange{{3, 6}, R::Explicit}
+    };
     auto coalesced = Analyze(tree, memory, {.InheritedProtection = same});
     ASSERT_EQ(coalesced.Protection().size(), 1);
     EXPECT_EQ(coalesced.Protection()[0].Source.End, 6);
     const std::array overlap{
         formatter::ProtectedSourceRange{{0, 4}, R::Explicit},
-        formatter::ProtectedSourceRange{{3, 6}, R::Disabled}};
+        formatter::ProtectedSourceRange{{3, 6}, R::Disabled}
+    };
     auto unioned = Analyze(tree, memory, {.InheritedProtection = overlap});
     ASSERT_EQ(unioned.Protection().size(), 1);
     EXPECT_EQ(unioned.Protection()[0].Source.End, 6);
@@ -211,22 +216,24 @@ TEST(SourceAnalysis, ScopedIncludeBoundaryDoesNotAbsorbExcludedSeparator)
     auto scoped = Analyze(tree, memory, {.EditScope = scope});
     ASSERT_EQ(scoped.Protection().size(), 2);
     EXPECT_EQ(scoped.Protection()[0].Source.End, 30);
-    EXPECT_EQ(scoped.Protection()[0].Reasons,
+    EXPECT_EQ(
+        scoped.Protection()[0].Reasons,
         formatter::ProtectionReason::Directive);
     EXPECT_EQ(scoped.Protection()[1].Source.Begin, 30);
-    EXPECT_EQ(scoped.Protection()[1].Reasons,
+    EXPECT_EQ(
+        scoped.Protection()[1].Reasons,
         formatter::ProtectionReason::OutsideEditScope);
     EXPECT_TRUE(scoped.IntersectsImmutable({30, 30}));
-    EXPECT_TRUE(scoped.IntersectsImmutable({uint32_t(input.Size),
-        uint32_t(input.Size)}));
+    EXPECT_TRUE(scoped
+        .IntersectsImmutable({uint32_t(input.Size), uint32_t(input.Size)}));
     EXPECT_FALSE(scoped.CanReplaceGap(2, "\n"));
 }
 TEST(SourceAnalysis, DiagnosticGolden)
 {
     const auto directory = std::filesystem::path(__FILE__).parent_path() /
         "testdata/source-analysis";
-    const auto input = test::golden::ReadFile(
-        directory / "protection.input.cpp");
+    const auto input =
+        test::golden::ReadFile(directory / "protection.input.cpp");
     Input padded(input);
     auto tree = Parse(padded);
     std::pmr::monotonic_buffer_resource memory;
@@ -242,16 +249,20 @@ TEST(SourceAnalysis, DiagnosticGolden)
     }
     for (formatter::GapId i = 0; i < analysis.Gaps().size(); ++i) {
         const auto& gap = analysis.Gaps()[i];
-        if (gap.Preserve || gap.LineBoundary !=
-            formatter::GapLineBoundary::Any ||
+        if (gap.Preserve ||
+            gap.LineBoundary != formatter::GapLineBoundary::Any ||
             gap.Separation == formatter::GapSeparation::Required)
         {
             dump += std::format(
                 "gap {} [{},{}) preserve={} separation={} line={} "
                 "lf-first={} context={}\n",
-                i, gap.Source.Begin, gap.Source.End, gap.Preserve,
-                static_cast<unsigned>(gap.Separation), static_cast<unsigned>(
-                    gap.LineBoundary), gap.MustStartWithLineFeed,
+                i,
+                gap.Source.Begin,
+                gap.Source.End,
+                gap.Preserve,
+                static_cast<unsigned>(gap.Separation),
+                static_cast<unsigned>(gap.LineBoundary),
+                gap.MustStartWithLineFeed,
                 gap.ContextSensitive);
         }
     }
@@ -356,31 +367,40 @@ TEST(SourceAnalysis, RequiresTerminalRecoveryProtectsConstraintNotFollowingFunct
     };
     const TerminalCase terminals[] = {{"@", true}, {"&& @", false}};
     for (const auto declaration : declarations) {
-        for (const auto &terminal : terminals) {
-            const auto source = "template<class T> requires requires(T v) { v.touch(); } " +
-                std::string(terminal.Text) + "\n" + std::string(declaration) + "\n";
+        for (const auto& terminal : terminals) {
+            const auto source =
+                "template<class T> requires requires(T v) { v.touch(); } " +
+                    std::string(terminal.Text) + "\n" +
+                    std::string(declaration) + "\n";
             SCOPED_TRACE(source);
             Input input(source);
             auto tree = Parse(input);
             std::pmr::monotonic_buffer_resource memory;
             auto analysis = Analyze(tree, memory);
-            const auto invalid = static_cast<parser::SourceOffset>(source.find('@'));
+            const auto invalid =
+                static_cast<parser::SourceOffset>(source.find('@'));
             EXPECT_TRUE(analysis.IntersectsImmutable({invalid, invalid}));
             EXPECT_TRUE(analysis.IntersectsImmutable({invalid, invalid + 1}));
             size_t clauses = 0;
             size_t functions = 0;
             size_t unparsed = 0;
             size_t invalidRegions = 0;
-            for (const auto &region : analysis.Regions()) {
-                if (region.Source.Begin == invalid && region.Source.End == invalid + 1) {
+            for (const auto& region : analysis.Regions()) {
+                if (region.Source.Begin == invalid &&
+                    region.Source.End == invalid + 1)
+                {
                     ++invalidRegions;
-                    EXPECT_TRUE(region.Status == formatter::RegionStatus::Recovery ||
-                        region.Status == formatter::RegionStatus::RecoveryAndAmbiguous);
+                    EXPECT_TRUE(
+                        region.Status == formatter::RegionStatus::Recovery ||
+                        region.Status ==
+                            formatter::RegionStatus::RecoveryAndAmbiguous);
                 }
                 if (region.Kind == parser::NodeKind::RequiresClause) {
                     ++clauses;
-                    EXPECT_TRUE(region.Status == formatter::RegionStatus::Recovery ||
-                        region.Status == formatter::RegionStatus::RecoveryAndAmbiguous);
+                    EXPECT_TRUE(
+                        region.Status == formatter::RegionStatus::Recovery ||
+                        region.Status ==
+                            formatter::RegionStatus::RecoveryAndAmbiguous);
                 }
                 if (region.Kind == parser::NodeKind::UnparsedSyntax) {
                     ++unparsed;
@@ -390,8 +410,11 @@ TEST(SourceAnalysis, RequiresTerminalRecoveryProtectsConstraintNotFollowingFunct
                 if (region.Kind == parser::NodeKind::FunctionDefinition) {
                     ++functions;
                     EXPECT_EQ(region.Status, formatter::RegionStatus::Complete);
-                    EXPECT_EQ(std::string_view(source).substr(region.Source.Begin,
-                        region.Source.End - region.Source.Begin), declaration);
+                    EXPECT_EQ(
+                        std::string_view(source).substr(
+                            region.Source.Begin,
+                            region.Source.End - region.Source.Begin),
+                        declaration);
                     EXPECT_FALSE(analysis.IntersectsImmutable(region.Source));
                 }
             }
@@ -443,8 +466,15 @@ void ExpectSameTokens(
 }
 TEST(SourceAnalysis, LineTokenTerminationAndEofKeepExactSpelling)
 {
-    for (auto source : {"// note\nint x;\n", "// note\r\nint x;\r\n",
-        "// note", "// note\r", "#define X 1", "%:define X 1"})
+    for (auto source :
+        {
+            "// note\nint x;\n",
+            "// note\r\nint x;\r\n",
+            "// note",
+            "// note\r",
+            "#define X 1",
+            "%:define X 1",
+        })
     {
         Input input(source);
         auto tree = Parse(input);
@@ -458,7 +488,10 @@ TEST(SourceAnalysis, LineTokenTerminationAndEofKeepExactSpelling)
             EXPECT_TRUE(analysis.CanReplaceGap(right, "\n  "));
             auto changed = std::string(tree.Source());
             const auto& gap = analysis.Gaps()[right];
-            changed.replace(gap.Source.Begin, analysis.Original(gap).size(), "\n  ");
+            changed.replace(
+                gap.Source.Begin,
+                analysis.Original(gap).size(),
+                "\n  ");
             ExpectSameTokens(tree, changed);
         }
     }
@@ -478,14 +511,15 @@ TEST(SourceAnalysis, HeaderNameInternalGapsAreContextSensitive)
         ++headers;
         for (auto i = region.Tokens.Begin + 1; i < region.Tokens.End; ++i) {
             EXPECT_TRUE(analysis.Gaps()[i].ContextSensitive);
-            EXPECT_FALSE(analysis.CanReplaceGap(i,
-                analysis.Original(i).empty() ? " " : ""));
+            EXPECT_FALSE(analysis
+                .CanReplaceGap(i, analysis.Original(i).empty() ? " " : ""));
         }
         for (auto outside : {region.Tokens.Begin, region.Tokens.End}) {
             EXPECT_TRUE(analysis.CanReplaceGap(outside, "  "));
             auto changed = std::string(tree.Source());
             const auto& gap = analysis.Gaps()[outside];
-            changed.replace(gap.Source.Begin, analysis.Original(gap).size(), "  ");
+            changed
+                .replace(gap.Source.Begin, analysis.Original(gap).size(), "  ");
             ExpectSameTokens(tree, changed);
         }
     }
@@ -493,37 +527,49 @@ TEST(SourceAnalysis, HeaderNameInternalGapsAreContextSensitive)
     EXPECT_TRUE(analysis.CanReplaceGap(Before(tree, "tail"), "  "));
     const auto opener = Before(tree, "<");
     const auto token = tree.Token(opener);
-    const std::array<parser::SourceRange, 1> ranges{{
-        {token.Text.Begin, token.Text.End},
-    }};
+    const std::array<parser::SourceRange, 1> ranges{
+        {{token.Text.Begin, token.Text.End}},
+    };
     auto excluded = Analyze(tree, memory, {.ImmutableRanges = ranges});
     EXPECT_FALSE(excluded.CanReplaceGap(opener, "  "));
-    const std::array<formatter::ProtectedSourceRange, 1> inherited{{
-        {ranges[0], formatter::ProtectionReason::HeaderName},
-    }};
+    const std::array<formatter::ProtectedSourceRange, 1> inherited{
+        {{ranges[0], formatter::ProtectionReason::HeaderName}},
+    };
     auto projected = Analyze(tree, memory, {.InheritedProtection = inherited});
     EXPECT_TRUE(projected.CanReplaceGap(opener, "  "));
-    auto mixed = Analyze(tree, memory, {.ImmutableRanges = ranges,
-        .InheritedProtection = inherited});
+    auto mixed = Analyze(
+        tree,
+        memory,
+        {.ImmutableRanges = ranges, .InheritedProtection = inherited});
     EXPECT_FALSE(mixed.CanReplaceGap(opener, "  "));
     bool unionFound = false;
     for (const auto& range : mixed.Protection()) {
-        unionFound |= Has(range.Reasons, formatter::ProtectionReason::
+        unionFound |= Has(
+            range.Reasons,
+            formatter::ProtectionReason::
             Explicit) &&
             Has(range.Reasons, formatter::ProtectionReason::HeaderName);
     }
     EXPECT_TRUE(unionFound);
-    const std::array<parser::SourceRange, 1> entire{{{0, uint32_t(
-        input.Size)}}};
+    const std::array<parser::SourceRange, 1> entire{
+        {{0, uint32_t(input.Size)}},
+    };
     auto scoped = Analyze(tree, memory, {.EditScope = entire});
     EXPECT_TRUE(scoped.CanReplaceGap(opener, "  "));
     EXPECT_FALSE(scoped.CanReplaceGap(Before(tree, "pkg"), " "));
-    auto scopedMixed = Analyze(tree, memory, {.ImmutableRanges = ranges,
-        .InheritedProtection = inherited, .EditScope = entire});
+    auto scopedMixed = Analyze(
+        tree,
+        memory,
+        {
+            .ImmutableRanges = ranges,
+            .InheritedProtection = inherited,
+            .EditScope = entire,
+        });
     EXPECT_FALSE(scopedMixed.CanReplaceGap(opener, "  "));
     auto invalid = inherited;
     invalid[0].Source.End = uint32_t(tree.Source().size() + 1);
-    EXPECT_THROW(Analyze(tree, memory, {.InheritedProtection = invalid}),
+    EXPECT_THROW(
+        Analyze(tree, memory, {.InheritedProtection = invalid}),
         std::invalid_argument);
 }
 TEST(SourceAnalysis, SplicedMarkerLookalikesDoNotDisableFollowingLines)
@@ -537,8 +583,8 @@ TEST(SourceAnalysis, SplicedMarkerLookalikesDoNotDisableFollowingLines)
         auto analysis = Analyze(tree, memory);
         bool splice = false;
         for (const auto& range : analysis.Protection()) {
-            EXPECT_FALSE(Has(range.Reasons,
-                formatter::ProtectionReason::Disabled));
+            EXPECT_FALSE(
+                Has(range.Reasons, formatter::ProtectionReason::Disabled));
             if (Has(range.Reasons, formatter::ProtectionReason::LineSplice)) {
                 splice = true;
                 EXPECT_EQ(range.Source.Begin, 0u);
@@ -553,8 +599,8 @@ TEST(SourceAnalysis, SplicedMarkerLookalikesDoNotDisableFollowingLines)
 }
 TEST(SourceAnalysis, AmbiguousAndInvalidTokensAreLocalNotWholeFileRollback)
 {
-    Input input("void f() { unknown * value; int good = 1; @; }\n"
-        "int tail = 2;\n");
+    Input input(
+        "void f() { unknown * value; int good = 1; @; }\n" "int tail = 2;\n");
     auto tree = Parse(input);
     std::pmr::monotonic_buffer_resource memory;
     auto analysis = Analyze(tree, memory);
@@ -568,8 +614,8 @@ TEST(SourceAnalysis, AmbiguousAndInvalidTokensAreLocalNotWholeFileRollback)
 }
 TEST(SourceAnalysis, AcceptedGapEditsKeepExactTokensIndividuallyAndTogether)
 {
-    Input input("void f() { int alpha = 1; int beta = 2; "
-        "alpha = beta + +alpha; "
+    Input input(
+        "void f() { int alpha = 1; int beta = 2; " "alpha = beta + +alpha; "
         "alpha = beta / *ptr; bool yes = alpha > beta and not done; "
         "return; } // note\n"
         "#define VALUE 1\nimport <pkg/sub.h>;\n// note\r\nint tail;\n"
@@ -580,15 +626,16 @@ TEST(SourceAnalysis, AcceptedGapEditsKeepExactTokensIndividuallyAndTogether)
     std::string together;
     for (formatter::GapId i = 0; i < analysis.Gaps().size(); ++i) {
         const auto& gap = analysis.Gaps()[i];
-        for (auto replacement : {
-            std::string_view(""),
-            std::string_view(" "),
-            std::string_view("\r\n"),
-            std::string_view("\n"),
-            std::string_view("\n  "),
-            std::string_view(" \n"),
-            std::string_view("\t\r\n"),
-        })
+        for (auto replacement :
+            {
+                std::string_view(""),
+                std::string_view(" "),
+                std::string_view("\r\n"),
+                std::string_view("\n"),
+                std::string_view("\n  "),
+                std::string_view(" \n"),
+                std::string_view("\t\r\n"),
+            })
         {
             if (analysis.CanReplaceGap(i, replacement)) {
                 auto changed = std::string(tree.Source());
@@ -630,13 +677,15 @@ TEST(SourceAnalysis, ContextSensitivePunctuationIsNotJustTokenization)
 TEST(SourceAnalysis, LexicalConstraintsCoverPunctuationAndLiteralBoundaries)
 {
     for (const auto& [first, second, required] :
-        {std::tuple{">", "::", false}, {">>", "::", false},
+        {
+            std::tuple{">", "::", false}, {">>", "::", false},
             {"::", "*", false}, {"+", "*", false}, {"&&", "!", false},
             {"+", "+", true}, {"/", "*", true}, {"/", "/", true},
             {">", ">", true}, {"<", "::", true}, {"<:", ":", true},
             {"<", "%", true}, {"%", ">", true}, {":", ">", true},
             {"-", ">", true}, {"->", "*", true}, {"<<", "=", true},
-            {">>", "=", true}, {"<=", ">", true}, {".", ".", true}})
+            {">>", "=", true}, {"<=", ">", true}, {".", ".", true}
+        })
     {
         Input input(std::string(first) + " " + second);
         auto tree = parser::SyntaxTree::TokenizeOnly(input.View());
@@ -644,7 +693,8 @@ TEST(SourceAnalysis, LexicalConstraintsCoverPunctuationAndLiteralBoundaries)
         EXPECT_EQ(formatter::TokenGapNeedsSeparation(tree, 1), required)
             << first << ' ' << second;
     }
-    const std::array spellings{"alpha",
+    const std::array spellings{
+        "alpha",
         "1",
         "1.0",
         "0x1",
@@ -749,10 +799,13 @@ TEST(SourceAnalysis, LexicalConstraintsCoverPunctuationAndLiteralBoundaries)
 TEST(SourceAnalysis, SourceSizeIsCheckedBeforeOffsetNarrowing)
 {
     EXPECT_EQ(formatter::CheckedSourceAnalysisSize(0), 0u);
-    EXPECT_EQ(formatter::CheckedSourceAnalysisSize(util::MaxSourceSize),
+    EXPECT_EQ(
+        formatter::CheckedSourceAnalysisSize(util::MaxSourceSize),
         util::MaxSourceSize);
-    EXPECT_THROW(static_cast<void>(formatter::CheckedSourceAnalysisSize(
-        util::MaxSourceSize + 1)), std::length_error);
+    EXPECT_THROW(
+        static_cast<void>(formatter::CheckedSourceAnalysisSize(
+            util::MaxSourceSize + 1)),
+        std::length_error);
     EXPECT_THROW(static_cast<void>(formatter::CheckedSourceAnalysisSize(
         std::numeric_limits<size_t>::max())), std::length_error);
     if constexpr (sizeof(size_t) > sizeof(parser::SourceOffset)) {
@@ -790,7 +843,8 @@ TEST(SourceAnalysis, EditScopeUnrestrictedFullAndEmpty)
     for (formatter::GapId i = 0; i < normal.Gaps().size(); ++i) {
         for (auto replacement : {"", " ", "\n  ", "\r\n"}) {
             if (i + 1 < normal.Gaps().size()) {
-                EXPECT_EQ(normal.CanReplaceGap(i, replacement),
+                EXPECT_EQ(
+                    normal.CanReplaceGap(i, replacement),
                     full.CanReplaceGap(i, replacement));
             } else if (replacement != full.Original(i)) {
                 // Strict EOF is not an owned final-indentation point, even
@@ -802,12 +856,13 @@ TEST(SourceAnalysis, EditScopeUnrestrictedFullAndEmpty)
             }
         }
         EXPECT_TRUE(empty.CanReplaceGap(i, empty.Original(i)));
-        EXPECT_TRUE(Has(empty.Gaps()[i].Reasons,
+        EXPECT_TRUE(Has(
+            empty.Gaps()[i].Reasons,
             formatter::ProtectionReason::OutsideEditScope));
     }
     EXPECT_TRUE(empty.IntersectsImmutable({0, 0}));
-    EXPECT_TRUE(full.IntersectsImmutable({uint32_t(input.Size), uint32_t(
-        input.Size)}));
+    EXPECT_TRUE(
+        full.IntersectsImmutable({uint32_t(input.Size), uint32_t(input.Size)}));
     EXPECT_FALSE(full.CanReplaceGap(tree.TokenCount(), "\n    "));
     Input zero("");
     auto zeroTree = Parse(zero);
@@ -817,8 +872,9 @@ TEST(SourceAnalysis, EditScopeUnrestrictedFullAndEmpty)
     EXPECT_TRUE(zeroScope.IntersectsImmutable({0, 0}));
     Input eof("int a;");
     auto eofTree = Parse(eof);
-    const std::array<parser::SourceRange, 1> eofScope{{{0, uint32_t(
-        eof.Size)}}};
+    const std::array<parser::SourceRange, 1> eofScope{
+        {{0, uint32_t(eof.Size)}},
+    };
     auto noFinalLf = Analyze(eofTree, memory, {.EditScope = eofScope});
     EXPECT_FALSE(noFinalLf.CanReplaceGap(eofTree.TokenCount(), " "));
     EXPECT_TRUE(noFinalLf.IntersectsImmutable({6, 6}));
@@ -835,14 +891,17 @@ TEST(SourceAnalysis, EditScopeValidationAndTouchingOwnership)
         std::vector<parser::SourceRange>{{0, 5}, {4, 7}},
         std::vector<parser::SourceRange>{{7, 9}, {0, 4}}})
     {
-        EXPECT_THROW(Analyze(tree, memory, {.EditScope = ranges}), std::
+        EXPECT_THROW(
+            Analyze(tree, memory, {.EditScope = ranges}),
+            std::
             invalid_argument);
         auto deferred = Analyze(tree, memory);
         auto original = Analyze(tree, memory);
         EXPECT_THROW(deferred.RestrictEditScope(ranges), std::invalid_argument);
         ExpectSameAnalysis(original, deferred);
-        const std::array<parser::SourceRange, 1> valid{{{0,
-            uint32_t(input.Size)}}};
+        const std::array<parser::SourceRange, 1> valid{
+            {{0, uint32_t(input.Size)}},
+        };
         deferred.RestrictEditScope(valid);
         auto direct = Analyze(tree, memory, {.EditScope = valid});
         ExpectSameAnalysis(direct, deferred);
@@ -856,8 +915,8 @@ TEST(SourceAnalysis, EditScopeValidationAndTouchingOwnership)
 TEST(SourceAnalysis, PartialFinalIndentationFencesExactTopology)
 {
     for (auto prefix : {"\n", "\r\n", "\n \t\r\n", "\r\n\n"}) {
-        const auto source = std::string("void f() {") + prefix +
-            " \tinvoke(a,b);\n}\n";
+        const auto source =
+            std::string("void f() {") + prefix + " \tinvoke(a,b);\n}\n";
         Input input(source);
         auto tree = Parse(input);
         const auto begin = uint32_t(source.find(" \tinvoke"));
@@ -865,7 +924,10 @@ TEST(SourceAnalysis, PartialFinalIndentationFencesExactTopology)
         std::pmr::monotonic_buffer_resource memory;
         auto analysis = Analyze(tree, memory, {.EditScope = scope});
         const auto gap = Before(tree, "invoke");
-        const auto* permission = Permission(analysis, gap, PermissionKind::
+        const auto* permission = Permission(
+            analysis,
+            gap,
+            PermissionKind::
             FinalIndentation);
         ASSERT_NE(permission, nullptr) << prefix;
         EXPECT_EQ(permission->Source.Begin, begin);
@@ -880,8 +942,13 @@ TEST(SourceAnalysis, PartialFinalIndentationFencesExactTopology)
         EXPECT_EQ(changed.substr(begin + 4), source.substr(begin + 2));
         const std::array<parser::SourceRange, 1> cut{{{begin + 1, begin + 15}}};
         auto partial = Analyze(tree, memory, {.EditScope = cut});
-        EXPECT_EQ(Permission(partial, gap, PermissionKind::
-            FinalIndentation), nullptr);
+        EXPECT_EQ(
+            Permission(
+                partial,
+                gap,
+                PermissionKind::
+            FinalIndentation),
+            nullptr);
     }
 }
 TEST(SourceAnalysis, ZeroWidthIndentUsesStrictHalfOpenInsertionOwnership)
@@ -893,7 +960,10 @@ TEST(SourceAnalysis, ZeroWidthIndentUsesStrictHalfOpenInsertionOwnership)
     std::pmr::monotonic_buffer_resource memory;
     const std::array<parser::SourceRange, 1> selected{{{begin, begin + 10}}};
     auto analysis = Analyze(tree, memory, {.EditScope = selected});
-    const auto* permission = Permission(analysis, gap, PermissionKind::
+    const auto* permission = Permission(
+        analysis,
+        gap,
+        PermissionKind::
         FinalIndentation);
     ASSERT_NE(permission, nullptr);
     EXPECT_EQ(permission->Source.Begin, begin);
@@ -901,19 +971,26 @@ TEST(SourceAnalysis, ZeroWidthIndentUsesStrictHalfOpenInsertionOwnership)
     EXPECT_FALSE(analysis.CanReplaceGap(gap, "\n    "));
     const std::array<parser::SourceRange, 1> previous{{{0, begin}}};
     auto excluded = Analyze(tree, memory, {.EditScope = previous});
-    EXPECT_EQ(Permission(excluded, gap, PermissionKind::FinalIndentation),
+    EXPECT_EQ(
+        Permission(excluded, gap, PermissionKind::FinalIndentation),
         nullptr);
     EXPECT_TRUE(excluded.IntersectsImmutable({begin, begin}));
     // The following line's zero-width indentation must not inherit ownership
     // at end, even though all existing bytes of its LF gap are selected.
     const auto closing = Before(tree, "}");
-    EXPECT_EQ(Permission(analysis, closing, PermissionKind::
-        FinalIndentation), nullptr);
+    EXPECT_EQ(
+        Permission(
+            analysis,
+            closing,
+            PermissionKind::
+        FinalIndentation),
+        nullptr);
     EXPECT_TRUE(analysis.Gaps()[closing].Preserve);
     EXPECT_FALSE(analysis.CanReplaceGap(closing, "\n    "));
     EXPECT_FALSE(analysis.CanReplaceGap(closing, " "));
-    const std::array<parser::SourceRange, 1> withFollowingPoint{{{begin,
-        begin + 11}}};
+    const std::array<parser::SourceRange, 1> withFollowingPoint{
+        {{begin, begin + 11}},
+    };
     auto following = Analyze(tree, memory, {.EditScope = withFollowingPoint});
     EXPECT_FALSE(following.Gaps()[closing].Preserve);
     EXPECT_TRUE(following.CanReplaceGap(closing, "\n    "));
@@ -925,8 +1002,9 @@ TEST(SourceAnalysis, PartialTrailingAndBlankHorizontalTrimKeepsSuffix)
     const auto gap = Before(tree, "}");
     const auto begin = tree.Token(gap - 1).Text.End;
     std::pmr::monotonic_buffer_resource memory;
-    const std::array<parser::SourceRange, 2> scope{{{begin, begin + 2}, {
-        begin + 4, begin + 6}}};
+    const std::array<parser::SourceRange, 2> scope{
+        {{begin, begin + 2}, {begin + 4, begin + 6}},
+    };
     auto analysis = Analyze(tree, memory, {.EditScope = scope});
     std::vector<parser::SourceRange> slices;
     for (const auto& permission : analysis.PartialGapPermissions()) {
@@ -963,58 +1041,88 @@ TEST(SourceAnalysis,
     const std::array<parser::SourceRange, 1> scope{{{indent, trim + 2}}};
     std::pmr::monotonic_buffer_resource memory;
     const std::array<parser::SourceRange, 1> prefix{{{indent - 1, indent}}};
-    auto allowed = Analyze(tree, memory, {.ImmutableRanges = prefix,
-        .EditScope = scope});
-    EXPECT_NE(Permission(allowed, indentGap, PermissionKind::
-        FinalIndentation), nullptr);
+    auto allowed =
+        Analyze(tree, memory, {.ImmutableRanges = prefix, .EditScope = scope});
+    EXPECT_NE(
+        Permission(
+            allowed,
+            indentGap,
+            PermissionKind::
+        FinalIndentation),
+        nullptr);
     EXPECT_FALSE(allowed.CanReplaceGap(indentGap, "\n    "));
     auto deferred = Analyze(tree, memory, {.ImmutableRanges = prefix});
     ASSERT_TRUE(deferred.Gaps()[indentGap].Preserve);
     deferred.RestrictEditScope(scope);
     ExpectSameAnalysis(allowed, deferred);
-    const std::array<formatter::ProtectedSourceRange, 1> headerPrefix{{
-        {prefix[0], formatter::ProtectionReason::HeaderName},
-    }};
-    auto foldedContext = Analyze(tree, memory, {.InheritedProtection =
-        headerPrefix});
+    const std::array<formatter::ProtectedSourceRange, 1> headerPrefix{
+        {{prefix[0], formatter::ProtectionReason::HeaderName}},
+    };
+    auto foldedContext = Analyze(
+        tree,
+        memory,
+        {
+            .InheritedProtection =
+        headerPrefix,
+        });
     ASSERT_TRUE(foldedContext.Gaps()[indentGap].ContextSensitive);
     foldedContext.RestrictEditScope(scope);
-    EXPECT_NE(Permission(foldedContext, indentGap,
-        PermissionKind::FinalIndentation), nullptr);
+    EXPECT_NE(
+        Permission(foldedContext, indentGap, PermissionKind::FinalIndentation),
+        nullptr);
     EXPECT_FALSE(foldedContext.CanReplaceGap(indentGap, "\n    "));
-    const std::array<parser::SourceRange, 2> fenced{{{indent, indent + 1}, {
-        trim, trim + 1}}};
-    auto denied = Analyze(tree, memory, {.ImmutableRanges = fenced,
-        .EditScope = scope});
+    const std::array<parser::SourceRange, 2> fenced{
+        {{indent, indent + 1}, {trim, trim + 1}},
+    };
+    auto denied =
+        Analyze(tree, memory, {.ImmutableRanges = fenced, .EditScope = scope});
     EXPECT_TRUE(denied.PartialGapPermissions().empty());
-    for (auto reason : {formatter::ProtectionReason::Disabled,
-        formatter::ProtectionReason::SensitiveMacro, formatter::
+    for (auto reason :
+        {
+            formatter::ProtectionReason::Disabled,
+            formatter::ProtectionReason::SensitiveMacro,
+            formatter::
             ProtectionReason::Recovery,
-        formatter::ProtectionReason::Ambiguous, formatter::
+            formatter::ProtectionReason::Ambiguous,
+            formatter::
             ProtectionReason::Directive,
-        formatter::ProtectionReason::LineSplice, formatter::
-            ProtectionReason::HeaderName})
+            formatter::ProtectionReason::LineSplice,
+            formatter::
+            ProtectionReason::HeaderName,
+        })
     {
-        const std::array<formatter::ProtectedSourceRange, 1> protection{{{{
-            indent, trim + 2}, reason}}};
-        auto blocked = Analyze(tree, memory, {.InheritedProtection =
-            protection, .EditScope = scope});
+        const std::array<formatter::ProtectedSourceRange, 1> protection{
+            {{{indent, trim + 2}, reason}},
+        };
+        auto blocked = Analyze(
+            tree,
+            memory,
+            {
+                .InheritedProtection =
+            protection,
+                .EditScope = scope,
+            });
         EXPECT_TRUE(blocked.PartialGapPermissions().empty());
         EXPECT_FALSE(blocked.CanReplaceGap(indentGap, "\n    "));
         EXPECT_TRUE(Has(blocked.Gaps()[indentGap].Reasons, reason));
-        EXPECT_TRUE(Has(blocked.Gaps()[indentGap].Reasons, formatter::
+        EXPECT_TRUE(Has(
+            blocked.Gaps()[indentGap].Reasons,
+            formatter::
             ProtectionReason::OutsideEditScope));
-        const auto covering = std::find_if(blocked.Protection().begin(),
-            blocked.Protection().end(), [&](const auto& range) {
-                return range.Source.Begin <= indent && trim + 2 <=
-                    range.Source.End;
+        const auto covering = std::find_if(
+            blocked.Protection().begin(),
+            blocked.Protection().end(),
+            [&] (const auto& range) {
+                return range.Source.Begin <= indent &&
+                    trim + 2 <= range.Source.End;
             });
         ASSERT_NE(covering, blocked.Protection().end());
         EXPECT_EQ(covering->Source.Begin, indent);
         EXPECT_EQ(covering->Source.End, trim + 2);
         EXPECT_EQ(covering->Reasons, reason);
         EXPECT_EQ(blocked.Protection().front().Source.End, indent);
-        EXPECT_EQ(blocked.Protection().front().Reasons,
+        EXPECT_EQ(
+            blocked.Protection().front().Reasons,
             formatter::ProtectionReason::OutsideEditScope);
     }
 }
@@ -1025,14 +1133,18 @@ TEST(SourceAnalysis, PartialCommentOwnedCrAndDirectivePrefix)
         Input input(source);
         auto tree = Parse(input);
         const auto begin = uint32_t(source.find("  int"));
-        const std::array<parser::SourceRange, 1> scope{{{begin, uint32_t(
-            source.size())}}};
+        const std::array<parser::SourceRange, 1> scope{
+            {{begin, uint32_t(source.size())}},
+        };
         std::pmr::monotonic_buffer_resource memory;
         auto analysis = Analyze(tree, memory, {.EditScope = scope});
         const auto gap = Before(tree, "int");
         EXPECT_TRUE(analysis.Gaps()[gap].MustStartWithLineFeed);
         EXPECT_TRUE(analysis.Original(gap).starts_with('\n'));
-        const auto* permission = Permission(analysis, gap, PermissionKind::
+        const auto* permission = Permission(
+            analysis,
+            gap,
+            PermissionKind::
             FinalIndentation);
         ASSERT_NE(permission, nullptr);
         EXPECT_EQ(permission->Source.Begin, begin);
@@ -1051,34 +1163,48 @@ TEST(SourceAnalysis, PartialHeaderOpeningPointAndTokenOwnedTrailingWhitespace)
     const auto comment = Before(tree, "// note  \r");
     const auto tail = Before(tree, "int");
     std::pmr::monotonic_buffer_resource memory;
-    const std::array<parser::SourceRange, 2> scope{{
-        {begin, tree.Token(opener).Text.End},
-        {tree.Token(comment).Text.End - 3, tree.Token(tail).Text.Begin + 1},
-    }};
+    const std::array<parser::SourceRange, 2> scope{
+        {
+            {begin, tree.Token(opener).Text.End},
+            {tree.Token(comment).Text.End - 3, tree.Token(tail).Text.Begin + 1},
+        },
+    };
     auto analysis = Analyze(tree, memory, {.EditScope = scope});
-    EXPECT_NE(Permission(analysis, opener, PermissionKind::
-        FinalIndentation), nullptr);
-    EXPECT_EQ(Permission(analysis, tail, PermissionKind::TrimHorizontal),
+    EXPECT_NE(
+        Permission(
+            analysis,
+            opener,
+            PermissionKind::
+        FinalIndentation),
         nullptr);
-    const std::array<parser::SourceRange, 1> explicitRange{{{begin, begin +
-        1}}};
-    auto denied = Analyze(tree, memory, {.ImmutableRanges = explicitRange,
-        .EditScope = scope});
-    EXPECT_EQ(Permission(denied, opener, PermissionKind::FinalIndentation),
+    EXPECT_EQ(
+        Permission(analysis, tail, PermissionKind::TrimHorizontal),
+        nullptr);
+    const std::array<parser::SourceRange, 1> explicitRange{
+        {{begin, begin + 1}},
+    };
+    auto denied = Analyze(
+        tree,
+        memory,
+        {.ImmutableRanges = explicitRange, .EditScope = scope});
+    EXPECT_EQ(
+        Permission(denied, opener, PermissionKind::FinalIndentation),
         nullptr);
 }
 TEST(SourceAnalysis, PartialUnsafeRealSyntaxAndUnsupportedWhitespace)
 {
-    for (auto source : {
-        "// hit-fmt off\n  int frozen; \t\n// hit-fmt on\n",
-        "void f() { KEEP(\n  a \t\n); }\n",
-        "void f() {\n  @; \t\n}\n",
-        "void f() {\n  unknown * value; \t\n}\n",
-        "int x = \\\n  1; \t\n",
-        "import <\n  pkg / unit.h \t\n>;\n",
-        "[\n  [ x ] \t\n]\n",
-        "void f() {\r  invoke(); \t\r}\n",
-        "void f() {\n\f  invoke(); \t\f\n}\n"})
+    for (auto source :
+        {
+            "// hit-fmt off\n  int frozen; \t\n// hit-fmt on\n",
+            "void f() { KEEP(\n  a \t\n); }\n",
+            "void f() {\n  @; \t\n}\n",
+            "void f() {\n  unknown * value; \t\n}\n",
+            "int x = \\\n  1; \t\n",
+            "import <\n  pkg / unit.h \t\n>;\n",
+            "[\n  [ x ] \t\n]\n",
+            "void f() {\r  invoke(); \t\r}\n",
+            "void f() {\n\f  invoke(); \t\f\n}\n",
+        })
     {
         Input input(source);
         auto tree = Parse(input);
@@ -1086,36 +1212,56 @@ TEST(SourceAnalysis, PartialUnsafeRealSyntaxAndUnsupportedWhitespace)
         // Select only complete horizontal runs, never newline topology.
         for (uint32_t i = 0; i < input.Size;) {
             const auto begin = i;
-            while (i < input.Size && (source[i] == ' ' || source[i] ==
-                '\t')) { ++i; }
-            if (begin < i) { scope.push_back({begin, i}); }
-            else { ++i; }
+            while (i < input.Size && (source[i] == ' ' || source[i] == '\t')) {
+                ++i;
+            }
+            if (begin < i) {
+                scope.push_back({begin, i});
+            } else {
+                ++i;
+            }
         }
         const std::array names{std::string_view("KEEP")};
         std::pmr::monotonic_buffer_resource memory;
-        auto analysis = Analyze(tree, memory, {.WhitespaceSensitiveMacros =
-            names, .EditScope = scope});
+        auto analysis = Analyze(
+            tree,
+            memory,
+            {
+                .WhitespaceSensitiveMacros =
+            names,
+                .EditScope = scope,
+            });
         // Some independent gaps can still be safe, but every emitted permission
         // must remain outside actual protection and whole-gap semantic fences.
         auto base = Analyze(tree, memory, {.WhitespaceSensitiveMacros = names});
         for (const auto& permission : analysis.PartialGapPermissions()) {
             EXPECT_FALSE(base.IntersectsImmutable(permission.Source)) << source;
-            EXPECT_FALSE(base.Gaps(
-                )[permission.Gap].ContextSensitive) << source;
+            EXPECT_FALSE(base.Gaps()[permission.Gap].ContextSensitive)
+                << source;
             EXPECT_FALSE(base.Gaps()[permission.Gap].Preserve &&
                 base.Gaps()[permission.Gap].Reasons == formatter::
                     ProtectionReason::None) << source;
         }
         for (formatter::GapId gap = 0; gap < base.Gaps().size(); ++gap) {
-            if (base.Gaps()[gap].Preserve || base.Gaps(
-                )[gap].ContextSensitive ||
+            if (base.Gaps()[gap].Preserve ||
+                base.Gaps()[gap].ContextSensitive ||
                 base.Original(gap).find_first_of("\f\v") != std::
                     string_view::npos)
             {
-                EXPECT_EQ(Permission(analysis, gap, PermissionKind::
-                    FinalIndentation), nullptr) << source;
-                EXPECT_EQ(Permission(analysis, gap, PermissionKind::
-                    TrimHorizontal), nullptr) << source;
+                EXPECT_EQ(
+                    Permission(
+                        analysis,
+                        gap,
+                        PermissionKind::
+                    FinalIndentation),
+                    nullptr) << source;
+                EXPECT_EQ(
+                    Permission(
+                        analysis,
+                        gap,
+                        PermissionKind::
+                    TrimHorizontal),
+                    nullptr) << source;
             }
         }
     }
@@ -1128,14 +1274,23 @@ TEST(SourceAnalysis, EditScopeAndScratchStorageMayDieAfterBuild)
     auto analysis = [&] {
         std::pmr::monotonic_buffer_resource scratch;
         std::vector<parser::SourceRange> scope{{11, 24}};
-        return formatter::BuildSourceAnalysis(tree, {.EditScope = scope},
-            memory, scratch);
+        return formatter::BuildSourceAnalysis(
+            tree,
+            {.EditScope = scope},
+            memory,
+            scratch);
     }();
     const auto gap = Before(tree, "invoke");
-    EXPECT_NE(Permission(analysis, gap, PermissionKind::FinalIndentation),
+    EXPECT_NE(
+        Permission(analysis, gap, PermissionKind::FinalIndentation),
         nullptr);
-    EXPECT_NE(Permission(analysis, Before(tree, "}"), PermissionKind::
-        TrimHorizontal), nullptr);
+    EXPECT_NE(
+        Permission(
+            analysis,
+            Before(tree, "}"),
+            PermissionKind::
+        TrimHorizontal),
+        nullptr);
     EXPECT_FALSE(analysis.CanReplaceGap(gap, "\n    "));
     EXPECT_FALSE(analysis.IntersectsImmutable({11, 13}));
     EXPECT_TRUE(analysis.IntersectsImmutable({24, 24}));
@@ -1191,7 +1346,8 @@ TEST(SourceAnalysis, DeferredRestrictionOutlivesTreeScopeAndScratch)
     EXPECT_EQ(analysis.Regions()[owner].Kind, parser::NodeKind::CallExpression);
     for (formatter::RegionId id = 0; id < analysis.Regions().size(); ++id) {
         const auto& region = analysis.Regions()[id];
-        for (auto child = region.FirstChild; child != formatter::NoRegion;
+        for (auto child = region.FirstChild;
+            child != formatter::NoRegion;
             child = analysis.Regions()[child].NextSibling)
         {
             ASSERT_GT(child, id);
@@ -1209,9 +1365,11 @@ TEST(SourceAnalysis, DeferredRestrictionOutlivesTreeScopeAndScratch)
         std::vector<parser::SourceRange> scope{{11, 24}};
         analysis.RestrictEditScope(scope);
     }
-    EXPECT_NE(Permission(analysis, indent, PermissionKind::FinalIndentation),
+    EXPECT_NE(
+        Permission(analysis, indent, PermissionKind::FinalIndentation),
         nullptr);
-    EXPECT_NE(Permission(analysis, trim, PermissionKind::TrimHorizontal),
+    EXPECT_NE(
+        Permission(analysis, trim, PermissionKind::TrimHorizontal),
         nullptr);
     EXPECT_FALSE(analysis.CanReplaceGap(indent, "\n    "));
     EXPECT_FALSE(analysis.IntersectsImmutable({11, 13}));
@@ -1300,7 +1458,8 @@ TEST(SourceAnalysis, AdversarialMarkersHaveLinearStorage)
         EXPECT_EQ(analysis.Regions().size(), count + 7);
         EXPECT_TRUE(analysis.Protection().empty());
         EXPECT_TRUE(analysis.CanReplaceGap(Before(tree, "after"), "  "));
-        EXPECT_LE(file.BytesRequested + scratch.BytesRequested,
+        EXPECT_LE(
+            file.BytesRequested + scratch.BytesRequested,
             source.size() * 128);
         const auto calls = file.Calls + scratch.Calls;
         for (formatter::GapId gap = 1; gap < count; ++gap) {
@@ -1333,31 +1492,39 @@ TEST(SourceAnalysis, IterativeClassificationAndScratchLifetime)
     CountingResource scopedFile;
     CountingResource scopedScratch;
     auto scoped = formatter::BuildSourceAnalysis(
-        tree, {.EditScope = scope}, scopedFile, scopedScratch);
+        tree,
+        {.EditScope = scope},
+        scopedFile,
+        scopedScratch);
     CountingResource deferredFile;
     CountingResource deferredScratch;
-    auto deferred = formatter::BuildSourceAnalysis(tree, {}, deferredFile,
-        deferredScratch);
+    auto deferred =
+        formatter::BuildSourceAnalysis(tree, {}, deferredFile, deferredScratch);
     const auto scratchCalls = deferredScratch.Calls;
     const auto beforeBytes = deferredFile.BytesRequested;
     const auto beforeCalls = deferredFile.Calls;
     deferred.RestrictEditScope(scope);
     ExpectSameAnalysis(scoped, deferred);
     EXPECT_EQ(deferredScratch.Calls, scratchCalls);
-    EXPECT_LE(deferredFile.BytesRequested - beforeBytes,
-        scope.size() * (sizeof(parser::SourceRange) +
+    EXPECT_LE(
+        deferredFile.BytesRequested - beforeBytes,
+        scope.size() *
+        (sizeof(parser::SourceRange) +
             4 * sizeof(formatter::PartialGapPermission) +
             2 * sizeof(formatter::ProtectedSourceRange)));
     EXPECT_LE(deferredFile.Calls - beforeCalls, 16u);
     for (size_t i = 1; i < deferred.PartialGapPermissions().size(); ++i) {
-        EXPECT_LT(deferred.PartialGapPermissions()[i - 1].Source.Begin,
+        EXPECT_LT(
+            deferred.PartialGapPermissions()[i - 1].Source.Begin,
             deferred.PartialGapPermissions()[i].Source.Begin);
     }
     ASSERT_EQ(scoped.PartialGapPermissions().size(), 1999u);
-    EXPECT_EQ(scoped.PartialGapPermissions().back().Kind,
+    EXPECT_EQ(
+        scoped.PartialGapPermissions().back().Kind,
         PermissionKind::FinalIndentation);
     EXPECT_TRUE(scoped.PartialGapPermissions().back().Source.Empty());
-    EXPECT_LE(scopedFile.BytesRequested + scopedScratch.BytesRequested,
+    EXPECT_LE(
+        scopedFile.BytesRequested + scopedScratch.BytesRequested,
         text.size() * 256);
     const auto calls = scopedFile.Calls + scopedScratch.Calls;
     for (uint32_t i = 0; i < 2000; ++i) {
@@ -1371,7 +1538,9 @@ TEST(SourceAnalysis, NewlineSpellingOwnsFullExistingBytesNotEndInsertions)
     Input input("int a;\r\nint b;\r\n");
     auto tree = Parse(input);
     std::pmr::monotonic_buffer_resource memory;
-    const std::array selected{parser::SourceRange{6, 8}, parser::SourceRange{14, 16}};
+    const std::array selected{
+        parser::SourceRange{6, 8}, parser::SourceRange{14, 16}
+    };
     auto safety = Analyze(tree, memory, {.EditScope = selected});
     for (formatter::GapId i = 0; i < safety.Gaps().size(); ++i) {
         const auto& gap = safety.Gaps()[i];
@@ -1379,16 +1548,23 @@ TEST(SourceAnalysis, NewlineSpellingOwnsFullExistingBytesNotEndInsertions)
             EXPECT_TRUE(safety.CanSpellGapNewlines(i));
             EXPECT_TRUE(gap.Preserve);
             EXPECT_FALSE(safety.CanReplaceGap(i, "\n"));
-            EXPECT_TRUE(safety.IntersectsImmutable({gap.Source.End, gap.Source.End}));
-        } else EXPECT_FALSE(safety.CanSpellGapNewlines(i));
+            EXPECT_TRUE(
+                safety.IntersectsImmutable({gap.Source.End, gap.Source.End}));
+        } else {
+            EXPECT_FALSE(safety.CanSpellGapNewlines(i));
+        }
     }
     EXPECT_FALSE(safety.CanSpellGapNewlines(UINT32_MAX));
-    const std::array half{parser::SourceRange{6, 7}, parser::SourceRange{15, 16}};
+    const std::array half{
+        parser::SourceRange{6, 7}, parser::SourceRange{15, 16}
+    };
     auto partial = Analyze(tree, memory, {.EditScope = half});
     for (formatter::GapId i = 0; i < partial.Gaps().size(); ++i)
         EXPECT_FALSE(partial.CanSpellGapNewlines(i));
     const std::array immutable{parser::SourceRange{7, 8}};
-    auto protectedGap = Analyze(tree, memory,
+    auto protectedGap = Analyze(
+        tree,
+        memory,
         {.ImmutableRanges = immutable, .EditScope = selected});
     EXPECT_FALSE(protectedGap.CanSpellGapNewlines(3));
     auto empty = Analyze(tree, memory,
@@ -1399,11 +1575,12 @@ TEST(SourceAnalysis, NewlineSpellingOwnsFullExistingBytesNotEndInsertions)
     auto spliceTree = Parse(splice);
     auto intrinsic = Analyze(spliceTree, memory);
     for (formatter::GapId i = 0; i < intrinsic.Gaps().size(); ++i)
-        if (intrinsic.Gaps()[i].IntrinsicPreserve)
+        if (intrinsic.Gaps()[i].IntrinsicPreserve) {
             EXPECT_FALSE(intrinsic.CanSpellGapNewlines(i));
+        }
     const std::string recoverySource =
         "template<class T> requires requires(T v) { v.touch(); } @\r\n"
-        "int inspect(T value) { return 1; }\r\n";
+            "int inspect(T value) { return 1; }\r\n";
     Input recovery(recoverySource);
     auto recoveryTree = Parse(recovery);
     auto recovered = Analyze(recoveryTree, memory);
@@ -1413,9 +1590,12 @@ TEST(SourceAnalysis, NewlineSpellingOwnsFullExistingBytesNotEndInsertions)
     EXPECT_EQ(recovered.Gaps()[newline].Source.Begin, invalid + 1);
     EXPECT_EQ(recovered.Gaps()[newline].Source.End, invalid + 3);
     bool recoveryOwnsAtom = false;
-    for (const auto& range : recovered.Protection())
-        recoveryOwnsAtom |= Has(range.Reasons, formatter::ProtectionReason::Recovery) &&
-            range.Source.Begin <= invalid + 1 && range.Source.End >= invalid + 3;
+    for (const auto& range : recovered.Protection()) {
+        recoveryOwnsAtom |=
+            Has(range.Reasons, formatter::ProtectionReason::Recovery) &&
+                range.Source.Begin <= invalid + 1 &&
+                range.Source.End >= invalid + 3;
+    }
     EXPECT_TRUE(recoveryOwnsAtom);
     EXPECT_FALSE(recovered.CanSpellGapNewlines(newline));
     ASSERT_EQ(recovered.Original(recovered.Gaps().back()), "\r\n");

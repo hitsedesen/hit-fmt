@@ -52,6 +52,12 @@ public:
     const NamespaceCommentOptions NamespaceComments;
     const bool HonorClangFormatDirectives;
     const std::vector<std::string> WhitespaceSensitiveMacros;
+    const std::vector<std::string> FunctionBodyMacroNames;
+
+    [[nodiscard]] parser::ParseOptions ParsingOptions() const
+    {
+        return {.FunctionBodyMacroNames = FunctionBodyMacroNames};
+    }
 };
 
 struct FormatRequest
@@ -114,6 +120,8 @@ struct FormatResult
 
 // One optional atomic normalization, one syntax document, one render. Failures
 // throw; no original-text fallback, retry, repair, or alternate pipeline.
+// Tree overloads use supplied syntax; parse with prepared.ParsingOptions() to
+// enable macro-body hints. Source overloads apply those hints automatically.
 // Tree/source need survive only this call. Results own storage independently of
 // source, configuration, tree and the operation's file/scratch arenas.
 [[nodiscard]] FormatResult Format(

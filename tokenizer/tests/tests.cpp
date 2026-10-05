@@ -247,8 +247,6 @@ TEST(Tokenizer, RejectsMalformedUtf8)
         auto errors = TokenizeErrors(source);
         EXPECT_EQ(
             errors,
-            (std::vector{
-                TokenizationErrorKind::InvalidUtf8CodePoint,
-                TokenizationErrorKind::InvalidUtf8CodePoint}));
+            (std::vector{TokenizationErrorKind::InvalidUtf8CodePoint,TokenizationErrorKind::InvalidUtf8CodePoint}));
     }
 }

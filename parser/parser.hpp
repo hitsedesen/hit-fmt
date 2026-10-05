@@ -5,6 +5,7 @@
 #include <util/input.hpp>
 
 #include <functional>
+#include <span>
 #include <string>
 #include <string_view>
 
@@ -18,11 +19,20 @@ struct ParseError
 
 using ErrorHandler = std::function<void(ParseError)>;
 
+struct ParseOptions
+{
+    // Exact, unqualified macro names. A balanced invocation followed by a
+    // balanced brace body introduces function-body grammar, not a signature.
+    // Borrowed for Parse only; the resulting tree retains no configuration.
+    std::span<const std::string> FunctionBodyMacroNames = {};
+};
+
 // Build a recovery-oriented, lossless C++ syntax tree. The parser recognizes
 // the structure needed by a formatter and does not do type checking, macro
 // expansion, or conditional preprocessing.
 [[nodiscard]] SyntaxTree Parse(
     util::PaddedSourceView input,
-    ErrorHandler errorHandler = {});
+    ErrorHandler errorHandler = {},
+    const ParseOptions& options = {});
 
 } // namespace parser

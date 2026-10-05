@@ -133,6 +133,11 @@ OperatorOverloadOperatorSpaceAfter = NoSpace
 SubscriptOperatorSpacing = NoSpace
 SubscriptOperatorInteriorSpacing = NoSpace
 
+# Test declarations introduce function bodies; their macro headers stay exact.
+FunctionBodyMacroNames = [
+    "TEST", "TEST_F", "TEST_P", "TYPED_TEST", "TYPED_TEST_P"
+]
+
 # Do not scan generated outputs, goldens or benchmarks.
 Exclude = [
     "(^|/)build[^/]*(/|$)", "(^|/)testdata(/|$)", "(^|/)benchmarks(/|$)",

@@ -131,21 +131,22 @@ TEST(SyntaxSpacing, UnsupportedTemplateDeclarationPolicyIsRejected)
     GapPolicies policies;
     policies.AmbiguousTemplateDeclarationSpacing = GapPolicy::Space;
     EXPECT_THROW(
-        (void)analysis.Classify(
-            policies,
-            PointerReferenceDeclaratorLocation::Preserve),
+        (void)analysis
+            .Classify(policies, PointerReferenceDeclaratorLocation::Preserve),
         std::invalid_argument);
 }
 
 TEST(SyntaxSpacing, EveryControlProjectsPoliciesOnlyToItsClassifiedSites)
 {
     const auto source = test::golden::ReadFile(FixturePath("roles.input.cpp"));
-    for (auto policy : {GapPolicy::Space,
-        GapPolicy::NoSpace,
-        GapPolicy::GeneratedSpace,
-        GapPolicy::GeneratedNoSpace,
-        GapPolicy::Preserve,
-    })
+    for (auto policy :
+        {
+            GapPolicy::Space,
+            GapPolicy::NoSpace,
+            GapPolicy::GeneratedSpace,
+            GapPolicy::GeneratedNoSpace,
+            GapPolicy::Preserve,
+        })
     {
         GapPolicies policies;
 #define SET_POLICY(type, name, initial) policies.name = policy;
@@ -159,8 +160,8 @@ TEST(SyntaxSpacing, EveryControlProjectsPoliciesOnlyToItsClassifiedSites)
             const auto& safety = analysis.Safety.Gaps()[i];
             if (gap.Field == F::None || safety.Preserve ||
                 safety.ContextSensitive ||
-                safety.LineBoundary ==
-                    GapLineBoundary::Required || safety.MustStartWithLineFeed)
+                safety.LineBoundary == GapLineBoundary::Required ||
+                safety.MustStartWithLineFeed)
             {
                 continue;
             }
@@ -174,12 +175,9 @@ TEST(SyntaxSpacing, EveryControlProjectsPoliciesOnlyToItsClassifiedSites)
                     expected = true;
                 }
                 EXPECT_EQ(
-                    analysis.Spacing.SpacePreference(
-                        i,
-                        context,
-                        analysis.Safety),
-                    expected)
-                    << SpacingFieldName(gap.Field);
+                    analysis.Spacing
+                        .SpacePreference(i, context, analysis.Safety),
+                    expected) << SpacingFieldName(gap.Field);
             }
         }
         // Editable sites also prove coverage of every advertised syntax field.
@@ -196,56 +194,84 @@ TEST(SyntaxSpacing, ControlKeywordBoundaryDoesNotOwnSkippedMacroIdentifier)
     for (auto policy : {GapPolicy::Space, GapPolicy::NoSpace}) {
         GapPolicies policies;
         policies.ControlBlockKeywordSpacing = policy;
-        for (auto header : {"if(flag)", "if constexpr(flag)",
-            "for(;;)", "for co_await(auto item : items)", "while(flag)",
-            "switch(flag)", "try {} catch(...)"})
+        for (auto header :
+            {
+                "if(flag)",
+                "if constexpr(flag)",
+                "for(;;)",
+                "for co_await(auto item : items)",
+                "while(flag)",
+                "switch(flag)",
+                "try {} catch(...)",
+            })
         {
-            Analysis analysis(std::string("void f(){") + header + "{}}", policies);
+            Analysis analysis(
+                std::string("void f(){") + header + "{}}",
+                policies);
             const auto id = analysis.Before("(", 1);
             const auto& gap = analysis.Spacing.Gaps()[id];
             EXPECT_EQ(gap.Field, F::ControlBlockKeywordSpacing) << header;
             EXPECT_EQ(gap.Category, C::ControlHeaders) << header;
-            EXPECT_EQ(analysis.Spacing.SpacePreference(
-                id, GapContext::Rebuilt, analysis.Safety),
+            EXPECT_EQ(
+                analysis.Spacing
+                    .SpacePreference(id, GapContext::Rebuilt, analysis.Safety),
                 GapUsesSpace(policy, GapContext::Rebuilt)) << header;
         }
-        for (auto header : {"if CHECK(flag)", "while CHECK (flag)",
-            "if CHECK /* keep */ (flag)"})
+        for (auto header :
+            {
+                "if CHECK(flag)",
+                "while CHECK (flag)",
+                "if CHECK /* keep */ (flag)",
+            })
         {
-            Analysis analysis(std::string("void f(){") + header + "{}}", policies);
+            Analysis analysis(
+                std::string("void f(){") + header + "{}}",
+                policies);
             const auto id = analysis.Before("(", 1);
             const auto& gap = analysis.Spacing.Gaps()[id];
             EXPECT_EQ(gap.Field, F::None) << header;
             EXPECT_EQ(gap.Category, C::None) << header;
             EXPECT_TRUE(analysis.Safety.Gaps()[id].Preserve ||
                 (static_cast<uint8_t>(gap.Constraint) &
-                    static_cast<uint8_t>(SpacingConstraint::UncertainSyntax)) != 0);
-            EXPECT_EQ(analysis.Spacing.SpacePreference(
-                id, GapContext::Rebuilt, analysis.Safety), std::nullopt);
+                    static_cast<uint8_t>(SpacingConstraint::UncertainSyntax)) !=
+                    0);
+            EXPECT_EQ(
+                analysis.Spacing
+                    .SpacePreference(id, GapContext::Rebuilt, analysis.Safety),
+                std::nullopt);
         }
-        Analysis protectedHeader("// clang-format off\n"
-            "void f(){if (flag){}}\n// clang-format on\n", policies,
+        Analysis protectedHeader(
+            "// clang-format off\n"
+            "void f(){if (flag){}}\n// clang-format on\n",
+            policies,
             PointerReferenceDeclaratorLocation::Preserve,
             {.HonorClangFormatDirectives = true});
         const auto id = protectedHeader.Before("(", 1);
         EXPECT_TRUE(protectedHeader.Safety.Gaps()[id].Preserve);
-        EXPECT_EQ(protectedHeader.Spacing.SpacePreference(
-            id, GapContext::Rebuilt, protectedHeader.Safety), std::nullopt);
+        EXPECT_EQ(
+            protectedHeader.Spacing.SpacePreference(
+                id,
+                GapContext::Rebuilt,
+                protectedHeader.Safety),
+            std::nullopt);
     }
 }
 
 TEST(SyntaxSpacing, EnumeratorAssignmentsOwnBothGaps)
 {
-    for (const auto policy : {GapPolicy::Space,
-        GapPolicy::NoSpace,
-        GapPolicy::Preserve,
-        GapPolicy::GeneratedSpace,
-        GapPolicy::GeneratedNoSpace,
-    })
+    for (const auto policy :
+        {
+            GapPolicy::Space,
+            GapPolicy::NoSpace,
+            GapPolicy::Preserve,
+            GapPolicy::GeneratedSpace,
+            GapPolicy::GeneratedNoSpace,
+        })
     {
         GapPolicies policies;
         policies.AssignmentOperatorSpacing = policy;
-        Analysis analysis("enum class Mode { First=1, Second = (1 + 2), "
+        Analysis analysis(
+            "enum class Mode { First=1, Second = (1 + 2), "
             "Third=choose(3, 4) }; int count=0; void f(int x=1){count+=x;}",
             policies);
         for (size_t occurrence = 0; occurrence != 5; ++occurrence) {
@@ -256,14 +282,12 @@ TEST(SyntaxSpacing, EnumeratorAssignmentsOwnBothGaps)
                     analysis.Spacing.Gaps()[gap].Field,
                     F::AssignmentOperatorSpacing) << occurrence;
                 EXPECT_EQ(analysis.Spacing.Gaps()[gap].Policy, policy);
-                for (const auto context : {GapContext::Preserved,
-                    GapContext::Rebuilt,
-                })
+                for (const auto context :
+                    {GapContext::Preserved, GapContext::Rebuilt})
                 {
-                    EXPECT_EQ(analysis.Spacing.SpacePreference(
-                        gap,
-                        context,
-                        analysis.Safety),
+                    EXPECT_EQ(
+                        analysis.Spacing
+                            .SpacePreference(gap, context, analysis.Safety),
                         GapUsesSpace(policy, context)) << occurrence;
                 }
             }
@@ -296,8 +320,9 @@ TEST(SyntaxSpacing, TrailingCommentPolicyOverridesAssignmentGap)
 {
     GapPolicies policies;
     policies.AssignmentOperatorSpacing = GapPolicy::Space;
-    Analysis analysis("enum Mode { First=  // note\n 1 }; "
-        "int count=  // control\n 1;", policies);
+    Analysis analysis(
+        "enum Mode { First=  // note\n 1 }; " "int count=  // control\n 1;",
+        policies);
     for (const auto comment : {"// note", "// control"}) {
         const auto gap = analysis.Before(comment);
         EXPECT_EQ(
@@ -312,10 +337,8 @@ TEST(SyntaxSpacing, TrailingCommentPolicyOverridesAssignmentGap)
         EXPECT_EQ(analysis.Safety.Gaps()[gap].Reasons, ProtectionReason::None);
         EXPECT_FALSE(analysis.Safety.Gaps()[gap].Preserve);
         EXPECT_TRUE(analysis.Safety.CanReplaceGap(gap, " "));
-        EXPECT_FALSE(analysis.Spacing.SpacePreference(
-            gap,
-            GapContext::Rebuilt,
-            analysis.Safety));
+        EXPECT_FALSE(analysis.Spacing
+            .SpacePreference(gap, GapContext::Rebuilt, analysis.Safety));
     }
 }
 
@@ -328,17 +351,16 @@ TEST(SyntaxSpacing, SpecificAndEmptyRulesOverrideGeneralRulesEvenWhenPreserved)
     policies.EmptyFunctionCallArgumentsSpacing = GapPolicy::Preserve;
     policies.FunctionCallSpaceBeforeParameters = GapPolicy::Space;
     policies.LambdaCallSpaceBeforeArguments = GapPolicy::NoSpace;
-    Analysis analysis("void f(){int item; item++; call(  ); []{}();}",
+    Analysis analysis(
+        "void f(){int item; item++; call(  ); []{}();}",
         policies);
     auto declaration = analysis.Before(";");
     EXPECT_EQ(
         analysis.Spacing.Gaps()[declaration].Field,
         F::DeclarationSemicolonSpacing);
     EXPECT_EQ(
-        analysis.Spacing.SpacePreference(
-            declaration,
-            GapContext::Rebuilt,
-            analysis.Safety),
+        analysis.Spacing
+            .SpacePreference(declaration, GapContext::Rebuilt, analysis.Safety),
         false);
     auto statement = analysis.Before(";", 1);
     EXPECT_EQ(
@@ -349,10 +371,8 @@ TEST(SyntaxSpacing, SpecificAndEmptyRulesOverrideGeneralRulesEvenWhenPreserved)
     EXPECT_EQ(
         analysis.Spacing.Gaps()[empty].Field,
         F::EmptyFunctionCallArgumentsSpacing);
-    EXPECT_FALSE(analysis.Spacing.SpacePreference(
-        empty,
-        GapContext::Rebuilt,
-        analysis.Safety));
+    EXPECT_FALSE(analysis.Spacing
+        .SpacePreference(empty, GapContext::Rebuilt, analysis.Safety));
     auto lambdaCall = analysis.Before("(", 2);
     EXPECT_EQ(
         analysis.Spacing.Gaps()[lambdaCall].Field,
@@ -365,7 +385,8 @@ TEST(SyntaxSpacing, DoWhileOwnTerminatorIsNotAHeaderSeparator)
     policies.StatementSemicolonSpacing = GapPolicy::NoSpace;
     policies.DeclarationSemicolonSpacing = GapPolicy::Space;
     policies.LoopSemicolonSpacing = GapPolicy::Space;
-    Analysis analysis("void f(){do {step()  ;} while(flag)  ; "
+    Analysis analysis(
+        "void f(){do {step()  ;} while(flag)  ; "
         "do step()  ; while(flag)  ; for(int i=0; i<2; ++i){} }",
         policies);
     for (size_t occurrence : {1u, 3u}) {
@@ -373,24 +394,26 @@ TEST(SyntaxSpacing, DoWhileOwnTerminatorIsNotAHeaderSeparator)
         const auto& gap = analysis.Spacing.Gaps()[id];
         EXPECT_EQ(gap.Field, F::StatementSemicolonSpacing);
         ASSERT_NE(gap.Owner, NoRegion);
-        EXPECT_EQ(analysis.Safety.Regions()[gap.Owner].Kind, parser::NodeKind::DoWhileStatement);
+        EXPECT_EQ(
+            analysis.Safety.Regions()[gap.Owner].Kind,
+            parser::NodeKind::DoWhileStatement);
         EXPECT_EQ(gap.Category, C::Bodies);
-        EXPECT_EQ(analysis.Spacing.SpacePreference(
-            id,
-            GapContext::Rebuilt,
-            analysis.Safety), false);
+        EXPECT_EQ(
+            analysis.Spacing
+                .SpacePreference(id, GapContext::Rebuilt, analysis.Safety),
+            false);
         EXPECT_TRUE(analysis.Safety.CanReplaceGap(id, ""));
     }
     for (size_t occurrence : {0u, 2u}) {
-        const auto& gap = analysis.Spacing.Gaps()[
-            analysis.Before(";", occurrence)];
+        const auto& gap =
+            analysis.Spacing.Gaps()[analysis.Before(";", occurrence)];
         EXPECT_EQ(gap.Field, F::StatementSemicolonSpacing);
         ASSERT_NE(gap.Owner, NoRegion);
-        EXPECT_EQ(analysis.Safety.Regions()[gap.Owner].Kind, parser::NodeKind::ExpressionStatement);
+        EXPECT_EQ(
+            analysis.Safety.Regions()[gap.Owner].Kind,
+            parser::NodeKind::ExpressionStatement);
     }
-    EXPECT_EQ(
-        analysis.Spacing.Gaps()[analysis.Before(";", 4)].Field,
-        F::None);
+    EXPECT_EQ(analysis.Spacing.Gaps()[analysis.Before(";", 4)].Field, F::None);
     EXPECT_EQ(
         analysis.Spacing.Gaps()[analysis.Before("i", 1)].Field,
         F::LoopSemicolonSpacing);
@@ -406,11 +429,19 @@ TEST(SyntaxSpacing, BracedAssignmentKeepsItsOperatorGap)
         GapPolicies policies;
         policies.AssignmentOperatorSpacing = policy;
         policies.BraceInitializerSpacing = GapPolicy::NoSpace;
-        Analysis analysis("void f(){ value = {}; value = {one, two}; int named = {}; }", policies);
+        Analysis analysis(
+            "void f(){ value = {}; value = {one, two}; int named = {}; }",
+            policies);
         for (size_t occurrence = 1; occurrence <= 3; ++occurrence) {
             const auto open = analysis.Before("{", occurrence);
-            EXPECT_EQ(analysis.Spacing.Gaps()[open].Field, F::AssignmentOperatorSpacing);
-            EXPECT_EQ(analysis.Spacing.SpacePreference(open, GapContext::Rebuilt, analysis.Safety),
+            EXPECT_EQ(
+                analysis.Spacing.Gaps()[open].Field,
+                F::AssignmentOperatorSpacing);
+            EXPECT_EQ(
+                analysis.Spacing.SpacePreference(
+                    open,
+                    GapContext::Rebuilt,
+                    analysis.Safety),
                 policy == GapPolicy::Space);
         }
     }
@@ -420,43 +451,47 @@ TEST(SyntaxSpacing, CaptureAssignmentDoesNotOwnRawInitializerInternals)
 {
     GapPolicies policies;
     policies.SpaceAroundCaptureAssignment = GapPolicy::Space;
-    for (auto capture : {"[x=(a=1)]",
-        "[x=a=1]",
-        "[&x=(a=1)]",
-        "[...x=(a=1)]",
-        "[&...x=a=1]",
-        "[x /* bind */ = (a=1)]",
-    })
+    for (auto capture :
+        {
+            "[x=(a=1)]",
+            "[x=a=1]",
+            "[&x=(a=1)]",
+            "[...x=(a=1)]",
+            "[&...x=a=1]",
+            "[x /* bind */ = (a=1)]",
+        })
     {
-        const std::string source = std::string("void f(){int a; auto fn=") +
-            capture + "{};}";
+        const std::string source =
+            std::string("void f(){int a; auto fn=") + capture + "{};}";
         Analysis analysis(source, policies);
         const auto separator = analysis.Before("=", 1);
         const auto inner = analysis.Before("=", 2);
         const auto& own = analysis.Spacing.Gaps()[separator];
         ASSERT_NE(own.Owner, NoRegion) << capture;
-        EXPECT_EQ(analysis.Safety.Regions()[own.Owner].Kind, parser::NodeKind::LambdaCaptureList);
+        EXPECT_EQ(
+            analysis.Safety.Regions()[own.Owner].Kind,
+            parser::NodeKind::LambdaCaptureList);
         for (auto id : {separator, separator + 1}) {
             EXPECT_EQ(
                 analysis.Spacing.Gaps()[id].Field,
                 F::SpaceAroundCaptureAssignment) << capture;
-            EXPECT_EQ(analysis.Spacing.SpacePreference(
-                id,
-                GapContext::Rebuilt,
-                analysis.Safety), true) << capture;
+            EXPECT_EQ(
+                analysis.Spacing
+                    .SpacePreference(id, GapContext::Rebuilt, analysis.Safety),
+                true) << capture;
         }
         for (auto id : {inner, inner + 1}) {
             const auto& gap = analysis.Spacing.Gaps()[id];
             EXPECT_EQ(gap.Field, F::None) << capture;
             EXPECT_EQ(gap.Category, C::None) << capture;
             EXPECT_NE(gap.Owner, own.Owner) << capture;
-            EXPECT_NE(static_cast<uint8_t>(gap.Constraint) &
-                static_cast<uint8_t>(SpacingConstraint::UncertainSyntax), 0)
+            EXPECT_NE(
+                static_cast<uint8_t>(gap.Constraint) &
+                static_cast<uint8_t>(SpacingConstraint::UncertainSyntax),
+                0) << capture;
+            EXPECT_FALSE(analysis.Spacing
+                .SpacePreference(id, GapContext::Rebuilt, analysis.Safety))
                 << capture;
-            EXPECT_FALSE(analysis.Spacing.SpacePreference(
-                id,
-                GapContext::Rebuilt,
-                analysis.Safety)) << capture;
         }
     }
     Analysis defaults("void f(){auto fn=[=]{};}", policies);
@@ -464,13 +499,12 @@ TEST(SyntaxSpacing, CaptureAssignmentDoesNotOwnRawInitializerInternals)
         EXPECT_NE(
             defaults.Spacing.Gaps()[id].Field,
             F::SpaceAroundCaptureAssignment);
-        EXPECT_FALSE(defaults.Spacing.SpacePreference(
-            id,
-            GapContext::Rebuilt,
-            defaults.Safety));
+        EXPECT_FALSE(defaults.Spacing
+            .SpacePreference(id, GapContext::Rebuilt, defaults.Safety));
     }
     for (auto capture : {"[x(a=1)]", "[x{a=1}]"}) {
-        Analysis direct(std::string("void f(){auto fn=") + capture + "{};}",
+        Analysis direct(
+            std::string("void f(){auto fn=") + capture + "{};}",
             policies);
         EXPECT_EQ(direct.Spacing.Gaps()[direct.Before("=", 1)].Field, F::None);
         EXPECT_FALSE(direct.Spacing.SpacePreference(
@@ -478,7 +512,9 @@ TEST(SyntaxSpacing, CaptureAssignmentDoesNotOwnRawInitializerInternals)
             GapContext::Rebuilt,
             direct.Safety));
     }
-    Analysis simple("void f(){auto fn=[&a, values...]{};}", policies,
+    Analysis simple(
+        "void f(){auto fn=[&a, values...]{};}",
+        policies,
         PointerReferenceDeclaratorLocation::Left);
     EXPECT_NE(
         simple.Spacing.Gaps()[simple.Before("a")].Field,
@@ -507,10 +543,8 @@ TEST(SyntaxSpacing, GeneratedPoliciesObserveOwnerNotDescendantEdits)
     EXPECT_EQ(comma.Category, C::Calls);
     EXPECT_EQ(binary.Category, C::Expressions);
     EXPECT_NE(comma.Owner, binary.Owner);
-    EXPECT_FALSE(analysis.Spacing.SpacePreference(
-        commaAfter,
-        GapContext::Preserved,
-        analysis.Safety));
+    EXPECT_FALSE(analysis.Spacing
+        .SpacePreference(commaAfter, GapContext::Preserved, analysis.Safety));
     EXPECT_EQ(
         analysis.Spacing.SpacePreference(
             binaryBefore,
@@ -518,10 +552,8 @@ TEST(SyntaxSpacing, GeneratedPoliciesObserveOwnerNotDescendantEdits)
             analysis.Safety),
         false);
     EXPECT_EQ(
-        analysis.Spacing.SpacePreference(
-            commaAfter,
-            GapContext::Rebuilt,
-            analysis.Safety),
+        analysis.Spacing
+            .SpacePreference(commaAfter, GapContext::Rebuilt, analysis.Safety),
         true);
 }
 
@@ -529,23 +561,24 @@ TEST(SyntaxSpacing, TrailingDeclarationCommentsBelongToHeaderNotOuterBody)
 {
     GapPolicies policies;
     policies.TrailingCommentSpacing = GapPolicy::GeneratedSpace;
-    Analysis analysis("int root; // root\nvoid f(){int local; // local\n}",
+    Analysis analysis(
+        "int root; // root\nvoid f(){int local; // local\n}",
         policies);
     for (auto text : {"// root", "// local"}) {
         const auto id = analysis.Before(text);
         const auto& gap = analysis.Spacing.Gaps()[id];
         ASSERT_NE(gap.Owner, NoRegion);
         EXPECT_EQ(gap.Category, C::DeclarationHeaders);
-        EXPECT_TRUE(analysis.Safety.Regions()[gap.Owner].Kind == parser::NodeKind::Declaration ||
-            analysis.Safety.Regions()[gap.Owner].Kind == parser::NodeKind::DeclarationStatement);
-        EXPECT_FALSE(analysis.Spacing.SpacePreference(
-            id,
-            GapContext::Preserved,
-            analysis.Safety));
-        EXPECT_EQ(analysis.Spacing.SpacePreference(
-            id,
-            GapContext::Rebuilt,
-            analysis.Safety), true);
+        EXPECT_TRUE(analysis.Safety.Regions()[gap.Owner].Kind ==
+            parser::NodeKind::Declaration ||
+            analysis.Safety.Regions()[gap.Owner].Kind ==
+                parser::NodeKind::DeclarationStatement);
+        EXPECT_FALSE(analysis.Spacing
+            .SpacePreference(id, GapContext::Preserved, analysis.Safety));
+        EXPECT_EQ(
+            analysis.Spacing
+                .SpacePreference(id, GapContext::Rebuilt, analysis.Safety),
+            true);
     }
 }
 
@@ -565,16 +598,21 @@ TEST(SyntaxSpacing, CompleteSpecifierToDirectNamedDeclaratorFallback)
         EXPECT_TRUE(gap.FallbackSpace) << name;
         // This is a lowering fallback, not an explicit spacing demand.
         EXPECT_EQ(gap.Policy, GapPolicy::Preserve) << name;
-        EXPECT_EQ(analysis.Spacing.SpacePreference(
-            id, GapContext::Rebuilt, analysis.Safety), std::nullopt) << name;
+        EXPECT_EQ(
+            analysis.Spacing
+                .SpacePreference(id, GapContext::Rebuilt, analysis.Safety),
+            std::nullopt) << name;
     }
 
     Analysis qualified("template<class T> struct Box {}; "
         "Box<int> Owner<int>::method() const & {} "
-        "Box<int> Owner<int>::method(); "
-        "Box<int> space::method(){}");
-    for (const auto id : {qualified.Before("Owner"),
-        qualified.Before("Owner", 1), qualified.Before("space")})
+        "Box<int> Owner<int>::method(); " "Box<int> space::method(){}");
+    for (const auto id :
+        {
+            qualified.Before("Owner"),
+            qualified.Before("Owner", 1),
+            qualified.Before("space"),
+        })
     {
         const auto& gap = qualified.Spacing.Gaps()[id];
         ASSERT_NE(gap.Owner, NoRegion);
@@ -582,8 +620,10 @@ TEST(SyntaxSpacing, CompleteSpecifierToDirectNamedDeclaratorFallback)
         EXPECT_EQ(gap.Field, F::None);
         EXPECT_TRUE(gap.FallbackSpace);
         EXPECT_EQ(gap.Policy, GapPolicy::Preserve);
-        EXPECT_EQ(qualified.Spacing.SpacePreference(
-            id, GapContext::Rebuilt, qualified.Safety), std::nullopt);
+        EXPECT_EQ(
+            qualified.Spacing
+                .SpacePreference(id, GapContext::Rebuilt, qualified.Safety),
+            std::nullopt);
     }
 
     Analysis decltypeDefinition("decltype(value)  incomplete(){}");
@@ -594,8 +634,12 @@ TEST(SyntaxSpacing, CompleteSpecifierToDirectNamedDeclaratorFallback)
     EXPECT_EQ(gap.Field, F::None);
     EXPECT_TRUE(gap.FallbackSpace);
     EXPECT_EQ(gap.Policy, GapPolicy::Preserve);
-    EXPECT_EQ(decltypeDefinition.Spacing.SpacePreference(
-        id, GapContext::Rebuilt, decltypeDefinition.Safety), std::nullopt);
+    EXPECT_EQ(
+        decltypeDefinition.Spacing.SpacePreference(
+            id,
+            GapContext::Rebuilt,
+            decltypeDefinition.Safety),
+        std::nullopt);
 }
 
 TEST(SyntaxSpacing, DeclarationFallbackDoesNotGuessPunctuationBoundaries)
@@ -614,18 +658,24 @@ TEST(SyntaxSpacing, DeclarationFallbackDoesNotGuessPunctuationBoundaries)
     // declaration fallback; do not assert that those gaps have no fallback.
     for (const auto token : {"*", "&"}) {
         const auto id = analysis.Before(token);
-        EXPECT_EQ(analysis.Spacing.Gaps()[id].FallbackSpace,
+        EXPECT_EQ(
+            analysis.Spacing.Gaps()[id].FallbackSpace,
             analysis.Safety.Gaps()[id].Separation == GapSeparation::Required);
-        EXPECT_EQ(analysis.Spacing.SpacePreference(
-            id, GapContext::Rebuilt, analysis.Safety), std::nullopt);
+        EXPECT_EQ(
+            analysis.Spacing
+                .SpacePreference(id, GapContext::Rebuilt, analysis.Safety),
+            std::nullopt);
     }
-    EXPECT_EQ(analysis.Spacing.Gaps()[analysis.Before("b")].Category,
+    EXPECT_EQ(
+        analysis.Spacing.Gaps()[analysis.Before("b")].Category,
         C::Expressions);
-    EXPECT_NE(analysis.Spacing.Gaps()[analysis.Before("put")].Category,
+    EXPECT_NE(
+        analysis.Spacing.Gaps()[analysis.Before("put")].Category,
         C::DeclarationHeaders);
     // A constructor can inherit a body sequence fallback, not a return-type
     // boundary. Its owner category must remain independent of this rule.
-    EXPECT_NE(analysis.Spacing.Gaps()[analysis.Before("C", 1)].Category,
+    EXPECT_NE(
+        analysis.Spacing.Gaps()[analysis.Before("C", 1)].Category,
         C::DeclarationHeaders);
 }
 
@@ -635,16 +685,20 @@ TEST(SyntaxSpacing, PointerBindingAndNestedMemberOverrides)
     policies.NestedDeclaratorPointerSpacing = GapPolicy::Space;
     policies.MemberPointerDeclaratorSpacing = GapPolicy::Space;
     policies.NestedDeclaratorInteriorSpacing = GapPolicy::NoSpace;
-    for (auto binding : {PointerReferenceDeclaratorLocation::Left,
-        PointerReferenceDeclaratorLocation::Middle,
-        PointerReferenceDeclaratorLocation::Right,
-    })
+    for (auto binding :
+        {
+            PointerReferenceDeclaratorLocation::Left,
+            PointerReferenceDeclaratorLocation::Middle,
+            PointerReferenceDeclaratorLocation::Right,
+        })
     {
-        Analysis analysis("int *pointer; int &reference = value; "
+        Analysis analysis(
+            "int *pointer; int &reference = value; "
             "int (*function)(int); int Holder::*member; "
             "template<class... Items> void pack("
             "Items (*... callbacks)(int), Items Holder::*... members);",
-            policies, binding);
+            policies,
+            binding);
         const auto beforePointer = analysis.Before("*");
         const auto afterPointer = analysis.Before("pointer");
         EXPECT_EQ(
@@ -666,61 +720,76 @@ TEST(SyntaxSpacing, PointerBindingAndNestedMemberOverrides)
             analysis.Spacing.Gaps()[analysis.Before("member")].Field,
             F::MemberPointerDeclaratorSpacing);
         for (size_t pack = 1; pack <= 2; ++pack) {
-            EXPECT_EQ(analysis.Spacing.SpacePreference(
-                analysis.Before("...", pack),
-                GapContext::Rebuilt,
-                analysis.Safety), false);
+            EXPECT_EQ(
+                analysis.Spacing.SpacePreference(
+                    analysis.Before("...", pack),
+                    GapContext::Rebuilt,
+                    analysis.Safety),
+                false);
         }
     }
 }
 
 TEST(SyntaxSpacing, PreservedNestedPointerRuleOverridesScalarBinding)
 {
-    Analysis analysis("int (*  function)(int); int Holder::*  member;", {},
+    Analysis analysis(
+        "int (*  function)(int); int Holder::*  member;",
+        {},
         PointerReferenceDeclaratorLocation::Right);
     for (auto name : {"function", "member"}) {
         const auto id = analysis.Before(name);
         EXPECT_EQ(analysis.Safety.Original(id), "  ");
-        EXPECT_FALSE(analysis.Spacing.SpacePreference(
-            id,
-            GapContext::Rebuilt,
-            analysis.Safety));
+        EXPECT_FALSE(analysis.Spacing
+            .SpacePreference(id, GapContext::Rebuilt, analysis.Safety));
     }
 }
 
 TEST(SyntaxSpacing, PointerRunsAndSeparatedDeclaratorsKeepTheirOwnBinding)
 {
-    for (auto binding : {PointerReferenceDeclaratorLocation::Left,
-        PointerReferenceDeclaratorLocation::Middle,
-        PointerReferenceDeclaratorLocation::Right,
-    })
+    for (auto binding :
+        {
+            PointerReferenceDeclaratorLocation::Left,
+            PointerReferenceDeclaratorLocation::Middle,
+            PointerReferenceDeclaratorLocation::Right,
+        })
     {
-        Analysis analysis("int **first, **second; "
-            "int * const qualified = value; "
+        Analysis analysis(
+            "int **first, **second; " "int * const qualified = value; "
             "template<class... Items> void pack(Items*... pointers, "
-            "Items&... refs, Items&&... values);", {}, binding);
-        EXPECT_EQ(analysis.Spacing.SpacePreference(
-            analysis.Before("*", 1),
-            GapContext::Rebuilt,
-            analysis.Safety), false);
-        EXPECT_EQ(analysis.Spacing.SpacePreference(
-            analysis.Before("*", 3),
-            GapContext::Rebuilt,
-            analysis.Safety), false);
-        EXPECT_EQ(analysis.Spacing.SpacePreference(
-            analysis.Before("second"),
-            GapContext::Rebuilt,
-            analysis.Safety), binding ==
-                PointerReferenceDeclaratorLocation::Middle);
-        EXPECT_EQ(analysis.Spacing.SpacePreference(
-            analysis.Before("qualified"),
-            GapContext::Rebuilt,
-            analysis.Safety), std::nullopt);
-        for (size_t pack = 1; pack <= 3; ++pack) {
-            EXPECT_EQ(analysis.Spacing.SpacePreference(
-                analysis.Before("...", pack),
+            "Items&... refs, Items&&... values);",
+            {},
+            binding);
+        EXPECT_EQ(
+            analysis.Spacing.SpacePreference(
+                analysis.Before("*", 1),
                 GapContext::Rebuilt,
-                analysis.Safety), false);
+                analysis.Safety),
+            false);
+        EXPECT_EQ(
+            analysis.Spacing.SpacePreference(
+                analysis.Before("*", 3),
+                GapContext::Rebuilt,
+                analysis.Safety),
+            false);
+        EXPECT_EQ(
+            analysis.Spacing.SpacePreference(
+                analysis.Before("second"),
+                GapContext::Rebuilt,
+                analysis.Safety),
+            binding == PointerReferenceDeclaratorLocation::Middle);
+        EXPECT_EQ(
+            analysis.Spacing.SpacePreference(
+                analysis.Before("qualified"),
+                GapContext::Rebuilt,
+                analysis.Safety),
+            std::nullopt);
+        for (size_t pack = 1; pack <= 3; ++pack) {
+            EXPECT_EQ(
+                analysis.Spacing.SpacePreference(
+                    analysis.Before("...", pack),
+                    GapContext::Rebuilt,
+                    analysis.Safety),
+                false);
         }
     }
 }
@@ -766,25 +835,30 @@ TEST(SyntaxSpacing, JointPreferencesRetainExactTokenKindsAndSpellings)
         if (policy != GapPolicy::NoSpace) {
             continue;
         }
-        Analysis lexical("void f(){value = alpha and not beta; "
+        Analysis lexical(
+            "void f(){value = alpha and not beta; "
             "value = left + +right; // note\n"
-            "value = 2;}\nimport <pkg/sub.h>;\n#define ITEM 1\n", policies);
+            "value = 2;}\nimport <pkg/sub.h>;\n#define ITEM 1\n",
+            policies);
         for (const auto token : {"and", "not", "beta"}) {
-            EXPECT_EQ(lexical.Spacing.SpacePreference(
-                lexical.Before(token), GapContext::Rebuilt, lexical.Safety),
+            EXPECT_EQ(
+                lexical.Spacing.SpacePreference(
+                    lexical.Before(token),
+                    GapContext::Rebuilt,
+                    lexical.Safety),
                 true) << token;
         }
-        for (const auto context : {
-            GapContext::Preserved, GapContext::Rebuilt})
+        for (const auto context : {GapContext::Preserved, GapContext::Rebuilt})
         {
             SCOPED_TRACE(static_cast<int>(context));
             checkTokens(lexical, context);
         }
         std::array<parser::SourceRange, 1> ranges{{{9, 27}}};
-        Analysis protectedSource("void f(){value = alpha + beta;}", policies,
-            PointerReferenceDeclaratorLocation::Preserve, {
-                .ImmutableRanges = ranges,
-            });
+        Analysis protectedSource(
+            "void f(){value = alpha + beta;}",
+            policies,
+            PointerReferenceDeclaratorLocation::Preserve,
+            {.ImmutableRanges = ranges});
         EXPECT_FALSE(protectedSource.Spacing.SpacePreference(
             protectedSource.Before("+"),
             GapContext::Rebuilt,
@@ -796,33 +870,34 @@ TEST(SyntaxSpacing, HeaderCastNewAndAttributeBoundariesHaveDistinctOwners)
 {
     GapPolicies headerPolicies;
     headerPolicies.FunctionSuffixSpecifierSpacing = GapPolicy::NoSpace;
-    for (auto source : {"void f()try {} catch(...){}",
-        "void f() try {} catch(...){}",
-        "void f()\ntry {} catch(...){}",
-        "struct C {C()try : value(1){}catch(...){} int value;};",
-        "struct C {C() try : value(1){}catch(...){} int value;};",
-        "struct C {C()\ntry : value(1){}catch(...){} int value;};",
-        "void f() /* header */try {}catch(...){}",
-    })
+    for (auto source :
+        {
+            "void f()try {} catch(...){}",
+            "void f() try {} catch(...){}",
+            "void f()\ntry {} catch(...){}",
+            "struct C {C()try : value(1){}catch(...){} int value;};",
+            "struct C {C() try : value(1){}catch(...){} int value;};",
+            "struct C {C()\ntry : value(1){}catch(...){} int value;};",
+            "void f() /* header */try {}catch(...){}",
+        })
     {
         Analysis functionTry(source, headerPolicies);
         const auto id = functionTry.Before("try");
         const auto& gap = functionTry.Spacing.Gaps()[id];
         ASSERT_NE(gap.Owner, NoRegion) << source;
-        EXPECT_EQ(functionTry.Safety.Regions()[gap.Owner].Kind, parser::NodeKind::FunctionDefinition)
-            << source;
+        EXPECT_EQ(
+            functionTry.Safety.Regions()[gap.Owner].Kind,
+            parser::NodeKind::FunctionDefinition) << source;
         EXPECT_EQ(gap.Category, C::DeclarationHeaders) << source;
         EXPECT_EQ(gap.Field, F::None) << source;
         EXPECT_EQ(gap.Policy, GapPolicy::Preserve) << source;
         EXPECT_TRUE(gap.FallbackSpace) << source;
-        EXPECT_FALSE(functionTry.Spacing.SpacePreference(
-            id,
-            GapContext::Preserved,
-            functionTry.Safety)) << source;
-        EXPECT_FALSE(functionTry.Spacing.SpacePreference(
-            id,
-            GapContext::Rebuilt,
-            functionTry.Safety)) << source;
+        EXPECT_FALSE(functionTry.Spacing
+            .SpacePreference(id, GapContext::Preserved, functionTry.Safety))
+            << source;
+        EXPECT_FALSE(functionTry.Spacing
+            .SpacePreference(id, GapContext::Rebuilt, functionTry.Safety))
+            << source;
         EXPECT_TRUE(functionTry.Safety.CanReplaceGap(id, " ")) << source;
     }
     Analysis lineComment("void f() // header\ntry {}catch(...){}");
@@ -832,9 +907,12 @@ TEST(SyntaxSpacing, HeaderCastNewAndAttributeBoundariesHaveDistinctOwners)
     EXPECT_FALSE(lineComment.Safety.CanReplaceGap(afterComment, " "));
     SourceAnalysisOptions protectedOptions;
     protectedOptions.HonorClangFormatDirectives = true;
-    Analysis protectedTry("// clang-format off\n"
-        "void f()try {}catch(...){}\n// clang-format on\n", headerPolicies,
-        PointerReferenceDeclaratorLocation::Preserve, protectedOptions);
+    Analysis protectedTry(
+        "// clang-format off\n"
+        "void f()try {}catch(...){}\n// clang-format on\n",
+        headerPolicies,
+        PointerReferenceDeclaratorLocation::Preserve,
+        protectedOptions);
     const auto immutable = protectedTry.Before("try");
     EXPECT_TRUE(protectedTry.Safety.Gaps()[immutable].Preserve);
     EXPECT_FALSE(protectedTry.Safety.CanReplaceGap(immutable, " "));
@@ -842,14 +920,15 @@ TEST(SyntaxSpacing, HeaderCastNewAndAttributeBoundariesHaveDistinctOwners)
     const auto standaloneTry = standalone.Before("try");
     EXPECT_EQ(standalone.Spacing.Gaps()[standaloneTry].Category, C::Bodies);
     EXPECT_EQ(
-        standalone.Safety.Regions()[standalone.Spacing.Gaps()[standaloneTry].Owner].Kind,
+        standalone.Safety
+            .Regions()[standalone.Spacing.Gaps()[standaloneTry].Owner].Kind,
         parser::NodeKind::CompoundStatement);
     Analysis unconfirmed("void f()try;", headerPolicies);
     EXPECT_EQ(
         unconfirmed.Spacing.Gaps()[unconfirmed.Before("try")].Field,
         F::None);
-    EXPECT_FALSE(unconfirmed.Spacing.Gaps()[
-        unconfirmed.Before("try")].FallbackSpace);
+    EXPECT_FALSE(
+        unconfirmed.Spacing.Gaps()[unconfirmed.Before("try")].FallbackSpace);
 
     Analysis analysis("void f(){ if(int value = 1; value) {} "
         "for(int i = 0; i < 2; ++i) {} "
@@ -886,10 +965,8 @@ TEST(SyntaxSpacing, HeaderCastNewAndAttributeBoundariesHaveDistinctOwners)
             analysis.Tree.Kind(i) == analysis.Tree.Kind(i - 1))
         {
             EXPECT_EQ(analysis.Spacing.Gaps()[i].Field, F::None);
-            EXPECT_FALSE(analysis.Spacing.SpacePreference(
-                i,
-                GapContext::Rebuilt,
-                analysis.Safety));
+            EXPECT_FALSE(analysis.Spacing
+                .SpacePreference(i, GapContext::Rebuilt, analysis.Safety));
         }
     }
 }
@@ -903,8 +980,9 @@ TEST(SyntaxSpacing, ParenthesisInteriorsTakePrecedenceOverAttributeSpacing)
         C Category;
         bool Trailing = false;
     };
-    for (const auto& test : {
-        Case{"void f(){for([[tag]] const auto& token : tokens){}}",
+    for (const auto& test :
+        {
+            Case{"void f(){for([[tag]] const auto& token : tokens){}}",
             F::ControlBlockConditionSpacing, C::ControlHeaders},
         Case{"void f(){for([[tag]] int i = 0; i < 2; ++i){}}",
             F::ControlBlockConditionSpacing, C::ControlHeaders},
@@ -914,10 +992,16 @@ TEST(SyntaxSpacing, ParenthesisInteriorsTakePrecedenceOverAttributeSpacing)
             F::SpaceInsideFunctionParameters, C::Parameters, true},
         Case{"auto f = []([[tag]] int value) {};",
             F::SpaceInsideLambdaParameters, C::Parameters},
-    }) {
-        for (auto policy : {GapPolicy::Space, GapPolicy::NoSpace,
-            GapPolicy::GeneratedSpace, GapPolicy::GeneratedNoSpace,
-            GapPolicy::Preserve})
+        })
+    {
+        for (auto policy :
+            {
+                GapPolicy::Space,
+                GapPolicy::NoSpace,
+                GapPolicy::GeneratedSpace,
+                GapPolicy::GeneratedNoSpace,
+                GapPolicy::Preserve,
+            })
         {
             SCOPED_TRACE(test.Source);
             GapPolicies policies;
@@ -935,11 +1019,12 @@ TEST(SyntaxSpacing, ParenthesisInteriorsTakePrecedenceOverAttributeSpacing)
             EXPECT_EQ(gap.Field, test.Field);
             EXPECT_EQ(gap.Category, test.Category);
             EXPECT_EQ(gap.Policy, policy);
-            EXPECT_EQ(analysis.Spacing.Gaps()[analysis.Before("tag")].Field,
+            EXPECT_EQ(
+                analysis.Spacing.Gaps()[analysis.Before("tag")].Field,
                 F::AttributeInteriorSpacing);
             if (!test.Trailing) {
-                EXPECT_EQ(analysis.Spacing.Gaps()[
-                    analysis.Before("tag") + 3].Field,
+                EXPECT_EQ(
+                    analysis.Spacing.Gaps()[analysis.Before("tag") + 3].Field,
                     F::AttributeSpaceAfterSpecifier);
             }
         }
@@ -985,82 +1070,129 @@ TEST(SyntaxSpacing, MalformedPrefixesKeepOnlyIndependentlyProvenLocalGaps)
         "template<class... Ts> int n=sizeof... ( ); "
         "template<class... Us> int m=sizeof... (Us);";
     Analysis analysis(source, policies);
-    auto check = [&] (GapId id, F field, parser::NodeKind kind,
-        RegionStatus status) {
-        const auto& gap = analysis.Spacing.Gaps()[id];
-        EXPECT_EQ(gap.Field, field);
-        ASSERT_NE(gap.Owner, NoRegion);
-        EXPECT_EQ(analysis.Safety.Regions()[gap.Owner].Kind, kind);
-        bool found = false;
-        for (const auto& region : analysis.Safety.Regions()) {
-            if (region.Kind == kind &&
-                region.Tokens.Begin == analysis.Safety.Regions()[gap.Owner].Tokens.Begin &&
-                region.Tokens.End == analysis.Safety.Regions()[gap.Owner].Tokens.End)
-            {
-                EXPECT_EQ(region.Status, status);
-                found = true;
+    auto check =
+        [&] (GapId id, F field, parser::NodeKind kind, RegionStatus status) {
+            const auto& gap = analysis.Spacing.Gaps()[id];
+            EXPECT_EQ(gap.Field, field);
+            ASSERT_NE(gap.Owner, NoRegion);
+            EXPECT_EQ(analysis.Safety.Regions()[gap.Owner].Kind, kind);
+            bool found = false;
+            for (const auto& region : analysis.Safety.Regions()) {
+                if (region.Kind == kind &&
+                    region.Tokens.Begin ==
+                        analysis.Safety.Regions()[gap.Owner].Tokens.Begin &&
+                    region.Tokens.End ==
+                        analysis.Safety.Regions()[gap.Owner].Tokens.End)
+                {
+                    EXPECT_EQ(region.Status, status);
+                    found = true;
+                }
             }
-        }
-        EXPECT_TRUE(found);
-        EXPECT_TRUE(analysis.Safety.CanReplaceGap(id, ""));
-        EXPECT_EQ(analysis.Spacing.SpacePreference(
-            id, GapContext::Rebuilt, analysis.Safety), false);
-    };
-    check(analysis.Before("["), F::DeleteArraySpaceBeforeBrackets,
-        parser::NodeKind::DeleteArrayMarker, RegionStatus::Complete);
-    check(analysis.Before("[", 1), F::DeleteArraySpaceBeforeBrackets,
-        parser::NodeKind::DeleteArrayMarker, RegionStatus::Complete);
-    check(analysis.Before("pointer"), F::DeleteArraySpaceAfterBrackets,
-        parser::NodeKind::DeleteArrayMarker, RegionStatus::Complete);
-    check(analysis.Before("(", 2), F::NewInitializerSpaceBeforeParentheses,
-        parser::NodeKind::NewInitializer, RegionStatus::Complete);
-    check(analysis.Before("(", 3), F::SizeofPackSpaceBeforeParentheses,
-        parser::NodeKind::UnaryExpression, RegionStatus::Recovery);
-    check(analysis.Before("(", 4), F::SizeofPackSpaceBeforeParentheses,
-        parser::NodeKind::UnaryExpression, RegionStatus::Complete);
-    for (auto id : {analysis.Before(";"), analysis.Before("(", 1),
-        analysis.Before(")", 3)})
+            EXPECT_TRUE(found);
+            EXPECT_TRUE(analysis.Safety.CanReplaceGap(id, ""));
+            EXPECT_EQ(
+                analysis.Spacing
+                    .SpacePreference(id, GapContext::Rebuilt, analysis.Safety),
+                false);
+        };
+    check(
+        analysis.Before("["),
+        F::DeleteArraySpaceBeforeBrackets,
+        parser::NodeKind::DeleteArrayMarker,
+        RegionStatus::Complete);
+    check(
+        analysis.Before("[", 1),
+        F::DeleteArraySpaceBeforeBrackets,
+        parser::NodeKind::DeleteArrayMarker,
+        RegionStatus::Complete);
+    check(
+        analysis.Before("pointer"),
+        F::DeleteArraySpaceAfterBrackets,
+        parser::NodeKind::DeleteArrayMarker,
+        RegionStatus::Complete);
+    check(
+        analysis.Before("(", 2),
+        F::NewInitializerSpaceBeforeParentheses,
+        parser::NodeKind::NewInitializer,
+        RegionStatus::Complete);
+    check(
+        analysis.Before("(", 3),
+        F::SizeofPackSpaceBeforeParentheses,
+        parser::NodeKind::UnaryExpression,
+        RegionStatus::Recovery);
+    check(
+        analysis.Before("(", 4),
+        F::SizeofPackSpaceBeforeParentheses,
+        parser::NodeKind::UnaryExpression,
+        RegionStatus::Complete);
+    for (auto id :
+        {
+            analysis.Before(";"),
+            analysis.Before("(", 1),
+            analysis.Before(")", 3),
+        })
     {
         EXPECT_TRUE(analysis.Safety.Gaps()[id].Preserve);
         EXPECT_FALSE(analysis.Safety.CanReplaceGap(id, ""));
-        EXPECT_EQ(analysis.Spacing.SpacePreference(
-            id, GapContext::Rebuilt, analysis.Safety), std::nullopt);
+        EXPECT_EQ(
+            analysis.Spacing
+                .SpacePreference(id, GapContext::Rebuilt, analysis.Safety),
+            std::nullopt);
     }
-    EXPECT_NE(analysis.Spacing.Gaps()[analysis.Before(";")].Field,
+    EXPECT_NE(
+        analysis.Spacing.Gaps()[analysis.Before(";")].Field,
         F::DeleteArraySpaceAfterBrackets);
-    EXPECT_NE(analysis.Spacing.Gaps()[analysis.Before("(", 1)].Field,
+    EXPECT_NE(
+        analysis.Spacing.Gaps()[analysis.Before("(", 1)].Field,
         F::NewInitializerSpaceBeforeParentheses);
-    Analysis protectedPrefixes("// hit-fmt off\n" + source +
-        "\n// hit-fmt on\n", policies);
-    for (auto id : {protectedPrefixes.Before("["),
-        protectedPrefixes.Before("(", 3)})
+    Analysis protectedPrefixes(
+        "// hit-fmt off\n" + source + "\n// hit-fmt on\n",
+        policies);
+    for (auto id :
+        {protectedPrefixes.Before("["), protectedPrefixes.Before("(", 3)})
     {
         EXPECT_TRUE(protectedPrefixes.Safety.Gaps()[id].Preserve);
-        EXPECT_EQ(protectedPrefixes.Spacing.SpacePreference(
-            id, GapContext::Rebuilt, protectedPrefixes.Safety), std::nullopt);
+        EXPECT_EQ(
+            protectedPrefixes.Spacing.SpacePreference(
+                id,
+                GapContext::Rebuilt,
+                protectedPrefixes.Safety),
+            std::nullopt);
     }
 }
 
 TEST(SyntaxSpacing, RecoveredSizeofPackOperandDoesNotOwnGroupingInteriors)
 {
-    for (auto policy : {GapPolicy::Space, GapPolicy::NoSpace,
-        GapPolicy::GeneratedSpace, GapPolicy::GeneratedNoSpace})
+    for (auto policy :
+        {
+            GapPolicy::Space,
+            GapPolicy::NoSpace,
+            GapPolicy::GeneratedSpace,
+            GapPolicy::GeneratedNoSpace,
+        })
     {
         GapPolicies policies;
         policies.SizeofPackSpaceBeforeParentheses = GapPolicy::NoSpace;
         policies.GroupingInteriorSpacing = policy;
         for (auto operand : {"first, second", "first + second"}) {
-            Analysis analysis(std::string("void f(){auto n=sizeof... (") +
-                operand + ");}", policies);
+            Analysis analysis(
+                std::string("void f(){auto n=sizeof... (") + operand + ");}",
+                policies);
             const auto open = analysis.Before("(", 1);
             const auto close = analysis.Before(")", 1);
             const auto& prefix = analysis.Spacing.Gaps()[open];
             EXPECT_EQ(prefix.Field, F::SizeofPackSpaceBeforeParentheses);
             ASSERT_NE(prefix.Owner, NoRegion);
-            EXPECT_EQ(analysis.Safety.Regions()[prefix.Owner].Kind, parser::NodeKind::UnaryExpression);
+            EXPECT_EQ(
+                analysis.Safety.Regions()[prefix.Owner].Kind,
+                parser::NodeKind::UnaryExpression);
             EXPECT_TRUE(analysis.Safety.CanReplaceGap(open, ""));
-            EXPECT_EQ(analysis.Spacing.SpacePreference(
-                open, GapContext::Rebuilt, analysis.Safety), false);
+            EXPECT_EQ(
+                analysis.Spacing.SpacePreference(
+                    open,
+                    GapContext::Rebuilt,
+                    analysis.Safety),
+                false);
             // The empty closer gap sits at the recovery range's exclusive
             // end. It permits insertion lexically, but lacks syntax authority.
             EXPECT_TRUE(analysis.Safety.Original(close).empty());
@@ -1070,13 +1202,20 @@ TEST(SyntaxSpacing, RecoveredSizeofPackOperandDoesNotOwnGroupingInteriors)
                 EXPECT_EQ(gap.Field, F::None);
                 EXPECT_EQ(gap.Category, C::None);
                 ASSERT_NE(gap.Owner, NoRegion);
-                EXPECT_EQ(analysis.Safety.Regions()[gap.Owner].Kind,
+                EXPECT_EQ(
+                    analysis.Safety.Regions()[gap.Owner].Kind,
                     parser::NodeKind::ParenthesizedExpression);
-                EXPECT_NE(static_cast<uint8_t>(gap.Constraint) &
-                    static_cast<uint8_t>(SpacingConstraint::UncertainSyntax), 0);
-                for (auto context : {GapContext::Preserved, GapContext::Rebuilt}) {
-                    EXPECT_EQ(analysis.Spacing.SpacePreference(
-                        id, context, analysis.Safety), std::nullopt);
+                EXPECT_NE(
+                    static_cast<uint8_t>(gap.Constraint) &
+                    static_cast<uint8_t>(SpacingConstraint::UncertainSyntax),
+                    0);
+                for (auto context :
+                    {GapContext::Preserved, GapContext::Rebuilt})
+                {
+                    EXPECT_EQ(
+                        analysis.Spacing
+                            .SpacePreference(id, context, analysis.Safety),
+                        std::nullopt);
                 }
             }
             bool recoveredOperand = false;
@@ -1087,14 +1226,16 @@ TEST(SyntaxSpacing, RecoveredSizeofPackOperandDoesNotOwnGroupingInteriors)
                 {
                     EXPECT_EQ(region.Status, RegionStatus::Recovery);
                     ASSERT_NE(region.Parent, NoRegion);
-                    EXPECT_EQ(analysis.Safety.Regions()[region.Parent].Status,
+                    EXPECT_EQ(
+                        analysis.Safety.Regions()[region.Parent].Status,
                         RegionStatus::Recovery);
                     recoveredOperand = true;
                 }
                 if (region.Kind == parser::NodeKind::UnparsedSyntax &&
                     region.Tokens.End == close)
                 {
-                    EXPECT_EQ(region.Source.End,
+                    EXPECT_EQ(
+                        region.Source.End,
                         analysis.Safety.Gaps()[close].Source.Begin);
                     recoveredTokens = true;
                 }
@@ -1102,18 +1243,27 @@ TEST(SyntaxSpacing, RecoveredSizeofPackOperandDoesNotOwnGroupingInteriors)
             EXPECT_TRUE(recoveredOperand);
             EXPECT_TRUE(recoveredTokens);
         }
-        Analysis valid("void f(){auto n=sizeof... (Pack); "
-            "auto grouped=(first + second);}", policies);
-        for (auto id : {valid.Before("Pack"), valid.Before(")", 1),
-            valid.Before("first"), valid.Before(")", 2)})
+        Analysis valid(
+            "void f(){auto n=sizeof... (Pack); "
+            "auto grouped=(first + second);}",
+            policies);
+        for (auto id :
+            {
+                valid.Before("Pack"),
+                valid.Before(")", 1),
+                valid.Before("first"),
+                valid.Before(")", 2),
+            })
         {
             const auto& gap = valid.Spacing.Gaps()[id];
             EXPECT_EQ(gap.Field, F::GroupingInteriorSpacing);
             ASSERT_NE(gap.Owner, NoRegion);
-            EXPECT_EQ(valid.Safety.Regions()[gap.Owner].Kind,
+            EXPECT_EQ(
+                valid.Safety.Regions()[gap.Owner].Kind,
                 parser::NodeKind::ParenthesizedExpression);
-            EXPECT_EQ(valid.Spacing.SpacePreference(
-                id, GapContext::Rebuilt, valid.Safety),
+            EXPECT_EQ(
+                valid.Spacing
+                    .SpacePreference(id, GapContext::Rebuilt, valid.Safety),
                 GapUsesSpace(policy, GapContext::Rebuilt));
         }
     }
@@ -1124,29 +1274,32 @@ TEST(SyntaxSpacing, NewArrayRulesDoNotLeakIntoSizesOrUnconfirmedTypes)
     GapPolicies policies;
     policies.NewArraySpaceBeforeBrackets = GapPolicy::Space;
     policies.SubscriptOperatorSpacing = GapPolicy::Space;
-    Analysis analysis("void f(){ auto p = new int[values[0]]; "
-        "auto q = new decltype(values[0])[2][3]; }", policies);
+    Analysis analysis(
+        "void f(){ auto p = new int[values[0]]; "
+        "auto q = new decltype(values[0])[2][3]; }",
+        policies);
     EXPECT_EQ(
         analysis.Spacing.Gaps()[analysis.Before("[", 0)].Field,
         F::NewArraySpaceBeforeBrackets);
     EXPECT_EQ(analysis.Spacing.Gaps()[analysis.Before("[", 1)].Field, F::None);
     // The parser leaves a one-token decltype NewTypeId and calls its operand a
     // NewInitializer, without recording recovery. That type is not confirmed.
-    for (auto index : {analysis.Before("[", 2),
-        analysis.Before("[", 3),
-        analysis.Before("[", 4),
-    })
+    for (auto index :
+        {
+            analysis.Before("[", 2),
+            analysis.Before("[", 3),
+            analysis.Before("[", 4),
+        })
     {
         EXPECT_NE(
             analysis.Spacing.Gaps()[index].Field,
             F::NewArraySpaceBeforeBrackets);
-        EXPECT_NE(static_cast<uint8_t>(
-            analysis.Spacing.Gaps()[index].Constraint) &
-            static_cast<uint8_t>(SpacingConstraint::UncertainSyntax), 0);
-        EXPECT_FALSE(analysis.Spacing.SpacePreference(
-            index,
-            GapContext::Rebuilt,
-            analysis.Safety));
+        EXPECT_NE(
+            static_cast<uint8_t>(analysis.Spacing.Gaps()[index].Constraint) &
+            static_cast<uint8_t>(SpacingConstraint::UncertainSyntax),
+            0);
+        EXPECT_FALSE(analysis.Spacing
+            .SpacePreference(index, GapContext::Rebuilt, analysis.Safety));
     }
 }
 
@@ -1185,20 +1338,20 @@ TEST(SyntaxSpacing, UncertainParenthesizedCalleeDoesNotBorrowCallPolicies)
     policies.FunctionCallSpaceBeforeParameters = GapPolicy::Space;
     policies.SpaceInsideCallArguments = GapPolicy::Space;
     policies.CommaSpaceAfter = GapPolicy::Space;
-    Analysis analysis("void f(){ (unknown)(first, second); "
-        "(*callback)(first); }", policies);
+    Analysis analysis(
+        "void f(){ (unknown)(first, second); " "(*callback)(first); }",
+        policies);
     const auto open = analysis.Before("(", 2);
     const auto first = analysis.Before("first");
     const auto second = analysis.Before("second");
     for (auto index : {open, first, second}) {
         EXPECT_EQ(analysis.Spacing.Gaps()[index].Category, C::None);
-        EXPECT_NE(static_cast<uint8_t>(
-            analysis.Spacing.Gaps()[index].Constraint) &
-            static_cast<uint8_t>(SpacingConstraint::UncertainSyntax), 0);
-        EXPECT_FALSE(analysis.Spacing.SpacePreference(
-            index,
-            GapContext::Rebuilt,
-            analysis.Safety));
+        EXPECT_NE(
+            static_cast<uint8_t>(analysis.Spacing.Gaps()[index].Constraint) &
+            static_cast<uint8_t>(SpacingConstraint::UncertainSyntax),
+            0);
+        EXPECT_FALSE(analysis.Spacing
+            .SpacePreference(index, GapContext::Rebuilt, analysis.Safety));
     }
     EXPECT_EQ(
         analysis.Spacing.Gaps()[analysis.Before("(", 4)].Field,
@@ -1215,88 +1368,99 @@ TEST(SyntaxSpacing, CompleteDirectSequenceBoundariesHaveFlatSpaceFallback)
         parser::NodeKind Owner;
         C Category;
     };
-    const Case cases[] = {
-        {"void f(){first();\nsecond();}",
-            "second",
-            0,
-            parser::NodeKind::CompoundStatement,
-            C::Bodies,
-        },
-        {"auto action=[]{first();\nsecond();};",
-            "second",
-            0,
-            parser::NodeKind::LambdaBody,
-            C::LambdaBodies,
-        },
-        {"struct S {int first;\nint second;};",
-            "int",
-            1,
-            parser::NodeKind::RecordDeclaration,
-            C::Bodies,
-        },
-        {"int first;\nint second;",
-            "int",
-            1,
-            parser::NodeKind::TranslationUnit,
-            C::Bodies,
-        },
-        {"void f(){{first();\nsecond();}}",
-            "second",
-            0,
-            parser::NodeKind::CompoundStatement,
-            C::Bodies,
-        },
-        {"namespace n {int first;\nint second;}",
-            "int",
-            1,
-            parser::NodeKind::NamespaceDeclaration,
-            C::Bodies,
-        },
-        {"export { int first; int second; }",
-            "int",
-            1,
-            parser::NodeKind::ExportDeclaration,
-            C::Bodies,
-        },
-        {"export /* scope */ { int first; /* note */ int second; }",
-            "/* note */",
-            0,
-            parser::NodeKind::ExportDeclaration,
-            C::Bodies,
-        },
-        {"export /* scope */ { int first; /* note */ int second; }",
-            "int",
-            1,
-            parser::NodeKind::ExportDeclaration,
-            C::Bodies,
-        },
-        {"void f(){first(); /* note */ second();}",
-            "/* note */",
-            0,
-            parser::NodeKind::CompoundStatement,
-            C::Bodies,
-        },
-        {"void f(){first(); /* note */ second();}",
-            "second",
-            0,
-            parser::NodeKind::CompoundStatement,
-            C::Bodies,
-        },
-    };
+    const Case cases[] =
+        {
+            {
+                "void f(){first();\nsecond();}",
+                "second",
+                0,
+                parser::NodeKind::CompoundStatement,
+                C::Bodies,
+            },
+            {
+                "auto action=[]{first();\nsecond();};",
+                "second",
+                0,
+                parser::NodeKind::LambdaBody,
+                C::LambdaBodies,
+            },
+            {
+                "struct S {int first;\nint second;};",
+                "int",
+                1,
+                parser::NodeKind::RecordDeclaration,
+                C::Bodies,
+            },
+            {
+                "int first;\nint second;",
+                "int",
+                1,
+                parser::NodeKind::TranslationUnit,
+                C::Bodies,
+            },
+            {
+                "void f(){{first();\nsecond();}}",
+                "second",
+                0,
+                parser::NodeKind::CompoundStatement,
+                C::Bodies,
+            },
+            {
+                "namespace n {int first;\nint second;}",
+                "int",
+                1,
+                parser::NodeKind::NamespaceDeclaration,
+                C::Bodies,
+            },
+            {
+                "export { int first; int second; }",
+                "int",
+                1,
+                parser::NodeKind::ExportDeclaration,
+                C::Bodies,
+            },
+            {
+                "export /* scope */ { int first; /* note */ int second; }",
+                "/* note */",
+                0,
+                parser::NodeKind::ExportDeclaration,
+                C::Bodies,
+            },
+            {
+                "export /* scope */ { int first; /* note */ int second; }",
+                "int",
+                1,
+                parser::NodeKind::ExportDeclaration,
+                C::Bodies,
+            },
+            {
+                "void f(){first(); /* note */ second();}",
+                "/* note */",
+                0,
+                parser::NodeKind::CompoundStatement,
+                C::Bodies,
+            },
+            {
+                "void f(){first(); /* note */ second();}",
+                "second",
+                0,
+                parser::NodeKind::CompoundStatement,
+                C::Bodies,
+            },
+        };
     for (const auto& item : cases) {
         Analysis analysis(item.Source);
         const auto id = analysis.Before(item.Right, item.Occurrence);
         const auto& gap = analysis.Spacing.Gaps()[id];
         ASSERT_NE(gap.Owner, NoRegion) << item.Source;
-        EXPECT_EQ(analysis.Safety.Regions()[gap.Owner].Kind, item.Owner) << item.Source;
+        EXPECT_EQ(analysis.Safety.Regions()[gap.Owner].Kind, item.Owner)
+            << item.Source;
         EXPECT_EQ(gap.Category, item.Category) << item.Source;
         EXPECT_TRUE(gap.FallbackSpace) << item.Source;
         // nullopt is no explicit preference, not permission to borrow bytes.
         // Canonical topology fallback before fitting is the consumer's job.
-        EXPECT_FALSE(analysis.Spacing.SpacePreference(
-            id,
-            GapContext::Rebuilt,
-            analysis.Safety));
+        EXPECT_FALSE(analysis.Spacing
+            .SpacePreference(id, GapContext::Rebuilt, analysis.Safety));
         EXPECT_TRUE(analysis.Safety.CanReplaceGap(id, " "));
     }
 }
@@ -1326,15 +1490,14 @@ TEST(SyntaxSpacing, SequenceAttachmentsRetainSpecificAndSafetyRules)
     EXPECT_FALSE(unbraced.Spacing.Gaps()[unbraced.Before("int")].FallbackSpace);
     Analysis exportedComment("export {int first; // note\nint second;}");
     const auto afterExportComment = exportedComment.Before("int", 1);
-    EXPECT_TRUE(exportedComment.Spacing.Gaps()[
-        afterExportComment].FallbackSpace);
+    EXPECT_TRUE(
+        exportedComment.Spacing.Gaps()[afterExportComment].FallbackSpace);
     EXPECT_FALSE(exportedComment.Safety.CanReplaceGap(afterExportComment, " "));
     Analysis exportedDirective("export {int first;\n#define X 1\nint second;}");
-    EXPECT_FALSE(exportedDirective.Spacing.Gaps()[
-        exportedDirective.Before("int", 1)].FallbackSpace);
-    EXPECT_FALSE(exportedDirective.Safety.CanReplaceGap(
-        exportedDirective.Before("int", 1),
-        " "));
+    EXPECT_FALSE(exportedDirective.Spacing
+        .Gaps()[exportedDirective.Before("int", 1)].FallbackSpace);
+    EXPECT_FALSE(exportedDirective.Safety
+        .CanReplaceGap(exportedDirective.Before("int", 1), " "));
     Analysis parameters("export void f(int first, int second);");
     EXPECT_EQ(
         parameters.Spacing.Gaps()[parameters.Before("int", 1)].Field,
@@ -1363,8 +1526,8 @@ TEST(SyntaxSpacing, SequenceAttachmentsRetainSpecificAndSafetyRules)
         GapContext::Rebuilt,
         recovery.Safety));
 
-    Analysis label("void f(){label:\nfirst();} "
-        "struct S {public:\nint value;};");
+    Analysis label(
+        "void f(){label:\nfirst();} " "struct S {public:\nint value;};");
     EXPECT_TRUE(label.Spacing.Gaps()[label.Before("first")].FallbackSpace);
     EXPECT_EQ(
         label.Spacing.Gaps()[label.Before("first")].Field,
@@ -1374,8 +1537,8 @@ TEST(SyntaxSpacing, SequenceAttachmentsRetainSpecificAndSafetyRules)
         label.Spacing.Gaps()[label.Before("int")].Field,
         F::AccessModifierColonSpacing);
 
-    Analysis headers("void f(){for(int i=0; i<2; ++i){} "
-        "invoke(first, second);}");
+    Analysis headers(
+        "void f(){for(int i=0; i<2; ++i){} " "invoke(first, second);}");
     EXPECT_EQ(
         headers.Spacing.Gaps()[headers.Before("i", 1)].Field,
         F::LoopSemicolonSpacing);
@@ -1415,10 +1578,8 @@ TEST(SyntaxSpacing, ArenaStorageScalesWithGapsNotOptionsOrNodeWidth)
         EXPECT_LT(scratch.Bytes, 4096u);
         const auto calls = file.Calls + scratch.Calls;
         for (GapId i = 0; i < analysis.Tree.TokenCount(); ++i) {
-            (void)spacing.SpacePreference(
-                i,
-                GapContext::Rebuilt,
-                analysis.Safety);
+            (void)spacing
+                .SpacePreference(i, GapContext::Rebuilt, analysis.Safety);
         }
         EXPECT_EQ(file.Calls + scratch.Calls, calls);
     }
@@ -1430,8 +1591,9 @@ TEST(SyntaxSpacing, IrrelevantContextsAndRecoveryStayUnnormalized)
     policies.TemplateTypeArgumentSpacing = GapPolicy::Space;
     policies.FunctionQualifierSpacing = GapPolicy::Space;
     policies.BinaryOperatorSpacing = GapPolicy::NoSpace;
-    Analysis analysis("void f(){ auto compare = first < second; "
-        "auto result = broken( ; }", policies);
+    Analysis analysis(
+        "void f(){ auto compare = first < second; " "auto result = broken( ; }",
+        policies);
     EXPECT_NE(
         analysis.Spacing.Gaps()[analysis.Before("<")].Field,
         F::TemplateTypeArgumentSpacing);
@@ -1444,10 +1606,8 @@ TEST(SyntaxSpacing, IrrelevantContextsAndRecoveryStayUnnormalized)
             analysis.Spacing.Gaps()[i].Field,
             F::FunctionQualifierSpacing);
         if (analysis.Safety.Gaps()[i].Preserve) {
-            EXPECT_FALSE(analysis.Spacing.SpacePreference(
-                i,
-                GapContext::Rebuilt,
-                analysis.Safety));
+            EXPECT_FALSE(analysis.Spacing
+                .SpacePreference(i, GapContext::Rebuilt, analysis.Safety));
         }
     }
 }
@@ -1455,11 +1615,13 @@ TEST(SyntaxSpacing, IrrelevantContextsAndRecoveryStayUnnormalized)
 } // namespace
 
 namespace {
+
 TEST(SyntaxSpacing, TrailingCommentSpacesUsesActualNamespaceOwnersAndScalarSafety)
 {
-    const std::string source = "namespace Outer {\nnamespace Inner {\nint local;\n} \t// arbitrary\n"
-        "} \t// arbitrary\nint item; \t// namespace Outer\n"
-        "void task(){} \t// namespace task\nint quotient=8 / \t// divisor\n2;\n";
+    const std::string source =
+        "namespace Outer {\nnamespace Inner {\nint local;\n} \t// arbitrary\n"
+            "} \t// arbitrary\nint item; \t// namespace Outer\n"
+            "void task(){} \t// namespace task\nint quotient=8 / \t// divisor\n2;\n";
     Analysis legacy(source);
     GapPolicies policies;
     std::pmr::monotonic_buffer_resource file;
@@ -1485,14 +1647,23 @@ TEST(SyntaxSpacing, TrailingCommentSpacesUsesActualNamespaceOwnersAndScalarSafet
     ASSERT_EQ(spacing.Gaps().size(), legacy.Spacing.Gaps().size());
     for (size_t i = 0; i < spacing.Gaps().size(); ++i) {
         EXPECT_EQ(spacing.Gaps()[i].Owner, legacy.Spacing.Gaps()[i].Owner);
-        EXPECT_EQ(spacing.Gaps()[i].Category, legacy.Spacing.Gaps()[i].Category);
+        EXPECT_EQ(
+            spacing.Gaps()[i].Category,
+            legacy.Spacing.Gaps()[i].Category);
         EXPECT_EQ(spacing.Gaps()[i].Field, legacy.Spacing.Gaps()[i].Field);
-        EXPECT_EQ(spacing.Gaps()[i].Priority, legacy.Spacing.Gaps()[i].Priority);
-        EXPECT_EQ(spacing.Gaps()[i].Constraint, legacy.Spacing.Gaps()[i].Constraint);
+        EXPECT_EQ(
+            spacing.Gaps()[i].Priority,
+            legacy.Spacing.Gaps()[i].Priority);
+        EXPECT_EQ(
+            spacing.Gaps()[i].Constraint,
+            legacy.Spacing.Gaps()[i].Constraint);
     }
-    RecordProperty("syntax_gap_preference_bytes", int(sizeof(SyntaxGapPreference)));
+    RecordProperty(
+        "syntax_gap_preference_bytes",
+        int(sizeof(SyntaxGapPreference)));
     RecordProperty("syntax_spacing_bytes", int(sizeof(SyntaxSpacing)));
     RecordProperty("trailing_comment_option_bytes",
         int(sizeof(std::optional<TrailingCommentSpaceSetting>)));
 }
+
 }

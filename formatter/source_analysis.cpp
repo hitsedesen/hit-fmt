@@ -749,6 +749,11 @@ SourceAnalysis BuildSourceAnalysis(
             // delimiters.
             protect(begin, end, ProtectionReason::HeaderName);
         }
+        if (node.Kind == parser::NodeKind::MacroFunctionHeader) {
+            // The hint describes only the body grammar. Macro arguments can
+            // be stringified or token-pasted; preserve the complete header.
+            protect(begin, end, ProtectionReason::SensitiveMacro);
+        }
         if (recovery || ambiguous) {
             // Own the adjacent trivia too. Empty missing-token nodes still
             // fence the insertion point; parents report incomplete status.

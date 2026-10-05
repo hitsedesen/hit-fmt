@@ -356,6 +356,7 @@ public:
             switch (node.Kind) {
                 case NodeKind::FunctionDeclaration:
                 case NodeKind::FunctionDefinition:
+                case NodeKind::MacroFunctionDefinition:
                 case NodeKind::FunctionTryBlock:
                 case NodeKind::CompoundStatement:
                 case NodeKind::LambdaBody:
@@ -620,6 +621,7 @@ private:
                     });
             }
             entry.Definition = node.Kind == NodeKind::FunctionDefinition ||
+                node.Kind == NodeKind::MacroFunctionDefinition ||
                 node.Kind == NodeKind::FunctionTryBlock;
             if (node.Kind == NodeKind::RecordDeclaration ||
                 node.Kind == NodeKind::EnumDeclaration)
@@ -1446,6 +1448,7 @@ private:
         const auto& node = Region(Syntax_[id]);
         switch (node.Kind) {
             case NodeKind::FunctionDefinition:
+            case NodeKind::MacroFunctionDefinition:
             case NodeKind::FunctionTryBlock:
                 return Policies_.Braces.Function;
             case NodeKind::NamespaceDeclaration:
@@ -2045,7 +2048,11 @@ private:
                 safeHeader = false;
             }
         }
-        const bool canonical = safeHeader &&
+        const bool macroFunction =
+            node.Kind == NodeKind::MacroFunctionDefinition;
+        // A configured macro owns only the brace outside its opaque header.
+        // Gap safety still fences directives, disabled and excluded bytes.
+        const bool canonical = (safeHeader || macroFunction) &&
             (control
                 ? Policies_.ControlHeaders.Layout
                 : Policies_.DeclarationHeaders) == LayoutMode::Canonical;
@@ -2082,7 +2089,9 @@ private:
                         : Boundary::Conditional,
                 document::GapKind::Hard,
                 true);
-            ProjectHeaderGaps(id, node.Tokens.Begin, opening, group);
+            if (!macroFunction) {
+                ProjectHeaderGaps(id, node.Tokens.Begin, opening, group);
+            }
         }
         if (!canonical) {
             Own(
@@ -2989,6 +2998,7 @@ private:
             case NodeKind::Declaration:
             case NodeKind::FunctionDeclaration:
             case NodeKind::FunctionDefinition:
+            case NodeKind::MacroFunctionDefinition:
             case NodeKind::FunctionTryBlock:
             case NodeKind::NamespaceDeclaration:
             case NodeKind::RecordDeclaration:

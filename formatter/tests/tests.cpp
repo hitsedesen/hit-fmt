@@ -153,9 +153,13 @@ std::string FormatWithStyle(
     storage.append(util::SourcePaddingSize, '\0');
     util::PaddedSourceView padded{.Data = storage.data(),
         .Size = source.size()};
-    auto tree = parser::Parse(padded, [] (parser::ParseError) { });
-    const auto actual = formatter::Format(tree, style);
-    EXPECT_EQ(actual, formatter::Format(padded, style));
+    const formatter::PreparedFormat prepared(style);
+    auto tree = parser::Parse(
+        padded,
+        [] (parser::ParseError) {},
+        prepared.ParsingOptions());
+    const auto actual = formatter::Format(tree, prepared).Text;
+    EXPECT_EQ(actual, formatter::Format(padded, prepared).Text);
     return actual;
 }
 void ExpectFormattedGolden(
@@ -283,6 +287,11 @@ void ShareExpected(
 std::vector<FormatCase> FormatCases()
 {
     std::vector<FormatCase> cases;
+    AddCases(
+        cases,
+        std::filesystem::path(FORMATTER_TESTDATA_DIR) /
+        "../function-body-macros",
+        {"hinted", "unhinted"});
     AddCases(
         cases,
         std::filesystem::path(FORMATTER_TESTDATA_DIR) /
@@ -3013,15 +3022,21 @@ TEST_P(FormatTest, Golden)
     const auto& value = GetParam();
     const test::golden::Fixture fixture{value.Directory, value.Name};
     const auto config = value.Config.empty() ? value.Name : value.Config;
-    const auto style = value.Style ? *value.Style : formatter::LoadConfigFile(
-        fixture.Directory / (config + ".hit-fmt")).FormattingStyle;
+    const auto style = value.Style
+        ? *value.Style
+        : formatter::LoadConfigFile(fixture.Directory / (config + ".hit-fmt"))
+            .FormattingStyle;
     const auto input = fixture.Input(value.Input);
     if (value.Hunks.empty()) {
         const auto expected = value.Expected.empty()
             ? fixture.Named(".output.cpp")
             : fixture.Directory / value.Expected;
-        ExpectFormattedGolden(expected, input, style,
-            value.CheckOwningMaps, !value.Expected.empty());
+        ExpectFormattedGolden(
+            expected,
+            input,
+            style,
+            value.CheckOwningMaps,
+            !value.Expected.empty());
     } else {
         std::string storage(input);
         storage.append(util::SourcePaddingSize, '\0');
@@ -3029,7 +3044,10 @@ TEST_P(FormatTest, Golden)
             {.Data = storage.data(), .Size = input.size()},
             [] (parser::ParseError) { });
         fixture.Expect(formatter::FormatChanged(
-            tree, style, value.Hunks, value.Spillover));
+            tree,
+            style,
+            value.Hunks,
+            value.Spillover));
     }
 }
 INSTANTIATE_TEST_SUITE_P(
@@ -3056,13 +3074,13 @@ class ParameterNameTest
 { };
 TEST_P(ParameterNameTest, Golden)
 {
-    const auto directory = std::filesystem::path(FORMATTER_TESTDATA_DIR) /
-        "../parameter_names";
+    const auto directory =
+        std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../parameter_names";
     const auto input = ReadFile(directory / "input.cpp");
     const bool ytsaurus = GetParam() == "ytsaurus";
     const auto configPath = ytsaurus
         ? (directory / "../../../../hit-fmt/examples/ytsaurus.hit-fmt")
-              .lexically_normal()
+            .lexically_normal()
         : directory / (GetParam() + ".hit-fmt");
     const auto config = formatter::LoadConfigFile(configPath);
     std::string storage(input);
@@ -3071,9 +3089,7 @@ TEST_P(ParameterNameTest, Golden)
         {.Data = storage.data(), .Size = input.size()},
         [] (parser::ParseError) { });
     std::string actual;
-    for (const auto& diagnostic : formatter::CheckParameterNames(
-        tree,
-        config))
+    for (const auto& diagnostic : formatter::CheckParameterNames(tree, config))
     {
         actual += std::to_string(diagnostic.Position.Line) + ":" +
             std::to_string(diagnostic.Position.Column) + " [" +
@@ -3081,11 +3097,11 @@ TEST_P(ParameterNameTest, Golden)
             std::to_string(diagnostic.SignatureEndLine) + "]: " +
             diagnostic.Function + ", parameter #" +
             std::to_string(diagnostic.ParameterNumber) +
-            (diagnostic.AllowCommentedName ? " (comment allowed)" : "") +
-            "\n";
+            (diagnostic.AllowCommentedName ? " (comment allowed)" : "") + "\n";
     }
-    test::golden::ExpectGolden(directory /
-        (ytsaurus ? "enabled.expected" : GetParam() + ".expected"), actual);
+    test::golden::ExpectGolden(
+        directory / (ytsaurus ? "enabled.expected" : GetParam() + ".expected"),
+        actual);
 }
 INSTANTIATE_TEST_SUITE_P(
     Formatter,
@@ -3097,22 +3113,28 @@ TEST(Formatter, CallArgument_RejectsUnsupportedSyntaxHints)
 {
     const test::golden::Fixture fixture{
         std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../call-like-macro",
-        "selected"};
-    const auto style = formatter::LoadConfigFile(
-        fixture.Named(".hit-fmt")).FormattingStyle;
+        "selected",
+    };
+    const auto style =
+        formatter::LoadConfigFile(fixture.Named(".hit-fmt")).FormattingStyle;
     const auto input = fixture.Input();
     std::string storage(input);
     storage.append(util::SourcePaddingSize, '\0');
-    const util::PaddedSourceView source{.Data = storage.data(), .Size = input.size()};
+    const util::PaddedSourceView source{
+        .Data = storage.data(),
+        .Size = input.size(),
+    };
     const auto tree = parser::Parse(source, [] (parser::ParseError) { });
     for (bool parsed : {false, true}) {
         SCOPED_TRACE(parsed);
         try {
-            const auto output = parsed ? formatter::Format(tree, style)
-                                       : formatter::Format(source, style);
+            const auto output = parsed
+                ? formatter::Format(tree, style)
+                : formatter::Format(source, style);
             FAIL() << "unsupported syntax hints produced output: " << output;
         } catch (const std::invalid_argument& error) {
-            EXPECT_EQ(std::string_view(error.what()),
+            EXPECT_EQ(
+                std::string_view(error.what()),
                 "CallLikeMacroNames syntax hints are not yet supported by the public pipeline");
         }
     }
@@ -3125,7 +3147,8 @@ TEST(Formatter, CallArgument_RequiresOwnedBreaksAcrossArities)
     style.ColumnLimit = 100;
     const test::golden::Fixture fixture{
         std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../macro-nested-calls",
-        "configured"};
+        "configured",
+    };
     const auto input = fixture.Input();
     style.CallsBreak = formatter::BreakRequirement::IfNeeded;
     const auto adaptive = FormatWithStyle(input, style);
@@ -3153,14 +3176,10 @@ TEST(Formatter, CallArgument_RequiresOwnedBreaksAcrossArities)
 
 TEST(Formatter, ExpressionLayout_ChecksPipelineMismatchAndEmittedWidth)
 {
-    const auto input =
-        "int f() {\n"
+    const auto input = "int f() {\n"
         "    auto description = someVeryLongIdentifierName;\n"
-        "    auto x = left\n"
-        "        + right;\n"
-        "    return condition ?\n"
-        "        alphaValue : betaValue;\n"
-        "}\n";
+        "    auto x = left\n" "        + right;\n" "    return condition ?\n"
+        "        alphaValue : betaValue;\n" "}\n";
     std::string storage(input);
     const auto length = storage.size();
     storage.append(util::SourcePaddingSize, '\0');
@@ -3176,8 +3195,8 @@ TEST(Formatter, ExpressionLayout_ChecksPipelineMismatchAndEmittedWidth)
     style.BinaryOperatorSide = formatter::OperatorSide::Trailing;
     style.TernaryOperatorSide = formatter::OperatorSide::Leading;
     style.TernaryLayout = formatter::TernaryLayout::ThreePart;
-    const auto result = formatter::Format(tree, formatter::PreparedFormat(
-        style));
+    const auto result =
+        formatter::Format(tree, formatter::PreparedFormat(style));
     EXPECT_NE(result.Text, input);
     EXPECT_NE(result.Text.find("left +\n"), std::string::npos);
     EXPECT_NE(result.Text.find("\n        ? alphaValue\n"), std::string::npos);
@@ -3185,23 +3204,25 @@ TEST(Formatter, ExpressionLayout_ChecksPipelineMismatchAndEmittedWidth)
     // The selected layout fits: source overflow must not leak into diagnostics.
     EXPECT_TRUE(result.Diagnostics.empty());
     style.ExpressionsLayout = formatter::CategoryLayout::Preserve;
-    const auto preserved = formatter::Format(
-        tree, formatter::PreparedFormat(style));
+    const auto preserved =
+        formatter::Format(tree, formatter::PreparedFormat(style));
     EXPECT_EQ(preserved.Text, input);
     ASSERT_EQ(preserved.Diagnostics.size(), 1u);
     EXPECT_EQ(preserved.Diagnostics[0].Position.Line, 2u);
-    EXPECT_EQ(preserved.Diagnostics[0].Kind,
+    EXPECT_EQ(
+        preserved.Diagnostics[0].Kind,
         formatter::LayoutDiagnosticKind::LineWidth);
-    EXPECT_NE(preserved.Diagnostics[0].Message.find("exceeds ColumnLimit"),
+    EXPECT_NE(
+        preserved.Diagnostics[0].Message.find("exceeds ColumnLimit"),
         std::string::npos);
     style.WidthDiagnostics = formatter::WidthDiagnosticPolicy::Off;
-    const auto quiet = formatter::Format(tree, formatter::PreparedFormat(
-        style));
+    const auto quiet =
+        formatter::Format(tree, formatter::PreparedFormat(style));
     EXPECT_EQ(quiet.Text, input);
     EXPECT_TRUE(quiet.Diagnostics.empty());
     style.ExpressionsLayout = formatter::CategoryLayout::Canonical;
-    const auto mismatchOnly = formatter::Format(
-        tree, formatter::PreparedFormat(style));
+    const auto mismatchOnly =
+        formatter::Format(tree, formatter::PreparedFormat(style));
     EXPECT_EQ(mismatchOnly.Text, result.Text);
     EXPECT_TRUE(mismatchOnly.Diagnostics.empty());
 }
@@ -3226,8 +3247,8 @@ class LayoutDiagnosticTest
 TEST_P(LayoutDiagnosticTest, Golden)
 {
     const auto& value = GetParam();
-    const auto directory = std::filesystem::path(FORMATTER_TESTDATA_DIR) /
-        ".." / value.Directory;
+    const auto directory =
+        std::filesystem::path(FORMATTER_TESTDATA_DIR) / ".." / value.Directory;
     auto source = ReadFile(directory / value.Input);
     const auto size = source.size();
     source.append(util::SourcePaddingSize, '\0');
@@ -3235,24 +3256,22 @@ TEST_P(LayoutDiagnosticTest, Golden)
         {.Data = source.data(), .Size = size},
         [] (parser::ParseError) { });
     const auto config = value.Config.empty() ? value.Name : value.Config;
-    auto style = formatter::LoadConfigFile(
-        directory / (config + ".hit-fmt")).FormattingStyle;
+    auto style = formatter::LoadConfigFile(directory / (config + ".hit-fmt"))
+        .FormattingStyle;
     if (value.StrictLength) {
         style.WidthDiagnostics = formatter::WidthDiagnosticPolicy::Report;
     }
     // Public diagnostics describe emitted widths, not source-layout
     // feasibility.
     std::string actual;
-    const auto result = formatter::Format(tree, formatter::PreparedFormat(
-        style));
-    for (const auto& diagnostic : result.Diagnostics)
-    {
+    const auto result =
+        formatter::Format(tree, formatter::PreparedFormat(style));
+    for (const auto& diagnostic : result.Diagnostics) {
         actual += std::to_string(diagnostic.Position.Line) + ":" +
             std::to_string(diagnostic.Position.Column) + ": " +
             diagnostic.Message + "\n";
     }
-    test::golden::ExpectGolden(
-        directory / (value.Name + value.Suffix), actual);
+    test::golden::ExpectGolden(directory / (value.Name + value.Suffix), actual);
 }
 // Check the emitted text independently of the diagnostic golden. Public
 // formatting uses eight-column tab stops; CRLF is one physical terminator.
@@ -3305,8 +3324,8 @@ void ExpectEmittedWidthDiagnostics(
 TEST_P(LayoutDiagnosticTest, ReportsEmittedWidths)
 {
     const auto& value = GetParam();
-    const auto directory = std::filesystem::path(FORMATTER_TESTDATA_DIR) /
-        ".." / value.Directory;
+    const auto directory =
+        std::filesystem::path(FORMATTER_TESTDATA_DIR) / ".." / value.Directory;
     auto source = ReadFile(directory / value.Input);
     const auto size = source.size();
     source.append(util::SourcePaddingSize, '\0');
@@ -3314,11 +3333,13 @@ TEST_P(LayoutDiagnosticTest, ReportsEmittedWidths)
         {.Data = source.data(), .Size = size},
         [] (parser::ParseError) { });
     const auto config = value.Config.empty() ? value.Name : value.Config;
-    auto style = formatter::LoadConfigFile(
-        directory / (config + ".hit-fmt")).FormattingStyle;
-    if (value.StrictLength)
+    auto style = formatter::LoadConfigFile(directory / (config + ".hit-fmt"))
+        .FormattingStyle;
+    if (value.StrictLength) {
         style.WidthDiagnostics = formatter::WidthDiagnosticPolicy::Report;
-    const auto result = formatter::Format(tree, formatter::PreparedFormat(style));
+    }
+    const auto result =
+        formatter::Format(tree, formatter::PreparedFormat(style));
     ExpectEmittedWidthDiagnostics(result, style);
 }
 TEST(Formatter, WidthDiagnostics_CountsProtectedTabsAndMixedTerminators)
@@ -3334,14 +3355,17 @@ TEST(Formatter, WidthDiagnostics_CountsProtectedTabsAndMixedTerminators)
     style.ColumnLimit = 16;
     style.WidthDiagnostics = formatter::WidthDiagnosticPolicy::Report;
     style.TrailingWhitespace = formatter::TrailingWhitespace::Trim;
-    const auto result = formatter::Format(tree, formatter::PreparedFormat(style));
+    const auto result =
+        formatter::Format(tree, formatter::PreparedFormat(style));
     EXPECT_EQ(result.Text, input);
     ASSERT_EQ(result.Diagnostics.size(), 2u);
     EXPECT_EQ(result.Diagnostics[0].Position.Line, 2u);
-    EXPECT_EQ(result.Diagnostics[0].Message,
+    EXPECT_EQ(
+        result.Diagnostics[0].Message,
         "emitted line width 18 exceeds ColumnLimit 16");
     EXPECT_EQ(result.Diagnostics[1].Position.Line, 3u);
-    EXPECT_EQ(result.Diagnostics[1].Message,
+    EXPECT_EQ(
+        result.Diagnostics[1].Message,
         "emitted line width 22 exceeds ColumnLimit 16");
     ExpectEmittedWidthDiagnostics(result, style);
     EXPECT_EQ(FormatWithStyle(result.Text, style), result.Text);
@@ -3364,20 +3388,20 @@ INSTANTIATE_TEST_SUITE_P(Formatter, LayoutDiagnosticTest,
     });
 TEST(Formatter, ExpressionLayout_ReportsUnavoidableWidthWithoutReflowing)
 {
-    const auto directory = std::filesystem::path(FORMATTER_TESTDATA_DIR) /
-        "../line-length";
+    const auto directory =
+        std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../line-length";
     const auto input = ReadFile(directory / "input.cpp");
     auto source = input;
     source.append(util::SourcePaddingSize, '\0');
     const auto tree = parser::Parse(
         {.Data = source.data(), .Size = input.size()},
         [] (parser::ParseError) { });
-    auto style = formatter::LoadConfigFile(
-        directory / "soft.hit-fmt").FormattingStyle;
+    auto style =
+        formatter::LoadConfigFile(directory / "soft.hit-fmt").FormattingStyle;
     style.ExpressionsLayout = formatter::CategoryLayout::Preserve;
     style.WidthDiagnostics = formatter::WidthDiagnosticPolicy::Report;
-    const auto reported = formatter::Format(tree, formatter::PreparedFormat(
-        style));
+    const auto reported =
+        formatter::Format(tree, formatter::PreparedFormat(style));
     EXPECT_EQ(reported.Text, input);
     ASSERT_EQ(reported.Diagnostics.size(), 4u);
     for (const auto& diagnostic : reported.Diagnostics) {
@@ -3385,8 +3409,8 @@ TEST(Formatter, ExpressionLayout_ReportsUnavoidableWidthWithoutReflowing)
     }
     // Report includes unavoidable overflow, not just fixable layout failures.
     style.WidthDiagnostics = formatter::WidthDiagnosticPolicy::Off;
-    const auto quiet = formatter::Format(tree, formatter::PreparedFormat(
-        style));
+    const auto quiet =
+        formatter::Format(tree, formatter::PreparedFormat(style));
     EXPECT_EQ(quiet.Text, input);
     EXPECT_TRUE(quiet.Diagnostics.empty());
 }
@@ -3400,23 +3424,18 @@ TEST(Formatter, OperatorSpacing_PreservesUnknownCastOrBinaryOperator)
     style.ExpressionsBreak = formatter::BreakRequirement::Always;
     style.ColumnLimit = 120;
     const std::string source =
-        "void f(int a, int b) {\n"
-        "    auto address = (UnknownType) &a;\n"
-        "    auto pointer = (UnknownType)*b;\n"
-        "    auto bitwise = (a)& b;\n"
-        "    auto multiply = (a)* b;\n"
-        "    auto qualified = (NS::UnknownType) &a;\n"
-        "}\n";
+        "void f(int a, int b) {\n" "    auto address = (UnknownType) &a;\n"
+            "    auto pointer = (UnknownType)*b;\n"
+            "    auto bitwise = (a)& b;\n" "    auto multiply = (a)* b;\n"
+            "    auto qualified = (NS::UnknownType) &a;\n" "}\n";
     // Canonical Always cannot manufacture authority for ambiguous operators.
     ExpectUnchanged(source, style);
     // Certain expressions remain editable. Test their horizontal policies
     // without requiring canonical Always to retain their original topology.
     style.ExpressionsLayout = formatter::CategoryLayout::Preserve;
     const std::string certain =
-        "void f(int a, int b) {\n"
-        "    auto certain = (a + b) & b;\n"
-        "    auto knownCast = (int)&a;\n"
-        "}\n";
+        "void f(int a, int b) {\n" "    auto certain = (a + b) & b;\n"
+            "    auto knownCast = (int)&a;\n" "}\n";
     ExpectUnchanged(certain, style);
     const auto compact = std::string(certain).replace(
         certain.find("(a + b) & b"),
@@ -3431,8 +3450,8 @@ TEST(Formatter, OperatorSpacing_PreservesUnknownCastOrBinaryOperator)
 }
 TEST(Formatter, SpacingOptions_ProfileOverflowReportsWidthAndKeepsTokens)
 {
-    const auto directory = std::filesystem::path(FORMATTER_TESTDATA_DIR) /
-        "../spacing-options";
+    const auto directory =
+        std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../spacing-options";
     const auto input = ReadFile(directory / "profile-overflow.input.cpp");
     const auto config = formatter::LoadConfigFile(
         (directory / "../../../../hit-fmt/examples/ytsaurus.hit-fmt")
@@ -3442,18 +3461,24 @@ TEST(Formatter, SpacingOptions_ProfileOverflowReportsWidthAndKeepsTokens)
     const auto tree = parser::Parse(
         {.Data = storage.data(), .Size = input.size()},
         [] (parser::ParseError) { });
-    const auto result = formatter::Format(tree, formatter::PreparedFormat(config));
+    const auto result =
+        formatter::Format(tree, formatter::PreparedFormat(config));
     // Width is a soft limit, not a promise to lower unsupported declaration
     // internals. A retained overflowing static_assert must still be diagnosed.
     const auto staticAssert = result.Text.find("    static_assert(!");
     ASSERT_NE(staticAssert, std::string::npos);
-    const auto line = std::count(result.Text.begin(),
-        result.Text.begin() + staticAssert, '\n') + 1;
-    EXPECT_TRUE(std::ranges::any_of(result.Diagnostics, [&] (const auto& diagnostic) {
-        return diagnostic.Kind == formatter::LayoutDiagnosticKind::LineWidth &&
-            diagnostic.Position.Line == line &&
-            diagnostic.Position.Column == config.ColumnLimit + 1;
-    }));
+    const auto line = std::count(
+        result.Text.begin(),
+        result.Text.begin() + staticAssert,
+        '\n') + 1;
+    EXPECT_TRUE(std::ranges::any_of(
+        result.Diagnostics,
+        [&] (const auto& diagnostic) {
+            return diagnostic.Kind ==
+                formatter::LayoutDiagnosticKind::LineWidth &&
+                diagnostic.Position.Line == line &&
+                diagnostic.Position.Column == config.ColumnLimit + 1;
+        }));
     std::string output(result.Text);
     output.append(util::SourcePaddingSize, '\0');
     const auto tokens = parser::SyntaxTree::TokenizeOnly(
@@ -3472,13 +3497,14 @@ TEST_P(NamingTest, Golden)
 {
     const auto dir = std::filesystem::path(NAMING_TESTDATA_DIR);
     const auto name = GetParam();
-    const auto input = ReadFile(
-        dir / (name == "rules" ? "input.cpp" : "alternate.cpp"));
+    const auto input =
+        ReadFile(dir / (name == "rules" ? "input.cpp" : "alternate.cpp"));
     const auto config = formatter::LoadConfigFile(dir / (name + ".hit-fmt"));
     std::string storage = input;
     storage.append(util::SourcePaddingSize, '\0');
-    const auto tree = parser::Parse({.Data = storage.data(),
-        .Size = input.size()}, [] (parser::ParseError) { });
+    const auto tree = parser::Parse(
+        {.Data = storage.data(), .Size = input.size()},
+        [] (parser::ParseError) { });
     std::string actual;
     for (const auto& diagnostic : formatter::CheckNames(tree, config)) {
         actual += std::to_string(diagnostic.Position.Line) + ":" +
@@ -3496,13 +3522,14 @@ INSTANTIATE_TEST_SUITE_P(
     ConfigName);
 TEST(Formatter, Preserve_KeepsEmptyRecoveryAndBinarySource)
 {
-    for (const std::string source : {
-        std::string{},
+    for (const std::string source :
+        {
+            std::string{},
         std::string{" \t\r\n\r\n"},
         std::string{"#define STR(x) #x\r\nSTR(a+b);\r\n"},
         std::string{"int f(\n  /* unfinished"},
         std::string{"int x;\0int y;\n", 14},
-    })
+        })
     {
         ExpectUnchanged(source, formatter::Style{});
     }
@@ -3517,27 +3544,21 @@ TEST(Formatter, PreserveConfig_ParsesSettings)
         output << contents;
     };
     save("IndentWidth = 2\nColumnLimit = 40\n"
-         "ExpressionsLayout = Canonical\nExpressionsBreak = IfNeeded\n"
-         "BinaryOperatorSide = Trailing\nAssignmentOperatorSide = Trailing\n"
-         "StatementAttributeIndent = Block\n"
-         "AccessModifierIndentWidth = 1\nMemberIndentWidth = 3\n"
-         "BlockBodyIndentWidth = 4\nCaseLabelIndentWidth = 1\n"
-         "StatementAttributeIndentWidth = 2\nNamespaceCommentSpaces = 2\n"
-         "CommaSpaceBefore = NoSpace\nCommaSpaceAfter = Space\n"
-         "TernaryOperatorSide = Trailing\nTernaryLayout = ThreePart\n"
-         "CallsLayout = Canonical\nCallsPacking = Fill\n"
-         "CallsFirstItem = NextLine\nCallsAlignment = Delimiter\n"
-         "CallLineFirstStringNames = [\"YT_LOG_INFO\", \"YT_LOG_ERROR\"]\n"
-         "IndentedCallScopePairs = [\"OnBeginList:OnEndList\"]\n"
-         "Exclude = [ # list comment\n"
-         "  \"x]y\", # bracket in a quoted item\n"
-         "  \"(^|/)generated(/|$)\"\n"
-         "]\n"
-         "ClassNamePrefixes = [\n"
-         "  \"S\", # prefix comment\n"
-         "  \"C\"\n"
-         "]\n"
-         "IndentWidth = 3\n");
+        "ExpressionsLayout = Canonical\nExpressionsBreak = IfNeeded\n"
+        "BinaryOperatorSide = Trailing\nAssignmentOperatorSide = Trailing\n"
+        "StatementAttributeIndent = Block\n"
+        "AccessModifierIndentWidth = 1\nMemberIndentWidth = 3\n"
+        "BlockBodyIndentWidth = 4\nCaseLabelIndentWidth = 1\n"
+        "StatementAttributeIndentWidth = 2\nNamespaceCommentSpaces = 2\n"
+        "CommaSpaceBefore = NoSpace\nCommaSpaceAfter = Space\n"
+        "TernaryOperatorSide = Trailing\nTernaryLayout = ThreePart\n"
+        "CallsLayout = Canonical\nCallsPacking = Fill\n"
+        "CallsFirstItem = NextLine\nCallsAlignment = Delimiter\n"
+        "CallLineFirstStringNames = [\"YT_LOG_INFO\", \"YT_LOG_ERROR\"]\n"
+        "IndentedCallScopePairs = [\"OnBeginList:OnEndList\"]\n"
+        "Exclude = [ # list comment\n" "  \"x]y\", # bracket in a quoted item\n"
+        "  \"(^|/)generated(/|$)\"\n" "]\n" "ClassNamePrefixes = [\n"
+        "  \"S\", # prefix comment\n" "  \"C\"\n" "]\n" "IndentWidth = 3\n");
     const auto config = formatter::LoadConfigFile(path);
     const auto& style = config.FormattingStyle;
     EXPECT_EQ(style.IndentWidth, 3u);
@@ -3546,7 +3567,9 @@ TEST(Formatter, PreserveConfig_ParsesSettings)
     EXPECT_EQ(style.ExpressionsBreak, formatter::BreakRequirement::IfNeeded);
     EXPECT_EQ(style.BinaryOperatorSide, formatter::OperatorSide::Trailing);
     EXPECT_EQ(style.AssignmentOperatorSide, formatter::OperatorSide::Trailing);
-    EXPECT_EQ(style.StatementAttributeIndent, formatter::
+    EXPECT_EQ(
+        style.StatementAttributeIndent,
+        formatter::
         StatementAttributeIndent::Block);
     EXPECT_EQ(style.AccessModifierIndentWidth, 1u);
     EXPECT_EQ(style.MemberIndentWidth, 3u);
@@ -3561,7 +3584,9 @@ TEST(Formatter, PreserveConfig_ParsesSettings)
     EXPECT_EQ(style.CallsLayout, formatter::CategoryLayout::Canonical);
     EXPECT_EQ(style.CallsPacking, formatter::ListPacking::Fill);
     EXPECT_EQ(style.CallsFirstItem, formatter::FirstItemPlacement::NextLine);
-    EXPECT_EQ(style.CallsAlignment, formatter::ContinuationAlignment::
+    EXPECT_EQ(
+        style.CallsAlignment,
+        formatter::ContinuationAlignment::
         Delimiter);
     EXPECT_EQ(style.CallLineFirstStringNames,
         (std::vector<std::string>{"YT_LOG_INFO", "YT_LOG_ERROR"}));
@@ -3574,15 +3599,17 @@ TEST(Formatter, PreserveConfig_ParsesSettings)
     EXPECT_EQ(*config.Naming.Class.Prefixes,
         (std::vector<std::string>{"S", "C"}));
     save("ClassNameCase = Unchecked\nClassNamePrefixes = []\n"
-         "BaseListsContinuationOffset = 0\n"
-         "ConstructorListsContinuationOffset = 0\nShortNamespaceLines = 0\n");
+        "BaseListsContinuationOffset = 0\n"
+        "ConstructorListsContinuationOffset = 0\nShortNamespaceLines = 0\n");
     const auto disabled = formatter::LoadConfigFile(path);
     EXPECT_EQ(disabled.Naming.Class.Case, formatter::NameCase::Unchecked);
     EXPECT_FALSE(disabled.Naming.Class.Prefixes.has_value());
     const auto policies = formatter::CompilePolicies(disabled.FormattingStyle);
-    EXPECT_EQ(policies.BaseLists.Items.Indent.ContinuationOffset,
+    EXPECT_EQ(
+        policies.BaseLists.Items.Indent.ContinuationOffset,
         disabled.FormattingStyle.IndentWidth);
-    EXPECT_EQ(policies.ConstructorLists.Items.Indent.ContinuationOffset,
+    EXPECT_EQ(
+        policies.ConstructorLists.Items.Indent.ContinuationOffset,
         disabled.FormattingStyle.IndentWidth);
     EXPECT_EQ(disabled.FormattingStyle.ShortNamespaceLines, 0u);
     save("CallsLayout = Canonical\nCallsPacking = Fill\nCallsBreak = Always\n");
@@ -3590,9 +3617,11 @@ TEST(Formatter, PreserveConfig_ParsesSettings)
     EXPECT_EQ(alternate.CallsLayout, formatter::CategoryLayout::Canonical);
     EXPECT_EQ(alternate.CallsBreak, formatter::BreakRequirement::Always);
     save("ExpressionsLayout = Preserve\nExpressionsBreak = Always\n"
-         "TernaryOperatorSide = Leading\nTernaryLayout = Flexible\n");
+        "TernaryOperatorSide = Leading\nTernaryLayout = Flexible\n");
     const auto preserving = formatter::LoadConfigFile(path).FormattingStyle;
-    EXPECT_EQ(preserving.ExpressionsLayout, formatter::CategoryLayout::
+    EXPECT_EQ(
+        preserving.ExpressionsLayout,
+        formatter::CategoryLayout::
         Preserve);
     EXPECT_EQ(preserving.TernaryOperatorSide, formatter::OperatorSide::Leading);
     EXPECT_EQ(preserving.TernaryLayout, formatter::TernaryLayout::Flexible);
@@ -3601,4 +3630,5 @@ TEST(Formatter, PreserveConfig_ParsesSettings)
     EXPECT_EQ(preserved.Expressions.Break, formatter::BreakRequirement::Always);
     std::filesystem::remove(path);
 }
+
 } // namespace

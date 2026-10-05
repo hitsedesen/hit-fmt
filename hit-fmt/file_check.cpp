@@ -156,7 +156,10 @@ CheckedFile CheckFile(
     const PreparedFileConfiguration& configuration,
     std::string_view inputFilePath)
 {
-    auto tree = parser::Parse(source, [] (parser::ParseError) {});
+    auto tree = parser::Parse(
+        source,
+        [] (parser::ParseError) {},
+        configuration.Formatting.ParsingOptions());
     CheckedFile checked;
     checked.Formatting = formatter::Format(
         tree,
