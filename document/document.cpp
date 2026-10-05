@@ -26,21 +26,24 @@ std::uint32_t Offset(std::uint32_t base, std::int32_t offset)
 
 struct Measure
 {
-    std::uint32_t Width = 0;
     std::uint32_t Prefix = 0;
     bool Line = false;
     bool CanBreak = false;
     // ASCII bytes without tabs/newlines advance by their length. Leading
     // indentation still needs inspection; Unicode retains byte-width rules.
     bool Plain = true;
+
+    std::uint32_t Width() const
+    {
+        return Line ? Infinity : Prefix;
+    }
 };
 
-static_assert(sizeof(Measure) <= 12);
+static_assert(sizeof(Measure) <= 8);
 
 Measure Join(Measure a, Measure b)
 {
     return {
-        a.Line || b.Line ? Infinity : AddWidth(a.Width, b.Width),
         a.Line ? a.Prefix : AddWidth(a.Prefix, b.Prefix),
         a.Line || b.Line,
         a.CanBreak || b.CanBreak,
@@ -60,7 +63,6 @@ Measure MeasureText(std::string_view text, std::uint8_t tabWidth)
         if (c == '\n' || c == '\r') {
             result.Line = true;
             result.CanBreak = true;
-            result.Width = Infinity;
             result.Plain = false;
             // No suffix fact is consumed after the first physical boundary.
             return result;
@@ -69,8 +71,7 @@ Measure MeasureText(std::string_view text, std::uint8_t tabWidth)
                 static_cast<unsigned char>(c) < 0x80;
             // Conservative only for literal/source tabs: actual emission uses
             // tab stops. This summary never underestimates flat width.
-            result.Width = AddWidth(result.Width, c == '\t' ? tabWidth : 1);
-            result.Prefix = result.Width;
+            result.Prefix = AddWidth(result.Prefix, c == '\t' ? tabWidth : 1);
         }
     }
     return result;
@@ -82,7 +83,7 @@ Measure MeasureFlatGap(
     std::uint8_t tabWidth)
 {
     if (gap.Kind == GapKind::Hard) {
-        return {Infinity, 0, true, true};
+        return {0, true, true};
     }
     if (gap.FlatSourceBegin != InvalidId) {
         auto measured = MeasureText(
@@ -93,7 +94,7 @@ Measure MeasureFlatGap(
         measured.CanBreak = gap.Kind == GapKind::Soft;
         return measured;
     }
-    return {gap.Spaces, gap.Spaces, false, gap.Kind == GapKind::Soft};
+    return {gap.Spaces, false, gap.Kind == GapKind::Soft};
 }
 
 std::uint32_t SourceColumn(std::string_view text, std::uint8_t tabWidth)
@@ -1203,7 +1204,6 @@ Result Document::Render(
             broken = flat.Line || forced ? summary.Broken : flat;
             if (forced) {
                 flat = broken;
-                flat.Width = Infinity;
                 flat.Line = true;
                 guaranteedLine = true;
             }
@@ -1219,7 +1219,7 @@ Result Document::Render(
             for (auto p = node.Run.Begin; p < node.Run.End; ++p) {
                 const auto& part = RunParts_[p];
                 const auto measured = part.Type == RunKind::Spaces
-                    ? Measure{part.Spaces, part.Spaces, false, false}
+                    ? Measure{part.Spaces, false, false}
                     : MeasureText(
                         Source_
                             .substr(
@@ -1248,8 +1248,8 @@ Result Document::Render(
             if (node.Type == Kind::ConditionalText) {
                 summary.OwnedShapeChoice = summary.OwnedShapeChoice ||
                     FlatText(node) != BrokenText(node);
-                flat.Width = flat.Prefix =
-                    std::max(flat.Width, TextPayloads_[node.Payload].Detail);
+                flat.Prefix =
+                    std::max(flat.Prefix, TextPayloads_[node.Payload].Detail);
             }
             broken = node.Type == Kind::ConditionalText
                 ? MeasureText(BrokenText(node), policy.TabWidth)
@@ -1271,9 +1271,9 @@ Result Document::Render(
             // Reuse each flat whitespace measurement for fill and summaries.
             broken =
                 node.Owner != InvalidId && gaps.Broken.Kind == GapKind::Soft
-                ? Measure{Infinity, 0, true, true}
+                ? Measure{0, true, true}
                 : expandedFlat;
-            expandedGapWidth = expandedFlat.Width;
+            expandedGapWidth = expandedFlat.Width();
             if (node.Owner != InvalidId && gaps.Broken.Kind != GapKind::Flat) {
                 ownedBreak = static_cast<std::uint32_t>(i);
             }
@@ -1581,7 +1581,7 @@ Result Document::Render(
                 lines == frame.StartLine;
             const bool broken = mandatory ||
                 (!frame.Flat && entry.Flat.CanBreak &&
-                    !fits(AddWidth(entry.Flat.Width, tail)));
+                    !fits(AddWidth(entry.Flat.Width(), tail)));
             const bool keepOwnedFlat = broken && childLayoutDepth &&
                 groupEntry.ChildLayoutAllowed && i <= childLayoutEnd &&
                 frames.size() - childLayoutBase < childLayoutDepth;
@@ -2217,7 +2217,7 @@ Result Document::Render(
             groupCache[Group(node).Reference].OwnedLastBreak != InvalidId &&
             !frame.Flat && !entry.Flat.Line && entry.Flat.CanBreak &&
             !fits(AddWidth(
-                entry.Flat.Width,
+                entry.Flat.Width(),
                 groupTail(
                     groupCache[Group(node).Reference],
                     Group(node).BreakPenalty))))
