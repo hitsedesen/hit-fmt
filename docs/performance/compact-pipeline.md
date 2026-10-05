@@ -1,5 +1,9 @@
 # Compact pipeline measurements
 
+The [integrated runtime validation](runtime-completion.md) supersedes
+these timing conclusions. This report preserves the selection audit and
+initial implementation history.
+
 ## Scope and conclusions
 
 Baseline: `6d36496ba097337c7ca69e73654e3c1a32258985`, the freshly

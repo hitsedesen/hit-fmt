@@ -1,5 +1,8 @@
 # Runtime-focused follow-up
 
+The [integrated runtime validation](runtime-completion.md) supersedes
+these timing conclusions and resolves the fixed-input regressions below.
+
 This follow-up uses the pinned inputs, unchanged example configurations,
 Release settings, single worker, CPU affinity, and evidence contracts from
 [the initial report](compact-pipeline.md). Runtime, not allocation request
