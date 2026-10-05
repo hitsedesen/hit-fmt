@@ -1,12 +1,15 @@
 find_package(Threads REQUIRED)
 
-add_library(lib-file-check STATIC file_check.cpp options.cpp source_excerpt.cpp)
+add_library(lib-file-check STATIC
+    file_check.cpp
+    options.cpp
+    source_excerpt.cpp
+    config_template.cpp)
 target_link_libraries(lib-file-check PUBLIC lib-formatter)
 
 add_executable(hit-fmt
     main.cpp
     config_help.cpp
-    config_template.cpp
     version.cpp)
 target_link_libraries(hit-fmt
     lib-file-check
