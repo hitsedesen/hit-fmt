@@ -63,7 +63,8 @@ template<class T> void InspectConditions(int count)
         Use(value);
     }
     if (std::numeric_limits<ExternalType>::max() != count &&
-        HasCapacityForCurrentEndpoint()) {
+        HasCapacityForCurrentEndpoint())
+    {
         Use(count);
     }
 }

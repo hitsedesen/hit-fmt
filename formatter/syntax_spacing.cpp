@@ -1311,11 +1311,11 @@ public:
                 const auto close = Tree_.MatchingDelimiter(i);
                 if (close != NoToken && close < node.Tokens.End &&
                     close + 1 < Tree_.TokenCount() &&
-                    Tree_.Kind(close + 1) == TK::Comment && Tree_
-                        .TokenText(close + 1)
-                        .starts_with("//") && Tree_
-                            .WhitespaceBefore(close + 1)
-                            .find_first_not_of(" \t") == std::string_view::npos)
+                    Tree_.Kind(close + 1) == TK::Comment &&
+                    Tree_.TokenText(close + 1).starts_with("//") &&
+                    Tree_
+                        .WhitespaceBefore(close + 1)
+                        .find_first_not_of(" \t") == std::string_view::npos)
                 {
                     Gaps_[close + 1].NamespaceClosingComment = true;
                 }
@@ -1347,12 +1347,11 @@ public:
                     3);
             }
             KeywordAt(node, state, i);
-            if (kind == TK::Comment && i > 0 && Tree_
-                .TokenText(i)
-                .starts_with("//") && Tree_.Kind(i - 1) != TK::Comment &&
-                Tree_.Kind(i - 1) != TK::PreprocessingDirective && Tree_
-                    .WhitespaceBefore(i)
-                    .find('\n') == std::string_view::npos)
+            if (kind == TK::Comment && i > 0 &&
+                Tree_.TokenText(i).starts_with("//") &&
+                Tree_.Kind(i - 1) != TK::Comment &&
+                Tree_.Kind(i - 1) != TK::PreprocessingDirective &&
+                Tree_.WhitespaceBefore(i).find('\n') == std::string_view::npos)
             {
                 Mark(
                     i,
@@ -1924,10 +1923,7 @@ std::optional<bool> SyntaxSpacing::SpacePreference(
     GapContext ownerContext,
     const SourceAnalysis& safety) const
 {
-    if (gap >= Gaps_.size() || gap >= safety
-        .Gaps()
-        .size())
-    {
+    if (gap >= Gaps_.size() || gap >= safety.Gaps().size()) {
         return std::nullopt;
     }
     const auto& source = safety.Gaps()[gap];
@@ -1947,9 +1943,8 @@ std::optional<bool> SyntaxSpacing::SpacePreference(
         return std::nullopt;
     }
     auto preference = GapUsesSpace(Gaps_[gap].Policy, ownerContext);
-    if (preference && source.Separation == GapSeparation::Required && !safety
-        .Original(source)
-        .empty())
+    if (preference && source.Separation == GapSeparation::Required &&
+        !safety.Original(source).empty())
     {
         return true;
     }
@@ -1961,9 +1956,7 @@ std::optional<std::uint16_t> SyntaxSpacing::TrailingCommentCount(
     const SourceAnalysis& safety) const
 {
     if (!TrailingCommentSpaces_ || !TrailingCommentSpaces_->Count ||
-        gap >= Gaps_.size() || gap >= safety
-            .Gaps()
-            .size())
+        gap >= Gaps_.size() || gap >= safety.Gaps().size())
     {
         return std::nullopt;
     }
@@ -1980,9 +1973,8 @@ std::optional<std::uint16_t> SyntaxSpacing::TrailingCommentCount(
         return std::nullopt;
     }
     auto count = *TrailingCommentSpaces_->Count;
-    if (source.Separation == GapSeparation::Required && !safety
-        .Original(source)
-        .empty())
+    if (source.Separation == GapSeparation::Required &&
+        !safety.Original(source).empty())
     {
         count = std::max<std::size_t>(count, 1);
     }
@@ -2004,17 +1996,9 @@ SyntaxSpacing BuildSyntaxSpacing(
         throw std::invalid_argument(
             "TrailingCommentSpaces must be between 0 and 10000");
     }
-    if (safety
-        .Gaps()
-        .size() != static_cast<size_t>(tree.TokenCount()) + 1 || safety
-            .Source()
-            .data() != tree
-                .Source()
-                .data() || safety
-                    .Source()
-                    .size() != tree
-                        .Source()
-                        .size())
+    if (safety.Gaps().size() != static_cast<size_t>(tree.TokenCount()) + 1 ||
+        safety.Source().data() != tree.Source().data() ||
+        safety.Source().size() != tree.Source().size())
     {
         throw std::invalid_argument(
             "syntax spacing requires matching source analysis");

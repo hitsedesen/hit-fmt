@@ -786,9 +786,9 @@ TEST(Parser, DirectLambdaArgumentsHaveOneExpressionOwner)
             ASSERT_NE(conditional->FirstChild, nullptr);
             const auto* middle = conditional->FirstChild->NextSibling;
             ASSERT_NE(middle, nullptr);
-            if (middle->Kind == BinaryExpression && tree
-                .SourceText(middle->Tokens)
-                .find(',') != std::string_view::npos)
+            if (middle->Kind == BinaryExpression &&
+                tree.SourceText(middle->Tokens).find(',') !=
+                    std::string_view::npos)
             {
                 commaMiddle = true;
             }
@@ -2763,10 +2763,7 @@ TEST(Parser, RemovesNullStatementsWithoutReparsingSyntax)
     parser::TokenIndex removed = original.TokenCount();
     for (parser::TokenIndex i = 0; i < original.TokenCount(); ++i) {
         if (original.Kind(i) == tokenizer::TokenKind::Operator_Semicolon &&
-            original.Token(i).Text.Begin == input
-                .View()
-                .View()
-                .find("{;") + 1)
+            original.Token(i).Text.Begin == input.View().View().find("{;") + 1)
         {
             removed = i;
             break;
@@ -4246,9 +4243,10 @@ TEST(Parser, ParameterDefaultsKeepDelimitedComparisonBoundaries)
         while (!pending.empty()) {
             const auto* node = pending.back();
             pending.pop_back();
-            if (node->Kind == parser::NodeKind::ParameterList && tree
-                .SourceText(node->Tokens)
-                .starts_with("(" + std::string(firstText)))
+            if (node->Kind == parser::NodeKind::ParameterList &&
+                tree
+                    .SourceText(node->Tokens)
+                    .starts_with("(" + std::string(firstText)))
             {
                 parameters = node;
             }

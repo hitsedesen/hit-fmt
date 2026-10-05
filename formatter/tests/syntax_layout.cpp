@@ -79,8 +79,7 @@ Output Lower(
                 .substr(map.OutputBegin, map.OutputEnd - map.OutputBegin),
             tree.TokenText(id));
     }
-    for (parser::TokenIndex i = 0; i < tree.TokenCount(); ++i)
-    {
+    for (parser::TokenIndex i = 0; i < tree.TokenCount(); ++i) {
         if (!seen[i]) {
             EXPECT_EQ(tree.Kind(i), tokenizer::TokenKind::Operator_Comma);
             EXPECT_NE(
@@ -103,8 +102,7 @@ void ExpectSplitGapMap(
     std::string_view indent)
 {
     bool found = false;
-    for (size_t i = 0; i + 1 < output.Map.size(); ++i)
-    {
+    for (size_t i = 0; i + 1 < output.Map.size(); ++i) {
         const auto& generated = output.Map[i];
         const auto& borrowed = output.Map[i + 1];
         if (generated.Source.Identity != document::NoIdentity ||
@@ -226,8 +224,7 @@ TEST(SyntaxLayout, PartialCRLFIndentationMapsBorrowedTerminatorExactly)
     const auto output = Lower(input, Canonical(80), {}, scope);
     EXPECT_EQ(output.Text, "void f() {\r\n  work();\r\n}\r\n");
     bool split = false;
-    for (size_t i = 0; i + 1 < output.Map.size(); ++i)
-    {
+    for (size_t i = 0; i + 1 < output.Map.size(); ++i) {
         const auto& prefix = output.Map[i];
         const auto& indent = output.Map[i + 1];
         if (prefix.Source.Begin == begin - 2 && prefix.Source.End == begin) {
@@ -846,16 +843,28 @@ TEST(SyntaxLayout, ControlledArmProtectionAndTryHeaderPolicies)
 {
     auto style = Canonical(80);
     style.ControlBracePlacement = formatter::BracePlacement::NextLine;
-    const std::string protectedInput =
-        "void f(){ if (ready) { first(); } else { second(); } }\n";
-    const auto space = protectedInput.find("else") + 4;
-    const parser::SourceRange immutable[] =
-        {{uint32_t(space), uint32_t(space + 1)}};
-    formatter::SourceAnalysisOptions safety;
-    safety.ImmutableRanges = immutable;
-    const auto protectedArm = Lower(protectedInput, style, {}, safety).Text;
-    EXPECT_NE(protectedArm.find("if (ready)\n  {"), std::string::npos);
-    EXPECT_NE(protectedArm.find("else {"), std::string::npos) << protectedArm;
+    for (const auto condition : {"ready", "meta::matches<Tag>(entry)"}) {
+        const std::string header = "if (" + std::string(condition) + ")";
+        const std::string protectedInput =
+            "void f(){ " + header + " { first(); } else { second(); } }\n";
+        for (const bool protectOpening : {false, true}) {
+            const auto space = protectOpening
+                ? protectedInput.find(" { first")
+                : protectedInput.find("else") + 4;
+            const parser::SourceRange immutable[] =
+                {{uint32_t(space), uint32_t(space + 1)}};
+            formatter::SourceAnalysisOptions safety;
+            safety.ImmutableRanges = immutable;
+            const auto protectedArm =
+                Lower(protectedInput, style, {}, safety).Text;
+            EXPECT_NE(
+                protectedArm.find(header + (protectOpening ? " {" : "\n  {")),
+                std::string::npos) << protectedArm;
+            EXPECT_NE(
+                protectedArm.find(protectOpening ? "else\n  {" : "else {"),
+                std::string::npos) << protectedArm;
+        }
+    }
 
     // A statement try header follows control policy, not declaration policy.
     style.DeclarationHeadersLayout = formatter::CategoryLayout::Preserve;
@@ -1176,10 +1185,11 @@ TEST(SyntaxLayout, CRLFCommentOwnsCRAndGapStartsWithLF)
     EXPECT_EQ(output.Text.find("\r\r\n"), std::string::npos);
     EXPECT_NE(output.Text.find("// note\r\n"), std::string::npos);
     for (const auto& map : output.Map) {
-        if (map.Source.Identity != document::NoIdentity && map.Exact && output
-            .Text
-            .substr(map.OutputBegin, map.OutputEnd - map.OutputBegin)
-            .starts_with("//"))
+        if (map.Source.Identity != document::NoIdentity && map.Exact &&
+            output
+                .Text
+                .substr(map.OutputBegin, map.OutputEnd - map.OutputBegin)
+                .starts_with("//"))
         {
             EXPECT_EQ(
                 output.Text
@@ -3116,8 +3126,7 @@ TEST(SyntaxLayout, RecordHeadCommaPreferenceIsClassifiedAndLocallyAuthorized)
     ASSERT_EQ(record->Kind, parser::NodeKind::RecordDeclaration);
     size_t separators = 0;
     formatter::GapId afterComma = 0;
-    for (parser::TokenIndex i = 0; i < tree.TokenCount(); ++i)
-    {
+    for (parser::TokenIndex i = 0; i < tree.TokenCount(); ++i) {
         if (tree.Kind(i) != tokenizer::TokenKind::Operator_Comma) {
             continue;
         }

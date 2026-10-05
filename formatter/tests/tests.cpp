@@ -1653,6 +1653,40 @@ std::vector<FormatCase> FormatCases()
         profile,
     });
     addProfileCase("../control-header-clauses", "profile");
+    addProfileCase("../control-braces-after-wrap", "profile");
+    cases.back().CheckOwningMaps = true;
+    {
+        const auto directory = std::filesystem::path(FORMATTER_TESTDATA_DIR) /
+            "../control-braces-after-wrap";
+        const auto base = formatter::LoadConfigFile(
+            directory / (profile + ".hit-fmt")).FormattingStyle;
+        auto narrow = base;
+        narrow.ColumnLimit = 80;
+        narrow.AlwaysBreakChainRootNames.push_back("event");
+        cases.push_back({directory, "narrow", "profile.input.cpp"});
+        cases.back().Style = narrow;
+        cases.back().CheckOwningMaps = true;
+        auto leading = narrow;
+        leading.BinaryOperatorSide = formatter::OperatorSide::Leading;
+        cases.push_back({directory, "leading", "profile.input.cpp"});
+        cases.back().Style = leading;
+        cases.back().CheckOwningMaps = true;
+        auto attached = base;
+        attached.ControlBracePlacement = formatter::BracePlacement::Attached;
+        cases.push_back({directory, "attached", "profile.input.cpp"});
+        cases.back().Style = attached;
+        cases.back().CheckOwningMaps = true;
+        auto nextLine = base;
+        nextLine.ControlBracePlacement = formatter::BracePlacement::NextLine;
+        cases.push_back({directory, "next-line", "profile.input.cpp"});
+        cases.back().Style = nextLine;
+        cases.back().CheckOwningMaps = true;
+        auto preserved = base;
+        preserved.ControlHeadersLayout = formatter::CategoryLayout::Preserve;
+        cases.push_back({directory, "preserved", "profile.input.cpp"});
+        cases.back().Style = preserved;
+        cases.back().CheckOwningMaps = true;
+    }
     addProfileCase("../whitespace-sensitive-macros", "profile");
     addProfileCase("../call-reflow", "balanced-expressions");
     cases.push_back(
@@ -4382,8 +4416,7 @@ void ExpectEmittedWidthDiagnostics(
         ++line;
     }
     ASSERT_EQ(result.Diagnostics.size(), overflows.size());
-    for (size_t i = 0; i < overflows.size(); ++i)
-    {
+    for (size_t i = 0; i < overflows.size(); ++i) {
         SCOPED_TRACE(i);
         const auto& diagnostic = result.Diagnostics[i];
         EXPECT_EQ(diagnostic.Kind, formatter::LayoutDiagnosticKind::LineWidth);

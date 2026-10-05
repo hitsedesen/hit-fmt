@@ -112,13 +112,8 @@ void CheckAnalysisSource(
     const parser::SyntaxTree& tree,
     const SourceAnalysis& safety)
 {
-    if (safety
-        .Gaps()
-        .size() != static_cast<size_t>(tree.TokenCount()) + 1 || safety
-            .Source()
-            .data() != tree
-                .Source()
-                .data())
+    if (safety.Gaps().size() != static_cast<size_t>(tree.TokenCount()) + 1 ||
+        safety.Source().data() != tree.Source().data())
     {
         throw std::invalid_argument("analysis is not from original source");
     }
@@ -156,10 +151,7 @@ void Walk(
             RegionStatus status = RegionStatus::Complete;
             bool trailingLabel = false;
             if (safety) {
-                if (region >= safety
-                    ->Regions()
-                    .size())
-                {
+                if (region >= safety->Regions().size()) {
                     throw std::invalid_argument("analysis/tree mismatch");
                 }
                 trailingLabel =
@@ -224,10 +216,7 @@ void Walk(
             stack.pop_back();
         }
     }
-    if (safety && region != safety
-        ->Regions()
-        .size())
-    {
+    if (safety && region != safety->Regions().size()) {
         throw std::invalid_argument("analysis/tree mismatch");
     }
 }
@@ -292,17 +281,14 @@ bool ParseInclude(const parser::SyntaxTree& tree, TI token, Include& result)
     }
     bool angled = text.front() == '<';
     auto close = text.find(angled ? '>' : '"', 1);
-    if (close == std::string_view::npos || close == 1 || text
-        .substr(close + 1)
-        .find_first_not_of(" \t\r") != std::string_view::npos)
+    if (close == std::string_view::npos || close == 1 ||
+        text.substr(close + 1).find_first_not_of(" \t\r") !=
+            std::string_view::npos)
     {
         return false;
     }
     auto range = tree.Token(token).Text;
-    if (range.End >= tree
-        .Source()
-        .size() || tree.Source()[range.End] != '\n')
-    {
+    if (range.End >= tree.Source().size() || tree.Source()[range.End] != '\n') {
         return false; // Only complete line atoms may move, including their LF.
     }
     // Indentation belongs to the exact line atom too. These gap scans visit
@@ -366,19 +352,16 @@ void ScanIncludeGroups(
         Include next;
         while (end < tree.TokenCount() && ParseInclude(tree, end, next) &&
             (group.back().Atom.End == next.Atom.Begin ||
-                (grouping != IncludeGrouping::Preserve && IncludeGap(
-                    tree
-                        .Source()
-                        .substr(
-                            group.back().Atom.End,
-                            next.Atom.Begin - group.back().Atom.End),
-                    tree
-                        .TokenText(i)
-                        .ends_with('\r')))) && tree
-                            .TokenText(i)
-                            .ends_with('\r') == tree
-                                .TokenText(end)
-                                .ends_with('\r'))
+                (grouping != IncludeGrouping::Preserve &&
+                    IncludeGap(
+                        tree
+                            .Source()
+                            .substr(
+                                group.back().Atom.End,
+                                next.Atom.Begin - group.back().Atom.End),
+                        tree.TokenText(i).ends_with('\r')))) &&
+            tree.TokenText(i).ends_with('\r') ==
+                tree.TokenText(end).ends_with('\r'))
         {
             group.push_back(next);
             ++end;
@@ -1044,9 +1027,8 @@ StructuralPlan PlanStructuralEdits(
                 {
                     Skip(plan, action, tokens, StructuralSkip::Protected);
                 } else if (options.PreserveBareCR &&
-                    safety.Gaps()[token].HasBareCR && safety
-                        .Original(token)
-                        .ends_with('\r'))
+                    safety.Gaps()[token].HasBareCR &&
+                    safety.Original(token).ends_with('\r'))
                 {
                     // Retain the first original separator of a zero-gap
                     // deletion chain before admission: no cancellation or ID
@@ -1111,7 +1093,8 @@ StructuralMaterialization MaterializeStructuralEdits(
             false,
         });
         for (TI i = FirstBeginningAt(tree, source.Begin); i < tree.TokenCount();
-             ++i) {
+             ++i)
+        {
             auto token = tree.Token(i).Text;
             if (token.Begin >= source.End) {
                 break;
@@ -1297,9 +1280,8 @@ NamespaceCommentPlan PlanNamespaceComments(
                 auto begin = original.Token(close).Text.End;
                 auto comment = original.TokenCount();
                 if (close + 1 < original.TokenCount() &&
-                    original.Kind(close + 1) == TK::Comment && original
-                        .TokenText(close + 1)
-                        .starts_with("//") &&
+                    original.Kind(close + 1) == TK::Comment &&
+                    original.TokenText(close + 1).starts_with("//") &&
                     Horizontal(original.WhitespaceAfter(close)))
                 {
                     comment = close + 1;
@@ -1435,7 +1417,8 @@ StructuralPlan ResolveNamespaceComments(
         throw std::invalid_argument("unordered original namespace identities");
     }
     for (size_t namespaceIndex = 0; namespaceIndex < plan.Namespaces.size();
-        ++namespaceIndex) {
+        ++namespaceIndex)
+    {
         const auto& ns = plan.Namespaces[namespaceIndex];
         auto skip = [&] (StructuralSkip reason) {
             Skip(

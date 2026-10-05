@@ -181,7 +181,8 @@ struct Syntax
     bool ChainSafe = true;
     bool String = false;
     bool Definition = false;
-    bool ItemSequence = false;
+    bool ItemSequence : 1 = false;
+    bool ControlHeader : 1 = false;
     parser::TokenRange SequenceBody = {};
 };
 
@@ -306,19 +307,10 @@ public:
     SyntaxLayoutStatus Build()
     {
         const auto count = Tree_.TokenCount();
-        if (Safety_
-            .Gaps()
-            .size() != size_t(count) + 1 || Spacing_
-                .Gaps()
-                .size() != size_t(count) + 1 || Safety_
-                    .Source()
-                    .data() != Tree_
-                        .Source()
-                        .data() || Safety_
-                            .Source()
-                            .size() != Tree_
-                                .Source()
-                                .size())
+        if (Safety_.Gaps().size() != size_t(count) + 1 ||
+            Spacing_.Gaps().size() != size_t(count) + 1 ||
+            Safety_.Source().data() != Tree_.Source().data() ||
+            Safety_.Source().size() != Tree_.Source().size())
         {
             return {SyntaxLayoutError::MismatchedInputs};
         }
@@ -601,6 +593,12 @@ private:
                 default:
                     break;
             }
+            // Carry header context through expressions and arguments, but
+            // never into a lambda or other independently formatted body.
+            entry.ControlHeader = region.Kind == NodeKind::Condition ||
+                region.Kind == NodeKind::ForHeader ||
+                (!entry.ItemSequence && region.Parent != None &&
+                    Syntax_[region.Parent].ControlHeader);
             if (region.Parent != None) {
                 entry.PreviousSibling = LastChild_[region.Parent];
                 LastChild_[region.Parent] = id;
@@ -2230,10 +2228,14 @@ private:
                 ProjectHeaderGaps(id, begin, opening, header);
             }
             if (braced) {
+                // Opaque header descendants prevent reflow, not placement of
+                // a separately proven, editable body delimiter boundary.
+                const bool canonicalBrace = Policies_.ControlHeaders.Layout ==
+                    LayoutMode::Canonical && GapMutable(opening);
                 Own(
                     opening,
                     header,
-                    !canonical
+                    !canonicalBrace
                     ? Boundary::Preserve
                     : brace == BracePlacement::NextLine
                         ? Boundary::Hard
@@ -2242,7 +2244,7 @@ private:
                             : Boundary::Conditional,
                     document::GapKind::Hard,
                     true);
-                if (!canonical) {
+                if (!canonicalBrace) {
                     Reindent(opening, header, true);
                 }
             } else if (elseIf) {
@@ -2858,9 +2860,7 @@ private:
 
     bool PlanAnnotatedChain(Index id, Index group, Index calls)
     {
-        if (ChainScopeNames_.empty() && Annotations_
-            .StickyChainPairs()
-            .empty())
+        if (ChainScopeNames_.empty() && Annotations_.StickyChainPairs().empty())
         {
             return false;
         }
@@ -3146,18 +3146,21 @@ private:
             int32_t(policy.Indent.ContinuationOffset),
             policy.Indent);
         // Prefer operator/list boundaries over splitting multi-call chains
-        // or multi-member field paths. A single member or suffix call should
-        // not force its arguments to break instead of a member boundary.
+        // or multi-member field paths. Outside control headers, a single
+        // member or suffix call may split before its arguments; header chains
+        // prefer argument breaks as well as operator and clause boundaries.
         Groups_[group].Spec.BreakPenalty =
-            links > 1 && packingCalls != 1 ? 2 : 0;
+            entry.ControlHeader ? 3 : links > 1 && packingCalls != 1 ? 2 : 0;
         // A chain owns continuation independently of pending expression
         // offsets, but retains enclosing list and realized-line indentation.
         Groups_[group].Spec.StructuralBase = true;
         Groups_[group].Spec.Continuation = true;
         // Always counts suffix calls, not fields or receiver construction.
-        // Configured roots may also force a single-call break.
+        // Control headers keep fitting chains inline and prefer other breaks.
+        // Explicit conventional roots still require their annotated shape.
         Groups_[group].Spec.ForceBreak = conventional ||
-            (policy.Break == BreakRequirement::Always && calls > 1);
+            (!entry.ControlHeader && policy.Break == BreakRequirement::Always &&
+                calls > 1);
         if (PlanAnnotatedChain(id, group, packingCalls)) {
             return;
         }
@@ -3321,11 +3324,7 @@ private:
             return None;
         }
         Index column = 0;
-        for (const char c :
-            Safety_
-                .Original(gap)
-                .substr(lf + 1))
-        {
+        for (const char c : Safety_.Original(gap).substr(lf + 1)) {
             if (c == '\t') {
                 column = AddWidth(
                     column,
@@ -3341,10 +3340,7 @@ private:
 
     void AnalyzeVisualScopes()
     {
-        if (Annotations_
-            .VisualScopes()
-            .empty())
-        {
+        if (Annotations_.VisualScopes().empty()) {
             return;
         }
         const auto annotations = Annotations_.VisualScopes();
@@ -3717,8 +3713,7 @@ private:
                 }
                 following.resize(children.size());
                 Index nextItem = None;
-                for (size_t p = children.size(); p-- > 0;)
-                {
+                for (size_t p = children.size(); p-- > 0;) {
                     following[p] = nextItem;
                     if (Region(Syntax_[children[p]]).Kind != NodeKind::Comment)
                     {
@@ -3739,8 +3734,7 @@ private:
                 Index access = None;
                 bool seenAccess = false;
                 bool content = false;
-                for (size_t p = 0; p < children.size(); ++p)
-                {
+                for (size_t p = 0; p < children.size(); ++p) {
                     const auto child = children[p];
                     const auto& entry = Syntax_[child];
                     const auto& part = Region(entry);
@@ -4157,10 +4151,11 @@ private:
             const auto lf = Safety_
                 .Original(source)
                 .rfind('\n');
-            if (lf != std::string_view::npos && Safety_
-                .Original(source)
-                .substr(lf + 1)
-                .find_first_not_of(" \t") == std::string_view::npos)
+            if (lf != std::string_view::npos &&
+                Safety_
+                    .Original(source)
+                    .substr(lf + 1)
+                    .find_first_not_of(" \t") == std::string_view::npos)
             {
                 spec.IndentSourceBegin = source.Source.Begin + Index(lf + 1);
                 spec.IndentSourceEnd = source.Source.End;

@@ -192,10 +192,7 @@ std::pmr::vector<GapId> GeneratedGaps(
     std::pmr::vector<GapId> result(&scratch);
     size_t interval = 0;
     size_t piece = 0;
-    for (GapId i = 0; i < safety
-        .Gaps()
-        .size(); ++i)
-    {
+    for (GapId i = 0; i < safety.Gaps().size(); ++i) {
         const auto range = safety.Gaps()[i].Source;
         while (interval < ranges.size() && ranges[interval].End < range.Begin) {
             ++interval;
@@ -246,8 +243,7 @@ std::pmr::vector<document::Identity> OriginalIdentities(
     }
     std::pmr::vector<CurrentIdentity> surviving(&scratch);
     surviving.reserve(normalized->OriginalTokens.size());
-    for (parser::TokenIndex i = 0; i < normalized->OriginalTokens.size(); ++i)
-    {
+    for (parser::TokenIndex i = 0; i < normalized->OriginalTokens.size(); ++i) {
         const auto& token = normalized->OriginalTokens[i];
         if (token.Present) {
             surviving.push_back({token.Output, i});
@@ -336,9 +332,7 @@ document::Identity RecordRenderAnchors(
                 return range.Source.End <= begin;
             });
         for (;
-            it != safety
-                .Protection()
-                .end() && it->Source.Begin < source.End;
+            it != safety.Protection().end() && it->Source.Begin < source.End;
             ++it)
         {
             const auto begin = std::max(source.Begin, it->Source.Begin);
@@ -648,8 +642,7 @@ void WidthDiagnostics(
             });
         }
     };
-    for (size_t i = 0; i < result.Text.size(); ++i)
-    {
+    for (size_t i = 0; i < result.Text.size(); ++i) {
         const auto c = result.Text[i];
         if (c == '\n' || c == '\r') {
             report();
