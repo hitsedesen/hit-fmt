@@ -104,7 +104,8 @@ void PrintOption(std::ostream& output, std::string_view name, const T& value)
                 "# else/elif/endif align with their if.\n";
     } else if (name == "ListPacking") {
         output
-            << "# Comments after a separator move with the following item.\n"
+            << "# Block comments after a separator move with the next item.\n"
+                "# Line comments and mixed comment prefixes stay in place.\n"
                 "# In a broken call: consume(alpha,\n"
                 "#     /* next argument */ beta);\n";
     } else if (name == "IndentedCallScopePairs") {

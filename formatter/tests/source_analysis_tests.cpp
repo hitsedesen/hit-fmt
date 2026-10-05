@@ -407,7 +407,8 @@ TEST(SourceAnalysis, CommentsDirectivesSplicesAndCrLf)
         "int d = 4;\r\nint e = \\\n  5;\nint f = 6;\n"
         "void use() { auto x = call(a, /* prefix */ b /* suffix */, c);\n"
         "auto y = call((a, /* expression */ b), c);\n"
-        "auto z = {a, /* trailing */}; }\n");
+        "auto z = {a, /* trailing */};\n" "auto line = call(a, // stays\n b);\n"
+        "auto mixed = call(a, /* mixed prefix */ // stays too\n b); }\n");
     auto tree = Parse(input);
     std::pmr::monotonic_buffer_resource memory;
     auto analysis = Analyze(tree, memory);
@@ -426,7 +427,14 @@ TEST(SourceAnalysis, CommentsDirectivesSplicesAndCrLf)
     EXPECT_TRUE(analysis.CanReplaceGap(Before(tree, "/* prefix */"), "\n"));
     EXPECT_FALSE(analysis.CanReplaceGap(Before(tree, "b", 1), "\n"));
     for (const auto text :
-        {"/* suffix */", "/* expression */", "/* trailing */"})
+        {
+            "/* suffix */",
+            "/* expression */",
+            "/* trailing */",
+            "// stays",
+            "/* mixed prefix */",
+            "// stays too",
+        })
     {
         EXPECT_FALSE(analysis.CanReplaceGap(Before(tree, text), "\n"));
     }

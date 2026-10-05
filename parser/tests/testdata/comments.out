@@ -135,11 +135,47 @@
               (argument
                 (identifier-expression "alpha")
               )
+              (list-separator
+                ","
+                (trailing-trivia
+                  (comment "// stays with alpha")
+                )
+              )
+              "// stays with alpha"
+              (argument
+                (identifier-expression "beta")
+              )
               (list-separator ",")
-              "// next argument"
+              (argument
+                (identifier-expression "gamma")
+              )
+              ")"
+            )
+          )
+        )
+        ";"
+      )
+      (expression-statement
+        (assignment-expression
+          (identifier-expression "result")
+          "="
+          (call-expression
+            (identifier-expression "consume")
+            (argument-list
+              "("
+              (argument
+                (identifier-expression "alpha")
+              )
+              (list-separator
+                ","
+                (trailing-trivia
+                  (comment "// stays with alpha")
+                )
+              )
+              "/* prefix */" "// stays with alpha"
               (argument
                 (leading-trivia
-                  (comment "// next argument")
+                  (comment "/* prefix */")
                 )
                 (identifier-expression "beta")
               )

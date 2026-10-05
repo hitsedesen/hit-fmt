@@ -1,8 +1,7 @@
 void demo() {
     consume( // first argument
             alpha,
-            beta,
-            // next argument
+            beta, // next argument
             gamma,
             /* block prefix */
             delta,
@@ -11,8 +10,7 @@ void demo() {
     );
     auto values = { // first element
                    alpha,
-                   beta,
-                   // next element
+                   beta, // next element
                    gamma,
                    /* block prefix */
                    delta,
@@ -20,8 +18,7 @@ void demo() {
                    epsilon
     };
     consume(
-            alpha,
-            // first comment
+            alpha, // first comment
             // second comment
             beta
     );
@@ -38,6 +35,11 @@ void demo() {
                             /* first */ /* second */ beta,
                             gamma
     );
+    auto mixed = consume(
+                         alpha, /* prefix */ // stays with alpha
+                         beta,
+                         gamma
+    );
     auto suffix = consume(
                           alpha /* belongs to alpha */,
                           beta,
@@ -50,16 +52,14 @@ void demo() {
     auto trailingBlock = {
                           alpha, /* no next item */};
     consume(
-            alpha,
-            // trailing comment
+            alpha, // trailing comment
             beta /* closer comment */
     );
     auto nested = {
                    consume( // nested argument
                            x,
                            y
-                   ),
-                   // nested element
+                   ), // nested element
                    z
     };
     // clang-format off

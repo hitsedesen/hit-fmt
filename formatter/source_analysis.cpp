@@ -775,7 +775,9 @@ SourceAnalysis BuildSourceAnalysis(
         }
         if (node.Kind == parser::NodeKind::ListSeparator &&
             tokens.Size() == 1 && tokens.End < count &&
-            tree.Kind(tokens.End) == TK::Comment)
+            tree.Kind(tokens.End) == TK::Comment && tree
+                .TokenText(tokens.End)
+                .starts_with("/*"))
         {
             auto* next = node.NextSibling;
             while (next && next->Kind == parser::NodeKind::Comment) {
@@ -784,14 +786,16 @@ SourceAnalysis BuildSourceAnalysis(
             if (next && tokens.End < next->Tokens.Begin) {
                 auto afterComments = tokens.End;
                 while (afterComments < next->Tokens.Begin &&
-                    tree.Kind(afterComments) == TK::Comment)
+                    tree.Kind(afterComments) == TK::Comment && tree
+                        .TokenText(afterComments)
+                        .starts_with("/*"))
                 {
                     ++afterComments;
                 }
                 if (afterComments == next->Tokens.Begin) {
-                    // The separator owns the boundary before the next item's
-                    // comment prefix. Preserve links within that prefix and
-                    // to the item, not its original line with the separator.
+                    // Move a block-comment prefix with the next item while
+                    // preserving its internal links. Mixed prefixes stay put
+                    // so a line comment cannot move with the block comments.
                     result.Gaps_[tokens.End].LineBoundary =
                         GapLineBoundary::Any;
                 }

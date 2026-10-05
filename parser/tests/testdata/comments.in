@@ -12,7 +12,9 @@ void listComments()
 {
     auto result = consume(alpha, /* next argument */ beta, gamma);
     result = consume(alpha, /* first */ /* second */ beta, gamma);
-    result = consume(alpha, // next argument
+    result = consume(alpha, // stays with alpha
+        beta, gamma);
+    result = consume(alpha, /* prefix */ // stays with alpha
         beta, gamma);
     result = consume(alpha /* previous argument */, beta, gamma);
     result = consume((alpha, /* expression */ beta), gamma);

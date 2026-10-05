@@ -9677,9 +9677,12 @@ private:
             i < end;
             i = Tree_.Tokens_.FindComment(i + 1, end))
         {
-            if (previous && previous->Kind == NodeKind::ListSeparator && next) {
-                // A comment after a list separator describes the next item,
-                // even when it originally shares a line with the separator.
+            if (previous && previous->Kind == NodeKind::ListSeparator && next &&
+                Text(i).starts_with("/*"))
+            {
+                // A block comment after a list separator describes the next
+                // item, even when it shares a line with the separator. Line
+                // comments retain their original line-based attachment.
                 AttachComment(*next, i, TriviaPlacement::Leading);
             } else if (previous && !previous->Tokens.Empty() &&
                 SourceLine(previous->Tokens.End - 1) == SourceLine(i))
