@@ -1831,7 +1831,10 @@ private:
             return false;
         }
         auto next = block.NextSibling;
-        while (next != None && Region(Syntax_[next]).Kind == NodeKind::Comment)
+        // Comments and directives are not statements in the case body.
+        while (next != None &&
+            (Region(Syntax_[next]).Kind == NodeKind::Comment ||
+                Region(Syntax_[next]).Kind == NodeKind::PreprocessingDirective))
         {
             next = Region(Syntax_[next]).NextSibling;
         }

@@ -54,7 +54,6 @@ void ExplicitBoundary(int value)
 
 Handler* BlocksBeforeMacros(int value)
 {
-#define LOCAL_ENTRY(tag) case tag: Consume(tag); break;
     switch (value) {
         case 0: {
             Consume(0);
@@ -64,19 +63,26 @@ Handler* BlocksBeforeMacros(int value)
             static Handler handler(true);
             return &handler;
         }
+#define LOCAL_ENTRY(tag) case tag: Consume(tag); break;
+#define TAG_GROUP 2
         LOCAL_ENTRY( 2 )
+#undef TAG_GROUP
         LOCAL_ENTRY( 3 )
         case 4:
         {
             Consume(4);
             break;
         } // The opaque run can introduce new labels.
+#define TAG_GROUP 5
         LOCAL_ENTRY( 5 )
+#undef TAG_GROUP
         case 6: {
                 Consume(6);
             }
+#define FINISH_TAG 6
             Finish();
             break;
+#undef FINISH_TAG
         case 7:
             Prepare();
             {
@@ -87,9 +93,9 @@ Handler* BlocksBeforeMacros(int value)
             Consume(-1);
             break;
         }
+#undef LOCAL_ENTRY
     }
     return nullptr;
-#undef LOCAL_ENTRY
 }
 
 void BlockBeforeOpaqueTail(int value)
