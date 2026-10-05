@@ -142,11 +142,6 @@
     (init-declarator-list
       (init-declarator
         (abstract-declarator
-          (nested-declarator
-            "(" "Label" "," "Variant" "," "Make" "(" "1" ")" ","
-            (pointer-operator "&")
-            "factory" ")"
-          )
           (function-declarator
             (parameter-list
               "("
@@ -168,14 +163,7 @@
               )
               (list-separator ",")
               (parameter-declaration
-                (init-declarator-list
-                  (init-declarator
-                    (declarator
-                      (pointer-operator "&")
-                      (declarator-name "factory")
-                    )
-                  )
-                )
+                (unparsed-syntax "&" "factory")
               )
               ")"
             )

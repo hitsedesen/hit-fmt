@@ -267,6 +267,50 @@ TEST(FileCheck, TokenEndpointAndUnicodePositionsMapWithoutReparsingOutput)
         (recoveredStart == std::string::npos ? 0 : recoveredStart + 1) + 1);
 }
 
+TEST(FileCheck, UnicodeWidthDiagnosticGoldenMapsCodePointsAndTabs)
+{
+    const test::golden::Fixture fixture{
+        std::filesystem::path(__FILE__).parent_path() / "testdata/file-check",
+        "unicode-width",
+    };
+    formatter::Configuration raw;
+    raw.FormattingStyle.ColumnLimit = 12;
+    raw.FormattingStyle.WidthDiagnostics =
+        formatter::WidthDiagnosticPolicy::Report;
+    const hit_fmt::PreparedFileConfiguration prepared(raw);
+    const Input input(fixture.InputNamed(".input.cpp"));
+    const auto checked = hit_fmt::CheckFile(input.View(), prepared);
+    EXPECT_FALSE(checked.FormattingMismatch);
+    ASSERT_EQ(checked.Formatting.Diagnostics.size(), 2u);
+    ASSERT_EQ(checked.OriginalWidthPositions.size(), 2u);
+    EXPECT_EQ(checked.Formatting.Diagnostics[0].Position.Line, 2u);
+    EXPECT_EQ(checked.Formatting.Diagnostics[1].Position.Line, 4u);
+    EXPECT_EQ(checked.OriginalWidthPositions[0].Column, 13u);
+    EXPECT_EQ(checked.OriginalWidthPositions[1].Column, 12u);
+    for (const bool fix : {false, true}) {
+        std::ostringstream output;
+        hit_fmt::PrintFileIssues(
+            output,
+            "unicode.cpp",
+            input
+                .View()
+                .View(),
+            checked,
+            fix,
+            80);
+        fixture.Expect(output.str(), fix ? ".fix.txt" : ".check.txt");
+    }
+
+    // A tab itself can contain the first column exceeding the limit.
+    raw.FormattingStyle.ColumnLimit = 6;
+    const hit_fmt::PreparedFileConfiguration narrow(raw);
+    const Input tab("// é界😀\t\n");
+    const auto tabbed = hit_fmt::CheckFile(tab.View(), narrow);
+    ASSERT_EQ(tabbed.Formatting.Diagnostics.size(), 1u);
+    ASSERT_EQ(tabbed.OriginalWidthPositions.size(), 1u);
+    EXPECT_EQ(tabbed.OriginalWidthPositions[0].Column, 7u);
+}
+
 TEST(FileCheck, ActualProtectedOverflowRemainsFailureInFixMode)
 {
     auto raw = Configuration();

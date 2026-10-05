@@ -14,7 +14,7 @@ namespace hit_fmt {
 
 namespace {
 
-// Emitted widths count bytes and tab stops, not tokenizer code points.
+// Convert code-point widths with tab stops to tokenizer columns.
 size_t WidthCaretColumn(std::string_view text, size_t target)
 {
     size_t width = 1, column = 1;
@@ -24,7 +24,7 @@ size_t WidthCaretColumn(std::string_view text, size_t target)
             ? 1
             : unicode::utf8::GetFirstCodePointSize(text.substr(offset))
                 .value_or(1);
-        const auto nextWidth = width + (c == '\t' ? 8 - (width - 1) % 8 : size);
+        const auto nextWidth = width + (c == '\t' ? 8 - (width - 1) % 8 : 1);
         if (nextWidth > target) {
             break;
         }
@@ -233,22 +233,34 @@ void MapWidthPositions(const parser::SyntaxTree& tree, CheckedFile& checked)
     std::pmr::vector<Point> points(&scratch);
     points.reserve(checked.Formatting.Diagnostics.size());
     for (const auto& diagnostic : checked.Formatting.Diagnostics) {
-        // Match the formatter's byte-width/tab-stop coordinates, including
-        // CRLF and standalone CR. Translate the offending byte inside a
-        // surviving token; generated text uses an original token anchor.
+        // Match the formatter's code-point/tab-stop coordinates, including
+        // CRLF and standalone CR. Keep offsets at code-point boundaries;
+        // generated text uses an original token anchor.
         while (offset < text.size() &&
             (line < diagnostic.Position.Line ||
                 column < diagnostic.Position.Column))
         {
-            const auto c = text[offset++];
+            const auto c = static_cast<unsigned char>(text[offset]);
             if (c == '\r' || c == '\n') {
+                ++offset;
                 if (c == '\r' && offset < text.size() && text[offset] == '\n') {
                     ++offset;
                 }
                 ++line;
                 column = 1;
             } else {
-                column += c == '\t' ? 8 - (column - 1) % 8 : 1;
+                const auto nextColumn =
+                    column + (c == '\t' ? 8 - (column - 1) % 8 : 1);
+                if (line == diagnostic.Position.Line &&
+                    nextColumn > diagnostic.Position.Column)
+                {
+                    break; // The overflow starts inside this tab's cells.
+                }
+                offset += c < 0x80
+                    ? 1
+                    : unicode::utf8::GetFirstCodePointSize(
+                        std::string_view(text).substr(offset)).value_or(1);
+                column = nextColumn;
             }
         }
         auto token = std::upper_bound(

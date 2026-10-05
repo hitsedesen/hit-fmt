@@ -1373,27 +1373,21 @@ int main(int argc, char* argv[])
         return result.Failed;
     };
     if (options.Threads == 1) {
-        try {
-            if (!ForEachFile(
-                options.Paths,
-                options.Exclusions,
-                [
-                    &
-                ] (
-                    const auto& path,
-                    bool directory) { return styleResolver
-                            ->IsExcluded(path, directory); },
-                [&] (const auto& path) {
-                    bool failed =
-                        printResult(processFile(path, *styleResolver));
-                    return !failed;
-                }))
-            {
-                return 1;
-            }
-        }
-        catch (const std::exception& error) {
-            std::cerr << error.what() << '\n';
+        if (!hit_fmt::RunSerialFiles(
+            [&] (auto visit) {
+                return ForEachFile(
+                    options.Paths,
+                    options.Exclusions,
+                    [&] (const auto& path, bool directory) {
+                        return styleResolver->IsExcluded(path, directory);
+                    },
+                    visit);
+            },
+            *styleResolver,
+            processFile,
+            printResult,
+            std::cerr))
+        {
             return 1;
         }
     } else {

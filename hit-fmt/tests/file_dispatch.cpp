@@ -1,4 +1,5 @@
 #include <hit-fmt/file_dispatch.hpp>
+#include <util/file.hpp>
 
 #include <gtest/gtest.h>
 
@@ -11,6 +12,126 @@
 #include <string>
 #include <thread>
 #include <vector>
+
+namespace {
+
+struct FileInputs
+{
+    std::filesystem::path Directory = std::filesystem::temp_directory_path() /
+        ("hit-fmt-dispatch-" + std::to_string(std::chrono::steady_clock::now()
+            .time_since_epoch()
+            .count()));
+
+    explicit FileInputs(size_t count)
+    {
+        std::filesystem::create_directory(Directory);
+        for (size_t index = 0; index < count; ++index) {
+            util::WriteEntireFile(Path(index).string(), "int value;\n");
+        }
+    }
+
+    ~FileInputs()
+    {
+        std::error_code error;
+        std::filesystem::remove_all(Directory, error);
+    }
+
+    std::filesystem::path Path(size_t index) const
+    {
+        return Directory / (std::to_string(index) + ".cpp");
+    }
+};
+
+} // namespace
+
+TEST(FileDispatch, FileFailuresDoNotHideLaterResults)
+{
+    for (const size_t threads : {1u, 2u}) {
+        SCOPED_TRACE(threads);
+        // Exceed the queue limit, with failures inside multi-file batches.
+        constexpr size_t count = 140;
+        const FileInputs files(count);
+        std::atomic<size_t> processed{0};
+        size_t printed = 0;
+        auto discover = [&] (auto visit) {
+            for (size_t index = 0; index < count; ++index) {
+                if (!visit(files.Path(index))) {
+                    return false;
+                }
+            }
+            return true;
+        };
+        auto process = [&] (const std::filesystem::path& path, int&) {
+            ++processed;
+            const auto name = path
+                .stem()
+                .string();
+            const bool failed = name == "0" || name == "3";
+            if (!failed) {
+                util::WriteEntireFile(path.string(), "int value = 0;\n");
+            }
+            return hit_fmt::FileResult{.Output = name, .Failed = failed};
+        };
+        auto print = [&] (const auto& result) {
+            EXPECT_EQ(result.Output, std::to_string(printed++));
+            return result.Failed;
+        };
+        std::ostringstream errors;
+        int resolver = 0;
+        const bool success = threads == 1
+            ? hit_fmt::RunSerialFiles(
+                discover,
+                resolver,
+                process,
+                print,
+                errors)
+            : hit_fmt::RunParallelFiles(
+                threads,
+                discover,
+                [] { return 0; },
+                process,
+                print,
+                errors);
+        EXPECT_FALSE(success);
+        EXPECT_EQ(processed.load(), count);
+        EXPECT_EQ(printed, count);
+        EXPECT_TRUE(errors
+            .str()
+            .empty());
+    }
+}
+
+TEST(FileDispatch, DiscoveryErrorsDrainDispatchedFiles)
+{
+    std::promise<void> firstStarted;
+    auto started = firstStarted.get_future();
+    std::vector<std::string> printed;
+    std::ostringstream errors;
+    const bool success = hit_fmt::RunParallelFiles(
+        2,
+        [&] (auto visit) -> bool {
+            visit(std::filesystem::path("first.cpp"));
+            if (started.wait_for(std::chrono::seconds(5)) !=
+                std::future_status::ready)
+            {
+                throw std::runtime_error("worker did not start");
+            }
+            throw std::runtime_error("discovery failed");
+        },
+        [] { return 0; },
+        [&] (const auto& path, int&) {
+            firstStarted.set_value();
+            return hit_fmt::FileResult{.Output = path.string()};
+        },
+        [&] (const auto& result) {
+            printed.push_back(result.Output);
+            return result.Failed;
+        },
+        errors);
+    EXPECT_FALSE(success);
+    EXPECT_EQ(printed, (std::vector<std::string>{"first.cpp"}));
+    EXPECT_EQ(errors.str(), "discovery failed\n");
+}
 
 TEST(FileDispatch, ProcessesDuringDiscoveryAndPrintsInOrder)
 {

@@ -24,6 +24,21 @@ void RecoverLater()
     };
 }
 
+void RecoverNested()
+{
+    auto callback = [
+        state] (int requestId, int additionalRequestId)
+    {
+        Prepare();
+        if (requestId) {
+            UnknownValue value;
+            Finish(value);
+        }
+        Finish(requestId);
+    };
+    Use(callback);
+}
+
 using KnownValue = int;
 void Known()
 {

@@ -1,4 +1,4 @@
-decltype (0) extract(const int& value) {
+decltype(0) extract(const int& value) {
     return value;
 }
 static decltype (auto) forward(int&& value) {
@@ -8,7 +8,9 @@ decltype(*source) dereference(const int* value);
 decltype((source)) nested(const int& value);
 decltype(combine((source), 0)) expression(const int& value);
 decltype(factory<int>(0)) templated(const int& value);
-decltype([](int item) { return item; }(0)) lambda(const int& value);
+decltype([](int item) {
+    return item;
+}(0)) lambda(const int& value);
 decltype /* operand */ (0) commented(const int& value);
 decltype(0) scalar(int value);
 decltype(0) stored = 0;

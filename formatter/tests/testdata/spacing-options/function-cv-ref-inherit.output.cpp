@@ -34,7 +34,7 @@ const int& ValueHolder::Read() const & {
 const int&& ValueHolder::Take() const && {
     return std::move(value);
 }
-int(ValueHolder::*method)() const &&;
+int (ValueHolder::*method)() const &&;
 inline ValueHolder::operator bool() const {
     return true;
 }

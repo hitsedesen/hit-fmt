@@ -72,7 +72,8 @@ Bare `-j` uses the available hardware concurrency (or 1 if unknown).
 With multiple workers, formatting starts while discovery continues. Files
 are queued in batches of up to four or 256 KiB of source, whichever limit
 comes first; large files get their own batch. File diagnostics remain in
-discovery order.
+discovery order. A file error does not stop later files from being processed;
+all completed files are reported, and any error makes the command fail.
 
 Checks report affected source chunks with caret-marked formatting,
 expression-layout, naming and parameter-name violations. Source excerpts

@@ -208,7 +208,8 @@ constexpr HelpSection HelpSections[] = {
         "WidthDiagnostics is Off or Report; "
         "ColumnLimit = 0 disables width wrapping and width diagnostics, "
         "but retains mandatory breaks. "
-        "Report checks emitted line widths without a "
+        "Report checks emitted line widths in Unicode code points, "
+        "expanding tabs to tab stops, without a "
             "feasibility-format probe.\n", LayoutExamples},
     {"Lists and alignment", "Categories: Calls, Parameters, "
         "TemplateParameters, TemplateArguments, Initializers, Captures, "

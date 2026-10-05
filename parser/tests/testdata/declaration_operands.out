@@ -1,6 +1,15 @@
 (translation-unit
   (function-definition
-    (declaration-specifiers "decltype" "(" "0" ")")
+    (declaration-specifiers
+      (type-id
+        "decltype"
+        (parenthesized-expression
+          "("
+          (literal-expression "0")
+          ")"
+        )
+      )
+    )
     (init-declarator-list
       (init-declarator
         (declarator
@@ -72,7 +81,19 @@
     )
   )
   (function-declaration
-    (declaration-specifiers "decltype" "(" "*" "source" ")")
+    (declaration-specifiers
+      (type-id
+        "decltype"
+        (parenthesized-expression
+          "("
+          (unary-expression
+            "*"
+            (identifier-expression "source")
+          )
+          ")"
+        )
+      )
+    )
     (init-declarator-list
       (init-declarator
         (declarator
@@ -100,7 +121,20 @@
     ";"
   )
   (function-declaration
-    (declaration-specifiers "decltype" "(" "(" "source" ")" ")")
+    (declaration-specifiers
+      (type-id
+        "decltype"
+        (parenthesized-expression
+          "("
+          (parenthesized-expression
+            "("
+            (identifier-expression "source")
+            ")"
+          )
+          ")"
+        )
+      )
+    )
     (init-declarator-list
       (init-declarator
         (declarator
@@ -128,7 +162,33 @@
     ";"
   )
   (function-declaration
-    (declaration-specifiers "decltype" "(" "combine" "(" "(" "source" ")" "," "0" ")" ")")
+    (declaration-specifiers
+      (type-id
+        "decltype"
+        (parenthesized-expression
+          "("
+          (call-expression
+            (identifier-expression "combine")
+            (argument-list
+              "("
+              (argument
+                (parenthesized-expression
+                  "("
+                  (identifier-expression "source")
+                  ")"
+                )
+              )
+              (list-separator ",")
+              (argument
+                (literal-expression "0")
+              )
+              ")"
+            )
+          )
+          ")"
+        )
+      )
+    )
     (init-declarator-list
       (init-declarator
         (declarator
@@ -157,13 +217,30 @@
   )
   (function-declaration
     (declaration-specifiers
-      "decltype" "(" "factory"
-      (template-argument-list
-        "<"
-        (template-argument "int")
-        ">"
+      (type-id
+        "decltype"
+        (parenthesized-expression
+          "("
+          (call-expression
+            (template-id-expression
+              (identifier-expression "factory")
+              (template-argument-list
+                "<"
+                (template-argument "int")
+                ">"
+              )
+            )
+            (argument-list
+              "("
+              (argument
+                (literal-expression "0")
+              )
+              ")"
+            )
+          )
+          ")"
+        )
       )
-      "(" "0" ")" ")"
     )
     (init-declarator-list
       (init-declarator
@@ -192,7 +269,50 @@
     ";"
   )
   (function-declaration
-    (declaration-specifiers "decltype" "(" "[" "]" "(" "int" "item" ")" "{" "return" "item" ";" "}" "(" "0" ")" ")")
+    (declaration-specifiers
+      (type-id
+        "decltype"
+        (parenthesized-expression
+          "("
+          (call-expression
+            (lambda-expression
+              (lambda-capture-list "[" "]")
+              (parameter-list
+                "("
+                (parameter-declaration
+                  (declaration-specifiers "int")
+                  (init-declarator-list
+                    (init-declarator
+                      (declarator
+                        (declarator-name "item")
+                      )
+                    )
+                  )
+                )
+                ")"
+              )
+              (lambda-body
+                "{"
+                (return-statement
+                  "return"
+                  (identifier-expression "item")
+                  ";"
+                )
+                "}"
+              )
+            )
+            (argument-list
+              "("
+              (argument
+                (literal-expression "0")
+              )
+              ")"
+            )
+          )
+          ")"
+        )
+      )
+    )
     (init-declarator-list
       (init-declarator
         (declarator
@@ -221,9 +341,16 @@
   )
   (function-declaration
     (declaration-specifiers
-      "decltype" "/* operand */" "(" "0" ")"
-      (dangling-trivia
-        (comment "/* operand */")
+      (type-id
+        "decltype" "/* operand */"
+        (parenthesized-expression
+          (leading-trivia
+            (comment "/* operand */")
+          )
+          "("
+          (literal-expression "0")
+          ")"
+        )
       )
     )
     (init-declarator-list
@@ -253,7 +380,16 @@
     ";"
   )
   (function-declaration
-    (declaration-specifiers "decltype" "(" "0" ")")
+    (declaration-specifiers
+      (type-id
+        "decltype"
+        (parenthesized-expression
+          "("
+          (literal-expression "0")
+          ")"
+        )
+      )
+    )
     (init-declarator-list
       (init-declarator
         (declarator
@@ -280,7 +416,16 @@
     ";"
   )
   (declaration
-    (declaration-specifiers "decltype" "(" "0" ")")
+    (declaration-specifiers
+      (type-id
+        "decltype"
+        (parenthesized-expression
+          "("
+          (literal-expression "0")
+          ")"
+        )
+      )
+    )
     (init-declarator-list
       (init-declarator
         (declarator
@@ -295,7 +440,19 @@
     ";"
   )
   (declaration
-    (declaration-specifiers "decltype" "(" "*" "source" ")")
+    (declaration-specifiers
+      (type-id
+        "decltype"
+        (parenthesized-expression
+          "("
+          (unary-expression
+            "*"
+            (identifier-expression "source")
+          )
+          ")"
+        )
+      )
+    )
     (init-declarator-list
       (init-declarator
         (declarator
@@ -328,7 +485,16 @@
     ";"
   )
   (function-declaration
-    (declaration-specifiers "decltype" "(" "0" ")")
+    (declaration-specifiers
+      (type-id
+        "decltype"
+        (parenthesized-expression
+          "("
+          (literal-expression "0")
+          ")"
+        )
+      )
+    )
     (init-declarator-list
       (init-declarator
         (declarator

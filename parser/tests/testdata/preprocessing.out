@@ -13,7 +13,11 @@
         )
         "#if FIRST"
       )
-      (using-declaration "using" "Selected" "=" "int" ";")
+      (using-declaration
+        "using" "Selected" "="
+        (type-id "int")
+        ";"
+      )
       (preprocessing-conditional
         (preprocessing-branch
           (preprocessing-directive "#  if NESTED")
@@ -37,11 +41,19 @@
     )
     (preprocessing-branch
       (preprocessing-directive "#elif SECOND")
-      (using-declaration "using" "Selected" "=" "long" ";")
+      (using-declaration
+        "using" "Selected" "="
+        (type-id "long")
+        ";"
+      )
     )
     (preprocessing-branch
       (preprocessing-directive "#else")
-      (using-declaration "using" "Selected" "=" "short" ";")
+      (using-declaration
+        "using" "Selected" "="
+        (type-id "short")
+        ";"
+      )
     )
     (preprocessing-directive "#endif")
   )

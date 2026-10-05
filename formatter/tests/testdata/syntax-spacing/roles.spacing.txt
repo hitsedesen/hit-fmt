@@ -92,7 +92,9 @@
 111 before=member field=MemberPointerDeclaratorSpacing owner=member-pointer-operator category=10 priority=4 fallback=0 protected=0 constraint=0
 112 before=; field=DeclarationSemicolonSpacing owner=declaration category=10 priority=3 fallback=0 protected=0 constraint=0
 113 before=using field=None owner=translation-unit category=11 priority=1 fallback=1 protected=0 constraint=0
-117 before=( field=DecltypeSpaceBeforeParentheses owner=using-declaration category=10 priority=4 fallback=1 protected=0 constraint=0
+117 before=( field=DecltypeSpaceBeforeParentheses owner=type-id category=10 priority=4 fallback=1 protected=0 constraint=0
+118 before=1 field=GroupingInteriorSpacing owner=parenthesized-expression category=8 priority=2 fallback=0 protected=0 constraint=0
+119 before=) field=GroupingInteriorSpacing owner=parenthesized-expression category=8 priority=2 fallback=0 protected=0 constraint=0
 120 before=; field=DeclarationSemicolonSpacing owner=using-declaration category=10 priority=3 fallback=0 protected=0 constraint=0
 121 before=alignas field=None owner=translation-unit category=11 priority=1 fallback=1 protected=0 constraint=0
 122 before=( field=AlignasSpaceBeforeParentheses owner=declaration-specifiers category=10 priority=4 fallback=1 protected=0 constraint=0

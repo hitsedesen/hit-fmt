@@ -19,16 +19,14 @@
         )
         (init-declarator-list
           (init-declarator
-            (abstract-declarator
+            (declarator
+              (nested-declarator
+                "("
+                (declarator-name "make")
+                ")"
+              )
               (function-declarator
-                (parameter-list
-                  "("
-                  (parameter-declaration
-                    (declaration-specifiers "make")
-                  )
-                  ")"
-                )
-                "(" ")"
+                (parameter-list "(" ")")
               )
             )
           )
@@ -46,26 +44,14 @@
         )
         (init-declarator-list
           (init-declarator
-            (abstract-declarator
+            (declarator
+              (nested-declarator
+                "(" "("
+                (declarator-name "create")
+                ")" ")"
+              )
               (function-declarator
-                (parameter-list
-                  "("
-                  (parameter-declaration
-                    (init-declarator-list
-                      (init-declarator
-                        (declarator
-                          (nested-declarator
-                            "("
-                            (declarator-name "create")
-                            ")"
-                          )
-                        )
-                      )
-                    )
-                  )
-                  ")"
-                )
-                "(" ")"
+                (parameter-list "(" ")")
               )
             )
           )
@@ -123,11 +109,6 @@
         (init-declarator-list
           (init-declarator
             (abstract-declarator
-              (nested-declarator
-                "(" "T"
-                (pointer-operator "*")
-                "p" ")"
-              )
               (function-declarator
                 (parameter-list
                   "("
@@ -164,11 +145,6 @@
         (init-declarator-list
           (init-declarator
             (abstract-declarator
-              (nested-declarator
-                "(" "T"
-                (pointer-operator "*")
-                "p" ")"
-              )
               (function-declarator
                 (parameter-list
                   "("
@@ -209,11 +185,6 @@
         (init-declarator-list
           (init-declarator
             (abstract-declarator
-              (nested-declarator
-                "(" "T"
-                (pointer-operator "*")
-                "p" ")"
-              )
               (function-declarator
                 (parameter-list
                   "("

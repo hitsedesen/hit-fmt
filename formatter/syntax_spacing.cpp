@@ -137,6 +137,43 @@ public:
             : &Regions_[node.NextSibling];
     }
 
+    bool HasScopeQualifier(const SourceRegion& node, TI scope) const
+    {
+        auto previous = scope;
+        while (previous > node.Tokens.Begin &&
+            Tree_.Kind(previous - 1) == TK::Comment)
+        {
+            --previous;
+        }
+        if (previous == node.Tokens.Begin) {
+            return false;
+        }
+        --previous;
+        const auto kind = Tree_.Kind(previous);
+        // Qualified declarators can retain template closers without a
+        // dedicated list role. Expression operands have their own node ranges,
+        // so a comparison/shift before a leading :: is outside this node.
+        if (kind == TK::Identifier || kind == TK::Operator_Greater ||
+            kind == TK::Operator_RightShift)
+        {
+            return true;
+        }
+        if (kind != TK::Operator_CloseParenthesis) {
+            return false;
+        }
+        auto opening = Tree_.MatchingDelimiter(previous);
+        if (opening == NoToken || opening <= node.Tokens.Begin) {
+            return false;
+        }
+        while (opening > node.Tokens.Begin &&
+            Tree_.Kind(opening - 1) == TK::Comment)
+        {
+            --opening;
+        }
+        return opening > node.Tokens.Begin &&
+            Tree_.Kind(opening - 1) == TK::Keyword_decltype;
+    }
+
     void Mark(
         TI gap,
         F field,
@@ -1165,14 +1202,17 @@ public:
                 role != PR::AmbiguousOperator &&
                 node.Kind != NK::OperatorFunctionName)
             {
-                // Leading global qualification has no left qualifier edge.
-                if (i > node.Tokens.Begin) {
+                // Leading global qualification has no left qualifier edge,
+                // even after specifiers inside the same type production.
+                if (HasScopeQualifier(node, i)) {
                     Mark(
                         i,
                         F::ScopeResolutionSpacing,
                         owner,
                         state.Category,
                         1);
+                } else if (i > node.Tokens.Begin) {
+                    Mark(i, F::None, owner, state.Category, 1, true);
                 }
                 Mark(
                     i + 1,

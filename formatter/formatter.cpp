@@ -3,6 +3,8 @@
 #include "syntax_layout.hpp"
 #include "text_policies.hpp"
 
+#include <unicode/utf8.hpp>
+
 #include <algorithm>
 #include <format>
 #include <memory_resource>
@@ -675,6 +677,11 @@ void WidthDiagnostics(
             width += tabWidth - width % tabWidth;
         } else {
             ++width;
+            // One column per code point; invalid UTF8 bytes each occupy one.
+            if (static_cast<unsigned char>(c) >= 0x80) {
+                i += unicode::utf8::GetFirstCodePointSize(
+                    std::string_view(result.Text).substr(i)).value_or(1) - 1;
+            }
         }
     }
     report();

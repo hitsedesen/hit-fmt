@@ -16,5 +16,8 @@ struct Holder {
 };
 DEFINE_CASE(Suite, DeclarationOnly);
 UNLISTED_CASE(Suite, Opaque) { untouched = left+right; }
+static DEFINE_CASE(Suite, const Shared& value) { Use(value); }
+static inline DEFINE_CASE(Suite, Helper(alpha + beta)) { Use(value); }
+static DEFINE_CASE(Suite, DeclarationOnly);
 int tail;
 }

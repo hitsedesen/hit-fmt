@@ -1,0 +1,231 @@
+(translation-unit
+  (record-declaration "struct" "First" "{" "}" ";")
+  (record-declaration "struct" "Second" "{" "}" ";")
+  (using-declaration
+    "using" "Simple" "="
+    (type-id
+      "Map"
+      (template-argument-list
+        "<"
+        (template-argument "First")
+        (list-separator ",")
+        (template-argument "Second")
+        ">"
+      )
+    )
+    ";"
+  )
+  (template-declaration
+    "template"
+    (template-parameter-list
+      "<"
+      (template-parameter "class" "T")
+      ">"
+    )
+    (using-declaration
+      "using" "Nested" "="
+      (type-id
+        "Pair"
+        (template-argument-list
+          "<"
+          (template-argument
+            "Box"
+            (template-argument-list
+              "<"
+              (template-argument "T")
+              ">"
+            )
+          )
+          (list-separator ",")
+          (template-argument
+            "Pair"
+            (template-argument-list
+              "<"
+              (template-argument "First")
+              (list-separator ",")
+              (template-argument "Second")
+              ">>"
+            )
+          )
+        )
+      )
+      ";"
+    )
+  )
+  (using-declaration
+    "using" "/* gap */" "Attributed" "[" "[" "deprecated" "]" "]" "="
+    (type-id
+      (leading-trivia
+        (comment "/* gap */")
+      )
+      "Pair"
+      (template-argument-list
+        "<"
+        (template-argument "First")
+        (list-separator ",")
+        (template-argument "Second")
+        ">"
+      )
+    )
+    ";"
+  )
+  (typedef-declaration
+    "typedef"
+    (declaration-specifiers
+      "Pair"
+      (template-argument-list
+        "<"
+        (template-argument "First")
+        (list-separator ",")
+        (template-argument "Second")
+        ">"
+      )
+    )
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (declarator-name "Legacy")
+        )
+      )
+    )
+    ";"
+  )
+  (using-declaration
+    "using" "Computed" "="
+    (type-id
+      (type-id
+        "decltype"
+        (parenthesized-expression
+          "("
+          (call-expression
+            (template-id-expression
+              (identifier-expression "Invoke")
+              (template-argument-list
+                "<"
+                (template-argument "First")
+                (list-separator ",")
+                (template-argument "Second")
+                ">"
+              )
+            )
+            (argument-list
+              "("
+              (argument
+                (identifier-expression "value")
+              )
+              ")"
+            )
+          )
+          ")"
+        )
+      )
+    )
+    ";"
+  )
+  (declaration
+    (declaration-specifiers
+      "Map"
+      (template-argument-list
+        "<"
+        (template-argument
+          (type-id
+            "decltype"
+            (parenthesized-expression
+              "("
+              (call-expression
+                (template-id-expression
+                  (identifier-expression "Invoke")
+                  (template-argument-list
+                    "<"
+                    (template-argument "First")
+                    (list-separator ",")
+                    (template-argument "Second")
+                    ">"
+                  )
+                )
+                (argument-list
+                  "("
+                  (argument
+                    (identifier-expression "value")
+                  )
+                  ")"
+                )
+              )
+              ")"
+            )
+          )
+        )
+        (list-separator ",")
+        (template-argument "Third")
+        ">"
+      )
+    )
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (declarator-name "computed")
+        )
+      )
+    )
+    ";"
+  )
+  (declaration
+    (declaration-specifiers
+      "Map"
+      (template-argument-list
+        "<"
+        (template-argument
+          "int" "(" "*" ")" "(" "Pair"
+          (template-argument-list
+            "<"
+            (template-argument "First")
+            (list-separator ",")
+            (template-argument "Second")
+            ">"
+          )
+          ")"
+        )
+        (list-separator ",")
+        (template-argument "Third")
+        ">"
+      )
+    )
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (declarator-name "callback")
+        )
+      )
+    )
+    ";"
+  )
+  (using-declaration
+    "using" "Compared" "="
+    (type-id
+      (type-id
+        "decltype"
+        (parenthesized-expression
+          "("
+          (binary-expression
+            (binary-expression
+              (identifier-expression "left")
+              "<"
+              (identifier-expression "right")
+            )
+            ">"
+            (identifier-expression "tail")
+          )
+          ")"
+        )
+      )
+    )
+    ";"
+  )
+  (using-declaration
+    "using" "Type" "="
+    (type-id "decltype" "(" "auto" ")")
+    ";"
+  )
+  (using-declaration "using" "namespace" "samples" ";")
+  (using-declaration "using" "samples" "::" "Value" ";")
+)

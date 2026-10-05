@@ -2,6 +2,10 @@ template<class A, class B> struct Pair {
 };
 template<class T> struct Box {
 };
+struct FirstLongTemplateArgument {
+};
+struct SecondLongTemplateArgument {
+};
 
 storage::Map<FirstLongTemplateArgument,
   SecondLongTemplateArgument,
@@ -50,6 +54,29 @@ template<class T> void UseArguments(T value) {
     Pair< FirstLongTemplateArgument ,  SecondLongTemplateArgument > disabled;
     // hit-fmt on
 }
+
+using SimpleAlias = storage::Map<
+  FirstLongTemplateArgument,
+  SecondLongTemplateArgument>;
+template<class T> using NestedAlias = storage::Pair<
+  types::Box<
+    T>, types::Pair<FirstLongTemplateArgument,
+      SecondLongTemplateArgument>>;
+using /* name comment */ AttributedAlias [[deprecated]] = storage::Pair<
+  FirstLongTemplateArgument,
+  SecondLongTemplateArgument>;
+typedef storage::Pair<FirstLongTemplateArgument,
+  SecondLongTemplateArgument> LegacyAlias;
+using ComputedAlias = decltype(Invoke<
+    FirstLongTemplateArgument,
+    SecondLongTemplateArgument>(value));
+storage::Map<decltype(Invoke<FirstLongTemplateArgument,
+  SecondLongTemplateArgument>(value)),
+  ThirdLongTemplateArgument> computed;
+storage::Map<int (*)(Pair<FirstLongTemplateArgument,
+  SecondLongTemplateArgument>),
+  ThirdLongTemplateArgument> callbacks;
+using ComparedAlias = decltype(left < right > tail);
 
 Pair<FirstLongTemplateArgument,,SecondLongTemplateArgument> malformed;
 Pair<FirstLongTemplateArgument,> trailing;

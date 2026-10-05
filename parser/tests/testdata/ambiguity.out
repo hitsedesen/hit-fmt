@@ -1,5 +1,9 @@
 (translation-unit
-  (using-declaration "using" "Output" "=" "int" ";")
+  (using-declaration
+    "using" "Output" "="
+    (type-id "int")
+    ";"
+  )
   (function-declaration
     (declaration-specifiers "Output")
     (init-declarator-list

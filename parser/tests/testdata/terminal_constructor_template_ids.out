@@ -44,4 +44,117 @@
       "}" ";"
     )
   )
+  (using-declaration
+    "using" "ParcelAlias" "="
+    (type-id
+      "Parcel"
+      (template-argument-list
+        "<"
+        (template-argument "int")
+        ">"
+      )
+    )
+    ";"
+  )
+  (function-definition
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          "ParcelAlias" "::"
+          (declarator-name "Parcel")
+          (function-declarator
+            (parameter-list
+              "("
+              (parameter-declaration
+                (declaration-specifiers "const" "ParcelAlias")
+                (init-declarator-list
+                  (init-declarator
+                    (declarator
+                      (pointer-operator "&")
+                      (declarator-name "other")
+                    )
+                  )
+                )
+              )
+              ")"
+            )
+            (constructor-initializer-list
+              ":"
+              (constructor-initializer
+                (call-expression
+                  (identifier-expression "saved")
+                  (argument-list
+                    "("
+                    (argument
+                      (member-expression
+                        (identifier-expression "other")
+                        "."
+                        (identifier-expression "saved")
+                      )
+                    )
+                    ")"
+                  )
+                )
+              )
+            )
+          )
+        )
+      )
+    )
+    (compound-statement "{" "}")
+  )
+  (function-definition
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          "ParcelAlias" "::"
+          (destructor-name "~" "Parcel")
+          (function-declarator
+            (parameter-list "(" ")")
+          )
+        )
+      )
+    )
+    (compound-statement "{" "}")
+  )
+  (function-definition
+    (declaration-specifiers "ParcelAlias" "::" "Value")
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (declarator-name "makeValue")
+          (function-declarator
+            (parameter-list
+              "("
+              (parameter-declaration
+                (declaration-specifiers "const" "ParcelAlias")
+                (init-declarator-list
+                  (init-declarator
+                    (declarator
+                      (pointer-operator "&")
+                      (declarator-name "value")
+                    )
+                  )
+                )
+              )
+              ")"
+            )
+          )
+        )
+      )
+    )
+    (compound-statement
+      "{"
+      (return-statement
+        "return"
+        (member-expression
+          (identifier-expression "value")
+          "."
+          (identifier-expression "saved")
+        )
+        ";"
+      )
+      "}"
+    )
+  )
 )
