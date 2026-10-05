@@ -41,6 +41,32 @@ void Branches() {
     auto a=c*d;
 #endif
 }
+void BranchBodies(int descriptor) {
+    if (descriptor >= 0) {
+        #ifndef PLATFORM_WINDOWS
+            if (descriptor >= DescriptorLimit) {
+            LogWarning("Descriptor exceeds limit")
+                .With("Descriptor", descriptor)
+                .With("Limit", DescriptorLimit);
+            status = -1;
+        }
+        #else
+                  while (Ready()) {
+        Poll();
+             }
+        #endif
+#if OUTER_FEATURE
+#if INNER_FEATURE
+                 if (Ready()) {
+        Poll();
+             }
+#else
+        Reset(); Notify();
+#endif
+#endif
+        Finish();
+    }
+}
 void Arguments() {
     Consume(first,
 #if PICK_LEFT

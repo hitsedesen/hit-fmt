@@ -1375,6 +1375,7 @@ std::vector<FormatCase> FormatCases()
         });
     };
     addProfileCase("../preprocessing-fragments", "canonical");
+    cases.back().CheckOwningMaps = true;
     addProfileCase("../preprocessing-fragments", "case-comments");
     addProfileCase("../spacing-options", "profile-initializers");
     addProfileCase("../spacing-options", "profile-overflow");
@@ -2080,8 +2081,8 @@ std::vector<FormatCase> FormatCases()
             },
         })
     {
-        auto style = formatter::LoadConfigFile(spacing / "case-regions.hit-fmt")
-            .FormattingStyle;
+        auto style = formatter::LoadConfigFile(
+            spacing / "case-regions.hit-fmt").FormattingStyle;
         style.IndentCaseLabels = indentation;
         style.CaseLabelIndentWidth = 1;
         cases.push_back(

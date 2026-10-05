@@ -302,42 +302,18 @@ bool SourceAnalysis::CanSpellGapNewlines(GapId id) const
     return !gap.Source.Empty() && !gap.IntrinsicPreserve &&
         !gap.IntrinsicContextSensitive && !IntersectsImmutable(gap.Source);
 }
-void SourceAnalysis::RestrictEditScope(
-    std::span<const parser::SourceRange> ranges)
+std::pmr::vector<PartialGapPermission>
+SourceAnalysis::CollectPartialGapPermissions(
+    std::optional<std::span<const parser::SourceRange>> scope) const
 {
-    if (!Built_ || Gaps_.empty() || HasEditScope_) {
-        throw std::logic_error(
-            "edit scope requires built unrestricted analysis");
-    }
-    const auto size = Gaps_.back().Source.End;
-    // Validate before allocating or changing any analysis facts.
-    Offset previousEnd = 0;
-    for (const auto range : ranges) {
-        if (range.Begin >= range.End || range.End > size ||
-            range.Begin < previousEnd)
-        {
-            throw std::invalid_argument("invalid source edit scope");
-        }
-        previousEnd = range.End;
-    }
-    const auto allocator = Gaps_
-        .get_allocator()
-        .resource();
-    std::pmr::vector<parser::SourceRange> scope(allocator);
-    scope.reserve(ranges.size());
-    for (const auto range : ranges) {
-        if (!scope.empty() && range.Begin == scope.back().End) {
-            scope.back().End = range.End;
-        } else {
-            scope.push_back(range);
-        }
-    }
-    // All potentially throwing work precedes commit. Protection still contains
-    // semantic/explicit reasons only; the complement must not hide safe slices.
-    std::pmr::vector<PartialGapPermission> permissions(allocator);
+    std::pmr::vector<PartialGapPermission> permissions(
+        Gaps_.get_allocator().resource());
+    // A directive owns its terminating LF, not the next line's indentation.
+    // Keep the same slice authority for unrestricted and scoped formatting.
     for (GapId id = 0; id < Gaps_.size(); ++id) {
         const auto& gap = Gaps_[id];
-        if (!WholeGapCovered(scope, gap, Original(gap)) &&
+        if ((gap.Preserve ||
+            (scope && !WholeGapCovered(*scope, gap, Original(gap)))) &&
             !gap.IntrinsicPreserve && !gap.IntrinsicContextSensitive &&
             (!gap.MustStartWithLineFeed || Original(gap).starts_with('\n')) &&
             Original(gap).find_first_not_of(" \t\r\n") ==
@@ -356,7 +332,7 @@ void SourceAnalysis::RestrictEditScope(
             }
             auto permit =
                 [&] (parser::SourceRange slice, PartialGapPermissionKind kind) {
-                    if (!Covered(scope, slice)) {
+                    if (scope && !Covered(*scope, slice)) {
                         return;
                     }
                 // HeaderName alone does not own insertion before its opener.
@@ -410,6 +386,42 @@ void SourceAnalysis::RestrictEditScope(
             }
         }
     }
+    return permissions;
+}
+
+void SourceAnalysis::RestrictEditScope(
+    std::span<const parser::SourceRange> ranges)
+{
+    if (!Built_ || Gaps_.empty() || HasEditScope_) {
+        throw std::logic_error(
+            "edit scope requires built unrestricted analysis");
+    }
+    const auto size = Gaps_.back().Source.End;
+    // Validate before allocating or changing any analysis facts.
+    Offset previousEnd = 0;
+    for (const auto range : ranges) {
+        if (range.Begin >= range.End || range.End > size ||
+            range.Begin < previousEnd)
+        {
+            throw std::invalid_argument("invalid source edit scope");
+        }
+        previousEnd = range.End;
+    }
+    const auto allocator = Gaps_
+        .get_allocator()
+        .resource();
+    std::pmr::vector<parser::SourceRange> scope(allocator);
+    scope.reserve(ranges.size());
+    for (const auto range : ranges) {
+        if (!scope.empty() && range.Begin == scope.back().End) {
+            scope.back().End = range.End;
+        } else {
+            scope.push_back(range);
+        }
+    }
+    // All potentially throwing work precedes commit. Protection still contains
+    // semantic/explicit reasons only; the complement must not hide safe slices.
+    auto permissions = CollectPartialGapPermissions(scope);
     std::pmr::vector<ProtectedSourceRange> protection(allocator);
     protection.reserve(Protection_.size() + scope.size() + 1);
     protection.insert(protection.end(), Protection_.begin(), Protection_.end());
@@ -924,6 +936,9 @@ SourceAnalysis BuildSourceAnalysis(
     result.Built_ = true;
     if (options.EditScope) {
         result.RestrictEditScope(*options.EditScope);
+    } else {
+        result.PartialGapPermissions_ =
+            result.CollectPartialGapPermissions(std::nullopt);
     }
     return result;
 }

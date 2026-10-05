@@ -1358,6 +1358,25 @@ TEST(SourceAnalysis, PartialCommentOwnedCrAndDirectivePrefix)
         changed.replace(begin, 2, "\t");
         ExpectSameTokens(tree, changed);
         EXPECT_FALSE(analysis.CanReplaceGap(gap, "\r\n\t"));
+        if (std::string_view(prefix).starts_with('#')) {
+            auto unrestricted = Analyze(tree, memory);
+            const std::array<parser::SourceRange, 1> fullScope{
+                {{0, uint32_t(source.size())}},
+            };
+            auto fullySelected =
+                Analyze(tree, memory, {.EditScope = fullScope});
+            for (const auto* candidate : {&unrestricted, &fullySelected}) {
+                const auto* indent = Permission(
+                    *candidate,
+                    gap,
+                    PermissionKind::FinalIndentation);
+                ASSERT_NE(indent, nullptr);
+                EXPECT_EQ(indent->Source.Begin, begin);
+                EXPECT_EQ(indent->Source.End, begin + 2);
+                EXPECT_FALSE(candidate->IntersectsImmutable(indent->Source));
+                EXPECT_FALSE(candidate->CanReplaceGap(gap, "\n\t"));
+            }
+        }
     }
 }
 

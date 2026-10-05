@@ -196,9 +196,9 @@ public:
         return Regions_;
     }
 
-    // Sparse permissions for partly selected gaps: indentation replaces a
-    // complete horizontal suffix after fixed LF (or a zero-width point);
-    // TrimHorizontal deletes a complete space/tab run before LF/CRLF.
+    // Sparse permissions for partly protected/selected gaps: indentation
+    // replaces a complete horizontal suffix after fixed LF (or a zero-width
+    // point); TrimHorizontal deletes a complete space/tab run before LF/CRLF.
     // Partial runs, newline changes and token edits remain forbidden.
     // Other safety constraints still apply.
     [[nodiscard]] std::span<const PartialGapPermission> PartialGapPermissions()
@@ -243,6 +243,9 @@ private:
     std::pmr::vector<PartialGapPermission> PartialGapPermissions_;
     bool HasEditScope_ = false;
     bool Built_ = false;
+
+    std::pmr::vector<PartialGapPermission> CollectPartialGapPermissions(
+        std::optional<std::span<const parser::SourceRange>> scope) const;
 
     friend SourceAnalysis BuildSourceAnalysis(
         const parser::SyntaxTree&,
