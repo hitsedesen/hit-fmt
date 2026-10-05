@@ -1375,6 +1375,7 @@ std::vector<FormatCase> FormatCases()
         });
     };
     addProfileCase("../preprocessing-fragments", "canonical");
+    cases.back().CheckOwningMaps = true;
     addProfileCase("../preprocessing-fragments", "case-comments");
     addProfileCase("../spacing-options", "profile-initializers");
     addProfileCase("../spacing-options", "profile-overflow");

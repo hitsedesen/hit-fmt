@@ -2596,6 +2596,34 @@ private:
         return fallback;
     }
 
+    bool PreprocessingSequence(Index id) const
+    {
+        const auto kind = Region(Syntax_[id]).Kind;
+        return Syntax_[id].ItemSequence &&
+            (kind == NodeKind::PreprocessingConditional ||
+                kind == NodeKind::PreprocessingBranch);
+    }
+
+    Index NextBodyItem(Index item, Index body) const
+    {
+        // Conditional statement/declaration sequences are transparent to the
+        // surrounding body. Do not descend into expression fragments or real
+        // nested bodies, which own their own layout and indentation.
+        if (PreprocessingSequence(item) &&
+            Region(Syntax_[item]).FirstChild != None)
+        {
+            return Region(Syntax_[item]).FirstChild;
+        }
+        while (item != body) {
+            const auto& node = Region(Syntax_[item]);
+            if (node.NextSibling != None) {
+                return node.NextSibling;
+            }
+            item = node.Parent;
+        }
+        return None;
+    }
+
     void PlanBody(
         Index id,
         Index opening,
@@ -2710,11 +2738,11 @@ private:
         Index contents = None;
         for (auto child = Region(Syntax_[id]).FirstChild;
             child != None;
-            child = Region(Syntax_[child]).NextSibling)
+            child = NextBodyItem(child, id))
         {
             const auto& part = Region(Syntax_[child]);
-            if (part.Tokens.Empty() || part.Tokens.Begin <= opening ||
-                part.Tokens.End > close)
+            if (PreprocessingSequence(child) || part.Tokens.Empty() ||
+                part.Tokens.Begin <= opening || part.Tokens.End > close)
             {
                 continue;
             }

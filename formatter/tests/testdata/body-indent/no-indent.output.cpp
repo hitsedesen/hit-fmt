@@ -6,9 +6,9 @@ int b;
 // Keep this comment at its source indentation.
 int c;
 #ifdef OPTIONAL_MEMBER
-  int d;
+int d;
 #endif
-  struct Nested {
+struct Nested {
 public:
 int value;
   };
