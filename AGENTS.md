@@ -6,6 +6,15 @@ and resolve any remaining violations. Do not block pushing to a branch or
 creating a PR if the formatter is temporarily unavailable due to work
 in the repo.
 
+## Documentation
+
+- Document command-line options in `--help` and configuration options in
+  `--help-config` and the generated configuration template. Update their
+  descriptions and examples when adding or changing options.
+- Do not add option lists, option references, or detailed option guidance to
+  `README.md`. Keep it focused on the project overview, building, and basic
+  usage; the built-in help is the source of option documentation.
+
 ## Tests and examples
 
 - Run `build/tests/tests` directly to see each GoogleTest case, and
