@@ -1,0 +1,19 @@
+fail: function name 'selected_bad' has invalid case; expected PascalCase
+  --> sample.cpp:4:6 [written output]
+fail: parameter #1 in function definition 'selected_bad': expected a name
+  --> sample.cpp:4:22 [written output]
+fail: function name 'bad_after' has invalid case; expected PascalCase
+  --> sample.cpp:16:6 [written output]
+fail: parameter #1 in function definition 'bad_after': expected a name
+  --> sample.cpp:16:19 [written output]
+fail: cannot format this line automatically within ColumnLimit 40
+  --> sample.cpp:10:41 [written output]
+   |
+10 |             "unavoidable_spilled_literal_over_the_limit");
+   |                                         ^
+fail: cannot format this line automatically within ColumnLimit 40
+  --> sample.cpp:13:41 [written output]
+   |
+13 |         "unavoidable_selected_literal_over_the_limit",
+   |                                         ^
+summary: fail: naming or parameter-name violation; fail: cannot format automatically within column limit

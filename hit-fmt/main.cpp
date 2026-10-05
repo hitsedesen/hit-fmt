@@ -2,6 +2,7 @@
 #include "config_template.hpp"
 #include "file_dispatch.hpp"
 #include "file_check.hpp"
+#include "options.hpp"
 #include "source_excerpt.hpp"
 #include "version.hpp"
 
@@ -1023,132 +1024,9 @@ bool ForEachFile(
     return true;
 }
 
-struct Options
-{
-    bool Fix = false;
-    bool SummaryOnly = false;
-    bool DisableConfig = false;
-    bool ShowHelp = false;
-    bool ShowVersion = false;
-    bool ShowConfigHelp = false;
-    bool GenerateConfig = false;
-    size_t Threads = 1;
-    std::optional<std::filesystem::path> ConfigPath;
-    std::vector<std::regex> Exclusions;
-    std::vector<std::filesystem::path> Paths;
-};
+using hit_fmt::Options;
 
-Options ParseOptions(int argc, char* argv[])
-{
-    Options options;
-    bool positionalOnly = false;
-    for (int index = 1; index < argc; ++index) {
-        std::string_view argument(argv[index]);
-        if (!positionalOnly) {
-            hit_fmt::ValidatePreviewOption(argument);
-        }
-        if (positionalOnly || !argument.starts_with('-') || argument == "-") {
-            options.Paths.emplace_back(argument);
-        } else if (argument == "--") {
-            positionalOnly = true;
-        } else if (argument == "-h" || argument == "--help") {
-            options.ShowHelp = true;
-        } else if (argument == "-V" || argument == "--version") {
-            options.ShowVersion = true;
-        } else if (argument == "--help-config") {
-            options.ShowConfigHelp = true;
-        } else if (argument == "--generate-config") {
-            options.GenerateConfig = true;
-        } else if (argument == "--fix") {
-            options.Fix = true;
-        } else if (argument == "--check") {
-            // Check mode is the default, so this flag needs no state change.
-        } else if (argument == "--summary") {
-            options.SummaryOnly = true;
-        } else if (argument == "--no-config") {
-            options.DisableConfig = true;
-        } else if (argument == "-j" || argument == "--threads" ||
-            argument.starts_with("--threads=") ||
-            (argument.starts_with("-j") && argument.size() > 2))
-        {
-            std::string_view value;
-            if (argument == "-j") {
-                // Only consume the next token if it is a thread count;
-                // otherwise it remains an input path or another option.
-                if (index + 1 < argc) {
-                    std::string_view next(argv[index + 1]);
-                    if (!next.empty() &&
-                        std::ranges::all_of(
-                            next,
-                            [] (char c) { return c >= '0' && c <= '9'; }))
-                    {
-                        value = argv[++index];
-                    }
-                }
-                if (value.empty()) {
-                    options.Threads =
-                        std::max(1u, std::thread::hardware_concurrency());
-                    continue;
-                }
-            } else if (argument == "--threads") {
-                if (++index == argc) {
-                    throw std::runtime_error(
-                        "--threads requires a positive integer");
-                }
-                value = argv[index];
-            } else {
-                value = argument.substr(argument.starts_with("-j") ? 2 : 10);
-            }
-            size_t threads = 0;
-            auto [end, error] = std::from_chars(
-                value.data(),
-                value.data() + value.size(),
-                threads);
-            if (error != std::errc{} || end != value.data() + value.size() ||
-                threads == 0)
-            {
-                throw std::runtime_error(
-                    "--threads requires a positive integer");
-            }
-            options.Threads = threads;
-        } else if (argument == "--config") {
-            if (++index == argc) {
-                throw std::runtime_error("--config requires a file path");
-            }
-            options.ConfigPath = argv[index];
-        } else if (argument.starts_with("--config=")) {
-            options.ConfigPath = std::string(argument.substr(9));
-        } else if (argument == "--exclude" ||
-            argument.starts_with("--exclude="))
-        {
-            std::string pattern;
-            if (argument == "--exclude") {
-                if (++index == argc) {
-                    throw std::runtime_error("--exclude requires a regex");
-                }
-                pattern = argv[index];
-            } else {
-                pattern = argument.substr(10);
-            }
-            if (pattern.empty()) {
-                throw std::runtime_error("--exclude requires a regex");
-            }
-            try {
-                options.Exclusions.emplace_back(pattern);
-            } catch (const std::regex_error& error) {
-                throw std::runtime_error("invalid --exclude regex: " + pattern +
-                    ": " + error.what());
-            }
-        } else {
-            throw std::runtime_error(
-                "unknown option: " + std::string(argument));
-        }
-    }
-    if (options.DisableConfig && options.ConfigPath) {
-        throw std::runtime_error("--config and --no-config cannot be combined");
-    }
-    return options;
-}
+using hit_fmt::ParseOptions;
 
 class StyleResolver
 {
@@ -1287,7 +1165,7 @@ void PrintHelp(std::ostream& output, std::string_view executable, bool useColor)
     output << '\n';
     option("--fix", "            Fix what can be fixed; check the result.");
     option("--check", "          Check without editing (default; optional).");
-    option("--no-spillover", "   Unsupported in this whole-file preview.");
+    option("--no-spillover", "   Restrict changes to selected hunk lines.");
     option("--summary", "        Print only file status lines.");
     option("-j [n]", "         Use n threads, or all cores without n.");
     option("--threads <n>", "  Use n threads (default 1).");
@@ -1297,7 +1175,7 @@ void PrintHelp(std::ostream& output, std::string_view executable, bool useColor)
         "      Do not search parent directories for .hit-fmt.");
     option(
         "--changed-hunks <file|->",
-        "  Unsupported in this whole-file preview.");
+        "  Read changed file/line records (alias --changed-ranges).");
     option(
         "--exclude <regex>",
         " Skip matching files or directories (repeatable).");
@@ -1316,8 +1194,10 @@ void PrintHelp(std::ostream& output, std::string_view executable, bool useColor)
             "config file.\n"
         << "Both use ECMAScript regex; matching directories are skipped.\n"
         << "Files larger than 4 MiB are skipped with a warning.\n"
-        << "Experimental whole-file pipeline: changed-hunks/no-spillover and "
-            "nonempty CallLikeMacroNames are currently unsupported.\n"
+        << "Hunk lines are one-based and inclusive in the original source.\n"
+        << "Hunk paths are relative to the working directory. Safe enclosing "
+            "lists and include groups may spill up to 200 lines.\n"
+        << "Nonempty CallLikeMacroNames are currently unsupported.\n"
         << "Output is colorized when written to a terminal; set "
             "NO_COLOR to disable it.\n\n";
     highlight("Examples:", BoldCyan);
@@ -1328,6 +1208,7 @@ void PrintHelp(std::ostream& output, std::string_view executable, bool useColor)
             " --fix source.cpp include/",
             " --summary src/ include/",
             " --fix --exclude '(^|/)generated(/|$)' src/",
+            " --fix --changed-hunks - < hunks.txt",
         })
     {
         output << "  ";
@@ -1342,6 +1223,7 @@ int main(int argc, char* argv[])
 {
     Options options;
     std::optional<StyleResolver> styleResolver;
+    formatter::ChangedHunkFiles changed;
     try {
         options = ParseOptions(argc, argv);
         if (options.ShowHelp) {
@@ -1360,7 +1242,23 @@ int main(int argc, char* argv[])
             hit_fmt::PrintPreserveConfig(std::cout);
             return 0;
         }
-        if (options.Paths.empty()) {
+        if (options.HunkInput) {
+            if (*options.HunkInput == "-") {
+                changed = formatter::ParseChangedHunks(
+                    std::cin,
+                    std::filesystem::current_path());
+            } else {
+                std::ifstream input(*options.HunkInput);
+                if (!input) {
+                    throw std::runtime_error(
+                        "cannot open changed ranges: " + *options.HunkInput);
+                }
+                changed = formatter::ParseChangedHunks(
+                    input,
+                    std::filesystem::current_path());
+            }
+            options.Paths = std::move(changed.Paths);
+        } else if (options.Paths.empty()) {
             PrintHelp(std::cerr, argv[0], UseTerminalColors(stderr));
             return 1;
         }
@@ -1392,8 +1290,17 @@ int main(int argc, char* argv[])
             auto source = paddedSource.View();
             const auto& config = resolver.Resolve(path);
             const auto inputFilePath = path.generic_string();
+            std::optional<hit_fmt::ChangedFileScope> scope;
+            if (options.HunkInput) {
+                const auto absolute =
+                    std::filesystem::absolute(path).lexically_normal();
+                scope = hit_fmt::ChangedFileScope{
+                    changed.Hunks.at(absolute.string()),
+                    options.Spillover,
+                };
+            }
             const auto checked =
-                hit_fmt::CheckFile(paddedSource, config, inputFilePath);
+                hit_fmt::CheckFile(paddedSource, config, inputFilePath, scope);
             if (options.Fix && checked.FormattingMismatch) {
                 util::WriteEntireFile(filePath, checked.Formatting.Text);
                 if (summaryOnly) {
@@ -1514,8 +1421,10 @@ int main(int argc, char* argv[])
     }
     if (useColor) {
         if (mismatchCount == 0) {
-            std::cout << BoldGreen << "All checked files are formatted."
-                << ResetColor << '\n';
+            std::cout << BoldGreen
+                << (options.HunkInput
+                    ? "No hunk or spillover violations found."
+                    : "All checked files are formatted.") << ResetColor << '\n';
         } else {
             std::cout << BoldRed << mismatchCount << " file"
                 << (mismatchCount == 1 ? "" : "s")

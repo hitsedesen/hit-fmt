@@ -2,9 +2,12 @@
 
 #include <formatter/config.hpp>
 #include <formatter/formatter.hpp>
+#include <formatter/hunks.hpp>
 
 #include <cstdint>
+#include <optional>
 #include <ostream>
+#include <span>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -31,14 +34,28 @@ struct CheckedFile
 {
     formatter::FormatResult Formatting;
     std::vector<SemanticDiagnostic> Semantic;
+    // Definite required edits blocked by the original hunk boundary.
+    std::vector<SemanticDiagnostic> RequiredChanges;
+    // Original byte ranges that were not fully checked.
+    std::vector<formatter::HunkCoverage> Incomplete;
     // Original token anchors, indexed like Formatting.Diagnostics.
     std::vector<util::Position> OriginalWidthPositions;
     std::uint16_t ColumnLimit = 0;
     bool FormattingMismatch = false;
 
-    // Applied formatting is not a remaining failure in fix mode. Naming,
-    // parameter names and actual emitted width failures are never erased.
+    // Applied formatting is not a failure in fix mode. Remaining semantic,
+    // structural and width violations are failures in both modes.
     [[nodiscard]] bool HasFailures(bool fix) const;
+};
+
+// One-based inclusive original physical lines. Spill authorizes only bounded
+// safe lists/include groups, not whole functions. An engaged empty selection
+// selects nothing; absent scope checks the whole file. Borrowed only during
+// CheckFile.
+struct ChangedFileScope
+{
+    std::span<const formatter::Hunk> Hunks;
+    bool Spillover = true;
 };
 
 // One original parse and one public pipeline invocation, mode-independent.
@@ -48,12 +65,12 @@ struct CheckedFile
 [[nodiscard]] CheckedFile CheckFile(
     util::PaddedSourceView source,
     const PreparedFileConfiguration& configuration,
-    std::string_view inputFilePath = {});
+    std::string_view inputFilePath = {},
+    std::optional<ChangedFileScope> changed = std::nullopt);
 
-// Check diagnostics point into the original source. Fix diagnostics point
-// into the written output. Width failures state that automatic formatting
-// cannot satisfy the limit and show the offending line. originalSource is
-// borrowed only while printing; fix excerpts use Formatting.Text instead.
+// Check diagnostics use original coordinates; fix diagnostics use emitted
+// coordinates. originalSource is borrowed only while printing; fix excerpts
+// use Formatting.Text.
 // Printing does not parse or run the formatter.
 void PrintFileIssues(
     std::ostream& output,
@@ -68,8 +85,5 @@ void PrintFileSummaryIssues(
     std::ostream& output,
     const CheckedFile& checked,
     bool fix);
-
-// Reject unsupported options before discovery, formatting or writes.
-void ValidatePreviewOption(std::string_view argument);
 
 } // namespace hit_fmt

@@ -107,11 +107,46 @@ private:
     util::Position Current_{1, 1};
 };
 
-void MapSemanticPositions(const parser::SyntaxTree& tree, CheckedFile& checked)
+bool InLines(size_t line, std::span<const formatter::Hunk> hunks)
+{
+    const auto it = std::lower_bound(
+        hunks.begin(),
+        hunks.end(),
+        line,
+        [] (auto hunk, auto target) { return hunk.End < target; });
+    return it != hunks.end() && it->Begin <= line;
+}
+
+std::string_view RequiredChangeMessage(formatter::StructuralAction action)
+{
+    using Action = formatter::StructuralAction;
+    switch (action) {
+        case Action::AddMissingControlBraces:
+            return "control body requires braces";
+        case Action::EmptyControlBody:
+            return "empty control body must use an empty block";
+        case Action::RemoveNullStatements:
+            return "redundant null statement must be removed";
+        case Action::RemoveNullDeclarations:
+            return "redundant null declaration must be removed";
+        case Action::IncludeOrder:
+        case Action::NamespaceComments:
+            break; // These skips are not proof of a required edit.
+    }
+    throw std::logic_error("unexpected required hunk edit");
+}
+
+constexpr std::string_view BlockedHunkFix =
+    "; cannot automatically fix within selected hunks or allowed spillover";
+
+void MapSemanticPositions(
+    const parser::SyntaxTree& tree,
+    const formatter::FormatResult& formatting,
+    std::vector<SemanticDiagnostic>& diagnostics)
 {
     std::sort(
-        checked.Semantic.begin(),
-        checked.Semantic.end(),
+        diagnostics.begin(),
+        diagnostics.end(),
         [] (
             const auto& a,
             const auto& b) { return Before(a.Original, b.Original); });
@@ -122,10 +157,10 @@ void MapSemanticPositions(const parser::SyntaxTree& tree, CheckedFile& checked)
         size_t Diagnostic;
     };
     std::pmr::vector<Point> points(&scratch);
-    points.reserve(checked.Semantic.size());
+    points.reserve(diagnostics.size());
     PositionSweep original(tree.Source());
-    for (size_t i = 0; i < checked.Semantic.size(); ++i) {
-        const auto offset = original.Offset(checked.Semantic[i].Original);
+    for (size_t i = 0; i < diagnostics.size(); ++i) {
+        const auto offset = original.Offset(diagnostics[i].Original);
         // Prefer the token beginning at a point; otherwise the containing or
         // preceding endpoint. Missing-name diagnostics can be insertion points.
         parser::TokenIndex low = 0, high = tree.TokenCount();
@@ -148,7 +183,7 @@ void MapSemanticPositions(const parser::SyntaxTree& tree, CheckedFile& checked)
             --token;
         }
         const auto range = tree.Token(token).Text;
-        const auto& mapped = checked.Formatting.OriginalTokens.at(token);
+        const auto& mapped = formatting.OriginalTokens.at(token);
         if (offset < range.Begin || offset > range.End || !mapped.Present ||
             mapped.Output.End - mapped.Output.Begin != range.End - range.Begin)
         {
@@ -161,10 +196,9 @@ void MapSemanticPositions(const parser::SyntaxTree& tree, CheckedFile& checked)
         points.begin(),
         points.end(),
         [] (const auto& a, const auto& b) { return a.Offset < b.Offset; });
-    PositionSweep emitted(checked.Formatting.Text);
+    PositionSweep emitted(formatting.Text);
     for (const auto point : points) {
-        checked.Semantic[point.Diagnostic].Emitted =
-            emitted.Position(point.Offset);
+        diagnostics[point.Diagnostic].Emitted = emitted.Position(point.Offset);
     }
 }
 
@@ -269,13 +303,14 @@ PreparedFileConfiguration::PreparedFileConfiguration(
 bool CheckedFile::HasFailures(bool fix) const
 {
     return (!fix && FormattingMismatch) || !Semantic.empty() ||
-        !Formatting.Diagnostics.empty();
+        !RequiredChanges.empty() || !Formatting.Diagnostics.empty();
 }
 
 CheckedFile CheckFile(
     util::PaddedSourceView source,
     const PreparedFileConfiguration& configuration,
-    std::string_view inputFilePath)
+    std::string_view inputFilePath,
+    std::optional<ChangedFileScope> changed)
 {
     auto tree = parser::Parse(
         source,
@@ -283,10 +318,33 @@ CheckedFile CheckFile(
         configuration.Formatting.ParsingOptions());
     CheckedFile checked;
     checked.ColumnLimit = configuration.Formatting.Policies.ColumnLimit;
-    checked.Formatting = formatter::Format(
-        tree,
-        configuration.Formatting,
-        {.SourceMap = true, .InputFilePath = inputFilePath});
+    std::vector<formatter::Hunk> selected, permitted;
+    const formatter::FormatRequest request{
+        .SourceMap = true,
+        .InputFilePath = inputFilePath,
+    };
+    if (changed) {
+        auto result = formatter::FormatChanged(
+            tree,
+            configuration.Formatting,
+            changed->Hunks,
+            changed->Spillover,
+            request);
+        selected = std::move(result.SelectedLines);
+        permitted = std::move(result.PermittedLines);
+        checked.Incomplete = std::move(result.Incomplete);
+        for (const auto& skip : result.RequiredSkips) {
+            checked.RequiredChanges.push_back({
+                tree.TokenPosition(skip.Tokens.Begin),
+                {},
+                std::string(RequiredChangeMessage(skip.Action)),
+            });
+        }
+        checked.Formatting = std::move(result.Result);
+    } else {
+        checked.Formatting =
+            formatter::Format(tree, configuration.Formatting, request);
+    }
     checked.FormattingMismatch = checked.Formatting.Text != tree.Source();
     for (auto& diagnostic : formatter::CheckNames(tree, configuration.Settings))
     {
@@ -308,8 +366,31 @@ CheckedFile CheckFile(
         checked.Semantic
             .push_back({diagnostic.Position, {}, std::move(message)});
     }
-    MapSemanticPositions(tree, checked);
+    if (changed) {
+        std::erase_if(
+            checked.Semantic,
+            [&] (const auto& diagnostic) {
+                return !InLines(diagnostic.Original.Line, selected);
+            });
+    }
+    MapSemanticPositions(tree, checked.Formatting, checked.Semantic);
+    MapSemanticPositions(tree, checked.Formatting, checked.RequiredChanges);
     MapWidthPositions(tree, checked);
+    if (changed) {
+        size_t count = 0;
+        for (size_t i = 0; i < checked.Formatting.Diagnostics.size(); ++i) {
+            if (InLines(checked.OriginalWidthPositions[i].Line, permitted)) {
+                if (count != i) {
+                    checked.Formatting.Diagnostics[count] =
+                        std::move(checked.Formatting.Diagnostics[i]);
+                }
+                checked.OriginalWidthPositions[count++] =
+                    checked.OriginalWidthPositions[i];
+            }
+        }
+        checked.Formatting.Diagnostics.resize(count);
+        checked.OriginalWidthPositions.resize(count);
+    }
     return checked;
 }
 
@@ -325,6 +406,16 @@ void PrintFileIssues(
         const auto position = fix ? diagnostic.Emitted : diagnostic.Original;
         output << "fail: " << diagnostic.Message << "\n  --> " << path << ':'
             << position.Line << ':' << position.Column
+            << (fix ? " [written output]" : " [original source]") << '\n';
+    }
+    for (const auto& diagnostic : checked.RequiredChanges) {
+        const auto position = fix ? diagnostic.Emitted : diagnostic.Original;
+        output << "fail: " << diagnostic.Message;
+        if (fix) {
+            output << BlockedHunkFix;
+        }
+        output << "\n  --> " << path << ':' << position.Line << ':'
+            << position.Column
             << (fix ? " [written output]" : " [original source]") << '\n';
     }
     if (checked.Formatting.Diagnostics.empty()) {
@@ -361,10 +452,12 @@ void PrintFileIssues(
         const auto position = fix
             ? diagnostic.Position
             : checked.OriginalWidthPositions.at(i);
-        output
-            << "fail: cannot format this line automatically "
-                "within ColumnLimit " << checked.ColumnLimit << "\n  --> "
-            << path << ':' << position.Line << ':' << position.Column
+        output << "fail: "
+            << (fix
+                ? "cannot format this line automatically within ColumnLimit "
+                : "line exceeds ColumnLimit ") << checked.ColumnLimit
+            << "\n  --> " << path << ':' << position.Line << ':'
+            << position.Column
             << (fix ? " [written output]" : " [original source]") << '\n';
         const auto number = std::to_string(position.Line);
         const auto gutter = std::string(number.size() + 1, ' ') + "| ";
@@ -392,9 +485,12 @@ void PrintFileSummaryIssues(
     bool fix)
 {
     bool separated = false;
-    auto issue = [&] (std::string_view message) {
+    auto issue = [&] (std::string_view message, bool failure = false) {
         if (separated) {
             output << "; ";
+        }
+        if (failure) {
+            output << "fail: ";
         }
         output << message;
         separated = true;
@@ -405,23 +501,16 @@ void PrintFileSummaryIssues(
     if (!checked.Semantic.empty()) {
         issue("fail: naming or parameter-name violation");
     }
-    if (!checked.Formatting.Diagnostics.empty()) {
-        issue("fail: cannot format automatically within column limit");
+    for (const auto& diagnostic : checked.RequiredChanges) {
+        issue(diagnostic.Message, true);
+        if (fix) {
+            output << BlockedHunkFix;
+        }
     }
-}
-
-void ValidatePreviewOption(std::string_view argument)
-{
-    if (argument == "--changed-hunks" ||
-        argument.starts_with("--changed-hunks=") ||
-        argument == "--changed-ranges" ||
-        argument.starts_with("--changed-ranges=") ||
-        argument == "--no-spillover")
-    {
-        throw std::invalid_argument(
-            "--changed-hunks/--changed-ranges and --no-spillover are "
-            "unsupported in this whole-file preview; constrained-hunk "
-            "integration is blocked");
+    if (!checked.Formatting.Diagnostics.empty()) {
+        issue(fix
+            ? "fail: cannot format automatically within column limit"
+            : "fail: column-limit violation");
     }
 }
 
