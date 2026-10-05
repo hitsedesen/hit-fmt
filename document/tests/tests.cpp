@@ -1975,12 +1975,15 @@ TEST(GroupLayout, SourceRunsMatchIndividualAtoms)
             for (auto tab : {1u, 4u, 8u}) {
                 for (auto width : {3u, 10u, 40u, 80u}) {
                     for (auto maps = 0; maps < 4; ++maps) {
-                        const Policy policy{.Width = width,
+                        const Policy policy{
+                            .Width = width,
                             .TabWidth = static_cast<std::uint8_t>(tab),
-                            .SourceMap = maps == 0, .TokenMap = maps == 2,
+                            .SourceMap = maps == 0,
+                            .TokenMap = maps == 2,
                             .TrackSource = maps == 3
-                            ? std::span<const Provenance>(tracked)
-                            : std::span<const Provenance>()};
+                                ? std::span<const Provenance>(tracked)
+                                : std::span<const Provenance>(),
+                        };
                         const auto a = packed.Render(policy);
                         const auto b = separate.Render(policy);
                         ASSERT_TRUE(a.State);

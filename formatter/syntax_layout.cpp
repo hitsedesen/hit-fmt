@@ -155,8 +155,10 @@ struct IndentBasis
 constexpr IndentBasis AccumulateIndent(IndentBasis parent, int32_t delta)
 {
     const auto logical = int64_t(parent.Column) + delta;
-    return {uint32_t(std::clamp<int64_t>(logical, 0, int64_t(UINT32_MAX) - 1)),
-            parent.Saturated || logical >= int64_t(UINT32_MAX)};
+    return {
+        uint32_t(std::clamp<int64_t>(logical, 0, int64_t(UINT32_MAX) - 1)),
+        parent.Saturated || logical >= int64_t(UINT32_MAX),
+    };
 }
 
 // A later negative offset cannot undo information lost by an ancestor clamp.
@@ -838,11 +840,21 @@ private:
                 return false;
             case NodeKind::ArgumentList:
             case NodeKind::Condition:
+            case NodeKind::InitializerList:
                 if (node.Tokens.Size() < 2 ||
                     Tree_.Kind(node.Tokens.Begin) !=
-                        TokenKind::Operator_OpenParenthesis ||
+                        (node.Kind == NodeKind::InitializerList
+                            ? TokenKind::Operator_OpenBrace
+                            : TokenKind::Operator_OpenParenthesis) ||
                     Tree_.MatchingDelimiter(node.Tokens.Begin) !=
                         node.Tokens.End - 1)
+                {
+                    return false;
+                }
+                break;
+            case NodeKind::ConstructorInitializerList:
+                if (node.Tokens.Empty() ||
+                    Tree_.Kind(node.Tokens.Begin) != TokenKind::Operator_Colon)
                 {
                     return false;
                 }
@@ -1041,6 +1053,22 @@ private:
             node.Kind != NodeKind::EnumeratorList)
         {
             Groups_[group].Spec.Continuation = true;
+        }
+        if (node.Kind == NodeKind::ArgumentList && node.Parent != None &&
+            Region(Syntax_[node.Parent]).Kind == NodeKind::CallExpression)
+        {
+            const auto callee = Region(Syntax_[node.Parent]).FirstChild;
+            if (callee != None && !Syntax_[callee].Safe) {
+                const auto& leading =
+                    Safety_.Gaps()[Region(Syntax_[callee]).Tokens.Begin];
+                if (leading.Preserve && leading.HasLineFeed) {
+                    // A protected incoming line can leave surrounding lists
+                    // unplanned. Use the actual opening line instead of the
+                    // enclosing block's unrealized continuation level.
+                    Groups_[group].Spec.LineBase = true;
+                    Groups_[group].Spec.Continuation = false;
+                }
+            }
         }
         const bool empty = !prefixed && node.Tokens.Size() == 2;
         Groups_[group].Spec.ForceBreak =
@@ -2487,6 +2515,19 @@ private:
             }
             const auto owner = contents == None ? group : contents;
             if (!Syntax_[child].Safe) {
+                // Uncertain interiors do not own an editable statement's
+                // leading indentation. Retain its topology and leave actual
+                // protected gaps untouched, just as for a preserved body.
+                if (GapMutable(part.Tokens.Begin) &&
+                    PrefixOpaqueFences_[part.Tokens.Begin] ==
+                        PrefixOpaqueFences_[part.Tokens.End])
+                {
+                    Reindent(
+                        part.Tokens.Begin,
+                        owner,
+                        false,
+                        independentIndent);
+                }
                 continue;
             }
             if (canonical) {

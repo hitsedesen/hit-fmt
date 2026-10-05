@@ -1,0 +1,460 @@
+(translation-unit
+  (record-declaration
+    "struct" "Worker"
+    (base-clause
+      ":"
+      (base-specifier
+        "public"
+        (base-type "Base")
+      )
+    )
+    "{"
+    (function-definition
+      (init-declarator-list
+        (init-declarator
+          (declarator
+            (declarator-name "Worker")
+            (function-declarator
+              (parameter-list "(" ")")
+              (constructor-initializer-list
+                ":"
+                (constructor-initializer
+                  (call-expression
+                    (identifier-expression "Base")
+                    (argument-list "(" ")")
+                  )
+                )
+                (list-separator ",")
+                (constructor-initializer
+                  (call-expression
+                    (identifier-expression "Handler")
+                    (argument-list
+                      "("
+                      (argument
+                        (call-expression
+                          (unparsed-syntax "Create" "<" "External" ">")
+                          (argument-list
+                            "("
+                            (argument
+                              (call-expression
+                                (member-expression
+                                  (identifier-expression "std")
+                                  "::"
+                                  (identifier-expression "move")
+                                )
+                                (argument-list
+                                  "("
+                                  (argument
+                                    (identifier-expression "value")
+                                  )
+                                  ")"
+                                )
+                              )
+                            )
+                            (list-separator ",")
+                            (argument
+                              (call-expression
+                                (identifier-expression "TRACE")
+                                (argument-list
+                                  "("
+                                  (argument
+                                    (unary-expression
+                                      "&"
+                                      (member-expression
+                                        (identifier-expression "Pool")
+                                        "::"
+                                        (identifier-expression "Release")
+                                      )
+                                    )
+                                  )
+                                  (list-separator ",")
+                                  (argument
+                                    (call-expression
+                                      (identifier-expression "Copy")
+                                      (argument-list
+                                        "("
+                                        (argument
+                                          (identifier-expression "this")
+                                        )
+                                        ")"
+                                      )
+                                    )
+                                  )
+                                  ")"
+                                )
+                              )
+                            )
+                            (list-separator ",")
+                            (argument
+                              (call-expression
+                                (member-expression
+                                  (identifier-expression "Options")
+                                  "::"
+                                  (identifier-expression "Timeout")
+                                )
+                                (argument-list
+                                  "("
+                                  (argument
+                                    (member-expression
+                                      (identifier-expression "Settings")
+                                      "::"
+                                      (identifier-expression "Limit")
+                                    )
+                                  )
+                                  ")"
+                                )
+                              )
+                            )
+                            ")"
+                          )
+                        )
+                      )
+                      ")"
+                    )
+                  )
+                )
+              )
+            )
+          )
+        )
+      )
+      (compound-statement "{" "}")
+    )
+    (function-definition
+      (init-declarator-list
+        (init-declarator
+          (declarator
+            (declarator-name "Worker")
+            (function-declarator
+              (parameter-list
+                "("
+                (parameter-declaration
+                  (declaration-specifiers "int")
+                )
+                ")"
+              )
+              (constructor-initializer-list
+                ":"
+                (constructor-initializer
+                  (call-expression
+                    (identifier-expression "Base")
+                    (argument-list "(" ")")
+                  )
+                )
+                (list-separator ",")
+                (constructor-initializer
+                  (call-expression
+                    (identifier-expression "Handler")
+                    (argument-list
+                      "("
+                      (argument
+                        (call-expression
+                          (unparsed-syntax "Create" "<" "External" ">")
+                          (argument-list
+                            "("
+                            (argument
+                              (call-expression
+                                (member-expression
+                                  (identifier-expression "std")
+                                  "::"
+                                  (identifier-expression "move")
+                                )
+                                (argument-list
+                                  "("
+                                  (argument
+                                    (identifier-expression "value")
+                                  )
+                                  ")"
+                                )
+                              )
+                            )
+                            (list-separator ",")
+                            (argument
+                              (call-expression
+                                (identifier-expression "TRACE")
+                                (argument-list
+                                  "("
+                                  (argument
+                                    (unary-expression
+                                      "&"
+                                      (member-expression
+                                        (identifier-expression "Pool")
+                                        "::"
+                                        (identifier-expression "Release")
+                                      )
+                                    )
+                                  )
+                                  (list-separator ",")
+                                  (argument
+                                    (call-expression
+                                      (identifier-expression "Copy")
+                                      (argument-list
+                                        "("
+                                        (argument
+                                          (identifier-expression "this")
+                                        )
+                                        ")"
+                                      )
+                                    )
+                                  )
+                                  ")"
+                                )
+                              )
+                            )
+                            (list-separator ",")
+                            (argument
+                              (call-expression
+                                (member-expression
+                                  (identifier-expression "Options")
+                                  "::"
+                                  (identifier-expression "Timeout")
+                                )
+                                (argument-list
+                                  "("
+                                  (argument
+                                    (member-expression
+                                      (identifier-expression "Settings")
+                                      "::"
+                                      (identifier-expression "Limit")
+                                    )
+                                  )
+                                  ")"
+                                )
+                              )
+                            )
+                            ")"
+                          )
+                        )
+                      )
+                      ")"
+                    )
+                  )
+                )
+              )
+            )
+          )
+        )
+      )
+      (compound-statement "{" "}")
+    )
+    "}" ";"
+  )
+  (function-definition
+    (declaration-specifiers "void")
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          "Owner"
+          (template-argument-list
+            "<"
+            (template-argument "First")
+            (list-separator ",")
+            (template-argument "Second")
+            ">"
+          )
+          "::"
+          (declarator-name "Run")
+          (function-declarator
+            (parameter-list "(" ")")
+          )
+        )
+      )
+    )
+    (compound-statement "{" "}")
+  )
+  (function-definition
+    (declaration-specifiers "int")
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (declarator-name "Invoke")
+          (function-declarator
+            (parameter-list "(" ")")
+          )
+        )
+      )
+    )
+    (compound-statement
+      "{"
+      (return-statement
+        "return"
+        (call-expression
+          (template-id-expression
+            (identifier-expression "Choose")
+            (template-argument-list
+              "<"
+              (template-argument
+                "External"
+                (template-argument-list
+                  "<"
+                  (template-argument "int")
+                  ">"
+                )
+              )
+              (list-separator ",")
+              (template-argument "int")
+              ">"
+            )
+          )
+          (argument-list
+            "("
+            (argument
+              (braced-initializer
+                (initializer-list "{" "}")
+              )
+            )
+            (list-separator ",")
+            (argument
+              (literal-expression "1")
+            )
+            ")"
+          )
+        )
+        ";"
+      )
+      "}"
+    )
+  )
+  (function-definition
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          "Catalog" "::"
+          (declarator-name "Catalog")
+          (function-declarator
+            (parameter-list "(" ")")
+            (constructor-initializer-list
+              ":"
+              (constructor-initializer
+                (type-construction-expression
+                  (identifier-expression "Entries")
+                  (braced-initializer
+                    (initializer-list
+                      "{"
+                      (initializer-element
+                        "." "Enabled" "="
+                        (literal-expression "true")
+                      )
+                      (list-separator ",")
+                      (initializer-element
+                        "." "Visible" "="
+                        (literal-expression "true")
+                      )
+                      (list-separator ",")
+                      (initializer-element
+                        "." "Name" "="
+                        (literal-expression "\"\"")
+                      )
+                      (list-separator ",")
+                      "}"
+                    )
+                  )
+                )
+              )
+            )
+          )
+        )
+      )
+    )
+    (compound-statement "{" "}")
+  )
+  (declaration
+    (declaration-specifiers "int")
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (declarator-name "owner")
+        )
+        (initializer
+          "="
+          (literal-expression "1")
+        )
+      )
+      (list-separator ",")
+      (init-declarator
+        (declarator
+          (declarator-name "first")
+        )
+        (initializer
+          "="
+          (literal-expression "2")
+        )
+      )
+      (list-separator ",")
+      (init-declarator
+        (declarator
+          (declarator-name "second")
+        )
+        (initializer
+          "="
+          (literal-expression "3")
+        )
+      )
+    )
+    ";"
+  )
+  (declaration
+    (declaration-specifiers "bool")
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (declarator-name "comparison")
+        )
+        (initializer
+          "="
+          (parenthesized-expression
+            "("
+            (call-expression
+              (member-expression
+                (unparsed-syntax "owner" "<" "first" "," "second" ">")
+                "::"
+                (identifier-expression "Run")
+              )
+              (argument-list "(" ")")
+            )
+            ")"
+          )
+        )
+      )
+    )
+    ";"
+  )
+  (function-definition
+    (declaration-specifiers "void")
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (unparsed-syntax "Predicate" "<" "1" "<" "2" "," "3" ">" "::")
+          (declarator-name "Run")
+          (function-declarator
+            (parameter-list "(" ")")
+          )
+        )
+      )
+    )
+    (compound-statement "{" "}")
+  )
+  (function-definition
+    (declaration-specifiers "void")
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          "Predicate"
+          (template-argument-list
+            "<"
+            (template-argument "(" "1" "<" "2" ")")
+            (list-separator ",")
+            (template-argument "3")
+            ">"
+          )
+          "::"
+          (declarator-name "Run")
+          (function-declarator
+            (parameter-list "(" ")")
+          )
+        )
+      )
+    )
+    (compound-statement "{" "}")
+  )
+)

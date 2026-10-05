@@ -2036,6 +2036,44 @@ std::vector<FormatCase> FormatCases()
         }
     }
     AddCases(cases, data / "qualified-record", {"canonical", "ytsaurus"});
+    AddCases(cases, data / "uncertain-layout", {"canonical", "preserve"});
+    AddCases(
+        cases,
+        data / "uncertain-layout",
+        {"additional"},
+        "additional.input.cpp");
+    cases.push_back(
+        {data / "uncertain-layout", "additional-wide", "additional.input.cpp"});
+    cases.push_back({
+        data / "uncertain-layout",
+        "additional-preserve",
+        "additional.input.cpp",
+        "preserve",
+        {},
+        true,
+        "additional.input.cpp",
+    });
+    {
+        auto style = formatter::LoadConfigFile(
+            data / "uncertain-layout/additional.hit-fmt").FormattingStyle;
+        style.ColumnLimit = 10000;
+        style.TemplateArgumentsBreak = BreakRequirement::IfNeeded;
+        ApplyProfile(
+            cases,
+            data / "uncertain-layout",
+            "additional-wide",
+            style);
+    }
+    for (auto& value : cases) {
+        if (value.Directory == data / "uncertain-layout") {
+            value.CheckOwningMaps = true;
+        }
+    }
+    ShareExpected(
+        cases,
+        data / "uncertain-layout",
+        "preserve.output.cpp",
+        "input.cpp");
     AddCases(
         cases,
         data / "template-arguments",
