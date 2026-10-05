@@ -2147,8 +2147,9 @@ TEST(PublicPipeline, EditScopeBraceInsertionRequiresBothOriginalPoints)
         prepared,
         {.SourceMap = true, .EditScope = ownedEnd});
     const auto hasInsertedControlPair = [&] (
-        const formatter::FormatResult&
-        formatted) {
+            const formatter::FormatResult&
+        formatted)
+        {
             for (size_t action = 0; action <
                 formatted.StructuralOperations.size();
              ++action)
@@ -3618,7 +3619,9 @@ TEST(PublicPipeline, FunctionBodyMacrosRetainHeadersThroughNormalization)
     style.RemoveNullStatements = true;
     const formatter::PreparedFormat prepared(style);
     style.FunctionBodyMacroNames.clear();
-    const std::string header = "DEFINE_CASE(Shared, Helper(alpha   +  beta))";
+    const std::string header =
+        "static inline DEFINE_CASE(Shared, Helper(alpha   +  beta), "
+            "const Shared& input)";
     const std::string source = "using Shared = int;\n" + header +
         " {Shared* pointer; auto value=left+right; ; "
             "if(value) Use(value); TOKEN_TEXT(alpha   +  beta);}\n";

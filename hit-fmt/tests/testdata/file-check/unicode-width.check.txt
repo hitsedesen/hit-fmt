@@ -1,0 +1,10 @@
+fail: line exceeds ColumnLimit 12
+  --> unicode.cpp:2:13 [original source]
+  |
+2 | // é界😀é界😀é界😀界
+  |             ^
+fail: line exceeds ColumnLimit 12
+  --> unicode.cpp:4:12 [original source]
+  |
+4 | // é界😀      界😀é界😀
+  |                 ^

@@ -1,5 +1,9 @@
 (translation-unit
-  (using-declaration "using" "Type" "=" "int" ";")
+  (using-declaration
+    "using" "Type" "="
+    (type-id "int")
+    ";"
+  )
   (template-declaration
     (leading-trivia
       (whitespace "\n\n")

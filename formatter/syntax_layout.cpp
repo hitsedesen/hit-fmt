@@ -2,6 +2,7 @@
 #include "text_policies.hpp"
 
 #include <parser/operator_info.hpp>
+#include <unicode/utf8.hpp>
 
 #include <algorithm>
 #include <limits>
@@ -222,7 +223,12 @@ bool HasLine(std::string_view text)
 Index HorizontalColumns(std::string_view text, uint8_t tabWidth)
 {
     Index width = 0;
-    for (char c : text) {
+    for (std::size_t i = 0; i < text.size(); ++i) {
+        const auto c = static_cast<unsigned char>(text[i]);
+        if (c >= 0x80) {
+            i += unicode::utf8::GetFirstCodePointSize(text.substr(i))
+                .value_or(1) - 1;
+        }
         if (c == '\n' || c == '\r') {
             return None;
         }
@@ -2076,8 +2082,18 @@ private:
             if (indent == None || indent > uint32_t(INT32_MAX)) {
                 continue;
             }
+            // A nested control/body can freeze interior indentation even
+            // when its leading gap is editable. Its authored level constrains
+            // this body too. Expressions containing independently anchored
+            // lambdas do not constrain their enclosing statement's level.
+            const bool nestedBody =
+                IsControl(part.Kind) || part.Kind == NodeKind::TryStatement ||
+                    part.Kind == NodeKind::CompoundStatement;
             if ((uint16_t(Safety_.Gaps()[part.Tokens.Begin].Reasons) &
-                uint16_t(ProtectionReason::Ambiguous)) != 0)
+                uint16_t(ProtectionReason::Ambiguous)) != 0 ||
+                (nestedBody &&
+                    (uint8_t(part.Status) & uint8_t(RegionStatus::Ambiguous)) !=
+                        0))
             {
                 return indent;
             }

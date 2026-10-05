@@ -125,6 +125,42 @@ TEST(SyntaxSpacing, DiagnosticGolden)
         Dump(analysis));
 }
 
+TEST(SyntaxSpacing, GlobalScopeDoesNotOwnSpecifierBoundaries)
+{
+    for (const auto policy : {GapPolicy::NoSpace, GapPolicy::Space}) {
+        GapPolicies policies;
+        policies.ScopeResolutionSpacing = policy;
+        Analysis analysis(
+            "void Use(const /* qualifier */ :: N :: Value* first, "
+            "volatile :: N :: Value& second); "
+            "Box<Box<int>> :: Type* nested; "
+            "void Compare(){auto smaller=value > :: N :: Limit;}",
+            policies);
+        for (const auto occurrence : {0u, 2u}) {
+            const auto gap = analysis.Before("::", occurrence);
+            EXPECT_EQ(analysis.Spacing.Gaps()[gap].Field, F::None);
+            EXPECT_TRUE(analysis.Spacing.Gaps()[gap].FallbackSpace);
+            EXPECT_EQ(
+                analysis.Spacing
+                    .SpacePreference(gap, GapContext::Rebuilt, analysis.Safety),
+                std::nullopt);
+        }
+        EXPECT_NE(
+            analysis.Spacing.Gaps()[analysis.Before("::", 5)].Field,
+            F::ScopeResolutionSpacing);
+        for (const auto occurrence : {1u, 3u, 4u, 6u}) {
+            const auto gap = analysis.Before("::", occurrence);
+            EXPECT_EQ(
+                analysis.Spacing.Gaps()[gap].Field,
+                F::ScopeResolutionSpacing);
+            EXPECT_EQ(
+                analysis.Spacing
+                    .SpacePreference(gap, GapContext::Rebuilt, analysis.Safety),
+                policy == GapPolicy::Space);
+        }
+    }
+}
+
 TEST(SyntaxSpacing, UnsupportedTemplateDeclarationPolicyIsRejected)
 {
     Analysis analysis(test::golden::ReadFile(FixturePath("roles.input.cpp")));

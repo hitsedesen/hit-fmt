@@ -1763,6 +1763,135 @@ TEST(GroupLayout, VerticalGapCountUsesFirstOverrideAndNoBlankLineIndent)
         output.Text);
 }
 
+TEST(GroupLayout, UnicodeColumnsGolden)
+{
+    constexpr std::string_view source = "é中🙂";
+    std::string actual;
+    for (const auto mode : {GroupMode::Consistent, GroupMode::Fill}) {
+        for (const auto kind : {"text", "source", "run", "verbatim", "choice"})
+        {
+            Document document(source);
+            document.Text("前(");
+            const auto group = document.BeginGroup({mode, 2});
+            const std::string_view name(kind);
+            if (name == "text") {
+                document.Text(source);
+            } else if (name == "source") {
+                document.SourceText(0, source.size());
+            } else if (name == "run") {
+                document.AppendSourceText(0, 2);
+                document.AppendSourceText(2, 5);
+                document.AppendSourceText(5, source.size());
+            } else if (name == "verbatim") {
+                document.Verbatim(source);
+            } else {
+                document.ConditionalText(group, source, "é中🙂!");
+            }
+            document.Gap();
+            document.Text("x)");
+            document.EndGroup(group);
+            ASSERT_TRUE(document.Seal());
+            const auto label = std::string(
+                mode == GroupMode::Consistent ? "consistent " : "fill ") + kind;
+            for (const auto width : {8u, 7u}) {
+                AppendRender(actual, document, width, label);
+            }
+        }
+    }
+    {
+        Document document("");
+        document.Text("ééééééé\t");
+        const auto anchor = document.MarkAnchor({AnchorKind::DelimiterColumn});
+        const auto group = document.BeginGroup({GroupMode::Consistent, 2});
+        document.Text("ab");
+        document.Gap({}, anchor);
+        document.Text("cd");
+        document.EndGroup(group);
+        ASSERT_TRUE(document.Seal());
+        for (const auto width : {13u, 12u}) {
+            AppendRender(actual, document, width, "unicode tab alignment");
+        }
+    }
+    {
+        Document document("");
+        document.Verbatim("é\r\n日本");
+        const auto anchor = document.MarkAnchor({AnchorKind::DelimiterColumn});
+        const auto group = document.BeginGroup({GroupMode::Consistent, 2});
+        document.Text("x");
+        document.Gap({}, anchor);
+        document.Text("y");
+        document.EndGroup(group);
+        ASSERT_TRUE(document.Seal());
+        for (const auto width : {5u, 4u}) {
+            AppendRender(actual, document, width, "unicode CRLF alignment");
+        }
+    }
+    {
+        Document document("");
+        const auto group = document.BeginGroup({GroupMode::Fill, 0});
+        document.Text("a");
+        document.Gap();
+        document.Verbatim("é中\r\n🙂");
+        document.EndGroup(group);
+        ASSERT_TRUE(document.Seal());
+        for (const auto width : {4u, 3u}) {
+            AppendRender(actual, document, width, "unicode multiline prefix");
+        }
+    }
+    {
+        Document document("");
+        const auto group = document.BeginGroup({GroupMode::Consistent, 0});
+        document.Text("é"); // Two code points, not one grapheme/display cell.
+        document.Gap();
+        document.Text("x");
+        document.EndGroup(group);
+        ASSERT_TRUE(document.Seal());
+        for (const auto width : {4u, 3u}) {
+            AppendRender(actual, document, width, "combining code point");
+        }
+    }
+    test::golden::ExpectGolden(
+        std::filesystem::path(DOCUMENT_TESTDATA_DIR) /
+        "unicode-columns.expected",
+        actual);
+}
+
+TEST(GroupLayout, InvalidUTF8ColumnsMatchIndividualBytes)
+{
+    for (const std::string_view invalid :
+        {"\xc3", "\x80", "\xc0\xaf", "\xed\xa0\x80", "\xf0\x9f"})
+    {
+        const std::string ascii(invalid.size(), 'a');
+        Document malformed(invalid);
+        Document counterpart(ascii);
+        const auto build = [] (Document& document, std::uint32_t size) {
+            document.Text("[");
+            const auto group = document.BeginGroup({GroupMode::Consistent, 2});
+            document.SourceText(0, size, NoIdentity, true);
+            document.Gap();
+            document.Text("x]");
+            document.EndGroup(group);
+        };
+        build(malformed, invalid.size());
+        build(counterpart, ascii.size());
+        ASSERT_TRUE(malformed.Seal());
+        ASSERT_TRUE(counterpart.Seal());
+        for (const auto extra : {3u, 4u}) {
+            const Policy policy{.Width = std::uint32_t(invalid.size()) + extra};
+            const auto actual = malformed.Render(policy);
+            const auto expected = counterpart.Render(policy);
+            ASSERT_TRUE(actual.State);
+            ASSERT_TRUE(expected.State);
+            EXPECT_EQ(actual.Broken, expected.Broken);
+            EXPECT_EQ(actual.Text.substr(1, invalid.size()), invalid);
+            EXPECT_EQ(
+                actual.Text.substr(1 + invalid.size()),
+                expected.Text.substr(1 + ascii.size()));
+            EXPECT_EQ(actual.Broken[0] != 0, extra == 3);
+        }
+    }
+}
+
 TEST(GroupLayout, SourceRunsMatchIndividualAtoms)
 {
     const std::string source = "\ta+b /*x*/\tq\nnext";

@@ -24,3 +24,13 @@ struct Holder
 };
 UNLISTED_CASE( Suite , Other ) {untouched=left+right;}
 DEFINE_CASE(Suite, DeclarationOnly);
+static DEFINE_CASE(Suite, const Known& value)
+{
+    auto sum = left + right;
+    Use(sum);
+}
+static inline DEFINE_CASE(Suite, Helper(alpha   +  beta))
+{
+    Use(value);
+}
+static DEFINE_CASE(Suite, DeclarationOnly);

@@ -5,6 +5,7 @@
 #include <formatter/naming.hpp>
 #include <formatter/parameter_names.hpp>
 #include <tests/golden.hpp>
+#include <unicode/utf8.hpp>
 #include <gtest/gtest.h>
 #include <algorithm>
 #include <array>
@@ -1591,6 +1592,14 @@ std::vector<FormatCase> FormatCases()
             }
         }
     }
+    const auto unicode =
+        std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../unicode-width";
+    AddCases(cases, unicode, {"fitting", "overflow"});
+    for (auto& value : cases) {
+        if (value.Directory == unicode) {
+            value.CheckOwningMaps = true;
+        }
+    }
     const auto google = std::filesystem::path(FORMATTER_TESTDATA_DIR) /
         "../google-style-regressions";
     const auto googleProfile =
@@ -1639,6 +1648,18 @@ std::vector<FormatCase> FormatCases()
         "punctuation-preserve.input.cpp");
     cases.push_back({google, "access-only", "access-scope.input.cpp"});
     cases.push_back({google, "scope-only", "access-scope-safe.input.cpp"});
+    cases.push_back({
+        google,
+        "scope-only-canonical",
+        "access-scope-safe.input.cpp",
+        "scope-only",
+    });
+    auto scopeStyle = formatter::LoadConfigFile(google / "scope-only.hit-fmt")
+        .FormattingStyle;
+    scopeStyle.DeclarationHeadersLayout = CategoryLayout::Canonical;
+    scopeStyle.ParametersLayout = CategoryLayout::Canonical;
+    scopeStyle.ColumnLimit = 48;
+    cases.back().Style = std::move(scopeStyle);
     const auto attribute =
         std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../attribute-indent";
     AddCases(cases, attribute, {"preserve", "block", "indent"});
@@ -3767,8 +3788,13 @@ TEST_P(ParameterNameTest, Golden)
 INSTANTIATE_TEST_SUITE_P(
     Formatter,
     ParameterNameTest,
-    testing::Values("enabled", "default", "declarations_only",
-        "definitions_only", "names_only", "ytsaurus"),
+    testing::Values(
+        "enabled",
+        "default",
+        "declarations_only",
+        "definitions_only",
+        "names_only",
+        "ytsaurus"),
     ConfigName);
 TEST(Formatter, CallArgument_RejectsUnsupportedSyntaxHints)
 {
@@ -3955,8 +3981,13 @@ void ExpectEmittedWidthDiagnostics(
         if (end == std::string_view::npos)
             end = text.size();
         size_t width = 0;
-        for (const char c : text.substr(begin, end - begin)) {
+        for (size_t offset = begin; offset < end;) {
+            const auto c = static_cast<unsigned char>(text[offset]);
             width = c == '\t' ? (width / 8 + 1) * 8 : width + 1;
+            offset += c < 0x80
+                ? 1
+                : unicode::utf8::GetFirstCodePointSize(
+                    text.substr(offset, end - offset)).value_or(1);
         }
         if (width > columnLimit) {
             overflows.emplace_back(line, width);
@@ -4007,7 +4038,9 @@ TEST_P(LayoutDiagnosticTest, ReportsEmittedWidths)
 TEST(Formatter, WidthDiagnostics_CountsProtectedTabsAndMixedTerminators)
 {
     const std::string input = "// hit-fmt off\r\nint\tlong_name;\r\n"
-        "\tint long_name;\n// hit-fmt on\n";
+        "\tint long_name;\n" "// é界😀é界😀é界😀é界😀é\r\n" "// é界😀é界😀é界😀é界😀é界\r"
+        "// é界😀\té界😀é界😀é界\n" "// é界😀\té界😀é界😀é界😀\n" + std::string("// ") +
+        std::string(13, 'a') + "\x80\xe2\x82é\n" + "// hit-fmt on\n";
     auto source = input;
     source.append(util::SourcePaddingSize, '\0');
     const auto tree = parser::Parse(
@@ -4020,7 +4053,7 @@ TEST(Formatter, WidthDiagnostics_CountsProtectedTabsAndMixedTerminators)
     const auto result =
         formatter::Format(tree, formatter::PreparedFormat(style));
     EXPECT_EQ(result.Text, input);
-    ASSERT_EQ(result.Diagnostics.size(), 2u);
+    ASSERT_EQ(result.Diagnostics.size(), 5u);
     EXPECT_EQ(result.Diagnostics[0].Position.Line, 2u);
     EXPECT_EQ(
         result.Diagnostics[0].Message,
@@ -4029,6 +4062,17 @@ TEST(Formatter, WidthDiagnostics_CountsProtectedTabsAndMixedTerminators)
     EXPECT_EQ(
         result.Diagnostics[1].Message,
         "emitted line width 22 exceeds ColumnLimit 16");
+    EXPECT_EQ(result.Diagnostics[2].Position.Line, 5u);
+    EXPECT_EQ(result.Diagnostics[3].Position.Line, 7u);
+    for (size_t index = 2; index < 4; ++index) {
+        EXPECT_EQ(
+            result.Diagnostics[index].Message,
+            "emitted line width 17 exceeds ColumnLimit 16");
+    }
+    EXPECT_EQ(result.Diagnostics[4].Position.Line, 8u);
+    EXPECT_EQ(
+        result.Diagnostics[4].Message,
+        "emitted line width 20 exceeds ColumnLimit 16");
     ExpectEmittedWidthDiagnostics(result, style);
     EXPECT_EQ(FormatWithStyle(result.Text, style), result.Text);
 }

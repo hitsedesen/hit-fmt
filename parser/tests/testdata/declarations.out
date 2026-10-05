@@ -241,7 +241,9 @@
     (leading-trivia
       (whitespace "\n\n")
     )
-    "using" "Type" "=" "int" ";"
+    "using" "Type" "="
+    (type-id "int")
+    ";"
   )
   (declaration
     (declaration-specifiers "Type")
@@ -721,7 +723,18 @@
         )
         (compound-statement
           "{"
-          (using-declaration "using" "UnsignedT" "=" "std" "::" "make_unsigned_t" "<" "T" ">" ";")
+          (using-declaration
+            "using" "UnsignedT" "="
+            (type-id
+              "std" "::" "make_unsigned_t"
+              (template-argument-list
+                "<"
+                (template-argument "T")
+                ">"
+              )
+            )
+            ";"
+          )
           (return-statement
             "return"
             (braced-initializer

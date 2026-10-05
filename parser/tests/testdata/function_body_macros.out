@@ -1,7 +1,11 @@
 (translation-unit
   (namespace-declaration
     "namespace" "Samples" "{"
-    (using-declaration "using" "Shared" "=" "int" ";")
+    (using-declaration
+      "using" "Shared" "="
+      (type-id "int")
+      ";"
+    )
     (macro-function-definition
       (macro-function-header
         "DEFINE_CASE" "/* header */" "(" "Shared" "," "Nested" "(" "1" "," "(" "2" "+" "3" ")" ")" ")"
@@ -162,6 +166,69 @@
     )
     (declaration
       (unparsed-syntax "UNLISTED_CASE" "(" "Suite" "," "Opaque" ")" "{" "untouched" "=" "left" "+" "right" ";" "}")
+    )
+    (macro-function-definition
+      (macro-function-header "static" "DEFINE_CASE" "(" "Suite" "," "const" "Shared" "&" "value" ")")
+      (compound-statement
+        "{"
+        (expression-statement
+          (call-expression
+            (identifier-expression "Use")
+            (argument-list
+              "("
+              (argument
+                (identifier-expression "value")
+              )
+              ")"
+            )
+          )
+          ";"
+        )
+        "}"
+      )
+    )
+    (macro-function-definition
+      (macro-function-header "static" "inline" "DEFINE_CASE" "(" "Suite" "," "Helper" "(" "alpha" "+" "beta" ")" ")")
+      (compound-statement
+        "{"
+        (expression-statement
+          (call-expression
+            (identifier-expression "Use")
+            (argument-list
+              "("
+              (argument
+                (identifier-expression "value")
+              )
+              ")"
+            )
+          )
+          ";"
+        )
+        "}"
+      )
+    )
+    (function-declaration
+      (declaration-specifiers "static" "DEFINE_CASE")
+      (init-declarator-list
+        (init-declarator
+          (abstract-declarator
+            (function-declarator
+              (parameter-list
+                "("
+                (parameter-declaration
+                  (declaration-specifiers "Suite")
+                )
+                (list-separator ",")
+                (parameter-declaration
+                  (declaration-specifiers "DeclarationOnly")
+                )
+                ")"
+              )
+            )
+          )
+        )
+      )
+      ";"
     )
     (declaration
       (declaration-specifiers "int")

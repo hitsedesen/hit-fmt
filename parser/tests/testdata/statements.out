@@ -61,7 +61,11 @@
     )
     (record-declaration
       "struct" "Box" "{"
-      (using-declaration "using" "type" "=" "int" ";")
+      (using-declaration
+        "using" "type" "="
+        (type-id "int")
+        ";"
+      )
       (declaration
         (declaration-specifiers "static" "constexpr" "int")
         (init-declarator-list
@@ -82,10 +86,18 @@
   )
   (record-declaration
     "struct" "Outer" "{"
-    (using-declaration "using" "Inner" "=" "int" ";")
+    (using-declaration
+      "using" "Inner" "="
+      (type-id "int")
+      ";"
+    )
     (record-declaration
       "struct" "Nested" "{"
-      (using-declaration "using" "Leaf" "=" "int" ";")
+      (using-declaration
+        "using" "Leaf" "="
+        (type-id "int")
+        ";"
+      )
       "}" ";"
     )
     (enum-declaration
@@ -563,7 +575,11 @@
         )
         ";"
       )
-      (using-declaration "using" "Number" "=" "int" ";")
+      (using-declaration
+        "using" "Number" "="
+        (type-id "int")
+        ";"
+      )
       (declaration-statement
         (declaration-specifiers "int")
         (init-declarator-list

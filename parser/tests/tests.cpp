@@ -2402,6 +2402,7 @@ INSTANTIATE_TEST_SUITE_P(
         GoldenCase{"declarator_syntax"},
         GoldenCase{"constructor_initializer_ranges"},
         GoldenCase{"terminal_constructor_template_ids"},
+        GoldenCase{"template_type_aliases"},
         GoldenCase{"declaration_operands", false, true},
         GoldenCase{"punctuation_roles", false, true},
         GoldenCase{"declaration_operands_recovery", true},
@@ -3315,20 +3316,25 @@ TEST(Parser, RecordHeadChildrenAreBoundedWithoutGuessingOperands)
                 pending.push_back(child);
             }
             if (node->Kind == parser::NodeKind::TemplateArgument) {
-                // Nested angle lists own their own commas; other operands
-                // are not guessed as calls or general expressions here.
+                // Nested angle lists own their own commas. Only an explicit
+                // decltype operand introduces general expression syntax.
                 for (auto* child = node->FirstChild;
                     child;
                     child = child->NextSibling)
                 {
-                    EXPECT_EQ(
-                        child->Kind,
-                        parser::NodeKind::TemplateArgumentList);
+                    if (child->Kind != parser::NodeKind::TemplateArgumentList) {
+                        EXPECT_EQ(child->Kind, parser::NodeKind::TypeId);
+                        EXPECT_EQ(
+                            tree.Kind(child->Tokens.Begin),
+                            tokenizer::TokenKind::Keyword_decltype);
+                    }
                 }
             }
         }
         EXPECT_EQ(lists, expectedLists);
-        EXPECT_EQ(calls, 0u);
+        EXPECT_EQ(
+            calls,
+            source.find("decltype(call(") != source.npos ? 1u : 0u);
     }
 
     // Attaching head syntax must not alter name registration for

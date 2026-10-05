@@ -1987,15 +1987,27 @@ private:
             return nullptr;
         }
         const auto first = NextSignificant(Cursor_);
-        if (Kind(first) != TK::Identifier ||
+        auto macro = first;
+        // Function-like macros can follow storage and function specifiers.
+        // The complete header remains opaque, including these prefixes.
+        while (Kind(macro) == TK::Keyword_static ||
+            Kind(macro) == TK::Keyword_extern ||
+            Kind(macro) == TK::Keyword_inline ||
+            Kind(macro) == TK::Keyword_constexpr ||
+            Kind(macro) == TK::Keyword_consteval ||
+            Kind(macro) == TK::Keyword_friend)
+        {
+            macro = NextSignificant(macro + 1);
+        }
+        if (Kind(macro) != TK::Identifier ||
             !std::binary_search(
                 FunctionBodyMacroNames_.begin(),
                 FunctionBodyMacroNames_.end(),
-                Text(first)))
+                Text(macro)))
         {
             return nullptr;
         }
-        const auto arguments = NextSignificant(first + 1);
+        const auto arguments = NextSignificant(macro + 1);
         if (Kind(arguments) != TK::Operator_OpenParenthesis) {
             return nullptr;
         }
@@ -2266,6 +2278,8 @@ private:
             AddModuleDeclarationSyntax(*node, start, Cursor_, true);
         } else if (kind == NodeKind::ConceptDeclaration) {
             AddConceptDeclarationSyntax(*node, start, Cursor_);
+        } else if (kind == NodeKind::UsingDeclaration) {
+            AddUsingDeclarationSyntax(*node, start, Cursor_);
         } else if (kind == NodeKind::StaticAssertDeclaration) {
             auto expressionBegin = NextSignificant(start + 1);
             auto expressionEnd = Cursor_;
@@ -2524,13 +2538,33 @@ private:
     {
         auto start = Cursor_;
         auto* node = ParseToSemicolon(NodeKind::UsingDeclaration);
-        auto name = NextSignificant(start) + 1;
-        auto assign = NextSignificant(name + 1);
+        auto name = NextSignificant(NextSignificant(start) + 1);
+        auto assign = SkipAttributeSpecifiers(name + 1);
         if (Kind(name) == TK::Identifier && Kind(assign) == TK::Operator_Assign)
         {
             AddName(Text(name), NameKind::Type);
         }
         return node;
+    }
+
+    void AddUsingDeclarationSyntax(Node& node, size_t begin, size_t end)
+    {
+        const auto name = NextSignificant(NextSignificant(begin) + 1);
+        const auto assign = SkipAttributeSpecifiers(name + 1);
+        if (Kind(name) != TK::Identifier || Kind(assign) != TK::Operator_Assign)
+        {
+            return;
+        }
+        const auto typeBegin = NextSignificant(assign + 1);
+        if (end > typeBegin && Kind(end - 1) == TK::Operator_Semicolon) {
+            --end;
+        }
+        if (typeBegin < end) {
+            auto* type = MakeNode(NodeKind::TypeId, typeBegin);
+            type->Tokens.End = end;
+            AddTypeSyntaxChildren(*type, typeBegin, end);
+            Append(node, *type);
+        }
     }
 
     Node* ParseTypedefDeclaration()
@@ -2665,7 +2699,8 @@ private:
         } else if (declaration &&
             declaration->Kind == NodeKind::UsingDeclaration)
         {
-            auto name = NextSignificant(declaration->Tokens.Begin) + 1;
+            auto name =
+                NextSignificant(NextSignificant(declaration->Tokens.Begin) + 1);
             if (Kind(name) == TK::Identifier) {
                 AddName(Text(name), NameKind::Type);
             }
@@ -3435,7 +3470,14 @@ private:
                         ? FunctionKind::Destructor
                         : FunctionKind::Constructor;
                 }
-                return matches;
+                // A qualified terminal name followed directly by parameters
+                // has no return type. Its qualifier may be an alias defined in
+                // an include; retain the declarator without claiming that the
+                // terminal name proves a constructor/destructor identity.
+                return matches ||
+                    (!localOwner && !templateId &&
+                        after != std::numeric_limits<TokenIndex>::max() &&
+                        after <= end);
             }
             if (destructor || next >= end ||
                 Kind(next) != TK::Operator_ScopeResolution)
@@ -3979,7 +4021,7 @@ private:
         return valid;
     }
 
-    // Returns absence of empty parameter slots, not full grammar validity.
+    // Rejects empty/type-less parameter slots, not full grammar validity.
     bool AddParameterDeclarations(Node& list, TokenRange parameters)
     {
         if (Tree_.Tokens_.FindPreprocessingDirective(
@@ -4081,7 +4123,13 @@ private:
                 auto* parameter =
                     MakeNode(NodeKind::ParameterDeclaration, segmentBegin);
                 parameter->Tokens.End = i;
-                if (conditionalMiddle != 0) {
+                const auto firstKind = Kind(NextSignificant(segmentBegin));
+                // A pointer/reference operator cannot supply a parameter's
+                // missing type. The payload may be unexpanded macro arguments.
+                const bool missingType = firstKind == TK::Operator_Star ||
+                    firstKind == TK::Operator_Ampersand ||
+                    firstKind == TK::Operator_And;
+                if (conditionalMiddle != 0 || missingType) {
                     AddUnparsedSyntax(*parameter, segmentBegin, i);
                     noEmptyParameterSlots = false;
                 } else {
@@ -4680,11 +4728,46 @@ private:
 
     void AddTypeSyntaxChildren(Node& node, size_t begin, size_t end)
     {
+        std::optional<bool> knownType;
         for (auto i = begin; i < end; ++i) {
+            if (Kind(i) == TK::Keyword_decltype) {
+                const auto opening = NextSignificant(i + 1);
+                const auto after = Kind(opening) == TK::Operator_OpenParenthesis
+                    ? FindBalancedEnd(opening)
+                    : std::numeric_limits<TokenIndex>::max();
+                if (after <= end) {
+                    const auto first = NextSignificant(opening + 1);
+                    if (Kind(first) == TK::Keyword_auto &&
+                        NextSignificant(first + 1) == after - 1)
+                    {
+                        i = after - 1;
+                        continue;
+                    }
+                    // The operand is an expression: let expression syntax
+                    // distinguish nested template calls from comparisons.
+                    auto* type = MakeNode(NodeKind::TypeId, i);
+                    type->Tokens.End = after;
+                    auto* operand =
+                        MakeNode(NodeKind::ParenthesizedExpression, opening);
+                    operand->Tokens.End = after;
+                    AddExpressionRange(*operand, opening + 1, after - 1);
+                    Append(*type, *operand);
+                    Append(node, *type);
+                    i = after - 1;
+                    continue;
+                }
+            }
             if ((node.Kind == NodeKind::TemplateArgument ||
                 node.Kind == NodeKind::TemplateParameter) &&
                 IsOpenDelimiter(Kind(i)))
             {
+                if (!knownType) {
+                    knownType = node.Kind == NodeKind::TemplateArgument &&
+                        LooksLikeTypeId(begin, end);
+                }
+                if (*knownType && Kind(i) == TK::Operator_OpenParenthesis) {
+                    continue;
+                }
                 // Non-type argument interiors are opaque here. Comparisons
                 // and shifts in parentheses must not become nested type lists.
                 const auto closingEnd = FindBalancedEnd(i);
@@ -4818,8 +4901,12 @@ private:
         {
             parameters.reset();
         }
-        if (!parameters && inferNestedParameters) {
-            parameters = InferNestedFunctionParameters(begin, end);
+        if (inferNestedParameters &&
+            (!parameters || parameters->Begin == begin))
+        {
+            if (auto nested = InferNestedFunctionParameters(begin, end)) {
+                parameters = nested;
+            }
         }
         bool isFunction = parameters && !parameters->Empty();
         if (!isFunction &&
@@ -4933,7 +5020,11 @@ private:
         Node* core = declarator;
         size_t coreBegin = begin;
         size_t nestedEnd = begin;
-        if (Kind(begin) == TK::Operator_OpenParenthesis) {
+        // An explicitly selected parameter list is never a grouped declarator,
+        // even when its payload contains pointer/reference operators.
+        if (Kind(begin) == TK::Operator_OpenParenthesis &&
+            (!parameters || begin != parameters->Begin))
+        {
             auto balancedEnd = FindBalancedEnd(begin);
             if (balancedEnd != std::numeric_limits<TokenIndex>::max() &&
                 balancedEnd <= declaratorEnd &&

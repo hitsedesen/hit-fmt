@@ -1,0 +1,10 @@
+fail: cannot format this line automatically within ColumnLimit 12
+  --> unicode.cpp:2:13 [written output]
+  |
+2 | // é界😀é界😀é界😀界
+  |             ^
+fail: cannot format this line automatically within ColumnLimit 12
+  --> unicode.cpp:4:13 [written output]
+  |
+4 | // é界😀      界😀é界😀
+  |                 ^

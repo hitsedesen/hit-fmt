@@ -1,3 +1,7 @@
 template<class T> struct Parcel {
 explicit Parcel<T>(T* value) {}
 };
+using ParcelAlias = Parcel<int>;
+ParcelAlias::Parcel(const ParcelAlias& other) : saved(other.saved) {}
+ParcelAlias::~Parcel() {}
+ParcelAlias::Value makeValue(const ParcelAlias& value) { return value.saved; }

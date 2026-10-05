@@ -1,0 +1,12 @@
+ColumnLimit = 26
+ExpressionsLayout = Canonical
+CallsLayout = Canonical
+CallsPacking = Fill
+CallsAlignment = Delimiter
+DeclarationHeadersLayout = Canonical
+ParametersLayout = Canonical
+ParametersPacking = Fill
+ParametersAlignment = Delimiter
+TemplateArgumentsLayout = Canonical
+TemplateArgumentsPacking = Fill
+TemplateArgumentsAlignment = Delimiter

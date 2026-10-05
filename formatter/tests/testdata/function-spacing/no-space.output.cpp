@@ -14,7 +14,7 @@ struct Widget {
 };
 int ns::qualified(int);
 int (*callback)(int);
-int(parenthesized) (int);
+int (parenthesized)(int);
 #define DECLARE(name) int name (int)
 template<class T> concept Check = requires (const T& val) {
     { [] (auto&&... args) {} (val) };

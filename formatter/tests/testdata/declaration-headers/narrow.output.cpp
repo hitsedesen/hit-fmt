@@ -13,8 +13,8 @@ ReadFirstResultFromPaddedStorage(
 static constexpr unsigned long long
 ReadVeryLongCounterFromInput(
     const char* input);
-constexpr
-decltype(Probe(First{}, Second{}))
+constexpr decltype(Probe(First{},
+    Second{}))
 ReadComputedResultFromInput();
 template <class Element>
 [[nodiscard]] constexpr Container<

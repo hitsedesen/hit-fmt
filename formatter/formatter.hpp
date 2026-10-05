@@ -33,6 +33,7 @@ enum class LayoutDiagnosticKind
 struct LayoutDiagnostic
 {
     // Final emitted coordinates, not an independent source feasibility check.
+    // Columns count Unicode code points, with tabs expanded to tab stops.
     util::Position Position;
     std::string Message;
     LayoutDiagnosticKind Kind;

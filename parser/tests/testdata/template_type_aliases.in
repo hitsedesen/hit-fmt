@@ -1,0 +1,13 @@
+struct First {};
+struct Second {};
+using Simple = Map<First, Second>;
+template<class T> using Nested = Pair<Box<T>, Pair<First, Second>>;
+using /* gap */ Attributed [[deprecated]] = Pair<First, Second>;
+typedef Pair<First, Second> Legacy;
+using Computed = decltype(Invoke<First, Second>(value));
+Map<decltype(Invoke<First, Second>(value)), Third> computed;
+Map<int (*)(Pair<First, Second>), Third> callback;
+using Compared = decltype(left < right > tail);
+using Type = decltype(auto);
+using namespace samples;
+using samples::Value;

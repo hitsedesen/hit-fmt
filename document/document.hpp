@@ -182,6 +182,7 @@ struct Status
 
 struct Policy
 {
+    // Unicode code points; invalid UTF-8 bytes each occupy one column.
     std::uint32_t Width = 80;
     std::uint8_t TabWidth = 8; // 1..32; tabs advance to output tab stops.
     Newline LineEnding = Newline::LF;

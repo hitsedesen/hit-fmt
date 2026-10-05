@@ -1,5 +1,9 @@
 (translation-unit
-  (using-declaration "using" "Type" "=" "int" ";")
+  (using-declaration
+    "using" "Type" "="
+    (type-id "int")
+    ";"
+  )
   (record-declaration "struct" "Record" "{" "}" ";")
   (function-definition
     (leading-trivia
@@ -244,7 +248,11 @@
       )
       (compound-statement
         "{"
-        (using-declaration "using" "Local" "=" "long" ";")
+        (using-declaration
+          "using" "Local" "="
+          (type-id "long")
+          ";"
+        )
         (declaration-statement
           (declaration-specifiers "Local")
           (init-declarator-list
