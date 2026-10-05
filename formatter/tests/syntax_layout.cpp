@@ -774,9 +774,9 @@ TEST(SyntaxLayout, HeaderDecisionEndsBeforeExpandedBody)
     style.ColumnLimit = 80;
     style.ParametersLayout = formatter::CategoryLayout::Preserve;
     style.ExpressionsLayout = formatter::CategoryLayout::Preserve;
-    const auto preserved =
-        Lower("void\nf(int x,\n  int y = alpha\n+ beta) { work(); }\n", style)
-            .Text;
+    const auto preserved = Lower(
+        "void\nf(int x,\n  int y = alpha\n+ beta) { work(); }\n",
+        style).Text;
     EXPECT_NE(preserved.find("void f(int x,\n"), std::string::npos)
         << preserved;
     EXPECT_NE(preserved.find("alpha\n    + beta"), std::string::npos)
@@ -787,9 +787,9 @@ TEST(SyntaxLayout, HeaderDecisionEndsBeforeExpandedBody)
         Lower("struct X { int\nf() const\nnoexcept { return 0; } };\n", style)
             .Text.find("int f() const noexcept {"),
         std::string::npos);
-    const auto attribute =
-        Lower("[[deprecated(\n\"old\"\n)]] void\nf() { work(); }\n", style)
-            .Text;
+    const auto attribute = Lower(
+        "[[deprecated(\n\"old\"\n)]] void\nf() { work(); }\n",
+        style).Text;
     EXPECT_NE(attribute.find("[[deprecated(\n\"old\"\n)]]"), std::string::npos)
         << attribute;
     EXPECT_NE(attribute.find("void f()\n{"), std::string::npos) << attribute;
@@ -807,9 +807,9 @@ TEST(SyntaxLayout, FunctionTryHeaderSpacingIsSourceIndependent)
     auto style = Canonical(80);
     style.FunctionBracePlacement =
         formatter::BracePlacement::NextLineIfHeaderBroken;
-    const auto expected =
-        Lower("void f() try { work(); } catch (...) { recover(); }\n", style)
-            .Text;
+    const auto expected = Lower(
+        "void f() try { work(); } catch (...) { recover(); }\n",
+        style).Text;
     for (const auto header : {"void\nf()\ntry", "void\tf()\ttry"}) {
         const auto output = Lower(
             std::string(header) + " { work(); } catch (...) { recover(); }\n",
@@ -1140,9 +1140,9 @@ TEST(SyntaxLayout, MessagePinAcceptsOnlyCompleteStringLiteralSequence)
         "void f(){ message(\"left\" \"right\", " "alpha, beta, gamma); }\n",
         style).Text;
     EXPECT_NE(output.find("message(\"left\" \"right\","), std::string::npos);
-    const auto nonliteral =
-        Lower("void f(){ message(\"text\" + value, alpha, beta); }\n", style)
-            .Text;
+    const auto nonliteral = Lower(
+        "void f(){ message(\"text\" + value, alpha, beta); }\n",
+        style).Text;
     EXPECT_EQ(nonliteral.find("message(\"text\""), std::string::npos);
     style.ColumnLimit = 12;
     const auto wide = Lower(
@@ -2582,9 +2582,9 @@ TEST(SyntaxLayout, ExactVerticalGapsCapAndPreservedIndentation)
     EXPECT_NE(output.find("complete\r\n\t[[nodiscard]]"), std::string::npos);
     EXPECT_EQ(output.find("\r\r\n"), std::string::npos);
     EXPECT_EQ(Lower(output, style, options).Text, output);
-    const auto record =
-        Lower("class X { public: int first; private: int second; };\n", style)
-            .Text;
+    const auto record = Lower(
+        "class X { public: int first; private: int second; };\n",
+        style).Text;
     EXPECT_NE(record.find("public:\n\n"), std::string::npos) << record;
     EXPECT_NE(record.find("first;\n\nprivate:"), std::string::npos);
     auto zero = style;

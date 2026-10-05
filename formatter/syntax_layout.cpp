@@ -3145,12 +3145,13 @@ private:
             document::GroupMode::Fill,
             int32_t(policy.Indent.ContinuationOffset),
             policy.Indent);
-        // Prefer operator/list boundaries over splitting multi-call chains
-        // or multi-member field paths. Outside control headers, a single
-        // member or suffix call may split before its arguments; header chains
-        // prefer argument breaks as well as operator and clause boundaries.
-        Groups_[group].Spec.BreakPenalty =
-            entry.ControlHeader ? 3 : links > 1 && packingCalls != 1 ? 2 : 0;
+        // Prefer operator/list boundaries over splitting field paths or
+        // multi-call chains. Outside control headers, a single suffix call
+        // may split before its arguments; header chains prefer argument
+        // breaks as well as operator and clause boundaries.
+        Groups_[group].Spec.BreakPenalty = entry.ControlHeader
+            ? 3
+            : packingCalls == 0 || (links > 1 && packingCalls != 1) ? 2 : 0;
         // A chain owns continuation independently of pending expression
         // offsets, but retains enclosing list and realized-line indentation.
         Groups_[group].Spec.StructuralBase = true;

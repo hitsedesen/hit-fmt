@@ -1561,8 +1561,8 @@ TEST(PublicPipeline, EnumeratorAssignmentMapsAndProtection)
     {
         SCOPED_TRACE(profile);
         const test::golden::Fixture fixture{directory, profile};
-        const auto style = formatter::LoadConfigFile(fixture.Named(".hit-fmt"))
-            .FormattingStyle;
+        const auto style = formatter::LoadConfigFile(
+            fixture.Named(".hit-fmt")).FormattingStyle;
         const formatter::PreparedFormat prepared(style);
         CheckIdentities(source, FormatInput(source, prepared));
     }
@@ -2098,10 +2098,10 @@ TEST(PublicPipeline, IncludeRegroupingOwnsBlankLinesAndPreservesMovedIdentities)
     for (const bool priorities : {false, true}) {
         const auto source = test::golden::ReadFile(directory /
             (priorities ? "groups.input.cpp" : "relative.input.cpp"));
-        auto style = formatter::LoadConfigFile(
-            directory /
-            (priorities ? "groups.hit-fmt" : "directory-relative.hit-fmt"))
-            .FormattingStyle;
+        auto style = formatter::LoadConfigFile(directory /
+            (priorities
+                ? "groups.hit-fmt"
+                : "directory-relative.hit-fmt")).FormattingStyle;
         formatter::FormatResult owned;
         {
             const formatter::PreparedFormat prepared(style);
