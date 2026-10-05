@@ -394,7 +394,6 @@ TEST(FileCheck, HunkDiagnosticGoldenUsesOriginalSelectionAndMappedOutput)
         formatter::WidthDiagnosticPolicy::Report;
     const hit_fmt::PreparedFileConfiguration prepared(raw);
     const Input input(fixture.InputNamed(".input.cpp"));
-    // Reversed ordering and duplicates also exercise canonical selection.
     const formatter::Hunk selected[] =
         {{13, 13}, {11, 11}, {9, 9}, {4, 5}, {1, 1}, {5, 5}};
     for (const bool spillover : {false, true}) {

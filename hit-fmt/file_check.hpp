@@ -36,16 +36,15 @@ struct CheckedFile
     std::vector<SemanticDiagnostic> Semantic;
     // Definite required edits blocked by the original hunk boundary.
     std::vector<SemanticDiagnostic> RequiredChanges;
-    // Internal coverage metadata, not a violation or printed diagnostic.
+    // Original byte ranges that were not fully checked.
     std::vector<formatter::HunkCoverage> Incomplete;
     // Original token anchors, indexed like Formatting.Diagnostics.
     std::vector<util::Position> OriginalWidthPositions;
     std::uint16_t ColumnLimit = 0;
     bool FormattingMismatch = false;
 
-    // Applied formatting is not a remaining failure in fix mode. Naming,
-    // parameter names, required blocked edits and in-scope emitted width
-    // failures are never erased. Incomplete coverage alone is not a failure.
+    // Applied formatting is not a failure in fix mode. Remaining semantic,
+    // structural and width violations are failures in both modes.
     [[nodiscard]] bool HasFailures(bool fix) const;
 };
 
@@ -69,12 +68,9 @@ struct ChangedFileScope
     std::string_view inputFilePath = {},
     std::optional<ChangedFileScope> changed = std::nullopt);
 
-// Check diagnostics point into the original source. Fix diagnostics point
-// into the written output. Only violations are printed, not coverage notes.
-// Width violations show the offending line. Fix diagnostics also explain
-// when automatic formatting cannot satisfy the style or hunk scope.
-// originalSource is borrowed only while printing; fix excerpts use
-// Formatting.Text instead.
+// Check diagnostics use original coordinates; fix diagnostics use emitted
+// coordinates. originalSource is borrowed only while printing; fix excerpts
+// use Formatting.Text.
 // Printing does not parse or run the formatter.
 void PrintFileIssues(
     std::ostream& output,

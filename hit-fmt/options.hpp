@@ -26,7 +26,6 @@ struct Options
     std::vector<std::filesystem::path> Paths;
 };
 
-// Parse arguments only; do not discover files, read stdin, or run the CLI.
 [[nodiscard]] Options ParseOptions(int argc, const char* const argv[]);
 
 } // namespace hit_fmt
