@@ -115,6 +115,16 @@ void PrintOption(std::ostream& output, std::string_view name, const T& value)
                 "# Line comments and mixed comment prefixes stay in place.\n"
                 "# In a broken call: consume(alpha,\n"
                 "#     /* next argument */ beta);\n";
+    } else if (name == "AttributeSpaceBeforeSpecifier" ||
+        name == "AttributeSpaceAfterSpecifier")
+    {
+        output
+            << "# Outside [[...]], GNU __attribute__ and MS __declspec.\n"
+                "# Interiors and punctuation retain their own policies.\n";
+    } else if (name == "AttributeInteriorSpacing" ||
+        name == "EmptyAttributeInteriorSpacing")
+    {
+        output << "# C++ [[...]] bracket interiors, not extension payloads.\n";
     } else if (name == "IndentedCallScopePairs") {
         output
             << "# Uncertain scopes retain existing line-start regions.\n"

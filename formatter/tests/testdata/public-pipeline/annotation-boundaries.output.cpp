@@ -33,9 +33,18 @@ int(grouped)(int n) {
   return n;
 }
 int (*pointer(int n))(int);
-__attribute__((unused))static int extension(int n) {
+__attribute__((unused)) static int extension(int n) {
   return n;
 }
+__attribute__((destructor(101))) static void Cleanup() {
+}
+static __attribute__((unused)) int tagged;
+__attribute__((used)) __attribute__((noinline)) int consecutive() {
+  return 0;
+}
+__attribute__ /* annotation */ ((format(printf, 1, 2))) int log(const char *format, ...);
+__declspec(dllexport) int exported();
+void suffix() __attribute__((cold));
 Vec NOTE(0) load(int n) noexcept(true) try { return n; } /* first */ catch(int Type) { Type * value; } /* between */ catch(...) { return 0; }
 RAW(int n) & noexcept try { return n; } catch(...) { return 0; }
 int genuine(int n) try {

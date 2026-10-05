@@ -683,10 +683,23 @@ public:
                 }
                 break;
             case NK::AttributeSpecifier:
-                if (end >= begin + 4 && Delimited(begin, end) &&
-                    Tree_.Kind(begin + 1) == TK::Operator_OpenBracket &&
-                    Tree_.MatchingDelimiter(begin + 1) == end - 2)
-                {
+            case NK::ExtensionAttributeSpecifier: {
+                auto opening = begin + 1;
+                while (opening < end && Tree_.Kind(opening) == TK::Comment) {
+                    ++opening;
+                }
+                const bool standard = kind == NK::AttributeSpecifier;
+                const bool complete = standard
+                    ? end >= begin + 4 && Delimited(begin, end) &&
+                        Tree_.Kind(begin + 1) == TK::Operator_OpenBracket &&
+                        Tree_.MatchingDelimiter(begin + 1) == end - 2
+                    : opening < end &&
+                        Tree_.Kind(opening) == TK::Operator_OpenParenthesis &&
+                        Delimited(opening, end);
+                if (complete) {
+                    // Extension boundaries defer to declaration punctuation
+                    // and suffix rules, which have priority 3.
+                    const uint8_t priority = standard ? 3 : 2;
                     // An attribute at a confirmed parenthesis edge does not
                     // own that gap; retain the enclosing interior policy.
                     if (begin == 0 ||
@@ -700,7 +713,7 @@ public:
                             ? Regions_[state.Owner]
                             : node,
                             state.Category,
-                            3,
+                            priority,
                             true);
                     }
                     if (end == Tree_.TokenCount() ||
@@ -714,19 +727,24 @@ public:
                             ? Regions_[state.Owner]
                             : node,
                             state.Category,
-                            3,
+                            priority,
                             true);
                     }
-                    Interior(
-                        begin + 1,
-                        end - 1,
-                        F::AttributeInteriorSpacing,
-                        F::EmptyAttributeInteriorSpacing,
-                        node,
-                        state.Category,
-                        3);
+                    // Extension payloads remain opaque; their parentheses
+                    // are not C++ attribute brackets or ordinary call syntax.
+                    if (standard) {
+                        Interior(
+                            begin + 1,
+                            end - 1,
+                            F::AttributeInteriorSpacing,
+                            F::EmptyAttributeInteriorSpacing,
+                            node,
+                            state.Category,
+                            3);
+                    }
                 }
                 break;
+            }
             case NK::NewPlacement:
                 list(C::Calls);
                 Mark(
