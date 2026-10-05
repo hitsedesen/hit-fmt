@@ -1666,6 +1666,62 @@ TEST(GroupLayout, GeneratedTabsPreserveVisualLayoutAndOpaqueSource)
     EXPECT_EQ(wideTabs.Text, "\n\tx");
     auto wideSpaces = wideIndent.Render({.Width = 40, .TabWidth = 32});
     EXPECT_EQ(ExpandTabs(wideTabs.Text, 32), std::string_view(wideSpaces.Text));
+
+    // Leaf facts are local to a render policy. Exact-width fitting and output
+    // advancement must agree on ASCII, opaque UTF8/invalid bytes, tabs and
+    // multiline protected text without changing its provenance.
+    for (const auto& [value, columns] :
+        std::initializer_list<std::pair<std::string, std::uint32_t>>{
+            {"abc", 3},
+            {"\xc3\xa9", 1},
+            {"\xff", 1},
+            {"a\tb", 2},
+            {"a\r\n b", 5},
+        })
+    {
+        Document facts(value);
+        facts.Text("x");
+        const auto owner = facts.BeginGroup({GroupMode::Consistent, 2});
+        facts.SourceText(0, static_cast<std::uint32_t>(value.size()), 77, true);
+        facts.Gap({GapKind::Soft, 1});
+        facts.Text("z");
+        facts.EndGroup(owner);
+        ASSERT_TRUE(facts.Seal());
+        const bool multiline = value.find('\n') != value.npos;
+        for (const std::uint8_t tabWidth : {1, 4, 8, 32}) {
+            const std::uint32_t exactWidth = 3 + columns +
+                static_cast<std::uint32_t>(std::count(
+                    value.begin(),
+                    value.end(),
+                    '\t')) * tabWidth;
+            for (const bool narrow : {false, true}) {
+                Policy leafPolicy{
+                    .Width = multiline ? 80 : exactWidth - narrow,
+                    .TabWidth = tabWidth,
+                };
+                const auto mapped = facts.Render(leafPolicy);
+                ASSERT_TRUE(mapped.State);
+                EXPECT_EQ(
+                    std::string_view(mapped.Text),
+                    "x" + value + (multiline || narrow ? "\n  z" : " z"));
+                ASSERT_EQ(mapped.Map.size(), 4u);
+                EXPECT_TRUE(mapped.Map[1].Exact);
+                EXPECT_TRUE(mapped.Map[1].Protected);
+                EXPECT_EQ(mapped.Map[1].Source.Identity, 77u);
+                EXPECT_EQ(
+                    std::string_view(mapped.Text).substr(
+                        mapped.Map[1].OutputBegin,
+                        mapped.Map[1].OutputEnd - mapped.Map[1].OutputBegin),
+                    value);
+                leafPolicy.SourceMap = false;
+                const auto unmapped = facts.Render(leafPolicy);
+                ASSERT_TRUE(unmapped.State);
+                EXPECT_EQ(unmapped.Text, mapped.Text);
+                EXPECT_EQ(unmapped.Broken, mapped.Broken);
+                EXPECT_TRUE(unmapped.Map.empty());
+            }
+        }
+    }
 }
 
 TEST(GroupLayout, SourceCarriageReturnAndLocalGapNewlinesGolden)

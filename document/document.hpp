@@ -494,6 +494,7 @@ private:
         bool Compact : 1 = false;
         bool ComplexGap : 1 = false;
         bool FitNextSegment : 1 = false;
+        bool FitFlatTail : 1 = false;
 
         union
         {
@@ -549,6 +550,7 @@ private:
     std::pmr::vector<std::uint32_t> Open_;
     std::uint32_t LogicalNodes_ = 0;
     std::uint32_t Anchors_ = 0;
+    std::uint32_t RenderGaps_ = 0;
     std::uint32_t Depth_ = 0;
     Status State_;
     bool Sealed_ = false;
