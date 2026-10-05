@@ -1,0 +1,12 @@
+Layout = Canonical
+IndentationKind = Spaces
+ColumnLimit = 52
+BreakAfterTemplateHeader = true
+ExpressionsAlignment = Operand
+ExpressionsPacking = VerticalWhenBroken
+AssignmentRhsPlacement = NextLine
+FunctionBracePlacement = NextLine
+ConstructorBracePlacement = Attached
+DestructorBracePlacement = Attached
+IndentedCallScopePairs = ["Open:Close"]
+GenerateCallScopeIndentation = true

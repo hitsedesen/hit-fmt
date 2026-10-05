@@ -332,6 +332,8 @@
     OPT(formatter::CategoryLayout, DeclarationHeadersLayout, \
         formatter::CategoryLayout::Inherit) \
     OPT(bool, BreakAfterTemplateHeader, false) \
+    OPT(formatter::FirstItemPlacement, AssignmentRhsPlacement, \
+        formatter::FirstItemPlacement::InlineIfFits) \
     OPT(formatter::CategoryLayout, BodiesLayout, \
         formatter::CategoryLayout::Inherit) \
     OPT(formatter::BodyShape, BodyShape, formatter::BodyShape::Expanded)       \
@@ -350,6 +352,8 @@
     OPT(formatter::BracePlacement, FunctionBracePlacement, \
         formatter::BracePlacement::Attached) \
     OPT(std::optional<formatter::BracePlacement>, ConstructorBracePlacement, \
+        std::nullopt) \
+    OPT(std::optional<formatter::BracePlacement>, DestructorBracePlacement, \
         std::nullopt) \
     OPT(formatter::BracePlacement, LambdaBracePlacement, \
         formatter::BracePlacement::Attached) \
@@ -412,11 +416,18 @@
     OPT(std::vector<std::string>, ChainedCallRootNames, {})                   \
     OPT(std::vector<std::string>, AlwaysBreakChainRootNames, {})              \
     OPT(std::vector<std::string>, IndentedCallScopePairs, {})                 \
+    OPT(bool, GenerateCallScopeIndentation, false) \
     OPT(std::vector<std::string>, IndentedChainScopePairs, {})                \
     OPT(std::vector<std::string>, StickyChainCallPairs, {})                    \
     OPT(std::vector<std::string>, CallLikeMacroNames, {})                     \
     OPT(std::vector<std::string>, FunctionBodyMacroNames, {})                 \
     OPT(std::vector<std::string>, WhitespaceSensitiveMacros, {})              \
+    OPT(bool, IndentPreprocessingDirectives, false) \
+    OPT(bool, AlignMacroBackslashes, false) \
+    /* Zero preserves spelling; length counts slashes, not indentation. */ \
+    OPT(std::size_t, RulerLength, 0) \
+    OPT(formatter::BlankLineSetting, RulerBlankLinesBefore, {}) \
+    OPT(formatter::BlankLineSetting, RulerBlankLinesAfter, {}) \
     OPT(formatter::IncludeOrder, IncludeOrder, \
         formatter::IncludeOrder::Preserve) \
     OPT(formatter::IncludeMatchingHeader, IncludeMatchingHeader, \

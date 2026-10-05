@@ -290,6 +290,14 @@ void ShareExpected(
 std::vector<FormatCase> FormatCases()
 {
     std::vector<FormatCase> cases;
+    const auto newOptions =
+        std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../new-options";
+    AddCases(cases, newOptions, {"syntax", "unlimited", "preserve", "always"});
+    AddCases(cases, newOptions, {"text", "sorted-text"}, "text.input.cpp");
+    AddCases(cases, newOptions, {"crlf"}, "crlf.input.cpp");
+    for (auto& value : cases) {
+        value.CheckOwningMaps = true;
+    }
     AddCases(
         cases,
         std::filesystem::path(FORMATTER_TESTDATA_DIR) /

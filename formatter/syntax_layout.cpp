@@ -1,4 +1,5 @@
 #include "syntax_layout.hpp"
+#include "text_policies.hpp"
 
 #include <parser/operator_info.hpp>
 
@@ -414,6 +415,9 @@ public:
                 default:
                     break;
             }
+            if (node.Kind == NodeKind::TemplateDeclaration) {
+                PlanTemplateHeader(i);
+            }
             if (!Syntax_[i].Safe && !CanPlanAroundOpaqueChildren(i)) {
                 if (ListFor(node.Kind)) {
                     PreserveUnplannedListContext(i);
@@ -458,6 +462,7 @@ public:
         }
         PlanVisualScopes();
         PlanVerticalGaps();
+        PlanRulerGaps();
         if (!State_) {
             return State_;
         }
@@ -1326,6 +1331,36 @@ private:
         }
     }
 
+    void PlanTemplateHeader(Index id)
+    {
+        if (!Policies_.BreakAfterTemplateHeader ||
+            Policies_.DeclarationHeaders != LayoutMode::Canonical)
+        {
+            return;
+        }
+        for (auto child = Region(Syntax_[id]).FirstChild;
+            child != None;
+            child = Region(Syntax_[child]).NextSibling)
+        {
+            const auto& header = Region(Syntax_[child]);
+            if (header.Kind != NodeKind::TemplateParameterList ||
+                !Syntax_[child].Safe || header.Tokens.Empty())
+            {
+                continue;
+            }
+            const auto gap = header.Tokens.End;
+            if (gap >= Region(Syntax_[id]).Tokens.End) {
+                continue;
+            }
+            const auto group = GroupAt(
+                GapPosition(gap),
+                TokenPosition(gap),
+                document::GroupMode::Consistent);
+            Groups_[group].Spec.StructuralBase = true;
+            Own(gap, group, Boundary::Hard);
+        }
+    }
+
     void PlanKeywordExpression(Index id)
     {
         const auto& entry = Syntax_[id];
@@ -1414,6 +1449,12 @@ private:
             : document::GroupMode::Fill,
             int32_t(indentation.ContinuationOffset),
             indentation);
+        if (policy.Alignment == ExpressionAlignment::Operand &&
+            !declarationAssignment && kind != NodeKind::AssignmentExpression)
+        {
+            Groups_[group].Indent.Alignment = ContinuationAlignment::Delimiter;
+            Groups_[group].Indent.ContinuationOffset = 0;
+        }
         Groups_[group].Spec.ExpressionContinuation = true;
         Groups_[group].Spec.Continuation = true;
         if (canonical && threePart && parent != None &&
@@ -1515,6 +1556,13 @@ private:
                             ? policy.Ternary
                             : policy.Binary;
                 if (canonical) {
+                    if (role == PunctuationRole::AssignmentOperator &&
+                        policy.AssignmentRhs == FirstItemPlacement::NextLine)
+                    {
+                        Own(t + 1, group, Boundary::Hard);
+                        Own(t, group, Boundary::Flat);
+                        return;
+                    }
                     Own(
                         side == OperatorSide::Leading ? t : t + 1,
                         group,
@@ -1584,8 +1632,21 @@ private:
         switch (node.Kind) {
             case NodeKind::FunctionDefinition:
             case NodeKind::MacroFunctionDefinition:
-            case NodeKind::FunctionTryBlock:
+            case NodeKind::FunctionTryBlock: {
+                auto function = node.Function;
+                if (node.Kind == NodeKind::FunctionTryBlock &&
+                    node.Parent != None)
+                {
+                    function = Region(Syntax_[node.Parent]).Function;
+                }
+                if (function == parser::FunctionKind::Constructor) {
+                    return Policies_.Braces.Constructor;
+                }
+                if (function == parser::FunctionKind::Destructor) {
+                    return Policies_.Braces.Destructor;
+                }
                 return Policies_.Braces.Function;
+            }
             case NodeKind::NamespaceDeclaration:
                 return Policies_.Braces.Namespace;
             case NodeKind::EnumDeclaration:
@@ -3069,8 +3130,9 @@ private:
                     SourceIndent(Region(Syntax_[begin.Statement]).Tokens.Begin);
                 const auto interiorIndent =
                     SourceIndent(Region(Syntax_[first]).Tokens.Begin);
-                if (beginIndent == None || interiorIndent == None ||
-                    interiorIndent <= beginIndent)
+                if (!Policies_.GenerateCallScopeIndentation &&
+                    (beginIndent == None || interiorIndent == None ||
+                        interiorIndent <= beginIndent))
                 {
                     continue; // Flat nested pairs never invent an extra level.
                 }
@@ -3248,6 +3310,33 @@ private:
             }
             if (last != Tree_.TokenCount()) {
                 ExactVertical(last, policy.StandaloneCommentBlankLinesAfter, 2);
+            }
+        }
+    }
+
+    void PlanRulerGaps()
+    {
+        if (Policies_.RulerBlankLinesBefore.Mode != VerticalGapMode::Exact &&
+            Policies_.RulerBlankLinesAfter.Mode != VerticalGapMode::Exact)
+        {
+            return;
+        }
+        for (Index token = 0; token < Tree_.TokenCount(); ++token) {
+            const auto range = Tree_.Token(token).Text;
+            if (Tree_.Kind(token) != TokenKind::Comment ||
+                !IsRuler(Tree_.TokenText(token)) ||
+                ContextProtected({range.Begin, range.End}) ||
+                (token != 0 && !Safety_.Gaps()[token].HasLineFeed) ||
+                (token + 1 != Tree_.TokenCount() &&
+                    !Safety_.Gaps()[token + 1].HasLineFeed))
+            {
+                continue;
+            }
+            if (token != 0) {
+                ExactVertical(token, Policies_.RulerBlankLinesBefore, 3);
+            }
+            if (token + 1 != Tree_.TokenCount()) {
+                ExactVertical(token + 1, Policies_.RulerBlankLinesAfter, 4);
             }
         }
     }
@@ -4405,7 +4494,9 @@ document::Policy SyntaxRenderPolicy(
     const SyntaxLayoutOptions& options)
 {
     document::Policy result;
-    result.Width = uint32_t(policies.ColumnLimit);
+    result.Width = policies.ColumnLimit == 0
+        ? UINT32_MAX - 1
+        : uint32_t(policies.ColumnLimit);
     result.TabWidth = options.TabWidth;
     result.LineEnding = options.LineEnding;
     result.Indentation = policies.IndentationKind == IndentationKind::Tabs

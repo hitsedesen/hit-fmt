@@ -124,6 +124,32 @@ with all settings and their accepted values annotated:
 hit-fmt --generate-config > .hit-fmt
 ```
 
+## Additional layout policies
+
+- `ColumnLimit = 0`: unlimited width; mandatory breaks still apply.
+- `BreakAfterTemplateHeader = true`: always separate a template header from
+  its declaration in canonical declaration-header layout.
+- `ExpressionsAlignment = Operand`: align wrapped expressions under their
+  first operand instead of adding a block continuation level.
+- `ConstructorBracePlacement` and `DestructorBracePlacement`: independently
+  override `FunctionBracePlacement`; both default to `Inherit`.
+- `AssignmentRhsPlacement = InlineIfFits | NextLine`: control assignment and
+  declaration-initializer RHS placement in canonical expression layout.
+- `IndentPreprocessingDirectives = true`: indent nested directives after
+  `#` using `IndentWidth`, with branch/end directives aligned to their opener.
+- `AlignMacroBackslashes = true`: align safe macro continuation backslashes
+  one space beyond the longest prefix. Spliced tokens and literals stay exact.
+- `RulerLength = N`: normalize standalone slash-only comments (at least
+  `///`) to N slashes; zero preserves their length. `RulerBlankLinesBefore`
+  and `RulerBlankLinesAfter` accept `Preserve` or an exact empty-line count,
+  independently of ordinary comment gaps.
+- `GenerateCallScopeIndentation = true`: generate one indentation level
+  between matched `IndentedCallScopePairs = ["Begin:End"]` calls. Select
+  `IndentationKind = Spaces` or `Tabs`. Unmatched or unsafe pairs stay exact.
+
+Defaults retain existing behavior. Disabled formatting, immutable ranges,
+parser uncertainty, and changed-hunk edit scope still take precedence.
+
 ## License
 
 The project is licensed under the [MIT License](LICENSE). Generated Unicode

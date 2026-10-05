@@ -1,4 +1,5 @@
 #include "structural_edits.hpp"
+#include "text_policies.hpp"
 
 #include <algorithm>
 #include <limits>
@@ -312,18 +313,7 @@ bool ParseInclude(const parser::SyntaxTree& tree, TI token, Include& result)
 
 bool DirectiveOnly(const SourceAnalysis& safety, SR range)
 {
-    auto intervals = safety.Protection();
-    auto it = std::lower_bound(
-        intervals.begin(),
-        intervals.end(),
-        range.Begin,
-        [] (const auto& r, auto offset) { return r.Source.End <= offset; });
-    for (; it != intervals.end() && it->Source.Begin < range.End; ++it) {
-        if (it->Reasons != ProtectionReason::Directive) {
-            return false;
-        }
-    }
-    return true;
+    return safety.CanRewriteDirective(range);
 }
 template <class Accept, class Reject>
 void ScanIncludeGroups(
@@ -760,6 +750,7 @@ StructuralPlan PlanStructuralEdits(
     if (options.SortIncludes) {
         Includes(tree, safety, plan, scratchMemory);
     }
+    PlanTextPolicyEdits(tree, safety, options, plan, fileMemory, scratchMemory);
     Sort(plan);
     (void)Validate(tree.Source(), plan);
     return plan;

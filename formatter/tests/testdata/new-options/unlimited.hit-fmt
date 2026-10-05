@@ -1,0 +1,4 @@
+Layout = Canonical
+IndentationKind = Spaces
+ColumnLimit = 0
+WidthDiagnostics = Report

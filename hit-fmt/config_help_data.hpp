@@ -143,6 +143,7 @@ constexpr HelpExample AnnotationExamples[] = {
 ChainedCallRootNames = ["factory", "pipeline::Builder"]
 AlwaysBreakChainRootNames = ["WRITE_EVENT", "logging::Event"]
 IndentedCallScopePairs = ["OpenItems:CloseItems"]
+GenerateCallScopeIndentation = true
 IndentedChainScopePairs = ["BeginMap:EndMap", "BeginList:EndList"]
 StickyChainCallPairs = ["Item:Value", "Item:BeginMap", "registrar:Parameter"]
 # Every call uses global ColumnLimit; there are no named-width overrides.
@@ -182,8 +183,15 @@ IncludeMatchingHeader = Off
 IncludeGrouping = Preserve
 IncludeGroupPrefixes = []
 ConstructorBracePlacement = Inherit
-# Template breaks, Operand, matching/regrouping and constructor overrides
-# are rejected by public preparation. Inactive prefixes do not enable grouping.
+DestructorBracePlacement = Inherit
+AssignmentRhsPlacement = InlineIfFits
+IndentPreprocessingDirectives = false
+AlignMacroBackslashes = false
+RulerLength = 0
+RulerBlankLinesBefore = Preserve
+RulerBlankLinesAfter = Preserve
+# Matching/regrouping are rejected by public preparation.
+# Inactive prefixes do not enable grouping.
 )"},
 };
 
@@ -198,6 +206,8 @@ constexpr HelpSection HelpSections[] = {
             "empty/indivisible/protected groups. "
             "Preserve/protection win. "
         "WidthDiagnostics is Off or Report; "
+        "ColumnLimit = 0 disables width wrapping and width diagnostics, "
+        "but retains mandatory breaks. "
         "Report checks emitted line widths without a "
             "feasibility-format probe.\n", LayoutExamples},
     {"Lists and alignment", "Categories: Calls, Parameters, "
@@ -366,6 +376,9 @@ constexpr HelpSection HelpSections[] = {
         "convention list, "
         "not a message-pin side effect or a replacement for root selection. "
         "It obeys ChainsLayout, root selection and protection. "
+        "GenerateCallScopeIndentation creates an extra IndentWidth for matched "
+        "IndentedCallScopePairs even when the input is flat; it requires "
+        "non-Preserve IndentationKind. By default, "
         "IndentedCallScopePairs preserves an "
             "existing visual extra level only for "
         "matched pairs in the same statement "
@@ -386,12 +399,19 @@ constexpr HelpSection HelpSections[] = {
         "use global ColumnLimit. Macro safety hints "
             "are separate.\n", AnnotationExamples},
     {"Configuration limits",
-        "Public preparation rejects template breaks, Operand alignment, "
-        "matching First, Regroup and constructor overrides. "
+        "Public preparation rejects matching First and Regroup. "
+        "BreakAfterTemplateHeader always breaks after a template declaration "
+        "header in canonical DeclarationHeadersLayout. "
+        "ExpressionsAlignment = Operand aligns continuations to the first "
+        "operand, with the configured fallback when an atom cannot fit. "
+        "AssignmentRhsPlacement = NextLine puts assignment and declaration "
+        "initializer right-hand sides on the next line in canonical "
+        "expressions, regardless of AssignmentOperatorSide; "
+        "InlineIfFits uses normal fitting. "
         "Low-level scalar compilation "
         "and owning prefix metadata may be used separately. Comment counts "
         "accept Preserve or 0..10000 and must fit MaxEmptyLines. Constructor "
-        "Inherit resolves final FunctionBracePlacement once. "
+        "and Destructor Inherit resolve final FunctionBracePlacement once. "
         "IncludeGroupPrefixes "
         "is an ordered quoted array of normalized relative directory prefixes "
         "ending in /; duplicates, absolute paths, backslashes, empty, . and .. "
@@ -399,11 +419,21 @@ constexpr HelpSection HelpSections[] = {
         "Regroup conflicts with explicit MaxEmptyLines=0 "
         "before unsupported-feature "
         "rejection. IncludeOrder defaults to Preserve. ColumnLimit "
-        "accepts 1..10000; zero is invalid.\n",
+        "accepts 0 (unlimited) or 1..10000.\n",
         StagedExamples},
     {"Safety, transforms and checks",
-        "Directives and protected bytes are never "
-        "rewritten. hit-fmt off/on always protects "
+        "Protected bytes are never rewritten. IndentPreprocessingDirectives "
+        "adds nesting spaces after #, keeping # in its original column; "
+        "else/elif/endif align with their if. AlignMacroBackslashes aligns "
+        "existing whitespace-separated macro continuations one column after "
+        "the longest prefix (tab stops of 8), without changing macro tokens. "
+        "Spliced identifiers, literals, comments and raw strings "
+        "are left alone. "
+        "RulerLength counts slashes in standalone comments containing only "
+        "three or more slashes; 0 preserves spelling. "
+        "RulerBlankLinesBefore/After "
+        "override ordinary standalone-comment gaps at ruler boundaries. "
+        "hit-fmt off/on always protects "
             "regions; clang-format off/on is "
         "honored by default. Macro hints describe "
             "syntax/protection, not aesthetics. "

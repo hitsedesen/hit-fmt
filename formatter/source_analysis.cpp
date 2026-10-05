@@ -215,6 +215,7 @@ parser::SourceOffset CheckedSourceAnalysisSize(size_t size)
 SourceAnalysis::SourceAnalysis(std::pmr::memory_resource& fileMemory)
     : Gaps_(&fileMemory)
     , Protection_(&fileMemory)
+    , DirectiveFences_(&fileMemory)
     , Regions_(&fileMemory)
     , EditScope_(&fileMemory)
     , PartialGapPermissions_(&fileMemory)
@@ -224,6 +225,7 @@ SourceAnalysis::SourceAnalysis(SourceAnalysis&& other) noexcept
     : Source_(std::exchange(other.Source_, {}))
     , Gaps_(std::move(other.Gaps_))
     , Protection_(std::move(other.Protection_))
+    , DirectiveFences_(std::move(other.DirectiveFences_))
     , Regions_(std::move(other.Regions_))
     , EditScope_(std::move(other.EditScope_))
     , PartialGapPermissions_(std::move(other.PartialGapPermissions_))
@@ -248,6 +250,24 @@ bool SourceAnalysis::IntersectsImmutable(parser::SourceRange source) const
         (source.Empty()
             ? first->Source.Begin <= source.Begin
             : first->Source.Begin < source.End);
+}
+
+bool SourceAnalysis::CanRewriteDirective(parser::SourceRange source) const
+{
+    if (!Built_ || source.Empty() || source.Begin > source.End ||
+        source.End > Source_.size() ||
+        (HasEditScope_ && !Covered(EditScope_, source)))
+    {
+        return false;
+    }
+    const auto first = std::lower_bound(
+        DirectiveFences_.begin(),
+        DirectiveFences_.end(),
+        source.Begin,
+        [] (
+            const auto& range,
+            Offset begin) { return range.Source.End <= begin; });
+    return first == DirectiveFences_.end() || first->Source.Begin >= source.End;
 }
 
 bool SourceAnalysis::CanReplaceGap(GapId id, std::string_view replacement) const
@@ -688,6 +708,11 @@ SourceAnalysis BuildSourceAnalysis(
                 "inherited protection requires a reason");
         }
         protect(range.Source.Begin, range.Source.End, range.Reasons);
+        if ((uint16_t(range.Reasons) &
+            ~uint16_t(ProtectionReason::Directive)) != 0)
+        {
+            result.DirectiveFences_.push_back(range);
+        }
     }
     struct Frame
     {
@@ -736,6 +761,7 @@ SourceAnalysis BuildSourceAnalysis(
             NoRegion,
             node.Kind,
             status,
+            node.GetFunctionKind(),
         });
         if (parent != NoRegion) {
             auto& frame = stack.back();
@@ -795,6 +821,16 @@ SourceAnalysis BuildSourceAnalysis(
             }
         }
     }
+    for (const auto& range : result.Protection_) {
+        if ((uint16_t(range.Reasons) &
+            ~uint16_t(
+                ProtectionReason::Directive | ProtectionReason::LineSplice)) !=
+            0)
+        {
+            result.DirectiveFences_.push_back(range);
+        }
+    }
+    MergeProtection(result.DirectiveFences_);
     MergeProtection(result.Protection_);
     size_t interval = 0;
     for (auto& gap : result.Gaps_) {
