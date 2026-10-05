@@ -31,6 +31,7 @@ TEST(HunkParser, GroupsFilesAndResolvesPathsAgainstGivenDirectory)
         parsed.Hunks.at((base / "src/file with spaces.cpp").string())[0],
         (formatter::Hunk{1, 1}));
 }
+
 TEST(HunkParser, EmptyInputSelectsNoFiles)
 {
     std::istringstream input;
@@ -39,6 +40,7 @@ TEST(HunkParser, EmptyInputSelectsNoFiles)
     EXPECT_TRUE(parsed.Paths.empty());
     EXPECT_TRUE(parsed.Hunks.empty());
 }
+
 TEST(HunkParser, RejectsMalformedRecordsWithLineNumbers)
 {
     for (auto [text, line] :
@@ -66,6 +68,7 @@ TEST(HunkParser, RejectsMalformedRecordsWithLineNumbers)
         }
     }
 }
+
 TEST(HunkParser, RejectsFileWithoutHunksAtEndOfInput)
 {
     std::istringstream input("file a.cpp\n");
@@ -73,6 +76,7 @@ TEST(HunkParser, RejectsFileWithoutHunksAtEndOfInput)
         formatter::ParseChangedHunks(input, std::filesystem::current_path()),
         std::runtime_error);
 }
+
 struct HunkInput
 {
     std::string Storage;
@@ -92,6 +96,7 @@ struct HunkInput
             [] (parser::ParseError) {});
     }
 };
+
 TEST(HunkAdapter, RejectsInvalidOriginalPhysicalLines)
 {
     for (std::string_view text : {"", "int x;", "int x;\n"}) {
@@ -118,6 +123,7 @@ TEST(HunkAdapter, RejectsInvalidOriginalPhysicalLines)
         }
     }
 }
+
 formatter::ChangedFormatResult Changed(
     std::string_view source,
     std::span<const formatter::Hunk> hunks,
@@ -155,6 +161,7 @@ TEST(HunkAdapter, CoalescesUnsortedAdjacentAndOverlappingOriginalLines)
         result.Result.Text,
         Changed(source, joined, false, HunkStyle()).Result.Text);
 }
+
 TEST(HunkAdapter, EmptySelectionAndStrictEOFAuthority)
 {
     EXPECT_EQ(Changed("", {}).Result.Text, "");
@@ -167,6 +174,7 @@ TEST(HunkAdapter, EmptySelectionAndStrictEOFAuthority)
         EXPECT_EQ(result.SelectedLines.size(), 1);
     }
 }
+
 TEST(HunkAdapter, StrictSelectedIndentTrimAndExcludedFollowingPoint)
 {
     const std::string source =
@@ -183,6 +191,7 @@ TEST(HunkAdapter, StrictSelectedIndentTrimAndExcludedFollowingPoint)
     style.TrailingWhitespace = formatter::TrailingWhitespace::Preserve;
     EXPECT_EQ(Changed(source, selected, false, style).Result.Text, source);
 }
+
 TEST(HunkAdapter, CallerScopeAndExplicitProtectionOnlyNarrowAuthority)
 {
     const std::string source = "void f() {\n      work();\n}\n";
@@ -309,6 +318,7 @@ TEST(HunkAdapter, CallerScopeAndExplicitProtectionOnlyNarrowAuthority)
         }
     }
 }
+
 TEST(HunkAdapter, BlockedAtomicBracesDoNotSuppressIndependentFormatting)
 {
     const std::string source =
@@ -323,6 +333,7 @@ TEST(HunkAdapter, BlockedAtomicBracesDoNotSuppressIndependentFormatting)
     // The required brace footprint is line 3, not the selected control header.
     EXPECT_TRUE(result.RequiredSkips.empty());
 }
+
 TEST(HunkAdapter, NamespaceInteriorSelectionIsNotARequestedCommentFailure)
 {
     const std::string source = "namespace n {\nint f( int x );\n}\n";
@@ -340,6 +351,7 @@ TEST(HunkAdapter, NamespaceInteriorSelectionIsNotARequestedCommentFailure)
             formatter::HunkCoverageReason::StructuralEligibility);
     }
 }
+
 TEST(HunkAdapter, SafeIncludeSpillSortsAtomicallyAndStrictCoverageIsNotMismatch)
 {
     const std::string source =
@@ -361,6 +373,7 @@ TEST(HunkAdapter, SafeIncludeSpillSortsAtomicallyAndStrictCoverageIsNotMismatch)
         spill.PermittedLines,
         (std::vector<formatter::Hunk>{{1, 2}, {4, 4}}));
 }
+
 TEST(HunkAdapter, BoundedNestedListsNeverPromoteFunctionOrOverTwoHundredLines)
 {
     std::string source =
@@ -411,6 +424,7 @@ TEST(HunkAdapter, BoundedNestedListsNeverPromoteFunctionOrOverTwoHundredLines)
         }
     }
 }
+
 TEST(HunkAdapter, AlreadyCompliantPartialLayoutIsIncompleteNotRequiredFailure)
 {
     const std::string source = "void f() {\n    call(1,\n        2);\n}\n";
@@ -422,6 +436,7 @@ TEST(HunkAdapter, AlreadyCompliantPartialLayoutIsIncompleteNotRequiredFailure)
     EXPECT_FALSE(result.Incomplete.empty());
     EXPECT_EQ(result.Result.Text, source);
 }
+
 TEST(HunkAdapter, PureScopeBlockedBraceHasDefiniteProofButDisabledBytesDoNot)
 {
     const std::string source = "void f(bool x) {\n  if (x) work();\n}\n";
@@ -445,6 +460,7 @@ TEST(HunkAdapter, PureScopeBlockedBraceHasDefiniteProofButDisabledBytesDoNot)
     EXPECT_EQ(protectedResult.Result.Text, disabled);
     EXPECT_FALSE(protectedResult.Incomplete.empty());
 }
+
 TEST(HunkAdapter, OwningMapsPreserveEveryOutsideByteAndOriginalIdentity)
 {
     const std::string source =
@@ -530,6 +546,7 @@ TEST(HunkAdapter, OwningMapsPreserveEveryOutsideByteAndOriginalIdentity)
     EXPECT_TRUE(result.RequiredSkips.empty());
     EXPECT_TRUE(result.Result.StructuralOperations.size() >= 2);
 }
+
 TEST(HunkAdapter, IncludeSpillRetainsTwoHundredLineBoundAndOutsideStatements)
 {
     const formatter::Hunk selected[] = {{1, 1}};
@@ -551,6 +568,7 @@ TEST(HunkAdapter, IncludeSpillRetainsTwoHundredLineBoundAndOutsideStatements)
         EXPECT_TRUE(result.RequiredSkips.empty());
     }
 }
+
 TEST(HunkAdapter, NamespaceClosingFootprintAndEOFRemainAtomic)
 {
     const std::string source = "namespace n {\nint value;\n}\n";
@@ -590,6 +608,7 @@ TEST(HunkAdapter, NamespaceClosingFootprintAndEOFRemainAtomic)
                 formatter::HunkCoverageReason::StructuralEligibility;
         }));
 }
+
 TEST(HunkAdapter, AmbiguityAndRecoveryDoNotFreezeIndependentSelectedDeclaration)
 {
     const std::string source =
@@ -609,6 +628,7 @@ TEST(HunkAdapter, AmbiguityAndRecoveryDoNotFreezeIndependentSelectedDeclaration)
                 formatter::HunkCoverageReason::SemanticProtection;
         }));
 }
+
 TEST(HunkAdapter, OptionalCommaInsertionAndRemovalHaveOriginalAuthority)
 {
     const std::string source =
@@ -666,6 +686,7 @@ TEST(HunkAdapter, OptionalCommaInsertionAndRemovalHaveOriginalAuthority)
                         map.Output.End - map.Output.Begin) == ",";
         }));
 }
+
 TEST(HunkAdapter,
     IdempotenceRemapsSelectedOriginalIdentitiesAfterAtomicLineInsertion)
 {

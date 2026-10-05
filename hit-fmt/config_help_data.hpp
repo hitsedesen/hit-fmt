@@ -164,6 +164,9 @@ CallLikeMacroNames = ["REGISTER_NODE"]
 # Exact names; a balanced invocation plus brace body uses function-body grammar.
 # Headers stay opaque; existing source protection still applies.
 FunctionBodyMacroNames = ["DEFINE_CASE", "DEFINE_METHOD"]
+# Function-like invocations delimit a class; nested ends match their pair.
+# Endpoints must be distinct and unique. Arguments are not expanded type names.
+ClassMacroNames = ["BEGIN_SETTER:END_SETTER"]
 WhitespaceSensitiveMacros = ["STRINGIZE_TEXT"]
 AddMissingControlBraces = false
 RemoveNullStatements = false
@@ -525,6 +528,13 @@ constexpr HelpSection HelpSections[] = {
             "regions; clang-format off/on is "
         "honored by default. Macro hints describe "
             "syntax/protection, not aesthetics. "
+        "ClassMacroNames contains Begin:End pairs of exact unqualified "
+        "identifiers for balanced function-like invocations opening/closing "
+        "class-member grammar. Endpoints must be distinct and unique across "
+        "pairs. Nested classes must close with their matching end macro. "
+        "Invocation arguments stay byte-for-byte intact; no expanded "
+        "class name or type binding is inferred. Members use ordinary "
+        "member/body indentation and access-section policies. "
         "Transforms are explicitly opt-in and may "
             "not cross protected spans. Naming "
         "and parameter checks never rename code. "

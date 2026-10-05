@@ -390,6 +390,7 @@ void AssignStyle(
             Member == &Style::IndentedCallScopePairs ||
             Member == &Style::IndentedChainScopePairs ||
             Member == &Style::StickyChainCallPairs ||
+            Member == &Style::ClassMacroNames ||
             Member == &Style::IncludeGroupPrefixes)
         {
             config.FormattingStyle.*Member = ParseStringList(value, path, line);
@@ -668,6 +669,7 @@ void ValidateLibraryAnnotationStyle(const Style& style)
         style.IndentedCallScopePairs.size() * 2,
         style.IndentedChainScopePairs.size() * 2,
         style.StickyChainCallPairs.size(),
+        style.ClassMacroNames.size() * 2,
     }));
     ValidateAnnotationNames(
         style.CallLineFirstStringNames,
@@ -705,6 +707,13 @@ void ValidateLibraryAnnotationStyle(const Style& style)
         scratch.push_back(pair);
     }
     RejectDuplicateAnnotations(scratch, "StickyChainCallPairs");
+    scratch.clear();
+    for (const auto& pair : style.ClassMacroNames) {
+        const auto [begin, end] = AnnotationScopePair(pair, "ClassMacroNames");
+        scratch.push_back(begin);
+        scratch.push_back(end);
+    }
+    RejectDuplicateAnnotations(scratch, "ClassMacroNames");
 }
 
 LibraryAnnotations CompileLibraryAnnotations(const Style& style)

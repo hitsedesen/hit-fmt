@@ -1278,6 +1278,46 @@ TEST(ConfigPolicy, SupportedOptionsKeepExistingRejections)
     }
 }
 
+TEST(ConfigPolicy, ClassMacroHintsRejectMalformedOrAmbiguousPairs)
+{
+    const TemporaryConfig config(
+        "ClassMacroNames = [\"OPEN_CLASS:CLOSE_CLASS\", "
+        "\"BEGIN_NODE:END_NODE\"]\n");
+    auto style = formatter::LoadConfigFile(config.Path).FormattingStyle;
+    EXPECT_NO_THROW((void)formatter::PreparedFormat(style));
+    style.ClassMacroNames.clear();
+    EXPECT_NO_THROW((void)formatter::PreparedFormat(style));
+    for (const auto& pairs :
+        std::vector<std::vector<std::string>>{
+            {"OPEN_CLASS"},
+            {"OPEN_CLASS:"},
+            {":CLOSE_CLASS"},
+            {"OPEN_CLASS:CLOSE_CLASS:OTHER"},
+            {"scope::OPEN_CLASS:CLOSE_CLASS"},
+            {"OPEN_CLASS:OPEN_CLASS"},
+            {"OPEN_CLASS:CLOSE_CLASS", "OPEN_CLASS:END_NODE"},
+            {"OPEN_CLASS:CLOSE_CLASS", "BEGIN_NODE:CLOSE_CLASS"},
+            {"OPEN_CLASS:CLOSE_CLASS", "CLOSE_CLASS:END_NODE"},
+            {"OPEN_CLASS:CLOSE_CLASS", "OPEN_CLASS:CLOSE_CLASS"},
+        })
+    {
+        style.ClassMacroNames = pairs;
+        std::string text = "ClassMacroNames = [";
+        for (size_t i = 0; i < pairs.size(); ++i) {
+            text += (i ? ", \"" : "\"") + pairs[i] + "\"";
+        }
+        text += "]\n";
+        SCOPED_TRACE(text);
+        EXPECT_THROW(
+            (void)formatter::PreparedFormat(style),
+            std::invalid_argument);
+        const TemporaryConfig invalid(text);
+        EXPECT_THROW(
+            (void)formatter::LoadConfigFile(invalid.Path),
+            std::runtime_error);
+    }
+}
+
 TEST(ConfigPolicy, OrderedPrefixIndexPreservesEarliestRuleAcrossOwningLifetimes)
 {
     auto make = [] {

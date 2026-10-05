@@ -1,0 +1,14 @@
+namespace Detail {
+BEGIN_SETTER(Missing, int)
+void Run() {Use(1);}
+}
+void Neighbor() {Use(2);}
+
+BEGIN_SETTER(Outer, int)
+OPEN_RECORD(Inner, int)
+void Run() {Use(3);}
+END_SETTER()
+void AfterMismatchedPair() {Use(4);}
+
+BEGIN_SETTER(Unterminated, int)
+void Run() {Use(5);}

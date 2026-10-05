@@ -182,6 +182,7 @@ TEST(StructuralEdits, DiagnosticGolden)
         Dump(plan) + "namespace-output-plan\n" + Dump(comments));
     CheckMapping(file, normalized);
 }
+
 TEST(StructuralEdits, NestedControlsKeepDanglingElseAndSingleOriginalPlan)
 {
     File file("void f(){if(a) if(b) while(c) x(); else y();}");
@@ -200,6 +201,7 @@ TEST(StructuralEdits, NestedControlsKeepDanglingElseAndSingleOriginalPlan)
         .Edits
         .empty());
 }
+
 TEST(StructuralEdits, ElseIfChainAndDoWhile)
 {
     File file("void f(){if(a) x(); else if(b) y(); else do x(); while(c);}");
@@ -210,6 +212,7 @@ TEST(StructuralEdits, ElseIfChainAndDoWhile)
         "void f(){if(a) {x();} else if(b) {y();} else {do {x();} while(c);}}");
     CheckMapping(file, result);
 }
+
 TEST(StructuralEdits, NullBodyIsNotRemovedAndEmptyBlockIsIndependent)
 {
     for (bool add : {false, true}) {
@@ -231,6 +234,7 @@ TEST(StructuralEdits, NullBodyIsNotRemovedAndEmptyBlockIsIndependent)
         CheckMapping(file, result);
     }
 }
+
 TEST(StructuralEdits, LabelsAttributesAndAttachedCommentsAreLocalSkips)
 {
     File file("void f(){label: ; switch(a){case 1: ; ;} if(a) [[likely]] x(); "
@@ -271,6 +275,7 @@ TEST(StructuralEdits, LabelsAttributesAndAttachedCommentsAreLocalSkips)
         CheckMapping(controlled, changed);
     }
 }
+
 TEST(StructuralEdits,
     NullRemovalPreservesRequiredExportAndStatementExpressionBodies)
 {
@@ -287,6 +292,7 @@ TEST(StructuralEdits,
             return diagnostic.Reason == StructuralSkip::RequiredBody;
         }));
 }
+
 TEST(StructuralEdits, ProtectedMacroDisabledRecoveryAndDirectiveBoundaries)
 {
     std::array names{std::string_view("KEEP")};
@@ -316,6 +322,7 @@ TEST(StructuralEdits, ProtectedMacroDisabledRecoveryAndDirectiveBoundaries)
     }
     CheckMapping(file, result);
 }
+
 TEST(StructuralEdits, ExactIncludeLineAtomsAndConditionalCommentBarriers)
 {
     File file("#include <z.h>\r\n#include \"a.h\"\r\n#if FLAG\r\n#include "
@@ -351,6 +358,7 @@ TEST(StructuralEdits, ExactIncludeLineAtomsAndConditionalCommentBarriers)
     }
     CheckMapping(file, result);
 }
+
 TEST(StructuralEdits, IncludeIndentationAndDigraphMarkersStayWithExactAtoms)
 {
     File file("  %:include <z.h>\r\n\t# include \"a.h\"\r\n");
@@ -369,6 +377,7 @@ TEST(StructuralEdits, IncludeIndentationAndDigraphMarkersStayWithExactAtoms)
     EXPECT_EQ(result.Text, "\t# include \"a.h\"\r\n  %:include <z.h>\r\n");
     CheckMapping(file, result);
 }
+
 TEST(StructuralEdits, IncludeDiscoveryContainsSortedGroupsAndExactPermutations)
 {
     File file("  #include \"a.h\"\n\t#include <z.h>\n\n"
@@ -430,6 +439,7 @@ TEST(StructuralEdits, IncludeDiscoveryContainsSortedGroupsAndExactPermutations)
         .Operations
         .empty());
 }
+
 TEST(StructuralEdits, IncludeDiscoveryRespectsCompleteGroupBoundaries)
 {
     // Every separator is a fence, not a spelling-based eligibility shortcut.
@@ -540,6 +550,7 @@ TEST(StructuralEdits, IncludeDiscoveryRespectsCompleteGroupBoundaries)
     EXPECT_EQ(plan.Operations.size(), 2u);
     CheckMapping(mixed, mixed.Apply(plan));
 }
+
 TEST(StructuralEdits, IncludeDiscoveryNeverWeakensProtectionOrScope)
 {
     std::string text = "#include <z.h>\n#include <a.h>\n";
@@ -702,6 +713,7 @@ TEST(StructuralEdits, IncludeDiscoveryNeverWeakensProtectionOrScope)
             original.Scratch),
         std::invalid_argument);
 }
+
 TEST(StructuralEdits, IncludeDiscoveryOwnsDescriptorsForManyDisjointGroups)
 {
     constexpr size_t Count = 256;
@@ -740,6 +752,7 @@ TEST(StructuralEdits, IncludeDiscoveryOwnsDescriptorsForManyDisjointGroups)
         EXPECT_EQ(groups[i].Source.End, 31 * i + 30);
     }
 }
+
 TEST(StructuralEdits, OwnershipValidationRejectsOverlapsAndCoownedInsertions)
 {
     File file("void f(){if(a) work();}");
@@ -760,6 +773,7 @@ TEST(StructuralEdits, OwnershipValidationRejectsOverlapsAndCoownedInsertions)
     deletion.Edits[1].Source.Begin = deletion.Edits[0].Source.Begin;
     EXPECT_THROW((void)declarations.Apply(deletion), std::invalid_argument);
 }
+
 TEST(StructuralEdits, DeepNestingUsesOnePlanAndDeterministicCloseOrdering)
 {
     std::string source = "void f(){";
@@ -774,6 +788,7 @@ TEST(StructuralEdits, DeepNestingUsesOnePlanAndDeterministicCloseOrdering)
     EXPECT_EQ(std::count(result.Text.begin(), result.Text.end(), '{'), 129);
     CheckMapping(file, result);
 }
+
 TEST(StructuralEdits, NamespaceThresholdUsesFinalInteriorLinesNotSource)
 {
     File file("namespace n {int x;}");
@@ -816,6 +831,7 @@ TEST(StructuralEdits, NamespaceThresholdUsesFinalInteriorLinesNotSource)
         }
     }
 }
+
 TEST(StructuralEdits, NamespaceZeroDisablesExemptionAndNestedIdentities)
 {
     File file("namespace a {namespace b::c {}}\n");
@@ -854,6 +870,7 @@ TEST(StructuralEdits, NamespaceZeroDisablesExemptionAndNestedIdentities)
     ASSERT_FALSE(opaque.Skipped.empty());
     EXPECT_EQ(opaque.Skipped.front().Reason, StructuralSkip::Incomplete);
 }
+
 TEST(StructuralEdits, NamespaceFixRemoveKeepCrLfAndIgnoreThreshold)
 {
     for (auto policy :
@@ -884,6 +901,7 @@ TEST(StructuralEdits, NamespaceFixRemoveKeepCrLfAndIgnoreThreshold)
             : "namespace a {}\r\nint x;\r\n");
     }
 }
+
 TEST(StructuralEdits, AnonymousNamespaceNoOpFixAndOriginalProtection)
 {
     File anonymous("namespace {}\n");
@@ -937,6 +955,7 @@ TEST(StructuralEdits, AnonymousNamespaceNoOpFixAndOriginalProtection)
     ASSERT_FALSE(blocked.Skipped.empty());
     EXPECT_EQ(blocked.Skipped.front().Reason, StructuralSkip::Protected);
 }
+
 TEST(StructuralEdits, NamespaceCannotSwallowFollowingCodeCommentsOrProtection)
 {
     for (const auto& text :

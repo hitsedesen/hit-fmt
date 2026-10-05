@@ -412,6 +412,7 @@ public:
                 case NodeKind::RequirementBody:
                 case NodeKind::NamespaceDeclaration:
                 case NodeKind::RecordDeclaration:
+                case NodeKind::MacroRecordDeclaration:
                 case NodeKind::EnumDeclaration:
                 case NodeKind::LambdaExpression:
                 case NodeKind::IfStatement:
@@ -584,6 +585,7 @@ private:
                 case NodeKind::TranslationUnit:
                 case NodeKind::NamespaceDeclaration:
                 case NodeKind::RecordDeclaration:
+                case NodeKind::MacroRecordDeclaration:
                 case NodeKind::CompoundStatement:
                 case NodeKind::LambdaBody:
                 case NodeKind::RequirementBody:
@@ -657,7 +659,20 @@ private:
                 (IsSpine(node.Kind) && CanPlanAroundOpaqueChildren(i));
             if (entry.ItemSequence) {
                 entry.SequenceBody = node.Tokens;
-                if (node.Kind != NodeKind::TranslationUnit &&
+                if (node.Kind == NodeKind::MacroRecordDeclaration) {
+                    const auto first = node.FirstChild;
+                    const auto last = LastChild_[i];
+                    entry.ItemSequence = first != None && last != None &&
+                        Region(Syntax_[first]).Kind ==
+                            NodeKind::MacroRecordBegin &&
+                        Region(Syntax_[last]).Kind == NodeKind::MacroRecordEnd;
+                    if (entry.ItemSequence) {
+                        entry.SequenceBody = {
+                            Region(Syntax_[first]).Tokens.End,
+                            Region(Syntax_[last]).Tokens.Begin,
+                        };
+                    }
+                } else if (node.Kind != NodeKind::TranslationUnit &&
                     node.Kind != NodeKind::PreprocessingConditional &&
                     node.Kind != NodeKind::PreprocessingBranch)
                 {
@@ -704,7 +719,9 @@ private:
             }
             entry.Definition = node.Kind == NodeKind::FunctionDefinition ||
                 node.Kind == NodeKind::MacroFunctionDefinition ||
-                node.Kind == NodeKind::FunctionTryBlock;
+                node.Kind == NodeKind::FunctionTryBlock ||
+                (node.Kind == NodeKind::MacroRecordDeclaration &&
+                    entry.ItemSequence);
             if (node.Kind == NodeKind::RecordDeclaration ||
                 node.Kind == NodeKind::EnumDeclaration)
             {
@@ -2302,6 +2319,13 @@ private:
     void PlanHeaderAndBody(Index id)
     {
         const auto& node = Region(Syntax_[id]);
+        if (node.Kind == NodeKind::MacroRecordDeclaration) {
+            if (Syntax_[id].ItemSequence) {
+                const auto body = Syntax_[id].SequenceBody;
+                PlanBody(id, body.Begin - 1, body.End, Policies_.Bodies, true);
+            }
+            return;
+        }
         if (node.Kind == NodeKind::FunctionDeclaration) {
             if (!node.Tokens.Empty() && Syntax_[id].Safe &&
                 Policies_.DeclarationHeaders == LayoutMode::Canonical &&
@@ -2540,10 +2564,13 @@ private:
         const BodyPolicy& policy,
         bool record)
     {
+        const bool macroRecord =
+            Region(Syntax_[id]).Kind == NodeKind::MacroRecordDeclaration;
         if (opening >= close || close >= Tree_.TokenCount() ||
-            Tree_.Kind(opening) != TokenKind::Operator_OpenBrace ||
-            Tree_.Kind(close) != TokenKind::Operator_CloseBrace ||
-            Tree_.MatchingDelimiter(opening) != close)
+            (!macroRecord &&
+                (Tree_.Kind(opening) != TokenKind::Operator_OpenBrace ||
+                    Tree_.Kind(close) != TokenKind::Operator_CloseBrace ||
+                    Tree_.MatchingDelimiter(opening) != close)))
         {
             return;
         }
@@ -2583,9 +2610,11 @@ private:
             // to its structural base, as its closing brace already does.
             Gaps_[opening].Reindent = true;
         }
-        const auto shape = opening + 1 == close
-            ? policy.EmptyShape
-            : policy.Shape;
+        // Macro delimiters must remain separate invocations, not collapse
+        // together under a compact/empty brace-body policy.
+        const auto shape = macroRecord
+            ? BodyShape::Expanded
+            : opening + 1 == close ? policy.EmptyShape : policy.Shape;
         const bool independentIndent = record
             ? Policies_.Indentation.Members.Mode != BodyIndentation::Preserve
             : namespaced &&
@@ -2684,7 +2713,12 @@ private:
                 }
             }
             const auto owner = contents == None ? group : contents;
-            if (!Syntax_[child].Safe) {
+            // Hinted definitions have protected opaque delimiters, but their
+            // editable leading gap still belongs to the enclosing sequence.
+            if (!Syntax_[child].Safe &&
+                part.Kind != NodeKind::MacroRecordDeclaration &&
+                part.Kind != NodeKind::MacroFunctionDefinition)
+            {
                 // Uncertain interiors do not own an editable statement's
                 // leading indentation. Retain its topology and leave actual
                 // protected gaps untouched, just as for a preserved body.
@@ -3487,6 +3521,7 @@ private:
             case NodeKind::FunctionTryBlock:
             case NodeKind::NamespaceDeclaration:
             case NodeKind::RecordDeclaration:
+            case NodeKind::MacroRecordDeclaration:
             case NodeKind::EnumDeclaration:
             case NodeKind::TemplateDeclaration:
             case NodeKind::UsingDeclaration:
@@ -3668,7 +3703,8 @@ private:
                 }
                 if (node.Kind != NodeKind::TranslationUnit &&
                     node.Kind != NodeKind::NamespaceDeclaration &&
-                    node.Kind != NodeKind::RecordDeclaration)
+                    node.Kind != NodeKind::RecordDeclaration &&
+                    node.Kind != NodeKind::MacroRecordDeclaration)
                 {
                     continue;
                 }
@@ -3723,7 +3759,11 @@ private:
                             policy.NamespaceBlankLinesAfterOpen);
                     }
                     content = content || !part.Tokens.Empty();
-                    if (!entry.Safe ||
+                    const bool macroDefinition =
+                        part.Kind == NodeKind::MacroFunctionDefinition ||
+                            (part.Kind == NodeKind::MacroRecordDeclaration &&
+                                entry.ItemSequence);
+                    if ((!entry.Safe && !macroDefinition) ||
                         part.Kind == NodeKind::PreprocessingDirective ||
                         part.Kind == NodeKind::PreprocessingConditional)
                     {
@@ -3750,7 +3790,8 @@ private:
                         continue;
                     }
                     if (part.Kind == NodeKind::AccessSpecifier &&
-                        node.Kind == NodeKind::RecordDeclaration)
+                        (node.Kind == NodeKind::RecordDeclaration ||
+                            node.Kind == NodeKind::MacroRecordDeclaration))
                     {
                         if (seenAccess) {
                             ExactVertical(
@@ -3774,7 +3815,8 @@ private:
                     }
                     if (previous != None) {
                         const bool member =
-                            node.Kind == NodeKind::RecordDeclaration;
+                            node.Kind == NodeKind::RecordDeclaration ||
+                                node.Kind == NodeKind::MacroRecordDeclaration;
                         ExactVertical(
                             Region(entry).Attached.Begin,
                             member

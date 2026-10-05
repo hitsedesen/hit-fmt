@@ -1,0 +1,188 @@
+(translation-unit
+  (namespace-declaration
+    "namespace" "Detail" "{"
+    (macro-record-declaration
+      (macro-record-begin "BEGIN_SETTER" "(" "Missing" "," "int" ")")
+      (function-definition
+        (declaration-specifiers "void")
+        (init-declarator-list
+          (init-declarator
+            (declarator
+              (declarator-name "Run")
+              (function-declarator
+                (parameter-list "(" ")")
+              )
+            )
+          )
+        )
+        (compound-statement
+          "{"
+          (expression-statement
+            (call-expression
+              (identifier-expression "Use")
+              (argument-list
+                "("
+                (argument
+                  (literal-expression "1")
+                )
+                ")"
+              )
+            )
+            ";"
+          )
+          "}"
+        )
+      )
+      (missing-token)
+    )
+    "}"
+  )
+  (function-definition
+    (declaration-specifiers "void")
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (declarator-name "Neighbor")
+          (function-declarator
+            (parameter-list "(" ")")
+          )
+        )
+      )
+    )
+    (compound-statement
+      "{"
+      (expression-statement
+        (call-expression
+          (identifier-expression "Use")
+          (argument-list
+            "("
+            (argument
+              (literal-expression "2")
+            )
+            ")"
+          )
+        )
+        ";"
+      )
+      "}"
+    )
+  )
+  (macro-record-declaration
+    (leading-trivia
+      (whitespace "\n\n")
+    )
+    (macro-record-begin
+      (leading-trivia
+        (whitespace "\n\n")
+      )
+      "BEGIN_SETTER" "(" "Outer" "," "int" ")"
+    )
+    (macro-record-declaration
+      (macro-record-begin "OPEN_RECORD" "(" "Inner" "," "int" ")")
+      (function-definition
+        (declaration-specifiers "void")
+        (init-declarator-list
+          (init-declarator
+            (declarator
+              (declarator-name "Run")
+              (function-declarator
+                (parameter-list "(" ")")
+              )
+            )
+          )
+        )
+        (compound-statement
+          "{"
+          (expression-statement
+            (call-expression
+              (identifier-expression "Use")
+              (argument-list
+                "("
+                (argument
+                  (literal-expression "3")
+                )
+                ")"
+              )
+            )
+            ";"
+          )
+          "}"
+        )
+      )
+      (missing-token)
+    )
+    (macro-record-end "END_SETTER" "(" ")")
+  )
+  (function-definition
+    (declaration-specifiers "void")
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (declarator-name "AfterMismatchedPair")
+          (function-declarator
+            (parameter-list "(" ")")
+          )
+        )
+      )
+    )
+    (compound-statement
+      "{"
+      (expression-statement
+        (call-expression
+          (identifier-expression "Use")
+          (argument-list
+            "("
+            (argument
+              (literal-expression "4")
+            )
+            ")"
+          )
+        )
+        ";"
+      )
+      "}"
+    )
+  )
+  (macro-record-declaration
+    (leading-trivia
+      (whitespace "\n\n")
+    )
+    (macro-record-begin
+      (leading-trivia
+        (whitespace "\n\n")
+      )
+      "BEGIN_SETTER" "(" "Unterminated" "," "int" ")"
+    )
+    (function-definition
+      (declaration-specifiers "void")
+      (init-declarator-list
+        (init-declarator
+          (declarator
+            (declarator-name "Run")
+            (function-declarator
+              (parameter-list "(" ")")
+            )
+          )
+        )
+      )
+      (compound-statement
+        "{"
+        (expression-statement
+          (call-expression
+            (identifier-expression "Use")
+            (argument-list
+              "("
+              (argument
+                (literal-expression "5")
+              )
+              ")"
+            )
+          )
+          ";"
+        )
+        "}"
+      )
+    )
+    (missing-token)
+  )
+)

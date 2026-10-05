@@ -1,0 +1,10 @@
+Layout = Canonical
+IndentationKind = Spaces
+FunctionBracePlacement = NextLine
+BodyShape = Expanded
+FunctionCallSpaceBeforeParameters = NoSpace
+BinaryOperatorSpacing = Space
+AssignmentOperatorSpacing = Space
+ClassMacroNames = ["BEGIN_SETTER:END_SETTER", "OPEN_RECORD:CLOSE_RECORD"]
+FunctionBodyMacroNames = ["DEFINE_METHOD"]
+AddMissingControlBraces = true

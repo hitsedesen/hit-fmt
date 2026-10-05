@@ -52,6 +52,9 @@ struct TokenRange
     SYNTAX_NODE_KIND(FunctionDefinition, "function-definition")                \
     SYNTAX_NODE_KIND(MacroFunctionDefinition, "macro-function-definition")    \
     SYNTAX_NODE_KIND(MacroFunctionHeader, "macro-function-header")            \
+    SYNTAX_NODE_KIND(MacroRecordDeclaration, "macro-record-declaration")      \
+    SYNTAX_NODE_KIND(MacroRecordBegin, "macro-record-begin")                  \
+    SYNTAX_NODE_KIND(MacroRecordEnd, "macro-record-end")                      \
     SYNTAX_NODE_KIND(FunctionTryBlock, "function-try-block")                   \
     SYNTAX_NODE_KIND(NamespaceDeclaration, "namespace-declaration")            \
     SYNTAX_NODE_KIND(RecordDeclaration, "record-declaration")                  \

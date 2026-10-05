@@ -215,6 +215,7 @@ TEST(SyntaxLayout, PartialIndentationRetainsFixedTopologyAndSplitMaps)
         EXPECT_TRUE(generatedIndent);
     }
 }
+
 TEST(SyntaxLayout, PartialCRLFIndentationMapsBorrowedTerminatorExactly)
 {
     const std::string input = "void f() {\r\n      work();\r\n}\r\n";
@@ -248,6 +249,7 @@ TEST(SyntaxLayout, PartialCRLFIndentationMapsBorrowedTerminatorExactly)
     }
     EXPECT_TRUE(split);
 }
+
 TEST(SyntaxLayout, PartialTrimDoesNotRewriteUnselectedBlankSuffix)
 {
     const std::string input = "void f() {\n  work();  \r\n \n\t \r\n}\n";
@@ -268,6 +270,7 @@ TEST(SyntaxLayout, PartialTrimDoesNotRewriteUnselectedBlankSuffix)
     style.TrailingWhitespace = formatter::TrailingWhitespace::Preserve;
     EXPECT_EQ(Lower(input, style, {}, scope).Text, input);
 }
+
 TEST(SyntaxLayout, PartialGapPoliciesAndAnchorsGolden)
 {
     std::string records;
@@ -431,6 +434,7 @@ TEST(SyntaxLayout, PartialGapPoliciesAndAnchorsGolden)
     };
     fixture.Expect(records, ".golden");
 }
+
 TEST(SyntaxLayout, PartialInsertionPointsCutsAndTailRemainFenced)
 {
     auto style = Canonical(80);
@@ -490,6 +494,7 @@ TEST(SyntaxLayout, PartialInsertionPointsCutsAndTailRemainFenced)
     scope.EditScope = eofLF;
     EXPECT_EQ(Lower(eof, style, {}, scope).Text, eof);
 }
+
 TEST(SyntaxLayout, PartialFixedLinesCannotSatisfyAlwaysOwnedBreak)
 {
     const std::string input = "void f() {\n  call(\n      alpha, beta);\n}\n";
@@ -514,6 +519,7 @@ TEST(SyntaxLayout, PartialFixedLinesCannotSatisfyAlwaysOwnedBreak)
         Lower(input, style, {}, scope).Text,
         "void f() {\n  call(\n    alpha, beta);\n}\n");
 }
+
 TEST(SyntaxLayout, PartialPermissionsDoNotBypassRealOrUncertainProtection)
 {
     auto style = Canonical(80);
@@ -558,6 +564,7 @@ TEST(SyntaxLayout, PartialPermissionsDoNotBypassRealOrUncertainProtection)
     expected.replace(work, 6, "  ");
     EXPECT_EQ(Lower(separate, style, {}, scope).Text, expected);
 }
+
 TEST(SyntaxLayout, ScopedSyntaxContextCannotAuthorizeExcludedCommaRemoval)
 {
     const std::string input = "void f() { consume({alpha  ,  }); }\n";
@@ -604,6 +611,7 @@ TEST(SyntaxLayout, ScopedSyntaxContextCannotAuthorizeExcludedCommaRemoval)
         scope.EditScope = ranges;
     }
 }
+
 TEST(SyntaxLayout, ScopedCloserDoesNotAuthorizeCommaInsertionBeforeComment)
 {
     auto style = Canonical(80);
@@ -712,6 +720,7 @@ TEST(SyntaxLayout, ScopedCloserDoesNotAuthorizeCommaInsertionBeforeComment)
         Lower(existing, style, {}, scope).Text.find(','),
         std::string::npos);
 }
+
 TEST(SyntaxLayout, UnscopedAndFullySelectedLoweringAgree)
 {
     const std::string input = "void f(){ call(alpha,beta); work(); }\n";
@@ -725,6 +734,7 @@ TEST(SyntaxLayout, UnscopedAndFullySelectedLoweringAgree)
             Lower(input, style).Text);
     }
 }
+
 TEST(SyntaxLayout, CanonicalListTopologyIsSourceIndependent)
 {
     auto style = Canonical(24);
@@ -743,6 +753,7 @@ TEST(SyntaxLayout, CanonicalListTopologyIsSourceIndependent)
     EXPECT_NE(a.find("nested("), std::string::npos);
     EXPECT_NE(a.find("\n"), std::string::npos);
 }
+
 TEST(SyntaxLayout, HeaderDecisionEndsBeforeExpandedBody)
 {
     auto style = Canonical(80);
@@ -793,6 +804,7 @@ TEST(SyntaxLayout, HeaderDecisionEndsBeforeExpandedBody)
             .find("void\nf()\n{"),
         std::string::npos);
 }
+
 TEST(SyntaxLayout, FunctionTryHeaderSpacingIsSourceIndependent)
 {
     auto style = Canonical(80);
@@ -809,6 +821,7 @@ TEST(SyntaxLayout, FunctionTryHeaderSpacingIsSourceIndependent)
         EXPECT_EQ(Lower(output, style).Text, output);
     }
 }
+
 TEST(SyntaxLayout, ControlledArmSeparatorsAreSourceIndependent)
 {
     for (const auto placement :
@@ -828,6 +841,7 @@ TEST(SyntaxLayout, ControlledArmSeparatorsAreSourceIndependent)
                 style).Text);
     }
 }
+
 TEST(SyntaxLayout, ControlledArmProtectionAndTryHeaderPolicies)
 {
     auto style = Canonical(80);
@@ -858,6 +872,7 @@ TEST(SyntaxLayout, ControlledArmProtectionAndTryHeaderPolicies)
     EXPECT_NE(preservedTry.find("try {"), std::string::npos) << preservedTry;
     EXPECT_EQ(Lower(preservedTry, style).Text, preservedTry);
 }
+
 TEST(SyntaxLayout, ControlledArmsSkipDescendantElseSeparators)
 {
     for (const bool outerBraced : {false, true}) {
@@ -891,6 +906,7 @@ TEST(SyntaxLayout, ControlledArmsSkipDescendantElseSeparators)
         }
     }
 }
+
 TEST(SyntaxLayout, DanglingElseRemainsOwnedByNearestIf)
 {
     const std::string source =
@@ -940,6 +956,7 @@ TEST(SyntaxLayout, DanglingElseRemainsOwnedByNearestIf)
     const auto output = Lower(source, style);
     EXPECT_EQ(Lower(output.Text, style).Text, output.Text);
 }
+
 TEST(SyntaxLayout, MixedPreserveDoesNotActivateOuterGeneratedGaps)
 {
     auto style = Canonical(18);
@@ -953,6 +970,7 @@ TEST(SyntaxLayout, MixedPreserveDoesNotActivateOuterGeneratedGaps)
     EXPECT_NE(output.find("delta  )"), std::string::npos);
     EXPECT_EQ(Lower(output, style).Text, output);
 }
+
 TEST(SyntaxLayout, ThreePartTernaryAndOperatorSides)
 {
     auto style = Canonical(22);
@@ -969,6 +987,7 @@ TEST(SyntaxLayout, ThreePartTernaryAndOperatorSides)
     const auto flat = Lower("void f(){ x = a ? b : c; }\n", Canonical(80)).Text;
     EXPECT_NE(flat.find("x = a ? b : c;"), std::string::npos);
 }
+
 TEST(SyntaxLayout, FluentCalleeSpineIncludesRepeatedInvocation)
 {
     auto style = Canonical(26);
@@ -989,6 +1008,7 @@ TEST(SyntaxLayout, FluentCalleeSpineIncludesRepeatedInvocation)
         Lower("void f(){ factory()(alpha)(beta); }\n", style).Text,
         Lower("void f(){ factory()(alpha)(beta); }\n", ordinary).Text);
 }
+
 TEST(SyntaxLayout, ChainStructuralBaseDropsOnlyPendingExpressionIndent)
 {
     // Block-aligned chain indentation is independent of the RHS width;
@@ -1059,6 +1079,7 @@ TEST(SyntaxLayout, ChainStructuralBaseDropsOnlyPendingExpressionIndent)
         }
     }
 }
+
 TEST(SyntaxLayout, ChainStructuralBaseRespectsPoliciesAndRealizedRhsLines)
 {
     auto style = Canonical(10000);
@@ -1099,6 +1120,7 @@ TEST(SyntaxLayout, ChainStructuralBaseRespectsPoliciesAndRealizedRhsLines)
     EXPECT_NE(fallback.find("\n        .Open()"), std::string::npos)
         << fallback;
 }
+
 TEST(SyntaxLayout, MessagePinAcceptsOnlyCompleteStringLiteralSequence)
 {
     auto style = Canonical(32);
@@ -1120,6 +1142,7 @@ TEST(SyntaxLayout, MessagePinAcceptsOnlyCompleteStringLiteralSequence)
         style).Text;
     EXPECT_EQ(wide.find("message(\"a string"), std::string::npos);
 }
+
 TEST(SyntaxLayout, MatchedScopesRetainOnlyExistingExtraLevel)
 {
     auto style = Canonical(80);
@@ -1140,6 +1163,7 @@ TEST(SyntaxLayout, MatchedScopesRetainOnlyExistingExtraLevel)
         style).Text;
     EXPECT_NE(different.find("\n     work(  arg );"), std::string::npos);
 }
+
 TEST(SyntaxLayout, CRLFCommentOwnsCRAndGapStartsWithLF)
 {
     auto style = Canonical(18);
@@ -1164,6 +1188,7 @@ TEST(SyntaxLayout, CRLFCommentOwnsCRAndGapStartsWithLF)
         }
     }
 }
+
 TEST(SyntaxLayout,
      TopologyRebuiltPreserveUsesStableFallbackAndFlatOnlyRetainsTabs)
 {
@@ -1186,6 +1211,7 @@ TEST(SyntaxLayout,
         Lower("void f(){ call(alpha,\tbeta); }\n", style).Text.find(",\tbeta"),
         std::string::npos);
 }
+
 TEST(SyntaxLayout, InitializerCommaFollowsOutputShapeNotInputComma)
 {
     auto style = Canonical(80);
@@ -1260,6 +1286,7 @@ TEST(SyntaxLayout, InitializerCommaFollowsOutputShapeNotInputComma)
             formatter::TrailingCommaPolicy::WhenMultiline;
     }
 }
+
 TEST(SyntaxLayout, IncompleteInitializerTailCannotAuthorizeCommaEdits)
 {
     auto style = Canonical(80);
@@ -1302,6 +1329,7 @@ TEST(SyntaxLayout, IncompleteInitializerTailCannotAuthorizeCommaEdits)
         }
     }
 }
+
 TEST(SyntaxLayout, NestedInitializerCommaUsesCompleteElementEndpoint)
 {
     auto style = Canonical(80);
@@ -1357,6 +1385,7 @@ TEST(SyntaxLayout, NestedInitializerCommaUsesCompleteElementEndpoint)
     scope.ImmutableRanges = protectedPoint;
     expectNoOuterComma(Lower(input, style, {}, scope));
 }
+
 TEST(SyntaxLayout, CommaDeletionRetainsIncompatibleGapUnits)
 {
     auto style = Canonical(24);
@@ -1387,6 +1416,7 @@ TEST(SyntaxLayout, CommaDeletionRetainsIncompatibleGapUnits)
         Lower("int values[] = {alpha,};\n", style).Text.find("alpha,"),
         std::string::npos);
 }
+
 TEST(SyntaxLayout, ExplicitImmutableRegionWinsWithoutFreezingOtherStatements)
 {
     auto style = Canonical(20);
@@ -1402,6 +1432,7 @@ TEST(SyntaxLayout, ExplicitImmutableRegionWinsWithoutFreezingOtherStatements)
     EXPECT_NE(output.find("next(alpha,"), std::string::npos);
     EXPECT_EQ(output.find("next(alpha, beta, gamma)"), std::string::npos);
 }
+
 TEST(SyntaxLayout, DelimiterFallbackIncludesCloserAndSemicolonSuffix)
 {
     auto style = Canonical(18);
@@ -1420,6 +1451,7 @@ TEST(SyntaxLayout, DelimiterFallbackIncludesCloserAndSemicolonSuffix)
             .find("\n\tbetabetabeta);"),
         std::string::npos);
 }
+
 TEST(SyntaxLayout, ListsHeadersLambdasAndControlClausesCompose)
 {
     auto style = Canonical(28);
@@ -2194,6 +2226,7 @@ TEST(SyntaxLayout, IndependentBodyAndIndentControls)
     const auto block = Lower("void f(){ { work(); } }\n", style).Text;
     EXPECT_NE(block.find("\n    {"), std::string::npos) << block;
 }
+
 TEST(SyntaxLayout, CaseBraceAndLabelIndentAreIndependentOfFollowingBody)
 {
     auto style = Canonical(80);
@@ -2391,6 +2424,7 @@ TEST(SyntaxLayout, CaseLabelPreserveRetainsOnlyExistingIndentation)
         }
     }
 }
+
 TEST(SyntaxLayout, AlwaysRequiresOwnedBoundariesButPreserveAndEmptyWin)
 {
     auto style = Canonical(100);
@@ -2420,6 +2454,7 @@ TEST(SyntaxLayout, AlwaysRequiresOwnedBoundariesButPreserveAndEmptyWin)
         Lower("void f(){ call(item); }\n", style).Text.find("call(item)"),
         std::string::npos);
 }
+
 TEST(SyntaxLayout, EmptyShapeNamespaceIndentAndEnumListAreIndependent)
 {
     auto style = Canonical(80);
@@ -2465,6 +2500,7 @@ TEST(SyntaxLayout, EmptyShapeNamespaceIndentAndEnumListAreIndependent)
         std::string::npos) << kept;
     EXPECT_EQ(Lower(kept, style).Text, kept);
 }
+
 TEST(SyntaxLayout, ExpressionPackingCoOwnsOnlySamePrecedenceSpine)
 {
     auto style = Canonical(18);
@@ -2482,6 +2518,7 @@ TEST(SyntaxLayout, ExpressionPackingCoOwnsOnlySamePrecedenceSpine)
     EXPECT_NE(parenthesized.find("beta +\n"), std::string::npos);
     EXPECT_EQ(Lower(parenthesized, style).Text, parenthesized);
 }
+
 TEST(SyntaxLayout, DeclarationAssignmentsAndPreservedEnumeratorOwners)
 {
     auto style = Canonical(22);
@@ -2497,6 +2534,7 @@ TEST(SyntaxLayout, DeclarationAssignmentsAndPreservedEnumeratorOwners)
         Lower("enum E { A  ,  B  };\n", style).Text,
         "enum E { A  ,  B  };\n");
 }
+
 TEST(SyntaxLayout, ExactVerticalGapsCapAndPreservedIndentation)
 {
     formatter::Style style;
@@ -2618,6 +2656,7 @@ TEST(SyntaxLayout, PrefixedDelimiterAnchorsUseRenderedColonAndRebasedFallback)
         << constructor;
     EXPECT_EQ(Lower(constructor, style).Text, constructor);
 }
+
 TEST(SyntaxLayout,
      GeneratedAdjacencyMetadataDoesNotActivateUnrelatedPreservedEdges)
 {
@@ -2630,6 +2669,7 @@ TEST(SyntaxLayout,
         Lower(source, {}, options).Text,
         "void f(){ call(item,  other  ); }\n");
 }
+
 TEST(SyntaxLayout, NestedVisualScopesAndWrapperContextRespectBarriers)
 {
     auto style = Canonical(80);
@@ -2763,6 +2803,7 @@ TEST(SyntaxLayout, NestedVisualScopesAndWrapperContextRespectBarriers)
     EXPECT_NE(afterDirective.find("\n    after();"), std::string::npos)
         << afterDirective;
 }
+
 TEST(SyntaxLayout, MacroProtectionWinsOverBreakSpacingAndCommaActions)
 {
     auto style = Canonical(18);
@@ -2853,6 +2894,7 @@ TEST(SyntaxLayout, MacroProtectionWinsOverBreakSpacingAndCommaActions)
         Lower(declaration, calls, {}, protection).Text,
         "void declared(  int value = VERBATIM(x,  y) , int other  );\n");
 }
+
 TEST(SyntaxLayout, VerticalCountsAfterCommentCRAndDirectiveBarriersStaySafe)
 {
     formatter::Style style;
@@ -2874,6 +2916,7 @@ TEST(SyntaxLayout, VerticalCountsAfterCommentCRAndDirectiveBarriersStaySafe)
     EXPECT_EQ(output.find("\r\r\n"), std::string::npos);
     EXPECT_EQ(Lower(output, style, options).Text, output);
 }
+
 class CountingResource
     : public std::pmr::memory_resource
 {
@@ -2902,6 +2945,7 @@ private:
         return this == &other;
     }
 };
+
 TEST(SyntaxLayout, FileAndScratchArenasReleaseAndScaleWithWideInput)
 {
     size_t smallFile = 0;
@@ -2945,6 +2989,7 @@ TEST(SyntaxLayout, FileAndScratchArenasReleaseAndScaleWithWideInput)
         EXPECT_LT(output.Text.size(), input.size() * 3);
     }
 }
+
 TEST(SyntaxLayout, SparsePartialPermissionsReleaseScratchAndScale)
 {
     size_t smallFile = 0;
@@ -2999,6 +3044,7 @@ TEST(SyntaxLayout, SparsePartialPermissionsReleaseScratchAndScale)
         }
     }
 }
+
 TEST(SyntaxLayout, WideAndDeepGroupsHaveBoundedIterativeConstruction)
 {
     auto style = Canonical(60);
