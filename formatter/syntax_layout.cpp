@@ -2494,7 +2494,12 @@ private:
             if (IsSoleCaseBlock(next) && Syntax_[next].Safe) {
                 opening = body.Tokens.Begin;
                 bodyChild = next;
-                const auto parent = Region(Syntax_[id]).Parent;
+                // Conditional sequences use their enclosing body's gap
+                // owner, not a separate block for each directive branch.
+                auto parent = Region(Syntax_[id]).Parent;
+                while (parent != None && PreprocessingSequence(parent)) {
+                    parent = Region(Syntax_[parent]).Parent;
+                }
                 if (parent != None && Gaps_[opening].Owner == BlockOf_[parent])
                 {
                     Gaps_[opening].Owner = None;
