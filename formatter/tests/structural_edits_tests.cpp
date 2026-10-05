@@ -1,7 +1,11 @@
 #include <formatter/structural_edits.hpp>
-#include <parser/parser.hpp>
-#include <tests/golden.hpp>
+
 #include <gtest/gtest.h>
+
+#include <parser/parser.hpp>
+
+#include <tests/golden.hpp>
+
 #include <array>
 #include <filesystem>
 #include <format>

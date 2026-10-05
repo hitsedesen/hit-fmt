@@ -1,7 +1,7 @@
 # LLVM-inspired approximation, not clang-format compatibility.
 # Canonical groups flatten fitting lists; delimiter alignment has a fixed fallback.
 # Directives/protected regions are byte-exact. See --help-config.
-# Include categories, contextual lambda indentation and brace removal remain unsupported.
+# Contextual lambda indentation and brace removal remain unsupported.
 # Comments/literals are not reflowed to guarantee the column limit.
 Layout = Canonical
 IndentWidth = 2
@@ -48,7 +48,13 @@ IndentMembers = Indent
 IndentNamespaces = NoIndent
 IndentCaseLabels = NoIndent
 StatementAttributeIndent = Block
-IncludeOrder = Preserve
+# Paired header first; directory groups approximate upstream include categories.
+IncludeOrder = Sort
+IncludeMatchingHeader = First
+IncludeGrouping = Directory
+IncludeDirectoryOrder = NearestFirst
+IncludePathBase = SourceDirectory
+IncludeStandardHeaders = Last
 NamespaceComments = Fix
 ShortNamespaceLines = 1
 RemoveNullDeclarations = true

@@ -1,0 +1,3 @@
+fail: includes are not sorted
+  --> sample.cpp:1:1 [original source]
+summary: fail: includes are not sorted

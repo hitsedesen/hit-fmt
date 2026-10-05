@@ -82,7 +82,14 @@ NamespaceBlankLinesBeforeClose = 1
 IndentCaseLabels = Indent
 StatementAttributeIndent = Block
 
-IncludeOrder = Preserve
+# Paired header first, then root-relative directories nearest to the input file.
+# Pass project-relative input filenames so directory distances share that root.
+IncludeOrder = Sort
+IncludeMatchingHeader = First
+IncludeGrouping = Directory
+IncludeDirectoryOrder = NearestFirst
+IncludePathBase = ProjectRoot
+IncludeStandardHeaders = Last
 NamespaceComments = Fix
 AddMissingControlBraces = true
 EmptyControlBody = EmptyBlock

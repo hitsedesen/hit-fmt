@@ -1,3 +1,5 @@
+fail: includes are not sorted
+  --> sample.cpp:1:1 [original source]
 fail: function name 'selected_bad' has invalid case; expected PascalCase
   --> sample.cpp:4:6 [original source]
 fail: parameter #1 in function definition 'selected_bad': expected a name
@@ -16,4 +18,4 @@ fail: line exceeds ColumnLimit 40
    |
 11 |   invoke("unavoidable_selected_literal_over_the_limit",right);
    |                                          ^
-summary: formatting mismatch; fail: naming or parameter-name violation; fail: column-limit violation
+summary: formatting mismatch; fail: includes are not sorted; fail: naming or parameter-name violation; fail: column-limit violation

@@ -1,0 +1,18 @@
+#include <vector>
+#include <unistd.h>
+#include <library/vector>
+#include <iostream>
+#include "vector"
+#include <gtest/gtest.h>
+#include <stdio.h>
+#include <vendor_api>
+#include <library/api.h>
+#include <implementation.hpp>
+#include <vector.h>
+#include <sys/types.h>
+#include <helper.header>
+#include <custom.inc>
+#include "library/a.h"
+#include <Vector>
+ #include <vector>
+%:include <memory>

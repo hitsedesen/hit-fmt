@@ -1,4 +1,5 @@
 #include "formatter.hpp"
+
 #include "format_pipeline.hpp"
 #include "syntax_layout.hpp"
 #include "text_policies.hpp"
@@ -30,22 +31,6 @@ CompiledPolicies PreparePolicies(const Style& style)
     if (style.AmbiguousTemplateDeclarationSpacing != GapPolicy::Preserve) {
         throw std::invalid_argument(
             "AmbiguousTemplateDeclarationSpacing is unsupported");
-    }
-    // Reject unsupported behavior rather than silently accepting inert
-    // settings.
-    const auto pending = [&] () -> std::string_view {
-        if (style.IncludeMatchingHeader != IncludeMatchingHeader::Off) {
-            return "IncludeMatchingHeader";
-        }
-        if (style.IncludeGrouping != IncludeGrouping::Preserve) {
-            return "IncludeGrouping";
-        }
-        return {};
-    }();
-    if (!pending.empty()) {
-        throw std::invalid_argument(std::string(pending) +
-            " is staged configuration; its public pipeline consumer "
-                "is not yet supported");
     }
     return policies;
 }
@@ -692,6 +677,9 @@ void WidthDiagnostics(
 PreparedFormat::PreparedFormat(const Style& style)
     : Policies(PreparePolicies(style))
     , Annotations(CompileLibraryAnnotations(style))
+    , IncludePrefixes(style.IncludeGrouping != IncludeGrouping::Preserve
+        ? std::span<const std::string>(style.IncludeGroupPrefixes)
+        : std::span<const std::string>{})
     , Structural{
         style.AddMissingControlBraces,
         style.EmptyControlBody == EmptyControlBody::EmptyBlock,
@@ -703,6 +691,11 @@ PreparedFormat::PreparedFormat(const Style& style)
         style.AlignMacroBackslashes,
         style.RulerLength,
         static_cast<std::uint8_t>(style.IndentWidth),
+        style.IncludeMatchingHeader,
+        style.IncludeGrouping,
+        style.IncludeDirectoryOrder,
+        style.IncludePathBase,
+        style.IncludeStandardHeaders,
     }
     , NamespaceComments(CommentOptions(style))
     , HonorClangFormatDirectives(style.HonorClangFormatDirectives)
@@ -756,7 +749,8 @@ FormatResult detail::FormatWithAnalysis(
         safety,
         prepared.Structural,
         file,
-        scratch);
+        scratch,
+        {request.InputFilePath, &prepared.IncludePrefixes});
     scratch.release();
     auto namespacePlan = PlanNamespaceComments(
         original,

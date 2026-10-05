@@ -1,7 +1,8 @@
 #include <document/document.hpp>
-#include <tests/golden.hpp>
 
 #include <gtest/gtest.h>
+
+#include <tests/golden.hpp>
 
 #include <algorithm>
 #include <array>

@@ -1,7 +1,8 @@
 #include <hit-fmt/file_dispatch.hpp>
-#include <util/file.hpp>
 
 #include <gtest/gtest.h>
+
+#include <util/file.hpp>
 
 #include <atomic>
 #include <chrono>

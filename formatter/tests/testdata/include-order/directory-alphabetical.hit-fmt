@@ -1,0 +1,6 @@
+IncludeOrder = Sort
+IncludeMatchingHeader = First
+IncludeGrouping = Directory
+IncludeDirectoryOrder = Alphabetical
+IncludePathBase = ProjectRoot
+IncludeStandardHeaders = Last

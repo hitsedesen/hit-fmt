@@ -1,10 +1,11 @@
 #pragma once
 
-#include <document/document.hpp>
 #include <formatter/config_annotations.hpp>
 #include <formatter/policy.hpp>
 #include <formatter/source_analysis.hpp>
 #include <formatter/syntax_spacing.hpp>
+
+#include <document/document.hpp>
 
 #include <memory_resource>
 #include <span>

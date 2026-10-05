@@ -1,10 +1,12 @@
 #include "public_pipeline.hpp"
+
 #include <formatter/config.hpp>
 #include <formatter/formatter.hpp>
 #include <formatter/source_analysis.hpp>
-#include <tests/golden.hpp>
 
 #include <gtest/gtest.h>
+
+#include <tests/golden.hpp>
 
 #include <algorithm>
 #include <array>
@@ -2087,6 +2089,120 @@ TEST(PublicPipeline, EditScopeProjectsPermutationGeneratedBytesAndReasonUnions)
         FormatInput(source, prepared, {.SourceMap = true, .EditScope = partial})
             .Text,
         source);
+}
+
+TEST(PublicPipeline, IncludeRegroupingOwnsBlankLinesAndPreservesMovedIdentities)
+{
+    const auto directory = std::filesystem::path(__FILE__).parent_path() /
+        "testdata/include-order";
+    for (const bool priorities : {false, true}) {
+        const auto source = test::golden::ReadFile(directory /
+            (priorities ? "groups.input.cpp" : "relative.input.cpp"));
+        auto style = formatter::LoadConfigFile(
+            directory /
+            (priorities ? "groups.hit-fmt" : "directory-relative.hit-fmt"))
+            .FormattingStyle;
+        formatter::FormatResult owned;
+        {
+            const formatter::PreparedFormat prepared(style);
+            style.IncludeGrouping = formatter::IncludeGrouping::Preserve;
+            style.IncludeGroupPrefixes.clear();
+            style.IncludeStandardHeaders =
+                formatter::IncludeStandardHeaders::Preserve;
+            std::string path = priorities ? "library/unit/widget.cpp"
+                : "/project/engine/widget.cpp";
+            owned = FormatInput(
+                source,
+                prepared,
+                {.SourceMap = true, .InputFilePath = path});
+            Input input(source);
+            auto tree = parser::Parse(input.View(), [] (parser::ParseError) {});
+            EXPECT_EQ(
+                owned.Text,
+                formatter::Format(tree, prepared, {.InputFilePath = path})
+                    .Text);
+            EXPECT_NE(owned.Text, source);
+            const auto repeated = FormatInput(
+                owned.Text,
+                prepared,
+                {.SourceMap = true, .InputFilePath = path});
+            EXPECT_EQ(repeated.Text, owned.Text);
+            EXPECT_TRUE(repeated.StructuralOperations.empty());
+            const auto blank = parser::SourceOffset(source.find("\n\n") + 1);
+            // A one-byte hole in blank-line authority blocks the entire move.
+            const std::array<parser::SourceRange, 2> scope{
+                {{0, blank}, {blank + 1, parser::SourceOffset(source.size())}},
+            };
+            const auto partial = FormatInput(
+                source,
+                prepared,
+                {.SourceMap = true, .EditScope = scope, .InputFilePath = path});
+            EXPECT_EQ(partial.Text, source);
+            EXPECT_TRUE(partial.StructuralOperations.empty());
+            CheckIdentities(source, partial);
+            CheckExcludedCopies(source, partial, scope);
+            const std::array<parser::SourceRange, 1> immutable{
+                {{blank, blank + 1}},
+            };
+            const auto protectedResult = FormatInput(
+                source,
+                prepared,
+                {
+                    .ImmutableRanges = immutable,
+                    .SourceMap = true,
+                    .InputFilePath = path,
+                });
+            EXPECT_EQ(protectedResult.Text, source);
+            CheckIdentities(source, protectedResult);
+            path.assign(path.size(), '?');
+        }
+        CheckIdentities(source, owned);
+        for (const auto& token : owned.OriginalTokens) {
+            EXPECT_TRUE(token.Present);
+        }
+        EXPECT_TRUE(std::any_of(
+            owned.Map.begin(),
+            owned.Map.end(),
+            [&] (const auto& map) {
+                return map.Generated &&
+                    map.Action != formatter::NoStructuralAction &&
+                    owned.StructuralOperations[map.Action].Kind ==
+                        formatter::StructuralAction::IncludeOrder;
+            }));
+    }
+}
+
+TEST(PublicPipeline, IncludeRegroupingRetainsLineEndingsAndIncompleteAtoms)
+{
+    formatter::Style style;
+    style.IncludeOrder = formatter::IncludeOrder::Sort;
+    style.IncludeGrouping = formatter::IncludeGrouping::Directory;
+    style.IncludeMatchingHeader = formatter::IncludeMatchingHeader::First;
+    const formatter::PreparedFormat prepared(style);
+    for (const auto source :
+        {
+            "#include \"z.h\"\r\n\r\n#include \"a.h\"\r\n"
+                "#include \"child/a.h\"\r\n",
+            "#include \"z.h\"\n\r\n#include \"a.h\"\n",
+            "#include \"z.h\"\n\n#include \"a.h\"",
+            "#include \"z.h\"\n\r#include \"a.h\"\n",
+        })
+    {
+        const auto result = FormatInput(source, prepared);
+        CheckIdentities(source, result);
+        EXPECT_EQ(FormatInput(result.Text, prepared).Text, result.Text);
+        if (std::string_view(source).starts_with("#include \"z.h\"\r\n")) {
+            EXPECT_NE(result.Text, source);
+            for (std::size_t i = 0; i < result.Text.size(); ++i) {
+                if (result.Text[i] == '\n') {
+                    ASSERT_GT(i, 0u);
+                    EXPECT_EQ(result.Text[i - 1], '\r');
+                }
+            }
+        } else {
+            EXPECT_EQ(result.Text, source);
+        }
+    }
 }
 
 TEST(PublicPipeline, EditScopeDeletionAndReplacementDoNotOwnTheirEnds)

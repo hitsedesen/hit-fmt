@@ -1,8 +1,9 @@
 #include <parser/operator_info.hpp>
 #include <parser/parser.hpp>
-#include <tests/golden.hpp>
 
 #include <gtest/gtest.h>
+
+#include <tests/golden.hpp>
 
 #include <algorithm>
 #include <array>

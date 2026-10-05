@@ -1,0 +1,6 @@
+IncludeOrder = Sort
+IncludeMatchingHeader = First
+IncludeGrouping = Regroup
+IncludeGroupPrefixes = ["project/core/", "project/", "foreign/"]
+IncludePathBase = ProjectRoot
+IncludeStandardHeaders = Last

@@ -241,12 +241,12 @@ void ValidatePolicyStyle(const Style& style)
         style.StandaloneCommentBlankLinesAfter,
         style.MaxEmptyLines,
         "StandaloneCommentBlankLinesAfter");
-    if (style.IncludeGrouping == IncludeGrouping::Regroup &&
+    if (style.IncludeGrouping != IncludeGrouping::Preserve &&
         style.MaxEmptyLines && *style.MaxEmptyLines == 0)
     {
-        throw std::invalid_argument(
-            "IncludeGrouping = Regroup requires one empty line, exceeding "
-            "MaxEmptyLines = 0");
+        throw std::invalid_argument("IncludeGrouping = " +
+            std::string(SerializeConfigEnum(style.IncludeGrouping)) +
+            " requires one empty line, exceeding " "MaxEmptyLines = 0");
     }
     ValidateIncludeGroupPrefixes(style.IncludeGroupPrefixes);
     if (style.ExpressionsAlignment != ExpressionAlignment::Block &&
@@ -265,10 +265,25 @@ void ValidatePolicyStyle(const Style& style)
     {
         throw std::invalid_argument("IncludeMatchingHeader has invalid value");
     }
-    if (style.IncludeGrouping != IncludeGrouping::Preserve &&
-        style.IncludeGrouping != IncludeGrouping::Regroup)
+    if (static_cast<std::size_t>(style.IncludeGrouping) >=
+        ConfigEnumNames<IncludeGrouping>::Values.size())
     {
         throw std::invalid_argument("IncludeGrouping has invalid value");
+    }
+    if (static_cast<std::size_t>(style.IncludeDirectoryOrder) >=
+        ConfigEnumNames<IncludeDirectoryOrder>::Values.size())
+    {
+        throw std::invalid_argument("IncludeDirectoryOrder has invalid value");
+    }
+    if (static_cast<std::size_t>(style.IncludePathBase) >=
+        ConfigEnumNames<IncludePathBase>::Values.size())
+    {
+        throw std::invalid_argument("IncludePathBase has invalid value");
+    }
+    if (static_cast<std::size_t>(style.IncludeStandardHeaders) >=
+        ConfigEnumNames<IncludeStandardHeaders>::Values.size())
+    {
+        throw std::invalid_argument("IncludeStandardHeaders has invalid value");
     }
     if (style.ConstructorBracePlacement &&
         *style.ConstructorBracePlacement != BracePlacement::Attached &&
@@ -426,7 +441,9 @@ CompiledPolicies CompilePolicies(const Style& style)
         .GenerateCallScopeIndentation = style.GenerateCallScopeIndentation,
         .RulerBlankLinesBefore = CompileBlankLines(style.RulerBlankLinesBefore),
         .RulerBlankLinesAfter = CompileBlankLines(style.RulerBlankLinesAfter),
-        .Includes = {style.IncludeMatchingHeader, style.IncludeGrouping},
+        .Includes = {style.IncludeMatchingHeader, style.IncludeGrouping,
+            style.IncludeDirectoryOrder, style.IncludePathBase,
+            style.IncludeStandardHeaders},
     };
 }
 

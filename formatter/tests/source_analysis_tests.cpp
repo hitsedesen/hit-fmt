@@ -1,14 +1,18 @@
 #include <formatter/source_analysis.hpp>
 #include <formatter/syntax_spacing.hpp>
-#include <parser/parser.hpp>
-#include <tests/golden.hpp>
+
 #include <gtest/gtest.h>
+
+#include <parser/parser.hpp>
+
+#include <tests/golden.hpp>
+
 #include <algorithm>
 #include <array>
 #include <filesystem>
 #include <format>
-#include <memory_resource>
 #include <limits>
+#include <memory_resource>
 #include <stdexcept>
 #include <string>
 #include <tuple>

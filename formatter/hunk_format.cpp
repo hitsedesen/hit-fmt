@@ -1,6 +1,7 @@
-#include "hunks.hpp"
-#include "hunk_scope.hpp"
 #include "format_pipeline.hpp"
+#include "hunk_scope.hpp"
+#include "hunks.hpp"
+
 #include <algorithm>
 #include <memory_resource>
 #include <stdexcept>
@@ -257,7 +258,14 @@ ChangedFormatResult FormatChanged(
     // Discovery uses the original unrestricted semantic analysis, and the
     // eventual scoped planner independently checks atomic authority.
     if (!selected.empty()) {
-        const auto groups = DiscoverIncludeGroups(tree, safety, file, scratch);
+        const auto groups = DiscoverIncludeGroups(
+            tree,
+            safety,
+            file,
+            scratch,
+            prepared.Structural.SortIncludes
+            ? prepared.Structural.Grouping
+            : IncludeGrouping::Preserve);
         for (const auto& group : groups) {
             if (!detail::HunkScopeIntersects(selectedBytes, group.Source)) {
                 continue;

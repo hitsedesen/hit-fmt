@@ -1,8 +1,10 @@
 #include <formatter/syntax_spacing.hpp>
-#include <parser/parser.hpp>
-#include <tests/golden.hpp>
 
 #include <gtest/gtest.h>
+
+#include <parser/parser.hpp>
+
+#include <tests/golden.hpp>
 
 #include <array>
 #include <filesystem>

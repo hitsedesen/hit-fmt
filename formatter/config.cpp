@@ -2,8 +2,8 @@
 
 #include <algorithm>
 #include <array>
-#include <charconv>
 #include <cctype>
+#include <charconv>
 #include <fstream>
 #include <span>
 #include <stdexcept>

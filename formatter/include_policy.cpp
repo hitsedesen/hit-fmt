@@ -74,6 +74,9 @@ void ValidateIncludeGroupPrefixes(std::span<const std::string> prefixes)
 PreparedIncludePrefixes::PreparedIncludePrefixes(
     std::span<const std::string> prefixes)
 {
+    if (prefixes.empty()) {
+        return;
+    }
     const auto order = ValidateAndSort(prefixes);
     Prefixes_.assign(prefixes.begin(), prefixes.end());
     std::size_t bytes = 0;

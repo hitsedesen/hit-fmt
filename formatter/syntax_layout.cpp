@@ -1,7 +1,9 @@
 #include "syntax_layout.hpp"
+
 #include "text_policies.hpp"
 
 #include <parser/operator_info.hpp>
+
 #include <unicode/utf8.hpp>
 
 #include <algorithm>

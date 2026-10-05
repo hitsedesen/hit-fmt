@@ -5,6 +5,7 @@
 
 #include <unicode/code_point.hpp>
 #include <unicode/utf8.hpp>
+
 #include <util/input.hpp>
 
 #include <functional>

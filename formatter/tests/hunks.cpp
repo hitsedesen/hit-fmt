@@ -1,5 +1,7 @@
 #include <formatter/hunks.hpp>
+
 #include <gtest/gtest.h>
+
 #include <algorithm>
 #include <filesystem>
 #include <sstream>
