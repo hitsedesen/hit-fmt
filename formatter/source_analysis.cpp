@@ -359,7 +359,8 @@ void SourceAnalysis::RestrictEditScope(
                     if (!Covered(scope, slice)) {
                         return;
                     }
-                // HeaderName alone does not own insertion before its opener.
+                    // HeaderName alone does not own insertion before its
+                    // opener.
                     auto first = std::lower_bound(
                         Protection_.begin(),
                         Protection_.end(),

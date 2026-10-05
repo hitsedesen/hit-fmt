@@ -7560,10 +7560,15 @@ private:
         if (!conditionalBody && !AtEnd()) {
             Append(*node, *ParseStatement());
         }
-        // Attributes after the completed body belong to the next statement,
-        // not to this if's else lookahead. Unsupported attributed statements
-        // must retain their required semicolon in the enclosing sequence.
-        ParseTriviaBeforeChild(*node, false);
+        // Only consume comments in else lookahead when an else or directive
+        // follows. Otherwise they belong to the enclosing statement sequence,
+        // not this completed control. Keep directive handling conservative.
+        // Attributes likewise belong to the next statement and must retain
+        // their required semicolon in the enclosing sequence.
+        auto next = SignificantKind(Cursor_);
+        if (next == TK::Keyword_else || next == TK::PreprocessingDirective) {
+            ParseTriviaBeforeChild(*node, false);
+        }
         if (CurrentKind() == TK::Keyword_else) {
             ++Cursor_;
             bool conditionalElse = ParseTriviaBeforeChild(*node);

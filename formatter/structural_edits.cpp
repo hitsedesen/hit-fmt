@@ -883,10 +883,12 @@ StructuralPlan PlanStructuralEdits(
                         if (!(null
                             ? options.EmptyControlBody
                             : options.AddMissingControlBraces))
+                        {
                             continue;
-                    // Preserve the conventional else-if chain; nested
-                    // then-controls are wrapped together, with closes ordered
-                    // deepest-first.
+                        }
+                        // Preserve the conventional else-if chain; nested
+                        // then-controls are wrapped together, with closes
+                        // ordered deepest-first.
                         if (body->Kind == NK::IfStatement && tokens.Begin &&
                             tree.Kind(tokens.Begin - 1) == TK::Keyword_else)
                         {
