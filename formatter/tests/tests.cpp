@@ -309,6 +309,17 @@ std::vector<FormatCase> FormatCases()
         std::filesystem::path(FORMATTER_TESTDATA_DIR) /
         "../declaration-headers",
         {"wrap", "narrow", "wide"});
+    cases.push_back({
+        std::filesystem::path(FORMATTER_TESTDATA_DIR) /
+            "../declaration-headers",
+        "return-types",
+        "return-types.input.cpp",
+        "narrow",
+        {},
+        true,
+        {},
+        true,
+    });
     AddCases(
         cases,
         std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../vertical-grouping",

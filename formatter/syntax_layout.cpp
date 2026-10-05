@@ -1754,6 +1754,11 @@ private:
         const bool function = kind == NodeKind::FunctionDeclaration ||
             kind == NodeKind::FunctionDefinition ||
             kind == NodeKind::FunctionTryBlock;
+        if (function) {
+            // Prefer parameter-list breaks, but allow a long return type to
+            // separate from the complete function name when needed.
+            Groups_[group].Spec.BreakPenalty = 2;
+        }
         Stack_.clear();
         Stack_.push_back(id);
         while (!Stack_.empty()) {
@@ -1774,6 +1779,37 @@ private:
                 // Keep suffixes beside the parameter closer when splitting
                 // the parameter list can satisfy the width instead.
                 Groups_[owner].Spec.BreakPenalty = 2;
+            }
+            Index nameBegin = None;
+            if (function && part.Kind == NodeKind::Declarator) {
+                auto prefix = part.Tokens.Begin;
+                for (auto child = part.FirstChild;
+                    child != None;
+                    child = Region(Syntax_[child]).NextSibling)
+                {
+                    const auto& node = Region(Syntax_[child]);
+                    if ((node.Kind == NodeKind::PointerOperator ||
+                        node.Kind == NodeKind::MemberPointerOperator) &&
+                        node.Tokens.Begin == prefix)
+                    {
+                        prefix = node.Tokens.End;
+                        // Pointer cv-qualifiers are direct declarator tokens.
+                        while (prefix < part.Tokens.End &&
+                            (Tree_.Kind(prefix) == TokenKind::Keyword_const ||
+                                Tree_.Kind(prefix) ==
+                                    TokenKind::Keyword_volatile))
+                        {
+                            ++prefix;
+                        }
+                    } else if (node.Kind == NodeKind::DeclaratorName ||
+                        node.Kind == NodeKind::OperatorFunctionName)
+                    {
+                        // Qualified prefixes are direct declarator tokens;
+                        // the name child may contain only the terminal name.
+                        nameBegin = prefix;
+                        break;
+                    }
+                }
             }
             Index operandEnd = 0;
             DirectTokens(
@@ -1811,7 +1847,8 @@ private:
                         // A qualified name breaks before its complete prefix,
                         // never between the final :: and terminal identifier.
                         const bool qualifiedTerminal =
-                            node.Kind == NodeKind::DeclaratorName &&
+                            (node.Kind == NodeKind::DeclaratorName ||
+                                node.Kind == NodeKind::OperatorFunctionName) &&
                                 Tree_.Kind(t - 1) ==
                                     TokenKind::Operator_ScopeResolution;
                         const bool headerPart = (node.Kind ==
@@ -1820,7 +1857,7 @@ private:
                         const bool breakable = function && !operand &&
                             Tree_.Kind(t - 1) != TokenKind::Comment &&
                             ((node.Kind == NodeKind::DeclarationSpecifiers &&
-                                separated) ||
+                                separated) || t == nameBegin ||
                                 (t == node.Tokens.Begin && headerPart));
                         if (kind == NodeKind::FunctionDeclaration && !breakable)
                         {
