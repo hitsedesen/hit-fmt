@@ -1356,6 +1356,7 @@ std::vector<FormatCase> FormatCases()
         });
     };
     addProfileCase("../preprocessing-fragments", "canonical");
+    addProfileCase("../preprocessing-fragments", "case-comments");
     addProfileCase("../spacing-options", "profile-initializers");
     addProfileCase("../spacing-options", "profile-overflow");
     addProfileCase("../spacing-options", "profile-case-blocks");

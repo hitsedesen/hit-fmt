@@ -3867,14 +3867,23 @@ private:
 
     void ResolveSafety()
     {
-        for (Index i = 0; i < Gaps_.size(); ++i) {
+        bool beforeDirective = false;
+        for (Index i = Gaps_.size(); i-- > 0;) {
             auto& gap = Gaps_[i];
-            if (i < Tree_.TokenCount() &&
-                Tree_.Kind(i) == TokenKind::PreprocessingDirective)
+            const bool comment =
+                i < Tree_.TokenCount() && Tree_.Kind(i) == TokenKind::Comment;
+            if (!comment) {
+                beforeDirective = i < Tree_.TokenCount() &&
+                    Tree_.Kind(i) == TokenKind::PreprocessingDirective;
+            }
+            if (beforeDirective &&
+                (!comment || i == 0 || Safety_.Gaps()[i].HasLineFeed))
             {
-                // Directive protection also owns column-zero indentation,
-                // even when its incoming gap is outside the protected line.
-                // Preserved bodies must not treat it as an ordinary C++ line.
+                // Directives retain authored indentation, including column
+                // zero. Their leading standalone comments must retain it too,
+                // rather than being captured by a preceding case/body scope.
+                // The reverse pass carries attachment through comment runs
+                // without changing trailing comments or allocating storage.
                 gap.PreserveIndent = true;
                 gap.Reindent = false;
                 gap.OverrideIndent = false;
