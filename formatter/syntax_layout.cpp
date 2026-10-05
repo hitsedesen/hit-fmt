@@ -5,6 +5,7 @@
 #include <parser/operator_info.hpp>
 
 #include <unicode/utf8.hpp>
+
 #include <util/ascii.hpp>
 
 #include <algorithm>

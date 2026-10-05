@@ -1,6 +1,7 @@
 #include <document/document.hpp>
 
 #include <unicode/utf8.hpp>
+
 #include <util/ascii.hpp>
 
 #include <algorithm>
@@ -2272,8 +2273,8 @@ Result Document::Render(
                     const auto& part = Nodes_[j];
                     if (part.Type == Kind::Begin) {
                         child = true;
-                        if (groupCache[Group(part).Reference]
-                            .ChildLayoutAllowed)
+                        if (groupCache[Group(
+                            part).Reference].ChildLayoutAllowed)
                         {
                             candidateDepth = std::max(
                                 candidateDepth,
