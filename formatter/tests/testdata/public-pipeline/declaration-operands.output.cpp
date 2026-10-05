@@ -22,6 +22,18 @@ struct Callable {
     int operator()(const int& value);
 };
 alignas(16) int aligned;
+alignas(1 << 4) int shifted;
+alignas((1 < 2) ? 16 : 32) int selected;
+alignas(combine(8, 16)) int called;
+alignas(factory<int, long>(1 + 2)) int templated_alignment;
+alignas(alignof (int) + sizeof(long)) int builtin_alignment;
+alignas /* operand */ (1 + 15) int commented_alignment;
+alignas(int*) int pointer_alignment;
+alignas(first_alignment + second_alignment + third_alignment + fourth_alignment +
+    fifth_alignment) int combined_alignment;
+void local_alignment() {
+    alignas(1 << 4) int local;
+}
 int plain(const int& value);
 
 template<class Store>

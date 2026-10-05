@@ -98,6 +98,8 @@
 120 before=; field=DeclarationSemicolonSpacing owner=using-declaration category=10 priority=3 fallback=0 protected=0 constraint=0
 121 before=alignas field=None owner=translation-unit category=11 priority=1 fallback=1 protected=0 constraint=0
 122 before=( field=AlignasSpaceBeforeParentheses owner=declaration-specifiers category=10 priority=4 fallback=1 protected=0 constraint=0
+123 before=16 field=GroupingInteriorSpacing owner=parenthesized-expression category=8 priority=2 fallback=0 protected=0 constraint=0
+124 before=) field=GroupingInteriorSpacing owner=parenthesized-expression category=8 priority=2 fallback=0 protected=0 constraint=0
 125 before=int field=None owner=declaration-specifiers category=10 priority=1 fallback=1 protected=0 constraint=0
 126 before=aligned field=None owner=declaration category=10 priority=1 fallback=1 protected=0 constraint=0
 127 before=; field=DeclarationSemicolonSpacing owner=declaration category=10 priority=3 fallback=0 protected=0 constraint=0

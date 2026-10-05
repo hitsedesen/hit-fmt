@@ -983,7 +983,13 @@
     ";"
   )
   (record-declaration
-    "struct" "alignas" "(" "Alignment" ")" "Host" "::" "Aligned" "{"
+    "struct" "alignas"
+    (parenthesized-expression
+      "("
+      (identifier-expression "Alignment")
+      ")"
+    )
+    "Host" "::" "Aligned" "{"
     (function-definition
       (init-declarator-list
         (init-declarator
@@ -1012,6 +1018,198 @@
       (compound-statement "{" "}")
     )
     "}" ";"
+  )
+  (record-declaration
+    "struct" "alignas"
+    (parenthesized-expression
+      "("
+      (binary-expression
+        (literal-expression "1")
+        "<<"
+        (literal-expression "4")
+      )
+      ")"
+    )
+    "Shifted" "{" "}" ";"
+  )
+  (record-declaration
+    "class" "alignas"
+    (parenthesized-expression
+      "("
+      (conditional-expression
+        (parenthesized-expression
+          "("
+          (binary-expression
+            (literal-expression "1")
+            "<"
+            (literal-expression "2")
+          )
+          ")"
+        )
+        "?"
+        (literal-expression "16")
+        ":"
+        (literal-expression "32")
+      )
+      ")"
+    )
+    "Selected" "{" "}" ";"
+  )
+  (record-declaration
+    "union" "alignas"
+    (parenthesized-expression
+      "("
+      (binary-expression
+        (unary-expression
+          "alignof"
+          (parenthesized-expression
+            "("
+            (expression "int")
+            ")"
+          )
+        )
+        "+"
+        (unary-expression
+          "sizeof"
+          (parenthesized-expression
+            "("
+            (expression "long")
+            ")"
+          )
+        )
+      )
+      ")"
+    )
+    "alignas"
+    (parenthesized-expression
+      "("
+      (call-expression
+        (identifier-expression "combine")
+        (argument-list
+          "("
+          (argument
+            (literal-expression "8")
+          )
+          (list-separator ",")
+          (argument
+            (literal-expression "16")
+          )
+          ")"
+        )
+      )
+      ")"
+    )
+    "RepeatedExpressions" "{"
+    (declaration
+      (declaration-specifiers "int")
+      (init-declarator-list
+        (init-declarator
+          (declarator
+            (declarator-name "value")
+          )
+        )
+      )
+      ";"
+    )
+    "}" ";"
+  )
+  (record-declaration
+    "struct" "alignas"
+    (parenthesized-expression
+      "("
+      (call-expression
+        (template-id-expression
+          (identifier-expression "factory")
+          (template-argument-list
+            "<"
+            (template-argument "int")
+            (list-separator ",")
+            (template-argument "long")
+            ">"
+          )
+        )
+        (argument-list
+          "("
+          (argument
+            (binary-expression
+              (literal-expression "1")
+              "+"
+              (literal-expression "2")
+            )
+          )
+          ")"
+        )
+      )
+      ")"
+    )
+    "Templated" ";"
+  )
+  (record-declaration
+    "struct" "alignas" "/* operand */"
+    (parenthesized-expression
+      (leading-trivia
+        (comment "/* operand */")
+      )
+      "("
+      (binary-expression
+        (literal-expression "1")
+        "+"
+        (literal-expression "15")
+      )
+      ")"
+    )
+    "CommentedExpression" "{" "}" ";"
+  )
+  (template-declaration
+    "template"
+    (template-parameter-list
+      "<"
+      (template-parameter "class" "..." "Types")
+      ">"
+    )
+    (record-declaration
+      "struct" "alignas"
+      (parenthesized-expression
+        "("
+        (identifier-expression "Types")
+        "..." ")"
+      )
+      "TypePack" "{" "}" ";"
+    )
+  )
+  (template-declaration
+    "template"
+    (template-parameter-list
+      "<"
+      (template-parameter "int" "..." "Values")
+      ">"
+    )
+    (record-declaration
+      "struct" "alignas"
+      (parenthesized-expression
+        "("
+        (parenthesized-expression
+          "("
+          (binary-expression
+            (identifier-expression "Values")
+            "+"
+            (literal-expression "16")
+          )
+          ")"
+        )
+        "..." ")"
+      )
+      "ValuePack" "{" "}" ";"
+    )
+  )
+  (record-declaration
+    "struct" "alignas"
+    (parenthesized-expression
+      "("
+      (type-id "int" "*")
+      ")"
+    )
+    "PointerType" "{" "}" ";"
   )
   (record-declaration
     "struct" "__attribute__" "(" "(" "aligned" "(" "16" ")" ")" ")" "Host" "::" "Extended" "{"
