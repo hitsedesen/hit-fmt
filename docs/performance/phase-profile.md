@@ -1,5 +1,8 @@
 # Direct phase cost measurements
 
+The [leaf-fact follow-up](leaf-facts-follow-up.md) targets lowering and
+rendering after this profile, with separate runtime acceptance evidence.
+
 This report measures phases directly, rather than assigning instruction-IP
 samples to function families. Compared sources are main `e102de7` and branch
 `5a160c4` (implementation `398bb7f`). Instrumentation is external to Git;
