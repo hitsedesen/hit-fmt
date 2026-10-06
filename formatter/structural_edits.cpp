@@ -254,6 +254,84 @@ void Walk(
     }
 }
 
+bool NullSyntax(const parser::SyntaxTree& tree, const SourceRegion& region)
+{
+    return (region.Kind == NK::EmptyDeclaration ||
+        region.Kind == NK::ExpressionStatement) && region.Tokens.Size() == 1 &&
+        tree.Kind(region.Tokens.Begin) == TK::Operator_Semicolon;
+}
+
+constexpr uint8_t KnownSyntax = 1;
+
+constexpr uint8_t KnownBefore = 2;
+
+constexpr uint8_t KnownAfter = 4;
+
+constexpr uint8_t UnknownScope = 8;
+
+std::pmr::vector<uint8_t> NullRemovalContexts(
+    const parser::SyntaxTree& tree,
+    std::span<const SourceRegion> regions,
+    std::pmr::memory_resource& scratch)
+{
+    std::pmr::vector<uint8_t> contexts(regions.size(), KnownSyntax, &scratch);
+    // Complete only rules out recovery and ambiguity. A function-shaped macro
+    // can still have an unknown function kind and require its trailing ';'.
+    // Its apparent body is not a proven statement sequence either.
+    for (size_t id = 0; id < regions.size(); ++id) {
+        const auto& region = regions[id];
+        if ((region.Kind == NK::FunctionDefinition &&
+            region.Function == parser::FunctionKind::Unknown) ||
+            region.Kind == NK::MacroFunctionDefinition ||
+            region.Kind == NK::MacroRecordDeclaration ||
+            (region.Parent != NoRegion &&
+                (contexts[region.Parent] & UnknownScope)))
+        {
+            contexts[id] |= UnknownScope;
+        }
+        if (region.Status != RegionStatus::Complete ||
+            (contexts[id] & UnknownScope))
+        {
+            contexts[id] &= ~KnownSyntax;
+        }
+    }
+    for (size_t i = regions.size(); i > 0; --i) {
+        const auto id = i - 1;
+        const auto& region = regions[id];
+        if (!(contexts[id] & KnownSyntax) && region.Parent != NoRegion) {
+            contexts[region.Parent] &= ~KnownSyntax;
+        }
+        // Ignore null runs when looking for syntax on either side: otherwise
+        // two semicolons could authorize each other's removal beside a macro.
+        const auto next = region.NextSibling;
+        if (next == NoRegion ||
+            ((regions[next].Kind == NK::Comment ||
+                NullSyntax(tree, regions[next]))
+                ? contexts[next] & KnownAfter
+                : contexts[next] & KnownSyntax))
+        {
+            contexts[id] |= KnownAfter;
+        }
+    }
+    for (const auto& parent : regions) {
+        bool known = true; // The beginning of a syntax sequence is a boundary.
+        for (auto id = parent.FirstChild;
+            id != NoRegion;
+            id = regions[id].NextSibling)
+        {
+            if (known) {
+                contexts[id] |= KnownBefore;
+            }
+            if (regions[id].Kind != NK::Comment &&
+                !NullSyntax(tree, regions[id]))
+            {
+                known = contexts[id] & KnownSyntax;
+            }
+        }
+    }
+    return contexts;
+}
+
 bool AdjacentComment(const parser::SyntaxTree& tree, parser::TokenRange tokens)
 {
     if (tokens.Begin && tree.Kind(tokens.Begin - 1) == TK::Comment) {
@@ -970,6 +1048,11 @@ StructuralPlan PlanStructuralEdits(
         }
     }
     TI namespaceSuffixEnd = tree.TokenCount();
+    auto nullContexts =
+        options.RemoveNullStatements || options.RemoveNullDeclarations
+        ? NullRemovalContexts(tree, regions, scratchMemory)
+        : std::pmr::vector<uint8_t>(&scratchMemory);
+    size_t regionIndex = 0;
     Walk(
         tree,
         &safety,
@@ -984,6 +1067,7 @@ StructuralPlan PlanStructuralEdits(
             RegionStatus status,
             bool trailingLabel,
             bool previousTrailingLabel) {
+                const auto region = regionIndex++;
                 if (Control(node.Kind)) {
                     bool attributes = false, labels = false, directives = false;
                     for (auto* child = node.Child();
@@ -1147,7 +1231,12 @@ StructuralPlan PlanStructuralEdits(
                     ? StructuralAction::RemoveNullStatements
                     : StructuralAction::RemoveNullDeclarations;
                 parser::TokenRange tokens{token, token + 1};
-                if (status != RegionStatus::Complete) {
+                const auto requiredContext = functionSuffix
+                    ? KnownSyntax | KnownAfter
+                    : KnownSyntax | KnownBefore | KnownAfter;
+                if (status != RegionStatus::Complete ||
+                    (nullContexts[region] & requiredContext) != requiredContext)
+                {
                     Skip(plan, action, tokens, StructuralSkip::Incomplete);
                 } else if ((nullDeclaration && !declarationSequence) ||
                     (nullStatement &&

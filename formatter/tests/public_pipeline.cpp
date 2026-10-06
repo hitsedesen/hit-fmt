@@ -719,9 +719,11 @@ TEST(PublicPipeline, AmbiguousAssignmentRhsKeepsMapsAndScopes)
     const formatter::PreparedFormat prepared(style);
     const std::string source = "void f() { External  *  pointer = "
         "Acquire(firstLongArgument, secondLongArgument, thirdLongArgument); "
-        "; }\n";
+        "; int tail = 0; ; }\n";
     const auto result = FormatInput(source, prepared);
-    EXPECT_FALSE(result.StructuralOperations.empty());
+    // Retain the null beside ambiguity, but still exercise normalization and
+    // maps through the independently known tail statement.
+    EXPECT_EQ(result.StructuralOperations.size(), 1u);
     EXPECT_NE(result.Text.find("External  *  pointer ="), std::string::npos);
     EXPECT_NE(result.Text.find("Acquire(\n"), std::string::npos);
     CheckIdentities(source, result);

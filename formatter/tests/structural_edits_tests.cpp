@@ -295,6 +295,36 @@ TEST(StructuralEdits,
         }));
 }
 
+TEST(StructuralEdits, NullRemovalRequiresKnownSyntaxOnBothSides)
+{
+    const auto directory =
+        std::filesystem::path(__FILE__).parent_path() / "testdata/null-removal";
+    File file(test::golden::ReadFile(directory / "input.cpp"));
+    const auto plan = file
+        .Plan({.RemoveNullStatements = true, .RemoveNullDeclarations = true});
+    const auto result = file.Apply(plan);
+    EXPECT_FALSE(plan.Edits.empty());
+    EXPECT_TRUE(std::any_of(
+        plan.Skipped.begin(),
+        plan.Skipped.end(),
+        [] (const auto& skip) {
+            return skip.Reason == StructuralSkip::Incomplete;
+        }));
+    // Unknown function-shaped syntax can be marked Complete. Its suffix must
+    // retain its original identity, not just be replaced with another ';'.
+    for (const auto& region : file.Safety.Regions()) {
+        if (region.Kind == parser::NodeKind::FunctionDefinition &&
+            region.Function == parser::FunctionKind::Unknown &&
+            file.Tree.Kind(region.Tokens.End - 1) ==
+                tokenizer::TokenKind::Operator_Semicolon)
+        {
+            EXPECT_TRUE(result.OriginalTokens[region.Tokens.End - 1].Present);
+        }
+    }
+    file.Scratch.release();
+    CheckMapping(file, result);
+}
+
 TEST(StructuralEdits, ProtectedMacroDisabledRecoveryAndDirectiveBoundaries)
 {
     std::array names{std::string_view("KEEP")};
