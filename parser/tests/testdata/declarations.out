@@ -813,24 +813,36 @@
               "("
               (pointer-operator "*")
               (declarator-name "Select")
-              "(" "Operation" "operation" ")" ")"
+              (function-declarator
+                (parameter-list
+                  "("
+                  (parameter-declaration
+                    (declaration-specifiers "Operation")
+                    (init-declarator-list
+                      (init-declarator
+                        (declarator
+                          (declarator-name "operation")
+                        )
+                      )
+                    )
+                  )
+                  ")"
+                )
+              )
+              ")"
             )
             (function-declarator
               (parameter-list
                 "("
                 (parameter-declaration
-                  (declaration-specifiers "Operation")
-                  (init-declarator-list
-                    (init-declarator
-                      (declarator
-                        (declarator-name "operation")
-                      )
-                    )
-                  )
+                  (declaration-specifiers "Value")
+                )
+                (list-separator ",")
+                (parameter-declaration
+                  (declaration-specifiers "Value")
                 )
                 ")"
               )
-              ")" "(" "Value" "," "Value" ")"
             )
           )
         )

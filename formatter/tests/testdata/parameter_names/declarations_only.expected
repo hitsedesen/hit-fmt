@@ -4,3 +4,4 @@
 9:21 [9-9]: function declaration 'pointer', parameter #1
 21:16 [21-21]: function declaration 'arrays', parameter #1
 21:25 [21-21]: function declaration 'arrays', parameter #2
+23:27 [23-23]: function declaration 'missing_selector', parameter #1

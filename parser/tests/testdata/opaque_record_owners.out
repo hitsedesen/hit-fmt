@@ -238,11 +238,19 @@
               "("
               (pointer-operator "*")
               (declarator-name "factory")
-              "(" ")" ")"
+              (function-declarator
+                (parameter-list "(" ")")
+              )
+              ")"
             )
             (function-declarator
-              (parameter-list "(" ")")
-              ")" "(" "double" ")"
+              (parameter-list
+                "("
+                (parameter-declaration
+                  (declaration-specifiers "double")
+                )
+                ")"
+              )
             )
           )
         )

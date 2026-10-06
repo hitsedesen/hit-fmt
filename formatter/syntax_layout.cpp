@@ -2121,9 +2121,19 @@ private:
                                 node.Kind == NodeKind::OperatorFunctionName) &&
                                 Tree_.Kind(t - 1) ==
                                     TokenKind::Operator_ScopeResolution;
-                        const bool headerPart = (node.Kind ==
-                            NodeKind::Declarator && separated) ||
-                            (HeaderBreakPart(node.Kind) && !qualifiedTerminal);
+                        // Keep a grouped pointer/name spine intact; either
+                        // function signature can break its own parameter list.
+                        const bool groupedName =
+                            (node.Kind == NodeKind::DeclaratorName ||
+                                node.Kind == NodeKind::DestructorName ||
+                                node.Kind == NodeKind::OperatorFunctionName) &&
+                                node.Parent != None &&
+                                Region(Syntax_[node.Parent]).Kind ==
+                                    NodeKind::NestedDeclarator;
+                        const bool headerPart =
+                            (node.Kind == NodeKind::Declarator && separated) ||
+                                (HeaderBreakPart(node.Kind) &&
+                                    !qualifiedTerminal && !groupedName);
                         const bool breakable = function && !operand &&
                             Tree_.Kind(t - 1) != TokenKind::Comment &&
                             ((node.Kind == NodeKind::DeclarationSpecifiers &&

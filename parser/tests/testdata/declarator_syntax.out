@@ -728,4 +728,266 @@
       "}"
     )
   )
+  (function-declaration
+    (declaration-specifiers "int")
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (nested-declarator
+            "("
+            (pointer-operator "*")
+            (declarator-name "MakeCallback")
+            (function-declarator
+              (parameter-list "(" ")")
+            )
+            ")"
+          )
+          (function-declarator
+            (parameter-list
+              "("
+              (parameter-declaration
+                (declaration-specifiers "int")
+                (init-declarator-list
+                  (init-declarator
+                    (declarator
+                      (declarator-name "first")
+                    )
+                  )
+                )
+              )
+              (list-separator ",")
+              (parameter-declaration
+                (declaration-specifiers "int")
+                (init-declarator-list
+                  (init-declarator
+                    (declarator
+                      (declarator-name "second")
+                    )
+                  )
+                )
+              )
+              ")"
+            )
+          )
+        )
+      )
+    )
+    ";"
+  )
+  (function-definition
+    (declaration-specifiers "int")
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (nested-declarator
+            "("
+            (pointer-operator "*")
+            (declarator-name "ChooseCallback")
+            (function-declarator
+              (parameter-list
+                "("
+                (parameter-declaration
+                  (declaration-specifiers "int")
+                  (init-declarator-list
+                    (init-declarator
+                      (declarator
+                        (declarator-name "index")
+                      )
+                    )
+                  )
+                )
+                ")"
+              )
+              (exception-specification "noexcept")
+            )
+            ")"
+          )
+          (function-declarator
+            (parameter-list
+              "("
+              (parameter-declaration
+                (declaration-specifiers "int")
+                (init-declarator-list
+                  (init-declarator
+                    (declarator
+                      (declarator-name "first")
+                    )
+                  )
+                )
+              )
+              (list-separator ",")
+              (parameter-declaration
+                (declaration-specifiers "int")
+                (init-declarator-list
+                  (init-declarator
+                    (declarator
+                      (declarator-name "second")
+                    )
+                  )
+                )
+              )
+              ")"
+            )
+          )
+        )
+      )
+    )
+    (compound-statement
+      "{"
+      (return-statement
+        "return"
+        (literal-expression "nullptr")
+        ";"
+      )
+      "}"
+    )
+  )
+  (function-declaration
+    (declaration-specifiers "int")
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (nested-declarator
+            "("
+            (pointer-operator "&")
+            (declarator-name "GetCallback")
+            (function-declarator
+              (parameter-list "(" ")")
+            )
+            ")"
+          )
+          (function-declarator
+            (parameter-list
+              "("
+              (parameter-declaration
+                (declaration-specifiers "int")
+                (init-declarator-list
+                  (init-declarator
+                    (declarator
+                      (declarator-name "first")
+                    )
+                  )
+                )
+              )
+              (list-separator ",")
+              (parameter-declaration
+                (declaration-specifiers "int")
+                (init-declarator-list
+                  (init-declarator
+                    (declarator
+                      (declarator-name "second")
+                    )
+                  )
+                )
+              )
+              ")"
+            )
+          )
+        )
+      )
+    )
+    ";"
+  )
+  (function-declaration
+    (declaration-specifiers "int")
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (nested-declarator
+            "("
+            (member-pointer-operator "Owner" "::" "*")
+            (declarator-name "MakeMemberCallback")
+            (function-declarator
+              (parameter-list
+                "("
+                (parameter-declaration
+                  (declaration-specifiers "int")
+                  (init-declarator-list
+                    (init-declarator
+                      (declarator
+                        (declarator-name "selection")
+                      )
+                    )
+                  )
+                )
+                ")"
+              )
+            )
+            ")"
+          )
+          (function-declarator
+            (parameter-list
+              "("
+              (parameter-declaration
+                (declaration-specifiers "int")
+                (init-declarator-list
+                  (init-declarator
+                    (declarator
+                      (declarator-name "first")
+                    )
+                  )
+                )
+              )
+              (list-separator ",")
+              (parameter-declaration
+                (declaration-specifiers "int")
+                (init-declarator-list
+                  (init-declarator
+                    (declarator
+                      (declarator-name "second")
+                    )
+                  )
+                )
+              )
+              ")"
+            )
+          )
+        )
+      )
+    )
+    ";"
+  )
+  (declaration
+    (declaration-specifiers "int")
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (nested-declarator
+            "("
+            (pointer-operator "*")
+            (declarator-name "Callback")
+            ")"
+          )
+          (function-declarator
+            (parameter-list
+              "("
+              (parameter-declaration
+                (declaration-specifiers "int")
+                (init-declarator-list
+                  (init-declarator
+                    (declarator
+                      (declarator-name "first")
+                    )
+                  )
+                )
+              )
+              (list-separator ",")
+              (parameter-declaration
+                (declaration-specifiers "int")
+                (init-declarator-list
+                  (init-declarator
+                    (declarator
+                      (declarator-name "second")
+                    )
+                  )
+                )
+              )
+              ")"
+            )
+          )
+        )
+      )
+    )
+    ";"
+  )
 )

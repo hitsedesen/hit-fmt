@@ -3830,6 +3830,16 @@ private:
                         break;
                     }
                     i = attributeEnd - 1;
+                } else if (candidate < parameters->Begin &&
+                    Kind(i) == TK::Operator_OpenParenthesis)
+                {
+                    // Parameter names inside a grouped function declarator
+                    // are not candidates for the enclosing declarator name.
+                    const auto after = FindBalancedEnd(i);
+                    if (after > parameters->Begin) {
+                        break;
+                    }
+                    i = after - 1;
                 } else if (Kind(i) == TK::Keyword_operator) {
                     return i;
                 } else if (Kind(i) == TK::Identifier) {
@@ -5529,29 +5539,60 @@ private:
         }
 
         Node* function = nullptr;
+        std::optional<TokenRange> nestedParameters;
         auto suffixScanEnd = declaratorEnd;
         if (isFunction) {
-            function =
-                MakeNode(NodeKind::FunctionDeclarator, parameters->Begin);
-            function->Tokens.End = declaratorEnd;
-            auto* parameterList =
-                MakeNode(NodeKind::ParameterList, parameters->Begin);
-            parameterList->Tokens.End = parameters->End;
-            knownHead &= AddParameterDeclarations(*parameterList, *parameters);
-            AddDirectiveChildrenInGap(
-                *parameterList,
-                parameters->Begin,
-                parameters->End);
-            Append(*function, *parameterList);
-            if (auto initializerColon = AddFunctionSuffixSyntax(
-                *function,
-                parameters->End,
-                declaratorEnd,
-                functionKind == FunctionKind::Constructor))
-            {
-                // Constructor initializers belong to the function, not its
-                // array declarator suffixes.
-                suffixScanEnd = *initializerColon;
+            auto outerParameters = parameters;
+            if (nestedEnd != begin) {
+                if (parameters->End < nestedEnd) {
+                    nestedParameters = parameters;
+                    outerParameters =
+                        InferNestedFunctionParameters(begin, declaratorEnd);
+                } else if (name < nestedEnd) {
+                    const auto opening = NextSignificant(name + 1);
+                    if (Kind(opening) == TK::Operator_OpenParenthesis) {
+                        bool ambiguous = false;
+                        nestedParameters = InferParameterList(
+                            opening,
+                            nestedEnd - 1,
+                            ambiguous,
+                            false,
+                            true);
+                    }
+                }
+            }
+            auto makeFunction = [&] (TokenRange list, size_t functionEnd) {
+                auto* result =
+                    MakeNode(NodeKind::FunctionDeclarator, list.Begin);
+                result->Tokens.End = functionEnd;
+                auto* parameterList =
+                    MakeNode(NodeKind::ParameterList, list.Begin);
+                parameterList->Tokens.End = list.End;
+                knownHead &= AddParameterDeclarations(*parameterList, list);
+                AddDirectiveChildrenInGap(*parameterList, list.Begin, list.End);
+                Append(*result, *parameterList);
+                if (auto initializerColon = AddFunctionSuffixSyntax(
+                    *result,
+                    list.End,
+                    functionEnd,
+                    functionKind == FunctionKind::Constructor))
+                {
+                    // Constructor initializers belong to the function, not
+                    // its array declarator suffixes.
+                    suffixScanEnd = *initializerColon;
+                }
+                return result;
+            };
+            if (nestedParameters) {
+                // The inner signature ends before the grouped closer. The
+                // returned function type owns an independent outer signature.
+                Append(*core, *makeFunction(*nestedParameters, nestedEnd - 1));
+            }
+            if (outerParameters) {
+                parameters = outerParameters;
+                function = makeFunction(*outerParameters, declaratorEnd);
+            } else {
+                parameters.reset();
             }
         }
 
@@ -5563,8 +5604,12 @@ private:
                     ? name + 1
                     : (nestedEnd != begin ? nestedEnd : begin));
             for (auto i = suffixBegin; i < suffixScanEnd; ++i) {
-                if (isFunction && i == parameters->Begin) {
+                if (parameters && i == parameters->Begin) {
                     i = parameters->End - 1;
+                    continue;
+                }
+                if (nestedParameters && i == nestedParameters->Begin) {
+                    i = nestedParameters->End - 1;
                     continue;
                 }
                 auto kind = Kind(i);

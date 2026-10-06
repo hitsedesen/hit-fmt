@@ -188,6 +188,15 @@ void CheckFunction(
         auto* signature = declarator
             ? Child(*declarator, NK::FunctionDeclarator)
             : nullptr;
+        if (declarator) {
+            if (auto* nested = Child(*declarator, NK::NestedDeclarator)) {
+                if (auto* inner = Child(*nested, NK::FunctionDeclarator)) {
+                    // Check the function's parameters, not those of its
+                    // returned function-pointer type.
+                    signature = inner;
+                }
+            }
+        }
         auto* parameters = signature
             ? Child(*signature, NK::ParameterList)
             : nullptr;

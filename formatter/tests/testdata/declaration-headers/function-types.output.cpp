@@ -33,3 +33,36 @@ Callback<bool(
     const Batch<long>& deferred,
     const Batch<unsigned long long>& completed,
     JobQueue* destination)> Route;
+int (*MakeCallback())(
+    int firstParameterWithSomeExtraContext,
+    int secondParameterWithSomeExtraContext,
+    int thirdParameterWithSomeExtraContext);
+int(*ChooseCallback(
+    int firstSelectionParameter,
+    int secondSelectionParameter,
+    int thirdSelectionParameter) noexcept)(
+    int firstParameterWithSomeExtraContext,
+    int secondParameterWithSomeExtraContext,
+    int thirdParameterWithSomeExtraContext)
+{
+    return nullptr;
+}
+int (&GetCallback())(
+    int firstParameterWithSomeExtraContext,
+    int secondParameterWithSomeExtraContext,
+    int thirdParameterWithSomeExtraContext);
+int (TaskHooks::*MakeMemberCallback(
+    int selectionParameter))(
+    int firstParameterWithSomeExtraContext,
+    int secondParameterWithSomeExtraContext,
+    int thirdParameterWithSomeExtraContext);
+int (*CallbackPointer)(
+    int firstParameterWithSomeExtraContext,
+    int secondParameterWithSomeExtraContext,
+    int thirdParameterWithSomeExtraContext);
+int (*ShortCallback())(int first, int second);
+void AcceptCallback(
+    int (*callback)(
+        int firstParameterWithSomeExtraContext,
+        int secondParameterWithSomeExtraContext,
+        int thirdParameterWithSomeExtraContext));

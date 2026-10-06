@@ -25,3 +25,8 @@ EXPORT Box<int> Owner<int>::method() { return {}; }
 Value Owner<int>::unprefixed() { return {}; }
 Value Owner::*member;
 EXPORT Box<int>*pointer() { return nullptr; }
+int (*MakeCallback())(int first, int second);
+int (*ChooseCallback(int index) noexcept)(int first, int second) { return nullptr; }
+int (&GetCallback())(int first, int second);
+int (Owner::*MakeMemberCallback(int selection))(int first, int second);
+int (*Callback)(int first, int second);
