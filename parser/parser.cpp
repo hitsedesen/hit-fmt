@@ -4612,20 +4612,15 @@ private:
         if (expressionBegin >= end) {
             return;
         }
-        if (Kind(expressionBegin) == TK::Operator_OpenBrace) {
-            auto* braced =
-                MakeNode(NodeKind::BracedInitializer, expressionBegin);
-            braced->Tokens.End = end;
-            AddBracedInitializerElements(*braced, expressionBegin, end);
-            Append(initializer, *braced);
-            return;
-        }
         if (Kind(begin) == TK::Operator_OpenParenthesis &&
             ArgumentPairEnd(begin, end) == end)
         {
             AddArgumentList(initializer, begin, end);
             return;
         }
+        // Let expression parsing bound braces by their matching closer, not
+        // the declaration's end. A macro-led statement can look like a direct
+        // initializer while continuing with operators after the braces.
         if (auto* expression = ParseExpressionSyntax(expressionBegin, end)) {
             Append(initializer, *expression);
         }

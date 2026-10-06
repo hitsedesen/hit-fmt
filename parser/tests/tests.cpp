@@ -2214,6 +2214,36 @@ TEST(Parser, StringLiteralSequencesHaveCompleteRanges)
     EXPECT_TRUE(foundCommentRange);
 }
 
+TEST(Parser, BracedInitializerRangesStopAtMatchingCloser)
+{
+    const test::golden::Fixture fixture{PARSER_TESTDATA_DIR, "expressions"};
+    PaddedInput input(fixture.InputNamed(".in"));
+    auto tree = parser::Parse(input.View(), [] (parser::ParseError) {});
+    size_t initializers = 0;
+    std::vector<const Node*> pending{&tree.Root()};
+    while (!pending.empty()) {
+        const auto* node = pending.back();
+        pending.pop_back();
+        if (node->Kind == parser::NodeKind::BracedInitializer ||
+            node->Kind == parser::NodeKind::InitializerList)
+        {
+            ++initializers;
+            ASSERT_FALSE(node->Tokens.Empty());
+            EXPECT_EQ(
+                tree.Kind(node->Tokens.Begin),
+                tokenizer::TokenKind::Operator_OpenBrace);
+            EXPECT_EQ(
+                tree.MatchingDelimiter(node->Tokens.Begin),
+                node->Tokens.End - 1);
+        }
+        for (auto* child = node->FirstChild; child; child = child->NextSibling)
+        {
+            pending.push_back(child);
+        }
+    }
+    EXPECT_GT(initializers, 0);
+}
+
 TEST(Parser, BinaryOperatorMetadataMatchesGrouping)
 {
     const test::golden::Fixture fixture{PARSER_TESTDATA_DIR, "expressions"};
