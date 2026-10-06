@@ -2111,6 +2111,24 @@ std::vector<FormatCase> FormatCases()
     cases.push_back({controlPlacement, "reflow", "reflow.input.cpp"});
     cases.push_back({controlPlacement, "reverse", "reverse.input.cpp"});
     cases.push_back({controlPlacement, "crlf", "crlf.input.cpp"});
+    {
+        const auto directory = std::filesystem::path(FORMATTER_TESTDATA_DIR) /
+            "../if-conditions-packing";
+        AddCases(
+            cases,
+            directory,
+            {
+                "fill",
+                "leading",
+                "trailing",
+                "next-line",
+                "forced",
+                "expression-forced",
+                "preserve",
+                "preserve-expressions",
+                "delimiter",
+            });
+    }
     cases.push_back({
         std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../lambda-body",
         "profile",

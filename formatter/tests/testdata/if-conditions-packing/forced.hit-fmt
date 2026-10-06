@@ -1,0 +1,9 @@
+Layout = Canonical
+ColumnLimit = 0
+IndentationKind = Spaces
+BinaryOperatorSpacing = Space
+ControlBlockKeywordSpacing = Space
+ControlBlockConditionSpacing = NoSpace
+IfConditionsPacking = VerticalWhenBroken
+ControlHeadersBreak = Always
+ControlHeadersFirstItem = NextLine

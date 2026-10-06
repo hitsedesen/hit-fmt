@@ -301,6 +301,8 @@
     FORMATTER_DELIMITED_LIST_CATEGORY_OPTIONS(OPT, Initializers)              \
     FORMATTER_DELIMITED_LIST_CATEGORY_OPTIONS(OPT, Captures)                   \
     FORMATTER_DELIMITED_LIST_CATEGORY_OPTIONS(OPT, ControlHeaders)             \
+    OPT(formatter::ListPacking, IfConditionsPacking, \
+        formatter::ListPacking::Fill) \
     FORMATTER_DELIMITED_LIST_CATEGORY_OPTIONS(OPT, Enumerators)                \
     FORMATTER_LIST_CATEGORY_OPTIONS(OPT, BaseLists)                           \
     FORMATTER_LIST_CATEGORY_OPTIONS(OPT, ConstructorLists)                    \

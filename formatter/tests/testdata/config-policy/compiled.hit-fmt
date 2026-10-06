@@ -31,6 +31,7 @@ CallsAlignment = Inherit
 ParametersLayout = Preserve
 ParametersContinuationOffset = 3
 ControlHeadersAlignmentFallbackOffset = 6
+IfConditionsPacking = VerticalWhenBroken
 EnumeratorsLayout = Inherit
 EnumeratorsPacking = VerticalWhenBroken
 EnumeratorsFirstItem = NextLine

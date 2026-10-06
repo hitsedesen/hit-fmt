@@ -93,6 +93,25 @@ void PrintOption(std::ostream& output, std::string_view name, const T& value)
         }
         return;
     }
+    if (name == "IfConditionsPacking") {
+        output
+            << "# Fill keeps ordinary expression packing (default).\n"
+                "# VerticalWhenBroken splits all top-level &&/|| operands\n"
+                "# when an if header wraps, including nested call breaks.\n"
+                "# Parentheses, init-statements and other controls keep\n"
+                "# their own policies. Canonical header/expression layout\n"
+                "# is required; fitting headers stay flat unless forced.\n"
+                "# Comment attachments and protected gaps take precedence.\n"
+                "# BinaryOperatorSide selects leading/trailing operators.\n"
+                "# ControlHeadersFirstItem selects InlineIfFits/NextLine.\n"
+                "# Example with Leading: if (ready\n"
+                "#     && (left || right)\n" "#     && enabled)\n";
+    }
+    if (name == "ControlHeadersFirstItem") {
+        output
+            << "# In broken headers: InlineIfFits keeps the first condition\n"
+                "# beside the opener if it fits; NextLine moves it below.\n";
+    }
     if (name == "ChainsBreak") {
         output
             << "# In control headers, chains break only when needed.\n"
