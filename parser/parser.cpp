@@ -9795,6 +9795,50 @@ private:
         RegisterDeclaredNames(declaration, NameKind::Value);
     }
 
+    void AddAmbiguousAssignmentRhs(Node& statement)
+    {
+        const auto end = statement.Tokens.End - 1;
+        if (Kind(end) != TK::Operator_Semicolon) {
+            return;
+        }
+        // Both a declaration and an expression can have this head. Bound its
+        // assignment without choosing pointer/reference or binary roles, and
+        // do not search through conditionals, other declarators or macros.
+        TokenIndex cursor = SkipDeclarationTypeName(
+            SkipAttributeSpecifiers(statement.Tokens.Begin),
+            end,
+            true);
+        while (cursor < end &&
+            (Kind(cursor) == TK::Operator_Star ||
+                Kind(cursor) == TK::Operator_Ampersand ||
+                Kind(cursor) == TK::Operator_And ||
+                Kind(cursor) == TK::Keyword_const ||
+                Kind(cursor) == TK::Keyword_volatile))
+        {
+            cursor = NextSignificant(cursor + 1);
+        }
+        if (Kind(cursor) != TK::Identifier) {
+            return;
+        }
+        const auto assignment = NextSignificant(cursor + 1);
+        if (Kind(assignment) != TK::Operator_Assign) {
+            return;
+        }
+        cursor = NextSignificant(assignment + 1);
+        // A comma can separate declarators rather than expressions. Only a
+        // complete assignment-expression RHS is shared by both readings.
+        auto* expression = ParseExpressionSyntax(cursor, end, 2);
+        if (!expression || NextSignificant(cursor) != end ||
+            NextSignificant(expression->Tokens.End) != end)
+        {
+            return;
+        }
+        auto* initializer = MakeNode(NodeKind::Initializer, assignment);
+        initializer->Tokens.End = end;
+        Append(*initializer, *expression);
+        Append(statement, *initializer);
+    }
+
     Node* ParseSimpleStatement()
     {
         auto start = Cursor_;
@@ -9869,6 +9913,7 @@ private:
                     name->Tokens.End = unknown + 1;
                     Append(*node, *name);
                 }
+                AddAmbiguousAssignmentRhs(*node);
             }
             AddDirectiveChildrenInGap(*node, start, Cursor_);
         }
