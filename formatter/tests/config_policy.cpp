@@ -1047,7 +1047,8 @@ TEST(ConfigPolicy, StagedOptionsResolveFinalInheritanceAndOwnScalarSnapshot)
         "StandaloneCommentBlankLinesAfter = 2\n" "MaxEmptyLines = 2\n"
         "BreakAfterTemplateHeader = true\n" "ExpressionsAlignment = Operand\n"
         "IncludeMatchingHeader = First\n" "IncludeGrouping = Regroup\n"
-        "IncludeGroupPrefixes = [\"engine/\", \"engine/detail/\"]\n"
+        "IncludeGroups = [{Prefix = \"engine/\", Depth = 2}, "
+        "{Prefix = \"engine/detail/\", Depth = 1}]\n"
         "IncludeDirectoryOrder = Alphabetical\n"
         "IncludePathBase = ProjectRoot\n" "IncludeStandardHeaders = Last\n");
     auto style = formatter::LoadConfigFile(config.Path).FormattingStyle;
@@ -1079,7 +1080,9 @@ TEST(ConfigPolicy, StagedOptionsResolveFinalInheritanceAndOwnScalarSnapshot)
         formatter::IncludeMatchingHeader::First);
     EXPECT_EQ(policies.Includes.Grouping, formatter::IncludeGrouping::Regroup);
     const formatter::PreparedFormat prepared(style);
-    style.IncludeGroupPrefixes.clear();
+    style.IncludeGroups.clear();
+    EXPECT_EQ(prepared.IncludeGroups.Depth(0), 2u);
+    EXPECT_EQ(prepared.IncludeGroups.Depth(1), 1u);
     style.IncludeDirectoryOrder =
         formatter::IncludeDirectoryOrder::NearestFirst;
     style.IncludePathBase = formatter::IncludePathBase::SourceDirectory;
@@ -1096,11 +1099,8 @@ TEST(ConfigPolicy, StagedOptionsResolveFinalInheritanceAndOwnScalarSnapshot)
     EXPECT_EQ(
         prepared.Structural.PathBase,
         formatter::IncludePathBase::ProjectRoot);
-    EXPECT_EQ(
-        prepared.IncludePrefixes
-            .ClassifyNormalizedRelativePath("engine/part.h"),
-        0u);
-    EXPECT_EQ(prepared.IncludePrefixes.RuleCount(), 2u);
+    EXPECT_EQ(prepared.IncludeGroups.Classify("engine/part.h").Group, 0u);
+    EXPECT_EQ(prepared.IncludeGroups.GroupCount(), 2u);
     style.FunctionBracePlacement = formatter::BracePlacement::Attached;
     style.ConstructorBracePlacement = formatter::BracePlacement::NextLine;
     style.StandaloneCommentBlankLinesAfter = {};
@@ -1170,7 +1170,7 @@ TEST(ConfigPolicy, IncludeGroupingCapsValidateBeforePreparation)
                 EXPECT_NO_THROW((void)formatter::CompilePolicies(style));
                 style.IncludeGrouping = formatter::IncludeGrouping::Preserve;
                 style.MaxEmptyLines = 0;
-                style.IncludeGroupPrefixes = {"engine/"};
+                style.IncludeGroups = {{{"engine/"}, 0}};
                 EXPECT_NO_THROW((void)formatter::PreparedFormat(style));
             }
         }
@@ -1319,30 +1319,36 @@ TEST(ConfigPolicy, ClassMacroHintsRejectMalformedOrAmbiguousPairs)
     }
 }
 
-TEST(ConfigPolicy, OrderedPrefixIndexPreservesEarliestRuleAcrossOwningLifetimes)
+TEST(ConfigPolicy, OrderedGroupIndexPreservesEarliestRuleAcrossOwningLifetimes)
 {
     auto make = [] {
         formatter::Style style;
-        style.IncludeGroupPrefixes =
-            {"engine/", "engine/detail/", "platform/", "eng/"};
-        auto prepared =
-            formatter::PreparedIncludePrefixes(style.IncludeGroupPrefixes);
-        style.IncludeGroupPrefixes = {"other/"};
+        style.IncludeGroups = {
+            {{"engine/", "mirror/engine/"}, 2},
+            {{"engine/detail/"}, 1},
+            {{"platform/"}, 0},
+            {{"eng/"}, 3},
+        };
+        auto prepared = formatter::PreparedIncludeGroups(style.IncludeGroups);
+        style.IncludeGroups = {{{"other/"}, 0}};
         return prepared;
     };
     auto original = make();
     auto copy = original;
     auto moved = std::move(copy);
-    original = formatter::PreparedIncludePrefixes(
-        std::vector<std::string>{"replacement/"});
-    EXPECT_EQ(moved.ClassifyNormalizedRelativePath("engine/detail/item.h"), 0u);
-    EXPECT_EQ(moved.ClassifyNormalizedRelativePath("platform/item.h"), 2u);
-    EXPECT_EQ(moved.ClassifyNormalizedRelativePath("engine/item\\name.h"), 0u);
-    EXPECT_EQ(moved.ClassifyNormalizedRelativePath("engine/..\\name.h"), 0u);
-    EXPECT_EQ(moved.ClassifyNormalizedRelativePath("eng/item.h"), 3u);
-    EXPECT_EQ(
-        moved.ClassifyNormalizedRelativePath("engineer/item.h"),
-        moved.RuleCount());
+    original = formatter::PreparedIncludeGroups(
+        std::vector<formatter::IncludeGroupRule>{{{"replacement/"}, 0}});
+    EXPECT_EQ(moved.Classify("engine/detail/item.h").Group, 0u);
+    const auto alias = moved.Classify("mirror/engine/detail/item.h");
+    EXPECT_EQ(alias.Group, 0u);
+    EXPECT_EQ(moved.Depth(alias.Group), 2u);
+    EXPECT_EQ(moved.PrefixDepth(alias.Prefix), 2u);
+    EXPECT_EQ(moved.CanonicalPrefix(alias.Group), "engine/");
+    EXPECT_EQ(moved.Classify("platform/item.h").Group, 2u);
+    EXPECT_EQ(moved.Classify("engine/item\\name.h").Group, 0u);
+    EXPECT_EQ(moved.Classify("engine/..\\name.h").Group, 0u);
+    EXPECT_EQ(moved.Classify("eng/item.h").Group, 3u);
+    EXPECT_EQ(moved.Classify("engineer/item.h").Group, moved.GroupCount());
     for (const auto path :
         {
             "/engine/item.h",
@@ -1356,33 +1362,36 @@ TEST(ConfigPolicy, OrderedPrefixIndexPreservesEarliestRuleAcrossOwningLifetimes)
         })
     {
         SCOPED_TRACE(path);
-        EXPECT_EQ(
-            moved.ClassifyNormalizedRelativePath(path),
-            moved.RuleCount());
+        EXPECT_EQ(moved.Classify(path).Group, moved.GroupCount());
     }
-    const formatter::PreparedIncludePrefixes reversed(
-        std::vector<std::string>{"engine/detail/", "engine/"});
-    EXPECT_EQ(
-        reversed.ClassifyNormalizedRelativePath("engine/detail/item.h"),
-        0u);
-    EXPECT_EQ(reversed.ClassifyNormalizedRelativePath("engine/item.h"), 1u);
-    const formatter::PreparedIncludePrefixes empty(std::vector<std::string>{});
-    EXPECT_EQ(
-        empty.ClassifyNormalizedRelativePath("engine/item.h"),
-        empty.RuleCount());
+    const formatter::PreparedIncludeGroups reversed(
+        std::vector<formatter::IncludeGroupRule>{
+            {{"engine/detail/"}, 1},
+            {{"engine/"}, 2},
+        });
+    EXPECT_EQ(reversed.Classify("engine/detail/item.h").Group, 0u);
+    EXPECT_EQ(reversed.Classify("engine/item.h").Group, 1u);
+    const formatter::PreparedIncludeGroups fallback(
+        std::vector<formatter::IncludeGroupRule>{{{"engine/"}, 2}, {{""}, 1}});
+    EXPECT_EQ(fallback.Classify("engine/item.h").Group, 0u);
+    EXPECT_EQ(fallback.Classify("../engine/item.h").Group, 1u);
+    EXPECT_EQ(fallback.Classify("/engine/item.h").Group, 1u);
+    const formatter::PreparedIncludeGroups empty(
+        std::vector<formatter::IncludeGroupRule>{});
+    EXPECT_EQ(empty.Classify("engine/item.h").Group, empty.GroupCount());
     // Exercise branching and long shared prefixes in the compact index.
-    std::vector<std::string> many;
+    std::vector<formatter::IncludeGroupRule> many;
     for (int index = 255; index >= 1; --index) {
         if (index == '/' || index == '\\' || index == '.') {
             continue;
         }
         many.push_back(
-            "base/" + std::string(1, static_cast<char>(index)) + "/");
+            {{"base/" + std::string(1, static_cast<char>(index)) + "/"}, 0});
     }
-    const formatter::PreparedIncludePrefixes wide(many);
+    const formatter::PreparedIncludeGroups wide(many);
     for (std::size_t index = 0; index < many.size(); ++index) {
         EXPECT_EQ(
-            wide.ClassifyNormalizedRelativePath(many[index] + "item.h"),
+            wide.Classify(many[index].Prefixes.front() + "item.h").Group,
             index);
     }
 }
@@ -1391,7 +1400,8 @@ TEST(ConfigPolicy, PrefixValidationIsFinalOrderedAndCannotBeBypassed)
 {
     for (const auto prefixes :
         {
-            std::vector<std::string>{""},
+            std::vector<std::string>{},
+            {"", "engine/"},
             {"engine"},
             {"/engine/"},
             {"engine//"},
@@ -1402,29 +1412,30 @@ TEST(ConfigPolicy, PrefixValidationIsFinalOrderedAndCannotBeBypassed)
         })
     {
         formatter::Style style;
-        style.IncludeGroupPrefixes = prefixes;
+        style.IncludeGroups = {{prefixes, 0}};
         EXPECT_THROW(
             (void)formatter::CompilePolicies(style),
             std::invalid_argument);
         EXPECT_THROW(
-            (void)formatter::PreparedIncludePrefixes(prefixes),
+            (void)formatter::PreparedIncludeGroups(style.IncludeGroups),
             std::invalid_argument);
         EXPECT_THROW(
             (void)formatter::PreparedFormat(style),
             std::invalid_argument);
     }
-    const TemporaryConfig repaired("IncludeGroupPrefixes = [\"bad\"]\n"
-        "IncludeGroupPrefixes = [\"engine/\", \"engine/detail/\"]\n");
+    const TemporaryConfig repaired("IncludeGroups = [{Prefix = \"bad\"}]\n"
+        "IncludeGroups = [{Prefix = \"engine/\"}, "
+        "{Prefix = \"engine/detail/\"}]\n");
     EXPECT_NO_THROW((void)formatter::LoadConfigFile(repaired.Path));
-    const TemporaryConfig duplicate(
-        "IncludeGroupPrefixes = [\"engine/\", \"engine/\"]\n");
+    const TemporaryConfig duplicate("IncludeGroups = [{Prefix = \"engine/\"}, "
+        "{Prefixes = [\"engine/\"]}]\n");
     try {
         (void)formatter::LoadConfigFile(duplicate.Path);
         FAIL() << "duplicate prefixes were accepted";
     } catch (const std::runtime_error& error) {
         EXPECT_NE(
-            std::string(error.what()).find("IncludeGroupPrefixes at " +
-                duplicate.Path.string() + ":1"),
+            std::string(error.what())
+                .find("IncludeGroups at " + duplicate.Path.string() + ":1"),
             std::string::npos);
     }
     const TemporaryConfig serialized(std::string("ExpressionsAlignment = ") +
@@ -1455,6 +1466,54 @@ TEST(ConfigPolicy, PrefixValidationIsFinalOrderedAndCannotBeBypassed)
 }
 
 } // namespace
+
+TEST(ConfigPolicy, IncludeGroupRulesParseNestedArraysAndRejectAmbiguity)
+{
+    const TemporaryConfig nested("IncludeGroups = [\n" "  { Prefixes = [\n"
+        "      \"engine]/\", # brackets inside strings are not terminators\n"
+        "      \"mirror#root/\"\n" "    ], Depth = 2 },\n"
+        "  { Depth = 1, Prefix = \"other/\" },\n" "  { Prefix = \"\" }\n"
+        "]\n");
+    const auto style = formatter::LoadConfigFile(nested.Path).FormattingStyle;
+    EXPECT_EQ(
+        style.IncludeGroups,
+        (std::vector<formatter::IncludeGroupRule>{
+            {{"engine]/", "mirror#root/"}, 2},
+            {{"other/"}, 1},
+            {{""}, 0},
+        }));
+    const formatter::PreparedIncludeGroups prepared(style.IncludeGroups);
+    EXPECT_EQ(prepared.Classify("engine]/item.h").Group, 0u);
+    EXPECT_EQ(prepared.Classify("mirror#root/item.h").Group, 0u);
+    EXPECT_EQ(prepared.Classify("../other/item.h").Group, 2u);
+    for (const auto text :
+        {
+            "IncludeGroups = [\"engine/\"]\n",
+            "IncludeGroups = [{}]\n",
+            "IncludeGroups = [{Prefixes = []}]\n",
+            "IncludeGroups = [{Prefix = \"engine/\" \"mirror/\"}]\n",
+            "IncludeGroups = [{Prefix = \"engine/\", Depth = }]\n",
+            "IncludeGroups = [{Prefix = \"engine/\", "
+                "Prefixes = [\"mirror/\"]}]\n",
+            "IncludeGroups = [{Prefix = \"engine/\", Depth = 1, Depth = 2}]\n",
+            "IncludeGroups = [{Prefix = \"engine/\", Depth = -1}]\n",
+            "IncludeGroups = [{Prefix = \"engine/\", "
+                "Depth = 99999999999999999999999}]\n",
+            "IncludeGroups = [{Prefix = \"engine/\", Typo = 1}]\n",
+            "IncludeGroups = [{Prefix = \"engine/\"}\n",
+            "IncludeGroups = [{Prefix = \"engine/\"}] junk\n",
+            "IncludeGroups = [{Prefixes = [\"engine/\"],\n",
+            "IncludeGroupPrefixes = []\n",
+            "IncludeGroupDepth = 1\n",
+        })
+    {
+        SCOPED_TRACE(text);
+        const TemporaryConfig invalid(text);
+        EXPECT_THROW(
+            (void)formatter::LoadConfigFile(invalid.Path),
+            std::runtime_error);
+    }
+}
 
 TEST(ConfigPolicy, TernaryOperatorIndentationRoundTripsAndValidates)
 {

@@ -279,6 +279,8 @@ struct IncludeKey
     std::size_t DirectoryLength = 0;
     std::size_t Distance = 0;
     std::size_t Rule = 0;
+    std::size_t Prefix = 0;
+    std::size_t Depth = 0;
     bool Matching = false;
     bool Standard = false;
 };
@@ -481,10 +483,14 @@ void Includes(
     StructuralOptions options,
     IncludeSortContext context)
 {
+    if (options.Grouping == IncludeGrouping::Preserve) {
+        context.Groups = nullptr;
+    }
     std::pmr::vector<std::string_view> current(&scratch), parts(&scratch);
+    std::pmr::vector<std::string_view> grouped(&scratch);
     const auto inputDirectory = Directory(context.InputFilePath);
     const bool inputAbsolute = inputDirectory.starts_with('/');
-    const bool needPaths = options.Grouping == IncludeGrouping::Directory ||
+    const bool needPaths = options.Grouping != IncludeGrouping::Preserve ||
         options.MatchingHeader == IncludeMatchingHeader::First;
     if (needPaths) {
         AppendComponents(current, inputDirectory, inputAbsolute);
@@ -516,10 +522,12 @@ void Includes(
                     atom.Path.find('/') == std::string_view::npos &&
                     atom.Path.find(".h") == std::string_view::npos;
                 if (options.Grouping != IncludeGrouping::Preserve &&
-                    context.Prefixes)
+                    context.Groups)
                 {
-                    key.Rule = context.Prefixes->ClassifyNormalizedRelativePath(
-                        atom.Path);
+                    const auto match = context.Groups->Classify(atom.Path);
+                    key.Rule = match.Group;
+                    key.Prefix = match.Prefix;
+                    key.Depth = context.Groups->Depth(match.Group);
                 }
                 if (!needPaths) {
                     continue;
@@ -541,27 +549,66 @@ void Includes(
                     parts.assign(current.begin(), current.end());
                 }
                 AppendComponents(parts, Directory(atom.Path), absolute);
+                // Canonicalize only the grouping key, never the include atom
+                // or the full path used for matching-header detection.
+                grouped.clear();
+                bool groupAbsolute = absolute;
+                const auto prefix = context.Groups
+                    ? context.Groups->Prefix(key.Prefix)
+                    : std::string_view{};
+                const auto canonical = context.Groups
+                    ? context.Groups->CanonicalPrefix(key.Rule)
+                    : std::string_view{};
+                if (options.Grouping == IncludeGrouping::Regroup) {
+                    groupAbsolute = options.PathBase ==
+                        IncludePathBase::SourceDirectory && inputAbsolute;
+                    if (options.PathBase == IncludePathBase::SourceDirectory) {
+                        grouped.assign(current.begin(), current.end());
+                    }
+                    AppendComponents(grouped, canonical, groupAbsolute);
+                } else if (!prefix.empty()) {
+                    const auto base = relative ? current.size() : 0;
+                    const auto suffix =
+                        base + context.Groups->PrefixDepth(key.Prefix);
+                    const auto count = key.Depth == 0
+                        ? parts.size() - suffix
+                        : std::min(key.Depth, parts.size() - suffix);
+                    grouped.insert(
+                        grouped.end(),
+                        parts.begin(),
+                        parts.begin() + base);
+                    AppendComponents(grouped, canonical, groupAbsolute);
+                    grouped.insert(
+                        grouped.end(),
+                        parts.begin() + suffix,
+                        parts.begin() + suffix + count);
+                } else {
+                    const auto count = key.Depth == 0
+                        ? parts.size()
+                        : std::min(key.Depth, parts.size());
+                    grouped.assign(parts.begin(), parts.begin() + count);
+                }
                 std::size_t common = 0;
-                if (absolute == inputAbsolute) {
-                    while (common < std::min(current.size(), parts.size()) &&
-                        current[common] == parts[common])
+                if (groupAbsolute == inputAbsolute) {
+                    while (common < std::min(current.size(), grouped.size()) &&
+                        current[common] == grouped[common])
                     {
                         ++common;
                     }
                     key.Distance =
-                        current.size() - common + parts.size() - common;
+                        current.size() - common + grouped.size() - common;
                 } else {
                     key.Distance = std::numeric_limits<std::size_t>::max();
                 }
                 key.DirectoryOffset = directories.size();
-                if (absolute) {
+                if (groupAbsolute) {
                     directories.push_back('/');
                 }
-                for (std::size_t index = 0; index < parts.size(); ++index) {
+                for (std::size_t index = 0; index < grouped.size(); ++index) {
                     if (index) {
                         directories.push_back('/');
                     }
-                    directories.append(parts[index]);
+                    directories.append(grouped[index]);
                 }
                 key.DirectoryLength = directories.size() - key.DirectoryOffset;
                 const auto name = Filename(atom.Path);
@@ -610,17 +657,23 @@ void Includes(
                 if (standard(a) != standard(b)) {
                     return !standard(a);
                 }
-                if (options.Grouping != IncludeGrouping::Preserve &&
-                    !matching(a) && !standard(a) && key(a).Rule != key(b).Rule)
-                {
-                    return key(a).Rule < key(b).Rule;
-                }
                 if (a.Angled != b.Angled) {
                     return !a.Angled;
                 }
-                if (options.Grouping == IncludeGrouping::Directory &&
+                if (options.Grouping != IncludeGrouping::Preserve &&
                     !matching(a) && !standard(a))
                 {
+                    if (options.Grouping == IncludeGrouping::Regroup &&
+                        context.Groups)
+                    {
+                        const bool unmatchedA =
+                            key(a).Rule == context.Groups->GroupCount();
+                        const bool unmatchedB =
+                            key(b).Rule == context.Groups->GroupCount();
+                        if (unmatchedA != unmatchedB) {
+                            return !unmatchedA;
+                        }
+                    }
                     if (options.DirectoryOrder ==
                         IncludeDirectoryOrder::NearestFirst &&
                         key(a).Distance != key(b).Distance)
@@ -630,7 +683,16 @@ void Includes(
                     if (directory(a) != directory(b)) {
                         return directory(a) < directory(b);
                     }
-                    if (Filename(a.Path) != Filename(b.Path)) {
+                    if (key(a).Rule != key(b).Rule) {
+                        // Canonical paths can collide through aliases. Break
+                        // ties by stable rule roots, not matching-list order.
+                        return context.Groups->CanonicalPrefix(key(a).Rule) <
+                            context.Groups->CanonicalPrefix(key(b).Rule);
+                    }
+                    if (options.Grouping == IncludeGrouping::Directory &&
+                        key(a).Depth == 0 &&
+                        Filename(a.Path) != Filename(b.Path))
+                    {
                         return Filename(a.Path) < Filename(b.Path);
                     }
                 }

@@ -1,6 +1,7 @@
 IncludeOrder = Sort
 IncludeMatchingHeader = First
 IncludeGrouping = Directory
+IncludeGroups = []
 IncludeDirectoryOrder = NearestFirst
 IncludePathBase = ProjectRoot
 IncludeStandardHeaders = Last

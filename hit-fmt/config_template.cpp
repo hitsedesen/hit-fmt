@@ -227,14 +227,28 @@ void PrintOption(std::ostream& output, std::string_view name, const T& value)
         }
     } else if constexpr (std::is_same_v<T, std::size_t>) {
         output << IntegerValues(name) << '\n' << name << " = " << value;
+    } else if constexpr (std::is_same_v<
+        T,
+        std::vector<formatter::IncludeGroupRule>>)
+    {
+        output << "[] or [{Prefix = \"directory/\", Depth = 0}, ...]\n" << name
+            << " = [";
+        for (std::size_t index = 0; index < value.size(); ++index) {
+            if (index) {
+                output << ", ";
+            }
+            output << "{Prefixes = ";
+            PrintStringList(output, value[index].Prefixes);
+            output << ", Depth = " << value[index].Depth << '}';
+        }
+        output << ']';
     } else if constexpr (std::is_same_v<T, std::vector<std::string>>) {
         if (name == "NamingNamespaceExemptions" ||
             name == "ChainedCallRootNames" ||
             name == "AlwaysBreakChainRootNames")
         {
             output << "[] or [\"qualified::name\", ...]";
-        } else if (name == "IncludeGroupPrefixes") {
-            output << "[] or [\"directory/\", ...] (ordered literal prefixes)";
+
         } else if (name == "IndentedCallScopePairs" ||
             name == "IndentedChainScopePairs" || name == "ClassMacroNames")
         {
@@ -274,19 +288,36 @@ void PrintPreserveConfig(std::ostream& output)
             "# (.h/.hh/.hpp/.hxx/.h++) in the input file's directory.\n"
             "# Pairing is disabled for header inputs or missing filenames.\n"
             "# IncludeGrouping = Preserve retains existing blank boundaries;\n"
-            "# Regroup uses ordered literal IncludeGroupPrefixes; Directory\n"
-            "# groups normalized directories and sorts filenames in each.\n"
-            "# Both honor ordered prefix buckets before quote/angle and "
-            "distance.\n"
-            "# Example: IncludeGroupPrefixes = [\"library/\", \"gtest/\"]\n"
-            "# Unmatched headers follow configured buckets. Preserve "
-            "ignores them.\n"
+            "# Regroup groups by IncludeGroups rules; Directory additionally\n"
+            "# subdivides each rule by its directory suffix and Depth.\n"
+            "# Example: IncludeGroups = [{Prefix = \"library/\", Depth = 1}]\n"
+            "# Each rule has Prefix or Prefixes, "
+            "and optional Depth (default 0).\n"
+            "# Depth 0 uses the full remaining directory, not the filename;\n"
+            "# positive values cap components after the matched prefix.\n"
+            "# With prefix library/, 1 groups library/core/a.hpp and\n"
+            "# library/core/detail/b.hpp together; 2 separates them.\n"
+            "# Prefixes = [\"yt/yt/\", \"yt/yt_proto/yt/\"] "
+            "merges corresponding\n"
+            "# suffix groups; the first prefix represents "
+            "their ordering path.\n"
+            "# First matching rule/prefix wins; rule order "
+            "is not sort priority.\n" "# Group order uses quote/angle "
+            "and IncludeDirectoryOrder instead.\n"
+            "# Unmatched paths use full-directory groups under Directory.\n"
+            "# Prefix = \"\" is an explicit fallback "
+            "for any include spelling;\n"
+            "# its Depth counts from the start of the resolved directory.\n"
+            "# Preserve ignores rules. Regroup ignores Depth "
+            "and puts unmatched\n"
+            "# headers after configured groups. Matching/standard groups stay\n"
+            "# separate. Include paths are never rewritten by group aliases.\n"
             "# Regroup/Directory span blank lines and insert one empty line\n"
             "# between groups; both conflict with MaxEmptyLines = 0.\n"
             "# IncludeDirectoryOrder = NearestFirst uses parent + child steps\n"
             "# from the input directory; ties sort by directory spelling.\n"
-            "# Alphabetical omits distance. Within each prefix bucket, "
-            "quoted\n" "# groups precede angled ones.\n"
+            "# Alphabetical omits distance. "
+            "Quoted groups precede angled ones.\n"
             "# IncludePathBase = SourceDirectory resolves source-relative "
             "paths.\n"
             "# ProjectRoot requires input and include paths with the same "
@@ -307,9 +338,8 @@ void PrintPreserveConfig(std::ostream& output)
             "# Check mode reports one include-order failure per file, "
             "not per header.\n"
             "# Other formatting, naming and width failures remain "
-            "independent.\n"
-            "# Prefixes are validated even when inactive; earliest match "
-            "wins.\n"
+            "independent.\n" "# Rules are validated even when inactive; "
+            "prefixes must be unique.\n"
             "# Comments, macros, conditionals, protection and mixed line "
             "endings\n"
             "# stop blocks. Hunk edits require authority over the entire "

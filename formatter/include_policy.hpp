@@ -8,33 +8,65 @@
 
 namespace formatter {
 
-void ValidateIncludeGroupPrefixes(std::span<const std::string> prefixes);
+struct IncludeGroupRule
+{
+    std::vector<std::string> Prefixes;
+    // Zero uses the full directory suffix; positive values cap its components.
+    std::size_t Depth = 0;
+    friend bool operator==(
+        const IncludeGroupRule&,
+        const IncludeGroupRule&) = default;
+};
 
-// Owns include-prefix metadata for read-only reuse across files.
-// Compile after configuration overrides; copies and moves preserve indices.
-class PreparedIncludePrefixes
+void ValidateIncludeGroups(std::span<const IncludeGroupRule> groups);
+
+// Owns grouping metadata for read-only reuse across files. Rule order controls
+// matching, not sorting. The first prefix represents a group's ordering path.
+class PreparedIncludeGroups
 {
 public:
-    explicit PreparedIncludePrefixes(std::span<const std::string> prefixes);
-
-    // Input must already be lexically normalized relative slash syntax. Invalid
-    // syntax is unmatched; this lookup neither normalizes nor rewrites paths.
-    // Backslashes in input names are ordinary bytes, not slash separators.
-    // First configured match wins, not the longest. RuleCount is unmatched.
-    [[nodiscard]] std::size_t ClassifyNormalizedRelativePath(
-        std::string_view path) const noexcept;
-
-    [[nodiscard]] std::size_t RuleCount() const noexcept
+    struct Match
     {
-        return Prefixes_.size();
+        std::size_t Group;
+        std::size_t Prefix;
+    };
+
+    explicit PreparedIncludeGroups(std::span<const IncludeGroupRule> groups);
+
+    // Explicit prefixes match normalized relative literal spelling only.
+    // An empty-prefix fallback matches any spelling. First rule/prefix wins.
+    [[nodiscard]] Match Classify(std::string_view path) const noexcept;
+
+    [[nodiscard]] std::size_t GroupCount() const noexcept
+    {
+        return Groups_.size();
     }
 
+    [[nodiscard]] std::size_t Depth(std::size_t group) const noexcept;
+    [[nodiscard]] std::size_t PrefixDepth(std::size_t prefix) const noexcept;
+    [[nodiscard]] std::string_view Prefix(std::size_t prefix) const noexcept;
+    [[nodiscard]] std::string_view CanonicalPrefix(
+        std::size_t group) const noexcept;
+
 private:
+    struct Group
+    {
+        std::size_t FirstPrefix;
+        std::size_t Depth;
+    };
+
+    struct PrefixEntry
+    {
+        std::string Text;
+        std::size_t Depth;
+        std::size_t Group;
+    };
+
     struct Node
     {
         std::size_t FirstEdge = 0;
         std::size_t EdgeCount = 0;
-        std::size_t Rule;
+        std::size_t Prefix;
     };
 
     struct Edge
@@ -43,7 +75,8 @@ private:
         std::size_t Child;
     };
 
-    std::vector<std::string> Prefixes_;
+    std::vector<Group> Groups_;
+    std::vector<PrefixEntry> Prefixes_;
     std::vector<Node> Nodes_;
     std::vector<Edge> Edges_;
 };

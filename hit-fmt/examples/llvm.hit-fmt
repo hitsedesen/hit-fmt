@@ -48,12 +48,16 @@ IndentMembers = Indent
 IndentNamespaces = NoIndent
 IndentCaseLabels = NoIndent
 StatementAttributeIndent = Block
-# Paired header first; directory groups approximate upstream include categories.
+# Project/subproject groups (clang/, llvm/, etc.), not individual directories.
+# https://llvm.org/docs/CodingStandards.html#include-style
+# Pass input paths relative to the shared project root. NearestFirst puts
+# the input subproject first; local/private categories remain approximate.
 IncludeOrder = Sort
 IncludeMatchingHeader = First
 IncludeGrouping = Directory
+IncludeGroups = [{Prefix = "", Depth = 1}]
 IncludeDirectoryOrder = NearestFirst
-IncludePathBase = SourceDirectory
+IncludePathBase = ProjectRoot
 IncludeStandardHeaders = Last
 NamespaceComments = Fix
 ShortNamespaceLines = 1

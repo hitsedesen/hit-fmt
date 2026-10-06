@@ -3,4 +3,4 @@ IncludeMatchingHeader = First
 IncludeGrouping = Regroup
 IncludePathBase = ProjectRoot
 IncludeStandardHeaders = Last
-IncludeGroupPrefixes = ["library/", "gtest/"]
+IncludeGroups = [{Prefix = "library/", Depth = 1}, {Prefix = "gtest/", Depth = 1}]

@@ -50,7 +50,7 @@ public:
     explicit PreparedFormat(const Style& style);
     const CompiledPolicies Policies;
     const LibraryAnnotations Annotations;
-    const PreparedIncludePrefixes IncludePrefixes;
+    const PreparedIncludeGroups IncludeGroups;
     const StructuralOptions Structural;
     const NamespaceCommentOptions NamespaceComments;
     const bool HonorClangFormatDirectives;

@@ -1,0 +1,9 @@
+IncludeOrder = Sort
+IncludeMatchingHeader = First
+IncludeGrouping = Directory
+IncludeGroups = [
+    { Prefixes = ["yt/yt/core/rpc/", "yt/yt_proto/yt/core/rpc/proto/"] }
+]
+IncludeDirectoryOrder = NearestFirst
+IncludePathBase = ProjectRoot
+IncludeStandardHeaders = Last

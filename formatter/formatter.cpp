@@ -686,9 +686,9 @@ void WidthDiagnostics(
 PreparedFormat::PreparedFormat(const Style& style)
     : Policies(PreparePolicies(style))
     , Annotations(CompileLibraryAnnotations(style))
-    , IncludePrefixes(style.IncludeGrouping != IncludeGrouping::Preserve
-        ? std::span<const std::string>(style.IncludeGroupPrefixes)
-        : std::span<const std::string>{})
+    , IncludeGroups(style.IncludeGrouping != IncludeGrouping::Preserve
+        ? std::span<const IncludeGroupRule>(style.IncludeGroups)
+        : std::span<const IncludeGroupRule>{})
     , Structural{
         style.AddMissingControlBraces,
         style.EmptyControlBody == EmptyControlBody::EmptyBlock,
@@ -775,7 +775,7 @@ FormatResult detail::FormatWithAnalysis(
         prepared.Structural,
         file,
         scratch,
-        {request.InputFilePath, &prepared.IncludePrefixes});
+        {request.InputFilePath, &prepared.IncludeGroups});
     scratch.release();
     auto namespacePlan = PlanNamespaceComments(
         original,

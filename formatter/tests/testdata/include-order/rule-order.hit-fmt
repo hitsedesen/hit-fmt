@@ -1,0 +1,8 @@
+IncludeOrder = Sort
+IncludeGrouping = Directory
+IncludeGroups = [
+    { Prefixes = ["alias/foo/", "z/"], Depth = 0 },
+    { Prefixes = ["alias/", "a/"], Depth = 1 }
+]
+IncludeDirectoryOrder = Alphabetical
+IncludePathBase = ProjectRoot

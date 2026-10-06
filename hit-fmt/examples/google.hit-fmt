@@ -43,12 +43,16 @@ IndentMembers = Indent
 IndentNamespaces = NoIndent
 IndentCaseLabels = Indent
 StatementAttributeIndent = Block
-# Paired header first, then nearest directories; upstream categories differ.
+# Google uses semantic categories, not directory-depth groups. Keep the
+# existing C, C++, third-party and project boundaries; sort within each.
+# https://google.github.io/styleguide/cppguide.html#Names_and_Order_of_Includes
+# Rules are inactive under Preserve. Pass project-relative input filenames.
 IncludeOrder = Sort
 IncludeMatchingHeader = First
-IncludeGrouping = Directory
+IncludeGrouping = Preserve
+IncludeGroups = []
 IncludeDirectoryOrder = NearestFirst
-IncludePathBase = SourceDirectory
+IncludePathBase = ProjectRoot
 IncludeStandardHeaders = Last
 # Ordinary trailing // gaps; comment alignment and prose wrapping are not modeled.
 TrailingCommentSpaces = 2
