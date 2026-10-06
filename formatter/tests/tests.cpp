@@ -606,6 +606,25 @@ std::vector<FormatCase> FormatCases()
         "input.cpp",
         "../../../../hit-fmt/examples/ytsaurus",
     });
+    for (const auto* name : {"opaque-body", "opaque-body-expanded"}) {
+        cases.push_back({
+            std::filesystem::path(FORMATTER_TESTDATA_DIR) /
+                "../control-expression-continuation",
+            name,
+            "opaque-body.input.cpp",
+            "../../../../hit-fmt/examples/ytsaurus",
+            {},
+            true,
+            {},
+            true,
+        });
+        if (std::string_view(name) == "opaque-body-expanded") {
+            cases.back().Style = formatter::LoadConfigFile(
+                cases.back().Directory /
+                (cases.back().Config + ".hit-fmt")).FormattingStyle;
+            cases.back().Style->LambdaBodiesLayout = CategoryLayout::Canonical;
+        }
+    }
     for (const auto* name :
         {
             "lf",
@@ -1732,6 +1751,19 @@ std::vector<FormatCase> FormatCases()
         cases.push_back(std::move(value));
     }
     addProfileCase("../spacing-options", "profile-initializers");
+    cases.back().CheckOwningMaps = true;
+    AddCases(
+        cases,
+        std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../spacing-options",
+        {
+            "designated-assignment",
+            "designated-assignment-no-space",
+            "designated-assignment-preserve",
+        },
+        "designated-assignment.input.cpp");
+    for (auto i = cases.size() - 3; i < cases.size(); ++i) {
+        cases[i].CheckOwningMaps = true;
+    }
     addProfileCase("../spacing-options", "profile-overflow");
     addProfileCase("../spacing-options", "profile-case-blocks");
     addProfileCase("../spacing-options", "profile-ref-qualifiers");

@@ -8111,7 +8111,9 @@ private:
             RegisterDeclaredValues(*declaration);
         } else {
             // Unavailable type bindings remain ambiguous, not invented.
+            // The complete assignment RHS is shared by both interpretations.
             declaration->Kind = NodeKind::AmbiguousStatement;
+            AddAmbiguousAssignmentRhs(*declaration, end);
         }
         Append(header, *declaration);
     }
@@ -10114,12 +10116,8 @@ private:
         RegisterDeclaredNames(declaration, NameKind::Value);
     }
 
-    void AddAmbiguousAssignmentRhs(Node& statement)
+    void AddAmbiguousAssignmentRhs(Node& statement, size_t end)
     {
-        const auto end = statement.Tokens.End - 1;
-        if (Kind(end) != TK::Operator_Semicolon) {
-            return;
-        }
         // Both a declaration and an expression can have this head. Bound its
         // assignment without choosing pointer/reference or binary roles, and
         // do not search through conditionals, other declarators or macros.
@@ -10232,7 +10230,9 @@ private:
                     name->Tokens.End = unknown + 1;
                     Append(*node, *name);
                 }
-                AddAmbiguousAssignmentRhs(*node);
+                if (Kind(node->Tokens.End - 1) == TK::Operator_Semicolon) {
+                    AddAmbiguousAssignmentRhs(*node, node->Tokens.End - 1);
+                }
             }
             AddDirectiveChildrenInGap(*node, start, Cursor_);
         }

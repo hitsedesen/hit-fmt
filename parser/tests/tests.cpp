@@ -1406,9 +1406,8 @@ TEST(Parser, LambdaBodyBindingsUseOnlyDirectParametersNotRequiresLocals)
 TEST(Parser, ExplicitOperatorTemplateNamesPreserveArgumentAndDefaultBoundaries)
 {
     using enum parser::NodeKind;
-    const auto checkOuterParameters = [] (
-        const parser::SyntaxTree& tree,
-        const std::string& call) {
+    const auto checkOuterParameters =
+        [] (const parser::SyntaxTree& tree, const std::string& call) {
             const auto functions = LambdaOwnershipNodes(
                 *tree.Root().FirstChild,
                 FunctionDeclarator);

@@ -774,25 +774,57 @@ TEST(SourceAnalysis, AmbiguousAndInvalidTokensAreLocalNotWholeFileRollback)
 
 TEST(SourceAnalysis, AmbiguousAssignmentsProtectOnlyTheirUncertainHeads)
 {
-    Input input("void f() { External  *  pointer = Acquire(first, second); "
-        "External * other; }\n");
-    auto tree = Parse(input);
-    std::pmr::monotonic_buffer_resource memory;
-    auto analysis = Analyze(tree, memory);
-    EXPECT_FALSE(analysis.CanReplaceGap(Before(tree, "*"), ""));
-    EXPECT_FALSE(analysis.CanReplaceGap(Before(tree, "pointer"), ""));
-    EXPECT_FALSE(analysis.CanReplaceGap(Before(tree, "="), "\n    "));
-    EXPECT_TRUE(analysis.CanReplaceGap(Before(tree, "Acquire"), "\n    "));
-    EXPECT_TRUE(analysis.CanReplaceGap(Before(tree, "first"), "\n        "));
-    EXPECT_TRUE(analysis.CanReplaceGap(Before(tree, "second"), "\n        "));
-    EXPECT_FALSE(analysis.CanReplaceGap(Before(tree, "*", 1), ""));
-    EXPECT_FALSE(analysis.CanReplaceGap(Before(tree, "other"), ""));
-    for (const auto& region : analysis.Regions()) {
-        if (region.Kind == parser::NodeKind::Initializer ||
-            region.Kind == parser::NodeKind::CallExpression)
+    for (const auto& [statement, assignment] :
         {
-            EXPECT_EQ(region.Status, formatter::RegionStatus::Complete);
+            std::pair{"External  *  pointer = Acquire(first, second);", 0u},
+            {"if (External  *  pointer = Acquire(first, second)) {}", 0u},
+            {"while (External  *  pointer = Acquire(first, second)) {}", 0u},
+            {
+                "if (int index = 0; External  *  pointer = "
+                    "Acquire(first, second)) {}",
+                1u,
+            },
+        })
+    {
+        SCOPED_TRACE(statement);
+        Input input(
+            std::string("void f() { ") + statement + " External * other; }\n");
+        auto tree = Parse(input);
+        std::pmr::monotonic_buffer_resource memory;
+        auto analysis = Analyze(tree, memory);
+        EXPECT_FALSE(analysis.CanReplaceGap(Before(tree, "*"), ""));
+        EXPECT_FALSE(analysis.CanReplaceGap(Before(tree, "pointer"), ""));
+        EXPECT_FALSE(
+            analysis.CanReplaceGap(Before(tree, "=", assignment), "\n    "));
+        EXPECT_TRUE(analysis.CanReplaceGap(Before(tree, "Acquire"), "\n    "));
+        EXPECT_TRUE(
+            analysis.CanReplaceGap(Before(tree, "first"), "\n        "));
+        EXPECT_TRUE(
+            analysis.CanReplaceGap(Before(tree, "second"), "\n        "));
+        EXPECT_FALSE(analysis.CanReplaceGap(Before(tree, "*", 1), ""));
+        EXPECT_FALSE(analysis.CanReplaceGap(Before(tree, "other"), ""));
+        for (const auto& region : analysis.Regions()) {
+            if (region.Kind == parser::NodeKind::Initializer ||
+                region.Kind == parser::NodeKind::CallExpression)
+            {
+                EXPECT_EQ(region.Status, formatter::RegionStatus::Complete);
+            }
         }
+    }
+    for (const auto* rhs :
+        {"Acquire(first, second), other", "PREFIX Acquire(first, second)"})
+    {
+        SCOPED_TRACE(rhs);
+        Input input(std::string("void f() { if (External * pointer = ") + rhs +
+            ") {} }\n");
+        auto tree = Parse(input);
+        std::pmr::monotonic_buffer_resource memory;
+        auto analysis = Analyze(tree, memory);
+        EXPECT_FALSE(analysis.CanReplaceGap(Before(tree, "Acquire"), "\n    "));
+        EXPECT_FALSE(
+            analysis.CanReplaceGap(Before(tree, "first"), "\n        "));
+        EXPECT_FALSE(
+            analysis.CanReplaceGap(Before(tree, "second"), "\n        "));
     }
 }
 

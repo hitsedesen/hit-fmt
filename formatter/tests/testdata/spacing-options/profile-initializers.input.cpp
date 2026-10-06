@@ -7,6 +7,7 @@ void Example()
     record.Handler = {};
     record.Other = Record{55};
     record.Groups = {{ "red", "blue" }, {"green", "yellow"}};
+    record.Options = {.Node= {.Identifier="identifier", .Inputs = {1}}, .Name="Example"};
     int frames[][4] = {
         {
             WrapCode(11), WrapCode(12), WrapCode(13), WrapCode(14)

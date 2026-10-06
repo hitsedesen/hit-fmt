@@ -185,6 +185,9 @@ struct Syntax
     bool Safe = true;
     bool IndentSafe = true;
     bool ChainSafe = true;
+    // Opaque syntax in independently delimited bodies does not invalidate
+    // the enclosing expression's proven boundaries.
+    bool OpaqueSafe = true;
     bool String = false;
     bool Definition = false;
     bool ItemSequence : 1 = false;
@@ -663,20 +666,22 @@ private:
                     PrefixProtection_[node.Tokens.Begin] ==
                         PrefixProtection_[node.Tokens.End];
             }
-            // Complete ambiguous statements can move as opaque units. Their
-            // parents can also follow the body's indentation if all other
-            // syntax is movable; real fences still anchor nested bodies.
+            // Complete ambiguous statements and bounded conditions can move
+            // as opaque units. Their parents can follow body indentation if
+            // all other syntax is movable; real fences still anchor bodies.
             const bool statementBoundary = HasStatementBoundary(node);
-            if (!statementBoundary &&
-                PrefixOpaqueFences_[node.Tokens.Begin] !=
-                    PrefixOpaqueFences_[node.Tokens.End])
+            if (PrefixOpaqueFences_[node.Tokens.Begin] !=
+                PrefixOpaqueFences_[node.Tokens.End])
             {
                 DirectTokens(
                     i,
                     [&] (Index token) {
-                        entry.IndentSafe &=
-                            PrefixOpaqueFences_[token] ==
-                                PrefixOpaqueFences_[token + 1];
+                        const bool safe = PrefixOpaqueFences_[token] ==
+                            PrefixOpaqueFences_[token + 1];
+                        entry.OpaqueSafe &= safe;
+                        if (!statementBoundary) {
+                            entry.IndentSafe &= safe;
+                        }
                     });
             }
             for (auto child = Region(entry).FirstChild;
@@ -684,6 +689,8 @@ private:
                 child = Region(Syntax_[child]).NextSibling)
             {
                 entry.Safe = entry.Safe && Syntax_[child].Safe;
+                entry.OpaqueSafe &= Syntax_[child].OpaqueSafe ||
+                    HasIndependentBodyBoundary(Region(Syntax_[child]));
                 if (!statementBoundary) {
                     entry.IndentSafe &= Syntax_[child].IndentSafe;
                 }
@@ -913,6 +920,21 @@ private:
         }
     }
 
+    bool HasIndependentBodyBoundary(const SourceRegion& node) const
+    {
+        if ((node.Kind != NodeKind::LambdaBody &&
+            node.Kind != NodeKind::RequirementBody) || node.Tokens.Size() < 2)
+        {
+            return false;
+        }
+        const auto opening = node.Tokens.Begin;
+        const auto close = node.Tokens.End - 1;
+        return Tree_.Kind(opening) == TokenKind::Operator_OpenBrace &&
+            Tree_.MatchingDelimiter(opening) == close &&
+            PrefixProtection_[opening] == PrefixProtection_[opening + 1] &&
+            PrefixProtection_[close] == PrefixProtection_[close + 1];
+    }
+
     bool CanPlanAroundOpaqueChildren(Index id) const
     {
         const auto& node = Region(Syntax_[id]);
@@ -997,9 +1019,7 @@ private:
         if (node.FirstChild == None) {
             return false;
         }
-        if (PrefixOpaqueFences_[node.Tokens.Begin] !=
-            PrefixOpaqueFences_[node.Tokens.End])
-        {
+        if (!Syntax_[id].OpaqueSafe) {
             return false;
         }
         for (auto child = node.FirstChild;
@@ -2632,9 +2652,21 @@ private:
 
     bool HasStatementBoundary(const SourceRegion& node) const
     {
-        return node.Kind == NodeKind::AmbiguousStatement &&
-            node.Status == RegionStatus::Ambiguous && !node.Tokens.Empty() &&
-            Tree_.Kind(node.Tokens.End - 1) == TokenKind::Operator_Semicolon;
+        if (node.Kind != NodeKind::AmbiguousStatement ||
+            node.Status != RegionStatus::Ambiguous || node.Tokens.Empty())
+        {
+            return false;
+        }
+        if (Tree_.Kind(node.Tokens.End - 1) == TokenKind::Operator_Semicolon) {
+            return true;
+        }
+        if (node.Parent == None) {
+            return false;
+        }
+        const auto& parent = Region(Syntax_[node.Parent]);
+        return parent.Kind == NodeKind::Condition &&
+            parent.Tokens.End == node.Tokens.End + 1 &&
+            Tree_.MatchingDelimiter(parent.Tokens.Begin) == node.Tokens.End;
     }
 
     Index PreservedBodyIndent(Index id, Index opening, Index close) const

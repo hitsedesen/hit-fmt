@@ -73,3 +73,32 @@ bool inspect()
     auto lower_constructed = construct{item};
     return scalar;
 }
+
+void inspect_conditions()
+{
+    if (external::Handle  *  pointer = Acquire( first , second )) {
+        Use(pointer);
+    }
+    while (ExternalCount& reference = Acquire(first, second)) {
+        Use(reference);
+    }
+    if (int index = 0; ExternalCount&& movable = Adapt(Acquire(index, second), third)) {
+        Use(movable);
+    }
+    if (ExternalCount* grouped = (Acquire(first, second), fallback)) {
+        Use(grouped);
+    }
+    if (ExternalCount* multiple = Acquire(first, second), other) {
+        Use(multiple);
+    }
+    if (ExternalCount* opaque = PREFIX Acquire(first, second)) {
+        Use(opaque);
+    }
+    if (ExternalCount* braced{first, second}) {
+        Use(braced);
+    }
+    int known;
+    if (known * operand = Acquire(first, second)) {
+        Use(known);
+    }
+}

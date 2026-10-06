@@ -1238,6 +1238,7 @@ public:
                 Pair(i, field, field, owner, C::Expressions, 1, !memberPointer);
             } else if (role == PR::AssignmentOperator ||
                 ((node.Kind == NK::Initializer ||
+                    node.Kind == NK::InitializerElement ||
                     node.Kind == NK::Enumerator) &&
                     kind == TK::Operator_Assign))
             {

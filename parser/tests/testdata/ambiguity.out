@@ -1095,4 +1095,368 @@
       )
     )
   )
+  (function-definition
+    (leading-trivia
+      (whitespace "\n\n")
+    )
+    (declaration-specifiers "void")
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (declarator-name "inspect_conditions")
+          (function-declarator
+            (parameter-list "(" ")")
+          )
+        )
+      )
+    )
+    (compound-statement
+      "{"
+      (if-statement
+        "if"
+        (condition
+          "("
+          (ambiguous-statement
+            "external" "::" "Handle" "*" "pointer"
+            (initializer
+              "="
+              (call-expression
+                (identifier-expression "Acquire")
+                (argument-list
+                  "("
+                  (argument
+                    (identifier-expression "first")
+                  )
+                  (list-separator ",")
+                  (argument
+                    (identifier-expression "second")
+                  )
+                  ")"
+                )
+              )
+            )
+          )
+          ")"
+        )
+        (compound-statement
+          "{"
+          (expression-statement
+            (call-expression
+              (identifier-expression "Use")
+              (argument-list
+                "("
+                (argument
+                  (identifier-expression "pointer")
+                )
+                ")"
+              )
+            )
+            ";"
+          )
+          "}"
+        )
+      )
+      (while-statement
+        "while"
+        (condition
+          "("
+          (ambiguous-statement
+            "ExternalCount" "&" "reference"
+            (initializer
+              "="
+              (call-expression
+                (identifier-expression "Acquire")
+                (argument-list
+                  "("
+                  (argument
+                    (identifier-expression "first")
+                  )
+                  (list-separator ",")
+                  (argument
+                    (identifier-expression "second")
+                  )
+                  ")"
+                )
+              )
+            )
+          )
+          ")"
+        )
+        (compound-statement
+          "{"
+          (expression-statement
+            (call-expression
+              (identifier-expression "Use")
+              (argument-list
+                "("
+                (argument
+                  (identifier-expression "reference")
+                )
+                ")"
+              )
+            )
+            ";"
+          )
+          "}"
+        )
+      )
+      (if-statement
+        "if"
+        (condition
+          "("
+          (declaration-statement
+            (declaration-specifiers "int")
+            (init-declarator-list
+              (init-declarator
+                (declarator
+                  (declarator-name "index")
+                )
+                (initializer
+                  "="
+                  (literal-expression "0")
+                )
+              )
+            )
+          )
+          ";"
+          (ambiguous-statement
+            "ExternalCount" "&&" "movable"
+            (initializer
+              "="
+              (call-expression
+                (identifier-expression "Adapt")
+                (argument-list
+                  "("
+                  (argument
+                    (call-expression
+                      (identifier-expression "Acquire")
+                      (argument-list
+                        "("
+                        (argument
+                          (identifier-expression "index")
+                        )
+                        (list-separator ",")
+                        (argument
+                          (identifier-expression "second")
+                        )
+                        ")"
+                      )
+                    )
+                  )
+                  (list-separator ",")
+                  (argument
+                    (identifier-expression "third")
+                  )
+                  ")"
+                )
+              )
+            )
+          )
+          ")"
+        )
+        (compound-statement
+          "{"
+          (expression-statement
+            (call-expression
+              (identifier-expression "Use")
+              (argument-list
+                "("
+                (argument
+                  (identifier-expression "movable")
+                )
+                ")"
+              )
+            )
+            ";"
+          )
+          "}"
+        )
+      )
+      (if-statement
+        "if"
+        (condition
+          "("
+          (ambiguous-statement
+            "ExternalCount" "*" "grouped"
+            (initializer
+              "="
+              (parenthesized-expression
+                "("
+                (binary-expression
+                  (call-expression
+                    (identifier-expression "Acquire")
+                    (argument-list
+                      "("
+                      (argument
+                        (identifier-expression "first")
+                      )
+                      (list-separator ",")
+                      (argument
+                        (identifier-expression "second")
+                      )
+                      ")"
+                    )
+                  )
+                  ","
+                  (identifier-expression "fallback")
+                )
+                ")"
+              )
+            )
+          )
+          ")"
+        )
+        (compound-statement
+          "{"
+          (expression-statement
+            (call-expression
+              (identifier-expression "Use")
+              (argument-list
+                "("
+                (argument
+                  (identifier-expression "grouped")
+                )
+                ")"
+              )
+            )
+            ";"
+          )
+          "}"
+        )
+      )
+      (if-statement
+        "if"
+        (condition
+          "("
+          (ambiguous-statement "ExternalCount" "*" "multiple" "=" "Acquire" "(" "first" "," "second" ")" "," "other")
+          ")"
+        )
+        (compound-statement
+          "{"
+          (expression-statement
+            (call-expression
+              (identifier-expression "Use")
+              (argument-list
+                "("
+                (argument
+                  (identifier-expression "multiple")
+                )
+                ")"
+              )
+            )
+            ";"
+          )
+          "}"
+        )
+      )
+      (if-statement
+        "if"
+        (condition
+          "("
+          (ambiguous-statement "ExternalCount" "*" "opaque" "=" "PREFIX" "Acquire" "(" "first" "," "second" ")")
+          ")"
+        )
+        (compound-statement
+          "{"
+          (expression-statement
+            (call-expression
+              (identifier-expression "Use")
+              (argument-list
+                "("
+                (argument
+                  (identifier-expression "opaque")
+                )
+                ")"
+              )
+            )
+            ";"
+          )
+          "}"
+        )
+      )
+      (if-statement
+        "if"
+        (condition
+          "("
+          (ambiguous-statement "ExternalCount" "*" "braced" "{" "first" "," "second" "}")
+          ")"
+        )
+        (compound-statement
+          "{"
+          (expression-statement
+            (call-expression
+              (identifier-expression "Use")
+              (argument-list
+                "("
+                (argument
+                  (identifier-expression "braced")
+                )
+                ")"
+              )
+            )
+            ";"
+          )
+          "}"
+        )
+      )
+      (declaration-statement
+        (declaration-specifiers "int")
+        (init-declarator-list
+          (init-declarator
+            (declarator
+              (declarator-name "known")
+            )
+          )
+        )
+        ";"
+      )
+      (if-statement
+        "if"
+        (condition
+          "("
+          (assignment-expression
+            (binary-expression
+              (identifier-expression "known")
+              "*"
+              (identifier-expression "operand")
+            )
+            "="
+            (call-expression
+              (identifier-expression "Acquire")
+              (argument-list
+                "("
+                (argument
+                  (identifier-expression "first")
+                )
+                (list-separator ",")
+                (argument
+                  (identifier-expression "second")
+                )
+                ")"
+              )
+            )
+          )
+          ")"
+        )
+        (compound-statement
+          "{"
+          (expression-statement
+            (call-expression
+              (identifier-expression "Use")
+              (argument-list
+                "("
+                (argument
+                  (identifier-expression "known")
+                )
+                ")"
+              )
+            )
+            ";"
+          )
+          "}"
+        )
+      )
+      "}"
+    )
+  )
 )
