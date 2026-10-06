@@ -1317,6 +1317,52 @@ TEST(SyntaxLayout, InitializerCommaFollowsOutputShapeNotInputComma)
     }
 }
 
+TEST(SyntaxLayout, InitializerCommaMappingExcludesTrailingComments)
+{
+    auto style = Canonical(80);
+    style.InitializersBreak = formatter::BreakRequirement::Always;
+    style.InitializersTrailingComma =
+        formatter::TrailingCommaPolicy::WhenMultiline;
+    for (const std::string input :
+        {
+            "Value values[] = {Value::First, Value::Last // last\n};\n",
+            "Value values[] = {first, source.last /* last */ /* extra */};\n",
+            "Value values[] = {first, offset + Value::Last /* last */};\n",
+        })
+    {
+        SCOPED_TRACE(input);
+        const auto endpoint = parser::SourceOffset(input.find(" /"));
+        const auto output = Lower(input, style);
+        size_t generated = 0;
+        for (const auto& map : output.Map) {
+            if (map.Source.Identity == document::NoIdentity &&
+                std::string_view(output.Text)
+                    .substr(map.OutputBegin, map.OutputEnd - map.OutputBegin) ==
+                    ",")
+            {
+                EXPECT_FALSE(map.Exact);
+                EXPECT_EQ(map.Source.Begin, endpoint);
+                EXPECT_EQ(map.Source.End, endpoint);
+                ++generated;
+            }
+        }
+        EXPECT_EQ(generated, 1u);
+        const parser::SourceRange immutable[] = {{endpoint, endpoint + 1}};
+        formatter::SourceAnalysisOptions safety;
+        safety.ImmutableRanges = immutable;
+        const auto protectedOutput = Lower(input, style, {}, safety);
+        for (const auto& map : protectedOutput.Map) {
+            if (map.Source.Identity == document::NoIdentity) {
+                EXPECT_NE(
+                    std::string_view(protectedOutput.Text).substr(
+                        map.OutputBegin,
+                        map.OutputEnd - map.OutputBegin),
+                    ",");
+            }
+        }
+    }
+}
+
 TEST(SyntaxLayout, IncompleteInitializerTailCannotAuthorizeCommaEdits)
 {
     auto style = Canonical(80);

@@ -2519,6 +2519,11 @@ std::vector<FormatCase> FormatCases()
         "conditional-closer",
         "input.cpp",
     });
+    for (const auto* name : {"comments", "comments-preserve"}) {
+        cases.push_back(
+            {data / "initializer-trailing-comma", name, "comments.input.cpp"});
+        cases.back().CheckOwningMaps = true;
+    }
     AddCases(
         cases,
         data / "function_parameters",

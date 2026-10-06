@@ -73,5 +73,9 @@ auto evaluate(Values... values) {
     RAISE exception{} << "first" " second";
     WARN exception{code} << "first" /* join */ " second";
     NOTICE types::exception{} + R"(raw)" " tail";
+    auto commented_member = object./* internal */member /* trailing */;
+    auto qualified_values = {Value::First, Value::Last // last
+    };
+    object.operator bool /* trailing */ ();
     return lambda(initialized);
 }
