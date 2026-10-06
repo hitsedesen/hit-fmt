@@ -1740,13 +1740,43 @@ private:
         return Cursor_;
     }
 
+    void RecordParsedBodyDelimiters(TokenIndex opening, PunctuationRole role)
+    {
+        if (HasDelimiterMap_ || BranchParseDepth_ != 0 ||
+            CurrentKind() != TK::Operator_CloseBrace)
+        {
+            return;
+        }
+        // Alternative branches can each open a scope closed after #endif.
+        // The linear token stack then pairs enclosing braces incorrectly.
+        // Publish only the boundaries proven by the statement/declaration
+        // parser; do not make the whole delimiter map authoritative again.
+        const auto none = std::numeric_limits<TokenIndex>::max();
+        for (auto token : {opening, Cursor_}) {
+            const auto previous = Tree_.Tokens_.MatchingDelimiter(token);
+            if (previous != none &&
+                Tree_.Tokens_.MatchingDelimiter(previous) == token)
+            {
+                Tree_.Tokens_.SetMatchingDelimiter(previous, none);
+            }
+        }
+        Tree_.Tokens_.SetMatchingDelimiter(opening, Cursor_);
+        Tree_.Tokens_.SetMatchingDelimiter(Cursor_, opening);
+        Tree_.Tokens_.SetRole(opening, role);
+        Tree_.Tokens_.SetRole(Cursor_, role);
+    }
+
     void ParseDeclarationSequence(
         Node& parent,
         TK closing,
         bool macroRecord = false)
     {
+        const auto opening = Cursor_ == 0 ? 0 : Cursor_ - 1;
         PushConditionalBraceScope();
         while (!AtEnd()) {
+            if (ParseConditionalBodyTail(parent, false)) {
+                continue;
+            }
             if (macroRecord && CurrentKind() == TK::Identifier &&
                 std::binary_search(
                     ClassEndMacroNames_.begin(),
@@ -1776,6 +1806,15 @@ private:
             }
         }
         PopConditionalBraceScope();
+        if (!macroRecord && closing == TK::Operator_CloseBrace &&
+            Kind(opening) == TK::Operator_OpenBrace)
+        {
+            RecordParsedBodyDelimiters(
+                opening,
+                parent.Kind == NodeKind::RecordDeclaration
+                ? PunctuationRole::RecordDelimiter
+                : PunctuationRole::BlockDelimiter);
+        }
         if (!macroRecord && closing != TK::EndOfFile && AtEnd()) {
             ErrorAt(Cursor_, "expected closing brace");
         }
@@ -1988,6 +2027,39 @@ private:
         delimiter->Tokens.End = ++Cursor_;
         Append(parent, *delimiter);
         --ConditionalOpenBraces_[ConditionalBraceScopeDepth_ - 1];
+        return true;
+    }
+
+    bool ParseConditionalBodyTail(Node& parent, bool statementContext)
+    {
+        if (ConditionalBraceScopeOverflow_ != 0 ||
+            ConditionalBraceScopeDepth_ == 0 ||
+            ConditionalOpenBraces_[ConditionalBraceScopeDepth_ - 1] == 0)
+        {
+            return false;
+        }
+        // A scope opened in alternative branches has no single owning node.
+        // Keep its shared continuation opaque rather than indenting its
+        // statements as direct children of the surrounding body.
+        auto* tail = MakeNode(NodeKind::UnparsedSyntax, Cursor_);
+        while (!AtEnd() &&
+            ConditionalOpenBraces_[ConditionalBraceScopeDepth_ - 1] != 0)
+        {
+            if (ConsumeConditionalClosingBrace(*tail) ||
+                ParseTrivia(*tail, statementContext))
+            {
+                continue;
+            }
+            const auto before = Cursor_;
+            Append(
+                *tail,
+                statementContext ? *ParseStatement() : *ParseDeclaration());
+            if (Cursor_ == before) {
+                ++Cursor_;
+            }
+        }
+        tail->Tokens.End = Cursor_;
+        Append(parent, *tail);
         return true;
     }
 
@@ -7673,6 +7745,9 @@ private:
             RegisterParameterValues(*functionDeclaration);
         }
         while (!AtEnd()) {
+            if (ParseConditionalBodyTail(*node, true)) {
+                continue;
+            }
             if (CurrentKind() == TK::Operator_CloseBrace) {
                 if (ConsumeConditionalClosingBrace(*node)) {
                     continue;
@@ -7691,6 +7766,7 @@ private:
         PopConditionalBraceScope();
         PopScope();
         if (CurrentKind() == TK::Operator_CloseBrace) {
+            RecordParsedBodyDelimiters(start, PunctuationRole::BlockDelimiter);
             ++Cursor_;
         } else {
             ErrorAt(start, "unterminated compound statement");
@@ -10466,6 +10542,16 @@ private:
         for (auto i = node.Tokens.Begin; i < node.Tokens.End; ++i) {
             if (Kind(i) != openingKind) {
                 continue;
+            }
+            // Parsed scope boundaries remain valid even when conditional
+            // branches prevent a globally balanced linear delimiter map.
+            const auto parsedClose = Tree_.Tokens_.MatchingDelimiter(i);
+            if (!HasDelimiterMap_ && Tree_.Tokens_.Role(i) == role &&
+                parsedClose > i && parsedClose < node.Tokens.End &&
+                Tree_.Tokens_.MatchingDelimiter(parsedClose) == i &&
+                Kind(parsedClose) == closingKind)
+            {
+                return;
             }
             auto closingEnd = FindBalancedEnd(i);
             if (closingEnd <= node.Tokens.End && closingEnd > i &&
