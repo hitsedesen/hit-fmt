@@ -1405,6 +1405,14 @@ public:
                     C::DeclarationHeaders,
                     3);
             }
+            if (node.Kind == NK::RecordDeclaration && kind == TK::Identifier &&
+                Tree_.TokenText(i) == "final")
+            {
+                // The contextual class-virt-specifier is a separate header
+                // component, even after a template-id or comment. Template
+                // arguments and members are owned by their own children.
+                Mark(i, F::None, node, C::DeclarationHeaders, 1, true);
+            }
             KeywordAt(node, state, i);
             if (kind == TK::Comment && i > 0 &&
                 Tree_.TokenText(i).starts_with("//") &&
