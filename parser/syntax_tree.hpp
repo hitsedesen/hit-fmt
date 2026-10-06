@@ -58,6 +58,7 @@ struct TokenRange
     SYNTAX_NODE_KIND(FunctionTryBlock, "function-try-block")                   \
     SYNTAX_NODE_KIND(NamespaceDeclaration, "namespace-declaration")            \
     SYNTAX_NODE_KIND(RecordDeclaration, "record-declaration")                  \
+    SYNTAX_NODE_KIND(ClassVirtSpecifier, "class-virt-specifier")               \
     SYNTAX_NODE_KIND(EnumDeclaration, "enum-declaration")                      \
     SYNTAX_NODE_KIND(TemplateDeclaration, "template-declaration")              \
     SYNTAX_NODE_KIND(UsingDeclaration, "using-declaration")                    \

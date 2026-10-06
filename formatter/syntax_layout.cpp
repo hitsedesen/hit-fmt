@@ -2057,6 +2057,7 @@ private:
             case NodeKind::NestedDeclarator:
             case NodeKind::FunctionDeclarator:
             case NodeKind::FunctionQualifier:
+            case NodeKind::ClassVirtSpecifier:
             case NodeKind::ExceptionSpecification:
             case NodeKind::TrailingReturnType:
             case NodeKind::TypeId:

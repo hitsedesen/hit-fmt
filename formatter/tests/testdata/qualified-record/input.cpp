@@ -98,3 +98,15 @@ void global_values(int operand, int mask, bool condition) {
     ::factor&&true;
     ::invoke(operand);
 }
+template<class T> struct Closed;
+template<> struct Closed<int> final {};
+template<class T> struct Closed<T*>final {};
+template<> struct Closed<Spec<int>> final : Plain {};
+template<class T> class FinalClass;
+template<> class FinalClass<int> final {};
+template<class T> struct OuterFinal { struct Nested; };
+template<class T> struct OuterFinal<T>::Nested final {};
+template<> struct Closed<long> /* closer */ final {};
+struct final {};
+template<> struct Closed<final> {};
+void template_calls() { make<int>(); make<Spec<int>>(); }

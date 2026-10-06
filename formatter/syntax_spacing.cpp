@@ -857,6 +857,17 @@ public:
                         true);
                 }
                 break;
+            case NK::ClassVirtSpecifier:
+                // A parsed class-virt-specifier is a separate header component,
+                // even after a template-id or comment.
+                Mark(
+                    begin,
+                    F::None,
+                    parent ? *parent : node,
+                    C::DeclarationHeaders,
+                    1,
+                    true);
+                break;
             case NK::FunctionQualifier: {
                 const auto token = Tree_.Kind(begin);
                 auto field = F::FunctionSuffixSpecifierSpacing;

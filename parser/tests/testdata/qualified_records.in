@@ -71,3 +71,20 @@ void keep_exports() {
     ExportedTemplateEmpty<int>* template_empty;
     ExportedTemplateForward<int>* template_forward;
 }
+template<class T> struct Closed;
+template<> struct Closed<int> final {};
+template<class T> struct Closed<T*>final {};
+template<> struct Closed<Spec<int>> final : Plain {};
+template<class T> class FinalClass;
+template<> class FinalClass<int> final {};
+template<class T> struct OuterFinal { struct Nested; };
+template<class T> struct OuterFinal<T>::Nested final {};
+template<> struct Closed<long> /* closer */ final {};
+struct final {};
+template<> struct Closed<final> {};
+void template_calls() { make<int>(); make<Spec<int>>(); }
+struct [[nodiscard]] AttributedFinal final {};
+struct HeadComment /* name */ final /* modifier */ {};
+struct Members { int final; virtual void call() final; };
+void ordinary_final(int final) { use(final); }
+struct Plain final;

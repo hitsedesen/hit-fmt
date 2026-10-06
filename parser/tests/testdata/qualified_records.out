@@ -1837,4 +1837,303 @@
       "}"
     )
   )
+  (template-declaration
+    "template"
+    (template-parameter-list
+      "<"
+      (template-parameter "class" "T")
+      ">"
+    )
+    (record-declaration "struct" "Closed" ";")
+  )
+  (template-declaration
+    "template"
+    (template-parameter-list "<" ">")
+    (record-declaration
+      "struct" "Closed"
+      (template-argument-list
+        "<"
+        (template-argument "int")
+        ">"
+      )
+      (class-virt-specifier "final")
+      "{" "}" ";"
+    )
+  )
+  (template-declaration
+    "template"
+    (template-parameter-list
+      "<"
+      (template-parameter "class" "T")
+      ">"
+    )
+    (record-declaration
+      "struct" "Closed"
+      (template-argument-list
+        "<"
+        (template-argument "T" "*")
+        ">"
+      )
+      (class-virt-specifier "final")
+      "{" "}" ";"
+    )
+  )
+  (template-declaration
+    "template"
+    (template-parameter-list "<" ">")
+    (record-declaration
+      "struct" "Closed"
+      (template-argument-list
+        "<"
+        (template-argument
+          "Spec"
+          (template-argument-list
+            "<"
+            (template-argument "int")
+            ">>"
+          )
+        )
+      )
+      (class-virt-specifier "final")
+      (base-clause
+        ":"
+        (base-specifier
+          (base-type "Plain")
+        )
+      )
+      "{" "}" ";"
+    )
+  )
+  (template-declaration
+    "template"
+    (template-parameter-list
+      "<"
+      (template-parameter "class" "T")
+      ">"
+    )
+    (record-declaration "class" "FinalClass" ";")
+  )
+  (template-declaration
+    "template"
+    (template-parameter-list "<" ">")
+    (record-declaration
+      "class" "FinalClass"
+      (template-argument-list
+        "<"
+        (template-argument "int")
+        ">"
+      )
+      (class-virt-specifier "final")
+      "{" "}" ";"
+    )
+  )
+  (template-declaration
+    "template"
+    (template-parameter-list
+      "<"
+      (template-parameter "class" "T")
+      ">"
+    )
+    (record-declaration
+      "struct" "OuterFinal" "{"
+      (record-declaration "struct" "Nested" ";")
+      "}" ";"
+    )
+  )
+  (template-declaration
+    "template"
+    (template-parameter-list
+      "<"
+      (template-parameter "class" "T")
+      ">"
+    )
+    (record-declaration
+      "struct" "OuterFinal"
+      (template-argument-list
+        "<"
+        (template-argument "T")
+        ">"
+      )
+      "::" "Nested"
+      (class-virt-specifier "final")
+      "{" "}" ";"
+    )
+  )
+  (template-declaration
+    "template"
+    (template-parameter-list "<" ">")
+    (record-declaration
+      "struct" "Closed"
+      (template-argument-list
+        "<"
+        (template-argument "long")
+        ">"
+        (trailing-trivia
+          (comment "/* closer */")
+        )
+      )
+      "/* closer */"
+      (class-virt-specifier "final")
+      "{" "}" ";"
+    )
+  )
+  (record-declaration "struct" "final" "{" "}" ";")
+  (template-declaration
+    "template"
+    (template-parameter-list "<" ">")
+    (record-declaration
+      "struct" "Closed"
+      (template-argument-list
+        "<"
+        (template-argument "final")
+        ">"
+      )
+      "{" "}" ";"
+    )
+  )
+  (function-definition
+    (declaration-specifiers "void")
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (declarator-name "template_calls")
+          (function-declarator
+            (parameter-list "(" ")")
+          )
+        )
+      )
+    )
+    (compound-statement
+      "{"
+      (expression-statement
+        (call-expression
+          (template-id-expression
+            (identifier-expression "make")
+            (template-argument-list
+              "<"
+              (template-argument "int")
+              ">"
+            )
+          )
+          (argument-list "(" ")")
+        )
+        ";"
+      )
+      (expression-statement
+        (call-expression
+          (template-id-expression
+            (identifier-expression "make")
+            (template-argument-list
+              "<"
+              (template-argument
+                "Spec"
+                (template-argument-list
+                  "<"
+                  (template-argument "int")
+                  ">>"
+                )
+              )
+            )
+          )
+          (argument-list "(" ")")
+        )
+        ";"
+      )
+      "}"
+    )
+  )
+  (record-declaration
+    "struct"
+    (attribute-specifier "[" "[" "nodiscard" "]" "]")
+    "AttributedFinal"
+    (class-virt-specifier "final")
+    "{" "}" ";"
+  )
+  (record-declaration
+    "struct" "HeadComment" "/* name */"
+    (class-virt-specifier
+      (leading-trivia
+        (comment "/* name */")
+      )
+      "final"
+      (trailing-trivia
+        (comment "/* modifier */")
+      )
+    )
+    "/* modifier */" "{" "}" ";"
+  )
+  (record-declaration
+    "struct" "Members" "{"
+    (declaration
+      (declaration-specifiers "int")
+      (init-declarator-list
+        (init-declarator
+          (declarator
+            (declarator-name "final")
+          )
+        )
+      )
+      ";"
+    )
+    (function-declaration
+      (declaration-specifiers "virtual" "void")
+      (init-declarator-list
+        (init-declarator
+          (declarator
+            (declarator-name "call")
+            (function-declarator
+              (parameter-list "(" ")")
+              (function-qualifier "final")
+            )
+          )
+        )
+      )
+      ";"
+    )
+    "}" ";"
+  )
+  (function-definition
+    (declaration-specifiers "void")
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (declarator-name "ordinary_final")
+          (function-declarator
+            (parameter-list
+              "("
+              (parameter-declaration
+                (declaration-specifiers "int")
+                (init-declarator-list
+                  (init-declarator
+                    (declarator
+                      (declarator-name "final")
+                    )
+                  )
+                )
+              )
+              ")"
+            )
+          )
+        )
+      )
+    )
+    (compound-statement
+      "{"
+      (expression-statement
+        (call-expression
+          (identifier-expression "use")
+          (argument-list
+            "("
+            (argument
+              (identifier-expression "final")
+            )
+            ")"
+          )
+        )
+        ";"
+      )
+      "}"
+    )
+  )
+  (record-declaration "struct" "Plain" "final" ";")
 )
