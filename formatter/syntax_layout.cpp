@@ -1705,6 +1705,25 @@ private:
         if (parent != None && SameOperatorSequence(parent, id)) {
             return;
         }
+        if (parent != None && !Syntax_[parent].Safe) {
+            const auto parentKind = Region(Syntax_[parent]).Kind;
+            if ((parentKind == NodeKind::BinaryExpression ||
+                parentKind == NodeKind::AssignmentExpression ||
+                parentKind == NodeKind::ConditionalExpression) &&
+                Safety_.Gaps()[node.Tokens.Begin].HasLineFeed &&
+                !CanPlanAroundOpaqueChildren(parent))
+            {
+                // An unplanned operator sequence cannot provide its retained
+                // operand line's continuation. Capture that physical base
+                // without taking ownership of the enclosing opaque syntax.
+                const auto scope = GroupAt(
+                    TokenPosition(node.Tokens.Begin),
+                    GapPosition(node.Tokens.End),
+                    document::GroupMode::Fill);
+                Groups_[scope].Spec.StructuralBase = true;
+                Groups_[scope].Spec.LineBase = true;
+            }
+        }
         const auto& policy = Policies_.Expressions;
         const auto& indentation = policy.Indent;
         const bool canonical = policy.Layout == LayoutMode::Canonical;

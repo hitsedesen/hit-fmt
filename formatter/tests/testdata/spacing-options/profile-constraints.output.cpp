@@ -25,3 +25,24 @@ struct Compact;
 
 template <class T>
 void Probe() requires (Ready<T> && Enabled<T>);
+
+template <class Tag, Tag... Defaults, CompatibleBase Base, Tag... Entries, class... Branches>
+    requires (
+        CompatibleHierarchy<Base, Branches...> &&
+        // The fallback branch must have a compatible default.
+        (!OptionalChoice<Tag, Defaults...>::DefaultChoiceValue.has_value() ||
+            IsDefaultChoiceInMapping<Tag, Defaults..., Entries...>)
+        )
+struct ConstrainedChoice;
+
+struct ConstrainedFactory
+{
+    template <class Tag, Tag... Defaults, CompatibleBase Base, Tag... Entries, class... Branches>
+        requires (
+            CompatibleHierarchy<Base, Branches...> &&
+            // Keep the nested fallback at the retained constraint's level.
+            (!OptionalChoice<Tag, Defaults...>::DefaultChoiceValue.has_value() ||
+                IsDefaultChoiceInMapping<Tag, Defaults..., Entries...>)
+            )
+    static void Configure();
+};
