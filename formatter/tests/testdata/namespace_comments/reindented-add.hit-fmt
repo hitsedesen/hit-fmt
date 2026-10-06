@@ -1,0 +1,7 @@
+Layout = Canonical
+IndentWidth = 4
+IndentationKind = Spaces
+IndentNamespaces = NoIndent
+NamespaceComments = AddMissing
+NamespaceBlankLinesAfterOpen = 1
+NamespaceBlankLinesBeforeClose = 1

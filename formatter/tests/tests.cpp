@@ -2424,6 +2424,18 @@ std::vector<FormatCase> FormatCases()
         "composes-spacing",
         "composes-spacing.input.cpp",
     });
+    for (const auto* profile : {"reindented", "reindented-add"}) {
+        cases.push_back({
+            data / "namespace_comments",
+            profile,
+            "reindented.input.cpp",
+            {},
+            {},
+            true,
+            {},
+            true,
+        });
+    }
     AddCases(
         cases,
         data / "attribute-parenthesis-interiors",
