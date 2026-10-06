@@ -1359,6 +1359,29 @@ private:
                     part.Tokens.Begin > begin && part.Tokens.End <= closer)
                 {
                     lastItem = child;
+                    // Comment topology stays preserved, but spacing owned by
+                    // this list follows its layout throughout attached runs.
+                    const auto spacingContext = [&] (Index gap) {
+                        if (Spacing_.Gaps()[gap].Owner == Syntax_[id].Region) {
+                            Gaps_[gap].Context = canonical
+                                ? GapContext::Rebuilt
+                                : GapContext::Preserved;
+                            Gaps_[gap].ContextKnown = true;
+                        }
+                    };
+                    auto gap = part.Tokens.Begin;
+                    spacingContext(gap);
+                    while (gap > begin + 1 &&
+                        Tree_.Kind(gap - 1) == TokenKind::Comment)
+                    {
+                        spacingContext(--gap);
+                    }
+                    for (gap = part.Tokens.End;
+                        gap < closer && Tree_.Kind(gap) == TokenKind::Comment;
+                        ++gap)
+                    {
+                        spacingContext(gap);
+                    }
                 }
                 continue;
             }

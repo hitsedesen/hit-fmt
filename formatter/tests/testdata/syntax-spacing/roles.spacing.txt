@@ -644,3 +644,18 @@
 720 before=; field=DeclarationSemicolonSpacing owner=function-declaration category=10 priority=3 fallback=0 protected=0 constraint=0
 721 before=} field=RecordBodyInteriorSpacing owner=record-declaration category=11 priority=3 fallback=1 protected=0 constraint=0
 722 before=; field=DeclarationSemicolonSpacing owner=record-declaration category=10 priority=3 fallback=0 protected=0 constraint=0
+723 before=void field=None owner=translation-unit category=11 priority=1 fallback=1 protected=0 constraint=0
+724 before=labeled field=None owner=function-definition category=10 priority=1 fallback=1 protected=0 constraint=0
+725 before=( field=FunctionSpaceBeforeParameters owner=function-declarator category=2 priority=2 fallback=0 protected=0 constraint=0
+726 before=) field=EmptyFunctionParametersSpacing owner=function-declarator category=2 priority=3 fallback=0 protected=0 constraint=0
+727 before={ field=FunctionBraceSpacing owner=function-definition category=10 priority=3 fallback=1 protected=0 constraint=0
+728 before=compute field=BlockInteriorSpacing owner=compound-statement category=11 priority=2 fallback=1 protected=0 constraint=0
+729 before=( field=FunctionCallSpaceBeforeParameters owner=call-expression category=1 priority=2 fallback=0 protected=0 constraint=0
+730 before=/* next */ field=SpaceInsideCallArguments owner=call-expression category=1 priority=2 fallback=0 protected=0 constraint=0
+731 before=/* another */ field=ArgumentCommentSpacing owner=argument-list category=1 priority=4 fallback=0 protected=0 constraint=0
+732 before=second field=ArgumentCommentSpacing owner=argument-list category=1 priority=4 fallback=0 protected=0 constraint=0
+733 before=/* previous */ field=ArgumentCommentSpacing owner=argument-list category=1 priority=4 fallback=0 protected=0 constraint=0
+734 before=/* final */ field=ArgumentCommentSpacing owner=argument-list category=1 priority=4 fallback=0 protected=0 constraint=0
+735 before=) field=SpaceInsideCallArguments owner=call-expression category=1 priority=2 fallback=0 protected=0 constraint=0
+736 before=; field=StatementSemicolonSpacing owner=expression-statement category=11 priority=2 fallback=0 protected=0 constraint=0
+737 before=} field=BlockInteriorSpacing owner=compound-statement category=11 priority=2 fallback=1 protected=0 constraint=0

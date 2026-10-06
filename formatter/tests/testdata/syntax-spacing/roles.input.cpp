@@ -84,3 +84,4 @@ template<class... Values> void captureAssign(Values... a) {
 void guarded()try {} catch(...) {}
 struct Guard { Guard() try : value(1){} catch(...){} int value; };
 struct RefCallable { void run() &; };
+void labeled() { compute(/* next */ /* another */ second /* previous */ /* final */); }

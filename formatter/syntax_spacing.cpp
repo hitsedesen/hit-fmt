@@ -437,6 +437,18 @@ public:
                     C::Calls);
                 break;
             }
+            case NK::Argument:
+                if (parent && parent->Kind == NK::ArgumentList &&
+                    !state.KeywordOperands && !state.UncertainOperands)
+                {
+                    ArgumentComments(node, *parent, C::Calls);
+                }
+                break;
+            case NK::InitializerElement:
+                if (parent && parent->Kind == NK::InitializerList) {
+                    ArgumentComments(node, *parent, C::Initializers);
+                }
+                break;
             case NK::ParameterList: {
                 const bool lambda =
                     parent && parent->Kind == NK::LambdaExpression;
@@ -474,9 +486,14 @@ public:
                     node,
                     C::Captures);
                 break;
-            case NK::BracedInitializer:
+            case NK::BracedInitializer: {
                 list(C::Initializers);
-                if (parent && parent->Kind == NK::InitializerElement &&
+                // An intervening label comment owns its following gap, not
+                // the type/assignment boundary before an initializer.
+                const bool afterComment =
+                    begin > 0 && Tree_.Kind(begin - 1) == TK::Comment;
+                if (!afterComment && parent &&
+                    parent->Kind == NK::InitializerElement &&
                     parent->Tokens.Begin < begin)
                 {
                     Mark(
@@ -486,10 +503,11 @@ public:
                         C::Initializers,
                         3);
                 }
-                if ((!parent ||
-                    (parent->Kind != NK::Initializer &&
-                        parent->Kind != NK::InitializerElement) ||
-                    parent->Tokens.Begin == begin) &&
+                if (!afterComment &&
+                    (!parent ||
+                        (parent->Kind != NK::Initializer &&
+                            parent->Kind != NK::InitializerElement) ||
+                        parent->Tokens.Begin == begin) &&
                     (!parent ||
                         (parent->Kind != NK::ReturnStatement &&
                             parent->Kind != NK::ThrowStatement &&
@@ -509,6 +527,7 @@ public:
                     node,
                     C::Initializers);
                 break;
+            }
             case NK::InitializerList:
             case NK::EnumeratorList:
                 list(C::Initializers);
@@ -1536,6 +1555,58 @@ public:
     }
 
 private:
+    void ArgumentComments(
+        const SourceRegion& node,
+        const SourceRegion& list,
+        C category)
+    {
+        if (node.Status != RegionStatus::Complete) {
+            return;
+        }
+        const auto separator = [&] (TI token) {
+            return Tree_.Kind(token) == TK::Operator_Comma &&
+                Tree_.Role(token) == PR::ListSeparator;
+        };
+        const auto markRun = [&] (TI first, TI last) {
+            for (auto gap = first + 1; gap < last; ++gap) {
+                if (Tree_.TokenText(gap - 1).starts_with("/*") &&
+                    Tree_.TokenText(gap).starts_with("/*"))
+                {
+                    Mark(gap, F::ArgumentCommentSpacing, list, category, 4);
+                }
+            }
+        };
+        // Own the argument-facing gap and gaps between consecutive block
+        // comments in its attached runs, but not separator-facing gaps.
+        const auto begin = node.Tokens.Begin;
+        auto prefix = begin;
+        while (prefix > list.Tokens.Begin + 1 &&
+            Tree_.Kind(prefix - 1) == TK::Comment)
+        {
+            --prefix;
+        }
+        if (prefix < begin &&
+            (prefix == list.Tokens.Begin + 1 || separator(prefix - 1)))
+        {
+            markRun(prefix, begin);
+            if (Tree_.TokenText(begin - 1).starts_with("/*")) {
+                Mark(begin, F::ArgumentCommentSpacing, list, category, 4);
+            }
+        }
+        const auto end = node.Tokens.End;
+        const auto closer = list.Tokens.End - 1;
+        auto suffix = end;
+        while (suffix < closer && Tree_.Kind(suffix) == TK::Comment) {
+            ++suffix;
+        }
+        if (suffix > end && (suffix == closer || separator(suffix))) {
+            markRun(end, suffix);
+            if (Tree_.TokenText(end).starts_with("/*")) {
+                Mark(end, F::ArgumentCommentSpacing, list, category, 4);
+            }
+        }
+    }
+
     void Capture(const SourceRegion& node, const SourceRegion* parent)
     {
         const auto end = node.Tokens.End;

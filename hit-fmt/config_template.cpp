@@ -136,6 +136,24 @@ void PrintOption(std::ostream& output, std::string_view name, const T& value)
         output
             << "# Uncertain scopes retain existing line-start regions.\n"
                 "# Inline endpoints do not prevent body expansion.\n";
+    } else if (name == "BraceInitializerSpacing") {
+        output
+            << "# Gap before an initializer's {, except after a comment.\n"
+                "# ArgumentCommentSpacing controls comment-to-value gaps.\n";
+    } else if (name == "ArgumentCommentSpacing") {
+        output
+            << "# Between a call argument or braced initializer element and\n"
+                "# its leading/trailing block comments, for any value kind.\n"
+                "# After the last leading and before the first trailing one,\n"
+                "# and between consecutive block comments in attached runs.\n"
+                "# Space: consume(/* first */ /* second */ value /* note */);\n"
+                "# NoSpace: consume(/* first *//* second */value/* note */);\n"
+                "# Default: Preserve, keeping original horizontal spelling.\n"
+                "# Choose Space explicitly to normalize horizontal gaps.\n"
+                "# Generated* applies when the owning list is rebuilt.\n"
+                "# Only block-to-block and block-to-argument gaps qualify.\n"
+                "# Newlines, line comments, interiors, separator-facing gaps\n"
+                "# and protections stay put.\n";
     } else if (name == "TemplateTypeArgumentInteriorSpacing") {
         output << "# NoSpace may join confirmed template closers as >>.\n";
     } else if (name == "ScopeResolutionSpacing") {

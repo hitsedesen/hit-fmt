@@ -612,7 +612,11 @@ TEST(SyntaxSpacing, GeneratedPoliciesObserveOwnerNotDescendantEdits)
     GapPolicies policies;
     policies.CommaSpaceAfter = GapPolicy::GeneratedSpace;
     policies.BinaryOperatorSpacing = GapPolicy::GeneratedNoSpace;
-    Analysis analysis("void f(){invoke(first + second, third);}", policies);
+    policies.ArgumentCommentSpacing = GapPolicy::GeneratedNoSpace;
+    Analysis analysis(
+        "void f(){invoke(first + second, third, /* fourth */ "
+        "{first} /* other */ /* suffix */);}",
+        policies);
     const auto commaAfter = analysis.Before("third");
     const auto binaryBefore = analysis.Before("+");
     const auto& comma = analysis.Spacing.Gaps()[commaAfter];
@@ -634,6 +638,34 @@ TEST(SyntaxSpacing, GeneratedPoliciesObserveOwnerNotDescendantEdits)
         analysis.Spacing
             .SpacePreference(commaAfter, GapContext::Rebuilt, analysis.Safety),
         true);
+    const auto labelAfter = analysis.Before("{", 1);
+    const auto& label = analysis.Spacing.Gaps()[labelAfter];
+    EXPECT_EQ(label.Field, F::ArgumentCommentSpacing);
+    EXPECT_EQ(label.Category, C::Calls);
+    ASSERT_NE(label.Owner, NoRegion);
+    EXPECT_EQ(
+        analysis.Safety.Regions()[label.Owner].Kind,
+        parser::NodeKind::ArgumentList);
+    EXPECT_NE(label.Owner, binary.Owner);
+    const auto suffixBefore = analysis.Before("/* suffix */");
+    const auto& suffix = analysis.Spacing.Gaps()[suffixBefore];
+    EXPECT_EQ(suffix.Field, F::ArgumentCommentSpacing);
+    EXPECT_EQ(suffix.Owner, label.Owner);
+    EXPECT_EQ(suffix.Category, label.Category);
+    EXPECT_FALSE(analysis.Spacing
+        .SpacePreference(suffixBefore, GapContext::Preserved, analysis.Safety));
+    EXPECT_EQ(
+        analysis.Spacing.SpacePreference(
+            suffixBefore,
+            GapContext::Rebuilt,
+            analysis.Safety),
+        false);
+    EXPECT_FALSE(analysis.Spacing
+        .SpacePreference(labelAfter, GapContext::Preserved, analysis.Safety));
+    EXPECT_EQ(
+        analysis.Spacing
+            .SpacePreference(labelAfter, GapContext::Rebuilt, analysis.Safety),
+        false);
 }
 
 TEST(SyntaxSpacing, TrailingDeclarationCommentsBelongToHeaderNotOuterBody)
