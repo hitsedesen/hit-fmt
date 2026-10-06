@@ -1365,10 +1365,9 @@ private:
 
     void PushScope()
     {
-        CurrentScope_ =
-            detail::Make<NameScope>(
-                ScratchMemory_,
-                NameScope{.Parent = CurrentScope_});
+        CurrentScope_ = detail::Make<NameScope>(
+            ScratchMemory_,
+            NameScope{.Parent = CurrentScope_});
     }
 
     void PopScope()
@@ -4992,6 +4991,10 @@ private:
 
     void AddTypeSyntaxChildren(Node& node, size_t begin, size_t end)
     {
+        if (TypeSyntaxDepth_ >= 64) {
+            return;
+        }
+        ++TypeSyntaxDepth_;
         std::optional<bool> knownType;
         for (auto i = begin; i < end; ++i) {
             if (Kind(i) == TK::Keyword_alignas) {
@@ -5026,6 +5029,40 @@ private:
                     Append(node, *type);
                     i = after - 1;
                     continue;
+                }
+            }
+            if (Kind(i) == TK::Operator_OpenParenthesis &&
+                (node.Kind == NodeKind::TypeId ||
+                    node.Kind == NodeKind::TemplateArgument))
+            {
+                if (!knownType) {
+                    knownType = node.Kind == NodeKind::TypeId ||
+                        LooksLikeTypeId(begin, end);
+                }
+                if (*knownType && FindDeclarationSpecifiersEnd(begin, end) == i)
+                {
+                    bool ambiguous = false;
+                    if (auto parameters =
+                        InferParameterList(i, end, ambiguous, false, true))
+                    {
+                        auto* function =
+                            MakeNode(NodeKind::FunctionDeclarator, i);
+                        function->Tokens.End = parameters->End;
+                        auto* list = MakeNode(NodeKind::ParameterList, i);
+                        list->Tokens.End = parameters->End;
+                        AddParameterDeclarations(*list, *parameters);
+                        AddDirectiveChildrenInGap(*list, i, parameters->End);
+                        Append(*function, *list);
+                        (void)AddFunctionSuffixSyntax(
+                            *function,
+                            parameters->End,
+                            end,
+                            false);
+                        function->Tokens.End = function->LastChild->Tokens.End;
+                        Append(node, *function);
+                        i = function->Tokens.End - 1;
+                        continue;
+                    }
                 }
             }
             if ((node.Kind == NodeKind::TemplateArgument ||
@@ -5115,6 +5152,7 @@ private:
                 }
             }
         }
+        --TypeSyntaxDepth_;
     }
 
     [[nodiscard]] std::optional<TokenRange> InferNestedFunctionParameters(
@@ -5662,6 +5700,75 @@ private:
         bool proveDirectInitializer = false) const
     {
         ambiguous = false;
+        auto name = Kind(begin) == TK::Identifier
+            ? begin
+            : FindDeclaratorName(begin, end, std::nullopt);
+        if (name >= end || Kind(name) != TK::Identifier) {
+            ambiguous = proveDirectInitializer;
+            return std::nullopt;
+        }
+        auto opening = NextSignificant(name + 1);
+        if (Kind(opening) != TK::Operator_OpenParenthesis &&
+            Kind(begin) == TK::Operator_OpenParenthesis)
+        {
+            if (auto nested = InferNestedFunctionParameters(begin, end)) {
+                opening = nested->Begin;
+            }
+        }
+        if (Kind(opening) != TK::Operator_OpenParenthesis) {
+            ambiguous = proveDirectInitializer;
+            return std::nullopt;
+        }
+        return InferParameterList(
+            opening,
+            end,
+            ambiguous,
+            proveDirectInitializer);
+    }
+
+    [[nodiscard]] ParameterTypeEvidence StartsFunctionTypeParameter(
+        TokenIndex first,
+        TokenIndex end) const
+    {
+        const auto evidence = StartsStatementParameterType(first, end);
+        if (evidence != ParameterTypeEvidence::Unknown) {
+            return evidence;
+        }
+        // Included types need not have local bindings. Adjacent type/name
+        // identifiers, cv qualifiers, and trailing abstract pointer operators
+        // rule out a value expression. `Unknown * value` alone does not.
+        const auto afterType = FindDeclarationSpecifiersEnd(first, end);
+        if (afterType <= first) {
+            return evidence;
+        }
+        if (Kind(first) == TK::Keyword_const ||
+            Kind(first) == TK::Keyword_volatile ||
+            Kind(afterType) == TK::Identifier)
+        {
+            return ParameterTypeEvidence::Type;
+        }
+        auto afterPointers = afterType;
+        while (afterPointers < end &&
+            (Kind(afterPointers) == TK::Operator_Star ||
+                Kind(afterPointers) == TK::Operator_Ampersand ||
+                Kind(afterPointers) == TK::Operator_And))
+        {
+            afterPointers = NextSignificant(afterPointers + 1);
+        }
+        return afterPointers > afterType &&
+            (afterPointers == end || Kind(afterPointers) == TK::Operator_Comma)
+            ? ParameterTypeEvidence::Type
+            : evidence;
+    }
+
+    [[nodiscard]] std::optional<TokenRange> InferParameterList(
+        TokenIndex opening,
+        TokenIndex end,
+        bool& ambiguous,
+        bool proveDirectInitializer = false,
+        bool functionType = false) const
+    {
+        ambiguous = false;
         size_t proofWork = 4096;
         const auto uncertain = [&] () -> std::optional<TokenRange> {
             ambiguous = true;
@@ -5707,23 +5814,14 @@ private:
                 }
                 return ParameterTypeEvidence::Value;
             };
-        auto name = Kind(begin) == TK::Identifier
-            ? begin
-            : FindDeclaratorName(begin, end, std::nullopt);
-        if (name >= end || Kind(name) != TK::Identifier) {
-            return proveDirectInitializer ? uncertain() : std::nullopt;
-        }
-        auto opening = NextSignificant(name + 1);
-        if (Kind(opening) != TK::Operator_OpenParenthesis &&
-            Kind(begin) == TK::Operator_OpenParenthesis)
-        {
-            if (auto nested = InferNestedFunctionParameters(begin, end)) {
-                opening = nested->Begin;
+        const auto parameterType = [&] (TokenIndex first, TokenIndex limit) {
+            if (proveDirectInitializer) {
+                return proofParameterType(first, limit);
             }
-        }
-        if (Kind(opening) != TK::Operator_OpenParenthesis) {
-            return proveDirectInitializer ? uncertain() : std::nullopt;
-        }
+            return functionType
+                ? StartsFunctionTypeParameter(first, limit)
+                : StartsStatementParameterType(first, limit);
+        };
         auto closing = proveDirectInitializer
             ? ArgumentPairEnd(opening, end)
                 .value_or(std::numeric_limits<TokenIndex>::max())
@@ -5740,9 +5838,7 @@ private:
             if (Kind(first) == TK::Operator_Ellipsis) {
                 return TokenRange{.Begin = opening, .End = closing};
             }
-            auto evidence = proveDirectInitializer
-                ? proofParameterType(first, closing - 1)
-                : StartsStatementParameterType(first, closing - 1);
+            auto evidence = parameterType(first, closing - 1);
             if (evidence == ParameterTypeEvidence::Value) {
                 return initializer();
             }
@@ -5754,25 +5850,29 @@ private:
         }
 
         // A parenthesized initializer can also start with an identifier.
-        // Infer parameters only from types established in this file or
-        // explicit type keywords. An unresolved name may instead be a value.
+        // Ordinary declarations require locally established parameter types.
+        // Within a function type, one definite parameter proves the list's
+        // role and lets other parameters use unresolved included types.
+        bool hasDefiniteType = false;
         while (first < closing - 1) {
             if (Kind(first) == TK::Operator_Ellipsis) {
                 if (NextSignificant(first + 1) != closing - 1) {
                     return initializer();
+                }
+                if (functionType && hasDefiniteType) {
+                    ambiguous = false;
                 }
                 return ambiguous
                     ? std::nullopt
                     : std::optional<TokenRange>(
                         TokenRange{.Begin = opening, .End = closing});
             }
-            auto evidence = proveDirectInitializer
-                ? proofParameterType(first, closing - 1)
-                : StartsStatementParameterType(first, closing - 1);
+            auto evidence = parameterType(first, closing - 1);
             if (evidence == ParameterTypeEvidence::Value) {
                 return initializer();
             }
             ambiguous |= evidence == ParameterTypeEvidence::Unknown;
+            hasDefiniteType |= evidence == ParameterTypeEvidence::Type;
             // Before a parameter's default argument, a declarator cannot
             // contain a value expression or a braced initializer. A type
             // followed by either one is still direct initialization.
@@ -5803,13 +5903,9 @@ private:
                         }
                         continue;
                     }
-                    auto nestedEvidence = proveDirectInitializer
-                        ? proofParameterType(
-                            nestedParameterStarts[depth - 1],
-                            closing - 1)
-                        : StartsStatementParameterType(
-                            nestedParameterStarts[depth - 1],
-                            closing - 1);
+                    auto nestedEvidence = parameterType(
+                        nestedParameterStarts[depth - 1],
+                        closing - 1);
                     if (nestedEvidence == ParameterTypeEvidence::Value) {
                         return initializer();
                     }
@@ -6040,6 +6136,9 @@ private:
             if (first == closing - 1) {
                 return initializer();
             }
+        }
+        if (functionType && hasDefiniteType) {
+            ambiguous = false;
         }
         if (ambiguous) {
             return proveDirectInitializer ? uncertain() : std::nullopt;
@@ -10385,6 +10484,7 @@ private:
     TokenIndex ParseLimit_ = 0;
     size_t BranchParseDepth_ = 0;
     unsigned TemplateListDepth_ = 0;
+    unsigned TypeSyntaxDepth_ = 0;
     static constexpr size_t MaximumParseDepth = 256;
     std::array<size_t, MaximumParseDepth> ConditionalOpenBraces_{};
     size_t ConditionalBraceScopeDepth_ = 0;

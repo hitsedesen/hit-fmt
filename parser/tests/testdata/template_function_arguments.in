@@ -5,6 +5,7 @@ void dispatch()
 {
     Setter<T, R(ErrorOr<U>&&)>::Run(promise, callback, move(value));
     Setter<T, R()>::Run(promise, callback);
+    Setter<T, R(T first, const U& second)> named;
     scope::Setter<T, R(ErrorOr<U>&&)>::Run(promise, callback, move(value));
     ::Setter<T, R(ErrorOr<U>&&)>::Run(promise, callback, move(value));
     Setter<T, R(Pair<U, T>&&, Box<Box<U>>)>::Run(promise, callback);
@@ -15,6 +16,17 @@ void dispatch()
     auto comparison = left < right > ::Run();
     Setter<T, (left < right)>::Run(promise, callback);
 }
+template<class Signature> struct Callback;
+Callback<bool(const DispatchPlan& plan, JobQueue* queue, unsigned long long ticket)> submit;
+Callback<int(const scheduling::WorkUnit* work, JobQueue* queue, bool urgent)> schedule;
+Callback<bool(const Batch<unsigned>& incoming, const Batch<long>& deferred, JobQueue* destination)> route;
+using DispatchSignature = int(JobQueue* queue, const DispatchPlan& plan, bool urgent) noexcept;
+Callback<int(1 + 2)> constant;
+Callback<int(unresolved)> unresolved;
+Callback<int(left * right)> product;
+Callback<int(left & right)> bitwise;
+Callback<int(left && right)> logical;
+Callback<decltype(compute(1, 2))> result;
 void external_types()
 {
     Setter<T, R()>::Run(promise, callback);

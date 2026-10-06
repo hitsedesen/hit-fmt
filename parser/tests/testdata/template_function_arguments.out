@@ -74,13 +74,30 @@
                   (template-argument "T")
                   (list-separator ",")
                   (template-argument
-                    "R" "(" "ErrorOr"
-                    (template-argument-list
-                      "<"
-                      (template-argument "U")
-                      ">"
+                    "R"
+                    (function-declarator
+                      (parameter-list
+                        "("
+                        (parameter-declaration
+                          (declaration-specifiers
+                            "ErrorOr"
+                            (template-argument-list
+                              "<"
+                              (template-argument "U")
+                              ">"
+                            )
+                          )
+                          (init-declarator-list
+                            (init-declarator
+                              (abstract-declarator
+                                (pointer-operator "&&")
+                              )
+                            )
+                          )
+                        )
+                        ")"
+                      )
                     )
-                    "&&" ")"
                   )
                   ">"
                 )
@@ -124,7 +141,12 @@
                   "<"
                   (template-argument "T")
                   (list-separator ",")
-                  (template-argument "R" "(" ")")
+                  (template-argument
+                    "R"
+                    (function-declarator
+                      (parameter-list "(" ")")
+                    )
+                  )
                   ">"
                 )
               )
@@ -145,6 +167,56 @@
           )
           ";"
         )
+        (declaration-statement
+          (declaration-specifiers
+            "Setter"
+            (template-argument-list
+              "<"
+              (template-argument "T")
+              (list-separator ",")
+              (template-argument
+                "R"
+                (function-declarator
+                  (parameter-list
+                    "("
+                    (parameter-declaration
+                      (declaration-specifiers "T")
+                      (init-declarator-list
+                        (init-declarator
+                          (declarator
+                            (declarator-name "first")
+                          )
+                        )
+                      )
+                    )
+                    (list-separator ",")
+                    (parameter-declaration
+                      (declaration-specifiers "const" "U")
+                      (init-declarator-list
+                        (init-declarator
+                          (declarator
+                            (pointer-operator "&")
+                            (declarator-name "second")
+                          )
+                        )
+                      )
+                    )
+                    ")"
+                  )
+                )
+              )
+              ">"
+            )
+          )
+          (init-declarator-list
+            (init-declarator
+              (declarator
+                (declarator-name "named")
+              )
+            )
+          )
+          ";"
+        )
         (expression-statement
           (call-expression
             (member-expression
@@ -158,13 +230,30 @@
                     (template-argument "T")
                     (list-separator ",")
                     (template-argument
-                      "R" "(" "ErrorOr"
-                      (template-argument-list
-                        "<"
-                        (template-argument "U")
-                        ">"
+                      "R"
+                      (function-declarator
+                        (parameter-list
+                          "("
+                          (parameter-declaration
+                            (declaration-specifiers
+                              "ErrorOr"
+                              (template-argument-list
+                                "<"
+                                (template-argument "U")
+                                ">"
+                              )
+                            )
+                            (init-declarator-list
+                              (init-declarator
+                                (abstract-declarator
+                                  (pointer-operator "&&")
+                                )
+                              )
+                            )
+                          )
+                          ")"
+                        )
                       )
-                      "&&" ")"
                     )
                     ">"
                   )
@@ -210,13 +299,30 @@
                   (template-argument "T")
                   (list-separator ",")
                   (template-argument
-                    "R" "(" "ErrorOr"
-                    (template-argument-list
-                      "<"
-                      (template-argument "U")
-                      ">"
+                    "R"
+                    (function-declarator
+                      (parameter-list
+                        "("
+                        (parameter-declaration
+                          (declaration-specifiers
+                            "ErrorOr"
+                            (template-argument-list
+                              "<"
+                              (template-argument "U")
+                              ">"
+                            )
+                          )
+                          (init-declarator-list
+                            (init-declarator
+                              (abstract-declarator
+                                (pointer-operator "&&")
+                              )
+                            )
+                          )
+                        )
+                        ")"
+                      )
                     )
-                    "&&" ")"
                   )
                   ">"
                 )
@@ -261,27 +367,49 @@
                   (template-argument "T")
                   (list-separator ",")
                   (template-argument
-                    "R" "(" "Pair"
-                    (template-argument-list
-                      "<"
-                      (template-argument "U")
-                      (list-separator ",")
-                      (template-argument "T")
-                      ">"
-                    )
-                    "&&" "," "Box"
-                    (template-argument-list
-                      "<"
-                      (template-argument
-                        "Box"
-                        (template-argument-list
-                          "<"
-                          (template-argument "U")
-                          ">>"
+                    "R"
+                    (function-declarator
+                      (parameter-list
+                        "("
+                        (parameter-declaration
+                          (declaration-specifiers
+                            "Pair"
+                            (template-argument-list
+                              "<"
+                              (template-argument "U")
+                              (list-separator ",")
+                              (template-argument "T")
+                              ">"
+                            )
+                          )
+                          (init-declarator-list
+                            (init-declarator
+                              (abstract-declarator
+                                (pointer-operator "&&")
+                              )
+                            )
+                          )
                         )
+                        (list-separator ",")
+                        (parameter-declaration
+                          (declaration-specifiers
+                            "Box"
+                            (template-argument-list
+                              "<"
+                              (template-argument
+                                "Box"
+                                (template-argument-list
+                                  "<"
+                                  (template-argument "U")
+                                  ">>"
+                                )
+                              )
+                            )
+                          )
+                        )
+                        ")"
                       )
                     )
-                    ")"
                   )
                   ">"
                 )
@@ -312,7 +440,12 @@
                   "<"
                   (template-argument "T")
                   (list-separator ",")
-                  (template-argument "R" "(" ")")
+                  (template-argument
+                    "R"
+                    (function-declarator
+                      (parameter-list "(" ")")
+                    )
+                  )
                   ">"
                 )
               )
@@ -341,13 +474,30 @@
               (template-argument "T")
               (list-separator ",")
               (template-argument
-                "R" "(" "ErrorOr"
-                (template-argument-list
-                  "<"
-                  (template-argument "U")
-                  ">"
+                "R"
+                (function-declarator
+                  (parameter-list
+                    "("
+                    (parameter-declaration
+                      (declaration-specifiers
+                        "ErrorOr"
+                        (template-argument-list
+                          "<"
+                          (template-argument "U")
+                          ">"
+                        )
+                      )
+                      (init-declarator-list
+                        (init-declarator
+                          (abstract-declarator
+                            (pointer-operator "&&")
+                          )
+                        )
+                      )
+                    )
+                    ")"
+                  )
                 )
-                "&&" ")"
               )
               ">"
             )
@@ -453,6 +603,388 @@
         "}"
       )
     )
+  )
+  (template-declaration
+    "template"
+    (template-parameter-list
+      "<"
+      (template-parameter "class" "Signature")
+      ">"
+    )
+    (record-declaration "struct" "Callback" ";")
+  )
+  (declaration
+    (declaration-specifiers
+      "Callback"
+      (template-argument-list
+        "<"
+        (template-argument
+          "bool"
+          (function-declarator
+            (parameter-list
+              "("
+              (parameter-declaration
+                (declaration-specifiers "const" "DispatchPlan")
+                (init-declarator-list
+                  (init-declarator
+                    (declarator
+                      (pointer-operator "&")
+                      (declarator-name "plan")
+                    )
+                  )
+                )
+              )
+              (list-separator ",")
+              (parameter-declaration
+                (declaration-specifiers "JobQueue")
+                (init-declarator-list
+                  (init-declarator
+                    (declarator
+                      (pointer-operator "*")
+                      (declarator-name "queue")
+                    )
+                  )
+                )
+              )
+              (list-separator ",")
+              (parameter-declaration
+                (declaration-specifiers "unsigned" "long" "long")
+                (init-declarator-list
+                  (init-declarator
+                    (declarator
+                      (declarator-name "ticket")
+                    )
+                  )
+                )
+              )
+              ")"
+            )
+          )
+        )
+        ">"
+      )
+    )
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (declarator-name "submit")
+        )
+      )
+    )
+    ";"
+  )
+  (declaration
+    (declaration-specifiers
+      "Callback"
+      (template-argument-list
+        "<"
+        (template-argument
+          "int"
+          (function-declarator
+            (parameter-list
+              "("
+              (parameter-declaration
+                (declaration-specifiers "const" "scheduling" "::" "WorkUnit")
+                (init-declarator-list
+                  (init-declarator
+                    (declarator
+                      (pointer-operator "*")
+                      (declarator-name "work")
+                    )
+                  )
+                )
+              )
+              (list-separator ",")
+              (parameter-declaration
+                (declaration-specifiers "JobQueue")
+                (init-declarator-list
+                  (init-declarator
+                    (declarator
+                      (pointer-operator "*")
+                      (declarator-name "queue")
+                    )
+                  )
+                )
+              )
+              (list-separator ",")
+              (parameter-declaration
+                (declaration-specifiers "bool")
+                (init-declarator-list
+                  (init-declarator
+                    (declarator
+                      (declarator-name "urgent")
+                    )
+                  )
+                )
+              )
+              ")"
+            )
+          )
+        )
+        ">"
+      )
+    )
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (declarator-name "schedule")
+        )
+      )
+    )
+    ";"
+  )
+  (declaration
+    (declaration-specifiers
+      "Callback"
+      (template-argument-list
+        "<"
+        (template-argument
+          "bool"
+          (function-declarator
+            (parameter-list
+              "("
+              (parameter-declaration
+                (declaration-specifiers
+                  "const" "Batch"
+                  (template-argument-list
+                    "<"
+                    (template-argument "unsigned")
+                    ">"
+                  )
+                )
+                (init-declarator-list
+                  (init-declarator
+                    (declarator
+                      (pointer-operator "&")
+                      (declarator-name "incoming")
+                    )
+                  )
+                )
+              )
+              (list-separator ",")
+              (parameter-declaration
+                (declaration-specifiers
+                  "const" "Batch"
+                  (template-argument-list
+                    "<"
+                    (template-argument "long")
+                    ">"
+                  )
+                )
+                (init-declarator-list
+                  (init-declarator
+                    (declarator
+                      (pointer-operator "&")
+                      (declarator-name "deferred")
+                    )
+                  )
+                )
+              )
+              (list-separator ",")
+              (parameter-declaration
+                (declaration-specifiers "JobQueue")
+                (init-declarator-list
+                  (init-declarator
+                    (declarator
+                      (pointer-operator "*")
+                      (declarator-name "destination")
+                    )
+                  )
+                )
+              )
+              ")"
+            )
+          )
+        )
+        ">"
+      )
+    )
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (declarator-name "route")
+        )
+      )
+    )
+    ";"
+  )
+  (using-declaration
+    "using" "DispatchSignature" "="
+    (type-id
+      "int"
+      (function-declarator
+        (parameter-list
+          "("
+          (parameter-declaration
+            (declaration-specifiers "JobQueue")
+            (init-declarator-list
+              (init-declarator
+                (declarator
+                  (pointer-operator "*")
+                  (declarator-name "queue")
+                )
+              )
+            )
+          )
+          (list-separator ",")
+          (parameter-declaration
+            (declaration-specifiers "const" "DispatchPlan")
+            (init-declarator-list
+              (init-declarator
+                (declarator
+                  (pointer-operator "&")
+                  (declarator-name "plan")
+                )
+              )
+            )
+          )
+          (list-separator ",")
+          (parameter-declaration
+            (declaration-specifiers "bool")
+            (init-declarator-list
+              (init-declarator
+                (declarator
+                  (declarator-name "urgent")
+                )
+              )
+            )
+          )
+          ")"
+        )
+        (exception-specification "noexcept")
+      )
+    )
+    ";"
+  )
+  (declaration
+    (declaration-specifiers
+      "Callback"
+      (template-argument-list
+        "<"
+        (template-argument "int" "(" "1" "+" "2" ")")
+        ">"
+      )
+    )
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (declarator-name "constant")
+        )
+      )
+    )
+    ";"
+  )
+  (declaration
+    (declaration-specifiers
+      "Callback"
+      (template-argument-list
+        "<"
+        (template-argument "int" "(" "unresolved" ")")
+        ">"
+      )
+    )
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (declarator-name "unresolved")
+        )
+      )
+    )
+    ";"
+  )
+  (declaration
+    (declaration-specifiers
+      "Callback"
+      (template-argument-list
+        "<"
+        (template-argument "int" "(" "left" "*" "right" ")")
+        ">"
+      )
+    )
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (declarator-name "product")
+        )
+      )
+    )
+    ";"
+  )
+  (declaration
+    (declaration-specifiers
+      "Callback"
+      (template-argument-list
+        "<"
+        (template-argument "int" "(" "left" "&" "right" ")")
+        ">"
+      )
+    )
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (declarator-name "bitwise")
+        )
+      )
+    )
+    ";"
+  )
+  (declaration
+    (declaration-specifiers
+      "Callback"
+      (template-argument-list
+        "<"
+        (template-argument "int" "(" "left" "&&" "right" ")")
+        ">"
+      )
+    )
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (declarator-name "logical")
+        )
+      )
+    )
+    ";"
+  )
+  (declaration
+    (declaration-specifiers
+      "Callback"
+      (template-argument-list
+        "<"
+        (template-argument
+          (type-id
+            "decltype"
+            (parenthesized-expression
+              "("
+              (call-expression
+                (identifier-expression "compute")
+                (argument-list
+                  "("
+                  (argument
+                    (literal-expression "1")
+                  )
+                  (list-separator ",")
+                  (argument
+                    (literal-expression "2")
+                  )
+                  ")"
+                )
+              )
+              ")"
+            )
+          )
+        )
+        ">"
+      )
+    )
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (declarator-name "result")
+        )
+      )
+    )
+    ";"
   )
   (function-definition
     (declaration-specifiers "void")

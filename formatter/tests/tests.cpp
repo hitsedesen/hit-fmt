@@ -1452,6 +1452,21 @@ std::vector<FormatCase> FormatCases()
     addProfileCase("../spacing-options", "profile-ref-qualifiers");
     addProfileCase("../spacing-options", "profile-template-punctuation");
     cases.back().CheckOwningMaps = true;
+    addProfileCase("../declaration-headers", "function-types");
+    cases.back().CheckOwningMaps = true;
+    {
+        auto forced = cases.back();
+        auto preserved = cases.back();
+        forced.Name = "function-types-forced-template";
+        forced.Style =
+            formatter::LoadConfigFile(profile + ".hit-fmt").FormattingStyle;
+        forced.Style->TemplateArgumentsBreak = BreakRequirement::Always;
+        cases.push_back(std::move(forced));
+        preserved.Name = "function-types-preserve";
+        preserved.Style = formatter::Style{};
+        preserved.Expected = preserved.Input;
+        cases.push_back(std::move(preserved));
+    }
     cases.push_back({
         std::filesystem::path(FORMATTER_TESTDATA_DIR) /
             "../declaration-headers",
