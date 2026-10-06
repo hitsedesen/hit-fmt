@@ -1,0 +1,5 @@
+Layout = Canonical
+DeclarationBlankLines = 1
+DefinitionBlankLines = 1
+NamespaceComments = AddMissing
+RemoveNullDeclarations = false

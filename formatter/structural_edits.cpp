@@ -1639,6 +1639,15 @@ StructuralPlan ResolveNamespaceComments(
             if (plan.Options.Policy == NamespaceCommentPolicy::Remove) {
                 continue;
             }
+            // A surviving null declaration can own the closing comment.
+            // Layout may move that suffix to another line, but it must not
+            // turn an originally occupied suffix into a missing comment.
+            if (following != count &&
+                original.Kind(following) == TK::Operator_Semicolon)
+            {
+                skip(StructuralSkip::FollowingText);
+                continue;
+            }
             auto openLine = line(mapping[ns.Open].Output.Begin);
             auto closeLine = line(mapping[ns.Close].Output.Begin);
             auto interior = closeLine > openLine ? closeLine - openLine - 1 : 0;
