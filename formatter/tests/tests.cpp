@@ -387,6 +387,34 @@ std::vector<FormatCase> FormatCases()
         "trailing-return.input.cpp",
         "qualified-always",
     });
+    {
+        const auto directory = std::filesystem::path(FORMATTER_TESTDATA_DIR) /
+            "../declaration-headers";
+        const auto base = formatter::LoadConfigFile(
+            directory / "../../../../.hit-fmt").FormattingStyle;
+        for (const auto name :
+            {
+                "assignment-prefix",
+                "assignment-prefix-leading",
+                "assignment-prefix-next-line",
+                "assignment-prefix-preserve",
+            })
+        {
+            FormatCase value{directory, name, "assignment-prefix.input.cpp"};
+            value.Style = base;
+            if (std::string_view(name) == "assignment-prefix-leading") {
+                value.Style->AssignmentOperatorSide = OperatorSide::Leading;
+            } else if (std::string_view(name) == "assignment-prefix-next-line")
+            {
+                value.Style->AssignmentRhsPlacement =
+                    FirstItemPlacement::NextLine;
+            } else if (std::string_view(name) == "assignment-prefix-preserve") {
+                value.Style->DeclarationHeadersLayout =
+                    CategoryLayout::Preserve;
+            }
+            cases.push_back(std::move(value));
+        }
+    }
     for (auto& value : cases) {
         if (value.Directory.filename() == "declaration-headers") {
             value.CheckOwningMaps = true;
@@ -4730,8 +4758,8 @@ TEST_P(FormatTest, Golden)
     const auto config = value.Config.empty() ? value.Name : value.Config;
     const auto style = value.Style
         ? *value.Style
-        : formatter::LoadConfigFile(
-            fixture.Directory / (config + ".hit-fmt")).FormattingStyle;
+        : formatter::LoadConfigFile(fixture.Directory / (config + ".hit-fmt"))
+            .FormattingStyle;
     const auto input = fixture.Input(value.Input);
     if (value.Hunks.empty()) {
         const auto expected = value.Expected.empty()
@@ -4983,6 +5011,31 @@ TEST(Formatter, ExpressionLayout_ChecksPipelineMismatchAndEmittedWidth)
         formatter::Format(tree, formatter::PreparedFormat(style));
     EXPECT_EQ(mismatchOnly.Text, result.Text);
     EXPECT_TRUE(mismatchOnly.Diagnostics.empty());
+}
+
+TEST(Formatter, InitializedDeclaratorBreaksResolveWidthDiagnostics)
+{
+    const auto directory = std::filesystem::path(FORMATTER_TESTDATA_DIR) /
+        "../declaration-headers";
+    auto source = ReadFile(directory / "assignment-prefix.input.cpp");
+    const auto size = source.size();
+    source.append(util::SourcePaddingSize, '\0');
+    const auto tree = parser::Parse(
+        {.Data = source.data(), .Size = size},
+        [] (parser::ParseError) { });
+    auto style = formatter::LoadConfigFile(
+        directory / "../../../../.hit-fmt").FormattingStyle;
+    for (const auto side : {OperatorSide::Leading, OperatorSide::Trailing}) {
+        style.AssignmentOperatorSide = side;
+        for (const auto placement :
+            {FirstItemPlacement::InlineIfFits, FirstItemPlacement::NextLine})
+        {
+            style.AssignmentRhsPlacement = placement;
+            const auto result =
+                formatter::Format(tree, formatter::PreparedFormat(style));
+            EXPECT_TRUE(result.Diagnostics.empty()) << result.Text;
+        }
+    }
 }
 
 struct LayoutDiagnosticCase
