@@ -1,0 +1,4 @@
+RemoveNullStatements = true
+RemoveNullDeclarations = true
+IndentationKind = Spaces
+TrailingWhitespace = Trim

@@ -4751,11 +4751,14 @@ private:
                     lf > 0 && Safety_.Original(source)[lf - 1] == '\r';
                 const auto newlineBegin =
                     source.Source.Begin + Index(lf) - (crlf ? 1 : 0);
+                // The rebuilt final newline is outside this slice, so trim
+                // its trailing whitespace at the slice boundary as well.
                 PreservedSlice(
                     i,
                     source.Source.Begin,
                     newlineBegin,
-                    Policies_.TrailingWhitespace == TrailingWhitespace::Trim);
+                    Policies_.TrailingWhitespace == TrailingWhitespace::Trim,
+                    true);
                 auto spec = Spec(i, document::GapKind::Hard, false);
                 if (Policies_.LineEnding == LineEnding::Preserve) {
                     spec.LineEnding = crlf
