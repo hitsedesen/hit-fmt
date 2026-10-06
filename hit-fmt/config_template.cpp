@@ -136,6 +136,10 @@ void PrintOption(std::ostream& output, std::string_view name, const T& value)
         output
             << "# Uncertain scopes retain existing line-start regions.\n"
                 "# Inline endpoints do not prevent body expansion.\n";
+    } else if (name == "BraceInitializerSpacing") {
+        output
+            << "# Gap before an initializer's {, except after a comment.\n"
+                "# /* argument */ {first, last} keeps its following space.\n";
     } else if (name == "TemplateTypeArgumentInteriorSpacing") {
         output << "# NoSpace may join confirmed template closers as >>.\n";
     } else if (name == "ScopeResolutionSpacing") {

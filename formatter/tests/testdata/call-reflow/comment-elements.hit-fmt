@@ -11,3 +11,4 @@ ContinuationOffset = 4
 BodyShape = Expanded
 CommaSpaceAfter = Space
 SpaceInsideCallArguments = NoSpace
+BraceInitializerSpacing = NoSpace

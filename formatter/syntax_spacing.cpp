@@ -474,9 +474,14 @@ public:
                     node,
                     C::Captures);
                 break;
-            case NK::BracedInitializer:
+            case NK::BracedInitializer: {
                 list(C::Initializers);
-                if (parent && parent->Kind == NK::InitializerElement &&
+                // An intervening label comment owns its following gap, not
+                // the type/assignment boundary before an initializer.
+                const bool afterComment =
+                    begin > 0 && Tree_.Kind(begin - 1) == TK::Comment;
+                if (!afterComment && parent &&
+                    parent->Kind == NK::InitializerElement &&
                     parent->Tokens.Begin < begin)
                 {
                     Mark(
@@ -486,10 +491,11 @@ public:
                         C::Initializers,
                         3);
                 }
-                if ((!parent ||
-                    (parent->Kind != NK::Initializer &&
-                        parent->Kind != NK::InitializerElement) ||
-                    parent->Tokens.Begin == begin) &&
+                if (!afterComment &&
+                    (!parent ||
+                        (parent->Kind != NK::Initializer &&
+                            parent->Kind != NK::InitializerElement) ||
+                        parent->Tokens.Begin == begin) &&
                     (!parent ||
                         (parent->Kind != NK::ReturnStatement &&
                             parent->Kind != NK::ThrowStatement &&
@@ -509,6 +515,7 @@ public:
                     node,
                     C::Initializers);
                 break;
+            }
             case NK::InitializerList:
             case NK::EnumeratorList:
                 list(C::Initializers);

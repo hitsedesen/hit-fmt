@@ -1687,6 +1687,7 @@ std::vector<FormatCase> FormatCases()
     for (const auto* name :
         {
             "comment-elements",
+            "comment-elements-space",
             "comment-elements-preserve",
             "comment-elements-tabs",
             "comment-elements-delimiter",
@@ -1706,7 +1707,9 @@ std::vector<FormatCase> FormatCases()
         auto style = formatter::LoadConfigFile(
             callReflow / "comment-elements.hit-fmt").FormattingStyle;
         const std::string_view profile(name);
-        if (profile == "comment-elements-preserve") {
+        if (profile == "comment-elements-space") {
+            style.BraceInitializerSpacing = GapPolicy::Space;
+        } else if (profile == "comment-elements-preserve") {
             style.Layout = LayoutMode::Preserve;
         } else if (profile == "comment-elements-tabs") {
             style.IndentationKind = IndentationKind::Tabs;

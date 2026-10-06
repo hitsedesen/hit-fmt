@@ -24,6 +24,12 @@ void demo() {
   };
     consume(alpha, /* inline */ beta, gamma);
     auto prefixes = consume(alpha, /* first */ /* second */ beta, gamma);
+    consume(/* range */ {first, last}, /* empty */ {}, /* scalar */ value);
+    consume(alpha, /* range */ {positions.begin(), positions.end()}, gamma);
+    consume(/* tight */{first, last});
+    consume(/* type */ Range {first, last});
+    consume(/* outer */ {/* inner */ {first, last}});
+    auto labeled = {/* range */ {first, last}, /* tight */{first, last}};
     auto mixed = consume(alpha, /* prefix */ // stays with alpha
         beta, gamma);
     auto suffix = consume(alpha /* belongs to alpha */, beta, gamma);
