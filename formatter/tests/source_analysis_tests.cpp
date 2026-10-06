@@ -68,9 +68,7 @@ void ExpectSameAnalysis(
         EXPECT_EQ(a.ContextSensitive, b.ContextSensitive);
         EXPECT_EQ(bool(a.HasLineFeed), bool(b.HasLineFeed));
         EXPECT_EQ(bool(a.Horizontal), bool(b.Horizontal));
-        EXPECT_EQ(
-            bool(a.RecoveryCalleeBoundary),
-            bool(b.RecoveryCalleeBoundary));
+        EXPECT_EQ(bool(a.RecoveryBoundary), bool(b.RecoveryBoundary));
         EXPECT_EQ(bool(a.IntrinsicPreserve), bool(b.IntrinsicPreserve));
         EXPECT_EQ(
             bool(a.IntrinsicContextSensitive),
@@ -124,6 +122,7 @@ void ExpectSameAnalysis(
         EXPECT_EQ(a.Attached.Begin, b.Attached.Begin);
         EXPECT_EQ(a.Attached.End, b.Attached.End);
         EXPECT_EQ(a.Status, b.Status);
+        EXPECT_EQ(a.StatementBoundary, b.StatementBoundary);
     }
     ASSERT_EQ(
         direct
@@ -587,6 +586,59 @@ TEST(SourceAnalysis, OpaqueCalleeProtectsSpellingNotIncomingGap)
     std::pmr::monotonic_buffer_resource memory;
     auto analysis = Analyze(tree, memory);
     EXPECT_FALSE(analysis.CanReplaceGap(Before(tree, "Factory"), "\n    "));
+}
+
+TEST(SourceAnalysis, OpaqueStatementsProtectInteriorsNotBoundaries)
+{
+    for (const auto separator : {"", "\n"}) {
+        for (const auto statement :
+            {
+                "Assign()  =  value ?: fallback;",
+                "Assign() = first => second;",
+                "Assign() = value ?:\n        fallback;",
+                "Assign() = value ? /* omitted */ : fallback;",
+            })
+        {
+            SCOPED_TRACE(statement);
+            Input input(std::string("void f() {") + separator + statement +
+                separator + "int result = value ?: fallback;" + separator +
+                "Finish();\n}\n");
+            auto tree = Parse(input);
+            std::pmr::monotonic_buffer_resource memory;
+            auto analysis = Analyze(tree, memory);
+            const auto start = Before(tree, "Assign");
+            EXPECT_TRUE(analysis.CanReplaceGap(start, "\n    "));
+            EXPECT_TRUE(analysis.CanReplaceGap(Before(tree, "int"), "\n    "));
+            EXPECT_TRUE(
+                analysis.CanReplaceGap(Before(tree, "Finish"), "\n    "));
+            const auto end = Before(tree, ";");
+            for (auto gap = start + 1; gap <= end; ++gap) {
+                EXPECT_FALSE(analysis.CanReplaceGap(gap, "\n  "));
+            }
+            const std::array immutable{
+                parser::SourceRange{
+                    analysis.Gaps()[start].Source.Begin,
+                    tree.Token(start).Text.End,
+                },
+            };
+            auto fenced = Analyze(tree, memory, {.ImmutableRanges = immutable});
+            EXPECT_FALSE(fenced.CanReplaceGap(start, "\n    "));
+        }
+    }
+    for (const auto statement :
+        {
+            "Assign() = value ?: fallback",
+            "Assign() = value ?: fallback);",
+            "Assign() = value @ fallback;",
+        })
+    {
+        SCOPED_TRACE(statement);
+        Input input(std::string("void f() {\n") + statement + "\n}\n");
+        auto tree = Parse(input);
+        std::pmr::monotonic_buffer_resource memory;
+        auto analysis = Analyze(tree, memory);
+        EXPECT_FALSE(analysis.CanReplaceGap(Before(tree, "Assign"), "\n    "));
+    }
 }
 
 TEST(SourceAnalysis, RecoverySummariesAndMergedExplicitRanges)

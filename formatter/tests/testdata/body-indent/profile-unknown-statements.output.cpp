@@ -58,6 +58,41 @@ void AfterDisabled()
     Use(other);
 }
 
+void RecoveredExpressions()
+{
+    if (Ready()) {
+        Assign()  =  value ?: fallback;
+        int result = value ?: fallback;
+        Assign() = first => second;
+        Finish();
+    }
+}
+
+void MultilineRecoveredExpressions()
+{
+    if (Ready()) {
+        Assign() = value ?:
+            fallback;
+        Assign() = value ? /* omitted operand */ : fallback;
+        // Preserve the recovered expression's interior.
+        Assign() = first =>
+            second;
+        Consume(value ?:
+            fallback);
+        int result = (value ?:
+            fallback);
+        Finish();
+    }
+}
+
+void RecoveredLambda()
+{
+    auto callback = [] {
+        Assign() = value ?: fallback;
+        Finish();
+    };
+}
+
 void Incomplete()
 {
         External value
