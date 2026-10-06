@@ -49,3 +49,33 @@ types::Map<
     ExceptionallyLongFirstTemplateArgument,
     ExceptionallyLongSecondTemplateArgument,
     ExceptionallyLongThirdTemplateArgument> large;
+
+template <class T> auto WrapState()
+{
+    return Handle<T>(Create<app::detail::SharedState<T>>(
+        /*strongCount*/ 1,
+        /*weakCount*/ 1,
+        /*observerCount*/ 1));
+}
+
+template <class T> auto WrapStateWithoutComments()
+{
+    return Handle<T>(Create<app::detail::SharedState<T>>(
+        strongReferenceCount,
+        weakReferenceCount,
+        observerReferenceCount));
+}
+
+template <class T> auto WrapShortState()
+{
+    return Handle<T>(Create<State<T>>(1, 2, 3));
+}
+
+template <
+    class ExceptionallyLongFirstTemplateArgument,
+    class ExceptionallyLongSecondTemplateArgument> auto WrapLongType()
+{
+    return Handle<
+        ExceptionallyLongFirstTemplateArgument,
+        ExceptionallyLongSecondTemplateArgument>(Create<State<int>>(1, 2, 3));
+}

@@ -1206,6 +1206,11 @@ Result Document::Render(
         Measure broken;
         Measure flexible;
         std::uint8_t firstBreakPenalty = 0;
+        std::array<std::uint32_t, 3> childBreakPrefixes{
+            Infinity,
+            Infinity,
+            Infinity,
+        };
         std::uint32_t lastBreak = InvalidId;
         std::uint32_t ownedBreak = InvalidId;
         std::uint32_t expandedGapWidth = 0;
@@ -1246,6 +1251,13 @@ Result Document::Render(
             {
                 flexible = summary.Broken;
                 firstBreakPenalty = Group(node).BreakPenalty;
+            }
+            // A wrapper without owned breaks still exposes cheaper breaks
+            // in its descendants. Do not bypass coupled owned boundaries.
+            if (groupEntry.OwnedLastBreak == InvalidId ||
+                groupEntry.ChildLayoutAllowed)
+            {
+                childBreakPrefixes = summary.BreakPrefixes;
             }
             summary = summaries.back();
             summaries.pop_back();
@@ -1372,9 +1384,11 @@ Result Document::Render(
             auto& prefix = summary.BreakPrefixes[penalty - 1];
             prefix = flat.Line
                 ? flat.Prefix
-                : flexible.Line && firstBreakPenalty < penalty
+                : std::min(
+                    childBreakPrefixes[penalty - 1],
+                    flexible.Line && firstBreakPenalty < penalty
                     ? flexible.Prefix
-                    : AddWidth(flat.Prefix, prefix);
+                    : AddWidth(flat.Prefix, prefix));
         }
         summary.Flat = Join(flat, summary.Flat);
         summary.Broken = Join(broken, summary.Broken);

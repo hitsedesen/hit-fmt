@@ -1092,6 +1092,46 @@ TEST(GroupLayout, ChildFittingCostGolden)
             }
         }
     }
+    for (const auto width : {18u, 34u, 80u}) {
+        Document document("");
+        document.Text("TypeMap<");
+        const auto type = document.BeginGroup({
+            .Mode = GroupMode::Fill,
+            .Indent = 4,
+            .StructuralBase = true,
+            .BreakPenalty = 3,
+        });
+        document.ConditionalGap(type, {GapKind::Flat, 0}, {GapKind::Soft, 0});
+        document.Text("T>");
+        document.EndGroup(type);
+        document.Text(" value(");
+        const auto outer = document.BeginGroup({.Mode = GroupMode::Fill});
+        const auto inner = document.BeginGroup({.Mode = GroupMode::Fill});
+        document.Text("make(");
+        const auto arguments = document.BeginGroup(
+            {.Mode = GroupMode::Fill, .Indent = 4, .StructuralBase = true});
+        document
+            .ConditionalGap(arguments, {GapKind::Flat, 0}, {GapKind::Hard, 0});
+        document.Text("firstValue,");
+        document
+            .ConditionalGap(arguments, {GapKind::Flat, 1}, {GapKind::Hard, 0});
+        document.Text("secondValue,");
+        document
+            .ConditionalGap(arguments, {GapKind::Flat, 1}, {GapKind::Hard, 0});
+        document.Text("thirdValue)");
+        document.EndGroup(arguments);
+        document.EndGroup(inner);
+        document.EndGroup(outer);
+        document.Text(");");
+        ASSERT_TRUE(document.Seal());
+        const auto output = document.Render({.Width = width});
+        ASSERT_TRUE(output.State);
+        EXPECT_EQ(output.Broken[type] != 0, width == 18);
+        EXPECT_EQ(output.Broken[arguments] != 0, width < 80);
+        actual += "nested suffix width=" + std::to_string(width) + "\n";
+        actual.append(output.Text);
+        actual += '\n';
+    }
     for (const auto width : {28u, 48u, 100u}) {
         for (const auto middlePenalty : {2u, 3u}) {
             for (const bool forceMiddle : {false, true}) {
