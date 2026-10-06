@@ -80,9 +80,9 @@ struct SourceGap
     // Immutable byte facts shared by spacing and layout, not edit authority.
     bool HasLineFeed : 1 = false;
     bool Horizontal : 1 = true;
-    // A recovered callee's proven start permits its incoming whitespace gap,
+    // A recovered callee or bounded statement permits its incoming gap,
     // including insertion before the first protected byte. Other fences win.
-    bool RecoveryCalleeBoundary : 1 = false;
+    bool RecoveryBoundary : 1 = false;
 };
 
 static_assert(sizeof(SourceGap) <= 16);
@@ -108,6 +108,9 @@ struct SourceRegion
     parser::NodeKind Kind;
     RegionStatus Status = RegionStatus::Complete;
     parser::FunctionKind Function = parser::FunctionKind::Unknown;
+    // Proven opaque statement/condition edges permit leading reindentation,
+    // not changes to the uncertain interior.
+    bool StatementBoundary = false;
 };
 
 static_assert(sizeof(SourceRegion) <= 40);
@@ -154,7 +157,7 @@ struct SourceAnalysisOptions
 // scratch pointers are retained. Gap i precedes token i; TokenCount() is the
 // tail gap. Region IDs are preorder indices. Protection is sorted/disjoint:
 // overlaps union reasons; touching equal reason masks coalesce.
-// HeaderName and recovered callees protect spelling, not their proven incoming
+// HeaderName and bounded recovery protect spelling, not their proven incoming
 // gaps; other reasons still apply there. IntersectsImmutable conservatively
 // fences insertion at a protected range's beginning; Gaps describes whitespace
 // replacement authority at these boundaries, including EOF.

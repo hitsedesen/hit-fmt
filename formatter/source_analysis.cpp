@@ -199,6 +199,51 @@ bool Recovery(parser::NodeKind kind)
         kind == NK::UnexpectedToken || kind == NK::Error;
 }
 
+bool SimpleStatementBoundary(
+    const parser::SyntaxTree& tree,
+    const parser::Node& node,
+    parser::NodeKind parent)
+{
+    using NK = parser::NodeKind;
+    const auto tokens = node.Tokens;
+    if ((parent != NK::CompoundStatement && parent != NK::LambdaBody) ||
+        tokens.Empty() || tree.Kind(tokens.End - 1) != TK::Operator_Semicolon)
+    {
+        return false;
+    }
+    switch (node.Kind) {
+        case NK::ExpressionStatement:
+        case NK::DeclarationStatement:
+        case NK::ReturnStatement:
+        case NK::ThrowStatement:
+        case NK::CoYieldStatement:
+            // Parsed simple statements prove their own edges, even when an
+            // expression descendant is opaque. Its interior remains exact.
+            return true;
+        case NK::UnparsedSyntax:
+            break;
+        default:
+            return false;
+    }
+    // A semicolon inside unmatched delimiters is not a statement boundary.
+    // Invalid tokens and directives retain their existing recovery fences.
+    for (auto token = tokens.Begin; token < tokens.End; ++token) {
+        const auto kind = tree.Kind(token);
+        if (kind == TK::Invalid || kind == TK::PreprocessingDirective) {
+            return false;
+        }
+        if (kind >= TK::Operator_OpenBrace &&
+            kind <= TK::Operator_CloseParenthesis)
+        {
+            const auto matching = tree.MatchingDelimiter(token);
+            if (matching < tokens.Begin || matching >= tokens.End) {
+                return false;
+            }
+        }
+    }
+    return true;
+}
+
 RegionStatus Combine(RegionStatus a, RegionStatus b)
 {
     return static_cast<RegionStatus>(static_cast<uint8_t>(a) |
@@ -800,6 +845,11 @@ SourceAnalysis BuildSourceAnalysis(
             node.Kind,
             status,
             node.GetFunctionKind(),
+            parent != NoRegion &&
+                SimpleStatementBoundary(
+                    tree,
+                    node,
+                    result.Regions_[parent].Kind),
         });
         if (parent != NoRegion) {
             auto& frame = stack.back();
@@ -881,7 +931,7 @@ SourceAnalysis BuildSourceAnalysis(
             // proven edges, even when their interpretation is unknown.
             // Keep its uncertain head exact, but allow an independently
             // parsed assignment RHS and let the body indent around it.
-            // Recovery still owns adjacent trivia and empty insertion points.
+            // Other recovery still owns adjacent trivia and insertion points.
             auto protectedEnd = end;
             if (ambiguous) {
                 for (auto* child = node.Child();
@@ -901,9 +951,11 @@ SourceAnalysis BuildSourceAnalysis(
                 tree.MatchingDelimiter(result.Regions_[parent].Tokens.Begin) ==
                     tokens.End;
             const bool statementBoundary =
-                ambiguous && !hasRecovery && !tokens.Empty() &&
+                (ambiguous && !hasRecovery && !tokens.Empty() &&
                     (tree.Kind(tokens.End - 1) == TK::Operator_Semicolon ||
-                        conditionBoundary);
+                        conditionBoundary)) ||
+                    result.Regions_[id].StatementBoundary;
+            result.Regions_[id].StatementBoundary = statementBoundary;
             // A recovered callee has a proven start in its enclosing call.
             // Protect its spelling without freezing the preceding operator
             // or keyword gap, which can break independently of the callee.
@@ -914,8 +966,8 @@ SourceAnalysis BuildSourceAnalysis(
                         parser::NodeKind::CallExpression &&
                     result.Regions_[parent].FirstChild == id &&
                     result.Regions_[parent].Tokens.Begin == tokens.Begin;
-            if (calleeBoundary) {
-                result.Gaps_[tokens.Begin].RecoveryCalleeBoundary = true;
+            if (calleeBoundary || (recovery && statementBoundary)) {
+                result.Gaps_[tokens.Begin].RecoveryBoundary = true;
             }
             const auto before = statementBoundary || calleeBoundary
                 ? begin
@@ -989,7 +1041,7 @@ SourceAnalysis BuildSourceAnalysis(
             const bool beforeSpelling =
                 gap.Source.Empty() && gap.Source.Begin == range.Source.Begin &&
                     (range.Reasons == ProtectionReason::HeaderName ||
-                        (gap.RecoveryCalleeBoundary &&
+                        (gap.RecoveryBoundary &&
                             range.Reasons == ProtectionReason::Recovery));
             if (!beforeSpelling &&
                 (gap.Source.Empty()

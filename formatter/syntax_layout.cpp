@@ -689,10 +689,9 @@ private:
                     PrefixProtection_[node.Tokens.Begin] ==
                         PrefixProtection_[node.Tokens.End];
             }
-            // Complete ambiguous statements and bounded conditions can move
-            // as opaque units. Their parents can follow body indentation if
-            // all other syntax is movable; real fences still anchor bodies.
-            const bool statementBoundary = HasStatementBoundary(node);
+            // Bounded opaque statements and conditions permit leading
+            // indentation without rewriting their uncertain interiors.
+            const bool statementBoundary = node.StatementBoundary;
             if (PrefixOpaqueFences_[node.Tokens.Begin] !=
                 PrefixOpaqueFences_[node.Tokens.End])
             {
@@ -2671,25 +2670,6 @@ private:
                 }
             }
         }
-    }
-
-    bool HasStatementBoundary(const SourceRegion& node) const
-    {
-        if (node.Kind != NodeKind::AmbiguousStatement ||
-            node.Status != RegionStatus::Ambiguous || node.Tokens.Empty())
-        {
-            return false;
-        }
-        if (Tree_.Kind(node.Tokens.End - 1) == TokenKind::Operator_Semicolon) {
-            return true;
-        }
-        if (node.Parent == None) {
-            return false;
-        }
-        const auto& parent = Region(Syntax_[node.Parent]);
-        return parent.Kind == NodeKind::Condition &&
-            parent.Tokens.End == node.Tokens.End + 1 &&
-            Tree_.MatchingDelimiter(parent.Tokens.Begin) == node.Tokens.End;
     }
 
     Index PreservedBodyIndent(Index id, Index opening, Index close) const
