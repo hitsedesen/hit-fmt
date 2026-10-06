@@ -1135,9 +1135,15 @@ public:
                 Gaps_[i].Owner = Id(owner);
                 Gaps_[i].Category = state.Category;
             }
-            if (kind == TK::Operator_Comma &&
-                (role == PR::ListSeparator || role == PR::BinaryOperator))
+            if (kind == TK::Operator_Comma && role != PR::ListSeparator &&
+                role != PR::BinaryOperator)
             {
+                // Raw declarator syntax can contain opaque macro arguments.
+                // Without a list or expression role, canonical fallback must
+                // not erase the original separation around their commas.
+                PreserveUncertain(i, owner);
+                PreserveUncertain(i + 1, owner);
+            } else if (kind == TK::Operator_Comma) {
                 if (state.UncertainOperands && role == PR::ListSeparator &&
                     state.ListOwner != NoRegion)
                 {
