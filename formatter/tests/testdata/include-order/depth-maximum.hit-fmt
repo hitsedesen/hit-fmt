@@ -2,4 +2,4 @@ IncludeOrder = Sort
 IncludeGrouping = Directory
 IncludeDirectoryOrder = Alphabetical
 IncludePathBase = ProjectRoot
-IncludeGroups = [{Prefixes = ["engine/", "mirror/"], Depth = -1}]
+IncludeGroups = [{Prefixes = ["engine/", "mirror/"], Depth = 127}]

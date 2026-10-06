@@ -923,13 +923,13 @@ std::vector<FormatCase> FormatCases()
         AddCases(
             cases,
             directory,
-            {"depth-zero", "depth-default", "depth-unlimited"},
+            {"depth-zero", "depth-default", "depth-maximum"},
             "depth.input.cpp");
         ShareExpected(
             cases,
             directory,
             "depth-default.output.cpp",
-            "depth-zero.output.cpp");
+            "depth-maximum.output.cpp");
         AddCases(
             cases,
             directory,
@@ -977,6 +977,52 @@ std::vector<FormatCase> FormatCases()
             FormatCase value{directory, name, "prefix-order.input.cpp"};
             value.InputFilePath = "library/z/runner.cpp";
             cases.push_back(std::move(value));
+        }
+        for (const auto name : {"priorities-foo", "priorities-bar"}) {
+            FormatCase value{
+                directory,
+                name,
+                "priorities.input.cpp",
+                "priorities",
+            };
+            value.InputFilePath = std::string_view(name) == "priorities-foo"
+                ? "foo/bar/library/converter.cpp"
+                : "bar/libs/example.h";
+            cases.push_back(std::move(value));
+        }
+        for (const auto grouping :
+            {
+                formatter::IncludeGrouping::Directory,
+                formatter::IncludeGrouping::Regroup,
+            })
+        {
+            for (const auto order :
+                {
+                    formatter::IncludeGroupOrder::Directory,
+                    formatter::IncludeGroupOrder::Configured,
+                })
+            {
+                FormatCase value{
+                    directory,
+                    "priorities-" +
+                        std::string(formatter::SerializeConfigEnum(grouping)) +
+                        "-" +
+                        std::string(formatter::SerializeConfigEnum(order)),
+                    "prefix-order.input.cpp",
+                    "prefix-order-nearest",
+                };
+                value.Style = formatter::LoadConfigFile(
+                    directory / "prefix-order-nearest.hit-fmt").FormattingStyle;
+                value.Expected = "priorities-" +
+                    std::string(formatter::SerializeConfigEnum(grouping)) +
+                    ".output.cpp";
+                value.Style->IncludeGrouping = grouping;
+                value.Style->IncludeGroupOrder = order;
+                value.Style->IncludeGroups[0].Priority = 2;
+                value.Style->IncludeGroups[1].Priority = -1;
+                value.InputFilePath = "library/z/runner.cpp";
+                cases.push_back(std::move(value));
+            }
         }
         for (const auto profile :
             {"prefix-order-nearest", "prefix-order-regroup", "matching"})
@@ -1042,7 +1088,7 @@ std::vector<FormatCase> FormatCases()
                 formatter::IncludeGroupOrder::Configured;
             // Preserve must ignore both grouping rules and their ordering.
             if (std::string_view(profile) == "matching") {
-                value.Style->IncludeGroups = {{{"project/"}, 1}};
+                value.Style->IncludeGroups = {{{"project/"}, 1, -1}};
             }
             value.InputFilePath = "project/engine/widget.cpp";
             cases.push_back(std::move(value));

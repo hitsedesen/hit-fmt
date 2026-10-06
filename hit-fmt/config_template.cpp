@@ -231,8 +231,9 @@ void PrintOption(std::ostream& output, std::string_view name, const T& value)
         T,
         std::vector<formatter::IncludeGroupRule>>)
     {
-        output << "[] or [{Prefix = \"directory/\", Depth = 0}, ...]\n" << name
-            << " = [";
+        output
+            << "[] or [{Prefix = \"directory/\", Depth = 127, "
+                "Priority = 0}, ...]\n" << name << " = [";
         for (std::size_t index = 0; index < value.size(); ++index) {
             if (index) {
                 output << ", ";
@@ -240,6 +241,7 @@ void PrintOption(std::ostream& output, std::string_view name, const T& value)
             output << "{Prefixes = ";
             PrintStringList(output, value[index].Prefixes);
             output << ", Depth = " << static_cast<int>(value[index].Depth)
+                << ", Priority = " << static_cast<int>(value[index].Priority)
                 << '}';
         }
         output << ']';
@@ -292,12 +294,18 @@ void PrintPreserveConfig(std::ostream& output)
             "# Regroup groups by IncludeGroups rules; Directory additionally\n"
             "# subdivides each rule by its directory suffix and Depth.\n"
             "# Example: IncludeGroups = [{Prefix = \"library/\", Depth = 1}]\n"
-            "# Each rule has Prefix or Prefixes, "
-            "and optional Depth (default 0).\n"
+            "# Each rule has Prefix or Prefixes, optional Depth and Priority.\n"
+            "# Depth defaults to 127; Priority defaults to 0.\n"
+            "# Priority is an integer from -128 to 127.\n"
+            "# Lower values sort first within each quote/angle category.\n"
+            "# Unmatched headers have priority zero.\n"
+            "# Priority never changes first-match selection; equal priorities\n"
+            "# use IncludeGroupOrder and the usual directory/header ordering.\n"
             "# Depth 0 keeps the entire rule together "
             "within quote/angle groups;\n"
-            "# -1 uses the full remaining directory, not the filename.\n"
-            "# Values 1..127 cap components after the matched prefix.\n"
+            "# 127 uses the full remaining directory, not the filename.\n"
+            "# Values 1..126 cap components after the matched prefix.\n"
+            "# Depth must be an integer from 0 to 127; negatives are invalid.\n"
             "# With prefix library/, 1 groups library/core/a.hpp and\n"
             "# library/core/detail/b.hpp together; 2 separates them.\n"
             "# Prefixes = [\"yt/yt/\", \"yt/yt_proto/yt/\"] "
@@ -305,10 +313,10 @@ void PrintPreserveConfig(std::ostream& output)
             "# suffix groups; the first prefix represents "
             "their ordering path.\n"
             "# First matching rule/prefix wins. IncludeGroupOrder = Directory\n"
-            "# (default) orders rule groups together by directory. Configured\n"
-            "# uses IncludeGroups list order first, "
-            "then IncludeDirectoryOrder\n"
-            "# for subgroups within each rule; unmatched paths follow rules.\n"
+            "# (default) orders equal-priority groups together by directory.\n"
+            "# Configured uses list order within each priority tier, then\n"
+            "# IncludeDirectoryOrder for subgroups within each rule.\n"
+            "# Unmatched paths follow configured rules in the same tier.\n"
             "# Prefixes within one rule are aliases, not separate priorities.\n"
             "# Example: IncludeGroupOrder = Configured with IncludeGroups =\n"
             "# [{Prefix = \"library/\", Depth = 1}, "
@@ -319,9 +327,16 @@ void PrintPreserveConfig(std::ostream& output)
             "# Prefix = \"\" is an explicit fallback "
             "for any include spelling;\n"
             "# its Depth counts from the start of the resolved directory.\n"
-            "# Preserve ignores rules and IncludeGroupOrder. "
-            "Regroup ignores Depth " "and puts unmatched\n"
-            "# headers after configured groups. Matching/standard groups stay\n"
+            "# Example: nearest project groups, then library/, then util/:\n"
+            "# IncludeGroupOrder = Directory\n"
+            "# IncludePathBase = ProjectRoot\n" "# IncludeGroups = [\n"
+            "#     {Prefix = \"library/\", Priority = 1},\n"
+            "#     {Prefix = \"util/\", Priority = 2},\n"
+            "#     {Prefix = \"\", Depth = 3}\n" "# ]\n"
+            "# Specific rules precede the fallback for matching, not output.\n"
+            "# Preserve ignores rules, priorities and IncludeGroupOrder.\n"
+            "# Regroup ignores Depth; unmatched headers follow configured\n"
+            "# groups in the same priority tier. Paired/standard groups stay\n"
             "# separate. Include paths are never rewritten by group aliases.\n"
             "# Regroup/Directory span blank lines and insert one empty line\n"
             "# between groups; both conflict with MaxEmptyLines = 0.\n"
