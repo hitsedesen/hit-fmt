@@ -1,19 +1,20 @@
 #include "code_point.hpp"
 
 #include <algorithm>
-#include <vector>
+#include <span>
+#include <utility>
 
 namespace unicode {
 
-extern const std::vector<std::pair<char32_t, char32_t>> XIDStartRanges;
+extern const std::span<const std::pair<char32_t, char32_t>> XIDStartRanges;
 
-extern const std::vector<std::pair<char32_t, char32_t>> XIDContinueRanges;
+extern const std::span<const std::pair<char32_t, char32_t>> XIDContinueRanges;
 
 namespace {
 
 bool IsInRange(
     CodePoint cp,
-    const std::vector<std::pair<char32_t, char32_t>>& ranges)
+    std::span<const std::pair<char32_t, char32_t>> ranges)
 {
     auto value = static_cast<char32_t>(cp);
     auto candidate = std::ranges::lower_bound(
