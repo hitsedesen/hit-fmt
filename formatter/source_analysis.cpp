@@ -877,8 +877,8 @@ SourceAnalysis BuildSourceAnalysis(
             protect(begin, end, ProtectionReason::SensitiveMacro);
         }
         if (recovery || ambiguous) {
-            // A complete ambiguous statement has proven outer boundaries,
-            // even when its declaration/expression interpretation is unknown.
+            // Complete ambiguous statements and bounded conditions have
+            // proven edges, even when their interpretation is unknown.
             // Keep its uncertain head exact, but allow an independently
             // parsed assignment RHS and let the body indent around it.
             // Recovery still owns adjacent trivia and empty insertion points.
@@ -895,9 +895,15 @@ SourceAnalysis BuildSourceAnalysis(
                     }
                 }
             }
+            const bool conditionBoundary = parent != NoRegion &&
+                result.Regions_[parent].Kind == parser::NodeKind::Condition &&
+                result.Regions_[parent].Tokens.End == tokens.End + 1 &&
+                tree.MatchingDelimiter(result.Regions_[parent].Tokens.Begin) ==
+                    tokens.End;
             const bool statementBoundary =
                 ambiguous && !hasRecovery && !tokens.Empty() &&
-                    tree.Kind(tokens.End - 1) == TK::Operator_Semicolon;
+                    (tree.Kind(tokens.End - 1) == TK::Operator_Semicolon ||
+                        conditionBoundary);
             // A recovered callee has a proven start in its enclosing call.
             // Protect its spelling without freezing the preceding operator
             // or keyword gap, which can break independently of the callee.
