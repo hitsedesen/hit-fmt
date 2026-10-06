@@ -10,6 +10,15 @@ void Sample()
     if (external::Range<int> range = make(firstLongArgument, secondLongArgument); range.ready()) {
         consume(range);
     }
+    BufferSize maximumEncodedByteCountForCurrentBuffer = Estimate(unencodedByteCountForCurrentBuffer, estimatedByteCountForCurrentBuffer);
+    size_t maximumReservedByteCountForCurrentBuffer = Estimate(unreservedByteCountForCurrentBuffer, estimatedByteCountForCurrentBuffer);
+    ByteCount shortName = Estimate(firstLongArgument, secondLongArgument, thirdLongArgument);
+    ByteCount fitting = Estimate(first, second);
+    [[maybe_unused]] ByteCount annotated = Estimate(firstLongArgument, secondLongArgument, thirdLongArgument);
+    ByteCount /* external type */ commented = Estimate(firstLongArgument, secondLongArgument, thirdLongArgument);
+    ByteCount plain;
+    ByteCount assigned;
+    assigned = Estimate(firstLongArgument, secondLongArgument, thirdLongArgument);
     external::Range unresolved(Unknown);
     left < middle > right(1, 2);
     external::left < middle > right(1, 2);

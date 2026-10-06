@@ -1289,7 +1289,7 @@ TEST(PublicPipeline, LambdaLineBasesKeepSourceAuthority)
         EXPECT_TRUE(result.Diagnostics.empty());
         EXPECT_EQ(FormatInput(result.Text, prepared).Text, result.Text);
         EXPECT_NE(
-            result.Text.find("                auto guard ="),
+            result.Text.find("\n            auto guard ="),
             std::string::npos);
         const auto begin = uint32_t(source.find("class Adapter"));
         const std::array scope{
@@ -1302,7 +1302,7 @@ TEST(PublicPipeline, LambdaLineBasesKeepSourceAuthority)
         CheckExcludedCopies(source, scoped, scope);
         CheckIdentities(source, scoped);
         EXPECT_NE(
-            scoped.Text.find("                auto guard ="),
+            scoped.Text.find("\n            auto guard ="),
             std::string::npos);
         const auto guardBegin =
             uint32_t(source.find("                    InvokerGuard", begin));
@@ -1547,11 +1547,12 @@ TEST(PublicPipeline, ProtectedBytesSurviveBothBranchesAndCRLF)
             result.Text.starts_with(source.substr(0, source.find("void f"))));
         EXPECT_NE(result.Text.find("KEEP(  x, y )"), std::string::npos);
         CheckIdentities(source, result);
-        for (size_t i = 0; i < result.Text.size(); ++i)
+        for (size_t i = 0; i < result.Text.size(); ++i) {
             if (result.Text[i] == '\n') {
                 ASSERT_GT(i, 0u);
                 EXPECT_EQ(result.Text[i - 1], '\r');
             }
+        }
         EXPECT_EQ(FormatInput(result.Text, prepared).Text, result.Text);
     }
 }
@@ -2374,9 +2375,9 @@ TEST(PublicPipeline, EditScopeBraceInsertionRequiresBothOriginalPoints)
     const auto hasInsertedControlPair = [&] (
         const formatter::FormatResult&
         formatted) {
-            for (size_t action = 0; action <
-                formatted.StructuralOperations.size();
-             ++action)
+            for (size_t action = 0;
+                action < formatted.StructuralOperations.size();
+                ++action)
             {
                 if (formatted.StructuralOperations[action].Kind !=
                     formatter::StructuralAction::AddMissingControlBraces)
@@ -3808,9 +3809,9 @@ TEST(PublicPipeline, TrailingCommentSpacesBoundedScalarReportsHonestWidth)
     EXPECT_EQ(FormatInput(result.Text, prepared).Text, result.Text);
 }
 
-}
+} // namespace
 
-}
+} // namespace public_pipeline
 
 namespace public_pipeline {
 
@@ -4092,7 +4093,7 @@ TEST(PublicPipeline, FunctionBodyMacroHintsCannotOverrideProtection)
     }
 }
 
-}
+} // namespace
 
 void CheckFormattedResult(
     std::string_view source,
@@ -4106,4 +4107,4 @@ void CheckFormattedResult(
     EXPECT_EQ(FormatInput(result.Text, prepared).Text, result.Text);
 }
 
-}
+} // namespace public_pipeline

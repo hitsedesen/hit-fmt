@@ -9623,7 +9623,9 @@ private:
 
         auto next = NextSignificant(name + 1);
         if (Kind(next) == TK::Identifier) {
-            return NodeKind::AmbiguousStatement;
+            // Adjacent type and declarator names cannot form an expression,
+            // even when the type's declaration is outside this input file.
+            return NodeKind::DeclarationStatement;
         }
         bool unambiguous = false;
         if (LooksLikeUnknownTypeDeclaration(

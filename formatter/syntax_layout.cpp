@@ -2752,9 +2752,11 @@ private:
         const bool canonical = policy.Layout == LayoutMode::Canonical;
         const bool namespaced =
             Region(Syntax_[id]).Kind == NodeKind::NamespaceDeclaration;
-        int32_t offset = record ? BodyOffset(Policies_.Indentation.Members,
-                                             int32_t(policy.IndentWidth))
-                                : int32_t(policy.IndentWidth);
+        int32_t offset = record
+            ? BodyOffset(
+                Policies_.Indentation.Members,
+                int32_t(policy.IndentWidth))
+            : int32_t(policy.IndentWidth);
         if (namespaced) {
             offset = BodyOffset(Policies_.Indentation.Namespaces, 0);
             if (Policies_.Indentation.Namespaces.Mode ==

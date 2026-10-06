@@ -78,6 +78,7 @@ struct Analysis
             Memory,
             scratch);
     }
+
     GapId Before(std::string_view token, size_t occurrence = 0) const
     {
         for (GapId i = 0; i < Tree.TokenCount(); ++i) {
@@ -1894,8 +1895,13 @@ TEST(SyntaxSpacing,
     std::pmr::monotonic_buffer_resource file;
     SyntaxSpacing spacing = [&] {
         std::pmr::monotonic_buffer_resource scratch;
-        return BuildSyntaxSpacing(legacy.Tree, legacy.Safety, policies,
-            PointerReferenceDeclaratorLocation::Preserve, file, scratch,
+        return BuildSyntaxSpacing(
+            legacy.Tree,
+            legacy.Safety,
+            policies,
+            PointerReferenceDeclaratorLocation::Preserve,
+            file,
+            scratch,
             TrailingCommentSpaceSetting{0});
     }();
     for (const auto occurrence : {0u, 1u}) {

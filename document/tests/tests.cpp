@@ -2426,8 +2426,12 @@ TEST(GroupLayout, BorrowedIndentAfterBlankLinesPreservesBytesAndBlockBase)
     Document document(source);
     auto group = document.BeginGroup({GroupMode::Consistent, 2});
     document.SourceText(0, 8, 40, true);
-    GapSpec preserved{.Kind = GapKind::Hard, .Spaces = 0,
-        .LineEnding = GapNewline::LF, .NewlineCount = 3};
+    GapSpec preserved{
+        .Kind = GapKind::Hard,
+        .Spaces = 0,
+        .LineEnding = GapNewline::LF,
+        .NewlineCount = 3,
+    };
     preserved.IndentSourceBegin = 9;
     preserved.IndentSourceEnd = 11;
     document.Gap(preserved, InvalidId, {8, 11, 42});
@@ -2520,7 +2524,8 @@ TEST(GroupLayout, SourceLineIndentPrefixesAndMappingsGolden)
                 for (auto kind :
                     {IndentationKind::Spaces, IndentationKind::Tabs})
                 {
-                    Policy policy{.Width = 80,
+                    Policy policy{
+                        .Width = 80,
                         .TabWidth = tabWidth,
                         .LineEnding = Newline::CRLF,
                         .Indentation = kind,

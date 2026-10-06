@@ -320,9 +320,22 @@
         )
         ";"
       )
-      (ambiguous-statement
-        (unknown-type-name "Packet")
-        "plainEmpty" "=" "{" "}" ";"
+      (declaration-statement
+        (declaration-specifiers "Packet")
+        (init-declarator-list
+          (init-declarator
+            (declarator
+              (declarator-name "plainEmpty")
+            )
+            (initializer
+              "="
+              (braced-initializer
+                (initializer-list "{" "}")
+              )
+            )
+          )
+        )
+        ";"
       )
       (declaration
         (declaration-specifiers "struct" "Packet")
@@ -347,9 +360,28 @@
         )
         ";"
       )
-      (ambiguous-statement
-        (unknown-type-name "Packet")
-        "plainValue" "=" "{" "7" "}" ";"
+      (declaration-statement
+        (declaration-specifiers "Packet")
+        (init-declarator-list
+          (init-declarator
+            (declarator
+              (declarator-name "plainValue")
+            )
+            (initializer
+              "="
+              (braced-initializer
+                (initializer-list
+                  "{"
+                  (initializer-element
+                    (literal-expression "7")
+                  )
+                  "}"
+                )
+              )
+            )
+          )
+        )
+        ";"
       )
       (declaration
         (declaration-specifiers "class" "Message")

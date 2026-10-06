@@ -39,12 +39,11 @@ std::pair<std::string, std::vector<std::string>> TokenizeAndSerialize(
     paddedInput.append(util::SourcePaddingSize, '\0');
     Tokenizer tokenizer(
         {.Data = paddedInput.data(), .Size = input.size()},
-        [&](TokenizationError error) {
-            errors.push_back(
-                std::format(
-                    "{} error: {}",
-                    error.ErrorPosition,
-                    GetTokenizationErrorDescription(error.Kind)));
+        [&] (TokenizationError error) {
+            errors.push_back(std::format(
+                "{} error: {}",
+                error.ErrorPosition,
+                GetTokenizationErrorDescription(error.Kind)));
         });
     std::string result;
     for (const auto& token : tokenizer) {
@@ -64,7 +63,7 @@ std::vector<TokenizationErrorKind> TokenizeErrors(std::string_view input)
     paddedInput.append(util::SourcePaddingSize, '\0');
     Tokenizer tokenizer(
         {.Data = paddedInput.data(), .Size = input.size()},
-        [&](TokenizationError error) {
+        [&] (TokenizationError error) {
             errors.push_back(error.Kind);
         });
     for ([[maybe_unused]] const auto& token : tokenizer) { }
@@ -158,7 +157,7 @@ TEST(Tokenizer, KeepsEofStableAfterAsciiUnicodeAndInvalidUtf8)
         size_t errors = 0;
         Tokenizer tokenizer(
             {.Data = storage.data(), .Size = input.size()},
-            [&](TokenizationError error) {
+            [&] (TokenizationError error) {
                 ++errors;
                 EXPECT_EQ(
                     error.Kind,

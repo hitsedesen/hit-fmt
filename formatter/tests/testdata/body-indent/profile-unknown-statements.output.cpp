@@ -40,8 +40,7 @@ void Inline()
 void Opaque()
 {
     unknown  *  value;
-    External item =
-                MakeValue(  first,second  );
+    External item = MakeValue(first, second);
     Finish();
 }
 

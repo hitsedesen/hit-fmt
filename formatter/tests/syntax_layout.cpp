@@ -112,6 +112,7 @@ Output Lower(
         {rendered.Broken.begin(), rendered.Broken.end()},
     };
 }
+
 void ExpectSplitGapMap(
     const Output& output,
     size_t sourceBegin,
@@ -149,6 +150,7 @@ void ExpectSplitGapMap(
     }
     EXPECT_TRUE(found) << "missing generated-prefix / exact-indent association";
 }
+
 formatter::Style Canonical(size_t width = 40)
 {
     formatter::Style style;

@@ -41,6 +41,7 @@ parser::SyntaxTree Parse(const Input& input)
 {
     return parser::Parse(input.View(), [] (parser::ParseError) { });
 }
+
 void ExpectSameAnalysis(
     const formatter::SourceAnalysis& direct,
     const formatter::SourceAnalysis& deferred)
@@ -152,6 +153,7 @@ void ExpectSameAnalysis(
         }
     }
 }
+
 formatter::SourceAnalysis Analyze(
     const parser::SyntaxTree& tree,
     std::pmr::memory_resource& memory,

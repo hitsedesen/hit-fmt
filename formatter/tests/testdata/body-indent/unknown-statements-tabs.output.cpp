@@ -37,7 +37,7 @@ void Opaque()
 {
     unknown  *  value;
     External item =
-                MakeValue(  first,second  );
+	MakeValue(first, second);
     Finish();
 }
 

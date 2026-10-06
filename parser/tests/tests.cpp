@@ -2966,8 +2966,7 @@ TEST(Parser, HandlesDeepExpressionNesting)
 
 TEST(Parser, RecordHeadTemplateArgumentsOwnTheirSeparators)
 {
-    PaddedInput input(
-        "template<class A, class B> struct Pair;\n"
+    PaddedInput input("template<class A, class B> struct Pair;\n"
         "template<class A, class B> struct Pair<A,B> {};\n");
     const auto tree = parser::Parse(input.View(), [] (parser::ParseError) {});
     const auto* declaration = tree.Root().FirstChild->NextSibling->FirstChild;
@@ -3397,10 +3396,8 @@ TEST(Parser, RecordHeadChildrenAreBoundedWithoutGuessingOperands)
 
     // Attaching head syntax must not alter name registration for
     // forward declarations or the declaration following them.
-    PaddedInput input(
-        "template<class A, class B> struct Pair;\n"
-        "template<> struct Pair<int,long>;\n"
-        "Pair<int,long> value;\n");
+    PaddedInput input("template<class A, class B> struct Pair;\n"
+        "template<> struct Pair<int,long>;\n" "Pair<int,long> value;\n");
     const auto tree = parser::Parse(input.View(), [] (parser::ParseError) {});
     const auto* last = tree.Root().LastChild;
     ASSERT_EQ(last->Kind, parser::NodeKind::Declaration);
@@ -4514,8 +4511,7 @@ TEST(Parser, FunctionKindsLeaveUncertainHeadsAndNonfunctionsUnknown)
 
 TEST(Parser, FunctionKindsSurviveOwningCopiesMovesAndRebinds)
 {
-    PaddedInput input(
-        "#include <z>\n#include <a>\n"
+    PaddedInput input("#include <z>\n#include <a>\n"
         "struct Device { Device() { /* note */ if (ready) return; ; } "
         "~Device() {} int Read() { return 1; } };\n");
     auto original = parser::Parse(input.View(), [] (parser::ParseError) {});
@@ -5491,7 +5487,9 @@ TEST(Parser, TerminalConstructorTemplateIdsRetainOwningCopies)
     EXPECT_FALSE(clone.BorrowsSyntax());
     auto moved = std::move(clone);
     check(moved);
-    PaddedInput spaced(std::string(input.View().View()) + "\n");
+    PaddedInput spaced(std::string(input
+        .View()
+        .View()) + "\n");
     auto rebound = moved.RebindWhitespaceGaps(spaced.View());
     ASSERT_TRUE(rebound);
     check(*rebound);
@@ -5703,8 +5701,7 @@ TEST(Parser, TerminalConstructorBoundariesRejectGroupedAndUnownedContinuations)
     }
     // EOF must not complete the default/delete reservation.
     for (auto tail : {"default", "delete"}) {
-        PaddedInput input(
-            "template<class T> struct Owner { Owner<T>(T* p) = " +
+        PaddedInput input("template<class T> struct Owner { Owner<T>(T* p) = " +
             std::string(tail));
         const auto tree =
             parser::Parse(input.View(), [] (parser::ParseError) {});

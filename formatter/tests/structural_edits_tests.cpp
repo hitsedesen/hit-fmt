@@ -59,6 +59,7 @@ struct File
 };
 
 constexpr StructuralOptions All{true, true, true, true, true};
+
 std::string Dump(const StructuralPlan& plan)
 {
     std::string result;
@@ -103,6 +104,7 @@ std::string Dump(const StructuralPlan& plan)
     }
     return result;
 }
+
 void CheckMapping(File& file, const StructuralMaterialization& result)
 {
     for (parser::TokenIndex i = 0; i < file.Tree.TokenCount(); ++i) {
