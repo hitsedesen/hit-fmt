@@ -65,7 +65,7 @@ struct Gap
     bool Reassembled = false;
     int32_t ExtraIndent = 0;
     bool OverrideIndent = false;
-    // Only final line indentation may change in an unclassified suffix.
+    // Only final line indentation may change in otherwise frozen syntax.
     bool RelativeIndent = false;
     bool Frozen = false;
     uint16_t NewlineCount = 1;
@@ -223,6 +223,13 @@ struct VisualRange
     Index End;
 };
 
+struct FrozenRange
+{
+    Index Begin;
+    Index End;
+    Index Body;
+};
+
 struct Comma
 {
     Index Owner = None;
@@ -316,6 +323,7 @@ public:
         , PrefixProtection_(&scratch)
         , PrefixOpaqueFences_(&scratch)
         , Visual_(&scratch)
+        , Frozen_(&scratch)
         , RootName_(&scratch)
         , ScopeNames_(&scratch)
         , ChainLinks_(&scratch)
@@ -399,6 +407,11 @@ public:
         for (Index i = 0; i < Syntax_.size(); ++i) {
             auto& entry = Syntax_[i];
             const auto& node = Region(entry);
+            // Uncertain annotation islands retain their complete topology.
+            // Plan their relative indentation once, not nested syntax layouts.
+            if (!node.Tokens.Empty() && Gaps_[node.Tokens.Begin].Frozen) {
+                continue;
+            }
             if (entry.ItemSequence &&
                 entry.SequenceBody.Begin < entry.SequenceBody.End)
             {
@@ -453,6 +466,12 @@ public:
             if (node.Kind == NodeKind::TemplateDeclaration) {
                 PlanTemplateHeader(i);
             }
+            if (node.Kind == NodeKind::AmbiguousStatement &&
+                node.Status == RegionStatus::Ambiguous &&
+                node.StatementBoundary)
+            {
+                PlanPreservedIndentation(i, node.Tokens.Begin);
+            }
             if (!entry.Safe &&
                 !(IsSpine(node.Kind)
                     ? entry.ChainSafe
@@ -471,7 +490,11 @@ public:
                     PlanInitializedDeclarator(i);
                     break;
                 case NodeKind::AmbiguousDeclaratorSuffix:
-                    PlanPreservedDeclaratorSuffix(i);
+                    PlanPreservedIndentation(
+                        i,
+                        node.Parent == None
+                        ? node.Tokens.Begin
+                        : Region(Syntax_[node.Parent]).Tokens.Begin);
                     break;
                 case NodeKind::RequiresClause:
                     PlanConstraintHeader(i);
@@ -514,6 +537,7 @@ public:
                     break;
             }
         }
+        PlanFrozenScopes();
         PlanVisualScopes();
         PlanVerticalGaps();
         PlanRulerGaps();
@@ -559,6 +583,7 @@ private:
     std::pmr::vector<Index> PrefixProtection_;
     std::pmr::vector<Index> PrefixOpaqueFences_;
     std::pmr::vector<VisualRange> Visual_;
+    std::pmr::vector<FrozenRange> Frozen_;
     std::pmr::string RootName_;
     std::pmr::vector<ScopeName> ScopeNames_;
     std::pmr::vector<ChainLink> ChainLinks_;
@@ -3457,10 +3482,10 @@ private:
             Options_.TabWidth);
     }
 
-    // A suffix which may be parameters or a direct initializer has no list
-    // layout authority. Its authored continuation lines still move with the
-    // declaration, without changing its topology or horizontal spelling.
-    void PlanPreservedDeclaratorSuffix(Index id)
+    // Unclassified syntax has no layout authority. Its authored continuation
+    // lines still move with the statement/declarator, without changing its
+    // topology or horizontal spelling.
+    void PlanPreservedIndentation(Index id, Index begin)
     {
         if (Policies_.IndentationKind == IndentationKind::Preserve) {
             return;
@@ -3469,10 +3494,6 @@ private:
         if (range.Empty()) {
             return;
         }
-        const auto parent = Region(Syntax_[id]).Parent;
-        const auto begin = parent == None
-            ? range.Begin
-            : Region(Syntax_[parent]).Tokens.Begin;
         Index base = None;
         Index group = None;
         DirectTokens(
@@ -3480,7 +3501,8 @@ private:
             [&] (Index gap) {
                 const auto indent = SourceIndent(gap);
                 if (gap == begin || indent == None || Gaps_[gap].Frozen ||
-                    Safety_.Gaps()[gap].Preserve ||
+                    (Safety_.Gaps()[gap].Preserve &&
+                        !Safety_.Gaps()[gap].MovableStatementIndent) ||
                     Safety_.Gaps()[gap].ContextSensitive ||
                     RetainsBareCR(gap) || Gaps_[gap].Owner != None)
                 {
@@ -3857,6 +3879,7 @@ private:
             .resource());
         std::pmr::vector<int64_t> frozen(Tree_.TokenCount() + size_t(2), 0,
                                          Syntax_.get_allocator().resource());
+        Index frozenBody = None;
         const auto freeze = [&] (Index begin, Index end) {
             // Inline regions have no existing visual indentation to retain.
             // Freezing them would suppress ordinary body expansion, including
@@ -3864,6 +3887,7 @@ private:
             if (begin < end && SourceIndent(begin) != None) {
                 ++frozen[begin];
                 --frozen[end];
+                Frozen_.push_back({begin, end, frozenBody});
             }
         };
         for (Index id = 0; id < Syntax_.size(); ++id) {
@@ -3873,6 +3897,7 @@ private:
             {
                 continue;
             }
+            frozenBody = id;
             pairs.clear();
             for (auto child = Region(Syntax_[id]).FirstChild;
                 child != None;
@@ -3972,6 +3997,70 @@ private:
             const auto range = Region(entry).Tokens;
             entry.Safe = entry.Safe &&
                 PrefixProtection_[range.Begin] == PrefixProtection_[range.End];
+        }
+    }
+
+    void PlanFrozenScopes()
+    {
+        if (Policies_.IndentationKind == IndentationKind::Preserve) {
+            return;
+        }
+        std::sort(
+            Frozen_.begin(),
+            Frozen_.end(),
+            [] (const FrozenRange& a, const FrozenRange& b) {
+                return a.Begin != b.Begin ? a.Begin < b.Begin : a.End > b.End;
+            });
+        size_t merged = 0;
+        for (const auto range : Frozen_) {
+            if (merged && range.Begin < Frozen_[merged - 1].End) {
+                Frozen_[merged - 1].End =
+                    std::max(Frozen_[merged - 1].End, range.End);
+            } else {
+                Frozen_[merged++] = range;
+            }
+        }
+        Frozen_.resize(merged);
+        for (const auto range : Frozen_) {
+            if (range.Body == None || BlockOf_[range.Body] == None) {
+                continue;
+            }
+            const auto first = Region(Syntax_[range.Body]).FirstChild;
+            auto base = first == None
+                ? None
+                : SourceIndent(Region(Syntax_[first]).Tokens.Begin);
+            if (base == None) {
+                base = SourceIndent(range.Begin);
+            }
+            Index group = None;
+            for (Index gap = range.Begin; gap < range.End; ++gap) {
+                const auto indent = SourceIndent(gap);
+                const auto& source = Safety_.Gaps()[gap];
+                if (indent == None ||
+                    (source.Preserve && !source.MovableStatementIndent) ||
+                    source.ContextSensitive || RetainsBareCR(gap))
+                {
+                    continue;
+                }
+                const auto delta = int64_t(indent) - int64_t(base);
+                if (delta < INT32_MIN || delta > INT32_MAX) {
+                    continue;
+                }
+                if (group == None) {
+                    group = GroupAt(
+                        GapPosition(range.Begin),
+                        GapPosition(range.End),
+                        document::GroupMode::Fill);
+                    Groups_[group].Spec.StructuralBase = true;
+                }
+                auto& plan = Gaps_[gap];
+                plan.Owner = group;
+                plan.Shape = Boundary::Preserve;
+                plan.Reindent = true;
+                plan.OverrideIndent = true;
+                plan.RelativeIndent = true;
+                plan.ExtraIndent = int32_t(delta);
+            }
         }
     }
 
@@ -4389,12 +4478,14 @@ private:
                 gap.PreserveIndent = true;
                 gap.Reindent = false;
                 gap.OverrideIndent = false;
+                gap.RelativeIndent = false;
             }
             if (RetainsBareCR(i)) {
                 // Retain source topology before summaries or emission; do not
                 // freeze safe atom spelling or invent an owned break.
                 gap.Shape = Boundary::Preserve;
                 gap.Reindent = false;
+                gap.RelativeIndent = false;
                 gap.Vertical = false;
                 gap.PartialIndent = false;
                 gap.CanonicalFlat = false;
@@ -4930,7 +5021,7 @@ private:
     {
         const auto& source = Safety_.Gaps()[i];
         const auto& plan = Gaps_[i];
-        if (plan.Frozen || (Uncertain(i) && !plan.RelativeIndent) ||
+        if (((plan.Frozen || Uncertain(i)) && !plan.RelativeIndent) ||
             source.ContextSensitive)
         {
             FixedGapSlice(i, source.Source.Begin, source.Source.End);
@@ -5069,12 +5160,16 @@ private:
         const auto& source = Safety_.Gaps()[i];
         const auto& plan = Gaps_[i];
         // Accepted descriptors authorize only their slices, even though this
-        // whole gap remains Preserve. Annotation/spacing uncertainty wins too.
-        if (plan.Frozen || Uncertain(i) || source.ContextSensitive) {
+        // whole gap remains Preserve. Only final indentation may be rebased
+        // inside uncertain syntax or a frozen annotation island.
+        if (((plan.Frozen || Uncertain(i)) && !plan.RelativeIndent) ||
+            source.ContextSensitive)
+        {
             FixedGapSlice(i, source.Source.Begin, source.Source.End);
             return;
         }
-        const bool spelling = Policies_.LineEnding != LineEnding::Preserve &&
+        const bool spelling = !plan.RelativeIndent &&
+            Policies_.LineEnding != LineEnding::Preserve &&
             Safety_.CanSpellGapNewlines(i);
         const auto copied = [&] (Index begin, Index end) {
             if (spelling) {
@@ -5086,7 +5181,9 @@ private:
         auto cursor = source.Source.Begin;
         for (const auto& permission : permissions) {
             if (permission.Kind == PartialGapPermissionKind::TrimHorizontal) {
-                if (Policies_.TrailingWhitespace == TrailingWhitespace::Trim) {
+                if (!plan.RelativeIndent &&
+                    Policies_.TrailingWhitespace == TrailingWhitespace::Trim)
+                {
                     if (cursor < permission.Source.Begin) {
                         copied(cursor, permission.Source.Begin);
                     }

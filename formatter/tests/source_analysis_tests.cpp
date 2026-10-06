@@ -1170,6 +1170,59 @@ const formatter::PartialGapPermission* Permission(
     return nullptr;
 }
 
+TEST(SourceAnalysis, CompleteOpaqueStatementsPermitOnlyFinalIndentation)
+{
+    Input input(
+        "void f() { std::vector<String> values(\n    first,\nsecond); }\n");
+    auto tree = Parse(input);
+    std::pmr::monotonic_buffer_resource memory;
+    const auto first = Before(tree, "first");
+    const auto second = Before(tree, "second");
+    auto analysis = Analyze(tree, memory);
+    EXPECT_FALSE(analysis.CanReplaceGap(first, "\n        "));
+    EXPECT_FALSE(analysis.CanReplaceGap(second, " "));
+    const auto* firstIndent =
+        Permission(analysis, first, PermissionKind::FinalIndentation);
+    ASSERT_NE(firstIndent, nullptr);
+    EXPECT_EQ(firstIndent->Source.End - firstIndent->Source.Begin, 4u);
+    const auto* secondIndent =
+        Permission(analysis, second, PermissionKind::FinalIndentation);
+    ASSERT_NE(secondIndent, nullptr);
+    EXPECT_TRUE(secondIndent->Source.Empty());
+    EXPECT_EQ(
+        Permission(analysis, first, PermissionKind::TrimHorizontal),
+        nullptr);
+
+    const std::array selected{firstIndent->Source};
+    auto scoped = Analyze(tree, memory, {.EditScope = selected});
+    EXPECT_NE(
+        Permission(scoped, first, PermissionKind::FinalIndentation),
+        nullptr);
+    EXPECT_EQ(
+        Permission(scoped, second, PermissionKind::FinalIndentation),
+        nullptr);
+    const std::array immutable{
+        parser::SourceRange{
+            firstIndent->Source.Begin + 1,
+            firstIndent->Source.Begin + 2,
+        },
+    };
+    auto protectedIndent =
+        Analyze(tree, memory, {.ImmutableRanges = immutable});
+    EXPECT_EQ(
+        Permission(protectedIndent, first, PermissionKind::FinalIndentation),
+        nullptr);
+    const std::string_view macros[] = {"values"};
+    auto sensitive =
+        Analyze(tree, memory, {.WhitespaceSensitiveMacros = macros});
+    EXPECT_EQ(
+        Permission(sensitive, first, PermissionKind::FinalIndentation),
+        nullptr);
+    EXPECT_EQ(
+        Permission(sensitive, second, PermissionKind::FinalIndentation),
+        nullptr);
+}
+
 TEST(SourceAnalysis, EditScopeUnrestrictedFullAndEmpty)
 {
     Input input("void f() {\ninvoke(a,b);\n}\n");
