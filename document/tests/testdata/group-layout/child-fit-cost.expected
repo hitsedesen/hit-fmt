@@ -145,6 +145,19 @@ sibling penalties=3,3 width=80 breakable=0
 Map<Key, Value> value{one, two, three};
 sibling penalties=3,3 width=80 breakable=1
 Map<Key, Value> value{one, two, three};
+nested suffix width=18
+TypeMap<
+    T> value(make(
+    firstValue,
+    secondValue,
+    thirdValue));
+nested suffix width=34
+TypeMap<T> value(make(
+    firstValue,
+    secondValue,
+    thirdValue));
+nested suffix width=80
+TypeMap<T> value(make(firstValue, secondValue, thirdValue));
 successive penalties=3,2,0 width=28 forced-middle=0
 capture[&] template<
     T> parameters(
