@@ -2145,6 +2145,32 @@ std::vector<FormatCase> FormatCases()
     {
         const auto directory =
             std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../lambda-body";
+        const auto base =
+            formatter::LoadConfigFile(profile + ".hit-fmt").FormattingStyle;
+        for (const auto* name :
+            {
+                "preserved-suffix",
+                "preserved-suffix-canonical",
+                "preserved-suffix-tabs",
+                "preserved-suffix-indent-preserve",
+            })
+        {
+            auto style = base;
+            const std::string_view variant(name);
+            if (variant == "preserved-suffix-canonical") {
+                style.LambdaBodiesLayout = CategoryLayout::Canonical;
+            } else if (variant == "preserved-suffix-tabs") {
+                style.IndentationKind = IndentationKind::Tabs;
+            } else if (variant == "preserved-suffix-indent-preserve") {
+                style.IndentationKind = IndentationKind::Preserve;
+            }
+            cases.push_back({directory, name, "preserved-suffix.input.cpp"});
+            cases.back().Style = style;
+            if (variant == "preserved-suffix-canonical") {
+                cases.back().Expected = "preserved-suffix.output.cpp";
+            }
+            cases.back().CheckOwningMaps = true;
+        }
         cases.push_back(
             {directory, "member-pointers", "member-pointers.input.cpp"});
         cases.back().CheckOwningMaps = true;
