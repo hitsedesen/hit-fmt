@@ -1500,6 +1500,87 @@
           )
           ";"
         )
+        (declaration-statement
+          (declaration-specifiers "auto")
+          (init-declarator-list
+            (init-declarator
+              (declarator
+                (declarator-name "commented_member")
+              )
+              (initializer
+                "="
+                (member-expression
+                  (identifier-expression
+                    "object"
+                    (trailing-trivia
+                      (comment "/* internal */")
+                    )
+                  )
+                  "." "/* internal */"
+                  (identifier-expression "member")
+                  (trailing-trivia
+                    (comment "/* trailing */")
+                  )
+                )
+                "/* trailing */"
+              )
+            )
+          )
+          ";"
+        )
+        (declaration-statement
+          (declaration-specifiers "auto")
+          (init-declarator-list
+            (init-declarator
+              (declarator
+                (declarator-name "qualified_values")
+              )
+              (initializer
+                "="
+                (braced-initializer
+                  (initializer-list
+                    "{"
+                    (initializer-element
+                      (member-expression
+                        (identifier-expression "Value")
+                        "::"
+                        (identifier-expression "First")
+                      )
+                    )
+                    (list-separator ",")
+                    (initializer-element
+                      (member-expression
+                        (identifier-expression "Value")
+                        "::"
+                        (identifier-expression "Last")
+                      )
+                      (trailing-trivia
+                        (comment "// last")
+                      )
+                    )
+                    "// last" "}"
+                  )
+                )
+              )
+            )
+          )
+          ";"
+        )
+        (expression-statement
+          (call-expression
+            (member-expression
+              (identifier-expression "object")
+              "."
+              (identifier-expression "operator" "bool")
+              (trailing-trivia
+                (comment "/* trailing */")
+              )
+            )
+            "/* trailing */"
+            (argument-list "(" ")")
+          )
+          ";"
+        )
         (return-statement
           "return"
           (call-expression

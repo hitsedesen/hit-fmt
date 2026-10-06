@@ -9103,7 +9103,8 @@ private:
         }
 
         auto* name = MakeNode(NodeKind::IdentifierExpression, nameBegin);
-        name->Tokens.End = cursor;
+        // Lookahead skips comments, but they are not part of the member name.
+        name->Tokens.End = PreviousSignificant(cursor) + 1;
         if (Kind(cursor) != TK::Operator_Less) {
             return name;
         }
@@ -9533,7 +9534,7 @@ private:
                     break;
                 }
                 auto* member = MakeNode(NodeKind::MemberExpression, start);
-                member->Tokens.End = memberCursor;
+                member->Tokens.End = name->Tokens.End;
                 Append(*member, *left);
                 Append(*member, *name);
                 cursor = memberCursor;

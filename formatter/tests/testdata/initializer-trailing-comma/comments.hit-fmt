@@ -1,0 +1,6 @@
+Layout = Canonical
+InitializersBreak = Always
+InitializersPacking = VerticalWhenBroken
+InitializersFirstItem = NextLine
+InitializersCloser = OwnLine
+InitializersTrailingComma = WhenMultiline
