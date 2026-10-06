@@ -71,7 +71,7 @@ struct StructuralOptions
 struct IncludeSortContext
 {
     std::string_view InputFilePath;
-    const PreparedIncludePrefixes* Prefixes = nullptr;
+    const PreparedIncludeGroups* Groups = nullptr;
 };
 
 using StructuralActionId = uint32_t;

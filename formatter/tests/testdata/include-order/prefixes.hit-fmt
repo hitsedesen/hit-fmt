@@ -1,6 +1,6 @@
 IncludeOrder = Sort
 IncludeMatchingHeader = First
 IncludeGrouping = Regroup
-IncludeGroupPrefixes = ["project/core/", "project/", "foreign/"]
+IncludeGroups = [{Prefix = "project/core/"}, {Prefix = "project/"}, {Prefix = "foreign/"}]
 IncludePathBase = ProjectRoot
 IncludeStandardHeaders = Last

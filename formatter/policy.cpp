@@ -248,7 +248,7 @@ void ValidatePolicyStyle(const Style& style)
             std::string(SerializeConfigEnum(style.IncludeGrouping)) +
             " requires one empty line, exceeding " "MaxEmptyLines = 0");
     }
-    ValidateIncludeGroupPrefixes(style.IncludeGroupPrefixes);
+    ValidateIncludeGroups(style.IncludeGroups);
     if (style.ExpressionsAlignment != ExpressionAlignment::Block &&
         style.ExpressionsAlignment != ExpressionAlignment::Operand)
     {

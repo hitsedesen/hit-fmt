@@ -1,0 +1,12 @@
+IncludeOrder = Sort
+IncludeMatchingHeader = First
+IncludeGrouping = Directory
+IncludeGroups = [
+    { Prefix = "contrib/libs/", Depth = 1 },
+    { Prefix = "library/cpp/yt/memory/", Depth = 0 },
+    { Prefix = "library/cpp/yt/", Depth = 1 },
+    { Prefixes = ["yt/yt/", "yt/yt_proto/yt/"], Depth = 2 }
+]
+IncludeDirectoryOrder = Alphabetical
+IncludePathBase = ProjectRoot
+IncludeStandardHeaders = Last

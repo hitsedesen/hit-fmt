@@ -60,10 +60,11 @@ std::string_view StripComment(std::string_view line)
         std::string(message));
 }
 
-// A closing bracket inside a quoted item does not terminate an array.
+// Nested prefix arrays and quoted brackets do not terminate an outer array.
 // Quoted items themselves cannot span physical lines.
-bool HasArrayEnd(
+size_t ArrayDepth(
     std::string_view text,
+    size_t depth,
     const std::filesystem::path& path,
     size_t line)
 {
@@ -76,14 +77,22 @@ bool HasArrayEnd(
             escaped = true;
         } else if (character == '"') {
             quoted = !quoted;
+        } else if (character == '[' && !quoted) {
+            ++depth;
         } else if (character == ']' && !quoted) {
-            return true;
+            if (depth == 0) {
+                ThrowConfigError(
+                    path,
+                    line,
+                    "unexpected closing array bracket");
+            }
+            --depth;
         }
     }
     if (quoted) {
         ThrowConfigError(path, line, "unterminated quoted array item");
     }
-    return false;
+    return depth;
 }
 
 size_t ParseNonnegativeInteger(
@@ -134,6 +143,9 @@ std::string ParseString(
     result.reserve(value.size() - 2);
     for (size_t index = 1; index + 1 < value.size(); ++index) {
         char character = value[index];
+        if (character == '"') {
+            ThrowConfigError(path, line, "unescaped quote inside string");
+        }
         if (character != '\\') {
             result.push_back(character);
             continue;
@@ -204,6 +216,129 @@ std::vector<std::string> ParseStringList(
             ThrowConfigError(path, line, "expected ',' between array items");
         }
         value.remove_prefix(1);
+    }
+}
+
+std::vector<IncludeGroupRule> ParseIncludeGroups(
+    std::string_view value,
+    const std::filesystem::path& path,
+    size_t line)
+{
+    auto expect = [&] (char character) {
+        value = Trim(value);
+        if (value.empty() || value.front() != character) {
+            ThrowConfigError(
+                path,
+                line,
+                "IncludeGroups expected '" + std::string(1, character) + "'");
+        }
+        value.remove_prefix(1);
+    };
+    auto fieldValue = [&] {
+        bool quoted = false;
+        bool escaped = false;
+        size_t depth = 0;
+        size_t end = 0;
+        for (; end < value.size(); ++end) {
+            const char character = value[end];
+            if (escaped) {
+                escaped = false;
+            } else if (quoted && character == '\\') {
+                escaped = true;
+            } else if (character == '"') {
+                quoted = !quoted;
+            } else if (!quoted) {
+                if (character == '[') {
+                    ++depth;
+                } else if (character == ']') {
+                    if (!depth) {
+                        break;
+                    }
+                    --depth;
+                } else if (!depth && (character == ',' || character == '}')) {
+                    break;
+                }
+            }
+        }
+        auto result = Trim(value.substr(0, end));
+        value.remove_prefix(end);
+        return result;
+    };
+    expect('[');
+    std::vector<IncludeGroupRule> result;
+    while (true) {
+        value = Trim(value);
+        if (!value.empty() && value.front() == ']') {
+            value.remove_prefix(1);
+            if (!Trim(value).empty()) {
+                ThrowConfigError(
+                    path,
+                    line,
+                    "unexpected text after IncludeGroups array");
+            }
+            return result;
+        }
+        expect('{');
+        IncludeGroupRule group;
+        bool prefixes = false;
+        bool depth = false;
+        while (true) {
+            value = Trim(value);
+            if (!value.empty() && value.front() == '}') {
+                value.remove_prefix(1);
+                break;
+            }
+            const auto end = value.find_first_not_of(
+                "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_");
+            const auto name = value.substr(0, end);
+            value.remove_prefix(name.size());
+            expect('=');
+            const auto field = fieldValue();
+            if (name == "Prefix" || name == "Prefixes") {
+                if (prefixes) {
+                    ThrowConfigError(
+                        path,
+                        line,
+                        "IncludeGroups requires exactly one "
+                        "Prefix or Prefixes field");
+                }
+                prefixes = true;
+                group.Prefixes = name == "Prefix"
+                    ? std::vector<std::string>{ParseString(field, path, line)}
+                    : ParseStringList(field, path, line);
+            } else if (name == "Depth") {
+                if (depth) {
+                    ThrowConfigError(
+                        path,
+                        line,
+                        "IncludeGroups has duplicate Depth field");
+                }
+                depth = true;
+                group.Depth = ParseNonnegativeInteger(field, path, line);
+            } else {
+                ThrowConfigError(
+                    path,
+                    line,
+                    "unknown IncludeGroups field '" + std::string(name) + "'");
+            }
+            value = Trim(value);
+            if (!value.empty() && value.front() == '}') {
+                continue;
+            }
+            expect(',');
+        }
+        if (!prefixes) {
+            ThrowConfigError(
+                path,
+                line,
+                "IncludeGroups requires Prefix or Prefixes");
+        }
+        result.push_back(std::move(group));
+        value = Trim(value);
+        if (!value.empty() && value.front() == ']') {
+            continue;
+        }
+        expect(',');
     }
 }
 
@@ -374,6 +509,15 @@ void ParseField(
     }
 }
 
+void ParseField(
+    std::vector<IncludeGroupRule>& field,
+    std::string_view value,
+    const std::filesystem::path& path,
+    size_t line)
+{
+    field = ParseIncludeGroups(value, path, line);
+}
+
 template <auto Member>
 void AssignStyle(
     Configuration& config,
@@ -390,8 +534,7 @@ void AssignStyle(
             Member == &Style::IndentedCallScopePairs ||
             Member == &Style::IndentedChainScopePairs ||
             Member == &Style::StickyChainCallPairs ||
-            Member == &Style::ClassMacroNames ||
-            Member == &Style::IncludeGroupPrefixes)
+            Member == &Style::ClassMacroNames)
         {
             config.FormattingStyle.*Member = ParseStringList(value, path, line);
         } else {
@@ -924,7 +1067,10 @@ Configuration LoadConfigFile(const std::filesystem::path& path)
         const size_t settingLine = lineNumber;
         std::string arrayValue;
         std::string arrayKey;
-        if (value.front() == '[' && !HasArrayEnd(value, path, lineNumber)) {
+        auto arrayDepth = value.front() == '['
+            ? ArrayDepth(value, 0, path, lineNumber)
+            : 0;
+        if (arrayDepth != 0) {
             // key and value refer to lineText, which the next getline replaces.
             arrayKey = key;
             arrayValue = value;
@@ -941,7 +1087,8 @@ Configuration LoadConfigFile(const std::filesystem::path& path)
                 auto itemLine = Trim(StripComment(lineText));
                 arrayValue.push_back('\n');
                 arrayValue.append(itemLine);
-                if (HasArrayEnd(itemLine, path, lineNumber)) {
+                arrayDepth = ArrayDepth(itemLine, arrayDepth, path, lineNumber);
+                if (arrayDepth == 0) {
                     break;
                 }
             }

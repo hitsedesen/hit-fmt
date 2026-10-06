@@ -904,6 +904,9 @@ std::vector<FormatCase> FormatCases()
             {
                 "directory",
                 "directory-alphabetical",
+                "directory-depth-one",
+                "directory-depth-two",
+                "directory-depth-deep",
                 "directory-preserve",
                 "matching",
                 "prefixes",
@@ -921,33 +924,65 @@ std::vector<FormatCase> FormatCases()
             directory,
             {"standard", "standard-preserve", "standard-adjacent"},
             "standard.input.cpp");
-        for (const auto name : {"groups", "groups-reversed", "groups-regroup"})
+        for (const auto name :
+            {"groups", "groups-reversed", "groups-regroup", "groups-depth-one"})
         {
             FormatCase value{directory, name, "groups.input.cpp"};
             value.InputFilePath = "library/unit/widget.cpp";
             cases.push_back(std::move(value));
         }
-        FormatCase relative{
-            directory,
-            "directory-relative",
-            "relative.input.cpp",
-        };
-        relative.InputFilePath = "/project/engine/widget.cpp";
-        cases.push_back(std::move(relative));
+        for (const auto name :
+            {
+                "prefix-depth-one",
+                "prefix-depth-two",
+                "prefix-depth-relative",
+                "prefix-depth-reversed",
+            })
+        {
+            FormatCase value{directory, name, "prefix-depth.input.cpp"};
+            value.InputFilePath = "project/source/runner.cpp";
+            cases.push_back(std::move(value));
+        }
+        for (const auto name :
+            {
+                "rules-nearest",
+                "rules-alphabetical",
+                "rules-regroup",
+                "rules-full-suffix",
+            })
+        {
+            FormatCase value{directory, name, "rule-groups.input.cpp"};
+            value.InputFilePath = "yt/yt/core/rpc/runner.cpp";
+            cases.push_back(std::move(value));
+        }
+        for (const auto name : {"rule-order", "rule-order-reversed"}) {
+            FormatCase value{directory, name, "rule-order.input.cpp"};
+            value.InputFilePath = "source/runner.cpp";
+            if (std::string_view(name) == "rule-order-reversed") {
+                value.Expected = "rule-order.output.cpp";
+            }
+            cases.push_back(std::move(value));
+        }
+        for (const auto name :
+            {"directory-relative", "directory-relative-depth-two"})
+        {
+            FormatCase relative{directory, name, "relative.input.cpp"};
+            relative.InputFilePath = "/project/engine/widget.cpp";
+            cases.push_back(std::move(relative));
+        }
         for (const auto profile : {"google", "llvm", "ytsaurus"}) {
-            const bool rootRelative = std::string_view(profile) == "ytsaurus";
             FormatCase value{
                 directory,
                 "profile-" + std::string(profile),
-                rootRelative ? "directory.input.cpp" : "relative.input.cpp",
+                "directory.input.cpp",
                 "../../../../hit-fmt/examples/" + std::string(profile),
             };
-            value.InputFilePath = rootRelative
-                ? "project/engine/widget.cpp"
-                : "/project/engine/widget.cpp";
-            value.Expected = rootRelative
-                ? "directory.output.cpp"
-                : "directory-relative.output.cpp";
+            value.InputFilePath = "project/engine/widget.cpp";
+            value.Expected = std::string_view(profile) == "google"
+                ? "matching.output.cpp"
+                : std::string_view(profile) == "llvm"
+                    ? "directory-depth-one.output.cpp"
+                    : "directory.output.cpp";
             cases.push_back(std::move(value));
         }
         cases.push_back({

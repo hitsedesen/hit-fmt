@@ -1,13 +1,13 @@
 #include "project/engine/widget.h"
 #include "widget.hpp"
 
-#include "project/core/a.hpp"
-#include "project/core/z.hpp"
-
 #include "project/a.hpp"
 #include "project/engine/detail/a.hpp"
 #include "project/engine/detail/z.hpp"
 #include "project/engine/z.hpp"
+
+#include "project/core/a.hpp"
+#include "project/core/z.hpp"
 
 #include "foreign/a.hpp"
 #include "foreign/b.hpp"

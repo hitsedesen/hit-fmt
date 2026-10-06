@@ -437,7 +437,7 @@
         formatter::IncludeMatchingHeader::Off) \
     OPT(formatter::IncludeGrouping, IncludeGrouping, \
         formatter::IncludeGrouping::Preserve) \
-    OPT(std::vector<std::string>, IncludeGroupPrefixes, {}) \
+    OPT(std::vector<formatter::IncludeGroupRule>, IncludeGroups, {}) \
     OPT(formatter::IncludeDirectoryOrder, IncludeDirectoryOrder, \
         formatter::IncludeDirectoryOrder::NearestFirst) \
     OPT(formatter::IncludePathBase, IncludePathBase, \

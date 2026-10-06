@@ -359,6 +359,20 @@ TEST(StructuralEdits, ExactIncludeLineAtomsAndConditionalCommentBarriers)
         EXPECT_EQ(edit.PieceEnd - edit.PieceBegin, 2u);
     }
     CheckMapping(file, result);
+    // Preserve ignores rules even when raw structural callers provide them
+    // alongside matching-header metadata for bare include names.
+    const PreparedIncludeGroups inactive(
+        std::vector<IncludeGroupRule>{{{"unrelated/deep/prefix/"}, 1}});
+    const auto withMetadata = PlanStructuralEdits(
+        file.Tree,
+        file.Safety,
+        {.SortIncludes = true, .MatchingHeader = IncludeMatchingHeader::First},
+        file.Memory,
+        file.Scratch,
+        {"original.cpp", &inactive});
+    const auto unchanged = file.Apply(withMetadata);
+    EXPECT_EQ(unchanged.Text, result.Text);
+    CheckMapping(file, unchanged);
 }
 
 TEST(StructuralEdits, IncludeIndentationAndDigraphMarkersStayWithExactAtoms)

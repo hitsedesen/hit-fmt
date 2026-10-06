@@ -1436,9 +1436,9 @@ TEST(PublicPipeline, NoEditTreeSourceParityAndResultLifetime)
     formatter::FormatResult withMetadata;
     {
         auto style = defaults;
-        style.IncludeGroupPrefixes = {"engine/", "engine/detail/"};
+        style.IncludeGroups = {{{"engine/"}, 1}, {{"engine/detail/"}, 0}};
         const formatter::PreparedFormat prepared(style);
-        style.IncludeGroupPrefixes.clear();
+        style.IncludeGroups.clear();
         style.ColumnLimit = 0; // Mutating Style cannot affect prepared scalars.
         Input input(composed);
         auto tree = parser::Parse(input.View(), [] (parser::ParseError) {});
@@ -2191,23 +2191,31 @@ TEST(PublicPipeline, IncludeRegroupingOwnsBlankLinesAndPreservesMovedIdentities)
 {
     const auto directory = std::filesystem::path(__FILE__).parent_path() /
         "testdata/include-order";
-    for (const bool priorities : {false, true}) {
+    for (const auto name : {"relative", "groups", "rules"}) {
+        const bool groups = std::string_view(name) == "groups";
+        const bool rules = std::string_view(name) == "rules";
         const auto source = test::golden::ReadFile(directory /
-            (priorities ? "groups.input.cpp" : "relative.input.cpp"));
+            (rules
+                ? "rule-groups.input.cpp"
+                : groups ? "groups.input.cpp" : "relative.input.cpp"));
         auto style = formatter::LoadConfigFile(directory /
-            (priorities
-                ? "groups.hit-fmt"
-                : "directory-relative.hit-fmt")).FormattingStyle;
+            (rules
+                ? "rules-nearest.hit-fmt"
+                : groups
+                    ? "groups.hit-fmt"
+                    : "directory-relative.hit-fmt")).FormattingStyle;
         formatter::FormatResult owned;
         {
             const formatter::PreparedFormat prepared(style);
             style.IncludeGrouping = formatter::IncludeGrouping::Preserve;
-            style.IncludeGroupPrefixes.clear();
+            style.IncludeGroups.clear();
             style.IncludeStandardHeaders =
                 formatter::IncludeStandardHeaders::Preserve;
-            std::string path = priorities
-                ? "library/unit/widget.cpp"
-                : "/project/engine/widget.cpp";
+            std::string path = rules
+                ? "yt/yt/core/rpc/runner.cpp"
+                : groups
+                    ? "library/unit/widget.cpp"
+                    : "/project/engine/widget.cpp";
             owned = FormatInput(
                 source,
                 prepared,
