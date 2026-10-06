@@ -1,5 +1,6 @@
 Layout = Canonical
 BodyShape = Expanded
+StructBracePlacement = NextLine
 EmptyBodyShape = CompactIfFits
 EmptyBlockInteriorSpacing = Space
 BraceInitializerSpacing = NoSpace
