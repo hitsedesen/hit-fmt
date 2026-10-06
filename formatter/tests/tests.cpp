@@ -1824,6 +1824,24 @@ std::vector<FormatCase> FormatCases()
         cases,
         std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../lambda-body",
         {"preserve", "inherit", "inline"});
+    {
+        const auto directory =
+            std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../lambda-body";
+        cases.push_back(
+            {directory, "member-pointers", "member-pointers.input.cpp"});
+        cases.back().CheckOwningMaps = true;
+        auto style = formatter::LoadConfigFile(
+            directory / "member-pointers.hit-fmt").FormattingStyle;
+        style.LambdaBodiesLayout = CategoryLayout::Canonical;
+        cases.push_back({
+            directory,
+            "member-pointers-canonical",
+            "member-pointers.input.cpp",
+        });
+        cases.back().Style = style;
+        cases.back().Expected = "member-pointers.output.cpp";
+        cases.back().CheckOwningMaps = true;
+    }
     cases.push_back({
         std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../lambda-body",
         "visual-scopes",

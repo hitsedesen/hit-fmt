@@ -62,6 +62,9 @@ struct BinaryOperatorInfo
         case TK::Operator_Divide:
         case TK::Operator_Remainder:
             return {.Precedence = 13};
+        case TK::Operator_PointerToMemberDereference:
+        case TK::Operator_IndirectPointerToMemberDereference:
+            return {.Precedence = 14};
         default:
             return {};
     }
