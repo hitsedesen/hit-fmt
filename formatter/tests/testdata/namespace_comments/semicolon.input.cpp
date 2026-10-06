@@ -28,6 +28,18 @@ namespace block {
 int value;
 }; /* keep this block comment */
 
+namespace spaced {
+int value;
+} ; ; // spaced closing suffix
+int after;
+
+namespace standalone {
+int value;
+}
+; // keep this standalone semicolon
+
+namespace alias = direct; // not a namespace body
+
 namespace separate {
 int value;
 };
@@ -36,3 +48,7 @@ int value;
 struct Record {
 int value;
 }; // not a namespace comment
+
+namespace eof {
+int value;
+};; // closing comment at EOF

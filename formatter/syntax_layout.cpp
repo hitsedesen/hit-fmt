@@ -192,6 +192,7 @@ struct Syntax
     bool Definition = false;
     bool ItemSequence : 1 = false;
     bool ControlHeader : 1 = false;
+    bool NamespaceSuffix : 1 = false;
     parser::TokenRange SequenceBody = {};
 };
 
@@ -642,6 +643,23 @@ private:
             if (region.Parent != None) {
                 entry.PreviousSibling = LastChild_[region.Parent];
                 LastChild_[region.Parent] = id;
+            }
+            if (region.Kind == NodeKind::EmptyDeclaration &&
+                region.Tokens.Size() == 1 && entry.PreviousSibling != None &&
+                Safety_.Gaps()[region.Tokens.Begin].Horizontal)
+            {
+                const auto& previous = Syntax_[entry.PreviousSibling];
+                const auto& preceding = Region(previous);
+                // Same-line null declarations after a namespace body are a
+                // closing suffix, not a new paragraph. Carry this through a
+                // run of semicolons so its trailing comment stays attached.
+                entry.NamespaceSuffix =
+                    preceding.Tokens.End == region.Tokens.Begin &&
+                        (previous.NamespaceSuffix ||
+                            (preceding.Kind == NodeKind::NamespaceDeclaration &&
+                                !preceding.Tokens.Empty() &&
+                                Tree_.Kind(preceding.Tokens.End - 1) ==
+                                    TokenKind::Operator_CloseBrace));
             }
         }
         for (Index i = Index(Syntax_.size()); i-- > 0;) {
@@ -3173,9 +3191,11 @@ private:
                 Own(
                     part.Tokens.Begin,
                     owner,
-                    shape == BodyShape::Expanded
-                    ? Boundary::Hard
-                    : Boundary::Soft);
+                    Syntax_[child].NamespaceSuffix
+                    ? Boundary::Preserve
+                    : shape == BodyShape::Expanded
+                        ? Boundary::Hard
+                        : Boundary::Soft);
                 Gaps_[part.Tokens.Begin].Reindent |= independentIndent;
             } else {
                 Own(part.Tokens.Begin, owner, Boundary::Preserve);
@@ -4239,6 +4259,10 @@ private:
                     }
                     if (!DeclarationItem(part.Kind)) {
                         previous = access = None;
+                        continue;
+                    }
+                    if (entry.NamespaceSuffix) {
+                        previous = child;
                         continue;
                     }
                     if (access != None) {

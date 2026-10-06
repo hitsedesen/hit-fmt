@@ -1,9 +1,9 @@
 #include <cstddef>
 namespace N {}
 namespace foo {
-}; // foo
+} // foo
 namespace bar {
-}; /* bar */
+} /* bar */
 namespace Alias = N;
 export ;
 namespace Outer {
