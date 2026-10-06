@@ -314,7 +314,19 @@ std::vector<IncludeGroupRule> ParseIncludeGroups(
                         "IncludeGroups has duplicate Depth field");
                 }
                 depth = true;
-                group.Depth = ParseNonnegativeInteger(field, path, line);
+                auto [end, error] = std::from_chars(
+                    field.data(),
+                    field.data() + field.size(),
+                    group.Depth);
+                if (error != std::errc{} ||
+                    end != field.data() + field.size() || group.Depth < -1)
+                {
+                    ThrowConfigError(
+                        path,
+                        line,
+                        "IncludeGroups Depth must be an integer "
+                        "from -1 to 127");
+                }
             } else {
                 ThrowConfigError(
                     path,

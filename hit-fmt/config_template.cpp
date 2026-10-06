@@ -239,7 +239,8 @@ void PrintOption(std::ostream& output, std::string_view name, const T& value)
             }
             output << "{Prefixes = ";
             PrintStringList(output, value[index].Prefixes);
-            output << ", Depth = " << value[index].Depth << '}';
+            output << ", Depth = " << static_cast<int>(value[index].Depth)
+                << '}';
         }
         output << ']';
     } else if constexpr (std::is_same_v<T, std::vector<std::string>>) {
@@ -293,8 +294,10 @@ void PrintPreserveConfig(std::ostream& output)
             "# Example: IncludeGroups = [{Prefix = \"library/\", Depth = 1}]\n"
             "# Each rule has Prefix or Prefixes, "
             "and optional Depth (default 0).\n"
-            "# Depth 0 uses the full remaining directory, not the filename;\n"
-            "# positive values cap components after the matched prefix.\n"
+            "# Depth 0 keeps the entire rule together "
+            "within quote/angle groups;\n"
+            "# -1 uses the full remaining directory, not the filename.\n"
+            "# Values 1..127 cap components after the matched prefix.\n"
             "# With prefix library/, 1 groups library/core/a.hpp and\n"
             "# library/core/detail/b.hpp together; 2 separates them.\n"
             "# Prefixes = [\"yt/yt/\", \"yt/yt_proto/yt/\"] "

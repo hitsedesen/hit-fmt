@@ -104,7 +104,7 @@ IncludeGroups = [
     { Prefix = "library/cpp/yt/", Depth = 1 },
     { Prefix = "contrib/libs/", Depth = 1 }
 ]
-# Optional: to merge base RPC source/protobuf headers, replace the RPC rule:
+# Optional: to merge all RPC source/protobuf headers, replace the RPC rule:
 # { Prefixes = ["yt/yt/core/rpc/",
 #               "yt/yt_proto/yt/core/rpc/proto/"], Depth = 0 }
 # Aliases must share the same matched rule; more-specific rules take precedence.
