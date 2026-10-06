@@ -1,5 +1,172 @@
 (translation-unit
   (declaration
+    (declaration-specifiers "struct" "Record")
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (declarator-name "record")
+        )
+        (initializer
+          (braced-initializer
+            (initializer-list
+              "{"
+              (initializer-element
+                (call-expression
+                  (identifier-expression "First")
+                  (argument-list "(" ")")
+                )
+              )
+              (list-separator ",")
+              (initializer-element
+                (call-expression
+                  (identifier-expression "Second")
+                  (argument-list "(" ")")
+                )
+              )
+              (list-separator ",")
+              "}"
+            )
+          )
+        )
+      )
+    )
+    ";"
+  )
+  (declaration
+    (declaration-specifiers "struct" "External")
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (declarator-name "callPair")
+        )
+        (initializer
+          (braced-initializer
+            (initializer-list
+              "{"
+              (initializer-element
+                (call-expression
+                  (identifier-expression "produce")
+                  (argument-list
+                    "("
+                    (argument
+                      (literal-expression "1")
+                    )
+                    (list-separator ",")
+                    (argument
+                      (literal-expression "2")
+                    )
+                    ")"
+                  )
+                )
+              )
+              (list-separator ",")
+              (initializer-element
+                (call-expression
+                  (identifier-expression "consume")
+                  (argument-list
+                    "("
+                    (argument
+                      (literal-expression "3")
+                    )
+                    (list-separator ",")
+                    (argument
+                      (literal-expression "4")
+                    )
+                    ")"
+                  )
+                )
+              )
+              "}"
+            )
+          )
+        )
+      )
+    )
+    ";"
+  )
+  (declaration
+    (declaration-specifiers "struct" "External")
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (declarator-name "conditionalPair")
+        )
+        (initializer
+          (braced-initializer
+            (initializer-list
+              "{"
+              (initializer-element
+                (conditional-expression
+                  (identifier-expression "flag")
+                  "?"
+                  (call-expression
+                    (identifier-expression "produce")
+                    (argument-list "(" ")")
+                  )
+                  ":"
+                  (call-expression
+                    (identifier-expression "consume")
+                    (argument-list "(" ")")
+                  )
+                )
+              )
+              (list-separator ",")
+              (initializer-element
+                (call-expression
+                  (identifier-expression "finish")
+                  (argument-list "(" ")")
+                )
+              )
+              "}"
+            )
+          )
+        )
+      )
+    )
+    ";"
+  )
+  (declaration
+    (declaration-specifiers "struct" "External")
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (declarator-name "templatePair")
+        )
+        (initializer
+          (braced-initializer
+            (initializer-list
+              "{"
+              (initializer-element
+                (call-expression
+                  (template-id-expression
+                    (identifier-expression "make")
+                    (template-argument-list
+                      "<"
+                      (template-argument "int")
+                      (list-separator ",")
+                      (template-argument "long")
+                      ">"
+                    )
+                  )
+                  (argument-list "(" ")")
+                )
+              )
+              (list-separator ",")
+              (initializer-element
+                (call-expression
+                  (identifier-expression "finish")
+                  (argument-list "(" ")")
+                )
+              )
+              "}"
+            )
+          )
+        )
+      )
+    )
+    ";"
+  )
+  (declaration
     (declaration-specifiers "struct" "Packet")
     (init-declarator-list
       (init-declarator
@@ -916,6 +1083,201 @@
     "struct"
     (unparsed-syntax "Exported" "Empty")
     "{" "}" ";"
+  )
+  (record-declaration
+    "struct"
+    (unparsed-syntax "Exported" "Pair")
+    "{"
+    (declaration
+      (declaration-specifiers "Field")
+      (init-declarator-list
+        (init-declarator
+          (declarator
+            (declarator-name "first")
+          )
+        )
+        (list-separator ",")
+        (init-declarator
+          (declarator
+            (declarator-name "second")
+          )
+        )
+      )
+      ";"
+    )
+    "}" ";"
+  )
+  (record-declaration
+    "struct"
+    (unparsed-syntax "Exported" "Constructed")
+    "{"
+    (function-definition
+      (init-declarator-list
+        (init-declarator
+          (declarator
+            (declarator-name "Constructed")
+            (function-declarator
+              (parameter-list "(" ")")
+              (constructor-initializer-list
+                ":"
+                (constructor-initializer
+                  (call-expression
+                    (identifier-expression "first")
+                    (argument-list
+                      "("
+                      (argument
+                        (literal-expression "1")
+                      )
+                      ")"
+                    )
+                  )
+                )
+                (list-separator ",")
+                (constructor-initializer
+                  (call-expression
+                    (identifier-expression "second")
+                    (argument-list
+                      "("
+                      (argument
+                        (literal-expression "2")
+                      )
+                      ")"
+                    )
+                  )
+                )
+              )
+            )
+          )
+        )
+      )
+      (compound-statement "{" "}")
+    )
+    (declaration
+      (declaration-specifiers "int")
+      (init-declarator-list
+        (init-declarator
+          (declarator
+            (declarator-name "first")
+          )
+        )
+      )
+      ";"
+    )
+    (declaration
+      (declaration-specifiers "int")
+      (init-declarator-list
+        (init-declarator
+          (declarator
+            (declarator-name "second")
+          )
+        )
+      )
+      ";"
+    )
+    "}" ";"
+  )
+  (record-declaration
+    "struct"
+    (unparsed-syntax "Exported" "Callable")
+    "{"
+    (template-declaration
+      "template"
+      (template-parameter-list
+        "<"
+        (template-parameter "class" "A")
+        (list-separator ",")
+        (template-parameter "class" "B")
+        ">"
+      )
+      (function-definition
+        (init-declarator-list
+          (init-declarator
+            (declarator
+              (declarator-name "Callable")
+              (function-declarator
+                (parameter-list
+                  "("
+                  (parameter-declaration
+                    (declaration-specifiers "A")
+                    (init-declarator-list
+                      (init-declarator
+                        (declarator
+                          (declarator-name "a")
+                        )
+                      )
+                    )
+                  )
+                  (list-separator ",")
+                  (parameter-declaration
+                    (declaration-specifiers "B")
+                    (init-declarator-list
+                      (init-declarator
+                        (declarator
+                          (declarator-name "b")
+                        )
+                      )
+                    )
+                  )
+                  ")"
+                )
+              )
+            )
+          )
+        )
+        (compound-statement "{" "}")
+      )
+    )
+    "}" ";"
+  )
+  (record-declaration
+    "struct"
+    (unparsed-syntax "Exported" "Comma")
+    "{"
+    (function-definition
+      (declaration-specifiers "Comma")
+      (init-declarator-list
+        (init-declarator
+          (declarator
+            (pointer-operator "&")
+            (operator-function-name "operator")
+          )
+        )
+        (list-separator ",")
+        (init-declarator
+          (abstract-declarator
+            (function-declarator
+              (parameter-list
+                "("
+                (parameter-declaration
+                  (declaration-specifiers "int")
+                  (init-declarator-list
+                    (init-declarator
+                      (declarator
+                        (declarator-name "value")
+                      )
+                    )
+                  )
+                )
+                ")"
+              )
+            )
+          )
+        )
+      )
+      (compound-statement
+        "{"
+        (return-statement
+          "return"
+          (unary-expression
+            "*"
+            (identifier-expression "this")
+          )
+          ";"
+        )
+        "}"
+      )
+    )
+    "}" ";"
   )
   (record-declaration
     "struct"

@@ -1,3 +1,10 @@
+struct Record record{
+    First(),
+    Second(),
+};
+struct External callPair{produce(1, 2), consume(3, 4)};
+struct External conditionalPair{flag ? produce() : consume(), finish()};
+struct External templatePair{make<int, long>(), finish()};
 struct Packet first = {};
 Packet second = {};
 struct Packet third = {1};
@@ -49,5 +56,17 @@ struct Sealed;
 struct Sealed final { int value; };
 struct Exported Record { int value; };
 struct Exported Empty {};
+struct Exported Pair { Field first, second; };
+struct Exported Constructed {
+    Constructed() : first(1), second(2) {}
+    int first;
+    int second;
+};
+struct Exported Callable {
+    template<class A, class B> Callable(A a, B b) {}
+};
+struct Exported Comma {
+    Comma& operator,(int value) { return *this; }
+};
 struct Exported Destructible { ~Destructible() {} };
 template<int N> struct Derived : Base<N == 1> { int value; };
