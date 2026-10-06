@@ -1711,6 +1711,7 @@ std::vector<FormatCase> FormatCases()
             style.BraceInitializerSpacing = GapPolicy::Space;
         } else if (profile == "comment-elements-preserve") {
             style.Layout = LayoutMode::Preserve;
+            style.ArgumentCommentSpacing = GapPolicy::Preserve;
         } else if (profile == "comment-elements-tabs") {
             style.IndentationKind = IndentationKind::Tabs;
         } else if (profile == "comment-elements-delimiter") {

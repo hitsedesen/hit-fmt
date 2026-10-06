@@ -10,5 +10,6 @@ ListAlignment = Block
 ContinuationOffset = 4
 BodyShape = Expanded
 CommaSpaceAfter = Space
+ArgumentCommentSpacing = Space
 SpaceInsideCallArguments = NoSpace
 BraceInitializerSpacing = NoSpace
