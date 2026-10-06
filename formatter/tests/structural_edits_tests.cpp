@@ -957,6 +957,63 @@ TEST(StructuralEdits, AnonymousNamespaceNoOpFixAndOriginalProtection)
     EXPECT_EQ(blocked.Skipped.front().Reason, StructuralSkip::Protected);
 }
 
+TEST(StructuralEdits, NamespaceCommentMappingsAllowOnlyReindentation)
+{
+    File file("namespace n {\r\n/* note\r\n * body\r\n */\r\n}\r\n");
+    const auto plan = PlanNamespaceComments(
+        file.Tree,
+        file.Safety,
+        {.Policy = NamespaceCommentPolicy::AddMissing},
+        file.Memory,
+        file.Scratch);
+    const auto map = MapOutput(file.Tree, file.Tree.Source());
+    struct Change
+    {
+        std::string_view Before;
+        std::string_view After;
+        bool Valid;
+    };
+    for (const auto& change :
+        std::array<Change, 7>{
+            {
+                {"\r\n * body", "\r\n\t* body", true},
+                {"/* note", "/*\tnote", false},
+                {"* body", "* Body", false},
+                {"* body", "*\tbody", false},
+                {"\n * body", "\r * body", false},
+                {"\r\n * body", "\n\r * body", false},
+                {"\r\n * body", "\r \n* body", false},
+            },
+        })
+    {
+        SCOPED_TRACE(change.After);
+        std::string output(file.Tree.Source());
+        ASSERT_EQ(change.Before.size(), change.After.size());
+        output.replace(
+            output.find(change.Before),
+            change.Before.size(),
+            change.After);
+        const auto resolved = ResolveNamespaceComments(
+            file.Tree,
+            plan,
+            output,
+            map,
+            {},
+            file.Memory,
+            file.Scratch);
+        if (change.Valid) {
+            EXPECT_EQ(resolved.Edits.size(), 1u);
+            EXPECT_TRUE(resolved.Skipped.empty());
+        } else {
+            EXPECT_TRUE(resolved.Edits.empty());
+            ASSERT_EQ(resolved.Skipped.size(), 1u);
+            EXPECT_EQ(
+                resolved.Skipped.front().Reason,
+                StructuralSkip::InvalidMapping);
+        }
+    }
+}
+
 TEST(StructuralEdits, NamespaceCannotSwallowFollowingCodeCommentsOrProtection)
 {
     for (const auto& text :

@@ -31,6 +31,39 @@ bool Horizontal(std::string_view text)
     return text.find_first_not_of(" \t") == std::string_view::npos;
 }
 
+bool ReindentedCommentMatches(
+    std::string_view original,
+    std::string_view output)
+{
+    // Layout may change only leading horizontal whitespace after a newline
+    // inside a block comment. Keep its content and newline atoms exact.
+    while (!original.empty() && !output.empty()) {
+        const auto c = original.front();
+        if (c != output.front()) {
+            return false;
+        }
+        original.remove_prefix(1);
+        output.remove_prefix(1);
+        if (c == '\r' && original.starts_with('\n') != output.starts_with('\n'))
+        {
+            return false;
+        }
+        if (c == '\r' || c == '\n') {
+            while (!original.empty() &&
+                (original.front() == ' ' || original.front() == '\t'))
+            {
+                original.remove_prefix(1);
+            }
+            while (!output.empty() &&
+                (output.front() == ' ' || output.front() == '\t'))
+            {
+                output.remove_prefix(1);
+            }
+        }
+    }
+    return original.empty() && output.empty();
+}
+
 bool Control(NK kind)
 {
     return kind == NK::IfStatement || kind == NK::ForStatement ||
@@ -1349,10 +1382,16 @@ StructuralPlan ResolveNamespaceComments(
     std::pmr::vector<TI> after(count + 1, count, &scratchMemory);
     for (TI token = 0; token < count; ++token) {
         auto r = mapping[token].Output;
-        mappedValid[token] = mapping[token].Present && r.Begin <= r.End &&
-            r.End <= output.size() &&
-            output.substr(r.Begin, r.End - r.Begin) ==
-                original.TokenText(token);
+        if (mapping[token].Present && r.Begin <= r.End &&
+            r.End <= output.size())
+        {
+            const auto sourceText = original.TokenText(token);
+            const auto outputText = output.substr(r.Begin, r.End - r.Begin);
+            mappedValid[token] = outputText == sourceText ||
+                (original.Kind(token) == TK::Comment &&
+                    sourceText.starts_with("/*") &&
+                    ReindentedCommentMatches(sourceText, outputText));
+        }
         before[token + 1] = mapping[token].Present ? token : before[token];
     }
     for (TI token = count; token > 0; --token) {

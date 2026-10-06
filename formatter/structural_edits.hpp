@@ -244,8 +244,10 @@ struct NamespaceCommentPlan
 // Mapping is indexed by ORIGINAL token identity, composed by the caller
 // through normalization AND final layout. Mapped namespace/comment atoms must
 // retain exact spelling and enclose surviving original interior identities in
-// order relative to outside neighbors. Interior envelopes are computed once;
-// authorized include permutations and absent deleted tokens are supported.
+// order relative to outside neighbors. Block comment identities may change
+// only line-leading indentation, as permitted by layout. Interior envelopes
+// are computed once; authorized include permutations and absent deleted
+// tokens are supported.
 // OutputProtection contains sorted disjoint immutable final-output ranges,
 // including exclusions introduced after normalization.
 // This is one semantic materialization after layout, never a reflow or parse.
