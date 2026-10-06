@@ -335,6 +335,11 @@ std::vector<FormatCase> FormatCases()
     }
     AddCases(
         cases,
+        std::filesystem::path(FORMATTER_TESTDATA_DIR) /
+        "../declarator-macro-spacing",
+        {"space", "no-space"});
+    AddCases(
+        cases,
         std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../class-body-macros",
         {"hinted", "preserve", "unhinted"});
     AddCases(

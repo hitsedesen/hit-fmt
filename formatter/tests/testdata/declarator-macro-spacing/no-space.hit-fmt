@@ -1,0 +1,7 @@
+Layout = Canonical
+IndentationKind = Spaces
+IndentWidth = 4
+FunctionBracePlacement = NextLine
+BodyShape = Expanded
+CommaSpaceBefore = NoSpace
+CommaSpaceAfter = NoSpace
