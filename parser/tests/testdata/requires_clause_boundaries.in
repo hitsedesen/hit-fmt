@@ -12,3 +12,25 @@ requires (requires { typename T::value_type; }) && true
 int inspect(T value) { return 1; }
 
 int outside;
+
+template<class Tag, Tag... Defaults, ForeignConstraint Base, class... Branches>
+requires (
+    CompatibleHierarchy<Base, Branches...> &&
+    // The fallback branch must have a compatible default.
+    (
+        !OptionalChoice<Tag, Defaults...>::DefaultChoiceValue.has_value() ||
+        HasDefaultChoice<Tag, Defaults..., Branches...>)
+    )
+void Configure();
+
+template<typename /* type pack */ ... Items>
+void Select() requires (Ready<Items...> && Compatible<External, Items..., 0>)
+{}
+
+template<class... Items>
+requires (requires { sizeof...(Items); } && Ready<Items...>)
+struct Pack;
+
+template<int Value>
+requires (lower < Value > upper)
+void Ordered();

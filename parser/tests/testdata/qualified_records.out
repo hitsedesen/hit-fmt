@@ -1171,7 +1171,7 @@
       "struct" "alignas"
       (parenthesized-expression
         "("
-        (identifier-expression "Types")
+        (type-id "Types")
         "..." ")"
       )
       "TypePack" "{" "}" ";"

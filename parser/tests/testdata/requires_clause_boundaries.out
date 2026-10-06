@@ -138,4 +138,249 @@
     )
     ";"
   )
+  (template-declaration
+    (leading-trivia
+      (whitespace "\n\n")
+    )
+    "template"
+    (template-parameter-list
+      "<"
+      (template-parameter "class" "Tag")
+      (list-separator ",")
+      (template-parameter "Tag" "..." "Defaults")
+      (list-separator ",")
+      (template-parameter "ForeignConstraint" "Base")
+      (list-separator ",")
+      (template-parameter "class" "..." "Branches")
+      ">"
+    )
+    (requires-clause
+      "requires"
+      (constraint-expression
+        (parenthesized-expression
+          "("
+          (binary-expression
+            (template-id-expression
+              (identifier-expression "CompatibleHierarchy")
+              (template-argument-list
+                "<"
+                (template-argument "Base")
+                (list-separator ",")
+                (template-argument "Branches" "...")
+                ">"
+              )
+            )
+            "&&" "// The fallback branch must have a compatible default."
+            (parenthesized-expression
+              (leading-trivia
+                (comment "// The fallback branch must have a compatible default.")
+              )
+              "("
+              (binary-expression
+                (unary-expression
+                  "!"
+                  (call-expression
+                    (member-expression
+                      (member-expression
+                        (template-id-expression
+                          (identifier-expression "OptionalChoice")
+                          (template-argument-list
+                            "<"
+                            (template-argument "Tag")
+                            (list-separator ",")
+                            (template-argument "Defaults" "...")
+                            ">"
+                          )
+                        )
+                        "::"
+                        (identifier-expression "DefaultChoiceValue")
+                      )
+                      "."
+                      (identifier-expression "has_value")
+                    )
+                    (argument-list "(" ")")
+                  )
+                )
+                "||"
+                (template-id-expression
+                  (identifier-expression "HasDefaultChoice")
+                  (template-argument-list
+                    "<"
+                    (template-argument "Tag")
+                    (list-separator ",")
+                    (template-argument "Defaults" "...")
+                    (list-separator ",")
+                    (template-argument "Branches" "...")
+                    ">"
+                  )
+                )
+              )
+              ")"
+            )
+          )
+          ")"
+        )
+      )
+    )
+    (function-declaration
+      (declaration-specifiers "void")
+      (init-declarator-list
+        (init-declarator
+          (declarator
+            (declarator-name "Configure")
+            (function-declarator
+              (parameter-list "(" ")")
+            )
+          )
+        )
+      )
+      ";"
+    )
+  )
+  (template-declaration
+    (leading-trivia
+      (whitespace "\n\n")
+    )
+    "template"
+    (template-parameter-list
+      "<"
+      (template-parameter
+        "typename" "/* type pack */" "..." "Items"
+        (dangling-trivia
+          (comment "/* type pack */")
+        )
+      )
+      ">"
+    )
+    (function-definition
+      (declaration-specifiers "void")
+      (init-declarator-list
+        (init-declarator
+          (declarator
+            (declarator-name "Select")
+            (function-declarator
+              (parameter-list "(" ")")
+              (requires-clause
+                "requires"
+                (constraint-expression
+                  (parenthesized-expression
+                    "("
+                    (binary-expression
+                      (template-id-expression
+                        (identifier-expression "Ready")
+                        (template-argument-list
+                          "<"
+                          (template-argument "Items" "...")
+                          ">"
+                        )
+                      )
+                      "&&"
+                      (template-id-expression
+                        (identifier-expression "Compatible")
+                        (template-argument-list
+                          "<"
+                          (template-argument "External")
+                          (list-separator ",")
+                          (template-argument "Items" "...")
+                          (list-separator ",")
+                          (template-argument "0")
+                          ">"
+                        )
+                      )
+                    )
+                    ")"
+                  )
+                )
+              )
+            )
+          )
+        )
+      )
+      (compound-statement "{" "}")
+    )
+  )
+  (template-declaration
+    (leading-trivia
+      (whitespace "\n\n")
+    )
+    "template"
+    (template-parameter-list
+      "<"
+      (template-parameter "class" "..." "Items")
+      ">"
+    )
+    (requires-clause
+      "requires"
+      (constraint-expression
+        (parenthesized-expression
+          "("
+          (binary-expression
+            (requires-expression
+              "requires"
+              (requirement-body
+                "{"
+                (requirement "sizeof" "..." "(" "Items" ")")
+                (list-separator ";")
+                "}"
+              )
+            )
+            "&&"
+            (template-id-expression
+              (identifier-expression "Ready")
+              (template-argument-list
+                "<"
+                (template-argument "Items" "...")
+                ">"
+              )
+            )
+          )
+          ")"
+        )
+      )
+    )
+    (record-declaration "struct" "Pack" ";")
+  )
+  (template-declaration
+    (leading-trivia
+      (whitespace "\n\n")
+    )
+    "template"
+    (template-parameter-list
+      "<"
+      (template-parameter "int" "Value")
+      ">"
+    )
+    (requires-clause
+      "requires"
+      (constraint-expression
+        (parenthesized-expression
+          "("
+          (binary-expression
+            (binary-expression
+              (identifier-expression "lower")
+              "<"
+              (identifier-expression "Value")
+            )
+            ">"
+            (identifier-expression "upper")
+          )
+          ")"
+        )
+      )
+    )
+    (function-declaration
+      (declaration-specifiers "void")
+      (init-declarator-list
+        (init-declarator
+          (declarator
+            (declarator-name "Ordered")
+            (function-declarator
+              (parameter-list "(" ")")
+            )
+          )
+        )
+      )
+      ";"
+    )
+  )
 )

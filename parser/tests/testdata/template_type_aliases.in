@@ -31,3 +31,31 @@ void shadowed()
     Select<Box<int>, Second>(first, second);
     Select<Box<int>, value>(first, second);
 }
+
+template<class... Elements>
+void pack_arguments()
+{
+    auto plain = Ready<Elements...> && Other<External, Elements...>;
+    auto nested = Ready<Box<Elements>...> && Other<External, Box<Elements>...>;
+    auto shared = Ready<Box<Box<Elements>>...>;
+}
+
+void escaped_pack_name()
+{
+    auto comparison = lower < Elements > upper;
+}
+
+int Hidden = 1;
+template<template<class... Hidden> class Factory>
+void nested_pack_scope()
+{
+    auto comparison = lower < Hidden > upper;
+    auto specialized = Ready<Factory<int>>;
+}
+
+template<int... Values>
+void value_packs()
+{
+    auto undecided = Check<Values...> && true;
+    auto comparisons = ((lower < Values) && ...);
+}

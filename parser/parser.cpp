@@ -2730,12 +2730,24 @@ private:
     void RegisterTemplateTypeParameters(size_t begin, size_t end)
     {
         for (auto i = begin; i < end; ++i) {
+            if (Kind(i) == TK::Keyword_template) {
+                const auto opening = NextSignificant(i + 1);
+                if (Kind(opening) == TK::Operator_Less) {
+                    // A nested template's parameters do not belong to this
+                    // scope; only its following parameter name does.
+                    i = SkipTemplateArguments(opening, end) - 1;
+                    continue;
+                }
+            }
             if (Kind(i) != TK::Keyword_typename && Kind(i) != TK::Keyword_class)
             {
                 continue;
             }
             auto name = NextSignificant(i + 1);
-            if (Kind(name) == TK::Identifier) {
+            if (Kind(name) == TK::Operator_Ellipsis) {
+                name = NextSignificant(name + 1);
+            }
+            if (name < end && Kind(name) == TK::Identifier) {
                 AddName(Text(name), NameKind::Type);
             }
         }
@@ -8909,6 +8921,10 @@ private:
             if (exactClosing || sharedCloser) {
                 afterArgument = NextSignificant(nestedEnd);
             }
+        }
+        // Expanding a known type preserves its definite type evidence.
+        if (knownTypeArgument && Kind(afterArgument) == TK::Operator_Ellipsis) {
+            afterArgument = NextSignificant(afterArgument + 1);
         }
         return (knownTypeArgument ||
             IsFundamentalTypeKeyword(Kind(firstArgument))) &&
