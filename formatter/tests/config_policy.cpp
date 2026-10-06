@@ -651,6 +651,7 @@ TEST(ConfigPolicy, PreserveTemplateRoundTripsEveryRegisteredStyleDefault)
         "FunctionCvRefQualifierSpacing = Inherit\n",
         "TernaryOperatorIndentation = Align\n",
         "LineEnding = Preserve\n",
+        "ArgumentCommentSpacing = GeneratedSpace\n",
         "first newline",
         "# TrailingCommentSpaces = Preserve",
     })

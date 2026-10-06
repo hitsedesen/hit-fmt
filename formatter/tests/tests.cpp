@@ -1726,13 +1726,20 @@ std::vector<FormatCase> FormatCases()
             "label-no-space",
             "label-generated-space",
             "label-generated-no-space",
+            "label-preserve",
         })
     {
         const std::string_view policy(config);
         const bool generated = policy.starts_with("label-generated-");
+        const auto spacing = formatter::LoadConfigFile(callReflow /
+            (std::string(config) +
+                ".hit-fmt")).FormattingStyle.ArgumentCommentSpacing;
         for (const auto layout : {LayoutMode::Canonical, LayoutMode::Preserve})
         {
             const bool preserve = layout == LayoutMode::Preserve;
+            if (preserve && spacing == GapPolicy::Preserve) {
+                continue;
+            }
             const auto name = "comment-elements-" + std::string(config) +
                 (preserve ? "-preserve" : "");
             std::string expected;
@@ -1756,10 +1763,7 @@ std::vector<FormatCase> FormatCases()
             auto style = formatter::LoadConfigFile(
                 callReflow / "comment-elements.hit-fmt").FormattingStyle;
             style.Layout = layout;
-            style.ArgumentCommentSpacing = formatter::LoadConfigFile(
-                callReflow /
-                (std::string(config) +
-                    ".hit-fmt")).FormattingStyle.ArgumentCommentSpacing;
+            style.ArgumentCommentSpacing = spacing;
             cases.back().Style = std::move(style);
         }
     }

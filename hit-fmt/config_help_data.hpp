@@ -144,7 +144,8 @@ ArgumentCommentSpacing = Space
 # and between consecutive block comments in those attached runs.
 # Space: consume(/* first */ /* second */ value /* note */);
 # NoSpace: consume(/* first *//* second */value/* note */);
-# Preserve is the default; separator-facing gaps stay independent.
+# Default GeneratedSpace normalizes rebuilt lists; Preserve retains gaps.
+# Separator-facing gaps stay independent.
 CommaSpaceBefore = NoSpace
 CommaSpaceAfter = Space
 EmptyBlockInteriorSpacing = GeneratedNoSpace
@@ -426,8 +427,9 @@ constexpr HelpSection HelpSections[] = {
         "comments: after the last leading comment and before the first "
         "trailing comment, for any kind of value. It also controls gaps "
         "between consecutive block comments in those attached runs. "
-        "It defaults to Preserve; "
-        "Space and NoSpace force one or zero spaces, while Generated* applies "
+        "It defaults to GeneratedSpace, so rebuilt lists use one space; "
+        "Preserve retains horizontal spelling. Space and NoSpace force "
+        "one or zero spaces, while Generated* applies "
         "only when that item's list owner is rebuilt. Comment interiors, "
         "separator-facing gaps, and argument-facing "
         "line comments are excluded. Mixed runs can still normalize "

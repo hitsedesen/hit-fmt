@@ -38,7 +38,7 @@ void demo() {
     );
     auto prefixes = consume(
 	alpha,
-	/* first */  /* second */	beta,
+	/* first */ /* second */ beta,
 	gamma
     );
     consume(
@@ -58,7 +58,7 @@ void demo() {
 	gamma
     );
     consume(
-	/* tight */{
+	/* tight */ {
 	    first,
 	    last
 	}
@@ -92,7 +92,7 @@ void demo() {
 	    first,
 	    last
 	},
-	/* tight */{
+	/* tight */ {
 	    first,
 	    last
 	}
@@ -108,8 +108,8 @@ void demo() {
 	gamma
     );
     consume(
-	/* leading */value/* trailing */,
-	alpha /* first */  /* second */);
+	/* leading */ value /* trailing */,
+	alpha /* first */ /* second */);
     consume(
 	{
 	    first,
@@ -118,12 +118,12 @@ void demo() {
 	Range{
 	    first,
 	    last
-	}/* typed */);
+	} /* typed */);
     auto notes = {
-	/* leading */{
+	/* leading */ {
 	    first,
 	    last
-	}/* trailing */,
+	} /* trailing */,
 	value /* item */};
     consume(
 	value /* multiline
@@ -135,7 +135,7 @@ void demo() {
 	value /* mixed block */ // mixed line
     );
     consume(// leading line
-	/* leading block */value
+	/* leading block */ value
     );
     (opaque)(value /* uncertain suffix */);
     auto nestedComma = consume(
