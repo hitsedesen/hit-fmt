@@ -374,6 +374,19 @@ std::vector<FormatCase> FormatCases()
         {},
         true,
     });
+    AddCases(
+        cases,
+        std::filesystem::path(FORMATTER_TESTDATA_DIR) /
+        "../declaration-headers",
+        {"trailing-return", "trailing-return-narrow", "trailing-return-wide"},
+        "trailing-return.input.cpp");
+    cases.push_back({
+        std::filesystem::path(FORMATTER_TESTDATA_DIR) /
+            "../declaration-headers",
+        "trailing-return-forced",
+        "trailing-return.input.cpp",
+        "qualified-always",
+    });
     for (auto& value : cases) {
         if (value.Directory.filename() == "declaration-headers") {
             value.CheckOwningMaps = true;

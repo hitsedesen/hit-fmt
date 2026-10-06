@@ -1177,6 +1177,24 @@ private:
             // including the lambda's independent parameter list.
             Groups_[group].Spec.BreakPenalty = 3;
         }
+        if (node.Kind == NodeKind::ParameterList && node.Parent != None &&
+            Region(Syntax_[node.Parent]).Kind == NodeKind::FunctionDeclarator &&
+            Policies_.DeclarationHeaders == LayoutMode::Canonical)
+        {
+            const auto& parent = Region(Syntax_[node.Parent]);
+            for (auto child = parent.FirstChild;
+                child != None;
+                child = Region(Syntax_[child]).NextSibling)
+            {
+                if (Region(Syntax_[child]).Kind == NodeKind::TrailingReturnType)
+                {
+                    // Prefer moving a trailing return type over splitting an
+                    // otherwise fitting parameter list.
+                    Groups_[group].Spec.BreakPenalty = 1;
+                    break;
+                }
+            }
+        }
         // Semicolon-separated control clauses choose their own boundaries,
         // rather than splitting an initializer to keep every clause inline.
         Groups_[group].Spec.ChildBreaks = node.Kind != NodeKind::ForHeader;
@@ -2041,9 +2059,21 @@ private:
                     document::GroupMode::Fill)
                 : group;
             if (suffix) {
-                // Keep suffixes beside the parameter closer when splitting
-                // the parameter list can satisfy the width instead.
-                Groups_[owner].Spec.BreakPenalty = 2;
+                // Keep qualifiers beside the parameter closer; a return type
+                // can instead move intact before breaking its template lists.
+                const bool trailing = part.Kind == NodeKind::TrailingReturnType;
+                Groups_[owner].Spec.BreakPenalty = trailing ? 0 : 2;
+                if (trailing) {
+                    const auto offset =
+                        Policies_.Parameters.Indent.ContinuationOffset;
+                    Groups_[owner].Spec.Indent = int32_t(offset);
+                    Groups_[owner].Spec.StructuralBase = true;
+                    Groups_[owner].Spec.Continuation = true;
+                    Groups_[owner].Indent =
+                        {ContinuationAlignment::Block, offset, offset};
+                    Groups_[owner].HasAnchor = true;
+                    Gaps_[part.Tokens.Begin].FitThrough = part.Tokens.End;
+                }
             }
             Index nameBegin = None;
             if (function && part.Kind == NodeKind::Declarator) {
@@ -4163,10 +4193,10 @@ private:
             Facts_[i].RequiredWidth = width;
             const auto fitThrough = Gaps_[i].FitThrough;
             if (fitThrough != None && Gaps_[i].FitNextSegment) {
-                // Qualified names can contain independently breakable template
-                // arguments. Fit their flat spelling before splitting a child
-                // merely to keep the return type on the same line. These name
-                // spans are disjoint, so their total work remains linear.
+                // Qualified names and trailing return types can contain
+                // independently breakable template arguments. Fit their flat
+                // spelling before splitting a child merely to keep the header
+                // on the same line.
                 Index prefixWidth = 0;
                 auto t = i;
                 while (t < fitThrough) {
