@@ -71,6 +71,8 @@ struct Gap
     bool PreserveIndent = false;
     uint8_t VerticalPriority = 0;
     Index MarkDelimiter = None;
+    // Fit a complete syntax prefix before considering optional child breaks.
+    Index FitThrough = None;
     GapContext Context = GapContext::Preserved;
     bool ContextKnown = false;
     // A flat header boundary still rebuilds source topology, so horizontal
@@ -2035,6 +2037,9 @@ private:
                         // Qualified prefixes are direct declarator tokens;
                         // the name child may contain only the terminal name.
                         nameBegin = prefix;
+                        if (prefix < node.Tokens.Begin) {
+                            Gaps_[prefix].FitThrough = node.Tokens.End;
+                        }
                         break;
                     }
                 }
@@ -4108,6 +4113,42 @@ private:
                 width = AddWidth(width, 1);
             }
             Facts_[i].RequiredWidth = width;
+            const auto fitThrough = Gaps_[i].FitThrough;
+            if (fitThrough != None && Gaps_[i].FitNextSegment) {
+                // Qualified names can contain independently breakable template
+                // arguments. Fit their flat spelling before splitting a child
+                // merely to keep the return type on the same line. These name
+                // spans are disjoint, so their total work remains linear.
+                Index prefixWidth = 0;
+                auto t = i;
+                while (t < fitThrough) {
+                    if (!Removed_[t]) {
+                        prefixWidth = AddWidth(
+                            prefixWidth,
+                            HorizontalColumns(
+                                Tree_.TokenText(t),
+                                Options_.TabWidth));
+                    }
+                    ++t;
+                    const auto& next = Gaps_[t];
+                    const bool mandatory = next.Shape == Boundary::Hard ||
+                        (next.Shape == Boundary::Preserve &&
+                            Safety_.Gaps()[t].HasLineFeed) ||
+                        (next.Shape == Boundary::Conditional &&
+                            next.Broken != document::GapKind::Flat &&
+                            next.Owner != None &&
+                            Groups_[next.Owner].Spec.ForceBreak);
+                    if (mandatory) {
+                        break;
+                    }
+                    prefixWidth = AddWidth(prefixWidth, FlatWidth(t));
+                    if (t == fitThrough) {
+                        prefixWidth =
+                            AddWidth(prefixWidth, Facts_[t].RequiredWidth);
+                    }
+                }
+                Facts_[i].RequiredWidth = std::max(width, prefixWidth);
+            }
             RequireBlockAnchor(i);
             const auto& gap = Gaps_[i];
             const bool boundary =
