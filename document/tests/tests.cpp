@@ -1092,6 +1092,67 @@ TEST(GroupLayout, ChildFittingCostGolden)
             }
         }
     }
+    for (const auto width : {28u, 48u, 100u}) {
+        for (const auto middlePenalty : {2u, 3u}) {
+            for (const bool forceMiddle : {false, true}) {
+                Document document("");
+                document.Text("capture[");
+                const auto capture = document.BeginGroup({
+                    .Mode = GroupMode::Fill,
+                    .Indent = 4,
+                    .StructuralBase = true,
+                    .BreakPenalty = 3,
+                });
+                document.ConditionalGap(
+                    capture,
+                    {GapKind::Flat, 0},
+                    {GapKind::Hard, 0});
+                document.Text("&]");
+                document.EndGroup(capture);
+                document.Text(" template<");
+                const auto middle = document.BeginGroup({
+                    .Mode = GroupMode::Fill,
+                    .Indent = 4,
+                    .ForceBreak = forceMiddle,
+                    .StructuralBase = true,
+                    .BreakPenalty = static_cast<std::uint8_t>(middlePenalty),
+                });
+                document.ConditionalGap(
+                    middle,
+                    {GapKind::Flat, 0},
+                    {GapKind::Hard, 0});
+                document.Text("T>");
+                document.EndGroup(middle);
+                document.Text(" parameters(");
+                const auto parameters = document.BeginGroup({
+                    .Mode = GroupMode::Fill,
+                    .Indent = 4,
+                    .StructuralBase = true,
+                });
+                document.ConditionalGap(
+                    parameters,
+                    {GapKind::Flat, 0},
+                    {GapKind::Hard, 0});
+                document.Text("firstLongParameter,");
+                document.ConditionalGap(
+                    parameters,
+                    {GapKind::Flat, 1},
+                    {GapKind::Hard, 0});
+                document.Text("secondLongParameter)");
+                document.EndGroup(parameters);
+                document.Text(";");
+                ASSERT_TRUE(document.Seal());
+                const auto output = document.Render({.Width = width});
+                ASSERT_TRUE(output.State);
+                actual +=
+                    "successive penalties=3," + std::to_string(middlePenalty) +
+                        ",0 width=" + std::to_string(width) +
+                        " forced-middle=" + std::to_string(forceMiddle) + "\n";
+                actual.append(output.Text);
+                actual += '\n';
+            }
+        }
+    }
     test::golden::ExpectGolden(
         std::filesystem::path(DOCUMENT_TESTDATA_DIR) /
         "child-fit-cost.expected",

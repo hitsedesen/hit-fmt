@@ -1622,6 +1622,21 @@ std::vector<FormatCase> FormatCases()
         "lambda-trailing-return.input.cpp",
     });
     addProfileCase("../lambda-captures", "profile");
+    for (const auto* name :
+        {"generic-header", "generic-header-fitting", "generic-header-forced"})
+    {
+        addProfileCase("../lambda-captures", name);
+        cases.back().Input = "generic-header.input.cpp";
+        auto style =
+            formatter::LoadConfigFile(profile + ".hit-fmt").FormattingStyle;
+        style.ColumnLimit =
+            std::string_view(name) == "generic-header-fitting" ? 120 : 80;
+        if (std::string_view(name) == "generic-header-forced") {
+            style.CapturesBreak = BreakRequirement::Always;
+        }
+        cases.back().Style = style;
+        cases.back().CheckOwningMaps = true;
+    }
     {
         const auto directory = std::filesystem::path(FORMATTER_TESTDATA_DIR) /
             "../lambda-captures";
