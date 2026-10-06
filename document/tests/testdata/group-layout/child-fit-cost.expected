@@ -145,3 +145,52 @@ sibling penalties=3,3 width=80 breakable=0
 Map<Key, Value> value{one, two, three};
 sibling penalties=3,3 width=80 breakable=1
 Map<Key, Value> value{one, two, three};
+successive penalties=3,2,0 width=28 forced-middle=0
+capture[&] template<
+    T> parameters(
+    firstLongParameter,
+    secondLongParameter);
+successive penalties=3,2,0 width=28 forced-middle=1
+capture[&] template<
+    T> parameters(
+    firstLongParameter,
+    secondLongParameter);
+successive penalties=3,3,0 width=28 forced-middle=0
+capture[
+    &] template<
+    T> parameters(
+    firstLongParameter,
+    secondLongParameter);
+successive penalties=3,3,0 width=28 forced-middle=1
+capture[&] template<
+    T> parameters(
+    firstLongParameter,
+    secondLongParameter);
+successive penalties=3,2,0 width=48 forced-middle=0
+capture[&] template<T> parameters(
+    firstLongParameter,
+    secondLongParameter);
+successive penalties=3,2,0 width=48 forced-middle=1
+capture[&] template<
+    T> parameters(
+    firstLongParameter,
+    secondLongParameter);
+successive penalties=3,3,0 width=48 forced-middle=0
+capture[&] template<T> parameters(
+    firstLongParameter,
+    secondLongParameter);
+successive penalties=3,3,0 width=48 forced-middle=1
+capture[&] template<
+    T> parameters(
+    firstLongParameter,
+    secondLongParameter);
+successive penalties=3,2,0 width=100 forced-middle=0
+capture[&] template<T> parameters(firstLongParameter, secondLongParameter);
+successive penalties=3,2,0 width=100 forced-middle=1
+capture[&] template<
+    T> parameters(firstLongParameter, secondLongParameter);
+successive penalties=3,3,0 width=100 forced-middle=0
+capture[&] template<T> parameters(firstLongParameter, secondLongParameter);
+successive penalties=3,3,0 width=100 forced-middle=1
+capture[&] template<
+    T> parameters(firstLongParameter, secondLongParameter);

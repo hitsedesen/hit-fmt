@@ -5,6 +5,7 @@
 #include <util/ascii.hpp>
 
 #include <algorithm>
+#include <array>
 #include <limits>
 #include <memory>
 
@@ -1116,8 +1117,12 @@ Result Document::Render(
         Measure BrokenTail;
         std::uint32_t LastBreak = InvalidId;
         std::uint32_t OwnedLastBreak = InvalidId;
-        std::uint32_t TailBreakPrefix = Infinity;
-        std::uint8_t TailBreakPenalty = 4;
+        // First reachable break cheaper than each nonzero penalty (1..3).
+        std::array<std::uint32_t, 3> TailBreakPrefixes{
+            Infinity,
+            Infinity,
+            Infinity,
+        };
         bool GuaranteedLine = false;
         bool ChildLayoutAllowed = false;
         bool ShapeSensitive = false;
@@ -1138,8 +1143,11 @@ Result Document::Render(
     {
         Measure Flat;
         Measure Broken;
-        Measure Flexible;
-        std::uint8_t FirstBreakPenalty = 4;
+        std::array<std::uint32_t, 3> BreakPrefixes{
+            Infinity,
+            Infinity,
+            Infinity,
+        };
         std::uint32_t LastBreak = InvalidId;
         std::uint32_t OwnedLastBreak = InvalidId;
         bool GuaranteedLine = false;
@@ -1341,10 +1349,7 @@ Result Document::Render(
             auto& groupEntry = groupCache[Group(node).Reference];
             groupEntry.FlatTail = summary.Flat;
             groupEntry.BrokenTail = summary.Broken;
-            if (summary.Flexible.Line) {
-                groupEntry.TailBreakPrefix = summary.Flexible.Prefix;
-                groupEntry.TailBreakPenalty = summary.FirstBreakPenalty;
-            }
+            groupEntry.TailBreakPrefixes = summary.BreakPrefixes;
         } else if (node.Type == Kind::Gap || node.Type == Kind::ConditionalGap)
         {
             entry.Gap = static_cast<std::uint32_t>(gapCache.size());
@@ -1356,12 +1361,23 @@ Result Document::Render(
                 expandedGapWidth,
             });
         }
+        // Retain the earliest affordable opportunity for each penalty, not
+        // merely the first break or the globally cheapest one. An expensive
+        // intervening list must not hide a cheaper suffix; a nearer medium-
+        // cost break may still be needed when that suffix is too far away.
+        for (std::size_t penalty = 1;
+            penalty <= summary.BreakPrefixes.size();
+            ++penalty)
+        {
+            auto& prefix = summary.BreakPrefixes[penalty - 1];
+            prefix = flat.Line
+                ? flat.Prefix
+                : flexible.Line && firstBreakPenalty < penalty
+                    ? flexible.Prefix
+                    : AddWidth(flat.Prefix, prefix);
+        }
         summary.Flat = Join(flat, summary.Flat);
         summary.Broken = Join(broken, summary.Broken);
-        summary.Flexible = Join(flexible, summary.Flexible);
-        if (flexible.Line) {
-            summary.FirstBreakPenalty = firstBreakPenalty;
-        }
         if (summary.LastBreak == InvalidId) {
             summary.LastBreak = lastBreak;
         }
@@ -1513,8 +1529,8 @@ Result Document::Render(
             tailWidth(frame.OwnedFlat ? entry.FlatTail : entry.BrokenTail);
         // Keep costly groups flat when a cheaper following group can break.
         // An owned-flat parent still requires its complete flat suffix.
-        return !frame.OwnedFlat && penalty > entry.TailBreakPenalty
-            ? std::min(width, entry.TailBreakPrefix)
+        return !frame.OwnedFlat && penalty != 0
+            ? std::min(width, entry.TailBreakPrefixes[penalty - 1])
             : width;
     };
     auto resolveIndent = [&] (AnchorId id, std::uint32_t requiredWidth) {
