@@ -708,6 +708,48 @@ TEST(PublicPipeline, UnbracedControlSeparatorCompactWidthAndMultilineSuffix)
     }
 }
 
+TEST(PublicPipeline, AmbiguousAssignmentRhsKeepsMapsAndScopes)
+{
+    auto style = Canonical();
+    style.ColumnLimit = 60;
+    style.BodyShape = formatter::BodyShape::Expanded;
+    style.CallsPacking = formatter::ListPacking::VerticalWhenBroken;
+    style.CallsFirstItem = formatter::FirstItemPlacement::NextLine;
+    style.RemoveNullStatements = true;
+    const formatter::PreparedFormat prepared(style);
+    const std::string source = "void f() { External  *  pointer = "
+        "Acquire(firstLongArgument, secondLongArgument, thirdLongArgument); "
+        "; }\n";
+    const auto result = FormatInput(source, prepared);
+    EXPECT_FALSE(result.StructuralOperations.empty());
+    EXPECT_NE(result.Text.find("External  *  pointer ="), std::string::npos);
+    EXPECT_NE(result.Text.find("Acquire(\n"), std::string::npos);
+    CheckIdentities(source, result);
+    EXPECT_EQ(FormatInput(result.Text, prepared).Text, result.Text);
+    EXPECT_EQ(
+        FormatInput(
+            source,
+            prepared,
+            {.EditScope = std::span<const parser::SourceRange>{}}).Text,
+        source);
+    const std::array immutable{parser::SourceRange{0, uint32_t(source.size())}};
+    EXPECT_EQ(
+        FormatInput(source, prepared, {.ImmutableRanges = immutable}).Text,
+        source);
+    const auto begin = uint32_t(source.find("Acquire"));
+    const auto end = uint32_t(source.find(';'));
+    const std::array selected{parser::SourceRange{begin, end}};
+    const auto scoped = FormatInput(
+        source,
+        prepared,
+        {.SourceMap = true, .EditScope = selected});
+    EXPECT_TRUE(scoped.StructuralOperations.empty());
+    EXPECT_TRUE(scoped.Text.starts_with(source.substr(0, begin)));
+    EXPECT_TRUE(scoped.Text.ends_with(source.substr(end)));
+    EXPECT_NE(scoped.Text.find("Acquire(\n"), std::string::npos);
+    CheckIdentities(source, scoped);
+}
+
 TEST(PublicPipeline, UnknownAnnotationBoundariesPreserveRecoveryAndMaps)
 {
     auto style = Canonical();

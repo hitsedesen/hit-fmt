@@ -502,6 +502,244 @@
           (unknown-type-name "ExternalCount")
           "&&" "ambiguousConjunction" ";"
         )
+        (ambiguous-statement
+          (unknown-type-name "ExternalCount")
+          "*" "pointer"
+          (initializer
+            "="
+            (call-expression
+              (identifier-expression "Acquire")
+              (argument-list
+                "("
+                (argument
+                  (identifier-expression "first")
+                )
+                (list-separator ",")
+                (argument
+                  (identifier-expression "second")
+                )
+                ")"
+              )
+            )
+          )
+          ";"
+        )
+        (ambiguous-statement
+          (unknown-type-name "ExternalCount")
+          "&" "reference"
+          (initializer
+            "="
+            (call-expression
+              (identifier-expression "Acquire")
+              (argument-list
+                "("
+                (argument
+                  (identifier-expression "first")
+                )
+                (list-separator ",")
+                (argument
+                  (identifier-expression "second")
+                )
+                ")"
+              )
+            )
+          )
+          ";"
+        )
+        (ambiguous-statement
+          (unknown-type-name "ExternalCount")
+          "&&" "movable"
+          (initializer
+            "="
+            (call-expression
+              (identifier-expression "Acquire")
+              (argument-list
+                "("
+                (argument
+                  (identifier-expression "first")
+                )
+                (list-separator ",")
+                (argument
+                  (identifier-expression "second")
+                )
+                ")"
+              )
+            )
+          )
+          ";"
+        )
+        (ambiguous-statement
+          "[" "[" "maybe_unused" "]" "]"
+          (unknown-type-name
+            "ExternalCount"
+            (trailing-trivia
+              (comment "/* type */")
+            )
+          )
+          "/* type */" "*" "annotatedPointer"
+          (initializer
+            "="
+            (call-expression
+              (identifier-expression "Acquire")
+              (argument-list
+                "("
+                (argument
+                  (identifier-expression "first")
+                )
+                (list-separator ",")
+                (argument
+                  (identifier-expression "second")
+                )
+                ")"
+              )
+            )
+          )
+          ";"
+        )
+        (ambiguous-statement
+          "::"
+          (unknown-type-name "external")
+          "::" "Buffer" "*" "const" "global"
+          (initializer
+            "="
+            (call-expression
+              (identifier-expression "Acquire")
+              (argument-list
+                "("
+                (argument
+                  (identifier-expression "first")
+                )
+                (list-separator ",")
+                (argument
+                  (identifier-expression "second")
+                )
+                ")"
+              )
+            )
+          )
+          ";"
+        )
+        (ambiguous-statement
+          (unknown-type-name "ExternalCount")
+          "*" "nested"
+          (initializer
+            "="
+            (call-expression
+              (identifier-expression "Adapt")
+              (argument-list
+                "("
+                (argument
+                  (call-expression
+                    (identifier-expression "Acquire")
+                    (argument-list
+                      "("
+                      (argument
+                        (identifier-expression "first")
+                      )
+                      (list-separator ",")
+                      (argument
+                        (identifier-expression "second")
+                      )
+                      ")"
+                    )
+                  )
+                )
+                (list-separator ",")
+                (argument
+                  (identifier-expression "third")
+                )
+                ")"
+              )
+            )
+          )
+          ";"
+        )
+        (ambiguous-statement
+          (unknown-type-name "ExternalCount")
+          "*" "conditional"
+          (initializer
+            "="
+            (conditional-expression
+              (identifier-expression "ready")
+              "?"
+              (call-expression
+                (identifier-expression "Acquire")
+                (argument-list
+                  "("
+                  (argument
+                    (identifier-expression "first")
+                  )
+                  (list-separator ",")
+                  (argument
+                    (identifier-expression "second")
+                  )
+                  ")"
+                )
+              )
+              ":"
+              (identifier-expression "fallback")
+            )
+          )
+          ";"
+        )
+        (ambiguous-statement
+          (unknown-type-name "ExternalCount")
+          "*" "grouped"
+          (initializer
+            "="
+            (parenthesized-expression
+              "("
+              (binary-expression
+                (call-expression
+                  (identifier-expression "Acquire")
+                  (argument-list
+                    "("
+                    (argument
+                      (identifier-expression "first")
+                    )
+                    (list-separator ",")
+                    (argument
+                      (identifier-expression "second")
+                    )
+                    ")"
+                  )
+                )
+                ","
+                (identifier-expression "fallback")
+              )
+              ")"
+            )
+          )
+          ";"
+        )
+        (ambiguous-statement
+          (unknown-type-name "ExternalCount")
+          "*" "multiple" "=" "Acquire" "(" "first" "," "second" ")" "," "*" "other" "=" "fallback" ";"
+        )
+        (ambiguous-statement
+          (unknown-type-name "ExternalCount")
+          "*" "condition" "?" "target" "=" "Acquire" "(" "first" "," "second" ")" ":" "fallback" ";"
+        )
+        (ambiguous-statement
+          (unknown-type-name "ExternalCount")
+          "*" "opaque" "=" "PREFIX" "Acquire" "(" "first" "," "second" ")" ";"
+        )
+        (ambiguous-statement
+          (unknown-type-name "ExternalCount")
+          "*" "incomplete" "=" "Acquire" "(" "first" "," "second" ")" "+" ";"
+        )
+        (ambiguous-statement
+          (unknown-type-name "ExternalCount")
+          "*" "comparison" "==" "Acquire" "(" "first" "," "second" ")" ";"
+        )
+        (ambiguous-statement
+          (unknown-type-name "ExternalCount")
+          "*" "compound" "+=" "Acquire" "(" "first" "," "second" ")" ";"
+        )
+        (ambiguous-statement
+          (unknown-type-name "ExternalCount")
+          "*" "nestedOnly" "(" "Acquire" "(" "target" "=" "first" "," "second" ")" ")" ";"
+        )
         (declaration-statement
           (declaration-specifiers "ExternalCount")
           (init-declarator-list
@@ -699,11 +937,34 @@
         )
         (ambiguous-statement
           (unknown-type-name "external")
-          "::" "Distribution" "<" "int" ">" "*" "pointer" "=" "make" "(" "1" "," "2" ")" ";"
+          "::" "Distribution" "<" "int" ">" "*" "pointer"
+          (initializer
+            "="
+            (call-expression
+              (identifier-expression "make")
+              (argument-list
+                "("
+                (argument
+                  (literal-expression "1")
+                )
+                (list-separator ",")
+                (argument
+                  (literal-expression "2")
+                )
+                ")"
+              )
+            )
+          )
+          ";"
         )
         (ambiguous-statement
           (unknown-type-name "external")
-          "::" "Distribution" "<" "int" ">" "&" "reference" "=" "sample" ";"
+          "::" "Distribution" "<" "int" ">" "&" "reference"
+          (initializer
+            "="
+            (identifier-expression "sample")
+          )
+          ";"
         )
         (declaration-statement
           (declaration-specifiers "external" "::" "Range")

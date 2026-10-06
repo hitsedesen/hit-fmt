@@ -879,8 +879,22 @@ SourceAnalysis BuildSourceAnalysis(
         if (recovery || ambiguous) {
             // A complete ambiguous statement has proven outer boundaries,
             // even when its declaration/expression interpretation is unknown.
-            // Keep its interior exact, but let the body indent around it.
+            // Keep its uncertain head exact, but allow an independently
+            // parsed assignment RHS and let the body indent around it.
             // Recovery still owns adjacent trivia and empty insertion points.
+            auto protectedEnd = end;
+            if (ambiguous) {
+                for (auto* child = node.Child();
+                    child;
+                    child = child->NextSibling)
+                {
+                    if (child->Kind == parser::NodeKind::Initializer) {
+                        protectedEnd =
+                            tree.Token(child->Tokens.Begin).Text.Begin;
+                        break;
+                    }
+                }
+            }
             const bool statementBoundary =
                 ambiguous && !hasRecovery && !tokens.Empty() &&
                     tree.Kind(tokens.End - 1) == TK::Operator_Semicolon;
@@ -897,9 +911,13 @@ SourceAnalysis BuildSourceAnalysis(
             const auto before = statementBoundary || calleeBoundary
                 ? begin
                 : tokens.Begin ? tree.Token(tokens.Begin - 1).Text.End : 0;
-            const auto after = statementBoundary
-                ? end
-                : tokens.End < count ? tree.Token(tokens.End).Text.Begin : size;
+            const auto after = ambiguous && protectedEnd != end
+                ? protectedEnd
+                : statementBoundary
+                    ? end
+                    : tokens.End < count
+                        ? tree.Token(tokens.End).Text.Begin
+                        : size;
             protect(
                 before,
                 after,
