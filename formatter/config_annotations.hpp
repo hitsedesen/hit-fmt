@@ -1,5 +1,7 @@
 #pragma once
 
+#include "config_enum.hpp"
+
 #include <cstddef>
 #include <cstdint>
 #include <span>
@@ -13,8 +15,9 @@ struct Style;
 
 enum class FirstArgumentAnnotation : std::uint8_t
 {
-    // Soft preference for the complete literal expression, not its prefix.
-    // A required legal owned Always break and safety/protection outrank it.
+    // Only complete literal expressions qualify, never a literal prefix of
+    // another expression. Overflow controls how qualifying arguments attach.
+    // Required legal owned Always breaks and safety/protection outrank it.
     PinCompleteStringLiteral
 };
 
@@ -34,6 +37,7 @@ struct MessagePinAnnotation
     std::string Name;
     FirstArgumentAnnotation FirstArgument =
         FirstArgumentAnnotation::PinCompleteStringLiteral;
+    AttachedStringOverflow Overflow = AttachedStringOverflow::Wrap;
 };
 
 struct VisualScopeAnnotation

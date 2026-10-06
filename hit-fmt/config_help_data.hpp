@@ -178,6 +178,11 @@ FunctionCvRefQualifierSpacing = NoSpace
 constexpr HelpExample AnnotationExamples[] = {
     {"Explicit library layout annotations:",
         R"CONFIG(CallLineFirstStringNames = ["WRITE_MESSAGE"]
+CallLineFirstStringOverflow = BreakBefore
+# Wrap (default): normal wrapping, including between concatenated literals.
+# BreakBefore: move the complete string below the opener if it will not fit.
+# KeepInline: keep the first literal attached even when it exceeds the limit.
+# Literal contents are never split; later concatenated pieces may wrap.
 ChainedCallRootNames = ["factory", "pipeline::Builder"]
 AlwaysBreakChainRootNames = ["WRITE_EVENT", "logging::Event"]
 IndentedCallScopePairs = ["OpenItems:CloseItems"]
@@ -504,7 +509,14 @@ constexpr HelpSection HelpSections[] = {
     {"Library layout annotations",
         "CallLineFirstStringNames softly pins only a "
         "complete "
-        "string-literal first argument; Always "
+        "string-literal first argument. CallLineFirstStringOverflow controls "
+        "overflow: Wrap (default) uses ordinary wrapping; BreakBefore fits "
+        "the complete concatenated literal sequence before keeping it inline; "
+        "KeepInline keeps the first literal beside the opener even when it "
+        "exceeds ColumnLimit. Concatenation boundaries may still wrap in "
+        "all modes; literal contents are never split. Only annotated calls "
+        "with a complete string-literal first argument are affected, and "
+        "preserved call layout stays preserved. Always "
             "outranks the pin when a legal owned break "
             "is needed. Empty ChainedCallRootNames means "
             "AllSafe; "

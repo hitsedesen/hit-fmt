@@ -912,7 +912,11 @@ LibraryAnnotations CompileLibraryAnnotations(const Style& style)
     LibraryAnnotations result;
     result.MessagePins_.reserve(style.CallLineFirstStringNames.size());
     for (const auto& name : style.CallLineFirstStringNames) {
-        result.MessagePins_.push_back({name});
+        result.MessagePins_.push_back({
+            name,
+            FirstArgumentAnnotation::PinCompleteStringLiteral,
+            style.CallLineFirstStringOverflow,
+        });
     }
     std::sort(
         result.MessagePins_.begin(),

@@ -2780,6 +2780,46 @@ std::vector<FormatCase> FormatCases()
             {data / "group-syntax", name, std::string(name) + ".input.cpp"});
         cases.back().CheckOwningMaps = true;
     }
+    {
+        const auto directory = data / "attached-string-overflow";
+        for (const auto overflow :
+            {
+                formatter::AttachedStringOverflow::Wrap,
+                formatter::AttachedStringOverflow::BreakBefore,
+                formatter::AttachedStringOverflow::KeepInline,
+            })
+        {
+            auto style = formatter::LoadConfigFile(
+                data / "group-syntax/messages.hit-fmt").FormattingStyle;
+            style.CallLineFirstStringOverflow = overflow;
+            const auto name =
+                std::string(formatter::SerializeConfigEnum(overflow));
+            cases.push_back({directory, name, "input.cpp"});
+            cases.back().Style = style;
+            cases.back().CheckOwningMaps = true;
+            style.CallsBreak = BreakRequirement::Always;
+            cases.push_back({directory, name + "-always", "input.cpp"});
+            cases.back().Style = style;
+            cases.back().CheckOwningMaps = true;
+            if (overflow == formatter::AttachedStringOverflow::KeepInline) {
+                cases.back().Expected = "Wrap-always.output.cpp";
+            }
+            style.CallsLayout = CategoryLayout::Preserve;
+            cases.push_back({directory, name + "-preserve", "input.cpp"});
+            cases.back().Style = style;
+            if (overflow != formatter::AttachedStringOverflow::Wrap) {
+                cases.back().Expected = "Wrap-preserve.output.cpp";
+            }
+            style.CallsLayout = CategoryLayout::Canonical;
+            style.CallsBreak = BreakRequirement::IfNeeded;
+            style.ColumnLimit = 0;
+            cases.push_back({directory, name + "-unlimited", "input.cpp"});
+            cases.back().Style = style;
+            if (overflow != formatter::AttachedStringOverflow::Wrap) {
+                cases.back().Expected = "Wrap-unlimited.output.cpp";
+            }
+        }
+    }
     AddCases(
         cases,
         data / "structural-expression-base",
