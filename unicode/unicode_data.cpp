@@ -1,12 +1,14 @@
 // Generated from the Unicode 18.0.0 DerivedCoreProperties.txt file.
 // See unicode/README.md for provenance, reproduction, and licensing.
 
+#include <span>
 #include <utility>
-#include <vector>
 
 namespace unicode {
 
-extern const std::vector<std::pair<char32_t, char32_t>> XIDStartRanges{
+namespace {
+
+constexpr std::pair<char32_t, char32_t> XIDStartData[]{
     {0x41, 0x5a},       {0x61, 0x7a},       {0xaa, 0xaa},
     {0xb5, 0xb5},       {0xba, 0xba},       {0xc0, 0xd6},
     {0xd8, 0xf6},       {0xf8, 0x1ba},      {0x1bb, 0x1bb},
@@ -273,7 +275,7 @@ extern const std::vector<std::pair<char32_t, char32_t>> XIDStartRanges{
     {0x30000, 0x3134a}, {0x31350, 0x33479}, {0x3d000, 0x3fc3f},
 };
 
-extern const std::vector<std::pair<char32_t, char32_t>> XIDContinueRanges{
+constexpr std::pair<char32_t, char32_t> XIDContinueData[]{
     {0x30, 0x39},       {0x41, 0x5a},       {0x5f, 0x5f},
     {0x61, 0x7a},       {0xaa, 0xaa},       {0xb5, 0xb5},
     {0xb7, 0xb7},       {0xba, 0xba},       {0xc0, 0xd6},
@@ -756,5 +758,13 @@ extern const std::vector<std::pair<char32_t, char32_t>> XIDContinueRanges{
     {0x30000, 0x3134a}, {0x31350, 0x33479}, {0x3d000, 0x3fc3f},
     {0xe0100, 0xe01ef},
 };
+
+} // namespace
+
+extern constexpr std::span<const std::pair<char32_t, char32_t>> XIDStartRanges{
+    XIDStartData};
+
+extern constexpr std::span<const std::pair<char32_t, char32_t>> XIDContinueRanges{
+    XIDContinueData};
 
 } // namespace unicode
