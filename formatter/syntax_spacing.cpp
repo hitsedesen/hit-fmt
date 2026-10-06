@@ -1498,7 +1498,8 @@ public:
         const SourceRegion& list)
     {
         if ((!IsDeclaration(declaration.Kind) &&
-            declaration.Kind != NK::FunctionDefinition) ||
+            declaration.Kind != NK::FunctionDefinition &&
+            declaration.Kind != NK::ParameterDeclaration) ||
             specifiers.Kind != NK::DeclarationSpecifiers ||
             list.Kind != NK::InitDeclaratorList || specifiers.Tokens.Empty() ||
             specifiers.Tokens.End != list.Tokens.Begin)
@@ -1536,7 +1537,9 @@ public:
             list.Tokens.Begin,
             F::None,
             declaration,
-            C::DeclarationHeaders,
+            declaration.Kind == NK::ParameterDeclaration
+            ? C::Parameters
+            : C::DeclarationHeaders,
             1,
             true);
     }

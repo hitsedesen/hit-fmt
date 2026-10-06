@@ -2372,9 +2372,8 @@ TEST(PublicPipeline, EditScopeBraceInsertionRequiresBothOriginalPoints)
         source,
         prepared,
         {.SourceMap = true, .EditScope = ownedEnd});
-    const auto hasInsertedControlPair = [&] (
-        const formatter::FormatResult&
-        formatted) {
+    const auto hasInsertedControlPair =
+        [&] (const formatter::FormatResult& formatted) {
             for (size_t action = 0;
                 action < formatted.StructuralOperations.size();
                 ++action)
