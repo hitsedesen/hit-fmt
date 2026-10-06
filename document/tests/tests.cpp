@@ -1666,6 +1666,72 @@ TEST(GroupLayout, GeneratedTabsPreserveVisualLayoutAndOpaqueSource)
     EXPECT_EQ(wideTabs.Text, "\n\tx");
     auto wideSpaces = wideIndent.Render({.Width = 40, .TabWidth = 32});
     EXPECT_EQ(ExpandTabs(wideTabs.Text, 32), std::string_view(wideSpaces.Text));
+
+    // Plain-byte facts are reusable, but widths remain local to the render
+    // policy. Fitting and advancement must agree on ASCII, UTF8/invalid bytes,
+    // tabs and multiline protected text without changing its provenance.
+    for (const auto& [value, columns] :
+        std::initializer_list<std::pair<std::string, std::uint32_t>>{
+            {"abc", 3},
+            {"1234567", 7},
+            {"12345678", 8},
+            {"123456789", 9},
+            {"123456789abcdef0", 16},
+            {"1234567\tz", 8},
+            {"12345678\xc3\xa9", 9},
+            {"1234567\xff", 8},
+            {"12345678\r\nz", 11},
+            {"a\v\f b", 5},
+            {std::string("12345678\0z", 10), 10},
+            {"\xc3\xa9", 1},
+            {"\xff", 1},
+            {"a\tb", 2},
+            {"a\r\n b", 5},
+        })
+    {
+        Document facts(value);
+        facts.Text("x");
+        const auto owner = facts.BeginGroup({GroupMode::Consistent, 2});
+        facts.SourceText(0, static_cast<std::uint32_t>(value.size()), 77, true);
+        facts.Gap({GapKind::Soft, 1});
+        facts.Text("z");
+        facts.EndGroup(owner);
+        ASSERT_TRUE(facts.Seal());
+        const bool multiline = value.find('\n') != value.npos;
+        for (const std::uint8_t tabWidth : {1, 4, 8, 32}) {
+            const std::uint32_t exactWidth = 3 + columns +
+                static_cast<std::uint32_t>(std::count(
+                    value.begin(),
+                    value.end(),
+                    '\t')) * tabWidth;
+            for (const bool narrow : {false, true}) {
+                Policy leafPolicy{
+                    .Width = multiline ? 80 : exactWidth - narrow,
+                    .TabWidth = tabWidth,
+                };
+                const auto mapped = facts.Render(leafPolicy);
+                ASSERT_TRUE(mapped.State);
+                EXPECT_EQ(
+                    std::string_view(mapped.Text),
+                    "x" + value + (multiline || narrow ? "\n  z" : " z"));
+                ASSERT_EQ(mapped.Map.size(), 4u);
+                EXPECT_TRUE(mapped.Map[1].Exact);
+                EXPECT_TRUE(mapped.Map[1].Protected);
+                EXPECT_EQ(mapped.Map[1].Source.Identity, 77u);
+                EXPECT_EQ(
+                    std::string_view(mapped.Text).substr(
+                        mapped.Map[1].OutputBegin,
+                        mapped.Map[1].OutputEnd - mapped.Map[1].OutputBegin),
+                    value);
+                leafPolicy.SourceMap = false;
+                const auto unmapped = facts.Render(leafPolicy);
+                ASSERT_TRUE(unmapped.State);
+                EXPECT_EQ(unmapped.Text, mapped.Text);
+                EXPECT_EQ(unmapped.Broken, mapped.Broken);
+                EXPECT_TRUE(unmapped.Map.empty());
+            }
+        }
+    }
 }
 
 TEST(GroupLayout, SourceCarriageReturnAndLocalGapNewlinesGolden)
@@ -1982,9 +2048,8 @@ TEST(GroupLayout, InvalidUTF8ColumnsMatchIndividualBytes)
     }
 }
 
-TEST(GroupLayout, SourceRunsMatchIndividualAtoms)
+void ExpectSourceRunsMatchIndividualAtoms(std::string_view source)
 {
-    const std::string source = "\ta+b /*x*/\tq\nnext";
     const std::array<Provenance, 2> tracked{{{0, 1}, {5, 12}}};
     for (auto mode : {GroupMode::Consistent, GroupMode::Fill}) {
         // These lengths cross the original 256-logical-node search boundary.
@@ -2050,7 +2115,22 @@ TEST(GroupLayout, SourceRunsMatchIndividualAtoms)
                 text(10, 11, NoIdentity, true);
                 text(11, 12, 201);
                 document.EndGroup(child);
-                document.Gap({GapKind::Soft, 1}, InvalidId, {12, 13});
+                // Exercise inline gap flags/counts alongside indexed text,
+                // group and prefix payloads, including source-run boundaries.
+                document.Gap(
+                    {
+                        .Kind = GapKind::Soft,
+                        .Spaces = 1,
+                        .RequiredWidth = 4,
+                        .LineEnding = repetitions % 2
+                            ? GapNewline::LF
+                            : GapNewline::CRLF,
+                        .FitNextSegment = repetitions % 2 != 0,
+                        .NewlineCount = static_cast<std::uint16_t>(1 +
+                            repetitions % 3),
+                    },
+                    InvalidId,
+                    {12, 13});
                 text(13, 17, 202);
                 document.EndGroup(owner);
                 // A multiline source atom must remain a run boundary.
@@ -2078,6 +2158,35 @@ TEST(GroupLayout, SourceRunsMatchIndividualAtoms)
                         ASSERT_TRUE(b.State);
                         EXPECT_EQ(a.Text, b.Text);
                         EXPECT_EQ(a.Broken, b.Broken);
+                        if (maps == 2) {
+                            auto indexedPolicy = policy;
+                            indexedPolicy.TokenMap = false;
+                            indexedPolicy.IndexedTokenMap = true;
+                            indexedPolicy.TokenCount = 1000;
+                            const auto indexed = packed.Render(indexedPolicy);
+                            ASSERT_TRUE(indexed.State);
+                            EXPECT_EQ(a.Text, indexed.Text);
+                            EXPECT_EQ(a.Broken, indexed.Broken);
+                            EXPECT_TRUE(indexed.Map.empty());
+                            std::vector<TokenPosition> expected(1000);
+                            for (const auto& map : a.Map) {
+                                ASSERT_LT(map.Source.Identity, expected.size());
+                                expected[map.Source.Identity] =
+                                    {map.OutputBegin, map.OutputEnd, true};
+                            }
+                            ASSERT_EQ(indexed.Tokens.size(), expected.size());
+                            for (size_t id = 0; id < expected.size(); ++id) {
+                                EXPECT_EQ(
+                                    indexed.Tokens[id].Begin,
+                                    expected[id].Begin);
+                                EXPECT_EQ(
+                                    indexed.Tokens[id].End,
+                                    expected[id].End);
+                                EXPECT_EQ(
+                                    indexed.Tokens[id].Present,
+                                    expected[id].Present);
+                            }
+                        }
                         ASSERT_EQ(a.Map.size(), b.Map.size());
                         for (std::size_t i = 0; i < a.Map.size(); ++i) {
                             EXPECT_EQ(
@@ -2099,6 +2208,13 @@ TEST(GroupLayout, SourceRunsMatchIndividualAtoms)
             }
         }
     }
+}
+
+TEST(GroupLayout, SourceRunsMatchIndividualAtoms)
+{
+    ExpectSourceRunsMatchIndividualAtoms("\ta+b /*x*/\tq\nnext");
+    ExpectSourceRunsMatchIndividualAtoms("\ta+b \xc3\xa9xyz\tq\nnext");
+    ExpectSourceRunsMatchIndividualAtoms("\ta+b \xff" "1234\tq\nnext");
 }
 
 TEST(GroupLayout, BorrowedFlatWhitespaceSelectionMeasurementAndMapping)

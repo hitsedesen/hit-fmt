@@ -54,6 +54,8 @@ TEST(FileCheck, OneResultServesCheckAndFixWithoutCountingAppliedFormatting)
     EXPECT_FALSE(checked.HasFailures(true));
     EXPECT_NE(checked.Formatting.Text.find("left, right"), std::string::npos);
     EXPECT_TRUE(checked.Semantic.empty());
+    EXPECT_TRUE(checked.Formatting.Map.empty());
+    EXPECT_TRUE(checked.Formatting.StructuralOperations.empty());
     std::ostringstream checkSummary, fixSummary;
     hit_fmt::PrintFileSummaryIssues(checkSummary, checked, false);
     hit_fmt::PrintFileSummaryIssues(fixSummary, checked, true);
@@ -197,6 +199,8 @@ TEST(FileCheck, DiagnosticGoldenUsesOriginalCheckAndFinalFixCoordinates)
     const Input input(fixture.InputNamed(".input.cpp"));
     const auto checked = hit_fmt::CheckFile(input.View(), prepared);
     ASSERT_EQ(checked.Semantic.size(), 4u);
+    EXPECT_TRUE(checked.Formatting.Map.empty());
+    EXPECT_FALSE(checked.Formatting.OriginalTokens.empty());
     EXPECT_TRUE(checked.HasFailures(false));
     EXPECT_TRUE(checked.HasFailures(true));
     EXPECT_GT(

@@ -494,9 +494,10 @@ SourceAnalysis BuildSourceAnalysis(
             // Matches Tokenizer::TrySkipNewline's horizontal whitespace.
             // Cache both marker boundaries once; candidate comments must not
             // rescan a shared, arbitrarily long physical-line prefix/suffix.
-            if (std::string_view(" \t\r\f\v").find(source[i]) ==
-                std::string_view::npos)
-            {
+            // LF was handled above; the remaining horizontal whitespace is
+            // space or one of the contiguous ASCII control codes HT..CR.
+            const auto c = source[i];
+            if (c != ' ' && (c < '\t' || c > '\r')) {
                 if (line.FirstContent == size) {
                     line.FirstContent = i;
                 }

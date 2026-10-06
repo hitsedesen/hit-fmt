@@ -470,13 +470,16 @@ void ApplyComments(
     const StructuralPlan& comments,
     const parser::SyntaxTree& original,
     const NamespaceCommentPlan& namespacePlan,
+    bool sourceMap,
     std::pmr::memory_resource& scratch)
 {
     const auto actionBase = result.StructuralOperations.size();
-    result.StructuralOperations.insert(
-        result.StructuralOperations.end(),
-        comments.Operations.begin(),
-        comments.Operations.end());
+    if (sourceMap) {
+        result.StructuralOperations.insert(
+            result.StructuralOperations.end(),
+            comments.Operations.begin(),
+            comments.Operations.end());
+    }
     std::pmr::vector<NamespaceIdentity> namespaces(
         namespacePlan.Namespaces.begin(), namespacePlan.Namespaces.end(),
         &scratch);
@@ -494,7 +497,9 @@ void ApplyComments(
     std::pmr::vector<Copy> copies(&scratch);
     std::pmr::vector<FormatMapping> generated(&scratch);
     copies.reserve(comments.Edits.size() + 1);
-    generated.reserve(comments.Edits.size());
+    if (sourceMap) {
+        generated.reserve(comments.Edits.size());
+    }
     Offset cursor = 0;
     Offset output = 0;
     for (const auto& edit : comments.Edits) {
@@ -524,16 +529,18 @@ void ApplyComments(
                 throw std::runtime_error("missing namespace action identity");
             }
             const auto anchor = original.Token(identity->Close).Text.End;
-            generated.push_back({
-                {begin, output},
-                {anchor, anchor},
-                document::NoIdentity,
-                StructuralActionId(actionBase + edit.Operation),
-                true,
-                false,
-                false,
-                true,
-            });
+            if (sourceMap) {
+                generated.push_back({
+                    {begin, output},
+                    {anchor, anchor},
+                    document::NoIdentity,
+                    StructuralActionId(actionBase + edit.Operation),
+                    true,
+                    false,
+                    false,
+                    true,
+                });
+            }
         }
         cursor = edit.Source.End;
     }
@@ -577,6 +584,9 @@ void ApplyComments(
             copy->After.Begin + range.Source.Begin - copy->Before.Begin,
             copy->After.Begin + range.Source.End - copy->Before.Begin,
         };
+    }
+    if (!sourceMap) {
+        return;
     }
     std::vector<FormatMapping> maps;
     maps.reserve(result.Map.size() + generated.size());
@@ -708,8 +718,23 @@ FormatResult Format(
     const PreparedFormat& prepared,
     const FormatRequest& request)
 {
-    std::pmr::monotonic_buffer_resource file;
-    std::pmr::monotonic_buffer_resource scratch;
+    // Bound the initial input-local backing block. Consolidating the common
+    // case avoids repeated heap growth/trim during arena teardown; larger
+    // inputs still grow through the normal upstream resource.
+    const auto capacity = std::clamp<std::size_t>(
+        std::size_t(original.TokenCount()) * 512,
+        4096,
+        1048576);
+    auto buffer = std::make_unique_for_overwrite<std::byte[]>(capacity);
+    std::pmr::monotonic_buffer_resource file(buffer.get(), capacity);
+    // Keep only this bounded initial slice across scratch resets. Overflow
+    // blocks are released normally, and no backing memory survives the file.
+    const auto scratchCapacity = std::clamp<std::size_t>(
+        std::size_t(original.TokenCount()) * 128,
+        1024,
+        262144);
+    auto* scratchBuffer = file.allocate(scratchCapacity);
+    std::pmr::monotonic_buffer_resource scratch(scratchBuffer, scratchCapacity);
     std::pmr::vector<std::string_view> sensitive(&file);
     for (const auto& name : prepared.WhitespaceSensitiveMacros) {
         sensitive.push_back(name);
@@ -877,13 +902,15 @@ FormatResult detail::FormatWithAnalysis(
     options.ReassembledGaps = {};
     scratch.release();
     const bool needNamespaceAnchors = !namespacePlan.Namespaces.empty();
-    const bool needMaps = request.SourceMap || needNamespaceAnchors;
+    const bool needMaps =
+        request.SourceMap || request.TokenMap || needNamespaceAnchors;
     auto renderPolicy = SyntaxRenderPolicy(prepared.Policies, options);
     renderPolicy.SourceMap = request.SourceMap;
     auto rendered = [&] {
         std::pmr::vector<document::Provenance> tracked(&scratch);
+        renderPolicy.IndexedTokenMap = !request.SourceMap && needMaps;
+        renderPolicy.TokenCount = tree->TokenCount();
         if (needNamespaceAnchors && !request.SourceMap) {
-            renderPolicy.TokenMap = true;
             tracked.reserve(currentSafety
                 ->Protection()
                 .size());
@@ -924,6 +951,16 @@ FormatResult detail::FormatWithAnalysis(
                 identities,
                 provenance);
         } else {
+            for (parser::TokenIndex id = 0; id < rendered.Tokens.size(); ++id) {
+                const auto& token = rendered.Tokens[id];
+                const auto originalId = identities[id];
+                if (token.Present && originalId != document::NoIdentity) {
+                    result.OriginalTokens[originalId] =
+                        {{token.Begin, token.End}, true};
+                }
+            }
+            // Remaining mappings are precisely the tracked exact copies used
+            // for protection validation, not a full per-token map vector.
             ComposeNamespaceAnchors(
                 result,
                 rendered,
@@ -956,13 +993,16 @@ FormatResult detail::FormatWithAnalysis(
         if (!comments.Edits.empty()) {
             auto text =
                 MaterializeNamespaceComments(result.Text, comments, file);
-            if (request.SourceMap || !result.OutputProtection.empty()) {
+            if (request.SourceMap || request.TokenMap ||
+                !result.OutputProtection.empty())
+            {
                 // Validate protected copies even without output maps.
                 ApplyComments(
                     result,
                     comments,
                     original,
                     namespacePlan,
+                    request.SourceMap,
                     scratch);
                 scratch.release();
             }
@@ -981,7 +1021,9 @@ FormatResult detail::FormatWithAnalysis(
     if (!request.SourceMap) {
         result.Map = std::vector<FormatMapping>{};
         result.StructuralOperations = std::vector<StructuralOperation>{};
-        result.OriginalTokens = std::vector<TokenOutputOffset>{};
+        if (!request.TokenMap) {
+            result.OriginalTokens = std::vector<TokenOutputOffset>{};
+        }
         result.OutputProtection = std::vector<ProtectedSourceRange>{};
     }
     return result;

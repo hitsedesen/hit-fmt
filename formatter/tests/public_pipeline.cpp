@@ -39,11 +39,27 @@ struct Input
 
 void CheckVisibleResults(
     const formatter::FormatResult& mapped,
-    const formatter::FormatResult& plain)
+    const formatter::FormatResult& plain,
+    bool tokenMap = false)
 {
     EXPECT_EQ(plain.Text, mapped.Text);
     EXPECT_TRUE(plain.Map.empty());
-    EXPECT_TRUE(plain.OriginalTokens.empty());
+    if (tokenMap) {
+        ASSERT_EQ(plain.OriginalTokens.size(), mapped.OriginalTokens.size());
+        for (size_t i = 0; i < mapped.OriginalTokens.size(); ++i) {
+            EXPECT_EQ(
+                plain.OriginalTokens[i].Present,
+                mapped.OriginalTokens[i].Present);
+            EXPECT_EQ(
+                plain.OriginalTokens[i].Output.Begin,
+                mapped.OriginalTokens[i].Output.Begin);
+            EXPECT_EQ(
+                plain.OriginalTokens[i].Output.End,
+                mapped.OriginalTokens[i].Output.End);
+        }
+    } else {
+        EXPECT_TRUE(plain.OriginalTokens.empty());
+    }
     EXPECT_TRUE(plain.OutputProtection.empty());
     EXPECT_TRUE(plain.StructuralOperations.empty());
     ASSERT_EQ(
@@ -81,8 +97,14 @@ formatter::FormatResult FormatInput(
         // The metadata-free path must retain the same namespace edits, scope
         // and protection decisions, and final diagnostics across these cases.
         request.SourceMap = false;
+        request.TokenMap = false;
         const auto plain = formatter::Format(input.View(), prepared, request);
         CheckVisibleResults(result, plain);
+        // Diagnostic-only requests must retain the same final token offsets,
+        // including identities transported through normalization/comments.
+        request.TokenMap = true;
+        const auto tokens = formatter::Format(input.View(), prepared, request);
+        CheckVisibleResults(result, tokens, true);
     }
     return result;
 }

@@ -437,42 +437,6 @@ CheckedFile CheckFile(
         configuration.Formatting.ParsingOptions());
     CheckedFile checked;
     checked.ColumnLimit = configuration.Formatting.Policies.ColumnLimit;
-    std::vector<formatter::Hunk> selected, permitted;
-    const formatter::FormatRequest request{
-        .SourceMap = true,
-        .InputFilePath = inputFilePath,
-    };
-    if (changed) {
-        auto result = formatter::FormatChanged(
-            tree,
-            configuration.Formatting,
-            changed->Hunks,
-            changed->Spillover,
-            request);
-        selected = std::move(result.SelectedLines);
-        permitted = std::move(result.PermittedLines);
-        checked.Incomplete = std::move(result.Incomplete);
-        for (const auto& skip : result.RequiredSkips) {
-            checked.RequiredChanges.push_back({
-                tree.TokenPosition(skip.Tokens.Begin),
-                {},
-                std::string(RequiredChangeMessage(skip.Action)),
-            });
-        }
-        checked.Formatting = std::move(result.Result);
-    } else {
-        checked.Formatting =
-            formatter::Format(tree, configuration.Formatting, request);
-    }
-    checked.FormattingMismatch = checked.Formatting.Text != tree.Source();
-    if (checked.FormattingMismatch) {
-        checked.IncludeOrderChanges = IncludeChanges(tree, checked.Formatting);
-        checked.OtherFormattingMismatch = checked.IncludeOrderChanges.empty() ||
-            OtherFormattingChanged(
-                tree.Source(),
-                checked.Formatting,
-                checked.IncludeOrderChanges);
-    }
     for (auto& diagnostic : formatter::CheckNames(tree, configuration.Settings))
     {
         checked.Semantic.push_back({
@@ -493,12 +457,53 @@ CheckedFile CheckFile(
         checked.Semantic
             .push_back({diagnostic.Position, {}, std::move(message)});
     }
+    // Hunk edit authority and include-order diagnostics require full source
+    // associations. Other whole-file diagnostics need only token identities.
+    const bool tokenMap = !checked.Semantic.empty() ||
+        configuration.Formatting.Policies.WidthDiagnostics ==
+            formatter::WidthDiagnosticPolicy::Report;
+    std::vector<formatter::Hunk> selected, permitted;
+    const formatter::FormatRequest request{
+        .SourceMap = changed.has_value() ||
+            configuration.Formatting.Structural.SortIncludes,
+        .InputFilePath = inputFilePath,
+        .TokenMap = tokenMap,
+    };
     if (changed) {
+        auto result = formatter::FormatChanged(
+            tree,
+            configuration.Formatting,
+            changed->Hunks,
+            changed->Spillover,
+            request);
+        selected = std::move(result.SelectedLines);
+        permitted = std::move(result.PermittedLines);
+        checked.Incomplete = std::move(result.Incomplete);
+        for (const auto& skip : result.RequiredSkips) {
+            checked.RequiredChanges.push_back({
+                tree.TokenPosition(skip.Tokens.Begin),
+                {},
+                std::string(RequiredChangeMessage(skip.Action)),
+            });
+        }
+        checked.Formatting = std::move(result.Result);
         std::erase_if(
             checked.Semantic,
             [&] (const auto& diagnostic) {
                 return !InLines(diagnostic.Original.Line, selected);
             });
+    } else {
+        checked.Formatting =
+            formatter::Format(tree, configuration.Formatting, request);
+    }
+    checked.FormattingMismatch = checked.Formatting.Text != tree.Source();
+    if (checked.FormattingMismatch) {
+        checked.IncludeOrderChanges = IncludeChanges(tree, checked.Formatting);
+        checked.OtherFormattingMismatch = checked.IncludeOrderChanges.empty() ||
+            OtherFormattingChanged(
+                tree.Source(),
+                checked.Formatting,
+                checked.IncludeOrderChanges);
     }
     MapSemanticPositions(tree, checked.Formatting, checked.Semantic);
     MapSemanticPositions(tree, checked.Formatting, checked.RequiredChanges);

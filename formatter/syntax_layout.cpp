@@ -6,9 +6,10 @@
 
 #include <unicode/utf8.hpp>
 
+#include <util/ascii.hpp>
+
 #include <algorithm>
 #include <limits>
-#include <numeric>
 #include <optional>
 #include <stdexcept>
 
@@ -134,6 +135,7 @@ struct Group
     document::GroupSpec Spec;
     LayoutIndentation Indent;
     bool HasAnchor = false;
+    bool SyntaxBody = false;
     document::GroupId Id = document::InvalidId;
     document::AnchorId Anchor = document::InvalidId;
     // Delimiter placement may differ from the level shared by the condition.
@@ -230,8 +232,14 @@ bool HasLine(std::string_view text)
 
 Index HorizontalColumns(std::string_view text, uint8_t tabWidth)
 {
-    Index width = 0;
-    for (std::size_t i = 0; i < text.size(); ++i) {
+    // Tree source ranges have 32-bit byte offsets, so even all tabs fit
+    // this accumulator. Clamp the complete width rather than each byte.
+    const auto ascii = util::PlainAsciiPrefix(text);
+    if (ascii == text.size()) {
+        return Index(ascii);
+    }
+    uint64_t width = ascii;
+    for (std::size_t i = ascii; i < text.size(); ++i) {
         const auto c = static_cast<unsigned char>(text[i]);
         if (c >= 0x80) {
             i += unicode::utf8::GetFirstCodePointSize(text.substr(i))
@@ -240,9 +248,9 @@ Index HorizontalColumns(std::string_view text, uint8_t tabWidth)
         if (c == '\n' || c == '\r') {
             return None;
         }
-        width = AddWidth(width, c == '\t' ? tabWidth : 1);
+        width += c == '\t' ? tabWidth : 1;
     }
-    return width;
+    return Index(std::min<uint64_t>(width, None));
 }
 
 bool IsControl(NodeKind kind)
@@ -328,28 +336,31 @@ public:
         for (const auto& range : protection) {
             const auto reasons = uint16_t(range.Reasons) &
                 ~uint16_t(ProtectionReason::OutsideEditScope);
-            opaqueFences.push_back(reasons != 0 &&
+            const bool contextual = reasons != 0;
+            const bool opaque = contextual &&
                 (reasons != uint16_t(ProtectionReason::Recovery) ||
-                    HasLine(Tree_.SourceText(range.Source))));
+                    HasLine(Tree_.SourceText(range.Source)));
+            opaqueFences
+                .push_back(uint8_t(contextual) | (uint8_t(opaque) << 1));
         }
         size_t firstProtection = 0;
         for (Index i = 0; i < count; ++i) {
             const auto token = Tree_.Token(i).Text;
-            PrefixProtection_[i + 1] =
-                PrefixProtection_[i] +
-                    (ContextProtected({token.Begin, token.End}) ? 1 : 0);
             while (firstProtection < protection.size() &&
                 protection[firstProtection].Source.End <= token.Begin)
             {
                 ++firstProtection;
             }
+            bool contextual = false;
             bool fenced = false;
             for (auto p = firstProtection;
                 p < protection.size() && protection[p].Source.Begin < token.End;
                 ++p)
             {
-                fenced |= opaqueFences[p] != 0;
+                contextual |= (opaqueFences[p] & 1) != 0;
+                fenced |= (opaqueFences[p] & 2) != 0;
             }
+            PrefixProtection_[i + 1] = PrefixProtection_[i] + contextual;
             PrefixOpaqueFences_[i + 1] = PrefixOpaqueFences_[i] + fenced;
         }
         for (auto id : Options_.GeneratedAdjacencies) {
@@ -525,6 +536,7 @@ private:
     SyntaxLayoutStatus State_;
     size_t NextPermission_ = 0;
     bool GapCacheReady_ = false;
+    bool NaturalBodies_ = true;
 
     // Scope exclusions prohibit edits, not understanding the surrounding
     // grammar. Keep real reason unions (including scope + semantic reasons)
@@ -2762,6 +2774,7 @@ private:
                     Region(Syntax_[parent]).Kind ==
                         NodeKind::LambdaExpression));
         BlockOf_[id] = group;
+        Groups_[group].SyntaxBody = true;
         if (canonical) {
             const bool expanded = shape == BodyShape::Expanded;
             Own(opening + 1, group, expanded ? Boundary::Hard : Boundary::Soft);
@@ -4213,26 +4226,74 @@ private:
             : 0;
     }
 
+    bool BeforeGroup(Index a, Index b) const
+    {
+        const auto& x = Groups_[a];
+        const auto& y = Groups_[b];
+        if (x.Begin != y.Begin) {
+            return x.Begin < y.Begin;
+        }
+        if (x.End != y.End) {
+            return x.End > y.End;
+        }
+        return a < b;
+    }
+
+    // Balanced syntax bodies already follow the region preorder. Walk their
+    // existing projection iteratively and merge specialized interval owners;
+    // neither validation nor emission needs a second list of body intervals.
+    Index NextGroup(size_t& special, Index& syntax) const
+    {
+        if (NaturalBodies_) {
+            while (syntax < BlockOf_.size() && BlockOf_[syntax] == None) {
+                ++syntax;
+            }
+            if (syntax < BlockOf_.size()) {
+                const auto body = BlockOf_[syntax];
+                if (special == Order_.size() ||
+                    BeforeGroup(body, Order_[special]))
+                {
+                    ++syntax;
+                    return body;
+                }
+            }
+        }
+        return special < Order_.size() ? Order_[special++] : None;
+    }
+
     void SortForest()
     {
-        Order_.resize(Groups_.size());
-        std::iota(Order_.begin(), Order_.end(), 0);
+        Index previous = None;
+        size_t bodies = 0;
+        for (const auto body : BlockOf_) {
+            if (body == None) {
+                continue;
+            }
+            ++bodies;
+            if (previous != None && !BeforeGroup(previous, body)) {
+                // Non-source-ordered projections still use the same interval
+                // planner and emitter; never guess a different ownership.
+                NaturalBodies_ = false;
+            }
+            previous = body;
+        }
+        Order_.reserve(Groups_.size() - (NaturalBodies_ ? bodies : 0));
+        for (Index id = 0; id < Groups_.size(); ++id) {
+            if (!NaturalBodies_ || !Groups_[id].SyntaxBody) {
+                Order_.push_back(id);
+            }
+        }
         std::sort(
             Order_.begin(),
             Order_.end(),
-            [&] (Index a, Index b) {
-                const auto& x = Groups_[a];
-                const auto& y = Groups_[b];
-                if (x.Begin != y.Begin) {
-                    return x.Begin < y.Begin;
-                }
-                if (x.End != y.End) {
-                    return x.End > y.End;
-                }
-                return a < b;
-            });
+            [&] (Index a, Index b) { return BeforeGroup(a, b); });
         Stack_.clear();
-        for (const auto id : Order_) {
+        size_t special = 0;
+        Index syntax = 0;
+        for (auto id = NextGroup(special, syntax);
+            id != None;
+            id = NextGroup(special, syntax))
+        {
             auto& group = Groups_[id];
             while (!Stack_.empty() && Groups_[Stack_.back()].End <= group.Begin)
             {
@@ -4745,7 +4806,9 @@ private:
             uint32_t(std::min<uint64_t>(
                 None,
                 uint64_t(Tree_.TokenCount()) * 2 + 1)));
-        size_t next = 0;
+        size_t special = 0;
+        Index syntax = 0;
+        auto next = NextGroup(special, syntax);
         Index continuation = None;
         for (Position p = 0; p <= GapPosition(Tree_.TokenCount()); ++p) {
             while (!Stack_.empty() && Groups_[Stack_.back()].End == p) {
@@ -4753,8 +4816,9 @@ private:
                 continuation = Groups_[Stack_.back()].PreviousContinuation;
                 Stack_.pop_back();
             }
-            while (next < Order_.size() && Groups_[Order_[next]].Begin == p) {
-                const auto id = Order_[next++];
+            while (next != None && Groups_[next].Begin == p) {
+                const auto id = next;
+                next = NextGroup(special, syntax);
                 auto& group = Groups_[id];
                 group.PreviousContinuation = continuation;
                 const bool sharedAnchor =

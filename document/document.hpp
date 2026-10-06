@@ -198,6 +198,10 @@ struct Policy
     // are borrowed for this Render call only; they grant no edit authority.
     bool TokenMap = false;
     std::span<const Provenance> TrackSource = {};
+    // Store identity-indexed output positions directly, without intermediate
+    // Mapping records. Full maps and tracked exact copies remain independent.
+    bool IndexedTokenMap = false;
+    std::uint32_t TokenCount = 0;
 };
 
 namespace detail {
@@ -221,12 +225,20 @@ struct Mapping
     bool Protected = false;
 };
 
+struct TokenPosition
+{
+    std::uint32_t Begin = 0;
+    std::uint32_t End = 0;
+    bool Present = false;
+};
+
 struct Result
 {
     explicit Result(std::pmr::memory_resource* resource);
     Status State;
     std::pmr::string Text;
     std::pmr::vector<Mapping> Map;
+    std::pmr::vector<TokenPosition> Tokens;
     // A broken decision denotes output shape, never input whitespace history.
     std::pmr::vector<std::uint8_t> Broken;
 };
@@ -391,6 +403,7 @@ private:
         Provenance Origin;
         std::uint16_t Spaces = 0;
         RunKind Type = RunKind::Text;
+        bool Plain = false;
     };
 
     struct RunData
@@ -440,6 +453,7 @@ private:
         bool Exact : 1 = false;
         bool HasPrefix : 1 = false;
         bool Compact : 1 = false;
+        bool Plain : 1 = false;
 
         // The constructor activates the kind's payload. All alternatives are
         // trivially copyable; SourceLineIndent uses GapData plus Origin.
@@ -453,14 +467,75 @@ private:
         };
     };
 
-    static_assert(sizeof(Node) <= 80);
+    // Construction drafts keep the public specifications convenient on the
+    // stack. Only compact atoms are retained in the file-scoped document.
+    struct SimpleGapData
+    {
+        std::uint32_t RequiredWidth;
+        AnchorId Anchor;
+        std::uint16_t Spaces;
+        std::uint16_t NewlineCount;
+    };
+
+    struct CompactTextData
+    {
+        std::uint32_t Flat;
+        std::uint32_t Broken;
+        std::uint32_t Detail;
+    };
+
+    struct EndData
+    {
+        std::uint32_t Match;
+        std::uint32_t LogicalPosition;
+        GroupId Reference;
+    };
+
+    struct Atom
+    {
+        explicit Atom(Kind kind)
+            : Type(kind)
+            , Text{}
+        { }
+
+        Provenance Origin;
+        GroupId Owner = InvalidId;
+        Kind Type;
+        GapKind GapType = GapKind::Flat;
+        GapNewline LineEnding = GapNewline::Inherit;
+        bool Exact : 1 = false;
+        bool HasPrefix : 1 = false;
+        bool Compact : 1 = false;
+        bool ComplexGap : 1 = false;
+        bool FitNextSegment : 1 = false;
+        bool FitFlatTail : 1 = false;
+        bool Plain : 1 = false;
+
+        union
+        {
+            CompactTextData Text;
+            SimpleGapData Gap;
+            RunData Run;
+            EndData End;
+            std::uint32_t Payload;
+        };
+    };
+
+    static_assert(sizeof(Atom) <= 32);
+    static_assert(sizeof(SimpleGapData) <= 12);
+    static_assert(sizeof(CompactTextData) <= 12);
     static_assert(sizeof(Mapping) <= 24);
     static_assert(sizeof(RunPart) <= 16);
 
+    Atom Pack(const Node& node);
+    GapSpec GapFor(const Atom& atom, bool broken = false) const;
+    AnchorId GapAnchor(const Atom& atom) const;
+    const GroupData& Group(const Atom& atom) const;
+    const PrefixedTextData& Prefix(const Atom& atom) const;
     std::uint32_t BorrowText(std::string_view text);
     std::string_view TextView(std::uint32_t id, Provenance origin) const;
-    std::string_view FlatText(const Node& node) const;
-    std::string_view BrokenText(const Node& node) const;
+    std::string_view FlatText(const Atom& node) const;
+    std::string_view BrokenText(const Atom& node) const;
 
     void EmitSourceText(
         std::uint32_t begin,
@@ -471,7 +546,7 @@ private:
     void StartSourceRun();
     void AppendRunPart(RunPart part, bool logical = true);
     static RunPart FlatRunPart(GapSpec gap, Provenance origin);
-    std::uint32_t Add(Node node);
+    std::uint32_t Add(const Node& node);
     bool CheckOrigin(Provenance origin);
     bool CheckGapData(GapSpec spec);
     bool CheckHorizontalSource(std::uint32_t begin, std::uint32_t end);
@@ -479,13 +554,18 @@ private:
     void Fail(Error error);
 
     std::string_view Source_;
-    std::pmr::vector<Node> Nodes_;
+    std::pmr::vector<Atom> Nodes_;
+    std::pmr::vector<CompactTextData> TextPayloads_;
+    std::pmr::vector<GroupData> GroupPayloads_;
+    std::pmr::vector<GapData> GapPayloads_;
+    std::pmr::vector<PrefixedTextData> PrefixPayloads_;
     std::pmr::vector<BorrowedText> BorrowedTexts_;
     std::pmr::vector<RunPart> RunParts_;
     std::pmr::vector<std::uint32_t> Groups_;
     std::pmr::vector<std::uint32_t> Open_;
     std::uint32_t LogicalNodes_ = 0;
     std::uint32_t Anchors_ = 0;
+    std::uint32_t RenderGaps_ = 0;
     std::uint32_t Depth_ = 0;
     Status State_;
     bool Sealed_ = false;
