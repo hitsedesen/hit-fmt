@@ -3052,6 +3052,7 @@ private:
         bool IsQualified;
         bool HasOpaquePrefix = false;
         bool HasTerminalName = false;
+        size_t FinalSpecifier = std::numeric_limits<TokenIndex>::max();
     };
 
     [[nodiscard]] RecordHeadName FindDeclaredRecordName(size_t start) const
@@ -3120,13 +3121,24 @@ private:
                 name = next;
                 continue;
             }
+            auto finalSpecifier = end;
             if (Kind(next) == TK::Identifier && Text(next) == "final") {
+                finalSpecifier = next;
                 next = skipAttributes(NextSignificant(next + 1));
             }
             const auto kind = Kind(next);
             const bool terminal = kind == TK::Operator_OpenBrace ||
                 kind == TK::Operator_Colon || kind == TK::Operator_Semicolon;
-            return {name, isQualified, opaquePrefix, terminal};
+            // Before ';', final can instead name an elaborated-type variable.
+            return {
+                name,
+                isQualified,
+                opaquePrefix,
+                terminal,
+                terminal && kind != TK::Operator_Semicolon
+                    ? finalSpecifier
+                    : end,
+            };
         }
         return {end, isQualified, opaquePrefix, false};
     }
@@ -3309,7 +3321,11 @@ private:
         if (!unknownHeader && angleDepth == 0) {
             Node head;
             for (auto i = start + 1; i < headEnd; ++i) {
-                if (Kind(i) == TK::Keyword_alignas) {
+                if (i == recordName.FinalSpecifier) {
+                    auto* specifier = MakeNode(NodeKind::ClassVirtSpecifier, i);
+                    specifier->Tokens.End = i + 1;
+                    Append(head, *specifier);
+                } else if (Kind(i) == TK::Keyword_alignas) {
                     if (auto* operand = MakeAlignmentOperand(i, headEnd)) {
                         Append(head, *operand);
                         i = operand->Tokens.End - 1;
