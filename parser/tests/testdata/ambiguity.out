@@ -1034,6 +1034,35 @@
           (unknown-type-name "external")
           "::" "value" "<" "int" ">" "&&" "enabled" ";"
         )
+        (expression-statement
+          (call-expression
+            (identifier-expression "invoke")
+            (argument-list
+              "("
+              (argument
+                (call-expression
+                  (unparsed-syntax "left" "<" "middle" "," "right" ">")
+                  (argument-list
+                    "("
+                    (argument
+                      (identifier-expression "value")
+                    )
+                    ")"
+                  )
+                )
+              )
+              (list-separator ",")
+              (argument
+                (call-expression
+                  (identifier-expression "tail")
+                  (argument-list "(" ")")
+                )
+              )
+              ")"
+            )
+          )
+          ";"
+        )
         (declaration-statement
           (declaration-specifiers "auto")
           (init-declarator-list

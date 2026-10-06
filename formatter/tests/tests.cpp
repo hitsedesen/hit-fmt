@@ -2241,6 +2241,16 @@ std::vector<FormatCase> FormatCases()
     addProfileCase("../call-reflow", "balanced-expressions");
     cases.push_back({
         callReflow,
+        "braced-arguments",
+        "braced-arguments.input.cpp",
+        "../../../../hit-fmt/examples/ytsaurus",
+        {},
+        true,
+        {},
+        true,
+    });
+    cases.push_back({
+        callReflow,
         "typed-declarations",
         "typed-declarations.input.cpp",
         "../../../../",
