@@ -904,6 +904,7 @@ std::vector<FormatCase> FormatCases()
             {
                 "directory",
                 "directory-alphabetical",
+                "directory-depth-zero",
                 "directory-depth-one",
                 "directory-depth-two",
                 "directory-depth-deep",
@@ -919,6 +920,16 @@ std::vector<FormatCase> FormatCases()
             }
             cases.push_back(std::move(value));
         }
+        AddCases(
+            cases,
+            directory,
+            {"depth-zero", "depth-default", "depth-unlimited"},
+            "depth.input.cpp");
+        ShareExpected(
+            cases,
+            directory,
+            "depth-default.output.cpp",
+            "depth-zero.output.cpp");
         AddCases(
             cases,
             directory,
@@ -964,7 +975,11 @@ std::vector<FormatCase> FormatCases()
             cases.push_back(std::move(value));
         }
         for (const auto name :
-            {"directory-relative", "directory-relative-depth-two"})
+            {
+                "directory-relative",
+                "directory-relative-depth-zero",
+                "directory-relative-depth-two",
+            })
         {
             FormatCase relative{directory, name, "relative.input.cpp"};
             relative.InputFilePath = "/project/engine/widget.cpp";

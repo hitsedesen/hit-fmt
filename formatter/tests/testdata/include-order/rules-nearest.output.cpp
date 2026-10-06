@@ -22,10 +22,9 @@
 #include <contrib/libs/http/include/alpha.h>
 
 #include <library/cpp/yt/memory/alpha.h>
+#include <library/cpp/yt/memory/impl/zeta.h>
 
 #include <library/cpp/yt/system/alpha.h>
 #include <library/cpp/yt/system/impl/alpha.h>
-
-#include <library/cpp/yt/memory/impl/zeta.h>
 
 #include <vector>

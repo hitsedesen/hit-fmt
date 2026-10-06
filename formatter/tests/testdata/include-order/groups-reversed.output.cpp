@@ -8,7 +8,6 @@
 #include "outside/b.h"
 
 #include <library/b.h>
-
 #include <library/deep/a.h>
 #include <library/deep/z.h>
 

@@ -1423,6 +1423,17 @@ TEST(ConfigPolicy, PrefixValidationIsFinalOrderedAndCannotBeBypassed)
             (void)formatter::PreparedFormat(style),
             std::invalid_argument);
     }
+    formatter::Style invalidDepth;
+    invalidDepth.IncludeGroups = {{{"engine/"}, -2}};
+    EXPECT_THROW(
+        (void)formatter::CompilePolicies(invalidDepth),
+        std::invalid_argument);
+    EXPECT_THROW(
+        (void)formatter::PreparedIncludeGroups(invalidDepth.IncludeGroups),
+        std::invalid_argument);
+    EXPECT_THROW(
+        (void)formatter::PreparedFormat(invalidDepth),
+        std::invalid_argument);
     const TemporaryConfig repaired("IncludeGroups = [{Prefix = \"bad\"}]\n"
         "IncludeGroups = [{Prefix = \"engine/\"}, "
         "{Prefix = \"engine/detail/\"}]\n");
@@ -1472,20 +1483,22 @@ TEST(ConfigPolicy, IncludeGroupRulesParseNestedArraysAndRejectAmbiguity)
     const TemporaryConfig nested("IncludeGroups = [\n" "  { Prefixes = [\n"
         "      \"engine]/\", # brackets inside strings are not terminators\n"
         "      \"mirror#root/\"\n" "    ], Depth = 2 },\n"
-        "  { Depth = 1, Prefix = \"other/\" },\n" "  { Prefix = \"\" }\n"
+        "  { Depth = -1, Prefix = \"other/\" },\n"
+        "  { Depth = 127, Prefix = \"deep/\" },\n" "  { Prefix = \"\" }\n"
         "]\n");
     const auto style = formatter::LoadConfigFile(nested.Path).FormattingStyle;
     EXPECT_EQ(
         style.IncludeGroups,
         (std::vector<formatter::IncludeGroupRule>{
             {{"engine]/", "mirror#root/"}, 2},
-            {{"other/"}, 1},
+            {{"other/"}, -1},
+            {{"deep/"}, 127},
             {{""}, 0},
         }));
     const formatter::PreparedIncludeGroups prepared(style.IncludeGroups);
     EXPECT_EQ(prepared.Classify("engine]/item.h").Group, 0u);
     EXPECT_EQ(prepared.Classify("mirror#root/item.h").Group, 0u);
-    EXPECT_EQ(prepared.Classify("../other/item.h").Group, 2u);
+    EXPECT_EQ(prepared.Classify("../other/item.h").Group, 3u);
     for (const auto text :
         {
             "IncludeGroups = [\"engine/\"]\n",
@@ -1496,7 +1509,10 @@ TEST(ConfigPolicy, IncludeGroupRulesParseNestedArraysAndRejectAmbiguity)
             "IncludeGroups = [{Prefix = \"engine/\", "
                 "Prefixes = [\"mirror/\"]}]\n",
             "IncludeGroups = [{Prefix = \"engine/\", Depth = 1, Depth = 2}]\n",
-            "IncludeGroups = [{Prefix = \"engine/\", Depth = -1}]\n",
+            "IncludeGroups = [{Prefix = \"engine/\", Depth = -2}]\n",
+            "IncludeGroups = [{Prefix = \"engine/\", Depth = 128}]\n",
+            "IncludeGroups = [{Prefix = \"engine/\", Depth = -129}]\n",
+            "IncludeGroups = [{Prefix = \"engine/\", Depth = 1.5}]\n",
             "IncludeGroups = [{Prefix = \"engine/\", "
                 "Depth = 99999999999999999999999}]\n",
             "IncludeGroups = [{Prefix = \"engine/\", Typo = 1}]\n",

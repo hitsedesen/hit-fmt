@@ -34,6 +34,10 @@ void ValidateIncludeGroups(std::span<const IncludeGroupRule> groups)
 {
     std::vector<std::string_view> prefixes;
     for (const auto& group : groups) {
+        if (group.Depth < -1) {
+            throw std::invalid_argument(
+                "IncludeGroups Depth must be an integer from -1 to 127");
+        }
         if (group.Prefixes.empty()) {
             throw std::invalid_argument(
                 "IncludeGroups requires a Prefix or nonempty Prefixes array");
@@ -201,9 +205,9 @@ PreparedIncludeGroups::Match PreparedIncludeGroups::Classify(
     };
 }
 
-std::size_t PreparedIncludeGroups::Depth(std::size_t group) const noexcept
+std::int8_t PreparedIncludeGroups::Depth(std::size_t group) const noexcept
 {
-    return group < GroupCount() ? Groups_[group].Depth : 0;
+    return group < GroupCount() ? Groups_[group].Depth : -1;
 }
 
 std::size_t PreparedIncludeGroups::PrefixDepth(

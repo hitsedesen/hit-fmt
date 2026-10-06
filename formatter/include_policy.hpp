@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstddef>
+#include <cstdint>
 #include <span>
 #include <string>
 #include <string_view>
@@ -11,8 +12,9 @@ namespace formatter {
 struct IncludeGroupRule
 {
     std::vector<std::string> Prefixes;
-    // Zero uses the full directory suffix; positive values cap its components.
-    std::size_t Depth = 0;
+    // Zero keeps the rule together; -1 uses the full directory suffix.
+    // Positive values cap the suffix's directory components.
+    std::int8_t Depth = 0;
     friend bool operator==(
         const IncludeGroupRule&,
         const IncludeGroupRule&) = default;
@@ -42,7 +44,7 @@ public:
         return Groups_.size();
     }
 
-    [[nodiscard]] std::size_t Depth(std::size_t group) const noexcept;
+    [[nodiscard]] std::int8_t Depth(std::size_t group) const noexcept;
     [[nodiscard]] std::size_t PrefixDepth(std::size_t prefix) const noexcept;
     [[nodiscard]] std::string_view Prefix(std::size_t prefix) const noexcept;
     [[nodiscard]] std::string_view CanonicalPrefix(
@@ -52,7 +54,7 @@ private:
     struct Group
     {
         std::size_t FirstPrefix;
-        std::size_t Depth;
+        std::int8_t Depth;
     };
 
     struct PrefixEntry

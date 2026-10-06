@@ -280,7 +280,7 @@ struct IncludeKey
     std::size_t Distance = 0;
     std::size_t Rule = 0;
     std::size_t Prefix = 0;
-    std::size_t Depth = 0;
+    std::int8_t Depth = -1;
     bool Matching = false;
     bool Standard = false;
 };
@@ -559,7 +559,9 @@ void Includes(
                 const auto canonical = context.Groups
                     ? context.Groups->CanonicalPrefix(key.Rule)
                     : std::string_view{};
-                if (options.Grouping == IncludeGrouping::Regroup) {
+                if (options.Grouping == IncludeGrouping::Regroup ||
+                    key.Depth == 0)
+                {
                     groupAbsolute = options.PathBase ==
                         IncludePathBase::SourceDirectory && inputAbsolute;
                     if (options.PathBase == IncludePathBase::SourceDirectory) {
@@ -570,9 +572,11 @@ void Includes(
                     const auto base = relative ? current.size() : 0;
                     const auto suffix =
                         base + context.Groups->PrefixDepth(key.Prefix);
-                    const auto count = key.Depth == 0
+                    const auto count = key.Depth == -1
                         ? parts.size() - suffix
-                        : std::min(key.Depth, parts.size() - suffix);
+                        : std::min(
+                            static_cast<std::size_t>(key.Depth),
+                            parts.size() - suffix);
                     grouped.insert(
                         grouped.end(),
                         parts.begin(),
@@ -583,9 +587,11 @@ void Includes(
                         parts.begin() + suffix,
                         parts.begin() + suffix + count);
                 } else {
-                    const auto count = key.Depth == 0
+                    const auto count = key.Depth == -1
                         ? parts.size()
-                        : std::min(key.Depth, parts.size());
+                        : std::min(
+                            static_cast<std::size_t>(key.Depth),
+                            parts.size());
                     grouped.assign(parts.begin(), parts.begin() + count);
                 }
                 std::size_t common = 0;
@@ -690,7 +696,7 @@ void Includes(
                             context.Groups->CanonicalPrefix(key(b).Rule);
                     }
                     if (options.Grouping == IncludeGrouping::Directory &&
-                        key(a).Depth == 0 &&
+                        key(a).Depth == -1 &&
                         Filename(a.Path) != Filename(b.Path))
                     {
                         return Filename(a.Path) < Filename(b.Path);
