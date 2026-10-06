@@ -406,7 +406,12 @@ TEST(SourceAnalysis, CommentsDirectivesSplicesAndCrLf)
         "void use() { auto x = call(a, /* prefix */ b /* suffix */, c);\n"
         "auto y = call((a, /* expression */ b), c);\n"
         "auto z = {a, /* trailing */};\n" "auto line = call(a, // stays\n b);\n"
-        "auto mixed = call(a, /* mixed prefix */ // stays too\n b); }\n");
+        "auto mixed = call(a, /* mixed prefix */ // stays too\n b);\n"
+        "call(/* first */ /* label */ a, b);\n"
+        "auto first = {/* element */ a, b};\n"
+        "call(/* opening mixed */ // opening line\n a, b);\n"
+        "call(/* empty call */); auto empty = {/* empty list */}; }\n"
+        "void declared(/* parameter */ int a, int b);\n");
     auto tree = Parse(input);
     std::pmr::monotonic_buffer_resource memory;
     auto analysis = Analyze(tree, memory);
@@ -424,6 +429,10 @@ TEST(SourceAnalysis, CommentsDirectivesSplicesAndCrLf)
     EXPECT_TRUE(analysis.CanReplaceGap(Before(tree, "f"), "  "));
     EXPECT_TRUE(analysis.CanReplaceGap(Before(tree, "/* prefix */"), "\n"));
     EXPECT_FALSE(analysis.CanReplaceGap(Before(tree, "b", 1), "\n"));
+    for (const auto text : {"/* first */", "/* element */", "/* parameter */"})
+    {
+        EXPECT_TRUE(analysis.CanReplaceGap(Before(tree, text), "\n")) << text;
+    }
     for (const auto text :
         {
             "/* suffix */",
@@ -432,6 +441,11 @@ TEST(SourceAnalysis, CommentsDirectivesSplicesAndCrLf)
             "// stays",
             "/* mixed prefix */",
             "// stays too",
+            "/* label */",
+            "/* opening mixed */",
+            "// opening line",
+            "/* empty call */",
+            "/* empty list */",
         })
     {
         EXPECT_FALSE(analysis.CanReplaceGap(Before(tree, text), "\n"));

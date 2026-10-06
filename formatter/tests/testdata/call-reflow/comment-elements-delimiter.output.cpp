@@ -1,3 +1,9 @@
+void configured(
+                /* first parameter */ int alpha,
+                /* second parameter */ int beta
+) {
+}
+
 void demo() {
     consume( // first argument
             alpha,
@@ -52,6 +58,24 @@ void demo() {
     auto trailingBlock = {
                           alpha, /* no next item */};
     consume(
+            /* first */ alpha,
+            /* second */ beta
+    );
+    consume(
+            /* first */ /* label */ alpha,
+            beta
+    );
+    auto firstPrefix = {
+                        /* first */ alpha,
+                        beta
+    };
+    consume(/* mixed */ // stays with opening
+            alpha,
+            beta
+    );
+    consume(/* no argument */);
+    auto empty = {/* no element */};
+    consume(
             alpha, // trailing comment
             beta /* closer comment */
     );
@@ -63,6 +87,7 @@ void demo() {
                    z
     };
     // clang-format off
+    consume(/* protected prefix */ alpha, beta);
     consume(alpha, // protected argument
   beta);
     // clang-format on

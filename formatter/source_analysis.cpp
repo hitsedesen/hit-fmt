@@ -807,29 +807,57 @@ SourceAnalysis BuildSourceAnalysis(
             }
             frame.LastChild = id;
         }
-        if (node.Kind == parser::NodeKind::ListSeparator &&
-            tokens.Size() == 1 && tokens.End < count &&
-            tree.Kind(tokens.End) == TK::Comment &&
-            tree.TokenText(tokens.End).starts_with("/*"))
+        auto prefix = NoToken;
+        const parser::Node* next = nullptr;
+        switch (node.Kind) {
+            case parser::NodeKind::ListSeparator:
+                if (tokens.Size() == 1) {
+                    prefix = tokens.End;
+                    next = node.NextSibling;
+                }
+                break;
+            case parser::NodeKind::ArgumentList:
+            case parser::NodeKind::ParameterList:
+            case parser::NodeKind::TemplateArgumentList:
+            case parser::NodeKind::TemplateParameterList:
+            case parser::NodeKind::InitializerList:
+            case parser::NodeKind::EnumeratorList:
+            case parser::NodeKind::LambdaCaptureList:
+            case parser::NodeKind::Condition:
+            case parser::NodeKind::ForHeader:
+            case parser::NodeKind::BaseClause:
+            case parser::NodeKind::ConstructorInitializerList:
+                if (!tokens.Empty()) {
+                    prefix = tokens.Begin + 1;
+                    next = node.Child();
+                }
+                break;
+            default:
+                break;
+        }
+        if (prefix < count && tree.Kind(prefix) == TK::Comment &&
+            tree.TokenText(prefix).starts_with("/*"))
         {
-            auto* next = node.NextSibling;
             while (next && next->Kind == parser::NodeKind::Comment) {
                 next = next->NextSibling;
             }
-            if (next && tokens.End < next->Tokens.Begin) {
-                auto afterComments = tokens.End;
-                while (afterComments < next->Tokens.Begin &&
+            if (next) {
+                auto afterComments = prefix;
+                while (afterComments < next->Tokens.End &&
                     tree.Kind(afterComments) == TK::Comment &&
                     tree.TokenText(afterComments).starts_with("/*"))
                 {
                     ++afterComments;
                 }
-                if (afterComments == next->Tokens.Begin) {
-                    // Move a block-comment prefix with the next item while
-                    // preserving its internal links. Mixed prefixes stay put
-                    // so a line comment cannot move with the block comments.
-                    result.Gaps_[tokens.End].LineBoundary =
-                        GapLineBoundary::Any;
+                // Some list items include their leading trivia in Tokens.
+                // The first non-comment token must belong to the next item.
+                if (afterComments >= next->Tokens.Begin &&
+                    afterComments < next->Tokens.End)
+                {
+                    // First and subsequent items carry their block-comment
+                    // prefixes, preserving internal links. Mixed prefixes stay
+                    // put so a line comment cannot move with block comments.
+                    result.Gaps_[prefix].LineBoundary = GapLineBoundary::Any;
                 }
             }
         }

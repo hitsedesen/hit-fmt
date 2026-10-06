@@ -16,9 +16,10 @@ void Example() {
             [state] {
                 state->Pause();
             }));
-    MakeCallback(/* callback */ [state] {
-        state->Pause();
-    } /* done */);
+    MakeCallback(
+        /* callback */ [state] {
+            state->Pause();
+        } /* done */);
     Consume(
         firstLengthyConditionValue || secondLengthyConditionValue ||
         thirdLengthyConditionValue);
