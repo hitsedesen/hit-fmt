@@ -1159,6 +1159,34 @@ std::vector<FormatCase> FormatCases()
     const auto nullStatements =
         std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../null-statements";
     AddCases(cases, nullStatements, {"preserve", "remove"});
+    for (const auto name :
+        {
+            "whitespace-trim",
+            "whitespace-preserve",
+            "whitespace-trim-crlf",
+            "whitespace-trim-preserve-indent",
+        })
+    {
+        FormatCase value{
+            nullStatements,
+            name,
+            "whitespace.input.cpp",
+            "whitespace-trim",
+        };
+        value.Style = formatter::LoadConfigFile(
+            nullStatements / "whitespace-trim.hit-fmt").FormattingStyle;
+        value.CheckOwningMaps = true;
+        if (std::string_view(name) == "whitespace-preserve") {
+            value.Style->TrailingWhitespace = TrailingWhitespace::Preserve;
+        } else if (std::string_view(name) == "whitespace-trim-crlf") {
+            value.Input = "whitespace-crlf.input.cpp";
+            value.Style->LineEnding = LineEnding::CRLF;
+        } else if (std::string_view(name) == "whitespace-trim-preserve-indent")
+        {
+            value.Style->IndentationKind = IndentationKind::Preserve;
+        }
+        cases.push_back(std::move(value));
+    }
     for (const auto& [name, config] :
         {
             std::pair{"decl-preserve", "preserve"},
