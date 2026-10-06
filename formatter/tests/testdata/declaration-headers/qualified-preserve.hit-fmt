@@ -1,0 +1,13 @@
+Layout = Canonical
+ColumnLimit = 80
+IndentWidth = 4
+IndentationKind = Spaces
+FunctionBracePlacement = NextLineIfHeaderBroken
+PointerReferenceDeclaratorLocation = Left
+FunctionSpaceBeforeParameters = NoSpace
+SpaceInsideFunctionParameters = NoSpace
+ReturnArrowSpaceBefore = Space
+ReturnArrowSpaceAfter = Space
+TemplateArgumentsLayout = Preserve
+TemplateArgumentsFirstItem = NextLine
+TemplateArgumentsPacking = VerticalWhenBroken

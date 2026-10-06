@@ -352,6 +352,12 @@ std::vector<FormatCase> FormatCases()
         std::filesystem::path(FORMATTER_TESTDATA_DIR) /
         "../declaration-headers",
         {"wrap", "narrow", "wide"});
+    AddCases(
+        cases,
+        std::filesystem::path(FORMATTER_TESTDATA_DIR) /
+        "../declaration-headers",
+        {"qualified", "qualified-always", "qualified-preserve"},
+        "qualified.input.cpp");
     cases.push_back({
         std::filesystem::path(FORMATTER_TESTDATA_DIR) /
             "../declaration-headers",
@@ -363,6 +369,11 @@ std::vector<FormatCase> FormatCases()
         {},
         true,
     });
+    for (auto& value : cases) {
+        if (value.Directory.filename() == "declaration-headers") {
+            value.CheckOwningMaps = true;
+        }
+    }
     AddCases(
         cases,
         std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../vertical-grouping",
