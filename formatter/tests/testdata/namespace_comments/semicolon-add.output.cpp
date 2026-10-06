@@ -1,32 +1,20 @@
 namespace alpha {
 int value;
-}
-
-; // namespace alpha
+}; // namespace alpha
 
 namespace scoped::inner {
 int value;
-}
-
-;
-
-; // namespace scoped::inner
+};; // namespace scoped::inner
 
 namespace {
 int value;
-}
-
-; // anonymous namespace
+}; // anonymous namespace
 
 namespace outer {
 namespace nested {
 int value;
-}
-
-; // nested closing comment
-}
-
-; // outer closing comment
+}; // nested closing comment
+}; // outer closing comment
 
 namespace direct {
 int value;
@@ -34,24 +22,36 @@ int value;
 
 namespace missing {
 int value;
-}
-
-;
+};
 
 namespace block {
 int value;
-}
+}; /* keep this block comment */
 
-; /* keep this block comment */
+namespace spaced {
+int value;
+} ; ; // spaced closing suffix
 
-namespace separate {
+int after;
+
+namespace standalone {
 int value;
 }
 
-;
+; // keep this standalone semicolon
+
+namespace alias = direct; // not a namespace body
+
+namespace separate {
+int value;
+};
 
 // keep this standalone comment
 
 struct Record {
     int value;
 }; // not a namespace comment
+
+namespace eof {
+int value;
+};; // closing comment at EOF

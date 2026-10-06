@@ -1,4 +1,4 @@
 namespace windows {
     namespace nested {
-    } // wrong
+    };; // wrong
 }  

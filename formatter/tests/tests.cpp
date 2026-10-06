@@ -2913,7 +2913,15 @@ std::vector<FormatCase> FormatCases()
         "composes-spacing",
         "composes-spacing.input.cpp",
     });
-    for (const auto* profile : {"semicolon-fix", "semicolon-add"}) {
+    for (const auto* profile :
+        {
+            "semicolon-fix",
+            "semicolon-add",
+            "semicolon-preserve",
+            "semicolon-add-remove",
+            "semicolon-remove",
+        })
+    {
         cases.push_back({
             data / "namespace_comments",
             profile,

@@ -969,6 +969,7 @@ StructuralPlan PlanStructuralEdits(
             trailingLabels[region.Parent] = true;
         }
     }
+    TI namespaceSuffixEnd = tree.TokenCount();
     Walk(
         tree,
         &safety,
@@ -1130,6 +1131,18 @@ StructuralPlan PlanStructuralEdits(
                 if (tree.Kind(token) != TK::Operator_Semicolon) {
                     return;
                 }
+                // A namespace's same-line null-declaration suffix is
+                // redundant even when a comment follows it. Remove only the
+                // semicolon atoms, retaining the authored comment and gaps.
+                bool namespaceSuffix = nullDeclaration && token &&
+                    Horizontal(tree.WhitespaceBefore(token)) &&
+                    ((previous == NK::NamespaceDeclaration &&
+                        tree.Kind(token - 1) == TK::Operator_CloseBrace) ||
+                        (previous == NK::EmptyDeclaration &&
+                            namespaceSuffixEnd == token));
+                if (namespaceSuffix) {
+                    namespaceSuffixEnd = token + 1;
+                }
                 auto action = nullStatement
                     ? StructuralAction::RemoveNullStatements
                     : StructuralAction::RemoveNullDeclarations;
@@ -1151,7 +1164,7 @@ StructuralPlan PlanStructuralEdits(
                         previous == NK::LabelStatement))
                 {
                     Skip(plan, action, tokens, StructuralSkip::LabelBody);
-                } else if (AdjacentComment(tree, tokens)) {
+                } else if (!namespaceSuffix && AdjacentComment(tree, tokens)) {
                     Skip(plan, action, tokens, StructuralSkip::CommentAttached);
                 } else if (safety.IntersectsImmutable(Range(tree, tokens)) ||
                     (safety.Gaps()[tokens.Begin].Preserve &&
@@ -1418,12 +1431,19 @@ NamespaceCommentPlan PlanNamespaceComments(
                 }
                 auto begin = original.Token(close).Text.End;
                 auto comment = original.TokenCount();
-                if (close + 1 < original.TokenCount() &&
-                    original.Kind(close + 1) == TK::Comment &&
-                    original.TokenText(close + 1).starts_with("//") &&
-                    Horizontal(original.WhitespaceAfter(close)))
+                auto suffix = close + 1;
+                while (suffix < original.TokenCount() &&
+                    original.Kind(suffix) == TK::Operator_Semicolon &&
+                    Horizontal(original.WhitespaceBefore(suffix)))
                 {
-                    comment = close + 1;
+                    ++suffix;
+                }
+                if (suffix < original.TokenCount() &&
+                    original.Kind(suffix) == TK::Comment &&
+                    original.TokenText(suffix).starts_with("//") &&
+                    Horizontal(original.WhitespaceBefore(suffix)))
+                {
+                    comment = suffix;
                 }
                 SR window{
                     begin,
@@ -1618,6 +1638,12 @@ StructuralPlan ResolveNamespaceComments(
         auto begin = mapping[ns.Close].Output.End;
         auto end = begin;
         if (existing) {
+            // Comments after a null suffix become closing comments only if
+            // normalization actually removed every intervening semicolon.
+            if (following < ns.Comment) {
+                skip(StructuralSkip::FollowingText);
+                continue;
+            }
             auto r = mapping[ns.Comment].Output;
             if (r.Begin < begin ||
                 !Horizontal(output.substr(begin, r.Begin - begin)))

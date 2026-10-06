@@ -9,8 +9,7 @@ namespace Alias = N;
 export ;
 namespace Outer {
     namespace Inner {
-    }
-    ;
+    };
     ;
     int value;
     ; // Keep this placeholder.

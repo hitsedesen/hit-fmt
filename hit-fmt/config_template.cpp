@@ -195,6 +195,14 @@ void PrintOption(std::ostream& output, std::string_view name, const T& value)
         output
             << "# Qualified :: edges, not the gap before leading global ::.\n";
     }
+    if (name == "RemoveNullDeclarations") {
+        output
+            << "# Remove redundant null declarations.\n"
+                "# Required semicolons stay intact.\n"
+                "# Same-line namespace suffixes are removed beside comments:\n"
+                "# namespace N {}; // note becomes namespace N {} // note.\n"
+                "# Standalone commented placeholders stay intact.\n";
+    }
     if (name == "ClassMacroNames") {
         output
             << "# Begin:End pairs of unqualified function-like macro names.\n"

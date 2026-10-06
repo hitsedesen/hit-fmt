@@ -209,6 +209,9 @@ WhitespaceSensitiveMacros = ["STRINGIZE_TEXT"]
 AddMissingControlBraces = false
 RemoveNullStatements = false
 RemoveNullDeclarations = false
+# With true, namespace N {}; // note becomes namespace N {} // note.
+# Same-line namespace suffixes are removed even beside comments.
+# Required semicolons and standalone commented placeholders stay intact.
 IncludeOrder = Preserve
 NamespaceComments = Preserve
 # When enabled, nested directives move together with their # (or %:) marker.

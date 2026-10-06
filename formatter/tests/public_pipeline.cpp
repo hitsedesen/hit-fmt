@@ -1893,6 +1893,35 @@ TEST(PublicPipeline, ImmutableRangesConstrainNamespaceAndStructuralPlanning)
             EXPECT_EQ(diagnostic.Reason, formatter::StructuralSkip::Protected);
         }
     }
+    // Comment attachment cannot veto removal of a redundant namespace suffix,
+    // but protection of the semicolon atoms still can.
+    style.RemoveNullDeclarations = true;
+    style.NamespaceComments = formatter::NamespaceComments::Preserve;
+    const formatter::PreparedFormat removal(style);
+    const std::string suffix = "namespace Name {};; // keep\nint tail;\n";
+    const auto begin = uint32_t(suffix.find(";;"));
+    for (const bool protectSuffix : {false, true}) {
+        const auto comment = uint32_t(suffix.find("//"));
+        const std::array protectedRange{
+            protectSuffix
+                ? parser::SourceRange{begin, begin + 2}
+                : parser::SourceRange{comment, comment + 7},
+        };
+        const auto result = FormatInput(
+            suffix,
+            removal,
+            {.ImmutableRanges = protectedRange, .SourceMap = true});
+        Input input(suffix);
+        const auto tree = parser::Parse(input.View(), [] (auto) {});
+        for (parser::TokenIndex token = 0; token < tree.TokenCount(); ++token) {
+            const auto atom = tree.Token(token).Text;
+            if (begin <= atom.Begin && atom.End <= begin + 2) {
+                EXPECT_EQ(result.OriginalTokens[token].Present, protectSuffix);
+            }
+        }
+        EXPECT_NE(result.Text.find("// keep\n"), std::string::npos);
+        CheckIdentities(suffix, result);
+    }
 }
 
 TEST(PublicPipeline, InvalidPreparedRequestsAndActualEmittedWidthDiagnostics)
