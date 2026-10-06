@@ -1372,6 +1372,16 @@ private:
             const bool separator = part.Kind == NodeKind::ListSeparator ||
                 part.Kind == NodeKind::RangeForSeparator;
             if (!separator) {
+                if (canonical && part.Kind == NodeKind::ParameterDeclaration &&
+                    Syntax_[child].Safe && part.FirstChild != None &&
+                    Region(Syntax_[part.FirstChild]).Kind ==
+                        NodeKind::DeclarationSpecifiers)
+                {
+                    // The list owns breaks between parameters; each complete
+                    // declaration keeps its type and declarator together.
+                    // Nested lists and default expressions plan independently.
+                    ProjectHeaderGaps(child, t, part.Tokens.End, group);
+                }
                 if (part.Kind != NodeKind::Comment &&
                     part.Kind != NodeKind::PreprocessingDirective &&
                     part.Tokens.Begin > begin && part.Tokens.End <= closer)
@@ -2134,10 +2144,15 @@ private:
                             t > node.Tokens.Begin + 1;
                     if (!opaqueExceptionOperand && t > begin && t < end &&
                         GapMutable(t) && Tree_.Kind(t) != TokenKind::Comment &&
+                        (kind != NodeKind::ParameterDeclaration ||
+                            Tree_.Kind(t - 1) != TokenKind::Comment) &&
                         (Spacing_.Gaps()[t].Category ==
                             SpacingOwner::DeclarationHeaders ||
                             Spacing_.Gaps()[t].Category ==
-                                SpacingOwner::ControlHeaders))
+                                SpacingOwner::ControlHeaders ||
+                            (kind == NodeKind::ParameterDeclaration &&
+                                Spacing_.Gaps()[t].Category ==
+                                    SpacingOwner::Parameters)))
                     {
                         const bool separated =
                             Spacing_.Gaps()[t].FallbackSpace ||
@@ -2187,6 +2202,7 @@ private:
                         Gaps_[t].FitNextSegment = breakable;
                         Gaps_[t].KeepFlatSpacing =
                             kind == NodeKind::FunctionDeclaration ||
+                                kind == NodeKind::ParameterDeclaration ||
                                 node.Kind == NodeKind::FunctionQualifier;
                     }
                 });

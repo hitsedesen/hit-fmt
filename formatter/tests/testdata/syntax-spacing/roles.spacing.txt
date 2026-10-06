@@ -60,6 +60,7 @@
 69 before=compute field=None owner=function-declaration category=10 priority=1 fallback=1 protected=0 constraint=0
 70 before=( field=FunctionSpaceBeforeParameters owner=function-declarator category=2 priority=2 fallback=0 protected=0 constraint=0
 71 before=int field=SpaceInsideFunctionParameters owner=function-declarator category=2 priority=2 fallback=0 protected=0 constraint=0
+72 before=value field=None owner=parameter-declaration category=2 priority=1 fallback=1 protected=0 constraint=0
 73 before=, field=CommaSpaceBefore owner=function-declarator category=2 priority=3 fallback=0 protected=0 constraint=0
 74 before=int field=CommaSpaceAfter owner=function-declarator category=2 priority=3 fallback=1 protected=0 constraint=0
 77 before=) field=SpaceInsideFunctionParameters owner=function-declarator category=2 priority=2 fallback=0 protected=0 constraint=0
@@ -119,6 +120,7 @@
 145 before=examine field=None owner=function-definition category=10 priority=1 fallback=1 protected=0 constraint=0
 146 before=( field=FunctionSpaceBeforeParameters owner=function-declarator category=2 priority=2 fallback=0 protected=0 constraint=0
 147 before=Pack field=SpaceInsideFunctionParameters owner=function-declarator category=2 priority=2 fallback=0 protected=0 constraint=0
+148 before=... field=None owner=parameter-declaration category=2 priority=1 fallback=1 protected=0 constraint=0
 150 before=) field=SpaceInsideFunctionParameters owner=function-declarator category=2 priority=2 fallback=0 protected=0 constraint=0
 151 before={ field=FunctionBraceSpacing owner=function-definition category=10 priority=3 fallback=1 protected=0 constraint=0
 152 before=Bucket field=BlockInteriorSpacing owner=compound-statement category=11 priority=2 fallback=1 protected=0 constraint=0
@@ -160,6 +162,7 @@
 190 before=] field=SpaceAroundCaptureList owner=lambda-capture-list category=4 priority=2 fallback=0 protected=0 constraint=0
 191 before=( field=LambdaSpaceBeforeParameters owner=lambda-expression category=2 priority=2 fallback=0 protected=0 constraint=0
 192 before=int field=SpaceInsideLambdaParameters owner=lambda-expression category=2 priority=2 fallback=0 protected=0 constraint=0
+193 before=arg field=None owner=parameter-declaration category=2 priority=1 fallback=1 protected=0 constraint=0
 194 before=) field=SpaceInsideLambdaParameters owner=lambda-expression category=2 priority=2 fallback=0 protected=0 constraint=0
 195 before=mutable field=FunctionSuffixSpecifierSpacing owner=lambda-expression category=10 priority=3 fallback=1 protected=0 constraint=0
 196 before={ field=LambdaBraceSpacing owner=lambda-expression category=10 priority=3 fallback=1 protected=0 constraint=0
@@ -455,8 +458,10 @@
 500 before=+ field=OperatorOverloadOperatorSpaceBefore owner=declarator category=10 priority=4 fallback=0 protected=0 constraint=0
 501 before=( field=OperatorOverloadOperatorSpaceAfter owner=declarator category=10 priority=4 fallback=0 protected=0 constraint=0
 502 before=int field=SpaceInsideFunctionParameters owner=function-declarator category=2 priority=2 fallback=0 protected=0 constraint=0
+503 before=value field=None owner=parameter-declaration category=2 priority=1 fallback=1 protected=0 constraint=0
 504 before=, field=CommaSpaceBefore owner=function-declarator category=2 priority=3 fallback=0 protected=0 constraint=0
 505 before=Cell field=CommaSpaceAfter owner=function-declarator category=2 priority=3 fallback=1 protected=0 constraint=0
+506 before=other field=None owner=parameter-declaration category=2 priority=1 fallback=1 protected=0 constraint=0
 507 before=) field=SpaceInsideFunctionParameters owner=function-declarator category=2 priority=2 fallback=0 protected=0 constraint=0
 508 before=; field=DeclarationSemicolonSpacing owner=function-declaration category=10 priority=3 fallback=0 protected=0 constraint=0
 509 before=struct field=None owner=translation-unit category=11 priority=1 fallback=1 protected=0 constraint=0
@@ -466,6 +471,7 @@
 514 before=( field=OperatorOverloadOperatorSpaceBefore owner=declarator category=10 priority=4 fallback=0 protected=0 constraint=0
 516 before=( field=OperatorOverloadOperatorSpaceAfter owner=declarator category=10 priority=4 fallback=0 protected=0 constraint=0
 517 before=int field=SpaceInsideFunctionParameters owner=function-declarator category=2 priority=2 fallback=0 protected=0 constraint=0
+518 before=value field=None owner=parameter-declaration category=2 priority=1 fallback=1 protected=0 constraint=0
 519 before=) field=SpaceInsideFunctionParameters owner=function-declarator category=2 priority=2 fallback=0 protected=0 constraint=0
 520 before=; field=DeclarationSemicolonSpacing owner=function-declaration category=10 priority=3 fallback=0 protected=0 constraint=0
 521 before=} field=RecordBodyInteriorSpacing owner=record-declaration category=11 priority=3 fallback=1 protected=0 constraint=0
@@ -479,6 +485,7 @@
 529 before=trailing field=None owner=function-declaration category=10 priority=1 fallback=1 protected=0 constraint=0
 530 before=( field=FunctionSpaceBeforeParameters owner=function-declarator category=2 priority=2 fallback=0 protected=0 constraint=0
 531 before=int field=SpaceInsideFunctionParameters owner=function-declarator category=2 priority=2 fallback=0 protected=0 constraint=0
+532 before=value field=None owner=parameter-declaration category=2 priority=1 fallback=1 protected=0 constraint=0
 533 before=) field=SpaceInsideFunctionParameters owner=function-declarator category=2 priority=2 fallback=0 protected=0 constraint=0
 534 before=-> field=ReturnArrowSpaceBefore owner=function-declarator category=10 priority=3 fallback=1 protected=0 constraint=0
 535 before=int field=ReturnArrowSpaceAfter owner=function-declarator category=10 priority=3 fallback=1 protected=0 constraint=0
@@ -489,6 +496,7 @@
 540 before=requires field=AssignmentOperatorSpacing owner=declaration category=10 priority=1 fallback=1 protected=0 constraint=0
 541 before=( field=RequiresSpaceBeforeParentheses owner=requires-expression category=8 priority=4 fallback=1 protected=0 constraint=0
 542 before=int field=SpaceInsideFunctionParameters owner=requires-expression category=2 priority=2 fallback=0 protected=0 constraint=0
+543 before=value field=None owner=parameter-declaration category=2 priority=1 fallback=1 protected=0 constraint=0
 544 before=) field=SpaceInsideFunctionParameters owner=requires-expression category=2 priority=2 fallback=0 protected=0 constraint=0
 546 before=value field=RequirementBodyInteriorSpacing owner=requirement-body category=11 priority=2 fallback=1 protected=0 constraint=0
 550 before=} field=RequirementBodyInteriorSpacing owner=requirement-body category=11 priority=2 fallback=1 protected=0 constraint=0
@@ -552,6 +560,7 @@
 618 before=captureAssign field=None owner=function-definition category=10 priority=1 fallback=1 protected=0 constraint=0
 619 before=( field=FunctionSpaceBeforeParameters owner=function-declarator category=2 priority=2 fallback=0 protected=0 constraint=0
 620 before=Values field=SpaceInsideFunctionParameters owner=function-declarator category=2 priority=2 fallback=0 protected=0 constraint=0
+621 before=... field=None owner=parameter-declaration category=2 priority=1 fallback=1 protected=0 constraint=0
 623 before=) field=SpaceInsideFunctionParameters owner=function-declarator category=2 priority=2 fallback=0 protected=0 constraint=0
 624 before={ field=FunctionBraceSpacing owner=function-definition category=10 priority=3 fallback=1 protected=0 constraint=0
 625 before=auto field=BlockInteriorSpacing owner=compound-statement category=11 priority=2 fallback=1 protected=0 constraint=0

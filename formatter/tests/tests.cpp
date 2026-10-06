@@ -1080,6 +1080,23 @@ std::vector<FormatCase> FormatCases()
         cases,
         LAMBDA_INNER_PARAMETER_TESTDATA_DIR,
         {"preserve", "space", "no-space", "combined"});
+    {
+        const auto directory =
+            std::filesystem::path(LAMBDA_INNER_PARAMETER_TESTDATA_DIR);
+        const auto style = formatter::LoadConfigFile(
+            directory / "../../../../.hit-fmt").FormattingStyle;
+        for (const auto name : {"breaks", "breaks-narrow", "breaks-preserve"}) {
+            FormatCase value{directory, name, "breaks.input.cpp"};
+            value.Style = style;
+            value.CheckOwningMaps = true;
+            if (std::string_view(name) == "breaks-narrow") {
+                value.Style->ColumnLimit = 60;
+            } else if (std::string_view(name) == "breaks-preserve") {
+                value.Style->ParametersLayout = CategoryLayout::Preserve;
+            }
+            cases.push_back(std::move(value));
+        }
+    }
     AddCases(
         cases,
         BODY_INDENT_TESTDATA_DIR,
