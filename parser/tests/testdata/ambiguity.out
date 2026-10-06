@@ -350,6 +350,178 @@
           "<" "extent" "+" "1" ">" "storage" ";"
         )
         (declaration-statement
+          (declaration-specifiers "ExternalCount")
+          (init-declarator-list
+            (init-declarator
+              (declarator
+                (declarator-name "plain")
+              )
+            )
+          )
+          ";"
+        )
+        (declaration-statement
+          (declaration-specifiers "ExternalCount")
+          (init-declarator-list
+            (init-declarator
+              (declarator
+                (declarator-name "assigned")
+              )
+              (initializer
+                "="
+                (call-expression
+                  (identifier-expression "Estimate")
+                  (argument-list
+                    "("
+                    (argument
+                      (identifier-expression "first")
+                    )
+                    (list-separator ",")
+                    (argument
+                      (identifier-expression "second")
+                    )
+                    ")"
+                  )
+                )
+              )
+            )
+          )
+          ";"
+        )
+        (declaration-statement
+          (declaration-specifiers "ExternalCount")
+          (init-declarator-list
+            (init-declarator
+              (declarator
+                (declarator-name "direct")
+              )
+              (ambiguous-declarator-suffix "(" "first" "," "second" ")")
+            )
+          )
+          ";"
+        )
+        (declaration-statement
+          (declaration-specifiers "ExternalCount")
+          (init-declarator-list
+            (init-declarator
+              (declarator
+                (declarator-name "braced")
+              )
+              (initializer
+                (braced-initializer
+                  (initializer-list
+                    "{"
+                    (initializer-element
+                      (identifier-expression "first")
+                    )
+                    (list-separator ",")
+                    (initializer-element
+                      (identifier-expression "second")
+                    )
+                    "}"
+                  )
+                )
+              )
+            )
+          )
+          ";"
+        )
+        (declaration-statement
+          (declaration-specifiers
+            (attribute-specifier "[" "[" "maybe_unused" "]" "]")
+            "ExternalCount"
+          )
+          (init-declarator-list
+            (init-declarator
+              (declarator
+                (declarator-name "annotated")
+              )
+              (initializer
+                "="
+                (call-expression
+                  (identifier-expression "Estimate")
+                  (argument-list
+                    "("
+                    (argument
+                      (identifier-expression "first")
+                    )
+                    (list-separator ",")
+                    (argument
+                      (identifier-expression "second")
+                    )
+                    ")"
+                  )
+                )
+              )
+            )
+          )
+          ";"
+        )
+        (declaration-statement
+          (declaration-specifiers
+            "ExternalCount" "/* type */"
+            (dangling-trivia
+              (comment "/* type */")
+            )
+          )
+          (init-declarator-list
+            (init-declarator
+              (declarator
+                (declarator-name "commented")
+              )
+              (initializer
+                "="
+                (call-expression
+                  (identifier-expression "Estimate")
+                  (argument-list
+                    "("
+                    (argument
+                      (identifier-expression "first")
+                    )
+                    (list-separator ",")
+                    (argument
+                      (identifier-expression "second")
+                    )
+                    ")"
+                  )
+                )
+              )
+            )
+          )
+          ";"
+        )
+        (ambiguous-statement
+          (unknown-type-name "ExternalCount")
+          "*" "ambiguousPointer" ";"
+        )
+        (ambiguous-statement
+          (unknown-type-name "ExternalCount")
+          "&" "ambiguousReference" ";"
+        )
+        (ambiguous-statement
+          (unknown-type-name "ExternalCount")
+          "&&" "ambiguousConjunction" ";"
+        )
+        (declaration-statement
+          (declaration-specifiers "ExternalCount")
+          (init-declarator-list
+            (init-declarator
+              (declarator
+                (declarator-name "shadowedType")
+              )
+            )
+          )
+          ";"
+        )
+        (expression-statement
+          (binary-expression
+            (identifier-expression "shadowedType")
+            "*"
+            (identifier-expression "operand")
+          )
+          ";"
+        )
+        (declaration-statement
           (declaration-specifiers "external" "::" "Range")
           (init-declarator-list
             (init-declarator

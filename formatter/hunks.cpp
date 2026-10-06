@@ -67,8 +67,10 @@ ChangedHunkFiles ParseChangedHunks(
                 throw std::runtime_error("changed ranges line " +
                     std::to_string(line) + ": expected hunk <first>:<last>");
             }
-            Hunk hunk{ParseHunkLine(range.substr(0, colon), line),
-                ParseHunkLine(range.substr(colon + 1), line)};
+            Hunk hunk{
+                ParseHunkLine(range.substr(0, colon), line),
+                ParseHunkLine(range.substr(colon + 1), line),
+            };
             if (hunk.End < hunk.Begin) {
                 throw std::runtime_error("changed ranges line " +
                     std::to_string(line) + ": reversed hunk");

@@ -2252,7 +2252,23 @@
           "if"
           (condition
             "("
-            (ambiguous-statement "ExternalType" "value" "=" "Acquire" "(" ")")
+            (declaration-statement
+              (declaration-specifiers "ExternalType")
+              (init-declarator-list
+                (init-declarator
+                  (declarator
+                    (declarator-name "value")
+                  )
+                  (initializer
+                    "="
+                    (call-expression
+                      (identifier-expression "Acquire")
+                      (argument-list "(" ")")
+                    )
+                  )
+                )
+              )
+            )
             ")"
           )
           (compound-statement

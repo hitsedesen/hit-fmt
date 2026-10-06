@@ -151,6 +151,7 @@ void CheckAnalysisSource(
         throw std::invalid_argument("analysis is not from original source");
     }
 }
+
 // Walk in SourceAnalysis preorder, with a bounded explicit heap stack. No
 // scratch-node pointers are retained in either public plan.
 template <class F>
@@ -174,61 +175,62 @@ void Walk(
     }
     std::pmr::vector<Frame> stack(&scratch);
     size_t region = 0;
-    auto enter = [&] (
-        const parser::Node* node,
-        NK parent,
-        NK previous,
-        bool previousTrailingLabel) {
-            RegionStatus status = RegionStatus::Complete;
-            bool trailingLabel = false;
-            if (safety) {
-                if (region >= safety->Regions().size()) {
-                    throw std::invalid_argument("analysis/tree mismatch");
+    auto enter =
+        [&] (
+            const parser::Node* node,
+            NK parent,
+            NK previous,
+            bool previousTrailingLabel) {
+                RegionStatus status = RegionStatus::Complete;
+                bool trailingLabel = false;
+                if (safety) {
+                    if (region >= safety->Regions().size()) {
+                        throw std::invalid_argument("analysis/tree mismatch");
+                    }
+                    trailingLabel =
+                        !trailingLabels.empty() && trailingLabels[region];
+                    const auto& r = safety->Regions()[region++];
+                    if (r.Kind != node->Kind ||
+                        r.Tokens.Begin != node->Tokens.Begin ||
+                        r.Tokens.End != node->Tokens.End)
+                    {
+                        throw std::invalid_argument("analysis/tree mismatch");
+                    }
+                    status = r.Status;
                 }
-                trailingLabel =
-                    !trailingLabels.empty() && trailingLabels[region];
-                const auto& r = safety->Regions()[region++];
-                if (r.Kind != node->Kind ||
-                    r.Tokens.Begin != node->Tokens.Begin ||
-                    r.Tokens.End != node->Tokens.End)
+                auto grandparent = stack.size() > 1
+                    ? stack[stack.size() - 2].Node->Kind
+                    : NK::Error;
+                bool parentSequence =
+                    !stack.empty() && stack.back().DeclarationSequence;
+                visit(
+                    *node,
+                    parent,
+                    previous,
+                    grandparent,
+                    parentSequence,
+                    static_cast<uint32_t>(stack.size()),
+                    status,
+                    trailingLabel,
+                    previousTrailingLabel);
+                bool sequence = node->Kind == NK::TranslationUnit ||
+                    node->Kind == NK::NamespaceDeclaration;
+                if (node->Kind == NK::ExportDeclaration ||
+                    node->Kind == NK::LinkageSpecification)
                 {
-                    throw std::invalid_argument("analysis/tree mismatch");
+                    auto header = node->Tokens.Begin +
+                        (node->Kind == NK::ExportDeclaration ? 1 : 2);
+                    while (header < node->Tokens.End &&
+                        tree.Kind(header) == TK::Comment)
+                    {
+                        ++header;
+                    }
+                    sequence = header < node->Tokens.End &&
+                        tree.Kind(header) == TK::Operator_OpenBrace &&
+                        tree.MatchingDelimiter(header) < node->Tokens.End;
                 }
-                status = r.Status;
-            }
-            auto grandparent = stack.size() > 1
-                ? stack[stack.size() - 2].Node->Kind
-                : NK::Error;
-            bool parentSequence =
-                !stack.empty() && stack.back().DeclarationSequence;
-            visit(
-                *node,
-                parent,
-                previous,
-                grandparent,
-                parentSequence,
-                static_cast<uint32_t>(stack.size()),
-                status,
-                trailingLabel,
-                previousTrailingLabel);
-            bool sequence = node->Kind == NK::TranslationUnit ||
-                node->Kind == NK::NamespaceDeclaration;
-            if (node->Kind == NK::ExportDeclaration ||
-                node->Kind == NK::LinkageSpecification)
-            {
-                auto header = node->Tokens.Begin +
-                    (node->Kind == NK::ExportDeclaration ? 1 : 2);
-                while (header < node->Tokens.End &&
-                    tree.Kind(header) == TK::Comment)
-                {
-                    ++header;
-                }
-                sequence = header < node->Tokens.End &&
-                    tree.Kind(header) == TK::Operator_OpenBrace &&
-                    tree.MatchingDelimiter(header) < node->Tokens.End;
-            }
-            stack.push_back({node, node->Child(), NK::Error, sequence});
-        };
+                stack.push_back({node, node->Child(), NK::Error, sequence});
+            };
     enter(&tree.Root(), NK::Error, NK::Error, false);
     while (!stack.empty()) {
         auto& frame = stack.back();
@@ -871,7 +873,10 @@ StructuralPlan PlanStructuralEdits(
             trailingLabels[region.Parent] = true;
         }
     }
-    Walk(tree, &safety, scratchMemory,
+    Walk(
+        tree,
+        &safety,
+        scratchMemory,
         [&] (
             const parser::Node& node,
             NK parent,
@@ -1073,7 +1078,8 @@ StructuralPlan PlanStructuralEdits(
                     // or gaps.
                     Literal(plan, Range(tree, tokens), "", id);
                 }
-            }, trailingLabels);
+            },
+        trailingLabels);
     if (options.SortIncludes) {
         Includes(tree, safety, plan, scratchMemory, options, includes);
     }
@@ -1125,8 +1131,9 @@ StructuralMaterialization MaterializeStructuralEdits(
             operation,
             false,
         });
-        for (TI i = FirstBeginningAt(tree, source.Begin); i < tree.TokenCount();
-             ++i)
+        for (TI i = FirstBeginningAt(tree, source.Begin);
+            i < tree.TokenCount();
+            ++i)
         {
             auto token = tree.Token(i).Text;
             if (token.Begin >= source.End) {
@@ -1186,10 +1193,12 @@ StructuralMaterialization MaterializeStructuralEdits(
         tree.TokenCount() + 1, tree.TokenCount(), &scratchMemory);
     std::pmr::vector<TI> after(
         tree.TokenCount() + 1, tree.TokenCount(), &scratchMemory);
-    for (TI i = 0; i < tree.TokenCount(); ++i)
+    for (TI i = 0; i < tree.TokenCount(); ++i) {
         before[i + 1] = result.OriginalTokens[i].Present ? i : before[i];
-    for (TI i = tree.TokenCount(); i > 0; --i)
+    }
+    for (TI i = tree.TokenCount(); i > 0; --i) {
         after[i - 1] = result.OriginalTokens[i - 1].Present ? i - 1 : after[i];
+    }
     for (size_t i = 0; i < plan.Edits.size(); ++i) {
         const auto& edit = plan.Edits[i];
         auto leftIndex = FirstBeginningAt(tree, edit.Source.Begin);
@@ -1234,7 +1243,10 @@ NamespaceCommentPlan PlanNamespaceComments(
         namespaceKeywords[i + 1] =
             namespaceKeywords[i] + (original.Kind(i) == TK::Keyword_namespace);
     }
-    Walk(original, &safety, scratchMemory,
+    Walk(
+        original,
+        &safety,
+        scratchMemory,
         [&] (
             const parser::Node& node,
             NK,
@@ -1317,9 +1329,12 @@ NamespaceCommentPlan PlanNamespaceComments(
                 {
                     comment = close + 1;
                 }
-                SR window{begin, comment == original.TokenCount()
-                                 ? begin
-                                 : original.Token(comment).Text.End};
+                SR window{
+                    begin,
+                    comment == original.TokenCount()
+                        ? begin
+                        : original.Token(comment).Text.End,
+                };
                 if (safety.IntersectsImmutable(
                     Range(original, {node.Tokens.Begin, open + 1})) ||
                     safety.IntersectsImmutable(
@@ -1367,10 +1382,11 @@ StructuralPlan ResolveNamespaceComments(
     }
     std::pmr::vector<parser::SourceOffset> lines(&scratchMemory);
     lines.push_back(0);
-    for (size_t i = 0; i < output.size(); ++i)
+    for (size_t i = 0; i < output.size(); ++i) {
         if (output[i] == '\n') {
             lines.push_back(static_cast<parser::SourceOffset>(i + 1));
         }
+    }
     auto line = [&] (parser::SourceOffset offset) {
         return static_cast<
             size_t>(std::upper_bound(lines.begin(), lines.end(), offset) -
@@ -1454,7 +1470,8 @@ StructuralPlan ResolveNamespaceComments(
     if (!active.empty() || nextNamespace != plan.Namespaces.size()) {
         throw std::invalid_argument("unordered original namespace identities");
     }
-    for (size_t namespaceIndex = 0; namespaceIndex < plan.Namespaces.size();
+    for (size_t namespaceIndex = 0;
+        namespaceIndex < plan.Namespaces.size();
         ++namespaceIndex)
     {
         const auto& ns = plan.Namespaces[namespaceIndex];

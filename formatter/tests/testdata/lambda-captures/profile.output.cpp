@@ -77,20 +77,19 @@ public:
             callback.Reset();
             return;
         }
-        return Target_->Invoke(BIND_WRAPPED(
-            [this, keep = Hold(this), callback = std::move(callback)] () mutable {
-                auto guard = Detail::MakeGuard(Context_);
+        return Target_->Invoke(BIND_WRAPPED([this, keep = Hold(this), callback = std::move(callback)] () mutable {
+            auto guard = Detail::MakeGuard(Context_);
 
-                if (Context_->Closed_) {
-                    callback.Reset();
-                    return;
-                }
+            if (Context_->Closed_) {
+                callback.Reset();
+                return;
+            }
 
-                {
-                    InvokerGuard invokerGuard(this);
-                    ContextGuard contextGuard(Context_);
-                    callback();
-                }
-            }));
+            {
+                InvokerGuard invokerGuard(this);
+                ContextGuard contextGuard(Context_);
+                callback();
+            }
+        }));
     }
 };

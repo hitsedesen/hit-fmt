@@ -26,6 +26,17 @@ bool inspect()
     Sequence<Element>::Cursor position;
     catalog::Buffer<int, extent + 1> buffer;
     Storage<extent + 1> storage;
+    ExternalCount plain;
+    ExternalCount assigned = Estimate(first, second);
+    ExternalCount direct(first, second);
+    ExternalCount braced{first, second};
+    [[maybe_unused]] ExternalCount annotated = Estimate(first, second);
+    ExternalCount /* type */ commented = Estimate(first, second);
+    ExternalCount * ambiguousPointer;
+    ExternalCount & ambiguousReference;
+    ExternalCount && ambiguousConjunction;
+    ExternalCount shadowedType;
+    shadowedType * operand;
     external::Range bounds(1, 2);
     Distribution<int> samples(1, 2);
     external::Distribution<int> qualified(static_cast<int>(extent * 0.5), static_cast<int>(extent * 1.5));

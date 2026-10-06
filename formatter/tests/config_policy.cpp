@@ -1500,8 +1500,8 @@ TEST(ConfigPolicy, LineEndingRoundTripsAndValidatesPreparedSnapshot)
         const formatter::PreparedFormat prepared(style);
         style.LineEnding = formatter::LineEnding::Preserve;
         EXPECT_EQ(prepared.Policies.LineEnding, ending);
-        TemporaryConfig config("LineEnding = " + std::string(
-            formatter::SerializeConfigEnum(ending)) + "\n");
+        TemporaryConfig config("LineEnding = " +
+            std::string(formatter::SerializeConfigEnum(ending)) + "\n");
         EXPECT_EQ(
             formatter::LoadConfigFile(config.Path).FormattingStyle.LineEnding,
             ending);

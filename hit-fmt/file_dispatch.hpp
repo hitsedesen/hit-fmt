@@ -178,10 +178,9 @@ bool RunParallelFiles(
                         std::error_code error;
                         auto size = std::filesystem::file_size(path, error);
                         size_t estimatedBytes = error
-                                ? BatchByteLimit
-                                : static_cast<size_t>(
-                                    std::min<std::uintmax_t>(
-                                        size, BatchByteLimit));
+                            ? BatchByteLimit
+                            : static_cast<size_t>(
+                                std::min<std::uintmax_t>(size, BatchByteLimit));
                         return AddFileToBatch(
                             batch,
                             batchBytes,

@@ -45,6 +45,7 @@ bool WholeGapCovered(
         (!original.ends_with('\n') ||
             Covered(ranges, {gap.Source.End, gap.Source.End}));
 }
+
 void MergeProtection(std::pmr::vector<ProtectedSourceRange>& protection)
 {
     std::sort(
@@ -81,6 +82,7 @@ void MergeProtection(std::pmr::vector<ProtectedSourceRange>& protection)
     }
     protection.resize(merged);
 }
+
 bool Word(TK kind, std::string_view text)
 {
     // Alternative operators are identifier spellings with operator kinds.

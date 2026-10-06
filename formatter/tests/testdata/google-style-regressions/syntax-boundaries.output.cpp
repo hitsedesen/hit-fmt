@@ -16,5 +16,5 @@ void f() {
       },
       "");
   int product = a * *p;
-  T value {1, 2};
+  T value{1, 2};
 }

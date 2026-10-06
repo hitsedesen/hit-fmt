@@ -43,6 +43,7 @@ std::pmr::vector<Range> ByteScope(
     }
     return result;
 }
+
 // Validate the caller's original authority BEFORE intersecting it: an invalid
 // interval outside the requested lines must not disappear into a valid result.
 std::pmr::vector<Range> NarrowScope(
@@ -83,6 +84,7 @@ std::pmr::vector<Range> NarrowScope(
     }
     return result;
 }
+
 bool SemanticProtection(const SourceAnalysis& safety, Range source)
 {
     const auto ranges = safety.Protection();
