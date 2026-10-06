@@ -43,19 +43,21 @@ types::Map<
 template <
     class T> auto WrapState() {
     return Handle<
-        T>(Create<app::detail::SharedState<T>>(
-            /*strongCount*/ 1,
-            /*weakCount*/ 1,
-            /*observerCount*/ 1));
+        T>(
+            Create<app::detail::SharedState<T>>(
+                /*strongCount*/ 1,
+                /*weakCount*/ 1,
+                /*observerCount*/ 1));
 }
 
 template <
     class T> auto WrapStateWithoutComments() {
     return Handle<
-        T>(Create<app::detail::SharedState<T>>(
-            strongReferenceCount,
-            weakReferenceCount,
-            observerReferenceCount));
+        T>(
+            Create<app::detail::SharedState<T>>(
+                strongReferenceCount,
+                weakReferenceCount,
+                observerReferenceCount));
 }
 
 template <

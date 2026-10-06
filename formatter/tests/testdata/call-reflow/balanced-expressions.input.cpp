@@ -26,3 +26,21 @@ void StoreRecord()
     Values_.push_back(std::string(Options_->Lead, '.') + std::string(DescribeArchivedRecordPayload(DecodeRecordVariant<TSubstantialRecordPayload>(record.Payload))));
     auto product = ComputeLedgerWeight(factors.Base, factors.Limit) * ConvertTokenizedMetric(ExtractValueFromIndexedPayload<TStoredMetric>(record.Payload));
 }
+
+void SampleRows(int row)
+{
+    if (Sampler::ShouldKeepArchivedRecord(DecodeField<Payload>(
+        row,
+        "PersistentRecordIdentifier"), GetOptions()->ArchiveSamplingPercentage))
+    {
+        Save();
+    }
+    if (Sampler::ShouldKeepArchivedRecord(GetOptions()->ArchiveSamplingPercentage,DecodeField< Payload >(row, "PersistentRecordIdentifier")))
+    {
+        Save();
+    }
+    if (Sampler::Keep(DecodeField< Payload >(row, "id"), rate))
+    {
+        Save();
+    }
+}

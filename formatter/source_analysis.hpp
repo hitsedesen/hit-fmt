@@ -80,6 +80,9 @@ struct SourceGap
     // Immutable byte facts shared by spacing and layout, not edit authority.
     bool HasLineFeed : 1 = false;
     bool Horizontal : 1 = true;
+    // A recovered callee's proven start permits its incoming whitespace gap,
+    // including insertion before the first protected byte. Other fences win.
+    bool RecoveryCalleeBoundary : 1 = false;
 };
 
 static_assert(sizeof(SourceGap) <= 16);
@@ -151,9 +154,10 @@ struct SourceAnalysisOptions
 // scratch pointers are retained. Gap i precedes token i; TokenCount() is the
 // tail gap. Region IDs are preorder indices. Protection is sorted/disjoint:
 // overlaps union reasons; touching equal reason masks coalesce.
-// HeaderName protects internal gaps, not insertion before its opener; other
-// reasons still apply there. Insertion at a protected range's beginning is
-// fenced. Use IntersectsImmutable/Gaps for insertion fences, including EOF;
+// HeaderName and recovered callees protect spelling, not their proven incoming
+// gaps; other reasons still apply there. IntersectsImmutable conservatively
+// fences insertion at a protected range's beginning; Gaps describes whitespace
+// replacement authority at these boundaries, including EOF.
 // Protection() describes bytes only.
 // Validates whitespace edits, not semantic equivalence of structural edits.
 // Complete means no known parser recovery or ambiguity.

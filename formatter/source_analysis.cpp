@@ -908,6 +908,9 @@ SourceAnalysis BuildSourceAnalysis(
                         parser::NodeKind::CallExpression &&
                     result.Regions_[parent].FirstChild == id &&
                     result.Regions_[parent].Tokens.Begin == tokens.Begin;
+            if (calleeBoundary) {
+                result.Gaps_[tokens.Begin].RecoveryCalleeBoundary = true;
+            }
             const auto before = statementBoundary || calleeBoundary
                 ? begin
                 : tokens.Begin ? tree.Token(tokens.Begin - 1).Text.End : 0;
@@ -974,13 +977,15 @@ SourceAnalysis BuildSourceAnalysis(
         }
         if (interval < result.Protection_.size()) {
             const auto& range = result.Protection_[interval];
-            // An insertion before the opening header delimiter is outside
-            // its spelling, despite sharing the delimiter's source offset.
-            // Other protection reasons still own that boundary conservatively.
-            const bool beforeHeader =
+            // Proven incoming gaps are outside the protected spelling, even
+            // when empty and sharing its first byte's offset. Do not bypass
+            // overlapping protection from any other reason.
+            const bool beforeSpelling =
                 gap.Source.Empty() && gap.Source.Begin == range.Source.Begin &&
-                    range.Reasons == ProtectionReason::HeaderName;
-            if (!beforeHeader &&
+                    (range.Reasons == ProtectionReason::HeaderName ||
+                        (gap.RecoveryCalleeBoundary &&
+                            range.Reasons == ProtectionReason::Recovery));
+            if (!beforeSpelling &&
                 (gap.Source.Empty()
                     ? range.Source.Begin <= gap.Source.Begin
                     : range.Source.Begin < gap.Source.End))
