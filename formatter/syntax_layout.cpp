@@ -65,6 +65,8 @@ struct Gap
     bool Reassembled = false;
     int32_t ExtraIndent = 0;
     bool OverrideIndent = false;
+    // Only final line indentation may change in an unclassified suffix.
+    bool RelativeIndent = false;
     bool Frozen = false;
     uint16_t NewlineCount = 1;
     bool Vertical = false;
@@ -466,6 +468,9 @@ public:
             switch (node.Kind) {
                 case NodeKind::InitDeclarator:
                     PlanInitializedDeclarator(i);
+                    break;
+                case NodeKind::AmbiguousDeclaratorSuffix:
+                    PlanPreservedDeclaratorSuffix(i);
                     break;
                 case NodeKind::RequiresClause:
                     PlanConstraintHeader(i);
@@ -3440,6 +3445,69 @@ private:
         return true;
     }
 
+    Index SourceLineIndent(Index token) const
+    {
+        const auto source = Tree_.Source();
+        const auto offset = Tree_.Token(token).Text.Begin;
+        const auto lf = source.rfind('\n', offset);
+        const auto line = lf == std::string_view::npos ? 0 : lf + 1;
+        const auto prefix = source.substr(line, offset - line);
+        return HorizontalColumns(
+            prefix.substr(0, prefix.find_first_not_of(" \t")),
+            Options_.TabWidth);
+    }
+
+    // A suffix which may be parameters or a direct initializer has no list
+    // layout authority. Its authored continuation lines still move with the
+    // declaration, without changing its topology or horizontal spelling.
+    void PlanPreservedDeclaratorSuffix(Index id)
+    {
+        if (Policies_.IndentationKind == IndentationKind::Preserve) {
+            return;
+        }
+        const auto range = Region(Syntax_[id]).Tokens;
+        if (range.Empty()) {
+            return;
+        }
+        const auto parent = Region(Syntax_[id]).Parent;
+        const auto begin = parent == None
+            ? range.Begin
+            : Region(Syntax_[parent]).Tokens.Begin;
+        Index base = None;
+        Index group = None;
+        DirectTokens(
+            id,
+            [&] (Index gap) {
+                const auto indent = SourceIndent(gap);
+                if (gap == begin || indent == None || Gaps_[gap].Frozen ||
+                    Safety_.Gaps()[gap].Preserve ||
+                    Safety_.Gaps()[gap].ContextSensitive ||
+                    RetainsBareCR(gap) || Gaps_[gap].Owner != None)
+                {
+                    return;
+                }
+                if (base == None) {
+                    base = SourceLineIndent(begin);
+                }
+                const auto delta = int64_t(indent) - int64_t(base);
+                if (delta < INT32_MIN || delta > INT32_MAX) {
+                    return;
+                }
+                if (group == None) {
+                    group = GroupAt(
+                        TokenPosition(begin),
+                        GapPosition(range.End),
+                        document::GroupMode::Fill);
+                    Groups_[group].Spec.StructuralBase = true;
+                    Groups_[group].Spec.LineBase = true;
+                }
+                Reindent(gap, group);
+                Gaps_[gap].OverrideIndent = true;
+                Gaps_[gap].RelativeIndent = true;
+                Gaps_[gap].ExtraIndent = int32_t(delta);
+            });
+    }
+
     // Unselected chains keep their breaks and relative indentation, but
     // their source-owned continuation lines still follow the realized root.
     void PlanPreservedChain(Index id)
@@ -3449,14 +3517,7 @@ private:
         }
         const auto& entry = Syntax_[id];
         const auto begin = Region(entry).Tokens.Begin;
-        const auto source = Tree_.Source();
-        const auto offset = Tree_.Token(begin).Text.Begin;
-        auto line = source.rfind('\n', offset);
-        line = line == std::string_view::npos ? 0 : line + 1;
-        const auto prefix = source.substr(line, offset - line);
-        const auto base = HorizontalColumns(
-            prefix.substr(0, prefix.find_first_not_of(" \t")),
-            Options_.TabWidth);
+        const auto base = SourceLineIndent(begin);
         Index group = None;
         for (Index spine = id; spine != entry.Root;) {
             const auto callee = Region(Syntax_[spine]).FirstChild;
@@ -4865,7 +4926,9 @@ private:
     {
         const auto& source = Safety_.Gaps()[i];
         const auto& plan = Gaps_[i];
-        if (plan.Frozen || Uncertain(i) || source.ContextSensitive) {
+        if (plan.Frozen || (Uncertain(i) && !plan.RelativeIndent) ||
+            source.ContextSensitive)
+        {
             FixedGapSlice(i, source.Source.Begin, source.Source.End);
             return;
         }
@@ -4895,6 +4958,23 @@ private:
             .Original(source)
             .rfind('\n');
         if (lf != std::string_view::npos) {
+            if (plan.RelativeIndent) {
+                if (!Safety_.CanReplaceGap(i, Safety_.Original(source))) {
+                    FixedGapSlice(i, source.Source.Begin, source.Source.End);
+                    return;
+                }
+                const auto indentBegin = source.Source.Begin + Index(lf + 1);
+                const auto anchor = Document_.MarkAnchor(
+                    {document::AnchorKind::BlockRelative, plan.ExtraIndent});
+                Document_.SourceLineIndent(
+                    source.Source.Begin,
+                    indentBegin,
+                    indentBegin,
+                    source.Source.End,
+                    anchor,
+                    Facts_[i].RequiredWidth);
+                return;
+            }
             if (plan.Vertical && Allows(i, document::GapKind::Hard)) {
                 auto anchor = plan.Owner == None
                     ? document::InvalidId
