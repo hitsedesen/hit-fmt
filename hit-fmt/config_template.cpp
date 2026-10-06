@@ -93,6 +93,22 @@ void PrintOption(std::ostream& output, std::string_view name, const T& value)
         }
         return;
     }
+    if (name == "CallLineFirstStringOverflow") {
+        output
+            << "# Complete string first arguments of configured names.\n"
+                "# Applies to CallLineFirstStringNames only.\n"
+                "# Wrap (default): ordinary wrapping between literal pieces.\n"
+                "# BreakBefore: move below the opener if the whole string\n"
+                "# sequence and its same-line punctuation do not fit.\n"
+                "# KeepInline: keep the first piece beside the opener, even\n"
+                "# over ColumnLimit; later concatenated pieces may wrap.\n"
+                "# Never splits literal contents. Always and protection win.\n"
+                "# Preserved call layout is unchanged. Example:\n"
+                "# CallLineFirstStringNames = [\"message\"]\n"
+                "# BreakBefore moves the string in\n"
+                "# message(\"first \" \"second\", value) below the opener\n"
+                "# if the complete first argument will not fit beside it.\n";
+    }
     if (name == "IfConditionsPacking") {
         output
             << "# Fill keeps ordinary expression packing (default).\n"

@@ -666,6 +666,8 @@ TEST(ConfigPolicy, PreserveTemplateRoundTripsEveryRegisteredStyleDefault)
         "LineEnding = Preserve\n",
         "ArgumentCommentSpacing = Preserve\n",
         "IfConditionsPacking = Fill\n",
+        "CallLineFirstStringOverflow = Wrap\n",
+        "Wrap | BreakBefore | KeepInline",
         "top-level &&/|| operands",
         "first newline",
         "# TrailingCommentSpaces = Preserve",
@@ -821,6 +823,33 @@ TEST(ConfigPolicy, ProgrammaticStylesCannotBypassWidthAndOffsetLimits)
     EXPECT_EQ(bounded.Indentation.CaseLabels.Offset, 32u);
     EXPECT_EQ(bounded.Indentation.StandaloneBraces.Offset, 32u);
     EXPECT_EQ(bounded.Indentation.StatementAttributes.Offset, 32u);
+}
+
+TEST(ConfigPolicy, AttachedStringOverflowCompilesIntoOwnedAnnotations)
+{
+    for (const auto overflow :
+        {
+            formatter::AttachedStringOverflow::Wrap,
+            formatter::AttachedStringOverflow::BreakBefore,
+            formatter::AttachedStringOverflow::KeepInline,
+        })
+    {
+        const TemporaryConfig input("CallLineFirstStringNames = [\"message\"]\n"
+            "CallLineFirstStringOverflow = " +
+            std::string(formatter::SerializeConfigEnum(overflow)) + "\n");
+        auto style = formatter::LoadConfigFile(input.Path).FormattingStyle;
+        EXPECT_EQ(style.CallLineFirstStringOverflow, overflow);
+        const auto annotations = formatter::CompileLibraryAnnotations(style);
+        style.CallLineFirstStringOverflow =
+            formatter::AttachedStringOverflow::Wrap;
+        style.CallLineFirstStringNames.clear();
+        ASSERT_NE(annotations.FindMessagePin("message"), nullptr);
+        EXPECT_EQ(annotations.FindMessagePin("message")->Overflow, overflow);
+    }
+    const TemporaryConfig invalid("CallLineFirstStringOverflow = Unknown\n");
+    EXPECT_THROW(
+        (void)formatter::LoadConfigFile(invalid.Path),
+        std::runtime_error);
 }
 
 TEST(ConfigPolicy, SchemaCompilesOwnedAnnotationsAndIndependentMetadata)

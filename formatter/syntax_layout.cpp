@@ -1030,38 +1030,43 @@ private:
         return directSafe;
     }
 
-    bool PinFirst(Index id) const
+    const MessagePinAnnotation* PinFirst(Index id) const
     {
         const auto parent = Region(Syntax_[id]).Parent;
         if (parent == None ||
             Region(Syntax_[parent]).Kind != NodeKind::CallExpression)
         {
-            return false;
+            return nullptr;
         }
         auto callee = Region(Syntax_[parent]).FirstChild;
         if (callee == None) {
-            return false;
+            return nullptr;
         }
         if (Region(Syntax_[callee]).Kind == NodeKind::MemberExpression) {
             callee = LastChild_[callee];
         }
         const auto name = Region(Syntax_[callee]).Tokens;
-        if (name.Size() != 1 ||
-            !Annotations_.FindMessagePin(Tree_.TokenText(name.Begin)))
-        {
-            return false;
+        if (name.Size() != 1) {
+            return nullptr;
+        }
+        const auto* pin =
+            Annotations_.FindMessagePin(Tree_.TokenText(name.Begin));
+        if (!pin) {
+            return nullptr;
         }
         auto first = Region(Syntax_[id]).FirstChild;
         if (first == None || Region(Syntax_[first]).Kind != NodeKind::Argument)
         {
-            return false;
+            return nullptr;
         }
         const auto expression = Region(Syntax_[first]).FirstChild;
         return expression != None && Syntax_[expression].String &&
             Region(Syntax_[expression]).Tokens.Begin ==
                 Region(Syntax_[first]).Tokens.Begin &&
             Region(Syntax_[expression]).Tokens.End ==
-                Region(Syntax_[first]).Tokens.End;
+                Region(Syntax_[first]).Tokens.End
+            ? pin
+            : nullptr;
     }
 
     void PreserveUnplannedListContext(Index id)
@@ -1280,10 +1285,17 @@ private:
                     firstItem = Policies_.CallsSoleArgumentFirstItem;
                 }
             }
-            auto firstKind =
-                firstItem == FirstItemPlacement::NextLine && !PinFirst(id)
+            const auto* pin = PinFirst(id);
+            auto firstKind = firstItem == FirstItemPlacement::NextLine && !pin
                 ? document::GapKind::Hard
                 : document::GapKind::Soft;
+            if (pin && pin->Overflow == AttachedStringOverflow::KeepInline &&
+                policy.Break != BreakRequirement::Always)
+            {
+                // Literal contents stay indivisible; their concatenation
+                // group may still wrap independently after the attached piece.
+                firstKind = document::GapKind::Flat;
+            }
             if (node.Kind == NodeKind::TemplateArgumentList &&
                 policy.Break == BreakRequirement::IfNeeded &&
                 policy.Closer == CloserPlacement::SameLine &&
@@ -1298,6 +1310,19 @@ private:
                 firstKind = document::GapKind::Soft;
             }
             Own(begin + 1, group, Boundary::Conditional, firstKind);
+            if (pin && pin->Overflow == AttachedStringOverflow::BreakBefore &&
+                Policies_.ColumnLimit != 0)
+            {
+                // Demand the complete literal sequence, not a prefix shortened
+                // by optional concatenation breaks. FitThrough also includes
+                // its mandatory same-line punctuation suffix.
+                const auto first = node.FirstChild;
+                // Child-only trials keep the opener flat without consulting
+                // its fit demand; the list must own this overflow decision.
+                Groups_[group].Spec.ChildBreaks = false;
+                Gaps_[begin + 1].FitNextSegment = true;
+                Gaps_[begin + 1].FitThrough = Region(Syntax_[first]).Tokens.End;
+            }
             if (node.Kind == NodeKind::ArgumentList &&
                 firstKind == document::GapKind::Soft)
             {
