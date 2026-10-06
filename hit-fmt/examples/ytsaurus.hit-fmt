@@ -84,31 +84,24 @@ IndentNamespaces = NoIndent
 IndentCaseLabels = Indent
 StatementAttributeIndent = Block
 NamespaceComments = Fix
-# Paired header first, then nearest root-relative directories.
-# Library-root rules retain the most-specific directory families separately.
-# See yt/styleguide/cpp.md (Include Directives).
+# Paired header first, then yt, library, util and contrib groups in that order.
+# Merge yt source/protobuf headers into corresponding depth-one subgroups.
+# Within yt, core/client/server/etc. sort nearest first. Inside each subgroup,
+# full resolved directories sort nearest first, with alphabetical path ties.
+# Aliases merge groups but retain literal directory distances inside them.
 # Pass project-relative input filenames so directory distances share that root.
 IncludeOrder = Sort
 IncludeMatchingHeader = First
 IncludeGrouping = Directory
+IncludeGroupOrder = Configured
 IncludeGroups = [
-    { Prefix = "yt/yt/server/node/", Depth = 1 },
-    { Prefix = "yt/yt/server/lib/", Depth = 1 },
-    { Prefix = "yt/yt/ytlib/api/", Depth = 1 },
-    { Prefix = "yt/yt/ytlib/", Depth = 1 },
-    { Prefix = "yt/yt/client/api/", Depth = 1 },
-    { Prefix = "yt/yt/client/", Depth = 1 },
-    { Prefix = "yt/yt/core/rpc/", Depth = 1 },
-    { Prefix = "yt/yt/core/bus/", Depth = 1 },
-    { Prefix = "yt/yt/core/", Depth = 1 },
-    { Prefix = "library/cpp/yt/", Depth = 1 },
+    { Prefixes = ["yt/yt/", "yt/yt_proto/yt/"], Depth = 1 },
+    { Prefix = "library/", Depth = 1 },
+    { Prefix = "util/", Depth = 1 },
     { Prefix = "contrib/libs/", Depth = 1 }
 ]
-# Optional: to merge all RPC source/protobuf headers, replace the RPC rule:
-# { Prefixes = ["yt/yt/core/rpc/",
-#               "yt/yt_proto/yt/core/rpc/proto/"], Depth = 0 }
-# Aliases must share the same matched rule; more-specific rules take precedence.
 IncludeDirectoryOrder = NearestFirst
+IncludeInGroupOrder = NearestFirst
 IncludePathBase = ProjectRoot
 IncludeStandardHeaders = Last
 AddMissingControlBraces = true

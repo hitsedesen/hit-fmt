@@ -278,6 +278,7 @@ struct IncludeKey
     std::size_t DirectoryOffset = 0;
     std::size_t DirectoryLength = 0;
     std::size_t Distance = 0;
+    std::size_t HeaderDistance = 0;
     std::size_t Rule = 0;
     std::size_t Prefix = 0;
     std::int8_t Depth = -1;
@@ -490,8 +491,24 @@ void Includes(
     std::pmr::vector<std::string_view> grouped(&scratch);
     const auto inputDirectory = Directory(context.InputFilePath);
     const bool inputAbsolute = inputDirectory.starts_with('/');
+    const bool nearestHeaders =
+        options.InGroupOrder == IncludeInGroupOrder::NearestFirst;
     const bool needPaths = options.Grouping != IncludeGrouping::Preserve ||
-        options.MatchingHeader == IncludeMatchingHeader::First;
+        options.MatchingHeader == IncludeMatchingHeader::First ||
+        nearestHeaders;
+    auto distance =
+        [&] (std::span<const std::string_view> path, bool absolute) {
+            if (absolute != inputAbsolute) {
+                return std::numeric_limits<std::size_t>::max();
+            }
+            std::size_t common = 0;
+            while (common < std::min(current.size(), path.size()) &&
+                current[common] == path[common])
+            {
+                ++common;
+            }
+            return current.size() - common + path.size() - common;
+        };
     if (needPaths) {
         AppendComponents(current, inputDirectory, inputAbsolute);
     }
@@ -549,6 +566,11 @@ void Includes(
                     parts.assign(current.begin(), current.end());
                 }
                 AppendComponents(parts, Directory(atom.Path), absolute);
+                if (nearestHeaders) {
+                    // Keep literal resolved directories distinct from alias
+                    // and depth-capped group paths. Compute once per header.
+                    key.HeaderDistance = distance(parts, absolute);
+                }
                 // Canonicalize only the grouping key, never the include atom
                 // or the full path used for matching-header detection.
                 grouped.clear();
@@ -594,18 +616,7 @@ void Includes(
                             parts.size());
                     grouped.assign(parts.begin(), parts.begin() + count);
                 }
-                std::size_t common = 0;
-                if (groupAbsolute == inputAbsolute) {
-                    while (common < std::min(current.size(), grouped.size()) &&
-                        current[common] == grouped[common])
-                    {
-                        ++common;
-                    }
-                    key.Distance =
-                        current.size() - common + grouped.size() - common;
-                } else {
-                    key.Distance = std::numeric_limits<std::size_t>::max();
-                }
+                key.Distance = distance(grouped, groupAbsolute);
                 key.DirectoryOffset = directories.size();
                 if (groupAbsolute) {
                     directories.push_back('/');
@@ -669,6 +680,12 @@ void Includes(
                 if (options.Grouping != IncludeGrouping::Preserve &&
                     !matching(a) && !standard(a))
                 {
+                    if (context.Groups &&
+                        options.GroupOrder == IncludeGroupOrder::Configured &&
+                        key(a).Rule != key(b).Rule)
+                    {
+                        return key(a).Rule < key(b).Rule;
+                    }
                     if (options.Grouping == IncludeGrouping::Regroup &&
                         context.Groups)
                     {
@@ -695,12 +712,18 @@ void Includes(
                         return context.Groups->CanonicalPrefix(key(a).Rule) <
                             context.Groups->CanonicalPrefix(key(b).Rule);
                     }
-                    if (options.Grouping == IncludeGrouping::Directory &&
+                    if (!nearestHeaders &&
+                        options.Grouping == IncludeGrouping::Directory &&
                         key(a).Depth == -1 &&
                         Filename(a.Path) != Filename(b.Path))
                     {
                         return Filename(a.Path) < Filename(b.Path);
                     }
+                }
+                if (nearestHeaders && !matching(a) && !standard(a) &&
+                    key(a).HeaderDistance != key(b).HeaderDistance)
+                {
+                    return key(a).HeaderDistance < key(b).HeaderDistance;
                 }
                 return a.Path != b.Path ? a.Path < b.Path : a.Token < b.Token;
             };

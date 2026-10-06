@@ -207,17 +207,20 @@ Exclude = ["(^|/)generated(/|$)"]
 };
 
 constexpr HelpExample IncludeExamples[] = {
-    {"Paired header, nearest directory groups, alphabetical filenames:",
+    {"Configured prefixes, nearest depth-one groups, alphabetical paths:",
         R"(IncludeOrder = Sort
 IncludeMatchingHeader = First
 IncludeGrouping = Directory
+IncludeGroupOrder = Configured
 IncludeDirectoryOrder = NearestFirst
+# Optional: nearest full directories within each subgroup:
+# IncludeInGroupOrder = NearestFirst
 IncludePathBase = SourceDirectory
 IncludeStandardHeaders = Last
-# Matching order is independent of nearest/alphabetical group ordering:
+# library/ precedes util/; distance orders subgroups within each rule:
 IncludeGroups = [
     { Prefix = "library/", Depth = 1 },
-    { Prefix = "gtest/", Depth = 0 }
+    { Prefix = "util/", Depth = 1 }
 ]
 # library/core/a.hpp and library/core/detail/b.hpp share a group.
 # Optional aliases: corresponding suffixes become one logical group:
@@ -236,7 +239,9 @@ ExpressionsAlignment = Block
 IncludeMatchingHeader = Off
 IncludeGrouping = Preserve
 IncludeGroups = []
+IncludeGroupOrder = Directory
 IncludeDirectoryOrder = NearestFirst
+IncludeInGroupOrder = Alphabetical
 IncludePathBase = SourceDirectory
 IncludeStandardHeaders = Preserve
 ConstructorBracePlacement = Inherit
@@ -510,8 +515,8 @@ constexpr HelpSection HelpSections[] = {
         "within each quoted/angled group; -1 uses the full remaining "
         "directory, not the filename. Depth ranges from -1 to 127. "
         "Positive depths use at most N suffix "
-        "components. Zero and positive depths sort include paths "
-        "alphabetically inside groups. With prefix "
+        "components. By default, zero and positive depths sort include "
+        "paths alphabetically inside groups. With prefix "
         "library/, Depth = 1 groups library/core/a.hpp and "
         "library/core/detail/b.hpp together; 2 separates them. Direct headers "
         "form the prefix's base group. Multiple prefixes in one rule merge "
@@ -523,11 +528,26 @@ constexpr HelpSection HelpSections[] = {
         "A sole empty Prefix = \"\" is an explicit fallback for any spelling; "
         "its Depth counts from the start of the resolved directory. "
         "First matching rule and prefix win, not the longest match. Rule "
-        "order controls matching only, never include priority. Quoted groups "
-        "precede angled groups; IncludeDirectoryOrder = NearestFirst "
+        "order always controls matching. IncludeGroupOrder = Directory "
+        "(default) orders rule groups together by directory. Configured "
+        "instead uses IncludeGroups list order first, with unmatched paths "
+        "last; IncludeDirectoryOrder then orders subgroups within each rule. "
+        "Prefixes in one rule remain aliases, not separate priorities. "
+        "IncludeGrouping = Preserve ignores IncludeGroupOrder. Quoted groups "
+        "precede angled groups in either mode; "
+        "IncludeDirectoryOrder = NearestFirst "
         "(default) orders groups by parent plus child steps from the input "
         "directory, then alphabetical group path on ties. Alphabetical omits "
-        "distance. Matching-header and standard-header groups stay separate. "
+        "distance. IncludeInGroupOrder = Alphabetical (default) keeps "
+        "existing alphabetical ordering inside groups. NearestFirst instead "
+        "sorts headers by parent plus child steps from the input directory "
+        "to their full resolved containing directory, without Depth capping "
+        "or prefix-alias substitution; ties use alphabetical include spelling "
+        "and duplicate paths stay stable. It does not change subgroup "
+        "membership, separators or group priority, and also works inside "
+        "each adjacent block with IncludeGrouping = Preserve. Paired headers "
+        "and the final standard-header group retain alphabetical ordering. "
+        "Matching-header and standard-header groups stay separate. "
         "Regroup and Directory insert one empty line between groups, "
         "including the paired header group, and conflict with MaxEmptyLines "
         "= 0. "

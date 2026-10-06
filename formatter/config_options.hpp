@@ -438,8 +438,12 @@
     OPT(formatter::IncludeGrouping, IncludeGrouping, \
         formatter::IncludeGrouping::Preserve) \
     OPT(std::vector<formatter::IncludeGroupRule>, IncludeGroups, {}) \
+    OPT(formatter::IncludeGroupOrder, IncludeGroupOrder, \
+        formatter::IncludeGroupOrder::Directory) \
     OPT(formatter::IncludeDirectoryOrder, IncludeDirectoryOrder, \
         formatter::IncludeDirectoryOrder::NearestFirst) \
+    OPT(formatter::IncludeInGroupOrder, IncludeInGroupOrder, \
+        formatter::IncludeInGroupOrder::Alphabetical) \
     OPT(formatter::IncludePathBase, IncludePathBase, \
         formatter::IncludePathBase::SourceDirectory) \
     OPT(formatter::IncludeStandardHeaders, IncludeStandardHeaders, \

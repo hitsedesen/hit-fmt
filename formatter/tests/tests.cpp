@@ -966,6 +966,87 @@ std::vector<FormatCase> FormatCases()
             value.InputFilePath = "yt/yt/core/rpc/runner.cpp";
             cases.push_back(std::move(value));
         }
+        for (const auto name :
+            {
+                "prefix-order-nearest",
+                "prefix-order-alphabetical",
+                "prefix-order-reversed",
+                "prefix-order-regroup",
+            })
+        {
+            FormatCase value{directory, name, "prefix-order.input.cpp"};
+            value.InputFilePath = "library/z/runner.cpp";
+            cases.push_back(std::move(value));
+        }
+        for (const auto profile :
+            {"prefix-order-nearest", "prefix-order-regroup", "matching"})
+        {
+            FormatCase value{
+                directory,
+                "in-group-" + std::string(profile),
+                "prefix-order.input.cpp",
+                profile,
+            };
+            value.Style = formatter::LoadConfigFile(directory /
+                (std::string(profile) + ".hit-fmt")).FormattingStyle;
+            value.Style->IncludeInGroupOrder =
+                formatter::IncludeInGroupOrder::NearestFirst;
+            value.InputFilePath = "library/core/runner.cpp";
+            cases.push_back(std::move(value));
+        }
+        for (const auto profile :
+            {"directory-relative-depth-zero", "directory-relative-depth-two"})
+        {
+            FormatCase value{
+                directory,
+                "in-group-" + std::string(profile),
+                "relative.input.cpp",
+                profile,
+            };
+            value.Style = formatter::LoadConfigFile(directory /
+                (std::string(profile) + ".hit-fmt")).FormattingStyle;
+            value.Style->IncludeInGroupOrder =
+                formatter::IncludeInGroupOrder::NearestFirst;
+            value.InputFilePath = "/project/engine/widget.cpp";
+            cases.push_back(std::move(value));
+        }
+        for (const bool sourceRelative : {false, true}) {
+            FormatCase value{
+                directory,
+                sourceRelative ? "in-group-roots-source" : "in-group-roots",
+                "in-group-roots.input.cpp",
+                "in-group-roots",
+            };
+            if (sourceRelative) {
+                value.Style = formatter::LoadConfigFile(
+                    directory / "in-group-roots.hit-fmt").FormattingStyle;
+                value.Style->IncludePathBase =
+                    formatter::IncludePathBase::SourceDirectory;
+            }
+            value.InputFilePath = "/project/engine/widget.cpp";
+            cases.push_back(std::move(value));
+        }
+        for (const auto profile : {"directory", "matching"}) {
+            FormatCase value{
+                directory,
+                "configured-" + std::string(profile),
+                "directory.input.cpp",
+                profile,
+                {},
+                true,
+                std::string(profile) + ".output.cpp",
+            };
+            value.Style = formatter::LoadConfigFile(directory /
+                (std::string(profile) + ".hit-fmt")).FormattingStyle;
+            value.Style->IncludeGroupOrder =
+                formatter::IncludeGroupOrder::Configured;
+            // Preserve must ignore both grouping rules and their ordering.
+            if (std::string_view(profile) == "matching") {
+                value.Style->IncludeGroups = {{{"project/"}, 1}};
+            }
+            value.InputFilePath = "project/engine/widget.cpp";
+            cases.push_back(std::move(value));
+        }
         for (const auto name : {"rule-order", "rule-order-reversed"}) {
             FormatCase value{directory, name, "rule-order.input.cpp"};
             value.InputFilePath = "source/runner.cpp";
@@ -993,13 +1074,21 @@ std::vector<FormatCase> FormatCases()
                 "../../../../hit-fmt/examples/" + std::string(profile),
             };
             value.InputFilePath = "project/engine/widget.cpp";
-            value.Expected = std::string_view(profile) == "google"
-                ? "matching.output.cpp"
-                : std::string_view(profile) == "llvm"
-                    ? "directory-depth-one.output.cpp"
-                    : "directory.output.cpp";
+            if (std::string_view(profile) != "ytsaurus") {
+                value.Expected = std::string_view(profile) == "google"
+                    ? "matching.output.cpp"
+                    : "directory-depth-one.output.cpp";
+            }
             cases.push_back(std::move(value));
         }
+        FormatCase ytsaurusRoots{
+            directory,
+            "profile-ytsaurus-roots",
+            "rule-groups.input.cpp",
+            "../../../../hit-fmt/examples/ytsaurus",
+        };
+        ytsaurusRoots.InputFilePath = "yt/yt/core/rpc/runner.cpp";
+        cases.push_back(std::move(ytsaurusRoots));
         cases.push_back({
             directory,
             "directory-no-path",

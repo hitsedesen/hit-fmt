@@ -23,7 +23,8 @@ struct IncludeGroupRule
 void ValidateIncludeGroups(std::span<const IncludeGroupRule> groups);
 
 // Owns grouping metadata for read-only reuse across files. Rule order controls
-// matching, not sorting. The first prefix represents a group's ordering path.
+// matching and optional configured sorting. The first prefix represents a
+// group's ordering path for directory sorting.
 class PreparedIncludeGroups
 {
 public:

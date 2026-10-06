@@ -702,7 +702,9 @@ PreparedFormat::PreparedFormat(const Style& style)
         static_cast<std::uint8_t>(style.IndentWidth),
         style.IncludeMatchingHeader,
         style.IncludeGrouping,
+        style.IncludeGroupOrder,
         style.IncludeDirectoryOrder,
+        style.IncludeInGroupOrder,
         style.IncludePathBase,
         style.IncludeStandardHeaders,
     }
