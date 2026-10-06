@@ -1203,13 +1203,13 @@ public:
                 role == PR::ComparisonOperator || role == PR::ShiftOperator ||
                 node.Kind == NK::FoldOperator)
             {
-                Pair(
-                    i,
-                    F::BinaryOperatorSpacing,
-                    F::BinaryOperatorSpacing,
-                    owner,
-                    C::Expressions,
-                    1);
+                const bool memberPointer =
+                    kind == TK::Operator_PointerToMemberDereference ||
+                        kind == TK::Operator_IndirectPointerToMemberDereference;
+                const auto field = memberPointer
+                    ? F::MemberAccessOperatorsSpacing
+                    : F::BinaryOperatorSpacing;
+                Pair(i, field, field, owner, C::Expressions, 1, !memberPointer);
             } else if (role == PR::AssignmentOperator ||
                 ((node.Kind == NK::Initializer ||
                     node.Kind == NK::Enumerator) &&

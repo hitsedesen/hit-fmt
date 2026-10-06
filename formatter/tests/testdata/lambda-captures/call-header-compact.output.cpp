@@ -1,8 +1,9 @@
 void Check()
 {
-    FooBar::ForEachFooBarium([&] (FooBarType /*type*/, auto FooBar::* foobar) {
-        result = result && this->*foobar == 0;
-    });
+    FooBar::ForEachFooBarium(
+        [&] (
+            FooBarType /*type*/,
+            auto FooBar::* foobar) { result = result && this->*foobar == 0; });
     FooBar::ForEachFooBarium(
         [&] (FooBarType /*type*/, auto FooBar::* foobar) { return result; });
     FooBar::ForEachFooBarium(

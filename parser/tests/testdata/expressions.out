@@ -914,6 +914,166 @@
           )
           ";"
         )
+        (expression-statement
+          (assignment-expression
+            (binary-expression
+              (identifier-expression "object")
+              ".*"
+              (identifier-expression "member")
+            )
+            "="
+            (identifier-expression "value")
+          )
+          ";"
+        )
+        (expression-statement
+          (assignment-expression
+            (binary-expression
+              (identifier-expression "pointer")
+              "->*"
+              (identifier-expression "member")
+            )
+            "="
+            (binary-expression
+              (identifier-expression "object")
+              ".*"
+              (identifier-expression "other")
+            )
+          )
+          ";"
+        )
+        (declaration-statement
+          (declaration-specifiers "auto")
+          (init-declarator-list
+            (init-declarator
+              (declarator
+                (declarator-name "member_product")
+              )
+              (initializer
+                "="
+                (binary-expression
+                  (binary-expression
+                    (binary-expression
+                      (identifier-expression "object")
+                      ".*"
+                      (identifier-expression "member")
+                    )
+                    "*"
+                    (identifier-expression "factor")
+                  )
+                  "+"
+                  (binary-expression
+                    (identifier-expression "pointer")
+                    "->*"
+                    (identifier-expression "member")
+                  )
+                )
+              )
+            )
+          )
+          ";"
+        )
+        (declaration-statement
+          (declaration-specifiers "auto")
+          (init-declarator-list
+            (init-declarator
+              (declarator
+                (declarator-name "member_chain")
+              )
+              (initializer
+                "="
+                (binary-expression
+                  (binary-expression
+                    (identifier-expression "object")
+                    ".*"
+                    (identifier-expression "first")
+                  )
+                  "->*"
+                  (identifier-expression "second")
+                )
+              )
+            )
+          )
+          ";"
+        )
+        (declaration-statement
+          (declaration-specifiers "auto")
+          (init-declarator-list
+            (init-declarator
+              (declarator
+                (declarator-name "member_unary")
+              )
+              (initializer
+                "="
+                (binary-expression
+                  (unary-expression
+                    "*"
+                    (identifier-expression "pointer")
+                  )
+                  ".*"
+                  (identifier-expression "member")
+                )
+              )
+            )
+          )
+          ";"
+        )
+        (declaration-statement
+          (declaration-specifiers "auto")
+          (init-declarator-list
+            (init-declarator
+              (declarator
+                (declarator-name "member_cast")
+              )
+              (initializer
+                "="
+                (binary-expression
+                  (cast-expression
+                    "("
+                    (type-id "Type" "*")
+                    ")"
+                    (identifier-expression "pointer")
+                  )
+                  "->*"
+                  (identifier-expression "member")
+                )
+              )
+            )
+          )
+          ";"
+        )
+        (declaration-statement
+          (declaration-specifiers "auto")
+          (init-declarator-list
+            (init-declarator
+              (declarator
+                (declarator-name "member_call")
+              )
+              (initializer
+                "="
+                (call-expression
+                  (parenthesized-expression
+                    "("
+                    (binary-expression
+                      (identifier-expression "pointer")
+                      "->*"
+                      (identifier-expression "method")
+                    )
+                    ")"
+                  )
+                  (argument-list
+                    "("
+                    (argument
+                      (identifier-expression "argument")
+                    )
+                    ")"
+                  )
+                )
+              )
+            )
+          )
+          ";"
+        )
         (declaration-statement
           (declaration-specifiers "auto")
           (init-declarator-list

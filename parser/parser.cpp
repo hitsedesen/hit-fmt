@@ -6644,13 +6644,15 @@ private:
             }
             return pair;
         }
-        if (GetBinaryOperatorInfo(kind).Precedence == 0 &&
-            kind != TK::Operator_Not && kind != TK::Operator_Complement &&
-            kind != TK::Operator_Increment && kind != TK::Operator_Decrement &&
-            kind != TK::Operator_IndirectClassMemberAccess &&
-            kind != TK::Operator_IndirectPointerToMemberDereference &&
-            kind != TK::Keyword_co_await && kind != TK::Keyword_new &&
-            kind != TK::Keyword_delete)
+        // .* is a binary operator, but unlike ->* it cannot be overloaded.
+        if (kind == TK::Operator_PointerToMemberDereference ||
+            (GetBinaryOperatorInfo(kind).Precedence == 0 &&
+                kind != TK::Operator_Not && kind != TK::Operator_Complement &&
+                kind != TK::Operator_Increment &&
+                kind != TK::Operator_Decrement &&
+                kind != TK::Operator_IndirectClassMemberAccess &&
+                kind != TK::Keyword_co_await && kind != TK::Keyword_new &&
+                kind != TK::Keyword_delete))
         {
             return std::nullopt;
         }
@@ -8874,7 +8876,7 @@ private:
             Append(*expression, *marker);
             cursor = NextSignificant(closing + 1);
         }
-        if (auto* operand = ParseExpressionSyntax(cursor, end, 14)) {
+        if (auto* operand = ParseExpressionSyntax(cursor, end, 15)) {
             Append(*expression, *operand);
             expression->Tokens.End = operand->Tokens.End;
         } else {
@@ -9293,7 +9295,7 @@ private:
                     }
                 }
             }
-            auto* operand = ParseExpressionSyntax(cursor, operandEnd, 14);
+            auto* operand = ParseExpressionSyntax(cursor, operandEnd, 15);
             if (!operand) {
                 // A dangling prefix operator cannot be the right operand
                 // of a binary expression (`char**` in a type-like macro
@@ -9342,7 +9344,7 @@ private:
                 AddTypeSyntaxChildren(*type, cursor + 1, closing);
                 Append(*cast, *type);
                 cursor = closingEnd;
-                if (auto* operand = ParseExpressionSyntax(cursor, end, 14)) {
+                if (auto* operand = ParseExpressionSyntax(cursor, end, 15)) {
                     Append(*cast, *operand);
                     cast->Tokens.End = operand->Tokens.End;
                 } else {

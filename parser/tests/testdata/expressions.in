@@ -45,6 +45,13 @@ auto evaluate(Values... values) {
     auto equal = a - b + c;
     auto assigned = a = b += c;
     auto grouped = (a + b) * c;
+    object.*member = value;
+    pointer->*member = object.*other;
+    auto member_product = object.*member * factor + pointer->*member;
+    auto member_chain = object.*first->*second;
+    auto member_unary = *pointer.*member;
+    auto member_cast = (Type*)pointer->*member;
+    auto member_call = (pointer->*method)(argument);
     auto alternatives = a bitand b xor c bitor d and e or f;
     a and_eq b or_eq c xor_eq d;
     auto unequal = a not_eq b;

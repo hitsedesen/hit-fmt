@@ -401,9 +401,14 @@ void AssignStyle(
             decltype(config.FormattingStyle.*Member)>,
             std::optional<TrailingCommentSpaceSetting>>)
     {
-        config.FormattingStyle.*Member = TrailingCommentSpaceSetting{
-            value == "Preserve" ? std::nullopt : std::optional<std::size_t>{
-                ParseNonnegativeInteger(value, path, line)}};
+        config.FormattingStyle.*Member =
+            TrailingCommentSpaceSetting{
+                value == "Preserve"
+                    ? std::nullopt
+                    : std::optional<std::size_t>{
+                        ParseNonnegativeInteger(value, path, line),
+                    },
+            };
     } else if constexpr (std::is_same_v<std::remove_cvref_t<
             decltype(config.FormattingStyle.*Member)>, BlankLineSetting>)
     {
@@ -421,17 +426,23 @@ void AssignStyle(
                     "Inherit is only valid for member blank-line settings");
             }
         } else {
-            config.FormattingStyle.*Member = {BlankLineMode::Exact,
-                ParseNonnegativeInteger(value, path, line)};
+            config.FormattingStyle.*Member =
+                {
+                    BlankLineMode::Exact,
+                    ParseNonnegativeInteger(value, path, line),
+                };
         }
     } else if constexpr (std::is_same_v<std::remove_cvref_t<
             decltype(config.FormattingStyle.*Member)>, std::optional<std::
                 size_t>>)
     {
         if constexpr (Member == &Style::MaxEmptyLines) {
-            config.FormattingStyle.*Member = value == "Preserve"
-                ? std::nullopt : std::optional<std::size_t>{
-                    ParseNonnegativeInteger(value, path, line)};
+            config.FormattingStyle.*Member =
+                value == "Preserve"
+                ? std::nullopt
+                : std::optional<std::size_t>{
+                    ParseNonnegativeInteger(value, path, line),
+                };
         } else {
             ParseField(config.FormattingStyle.*Member, value, path, line);
         }
