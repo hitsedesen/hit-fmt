@@ -454,6 +454,11 @@ public:
                 case NodeKind::RequiresClause:
                     PlanConstraintHeader(i);
                     break;
+                case NodeKind::CompoundRequirement:
+                    PlanCompoundRequirement(i);
+                    break;
+                case NodeKind::TypeRequirement:
+                case NodeKind::NestedRequirement:
                 case NodeKind::ReturnStatement:
                 case NodeKind::ThrowStatement:
                 case NodeKind::CoYieldStatement:
@@ -465,6 +470,7 @@ public:
                 case NodeKind::AssignmentExpression:
                 case NodeKind::ConditionalExpression:
                 case NodeKind::ParenthesizedExpression:
+                case NodeKind::RequirementExpression:
                 case NodeKind::SubscriptExpression:
                 case NodeKind::CastExpression:
                 case NodeKind::TypeConstructionExpression:
@@ -962,6 +968,7 @@ private:
             case NodeKind::AssignmentExpression:
             case NodeKind::ConditionalExpression:
             case NodeKind::ParenthesizedExpression:
+            case NodeKind::RequirementExpression:
                 break;
             case NodeKind::CastExpression: {
                 const auto opening = NamedCastOpening(id);
@@ -1667,6 +1674,39 @@ private:
         Gaps_[node.Tokens.Begin + 1].FitNextSegment = true;
     }
 
+    void PlanCompoundRequirement(Index id)
+    {
+        const auto& node = Region(Syntax_[id]);
+        const auto& policy = Policies_.Expressions;
+        const auto& indent = policy.Indent;
+        const auto group = GroupAt(
+            TokenPosition(node.Tokens.Begin),
+            GapPosition(node.Tokens.End),
+            document::GroupMode::Fill,
+            int32_t(indent.ContinuationOffset),
+            indent);
+        Groups_[group].Spec.StructuralBase = true;
+        Groups_[group].Spec.Continuation = true;
+        for (auto child = node.FirstChild;
+            child != None;
+            child = Region(Syntax_[child]).NextSibling)
+        {
+            const auto& part = Region(Syntax_[child]);
+            if (part.Kind != NodeKind::ExceptionSpecification &&
+                part.Kind != NodeKind::TypeConstraint)
+            {
+                continue;
+            }
+            Own(
+                part.Tokens.Begin,
+                group,
+                policy.Layout == LayoutMode::Canonical
+                ? Boundary::Soft
+                : Boundary::Preserve);
+            Reindent(part.Tokens.Begin, group);
+        }
+    }
+
     bool SameOperatorSequence(Index parent, Index child) const
     {
         const auto& a = Syntax_[parent];
@@ -1827,6 +1867,7 @@ private:
                 : Tree_.Role(t);
             if (canonical &&
                 (kind == NodeKind::ParenthesizedExpression ||
+                    kind == NodeKind::RequirementExpression ||
                     kind == NodeKind::SubscriptExpression ||
                     kind == NodeKind::CastExpression ||
                     kind == NodeKind::TypeConstructionExpression) &&

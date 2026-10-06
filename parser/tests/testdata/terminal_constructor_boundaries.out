@@ -80,8 +80,6 @@
         (init-declarator-list
           (init-declarator
             (abstract-declarator
-              "(" "items" ")"
-              (attribute-specifier "[" "[" "]" "(" ")" "{" "return" "4" ";" "}" "(" ")" "]")
               (function-declarator
                 (parameter-list
                   "("

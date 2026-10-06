@@ -126,6 +126,12 @@ struct TokenRange
     SYNTAX_NODE_KIND(RequiresExpression, "requires-expression")                \
     SYNTAX_NODE_KIND(RequirementBody, "requirement-body")                      \
     SYNTAX_NODE_KIND(Requirement, "requirement")                               \
+    SYNTAX_NODE_KIND(SimpleRequirement, "simple-requirement")                  \
+    SYNTAX_NODE_KIND(TypeRequirement, "type-requirement")                      \
+    SYNTAX_NODE_KIND(CompoundRequirement, "compound-requirement")              \
+    SYNTAX_NODE_KIND(NestedRequirement, "nested-requirement")                  \
+    SYNTAX_NODE_KIND(RequirementExpression, "requirement-expression")          \
+    SYNTAX_NODE_KIND(TypeConstraint, "type-constraint")                        \
     SYNTAX_NODE_KIND(NewExpression, "new-expression")                          \
     SYNTAX_NODE_KIND(NewPlacement, "new-placement")                            \
     SYNTAX_NODE_KIND(NewTypeId, "new-type-id")                                 \

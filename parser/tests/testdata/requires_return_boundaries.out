@@ -187,7 +187,16 @@
             )
             (requirement-body
               "{"
-              (requirement "value" "." "touch" "(" ")")
+              (simple-requirement
+                (call-expression
+                  (member-expression
+                    (identifier-expression "value")
+                    "."
+                    (identifier-expression "touch")
+                  )
+                  (argument-list "(" ")")
+                )
+              )
               (list-separator ";")
               "}"
             )

@@ -95,8 +95,6 @@
       (init-declarator
         (declarator
           (declarator-name "function")
-          "(" ")"
-          (extension-attribute-specifier "__attribute__" "(" "(" "cold" ")" ")")
           (function-declarator
             (parameter-list "(" ")")
             (extension-attribute-specifier "__attribute__" "(" "(" "cold" ")" ")")

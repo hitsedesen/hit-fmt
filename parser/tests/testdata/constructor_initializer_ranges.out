@@ -323,8 +323,6 @@
         (init-declarator
           (declarator
             (declarator-name "QualifiedCallback")
-            "(" ")" "noexcept" "(" "noexcept" "("
-            (array-declarator "[" "]")
             (function-declarator
               (parameter-list "(" ")")
               (exception-specification "noexcept" "(" "noexcept" "(" "[" "]" "{" "return" "1" ";" "}" "(" ")" ")" ")")
@@ -901,8 +899,6 @@
       (init-declarator
         (declarator
           (declarator-name "attributed")
-          "(" ")"
-          (attribute-specifier "[" "[" "tag" "]" "]")
           (function-declarator
             (parameter-list "(" ")")
             (attribute-specifier "[" "[" "tag" "]" "]")

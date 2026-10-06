@@ -27,13 +27,55 @@
           )
           (requirement-body
             "{"
-            (requirement "value" "." "touch" "(" ")")
+            (simple-requirement
+              (call-expression
+                (member-expression
+                  (identifier-expression "value")
+                  "."
+                  (identifier-expression "touch")
+                )
+                (argument-list "(" ")")
+              )
+            )
             (list-separator ";")
-            (requirement "{" "value" "." "touch" "(" ")" "}" "noexcept")
+            (compound-requirement
+              (requirement-expression
+                "{"
+                (call-expression
+                  (member-expression
+                    (identifier-expression "value")
+                    "."
+                    (identifier-expression "touch")
+                  )
+                  (argument-list "(" ")")
+                )
+                "}"
+              )
+              (exception-specification "noexcept")
+            )
             (list-separator ";")
-            (requirement "typename" "T" "::" "value_type")
+            (type-requirement
+              "typename"
+              (type-id "T" "::" "value_type")
+            )
             (list-separator ";")
-            (requirement "requires" "requires" "{" "typename" "T" "::" "other_type" ";" "}")
+            (nested-requirement
+              "requires"
+              (constraint-expression
+                (requires-expression
+                  "requires"
+                  (requirement-body
+                    "{"
+                    (type-requirement
+                      "typename"
+                      (type-id "T" "::" "other_type")
+                    )
+                    (list-separator ";")
+                    "}"
+                  )
+                )
+              )
+            )
             (list-separator ";")
             "}"
           )
@@ -76,7 +118,10 @@
               "requires"
               (requirement-body
                 "{"
-                (requirement "typename" "T" "::" "value_type")
+                (type-requirement
+                  "typename"
+                  (type-id "T" "::" "value_type")
+                )
                 (list-separator ";")
                 "}"
               )
@@ -319,7 +364,16 @@
               "requires"
               (requirement-body
                 "{"
-                (requirement "sizeof" "..." "(" "Items" ")")
+                (simple-requirement
+                  (unary-expression
+                    "sizeof" "..."
+                    (parenthesized-expression
+                      "("
+                      (identifier-expression "Items")
+                      ")"
+                    )
+                  )
+                )
                 (list-separator ";")
                 "}"
               )

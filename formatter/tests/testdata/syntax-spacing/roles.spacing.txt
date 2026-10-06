@@ -499,6 +499,8 @@
 543 before=value field=None owner=parameter-declaration category=2 priority=1 fallback=1 protected=0 constraint=0
 544 before=) field=SpaceInsideFunctionParameters owner=requires-expression category=2 priority=2 fallback=0 protected=0 constraint=0
 546 before=value field=RequirementBodyInteriorSpacing owner=requirement-body category=11 priority=2 fallback=1 protected=0 constraint=0
+547 before=+ field=BinaryOperatorSpacing owner=binary-expression category=8 priority=1 fallback=1 protected=0 constraint=0
+548 before=value field=BinaryOperatorSpacing owner=binary-expression category=8 priority=1 fallback=1 protected=0 constraint=0
 550 before=} field=RequirementBodyInteriorSpacing owner=requirement-body category=11 priority=2 fallback=1 protected=0 constraint=0
 551 before=; field=DeclarationSemicolonSpacing owner=declaration category=10 priority=3 fallback=0 protected=0 constraint=0
 552 before=auto field=None owner=translation-unit category=11 priority=1 fallback=1 protected=0 constraint=0
