@@ -1238,6 +1238,19 @@ private:
                 firstItem == FirstItemPlacement::NextLine && !PinFirst(id)
                 ? document::GapKind::Hard
                 : document::GapKind::Soft;
+            if (node.Kind == NodeKind::TemplateArgumentList &&
+                policy.Break == BreakRequirement::IfNeeded &&
+                policy.Closer == CloserPlacement::SameLine &&
+                node.FirstChild != None &&
+                Region(Syntax_[node.FirstChild]).Kind ==
+                    NodeKind::TemplateArgument &&
+                Region(Syntax_[node.FirstChild]).NextSibling == None)
+            {
+                // A sole template argument has no separators to couple.
+                // Keep its opener flat when cheaper nested syntax can break;
+                // an owned break still places the sole item on the next line.
+                firstKind = document::GapKind::Soft;
+            }
             Own(begin + 1, group, Boundary::Conditional, firstKind);
             if (node.Kind == NodeKind::ArgumentList &&
                 firstKind == document::GapKind::Soft)

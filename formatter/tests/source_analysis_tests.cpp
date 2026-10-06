@@ -1590,11 +1590,7 @@ TEST(SourceAnalysis, DeferredRestrictionRequiresBuiltUnrestrictedAnalysis)
     auto empty = Analyze(
         tree,
         memory,
-        {
-            .EditScope = std::span<
-                const
-        parser::SourceRange>{},
-        });
+        {.EditScope = std::span<const parser::SourceRange>{}});
     EXPECT_THROW(empty.RestrictEditScope(scope), std::logic_error);
     EXPECT_FALSE(empty.CanReplaceGap(Before(tree, "invoke"), "\n    "));
 }
