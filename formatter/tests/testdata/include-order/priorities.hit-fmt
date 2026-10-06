@@ -1,0 +1,13 @@
+IncludeOrder = Sort
+IncludeMatchingHeader = First
+IncludeGrouping = Directory
+IncludeGroupOrder = Directory
+IncludeDirectoryOrder = NearestFirst
+IncludeInGroupOrder = NearestFirst
+IncludePathBase = ProjectRoot
+IncludeStandardHeaders = Last
+IncludeGroups = [
+    {Prefix = "library/", Depth = 0, Priority = 1},
+    {Prefix = "util/", Depth = 0, Priority = 2},
+    {Prefix = "", Depth = 3},
+]

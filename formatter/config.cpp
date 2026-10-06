@@ -282,6 +282,7 @@ std::vector<IncludeGroupRule> ParseIncludeGroups(
         IncludeGroupRule group;
         bool prefixes = false;
         bool depth = false;
+        bool priority = false;
         while (true) {
             value = Trim(value);
             if (!value.empty() && value.front() == '}') {
@@ -319,13 +320,33 @@ std::vector<IncludeGroupRule> ParseIncludeGroups(
                     field.data() + field.size(),
                     group.Depth);
                 if (error != std::errc{} ||
-                    end != field.data() + field.size() || group.Depth < -1)
+                    end != field.data() + field.size() || group.Depth < 0)
                 {
                     ThrowConfigError(
                         path,
                         line,
                         "IncludeGroups Depth must be an integer "
-                        "from -1 to 127");
+                        "from 0 to 127");
+                }
+            } else if (name == "Priority") {
+                if (priority) {
+                    ThrowConfigError(
+                        path,
+                        line,
+                        "IncludeGroups has duplicate Priority field");
+                }
+                priority = true;
+                auto [end, error] = std::from_chars(
+                    field.data(),
+                    field.data() + field.size(),
+                    group.Priority);
+                if (error != std::errc{} || end != field.data() + field.size())
+                {
+                    ThrowConfigError(
+                        path,
+                        line,
+                        "IncludeGroups Priority must be an integer "
+                        "from -128 to 127");
                 }
             } else {
                 ThrowConfigError(

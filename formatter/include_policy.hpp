@@ -11,10 +11,14 @@ namespace formatter {
 
 struct IncludeGroupRule
 {
+    static constexpr std::int8_t MaxDepth = 127;
+
     std::vector<std::string> Prefixes;
-    // Zero keeps the rule together; -1 uses the full directory suffix.
-    // Positive values cap the suffix's directory components.
-    std::int8_t Depth = 0;
+    // Zero keeps the rule together; MaxDepth uses the full directory suffix.
+    // Intermediate values cap the suffix's directory components.
+    std::int8_t Depth = MaxDepth;
+    // Lower priorities sort first; matching precedence is unchanged.
+    std::int8_t Priority = 0;
     friend bool operator==(
         const IncludeGroupRule&,
         const IncludeGroupRule&) = default;
@@ -23,8 +27,8 @@ struct IncludeGroupRule
 void ValidateIncludeGroups(std::span<const IncludeGroupRule> groups);
 
 // Owns grouping metadata for read-only reuse across files. Rule order controls
-// matching and optional configured sorting. The first prefix represents a
-// group's ordering path for directory sorting.
+// matching and optional configured sorting within each priority tier. The
+// first prefix represents a group's ordering path for directory sorting.
 class PreparedIncludeGroups
 {
 public:
@@ -46,6 +50,7 @@ public:
     }
 
     [[nodiscard]] std::int8_t Depth(std::size_t group) const noexcept;
+    [[nodiscard]] std::int8_t Priority(std::size_t group) const noexcept;
     [[nodiscard]] std::size_t PrefixDepth(std::size_t prefix) const noexcept;
     [[nodiscard]] std::string_view Prefix(std::size_t prefix) const noexcept;
     [[nodiscard]] std::string_view CanonicalPrefix(
@@ -56,6 +61,7 @@ private:
     {
         std::size_t FirstPrefix;
         std::int8_t Depth;
+        std::int8_t Priority;
     };
 
     struct PrefixEntry

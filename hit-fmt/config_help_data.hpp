@@ -228,6 +228,25 @@ IncludeGroups = [
 # For root-relative project includes and input filenames:
 # IncludePathBase = ProjectRoot
 )"},
+    {"Nearest project groups, then library/, util/ and standard headers:",
+        R"(IncludeOrder = Sort
+IncludeMatchingHeader = First
+IncludeGrouping = Directory
+IncludeGroupOrder = Directory
+IncludeDirectoryOrder = NearestFirst
+IncludeInGroupOrder = NearestFirst
+IncludePathBase = ProjectRoot
+IncludeStandardHeaders = Last
+# Specific rules match before the fallback, but priority orders output:
+IncludeGroups = [
+    { Prefix = "library/", Priority = 1 },
+    { Prefix = "util/", Priority = 2 },
+    { Prefix = "", Depth = 3, Priority = 0 }
+]
+# Pass project-relative input filenames for root-relative distance.
+# Depth 3 counts from the root for the empty-prefix fallback.
+# Quoted groups still precede angled groups, regardless of priority.
+)"},
 };
 
 constexpr HelpExample StagedExamples[] = {
@@ -506,16 +525,18 @@ constexpr HelpSection HelpSections[] = {
         "IncludeGrouping = Preserve sorts each adjacent block without "
         "changing blank lines and ignores IncludeGroups. Regroup spans blank "
         "lines and forms one quoted/angled group per matched rule, ignoring "
-        "Depth; unmatched headers follow configured groups. Directory groups "
+        "Depth; unmatched headers follow configured groups within the same "
+        "priority tier. Directory groups "
         "by lexically normalized containing directory, using each rule's "
         "Depth to cap directory components after its matched prefix. "
         "IncludeGroups = [] (default) retains full-directory grouping. "
         "Each rule has Prefix = \"directory/\" or Prefixes = [\"directory/\", "
-        "...], and optional Depth = 0. Zero keeps the entire rule together "
-        "within each quoted/angled group; -1 uses the full remaining "
-        "directory, not the filename. Depth ranges from -1 to 127. "
-        "Positive depths use at most N suffix "
-        "components. By default, zero and positive depths sort include "
+        "...], optional Depth = 127 and Priority = 0. Zero depth keeps the "
+        "entire rule together within each quoted/angled group; 127 (default) "
+        "uses the full remaining directory, not the filename. Depth ranges "
+        "from 0 to 127; negative values are invalid. Values 1..126 use at "
+        "most N suffix components. By default, zero and capped depths sort "
+        "include "
         "paths alphabetically inside groups. With prefix "
         "library/, Depth = 1 groups library/core/a.hpp and "
         "library/core/detail/b.hpp together; 2 separates them. Direct headers "
@@ -528,12 +549,17 @@ constexpr HelpSection HelpSections[] = {
         "A sole empty Prefix = \"\" is an explicit fallback for any spelling; "
         "its Depth counts from the start of the resolved directory. "
         "First matching rule and prefix win, not the longest match. Rule "
-        "order always controls matching. IncludeGroupOrder = Directory "
-        "(default) orders rule groups together by directory. Configured "
-        "instead uses IncludeGroups list order first, with unmatched paths "
-        "last; IncludeDirectoryOrder then orders subgroups within each rule. "
+        "order always controls matching; Priority does not affect selection. "
+        "Priority is a signed integer from -128 to 127; lower "
+        "values sort first within each quoted/angled category. Unmatched "
+        "headers have priority zero. Within equal priorities, "
+        "IncludeGroupOrder = Directory (default) orders rule groups together "
+        "by directory. Configured instead uses IncludeGroups list order "
+        "first, with unmatched paths last in that tier; "
+        "IncludeDirectoryOrder then orders subgroups within each rule. "
         "Prefixes in one rule remain aliases, not separate priorities. "
-        "IncludeGrouping = Preserve ignores IncludeGroupOrder. Quoted groups "
+        "IncludeGrouping = Preserve ignores rules, priorities and "
+        "IncludeGroupOrder. Quoted groups "
         "precede angled groups in either mode; "
         "IncludeDirectoryOrder = NearestFirst "
         "(default) orders groups by parent plus child steps from the input "

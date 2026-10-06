@@ -2,7 +2,7 @@ IncludeOrder = Sort
 IncludeMatchingHeader = First
 IncludeGrouping = Directory
 IncludeGroups = [
-    { Prefixes = ["yt/yt/core/rpc/", "yt/yt_proto/yt/core/rpc/proto/"], Depth = -1 }
+    { Prefixes = ["yt/yt/core/rpc/", "yt/yt_proto/yt/core/rpc/proto/"], Depth = 127 }
 ]
 IncludeDirectoryOrder = NearestFirst
 IncludePathBase = ProjectRoot

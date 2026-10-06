@@ -34,9 +34,9 @@ void ValidateIncludeGroups(std::span<const IncludeGroupRule> groups)
 {
     std::vector<std::string_view> prefixes;
     for (const auto& group : groups) {
-        if (group.Depth < -1) {
+        if (group.Depth < 0) {
             throw std::invalid_argument(
-                "IncludeGroups Depth must be an integer from -1 to 127");
+                "IncludeGroups Depth must be an integer from 0 to 127");
         }
         if (group.Prefixes.empty()) {
             throw std::invalid_argument(
@@ -82,7 +82,8 @@ PreparedIncludeGroups::PreparedIncludeGroups(
     Groups_.reserve(groups.size());
     Prefixes_.reserve(count);
     for (std::size_t group = 0; group < groups.size(); ++group) {
-        Groups_.push_back({Prefixes_.size(), groups[group].Depth});
+        Groups_.push_back(
+            {Prefixes_.size(), groups[group].Depth, groups[group].Priority});
         for (const auto& prefix : groups[group].Prefixes) {
             Prefixes_.push_back({
                 prefix,
@@ -207,7 +208,14 @@ PreparedIncludeGroups::Match PreparedIncludeGroups::Classify(
 
 std::int8_t PreparedIncludeGroups::Depth(std::size_t group) const noexcept
 {
-    return group < GroupCount() ? Groups_[group].Depth : -1;
+    return group < GroupCount()
+        ? Groups_[group].Depth
+        : IncludeGroupRule::MaxDepth;
+}
+
+std::int8_t PreparedIncludeGroups::Priority(std::size_t group) const noexcept
+{
+    return group < Groups_.size() ? Groups_[group].Priority : 0;
 }
 
 std::size_t PreparedIncludeGroups::PrefixDepth(

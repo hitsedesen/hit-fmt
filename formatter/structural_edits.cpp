@@ -281,7 +281,8 @@ struct IncludeKey
     std::size_t HeaderDistance = 0;
     std::size_t Rule = 0;
     std::size_t Prefix = 0;
-    std::int8_t Depth = -1;
+    std::int8_t Priority = 0;
+    std::int8_t Depth = IncludeGroupRule::MaxDepth;
     bool Matching = false;
     bool Standard = false;
 };
@@ -545,6 +546,7 @@ void Includes(
                     key.Rule = match.Group;
                     key.Prefix = match.Prefix;
                     key.Depth = context.Groups->Depth(match.Group);
+                    key.Priority = context.Groups->Priority(match.Group);
                 }
                 if (!needPaths) {
                     continue;
@@ -594,7 +596,7 @@ void Includes(
                     const auto base = relative ? current.size() : 0;
                     const auto suffix =
                         base + context.Groups->PrefixDepth(key.Prefix);
-                    const auto count = key.Depth == -1
+                    const auto count = key.Depth == IncludeGroupRule::MaxDepth
                         ? parts.size() - suffix
                         : std::min(
                             static_cast<std::size_t>(key.Depth),
@@ -609,7 +611,7 @@ void Includes(
                         parts.begin() + suffix,
                         parts.begin() + suffix + count);
                 } else {
-                    const auto count = key.Depth == -1
+                    const auto count = key.Depth == IncludeGroupRule::MaxDepth
                         ? parts.size()
                         : std::min(
                             static_cast<std::size_t>(key.Depth),
@@ -680,6 +682,9 @@ void Includes(
                 if (options.Grouping != IncludeGrouping::Preserve &&
                     !matching(a) && !standard(a))
                 {
+                    if (key(a).Priority != key(b).Priority) {
+                        return key(a).Priority < key(b).Priority;
+                    }
                     if (context.Groups &&
                         options.GroupOrder == IncludeGroupOrder::Configured &&
                         key(a).Rule != key(b).Rule)
@@ -714,7 +719,7 @@ void Includes(
                     }
                     if (!nearestHeaders &&
                         options.Grouping == IncludeGrouping::Directory &&
-                        key(a).Depth == -1 &&
+                        key(a).Depth == IncludeGroupRule::MaxDepth &&
                         Filename(a.Path) != Filename(b.Path))
                     {
                         return Filename(a.Path) < Filename(b.Path);

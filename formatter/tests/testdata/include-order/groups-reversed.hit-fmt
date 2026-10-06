@@ -4,4 +4,4 @@ IncludeGrouping = Directory
 IncludeDirectoryOrder = NearestFirst
 IncludePathBase = ProjectRoot
 IncludeStandardHeaders = Last
-IncludeGroups = [{Prefix = "gtest/"}, {Prefix = "library/"}]
+IncludeGroups = [{Prefix = "gtest/", Depth = 0}, {Prefix = "library/", Depth = 0}]

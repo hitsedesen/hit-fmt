@@ -1360,8 +1360,8 @@ TEST(ConfigPolicy, OrderedGroupIndexPreservesEarliestRuleAcrossOwningLifetimes)
     auto make = [] {
         formatter::Style style;
         style.IncludeGroups = {
-            {{"engine/", "mirror/engine/"}, 2},
-            {{"engine/detail/"}, 1},
+            {{"engine/", "mirror/engine/"}, 2, 7},
+            {{"engine/detail/"}, 1, -3},
             {{"platform/"}, 0},
             {{"eng/"}, 3},
         };
@@ -1378,6 +1378,8 @@ TEST(ConfigPolicy, OrderedGroupIndexPreservesEarliestRuleAcrossOwningLifetimes)
     const auto alias = moved.Classify("mirror/engine/detail/item.h");
     EXPECT_EQ(alias.Group, 0u);
     EXPECT_EQ(moved.Depth(alias.Group), 2u);
+    EXPECT_EQ(moved.Priority(alias.Group), 7);
+    EXPECT_EQ(moved.Priority(moved.GroupCount()), 0);
     EXPECT_EQ(moved.PrefixDepth(alias.Prefix), 2u);
     EXPECT_EQ(moved.CanonicalPrefix(alias.Group), "engine/");
     EXPECT_EQ(moved.Classify("platform/item.h").Group, 2u);
@@ -1460,7 +1462,7 @@ TEST(ConfigPolicy, PrefixValidationIsFinalOrderedAndCannotBeBypassed)
             std::invalid_argument);
     }
     formatter::Style invalidDepth;
-    invalidDepth.IncludeGroups = {{{"engine/"}, -2}};
+    invalidDepth.IncludeGroups = {{{"engine/"}, -1}};
     EXPECT_THROW(
         (void)formatter::CompilePolicies(invalidDepth),
         std::invalid_argument);
@@ -1518,18 +1520,18 @@ TEST(ConfigPolicy, IncludeGroupRulesParseNestedArraysAndRejectAmbiguity)
 {
     const TemporaryConfig nested("IncludeGroups = [\n" "  { Prefixes = [\n"
         "      \"engine]/\", # brackets inside strings are not terminators\n"
-        "      \"mirror#root/\"\n" "    ], Depth = 2 },\n"
-        "  { Depth = -1, Prefix = \"other/\" },\n"
-        "  { Depth = 127, Prefix = \"deep/\" },\n" "  { Prefix = \"\" }\n"
-        "]\n");
+        "      \"mirror#root/\"\n" "    ], Depth = 2, Priority = 127 },\n"
+        "  { Priority = -128, Depth = 0, Prefix = \"other/\" },\n"
+        "  { Depth = 127, Prefix = \"deep/\", Priority = -1 },\n"
+        "  { Prefix = \"\" }\n" "]\n");
     const auto style = formatter::LoadConfigFile(nested.Path).FormattingStyle;
     EXPECT_EQ(
         style.IncludeGroups,
         (std::vector<formatter::IncludeGroupRule>{
-            {{"engine]/", "mirror#root/"}, 2},
-            {{"other/"}, -1},
-            {{"deep/"}, 127},
-            {{""}, 0},
+            {{"engine]/", "mirror#root/"}, 2, 127},
+            {{"other/"}, 0, -128},
+            {{"deep/"}, 127, -1},
+            {{""}, 127},
         }));
     const formatter::PreparedIncludeGroups prepared(style.IncludeGroups);
     EXPECT_EQ(prepared.Classify("engine]/item.h").Group, 0u);
@@ -1545,12 +1547,23 @@ TEST(ConfigPolicy, IncludeGroupRulesParseNestedArraysAndRejectAmbiguity)
             "IncludeGroups = [{Prefix = \"engine/\", "
                 "Prefixes = [\"mirror/\"]}]\n",
             "IncludeGroups = [{Prefix = \"engine/\", Depth = 1, Depth = 2}]\n",
+            "IncludeGroups = [{Prefix = \"engine/\", Depth = -1}]\n",
             "IncludeGroups = [{Prefix = \"engine/\", Depth = -2}]\n",
             "IncludeGroups = [{Prefix = \"engine/\", Depth = 128}]\n",
             "IncludeGroups = [{Prefix = \"engine/\", Depth = -129}]\n",
             "IncludeGroups = [{Prefix = \"engine/\", Depth = 1.5}]\n",
             "IncludeGroups = [{Prefix = \"engine/\", "
                 "Depth = 99999999999999999999999}]\n",
+            "IncludeGroups = [{Prefix = \"engine/\", Priority = }]\n",
+            "IncludeGroups = [{Prefix = \"engine/\", "
+                "Priority = 1, Priority = 2}]\n",
+            "IncludeGroups = [{Prefix = \"engine/\", Priority = 128}]\n",
+            "IncludeGroups = [{Prefix = \"engine/\", Priority = -129}]\n",
+            "IncludeGroups = [{Prefix = \"engine/\", Priority = 1.5}]\n",
+            "IncludeGroups = [{Prefix = \"engine/\", Priority = \"1\"}]\n",
+            "IncludeGroups = [{Prefix = \"engine/\", Priority = 1junk}]\n",
+            "IncludeGroups = [{Prefix = \"engine/\", "
+                "Priority = 99999999999999999999999}]\n",
             "IncludeGroups = [{Prefix = \"engine/\", Typo = 1}]\n",
             "IncludeGroups = [{Prefix = \"engine/\"}\n",
             "IncludeGroups = [{Prefix = \"engine/\"}] junk\n",
