@@ -12,7 +12,7 @@ auto lambda = []() -> Pair<int,long> {
 void Use() {
     Invoke([]() -> Pair<int,long> {
         return {};
-    }, value);
+    },value);
 }
 auto Dependent() -> decltype(Make<int,long>());
 auto Compared() -> decltype(left < middle,middle > right);

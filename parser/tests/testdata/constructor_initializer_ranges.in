@@ -29,6 +29,9 @@ struct TemplateBases {
     TemplateBases(char tag) : State<void>{first, second}, member{1} {}
     TemplateBases(unsigned tag) : State<7>(first, second)... {}
 };
+Owned::Owned() : Value(Build<const Schema::Key>(0, Set<Text>{"first", "second"}, Helper::Create<Owned>())) {}
+Owned::Owned(int tag) : Value(Build<Unknown>(Set<Text>{"first"}, Set<Text>{"second"}, tag)) {}
+Owned::Owned(char tag) : Value(select < left > (right, other)), Ready(true) {}
 auto query() noexcept(noexcept(check(1 ? 2 : 3))) -> int;
 void attributed() [[tag]];
 template<class T> void constrained() requires (T::flag ? true : false) {}

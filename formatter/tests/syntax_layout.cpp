@@ -2883,6 +2883,47 @@ TEST(SyntaxLayout, NestedVisualScopesAndWrapperContextRespectBarriers)
         << afterDirective;
 }
 
+TEST(SyntaxLayout, OpaqueHeaderLeavesOnlyEditableBodyBoundaryCanonical)
+{
+    auto style = Canonical(120);
+    style.ConstructorBracePlacement = formatter::BracePlacement::NextLine;
+    style.EmptyBodyShape = formatter::BodyShape::CompactIfFits;
+    style.EmptyBlockInteriorSpacing = formatter::GapPolicy::Space;
+    style.TemplateArgumentsBreak = formatter::BreakRequirement::Always;
+    style.BinaryOperatorSpacing = formatter::GapPolicy::NoSpace;
+    const std::string input =
+        "Owned::Owned() : Value(choose  <  Unknown  > (first, second)) { }\n";
+    const std::string opaque = "choose  <  Unknown  > ";
+    const auto output = Lower(input, style);
+    EXPECT_NE(output.Text.find(opaque), std::string::npos) << output.Text;
+    EXPECT_TRUE(output.Text.ends_with("\n{ }\n")) << output.Text;
+    EXPECT_EQ(Lower(output.Text, style).Text, output.Text);
+    const auto begin = input.find(opaque);
+    const auto end = begin + opaque.size();
+    size_t protectedBytes = 0;
+    for (const auto& map : output.Map) {
+        if (map.Source.Begin >= begin && map.Source.End <= end &&
+            map.Source.Begin < map.Source.End)
+        {
+            EXPECT_TRUE(map.Exact);
+            EXPECT_TRUE(map.Protected);
+            protectedBytes += map.Source.End - map.Source.Begin;
+        }
+    }
+    EXPECT_EQ(protectedBytes, opaque.size());
+
+    // Proving a body boundary never grants edits to an immutable brace gap.
+    const auto brace = parser::SourceOffset(input.find(" { }"));
+    const parser::SourceRange immutable[] = {{brace, brace + 4}};
+    formatter::SourceAnalysisOptions protection;
+    protection.ImmutableRanges = immutable;
+    const auto protectedOutput = Lower(input, style, {}, protection).Text;
+    EXPECT_TRUE(protectedOutput.ends_with(")) { }\n")) << protectedOutput;
+    style.DeclarationHeadersLayout = formatter::CategoryLayout::Preserve;
+    const auto preserved = Lower(input, style).Text;
+    EXPECT_TRUE(preserved.ends_with(")) { }\n")) << preserved;
+}
+
 TEST(SyntaxLayout, MacroProtectionWinsOverBreakSpacingAndCommaActions)
 {
     auto style = Canonical(18);
