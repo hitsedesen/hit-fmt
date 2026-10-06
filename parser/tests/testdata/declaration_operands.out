@@ -976,4 +976,327 @@
     )
     ";"
   )
+  (function-declaration
+    (declaration-specifiers "auto")
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (declarator-name "pointer_return")
+          (function-declarator
+            (parameter-list "(" ")")
+            (trailing-return-type
+              "->" "int"
+              (abstract-declarator
+                (nested-declarator
+                  "("
+                  (pointer-operator "*")
+                  ")"
+                )
+                (function-declarator
+                  (parameter-list
+                    "("
+                    (parameter-declaration
+                      (declaration-specifiers "int")
+                    )
+                    (list-separator ",")
+                    (parameter-declaration
+                      (declaration-specifiers "long")
+                    )
+                    ")"
+                  )
+                )
+              )
+            )
+          )
+        )
+      )
+    )
+    ";"
+  )
+  (function-declaration
+    (declaration-specifiers "auto")
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (declarator-name "reference_return")
+          (function-declarator
+            (parameter-list "(" ")")
+            (trailing-return-type
+              "->" "int"
+              (abstract-declarator
+                (nested-declarator
+                  "("
+                  (pointer-operator "&")
+                  ")"
+                )
+                (function-declarator
+                  (parameter-list
+                    "("
+                    (parameter-declaration
+                      (declaration-specifiers "int")
+                    )
+                    (list-separator ",")
+                    (parameter-declaration
+                      (declaration-specifiers "long")
+                    )
+                    ")"
+                  )
+                )
+              )
+            )
+          )
+        )
+      )
+    )
+    ";"
+  )
+  (function-declaration
+    (declaration-specifiers "auto")
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (declarator-name "member_return")
+          (function-declarator
+            (parameter-list "(" ")")
+            (trailing-return-type
+              "->" "int"
+              (abstract-declarator
+                (nested-declarator
+                  "("
+                  (member-pointer-operator "Callable" "::" "*")
+                  ")"
+                )
+                (function-declarator
+                  (parameter-list
+                    "("
+                    (parameter-declaration
+                      (declaration-specifiers "int")
+                    )
+                    (list-separator ",")
+                    (parameter-declaration
+                      (declaration-specifiers "long")
+                    )
+                    ")"
+                  )
+                  (function-qualifier "const")
+                  (exception-specification "noexcept")
+                )
+              )
+            )
+          )
+        )
+      )
+    )
+    ";"
+  )
+  (function-declaration
+    (declaration-specifiers "auto")
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (declarator-name "wrapped_return")
+          (function-declarator
+            (parameter-list "(" ")")
+            (trailing-return-type
+              "->" "Wrapper"
+              (template-argument-list
+                "<"
+                (template-argument
+                  "int"
+                  (abstract-declarator
+                    (nested-declarator
+                      "("
+                      (pointer-operator "*")
+                      ")"
+                    )
+                    (function-declarator
+                      (parameter-list
+                        "("
+                        (parameter-declaration
+                          (declaration-specifiers "int")
+                        )
+                        (list-separator ",")
+                        (parameter-declaration
+                          (declaration-specifiers "long")
+                        )
+                        ")"
+                      )
+                    )
+                  )
+                )
+                ">"
+              )
+            )
+          )
+        )
+      )
+    )
+    ";"
+  )
+  (function-declaration
+    (declaration-specifiers "auto")
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (declarator-name "named_return")
+          (function-declarator
+            (parameter-list "(" ")")
+            (trailing-return-type
+              "->" "int"
+              (abstract-declarator
+                (nested-declarator
+                  "("
+                  (pointer-operator "*")
+                  ")"
+                )
+                (function-declarator
+                  (parameter-list
+                    "("
+                    (parameter-declaration
+                      (declaration-specifiers "int")
+                      (init-declarator-list
+                        (init-declarator
+                          (declarator
+                            (declarator-name "first")
+                          )
+                        )
+                      )
+                    )
+                    (list-separator ",")
+                    (parameter-declaration
+                      (declaration-specifiers "long")
+                      (init-declarator-list
+                        (init-declarator
+                          (declarator
+                            (declarator-name "second")
+                          )
+                        )
+                      )
+                    )
+                    ")"
+                  )
+                )
+              )
+            )
+          )
+        )
+      )
+    )
+    ";"
+  )
+  (function-declaration
+    (declaration-specifiers "auto")
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (declarator-name "included_return")
+          (function-declarator
+            (parameter-list "(" ")")
+            (trailing-return-type
+              "->" "Result"
+              (abstract-declarator
+                (nested-declarator
+                  "("
+                  (pointer-operator "*")
+                  ")"
+                )
+                (function-declarator
+                  (parameter-list
+                    "("
+                    (parameter-declaration
+                      (declaration-specifiers "First")
+                    )
+                    (list-separator ",")
+                    (parameter-declaration
+                      (declaration-specifiers "Second")
+                    )
+                    ")"
+                  )
+                )
+              )
+            )
+          )
+        )
+      )
+    )
+    ";"
+  )
+  (function-declaration
+    (declaration-specifiers "auto")
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (declarator-name "expression_argument")
+          (function-declarator
+            (parameter-list "(" ")")
+            (trailing-return-type
+              "->" "Fixed"
+              (template-argument-list
+                "<"
+                (template-argument "int" "(" "left" "*" "right" ")")
+                (list-separator ",")
+                (template-argument "7")
+                ">"
+              )
+            )
+          )
+        )
+      )
+    )
+    ";"
+  )
+  (using-declaration
+    "using" "FunctionPointer" "="
+    (type-id
+      "int"
+      (abstract-declarator
+        (nested-declarator
+          "("
+          (pointer-operator "*")
+          ")"
+        )
+        (function-declarator
+          (parameter-list
+            "("
+            (parameter-declaration
+              (declaration-specifiers "int")
+            )
+            (list-separator ",")
+            (parameter-declaration
+              (declaration-specifiers "long")
+            )
+            ")"
+          )
+        )
+      )
+    )
+    ";"
+  )
+  (using-declaration
+    "using" "FunctionReference" "="
+    (type-id
+      "int"
+      (abstract-declarator
+        (nested-declarator
+          "("
+          (pointer-operator "&")
+          ")"
+        )
+        (function-declarator
+          (parameter-list
+            "("
+            (parameter-declaration
+              (declaration-specifiers "int")
+            )
+            (list-separator ",")
+            (parameter-declaration
+              (declaration-specifiers "long")
+            )
+            ")"
+          )
+        )
+      )
+    )
+    ";"
+  )
 )

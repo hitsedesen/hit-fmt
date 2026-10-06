@@ -70,8 +70,9 @@ storage::Map<decltype(Invoke<FirstLongTemplateArgument,
     SecondLongTemplateArgument>(
         value)), ThirdLongTemplateArgument> computed;
 storage::Map<
-    int (*)(Pair<FirstLongTemplateArgument,
-        SecondLongTemplateArgument>),
+    int (*)(
+        Pair<FirstLongTemplateArgument,
+            SecondLongTemplateArgument>),
     ThirdLongTemplateArgument> callbacks;
 using ComparedAlias = decltype(left < right > tail);
 

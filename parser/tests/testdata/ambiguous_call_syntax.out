@@ -69,7 +69,20 @@
               (list-separator ",")
               (template-argument "Result")
               (list-separator ",")
-              (template-argument "Result" "(" "Owner" "::" "*" ")" "(" ")" "const")
+              (template-argument
+                "Result"
+                (abstract-declarator
+                  (nested-declarator
+                    "("
+                    (member-pointer-operator "Owner" "::" "*")
+                    ")"
+                  )
+                  (function-declarator
+                    (parameter-list "(" ")")
+                    (function-qualifier "const")
+                  )
+                )
+              )
               ">>"
             )
           )

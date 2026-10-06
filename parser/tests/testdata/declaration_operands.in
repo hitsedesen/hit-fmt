@@ -24,3 +24,12 @@ alignas(int*) int pointer_alignment;
 alignas(first_alignment+second_alignment+third_alignment+fourth_alignment+fifth_alignment) int combined_alignment;
 void local_alignment() { alignas(1<<4) int local; }
 int plain(const int& value);
+auto pointer_return() -> int (*)(int,long);
+auto reference_return() -> int (&)(int,long);
+auto member_return() -> int (Callable::*)(int,long) const noexcept;
+auto wrapped_return() -> Wrapper<int (*)(int,long)>;
+auto named_return() -> int (*)(int first,long second);
+auto included_return() -> Result (*)(First,Second);
+auto expression_argument() -> Fixed<int(left * right),7>;
+using FunctionPointer = int (*)(int,long);
+using FunctionReference = int (&)(int,long);
