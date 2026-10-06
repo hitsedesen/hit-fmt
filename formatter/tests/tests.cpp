@@ -392,6 +392,13 @@ std::vector<FormatCase> FormatCases()
             "../declaration-headers";
         const auto base = formatter::LoadConfigFile(
             directory / "../../../../.hit-fmt").FormattingStyle;
+        FormatCase fitting{
+            directory,
+            "fitting-prefix-rhs",
+            "fitting-prefix-rhs.input.cpp",
+        };
+        fitting.Style = base;
+        cases.push_back(std::move(fitting));
         for (const auto name :
             {
                 "assignment-prefix",
@@ -4758,8 +4765,8 @@ TEST_P(FormatTest, Golden)
     const auto config = value.Config.empty() ? value.Name : value.Config;
     const auto style = value.Style
         ? *value.Style
-        : formatter::LoadConfigFile(fixture.Directory / (config + ".hit-fmt"))
-            .FormattingStyle;
+        : formatter::LoadConfigFile(
+            fixture.Directory / (config + ".hit-fmt")).FormattingStyle;
     const auto input = fixture.Input(value.Input);
     if (value.Hunks.empty()) {
         const auto expected = value.Expected.empty()

@@ -2441,10 +2441,9 @@ TEST(PublicPipeline, EditScopeBraceInsertionRequiresBothOriginalPoints)
                     {
                         continue;
                     }
-                    const auto text = std::string_view(formatted.Text)
-                        .substr(
-                            map.Output.Begin,
-                            map.Output.End - map.Output.Begin);
+                    const auto text = std::string_view(formatted.Text).substr(
+                        map.Output.Begin,
+                        map.Output.End - map.Output.Begin);
                     opens += text == "{" && map.Original.Begin == begin;
                     closes += text == "}" && map.Original.Begin == end;
                 }

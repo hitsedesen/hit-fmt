@@ -5844,8 +5844,8 @@ TEST(Parser, TerminalConstructorTemplateIdsPreserveGroupedSelfTypeDeclarators)
     const auto tree =
         parser::Parse(input.View(), [&] (parser::ParseError) { ++errors; });
     EXPECT_EQ(errors, 0u);
-    size_t callbacks = 0, factories = 0, pointers = 0, constructors =
-        0, selfTypes = 0;
+    size_t callbacks = 0, factories = 0, pointers = 0, constructors = 0,
+        selfTypes = 0;
     std::vector<parser::TokenRange> parameters, groups;
     std::vector<const Node*> pending{&tree.Root()};
     while (!pending.empty()) {

@@ -81,6 +81,5 @@ void check_conditions() {
         first_condition_name && second_condition_name && third_condition_name;) {
         run();
     }
-    bool
-        result = first_condition_name && second_condition_name && third_condition_name;
+    bool result = first_condition_name && second_condition_name && third_condition_name;
 }

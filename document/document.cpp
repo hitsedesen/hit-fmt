@@ -494,6 +494,7 @@ GroupId Document::BeginGroup(GroupSpec spec, std::uint32_t elidedMarkers)
         Fail(Error::InvalidPolicy);
     }
     node.Group.ChildBreaks = spec.ChildBreaks;
+    node.Group.FitSuffixWidth = spec.FitSuffixWidth;
     if (spec.BreakPenalty > 3 || spec.FlatInBrokenParentPenalty > 3) {
         Fail(Error::InvalidPolicy);
     }
@@ -1538,7 +1539,11 @@ Result Document::Render(
     auto tailWidth = [&] (Measure tail) {
         return tail.Line ? tail.Prefix : AddWidth(tail.Prefix, frame.Tail);
     };
-    auto groupTail = [&] (const GroupCache& entry, std::uint8_t penalty) {
+    auto groupTail = [&] (const GroupData& group, const GroupCache& entry) {
+        if (group.FitSuffixWidth != InvalidId) {
+            return group.FitSuffixWidth;
+        }
+        const auto penalty = group.BreakPenalty;
         const auto width =
             tailWidth(frame.OwnedFlat ? entry.FlatTail : entry.BrokenTail);
         // Keep costly groups flat when a cheaper following group can break.
@@ -1641,7 +1646,7 @@ Result Document::Render(
         if (node.Type == Kind::Begin) {
             const GroupNode node{Group(Nodes_[i])};
             const auto& groupEntry = groupCache[node.Group.Reference];
-            const auto tail = groupTail(groupEntry, node.Group.BreakPenalty);
+            const auto tail = groupTail(node.Group, groupEntry);
             const bool mandatory = frame.Mandatory != InvalidId &&
                 frame.Mandatory >= i && frame.Mandatory <= node.Group.Match &&
                 lines == frame.StartLine;
@@ -2282,9 +2287,7 @@ Result Document::Render(
             !frame.Flat && !entry.Flat.Line && entry.Flat.CanBreak &&
             !fits(AddWidth(
                 entry.Flat.Width(),
-                groupTail(
-                    groupCache[Group(node).Reference],
-                    Group(node).BreakPenalty))))
+                groupTail(Group(node), groupCache[Group(node).Reference]))))
         {
             const GroupNode node{Group(Nodes_[i])};
             const auto& groupEntry = groupCache[node.Group.Reference];
@@ -2334,8 +2337,7 @@ Result Document::Render(
                 const auto savedLineIndent = lineIndent;
                 const auto savedLinePrefix = linePrefix;
                 const auto savedDepth = frames.size();
-                const auto tail =
-                    groupTail(groupEntry, node.Group.BreakPenalty);
+                const auto tail = groupTail(node.Group, groupEntry);
                 childLayoutBase = savedDepth;
                 childLayoutEnd = node.Group.Match;
                 std::size_t bestCost = 0;

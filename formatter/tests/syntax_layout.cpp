@@ -1895,10 +1895,9 @@ TEST(SyntaxLayout, RealizedExpressionLineRetainsChildContinuationBase)
                     if (map.Source.Identity != document::NoIdentity) {
                         continue;
                     }
-                    const auto text = std::string_view(output.Text)
-                        .substr(
-                            map.OutputBegin,
-                            map.OutputEnd - map.OutputBegin);
+                    const auto text = std::string_view(output.Text).substr(
+                        map.OutputBegin,
+                        map.OutputEnd - map.OutputBegin);
                     const auto prefixBegin = trimBegin + (trim ? 2 : 0);
                     const auto prefixEnd =
                         parentEnd - (selectParentIndent ? 8 : 0);

@@ -790,6 +790,30 @@ TEST(GroupLayout, FillSegmentDemandKeepsIndependentChildBreaks)
             actual += "$\n";
         }
     }
+    for (const auto suffix : {InvalidId, 0u, 2u}) {
+        for (const auto name : {"abc", "variable"}) {
+            Document document("");
+            document.Text("Type");
+            const auto prefix = document.BeginGroup({
+                .Mode = GroupMode::Fill,
+                .Indent = 4,
+                .FitSuffixWidth = suffix,
+            });
+            document.Gap();
+            document.Text(name);
+            document.EndGroup(prefix);
+            if (suffix == 0) {
+                document.Gap({GapKind::Hard, 0});
+                document.Text("= unbreakable_rhs;");
+            } else {
+                document.Text(" = unbreakable_rhs;");
+            }
+            ASSERT_TRUE(document.Seal());
+            actual += "prefix suffix=" + std::to_string(suffix) + " name=" +
+                name + ":\n";
+            AppendRender(actual, document, 14, "independent prefix fitting");
+        }
+    }
     test::golden::ExpectGolden(
         std::filesystem::path(DOCUMENT_TESTDATA_DIR) /
         "fill-segment-fit.expected",
@@ -844,15 +868,14 @@ TEST(GroupLayout, BoundedChildFittingGolden)
                     {GapKind::Soft, 0});
                 document.Text(".slice({");
                 const auto anchor = mode == 2
-                    ? document
-                        .MarkAnchor(
-                            {
-                                .Kind = document::AnchorKind::DelimiterColumn,
-                                .Fallback = 4,
-                                .Minimum = 4,
-                                .StructuralBase = true,
-                                .Continuation = true,
-                            })
+                    ? document.MarkAnchor(
+                        {
+                            .Kind = document::AnchorKind::DelimiterColumn,
+                            .Fallback = 4,
+                            .Minimum = 4,
+                            .StructuralBase = true,
+                            .Continuation = true,
+                        })
                     : document::InvalidId;
                 const auto arguments = document.BeginGroup({
                     .Mode = GroupMode::Fill,
@@ -1905,10 +1928,9 @@ TEST(GroupLayout, SourceCarriageReturnAndLocalGapNewlinesGolden)
                 mappedText(3),
                 !broken ? "" : global == Newline::CRLF ? "\n\t" : "\r\n\t");
             EXPECT_EQ(mappedText(6), global == Newline::CRLF ? "\r\n" : "\n");
-            const auto callText = std::string_view(output.Text)
-                .substr(
-                    output.Map[2].OutputBegin,
-                    output.Map[5].OutputEnd - output.Map[2].OutputBegin);
+            const auto callText = std::string_view(output.Text).substr(
+                output.Map[2].OutputBegin,
+                output.Map[5].OutputEnd - output.Map[2].OutputBegin);
             EXPECT_EQ(
                 callText.find_first_of("\r\n") != std::string_view::npos,
                 output.Broken[call] != 0);
@@ -3462,10 +3484,9 @@ TEST(GroupLayout, DecisionsDescribeActualMultilineAcrossNestedShapes)
         }
         EXPECT_EQ(mappedEnd, output.Text.size());
         for (std::size_t group = 0; group < output.Broken.size(); ++group) {
-            const auto view = std::string_view(output.Text)
-                .substr(
-                    boundaries[group * 2],
-                    boundaries[group * 2 + 1] - boundaries[group * 2]);
+            const auto view = std::string_view(output.Text).substr(
+                boundaries[group * 2],
+                boundaries[group * 2 + 1] - boundaries[group * 2]);
             EXPECT_EQ(
                 output.Broken[group] != 0,
                 view.find_first_of("\r\n") != std::string_view::npos)

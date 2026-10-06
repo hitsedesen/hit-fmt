@@ -2142,6 +2142,7 @@ private:
         if (initializer == None ||
             Region(Syntax_[initializer]).Kind != NodeKind::Initializer ||
             declaration == None ||
+            node.Tokens.Begin != Region(Syntax_[list]).Tokens.Begin ||
             (Region(Syntax_[declaration]).Kind != NodeKind::Declaration &&
                 Region(Syntax_[declaration]).Kind !=
                     NodeKind::DeclarationStatement) ||
@@ -2151,18 +2152,36 @@ private:
         {
             return;
         }
-        // Type lists keep their independent layout and indentation;
-        // only the declarator and its initializer share this level.
+        // Keep both the type and initializer outside the declarator group:
+        // adding a parent around the RHS changes its bounded layout search.
+        const auto end = Region(Syntax_[initializer]).Tokens.Begin;
+        if (end <= node.Tokens.Begin) {
+            return;
+        }
         const auto& indent = Policies_.Expressions.Indent;
         const auto group = GroupAt(
             GapPosition(node.Tokens.Begin),
-            GapPosition(node.Tokens.End),
+            GapPosition(end),
             document::GroupMode::Fill,
             int32_t(indent.ContinuationOffset),
             indent);
         Groups_[group].Spec.StructuralBase = true;
         Groups_[group].Spec.Continuation = true;
-        ProjectHeaderGaps(id, node.Tokens.Begin, node.Tokens.End, group);
+        const bool leading =
+            Policies_.Expressions.Layout == LayoutMode::Canonical
+            ? Tree_.Kind(end) == TokenKind::Operator_Assign &&
+                Policies_.Expressions.Assignment == OperatorSide::Leading &&
+                Policies_.Expressions.AssignmentRhs !=
+                    FirstItemPlacement::NextLine
+            : Safety_.Gaps()[end].HasLineFeed;
+        // Only the declarator and an attached initializer opener must fit.
+        // An unbreakable or preserved RHS must not move a fitting prefix.
+        Groups_[group].Spec.FitSuffixWidth = leading
+            ? 0
+            : AddWidth(
+                FlatWidth(end),
+                HorizontalColumns(Tree_.TokenText(end), Options_.TabWidth));
+        ProjectHeaderGaps(id, node.Tokens.Begin, end, group);
     }
 
     void ProjectHeaderGaps(Index id, Index begin, Index end, Index group)

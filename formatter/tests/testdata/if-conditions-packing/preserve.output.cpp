@@ -32,12 +32,14 @@ void check_conditions() {
             second_argument_name) && enabled) {
         run();
     }
-    if (auto value = create(left && right); value && ready &&
-        enabled) {
+    if (auto value =
+        create(left && right); value && ready && enabled) {
         run();
     }
-    if (auto value = left && right; value &&
-        first_condition_name && second_condition_name) {
+    if (auto value =
+        left &&
+            right; value && first_condition_name &&
+            second_condition_name) {
         run();
     }
     if (left_value > threshold && first_condition_name &&
