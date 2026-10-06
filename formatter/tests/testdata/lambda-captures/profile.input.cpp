@@ -16,6 +16,20 @@ void Make()
     }));
 }
 
+void WriteBatches()
+{
+    if (ready) {
+        auto pending = Bind([
+            bufferedItems,
+            createGuard = options->CreateBackgroundReadGuard,
+            batchWriter,
+            batchRange = partitionRanges[index]
+        ] {
+            batchWriter->Write(bufferedItems, batchRange, createGuard());
+        });
+    }
+}
+
 void BuildSelector()
 {
     auto selector = BindSelector(
