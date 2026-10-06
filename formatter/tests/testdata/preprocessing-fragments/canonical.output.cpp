@@ -112,7 +112,8 @@ void Parameters(
 #else
     double right,
 #endif
-    int common) { }
+    int common)
+{ }
 void PreserveSplitExpressions()
 {
     auto a =

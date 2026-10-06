@@ -876,11 +876,14 @@ FormatResult detail::FormatWithAnalysis(
         }
     }
     std::pmr::vector<GapId> reassembled(&scratch);
-    auto gaps = GeneratedGaps(*currentSafety,
+    auto gaps = GeneratedGaps(
+        *currentSafety,
         normalized
         ? std::span<const GeneratedAdjacency>(normalized->GeneratedAdjacencies)
         : std::span<const GeneratedAdjacency>{},
-        provenance, reassembled, scratch);
+        provenance,
+        reassembled,
+        scratch);
     options.GeneratedAdjacencies = gaps;
     options.ReassembledGaps = reassembled;
     document::Document document(tree->Source(), &file);

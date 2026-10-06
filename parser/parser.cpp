@@ -6829,6 +6829,11 @@ private:
         {
             return true;
         }
+        if (kind == TK::Operator_OpenBrace) {
+            // A braced initializer cannot be a comparison's right operand.
+            // Its cached pair proves the following argument boundary.
+            return ArgumentPairEnd(following, end).has_value();
+        }
         if (kind != TK::Operator_OpenParenthesis) {
             return false;
         }

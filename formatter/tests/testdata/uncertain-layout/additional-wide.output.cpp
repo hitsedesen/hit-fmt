@@ -28,6 +28,7 @@ Catalog::Catalog()
 
 int owner = 1, first = 2, second = 3;
 bool comparison = (owner<first,second>::Run());
-void Predicate<1 < 2,3>::Run() { }
+void Predicate<1 < 2,3>::Run()
+{ }
 void Predicate<(1 < 2), 3>::Run()
 { }

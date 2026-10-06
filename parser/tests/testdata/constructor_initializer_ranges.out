@@ -877,6 +877,251 @@
     )
     "}" ";"
   )
+  (function-definition
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          "Owned" "::"
+          (declarator-name "Owned")
+          (function-declarator
+            (parameter-list "(" ")")
+            (constructor-initializer-list
+              ":"
+              (constructor-initializer
+                (call-expression
+                  (identifier-expression "Value")
+                  (argument-list
+                    "("
+                    (argument
+                      (call-expression
+                        (unparsed-syntax "Build" "<" "const" "Schema" "::" "Key" ">")
+                        (argument-list
+                          "("
+                          (argument
+                            (literal-expression "0")
+                          )
+                          (list-separator ",")
+                          (argument
+                            (type-construction-expression
+                              (template-id-expression
+                                (identifier-expression "Set")
+                                (template-argument-list
+                                  "<"
+                                  (template-argument "Text")
+                                  ">"
+                                )
+                              )
+                              (braced-initializer
+                                (initializer-list
+                                  "{"
+                                  (initializer-element
+                                    (literal-expression "\"first\"")
+                                  )
+                                  (list-separator ",")
+                                  (initializer-element
+                                    (literal-expression "\"second\"")
+                                  )
+                                  "}"
+                                )
+                              )
+                            )
+                          )
+                          (list-separator ",")
+                          (argument
+                            (call-expression
+                              (member-expression
+                                (identifier-expression "Helper")
+                                "::"
+                                (template-id-expression
+                                  (identifier-expression "Create")
+                                  (template-argument-list
+                                    "<"
+                                    (template-argument "Owned")
+                                    ">"
+                                  )
+                                )
+                              )
+                              (argument-list "(" ")")
+                            )
+                          )
+                          ")"
+                        )
+                      )
+                    )
+                    ")"
+                  )
+                )
+              )
+            )
+          )
+        )
+      )
+    )
+    (compound-statement "{" "}")
+  )
+  (function-definition
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          "Owned" "::"
+          (declarator-name "Owned")
+          (function-declarator
+            (parameter-list
+              "("
+              (parameter-declaration
+                (declaration-specifiers "int")
+                (init-declarator-list
+                  (init-declarator
+                    (declarator
+                      (declarator-name "tag")
+                    )
+                  )
+                )
+              )
+              ")"
+            )
+            (constructor-initializer-list
+              ":"
+              (constructor-initializer
+                (call-expression
+                  (identifier-expression "Value")
+                  (argument-list
+                    "("
+                    (argument
+                      (call-expression
+                        (unparsed-syntax "Build" "<" "Unknown" ">")
+                        (argument-list
+                          "("
+                          (argument
+                            (type-construction-expression
+                              (template-id-expression
+                                (identifier-expression "Set")
+                                (template-argument-list
+                                  "<"
+                                  (template-argument "Text")
+                                  ">"
+                                )
+                              )
+                              (braced-initializer
+                                (initializer-list
+                                  "{"
+                                  (initializer-element
+                                    (literal-expression "\"first\"")
+                                  )
+                                  "}"
+                                )
+                              )
+                            )
+                          )
+                          (list-separator ",")
+                          (argument
+                            (type-construction-expression
+                              (template-id-expression
+                                (identifier-expression "Set")
+                                (template-argument-list
+                                  "<"
+                                  (template-argument "Text")
+                                  ">"
+                                )
+                              )
+                              (braced-initializer
+                                (initializer-list
+                                  "{"
+                                  (initializer-element
+                                    (literal-expression "\"second\"")
+                                  )
+                                  "}"
+                                )
+                              )
+                            )
+                          )
+                          (list-separator ",")
+                          (argument
+                            (identifier-expression "tag")
+                          )
+                          ")"
+                        )
+                      )
+                    )
+                    ")"
+                  )
+                )
+              )
+            )
+          )
+        )
+      )
+    )
+    (compound-statement "{" "}")
+  )
+  (function-definition
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          "Owned" "::"
+          (declarator-name "Owned")
+          (function-declarator
+            (parameter-list
+              "("
+              (parameter-declaration
+                (declaration-specifiers "char")
+                (init-declarator-list
+                  (init-declarator
+                    (declarator
+                      (declarator-name "tag")
+                    )
+                  )
+                )
+              )
+              ")"
+            )
+            (constructor-initializer-list
+              ":"
+              (constructor-initializer
+                (call-expression
+                  (identifier-expression "Value")
+                  (argument-list
+                    "("
+                    (argument
+                      (call-expression
+                        (unparsed-syntax "select" "<" "left" ">")
+                        (argument-list
+                          "("
+                          (argument
+                            (identifier-expression "right")
+                          )
+                          (list-separator ",")
+                          (argument
+                            (identifier-expression "other")
+                          )
+                          ")"
+                        )
+                      )
+                    )
+                    ")"
+                  )
+                )
+              )
+              (list-separator ",")
+              (constructor-initializer
+                (call-expression
+                  (identifier-expression "Ready")
+                  (argument-list
+                    "("
+                    (argument
+                      (literal-expression "true")
+                    )
+                    ")"
+                  )
+                )
+              )
+            )
+          )
+        )
+      )
+    )
+    (compound-statement "{" "}")
+  )
   (function-declaration
     (declaration-specifiers "auto")
     (init-declarator-list

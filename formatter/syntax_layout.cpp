@@ -2886,28 +2886,28 @@ private:
         Groups_[group].Spec.FixedBase = fixedBase;
         Groups_[group].Spec.LineBase =
             fixedBase == None && node.Kind == NodeKind::LambdaExpression;
-        if (canonical) {
-            Own(
-                opening,
-                group,
-                *brace == BracePlacement::NextLine
+        // Opaque header descendants do not change a separately proven body
+        // boundary. Keep their bytes exact without preserving its brace gap.
+        const bool canonicalBrace = (control
+            ? Policies_.ControlHeaders.Layout
+            : Policies_.DeclarationHeaders) == LayoutMode::Canonical &&
+            GapMutable(opening);
+        Own(
+            opening,
+            group,
+            !canonicalBrace
+            ? Boundary::Preserve
+            : *brace == BracePlacement::NextLine
                 ? Boundary::Hard
                 : *brace == BracePlacement::Attached && fixedBase == None
                     ? Boundary::Flat
                     : Boundary::Conditional,
-                document::GapKind::Hard,
-                true);
-            if (!macroFunction) {
-                ProjectHeaderGaps(id, node.Tokens.Begin, opening, group);
-            }
+            document::GapKind::Hard,
+            true);
+        if (canonical && !macroFunction) {
+            ProjectHeaderGaps(id, node.Tokens.Begin, opening, group);
         }
-        if (!canonical) {
-            Own(
-                opening,
-                group,
-                Boundary::Preserve,
-                document::GapKind::Flat,
-                true);
+        if (!canonicalBrace) {
             Reindent(opening, group, true);
         }
         if (bodyChild == None) {
