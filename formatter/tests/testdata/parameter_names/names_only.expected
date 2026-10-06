@@ -9,3 +9,5 @@
 18:8 [16-18]: function definition 'multiline', parameter #2
 21:16 [21-21]: function declaration 'arrays', parameter #1
 21:25 [21-21]: function declaration 'arrays', parameter #2
+23:27 [23-23]: function declaration 'missing_selector', parameter #1
+25:35 [25-25]: function definition 'defined_missing_selector', parameter #1

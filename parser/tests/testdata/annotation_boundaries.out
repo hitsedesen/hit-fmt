@@ -315,24 +315,32 @@
             "("
             (pointer-operator "*")
             (declarator-name "pointer")
-            "(" "int" "n" ")" ")"
+            (function-declarator
+              (parameter-list
+                "("
+                (parameter-declaration
+                  (declaration-specifiers "int")
+                  (init-declarator-list
+                    (init-declarator
+                      (declarator
+                        (declarator-name "n")
+                      )
+                    )
+                  )
+                )
+                ")"
+              )
+            )
+            ")"
           )
           (function-declarator
             (parameter-list
               "("
               (parameter-declaration
                 (declaration-specifiers "int")
-                (init-declarator-list
-                  (init-declarator
-                    (declarator
-                      (declarator-name "n")
-                    )
-                  )
-                )
               )
               ")"
             )
-            ")" "(" "int" ")"
           )
         )
       )

@@ -98,8 +98,8 @@
 178: & reference-declarator
 180: ) declaration-delimiter
 181: ) declaration-delimiter
-182: ( generic
-184: ) generic
+182: ( declaration-delimiter
+184: ) declaration-delimiter
 185: ; generic
 187: ( declaration-delimiter
 188: * pointer-declarator

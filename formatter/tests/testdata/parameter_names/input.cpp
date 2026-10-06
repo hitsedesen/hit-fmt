@@ -19,3 +19,7 @@ void multiline(
 {
 }
 void arrays(int [3], int = 1);
+int (*make_callback(int index))(int);
+int (*missing_selector(int))(int result);
+int (*defined_callback(int index))(int) { return nullptr; }
+int (*defined_missing_selector(int))(int result) { return nullptr; }

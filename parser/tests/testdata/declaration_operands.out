@@ -502,25 +502,33 @@
             "("
             (pointer-operator "*")
             (declarator-name "select")
-            "(" "const" "int" "&" "value" ")" ")"
+            (function-declarator
+              (parameter-list
+                "("
+                (parameter-declaration
+                  (declaration-specifiers "const" "int")
+                  (init-declarator-list
+                    (init-declarator
+                      (declarator
+                        (pointer-operator "&")
+                        (declarator-name "value")
+                      )
+                    )
+                  )
+                )
+                ")"
+              )
+            )
+            ")"
           )
           (function-declarator
             (parameter-list
               "("
               (parameter-declaration
-                (declaration-specifiers "const" "int")
-                (init-declarator-list
-                  (init-declarator
-                    (declarator
-                      (pointer-operator "&")
-                      (declarator-name "value")
-                    )
-                  )
-                )
+                (declaration-specifiers "int")
               )
               ")"
             )
-            ")" "(" "int" ")"
           )
         )
       )
