@@ -1756,10 +1756,10 @@ std::vector<FormatCase> FormatCases()
             auto style = formatter::LoadConfigFile(
                 callReflow / "comment-elements.hit-fmt").FormattingStyle;
             style.Layout = layout;
-            style.ArgumentLabelCommentSpacing = formatter::LoadConfigFile(
+            style.ArgumentCommentSpacing = formatter::LoadConfigFile(
                 callReflow /
                 (std::string(config) +
-                    ".hit-fmt")).FormattingStyle.ArgumentLabelCommentSpacing;
+                    ".hit-fmt")).FormattingStyle.ArgumentCommentSpacing;
             cases.back().Style = std::move(style);
         }
     }

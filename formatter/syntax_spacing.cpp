@@ -441,12 +441,12 @@ public:
                 if (parent && parent->Kind == NK::ArgumentList &&
                     !state.KeywordOperands && !state.UncertainOperands)
                 {
-                    ArgumentLabel(node, *parent, C::Calls);
+                    ArgumentComments(node, *parent, C::Calls);
                 }
                 break;
             case NK::InitializerElement:
                 if (parent && parent->Kind == NK::InitializerList) {
-                    ArgumentLabel(node, *parent, C::Initializers);
+                    ArgumentComments(node, *parent, C::Initializers);
                 }
                 break;
             case NK::ParameterList: {
@@ -1555,7 +1555,7 @@ public:
     }
 
 private:
-    void ArgumentLabel(
+    void ArgumentComments(
         const SourceRegion& node,
         const SourceRegion& list,
         C category)
@@ -1563,26 +1563,48 @@ private:
         if (node.Status != RegionStatus::Complete) {
             return;
         }
+        const auto separator = [&] (TI token) {
+            return Tree_.Kind(token) == TK::Operator_Comma &&
+                Tree_.Role(token) == PR::ListSeparator;
+        };
+        const auto markRun = [&] (TI first, TI last) {
+            for (auto gap = first + 1; gap < last; ++gap) {
+                if (Tree_.TokenText(gap - 1).starts_with("/*") &&
+                    Tree_.TokenText(gap).starts_with("/*"))
+                {
+                    Mark(gap, F::ArgumentCommentSpacing, list, category, 4);
+                }
+            }
+        };
+        // Own the argument-facing gap and gaps between consecutive block
+        // comments in its attached runs, but not separator-facing gaps.
         const auto begin = node.Tokens.Begin;
         auto prefix = begin;
         while (prefix > list.Tokens.Begin + 1 &&
             Tree_.Kind(prefix - 1) == TK::Comment)
         {
-            if (!Tree_.TokenText(prefix - 1).starts_with("/*")) {
-                return;
-            }
             --prefix;
         }
-        if (prefix == begin ||
-            (prefix != list.Tokens.Begin + 1 &&
-                (Tree_.Kind(prefix - 1) != TK::Operator_Comma ||
-                    Tree_.Role(prefix - 1) != PR::ListSeparator)))
+        if (prefix < begin &&
+            (prefix == list.Tokens.Begin + 1 || separator(prefix - 1)))
         {
-            return;
+            markRun(prefix, begin);
+            if (Tree_.TokenText(begin - 1).starts_with("/*")) {
+                Mark(begin, F::ArgumentCommentSpacing, list, category, 4);
+            }
         }
-        // Only the link from a block-comment prefix to its item is owned.
-        // Comment interiors, inter-comment gaps and suffixes stay separate.
-        Mark(begin, F::ArgumentLabelCommentSpacing, list, category, 4);
+        const auto end = node.Tokens.End;
+        const auto closer = list.Tokens.End - 1;
+        auto suffix = end;
+        while (suffix < closer && Tree_.Kind(suffix) == TK::Comment) {
+            ++suffix;
+        }
+        if (suffix > end && (suffix == closer || separator(suffix))) {
+            markRun(end, suffix);
+            if (Tree_.TokenText(end).starts_with("/*")) {
+                Mark(end, F::ArgumentCommentSpacing, list, category, 4);
+            }
+        }
     }
 
     void Capture(const SourceRegion& node, const SourceRegion* parent)

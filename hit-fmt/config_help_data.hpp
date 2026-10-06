@@ -138,9 +138,13 @@ constexpr HelpExample GapExamples[] = {
         "spacing:",
         R"(FunctionSpaceBeforeParameters = NoSpace
 ControlBlockKeywordSpacing = Space
-ArgumentLabelCommentSpacing = Space
-# consume(/* range */ {first, last}); also spaces /* value */ value.
-# NoSpace joins /* range */{first, last}; Preserve is the default.
+ArgumentCommentSpacing = Space
+# consume(/* range */ {first, last} /* note */, /* value */ value);
+# Spaces between arguments and their leading/trailing block comments,
+# and between consecutive block comments in those attached runs.
+# Space: consume(/* first */ /* second */ value /* note */);
+# NoSpace: consume(/* first *//* second */value/* note */);
+# Preserve is the default; separator-facing gaps stay independent.
 CommaSpaceBefore = NoSpace
 CommaSpaceAfter = Space
 EmptyBlockInteriorSpacing = GeneratedNoSpace
@@ -416,13 +420,18 @@ constexpr HelpSection HelpSections[] = {
         "lexical separation. ScopeResolutionSpacing controls qualified :: "
         "edges, not the gap before a leading global ::. "
         "BraceInitializerSpacing controls the gap before an initializer's {, "
-        "except immediately after a comment. ArgumentLabelCommentSpacing "
-        "controls the horizontal gap after the last leading block comment "
-        "of a parsed call argument or braced initializer element, before any "
-        "kind of value. It defaults to Preserve; Space and NoSpace force "
-        "one or zero spaces, while Generated* applies only when that item's "
-        "list owner is rebuilt. Comment interiors, gaps between comments, "
-        "suffix comments, and mixed block/line-comment prefixes are excluded. "
+        "except immediately after a comment. ArgumentCommentSpacing "
+        "controls the horizontal gap between a parsed call argument or "
+        "braced initializer element and its leading or trailing block "
+        "comments: after the last leading comment and before the first "
+        "trailing comment, for any kind of value. It also controls gaps "
+        "between consecutive block comments in those attached runs. "
+        "It defaults to Preserve; "
+        "Space and NoSpace force one or zero spaces, while Generated* applies "
+        "only when that item's list owner is rebuilt. Comment interiors, "
+        "separator-facing gaps, and argument-facing "
+        "line comments are excluded. Mixed runs can still normalize "
+        "block-to-block and block-to-argument gaps. "
         "Existing newlines and protected or uncertain syntax stay preserved. "
         "Lexical safety and comment boundaries "
             "override spacing. Use --generate-config "

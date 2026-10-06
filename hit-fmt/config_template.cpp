@@ -139,17 +139,20 @@ void PrintOption(std::ostream& output, std::string_view name, const T& value)
     } else if (name == "BraceInitializerSpacing") {
         output
             << "# Gap before an initializer's {, except after a comment.\n"
-                "# ArgumentLabelCommentSpacing controls label-to-value gaps.\n";
-    } else if (name == "ArgumentLabelCommentSpacing") {
+                "# ArgumentCommentSpacing controls comment-to-value gaps.\n";
+    } else if (name == "ArgumentCommentSpacing") {
         output
-            << "# After the last leading block comment of a call argument\n"
-                "# or braced initializer element, before any kind of value.\n"
-                "# Space: consume(/* range */ {first, last});\n"
-                "# NoSpace: consume(/* range */{first, last});\n"
+            << "# Between a call argument or braced initializer element and\n"
+                "# its leading/trailing block comments, for any value kind.\n"
+                "# After the last leading and before the first trailing one,\n"
+                "# and between consecutive block comments in attached runs.\n"
+                "# Space: consume(/* first */ /* second */ value /* note */);\n"
+                "# NoSpace: consume(/* first *//* second */value/* note */);\n"
                 "# Preserve keeps horizontal spelling (the default).\n"
                 "# Generated* applies when the owning list is rebuilt.\n"
-                "# Newlines, suffixes, mixed block/line prefixes, comment\n"
-                "# interiors, inter-comment gaps and protections stay put.\n";
+                "# Only block-to-block and block-to-argument gaps qualify.\n"
+                "# Newlines, line comments, interiors, separator-facing gaps\n"
+                "# and protections stay put.\n";
     } else if (name == "TemplateTypeArgumentInteriorSpacing") {
         output << "# NoSpace may join confirmed template closers as >>.\n";
     } else if (name == "ScopeResolutionSpacing") {

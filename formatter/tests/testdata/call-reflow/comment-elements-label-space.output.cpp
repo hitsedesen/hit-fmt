@@ -1,3 +1,9 @@
+void configured(
+    /* first parameter */ int alpha,
+    /* second parameter */ int beta
+) {
+}
+
 void demo() {
     consume( // first argument
         alpha,
@@ -32,13 +38,14 @@ void demo() {
     );
     auto prefixes = consume(
         alpha,
-        /* first */  /* second */ beta,
+        /* first */ /* second */ beta,
         gamma
     );
-    consume(/* range */ {
-        first,
-        last
-    },
+    consume(
+        /* range */ {
+            first,
+            last
+        },
         /* empty */ {},
         /* scalar */ value
     );
@@ -50,15 +57,17 @@ void demo() {
         },
         gamma
     );
-    consume(/* tight */ {
-        first,
-        last
-    }
+    consume(
+        /* tight */ {
+            first,
+            last
+        }
     );
-    consume(/* type */ Range{
-        first,
-        last
-    }
+    consume(
+        /* type */ Range{
+            first,
+            last
+        }
     );
     consume(
         Range /* suffix */ {
@@ -70,13 +79,16 @@ void demo() {
         first,
         last
     });
-    consume(/* outer */ {/* inner */ {
-            first,
-            last
+    consume(
+        /* outer */ {
+            /* inner */ {
+                first,
+                last
+            }
         }
-    }
     );
-    auto labeled = {/* range */ {
+    auto labeled = {
+        /* range */ {
             first,
             last
         },
@@ -95,12 +107,61 @@ void demo() {
         beta,
         gamma
     );
+    consume(
+        /* leading */ value /* trailing */,
+        alpha /* first */ /* second */);
+    consume(
+        {
+            first,
+            last
+        } /* range */,
+        Range{
+            first,
+            last
+        } /* typed */);
+    auto notes = {
+        /* leading */ {
+            first,
+            last
+        } /* trailing */,
+        value /* item */};
+    consume(
+        value /* multiline
+    suffix */);
+    consume(
+        value
+        /* newline suffix */);
+    consume(
+        value /* mixed block */ // mixed line
+    );
+    consume(// leading line
+        /* leading block */ value
+    );
+    (opaque)(value /* uncertain suffix */);
     auto nestedComma = consume(
         (alpha, /* expression */ beta),
         gamma
     );
     auto trailingBlock = {
         alpha, /* no next item */};
+    consume(
+        /* first */ alpha,
+        /* second */ beta
+    );
+    consume(
+        /* first */ /* label */ alpha,
+        beta
+    );
+    auto firstPrefix = {
+        /* first */ alpha,
+        beta
+    };
+    consume(/* mixed */ // stays with opening
+        alpha,
+        beta
+    );
+    consume(/* no argument */);
+    auto empty = {/* no element */};
     consume(
         alpha, // trailing comment
         beta /* closer comment */
@@ -113,7 +174,8 @@ void demo() {
         z
     };
     // clang-format off
-    consume(/* protected */ {first, last});
+    consume(/* protected prefix */ alpha, beta);
+    consume(/* protected */ {first, last} /* protected suffix */);
     consume(alpha, // protected argument
   beta);
     // clang-format on

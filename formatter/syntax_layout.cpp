@@ -1294,11 +1294,7 @@ private:
                 Reindent(closer, group, true);
             }
         }
-        OwnCommentLinks(
-            begin + 1,
-            group,
-            closer,
-            canonical ? Syntax_[id].Region : NoRegion);
+        OwnCommentLinks(begin + 1, group, closer);
         const auto* header = node.Kind == NodeKind::BaseClause
             ? &Policies_.BaseLists
             : &Policies_.ConstructorLists;
@@ -1350,6 +1346,29 @@ private:
                     part.Tokens.Begin > begin && part.Tokens.End <= closer)
                 {
                     lastItem = child;
+                    // Comment topology stays preserved, but spacing owned by
+                    // this list follows its layout throughout attached runs.
+                    const auto spacingContext = [&] (Index gap) {
+                        if (Spacing_.Gaps()[gap].Owner == Syntax_[id].Region) {
+                            Gaps_[gap].Context = canonical
+                                ? GapContext::Rebuilt
+                                : GapContext::Preserved;
+                            Gaps_[gap].ContextKnown = true;
+                        }
+                    };
+                    auto gap = part.Tokens.Begin;
+                    spacingContext(gap);
+                    while (gap > begin + 1 &&
+                        Tree_.Kind(gap - 1) == TokenKind::Comment)
+                    {
+                        spacingContext(--gap);
+                    }
+                    for (gap = part.Tokens.End;
+                        gap < closer && Tree_.Kind(gap) == TokenKind::Comment;
+                        ++gap)
+                    {
+                        spacingContext(gap);
+                    }
                 }
                 continue;
             }
@@ -1378,11 +1397,7 @@ private:
                 }
                 Reindent(t, group);
             }
-            OwnCommentLinks(
-                t + 1,
-                group,
-                closer,
-                canonical ? Syntax_[id].Region : NoRegion);
+            OwnCommentLinks(t + 1, group, closer);
         }
         // Control headers can represent their semicolons as direct punctuation,
         // not ListSeparator children. Walk only disjoint direct-token spans.
@@ -1526,11 +1541,7 @@ private:
 
     // Carry the boundary's indentation through trivia without reflowing its
     // links. The end gap belongs to the list closer, not its next item.
-    void OwnCommentLinks(
-        Index begin,
-        Index owner,
-        Index end,
-        RegionId rebuiltSpacingOwner = NoRegion)
+    void OwnCommentLinks(Index begin, Index owner, Index end)
     {
         for (auto token = begin;
             token < Tree_.TokenCount() && token + 1 < end &&
@@ -1538,13 +1549,6 @@ private:
             ++token)
         {
             Own(token + 1, owner, Boundary::Preserve);
-            // Retain comment topology while rebuilding spacing explicitly
-            // classified as a property of this canonical list owner.
-            if (rebuiltSpacingOwner != NoRegion &&
-                Spacing_.Gaps()[token + 1].Owner == rebuiltSpacingOwner)
-            {
-                Gaps_[token + 1].Context = GapContext::Rebuilt;
-            }
             Reindent(token + 1, owner);
         }
     }

@@ -652,7 +652,10 @@
 728 before=compute field=BlockInteriorSpacing owner=compound-statement category=11 priority=2 fallback=1 protected=0 constraint=0
 729 before=( field=FunctionCallSpaceBeforeParameters owner=call-expression category=1 priority=2 fallback=0 protected=0 constraint=0
 730 before=/* next */ field=SpaceInsideCallArguments owner=call-expression category=1 priority=2 fallback=0 protected=0 constraint=0
-731 before=second field=ArgumentLabelCommentSpacing owner=argument-list category=1 priority=4 fallback=0 protected=0 constraint=0
-732 before=) field=SpaceInsideCallArguments owner=call-expression category=1 priority=2 fallback=0 protected=0 constraint=0
-733 before=; field=StatementSemicolonSpacing owner=expression-statement category=11 priority=2 fallback=0 protected=0 constraint=0
-734 before=} field=BlockInteriorSpacing owner=compound-statement category=11 priority=2 fallback=1 protected=0 constraint=0
+731 before=/* another */ field=ArgumentCommentSpacing owner=argument-list category=1 priority=4 fallback=0 protected=0 constraint=0
+732 before=second field=ArgumentCommentSpacing owner=argument-list category=1 priority=4 fallback=0 protected=0 constraint=0
+733 before=/* previous */ field=ArgumentCommentSpacing owner=argument-list category=1 priority=4 fallback=0 protected=0 constraint=0
+734 before=/* final */ field=ArgumentCommentSpacing owner=argument-list category=1 priority=4 fallback=0 protected=0 constraint=0
+735 before=) field=SpaceInsideCallArguments owner=call-expression category=1 priority=2 fallback=0 protected=0 constraint=0
+736 before=; field=StatementSemicolonSpacing owner=expression-statement category=11 priority=2 fallback=0 protected=0 constraint=0
+737 before=} field=BlockInteriorSpacing owner=compound-statement category=11 priority=2 fallback=1 protected=0 constraint=0

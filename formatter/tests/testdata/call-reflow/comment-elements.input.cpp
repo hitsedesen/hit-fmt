@@ -35,6 +35,18 @@ void demo() {
     auto mixed = consume(alpha, /* prefix */ // stays with alpha
         beta, gamma);
     auto suffix = consume(alpha /* belongs to alpha */, beta, gamma);
+    consume(/* leading */value/* trailing */, alpha /* first */  /* second */);
+    consume({first, last} /* range */, Range{first, last}/* typed */);
+    auto notes = {/* leading */{first, last}/* trailing */, value /* item */};
+    consume(value /* multiline
+        suffix */);
+    consume(value
+        /* newline suffix */);
+    consume(value /* mixed block */ // mixed line
+    );
+    consume(// leading line
+        /* leading block */value);
+    (opaque)(value /* uncertain suffix */);
     auto nestedComma = consume((alpha, /* expression */ beta), gamma);
     auto trailingBlock = {alpha, /* no next item */};
     consume(/* first */ alpha, /* second */ beta);
@@ -53,7 +65,7 @@ void demo() {
  z};
     // clang-format off
     consume(/* protected prefix */ alpha, beta);
-    consume(/* protected */ {first, last});
+    consume(/* protected */ {first, last} /* protected suffix */);
     consume(alpha, // protected argument
   beta);
     // clang-format on

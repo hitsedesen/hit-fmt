@@ -41,10 +41,11 @@ void demo() {
         /* first */  /* second */	beta,
         gamma
     );
-    consume(/* range */ {
-        first,
-        last
-    },
+    consume(
+        /* range */ {
+            first,
+            last
+        },
         /* empty */ {},
         /* scalar */ value
     );
@@ -56,15 +57,17 @@ void demo() {
         },
         gamma
     );
-    consume(/* tight */{
-        first,
-        last
-    }
+    consume(
+        /* tight */{
+            first,
+            last
+        }
     );
-    consume(/* type */ Range{
-        first,
-        last
-    }
+    consume(
+        /* type */ Range{
+            first,
+            last
+        }
     );
     consume(
         Range /* suffix */ {
@@ -76,13 +79,16 @@ void demo() {
         first,
         last
     });
-    consume(/* outer */ {/* inner */ {
-            first,
-            last
+    consume(
+        /* outer */ {
+            /* inner */ {
+                first,
+                last
+            }
         }
-    }
     );
-    auto labeled = {/* range */ {
+    auto labeled = {
+        /* range */ {
             first,
             last
         },
@@ -101,6 +107,37 @@ void demo() {
         beta,
         gamma
     );
+    consume(
+        /* leading */value/* trailing */,
+        alpha /* first */  /* second */);
+    consume(
+        {
+            first,
+            last
+        } /* range */,
+        Range{
+            first,
+            last
+        }/* typed */);
+    auto notes = {
+        /* leading */{
+            first,
+            last
+        }/* trailing */,
+        value /* item */};
+    consume(
+        value /* multiline
+    suffix */);
+    consume(
+        value
+        /* newline suffix */);
+    consume(
+        value /* mixed block */ // mixed line
+    );
+    consume(// leading line
+        /* leading block */value
+    );
+    (opaque)(value /* uncertain suffix */);
     auto nestedComma = consume(
         (alpha, /* expression */ beta),
         gamma
@@ -138,7 +175,7 @@ void demo() {
     };
     // clang-format off
     consume(/* protected prefix */ alpha, beta);
-    consume(/* protected */ {first, last});
+    consume(/* protected */ {first, last} /* protected suffix */);
     consume(alpha, // protected argument
   beta);
     // clang-format on

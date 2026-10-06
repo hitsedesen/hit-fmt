@@ -4,7 +4,7 @@
 #define FORMATTER_GAP_OPTIONS(OPT)                                            \
     OPT(formatter::GapPolicy, TrailingCommentSpacing, \
         formatter::GapPolicy::Preserve) \
-    OPT(formatter::GapPolicy, ArgumentLabelCommentSpacing, \
+    OPT(formatter::GapPolicy, ArgumentCommentSpacing, \
         formatter::GapPolicy::Preserve) \
     OPT(formatter::GapPolicy, NamedCastSpaceBeforeOperandParentheses, \
         formatter::GapPolicy::Preserve) \

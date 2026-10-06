@@ -1,3 +1,5 @@
+void configured(/* first parameter */ int alpha, /* second parameter */ int beta) {}
+
 void demo() {
     consume( // first argument
         alpha,
@@ -5,7 +7,7 @@ void demo() {
         gamma,
         /* block prefix */
         delta,
-        /* adjacent */ /* comments */
+        /* adjacent *//* comments */
         epsilon);
     auto values = { // first element
         alpha,
@@ -13,7 +15,7 @@ void demo() {
         gamma,
         /* block prefix */
         delta,
-        /* adjacent */ /* comments */
+        /* adjacent *//* comments */
         epsilon};
     consume(alpha, // first comment
         // second comment
@@ -21,7 +23,7 @@ void demo() {
     auto trailing = {alpha, // trailing comma comment
     };
     consume(alpha, /* inline */beta, gamma);
-    auto prefixes = consume(alpha, /* first */  /* second */beta, gamma);
+    auto prefixes = consume(alpha, /* first *//* second */beta, gamma);
     consume(/* range */{first, last}, /* empty */{}, /* scalar */value);
     consume(alpha, /* range */{positions.begin(), positions.end()}, gamma);
     consume(/* tight */{first, last});
@@ -32,18 +34,38 @@ void demo() {
     auto labeled = {/* range */{first, last}, /* tight */{first, last}};
     auto mixed = consume(alpha, /* prefix */ // stays with alpha
         beta, gamma);
-    auto suffix = consume(alpha /* belongs to alpha */, beta, gamma);
+    auto suffix = consume(alpha/* belongs to alpha */, beta, gamma);
+    consume(/* leading */value/* trailing */, alpha/* first *//* second */);
+    consume({first, last}/* range */, Range{first, last}/* typed */);
+    auto notes = {/* leading */{first, last}/* trailing */, value/* item */};
+    consume(value/* multiline
+       suffix */);
+    consume(value
+        /* newline suffix */);
+    consume(value/* mixed block */ // mixed line
+    );
+    consume(// leading line
+        /* leading block */value);
+    (opaque)(value /* uncertain suffix */);
     auto nestedComma = consume((alpha, /* expression */ beta), gamma);
     auto trailingBlock = {alpha, /* no next item */};
+    consume(/* first */alpha, /* second */beta);
+    consume(/* first *//* label */alpha, beta);
+    auto firstPrefix = {/* first */alpha, beta};
+    consume(/* mixed */ // stays with opening
+        alpha, beta);
+    consume(/* no argument */);
+    auto empty = {/* no element */};
     consume(alpha, // trailing comment
-        beta /* closer comment */
+        beta/* closer comment */
     );
     auto nested = {consume( // nested argument
             x,
             y), // nested element
         z};
     // clang-format off
-    consume(/* protected */ {first, last});
+    consume(/* protected prefix */ alpha, beta);
+    consume(/* protected */ {first, last} /* protected suffix */);
     consume(alpha, // protected argument
   beta);
     // clang-format on
