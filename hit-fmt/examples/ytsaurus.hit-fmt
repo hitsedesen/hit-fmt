@@ -86,8 +86,9 @@ StatementAttributeIndent = Block
 NamespaceComments = Fix
 # Paired header first, then yt, library, util and contrib groups in that order.
 # Merge yt source/protobuf headers into corresponding depth-one subgroups.
-# Within yt, core/client/server/etc. sort nearest first; paths inside each
-# subgroup sort alphabetically, including deeper directories and aliases.
+# Within yt, core/client/server/etc. sort nearest first. Inside each subgroup,
+# full resolved directories sort nearest first, with alphabetical path ties.
+# Aliases merge groups but retain literal directory distances inside them.
 # Pass project-relative input filenames so directory distances share that root.
 IncludeOrder = Sort
 IncludeMatchingHeader = First
@@ -100,6 +101,7 @@ IncludeGroups = [
     { Prefix = "contrib/libs/", Depth = 1 }
 ]
 IncludeDirectoryOrder = NearestFirst
+IncludeInGroupOrder = NearestFirst
 IncludePathBase = ProjectRoot
 IncludeStandardHeaders = Last
 AddMissingControlBraces = true

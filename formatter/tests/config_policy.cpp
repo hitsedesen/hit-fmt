@@ -1051,7 +1051,8 @@ TEST(ConfigPolicy, StagedOptionsResolveFinalInheritanceAndOwnScalarSnapshot)
         "{Prefix = \"engine/detail/\", Depth = 1}]\n"
         "IncludeGroupOrder = Configured\n"
         "IncludeDirectoryOrder = Alphabetical\n"
-        "IncludePathBase = ProjectRoot\n" "IncludeStandardHeaders = Last\n");
+        "IncludeInGroupOrder = NearestFirst\n" "IncludePathBase = ProjectRoot\n"
+        "IncludeStandardHeaders = Last\n");
     auto style = formatter::LoadConfigFile(config.Path).FormattingStyle;
     const auto policies = formatter::CompilePolicies(style);
     EXPECT_EQ(
@@ -1083,6 +1084,13 @@ TEST(ConfigPolicy, StagedOptionsResolveFinalInheritanceAndOwnScalarSnapshot)
     const formatter::PreparedFormat prepared(style);
     style.IncludeGroups.clear();
     style.IncludeGroupOrder = formatter::IncludeGroupOrder::Directory;
+    style.IncludeInGroupOrder = formatter::IncludeInGroupOrder::Alphabetical;
+    EXPECT_EQ(
+        policies.Includes.InGroupOrder,
+        formatter::IncludeInGroupOrder::NearestFirst);
+    EXPECT_EQ(
+        prepared.Structural.InGroupOrder,
+        formatter::IncludeInGroupOrder::NearestFirst);
     EXPECT_EQ(
         policies.Includes.GroupOrder,
         formatter::IncludeGroupOrder::Configured);
@@ -1199,6 +1207,16 @@ TEST(ConfigPolicy, IncludeGroupingCapsValidateBeforePreparation)
     EXPECT_THROW(
         (void)formatter::PreparedFormat(invalidOrder),
         std::invalid_argument);
+    formatter::Style invalidInGroupOrder;
+    invalidInGroupOrder.IncludeInGroupOrder =
+        static_cast<formatter::IncludeInGroupOrder>(255);
+    EXPECT_THROW(
+        (void)formatter::PreparedFormat(invalidInGroupOrder),
+        std::invalid_argument);
+    const TemporaryConfig badInGroupOrder("IncludeInGroupOrder = Reverse\n");
+    EXPECT_THROW(
+        (void)formatter::LoadConfigFile(badInGroupOrder.Path),
+        std::runtime_error);
     formatter::Style invalidBase;
     invalidBase.IncludePathBase = static_cast<formatter::IncludePathBase>(255);
     EXPECT_THROW(

@@ -704,6 +704,7 @@ PreparedFormat::PreparedFormat(const Style& style)
         style.IncludeGrouping,
         style.IncludeGroupOrder,
         style.IncludeDirectoryOrder,
+        style.IncludeInGroupOrder,
         style.IncludePathBase,
         style.IncludeStandardHeaders,
     }

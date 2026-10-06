@@ -171,6 +171,7 @@ struct IncludePolicy
     IncludeGrouping Grouping;
     IncludeGroupOrder GroupOrder;
     IncludeDirectoryOrder DirectoryOrder;
+    IncludeInGroupOrder InGroupOrder;
     IncludePathBase PathBase;
     IncludeStandardHeaders StandardHeaders;
 };

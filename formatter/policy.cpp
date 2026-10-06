@@ -280,6 +280,11 @@ void ValidatePolicyStyle(const Style& style)
     {
         throw std::invalid_argument("IncludeDirectoryOrder has invalid value");
     }
+    if (static_cast<std::size_t>(style.IncludeInGroupOrder) >=
+        ConfigEnumNames<IncludeInGroupOrder>::Values.size())
+    {
+        throw std::invalid_argument("IncludeInGroupOrder has invalid value");
+    }
     if (static_cast<std::size_t>(style.IncludePathBase) >=
         ConfigEnumNames<IncludePathBase>::Values.size())
     {
@@ -448,7 +453,8 @@ CompiledPolicies CompilePolicies(const Style& style)
         .RulerBlankLinesAfter = CompileBlankLines(style.RulerBlankLinesAfter),
         .Includes = {style.IncludeMatchingHeader, style.IncludeGrouping,
             style.IncludeGroupOrder, style.IncludeDirectoryOrder,
-            style.IncludePathBase, style.IncludeStandardHeaders},
+            style.IncludeInGroupOrder, style.IncludePathBase,
+            style.IncludeStandardHeaders},
     };
 }
 
