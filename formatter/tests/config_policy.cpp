@@ -115,6 +115,9 @@ TEST(ConfigPolicy, CompilesCategoryInheritanceWithoutSourceOwnedSentinels)
     EXPECT_EQ(policies.Calls.Indent.FallbackOffset, 2u);
     EXPECT_EQ(policies.Parameters.Indent.ContinuationOffset, 3u);
     EXPECT_EQ(policies.ControlHeaders.Indent.FallbackOffset, 6u);
+    EXPECT_EQ(
+        policies.IfConditionsPacking,
+        formatter::ListPacking::VerticalWhenBroken);
     EXPECT_EQ(policies.Bodies.Layout, formatter::LayoutMode::Preserve);
     EXPECT_EQ(policies.LambdaBodies.Layout, formatter::LayoutMode::Preserve);
     EXPECT_EQ(policies.LambdaBodies.Shape, formatter::BodyShape::CompactIfFits);
@@ -214,6 +217,7 @@ TEST(ConfigPolicy, CompilesCategoryInheritanceWithoutSourceOwnedSentinels)
     style.NamespaceIndentWidth = 3;
     style.EmptyBodyShape = formatter::BodyShape::Expanded;
     style.EnumeratorsLayout = formatter::CategoryLayout::Preserve;
+    style.IfConditionsPacking = formatter::ListPacking::Fill;
     style.DefinitionBlankLines = {formatter::BlankLineMode::Exact, 1};
     const auto changed = formatter::CompilePolicies(style);
     EXPECT_EQ(changed.Parameters.Break, formatter::BreakRequirement::IfNeeded);
@@ -227,6 +231,10 @@ TEST(ConfigPolicy, CompilesCategoryInheritanceWithoutSourceOwnedSentinels)
     EXPECT_EQ(changed.Bodies.EmptyShape, formatter::BodyShape::Expanded);
     EXPECT_EQ(changed.LambdaBodies.EmptyShape, formatter::BodyShape::Expanded);
     EXPECT_EQ(changed.Enumerators.Layout, formatter::LayoutMode::Preserve);
+    EXPECT_EQ(changed.IfConditionsPacking, formatter::ListPacking::Fill);
+    EXPECT_EQ(
+        policies.IfConditionsPacking,
+        formatter::ListPacking::VerticalWhenBroken);
     EXPECT_EQ(changed.Enumerators.Break, formatter::BreakRequirement::IfNeeded);
     EXPECT_EQ(changed.VerticalGaps.MemberDefinitionBlankLines.EmptyLines, 1u);
     EXPECT_EQ(policies.Parameters.Break, formatter::BreakRequirement::Always);
@@ -298,9 +306,14 @@ TEST(ConfigPolicy, PreserveDefaultAndExplicitCanonicalOverrideAreDistinct)
     EXPECT_EQ(policies.Calls.Layout, formatter::LayoutMode::Preserve);
     // Explicit packing is still only a shape preference, not layout activation.
     style.CallsPacking = formatter::ListPacking::Fill;
+    style.IfConditionsPacking = formatter::ListPacking::VerticalWhenBroken;
     const auto explicitPacking = formatter::CompilePolicies(style);
     EXPECT_EQ(explicitPacking.Calls.Layout, policies.Calls.Layout);
     EXPECT_EQ(explicitPacking.Calls.Packing, formatter::ListPacking::Fill);
+    EXPECT_EQ(policies.IfConditionsPacking, formatter::ListPacking::Fill);
+    EXPECT_EQ(
+        explicitPacking.ControlHeaders.Layout,
+        formatter::LayoutMode::Preserve);
     EXPECT_EQ(policies.Bodies.Layout, formatter::LayoutMode::Preserve);
     EXPECT_EQ(policies.DeclarationHeaders, formatter::LayoutMode::Preserve);
     EXPECT_EQ(policies.Calls.Break, formatter::BreakRequirement::IfNeeded);
@@ -652,6 +665,8 @@ TEST(ConfigPolicy, PreserveTemplateRoundTripsEveryRegisteredStyleDefault)
         "TernaryOperatorIndentation = Align\n",
         "LineEnding = Preserve\n",
         "ArgumentCommentSpacing = Preserve\n",
+        "IfConditionsPacking = Fill\n",
+        "top-level &&/|| operands",
         "first newline",
         "# TrailingCommentSpaces = Preserve",
     })
@@ -1036,6 +1051,15 @@ TEST(ConfigPolicy, InvalidEnumValuesAndOffsetsAreRejected)
             (void)formatter::LoadConfigFile(ConfigData(name)),
             std::runtime_error);
     }
+    const TemporaryConfig invalid("IfConditionsPacking = Inherit\n");
+    EXPECT_THROW(
+        (void)formatter::LoadConfigFile(invalid.Path),
+        std::runtime_error);
+    formatter::Style style;
+    style.IfConditionsPacking = static_cast<formatter::ListPacking>(255);
+    EXPECT_THROW(
+        (void)formatter::CompilePolicies(style),
+        std::invalid_argument);
 }
 
 TEST(ConfigPolicy, StagedOptionsResolveFinalInheritanceAndOwnScalarSnapshot)

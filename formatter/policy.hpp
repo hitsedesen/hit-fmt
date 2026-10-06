@@ -232,6 +232,8 @@ struct CompiledPolicies
     const ListPolicy Initializers;
     const ListPolicy Captures;
     const ListPolicy ControlHeaders;
+    // Couples unparenthesized logical operands to the if header's shape.
+    const ListPacking IfConditionsPacking;
     const HeaderListPolicy BaseLists;
     const HeaderListPolicy ConstructorLists;
     const ExpressionPolicy Expressions;

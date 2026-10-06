@@ -249,6 +249,11 @@ void ValidatePolicyStyle(const Style& style)
             " requires one empty line, exceeding " "MaxEmptyLines = 0");
     }
     ValidateIncludeGroups(style.IncludeGroups);
+    if (static_cast<std::size_t>(style.IfConditionsPacking) >=
+        ConfigEnumNames<ListPacking>::Values.size())
+    {
+        throw std::invalid_argument("IfConditionsPacking has invalid value");
+    }
     if (style.ExpressionsAlignment != ExpressionAlignment::Block &&
         style.ExpressionsAlignment != ExpressionAlignment::Operand)
     {
@@ -397,6 +402,7 @@ CompiledPolicies CompilePolicies(const Style& style)
         .Initializers = Initializers,
         .Captures = Captures,
         .ControlHeaders = ControlHeaders,
+        .IfConditionsPacking = style.IfConditionsPacking,
         .BaseLists = {BaseLists, style.BaseListsColonSide,
             style.BaseListsCommaSide},
         .ConstructorLists = {ConstructorLists, style.ConstructorListsColonSide,

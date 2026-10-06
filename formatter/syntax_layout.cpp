@@ -181,6 +181,7 @@ struct Syntax
     Index Root = None;
     Index PreviousSibling = None;
     Index Operator = None;
+    Index IfConditionGroup = None;
     bool Safe = true;
     bool IndentSafe = true;
     bool ChainSafe = true;
@@ -390,7 +391,7 @@ public:
             ChainScopeNames_.end(),
             [] (const auto& a, const auto& b) { return a.Name < b.Name; });
         for (Index i = 0; i < Syntax_.size(); ++i) {
-            const auto& entry = Syntax_[i];
+            auto& entry = Syntax_[i];
             const auto& node = Region(entry);
             if (entry.ItemSequence &&
                 entry.SequenceBody.Begin < entry.SequenceBody.End)
@@ -407,6 +408,15 @@ public:
                     Gaps_[node.Tokens.Begin].ParagraphBoundary = true;
                     Gaps_[node.Tokens.End].ParagraphBoundary = true;
                 }
+            }
+            // Only direct logical operands inherit the header owner. Calls,
+            // parentheses, init-statements and lambda bodies stop propagation.
+            if (node.Kind == NodeKind::BinaryExpression &&
+                entry.Operator != None && node.Parent != None &&
+                (Tree_.Kind(entry.Operator) == TokenKind::Operator_And ||
+                    Tree_.Kind(entry.Operator) == TokenKind::Operator_Or))
+            {
+                entry.IfConditionGroup = Syntax_[node.Parent].IfConditionGroup;
             }
             switch (node.Kind) {
                 case NodeKind::FunctionDeclaration:
@@ -1226,6 +1236,14 @@ private:
                 }
             }
         }
+        if (canonical && node.Kind == NodeKind::Condition &&
+            node.Parent != None &&
+            Region(Syntax_[node.Parent]).Kind == NodeKind::IfStatement &&
+            Policies_.Expressions.Layout == LayoutMode::Canonical &&
+            Policies_.IfConditionsPacking == ListPacking::VerticalWhenBroken)
+        {
+            Syntax_[id].IfConditionGroup = group;
+        }
         const bool empty = !prefixed && node.Tokens.Size() == 2;
         Groups_[group].Spec.ForceBreak =
             canonical && !empty && policy.Break == BreakRequirement::Always;
@@ -1767,6 +1785,33 @@ private:
             return;
         }
         if (node.Tokens.Size() < 2) {
+            return;
+        }
+        if (const auto group = Syntax_[id].IfConditionGroup; group != None) {
+            Groups_[group].Spec.ForceBreak |=
+                Policies_.Expressions.Break == BreakRequirement::Always;
+            // The header owns these boundaries, not independent precedence
+            // groups. Any header break therefore splits all logical operands,
+            // even when only a call or a different precedence level wraps.
+            DirectTokens(
+                id,
+                [&] (Index t) {
+                    if (Tree_.Kind(t) != TokenKind::Operator_And &&
+                        Tree_.Kind(t) != TokenKind::Operator_Or)
+                    {
+                        return;
+                    }
+                    const auto side = Policies_.Expressions.Binary;
+                    Own(
+                        side == OperatorSide::Leading ? t : t + 1,
+                        group,
+                        Boundary::Conditional,
+                        document::GapKind::Hard);
+                    Own(
+                        side == OperatorSide::Leading ? t + 1 : t,
+                        group,
+                        Boundary::Flat);
+                });
             return;
         }
         const auto parent = Region(Syntax_[id]).Parent;

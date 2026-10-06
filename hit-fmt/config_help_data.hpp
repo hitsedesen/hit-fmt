@@ -68,6 +68,18 @@ CallsSoleArgumentFirstItem = InlineIfFits
 # Multiple arguments retain CallsFirstItem.
 # Always still requires an owned break.
 )"},
+    {"Separate top-level conditions when an if header wraps:",
+        R"(Layout = Canonical
+IfConditionsPacking = VerticalWhenBroken
+ControlHeadersFirstItem = InlineIfFits
+# Use NextLine to move the first condition below the opening parenthesis.
+BinaryOperatorSide = Leading
+# A broken if (ready && (left || right) && enabled) becomes:
+# if (ready
+#     && (left || right)
+#     && enabled)
+# Short, fitting headers stay on one line.
+)"},
 };
 constexpr HelpExample ExpressionExamples[] = {
     {"Syntax-based expressions and all safely "
@@ -284,6 +296,17 @@ constexpr HelpSection HelpSections[] = {
         "Closer is available only for delimiter-bearing categories, not "
         "BaseLists/ConstructorLists. Optional values default to Inherit. "
         "First/Closer apply only when broken. "
+        "ControlHeadersFirstItem selects InlineIfFits or NextLine for the "
+        "first condition in a broken control header. "
+        "IfConditionsPacking defaults to Fill; VerticalWhenBroken separates "
+        "all unparenthesized &&/|| operands when an if header breaks, "
+        "including breaks in nested calls. Parenthesized expressions, "
+        "init-statements and other control kinds keep their own policies. "
+        "It requires canonical control-header and expression layout; "
+        "fitting headers stay flat unless Break = Always is selected. "
+        "Comment attachments and protected gaps take precedence. "
+        "BinaryOperatorSide selects leading or "
+        "trailing logical operators. "
         "Parameters governs function parameters; TemplateParameters governs "
         "template declarations and explicit generic-lambda template headers. "
         "TemplateArguments also governs named-cast type brackets. "

@@ -1,0 +1,10 @@
+Layout = Canonical
+ColumnLimit = 64
+IndentationKind = Spaces
+BinaryOperatorSpacing = Space
+ControlBlockKeywordSpacing = Space
+ControlBlockConditionSpacing = NoSpace
+IfConditionsPacking = VerticalWhenBroken
+BinaryOperatorSide = Leading
+ControlHeadersFirstItem = NextLine
+ControlHeadersCloser = OwnLine
