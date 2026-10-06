@@ -790,6 +790,30 @@ TEST(GroupLayout, FillSegmentDemandKeepsIndependentChildBreaks)
             actual += "$\n";
         }
     }
+    for (const auto suffix : {InvalidId, 0u, 2u}) {
+        for (const auto name : {"abc", "variable"}) {
+            Document document("");
+            document.Text("Type");
+            const auto prefix = document.BeginGroup({
+                .Mode = GroupMode::Fill,
+                .Indent = 4,
+                .FitSuffixWidth = suffix,
+            });
+            document.Gap();
+            document.Text(name);
+            document.EndGroup(prefix);
+            if (suffix == 0) {
+                document.Gap({GapKind::Hard, 0});
+                document.Text("= unbreakable_rhs;");
+            } else {
+                document.Text(" = unbreakable_rhs;");
+            }
+            ASSERT_TRUE(document.Seal());
+            actual += "prefix suffix=" + std::to_string(suffix) + " name=" +
+                name + ":\n";
+            AppendRender(actual, document, 14, "independent prefix fitting");
+        }
+    }
     test::golden::ExpectGolden(
         std::filesystem::path(DOCUMENT_TESTDATA_DIR) /
         "fill-segment-fit.expected",

@@ -154,6 +154,10 @@ struct GroupSpec
     // Same fixed structural-base contract as AnchorSpec. Indent remains a
     // relative offset from this base, not an absolute contents column.
     std::uint32_t FixedBase = InvalidId;
+    // Fit a standalone prefix against this many required suffix columns,
+    // rather than letting the following expression force a prefix break.
+    // InvalidId retains ordinary following-layout fitting.
+    std::uint32_t FitSuffixWidth = InvalidId;
 };
 
 enum class Error : std::uint8_t
@@ -430,7 +434,13 @@ private:
         AnchorId Anchor = InvalidId;
         std::int32_t Indent = 0;
         std::int32_t Fallback = 0;
-        std::uint32_t Minimum = 0;
+
+        union
+        {
+            std::uint32_t Minimum = 0; // Anchor alignment floor.
+            std::uint32_t FitSuffixWidth; // Begin-group fitting suffix.
+        };
+
         std::uint32_t FixedBase = InvalidId;
         GroupMode Mode = GroupMode::Consistent;
         AnchorKind Alignment = AnchorKind::BlockRelative;

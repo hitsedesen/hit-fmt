@@ -461,6 +461,9 @@ public:
                 PlanList(i, *list);
             }
             switch (node.Kind) {
+                case NodeKind::InitDeclarator:
+                    PlanInitializedDeclarator(i);
+                    break;
                 case NodeKind::RequiresClause:
                     PlanConstraintHeader(i);
                     break;
@@ -2128,15 +2131,69 @@ private:
         }
     }
 
+    void PlanInitializedDeclarator(Index id)
+    {
+        const auto& node = Region(Syntax_[id]);
+        const auto initializer = LastChild_[id];
+        const auto list = node.Parent;
+        const auto declaration = list == None
+            ? None
+            : Region(Syntax_[list]).Parent;
+        if (initializer == None ||
+            Region(Syntax_[initializer]).Kind != NodeKind::Initializer ||
+            declaration == None ||
+            node.Tokens.Begin != Region(Syntax_[list]).Tokens.Begin ||
+            (Region(Syntax_[declaration]).Kind != NodeKind::Declaration &&
+                Region(Syntax_[declaration]).Kind !=
+                    NodeKind::DeclarationStatement) ||
+            Policies_.DeclarationHeaders != LayoutMode::Canonical ||
+            PrefixProtection_[node.Tokens.Begin] !=
+                PrefixProtection_[node.Tokens.End])
+        {
+            return;
+        }
+        // Keep both the type and initializer outside the declarator group:
+        // adding a parent around the RHS changes its bounded layout search.
+        const auto end = Region(Syntax_[initializer]).Tokens.Begin;
+        if (end <= node.Tokens.Begin) {
+            return;
+        }
+        const auto& indent = Policies_.Expressions.Indent;
+        const auto group = GroupAt(
+            GapPosition(node.Tokens.Begin),
+            GapPosition(end),
+            document::GroupMode::Fill,
+            int32_t(indent.ContinuationOffset),
+            indent);
+        Groups_[group].Spec.StructuralBase = true;
+        Groups_[group].Spec.Continuation = true;
+        const bool leading =
+            Policies_.Expressions.Layout == LayoutMode::Canonical
+            ? Tree_.Kind(end) == TokenKind::Operator_Assign &&
+                Policies_.Expressions.Assignment == OperatorSide::Leading &&
+                Policies_.Expressions.AssignmentRhs !=
+                    FirstItemPlacement::NextLine
+            : Safety_.Gaps()[end].HasLineFeed;
+        // Only the declarator and an attached initializer opener must fit.
+        // An unbreakable or preserved RHS must not move a fitting prefix.
+        Groups_[group].Spec.FitSuffixWidth = leading
+            ? 0
+            : AddWidth(
+                FlatWidth(end),
+                HorizontalColumns(Tree_.TokenText(end), Options_.TabWidth));
+        ProjectHeaderGaps(id, node.Tokens.Begin, end, group);
+    }
+
     void ProjectHeaderGaps(Index id, Index begin, Index end, Index group)
     {
         const auto kind = Region(Syntax_[id]).Kind;
         const bool function = kind == NodeKind::FunctionDeclaration ||
             kind == NodeKind::FunctionDefinition ||
             kind == NodeKind::FunctionTryBlock;
-        if (function) {
-            // Prefer parameter-list breaks, but allow a long return type to
-            // separate from the complete function name when needed.
+        const bool declaration = function || kind == NodeKind::InitDeclarator;
+        if (declaration) {
+            // Prefer list/initializer breaks, but allow a long type to
+            // separate from the complete declarator name when needed.
             Groups_[group].Spec.BreakPenalty = 2;
         }
         Stack_.clear();
@@ -2173,7 +2230,7 @@ private:
                 }
             }
             Index nameBegin = None;
-            if (function && part.Kind == NodeKind::Declarator) {
+            if (declaration && part.Kind == NodeKind::Declarator) {
                 auto prefix = part.Tokens.Begin;
                 for (auto child = part.FirstChild;
                     child != None;
@@ -2229,8 +2286,11 @@ private:
                     const bool opaqueExceptionOperand =
                         node.Kind == NodeKind::ExceptionSpecification &&
                             t > node.Tokens.Begin + 1;
-                    if (!opaqueExceptionOperand && t > begin && t < end &&
-                        GapMutable(t) && Tree_.Kind(t) != TokenKind::Comment &&
+                    if (!opaqueExceptionOperand &&
+                        (t > begin ||
+                            (declaration && !function && t == begin)) &&
+                        t < end && GapMutable(t) &&
+                        Tree_.Kind(t) != TokenKind::Comment &&
                         (kind != NodeKind::ParameterDeclaration ||
                             Tree_.Kind(t - 1) != TokenKind::Comment) &&
                         (Spacing_.Gaps()[t].Category ==
@@ -2266,12 +2326,13 @@ private:
                             (node.Kind == NodeKind::Declarator && separated) ||
                                 (HeaderBreakPart(node.Kind) &&
                                     !qualifiedTerminal && !groupedName);
-                        const bool breakable = function && !operand &&
+                        const bool breakable = declaration && !operand &&
                             Tree_.Kind(t - 1) != TokenKind::Comment &&
                             ((node.Kind == NodeKind::DeclarationSpecifiers &&
                                 separated) || t == nameBegin ||
                                 (t == node.Tokens.Begin && headerPart));
-                        if (kind == NodeKind::FunctionDeclaration && !breakable)
+                        if ((kind == NodeKind::FunctionDeclaration ||
+                            kind == NodeKind::InitDeclarator) && !breakable)
                         {
                             return;
                         }
@@ -2290,6 +2351,7 @@ private:
                         Gaps_[t].KeepFlatSpacing =
                             kind == NodeKind::FunctionDeclaration ||
                                 kind == NodeKind::ParameterDeclaration ||
+                                kind == NodeKind::InitDeclarator ||
                                 node.Kind == NodeKind::FunctionQualifier;
                     }
                 });
@@ -2303,7 +2365,7 @@ private:
                 {
                     continue;
                 }
-                if (function &&
+                if (declaration &&
                     (node.Kind == NodeKind::AttributeSpecifier ||
                         node.Kind == NodeKind::ExtensionAttributeSpecifier) &&
                     node.Tokens.Begin > begin &&

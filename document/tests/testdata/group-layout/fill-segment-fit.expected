@@ -33,3 +33,26 @@ a	b c$
 conservative tab fit tab=4 width=7:
 a	b
 c$
+prefix suffix=4294967295 name=abc:
+independent prefix fitting width=14:
+Type
+    abc = unbreakable_rhs;$
+prefix suffix=4294967295 name=variable:
+independent prefix fitting width=14:
+Type
+    variable = unbreakable_rhs;$
+prefix suffix=0 name=abc:
+independent prefix fitting width=14:
+Type abc
+= unbreakable_rhs;$
+prefix suffix=0 name=variable:
+independent prefix fitting width=14:
+Type variable
+= unbreakable_rhs;$
+prefix suffix=2 name=abc:
+independent prefix fitting width=14:
+Type abc = unbreakable_rhs;$
+prefix suffix=2 name=variable:
+independent prefix fitting width=14:
+Type
+    variable = unbreakable_rhs;$
