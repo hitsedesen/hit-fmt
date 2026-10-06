@@ -175,15 +175,32 @@
       (template-argument-list
         "<"
         (template-argument
-          "int" "(" "*" ")" "(" "Pair"
-          (template-argument-list
-            "<"
-            (template-argument "First")
-            (list-separator ",")
-            (template-argument "Second")
-            ">"
+          "int"
+          (abstract-declarator
+            (nested-declarator
+              "("
+              (pointer-operator "*")
+              ")"
+            )
+            (function-declarator
+              (parameter-list
+                "("
+                (parameter-declaration
+                  (declaration-specifiers
+                    "Pair"
+                    (template-argument-list
+                      "<"
+                      (template-argument "First")
+                      (list-separator ",")
+                      (template-argument "Second")
+                      ">"
+                    )
+                  )
+                )
+                ")"
+              )
+            )
           )
-          ")"
         )
         (list-separator ",")
         (template-argument "Third")

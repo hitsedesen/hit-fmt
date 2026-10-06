@@ -5043,10 +5043,12 @@ private:
             }
             if (Kind(i) == TK::Operator_OpenParenthesis &&
                 (node.Kind == NodeKind::TypeId ||
+                    node.Kind == NodeKind::TrailingReturnType ||
                     node.Kind == NodeKind::TemplateArgument))
             {
                 if (!knownType) {
                     knownType = node.Kind == NodeKind::TypeId ||
+                        node.Kind == NodeKind::TrailingReturnType ||
                         LooksLikeTypeId(begin, end);
                 }
                 if (*knownType && FindDeclarationSpecifiersEnd(begin, end) == i)
@@ -5072,6 +5074,41 @@ private:
                         Append(node, *function);
                         i = function->Tokens.End - 1;
                         continue;
+                    }
+                    // A grouped abstract pointer/reference declarator owns
+                    // the following signature, not the grouping parentheses.
+                    if (auto nested = InferNestedFunctionParameters(i, end)) {
+                        const auto close = FindBalancedEnd(i) - 1;
+                        auto pointer = NextSignificant(i + 1);
+                        pointer = FindMemberPointerEnd(pointer, close);
+                        bool hasPointer = pointer > NextSignificant(i + 1);
+                        while (pointer < close) {
+                            const auto kind = Kind(pointer);
+                            if (kind == TK::Operator_Star ||
+                                kind == TK::Operator_Ampersand ||
+                                kind == TK::Operator_And)
+                            {
+                                hasPointer = true;
+                            } else if (kind != TK::Keyword_const &&
+                                kind != TK::Keyword_volatile)
+                            {
+                                break;
+                            }
+                            pointer = NextSignificant(pointer + 1);
+                        }
+                        if (hasPointer && pointer == close) {
+                            (void)AddDeclaratorSyntax(
+                                node,
+                                i,
+                                end,
+                                nested,
+                                false,
+                                true,
+                                FunctionKind::Unknown,
+                                true);
+                            i = end - 1;
+                            continue;
+                        }
                     }
                 }
             }
@@ -5249,7 +5286,8 @@ private:
         std::optional<TokenRange> parameters,
         bool ambiguousSuffix = false,
         bool inferNestedParameters = true,
-        FunctionKind functionKind = FunctionKind::Unknown)
+        FunctionKind functionKind = FunctionKind::Unknown,
+        bool abstractDeclarator = false)
     {
         const bool hasExplicitParameters = parameters.has_value();
         if (parameters &&
@@ -5352,7 +5390,7 @@ private:
                 }
             }
         }
-        if (name == end) {
+        if (name == end && !abstractDeclarator) {
             name = FindDeclaratorName(begin, end, parameters);
         }
         auto initializerStart =
@@ -5362,7 +5400,9 @@ private:
             parameters.reset();
             isFunction = false;
             nameArgumentsEnd = begin;
-            name = FindDeclaratorName(begin, end, std::nullopt);
+            name = abstractDeclarator
+                ? end
+                : FindDeclaratorName(begin, end, std::nullopt);
             initializerStart =
                 FindInitializerStart(begin, end, name, isFunction);
             declaratorEnd = initializerStart;

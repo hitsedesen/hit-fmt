@@ -470,8 +470,11 @@ void AssignNamingPrefixes(
     ParseField((config.Naming.*Member).Prefixes, value, path, line);
 }
 
-using OptionHandler = void (*)(Configuration&, std::string_view,
-    const std::filesystem::path&, size_t);
+using OptionHandler = void (*)(
+    Configuration&,
+    std::string_view,
+    const std::filesystem::path&,
+    size_t);
 
 struct OptionBinding
 {
