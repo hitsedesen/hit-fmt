@@ -1,0 +1,14 @@
+Layout = Canonical
+ColumnLimit = 120
+IndentWidth = 4
+IndentationKind = Spaces
+FunctionBracePlacement = NextLine
+ListPacking = VerticalWhenBroken
+ListFirstItem = NextLine
+ListCloser = SameLine
+PointerReferenceDeclaratorLocation = Left
+FunctionSpaceBeforeParameters = NoSpace
+SpaceInsideFunctionParameters = NoSpace
+ReturnArrowSpaceBefore = Space
+ReturnArrowSpaceAfter = Space
+AssignmentOperatorSpacing = Space

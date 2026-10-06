@@ -18,8 +18,8 @@ class Reader {
     public:
     [[nodiscard]] virtual const ResultWithSize& ReadResultFromCurrentStorage()
     const noexcept = 0;
-    [[nodiscard]] static auto GetResultFromCurrentStorage()
-    noexcept -> std::optional<ResultWithSize>;
+    [[nodiscard]] static auto GetResultFromCurrentStorage() noexcept
+        -> std::optional<ResultWithSize>;
     Reader() noexcept;
     operator bool() const noexcept;
     virtual ~Reader() = default;
