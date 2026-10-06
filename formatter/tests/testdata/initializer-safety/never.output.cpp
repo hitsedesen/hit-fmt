@@ -59,4 +59,18 @@ void inspect()
         std::numeric_limits<ExternalType>::max());
     auto available = ReadCurrentCapacityForActiveEndpoint() !=
         std::numeric_limits<ExternalType>::max();
+    RAISE exception{} <<
+        "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+            "BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB";
+    WARN exception{code} <<
+        "a long initial message that will need wrapping when concatenated with "
+        /* join */ "the continuation of the message";
+    NOTICE types::exception{} +
+        R"(a raw message with enough text to make concatenation wrap )"
+            "and a tail";
+    RAISE exception{} << "short" " text";
+    const char* messages[] = {
+        "a long initial message that will need wrapping when concatenated with "
+            "the continuation of the message"
+    };
 }

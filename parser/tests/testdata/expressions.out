@@ -1428,6 +1428,78 @@
           )
           ";"
         )
+        (declaration-statement
+          (declaration-specifiers "RAISE")
+          (init-declarator-list
+            (init-declarator
+              (declarator
+                (declarator-name "exception")
+              )
+              (initializer
+                (binary-expression
+                  (braced-initializer
+                    (initializer-list "{" "}")
+                  )
+                  "<<"
+                  (literal-expression "\"first\"" "\" second\"")
+                )
+              )
+            )
+          )
+          ";"
+        )
+        (declaration-statement
+          (declaration-specifiers "WARN")
+          (init-declarator-list
+            (init-declarator
+              (declarator
+                (declarator-name "exception")
+              )
+              (initializer
+                (binary-expression
+                  (braced-initializer
+                    (initializer-list
+                      "{"
+                      (initializer-element
+                        (identifier-expression "code")
+                      )
+                      "}"
+                    )
+                  )
+                  "<<"
+                  (literal-expression
+                    "\"first\"" "/* join */" "\" second\""
+                    (dangling-trivia
+                      (comment "/* join */")
+                    )
+                  )
+                )
+              )
+            )
+          )
+          ";"
+        )
+        (declaration-statement
+          (declaration-specifiers "NOTICE")
+          (init-declarator-list
+            (init-declarator
+              (declarator
+                (declarator-name "types")
+                "::" "exception"
+              )
+              (initializer
+                (binary-expression
+                  (braced-initializer
+                    (initializer-list "{" "}")
+                  )
+                  "+"
+                  (literal-expression "R\"(raw)\"" "\" tail\"")
+                )
+              )
+            )
+          )
+          ";"
+        )
         (return-statement
           "return"
           (call-expression

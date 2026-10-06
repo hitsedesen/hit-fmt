@@ -18,10 +18,11 @@
                   (argument-list "(" ")")
                 )
               )
-              (unparsed-syntax ";" "}" "}" "DEFINE_CASE" "(" "Suite" "," "MissingBody" ")" "{" "int")
-              "value"
+              (unparsed-syntax ";")
+              "}"
             )
           )
+          (unparsed-syntax "}" "DEFINE_CASE" "(" "Suite" "," "MissingBody" ")" "{" "int" "value")
         )
       )
     )

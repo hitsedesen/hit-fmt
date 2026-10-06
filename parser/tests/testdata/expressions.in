@@ -70,5 +70,8 @@ auto evaluate(Values... values) {
     auto character = "indexed" " text"[index];
     auto size = ("member" " text").size();
     auto called = ("callee" " text")(value);
+    RAISE exception{} << "first" " second";
+    WARN exception{code} << "first" /* join */ " second";
+    NOTICE types::exception{} + R"(raw)" " tail";
     return lambda(initialized);
 }
