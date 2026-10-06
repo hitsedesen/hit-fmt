@@ -433,6 +433,469 @@
     )
   )
   (record-declaration
+    "struct" "Known" "{"
+    (declaration
+      (declaration-specifiers "int")
+      (init-declarator-list
+        (init-declarator
+          (declarator
+            (declarator-name "value")
+          )
+        )
+      )
+      ";"
+    )
+    "}" ";"
+  )
+  (declaration
+    (declaration-specifiers "struct" "Known")
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (declarator-name "directEmpty")
+        )
+        (initializer
+          (braced-initializer
+            (initializer-list "{" "}")
+          )
+        )
+      )
+    )
+    ";"
+  )
+  (declaration
+    (declaration-specifiers "struct" "Known")
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (declarator-name "directValue")
+        )
+        (initializer
+          (braced-initializer
+            (initializer-list
+              "{"
+              (initializer-element
+                (literal-expression "1")
+              )
+              "}"
+            )
+          )
+        )
+      )
+    )
+    ";"
+  )
+  (declaration
+    (declaration-specifiers "struct" "Known")
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (declarator-name "directCall")
+        )
+        (initializer
+          (braced-initializer
+            (initializer-list
+              "{"
+              (initializer-element
+                (call-expression
+                  (identifier-expression "produce")
+                  (argument-list "(" ")")
+                )
+              )
+              "}"
+            )
+          )
+        )
+      )
+    )
+    ";"
+  )
+  (record-declaration "class" "KnownMessage" ";")
+  (declaration
+    (declaration-specifiers "class" "KnownMessage")
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (declarator-name "directMessage")
+        )
+        (initializer
+          (braced-initializer
+            (initializer-list
+              "{"
+              (initializer-element
+                (literal-expression "2")
+              )
+              "}"
+            )
+          )
+        )
+      )
+    )
+    ";"
+  )
+  (record-declaration "union" "KnownPayload" ";")
+  (declaration
+    (declaration-specifiers "union" "KnownPayload")
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (declarator-name "directPayload")
+        )
+        (initializer
+          (braced-initializer
+            (initializer-list
+              "{"
+              (initializer-element
+                (literal-expression "3")
+              )
+              "}"
+            )
+          )
+        )
+      )
+    )
+    ";"
+  )
+  (declaration
+    (declaration-specifiers "struct" "External")
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (declarator-name "directExternal")
+        )
+        (initializer
+          (braced-initializer
+            (initializer-list
+              "{"
+              (initializer-element
+                (literal-expression "9")
+              )
+              "}"
+            )
+          )
+        )
+      )
+    )
+    ";"
+  )
+  (declaration
+    (declaration-specifiers "struct" "External")
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (declarator-name "negative")
+        )
+        (initializer
+          (braced-initializer
+            (initializer-list
+              "{"
+              (initializer-element
+                (unary-expression
+                  "-"
+                  (literal-expression "1")
+                )
+              )
+              "}"
+            )
+          )
+        )
+      )
+    )
+    ";"
+  )
+  (declaration
+    (declaration-specifiers "struct" "External")
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (declarator-name "designated")
+        )
+        (initializer
+          (braced-initializer
+            (initializer-list
+              "{"
+              (initializer-element
+                "." "value" "="
+                (literal-expression "10")
+              )
+              "}"
+            )
+          )
+        )
+      )
+    )
+    ";"
+  )
+  (declaration
+    (declaration-specifiers "struct" "External")
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (pointer-operator "*")
+          (declarator-name "directPointer")
+        )
+        (initializer
+          (braced-initializer
+            (initializer-list "{" "}")
+          )
+        )
+      )
+    )
+    ";"
+  )
+  (declaration
+    (declaration-specifiers "struct" "Scope" "::" "Packet")
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (declarator-name "directQualified")
+        )
+        (initializer
+          (braced-initializer
+            (initializer-list
+              "{"
+              (initializer-element
+                (literal-expression "4")
+              )
+              "}"
+            )
+          )
+        )
+      )
+    )
+    ";"
+  )
+  (declaration
+    (declaration-specifiers
+      "struct" "Batch"
+      (template-argument-list
+        "<"
+        (template-argument "int")
+        ">"
+      )
+    )
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (declarator-name "directBatch")
+        )
+        (initializer
+          (braced-initializer
+            (initializer-list
+              "{"
+              (initializer-element
+                (literal-expression "5")
+              )
+              "}"
+            )
+          )
+        )
+      )
+    )
+    ";"
+  )
+  (declaration
+    (declaration-specifiers "struct" "Packet")
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (declarator-name "directPair")
+          (array-declarator "[" "]")
+        )
+        (initializer
+          (braced-initializer
+            (initializer-list
+              "{"
+              (initializer-element
+                (braced-initializer
+                  (initializer-list
+                    "{"
+                    (initializer-element
+                      (literal-expression "1")
+                    )
+                    "}"
+                  )
+                )
+              )
+              (list-separator ",")
+              (initializer-element
+                (braced-initializer
+                  (initializer-list
+                    "{"
+                    (initializer-element
+                      (literal-expression "2")
+                    )
+                    "}"
+                  )
+                )
+              )
+              "}"
+            )
+          )
+        )
+      )
+    )
+    ";"
+  )
+  (record-declaration
+    "struct" "DirectHolder" "{"
+    (declaration
+      (declaration-specifiers "struct" "Known")
+      (init-declarator-list
+        (init-declarator
+          (declarator
+            (declarator-name "member")
+          )
+          (initializer
+            (braced-initializer
+              (initializer-list
+                "{"
+                (initializer-element
+                  (literal-expression "6")
+                )
+                "}"
+              )
+            )
+          )
+        )
+      )
+      ";"
+    )
+    "}" ";"
+  )
+  (function-definition
+    (declaration-specifiers "void")
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (declarator-name "useDirect")
+          (function-declarator
+            (parameter-list "(" ")")
+          )
+        )
+      )
+    )
+    (compound-statement
+      "{"
+      (declaration
+        (declaration-specifiers "struct" "Known")
+        (init-declarator-list
+          (init-declarator
+            (declarator
+              (declarator-name "localEmpty")
+            )
+            (initializer
+              (braced-initializer
+                (initializer-list "{" "}")
+              )
+            )
+          )
+        )
+        ";"
+      )
+      (declaration
+        (declaration-specifiers "struct" "Known")
+        (init-declarator-list
+          (init-declarator
+            (declarator
+              (declarator-name "localValue")
+            )
+            (initializer
+              (braced-initializer
+                (initializer-list
+                  "{"
+                  (initializer-element
+                    (literal-expression "7")
+                  )
+                  "}"
+                )
+              )
+            )
+          )
+        )
+        ";"
+      )
+      (declaration
+        (declaration-specifiers "struct" "External")
+        (init-declarator-list
+          (init-declarator
+            (declarator
+              (declarator-name "localExternal")
+            )
+            (initializer
+              (braced-initializer
+                (initializer-list
+                  "{"
+                  (initializer-element
+                    (literal-expression "8")
+                  )
+                  "}"
+                )
+              )
+            )
+          )
+        )
+        ";"
+      )
+      (declaration-statement
+        (declaration-specifiers "int")
+        (init-declarator-list
+          (init-declarator
+            (declarator
+              (declarator-name "seed")
+            )
+            (initializer
+              "="
+              (literal-expression "11")
+            )
+          )
+        )
+        ";"
+      )
+      (declaration
+        (declaration-specifiers "struct" "External")
+        (init-declarator-list
+          (init-declarator
+            (declarator
+              (declarator-name "fromValue")
+            )
+            (initializer
+              (braced-initializer
+                (initializer-list
+                  "{"
+                  (initializer-element
+                    (identifier-expression "seed")
+                  )
+                  "}"
+                )
+              )
+            )
+          )
+        )
+        ";"
+      )
+      "}"
+    )
+  )
+  (record-declaration "struct" "Sealed" ";")
+  (record-declaration
+    "struct" "Sealed"
+    (class-virt-specifier "final")
+    "{"
+    (declaration
+      (declaration-specifiers "int")
+      (init-declarator-list
+        (init-declarator
+          (declarator
+            (declarator-name "value")
+          )
+        )
+      )
+      ";"
+    )
+    "}" ";"
+  )
+  (record-declaration
     "struct"
     (unparsed-syntax "Exported" "Record")
     "{"
@@ -446,6 +909,30 @@
         )
       )
       ";"
+    )
+    "}" ";"
+  )
+  (record-declaration
+    "struct"
+    (unparsed-syntax "Exported" "Empty")
+    "{" "}" ";"
+  )
+  (record-declaration
+    "struct"
+    (unparsed-syntax "Exported" "Destructible")
+    "{"
+    (function-definition
+      (init-declarator-list
+        (init-declarator
+          (declarator
+            (destructor-name "~" "Destructible")
+            (function-declarator
+              (parameter-list "(" ")")
+            )
+          )
+        )
+      )
+      (compound-statement "{" "}")
     )
     "}" ";"
   )

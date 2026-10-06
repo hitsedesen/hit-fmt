@@ -3243,6 +3243,63 @@ private:
         return node;
     }
 
+    [[nodiscard]] bool IsElaboratedInitializer(
+        size_t start,
+        size_t opening,
+        const RecordHeadName& recordName) const
+    {
+        const auto first = SkipAttributeSpecifiers(start + 1);
+        if (Kind(first) != TK::Identifier &&
+            Kind(first) != TK::Operator_ScopeResolution)
+        {
+            return false;
+        }
+        auto cursor = SkipDeclarationTypeName(first, opening, true);
+        bool declaratorEvidence = cursor != NextSignificant(first + 1);
+        while (cursor < opening &&
+            (Kind(cursor) == TK::Operator_Star ||
+                Kind(cursor) == TK::Operator_Ampersand ||
+                Kind(cursor) == TK::Operator_And ||
+                Kind(cursor) == TK::Keyword_const ||
+                Kind(cursor) == TK::Keyword_volatile))
+        {
+            declaratorEvidence = true;
+            cursor = NextSignificant(cursor + 1);
+        }
+        cursor = SkipAttributeSpecifiers(cursor);
+        if (cursor >= opening || Kind(cursor) != TK::Identifier) {
+            return false;
+        }
+        const auto name = cursor;
+        cursor = SkipAttributeSpecifiers(cursor + 1);
+        while (cursor < opening && Kind(cursor) == TK::Operator_OpenBracket) {
+            const auto after = FindBalancedEnd(cursor);
+            if (after > opening || after <= cursor) {
+                return false;
+            }
+            declaratorEvidence = true;
+            cursor = SkipAttributeSpecifiers(after);
+        }
+        if (cursor != opening) {
+            return false;
+        }
+        const auto element = NextSignificant(opening + 1);
+        const auto kind = Kind(element);
+        const bool initializerEvidence =
+            IsLiteralExpressionToken(kind) || kind == TK::Operator_OpenBrace ||
+                kind == TK::Operator_ClassMemberAccess ||
+                (IsPrefixOperator(kind) && kind != TK::Operator_Complement) ||
+                (kind == TK::Identifier &&
+                    LookupName(Text(element)) == NameKind::Value);
+        // A bare pair of unknown identifiers may instead be an export macro
+        // and record name. Require type, declarator or initializer evidence;
+        // an empty body alone cannot distinguish these forms.
+        if (name == recordName.FinalSpecifier && !initializerEvidence) {
+            return false;
+        }
+        return declaratorEvidence || IsKnownType(first) || initializerEvidence;
+    }
+
     Node* ParseRecordDeclaration()
     {
         auto start = Cursor_;
@@ -3312,6 +3369,13 @@ private:
             } else {
                 ++Cursor_;
             }
+        }
+        if (!sawBaseClause && !invalidHeadAngles && angleDepth == 0 &&
+            CurrentKind() == TK::Operator_OpenBrace &&
+            IsElaboratedInitializer(start, Cursor_, recordName))
+        {
+            Cursor_ = start;
+            return ParseGeneralDeclaration();
         }
         const auto headEnd = sawBaseClause ? baseClauseBegin : Cursor_;
         unknownHeader |= invalidHeadAngles || angleDepth != 0;
