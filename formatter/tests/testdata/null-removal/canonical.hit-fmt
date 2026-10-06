@@ -1,0 +1,4 @@
+Layout = Canonical
+BodyShape = Expanded
+RemoveNullStatements = true
+RemoveNullDeclarations = true

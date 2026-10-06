@@ -335,6 +335,12 @@ std::vector<FormatCase> FormatCases()
     }
     AddCases(
         cases,
+        std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../null-removal",
+        {"canonical", "preserve"});
+    cases[cases.size() - 2].CheckOwningMaps = true;
+    cases.back().CheckOwningMaps = true;
+    AddCases(
+        cases,
         std::filesystem::path(FORMATTER_TESTDATA_DIR) /
         "../declarator-macro-spacing",
         {"space", "no-space"});

@@ -93,6 +93,12 @@ void PrintOption(std::ostream& output, std::string_view name, const T& value)
         }
         return;
     }
+    if (name == "RemoveNullStatements" || name == "RemoveNullDeclarations") {
+        output
+            << "# Remove only beside known syntax or sequence boundaries.\n"
+                "# Unknown syntax and macro bodies retain semicolons.\n"
+                "# Example: struct CLASS_NAME(Example) {}; keeps its ';'.\n";
+    }
     if (name == "CallLineFirstStringOverflow") {
         output
             << "# Complete string first arguments of configured names.\n"

@@ -209,6 +209,9 @@ WhitespaceSensitiveMacros = ["STRINGIZE_TEXT"]
 AddMissingControlBraces = false
 RemoveNullStatements = false
 RemoveNullDeclarations = false
+# Remove only beside known syntax or a proven sequence boundary.
+# Unknown syntax and macro-shaped bodies retain their semicolons.
+# For example, struct CLASS_NAME(Example) {}; keeps its trailing semicolon.
 # With true, namespace N {}; // note becomes namespace N {} // note.
 # Same-line namespace suffixes are removed even beside comments.
 # Required semicolons and standalone commented placeholders stay intact.
