@@ -68,6 +68,9 @@ void ExpectSameAnalysis(
         EXPECT_EQ(a.ContextSensitive, b.ContextSensitive);
         EXPECT_EQ(bool(a.HasLineFeed), bool(b.HasLineFeed));
         EXPECT_EQ(bool(a.Horizontal), bool(b.Horizontal));
+        EXPECT_EQ(
+            bool(a.RecoveryCalleeBoundary),
+            bool(b.RecoveryCalleeBoundary));
         EXPECT_EQ(bool(a.IntrinsicPreserve), bool(b.IntrinsicPreserve));
         EXPECT_EQ(
             bool(a.IntrinsicContextSensitive),
@@ -536,7 +539,15 @@ TEST(SourceAnalysis,
 
 TEST(SourceAnalysis, OpaqueCalleeProtectsSpellingNotIncomingGap)
 {
-    for (const auto prefix : {"target.Field += ", "return ", "consume(first, "})
+    for (const auto prefix :
+        {
+            "target.Field += ",
+            "return ",
+            "consume(first, ",
+            "target.Field+=",
+            "consume(",
+            "consume(first,",
+        })
     {
         const auto source = std::string("void f() { ") + prefix +
             "Factory< Unknown >(value)" +
@@ -550,10 +561,26 @@ TEST(SourceAnalysis, OpaqueCalleeProtectsSpellingNotIncomingGap)
         EXPECT_FALSE(analysis.CanReplaceGap(Before(tree, "Unknown"), ""))
             << source;
         EXPECT_FALSE(analysis.CanReplaceGap(Before(tree, ">"), "")) << source;
-        const std::array protectedRanges{analysis.Gaps()[callee].Source};
+        const std::array protectedRanges{
+            parser::SourceRange{
+                analysis.Gaps()[callee].Source.Begin,
+                tree.Token(callee).Text.End,
+            },
+        };
         auto scoped =
             Analyze(tree, memory, {.ImmutableRanges = protectedRanges});
         EXPECT_FALSE(scoped.CanReplaceGap(callee, "\n    ")) << source;
+        auto macro = Analyze(
+            tree,
+            memory,
+            {
+                .WhitespaceSensitiveMacros = std::array<std::string_view, 1>{
+                    "consume",
+                },
+            });
+        if (std::string_view(prefix).starts_with("consume")) {
+            EXPECT_FALSE(macro.CanReplaceGap(callee, "\n    ")) << source;
+        }
     }
     Input input("void f() { target.Field += Factory< Unknown >; }");
     auto tree = Parse(input);

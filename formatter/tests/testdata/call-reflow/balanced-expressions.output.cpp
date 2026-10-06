@@ -44,3 +44,22 @@ void StoreRecord()
     auto product = ComputeLedgerWeight(factors.Base, factors.Limit) *
         ConvertTokenizedMetric(ExtractValueFromIndexedPayload<TStoredMetric>(record.Payload));
 }
+
+void SampleRows(int row)
+{
+    if (Sampler::ShouldKeepArchivedRecord(
+        DecodeField<Payload>(row, "PersistentRecordIdentifier"),
+        GetOptions()->ArchiveSamplingPercentage))
+    {
+        Save();
+    }
+    if (Sampler::ShouldKeepArchivedRecord(
+        GetOptions()->ArchiveSamplingPercentage,
+        DecodeField< Payload >(row, "PersistentRecordIdentifier")))
+    {
+        Save();
+    }
+    if (Sampler::Keep(DecodeField< Payload >(row, "id"), rate)) {
+        Save();
+    }
+}
