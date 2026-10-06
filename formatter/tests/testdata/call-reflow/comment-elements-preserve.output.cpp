@@ -23,11 +23,13 @@ void demo() {
     auto trailing = {alpha, // trailing comma comment
     };
     consume(alpha, /* inline */ beta, gamma);
-    auto prefixes = consume(alpha, /* first */ /* second */ beta, gamma);
+    auto prefixes = consume(alpha, /* first */  /* second */	beta, gamma);
     consume(/* range */ {first, last}, /* empty */ {}, /* scalar */ value);
     consume(alpha, /* range */ {positions.begin(), positions.end()}, gamma);
     consume(/* tight */{first, last});
     consume(/* type */ Range{first, last});
+    consume(Range /* suffix */ {first, last});
+    (opaque)(/* uncertain */ {first, last});
     consume(/* outer */ {/* inner */ {first, last}});
     auto labeled = {/* range */ {first, last}, /* tight */{first, last}};
     auto mixed = consume(alpha, /* prefix */ // stays with alpha
@@ -51,6 +53,7 @@ void demo() {
         z};
     // clang-format off
     consume(/* protected prefix */ alpha, beta);
+    consume(/* protected */ {first, last});
     consume(alpha, // protected argument
   beta);
     // clang-format on

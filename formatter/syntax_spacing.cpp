@@ -437,6 +437,18 @@ public:
                     C::Calls);
                 break;
             }
+            case NK::Argument:
+                if (parent && parent->Kind == NK::ArgumentList &&
+                    !state.KeywordOperands && !state.UncertainOperands)
+                {
+                    ArgumentLabel(node, *parent, C::Calls);
+                }
+                break;
+            case NK::InitializerElement:
+                if (parent && parent->Kind == NK::InitializerList) {
+                    ArgumentLabel(node, *parent, C::Initializers);
+                }
+                break;
             case NK::ParameterList: {
                 const bool lambda =
                     parent && parent->Kind == NK::LambdaExpression;
@@ -1543,6 +1555,36 @@ public:
     }
 
 private:
+    void ArgumentLabel(
+        const SourceRegion& node,
+        const SourceRegion& list,
+        C category)
+    {
+        if (node.Status != RegionStatus::Complete) {
+            return;
+        }
+        const auto begin = node.Tokens.Begin;
+        auto prefix = begin;
+        while (prefix > list.Tokens.Begin + 1 &&
+            Tree_.Kind(prefix - 1) == TK::Comment)
+        {
+            if (!Tree_.TokenText(prefix - 1).starts_with("/*")) {
+                return;
+            }
+            --prefix;
+        }
+        if (prefix == begin ||
+            (prefix != list.Tokens.Begin + 1 &&
+                (Tree_.Kind(prefix - 1) != TK::Operator_Comma ||
+                    Tree_.Role(prefix - 1) != PR::ListSeparator)))
+        {
+            return;
+        }
+        // Only the link from a block-comment prefix to its item is owned.
+        // Comment interiors, inter-comment gaps and suffixes stay separate.
+        Mark(begin, F::ArgumentLabelCommentSpacing, list, category, 4);
+    }
+
     void Capture(const SourceRegion& node, const SourceRegion* parent)
     {
         const auto end = node.Tokens.End;

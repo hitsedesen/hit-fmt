@@ -612,7 +612,10 @@ TEST(SyntaxSpacing, GeneratedPoliciesObserveOwnerNotDescendantEdits)
     GapPolicies policies;
     policies.CommaSpaceAfter = GapPolicy::GeneratedSpace;
     policies.BinaryOperatorSpacing = GapPolicy::GeneratedNoSpace;
-    Analysis analysis("void f(){invoke(first + second, third);}", policies);
+    policies.ArgumentLabelCommentSpacing = GapPolicy::GeneratedNoSpace;
+    Analysis analysis(
+        "void f(){invoke(first + second, third, /* fourth */ {first});}",
+        policies);
     const auto commaAfter = analysis.Before("third");
     const auto binaryBefore = analysis.Before("+");
     const auto& comma = analysis.Spacing.Gaps()[commaAfter];
@@ -634,6 +637,21 @@ TEST(SyntaxSpacing, GeneratedPoliciesObserveOwnerNotDescendantEdits)
         analysis.Spacing
             .SpacePreference(commaAfter, GapContext::Rebuilt, analysis.Safety),
         true);
+    const auto labelAfter = analysis.Before("{", 1);
+    const auto& label = analysis.Spacing.Gaps()[labelAfter];
+    EXPECT_EQ(label.Field, F::ArgumentLabelCommentSpacing);
+    EXPECT_EQ(label.Category, C::Calls);
+    ASSERT_NE(label.Owner, NoRegion);
+    EXPECT_EQ(
+        analysis.Safety.Regions()[label.Owner].Kind,
+        parser::NodeKind::ArgumentList);
+    EXPECT_NE(label.Owner, binary.Owner);
+    EXPECT_FALSE(analysis.Spacing
+        .SpacePreference(labelAfter, GapContext::Preserved, analysis.Safety));
+    EXPECT_EQ(
+        analysis.Spacing
+            .SpacePreference(labelAfter, GapContext::Rebuilt, analysis.Safety),
+        false);
 }
 
 TEST(SyntaxSpacing, TrailingDeclarationCommentsBelongToHeaderNotOuterBody)

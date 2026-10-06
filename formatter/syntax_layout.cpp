@@ -1294,7 +1294,11 @@ private:
                 Reindent(closer, group, true);
             }
         }
-        OwnCommentLinks(begin + 1, group, closer);
+        OwnCommentLinks(
+            begin + 1,
+            group,
+            closer,
+            canonical ? Syntax_[id].Region : NoRegion);
         const auto* header = node.Kind == NodeKind::BaseClause
             ? &Policies_.BaseLists
             : &Policies_.ConstructorLists;
@@ -1374,7 +1378,11 @@ private:
                 }
                 Reindent(t, group);
             }
-            OwnCommentLinks(t + 1, group, closer);
+            OwnCommentLinks(
+                t + 1,
+                group,
+                closer,
+                canonical ? Syntax_[id].Region : NoRegion);
         }
         // Control headers can represent their semicolons as direct punctuation,
         // not ListSeparator children. Walk only disjoint direct-token spans.
@@ -1518,7 +1526,11 @@ private:
 
     // Carry the boundary's indentation through trivia without reflowing its
     // links. The end gap belongs to the list closer, not its next item.
-    void OwnCommentLinks(Index begin, Index owner, Index end)
+    void OwnCommentLinks(
+        Index begin,
+        Index owner,
+        Index end,
+        RegionId rebuiltSpacingOwner = NoRegion)
     {
         for (auto token = begin;
             token < Tree_.TokenCount() && token + 1 < end &&
@@ -1526,6 +1538,13 @@ private:
             ++token)
         {
             Own(token + 1, owner, Boundary::Preserve);
+            // Retain comment topology while rebuilding spacing explicitly
+            // classified as a property of this canonical list owner.
+            if (rebuiltSpacingOwner != NoRegion &&
+                Spacing_.Gaps()[token + 1].Owner == rebuiltSpacingOwner)
+            {
+                Gaps_[token + 1].Context = GapContext::Rebuilt;
+            }
             Reindent(token + 1, owner);
         }
     }

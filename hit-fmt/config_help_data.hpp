@@ -138,6 +138,9 @@ constexpr HelpExample GapExamples[] = {
         "spacing:",
         R"(FunctionSpaceBeforeParameters = NoSpace
 ControlBlockKeywordSpacing = Space
+ArgumentLabelCommentSpacing = Space
+# consume(/* range */ {first, last}); also spaces /* value */ value.
+# NoSpace joins /* range */{first, last}; Preserve is the default.
 CommaSpaceBefore = NoSpace
 CommaSpaceAfter = Space
 EmptyBlockInteriorSpacing = GeneratedNoSpace
@@ -413,8 +416,14 @@ constexpr HelpSection HelpSections[] = {
         "lexical separation. ScopeResolutionSpacing controls qualified :: "
         "edges, not the gap before a leading global ::. "
         "BraceInitializerSpacing controls the gap before an initializer's {, "
-        "but preserves a gap immediately after a comment: "
-        "/* argument */ {first, last} keeps its space even with NoSpace. "
+        "except immediately after a comment. ArgumentLabelCommentSpacing "
+        "controls the horizontal gap after the last leading block comment "
+        "of a parsed call argument or braced initializer element, before any "
+        "kind of value. It defaults to Preserve; Space and NoSpace force "
+        "one or zero spaces, while Generated* applies only when that item's "
+        "list owner is rebuilt. Comment interiors, gaps between comments, "
+        "suffix comments, and mixed block/line-comment prefixes are excluded. "
+        "Existing newlines and protected or uncertain syntax stay preserved. "
         "Lexical safety and comment boundaries "
             "override spacing. Use --generate-config "
         "for the complete option list and defaults, "

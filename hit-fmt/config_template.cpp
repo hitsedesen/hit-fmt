@@ -139,7 +139,17 @@ void PrintOption(std::ostream& output, std::string_view name, const T& value)
     } else if (name == "BraceInitializerSpacing") {
         output
             << "# Gap before an initializer's {, except after a comment.\n"
-                "# /* argument */ {first, last} keeps its following space.\n";
+                "# ArgumentLabelCommentSpacing controls label-to-value gaps.\n";
+    } else if (name == "ArgumentLabelCommentSpacing") {
+        output
+            << "# After the last leading block comment of a call argument\n"
+                "# or braced initializer element, before any kind of value.\n"
+                "# Space: consume(/* range */ {first, last});\n"
+                "# NoSpace: consume(/* range */{first, last});\n"
+                "# Preserve keeps horizontal spelling (the default).\n"
+                "# Generated* applies when the owning list is rebuilt.\n"
+                "# Newlines, suffixes, mixed block/line prefixes, comment\n"
+                "# interiors, inter-comment gaps and protections stay put.\n";
     } else if (name == "TemplateTypeArgumentInteriorSpacing") {
         output << "# NoSpace may join confirmed template closers as >>.\n";
     } else if (name == "ScopeResolutionSpacing") {

@@ -38,7 +38,7 @@ void demo() {
     );
     auto prefixes = consume(
 	alpha,
-	/* first */ /* second */ beta,
+	/* first */  /* second */	beta,
 	gamma
     );
     consume(/* range */ {
@@ -66,6 +66,16 @@ void demo() {
 	last
     }
     );
+    consume(
+	Range /* suffix */ {
+	    first,
+	    last
+	}
+    );
+    (opaque)(/* uncertain */ {
+	first,
+	last
+    });
     consume(/* outer */ {/* inner */ {
 	    first,
 	    last
@@ -128,6 +138,7 @@ void demo() {
     };
     // clang-format off
     consume(/* protected prefix */ alpha, beta);
+    consume(/* protected */ {first, last});
     consume(alpha, // protected argument
   beta);
     // clang-format on

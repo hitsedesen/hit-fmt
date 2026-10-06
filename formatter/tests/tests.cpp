@@ -1720,6 +1720,49 @@ std::vector<FormatCase> FormatCases()
         }
         cases.back().Style = std::move(style);
     }
+    for (const auto* config :
+        {
+            "label-space",
+            "label-no-space",
+            "label-generated-space",
+            "label-generated-no-space",
+        })
+    {
+        const std::string_view policy(config);
+        const bool generated = policy.starts_with("label-generated-");
+        for (const auto layout : {LayoutMode::Canonical, LayoutMode::Preserve})
+        {
+            const bool preserve = layout == LayoutMode::Preserve;
+            const auto name = "comment-elements-" + std::string(config) +
+                (preserve ? "-preserve" : "");
+            std::string expected;
+            if (generated) {
+                expected = preserve
+                    ? "comment-elements-preserve.output.cpp"
+                    : policy.ends_with("no-space")
+                        ? "comment-elements-label-no-space.output.cpp"
+                        : "comment-elements-label-space.output.cpp";
+            }
+            cases.push_back({
+                callReflow,
+                name,
+                "comment-elements.input.cpp",
+                "comment-elements",
+                {},
+                true,
+                expected,
+                true,
+            });
+            auto style = formatter::LoadConfigFile(
+                callReflow / "comment-elements.hit-fmt").FormattingStyle;
+            style.Layout = layout;
+            style.ArgumentLabelCommentSpacing = formatter::LoadConfigFile(
+                callReflow /
+                (std::string(config) +
+                    ".hit-fmt")).FormattingStyle.ArgumentLabelCommentSpacing;
+            cases.back().Style = std::move(style);
+        }
+    }
     cases.push_back({
         callReflow,
         "first-position-reflow",
