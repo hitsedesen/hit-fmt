@@ -1,0 +1,818 @@
+(translation-unit
+  (template-declaration
+    "template"
+    (template-parameter-list
+      "<"
+      (template-parameter "class" "T")
+      ">"
+    )
+    (concept-declaration
+      "concept"
+      (concept-name "Transformable")
+      "="
+      (constraint-expression
+        (requires-expression
+          "requires"
+          (parameter-list
+            "("
+            (parameter-declaration
+              (declaration-specifiers "T")
+              (init-declarator-list
+                (init-declarator
+                  (declarator
+                    (declarator-name "value")
+                  )
+                )
+              )
+            )
+            ")"
+          )
+          (requirement-body
+            "{"
+            (simple-requirement
+              (call-expression
+                (lambda-expression
+                  (lambda-capture-list "[" "]")
+                  (template-parameter-list
+                    "<"
+                    (template-parameter "class" "LeftArgumentWithContext")
+                    (list-separator ",")
+                    (template-parameter "class" "RightArgumentWithContext")
+                    (list-separator ",")
+                    (template-parameter "class" "ExtraArgumentWithContext")
+                    ">"
+                  )
+                  (parameter-list
+                    "("
+                    (parameter-declaration
+                      (declaration-specifiers "LeftArgumentWithContext")
+                      (init-declarator-list
+                        (init-declarator
+                          (declarator
+                            (declarator-name "left")
+                          )
+                        )
+                      )
+                    )
+                    (list-separator ",")
+                    (parameter-declaration
+                      (declaration-specifiers "RightArgumentWithContext")
+                      (init-declarator-list
+                        (init-declarator
+                          (declarator
+                            (declarator-name "right")
+                          )
+                        )
+                      )
+                    )
+                    (list-separator ",")
+                    (parameter-declaration
+                      (declaration-specifiers "ExtraArgumentWithContext")
+                      (init-declarator-list
+                        (init-declarator
+                          (declarator
+                            (declarator-name "extra")
+                          )
+                        )
+                      )
+                    )
+                    ")"
+                  )
+                  (lambda-body
+                    "{"
+                    (return-statement
+                      "return"
+                      (call-expression
+                        (identifier-expression "combine")
+                        (argument-list
+                          "("
+                          (argument
+                            (identifier-expression "left")
+                          )
+                          (list-separator ",")
+                          (argument
+                            (identifier-expression "right")
+                          )
+                          (list-separator ",")
+                          (argument
+                            (identifier-expression "extra")
+                          )
+                          (list-separator ",")
+                          (argument
+                            (call-expression
+                              (identifier-expression "make_extra_argument")
+                              (argument-list
+                                "("
+                                (argument
+                                  (identifier-expression "left")
+                                )
+                                ")"
+                              )
+                            )
+                          )
+                          ")"
+                        )
+                      )
+                      ";"
+                    )
+                    "}"
+                  )
+                )
+                (argument-list
+                  "("
+                  (argument
+                    (identifier-expression "value")
+                  )
+                  (list-separator ",")
+                  (argument
+                    (identifier-expression "value")
+                  )
+                  (list-separator ",")
+                  (argument
+                    (identifier-expression "value")
+                  )
+                  ")"
+                )
+              )
+            )
+            (list-separator ";")
+            (compound-requirement
+              (requirement-expression
+                "{"
+                (call-expression
+                  (lambda-expression
+                    (lambda-capture-list "[" "]")
+                    (template-parameter-list
+                      "<"
+                      (template-parameter "class" "Argument")
+                      (list-separator ",")
+                      (template-parameter "class" "ExtraArgument")
+                      ">"
+                    )
+                    (parameter-list
+                      "("
+                      (parameter-declaration
+                        (declaration-specifiers "Argument")
+                        (init-declarator-list
+                          (init-declarator
+                            (declarator
+                              (declarator-name "argument")
+                            )
+                          )
+                        )
+                      )
+                      (list-separator ",")
+                      (parameter-declaration
+                        (declaration-specifiers "ExtraArgument")
+                        (init-declarator-list
+                          (init-declarator
+                            (declarator
+                              (declarator-name "extra")
+                            )
+                          )
+                        )
+                      )
+                      ")"
+                    )
+                    (lambda-body
+                      "{"
+                      (return-statement
+                        "return"
+                        (call-expression
+                          (identifier-expression "combine")
+                          (argument-list
+                            "("
+                            (argument
+                              (identifier-expression "argument")
+                            )
+                            (list-separator ",")
+                            (argument
+                              (identifier-expression "extra")
+                            )
+                            ")"
+                          )
+                        )
+                        ";"
+                      )
+                      "}"
+                    )
+                  )
+                  (argument-list
+                    "("
+                    (argument
+                      (identifier-expression "value")
+                    )
+                    (list-separator ",")
+                    (argument
+                      (identifier-expression "value")
+                    )
+                    ")"
+                  )
+                )
+                "}"
+              )
+              (exception-specification "noexcept")
+              (type-constraint
+                "->" "ResultFor"
+                (template-argument-list
+                  "<"
+                  (template-argument "T")
+                  ">"
+                )
+              )
+            )
+            (list-separator ";")
+            (nested-requirement
+              "requires"
+              (constraint-expression
+                (parenthesized-expression
+                  "("
+                  (call-expression
+                    (lambda-expression
+                      (lambda-capture-list "[" "]")
+                      (template-parameter-list
+                        "<"
+                        (template-parameter "class" "Argument")
+                        ">"
+                      )
+                      (parameter-list
+                        "("
+                        (parameter-declaration
+                          (declaration-specifiers "Argument")
+                          (init-declarator-list
+                            (init-declarator
+                              (declarator
+                                (declarator-name "argument")
+                              )
+                            )
+                          )
+                        )
+                        ")"
+                      )
+                      (lambda-body
+                        "{"
+                        (return-statement
+                          "return"
+                          (binary-expression
+                            (binary-expression
+                              (unary-expression
+                                "sizeof"
+                                (parenthesized-expression
+                                  "("
+                                  (identifier-expression "argument")
+                                  ")"
+                                )
+                              )
+                              ">"
+                              (literal-expression "0")
+                            )
+                            "&&"
+                            (binary-expression
+                              (unary-expression
+                                "sizeof"
+                                (parenthesized-expression
+                                  "("
+                                  (identifier-expression "argument")
+                                  ")"
+                                )
+                              )
+                              "<"
+                              (literal-expression "64")
+                            )
+                          )
+                          ";"
+                        )
+                        "}"
+                      )
+                    )
+                    (argument-list
+                      "("
+                      (argument
+                        (identifier-expression "value")
+                      )
+                      ")"
+                    )
+                  )
+                  ")"
+                )
+              )
+            )
+            (list-separator ";")
+            (nested-requirement
+              "requires"
+              (constraint-expression
+                (requires-expression
+                  "requires"
+                  (requirement-body
+                    "{"
+                    (simple-requirement
+                      (call-expression
+                        (lambda-expression
+                          (lambda-capture-list "[" "]")
+                          (template-parameter-list
+                            "<"
+                            (template-parameter "class" "Argument")
+                            ">"
+                          )
+                          (parameter-list
+                            "("
+                            (parameter-declaration
+                              (declaration-specifiers "Argument")
+                              (init-declarator-list
+                                (init-declarator
+                                  (declarator
+                                    (declarator-name "argument")
+                                  )
+                                )
+                              )
+                            )
+                            ")"
+                          )
+                          (lambda-body
+                            "{"
+                            (return-statement
+                              "return"
+                              (call-expression
+                                (member-expression
+                                  (identifier-expression "argument")
+                                  "."
+                                  (identifier-expression "touch")
+                                )
+                                (argument-list "(" ")")
+                              )
+                              ";"
+                            )
+                            "}"
+                          )
+                        )
+                        (argument-list
+                          "("
+                          (argument
+                            (identifier-expression "value")
+                          )
+                          ")"
+                        )
+                      )
+                    )
+                    (list-separator ";")
+                    "}"
+                  )
+                )
+              )
+            )
+            (list-separator ";")
+            (type-requirement
+              "typename"
+              (type-id
+                "Wrapper"
+                (template-argument-list
+                  "<"
+                  (template-argument
+                    (type-id
+                      "decltype"
+                      (parenthesized-expression
+                        "("
+                        (call-expression
+                          (lambda-expression
+                            (lambda-capture-list "[" "]")
+                            (template-parameter-list
+                              "<"
+                              (template-parameter "class" "Argument")
+                              ">"
+                            )
+                            (parameter-list
+                              "("
+                              (parameter-declaration
+                                (declaration-specifiers "Argument")
+                                (init-declarator-list
+                                  (init-declarator
+                                    (declarator
+                                      (declarator-name "argument")
+                                    )
+                                  )
+                                )
+                              )
+                              ")"
+                            )
+                            (lambda-body
+                              "{"
+                              (return-statement
+                                "return"
+                                (identifier-expression "argument")
+                                ";"
+                              )
+                              "}"
+                            )
+                          )
+                          (argument-list
+                            "("
+                            (argument
+                              (identifier-expression "value")
+                            )
+                            ")"
+                          )
+                        )
+                        ")"
+                      )
+                    )
+                  )
+                  ">"
+                )
+                "::" "type"
+              )
+            )
+            (list-separator ";")
+            (simple-requirement
+              (call-expression
+                (lambda-expression
+                  (lambda-capture-list "[" "]")
+                  (template-parameter-list
+                    "<"
+                    (template-parameter "class" "A")
+                    ">"
+                  )
+                  (parameter-list
+                    "("
+                    (parameter-declaration
+                      (declaration-specifiers "A")
+                      (init-declarator-list
+                        (init-declarator
+                          (declarator
+                            (declarator-name "a")
+                          )
+                        )
+                      )
+                    )
+                    ")"
+                  )
+                  (lambda-body
+                    "{"
+                    (return-statement
+                      "return"
+                      (identifier-expression "a")
+                      ";"
+                    )
+                    "}"
+                  )
+                )
+                (argument-list
+                  "("
+                  (argument
+                    (identifier-expression "value")
+                  )
+                  ")"
+                )
+              )
+            )
+            (list-separator ";")
+            (simple-requirement
+              (call-expression
+                (lambda-expression
+                  (lambda-capture-list "[" "]")
+                  (parameter-list
+                    "("
+                    (parameter-declaration
+                      (declaration-specifiers "int")
+                      (init-declarator-list
+                        (init-declarator
+                          (declarator
+                            (declarator-name "item")
+                          )
+                        )
+                      )
+                    )
+                    ")"
+                  )
+                  (lambda-body
+                    "{"
+                    (return-statement
+                      "return"
+                      (binary-expression
+                        (identifier-expression "item")
+                        "+"
+                        (literal-expression "1")
+                      )
+                      ";"
+                    )
+                    "}"
+                  )
+                )
+                (argument-list
+                  "("
+                  (argument
+                    (literal-expression "0")
+                  )
+                  ")"
+                )
+              )
+            )
+            (list-separator ";")
+            (simple-requirement
+              (binary-expression
+                (subscript-expression
+                  (identifier-expression "value")
+                  "["
+                  (literal-expression "0")
+                  "]"
+                )
+                "<"
+                (subscript-expression
+                  (identifier-expression "value")
+                  "["
+                  (literal-expression "1")
+                  "]"
+                )
+              )
+            )
+            (list-separator ";")
+            "}"
+          )
+        )
+      )
+      ";"
+    )
+  )
+  (template-declaration
+    (leading-trivia
+      (whitespace "\n\n")
+    )
+    "template"
+    (template-parameter-list
+      "<"
+      (template-parameter "class" "T")
+      ">"
+    )
+    (requires-clause
+      "requires"
+      (constraint-expression
+        (requires-expression
+          "requires"
+          (parameter-list
+            "("
+            (parameter-declaration
+              (declaration-specifiers "T")
+              (init-declarator-list
+                (init-declarator
+                  (declarator
+                    (declarator-name "value")
+                  )
+                )
+              )
+            )
+            ")"
+          )
+          (requirement-body
+            "{"
+            (simple-requirement
+              (call-expression
+                (lambda-expression
+                  (lambda-capture-list "[" "]")
+                  (template-parameter-list
+                    "<"
+                    (template-parameter "class" "FirstArgument")
+                    (list-separator ",")
+                    (template-parameter "class" "SecondArgument")
+                    ">"
+                  )
+                  (parameter-list
+                    "("
+                    (parameter-declaration
+                      (declaration-specifiers "FirstArgument")
+                      (init-declarator-list
+                        (init-declarator
+                          (declarator
+                            (declarator-name "first")
+                          )
+                        )
+                      )
+                    )
+                    (list-separator ",")
+                    (parameter-declaration
+                      (declaration-specifiers "SecondArgument")
+                      (init-declarator-list
+                        (init-declarator
+                          (declarator
+                            (declarator-name "second")
+                          )
+                        )
+                      )
+                    )
+                    ")"
+                  )
+                  (lambda-body
+                    "{"
+                    (return-statement
+                      "return"
+                      (call-expression
+                        (identifier-expression "combine")
+                        (argument-list
+                          "("
+                          (argument
+                            (identifier-expression "first")
+                          )
+                          (list-separator ",")
+                          (argument
+                            (identifier-expression "second")
+                          )
+                          (list-separator ",")
+                          (argument
+                            (call-expression
+                              (identifier-expression "make_extra_argument")
+                              (argument-list
+                                "("
+                                (argument
+                                  (identifier-expression "first")
+                                )
+                                ")"
+                              )
+                            )
+                          )
+                          ")"
+                        )
+                      )
+                      ";"
+                    )
+                    "}"
+                  )
+                )
+                (argument-list
+                  "("
+                  (argument
+                    (identifier-expression "value")
+                  )
+                  (list-separator ",")
+                  (argument
+                    (identifier-expression "value")
+                  )
+                  ")"
+                )
+              )
+            )
+            (list-separator ";")
+            "}"
+          )
+        )
+      )
+    )
+    (function-definition
+      (declaration-specifiers "void")
+      (init-declarator-list
+        (init-declarator
+          (declarator
+            (declarator-name "check")
+            (function-declarator
+              (parameter-list
+                "("
+                (parameter-declaration
+                  (declaration-specifiers "T")
+                  (init-declarator-list
+                    (init-declarator
+                      (declarator
+                        (declarator-name "value")
+                      )
+                    )
+                  )
+                )
+                ")"
+              )
+            )
+          )
+        )
+      )
+      (compound-statement "{" "}")
+    )
+  )
+  (template-declaration
+    (leading-trivia
+      (whitespace "\n\n")
+    )
+    "template"
+    (template-parameter-list
+      "<"
+      (template-parameter "class" "T")
+      ">"
+    )
+    (function-definition
+      (declaration-specifiers "void")
+      (init-declarator-list
+        (init-declarator
+          (declarator
+            (declarator-name "trailing")
+            (function-declarator
+              (parameter-list
+                "("
+                (parameter-declaration
+                  (declaration-specifiers "T")
+                  (init-declarator-list
+                    (init-declarator
+                      (declarator
+                        (declarator-name "value")
+                      )
+                    )
+                  )
+                )
+                ")"
+              )
+              (requires-clause
+                "requires"
+                (constraint-expression
+                  (requires-expression
+                    "requires"
+                    (parameter-list
+                      "("
+                      (parameter-declaration
+                        (declaration-specifiers "T")
+                        (init-declarator-list
+                          (init-declarator
+                            (declarator
+                              (declarator-name "item")
+                            )
+                          )
+                        )
+                      )
+                      ")"
+                    )
+                    (requirement-body
+                      "{"
+                      (compound-requirement
+                        (requirement-expression
+                          "{"
+                          (call-expression
+                            (lambda-expression
+                              (lambda-capture-list "[" "]")
+                              (template-parameter-list
+                                "<"
+                                (template-parameter "class" "Argument")
+                                ">"
+                              )
+                              (parameter-list
+                                "("
+                                (parameter-declaration
+                                  (declaration-specifiers "Argument")
+                                  (init-declarator-list
+                                    (init-declarator
+                                      (declarator
+                                        (declarator-name "argument")
+                                      )
+                                    )
+                                  )
+                                )
+                                ")"
+                              )
+                              (lambda-body
+                                "{"
+                                (return-statement
+                                  "return"
+                                  (call-expression
+                                    (identifier-expression "combine")
+                                    (argument-list
+                                      "("
+                                      (argument
+                                        (identifier-expression "argument")
+                                      )
+                                      (list-separator ",")
+                                      (argument
+                                        (call-expression
+                                          (identifier-expression "make_extra_argument")
+                                          (argument-list
+                                            "("
+                                            (argument
+                                              (identifier-expression "argument")
+                                            )
+                                            ")"
+                                          )
+                                        )
+                                      )
+                                      ")"
+                                    )
+                                  )
+                                  ";"
+                                )
+                                "}"
+                              )
+                            )
+                            (argument-list
+                              "("
+                              (argument
+                                (identifier-expression "item")
+                              )
+                              ")"
+                            )
+                          )
+                          "}"
+                        )
+                      )
+                      (list-separator ";")
+                      "}"
+                    )
+                  )
+                )
+              )
+            )
+          )
+        )
+      )
+      (compound-statement "{" "}")
+    )
+  )
+)

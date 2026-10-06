@@ -6,4 +6,4 @@ auto l=[]() mutable{return 1;}; auto m=[] mutable{return 2;};
 template<class T> concept C=requires(T t){ t; };
 auto a=static_cast<int> (x); auto b=const_cast<int*> (p);
 struct Empty{ }; namespace NE{ } enum EE{ };
-template<class T> concept EC=requires{ };
+template<class T> concept EC=requires{};

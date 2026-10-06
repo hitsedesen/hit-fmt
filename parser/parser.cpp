@@ -1554,6 +1554,7 @@ private:
                     NodeKind::AccessSpecifier,
                     NodeKind::CompoundStatement,
                     NodeKind::RequirementBody,
+                    NodeKind::RequirementExpression,
                     NodeKind::RecordDeclaration,
                     NodeKind::BracedInitializer,
                     NodeKind::InitializerList,
@@ -5652,11 +5653,15 @@ private:
                     : (nestedEnd != begin ? nestedEnd : begin));
             for (auto i = suffixBegin; i < suffixScanEnd; ++i) {
                 if (parameters && i == parameters->Begin) {
-                    i = parameters->End - 1;
+                    // The signature owns its suffix expressions and types.
+                    // Their brackets are not array declarator suffixes.
+                    i = function
+                        ? function->Tokens.End - 1
+                        : parameters->End - 1;
                     continue;
                 }
                 if (nestedParameters && i == nestedParameters->Begin) {
-                    i = nestedParameters->End - 1;
+                    i = nestedEnd - 2;
                     continue;
                 }
                 auto kind = Kind(i);
@@ -8668,71 +8673,293 @@ private:
         return fold;
     }
 
+    void AddRequirementExpression(Node& owner, TokenIndex begin, TokenIndex end)
+    {
+        auto cursor = std::min(NextSignificant(begin), end);
+        if (auto* expression = ParseExpressionSyntax(cursor, end)) {
+            Append(owner, *expression);
+            // Recovery may advance past a failed operator. Only the syntax
+            // node's proven range certifies this requirement's expression.
+            cursor = expression->Tokens.End;
+        } else {
+            ErrorAt(cursor, "expected requirement expression");
+            AddMissingToken(owner, cursor);
+        }
+        cursor = std::min(NextSignificant(cursor), end);
+        if (cursor < end) {
+            ErrorAt(cursor, "unexpected tokens in requirement expression");
+            AddUnparsedSyntax(owner, cursor, end);
+        }
+    }
+
+    void AddRequirementName(Node& owner, TokenIndex begin, TokenIndex end)
+    {
+        auto cursor = std::min(NextSignificant(begin), end);
+        if (cursor < end && Kind(cursor) == TK::Operator_ScopeResolution) {
+            cursor = std::min(NextSignificant(cursor + 1), end);
+        }
+        size_t work = 4096;
+        while (true) {
+            if (cursor >= end || Kind(cursor) != TK::Identifier) {
+                ErrorAt(cursor, "expected requirement type or concept name");
+                if (cursor == end) {
+                    AddMissingToken(owner, cursor);
+                } else {
+                    AddUnparsedSyntax(owner, cursor, end);
+                }
+                return;
+            }
+            cursor = std::min(NextSignificant(cursor + 1), end);
+            if (cursor < end && Kind(cursor) == TK::Operator_Less) {
+                // This grammar expects a name, so a proved angle list is
+                // template syntax even for an unknown type or concept.
+                const auto after = ArgumentTemplateEnd(cursor, end, work);
+                if (!after) {
+                    ErrorAt(
+                        cursor,
+                        "expected complete requirement template arguments");
+                    AddUnparsedSyntax(owner, cursor, end);
+                    return;
+                }
+                Append(owner, *MakeTemplateArgumentList(cursor, *after));
+                cursor = std::min(NextSignificant(*after), end);
+            }
+            if (cursor >= end || Kind(cursor) != TK::Operator_ScopeResolution) {
+                break;
+            }
+            cursor = std::min(NextSignificant(cursor + 1), end);
+            if (cursor < end && Kind(cursor) == TK::Keyword_template) {
+                cursor = std::min(NextSignificant(cursor + 1), end);
+            }
+        }
+        if (cursor < end) {
+            ErrorAt(cursor, "unexpected tokens after requirement name");
+            AddUnparsedSyntax(owner, cursor, end);
+        }
+    }
+
+    Node* MakeRequirement(TokenIndex begin, TokenIndex end)
+    {
+        const auto kind = Kind(begin);
+        const auto nodeKind = kind == TK::Keyword_typename
+            ? NodeKind::TypeRequirement
+            : kind == TK::Keyword_requires
+                ? NodeKind::NestedRequirement
+                : kind == TK::Operator_OpenBrace
+                    ? NodeKind::CompoundRequirement
+                    : NodeKind::SimpleRequirement;
+        auto* requirement = MakeNode(nodeKind, begin);
+        requirement->Tokens.End = end;
+        const bool hasDirective =
+            Tree_.Tokens_.FindPreprocessingDirective(begin, end) < end;
+        if (RequiresSyntaxDepth_ >= 64 || hasDirective) {
+            if (hasDirective) {
+                requirement->Kind = NodeKind::Requirement;
+            }
+            AddUnparsedSyntax(*requirement, begin, end);
+            return requirement;
+        }
+        ++RequiresSyntaxDepth_;
+        if (kind == TK::Keyword_typename) {
+            const auto nameBegin = std::min(NextSignificant(begin + 1), end);
+            auto* name = MakeNode(NodeKind::TypeId, nameBegin);
+            name->Tokens.End = end;
+            AddRequirementName(*name, nameBegin, end);
+            Append(*requirement, *name);
+        } else if (kind == TK::Keyword_requires) {
+            const auto constraintBegin =
+                std::min(NextSignificant(begin + 1), end);
+            auto* constraint =
+                MakeNode(NodeKind::ConstraintExpression, constraintBegin);
+            constraint->Tokens.End = end;
+            AddRequirementExpression(*constraint, constraintBegin, end);
+            Append(*requirement, *constraint);
+        } else if (kind == TK::Operator_OpenBrace) {
+            // A compound requirement owns a single braced expression, not
+            // a statement body or initializer list. Its suffix is separate.
+            const auto after = FindBalancedEnd(begin);
+            if (after <= end) {
+                auto* expression =
+                    MakeNode(NodeKind::RequirementExpression, begin);
+                expression->Tokens.End = after;
+                AddRequirementExpression(*expression, begin + 1, after - 1);
+                Append(*requirement, *expression);
+                auto suffix = std::min(NextSignificant(after), end);
+                if (suffix < end && Kind(suffix) == TK::Keyword_noexcept) {
+                    auto* specification =
+                        MakeNode(NodeKind::ExceptionSpecification, suffix);
+                    specification->Tokens.End = suffix + 1;
+                    Append(*requirement, *specification);
+                    suffix = std::min(NextSignificant(suffix + 1), end);
+                }
+                if (suffix < end &&
+                    Kind(suffix) == TK::Operator_IndirectClassMemberAccess)
+                {
+                    auto* constraint =
+                        MakeNode(NodeKind::TypeConstraint, suffix);
+                    constraint->Tokens.End = end;
+                    AddRequirementName(*constraint, suffix + 1, end);
+                    Append(*requirement, *constraint);
+                } else if (suffix < end) {
+                    ErrorAt(suffix, "unexpected compound requirement suffix");
+                    AddUnparsedSyntax(*requirement, suffix, end);
+                }
+            } else {
+                ErrorAt(
+                    begin,
+                    "expected complete compound requirement expression");
+                AddUnparsedSyntax(*requirement, begin, end);
+            }
+        } else {
+            AddRequirementExpression(*requirement, begin, end);
+        }
+        --RequiresSyntaxDepth_;
+        return requirement;
+    }
+
+    void ValidateRequiresParameters(Node& parameters)
+    {
+        for (auto* parameter = parameters.FirstChild;
+            parameter;
+            parameter = parameter->NextSibling)
+        {
+            if (parameter->Kind != NodeKind::ParameterDeclaration) {
+                continue;
+            }
+            const auto first = NextSignificant(parameter->Tokens.Begin);
+            if (Kind(first) == TK::Operator_Ellipsis &&
+                NextSignificant(first + 1) >= parameter->Tokens.End)
+            {
+                ErrorAt(
+                    first,
+                    "requires parameter list cannot end with ellipsis");
+                parameter->FirstChild = parameter->LastChild = nullptr;
+                AddUnparsedSyntax(*parameter, first, parameter->Tokens.End);
+                continue;
+            }
+            for (auto* list = parameter->FirstChild;
+                list;
+                list = list->NextSibling)
+            {
+                if (list->Kind != NodeKind::InitDeclaratorList) {
+                    continue;
+                }
+                for (auto* declarator = list->FirstChild;
+                    declarator;
+                    declarator = declarator->NextSibling)
+                {
+                    for (auto* part = declarator->FirstChild;
+                        part;
+                        part = part->NextSibling)
+                    {
+                        if (part->Kind != NodeKind::Initializer) {
+                            continue;
+                        }
+                        ErrorAt(
+                            part->Tokens.Begin,
+                            "requires parameters cannot have "
+                            "default arguments");
+                        part->FirstChild = part->LastChild = nullptr;
+                        AddUnparsedSyntax(
+                            *part,
+                            part->Tokens.Begin,
+                            part->Tokens.End);
+                    }
+                }
+            }
+        }
+    }
+
     Node* ParseRequiresExpression(TokenIndex& cursor, TokenIndex end)
     {
-        auto start = cursor;
+        const auto start = cursor;
         auto* expression = MakeNode(NodeKind::RequiresExpression, start);
-        cursor = NextSignificant(cursor + 1);
-        if (Kind(cursor) == TK::Operator_OpenParenthesis) {
-            auto parameterEnd = FindBalancedEnd(cursor);
-            if (parameterEnd == std::numeric_limits<TokenIndex>::max() ||
-                parameterEnd > end)
-            {
-                expression->Tokens.End = cursor;
+        Node* localParameters = nullptr;
+        cursor = std::min(NextSignificant(cursor + 1), end);
+        if (cursor < end && Kind(cursor) == TK::Operator_OpenParenthesis) {
+            const auto parameterEnd = FindBalancedEnd(cursor);
+            if (parameterEnd > end) {
+                ErrorAt(cursor, "expected complete requires parameter list");
+                AddUnparsedSyntax(*expression, cursor, end);
+                cursor = end;
+                expression->Tokens.End = end;
                 return expression;
             }
             auto* parameters = MakeNode(NodeKind::ParameterList, cursor);
             parameters->Tokens.End = parameterEnd;
-            AddParameterDeclarations(
+            if (!AddParameterDeclarations(
                 *parameters,
-                TokenRange{.Begin = cursor, .End = parameterEnd});
+                TokenRange{.Begin = cursor, .End = parameterEnd}))
+            {
+                ErrorAt(cursor, "expected requires parameter declarations");
+            }
+            ValidateRequiresParameters(*parameters);
+            localParameters = parameters;
             Append(*expression, *parameters);
-            cursor = NextSignificant(parameterEnd);
+            cursor = std::min(NextSignificant(parameterEnd), end);
         }
-        if (Kind(cursor) != TK::Operator_OpenBrace) {
+        if (cursor >= end || Kind(cursor) != TK::Operator_OpenBrace) {
+            ErrorAt(cursor, "expected requirement body");
+            AddMissingToken(*expression, cursor);
             expression->Tokens.End = cursor;
             return expression;
         }
-        auto bodyEnd = FindBalancedEnd(cursor);
-        if (bodyEnd == std::numeric_limits<TokenIndex>::max() || bodyEnd > end)
-        {
-            expression->Tokens.End = cursor;
+        const auto bodyEnd = FindBalancedEnd(cursor);
+        if (bodyEnd > end) {
+            ErrorAt(cursor, "expected complete requirement body");
+            AddUnparsedSyntax(*expression, cursor, end);
+            cursor = end;
+            expression->Tokens.End = end;
             return expression;
+        }
+        PushScope();
+        if (localParameters) {
+            RegisterParameterValues(*localParameters);
         }
         auto* body = MakeNode(NodeKind::RequirementBody, cursor);
         body->Tokens.End = bodyEnd;
-        auto requirementBegin = NextSignificant(cursor + 1);
-        int depth = 0;
-        for (auto i = requirementBegin; i < bodyEnd - 1; ++i) {
-            auto kind = Kind(i);
-            if (IsOpenDelimiter(kind)) {
-                ++depth;
-            } else if (kind == TK::Operator_CloseParenthesis ||
-                kind == TK::Operator_CloseBracket ||
-                kind == TK::Operator_CloseBrace)
-            {
-                --depth;
-            } else if (depth == 0 && kind == TK::Operator_Semicolon) {
+        const auto closing = bodyEnd - 1;
+        auto requirementBegin = std::min(NextSignificant(cursor + 1), closing);
+        bool hasDirective = false;
+        for (auto i = requirementBegin; i < closing; ++i) {
+            const auto kind = Kind(i);
+            if (kind == TK::PreprocessingDirective && i == requirementBegin) {
+                hasDirective = true;
+                requirementBegin = std::min(NextSignificant(i + 1), closing);
+                i = requirementBegin - 1;
+            } else if (IsOpenDelimiter(kind)) {
+                // Cached pairs keep nested requirement splitting linear;
+                // inner semicolons belong to their own expression or body.
+                const auto after = FindBalancedEnd(i);
+                if (after > closing) {
+                    break;
+                }
+                i = after - 1;
+            } else if (kind == TK::Operator_Semicolon) {
                 if (requirementBegin < i) {
-                    auto* requirement =
-                        MakeNode(NodeKind::Requirement, requirementBegin);
-                    requirement->Tokens.End = i;
-                    Append(*body, *requirement);
+                    Append(*body, *MakeRequirement(requirementBegin, i));
+                } else {
+                    ErrorAt(i, "expected requirement before semicolon");
+                    AddMissingToken(*body, i);
                 }
                 auto* separator = MakeNode(NodeKind::ListSeparator, i);
                 separator->Tokens.End = i + 1;
                 Append(*body, *separator);
-                requirementBegin = NextSignificant(i + 1);
+                requirementBegin = std::min(NextSignificant(i + 1), closing);
             }
         }
-        if (requirementBegin < bodyEnd - 1) {
-            auto* requirement =
-                MakeNode(NodeKind::Requirement, requirementBegin);
-            requirement->Tokens.End = bodyEnd - 1;
+        if (requirementBegin < closing) {
+            auto* requirement = MakeRequirement(requirementBegin, closing);
+            ErrorAt(closing, "expected semicolon after requirement");
+            AddMissingToken(*requirement, closing);
             Append(*body, *requirement);
+        } else if (!body->FirstChild && !hasDirective) {
+            ErrorAt(closing, "expected nonempty requirement body");
+            AddMissingToken(*body, closing);
         }
         AddDirectiveChildrenInGap(*body, cursor, bodyEnd);
         Append(*expression, *body);
+        PopScope();
         cursor = bodyEnd;
         expression->Tokens.End = bodyEnd;
         return expression;
@@ -10212,6 +10439,11 @@ private:
         {
             return false;
         }
+        // A local value binding rules out the competing cast type-id.
+        const auto name = LookupName(Text(left.Tokens.Begin + 1));
+        if (end == left.Tokens.Begin + 2 && name == NameKind::Value) {
+            return false;
+        }
         for (auto i = left.Tokens.Begin + 2; i < end; i += 2) {
             if (i + 1 >= end || Kind(i) != TK::Operator_ScopeResolution ||
                 Kind(i + 1) != TK::Identifier)
@@ -10349,6 +10581,13 @@ private:
                             .SetRole(i, PunctuationRole::LabelDelimiter);
                     }
                 }
+                break;
+            case NodeKind::RequirementExpression:
+                MarkDelimiterRole(
+                    node,
+                    TK::Operator_OpenBrace,
+                    TK::Operator_CloseBrace,
+                    PunctuationRole::GroupingDelimiter);
                 break;
             case NodeKind::CompoundStatement:
             case NodeKind::RequirementBody:
@@ -10586,6 +10825,7 @@ private:
     size_t BranchParseDepth_ = 0;
     unsigned TemplateListDepth_ = 0;
     unsigned TypeSyntaxDepth_ = 0;
+    unsigned RequiresSyntaxDepth_ = 0;
     static constexpr size_t MaximumParseDepth = 256;
     std::array<size_t, MaximumParseDepth> ConditionalOpenBraces_{};
     size_t ConditionalBraceScopeDepth_ = 0;

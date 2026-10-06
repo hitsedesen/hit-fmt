@@ -38,11 +38,37 @@
           )
           (requirement-body
             "{"
-            (requirement "typename" "Values" "::" "type")
+            (type-requirement
+              "typename"
+              (type-id "Values" "::" "type")
+            )
             (list-separator ";")
-            (requirement "{" "values" "+" "..." "}" "->" "Same")
+            (compound-requirement
+              (requirement-expression
+                "{"
+                (binary-expression
+                  (identifier-expression "values")
+                  "+"
+                  (expression "...")
+                )
+                "}"
+              )
+              (type-constraint "->" "Same")
+            )
             (list-separator ";")
-            (requirement "requires" "Ready" "<" "Values" "..." ">")
+            (nested-requirement
+              "requires"
+              (constraint-expression
+                (template-id-expression
+                  (identifier-expression "Ready")
+                  (template-argument-list
+                    "<"
+                    (template-argument "Values" "...")
+                    ">"
+                  )
+                )
+              )
+            )
             (list-separator ";")
             "}"
           )

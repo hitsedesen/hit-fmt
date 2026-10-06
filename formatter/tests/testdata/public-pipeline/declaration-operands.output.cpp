@@ -41,7 +41,9 @@ template<class Store>
         store.Count();
         { store.Read() } noexcept;
         typename Store::value_type;
-        requires requires { typename Store::key_type; };
+        requires requires {
+            typename Store::key_type;
+        };
     }
 struct CheckedStore {
 };

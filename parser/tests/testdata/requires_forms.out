@@ -1,0 +1,490 @@
+(translation-unit
+  (template-declaration
+    "template"
+    (template-parameter-list
+      "<"
+      (template-parameter "class" "T")
+      ">"
+    )
+    (concept-declaration
+      "concept"
+      (concept-name "Requirements")
+      "="
+      (constraint-expression
+        (requires-expression
+          "requires"
+          (parameter-list
+            "("
+            (parameter-declaration
+              (declaration-specifiers "T")
+              (init-declarator-list
+                (init-declarator
+                  (declarator
+                    (declarator-name "value")
+                  )
+                )
+              )
+            )
+            ")"
+          )
+          (requirement-body
+            "{"
+            (simple-requirement
+              (call-expression
+                (member-expression
+                  (identifier-expression "value")
+                  "."
+                  (identifier-expression "touch")
+                )
+                (argument-list "(" ")")
+              )
+            )
+            (list-separator ";")
+            (simple-requirement
+              (binary-expression
+                (subscript-expression
+                  (identifier-expression "value")
+                  "["
+                  (literal-expression "0")
+                  "]"
+                )
+                "<"
+                (subscript-expression
+                  (identifier-expression "value")
+                  "["
+                  (literal-expression "1")
+                  "]"
+                )
+              )
+            )
+            (list-separator ";")
+            (type-requirement
+              "typename"
+              (type-id "T")
+            )
+            (list-separator ";")
+            (type-requirement
+              "typename"
+              (type-id
+                "::" "Names" "::" "Box"
+                (template-argument-list
+                  "<"
+                  (template-argument "T")
+                  ">"
+                )
+                "::" "template" "Rebind"
+                (template-argument-list
+                  "<"
+                  (template-argument
+                    "Box"
+                    (template-argument-list
+                      "<"
+                      (template-argument
+                        "Box"
+                        (template-argument-list
+                          "<"
+                          (template-argument "T")
+                          ">>"
+                        )
+                      )
+                    )
+                  )
+                  ">"
+                )
+                "::" "type"
+              )
+            )
+            (list-separator ";")
+            (type-requirement
+              "typename"
+              (type-id
+                "Holder"
+                (template-argument-list
+                  "<"
+                  (template-argument
+                    (type-id
+                      "decltype"
+                      (parenthesized-expression
+                        "("
+                        (call-expression
+                          (lambda-expression
+                            (lambda-capture-list "[" "]")
+                            (template-parameter-list
+                              "<"
+                              (template-parameter "class" "U")
+                              ">"
+                            )
+                            (parameter-list
+                              "("
+                              (parameter-declaration
+                                (declaration-specifiers "U")
+                                (init-declarator-list
+                                  (init-declarator
+                                    (declarator
+                                      (declarator-name "item")
+                                    )
+                                  )
+                                )
+                              )
+                              ")"
+                            )
+                            (lambda-body
+                              "{"
+                              (return-statement
+                                "return"
+                                (identifier-expression "item")
+                                ";"
+                              )
+                              "}"
+                            )
+                          )
+                          (argument-list
+                            "("
+                            (argument
+                              (identifier-expression "value")
+                            )
+                            ")"
+                          )
+                        )
+                        ")"
+                      )
+                    )
+                  )
+                  ">"
+                )
+                "::" "type"
+              )
+            )
+            (list-separator ";")
+            (compound-requirement
+              (requirement-expression
+                "{"
+                (call-expression
+                  (member-expression
+                    (identifier-expression "value")
+                    "."
+                    (identifier-expression "touch")
+                  )
+                  (argument-list "(" ")")
+                )
+                "}"
+              )
+            )
+            (list-separator ";")
+            (compound-requirement
+              (requirement-expression
+                "{"
+                (call-expression
+                  (member-expression
+                    (identifier-expression "value")
+                    "."
+                    (identifier-expression "touch")
+                  )
+                  (argument-list "(" ")")
+                )
+                "}"
+              )
+              (exception-specification "noexcept")
+            )
+            (list-separator ";")
+            (compound-requirement
+              (requirement-expression
+                "{"
+                (call-expression
+                  (member-expression
+                    (identifier-expression "value")
+                    "."
+                    (identifier-expression "touch")
+                  )
+                  (argument-list "(" ")")
+                )
+                "}"
+              )
+              (type-constraint "->" "Convertible")
+            )
+            (list-separator ";")
+            (compound-requirement
+              (requirement-expression
+                "{"
+                (call-expression
+                  (member-expression
+                    (identifier-expression "value")
+                    "."
+                    (identifier-expression "touch")
+                  )
+                  (argument-list "(" ")")
+                )
+                "}"
+              )
+              (exception-specification "noexcept")
+              (type-constraint
+                "->" "::" "Names" "::" "Accepts"
+                (template-argument-list
+                  "<"
+                  (template-argument
+                    "Box"
+                    (template-argument-list
+                      "<"
+                      (template-argument
+                        "Box"
+                        (template-argument-list
+                          "<"
+                          (template-argument "T")
+                          ">>"
+                        )
+                      )
+                    )
+                  )
+                  (list-separator ",")
+                  (template-argument "(" "1" "<" "2" ")")
+                  ">"
+                )
+              )
+            )
+            (list-separator ";")
+            (nested-requirement
+              "requires"
+              (constraint-expression
+                (binary-expression
+                  (template-id-expression
+                    (identifier-expression "Enabled")
+                    (template-argument-list
+                      "<"
+                      (template-argument "T")
+                      ">"
+                    )
+                  )
+                  "&&"
+                  (parenthesized-expression
+                    "("
+                    (binary-expression
+                      (unary-expression
+                        "sizeof"
+                        (parenthesized-expression
+                          "("
+                          (identifier-expression "T")
+                          ")"
+                        )
+                      )
+                      ">"
+                      (literal-expression "0")
+                    )
+                    ")"
+                  )
+                )
+              )
+            )
+            (list-separator ";")
+            (nested-requirement
+              "requires"
+              (constraint-expression
+                (requires-expression
+                  "requires"
+                  (parameter-list
+                    "("
+                    (parameter-declaration
+                      (declaration-specifiers "T")
+                      (init-declarator-list
+                        (init-declarator
+                          (declarator
+                            (declarator-name "other")
+                          )
+                        )
+                      )
+                    )
+                    ")"
+                  )
+                  (requirement-body
+                    "{"
+                    (type-requirement
+                      "typename"
+                      (type-id "T" "::" "value_type")
+                    )
+                    (list-separator ";")
+                    (compound-requirement
+                      (requirement-expression
+                        "{"
+                        (call-expression
+                          (member-expression
+                            (identifier-expression "other")
+                            "."
+                            (identifier-expression "touch")
+                          )
+                          (argument-list "(" ")")
+                        )
+                        "}"
+                      )
+                      (type-constraint
+                        "->" "Names" "::" "Result"
+                        (template-argument-list
+                          "<"
+                          (template-argument "T")
+                          ">"
+                        )
+                      )
+                    )
+                    (list-separator ";")
+                    "}"
+                  )
+                )
+              )
+            )
+            (list-separator ";")
+            "}"
+          )
+        )
+      )
+      ";"
+    )
+  )
+  (declaration
+    (declaration-specifiers "int")
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (declarator-name "outside")
+        )
+      )
+    )
+    ";"
+  )
+  (using-declaration
+    (leading-trivia
+      (whitespace "\n\n")
+    )
+    "using" "Local" "="
+    (type-id "int")
+    ";"
+  )
+  (template-declaration
+    "template"
+    (template-parameter-list
+      "<"
+      (template-parameter "class" "T")
+      ">"
+    )
+    (concept-declaration
+      "concept"
+      (concept-name "Scoped")
+      "="
+      (constraint-expression
+        (requires-expression
+          "requires"
+          (parameter-list
+            "("
+            (parameter-declaration
+              (declaration-specifiers "int")
+              (init-declarator-list
+                (init-declarator
+                  (declarator
+                    (declarator-name "Local")
+                  )
+                )
+              )
+            )
+            ")"
+          )
+          (requirement-body
+            "{"
+            (simple-requirement
+              (binary-expression
+                (parenthesized-expression
+                  "("
+                  (identifier-expression "Local")
+                  ")"
+                )
+                "*"
+                (unary-expression
+                  "sizeof"
+                  (parenthesized-expression
+                    "("
+                    (identifier-expression "T")
+                    ")"
+                  )
+                )
+              )
+            )
+            (list-separator ";")
+            (simple-requirement
+              (binary-expression
+                (parenthesized-expression
+                  "("
+                  (identifier-expression "Local")
+                  ")"
+                )
+                "&"
+                (literal-expression "1")
+              )
+            )
+            (list-separator ";")
+            "}"
+          )
+        )
+      )
+      ";"
+    )
+  )
+  (declaration
+    (declaration-specifiers "Local")
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (declarator-name "outside_type")
+        )
+      )
+    )
+    ";"
+  )
+  (template-declaration
+    (leading-trivia
+      (whitespace "\n\n")
+    )
+    "template"
+    (template-parameter-list
+      "<"
+      (template-parameter "class" "..." "Types")
+      ">"
+    )
+    (concept-declaration
+      "concept"
+      (concept-name "Pack")
+      "="
+      (constraint-expression
+        (requires-expression
+          "requires"
+          (parameter-list
+            "("
+            (parameter-declaration
+              (declaration-specifiers "Types")
+              (init-declarator-list
+                (init-declarator
+                  (declarator
+                    "..."
+                    (declarator-name "values")
+                  )
+                )
+              )
+            )
+            ")"
+          )
+          (requirement-body
+            "{"
+            (simple-requirement
+              (unary-expression
+                "sizeof" "..."
+                (parenthesized-expression
+                  "("
+                  (identifier-expression "values")
+                  ")"
+                )
+              )
+            )
+            (list-separator ";")
+            "}"
+          )
+        )
+      )
+      ";"
+    )
+  )
+)

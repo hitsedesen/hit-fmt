@@ -29,4 +29,4 @@ void use(int n) {
 #define TARGET(x) x
     TARGET (n);
 }
-template<class T> concept C = requires (T value) { value(); };
+template<class T> concept C = requires (T value) { value (); };

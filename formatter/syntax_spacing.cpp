@@ -309,6 +309,7 @@ public:
             kind == NK::FoldExpression || kind == NK::NewExpression ||
             kind == NK::DeleteExpression ||
             kind == NK::ParenthesizedExpression ||
+            kind == NK::RequirementExpression ||
             kind == NK::StatementExpression)
         {
             state.Owner = Id(node);
@@ -1062,6 +1063,20 @@ public:
                         3,
                         true);
                 }
+                break;
+            case NK::RequirementExpression:
+                Interior(
+                    begin,
+                    end,
+                    F::None,
+                    F::None,
+                    node,
+                    C::Expressions,
+                    2,
+                    true);
+                break;
+            case NK::TypeConstraint:
+                Pair(begin, F::None, F::None, node, C::Expressions, 3, true);
                 break;
             case NK::RequiresExpression:
             case NK::RequiresClause:

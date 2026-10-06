@@ -2447,6 +2447,9 @@ INSTANTIATE_TEST_SUITE_P(
         GoldenCase{"preprocessing_fragments"},
         GoldenCase{"modules_and_concepts"},
         GoldenCase{"requires_clause_boundaries"},
+        GoldenCase{"requires_template_lambdas", false, true},
+        GoldenCase{"requires_forms", false, true},
+        GoldenCase{"requires_forms_recovery", true, true},
         GoldenCase{"requires_return_boundaries"},
         GoldenCase{"unhinted_body_recovery"},
         GoldenCase{
@@ -3563,9 +3566,11 @@ TEST(Parser, RequiresClauseOwnsNestedExpressionBeforeDeclaration)
                         tree.Role(node->Tokens.End - 1),
                         parser::PunctuationRole::BlockDelimiter);
                     ASSERT_NE(node->FirstChild, nullptr);
-                    EXPECT_EQ(
-                        node->FirstChild->Kind,
-                        parser::NodeKind::Requirement);
+                    const auto kind = node->FirstChild->Kind;
+                    EXPECT_TRUE(kind == parser::NodeKind::SimpleRequirement ||
+                        kind == parser::NodeKind::TypeRequirement ||
+                        kind == parser::NodeKind::CompoundRequirement ||
+                        kind == parser::NodeKind::NestedRequirement);
                     EXPECT_EQ(
                         node->LastChild->Kind,
                         parser::NodeKind::ListSeparator);
@@ -3625,6 +3630,189 @@ TEST(Parser, RequiresClauseOwnsNestedExpressionBeforeDeclaration)
             }
         }
     }
+}
+
+TEST(Parser, RequirementsOwnLambdaSyntax)
+{
+    const test::golden::Fixture fixture{
+        PARSER_TESTDATA_DIR,
+        "requires_template_lambdas",
+    };
+    PaddedInput input(fixture.InputNamed(".in"));
+    size_t errors = 0;
+    const auto tree =
+        parser::Parse(input.View(), [&] (parser::ParseError) { ++errors; });
+    EXPECT_EQ(errors, 0u);
+    const auto lambdas =
+        LambdaOwnershipNodes(tree.Root(), parser::NodeKind::LambdaExpression);
+    ASSERT_EQ(lambdas.size(), 9u);
+    size_t templated = 0;
+    for (const auto* lambda : lambdas) {
+        ASSERT_NE(lambda->FirstChild, nullptr);
+        EXPECT_EQ(
+            lambda->FirstChild->Kind,
+            parser::NodeKind::LambdaCaptureList);
+        EXPECT_EQ(
+            tree.Role(lambda->FirstChild->Tokens.Begin),
+            parser::PunctuationRole::LambdaDelimiter);
+        EXPECT_EQ(
+            tree.Role(lambda->FirstChild->Tokens.End - 1),
+            parser::PunctuationRole::LambdaDelimiter);
+        EXPECT_TRUE(
+            LambdaOwnershipNodes(*lambda, parser::NodeKind::UnparsedSyntax)
+                .empty());
+        const auto parameters = LambdaOwnershipNodes(
+            *lambda,
+            parser::NodeKind::TemplateParameterList);
+        templated += !parameters.empty();
+        for (const auto* list : parameters) {
+            EXPECT_EQ(
+                tree.Role(list->Tokens.Begin),
+                parser::PunctuationRole::TemplateDelimiter);
+            EXPECT_EQ(
+                tree.Role(list->Tokens.End - 1),
+                parser::PunctuationRole::TemplateDelimiter);
+        }
+        ASSERT_NE(lambda->LastChild, nullptr);
+        EXPECT_EQ(lambda->LastChild->Kind, parser::NodeKind::LambdaBody);
+        EXPECT_EQ(
+            tree.Role(lambda->LastChild->Tokens.Begin),
+            parser::PunctuationRole::LambdaDelimiter);
+    }
+    EXPECT_EQ(templated, 8u);
+}
+
+TEST(Parser, RequirementFormsOwnNamesBracesAndLocalScope)
+{
+    const test::golden::Fixture fixture{PARSER_TESTDATA_DIR, "requires_forms"};
+    PaddedInput input(fixture.InputNamed(".in"));
+    size_t errors = 0;
+    const auto tree =
+        parser::Parse(input.View(), [&] (parser::ParseError) { ++errors; });
+    EXPECT_EQ(errors, 0u);
+    EXPECT_TRUE(
+        LambdaOwnershipNodes(tree.Root(), parser::NodeKind::UnparsedSyntax)
+            .empty());
+    EXPECT_EQ(
+        LambdaOwnershipNodes(tree.Root(), parser::NodeKind::SimpleRequirement)
+            .size(),
+        5u);
+    EXPECT_EQ(
+        LambdaOwnershipNodes(tree.Root(), parser::NodeKind::TypeRequirement)
+            .size(),
+        4u);
+    EXPECT_EQ(
+        LambdaOwnershipNodes(tree.Root(), parser::NodeKind::NestedRequirement)
+            .size(),
+        2u);
+    const auto compounds = LambdaOwnershipNodes(
+        tree.Root(),
+        parser::NodeKind::CompoundRequirement);
+    ASSERT_EQ(compounds.size(), 5u);
+    for (const auto* compound : compounds) {
+        const auto* expression = compound->FirstChild;
+        ASSERT_NE(expression, nullptr);
+        ASSERT_EQ(expression->Kind, parser::NodeKind::RequirementExpression);
+        EXPECT_EQ(
+            tree.Role(expression->Tokens.Begin),
+            parser::PunctuationRole::GroupingDelimiter);
+        EXPECT_EQ(
+            tree.Role(expression->Tokens.End - 1),
+            parser::PunctuationRole::GroupingDelimiter);
+        EXPECT_TRUE(
+            LambdaOwnershipNodes(*compound, parser::NodeKind::BracedInitializer)
+                .empty());
+    }
+    EXPECT_EQ(
+        LambdaOwnershipNodes(tree.Root(), parser::NodeKind::TypeConstraint)
+            .size(),
+        3u);
+    bool hasScopedProduct = false;
+    for (const auto* binary :
+        LambdaOwnershipNodes(tree.Root(), parser::NodeKind::BinaryExpression))
+    {
+        if (tree.SourceText(binary->Tokens) == "(Local) * sizeof(T)") {
+            ASSERT_NE(binary->FirstChild, nullptr);
+            EXPECT_EQ(
+                tree.Role(binary->FirstChild->Tokens.End),
+                parser::PunctuationRole::BinaryOperator);
+            hasScopedProduct = true;
+        }
+    }
+    EXPECT_TRUE(hasScopedProduct);
+    EXPECT_TRUE(
+        LambdaOwnershipNodes(tree.Root(), parser::NodeKind::CastExpression)
+            .empty());
+    bool hasOutsideType = false;
+    for (const auto* child = tree.Root().FirstChild;
+        child;
+        child = child->NextSibling)
+    {
+        if (tree.SourceText(child->Tokens) == "Local outside_type;") {
+            ASSERT_NE(child->FirstChild, nullptr);
+            EXPECT_EQ(
+                child->FirstChild->Kind,
+                parser::NodeKind::DeclarationSpecifiers);
+            hasOutsideType = true;
+        }
+    }
+    EXPECT_TRUE(hasOutsideType);
+}
+
+TEST(Parser, RequirementRecoveryDiagnostics)
+{
+    const test::golden::Fixture fixture{
+        PARSER_TESTDATA_DIR,
+        "requires_forms_recovery",
+    };
+    PaddedInput input(fixture.InputNamed(".in"));
+    std::vector<parser::ParseError> errors;
+    const auto tree = parser::Parse(
+        input.View(),
+        [&] (parser::ParseError error) { errors.push_back(std::move(error)); });
+    ASSERT_FALSE(errors.empty());
+    std::string diagnostics;
+    for (const auto& error : errors) {
+        diagnostics +=
+            std::format("{}:{} ", error.Position.Line, error.Position.Column);
+        AppendQuoted(diagnostics, error.Message);
+        diagnostics.push_back('\n');
+    }
+    fixture.Expect(diagnostics, ".diagnostics.out");
+    ASSERT_NE(tree.Root().LastChild, nullptr);
+    EXPECT_EQ(
+        tree.SourceText(tree.Root().LastChild->Tokens),
+        "int final_outside;");
+    EXPECT_FALSE(
+        LambdaOwnershipNodes(tree.Root(), parser::NodeKind::UnparsedSyntax)
+            .empty());
+    EXPECT_FALSE(
+        LambdaOwnershipNodes(tree.Root(), parser::NodeKind::MissingToken)
+            .empty());
+}
+
+TEST(Parser, NestedRequirementSyntaxHasBoundedRecovery)
+{
+    std::string source = "template<class T> concept C = requires { ";
+    for (size_t i = 0; i < 128; ++i) {
+        source += "requires requires { ";
+    }
+    source += "true; ";
+    for (size_t i = 0; i < 128; ++i) {
+        source += "}; ";
+    }
+    source += "}; int outside;";
+    PaddedInput input(source);
+    const auto tree = parser::Parse(input.View(), [] (parser::ParseError) { });
+    const auto unparsed =
+        LambdaOwnershipNodes(tree.Root(), parser::NodeKind::UnparsedSyntax);
+    ASSERT_EQ(unparsed.size(), 1u);
+    EXPECT_TRUE(tree
+        .SourceText(unparsed.front()->Tokens)
+        .starts_with("requires requires {"));
+    const auto* outside = tree.Root().LastChild;
+    ASSERT_NE(outside, nullptr);
+    EXPECT_EQ(tree.SourceText(outside->Tokens), "int outside;");
 }
 
 TEST(Parser, RequiresClauseOwnsDependentFunctionReturnPrefix)

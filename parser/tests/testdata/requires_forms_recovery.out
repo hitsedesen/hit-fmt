@@ -1,0 +1,365 @@
+(translation-unit
+  (template-declaration
+    "template"
+    (template-parameter-list
+      "<"
+      (template-parameter "class" "T")
+      ">"
+    )
+    (concept-declaration
+      "concept"
+      (concept-name "Broken")
+      "="
+      (constraint-expression
+        (requires-expression
+          "requires"
+          (parameter-list
+            "("
+            (parameter-declaration
+              (declaration-specifiers "T")
+              (init-declarator-list
+                (init-declarator
+                  (declarator
+                    (declarator-name "value")
+                  )
+                )
+              )
+            )
+            ")"
+          )
+          (requirement-body
+            "{"
+            (type-requirement
+              "typename"
+              (type-id
+                (missing-token)
+              )
+            )
+            (list-separator ";")
+            (type-requirement
+              "typename"
+              (type-id
+                "T" "::"
+                (missing-token)
+              )
+            )
+            (list-separator ";")
+            (type-requirement
+              "typename"
+              (type-id
+                (unparsed-syntax "int")
+              )
+            )
+            (list-separator ";")
+            (type-requirement
+              "typename"
+              (type-id
+                "T"
+                (unparsed-syntax "<" "int")
+              )
+            )
+            (list-separator ";")
+            (nested-requirement
+              "requires"
+              (constraint-expression
+                (missing-token)
+              )
+            )
+            (list-separator ";")
+            (compound-requirement
+              (requirement-expression
+                "{"
+                (missing-token)
+                "}"
+              )
+            )
+            (list-separator ";")
+            (compound-requirement
+              (requirement-expression
+                "{"
+                (identifier-expression "value")
+                "}"
+              )
+              (exception-specification "noexcept")
+              (unparsed-syntax "(" "true" ")")
+            )
+            (list-separator ";")
+            (compound-requirement
+              (requirement-expression
+                "{"
+                (identifier-expression "value")
+                "}"
+              )
+              (type-constraint
+                "->"
+                (missing-token)
+              )
+            )
+            (list-separator ";")
+            (compound-requirement
+              (requirement-expression
+                "{"
+                (identifier-expression "value")
+                "}"
+              )
+              (type-constraint
+                "->"
+                (unparsed-syntax "int")
+              )
+            )
+            (list-separator ";")
+            (compound-requirement
+              (requirement-expression
+                "{"
+                (identifier-expression "value")
+                "}"
+              )
+              (type-constraint
+                "->" "Names" "::"
+                (missing-token)
+              )
+            )
+            (list-separator ";")
+            (compound-requirement
+              (requirement-expression
+                "{"
+                (identifier-expression "value")
+                "}"
+              )
+              (type-constraint
+                "->" "Concept"
+                (template-argument-list
+                  "<"
+                  (template-argument "T")
+                  ">"
+                )
+                (unparsed-syntax "extra")
+              )
+            )
+            (list-separator ";")
+            (simple-requirement
+              (identifier-expression "value")
+              (unparsed-syntax "extra")
+            )
+            (list-separator ";")
+            (simple-requirement
+              (identifier-expression "value")
+              (unparsed-syntax "+")
+            )
+            (list-separator ";")
+            (simple-requirement
+              (call-expression
+                (member-expression
+                  (identifier-expression "value")
+                  "."
+                  (identifier-expression "touch")
+                )
+                (argument-list "(" ")")
+              )
+              (missing-token)
+            )
+            "}"
+          )
+        )
+      )
+      ";"
+    )
+  )
+  (declaration
+    (declaration-specifiers "int")
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (declarator-name "outside")
+        )
+      )
+    )
+    ";"
+  )
+  (template-declaration
+    (leading-trivia
+      (whitespace "\n\n")
+    )
+    "template"
+    (template-parameter-list
+      "<"
+      (template-parameter "class" "T")
+      ">"
+    )
+    (concept-declaration
+      "concept"
+      (concept-name "Defaults")
+      "="
+      (constraint-expression
+        (requires-expression
+          "requires"
+          (parameter-list
+            "("
+            (parameter-declaration
+              (declaration-specifiers "T")
+              (init-declarator-list
+                (init-declarator
+                  (declarator
+                    (declarator-name "value")
+                  )
+                  (initializer
+                    (unparsed-syntax "=" "{" "}")
+                  )
+                )
+              )
+            )
+            ")"
+          )
+          (requirement-body
+            "{"
+            (simple-requirement
+              (identifier-expression "value")
+            )
+            (list-separator ";")
+            "}"
+          )
+        )
+      )
+      ";"
+    )
+  )
+  (template-declaration
+    "template"
+    (template-parameter-list
+      "<"
+      (template-parameter "class" "T")
+      ">"
+    )
+    (concept-declaration
+      "concept"
+      (concept-name "Varargs")
+      "="
+      (constraint-expression
+        (requires-expression
+          "requires"
+          (parameter-list
+            "("
+            (parameter-declaration
+              (declaration-specifiers "T")
+              (init-declarator-list
+                (init-declarator
+                  (declarator
+                    (declarator-name "value")
+                  )
+                )
+              )
+            )
+            (list-separator ",")
+            (parameter-declaration
+              (unparsed-syntax "...")
+            )
+            ")"
+          )
+          (requirement-body
+            "{"
+            (simple-requirement
+              (identifier-expression "value")
+            )
+            (list-separator ";")
+            "}"
+          )
+        )
+      )
+      ";"
+    )
+  )
+  (template-declaration
+    "template"
+    (template-parameter-list
+      "<"
+      (template-parameter "class" "T")
+      ">"
+    )
+    (concept-declaration
+      "concept"
+      (concept-name "Missing")
+      "="
+      (constraint-expression
+        (requires-expression
+          "requires"
+          (parameter-list
+            "("
+            (parameter-declaration
+              (declaration-specifiers "T")
+              (init-declarator-list
+                (init-declarator
+                  (declarator
+                    (declarator-name "value")
+                  )
+                )
+              )
+            )
+            ")"
+          )
+          (missing-token)
+        )
+      )
+      ";"
+    )
+  )
+  (template-declaration
+    "template"
+    (template-parameter-list
+      "<"
+      (template-parameter "class" "T")
+      ">"
+    )
+    (concept-declaration
+      "concept"
+      (concept-name "Empty")
+      "="
+      (constraint-expression
+        (requires-expression
+          "requires"
+          (requirement-body
+            "{"
+            (missing-token)
+            "}"
+          )
+        )
+      )
+      ";"
+    )
+  )
+  (template-declaration
+    "template"
+    (template-parameter-list
+      "<"
+      (template-parameter "class" "T")
+      ">"
+    )
+    (concept-declaration
+      "concept"
+      (concept-name "EmptyItem")
+      "="
+      (constraint-expression
+        (requires-expression
+          "requires"
+          (requirement-body
+            "{"
+            (missing-token)
+            (list-separator ";")
+            "}"
+          )
+        )
+      )
+      ";"
+    )
+  )
+  (declaration
+    (declaration-specifiers "int")
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (declarator-name "final_outside")
+        )
+      )
+    )
+    ";"
+  )
+)

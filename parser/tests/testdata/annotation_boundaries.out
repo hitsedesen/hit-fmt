@@ -198,8 +198,6 @@
         (init-declarator
           (declarator
             (declarator-name "f")
-            "(" "int" "n" ")" "const" "volatile" "&" "noexcept" "(" "true" ")"
-            (extension-attribute-specifier "__attribute__" "(" "(" "unused" ")" ")")
             (function-declarator
               (parameter-list
                 "("
@@ -241,8 +239,6 @@
         (init-declarator
           (declarator
             (declarator-name "g")
-            "(" "int" "n" ")"
-            (attribute-specifier "[" "[" "maybe_unused" "]" "]")
             (function-declarator
               (parameter-list
                 "("

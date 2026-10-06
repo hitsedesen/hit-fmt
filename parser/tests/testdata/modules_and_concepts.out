@@ -130,7 +130,16 @@
           )
           (requirement-body
             "{"
-            (requirement "value" "." "get" "(" ")")
+            (simple-requirement
+              (call-expression
+                (member-expression
+                  (identifier-expression "value")
+                  "."
+                  (identifier-expression "get")
+                )
+                (argument-list "(" ")")
+              )
+            )
             (list-separator ";")
             "}"
           )
@@ -191,7 +200,30 @@
                     )
                     (requirement-body
                       "{"
-                      (requirement "{" "function" "(" "value" ")" "}" "->" "std" "::" "same_as" "<" "int" ">")
+                      (compound-requirement
+                        (requirement-expression
+                          "{"
+                          (call-expression
+                            (identifier-expression "function")
+                            (argument-list
+                              "("
+                              (argument
+                                (identifier-expression "value")
+                              )
+                              ")"
+                            )
+                          )
+                          "}"
+                        )
+                        (type-constraint
+                          "->" "std" "::" "same_as"
+                          (template-argument-list
+                            "<"
+                            (template-argument "int")
+                            ">"
+                          )
+                        )
+                      )
                       (list-separator ";")
                       "}"
                     )

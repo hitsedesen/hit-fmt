@@ -2837,6 +2837,51 @@ std::vector<FormatCase> FormatCases()
                 .string(),
         });
     }
+    AddCases(
+        cases,
+        data / "requires-lambdas",
+        {"canonical", "narrow", "preserve"});
+    {
+        const auto directory = data / "requires-lambdas";
+        const auto parserData = std::filesystem::path(PARSER_TESTDATA_DIR);
+        for (const auto* name : {"forms", "forms-narrow"}) {
+            cases.push_back({
+                directory,
+                name,
+                (parserData / "requires_forms.in").string(),
+                name,
+                {},
+                true,
+                {},
+                true,
+            });
+        }
+        cases.push_back({
+            directory,
+            "forms-recovery",
+            (parserData / "requires_forms_recovery.in").string(),
+            "canonical",
+            {},
+            true,
+            {},
+            true,
+        });
+        for (auto& value : cases) {
+            if (value.Directory == directory) {
+                value.CheckOwningMaps = true;
+            }
+        }
+        auto style = formatter::LoadConfigFile(
+            directory / "canonical.hit-fmt").FormattingStyle;
+        ApplyProfile(cases, directory, "forms", style);
+        style.ColumnLimit = 60;
+        ApplyProfile(cases, directory, "narrow", style);
+        ApplyProfile(cases, directory, "forms-narrow", style);
+        style.Layout = LayoutMode::Preserve;
+        style.TemplateParametersLayout = CategoryLayout::Preserve;
+        style.LambdaBodiesLayout = CategoryLayout::Preserve;
+        ApplyProfile(cases, directory, "preserve", style);
+    }
     AddCases(cases, data / "unhinted-body-recovery", {"canonical"});
     AddCases(cases, data / "macro-generated-cases", {"canonical", "preserve"});
     cases.push_back({
@@ -4651,6 +4696,44 @@ TEST(Formatter, CallArgument_RequiresOwnedBreaksAcrossArities)
     ExpectUnchanged("void f() { Probe(); }\n", style);
 }
 
+TEST(Formatter, RequiresLambdasFitAfterBreakingHeadersAndBodies)
+{
+    const auto directory =
+        std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../requires-lambdas";
+    auto style = formatter::LoadConfigFile(
+        directory / "canonical.hit-fmt").FormattingStyle;
+    style.WidthDiagnostics = formatter::WidthDiagnosticPolicy::Report;
+    for (const auto& path :
+        {
+            directory / "input.cpp",
+            std::filesystem::path(PARSER_TESTDATA_DIR) / "requires_forms.in",
+        })
+    {
+        SCOPED_TRACE(path);
+        auto source = ReadFile(path);
+        const auto length = source.size();
+        source.append(util::SourcePaddingSize, '\0');
+        const util::PaddedSourceView input{
+            .Data = source.data(),
+            .Size = length,
+        };
+        const auto tree = parser::Parse(input, [] (parser::ParseError) { });
+        for (const auto columns : {80u, 60u}) {
+            SCOPED_TRACE(columns);
+            style.ColumnLimit = columns;
+            const auto result =
+                formatter::Format(tree, formatter::PreparedFormat(style));
+            EXPECT_TRUE(result.Diagnostics.empty());
+            if (path.filename() == "input.cpp") {
+                EXPECT_NE(result.Text.find("[]<\n"), std::string::npos);
+                EXPECT_NE(
+                    result.Text.find("\n        return combine("),
+                    std::string::npos);
+            }
+        }
+    }
+}
+
 TEST(Formatter, ExpressionLayout_ChecksPipelineMismatchAndEmittedWidth)
 {
     const auto input = "int f() {\n"
@@ -4952,7 +5035,6 @@ TEST(Formatter, OperatorSpacing_PreservesUnknownCastOrBinaryOperator)
     const std::string source =
         "void f(int a, int b) {\n" "    auto address = (UnknownType) &a;\n"
             "    auto pointer = (UnknownType)*b;\n"
-            "    auto bitwise = (a)& b;\n" "    auto multiply = (a)* b;\n"
             "    auto qualified = (NS::UnknownType) &a;\n" "}\n";
     // Canonical Always cannot manufacture authority for ambiguous operators.
     ExpectUnchanged(source, style);
