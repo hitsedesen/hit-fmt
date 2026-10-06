@@ -966,6 +966,39 @@ std::vector<FormatCase> FormatCases()
             value.InputFilePath = "yt/yt/core/rpc/runner.cpp";
             cases.push_back(std::move(value));
         }
+        for (const auto name :
+            {
+                "prefix-order-nearest",
+                "prefix-order-alphabetical",
+                "prefix-order-reversed",
+                "prefix-order-regroup",
+            })
+        {
+            FormatCase value{directory, name, "prefix-order.input.cpp"};
+            value.InputFilePath = "library/z/runner.cpp";
+            cases.push_back(std::move(value));
+        }
+        for (const auto profile : {"directory", "matching"}) {
+            FormatCase value{
+                directory,
+                "configured-" + std::string(profile),
+                "directory.input.cpp",
+                profile,
+                {},
+                true,
+                std::string(profile) + ".output.cpp",
+            };
+            value.Style = formatter::LoadConfigFile(directory /
+                (std::string(profile) + ".hit-fmt")).FormattingStyle;
+            value.Style->IncludeGroupOrder =
+                formatter::IncludeGroupOrder::Configured;
+            // Preserve must ignore both grouping rules and their ordering.
+            if (std::string_view(profile) == "matching") {
+                value.Style->IncludeGroups = {{{"project/"}, 1}};
+            }
+            value.InputFilePath = "project/engine/widget.cpp";
+            cases.push_back(std::move(value));
+        }
         for (const auto name : {"rule-order", "rule-order-reversed"}) {
             FormatCase value{directory, name, "rule-order.input.cpp"};
             value.InputFilePath = "source/runner.cpp";
@@ -1000,6 +1033,14 @@ std::vector<FormatCase> FormatCases()
                     : "directory.output.cpp";
             cases.push_back(std::move(value));
         }
+        FormatCase ytsaurusRoots{
+            directory,
+            "profile-ytsaurus-roots",
+            "rule-groups.input.cpp",
+            "../../../../hit-fmt/examples/ytsaurus",
+        };
+        ytsaurusRoots.InputFilePath = "yt/yt/core/rpc/runner.cpp";
+        cases.push_back(std::move(ytsaurusRoots));
         cases.push_back({
             directory,
             "directory-no-path",

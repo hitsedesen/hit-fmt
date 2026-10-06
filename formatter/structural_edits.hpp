@@ -63,6 +63,7 @@ struct StructuralOptions
     std::uint8_t IndentWidth = 4;
     IncludeMatchingHeader MatchingHeader = IncludeMatchingHeader::Off;
     IncludeGrouping Grouping = IncludeGrouping::Preserve;
+    IncludeGroupOrder GroupOrder = IncludeGroupOrder::Directory;
     IncludeDirectoryOrder DirectoryOrder = IncludeDirectoryOrder::NearestFirst;
     IncludePathBase PathBase = IncludePathBase::SourceDirectory;
     IncludeStandardHeaders StandardHeaders = IncludeStandardHeaders::Preserve;

@@ -207,17 +207,18 @@ Exclude = ["(^|/)generated(/|$)"]
 };
 
 constexpr HelpExample IncludeExamples[] = {
-    {"Paired header, nearest directory groups, alphabetical filenames:",
+    {"Configured prefixes, nearest depth-one groups, alphabetical paths:",
         R"(IncludeOrder = Sort
 IncludeMatchingHeader = First
 IncludeGrouping = Directory
+IncludeGroupOrder = Configured
 IncludeDirectoryOrder = NearestFirst
 IncludePathBase = SourceDirectory
 IncludeStandardHeaders = Last
-# Matching order is independent of nearest/alphabetical group ordering:
+# library/ precedes util/; distance orders subgroups within each rule:
 IncludeGroups = [
     { Prefix = "library/", Depth = 1 },
-    { Prefix = "gtest/", Depth = 0 }
+    { Prefix = "util/", Depth = 1 }
 ]
 # library/core/a.hpp and library/core/detail/b.hpp share a group.
 # Optional aliases: corresponding suffixes become one logical group:
@@ -236,6 +237,7 @@ ExpressionsAlignment = Block
 IncludeMatchingHeader = Off
 IncludeGrouping = Preserve
 IncludeGroups = []
+IncludeGroupOrder = Directory
 IncludeDirectoryOrder = NearestFirst
 IncludePathBase = SourceDirectory
 IncludeStandardHeaders = Preserve
@@ -523,8 +525,14 @@ constexpr HelpSection HelpSections[] = {
         "A sole empty Prefix = \"\" is an explicit fallback for any spelling; "
         "its Depth counts from the start of the resolved directory. "
         "First matching rule and prefix win, not the longest match. Rule "
-        "order controls matching only, never include priority. Quoted groups "
-        "precede angled groups; IncludeDirectoryOrder = NearestFirst "
+        "order always controls matching. IncludeGroupOrder = Directory "
+        "(default) orders rule groups together by directory. Configured "
+        "instead uses IncludeGroups list order first, with unmatched paths "
+        "last; IncludeDirectoryOrder then orders subgroups within each rule. "
+        "Prefixes in one rule remain aliases, not separate priorities. "
+        "IncludeGrouping = Preserve ignores IncludeGroupOrder. Quoted groups "
+        "precede angled groups in either mode; "
+        "IncludeDirectoryOrder = NearestFirst "
         "(default) orders groups by parent plus child steps from the input "
         "directory, then alphabetical group path on ties. Alphabetical omits "
         "distance. Matching-header and standard-header groups stay separate. "

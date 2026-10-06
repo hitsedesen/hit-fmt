@@ -1049,6 +1049,7 @@ TEST(ConfigPolicy, StagedOptionsResolveFinalInheritanceAndOwnScalarSnapshot)
         "IncludeMatchingHeader = First\n" "IncludeGrouping = Regroup\n"
         "IncludeGroups = [{Prefix = \"engine/\", Depth = 2}, "
         "{Prefix = \"engine/detail/\", Depth = 1}]\n"
+        "IncludeGroupOrder = Configured\n"
         "IncludeDirectoryOrder = Alphabetical\n"
         "IncludePathBase = ProjectRoot\n" "IncludeStandardHeaders = Last\n");
     auto style = formatter::LoadConfigFile(config.Path).FormattingStyle;
@@ -1081,6 +1082,13 @@ TEST(ConfigPolicy, StagedOptionsResolveFinalInheritanceAndOwnScalarSnapshot)
     EXPECT_EQ(policies.Includes.Grouping, formatter::IncludeGrouping::Regroup);
     const formatter::PreparedFormat prepared(style);
     style.IncludeGroups.clear();
+    style.IncludeGroupOrder = formatter::IncludeGroupOrder::Directory;
+    EXPECT_EQ(
+        policies.Includes.GroupOrder,
+        formatter::IncludeGroupOrder::Configured);
+    EXPECT_EQ(
+        prepared.Structural.GroupOrder,
+        formatter::IncludeGroupOrder::Configured);
     EXPECT_EQ(prepared.IncludeGroups.Depth(0), 2u);
     EXPECT_EQ(prepared.IncludeGroups.Depth(1), 1u);
     style.IncludeDirectoryOrder =
@@ -1175,6 +1183,16 @@ TEST(ConfigPolicy, IncludeGroupingCapsValidateBeforePreparation)
             }
         }
     }
+    formatter::Style invalidGroupOrder;
+    invalidGroupOrder.IncludeGroupOrder =
+        static_cast<formatter::IncludeGroupOrder>(255);
+    EXPECT_THROW(
+        (void)formatter::PreparedFormat(invalidGroupOrder),
+        std::invalid_argument);
+    const TemporaryConfig badGroupOrder("IncludeGroupOrder = Reverse\n");
+    EXPECT_THROW(
+        (void)formatter::LoadConfigFile(badGroupOrder.Path),
+        std::runtime_error);
     formatter::Style invalidOrder;
     invalidOrder.IncludeDirectoryOrder =
         static_cast<formatter::IncludeDirectoryOrder>(255);

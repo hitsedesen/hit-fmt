@@ -669,6 +669,12 @@ void Includes(
                 if (options.Grouping != IncludeGrouping::Preserve &&
                     !matching(a) && !standard(a))
                 {
+                    if (context.Groups &&
+                        options.GroupOrder == IncludeGroupOrder::Configured &&
+                        key(a).Rule != key(b).Rule)
+                    {
+                        return key(a).Rule < key(b).Rule;
+                    }
                     if (options.Grouping == IncludeGrouping::Regroup &&
                         context.Groups)
                     {

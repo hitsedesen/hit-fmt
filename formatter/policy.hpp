@@ -169,6 +169,7 @@ struct IncludePolicy
 {
     IncludeMatchingHeader MatchingHeader;
     IncludeGrouping Grouping;
+    IncludeGroupOrder GroupOrder;
     IncludeDirectoryOrder DirectoryOrder;
     IncludePathBase PathBase;
     IncludeStandardHeaders StandardHeaders;
