@@ -59,7 +59,7 @@ void statements() {
     ;
     ;
 ANNOTATED(local) {};
-;
+    ;
     ;
     int next;
     ++next;
