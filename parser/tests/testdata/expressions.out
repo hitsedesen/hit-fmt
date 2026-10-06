@@ -1607,6 +1607,231 @@
           )
           ";"
         )
+        (expression-statement
+          (call-expression
+            (identifier-expression "invoke")
+            (argument-list
+              "("
+              (argument
+                (type-construction-expression
+                  (template-id-expression
+                    (identifier-expression "Bundle")
+                    (template-argument-list
+                      "<"
+                      (template-argument "long")
+                      (list-separator ",")
+                      (template-argument "bool")
+                      ">"
+                    )
+                  )
+                  (braced-initializer
+                    (initializer-list
+                      "{"
+                      (initializer-element
+                        (identifier-expression "count")
+                      )
+                      (list-separator ",")
+                      (initializer-element
+                        (identifier-expression "ready")
+                      )
+                      "}"
+                    )
+                  )
+                )
+              )
+              (list-separator ",")
+              (argument
+                (unary-expression
+                  "&"
+                  (parenthesized-expression
+                    "("
+                    (call-expression
+                      (member-expression
+                        (identifier-expression "cache")
+                        "."
+                        (identifier-expression "lookup")
+                      )
+                      (argument-list "(" ")")
+                    )
+                    ")"
+                  )
+                )
+              )
+              (list-separator ",")
+              (argument
+                (call-expression
+                  (identifier-expression "finish")
+                  (argument-list "(" ")")
+                )
+              )
+              ")"
+            )
+          )
+          ";"
+        )
+        (expression-statement
+          (call-expression
+            (identifier-expression "invoke")
+            (argument-list
+              "("
+              (argument
+                (type-construction-expression
+                  (member-expression
+                    (identifier-expression "types")
+                    "::"
+                    (template-id-expression
+                      (identifier-expression "Holder")
+                      (template-argument-list
+                        "<"
+                        (template-argument
+                          "Bundle"
+                          (template-argument-list
+                            "<"
+                            (template-argument "long")
+                            ">>"
+                          )
+                        )
+                      )
+                    )
+                  )
+                  (braced-initializer
+                    (initializer-list "{" "}")
+                  )
+                )
+              )
+              (list-separator ",")
+              (argument
+                (identifier-expression "next")
+              )
+              (list-separator ",")
+              (argument
+                (lambda-expression
+                  (lambda-capture-list "[" "]")
+                  (lambda-body
+                    "{"
+                    (return-statement
+                      "return"
+                      (literal-expression "1")
+                      ";"
+                    )
+                    "}"
+                  )
+                )
+              )
+              ")"
+            )
+          )
+          ";"
+        )
+        (expression-statement
+          (call-expression
+            (identifier-expression "invoke")
+            (argument-list
+              "("
+              (argument
+                (type-construction-expression
+                  (template-id-expression
+                    (identifier-expression "Bundle")
+                    (template-argument-list
+                      "<"
+                      (template-argument "long")
+                      ">"
+                    )
+                  )
+                  (braced-initializer
+                    (initializer-list
+                      "{"
+                      (initializer-element
+                        (call-expression
+                          (lambda-expression
+                            (lambda-capture-list "[" "]")
+                            (lambda-body
+                              "{"
+                              (return-statement
+                                "return"
+                                (literal-expression "2")
+                                ";"
+                              )
+                              "}"
+                            )
+                          )
+                          (argument-list "(" ")")
+                        )
+                      )
+                      "}"
+                    )
+                  )
+                )
+              )
+              (list-separator ",")
+              (argument
+                (identifier-expression "last")
+              )
+              ")"
+            )
+          )
+          ";"
+        )
+        (expression-statement
+          (call-expression
+            (identifier-expression "invoke")
+            (argument-list
+              "("
+              (argument
+                (conditional-expression
+                  (identifier-expression "ready")
+                  "?"
+                  (type-construction-expression
+                    (template-id-expression
+                      (identifier-expression "Bundle")
+                      (template-argument-list
+                        "<"
+                        (template-argument "long")
+                        ">"
+                      )
+                    )
+                    (braced-initializer
+                      (initializer-list
+                        "{"
+                        (initializer-element
+                          (identifier-expression "first")
+                        )
+                        (list-separator ",")
+                        (initializer-element
+                          (identifier-expression "second")
+                        )
+                        "}"
+                      )
+                    )
+                  )
+                  ":"
+                  (type-construction-expression
+                    (template-id-expression
+                      (identifier-expression "Bundle")
+                      (template-argument-list
+                        "<"
+                        (template-argument "long")
+                        ">"
+                      )
+                    )
+                    (braced-initializer
+                      (initializer-list "{" "}")
+                    )
+                  )
+                )
+              )
+              (list-separator ",")
+              (argument
+                (call-expression
+                  (identifier-expression "finish")
+                  (argument-list "(" ")")
+                )
+              )
+              ")"
+            )
+          )
+          ";"
+        )
         (return-statement
           "return"
           (call-expression

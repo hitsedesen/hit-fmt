@@ -69,6 +69,7 @@ bool inspect()
     external::value<int> * factor;
     external::value<int> & mask;
     external::value<int> && enabled;
+    invoke(left < middle, right > (value), tail());
     auto constructed = CONSTRUCT{item};
     auto lower_constructed = construct{item};
     return scalar;
