@@ -391,6 +391,58 @@ TEST(Parser, ConditionalFragmentsKeepRolesAndBodies)
     }
 }
 
+TEST(Parser, ConditionalSharedScopesKeepEnclosingDelimiters)
+{
+    const test::golden::Fixture fixture{PARSER_TESTDATA_DIR, "preprocessing"};
+    PaddedInput input(fixture.InputNamed(".in"));
+    const auto tree = parser::Parse(input.View(), [] (parser::ParseError) {});
+    const auto functions =
+        LambdaOwnershipNodes(tree.Root(), parser::NodeKind::FunctionDefinition);
+    ASSERT_EQ(functions.size(), 8u);
+    size_t destructorCount = 0;
+    for (const auto* function : functions) {
+        destructorCount +=
+            function->GetFunctionKind() == parser::FunctionKind::Destructor;
+        for (auto* child = function->FirstChild;
+            child;
+            child = child->NextSibling)
+        {
+            if (child->Kind == parser::NodeKind::CompoundStatement) {
+                EXPECT_EQ(
+                    tree.MatchingDelimiter(child->Tokens.Begin),
+                    child->Tokens.End - 1);
+                EXPECT_EQ(
+                    tree.MatchingDelimiter(child->Tokens.End - 1),
+                    child->Tokens.Begin);
+            }
+        }
+    }
+    EXPECT_EQ(destructorCount, 2u);
+    const auto records =
+        LambdaOwnershipNodes(tree.Root(), parser::NodeKind::RecordDeclaration);
+    ASSERT_EQ(records.size(), 2u);
+    for (const auto* record : records) {
+        const auto close = record->Tokens.End - 2;
+        ASSERT_EQ(tree.Kind(close), tokenizer::TokenKind::Operator_CloseBrace);
+        const auto open = tree.MatchingDelimiter(close);
+        ASSERT_GT(open, record->Tokens.Begin);
+        ASSERT_LT(open, close);
+        EXPECT_EQ(tree.MatchingDelimiter(open), close);
+        EXPECT_EQ(tree.Role(open), parser::PunctuationRole::RecordDelimiter);
+        EXPECT_EQ(tree.Role(close), parser::PunctuationRole::RecordDelimiter);
+    }
+    const auto owners = LambdaOwnershipNodes(
+        tree.Root(),
+        parser::NodeKind::NamespaceDeclaration);
+    ASSERT_EQ(owners.size(), 2u);
+    for (const auto* owner : owners) {
+        const auto close = owner->Tokens.End - 1;
+        const auto open = tree.MatchingDelimiter(close);
+        ASSERT_LT(open, close);
+        EXPECT_EQ(tree.MatchingDelimiter(open), close);
+    }
+}
+
 TEST(Parser, ConditionalFragmentProofIsBounded)
 {
     for (const bool nesting : {false, true}) {

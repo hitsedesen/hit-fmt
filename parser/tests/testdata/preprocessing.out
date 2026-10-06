@@ -185,14 +185,16 @@
         )
         (preprocessing-directive "#endif")
       )
-      (expression-statement
-        (call-expression
-          (identifier-expression "use")
-          (argument-list "(" ")")
+      (unparsed-syntax
+        (expression-statement
+          (call-expression
+            (identifier-expression "use")
+            (argument-list "(" ")")
+          )
+          ";"
         )
-        ";"
+        (unparsed-syntax "}")
       )
-      (unparsed-syntax "}")
       (expression-statement
         (call-expression
           (identifier-expression "finish")
@@ -202,5 +204,266 @@
       )
       "}"
     )
+  )
+  (namespace-declaration
+    (leading-trivia
+      (whitespace "\n\n")
+    )
+    "namespace" "detail" "{"
+    (record-declaration
+      "class" "Guard" "{"
+      (access-specifier "public" ":")
+      (function-definition
+        (init-declarator-list
+          (init-declarator
+            (declarator
+              (destructor-name "~" "Guard")
+              (function-declarator
+                (parameter-list "(" ")")
+              )
+            )
+          )
+        )
+        (compound-statement
+          "{"
+          (preprocessing-conditional
+            (preprocessing-branch
+              (preprocessing-directive "#if FEATURE")
+              (if-statement
+                "if"
+                (condition
+                  "("
+                  (identifier-expression "ready")
+                  ")"
+                )
+                (compound-statement
+                  "{"
+                  (missing-token)
+                )
+              )
+            )
+            (preprocessing-branch
+              (preprocessing-directive "#elif ALTERNATIVE")
+              (if-statement
+                "if"
+                (condition
+                  "("
+                  (identifier-expression "alternate")
+                  ")"
+                )
+                (compound-statement
+                  "{"
+                  (missing-token)
+                )
+              )
+            )
+            (preprocessing-branch
+              (preprocessing-directive "#else")
+              (if-statement
+                "if"
+                (condition
+                  "("
+                  (identifier-expression "fallback")
+                  ")"
+                )
+                (compound-statement
+                  "{"
+                  (missing-token)
+                )
+              )
+            )
+            (preprocessing-directive "#endif")
+          )
+          (unparsed-syntax
+            (expression-statement
+              (call-expression
+                (identifier-expression "Release")
+                (argument-list "(" ")")
+              )
+              ";"
+            )
+            (unparsed-syntax "}")
+          )
+          "}"
+        )
+      )
+      (function-definition
+        (declaration-specifiers "void")
+        (init-declarator-list
+          (init-declarator
+            (declarator
+              (declarator-name "Run")
+              (function-declarator
+                (parameter-list "(" ")")
+              )
+            )
+          )
+        )
+        (compound-statement
+          "{"
+          (expression-statement
+            (call-expression
+              (identifier-expression "Work")
+              (argument-list "(" ")")
+            )
+            ";"
+          )
+          "}"
+        )
+      )
+      (function-definition
+        (declaration-specifiers "void")
+        (init-declarator-list
+          (init-declarator
+            (declarator
+              (declarator-name "Stop")
+              (function-declarator
+                (parameter-list "(" ")")
+              )
+            )
+          )
+        )
+        (compound-statement
+          "{"
+          (expression-statement
+            (call-expression
+              (identifier-expression "Done")
+              (argument-list "(" ")")
+            )
+            ";"
+          )
+          "}"
+        )
+      )
+      "}" ";"
+    )
+    (record-declaration
+      "struct" "Worker" "{"
+      (function-definition
+        (init-declarator-list
+          (init-declarator
+            (declarator
+              (destructor-name "~" "Worker")
+              (function-declarator
+                (parameter-list "(" ")")
+              )
+            )
+          )
+        )
+        (compound-statement
+          "{"
+          (preprocessing-conditional
+            (preprocessing-branch
+              (preprocessing-directive "#if FEATURE")
+              (expression-statement
+                (call-expression
+                  (identifier-expression "Release")
+                  (argument-list "(" ")")
+                )
+                ";"
+              )
+            )
+            (preprocessing-branch
+              (preprocessing-directive "#else")
+              (expression-statement
+                (call-expression
+                  (identifier-expression "Reset")
+                  (argument-list "(" ")")
+                )
+                ";"
+              )
+            )
+            (preprocessing-directive "#endif")
+          )
+          "}"
+        )
+      )
+      (function-definition
+        (declaration-specifiers "void")
+        (init-declarator-list
+          (init-declarator
+            (declarator
+              (declarator-name "Run")
+              (function-declarator
+                (parameter-list "(" ")")
+              )
+            )
+          )
+        )
+        (compound-statement
+          "{"
+          (preprocessing-conditional
+            (preprocessing-branch
+              (preprocessing-directive "#ifndef FEATURE")
+              (while-statement
+                "while"
+                (condition
+                  "("
+                  (identifier-expression "ready")
+                  ")"
+                )
+                (compound-statement
+                  "{"
+                  (missing-token)
+                )
+              )
+            )
+            (preprocessing-branch
+              (preprocessing-directive "#else")
+              (while-statement
+                "while"
+                (condition
+                  "("
+                  (identifier-expression "fallback")
+                  ")"
+                )
+                (compound-statement
+                  "{"
+                  (missing-token)
+                )
+              )
+            )
+            (preprocessing-directive "#endif")
+          )
+          (unparsed-syntax
+            (expression-statement
+              (call-expression
+                (identifier-expression "Poll")
+                (argument-list "(" ")")
+              )
+              ";"
+            )
+            (unparsed-syntax "}")
+          )
+          "}"
+        )
+      )
+      (function-definition
+        (declaration-specifiers "void")
+        (init-declarator-list
+          (init-declarator
+            (declarator
+              (declarator-name "Stop")
+              (function-declarator
+                (parameter-list "(" ")")
+              )
+            )
+          )
+        )
+        (compound-statement
+          "{"
+          (expression-statement
+            (call-expression
+              (identifier-expression "Done")
+              (argument-list "(" ")")
+            )
+            ";"
+          )
+          "}"
+        )
+      )
+      "}" ";"
+    )
+    "}"
   )
 )
