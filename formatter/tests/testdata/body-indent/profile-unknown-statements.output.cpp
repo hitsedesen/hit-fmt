@@ -72,11 +72,11 @@ void MultilineRecoveredExpressions()
 {
     if (Ready()) {
         Assign() = value ?:
-            fallback;
+                    fallback;
         Assign() = value ? /* omitted operand */ : fallback;
         // Preserve the recovered expression's interior.
         Assign() = first =>
-            second;
+                    second;
         Consume(value ?:
             fallback);
         int result = (value ?:

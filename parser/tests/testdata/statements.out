@@ -2719,4 +2719,175 @@
       "}"
     )
   )
+  (function-definition
+    (leading-trivia
+      (whitespace "\n\n")
+    )
+    (declaration-specifiers "void")
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (declarator-name "opaque_blocks")
+          (function-declarator
+            (parameter-list "(" ")")
+          )
+        )
+      )
+    )
+    (compound-statement
+      "{"
+      (unparsed-syntax "DEFER" "{" "Consume" "(" ")" ";" "}" ";")
+      (unparsed-syntax "ON_EXIT" "{" "if" "(" "Ready" "(" ")" ")" "{" "Reset" "(" ")" ";" "}" "}" ";")
+      (expression-statement
+        (call-expression
+          (identifier-expression "Consume")
+          (argument-list
+            "("
+            (argument
+              (type-construction-expression
+                (identifier-expression "Value")
+                (braced-initializer
+                  (initializer-list
+                    "{"
+                    (initializer-element
+                      (literal-expression "1")
+                    )
+                    (list-separator ",")
+                    (initializer-element
+                      (literal-expression "2")
+                    )
+                    "}"
+                  )
+                )
+              )
+            )
+            ")"
+          )
+        )
+        ";"
+      )
+      (expression-statement
+        (call-expression
+          (identifier-expression "Consume")
+          (argument-list
+            "("
+            (argument
+              (type-construction-expression
+                (identifier-expression "Value")
+                (braced-initializer
+                  (initializer-list
+                    "{"
+                    (initializer-element
+                      (lambda-expression
+                        (lambda-capture-list "[" "]")
+                        (lambda-body
+                          "{"
+                          (expression-statement
+                            (call-expression
+                              (identifier-expression "Consume")
+                              (argument-list "(" ")")
+                            )
+                            ";"
+                          )
+                          "}"
+                        )
+                      )
+                    )
+                    "}"
+                  )
+                )
+              )
+            )
+            ")"
+          )
+        )
+        ";"
+      )
+      "}"
+    )
+  )
+  (function-definition
+    (leading-trivia
+      (whitespace "\n\n")
+    )
+    (declaration-specifiers "void")
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (declarator-name "conditional_after_if")
+          (function-declarator
+            (parameter-list "(" ")")
+          )
+        )
+      )
+    )
+    (compound-statement
+      "{"
+      (if-statement
+        "if"
+        (condition
+          "("
+          (call-expression
+            (identifier-expression "Ready")
+            (argument-list "(" ")")
+          )
+          ")"
+        )
+        (compound-statement
+          "{"
+          (expression-statement
+            (call-expression
+              (identifier-expression "Consume")
+              (argument-list "(" ")")
+            )
+            ";"
+          )
+          "}"
+        )
+      )
+      (preprocessing-conditional
+        (preprocessing-branch
+          (preprocessing-directive "#if FEATURE")
+          (unparsed-syntax "DEFER" "{" "Consume" "(" ")" ";" "}" ";")
+          (if-statement
+            "if"
+            (condition
+              "("
+              (call-expression
+                (identifier-expression "Ready")
+                (argument-list "(" ")")
+              )
+              ")"
+            )
+            (compound-statement
+              "{"
+              (preprocessing-conditional
+                (preprocessing-branch
+                  (preprocessing-directive "#if INNER")
+                  (expression-statement
+                    (call-expression
+                      (identifier-expression "Reset")
+                      (argument-list "(" ")")
+                    )
+                    ";"
+                  )
+                )
+                (preprocessing-directive "#endif")
+              )
+              "}"
+            )
+          )
+        )
+        (preprocessing-directive "#endif")
+      )
+      (expression-statement
+        (call-expression
+          (identifier-expression "Finish")
+          (argument-list "(" ")")
+        )
+        ";"
+      )
+      "}"
+    )
+  )
 )

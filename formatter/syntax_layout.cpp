@@ -469,8 +469,8 @@ public:
             if (node.Kind == NodeKind::TemplateDeclaration) {
                 PlanTemplateHeader(i);
             }
-            if (node.Kind == NodeKind::AmbiguousStatement &&
-                node.Status == RegionStatus::Ambiguous &&
+            if ((node.Kind == NodeKind::AmbiguousStatement ||
+                node.Kind == NodeKind::UnparsedSyntax) &&
                 node.StatementBoundary)
             {
                 PlanPreservedIndentation(i, node.Tokens.Begin);
@@ -730,7 +730,10 @@ private:
                             PrefixOpaqueFences_[token + 1];
                         entry.OpaqueSafe &= safe;
                         if (!statementBoundary) {
-                            entry.IndentSafe &= safe;
+                            // Directives keep their own indentation, but do
+                            // not anchor the surrounding C++ container.
+                            entry.IndentSafe &=
+                                safe || IndentTransparentDirective(token);
                         }
                     });
             }
@@ -968,6 +971,29 @@ private:
             default:
                 return nullptr;
         }
+    }
+
+    bool IndentTransparentDirective(Index token) const
+    {
+        if (Tree_.Kind(token) != TokenKind::PreprocessingDirective) {
+            return false;
+        }
+        const auto source = Tree_.Token(token).Text;
+        const auto protection = Safety_.Protection();
+        const auto range = std::lower_bound(
+            protection.begin(),
+            protection.end(),
+            source.Begin,
+            [] (const auto& range, auto begin) {
+                return range.Source.End <= begin;
+            });
+        return range != protection.end() &&
+            range->Source.Begin <= source.Begin &&
+            range->Source.End >= source.End &&
+            (uint16_t(range->Reasons) &
+                ~uint16_t(
+                    ProtectionReason::Directive |
+                    ProtectionReason::OutsideEditScope)) == 0;
     }
 
     bool HasIndependentBodyBoundary(const SourceRegion& node) const
@@ -3203,9 +3229,11 @@ private:
                 part.Kind != NodeKind::MacroFunctionDefinition)
             {
                 // Uncertain interiors do not own an editable statement's
-                // leading indentation. Retain its topology and leave actual
-                // protected gaps untouched, just as for a preserved body.
-                if (GapMutable(part.Tokens.Begin) && Syntax_[child].IndentSafe)
+                // leading indentation. Retain its topology; final slice
+                // permissions can indent after a protected directive LF.
+                // All other protected bytes remain untouched.
+                if (!Gaps_[part.Tokens.Begin].Frozen &&
+                    Syntax_[child].IndentSafe)
                 {
                     Reindent(
                         part.Tokens.Begin,

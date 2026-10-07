@@ -1719,6 +1719,8 @@ std::vector<FormatCase> FormatCases()
             profile,
         });
     };
+    addProfileCase("../preprocessing-fragments", "opaque-blocks");
+    cases.back().CheckOwningMaps = true;
     addProfileCase("../preprocessing-fragments", "canonical");
     cases.back().CheckOwningMaps = true;
     addProfileCase("../preprocessing-fragments", "shared-scopes");

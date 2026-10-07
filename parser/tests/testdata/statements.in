@@ -181,3 +181,33 @@ void attributed_statements(bool ready) {
         [[likely]] return;
     });
 }
+
+void opaque_blocks() {
+    DEFER {
+        Consume();
+    };
+    ON_EXIT {
+        if (Ready()) {
+            Reset();
+        }
+    };
+    Consume(Value{1, 2});
+    Consume(Value{[] { Consume(); }});
+}
+
+void conditional_after_if() {
+    if (Ready()) {
+        Consume();
+    }
+#if FEATURE
+    DEFER {
+        Consume();
+    };
+    if (Ready()) {
+#if INNER
+        Reset();
+#endif
+    }
+#endif
+    Finish();
+}
