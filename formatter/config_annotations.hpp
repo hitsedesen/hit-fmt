@@ -18,7 +18,9 @@ enum class FirstArgumentAnnotation : std::uint8_t
     // Only complete literal expressions qualify, never a literal prefix of
     // another expression. Overflow controls how qualifying arguments attach.
     // Required legal owned Always breaks and safety/protection outrank it.
-    PinCompleteStringLiteral
+    PinCompleteStringLiteral,
+    // Any parsed first argument qualifies; nested syntax may still wrap.
+    PinAnyArgument
 };
 
 enum class ChainParticipation : std::uint8_t

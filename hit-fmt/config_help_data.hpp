@@ -177,7 +177,14 @@ FunctionCvRefQualifierSpacing = NoSpace
 };
 constexpr HelpExample AnnotationExamples[] = {
     {"Explicit library layout annotations:",
-        R"CONFIG(CallLineFirstStringNames = ["WRITE_MESSAGE"]
+        R"CONFIG(CallLineFirstArgumentNames = ["dispatch"]
+CallLineFirstArgumentOverflow = Wrap
+# Pins any first argument: dispatch(value + offset, alpha, beta).
+# Wrap (default): attach if it fits; nested syntax may still wrap.
+# BreakBefore: move below the opener if the complete argument will not fit.
+# KeepInline: attach its opening piece even when it exceeds ColumnLimit.
+# The general rule wins for names present in both pin lists.
+CallLineFirstStringNames = ["WRITE_MESSAGE"]
 CallLineFirstStringOverflow = BreakBefore
 # Wrap (default): normal wrapping, including between concatenated literals.
 # BreakBefore: move the complete string below the opener if it will not fit.
@@ -514,6 +521,17 @@ constexpr HelpSection HelpSections[] = {
         "and declaration punctuation retain their own spacing policies.\n",
         GapExamples},
     {"Library layout annotations",
+        "CallLineFirstArgumentNames softly pins the first argument of any "
+        "type beside the opening parenthesis of exact named calls, including "
+        "member calls. CallLineFirstArgumentOverflow controls overflow: "
+        "Wrap (default) uses ordinary wrapping; BreakBefore moves the "
+        "argument below the opener if the complete argument does not fit; "
+        "KeepInline keeps its opening piece attached even over ColumnLimit. "
+        "Nested expressions, initializers and lambda bodies may still wrap "
+        "independently. For example, dispatch(value + offset, alpha, beta) "
+        "can keep value beside the opener while later arguments move below. "
+        "Both new options default to an empty name list and Wrap. The "
+        "general argument rule wins for names present in both pin lists. "
         "CallLineFirstStringNames softly pins only a "
         "complete "
         "string-literal first argument. CallLineFirstStringOverflow controls "
@@ -523,7 +541,7 @@ constexpr HelpSection HelpSections[] = {
         "exceeds ColumnLimit. Concatenation boundaries may still wrap in "
         "all modes; literal contents are never split. Only annotated calls "
         "with a complete string-literal first argument are affected, and "
-        "preserved call layout stays preserved. Always "
+        "preserved call layout stays preserved for both pin lists. Always "
             "outranks the pin when a legal owned break "
             "is needed. Empty ChainedCallRootNames means "
             "AllSafe; "

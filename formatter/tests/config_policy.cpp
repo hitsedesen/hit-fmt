@@ -666,6 +666,8 @@ TEST(ConfigPolicy, PreserveTemplateRoundTripsEveryRegisteredStyleDefault)
         "LineEnding = Preserve\n",
         "ArgumentCommentSpacing = Preserve\n",
         "IfConditionsPacking = Fill\n",
+        "CallLineFirstArgumentNames = []\n",
+        "CallLineFirstArgumentOverflow = Wrap\n",
         "CallLineFirstStringOverflow = Wrap\n",
         "Wrap | BreakBefore | KeepInline",
         "top-level &&/|| operands",
@@ -825,31 +827,84 @@ TEST(ConfigPolicy, ProgrammaticStylesCannotBypassWidthAndOffsetLimits)
     EXPECT_EQ(bounded.Indentation.StatementAttributes.Offset, 32u);
 }
 
-TEST(ConfigPolicy, AttachedStringOverflowCompilesIntoOwnedAnnotations)
+TEST(ConfigPolicy, AttachedArgumentOverflowCompilesIntoOwnedAnnotations)
 {
-    for (const auto overflow :
+    for (const bool anyArgument : {false, true}) {
+        const std::string prefix = anyArgument
+            ? "CallLineFirstArgument"
+            : "CallLineFirstString";
+        SCOPED_TRACE(prefix);
+        for (const auto overflow :
+            {
+                formatter::AttachedStringOverflow::Wrap,
+                formatter::AttachedStringOverflow::BreakBefore,
+                formatter::AttachedStringOverflow::KeepInline,
+            })
         {
-            formatter::AttachedStringOverflow::Wrap,
-            formatter::AttachedStringOverflow::BreakBefore,
-            formatter::AttachedStringOverflow::KeepInline,
-        })
-    {
-        const TemporaryConfig input("CallLineFirstStringNames = [\"message\"]\n"
-            "CallLineFirstStringOverflow = " +
-            std::string(formatter::SerializeConfigEnum(overflow)) + "\n");
-        auto style = formatter::LoadConfigFile(input.Path).FormattingStyle;
-        EXPECT_EQ(style.CallLineFirstStringOverflow, overflow);
-        const auto annotations = formatter::CompileLibraryAnnotations(style);
-        style.CallLineFirstStringOverflow =
-            formatter::AttachedStringOverflow::Wrap;
-        style.CallLineFirstStringNames.clear();
-        ASSERT_NE(annotations.FindMessagePin("message"), nullptr);
-        EXPECT_EQ(annotations.FindMessagePin("message")->Overflow, overflow);
+            const TemporaryConfig input(
+                prefix + "Names = [\"message\"]\n" + prefix + "Overflow = " +
+                std::string(formatter::SerializeConfigEnum(overflow)) + "\n");
+            auto style = formatter::LoadConfigFile(input.Path).FormattingStyle;
+            EXPECT_EQ(
+                anyArgument
+                ? style.CallLineFirstArgumentOverflow
+                : style.CallLineFirstStringOverflow,
+                overflow);
+            const auto annotations =
+                formatter::CompileLibraryAnnotations(style);
+            style.CallLineFirstArgumentOverflow =
+                formatter::AttachedStringOverflow::Wrap;
+            style.CallLineFirstStringOverflow =
+                formatter::AttachedStringOverflow::Wrap;
+            style.CallLineFirstArgumentNames.clear();
+            style.CallLineFirstStringNames.clear();
+            ASSERT_NE(annotations.FindMessagePin("message"), nullptr);
+            EXPECT_EQ(
+                annotations.FindMessagePin("message")->Overflow,
+                overflow);
+            EXPECT_EQ(
+                annotations.FindMessagePin("message")->FirstArgument,
+                anyArgument
+                ? formatter::FirstArgumentAnnotation::PinAnyArgument
+                : formatter::FirstArgumentAnnotation::PinCompleteStringLiteral);
+        }
+        const TemporaryConfig invalid(prefix + "Overflow = Unknown\n");
+        EXPECT_THROW(
+            (void)formatter::LoadConfigFile(invalid.Path),
+            std::runtime_error);
     }
-    const TemporaryConfig invalid("CallLineFirstStringOverflow = Unknown\n");
-    EXPECT_THROW(
-        (void)formatter::LoadConfigFile(invalid.Path),
-        std::runtime_error);
+}
+
+TEST(ConfigPolicy, GeneralArgumentPinOverridesOverlappingStringPin)
+{
+    formatter::Style style;
+    style.CallLineFirstArgumentNames = {"shared", "general"};
+    style.CallLineFirstStringNames = {"string", "shared"};
+    style.CallLineFirstArgumentOverflow =
+        formatter::AttachedStringOverflow::KeepInline;
+    style.CallLineFirstStringOverflow =
+        formatter::AttachedStringOverflow::BreakBefore;
+    const auto annotations = formatter::CompileLibraryAnnotations(style);
+    ASSERT_EQ(
+        annotations
+            .MessagePins()
+            .size(),
+        3u);
+    EXPECT_EQ(annotations.MessagePins()[0].Name, "general");
+    EXPECT_EQ(annotations.MessagePins()[1].Name, "shared");
+    EXPECT_EQ(
+        annotations.MessagePins()[1].FirstArgument,
+        formatter::FirstArgumentAnnotation::PinAnyArgument);
+    EXPECT_EQ(
+        annotations.MessagePins()[1].Overflow,
+        formatter::AttachedStringOverflow::KeepInline);
+    EXPECT_EQ(annotations.MessagePins()[2].Name, "string");
+    EXPECT_EQ(
+        annotations.MessagePins()[2].FirstArgument,
+        formatter::FirstArgumentAnnotation::PinCompleteStringLiteral);
+    EXPECT_EQ(
+        annotations.MessagePins()[2].Overflow,
+        formatter::AttachedStringOverflow::BreakBefore);
 }
 
 TEST(ConfigPolicy, SchemaCompilesOwnedAnnotationsAndIndependentMetadata)
@@ -955,6 +1010,9 @@ TEST(ConfigPolicy, SchemaCompilesOwnedAnnotationsAndIndependentMetadata)
 
     for (const auto text :
         {
+            "CallLineFirstArgumentNames = [\"Trace\", \"Trace\"]\n",
+            "CallLineFirstArgumentNames = [\"ns::Trace\"]\n",
+            "CallLineFirstArgumentNames = [\"\"]\n",
             "CallLineFirstStringNames = [\"Trace\", \"Trace\"]\n",
             "ChainedCallRootNames = [\"ns::Root\", \"ns::Root\"]\n",
             "ChainedCallRootNames = [\"ns::\"]\n",
@@ -999,6 +1057,11 @@ TEST(ConfigPolicy, SchemaCompilesOwnedAnnotationsAndIndependentMetadata)
         (void)formatter::CompileLibraryAnnotations(style),
         std::invalid_argument);
     style.StickyChainCallPairs.clear();
+    style.CallLineFirstArgumentNames = {"Trace", "Trace"};
+    EXPECT_THROW(
+        (void)formatter::CompileLibraryAnnotations(style),
+        std::invalid_argument);
+    style.CallLineFirstArgumentNames.clear();
     style.CallLineFirstStringNames = {"Trace", "Trace"};
     EXPECT_THROW(
         (void)formatter::CompileLibraryAnnotations(style),

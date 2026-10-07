@@ -2931,8 +2931,11 @@ std::vector<FormatCase> FormatCases()
             {data / "group-syntax", name, std::string(name) + ".input.cpp"});
         cases.back().CheckOwningMaps = true;
     }
-    {
-        const auto directory = data / "attached-string-overflow";
+    for (const bool anyArgument : {false, true}) {
+        const auto directory = data /
+            (anyArgument
+                ? "attached-argument-overflow"
+                : "attached-string-overflow");
         for (const auto overflow :
             {
                 formatter::AttachedStringOverflow::Wrap,
@@ -2942,7 +2945,14 @@ std::vector<FormatCase> FormatCases()
         {
             auto style = formatter::LoadConfigFile(
                 data / "group-syntax/messages.hit-fmt").FormattingStyle;
-            style.CallLineFirstStringOverflow = overflow;
+            if (anyArgument) {
+                style.CallLineFirstArgumentNames =
+                    style.CallLineFirstStringNames;
+                style.CallLineFirstStringNames.clear();
+                style.CallLineFirstArgumentOverflow = overflow;
+            } else {
+                style.CallLineFirstStringOverflow = overflow;
+            }
             const auto name =
                 std::string(formatter::SerializeConfigEnum(overflow));
             cases.push_back({directory, name, "input.cpp"});
@@ -2952,7 +2962,10 @@ std::vector<FormatCase> FormatCases()
             cases.push_back({directory, name + "-always", "input.cpp"});
             cases.back().Style = style;
             cases.back().CheckOwningMaps = true;
-            if (overflow == formatter::AttachedStringOverflow::KeepInline) {
+            if (overflow == formatter::AttachedStringOverflow::KeepInline ||
+                (anyArgument &&
+                    overflow == formatter::AttachedStringOverflow::BreakBefore))
+            {
                 cases.back().Expected = "Wrap-always.output.cpp";
             }
             style.CallsLayout = CategoryLayout::Preserve;
@@ -2970,6 +2983,22 @@ std::vector<FormatCase> FormatCases()
                 cases.back().Expected = "Wrap-unlimited.output.cpp";
             }
         }
+    }
+    {
+        auto style = formatter::LoadConfigFile(
+            data / "group-syntax/messages.hit-fmt").FormattingStyle;
+        cases.push_back(
+            {data / "attached-argument-overflow", "string-only", "input.cpp"});
+        cases.back().Style = style;
+        cases.back().CheckOwningMaps = true;
+        // Delimiter alignment must not lose the attached first argument.
+        style.CallLineFirstArgumentNames = style.CallLineFirstStringNames;
+        style.CallLineFirstStringNames.clear();
+        style.CallsAlignment = ContinuationAlignment::Delimiter;
+        cases.push_back(
+            {data / "attached-argument-overflow", "delimiter", "input.cpp"});
+        cases.back().Style = style;
+        cases.back().CheckOwningMaps = true;
     }
     AddCases(
         cases,

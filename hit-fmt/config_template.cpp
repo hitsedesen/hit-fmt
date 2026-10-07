@@ -99,6 +99,26 @@ void PrintOption(std::ostream& output, std::string_view name, const T& value)
                 "# Unknown syntax and macro bodies retain semicolons.\n"
                 "# Example: struct CLASS_NAME(Example) {}; keeps its ';'.\n";
     }
+    if (name == "CallLineFirstArgumentNames") {
+        output
+            << "# Exact names (including member calls), empty by default.\n"
+                "# Unqualified identifiers, not patterns.\n"
+                "# Keep any first argument beside the opener when it fits.\n"
+                "# Overrides CallLineFirstStringNames for shared names.\n"
+                "# Example: CallLineFirstArgumentNames = [\"dispatch\"]\n"
+                "# dispatch(value + offset, alpha, beta) can keep value\n"
+                "# beside '(' while later arguments move below.\n";
+    }
+    if (name == "CallLineFirstArgumentOverflow") {
+        output
+            << "# Applies to CallLineFirstArgumentNames only.\n"
+                "# Wrap (default): ordinary wrapping within the argument.\n"
+                "# BreakBefore: move below the opener if the complete\n"
+                "# argument and its same-line punctuation do not fit.\n"
+                "# KeepInline: attach the opening piece, even over the limit.\n"
+                "# Nested expressions, initializers and lambdas may wrap.\n"
+                "# Always and protection win; preserved calls stay as-is.\n";
+    }
     if (name == "CallLineFirstStringOverflow") {
         output
             << "# Complete string first arguments of configured names.\n"
