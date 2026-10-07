@@ -83,6 +83,9 @@ struct SourceGap
     // A recovered callee or bounded statement permits its incoming gap,
     // including insertion before the first protected byte. Other fences win.
     bool RecoveryBoundary : 1 = false;
+    // Complete opaque statements may move without reflowing their spelling.
+    // Only an accepted FinalIndentation permission grants interior edits.
+    bool MovableStatementIndent : 1 = false;
 };
 
 static_assert(sizeof(SourceGap) <= 16);

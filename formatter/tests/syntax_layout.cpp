@@ -1186,11 +1186,13 @@ TEST(SyntaxLayout, MatchedScopesRetainOnlyExistingExtraLevel)
     EXPECT_NE(flat.find("\n  work();"), std::string::npos);
     const auto unmatched =
         Lower("void f(){\n flow.Begin();\n     work(  arg );\n}\n", style).Text;
-    EXPECT_NE(unmatched.find("\n     work(  arg );"), std::string::npos);
+    // Keep the authored extra level and horizontal spelling, not an absolute
+    // column: the containing body moved from one space to two.
+    EXPECT_NE(unmatched.find("\n      work(  arg );"), std::string::npos);
     const auto different = Lower(
         "void f(){\n left.Begin();\n     work(  arg " ");\n right.End();\n}\n",
         style).Text;
-    EXPECT_NE(different.find("\n     work(  arg );"), std::string::npos);
+    EXPECT_NE(different.find("\n      work(  arg );"), std::string::npos);
 }
 
 TEST(SyntaxLayout, CRLFCommentOwnsCRAndGapStartsWithLF)
@@ -2808,7 +2810,7 @@ TEST(SyntaxLayout, NestedVisualScopesAndWrapperContextRespectBarriers)
             context.second + ";\n}\nvoid later(){ task(); }\n",
             style).Text;
         EXPECT_NE(
-            uncertainRegion.find("\n     work(  item );"),
+            uncertainRegion.find("\n      work(  item );"),
             std::string::npos) << uncertainRegion;
         EXPECT_NE(
             uncertainRegion.find("void later() {\n  task();\n}"),
@@ -2852,12 +2854,12 @@ TEST(SyntaxLayout, NestedVisualScopesAndWrapperContextRespectBarriers)
         "void f(){\n wrap(flow.Begin());\n     work( "
         " item );\n other(flow.End());\n}\n",
         style).Text;
-    EXPECT_NE(uncertain.find("\n     work(  item );"), std::string::npos);
+    EXPECT_NE(uncertain.find("\n      work(  item );"), std::string::npos);
     const auto barrier = Lower(
         "void f(){\n flow.Begin();\n     work(  item "
         ");\n#define VALUE 1\n flow.End();\n}\n",
         style).Text;
-    EXPECT_NE(barrier.find("\n     work(  item );"), std::string::npos);
+    EXPECT_NE(barrier.find("\n      work(  item );"), std::string::npos);
     EXPECT_EQ(Lower(wrapper, style).Text, wrapper);
     const std::string protectedInput =
         "void f(){\n  wrap(tag, flow.Begin());\n    "

@@ -389,8 +389,9 @@ SourceAnalysis::CollectPartialGapPermissions(
                     if (scope && !Covered(*scope, slice)) {
                         return;
                     }
-                    // HeaderName alone does not own insertion before its
-                    // opener.
+                    // HeaderName does not own insertion before its opener.
+                    // A certified empty statement indent can insert before
+                    // ambiguous spelling, even if touching chunks merged.
                     auto first = std::lower_bound(
                         Protection_.begin(),
                         Protection_.end(),
@@ -398,10 +399,15 @@ SourceAnalysis::CollectPartialGapPermissions(
                         [] (const auto& range, Offset begin) {
                             return range.Source.End <= begin;
                         });
-                    const bool beforeHeader = first != Protection_.end() &&
-                        slice.Empty() && slice.Begin == first->Source.Begin &&
-                        first->Reasons == ProtectionReason::HeaderName;
-                    if (first != Protection_.end() && !beforeHeader &&
+                    const bool beforeSpelling = first != Protection_.end() &&
+                        slice.Empty() &&
+                        ((slice.Begin == first->Source.Begin &&
+                            first->Reasons == ProtectionReason::HeaderName) ||
+                            (kind ==
+                                PartialGapPermissionKind::FinalIndentation &&
+                                gap.MovableStatementIndent &&
+                                first->Reasons == ProtectionReason::Ambiguous));
+                    if (first != Protection_.end() && !beforeSpelling &&
                         (slice.Empty()
                             ? first->Source.Begin <= slice.Begin
                             : first->Source.Begin < slice.End))
@@ -979,12 +985,46 @@ SourceAnalysis BuildSourceAnalysis(
                     : tokens.End < count
                         ? tree.Token(tokens.End).Text.Begin
                         : size;
-            protect(
-                before,
-                after,
-                recovery
-                ? ProtectionReason::Recovery
-                : ProtectionReason::Ambiguous);
+            if (ambiguous && !hasRecovery && statementBoundary) {
+                // Preserve opaque tokens, horizontal spelling and every
+                // newline. Complete final indentation slices can still follow
+                // the statement when its enclosing body moves.
+                auto protectedBegin = before;
+                for (auto token = tokens.Begin + 1; token < tokens.End; ++token)
+                {
+                    auto& gap = result.Gaps_[token];
+                    if (gap.Source.End > after) {
+                        break;
+                    }
+                    if (!gap.HasLineFeed || gap.Preserve ||
+                        gap.ContextSensitive || gap.HasBareCR)
+                    {
+                        continue;
+                    }
+                    const auto original = result.Original(gap);
+                    const auto indentBegin = original.rfind('\n') + 1;
+                    if (original.substr(indentBegin).find_first_not_of(" \t") !=
+                        std::string_view::npos)
+                    {
+                        continue;
+                    }
+                    const auto indent = gap.Source.Begin + Offset(indentBegin);
+                    protect(
+                        protectedBegin,
+                        indent,
+                        ProtectionReason::Ambiguous);
+                    protectedBegin = gap.Source.End;
+                    gap.MovableStatementIndent = true;
+                }
+                protect(protectedBegin, after, ProtectionReason::Ambiguous);
+            } else {
+                protect(
+                    before,
+                    after,
+                    recovery
+                    ? ProtectionReason::Recovery
+                    : ProtectionReason::Ambiguous);
+            }
             if (before == after && tokens.Begin < result.Gaps_.size()) {
                 result.Gaps_[tokens.Begin].Preserve = true;
                 result.Gaps_[tokens.Begin].Reasons = recovery
