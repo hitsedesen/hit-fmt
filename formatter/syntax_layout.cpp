@@ -195,6 +195,7 @@ struct Syntax
     bool ItemSequence : 1 = false;
     bool ControlHeader : 1 = false;
     bool NamespaceSuffix : 1 = false;
+    bool Preprocessing : 1 = false;
     parser::TokenRange SequenceBody = {};
 };
 
@@ -540,6 +541,14 @@ public:
                     break;
             }
         }
+        // Classified children plan first. Only unowned continuation gaps in
+        // a bounded opaque statement need the authored relative indentation.
+        for (Index i = 0; i < Syntax_.size(); ++i) {
+            const auto& node = Region(Syntax_[i]);
+            if (Syntax_[i].Preprocessing && node.StatementBoundary) {
+                PlanPreservedIndentation(i, node.Tokens.Begin, true);
+            }
+        }
         PlanFrozenScopes();
         PlanVisualScopes();
         PlanVerticalGaps();
@@ -729,6 +738,8 @@ private:
                         const bool safe = PrefixOpaqueFences_[token] ==
                             PrefixOpaqueFences_[token + 1];
                         entry.OpaqueSafe &= safe;
+                        entry.Preprocessing |= Tree_
+                            .Kind(token) == TokenKind::PreprocessingDirective;
                         if (!statementBoundary) {
                             // Directives keep their own indentation, but do
                             // not anchor the surrounding C++ container.
@@ -742,6 +753,7 @@ private:
                 child = Region(Syntax_[child]).NextSibling)
             {
                 entry.Safe = entry.Safe && Syntax_[child].Safe;
+                entry.Preprocessing |= Syntax_[child].Preprocessing;
                 entry.OpaqueSafe &= Syntax_[child].OpaqueSafe ||
                     HasIndependentBodyBoundary(Region(Syntax_[child]));
                 if (!statementBoundary) {
@@ -3563,10 +3575,38 @@ private:
             Options_.TabWidth);
     }
 
+    bool CanReindentPreservedGap(Index gap) const
+    {
+        if (!Safety_.Gaps()[gap].Preserve) {
+            return true;
+        }
+        const auto permissions = Safety_.PartialGapPermissions();
+        auto permission = std::lower_bound(
+            permissions.begin(),
+            permissions.end(),
+            gap,
+            [] (const PartialGapPermission& permission, Index gap) {
+                return permission.Gap < gap;
+            });
+        for (;
+            permission != permissions.end() && permission->Gap == gap;
+            ++permission)
+        {
+            if (permission->Kind == PartialGapPermissionKind::FinalIndentation)
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+
     // Unclassified syntax has no layout authority. Its authored continuation
     // lines still move with the statement/declarator, without changing its
     // topology or horizontal spelling.
-    void PlanPreservedIndentation(Index id, Index begin)
+    void PlanPreservedIndentation(
+        Index id,
+        Index begin,
+        bool descendants = false)
     {
         if (Policies_.IndentationKind == IndentationKind::Preserve) {
             return;
@@ -3577,38 +3617,65 @@ private:
         }
         Index base = None;
         Index group = None;
-        DirectTokens(
-            id,
-            [&] (Index gap) {
-                const auto indent = SourceIndent(gap);
-                if (gap == begin || indent == None || Gaps_[gap].Frozen ||
-                    (Safety_.Gaps()[gap].Preserve &&
-                        !Safety_.Gaps()[gap].MovableStatementIndent) ||
-                    Safety_.Gaps()[gap].ContextSensitive ||
-                    RetainsBareCR(gap) || Gaps_[gap].Owner != None)
-                {
-                    return;
+        auto plan = [&] (Index gap) {
+            const auto indent = SourceIndent(gap);
+            if (gap == begin || indent == None || Gaps_[gap].Frozen ||
+                !CanReindentPreservedGap(gap) ||
+                Safety_.Gaps()[gap].ContextSensitive || RetainsBareCR(gap) ||
+                Gaps_[gap].Owner != None)
+            {
+                return;
+            }
+            if (base == None) {
+                base = SourceLineIndent(begin);
+            }
+            const auto delta = int64_t(indent) - int64_t(base);
+            if (delta < INT32_MIN || delta > INT32_MAX) {
+                return;
+            }
+            if (group == None) {
+                group = GroupAt(
+                    TokenPosition(begin),
+                    GapPosition(range.End),
+                    document::GroupMode::Fill);
+                Groups_[group].Spec.StructuralBase = true;
+                Groups_[group].Spec.LineBase = true;
+            }
+            Reindent(gap, group);
+            Gaps_[gap].OverrideIndent = true;
+            Gaps_[gap].RelativeIndent = true;
+            Gaps_[gap].ExtraIndent = int32_t(delta);
+        };
+        if (!descendants) {
+            DirectTokens(id, plan);
+            return;
+        }
+        // Walk each token once, excluding independently delimited bodies.
+        // Their own statements carry their own structural indentation.
+        for (auto current = id;;) {
+            const auto& node = Region(Syntax_[current]);
+            plan(node.Tokens.Begin);
+            const bool body = current != id &&
+                (node.Kind == NodeKind::LambdaBody ||
+                    node.Kind == NodeKind::RequirementBody ||
+                    node.Kind == NodeKind::CompoundStatement);
+            if (!body) {
+                DirectTokens(current, plan);
+                if (node.FirstChild != None) {
+                    current = node.FirstChild;
+                    continue;
                 }
-                if (base == None) {
-                    base = SourceLineIndent(begin);
-                }
-                const auto delta = int64_t(indent) - int64_t(base);
-                if (delta < INT32_MIN || delta > INT32_MAX) {
-                    return;
-                }
-                if (group == None) {
-                    group = GroupAt(
-                        TokenPosition(begin),
-                        GapPosition(range.End),
-                        document::GroupMode::Fill);
-                    Groups_[group].Spec.StructuralBase = true;
-                    Groups_[group].Spec.LineBase = true;
-                }
-                Reindent(gap, group);
-                Gaps_[gap].OverrideIndent = true;
-                Gaps_[gap].RelativeIndent = true;
-                Gaps_[gap].ExtraIndent = int32_t(delta);
-            });
+            }
+            while (current != id &&
+                Region(Syntax_[current]).NextSibling == None)
+            {
+                current = Region(Syntax_[current]).Parent;
+            }
+            if (current == id) {
+                break;
+            }
+            current = Region(Syntax_[current]).NextSibling;
+        }
     }
 
     // Unselected chains keep their breaks and relative indentation, but
@@ -5159,8 +5226,11 @@ private:
                     return;
                 }
                 const auto indentBegin = source.Source.Begin + Index(lf + 1);
-                const auto anchor = Document_.MarkAnchor(
-                    {document::AnchorKind::BlockRelative, plan.ExtraIndent});
+                const auto anchor = Document_.MarkAnchor({
+                    .Kind = document::AnchorKind::BlockRelative,
+                    .Offset = plan.ExtraIndent,
+                    .StructuralBase = true,
+                });
                 Document_.SourceLineIndent(
                     source.Source.Begin,
                     indentBegin,
@@ -5297,8 +5367,9 @@ private:
                         : Groups_[plan.Owner].Anchor;
                 if (plan.OverrideIndent) {
                     anchor = Document_.MarkAnchor({
-                        document::AnchorKind::BlockRelative,
-                        plan.ExtraIndent,
+                        .Kind = document::AnchorKind::BlockRelative,
+                        .Offset = plan.ExtraIndent,
+                        .StructuralBase = plan.RelativeIndent,
                     });
                 }
                 // Any trimmed runs were before terminators. The remaining
