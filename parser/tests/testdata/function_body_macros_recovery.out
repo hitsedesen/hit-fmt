@@ -9,19 +9,7 @@
           "," "BadArguments" "[" ")" "{" "int" "value" ";" "}" "DEFINE_CASE" "(" "Suite" "," "BadBody" ")" "{" "if" "(" "ready" "]" ")"
         )
         (initializer
-          (braced-initializer
-            (initializer-list
-              "{"
-              (initializer-element
-                (call-expression
-                  (identifier-expression "Work")
-                  (argument-list "(" ")")
-                )
-              )
-              (unparsed-syntax ";")
-              "}"
-            )
-          )
+          (unparsed-syntax "{" "Work" "(" ")" ";" "}")
           (unparsed-syntax "}" "DEFINE_CASE" "(" "Suite" "," "MissingBody" ")" "{" "int" "value")
         )
       )

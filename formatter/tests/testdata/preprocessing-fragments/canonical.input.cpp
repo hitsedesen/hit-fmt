@@ -67,6 +67,34 @@ void BranchBodies(int descriptor) {
         Finish();
     }
 }
+void ReindentContainers() {
+            if (Ready()) {
+#if FEATURE
+Consume();
+#endif
+            }
+if (Ready()) {
+#if FEATURE
+Consume();
+#else
+Reset();
+#endif
+}
+#if FEATURE
+if (Ready()) {
+#if INNER
+Consume();
+#else
+Reset();
+#endif
+}
+#endif
+while (Ready()) {
+#if FEATURE
+Consume();
+#endif
+}
+}
 void Arguments() {
     Consume(first,
 #if PICK_LEFT

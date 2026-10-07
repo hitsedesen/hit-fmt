@@ -4829,6 +4829,10 @@ private:
             }
             auto* expression =
                 ParseExpressionSyntax(elementCursor, closingEnd - 1, 2);
+            if (expression && expression->Kind == NodeKind::UnparsedSyntax) {
+                braced.Kind = NodeKind::UnparsedSyntax;
+                return;
+            }
             if (expression) {
                 auto* element = MakeNode(NodeKind::InitializerElement, before);
                 element->Tokens.End = expression->Tokens.End;
@@ -4850,6 +4854,15 @@ private:
         const auto modeledEnd = list->LastChild
             ? list->LastChild->Tokens.End
             : opening + 1;
+        // A parsed prefix does not prove that these braces contain an
+        // initializer. In particular, an object-like macro followed by a
+        // statement block must stay wholly opaque. Directive fragments retain
+        // their existing conservative representation.
+        const auto tail = NextSignificant(modeledEnd);
+        if (tail < closingEnd - 1 && Kind(tail) != TK::PreprocessingDirective) {
+            braced.Kind = NodeKind::UnparsedSyntax;
+            return;
+        }
         AddUnparsedSyntax(*list, modeledEnd, closingEnd - 1);
         AddDirectiveChildrenInGap(*list, opening, closingEnd);
         Append(braced, *list);
@@ -8049,13 +8062,42 @@ private:
         if (!conditionalBody && !AtEnd()) {
             Append(*node, *ParseStatement());
         }
-        // Only consume comments in else lookahead when an else or directive
-        // follows. Otherwise they belong to the enclosing statement sequence,
-        // not this completed control. Keep directive handling conservative.
-        // Attributes likewise belong to the next statement and must retain
-        // their required semicolon in the enclosing sequence.
-        auto next = SignificantKind(Cursor_);
-        if (next == TK::Keyword_else || next == TK::PreprocessingDirective) {
+        // Trivia belongs to this control only when it leads to an else.
+        // In particular, an independent conditional sequence after the body
+        // belongs to the enclosing block, not to this completed if.
+        auto next = NextSignificant(Cursor_);
+        auto branchStart = next;
+        while (branchStart < ParseLimit_ &&
+            Kind(branchStart) == TK::PreprocessingDirective)
+        {
+            branchStart = NextSignificant(branchStart + 1);
+        }
+        // A conditional can either contain the else itself or precede it.
+        // Skip complete conditionals for lookahead only; independent branch
+        // statements must not be adopted without a following else.
+        while (Kind(branchStart) != TK::Keyword_else && next < ParseLimit_ &&
+            Kind(next) == TK::PreprocessingDirective)
+        {
+            if (GetDirectiveKind(next) == DirectiveKind::If) {
+                int depth = 1;
+                auto directive = next;
+                while (depth && directive < ParseLimit_) {
+                    directive = Tree_.Tokens_
+                        .FindPreprocessingDirective(directive + 1, ParseLimit_);
+                    if (directive == ParseLimit_) {
+                        break;
+                    }
+                    const auto kind = GetDirectiveKind(directive);
+                    depth += kind == DirectiveKind::If;
+                    depth -= kind == DirectiveKind::EndIf;
+                }
+                next = directive;
+            }
+            next = NextSignificant(next + 1);
+        }
+        if (Kind(branchStart) == TK::Keyword_else ||
+            Kind(next) == TK::Keyword_else)
+        {
             ParseTriviaBeforeChild(*node, false);
         }
         if (CurrentKind() == TK::Keyword_else) {
@@ -9979,12 +10021,16 @@ private:
                 auto* construction =
                     MakeNode(NodeKind::TypeConstructionExpression, start);
                 construction->Tokens.End = closingEnd;
-                Append(*construction, *left);
                 auto* initializer =
                     MakeNode(NodeKind::BracedInitializer, cursor);
                 initializer->Tokens.End = closingEnd;
                 AddBracedInitializerElements(*initializer, cursor, closingEnd);
-                Append(*construction, *initializer);
+                if (initializer->Kind == NodeKind::UnparsedSyntax) {
+                    construction->Kind = NodeKind::UnparsedSyntax;
+                } else {
+                    Append(*construction, *left);
+                    Append(*construction, *initializer);
+                }
                 cursor = closingEnd;
                 left = construction;
                 continue;
@@ -10395,7 +10441,11 @@ private:
             auto expressionCursor = start;
             auto* expression =
                 ParseExpressionSyntax(expressionCursor, expressionEnd);
-            if (expressionCursor != expressionEnd) {
+            if (expressionCursor != expressionEnd ||
+                (expression && expression->Kind == NodeKind::UnparsedSyntax &&
+                    expressionEnd > start &&
+                    Kind(expressionEnd - 1) == TK::Operator_CloseBrace))
+            {
                 // A parsed prefix does not certify a statement. In particular,
                 // adjacent macro invocations are not separate C++ calls: keep
                 // the whole run opaque instead of formatting only its first

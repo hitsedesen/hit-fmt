@@ -391,7 +391,7 @@ SourceAnalysis::CollectPartialGapPermissions(
                     }
                     // HeaderName does not own insertion before its opener.
                     // A certified empty statement indent can insert before
-                    // ambiguous spelling, even if touching chunks merged.
+                    // opaque spelling, even if touching chunks merged.
                     auto first = std::lower_bound(
                         Protection_.begin(),
                         Protection_.end(),
@@ -406,7 +406,10 @@ SourceAnalysis::CollectPartialGapPermissions(
                             (kind ==
                                 PartialGapPermissionKind::FinalIndentation &&
                                 gap.MovableStatementIndent &&
-                                first->Reasons == ProtectionReason::Ambiguous));
+                                (first->Reasons ==
+                                    ProtectionReason::Ambiguous ||
+                                    first->Reasons ==
+                                        ProtectionReason::Recovery)));
                     if (first != Protection_.end() && !beforeSpelling &&
                         (slice.Empty()
                             ? first->Source.Begin <= slice.Begin
@@ -807,6 +810,8 @@ SourceAnalysis BuildSourceAnalysis(
     {
         const parser::Node* Next;
         RegionId Id;
+        // Conditional wrappers are transparent to statement boundaries.
+        RegionId StatementParent;
         RegionId LastChild = NoRegion;
     };
     std::pmr::vector<Frame> stack(&scratchMemory);
@@ -841,6 +846,9 @@ SourceAnalysis BuildSourceAnalysis(
                 attached.End = std::max(attached.End, item->Tokens.End);
             }
         }
+        const auto boundaryParent = parent == NoRegion
+            ? NoRegion
+            : stack.back().StatementParent;
         result.Regions_.push_back({
             tokens,
             {begin, end},
@@ -851,11 +859,11 @@ SourceAnalysis BuildSourceAnalysis(
             node.Kind,
             status,
             node.GetFunctionKind(),
-            parent != NoRegion &&
+            boundaryParent != NoRegion &&
                 SimpleStatementBoundary(
                     tree,
                     node,
-                    result.Regions_[parent].Kind),
+                    result.Regions_[boundaryParent].Kind),
         });
         if (parent != NoRegion) {
             auto& frame = stack.back();
@@ -974,6 +982,8 @@ SourceAnalysis BuildSourceAnalysis(
                     result.Regions_[parent].Tokens.Begin == tokens.Begin;
             if (calleeBoundary || (recovery && statementBoundary)) {
                 result.Gaps_[tokens.Begin].RecoveryBoundary = true;
+                result.Gaps_[tokens.Begin].MovableStatementIndent =
+                    statementBoundary;
             }
             const auto before = statementBoundary || calleeBoundary
                 ? begin
@@ -985,7 +995,8 @@ SourceAnalysis BuildSourceAnalysis(
                     : tokens.End < count
                         ? tree.Token(tokens.End).Text.Begin
                         : size;
-            if (ambiguous && !hasRecovery && statementBoundary) {
+            if (statementBoundary && ((ambiguous && !hasRecovery) || recovery))
+            {
                 // Preserve opaque tokens, horizontal spelling and every
                 // newline. Complete final indentation slices can still follow
                 // the statement when its enclosing body moves.
@@ -1012,11 +1023,18 @@ SourceAnalysis BuildSourceAnalysis(
                     protect(
                         protectedBegin,
                         indent,
-                        ProtectionReason::Ambiguous);
+                        recovery
+                        ? ProtectionReason::Recovery
+                        : ProtectionReason::Ambiguous);
                     protectedBegin = gap.Source.End;
                     gap.MovableStatementIndent = true;
                 }
-                protect(protectedBegin, after, ProtectionReason::Ambiguous);
+                protect(
+                    protectedBegin,
+                    after,
+                    recovery
+                    ? ProtectionReason::Recovery
+                    : ProtectionReason::Ambiguous);
             } else {
                 protect(
                     before,
@@ -1032,7 +1050,14 @@ SourceAnalysis BuildSourceAnalysis(
                     : ProtectionReason::Ambiguous;
             }
         }
-        stack.push_back({node.Child(), id});
+        stack.push_back({
+            node.Child(),
+            id,
+            node.Kind == parser::NodeKind::PreprocessingConditional ||
+                node.Kind == parser::NodeKind::PreprocessingBranch
+                ? boundaryParent
+                : id,
+        });
     };
     visit(tree.Root(), NoRegion);
     while (!stack.empty()) {
