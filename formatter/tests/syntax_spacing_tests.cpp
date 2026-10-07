@@ -51,7 +51,7 @@ struct Analysis
         std::string_view text,
         GapPolicies policies = {},
         PointerReferenceDeclaratorLocation binding =
-        PointerReferenceDeclaratorLocation::Preserve,
+            PointerReferenceDeclaratorLocation::Preserve,
         SourceAnalysisOptions options = {})
         : Source(text)
         , Tree(parser::Parse(Source.View(), [] (parser::ParseError) {}))

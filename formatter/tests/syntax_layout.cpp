@@ -30,7 +30,7 @@ Output Lower(
     const formatter::SourceAnalysisOptions& protection = {},
     std::pmr::memory_resource* fileUpstream = std::pmr::get_default_resource(),
     std::pmr::memory_resource* scratchUpstream =
-    std::pmr::get_default_resource())
+        std::pmr::get_default_resource())
 {
     const auto size = input.size();
     input.append(util::SourcePaddingSize, '\0');

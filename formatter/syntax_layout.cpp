@@ -1934,7 +1934,22 @@ private:
             Groups_[group].Indent.Alignment = ContinuationAlignment::Delimiter;
             Groups_[group].Indent.ContinuationOffset = 0;
         }
-        Groups_[group].Spec.ExpressionContinuation = true;
+        auto declaration = parent;
+        while (declaration != None &&
+            (Region(Syntax_[declaration]).Kind == NodeKind::InitDeclarator ||
+                Region(Syntax_[declaration]).Kind ==
+                    NodeKind::InitDeclaratorList))
+        {
+            declaration = Region(Syntax_[declaration]).Parent;
+        }
+        const bool defaultArgument = kind == NodeKind::Initializer &&
+            declaration != None &&
+            Region(Syntax_[declaration]).Kind == NodeKind::ParameterDeclaration;
+        // A default starts a continuation from its parameter's physical line,
+        // not the parameter list's already-realized continuation level.
+        Groups_[group].Spec.ExpressionContinuation = !defaultArgument;
+        Groups_[group].Spec.StructuralBase = defaultArgument;
+        Groups_[group].Spec.LineBase = defaultArgument;
         Groups_[group].Spec.Continuation = true;
         if (canonical && threePart && parent != None &&
             Region(Syntax_[parent]).Kind == NodeKind::Initializer &&

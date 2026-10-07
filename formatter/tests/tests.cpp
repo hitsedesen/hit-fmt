@@ -2134,6 +2134,42 @@ std::vector<FormatCase> FormatCases()
         "first-position-reflow",
         "first-position-reflow.input.cpp",
     });
+    {
+        const auto directory = std::filesystem::path(FORMATTER_TESTDATA_DIR) /
+            "../function_parameters";
+        const auto base = formatter::LoadConfigFile(
+            directory / "../../../../.hit-fmt").FormattingStyle;
+        for (const auto name :
+            {
+                "default-wrap",
+                "default-leading",
+                "default-next-line",
+                "default-preserve",
+                "default-aligned",
+            })
+        {
+            FormatCase value{directory, name, "default.input.cpp"};
+            value.Style = base;
+            value.Style->ColumnLimit = 60;
+            value.CheckOwningMaps = true;
+            if (std::string_view(name) == "default-leading") {
+                value.Style->AssignmentOperatorSide = OperatorSide::Leading;
+            } else if (std::string_view(name) == "default-next-line") {
+                value.Style->AssignmentRhsPlacement =
+                    FirstItemPlacement::NextLine;
+            } else if (std::string_view(name) == "default-preserve") {
+                value.Style->ExpressionsLayout = CategoryLayout::Preserve;
+            } else if (std::string_view(name) == "default-aligned") {
+                value.Style->ParametersAlignment =
+                    ContinuationAlignment::Delimiter;
+                value.Style->ContinuationOffset = 6;
+                value.Style->ColumnLimit = 80;
+                value.Style->AssignmentRhsPlacement =
+                    FirstItemPlacement::NextLine;
+            }
+            cases.push_back(std::move(value));
+        }
+    }
     AddCases(
         cases,
         std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../macro-nested-calls",
