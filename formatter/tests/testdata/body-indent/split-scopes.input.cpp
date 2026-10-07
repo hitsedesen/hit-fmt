@@ -43,7 +43,7 @@ void WriteMatched(int tag)
     switch (tag) {
         case 0:
             encoder.OnBeginList();
-                encoder.Item(6);
+            encoder.Item(6);
             encoder.OnEndList();
             break;
         case 1: {
@@ -55,6 +55,20 @@ void WriteMatched(int tag)
         default:
             Finish();
     }
+}
+
+void WriteLabeled()
+{
+    wrap(tag, encoder.OnBeginList());
+        Before();
+next:
+        After();
+    wrap(tag, encoder.OnEndList());
+        Unrelated();
+done:
+    wrap(tag, encoder.OnBeginMap());
+        Within();
+    wrap(tag, encoder.OnEndMap());
 }
 
 void WriteShifted(int tag)

@@ -1408,6 +1408,7 @@ std::vector<FormatCase> FormatCases()
                 "split-scopes-indent",
                 "split-scopes-no-indent",
                 "split-scopes-tabs",
+                "split-scopes-generated",
             })
         {
             FormatCase value{directory, name, "split-scopes.input.cpp"};
@@ -1422,6 +1423,8 @@ std::vector<FormatCase> FormatCases()
                     formatter::BodyIndentation::NoIndent;
             } else if (variant == "split-scopes-tabs") {
                 value.Style->IndentationKind = IndentationKind::Tabs;
+            } else if (variant == "split-scopes-generated") {
+                value.Style->GenerateCallScopeIndentation = true;
             }
             cases.push_back(std::move(value));
         }

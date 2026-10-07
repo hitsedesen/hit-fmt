@@ -185,6 +185,7 @@ CallLineFirstStringOverflow = BreakBefore
 # Literal contents are never split; later concatenated pieces may wrap.
 ChainedCallRootNames = ["factory", "pipeline::Builder"]
 AlwaysBreakChainRootNames = ["WRITE_EVENT", "logging::Event"]
+# Complete pairs must stay within one case or ordinary label section.
 IndentedCallScopePairs = ["OpenItems:CloseItems"]
 GenerateCallScopeIndentation = true
 IndentedChainScopePairs = ["BeginMap:EndMap", "BeginList:EndList"]
@@ -537,8 +538,10 @@ constexpr HelpSection HelpSections[] = {
         "IndentedCallScopePairs preserves an "
             "existing visual extra level only for "
         "matched pairs in the same statement "
-            "sequence/receiver/wrapper context; "
-        "uncertain, unmatched and PP-crossing "
+            "sequence/receiver/wrapper context. "
+        "Case and ordinary labels delimit independent scope sections; "
+        "only complete pairs within one section affect indentation. "
+        "In unlabeled bodies, uncertain, unmatched and PP-crossing "
             "regions beginning on a source line remain unchanged. "
         "Inline regions have no visual indentation to retain and do not "
         "prevent body expansion. IndentedChainScopePairs adds one "

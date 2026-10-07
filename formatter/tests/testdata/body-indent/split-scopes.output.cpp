@@ -3,9 +3,9 @@ void WriteSplit(int tag)
     switch (tag) {
         case 0:
             encoder.OnBeginList();
-                encoder.Item(1);
+            encoder.Item(1);
         case 1:
-                encoder.Item(2);
+            encoder.Item(2);
             encoder.OnEndList();
             break;
         default:
@@ -19,11 +19,11 @@ void WriteUnclosed(int tag)
         case 0:
             Prepare();
             encoder.OnBeginMap();
-                if (Ready()) {
-                    encoder.Item(3);
-                }
+            if (Ready()) {
+                encoder.Item(3);
+            }
         default:
-                encoder.Item(4);
+            encoder.Item(4);
     }
 }
 
@@ -43,7 +43,7 @@ void WriteMatched(int tag)
     switch (tag) {
         case 0:
             encoder.OnBeginList();
-                encoder.Item(6);
+            encoder.Item(6);
             encoder.OnEndList();
             break;
         case 1: {
@@ -57,13 +57,27 @@ void WriteMatched(int tag)
     }
 }
 
+void WriteLabeled()
+{
+    wrap(tag, encoder.OnBeginList());
+    Before();
+    next:
+    After();
+    wrap(tag, encoder.OnEndList());
+    Unrelated();
+    done:
+    wrap(tag, encoder.OnBeginMap());
+        Within();
+    wrap(tag, encoder.OnEndMap());
+}
+
 void WriteShifted(int tag)
 {
     switch (tag) {
 case 0:
-    encoder.OnBeginList();
-        encoder.Item(8);
+            encoder.OnBeginList();
+            encoder.Item(8);
 case 1:
-    encoder.OnEndList();
+            encoder.OnEndList();
     }
 }
