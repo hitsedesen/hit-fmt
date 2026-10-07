@@ -2150,12 +2150,23 @@ private:
         }
     }
 
+    bool IsCaseLabel(Index id) const
+    {
+        // Statement attributes wrap the label, not its following body items.
+        while (id != None &&
+            Region(Syntax_[id]).Kind == NodeKind::AttributedStatement)
+        {
+            id = LastChild_[id];
+        }
+        return id != None && Region(Syntax_[id]).Kind == NodeKind::CaseLabel;
+    }
+
     bool IsSoleCaseBlock(Index id) const
     {
         const auto& block = Region(Syntax_[id]);
         const auto previous = Syntax_[id].PreviousSibling;
         if (block.Kind != NodeKind::CompoundStatement || previous == None ||
-            Region(Syntax_[previous]).Kind != NodeKind::CaseLabel ||
+            !IsCaseLabel(previous) ||
             Region(Syntax_[previous]).Tokens.End != block.Tokens.Begin)
         {
             return false;
@@ -2172,8 +2183,7 @@ private:
         // Mixed cases instead give every statement the same body level.
         // An opaque run may introduce new labels, so it cannot establish
         // that the preceding block belongs to a mixed case.
-        return next == None ||
-            Region(Syntax_[next]).Kind == NodeKind::CaseLabel ||
+        return next == None || IsCaseLabel(next) ||
             Region(Syntax_[next]).Kind == NodeKind::UnparsedSyntax;
     }
 
@@ -2757,8 +2767,8 @@ private:
             child = Region(Syntax_[child]).NextSibling)
         {
             const auto& part = Region(Syntax_[child]);
-            labeled |= part.Kind == NodeKind::CaseLabel ||
-                part.Kind == NodeKind::LabelStatement;
+            labeled |=
+                IsCaseLabel(child) || part.Kind == NodeKind::LabelStatement;
             if (Syntax_[child].Safe || part.Tokens.Empty() ||
                 part.Tokens.Begin <= opening || part.Tokens.End > close)
             {
@@ -2923,17 +2933,26 @@ private:
                 break;
             }
         }
+        auto labelItem = id;
+        if (node.Kind == NodeKind::CaseLabel) {
+            while (Region(Syntax_[labelItem]).Parent != None &&
+                Region(Syntax_[Region(Syntax_[labelItem]).Parent]).Kind ==
+                    NodeKind::AttributedStatement)
+            {
+                labelItem = Region(Syntax_[labelItem]).Parent;
+            }
+        }
         if (opening == None && node.Kind == NodeKind::CaseLabel &&
-            Region(Syntax_[id]).NextSibling != None)
+            Region(Syntax_[labelItem]).NextSibling != None)
         {
-            const auto next = Region(Syntax_[id]).NextSibling;
+            const auto next = Region(Syntax_[labelItem]).NextSibling;
             const auto& body = Region(Syntax_[next]);
             if (IsSoleCaseBlock(next) && Syntax_[next].Safe) {
                 opening = body.Tokens.Begin;
                 bodyChild = next;
                 // Conditional sequences use their enclosing body's gap
                 // owner, not a separate block for each directive branch.
-                auto parent = Region(Syntax_[id]).Parent;
+                auto parent = Region(Syntax_[labelItem]).Parent;
                 while (parent != None && PreprocessingSequence(parent)) {
                     parent = Region(Syntax_[parent]).Parent;
                 }
@@ -3199,10 +3218,11 @@ private:
                 }
                 continue;
             }
+            const bool caseLabel = IsCaseLabel(child);
             // Labels delimit direct-child case regions. A sole compound
             // supplies the case's body level; mixed cases share one level
             // across all their statements, including the first block.
-            if (part.Kind == NodeKind::CaseLabel) {
+            if (caseLabel) {
                 inCase = true;
                 contents = None;
             } else if (IsSoleCaseBlock(child)) {
@@ -3260,10 +3280,8 @@ private:
             // Indentation controls are structural subgroups, not a text pass.
             const auto special = part.Kind == NodeKind::AccessSpecifier
                 ? &Policies_.Indentation.AccessModifiers
-                : part.Kind == NodeKind::CaseLabel
-                    ? &Policies_.Indentation.CaseLabels
-                    : nullptr;
-            if (part.Kind == NodeKind::CaseLabel && special &&
+                : caseLabel ? &Policies_.Indentation.CaseLabels : nullptr;
+            if (caseLabel && special &&
                 special->Mode == BodyIndentation::Preserve &&
                 SourceIndent(part.Tokens.Begin) != None)
             {
@@ -3287,9 +3305,19 @@ private:
         // Attributes and their statement share a level without changing
         // whether their existing boundaries are inline or multiline.
         const auto& node = Region(Syntax_[id]);
+        const bool caseLabel = IsCaseLabel(id);
+        auto end = node.Tokens.End;
+        const auto next = node.NextSibling;
+        if (caseLabel && next != None && IsSoleCaseBlock(next) &&
+            Syntax_[next].Safe)
+        {
+            // Include the following brace so the label's header group nests
+            // inside the attributed group instead of crossing its boundary.
+            end = Region(Syntax_[next]).Tokens.Begin + 1;
+        }
         const auto group = GroupAt(
             GapPosition(node.Tokens.Begin),
-            GapPosition(node.Tokens.End),
+            GapPosition(end),
             document::GroupMode::Fill);
         Groups_[group].Spec.StructuralBase = true;
         for (auto child = node.FirstChild;
@@ -3299,11 +3327,20 @@ private:
             const auto& part = Region(Syntax_[child]);
             const auto begin = part.Tokens.Begin;
             if (begin > node.Tokens.Begin) {
-                const auto owner = part.Kind == NodeKind::AttributeSpecifier
+                const auto owner =
+                    !caseLabel && part.Kind == NodeKind::AttributeSpecifier
                     ? Gaps_[node.Tokens.Begin].Owner
                     : group;
                 Own(begin, owner, Boundary::Preserve);
                 Reindent(begin, owner);
+                if (caseLabel) {
+                    const auto& leading = Gaps_[node.Tokens.Begin];
+                    auto& gap = Gaps_[begin];
+                    gap.OverrideIndent = leading.OverrideIndent;
+                    gap.ExtraIndent = leading.ExtraIndent;
+                    gap.PreserveIndent = leading.PreserveIndent;
+                    gap.Reindent = leading.Reindent;
+                }
             }
         }
     }
@@ -4008,7 +4045,7 @@ private:
                         NodeKind::PreprocessingDirective ||
                     Region(Syntax_[child]).Kind ==
                         NodeKind::PreprocessingConditional ||
-                    Region(Syntax_[child]).Kind == NodeKind::CaseLabel ||
+                    IsCaseLabel(child) ||
                     Region(Syntax_[child]).Kind == NodeKind::LabelStatement)
                 {
                     if (!pairs.empty()) {
