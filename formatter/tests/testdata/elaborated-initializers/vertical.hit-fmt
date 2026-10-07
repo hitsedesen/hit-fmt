@@ -1,0 +1,13 @@
+Layout = Canonical
+BodyShape = Expanded
+StructBracePlacement = NextLine
+EmptyBodyShape = CompactIfFits
+EmptyBlockInteriorSpacing = Space
+BraceInitializerSpacing = NoSpace
+InitializersBreak = Always
+InitializersPacking = VerticalWhenBroken
+InitializersFirstItem = NextLine
+InitializersCloser = OwnLine
+InitializersTrailingComma = WhenMultiline
+CommaSpaceBefore = NoSpace
+CommaSpaceAfter = Space

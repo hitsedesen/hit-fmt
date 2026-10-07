@@ -3243,6 +3243,67 @@ private:
         return node;
     }
 
+    [[nodiscard]] bool HasInitializerListSeparators(size_t opening) const
+    {
+        const auto after = FindBalancedEnd(opening);
+        if (after <= opening || after > ParseLimit_) {
+            return false;
+        }
+        const auto closing = after - 1;
+        bool sawComma = false;
+        size_t conditionals = 0;
+        for (auto cursor = NextSignificant(opening + 1); cursor < closing;) {
+            const auto kind = Kind(cursor);
+            if (kind == TK::Operator_Semicolon ||
+                kind == TK::PreprocessingDirective)
+            {
+                return false;
+            }
+            if (IsOpenDelimiter(kind)) {
+                const auto end = FindBalancedEnd(cursor);
+                if (end <= cursor || end > closing) {
+                    return false;
+                }
+                cursor = NextSignificant(end);
+                continue;
+            }
+            const auto previous = Kind(PreviousSignificant(cursor));
+            if (kind == TK::Operator_Less &&
+                (previous == TK::Identifier ||
+                    previous == TK::Keyword_template))
+            {
+                bool exactClosing = false;
+                const auto end =
+                    SkipTemplateArguments(cursor, closing, true, &exactClosing);
+                if (!exactClosing || end <= cursor || end > closing) {
+                    // Unresolved angles cannot prove list separators. Stop
+                    // rather than repeatedly scanning an ambiguous tail.
+                    return false;
+                }
+                cursor = NextSignificant(end);
+                continue;
+            }
+            if (kind == TK::Operator_Conditional) {
+                ++conditionals;
+            } else if (kind == TK::Operator_Colon) {
+                // Access labels, bit-fields and constructor initializer lists
+                // belong to records, unlike a conditional expression's colon.
+                if (conditionals == 0) {
+                    return false;
+                }
+                --conditionals;
+            } else if (kind == TK::Operator_Comma && conditionals == 0 &&
+                previous != TK::Keyword_operator)
+            {
+                sawComma = true;
+            }
+            cursor = NextSignificant(cursor + 1);
+        }
+        // Member declarations need ';'; commas in parameter/template lists
+        // or operator names do not make a record body an initializer list.
+        return sawComma && conditionals == 0;
+    }
+
     [[nodiscard]] bool IsElaboratedInitializer(
         size_t start,
         size_t opening,
@@ -3283,6 +3344,11 @@ private:
         if (cursor != opening) {
             return false;
         }
+        if (name != recordName.FinalSpecifier &&
+            (declaratorEvidence || IsKnownType(first)))
+        {
+            return true;
+        }
         const auto element = NextSignificant(opening + 1);
         const auto kind = Kind(element);
         const bool initializerEvidence =
@@ -3294,10 +3360,7 @@ private:
         // A bare pair of unknown identifiers may instead be an export macro
         // and record name. Require type, declarator or initializer evidence;
         // an empty body alone cannot distinguish these forms.
-        if (name == recordName.FinalSpecifier && !initializerEvidence) {
-            return false;
-        }
-        return declaratorEvidence || IsKnownType(first) || initializerEvidence;
+        return initializerEvidence || HasInitializerListSeparators(opening);
     }
 
     Node* ParseRecordDeclaration()

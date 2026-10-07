@@ -3039,7 +3039,10 @@ std::vector<FormatCase> FormatCases()
         }
     }
     AddCases(cases, data / "qualified-record", {"canonical", "ytsaurus"});
-    AddCases(cases, data / "elaborated-initializers", {"canonical"});
+    AddCases(
+        cases,
+        data / "elaborated-initializers",
+        {"canonical", "vertical"});
     AddCases(cases, data / "uncertain-layout", {"canonical", "preserve"});
     AddCases(
         cases,
