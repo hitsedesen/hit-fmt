@@ -3205,6 +3205,11 @@ private:
             if (part.Kind == NodeKind::CaseLabel) {
                 inCase = true;
                 contents = None;
+            } else if (Gaps_[part.Tokens.Begin].Frozen) {
+                // The frozen scope owns authored offsets from this body's
+                // base, including case contents. End any preceding subgroup
+                // rather than layering its offset onto those preserved gaps.
+                contents = None;
             } else if (IsSoleCaseBlock(child)) {
                 contents = None;
             } else if (inCase) {
@@ -4132,7 +4137,23 @@ private:
                         GapPosition(range.Begin),
                         GapPosition(range.End),
                         document::GroupMode::Fill);
-                    Groups_[group].Spec.StructuralBase = true;
+                    auto& spec = Groups_[group].Spec;
+                    spec.StructuralBase = true;
+                    if (first != None &&
+                        Region(Syntax_[first]).Kind == NodeKind::CaseLabel)
+                    {
+                        // Source offsets are measured from the first label,
+                        // not the ordinary body level. Capture the same label
+                        // basis after formatting so later runs cannot drift.
+                        const auto& labels = Policies_.Indentation.CaseLabels;
+                        if (labels.Mode == BodyIndentation::Preserve) {
+                            spec.FixedBase = base;
+                        } else {
+                            const auto body = BlockOf_[range.Body];
+                            const auto offset = Groups_[body].Spec.Indent;
+                            spec.Indent = BodyOffset(labels, offset) - offset;
+                        }
+                    }
                 }
                 auto& plan = Gaps_[gap];
                 plan.Owner = group;
@@ -4140,6 +4161,7 @@ private:
                 plan.Reindent = true;
                 plan.OverrideIndent = true;
                 plan.RelativeIndent = true;
+                plan.PreserveIndent = false;
                 plan.ExtraIndent = int32_t(delta);
             }
         }
