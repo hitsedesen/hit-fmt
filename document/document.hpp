@@ -348,7 +348,7 @@ public:
     Result Render(
         Policy policy = {},
         std::pmr::memory_resource* resource =
-        std::pmr::get_default_resource()) const;
+            std::pmr::get_default_resource()) const;
 
 private:
     enum class Kind : std::uint8_t
