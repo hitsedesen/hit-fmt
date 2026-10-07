@@ -175,7 +175,9 @@ void PrintOption(std::ostream& output, std::string_view name, const T& value)
         output << "# C++ [[...]] bracket interiors, not extension payloads.\n";
     } else if (name == "IndentedCallScopePairs") {
         output
-            << "# Uncertain scopes retain existing line-start regions.\n"
+            << "# Case and ordinary labels delimit independent sections.\n"
+                "# Only complete pairs inside one section affect indentation.\n"
+                "# Uncertain unlabeled scopes retain line-start regions.\n"
                 "# Inline endpoints do not prevent body expansion.\n";
     } else if (name == "BraceInitializerSpacing") {
         output

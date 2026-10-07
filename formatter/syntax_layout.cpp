@@ -3961,7 +3961,13 @@ private:
         std::pmr::vector<int64_t> frozen(Tree_.TokenCount() + size_t(2), 0,
                                          Syntax_.get_allocator().resource());
         Index frozenBody = None;
+        bool labeledBody = false;
         const auto freeze = [&] (Index begin, Index end) {
+            // Incomplete scopes in a labeled sequence must not preserve an
+            // indentation region that could span independently entered cases.
+            if (labeledBody) {
+                return;
+            }
             // Inline regions have no existing visual indentation to retain.
             // Freezing them would suppress ordinary body expansion, including
             // lambdas containing a single unmatched scope endpoint.
@@ -3979,6 +3985,19 @@ private:
                 continue;
             }
             frozenBody = id;
+            labeledBody = false;
+            for (auto child = Region(Syntax_[id]).FirstChild;
+                child != None;
+                child = Region(Syntax_[child]).NextSibling)
+            {
+                const auto childKind = Region(Syntax_[child]).Kind;
+                if (childKind == NodeKind::CaseLabel ||
+                    childKind == NodeKind::LabelStatement)
+                {
+                    labeledBody = true;
+                    break;
+                }
+            }
             pairs.clear();
             for (auto child = Region(Syntax_[id]).FirstChild;
                 child != None;

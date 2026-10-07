@@ -2839,12 +2839,6 @@ TEST(SyntaxLayout, NestedVisualScopesAndWrapperContextRespectBarriers)
     EXPECT_NE(nestedWrappers.find("\n      work();"), std::string::npos)
         << nestedWrappers;
     EXPECT_EQ(Lower(nestedWrappers, style).Text, nestedWrappers);
-    const auto executionBarrier = Lower(
-        "void f(){\n  wrap(tag, flow.Begin());\n    "
-        "before();\nlabel:\n    after();\n  " "wrap(tag, flow.End());\n}\n",
-        style).Text;
-    EXPECT_NE(executionBarrier.find("\n    after();"), std::string::npos)
-        << executionBarrier;
     const auto wrapper = Lower(
         "void f(){\n  wrap(flow.Begin());\n    "
         "work();\n  wrap(flow.End());\n}\n",

@@ -1398,6 +1398,37 @@ std::vector<FormatCase> FormatCases()
         BODY_INDENT_TESTDATA_DIR,
         {"grouped-preserve", "grouped-strict"},
         "grouped-statements.input.cpp");
+    {
+        const auto directory = std::filesystem::path(BODY_INDENT_TESTDATA_DIR);
+        const auto base = formatter::LoadConfigFile(
+            directory / "grouped-preserve.hit-fmt").FormattingStyle;
+        for (const auto name :
+            {
+                "split-scopes",
+                "split-scopes-indent",
+                "split-scopes-no-indent",
+                "split-scopes-tabs",
+                "split-scopes-generated",
+            })
+        {
+            FormatCase value{directory, name, "split-scopes.input.cpp"};
+            value.Style = base;
+            value.CheckOwningMaps = true;
+            const std::string_view variant = name;
+            if (variant == "split-scopes-indent") {
+                value.Style->IndentCaseLabels =
+                    formatter::BodyIndentation::Indent;
+            } else if (variant == "split-scopes-no-indent") {
+                value.Style->IndentCaseLabels =
+                    formatter::BodyIndentation::NoIndent;
+            } else if (variant == "split-scopes-tabs") {
+                value.Style->IndentationKind = IndentationKind::Tabs;
+            } else if (variant == "split-scopes-generated") {
+                value.Style->GenerateCallScopeIndentation = true;
+            }
+            cases.push_back(std::move(value));
+        }
+    }
     AddCases(
         cases,
         BODY_INDENT_TESTDATA_DIR,
