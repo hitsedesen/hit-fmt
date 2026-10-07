@@ -2572,4 +2572,151 @@
       )
     )
   )
+  (function-definition
+    (leading-trivia
+      (whitespace "\n\n")
+    )
+    (declaration-specifiers "void")
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (declarator-name "attributed_statements")
+          (function-declarator
+            (parameter-list
+              "("
+              (parameter-declaration
+                (declaration-specifiers "bool")
+                (init-declarator-list
+                  (init-declarator
+                    (declarator
+                      (declarator-name "ready")
+                    )
+                  )
+                )
+              )
+              ")"
+            )
+          )
+        )
+      )
+    )
+    (compound-statement
+      "{"
+      (expression-statement
+        (call-expression
+          (identifier-expression "Visit")
+          (argument-list
+            "("
+            (argument
+              (lambda-expression
+                (lambda-capture-list
+                  "["
+                  (lambda-capture "&")
+                  "]"
+                )
+                (lambda-body
+                  "{"
+                  (attributed-statement
+                    (attribute-specifier "[" "[" "likely" "]" "]")
+                    (compound-statement
+                      "{"
+                      (declaration-statement
+                        (declaration-specifiers
+                          (attribute-specifier "[" "[" "maybe_unused" "]" "]")
+                          "int"
+                        )
+                        (init-declarator-list
+                          (init-declarator
+                            (declarator
+                              (declarator-name "result")
+                            )
+                            (initializer
+                              "="
+                              (literal-expression "0")
+                            )
+                          )
+                        )
+                        ";"
+                      )
+                      (attributed-statement
+                        (attribute-specifier "[" "[" "likely" "]" "]")
+                        (if-statement
+                          "if"
+                          (condition
+                            "("
+                            (identifier-expression "ready")
+                            ")"
+                          )
+                          (compound-statement
+                            "{"
+                            (expression-statement
+                              (call-expression
+                                (identifier-expression "Touch")
+                                (argument-list "(" ")")
+                              )
+                              ";"
+                            )
+                            "}"
+                          )
+                        )
+                      )
+                      "}"
+                    )
+                  )
+                  (attributed-statement
+                    (attribute-specifier "[" "[" "unlikely" "]" "]")
+                    (attribute-specifier "[" "[" "vendor" "::" "tag" "(" "1" ")" "]" "]")
+                    (compound-statement
+                      "{"
+                      (attributed-statement
+                        (attribute-specifier "[" "[" "likely" "]" "]")
+                        (expression-statement
+                          (call-expression
+                            (identifier-expression "Touch")
+                            (argument-list "(" ")")
+                          )
+                          ";"
+                        )
+                      )
+                      "}"
+                    )
+                  )
+                  (switch-statement
+                    "switch"
+                    (condition
+                      "("
+                      (literal-expression "1")
+                      ")"
+                    )
+                    (compound-statement
+                      "{"
+                      (case-label "case" "0" ":")
+                      (attributed-statement
+                        (attribute-specifier "[" "[" "fallthrough" "]" "]")
+                        (expression-statement ";")
+                      )
+                      (case-label "default" ":")
+                      (attributed-statement
+                        (attribute-specifier "[" "[" "unlikely" "]" "]")
+                        (break-statement "break" ";")
+                      )
+                      "}"
+                    )
+                  )
+                  (attributed-statement
+                    (attribute-specifier "[" "[" "likely" "]" "]")
+                    (return-statement "return" ";")
+                  )
+                  "}"
+                )
+              )
+            )
+            ")"
+          )
+        )
+        ";"
+      )
+      "}"
+    )
+  )
 )

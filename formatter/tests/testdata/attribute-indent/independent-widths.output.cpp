@@ -1,7 +1,7 @@
 void f() {
    switch (1) {
     case 1:
-[[fallthrough]];
+       [[fallthrough]];
     case 2:
       {
          Use();

@@ -7911,6 +7911,24 @@ private:
     Node* ParseStatement()
     {
         auto first = NextSignificant(Cursor_);
+        const auto afterAttributes = Kind(first) == TK::Operator_OpenBracket
+            ? SkipAttributeSpecifiers(first)
+            : first;
+        if (afterAttributes != first &&
+            Kind(afterAttributes) != TK::PreprocessingDirective &&
+            Kind(afterAttributes) != TK::Operator_CloseBrace &&
+            Kind(afterAttributes) != TK::Invalid &&
+            ClassifySimpleStatement(first) == NodeKind::ExpressionStatement)
+        {
+            // Declaration attributes remain in their specifier sequence.
+            // Statement attributes prefix a real statement, not an opaque
+            // expression extending through its nested bodies.
+            auto* node = MakeNode(NodeKind::AttributedStatement, Cursor_);
+            ParseTriviaBeforeChild(*node);
+            Append(*node, *ParseStatement());
+            node->Tokens.End = Cursor_;
+            return node;
+        }
         switch (Kind(first)) {
             case TK::Operator_OpenBrace:
                 Cursor_ = first;

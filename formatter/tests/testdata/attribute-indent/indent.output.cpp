@@ -3,7 +3,7 @@ void f(bool ready) {
   case 1:
     if (!ready)
       return;
-         [[fallthrough]];
+      [[fallthrough]];
   default:
     break;
   }

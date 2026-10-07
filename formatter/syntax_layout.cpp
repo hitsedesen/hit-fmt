@@ -438,6 +438,9 @@ public:
                 entry.IfConditionGroup = Syntax_[node.Parent].IfConditionGroup;
             }
             switch (node.Kind) {
+                case NodeKind::AttributedStatement:
+                    PlanAttributedStatement(i);
+                    break;
                 case NodeKind::FunctionDeclaration:
                 case NodeKind::FunctionDefinition:
                 case NodeKind::MacroFunctionDefinition:
@@ -3236,6 +3239,32 @@ private:
         }
     }
 
+    void PlanAttributedStatement(Index id)
+    {
+        // Attributes and their statement share a level without changing
+        // whether their existing boundaries are inline or multiline.
+        const auto& node = Region(Syntax_[id]);
+        const auto group = GroupAt(
+            GapPosition(node.Tokens.Begin),
+            GapPosition(node.Tokens.End),
+            document::GroupMode::Fill);
+        Groups_[group].Spec.StructuralBase = true;
+        for (auto child = node.FirstChild;
+            child != None;
+            child = Region(Syntax_[child]).NextSibling)
+        {
+            const auto& part = Region(Syntax_[child]);
+            const auto begin = part.Tokens.Begin;
+            if (begin > node.Tokens.Begin) {
+                const auto owner = part.Kind == NodeKind::AttributeSpecifier
+                    ? Gaps_[node.Tokens.Begin].Owner
+                    : group;
+                Own(begin, owner, Boundary::Preserve);
+                Reindent(begin, owner);
+            }
+        }
+    }
+
     void PlanAttribute(Index id)
     {
         const auto& node = Region(Syntax_[id]);
@@ -3269,6 +3298,15 @@ private:
                 return;
             }
             block = BlockOf_[blockParent];
+        } else if (kind == NodeKind::AttributedStatement) {
+            const auto blockParent = Region(Syntax_[parent]).Parent;
+            if (blockParent != None &&
+                (Region(Syntax_[blockParent]).Kind ==
+                    NodeKind::CompoundStatement ||
+                    Region(Syntax_[blockParent]).Kind == NodeKind::LambdaBody))
+            {
+                block = BlockOf_[blockParent];
+            }
         } else if (!IsControl(kind)) {
             return;
         }
