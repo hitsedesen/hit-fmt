@@ -1167,6 +1167,9 @@ private:
         {
             return nullptr;
         }
+        if (pin->FirstArgument == FirstArgumentAnnotation::PinAnyArgument) {
+            return pin;
+        }
         const auto expression = Region(Syntax_[first]).FirstChild;
         return expression != None && Syntax_[expression].String &&
             Region(Syntax_[expression]).Tokens.Begin ==
@@ -1400,8 +1403,8 @@ private:
             if (pin && pin->Overflow == AttachedStringOverflow::KeepInline &&
                 policy.Break != BreakRequirement::Always)
             {
-                // Literal contents stay indivisible; their concatenation
-                // group may still wrap independently after the attached piece.
+                // Attach the first argument's opening piece; its nested
+                // syntax (including literal concatenation) may still wrap.
                 firstKind = document::GapKind::Flat;
             }
             if (node.Kind == NodeKind::TemplateArgumentList &&
@@ -1421,9 +1424,9 @@ private:
             if (pin && pin->Overflow == AttachedStringOverflow::BreakBefore &&
                 Policies_.ColumnLimit != 0)
             {
-                // Demand the complete literal sequence, not a prefix shortened
-                // by optional concatenation breaks. FitThrough also includes
-                // its mandatory same-line punctuation suffix.
+                // Demand the complete argument, not a prefix shortened by
+                // optional nested breaks. FitThrough also includes its
+                // mandatory same-line punctuation suffix.
                 const auto first = node.FirstChild;
                 // Child-only trials keep the opener flat without consulting
                 // its fit demand; the list must own this overflow decision.

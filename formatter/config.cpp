@@ -853,6 +853,7 @@ void ValidateLibraryAnnotationStyle(const Style& style)
 {
     std::vector<std::string_view> scratch;
     scratch.reserve(std::max({
+        style.CallLineFirstArgumentNames.size(),
         style.CallLineFirstStringNames.size(),
         style.ChainedCallRootNames.size(),
         style.AlwaysBreakChainRootNames.size(),
@@ -861,6 +862,11 @@ void ValidateLibraryAnnotationStyle(const Style& style)
         style.StickyChainCallPairs.size(),
         style.ClassMacroNames.size() * 2,
     }));
+    ValidateAnnotationNames(
+        style.CallLineFirstArgumentNames,
+        scratch,
+        "CallLineFirstArgumentNames",
+        false);
     ValidateAnnotationNames(
         style.CallLineFirstStringNames,
         scratch,
@@ -910,7 +916,15 @@ LibraryAnnotations CompileLibraryAnnotations(const Style& style)
 {
     ValidateLibraryAnnotationStyle(style);
     LibraryAnnotations result;
-    result.MessagePins_.reserve(style.CallLineFirstStringNames.size());
+    result.MessagePins_.reserve(style.CallLineFirstArgumentNames.size() +
+        style.CallLineFirstStringNames.size());
+    for (const auto& name : style.CallLineFirstArgumentNames) {
+        result.MessagePins_.push_back({
+            name,
+            FirstArgumentAnnotation::PinAnyArgument,
+            style.CallLineFirstArgumentOverflow,
+        });
+    }
     for (const auto& name : style.CallLineFirstStringNames) {
         result.MessagePins_.push_back({
             name,
@@ -922,8 +936,22 @@ LibraryAnnotations CompileLibraryAnnotations(const Style& style)
         result.MessagePins_.begin(),
         result.MessagePins_.end(),
         [] (const auto& left, const auto& right) {
-            return left.Name < right.Name;
+            if (left.Name != right.Name) {
+                return left.Name < right.Name;
+            }
+            // The general argument rule wins when both lists name a call.
+            return left.FirstArgument ==
+                FirstArgumentAnnotation::PinAnyArgument &&
+                right.FirstArgument != FirstArgumentAnnotation::PinAnyArgument;
         });
+    result.MessagePins_.erase(
+        std::unique(
+            result.MessagePins_.begin(),
+            result.MessagePins_.end(),
+            [] (const auto& left, const auto& right) {
+                return left.Name == right.Name;
+            }),
+        result.MessagePins_.end());
     result.ChainRoots_ = style.ChainedCallRootNames;
     std::sort(result.ChainRoots_.begin(), result.ChainRoots_.end());
     result.AlwaysBreakChainRoots_ = style.AlwaysBreakChainRootNames;

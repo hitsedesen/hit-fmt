@@ -416,6 +416,9 @@
     OPT(formatter::BlankLineSetting, StandaloneCommentBlankLinesBefore, {}) \
     OPT(formatter::BlankLineSetting, StandaloneCommentBlankLinesAfter, {}) \
     OPT(std::optional<std::size_t>, MaxEmptyLines, std::nullopt)              \
+    OPT(std::vector<std::string>, CallLineFirstArgumentNames, {})             \
+    OPT(formatter::AttachedStringOverflow, CallLineFirstArgumentOverflow, \
+        formatter::AttachedStringOverflow::Wrap) \
     OPT(std::vector<std::string>, CallLineFirstStringNames, {})               \
     OPT(formatter::AttachedStringOverflow, CallLineFirstStringOverflow, \
         formatter::AttachedStringOverflow::Wrap) \
