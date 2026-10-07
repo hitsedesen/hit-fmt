@@ -2980,7 +2980,7 @@ std::vector<FormatCase> FormatCases()
     AddCases(
         cases,
         data / "attribute-parenthesis-interiors",
-        {"compact", "spaced", "preserve"});
+        {"compact", "spaced", "preserve", "canonical"});
     {
         const auto directory = std::filesystem::path(FORMATTER_TESTDATA_DIR) /
             "../attribute-parenthesis-interiors";

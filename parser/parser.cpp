@@ -3529,6 +3529,13 @@ private:
                         Append(head, *operand);
                         i = operand->Tokens.End - 1;
                     }
+                } else if (IsExtensionAttribute(i)) {
+                    const auto end = FindExtensionAttributeEnd(i, headEnd);
+                    auto* attribute =
+                        MakeNode(NodeKind::ExtensionAttributeSpecifier, i);
+                    attribute->Tokens.End = end;
+                    Append(head, *attribute);
+                    i = end - 1;
                 } else if (IsOpenDelimiter(Kind(i))) {
                     auto balancedEnd = FindBalancedEnd(i);
                     if (balancedEnd > headEnd) {

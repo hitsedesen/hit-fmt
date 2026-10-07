@@ -108,7 +108,9 @@
     (leading-trivia
       (whitespace "\n\n")
     )
-    "struct" "__attribute__" "(" "(" "packed" ")" ")" "Item" "{"
+    "struct"
+    (extension-attribute-specifier "__attribute__" "(" "(" "packed" ")" ")")
+    "Item" "{"
     (function-definition
       (init-declarator-list
         (init-declarator

@@ -12,6 +12,7 @@
 #include <sstream>
 #include <stdexcept>
 #include <string>
+#include <utility>
 
 namespace {
 
@@ -1208,11 +1209,23 @@ TEST(SyntaxSpacing, ParenthesisInteriorsTakePrecedenceOverAttributeSpacing)
 
 TEST(SyntaxSpacing, ExtensionAttributeBoundariesRespectEnclosingSyntax)
 {
-    for (const auto source :
+    for (const auto& [source, following] :
         {
-            "__attribute__((destructor(101))) static void Cleanup() {}",
-            "__attribute__ /* note */ ((unused)) static int value;",
-            "__declspec(dllexport) static int value;",
+            std::pair{
+                "__attribute__((destructor(101))) static void Cleanup() {}",
+                "static",
+            },
+            std::pair{
+                "__attribute__ /* note */ ((unused)) static int value;",
+                "static",
+            },
+            std::pair{"__declspec(dllexport) static int value;", "static"},
+            std::pair{"struct __attribute__((packed)) Value {};", "Value"},
+            std::pair{"class __declspec(dllexport) Value;", "Value"},
+            std::pair{
+                "union __attribute__ /* note */ ((aligned(16))) Value {};",
+                "Value",
+            },
         })
     {
         SCOPED_TRACE(source);
@@ -1229,7 +1242,7 @@ TEST(SyntaxSpacing, ExtensionAttributeBoundariesRespectEnclosingSyntax)
             policies.AttributeSpaceAfterSpecifier = policy;
             Analysis analysis(source, policies);
             const auto& gap =
-                analysis.Spacing.Gaps()[analysis.Before("static")];
+                analysis.Spacing.Gaps()[analysis.Before(following)];
             EXPECT_EQ(gap.Field, F::AttributeSpaceAfterSpecifier);
             EXPECT_EQ(gap.Policy, policy);
             EXPECT_EQ(gap.Category, C::DeclarationHeaders);

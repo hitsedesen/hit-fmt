@@ -1212,7 +1212,9 @@
     "PointerType" "{" "}" ";"
   )
   (record-declaration
-    "struct" "__attribute__" "(" "(" "aligned" "(" "16" ")" ")" ")" "Host" "::" "Extended" "{"
+    "struct"
+    (extension-attribute-specifier "__attribute__" "(" "(" "aligned" "(" "16" ")" ")" ")")
+    "Host" "::" "Extended" "{"
     (function-definition
       (init-declarator-list
         (init-declarator
