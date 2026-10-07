@@ -1,12 +1,15 @@
 #define CLASS_NAME(name) name
 
-struct CLASS_NAME(Example) {
+struct CLASS_NAME(Example)
+{
 };
 
-class CLASS_NAME(Widget) {
+class CLASS_NAME(Widget)
+{
 };
 
-union CLASS_NAME(Storage) {
+union CLASS_NAME(Storage)
+{
 };
 
 struct CLASS_NAME(WithMember) {

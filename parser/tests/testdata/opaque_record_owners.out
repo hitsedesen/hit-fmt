@@ -339,4 +339,277 @@
       "}"
     )
   )
+  (record-declaration
+    "struct"
+    (unparsed-syntax "PREFIX" "RECORD_NAME" "(" "Value" ")")
+    "{"
+    (declaration
+      (declaration-specifiers "int")
+      (init-declarator-list
+        (init-declarator
+          (declarator
+            (declarator-name "Number")
+          )
+        )
+      )
+      ";"
+    )
+    "}" ";"
+  )
+  (record-declaration
+    "struct"
+    (unparsed-syntax "RECORD_NAME" "(" "Value" ")")
+    "{"
+    (access-specifier "public" ":")
+    (declaration
+      (declaration-specifiers "int")
+      (init-declarator-list
+        (init-declarator
+          (declarator
+            (declarator-name "Number")
+          )
+        )
+      )
+      ";"
+    )
+    (access-specifier "protected" ":")
+    (function-definition
+      (declaration-specifiers "void")
+      (init-declarator-list
+        (init-declarator
+          (declarator
+            (declarator-name "update")
+            (function-declarator
+              (parameter-list "(" ")")
+            )
+          )
+        )
+      )
+      (compound-statement
+        "{"
+        (expression-statement
+          (call-expression
+            (identifier-expression "invoke")
+            (argument-list
+              "("
+              (argument
+                (identifier-expression "a")
+              )
+              (list-separator ",")
+              (argument
+                (identifier-expression "b")
+              )
+              ")"
+            )
+          )
+          ";"
+        )
+        "}"
+      )
+    )
+    (access-specifier "private" ":")
+    (declaration
+      (declaration-specifiers "int")
+      (init-declarator-list
+        (init-declarator
+          (declarator
+            (declarator-name "hidden")
+          )
+        )
+      )
+      ";"
+    )
+    "}" ";"
+  )
+  (record-declaration
+    "class"
+    (unparsed-syntax "api" "record_name" "(" "Value" ")" "final")
+    "{"
+    (access-specifier "public" ":")
+    (declaration
+      (declaration-specifiers "int")
+      (init-declarator-list
+        (init-declarator
+          (declarator
+            (declarator-name "Number")
+          )
+        )
+      )
+      ";"
+    )
+    "}" ";"
+  )
+  (record-declaration
+    "union"
+    (unparsed-syntax "API" "STORAGE_NAME" "(" "Value" ")")
+    "{"
+    (declaration
+      (declaration-specifiers "int")
+      (init-declarator-list
+        (init-declarator
+          (declarator
+            (declarator-name "Number")
+          )
+        )
+      )
+      ";"
+    )
+    (declaration
+      (declaration-specifiers "double")
+      (init-declarator-list
+        (init-declarator
+          (declarator
+            (declarator-name "Fraction")
+          )
+        )
+      )
+      ";"
+    )
+    "}" ";"
+  )
+  (record-declaration
+    "struct"
+    (unparsed-syntax "[" "[" "nodiscard" "]" "]" "API" "RECORD_NAME" "(" "select" "(" "1" "," "2" ")" "," "Tag" "<" "int" "," "long" ">" "," "Token" "{" "3" "}" ")" ":" "Base")
+    "{"
+    (access-specifier "public" ":")
+    (declaration
+      (declaration-specifiers "int")
+      (init-declarator-list
+        (init-declarator
+          (declarator
+            (declarator-name "Number")
+          )
+        )
+      )
+      ";"
+    )
+    "}" ";"
+  )
+  (record-declaration
+    "struct"
+    (unparsed-syntax
+      "API" "RECORD_NAME" "/* name */" "(" "Value" ")" "/* body */"
+      (dangling-trivia
+        (comment "/* name */")
+        (comment "/* body */")
+      )
+    )
+    "{"
+    (declaration
+      (declaration-specifiers "int")
+      (init-declarator-list
+        (init-declarator
+          (declarator
+            (declarator-name "Number")
+          )
+        )
+      )
+      ";"
+      (trailing-trivia
+        (comment "/* end */")
+      )
+    )
+    "}" "/* end */" ";"
+  )
+  (record-declaration "struct" "Result" "{" "}" ";")
+  (function-definition
+    (declaration-specifiers "struct" "Result")
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (declarator-name "make")
+          (function-declarator
+            (parameter-list
+              "("
+              (parameter-declaration
+                (declaration-specifiers "int")
+                (init-declarator-list
+                  (init-declarator
+                    (declarator
+                      (declarator-name "value")
+                    )
+                  )
+                )
+              )
+              ")"
+            )
+          )
+        )
+      )
+    )
+    (compound-statement
+      "{"
+      (return-statement
+        "return"
+        (braced-initializer
+          (initializer-list "{" "}")
+        )
+        ";"
+      )
+      "}"
+    )
+    ";"
+  )
+  (function-definition
+    (declaration-specifiers "struct" "External")
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (declarator-name "produce")
+          (function-declarator
+            (parameter-list
+              "("
+              (parameter-declaration
+                (declaration-specifiers "int")
+                (init-declarator-list
+                  (init-declarator
+                    (declarator
+                      (declarator-name "value")
+                    )
+                  )
+                )
+              )
+              ")"
+            )
+          )
+        )
+      )
+    )
+    (compound-statement
+      "{"
+      (return-statement
+        "return"
+        (braced-initializer
+          (initializer-list "{" "}")
+        )
+        ";"
+      )
+      "}"
+    )
+  )
+  (function-definition
+    (declaration-specifiers "void")
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (declarator-name "after")
+          (function-declarator
+            (parameter-list "(" ")")
+          )
+        )
+      )
+    )
+    (compound-statement
+      "{"
+      (ambiguous-statement
+        (unknown-type-name "RECORD_NAME")
+        "*" "marker" ";"
+      )
+      (ambiguous-statement
+        (unknown-type-name "record_name")
+        "*" "other" ";"
+      )
+      "}"
+    )
+  )
 )
