@@ -2838,11 +2838,6 @@ std::vector<FormatCase> FormatCases()
             directory,
             "declaration-operands-recovery",
             "declaration-operands");
-        ShareConfig(
-            cases,
-            directory,
-            "opaque-record-owners",
-            "../record-head-commas/space");
         ShareExpected(
             cases,
             directory,

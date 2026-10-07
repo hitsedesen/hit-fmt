@@ -1,0 +1,5 @@
+Layout = Canonical
+CommaSpaceAfter = Space
+IndentAccessModifiers = NoIndent
+RemoveNullDeclarations = true
+RemoveNullStatements = true

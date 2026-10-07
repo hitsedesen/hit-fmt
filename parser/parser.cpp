@@ -3125,6 +3125,7 @@ private:
         bool HasOpaquePrefix = false;
         bool HasTerminalName = false;
         size_t FinalSpecifier = std::numeric_limits<TokenIndex>::max();
+        bool HasMacroName = false;
     };
 
     [[nodiscard]] RecordHeadName FindDeclaredRecordName(size_t start) const
@@ -3156,6 +3157,7 @@ private:
             return index;
         };
         auto name = skipAttributes(NextSignificant(start + 1));
+        const auto firstName = name;
         bool isQualified = false;
         bool opaquePrefix = false;
         if (Kind(name) == TK::Operator_ScopeResolution) {
@@ -3193,6 +3195,17 @@ private:
                 name = next;
                 continue;
             }
+            bool macroName = false;
+            if (!isQualified && !templateId &&
+                Kind(next) == TK::Operator_OpenParenthesis)
+            {
+                const auto after = FindBalancedEnd(next);
+                if (after <= next || after >= end) {
+                    break;
+                }
+                next = skipAttributes(NextSignificant(after));
+                macroName = true;
+            }
             auto finalSpecifier = end;
             if (Kind(next) == TK::Identifier && Text(next) == "final") {
                 finalSpecifier = next;
@@ -3201,15 +3214,30 @@ private:
             const auto kind = Kind(next);
             const bool terminal = kind == TK::Operator_OpenBrace ||
                 kind == TK::Operator_Colon || kind == TK::Operator_Semicolon;
+            if (macroName && opaquePrefix) {
+                // `struct Type function(args)` can instead be an ordinary
+                // function. For an unknown prefix, a body followed by ';'
+                // supports an opaque record head; a known type remains a
+                // return type. A base clause also rules out a function.
+                const auto bodyEnd = kind == TK::Operator_OpenBrace
+                    ? FindBalancedEnd(next)
+                    : end;
+                macroName = !IsKnownType(firstName) &&
+                    (kind == TK::Operator_Colon ||
+                        (bodyEnd < end &&
+                            Kind(NextSignificant(bodyEnd)) ==
+                                TK::Operator_Semicolon));
+            }
             // Before ';', final can instead name an elaborated-type variable.
             return {
                 name,
                 isQualified,
                 opaquePrefix,
-                terminal,
+                terminal && !macroName,
                 terminal && kind != TK::Operator_Semicolon
                     ? finalSpecifier
                     : end,
+                terminal && macroName,
             };
         }
         return {end, isQualified, opaquePrefix, false};
@@ -3421,7 +3449,8 @@ private:
                 if (angleDepth == 0 && !sawBaseClause &&
                     Kind(previous) != TK::Keyword_alignas &&
                     Kind(previous) != TK::Keyword_decltype &&
-                    !IsExtensionAttribute(previous))
+                    !IsExtensionAttribute(previous) &&
+                    !(recordName.HasMacroName && previous == typeName))
                 {
                     Cursor_ = start;
                     return ParseGeneralDeclaration();
