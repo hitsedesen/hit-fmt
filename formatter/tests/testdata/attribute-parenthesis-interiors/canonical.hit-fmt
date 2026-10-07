@@ -1,0 +1,4 @@
+Layout = Canonical
+AttributeSpaceBeforeSpecifier = Space
+AttributeSpaceAfterSpecifier = Space
+AttributeInteriorSpacing = NoSpace

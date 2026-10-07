@@ -139,7 +139,7 @@ template <int... Values> struct alignas((Values + 16)...) ValuePack
 { };
 struct alignas(int*) PointerType
 { };
-struct __attribute__((aligned(16)))Host::Extended
+struct __attribute__((aligned(16))) Host::Extended
 {
     Extended(int* v)
     { }
