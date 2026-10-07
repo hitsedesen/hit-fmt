@@ -55,6 +55,10 @@ int main()
     static constexpr char Source[] = R"cpp(
 auto raw = R"delimiter(raw string contents)delimiter";
 auto literal = 42_a_user_defined_suffix_longer_than_sso;
+auto text = "hello"_a_user_defined_suffix_longer_than_sso(8);
+auto raw_text = u8R"(hello)"_a_user_defined_suffix_longer_than_sso;
+auto character = U'x'_a_user_defined_suffix_longer_than_sso;
+auto unicode_text = "hello"_世界42;
 auto integer = 42ULL;
 auto floating = 0x1'2.a'Bp+3'4_a_suffix_longer_than_sso;
 auto separated = 123'456'789_α42'3;

@@ -10,3 +10,11 @@
 1'234ULL 1'23.4'5e-6'7F 0x1'2.A'Bp+3'4
 1suffix0'2 1_suffix2'3 1_α42'3
 1.0_α42 0x1p0_SUFFIX
+"hello"_world(8)
+"plain"_tag42 u8"utf8"_tag u"utf16"_tag U"utf32"_tag L"wide"_tag
+R"mark(raw)mark"_tag u8R"(utf8)"_tag uR"(utf16)"_tag UR"(utf32)"_tag LR"(wide)"_tag
+'x'_tag u8'x'_tag u'x'_tag U'x'_tag L'x'_tag
+"unicode"_α42 R"(unicode)"_世界 'x'_α
+"space" _tag "comment"/* gap */_tag "digit"42
+"joined"_tag"tail" "head""tail"_tag
+operator""_world operator "" _world
