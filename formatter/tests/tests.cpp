@@ -3794,6 +3794,16 @@ std::vector<FormatCase> FormatCases()
     const auto lambdaAnchors = data / "consolidated-formatter/lambda-anchor";
     cases.push_back(
         {lambdaAnchors, "authored-anchor", "authored-anchor.input.cpp"});
+    for (const auto* name :
+        {
+            "attributed-blocks",
+            "attributed-blocks-canonical",
+            "attributed-blocks-tabs",
+        })
+    {
+        cases.push_back({lambdaAnchors, name, "attributed-blocks.input.cpp"});
+        cases.back().CheckOwningMaps = true;
+    }
     // Name, input, config override, read-only expectation alias.
     for (const auto& [name, input, config, expected] :
         {
@@ -3812,6 +3822,19 @@ std::vector<FormatCase> FormatCases()
     {
         const auto directory = std::filesystem::path(FORMATTER_TESTDATA_DIR) /
             "../consolidated-formatter/lambda-anchor";
+        {
+            auto style = formatter::LoadConfigFile(
+                directory / "attributed-blocks.hit-fmt").FormattingStyle;
+            style.LambdaBodiesLayout = formatter::CategoryLayout::Canonical;
+            ApplyProfile(
+                cases,
+                directory,
+                "attributed-blocks-canonical",
+                style);
+            style.LambdaBodiesLayout = formatter::CategoryLayout::Preserve;
+            style.IndentationKind = formatter::IndentationKind::Tabs;
+            ApplyProfile(cases, directory, "attributed-blocks-tabs", style);
+        }
         {
             auto style = formatter::LoadConfigFile(
                 directory / "authored-anchor.hit-fmt").FormattingStyle;

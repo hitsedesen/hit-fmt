@@ -109,6 +109,7 @@ struct TokenRange
     /* neither speculative tree is attached. */                               \
     SYNTAX_NODE_KIND(                                                          \
         AmbiguousDeclaratorSuffix, "ambiguous-declarator-suffix")              \
+    SYNTAX_NODE_KIND(AttributedStatement, "attributed-statement")              \
     SYNTAX_NODE_KIND(CompoundStatement, "compound-statement")                  \
     SYNTAX_NODE_KIND(DeclarationStatement, "declaration-statement")            \
     SYNTAX_NODE_KIND(ExpressionStatement, "expression-statement")              \

@@ -1,0 +1,7 @@
+Layout = Canonical
+IndentationKind = Spaces
+LambdaBodiesLayout = Preserve
+CallsBreak = Always
+CallsFirstItem = NextLine
+StatementAttributeIndent = Block
+IndentCaseLabels = Indent

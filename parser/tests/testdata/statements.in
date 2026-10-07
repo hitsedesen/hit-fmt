@@ -158,3 +158,26 @@ template<class T> void conditions(int count) {
     compare(count, Limits<ExternalType>::max());
     compare(count, left < limit > ::Result());
 }
+
+void attributed_statements(bool ready) {
+    Visit([&] {
+        [[likely]] {
+            [[maybe_unused]] int result = 0;
+            [[likely]] if (ready) {
+                Touch();
+            }
+        }
+        [[unlikely]]
+        [[vendor::tag(1)]]
+        {
+            [[likely]] Touch();
+        }
+        switch (1) {
+        case 0:
+            [[fallthrough]];
+        default:
+            [[unlikely]] break;
+        }
+        [[likely]] return;
+    });
+}

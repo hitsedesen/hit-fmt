@@ -549,10 +549,14 @@ TEST(Parser, IfElseLookaheadLeavesFollowingStatementAttributesInSequence)
         ASSERT_EQ(body->Kind, CompoundStatement);
         ASSERT_NE(body->LastChild, nullptr);
         EXPECT_EQ(tree.SourceText(body->LastChild->Tokens), "[[fallthrough]];");
-        EXPECT_GT(
-            LambdaOwnershipNodes(*body->LastChild, UnparsedSyntax).size() +
-            LambdaOwnershipNodes(*body->LastChild, MissingToken).size(),
-            0u);
+        EXPECT_EQ(body->LastChild->Kind, AttributedStatement);
+        EXPECT_EQ(
+            LambdaOwnershipNodes(*body->LastChild, AttributeSpecifier).size(),
+            1u);
+        EXPECT_TRUE(
+            LambdaOwnershipNodes(*body->LastChild, UnparsedSyntax).empty());
+        EXPECT_TRUE(
+            LambdaOwnershipNodes(*body->LastChild, MissingToken).empty());
     }
     for (const auto candidate :
         {
