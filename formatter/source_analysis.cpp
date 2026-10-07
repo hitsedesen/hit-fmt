@@ -812,6 +812,8 @@ SourceAnalysis BuildSourceAnalysis(
         RegionId Id;
         // Conditional wrappers are transparent to statement boundaries.
         RegionId StatementParent;
+        // Bounded statements may carry opaque expression continuations.
+        RegionId EnclosingStatement = NoRegion;
         RegionId LastChild = NoRegion;
     };
     std::pmr::vector<Frame> stack(&scratchMemory);
@@ -849,6 +851,9 @@ SourceAnalysis BuildSourceAnalysis(
         const auto boundaryParent = parent == NoRegion
             ? NoRegion
             : stack.back().StatementParent;
+        const auto enclosingStatement = parent == NoRegion
+            ? NoRegion
+            : stack.back().EnclosingStatement;
         result.Regions_.push_back({
             tokens,
             {begin, end},
@@ -995,14 +1000,34 @@ SourceAnalysis BuildSourceAnalysis(
                     : tokens.End < count
                         ? tree.Token(tokens.End).Text.Begin
                         : size;
-            if (statementBoundary && ((ambiguous && !hasRecovery) || recovery))
+            // A preprocessing split cannot be classified as one expression,
+            // but a bounded enclosing statement still proves its indentation
+            // may move. Other recovery retains its existing opaque fences.
+            bool preprocessingFragment = false;
+            if (enclosingStatement != NoRegion &&
+                node.Kind == parser::NodeKind::UnparsedSyntax)
+            {
+                for (auto token = tokens.Begin; token < tokens.End; ++token) {
+                    if (tree.Kind(token) == TK::PreprocessingDirective) {
+                        preprocessingFragment = true;
+                        break;
+                    }
+                }
+            }
+            if ((statementBoundary || preprocessingFragment) &&
+                ((ambiguous && !hasRecovery) || recovery))
             {
                 // Preserve opaque tokens, horizontal spelling and every
                 // newline. Complete final indentation slices can still follow
-                // the statement when its enclosing body moves.
+                // the enclosing bounded statement when its body moves.
                 auto protectedBegin = before;
-                for (auto token = tokens.Begin + 1; token < tokens.End; ++token)
-                {
+                const auto firstGap = preprocessingFragment
+                    ? tokens.Begin
+                    : tokens.Begin + 1;
+                const auto gapEnd = preprocessingFragment
+                    ? std::min(tokens.End, count) + 1
+                    : tokens.End;
+                for (auto token = firstGap; token < gapEnd; ++token) {
                     auto& gap = result.Gaps_[token];
                     if (gap.Source.End > after) {
                         break;
@@ -1020,6 +1045,9 @@ SourceAnalysis BuildSourceAnalysis(
                         continue;
                     }
                     const auto indent = gap.Source.Begin + Offset(indentBegin);
+                    if (indent < protectedBegin) {
+                        continue;
+                    }
                     protect(
                         protectedBegin,
                         indent,
@@ -1050,14 +1078,22 @@ SourceAnalysis BuildSourceAnalysis(
                     : ProtectionReason::Ambiguous;
             }
         }
-        stack.push_back({
-            node.Child(),
-            id,
-            node.Kind == parser::NodeKind::PreprocessingConditional ||
-                node.Kind == parser::NodeKind::PreprocessingBranch
-                ? boundaryParent
-                : id,
-        });
+        stack
+            .push_back({
+                node.Child(),
+                id,
+                node.Kind == parser::NodeKind::PreprocessingConditional ||
+                    node.Kind == parser::NodeKind::PreprocessingBranch
+                    ? boundaryParent
+                    : id,
+                result.Regions_[id].StatementBoundary
+                    ? id
+                    : node.Kind == parser::NodeKind::CompoundStatement ||
+                        node.Kind == parser::NodeKind::LambdaBody ||
+                        node.Kind == parser::NodeKind::RequirementBody
+                        ? NoRegion
+                        : enclosingStatement,
+            });
     };
     visit(tree.Root(), NoRegion);
     while (!stack.empty()) {

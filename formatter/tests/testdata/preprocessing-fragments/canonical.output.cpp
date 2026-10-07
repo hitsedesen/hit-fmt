@@ -143,6 +143,87 @@ void Parameters(
 #endif
     int common)
 { }
+void ReindentSplitCalls()
+{
+    if (Ready()) {
+        Consume(first,
+#if PICK_LEFT
+            left + delta,
+#else
+            right / delta,
+#endif
+            *last);
+        Consume(first +
+#if PICK_LEFT
+            left
+#else
+            right
+#endif
+        );
+        Consume(
+#if OPTIONAL
+            b
+#endif
+            *d);
+        Consume(first,
+#if OUTER
+#if INNER
+            Extra(left),
+#else
+            Extra(right),
+#endif
+#endif
+            &last);
+        Consume([] {
+            Consume(first +
+#if PICK_LEFT
+                left
+#else
+                right
+#endif
+            );
+        },
+#if OPTIONAL
+            extra,
+#endif
+            last);
+        auto result =
+#if PICK_LEFT
+            left
+#else
+            right
+#endif
+            * factor;
+        return first +
+#if PICK_LEFT
+            left
+#else
+            right
+#endif
+            *last;
+    }
+}
+void ReindentUnindentedSplitCall()
+{
+    if (Ready()) {
+        Consume(
+#if OPTIONAL
+            b
+#endif
+            *d);
+    }
+}
+// hit-fmt off
+void DisabledSplitCall() {
+            Consume(first +
+#if PICK_LEFT
+                left
+#else
+                right
+#endif
+            );
+}
+// hit-fmt on
 void PreserveSplitExpressions()
 {
     auto a =
