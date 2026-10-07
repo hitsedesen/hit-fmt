@@ -2708,6 +2708,19 @@ std::vector<FormatCase> FormatCases()
             {spacing, name, "case-regions.input.cpp", "case-regions"});
         cases.back().Style = std::move(style);
     }
+    {
+        auto style = formatter::LoadConfigFile(
+            spacing / "case-regions.hit-fmt").FormattingStyle;
+        style.IndentCaseLabels = formatter::BodyIndentation::NoIndent;
+        style.CaseBlockBracePlacement = formatter::BracePlacement::Attached;
+        cases.push_back({
+            spacing,
+            "case-regions-attached",
+            "case-regions.input.cpp",
+            "case-regions",
+        });
+        cases.back().Style = std::move(style);
+    }
     for (const auto& entry : std::filesystem::directory_iterator(spacing)) {
         const auto filename = entry
             .path()

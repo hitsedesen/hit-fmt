@@ -3,20 +3,23 @@ void b();
 void c();
 void regions(int value) {
    switch (value) {
-    case 0:
+    [[likely]] case 0:
+       a();
     case 1:
        a();
        b();
        break;
-    case 2:
+    [[unlikely]] case 2:
        {
           c();
        }
        a();
        break;
+    [[likely]]
+    [[vendor::hint]]
     case 3:
        while (value) {
-        case 4:
+        [[unlikely]] case 4:
            c();
        }
        break;
@@ -42,7 +45,27 @@ void regions(int value) {
        }
        c();
        break;
-    default:
+    [[likely]] case 7:
+      {
+         a();
+      }
+    [[unlikely]] case 8:
+       [[likely]] if (value) {
+          b();
+       }
+       c();
+       break;
+#if EXTRA_CASES
+    [[likely]] case 10:
+    [[unlikely]] case 11:
+       b();
+       break;
+#endif
+    case 9:
+      {
+         a();
+      }
+    [[unlikely]] default:
        break;
    }
 }
