@@ -895,6 +895,23 @@ bool Tokenizer::ConsumeEscapeSequence()
     return false;
 }
 
+void Tokenizer::ConsumeLiteralSuffix()
+{
+    if (!IsIdStart(CurrentCodePoint())) {
+        return;
+    }
+    // A directly attached identifier is part of the literal token, not a
+    // separate expression. Unlike numeric suffixes, digit separators are
+    // not allowed here.
+    while (true) {
+        auto byte = ScanAsciiRun<detail::AsciiState::Identifier>();
+        if (byte < 0x80 || !IsIdContinuation(CurrentUnicodeCodePoint())) {
+            break;
+        }
+        ConsumeUnicodeCodePoint();
+    }
+}
+
 Token Tokenizer::ParseCharacterLiteral()
 {
     ASSERT(PeekByte() == '\'');
@@ -942,6 +959,7 @@ Token Tokenizer::ParseCharacterLiteral()
         OnError(TokenizationErrorKind::TooManyCharactersInCharacterLiteral);
         valid = false;
     }
+    ConsumeLiteralSuffix();
     return FinishToken(
         valid ? TokenKind::Literal_Character : TokenKind::Invalid);
 }
@@ -974,6 +992,7 @@ Token Tokenizer::ParseStringLiteral()
         return FinishToken(TokenKind::Invalid);
     }
     ConsumeAsciiByte(byte);
+    ConsumeLiteralSuffix();
     return FinishToken(valid ? TokenKind::Literal_String : TokenKind::Invalid);
 }
 
@@ -1042,6 +1061,7 @@ Token Tokenizer::ParseRawStringLiteral()
                         ConsumeCodePoint();
                     } while (CurrentCodePointOffset_ < closingDelimiterEnd);
                     valid &= encodingErrorCount == EncodingErrorCount_;
+                    ConsumeLiteralSuffix();
                     return FinishToken(
                         valid ? TokenKind::Literal_String : TokenKind::Invalid);
                 }

@@ -15,4 +15,11 @@ void f() {
     consume("foo " /* keep */ "bar");
     consume("foo "
         "bar");
+    consume("hello"_world( 8 ));
+    consume(R"tag(raw)tag"_world( 8 ));
+    consume(u8"hello"_world( 8 ));
+    consume(U'x'_character( 8 ));
+    consume("head" /* keep */ "tail"_world( 8 ));
+    consume("head"_world
+        "tail"( 8 ));
 }

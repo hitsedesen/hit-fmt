@@ -336,6 +336,7 @@ private:
     Token ParseAsciiOperator(unsigned char byte);
     Token ParseIdentifier();
     bool ConsumeEscapeSequence();
+    void ConsumeLiteralSuffix();
     Token ParseCharacterLiteral();
     Token ParseStringLiteral();
     Token ParseRawStringLiteral();

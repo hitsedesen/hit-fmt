@@ -70,6 +70,15 @@ auto evaluate(Values... values) {
     auto character = "indexed" " text"[index];
     auto size = ("member" " text").size();
     auto called = ("callee" " text")(value);
+    auto literal_call = "hello"_world(8);
+    auto raw_literal_call = R"tag(raw)tag"_world(value);
+    auto encoded_literal_call = u8"hello"_world(value);
+    auto character_literal_call = U'x'_character(value);
+    auto unicode_literal_call = "hello"_世界(value);
+    auto joined_literal_call = "head" /* join */ "tail"_world(value);
+    auto suffixed_head_call = "head"_world "tail"(value);
+    auto literal_member = "hello"_world.member(value);
+    auto literal_index = "hello"_world[index];
     RAISE exception{} << "first" " second";
     WARN exception{code} << "first" /* join */ " second";
     NOTICE types::exception{} + R"(raw)" " tail";

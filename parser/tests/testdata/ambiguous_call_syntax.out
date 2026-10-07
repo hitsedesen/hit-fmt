@@ -277,8 +277,7 @@
           (argument-list
             "("
             (argument
-              (literal-expression "\"head\"" "\"tail\"")
-              (unparsed-syntax "_label")
+              (literal-expression "\"head\"" "\"tail\"_label")
             )
             (list-separator ",")
             (argument

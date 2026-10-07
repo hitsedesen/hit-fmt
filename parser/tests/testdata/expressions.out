@@ -1455,6 +1455,227 @@
           ";"
         )
         (declaration-statement
+          (declaration-specifiers "auto")
+          (init-declarator-list
+            (init-declarator
+              (declarator
+                (declarator-name "literal_call")
+              )
+              (initializer
+                "="
+                (call-expression
+                  (literal-expression "\"hello\"_world")
+                  (argument-list
+                    "("
+                    (argument
+                      (literal-expression "8")
+                    )
+                    ")"
+                  )
+                )
+              )
+            )
+          )
+          ";"
+        )
+        (declaration-statement
+          (declaration-specifiers "auto")
+          (init-declarator-list
+            (init-declarator
+              (declarator
+                (declarator-name "raw_literal_call")
+              )
+              (initializer
+                "="
+                (call-expression
+                  (literal-expression "R\"tag(raw)tag\"_world")
+                  (argument-list
+                    "("
+                    (argument
+                      (identifier-expression "value")
+                    )
+                    ")"
+                  )
+                )
+              )
+            )
+          )
+          ";"
+        )
+        (declaration-statement
+          (declaration-specifiers "auto")
+          (init-declarator-list
+            (init-declarator
+              (declarator
+                (declarator-name "encoded_literal_call")
+              )
+              (initializer
+                "="
+                (call-expression
+                  (literal-expression "u8\"hello\"_world")
+                  (argument-list
+                    "("
+                    (argument
+                      (identifier-expression "value")
+                    )
+                    ")"
+                  )
+                )
+              )
+            )
+          )
+          ";"
+        )
+        (declaration-statement
+          (declaration-specifiers "auto")
+          (init-declarator-list
+            (init-declarator
+              (declarator
+                (declarator-name "character_literal_call")
+              )
+              (initializer
+                "="
+                (call-expression
+                  (literal-expression "U'x'_character")
+                  (argument-list
+                    "("
+                    (argument
+                      (identifier-expression "value")
+                    )
+                    ")"
+                  )
+                )
+              )
+            )
+          )
+          ";"
+        )
+        (declaration-statement
+          (declaration-specifiers "auto")
+          (init-declarator-list
+            (init-declarator
+              (declarator
+                (declarator-name "unicode_literal_call")
+              )
+              (initializer
+                "="
+                (call-expression
+                  (literal-expression "\"hello\"_世界")
+                  (argument-list
+                    "("
+                    (argument
+                      (identifier-expression "value")
+                    )
+                    ")"
+                  )
+                )
+              )
+            )
+          )
+          ";"
+        )
+        (declaration-statement
+          (declaration-specifiers "auto")
+          (init-declarator-list
+            (init-declarator
+              (declarator
+                (declarator-name "joined_literal_call")
+              )
+              (initializer
+                "="
+                (call-expression
+                  (literal-expression
+                    "\"head\"" "/* join */" "\"tail\"_world"
+                    (dangling-trivia
+                      (comment "/* join */")
+                    )
+                  )
+                  (argument-list
+                    "("
+                    (argument
+                      (identifier-expression "value")
+                    )
+                    ")"
+                  )
+                )
+              )
+            )
+          )
+          ";"
+        )
+        (declaration-statement
+          (declaration-specifiers "auto")
+          (init-declarator-list
+            (init-declarator
+              (declarator
+                (declarator-name "suffixed_head_call")
+              )
+              (initializer
+                "="
+                (call-expression
+                  (literal-expression "\"head\"_world" "\"tail\"")
+                  (argument-list
+                    "("
+                    (argument
+                      (identifier-expression "value")
+                    )
+                    ")"
+                  )
+                )
+              )
+            )
+          )
+          ";"
+        )
+        (declaration-statement
+          (declaration-specifiers "auto")
+          (init-declarator-list
+            (init-declarator
+              (declarator
+                (declarator-name "literal_member")
+              )
+              (initializer
+                "="
+                (call-expression
+                  (member-expression
+                    (literal-expression "\"hello\"_world")
+                    "."
+                    (identifier-expression "member")
+                  )
+                  (argument-list
+                    "("
+                    (argument
+                      (identifier-expression "value")
+                    )
+                    ")"
+                  )
+                )
+              )
+            )
+          )
+          ";"
+        )
+        (declaration-statement
+          (declaration-specifiers "auto")
+          (init-declarator-list
+            (init-declarator
+              (declarator
+                (declarator-name "literal_index")
+              )
+              (initializer
+                "="
+                (subscript-expression
+                  (literal-expression "\"hello\"_world")
+                  "["
+                  (identifier-expression "index")
+                  "]"
+                )
+              )
+            )
+          )
+          ";"
+        )
+        (declaration-statement
           (declaration-specifiers "RAISE")
           (init-declarator-list
             (init-declarator

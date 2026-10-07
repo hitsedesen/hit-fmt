@@ -963,15 +963,12 @@ TEST(SourceAnalysis, AcceptedGapEditsKeepExactTokensIndividuallyAndTogether)
 
 TEST(SourceAnalysis, ContextSensitivePunctuationIsNotJustTokenization)
 {
-    Input input("[ [ x ] ] \"x\"_suffix");
+    Input input("[ [ x ] ]");
     auto tree = Parse(input);
     std::pmr::monotonic_buffer_resource memory;
     auto analysis = Analyze(tree, memory);
     EXPECT_TRUE(analysis.Gaps()[1].ContextSensitive);
     EXPECT_FALSE(analysis.CanReplaceGap(1, ""));
-    const auto suffix = Before(tree, "_suffix");
-    EXPECT_TRUE(analysis.Gaps()[suffix].ContextSensitive);
-    EXPECT_FALSE(analysis.CanReplaceGap(suffix, " "));
     const auto closing = Before(tree, "]", 1);
     EXPECT_TRUE(analysis.Gaps()[closing].ContextSensitive);
     EXPECT_FALSE(analysis.CanReplaceGap(closing, "\n    "));
@@ -1039,6 +1036,9 @@ TEST(SourceAnalysis, LexicalConstraintsCoverPunctuationAndLiteralBoundaries)
         "_tag",
         "\"x\"",
         "'a'",
+        "\"x\"_tag",
+        "R\"(x)\"_tag",
+        "'a'_tag",
         "{",
         "}",
         "[",
