@@ -1,17 +1,14 @@
 #pragma once
 
-#include "ascii.hpp"
 #include "token.hpp"
 
 #include <unicode/code_point.hpp>
-#include <unicode/utf8.hpp>
 
 #include <util/input.hpp>
 
 #include <functional>
 #include <iterator>
 #include <limits>
-#include <utility>
 
 namespace tokenizer {
 
@@ -76,7 +73,9 @@ namespace tokenizer {
         DigitSeparatorAtEndOfDecimalInteger,                                   \
         "Digit separator cannot appear at the end of decimal integer literal") \
     TOKENIZATION_ERROR_KIND(                                                   \
-        UnterminatedMultilineComment, "Unterminated multiline comment")
+        UnterminatedMultilineComment, "Unterminated multiline comment")        \
+    TOKENIZATION_ERROR_KIND(                                                   \
+        UnexpectedNullCharacter, "Unexpected NUL character")
 
 enum class TokenizationErrorKind : uint8_t
 {
@@ -85,18 +84,8 @@ enum class TokenizationErrorKind : uint8_t
 #undef TOKENIZATION_ERROR_KIND
 };
 
-[[nodiscard]] constexpr std::string_view GetTokenizationErrorDescription(
-    TokenizationErrorKind kind)
-{
-    constexpr auto Descriptions = std::to_array<std::string_view>({
-#define TOKENIZATION_ERROR_KIND(value, description) {description},
-        TOKENIZATION_ERROR_KINDS
-#undef TOKENIZATION_ERROR_KIND
-    });
-
-    using Underlying = std::underlying_type_t<TokenizationErrorKind>;
-    return Descriptions[static_cast<Underlying>(kind)];
-}
+[[nodiscard]] std::string_view GetTokenizationErrorDescription(
+    TokenizationErrorKind kind);
 
 struct TokenizationError
 {
@@ -118,127 +107,46 @@ protected:
         Ignore,
     };
 
-    [[nodiscard]] unicode::CodePoint CurrentCodePoint()
-    {
-        auto byte = PeekByte();
-        if (byte < 0x80) [[likely]] {
-            return byte;
-        }
-        return CurrentUnicodeCodePoint();
-    }
-
-    [[nodiscard]] unicode::CodePoint CurrentUnicodeCodePoint()
-    {
-        LoadCurrentUnicodeCodePoint();
-        return CachedUnicodeValue_;
-    }
-
-    void LoadCurrentUnicodeCodePoint()
-    {
-        if (CachedUnicodeOffset_ != CurrentCodePointOffset_) {
-            DecodeCurrentUnicodeCodePoint();
-        }
-    }
-
-    [[nodiscard]] bool AtEnd() const noexcept
-    {
-        return CurrentCodePointOffset_ == GetOwner().Input_.size();
-    }
-
-    [[nodiscard]] unsigned char ByteAt(size_t offset) const noexcept
-    {
-        return ByteData()[offset];
-    }
-
-    [[nodiscard]] unsigned char PeekByte(size_t lookahead = 0) const noexcept
-    {
-        return ByteAt(CurrentCodePointOffset_ + lookahead);
-    }
-
-    [[nodiscard]] const unsigned char* CurrentByteAddress() const noexcept
-    {
-        return ByteData() + CurrentCodePointOffset_;
-    }
+    [[nodiscard]] unicode::CodePoint CurrentCodePoint();
+    [[nodiscard]] unicode::CodePoint CurrentUnicodeCodePoint();
+    void LoadCurrentUnicodeCodePoint();
+    [[nodiscard]] bool AtEnd() const noexcept;
+    [[nodiscard]] unsigned char ByteAt(
+        util::SourceOffset offset) const noexcept;
+    [[nodiscard]] unsigned char PeekByte(
+        util::SourceOffset lookahead = 0) const noexcept;
+    [[nodiscard]] const unsigned char* CurrentByteAddress() const noexcept;
 
     void ConsumeAsciiByte(
         unsigned char byte,
-        NewlineHandling newlineHandling = NewlineHandling::Track)
-    {
-        auto& owner = GetOwner();
-        if (byte != 0 || !AtEnd()) {
-            ++owner.CurrentTokenSize_;
-            ++CurrentCodePointOffset_;
-        }
-        if (byte == '\n') {
-            ++CurrentCodePointPosition_.Line;
-            CurrentCodePointPosition_.Column = 1;
-            if (newlineHandling == NewlineHandling::Track) {
-                owner.IsNewLine_ = true;
-            }
-        } else {
-            ++CurrentCodePointPosition_.Column;
-            if (!IsAsciiSpace(byte)) {
-                owner.IsNewLine_ = false;
-            }
-        }
-    }
+        NewlineHandling newlineHandling = NewlineHandling::Track);
 
     // Requires the non-ASCII character at the current offset to have been
     // decoded by LoadCurrentUnicodeCodePoint() before this call.
-    void ConsumeUnicodeCodePoint()
-    {
-        auto& owner = GetOwner();
-        owner.CurrentTokenSize_ += CachedUnicodeSize_;
-        CurrentCodePointOffset_ += CachedUnicodeSize_;
-        ++CurrentCodePointPosition_.Column;
-        owner.IsNewLine_ = false;
-    }
+    void ConsumeUnicodeCodePoint();
 
     void ConsumeCodePoint(
         unicode::CodePoint value,
-        NewlineHandling newlineHandling = NewlineHandling::Track)
-    {
-        if (value < 0x80) [[likely]] {
-            ConsumeAsciiByte(
-                static_cast<unsigned char>(value),
-                newlineHandling);
-        } else {
-            ConsumeUnicodeCodePoint();
-        }
-    }
-
+        NewlineHandling newlineHandling = NewlineHandling::Track);
     void ConsumeCodePoint(
-        NewlineHandling newlineHandling = NewlineHandling::Track)
-    {
-        ConsumeCodePoint(CurrentCodePoint(), newlineHandling);
-    }
+        NewlineHandling newlineHandling = NewlineHandling::Track);
 
     static constexpr unicode::CodePoint InvalidCodePoint =
         static_cast<char32_t>(std::numeric_limits<uint32_t>::max());
 
-    size_t CurrentCodePointOffset_ = 0;
+    util::SourceOffset CurrentCodePointOffset_ = 0;
     // The cursor only advances, so ASCII never needs to invalidate this cache.
-    size_t CachedUnicodeOffset_ = std::numeric_limits<size_t>::max();
+    util::SourceOffset CachedUnicodeOffset_ =
+        std::numeric_limits<util::SourceOffset>::max();
     unicode::CodePoint CachedUnicodeValue_ = '\0';
     uint8_t CachedUnicodeSize_ = 0;
-    size_t EncodingErrorCount_ = 0;
+    uint32_t EncodingErrorCount_ = 0;
     util::Position CurrentCodePointPosition_ = {.Line = 1, .Column = 1};
 
 private:
-    [[nodiscard]] const unsigned char* ByteData() const noexcept
-    {
-        return reinterpret_cast<const unsigned char*>(GetOwner().Input_.data());
-    }
-
-    [[nodiscard]] Owner& GetOwner() noexcept
-    {
-        return static_cast<Owner&>(*this);
-    }
-
-    [[nodiscard]] const Owner& GetOwner() const noexcept
-    {
-        return static_cast<const Owner&>(*this);
-    }
+    [[nodiscard]] const unsigned char* ByteData() const noexcept;
+    [[nodiscard]] Owner& GetOwner() noexcept;
+    [[nodiscard]] const Owner& GetOwner() const noexcept;
 
     void DecodeCurrentUnicodeCodePoint();
 };
@@ -300,18 +208,16 @@ public:
     private:
         friend class Tokenizer;
 
-        explicit Iterator(Tokenizer& tokenizer)
-            : Tokenizer_(&tokenizer)
-            , Current_(tokenizer.Get())
-        { }
-
         Tokenizer* Tokenizer_ = nullptr;
         Token Current_{};
     };
 
     [[nodiscard]] Iterator begin()
     {
-        return Iterator(*this);
+        Iterator iterator;
+        iterator.Tokenizer_ = this;
+        iterator.Current_ = Get();
+        return iterator;
     }
 
     [[nodiscard]] static constexpr std::default_sentinel_t end() noexcept
@@ -324,12 +230,9 @@ private:
 
     [[nodiscard]] std::string_view CurrentTokenText() const noexcept;
     util::Position CurrentTokenPosition_ = {.Line = 1, .Column = 1};
-    size_t CurrentTokenOffset_ = 0;
-    size_t CurrentTokenSize_ = 0;
+    util::SourceOffset CurrentTokenOffset_ = 0;
+    util::SourceOffset CurrentTokenSize_ = 0;
     [[nodiscard]] Token FinishToken(TokenKind kind) const noexcept;
-
-    template <detail::AsciiState State>
-    unsigned char ScanAsciiRun();
 
     void SkipWhitespace();
     bool TrySkipNewline();
@@ -350,12 +253,13 @@ private:
     void OnError(TokenizationError error);
     void OnError(TokenizationErrorKind error);
 
-    std::string_view Input_;
+    util::PaddedSourceView Input_;
 
     std::function<void(TokenizationError)> ErrorHandler_;
 
     [[nodiscard]] bool IsFileStart() const noexcept;
     bool IsNewLine_ = true;
+    bool IsEndOfFile_ = false;
 };
 
 } // namespace tokenizer

@@ -91,7 +91,7 @@ struct HunkInput
     parser::SyntaxTree Tree() const
     {
         return parser::Parse(
-            {Storage.data(), Size},
+            {Storage.data(), static_cast<uint32_t>(Size)},
             [] (parser::ParseError) {});
     }
 };

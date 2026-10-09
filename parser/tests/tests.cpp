@@ -254,7 +254,7 @@ public:
 
     [[nodiscard]] util::PaddedSourceView View() const
     {
-        return {.Data = Storage_.data(), .Size = Size_};
+        return {.Data = Storage_.data(), .Size = static_cast<uint32_t>(Size_)};
     }
 
 private:

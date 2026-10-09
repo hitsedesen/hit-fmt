@@ -38,7 +38,10 @@ std::pair<std::string, std::vector<std::string>> TokenizeAndSerialize(
     auto paddedInput = input;
     paddedInput.append(util::SourcePaddingSize, '\0');
     Tokenizer tokenizer(
-        {.Data = paddedInput.data(), .Size = input.size()},
+        {
+            .Data = paddedInput.data(),
+            .Size = static_cast<uint32_t>(input.size()),
+        },
         [&] (TokenizationError error) {
             errors.push_back(std::format(
                 "{} error: {}",
@@ -62,7 +65,10 @@ std::vector<TokenizationErrorKind> TokenizeErrors(std::string_view input)
     std::string paddedInput(input);
     paddedInput.append(util::SourcePaddingSize, '\0');
     Tokenizer tokenizer(
-        {.Data = paddedInput.data(), .Size = input.size()},
+        {
+            .Data = paddedInput.data(),
+            .Size = static_cast<uint32_t>(input.size()),
+        },
         [&] (TokenizationError error) {
             errors.push_back(error.Kind);
         });
@@ -156,7 +162,10 @@ TEST(Tokenizer, KeepsEofStableAfterAsciiUnicodeAndInvalidUtf8)
         storage.append(util::SourcePaddingSize, '\0');
         size_t errors = 0;
         Tokenizer tokenizer(
-            {.Data = storage.data(), .Size = input.size()},
+            {
+                .Data = storage.data(),
+                .Size = static_cast<uint32_t>(input.size()),
+            },
             [&] (TokenizationError error) {
                 ++errors;
                 EXPECT_EQ(

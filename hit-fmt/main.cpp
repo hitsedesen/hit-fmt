@@ -1331,7 +1331,8 @@ int main(int argc, char* argv[])
                     util::SourcePaddingSize);
                 util::PaddedSourceView paddedSource{
                     .Data = sourceStorage.data(),
-                    .Size = sourceStorage.size() - util::SourcePaddingSize,
+                    .Size = static_cast<uint32_t>(
+                        sourceStorage.size() - util::SourcePaddingSize),
                 };
                 auto source = paddedSource.View();
                 const auto& config = resolver.Resolve(path);

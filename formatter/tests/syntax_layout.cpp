@@ -32,7 +32,7 @@ Output Lower(
     std::pmr::memory_resource* scratchUpstream =
         std::pmr::get_default_resource())
 {
-    const auto size = input.size();
+    const auto size = static_cast<uint32_t>(input.size());
     input.append(util::SourcePaddingSize, '\0');
     auto tree = parser::Parse({input.data(), size}, [] (parser::ParseError) {});
     std::pmr::monotonic_buffer_resource file(fileUpstream);
@@ -944,7 +944,7 @@ TEST(SyntaxLayout, DanglingElseRemainsOwnedByNearestIf)
     storage.append(util::SourcePaddingSize, '\0');
     size_t errors = 0;
     const auto tree = parser::Parse(
-        {storage.data(), source.size()},
+        {storage.data(), static_cast<uint32_t>(source.size())},
         [&] (parser::ParseError) { ++errors; });
     EXPECT_EQ(errors, 0u);
     const parser::Node* outer = nullptr;
@@ -3218,7 +3218,7 @@ TEST(SyntaxLayout, RecordHeadCommaPreferenceIsClassifiedAndLocallyAuthorized)
     std::string storage(source);
     storage.append(util::SourcePaddingSize, '\0');
     const auto tree = parser::Parse(
-        {storage.data(), source.size()},
+        {storage.data(), static_cast<uint32_t>(source.size())},
         [] (parser::ParseError) {});
     auto style = Canonical(200);
     style.CommaSpaceAfter = formatter::GapPolicy::Space;

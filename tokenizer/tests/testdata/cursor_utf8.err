@@ -4,7 +4,7 @@ Ln 4, Col 7 error: Unexpected token
 Ln 5, Col 2 error: Invalid UTF8 code point
 Ln 5, Col 4 error: Invalid UTF8 code point
 Ln 6, Col 7 error: Invalid UTF8 code point
-Ln 8, Col 5 error: Unexpected token
+Ln 8, Col 4 error: Unexpected NUL character
 Ln 9, Col 24 error: Invalid UTF8 code point
 Ln 10, Col 14 error: Invalid UTF8 code point
 Ln 11, Col 11 error: Invalid UTF8 code point

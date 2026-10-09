@@ -27,7 +27,7 @@ struct Input
 
     util::PaddedSourceView View() const
     {
-        return {Storage.data(), Size};
+        return {Storage.data(), static_cast<uint32_t>(Size)};
     }
 };
 

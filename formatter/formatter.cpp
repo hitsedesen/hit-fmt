@@ -803,7 +803,7 @@ FormatResult detail::FormatWithAnalysis(
         const auto size = normalized->Text.size();
         normalized->Text.append(util::SourcePaddingSize, '\0');
         normalizedTree.emplace(parser::Parse(
-            {normalized->Text.data(), size},
+            {normalized->Text.data(), static_cast<uint32_t>(size)},
             [] (parser::ParseError) {},
             prepared.ParsingOptions()));
         tree = &*normalizedTree;
