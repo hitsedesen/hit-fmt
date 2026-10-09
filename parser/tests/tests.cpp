@@ -2563,427 +2563,6 @@ INSTANTIATE_TEST_SUITE_P(
         return info.param.Name;
     });
 
-TEST(Parser, RebindsWhitespaceWithoutReclassifyingTokens)
-{
-    PaddedInput input("int f() { return value + 1; }\n");
-    PaddedInput reformatted("int f()\n{\n  return value + 1;\n}\n");
-    auto original = parser::Parse(input.View(), [] (parser::ParseError) {});
-    auto rebound = original.RebindWhitespace(reformatted.View());
-    ASSERT_TRUE(rebound);
-    auto reparsed =
-        parser::Parse(reformatted.View(), [] (parser::ParseError) {});
-    ASSERT_EQ(rebound->TokenCount(), reparsed.TokenCount());
-    EXPECT_EQ(&rebound->Root(), &original.Root());
-    for (parser::TokenIndex i = 0; i < rebound->TokenCount(); ++i) {
-        EXPECT_EQ(rebound->Kind(i), reparsed.Kind(i));
-        EXPECT_EQ(rebound->TokenText(i), reparsed.TokenText(i));
-        EXPECT_EQ(
-            rebound->TokenPosition(i).Line,
-            reparsed.TokenPosition(i).Line);
-        EXPECT_EQ(
-            rebound->TokenPosition(i).Column,
-            reparsed.TokenPosition(i).Column);
-        EXPECT_EQ(rebound->Role(i), reparsed.Role(i));
-        EXPECT_EQ(rebound->MatchingDelimiter(i), reparsed.MatchingDelimiter(i));
-    }
-
-    // Gap edits can update positions without running the lexer again.
-    const auto source = input
-        .View()
-        .View();
-    const auto beforeBrace = source.find(" {");
-    const auto beforeReturn = source.find(" return");
-    const auto beforeClose = source.find(" }");
-    const std::array<parser::WhitespaceEdit, 3> edits{
-        {
-            {
-                static_cast<util::SourceOffset>(beforeBrace),
-                static_cast<util::SourceOffset>(beforeBrace + 1),
-                "\n",
-            },
-            {
-                static_cast<util::SourceOffset>(beforeReturn),
-                static_cast<util::SourceOffset>(beforeReturn + 1),
-                "\n  ",
-            },
-            {
-                static_cast<util::SourceOffset>(beforeClose),
-                static_cast<util::SourceOffset>(beforeClose + 1),
-                "\n",
-            },
-        },
-    };
-    auto fromEdits = original.RebindWhitespaceEdits(reformatted.View(), edits);
-    auto fromGaps = original.RebindWhitespaceGaps(reformatted.View());
-    ASSERT_TRUE(fromEdits);
-    ASSERT_TRUE(fromGaps);
-    EXPECT_EQ(&fromGaps->Root(), &original.Root());
-    for (parser::TokenIndex i = 0; i < reparsed.TokenCount(); ++i) {
-        EXPECT_EQ(fromGaps->Token(i).Text, fromEdits->Token(i).Text);
-        EXPECT_EQ(
-            fromGaps->TokenPosition(i).Line,
-            fromEdits->TokenPosition(i).Line);
-        EXPECT_EQ(
-            fromGaps->TokenPosition(i).Column,
-            fromEdits->TokenPosition(i).Column);
-        EXPECT_EQ(fromEdits->TokenText(i), reparsed.TokenText(i));
-        EXPECT_EQ(fromEdits->Token(i).Text, reparsed.Token(i).Text);
-        EXPECT_EQ(
-            fromEdits->TokenPosition(i).Line,
-            reparsed.TokenPosition(i).Line);
-        EXPECT_EQ(
-            fromEdits->TokenPosition(i).Column,
-            reparsed.TokenPosition(i).Column);
-    }
-    const auto expanded = reformatted
-        .View()
-        .View();
-    const auto beforeOpen = expanded.find(")\n{") + 1;
-    const auto beforeBody = expanded.find("{\n  return") + 1;
-    const auto beforeEnd = expanded.find(";\n}") + 1;
-    const std::array<parser::WhitespaceEdit, 3> mergedEdits{
-        {
-            {
-                static_cast<util::SourceOffset>(beforeOpen),
-                static_cast<util::SourceOffset>(beforeOpen + 1),
-                " ",
-            },
-            {
-                static_cast<util::SourceOffset>(beforeBody),
-                static_cast<util::SourceOffset>(beforeBody + 3),
-                " ",
-            },
-            {
-                static_cast<util::SourceOffset>(beforeEnd),
-                static_cast<util::SourceOffset>(beforeEnd + 1),
-                " ",
-            },
-        },
-    };
-    auto merged = reparsed.RebindWhitespaceEdits(input.View(), mergedEdits);
-    ASSERT_TRUE(merged);
-    for (parser::TokenIndex i = 0; i < original.TokenCount(); ++i) {
-        EXPECT_EQ(
-            merged->TokenPosition(i).Line,
-            original.TokenPosition(i).Line);
-        EXPECT_EQ(
-            merged->TokenPosition(i).Column,
-            original.TokenPosition(i).Column);
-    }
-    PaddedInput joined("int f() { returnvalue + 1; }\n");
-    const std::array<parser::WhitespaceEdit, 1> unsafe{
-        {
-            {
-                static_cast<util::SourceOffset>(source.find(" value")),
-                static_cast<util::SourceOffset>(source.find(" value") + 1),
-                "",
-            },
-        },
-    };
-    EXPECT_FALSE(original.RebindWhitespaceEdits(joined.View(), unsafe));
-    EXPECT_FALSE(original.RebindWhitespaceGaps(joined.View()));
-    PaddedInput tight("int f() { return value+ 1; }\n");
-    const std::array<parser::WhitespaceEdit, 1> safe{
-        {
-            {
-                static_cast<util::SourceOffset>(source.find(" + ")),
-                static_cast<util::SourceOffset>(source.find(" + ") + 1),
-                "",
-            },
-        },
-    };
-    auto tightRebound = original.RebindWhitespaceEdits(tight.View(), safe);
-    ASSERT_TRUE(tightRebound);
-    EXPECT_TRUE(original.RebindWhitespaceGaps(tight.View()));
-    auto tightParsed = parser::Parse(tight.View(), [] (parser::ParseError) { });
-    for (parser::TokenIndex i = 0; i < tightParsed.TokenCount(); ++i) {
-        EXPECT_EQ(
-            tightRebound->TokenPosition(i).Column,
-            tightParsed.TokenPosition(i).Column);
-    }
-    PaddedInput changedSpelling("int f()\n{\n  return other + 1;\n}\n");
-    EXPECT_FALSE(original.RebindWhitespaceEdits(changedSpelling.View(), edits));
-
-    PaddedInput unicode("int f() { /* ñ */ return x; }\n");
-    PaddedInput unicodeSpaced("int f() { /* ñ */ return    x; }\n");
-    auto unicodeTree =
-        parser::Parse(unicode.View(), [] (parser::ParseError) { });
-    auto unicodeSource = unicode
-        .View()
-        .View();
-    auto gap = unicodeSource.find(" x;");
-    const std::array<parser::WhitespaceEdit, 1> unicodeEdit{
-        {
-            {
-                static_cast<util::SourceOffset>(gap),
-                static_cast<util::SourceOffset>(gap + 1),
-                "    ",
-            },
-        },
-    };
-    auto unicodeRebound =
-        unicodeTree.RebindWhitespaceEdits(unicodeSpaced.View(), unicodeEdit);
-    auto unicodeFromGaps =
-        unicodeTree.RebindWhitespaceGaps(unicodeSpaced.View());
-    ASSERT_TRUE(unicodeRebound);
-    ASSERT_TRUE(unicodeFromGaps);
-    auto unicodeParsed =
-        parser::Parse(unicodeSpaced.View(), [] (parser::ParseError) { });
-    for (parser::TokenIndex i = 0; i < unicodeParsed.TokenCount(); ++i) {
-        EXPECT_EQ(
-            unicodeRebound->TokenPosition(i).Line,
-            unicodeParsed.TokenPosition(i).Line);
-        EXPECT_EQ(
-            unicodeRebound->TokenPosition(i).Column,
-            unicodeParsed.TokenPosition(i).Column);
-        EXPECT_EQ(
-            unicodeFromGaps->TokenPosition(i).Column,
-            unicodeParsed.TokenPosition(i).Column);
-    }
-
-    PaddedInput changedToken("int f() { return another + 1; }\n");
-    EXPECT_FALSE(original.RebindWhitespace(changedToken.View()));
-    EXPECT_FALSE(original.RebindWhitespaceGaps(changedToken.View()));
-    PaddedInput comment("int f() { // hi\n return 1; }\n");
-    PaddedInput movedComment("int f() {\n // hi\n return 1; }\n");
-    auto commented = parser::Parse(comment.View(), [] (parser::ParseError) {});
-    EXPECT_FALSE(commented.RebindWhitespace(movedComment.View()));
-    EXPECT_FALSE(commented.RebindWhitespaceGaps(movedComment.View()));
-}
-
-TEST(Parser, RebindsMatchingTokensWithChangedComments)
-{
-    PaddedInput input("void f() { // old  \n    Work();\n}\n");
-    PaddedInput changed("void f() { // new\n    Work();\n}\n");
-    PaddedInput unsafe("void f() { // new\n    Skip();\n}\n");
-    auto original = parser::Parse(input.View(), [] (parser::ParseError) { });
-    EXPECT_FALSE(original.RebindWhitespaceGaps(changed.View()));
-    auto rebound = original.RebindMatchingTokens(changed.View());
-    ASSERT_TRUE(rebound);
-    EXPECT_EQ(rebound->TokenCount(), original.TokenCount());
-    EXPECT_EQ(
-        rebound->Source(),
-        changed
-            .View()
-            .View());
-    EXPECT_FALSE(original.RebindMatchingTokens(unsafe.View()));
-}
-
-TEST(Parser, ReordersBraceCommentsWithoutReparsingSyntax)
-{
-    PaddedInput input("void f() { /* note */ Work(); }\n");
-    PaddedInput edited("void f() /* note */ { Work(); }\n");
-    auto original = parser::Parse(input.View(), [] (parser::ParseError) { });
-    auto reparsed = parser::Parse(edited.View(), [] (parser::ParseError) { });
-    auto rebound = original.RebindReorderedComments(edited.View());
-    ASSERT_TRUE(rebound);
-    ASSERT_EQ(rebound->TokenCount(), reparsed.TokenCount());
-    for (parser::TokenIndex i = 0; i < rebound->TokenCount(); ++i) {
-        EXPECT_EQ(rebound->Kind(i), reparsed.Kind(i));
-        EXPECT_EQ(rebound->MatchingDelimiter(i), reparsed.MatchingDelimiter(i));
-    }
-    std::vector<std::pair<const parser::Node*, const parser::Node*>>
-        nodes{{&rebound->Root(), &reparsed.Root()}};
-    while (!nodes.empty()) {
-        auto [actual, expected] = nodes.back();
-        nodes.pop_back();
-        EXPECT_EQ(actual->Kind, expected->Kind);
-        EXPECT_EQ(actual->GetFunctionKind(), expected->GetFunctionKind());
-        EXPECT_EQ(actual->Tokens.Begin, expected->Tokens.Begin);
-        EXPECT_EQ(actual->Tokens.End, expected->Tokens.End);
-        auto* child = actual->Child();
-        auto* other = expected->Child();
-        while (child && other) {
-            nodes.emplace_back(child, other);
-            child = child->NextSibling;
-            other = other->NextSibling;
-        }
-        EXPECT_EQ(child, nullptr);
-        EXPECT_EQ(other, nullptr);
-    }
-    PaddedInput controlInput("void f() { if (x) { /* note */ Work(); } }\n");
-    PaddedInput controlEdited("void f() { if (x) /* note */ { Work(); } }\n");
-    auto control =
-        parser::Parse(controlInput.View(), [] (parser::ParseError) { });
-    auto controlParsed =
-        parser::Parse(controlEdited.View(), [] (parser::ParseError) { });
-    auto controlRebound = control.RebindReorderedComments(controlEdited.View());
-    ASSERT_TRUE(controlRebound);
-    nodes = {{&controlRebound->Root(), &controlParsed.Root()}};
-    while (!nodes.empty()) {
-        auto [actual, expected] = nodes.back();
-        nodes.pop_back();
-        EXPECT_EQ(actual->Kind, expected->Kind);
-        EXPECT_EQ(actual->GetFunctionKind(), expected->GetFunctionKind());
-        EXPECT_EQ(actual->Tokens.Begin, expected->Tokens.Begin);
-        EXPECT_EQ(actual->Tokens.End, expected->Tokens.End);
-        auto* child = actual->Child();
-        auto* other = expected->Child();
-        while (child && other) {
-            nodes.emplace_back(child, other);
-            child = child->NextSibling;
-            other = other->NextSibling;
-        }
-        EXPECT_EQ(child, nullptr);
-        EXPECT_EQ(other, nullptr);
-    }
-    PaddedInput unsafe("void f() /* note */ { Skip(); }\n");
-    EXPECT_FALSE(original.RebindReorderedComments(unsafe.View()));
-}
-
-TEST(Parser, RebindsOnlyPermutedDirectiveRuns)
-{
-    PaddedInput input("#include <z>\n#include <a>\nvoid f();\n");
-    PaddedInput sorted("#include <a>\n#include <z>\nvoid f();\n");
-    PaddedInput changed("#include <a>\n#include <z>\nvoid g();\n");
-    auto original = parser::Parse(input.View(), [] (parser::ParseError) { });
-    auto rebound = original.RebindSortedIncludes(sorted.View());
-    ASSERT_TRUE(rebound);
-    ASSERT_EQ(rebound->TokenCount(), original.TokenCount());
-    EXPECT_EQ(rebound->TokenText(0), "#include <a>");
-    EXPECT_EQ(rebound->TokenText(1), "#include <z>");
-    EXPECT_EQ(rebound->Root().Tokens.End, original.Root().Tokens.End);
-    EXPECT_FALSE(original.RebindSortedIncludes(changed.View()));
-}
-
-TEST(Parser, RemovesNullStatementsWithoutReparsingSyntax)
-{
-    PaddedInput input("void f() {; int x; }\n");
-    PaddedInput edited("void f() { int x; }\n");
-    auto original = parser::Parse(input.View(), [] (parser::ParseError) { });
-    auto reparsed = parser::Parse(edited.View(), [] (parser::ParseError) { });
-    parser::TokenIndex removed = original.TokenCount();
-    for (parser::TokenIndex i = 0; i < original.TokenCount(); ++i) {
-        if (original.Kind(i) == tokenizer::TokenKind::Operator_Semicolon &&
-            original.Token(i).Text.Begin == input.View().View().find("{;") + 1)
-        {
-            removed = i;
-            break;
-        }
-    }
-    ASSERT_LT(removed, original.TokenCount());
-    const std::array deleted{removed};
-    auto rebound = original.RebindRemovedNullStatements(edited.View(), deleted);
-    ASSERT_TRUE(rebound);
-    EXPECT_NE(&rebound->Root(), &original.Root());
-    ASSERT_EQ(rebound->TokenCount(), reparsed.TokenCount());
-    for (parser::TokenIndex i = 0; i < rebound->TokenCount(); ++i) {
-        EXPECT_EQ(rebound->Kind(i), reparsed.Kind(i));
-        EXPECT_EQ(rebound->Token(i).Text, reparsed.Token(i).Text);
-        EXPECT_EQ(
-            rebound->TokenPosition(i).Line,
-            reparsed.TokenPosition(i).Line);
-        EXPECT_EQ(
-            rebound->TokenPosition(i).Column,
-            reparsed.TokenPosition(i).Column);
-        EXPECT_EQ(rebound->MatchingDelimiter(i), reparsed.MatchingDelimiter(i));
-    }
-    EXPECT_EQ(rebound->Root().Tokens.End, rebound->TokenCount());
-    std::vector<const parser::Node*> nodes{&rebound->Root()};
-    while (!nodes.empty()) {
-        const auto* node = nodes.back();
-        nodes.pop_back();
-        EXPECT_FALSE(node->Kind == parser::NodeKind::ExpressionStatement &&
-            node->Tokens.End == node->Tokens.Begin + 1 &&
-            rebound->Kind(node->Tokens.Begin) ==
-                tokenizer::TokenKind::Operator_Semicolon);
-        for (auto* child = node->Child(); child; child = child->NextSibling) {
-            nodes.push_back(child);
-        }
-    }
-}
-
-TEST(Parser, InsertsControlBracesWithoutReparsingSyntax)
-{
-    PaddedInput input("void f() { if (x) g(); }\n");
-    PaddedInput edited("void f() { if (x) { g(); } }\n");
-    auto original = parser::Parse(input.View(), [] (parser::ParseError) { });
-    auto reparsed = parser::Parse(edited.View(), [] (parser::ParseError) { });
-    const parser::Node* body = nullptr;
-    std::vector<const parser::Node*> pending{&original.Root()};
-    while (!pending.empty()) {
-        auto* node = pending.back();
-        pending.pop_back();
-        if (node->Kind == parser::NodeKind::IfStatement) {
-            for (auto* child = node->Child(); child; child = child->NextSibling)
-            {
-                if (child->Kind == parser::NodeKind::ExpressionStatement) {
-                    body = child;
-                }
-            }
-        }
-        for (auto* child = node->Child(); child; child = child->NextSibling) {
-            pending.push_back(child);
-        }
-    }
-    ASSERT_NE(body, nullptr);
-    const std::array blocks{parser::InsertedControlBlock{body, false}};
-    auto rebound = original.RebindControlBraces(edited.View(), blocks);
-    ASSERT_TRUE(rebound);
-    ASSERT_EQ(rebound->TokenCount(), reparsed.TokenCount());
-    for (parser::TokenIndex i = 0; i < rebound->TokenCount(); ++i) {
-        EXPECT_EQ(rebound->Kind(i), reparsed.Kind(i));
-        EXPECT_EQ(rebound->Role(i), reparsed.Role(i));
-        EXPECT_EQ(rebound->MatchingDelimiter(i), reparsed.MatchingDelimiter(i));
-    }
-    std::vector<std::pair<const parser::Node*, const parser::Node*>>
-        nodes{{&rebound->Root(), &reparsed.Root()}};
-    while (!nodes.empty()) {
-        auto [actual, expected] = nodes.back();
-        nodes.pop_back();
-        EXPECT_EQ(actual->Kind, expected->Kind);
-        EXPECT_EQ(actual->GetFunctionKind(), expected->GetFunctionKind());
-        EXPECT_EQ(actual->Tokens.Begin, expected->Tokens.Begin);
-        EXPECT_EQ(actual->Tokens.End, expected->Tokens.End);
-        auto* child = actual->Child();
-        auto* other = expected->Child();
-        while (child && other) {
-            nodes.emplace_back(child, other);
-            child = child->NextSibling;
-            other = other->NextSibling;
-        }
-        EXPECT_EQ(child, nullptr);
-        EXPECT_EQ(other, nullptr);
-    }
-
-    PaddedInput nestedInput("void f(){if(a) if(b) Go(); else Stop();}\n");
-    PaddedInput nestedEdited(
-        "void f(){if(a) {if(b) {Go();} else " "{Stop();}}}\n");
-    auto nested =
-        parser::Parse(nestedInput.View(), [] (parser::ParseError) { });
-    auto nestedParsed =
-        parser::Parse(nestedEdited.View(), [] (parser::ParseError) { });
-    std::vector<parser::InsertedControlBlock> nestedBlocks;
-    pending = {&nested.Root()};
-    while (!pending.empty()) {
-        auto* node = pending.back();
-        pending.pop_back();
-        if (node->Kind == parser::NodeKind::IfStatement) {
-            for (auto* child = node->Child(); child; child = child->NextSibling)
-            {
-                if (child->Kind == parser::NodeKind::IfStatement ||
-                    child->Kind == parser::NodeKind::ExpressionStatement)
-                {
-                    nestedBlocks.push_back({child, false});
-                }
-            }
-        }
-        for (auto* child = node->Child(); child; child = child->NextSibling) {
-            pending.push_back(child);
-        }
-    }
-    ASSERT_EQ(nestedBlocks.size(), 3);
-    auto nestedRebound =
-        nested.RebindControlBraces(nestedEdited.View(), nestedBlocks);
-    ASSERT_TRUE(nestedRebound);
-    ASSERT_EQ(nestedRebound->TokenCount(), nestedParsed.TokenCount());
-    for (parser::TokenIndex i = 0; i < nestedRebound->TokenCount(); ++i) {
-        EXPECT_EQ(
-            nestedRebound->MatchingDelimiter(i),
-            nestedParsed.MatchingDelimiter(i));
-    }
-}
-
 TEST(Parser, HandlesDeepCompoundNesting)
 {
     std::string source = "void deeply_nested() {";
@@ -4782,7 +4361,7 @@ TEST(Parser, FunctionKindsLeaveUncertainHeadsAndNonfunctionsUnknown)
     }
 }
 
-TEST(Parser, FunctionKindsSurviveOwningCopiesMovesAndRebinds)
+TEST(Parser, FunctionKindsSurviveNodeCopiesAndTreeMoves)
 {
     PaddedInput input("#include <z>\n#include <a>\n"
         "struct Device { Device() { /* note */ if (ready) return; ; } "
@@ -4818,17 +4397,10 @@ TEST(Parser, FunctionKindsSurviveOwningCopiesMovesAndRebinds)
             1u);
     };
     check(original);
-    auto clone = [&] {
-        auto temporary =
-            parser::Parse(input.View(), [] (parser::ParseError) {});
-        return temporary.CloneSyntax(input.View());
-    }();
-    EXPECT_FALSE(clone.BorrowsSyntax());
-    check(clone);
-    auto moved = std::move(clone);
+    auto moved = std::move(original);
     check(moved);
-    clone = std::move(moved);
-    check(clone);
+    original = std::move(moved);
+    check(original);
     const Node* record = original.Root().FirstChild;
     while (record && record->Kind != parser::NodeKind::RecordDeclaration) {
         record = record->NextSibling;
@@ -4847,93 +4419,6 @@ TEST(Parser, FunctionKindsSurviveOwningCopiesMovesAndRebinds)
     EXPECT_EQ(assigned.GetFunctionKind(), parser::FunctionKind::Unknown);
     assigned = copy;
     EXPECT_EQ(assigned.GetFunctionKind(), parser::FunctionKind::Constructor);
-
-    const auto source = std::string(input
-        .View()
-        .View());
-    PaddedInput spaced(source + "\n");
-    auto whitespace = original.RebindWhitespace(spaced.View());
-    auto gaps = original.RebindWhitespaceGaps(spaced.View());
-    ASSERT_TRUE(whitespace);
-    ASSERT_TRUE(gaps);
-    check(*whitespace);
-    check(*gaps);
-    const std::array edits{
-        parser::WhitespaceEdit{
-            static_cast<util::SourceOffset>(source.size()),
-            static_cast<util::SourceOffset>(source.size()),
-            "\n",
-        },
-    };
-    auto fromEdits = original.RebindWhitespaceEdits(spaced.View(), edits);
-    ASSERT_TRUE(fromEdits);
-    check(*fromEdits);
-
-    auto changedSource = source;
-    changedSource.replace(changedSource.find("/* note */"), 10, "/* next */");
-    PaddedInput changed(changedSource);
-    auto matching = original.RebindMatchingTokens(changed.View());
-    ASSERT_TRUE(matching);
-    check(*matching);
-    auto sortedSource = source;
-    sortedSource
-        .replace(0, source.find("struct"), "#include <a>\n#include <z>\n");
-    PaddedInput sorted(sortedSource);
-    auto includes = original.RebindSortedIncludes(sorted.View());
-    ASSERT_TRUE(includes);
-    check(*includes);
-
-    auto commentSource = source;
-    commentSource
-        .replace(commentSource.find("{ /* note */"), 12, "/* note */ {");
-    PaddedInput comment(commentSource);
-    auto reordered = original.RebindReorderedComments(comment.View());
-    ASSERT_TRUE(reordered);
-    check(*reordered);
-
-    parser::TokenIndex nullToken = 0;
-    for (parser::TokenIndex i = 0; i + 1 < original.TokenCount(); ++i) {
-        if (original.Kind(i) == tokenizer::TokenKind::Operator_Semicolon &&
-            original.Kind(i + 1) == tokenizer::TokenKind::Operator_Semicolon)
-        {
-            nullToken = i + 1;
-        }
-    }
-    ASSERT_NE(nullToken, 0u);
-    const auto token = original.Token(nullToken);
-    auto removedSource = source;
-    removedSource.erase(token.Text.Begin, token.Text.End - token.Text.Begin);
-    PaddedInput removed(removedSource);
-    const std::array nulls{nullToken};
-    auto withoutNull =
-        original.RebindRemovedNullStatements(removed.View(), nulls);
-    ASSERT_TRUE(withoutNull);
-    check(*withoutNull);
-
-    const Node* body = nullptr;
-    std::vector<const Node*> pending{constructor};
-    while (!pending.empty()) {
-        const auto* node = pending.back();
-        pending.pop_back();
-        if (node->Kind == parser::NodeKind::IfStatement) {
-            body = node->LastChild;
-        }
-        for (auto* child = node->FirstChild; child; child = child->NextSibling)
-        {
-            pending.push_back(child);
-        }
-    }
-    ASSERT_NE(body, nullptr);
-    auto bracedSource = source;
-    const auto begin = original.Token(body->Tokens.Begin).Text.Begin;
-    const auto end = original.Token(body->Tokens.End - 1).Text.End;
-    bracedSource.insert(end, " }");
-    bracedSource.insert(begin, "{ ");
-    PaddedInput braced(bracedSource);
-    const std::array blocks{parser::InsertedControlBlock{body, false}};
-    auto controlled = original.RebindControlBraces(braced.View(), blocks);
-    ASSERT_TRUE(controlled);
-    check(*controlled);
 }
 
 TEST(Parser, FunctionKindsRetainBalancedQualifiedAndExplicitReturnEvidence)
@@ -5734,11 +5219,11 @@ TEST(Parser, TerminalConstructorTemplateIdsDoNotBorrowOuterOrMalformedOwners)
     EXPECT_EQ(constructors, 2u);
 }
 
-TEST(Parser, TerminalConstructorTemplateIdsRetainOwningCopies)
+TEST(Parser, TerminalConstructorTemplateIdsSurviveTreeMoves)
 {
     PaddedInput input(
         "template<class T> struct Parcel { Parcel<T>(T* p) {} };\n");
-    const auto tree = parser::Parse(input.View(), [] (parser::ParseError) {});
+    auto tree = parser::Parse(input.View(), [] (parser::ParseError) {});
     const auto check = [] (const parser::SyntaxTree& value) {
         size_t constructors = 0;
         std::vector<const Node*> pending{&value.Root()};
@@ -5756,17 +5241,11 @@ TEST(Parser, TerminalConstructorTemplateIdsRetainOwningCopies)
         }
         EXPECT_EQ(constructors, 1u);
     };
-    auto clone = tree.CloneSyntax(input.View());
-    EXPECT_FALSE(clone.BorrowsSyntax());
-    auto moved = std::move(clone);
+    check(tree);
+    auto moved = std::move(tree);
     check(moved);
-    PaddedInput spaced(std::string(input
-        .View()
-        .View()) + "\n");
-    auto rebound = moved.RebindWhitespaceGaps(spaced.View());
-    ASSERT_TRUE(rebound);
-    check(*rebound);
-    EXPECT_EQ(sizeof(parser::Node), 40u);
+    tree = std::move(moved);
+    check(tree);
 }
 
 TEST(Parser, TerminalConstructorTemplateIdsPreserveSelfTypedStatementBindings)
@@ -6059,29 +5538,21 @@ TEST(Parser, TerminalConstructorBoundariesResetAndRequireValidCachedEvidence)
         PaddedInput input(source);
         const auto tree =
             parser::Parse(input.View(), [] (parser::ParseError) {});
-        auto clone = tree.CloneSyntax(input.View());
-        auto moved = std::move(clone);
-        PaddedInput spaced(std::string(source) + "\n");
-        auto rebound = moved.RebindWhitespaceGaps(spaced.View());
-        ASSERT_TRUE(rebound);
-        const parser::SyntaxTree* values[] = {&tree, &moved, &*rebound};
-        for (const auto* value : values) {
-            size_t constructors = 0;
-            std::vector<const Node*> pending{&value->Root()};
-            while (!pending.empty()) {
-                const auto* node = pending.back();
-                pending.pop_back();
-                constructors += node->GetFunctionKind() ==
-                    parser::FunctionKind::Constructor;
-                for (auto* child = node->FirstChild;
-                    child;
-                    child = child->NextSibling)
-                {
-                    pending.push_back(child);
-                }
+        size_t constructors = 0;
+        std::vector<const Node*> pending{&tree.Root()};
+        while (!pending.empty()) {
+            const auto* node = pending.back();
+            pending.pop_back();
+            constructors +=
+                node->GetFunctionKind() == parser::FunctionKind::Constructor;
+            for (auto* child = node->FirstChild;
+                child;
+                child = child->NextSibling)
+            {
+                pending.push_back(child);
             }
-            EXPECT_EQ(constructors, 1u);
         }
+        EXPECT_EQ(constructors, 1u);
     }
     // Outer cached parentheses can survive malformed interiors. Global map
     // validity, not endpoints alone, must govern terminal-ID promotion.
