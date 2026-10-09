@@ -2,11 +2,9 @@
 
 #include <util/input.hpp>
 
-#include <array>
 #include <cstdint>
 #include <format>
 #include <string_view>
-#include <utility>
 
 namespace tokenizer {
 
@@ -165,16 +163,7 @@ enum class TokenKind : uint8_t
 #undef TOKEN_KIND
 };
 
-[[nodiscard]] constexpr std::string_view GetTokenKindName(TokenKind kind)
-{
-    constexpr auto Names = std::to_array<std::string_view>({
-#define TOKEN_KIND(value, name) {name},
-        TOKEN_KINDS
-#undef TOKEN_KIND
-    });
-
-    return Names[static_cast<std::underlying_type_t<TokenKind>>(kind)];
-}
+[[nodiscard]] std::string_view GetTokenKindName(TokenKind kind);
 
 struct Token
 {

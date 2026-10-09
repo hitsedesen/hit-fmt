@@ -22,11 +22,18 @@ inline constexpr size_t MaxSourceSize =
 struct PaddedSourceView
 {
     const char* Data;
-    size_t Size;
+    uint32_t Size;
 
     [[nodiscard]] constexpr std::string_view View() const
     {
         return {Data, Size};
+    }
+
+    [[nodiscard]] constexpr std::string_view substr(
+        size_t pos = 0,
+        size_t count = std::string_view::npos) const
+    {
+        return View().substr(pos, count);
     }
 };
 

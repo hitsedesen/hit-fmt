@@ -71,7 +71,7 @@ void ExpectUnchanged(std::string_view source, const formatter::Style& style)
     storage.append(util::SourcePaddingSize, '\0');
     util::PaddedSourceView padded{
         .Data = storage.data(),
-        .Size = source.size(),
+        .Size = static_cast<uint32_t>(source.size()),
     };
     auto tree = parser::Parse(padded, [] (parser::ParseError) { });
     EXPECT_EQ(formatter::Format(tree, style), source);
@@ -81,7 +81,10 @@ void ExpectUnchanged(std::string_view source, const formatter::Style& style)
     storage.append(util::SourcePaddingSize, '\0');
     EXPECT_EQ(
         formatter::Format(
-            {.Data = storage.data(), .Size = first.size()},
+            {
+                .Data = storage.data(),
+                .Size = static_cast<uint32_t>(first.size()),
+            },
             style),
         first);
 }
@@ -167,7 +170,7 @@ std::string FormatWithStyle(
     storage.append(util::SourcePaddingSize, '\0');
     util::PaddedSourceView padded{
         .Data = storage.data(),
-        .Size = source.size(),
+        .Size = static_cast<uint32_t>(source.size()),
     };
     const formatter::PreparedFormat prepared(style);
     auto tree = parser::Parse(
@@ -5049,7 +5052,10 @@ TEST_P(FormatTest, Golden)
         std::string storage(input);
         storage.append(util::SourcePaddingSize, '\0');
         const auto tree = parser::Parse(
-            {.Data = storage.data(), .Size = input.size()},
+            {
+                .Data = storage.data(),
+                .Size = static_cast<uint32_t>(input.size()),
+            },
             [] (parser::ParseError) { });
         fixture.Expect(formatter::FormatChanged(
             tree,
@@ -5098,7 +5104,7 @@ TEST_P(ParameterNameTest, Golden)
     std::string storage(input);
     storage.append(util::SourcePaddingSize, '\0');
     const auto tree = parser::Parse(
-        {.Data = storage.data(), .Size = input.size()},
+        {.Data = storage.data(), .Size = static_cast<uint32_t>(input.size())},
         [] (parser::ParseError) { });
     std::string actual;
     for (const auto& diagnostic : formatter::CheckParameterNames(tree, config))
@@ -5141,7 +5147,7 @@ TEST(Formatter, CallArgument_RejectsUnsupportedSyntaxHints)
     storage.append(util::SourcePaddingSize, '\0');
     const util::PaddedSourceView source{
         .Data = storage.data(),
-        .Size = input.size(),
+        .Size = static_cast<uint32_t>(input.size()),
     };
     const auto tree = parser::Parse(source, [] (parser::ParseError) { });
     for (bool parsed : {false, true}) {
@@ -5214,7 +5220,7 @@ TEST(Formatter, RequiresLambdasFitAfterBreakingHeadersAndBodies)
         source.append(util::SourcePaddingSize, '\0');
         const util::PaddedSourceView input{
             .Data = source.data(),
-            .Size = length,
+            .Size = static_cast<uint32_t>(length),
         };
         const auto tree = parser::Parse(input, [] (parser::ParseError) { });
         for (const auto columns : {80u, 60u}) {
@@ -5243,7 +5249,7 @@ TEST(Formatter, ExpressionLayout_ChecksPipelineMismatchAndEmittedWidth)
     const auto length = storage.size();
     storage.append(util::SourcePaddingSize, '\0');
     const auto tree = parser::Parse(
-        {.Data = storage.data(), .Size = length},
+        {.Data = storage.data(), .Size = static_cast<uint32_t>(length)},
         [] (parser::ParseError) { });
     formatter::Style style;
     style.ColumnLimit = 40;
@@ -5294,7 +5300,7 @@ TEST(Formatter, InitializedDeclaratorBreaksResolveWidthDiagnostics)
     const auto size = source.size();
     source.append(util::SourcePaddingSize, '\0');
     const auto tree = parser::Parse(
-        {.Data = source.data(), .Size = size},
+        {.Data = source.data(), .Size = static_cast<uint32_t>(size)},
         [] (parser::ParseError) { });
     auto style = formatter::LoadConfigFile(
         directory / "../../../../.hit-fmt").FormattingStyle;
@@ -5336,7 +5342,7 @@ TEST_P(LayoutDiagnosticTest, Golden)
     const auto directory =
         std::filesystem::path(FORMATTER_TESTDATA_DIR) / ".." / value.Directory;
     auto source = ReadFile(directory / value.Input);
-    const auto size = source.size();
+    const auto size = static_cast<uint32_t>(source.size());
     source.append(util::SourcePaddingSize, '\0');
     const auto tree = parser::Parse(
         {.Data = source.data(), .Size = size},
@@ -5418,7 +5424,7 @@ TEST_P(LayoutDiagnosticTest, ReportsEmittedWidths)
     const auto directory =
         std::filesystem::path(FORMATTER_TESTDATA_DIR) / ".." / value.Directory;
     auto source = ReadFile(directory / value.Input);
-    const auto size = source.size();
+    const auto size = static_cast<uint32_t>(source.size());
     source.append(util::SourcePaddingSize, '\0');
     const auto tree = parser::Parse(
         {.Data = source.data(), .Size = size},
@@ -5443,7 +5449,7 @@ TEST(Formatter, WidthDiagnostics_CountsProtectedTabsAndMixedTerminators)
     auto source = input;
     source.append(util::SourcePaddingSize, '\0');
     const auto tree = parser::Parse(
-        {.Data = source.data(), .Size = input.size()},
+        {.Data = source.data(), .Size = static_cast<uint32_t>(input.size())},
         [] (parser::ParseError) { });
     formatter::Style style;
     style.ColumnLimit = 16;
@@ -5526,7 +5532,7 @@ TEST(Formatter, ExpressionLayout_ReportsUnavoidableWidthWithoutReflowing)
     auto source = input;
     source.append(util::SourcePaddingSize, '\0');
     const auto tree = parser::Parse(
-        {.Data = source.data(), .Size = input.size()},
+        {.Data = source.data(), .Size = static_cast<uint32_t>(input.size())},
         [] (parser::ParseError) { });
     auto style =
         formatter::LoadConfigFile(directory / "soft.hit-fmt").FormattingStyle;
@@ -5592,7 +5598,7 @@ TEST(Formatter, SpacingOptions_ProfileOverflowWrapsAroundRecoveryAndKeepsTokens)
     std::string storage(input);
     storage.append(util::SourcePaddingSize, '\0');
     const auto tree = parser::Parse(
-        {.Data = storage.data(), .Size = input.size()},
+        {.Data = storage.data(), .Size = static_cast<uint32_t>(input.size())},
         [] (parser::ParseError) { });
     const auto result =
         formatter::Format(tree, formatter::PreparedFormat(config));
@@ -5602,8 +5608,10 @@ TEST(Formatter, SpacingOptions_ProfileOverflowWrapsAroundRecoveryAndKeepsTokens)
     EXPECT_TRUE(result.Diagnostics.empty());
     std::string output(result.Text);
     output.append(util::SourcePaddingSize, '\0');
-    const auto tokens = parser::SyntaxTree::TokenizeOnly(
-        {.Data = output.data(), .Size = result.Text.size()});
+    const auto tokens = parser::SyntaxTree::TokenizeOnly({
+        .Data = output.data(),
+        .Size = static_cast<uint32_t>(result.Text.size()),
+    });
     ASSERT_EQ(tokens.TokenCount(), tree.TokenCount());
     for (parser::TokenIndex i = 0; i < tree.TokenCount(); ++i) {
         EXPECT_EQ(tokens.Kind(i), tree.Kind(i));
@@ -5625,7 +5633,7 @@ TEST_P(NamingTest, Golden)
     std::string storage = input;
     storage.append(util::SourcePaddingSize, '\0');
     const auto tree = parser::Parse(
-        {.Data = storage.data(), .Size = input.size()},
+        {.Data = storage.data(), .Size = static_cast<uint32_t>(input.size())},
         [] (parser::ParseError) { });
     std::string actual;
     for (const auto& diagnostic : formatter::CheckNames(tree, config)) {

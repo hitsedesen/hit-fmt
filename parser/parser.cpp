@@ -657,7 +657,7 @@ std::optional<SyntaxTree> SyntaxTree::RebindWhitespaceEdits(
         joined.append(util::SourcePaddingSize, '\0');
         bool error = false;
         tokenizer::Tokenizer lexer(
-            {.Data = joined.data(), .Size = length},
+            {.Data = joined.data(), .Size = static_cast<uint32_t>(length)},
             [&] (tokenizer::TokenizationError) { error = true; });
         const auto a = lexer.Get();
         const auto b = lexer.Get();
@@ -1473,7 +1473,10 @@ private:
     void Tokenize()
     {
         tokenizer::Tokenizer tokenizer(
-            {.Data = Tree_.Input_.data(), .Size = Tree_.Input_.size()},
+            {
+                .Data = Tree_.Input_.data(),
+                .Size = static_cast<uint32_t>(Tree_.Input_.size()),
+            },
             [this] (tokenizer::TokenizationError error) {
                 OnError(ParseError{
                     .Message = std::string(

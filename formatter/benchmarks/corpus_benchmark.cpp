@@ -88,7 +88,8 @@ int main(int argc, char* argv[])
             }
             util::PaddedSourceView source{
                 .Data = storage.data(),
-                .Size = storage.size() - util::SourcePaddingSize,
+                .Size = static_cast<uint32_t>(
+                    storage.size() - util::SourcePaddingSize),
             };
             auto start = std::chrono::steady_clock::now();
             auto output = formatter::Format(source, config.FormattingStyle);
