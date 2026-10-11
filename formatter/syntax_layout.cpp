@@ -3215,6 +3215,8 @@ private:
         }
         bool inCase = false;
         Index contents = None;
+        Index commentEnd = 0;
+        bool commentsBeforeCase = false;
         for (auto child = Region(Syntax_[id]).FirstChild;
             child != None;
             child = NextBodyItem(child, id))
@@ -3234,11 +3236,31 @@ private:
                 continue;
             }
             const bool caseLabel = IsCaseLabel(child);
+            if (part.Kind == NodeKind::Comment &&
+                part.Tokens.Begin >= commentEnd)
+            {
+                // Classify each consecutive comment run once. Only siblings
+                // can document this body's next label; directives and nested
+                // bodies are not transparent attachment boundaries.
+                auto next = child;
+                do {
+                    commentEnd = Region(Syntax_[next]).Tokens.End;
+                    next = Region(Syntax_[next]).NextSibling;
+                } while (next != None &&
+                    Region(Syntax_[next]).Kind == NodeKind::Comment);
+                commentsBeforeCase = IsCaseLabel(next);
+            }
+            const bool caseComment =
+                part.Kind == NodeKind::Comment && commentsBeforeCase &&
+                    Safety_.Gaps()[part.Tokens.Begin].HasLineFeed;
             // Labels delimit direct-child case regions. A sole compound
             // supplies the case's body level; mixed cases share one level
             // across all their statements, including the first block.
-            if (caseLabel) {
-                inCase = true;
+            if (caseLabel || caseComment) {
+                inCase |= caseLabel;
+                // Standalone comments describing a label share its level,
+                // not the preceding case's contents. Trailing comments keep
+                // their existing statement attachment.
                 contents = None;
             } else if (IsSoleCaseBlock(child)) {
                 contents = None;
@@ -3295,8 +3317,10 @@ private:
             // Indentation controls are structural subgroups, not a text pass.
             const auto special = part.Kind == NodeKind::AccessSpecifier
                 ? &Policies_.Indentation.AccessModifiers
-                : caseLabel ? &Policies_.Indentation.CaseLabels : nullptr;
-            if (caseLabel && special &&
+                : caseLabel || caseComment
+                    ? &Policies_.Indentation.CaseLabels
+                    : nullptr;
+            if ((caseLabel || caseComment) && special &&
                 special->Mode == BodyIndentation::Preserve &&
                 SourceIndent(part.Tokens.Begin) != None)
             {
