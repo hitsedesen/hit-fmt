@@ -1926,6 +1926,30 @@ std::vector<FormatCase> FormatCases()
     addProfileCase("../function_parameters", "profile");
     addProfileCase("../body-indent", "profile-control-local");
     addProfileCase("../body-indent", "profile-direct-initializer");
+    addProfileCase("../body-indent", "profile-case-comments");
+    cases.back().CheckOwningMaps = true;
+    {
+        const auto directory = std::filesystem::path(BODY_INDENT_TESTDATA_DIR);
+        const auto base =
+            formatter::LoadConfigFile(profile + ".hit-fmt").FormattingStyle;
+        for (const auto label :
+            {
+                formatter::BodyIndentation::NoIndent,
+                formatter::BodyIndentation::Preserve,
+            })
+        {
+            cases.push_back({
+                directory,
+                label == formatter::BodyIndentation::NoIndent
+                    ? "case-comments-no-indent"
+                    : "case-comments-preserve",
+                "profile-case-comments.input.cpp",
+            });
+            cases.back().Style = base;
+            cases.back().Style->IndentCaseLabels = label;
+            cases.back().CheckOwningMaps = true;
+        }
+    }
     addProfileCase("../body-indent", "profile-unknown-statements");
     cases.back().CheckOwningMaps = true;
     {
