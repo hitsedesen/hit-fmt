@@ -2132,13 +2132,29 @@ TEST(PublicPipeline, EmptyAndRecoveryInputRemainLocalWithoutFallback)
 // indentation is tested separately, not assumed to remain frozen here.
 TEST(PublicPipeline, EditScopeAbsenceEmptyFullPartialAndLifetime)
 {
-    const std::string source = "void first(){ if(ok)invoke(a,b); }\n"
+    const std::string source = "    void first(){ if(ok)invoke(a,b); }\n"
         "void locked( ){  invoke( x,y ); }\n";
     for (const bool structural : {false, true}) {
         auto style = Canonical();
+        style.IndentationKind = formatter::IndentationKind::Spaces;
         style.AddMissingControlBraces = structural;
         const formatter::PreparedFormat prepared(style);
         const auto unrestricted = FormatInput(source, prepared);
+        EXPECT_TRUE(unrestricted.Text.starts_with("void first"));
+        const std::array<parser::SourceRange, 1> prefix{{{0, 4}}};
+        const auto prefixOnly = FormatInput(
+            source,
+            prepared,
+            {.SourceMap = true, .EditScope = prefix});
+        EXPECT_EQ(prefixOnly.Text, source.substr(4));
+        CheckIdentities(source, prefixOnly);
+        CheckExcludedCopies(source, prefixOnly, prefix);
+        const auto protectedPrefix = FormatInput(
+            source,
+            prepared,
+            {.ImmutableRanges = prefix, .SourceMap = true});
+        EXPECT_TRUE(protectedPrefix.Text.starts_with("    void first"));
+        CheckIdentities(source, protectedPrefix);
         const std::span<const parser::SourceRange> empty;
         const auto denied = FormatInput(
             source,
