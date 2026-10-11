@@ -8,14 +8,14 @@ auto reference =
 auto pointer = [] (int* value) { return *value; };
 
 auto generic = [] <class T> (
-        T value,
-        Ref<T()> callback) { return callback(); };
+    T value,
+    Ref<T()> callback) { return callback(); };
 
 auto defaulted =
     [] (int value = calculate(1, 2)) { return value; };
 
 auto commented = [] (
-        Ref<int()> // keep
+    Ref<int()> // keep
     callback) { return callback(); };
 
 auto grouped =

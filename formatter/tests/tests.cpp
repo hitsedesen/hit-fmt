@@ -1926,6 +1926,16 @@ std::vector<FormatCase> FormatCases()
     addProfileCase("../function_parameters", "profile");
     addProfileCase("../body-indent", "profile-control-local");
     addProfileCase("../body-indent", "profile-direct-initializer");
+    addProfileCase("../body-indent", "profile-leading-initializer");
+    cases.back().CheckOwningMaps = true;
+    cases.push_back({
+        std::filesystem::path(BODY_INDENT_TESTDATA_DIR),
+        "leading-initializer-preserve",
+        "profile-leading-initializer.input.cpp",
+    });
+    cases.back().Style = formatter::Style{};
+    cases.back().Expected = "profile-leading-initializer.input.cpp";
+    cases.back().CheckOwningMaps = true;
     addProfileCase("../body-indent", "profile-case-comments");
     cases.back().CheckOwningMaps = true;
     {

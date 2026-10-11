@@ -439,6 +439,9 @@ public:
                 entry.IfConditionGroup = Syntax_[node.Parent].IfConditionGroup;
             }
             switch (node.Kind) {
+                case NodeKind::TranslationUnit:
+                    PlanRootIndentation(i);
+                    break;
                 case NodeKind::AttributedStatement:
                     PlanAttributedStatement(i);
                     break;
@@ -2153,7 +2156,8 @@ private:
         bool force = false)
     {
         if ((force || Policies_.IndentationKind != IndentationKind::Preserve) &&
-            Safety_.Gaps()[gap].HasLineFeed)
+            (Safety_.Gaps()[gap].HasLineFeed ||
+                (gap == 0 && Safety_.Gaps()[gap].Horizontal)))
         {
             Own(
                 gap,
@@ -3098,6 +3102,42 @@ private:
             item = node.Parent;
         }
         return None;
+    }
+
+    void PlanRootIndentation(Index id)
+    {
+        for (auto child = Region(Syntax_[id]).FirstChild;
+            child != None;
+            child = NextBodyItem(child, id))
+        {
+            const auto& part = Region(Syntax_[child]);
+            if (PreprocessingSequence(child) || part.Tokens.Empty() ||
+                part.Kind == NodeKind::Comment ||
+                part.Kind == NodeKind::PreprocessingDirective)
+            {
+                continue;
+            }
+            if (!Syntax_[child].Safe) {
+                const auto last = LastChild_[child];
+                if (Syntax_[child].ItemSequence ||
+                    (last != None && Syntax_[last].ItemSequence &&
+                        Region(Syntax_[last]).Kind ==
+                            NodeKind::CompoundStatement))
+                {
+                    // Recovery inside a bounded declaration body does not
+                    // change the root level of its following declarations.
+                    continue;
+                }
+                // An opaque top-level run may generate a scope. Without its
+                // grammar, later declarations cannot establish a root level.
+                return;
+            }
+            if (DeclarationItem(part.Kind)) {
+                // All proven root declarations share the zero structural
+                // base, not just the first declaration in the file.
+                Reindent(part.Tokens.Begin, None);
+            }
+        }
     }
 
     void PlanBody(
@@ -5365,6 +5405,16 @@ private:
                     Safety_.CanReplaceGap(i, Safety_.Original(source)),
                     i == Tree_.TokenCount());
             }
+            return;
+        }
+        if (i == 0 && plan.Reindent && !plan.PreserveIndent &&
+            source.Horizontal && source.Source.Begin != source.Source.End &&
+            Safety_.CanReplaceGap(i, ""))
+        {
+            Document_.Gap(
+                {.Kind = document::GapKind::Flat, .Spaces = 0},
+                document::InvalidId,
+                GapOrigin(i));
             return;
         }
         if (i == Tree_.TokenCount() &&
