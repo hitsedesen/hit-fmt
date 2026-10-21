@@ -156,7 +156,14 @@ TEST(HunkScope, IndexOutlivesSourceAndScaleUsesContiguousOperationMemory)
         return OriginalHunkLines(source, memory);
     }();
     EXPECT_LE(memory.Bytes, 4 * (count + 1) * sizeof(parser::SourceOffset));
-    EXPECT_LE(memory.Calls, 16);
+    // Compare with one contiguous vector rather than a library-specific
+    // geometric growth factor (MSVC grows by 1.5, not 2).
+    CountingResource referenceMemory;
+    std::pmr::vector<parser::SourceOffset> reference(&referenceMemory);
+    for (size_t i = 0; i <= count; ++i) {
+        reference.push_back(0);
+    }
+    EXPECT_LE(memory.Calls, referenceMemory.Calls);
     const auto calls = memory.Calls;
     for (size_t i = 1; i <= count; ++i) {
         const auto source = lines.Bytes({i, i});

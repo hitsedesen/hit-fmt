@@ -1396,7 +1396,8 @@ Token Tokenizer::ParseNumber()
             if (*cursor == '+' || *cursor == '-') {
                 ++cursor;
             }
-            valid &= parseDigits(IsDigit) != 0;
+            auto exponentDigits = parseDigits(IsDigit);
+            valid &= exponentDigits != 0;
         } else if (hexadecimal) {
             valid = false;
         }

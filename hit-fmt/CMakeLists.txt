@@ -1,5 +1,3 @@
-find_package(Threads REQUIRED)
-
 add_library(lib-file-check STATIC
     file_check.cpp
     options.cpp

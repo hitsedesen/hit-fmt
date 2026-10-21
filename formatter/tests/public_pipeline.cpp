@@ -3655,7 +3655,8 @@ TEST(PublicPipeline, LineEndingCompositionControlSeparatorGeometryAndDefaults)
             std::string::npos);
         CheckBareCRCopies(source, result);
         EXPECT_EQ(FormatInput(result.Text, prepared).Text, result.Text);
-        const auto begin = source.find("}\r \n") + 1;
+        const auto begin =
+            static_cast<parser::SourceOffset>(source.find("}\r \n") + 1);
         const std::array selected{parser::SourceRange{begin, begin + 3}};
         const auto partial = FormatInput(
             source,
@@ -3711,7 +3712,10 @@ TEST(PublicPipeline, LineEndingCompositionRecoveryCloneAndScopedTail)
         CheckIdentities(source, result);
         EXPECT_EQ(FormatInput(result.Text, prepared).Text, result.Text);
         const std::array selected{
-            parser::SourceRange{source.find("int tail"), source.size()},
+            parser::SourceRange{
+                static_cast<parser::SourceOffset>(source.find("int tail")),
+                static_cast<parser::SourceOffset>(source.size()),
+            },
         };
         const auto scoped = FormatInput(
             source,

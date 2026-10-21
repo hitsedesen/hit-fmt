@@ -3573,7 +3573,24 @@ private:
                     AddUnparsedSyntax(*parameter, segmentBegin, i);
                     noEmptyParameterSlots = false;
                 } else {
-                    AddDeclarationSyntax(*parameter, segmentBegin, i);
+                    const auto opening = NextSignificant(segmentBegin);
+                    bool ambiguous = false;
+                    const auto types = TypeSyntaxDepth_ < 64 &&
+                        Kind(opening) == TK::Operator_OpenParenthesis &&
+                        FindBalancedEnd(opening) == PreviousSignificant(i) + 1
+                        ? InferParameterList(opening, i, ambiguous, false, true)
+                        : std::nullopt;
+                    if (types) {
+                        auto* nested =
+                            MakeNode(NodeKind::ParameterList, opening);
+                        nested->Tokens.End = types->End;
+                        ++TypeSyntaxDepth_;
+                        AddParameterDeclarations(*nested, *types);
+                        --TypeSyntaxDepth_;
+                        Append(*parameter, *nested);
+                    } else {
+                        AddDeclarationSyntax(*parameter, segmentBegin, i);
+                    }
                 }
                 Append(list, *parameter);
             }
@@ -5072,7 +5089,9 @@ private:
         TokenIndex end) const
     {
         const auto evidence = StartsStatementParameterType(first, end);
-        if (evidence != ParameterTypeEvidence::Unknown) {
+        if (evidence != ParameterTypeEvidence::Unknown &&
+            Kind(first) != TK::Operator_ScopeResolution)
+        {
             return evidence;
         }
         // Included types need not have local bindings. Adjacent type/name
@@ -5099,7 +5118,9 @@ private:
         return afterPointers > afterType &&
             (afterPointers == end || Kind(afterPointers) == TK::Operator_Comma)
             ? ParameterTypeEvidence::Type
-            : evidence;
+            : Kind(first) == TK::Operator_ScopeResolution
+                ? ParameterTypeEvidence::Unknown
+                : evidence;
     }
 
     [[nodiscard]] std::optional<TokenRange> InferParameterList(

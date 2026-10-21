@@ -3399,11 +3399,33 @@ std::vector<FormatCase> FormatCases()
     AddCases(cases, data / "macro-generated-cases", {"canonical", "preserve"});
     cases.push_back({
         data / "macro-generated-cases",
+        "type-tuples",
+        "type-tuples.input.cpp",
+        (data / "../../../hit-fmt/examples/ytsaurus")
+            .lexically_normal()
+            .string(),
+        {},
+        true,
+        {},
+        true,
+    });
+    cases.push_back({
+        data / "macro-generated-cases",
         "ytsaurus",
         "input.cpp",
         (data / "../../../hit-fmt/examples/ytsaurus")
             .lexically_normal()
             .string(),
+        {},
+        true,
+        {},
+        true,
+    });
+    cases.push_back({
+        data / "macro-generated-cases",
+        "type-tuples-preserve",
+        "type-tuples.input.cpp",
+        "preserve",
         {},
         true,
         {},
@@ -5110,7 +5132,7 @@ INSTANTIATE_TEST_SUITE_P(
             .param
             .Directory
             .lexically_normal()
-            .lexically_relative(root) / info.param.Name).string();
+            .lexically_relative(root) / info.param.Name).generic_string();
         std::ranges::replace(name, '/', '_');
         std::ranges::replace(name, '-', '_');
         return name;
@@ -5723,7 +5745,8 @@ TEST(Formatter, PreserveConfig_ParsesSettings)
         "CallsFirstItem = NextLine\nCallsAlignment = Delimiter\n"
         "CallLineFirstStringNames = [\"YT_LOG_INFO\", \"YT_LOG_ERROR\"]\n"
         "IndentedCallScopePairs = [\"OnBeginList:OnEndList\"]\n"
-        "Exclude = [ # list comment\n" "  \"x]y\", # bracket in a quoted item\n"
+        "Exclude = [ # list comment\n"
+        "  \"x\\\\]y\", # bracket in a quoted item\n"
         "  \"(^|/)generated(/|$)\"\n" "]\n" "ClassNamePrefixes = [\n"
         "  \"S\", # prefix comment\n" "  \"C\"\n" "]\n" "IndentWidth = 3\n");
     const auto config = formatter::LoadConfigFile(path);
