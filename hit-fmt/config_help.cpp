@@ -64,30 +64,34 @@ void PrintConfigHelp(std::ostream& output, bool useColor)
 {
     PrintHeading(output, "Configuration options", useColor);
     output
-        << "Flat Key = Value syntax; # comments and quoted-string arrays.\n"
-            "Defaults preserve source break topology. "
-            "Canonical layout is opt-in.\n"
-            "Unknown option names and invalid values are errors.\n\n";
+        << "Use Key = Value, # comments and [\"quoted\", \"strings\"] lists.\n"
+            "Defaults keep line breaks; Layout = Canonical reflows code.\n"
+            "Unknown names and invalid values are errors.\n"
+            "Use --generate-config for all options, values and defaults.\n\n";
     PrintHeading(output, "Configuration inheritance", useColor);
     output
-        << "include = \"base.hit-fmt\" loads a base configuration.\n"
-            "Relative paths start at the including file's directory; absolute\n"
-            "filesystem paths are also accepted. @/ starts at the nearest\n"
-            "ancestor containing a .git or .arc file or directory.\n"
-            "Local settings override the base regardless of include position.\n"
-            "Lists replace inherited lists; [] clears them. Nested includes\n"
-            "are supported (64 files max). Cycles, missing files and\n"
-            "duplicate includes are errors.\n"
-            "Validation uses merged settings.\n\n";
+        << "Load a base file with include = \"base.hit-fmt\".\n"
+            "- Paths start beside this config; absolute paths work too.\n"
+            "- @/ starts at the nearest ancestor with a .git or .arc marker.\n"
+            "- Local values win, regardless of include position.\n"
+            "- Lists replace inherited lists; [] clears them.\n"
+            "- Validate after merging. Nested includes: 64 files max.\n"
+            "- Cycles, missing files and duplicate includes are errors.\n\n";
     PrintCode(
         output,
         "include = \"@/configs/base.hit-fmt\"\nColumnLimit = 100\n",
         useColor);
     output << '\n';
+    bool firstSection = true;
     for (const auto& section : HelpSections) {
+        if (!firstSection) {
+            output << '\n';
+        }
+        firstSection = false;
         PrintHeading(output, section.Title, useColor);
         output << section.Description;
         for (const auto& example : section.Examples) {
+            output << '\n';
             if (useColor) {
                 output << Setting;
             }
@@ -97,7 +101,6 @@ void PrintConfigHelp(std::ostream& output, bool useColor)
             }
             output << '\n';
             PrintCode(output, example.Code, useColor);
-            output << '\n';
         }
     }
 }
