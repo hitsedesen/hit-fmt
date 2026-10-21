@@ -161,6 +161,12 @@ void PrintOption(std::ostream& output, std::string_view name, const T& value)
                 "# Lambda bodies and explicit AlwaysBreakChainRootNames keep\n"
                 "# their ordinary chain policy.\n";
     }
+    if (name == "ChainedCallRootNames" || name == "AlwaysBreakChainRootNames") {
+        output
+            << "# Exact qualified roots; only unambiguous templates match.\n"
+                "# ns::Builder<T>::Make<U> matches ns::Builder::Make.\n"
+                "# Omit the template disambiguator from configured names.\n";
+    }
     if (name == "CaseBlockBracePlacement") {
         output
             << "# Applies when a case contains only one compound block.\n"
