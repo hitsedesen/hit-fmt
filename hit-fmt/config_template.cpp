@@ -470,7 +470,17 @@ void PrintPreserveConfig(std::ostream& output)
     FORMATTER_NAMING_CATEGORIES(PRINT_NAMING_OPTION)
 #undef PRINT_NAMING_OPTION
 
-    output << "# Other configuration options\n\n";
+    output << "# Configuration inheritance (optional)\n"
+        "# Relative paths start here; absolute filesystem paths work too.\n"
+        "# @/ starts at the nearest ancestor with a .git or .arc marker\n"
+        "# (file or directory, including worktrees).\n"
+        "# Local settings override the base regardless of include position.\n"
+        "# Lists replace inherited lists; [] clears them.\n"
+        "# Validation uses merged settings. Nested includes: 64 files max.\n"
+        "# Cycles, missing files and duplicate includes are errors.\n"
+        "# include = \"base.hit-fmt\"\n"
+        "# include = \"@/configs/base.hit-fmt\"\n\n"
+        "# Other configuration options\n\n";
     const formatter::Configuration config;
 #define PRINT_CONFIG_OPTION(type, name, initial) \
     PrintOption(output, #name, config.name);

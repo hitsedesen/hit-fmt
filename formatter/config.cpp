@@ -685,11 +685,17 @@ constexpr auto Options = std::to_array<OptionBinding>({
 #undef CONFIG_BINDING
 });
 
+struct SettingLocation
+{
+    std::filesystem::path Path;
+    size_t Line = 0;
+};
+
 void ValidateStyleLimits(
     const Style& style,
     const std::filesystem::path& path,
     size_t line,
-    std::span<const std::size_t> settingLines)
+    std::span<const SettingLocation> settingLines)
 {
     try {
         ValidatePolicyStyle(style);
@@ -697,7 +703,7 @@ void ValidateStyleLimits(
         const std::string_view reason = error.what();
         std::string message(reason);
         for (std::size_t index = 0; index < Options.size(); ++index) {
-            if (settingLines[index] == 0) {
+            if (settingLines[index].Line == 0) {
                 continue;
             }
             const auto key = Options[index].Name;
@@ -711,9 +717,9 @@ void ValidateStyleLimits(
                     (at + key.size() == reason.size() ||
                         !identifier(reason[at + key.size()])))
                 {
-                    message +=
-                        " [" + std::string(key) + " at " + path.string() + ":" +
-                            std::to_string(settingLines[index]) + "]";
+                    message += " [" + std::string(key) + " at " +
+                        settingLines[index].Path.string() + ":" +
+                        std::to_string(settingLines[index].Line) + "]";
                     break;
                 }
                 at = reason.find(key, at + key.size());
@@ -729,13 +735,13 @@ void ApplySetting(
     std::string_view value,
     const std::filesystem::path& path,
     size_t line,
-    std::span<std::size_t> settingLines)
+    std::span<SettingLocation> settingLines)
 {
     for (std::size_t index = 0; index < Options.size(); ++index) {
         const auto& option = Options[index];
         if (option.Name == key) {
             option.Assign(config, value, path, line);
-            settingLines[index] = line;
+            settingLines[index] = {path, line};
             return;
         }
     }
@@ -1102,16 +1108,83 @@ const VisualScopeAnnotation* LibraryAnnotations::FindScopeEnd(
         : nullptr;
 }
 
-Configuration LoadConfigFile(const std::filesystem::path& path)
+namespace {
+
+std::filesystem::path ResolveConfigInclude(
+    std::string_view name,
+    const std::filesystem::path& path,
+    size_t line)
 {
+    if (name.empty() || name.find('\0') != std::string_view::npos) {
+        ThrowConfigError(path, line, "include expects a nonempty file path");
+    }
+    if (name.starts_with("@/")) {
+        const std::filesystem::path relative(name.substr(2));
+        if (relative.empty() || relative.has_root_path()) {
+            ThrowConfigError(
+                path,
+                line,
+                "expected a repository-relative include path");
+        }
+        auto directory = std::filesystem::canonical(
+            std::filesystem::absolute(path).parent_path());
+        while (true) {
+            std::error_code error;
+            for (const auto name : {".git", ".arc"}) {
+                const auto marker =
+                    std::filesystem::status(directory / name, error);
+                if (!error &&
+                    (std::filesystem::is_directory(marker) ||
+                        std::filesystem::is_regular_file(marker)))
+                {
+                    return directory / relative;
+                }
+                error.clear();
+            }
+            const auto parent = directory.parent_path();
+            if (parent == directory) {
+                ThrowConfigError(
+                    path,
+                    line,
+                    "cannot find repository root for include");
+            }
+            directory = parent;
+        }
+    }
+    const std::filesystem::path included(name);
+    return included.is_absolute() ? included : path.parent_path() / included;
+}
+
+size_t LoadConfigSettings(
+    const std::filesystem::path& path,
+    Configuration& config,
+    std::span<SettingLocation> settingLines,
+    std::vector<std::filesystem::path>& active)
+{
+    const auto canonical = std::filesystem::weakly_canonical(path);
+    if (std::find(active.begin(), active.end(), canonical) != active.end()) {
+        throw std::runtime_error(
+            "configuration include cycle: " + path.string());
+    }
+    if (active.size() >= 64) {
+        throw std::runtime_error(
+            "configuration include depth exceeds 64: " + path.string());
+    }
     std::ifstream input(path);
     if (!input.is_open()) {
         throw std::runtime_error(
             "cannot open configuration file: " + path.string());
     }
 
-    Configuration config;
-    std::array<std::size_t, Options.size()> settingLines{};
+    active.push_back(canonical);
+    struct Setting
+    {
+        std::string Key;
+        std::string Value;
+        size_t Line;
+    };
+    std::vector<Setting> settings;
+    std::optional<Setting> include;
     std::string lineText;
     size_t lineNumber = 0;
     while (std::getline(input, lineText)) {
@@ -1160,12 +1233,59 @@ Configuration LoadConfigFile(const std::filesystem::path& path)
             key = arrayKey;
             value = arrayValue;
         }
-        ApplySetting(config, key, value, path, settingLine, settingLines);
+        if (key == "include") {
+            if (include) {
+                ThrowConfigError(
+                    path,
+                    settingLine,
+                    "duplicate include setting");
+            }
+            include = Setting{
+                std::string(key),
+                ParseString(value, path, settingLine),
+                settingLine,
+            };
+        } else {
+            settings
+                .push_back({std::string(key), std::string(value), settingLine});
+        }
     }
     if (!input.eof()) {
         throw std::runtime_error(
             "failed to read configuration file: " + path.string());
     }
+    input.close();
+    if (include) {
+        const auto included =
+            ResolveConfigInclude(include->Value, path, include->Line);
+        try {
+            (void)LoadConfigSettings(included, config, settingLines, active);
+        } catch (const std::runtime_error& error) {
+            ThrowConfigError(path, include->Line, error.what());
+        }
+    }
+    for (const auto& setting : settings) {
+        ApplySetting(
+            config,
+            setting.Key,
+            setting.Value,
+            path,
+            setting.Line,
+            settingLines);
+    }
+    active.pop_back();
+    return lineNumber;
+}
+
+} // namespace
+
+Configuration LoadConfigFile(const std::filesystem::path& path)
+{
+    Configuration config;
+    std::array<SettingLocation, Options.size()> settingLines{};
+    std::vector<std::filesystem::path> active;
+    const auto lineNumber =
+        LoadConfigSettings(path, config, settingLines, active);
     ValidateStyleLimits(config.FormattingStyle, path, lineNumber, settingLines);
     try {
         ValidateLibraryAnnotationStyle(config.FormattingStyle);
