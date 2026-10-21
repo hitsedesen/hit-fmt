@@ -163,7 +163,7 @@ void PrintOption(std::ostream& output, std::string_view name, const T& value)
     }
     if (name == "ChainedCallRootNames" || name == "AlwaysBreakChainRootNames") {
         output
-            << "# Exact qualified roots; only unambiguous template uses match.\n"
+            << "# Exact qualified roots; only unambiguous templates match.\n"
                 "# ns::Builder<T>::Make<U> matches ns::Builder::Make.\n"
                 "# Omit the template disambiguator from configured names.\n";
     }
