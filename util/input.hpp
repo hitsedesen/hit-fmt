@@ -1,5 +1,6 @@
 #pragma once
 
+#include <array>
 #include <cassert>
 #include <cstddef>
 #include <cstdint>
@@ -11,7 +12,7 @@ namespace util {
 
 using SourceOffset = uint32_t;
 
-inline constexpr size_t SourcePaddingSize = 4;
+inline constexpr size_t SourcePaddingSize = 64;
 
 inline constexpr size_t MaxSourceSize =
     static_cast<size_t>(std::numeric_limits<SourceOffset>::max()) -
@@ -36,6 +37,16 @@ struct PaddedSourceView
         return View().substr(pos, count);
     }
 };
+
+template <size_t Size>
+[[nodiscard]] constexpr auto PadSource(const char (&source)[Size])
+{
+    std::array<char, Size - 1 + SourcePaddingSize> result{};
+    for (size_t i = 0; i < Size - 1; ++i) {
+        result[i] = source[i];
+    }
+    return result;
+}
 
 struct SourceView
 {

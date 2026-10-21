@@ -7,6 +7,7 @@
 
 #include <algorithm>
 #include <array>
+#include <bit>
 #include <cstdint>
 #include <string_view>
 #include <type_traits>
@@ -15,6 +16,8 @@
 namespace tokenizer {
 
 using util::SourceOffset;
+
+using detail::AsciiRun;
 
 std::string_view GetTokenKindName(TokenKind kind)
 {
@@ -200,70 +203,6 @@ TokenKind ClassifyIdentifier(std::string_view identifier)
 {
     return IsDigit(value) || (value >= 'a' && value <= 'z') ||
         (value >= 'A' && value <= 'Z') || value == '_';
-}
-
-[[nodiscard]] inline const unsigned char* ScanAsciiWhitespace(
-    const unsigned char* cursor) noexcept
-{
-    while (IsSpace(*cursor)) {
-        ++cursor;
-    }
-    return cursor;
-}
-
-[[nodiscard]] inline const unsigned char* ScanAsciiIdentifier(
-    const unsigned char* cursor) noexcept
-{
-    auto lastByte = *cursor;
-    while (IsAsciiIdentifierStart(lastByte) || IsDigit(lastByte)) {
-        ++cursor;
-        lastByte = *cursor;
-    }
-    return cursor;
-}
-
-[[nodiscard]] inline const unsigned char* ScanAsciiQuotedLiteral(
-    const unsigned char* cursor,
-    unsigned char quote) noexcept
-{
-    auto lastByte = *cursor;
-    while (lastByte < AsciiLimit && lastByte != quote && lastByte != '\\' &&
-        lastByte != '\n' && lastByte != '\0')
-    {
-        ++cursor;
-        lastByte = *cursor;
-    }
-    return cursor;
-}
-
-[[nodiscard]] inline const unsigned char* ScanAsciiBlockComment(
-    const unsigned char* cursor,
-    bool& nonSpace) noexcept
-{
-    auto lastByte = *cursor;
-    while (lastByte < AsciiLimit && lastByte != '*' && lastByte != '\n' &&
-        lastByte != '\0')
-    {
-        nonSpace |= !IsSpace(lastByte);
-        ++cursor;
-        lastByte = *cursor;
-    }
-    return cursor;
-}
-
-[[nodiscard]] inline const unsigned char* ScanAsciiRawString(
-    const unsigned char* cursor,
-    bool& nonSpace) noexcept
-{
-    auto lastByte = *cursor;
-    while (lastByte < AsciiLimit && lastByte != ')' && lastByte != '\n' &&
-        lastByte != '\0')
-    {
-        nonSpace |= !IsSpace(lastByte);
-        ++cursor;
-        lastByte = *cursor;
-    }
-    return cursor;
 }
 
 [[nodiscard]] bool IsIdStart(unicode::CodePoint cp)
@@ -479,7 +418,8 @@ Tokenizer::Tokenizer(
     , ErrorHandler_(std::move(errorHandler))
 {
     if (Input_.Size > util::MaxSourceSize) {
-        Input_ = {.Data = "\0\0\0", .Size = 0};
+        static constexpr auto EmptySource = util::PadSource("");
+        Input_ = {.Data = EmptySource.data(), .Size = 0};
         OnError(TokenizationError{
             .Kind = TokenizationErrorKind::InputTooLarge,
             .TokenStart = {.Line = 1, .Column = 1},
@@ -487,6 +427,47 @@ Tokenizer::Tokenizer(
             .TokenEnd = {.Line = 1, .Column = 1},
         });
     }
+}
+
+template <detail::AsciiRun Kind, bool TrackNonSpace>
+inline const unsigned char* Tokenizer::ScanAscii(
+    const unsigned char* cursor,
+    bool* nonSpace) noexcept
+{
+    static_assert(util::SourcePaddingSize >= detail::AsciiBlock::Size);
+    const auto* data = reinterpret_cast<const unsigned char*>(Input_.Data);
+    auto offset = static_cast<SourceOffset>(cursor - data);
+    while (true) {
+        const auto blockOffset = offset & ~(detail::AsciiBlock::Size - 1);
+        if (blockOffset != BlockOffset_) {
+            BlockOffset_ = blockOffset;
+            Block_ = ClassifyBlock_(data + BlockOffset_);
+        }
+        const auto within = offset - BlockOffset_;
+        const auto continuations = Block_[Kind] >> within;
+        const auto count = static_cast<SourceOffset>(
+            std::countr_one(continuations));
+        if constexpr (TrackNonSpace) {
+            const auto consumed = count == detail::AsciiBlock::Size
+                ? ~uint64_t{0}
+                : (uint64_t{1} << count) - 1;
+            *nonSpace |= (consumed &
+                ~(Block_[detail::AsciiRun::Whitespace] >> within)) != 0;
+        }
+        offset += count;
+        if (count < detail::AsciiBlock::Size - within) {
+            return data + offset;
+        }
+    }
+}
+
+inline const unsigned char* Tokenizer::ScanAsciiQuotedLiteral(
+    const unsigned char* cursor,
+    unsigned char quote) noexcept
+{
+    return quote == '"'
+        ? ScanAscii<detail::AsciiRun::String>(cursor)
+        : ScanAscii<detail::AsciiRun::Character>(cursor);
 }
 
 template <>
@@ -871,7 +852,7 @@ bool Tokenizer::IsFileStart() const noexcept
 bool Tokenizer::TrySkipNewline()
 {
     const auto* begin = CurrentByteAddress();
-    const auto* cursor = ScanAsciiWhitespace(begin);
+    const auto* cursor = ScanAscii<AsciiRun::Whitespace>(begin);
     auto lastByte = *cursor;
     auto size = static_cast<SourceOffset>(cursor - begin);
     CurrentCodePointOffset_ += size;
@@ -895,7 +876,7 @@ void Tokenizer::SkipWhitespace()
         unsigned char lastByte;
         while (true) {
             const auto* begin = CurrentByteAddress();
-            const auto* cursor = ScanAsciiWhitespace(begin);
+            const auto* cursor = ScanAscii<AsciiRun::Whitespace>(begin);
             lastByte = *cursor;
             auto size = static_cast<SourceOffset>(cursor - begin);
             CurrentCodePointOffset_ += size;
@@ -934,7 +915,7 @@ Token Tokenizer::ParseIdentifier()
     unsigned char lastByte;
     while (true) {
         const auto* begin = CurrentByteAddress();
-        const auto* cursor = ScanAsciiIdentifier(begin);
+        const auto* cursor = ScanAscii<AsciiRun::Identifier>(begin);
         lastByte = *cursor;
         auto size = static_cast<SourceOffset>(cursor - begin);
         CurrentCodePointOffset_ += size;
@@ -1142,7 +1123,7 @@ void Tokenizer::ConsumeLiteralSuffix()
     // not allowed here.
     while (true) {
         const auto* begin = CurrentByteAddress();
-        const auto* cursor = ScanAsciiIdentifier(begin);
+        const auto* cursor = ScanAscii<AsciiRun::Identifier>(begin);
         auto lastByte = *cursor;
         auto size = static_cast<SourceOffset>(cursor - begin);
         CurrentCodePointOffset_ += size;
@@ -1300,7 +1281,8 @@ Token Tokenizer::ParseRawStringLiteral()
     while (true) {
         const auto* begin = CurrentByteAddress();
         bool nonSpace = false;
-        const auto* cursor = ScanAsciiRawString(begin, nonSpace);
+        const auto* cursor =
+            ScanAscii<AsciiRun::RawString, true>(begin, &nonSpace);
         auto lastByte = *cursor;
         auto size = static_cast<SourceOffset>(cursor - begin);
         CurrentCodePointOffset_ += size;
@@ -1430,7 +1412,8 @@ Token Tokenizer::ParseNumber()
     if (IsIdStart(cur)) {
         while (true) {
             const auto* suffixBegin = CurrentByteAddress();
-            const auto* suffixCursor = ScanAsciiIdentifier(suffixBegin);
+            const auto* suffixCursor =
+                ScanAscii<AsciiRun::Identifier>(suffixBegin);
             auto lastByte = *suffixCursor;
             auto suffixSize =
                 static_cast<SourceOffset>(suffixCursor - suffixBegin);
@@ -1750,14 +1733,9 @@ Token Tokenizer::ParseInlineComment()
 {
     ConsumeAsciiByte('/');
     while (true) {
-        // Scan ASCII line-comment run.
         const auto* begin = CurrentByteAddress();
-        const auto* cursor = begin;
+        const auto* cursor = ScanAscii<AsciiRun::LineComment>(begin);
         auto lastByte = *cursor;
-        while (lastByte < AsciiLimit && lastByte != '\n' && lastByte != '\0') {
-            ++cursor;
-            lastByte = *cursor;
-        }
         auto size = static_cast<SourceOffset>(cursor - begin);
         CurrentCodePointOffset_ += size;
         CurrentCodePointPosition_.Column += size;
@@ -1780,7 +1758,8 @@ Token Tokenizer::ParseMultilineComment()
     while (true) {
         const auto* begin = CurrentByteAddress();
         bool nonSpace = false;
-        const auto* cursor = ScanAsciiBlockComment(begin, nonSpace);
+        const auto* cursor =
+            ScanAscii<AsciiRun::BlockComment, true>(begin, &nonSpace);
         auto lastByte = *cursor;
         auto size = static_cast<SourceOffset>(cursor - begin);
         CurrentCodePointOffset_ += size;
@@ -1818,20 +1797,11 @@ Token Tokenizer::ParsePreprocessingDirective()
         bool nonSpace = false;
         unsigned char lastByte;
         if (inBlockComment) {
-            cursor = ScanAsciiBlockComment(begin, nonSpace);
-            lastByte = *cursor;
+            cursor = ScanAscii<AsciiRun::BlockComment, true>(begin, &nonSpace);
         } else {
-            // Scan ASCII directive run.
-            lastByte = *cursor;
-            while (lastByte < AsciiLimit && lastByte != '\\' &&
-                lastByte != '/' && lastByte != '"' && lastByte != '\'' &&
-                lastByte != 'R' && lastByte != '\n' && lastByte != '\0')
-            {
-                nonSpace |= !IsSpace(lastByte);
-                ++cursor;
-                lastByte = *cursor;
-            }
+            cursor = ScanAscii<AsciiRun::Directive, true>(begin, &nonSpace);
         }
+        lastByte = *cursor;
         auto size = static_cast<SourceOffset>(cursor - begin);
         CurrentCodePointOffset_ += size;
         CurrentCodePointPosition_.Column += size;
@@ -1879,18 +1849,13 @@ Token Tokenizer::ParsePreprocessingDirective()
                 inBlockComment = true;
             } else if (cur == '/') {
                 while (cur != '\n' && cur != '\0') {
-                    // Scan ASCII directive line-comment run.
                     const auto* commentBegin = CurrentByteAddress();
-                    const auto* commentCursor = commentBegin;
                     bool commentNonSpace = false;
+                    const auto* commentCursor =
+                        ScanAscii<AsciiRun::DirectiveComment, true>(
+                            commentBegin,
+                            &commentNonSpace);
                     auto lastByte = *commentCursor;
-                    while (lastByte < AsciiLimit && lastByte != '\\' &&
-                        lastByte != '\n' && lastByte != '\0')
-                    {
-                        commentNonSpace |= !IsSpace(lastByte);
-                        ++commentCursor;
-                        lastByte = *commentCursor;
-                    }
                     auto commentSize = static_cast<SourceOffset>(
                         commentCursor - commentBegin);
                     CurrentCodePointOffset_ += commentSize;
@@ -1934,8 +1899,9 @@ Token Tokenizer::ParsePreprocessingDirective()
             while (true) {
                 const auto* rawBegin = CurrentByteAddress();
                 bool rawNonSpace = false;
-                const auto* rawCursor =
-                    ScanAsciiRawString(rawBegin, rawNonSpace);
+                const auto* rawCursor = ScanAscii<AsciiRun::RawString, true>(
+                    rawBegin,
+                    &rawNonSpace);
                 auto lastByte = *rawCursor;
                 auto rawSize = static_cast<SourceOffset>(rawCursor - rawBegin);
                 CurrentCodePointOffset_ += rawSize;

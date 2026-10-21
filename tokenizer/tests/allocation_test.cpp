@@ -52,7 +52,7 @@ void operator delete[](void* storage, size_t) noexcept
 
 int main()
 {
-    static constexpr char Source[] = R"cpp(
+    static constexpr auto Source = util::PadSource(R"cpp(
 auto raw = R"delimiter(raw string contents)delimiter";
 auto literal = 42_a_user_defined_suffix_longer_than_sso;
 auto text = "hello"_a_user_defined_suffix_longer_than_sso(8);
@@ -67,10 +67,10 @@ auto invalid_integer = 0b102;
 auto invalid_escape = "\q";
 @
 auto broken = R"missing(raw contents;
-)cpp" "\0\0\0";
+)cpp");
     static constexpr util::PaddedSourceView SourceView{
-        .Data = Source,
-        .Size = sizeof(Source) - util::SourcePaddingSize,
+        .Data = Source.data(),
+        .Size = Source.size() - util::SourcePaddingSize,
     };
 
     size_t errorCount = 0;

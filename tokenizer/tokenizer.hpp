@@ -1,5 +1,6 @@
 #pragma once
 
+#include "ascii_block.hpp"
 #include "token.hpp"
 
 #include <unicode/code_point.hpp>
@@ -234,6 +235,14 @@ private:
     util::SourceOffset CurrentTokenSize_ = 0;
     [[nodiscard]] Token FinishToken(TokenKind kind) const noexcept;
 
+    template <detail::AsciiRun Kind, bool TrackNonSpace = false>
+    [[nodiscard]] const unsigned char* ScanAscii(
+        const unsigned char* cursor,
+        bool* nonSpace = nullptr) noexcept;
+    [[nodiscard]] const unsigned char* ScanAsciiQuotedLiteral(
+        const unsigned char* cursor,
+        unsigned char quote) noexcept;
+
     void SkipWhitespace();
     bool TrySkipNewline();
     Token ParseAsciiOperator(unsigned char byte);
@@ -254,6 +263,12 @@ private:
     void OnError(TokenizationErrorKind error);
 
     util::PaddedSourceView Input_;
+
+    detail::AsciiBlock Block_{};
+    detail::AsciiBlockClassifier ClassifyBlock_ =
+        detail::GetAsciiBlockClassifier();
+    util::SourceOffset BlockOffset_ =
+        std::numeric_limits<util::SourceOffset>::max();
 
     std::function<void(TokenizationError)> ErrorHandler_;
 
