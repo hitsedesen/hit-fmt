@@ -68,6 +68,22 @@ void PrintConfigHelp(std::ostream& output, bool useColor)
             "Defaults preserve source break topology. "
             "Canonical layout is opt-in.\n"
             "Unknown option names and invalid values are errors.\n\n";
+    PrintHeading(output, "Configuration inheritance", useColor);
+    output
+        << "include = \"base.hit-fmt\" loads a base configuration.\n"
+            "Relative paths start at the including file's directory; absolute\n"
+            "filesystem paths are also accepted. @/ starts at the nearest\n"
+            "ancestor containing a .git or .arc file or directory.\n"
+            "Local settings override the base regardless of include position.\n"
+            "Lists replace inherited lists; [] clears them. Nested includes\n"
+            "are supported (64 files max). Cycles, missing files and\n"
+            "duplicate includes are errors.\n"
+            "Validation uses merged settings.\n\n";
+    PrintCode(
+        output,
+        "include = \"@/configs/base.hit-fmt\"\nColumnLimit = 100\n",
+        useColor);
+    output << '\n';
     for (const auto& section : HelpSections) {
         PrintHeading(output, section.Title, useColor);
         output << section.Description;

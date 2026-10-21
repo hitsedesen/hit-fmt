@@ -90,6 +90,160 @@ struct TemporaryConfig
     }
 };
 
+struct TemporaryConfigTree
+{
+    std::filesystem::path Path = std::filesystem::temp_directory_path() /
+        ("hit-fmt-includes-" + std::to_string(std::chrono::steady_clock::now()
+            .time_since_epoch()
+            .count()));
+
+    void Write(const std::filesystem::path& name, std::string_view contents)
+    {
+        std::filesystem::create_directories((Path / name).parent_path());
+        std::ofstream output(Path / name);
+        output << contents;
+        if (!output) {
+            throw std::runtime_error("cannot write test config");
+        }
+    }
+
+    ~TemporaryConfigTree()
+    {
+        std::error_code error;
+        std::filesystem::remove_all(Path, error);
+    }
+};
+
+TEST(ConfigPolicy, IncludesMergeBeforeLocalSettingsAndValidateFinalValues)
+{
+    TemporaryConfigTree tree;
+    tree.Write(
+        "base",
+        "ColumnLimit = 80\nIndentWidth = 2\n"
+        "ClassNameCase = PascalCase\nExclude = [\"generated\"]\n"
+        "CallLineFirstArgumentNames = [\"Trace\"]\n"
+        "DefinitionBlankLines = 2\nMaxEmptyLines = 1\n");
+    tree.Write("nested/middle", "include = \"../base\"\nIndentWidth = 3\n");
+    for (const auto contents :
+        {
+            "ColumnLimit = 100\ninclude = \"nested/middle\"\n",
+            "include = \"nested/middle\"\nColumnLimit = 100\n",
+        })
+    {
+        tree.Write(
+            "child",
+            std::string(contents) +
+            "MaxEmptyLines = 2\n"
+                "Exclude = []\nCallLineFirstArgumentNames = [\"Log\"]\n");
+        const auto config = formatter::LoadConfigFile(tree.Path / "child");
+        EXPECT_EQ(config.FormattingStyle.ColumnLimit, 100u);
+        EXPECT_EQ(config.FormattingStyle.IndentWidth, 3u);
+        EXPECT_EQ(config.Naming.Class.Case, formatter::NameCase::PascalCase);
+        EXPECT_TRUE(config.Exclude.empty());
+        EXPECT_EQ(
+            config.FormattingStyle.CallLineFirstArgumentNames,
+            (std::vector<std::string>{"Log"}));
+    }
+    tree.Write(
+        "child",
+        "include = \"" + (tree.Path / "base").generic_string() +
+        "\"\nMaxEmptyLines = 2\n");
+    EXPECT_EQ(
+        formatter::LoadConfigFile(
+            tree.Path / "child").FormattingStyle.IndentWidth,
+        2u);
+    tree.Write("child", "include = \"base\"\n");
+    try {
+        (void)formatter::LoadConfigFile(tree.Path / "child");
+        FAIL() << "inherited cap conflict was accepted";
+    } catch (const std::runtime_error& error) {
+        EXPECT_NE(
+            std::string(error.what()).find("DefinitionBlankLines at " +
+                (tree.Path / "base").string() + ":6"),
+            std::string::npos);
+    }
+}
+
+TEST(ConfigPolicy, RepositoryIncludesFindNearestGitOrArcRoot)
+{
+    for (const auto marker : {".git", ".arc"}) {
+        for (const bool directory : {false, true}) {
+            TemporaryConfigTree tree;
+            tree.Write(".git", "gitdir: outer\n");
+            tree.Write("base", "IndentWidth = 7\n");
+            if (directory) {
+                std::filesystem::create_directories(
+                    tree.Path / "repo" / marker);
+            } else {
+                tree.Write(
+                    std::filesystem::path("repo") / marker,
+                    "repository marker\n");
+            }
+            tree.Write("repo/base", "IndentWidth = 2\n");
+            tree.Write(
+                "repo/nested/base",
+                "include = \"@/base\"\nColumnLimit = 90\n");
+            tree.Write("repo/nested/deeper/child", "include = \"../base\"\n");
+            const auto style = formatter::LoadConfigFile(
+                tree.Path / "repo/nested/deeper/child").FormattingStyle;
+            EXPECT_EQ(style.IndentWidth, 2u);
+            EXPECT_EQ(style.ColumnLimit, 90u);
+        }
+    }
+    TemporaryConfigTree tree;
+    tree.Write(".git", "gitdir: outer\n");
+    tree.Write("settings", "IndentWidth = 7\n");
+    tree.Write("configs/nested/.git", "gitdir: nested\n");
+    tree.Write("configs/nested/settings", "IndentWidth = 2\n");
+    tree.Write("configs/base", "include = \"@/settings\"\n");
+    tree.Write("child", "include = \"configs/nested/../base\"\n");
+    EXPECT_EQ(
+        formatter::LoadConfigFile(
+            tree.Path / "child").FormattingStyle.IndentWidth,
+        7u);
+}
+
+TEST(ConfigPolicy, InvalidIncludesReportIncludingFileAndLine)
+{
+    TemporaryConfigTree tree;
+    tree.Write("cycle", "include = \"nested/../child\"\n");
+    std::filesystem::create_directories(tree.Path / "nested");
+    for (const auto value :
+        {
+            "unquoted",
+            "[]",
+            "\"\"",
+            "\"missing\"",
+            "\"@/missing\"",
+            "\"cycle\"",
+            "\"child\"",
+            "\"cycle\"\ninclude = \"cycle\"",
+        })
+    {
+        tree.Write("child", std::string("# config\ninclude = ") + value + "\n");
+        try {
+            (void)formatter::LoadConfigFile(tree.Path / "child");
+            FAIL() << "invalid include was accepted: " << value;
+        } catch (const std::runtime_error& error) {
+            EXPECT_NE(
+                std::string(error.what())
+                    .find((tree.Path / "child").string() + ":"),
+                std::string::npos);
+        }
+    }
+    for (size_t index = 0; index < 65; ++index) {
+        tree.Write(
+            std::to_string(index),
+            index == 64
+            ? "IndentWidth = 2\n"
+            : "include = \"" + std::to_string(index + 1) + "\"\n");
+    }
+    EXPECT_NO_THROW((void)formatter::LoadConfigFile(tree.Path / "1"));
+    EXPECT_THROW(
+        (void)formatter::LoadConfigFile(tree.Path / "0"),
+        std::runtime_error);
+}
+
 TEST(ConfigPolicy, CompilesCategoryInheritanceWithoutSourceOwnedSentinels)
 {
     auto style =
