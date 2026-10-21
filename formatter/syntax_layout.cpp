@@ -1452,10 +1452,22 @@ private:
                         Region(Syntax_[expression]).Kind ==
                             NodeKind::LambdaExpression)
                     {
-                        // Fit the lambda's flat header, not merely '[' before
-                        // a capture-list break. Multiline bodies still fit by
-                        // their prefix; child-only trials cannot bypass this.
-                        Gaps_[begin + 1].FitFlatTail = true;
+                        // Fit through the opening brace, not the optional
+                        // compact body. Authored body newlines must not change
+                        // the call's first-argument fitting obligation.
+                        Gaps_[begin + 1].FitNextSegment = true;
+                        for (auto part = Region(Syntax_[expression]).FirstChild;
+                            part != None;
+                            part = Region(Syntax_[part]).NextSibling)
+                        {
+                            if (Region(Syntax_[part]).Kind ==
+                                NodeKind::LambdaBody)
+                            {
+                                Gaps_[begin + 1].FitThrough =
+                                    Region(Syntax_[part]).Tokens.Begin;
+                                break;
+                            }
+                        }
                         Groups_[group].Spec.ChildBreaks = false;
                     }
                     break;
@@ -2159,12 +2171,18 @@ private:
             (Safety_.Gaps()[gap].HasLineFeed ||
                 (gap == 0 && Safety_.Gaps()[gap].Horizontal)))
         {
-            Own(
-                gap,
-                owner,
-                Boundary::Preserve,
-                document::GapKind::Flat,
-                closing);
+            // Indentation must not turn an already planned boundary into a
+            // source-dependent hard line on the next formatting pass.
+            if (Gaps_[gap].Owner != owner ||
+                Gaps_[gap].Shape == Boundary::Preserve)
+            {
+                Own(
+                    gap,
+                    owner,
+                    Boundary::Preserve,
+                    document::GapKind::Flat,
+                    closing);
+            }
             Gaps_[gap].Reindent = true;
         }
     }
@@ -3028,6 +3046,10 @@ private:
         Groups_[group].Spec.FixedBase = fixedBase;
         Groups_[group].Spec.LineBase =
             fixedBase == None && node.Kind == NodeKind::LambdaExpression;
+        if (node.Kind == NodeKind::LambdaExpression) {
+            // Prefer an independent body break over splitting a fitting header.
+            Groups_[group].Spec.BreakPenalty = 1;
+        }
         // Opaque header descendants do not change a separately proven body
         // boundary. Keep their bytes exact without preserving its brace gap.
         const bool canonicalBrace = (control
@@ -4123,9 +4145,8 @@ private:
         std::sort(
             ScopeNames_.begin(),
             ScopeNames_.end(),
-            [] (
-                const ScopeName& a,
-                const ScopeName& b) { return a.Name < b.Name; });
+            [] (const ScopeName& a, const ScopeName& b) { return a.Name <
+                    b.Name; });
         std::pmr::vector<Endpoint> pairs(Syntax_
             .get_allocator()
             .resource());
