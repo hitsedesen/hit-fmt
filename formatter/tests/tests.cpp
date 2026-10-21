@@ -1473,6 +1473,27 @@ std::vector<FormatCase> FormatCases()
         "child-fitting",
     });
     cases.push_back({chains, "structural-base", "structural-base.input.cpp"});
+    for (const auto* profile :
+        {
+            "template-roots-selected",
+            "template-roots-forced",
+            "template-roots-preserve",
+        })
+    {
+        cases.push_back({chains, profile, "template-roots.input.cpp"});
+        auto style = formatter::LoadConfigFile(
+            chains / "conventional.hit-fmt").FormattingStyle;
+        style.AlwaysBreakChainRootNames.clear();
+        style.ChainedCallRootNames = {"factory", "ns::Builder::Make"};
+        style.ChainsBreak = BreakRequirement::Always;
+        if (std::string_view(profile) == "template-roots-forced") {
+            style.ChainsBreak = BreakRequirement::IfNeeded;
+            style.AlwaysBreakChainRootNames = style.ChainedCallRootNames;
+        } else if (std::string_view(profile) == "template-roots-preserve") {
+            style.ChainsLayout = CategoryLayout::Preserve;
+        }
+        cases.back().Style = std::move(style);
+    }
     AddCases(
         cases,
         chains,

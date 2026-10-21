@@ -3844,6 +3844,55 @@ private:
         }
     }
 
+    void BuildChainRootName(Index root)
+    {
+        RootName_.clear();
+        const auto range = Region(Syntax_[root]).Tokens;
+        auto token = range.Begin;
+        auto append = [&] (Index end) {
+            for (; token < end; ++token) {
+                const auto kind = Tree_.Kind(token);
+                if (kind == TokenKind::Comment ||
+                    kind == TokenKind::Keyword_template)
+                {
+                    continue;
+                }
+                if (kind != TokenKind::Identifier &&
+                    kind != TokenKind::Operator_ScopeResolution)
+                {
+                    RootName_.clear();
+                    return false;
+                }
+                RootName_.append(Tree_.TokenText(token));
+            }
+            return true;
+        };
+        // Skip parsed argument subtrees, not angle-bracket spellings: template
+        // arguments can themselves contain comparisons, shifts and lambdas.
+        for (auto current = root;;) {
+            const auto& node = Region(Syntax_[current]);
+            if (node.Kind == NodeKind::TemplateArgumentList) {
+                if (!append(node.Tokens.Begin)) {
+                    return;
+                }
+                token = node.Tokens.End;
+            } else if (node.FirstChild != None) {
+                current = node.FirstChild;
+                continue;
+            }
+            while (current != root &&
+                Region(Syntax_[current]).NextSibling == None)
+            {
+                current = Region(Syntax_[current]).Parent;
+            }
+            if (current == root) {
+                break;
+            }
+            current = Region(Syntax_[current]).NextSibling;
+        }
+        append(range.End);
+    }
+
     void PlanChain(Index id)
     {
         const auto& entry = Syntax_[id];
@@ -3858,10 +3907,10 @@ private:
             return;
         }
         const auto& rootNode = Region(Syntax_[entry.Root]);
-        const auto root = rootNode.Tokens;
         const bool namedRoot =
             rootNode.Kind == NodeKind::IdentifierExpression ||
-                rootNode.Kind == NodeKind::MemberExpression;
+                rootNode.Kind == NodeKind::MemberExpression ||
+                rootNode.Kind == NodeKind::TemplateIdExpression;
         const bool selectedRoots =
             Annotations_.Chains() == ChainParticipation::AnnotatedRoots;
         if (selectedRoots && !namedRoot) {
@@ -3875,22 +3924,7 @@ private:
             // One reusable scratch spelling per maximal spine, never per-token
             // strings. Qualified identity ignores source whitespace and uses
             // the annotation snapshot's sorted lookup rather than a name scan.
-            RootName_.clear();
-            for (Index t = root.Begin; t < root.End; ++t) {
-                const auto kind = Tree_.Kind(t);
-                if (kind == TokenKind::Comment) {
-                    continue;
-                }
-                if (kind != TokenKind::Identifier &&
-                    kind != TokenKind::Operator_ScopeResolution)
-                {
-                    // Validated root names cannot match templates or other
-                    // expressions. Do not copy their potentially large text.
-                    RootName_.clear();
-                    break;
-                }
-                RootName_.append(Tree_.TokenText(t));
-            }
+            BuildChainRootName(entry.Root);
             if (selectedRoots && !Annotations_.IsAnnotatedChainRoot(RootName_))
             {
                 PlanPreservedChain(id);

@@ -146,6 +146,7 @@ CallLineFirstStringOverflow = BreakBefore
     {"Select chain roots and preferred breaks:",
         R"CONFIG(ChainedCallRootNames = ["factory", "pipeline::Builder"]
 AlwaysBreakChainRootNames = ["WRITE_EVENT", "logging::Event"]
+# Root names omit template arguments: factory<T> matches factory.
 )CONFIG"},
     {"Indent paired calls and keep related chain calls together:",
         R"CONFIG(IndentedCallScopePairs = ["OpenItems:CloseItems"]
@@ -403,6 +404,9 @@ constexpr HelpSection HelpSections[] = {
         "  listed roots. AlwaysBreakChainRootNames requests breaks even with\n"
         "  one following call. Both obey ChainsLayout, root selection and\n"
         "  protection. All calls use the global ColumnLimit.\n"
+        "  Only unambiguously parsed template arguments are ignored.\n"
+        "  ns::Builder<T>::Make<U> matches ns::Builder::Make, not Make.\n"
+        "  Omit template arguments and template from configured names.\n"
         "- IndentedCallScopePairs preserves an existing extra "
         "indentation level\n"
         "  between matched calls in the same context and label section.\n"
