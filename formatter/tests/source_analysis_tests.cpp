@@ -2011,7 +2011,15 @@ TEST(SourceAnalysis, IterativeClassificationAndScratchLifetime)
         (sizeof(parser::SourceRange) +
             4 * sizeof(formatter::PartialGapPermission) +
             2 * sizeof(formatter::ProtectedSourceRange)));
-    EXPECT_LE(deferredFile.Calls - beforeCalls, 16u);
+    // Scope and protection each reserve once; only the sparse permission
+    // vector grows incrementally. Use this library's vector growth policy.
+    CountingResource permissionMemory;
+    std::pmr::vector<formatter::PartialGapPermission> permissions(
+        &permissionMemory);
+    for (size_t i = 0; i < deferred.PartialGapPermissions().size(); ++i) {
+        permissions.emplace_back();
+    }
+    EXPECT_LE(deferredFile.Calls - beforeCalls, permissionMemory.Calls + 2);
     for (size_t i = 1; i < deferred.PartialGapPermissions().size(); ++i) {
         EXPECT_LT(
             deferred.PartialGapPermissions()[i - 1].Source.Begin,

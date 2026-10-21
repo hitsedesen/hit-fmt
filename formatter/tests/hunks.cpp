@@ -21,13 +21,17 @@ TEST(HunkParser, GroupsFilesAndResolvesPathsAgainstGivenDirectory)
     EXPECT_EQ(parsed.Paths[0], base / "src/a.cpp");
     EXPECT_EQ(parsed.Paths[1], base / "src/file with spaces.cpp");
     EXPECT_EQ(parsed.Paths[2], parsed.Paths[0]);
-    const auto& hunks = parsed.Hunks.at((base / "src/a.cpp").string());
+    const auto& hunks = parsed.Hunks.at((base / "src/a.cpp")
+        .lexically_normal()
+        .string());
     ASSERT_EQ(hunks.size(), 3);
     EXPECT_EQ(hunks[0], (formatter::Hunk{2, 4}));
     EXPECT_EQ(hunks[1], (formatter::Hunk{8, 8}));
     EXPECT_EQ(hunks[2], (formatter::Hunk{9, 10}));
     EXPECT_EQ(
-        parsed.Hunks.at((base / "src/file with spaces.cpp").string())[0],
+        parsed.Hunks.at((base / "src/file with spaces.cpp")
+            .lexically_normal()
+            .string())[0],
         (formatter::Hunk{1, 1}));
 }
 

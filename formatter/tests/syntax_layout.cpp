@@ -16,11 +16,44 @@
 #include <vector>
 namespace {
 
+// Count requests before arena slab rounding and unused slab space.
+class RequestResource
+    : public std::pmr::memory_resource
+{
+public:
+    explicit RequestResource(std::pmr::memory_resource& upstream)
+        : Upstream_(upstream)
+    { }
+
+    size_t BytesRequested = 0;
+private:
+    void* do_allocate(size_t bytes, size_t alignment) override
+    {
+        auto* pointer = Upstream_.allocate(bytes, alignment);
+        BytesRequested += bytes;
+        return pointer;
+    }
+
+    void do_deallocate(void* pointer, size_t bytes, size_t alignment) override
+    {
+        Upstream_.deallocate(pointer, bytes, alignment);
+    }
+
+    bool do_is_equal(
+        const std::pmr::memory_resource& other) const noexcept override
+    {
+        return this == &other;
+    }
+
+    std::pmr::memory_resource& Upstream_;
+};
+
 struct Output
 {
     std::string Text;
     std::vector<document::Mapping> Map;
     std::vector<uint8_t> Broken;
+    size_t ScratchBytesRequested = 0;
 };
 
 Output Lower(
@@ -36,7 +69,8 @@ Output Lower(
     input.append(util::SourcePaddingSize, '\0');
     auto tree = parser::Parse({input.data(), size}, [] (parser::ParseError) {});
     std::pmr::monotonic_buffer_resource file(fileUpstream);
-    std::pmr::monotonic_buffer_resource scratch(scratchUpstream);
+    std::pmr::monotonic_buffer_resource scratchArena(scratchUpstream);
+    RequestResource scratch(scratchArena);
     const auto policies = formatter::CompilePolicies(style);
     const auto annotations = formatter::CompileLibraryAnnotations(style);
     auto safety =
@@ -58,7 +92,7 @@ Output Lower(
     if (!status) {
         throw std::runtime_error("failed syntax lowering");
     }
-    scratch.release(); // The document must not retain planner storage.
+    scratchArena.release(); // The document must not retain planner storage.
     const auto rendered = document
         .Render(formatter::SyntaxRenderPolicy(policies, options), &file);
     EXPECT_TRUE(rendered.State) << "core " << int(rendered.State.Code);
@@ -110,6 +144,7 @@ Output Lower(
         std::string(rendered.Text),
         {rendered.Map.begin(), rendered.Map.end()},
         {rendered.Broken.begin(), rendered.Broken.end()},
+        scratch.BytesRequested,
     };
 }
 
@@ -3109,7 +3144,7 @@ TEST(SyntaxLayout, FileAndScratchArenasReleaseAndScaleWithWideInput)
 TEST(SyntaxLayout, SparsePartialPermissionsReleaseScratchAndScale)
 {
     size_t smallFile = 0;
-    size_t smallScratch = 0;
+    size_t smallScratchRequests = 0;
     for (const int count : {1000, 2000}) {
         std::string input = "void f() {\n";
         std::string expected = input;
@@ -3146,6 +3181,9 @@ TEST(SyntaxLayout, SparsePartialPermissionsReleaseScratchAndScale)
             "partial_scratch_peak_" + std::to_string(count),
             int(scratch.Peak));
         RecordProperty(
+            "partial_scratch_requested_" + std::to_string(count),
+            int(output.ScratchBytesRequested));
+        RecordProperty(
             "partial_file_allocations_" + std::to_string(count),
             int(file.Allocations));
         RecordProperty(
@@ -3153,10 +3191,13 @@ TEST(SyntaxLayout, SparsePartialPermissionsReleaseScratchAndScale)
             int(scratch.Allocations));
         if (count == 1000) {
             smallFile = file.Peak;
-            smallScratch = scratch.Peak;
+            smallScratchRequests = output.ScratchBytesRequested;
         } else {
             EXPECT_LT(file.Peak, smallFile * 3);
-            EXPECT_LT(scratch.Peak, smallScratch * 3);
+            // Arena slab growth can jump by more than the request growth.
+            // Count all requests, including deallocated vector buffers,
+            // while checking backing storage and release separately above.
+            EXPECT_LT(output.ScratchBytesRequested, smallScratchRequests * 3);
         }
     }
 }

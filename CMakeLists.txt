@@ -15,6 +15,8 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 option(HIT_FMT_TEST "Build tests" OFF)
 option(HIT_FMT_BENCHMARK "Build benchmarks" OFF)
 
+find_package(Threads REQUIRED)
+
 if(HIT_FMT_TEST)
     find_package(GTest CONFIG REQUIRED)
 endif()
