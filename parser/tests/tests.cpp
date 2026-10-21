@@ -2698,9 +2698,8 @@ TEST(Parser, RecordHeadTemplateArgumentsOwnTheirSeparators)
         std::vector<parser::ParseError> errors;
         const auto parsed = parser::Parse(
             padded.View(),
-            [&] (
-                parser::ParseError error) { errors
-                        .push_back(std::move(error)); });
+            [&] (parser::ParseError error) { errors
+                    .push_back(std::move(error)); });
         EXPECT_TRUE(errors.empty());
         const auto* record = parsed.Root().LastChild->FirstChild->NextSibling;
         ASSERT_EQ(record->Kind, parser::NodeKind::RecordDeclaration);
@@ -3153,9 +3152,8 @@ TEST(Parser, RequiresClauseOwnsNestedExpressionBeforeDeclaration)
             std::vector<parser::ParseError> errors;
             const auto tree = parser::Parse(
                 input.View(),
-                [&] (
-                    parser::ParseError error) { errors
-                            .push_back(std::move(error)); });
+                [&] (parser::ParseError error) { errors
+                        .push_back(std::move(error)); });
             EXPECT_TRUE(errors.empty());
             const auto* owner = tree.Root().FirstChild;
             ASSERT_NE(owner, nullptr);
@@ -3745,9 +3743,8 @@ TEST(Parser, RequiresClausePreservesOperatorAndUnknownConstraints)
         std::vector<parser::ParseError> errors;
         const auto tree = parser::Parse(
             input.View(),
-            [&] (
-                parser::ParseError error) { errors
-                        .push_back(std::move(error)); });
+            [&] (parser::ParseError error) { errors
+                    .push_back(std::move(error)); });
         if (constraint.Invalid) {
             ASSERT_EQ(errors.size(), 1u);
             EXPECT_EQ(errors.front().Message, "Unexpected token");
@@ -3847,9 +3844,8 @@ TEST(Parser, RequiresClauseKeepsBoundaryCommentsAndTerminalRecovery)
             std::vector<parser::ParseError> errors;
             const auto tree = parser::Parse(
                 input.View(),
-                [&] (
-                    parser::ParseError error) { errors
-                            .push_back(std::move(error)); });
+                [&] (parser::ParseError error) { errors
+                        .push_back(std::move(error)); });
             const auto invalidOffset = source.find('@');
             if (invalidOffset != std::string::npos) {
                 ASSERT_EQ(errors.size(), 1u);
@@ -3964,9 +3960,8 @@ TEST(Parser, RequiresClauseKeepsUnparsedSuffixAndDiagnosesMissingBody)
         std::vector<parser::ParseError> errors;
         const auto tree = parser::Parse(
             input.View(),
-            [&] (
-                parser::ParseError error) { errors
-                        .push_back(std::move(error)); });
+            [&] (parser::ParseError error) { errors
+                    .push_back(std::move(error)); });
         if (missingBody) {
             ASSERT_FALSE(errors.empty());
             EXPECT_EQ(
@@ -4075,9 +4070,8 @@ TEST(Parser, ParameterDefaultsKeepDelimitedComparisonBoundaries)
         std::vector<parser::ParseError> errors;
         const auto tree = parser::Parse(
             input.View(),
-            [&] (
-                parser::ParseError error) { errors
-                        .push_back(std::move(error)); });
+            [&] (parser::ParseError error) { errors
+                    .push_back(std::move(error)); });
         EXPECT_TRUE(errors.empty());
         const Node* parameters = nullptr;
         std::vector<const Node *> pending{&tree.Root()};

@@ -79,9 +79,8 @@ std::pmr::vector<ProtectedSourceRange> ProjectProtection(
             original.begin(),
             original.end(),
             piece.Original.Begin,
-            [] (
-                const auto& range,
-                Offset begin) { return range.Source.End <= begin; });
+            [] (const auto& range, Offset begin) { return range.Source.End <=
+                    begin; });
         for (;
             it != original.end() && it->Source.Begin < piece.Original.End;
             ++it)
@@ -253,9 +252,8 @@ std::pmr::vector<document::Identity> OriginalIdentities(
     std::sort(
         surviving.begin(),
         surviving.end(),
-        [] (
-            const auto& a,
-            const auto& b) { return a.Source.Begin < b.Source.Begin; });
+        [] (const auto& a, const auto& b) { return a.Source.Begin <
+                b.Source.Begin; });
     size_t next = 0;
     for (parser::TokenIndex i = 0;
         i < tree.TokenCount() && next < surviving.size();
@@ -283,9 +281,8 @@ void MergeProtection(std::vector<ProtectedSourceRange>& ranges)
     std::sort(
         ranges.begin(),
         ranges.end(),
-        [] (
-            const auto& a,
-            const auto& b) { return a.Source.Begin < b.Source.Begin; });
+        [] (const auto& a, const auto& b) { return a.Source.Begin <
+                b.Source.Begin; });
     size_t count = 0;
     for (const auto& range : ranges) {
         if (count && range.Source.Begin <= ranges[count - 1].Source.End) {
@@ -486,9 +483,8 @@ void ApplyComments(
     std::sort(
         namespaces.begin(),
         namespaces.end(),
-        [] (
-            const auto& a,
-            const auto& b) { return a.Owner.Begin < b.Owner.Begin; });
+        [] (const auto& a, const auto& b) { return a.Owner.Begin <
+                b.Owner.Begin; });
     struct Copy
     {
         Range Before;
@@ -551,9 +547,8 @@ void ApplyComments(
             copies.begin(),
             copies.end(),
             range.Begin,
-            [] (
-                const auto& copy,
-                Offset begin) { return copy.Before.End <= begin; });
+            [] (const auto& copy, Offset begin) { return copy.Before.End <=
+                    begin; });
         if (it != copies.end() && it->Before.Begin <= range.Begin &&
             range.End <= it->Before.End)
         {
@@ -595,9 +590,8 @@ void ApplyComments(
             copies.begin(),
             copies.end(),
             map.Output.Begin,
-            [] (
-                const auto& copy,
-                Offset begin) { return copy.Before.End <= begin; });
+            [] (const auto& copy, Offset begin) { return copy.Before.End <=
+                    begin; });
         for (; it != copies.end() && it->Before.Begin < map.Output.End; ++it) {
             const auto begin = std::max(map.Output.Begin, it->Before.Begin);
             const auto end = std::min(map.Output.End, it->Before.End);
@@ -626,9 +620,8 @@ void ApplyComments(
     std::stable_sort(
         maps.begin(),
         maps.end(),
-        [] (
-            const auto& a,
-            const auto& b) { return a.Output.Begin < b.Output.Begin; });
+        [] (const auto& a, const auto& b) { return a.Output.Begin <
+                b.Output.Begin; });
     result.Map = std::move(maps);
 }
 
