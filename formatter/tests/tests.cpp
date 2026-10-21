@@ -3926,6 +3926,43 @@ std::vector<FormatCase> FormatCases()
             "attached-spacing.output.cpp");
     }
     const auto lambdaAnchors = data / "consolidated-formatter/lambda-anchor";
+    {
+        const auto directory = data / "lambda-idempotence";
+        for (const auto* profileName : {"google", "llvm"}) {
+            const auto base = formatter::LoadConfigFile(data /
+                ("../../../hit-fmt/examples/" + std::string(profileName) +
+                    ".hit-fmt")).FormattingStyle;
+            for (const auto* variant :
+                {"flat", "multiline", "narrow", "preserve"})
+            {
+                const auto name = std::string(profileName) + "-" + variant;
+                cases.push_back({
+                    directory,
+                    name,
+                    std::string(profileName) +
+                        (std::string_view(variant) == "multiline"
+                            ? "-multiline.input.cpp"
+                            : "-flat.input.cpp"),
+                    {},
+                    {},
+                    true,
+                    std::string_view(variant) == "multiline"
+                        ? std::string(profileName) + "-flat.output.cpp"
+                        : "",
+                    true,
+                });
+                auto style = base;
+                if (std::string_view(variant) == "narrow") {
+                    style.ColumnLimit = 60;
+                } else if (std::string_view(variant) == "preserve") {
+                    style.LambdaBodiesLayout = CategoryLayout::Preserve;
+                    style.CapturesLayout = CategoryLayout::Preserve;
+                    style.ParametersLayout = CategoryLayout::Preserve;
+                }
+                cases.back().Style = style;
+            }
+        }
+    }
     cases.push_back(
         {lambdaAnchors, "authored-anchor", "authored-anchor.input.cpp"});
     for (const auto* name :

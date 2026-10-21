@@ -4,9 +4,9 @@ concept Requirements = requires(T value) {
     value[0] < value[1];
     typename T;
     typename ::Names::Box<T>::template Rebind<Box<Box<T>>>::type;
-    typename Holder<decltype([]<class U>(
-        U item
-    ) { return item; }(value))>::type;
+    typename Holder<decltype([]<class U>(U item) {
+        return item;
+    }(value))>::type;
     { value.touch() };
     { value.touch() } noexcept;
     { value.touch() } -> Convertible;

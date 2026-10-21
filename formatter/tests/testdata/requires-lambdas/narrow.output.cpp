@@ -19,16 +19,14 @@ concept Transformable = requires(T value) {
         ExtraArgument extra
     ) { return combine(argument, extra); }(value, value) }
         noexcept -> ResultFor<T>;
-    requires ([]<class Argument>(
-        Argument argument
-    ) {
+    requires ([]<class Argument>(Argument argument) {
         return sizeof(argument) > 0 &&
             sizeof(argument) < 64;
     }(value));
     requires requires {
-        []<class Argument>(
-            Argument argument
-        ) { return argument.touch(); }(value);
+        []<class Argument>(Argument argument) {
+            return argument.touch();
+        }(value);
     };
     typename Wrapper<decltype([]<class Argument>(
         Argument argument
@@ -55,9 +53,7 @@ void check(T value) {
 
 template<class T>
 void trailing(T value) requires requires(T item) {
-    { []<class Argument>(
-        Argument argument
-    ) {
+    { []<class Argument>(Argument argument) {
         return combine(
             argument,
             make_extra_argument(argument));

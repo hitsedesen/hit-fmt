@@ -319,9 +319,8 @@ bool SourceAnalysis::CanRewriteDirective(parser::SourceRange source) const
         DirectiveFences_.begin(),
         DirectiveFences_.end(),
         source.Begin,
-        [] (
-            const auto& range,
-            Offset begin) { return range.Source.End <= begin; });
+        [] (const auto& range, Offset begin) { return range.Source.End <=
+                begin; });
     return first == DirectiveFences_.end() || first->Source.Begin >= source.End;
 }
 

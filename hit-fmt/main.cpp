@@ -621,9 +621,8 @@ std::vector<Chunk> FormattingChunks(
             lines.begin(),
             lines.end(),
             offset,
-            [] (
-                const Line& line,
-                size_t value) { return line.Offset < value; }) - lines.begin());
+            [] (const Line& line, size_t value) { return line.Offset <
+                    value; }) - lines.begin());
     };
     auto nextBoundary = [&] {
         if (includeIndex < includeChanges.size()) {

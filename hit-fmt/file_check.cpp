@@ -256,9 +256,9 @@ void MapSemanticPositions(
     std::sort(
         diagnostics.begin(),
         diagnostics.end(),
-        [] (
-            const auto& a,
-            const auto& b) { return Before(a.Original, b.Original); });
+        [] (const auto& a, const auto& b) { return Before(
+                a.Original,
+                b.Original); });
     std::pmr::monotonic_buffer_resource scratch;
     struct Point
     {
@@ -376,9 +376,8 @@ void MapWidthPositions(const parser::SyntaxTree& tree, CheckedFile& checked)
             tokens.begin(),
             tokens.end(),
             offset,
-            [&] (
-                size_t point,
-                auto id) { return point < mapped[id].Output.Begin; });
+            [&] (size_t point, auto id) { return point <
+                    mapped[id].Output.Begin; });
         if (token != tokens.begin()) {
             --token;
         }
