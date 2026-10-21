@@ -13,12 +13,15 @@ add_executable(tests
     ../formatter/tests/syntax_spacing_tests.cpp
     ../hit-fmt/tests/file_batch.cpp
     ../hit-fmt/tests/file_dispatch.cpp
-    ../hit-fmt/tests/file_check.cpp)
+    ../hit-fmt/tests/file_check.cpp
+    ../hit-fmt/tests/config_help.cpp
+    ../hit-fmt/config_help.cpp)
 target_link_libraries(tests PRIVATE
     GTest::gtest_main
     lib-file-check
     Threads::Threads)
 target_compile_definitions(tests PRIVATE
+    HIT_FMT_TESTDATA_DIR="${CMAKE_SOURCE_DIR}/hit-fmt/tests/testdata"
     TOKENIZER_TESTDATA_DIR="${CMAKE_SOURCE_DIR}/tokenizer/tests/testdata"
     PARSER_TESTDATA_DIR="${CMAKE_SOURCE_DIR}/parser/tests/testdata"
     FORMATTER_TESTDATA_DIR="${CMAKE_SOURCE_DIR}/formatter/tests/testdata/style"

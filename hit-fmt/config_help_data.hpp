@@ -20,105 +20,81 @@ struct HelpSection
 
 // hit-fmt off
 constexpr HelpExample LayoutExamples[] = {
-    {"Opt in to canonical layout:",
-        R"(Layout = Canonical
+    {"Enable canonical layout:", R"(Layout = Canonical
 IndentWidth = 2
 ColumnLimit = 80
 WidthDiagnostics = Report
-# Override any category with Inherit, Preserve or Canonical.
 BaseListsLayout = Preserve
 )"},
 };
 constexpr HelpExample ListExamples[] = {
-    {"Shared list defaults and a category override:",
-        R"(ListBreak = IfNeeded
+    {"Set shared list defaults:", R"(ListBreak = IfNeeded
 ListPacking = Fill
 ListFirstItem = InlineIfFits
 ListCloser = SameLine
 ListAlignment = Delimiter
 ContinuationOffset = 4
 AlignmentFallbackOffset = 4
-# Under IfNeeded, broken calls are vertical and fitting calls stay flat.
-# Block comments after a separator move with the following argument:
-# consume(alpha,
-#     /* next argument */ beta);
+)"},
+    {"Put call arguments on separate lines:", R"(CallsBreak = Always
 CallsPacking = VerticalWhenBroken
-# The Always override below requires an eligible owned break, even if fitting:
-CallsBreak = Always
 CallsFirstItem = NextLine
 CallsCloser = OwnLine
 CallsAlignment = Block
-# Template headers and argument lists have independent overrides.
-TemplateParametersBreak = IfNeeded
+# Let a sole argument start inline if it fits.
+CallsSoleArgumentFirstItem = InlineIfFits
+)"},
+    {"Wrap template lists independently:", R"(TemplateParametersBreak = IfNeeded
 TemplateParametersPacking = VerticalWhenBroken
 TemplateParametersFirstItem = NextLine
 TemplateParametersCloser = SameLine
 TemplateParametersAlignment = Block
-# Type and expression template arguments have their own list overrides.
 TemplateArgumentsBreak = IfNeeded
 TemplateArgumentsPacking = VerticalWhenBroken
 TemplateArgumentsFirstItem = NextLine
 TemplateArgumentsCloser = SameLine
 TemplateArgumentsAlignment = Block
 )"},
-    {"Keep a sole argument's opening inline when it fits:",
-        R"(CallsFirstItem = NextLine
-CallsSoleArgumentFirstItem = InlineIfFits
-# Use Inherit to follow CallsFirstItem (or its shared default).
-# Multiple arguments retain CallsFirstItem.
-# Always still requires an owned break.
-)"},
-    {"Separate top-level conditions when an if header wraps:",
-        R"(Layout = Canonical
+    {"Separate conditions in a wrapped if header:", R"(Layout = Canonical
 IfConditionsPacking = VerticalWhenBroken
 ControlHeadersFirstItem = InlineIfFits
-# Use NextLine to move the first condition below the opening parenthesis.
 BinaryOperatorSide = Leading
-# A broken if (ready && (left || right) && enabled) becomes:
-# if (ready
-#     && (left || right)
-#     && enabled)
-# Short, fitting headers stay on one line.
 )"},
 };
 constexpr HelpExample ExpressionExamples[] = {
-    {"Syntax-based expressions and all safely "
-        "parsed member chains:",
-        R"(ExpressionsLayout = Canonical
+    {"Wrap expressions and ternaries:", R"(ExpressionsLayout = Canonical
 ExpressionsBreak = IfNeeded
 ExpressionsPacking = Fill
+ExpressionsAlignment = Block
 BinaryOperatorSide = Trailing
 ShiftOperatorSide = Leading
 AssignmentOperatorSide = Trailing
+AssignmentRhsPlacement = InlineIfFits
 TernaryOperatorSide = Leading
 TernaryLayout = ThreePart
 TernaryOperatorIndentation = Align
-ChainsLayout = Canonical
+)"},
+    {"Wrap call chains:", R"(ChainsLayout = Canonical
 ChainsBreak = IfNeeded
 ChainsPacking = Fill
 ChainsAlignment = Block
-# Even with ChainsBreak = Always, control headers prefer non-chain breaks.
-# Fitting header chains stay inline; other chains retain Always.
 )"},
 };
 constexpr HelpExample ShapeExamples[] = {
-    {"Independent brace, body and comma decisions:",
-        R"(FunctionBracePlacement = NextLine
+    {"Choose braces and body shapes:", R"(FunctionBracePlacement = NextLine
+ConstructorBracePlacement = Inherit
+DestructorBracePlacement = Inherit
 ControlBracePlacement = NextLineIfHeaderBroken
-# CaseBlockBracePlacement applies when a case contains only one block.
 CaseBlockBracePlacement = Attached
-# Mixed cases keep all statements and standalone blocks at one body level:
-# case 1:
-#     { first(); }
-#     { second(); }
-#     break;
 BodiesLayout = Canonical
 BodyShape = Expanded
 EmptyBodyShape = CompactIfFits
 LambdaBodiesLayout = Inherit
 LambdaBodyShape = CompactIfFits
 LambdaEmptyBodyShape = Inherit
-IndentNamespaces = NoIndent
+)"},
+    {"Set namespace, enum and initializer layout:",
+        R"(IndentNamespaces = NoIndent
 NamespaceIndentWidth = 0
 EnumBracePlacement = NextLineIfHeaderBroken
 EnumeratorsLayout = Canonical
@@ -130,8 +106,7 @@ InitializersTrailingComma = WhenMultiline
 )"},
 };
 constexpr HelpExample VerticalExamples[] = {
-    {"Exact syntax-owned empty-line counts and an "
-        "independent cap:",
+    {"Set blank lines at structural boundaries:",
         R"(NamespaceBlankLinesAfterOpen = 1
 NamespaceBlankLinesBeforeClose = 1
 AccessSectionBlankLinesBefore = 1
@@ -141,94 +116,103 @@ MemberDeclarationBlankLines = Preserve
 DefinitionBlankLines = 1
 MemberDefinitionBlankLines = 0
 MaxEmptyLines = 1
-# Default: Preserve for each count/cap, Inherit for member definitions.
-# Zero removes surplus empty lines but does not itself change boundary topology.
 )"},
 };
 constexpr HelpExample GapExamples[] = {
-    {"The same typed values for all syntax "
-        "spacing:",
-        R"(FunctionSpaceBeforeParameters = NoSpace
+    {"Set common spacing:", R"(FunctionSpaceBeforeParameters = NoSpace
 ControlBlockKeywordSpacing = Space
-ArgumentCommentSpacing = Space
-# consume(/* range */ {first, last} /* note */, /* value */ value);
-# Spaces between arguments and their leading/trailing block comments,
-# and between consecutive block comments in those attached runs.
-# Space: consume(/* first */ /* second */ value /* note */);
-# NoSpace: consume(/* first *//* second */value/* note */);
-# Preserve is the default; choose Space explicitly for normalization.
-# Separator-facing gaps stay independent.
 CommaSpaceBefore = NoSpace
 CommaSpaceAfter = Space
 EmptyBlockInteriorSpacing = GeneratedNoSpace
 ScopeResolutionSpacing = NoSpace
 TemplateTypeArgumentInteriorSpacing = NoSpace
-# Compact nested templates: Box<Box<int>>, Box<T>::Member.
+)"},
+    {"Space comments, attributes and function qualifiers:",
+        R"(ArgumentCommentSpacing = Space
+# Example: consume(/* first */ /* second */ value /* note */);
 AttributeSpaceBeforeSpecifier = Space
 AttributeSpaceAfterSpecifier = Space
-# Boundaries of [[...]], __attribute__((...)) and __declspec(...).
-# AttributeInteriorSpacing only controls C++ [[...]] bracket interiors.
 FunctionRefQualifierSpacing = Space
 FunctionCvRefQualifierSpacing = NoSpace
-# CV/ref spacing defaults to Inherit; Preserve uses usual preservation rules.
-# Generated* applies to properties rebuilt by their canonical owner.
-# Existing adjacencies qualify; unrelated nested edits do not rebuild an owner.
 )"},
 };
 constexpr HelpExample AnnotationExamples[] = {
-    {"Explicit library layout annotations:",
+    {"Keep selected first arguments beside the opener:",
         R"CONFIG(CallLineFirstArgumentNames = ["dispatch"]
 CallLineFirstArgumentOverflow = Wrap
-# Pins any first argument: dispatch(value + offset, alpha, beta).
-# Wrap (default): attach if it fits; nested syntax may still wrap.
-# BreakBefore: move below the opener if the complete argument will not fit.
-# KeepInline: attach its opening piece even when it exceeds ColumnLimit.
-# The general rule wins for names present in both pin lists.
 CallLineFirstStringNames = ["WRITE_MESSAGE"]
 CallLineFirstStringOverflow = BreakBefore
-# Wrap (default): normal wrapping, including between concatenated literals.
-# BreakBefore: move the complete string below the opener if it will not fit.
-# KeepInline: keep the first literal attached even when it exceeds the limit.
-# Literal contents are never split; later concatenated pieces may wrap.
-ChainedCallRootNames = ["factory", "pipeline::Builder"]
+)CONFIG"},
+    {"Select chain roots and preferred breaks:",
+        R"CONFIG(ChainedCallRootNames = ["factory", "pipeline::Builder"]
 AlwaysBreakChainRootNames = ["WRITE_EVENT", "logging::Event"]
-# Complete pairs must stay within one case or ordinary label section.
-IndentedCallScopePairs = ["OpenItems:CloseItems"]
+)CONFIG"},
+    {"Indent paired calls and keep related chain calls together:",
+        R"CONFIG(IndentedCallScopePairs = ["OpenItems:CloseItems"]
 GenerateCallScopeIndentation = true
 IndentedChainScopePairs = ["BeginMap:EndMap", "BeginList:EndList"]
-StickyChainCallPairs = ["Item:Value", "Item:BeginMap", "registrar:Parameter"]
-# Every call uses global ColumnLimit; there are no named-width overrides.
-# Lowering selects generic policies; the renderer never matches identifiers.
-# Inline unmatched endpoints do not prevent lambda body expansion.
+StickyChainCallPairs = ["Item:Value", "registrar:Parameter"]
 )CONFIG"},
 };
+constexpr HelpExample IncludeExamples[] = {
+    {"Sort headers in configured directory groups:", R"(IncludeOrder = Sort
+IncludeMatchingHeader = First
+IncludeGrouping = Directory
+IncludeGroupOrder = Configured
+IncludeDirectoryOrder = NearestFirst
+IncludeInGroupOrder = Alphabetical
+IncludePathBase = SourceDirectory
+IncludeStandardHeaders = Last
+IncludeGroups = [
+    { Prefix = "library/", Depth = 1 },
+    { Prefix = "util/", Depth = 1 }
+]
+# library/core/a.hpp and library/core/detail/b.hpp share a group.
+)"},
+    {"Put project headers before third-party groups:", R"(IncludeOrder = Sort
+IncludeGrouping = Directory
+IncludeGroupOrder = Directory
+IncludeDirectoryOrder = NearestFirst
+IncludeInGroupOrder = NearestFirst
+IncludePathBase = ProjectRoot
+IncludeGroups = [
+    { Prefix = "library/", Priority = 1 },
+    { Prefix = "util/", Priority = 2 },
+    { Prefix = "", Depth = 3, Priority = 0 }
+]
+# Pass project-relative input filenames with ProjectRoot.
+)"},
+};
+constexpr HelpExample StagedExamples[] = {
+    {"Control template headers, comments and rulers:",
+        R"(DeclarationHeadersLayout = Canonical
+BreakAfterTemplateHeader = true
+StandaloneCommentBlankLinesBefore = Preserve
+StandaloneCommentBlankLinesAfter = Preserve
+RulerLength = 0
+RulerBlankLinesBefore = Preserve
+RulerBlankLinesAfter = Preserve
+)"},
+};
 constexpr HelpExample SafetyExamples[] = {
-    {"Semantic hints, explicit transforms and "
-        "independent diagnostics:",
+    {"Describe macro syntax and protection:",
         R"CONFIG(HonorClangFormatDirectives = true
 CallLikeMacroNames = ["REGISTER_NODE"]
-# Exact names; a balanced invocation plus brace body uses function-body grammar.
-# Headers stay opaque; existing source protection still applies.
 FunctionBodyMacroNames = ["DEFINE_CASE", "DEFINE_METHOD"]
-# Function-like invocations delimit a class; nested ends match their pair.
-# Endpoints must be distinct and unique. Arguments are not expanded type names.
 ClassMacroNames = ["BEGIN_SETTER:END_SETTER"]
 WhitespaceSensitiveMacros = ["STRINGIZE_TEXT"]
-AddMissingControlBraces = false
+)CONFIG"},
+    {"Choose transforms explicitly (disabled here):",
+        R"(AddMissingControlBraces = false
 RemoveNullStatements = false
 RemoveNullDeclarations = false
-# Remove only beside known syntax or a proven sequence boundary.
-# Unknown syntax and macro-shaped bodies retain their semicolons.
-# For example, struct CLASS_NAME(Example) {}; keeps its trailing semicolon.
-# With true, namespace N {}; // note becomes namespace N {} // note.
-# Same-line namespace suffixes are removed even beside comments.
-# Required semicolons and standalone commented placeholders stay intact.
 IncludeOrder = Preserve
 NamespaceComments = Preserve
-# When enabled, nested directives move together with their # (or %:) marker.
-# With IndentWidth = 4, a nested #define starts with "    #define".
 IndentPreprocessingDirectives = false
-FunctionDeclarationParameterNames = Required
+AlignMacroBackslashes = false
+)"},
+    {"Check naming and exclude generated paths:",
+        R"CONFIG(FunctionDeclarationParameterNames = Required
 FunctionDefinitionParameterNames = NameOrCommentedNameRequired
 ClassNameCase = PascalCase
 ClassNamePrefixes = []
@@ -237,484 +221,307 @@ Exclude = ["(^|/)generated(/|$)"]
 )CONFIG"},
 };
 
-constexpr HelpExample IncludeExamples[] = {
-    {"Configured prefixes, nearest depth-one groups, alphabetical paths:",
-        R"(IncludeOrder = Sort
-IncludeMatchingHeader = First
-IncludeGrouping = Directory
-IncludeGroupOrder = Configured
-IncludeDirectoryOrder = NearestFirst
-# Optional: nearest full directories within each subgroup:
-# IncludeInGroupOrder = NearestFirst
-IncludePathBase = SourceDirectory
-IncludeStandardHeaders = Last
-# library/ precedes util/; distance orders subgroups within each rule:
-IncludeGroups = [
-    { Prefix = "library/", Depth = 1 },
-    { Prefix = "util/", Depth = 1 }
-]
-# library/core/a.hpp and library/core/detail/b.hpp share a group.
-# Optional aliases: corresponding suffixes become one logical group:
-# IncludeGroups = [{Prefixes = ["yt/yt/", "yt/yt_proto/yt/"], Depth = 2}]
-# For root-relative project includes and input filenames:
-# IncludePathBase = ProjectRoot
-)"},
-    {"Nearest project groups, then library/, util/ and standard headers:",
-        R"(IncludeOrder = Sort
-IncludeMatchingHeader = First
-IncludeGrouping = Directory
-IncludeGroupOrder = Directory
-IncludeDirectoryOrder = NearestFirst
-IncludeInGroupOrder = NearestFirst
-IncludePathBase = ProjectRoot
-IncludeStandardHeaders = Last
-# Specific rules match before the fallback, but priority orders output:
-IncludeGroups = [
-    { Prefix = "library/", Priority = 1 },
-    { Prefix = "util/", Priority = 2 },
-    { Prefix = "", Depth = 3, Priority = 0 }
-]
-# Pass project-relative input filenames for root-relative distance.
-# Depth 3 counts from the root for the empty-prefix fallback.
-# Quoted groups still precede angled groups, regardless of priority.
-)"},
-};
-
-constexpr HelpExample StagedExamples[] = {
-    {"Defaults for configuration with limited public-pipeline support:",
-        R"(StandaloneCommentBlankLinesBefore = Preserve
-StandaloneCommentBlankLinesAfter = Preserve
-BreakAfterTemplateHeader = false
-ExpressionsAlignment = Block
-IncludeMatchingHeader = Off
-IncludeGrouping = Preserve
-IncludeGroups = []
-IncludeGroupOrder = Directory
-IncludeDirectoryOrder = NearestFirst
-IncludeInGroupOrder = Alphabetical
-IncludePathBase = SourceDirectory
-IncludeStandardHeaders = Preserve
-ConstructorBracePlacement = Inherit
-DestructorBracePlacement = Inherit
-AssignmentRhsPlacement = InlineIfFits
-IndentPreprocessingDirectives = false
-AlignMacroBackslashes = false
-RulerLength = 0
-RulerBlankLinesBefore = Preserve
-RulerBlankLinesAfter = Preserve
-# Include options are inactive unless IncludeOrder = Sort.
-# Group rules apply to Regroup and Directory; Preserve ignores them.
-)"},
-};
-
 constexpr HelpSection HelpSections[] = {
-    {"Layout and width", "Layout defaults to Preserve: retain source "
-        "break topology. "
-        "Canonical selects fitting/broken groups; "
-            "IfNeeded permits fitting groups to flatten. "
-        "Always requires a legal owned break, even "
-            "if a child is multiline, but cannot "
-        "fabricate breaks in "
-            "empty/indivisible/protected groups. "
-            "Preserve/protection win. "
-        "Fitting and ColumnLimit count Unicode code points, not bytes "
-        "or display cells; invalid UTF-8 bytes count individually. "
-        "WidthDiagnostics is Off or Report; "
-        "ColumnLimit = 0 disables width wrapping and width diagnostics, "
-        "but retains mandatory breaks. "
-        "Report checks emitted line widths in Unicode code points, "
-        "expanding tabs to tab stops, without a "
-            "feasibility-format probe.\n", LayoutExamples},
-    {"Lists and alignment", "Categories: Calls, Parameters, "
-        "TemplateParameters, TemplateArguments, Initializers, Captures, "
-        "ControlHeaders, BaseLists, "
-            "ConstructorLists, Enumerators. Each accepts "
-            "Layout, Break, Packing, "
-        "FirstItem, Alignment, ContinuationOffset and AlignmentFallbackOffset. "
-        "Closer is available only for delimiter-bearing categories, not "
-        "BaseLists/ConstructorLists. Optional values default to Inherit. "
-        "First/Closer apply only when broken. "
-        "ControlHeadersFirstItem selects InlineIfFits or NextLine for the "
-        "first condition in a broken control header. "
-        "IfConditionsPacking defaults to Fill; VerticalWhenBroken separates "
-        "all unparenthesized &&/|| operands when an if header breaks, "
-        "including breaks in nested calls. Parenthesized expressions, "
-        "init-statements and other control kinds keep their own policies. "
-        "It requires canonical control-header and expression layout; "
-        "fitting headers stay flat unless Break = Always is selected. "
-        "Comment attachments and protected gaps take precedence. "
-        "BinaryOperatorSide selects leading or "
-        "trailing logical operators. "
-        "Parameters governs function parameters; TemplateParameters governs "
-        "template declarations and explicit generic-lambda template headers. "
-        "TemplateArguments also governs named-cast type brackets. "
-        "Neither template category selects the following declaration's line. "
-        "Nested lists keep shared >> closers as one unchanged token; "
-        "the outer list owns placement of a shared closer. "
-        "CallsSoleArgumentFirstItem overrides first-item placement for exactly "
-        "one parsed argument, irrespective of expression kind; Inherit follows "
-        "CallsFirstItem. Empty and multiple-argument calls are unaffected. "
-        "InlineIfFits respects width, required breaks and preservation. "
-        "Lambda bodies indent from their opening line's leading indentation, "
-        "with the closing brace returning to that base; following arguments "
-        "use the call's continuation alignment independently. "
-        "Fill packs items; VerticalWhenBroken splits at item boundaries. "
-        "Block comments after a separator belong to the following item and "
-        "move with it when the list breaks. Line comments, mixed comment "
-        "prefixes, and comments before a separator or after a trailing "
-        "separator keep their existing line attachment. "
-        "Delimiter alignment uses the column after "
-            "the opener; Block uses the block "
-        "column plus offset. Zero offsets use "
-            "IndentWidth. Scopes opened on the same line share one "
-        "prospective continuation offset. A list whose owner starts on "
-        "a continued line establishes a new level for its contents. "
-        "Expressions still share the surrounding level. "
-        "This line-based rule applies without nesting or context options. "
-        "Structural bodies establish a "
-        "fresh base, as do braced initializer and enum lists. "
-        "Delimiter columns remain aligned; nesting controls "
-        "their block-relative floor and fallback. Delimiter alignment falls "
-        "back when the next atom plus suffix cannot fit.\n", ListExamples},
-    {"Expressions and chains", "TernaryLayout is Flexible or ThreePart; "
-        "ThreePart "
-        "couples both breaks in a broken ternary and softly prefers that "
-        "shape when an assignment initializer wraps. It "
-        "alone does not force a fitting expression. "
-        "TernaryOperatorIndentation is Align (default) or Indent. Align shares "
-        "the surrounding continuation; Indent adds a continuation offset "
-        "when the condition starts on an already-continued line. Condition "
-        "continuations stay unchanged. For trailing operators it controls "
-        "the following branch lines. Inline ternaries remain unchanged. "
-        "Wrapped branch expressions share the delimiter line's continuation; "
-        "calls in a branch still establish their own argument indentation. "
-        "ExpressionsBreak and ChainsBreak default independently to IfNeeded. "
-        "ChainsBreak = Always requires multiple suffix calls across member "
-        "and repeated invocation links, including mixed . / -> links. "
-        "Receiver construction and argument calls do not "
-        "count. In control headers, ordinary chains break only when needed, "
-        "even with ChainsBreak = Always; operator, clause and argument breaks "
-        "are preferred. Nested lambda bodies retain the ordinary chain policy. "
-        "Field paths and ordinary single-call chains break only when "
-        "needed. AlwaysBreakChainRootNames can explicitly force conventional "
-        "roots with even one suffix call, independently of ChainsBreak. "
-        "ExpressionsPacking uses Fill or "
-            "VerticalWhenBroken on precedence-aware "
-            "owned "
-        "operator sequences; operand subtrees stay child groups. "
-        "Spines compose MemberExpression receiver "
-            "and CallExpression callee links: "
-        ". / -> member calls and repeated invocation "
-            "factory()(arg)(next), including "
-        "mixed spines. Nested argument calls are "
-            "child groups, not chain links. "
-        "Library annotations select reusable group "
-            "policies.\n", ExpressionExamples},
-    {"Output shape", "All brace placements accept Attached, NextLine or "
-        "NextLineIfHeaderBroken. "
-            "DeclarationHeadersLayout controls "
-            "declaration headers; "
-        "BodiesLayout and LambdaBodiesLayout control "
-            "bodies. BodyShape and independent "
-        "EmptyBodyShape default to Expanded; "
-            "matching lambda shapes inherit separately. "
-        "Empty means no interior tokens/comments "
-            "after safe transforms; comment-only bodies "
-        "are nonempty. Enums/lists/requirement "
-            "bodies are excluded. IndentNamespaces "
-        "uses Preserve/Indent/NoIndent; zero "
-            "NamespaceIndentWidth uses IndentWidth, not "
-        "zero indentation. NoIndent uses the "
-            "enclosing rendered structural base. "
-        "EnumBracePlacement observes the enum "
-            "header, not enumerator brokenness; "
-        "Enumerators uses shared list policies and "
-            "leaves existing enum commas unchanged. "
-        "Base/constructor lists "
-        "use ColonSide and CommaSide (Leading/Trailing). Trailing commas are "
-        "Preserve, Never or WhenMultiline, only at "
-            "grammar-approved initializer sites; "
-        "comma presence never determines closer placement.\n", ShapeExamples},
-    {"Structural vertical gaps", "Exact counts and caps accept Preserve or "
-        "0..10000. Canonical item/body boundaries retain authored blank lines "
-        "unless an exact count or cap overrides them; list/header interiors "
-        "still follow their layout policies. "
-        "MemberDeclarationBlankLines and MemberDefinitionBlankLines also "
-            "accept Inherit from their respective non-member settings. "
-        "At broken boundaries, n empty lines mean "
-            "n+1 newlines. Positive exact counts "
-        "own a boundary break independently of "
-            "surrounding Preserve; zero alone does not. "
-        "Namespace edges apply only to nonempty "
-            "content, outside attached comments. "
-        "Access-before applies before subsequent "
-            "explicit sections, not the first at "
-            "opening; "
-        "after-label applies only with following "
-            "content. Declaration gaps separate complete neighboring "
-            "declaration items in file, namespace and record scopes, including "
-            "prototypes and variables and their attached comments. "
-            "An exact definition count overrides the general declaration "
-            "count at definition boundaries. Definition gaps separate "
-            "neighboring "
-        "complete declaration items if either is a "
-            "function/record/enum definition; not two "
-        "ordinary variables/forward declarations, "
-            "lambdas, namespaces or access labels. "
-        "Member counts replace, not add to, general "
-            "counts. Comments stay attached; "
-        "directives/protection and unattached "
-            "comments are barriers. MaxEmptyLines only "
-            "caps "
-        "editable existing empty lines, never inline "
-            "boundaries, mandatory terminators or "
-        "token interiors. Exact/resolved counts "
-            "above an explicit cap are rejected after "
-        "overrides, irrespective of input/layout. No "
-            "post-layout cleanup pass.\n", VerticalExamples},
-    {"Syntax spacing", "All spacing fields use Preserve, Space, NoSpace, "
-        "GeneratedSpace or GeneratedNoSpace. "
-            "Generated* applies when the owning "
-        "canonical combinator rebuilds the property, "
-            "including existing adjacencies; "
-        "inserted gaps always qualify. Unrelated nested edits do not activate "
-        "preserved owners. Preserve retains source "
-            "horizontal spelling on preserved or "
-        "genuinely flat-only gaps, but canonical "
-            "topology-changing gaps use syntax-safe flat "
-        "fallback BEFORE fitting, even if selected "
-            "flat. This distinction is structural, "
-        "not final brokenness or text-history. "
-        "Before/After keys control the two sides "
-            "of colons, arrows and operator-overload boundaries independently. "
-        "TemplateTypeArgumentInteriorSpacing = NoSpace may join confirmed "
-        "template closers as >>; comparison and shift operators retain "
-        "lexical separation. ScopeResolutionSpacing controls qualified :: "
-        "edges, not the gap before a leading global ::. "
-        "BraceInitializerSpacing controls the gap before an initializer's {, "
-        "except immediately after a comment. ArgumentCommentSpacing "
-        "controls the horizontal gap between a parsed call argument or "
-        "braced initializer element and its leading or trailing block "
-        "comments: after the last leading comment and before the first "
-        "trailing comment, for any kind of value. It also controls gaps "
-        "between consecutive block comments in those attached runs. "
-        "It defaults to Preserve, retaining horizontal spelling. "
-        "Choose Space or NoSpace explicitly to force one or zero spaces; "
-        "Generated* applies "
-        "only when that item's list owner is rebuilt. Comment interiors, "
-        "separator-facing gaps, and argument-facing "
-        "line comments are excluded. Mixed runs can still normalize "
-        "block-to-block and block-to-argument gaps. "
-        "Existing newlines and protected or uncertain syntax stay preserved. "
-        "Lexical safety and comment boundaries "
-            "override spacing. Use --generate-config "
-        "for the complete option list and defaults, "
-            "including indentation, declarators "
-        "and keyword/delimiter spacing. FunctionCvRefQualifierSpacing controls "
-        "the gap between const/volatile and a function's &/&& ref qualifier, "
-        "not type references. It defaults to Inherit from "
-        "FunctionRefQualifierSpacing; explicit Preserve uses ordinary "
-        "gap-preservation rules rather than inheriting the generic policy. "
-        "AttributeSpaceBeforeSpecifier and AttributeSpaceAfterSpecifier also "
-        "control parsed GNU __attribute__ and MS __declspec boundaries; "
-        "extension payloads remain opaque. Enclosing parameter interiors "
-        "and declaration punctuation retain their own spacing policies.\n",
+    {"Layout and width",
+        "- Layout = Preserve (default) keeps source line breaks.\n"
+        "  Canonical reflows syntax to fit; category Layout overrides may use\n"
+        "  Inherit, Preserve or Canonical. Protection always "
+        "takes precedence.\n"
+        "- Break = IfNeeded allows fitting syntax to flatten. Always requests\n"
+        "  a break even when it fits, but cannot split empty, indivisible or\n"
+        "  protected syntax. A nested break alone may not satisfy Always.\n"
+        "- ColumnLimit: 0 (unlimited) or 1..10000. Zero disables "
+        "width wrapping\n"
+        "  and diagnostics, not required breaks.\n"
+        "- WidthDiagnostics: Off or Report. Widths count Unicode code points,\n"
+        "  not display cells; invalid UTF-8 bytes count individually. Report\n"
+        "  checks output line widths and expands tabs to tab stops.\n",
+        LayoutExamples},
+    {"Lists and alignment",
+        "- Categories: Calls, Parameters, TemplateParameters, "
+        "TemplateArguments,\n"
+        "  Initializers, Captures, ControlHeaders, BaseLists, "
+        "ConstructorLists,\n"
+        "  Enumerators. Use category prefixes for per-category overrides.\n"
+        "- Each supports Layout, Break, Packing, FirstItem, Alignment,\n"
+        "  ContinuationOffset and AlignmentFallbackOffset. Optional overrides\n"
+        "  default to Inherit. Closer excludes BaseLists and "
+        "ConstructorLists.\n"
+        "- Packing: Fill packs items; VerticalWhenBroken separates them once\n"
+        "  the list wraps. FirstItem: InlineIfFits or NextLine. "
+        "Closer: SameLine\n"
+        "  or OwnLine. First-item and closer placement apply to broken lists.\n"
+        "- Alignment: Delimiter aligns after the opener; Block uses the block\n"
+        "  indentation plus an offset. Zero offsets use "
+        "IndentWidth. Delimiter\n"
+        "  alignment falls back when the next item and suffix cannot fit.\n"
+        "  Openers on one line share a continuation level; lists starting on\n"
+        "  continued lines add a level. Bodies establish a fresh base.\n"
+        "- Parameters controls function parameters. "
+        "TemplateParameters controls\n"
+        "  template and generic-lambda headers; "
+        "TemplateArguments also controls\n"
+        "  named-cast type brackets. Shared >> closers stay together.\n"
+        "- CallsSoleArgumentFirstItem overrides CallsFirstItem "
+        "for one argument\n"
+        "  of any kind; Inherit follows CallsFirstItem. Other "
+        "calls are unchanged.\n"
+        "- ControlHeadersFirstItem places the first wrapped condition. With\n"
+        "  canonical control-header and expression layout, "
+        "IfConditionsPacking\n"
+        "  = VerticalWhenBroken separates top-level &&/|| operands in wrapped\n"
+        "  if headers. Fill is the default; parenthesized subexpressions and\n"
+        "  other control kinds keep their own rules. BinaryOperatorSide sets\n"
+        "  the operator side. Fitting headers stay flat unless "
+        "Always applies.\n"
+        "- Block comments after separators move with the next item. Other\n"
+        "  comment attachments and protected gaps take "
+        "precedence. Lambda bodies\n"
+        "  indent from their opening line, independently of later arguments.\n",
+        ListExamples},
+    {"Expressions and chains",
+        "- ExpressionsBreak and ChainsBreak default "
+        "independently to IfNeeded.\n"
+        "  Packing uses Fill or VerticalWhenBroken; expression "
+        "wrapping respects\n"
+        "  operator precedence. BinaryOperatorSide, ShiftOperatorSide,\n"
+        "  AssignmentOperatorSide and TernaryOperatorSide use "
+        "Leading/Trailing.\n"
+        "- ExpressionsAlignment = Operand aligns to the first "
+        "operand, falling\n"
+        "  back when it cannot fit; Block uses continuation indentation.\n"
+        "- AssignmentRhsPlacement: InlineIfFits or NextLine. NextLine moves\n"
+        "  assignment and declaration initializers below the operator in\n"
+        "  canonical expressions, regardless of AssignmentOperatorSide.\n"
+        "- TernaryLayout: Flexible or ThreePart. ThreePart "
+        "breaks both ? and :\n"
+        "  together when wrapping; it does not force a fitting "
+        "ternary to wrap.\n"
+        "  TernaryOperatorIndentation: Align (default) shares "
+        "the continuation;\n"
+        "  Indent adds a level when the condition starts on a continued line.\n"
+        "- Chains include . and -> calls and repeated calls: factory()(arg).\n"
+        "  Nested argument calls are not chain links. ChainsBreak = Always\n"
+        "  requires multiple calls after the receiver; field paths and single\n"
+        "  calls wrap only as needed. In control headers, "
+        "ordinary chains still\n"
+        "  wrap only as needed, preferring operator, clause or "
+        "argument breaks.\n"
+        "  Nested lambda bodies keep the ordinary chain policy.\n",
+        ExpressionExamples},
+    {"Output shape",
+        "- Brace placements: Attached, NextLine or NextLineIfHeaderBroken.\n"
+        "  ConstructorBracePlacement and DestructorBracePlacement may Inherit\n"
+        "  FunctionBracePlacement. CaseBlockBracePlacement applies to a case\n"
+        "  containing only one block, not mixed statements and blocks.\n"
+        "- DeclarationHeadersLayout controls headers; BodiesLayout and\n"
+        "  LambdaBodiesLayout control bodies. BodyShape and EmptyBodyShape\n"
+        "  default to Expanded; CompactIfFits allows compact bodies.\n"
+        "  LambdaBodyShape and LambdaEmptyBodyShape inherit independently.\n"
+        "  Comment-only bodies are not empty. Enum, list and requirement\n"
+        "  bodies are not controlled by these body shapes.\n"
+        "- IndentNamespaces: Preserve, Indent or NoIndent. "
+        "NamespaceIndentWidth\n"
+        "  = 0 uses IndentWidth; NoIndent uses the enclosing indentation.\n"
+        "- EnumBracePlacement follows the enum header, not its enumerators.\n"
+        "  Enumerators uses list policies and preserves existing enum commas.\n"
+        "- Base and constructor lists use ColonSide and CommaSide with\n"
+        "  Leading/Trailing values. InitializersTrailingComma uses Preserve,\n"
+        "  Never or WhenMultiline at legal initializer sites only. Trailing\n"
+        "  commas and closer placement are independent.\n",
+        ShapeExamples},
+    {"Blank lines",
+        "- Exact counts and MaxEmptyLines accept Preserve or 0..10000.\n"
+        "  Existing blank lines between items/bodies remain "
+        "unless overridden.\n"
+        "  Positive counts force a boundary break; zero does not "
+        "split a line.\n"
+        "- NamespaceBlankLinesAfterOpen/BeforeClose apply to "
+        "nonempty content,\n"
+        "  outside attached comments. AccessSectionBlankLinesBefore skips the\n"
+        "  first section at the opening; AfterLabel needs following content.\n"
+        "- DeclarationBlankLines separates declarations, including variables\n"
+        "  and prototypes. DefinitionBlankLines takes precedence when either\n"
+        "  neighbor is a function, record or enum definition, not a lambda,\n"
+        "  namespace or access label.\n"
+        "- MemberDeclarationBlankLines and MemberDefinitionBlankLines replace\n"
+        "  the corresponding general counts; Inherit follows those counts.\n"
+        "- MaxEmptyLines caps editable blank lines, not inline gaps or text\n"
+        "  inside tokens. Exact counts above an explicit cap are rejected,\n"
+        "  including inherited counts after overrides. Comments "
+        "stay attached;\n"
+        "  directives, protection and unattached comments stop "
+        "these changes.\n",
+        VerticalExamples},
+    {"Syntax spacing",
+        "- Values: Preserve, Space, NoSpace, GeneratedSpace, "
+        "GeneratedNoSpace.\n"
+        "  Generated* changes spacing only where canonical layout rebuilds\n"
+        "  the containing syntax, including existing gaps. Nested edits alone\n"
+        "  do not activate it. Preserve keeps source spacing where possible;\n"
+        "  reflowed gaps use syntax-safe spacing. Safety always wins.\n"
+        "- Before/After options independently control each side of colons,\n"
+        "  arrows and operator-overload boundaries. Use --generate-config for\n"
+        "  all indentation, declarator, keyword and delimiter "
+        "options/defaults.\n"
+        "- TemplateTypeArgumentInteriorSpacing = NoSpace permits nested >>.\n"
+        "  ScopeResolutionSpacing controls qualified ::, not a leading ::.\n"
+        "  BraceInitializerSpacing controls the gap before { except after\n"
+        "  comments; comparison and shift operators remain safely separated.\n"
+        "- ArgumentCommentSpacing (default Preserve) controls gaps around\n"
+        "  attached block comments in call arguments and "
+        "initializer elements,\n"
+        "  including consecutive comments. Space/NoSpace forces one/no space.\n"
+        "  Newlines, comment contents, separator-facing gaps and "
+        "line comments\n"
+        "  are unchanged. Generated* requires canonical layout of that list.\n"
+        "- FunctionCvRefQualifierSpacing controls const/volatile to &/&& in\n"
+        "  function qualifiers, not type references. Inherit "
+        "(default) follows\n"
+        "  FunctionRefQualifierSpacing; Preserve does not inherit.\n"
+        "- AttributeSpaceBeforeSpecifier/AfterSpecifier covers [[...]],\n"
+        "  __attribute__ and __declspec boundaries; extension contents stay\n"
+        "  unchanged. AttributeInteriorSpacing only covers C++ [[...]].\n",
         GapExamples},
     {"Library layout annotations",
-        "CallLineFirstArgumentNames softly pins the first argument of any "
-        "type beside the opening parenthesis of exact named calls, including "
-        "member calls. CallLineFirstArgumentOverflow controls overflow: "
-        "Wrap (default) uses ordinary wrapping; BreakBefore moves the "
-        "argument below the opener if the complete argument does not fit; "
-        "KeepInline keeps its opening piece attached even over ColumnLimit. "
-        "Nested expressions, initializers and lambda bodies may still wrap "
-        "independently. For example, dispatch(value + offset, alpha, beta) "
-        "can keep value beside the opener while later arguments move below. "
-        "Both new options default to an empty name list and Wrap. The "
-        "general argument rule wins for names present in both pin lists. "
-        "CallLineFirstStringNames softly pins only a "
-        "complete "
-        "string-literal first argument. CallLineFirstStringOverflow controls "
-        "overflow: Wrap (default) uses ordinary wrapping; BreakBefore fits "
-        "the complete concatenated literal sequence before keeping it inline; "
-        "KeepInline keeps the first literal beside the opener even when it "
-        "exceeds ColumnLimit. Concatenation boundaries may still wrap in "
-        "all modes; literal contents are never split. Only annotated calls "
-        "with a complete string-literal first argument are affected, and "
-        "preserved call layout stays preserved for both pin lists. Always "
-            "outranks the pin when a legal owned break "
-            "is needed. Empty ChainedCallRootNames means "
-            "AllSafe; "
-        "nonempty means AnnotatedRoots, independently gated by ChainsLayout. "
-        "AlwaysBreakChainRootNames is an independent exact-name "
-        "convention list, "
-        "not a message-pin side effect or a replacement for root selection. "
-        "It obeys ChainsLayout, root selection and protection. "
-        "GenerateCallScopeIndentation creates an extra IndentWidth for matched "
-        "IndentedCallScopePairs even when the input is flat; it requires "
-        "non-Preserve IndentationKind. By default, "
-        "IndentedCallScopePairs preserves an "
-            "existing visual extra level only for "
-        "matched pairs in the same statement "
-            "sequence/receiver/wrapper context. "
-        "Case and ordinary labels delimit independent scope sections; "
-        "only complete pairs within one section affect indentation. "
-        "In unlabeled bodies, uncertain, unmatched and PP-crossing "
-            "regions beginning on a source line remain unchanged. "
-        "Inline regions have no visual indentation to retain and do not "
-        "prevent body expansion. IndentedChainScopePairs adds one "
-        "IndentWidth inside matched, properly nested suffix-call pairs. "
-        "StickyChainCallPairs keeps consecutive named suffix calls together "
-        "when they fit, independently of ChainsBreak/ChainsPacking. "
-        "Its first name may also match a simple root receiver or factory, "
-        "so registrar:Parameter keeps registrar.Parameter together. "
-        "Both use First:Second identifier pairs, default to empty, and obey "
-        "ChainsLayout and ChainedCallRootNames; scopes require distinct, "
-        "unambiguous endpoints, while sticky pairs may share names. "
-        "Names/pairs "
-        "are exact validated metadata, not "
-            "heuristics or a matcher DSL. All calls "
-        "use global ColumnLimit. Macro safety hints "
-            "are separate.\n", AnnotationExamples},
+        "- CallLineFirstArgumentNames prefers the first argument beside the\n"
+        "  opener of exact named calls, including members.\n"
+        "  CallLineFirstStringNames does so only for "
+        "string-literal arguments.\n"
+        "  Both lists default to empty; the general argument "
+        "list wins overlaps.\n"
+        "- CallLineFirstArgumentOverflow and CallLineFirstStringOverflow:\n"
+        "  Wrap (default) wraps normally; BreakBefore moves the "
+        "argument below\n"
+        "  the opener if it cannot fit in full; KeepInline keeps its opening\n"
+        "  piece inline even beyond ColumnLimit. Nested syntax "
+        "may still wrap.\n"
+        "  Concatenated literals may break between pieces, never inside them.\n"
+        "  Preserve and required Always breaks take precedence over pinning.\n"
+        "- ChainedCallRootNames: empty selects all safe chains; "
+        "otherwise only\n"
+        "  listed roots. AlwaysBreakChainRootNames requests breaks even with\n"
+        "  one following call. Both obey ChainsLayout, root selection and\n"
+        "  protection. All calls use the global ColumnLimit.\n"
+        "- IndentedCallScopePairs preserves an existing extra "
+        "indentation level\n"
+        "  between matched calls in the same context and label section.\n"
+        "  GenerateCallScopeIndentation creates the level even "
+        "from flat input;\n"
+        "  it requires IndentationKind other than Preserve. "
+        "Uncertain, unmatched\n"
+        "  or directive-crossing source-line regions remain unchanged.\n"
+        "- IndentedChainScopePairs adds IndentWidth inside "
+        "nested matched chain\n"
+        "  calls. StickyChainCallPairs keeps consecutive named calls together\n"
+        "  if they fit; its first name may also name a root receiver/factory.\n"
+        "  Both obey ChainsLayout and ChainedCallRootNames.\n"
+        "- Pairs use First:Second exact identifiers. Scope endpoints must be\n"
+        "  distinct and unambiguous; sticky pairs may share names. These are\n"
+        "  exact names, not patterns. Macro safety hints are separate.\n",
+        AnnotationExamples},
     {"Include sorting",
-        "IncludeOrder = Preserve (default) disables all include transforms. "
-        "Sort moves exact include lines within safe blocks, quoted before "
-        "angled, alphabetically and stably "
-        "for duplicate paths. "
-        "IncludeMatchingHeader = First puts quoted headers with the input "
-        "file's stem in its own directory first (.h, .hh, .hpp, .hxx, .h++). "
-        "Header inputs and missing input filenames disable pairing. "
-        "IncludeGrouping = Preserve sorts each adjacent block without "
-        "changing blank lines and ignores IncludeGroups. Regroup spans blank "
-        "lines and forms one quoted/angled group per matched rule, ignoring "
-        "Depth; unmatched headers follow configured groups within the same "
-        "priority tier. Directory groups "
-        "by lexically normalized containing directory, using each rule's "
-        "Depth to cap directory components after its matched prefix. "
-        "IncludeGroups = [] (default) retains full-directory grouping. "
-        "Each rule has Prefix = \"directory/\" or Prefixes = [\"directory/\", "
-        "...], optional Depth = 127 and Priority = 0. Zero depth keeps the "
-        "entire rule together within each quoted/angled group; 127 (default) "
-        "uses the full remaining directory, not the filename. Depth ranges "
-        "from 0 to 127; negative values are invalid. Values 1..126 use at "
-        "most N suffix components. By default, zero and capped depths sort "
-        "include "
-        "paths alphabetically inside groups. With prefix "
-        "library/, Depth = 1 groups library/core/a.hpp and "
-        "library/core/detail/b.hpp together; 2 separates them. Direct headers "
-        "form the prefix's base group. Multiple prefixes in one rule merge "
-        "corresponding suffix groups; their first prefix is the canonical "
-        "group path for directory ordering and distance, not an include "
-        "spelling rewrite. For example Prefixes = [\"yt/yt/\", "
-        "\"yt/yt_proto/yt/\"] with Depth = 2 merges core/rpc suffix groups. "
-        "Unmatched paths retain full-directory groups under Directory. "
-        "A sole empty Prefix = \"\" is an explicit fallback for any spelling; "
-        "its Depth counts from the start of the resolved directory. "
-        "First matching rule and prefix win, not the longest match. Rule "
-        "order always controls matching; Priority does not affect selection. "
-        "Priority is a signed integer from -128 to 127; lower "
-        "values sort first within each quoted/angled category. Unmatched "
-        "headers have priority zero. Within equal priorities, "
-        "IncludeGroupOrder = Directory (default) orders rule groups together "
-        "by directory. Configured instead uses IncludeGroups list order "
-        "first, with unmatched paths last in that tier; "
-        "IncludeDirectoryOrder then orders subgroups within each rule. "
-        "Prefixes in one rule remain aliases, not separate priorities. "
-        "IncludeGrouping = Preserve ignores rules, priorities and "
-        "IncludeGroupOrder. Quoted groups "
-        "precede angled groups in either mode; "
-        "IncludeDirectoryOrder = NearestFirst "
-        "(default) orders groups by parent plus child steps from the input "
-        "directory, then alphabetical group path on ties. Alphabetical omits "
-        "distance. IncludeInGroupOrder = Alphabetical (default) keeps "
-        "existing alphabetical ordering inside groups. NearestFirst instead "
-        "sorts headers by parent plus child steps from the input directory "
-        "to their full resolved containing directory, without Depth capping "
-        "or prefix-alias substitution; ties use alphabetical include spelling "
-        "and duplicate paths stay stable. It does not change subgroup "
-        "membership, separators or group priority, and also works inside "
-        "each adjacent block with IncludeGrouping = Preserve. Paired headers "
-        "and the final standard-header group retain alphabetical ordering. "
-        "Matching-header and standard-header groups stay separate. "
-        "Regroup and Directory insert one empty line between groups, "
-        "including the paired header group, and conflict with MaxEmptyLines "
-        "= 0. "
-        "IncludePathBase = SourceDirectory (default) resolves include paths "
-        "against the input directory. ProjectRoot uses root-relative paths; "
-        "the input filename must use the same root (normally pass a "
-        "project-relative filename). Bare quoted names and quoted ./ or ../ "
-        "paths remain source-relative. Absolute paths remain absolute and "
-        "incompatible roots sort last. IncludeStandardHeaders = Last "
-        "uses a heuristic: angled includes whose literal names contain "
-        "neither / nor the case-sensitive substring .h form a final "
-        "alphabetical group, after all other headers regardless of directory "
-        "distance or rule matching. This is not ISO-header detection: "
-        "extensionless third-party names qualify, while C headers such as "
-        "stdio.h do not. Quoted names never qualify. Preserve (default) "
-        "keeps ordinary include sorting. IncludeGrouping = Preserve still "
-        "retains blank-line boundaries. "
-        "No filesystem lookup, header search "
-        "path inference, or include spelling rewrite occurs. "
-        "Comments, macros, conditional directives, protected regions and "
-        "mixed line endings stop blocks; attached-comment blocks stay exact. "
-        "Hunk selection authorizes each entire block atomically. "
-        "Check mode reports one includes-are-not-sorted failure per file, "
-        "rather than one failure per moved header; unrelated formatting, "
-        "naming and width violations remain separate. "
-        "Nonempty prefixes must be normalized relative directories ending "
-        "in /; duplicates across all rules, absolute paths, backslashes, "
-        "empty, . and .. components are invalid. Empty prefixes are only "
-        "allowed as a rule's sole fallback prefix. Prefix matching uses "
-        "literal normalized include spelling; ./, ../ and absolute spellings "
-        "are unmatched except by a fallback. Rules are validated even when "
-        "inactive.\n",
+        "- IncludeOrder: Preserve (default) disables transforms; Sort sorts\n"
+        "  safe blocks, quoted before angled. Duplicate paths stay stable.\n"
+        "- IncludeMatchingHeader: Off or First. First pairs a "
+        "source file with\n"
+        "  its same-directory, same-stem .h/.hh/.hpp/.hxx/.h++ header. Header\n"
+        "  inputs or missing input filenames disable pairing.\n"
+        "- IncludeGrouping: Preserve sorts adjacent blocks without changing\n"
+        "  blank lines and ignores group rules; Regroup combines "
+        "blocks across\n"
+        "  blank lines by rule; Directory groups by containing directory.\n"
+        "  Regroup/Directory insert one blank line between "
+        "groups and conflict\n"
+        "  with MaxEmptyLines = 0. Paired headers form a separate group.\n"
+        "- IncludeGroups rules use Prefix or Prefixes, Depth (default 127)\n"
+        "  and Priority (default 0). First matching rule/prefix wins.\n"
+        "  Depth: 0 keeps a rule together; 1..126 caps suffix "
+        "directory depth;\n"
+        "  127 uses the full directory. Regroup ignores Depth. No rules means\n"
+        "  full directories; unmatched paths also keep full-directory groups.\n"
+        "  Prefixes aliases merge corresponding suffix groups "
+        "without changing\n"
+        "  include spelling; the first prefix supplies the group path.\n"
+        "- Prefixes must be unique relative directories ending in /, with no\n"
+        "  backslashes, empty components, '.' or '..'. A sole "
+        "empty Prefix is a\n"
+        "  fallback; its Depth counts from the resolved directory's start.\n"
+        "  Matching uses literal normalized spelling; ./, ../ and absolute\n"
+        "  paths only match the fallback. Rules are validated "
+        "even if inactive.\n"
+        "- Priority: -128..127, lower first within quoted/angled categories;\n"
+        "  unmatched paths use 0. IncludeGroupOrder: Directory (default) or\n"
+        "  Configured (rule order, unmatched last within the priority tier).\n"
+        "  Priority changes output order, not rule matching.\n"
+        "- IncludeDirectoryOrder: NearestFirst (default) or Alphabetical.\n"
+        "  NearestFirst counts parent/child steps from the input directory;\n"
+        "  ties are alphabetical. With Configured, it orders rule subgroups.\n"
+        "- IncludeInGroupOrder: Alphabetical (default) or NearestFirst. The\n"
+        "  latter uses full containing directories, not Depth or aliases;\n"
+        "  ties use include spelling. Also works with Preserve grouping.\n"
+        "  Paired and final standard-header groups remain alphabetical.\n"
+        "- IncludePathBase: SourceDirectory (default) or ProjectRoot. With\n"
+        "  ProjectRoot, pass input filenames relative to the same root. Bare\n"
+        "  quoted names and quoted ./ or ../ paths remain source-relative;\n"
+        "  absolute paths stay absolute. No filesystem/header-path lookup.\n"
+        "- IncludeStandardHeaders: Preserve (default) or Last. Last makes a\n"
+        "  final alphabetical group of angled names with neither / nor .h.\n"
+        "  This heuristic includes extensionless third-party "
+        "names, not stdio.h.\n"
+        "- Comments, macros, conditionals, protection and mixed line endings\n"
+        "  stop sorting blocks. Attached-comment blocks stay exact. Selected\n"
+        "  hunks must cover a whole block. Check mode reports "
+        "one include-sort\n"
+        "  failure per file; other checks remain independent.\n",
         IncludeExamples},
-    {"Configuration limits",
-        "BreakAfterTemplateHeader always breaks after a template declaration "
-        "header in canonical DeclarationHeadersLayout. "
-        "ExpressionsAlignment = Operand aligns continuations to the first "
-        "operand, with the configured fallback when an atom cannot fit. "
-        "AssignmentRhsPlacement = NextLine puts assignment and declaration "
-        "initializer right-hand sides on the next line in canonical "
-        "expressions, regardless of AssignmentOperatorSide; "
-        "InlineIfFits uses normal fitting. "
-        "Low-level scalar compilation "
-        "and owning prefix metadata may be used separately. Comment counts "
-        "accept Preserve or 0..10000 and must fit MaxEmptyLines. Constructor "
-        "and Destructor Inherit resolve final FunctionBracePlacement once. "
-        "ColumnLimit "
-        "accepts 0 (unlimited) or 1..10000.\n",
+    {"Template headers, comments and rulers",
+        "- BreakAfterTemplateHeader breaks after template declaration headers\n"
+        "  when DeclarationHeadersLayout is canonical.\n"
+        "- StandaloneCommentBlankLinesBefore/After accepts "
+        "Preserve or 0..10000,\n"
+        "  subject to MaxEmptyLines.\n"
+        "- RulerLength sets the slash count in standalone all-slash comments\n"
+        "  containing at least three slashes; 0 preserves spelling.\n"
+        "  RulerBlankLinesBefore/After overrides standalone-comment counts\n"
+        "  at rulers, with the same count range and cap.\n",
         StagedExamples},
     {"Safety, transforms and checks",
-        "Protected bytes are never rewritten. IndentPreprocessingDirectives "
-        "indents the whole directive, including its # or %: marker, by "
-        "conditional nesting depth using IndentWidth spaces. Whitespace "
-        "between the marker and directive name is removed; "
-        "else/elif/endif align with their if. AlignMacroBackslashes aligns "
-        "existing whitespace-separated macro continuations one column after "
-        "the longest prefix (tab stops of 8), without changing macro tokens. "
-        "Spliced identifiers, literals, comments and raw strings "
-        "are left alone. "
-        "RulerLength counts slashes in standalone comments containing only "
-        "three or more slashes; 0 preserves spelling. "
-        "RulerBlankLinesBefore/After "
-        "override ordinary standalone-comment gaps at ruler boundaries. "
-        "hit-fmt off/on always protects "
-            "regions; clang-format off/on is "
-        "honored by default. Macro hints describe "
-            "syntax/protection, not aesthetics. "
-        "ClassMacroNames contains Begin:End pairs of exact unqualified "
-        "identifiers for balanced function-like invocations opening/closing "
-        "class-member grammar. Endpoints must be distinct and unique across "
-        "pairs. Nested classes must close with their matching end macro. "
-        "Invocation arguments stay byte-for-byte intact; no expanded "
-        "class name or type binding is inferred. Members use ordinary "
-        "member/body indentation and access-section policies. "
-        "Transforms are explicitly opt-in and may "
-            "not cross protected spans. Naming "
-        "and parameter checks never rename code. "
-            "Profiles approximate styles, not "
-        "clang-format compatibility.\n", SafetyExamples},
+        "- Protected text is never rewritten. hit-fmt off/on always applies;\n"
+        "  HonorClangFormatDirectives defaults to true for "
+        "clang-format off/on.\n"
+        "- Macro hints describe syntax, not style: CallLikeMacroNames marks\n"
+        "  call-like syntax; FunctionBodyMacroNames marks "
+        "balanced invocations\n"
+        "  followed by a function-like brace body. Headers stay unchanged.\n"
+        "  WhitespaceSensitiveMacros protects "
+        "whitespace-sensitive invocations.\n"
+        "- ClassMacroNames uses Begin:End unqualified identifier pairs for\n"
+        "  function-like macros enclosing class members. Endpoints must be\n"
+        "  distinct and unique; nested pairs must close with the "
+        "matching end.\n"
+        "  Arguments stay exact; no expanded class/type names are inferred.\n"
+        "- AddMissingControlBraces, RemoveNullStatements, "
+        "RemoveNullDeclarations\n"
+        "  and namespace-comment changes are opt-in. Required semicolons,\n"
+        "  uncertain macro syntax and commented standalone placeholders stay.\n"
+        "  No transform crosses protection. NamespaceComments "
+        "controls namespace\n"
+        "  closing comments; Exclude contains path exclusion patterns.\n"
+        "- IndentPreprocessingDirectives indents whole "
+        "directives by conditional\n"
+        "  depth using IndentWidth spaces, including # or %:. It "
+        "removes space\n"
+        "  after the marker; else/elif/endif align with their if.\n"
+        "- AlignMacroBackslashes aligns existing whitespace-separated macro\n"
+        "  continuations one column after the longest prefix (tab stops: 8).\n"
+        "  Tokens and spliced identifiers, literals and comments stay intact.\n"
+        "- Parameter-name and naming checks report issues; they never rename\n"
+        "  code. Use name-case/prefix options and "
+        "NamingNamespaceExemptions to\n"
+        "  tune checks. Profiles approximate styles, not "
+        "clang-format parity.\n",
+        SafetyExamples},
 };
 // hit-fmt on
 
