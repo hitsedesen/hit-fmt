@@ -12,7 +12,9 @@
 namespace tokenizer::detail {
 
 #if defined(HIT_FMT_HAS_AVX2)
-AsciiBlock ClassifyAsciiBlockAvx2(const unsigned char* source) noexcept;
+void ClassifyAsciiBlockAvx2(
+    const unsigned char* source,
+    AsciiBlock& result) noexcept;
 
 namespace {
 
@@ -55,9 +57,23 @@ AsciiBlockClassifier GetAsciiBlockClassifier() noexcept
 #endif
 }
 
-AsciiBlock ClassifyAsciiBlock(const unsigned char* source) noexcept
+void ClassifyAsciiBlock(
+    const unsigned char* source,
+    AsciiBlock& result) noexcept
 {
-    AsciiBlock result{};
+    result = {};
+    uint64_t colon = 0;
+    uint64_t dot = 0;
+    uint64_t minus = 0;
+    uint64_t bang = 0;
+    uint64_t plus = 0;
+    uint64_t percent = 0;
+    uint64_t caret = 0;
+    uint64_t ampersand = 0;
+    uint64_t pipe = 0;
+    uint64_t equals = 0;
+    uint64_t less = 0;
+    uint64_t greater = 0;
 #if defined(__SSE2__) || defined(_M_X64) || \
     (defined(_M_IX86_FP) && _M_IX86_FP >= 2)
     for (uint32_t offset = 0; offset < AsciiBlock::Size; offset += 16) {
@@ -76,15 +92,16 @@ AsciiBlock ClassifyAsciiBlock(const unsigned char* source) noexcept
         const auto digit = _mm_and_si128(
             _mm_cmpgt_epi8(bytes, _mm_set1_epi8('0' - 1)),
             _mm_cmpgt_epi8(_mm_set1_epi8('9' + 1), bytes));
-        const auto identifier =
-            mask(_mm_or_si128(_mm_or_si128(alpha, digit), equal('_')));
+        const auto digits = mask(digit);
+        const auto identifier = mask(_mm_or_si128(alpha, equal('_'))) | digits;
         const auto controls = _mm_and_si128(
             _mm_cmpgt_epi8(bytes, _mm_set1_epi8('\t' - 1)),
             _mm_cmpgt_epi8(_mm_set1_epi8('\r' + 1), bytes));
         const auto newline = mask(equal('\n'));
         const auto spaces = mask(_mm_or_si128(controls, equal(' '))) & ~newline;
-        const auto ordinary = static_cast<uint32_t>(~(mask(bytes) |
-            mask(equal('\0')) | newline)) & 0xffff;
+        const auto nonAscii = mask(bytes);
+        const auto nulls = mask(equal('\0'));
+
         const auto backslash = mask(equal('\\'));
         const auto quote = mask(equal('"'));
         const auto apostrophe = mask(equal('\''));
@@ -92,50 +109,137 @@ AsciiBlock ClassifyAsciiBlock(const unsigned char* source) noexcept
         const auto close = mask(equal(')'));
         const auto slash = mask(equal('/'));
         const auto raw = mask(equal('R'));
-        const std::array<uint32_t, static_cast<size_t>(AsciiRun::Count)> runs{
-            spaces,
-            identifier,
-            ordinary & ~(quote | backslash),
-            ordinary & ~(apostrophe | backslash),
-            ordinary & ~star,
-            ordinary & ~close,
-            ordinary,
-            ordinary & ~(backslash | slash | quote | apostrophe | raw),
-            ordinary & ~backslash,
-        };
-        for (size_t kind = 0; kind < runs.size(); ++kind) {
-            result.Continuations[kind] |=
-                static_cast<uint64_t>(runs[kind]) << offset;
-        }
+        const auto colons = mask(equal(':'));
+        const auto dots = mask(equal('.'));
+        const auto minuses = mask(equal('-'));
+        const auto bangs = mask(equal('!'));
+        const auto pluses = mask(equal('+'));
+        const auto percents = mask(equal('%'));
+        const auto carets = mask(equal('^'));
+        const auto ampersands = mask(equal('&'));
+        const auto pipes = mask(equal('|'));
+        const auto equalSigns = mask(equal('='));
+        const auto lesses = mask(equal('<'));
+        const auto greaters = mask(equal('>'));
+        auto punctuation = _mm_or_si128(equal('{'), equal('}'));
+        punctuation =
+            _mm_or_si128(punctuation, _mm_or_si128(equal('['), equal(']')));
+        punctuation =
+            _mm_or_si128(punctuation, _mm_or_si128(equal('('), equal(';')));
+        punctuation =
+            _mm_or_si128(punctuation, _mm_or_si128(equal('?'), equal('~')));
+        punctuation = _mm_or_si128(punctuation, equal(','));
+        result.Digits |= static_cast<uint64_t>(digits) << offset;
+        result.Newlines |= static_cast<uint64_t>(newline) << offset;
+        result.NonAscii |= static_cast<uint64_t>(nonAscii) << offset;
+        result.Nulls |= static_cast<uint64_t>(nulls) << offset;
+        result.Quotes |= static_cast<uint64_t>(quote) << offset;
+        result.Apostrophes |= static_cast<uint64_t>(apostrophe) << offset;
+        result.Backslashes |= static_cast<uint64_t>(backslash) << offset;
+        result.Slashes |= static_cast<uint64_t>(slash) << offset;
+        result.Stars |= static_cast<uint64_t>(star) << offset;
+        result.Punctuation |=
+            static_cast<uint64_t>(mask(punctuation) | close) << offset;
+        result.Singles |=
+            static_cast<uint64_t>(mask(punctuation) | close) << offset;
+        colon |= static_cast<uint64_t>(colons) << offset;
+        dot |= static_cast<uint64_t>(dots) << offset;
+        minus |= static_cast<uint64_t>(minuses) << offset;
+        bang |= static_cast<uint64_t>(bangs) << offset;
+        plus |= static_cast<uint64_t>(pluses) << offset;
+        percent |= static_cast<uint64_t>(percents) << offset;
+        caret |= static_cast<uint64_t>(carets) << offset;
+        ampersand |= static_cast<uint64_t>(ampersands) << offset;
+        pipe |= static_cast<uint64_t>(pipes) << offset;
+        equals |= static_cast<uint64_t>(equalSigns) << offset;
+        less |= static_cast<uint64_t>(lesses) << offset;
+        greater |= static_cast<uint64_t>(greaters) << offset;
+        result.Whitespace |= static_cast<uint64_t>(spaces) << offset;
+        result.Identifiers |= static_cast<uint64_t>(identifier) << offset;
+        result.ClosingParentheses |= static_cast<uint64_t>(close) << offset;
+        result.RawPrefixes |= static_cast<uint64_t>(raw) << offset;
     }
 #else
     for (uint32_t offset = 0; offset < AsciiBlock::Size; ++offset) {
         const auto byte = source[offset];
+        const auto bit = uint64_t{1} << offset;
         const bool space = byte == ' ' || byte == '\t' || byte == '\r' ||
             byte == '\f' || byte == '\v';
-        const bool identifier =
-            (byte >= 'a' && byte <= 'z') || (byte >= 'A' && byte <= 'Z') ||
-                (byte >= '0' && byte <= '9') || byte == '_';
-        const bool ordinary = byte < 0x80 && byte != '\0' && byte != '\n';
-        const std::array<bool, static_cast<size_t>(AsciiRun::Count)> runs{
-            space,
-            identifier,
-            ordinary && byte != '"' && byte != '\\',
-            ordinary && byte != '\'' && byte != '\\',
-            ordinary && byte != '*',
-            ordinary && byte != ')',
-            ordinary,
-            ordinary && byte != '\\' && byte != '/' && byte != '"' &&
-                byte != '\'' && byte != 'R',
-            ordinary && byte != '\\',
-        };
-        for (size_t kind = 0; kind < runs.size(); ++kind) {
-            result.Continuations[kind] |=
-                static_cast<uint64_t>(runs[kind]) << offset;
+        const bool digit = byte >= '0' && byte <= '9';
+        const bool identifier = (byte >= 'a' && byte <= 'z') ||
+            (byte >= 'A' && byte <= 'Z') || digit || byte == '_';
+        const bool newline = byte == '\n';
+        const bool nonAscii = byte >= 0x80;
+        const bool null = byte == '\0';
+        const bool quote = byte == '"';
+        const bool apostrophe = byte == '\'';
+        const bool backslash = byte == '\\';
+        const bool slash = byte == '/';
+        const bool star = byte == '*';
+
+        result.Digits |= digit ? bit : 0;
+        result.Newlines |= newline ? bit : 0;
+        result.NonAscii |= nonAscii ? bit : 0;
+        result.Nulls |= null ? bit : 0;
+        result.Quotes |= quote ? bit : 0;
+        result.Apostrophes |= apostrophe ? bit : 0;
+        result.Backslashes |= backslash ? bit : 0;
+        result.Slashes |= slash ? bit : 0;
+        result.Stars |= star ? bit : 0;
+        colon |= byte == ':' ? bit : 0;
+        dot |= byte == '.' ? bit : 0;
+        minus |= byte == '-' ? bit : 0;
+        bang |= byte == '!' ? bit : 0;
+        plus |= byte == '+' ? bit : 0;
+        percent |= byte == '%' ? bit : 0;
+        caret |= byte == '^' ? bit : 0;
+        ampersand |= byte == '&' ? bit : 0;
+        pipe |= byte == '|' ? bit : 0;
+        equals |= byte == '=' ? bit : 0;
+        less |= byte == '<' ? bit : 0;
+        greater |= byte == '>' ? bit : 0;
+        switch (byte) {
+            case '{':
+            case '}':
+            case '[':
+            case ']':
+            case '(':
+            case ')':
+            case ';':
+            case '?':
+            case '~':
+            case ',':
+                result.Punctuation |= bit;
+                result.Singles |= bit;
+                break;
+            default:
+                break;
         }
+        result.Whitespace |= space ? bit : 0;
+        result.Identifiers |= identifier ? bit : 0;
+        result.ClosingParentheses |= byte == ')' ? bit : 0;
+        result.RawPrefixes |= byte == 'R' ? bit : 0;
     }
 #endif
-    return result;
+    result.Punctuation |=
+        colon | dot | minus | bang | plus | percent | caret | ampersand | pipe |
+            equals | less | greater | result.Stars | result.Slashes;
+    result.Pairs =
+        (colon & ((colon | greater) >> 1)) | (dot & (result.Stars >> 1)) |
+            (minus & ((minus | greater) >> 1)) | (plus & (plus >> 1)) |
+            (ampersand & (ampersand >> 1)) | (pipe & (pipe >> 1)) |
+            (less & ((colon | percent | less) >> 1)) |
+            (greater & (greater >> 1)) |
+            ((bang | plus | minus | result.Stars | result.Slashes | percent |
+                caret | ampersand | pipe | equals | less | greater) &
+                (equals >> 1));
+    result.Triples =
+        (dot & (dot >> 1) & (dot >> 2)) |
+            (minus & (greater >> 1) & (result.Stars >> 2)) |
+            (less & (less >> 1) & (equals >> 2)) |
+            (greater & (greater >> 1) & (equals >> 2)) |
+            (less & (equals >> 1) & (greater >> 2));
+
 }
 
 } // namespace tokenizer::detail

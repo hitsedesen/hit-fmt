@@ -17,6 +17,7 @@
 #include <format>
 #include <memory>
 #include <ranges>
+#include <span>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -85,6 +86,7 @@ struct TokenizationSnapshot
 {
     std::vector<Token> Tokens;
     std::vector<TokenizationError> Errors;
+    std::vector<size_t> ErrorCalls;
 };
 
 TokenizationSnapshot SnapshotTokenization(
@@ -101,13 +103,16 @@ TokenizationSnapshot SnapshotTokenization(
     }
 
     TokenizationSnapshot result;
+    size_t call = 0;
     Tokenizer tokenizer(
         {.Data = data, .Size = static_cast<uint32_t>(input.size())},
         [&] (TokenizationError error) {
             result.Errors.push_back(error);
+            result.ErrorCalls.push_back(call);
         });
     // Bound recovery even if a regression stops the streaming cursor advancing.
     for (size_t i = 0; i <= input.size(); ++i) {
+        ++call;
         auto token = tokenizer.Get();
         result.Tokens.push_back(token);
         if (token.Kind == TokenKind::EndOfFile) {
@@ -142,6 +147,7 @@ void ExpectShiftedTokenization(
         EXPECT_EQ(token.Position.Column, expected.Position.Column);
     }
     ASSERT_EQ(actual.Errors.size(), reference.Errors.size());
+    EXPECT_EQ(actual.ErrorCalls, reference.ErrorCalls);
     for (size_t i = 0; i < reference.Errors.size(); ++i) {
         SCOPED_TRACE(std::format("diagnostic {}", i));
         const auto& error = actual.Errors[i];
@@ -198,6 +204,7 @@ INSTANTIATE_TEST_SUITE_P(
     testing::Values(
         GoldenCase{"multiline_preprocessing"},
         GoldenCase{"program_exists"},
+        GoldenCase{"keywords"},
         GoldenCase{"binary_literals"},
         GoldenCase{"hexadecimal_float_literals"},
         GoldenCase{"pointer_literal"},
@@ -378,9 +385,31 @@ TEST(Tokenizer, ClassifiesEveryByteInEveryBlockLane)
         for (size_t lane = 0; lane < detail::AsciiBlock::Size; ++lane) {
             data[lane] = static_cast<unsigned char>((phase + lane) % 256);
         }
-        const auto actual = detail::ClassifyAsciiBlock(data);
-        const auto selected = detail::GetAsciiBlockClassifier()(data);
-        EXPECT_EQ(selected.Continuations, actual.Continuations);
+        detail::AsciiBlock actual;
+        detail::AsciiBlock selected;
+        detail::ClassifyAsciiBlock(data, actual);
+        detail::GetAsciiBlockClassifier()(data, selected);
+        for (unsigned i = 0;
+            i < static_cast<unsigned>(detail::AsciiRun::Count);
+            ++i)
+        {
+            const auto run = static_cast<detail::AsciiRun>(i);
+            EXPECT_EQ(selected[run], actual[run]);
+        }
+        EXPECT_EQ(selected.Digits, actual.Digits);
+        EXPECT_EQ(selected.Newlines, actual.Newlines);
+        EXPECT_EQ(selected.NonAscii, actual.NonAscii);
+        EXPECT_EQ(selected.Nulls, actual.Nulls);
+        EXPECT_EQ(selected.Quotes, actual.Quotes);
+        EXPECT_EQ(selected.Apostrophes, actual.Apostrophes);
+        EXPECT_EQ(selected.Backslashes, actual.Backslashes);
+        EXPECT_EQ(selected.Slashes, actual.Slashes);
+        EXPECT_EQ(selected.Stars, actual.Stars);
+        EXPECT_EQ(selected.Punctuation, actual.Punctuation);
+        EXPECT_EQ(selected.Singles, actual.Singles);
+        EXPECT_EQ(selected.Pairs, actual.Pairs);
+        EXPECT_EQ(selected.Triples, actual.Triples);
+
         for (const auto& run : Runs) {
             SCOPED_TRACE(std::format("run {}", static_cast<unsigned>(run.Run)));
             uint64_t expected = 0;
@@ -397,6 +426,127 @@ TEST(Tokenizer, ClassifiesEveryByteInEveryBlockLane)
                 }
             }
             EXPECT_EQ(actual[run.Run], expected);
+        }
+    }
+}
+
+TEST(Tokenizer, FindsCompoundSymbolsAcrossVectorLanes)
+{
+    constexpr std::string_view Pairs[]{
+        "::",
+        ":>",
+        ".*",
+        "->",
+        "!=",
+        "+=",
+        "++",
+        "-=",
+        "--",
+        "*=",
+        "/=",
+        "%=",
+        "^=",
+        "&=",
+        "&&",
+        "|=",
+        "||",
+        "==",
+        "<:",
+        "<%",
+        "<=",
+        "<<",
+        ">=",
+        ">>",
+    };
+    constexpr std::string_view Triples[]{"...", "->*", "<<=", ">>=", "<=>"};
+    std::array<unsigned char, 64> bytes;
+    for (auto spelling : {
+        std::span<const std::string_view>(Pairs),
+        std::span<const std::string_view>(Triples),
+    })
+    {
+        for (auto text : spelling) {
+            for (size_t offset = 0; offset < bytes.size(); ++offset) {
+                bytes.fill(' ');
+                for (size_t i = 0;
+                    i < text.size() && offset + i < bytes.size();
+                    ++i)
+                {
+                    bytes[offset + i] = static_cast<unsigned char>(text[i]);
+                }
+                detail::AsciiBlock result;
+                detail::GetAsciiBlockClassifier()(bytes.data(), result);
+                uint64_t pairs = 0;
+                uint64_t triples = 0;
+                for (size_t i = 0; i < bytes.size(); ++i) {
+                    const std::string_view remaining(
+                        reinterpret_cast<const char*>(bytes.data() + i),
+                        bytes.size() - i);
+                    for (auto candidate : Pairs) {
+                        if (remaining.starts_with(candidate)) {
+                            pairs |= uint64_t{1} << i;
+                        }
+                    }
+                    for (auto candidate : Triples) {
+                        if (remaining.starts_with(candidate)) {
+                            triples |= uint64_t{1} << i;
+                        }
+                    }
+                }
+                EXPECT_EQ(result.Pairs, pairs);
+                EXPECT_EQ(result.Triples, triples);
+            }
+        }
+    }
+}
+
+TEST(Tokenizer, DeliversLookaheadDiagnosticsOnTheRequestingCall)
+{
+    const struct
+    {
+        std::string_view Text;
+        std::vector<size_t> Calls;
+        std::vector<TokenizationErrorKind> Kinds;
+    } Cases[]{
+        {";a\x80", {2}, {TokenizationErrorKind::InvalidUtf8CodePoint}},
+        {";+\x80", {2}, {TokenizationErrorKind::InvalidUtf8CodePoint}},
+        {";++\x80", {3}, {TokenizationErrorKind::InvalidUtf8CodePoint}},
+        {";<::\x80", {4}, {TokenizationErrorKind::InvalidUtf8CodePoint}},
+        {"z; \x80", {3}, {TokenizationErrorKind::InvalidUtf8CodePoint}},
+        {";\"x\"\x80", {2}, {TokenizationErrorKind::InvalidUtf8CodePoint}},
+        {
+            ";..\x80",
+            {2, 2},
+            {TokenizationErrorKind::InvalidUtf8CodePoint,
+                TokenizationErrorKind::UnfinishedEllipsis},
+        },
+    };
+    for (const auto& testCase : Cases) {
+        for (size_t prefix : {0u, 80u}) {
+            for (unsigned padding = 0; padding < 64; ++padding) {
+                SCOPED_TRACE(
+                    std::format("prefix {}, offset {}", prefix, padding));
+                const auto input = std::string(prefix, ';') +
+                    std::string(padding, ' ') + std::string(testCase.Text);
+                const auto result = SnapshotTokenization(input, 1);
+                auto calls = testCase.Calls;
+                for (auto& call : calls) {
+                    call += prefix;
+                }
+                EXPECT_EQ(result.ErrorCalls, calls);
+                std::vector<TokenizationErrorKind> kinds;
+                for (const auto& error : result.Errors) {
+                    kinds.push_back(error.Kind);
+                }
+                EXPECT_EQ(kinds, testCase.Kinds);
+                if (testCase.Text == "z; \x80") {
+                    ASSERT_EQ(result.Errors.size(), 1);
+                    const auto& error = result.Errors.front();
+                    EXPECT_EQ(error.TokenStart.Column, prefix + padding + 2);
+                    EXPECT_EQ(error.ErrorPosition.Column, prefix + padding + 4);
+                    EXPECT_EQ(error.TokenEnd.Column, prefix + padding + 4);
+                }
+            }
         }
     }
 }
