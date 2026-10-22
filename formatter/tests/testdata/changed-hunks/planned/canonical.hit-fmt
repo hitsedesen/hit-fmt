@@ -1,0 +1,8 @@
+Layout = Canonical
+IndentationKind = Spaces
+ColumnLimit = 40
+CallsLayout = Canonical
+CommaSpaceAfter = Space
+FunctionCallSpaceBeforeParameters = NoSpace
+FunctionSpaceBeforeParameters = NoSpace
+ControlBlockKeywordSpacing = Space

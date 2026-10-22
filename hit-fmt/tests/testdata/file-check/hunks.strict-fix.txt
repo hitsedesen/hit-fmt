@@ -3,14 +3,14 @@ fail: function name 'selected_bad' has invalid case; expected PascalCase
 fail: parameter #1 in function definition 'selected_bad': expected a name
   --> sample.cpp:4:22 [written output]
 fail: function name 'bad_after' has invalid case; expected PascalCase
-  --> sample.cpp:14:6 [written output]
+  --> sample.cpp:13:6 [written output]
 fail: parameter #1 in function definition 'bad_after': expected a name
-  --> sample.cpp:14:19 [written output]
+  --> sample.cpp:13:19 [written output]
 fail: control body requires braces; cannot automatically fix within selected hunks or allowed spillover
-  --> sample.cpp:8:9 [written output]
+  --> sample.cpp:7:5 [written output]
 fail: cannot format this line automatically within ColumnLimit 40
-  --> sample.cpp:11:41 [written output]
+  --> sample.cpp:10:41 [written output]
    |
-11 |         "unavoidable_selected_literal_over_the_limit",
+10 |         "unavoidable_selected_literal_over_the_limit",
    |                                         ^
 summary: fail: naming or parameter-name violation; fail: control body requires braces; cannot automatically fix within selected hunks or allowed spillover; fail: cannot format automatically within column limit

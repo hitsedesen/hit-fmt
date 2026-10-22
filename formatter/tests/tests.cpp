@@ -963,6 +963,23 @@ std::vector<FormatCase> FormatCases()
     {
         const auto directory =
             std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../include-order";
+        for (const auto name : {"directory", "matching", "prefixes"}) {
+            for (const bool absolute : {false, true}) {
+                FormatCase value{
+                    directory,
+                    std::string(name) +
+                        (absolute ? "-absolute-path" : "-dot-path"),
+                    "directory.input.cpp",
+                    name,
+                };
+                value.Expected = std::string(name) + ".output.cpp";
+                value.InputFilePath = absolute
+                    ? std::filesystem::absolute("project/engine/widget.cpp")
+                        .generic_string()
+                    : "./project/engine/widget.cpp";
+                cases.push_back(std::move(value));
+            }
+        }
         for (const auto name :
             {
                 "directory",
@@ -3526,6 +3543,17 @@ std::vector<FormatCase> FormatCases()
         {{2, 5}},
         false,
     });
+    for (const bool spillover : {false, true}) {
+        cases.push_back({
+            hunks / "planned",
+            spillover ? "canonical-spill" : "canonical-strict",
+            "canonical.input.cpp",
+            "canonical",
+            {{2, 2}, {6, 6}},
+            spillover,
+            "canonical.input.cpp",
+        });
+    }
     for (const auto* name :
         {
             "greedy-trailing",
@@ -5171,12 +5199,17 @@ TEST_P(FormatTest, Golden)
                 .Size = static_cast<uint32_t>(input.size()),
             },
             [] (parser::ParseError) { });
-        fixture.Expect(formatter::FormatChanged(
+        const auto formatted = formatter::FormatChanged(
             tree,
             formatter::PreparedFormat(style),
             value.Hunks,
             value.Spillover,
-            {.InputFilePath = value.InputFilePath}).Result.Text);
+            {.InputFilePath = value.InputFilePath}).Result.Text;
+        if (value.Expected.empty()) {
+            fixture.Expect(formatted);
+        } else {
+            EXPECT_EQ(formatted, ReadFile(fixture.Directory / value.Expected));
+        }
     }
 }
 INSTANTIATE_TEST_SUITE_P(

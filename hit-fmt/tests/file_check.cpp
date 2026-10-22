@@ -70,6 +70,100 @@ TEST(FileCheck, OneResultServesCheckAndFixWithoutCountingAppliedFormatting)
     EXPECT_FALSE(clean.HasFailures(true));
 }
 
+TEST(FileCheck, PartialSelectionNeverChangesCanonicalFormatting)
+{
+    auto raw = Configuration();
+    raw.FormattingStyle.ColumnLimit = 40;
+    raw.FormattingStyle.CallsLayout = formatter::CategoryLayout::Canonical;
+    const hit_fmt::PreparedFileConfiguration configuration(raw);
+    for (const std::string_view source :
+        {
+            "void f() { outer(first, child(left, right), last); }\n",
+            "void f() { if (ready) { first(); } else { second(); } }\n",
+            "struct Widget { void function(int first, int second, "
+                "int third); };\n",
+            "void f() { auto value = first + second + third + fourth "
+                "+ fifth; }\n",
+            "void f() { outer(first, [] (int value) { return value + 1; }, "
+                "last); }\n",
+            "void f() { object.First(first).Second(second).Third(third); }\n",
+            "void f() { if (first && second && third) { work(); } }\n",
+            "void f() { auto value = condition ? first : second; }\n",
+            "class Widget { public: void first(); void second(); "
+                "private: int value; };\n",
+            "void function(int first, int second, int third) "
+                "{ work(first, second, third); }\n",
+            "void f() { int values[] = {first, second, third, fourth, "
+                "fifth}; }\n",
+            "void f() { for (int index = 0; index < limit; ++index) "
+                "{ work(index); } }\n",
+            "Widget::Widget(int value) : First(value), Second(value), "
+                "Third(value) {}\n",
+        })
+    {
+        const Input input(source);
+        const auto full = hit_fmt::CheckFile(input.View(), configuration);
+        const Input canonical(full.Formatting.Text);
+        ASSERT_FALSE(hit_fmt::CheckFile(
+            canonical.View(),
+            configuration).FormattingMismatch) << full.Formatting.Text;
+        const auto count = std::count(
+            full.Formatting.Text.begin(),
+            full.Formatting.Text.end(),
+            '\n');
+        for (const std::string_view outside :
+            {"", "void outside(){work(a,b);}\n"})
+        {
+            const Input partial(full.Formatting.Text + std::string(outside));
+            for (size_t line = 1; line <= count; ++line) {
+                const formatter::Hunk selected[] = {{line, line}};
+                for (const bool spillover : {false, true}) {
+                    const auto checked = hit_fmt::CheckFile(
+                        partial.View(),
+                        configuration,
+                        {},
+                        hit_fmt::ChangedFileScope{selected, spillover});
+                    EXPECT_FALSE(checked.FormattingMismatch) << "line " << line
+                        << " spillover " << spillover << "\n"
+                        << full.Formatting.Text << "\n"
+                        << checked.Formatting.Text;
+                    EXPECT_TRUE(checked.RequiredChanges.empty());
+                }
+            }
+        }
+    }
+}
+
+TEST(FileCheck, IncludeOrderIsIndependentOfInputPathFormAndHunks)
+{
+    formatter::Configuration raw;
+    auto& style = raw.FormattingStyle;
+    style.IncludeOrder = formatter::IncludeOrder::Sort;
+    style.IncludeMatchingHeader = formatter::IncludeMatchingHeader::First;
+    style.IncludeGrouping = formatter::IncludeGrouping::Directory;
+    style.IncludePathBase = formatter::IncludePathBase::ProjectRoot;
+    const hit_fmt::PreparedFileConfiguration prepared(raw);
+    const Input input("#include \"project/engine/widget.h\"\n\n"
+        "#include \"project/engine/detail.h\"\n\n"
+        "#include \"project/base.h\"\n");
+    const formatter::Hunk selected[] = {{1, 5}};
+    const auto relative = std::filesystem::path("project/engine/widget.cpp");
+    for (const auto& path : {relative, std::filesystem::absolute(relative)}) {
+        const auto name = path.generic_string();
+        for (const bool hunks : {false, true}) {
+            const auto checked = hit_fmt::CheckFile(
+                input.View(),
+                prepared,
+                name,
+                hunks
+                ? std::optional(hit_fmt::ChangedFileScope{selected})
+                : std::nullopt);
+            EXPECT_FALSE(checked.FormattingMismatch) << name;
+            EXPECT_TRUE(checked.IncludeOrderChanges.empty()) << name;
+        }
+    }
+}
+
 TEST(FileCheck, IncludeOrderDiagnosticGoldenIsOneErrorForTheFile)
 {
     const test::golden::Fixture fixture{
