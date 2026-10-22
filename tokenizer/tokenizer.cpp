@@ -7,14 +7,22 @@
 
 #include <algorithm>
 #include <array>
+#include <bit>
 #include <cstdint>
+#include <cstring>
 #include <string_view>
 #include <type_traits>
 #include <utility>
 
+#if defined(_MSC_VER) && defined(_M_X64)
+#include <intrin.h>
+#endif
+
 namespace tokenizer {
 
 using util::SourceOffset;
+
+using detail::AsciiRun;
 
 std::string_view GetTokenKindName(TokenKind kind)
 {
@@ -51,117 +59,183 @@ constexpr uint64_t IdentifierKey(std::string_view text)
         (static_cast<uint64_t>(text.back()) << 32);
 }
 
+constexpr size_t KeywordSlot(uint64_t key)
+{
+    return (key * 0x1ed83522862e78afULL) >> 54;
+}
+
+struct KeywordLookup
+{
+    struct Text
+    {
+        uint64_t First;
+        uint64_t Second;
+        uint8_t Length;
+    };
+
+    std::array<Text, static_cast<size_t>(TokenKind::Keyword_while) + 1> Words;
+    std::array<TokenKind, 1024> Slots;
+};
+
+constexpr auto Keywords = [] {
+    KeywordLookup table{};
+    auto add = [&] (std::string_view text, TokenKind kind) {
+        const auto slot = KeywordSlot(IdentifierKey(text));
+        if (table.Slots[slot] != TokenKind::Invalid) {
+            throw "keyword hash collision";
+        }
+        table.Slots[slot] = kind;
+        auto& word = table.Words[static_cast<size_t>(kind)];
+        word.Length = static_cast<uint8_t>(text.size());
+        for (size_t i = 0; i < text.size(); ++i) {
+            auto& part = i < 8 ? word.First : word.Second;
+            part |= static_cast<uint64_t>(text[i]) << ((i % 8) * 8);
+        }
+    };
+#define TOKENIZER_KEYWORD(text, kind) add(text, TokenKind::kind)
+    TOKENIZER_KEYWORD("and", Operator_And);
+    TOKENIZER_KEYWORD("bitor", Operator_BitOr);
+    TOKENIZER_KEYWORD("or", Operator_Or);
+    TOKENIZER_KEYWORD("xor", Operator_Xor);
+    TOKENIZER_KEYWORD("compl", Operator_Complement);
+    TOKENIZER_KEYWORD("bitand", Operator_Ampersand);
+    TOKENIZER_KEYWORD("and_eq", Operator_BitAndAssign);
+    TOKENIZER_KEYWORD("or_eq", Operator_BitOrAssign);
+    TOKENIZER_KEYWORD("xor_eq", Operator_XorAssign);
+    TOKENIZER_KEYWORD("not", Operator_Not);
+    TOKENIZER_KEYWORD("not_eq", Operator_NotEquals);
+    TOKENIZER_KEYWORD("alignas", Keyword_alignas);
+    TOKENIZER_KEYWORD("alignof", Keyword_alignof);
+    TOKENIZER_KEYWORD("asm", Keyword_asm);
+    TOKENIZER_KEYWORD("auto", Keyword_auto);
+    TOKENIZER_KEYWORD("bool", Keyword_bool);
+    TOKENIZER_KEYWORD("break", Keyword_break);
+    TOKENIZER_KEYWORD("case", Keyword_case);
+    TOKENIZER_KEYWORD("catch", Keyword_catch);
+    TOKENIZER_KEYWORD("char", Keyword_char);
+    TOKENIZER_KEYWORD("char8_t", Keyword_char8_t);
+    TOKENIZER_KEYWORD("char16_t", Keyword_char16_t);
+    TOKENIZER_KEYWORD("char32_t", Keyword_char32_t);
+    TOKENIZER_KEYWORD("class", Keyword_class);
+    TOKENIZER_KEYWORD("concept", Keyword_concept);
+    TOKENIZER_KEYWORD("const", Keyword_const);
+    TOKENIZER_KEYWORD("consteval", Keyword_consteval);
+    TOKENIZER_KEYWORD("constexpr", Keyword_constexpr);
+    TOKENIZER_KEYWORD("constinit", Keyword_constinit);
+    TOKENIZER_KEYWORD("const_cast", Keyword_const_cast);
+    TOKENIZER_KEYWORD("continue", Keyword_continue);
+    TOKENIZER_KEYWORD("co_await", Keyword_co_await);
+    TOKENIZER_KEYWORD("co_return", Keyword_co_return);
+    TOKENIZER_KEYWORD("co_yield", Keyword_co_yield);
+    TOKENIZER_KEYWORD("decltype", Keyword_decltype);
+    TOKENIZER_KEYWORD("default", Keyword_default);
+    TOKENIZER_KEYWORD("delete", Keyword_delete);
+    TOKENIZER_KEYWORD("do", Keyword_do);
+    TOKENIZER_KEYWORD("double", Keyword_double);
+    TOKENIZER_KEYWORD("dynamic_cast", Keyword_dynamic_cast);
+    TOKENIZER_KEYWORD("else", Keyword_else);
+    TOKENIZER_KEYWORD("enum", Keyword_enum);
+    TOKENIZER_KEYWORD("explicit", Keyword_explicit);
+    TOKENIZER_KEYWORD("export", Keyword_export);
+    TOKENIZER_KEYWORD("extern", Keyword_extern);
+    TOKENIZER_KEYWORD("false", Keyword_false);
+    TOKENIZER_KEYWORD("float", Keyword_float);
+    TOKENIZER_KEYWORD("for", Keyword_for);
+    TOKENIZER_KEYWORD("friend", Keyword_friend);
+    TOKENIZER_KEYWORD("goto", Keyword_goto);
+    TOKENIZER_KEYWORD("if", Keyword_if);
+    TOKENIZER_KEYWORD("inline", Keyword_inline);
+    TOKENIZER_KEYWORD("int", Keyword_int);
+    TOKENIZER_KEYWORD("long", Keyword_long);
+    TOKENIZER_KEYWORD("mutable", Keyword_mutable);
+    TOKENIZER_KEYWORD("namespace", Keyword_namespace);
+    TOKENIZER_KEYWORD("new", Keyword_new);
+    TOKENIZER_KEYWORD("noexcept", Keyword_noexcept);
+    TOKENIZER_KEYWORD("nullptr", Keyword_nullptr);
+    TOKENIZER_KEYWORD("operator", Keyword_operator);
+    TOKENIZER_KEYWORD("private", Keyword_private);
+    TOKENIZER_KEYWORD("protected", Keyword_protected);
+    TOKENIZER_KEYWORD("public", Keyword_public);
+    TOKENIZER_KEYWORD("register", Keyword_register);
+    TOKENIZER_KEYWORD("reinterpret_cast", Keyword_reinterpret_cast);
+    TOKENIZER_KEYWORD("requires", Keyword_requires);
+    TOKENIZER_KEYWORD("return", Keyword_return);
+    TOKENIZER_KEYWORD("short", Keyword_short);
+    TOKENIZER_KEYWORD("signed", Keyword_signed);
+    TOKENIZER_KEYWORD("sizeof", Keyword_sizeof);
+    TOKENIZER_KEYWORD("static", Keyword_static);
+    TOKENIZER_KEYWORD("static_assert", Keyword_static_assert);
+    TOKENIZER_KEYWORD("static_cast", Keyword_static_cast);
+    TOKENIZER_KEYWORD("struct", Keyword_struct);
+    TOKENIZER_KEYWORD("switch", Keyword_switch);
+    TOKENIZER_KEYWORD("template", Keyword_template);
+    TOKENIZER_KEYWORD("this", Keyword_this);
+    TOKENIZER_KEYWORD("thread_local", Keyword_thread_local);
+    TOKENIZER_KEYWORD("throw", Keyword_throw);
+    TOKENIZER_KEYWORD("true", Keyword_true);
+    TOKENIZER_KEYWORD("try", Keyword_try);
+    TOKENIZER_KEYWORD("typedef", Keyword_typedef);
+    TOKENIZER_KEYWORD("typeid", Keyword_typeid);
+    TOKENIZER_KEYWORD("typename", Keyword_typename);
+    TOKENIZER_KEYWORD("union", Keyword_union);
+    TOKENIZER_KEYWORD("unsigned", Keyword_unsigned);
+    TOKENIZER_KEYWORD("using", Keyword_using);
+    TOKENIZER_KEYWORD("virtual", Keyword_virtual);
+    TOKENIZER_KEYWORD("void", Keyword_void);
+    TOKENIZER_KEYWORD("volatile", Keyword_volatile);
+    TOKENIZER_KEYWORD("wchar_t", Keyword_wchar_t);
+    TOKENIZER_KEYWORD("while", Keyword_while);
+#undef TOKENIZER_KEYWORD
+    return table;
+}();
+
+#if defined(_MSC_VER)
+__forceinline
+#else
+inline
+#endif
 TokenKind ClassifyIdentifier(std::string_view identifier)
 {
-    if (identifier.size() < 2 || identifier.size() > 16) {
+    if (identifier.size() < 2 || identifier.size() > 16 ||
+        identifier.front() < 'a' || identifier.front() > 'z')
+    {
         return TokenKind::Identifier;
     }
-    if (identifier.front() < 'a' || identifier.front() > 'z') {
+    const auto kind = Keywords.Slots[KeywordSlot(IdentifierKey(identifier))];
+    const auto& candidate = Keywords.Words[static_cast<size_t>(kind)];
+    if (candidate.Length != identifier.size()) {
         return TokenKind::Identifier;
     }
-
-#define TOKENIZER_KEYWORD(text, kind)                                          \
-    case IdentifierKey(text):                                                  \
-        return identifier == text ? TokenKind::kind : TokenKind::Identifier
-
-    switch (IdentifierKey(identifier)) {
-        TOKENIZER_KEYWORD("and", Operator_And);
-        TOKENIZER_KEYWORD("bitor", Operator_BitOr);
-        TOKENIZER_KEYWORD("or", Operator_Or);
-        TOKENIZER_KEYWORD("xor", Operator_Xor);
-        TOKENIZER_KEYWORD("compl", Operator_Complement);
-        TOKENIZER_KEYWORD("bitand", Operator_Ampersand);
-        TOKENIZER_KEYWORD("and_eq", Operator_BitAndAssign);
-        TOKENIZER_KEYWORD("or_eq", Operator_BitOrAssign);
-        TOKENIZER_KEYWORD("xor_eq", Operator_XorAssign);
-        TOKENIZER_KEYWORD("not", Operator_Not);
-        TOKENIZER_KEYWORD("not_eq", Operator_NotEquals);
-        TOKENIZER_KEYWORD("alignas", Keyword_alignas);
-        TOKENIZER_KEYWORD("alignof", Keyword_alignof);
-        TOKENIZER_KEYWORD("asm", Keyword_asm);
-        TOKENIZER_KEYWORD("auto", Keyword_auto);
-        TOKENIZER_KEYWORD("bool", Keyword_bool);
-        TOKENIZER_KEYWORD("break", Keyword_break);
-        TOKENIZER_KEYWORD("case", Keyword_case);
-        TOKENIZER_KEYWORD("catch", Keyword_catch);
-        TOKENIZER_KEYWORD("char", Keyword_char);
-        TOKENIZER_KEYWORD("char8_t", Keyword_char8_t);
-        TOKENIZER_KEYWORD("char16_t", Keyword_char16_t);
-        TOKENIZER_KEYWORD("char32_t", Keyword_char32_t);
-        TOKENIZER_KEYWORD("class", Keyword_class);
-        TOKENIZER_KEYWORD("concept", Keyword_concept);
-        TOKENIZER_KEYWORD("const", Keyword_const);
-        TOKENIZER_KEYWORD("consteval", Keyword_consteval);
-        TOKENIZER_KEYWORD("constexpr", Keyword_constexpr);
-        TOKENIZER_KEYWORD("constinit", Keyword_constinit);
-        TOKENIZER_KEYWORD("const_cast", Keyword_const_cast);
-        TOKENIZER_KEYWORD("continue", Keyword_continue);
-        TOKENIZER_KEYWORD("co_await", Keyword_co_await);
-        TOKENIZER_KEYWORD("co_return", Keyword_co_return);
-        TOKENIZER_KEYWORD("co_yield", Keyword_co_yield);
-        TOKENIZER_KEYWORD("decltype", Keyword_decltype);
-        TOKENIZER_KEYWORD("default", Keyword_default);
-        TOKENIZER_KEYWORD("delete", Keyword_delete);
-        TOKENIZER_KEYWORD("do", Keyword_do);
-        TOKENIZER_KEYWORD("double", Keyword_double);
-        TOKENIZER_KEYWORD("dynamic_cast", Keyword_dynamic_cast);
-        TOKENIZER_KEYWORD("else", Keyword_else);
-        TOKENIZER_KEYWORD("enum", Keyword_enum);
-        TOKENIZER_KEYWORD("explicit", Keyword_explicit);
-        TOKENIZER_KEYWORD("export", Keyword_export);
-        TOKENIZER_KEYWORD("extern", Keyword_extern);
-        TOKENIZER_KEYWORD("false", Keyword_false);
-        TOKENIZER_KEYWORD("float", Keyword_float);
-        TOKENIZER_KEYWORD("for", Keyword_for);
-        TOKENIZER_KEYWORD("friend", Keyword_friend);
-        TOKENIZER_KEYWORD("goto", Keyword_goto);
-        TOKENIZER_KEYWORD("if", Keyword_if);
-        TOKENIZER_KEYWORD("inline", Keyword_inline);
-        TOKENIZER_KEYWORD("int", Keyword_int);
-        TOKENIZER_KEYWORD("long", Keyword_long);
-        TOKENIZER_KEYWORD("mutable", Keyword_mutable);
-        TOKENIZER_KEYWORD("namespace", Keyword_namespace);
-        TOKENIZER_KEYWORD("new", Keyword_new);
-        TOKENIZER_KEYWORD("noexcept", Keyword_noexcept);
-        TOKENIZER_KEYWORD("nullptr", Keyword_nullptr);
-        TOKENIZER_KEYWORD("operator", Keyword_operator);
-        TOKENIZER_KEYWORD("private", Keyword_private);
-        TOKENIZER_KEYWORD("protected", Keyword_protected);
-        TOKENIZER_KEYWORD("public", Keyword_public);
-        TOKENIZER_KEYWORD("register", Keyword_register);
-        TOKENIZER_KEYWORD("reinterpret_cast", Keyword_reinterpret_cast);
-        TOKENIZER_KEYWORD("requires", Keyword_requires);
-        TOKENIZER_KEYWORD("return", Keyword_return);
-        TOKENIZER_KEYWORD("short", Keyword_short);
-        TOKENIZER_KEYWORD("signed", Keyword_signed);
-        TOKENIZER_KEYWORD("sizeof", Keyword_sizeof);
-        TOKENIZER_KEYWORD("static", Keyword_static);
-        TOKENIZER_KEYWORD("static_assert", Keyword_static_assert);
-        TOKENIZER_KEYWORD("static_cast", Keyword_static_cast);
-        TOKENIZER_KEYWORD("struct", Keyword_struct);
-        TOKENIZER_KEYWORD("switch", Keyword_switch);
-        TOKENIZER_KEYWORD("template", Keyword_template);
-        TOKENIZER_KEYWORD("this", Keyword_this);
-        TOKENIZER_KEYWORD("thread_local", Keyword_thread_local);
-        TOKENIZER_KEYWORD("throw", Keyword_throw);
-        TOKENIZER_KEYWORD("true", Keyword_true);
-        TOKENIZER_KEYWORD("try", Keyword_try);
-        TOKENIZER_KEYWORD("typedef", Keyword_typedef);
-        TOKENIZER_KEYWORD("typeid", Keyword_typeid);
-        TOKENIZER_KEYWORD("typename", Keyword_typename);
-        TOKENIZER_KEYWORD("union", Keyword_union);
-        TOKENIZER_KEYWORD("unsigned", Keyword_unsigned);
-        TOKENIZER_KEYWORD("using", Keyword_using);
-        TOKENIZER_KEYWORD("virtual", Keyword_virtual);
-        TOKENIZER_KEYWORD("void", Keyword_void);
-        TOKENIZER_KEYWORD("volatile", Keyword_volatile);
-        TOKENIZER_KEYWORD("wchar_t", Keyword_wchar_t);
-        TOKENIZER_KEYWORD("while", Keyword_while);
-        default:
-            return TokenKind::Identifier;
+    uint64_t first;
+    // Identifier views borrow the padded source, including short final words.
+    std::memcpy(&first, identifier.data(), sizeof(first));
+    if constexpr (std::endian::native == std::endian::big) {
+        first =
+            ((first & 0x00000000000000ffULL) << 56) |
+                ((first & 0x000000000000ff00ULL) << 40) |
+                ((first & 0x0000000000ff0000ULL) << 24) |
+                ((first & 0x00000000ff000000ULL) << 8) |
+                ((first & 0x000000ff00000000ULL) >> 8) |
+                ((first & 0x0000ff0000000000ULL) >> 24) |
+                ((first & 0x00ff000000000000ULL) >> 40) |
+                ((first & 0xff00000000000000ULL) >> 56);
     }
-
-#undef TOKENIZER_KEYWORD
+    if (identifier.size() <= 8) {
+        const auto shift = static_cast<unsigned>((8 - identifier.size()) * 8);
+        return ((first ^ candidate.First) << shift) == 0
+            ? kind
+            : TokenKind::Identifier;
+    }
+    if (first != candidate.First) {
+        return TokenKind::Identifier;
+    }
+    uint64_t second = 0;
+    for (size_t i = 8; i < identifier.size(); ++i) {
+        second |=
+            static_cast<uint64_t>(static_cast<unsigned char>(identifier[i]))
+                << ((i - 8) * 8);
+    }
+    return second == candidate.Second ? kind : TokenKind::Identifier;
 }
 
 [[nodiscard]] constexpr bool IsSpace(unsigned char byte) noexcept
@@ -202,68 +276,133 @@ TokenKind ClassifyIdentifier(std::string_view identifier)
         (value >= 'A' && value <= 'Z') || value == '_';
 }
 
-[[nodiscard]] inline const unsigned char* ScanAsciiWhitespace(
-    const unsigned char* cursor) noexcept
+constexpr uint64_t LowBits(unsigned count) noexcept
 {
-    while (IsSpace(*cursor)) {
-        ++cursor;
-    }
-    return cursor;
+    return count == 64 ? ~uint64_t{0} : (uint64_t{1} << count) - 1;
 }
 
-[[nodiscard]] inline const unsigned char* ScanAsciiIdentifier(
-    const unsigned char* cursor) noexcept
+[[nodiscard]] unsigned FirstBit(uint64_t bits) noexcept
 {
-    auto lastByte = *cursor;
-    while (IsAsciiIdentifierStart(lastByte) || IsDigit(lastByte)) {
-        ++cursor;
-        lastByte = *cursor;
-    }
-    return cursor;
+    assert(bits != 0);
+#if defined(_MSC_VER) && defined(_M_X64)
+    unsigned long index;
+    _BitScanForward64(&index, bits);
+    return index;
+#else
+    return static_cast<unsigned>(std::countr_zero(bits));
+#endif
 }
 
-[[nodiscard]] inline const unsigned char* ScanAsciiQuotedLiteral(
-    const unsigned char* cursor,
-    unsigned char quote) noexcept
+constexpr uint16_t OperatorKey(unsigned char first, unsigned char second)
 {
-    auto lastByte = *cursor;
-    while (lastByte < AsciiLimit && lastByte != quote && lastByte != '\\' &&
-        lastByte != '\n' && lastByte != '\0')
-    {
-        ++cursor;
-        lastByte = *cursor;
-    }
-    return cursor;
+    return static_cast<uint16_t>(first | (second << 8));
 }
 
-[[nodiscard]] inline const unsigned char* ScanAsciiBlockComment(
-    const unsigned char* cursor,
-    bool& nonSpace) noexcept
-{
-    auto lastByte = *cursor;
-    while (lastByte < AsciiLimit && lastByte != '*' && lastByte != '\n' &&
-        lastByte != '\0')
-    {
-        nonSpace |= !IsSpace(lastByte);
-        ++cursor;
-        lastByte = *cursor;
-    }
-    return cursor;
-}
+constexpr auto SingleOperators = [] {
+    std::array<TokenKind, 128> kinds{};
+    kinds['{'] = TokenKind::Operator_OpenBrace;
+    kinds['}'] = TokenKind::Operator_CloseBrace;
+    kinds['['] = TokenKind::Operator_OpenBracket;
+    kinds[']'] = TokenKind::Operator_CloseBracket;
+    kinds['('] = TokenKind::Operator_OpenParenthesis;
+    kinds[')'] = TokenKind::Operator_CloseParenthesis;
+    kinds[';'] = TokenKind::Operator_Semicolon;
+    kinds[':'] = TokenKind::Operator_Colon;
+    kinds['?'] = TokenKind::Operator_Conditional;
+    kinds['.'] = TokenKind::Operator_ClassMemberAccess;
+    kinds['~'] = TokenKind::Operator_Complement;
+    kinds['!'] = TokenKind::Operator_Not;
+    kinds['+'] = TokenKind::Operator_Plus;
+    kinds['-'] = TokenKind::Operator_Minus;
+    kinds['*'] = TokenKind::Operator_Star;
+    kinds['/'] = TokenKind::Operator_Divide;
+    kinds['%'] = TokenKind::Operator_Remainder;
+    kinds['^'] = TokenKind::Operator_Xor;
+    kinds['&'] = TokenKind::Operator_Ampersand;
+    kinds['|'] = TokenKind::Operator_BitOr;
+    kinds['='] = TokenKind::Operator_Assign;
+    kinds['<'] = TokenKind::Operator_Less;
+    kinds['>'] = TokenKind::Operator_Greater;
+    kinds[','] = TokenKind::Operator_Comma;
+    return kinds;
+}();
 
-[[nodiscard]] inline const unsigned char* ScanAsciiRawString(
-    const unsigned char* cursor,
-    bool& nonSpace) noexcept
+#if defined(_MSC_VER)
+__forceinline
+#else
+inline
+#endif
+TokenKind ClassifyOperator(const unsigned char* text, unsigned length)
 {
-    auto lastByte = *cursor;
-    while (lastByte < AsciiLimit && lastByte != ')' && lastByte != '\n' &&
-        lastByte != '\0')
-    {
-        nonSpace |= !IsSpace(lastByte);
-        ++cursor;
-        lastByte = *cursor;
+    if (length == 1) {
+        return SingleOperators[*text];
     }
-    return cursor;
+    if (length == 3) {
+        switch (*text) {
+            case '.':
+                return TokenKind::Operator_Ellipsis;
+            case '-':
+                return TokenKind::Operator_IndirectPointerToMemberDereference;
+            case '<':
+                return text[1] == '<'
+                    ? TokenKind::Operator_LeftShiftAssign
+                    : TokenKind::Operator_Spaceship;
+            default:
+                return TokenKind::Operator_RightShiftAssign;
+        }
+    }
+    switch (OperatorKey(text[0], text[1])) {
+        case OperatorKey(':', ':'):
+            return TokenKind::Operator_ScopeResolution;
+        case OperatorKey(':', '>'):
+            return TokenKind::Operator_CloseBracket;
+        case OperatorKey('.', '*'):
+            return TokenKind::Operator_PointerToMemberDereference;
+        case OperatorKey('-', '>'):
+            return TokenKind::Operator_IndirectClassMemberAccess;
+        case OperatorKey('!', '='):
+            return TokenKind::Operator_NotEquals;
+        case OperatorKey('+', '='):
+            return TokenKind::Operator_PlusAssign;
+        case OperatorKey('+', '+'):
+            return TokenKind::Operator_Increment;
+        case OperatorKey('-', '='):
+            return TokenKind::Operator_MinusAssign;
+        case OperatorKey('-', '-'):
+            return TokenKind::Operator_Decrement;
+        case OperatorKey('*', '='):
+            return TokenKind::Operator_MultiplyAssign;
+        case OperatorKey('/', '='):
+            return TokenKind::Operator_DivideAssign;
+        case OperatorKey('%', '='):
+            return TokenKind::Operator_RemainderAssign;
+        case OperatorKey('^', '='):
+            return TokenKind::Operator_XorAssign;
+        case OperatorKey('&', '='):
+            return TokenKind::Operator_BitAndAssign;
+        case OperatorKey('&', '&'):
+            return TokenKind::Operator_And;
+        case OperatorKey('|', '='):
+            return TokenKind::Operator_BitOrAssign;
+        case OperatorKey('|', '|'):
+            return TokenKind::Operator_Or;
+        case OperatorKey('=', '='):
+            return TokenKind::Operator_Equals;
+        case OperatorKey('<', ':'):
+            return TokenKind::Operator_OpenBracket;
+        case OperatorKey('<', '%'):
+            return TokenKind::Operator_OpenBrace;
+        case OperatorKey('<', '='):
+            return TokenKind::Operator_LessEquals;
+        case OperatorKey('<', '<'):
+            return TokenKind::Operator_LeftShift;
+        case OperatorKey('>', '='):
+            return TokenKind::Operator_GreaterEquals;
+        case OperatorKey('>', '>'):
+            return TokenKind::Operator_RightShift;
+        default:
+            return TokenKind::Invalid;
+    }
 }
 
 [[nodiscard]] bool IsIdStart(unicode::CodePoint cp)
@@ -479,7 +618,8 @@ Tokenizer::Tokenizer(
     , ErrorHandler_(std::move(errorHandler))
 {
     if (Input_.Size > util::MaxSourceSize) {
-        Input_ = {.Data = "\0\0\0", .Size = 0};
+        static constexpr auto EmptySource = util::PadSource("");
+        Input_ = {.Data = EmptySource.data(), .Size = 0};
         OnError(TokenizationError{
             .Kind = TokenizationErrorKind::InputTooLarge,
             .TokenStart = {.Line = 1, .Column = 1},
@@ -487,6 +627,54 @@ Tokenizer::Tokenizer(
             .TokenEnd = {.Line = 1, .Column = 1},
         });
     }
+}
+
+void Tokenizer::LoadBlock(SourceOffset offset) noexcept
+{
+    const auto blockOffset = offset & ~(detail::AsciiBlock::Size - 1);
+    if (blockOffset != BlockOffset_) {
+        BlockOffset_ = blockOffset;
+        ClassifyBlock_(
+            reinterpret_cast<const unsigned char*>(Input_.Data) + blockOffset,
+            Block_);
+    }
+}
+
+template <detail::AsciiRun Kind, bool TrackNonSpace>
+inline const unsigned char* Tokenizer::ScanAscii(
+    const unsigned char* cursor,
+    bool* nonSpace) noexcept
+{
+    static_assert(util::SourcePaddingSize >= detail::AsciiBlock::Size);
+    const auto* data = reinterpret_cast<const unsigned char*>(Input_.Data);
+    auto offset = static_cast<SourceOffset>(cursor - data);
+    while (true) {
+        LoadBlock(offset);
+        const auto within = offset - BlockOffset_;
+        const auto continuations = Block_[Kind] >> within;
+        const auto count = static_cast<SourceOffset>(
+            std::countr_one(continuations));
+        if constexpr (TrackNonSpace) {
+            const auto consumed = count == detail::AsciiBlock::Size
+                ? ~uint64_t{0}
+                : (uint64_t{1} << count) - 1;
+            *nonSpace |= (consumed &
+                ~(Block_[detail::AsciiRun::Whitespace] >> within)) != 0;
+        }
+        offset += count;
+        if (count < detail::AsciiBlock::Size - within) {
+            return data + offset;
+        }
+    }
+}
+
+inline const unsigned char* Tokenizer::ScanAsciiQuotedLiteral(
+    const unsigned char* cursor,
+    unsigned char quote) noexcept
+{
+    return quote == '"'
+        ? ScanAscii<detail::AsciiRun::String>(cursor)
+        : ScanAscii<detail::AsciiRun::Character>(cursor);
 }
 
 template <>
@@ -518,7 +706,321 @@ Token Tokenizer::FinishToken(TokenKind kind) const noexcept
     };
 }
 
-Token Tokenizer::Get()
+SourceOffset Tokenizer::FindLineCommentEnd(SourceOffset offset) noexcept
+{
+    while (true) {
+        LoadBlock(offset);
+        const auto within = offset - BlockOffset_;
+        const auto stops =
+            (Block_.Newlines | Block_.NonAscii | Block_.Nulls) >> within;
+        if (stops != 0) {
+            const auto end =
+                offset + static_cast<SourceOffset>(std::countr_zero(stops));
+            return ByteAt(end) >= AsciiLimit
+                ? std::numeric_limits<SourceOffset>::max()
+                : end;
+        }
+        offset = BlockOffset_ + detail::AsciiBlock::Size;
+    }
+}
+
+SourceOffset Tokenizer::FindBlockCommentEnd(SourceOffset offset) noexcept
+{
+    while (true) {
+        LoadBlock(offset);
+        const auto within = offset - BlockOffset_;
+        const auto closers = Block_.Stars & (Block_.Slashes >> 1);
+        const auto stops = (closers | Block_.NonAscii | Block_.Nulls) >> within;
+        if (stops != 0) {
+            const auto end =
+                offset + static_cast<SourceOffset>(std::countr_zero(stops));
+            return (closers & (uint64_t{1} << (end - BlockOffset_))) != 0
+                ? end + 2
+                : std::numeric_limits<SourceOffset>::max();
+        }
+        const auto end = BlockOffset_ + detail::AsciiBlock::Size;
+        if ((Block_.Stars >> 63) != 0 && ByteAt(end) == '/') {
+            return end + 1;
+        }
+        offset = end;
+    }
+}
+
+SourceOffset Tokenizer::FindQuotedEnd(
+    SourceOffset offset,
+    bool character) noexcept
+{
+    while (true) {
+        LoadBlock(offset);
+        const auto within = offset - BlockOffset_;
+        const auto delimiters = character ? Block_.Apostrophes : Block_.Quotes;
+        const auto stops = (delimiters | Block_.Backslashes | Block_.Newlines |
+            Block_.NonAscii | Block_.Nulls) >> within;
+        if (stops != 0) {
+            const auto end =
+                offset + static_cast<SourceOffset>(std::countr_zero(stops));
+            return (delimiters & (uint64_t{1} << (end - BlockOffset_))) != 0
+                ? end + 1
+                : std::numeric_limits<SourceOffset>::max();
+        }
+        offset = BlockOffset_ + detail::AsciiBlock::Size;
+    }
+}
+
+Token Tokenizer::Refill()
+{
+    PendingIndex_ = 0;
+    PendingCount_ = 0;
+    while (true) {
+        const bool more = ReadBlock();
+        if (PendingCount_ != 0) {
+            return Pending_[PendingIndex_++];
+        }
+        if (!more) {
+            return ReadComplexToken();
+        }
+    }
+}
+
+bool Tokenizer::ReadBlock()
+{
+    constexpr auto Width = detail::AsciiBlock::Size;
+    LoadBlock(CurrentCodePointOffset_);
+    const auto base = BlockOffset_;
+    const auto limit = std::min<SourceOffset>(base + Width, Input_.Size);
+    const auto* data = reinterpret_cast<const unsigned char*>(Input_.Data);
+    const auto words = Block_.Identifiers;
+    const auto digits = Block_.Digits;
+    const auto newlines = Block_.Newlines;
+    const auto whitespace = Block_.Whitespace | newlines;
+    const auto wordStarts = words & ~(words << 1);
+    auto wordEnds =
+        words & ~(words >> 1) & ~LowBits(CurrentCodePointOffset_ - base);
+    const auto punctuation = Block_.Punctuation;
+    const auto singles = Block_.Singles;
+    const auto quotes = Block_.Quotes;
+    const auto apostrophes = Block_.Apostrophes;
+    const auto backslashes = Block_.Backslashes;
+    const auto nonAscii = Block_.NonAscii;
+    const auto nulls = Block_.Nulls;
+    const auto pairs = Block_.Pairs;
+    const auto triples = Block_.Triples;
+    auto cursor = CurrentCodePointOffset_;
+    auto position = CurrentCodePointPosition_;
+    auto isNewLine = IsNewLine_;
+    auto remainingLines = newlines & ~LowBits(cursor - base);
+    unsigned count = 0;
+    auto starts = (wordStarts | (~words & ~whitespace)) &
+        ~LowBits(cursor - base) & LowBits(limit - base);
+    // A continuation arriving from another block starts at the current cursor.
+    if (cursor < limit && (words & (uint64_t{1} << (cursor - base))) != 0) {
+        starts |= uint64_t{1} << (cursor - base);
+    }
+
+    auto advance = [&] (SourceOffset end) {
+        if (end <= limit) {
+            const auto begin = cursor - base;
+            const auto stop = end - base;
+            const auto range = LowBits(stop) & ~LowBits(begin);
+            const auto lines = newlines & range;
+            if (lines != 0) {
+                position.Line += static_cast<uint32_t>(std::popcount(lines));
+                const auto last =
+                    63u - static_cast<unsigned>(std::countl_zero(lines));
+                position.Column = stop - last;
+                isNewLine = (range & ~LowBits(last + 1) & ~whitespace) == 0;
+            } else {
+                position.Column += stop - begin;
+                if ((range & ~whitespace) != 0) {
+                    isNewLine = false;
+                }
+            }
+            cursor = end;
+            return;
+        }
+        while (cursor < end) {
+            LoadBlock(cursor);
+            const auto begin = cursor - BlockOffset_;
+            const auto stop = std::min<SourceOffset>(end - BlockOffset_, Width);
+            const auto range = LowBits(stop) & ~LowBits(begin);
+            const auto lines = Block_.Newlines & range;
+            if (lines != 0) {
+                position.Line += static_cast<uint32_t>(std::popcount(lines));
+                const auto last =
+                    63u - static_cast<unsigned>(std::countl_zero(lines));
+                position.Column = stop - last;
+                isNewLine = (range & ~LowBits(last + 1) &
+                    ~(Block_[AsciiRun::Whitespace] | Block_.Newlines)) == 0;
+            } else {
+                position.Column += stop - begin;
+                if ((range & ~Block_[AsciiRun::Whitespace]) != 0) {
+                    isNewLine = false;
+                }
+            }
+            cursor = BlockOffset_ + stop;
+        }
+    };
+
+    // At most one token starts at each byte in this block.
+    while (starts != 0) {
+        const auto index = FirstBit(starts);
+        const auto start = base + index;
+        const auto bit = uint64_t{1} << index;
+        const auto skippedLines = remainingLines & LowBits(index);
+        if (skippedLines != 0) {
+            remainingLines &= ~skippedLines;
+            position.Line += static_cast<uint32_t>(std::popcount(skippedLines));
+            position.Column = index -
+                (63u - static_cast<unsigned>(std::countl_zero(skippedLines)));
+            isNewLine = true;
+        } else {
+            position.Column += start - cursor;
+        }
+        cursor = start;
+        auto end = start;
+        auto consumedStarts = starts & (starts - 1);
+        TokenKind kind;
+        if ((words & bit) != 0) {
+            const auto ends = wordEnds;
+            if (ends != 0) {
+                end = base + FirstBit(ends) + 1;
+                wordEnds &= wordEnds - 1;
+            }
+            if (end == 0 || end == start ||
+                (end == base + Width && IsAlphaNumeric(data[end])))
+            {
+                end = static_cast<
+                    SourceOffset>(ScanAscii<AsciiRun::Identifier>(data + end) -
+                        data);
+            }
+            const auto next = data[end];
+            if (next >= AsciiLimit || next == '"' || next == '\'') {
+                break;
+            }
+            if ((digits & bit) != 0) {
+                // Compound numeric spellings retain their validating path.
+                const auto length = end - start;
+                if (end > limit || next == '.' ||
+                    (data[start] == '0' && length > 1) ||
+                    ((digits >> index) & LowBits(length)) != LowBits(length))
+                {
+                    break;
+                }
+                kind = data[start] == '0'
+                    ? TokenKind::Literal_OctalInteger
+                    : TokenKind::Literal_DecimalInteger;
+            } else {
+                kind = ClassifyIdentifier(Input_.substr(start, end - start));
+            }
+        } else if ((singles & bit) != 0) {
+            end = start + 1;
+            kind = SingleOperators[data[start]];
+        } else if ((punctuation & bit) != 0) {
+            const auto byte = data[start];
+            const auto next = data[start + 1];
+            if (byte == '/' && (next == '/' || next == '*')) {
+                end = next == '/'
+                    ? FindLineCommentEnd(start + 2)
+                    : FindBlockCommentEnd(start + 2);
+                if (end > Input_.Size) {
+                    break;
+                }
+                kind = TokenKind::Comment;
+            } else {
+                if ((byte == '%' && next == ':' && isNewLine) ||
+                    (byte == '.' &&
+                        (IsDigit(next) ||
+                            (next == '.' && data[start + 2] != '.'))))
+                {
+                    break;
+                }
+                unsigned length = (triples & bit) != 0
+                    ? 3
+                    : (pairs & bit) != 0 ? 2 : 1;
+                if (index >= Width - 2) {
+                    // Keep compound symbols intact across block boundaries.
+                    detail::AsciiBlock boundary;
+                    ClassifyBlock_(data + start, boundary);
+                    length = (boundary.Triples & 1) != 0
+                        ? 3
+                        : (boundary.Pairs & 1) != 0 ? 2 : 1;
+                }
+                if (byte == '<' && next == ':' && data[start + 2] == ':' &&
+                    data[start + 3] != ':' && data[start + 3] != '>')
+                {
+                    length = 1;
+                }
+                end = start + length;
+                if (data[end] >= AsciiLimit) {
+                    break;
+                }
+                kind = ClassifyOperator(data + start, length);
+            }
+        } else if (((quotes | apostrophes) & bit) != 0) {
+            const bool character = (apostrophes & bit) != 0;
+            const auto delimiters = character ? apostrophes : quotes;
+            const auto stops = (delimiters | backslashes | newlines | nonAscii |
+                nulls) & ~LowBits(index + 1);
+            if (stops == 0) {
+                end = FindQuotedEnd(start + 1, character);
+            } else {
+                const auto close = FirstBit(stops);
+                end = (delimiters & (uint64_t{1} << close)) != 0
+                    ? base + close + 1
+                    : std::numeric_limits<SourceOffset>::max();
+            }
+            if (end > Input_.Size || (character && end == start + 2) ||
+                IsAsciiIdentifierStart(data[end]) || data[end] >= AsciiLimit)
+            {
+                break;
+            }
+            kind = character
+                ? TokenKind::Literal_Character
+                : TokenKind::Literal_String;
+        } else {
+            break;
+        }
+
+        auto& token = Pending_[count++];
+        token.Kind = kind;
+        token.Position = position;
+        token.Text.Begin = start;
+        token.Text.End = end;
+        if (kind == TokenKind::Comment) {
+            advance(end);
+        } else {
+            position.Column += end - start;
+            isNewLine = false;
+        }
+        cursor = end;
+        if (end >= limit) {
+            break;
+        }
+        if (((words | singles) & bit) == 0) {
+            const auto remaining = ~LowBits(end - base);
+            consumedStarts &= remaining;
+            wordEnds &= remaining;
+            remainingLines &= remaining;
+        }
+        starts = consumedStarts;
+    }
+    PendingCount_ = static_cast<uint8_t>(count);
+    if (count != 0) {
+        const auto& last = Pending_[count - 1];
+        CurrentTokenOffset_ = last.Text.Begin;
+        CurrentTokenPosition_ = last.Position;
+        CurrentTokenSize_ = last.Text.Size();
+    }
+    if (starts == 0 && cursor < limit) {
+        advance(limit);
+    }
+    CurrentCodePointOffset_ = cursor;
+    CurrentCodePointPosition_ = position;
+    IsNewLine_ = isNewLine;
+    return cursor == limit && cursor < Input_.Size;
+}
+
+Token Tokenizer::ReadComplexToken()
 {
     auto byte = PeekByte();
     if (byte <= 0x20 || byte >= AsciiLimit || byte == '\\') {
@@ -871,7 +1373,7 @@ bool Tokenizer::IsFileStart() const noexcept
 bool Tokenizer::TrySkipNewline()
 {
     const auto* begin = CurrentByteAddress();
-    const auto* cursor = ScanAsciiWhitespace(begin);
+    const auto* cursor = ScanAscii<AsciiRun::Whitespace>(begin);
     auto lastByte = *cursor;
     auto size = static_cast<SourceOffset>(cursor - begin);
     CurrentCodePointOffset_ += size;
@@ -895,7 +1397,7 @@ void Tokenizer::SkipWhitespace()
         unsigned char lastByte;
         while (true) {
             const auto* begin = CurrentByteAddress();
-            const auto* cursor = ScanAsciiWhitespace(begin);
+            const auto* cursor = ScanAscii<AsciiRun::Whitespace>(begin);
             lastByte = *cursor;
             auto size = static_cast<SourceOffset>(cursor - begin);
             CurrentCodePointOffset_ += size;
@@ -934,7 +1436,7 @@ Token Tokenizer::ParseIdentifier()
     unsigned char lastByte;
     while (true) {
         const auto* begin = CurrentByteAddress();
-        const auto* cursor = ScanAsciiIdentifier(begin);
+        const auto* cursor = ScanAscii<AsciiRun::Identifier>(begin);
         lastByte = *cursor;
         auto size = static_cast<SourceOffset>(cursor - begin);
         CurrentCodePointOffset_ += size;
@@ -1142,7 +1644,7 @@ void Tokenizer::ConsumeLiteralSuffix()
     // not allowed here.
     while (true) {
         const auto* begin = CurrentByteAddress();
-        const auto* cursor = ScanAsciiIdentifier(begin);
+        const auto* cursor = ScanAscii<AsciiRun::Identifier>(begin);
         auto lastByte = *cursor;
         auto size = static_cast<SourceOffset>(cursor - begin);
         CurrentCodePointOffset_ += size;
@@ -1300,7 +1802,8 @@ Token Tokenizer::ParseRawStringLiteral()
     while (true) {
         const auto* begin = CurrentByteAddress();
         bool nonSpace = false;
-        const auto* cursor = ScanAsciiRawString(begin, nonSpace);
+        const auto* cursor =
+            ScanAscii<AsciiRun::RawString, true>(begin, &nonSpace);
         auto lastByte = *cursor;
         auto size = static_cast<SourceOffset>(cursor - begin);
         CurrentCodePointOffset_ += size;
@@ -1430,7 +1933,8 @@ Token Tokenizer::ParseNumber()
     if (IsIdStart(cur)) {
         while (true) {
             const auto* suffixBegin = CurrentByteAddress();
-            const auto* suffixCursor = ScanAsciiIdentifier(suffixBegin);
+            const auto* suffixCursor =
+                ScanAscii<AsciiRun::Identifier>(suffixBegin);
             auto lastByte = *suffixCursor;
             auto suffixSize =
                 static_cast<SourceOffset>(suffixCursor - suffixBegin);
@@ -1750,14 +2254,9 @@ Token Tokenizer::ParseInlineComment()
 {
     ConsumeAsciiByte('/');
     while (true) {
-        // Scan ASCII line-comment run.
         const auto* begin = CurrentByteAddress();
-        const auto* cursor = begin;
+        const auto* cursor = ScanAscii<AsciiRun::LineComment>(begin);
         auto lastByte = *cursor;
-        while (lastByte < AsciiLimit && lastByte != '\n' && lastByte != '\0') {
-            ++cursor;
-            lastByte = *cursor;
-        }
         auto size = static_cast<SourceOffset>(cursor - begin);
         CurrentCodePointOffset_ += size;
         CurrentCodePointPosition_.Column += size;
@@ -1780,7 +2279,8 @@ Token Tokenizer::ParseMultilineComment()
     while (true) {
         const auto* begin = CurrentByteAddress();
         bool nonSpace = false;
-        const auto* cursor = ScanAsciiBlockComment(begin, nonSpace);
+        const auto* cursor =
+            ScanAscii<AsciiRun::BlockComment, true>(begin, &nonSpace);
         auto lastByte = *cursor;
         auto size = static_cast<SourceOffset>(cursor - begin);
         CurrentCodePointOffset_ += size;
@@ -1818,20 +2318,11 @@ Token Tokenizer::ParsePreprocessingDirective()
         bool nonSpace = false;
         unsigned char lastByte;
         if (inBlockComment) {
-            cursor = ScanAsciiBlockComment(begin, nonSpace);
-            lastByte = *cursor;
+            cursor = ScanAscii<AsciiRun::BlockComment, true>(begin, &nonSpace);
         } else {
-            // Scan ASCII directive run.
-            lastByte = *cursor;
-            while (lastByte < AsciiLimit && lastByte != '\\' &&
-                lastByte != '/' && lastByte != '"' && lastByte != '\'' &&
-                lastByte != 'R' && lastByte != '\n' && lastByte != '\0')
-            {
-                nonSpace |= !IsSpace(lastByte);
-                ++cursor;
-                lastByte = *cursor;
-            }
+            cursor = ScanAscii<AsciiRun::Directive, true>(begin, &nonSpace);
         }
+        lastByte = *cursor;
         auto size = static_cast<SourceOffset>(cursor - begin);
         CurrentCodePointOffset_ += size;
         CurrentCodePointPosition_.Column += size;
@@ -1879,18 +2370,13 @@ Token Tokenizer::ParsePreprocessingDirective()
                 inBlockComment = true;
             } else if (cur == '/') {
                 while (cur != '\n' && cur != '\0') {
-                    // Scan ASCII directive line-comment run.
                     const auto* commentBegin = CurrentByteAddress();
-                    const auto* commentCursor = commentBegin;
                     bool commentNonSpace = false;
+                    const auto* commentCursor =
+                        ScanAscii<AsciiRun::DirectiveComment, true>(
+                            commentBegin,
+                            &commentNonSpace);
                     auto lastByte = *commentCursor;
-                    while (lastByte < AsciiLimit && lastByte != '\\' &&
-                        lastByte != '\n' && lastByte != '\0')
-                    {
-                        commentNonSpace |= !IsSpace(lastByte);
-                        ++commentCursor;
-                        lastByte = *commentCursor;
-                    }
                     auto commentSize = static_cast<SourceOffset>(
                         commentCursor - commentBegin);
                     CurrentCodePointOffset_ += commentSize;
@@ -1934,8 +2420,9 @@ Token Tokenizer::ParsePreprocessingDirective()
             while (true) {
                 const auto* rawBegin = CurrentByteAddress();
                 bool rawNonSpace = false;
-                const auto* rawCursor =
-                    ScanAsciiRawString(rawBegin, rawNonSpace);
+                const auto* rawCursor = ScanAscii<AsciiRun::RawString, true>(
+                    rawBegin,
+                    &rawNonSpace);
                 auto lastByte = *rawCursor;
                 auto rawSize = static_cast<SourceOffset>(rawCursor - rawBegin);
                 CurrentCodePointOffset_ += rawSize;

@@ -6,27 +6,24 @@
 
 namespace benchmarks {
 
-inline constexpr char ServiceData[] =
-    R"HITFMTINPUT(@HIT_FMT_BENCHMARK_SERVICE@)HITFMTINPUT"
-    "\0\0\0";
-inline constexpr char TemplateLibraryData[] =
-    R"HITFMTINPUT(@HIT_FMT_BENCHMARK_TEMPLATE_LIBRARY@)HITFMTINPUT"
-    "\0\0\0";
-inline constexpr char PlatformData[] =
-    R"HITFMTINPUT(@HIT_FMT_BENCHMARK_PLATFORM@)HITFMTINPUT"
-    "\0\0\0";
+inline constexpr auto ServiceData = util::PadSource(
+    R"HITFMTINPUT(@HIT_FMT_BENCHMARK_SERVICE@)HITFMTINPUT");
+inline constexpr auto TemplateLibraryData = util::PadSource(
+    R"HITFMTINPUT(@HIT_FMT_BENCHMARK_TEMPLATE_LIBRARY@)HITFMTINPUT");
+inline constexpr auto PlatformData = util::PadSource(
+    R"HITFMTINPUT(@HIT_FMT_BENCHMARK_PLATFORM@)HITFMTINPUT");
 
 inline constexpr util::PaddedSourceView Service{
-    .Data = ServiceData,
-    .Size = sizeof(ServiceData) - util::SourcePaddingSize,
+    .Data = ServiceData.data(),
+    .Size = ServiceData.size() - util::SourcePaddingSize,
 };
 inline constexpr util::PaddedSourceView TemplateLibrary{
-    .Data = TemplateLibraryData,
-    .Size = sizeof(TemplateLibraryData) - util::SourcePaddingSize,
+    .Data = TemplateLibraryData.data(),
+    .Size = TemplateLibraryData.size() - util::SourcePaddingSize,
 };
 inline constexpr util::PaddedSourceView Platform{
-    .Data = PlatformData,
-    .Size = sizeof(PlatformData) - util::SourcePaddingSize,
+    .Data = PlatformData.data(),
+    .Size = PlatformData.size() - util::SourcePaddingSize,
 };
 
 inline constexpr std::array Corpus{Service, TemplateLibrary, Platform};

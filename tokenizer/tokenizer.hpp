@@ -1,5 +1,6 @@
 #pragma once
 
+#include "ascii_block.hpp"
 #include "token.hpp"
 
 #include <unicode/code_point.hpp>
@@ -164,7 +165,13 @@ public:
         std::function<void(TokenizationError)> errorHandler = {});
 
     // Returns the next token, or EndOfFile after the input is exhausted.
-    [[nodiscard]] Token Get();
+    [[nodiscard]] Token Get()
+    {
+        if (PendingIndex_ != PendingCount_) {
+            return Pending_[PendingIndex_++];
+        }
+        return Refill();
+    }
 
     // A single-pass view over this tokenizer's remaining tokens.
     class Iterator
@@ -234,6 +241,27 @@ private:
     util::SourceOffset CurrentTokenSize_ = 0;
     [[nodiscard]] Token FinishToken(TokenKind kind) const noexcept;
 
+    [[nodiscard]] Token Refill();
+    [[nodiscard]] bool ReadBlock();
+
+    [[nodiscard]] Token ReadComplexToken();
+    void LoadBlock(util::SourceOffset offset) noexcept;
+    [[nodiscard]] util::SourceOffset FindLineCommentEnd(
+        util::SourceOffset offset) noexcept;
+    [[nodiscard]] util::SourceOffset FindBlockCommentEnd(
+        util::SourceOffset offset) noexcept;
+    [[nodiscard]] util::SourceOffset FindQuotedEnd(
+        util::SourceOffset offset,
+        bool character) noexcept;
+
+    template <detail::AsciiRun Kind, bool TrackNonSpace = false>
+    [[nodiscard]] const unsigned char* ScanAscii(
+        const unsigned char* cursor,
+        bool* nonSpace = nullptr) noexcept;
+    [[nodiscard]] const unsigned char* ScanAsciiQuotedLiteral(
+        const unsigned char* cursor,
+        unsigned char quote) noexcept;
+
     void SkipWhitespace();
     bool TrySkipNewline();
     Token ParseAsciiOperator(unsigned char byte);
@@ -254,6 +282,16 @@ private:
     void OnError(TokenizationErrorKind error);
 
     util::PaddedSourceView Input_;
+
+    detail::AsciiBlock Block_{};
+    detail::AsciiBlockClassifier ClassifyBlock_ =
+        detail::GetAsciiBlockClassifier();
+    util::SourceOffset BlockOffset_ =
+        std::numeric_limits<util::SourceOffset>::max();
+
+    std::array<Token, detail::AsciiBlock::Size> Pending_;
+    uint8_t PendingIndex_ = 0;
+    uint8_t PendingCount_ = 0;
 
     std::function<void(TokenizationError)> ErrorHandler_;
 
