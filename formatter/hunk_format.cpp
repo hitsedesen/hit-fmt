@@ -334,26 +334,94 @@ ChangedFormatResult FormatChanged(
     result.SelectedLines.assign(selected.begin(), selected.end());
     result.PermittedLines.assign(permitted.begin(), permitted.end());
     result.EditScope.assign(scope.begin(), scope.end());
-    FormatRequest scoped = request;
-    scoped.EditScope = scope;
-    scoped.SourceMap = true;
-    const auto eligible = detail::FormatWithAnalysis(
+    // Eligibility needs only original-coordinate planners, never another
+    // normalization, parse, lowering or render of the scoped document.
+    auto eligible = PlanStructuralEdits(
         tree,
-        prepared,
         safety,
-        sensitive,
-        scoped,
+        prepared.Structural,
+        file,
+        scratch,
+        {request.InputFilePath, &prepared.IncludeGroups});
+    scratch.release();
+    auto namespacePlan = PlanNamespaceComments(
+        tree,
+        safety,
+        prepared.NamespaceComments,
         file,
         scratch);
+    eligible.Skipped.insert(
+        eligible.Skipped.end(),
+        namespacePlan.Skipped.begin(),
+        namespacePlan.Skipped.end());
+    scratch.release();
+    // Canonical comments have already been applied. Their original planner
+    // survivors supply authority; resolving them again would mistake generated
+    // suffixes or rewritten comment identities for unsafe following text.
+    std::pmr::vector<StructuralOperation> canonicalComments(&file);
+    for (const auto& operation : canonical.StructuralOperations) {
+        if (operation.Kind == StructuralAction::NamespaceComments) {
+            canonicalComments.push_back(operation);
+        }
+    }
+    std::sort(
+        canonicalComments.begin(),
+        canonicalComments.end(),
+        [] (const auto& a, const auto& b) {
+            return a.Owner.Begin != b.Owner.Begin
+                ? a.Owner.Begin < b.Owner.Begin
+                : a.Owner.End < b.Owner.End;
+        });
+    std::erase_if(
+        namespacePlan.Namespaces,
+        [&] (const auto& ns) {
+            const auto operation = std::lower_bound(
+                canonicalComments.begin(),
+                canonicalComments.end(),
+                ns.Owner,
+                [] (const auto& candidate, const auto& owner) {
+                    return candidate.Owner.Begin != owner.Begin
+                        ? candidate.Owner.Begin < owner.Begin
+                        : candidate.Owner.End < owner.End;
+                });
+            if (operation == canonicalComments.end() ||
+                operation->Owner.Begin != ns.Owner.Begin ||
+                operation->Owner.End != ns.Owner.End)
+            {
+                return false;
+            }
+            eligible.Operations.push_back(*operation);
+            return true;
+        });
+    std::pmr::vector<Range> outputProtection(&scratch);
+    for (const auto& range : canonical.OutputProtection) {
+        outputProtection.push_back(range.Source);
+    }
+    // Exemptions (notably short namespaces) use canonical line counts, not a
+    // separately formatted, scope-dependent layout.
+    const auto comments = ResolveNamespaceComments(
+        tree,
+        namespacePlan,
+        canonical.Text,
+        canonical.OriginalTokens,
+        outputProtection,
+        file,
+        scratch);
+    eligible.Skipped.insert(
+        eligible.Skipped.end(),
+        comments.Skipped.begin(),
+        comments.Skipped.end());
+    scratch.release();
     result.Result = detail::ProjectHunkFormat(
         tree,
         safety,
         canonical,
         eligible,
+        prepared,
         scope,
         request,
         file);
-    for (const auto& diagnostic : eligible.StructuralDiagnostics) {
+    for (const auto& diagnostic : eligible.Skipped) {
         if (diagnostic.Tokens.Empty()) {
             continue;
         }

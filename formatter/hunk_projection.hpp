@@ -18,7 +18,8 @@ inline FormatResult ProjectHunkFormat(
     const parser::SyntaxTree& tree,
     const SourceAnalysis& safety,
     const FormatResult& canonical,
-    const FormatResult& eligible,
+    const StructuralPlan& eligible,
+    const PreparedFormat& prepared,
     std::span<const parser::SourceRange> scope,
     const FormatRequest& request,
     std::pmr::memory_resource& memory)
@@ -52,7 +53,7 @@ inline FormatResult ProjectHunkFormat(
             : a.Owner.End < b.Owner.End;
     };
     std::pmr::vector<OperationKey> eligibleOperations(&memory);
-    for (const auto& operation : eligible.StructuralOperations) {
+    for (const auto& operation : eligible.Operations) {
         eligibleOperations.push_back({operation.Kind, operation.Owner});
     }
     std::sort(
@@ -72,13 +73,79 @@ inline FormatResult ProjectHunkFormat(
             ? a.Original.Begin < b.Original.Begin
             : a.Original.End < b.Original.End;
     };
+    // Canonical output proves punctuation is required. Original parsed list
+    // identities and scoped safety alone decide whether we may apply it.
     std::pmr::vector<CommaKey> eligibleCommas(&memory);
-    for (const auto& map : eligible.Map) {
-        if (map.Generated && map.Output.End - map.Output.Begin == 1 &&
-            eligible.Text[map.Output.Begin] == ',')
+    std::pmr::vector<bool> removableCommas(tree.TokenCount(), false, &memory);
+    const auto gapMutable = [&] (parser::TokenIndex index) {
+        const auto& gap = safety.Gaps()[index];
+        return !gap.Preserve && !gap.ContextSensitive &&
+            !(prepared.Policies.LineEnding != LineEnding::Preserve &&
+                gap.HasBareCR);
+    };
+    for (const auto& region : safety.Regions()) {
+        if (region.Kind != parser::NodeKind::InitializerList ||
+            region.Tokens.Empty())
         {
-            eligibleCommas.push_back({map.HasOriginal, map.Original});
+            continue;
         }
+        const auto open = region.Tokens.Begin;
+        const auto close = tree.MatchingDelimiter(open);
+        if (tree.Kind(open) != tokenizer::TokenKind::Operator_OpenBrace ||
+            close >= region.Tokens.End || !gapMutable(close))
+        {
+            continue;
+        }
+        RegionId last = NoRegion;
+        for (auto child = region.FirstChild;
+            child != NoRegion;
+            child = safety.Regions()[child].NextSibling)
+        {
+            if (safety.Regions()[child].Kind ==
+                parser::NodeKind::InitializerElement)
+            {
+                last = child;
+            }
+        }
+        if (last == NoRegion || safety.Regions()[last].Tokens.Empty()) {
+            continue;
+        }
+        const auto after = safety.Regions()[last].Tokens.End;
+        auto comma = tree.TokenCount();
+        bool valid = true;
+        for (auto token = after; token < close; ++token) {
+            if (tree.Kind(token) == tokenizer::TokenKind::Comment) {
+                continue;
+            }
+            if (tree.Kind(token) == tokenizer::TokenKind::Operator_Comma &&
+                comma == tree.TokenCount())
+            {
+                comma = token;
+            } else {
+                valid = false;
+                break;
+            }
+        }
+        const auto insertion = tree.Token(after - 1).Text.End;
+        if (!valid ||
+            (prepared.Policies.InitializersTrailingComma ==
+                TrailingCommaPolicy::WhenMultiline &&
+                safety.IntersectsImmutable({insertion, insertion})))
+        {
+            continue;
+        }
+        if (comma != tree.TokenCount()) {
+            const auto text = tree.Token(comma).Text;
+            if (safety.IntersectsImmutable({text.Begin, text.End}) ||
+                !gapMutable(comma) || !safety.CanReplaceGap(comma, "") ||
+                (prepared.Policies.Initializers.Layout !=
+                    LayoutMode::Canonical && safety.Gaps()[comma].HasLineFeed))
+            {
+                continue;
+            }
+            removableCommas[comma] = true;
+        }
+        eligibleCommas.push_back({true, {insertion, insertion}});
     }
     std::sort(eligibleCommas.begin(), eligibleCommas.end(), commaLess);
     std::pmr::vector<bool> allowedActions(&memory);
@@ -124,7 +191,8 @@ inline FormatResult ProjectHunkFormat(
         dependencies.push_back({map.Original, allowedActions[map.Action]});
     }
     // Optional trailing commas are layout atoms, not StructuralOperations.
-    // The scoped lowerer is the authority oracle for their closer-gap rule.
+    // Scoped original safety checks the closer gap and insertion/removal
+    // points; no scoped layout or generated-text oracle is needed.
     for (const auto& map : canonical.Map) {
         if (map.Generated && map.Action == NoStructuralAction &&
             map.Output.End - map.Output.Begin == 1 &&
@@ -144,7 +212,7 @@ inline FormatResult ProjectHunkFormat(
         {
             dependencies.push_back({
                 {tree.Token(i).Text.Begin, tree.Token(i).Text.End},
-                !eligible.OriginalTokens[i].Present,
+                removableCommas[i],
             });
         }
         // Reindented multiline comments remain indivisible original atoms.
@@ -351,7 +419,8 @@ inline FormatResult ProjectHunkFormat(
     };
     std::pmr::vector<Piece> pieces(&memory);
     FormatResult result;
-    result.StructuralDiagnostics = eligible.StructuralDiagnostics;
+    result.StructuralDiagnostics
+        .assign(eligible.Skipped.begin(), eligible.Skipped.end());
     const auto append = [&] (Range input, bool formatted) {
         if (input.Empty()) {
             return;
