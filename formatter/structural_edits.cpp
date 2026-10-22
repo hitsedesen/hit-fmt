@@ -581,7 +581,8 @@ void Includes(
                     .lexically_relative(root);
                 // Project-root includes and filenames passed relative to the
                 // working directory must use the same coordinate system.
-                if (!relative.empty()) {
+                // External absolute roots retain their lexical coordinates.
+                if (!relative.empty() && *relative.begin() != "..") {
                     relativeInput = relative.generic_string();
                     context.InputFilePath = relativeInput;
                 }

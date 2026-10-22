@@ -430,7 +430,7 @@ void PrintPreserveConfig(std::ostream& output)
             "# IncludePathBase = SourceDirectory resolves source-relative "
             "paths.\n"
             "# ProjectRoot uses the working directory as the input path root.\n"
-            "# Absolute input filenames are rebased to that root.\n"
+            "# Absolute input filenames beneath it are rebased to that root.\n"
             "# Bare quoted names and quoted ./ or ../ paths stay "
             "source-relative.\n"
             "# Paths normalize lexically only; no file lookup or spelling "

@@ -467,7 +467,7 @@ constexpr HelpSection HelpSections[] = {
         "  Paired and final standard-header groups remain alphabetical.\n"
         "- IncludePathBase: SourceDirectory (default) or ProjectRoot. With\n"
         "  ProjectRoot, input filenames use the working-directory root;\n"
-        "  absolute input filenames are rebased to it. Bare\n"
+        "  absolute input filenames beneath it are rebased to it. Bare\n"
         "  quoted names and quoted ./ or ../ paths remain source-relative;\n"
         "  absolute paths stay absolute. No filesystem/header-path lookup.\n"
         "- IncludeStandardHeaders: Preserve (default) or Last. Last makes a\n"

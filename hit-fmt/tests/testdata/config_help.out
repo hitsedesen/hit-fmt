@@ -341,7 +341,7 @@ Include sorting
   Paired and final standard-header groups remain alphabetical.
 - IncludePathBase: SourceDirectory (default) or ProjectRoot. With
   ProjectRoot, input filenames use the working-directory root;
-  absolute input filenames are rebased to it. Bare
+  absolute input filenames beneath it are rebased to it. Bare
   quoted names and quoted ./ or ../ paths remain source-relative;
   absolute paths stay absolute. No filesystem/header-path lookup.
 - IncludeStandardHeaders: Preserve (default) or Last. Last makes a
