@@ -181,7 +181,7 @@ IncludeGroups = [
     { Prefix = "util/", Priority = 2 },
     { Prefix = "", Depth = 3, Priority = 0 }
 ]
-# Pass project-relative input filenames with ProjectRoot.
+# ProjectRoot uses the working directory for input filenames.
 )"},
 };
 constexpr HelpExample StagedExamples[] = {
@@ -466,7 +466,8 @@ constexpr HelpSection HelpSections[] = {
         "  ties use include spelling. Also works with Preserve grouping.\n"
         "  Paired and final standard-header groups remain alphabetical.\n"
         "- IncludePathBase: SourceDirectory (default) or ProjectRoot. With\n"
-        "  ProjectRoot, pass input filenames relative to the same root. Bare\n"
+        "  ProjectRoot, input filenames use the working-directory root;\n"
+        "  absolute input filenames are rebased to it. Bare\n"
         "  quoted names and quoted ./ or ../ paths remain source-relative;\n"
         "  absolute paths stay absolute. No filesystem/header-path lookup.\n"
         "- IncludeStandardHeaders: Preserve (default) or Last. Last makes a\n"

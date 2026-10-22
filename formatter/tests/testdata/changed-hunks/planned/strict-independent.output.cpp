@@ -1,6 +1,6 @@
 void f() {
   g(first,
-        second, third);
+ second, third);
   untouched(  );
 }
 int h(int x);

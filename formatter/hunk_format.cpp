@@ -1,4 +1,5 @@
 #include "format_pipeline.hpp"
+#include "hunk_projection.hpp"
 #include "hunk_scope.hpp"
 #include "hunks.hpp"
 
@@ -300,6 +301,19 @@ ChangedFormatResult FormatChanged(
             coverage.push_back({protection.Source, Reason::SemanticProtection});
         }
     }
+    // Layout decisions see the complete original document and only semantic
+    // protection. Selection is applied to canonical byte replacements below.
+    FormatRequest canonicalRequest = request;
+    canonicalRequest.EditScope.reset();
+    canonicalRequest.SourceMap = true;
+    const auto canonical = detail::FormatWithAnalysis(
+        tree,
+        prepared,
+        safety,
+        sensitive,
+        canonicalRequest,
+        file,
+        scratch);
     safety.RestrictEditScope(scope);
     for (const auto& gap : safety.Gaps()) {
         if (gap.Preserve &&
@@ -322,7 +336,8 @@ ChangedFormatResult FormatChanged(
     result.EditScope.assign(scope.begin(), scope.end());
     FormatRequest scoped = request;
     scoped.EditScope = scope;
-    result.Result = detail::FormatWithAnalysis(
+    scoped.SourceMap = true;
+    const auto eligible = detail::FormatWithAnalysis(
         tree,
         prepared,
         safety,
@@ -330,7 +345,15 @@ ChangedFormatResult FormatChanged(
         scoped,
         file,
         scratch);
-    for (const auto& diagnostic : result.Result.StructuralDiagnostics) {
+    result.Result = detail::ProjectHunkFormat(
+        tree,
+        safety,
+        canonical,
+        eligible,
+        scope,
+        request,
+        file);
+    for (const auto& diagnostic : eligible.StructuralDiagnostics) {
         if (diagnostic.Tokens.Empty()) {
             continue;
         }

@@ -194,7 +194,10 @@ TEST(HunkAdapter, StrictSelectedIndentTrimAndExcludedFollowingPoint)
     EXPECT_FALSE(result.Incomplete.empty());
     style.IndentationKind = formatter::IndentationKind::Preserve;
     style.TrailingWhitespace = formatter::TrailingWhitespace::Preserve;
-    EXPECT_EQ(Changed(source, selected, false, style).Result.Text, source);
+    // Canonical layout still rebuilds statement boundaries under Preserve.
+    EXPECT_EQ(
+        Changed(source, selected, false, style).Result.Text,
+        "void f() {  \r\n    work();\r\nnext();\r\n}\r\n");
 }
 
 TEST(HunkAdapter, CallerScopeAndExplicitProtectionOnlyNarrowAuthority)
@@ -643,6 +646,7 @@ TEST(HunkAdapter, OptionalCommaInsertionAndRemovalHaveOriginalAuthority)
     auto style = HunkStyle();
     style.InitializersTrailingComma =
         formatter::TrailingCommaPolicy::WhenMultiline;
+    style.InitializersBreak = formatter::BreakRequirement::Always;
     const auto inserted =
         Changed(source, item, false, style, {.SourceMap = true});
     EXPECT_NE(inserted.Result.Text.find("2,"), std::string::npos);

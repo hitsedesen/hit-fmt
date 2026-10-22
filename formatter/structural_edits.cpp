@@ -3,6 +3,7 @@
 #include "text_policies.hpp"
 
 #include <algorithm>
+#include <filesystem>
 #include <limits>
 #include <stdexcept>
 
@@ -565,6 +566,27 @@ void Includes(
 {
     if (options.Grouping == IncludeGrouping::Preserve) {
         context.Groups = nullptr;
+    }
+    std::string relativeInput;
+    if (options.PathBase == IncludePathBase::ProjectRoot &&
+        !context.InputFilePath.empty())
+    {
+        const std::filesystem::path input(context.InputFilePath);
+        if (input.is_absolute()) {
+            std::error_code error;
+            const auto root = std::filesystem::current_path(error);
+            if (!error) {
+                const auto relative = input
+                    .lexically_normal()
+                    .lexically_relative(root);
+                // Project-root includes and filenames passed relative to the
+                // working directory must use the same coordinate system.
+                if (!relative.empty()) {
+                    relativeInput = relative.generic_string();
+                    context.InputFilePath = relativeInput;
+                }
+            }
+        }
     }
     std::pmr::vector<std::string_view> current(&scratch), parts(&scratch);
     std::pmr::vector<std::string_view> grouped(&scratch);
