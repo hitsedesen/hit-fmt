@@ -544,6 +544,21 @@ TEST(Tokenizer, PreservesTokensAndDiagnosticsAcrossBlockAndBackingOffsets)
             true,
         },
         {
+            "numeric_blocks",
+            "1.234567890123456e+123f; 0.125e-3; .5e+2; 3.e0;\n" +
+                std::string(193, '9') + "_suffix; 0b" + std::string(129, '1') + "'01; " +
+                "0" + std::string(129, '7') + "u; 0x" + std::string(193, 'A') + "'f.p+1'2; " +
+                "." + std::string(129, '5') + "e-" + std::string(129, '2') + "f",
+            true,
+        },
+        {
+            "invalid_numeric_blocks",
+            "0b" + std::string(129, '1') + "2; 0" + std::string(129, '7') + "8; " +
+                "0x" + std::string(129, 'a') + "''f; 1" + std::string(129, '2') + "'; " +
+                "1e" + std::string(129, '3') + "''4",
+            false,
+        },
+        {
             "comments",
             "// " + std::string(193, 'c') + " α\\\r\n" +
                 "after; /* " + std::string(129, 'b') + "**/\n" +

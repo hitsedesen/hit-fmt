@@ -46,3 +46,8 @@ Ln 9, Col 14 error: Invalid digit separator
 Ln 9, Col 21 error: Invalid digit separator
 Ln 9, Col 28 error: Invalid digit separator
 Ln 9, Col 29 error: Invalid digit separator
+Ln 10, Col 132 error: Invalid digit in binary integer
+Ln 10, Col 264 error: Invalid digit in octal integer
+Ln 10, Col 398 error: No digits between digit separators
+Ln 10, Col 532 error: Digit separator cannot appear at the end of decimal integer literal
+Ln 10, Col 665 error: Invalid digit separator
