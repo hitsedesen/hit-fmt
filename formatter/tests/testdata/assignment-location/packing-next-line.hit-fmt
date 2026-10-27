@@ -1,0 +1,3 @@
+include = "packing-fill.hit-fmt"
+AssignmentOperatorSide = Leading
+AssignmentRhsPlacement = NextLine

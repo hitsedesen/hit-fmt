@@ -135,6 +135,21 @@ void PrintOption(std::ostream& output, std::string_view name, const T& value)
                 "# message(\"first \" \"second\", value) below the opener\n"
                 "# if the complete first argument will not fit beside it.\n";
     }
+    if (name == "AssignmentsPacking") {
+        output
+            << "# Inherit (default) follows ExpressionsPacking.\n"
+                "# Applies to assignment operators and = initializers,\n"
+                "# including parameter defaults and enumerator values.\n"
+                "# Fill can keep the RHS prefix beside the assignment\n"
+                "# while nested expressions wrap independently.\n"
+                "# VerticalWhenBroken splits every assignment boundary\n"
+                "# in a broken assignment sequence.\n"
+                "# AssignmentRhsPlacement = NextLine and ExpressionsBreak\n"
+                "# = Always still require assignment breaks. Example:\n"
+                "# ExpressionsPacking = VerticalWhenBroken\n"
+                "# AssignmentsPacking = Fill\n"
+                "# auto ready = firstCheck() ||\n" "#     secondCheck();\n";
+    }
     if (name == "IfConditionsPacking") {
         output
             << "# Fill keeps ordinary expression packing (default).\n"

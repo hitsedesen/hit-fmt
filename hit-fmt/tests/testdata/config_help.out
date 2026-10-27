@@ -109,6 +109,12 @@ Expressions and chains
   AssignmentOperatorSide and TernaryOperatorSide use Leading/Trailing.
 - ExpressionsAlignment = Operand aligns to the first operand, falling
   back when it cannot fit; Block uses continuation indentation.
+- AssignmentsPacking: Inherit (default) follows ExpressionsPacking.
+  Fill can keep the RHS prefix beside the assignment while nested
+  expressions wrap. VerticalWhenBroken splits all assignment
+  boundaries in a broken sequence. Includes = initializers,
+  parameter defaults and enumerator values. ExpressionsBreak
+  = Always and AssignmentRhsPlacement = NextLine still force breaks.
 - AssignmentRhsPlacement: InlineIfFits or NextLine. NextLine moves
   assignment and declaration initializers below the operator in
   canonical expressions, regardless of AssignmentOperatorSide.
@@ -135,6 +141,14 @@ Wrap expressions and ternaries:
     TernaryOperatorSide = Leading
     TernaryLayout = ThreePart
     TernaryOperatorIndentation = Align
+
+Keep assignment prefixes beside wrapped expressions:
+    ExpressionsPacking = VerticalWhenBroken
+    AssignmentsPacking = Fill
+    AssignmentRhsPlacement = InlineIfFits
+    # When the RHS wraps:
+    # auto ready = firstCheck() ||
+    #     secondCheck();
 
 Wrap call chains:
     ChainsLayout = Canonical

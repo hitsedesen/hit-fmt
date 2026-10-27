@@ -694,6 +694,7 @@ TEST(ConfigPolicy, VerticalBoundsCannotBeBypassedByProgrammaticStyles)
             "RulerLength = 2\n",
             "RulerLength = 10001\n",
             "AssignmentRhsPlacement = Unsupported\n",
+            "AssignmentsPacking = Unsupported\n",
             "DestructorBracePlacement = Unsupported\n",
             "MaxEmptyLines = 10001\n",
             "MaxEmptyLines = Inherit\n",
@@ -1303,6 +1304,11 @@ TEST(ConfigPolicy, InvalidEnumValuesAndOffsetsAreRejected)
         std::runtime_error);
     formatter::Style style;
     style.IfConditionsPacking = static_cast<formatter::ListPacking>(255);
+    EXPECT_THROW(
+        (void)formatter::CompilePolicies(style),
+        std::invalid_argument);
+    style.IfConditionsPacking = formatter::ListPacking::Fill;
+    style.AssignmentsPacking = static_cast<formatter::ListPacking>(255);
     EXPECT_THROW(
         (void)formatter::CompilePolicies(style),
         std::invalid_argument);
