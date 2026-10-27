@@ -430,20 +430,16 @@ constexpr std::array<std::string_view, 11> IntegerSuffixes{
     "zu",
 };
 
-[[nodiscard]] constexpr bool EqualsIgnoringAsciiCase(std::string_view lhs, std::string_view rhs) noexcept
+[[nodiscard]] constexpr bool MatchesNumericSuffix(std::string_view suffix, std::string_view lowercaseSuffix) noexcept
 {
-    if (lhs.size() != rhs.size()) {
+    if (suffix.size() != lowercaseSuffix.size()) {
         return false;
     }
 
-    auto lower = [] (char value) {
-        if (value >= 'A' && value <= 'Z') {
-            return static_cast<char>(value + ('a' - 'A'));
-        }
-        return value;
-    };
-    for (SourceOffset i = 0; i < lhs.size(); ++i) {
-        if (lower(lhs[i]) != lower(rhs[i])) {
+    // Candidates contain only lowercase ASCII letters and digits; suffix bytes
+    // come from identifier scanning, so folding bit 0x20 cannot alias controls.
+    for (SourceOffset i = 0; i < suffix.size(); ++i) {
+        if ((static_cast<unsigned char>(suffix[i]) | 0x20) != lowercaseSuffix[i]) {
             return false;
         }
     }
@@ -1842,7 +1838,7 @@ Token Tokenizer::ParseNumber()
         if (!std::ranges::any_of(
             FloatingPointSuffixes,
             [&] (auto candidate) {
-                return EqualsIgnoringAsciiCase(suffix, candidate);
+                return MatchesNumericSuffix(suffix, candidate);
             }))
         {
             return FinishToken(TokenKind::Literal_UserDefinedFloatingPoint);
@@ -1850,7 +1846,7 @@ Token Tokenizer::ParseNumber()
     } else if (!std::ranges::any_of(
         IntegerSuffixes,
         [&] (auto candidate) {
-            return EqualsIgnoringAsciiCase(suffix, candidate);
+            return MatchesNumericSuffix(suffix, candidate);
         }))
     {
         return FinishToken(TokenKind::Literal_UserDefinedInteger);
@@ -1955,7 +1951,7 @@ Token Tokenizer::DiagnoseFloatingPoint()
     if (!std::ranges::any_of(
         FloatingPointSuffixes,
         [&] (auto candidate) {
-            return EqualsIgnoringAsciiCase(suffix, candidate);
+            return MatchesNumericSuffix(suffix, candidate);
         }))
     {
         return FinishToken(TokenKind::Literal_UserDefinedFloatingPoint);
@@ -2117,7 +2113,7 @@ Token Tokenizer::DiagnoseInteger()
     if (!std::ranges::any_of(
         IntegerSuffixes,
         [&] (auto candidate) {
-            return EqualsIgnoringAsciiCase(suffix, candidate);
+            return MatchesNumericSuffix(suffix, candidate);
         }))
     {
         return FinishToken(TokenKind::Literal_UserDefinedInteger);
