@@ -26,7 +26,3 @@ if(CMAKE_SYSTEM_PROCESSOR MATCHES "^(AMD64|amd64|x86_64|i.86|x86)$"
         target_compile_definitions(lib-tokenizer PRIVATE HIT_FMT_HAS_AVX2=1)
     endif()
 endif()
-
-if(HIT_FMT_BENCHMARK)
-    add_subdirectory(benchmarks)
-endif()
