@@ -1724,7 +1724,26 @@ Token Tokenizer::ParseNumber()
     }
     bool valid = true;
     unsigned char digitBits = 0;
-    auto parseDigits = [&] (auto isDigit) {
+    auto parseDigits = [&] (auto isDigit, bool useCachedBlock = false) {
+        if (useCachedBlock) {
+            const auto offset = static_cast<SourceOffset>(cursor - reinterpret_cast<const unsigned char*>(Input_.Data));
+            const auto within = offset - BlockOffset_;
+            if (within < detail::AsciiBlock::Size) {
+                const auto digits = static_cast<uint32_t>(Block_.Digits >> within);
+                const auto separators = static_cast<uint32_t>(Block_.Apostrophes >> within);
+                const auto available = std::min<unsigned>(32, detail::AsciiBlock::Size - within);
+                const auto full = ~uint32_t{0} >> (32 - available);
+                if ((digits | separators) != full) {
+                    const auto length = static_cast<unsigned>(std::countr_one(digits | separators));
+                    const auto consumed = (uint32_t{1} << length) - 1;
+                    const auto quotes = separators & consumed;
+                    valid &= (quotes & ((quotes << 1) | 1)) == 0;
+                    valid &= length == 0 || (quotes & (uint32_t{1} << (length - 1))) == 0;
+                    cursor += length;
+                    return static_cast<uint32_t>((digits & consumed) != 0);
+                }
+            }
+        }
         uint32_t count = 0;
         bool separator = false;
         while (true) {
@@ -1744,7 +1763,7 @@ Token Tokenizer::ParseNumber()
         valid &= !separator;
         return count;
     };
-    auto digits = hexadecimal ? parseDigits(IsHexDigit) : parseDigits(IsDigit);
+    auto digits = hexadecimal ? parseDigits(IsHexDigit) : parseDigits(IsDigit, !binary && !leadingZero);
     bool floating = !binary &&
         (*cursor == '.' || (hexadecimal ? *cursor == 'p' || *cursor == 'P' : *cursor == 'e' || *cursor == 'E'));
     TokenKind kind;
@@ -1752,7 +1771,7 @@ Token Tokenizer::ParseNumber()
         kind = hexadecimal ? TokenKind::Literal_HexadecimalFloatingPoint : TokenKind::Literal_DecimalFloatingPoint;
         if (*cursor == '.') {
             ++cursor;
-            digits += hexadecimal ? parseDigits(IsHexDigit) : parseDigits(IsDigit);
+            digits += hexadecimal ? parseDigits(IsHexDigit) : parseDigits(IsDigit, true);
         }
         valid &= digits != 0;
         bool exponent = hexadecimal ? *cursor == 'p' || *cursor == 'P' : *cursor == 'e' || *cursor == 'E';
@@ -1761,7 +1780,7 @@ Token Tokenizer::ParseNumber()
             if (*cursor == '+' || *cursor == '-') {
                 ++cursor;
             }
-            auto exponentDigits = parseDigits(IsDigit);
+            auto exponentDigits = parseDigits(IsDigit, true);
             valid &= exponentDigits != 0;
         } else if (hexadecimal) {
             valid = false;
