@@ -2202,8 +2202,7 @@ TEST(PublicPipeline, EditScopeAbsenceEmptyFullPartialAndLifetime)
         bool outside = false;
         for (const auto& range : selected.OutputProtection) {
             outside |= (uint16_t(range.Reasons) &
-                uint16_t(formatter::ProtectionReason::
-                               OutsideEditScope)) != 0;
+                uint16_t(formatter::ProtectionReason::OutsideEditScope)) != 0;
         }
         EXPECT_TRUE(outside);
     }
