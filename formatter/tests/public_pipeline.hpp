@@ -10,6 +10,7 @@ namespace public_pipeline {
 void CheckFormattedResult(
     std::string_view source,
     const formatter::Style& style,
-    std::string_view expectedText);
+    std::string_view expectedText,
+    std::string_view inputFilePath);
 
 } // namespace public_pipeline

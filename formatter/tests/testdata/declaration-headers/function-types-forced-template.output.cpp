@@ -22,6 +22,7 @@ struct TaskHooks
     Callback<
         bool(unsigned ticket)> Ready;
 };
+
 using DispatchSignature = int(
     const scheduling::WorkUnit* work,
     const ExecutionPreferences& preferences,
@@ -52,6 +53,7 @@ int (*MakeCallback())(
     int firstParameterWithSomeExtraContext,
     int secondParameterWithSomeExtraContext,
     int thirdParameterWithSomeExtraContext);
+
 int(*ChooseCallback(
     int firstSelectionParameter,
     int secondSelectionParameter,
@@ -62,6 +64,7 @@ int(*ChooseCallback(
 {
     return nullptr;
 }
+
 int (&GetCallback())(
     int firstParameterWithSomeExtraContext,
     int secondParameterWithSomeExtraContext,

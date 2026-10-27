@@ -53,10 +53,8 @@ constexpr uint32_t AsciiLimit = 0x80;
 
 constexpr uint64_t IdentifierKey(std::string_view text)
 {
-    return text.size() | (static_cast<uint64_t>(text[0]) << 8) |
-        (static_cast<uint64_t>(text[1]) << 16) |
-        (static_cast<uint64_t>(text.size() > 4 ? text[4] : '\0') << 24) |
-        (static_cast<uint64_t>(text.back()) << 32);
+    return text.size() | (static_cast<uint64_t>(text[0]) << 8) | (static_cast<uint64_t>(text[1]) << 16) |
+        (static_cast<uint64_t>(text.size() > 4 ? text[4] : '\0') << 24) | (static_cast<uint64_t>(text.back()) << 32);
 }
 
 constexpr size_t KeywordSlot(uint64_t key)
@@ -196,9 +194,7 @@ inline
 #endif
 TokenKind ClassifyIdentifier(std::string_view identifier)
 {
-    if (identifier.size() < 2 || identifier.size() > 16 ||
-        identifier.front() < 'a' || identifier.front() > 'z')
-    {
+    if (identifier.size() < 2 || identifier.size() > 16 || identifier.front() < 'a' || identifier.front() > 'z') {
         return TokenKind::Identifier;
     }
     const auto kind = Keywords.Slots[KeywordSlot(IdentifierKey(identifier))];
@@ -211,37 +207,28 @@ TokenKind ClassifyIdentifier(std::string_view identifier)
     std::memcpy(&first, identifier.data(), sizeof(first));
     if constexpr (std::endian::native == std::endian::big) {
         first =
-            ((first & 0x00000000000000ffULL) << 56) |
-                ((first & 0x000000000000ff00ULL) << 40) |
-                ((first & 0x0000000000ff0000ULL) << 24) |
-                ((first & 0x00000000ff000000ULL) << 8) |
-                ((first & 0x000000ff00000000ULL) >> 8) |
-                ((first & 0x0000ff0000000000ULL) >> 24) |
-                ((first & 0x00ff000000000000ULL) >> 40) |
-                ((first & 0xff00000000000000ULL) >> 56);
+            ((first & 0x00000000000000ffULL) << 56) | ((first & 0x000000000000ff00ULL) << 40) |
+                ((first & 0x0000000000ff0000ULL) << 24) | ((first & 0x00000000ff000000ULL) << 8) |
+                ((first & 0x000000ff00000000ULL) >> 8) | ((first & 0x0000ff0000000000ULL) >> 24) |
+                ((first & 0x00ff000000000000ULL) >> 40) | ((first & 0xff00000000000000ULL) >> 56);
     }
     if (identifier.size() <= 8) {
         const auto shift = static_cast<unsigned>((8 - identifier.size()) * 8);
-        return ((first ^ candidate.First) << shift) == 0
-            ? kind
-            : TokenKind::Identifier;
+        return ((first ^ candidate.First) << shift) == 0 ? kind : TokenKind::Identifier;
     }
     if (first != candidate.First) {
         return TokenKind::Identifier;
     }
     uint64_t second = 0;
     for (size_t i = 8; i < identifier.size(); ++i) {
-        second |=
-            static_cast<uint64_t>(static_cast<unsigned char>(identifier[i]))
-                << ((i - 8) * 8);
+        second |= static_cast<uint64_t>(static_cast<unsigned char>(identifier[i])) << ((i - 8) * 8);
     }
     return second == candidate.Second ? kind : TokenKind::Identifier;
 }
 
 [[nodiscard]] constexpr bool IsSpace(unsigned char byte) noexcept
 {
-    return byte == ' ' || byte == '\t' || byte == '\r' || byte == '\f' ||
-        byte == '\v';
+    return byte == ' ' || byte == '\t' || byte == '\r' || byte == '\f' || byte == '\v';
 }
 
 [[nodiscard]] constexpr bool IsOctalDigit(unicode::CodePoint cp) noexcept
@@ -266,14 +253,12 @@ TokenKind ClassifyIdentifier(std::string_view identifier)
 
 [[nodiscard]] constexpr bool IsAsciiIdentifierStart(unsigned char byte) noexcept
 {
-    return (byte >= 'a' && byte <= 'z') || (byte >= 'A' && byte <= 'Z') ||
-        byte == '_';
+    return (byte >= 'a' && byte <= 'z') || (byte >= 'A' && byte <= 'Z') || byte == '_';
 }
 
 [[nodiscard]] constexpr bool IsAlphaNumeric(unsigned char value) noexcept
 {
-    return IsDigit(value) || (value >= 'a' && value <= 'z') ||
-        (value >= 'A' && value <= 'Z') || value == '_';
+    return IsDigit(value) || (value >= 'a' && value <= 'z') || (value >= 'A' && value <= 'Z') || value == '_';
 }
 
 constexpr uint64_t LowBits(unsigned count) noexcept
@@ -344,9 +329,7 @@ TokenKind ClassifyOperator(const unsigned char* text, unsigned length)
             case '-':
                 return TokenKind::Operator_IndirectPointerToMemberDereference;
             case '<':
-                return text[1] == '<'
-                    ? TokenKind::Operator_LeftShiftAssign
-                    : TokenKind::Operator_Spaceship;
+                return text[1] == '<' ? TokenKind::Operator_LeftShiftAssign : TokenKind::Operator_Spaceship;
             default:
                 return TokenKind::Operator_RightShiftAssign;
         }
@@ -429,24 +412,9 @@ TokenKind ClassifyOperator(const unsigned char* text, unsigned length)
 
 constexpr std::array<std::string_view, 4> EncodingPrefixes{"u8", "u", "U", "L"};
 
-constexpr std::array<std::string_view, 5> RawEncodingPrefixes{
-    "R",
-    "u8R",
-    "uR",
-    "UR",
-    "LR",
-};
+constexpr std::array<std::string_view, 5> RawEncodingPrefixes{"R", "u8R", "uR", "UR", "LR"};
 
-constexpr std::array<std::string_view, 8> FloatingPointSuffixes{
-    "",
-    "f",
-    "l",
-    "f16",
-    "f32",
-    "f64",
-    "f128",
-    "bf16",
-};
+constexpr std::array<std::string_view, 8> FloatingPointSuffixes{"", "f", "l", "f16", "f32", "f64", "f128", "bf16"};
 
 constexpr std::array<std::string_view, 11> IntegerSuffixes{
     "",
@@ -462,9 +430,7 @@ constexpr std::array<std::string_view, 11> IntegerSuffixes{
     "zu",
 };
 
-[[nodiscard]] constexpr bool EqualsIgnoringAsciiCase(
-    std::string_view lhs,
-    std::string_view rhs) noexcept
+[[nodiscard]] constexpr bool EqualsIgnoringAsciiCase(std::string_view lhs, std::string_view rhs) noexcept
 {
     if (lhs.size() != rhs.size()) {
         return false;
@@ -520,22 +486,19 @@ inline bool TokenizerCursor<Owner>::AtEnd() const noexcept
 }
 
 template <typename Owner>
-inline unsigned char TokenizerCursor<Owner>::ByteAt(
-    SourceOffset offset) const noexcept
+inline unsigned char TokenizerCursor<Owner>::ByteAt(SourceOffset offset) const noexcept
 {
     return ByteData()[offset];
 }
 
 template <typename Owner>
-inline unsigned char TokenizerCursor<Owner>::PeekByte(
-    SourceOffset lookahead) const noexcept
+inline unsigned char TokenizerCursor<Owner>::PeekByte(SourceOffset lookahead) const noexcept
 {
     return ByteAt(CurrentCodePointOffset_ + lookahead);
 }
 
 template <typename Owner>
-inline const unsigned char* TokenizerCursor<Owner>::CurrentByteAddress()
-const noexcept
+inline const unsigned char* TokenizerCursor<Owner>::CurrentByteAddress() const noexcept
 {
     return ByteData() + CurrentCodePointOffset_;
 }
@@ -551,9 +514,7 @@ inline void TokenizerCursor<Owner>::ConsumeUnicodeCodePoint()
 }
 
 template <typename Owner>
-inline void TokenizerCursor<Owner>::ConsumeCodePoint(
-    unicode::CodePoint value,
-    NewlineHandling newlineHandling)
+inline void TokenizerCursor<Owner>::ConsumeCodePoint(unicode::CodePoint value, NewlineHandling newlineHandling)
 {
     if (value < AsciiLimit) [[likely]] {
         ConsumeAsciiByte(static_cast<unsigned char>(value), newlineHandling);
@@ -563,8 +524,7 @@ inline void TokenizerCursor<Owner>::ConsumeCodePoint(
 }
 
 template <typename Owner>
-inline void TokenizerCursor<Owner>::ConsumeCodePoint(
-    NewlineHandling newlineHandling)
+inline void TokenizerCursor<Owner>::ConsumeCodePoint(NewlineHandling newlineHandling)
 {
     ConsumeCodePoint(CurrentCodePoint(), newlineHandling);
 }
@@ -588,9 +548,7 @@ inline const Owner& TokenizerCursor<Owner>::GetOwner() const noexcept
 }
 
 template <typename Owner>
-void TokenizerCursor<Owner>::ConsumeAsciiByte(
-    unsigned char byte,
-    NewlineHandling newlineHandling)
+void TokenizerCursor<Owner>::ConsumeAsciiByte(unsigned char byte, NewlineHandling newlineHandling)
 {
     auto& owner = GetOwner();
     ++owner.CurrentTokenSize_;
@@ -611,9 +569,7 @@ void TokenizerCursor<Owner>::ConsumeAsciiByte(
 
 } // namespace detail
 
-Tokenizer::Tokenizer(
-    util::PaddedSourceView input,
-    std::function<void(TokenizationError)> errorHandler)
+Tokenizer::Tokenizer(util::PaddedSourceView input, std::function<void(TokenizationError)> errorHandler)
     : Input_(input)
     , ErrorHandler_(std::move(errorHandler))
 {
@@ -634,16 +590,12 @@ void Tokenizer::LoadBlock(SourceOffset offset) noexcept
     const auto blockOffset = offset & ~(detail::AsciiBlock::Size - 1);
     if (blockOffset != BlockOffset_) {
         BlockOffset_ = blockOffset;
-        ClassifyBlock_(
-            reinterpret_cast<const unsigned char*>(Input_.Data) + blockOffset,
-            Block_);
+        ClassifyBlock_(reinterpret_cast<const unsigned char*>(Input_.Data) + blockOffset, Block_);
     }
 }
 
 template <detail::AsciiRun Kind, bool TrackNonSpace>
-inline const unsigned char* Tokenizer::ScanAscii(
-    const unsigned char* cursor,
-    bool* nonSpace) noexcept
+inline const unsigned char* Tokenizer::ScanAscii(const unsigned char* cursor, bool* nonSpace) noexcept
 {
     static_assert(util::SourcePaddingSize >= detail::AsciiBlock::Size);
     const auto* data = reinterpret_cast<const unsigned char*>(Input_.Data);
@@ -655,11 +607,8 @@ inline const unsigned char* Tokenizer::ScanAscii(
         const auto count = static_cast<SourceOffset>(
             std::countr_one(continuations));
         if constexpr (TrackNonSpace) {
-            const auto consumed = count == detail::AsciiBlock::Size
-                ? ~uint64_t{0}
-                : (uint64_t{1} << count) - 1;
-            *nonSpace |= (consumed &
-                ~(Block_[detail::AsciiRun::Whitespace] >> within)) != 0;
+            const auto consumed = count == detail::AsciiBlock::Size ? ~uint64_t{0} : (uint64_t{1} << count) - 1;
+            *nonSpace |= (consumed & ~(Block_[detail::AsciiRun::Whitespace] >> within)) != 0;
         }
         offset += count;
         if (count < detail::AsciiBlock::Size - within) {
@@ -668,20 +617,15 @@ inline const unsigned char* Tokenizer::ScanAscii(
     }
 }
 
-inline const unsigned char* Tokenizer::ScanAsciiQuotedLiteral(
-    const unsigned char* cursor,
-    unsigned char quote) noexcept
+inline const unsigned char* Tokenizer::ScanAsciiQuotedLiteral(const unsigned char* cursor, unsigned char quote) noexcept
 {
-    return quote == '"'
-        ? ScanAscii<detail::AsciiRun::String>(cursor)
-        : ScanAscii<detail::AsciiRun::Character>(cursor);
+    return quote == '"' ? ScanAscii<detail::AsciiRun::String>(cursor) : ScanAscii<detail::AsciiRun::Character>(cursor);
 }
 
 template <>
 void detail::TokenizerCursor<Tokenizer>::DecodeCurrentUnicodeCodePoint()
 {
-    auto first = unicode::utf8::GetFirstCodePointFromPaddedInput(
-        GetOwner().Input_.Data + CurrentCodePointOffset_);
+    auto first = unicode::utf8::GetFirstCodePointFromPaddedInput(GetOwner().Input_.Data + CurrentCodePointOffset_);
     if (!first) {
         GetOwner().OnError(TokenizationErrorKind::InvalidUtf8CodePoint);
         ++EncodingErrorCount_;
@@ -699,10 +643,7 @@ Token Tokenizer::FinishToken(TokenKind kind) const noexcept
     return Token{
         .Kind = kind,
         .Position = CurrentTokenPosition_,
-        .Text = {
-            .Begin = CurrentTokenOffset_,
-            .End = CurrentTokenOffset_ + CurrentTokenSize_,
-        },
+        .Text = {.Begin = CurrentTokenOffset_, .End = CurrentTokenOffset_ + CurrentTokenSize_},
     };
 }
 
@@ -711,14 +652,10 @@ SourceOffset Tokenizer::FindLineCommentEnd(SourceOffset offset) noexcept
     while (true) {
         LoadBlock(offset);
         const auto within = offset - BlockOffset_;
-        const auto stops =
-            (Block_.Newlines | Block_.NonAscii | Block_.Nulls) >> within;
+        const auto stops = (Block_.Newlines | Block_.NonAscii | Block_.Nulls) >> within;
         if (stops != 0) {
-            const auto end =
-                offset + static_cast<SourceOffset>(std::countr_zero(stops));
-            return ByteAt(end) >= AsciiLimit
-                ? std::numeric_limits<SourceOffset>::max()
-                : end;
+            const auto end = offset + static_cast<SourceOffset>(std::countr_zero(stops));
+            return ByteAt(end) >= AsciiLimit ? std::numeric_limits<SourceOffset>::max() : end;
         }
         offset = BlockOffset_ + detail::AsciiBlock::Size;
     }
@@ -732,8 +669,7 @@ SourceOffset Tokenizer::FindBlockCommentEnd(SourceOffset offset) noexcept
         const auto closers = Block_.Stars & (Block_.Slashes >> 1);
         const auto stops = (closers | Block_.NonAscii | Block_.Nulls) >> within;
         if (stops != 0) {
-            const auto end =
-                offset + static_cast<SourceOffset>(std::countr_zero(stops));
+            const auto end = offset + static_cast<SourceOffset>(std::countr_zero(stops));
             return (closers & (uint64_t{1} << (end - BlockOffset_))) != 0
                 ? end + 2
                 : std::numeric_limits<SourceOffset>::max();
@@ -746,19 +682,16 @@ SourceOffset Tokenizer::FindBlockCommentEnd(SourceOffset offset) noexcept
     }
 }
 
-SourceOffset Tokenizer::FindQuotedEnd(
-    SourceOffset offset,
-    bool character) noexcept
+SourceOffset Tokenizer::FindQuotedEnd(SourceOffset offset, bool character) noexcept
 {
     while (true) {
         LoadBlock(offset);
         const auto within = offset - BlockOffset_;
         const auto delimiters = character ? Block_.Apostrophes : Block_.Quotes;
-        const auto stops = (delimiters | Block_.Backslashes | Block_.Newlines |
-            Block_.NonAscii | Block_.Nulls) >> within;
+        const auto stops =
+            (delimiters | Block_.Backslashes | Block_.Newlines | Block_.NonAscii | Block_.Nulls) >> within;
         if (stops != 0) {
-            const auto end =
-                offset + static_cast<SourceOffset>(std::countr_zero(stops));
+            const auto end = offset + static_cast<SourceOffset>(std::countr_zero(stops));
             return (delimiters & (uint64_t{1} << (end - BlockOffset_))) != 0
                 ? end + 1
                 : std::numeric_limits<SourceOffset>::max();
@@ -794,8 +727,7 @@ bool Tokenizer::ReadBlock()
     const auto newlines = Block_.Newlines;
     const auto whitespace = Block_.Whitespace | newlines;
     const auto wordStarts = words & ~(words << 1);
-    auto wordEnds =
-        words & ~(words >> 1) & ~LowBits(CurrentCodePointOffset_ - base);
+    auto wordEnds = words & ~(words >> 1) & ~LowBits(CurrentCodePointOffset_ - base);
     const auto punctuation = Block_.Punctuation;
     const auto singles = Block_.Singles;
     const auto quotes = Block_.Quotes;
@@ -810,8 +742,7 @@ bool Tokenizer::ReadBlock()
     auto isNewLine = IsNewLine_;
     auto remainingLines = newlines & ~LowBits(cursor - base);
     unsigned count = 0;
-    auto starts = (wordStarts | (~words & ~whitespace)) &
-        ~LowBits(cursor - base) & LowBits(limit - base);
+    auto starts = (wordStarts | (~words & ~whitespace)) & ~LowBits(cursor - base) & LowBits(limit - base);
     // A continuation arriving from another block starts at the current cursor.
     if (cursor < limit && (words & (uint64_t{1} << (cursor - base))) != 0) {
         starts |= uint64_t{1} << (cursor - base);
@@ -825,8 +756,7 @@ bool Tokenizer::ReadBlock()
             const auto lines = newlines & range;
             if (lines != 0) {
                 position.Line += static_cast<uint32_t>(std::popcount(lines));
-                const auto last =
-                    63u - static_cast<unsigned>(std::countl_zero(lines));
+                const auto last = 63u - static_cast<unsigned>(std::countl_zero(lines));
                 position.Column = stop - last;
                 isNewLine = (range & ~LowBits(last + 1) & ~whitespace) == 0;
             } else {
@@ -846,11 +776,9 @@ bool Tokenizer::ReadBlock()
             const auto lines = Block_.Newlines & range;
             if (lines != 0) {
                 position.Line += static_cast<uint32_t>(std::popcount(lines));
-                const auto last =
-                    63u - static_cast<unsigned>(std::countl_zero(lines));
+                const auto last = 63u - static_cast<unsigned>(std::countl_zero(lines));
                 position.Column = stop - last;
-                isNewLine = (range & ~LowBits(last + 1) &
-                    ~(Block_[AsciiRun::Whitespace] | Block_.Newlines)) == 0;
+                isNewLine = (range & ~LowBits(last + 1) & ~(Block_[AsciiRun::Whitespace] | Block_.Newlines)) == 0;
             } else {
                 position.Column += stop - begin;
                 if ((range & ~Block_[AsciiRun::Whitespace]) != 0) {
@@ -870,8 +798,7 @@ bool Tokenizer::ReadBlock()
         if (skippedLines != 0) {
             remainingLines &= ~skippedLines;
             position.Line += static_cast<uint32_t>(std::popcount(skippedLines));
-            position.Column = index -
-                (63u - static_cast<unsigned>(std::countl_zero(skippedLines)));
+            position.Column = index - (63u - static_cast<unsigned>(std::countl_zero(skippedLines)));
             isNewLine = true;
         } else {
             position.Column += start - cursor;
@@ -886,12 +813,8 @@ bool Tokenizer::ReadBlock()
                 end = base + FirstBit(ends) + 1;
                 wordEnds &= wordEnds - 1;
             }
-            if (end == 0 || end == start ||
-                (end == base + Width && IsAlphaNumeric(data[end])))
-            {
-                end = static_cast<
-                    SourceOffset>(ScanAscii<AsciiRun::Identifier>(data + end) -
-                        data);
+            if (end == 0 || end == start || (end == base + Width && IsAlphaNumeric(data[end]))) {
+                end = static_cast<SourceOffset>(ScanAscii<AsciiRun::Identifier>(data + end) - data);
             }
             const auto next = data[end];
             if (next >= AsciiLimit || next == '"' || next == '\'') {
@@ -900,15 +823,12 @@ bool Tokenizer::ReadBlock()
             if ((digits & bit) != 0) {
                 // Compound numeric spellings retain their validating path.
                 const auto length = end - start;
-                if (end > limit || next == '.' ||
-                    (data[start] == '0' && length > 1) ||
+                if (end > limit || next == '.' || (data[start] == '0' && length > 1) ||
                     ((digits >> index) & LowBits(length)) != LowBits(length))
                 {
                     break;
                 }
-                kind = data[start] == '0'
-                    ? TokenKind::Literal_OctalInteger
-                    : TokenKind::Literal_DecimalInteger;
+                kind = data[start] == '0' ? TokenKind::Literal_OctalInteger : TokenKind::Literal_DecimalInteger;
             } else {
                 kind = ClassifyIdentifier(Input_.substr(start, end - start));
             }
@@ -919,34 +839,26 @@ bool Tokenizer::ReadBlock()
             const auto byte = data[start];
             const auto next = data[start + 1];
             if (byte == '/' && (next == '/' || next == '*')) {
-                end = next == '/'
-                    ? FindLineCommentEnd(start + 2)
-                    : FindBlockCommentEnd(start + 2);
+                end = next == '/' ? FindLineCommentEnd(start + 2) : FindBlockCommentEnd(start + 2);
                 if (end > Input_.Size) {
                     break;
                 }
                 kind = TokenKind::Comment;
             } else {
                 if ((byte == '%' && next == ':' && isNewLine) ||
-                    (byte == '.' &&
-                        (IsDigit(next) ||
-                            (next == '.' && data[start + 2] != '.'))))
+                    (byte == '.' && (IsDigit(next) || (next == '.' && data[start + 2] != '.'))))
                 {
                     break;
                 }
-                unsigned length = (triples & bit) != 0
-                    ? 3
-                    : (pairs & bit) != 0 ? 2 : 1;
+                unsigned length = (triples & bit) != 0 ? 3 : (pairs & bit) != 0 ? 2 : 1;
                 if (index >= Width - 2) {
                     // Keep compound symbols intact across block boundaries.
                     detail::AsciiBlock boundary;
                     ClassifyBlock_(data + start, boundary);
-                    length = (boundary.Triples & 1) != 0
-                        ? 3
-                        : (boundary.Pairs & 1) != 0 ? 2 : 1;
+                    length = (boundary.Triples & 1) != 0 ? 3 : (boundary.Pairs & 1) != 0 ? 2 : 1;
                 }
-                if (byte == '<' && next == ':' && data[start + 2] == ':' &&
-                    data[start + 3] != ':' && data[start + 3] != '>')
+                if (byte == '<' && next == ':' && data[start + 2] == ':' && data[start + 3] != ':' &&
+                    data[start + 3] != '>')
                 {
                     length = 1;
                 }
@@ -959,8 +871,7 @@ bool Tokenizer::ReadBlock()
         } else if (((quotes | apostrophes) & bit) != 0) {
             const bool character = (apostrophes & bit) != 0;
             const auto delimiters = character ? apostrophes : quotes;
-            const auto stops = (delimiters | backslashes | newlines | nonAscii |
-                nulls) & ~LowBits(index + 1);
+            const auto stops = (delimiters | backslashes | newlines | nonAscii | nulls) & ~LowBits(index + 1);
             if (stops == 0) {
                 end = FindQuotedEnd(start + 1, character);
             } else {
@@ -969,14 +880,12 @@ bool Tokenizer::ReadBlock()
                     ? base + close + 1
                     : std::numeric_limits<SourceOffset>::max();
             }
-            if (end > Input_.Size || (character && end == start + 2) ||
-                IsAsciiIdentifierStart(data[end]) || data[end] >= AsciiLimit)
+            if (end > Input_.Size || (character && end == start + 2) || IsAsciiIdentifierStart(data[end]) ||
+                data[end] >= AsciiLimit)
             {
                 break;
             }
-            kind = character
-                ? TokenKind::Literal_Character
-                : TokenKind::Literal_String;
+            kind = character ? TokenKind::Literal_Character : TokenKind::Literal_String;
         } else {
             break;
         }
@@ -1155,8 +1064,7 @@ Token Tokenizer::ParseAsciiOperator(unsigned char byte)
                 }
                 case '*':
                     ConsumeCodePoint();
-                    return FinishToken(
-                        TokenKind::Operator_PointerToMemberDereference);
+                    return FinishToken(TokenKind::Operator_PointerToMemberDereference);
                 default:
                     return FinishToken(TokenKind::Operator_ClassMemberAccess);
             }
@@ -1171,12 +1079,10 @@ Token Tokenizer::ParseAsciiOperator(unsigned char byte)
                     if (cur == '*') {
                         ConsumeCodePoint();
                         using Kind = TokenKind;
-                        auto kind =
-                            Kind::Operator_IndirectPointerToMemberDereference;
+                        auto kind = Kind::Operator_IndirectPointerToMemberDereference;
                         return FinishToken(kind);
                     }
-                    return FinishToken(
-                        TokenKind::Operator_IndirectClassMemberAccess);
+                    return FinishToken(TokenKind::Operator_IndirectClassMemberAccess);
                 case '=':
                     ConsumeCodePoint();
                     return FinishToken(TokenKind::Operator_MinusAssign);
@@ -1304,9 +1210,7 @@ Token Tokenizer::ParseAsciiOperator(unsigned char byte)
                     // <:: when the following character is neither ':' nor '>'.
                     // In that case this is '<' followed by '::', not the '<:'
                     // digraph followed by ':'.
-                    if (PeekByte() == ':' && PeekByte(1) == ':' &&
-                        PeekByte(2) != ':' && PeekByte(2) != '>')
-                    {
+                    if (PeekByte() == ':' && PeekByte(1) == ':' && PeekByte(2) != ':' && PeekByte(2) != '>') {
                         return FinishToken(TokenKind::Operator_Less);
                     }
                     ConsumeCodePoint();
@@ -1349,8 +1253,7 @@ Token Tokenizer::ParseAsciiOperator(unsigned char byte)
                     cur = CurrentCodePoint();
                     if (cur == '=') {
                         ConsumeCodePoint();
-                        return FinishToken(
-                            TokenKind::Operator_RightShiftAssign);
+                        return FinishToken(TokenKind::Operator_RightShiftAssign);
                     }
                     return FinishToken(TokenKind::Operator_RightShift);
                 }
@@ -1445,32 +1348,22 @@ Token Tokenizer::ParseIdentifier()
         if (size != 0) {
             IsNewLine_ = false;
         }
-        if (lastByte < AsciiLimit ||
-            !IsIdContinuation(CurrentUnicodeCodePoint()))
-        {
+        if (lastByte < AsciiLimit || !IsIdContinuation(CurrentUnicodeCodePoint())) {
             break;
         }
         ConsumeUnicodeCodePoint();
     }
-    auto cur = lastByte < AsciiLimit
-        ? unicode::CodePoint(lastByte)
-        : CurrentUnicodeCodePoint();
+    auto cur = lastByte < AsciiLimit ? unicode::CodePoint(lastByte) : CurrentUnicodeCodePoint();
 
     if (cur == '\'') {
-        if (std::ranges::find(EncodingPrefixes, CurrentTokenText()) !=
-            EncodingPrefixes.end())
-        {
+        if (std::ranges::find(EncodingPrefixes, CurrentTokenText()) != EncodingPrefixes.end()) {
             return ParseCharacterLiteral();
         }
     } else if (cur == '"') {
-        if (std::ranges::find(EncodingPrefixes, CurrentTokenText()) !=
-            EncodingPrefixes.end())
-        {
+        if (std::ranges::find(EncodingPrefixes, CurrentTokenText()) != EncodingPrefixes.end()) {
             return ParseStringLiteral();
         }
-        if (std::ranges::find(RawEncodingPrefixes, CurrentTokenText()) !=
-            RawEncodingPrefixes.end())
-        {
+        if (std::ranges::find(RawEncodingPrefixes, CurrentTokenText()) != RawEncodingPrefixes.end()) {
             return ParseRawStringLiteral();
         }
     }
@@ -1512,10 +1405,7 @@ bool Tokenizer::ConsumeEscapeSequence()
     }
 
     if (IsOctalDigit(cur)) {
-        for (int count = 0;
-            count < 3 && IsOctalDigit(CurrentCodePoint());
-            ++count)
-        {
+        for (int count = 0; count < 3 && IsOctalDigit(CurrentCodePoint()); ++count) {
             ConsumeCodePoint();
         }
         return true;
@@ -1598,8 +1488,7 @@ bool Tokenizer::ConsumeEscapeSequence()
                 ConsumeCodePoint();
             }
         }
-        if (!valid || value > 0x10ffff || (value >= 0xd800 && value <= 0xdfff))
-        {
+        if (!valid || value > 0x10ffff || (value >= 0xd800 && value <= 0xdfff)) {
             OnError(TokenizationErrorKind::InvalidUniversalCharacter);
             return false;
         }
@@ -1611,9 +1500,7 @@ bool Tokenizer::ConsumeEscapeSequence()
         if (CurrentCodePoint() == '{') {
             ConsumeCodePoint();
             bool hasName = false;
-            while (CurrentCodePoint() != '}' && CurrentCodePoint() != '\n' &&
-                CurrentCodePoint() != '\0')
-            {
+            while (CurrentCodePoint() != '}' && CurrentCodePoint() != '\n' && CurrentCodePoint() != '\0') {
                 ConsumeCodePoint();
                 hasName = true;
             }
@@ -1653,9 +1540,7 @@ void Tokenizer::ConsumeLiteralSuffix()
         if (size != 0) {
             IsNewLine_ = false;
         }
-        if (lastByte < AsciiLimit ||
-            !IsIdContinuation(CurrentUnicodeCodePoint()))
-        {
+        if (lastByte < AsciiLimit || !IsIdContinuation(CurrentUnicodeCodePoint())) {
             break;
         }
         ConsumeUnicodeCodePoint();
@@ -1689,8 +1574,7 @@ Token Tokenizer::ParseCharacterLiteral()
             continue;
         }
         if (lastByte == '\\') {
-            bool lineSplice = PeekByte(1) == '\n' ||
-                (PeekByte(1) == '\r' && PeekByte(2) == '\n');
+            bool lineSplice = PeekByte(1) == '\n' || (PeekByte(1) == '\r' && PeekByte(2) == '\n');
             valid &= ConsumeEscapeSequence();
             characterCount += !lineSplice;
             continue;
@@ -1707,15 +1591,12 @@ Token Tokenizer::ParseCharacterLiteral()
         OnError(TokenizationErrorKind::EmptyCharacterLiteral);
         valid = false;
     }
-    if ((prefix == "u8" || prefix == "u" || prefix == "U") &&
-        characterCount > 1)
-    {
+    if ((prefix == "u8" || prefix == "u" || prefix == "U") && characterCount > 1) {
         OnError(TokenizationErrorKind::TooManyCharactersInCharacterLiteral);
         valid = false;
     }
     ConsumeLiteralSuffix();
-    return FinishToken(
-        valid ? TokenKind::Literal_Character : TokenKind::Invalid);
+    return FinishToken(valid ? TokenKind::Literal_Character : TokenKind::Invalid);
 }
 
 Token Tokenizer::ParseStringLiteral()
@@ -1773,9 +1654,7 @@ Token Tokenizer::ParseRawStringLiteral()
     bool reportedLongDelimiter = false;
     while (!AtEnd() && cur != '(' && cur != '\n') {
         auto value = static_cast<uint32_t>(cur);
-        if ((value < 0x21 || value > 0x7e || cur == ')' || cur == '\\') &&
-            !reportedInvalidDelimiter)
-        {
+        if ((value < 0x21 || value > 0x7e || cur == ')' || cur == '\\') && !reportedInvalidDelimiter) {
             OnError(TokenizationErrorKind::InvalidRawStringDelimiter);
             reportedInvalidDelimiter = true;
             valid = false;
@@ -1794,16 +1673,14 @@ Token Tokenizer::ParseRawStringLiteral()
         return FinishToken(TokenKind::Invalid);
     }
 
-    auto delimiter =
-        Input_.substr(delimiterStart, CurrentCodePointOffset_ - delimiterStart);
+    auto delimiter = Input_.substr(delimiterStart, CurrentCodePointOffset_ - delimiterStart);
     next();
 
     // A raw string may contain newlines and embedded NUL bytes.
     while (true) {
         const auto* begin = CurrentByteAddress();
         bool nonSpace = false;
-        const auto* cursor =
-            ScanAscii<AsciiRun::RawString, true>(begin, &nonSpace);
+        const auto* cursor = ScanAscii<AsciiRun::RawString, true>(begin, &nonSpace);
         auto lastByte = *cursor;
         auto size = static_cast<SourceOffset>(cursor - begin);
         CurrentCodePointOffset_ += size;
@@ -1815,24 +1692,17 @@ Token Tokenizer::ParseRawStringLiteral()
         if (AtEnd()) {
             break;
         }
-        cur = lastByte < AsciiLimit
-            ? unicode::CodePoint(lastByte)
-            : CurrentUnicodeCodePoint();
+        cur = lastByte < AsciiLimit ? unicode::CodePoint(lastByte) : CurrentUnicodeCodePoint();
         if (cur == ')') {
             auto suffix = Input_.substr(CurrentCodePointOffset_ + 1);
-            if (suffix.starts_with(delimiter) &&
-                suffix.size() > delimiter.size() &&
-                suffix[delimiter.size()] == '"')
-            {
-                auto closingDelimiterEnd = CurrentCodePointOffset_ + 2 +
-                    static_cast<SourceOffset>(delimiter.size());
+            if (suffix.starts_with(delimiter) && suffix.size() > delimiter.size() && suffix[delimiter.size()] == '"') {
+                auto closingDelimiterEnd = CurrentCodePointOffset_ + 2 + static_cast<SourceOffset>(delimiter.size());
                 do {
                     ConsumeCodePoint();
                 } while (CurrentCodePointOffset_ < closingDelimiterEnd);
                 valid &= encodingErrorCount == EncodingErrorCount_;
                 ConsumeLiteralSuffix();
-                return FinishToken(
-                    valid ? TokenKind::Literal_String : TokenKind::Invalid);
+                return FinishToken(valid ? TokenKind::Literal_String : TokenKind::Invalid);
             }
         }
         next();
@@ -1876,24 +1746,16 @@ Token Tokenizer::ParseNumber()
     };
     auto digits = hexadecimal ? parseDigits(IsHexDigit) : parseDigits(IsDigit);
     bool floating = !binary &&
-        (*cursor == '.' ||
-            (hexadecimal
-                ? *cursor == 'p' || *cursor == 'P'
-                : *cursor == 'e' || *cursor == 'E'));
+        (*cursor == '.' || (hexadecimal ? *cursor == 'p' || *cursor == 'P' : *cursor == 'e' || *cursor == 'E'));
     TokenKind kind;
     if (floating) {
-        kind = hexadecimal
-            ? TokenKind::Literal_HexadecimalFloatingPoint
-            : TokenKind::Literal_DecimalFloatingPoint;
+        kind = hexadecimal ? TokenKind::Literal_HexadecimalFloatingPoint : TokenKind::Literal_DecimalFloatingPoint;
         if (*cursor == '.') {
             ++cursor;
-            digits +=
-                hexadecimal ? parseDigits(IsHexDigit) : parseDigits(IsDigit);
+            digits += hexadecimal ? parseDigits(IsHexDigit) : parseDigits(IsDigit);
         }
         valid &= digits != 0;
-        bool exponent = hexadecimal
-            ? *cursor == 'p' || *cursor == 'P'
-            : *cursor == 'e' || *cursor == 'E';
+        bool exponent = hexadecimal ? *cursor == 'p' || *cursor == 'P' : *cursor == 'e' || *cursor == 'E';
         if (exponent) {
             ++cursor;
             if (*cursor == '+' || *cursor == '-') {
@@ -1933,11 +1795,9 @@ Token Tokenizer::ParseNumber()
     if (IsIdStart(cur)) {
         while (true) {
             const auto* suffixBegin = CurrentByteAddress();
-            const auto* suffixCursor =
-                ScanAscii<AsciiRun::Identifier>(suffixBegin);
+            const auto* suffixCursor = ScanAscii<AsciiRun::Identifier>(suffixBegin);
             auto lastByte = *suffixCursor;
-            auto suffixSize =
-                static_cast<SourceOffset>(suffixCursor - suffixBegin);
+            auto suffixSize = static_cast<SourceOffset>(suffixCursor - suffixBegin);
             CurrentCodePointOffset_ += suffixSize;
             CurrentCodePointPosition_.Column += suffixSize;
             CurrentTokenSize_ += suffixSize;
@@ -1949,8 +1809,7 @@ Token Tokenizer::ParseNumber()
                     ConsumeUnicodeCodePoint();
                     continue;
                 }
-            } else if (!floating && lastByte == '\'' &&
-                IsDigit(ByteAt(CurrentCodePointOffset_ - 1)) &&
+            } else if (!floating && lastByte == '\'' && IsDigit(ByteAt(CurrentCodePointOffset_ - 1)) &&
                 IsDigit(PeekByte(1)))
             {
                 ConsumeAsciiByte(lastByte);
@@ -2160,8 +2019,7 @@ Token Tokenizer::DiagnoseInteger()
                     next();
                 }
                 if (parsedDigits == 0) {
-                    OnError(
-                        TokenizationErrorKind::NoDigitsInHexadecimalInteger);
+                    OnError(TokenizationErrorKind::NoDigitsInHexadecimalInteger);
                     kind = TokenKind::Invalid;
                 } else if (prev == '\'') {
                     OnError(TokenizationErrorKind::
@@ -2204,8 +2062,7 @@ Token Tokenizer::DiagnoseInteger()
         while (IsDigit(cur) || cur == '\'') {
             if (cur == '\'') {
                 if (prev == '\'') {
-                    OnError(
-                        TokenizationErrorKind::NoDigitsBetweenDigitSeparators);
+                    OnError(TokenizationErrorKind::NoDigitsBetweenDigitSeparators);
                     kind = TokenKind::Invalid;
                 }
             } else {
@@ -2225,8 +2082,7 @@ Token Tokenizer::DiagnoseInteger()
 
     if (IsIdStart(cur)) {
         auto isDigitSeparator = [&] {
-            return cur == '\'' && CurrentCodePointOffset_ != 0 &&
-                IsDigit(ByteAt(CurrentCodePointOffset_ - 1)) &&
+            return cur == '\'' && CurrentCodePointOffset_ != 0 && IsDigit(ByteAt(CurrentCodePointOffset_ - 1)) &&
                 IsDigit(PeekByte(1));
         };
         do {
@@ -2279,8 +2135,7 @@ Token Tokenizer::ParseMultilineComment()
     while (true) {
         const auto* begin = CurrentByteAddress();
         bool nonSpace = false;
-        const auto* cursor =
-            ScanAscii<AsciiRun::BlockComment, true>(begin, &nonSpace);
+        const auto* cursor = ScanAscii<AsciiRun::BlockComment, true>(begin, &nonSpace);
         auto lastByte = *cursor;
         auto size = static_cast<SourceOffset>(cursor - begin);
         CurrentCodePointOffset_ += size;
@@ -2330,9 +2185,7 @@ Token Tokenizer::ParsePreprocessingDirective()
         if (nonSpace) {
             IsNewLine_ = false;
         }
-        cur = lastByte < AsciiLimit
-            ? unicode::CodePoint(lastByte)
-            : CurrentUnicodeCodePoint();
+        cur = lastByte < AsciiLimit ? unicode::CodePoint(lastByte) : CurrentUnicodeCodePoint();
         if (cur == '\0') {
             break;
         }
@@ -2373,9 +2226,7 @@ Token Tokenizer::ParsePreprocessingDirective()
                     const auto* commentBegin = CurrentByteAddress();
                     bool commentNonSpace = false;
                     const auto* commentCursor =
-                        ScanAscii<AsciiRun::DirectiveComment, true>(
-                            commentBegin,
-                            &commentNonSpace);
+                        ScanAscii<AsciiRun::DirectiveComment, true>(commentBegin, &commentNonSpace);
                     auto lastByte = *commentCursor;
                     auto commentSize = static_cast<SourceOffset>(
                         commentCursor - commentBegin);
@@ -2385,9 +2236,7 @@ Token Tokenizer::ParsePreprocessingDirective()
                     if (commentNonSpace) {
                         IsNewLine_ = false;
                     }
-                    cur = lastByte < AsciiLimit
-                        ? unicode::CodePoint(lastByte)
-                        : CurrentUnicodeCodePoint();
+                    cur = lastByte < AsciiLimit ? unicode::CodePoint(lastByte) : CurrentUnicodeCodePoint();
                     if (cur == '\n' || cur == '\0') {
                         break;
                     }
@@ -2412,17 +2261,13 @@ Token Tokenizer::ParsePreprocessingDirective()
             if (cur != '(') {
                 continue;
             }
-            auto delimiter = Input_.substr(
-                delimiterStart,
-                CurrentCodePointOffset_ - delimiterStart);
+            auto delimiter = Input_.substr(delimiterStart, CurrentCodePointOffset_ - delimiterStart);
             ConsumeCodePoint();
             cur = CurrentCodePoint();
             while (true) {
                 const auto* rawBegin = CurrentByteAddress();
                 bool rawNonSpace = false;
-                const auto* rawCursor = ScanAscii<AsciiRun::RawString, true>(
-                    rawBegin,
-                    &rawNonSpace);
+                const auto* rawCursor = ScanAscii<AsciiRun::RawString, true>(rawBegin, &rawNonSpace);
                 auto lastByte = *rawCursor;
                 auto rawSize = static_cast<SourceOffset>(rawCursor - rawBegin);
                 CurrentCodePointOffset_ += rawSize;
@@ -2431,16 +2276,13 @@ Token Tokenizer::ParsePreprocessingDirective()
                 if (rawNonSpace) {
                     IsNewLine_ = false;
                 }
-                cur = lastByte < AsciiLimit
-                    ? unicode::CodePoint(lastByte)
-                    : CurrentUnicodeCodePoint();
+                cur = lastByte < AsciiLimit ? unicode::CodePoint(lastByte) : CurrentUnicodeCodePoint();
                 if (AtEnd()) {
                     break;
                 }
                 if (cur == ')') {
                     auto suffix = Input_.substr(CurrentCodePointOffset_ + 1);
-                    if (suffix.starts_with(delimiter) &&
-                        suffix.size() > delimiter.size() &&
+                    if (suffix.starts_with(delimiter) && suffix.size() > delimiter.size() &&
                         suffix[delimiter.size()] == '"')
                     {
                         ConsumeCodePoint();
@@ -2457,29 +2299,23 @@ Token Tokenizer::ParsePreprocessingDirective()
             continue;
         }
         bool digitSeparator = cur == '\'' && CurrentCodePointOffset_ != 0 &&
-            IsAlphaNumeric(ByteAt(CurrentCodePointOffset_ - 1)) &&
-            IsAlphaNumeric(PeekByte(1));
+            IsAlphaNumeric(ByteAt(CurrentCodePointOffset_ - 1)) && IsAlphaNumeric(PeekByte(1));
         if ((cur == '\'' && !digitSeparator) || cur == '"') {
             auto quote = cur;
             ConsumeCodePoint();
             cur = CurrentCodePoint();
             while (cur != '\0' && cur != quote && cur != '\n') {
                 const auto* literalBegin = CurrentByteAddress();
-                const auto* literalCursor = ScanAsciiQuotedLiteral(
-                    literalBegin,
-                    static_cast<unsigned char>(quote));
+                const auto* literalCursor = ScanAsciiQuotedLiteral(literalBegin, static_cast<unsigned char>(quote));
                 auto lastByte = *literalCursor;
-                auto literalSize =
-                    static_cast<SourceOffset>(literalCursor - literalBegin);
+                auto literalSize = static_cast<SourceOffset>(literalCursor - literalBegin);
                 CurrentCodePointOffset_ += literalSize;
                 CurrentCodePointPosition_.Column += literalSize;
                 CurrentTokenSize_ += literalSize;
                 if (literalSize != 0) {
                     IsNewLine_ = false;
                 }
-                cur = lastByte < AsciiLimit
-                    ? unicode::CodePoint(lastByte)
-                    : CurrentUnicodeCodePoint();
+                cur = lastByte < AsciiLimit ? unicode::CodePoint(lastByte) : CurrentUnicodeCodePoint();
                 if (cur == '\0' || cur == quote || cur == '\n') {
                     break;
                 }
@@ -2511,9 +2347,8 @@ void Tokenizer::OnError(TokenizationError error)
     if (ErrorHandler_) {
         ErrorHandler_(std::move(error));
     } else {
-        std::cerr << "Tokenization error at Ln " << error.ErrorPosition.Line
-            << ", Col " << error.ErrorPosition.Column << ": "
-            << GetTokenizationErrorDescription(error.Kind) << '\n';
+        std::cerr << "Tokenization error at Ln " << error.ErrorPosition.Line << ", Col " << error.ErrorPosition.Column
+            << ": " << GetTokenizationErrorDescription(error.Kind) << '\n';
     }
 }
 

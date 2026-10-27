@@ -3,9 +3,9 @@
 #include "ascii_block.hpp"
 #include "token.hpp"
 
-#include <unicode/code_point.hpp>
-
 #include <util/input.hpp>
+
+#include <unicode/code_point.hpp>
 
 #include <functional>
 #include <iterator>
@@ -85,8 +85,7 @@ enum class TokenizationErrorKind : uint8_t
 #undef TOKENIZATION_ERROR_KIND
 };
 
-[[nodiscard]] std::string_view GetTokenizationErrorDescription(
-    TokenizationErrorKind kind);
+[[nodiscard]] std::string_view GetTokenizationErrorDescription(TokenizationErrorKind kind);
 
 struct TokenizationError
 {
@@ -112,33 +111,24 @@ protected:
     [[nodiscard]] unicode::CodePoint CurrentUnicodeCodePoint();
     void LoadCurrentUnicodeCodePoint();
     [[nodiscard]] bool AtEnd() const noexcept;
-    [[nodiscard]] unsigned char ByteAt(
-        util::SourceOffset offset) const noexcept;
-    [[nodiscard]] unsigned char PeekByte(
-        util::SourceOffset lookahead = 0) const noexcept;
+    [[nodiscard]] unsigned char ByteAt(util::SourceOffset offset) const noexcept;
+    [[nodiscard]] unsigned char PeekByte(util::SourceOffset lookahead = 0) const noexcept;
     [[nodiscard]] const unsigned char* CurrentByteAddress() const noexcept;
 
-    void ConsumeAsciiByte(
-        unsigned char byte,
-        NewlineHandling newlineHandling = NewlineHandling::Track);
+    void ConsumeAsciiByte(unsigned char byte, NewlineHandling newlineHandling = NewlineHandling::Track);
 
     // Requires the non-ASCII character at the current offset to have been
     // decoded by LoadCurrentUnicodeCodePoint() before this call.
     void ConsumeUnicodeCodePoint();
 
-    void ConsumeCodePoint(
-        unicode::CodePoint value,
-        NewlineHandling newlineHandling = NewlineHandling::Track);
-    void ConsumeCodePoint(
-        NewlineHandling newlineHandling = NewlineHandling::Track);
+    void ConsumeCodePoint(unicode::CodePoint value, NewlineHandling newlineHandling = NewlineHandling::Track);
+    void ConsumeCodePoint(NewlineHandling newlineHandling = NewlineHandling::Track);
 
-    static constexpr unicode::CodePoint InvalidCodePoint =
-        static_cast<char32_t>(std::numeric_limits<uint32_t>::max());
+    static constexpr unicode::CodePoint InvalidCodePoint = static_cast<char32_t>(std::numeric_limits<uint32_t>::max());
 
     util::SourceOffset CurrentCodePointOffset_ = 0;
     // The cursor only advances, so ASCII never needs to invalidate this cache.
-    util::SourceOffset CachedUnicodeOffset_ =
-        std::numeric_limits<util::SourceOffset>::max();
+    util::SourceOffset CachedUnicodeOffset_ = std::numeric_limits<util::SourceOffset>::max();
     unicode::CodePoint CachedUnicodeValue_ = '\0';
     uint8_t CachedUnicodeSize_ = 0;
     uint32_t EncodingErrorCount_ = 0;
@@ -160,9 +150,7 @@ class Tokenizer
     : private detail::TokenizerCursor<Tokenizer>
 {
 public:
-    Tokenizer(
-        util::PaddedSourceView input,
-        std::function<void(TokenizationError)> errorHandler = {});
+    Tokenizer(util::PaddedSourceView input, std::function<void(TokenizationError)> errorHandler = {});
 
     // Returns the next token, or EndOfFile after the input is exhausted.
     [[nodiscard]] Token Get()
@@ -200,14 +188,14 @@ public:
             return *this;
         }
 
-        Iterator operator++(int)
+        Iterator operator++(int /*unused*/)
         {
             auto previous = *this;
             ++*this;
             return previous;
         }
 
-        [[nodiscard]] bool operator==(std::default_sentinel_t) const noexcept
+        [[nodiscard]] bool operator==(std::default_sentinel_t /*sentinel*/) const noexcept
         {
             return Current_.Kind == TokenKind::EndOfFile;
         }
@@ -246,18 +234,12 @@ private:
 
     [[nodiscard]] Token ReadComplexToken();
     void LoadBlock(util::SourceOffset offset) noexcept;
-    [[nodiscard]] util::SourceOffset FindLineCommentEnd(
-        util::SourceOffset offset) noexcept;
-    [[nodiscard]] util::SourceOffset FindBlockCommentEnd(
-        util::SourceOffset offset) noexcept;
-    [[nodiscard]] util::SourceOffset FindQuotedEnd(
-        util::SourceOffset offset,
-        bool character) noexcept;
+    [[nodiscard]] util::SourceOffset FindLineCommentEnd(util::SourceOffset offset) noexcept;
+    [[nodiscard]] util::SourceOffset FindBlockCommentEnd(util::SourceOffset offset) noexcept;
+    [[nodiscard]] util::SourceOffset FindQuotedEnd(util::SourceOffset offset, bool character) noexcept;
 
     template <detail::AsciiRun Kind, bool TrackNonSpace = false>
-    [[nodiscard]] const unsigned char* ScanAscii(
-        const unsigned char* cursor,
-        bool* nonSpace = nullptr) noexcept;
+    [[nodiscard]] const unsigned char* ScanAscii(const unsigned char* cursor, bool* nonSpace = nullptr) noexcept;
     [[nodiscard]] const unsigned char* ScanAsciiQuotedLiteral(
         const unsigned char* cursor,
         unsigned char quote) noexcept;
@@ -284,10 +266,8 @@ private:
     util::PaddedSourceView Input_;
 
     detail::AsciiBlock Block_{};
-    detail::AsciiBlockClassifier ClassifyBlock_ =
-        detail::GetAsciiBlockClassifier();
-    util::SourceOffset BlockOffset_ =
-        std::numeric_limits<util::SourceOffset>::max();
+    detail::AsciiBlockClassifier ClassifyBlock_ = detail::GetAsciiBlockClassifier();
+    util::SourceOffset BlockOffset_ = std::numeric_limits<util::SourceOffset>::max();
 
     std::array<Token, detail::AsciiBlock::Size> Pending_;
     uint8_t PendingIndex_ = 0;

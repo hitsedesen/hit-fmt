@@ -35,8 +35,7 @@ enum class ProtectionReason : uint16_t
 
 constexpr ProtectionReason operator|(ProtectionReason a, ProtectionReason b)
 {
-    return static_cast<ProtectionReason>(static_cast<uint16_t>(a) |
-        static_cast<uint16_t>(b));
+    return static_cast<ProtectionReason>(static_cast<uint16_t>(a) | static_cast<uint16_t>(b));
 }
 
 struct ProtectedSourceRange
@@ -172,7 +171,7 @@ class SourceAnalysis
 public:
     explicit SourceAnalysis(std::pmr::memory_resource& fileMemory);
     SourceAnalysis(SourceAnalysis&& other) noexcept;
-    SourceAnalysis(const SourceAnalysis&) = delete;
+    SourceAnalysis(const SourceAnalysis& other) = delete;
 
     [[nodiscard]] std::span<const SourceGap> Gaps() const
     {
@@ -187,8 +186,7 @@ public:
     // Resolve compact source offsets against this file's borrowed input.
     [[nodiscard]] std::string_view Original(const SourceGap& gap) const
     {
-        return Source_
-            .substr(gap.Source.Begin, gap.Source.End - gap.Source.Begin);
+        return Source_.substr(gap.Source.Begin, gap.Source.End - gap.Source.Begin);
     }
 
     [[nodiscard]] std::string_view Original(GapId gap) const
@@ -211,8 +209,7 @@ public:
     // point); TrimHorizontal deletes a complete space/tab run before LF/CRLF.
     // Partial runs, newline changes and token edits remain forbidden.
     // Other safety constraints still apply.
-    [[nodiscard]] std::span<const PartialGapPermission> PartialGapPermissions()
-    const
+    [[nodiscard]] std::span<const PartialGapPermission> PartialGapPermissions() const
     {
         return PartialGapPermissions_;
     }
@@ -230,9 +227,7 @@ public:
     // Specialized opt-in directive whitespace authority. Ignores only native
     // Directive/LineSplice protection, never real fences or edit-scope bytes.
     [[nodiscard]] bool CanRewriteDirective(parser::SourceRange source) const;
-    [[nodiscard]] bool CanReplaceGap(
-        GapId gap,
-        std::string_view replacement) const;
+    [[nodiscard]] bool CanReplaceGap(GapId gap, std::string_view replacement) const;
     // Spelling-only authority for the ENTIRE nonempty original whitespace gap.
     // Full byte coverage can permit existing atom replacement at scope End/EOF
     // even when generic replacement lacks insertion-point ownership. No empty
@@ -258,19 +253,17 @@ private:
         std::optional<std::span<const parser::SourceRange>> scope) const;
 
     friend SourceAnalysis BuildSourceAnalysis(
-        const parser::SyntaxTree&,
-        const SourceAnalysisOptions&,
-        std::pmr::memory_resource&,
-        std::pmr::memory_resource&);
+        const parser::SyntaxTree& tree,
+        const SourceAnalysisOptions& options,
+        std::pmr::memory_resource& fileMemory,
+        std::pmr::memory_resource& scratchMemory);
 };
 
 // Lexical-only conservative maximal-munch predicate for adjacent tokens.
 // Accepts parsed or TokenizeOnly trees. right must be in [1, TokenCount()).
 // False does not authorize a gap edit: line/context/protection constraints also
 // apply. This never relaxes token identity for contextually split template >>.
-[[nodiscard]] bool TokenGapNeedsSeparation(
-    const parser::SyntaxTree& tree,
-    parser::TokenIndex right);
+[[nodiscard]] bool TokenGapNeedsSeparation(const parser::SyntaxTree& tree, parser::TokenIndex right);
 
 // Throws std::length_error for sizes exceeding util::MaxSourceSize. Exposed
 // separately so callers/tests can validate lengths without constructing huge

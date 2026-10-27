@@ -34,15 +34,19 @@ struct ValueHolder
     }
     operator bool() const;
 };
+
 const int& ValueHolder::Read() const &
 {
     return value;
 }
+
 const int&& ValueHolder::Take() const &&
 {
     return std::move(value);
 }
+
 int (ValueHolder::*method)() const &&;
+
 inline ValueHolder::operator bool() const
 {
     return true;

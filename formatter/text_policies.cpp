@@ -8,31 +8,20 @@ namespace formatter {
 
 bool IsRuler(std::string_view text)
 {
-    while (!text.empty() &&
-        (text.back() == ' ' || text.back() == '\t' || text.back() == '\r'))
-    {
+    while (!text.empty() && (text.back() == ' ' || text.back() == '\t' || text.back() == '\r')) {
         text.remove_suffix(1);
     }
-    return text.size() >= 3 &&
-        text.find_first_not_of('/') == std::string_view::npos;
+    return text.size() >= 3 && text.find_first_not_of('/') == std::string_view::npos;
 }
 
-bool CanRewriteTextAtom(
-    const SourceAnalysis& safety,
-    parser::SourceRange source,
-    bool directive)
+bool CanRewriteTextAtom(const SourceAnalysis& safety, parser::SourceRange source, bool directive)
 {
-    return directive
-        ? safety.CanRewriteDirective(source)
-        : !safety.IntersectsImmutable(source);
+    return directive ? safety.CanRewriteDirective(source) : !safety.IntersectsImmutable(source);
 }
 
 namespace {
 
-std::string_view DirectiveName(
-    std::string_view text,
-    size_t& marker,
-    size_t& begin)
+std::string_view DirectiveName(std::string_view text, size_t& marker, size_t& begin)
 {
     marker = text.starts_with('#') ? 1 : text.starts_with("%:") ? 2 : 0;
     if (marker == 0) {
@@ -44,8 +33,7 @@ std::string_view DirectiveName(
     }
     size_t end = begin;
     while (end < text.size() &&
-        ((text[end] >= 'a' && text[end] <= 'z') ||
-            (text[end] >= 'A' && text[end] <= 'Z') ||
+        ((text[end] >= 'a' && text[end] <= 'z') || (text[end] >= 'A' && text[end] <= 'Z') ||
             (text[end] >= '0' && text[end] <= '9') || text[end] == '_'))
     {
         ++end;
@@ -64,9 +52,7 @@ struct Continuation
 // logical tokens, before the splice or at the start of its following line.
 // Never introduce whitespace into a spliced identifier/operator or literal,
 // nor move a backslash inside a comment. Raw literals are conservative fences.
-void AlignContinuations(
-    std::pmr::string& text,
-    std::pmr::memory_resource& scratch)
+void AlignContinuations(std::pmr::string& text, std::pmr::memory_resource& scratch)
 {
     if (text.find("R\"") != std::string_view::npos) {
         return;
@@ -79,9 +65,7 @@ void AlignContinuations(
     for (size_t i = 0; i < text.size(); ++i) {
         const char c = text[i];
         const char next = i + 1 < text.size() ? text[i + 1] : '\0';
-        const bool splice = c == '\\' &&
-            (next == '\n' ||
-                (next == '\r' && i + 2 < text.size() && text[i + 2] == '\n'));
+        const bool splice = c == '\\' && (next == '\n' || (next == '\r' && i + 2 < text.size() && text[i + 2] == '\n'));
         if (splice) {
             size_t gap = i;
             while (gap && (text[gap - 1] == ' ' || text[gap - 1] == '\t')) {
@@ -89,8 +73,8 @@ void AlignContinuations(
             }
             const auto following = i + (next == '\r' ? 3 : 2);
             const bool separatedAfter = following < text.size() &&
-                (text[following] == ' ' || text[following] == '\t' ||
-                    text[following] == '\r' || text[following] == '\n');
+                (text[following] == ' ' || text[following] == '\t' || text[following] == '\r' ||
+                    text[following] == '\n');
             if (quote || block || comment || (gap == i && !separatedAfter)) {
                 return;
             }
@@ -152,9 +136,7 @@ void AlignContinuations(
     text.assign(aligned);
 }
 
-std::string_view StoreText(
-    std::string_view text,
-    std::pmr::memory_resource& file)
+std::string_view StoreText(std::string_view text, std::pmr::memory_resource& file)
 {
     auto* bytes = static_cast<char*>(file.allocate(text.size(), alignof(char)));
     std::memcpy(bytes, text.data(), text.size());
@@ -170,8 +152,7 @@ void ReplaceAtom(
     std::pmr::memory_resource& file)
 {
     const auto stored = StoreText(text, file);
-    const auto operation =
-        static_cast<StructuralActionId>(plan.Operations.size());
+    const auto operation = static_cast<StructuralActionId>(plan.Operations.size());
     plan.Operations.push_back({action, {token, token + 1}});
     const auto piece = static_cast<uint32_t>(plan.Pieces.size());
     plan.Pieces.push_back({{}, stored, false});
@@ -188,17 +169,12 @@ void PlanTextPolicyEdits(
     std::pmr::memory_resource& fileMemory,
     std::pmr::memory_resource& scratchMemory)
 {
-    if ((options.IndentPreprocessingDirectives &&
-        (options.IndentWidth == 0 || options.IndentWidth > 32)) ||
-        (options.RulerLength != 0 &&
-            (options.RulerLength < 3 || options.RulerLength > 10000)))
+    if ((options.IndentPreprocessingDirectives && (options.IndentWidth == 0 || options.IndentWidth > 32)) ||
+        (options.RulerLength != 0 && (options.RulerLength < 3 || options.RulerLength > 10000)))
     {
-        throw std::invalid_argument(
-            "invalid directive indent width or ruler length");
+        throw std::invalid_argument("invalid directive indent width or ruler length");
     }
-    if (!options.IndentPreprocessingDirectives &&
-        !options.AlignMacroBackslashes && options.RulerLength == 0)
-    {
+    if (!options.IndentPreprocessingDirectives && !options.AlignMacroBackslashes && options.RulerLength == 0) {
         return;
     }
     struct MovedAtom
@@ -208,9 +184,7 @@ void PlanTextPolicyEdits(
     };
     std::pmr::vector<MovedAtom> moved(&scratchMemory);
     for (const auto& edit : plan.Edits) {
-        if (plan.Operations[edit.Operation].Kind ==
-            StructuralAction::IncludeOrder)
-        {
+        if (plan.Operations[edit.Operation].Kind == StructuralAction::IncludeOrder) {
             for (auto p = edit.PieceBegin; p < edit.PieceEnd; ++p) {
                 moved.push_back({plan.Pieces[p].Source, p});
             }
@@ -219,8 +193,7 @@ void PlanTextPolicyEdits(
     std::sort(
         moved.begin(),
         moved.end(),
-        [] (const auto& a, const auto& b) { return a.Source.Begin <
-                b.Source.Begin; });
+        [] (const auto& a, const auto& b) { return a.Source.Begin < b.Source.Begin; });
     size_t depth = 0;
     std::pmr::string replacement(&scratchMemory);
     std::pmr::string line(&scratchMemory);
@@ -229,10 +202,8 @@ void PlanTextPolicyEdits(
         const auto atom = tree.Token(token).Text;
         parser::SourceRange source{atom.Begin, atom.End};
         if (tree.Kind(token) == tokenizer::TokenKind::Comment) {
-            if (options.RulerLength && IsRuler(text) &&
-                (token == 0 || safety.Gaps()[token].HasLineFeed) &&
-                (token + 1 == tree.TokenCount() ||
-                    safety.Gaps()[token + 1].HasLineFeed) &&
+            if (options.RulerLength && IsRuler(text) && (token == 0 || safety.Gaps()[token].HasLineFeed) &&
+                (token + 1 == tree.TokenCount() || safety.Gaps()[token + 1].HasLineFeed) &&
                 CanRewriteTextAtom(safety, source, false))
             {
                 replacement.assign(options.RulerLength, '/');
@@ -240,13 +211,7 @@ void PlanTextPolicyEdits(
                     replacement.push_back('\r');
                 }
                 if (replacement != text) {
-                    ReplaceAtom(
-                        plan,
-                        source,
-                        token,
-                        StructuralAction::RulerLength,
-                        replacement,
-                        fileMemory);
+                    ReplaceAtom(plan, source, token, StructuralAction::RulerLength, replacement, fileMemory);
                 }
             }
             continue;
@@ -257,29 +222,23 @@ void PlanTextPolicyEdits(
         size_t marker = 0, begin = 0;
         const auto name = DirectiveName(text, marker, begin);
         const bool close = name == "endif";
-        const bool branch = name == "else" || name == "elif" ||
-            name == "elifdef" || name == "elifndef";
+        const bool branch = name == "else" || name == "elif" || name == "elifdef" || name == "elifndef";
         if (close && depth) {
             --depth;
         }
         const auto level = branch && depth ? depth - 1 : depth;
         bool indent = false;
-        if (options.IndentPreprocessingDirectives &&
-            level <= 10000 / options.IndentWidth)
-        {
+        if (options.IndentPreprocessingDirectives && level <= 10000 / options.IndentWidth) {
             // Own only the horizontal prefix, never the preceding newline.
             // Replacing it with the token keeps the marker and directive at
             // the same nesting level, including in sorted include atoms.
             const auto before = tree.WhitespaceBefore(token);
             const auto lf = before.rfind('\n');
-            const auto leading = lf == std::string_view::npos
-                ? before
-                : before.substr(lf + 1);
+            const auto leading = lf == std::string_view::npos ? before : before.substr(lf + 1);
             indent = (token == 0 || lf != std::string_view::npos) &&
                 leading.find_first_not_of(" \t") == std::string_view::npos;
             if (indent) {
-                source.Begin -=
-                    static_cast<parser::SourceOffset>(leading.size());
+                source.Begin -= static_cast<parser::SourceOffset>(leading.size());
             }
         }
         if (!name.empty() && CanRewriteTextAtom(safety, source, true)) {
@@ -301,28 +260,15 @@ void PlanTextPolicyEdits(
                     [] (const auto& atom, auto begin) {
                         return atom.Source.End <= begin;
                     });
-                if (found != moved.end() &&
-                    found->Source.Begin <= source.Begin &&
-                    source.End <= found->Source.End)
-                {
-                    line.assign(tree.SourceText(parser::SourceRange{
-                        found->Source.Begin,
-                        source.Begin,
-                    }));
+                if (found != moved.end() && found->Source.Begin <= source.Begin && source.End <= found->Source.End) {
+                    line.assign(tree.SourceText(parser::SourceRange{found->Source.Begin, source.Begin}));
                     line.append(replacement);
-                    line.append(tree.SourceText(
-                        parser::SourceRange{source.End, found->Source.End}));
+                    line.append(tree.SourceText(parser::SourceRange{source.End, found->Source.End}));
                     auto& piece = plan.Pieces[found->Piece];
                     piece.Literal = StoreText(line, fileMemory);
                     piece.FromSource = false;
                 } else {
-                    ReplaceAtom(
-                        plan,
-                        source,
-                        token,
-                        StructuralAction::DirectiveWhitespace,
-                        replacement,
-                        fileMemory);
+                    ReplaceAtom(plan, source, token, StructuralAction::DirectiveWhitespace, replacement, fileMemory);
                 }
             }
         }

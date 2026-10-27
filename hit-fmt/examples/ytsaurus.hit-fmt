@@ -1,6 +1,6 @@
 # YTsaurus-inspired approximation for yt/yt, yt/chyt, yt/yql and library/cpp/yt.
 # Not intended for yt/cpp, util or other library/cpp. See --help-config.
-# Fitting calls/parameters flatten; base/constructor lists and call chains break.
+# Fitting calls/parameters and accessor chains flatten; base/constructor lists break.
 # Field paths and single-call chains wrap only when they do not fit.
 # Mixed links (. / -> / invocation) participate in the same call chain.
 # Receiver construction does not count as a chained call.
@@ -29,6 +29,7 @@ ListAlignment = Block
 ContinuationOffset = 4
 AlignmentFallbackOffset = 4
 # Broken template headers and uses have independent vertical list policies.
+BreakAfterTemplateHeader = true
 TemplateParametersLayout = Canonical
 TemplateParametersBreak = IfNeeded
 TemplateParametersPacking = VerticalWhenBroken
@@ -60,16 +61,22 @@ ControlHeadersBreak = IfNeeded
 ControlHeadersFirstItem = InlineIfFits
 ControlHeadersAlignment = Block
 ControlHeadersCloser = SameLine
-# Control headers retain fitting chains and prefer non-chain breaks.
-ChainsBreak = Always
+# Short accessor chains stay inline; the library builders below require breaks.
+ChainsBreak = IfNeeded
 ChainsPacking = VerticalWhenBroken
 ChainsAlignment = Block
+# Tables group numeric values into rows; designated fields stay one per line.
+# Preserve these distinct initializer topologies without changing other lists.
+InitializersLayout = Preserve
 InitializersCloser = OwnLine
 InitializersTrailingComma = WhenMultiline
 # Every broken initializer owns its closer, independently of trailing commas.
 ClassBracePlacement = NextLine
 StructBracePlacement = NextLine
 UnionBracePlacement = NextLine
+EnumBracePlacement = NextLine
+EnumeratorsBreak = Always
+EnumeratorsCloser = OwnLine
 FunctionBracePlacement = NextLine
 ControlBracePlacement = NextLineIfHeaderBroken
 CaseBlockBracePlacement = Attached
@@ -81,27 +88,34 @@ PointerReferenceDeclaratorLocation = Left
 IndentAccessModifiers = NoIndent
 IndentMembers = Indent
 IndentNamespaces = NoIndent
+# Wrapper namespaces may touch; retain their authored vertical gaps.
+NamespaceBlankLinesAfterOpen = Preserve
+NamespaceBlankLinesBeforeClose = Preserve
+# Members may separate fields and methods with an extra blank line.
+DefinitionBlankLines = 1
+MemberDefinitionBlankLines = Preserve
 IndentCaseLabels = Indent
 StatementAttributeIndent = Block
 NamespaceComments = Fix
 # Paired header first, then yt, library, util and contrib groups in that order.
-# Merge yt source/protobuf headers into corresponding depth-one subgroups.
-# Within yt, core/client/server/etc. sort nearest first. Inside each subgroup,
-# full resolved directories sort nearest first, with alphabetical path ties.
-# Aliases merge groups but retain literal directory distances inside them.
+# YT source/protobuf aliases share full-directory groups, ordered nearest first.
+# Shared YT libraries keep directory groups; other library/cpp code groups
+# by project. Headers within each group sort alphabetically.
 # Pass project-relative input filenames so directory distances share that root.
 IncludeOrder = Sort
 IncludeMatchingHeader = First
 IncludeGrouping = Directory
 IncludeGroupOrder = Configured
 IncludeGroups = [
-    { Prefixes = ["yt/yt/", "yt/yt_proto/yt/"], Depth = 1 },
+    { Prefixes = ["yt/yt/", "yt/yt_proto/yt/"], Depth = 127 },
+    { Prefix = "library/cpp/yt/", Depth = 127 },
+    { Prefix = "library/cpp/", Depth = 1 },
     { Prefix = "library/", Depth = 1 },
     { Prefix = "util/", Depth = 1 },
     { Prefix = "contrib/libs/", Depth = 1 }
 ]
 IncludeDirectoryOrder = NearestFirst
-IncludeInGroupOrder = NearestFirst
+IncludeInGroupOrder = Alphabetical
 IncludePathBase = ProjectRoot
 IncludeStandardHeaders = Last
 AddMissingControlBraces = true
@@ -113,9 +127,14 @@ RemoveNullDeclarations = true
 # affected invocation byte-for-byte instead; this is NOT macro-language formatting.
 # Other semantic macro protection remains intact (not aesthetic name exceptions).
 CallLikeMacroNames = []
+# GoogleTest declarations introduce function bodies, not call expressions.
+FunctionBodyMacroNames = [
+    "TEST", "TEST_F", "TEST_P", "TYPED_TEST", "TYPED_TEST_P"
+]
 # These invocations open/close generated classes, rather than function calls.
 ClassMacroNames = ["BEGIN_SETTER:END_SETTER"]
 WhitespaceSensitiveMacros = [
+    "MOCK_METHOD",
     "REGISTER_DERIVED_EXTERNALIZED_YSON_STRUCT",
     "PP_STRINGIZE", "DEFINE_ENUM", "DEFINE_BIT_ENUM",
     "DEFINE_BIT_ENUM_WITH_UNDERLYING_TYPE",
@@ -217,9 +236,9 @@ CallLineFirstStringNames = [
     "YT_TLOG_FATAL",
     "YT_TLOG_ALERT_AND_THROW",
 ]
-# Empty annotations select AllSafe, not disabled: the guide's chain rule is generic.
+# Empty annotations select AllSafe; ordinary chains wrap when they do not fit.
 ChainedCallRootNames = []
-# Logging/error builders conventionally break even with one suffix call.
+# Logging/error, callback and YSON builders break even with one suffix call.
 # This is independent of pinning their first message argument.
 AlwaysBreakChainRootNames = [
     "THROW_ERROR_EXCEPTION",
@@ -239,9 +258,22 @@ AlwaysBreakChainRootNames = [
     "YT_TLOG_ALERT",
     "YT_TLOG_FATAL",
     "YT_TLOG_ALERT_AND_THROW",
+    "YT_TLOG_EVENT",
+    "YT_TLOG_DEBUG_IF",
+    "YT_TLOG_FATAL_IF",
+    "YT_TLOG_DEBUG_UNLESS",
+    "YT_TLOG_EVENT_WITH_STATIC_ANCHOR",
     "TError",
     "BIND",
     "BIND_NO_PROPAGATE",
+    "BuildYsonFluently",
+    "BuildYsonNodeFluently",
+    "BuildYsonStringFluently",
+    "NYTree::BuildYsonFluently",
+    "NYTree::BuildYsonNodeFluently",
+    "NYT::NYTree::BuildYsonFluently",
+    # Registrar is the same library-role convention used by sticky pairs below.
+    "registrar",
 ]
 # Fluent YSON scopes nest; an item selector stays beside its value builder.
 IndentedChainScopePairs = [

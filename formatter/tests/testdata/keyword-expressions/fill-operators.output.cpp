@@ -6,17 +6,20 @@ bool Test()
             return x;
         });
 }
+
 bool NestedCall()
 {
     return F("0123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789") ||
         F("0123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789") ||
         Check(first_argument_with_an_extended_name, second_argument_with_an_extended_name);
 }
+
 bool Conditions()
 {
     return first_condition && second_condition && third_condition && fourth_condition && fifth_condition &&
         sixth_condition && seventh_condition;
 }
+
 bool NestedInitializer()
 {
     return F("0123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789") ||
@@ -27,6 +30,7 @@ bool NestedInitializer()
             baz,
         });
 }
+
 bool Compare()
 {
     return std::max(

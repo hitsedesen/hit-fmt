@@ -119,8 +119,8 @@ class StructuralPlan
 {
 public:
     explicit StructuralPlan(std::pmr::memory_resource& memory);
-    StructuralPlan(StructuralPlan&&) = default;
-    StructuralPlan(const StructuralPlan&) = delete;
+    StructuralPlan(StructuralPlan&& other) = default;
+    StructuralPlan(const StructuralPlan& other) = delete;
     std::pmr::vector<StructuralOperation> Operations;
     std::pmr::vector<StructuralEdit> Edits;
     std::pmr::vector<StructuralPiece> Pieces;
@@ -215,8 +215,7 @@ struct NamespaceCommentOptions
     // Zero disables exemption. Fix/Remove of existing comments ignores it.
     size_t ShortNamespaceLines = 0;
     size_t Spaces = 1; // 0..32, after the caller resolves trailing gap policy
-    bool PreserveBareCR =
-        false; // Do not capture EOF whitespace in a NEW comment.
+    bool PreserveBareCR = false; // Do not capture EOF whitespace in a NEW comment.
 };
 
 struct NamespaceIdentity

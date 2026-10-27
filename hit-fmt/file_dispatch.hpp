@@ -30,17 +30,8 @@ struct FileResult
 };
 
 // A file failure affects the aggregate status, not discovery of later files.
-template <
-    typename Discover,
-    typename Resolver,
-    typename Process,
-    typename Print>
-bool RunSerialFiles(
-    Discover&& discover,
-    Resolver& resolver,
-    Process&& process,
-    Print&& print,
-    std::ostream& errors)
+template <typename Discover, typename Resolver, typename Process, typename Print>
+bool RunSerialFiles(Discover&& discover, Resolver& resolver, Process&& process, Print&& print, std::ostream& errors)
 {
     bool failed = false;
     try {
@@ -57,11 +48,7 @@ bool RunSerialFiles(
 
 // Discovery yields file paths through visit(path). Each worker owns a
 // resolver; only the caller prints results, in discovery order.
-template <
-    typename Discover,
-    typename MakeResolver,
-    typename Process,
-    typename Print>
+template <typename Discover, typename MakeResolver, typename Process, typename Print>
 bool RunParallelFiles(
     size_t threadCount,
     Discover&& discover,
@@ -106,10 +93,8 @@ bool RunParallelFiles(
                         ready.wait(
                             lock,
                             [&] {
-                                bool canClaim = !pending.empty() &&
-                                    bufferedBytes < BufferedOutputLimit;
-                                return stop || canClaim ||
-                                    (discoveryDone && pending.empty());
+                                bool canClaim = !pending.empty() && bufferedBytes < BufferedOutputLimit;
+                                return stop || canClaim || (discoveryDone && pending.empty());
                             });
                         if (stop || (discoveryDone && pending.empty())) {
                             return;
@@ -124,17 +109,12 @@ bool RunParallelFiles(
                     }
                     {
                         std::lock_guard lock(mutex);
-                        for (size_t index = 0;
-                            index < completed.size();
-                            ++index)
-                        {
+                        for (size_t index = 0; index < completed.size(); ++index) {
                             auto& result = completed[index];
-                            bufferedBytes +=
-                                result.Output.size() + result.Error.size();
+                            bufferedBytes += result.Output.size() + result.Error.size();
                             // Batch indices are global; printed results have
                             // already left this deque.
-                            results[batch.FirstIndex + index - printed] =
-                                std::move(result);
+                            results[batch.FirstIndex + index - printed] = std::move(result);
                         }
                         --processing;
                     }
@@ -159,9 +139,7 @@ bool RunParallelFiles(
                         ready.wait(
                             lock,
                             [&] {
-                                return stop ||
-                                    results.size() + batch.Paths.size() <=
-                                        pendingFileLimit;
+                                return stop || results.size() + batch.Paths.size() <= pendingFileLimit;
                             });
                         if (stop) {
                             return false;
@@ -211,8 +189,7 @@ bool RunParallelFiles(
             return false;
         }
         auto canLaunch = [&] {
-            return !pending.empty() && bufferedBytes < BufferedOutputLimit &&
-                workers.size() < threadCount &&
+            return !pending.empty() && bufferedBytes < BufferedOutputLimit && workers.size() < threadCount &&
                 workers.size() < pending.size() + processing;
         };
         for (;;) {
@@ -222,9 +199,7 @@ bool RunParallelFiles(
                 ready.wait(
                     lock,
                     [&] {
-                        return (!results.empty() && results
-                            .front()
-                            .has_value()) ||
+                        return (!results.empty() && results.front().has_value()) ||
                             (discoveryDone && results.empty()) || canLaunch();
                     });
                 if (canLaunch()) {
@@ -245,13 +220,7 @@ bool RunParallelFiles(
                 if (results.empty()) {
                     break;
                 }
-                bufferedBytes -= results
-                    .front()
-                    ->Output
-                    .size() + results
-                        .front()
-                        ->Error
-                        .size();
+                bufferedBytes -= results.front()->Output.size() + results.front()->Error.size();
                 result = std::move(*results.front());
                 results.pop_front();
                 ++printed;

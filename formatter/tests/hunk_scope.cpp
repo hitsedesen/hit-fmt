@@ -20,21 +20,12 @@ TEST(HunkScope, OriginalPhysicalLinesRejectInvalidAndHaveNoPhantomEOFLine)
     std::pmr::monotonic_buffer_resource memory;
     for (const std::string source : {"", "x", "x\n", "x\r\n", "\n"}) {
         const OriginalHunkLines lines(source, memory);
-        EXPECT_TRUE(lines
-            .Coalesce({}, memory)
-            .empty());
+        EXPECT_TRUE(lines.Coalesce({}, memory).empty());
         for (const Hunk bad :
-            {
-            Hunk{0, 1},
-            {2, 1},
-            {2, 2},
-            {1, std::numeric_limits<size_t>::max()},
-        })
+            {Hunk{0, 1}, {2, 1}, {2, 2}, {1, std::numeric_limits<size_t>::max()}})
         {
             EXPECT_THROW((void)lines.Bytes(bad), std::invalid_argument);
-            EXPECT_THROW(
-                (void)lines.Coalesce(std::span(&bad, 1), memory),
-                std::invalid_argument);
+            EXPECT_THROW((void)lines.Coalesce(std::span(&bad, 1), memory), std::invalid_argument);
         }
         if (source.empty()) {
             EXPECT_THROW((void)lines.Bytes({1, 1}), std::invalid_argument);
@@ -60,17 +51,11 @@ TEST(HunkScope, CoalescesUnsortedOverlapAndAdjacencyButPreservesDisjointLines)
     EXPECT_EQ(result[1], (Hunk{6, 6}));
     const auto first = lines.Bytes(result[0]);
     const auto last = lines.Bytes(result[1]);
-    EXPECT_EQ(
-        std::string_view(source).substr(first.Begin, first.End - first.Begin),
-        "one\ntwo\nthree\n");
-    EXPECT_EQ(
-        std::string_view(source).substr(last.Begin, last.End - last.Begin),
-        "six");
+    EXPECT_EQ(std::string_view(source).substr(first.Begin, first.End - first.Begin), "one\ntwo\nthree\n");
+    EXPECT_EQ(std::string_view(source).substr(last.Begin, last.End - last.Begin), "six");
     const Range scope[] = {first, last};
-    EXPECT_FALSE(
-        formatter::detail::HunkScopeIntersects(scope, lines.Bytes({4, 5})));
-    EXPECT_TRUE(
-        formatter::detail::HunkScopeContains(scope, lines.Bytes({2, 3})));
+    EXPECT_FALSE(formatter::detail::HunkScopeIntersects(scope, lines.Bytes({4, 5})));
+    EXPECT_TRUE(formatter::detail::HunkScopeContains(scope, lines.Bytes({2, 3})));
 }
 
 TEST(HunkScope, SelectionOwnsCRLFAndCommentCRButExcludesNextIndentPointAndEOF)
@@ -79,22 +64,15 @@ TEST(HunkScope, SelectionOwnsCRLFAndCommentCRButExcludesNextIndentPointAndEOF)
     std::pmr::monotonic_buffer_resource memory;
     const OriginalHunkLines lines(source, memory);
     const Range scope[] = {lines.Bytes({2, 2})};
-    EXPECT_EQ(
-        std::string_view(source)
-            .substr(scope[0].Begin, scope[0].End - scope[0].Begin),
-        "\twork(); \r\n");
-    EXPECT_FALSE(formatter::detail::HunkScopeContains(
-        scope,
-        {scope[0].Begin - 1, scope[0].Begin})); // previous LF
+    EXPECT_EQ(std::string_view(source).substr(scope[0].Begin, scope[0].End - scope[0].Begin), "\twork(); \r\n");
+    EXPECT_FALSE(formatter::detail::HunkScopeContains(scope, {scope[0].Begin - 1, scope[0].Begin})); // previous LF
     EXPECT_TRUE(formatter::detail::HunkScopeContains(
         scope,
         {scope[0].Begin, scope[0].Begin})); // selected zero-width indent point
     EXPECT_FALSE(formatter::detail::HunkScopeContains(
         scope,
         {scope[0].End, scope[0].End})); // following line's indentation point
-    EXPECT_FALSE(formatter::detail::HunkScopeIntersects(
-        scope,
-        {scope[0].End, scope[0].End}));
+    EXPECT_FALSE(formatter::detail::HunkScopeIntersects(scope, {scope[0].End, scope[0].End}));
     const Range all[] = {lines.Bytes({1, 3})};
     const auto eof = parser::SourceOffset(source.size());
     EXPECT_FALSE(formatter::detail::HunkScopeContains(all, {eof, eof}));
@@ -136,8 +114,7 @@ private:
         std::pmr::new_delete_resource()->deallocate(pointer, bytes, alignment);
     }
 
-    bool do_is_equal(
-        const std::pmr::memory_resource& other) const noexcept override
+    bool do_is_equal(const std::pmr::memory_resource& other) const noexcept override
     {
         return this == &other;
     }

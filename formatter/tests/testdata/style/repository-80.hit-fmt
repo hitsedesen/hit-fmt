@@ -1,0 +1,16 @@
+# Keep narrow-layout regressions independent of the repository's active style.
+include = "@/hit-fmt/examples/ytsaurus.hit-fmt"
+ColumnLimit = 80
+InitializersLayout = Canonical
+ChainsBreak = Always
+BreakAfterTemplateHeader = false
+EnumBracePlacement = NextLine
+EnumeratorsCloser = OwnLine
+EnumeratorsBreak = Always
+DeclarationBlankLines = 1
+MemberDeclarationBlankLines = Preserve
+DefinitionBlankLines = 1
+MemberDefinitionBlankLines = 1
+NamespaceBlankLinesAfterOpen = 1
+NamespaceBlankLinesBeforeClose = 1
+ScopeResolutionSpacing = Preserve

@@ -17,7 +17,7 @@ struct Hunk
     size_t Begin;
     size_t End;
 
-    bool operator==(const Hunk&) const = default;
+    bool operator==(const Hunk& other) const = default;
 };
 
 struct ChangedHunkFiles
@@ -27,9 +27,7 @@ struct ChangedHunkFiles
 };
 
 // Paths in file records are resolved against directory, not the input stream.
-[[nodiscard]] ChangedHunkFiles ParseChangedHunks(
-    std::istream& input,
-    const std::filesystem::path& directory);
+[[nodiscard]] ChangedHunkFiles ParseChangedHunks(std::istream& input, const std::filesystem::path& directory);
 
 enum class HunkCoverageReason
 {

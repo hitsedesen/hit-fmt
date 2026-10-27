@@ -24,7 +24,7 @@ struct BlankLineSetting
         return {BlankLineMode::Inherit, 0};
     }
 
-    bool operator==(const BlankLineSetting&) const = default;
+    bool operator==(const BlankLineSetting& other) const = default;
 };
 
 // Concrete vertical counts measure empty lines, not newline characters. An

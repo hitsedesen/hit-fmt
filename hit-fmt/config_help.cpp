@@ -36,19 +36,14 @@ void PrintCode(std::ostream& output, std::string_view code, bool color)
     size_t start = 0;
     while (start < code.size()) {
         auto end = code.find('\n', start);
-        auto line = code.substr(
-            start,
-            end == std::string_view::npos ? code.size() - start : end - start);
+        auto line = code.substr(start, end == std::string_view::npos ? code.size() - start : end - start);
         start = end == std::string_view::npos ? code.size() : end + 1;
         if (line.empty()) {
             output << '\n';
             continue;
         }
         if (color) {
-            output
-                << (line.starts_with("//") || line.starts_with("#")
-                    ? Comment
-                    : Example);
+            output << (line.starts_with("//") || line.starts_with("#") ? Comment : Example);
         }
         output << "    " << line;
         if (color) {
@@ -73,14 +68,10 @@ void PrintConfigHelp(std::ostream& output, bool useColor)
         << "Load a base file with include = \"base.hit-fmt\".\n"
             "- Paths start beside this config; absolute paths work too.\n"
             "- @/ starts at the nearest ancestor with a .git or .arc marker.\n"
-            "- Local values win, regardless of include position.\n"
-            "- Lists replace inherited lists; [] clears them.\n"
+            "- Local values win, regardless of include position.\n" "- Lists replace inherited lists; [] clears them.\n"
             "- Validate after merging. Nested includes: 64 files max.\n"
             "- Cycles, missing files and duplicate includes are errors.\n\n";
-    PrintCode(
-        output,
-        "include = \"@/configs/base.hit-fmt\"\nColumnLimit = 100\n",
-        useColor);
+    PrintCode(output, "include = \"@/configs/base.hit-fmt\"\nColumnLimit = 100\n", useColor);
     output << '\n';
     bool firstSection = true;
     for (const auto& section : HelpSections) {

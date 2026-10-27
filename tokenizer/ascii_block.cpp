@@ -12,9 +12,7 @@
 namespace tokenizer::detail {
 
 #if defined(HIT_FMT_HAS_AVX2)
-void ClassifyAsciiBlockAvx2(
-    const unsigned char* source,
-    AsciiBlock& result) noexcept;
+void ClassifyAsciiBlockAvx2(const unsigned char* source, AsciiBlock& result) noexcept;
 
 namespace {
 
@@ -28,9 +26,7 @@ bool HasAvx2() noexcept
     }
     __cpuidex(registers, 1, 0);
     constexpr int AvxAndOsxsave = (1 << 28) | (1 << 27);
-    if ((registers[2] & AvxAndOsxsave) != AvxAndOsxsave ||
-        (_xgetbv(0) & 6) != 6)
-    {
+    if ((registers[2] & AvxAndOsxsave) != AvxAndOsxsave || (_xgetbv(0) & 6) != 6) {
         return false;
     }
     __cpuidex(registers, 7, 0);
@@ -48,18 +44,14 @@ bool HasAvx2() noexcept
 AsciiBlockClassifier GetAsciiBlockClassifier() noexcept
 {
 #if defined(HIT_FMT_HAS_AVX2)
-    static const auto Classifier = HasAvx2()
-        ? ClassifyAsciiBlockAvx2
-        : ClassifyAsciiBlock;
+    static const auto Classifier = HasAvx2() ? ClassifyAsciiBlockAvx2 : ClassifyAsciiBlock;
     return Classifier;
 #else
     return ClassifyAsciiBlock;
 #endif
 }
 
-void ClassifyAsciiBlock(
-    const unsigned char* source,
-    AsciiBlock& result) noexcept
+void ClassifyAsciiBlock(const unsigned char* source, AsciiBlock& result) noexcept
 {
     result = {};
     uint64_t colon = 0;
@@ -77,8 +69,7 @@ void ClassifyAsciiBlock(
 #if defined(__SSE2__) || defined(_M_X64) || \
     (defined(_M_IX86_FP) && _M_IX86_FP >= 2)
     for (uint32_t offset = 0; offset < AsciiBlock::Size; offset += 16) {
-        const auto bytes =
-            _mm_loadu_si128(reinterpret_cast<const __m128i*>(source + offset));
+        const auto bytes = _mm_loadu_si128(reinterpret_cast<const __m128i*>(source + offset));
         const auto equal = [=] (char value) {
             return _mm_cmpeq_epi8(bytes, _mm_set1_epi8(value));
         };
@@ -89,9 +80,8 @@ void ClassifyAsciiBlock(
         const auto alpha = _mm_and_si128(
             _mm_cmpgt_epi8(letters, _mm_set1_epi8('a' - 1)),
             _mm_cmpgt_epi8(_mm_set1_epi8('z' + 1), letters));
-        const auto digit = _mm_and_si128(
-            _mm_cmpgt_epi8(bytes, _mm_set1_epi8('0' - 1)),
-            _mm_cmpgt_epi8(_mm_set1_epi8('9' + 1), bytes));
+        const auto digit =
+            _mm_and_si128(_mm_cmpgt_epi8(bytes, _mm_set1_epi8('0' - 1)), _mm_cmpgt_epi8(_mm_set1_epi8('9' + 1), bytes));
         const auto digits = mask(digit);
         const auto identifier = mask(_mm_or_si128(alpha, equal('_'))) | digits;
         const auto controls = _mm_and_si128(
@@ -122,12 +112,9 @@ void ClassifyAsciiBlock(
         const auto lesses = mask(equal('<'));
         const auto greaters = mask(equal('>'));
         auto punctuation = _mm_or_si128(equal('{'), equal('}'));
-        punctuation =
-            _mm_or_si128(punctuation, _mm_or_si128(equal('['), equal(']')));
-        punctuation =
-            _mm_or_si128(punctuation, _mm_or_si128(equal('('), equal(';')));
-        punctuation =
-            _mm_or_si128(punctuation, _mm_or_si128(equal('?'), equal('~')));
+        punctuation = _mm_or_si128(punctuation, _mm_or_si128(equal('['), equal(']')));
+        punctuation = _mm_or_si128(punctuation, _mm_or_si128(equal('('), equal(';')));
+        punctuation = _mm_or_si128(punctuation, _mm_or_si128(equal('?'), equal('~')));
         punctuation = _mm_or_si128(punctuation, equal(','));
         result.Digits |= static_cast<uint64_t>(digits) << offset;
         result.Newlines |= static_cast<uint64_t>(newline) << offset;
@@ -138,10 +125,8 @@ void ClassifyAsciiBlock(
         result.Backslashes |= static_cast<uint64_t>(backslash) << offset;
         result.Slashes |= static_cast<uint64_t>(slash) << offset;
         result.Stars |= static_cast<uint64_t>(star) << offset;
-        result.Punctuation |=
-            static_cast<uint64_t>(mask(punctuation) | close) << offset;
-        result.Singles |=
-            static_cast<uint64_t>(mask(punctuation) | close) << offset;
+        result.Punctuation |= static_cast<uint64_t>(mask(punctuation) | close) << offset;
+        result.Singles |= static_cast<uint64_t>(mask(punctuation) | close) << offset;
         colon |= static_cast<uint64_t>(colons) << offset;
         dot |= static_cast<uint64_t>(dots) << offset;
         minus |= static_cast<uint64_t>(minuses) << offset;
@@ -163,11 +148,9 @@ void ClassifyAsciiBlock(
     for (uint32_t offset = 0; offset < AsciiBlock::Size; ++offset) {
         const auto byte = source[offset];
         const auto bit = uint64_t{1} << offset;
-        const bool space = byte == ' ' || byte == '\t' || byte == '\r' ||
-            byte == '\f' || byte == '\v';
+        const bool space = byte == ' ' || byte == '\t' || byte == '\r' || byte == '\f' || byte == '\v';
         const bool digit = byte >= '0' && byte <= '9';
-        const bool identifier = (byte >= 'a' && byte <= 'z') ||
-            (byte >= 'A' && byte <= 'Z') || digit || byte == '_';
+        const bool identifier = (byte >= 'a' && byte <= 'z') || (byte >= 'A' && byte <= 'Z') || digit || byte == '_';
         const bool newline = byte == '\n';
         const bool nonAscii = byte >= 0x80;
         const bool null = byte == '\0';
@@ -221,23 +204,17 @@ void ClassifyAsciiBlock(
         result.RawPrefixes |= byte == 'R' ? bit : 0;
     }
 #endif
-    result.Punctuation |=
-        colon | dot | minus | bang | plus | percent | caret | ampersand | pipe |
-            equals | less | greater | result.Stars | result.Slashes;
+    result.Punctuation |= colon | dot | minus | bang | plus | percent | caret | ampersand | pipe | equals | less |
+        greater | result.Stars | result.Slashes;
     result.Pairs =
-        (colon & ((colon | greater) >> 1)) | (dot & (result.Stars >> 1)) |
-            (minus & ((minus | greater) >> 1)) | (plus & (plus >> 1)) |
-            (ampersand & (ampersand >> 1)) | (pipe & (pipe >> 1)) |
-            (less & ((colon | percent | less) >> 1)) |
-            (greater & (greater >> 1)) |
-            ((bang | plus | minus | result.Stars | result.Slashes | percent |
-                caret | ampersand | pipe | equals | less | greater) &
-                (equals >> 1));
+        (colon & ((colon | greater) >> 1)) | (dot & (result.Stars >> 1)) | (minus & ((minus | greater) >> 1)) |
+            (plus & (plus >> 1)) | (ampersand & (ampersand >> 1)) | (pipe & (pipe >> 1)) |
+            (less & ((colon | percent | less) >> 1)) | (greater & (greater >> 1)) |
+            ((bang | plus | minus | result.Stars | result.Slashes | percent | caret | ampersand | pipe | equals | less |
+                greater) & (equals >> 1));
     result.Triples =
-        (dot & (dot >> 1) & (dot >> 2)) |
-            (minus & (greater >> 1) & (result.Stars >> 2)) |
-            (less & (less >> 1) & (equals >> 2)) |
-            (greater & (greater >> 1) & (equals >> 2)) |
+        (dot & (dot >> 1) & (dot >> 2)) | (minus & (greater >> 1) & (result.Stars >> 2)) |
+            (less & (less >> 1) & (equals >> 2)) | (greater & (greater >> 1) & (equals >> 2)) |
             (less & (equals >> 1) & (greater >> 2));
 
 }

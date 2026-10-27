@@ -1,8 +1,8 @@
+#include <util/file.hpp>
+
 #include <hit-fmt/file_dispatch.hpp>
 
 #include <gtest/gtest.h>
-
-#include <util/file.hpp>
 
 #include <atomic>
 #include <chrono>
@@ -19,9 +19,7 @@ namespace {
 struct FileInputs
 {
     std::filesystem::path Directory = std::filesystem::temp_directory_path() /
-        ("hit-fmt-dispatch-" + std::to_string(std::chrono::steady_clock::now()
-            .time_since_epoch()
-            .count()));
+        ("hit-fmt-dispatch-" + std::to_string(std::chrono::steady_clock::now().time_since_epoch().count()));
 
     explicit FileInputs(size_t count)
     {
@@ -64,9 +62,7 @@ TEST(FileDispatch, FileFailuresDoNotHideLaterResults)
         };
         auto process = [&] (const std::filesystem::path& path, int&) {
             ++processed;
-            const auto name = path
-                .stem()
-                .string();
+            const auto name = path.stem().string();
             const bool failed = name == "0" || name == "3";
             if (!failed) {
                 util::WriteEntireFile(path.string(), "int value = 0;\n");
@@ -80,25 +76,12 @@ TEST(FileDispatch, FileFailuresDoNotHideLaterResults)
         std::ostringstream errors;
         int resolver = 0;
         const bool success = threads == 1
-            ? hit_fmt::RunSerialFiles(
-                discover,
-                resolver,
-                process,
-                print,
-                errors)
-            : hit_fmt::RunParallelFiles(
-                threads,
-                discover,
-                [] { return 0; },
-                process,
-                print,
-                errors);
+            ? hit_fmt::RunSerialFiles(discover, resolver, process, print, errors)
+            : hit_fmt::RunParallelFiles(threads, discover, [] { return 0; }, process, print, errors);
         EXPECT_FALSE(success);
         EXPECT_EQ(processed.load(), count);
         EXPECT_EQ(printed, count);
-        EXPECT_TRUE(errors
-            .str()
-            .empty());
+        EXPECT_TRUE(errors.str().empty());
     }
 }
 
@@ -112,9 +95,7 @@ TEST(FileDispatch, DiscoveryErrorsDrainDispatchedFiles)
         2,
         [&] (auto visit) -> bool {
             visit(std::filesystem::path("first.cpp"));
-            if (started.wait_for(std::chrono::seconds(5)) !=
-                std::future_status::ready)
-            {
+            if (started.wait_for(std::chrono::seconds(5)) != std::future_status::ready) {
                 throw std::runtime_error("worker did not start");
             }
             throw std::runtime_error("discovery failed");
@@ -143,9 +124,7 @@ TEST(FileDispatch, ProcessesDuringDiscoveryAndPrintsInOrder)
         if (!visit(std::filesystem::path("first.cpp"))) {
             return false;
         }
-        if (started.wait_for(std::chrono::seconds(5)) !=
-            std::future_status::ready)
-        {
+        if (started.wait_for(std::chrono::seconds(5)) != std::future_status::ready) {
             throw std::runtime_error("discovery waited for formatting");
         }
         return visit(std::filesystem::path("second.cpp"));
@@ -153,11 +132,8 @@ TEST(FileDispatch, ProcessesDuringDiscoveryAndPrintsInOrder)
     auto process = [&] (const std::filesystem::path& path, int&) {
         if (path == "first.cpp") {
             firstStarted.set_value();
-            auto deadline =
-                std::chrono::steady_clock::now() + std::chrono::seconds(5);
-            while (!secondProcessed.load() &&
-                std::chrono::steady_clock::now() < deadline)
-            {
+            auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(5);
+            while (!secondProcessed.load() && std::chrono::steady_clock::now() < deadline) {
                 std::this_thread::yield();
             }
         } else {

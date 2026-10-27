@@ -9,8 +9,7 @@ namespace tokenizer::detail {
 namespace {
 
 template <std::size_t Size>
-constexpr std::array<unsigned char, 16> MakeMembershipTable(
-    const char (&members)[Size]) noexcept
+constexpr std::array<unsigned char, 16> MakeMembershipTable(const char (&members)[Size]) noexcept
 {
     std::array<unsigned char, 16> table{};
     // Printable ASCII uses six high-nibble bits, all below the sign bit.
@@ -28,8 +27,7 @@ constexpr auto GroupEqualsTable = MakeMembershipTable("+-&|<>!=*/%^");
 
 constexpr auto SinglesTable = MakeMembershipTable("{}[]();?~,");
 
-constexpr auto PunctuationTable =
-    MakeMembershipTable("{}[]();?~,+-&|<>!=*/%^:.");
+constexpr auto PunctuationTable = MakeMembershipTable("{}[]();?~,+-&|<>!=*/%^:.");
 
 template <uint32_t Offset>
 #if defined(_MSC_VER)
@@ -90,19 +88,16 @@ void ClassifyHalf(__m256i bytes, __m256i following, AsciiBlock& result) noexcept
     store(result.ClosingParentheses, close);
     store(result.RawPrefixes, raw);
 
-    const auto highNibbles =
-        _mm256_and_si256(_mm256_srli_epi16(bytes, 4), _mm256_set1_epi8(0x0f));
+    const auto highNibbles = _mm256_and_si256(_mm256_srli_epi16(bytes, 4), _mm256_set1_epi8(0x0f));
     const auto highBits = _mm256_shuffle_epi8(
-        _mm256_broadcastsi128_si256(
-            _mm_setr_epi8(0, 0, 1, 2, 4, 8, 16, 32, 0, 0, 0, 0, 0, 0, 0, 0)),
+        _mm256_broadcastsi128_si256(_mm_setr_epi8(0, 0, 1, 2, 4, 8, 16, 32, 0, 0, 0, 0, 0, 0, 0, 0)),
         highNibbles);
     const auto membership = [=] (const std::array<unsigned char, 16>& table) {
-        const auto lookup = _mm256_broadcastsi128_si256(
-            _mm_loadu_si128(reinterpret_cast<const __m128i*>(table.data())));
+        const auto lookup =
+            _mm256_broadcastsi128_si256(_mm_loadu_si128(reinterpret_cast<const __m128i*>(table.data())));
         // PSHUFB indexes by the low nibble and rejects non-ASCII bytes.
         // The high-nibble bit makes membership exact, including controls.
-        const auto bits =
-            _mm256_and_si256(_mm256_shuffle_epi8(lookup, bytes), highBits);
+        const auto bits = _mm256_and_si256(_mm256_shuffle_epi8(lookup, bytes), highBits);
         return _mm256_cmpgt_epi8(bits, _mm256_setzero_si256());
     };
     const auto repeated = membership(RepeatedTable);
@@ -125,53 +120,28 @@ void ClassifyHalf(__m256i bytes, __m256i following, AsciiBlock& result) noexcept
     const auto nextEquals = nextEqual('=');
     const auto nextGreater = nextEqual('>');
     auto pairs = _mm256_and_si256(groupEquals, nextEquals);
-    pairs = _mm256_or_si256(
-        pairs,
-        _mm256_and_si256(_mm256_or_si256(repeated, equal(':')), sameNext));
-    pairs = _mm256_or_si256(
-        pairs,
-        _mm256_and_si256(_mm256_or_si256(equal(':'), equal('-')), nextGreater));
-    pairs =
-        _mm256_or_si256(pairs, _mm256_and_si256(equal('.'), nextEqual('*')));
-    pairs = _mm256_or_si256(
-        pairs,
-        _mm256_and_si256(
-            equal('<'),
-            _mm256_or_si256(nextEqual(':'), nextEqual('%'))));
+    pairs = _mm256_or_si256(pairs, _mm256_and_si256(_mm256_or_si256(repeated, equal(':')), sameNext));
+    pairs = _mm256_or_si256(pairs, _mm256_and_si256(_mm256_or_si256(equal(':'), equal('-')), nextGreater));
+    pairs = _mm256_or_si256(pairs, _mm256_and_si256(equal('.'), nextEqual('*')));
+    pairs = _mm256_or_si256(pairs, _mm256_and_si256(equal('<'), _mm256_or_si256(nextEqual(':'), nextEqual('%'))));
     store(result.Pairs, mask(pairs));
 
-    auto triples = _mm256_and_si256(
-        _mm256_and_si256(equal('.'), sameNext),
-        nextNextEqual('.'));
+    auto triples = _mm256_and_si256(_mm256_and_si256(equal('.'), sameNext), nextNextEqual('.'));
+    triples = _mm256_or_si256(triples, _mm256_and_si256(_mm256_and_si256(equal('-'), nextGreater), nextNextEqual('*')));
     triples = _mm256_or_si256(
         triples,
-        _mm256_and_si256(
-            _mm256_and_si256(equal('-'), nextGreater),
-            nextNextEqual('*')));
-    triples = _mm256_or_si256(
-        triples,
-        _mm256_and_si256(
-            _mm256_and_si256(_mm256_or_si256(equal('<'), equal('>')), sameNext),
-            nextNextEqual('=')));
-    triples = _mm256_or_si256(
-        triples,
-        _mm256_and_si256(
-            _mm256_and_si256(equal('<'), nextEquals),
-            nextNextEqual('>')));
+        _mm256_and_si256(_mm256_and_si256(_mm256_or_si256(equal('<'), equal('>')), sameNext), nextNextEqual('=')));
+    triples = _mm256_or_si256(triples, _mm256_and_si256(_mm256_and_si256(equal('<'), nextEquals), nextNextEqual('>')));
     store(result.Triples, mask(triples));
 
 }
 
 } // namespace
 
-void ClassifyAsciiBlockAvx2(
-    const unsigned char* source,
-    AsciiBlock& result) noexcept
+void ClassifyAsciiBlockAvx2(const unsigned char* source, AsciiBlock& result) noexcept
 {
-    const auto first =
-        _mm256_loadu_si256(reinterpret_cast<const __m256i*>(source));
-    const auto second =
-        _mm256_loadu_si256(reinterpret_cast<const __m256i*>(source + 32));
+    const auto first = _mm256_loadu_si256(reinterpret_cast<const __m256i*>(source));
+    const auto second = _mm256_loadu_si256(reinterpret_cast<const __m256i*>(source + 32));
     ClassifyHalf<0>(first, second, result);
     ClassifyHalf<32>(second, _mm256_setzero_si256(), result);
 }

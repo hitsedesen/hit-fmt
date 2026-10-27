@@ -14,16 +14,13 @@
 
 namespace test::golden {
 
-inline std::optional<std::string> ReadGoldenFile(
-    const std::filesystem::path& path)
+inline std::optional<std::string> ReadGoldenFile(const std::filesystem::path& path)
 {
     std::ifstream input(path, std::ios::binary);
     if (!input) {
         return std::nullopt;
     }
-    return std::string(
-        std::istreambuf_iterator<char>(input),
-        std::istreambuf_iterator<char>());
+    return std::string(std::istreambuf_iterator<char>(input), std::istreambuf_iterator<char>());
 }
 
 inline std::string ReadFile(const std::filesystem::path& path)
@@ -35,9 +32,7 @@ inline std::string ReadFile(const std::filesystem::path& path)
     return std::move(*contents);
 }
 
-inline void WriteGoldenFile(
-    const std::filesystem::path& path,
-    std::string_view contents)
+inline void WriteGoldenFile(const std::filesystem::path& path, std::string_view contents)
 {
     std::ofstream output(path, std::ios::binary);
     if (output) {
@@ -50,9 +45,7 @@ inline void WriteGoldenFile(
 }
 
 // Missing goldens are errors unless explicitly regenerated.
-inline void ExpectGolden(
-    const std::filesystem::path& path,
-    std::string_view actual)
+inline void ExpectGolden(const std::filesystem::path& path, std::string_view actual)
 {
     if (std::getenv("UPDATE_GOLDEN")) {
         WriteGoldenFile(path, actual);
@@ -73,8 +66,7 @@ struct Fixture
         return Directory / (Name + std::string(suffix));
     }
 
-    [[nodiscard]] std::string Input(
-        const std::filesystem::path& filename = "input.cpp") const
+    [[nodiscard]] std::string Input(const std::filesystem::path& filename = "input.cpp") const
     {
         return ReadFile(Directory / filename);
     }
@@ -84,9 +76,7 @@ struct Fixture
         return ReadFile(Named(suffix));
     }
 
-    void Expect(
-        std::string_view actual,
-        std::string_view suffix = ".output.cpp") const
+    void Expect(std::string_view actual, std::string_view suffix = ".output.cpp") const
     {
         ExpectGolden(Named(suffix), actual);
     }

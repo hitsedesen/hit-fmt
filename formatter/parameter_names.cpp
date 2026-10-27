@@ -68,9 +68,7 @@ bool HasName(const Node& node)
 
 const Node* FunctionName(const Node& node)
 {
-    if (node.Kind == NK::DeclaratorName || node.Kind == NK::DestructorName ||
-        node.Kind == NK::OperatorFunctionName)
-    {
+    if (node.Kind == NK::DeclaratorName || node.Kind == NK::DestructorName || node.Kind == NK::OperatorFunctionName) {
         return &node;
     }
     if (node.Kind == NK::FunctionDeclarator) {
@@ -84,9 +82,7 @@ const Node* FunctionName(const Node& node)
     return nullptr;
 }
 
-util::Position AfterToken(
-    const parser::SyntaxTree& tree,
-    parser::TokenIndex index)
+util::Position AfterToken(const parser::SyntaxTree& tree, parser::TokenIndex index)
 {
     auto position = tree.TokenPosition(index);
     for (unsigned char c : tree.TokenText(index)) {
@@ -100,10 +96,7 @@ util::Position AfterToken(
     return position;
 }
 
-util::Position NamePosition(
-    const parser::SyntaxTree& tree,
-    const Node& parameter,
-    const Node& specifiers)
+util::Position NamePosition(const parser::SyntaxTree& tree, const Node& parameter, const Node& specifiers)
 {
     if (auto* declarators = Child(parameter, NK::InitDeclaratorList)) {
         if (auto* init = Child(*declarators, NK::InitDeclarator)) {
@@ -112,13 +105,8 @@ util::Position NamePosition(
                     // In a function pointer, the name goes inside (*...).
                     return tree.TokenPosition(nested->Tokens.End - 1);
                 }
-                for (auto* child = abstract->Child();
-                    child;
-                    child = child->NextSibling)
-                {
-                    if (child->Kind == NK::ArrayDeclarator ||
-                        child->Kind == NK::FunctionDeclarator)
-                    {
+                for (auto* child = abstract->Child(); child; child = child->NextSibling) {
+                    if (child->Kind == NK::ArrayDeclarator || child->Kind == NK::FunctionDeclarator) {
                         return tree.TokenPosition(child->Tokens.Begin);
                     }
                 }
@@ -129,8 +117,7 @@ util::Position NamePosition(
         }
     }
     auto last = specifiers.Tokens.End;
-    while (last > specifiers.Tokens.Begin && tree.Kind(last - 1) == TK::Comment)
-    {
+    while (last > specifiers.Tokens.Begin && tree.Kind(last - 1) == TK::Comment) {
         --last;
     }
     return AfterToken(tree, last - 1);
@@ -156,8 +143,7 @@ bool IsCommentedName(std::string_view text)
         return false;
     }
     auto identifier = [] (char c) {
-        return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') ||
-            (c >= '0' && c <= '9') || c == '_';
+        return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '_';
     };
     if (text.front() >= '0' && text.front() <= '9') {
         return false;
@@ -185,9 +171,7 @@ void CheckFunction(
             continue;
         }
         auto* declarator = Child(*init, NK::Declarator);
-        auto* signature = declarator
-            ? Child(*declarator, NK::FunctionDeclarator)
-            : nullptr;
+        auto* signature = declarator ? Child(*declarator, NK::FunctionDeclarator) : nullptr;
         if (declarator) {
             if (auto* nested = Child(*declarator, NK::NestedDeclarator)) {
                 if (auto* inner = Child(*nested, NK::FunctionDeclarator)) {
@@ -197,9 +181,7 @@ void CheckFunction(
                 }
             }
         }
-        auto* parameters = signature
-            ? Child(*signature, NK::ParameterList)
-            : nullptr;
+        auto* parameters = signature ? Child(*signature, NK::ParameterList) : nullptr;
         if (!parameters || UnsafeSyntax(*declarator)) {
             continue;
         }
@@ -207,22 +189,15 @@ void CheckFunction(
             ? "function definition"
             : "function declaration";
         if (auto* name = FunctionName(*declarator)) {
-            functionName +=
-                " '" + std::string(tree.SourceText(name->Tokens)) + "'";
+            functionName += " '" + std::string(tree.SourceText(name->Tokens)) + "'";
         }
         const auto first = tree.Token(function.Tokens.Begin);
         const auto last = tree.Token(signature->Tokens.End - 1);
-        const parser::SourceRange signatureRange{
-            first.Text.Begin,
-            last.Text.End,
-        };
+        const parser::SourceRange signatureRange{first.Text.Begin, last.Text.End};
         const auto beginLine = tree.TokenPosition(function.Tokens.Begin).Line;
         const auto endLine = tree.TokenPosition(signature->Tokens.End - 1).Line;
         size_t number = 0;
-        for (auto* parameter = parameters->Child();
-            parameter;
-            parameter = parameter->NextSibling)
-        {
+        for (auto* parameter = parameters->Child(); parameter; parameter = parameter->NextSibling) {
             if (parameter->Kind != NK::ParameterDeclaration) {
                 continue;
             }
@@ -243,16 +218,13 @@ void CheckFunction(
                 significant += tree.Kind(i) != TK::Comment;
             }
             if (significant == begin + 1 &&
-                (tree.Kind(begin) == TK::Identifier ||
-                    tree.Kind(begin) == TK::Keyword_void))
+                (tree.Kind(begin) == TK::Identifier || tree.Kind(begin) == TK::Keyword_void))
             {
                 continue;
             }
             bool unsafe = false;
             for (auto i = begin; i < end; ++i) {
-                if (tree.Kind(i) == TK::PreprocessingDirective ||
-                    tree.Kind(i) == TK::Operator_Ellipsis)
-                {
+                if (tree.Kind(i) == TK::PreprocessingDirective || tree.Kind(i) == TK::Operator_Ellipsis) {
                     unsafe = true;
                     break;
                 }
@@ -260,8 +232,7 @@ void CheckFunction(
             if (unsafe || HasName(*parameter)) {
                 continue;
             }
-            const bool allowCommentedName = definitionPolicy ==
-                FunctionDefinitionParameterNames::
+            const bool allowCommentedName = definitionPolicy == FunctionDefinitionParameterNames::
                     NameOrCommentedNameRequired;
             if (function.Kind == NK::FunctionDefinition && allowCommentedName) {
                 // A comment naming an unused parameter must end the type,
@@ -274,9 +245,7 @@ void CheckFunction(
                 for (auto i = begin; i < last; ++i) {
                     hasDefault |= tree.Kind(i) == TK::Operator_Assign;
                 }
-                if (!hasDefault && last < end &&
-                    IsCommentedName(tree.TokenText(end - 1)))
-                {
+                if (!hasDefault && last < end && IsCommentedName(tree.TokenText(end - 1))) {
                     continue;
                 }
             }
@@ -297,9 +266,7 @@ void CheckFunction(
 
 } // namespace
 
-std::vector<ParameterNameDiagnostic> CheckParameterNames(
-    const parser::SyntaxTree& tree,
-    const Configuration& config)
+std::vector<ParameterNameDiagnostic> CheckParameterNames(const parser::SyntaxTree& tree, const Configuration& config)
 {
     std::vector<ParameterNameDiagnostic> diagnostics;
     std::vector<const Node*> stack{&tree.Root()};
@@ -307,17 +274,11 @@ std::vector<ParameterNameDiagnostic> CheckParameterNames(
         auto* node = stack.back();
         stack.pop_back();
         if ((node->Kind == NK::FunctionDeclaration &&
-            config.FunctionDeclarationParameterNames ==
-                FunctionDeclarationParameterNames::Required) ||
+            config.FunctionDeclarationParameterNames == FunctionDeclarationParameterNames::Required) ||
             (node->Kind == NK::FunctionDefinition &&
-                config.FunctionDefinitionParameterNames !=
-                    FunctionDefinitionParameterNames::Unchecked))
+                config.FunctionDefinitionParameterNames != FunctionDefinitionParameterNames::Unchecked))
         {
-            CheckFunction(
-                tree,
-                *node,
-                config.FunctionDefinitionParameterNames,
-                diagnostics);
+            CheckFunction(tree, *node, config.FunctionDefinitionParameterNames, diagnostics);
         }
         for (auto* child = node->Child(); child; child = child->NextSibling) {
             stack.push_back(child);
@@ -327,8 +288,7 @@ std::vector<ParameterNameDiagnostic> CheckParameterNames(
         diagnostics,
         [] (const auto& a, const auto& b) {
             return a.Position.Line < b.Position.Line ||
-                (a.Position.Line == b.Position.Line &&
-                    a.Position.Column < b.Position.Column);
+                (a.Position.Line == b.Position.Line && a.Position.Column < b.Position.Column);
         });
     return diagnostics;
 }

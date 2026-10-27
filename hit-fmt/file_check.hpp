@@ -94,9 +94,6 @@ void PrintFileIssues(
     size_t terminalWidth = 80);
 
 // Summary preserves all failure categories, not only the first one.
-void PrintFileSummaryIssues(
-    std::ostream& output,
-    const CheckedFile& checked,
-    bool fix);
+void PrintFileSummaryIssues(std::ostream& output, const CheckedFile& checked, bool fix);
 
 } // namespace hit_fmt

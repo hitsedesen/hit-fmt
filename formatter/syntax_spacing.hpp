@@ -82,9 +82,7 @@ struct SyntaxGapPreference
 
 static_assert(sizeof(SyntaxGapPreference) <= 8);
 
-[[nodiscard]] GapContext SpacingOwnerContext(
-    SpacingOwner owner,
-    const CompiledPolicies& policies);
+[[nodiscard]] GapContext SpacingOwnerContext(SpacingOwner owner, const CompiledPolicies& policies);
 
 // File-arena storage; gap i precedes token i, including the tail. No source,
 // policy or scratch references are retained; Owner indexes source regions.
@@ -92,8 +90,8 @@ class SyntaxSpacing
 {
 public:
     explicit SyntaxSpacing(std::pmr::memory_resource& fileMemory);
-    SyntaxSpacing(SyntaxSpacing&&) = default;
-    SyntaxSpacing(const SyntaxSpacing&) = delete;
+    SyntaxSpacing(SyntaxSpacing&& other) = default;
+    SyntaxSpacing(const SyntaxSpacing& other) = delete;
 
     [[nodiscard]] std::span<const SyntaxGapPreference> Gaps() const
     {
@@ -112,21 +110,19 @@ public:
 
     // Scalar demand only for ordinary trailing horizontal // gaps. Safety
     // resolves count zero to one where changing adjacency needs separation.
-    [[nodiscard]] std::optional<std::uint16_t> TrailingCommentCount(
-        GapId gap,
-        const SourceAnalysis& safety) const;
+    [[nodiscard]] std::optional<std::uint16_t> TrailingCommentCount(GapId gap, const SourceAnalysis& safety) const;
 
 private:
     std::pmr::vector<SyntaxGapPreference> Gaps_;
     std::optional<TrailingCommentSpaceSetting> TrailingCommentSpaces_;
     friend SyntaxSpacing BuildSyntaxSpacing(
-        const parser::SyntaxTree&,
-        const SourceAnalysis&,
-        const GapPolicies&,
-        PointerReferenceDeclaratorLocation,
-        std::pmr::memory_resource&,
-        std::pmr::memory_resource&,
-        std::optional<TrailingCommentSpaceSetting>);
+        const parser::SyntaxTree& tree,
+        const SourceAnalysis& safety,
+        const GapPolicies& spacing,
+        PointerReferenceDeclaratorLocation pointerBinding,
+        std::pmr::memory_resource& fileMemory,
+        std::pmr::memory_resource& scratchMemory,
+        std::optional<TrailingCommentSpaceSetting> trailingCommentSpaces);
 };
 
 // One iterative tree traversal followed by a gap safety pass. SourceAnalysis
@@ -140,8 +136,7 @@ private:
     PointerReferenceDeclaratorLocation pointerBinding,
     std::pmr::memory_resource& fileMemory,
     std::pmr::memory_resource& scratchMemory,
-    std::optional<TrailingCommentSpaceSetting> trailingCommentSpaces =
-        std::nullopt);
+    std::optional<TrailingCommentSpaceSetting> trailingCommentSpaces = std::nullopt);
 
 [[nodiscard]] inline SyntaxSpacing BuildSyntaxSpacing(
     const parser::SyntaxTree& tree,

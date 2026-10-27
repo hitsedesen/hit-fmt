@@ -19,9 +19,7 @@ struct IncludeGroupRule
     std::int8_t Depth = MaxDepth;
     // Lower priorities sort first; matching precedence is unchanged.
     std::int8_t Priority = 0;
-    friend bool operator==(
-        const IncludeGroupRule&,
-        const IncludeGroupRule&) = default;
+    friend bool operator==(const IncludeGroupRule& lhs, const IncludeGroupRule& rhs) = default;
 };
 
 void ValidateIncludeGroups(std::span<const IncludeGroupRule> groups);
@@ -53,8 +51,7 @@ public:
     [[nodiscard]] std::int8_t Priority(std::size_t group) const noexcept;
     [[nodiscard]] std::size_t PrefixDepth(std::size_t prefix) const noexcept;
     [[nodiscard]] std::string_view Prefix(std::size_t prefix) const noexcept;
-    [[nodiscard]] std::string_view CanonicalPrefix(
-        std::size_t group) const noexcept;
+    [[nodiscard]] std::string_view CanonicalPrefix(std::size_t group) const noexcept;
 
 private:
     struct Group

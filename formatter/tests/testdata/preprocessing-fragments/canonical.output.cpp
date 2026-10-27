@@ -50,9 +50,7 @@ void BranchBodies(int descriptor)
     if (descriptor >= 0) {
         #ifndef PLATFORM_WINDOWS
         if (descriptor >= DescriptorLimit) {
-            LogWarning("Descriptor exceeds limit")
-                .With("Descriptor", descriptor)
-                .With("Limit", DescriptorLimit);
+            LogWarning("Descriptor exceeds limit").With("Descriptor", descriptor).With("Limit", DescriptorLimit);
             status = -1;
         }
         #else

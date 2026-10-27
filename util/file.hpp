@@ -16,10 +16,7 @@ public:
 
 // Reads at most maxSize bytes, then appends padding zero bytes. The returned
 // size includes the padding.
-[[nodiscard]] std::string ReadEntireFile(
-    const std::string& filePath,
-    size_t maxSize,
-    size_t padding = 0);
+[[nodiscard]] std::string ReadEntireFile(const std::string& filePath, size_t maxSize, size_t padding = 0);
 
 // Replaces filePath with contents, preserving bytes exactly.
 void WriteEntireFile(const std::string& filePath, std::string_view contents);
