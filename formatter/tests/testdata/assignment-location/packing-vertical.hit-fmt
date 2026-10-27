@@ -1,0 +1,3 @@
+include = "packing.hit-fmt"
+ExpressionsPacking = Fill
+AssignmentsPacking = VerticalWhenBroken

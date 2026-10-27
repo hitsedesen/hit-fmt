@@ -310,6 +310,8 @@
         formatter::BreakRequirement::IfNeeded)                               \
     OPT(formatter::ListPacking, ExpressionsPacking, \
         formatter::ListPacking::Fill) \
+    OPT(std::optional<formatter::ListPacking>, AssignmentsPacking, \
+        std::nullopt) \
     OPT(formatter::ExpressionAlignment, ExpressionsAlignment, \
         formatter::ExpressionAlignment::Block) \
     OPT(formatter::CategoryLayout, ExpressionsLayout, \

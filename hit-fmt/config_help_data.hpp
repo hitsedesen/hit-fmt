@@ -74,6 +74,14 @@ TernaryOperatorSide = Leading
 TernaryLayout = ThreePart
 TernaryOperatorIndentation = Align
 )"},
+    {"Keep assignment prefixes beside wrapped expressions:",
+        R"(ExpressionsPacking = VerticalWhenBroken
+AssignmentsPacking = Fill
+AssignmentRhsPlacement = InlineIfFits
+# When the RHS wraps:
+# auto ready = firstCheck() ||
+#     secondCheck();
+)"},
     {"Wrap call chains:", R"(ChainsLayout = Canonical
 ChainsBreak = IfNeeded
 ChainsPacking = Fill
@@ -291,6 +299,12 @@ constexpr HelpSection HelpSections[] = {
         "- ExpressionsAlignment = Operand aligns to the first "
         "operand, falling\n"
         "  back when it cannot fit; Block uses continuation indentation.\n"
+        "- AssignmentsPacking: Inherit (default) follows ExpressionsPacking.\n"
+        "  Fill can keep the RHS prefix beside the assignment while nested\n"
+        "  expressions wrap. VerticalWhenBroken splits all assignment\n"
+        "  boundaries in a broken sequence. Includes = initializers,\n"
+        "  parameter defaults and enumerator values. ExpressionsBreak\n"
+        "  = Always and AssignmentRhsPlacement = NextLine still force breaks.\n"
         "- AssignmentRhsPlacement: InlineIfFits or NextLine. NextLine moves\n"
         "  assignment and declaration initializers below the operator in\n"
         "  canonical expressions, regardless of AssignmentOperatorSide.\n"

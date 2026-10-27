@@ -1,0 +1,9 @@
+Layout = Canonical
+IndentationKind = Spaces
+IndentWidth = 4
+ContinuationOffset = 4
+ColumnLimit = 64
+ExpressionsPacking = VerticalWhenBroken
+BinaryOperatorSide = Trailing
+AssignmentOperatorSide = Trailing
+FunctionBracePlacement = NextLine

@@ -92,6 +92,7 @@ struct ExpressionPolicy
     ListPacking Packing = ListPacking::Fill;
     ExpressionAlignment Alignment = ExpressionAlignment::Block;
     FirstItemPlacement AssignmentRhs = FirstItemPlacement::InlineIfFits;
+    ListPacking AssignmentPacking = ListPacking::Fill;
 };
 
 struct ChainPolicy

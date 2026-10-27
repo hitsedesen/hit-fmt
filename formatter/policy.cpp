@@ -134,6 +134,12 @@ void ValidatePolicyStyle(const Style& style)
     {
         throw std::invalid_argument("AssignmentRhsPlacement has invalid value");
     }
+    if (style.AssignmentsPacking &&
+        static_cast<std::size_t>(*style.AssignmentsPacking) >=
+            ConfigEnumNames<ListPacking>::Values.size())
+    {
+        throw std::invalid_argument("AssignmentsPacking has invalid value");
+    }
     if (style.DestructorBracePlacement &&
         static_cast<std::size_t>(*style.DestructorBracePlacement) >=
             ConfigEnumNames<BracePlacement>::Values.size())
@@ -414,7 +420,8 @@ CompiledPolicies CompilePolicies(const Style& style)
             style.TernaryLayout, style.TernaryOperatorIndentation,
             {ContinuationAlignment::Block, continuation, fallback},
             style.ExpressionsBreak, style.ExpressionsPacking,
-            style.ExpressionsAlignment, style.AssignmentRhsPlacement},
+            style.ExpressionsAlignment, style.AssignmentRhsPlacement,
+            style.AssignmentsPacking.value_or(style.ExpressionsPacking)},
         .Chains = {ResolveLayout(style.ChainsLayout, style.Layout),
             style.ChainsPacking,
             {style.ChainsAlignment, continuation, fallback}, style.ChainsBreak},

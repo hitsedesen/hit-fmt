@@ -2070,8 +2070,12 @@ private:
                 Groups_[scope].ShareBranchContinuation = true;
             }
         }
+        const auto packing =
+            declarationAssignment || kind == NodeKind::AssignmentExpression
+            ? policy.AssignmentPacking
+            : policy.Packing;
         const auto boundary =
-            policy.Packing == ListPacking::VerticalWhenBroken && !threePart
+            packing == ListPacking::VerticalWhenBroken && !threePart
             ? Boundary::Conditional
             : Boundary::Soft;
         const auto planToken = [&] (Index t) {

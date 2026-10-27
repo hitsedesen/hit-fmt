@@ -2733,6 +2733,33 @@ std::vector<FormatCase> FormatCases()
     AddCases(
         cases,
         std::filesystem::path(FORMATTER_TESTDATA_DIR) /
+        "../assignment-location",
+        {
+            "packing",
+            "packing-fill",
+            "packing-leading",
+            "packing-next-line",
+            "packing-always",
+            "packing-preserve",
+            "packing-vertical",
+        },
+        "packing.input.cpp");
+    {
+        const auto directory = std::filesystem::path(FORMATTER_TESTDATA_DIR) /
+            "../assignment-location";
+        cases.push_back({
+            directory,
+            "packing-inherit",
+            "packing.input.cpp",
+            {},
+            {},
+            true,
+            "packing.output.cpp",
+        });
+    }
+    AddCases(
+        cases,
+        std::filesystem::path(FORMATTER_TESTDATA_DIR) /
         "../call-expression-indent",
         {"aligned", "aligned-no-call-reflow", "indent-width", "preserve"});
     AddCases(
