@@ -51,3 +51,5 @@ Ln 10, Col 264 error: Invalid digit in octal integer
 Ln 10, Col 398 error: No digits between digit separators
 Ln 10, Col 532 error: Digit separator cannot appear at the end of decimal integer literal
 Ln 10, Col 665 error: Invalid digit separator
+Ln 11, Col 8 error: Invalid universal character
+Ln 11, Col 12 error: Unfinished ellipsis

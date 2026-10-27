@@ -49,3 +49,12 @@ nul-like \0 and ) partial close α)tag"
 Ln 25, Col 39: op; ;
 Ln 26, Col 1: identifier final
 Ln 26, Col 6: op; ;
+Ln 27, Col 1: comment // ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc α\
+Ln 28, Col 1: identifier after
+Ln 28, Col 6: op; ;
+Ln 28, Col 8: comment /* bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb**/
+Ln 29, Col 1: comment /*
+ 	*/
+Ln 30, Col 6: identifier tail
+Ln 30, Col 10: op; ;
+Ln 31, Col 1: comment // eof eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee

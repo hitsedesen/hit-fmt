@@ -14,3 +14,12 @@ second line)"
 #define MESSAGE \
 "first line\n\
 second line\n"
+#define VALUE(x) ppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppp \
+ ((x) + 1) /* block
+comment */ "quoted // text" R"d(raw
+text)d"
+#define COUNT 1'234 // tail \
+continued α
+%:define LETTER 'a'
+next;
+#define EOF_VALUE 123

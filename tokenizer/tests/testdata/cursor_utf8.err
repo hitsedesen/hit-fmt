@@ -7,6 +7,57 @@ Ln 6, Col 7 error: Invalid UTF8 code point
 Ln 8, Col 4 error: Unexpected NUL character
 Ln 9, Col 24 error: Invalid UTF8 code point
 Ln 10, Col 14 error: Invalid UTF8 code point
-Ln 11, Col 11 error: Invalid UTF8 code point
-Ln 11, Col 12 error: Invalid UTF8 code point
-Ln 11, Col 13 error: Invalid UTF8 code point
+Ln 11, Col 11 error: Unexpected token
+Ln 11, Col 18 error: Unexpected token
+Ln 12, Col 3 error: Unexpected NUL character
+Ln 12, Col 31 error: Unexpected NUL character
+Ln 14, Col 1 error: Invalid UTF8 code point
+Ln 14, Col 3 error: Invalid UTF8 code point
+Ln 15, Col 3 error: Invalid UTF8 code point
+Ln 15, Col 5 error: Invalid UTF8 code point
+Ln 16, Col 4 error: Invalid UTF8 code point
+Ln 16, Col 6 error: Invalid UTF8 code point
+Ln 18, Col 1 error: Invalid UTF8 code point
+Ln 18, Col 3 error: Invalid UTF8 code point
+Ln 20, Col 1 error: Invalid UTF8 code point
+Ln 20, Col 3 error: Invalid UTF8 code point
+Ln 22, Col 2 error: Invalid UTF8 code point
+Ln 23, Col 2 error: Invalid UTF8 code point
+Ln 23, Col 3 error: Invalid UTF8 code point
+Ln 24, Col 2 error: Invalid UTF8 code point
+Ln 24, Col 3 error: Invalid UTF8 code point
+Ln 24, Col 4 error: Invalid UTF8 code point
+Ln 25, Col 2 error: Invalid UTF8 code point
+Ln 25, Col 3 error: Invalid UTF8 code point
+Ln 25, Col 4 error: Invalid UTF8 code point
+Ln 26, Col 2 error: Invalid UTF8 code point
+Ln 26, Col 3 error: Invalid UTF8 code point
+Ln 26, Col 4 error: Invalid UTF8 code point
+Ln 26, Col 5 error: Invalid UTF8 code point
+Ln 27, Col 2 error: Invalid UTF8 code point
+Ln 27, Col 3 error: Invalid UTF8 code point
+Ln 27, Col 4 error: Invalid UTF8 code point
+Ln 28, Col 4 error: Invalid UTF8 code point
+Ln 28, Col 5 error: Invalid UTF8 code point
+Ln 28, Col 6 error: Invalid UTF8 code point
+Ln 28, Col 7 error: Invalid UTF8 code point
+Ln 29, Col 11 error: Invalid UTF8 code point
+Ln 29, Col 13 error: Invalid UTF8 code point
+Ln 30, Col 4 error: Invalid UTF8 code point
+Ln 30, Col 5 error: Invalid UTF8 code point
+Ln 30, Col 6 error: Invalid UTF8 code point
+Ln 31, Col 8 error: Invalid UTF8 code point
+Ln 31, Col 18 error: Invalid UTF8 code point
+Ln 31, Col 19 error: Invalid UTF8 code point
+Ln 31, Col 20 error: Invalid UTF8 code point
+Ln 32, Col 3 error: Invalid UTF8 code point
+Ln 33, Col 3 error: Invalid UTF8 code point
+Ln 34, Col 4 error: Invalid UTF8 code point
+Ln 35, Col 5 error: Invalid UTF8 code point
+Ln 36, Col 4 error: Invalid UTF8 code point
+Ln 37, Col 5 error: Invalid UTF8 code point
+Ln 38, Col 4 error: Invalid UTF8 code point
+Ln 38, Col 4 error: Unfinished ellipsis
+Ln 39, Col 11 error: Invalid UTF8 code point
+Ln 39, Col 12 error: Invalid UTF8 code point
+Ln 39, Col 13 error: Invalid UTF8 code point

@@ -9,3 +9,7 @@
 "\o{0213}"
 "\xfeef"
 "\a"
+u8"quote: \" slash: \\ \t \x41 \u03b1"_suffix
+"sssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssss\
+continued\
+α"_suffix99

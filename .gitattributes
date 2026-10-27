@@ -5,3 +5,7 @@ formatter/tests/testdata/**/*crlf.input.cpp whitespace=cr-at-eol
 # Spacing fixtures intentionally include trailing whitespace and CRLF.
 formatter/tests/testdata/spacing-options/*.input.cpp -whitespace
 formatter/tests/testdata/spacing-options/*.output.cpp -whitespace
+
+# Tokenizer fixtures preserve source whitespace, including CRLF and trailing spaces.
+tokenizer/tests/testdata/*.in -whitespace
+tokenizer/tests/testdata/*.out -whitespace
