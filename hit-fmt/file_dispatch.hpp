@@ -199,9 +199,8 @@ bool RunParallelFiles(
                 ready.wait(
                     lock,
                     [&] {
-                        return (!results.empty() && results
-                            .front()
-                            .has_value()) || (discoveryDone && results.empty()) || canLaunch();
+                        return (!results.empty() && results.front().has_value()) ||
+                            (discoveryDone && results.empty()) || canLaunch();
                     });
                 if (canLaunch()) {
                     lock.unlock();
@@ -221,13 +220,7 @@ bool RunParallelFiles(
                 if (results.empty()) {
                     break;
                 }
-                bufferedBytes -= results
-                    .front()
-                    ->Output
-                    .size() + results
-                        .front()
-                        ->Error
-                        .size();
+                bufferedBytes -= results.front()->Output.size() + results.front()->Error.size();
                 result = std::move(*results.front());
                 results.pop_front();
                 ++printed;

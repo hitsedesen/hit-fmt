@@ -16,7 +16,11 @@ struct Style;
 // token provenance. A canonical combinator rebuilds its own gaps, including
 // existing adjacencies; unrelated nested edits do not rebuild preserved owners.
 // Inserted gaps are always Rebuilt. Never infer context from before/after text.
-enum class GapContext : std::uint8_t { Preserved, Rebuilt };
+enum class GapContext : std::uint8_t
+{
+    Preserved,
+    Rebuilt
+};
 
 // nullopt delegates spelling to lowering: rebuilt, topology-changing gaps use
 // syntax-safe flat fallback before fitting, even if they stay flat. Preserved

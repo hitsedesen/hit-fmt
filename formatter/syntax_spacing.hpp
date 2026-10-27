@@ -15,7 +15,8 @@ namespace formatter {
 // separately compiled scalar. None has no configurable preference; it may
 // still identify a syntax-owned Preserve boundary, including direct sequence
 // edges with a space fallback and the gap before a header semicolon.
-enum class SpacingField : uint8_t {
+enum class SpacingField : uint8_t
+{
     None,
 #define SYNTAX_SPACING_FIELD(type, name, initial) name,
     FORMATTER_GAP_OPTIONS(SYNTAX_SPACING_FIELD)
@@ -31,7 +32,8 @@ enum class SpacingField : uint8_t {
 // syntax sites. BuildSyntaxSpacing rejects a non-Preserve unsupported setting.
 [[nodiscard]] bool SupportsSpacingField(SpacingField field);
 
-enum class SpacingOwner : uint8_t {
+enum class SpacingOwner : uint8_t
+{
     None,
     Calls,
     Parameters,
@@ -46,9 +48,15 @@ enum class SpacingOwner : uint8_t {
     Bodies,
     LambdaBodies,
     TemplateArguments,
-    TemplateParameters, };
+    TemplateParameters,
+};
 
-enum class SpacingConstraint : uint8_t { None = 0, UncertainSyntax = 1, SourceSafety = 2, };
+enum class SpacingConstraint : uint8_t
+{
+    None = 0,
+    UncertainSyntax = 1,
+    SourceSafety = 2,
+};
 
 // Owner is the combinator whose own edge/separator/operator is being rebuilt,
 // not necessarily the deepest node at this offset. Owner indexes the matching

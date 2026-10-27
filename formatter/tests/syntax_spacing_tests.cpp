@@ -1058,10 +1058,7 @@ TEST(SyntaxSpacing, RecoveredSizeofPackOperandDoesNotOwnGroupingInteriors)
             EXPECT_EQ(analysis.Spacing.SpacePreference(open, GapContext::Rebuilt, analysis.Safety), false);
             // The empty closer gap sits at the recovery range's exclusive
             // end. It permits insertion lexically, but lacks syntax authority.
-            EXPECT_TRUE(analysis
-                .Safety
-                .Original(close)
-                .empty());
+            EXPECT_TRUE(analysis.Safety.Original(close).empty());
             EXPECT_TRUE(analysis.Safety.CanReplaceGap(close, " "));
             for (auto id : {open + 1, close}) {
                 const auto& gap = analysis.Spacing.Gaps()[id];
@@ -1174,38 +1171,37 @@ TEST(SyntaxSpacing, CompleteDirectSequenceBoundariesHaveFlatSpaceFallback)
         parser::NodeKind Owner;
         C Category;
     };
-    const Case cases[] =
+    const Case cases[] = {
+        {"void f(){first();\nsecond();}", "second", 0, parser::NodeKind::CompoundStatement, C::Bodies},
+        {"auto action=[]{first();\nsecond();};", "second", 0, parser::NodeKind::LambdaBody, C::LambdaBodies},
+        {"struct S {int first;\nint second;};", "int", 1, parser::NodeKind::RecordDeclaration, C::Bodies},
+        {"int first;\nint second;", "int", 1, parser::NodeKind::TranslationUnit, C::Bodies},
+        {"void f(){{first();\nsecond();}}", "second", 0, parser::NodeKind::CompoundStatement, C::Bodies},
+        {"namespace n {int first;\nint second;}", "int", 1, parser::NodeKind::NamespaceDeclaration, C::Bodies},
+        {"export { int first; int second; }", "int", 1, parser::NodeKind::ExportDeclaration, C::Bodies},
         {
-            {"void f(){first();\nsecond();}", "second", 0, parser::NodeKind::CompoundStatement, C::Bodies},
-            {"auto action=[]{first();\nsecond();};", "second", 0, parser::NodeKind::LambdaBody, C::LambdaBodies},
-            {"struct S {int first;\nint second;};", "int", 1, parser::NodeKind::RecordDeclaration, C::Bodies},
-            {"int first;\nint second;", "int", 1, parser::NodeKind::TranslationUnit, C::Bodies},
-            {"void f(){{first();\nsecond();}}", "second", 0, parser::NodeKind::CompoundStatement, C::Bodies},
-            {"namespace n {int first;\nint second;}", "int", 1, parser::NodeKind::NamespaceDeclaration, C::Bodies},
-            {"export { int first; int second; }", "int", 1, parser::NodeKind::ExportDeclaration, C::Bodies},
-            {
-                "export /* scope */ { int first; /* note */ int second; }",
-                "/* note */",
-                0,
-                parser::NodeKind::ExportDeclaration,
-                C::Bodies,
-            },
-            {
-                "export /* scope */ { int first; /* note */ int second; }",
-                "int",
-                1,
-                parser::NodeKind::ExportDeclaration,
-                C::Bodies,
-            },
-            {
-                "void f(){first(); /* note */ second();}",
-                "/* note */",
-                0,
-                parser::NodeKind::CompoundStatement,
-                C::Bodies,
-            },
-            {"void f(){first(); /* note */ second();}", "second", 0, parser::NodeKind::CompoundStatement, C::Bodies},
-        };
+            "export /* scope */ { int first; /* note */ int second; }",
+            "/* note */",
+            0,
+            parser::NodeKind::ExportDeclaration,
+            C::Bodies,
+        },
+        {
+            "export /* scope */ { int first; /* note */ int second; }",
+            "int",
+            1,
+            parser::NodeKind::ExportDeclaration,
+            C::Bodies,
+        },
+        {
+            "void f(){first(); /* note */ second();}",
+            "/* note */",
+            0,
+            parser::NodeKind::CompoundStatement,
+            C::Bodies,
+        },
+        {"void f(){first(); /* note */ second();}", "second", 0, parser::NodeKind::CompoundStatement, C::Bodies},
+    };
     for (const auto& item : cases) {
         Analysis analysis(item.Source);
         const auto id = analysis.Before(item.Right, item.Occurrence);
@@ -1296,11 +1292,7 @@ TEST(SyntaxSpacing, ArenaStorageScalesWithGapsNotOptionsOrNodeWidth)
             file,
             scratch);
         EXPECT_EQ(file.Calls, 1u);
-        EXPECT_EQ(
-            file.Bytes,
-            spacing
-                .Gaps()
-                .size() * sizeof(SyntaxGapPreference));
+        EXPECT_EQ(file.Bytes, spacing.Gaps().size() * sizeof(SyntaxGapPreference));
         // Width does not collect every sibling onto the scratch stack.
         EXPECT_LT(scratch.Bytes, 4096u);
         const auto calls = file.Calls + scratch.Calls;
@@ -1365,14 +1357,7 @@ TEST(SyntaxSpacing,
     const auto slash = legacy.Before("// divisor");
     EXPECT_EQ(legacy.Safety.Gaps()[slash].Separation, GapSeparation::Required);
     EXPECT_EQ(spacing.TrailingCommentCount(slash, legacy.Safety), 1);
-    ASSERT_EQ(
-        spacing
-            .Gaps()
-            .size(),
-        legacy
-            .Spacing
-            .Gaps()
-            .size());
+    ASSERT_EQ(spacing.Gaps().size(), legacy.Spacing.Gaps().size());
     for (size_t i = 0; i < spacing.Gaps().size(); ++i) {
         EXPECT_EQ(spacing.Gaps()[i].Owner, legacy.Spacing.Gaps()[i].Owner);
         EXPECT_EQ(spacing.Gaps()[i].Category, legacy.Spacing.Gaps()[i].Category);

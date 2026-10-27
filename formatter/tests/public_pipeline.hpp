@@ -7,6 +7,10 @@
 namespace public_pipeline {
 
 // Owning-result invariants shared by the canonical unscoped formatter goldens.
-void CheckFormattedResult(std::string_view source, const formatter::Style& style, std::string_view expectedText);
+void CheckFormattedResult(
+    std::string_view source,
+    const formatter::Style& style,
+    std::string_view expectedText,
+    std::string_view inputFilePath);
 
 } // namespace public_pipeline

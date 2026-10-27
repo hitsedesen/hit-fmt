@@ -283,12 +283,8 @@ document::Identity RecordRenderAnchors(
             throw std::runtime_error("invalid exact render mapping");
         }
         auto it = std::lower_bound(
-            safety
-                .Protection()
-                .begin(),
-            safety
-                .Protection()
-                .end(),
+            safety.Protection().begin(),
+            safety.Protection().end(),
             source.Begin,
             [] (const auto& range, Offset begin) {
                 return range.Source.End <= begin;
@@ -684,15 +680,11 @@ FormatResult detail::FormatWithAnalysis(
         unchanged.push_back({
             {
                 0,
-                CheckedSourceAnalysisSize(original
-                    .Source()
-                    .size()),
+                CheckedSourceAnalysisSize(original.Source().size()),
             },
             {
                 0,
-                CheckedSourceAnalysisSize(original
-                    .Source()
-                    .size()),
+                CheckedSourceAnalysisSize(original.Source().size()),
             },
             NoStructuralAction,
             false,
@@ -706,9 +698,7 @@ FormatResult detail::FormatWithAnalysis(
     if (prepared.Policies.LineEnding == LineEnding::CRLF) {
         options.LineEnding = document::Newline::CRLF;
     } else if (prepared.Policies.LineEnding == LineEnding::Preserve) {
-        const auto lf = original
-            .Source()
-            .find('\n');
+        const auto lf = original.Source().find('\n');
         if (lf != std::string_view::npos && lf && original.Source()[lf - 1] == '\r') {
             options.LineEnding = document::Newline::CRLF;
         }
@@ -753,9 +743,7 @@ FormatResult detail::FormatWithAnalysis(
         renderPolicy.IndexedTokenMap = !request.SourceMap && needMaps;
         renderPolicy.TokenCount = tree->TokenCount();
         if (needNamespaceAnchors && !request.SourceMap) {
-            tracked.reserve(currentSafety
-                ->Protection()
-                .size());
+            tracked.reserve(currentSafety->Protection().size());
             for (const auto& range : currentSafety->Protection()) {
                 tracked.push_back({range.Source.Begin, range.Source.End});
             }

@@ -251,14 +251,8 @@ TEST(PublicPipeline, ChainStructuralBaseHonorsGapScopeAndProtection)
     formatter::SourceAnalysisOptions options;
     options.EditScope = selected;
     const auto safety = formatter::BuildSourceAnalysis(tree, options, file, scratch);
-    ASSERT_EQ(
-        safety
-            .PartialGapPermissions()
-            .size(),
-        1u);
-    const auto permission = safety
-        .PartialGapPermissions()
-        .front();
+    ASSERT_EQ(safety.PartialGapPermissions().size(), 1u);
+    const auto permission = safety.PartialGapPermissions().front();
     EXPECT_EQ(permission.Kind, formatter::PartialGapPermissionKind::FinalIndentation);
     EXPECT_EQ(permission.Source.Begin, begin);
     EXPECT_EQ(permission.Source.End, begin + 12);
@@ -2983,12 +2977,7 @@ TEST(PublicPipeline, TrailingCommentSpacesBoundedScalarReportsHonestWidth)
     const auto result = FormatInput("int item;\t// memo\n", prepared);
     const auto comment = result.Text.find("// memo");
     ASSERT_EQ(comment, std::string("int item;").size() + 10000);
-    EXPECT_EQ(
-        result
-            .Text
-            .substr(9, 10000)
-            .find_first_not_of(' '),
-        std::string::npos);
+    EXPECT_EQ(result.Text.substr(9, 10000).find_first_not_of(' '), std::string::npos);
     EXPECT_FALSE(result.Diagnostics.empty());
     CheckIdentities("int item;\t// memo\n", result);
     EXPECT_EQ(FormatInput(result.Text, prepared).Text, result.Text);
@@ -3210,13 +3199,18 @@ TEST(PublicPipeline, FunctionBodyMacroHintsCannotOverrideProtection)
 
 } // namespace
 
-void CheckFormattedResult(std::string_view source, const formatter::Style& style, std::string_view expectedText)
+void CheckFormattedResult(
+    std::string_view source,
+    const formatter::Style& style,
+    std::string_view expectedText,
+    std::string_view inputFilePath)
 {
     const formatter::PreparedFormat prepared(style);
-    const auto result = FormatInput(source, prepared);
+    const formatter::FormatRequest request{.SourceMap = true, .InputFilePath = inputFilePath};
+    const auto result = FormatInput(source, prepared, request);
     EXPECT_EQ(result.Text, expectedText);
     CheckIdentities(source, result);
-    EXPECT_EQ(FormatInput(result.Text, prepared).Text, result.Text);
+    EXPECT_EQ(FormatInput(result.Text, prepared, request).Text, result.Text);
 }
 
 } // namespace public_pipeline

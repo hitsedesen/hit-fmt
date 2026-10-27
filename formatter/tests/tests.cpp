@@ -93,14 +93,9 @@ std::vector<PreserveCase> DiscoverCases()
 {
     std::vector<PreserveCase> cases;
     for (const auto& entry : std::filesystem::directory_iterator(FORMATTER_TESTDATA_DIR)) {
-        auto filename = entry
-            .path()
-            .filename()
-            .string();
+        auto filename = entry.path().filename().string();
         if (filename.ends_with(".output.cpp")) {
-            const auto input = entry
-                .path()
-                .parent_path() /
+            const auto input = entry.path().parent_path() /
                 (filename.substr(0, filename.size() - std::string_view(".output.cpp").size()) + ".input.cpp");
             // Equal input/output bytes have one default-preservation contract.
             if (std::filesystem::exists(input) && ReadFile(input) == ReadFile(entry.path())) {
@@ -169,7 +164,7 @@ void ExpectFormattedGolden(
     }
     EXPECT_EQ(FormatWithStyle(actual, style, inputFilePath), actual);
     if (checkOwningMaps) {
-        public_pipeline::CheckFormattedResult(input, style, actual);
+        public_pipeline::CheckFormattedResult(input, style, actual, inputFilePath);
     }
 }
 
@@ -209,11 +204,7 @@ struct FormatCase
 void PrintTo(const FormatCase& value, std::ostream* output)
 {
     const auto root = (std::filesystem::path(FORMATTER_TESTDATA_DIR) / "..").lexically_normal();
-    *output << value
-        .Directory
-        .lexically_normal()
-        .lexically_relative(root)
-        .generic_string() << '/' << value.Name;
+    *output << value.Directory.lexically_normal().lexically_relative(root).generic_string() << '/' << value.Name;
 }
 
 void AddCases(
@@ -507,6 +498,8 @@ std::vector<FormatCase> FormatCases()
             cases.back().Style =
                 formatter::LoadConfigFile(cases.back().Directory / (cases.back().Config + ".hit-fmt")).FormattingStyle;
             cases.back().Style->LambdaBodiesLayout = CategoryLayout::Canonical;
+            // Exercise list reflow beside protected macros and expanded lambda bodies.
+            cases.back().Style->InitializersLayout = CategoryLayout::Canonical;
         }
     }
     for (const auto* name :
@@ -1306,6 +1299,22 @@ std::vector<FormatCase> FormatCases()
             profile,
         });
     };
+    addProfileCase("../ytsaurus-corpus", "vertical");
+    cases.back().CheckOwningMaps = true;
+    {
+        auto continuation = cases.back();
+        continuation.Name = "vertical-continuation";
+        continuation.Style = formatter::LoadConfigFile(profile + ".hit-fmt").FormattingStyle;
+        continuation.Style->ContinuationOffset = 6;
+        cases.push_back(std::move(continuation));
+    }
+    addProfileCase("../ytsaurus-corpus", "includes");
+    cases.back().InputFilePath = "yt/yt/core/concurrency/worker.cpp";
+    cases.back().CheckOwningMaps = true;
+    addProfileCase("../ytsaurus-corpus", "expressions");
+    cases.back().CheckOwningMaps = true;
+    addProfileCase("../ytsaurus-corpus", "macros");
+    cases.back().CheckOwningMaps = true;
     addProfileCase("../preprocessing-fragments", "opaque-blocks");
     cases.back().CheckOwningMaps = true;
     addProfileCase("../preprocessing-fragments", "canonical");
@@ -1443,8 +1452,12 @@ std::vector<FormatCase> FormatCases()
     addProfileCase("../assignment-location", "profile");
     addProfileCase("../function_parameters", "profile");
     addProfileCase("../body-indent", "profile-control-local");
-    addProfileCase("../body-indent", "profile-direct-initializer");
-    addProfileCase("../body-indent", "profile-leading-initializer");
+    // Canonical child lists expose normalization and indentation in each body scope.
+    for (const auto* name : {"profile-direct-initializer", "profile-leading-initializer"}) {
+        addProfileCase("../body-indent", name);
+        cases.back().Style = formatter::LoadConfigFile(profile + ".hit-fmt").FormattingStyle;
+        cases.back().Style->InitializersLayout = CategoryLayout::Canonical;
+    }
     cases.back().CheckOwningMaps = true;
     cases.push_back({
         std::filesystem::path(BODY_INDENT_TESTDATA_DIR),
@@ -1739,7 +1752,10 @@ std::vector<FormatCase> FormatCases()
     cases.back().CheckOwningMaps = true;
     {
         const auto directory = std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../control-braces-after-wrap";
-        const auto base = formatter::LoadConfigFile(directory / (profile + ".hit-fmt")).FormattingStyle;
+        auto base = formatter::LoadConfigFile(directory / (profile + ".hit-fmt")).FormattingStyle;
+        // Nested bodies still exercise forced chains outside control-header scopes.
+        base.ChainsBreak = BreakRequirement::Always;
+        cases.back().Style = base;
         auto narrow = base;
         narrow.ColumnLimit = 80;
         narrow.AlwaysBreakChainRootNames.push_back("event");
@@ -1779,6 +1795,10 @@ std::vector<FormatCase> FormatCases()
         {},
         true,
     });
+    // Reflow canonical initializer and forced-chain children inside call arguments.
+    cases.back().Style = formatter::LoadConfigFile(profile + ".hit-fmt").FormattingStyle;
+    cases.back().Style->InitializersLayout = CategoryLayout::Canonical;
+    cases.back().Style->ChainsBreak = BreakRequirement::Always;
     cases.push_back({
         callReflow,
         "typed-declarations",
@@ -1818,6 +1838,9 @@ std::vector<FormatCase> FormatCases()
     cases.push_back({callReflow, "balanced-initializers", "balanced-initializers.input.cpp"});
     addProfileCase("../call-reflow", "profile-nested");
     addProfileCase("../chained-calls", "profile-multiline-lambda");
+    // Exercise forced layout for mixed member/invocation spines.
+    cases.back().Style = formatter::LoadConfigFile(profile + ".hit-fmt").FormattingStyle;
+    cases.back().Style->ChainsBreak = BreakRequirement::Always;
     {
         const auto directory = std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../chained-calls";
         {
@@ -1917,7 +1940,10 @@ std::vector<FormatCase> FormatCases()
         ShareExpected(cases, directory, "conventional-selected.output.cpp", "conventional-preserve.output.cpp");
     }
     addProfileCase("../keyword-expressions", "profile");
+    // Canonical initializer children participate in enclosing expression fitting.
     addProfileCase("../keyword-expressions", "fill-operators");
+    cases.back().Style = formatter::LoadConfigFile(profile + ".hit-fmt").FormattingStyle;
+    cases.back().Style->InitializersLayout = CategoryLayout::Canonical;
     cases.back().CheckOwningMaps = true;
     cases.push_back({
         std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../keyword-expressions",
@@ -1927,6 +1953,7 @@ std::vector<FormatCase> FormatCases()
     });
     cases.back().Style = formatter::LoadConfigFile(profile + ".hit-fmt").FormattingStyle;
     cases.back().Style->BinaryOperatorSide = OperatorSide::Leading;
+    cases.back().Style->InitializersLayout = CategoryLayout::Canonical;
     cases.back().CheckOwningMaps = true;
     AddCases(
         cases,
@@ -1997,6 +2024,9 @@ std::vector<FormatCase> FormatCases()
             .lexically_normal()
             .string(),
     });
+    // Braced entries exercise the same owned constructor ranges as parenthesized ones.
+    cases.back().Style = formatter::LoadConfigFile(profile + ".hit-fmt").FormattingStyle;
+    cases.back().Style->InitializersLayout = CategoryLayout::Canonical;
     const auto newArrays = std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../new-array-declarators";
     AddCases(cases, newArrays, {"left", "array-space", "array-preserve"});
     AddCases(
@@ -2096,10 +2126,7 @@ std::vector<FormatCase> FormatCases()
         cases.back().Style = std::move(style);
     }
     for (const auto& entry : std::filesystem::directory_iterator(spacing)) {
-        const auto filename = entry
-            .path()
-            .filename()
-            .string();
+        const auto filename = entry.path().filename().string();
         if (filename.ends_with(".input.cpp")) {
             const auto name = filename.substr(0, filename.size() - std::string_view(".input.cpp").size());
             const auto duplicate = std::ranges::any_of(
@@ -2477,9 +2504,7 @@ std::vector<FormatCase> FormatCases()
             data / "template-parameters",
             profile,
             "input.cpp",
-            (data / "../../../hit-fmt/examples" / profile)
-                .lexically_normal()
-                .string(),
+            (data / "../../../hit-fmt/examples" / profile).lexically_normal().string(),
         });
     }
     AddCases(cases, data / "requires-lambdas", {"canonical", "narrow", "preserve"});
@@ -2520,9 +2545,7 @@ std::vector<FormatCase> FormatCases()
         data / "macro-generated-cases",
         "type-tuples",
         "type-tuples.input.cpp",
-        (data / "../../../hit-fmt/examples/ytsaurus")
-            .lexically_normal()
-            .string(),
+        (data / "../../../hit-fmt/examples/ytsaurus").lexically_normal().string(),
         {},
         true,
         {},
@@ -2532,9 +2555,7 @@ std::vector<FormatCase> FormatCases()
         data / "macro-generated-cases",
         "ytsaurus",
         "input.cpp",
-        (data / "../../../hit-fmt/examples/ytsaurus")
-            .lexically_normal()
-            .string(),
+        (data / "../../../hit-fmt/examples/ytsaurus").lexically_normal().string(),
         {},
         true,
         {},
@@ -3793,11 +3814,8 @@ INSTANTIATE_TEST_SUITE_P(
     testing::ValuesIn(FormatCases()),
     [] (const auto& info) {
         const auto root = (std::filesystem::path(FORMATTER_TESTDATA_DIR) / "..").lexically_normal();
-        auto name = (info
-            .param
-            .Directory
-            .lexically_normal()
-            .lexically_relative(root) / info.param.Name).generic_string();
+        auto name =
+            (info.param.Directory.lexically_normal().lexically_relative(root) / info.param.Name).generic_string();
         std::ranges::replace(name, '/', '_');
         std::ranges::replace(name, '-', '_');
         return name;

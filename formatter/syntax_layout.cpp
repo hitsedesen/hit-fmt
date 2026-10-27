@@ -42,7 +42,14 @@ constexpr Position TokenPosition(Index i)
     return GapPosition(i) + 1;
 }
 
-enum class Boundary : uint8_t { Preserve, Flat, Soft, Hard, Conditional };
+enum class Boundary : uint8_t
+{
+    Preserve,
+    Flat,
+    Soft,
+    Hard,
+    Conditional
+};
 
 struct Gap
 {
@@ -1537,9 +1544,22 @@ private:
             if (gap >= Region(Syntax_[id]).Tokens.End) {
                 continue;
             }
-            const auto group = GroupAt(GapPosition(gap), TokenPosition(gap), document::GroupMode::Consistent);
+            const auto next = NextNonComment(gap);
+            const bool constraint =
+                next < Region(Syntax_[id]).Tokens.End && Tree_.Kind(next) == TokenKind::Keyword_requires;
+            // A prefix constraint continues the declaration header; the
+            // declaration following that constraint still starts at its base.
+            const auto offset = constraint ? Policies_.Parameters.Indent.ContinuationOffset : 0;
+            const auto group = GroupAt(
+                GapPosition(gap),
+                TokenPosition(constraint ? next : gap),
+                document::GroupMode::Consistent,
+                int32_t(offset));
             Groups_[group].Spec.StructuralBase = true;
             Own(gap, group, Boundary::Hard);
+            if (constraint) {
+                OwnCommentLinks(gap, group, next + 1);
+            }
         }
     }
 
@@ -3255,9 +3275,7 @@ private:
             PlanPreservedChain(id);
             return;
         }
-        const bool conventionalRoots = namedRoot && !Annotations_
-            .AlwaysBreakChainRoots()
-            .empty();
+        const bool conventionalRoots = namedRoot && !Annotations_.AlwaysBreakChainRoots().empty();
         if (selectedRoots || conventionalRoots) {
             // One reusable scratch spelling per maximal spine, never per-token
             // strings. Qualified identity ignores source whitespace and uses
@@ -3347,7 +3365,12 @@ private:
         bool Begin;
     };
 
-    enum class Discovery : uint8_t { None, Unique, Ambiguous };
+    enum class Discovery : uint8_t
+    {
+        None,
+        Unique,
+        Ambiguous
+    };
 
     struct DiscoveredEndpoint
     {
@@ -3450,9 +3473,7 @@ private:
     Index SourceIndent(Index token) const
     {
         const auto& gap = Safety_.Gaps()[token];
-        const auto lf = Safety_
-            .Original(gap)
-            .rfind('\n');
+        const auto lf = Safety_.Original(gap).rfind('\n');
         if (lf == std::string_view::npos) {
             return None;
         }
@@ -3484,9 +3505,7 @@ private:
             ScopeNames_.begin(),
             ScopeNames_.end(),
             [] (const ScopeName& a, const ScopeName& b) { return a.Name < b.Name; });
-        std::pmr::vector<Endpoint> pairs(Syntax_
-            .get_allocator()
-            .resource());
+        std::pmr::vector<Endpoint> pairs(Syntax_.get_allocator().resource());
         std::pmr::vector<int64_t> frozen(Tree_.TokenCount() + size_t(2), 0,
                                          Syntax_.get_allocator().resource());
         Index frozenBody = None;
@@ -3835,12 +3854,8 @@ private:
             policy.AccessSectionBlankLinesBefore.Mode == VerticalGapMode::Exact ||
             policy.AccessSectionBlankLinesAfterLabel.Mode == VerticalGapMode::Exact;
         if (sequenceRules) {
-            std::pmr::vector<Index> children(Syntax_
-                .get_allocator()
-                .resource());
-            std::pmr::vector<Index> following(Syntax_
-                .get_allocator()
-                .resource());
+            std::pmr::vector<Index> children(Syntax_.get_allocator().resource());
+            std::pmr::vector<Index> following(Syntax_.get_allocator().resource());
             for (Index id = 0; id < Syntax_.size(); ++id) {
                 const auto& node = Region(Syntax_[id]);
                 if (commentRules) {
@@ -3964,14 +3979,7 @@ private:
                 if (!GapMutable(i) || Gaps_[i].Vertical) {
                     continue;
                 }
-                const auto lines = std::count(
-                    Safety_
-                        .Original(i)
-                        .begin(),
-                    Safety_
-                        .Original(i)
-                        .end(),
-                    '\n');
+                const auto lines = std::count(Safety_.Original(i).begin(), Safety_.Original(i).end(), '\n');
                 if (lines > policy.MaxEmptyLines.EmptyLines + 1) {
                     auto& gap = Gaps_[i];
                     gap.PreserveIndent |= gap.Shape == Boundary::Preserve && !gap.Reindent && !gap.OverrideIndent;
@@ -4173,9 +4181,7 @@ private:
         auto& cached = Facts_[i].CachedCommentCount;
         if (cached == UINT16_MAX) {
             // BuildSyntaxSpacing validates counts at most 10000.
-            cached = Spacing_
-                .TrailingCommentCount(i, Safety_)
-                .value_or(UINT16_MAX - 1);
+            cached = Spacing_.TrailingCommentCount(i, Safety_).value_or(UINT16_MAX - 1);
         }
         return cached == UINT16_MAX - 1 ? std::nullopt : std::optional<uint16_t>{cached};
     }
@@ -4321,9 +4327,7 @@ private:
         spec.NewlineCount = Gaps_[i].NewlineCount;
         if (Gaps_[i].PreserveIndent && !Gaps_[i].Reindent) {
             const auto& source = Safety_.Gaps()[i];
-            const auto lf = Safety_
-                .Original(source)
-                .rfind('\n');
+            const auto lf = Safety_.Original(source).rfind('\n');
             if (lf != std::string_view::npos &&
                 Safety_.Original(source).substr(lf + 1).find_first_not_of(" \t") == std::string_view::npos)
             {
@@ -4397,9 +4401,7 @@ private:
         if (Gaps_[i].Frozen || Uncertain(i) || Safety_.Gaps()[i].ContextSensitive || !ExpressionGap(i)) {
             return;
         }
-        const auto text = Tree_
-            .Source()
-            .substr(begin, end - begin);
+        const auto text = Tree_.Source().substr(begin, end - begin);
         if (HasLine(text) && text.find_first_not_of(" \t\r\n") == std::string_view::npos) {
             Document_.ExpressionLine();
         }
@@ -4501,9 +4503,7 @@ private:
                 i == Tree_.TokenCount());
             return;
         }
-        const auto lf = Safety_
-            .Original(source)
-            .rfind('\n');
+        const auto lf = Safety_.Original(source).rfind('\n');
         if (lf != std::string_view::npos) {
             if (plan.RelativeIndent) {
                 if (!Safety_.CanReplaceGap(i, Safety_.Original(source))) {
@@ -4781,24 +4781,21 @@ private:
                         .SharedWith = Groups_[continuation].ContinuationAnchor,
                     });
                 } else if (group.HasAnchor) {
-                    group.Anchor =
-                        Document_
-                            .MarkAnchor(
-                                {
-                                    group.Indent.Alignment == ContinuationAlignment::Delimiter
-                                        ? document::AnchorKind::DelimiterColumn
-                                        : document::AnchorKind::BlockRelative,
-                                    group.Indent.Alignment == ContinuationAlignment::Delimiter
-                                        ? 0
-                                        : int32_t(group.Indent.ContinuationOffset),
-                                    int32_t(group.Indent.FallbackOffset),
-                                    uint32_t(group.Indent.ContinuationOffset),
-                                    group.Spec.StructuralBase,
-                                    group.Spec.Continuation,
-                                    sharedAnchor ? Groups_[continuation].ContinuationAnchor : document::InvalidId,
-                                    group.Spec.LineBase,
-                                    group.Spec.FixedBase,
-                                });
+                    group.Anchor = Document_.MarkAnchor({
+                        group.Indent.Alignment == ContinuationAlignment::Delimiter
+                            ? document::AnchorKind::DelimiterColumn
+                            : document::AnchorKind::BlockRelative,
+                        group.Indent.Alignment == ContinuationAlignment::Delimiter
+                            ? 0
+                            : int32_t(group.Indent.ContinuationOffset),
+                        int32_t(group.Indent.FallbackOffset),
+                        uint32_t(group.Indent.ContinuationOffset),
+                        group.Spec.StructuralBase,
+                        group.Spec.Continuation,
+                        sharedAnchor ? Groups_[continuation].ContinuationAnchor : document::InvalidId,
+                        group.Spec.LineBase,
+                        group.Spec.FixedBase,
+                    });
                 }
                 // Children share the prospective level, not the arm's
                 // physical-line anchor used for its own preserved gaps.

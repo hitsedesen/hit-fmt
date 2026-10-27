@@ -6,7 +6,8 @@
 
 namespace tokenizer::detail {
 
-enum class AsciiRun : uint8_t {
+enum class AsciiRun : uint8_t
+{
     Whitespace,
     Identifier,
     String,
@@ -16,7 +17,8 @@ enum class AsciiRun : uint8_t {
     LineComment,
     Directive,
     DirectiveComment,
-    Count, };
+    Count,
+};
 
 struct AsciiBlock
 {

@@ -27,7 +27,10 @@ struct Style
 #undef FORMATTER_STYLE_FIELD
 };
 
-enum class LayoutDiagnosticKind { LineWidth };
+enum class LayoutDiagnosticKind
+{
+    LineWidth
+};
 
 struct LayoutDiagnostic
 {

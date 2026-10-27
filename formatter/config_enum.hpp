@@ -11,7 +11,8 @@
 
 namespace formatter {
 
-template <typename T> struct ConfigEnumNames;
+template <typename T>
+struct ConfigEnumNames;
 
 // Expand each value list for both the enum and its on-disk spelling.
 #define CONFIG_ENUM_ITEM(value) value,
@@ -138,8 +139,16 @@ DEFINE_CONFIG_ENUM(FunctionDefinitionParameterNames, DEFINITION_PARAMETER_NAMES_
 #undef DEFINITION_PARAMETER_NAMES_VALUES
 
 // NameCase is the only enum whose spellings differ from its C++ members.
-enum class NameCase : std::uint8_t { Unchecked, CamelCase, PascalCase, SnakeCase, ScreamingSnakeCase };
-template <> struct ConfigEnumNames<NameCase>
+enum class NameCase : std::uint8_t
+{
+    Unchecked,
+    CamelCase,
+    PascalCase,
+    SnakeCase,
+    ScreamingSnakeCase
+};
+template <>
+struct ConfigEnumNames<NameCase>
 {
     static constexpr auto Values =
         std::to_array<std::string_view>({"Unchecked", "camelCase", "PascalCase", "snake_case", "SCREAMING_SNAKE_CASE"});

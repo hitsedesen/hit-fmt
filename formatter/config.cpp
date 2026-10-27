@@ -460,12 +460,9 @@ void AssignStyle(Configuration& config, std::string_view value, const std::files
             decltype(config.FormattingStyle.*Member)>,
             std::optional<TrailingCommentSpaceSetting>>)
     {
-        config.FormattingStyle.*Member =
-            TrailingCommentSpaceSetting{
-                value == "Preserve"
-                    ? std::nullopt
-                    : std::optional<std::size_t>{ParseNonnegativeInteger(value, path, line)},
-            };
+        config.FormattingStyle.*Member = TrailingCommentSpaceSetting{
+            value == "Preserve" ? std::nullopt : std::optional<std::size_t>{ParseNonnegativeInteger(value, path, line)},
+        };
     } else if constexpr (std::is_same_v<std::remove_cvref_t<
             decltype(config.FormattingStyle.*Member)>, BlankLineSetting>)
     {

@@ -78,7 +78,8 @@ namespace tokenizer {
     TOKENIZATION_ERROR_KIND(                                                   \
         UnexpectedNullCharacter, "Unexpected NUL character")
 
-enum class TokenizationErrorKind : uint8_t {
+enum class TokenizationErrorKind : uint8_t
+{
 #define TOKENIZATION_ERROR_KIND(value, description) value,
     TOKENIZATION_ERROR_KINDS
 #undef TOKENIZATION_ERROR_KIND
@@ -100,7 +101,11 @@ template <typename Owner>
 class TokenizerCursor
 {
 protected:
-    enum class NewlineHandling : uint8_t { Track, Ignore, };
+    enum class NewlineHandling : uint8_t
+    {
+        Track,
+        Ignore,
+    };
 
     [[nodiscard]] unicode::CodePoint CurrentCodePoint();
     [[nodiscard]] unicode::CodePoint CurrentUnicodeCodePoint();

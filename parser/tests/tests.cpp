@@ -2415,26 +2415,25 @@ TEST(Parser, RecordHeadTemplateArgumentsOwnTheirSeparators)
 
 TEST(Parser, RecordHeadChildrenAreBoundedWithoutGuessingOperands)
 {
-    const std::pair<std::string_view, size_t> cases[] =
-        {
-            {"struct Plain {};", 0},
-            {"struct Outer::Inner {};", 0},
-            {"template<> struct Outer<int>::Inner<long,char> {};", 2},
-            {"template<> struct Pair<> {};", 1},
-            {"template<> struct Pair<Wrap<int,long>, char> {};", 2},
-            {"template<> struct Pair<(a < b), 2> {};", 1},
-            {"template<> struct Pair<Value{1,2}, 3> {};", 1},
-            {"template<> struct Pair<decltype(auto), 2> {};", 1},
-            {"template<> struct Pair<decltype(call(a,b)), 2> {};", 1},
-            {"struct alignas(alignof(int)) Pair<int,long> {};", 1},
-            {"struct alignas(1<<4) Pair<int,long> {};", 1},
-            {"struct API alignas(1<<4) Pair<int,long> {};", 0},
-            {"struct alignas((1<2],0) Pair<int,long> {};", 0},
-            {"struct API Pair<int,long> {};", 0},
-            {"struct Pair<int, Wrap<long> {};", 0},
-            {"struct Pair<(1<2],0> {};", 0},
-            {"struct Pair<Value{1>0],0> {};", 0},
-        };
+    const std::pair<std::string_view, size_t> cases[] = {
+        {"struct Plain {};", 0},
+        {"struct Outer::Inner {};", 0},
+        {"template<> struct Outer<int>::Inner<long,char> {};", 2},
+        {"template<> struct Pair<> {};", 1},
+        {"template<> struct Pair<Wrap<int,long>, char> {};", 2},
+        {"template<> struct Pair<(a < b), 2> {};", 1},
+        {"template<> struct Pair<Value{1,2}, 3> {};", 1},
+        {"template<> struct Pair<decltype(auto), 2> {};", 1},
+        {"template<> struct Pair<decltype(call(a,b)), 2> {};", 1},
+        {"struct alignas(alignof(int)) Pair<int,long> {};", 1},
+        {"struct alignas(1<<4) Pair<int,long> {};", 1},
+        {"struct API alignas(1<<4) Pair<int,long> {};", 0},
+        {"struct alignas((1<2],0) Pair<int,long> {};", 0},
+        {"struct API Pair<int,long> {};", 0},
+        {"struct Pair<int, Wrap<long> {};", 0},
+        {"struct Pair<(1<2],0> {};", 0},
+        {"struct Pair<Value{1>0],0> {};", 0},
+    };
     for (const auto& [source, expectedLists] : cases) {
         SCOPED_TRACE(source);
         PaddedInput input(source);
@@ -2731,9 +2730,7 @@ TEST(Parser, NestedRequirementSyntaxHasBoundedRecovery)
     const auto tree = parser::Parse(input.View(), [] (parser::ParseError) { });
     const auto unparsed = LambdaOwnershipNodes(tree.Root(), parser::NodeKind::UnparsedSyntax);
     ASSERT_EQ(unparsed.size(), 1u);
-    EXPECT_TRUE(tree
-        .SourceText(unparsed.front()->Tokens)
-        .starts_with("requires requires {"));
+    EXPECT_TRUE(tree.SourceText(unparsed.front()->Tokens).starts_with("requires requires {"));
     const auto* outside = tree.Root().LastChild;
     ASSERT_NE(outside, nullptr);
     EXPECT_EQ(tree.SourceText(outside->Tokens), "int outside;");
@@ -2942,9 +2939,7 @@ TEST(Parser, RequiresClauseDoesNotCertifyMalformedTemplateReturnPrefix)
         }
         ASSERT_NE(clause, nullptr);
         ASSERT_NE(clause->FirstChild, nullptr);
-        EXPECT_TRUE(tree
-            .SourceText(clause->FirstChild->Tokens)
-            .starts_with("Ready<T>\n" + std::string(prefix)));
+        EXPECT_TRUE(tree.SourceText(clause->FirstChild->Tokens).starts_with("Ready<T>\n" + std::string(prefix)));
     }
 }
 
@@ -3198,9 +3193,7 @@ TEST(Parser, RequiresClauseRetainsDirectiveInsideRequirementBody)
             for (auto token = node->Tokens.Begin; token < node->Tokens.End; ++token) {
                 if (tree.Kind(token) == tokenizer::TokenKind::PreprocessingDirective) {
                     ++directives;
-                    EXPECT_TRUE(tree
-                        .TokenText(token)
-                        .starts_with("#define REQUIREMENT_VALUE 1"));
+                    EXPECT_TRUE(tree.TokenText(token).starts_with("#define REQUIREMENT_VALUE 1"));
                 }
             }
         }

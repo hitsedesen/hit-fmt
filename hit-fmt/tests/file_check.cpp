@@ -60,9 +60,7 @@ TEST(FileCheck, OneResultServesCheckAndFixWithoutCountingAppliedFormatting)
     hit_fmt::PrintFileSummaryIssues(checkSummary, checked, false);
     hit_fmt::PrintFileSummaryIssues(fixSummary, checked, true);
     EXPECT_EQ(checkSummary.str(), "formatting mismatch");
-    EXPECT_TRUE(fixSummary
-        .str()
-        .empty());
+    EXPECT_TRUE(fixSummary.str().empty());
     const Input applied(checked.Formatting.Text);
     const auto clean = hit_fmt::CheckFile(applied.View(), configuration);
     EXPECT_EQ(clean.Formatting.Text, checked.Formatting.Text);
@@ -170,10 +168,8 @@ TEST(FileCheck, IncludeOrderDiagnosticGoldenIsOneErrorForTheFile)
             EXPECT_TRUE(checked.HasFailures(false));
             EXPECT_FALSE(checked.HasFailures(true));
             for (const auto& change : checked.IncludeOrderChanges) {
-                const auto before = input
-                    .View()
-                    .View()
-                    .substr(change.Original.Begin, change.Original.End - change.Original.Begin);
+                const auto before =
+                    input.View().View().substr(change.Original.Begin, change.Original.End - change.Original.Begin);
                 const auto after = std::string_view(checked.Formatting.Text)
                     .substr(change.Emitted.Begin, change.Emitted.End - change.Emitted.Begin);
                 EXPECT_TRUE(before.ends_with('\n'));
@@ -183,14 +179,7 @@ TEST(FileCheck, IncludeOrderDiagnosticGoldenIsOneErrorForTheFile)
             }
             for (const bool fix : {false, true}) {
                 std::ostringstream output;
-                hit_fmt::PrintFileIssues(
-                    output,
-                    "sample.cpp",
-                    input
-                        .View()
-                        .View(),
-                    checked,
-                    fix);
+                hit_fmt::PrintFileIssues(output, "sample.cpp", input.View().View(), checked, fix);
                 output << "summary: ";
                 hit_fmt::PrintFileSummaryIssues(output, checked, fix);
                 output << '\n';
@@ -266,15 +255,7 @@ TEST(FileCheck, DiagnosticGoldenUsesOriginalCheckAndFinalFixCoordinates)
             SCOPED_TRACE(fix ? "fix" : "check");
             SCOPED_TRACE(terminalWidth);
             std::ostringstream output;
-            hit_fmt::PrintFileIssues(
-                output,
-                "sample.cpp",
-                input
-                    .View()
-                    .View(),
-                checked,
-                fix,
-                terminalWidth);
+            hit_fmt::PrintFileIssues(output, "sample.cpp", input.View().View(), checked, fix, terminalWidth);
             output << "summary: ";
             hit_fmt::PrintFileSummaryIssues(output, checked, fix);
             output << '\n';
@@ -341,13 +322,7 @@ TEST(FileCheck, TokenEndpointAndUnicodePositionsMapWithoutReparsingOutput)
     const Input input(source);
     const auto checked = hit_fmt::CheckFile(input.View(), prepared);
     ASSERT_EQ(checked.Semantic.size(), 4u);
-    EXPECT_NE(
-        checked
-            .Semantic
-            .back()
-            .Message
-            .find("function declaration"),
-        std::string::npos);
+    EXPECT_NE(checked.Semantic.back().Message.find("function declaration"), std::string::npos);
     EXPECT_EQ(
         checked.Semantic[0].Original.Column,
         source.find("bad_name") /* one extra UTF8 byte cancels one-based column */);
@@ -402,15 +377,7 @@ TEST(FileCheck, UnicodeWidthDiagnosticGoldenMapsCodePointsAndTabs)
     EXPECT_EQ(checked.OriginalWidthPositions[1].Column, 12u);
     for (const bool fix : {false, true}) {
         std::ostringstream output;
-        hit_fmt::PrintFileIssues(
-            output,
-            "unicode.cpp",
-            input
-                .View()
-                .View(),
-            checked,
-            fix,
-            80);
+        hit_fmt::PrintFileIssues(output, "unicode.cpp", input.View().View(), checked, fix, 80);
         fixture.Expect(output.str(), fix ? ".fix.txt" : ".check.txt");
     }
 
@@ -432,11 +399,7 @@ TEST(FileCheck, ActualProtectedOverflowRemainsFailureInFixMode)
     const hit_fmt::PreparedFileConfiguration prepared(raw);
     const Input input("// hit-fmt off\r\nint " "unavoidable_long_name;\r\n// hit-fmt on\r\n");
     const auto checked = hit_fmt::CheckFile(input.View(), prepared);
-    EXPECT_EQ(
-        checked.Formatting.Text,
-        input
-            .View()
-            .View());
+    EXPECT_EQ(checked.Formatting.Text, input.View().View());
     EXPECT_FALSE(checked.FormattingMismatch);
     EXPECT_TRUE(checked.HasFailures(false));
     EXPECT_TRUE(checked.HasFailures(true));
@@ -491,11 +454,7 @@ TEST(FileCheck, EmptyHunkScopeNeverFallsBackToWholeFile)
     const hit_fmt::PreparedFileConfiguration prepared(raw);
     const Input input("void bad_name(int);\n");
     const auto empty = hit_fmt::CheckFile(input.View(), prepared, {}, hit_fmt::ChangedFileScope{});
-    EXPECT_EQ(
-        empty.Formatting.Text,
-        input
-            .View()
-            .View());
+    EXPECT_EQ(empty.Formatting.Text, input.View().View());
     EXPECT_FALSE(empty.HasFailures(false));
     EXPECT_FALSE(empty.HasFailures(true));
     EXPECT_TRUE(empty.Incomplete.empty());
@@ -552,28 +511,13 @@ TEST(FileCheck, HunkDiagnosticGoldenUsesOriginalSelectionAndMappedOutput)
             std::string::npos);
         for (const bool fix : {false, true}) {
             std::ostringstream output;
-            hit_fmt::PrintFileIssues(
-                output,
-                "sample.cpp",
-                input
-                    .View()
-                    .View(),
-                checked,
-                fix);
+            hit_fmt::PrintFileIssues(output, "sample.cpp", input.View().View(), checked, fix);
             output << "summary: ";
             hit_fmt::PrintFileSummaryIssues(output, checked, fix);
             output << '\n';
-            EXPECT_EQ(
-                output
-                    .str()
-                    .find("note:"),
-                std::string::npos);
+            EXPECT_EQ(output.str().find("note:"), std::string::npos);
             if (!fix) {
-                EXPECT_EQ(
-                    output
-                        .str()
-                        .find("cannot"),
-                    std::string::npos);
+                EXPECT_EQ(output.str().find("cannot"), std::string::npos);
             }
             fixture.Expect(
                 output.str(),
@@ -598,21 +542,10 @@ TEST(FileCheck, IncompleteHunkCoverageAndRequiredChangesStayDistinct)
     EXPECT_FALSE(checked.Incomplete.empty());
     for (const bool fix : {false, true}) {
         std::ostringstream output, summary;
-        hit_fmt::PrintFileIssues(
-            output,
-            "sample.cpp",
-            input
-                .View()
-                .View(),
-            checked,
-            fix);
+        hit_fmt::PrintFileIssues(output, "sample.cpp", input.View().View(), checked, fix);
         hit_fmt::PrintFileSummaryIssues(summary, checked, fix);
-        EXPECT_TRUE(output
-            .str()
-            .empty());
-        EXPECT_TRUE(summary
-            .str()
-            .empty());
+        EXPECT_TRUE(output.str().empty());
+        EXPECT_TRUE(summary.str().empty());
     }
 
     raw.FormattingStyle.AddMissingControlBraces = true;
@@ -626,14 +559,7 @@ TEST(FileCheck, IncompleteHunkCoverageAndRequiredChangesStayDistinct)
     EXPECT_TRUE(required.HasFailures(true));
     for (const bool fix : {false, true}) {
         std::ostringstream output, summary;
-        hit_fmt::PrintFileIssues(
-            output,
-            "sample.cpp",
-            blocked
-                .View()
-                .View(),
-            required,
-            fix);
+        hit_fmt::PrintFileIssues(output, "sample.cpp", blocked.View().View(), required, fix);
         hit_fmt::PrintFileSummaryIssues(summary, required, fix);
         for (const auto& text : {output.str(), summary.str()}) {
             EXPECT_NE(text.find("fail: control body requires braces"), std::string::npos);

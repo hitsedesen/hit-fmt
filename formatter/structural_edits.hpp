@@ -15,7 +15,8 @@ namespace formatter {
 // Independent of renderer fitting and configuration storage. Include sorting
 // moves exact directive atoms unless opt-in directive whitespace also applies.
 // Text policies never grant authority over other protected interiors.
-enum class StructuralAction : uint8_t {
+enum class StructuralAction : uint8_t
+{
     AddMissingControlBraces,
     EmptyControlBody,
     RemoveNullStatements,
@@ -23,9 +24,11 @@ enum class StructuralAction : uint8_t {
     IncludeOrder,
     NamespaceComments,
     DirectiveWhitespace,
-    RulerLength, };
+    RulerLength,
+};
 
-enum class StructuralSkip : uint8_t {
+enum class StructuralSkip : uint8_t
+{
     Incomplete,
     Protected,
     CommentAttached,
@@ -35,7 +38,8 @@ enum class StructuralSkip : uint8_t {
     InvalidMapping,
     FollowingText,
     ShortNamespace,
-    RequiredBody, };
+    RequiredBody,
+};
 
 struct StructuralDiagnostic
 {
@@ -101,7 +105,12 @@ struct StructuralEdit
     StructuralActionId Operation;
     uint32_t Depth = 0;
 
-    enum class Edge : uint8_t { Close, Open, Replace } Boundary = Edge::Replace;
+    enum class Edge : uint8_t
+    {
+        Close,
+        Open,
+        Replace
+    } Boundary = Edge::Replace;
 };
 // Planner-created records are exposed for inspection, not permission to
 // fabricate semantic edits. Materialization validates ownership, not C++
@@ -191,7 +200,13 @@ struct IncludeGroup
     std::pmr::memory_resource& fileMemory,
     std::pmr::memory_resource& scratchMemory);
 
-enum class NamespaceCommentPolicy : uint8_t { Preserve, AddMissing, Fix, Remove };
+enum class NamespaceCommentPolicy : uint8_t
+{
+    Preserve,
+    AddMissing,
+    Fix,
+    Remove
+};
 
 struct NamespaceCommentOptions
 {

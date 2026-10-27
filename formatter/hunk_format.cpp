@@ -248,13 +248,7 @@ ChangedFormatResult FormatChanged(
     scratch.release();
     const auto permitted = lines.Coalesce(windows, file);
     const auto permittedBytes = ByteScope(lines, permitted, file);
-    const auto scope = NarrowScope(
-        permittedBytes,
-        request.EditScope,
-        tree
-            .Source()
-            .size(),
-        file);
+    const auto scope = NarrowScope(permittedBytes, request.EditScope, tree.Source().size(), file);
     for (const auto& protection : safety.Protection()) {
         if (detail::HunkScopeIntersects(selectedBytes, protection.Source)) {
             coverage.push_back({protection.Source, Reason::SemanticProtection});
@@ -275,9 +269,7 @@ ChangedFormatResult FormatChanged(
     }
     // EOF is never an owned insertion point, even with the last line selected.
     // That limits layout-check coverage; it is not evidence of a missing LF.
-    const auto size = CheckedSourceAnalysisSize(tree
-        .Source()
-        .size());
+    const auto size = CheckedSourceAnalysisSize(tree.Source().size());
     if (size && detail::HunkScopeContains(selectedBytes, {size - 1, size})) {
         coverage.push_back({{size - 1, size}, Reason::LimitedLayout});
     }

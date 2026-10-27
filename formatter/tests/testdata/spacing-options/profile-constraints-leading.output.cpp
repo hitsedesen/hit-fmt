@@ -20,7 +20,8 @@ struct ChoiceFactory
     static void Configure();
 };
 
-template <class T> requires (Ready<T> && Enabled<T>)
+template <class T>
+    requires (Ready<T> && Enabled<T>)
 struct Compact;
 
 template <class T>

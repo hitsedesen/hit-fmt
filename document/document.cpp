@@ -1500,30 +1500,28 @@ Result Document::Render(Policy policy, std::pmr::memory_resource* resource) cons
             if (pending != 0 && (logical < 0 || logical >= Infinity)) {
                 reversible = false;
             }
-            frame =
-                {
-                    Offset(base, indent),
-                    tail,
-                    forceOwned
-                        ? groupEntry.OwnedLastBreak
-                        : broken && !keepOwnedFlat && !groupEntry.GuaranteedLine ? groupEntry.LastBreak : InvalidId,
-                    lines,
-                    !broken,
-                    !broken || keepOwnedFlat,
-                    forceOwned,
-                    false,
-                    pending,
-                    node.Group.ExpressionContinuation,
-                    node.Group.StructuralBase,
-                    false,
-                    reversible,
-                    node.Group.Continuation ? base : frame.ContinuationBase,
-                    node.Group.Continuation || (!node.Group.StructuralBase && frame.HasContinuation),
-                    (shared || (!node.Group.Continuation && !node.Group.StructuralBase)) &&
-                        frame.RealizedContinuationLine,
-                    frame.RealizedContinuationIndent,
-                    node.Group.Continuation && !shared ? lines : frame.ContinuationStartLine,
-                };
+            frame = {
+                Offset(base, indent),
+                tail,
+                forceOwned
+                    ? groupEntry.OwnedLastBreak
+                    : broken && !keepOwnedFlat && !groupEntry.GuaranteedLine ? groupEntry.LastBreak : InvalidId,
+                lines,
+                !broken,
+                !broken || keepOwnedFlat,
+                forceOwned,
+                false,
+                pending,
+                node.Group.ExpressionContinuation,
+                node.Group.StructuralBase,
+                false,
+                reversible,
+                node.Group.Continuation ? base : frame.ContinuationBase,
+                node.Group.Continuation || (!node.Group.StructuralBase && frame.HasContinuation),
+                (shared || (!node.Group.Continuation && !node.Group.StructuralBase)) && frame.RealizedContinuationLine,
+                frame.RealizedContinuationIndent,
+                node.Group.Continuation && !shared ? lines : frame.ContinuationStartLine,
+            };
             return true;
         }
         if (node.Type == Kind::End) {

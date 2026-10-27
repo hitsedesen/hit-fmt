@@ -181,10 +181,7 @@ TEST(StructuralEdits, NestedControlsKeepDanglingElseAndSingleOriginalPlan)
     CheckMapping(file, result);
     // Reparse only in this property test, never in planning/materialization.
     File again(result.Text);
-    EXPECT_TRUE(again
-        .Plan({.AddMissingControlBraces = true})
-        .Edits
-        .empty());
+    EXPECT_TRUE(again.Plan({.AddMissingControlBraces = true}).Edits.empty());
 }
 
 TEST(StructuralEdits, ElseIfChainAndDoWhile)
@@ -399,10 +396,7 @@ TEST(StructuralEdits, IncludeDiscoveryContainsSortedGroupsAndExactPermutations)
     auto cursor = groups[1].Source.Begin;
     for (auto atom : atoms) {
         EXPECT_EQ(atom.Begin, cursor);
-        EXPECT_TRUE(file
-            .Tree
-            .SourceText(atom)
-            .ends_with('\n'));
+        EXPECT_TRUE(file.Tree.SourceText(atom).ends_with('\n'));
         cursor = atom.End;
     }
     EXPECT_EQ(cursor, groups[1].Source.End);
@@ -411,10 +405,7 @@ TEST(StructuralEdits, IncludeDiscoveryContainsSortedGroupsAndExactPermutations)
     CheckMapping(file, result);
     File sorted(result.Text);
     EXPECT_EQ(DiscoverIncludeGroups(sorted.Tree, sorted.Safety, sorted.Memory, sorted.Scratch).size(), 2u);
-    EXPECT_TRUE(sorted
-        .Plan({.SortIncludes = true})
-        .Operations
-        .empty());
+    EXPECT_TRUE(sorted.Plan({.SortIncludes = true}).Operations.empty());
 }
 
 TEST(StructuralEdits, IncludeDiscoveryRespectsCompleteGroupBoundaries)
@@ -451,14 +442,8 @@ TEST(StructuralEdits, IncludeDiscoveryRespectsCompleteGroupBoundaries)
                 EXPECT_TRUE(group.Source.End <= begin || end <= group.Source.Begin);
             }
             EXPECT_TRUE(std::any_of(
-                file
-                    .Safety
-                    .Protection()
-                    .begin(),
-                file
-                    .Safety
-                    .Protection()
-                    .end(),
+                file.Safety.Protection().begin(),
+                file.Safety.Protection().end(),
                 [&] (const auto& range) {
                     return range.Source.Begin < end && begin < range.Source.End &&
                         (uint16_t(range.Reasons) & uint16_t(ProtectionReason::LineSplice));
@@ -490,10 +475,7 @@ TEST(StructuralEdits, IncludeDiscoveryRespectsCompleteGroupBoundaries)
     {
         File file(text);
         EXPECT_TRUE(DiscoverIncludeGroups(file.Tree, file.Safety, file.Memory, file.Scratch).empty());
-        EXPECT_TRUE(file
-            .Plan({.SortIncludes = true})
-            .Edits
-            .empty());
+        EXPECT_TRUE(file.Plan({.SortIncludes = true}).Edits.empty());
     }
     File mixed("#include <b.h>\r\n#include <a.h>\r\n" "#include <b.h>\n#include <a.h>\n#include <final.h>");
     auto groups = DiscoverIncludeGroups(mixed.Tree, mixed.Safety, mixed.Memory, mixed.Scratch);
@@ -535,13 +517,7 @@ TEST(StructuralEdits, IncludeDiscoveryNeverWeakensProtectionOrScope)
             EXPECT_EQ(plan.Skipped.front().Reason, StructuralSkip::Protected);
             EXPECT_EQ(plan.Skipped.front().Tokens.Begin, 0u);
             EXPECT_EQ(plan.Skipped.front().Tokens.End, 2u);
-            EXPECT_EQ(
-                file
-                    .Safety
-                    .Protection()
-                    .front()
-                    .Reasons,
-                ProtectionReason::Directive | reason);
+            EXPECT_EQ(file.Safety.Protection().front().Reasons, ProtectionReason::Directive | reason);
         }
     }
     File original(text);
@@ -594,16 +570,10 @@ TEST(StructuralEdits, IncludeDiscoveryNeverWeakensProtectionOrScope)
     EXPECT_EQ(excludedPlan.Skipped.size(), 2u);
     File empty(text, {.EditScope = std::span<const parser::SourceRange>{}});
     EXPECT_TRUE(DiscoverIncludeGroups(empty.Tree, empty.Safety, empty.Memory, empty.Scratch).empty());
-    EXPECT_TRUE(empty
-        .Plan({.SortIncludes = true})
-        .Operations
-        .empty());
+    EXPECT_TRUE(empty.Plan({.SortIncludes = true}).Operations.empty());
     File disabled("// clang-format off\n" + text + "// clang-format on\n", {.HonorClangFormatDirectives = true});
     EXPECT_TRUE(DiscoverIncludeGroups(disabled.Tree, disabled.Safety, disabled.Memory, disabled.Scratch).empty());
-    EXPECT_TRUE(disabled
-        .Plan({.SortIncludes = true})
-        .Edits
-        .empty());
+    EXPECT_TRUE(disabled.Plan({.SortIncludes = true}).Edits.empty());
     File other(text);
     EXPECT_THROW(
         (void)DiscoverIncludeGroups(original.Tree, other.Safety, original.Memory, original.Scratch),

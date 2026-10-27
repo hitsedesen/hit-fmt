@@ -19,9 +19,7 @@ namespace {
 struct FileInputs
 {
     std::filesystem::path Directory = std::filesystem::temp_directory_path() /
-        ("hit-fmt-dispatch-" + std::to_string(std::chrono::steady_clock::now()
-            .time_since_epoch()
-            .count()));
+        ("hit-fmt-dispatch-" + std::to_string(std::chrono::steady_clock::now().time_since_epoch().count()));
 
     explicit FileInputs(size_t count)
     {
@@ -64,9 +62,7 @@ TEST(FileDispatch, FileFailuresDoNotHideLaterResults)
         };
         auto process = [&] (const std::filesystem::path& path, int&) {
             ++processed;
-            const auto name = path
-                .stem()
-                .string();
+            const auto name = path.stem().string();
             const bool failed = name == "0" || name == "3";
             if (!failed) {
                 util::WriteEntireFile(path.string(), "int value = 0;\n");
@@ -85,9 +81,7 @@ TEST(FileDispatch, FileFailuresDoNotHideLaterResults)
         EXPECT_FALSE(success);
         EXPECT_EQ(processed.load(), count);
         EXPECT_EQ(printed, count);
-        EXPECT_TRUE(errors
-            .str()
-            .empty());
+        EXPECT_TRUE(errors.str().empty());
     }
 }
 

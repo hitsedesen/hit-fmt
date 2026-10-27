@@ -29,7 +29,12 @@ struct ChangedHunkFiles
 // Paths in file records are resolved against directory, not the input stream.
 [[nodiscard]] ChangedHunkFiles ParseChangedHunks(std::istream& input, const std::filesystem::path& directory);
 
-enum class HunkCoverageReason { LimitedLayout, SemanticProtection, StructuralEligibility, };
+enum class HunkCoverageReason
+{
+    LimitedLayout,
+    SemanticProtection,
+    StructuralEligibility,
+};
 
 struct HunkCoverage
 {

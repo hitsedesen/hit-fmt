@@ -417,9 +417,7 @@ void SourceAnalysis::RestrictEditScope(std::span<const parser::SourceRange> rang
         }
         previousEnd = range.End;
     }
-    const auto allocator = Gaps_
-        .get_allocator()
-        .resource();
+    const auto allocator = Gaps_.get_allocator().resource();
     std::pmr::vector<parser::SourceRange> scope(allocator);
     scope.reserve(ranges.size());
     for (const auto range : ranges) {
@@ -908,21 +906,20 @@ SourceAnalysis BuildSourceAnalysis(
                     recovery ? ProtectionReason::Recovery : ProtectionReason::Ambiguous;
             }
         }
-        stack
-            .push_back({
-                node.Child(),
-                id,
-                node.Kind == parser::NodeKind::PreprocessingConditional ||
-                    node.Kind == parser::NodeKind::PreprocessingBranch
-                    ? boundaryParent
-                    : id,
-                result.Regions_[id].StatementBoundary
-                    ? id
-                    : node.Kind == parser::NodeKind::CompoundStatement || node.Kind == parser::NodeKind::LambdaBody ||
-                        node.Kind == parser::NodeKind::RequirementBody
-                        ? NoRegion
-                        : enclosingStatement,
-            });
+        stack.push_back({
+            node.Child(),
+            id,
+            node.Kind == parser::NodeKind::PreprocessingConditional ||
+                node.Kind == parser::NodeKind::PreprocessingBranch
+                ? boundaryParent
+                : id,
+            result.Regions_[id].StatementBoundary
+                ? id
+                : node.Kind == parser::NodeKind::CompoundStatement || node.Kind == parser::NodeKind::LambdaBody ||
+                    node.Kind == parser::NodeKind::RequirementBody
+                    ? NoRegion
+                    : enclosingStatement,
+        });
     };
     visit(tree.Root(), NoRegion);
     while (!stack.empty()) {

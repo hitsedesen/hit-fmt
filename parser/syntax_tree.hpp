@@ -200,7 +200,8 @@ struct TokenRange
     SYNTAX_NODE_KIND(RangeForSeparator, "range-for-separator")                 \
     SYNTAX_NODE_KIND(Error, "error")
 
-enum class NodeKind : uint8_t {
+enum class NodeKind : uint8_t
+{
 #define SYNTAX_NODE_KIND(value, name) value,
     SYNTAX_NODE_KINDS
 #undef SYNTAX_NODE_KIND
@@ -218,7 +219,13 @@ static_assert(static_cast<size_t>(NodeKind::Error) < 256);
     return Names[static_cast<size_t>(kind)];
 }
 
-enum class FunctionKind : uint8_t { Unknown, Ordinary, Constructor, Destructor, };
+enum class FunctionKind : uint8_t
+{
+    Unknown,
+    Ordinary,
+    Constructor,
+    Destructor,
+};
 
 struct SourceRange
 {
@@ -231,7 +238,8 @@ struct SourceRange
     }
 };
 
-enum class PunctuationRole : uint8_t {
+enum class PunctuationRole : uint8_t
+{
     None,
     Generic,
     PointerDeclarator,
@@ -258,9 +266,14 @@ enum class PunctuationRole : uint8_t {
     CastDelimiter,
     ConditionDelimiter,
     GroupingDelimiter,
-    ListSeparator, };
+    ListSeparator,
+};
 
-enum class TriviaKind { Comment, Whitespace, };
+enum class TriviaKind
+{
+    Comment,
+    Whitespace,
+};
 
 struct Trivia
 {

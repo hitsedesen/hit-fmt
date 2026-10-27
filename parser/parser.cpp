@@ -298,7 +298,11 @@ public:
     }
 
 private:
-    enum class NameKind { Type, Value, };
+    enum class NameKind
+    {
+        Type,
+        Value,
+    };
 
     struct NameScope;
 
@@ -741,7 +745,14 @@ private:
         }
     }
 
-    enum class DirectiveKind { Other, If, ElseIf, Else, EndIf, };
+    enum class DirectiveKind
+    {
+        Other,
+        If,
+        ElseIf,
+        Else,
+        EndIf,
+    };
 
     [[nodiscard]] DirectiveKind GetDirectiveKind(TokenIndex index) const
     {
@@ -2797,9 +2808,21 @@ private:
         return end;
     }
 
-    enum class ListFragmentKind { Arguments, Parameters, Initializers };
+    enum class ListFragmentKind
+    {
+        Arguments,
+        Parameters,
+        Initializers
+    };
 
-    enum class ListFragmentState { Empty, Item, AfterItem, Constructor, Complete };
+    enum class ListFragmentState
+    {
+        Empty,
+        Item,
+        AfterItem,
+        Constructor,
+        Complete
+    };
 
     // Parse complete list entries in each branch, without choosing a macro
     // configuration or expanding combinations of nested conditionals. Scanning
@@ -4299,7 +4322,12 @@ private:
         return knownHead ? functionKind : FunctionKind::Unknown;
     }
 
-    enum class ParameterTypeEvidence { Type, Value, Unknown, };
+    enum class ParameterTypeEvidence
+    {
+        Type,
+        Value,
+        Unknown,
+    };
 
     [[nodiscard]] ParameterTypeEvidence StartsStatementParameterType(TokenIndex first, TokenIndex end) const
     {
@@ -5331,7 +5359,14 @@ private:
         bool invalidFunctionSuffix = false;
         bool sawTrailingReturnType = false;
         TokenIndex functionTry = std::numeric_limits<TokenIndex>::max();
-        enum class TerminalPending { None, OptionalException, RequiredOperand, DefaultDelete, Semicolon };
+        enum class TerminalPending
+        {
+            None,
+            OptionalException,
+            RequiredOperand,
+            DefaultDelete,
+            Semicolon
+        };
         bool terminalEligible = false;
         bool terminalDenied = false;
         auto terminalPending = TerminalPending::None;
@@ -8137,7 +8172,12 @@ private:
         return Tree_.Trivia_[node.TriviaIndex_];
     }
 
-    enum class TriviaPlacement { Leading, Trailing, Dangling, };
+    enum class TriviaPlacement
+    {
+        Leading,
+        Trailing,
+        Dangling,
+    };
 
     void InsertTrivia(TriviaList& list, Trivia& trivia)
     {

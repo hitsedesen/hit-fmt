@@ -276,9 +276,8 @@ bool AdjacentComment(const parser::SyntaxTree& tree, parser::TokenRange tokens)
     if (tokens.Begin && tree.Kind(tokens.Begin - 1) == TK::Comment) {
         return true;
     }
-    return tokens.End < tree.TokenCount() && tree.Kind(tokens.End) == TK::Comment && tree
-        .WhitespaceBefore(tokens.End)
-        .find('\n') == std::string_view::npos;
+    return tokens.End < tree.TokenCount() && tree.Kind(tokens.End) == TK::Comment &&
+        tree.WhitespaceBefore(tokens.End).find('\n') == std::string_view::npos;
 }
 
 struct Include
@@ -489,9 +488,7 @@ void Includes(
             std::error_code error;
             const auto root = std::filesystem::current_path(error);
             if (!error) {
-                const auto relative = input
-                    .lexically_normal()
-                    .lexically_relative(root);
+                const auto relative = input.lexically_normal().lexically_relative(root);
                 // Project-root includes and filenames passed relative to the
                 // working directory must use the same coordinate system.
                 // External absolute roots retain their lexical coordinates.
@@ -704,9 +701,7 @@ void Includes(
             if (!sorted) {
                 std::sort(group.begin(), group.end(), compare);
             }
-            const auto ending = tree
-                .TokenText(group.front().Token)
-                .ends_with('\r')
+            const auto ending = tree.TokenText(group.front().Token).ends_with('\r')
                 ? std::string_view("\r\n")
                 : std::string_view("\n");
             for (std::size_t i = 0; i < group.size(); ++i) {
@@ -717,15 +712,12 @@ void Includes(
             }
             // Sorted blocks with canonical separators are no-ops, preserving
             // operation identities and avoiding reparsing on repeat runs.
-            auto original = tree
-                .Source()
-                .substr(descriptor.Source.Begin, descriptor.Source.End - descriptor.Source.Begin);
+            auto original =
+                tree.Source().substr(descriptor.Source.Begin, descriptor.Source.End - descriptor.Source.Begin);
             bool unchanged = true;
             for (const auto& piece : pieces) {
                 const auto text = piece.FromSource
-                    ? tree
-                        .Source()
-                        .substr(piece.Source.Begin, piece.Source.End - piece.Source.Begin)
+                    ? tree.Source().substr(piece.Source.Begin, piece.Source.End - piece.Source.Begin)
                     : piece.Literal;
                 if (!original.starts_with(text)) {
                     unchanged = false;
@@ -1128,9 +1120,7 @@ StructuralMaterialization MaterializeStructuralEdits(
     copy(
         {
             cursor,
-            static_cast<parser::SourceOffset>(tree
-                .Source()
-                .size()),
+            static_cast<parser::SourceOffset>(tree.Source().size()),
         },
         NoStructuralAction);
     // Linear nearest-survivor tables bound chains of neighboring deletions.

@@ -25,14 +25,16 @@ struct SyntaxLayoutOptions
     uint8_t TabWidth = 8;
 };
 
-enum class SyntaxLayoutError : uint8_t {
+enum class SyntaxLayoutError : uint8_t
+{
     None,
     MismatchedInputs,
     InvalidGeneratedAdjacency,
     CrossingGroups,
     ConflictingGapOwners,
     IndentationOverflow,
-    CoreFailure, };
+    CoreFailure,
+};
 
 struct SyntaxLayoutStatus
 {

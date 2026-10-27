@@ -30,17 +30,43 @@ struct Provenance
     document::Identity Identity = NoIdentity;
 };
 
-enum class GroupMode : std::uint8_t { Consistent, Fill };
+enum class GroupMode : std::uint8_t
+{
+    Consistent,
+    Fill
+};
 
-enum class GapKind : std::uint8_t { Flat, Soft, Hard };
+enum class GapKind : std::uint8_t
+{
+    Flat,
+    Soft,
+    Hard
+};
 
-enum class AnchorKind : std::uint8_t { BlockRelative, DelimiterColumn };
+enum class AnchorKind : std::uint8_t
+{
+    BlockRelative,
+    DelimiterColumn
+};
 
-enum class Newline : std::uint8_t { LF, CRLF };
+enum class Newline : std::uint8_t
+{
+    LF,
+    CRLF
+};
 
-enum class GapNewline : std::uint8_t { Inherit, LF, CRLF };
+enum class GapNewline : std::uint8_t
+{
+    Inherit,
+    LF,
+    CRLF
+};
 
-enum class IndentationKind : std::uint8_t { Spaces, Tabs };
+enum class IndentationKind : std::uint8_t
+{
+    Spaces,
+    Tabs
+};
 
 struct GapSpec
 {
@@ -134,7 +160,8 @@ struct GroupSpec
     std::uint32_t FitSuffixWidth = InvalidId;
 };
 
-enum class Error : std::uint8_t {
+enum class Error : std::uint8_t
+{
     None,
     Sealed,
     Unsealed,
@@ -148,7 +175,8 @@ enum class Error : std::uint8_t {
     InvalidPolicy,
     TooLarge,
     InvalidLinePrefix,
-    IndentationOverflow };
+    IndentationOverflow
+};
 
 struct Status
 {
@@ -302,7 +330,8 @@ public:
     Result Render(Policy policy = {}, std::pmr::memory_resource* resource = std::pmr::get_default_resource()) const;
 
 private:
-    enum class Kind : std::uint8_t {
+    enum class Kind : std::uint8_t
+    {
         Begin,
         End,
         Text,
@@ -315,7 +344,8 @@ private:
         SourceWhitespace,
         ReindentedText,
         ExpressionLine,
-        SourceRun };
+        SourceRun
+    };
 
     // Source atoms use Origin offsets directly. Only external borrowed text
     // needs a file-scoped table entry; no pointer or size_t lives in an atom.
@@ -343,7 +373,13 @@ private:
         Provenance Origin;
     };
 
-    enum class RunKind : std::uint8_t { Text, Verbatim, SourceGap, Spaces };
+    enum class RunKind : std::uint8_t
+    {
+        Text,
+        Verbatim,
+        SourceGap,
+        Spaces
+    };
 
     struct RunPart
     {

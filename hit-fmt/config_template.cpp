@@ -57,12 +57,14 @@ void PrintStringList(std::ostream& output, const std::vector<std::string>& value
     output << ']';
 }
 
-template <typename T> struct OptionalValue
+template <typename T>
+struct OptionalValue
 {
     static constexpr bool IsOptional = false;
 };
 
-template <typename T> struct OptionalValue<std::optional<T>>
+template <typename T>
+struct OptionalValue<std::optional<T>>
 {
     static constexpr bool IsOptional = true;
     using Type = T;

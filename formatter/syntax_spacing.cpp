@@ -1600,9 +1600,7 @@ SyntaxSpacing BuildSyntaxSpacing(
     }
     SyntaxSpacing result(fileMemory);
     result.TrailingCommentSpaces_ = trailingCommentSpaces;
-    result.Gaps_.resize(safety
-        .Gaps()
-        .size());
+    result.Gaps_.resize(safety.Gaps().size());
     const auto regions = safety.Regions();
     if (regions.empty()) {
         throw std::invalid_argument("syntax spacing requires matching tree regions");

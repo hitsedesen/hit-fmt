@@ -37,6 +37,7 @@ void RecoverNested()
 }
 
 using KnownValue = int;
+
 void Known()
 {
     auto callback = [

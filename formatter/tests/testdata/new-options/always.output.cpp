@@ -8,7 +8,7 @@ U Box<T>::convert(U value) {
     return value;
 }
 template<class T>
-requires Ready<T> T create(T value) {
+    requires Ready<T> T create(T value) {
     return value;
 }
 struct Box {

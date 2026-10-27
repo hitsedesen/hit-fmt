@@ -19,7 +19,8 @@ using RegionId = uint32_t;
 inline constexpr RegionId NoRegion = UINT32_MAX;
 
 // Reasons apply to immutable bytes, not to ordinary comment line barriers.
-enum class ProtectionReason : uint16_t {
+enum class ProtectionReason : uint16_t
+{
     None = 0,
     Disabled = 1,
     SensitiveMacro = 2,
@@ -29,7 +30,8 @@ enum class ProtectionReason : uint16_t {
     LineSplice = 32,
     Explicit = 64,
     HeaderName = 128,
-    OutsideEditScope = 256, };
+    OutsideEditScope = 256,
+};
 
 constexpr ProtectionReason operator|(ProtectionReason a, ProtectionReason b)
 {
@@ -42,9 +44,18 @@ struct ProtectedSourceRange
     ProtectionReason Reasons = ProtectionReason::None;
 };
 
-enum class GapSeparation : uint8_t { Optional, Required };
+enum class GapSeparation : uint8_t
+{
+    Optional,
+    Required
+};
 
-enum class GapLineBoundary : uint8_t { Any, Required, Forbidden };
+enum class GapLineBoundary : uint8_t
+{
+    Any,
+    Required,
+    Forbidden
+};
 
 struct SourceGap
 {
@@ -78,7 +89,13 @@ struct SourceGap
 
 static_assert(sizeof(SourceGap) <= 16);
 
-enum class RegionStatus : uint8_t { Complete, Recovery, Ambiguous, RecoveryAndAmbiguous, };
+enum class RegionStatus : uint8_t
+{
+    Complete,
+    Recovery,
+    Ambiguous,
+    RecoveryAndAmbiguous,
+};
 
 struct SourceRegion
 {
@@ -105,7 +122,11 @@ static_assert(sizeof(SourceRegion) <= 40);
 // LF/CRLF, stays exact. Fully byte-covered but insertion-fenced gaps may use
 // CanSpellGapNewlines independently; these descriptors grant no such rights.
 // These are properties, not edit instructions or editable owned line breaks.
-enum class PartialGapPermissionKind : uint8_t { FinalIndentation, TrimHorizontal, };
+enum class PartialGapPermissionKind : uint8_t
+{
+    FinalIndentation,
+    TrimHorizontal,
+};
 
 struct PartialGapPermission
 {

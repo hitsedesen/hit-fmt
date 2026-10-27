@@ -101,9 +101,7 @@ Output Lower(
             EXPECT_EQ(output, tree.TokenText(id));
         } else {
             EXPECT_EQ(tree.Kind(id), tokenizer::TokenKind::Comment);
-            EXPECT_TRUE(tree
-                .TokenText(id)
-                .starts_with("/*"));
+            EXPECT_TRUE(tree.TokenText(id).starts_with("/*"));
             const auto content = [] (std::string_view text) {
                 std::string result;
                 bool leading = false;

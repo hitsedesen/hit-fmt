@@ -686,14 +686,13 @@ TEST(GroupLayout, BoundedChildFittingGolden)
                 document.ConditionalGap(chain, {GapKind::Flat, 0}, {GapKind::Soft, 0});
                 document.Text(".slice({");
                 const auto anchor = mode == 2
-                    ? document.MarkAnchor(
-                        {
-                            .Kind = document::AnchorKind::DelimiterColumn,
-                            .Fallback = 4,
-                            .Minimum = 4,
-                            .StructuralBase = true,
-                            .Continuation = true,
-                        })
+                    ? document.MarkAnchor({
+                        .Kind = document::AnchorKind::DelimiterColumn,
+                        .Fallback = 4,
+                        .Minimum = 4,
+                        .StructuralBase = true,
+                        .Continuation = true,
+                    })
                     : document::InvalidId;
                 const auto arguments = document
                     .BeginGroup({.Mode = GroupMode::Fill, .Indent = 4, .StructuralBase = true, .Continuation = true});
@@ -2299,12 +2298,7 @@ TEST(GroupLayout, SourceLineIndentForceBreakStillRequiresEditableOwnedBoundary)
     // Borrowing made the group multiline, but cannot satisfy Always. Fill must
     // use the last editable owned gap even though it would otherwise fit.
     ExpectText(document, 80, "\n  aa bb\n  cc");
-    ASSERT_EQ(
-        document
-            .Render()
-            .Map
-            .size(),
-        7u);
+    ASSERT_EQ(document.Render().Map.size(), 7u);
     EXPECT_FALSE(document.Render().Map[5].Exact);
 
     Document earlierBoundary("\n");
@@ -2382,10 +2376,7 @@ TEST(GroupLayout, SourceLineIndentCannotInventEditableBreakWithoutOwnedSite)
     parent = empty.BeginGroup({GroupMode::Fill, 0, true});
     empty.EndGroup(parent);
     ASSERT_TRUE(empty.Seal());
-    EXPECT_TRUE(empty
-        .Render()
-        .Text
-        .empty());
+    EXPECT_TRUE(empty.Render().Text.empty());
     EXPECT_FALSE(empty.Render().Broken[parent]);
 }
 
@@ -2403,10 +2394,7 @@ TEST(GroupLayout, SourceLineIndentRejectsMalformedRangesPrefixesAndAnchors)
                 badPrefix ? 1 : range.Begin,
                 badPrefix ? 3 : range.End));
             EXPECT_EQ(document.Seal().Code, Error::InvalidSourceRange);
-            EXPECT_TRUE(document
-                .Render()
-                .Text
-                .empty());
+            EXPECT_TRUE(document.Render().Text.empty());
         }
     }
     for (auto prefix : {"", " ", "\n\t", "\r", "\n\r", "x\n", "\v\n"}) {

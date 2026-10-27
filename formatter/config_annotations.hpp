@@ -13,17 +13,26 @@ namespace formatter {
 
 struct Style;
 
-enum class FirstArgumentAnnotation : std::uint8_t {
+enum class FirstArgumentAnnotation : std::uint8_t
+{
     // Only complete literal expressions qualify, never a literal prefix of
     // another expression. Overflow controls how qualifying arguments attach.
     // Required legal owned Always breaks and safety/protection outrank it.
     PinCompleteStringLiteral,
     // Any parsed first argument qualifies; nested syntax may still wrap.
-    PinAnyArgument };
+    PinAnyArgument
+};
 
-enum class ChainParticipation : std::uint8_t { AllSafe, AnnotatedRoots };
+enum class ChainParticipation : std::uint8_t
+{
+    AllSafe,
+    AnnotatedRoots
+};
 
-enum class VisualScopeLayout : std::uint8_t { PreserveExistingExtraLevel };
+enum class VisualScopeLayout : std::uint8_t
+{
+    PreserveExistingExtraLevel
+};
 
 struct MessagePinAnnotation
 {
