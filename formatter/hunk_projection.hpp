@@ -48,18 +48,13 @@ inline FormatResult ProjectHunkFormat(
         if (a.Kind != b.Kind) {
             return a.Kind < b.Kind;
         }
-        return a.Owner.Begin != b.Owner.Begin
-            ? a.Owner.Begin < b.Owner.Begin
-            : a.Owner.End < b.Owner.End;
+        return a.Owner.Begin != b.Owner.Begin ? a.Owner.Begin < b.Owner.Begin : a.Owner.End < b.Owner.End;
     };
     std::pmr::vector<OperationKey> eligibleOperations(&memory);
     for (const auto& operation : eligible.Operations) {
         eligibleOperations.push_back({operation.Kind, operation.Owner});
     }
-    std::sort(
-        eligibleOperations.begin(),
-        eligibleOperations.end(),
-        operationLess);
+    std::sort(eligibleOperations.begin(), eligibleOperations.end(), operationLess);
     struct CommaKey
     {
         bool HasOriginal;
@@ -80,30 +75,22 @@ inline FormatResult ProjectHunkFormat(
     const auto gapMutable = [&] (parser::TokenIndex index) {
         const auto& gap = safety.Gaps()[index];
         return !gap.Preserve && !gap.ContextSensitive &&
-            !(prepared.Policies.LineEnding != LineEnding::Preserve &&
-                gap.HasBareCR);
+            !(prepared.Policies.LineEnding != LineEnding::Preserve && gap.HasBareCR);
     };
     for (const auto& region : safety.Regions()) {
-        if (region.Kind != parser::NodeKind::InitializerList ||
-            region.Tokens.Empty())
-        {
+        if (region.Kind != parser::NodeKind::InitializerList || region.Tokens.Empty()) {
             continue;
         }
         const auto open = region.Tokens.Begin;
         const auto close = tree.MatchingDelimiter(open);
-        if (tree.Kind(open) != tokenizer::TokenKind::Operator_OpenBrace ||
-            close >= region.Tokens.End || !gapMutable(close))
+        if (tree.Kind(open) != tokenizer::TokenKind::Operator_OpenBrace || close >= region.Tokens.End ||
+            !gapMutable(close))
         {
             continue;
         }
         RegionId last = NoRegion;
-        for (auto child = region.FirstChild;
-            child != NoRegion;
-            child = safety.Regions()[child].NextSibling)
-        {
-            if (safety.Regions()[child].Kind ==
-                parser::NodeKind::InitializerElement)
-            {
+        for (auto child = region.FirstChild; child != NoRegion; child = safety.Regions()[child].NextSibling) {
+            if (safety.Regions()[child].Kind == parser::NodeKind::InitializerElement) {
                 last = child;
             }
         }
@@ -117,9 +104,7 @@ inline FormatResult ProjectHunkFormat(
             if (tree.Kind(token) == tokenizer::TokenKind::Comment) {
                 continue;
             }
-            if (tree.Kind(token) == tokenizer::TokenKind::Operator_Comma &&
-                comma == tree.TokenCount())
-            {
+            if (tree.Kind(token) == tokenizer::TokenKind::Operator_Comma && comma == tree.TokenCount()) {
                 comma = token;
             } else {
                 valid = false;
@@ -128,18 +113,16 @@ inline FormatResult ProjectHunkFormat(
         }
         const auto insertion = tree.Token(after - 1).Text.End;
         if (!valid ||
-            (prepared.Policies.InitializersTrailingComma ==
-                TrailingCommaPolicy::WhenMultiline &&
+            (prepared.Policies.InitializersTrailingComma == TrailingCommaPolicy::WhenMultiline &&
                 safety.IntersectsImmutable({insertion, insertion})))
         {
             continue;
         }
         if (comma != tree.TokenCount()) {
             const auto text = tree.Token(comma).Text;
-            if (safety.IntersectsImmutable({text.Begin, text.End}) ||
-                !gapMutable(comma) || !safety.CanReplaceGap(comma, "") ||
-                (prepared.Policies.Initializers.Layout !=
-                    LayoutMode::Canonical && safety.Gaps()[comma].HasLineFeed))
+            if (safety.IntersectsImmutable({text.Begin, text.End}) || !gapMutable(comma) ||
+                !safety.CanReplaceGap(comma, "") ||
+                (prepared.Policies.Initializers.Layout != LayoutMode::Canonical && safety.Gaps()[comma].HasLineFeed))
             {
                 continue;
             }
@@ -161,10 +144,7 @@ inline FormatResult ProjectHunkFormat(
         if (owner.Empty()) {
             continue;
         }
-        Range envelope{
-            tree.Token(owner.Begin).Text.Begin,
-            tree.Token(owner.End - 1).Text.End,
-        };
+        Range envelope{tree.Token(owner.Begin).Text.Begin, tree.Token(owner.End - 1).Text.End};
         if (operation.Kind == StructuralAction::NamespaceComments) {
             // Header/interior eligibility comes from the scoped planner, but
             // only the closing comment is a byte replacement dependency.
@@ -183,9 +163,7 @@ inline FormatResult ProjectHunkFormat(
     // Namespace comments, moved includes and directive rewrites may own line
     // bytes beyond their syntax owner's token envelope.
     for (const auto& map : canonical.Map) {
-        if (!map.HasOriginal || map.Action == NoStructuralAction ||
-            map.Action >= allowedActions.size())
-        {
+        if (!map.HasOriginal || map.Action == NoStructuralAction || map.Action >= allowedActions.size()) {
             continue;
         }
         dependencies.push_back({map.Original, allowedActions[map.Action]});
@@ -194,8 +172,7 @@ inline FormatResult ProjectHunkFormat(
     // Scoped original safety checks the closer gap and insertion/removal
     // points; no scoped layout or generated-text oracle is needed.
     for (const auto& map : canonical.Map) {
-        if (map.Generated && map.Action == NoStructuralAction &&
-            map.Output.End - map.Output.Begin == 1 &&
+        if (map.Generated && map.Action == NoStructuralAction && map.Output.End - map.Output.Begin == 1 &&
             output[map.Output.Begin] == ',')
         {
             const bool allowed = std::binary_search(
@@ -207,37 +184,26 @@ inline FormatResult ProjectHunkFormat(
         }
     }
     for (parser::TokenIndex i = 0; i < tree.TokenCount(); ++i) {
-        if (tree.Kind(i) == tokenizer::TokenKind::Operator_Comma &&
-            !canonical.OriginalTokens[i].Present)
-        {
-            dependencies.push_back({
-                {tree.Token(i).Text.Begin, tree.Token(i).Text.End},
-                removableCommas[i],
-            });
+        if (tree.Kind(i) == tokenizer::TokenKind::Operator_Comma && !canonical.OriginalTokens[i].Present) {
+            dependencies.push_back({{tree.Token(i).Text.Begin, tree.Token(i).Text.End}, removableCommas[i]});
         }
         // Reindented multiline comments remain indivisible original atoms.
         const auto& token = canonical.OriginalTokens[i];
         if (token.Present && tree.TokenText(i) != view(token.Output, output)) {
-            dependencies.push_back(
-                {{tree.Token(i).Text.Begin, tree.Token(i).Text.End}, true});
+            dependencies.push_back({{tree.Token(i).Text.Begin, tree.Token(i).Text.End}, true});
         }
     }
     std::sort(
         dependencies.begin(),
         dependencies.end(),
         [] (const auto& a, const auto& b) {
-            return a.Source.Begin != b.Source.Begin
-                ? a.Source.Begin < b.Source.Begin
-                : a.Source.End < b.Source.End;
+            return a.Source.Begin != b.Source.Begin ? a.Source.Begin < b.Source.Begin : a.Source.End < b.Source.End;
         });
     size_t count = 0;
     for (const auto dependency : dependencies) {
-        if (count &&
-            dependency.Source.Begin <= dependencies[count - 1].Source.End)
-        {
+        if (count && dependency.Source.Begin <= dependencies[count - 1].Source.End) {
             auto& previous = dependencies[count - 1];
-            previous.Source.End =
-                std::max(previous.Source.End, dependency.Source.End);
+            previous.Source.End = std::max(previous.Source.End, dependency.Source.End);
             previous.Allowed = previous.Allowed && dependency.Allowed;
         } else {
             dependencies[count++] = dependency;
@@ -246,22 +212,16 @@ inline FormatResult ProjectHunkFormat(
     dependencies.resize(count);
     const auto overlaps = [] (Range a, Range b) {
         return a.Empty()
-            ? (b.Empty()
-                ? a.Begin == b.Begin
-                : b.Begin <= a.Begin && a.Begin < b.End)
-            : b.Empty()
-                ? a.Begin <= b.Begin && b.Begin < a.End
-                : a.Begin < b.End && b.Begin < a.End;
+            ? (b.Empty() ? a.Begin == b.Begin : b.Begin <= a.Begin && a.Begin < b.End)
+            : b.Empty() ? a.Begin <= b.Begin && b.Begin < a.End : a.Begin < b.End && b.Begin < a.End;
     };
     // Copied, monotonically ordered bytes are stable diff anchors. No anchor
     // may split a structural owner or a rewritten comment atom.
     std::pmr::vector<HunkPatch> anchors(&memory);
     for (const auto& map : canonical.Map) {
         if (!map.Exact || !map.HasOriginal || map.Output.Empty() ||
-            map.Output.End - map.Output.Begin !=
-                map.Original.End - map.Original.Begin ||
-            map.Action != NoStructuralAction ||
-            view(map.Output, output) != view(map.Original, source))
+            map.Output.End - map.Output.Begin != map.Original.End - map.Original.Begin ||
+            map.Action != NoStructuralAction || view(map.Output, output) != view(map.Original, source))
         {
             continue;
         }
@@ -273,10 +233,7 @@ inline FormatResult ProjectHunkFormat(
                 return d.Source.End < begin;
             });
         bool blocked = false;
-        for (;
-            it != dependencies.end() && it->Source.Begin <= map.Original.End;
-            ++it)
-        {
+        for (; it != dependencies.end() && it->Source.Begin <= map.Original.End; ++it) {
             if (overlaps(map.Original, it->Source)) {
                 blocked = true;
                 break;
@@ -307,14 +264,12 @@ inline FormatResult ProjectHunkFormat(
             [] (const auto& d, auto begin) {
                 return d.Source.End < begin;
             });
-        for (; it != dependencies.end() && it->Source.Begin <= before.End; ++it)
-        {
+        for (; it != dependencies.end() && it->Source.Begin <= before.End; ++it) {
             if (overlaps(before, it->Source)) {
                 atomic = true;
                 atomicBegin = std::min(atomicBegin, it->Source.Begin);
                 atomicEnd = std::max(atomicEnd, it->Source.End);
-                allowed = allowed && it->Allowed &&
-                    HunkScopeContains(scope, it->Source);
+                allowed = allowed && it->Allowed && HunkScopeContains(scope, it->Source);
             }
         }
         // Diff trimming must not transfer ownership to a different insertion
@@ -322,24 +277,20 @@ inline FormatResult ProjectHunkFormat(
         // following physical line, even if a common newline can be trimmed.
         allowed = allowed && HunkScopeContains(scope, before);
         {
-            while (!before.Empty() && !after.Empty() &&
-                (!atomic || before.Begin < atomicBegin) &&
+            while (!before.Empty() && !after.Empty() && (!atomic || before.Begin < atomicBegin) &&
                 source[before.Begin] == output[after.Begin])
             {
                 ++before.Begin;
                 ++after.Begin;
             }
-            while (!before.Empty() && !after.Empty() &&
-                (!atomic || atomicEnd < before.End) &&
+            while (!before.Empty() && !after.Empty() && (!atomic || atomicEnd < before.End) &&
                 source[before.End - 1] == output[after.End - 1])
             {
                 --before.End;
                 --after.End;
             }
         }
-        if (view(before, source) != view(after, output) && allowed &&
-            HunkScopeContains(scope, before))
-        {
+        if (view(before, source) != view(after, output) && allowed && HunkScopeContains(scope, before)) {
             patches.push_back({before, after});
         }
     };
@@ -357,11 +308,7 @@ inline FormatResult ProjectHunkFormat(
                 return d.Source.End < begin;
             });
         bool atomic = false;
-        for (;
-            dependency != dependencies.end() &&
-            dependency->Source.Begin <= before.End;
-            ++dependency)
-        {
+        for (; dependency != dependencies.end() && dependency->Source.Begin <= before.End; ++dependency) {
             if (overlaps(before, dependency->Source)) {
                 atomic = true;
                 break;
@@ -371,8 +318,7 @@ inline FormatResult ProjectHunkFormat(
         // Flattening, inserted breaks and structural atoms stay indivisible;
         // clipping those to a selected line would invent a different layout.
         if (atomic || !whitespace(original) || !whitespace(formatted) ||
-            std::count(original.begin(), original.end(), '\n') !=
-                std::count(formatted.begin(), formatted.end(), '\n'))
+            std::count(original.begin(), original.end(), '\n') != std::count(formatted.begin(), formatted.end(), '\n'))
         {
             consider(before, after);
             return;
@@ -396,20 +342,14 @@ inline FormatResult ProjectHunkFormat(
     Offset originalCursor = 0;
     Offset canonicalCursor = 0;
     for (const auto& anchor : anchors) {
-        if (anchor.Original.Begin < originalCursor ||
-            anchor.Canonical.Begin < canonicalCursor)
-        {
+        if (anchor.Original.Begin < originalCursor || anchor.Canonical.Begin < canonicalCursor) {
             continue;
         }
-        considerGap(
-            {originalCursor, anchor.Original.Begin},
-            {canonicalCursor, anchor.Canonical.Begin});
+        considerGap({originalCursor, anchor.Original.Begin}, {canonicalCursor, anchor.Canonical.Begin});
         originalCursor = anchor.Original.End;
         canonicalCursor = anchor.Canonical.End;
     }
-    considerGap(
-        {originalCursor, originalSize},
-        {canonicalCursor, canonicalSize});
+    considerGap({originalCursor, originalSize}, {canonicalCursor, canonicalSize});
 
     struct Piece
     {
@@ -419,19 +359,14 @@ inline FormatResult ProjectHunkFormat(
     };
     std::pmr::vector<Piece> pieces(&memory);
     FormatResult result;
-    result.StructuralDiagnostics
-        .assign(eligible.Skipped.begin(), eligible.Skipped.end());
+    result.StructuralDiagnostics.assign(eligible.Skipped.begin(), eligible.Skipped.end());
     const auto append = [&] (Range input, bool formatted) {
         if (input.Empty()) {
             return;
         }
         const auto begin = CheckedSourceAnalysisSize(result.Text.size());
         result.Text.append(view(input, formatted ? output : source));
-        pieces.push_back({
-            input,
-            {begin, CheckedSourceAnalysisSize(result.Text.size())},
-            formatted,
-        });
+        pieces.push_back({input, {begin, CheckedSourceAnalysisSize(result.Text.size())}, formatted});
     };
     originalCursor = 0;
     for (const auto& patch : patches) {
@@ -449,10 +384,8 @@ inline FormatResult ProjectHunkFormat(
             return id;
         }
         if (actions[id] == NoStructuralAction) {
-            actions[id] =
-                StructuralActionId(result.StructuralOperations.size());
-            result.StructuralOperations
-                .push_back(canonical.StructuralOperations[id]);
+            actions[id] = StructuralActionId(result.StructuralOperations.size());
+            result.StructuralOperations.push_back(canonical.StructuralOperations[id]);
         }
         return actions[id];
     };
@@ -474,14 +407,8 @@ inline FormatResult ProjectHunkFormat(
         };
         if (piece.Canonical) {
             auto it = canonical.Map.begin() +
-                (std::upper_bound(
-                    mapEnds.begin(),
-                    mapEnds.end(),
-                    piece.Input.Begin) - mapEnds.begin());
-            for (;
-                it != canonical.Map.end() && it->Output.Begin < piece.Input.End;
-                ++it)
-            {
+                (std::upper_bound(mapEnds.begin(), mapEnds.end(), piece.Input.Begin) - mapEnds.begin());
+            for (; it != canonical.Map.end() && it->Output.Begin < piece.Input.End; ++it) {
                 auto map = *it;
                 const Range part{
                     std::max(map.Output.Begin, piece.Input.Begin),
@@ -504,11 +431,9 @@ inline FormatResult ProjectHunkFormat(
                 canonical.OutputProtection.begin(),
                 canonical.OutputProtection.end(),
                 piece.Input.Begin,
-                [] (const auto& range, auto begin) { return range.Source.End <=
-                        begin; });
+                [] (const auto& range, auto begin) { return range.Source.End <= begin; });
             for (;
-                protection != canonical.OutputProtection.end() &&
-                protection->Source.Begin < piece.Input.End;
+                protection != canonical.OutputProtection.end() && protection->Source.Begin < piece.Input.End;
                 ++protection)
             {
                 const auto& protectedRange = *protection;
@@ -517,68 +442,43 @@ inline FormatResult ProjectHunkFormat(
                     std::min(protectedRange.Source.End, piece.Input.End),
                 };
                 if (part.Begin < part.End) {
-                    result.OutputProtection
-                        .push_back({shift(part), protectedRange.Reasons});
+                    result.OutputProtection.push_back({shift(part), protectedRange.Reasons});
                 }
             }
         } else {
-            result.Map.push_back({
-                piece.Output,
-                piece.Input,
-                document::NoIdentity,
-                NoStructuralAction,
-                true,
-                true,
-                false,
-                false,
-            });
+            result.Map.push_back(
+                {piece.Output, piece.Input, document::NoIdentity, NoStructuralAction, true, true, false, false});
             const auto protections = safety.Protection();
             auto protection = std::lower_bound(
                 protections.begin(),
                 protections.end(),
                 piece.Input.Begin,
-                [] (const auto& range, auto begin) { return range.Source.End <=
-                        begin; });
-            for (;
-                protection != protections.end() &&
-                protection->Source.Begin < piece.Input.End;
-                ++protection)
-            {
+                [] (const auto& range, auto begin) { return range.Source.End <= begin; });
+            for (; protection != protections.end() && protection->Source.Begin < piece.Input.End; ++protection) {
                 const auto& protectedRange = *protection;
                 const Range part{
                     std::max(protectedRange.Source.Begin, piece.Input.Begin),
                     std::min(protectedRange.Source.End, piece.Input.End),
                 };
                 if (part.Begin < part.End) {
-                    result.OutputProtection
-                        .push_back({shift(part), protectedRange.Reasons});
+                    result.OutputProtection.push_back({shift(part), protectedRange.Reasons});
                 }
             }
         }
     }
     // Deletions can have no emitted map carrying their action ID.
-    for (StructuralActionId id = 0;
-        id < canonical.StructuralOperations.size();
-        ++id)
-    {
+    for (StructuralActionId id = 0; id < canonical.StructuralOperations.size(); ++id) {
         const auto& operation = canonical.StructuralOperations[id];
         if (!allowedActions[id] || operation.Owner.Empty()) {
             continue;
         }
-        const Range owner{
-            tree.Token(operation.Owner.Begin).Text.Begin,
-            tree.Token(operation.Owner.End - 1).Text.End,
-        };
+        const Range owner{tree.Token(operation.Owner.Begin).Text.Begin, tree.Token(operation.Owner.End - 1).Text.End};
         const auto patch = std::lower_bound(
             patches.begin(),
             patches.end(),
             owner.Begin,
-            [] (
-                const auto& candidate,
-                auto begin) { return candidate.Original.End <= begin; });
-        if (patch != patches.end() && patch->Original.Begin <= owner.Begin &&
-            owner.End <= patch->Original.End)
-        {
+            [] (const auto& candidate, auto begin) { return candidate.Original.End <= begin; });
+        if (patch != patches.end() && patch->Original.Begin <= owner.Begin && owner.End <= patch->Original.End) {
             (void)action(id);
         }
     }
@@ -604,14 +504,9 @@ inline FormatResult ProjectHunkFormat(
                 [] (const auto& piece, auto begin) {
                     return piece.Input.End <= begin;
                 });
-            if (it != stream.end() && it->Input.Begin <= range.Begin &&
-                range.End <= it->Input.End)
-            {
+            if (it != stream.end() && it->Input.Begin <= range.Begin && range.End <= it->Input.End) {
                 result.OriginalTokens[i] = {
-                    {
-                        it->Output.Begin + range.Begin - it->Input.Begin,
-                        it->Output.Begin + range.End - it->Input.Begin,
-                    },
+                    {it->Output.Begin + range.Begin - it->Input.Begin, it->Output.Begin + range.End - it->Input.Begin},
                     true,
                 };
             }
@@ -624,17 +519,14 @@ inline FormatResult ProjectHunkFormat(
     for (parser::TokenIndex i = 0; i < tree.TokenCount(); ++i) {
         const auto& before = canonical.OriginalTokens[i];
         const auto& after = result.OriginalTokens[i];
-        if (before.Present && after.Present &&
-            view(before.Output, output) == view(after.Output, result.Text))
-        {
+        if (before.Present && after.Present && view(before.Output, output) == view(after.Output, result.Text)) {
             diagnosticTokens.push_back({after.Output, before.Output});
         }
     }
     std::sort(
         diagnosticTokens.begin(),
         diagnosticTokens.end(),
-        [] (const auto& a, const auto& b) { return a.Canonical.Begin <
-                b.Canonical.Begin; });
+        [] (const auto& a, const auto& b) { return a.Canonical.Begin < b.Canonical.Begin; });
     struct DiagnosticPoint
     {
         Offset Output;
@@ -643,33 +535,26 @@ inline FormatResult ProjectHunkFormat(
     std::pmr::vector<DiagnosticPoint> diagnosticPoints(&memory);
     // Public formatting uses the default eight-cell tab stops. Match its
     // code-point accounting, including standalone CR and CRLF, in both sweeps.
-    const auto advance =
-        [] (std::string_view text, Offset& offset, util::Position& position) {
-            const auto c = static_cast<unsigned char>(text[offset]);
-            if (c == '\r' || c == '\n') {
+    const auto advance = [] (std::string_view text, Offset& offset, util::Position& position) {
+        const auto c = static_cast<unsigned char>(text[offset]);
+        if (c == '\r' || c == '\n') {
+            ++offset;
+            if (c == '\r' && offset < text.size() && text[offset] == '\n') {
                 ++offset;
-                if (c == '\r' && offset < text.size() && text[offset] == '\n') {
-                    ++offset;
-                }
-                ++position.Line;
-                position.Column = 1;
-            } else {
-                offset += c < 0x80
-                    ? 1
-                    : unicode::utf8::GetFirstCodePointSize(text.substr(offset))
-                        .value_or(1);
-                position.Column +=
-                    c == '\t' ? 8 - (position.Column - 1) % 8 : 1;
             }
-        };
+            ++position.Line;
+            position.Column = 1;
+        } else {
+            offset += c < 0x80 ? 1 : unicode::utf8::GetFirstCodePointSize(text.substr(offset)).value_or(1);
+            position.Column += c == '\t' ? 8 - (position.Column - 1) % 8 : 1;
+        }
+    };
     Offset offset = 0;
     util::Position position{1, 1};
     for (size_t i = 0; i < canonical.Diagnostics.size(); ++i) {
         const auto target = canonical.Diagnostics[i].Position;
         while (offset < canonicalSize &&
-            (position.Line < target.Line ||
-                (position.Line == target.Line &&
-                    position.Column < target.Column)))
+            (position.Line < target.Line || (position.Line == target.Line && position.Column < target.Column)))
         {
             // An overflow inside a tab refers to that tab's byte, not its end.
             if (position.Line == target.Line && output[offset] == '\t' &&
@@ -686,15 +571,11 @@ inline FormatResult ProjectHunkFormat(
             diagnosticTokens.begin(),
             diagnosticTokens.end(),
             offset,
-            [] (auto point, const auto& candidate) { return point <
-                    candidate.Canonical.Begin; });
+            [] (auto point, const auto& candidate) { return point < candidate.Canonical.Begin; });
         if (token != diagnosticTokens.begin()) {
             --token;
             if (offset < token->Canonical.End) {
-                diagnosticPoints.push_back({
-                    token->Original.Begin + offset - token->Canonical.Begin,
-                    i,
-                });
+                diagnosticPoints.push_back({token->Original.Begin + offset - token->Canonical.Begin, i});
                 continue;
             }
         }
@@ -704,13 +585,11 @@ inline FormatResult ProjectHunkFormat(
             canonicalPieces.begin(),
             canonicalPieces.end(),
             offset,
-            [] (auto point, const auto& candidate) { return point <
-                    candidate.Input.Begin; });
+            [] (auto point, const auto& candidate) { return point < candidate.Input.Begin; });
         if (piece != canonicalPieces.begin()) {
             --piece;
             if (offset < piece->Input.End) {
-                diagnosticPoints.push_back(
-                    {piece->Output.Begin + offset - piece->Input.Begin, i});
+                diagnosticPoints.push_back({piece->Output.Begin + offset - piece->Input.Begin, i});
             }
         }
     }
@@ -718,9 +597,7 @@ inline FormatResult ProjectHunkFormat(
         diagnosticPoints.begin(),
         diagnosticPoints.end(),
         [] (const auto& a, const auto& b) {
-            return a.Output != b.Output
-                ? a.Output < b.Output
-                : a.Diagnostic < b.Diagnostic;
+            return a.Output != b.Output ? a.Output < b.Output : a.Diagnostic < b.Diagnostic;
         });
     offset = 0;
     position = {1, 1};
@@ -735,8 +612,7 @@ inline FormatResult ProjectHunkFormat(
         if (diagnostic.Message.starts_with("emitted line width ")) {
             diagnostic.Message.replace(0, 7, "canonical");
         }
-        if (!result.Diagnostics.empty() &&
-            result.Diagnostics.back().Position.Line == position.Line &&
+        if (!result.Diagnostics.empty() && result.Diagnostics.back().Position.Line == position.Line &&
             result.Diagnostics.back().Position.Column == position.Column &&
             result.Diagnostics.back().Kind == diagnostic.Kind)
         {
@@ -746,8 +622,7 @@ inline FormatResult ProjectHunkFormat(
     }
     if (!request.SourceMap) {
         decltype(result.Map){}.swap(result.Map);
-        decltype(result
-            .StructuralOperations){}.swap(result.StructuralOperations);
+        decltype(result.StructuralOperations){}.swap(result.StructuralOperations);
         decltype(result.OutputProtection){}.swap(result.OutputProtection);
         if (!request.TokenMap) {
             decltype(result.OriginalTokens){}.swap(result.OriginalTokens);

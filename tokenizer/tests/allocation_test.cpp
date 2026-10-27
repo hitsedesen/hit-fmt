@@ -80,8 +80,7 @@ auto broken = R"missing(raw contents;
         SourceView,
         [&] (tokenizer::TokenizationError error) {
             ++errorCount;
-            descriptionSize +=
-                tokenizer::GetTokenizationErrorDescription(error.Kind).size();
+            descriptionSize += tokenizer::GetTokenizationErrorDescription(error.Kind).size();
         });
     size_t tokenCount = 0;
     for ([[maybe_unused]] const auto& token : tokenizer) {
@@ -90,10 +89,7 @@ auto broken = R"missing(raw contents;
     TrackAllocations = false;
 
     if (AllocationCount != 0) {
-        std::fprintf(
-            stderr,
-            "tokenizer performed %zu allocation(s)\n",
-            AllocationCount);
+        std::fprintf(stderr, "tokenizer performed %zu allocation(s)\n", AllocationCount);
         return 1;
     }
     if (tokenCount == 0) {

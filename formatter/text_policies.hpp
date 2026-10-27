@@ -9,10 +9,7 @@ namespace formatter {
 
 // Directive edits may change only directive-owned whitespace. Every other
 // protection reason, including disabled formatting and edit scope, still wins.
-[[nodiscard]] bool CanRewriteTextAtom(
-    const SourceAnalysis& safety,
-    parser::SourceRange source,
-    bool directive);
+[[nodiscard]] bool CanRewriteTextAtom(const SourceAnalysis& safety, parser::SourceRange source, bool directive);
 
 void PlanTextPolicyEdits(
     const parser::SyntaxTree& tree,

@@ -107,9 +107,7 @@ DEFINE_CONFIG_ENUM(IncludeOrder, INCLUDE_ORDER_VALUES);
 DEFINE_CONFIG_ENUM(BodyIndentation, BODY_INDENTATION_VALUES);
 #undef BODY_INDENTATION_VALUES
 #define STANDALONE_BRACE_INDENT_VALUES(X) X(Preserve) X(Indent)
-DEFINE_CONFIG_ENUM(
-    StandaloneBlockBraceIndentation,
-    STANDALONE_BRACE_INDENT_VALUES);
+DEFINE_CONFIG_ENUM(StandaloneBlockBraceIndentation, STANDALONE_BRACE_INDENT_VALUES);
 #undef STANDALONE_BRACE_INDENT_VALUES
 #define STATEMENT_ATTRIBUTE_INDENT_VALUES(X) X(Preserve) X(Block) X(Indent)
 DEFINE_CONFIG_ENUM(StatementAttributeIndent, STATEMENT_ATTRIBUTE_INDENT_VALUES);
@@ -132,35 +130,19 @@ DEFINE_CONFIG_ENUM(TrailingWhitespace, TRAILING_WHITESPACE_VALUES);
 DEFINE_CONFIG_ENUM(EmptyControlBody, EMPTY_CONTROL_BODY_VALUES);
 #undef EMPTY_CONTROL_BODY_VALUES
 #define DECLARATION_PARAMETER_NAMES_VALUES(X) X(Unchecked) X(Required)
-DEFINE_CONFIG_ENUM(
-    FunctionDeclarationParameterNames,
-    DECLARATION_PARAMETER_NAMES_VALUES);
+DEFINE_CONFIG_ENUM(FunctionDeclarationParameterNames, DECLARATION_PARAMETER_NAMES_VALUES);
 #undef DECLARATION_PARAMETER_NAMES_VALUES
 #define DEFINITION_PARAMETER_NAMES_VALUES(X)                                  \
     X(Unchecked) X(NameRequired) X(NameOrCommentedNameRequired)
-DEFINE_CONFIG_ENUM(
-    FunctionDefinitionParameterNames,
-    DEFINITION_PARAMETER_NAMES_VALUES);
+DEFINE_CONFIG_ENUM(FunctionDefinitionParameterNames, DEFINITION_PARAMETER_NAMES_VALUES);
 #undef DEFINITION_PARAMETER_NAMES_VALUES
 
 // NameCase is the only enum whose spellings differ from its C++ members.
-enum class NameCase : std::uint8_t
-{
-    Unchecked,
-    CamelCase,
-    PascalCase,
-    SnakeCase,
-    ScreamingSnakeCase
-};
+enum class NameCase : std::uint8_t { Unchecked, CamelCase, PascalCase, SnakeCase, ScreamingSnakeCase };
 template <> struct ConfigEnumNames<NameCase>
 {
-    static constexpr auto Values = std::to_array<std::string_view>({
-        "Unchecked",
-        "camelCase",
-        "PascalCase",
-        "snake_case",
-        "SCREAMING_SNAKE_CASE",
-    });
+    static constexpr auto Values =
+        std::to_array<std::string_view>({"Unchecked", "camelCase", "PascalCase", "snake_case", "SCREAMING_SNAKE_CASE"});
 };
 
 #undef DEFINE_CONFIG_ENUM
@@ -168,13 +150,9 @@ template <> struct ConfigEnumNames<NameCase>
 #undef CONFIG_ENUM_NAME
 
 template <typename T>
-[[nodiscard]] constexpr std::optional<T> DeserializeConfigEnum(
-    std::string_view spelling)
+[[nodiscard]] constexpr std::optional<T> DeserializeConfigEnum(std::string_view spelling)
 {
-    for (std::size_t index = 0;
-        index < ConfigEnumNames<T>::Values.size();
-        ++index)
-    {
+    for (std::size_t index = 0; index < ConfigEnumNames<T>::Values.size(); ++index) {
         if (ConfigEnumNames<T>::Values[index] == spelling) {
             return static_cast<T>(index);
         }
@@ -185,8 +163,7 @@ template <typename T>
 template <typename T>
 [[nodiscard]] constexpr std::string_view SerializeConfigEnum(T value)
 {
-    return ConfigEnumNames<
-        T>::Values[static_cast<std::underlying_type_t<T>>(value)];
+    return ConfigEnumNames<T>::Values[static_cast<std::underlying_type_t<T>>(value)];
 }
 
 } // namespace formatter

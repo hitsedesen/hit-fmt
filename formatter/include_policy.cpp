@@ -35,41 +35,33 @@ void ValidateIncludeGroups(std::span<const IncludeGroupRule> groups)
     std::vector<std::string_view> prefixes;
     for (const auto& group : groups) {
         if (group.Depth < 0) {
-            throw std::invalid_argument(
-                "IncludeGroups Depth must be an integer from 0 to 127");
+            throw std::invalid_argument("IncludeGroups Depth must be an integer from 0 to 127");
         }
         if (group.Prefixes.empty()) {
-            throw std::invalid_argument(
-                "IncludeGroups requires a Prefix or nonempty Prefixes array");
+            throw std::invalid_argument("IncludeGroups requires a Prefix or nonempty Prefixes array");
         }
         for (const auto& prefix : group.Prefixes) {
             if (prefix.empty()) {
                 if (group.Prefixes.size() != 1) {
                     throw std::invalid_argument(
-                        "IncludeGroups empty fallback prefix must be "
-                        "the group's only prefix");
+                        "IncludeGroups empty fallback prefix must be " "the group's only prefix");
                 }
-            } else if (prefix.back() != '/' ||
-                prefix.find('\\') != std::string::npos ||
+            } else if (prefix.back() != '/' || prefix.find('\\') != std::string::npos ||
                 !NormalizedRelativePath(prefix))
             {
-                throw std::invalid_argument(
-                    "IncludeGroups requires normalized relative directory "
-                    "prefixes ending in / (no empty, . or .. components "
-                    "or backslashes)");
+                throw std::invalid_argument("IncludeGroups requires normalized relative directory "
+                    "prefixes ending in / (no empty, . or .. components " "or backslashes)");
             }
             prefixes.push_back(prefix);
         }
     }
     std::sort(prefixes.begin(), prefixes.end());
-    if (std::adjacent_find(prefixes.begin(), prefixes.end()) != prefixes.end())
-    {
+    if (std::adjacent_find(prefixes.begin(), prefixes.end()) != prefixes.end()) {
         throw std::invalid_argument("IncludeGroups has duplicate prefix");
     }
 }
 
-PreparedIncludeGroups::PreparedIncludeGroups(
-    std::span<const IncludeGroupRule> groups)
+PreparedIncludeGroups::PreparedIncludeGroups(std::span<const IncludeGroupRule> groups)
 {
     ValidateIncludeGroups(groups);
     if (groups.empty()) {
@@ -82,8 +74,7 @@ PreparedIncludeGroups::PreparedIncludeGroups(
     Groups_.reserve(groups.size());
     Prefixes_.reserve(count);
     for (std::size_t group = 0; group < groups.size(); ++group) {
-        Groups_.push_back(
-            {Prefixes_.size(), groups[group].Depth, groups[group].Priority});
+        Groups_.push_back({Prefixes_.size(), groups[group].Depth, groups[group].Priority});
         for (const auto& prefix : groups[group].Prefixes) {
             Prefixes_.push_back({
                 prefix,
@@ -107,14 +98,10 @@ PreparedIncludeGroups::PreparedIncludeGroups(
     for (const auto prefixIndex : order) {
         const std::string_view prefix = Prefixes_[prefixIndex].Text;
         std::size_t common = 0;
-        while (common < std::min(previous.size(), prefix.size()) &&
-            previous[common] == prefix[common])
-        {
+        while (common < std::min(previous.size(), prefix.size()) && previous[common] == prefix[common]) {
             ++common;
         }
-        if (prefix.size() - common >=
-            std::numeric_limits<std::size_t>::max() - bytes)
-        {
+        if (prefix.size() - common >= std::numeric_limits<std::size_t>::max() - bytes) {
             throw std::length_error("IncludeGroups index is too large");
         }
         bytes += prefix.size() - common;
@@ -138,9 +125,7 @@ PreparedIncludeGroups::PreparedIncludeGroups(
     for (const auto prefixIndex : order) {
         const std::string_view prefix = Prefixes_[prefixIndex].Text;
         std::size_t common = 0;
-        while (common < std::min(previous.size(), prefix.size()) &&
-            previous[common] == prefix[common])
-        {
+        while (common < std::min(previous.size(), prefix.size()) && previous[common] == prefix[common]) {
             ++common;
         }
         ancestors.resize(common + 1);
@@ -148,8 +133,7 @@ PreparedIncludeGroups::PreparedIncludeGroups(
             const auto parent = ancestors.back();
             const auto child = Nodes_.size();
             Nodes_.push_back({0, 0, Prefixes_.size()});
-            pending.push_back(
-                {parent, {static_cast<unsigned char>(prefix[index]), child}});
+            pending.push_back({parent, {static_cast<unsigned char>(prefix[index]), child}});
             ++Nodes_[parent].EdgeCount;
             ancestors.push_back(child);
         }
@@ -164,13 +148,11 @@ PreparedIncludeGroups::PreparedIncludeGroups(
     Edges_.resize(pending.size());
     std::vector<std::size_t> inserted(Nodes_.size(), 0);
     for (const auto& edge : pending) {
-        Edges_[Nodes_[edge.Parent].FirstEdge + inserted[edge.Parent]++] =
-            edge.Value;
+        Edges_[Nodes_[edge.Parent].FirstEdge + inserted[edge.Parent]++] = edge.Value;
     }
 }
 
-PreparedIncludeGroups::Match PreparedIncludeGroups::Classify(
-    std::string_view path) const noexcept
+PreparedIncludeGroups::Match PreparedIncludeGroups::Classify(std::string_view path) const noexcept
 {
     if (Nodes_.empty()) {
         return {GroupCount(), Prefixes_.size()};
@@ -200,17 +182,12 @@ PreparedIncludeGroups::Match PreparedIncludeGroups::Classify(
             match = std::min(match, Nodes_[node].Prefix);
         }
     }
-    return {
-        match < Prefixes_.size() ? Prefixes_[match].Group : GroupCount(),
-        match,
-    };
+    return {match < Prefixes_.size() ? Prefixes_[match].Group : GroupCount(), match};
 }
 
 std::int8_t PreparedIncludeGroups::Depth(std::size_t group) const noexcept
 {
-    return group < GroupCount()
-        ? Groups_[group].Depth
-        : IncludeGroupRule::MaxDepth;
+    return group < GroupCount() ? Groups_[group].Depth : IncludeGroupRule::MaxDepth;
 }
 
 std::int8_t PreparedIncludeGroups::Priority(std::size_t group) const noexcept
@@ -218,26 +195,19 @@ std::int8_t PreparedIncludeGroups::Priority(std::size_t group) const noexcept
     return group < Groups_.size() ? Groups_[group].Priority : 0;
 }
 
-std::size_t PreparedIncludeGroups::PrefixDepth(
-    std::size_t prefix) const noexcept
+std::size_t PreparedIncludeGroups::PrefixDepth(std::size_t prefix) const noexcept
 {
     return prefix < Prefixes_.size() ? Prefixes_[prefix].Depth : 0;
 }
 
-std::string_view PreparedIncludeGroups::Prefix(
-    std::size_t prefix) const noexcept
+std::string_view PreparedIncludeGroups::Prefix(std::size_t prefix) const noexcept
 {
-    return prefix < Prefixes_.size()
-        ? std::string_view(Prefixes_[prefix].Text)
-        : std::string_view{};
+    return prefix < Prefixes_.size() ? std::string_view(Prefixes_[prefix].Text) : std::string_view{};
 }
 
-std::string_view PreparedIncludeGroups::CanonicalPrefix(
-    std::size_t group) const noexcept
+std::string_view PreparedIncludeGroups::CanonicalPrefix(std::size_t group) const noexcept
 {
-    return group < GroupCount()
-        ? Prefix(Groups_[group].FirstPrefix)
-        : std::string_view{};
+    return group < GroupCount() ? Prefix(Groups_[group].FirstPrefix) : std::string_view{};
 }
 
 } // namespace formatter

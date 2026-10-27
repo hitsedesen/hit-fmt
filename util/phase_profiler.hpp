@@ -23,8 +23,7 @@ using Clock = std::chrono::steady_clock;
 
 inline bool Enabled()
 {
-    static const bool enabled =
-        std::getenv("HIT_FMT_PROFILE_PHASES") != nullptr;
+    static const bool enabled = std::getenv("HIT_FMT_PROFILE_PHASES") != nullptr;
     return enabled;
 }
 
@@ -59,10 +58,8 @@ public:
                 std::cerr << ':' << key.second;
             }
             std::cerr << " calls=" << value.Calls << " inclusive="
-                << std::chrono::duration<double>(value.Inclusive).count()
-                << " exclusive="
-                << std::chrono::duration<double>(value.Exclusive).count()
-                << '\n';
+                << std::chrono::duration<double>(value.Inclusive).count() << " exclusive="
+                << std::chrono::duration<double>(value.Exclusive).count() << '\n';
         }
     }
 
@@ -153,8 +150,7 @@ public:
         if (!Active_) {
             return;
         }
-        auto elapsed = std::chrono::duration_cast<std::chrono::nanoseconds>(
-            Clock::now() - Start_);
+        auto elapsed = std::chrono::duration_cast<std::chrono::nanoseconds>(Clock::now() - Start_);
         Current_ = Parent_;
         if (Parent_) {
             Parent_->Children_ += elapsed;
@@ -162,8 +158,8 @@ public:
         GetLocalResults().Record(Name_, Line_, elapsed, elapsed - Children_);
     }
 
-    Scope(const Scope&) = delete;
-    Scope& operator=(const Scope&) = delete;
+    Scope(const Scope& other) = delete;
+    Scope& operator=(const Scope& other) = delete;
 
 private:
     inline static thread_local Scope* Current_ = nullptr;

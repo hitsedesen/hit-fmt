@@ -30,43 +30,17 @@ struct Provenance
     document::Identity Identity = NoIdentity;
 };
 
-enum class GroupMode : std::uint8_t
-{
-    Consistent,
-    Fill
-};
+enum class GroupMode : std::uint8_t { Consistent, Fill };
 
-enum class GapKind : std::uint8_t
-{
-    Flat,
-    Soft,
-    Hard
-};
+enum class GapKind : std::uint8_t { Flat, Soft, Hard };
 
-enum class AnchorKind : std::uint8_t
-{
-    BlockRelative,
-    DelimiterColumn
-};
+enum class AnchorKind : std::uint8_t { BlockRelative, DelimiterColumn };
 
-enum class Newline : std::uint8_t
-{
-    LF,
-    CRLF
-};
+enum class Newline : std::uint8_t { LF, CRLF };
 
-enum class GapNewline : std::uint8_t
-{
-    Inherit,
-    LF,
-    CRLF
-};
+enum class GapNewline : std::uint8_t { Inherit, LF, CRLF };
 
-enum class IndentationKind : std::uint8_t
-{
-    Spaces,
-    Tabs
-};
+enum class IndentationKind : std::uint8_t { Spaces, Tabs };
 
 struct GapSpec
 {
@@ -160,8 +134,7 @@ struct GroupSpec
     std::uint32_t FitSuffixWidth = InvalidId;
 };
 
-enum class Error : std::uint8_t
-{
+enum class Error : std::uint8_t {
     None,
     Sealed,
     Unsealed,
@@ -175,8 +148,7 @@ enum class Error : std::uint8_t
     InvalidPolicy,
     TooLarge,
     InvalidLinePrefix,
-    IndentationOverflow
-};
+    IndentationOverflow };
 
 struct Status
 {
@@ -253,18 +225,13 @@ struct Result
 class Document
 {
 public:
-    explicit Document(
-        std::string_view source,
-        std::pmr::memory_resource* resource = std::pmr::get_default_resource());
+    explicit Document(std::string_view source, std::pmr::memory_resource* resource = std::pmr::get_default_resource());
     ~Document();
-    Document(const Document&) = delete;
-    Document& operator=(const Document&) = delete;
+    Document(const Document& other) = delete;
+    Document& operator=(const Document& other) = delete;
 
     // Optional capacity hint avoids geometric-growth retention in arenas.
-    void Reserve(
-        std::uint32_t nodes,
-        std::uint32_t groups = 0,
-        std::uint32_t sourceParts = 0);
+    void Reserve(std::uint32_t nodes, std::uint32_t groups = 0, std::uint32_t sourceParts = 0);
     // Preserve search distance for unused pre-group markers omitted by a
     // producer. This grants no edit or validation authority; the producer must
     // prove that the omitted markers have no observable effects.
@@ -272,11 +239,7 @@ public:
     void EndGroup(GroupId group);
     void Text(std::string_view generated, Provenance origin = {});
     // Source slices require real offsets, never generated-provenance sentinels.
-    void SourceText(
-        std::uint32_t begin,
-        std::uint32_t end,
-        Identity identity = NoIdentity,
-        bool verbatim = false);
+    void SourceText(std::uint32_t begin, std::uint32_t end, Identity identity = NoIdentity, bool verbatim = false);
     // Equivalent source emission with compact adjacent single-line slices and
     // flat gaps. Groups, anchors, conditional output and multiline text fence
     // runs. Every original piece retains its provenance and probe boundary.
@@ -289,10 +252,7 @@ public:
     // column. Preserve relative indentation, blank lines and newline spelling;
     // clamp outdented lines at column zero. The producer must authorize the
     // entire slice. A changed slice retains its identity but maps non-exactly.
-    void ReindentedSourceText(
-        std::uint32_t begin,
-        std::uint32_t end,
-        Identity identity = NoIdentity);
+    void ReindentedSourceText(std::uint32_t begin, std::uint32_t end, Identity identity = NoIdentity);
     // Producer must authorize the entire whitespace slice, including whole
     // CRLF atoms; a token-owned CR plus following gap LF must be excluded.
     // Changes spelling only, never topology/indentation/owned-break rights.
@@ -300,15 +260,9 @@ public:
     // Even unchanged LF requires a safe incoming boundary: a producer that
     // omits its necessary separator receives InvalidSourceRange at Render.
     // Borrowed source and resource survive rendering, like SourceText.
-    void SourceWhitespace(
-        std::uint32_t begin,
-        std::uint32_t end,
-        Newline ending);
+    void SourceWhitespace(std::uint32_t begin, std::uint32_t end, Newline ending);
     void Verbatim(std::string_view borrowed, Provenance origin = {});
-    void Gap(
-        GapSpec spec = {},
-        AnchorId anchor = InvalidId,
-        Provenance origin = {});
+    void Gap(GapSpec spec = {}, AnchorId anchor = InvalidId, Provenance origin = {});
     // Borrow an exact whitespace prefix ending in LF, then generate indentation
     // without adding newlines. One node keeps both in the owning group's width
     // summary; it is multiline shape, not an editable break. Valid at root too.
@@ -345,14 +299,10 @@ public:
         AnchorId anchor = InvalidId,
         Provenance origin = {});
     Status Seal();
-    Result Render(
-        Policy policy = {},
-        std::pmr::memory_resource* resource =
-            std::pmr::get_default_resource()) const;
+    Result Render(Policy policy = {}, std::pmr::memory_resource* resource = std::pmr::get_default_resource()) const;
 
 private:
-    enum class Kind : std::uint8_t
-    {
+    enum class Kind : std::uint8_t {
         Begin,
         End,
         Text,
@@ -365,8 +315,7 @@ private:
         SourceWhitespace,
         ReindentedText,
         ExpressionLine,
-        SourceRun
-    };
+        SourceRun };
 
     // Source atoms use Origin offsets directly. Only external borrowed text
     // needs a file-scoped table entry; no pointer or size_t lives in an atom.
@@ -394,13 +343,7 @@ private:
         Provenance Origin;
     };
 
-    enum class RunKind : std::uint8_t
-    {
-        Text,
-        Verbatim,
-        SourceGap,
-        Spaces
-    };
+    enum class RunKind : std::uint8_t { Text, Verbatim, SourceGap, Spaces };
 
     struct RunPart
     {
@@ -547,12 +490,7 @@ private:
     std::string_view FlatText(const Atom& node) const;
     std::string_view BrokenText(const Atom& node) const;
 
-    void EmitSourceText(
-        std::uint32_t begin,
-        std::uint32_t end,
-        Identity identity,
-        bool verbatim,
-        bool compact);
+    void EmitSourceText(std::uint32_t begin, std::uint32_t end, Identity identity, bool verbatim, bool compact);
     void StartSourceRun();
     void AppendRunPart(RunPart part, bool logical = true);
     static RunPart FlatRunPart(GapSpec gap, Provenance origin);

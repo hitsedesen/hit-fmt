@@ -12,16 +12,10 @@ extern const std::span<const std::pair<char32_t, char32_t>> XIDContinueRanges;
 
 namespace {
 
-bool IsInRange(
-    CodePoint cp,
-    std::span<const std::pair<char32_t, char32_t>> ranges)
+bool IsInRange(CodePoint cp, std::span<const std::pair<char32_t, char32_t>> ranges)
 {
     auto value = static_cast<char32_t>(cp);
-    auto candidate = std::ranges::lower_bound(
-        ranges,
-        value,
-        {},
-        &std::pair<char32_t, char32_t>::second);
+    auto candidate = std::ranges::lower_bound(ranges, value, {}, &std::pair<char32_t, char32_t>::second);
     return candidate != ranges.end() && candidate->first <= value;
 }
 

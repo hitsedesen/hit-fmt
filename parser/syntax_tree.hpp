@@ -200,8 +200,7 @@ struct TokenRange
     SYNTAX_NODE_KIND(RangeForSeparator, "range-for-separator")                 \
     SYNTAX_NODE_KIND(Error, "error")
 
-enum class NodeKind : uint8_t
-{
+enum class NodeKind : uint8_t {
 #define SYNTAX_NODE_KIND(value, name) value,
     SYNTAX_NODE_KINDS
 #undef SYNTAX_NODE_KIND
@@ -219,13 +218,7 @@ static_assert(static_cast<size_t>(NodeKind::Error) < 256);
     return Names[static_cast<size_t>(kind)];
 }
 
-enum class FunctionKind : uint8_t
-{
-    Unknown,
-    Ordinary,
-    Constructor,
-    Destructor,
-};
+enum class FunctionKind : uint8_t { Unknown, Ordinary, Constructor, Destructor, };
 
 struct SourceRange
 {
@@ -238,8 +231,7 @@ struct SourceRange
     }
 };
 
-enum class PunctuationRole : uint8_t
-{
+enum class PunctuationRole : uint8_t {
     None,
     Generic,
     PointerDeclarator,
@@ -266,14 +258,9 @@ enum class PunctuationRole : uint8_t
     CastDelimiter,
     ConditionDelimiter,
     GroupingDelimiter,
-    ListSeparator,
-};
+    ListSeparator, };
 
-enum class TriviaKind
-{
-    Comment,
-    Whitespace,
-};
+enum class TriviaKind { Comment, Whitespace, };
 
 struct Trivia
 {
@@ -376,8 +363,8 @@ public:
         MoveFrom(std::move(other));
     }
 
-    SegmentedStorage(const SegmentedStorage&) = delete;
-    SegmentedStorage& operator=(const SegmentedStorage&) = delete;
+    SegmentedStorage(const SegmentedStorage& other) = delete;
+    SegmentedStorage& operator=(const SegmentedStorage& other) = delete;
 
     void MoveFrom(SegmentedStorage&& other) noexcept
     {
@@ -413,8 +400,7 @@ public:
         if (ChunkCount_ == 0) {
             return;
         }
-        Chunks_ = static_cast<Chunk**>(Memory_
-            ->allocate(sizeof(Chunk*) * ChunkCount_, alignof(Chunk*)));
+        Chunks_ = static_cast<Chunk**>(Memory_->allocate(sizeof(Chunk*) * ChunkCount_, alignof(Chunk*)));
         auto* chunk = First_;
         for (uint32_t i = 0; i < ChunkCount_; ++i) {
             Chunks_[i] = chunk;
@@ -489,8 +475,8 @@ public:
 
     TriviaPool(TriviaPool&& other) noexcept = default;
 
-    TriviaPool(const TriviaPool&) = delete;
-    TriviaPool& operator=(const TriviaPool&) = delete;
+    TriviaPool(const TriviaPool& other) = delete;
+    TriviaPool& operator=(const TriviaPool& other) = delete;
 
     void MoveFrom(TriviaPool&& other) noexcept
     {
@@ -512,15 +498,13 @@ public:
     [[nodiscard]] TriviaAttachments& operator[](uint32_t index)
     {
         assert(index < Storage_.Size());
-        return Storage_.ResolveChunk(index / AttachmentsPerChunk)
-            ->Items[index % AttachmentsPerChunk];
+        return Storage_.ResolveChunk(index / AttachmentsPerChunk)->Items[index % AttachmentsPerChunk];
     }
 
     [[nodiscard]] const TriviaAttachments& operator[](uint32_t index) const
     {
         assert(index < Storage_.Size());
-        return Storage_.ResolveChunk(index / AttachmentsPerChunk)
-            ->Items[index % AttachmentsPerChunk];
+        return Storage_.ResolveChunk(index / AttachmentsPerChunk)->Items[index % AttachmentsPerChunk];
     }
 
 private:
@@ -552,8 +536,8 @@ public:
 
     TokenPool(TokenPool&& other) noexcept = default;
 
-    TokenPool(const TokenPool&) = delete;
-    TokenPool& operator=(const TokenPool&) = delete;
+    TokenPool(const TokenPool& other) = delete;
+    TokenPool& operator=(const TokenPool& other) = delete;
 
     void MoveFrom(TokenPool&& other) noexcept
     {
@@ -564,22 +548,15 @@ public:
     {
         auto slot = Storage_.Append();
         auto* chunk = slot.ChunkPtr;
-        chunk->HasPreprocessingDirective |=
-            token.Kind == tokenizer::TokenKind::PreprocessingDirective;
+        chunk->HasPreprocessingDirective |= token.Kind == tokenizer::TokenKind::PreprocessingDirective;
         chunk->HasComment |= token.Kind == tokenizer::TokenKind::Comment;
-        chunk->Tokens[slot.Offset] = {
-            .Text = token.Text,
-            .Line = token.Position.Line,
-            .Column = token.Position.Column,
-        };
+        chunk->Tokens[slot.Offset] = {.Text = token.Text, .Line = token.Position.Line, .Column = token.Position.Column};
         chunk->Kinds[slot.Offset] = token.Kind;
         chunk->Roles[slot.Offset] =
-            token.Kind >= tokenizer::TokenKind::Operator_OpenBrace &&
-                token.Kind <= tokenizer::TokenKind::Operator_Comma
+            token.Kind >= tokenizer::TokenKind::Operator_OpenBrace && token.Kind <= tokenizer::TokenKind::Operator_Comma
             ? PunctuationRole::Generic
             : PunctuationRole::None;
-        chunk->MatchingDelimiters[slot.Offset] =
-            std::numeric_limits<TokenIndex>::max();
+        chunk->MatchingDelimiters[slot.Offset] = std::numeric_limits<TokenIndex>::max();
     }
 
     void Seal()
@@ -590,8 +567,7 @@ public:
     [[nodiscard]] const StoredToken& operator[](TokenIndex index) const
     {
         assert(index < Storage_.Size());
-        return Storage_.ChunkAt(index / TokensPerChunk)
-            ->Tokens[index % TokensPerChunk];
+        return Storage_.ChunkAt(index / TokensPerChunk)->Tokens[index % TokensPerChunk];
     }
 
     [[nodiscard]] TokenIndex Size() const
@@ -602,44 +578,35 @@ public:
     [[nodiscard]] tokenizer::TokenKind Kind(TokenIndex index) const
     {
         assert(index < Storage_.Size());
-        return Storage_.ChunkAt(index / TokensPerChunk)
-            ->Kinds[index % TokensPerChunk];
+        return Storage_.ChunkAt(index / TokensPerChunk)->Kinds[index % TokensPerChunk];
     }
 
     [[nodiscard]] PunctuationRole Role(TokenIndex index) const
     {
         assert(index < Storage_.Size());
-        return Storage_.ChunkAt(index / TokensPerChunk)
-            ->Roles[index % TokensPerChunk];
+        return Storage_.ChunkAt(index / TokensPerChunk)->Roles[index % TokensPerChunk];
     }
 
     void SetRole(TokenIndex index, PunctuationRole role)
     {
         assert(index < Storage_.Size());
-        Storage_.ChunkAt(index / TokensPerChunk)
-            ->Roles[index % TokensPerChunk] = role;
+        Storage_.ChunkAt(index / TokensPerChunk)->Roles[index % TokensPerChunk] = role;
     }
 
     [[nodiscard]] TokenIndex MatchingDelimiter(TokenIndex index) const
     {
         assert(index < Storage_.Size());
-        return Storage_.ChunkAt(index / TokensPerChunk)
-            ->MatchingDelimiters[index % TokensPerChunk];
+        return Storage_.ChunkAt(index / TokensPerChunk)->MatchingDelimiters[index % TokensPerChunk];
     }
 
     void SetMatchingDelimiter(TokenIndex index, TokenIndex matching)
     {
         assert(index < Storage_.Size());
-        Storage_.ResolveChunk(index / TokensPerChunk)
-            ->MatchingDelimiters[index % TokensPerChunk] = matching;
+        Storage_.ResolveChunk(index / TokensPerChunk)->MatchingDelimiters[index % TokensPerChunk] = matching;
     }
 
-    [[nodiscard]] TokenIndex FindPreprocessingDirective(
-        TokenIndex begin,
-        TokenIndex end) const;
-    [[nodiscard]] TokenIndex FindComment(
-        TokenIndex begin,
-        TokenIndex end) const;
+    [[nodiscard]] TokenIndex FindPreprocessingDirective(TokenIndex begin, TokenIndex end) const;
+    [[nodiscard]] TokenIndex FindComment(TokenIndex begin, TokenIndex end) const;
 
 private:
     SegmentedStorage<Chunk, TokensPerChunk> Storage_;
@@ -659,8 +626,8 @@ public:
     SyntaxTree& operator=(SyntaxTree&& other) noexcept;
     ~SyntaxTree();
 
-    SyntaxTree(const SyntaxTree&) = delete;
-    SyntaxTree& operator=(const SyntaxTree&) = delete;
+    SyntaxTree(const SyntaxTree& other) = delete;
+    SyntaxTree& operator=(const SyntaxTree& other) = delete;
 
     [[nodiscard]] const Node& Root() const;
 
@@ -705,17 +672,14 @@ public:
         return Tokens_.MatchingDelimiter(index);
     }
 
-    [[nodiscard]] const TriviaAttachments* AssociatedTrivia(
-        const Node& node) const;
+    [[nodiscard]] const TriviaAttachments* AssociatedTrivia(const Node& node) const;
     [[nodiscard]] std::string_view SourceText(TokenRange range) const;
     [[nodiscard]] std::string_view SourceText(SourceRange range) const;
 
     [[nodiscard]] std::string_view WhitespaceBefore(TokenIndex token) const
     {
         assert(token < TokenCount());
-        auto* begin = token == 0
-            ? Input_.data()
-            : Input_.data() + Tokens_[token - 1].Text.End;
+        auto* begin = token == 0 ? Input_.data() : Input_.data() + Tokens_[token - 1].Text.End;
         auto* end = Input_.data() + Tokens_[token].Text.Begin;
         return {begin, static_cast<size_t>(end - begin)};
     }

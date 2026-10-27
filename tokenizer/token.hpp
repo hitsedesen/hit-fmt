@@ -156,8 +156,7 @@ namespace tokenizer {
     TOKEN_KIND(Keyword_wchar_t, "wchar_t")                                     \
     TOKEN_KIND(Keyword_while, "while")
 
-enum class TokenKind : uint8_t
-{
+enum class TokenKind : uint8_t {
 #define TOKEN_KIND(value, name) value,
     TOKEN_KINDS
 #undef TOKEN_KIND

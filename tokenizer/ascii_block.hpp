@@ -6,8 +6,7 @@
 
 namespace tokenizer::detail {
 
-enum class AsciiRun : uint8_t
-{
+enum class AsciiRun : uint8_t {
     Whitespace,
     Identifier,
     String,
@@ -17,8 +16,7 @@ enum class AsciiRun : uint8_t
     LineComment,
     Directive,
     DirectiveComment,
-    Count,
-};
+    Count, };
 
 struct AsciiBlock
 {
@@ -61,9 +59,7 @@ struct AsciiBlock
             case AsciiRun::LineComment:
                 return ordinary;
             case AsciiRun::Directive:
-                return ordinary &
-                    ~(Backslashes | Slashes | Quotes | Apostrophes |
-                        RawPrefixes);
+                return ordinary & ~(Backslashes | Slashes | Quotes | Apostrophes | RawPrefixes);
             case AsciiRun::DirectiveComment:
                 return ordinary & ~Backslashes;
             default:
@@ -74,9 +70,7 @@ struct AsciiBlock
 
 // Each bit describes one source byte, independently of lexical context.
 // The caller provides a readable block; NUL stops every run, including padding.
-void ClassifyAsciiBlock(
-    const unsigned char* source,
-    AsciiBlock& result) noexcept;
+void ClassifyAsciiBlock(const unsigned char* source, AsciiBlock& result) noexcept;
 
 using AsciiBlockClassifier =
     void (*)(const unsigned char*, AsciiBlock&) noexcept;

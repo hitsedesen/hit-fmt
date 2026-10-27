@@ -6,11 +6,11 @@
 #include "policy.hpp"
 #include "structural_edits.hpp"
 
+#include <util/input.hpp>
+
 #include <document/document.hpp>
 
 #include <parser/parser.hpp>
-
-#include <util/input.hpp>
 
 #include <optional>
 #include <span>
@@ -27,10 +27,7 @@ struct Style
 #undef FORMATTER_STYLE_FIELD
 };
 
-enum class LayoutDiagnosticKind
-{
-    LineWidth
-};
+enum class LayoutDiagnosticKind { LineWidth };
 
 struct LayoutDiagnostic
 {
@@ -60,10 +57,7 @@ public:
 
     [[nodiscard]] parser::ParseOptions ParsingOptions() const
     {
-        return {
-            .FunctionBodyMacroNames = FunctionBodyMacroNames,
-            .ClassMacroNames = ClassMacroNames,
-        };
+        return {.FunctionBodyMacroNames = FunctionBodyMacroNames, .ClassMacroNames = ClassMacroNames};
     }
 };
 
@@ -146,15 +140,11 @@ struct FormatResult
     const FormatRequest& request = {});
 
 // Convenience entrypoints compile the style once per call.
-[[nodiscard]] std::string Format(
-    const parser::SyntaxTree& tree,
-    const Style& style);
+[[nodiscard]] std::string Format(const parser::SyntaxTree& tree, const Style& style);
 
 [[nodiscard]] std::string Format(const parser::SyntaxTree& tree);
 
-[[nodiscard]] std::string Format(
-    util::PaddedSourceView source,
-    const Style& style);
+[[nodiscard]] std::string Format(util::PaddedSourceView source, const Style& style);
 
 [[nodiscard]] std::string Format(util::PaddedSourceView source);
 

@@ -3,7 +3,7 @@
 `hit-fmt` parses C and C++ source. It preserves compliant source by default,
 with configurable layout rules. Safe overflowing initializer lists can reflow
 without enforcing changes to already-fitting lists. This repository uses a
-stricter YTsaurus-inspired profile: 80 columns, overflow reflow, three-line
+YTsaurus-inspired example profile: 120 columns, overflow reflow, three-line
 ternaries, and one-level
 rather than delimiter-aligned continuation indentation. Checks also report
 naming violations without renaming identifiers, including after `--fix`.

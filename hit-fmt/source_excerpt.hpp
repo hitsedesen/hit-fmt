@@ -15,16 +15,9 @@ struct RenderedLine
     size_t Caret = 0;
 };
 
-[[nodiscard]] RenderedLine RenderLine(
-    std::string_view text,
-    size_t column,
-    size_t prefixWidth);
+[[nodiscard]] RenderedLine RenderLine(std::string_view text, size_t column, size_t prefixWidth);
 
-void PrintCells(
-    std::ostream& output,
-    std::span<const std::string_view> cells,
-    size_t begin,
-    size_t end);
+void PrintCells(std::ostream& output, std::span<const std::string_view> cells, size_t begin, size_t end);
 
 struct Excerpt
 {

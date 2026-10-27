@@ -15,8 +15,7 @@ namespace formatter {
 // Independent of renderer fitting and configuration storage. Include sorting
 // moves exact directive atoms unless opt-in directive whitespace also applies.
 // Text policies never grant authority over other protected interiors.
-enum class StructuralAction : uint8_t
-{
+enum class StructuralAction : uint8_t {
     AddMissingControlBraces,
     EmptyControlBody,
     RemoveNullStatements,
@@ -24,11 +23,9 @@ enum class StructuralAction : uint8_t
     IncludeOrder,
     NamespaceComments,
     DirectiveWhitespace,
-    RulerLength,
-};
+    RulerLength, };
 
-enum class StructuralSkip : uint8_t
-{
+enum class StructuralSkip : uint8_t {
     Incomplete,
     Protected,
     CommentAttached,
@@ -38,8 +35,7 @@ enum class StructuralSkip : uint8_t
     InvalidMapping,
     FollowingText,
     ShortNamespace,
-    RequiredBody,
-};
+    RequiredBody, };
 
 struct StructuralDiagnostic
 {
@@ -105,12 +101,7 @@ struct StructuralEdit
     StructuralActionId Operation;
     uint32_t Depth = 0;
 
-    enum class Edge : uint8_t
-    {
-        Close,
-        Open,
-        Replace
-    } Boundary = Edge::Replace;
+    enum class Edge : uint8_t { Close, Open, Replace } Boundary = Edge::Replace;
 };
 // Planner-created records are exposed for inspection, not permission to
 // fabricate semantic edits. Materialization validates ownership, not C++
@@ -119,8 +110,8 @@ class StructuralPlan
 {
 public:
     explicit StructuralPlan(std::pmr::memory_resource& memory);
-    StructuralPlan(StructuralPlan&&) = default;
-    StructuralPlan(const StructuralPlan&) = delete;
+    StructuralPlan(StructuralPlan&& other) = default;
+    StructuralPlan(const StructuralPlan& other) = delete;
     std::pmr::vector<StructuralOperation> Operations;
     std::pmr::vector<StructuralEdit> Edits;
     std::pmr::vector<StructuralPiece> Pieces;
@@ -200,13 +191,7 @@ struct IncludeGroup
     std::pmr::memory_resource& fileMemory,
     std::pmr::memory_resource& scratchMemory);
 
-enum class NamespaceCommentPolicy : uint8_t
-{
-    Preserve,
-    AddMissing,
-    Fix,
-    Remove
-};
+enum class NamespaceCommentPolicy : uint8_t { Preserve, AddMissing, Fix, Remove };
 
 struct NamespaceCommentOptions
 {
@@ -215,8 +200,7 @@ struct NamespaceCommentOptions
     // Zero disables exemption. Fix/Remove of existing comments ignores it.
     size_t ShortNamespaceLines = 0;
     size_t Spaces = 1; // 0..32, after the caller resolves trailing gap policy
-    bool PreserveBareCR =
-        false; // Do not capture EOF whitespace in a NEW comment.
+    bool PreserveBareCR = false; // Do not capture EOF whitespace in a NEW comment.
 };
 
 struct NamespaceIdentity

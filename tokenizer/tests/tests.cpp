@@ -1,3 +1,6 @@
+#include <util/file.hpp>
+#include <util/input.hpp>
+
 #include <tokenizer/ascii_block.hpp>
 #include <tokenizer/tokenizer.hpp>
 
@@ -7,9 +10,6 @@
 
 #include <unicode/code_point.hpp>
 #include <unicode/utf8.hpp>
-
-#include <util/file.hpp>
-#include <util/input.hpp>
 
 #include <algorithm>
 #include <array>
@@ -37,30 +37,20 @@ std::ostream& operator<<(std::ostream& os, const GoldenCase& testCase)
     return os << testCase.Name;
 }
 
-std::pair<std::string, std::vector<std::string>> TokenizeAndSerialize(
-    const std::string& input)
+std::pair<std::string, std::vector<std::string>> TokenizeAndSerialize(const std::string& input)
 {
     std::vector<std::string> errors;
     auto paddedInput = input;
     paddedInput.append(util::SourcePaddingSize, '\0');
     Tokenizer tokenizer(
-        {
-            .Data = paddedInput.data(),
-            .Size = static_cast<uint32_t>(input.size()),
-        },
+        {.Data = paddedInput.data(), .Size = static_cast<uint32_t>(input.size())},
         [&] (TokenizationError error) {
-            errors.push_back(std::format(
-                "{} error: {}",
-                error.ErrorPosition,
-                GetTokenizationErrorDescription(error.Kind)));
+            errors.push_back(
+                std::format("{} error: {}", error.ErrorPosition, GetTokenizationErrorDescription(error.Kind)));
         });
     std::string result;
     for (const auto& token : tokenizer) {
-        result += std::format(
-            "{}: {} {}\n",
-            token.Position,
-            token.Kind,
-            token.Text.View(input));
+        result += std::format("{}: {} {}\n", token.Position, token.Kind, token.Text.View(input));
     }
     return {std::move(result), std::move(errors)};
 }
@@ -71,10 +61,7 @@ std::vector<TokenizationErrorKind> TokenizeErrors(std::string_view input)
     std::string paddedInput(input);
     paddedInput.append(util::SourcePaddingSize, '\0');
     Tokenizer tokenizer(
-        {
-            .Data = paddedInput.data(),
-            .Size = static_cast<uint32_t>(input.size()),
-        },
+        {.Data = paddedInput.data(), .Size = static_cast<uint32_t>(input.size())},
         [&] (TokenizationError error) {
             errors.push_back(error.Kind);
         });
@@ -89,13 +76,10 @@ struct TokenizationSnapshot
     std::vector<size_t> ErrorCalls;
 };
 
-TokenizationSnapshot SnapshotTokenization(
-    std::string_view input,
-    size_t backingOffset)
+TokenizationSnapshot SnapshotTokenization(std::string_view input, size_t backingOffset)
 {
     // No string terminator or spare capacity beyond the required padding.
-    auto storage = std::make_unique<char[]>(
-        backingOffset + input.size() + util::SourcePaddingSize);
+    auto storage = std::make_unique<char[]>(backingOffset + input.size() + util::SourcePaddingSize);
     auto* data = storage.get() + backingOffset;
     std::ranges::copy(input, data);
     if (backingOffset != 0) {
@@ -168,10 +152,7 @@ class GoodTest
 
 TEST_P(GoodTest, Golden)
 {
-    const test::golden::Fixture fixture{
-        TOKENIZER_TESTDATA_DIR,
-        GetParam().Name,
-    };
+    const test::golden::Fixture fixture{TOKENIZER_TESTDATA_DIR, GetParam().Name};
     auto [actual, errors] = TokenizeAndSerialize(fixture.InputNamed(".in"));
     EXPECT_TRUE(errors.empty());
     fixture.Expect(actual, ".out");
@@ -183,10 +164,7 @@ class BadTest
 
 TEST_P(BadTest, Golden)
 {
-    const test::golden::Fixture fixture{
-        TOKENIZER_TESTDATA_DIR,
-        GetParam().Name,
-    };
+    const test::golden::Fixture fixture{TOKENIZER_TESTDATA_DIR, GetParam().Name};
     auto [actual, errors] = TokenizeAndSerialize(fixture.InputNamed(".in"));
     EXPECT_FALSE(errors.empty()) << "should output errors";
     std::string actualErrors;
@@ -237,27 +215,17 @@ INSTANTIATE_TEST_SUITE_P(
 
 TEST(Tokenizer, KeepsEofStableAfterAsciiUnicodeAndInvalidUtf8)
 {
-    constexpr std::array<std::string_view, 4> Inputs{
-        "",
-        "ascii",
-        "α",
-        std::string_view("\x80", 1),
-    };
+    constexpr std::array<std::string_view, 4> Inputs{"", "ascii", "α", std::string_view("\x80", 1)};
     for (auto input : Inputs) {
         SCOPED_TRACE(input);
         std::string storage(input);
         storage.append(util::SourcePaddingSize, '\0');
         size_t errors = 0;
         Tokenizer tokenizer(
-            {
-                .Data = storage.data(),
-                .Size = static_cast<uint32_t>(input.size()),
-            },
+            {.Data = storage.data(), .Size = static_cast<uint32_t>(input.size())},
             [&] (TokenizationError error) {
                 ++errors;
-                EXPECT_EQ(
-                    error.Kind,
-                    TokenizationErrorKind::InvalidUtf8CodePoint);
+                EXPECT_EQ(error.Kind, TokenizationErrorKind::InvalidUtf8CodePoint);
                 EXPECT_EQ(error.TokenStart.Line, 1);
                 EXPECT_EQ(error.TokenStart.Column, 1);
                 EXPECT_EQ(error.ErrorPosition.Line, 1);
@@ -331,13 +299,7 @@ TEST(Tokenizer, RejectsMalformedUtf8)
         static_cast<char>(0x28),
     };
     // Both cached and uncached ASCII boundaries must retain UTF-8 errors.
-    constexpr std::array<std::string_view, 5> Prefixes{
-        "",
-        "a;",
-        "a; ",
-        "a;\n",
-        "a;\\\n",
-    };
+    constexpr std::array<std::string_view, 5> Prefixes{"", "a;", "a; ", "a;\n", "a;\\\n"};
     for (auto prefix : Prefixes) {
         SCOPED_TRACE(prefix);
         std::string source(prefix);
@@ -345,10 +307,7 @@ TEST(Tokenizer, RejectsMalformedUtf8)
         auto errors = TokenizeErrors(source);
         EXPECT_EQ(
             errors,
-            (std::vector{
-                TokenizationErrorKind::InvalidUtf8CodePoint,
-                TokenizationErrorKind::InvalidUtf8CodePoint,
-            }));
+            (std::vector{TokenizationErrorKind::InvalidUtf8CodePoint, TokenizationErrorKind::InvalidUtf8CodePoint}));
     }
 }
 
@@ -389,10 +348,7 @@ TEST(Tokenizer, ClassifiesEveryByteInEveryBlockLane)
         detail::AsciiBlock selected;
         detail::ClassifyAsciiBlock(data, actual);
         detail::GetAsciiBlockClassifier()(data, selected);
-        for (unsigned i = 0;
-            i < static_cast<unsigned>(detail::AsciiRun::Count);
-            ++i)
-        {
+        for (unsigned i = 0; i < static_cast<unsigned>(detail::AsciiRun::Count); ++i) {
             const auto run = static_cast<detail::AsciiRun>(i);
             EXPECT_EQ(selected[run], actual[run]);
         }
@@ -416,11 +372,8 @@ TEST(Tokenizer, ClassifiesEveryByteInEveryBlockLane)
             for (size_t lane = 0; lane < detail::AsciiBlock::Size; ++lane) {
                 const auto byte = data[lane];
                 const bool continues = !run.Accepted.empty()
-                    ? run.Accepted.find(static_cast<char>(byte)) !=
-                        std::string_view::npos
-                    : byte != 0 && byte < 0x80 &&
-                        run.Excluded.find(static_cast<char>(byte)) ==
-                            std::string_view::npos;
+                    ? run.Accepted.find(static_cast<char>(byte)) != std::string_view::npos
+                    : byte != 0 && byte < 0x80 && run.Excluded.find(static_cast<char>(byte)) == std::string_view::npos;
                 if (continues) {
                     expected |= uint64_t{1} << lane;
                 }
@@ -460,18 +413,11 @@ TEST(Tokenizer, FindsCompoundSymbolsAcrossVectorLanes)
     };
     constexpr std::string_view Triples[]{"...", "->*", "<<=", ">>=", "<=>"};
     std::array<unsigned char, 64> bytes;
-    for (auto spelling : {
-        std::span<const std::string_view>(Pairs),
-        std::span<const std::string_view>(Triples),
-    })
-    {
+    for (auto spelling : {std::span<const std::string_view>(Pairs), std::span<const std::string_view>(Triples)}) {
         for (auto text : spelling) {
             for (size_t offset = 0; offset < bytes.size(); ++offset) {
                 bytes.fill(' ');
-                for (size_t i = 0;
-                    i < text.size() && offset + i < bytes.size();
-                    ++i)
-                {
+                for (size_t i = 0; i < text.size() && offset + i < bytes.size(); ++i) {
                     bytes[offset + i] = static_cast<unsigned char>(text[i]);
                 }
                 detail::AsciiBlock result;
@@ -479,9 +425,7 @@ TEST(Tokenizer, FindsCompoundSymbolsAcrossVectorLanes)
                 uint64_t pairs = 0;
                 uint64_t triples = 0;
                 for (size_t i = 0; i < bytes.size(); ++i) {
-                    const std::string_view remaining(
-                        reinterpret_cast<const char*>(bytes.data() + i),
-                        bytes.size() - i);
+                    const std::string_view remaining(reinterpret_cast<const char*>(bytes.data() + i), bytes.size() - i);
                     for (auto candidate : Pairs) {
                         if (remaining.starts_with(candidate)) {
                             pairs |= uint64_t{1} << i;
@@ -524,10 +468,8 @@ TEST(Tokenizer, DeliversLookaheadDiagnosticsOnTheRequestingCall)
     for (const auto& testCase : Cases) {
         for (size_t prefix : {0u, 80u}) {
             for (unsigned padding = 0; padding < 64; ++padding) {
-                SCOPED_TRACE(
-                    std::format("prefix {}, offset {}", prefix, padding));
-                const auto input = std::string(prefix, ';') +
-                    std::string(padding, ' ') + std::string(testCase.Text);
+                SCOPED_TRACE(std::format("prefix {}, offset {}", prefix, padding));
+                const auto input = std::string(prefix, ';') + std::string(padding, ' ') + std::string(testCase.Text);
                 const auto result = SnapshotTokenization(input, 1);
                 auto calls = testCase.Calls;
                 for (auto& call : calls) {
@@ -555,10 +497,7 @@ TEST(Tokenizer, RejectsOversizedInputWithStableEmptyEof)
 {
     std::vector<TokenizationError> errors;
     Tokenizer tokenizer(
-        {
-            .Data = nullptr,
-            .Size = static_cast<uint32_t>(util::MaxSourceSize + 1),
-        },
+        {.Data = nullptr, .Size = static_cast<uint32_t>(util::MaxSourceSize + 1)},
         [&] (TokenizationError error) {
             errors.push_back(error);
         });
@@ -693,8 +632,7 @@ TEST(Tokenizer, PreservesTokensAndDiagnosticsAcrossBlockAndBackingOffsets)
             SCOPED_TRACE(std::format("source shift {}", shift));
             // LF fixes all snippet columns, including diagnostic token starts
             // retained by lookahead from the semicolon on the preceding line.
-            const auto input =
-                ";" + std::string(shift, ' ') + "\n" + testCase.Input;
+            const auto input = ";" + std::string(shift, ' ') + "\n" + testCase.Input;
             for (size_t backingOffset : {0, 1, 15, 31, 63}) {
                 SCOPED_TRACE(std::format("backing offset {}", backingOffset));
                 const auto actual = SnapshotTokenization(input, backingOffset);

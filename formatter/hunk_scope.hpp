@@ -13,9 +13,7 @@ namespace formatter::detail {
 class OriginalHunkLines
 {
 public:
-    OriginalHunkLines(
-        std::string_view source,
-        std::pmr::memory_resource& memory)
+    OriginalHunkLines(std::string_view source, std::pmr::memory_resource& memory)
         : Boundaries_(&memory)
     {
         const auto size = CheckedSourceAnalysisSize(source.size());
@@ -29,9 +27,7 @@ public:
             Boundaries_.push_back(size);
         }
     }
-    std::pmr::vector<Hunk> Coalesce(
-        std::span<const Hunk> hunks,
-        std::pmr::memory_resource& memory) const
+    std::pmr::vector<Hunk> Coalesce(std::span<const Hunk> hunks, std::pmr::memory_resource& memory) const
     {
         for (const auto hunk : hunks) {
             Validate(hunk);
@@ -46,8 +42,7 @@ public:
         size_t count = 0;
         for (const auto hunk : result) {
             if (count && hunk.Begin <= result[count - 1].End + 1) {
-                result[count - 1].End =
-                    std::max(result[count - 1].End, hunk.End);
+                result[count - 1].End = std::max(result[count - 1].End, hunk.End);
             } else {
                 result[count++] = hunk;
             }
@@ -69,19 +64,14 @@ public:
             throw std::invalid_argument("invalid original hunk unit range");
         }
         const auto line = [&] (parser::SourceOffset offset) {
-            return size_t(std::upper_bound(
-                Boundaries_.begin(),
-                Boundaries_.end(),
-                offset) - Boundaries_.begin());
+            return size_t(std::upper_bound(Boundaries_.begin(), Boundaries_.end(), offset) - Boundaries_.begin());
         };
         return {line(source.Begin), line(source.End - 1)};
     }
 private:
     void Validate(Hunk hunk) const
     {
-        if (!hunk.Begin || hunk.Begin > hunk.End ||
-            hunk.End >= Boundaries_.size())
-        {
+        if (!hunk.Begin || hunk.Begin > hunk.End || hunk.End >= Boundaries_.size()) {
             throw std::invalid_argument("invalid original physical hunk lines");
         }
     }
@@ -91,9 +81,7 @@ private:
 // Queries require sorted/coalesced nonempty ranges. A zero-width insertion
 // owns [Begin,End), never End (including EOF); a map anchor grants no
 // authority.
-inline bool HunkScopeContains(
-    std::span<const parser::SourceRange> scope,
-    parser::SourceRange source)
+inline bool HunkScopeContains(std::span<const parser::SourceRange> scope, parser::SourceRange source)
 {
     const auto it = std::upper_bound(
         scope.begin(),
@@ -104,13 +92,10 @@ inline bool HunkScopeContains(
         return false;
     }
     const auto range = *std::prev(it);
-    return range.Begin <= source.Begin && source.Begin < range.End &&
-        source.End <= range.End;
+    return range.Begin <= source.Begin && source.Begin < range.End && source.End <= range.End;
 }
 
-inline bool HunkScopeIntersects(
-    std::span<const parser::SourceRange> scope,
-    parser::SourceRange source)
+inline bool HunkScopeIntersects(std::span<const parser::SourceRange> scope, parser::SourceRange source)
 {
     if (source.Empty()) {
         return HunkScopeContains(scope, source);

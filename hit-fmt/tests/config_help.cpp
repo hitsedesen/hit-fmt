@@ -11,9 +11,7 @@ TEST(ConfigHelp, Golden)
 {
     std::ostringstream output;
     hit_fmt::PrintConfigHelp(output, false);
-    test::golden::ExpectGolden(
-        std::filesystem::path(HIT_FMT_TESTDATA_DIR) / "config_help.out",
-        output.str());
+    test::golden::ExpectGolden(std::filesystem::path(HIT_FMT_TESTDATA_DIR) / "config_help.out", output.str());
 }
 
 TEST(ConfigHelp, ReadableLinesAndColorParity)

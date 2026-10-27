@@ -80,40 +80,25 @@ TEST(FileCheck, PartialSelectionNeverChangesCanonicalFormatting)
         {
             "void f() { outer(first, child(left, right), last); }\n",
             "void f() { if (ready) { first(); } else { second(); } }\n",
-            "struct Widget { void function(int first, int second, "
-                "int third); };\n",
-            "void f() { auto value = first + second + third + fourth "
-                "+ fifth; }\n",
-            "void f() { outer(first, [] (int value) { return value + 1; }, "
-                "last); }\n",
+            "struct Widget { void function(int first, int second, " "int third); };\n",
+            "void f() { auto value = first + second + third + fourth " "+ fifth; }\n",
+            "void f() { outer(first, [] (int value) { return value + 1; }, " "last); }\n",
             "void f() { object.First(first).Second(second).Third(third); }\n",
             "void f() { if (first && second && third) { work(); } }\n",
             "void f() { auto value = condition ? first : second; }\n",
-            "class Widget { public: void first(); void second(); "
-                "private: int value; };\n",
-            "void function(int first, int second, int third) "
-                "{ work(first, second, third); }\n",
-            "void f() { int values[] = {first, second, third, fourth, "
-                "fifth}; }\n",
-            "void f() { for (int index = 0; index < limit; ++index) "
-                "{ work(index); } }\n",
-            "Widget::Widget(int value) : First(value), Second(value), "
-                "Third(value) {}\n",
+            "class Widget { public: void first(); void second(); " "private: int value; };\n",
+            "void function(int first, int second, int third) " "{ work(first, second, third); }\n",
+            "void f() { int values[] = {first, second, third, fourth, " "fifth}; }\n",
+            "void f() { for (int index = 0; index < limit; ++index) " "{ work(index); } }\n",
+            "Widget::Widget(int value) : First(value), Second(value), " "Third(value) {}\n",
         })
     {
         const Input input(source);
         const auto full = hit_fmt::CheckFile(input.View(), configuration);
         const Input canonical(full.Formatting.Text);
-        ASSERT_FALSE(hit_fmt::CheckFile(
-            canonical.View(),
-            configuration).FormattingMismatch) << full.Formatting.Text;
-        const auto count = std::count(
-            full.Formatting.Text.begin(),
-            full.Formatting.Text.end(),
-            '\n');
-        for (const std::string_view outside :
-            {"", "void outside(){work(a,b);}\n"})
-        {
+        ASSERT_FALSE(hit_fmt::CheckFile(canonical.View(), configuration).FormattingMismatch) << full.Formatting.Text;
+        const auto count = std::count(full.Formatting.Text.begin(), full.Formatting.Text.end(), '\n');
+        for (const std::string_view outside : {"", "void outside(){work(a,b);}\n"}) {
             const Input partial(full.Formatting.Text + std::string(outside));
             for (size_t line = 1; line <= count; ++line) {
                 const formatter::Hunk selected[] = {{line, line}};
@@ -123,10 +108,8 @@ TEST(FileCheck, PartialSelectionNeverChangesCanonicalFormatting)
                         configuration,
                         {},
                         hit_fmt::ChangedFileScope{selected, spillover});
-                    EXPECT_FALSE(checked.FormattingMismatch) << "line " << line
-                        << " spillover " << spillover << "\n"
-                        << full.Formatting.Text << "\n"
-                        << checked.Formatting.Text;
+                    EXPECT_FALSE(checked.FormattingMismatch) << "line " << line << " spillover " << spillover << "\n"
+                        << full.Formatting.Text << "\n" << checked.Formatting.Text;
                     EXPECT_TRUE(checked.RequiredChanges.empty());
                 }
             }
@@ -143,8 +126,7 @@ TEST(FileCheck, IncludeOrderIsIndependentOfInputPathFormAndHunks)
     style.IncludeGrouping = formatter::IncludeGrouping::Directory;
     style.IncludePathBase = formatter::IncludePathBase::ProjectRoot;
     const hit_fmt::PreparedFileConfiguration prepared(raw);
-    const Input input("#include \"project/engine/widget.h\"\n\n"
-        "#include \"project/engine/detail.h\"\n\n"
+    const Input input("#include \"project/engine/widget.h\"\n\n" "#include \"project/engine/detail.h\"\n\n"
         "#include \"project/base.h\"\n");
     const formatter::Hunk selected[] = {{1, 5}};
     const auto relative = std::filesystem::path("project/engine/widget.cpp");
@@ -155,9 +137,7 @@ TEST(FileCheck, IncludeOrderIsIndependentOfInputPathFormAndHunks)
                 input.View(),
                 prepared,
                 name,
-                hunks
-                ? std::optional(hit_fmt::ChangedFileScope{selected})
-                : std::nullopt);
+                hunks ? std::optional(hit_fmt::ChangedFileScope{selected}) : std::nullopt);
             EXPECT_FALSE(checked.FormattingMismatch) << name;
             EXPECT_TRUE(checked.IncludeOrderChanges.empty()) << name;
         }
@@ -176,21 +156,15 @@ TEST(FileCheck, IncludeOrderDiagnosticGoldenIsOneErrorForTheFile)
             formatter::Configuration raw;
             auto& style = raw.FormattingStyle;
             style.IncludeOrder = formatter::IncludeOrder::Sort;
-            style.IncludeMatchingHeader =
-                formatter::IncludeMatchingHeader::First;
+            style.IncludeMatchingHeader = formatter::IncludeMatchingHeader::First;
             style.IncludeGrouping = formatter::IncludeGrouping::Directory;
-            style.IncludeStandardHeaders =
-                formatter::IncludeStandardHeaders::Last;
+            style.IncludeStandardHeaders = formatter::IncludeStandardHeaders::Last;
             style.IndentPreprocessingDirectives = indent;
             if (mixed) {
-                style.SpaceInsideFunctionParameters =
-                    formatter::GapPolicy::NoSpace;
+                style.SpaceInsideFunctionParameters = formatter::GapPolicy::NoSpace;
             }
             const hit_fmt::PreparedFileConfiguration prepared(std::move(raw));
-            const auto checked = hit_fmt::CheckFile(
-                input.View(),
-                prepared,
-                "project/sample.cpp");
+            const auto checked = hit_fmt::CheckFile(input.View(), prepared, "project/sample.cpp");
             ASSERT_EQ(checked.IncludeOrderChanges.size(), 2u);
             EXPECT_EQ(checked.OtherFormattingMismatch, mixed);
             EXPECT_TRUE(checked.HasFailures(false));
@@ -199,13 +173,9 @@ TEST(FileCheck, IncludeOrderDiagnosticGoldenIsOneErrorForTheFile)
                 const auto before = input
                     .View()
                     .View()
-                    .substr(
-                        change.Original.Begin,
-                        change.Original.End - change.Original.Begin);
+                    .substr(change.Original.Begin, change.Original.End - change.Original.Begin);
                 const auto after = std::string_view(checked.Formatting.Text)
-                    .substr(
-                        change.Emitted.Begin,
-                        change.Emitted.End - change.Emitted.Begin);
+                    .substr(change.Emitted.Begin, change.Emitted.End - change.Emitted.Begin);
                 EXPECT_TRUE(before.ends_with('\n'));
                 EXPECT_TRUE(after.ends_with('\n'));
                 EXPECT_EQ(before.find("int "), std::string_view::npos);
@@ -224,17 +194,10 @@ TEST(FileCheck, IncludeOrderDiagnosticGoldenIsOneErrorForTheFile)
                 output << "summary: ";
                 hit_fmt::PrintFileSummaryIssues(output, checked, fix);
                 output << '\n';
-                fixture.Expect(
-                    output.str(),
-                    fix
-                    ? ".fix.txt"
-                    : mixed ? ".mixed-check.txt" : ".check.txt");
+                fixture.Expect(output.str(), fix ? ".fix.txt" : mixed ? ".mixed-check.txt" : ".check.txt");
             }
             const Input applied(checked.Formatting.Text);
-            const auto clean = hit_fmt::CheckFile(
-                applied.View(),
-                prepared,
-                "project/sample.cpp");
+            const auto clean = hit_fmt::CheckFile(applied.View(), prepared, "project/sample.cpp");
             EXPECT_FALSE(clean.FormattingMismatch);
             EXPECT_TRUE(clean.IncludeOrderChanges.empty());
             const formatter::Hunk selected[] = {{1, 1}};
@@ -256,18 +219,15 @@ TEST(FileCheck, FunctionBodyMacroHintsApplyToTheInitialParse)
     raw.FormattingStyle.FunctionBodyMacroNames = {"define_case"};
     raw.FormattingStyle.BinaryOperatorSpacing = formatter::GapPolicy::Space;
     raw.Naming.Function.Case = formatter::NameCase::PascalCase;
-    raw.FunctionDefinitionParameterNames =
-        formatter::FunctionDefinitionParameterNames::NameRequired;
+    raw.FunctionDefinitionParameterNames = formatter::FunctionDefinitionParameterNames::NameRequired;
     const hit_fmt::PreparedFileConfiguration configuration(std::move(raw));
-    const Input input(
-        "define_case(Suite, Case) {auto sum=left+right; Use(sum);}\n");
+    const Input input("define_case(Suite, Case) {auto sum=left+right; Use(sum);}\n");
     const auto checked = hit_fmt::CheckFile(input.View(), configuration);
     EXPECT_TRUE(checked.FormattingMismatch);
     EXPECT_TRUE(checked.Semantic.empty());
     EXPECT_NE(checked.Formatting.Text.find("left + right"), std::string::npos);
     const Input applied(checked.Formatting.Text);
-    EXPECT_FALSE(
-        hit_fmt::CheckFile(applied.View(), configuration).FormattingMismatch);
+    EXPECT_FALSE(hit_fmt::CheckFile(applied.View(), configuration).FormattingMismatch);
 }
 
 TEST(FileCheck, DiagnosticGoldenUsesOriginalCheckAndFinalFixCoordinates)
@@ -278,17 +238,13 @@ TEST(FileCheck, DiagnosticGoldenUsesOriginalCheckAndFinalFixCoordinates)
     };
     auto configuration = Configuration();
     configuration.FormattingStyle.AddMissingControlBraces = true;
-    configuration.FormattingStyle.NamespaceComments =
-        formatter::NamespaceComments::AddMissing;
+    configuration.FormattingStyle.NamespaceComments = formatter::NamespaceComments::AddMissing;
     configuration.FormattingStyle.NamespaceCommentSpaces = 7;
     configuration.FormattingStyle.ColumnLimit = 24;
-    configuration.FormattingStyle.WidthDiagnostics =
-        formatter::WidthDiagnosticPolicy::Report;
+    configuration.FormattingStyle.WidthDiagnostics = formatter::WidthDiagnosticPolicy::Report;
     configuration.Naming.Function.Case = formatter::NameCase::PascalCase;
-    configuration.FunctionDeclarationParameterNames =
-        formatter::FunctionDeclarationParameterNames::Required;
-    configuration.FunctionDefinitionParameterNames =
-        formatter::FunctionDefinitionParameterNames::NameRequired;
+    configuration.FunctionDeclarationParameterNames = formatter::FunctionDeclarationParameterNames::Required;
+    configuration.FunctionDefinitionParameterNames = formatter::FunctionDefinitionParameterNames::NameRequired;
     const hit_fmt::PreparedFileConfiguration prepared(std::move(configuration));
     const Input input(fixture.InputNamed(".input.cpp"));
     const auto checked = hit_fmt::CheckFile(input.View(), prepared);
@@ -297,20 +253,14 @@ TEST(FileCheck, DiagnosticGoldenUsesOriginalCheckAndFinalFixCoordinates)
     EXPECT_FALSE(checked.Formatting.OriginalTokens.empty());
     EXPECT_TRUE(checked.HasFailures(false));
     EXPECT_TRUE(checked.HasFailures(true));
-    EXPECT_GT(
-        checked.Semantic.back().Emitted.Line,
-        checked.Semantic.back().Original.Line);
+    EXPECT_GT(checked.Semantic.back().Emitted.Line, checked.Semantic.back().Original.Line);
     ASSERT_FALSE(checked.Formatting.Diagnostics.empty());
     const auto& width = checked.Formatting.Diagnostics.back();
     const auto close = checked.Formatting.Text.find("// namespace test");
     ASSERT_NE(close, std::string::npos);
     EXPECT_EQ(
         width.Position.Line,
-        1u +
-        std::count(
-            checked.Formatting.Text.begin(),
-            checked.Formatting.Text.begin() + close,
-            '\n'));
+        1u + std::count(checked.Formatting.Text.begin(), checked.Formatting.Text.begin() + close, '\n'));
     for (const auto terminalWidth : {size_t(80), size_t(32)}) {
         for (const auto fix : {false, true}) {
             SCOPED_TRACE(fix ? "fix" : "check");
@@ -353,26 +303,15 @@ TEST(FileCheck, PreparedConfigurationOwnsSettingsAndResultsOutliveInputs)
         const formatter::Hunk selected[] = {{1, 1}};
         const hit_fmt::ChangedFileScope scope{selected};
         first = hit_fmt::CheckFile(input.View(), prepared, path, scope);
-        const auto withoutPath =
-            hit_fmt::CheckFile(input.View(), prepared, {}, scope);
+        const auto withoutPath = hit_fmt::CheckFile(input.View(), prepared, {}, scope);
         EXPECT_EQ(first.Formatting.Text, withoutPath.Formatting.Text);
         ASSERT_EQ(first.Semantic.size(), withoutPath.Semantic.size());
         for (size_t i = 0; i < first.Semantic.size(); ++i) {
-            EXPECT_EQ(
-                first.Semantic[i].Message,
-                withoutPath.Semantic[i].Message);
-            EXPECT_EQ(
-                first.Semantic[i].Original.Line,
-                withoutPath.Semantic[i].Original.Line);
-            EXPECT_EQ(
-                first.Semantic[i].Original.Column,
-                withoutPath.Semantic[i].Original.Column);
-            EXPECT_EQ(
-                first.Semantic[i].Emitted.Line,
-                withoutPath.Semantic[i].Emitted.Line);
-            EXPECT_EQ(
-                first.Semantic[i].Emitted.Column,
-                withoutPath.Semantic[i].Emitted.Column);
+            EXPECT_EQ(first.Semantic[i].Message, withoutPath.Semantic[i].Message);
+            EXPECT_EQ(first.Semantic[i].Original.Line, withoutPath.Semantic[i].Original.Line);
+            EXPECT_EQ(first.Semantic[i].Original.Column, withoutPath.Semantic[i].Original.Column);
+            EXPECT_EQ(first.Semantic[i].Emitted.Line, withoutPath.Semantic[i].Emitted.Line);
+            EXPECT_EQ(first.Semantic[i].Emitted.Column, withoutPath.Semantic[i].Emitted.Column);
         }
         path.assign(path.size(), '?');
     }
@@ -394,13 +333,11 @@ TEST(FileCheck, TokenEndpointAndUnicodePositionsMapWithoutReparsingOutput)
 {
     auto raw = Configuration();
     raw.Naming.Function.Case = formatter::NameCase::PascalCase;
-    raw.FunctionDeclarationParameterNames =
-        formatter::FunctionDeclarationParameterNames::Required;
-    raw.FunctionDefinitionParameterNames =
-        formatter::FunctionDefinitionParameterNames::NameRequired;
+    raw.FunctionDeclarationParameterNames = formatter::FunctionDeclarationParameterNames::Required;
+    raw.FunctionDefinitionParameterNames = formatter::FunctionDefinitionParameterNames::NameRequired;
     const hit_fmt::PreparedFileConfiguration prepared(raw);
-    const std::string source = "const char* text=\"é\"; void bad_name(int  , "
-        "void (*)(int)){}\nvoid GoodProto(int);\n";
+    const std::string source =
+        "const char* text=\"é\"; void bad_name(int  , " "void (*)(int)){}\nvoid GoodProto(int);\n";
     const Input input(source);
     const auto checked = hit_fmt::CheckFile(input.View(), prepared);
     ASSERT_EQ(checked.Semantic.size(), 4u);
@@ -413,8 +350,7 @@ TEST(FileCheck, TokenEndpointAndUnicodePositionsMapWithoutReparsingOutput)
         std::string::npos);
     EXPECT_EQ(
         checked.Semantic[0].Original.Column,
-        source.find(
-            "bad_name") /* one extra UTF8 byte cancels one-based column */);
+        source.find("bad_name") /* one extra UTF8 byte cancels one-based column */);
     const auto emitted = checked.Formatting.Text.find("bad_name");
     const auto lineStart = checked.Formatting.Text.rfind('\n', emitted);
     const auto begin = lineStart == std::string::npos ? 0 : lineStart + 1;
@@ -427,30 +363,22 @@ TEST(FileCheck, TokenEndpointAndUnicodePositionsMapWithoutReparsingOutput)
             [] (unsigned char c) { return (c & 0xc0) != 0x80; }));
     const auto& insertion = checked.Semantic[1];
     EXPECT_EQ(insertion.Emitted.Line, checked.Semantic[0].Emitted.Line);
-    EXPECT_EQ(
-        insertion.Emitted.Column,
-        checked.Semantic[0].Emitted.Column +
-        std::string_view("bad_name(int").size());
+    EXPECT_EQ(insertion.Emitted.Column, checked.Semantic[0].Emitted.Column + std::string_view("bad_name(int").size());
     const auto& pointerInsertion = checked.Semantic[2];
     EXPECT_EQ(pointerInsertion.Emitted.Line, insertion.Emitted.Line);
     EXPECT_GT(pointerInsertion.Emitted.Column, insertion.Emitted.Column);
 
     // Invalid UTF8 in a protected literal must not shift later name locations.
-    const std::string malformed = std::string("const char* text=\"") + '\x80' +
-        "\";\tvoid another_bad(){}\n";
+    const std::string malformed = std::string("const char* text=\"") + '\x80' + "\";\tvoid another_bad(){}\n";
     const Input recovery(malformed);
     const auto recovered = hit_fmt::CheckFile(recovery.View(), prepared);
     ASSERT_EQ(recovered.Semantic.size(), 1u);
-    EXPECT_EQ(
-        recovered.Semantic[0].Original.Column,
-        malformed.find("another_bad") + 1);
+    EXPECT_EQ(recovered.Semantic[0].Original.Column, malformed.find("another_bad") + 1);
     const auto recoveredName = recovered.Formatting.Text.find("another_bad");
-    const auto recoveredStart =
-        recovered.Formatting.Text.rfind('\n', recoveredName);
+    const auto recoveredStart = recovered.Formatting.Text.rfind('\n', recoveredName);
     EXPECT_EQ(
         recovered.Semantic[0].Emitted.Column,
-        recoveredName -
-        (recoveredStart == std::string::npos ? 0 : recoveredStart + 1) + 1);
+        recoveredName - (recoveredStart == std::string::npos ? 0 : recoveredStart + 1) + 1);
 }
 
 TEST(FileCheck, UnicodeWidthDiagnosticGoldenMapsCodePointsAndTabs)
@@ -461,8 +389,7 @@ TEST(FileCheck, UnicodeWidthDiagnosticGoldenMapsCodePointsAndTabs)
     };
     formatter::Configuration raw;
     raw.FormattingStyle.ColumnLimit = 12;
-    raw.FormattingStyle.WidthDiagnostics =
-        formatter::WidthDiagnosticPolicy::Report;
+    raw.FormattingStyle.WidthDiagnostics = formatter::WidthDiagnosticPolicy::Report;
     const hit_fmt::PreparedFileConfiguration prepared(raw);
     const Input input(fixture.InputNamed(".input.cpp"));
     const auto checked = hit_fmt::CheckFile(input.View(), prepared);
@@ -501,11 +428,9 @@ TEST(FileCheck, ActualProtectedOverflowRemainsFailureInFixMode)
 {
     auto raw = Configuration();
     raw.FormattingStyle.ColumnLimit = 10;
-    raw.FormattingStyle.WidthDiagnostics =
-        formatter::WidthDiagnosticPolicy::Report;
+    raw.FormattingStyle.WidthDiagnostics = formatter::WidthDiagnosticPolicy::Report;
     const hit_fmt::PreparedFileConfiguration prepared(raw);
-    const Input input(
-        "// hit-fmt off\r\nint " "unavoidable_long_name;\r\n// hit-fmt on\r\n");
+    const Input input("// hit-fmt off\r\nint " "unavoidable_long_name;\r\n// hit-fmt on\r\n");
     const auto checked = hit_fmt::CheckFile(input.View(), prepared);
     EXPECT_EQ(
         checked.Formatting.Text,
@@ -522,15 +447,7 @@ TEST(FileCheck, ActualProtectedOverflowRemainsFailureInFixMode)
 TEST(FileCheck, ChangedHunkOptionsSupportAliasesAndRejectMixedInputs)
 {
     for (const auto option : {"--changed-hunks", "--changed-ranges"}) {
-        const char* argv[] = {
-            "hit-fmt",
-            "--fix",
-            option,
-            "-",
-            "--no-spillover",
-            "--threads=2",
-            "--summary",
-        };
+        const char* argv[] = {"hit-fmt", "--fix", option, "-", "--no-spillover", "--threads=2", "--summary"};
         const auto parsed = hit_fmt::ParseOptions(std::size(argv), argv);
         ASSERT_TRUE(parsed.HunkInput);
         EXPECT_EQ(*parsed.HunkInput, "-");
@@ -540,9 +457,7 @@ TEST(FileCheck, ChangedHunkOptionsSupportAliasesAndRejectMixedInputs)
         EXPECT_TRUE(parsed.SummaryOnly);
         EXPECT_EQ(parsed.Threads, 2u);
     }
-    for (const auto option :
-        {"--changed-hunks=ranges.txt", "--changed-ranges=ranges.txt"})
-    {
+    for (const auto option : {"--changed-hunks=ranges.txt", "--changed-ranges=ranges.txt"}) {
         const char* argv[] = {"hit-fmt", option};
         const auto parsed = hit_fmt::ParseOptions(std::size(argv), argv);
         ASSERT_TRUE(parsed.HunkInput);
@@ -558,14 +473,10 @@ TEST(FileCheck, ChangedHunkOptionsSupportAliasesAndRejectMixedInputs)
             {"hit-fmt", "--no-spillover", "source.cpp"},
         })
     {
-        EXPECT_THROW(
-            hit_fmt::ParseOptions(argv.size(), argv.data()),
-            std::runtime_error);
+        EXPECT_THROW(hit_fmt::ParseOptions(argv.size(), argv.data()), std::runtime_error);
     }
-    const char* positional[] =
-        {"hit-fmt", "--", "--changed-hunks", "--no-spillover"};
-    const auto parsed =
-        hit_fmt::ParseOptions(std::size(positional), positional);
+    const char* positional[] = {"hit-fmt", "--", "--changed-hunks", "--no-spillover"};
+    const auto parsed = hit_fmt::ParseOptions(std::size(positional), positional);
     EXPECT_FALSE(parsed.HunkInput);
     EXPECT_EQ(parsed.Paths.size(), 2u);
 }
@@ -574,18 +485,12 @@ TEST(FileCheck, EmptyHunkScopeNeverFallsBackToWholeFile)
 {
     auto raw = Configuration();
     raw.Naming.Function.Case = formatter::NameCase::PascalCase;
-    raw.FunctionDeclarationParameterNames =
-        formatter::FunctionDeclarationParameterNames::Required;
+    raw.FunctionDeclarationParameterNames = formatter::FunctionDeclarationParameterNames::Required;
     raw.FormattingStyle.ColumnLimit = 10;
-    raw.FormattingStyle.WidthDiagnostics =
-        formatter::WidthDiagnosticPolicy::Report;
+    raw.FormattingStyle.WidthDiagnostics = formatter::WidthDiagnosticPolicy::Report;
     const hit_fmt::PreparedFileConfiguration prepared(raw);
     const Input input("void bad_name(int);\n");
-    const auto empty = hit_fmt::CheckFile(
-        input.View(),
-        prepared,
-        {},
-        hit_fmt::ChangedFileScope{});
+    const auto empty = hit_fmt::CheckFile(input.View(), prepared, {}, hit_fmt::ChangedFileScope{});
     EXPECT_EQ(
         empty.Formatting.Text,
         input
@@ -597,41 +502,27 @@ TEST(FileCheck, EmptyHunkScopeNeverFallsBackToWholeFile)
     EXPECT_TRUE(hit_fmt::CheckFile(input.View(), prepared).HasFailures(true));
     const formatter::Hunk invalid[] = {{2, 2}};
     EXPECT_THROW(
-        hit_fmt::CheckFile(
-            input.View(),
-            prepared,
-            {},
-            hit_fmt::ChangedFileScope{invalid}),
+        hit_fmt::CheckFile(input.View(), prepared, {}, hit_fmt::ChangedFileScope{invalid}),
         std::invalid_argument);
 }
 
 TEST(FileCheck, HunkDiagnosticGoldenUsesOriginalSelectionAndMappedOutput)
 {
-    const test::golden::Fixture fixture{
-        std::filesystem::path(__FILE__).parent_path() / "testdata/file-check",
-        "hunks",
-    };
+    const test::golden::Fixture fixture{std::filesystem::path(__FILE__).parent_path() / "testdata/file-check", "hunks"};
     auto raw = Configuration();
     raw.Naming.Function.Case = formatter::NameCase::PascalCase;
-    raw.FunctionDeclarationParameterNames =
-        formatter::FunctionDeclarationParameterNames::Required;
-    raw.FunctionDefinitionParameterNames =
-        formatter::FunctionDefinitionParameterNames::NameRequired;
+    raw.FunctionDeclarationParameterNames = formatter::FunctionDeclarationParameterNames::Required;
+    raw.FunctionDefinitionParameterNames = formatter::FunctionDefinitionParameterNames::NameRequired;
     raw.FormattingStyle.IncludeOrder = formatter::IncludeOrder::Sort;
     raw.FormattingStyle.AddMissingControlBraces = true;
     raw.FormattingStyle.ColumnLimit = 40;
-    raw.FormattingStyle.WidthDiagnostics =
-        formatter::WidthDiagnosticPolicy::Report;
+    raw.FormattingStyle.WidthDiagnostics = formatter::WidthDiagnosticPolicy::Report;
     const hit_fmt::PreparedFileConfiguration prepared(raw);
     const Input input(fixture.InputNamed(".input.cpp"));
-    const formatter::Hunk selected[] =
-        {{13, 13}, {11, 11}, {9, 9}, {4, 5}, {1, 1}, {5, 5}};
+    const formatter::Hunk selected[] = {{13, 13}, {11, 11}, {9, 9}, {4, 5}, {1, 1}, {5, 5}};
     for (const bool spillover : {false, true}) {
-        const auto checked = hit_fmt::CheckFile(
-            input.View(),
-            prepared,
-            "sample.cpp",
-            hit_fmt::ChangedFileScope{selected, spillover});
+        const auto checked =
+            hit_fmt::CheckFile(input.View(), prepared, "sample.cpp", hit_fmt::ChangedFileScope{selected, spillover});
         ASSERT_EQ(checked.Semantic.size(), 4u);
         for (const auto& diagnostic : checked.Semantic) {
             EXPECT_NE(diagnostic.Original.Line, 3u);
@@ -654,15 +545,10 @@ TEST(FileCheck, HunkDiagnosticGoldenUsesOriginalSelectionAndMappedOutput)
         EXPECT_TRUE(checked.HasFailures(false));
         EXPECT_TRUE(checked.HasFailures(true));
         EXPECT_EQ(checked.RequiredChanges.empty(), spillover);
-        EXPECT_EQ(
-            checked.Formatting.Text.starts_with("#include \"a.h\""),
-            spillover);
+        EXPECT_EQ(checked.Formatting.Text.starts_with("#include \"a.h\""), spillover);
+        EXPECT_NE(checked.Formatting.Text.find("void bad_before(int);"), std::string::npos);
         EXPECT_NE(
-            checked.Formatting.Text.find("void bad_before(int);"),
-            std::string::npos);
-        EXPECT_NE(
-            checked.Formatting.Text.find("const char* Outside = "
-                "\"unavoidable_outside_literal_over_the_limit\";"),
+            checked.Formatting.Text.find("const char* Outside = " "\"unavoidable_outside_literal_over_the_limit\";"),
             std::string::npos);
         for (const bool fix : {false, true}) {
             std::ostringstream output;
@@ -705,11 +591,7 @@ TEST(FileCheck, IncompleteHunkCoverageAndRequiredChangesStayDistinct)
     const hit_fmt::PreparedFileConfiguration prepared(raw);
     const Input input("void Good() {\n    call(1,\n        2);\n}\n");
     const formatter::Hunk selected[] = {{3, 3}};
-    const auto checked = hit_fmt::CheckFile(
-        input.View(),
-        prepared,
-        {},
-        hit_fmt::ChangedFileScope{selected, false});
+    const auto checked = hit_fmt::CheckFile(input.View(), prepared, {}, hit_fmt::ChangedFileScope{selected, false});
     EXPECT_FALSE(checked.FormattingMismatch);
     EXPECT_FALSE(checked.HasFailures(false));
     EXPECT_FALSE(checked.HasFailures(true));
@@ -735,13 +617,8 @@ TEST(FileCheck, IncompleteHunkCoverageAndRequiredChangesStayDistinct)
 
     raw.FormattingStyle.AddMissingControlBraces = true;
     const hit_fmt::PreparedFileConfiguration braces(raw);
-    const Input blocked("void Good(bool ready) {\n  if (ready)\n"
-        "    consume(\n      ready);\n}\n");
-    const auto required = hit_fmt::CheckFile(
-        blocked.View(),
-        braces,
-        {},
-        hit_fmt::ChangedFileScope{selected, false});
+    const Input blocked("void Good(bool ready) {\n  if (ready)\n" "    consume(\n      ready);\n}\n");
+    const auto required = hit_fmt::CheckFile(blocked.View(), braces, {}, hit_fmt::ChangedFileScope{selected, false});
     ASSERT_EQ(required.RequiredChanges.size(), 1u);
     EXPECT_TRUE(required.Semantic.empty());
     EXPECT_TRUE(required.Formatting.Diagnostics.empty());
@@ -759,12 +636,8 @@ TEST(FileCheck, IncompleteHunkCoverageAndRequiredChangesStayDistinct)
             fix);
         hit_fmt::PrintFileSummaryIssues(summary, required, fix);
         for (const auto& text : {output.str(), summary.str()}) {
-            EXPECT_NE(
-                text.find("fail: control body requires braces"),
-                std::string::npos);
-            EXPECT_EQ(
-                text.find("cannot automatically fix") != std::string::npos,
-                fix);
+            EXPECT_NE(text.find("fail: control body requires braces"), std::string::npos);
+            EXPECT_EQ(text.find("cannot automatically fix") != std::string::npos, fix);
             EXPECT_EQ(text.find("note:"), std::string::npos);
         }
     }
@@ -774,15 +647,10 @@ TEST(FileCheck, UnsupportedPreparationFailsClosed)
 {
     auto raw = Configuration();
     raw.FormattingStyle.CallLikeMacroNames = {"CALL_HINT"};
-    EXPECT_THROW(
-        hit_fmt::PreparedFileConfiguration{raw},
-        std::invalid_argument);
+    EXPECT_THROW(hit_fmt::PreparedFileConfiguration{raw}, std::invalid_argument);
     raw.FormattingStyle.CallLikeMacroNames.clear();
-    raw.FormattingStyle.AmbiguousTemplateDeclarationSpacing =
-        formatter::GapPolicy::Space;
-    EXPECT_THROW(
-        hit_fmt::PreparedFileConfiguration{raw},
-        std::invalid_argument);
+    raw.FormattingStyle.AmbiguousTemplateDeclarationSpacing = formatter::GapPolicy::Space;
+    EXPECT_THROW(hit_fmt::PreparedFileConfiguration{raw}, std::invalid_argument);
 }
 
 } // namespace

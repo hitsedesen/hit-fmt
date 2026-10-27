@@ -14,8 +14,7 @@ struct BinaryOperatorInfo
 // Lexical metadata only: callers must establish the token's binary role.
 // Unary/declarator uses, template angles, and split tokens need syntax context.
 // Conditional expressions are handled separately, not by this binary table.
-[[nodiscard]] constexpr BinaryOperatorInfo GetBinaryOperatorInfo(
-    tokenizer::TokenKind kind) noexcept
+[[nodiscard]] constexpr BinaryOperatorInfo GetBinaryOperatorInfo(tokenizer::TokenKind kind) noexcept
 {
     using TK = tokenizer::TokenKind;
     switch (kind) {

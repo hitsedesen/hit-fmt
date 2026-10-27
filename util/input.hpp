@@ -15,8 +15,7 @@ using SourceOffset = uint32_t;
 inline constexpr size_t SourcePaddingSize = 64;
 
 inline constexpr size_t MaxSourceSize =
-    static_cast<size_t>(std::numeric_limits<SourceOffset>::max()) -
-        SourcePaddingSize;
+    static_cast<size_t>(std::numeric_limits<SourceOffset>::max()) - SourcePaddingSize;
 
 // A non-owning source buffer with safe lookahead. Data points to Size source
 // bytes followed by SourcePaddingSize zero bytes.
@@ -30,9 +29,7 @@ struct PaddedSourceView
         return {Data, Size};
     }
 
-    [[nodiscard]] constexpr std::string_view substr(
-        size_t pos = 0,
-        size_t count = std::string_view::npos) const
+    [[nodiscard]] constexpr std::string_view substr(size_t pos = 0, size_t count = std::string_view::npos) const
     {
         return View().substr(pos, count);
     }
@@ -53,7 +50,7 @@ struct SourceView
     SourceOffset Begin = 0;
     SourceOffset End = 0;
 
-    constexpr bool operator==(const SourceView&) const = default;
+    constexpr bool operator==(const SourceView& other) const = default;
 
     [[nodiscard]] constexpr bool Empty() const
     {
@@ -91,10 +88,6 @@ struct std::formatter<util::Position>
 
     auto format(const util::Position& position, std::format_context& ctx) const
     {
-        return std::format_to(
-            ctx.out(),
-            "Ln {}, Col {}",
-            position.Line,
-            position.Column);
+        return std::format_to(ctx.out(), "Ln {}, Col {}", position.Line, position.Column);
     }
 };

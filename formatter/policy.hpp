@@ -16,18 +16,12 @@ struct Style;
 // token provenance. A canonical combinator rebuilds its own gaps, including
 // existing adjacencies; unrelated nested edits do not rebuild preserved owners.
 // Inserted gaps are always Rebuilt. Never infer context from before/after text.
-enum class GapContext : std::uint8_t
-{
-    Preserved,
-    Rebuilt
-};
+enum class GapContext : std::uint8_t { Preserved, Rebuilt };
 
 // nullopt delegates spelling to lowering: rebuilt, topology-changing gaps use
 // syntax-safe flat fallback before fitting, even if they stay flat. Preserved
 // and flat-only gaps retain source bytes. Layout owns newlines; safety wins.
-[[nodiscard]] constexpr std::optional<bool> GapUsesSpace(
-    GapPolicy policy,
-    GapContext context) noexcept
+[[nodiscard]] constexpr std::optional<bool> GapUsesSpace(GapPolicy policy, GapContext context) noexcept
 {
     switch (policy) {
         case GapPolicy::Preserve:
@@ -37,13 +31,9 @@ enum class GapContext : std::uint8_t
         case GapPolicy::NoSpace:
             return false;
         case GapPolicy::GeneratedSpace:
-            return context == GapContext::Rebuilt
-                ? std::optional<bool>{true}
-                : std::nullopt;
+            return context == GapContext::Rebuilt ? std::optional<bool>{true} : std::nullopt;
         case GapPolicy::GeneratedNoSpace:
-            return context == GapContext::Rebuilt
-                ? std::optional<bool>{false}
-                : std::nullopt;
+            return context == GapContext::Rebuilt ? std::optional<bool>{false} : std::nullopt;
     }
     return std::nullopt;
 }
@@ -181,21 +171,15 @@ struct IncludePolicy
 struct TrailingCommentSpaceSetting
 {
     std::optional<std::size_t> Count;
-    friend bool operator==(
-        const TrailingCommentSpaceSetting&,
-        const TrailingCommentSpaceSetting&) = default;
+    friend bool operator==(const TrailingCommentSpaceSetting& lhs, const TrailingCommentSpaceSetting& rhs) = default;
 };
 
-[[nodiscard]] constexpr GapPolicy ResolveGapPolicy(
-    GapPolicy policy,
-    GapPolicy) noexcept
+[[nodiscard]] constexpr GapPolicy ResolveGapPolicy(GapPolicy policy, GapPolicy) noexcept
 {
     return policy;
 }
 
-[[nodiscard]] constexpr GapPolicy ResolveGapPolicy(
-    std::optional<GapPolicy> policy,
-    GapPolicy fallback) noexcept
+[[nodiscard]] constexpr GapPolicy ResolveGapPolicy(std::optional<GapPolicy> policy, GapPolicy fallback) noexcept
 {
     return policy.value_or(fallback);
 }
