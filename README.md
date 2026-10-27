@@ -38,8 +38,8 @@ The GoogleTest executable prints each test as it runs. Select a subset with
 with `--gtest_list_tests`. The tokenizer allocation check uses a separate
 executable.
 
-Benchmarks can be built separately with
-`-DHIT_FMT_BENCHMARK=ON`; they require Google Benchmark.
+The corpus benchmark can be built separately with
+`-DHIT_FMT_BENCHMARK=ON`.
 
 ## Releases
 

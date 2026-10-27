@@ -13,17 +13,12 @@ set(CMAKE_CXX_STANDARD_REQUIRED TRUE)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
 option(HIT_FMT_TEST "Build tests" OFF)
-option(HIT_FMT_BENCHMARK "Build benchmarks" OFF)
+option(HIT_FMT_BENCHMARK "Build corpus benchmark" OFF)
 
 find_package(Threads REQUIRED)
 
 if(HIT_FMT_TEST)
     find_package(GTest CONFIG REQUIRED)
-endif()
-
-if(HIT_FMT_BENCHMARK)
-    find_package(benchmark CONFIG REQUIRED)
-    add_subdirectory(benchmarks)
 endif()
 
 add_subdirectory(util)

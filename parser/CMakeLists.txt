@@ -8,7 +8,3 @@ target_include_directories(lib-parser
 target_link_libraries(lib-parser
     lib-tokenizer
     lib-util)
-
-if(HIT_FMT_BENCHMARK)
-    add_subdirectory(benchmarks)
-endif()
