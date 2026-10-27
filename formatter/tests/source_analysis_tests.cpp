@@ -415,7 +415,7 @@ TEST(SourceAnalysis, RecoverySummariesAndMergedExplicitRanges)
 void ExpectSameTokens(const parser::SyntaxTree& original, std::string_view changed)
 {
     Input input(changed);
-    auto result = parser::SyntaxTree::TokenizeOnly(input.View());
+    auto result = Parse(input);
     ASSERT_EQ(original.TokenCount(), result.TokenCount()) << changed;
     for (parser::TokenIndex i = 0; i < original.TokenCount(); ++i) {
         EXPECT_EQ(original.Kind(i), result.Kind(i)) << changed;
@@ -684,7 +684,7 @@ TEST(SourceAnalysis, LexicalConstraintsCoverPunctuationAndLiteralBoundaries)
         })
     {
         Input input(std::string(first) + " " + second);
-        auto tree = parser::SyntaxTree::TokenizeOnly(input.View());
+        auto tree = Parse(input);
         ASSERT_EQ(tree.TokenCount(), 2u);
         EXPECT_EQ(formatter::TokenGapNeedsSeparation(tree, 1), required) << first << ' ' << second;
     }
@@ -772,7 +772,7 @@ TEST(SourceAnalysis, LexicalConstraintsCoverPunctuationAndLiteralBoundaries)
     for (auto first : spellings) {
         for (auto second : spellings) {
             Input input(std::string(first) + " " + second);
-            auto tree = parser::SyntaxTree::TokenizeOnly(input.View());
+            auto tree = Parse(input);
             if (tree.TokenCount() != 2) {
                 continue;
             }
@@ -784,7 +784,7 @@ TEST(SourceAnalysis, LexicalConstraintsCoverPunctuationAndLiteralBoundaries)
     }
     EXPECT_GT(removable, 1000u); // This is not an always-preserve oracle.
     Input input(". . . < :: > / * > > <: : name < :: : name");
-    auto tree = parser::SyntaxTree::TokenizeOnly(input.View());
+    auto tree = Parse(input);
     std::string changed;
     for (parser::TokenIndex i = 0; i < tree.TokenCount(); ++i) {
         if (i && formatter::TokenGapNeedsSeparation(tree, i)) {

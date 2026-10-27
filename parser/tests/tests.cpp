@@ -1262,9 +1262,13 @@ TEST(Parser, NamelessDirectBodyIsBoundedRecoveryWithoutInventedScope)
         EXPECT_EQ(owner->FirstChild->Tokens.End, owner->Tokens.End);
         EXPECT_EQ(owner->FirstChild->NextSibling, nullptr);
         EXPECT_EQ(owner->FirstChild->FirstChild, nullptr);
-        const auto lexical = parser::SyntaxTree::TokenizeOnly(input.View());
         for (auto i = owner->Tokens.Begin; i < owner->Tokens.End; ++i) {
-            EXPECT_EQ(tree.Role(i), lexical.Role(i));
+            const auto kind = tree.Kind(i);
+            const auto role =
+                kind >= tokenizer::TokenKind::Operator_OpenBrace && kind <= tokenizer::TokenKind::Operator_Comma
+                ? parser::PunctuationRole::Generic
+                : parser::PunctuationRole::None;
+            EXPECT_EQ(tree.Role(i), role);
         }
         const auto* following = tree.Root().LastChild;
         ASSERT_NE(following, nullptr);
