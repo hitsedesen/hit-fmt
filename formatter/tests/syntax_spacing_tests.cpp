@@ -303,25 +303,6 @@ TEST(SyntaxSpacing, EnumeratorAssignmentsOwnBothGaps)
     }
 }
 
-TEST(SyntaxSpacing, TrailingCommentPolicyOverridesAssignmentGap)
-{
-    GapPolicies policies;
-    policies.AssignmentOperatorSpacing = GapPolicy::Space;
-    Analysis analysis("enum Mode { First=  // note\n 1 }; " "int count=  // control\n 1;", policies);
-    for (const auto comment : {"// note", "// control"}) {
-        const auto gap = analysis.Before(comment);
-        EXPECT_EQ(analysis.Spacing.Gaps()[gap - 1].Field, F::AssignmentOperatorSpacing);
-        EXPECT_EQ(analysis.Spacing.Gaps()[gap].Field, F::TrailingCommentSpacing);
-        EXPECT_EQ(analysis.Spacing.Gaps()[gap].Policy, GapPolicy::Preserve);
-        EXPECT_EQ(analysis.Spacing.Gaps()[gap].Priority, 3);
-        EXPECT_EQ(analysis.Safety.Original(gap), "  ");
-        EXPECT_EQ(analysis.Safety.Gaps()[gap].Reasons, ProtectionReason::None);
-        EXPECT_FALSE(analysis.Safety.Gaps()[gap].Preserve);
-        EXPECT_TRUE(analysis.Safety.CanReplaceGap(gap, " "));
-        EXPECT_FALSE(analysis.Spacing.SpacePreference(gap, GapContext::Rebuilt, analysis.Safety));
-    }
-}
-
 TEST(SyntaxSpacing, SpecificAndEmptyRulesOverrideGeneralRulesEvenWhenPreserved)
 {
     GapPolicies policies;

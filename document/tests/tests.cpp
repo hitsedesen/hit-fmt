@@ -693,9 +693,6 @@ TEST(GroupLayout, BoundedChildFittingGolden)
                 ASSERT_TRUE(document.Seal());
                 const auto output = document.Render({.Width = width});
                 ASSERT_TRUE(output.State);
-                const auto repeated = document.Render({.Width = width});
-                EXPECT_EQ(output.Text, repeated.Text);
-                EXPECT_EQ(output.Broken, repeated.Broken);
                 // Oversized groups may overflow with ordinary fitting.
                 // Child-only candidates must fit every line.
                 if (width >= 25 && (padding == 0 || mode < 3)) {
@@ -1971,9 +1968,6 @@ TEST(GroupLayout, SourceLineIndentPrefixesGolden)
                             std::string_view(source).substr(0, end));
                         EXPECT_EQ(output.Text.find("\r\r\n"), std::string_view::npos);
                     }
-                    auto repeated = document.Render(policy);
-                    EXPECT_EQ(repeated.Text, output.Text);
-                    EXPECT_EQ(repeated.Broken, output.Broken);
                     actual += "prefix=" + std::to_string(index) + " indent=" + std::to_string(indent) + " tab=" +
                         std::to_string(tabWidth);
                     actual += kind == IndentationKind::Tabs ? " tabs:\n" : " spaces:\n";

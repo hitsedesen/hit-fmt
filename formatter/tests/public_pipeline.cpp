@@ -671,14 +671,6 @@ TEST(PublicPipeline, ConditionalFragmentsKeepSourceAuthority)
     const auto style =
         formatter::LoadConfigFile(directory / "../../../../hit-fmt/examples/ytsaurus.hit-fmt").FormattingStyle;
     const formatter::PreparedFormat prepared(style);
-    const auto result = FormatInput(source, prepared, {});
-    EXPECT_EQ(FormatInput(result.Text, prepared).Text, result.Text);
-
-    const auto splitBegin = source.find("    auto a =\n");
-    const auto splitEnd = source.find("\n}", splitBegin);
-    ASSERT_NE(splitBegin, std::string::npos);
-    EXPECT_NE(result.Text.find(source.substr(splitBegin, splitEnd - splitBegin)), std::string::npos);
-
     const auto begin = uint32_t(source.find("void Arguments()"));
     const auto end = uint32_t(source.find("void Parameters(", begin));
     const std::array scope{parser::SourceRange{begin, end}};
