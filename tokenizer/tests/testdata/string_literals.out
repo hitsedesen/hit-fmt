@@ -9,3 +9,7 @@ Ln 8, Col 1: str "\0123"
 Ln 9, Col 1: str "\o{0213}"
 Ln 10, Col 1: str "\xfeef"
 Ln 11, Col 1: str "\a"
+Ln 12, Col 1: str u8"quote: \" slash: \\ \t \x41 \u03b1"_suffix
+Ln 13, Col 1: str "sssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssss\
+continued\
+α"_suffix99

@@ -18,3 +18,5 @@ R"mark(raw)mark"_tag u8R"(utf8)"_tag uR"(utf16)"_tag UR"(utf32)"_tag LR"(wide)"_
 "space" _tag "comment"/* gap */_tag "digit"42
 "joined"_tag"tail" "head""tail"_tag
 operator""_world operator "" _world
+const auto _A0z9 = 12_customSuffix9 + 0x1.fp2f64;
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa9_β; "x"_literalSuffix42; αZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZ2_
