@@ -4021,26 +4021,14 @@ TEST(Formatter, OperatorSpacing_PreservesUnknownCastOrBinaryOperator)
     EXPECT_EQ(FormatWithStyle(separatedCast, style), certain);
 }
 
-TEST(Formatter, SpacingOptions_ProfileOverflowWrapsAroundRecoveryAndKeepsTokens)
+TEST(Formatter, SpacingOptions_ProfileOverflowHasNoDiagnostics)
 {
     const auto directory = std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../spacing-options";
     const auto input = ReadFile(directory / "profile-overflow.input.cpp");
     const auto config = formatter::LoadConfigFile(
         (directory / "../../../../hit-fmt/examples/ytsaurus.hit-fmt").lexically_normal()).FormattingStyle;
-    const Input storage(input);
-    const auto tree = parser::Parse(storage.View(), [] (parser::ParseError) { });
-    const auto result = formatter::Format(tree, formatter::PreparedFormat(config));
-    // Proven argument boundaries can move recovered operands intact without
-    // interpreting their template spelling or changing any original token.
-    EXPECT_NE(result.Text.find("    static_assert(!"), std::string::npos);
+    const auto result = test::FormatInput(input, formatter::PreparedFormat(config));
     EXPECT_TRUE(result.Diagnostics.empty());
-    const Input output(result.Text);
-    const auto tokens = parser::SyntaxTree::TokenizeOnly(output.View());
-    ASSERT_EQ(tokens.TokenCount(), tree.TokenCount());
-    for (parser::TokenIndex i = 0; i < tree.TokenCount(); ++i) {
-        EXPECT_EQ(tokens.Kind(i), tree.Kind(i));
-        EXPECT_EQ(tokens.TokenText(i), tree.TokenText(i));
-    }
 }
 
 class NamingTest

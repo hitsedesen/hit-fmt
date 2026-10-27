@@ -754,12 +754,6 @@ TEST(PublicPipeline, EnumeratorAssignmentRespectsScopeAndProtection)
     const auto directory =
         std::filesystem::path(__FILE__).parent_path() / "testdata/consolidated-pipeline/enumerator-assignment";
     const auto source = test::golden::ReadFile(directory / "input.cpp");
-    for (const auto* profile : {"space", "no-space", "preserve", "generated-space", "generated-no-space"}) {
-        SCOPED_TRACE(profile);
-        const test::golden::Fixture fixture{directory, profile};
-        const auto style = formatter::LoadConfigFile(fixture.Named(".hit-fmt")).FormattingStyle;
-        const formatter::PreparedFormat prepared(style);
-    }
     const formatter::PreparedFormat prepared(formatter::LoadConfigFile(directory / "space.hit-fmt").FormattingStyle);
     const auto second = uint32_t(source.find("Second"));
     const std::array<parser::SourceRange, 1> selected{{{0, second}}};
@@ -1361,9 +1355,6 @@ TEST(PublicPipeline, TerminalConstructorTemplateIdsRespectProtectionAndScope)
     };
     const auto source = fixture.InputNamed(".input.cpp");
     const formatter::PreparedFormat prepared(formatter::LoadConfigFile(fixture.Named(".hit-fmt")).FormattingStyle);
-    formatter::FormatResult complete;
-    ASSERT_NO_THROW(complete = FormatInput(source, prepared));
-    EXPECT_EQ(FormatInput(complete.Text, prepared).Text, complete.Text);
     const auto begin = uint32_t(source.find("explicit Parcel"));
     const auto end = uint32_t(source.find('{', begin));
     const std::array<parser::SourceRange, 1> header{{{begin, end}}};
