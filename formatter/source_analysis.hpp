@@ -260,7 +260,7 @@ private:
 };
 
 // Lexical-only conservative maximal-munch predicate for adjacent tokens.
-// Accepts parsed or TokenizeOnly trees. right must be in [1, TokenCount()).
+// right must be in [1, TokenCount()).
 // False does not authorize a gap edit: line/context/protection constraints also
 // apply. This never relaxes token identity for contextually split template >>.
 [[nodiscard]] bool TokenGapNeedsSeparation(const parser::SyntaxTree& tree, parser::TokenIndex right);
@@ -270,7 +270,6 @@ private:
 // source buffers. BuildSourceAnalysis checks this before scanning/allocating.
 [[nodiscard]] parser::SourceOffset CheckedSourceAnalysisSize(size_t size);
 
-// Requires a parsed tree (TokenizeOnly has no syntax root).
 // Throws std::length_error for oversized sources, before reading source bytes.
 // One source scan, one token classification, one iterative tree traversal;
 // O(bytes + tokens + nodes + intervals log intervals), plus name lookup in a

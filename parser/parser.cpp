@@ -195,17 +195,6 @@ const Node& SyntaxTree::Root() const
     return *Root_;
 }
 
-SyntaxTree SyntaxTree::TokenizeOnly(util::PaddedSourceView source)
-{
-    SyntaxTree tree(source.View());
-    tokenizer::Tokenizer lexer(source, [] (tokenizer::TokenizationError) { });
-    for (auto token : lexer) {
-        tree.Tokens_.Add(token);
-    }
-    tree.Tokens_.Seal();
-    return tree;
-}
-
 tokenizer::Token SyntaxTree::Token(TokenIndex index) const
 {
     return {.Kind = Kind(index), .Position = TokenPosition(index), .Text = Tokens_[index].Text};

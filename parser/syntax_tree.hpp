@@ -644,9 +644,6 @@ public:
 
     [[nodiscard]] const Node& Root() const;
 
-    // Lex a verification result without constructing a second syntax tree.
-    [[nodiscard]] static SyntaxTree TokenizeOnly(util::PaddedSourceView source);
-
     [[nodiscard]] std::string_view Source() const
     {
         return Input_;

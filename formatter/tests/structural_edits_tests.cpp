@@ -90,7 +90,7 @@ std::string Dump(const StructuralPlan& plan)
 std::vector<TokenOutputOffset> MapOutput(const parser::SyntaxTree& original, std::string_view output)
 {
     Input padded(output);
-    auto tokens = parser::SyntaxTree::TokenizeOnly(padded.View());
+    auto tokens = parser::Parse(padded.View(), [] (parser::ParseError) {});
     EXPECT_EQ(tokens.TokenCount(), original.TokenCount());
     std::vector<TokenOutputOffset> map(original.TokenCount());
     for (parser::TokenIndex i = 0; i < std::min(tokens.TokenCount(), original.TokenCount()); ++i) {

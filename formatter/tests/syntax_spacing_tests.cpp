@@ -665,7 +665,7 @@ TEST(SyntaxSpacing, JointPreferencesRetainExactTokenKindsAndSpellings)
             }
         }
         Input changed(edited);
-        auto after = parser::SyntaxTree::TokenizeOnly(changed.View());
+        auto after = parser::Parse(changed.View(), [] (parser::ParseError) {});
         ASSERT_EQ(analysis.Tree.TokenCount(), after.TokenCount());
         for (GapId i = 0; i < after.TokenCount(); ++i) {
             EXPECT_EQ(analysis.Tree.Kind(i), after.Kind(i));
