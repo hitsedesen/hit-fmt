@@ -629,8 +629,8 @@ std::vector<FormatCase> FormatCases()
         });
         if (std::string_view(name) == "opaque-body-expanded") {
             cases.back().Style = formatter::LoadConfigFile(
-                cases.back().Directory /
-                (cases.back().Config + ".hit-fmt")).FormattingStyle;
+                cases.back().Directory / (cases.back().Config +
+                    ".hit-fmt")).FormattingStyle;
             cases.back().Style->LambdaBodiesLayout = CategoryLayout::Canonical;
         }
     }
@@ -2582,6 +2582,19 @@ std::vector<FormatCase> FormatCases()
             "conventional-preserve.output.cpp");
     }
     addProfileCase("../keyword-expressions", "profile");
+    addProfileCase("../keyword-expressions", "fill-operators");
+    cases.back().CheckOwningMaps = true;
+    cases.push_back({
+        std::filesystem::path(FORMATTER_TESTDATA_DIR) /
+            "../keyword-expressions",
+        "fill-operators-leading",
+        "fill-operators.input.cpp",
+        profile,
+    });
+    cases.back().Style =
+        formatter::LoadConfigFile(profile + ".hit-fmt").FormattingStyle;
+    cases.back().Style->BinaryOperatorSide = OperatorSide::Leading;
+    cases.back().CheckOwningMaps = true;
     AddCases(
         cases,
         std::filesystem::path(FORMATTER_TESTDATA_DIR) /

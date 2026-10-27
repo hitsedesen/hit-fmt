@@ -2078,6 +2078,7 @@ private:
             packing == ListPacking::VerticalWhenBroken && !threePart
             ? Boundary::Conditional
             : Boundary::Soft;
+        auto segment = id;
         const auto planToken = [&] (Index t) {
             const auto role = declarationAssignment &&
                 Tree_.Kind(t) == TokenKind::Operator_Assign
@@ -2121,11 +2122,22 @@ private:
                         Own(t, group, Boundary::Flat);
                         return;
                     }
-                    Own(
-                        side == OperatorSide::Leading ? t : t + 1,
-                        group,
-                        boundary,
-                        document::GapKind::Hard);
+                    const auto split = side == OperatorSide::Leading
+                        ? t
+                        : t + 1;
+                    Own(split, group, boundary, document::GapKind::Hard);
+                    if (kind == NodeKind::BinaryExpression && !comparison &&
+                        boundary == Boundary::Soft &&
+                        Policies_.ColumnLimit != 0 &&
+                        LastChild_[segment] != None &&
+                        Region(Syntax_[LastChild_[segment]]).Tokens.Size() > 1)
+                    {
+                        // Prefer the operator boundary over splitting the next
+                        // operand merely to keep its opening fragment inline.
+                        Gaps_[split].FitNextSegment = true;
+                        Gaps_[split].FitThrough =
+                            Region(Syntax_[LastChild_[segment]]).Tokens.End;
+                    }
                     Own(
                         side == OperatorSide::Leading ? t + 1 : t,
                         group,
@@ -2147,7 +2159,6 @@ private:
                 }
             }
         };
-        auto segment = id;
         while (true) {
             DirectTokens(segment, planToken);
             if (Syntax_[segment].Operator == None) {
@@ -4901,13 +4912,15 @@ private:
             Facts_[i].RequiredWidth = width;
             const auto fitThrough = Gaps_[i].FitThrough;
             if (fitThrough != None && Gaps_[i].FitNextSegment) {
-                // Qualified names and trailing return types can contain
-                // independently breakable template arguments. Fit their flat
-                // spelling before splitting a child merely to keep the header
-                // on the same line.
+                // Fit operand/declaration prefixes across optional child
+                // breaks. Stop beyond the line width to bound overlapping
+                // demands from nested expressions.
                 Index prefixWidth = 0;
                 auto t = i;
-                while (t < fitThrough) {
+                while (t < fitThrough &&
+                    (Policies_.ColumnLimit == 0 ||
+                        prefixWidth <= Policies_.ColumnLimit))
+                {
                     if (!Removed_[t]) {
                         prefixWidth = AddWidth(
                             prefixWidth,
@@ -4925,6 +4938,15 @@ private:
                             next.Owner != None &&
                             Groups_[next.Owner].Spec.ForceBreak);
                     if (mandatory) {
+                        break;
+                    }
+                    if (t == fitThrough &&
+                        (next.Shape == Boundary::Soft ||
+                            (next.Shape == Boundary::Conditional &&
+                                next.Broken != document::GapKind::Flat)))
+                    {
+                        // An endpoint break does not require the following
+                        // segment to fit on the same line.
                         break;
                     }
                     prefixWidth = AddWidth(prefixWidth, FlatWidth(t));
