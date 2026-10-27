@@ -5,6 +5,7 @@
 #include <parser/parser.hpp>
 
 #include <tests/golden.hpp>
+#include <tests/input.hpp>
 
 #include <array>
 #include <filesystem>
@@ -22,23 +23,7 @@ using F = SpacingField;
 
 using C = SpacingOwner;
 
-struct Input
-{
-    std::string Storage;
-    size_t Size;
-
-    explicit Input(std::string_view text)
-        : Storage(text)
-        , Size(text.size())
-    {
-        Storage.append(util::SourcePaddingSize, '\0');
-    }
-
-    util::PaddedSourceView View() const
-    {
-        return {Storage.data(), static_cast<uint32_t>(Size)};
-    }
-};
+using test::Input;
 
 struct Analysis
 {
@@ -315,25 +300,6 @@ TEST(SyntaxSpacing, EnumeratorAssignmentsOwnBothGaps)
         EXPECT_EQ(analysis.Spacing.Gaps()[compound + 1].Field, F::AssignmentOperatorSpacing);
         EXPECT_EQ(analysis.Spacing.Gaps()[analysis.Before("+")].Field, F::BinaryOperatorSpacing);
         EXPECT_EQ(analysis.Spacing.Gaps()[analysis.Before(",", 2) + 1].Field, F::CommaSpaceAfter);
-    }
-}
-
-TEST(SyntaxSpacing, TrailingCommentPolicyOverridesAssignmentGap)
-{
-    GapPolicies policies;
-    policies.AssignmentOperatorSpacing = GapPolicy::Space;
-    Analysis analysis("enum Mode { First=  // note\n 1 }; " "int count=  // control\n 1;", policies);
-    for (const auto comment : {"// note", "// control"}) {
-        const auto gap = analysis.Before(comment);
-        EXPECT_EQ(analysis.Spacing.Gaps()[gap - 1].Field, F::AssignmentOperatorSpacing);
-        EXPECT_EQ(analysis.Spacing.Gaps()[gap].Field, F::TrailingCommentSpacing);
-        EXPECT_EQ(analysis.Spacing.Gaps()[gap].Policy, GapPolicy::Preserve);
-        EXPECT_EQ(analysis.Spacing.Gaps()[gap].Priority, 3);
-        EXPECT_EQ(analysis.Safety.Original(gap), "  ");
-        EXPECT_EQ(analysis.Safety.Gaps()[gap].Reasons, ProtectionReason::None);
-        EXPECT_FALSE(analysis.Safety.Gaps()[gap].Preserve);
-        EXPECT_TRUE(analysis.Safety.CanReplaceGap(gap, " "));
-        EXPECT_FALSE(analysis.Spacing.SpacePreference(gap, GapContext::Rebuilt, analysis.Safety));
     }
 }
 

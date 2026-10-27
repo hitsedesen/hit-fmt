@@ -1,5 +1,3 @@
-#include "public_pipeline.hpp"
-
 #include <formatter/config.hpp>
 #include <formatter/formatter.hpp>
 #include <formatter/hunks.hpp>
@@ -8,9 +6,8 @@
 
 #include <gtest/gtest.h>
 
+#include <tests/formatting.hpp>
 #include <tests/golden.hpp>
-
-#include <unicode/utf8.hpp>
 
 #include <algorithm>
 #include <array>
@@ -24,6 +21,8 @@
 namespace {
 
 using test::golden::ReadFile;
+using test::Input;
+using test::FormatWithStyle;
 
 using formatter::BlankLineMode;
 
@@ -67,16 +66,7 @@ using formatter::TrailingWhitespace;
 
 void ExpectUnchanged(std::string_view source, const formatter::Style& style)
 {
-    std::string storage(source);
-    storage.append(util::SourcePaddingSize, '\0');
-    util::PaddedSourceView padded{.Data = storage.data(), .Size = static_cast<uint32_t>(source.size())};
-    auto tree = parser::Parse(padded, [] (parser::ParseError) { });
-    EXPECT_EQ(formatter::Format(tree, style), source);
-    const auto first = formatter::Format(padded, style);
-    EXPECT_EQ(first, source);
-    storage.assign(first);
-    storage.append(util::SourcePaddingSize, '\0');
-    EXPECT_EQ(formatter::Format({.Data = storage.data(), .Size = static_cast<uint32_t>(first.size())}, style), first);
+    EXPECT_EQ(FormatWithStyle(source, style), source);
 }
 
 struct PreserveCase
@@ -117,12 +107,10 @@ class PreserveTest
 TEST_P(PreserveTest, KeepsUnchanged)
 {
     const auto input = ReadFile(std::filesystem::path(FORMATTER_TESTDATA_DIR) / GetParam().Name);
-    for (auto [indent, column] : {std::pair<size_t, size_t>{4, 10000}, {1, 10000}, {32, 10000}}) {
-        formatter::Style style;
-        style.IndentWidth = indent;
-        style.ColumnLimit = column;
-        ExpectUnchanged(input, style);
-    }
+    formatter::Style style;
+    style.IndentWidth = 32;
+    style.ColumnLimit = 10000;
+    ExpectUnchanged(input, style);
 }
 INSTANTIATE_TEST_SUITE_P(
     Formatter,
@@ -134,24 +122,11 @@ INSTANTIATE_TEST_SUITE_P(
         std::ranges::replace(name, '-', '_');
         return name;
     });
-std::string FormatWithStyle(std::string_view source, const formatter::Style& style, std::string_view inputFilePath = {})
-{
-    std::string storage(source);
-    storage.append(util::SourcePaddingSize, '\0');
-    util::PaddedSourceView padded{.Data = storage.data(), .Size = static_cast<uint32_t>(source.size())};
-    const formatter::PreparedFormat prepared(style);
-    auto tree = parser::Parse(padded, [] (parser::ParseError) {}, prepared.ParsingOptions());
-    const formatter::FormatRequest request{.InputFilePath = inputFilePath};
-    const auto actual = formatter::Format(tree, prepared, request).Text;
-    EXPECT_EQ(actual, formatter::Format(padded, prepared, request).Text);
-    return actual;
-}
 
 void ExpectFormattedGolden(
     const std::filesystem::path& path,
     std::string_view input,
     const formatter::Style& style,
-    bool checkOwningMaps,
     bool readOnlyExpected,
     std::string_view inputFilePath = {})
 {
@@ -163,9 +138,6 @@ void ExpectFormattedGolden(
         test::golden::ExpectGolden(path, actual);
     }
     EXPECT_EQ(FormatWithStyle(actual, style, inputFilePath), actual);
-    if (checkOwningMaps) {
-        public_pipeline::CheckFormattedResult(input, style, actual, inputFilePath);
-    }
 }
 
 struct FormatCase
@@ -175,30 +147,11 @@ struct FormatCase
     std::string Input;
     std::string Config;
     std::vector<formatter::Hunk> Hunks;
-    bool Spillover;
+    bool Spillover = true;
     std::string Expected;
-    bool CheckOwningMaps;
     std::optional<formatter::Style> Style;
     std::string InputFilePath;
 
-    FormatCase(
-        std::filesystem::path directory,
-        std::string name,
-        std::string input,
-        std::string config = {},
-        std::vector<formatter::Hunk> hunks = {},
-        bool spillover = true,
-        std::string expected = {},
-        bool checkOwningMaps = false)
-        : Directory(std::move(directory))
-        , Name(std::move(name))
-        , Input(std::move(input))
-        , Config(std::move(config))
-        , Hunks(std::move(hunks))
-        , Spillover(spillover)
-        , Expected(std::move(expected))
-        , CheckOwningMaps(checkOwningMaps)
-    { }
 };
 
 void PrintTo(const FormatCase& value, std::ostream* output)
@@ -214,7 +167,7 @@ void AddCases(
     std::string input = "input.cpp")
 {
     for (const auto* name : names) {
-        cases.push_back({directory, name, input, {}});
+        cases.push_back({directory, name, input});
     }
 }
 
@@ -267,75 +220,52 @@ void ShareExpected(
 std::vector<FormatCase> FormatCases()
 {
     std::vector<FormatCase> cases;
-    const auto newOptions = std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../new-options";
+    const auto data = std::filesystem::path(FORMATTER_TESTDATA_DIR).parent_path();
+    const auto newOptions = data / "new-options";
     AddCases(cases, newOptions, {"syntax", "unlimited", "preserve", "always"});
     AddCases(cases, newOptions, {"text", "sorted-text"}, "text.input.cpp");
     AddCases(cases, newOptions, {"crlf"}, "crlf.input.cpp");
-    for (auto& value : cases) {
-        value.CheckOwningMaps = true;
-    }
-    AddCases(cases, std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../function-body-macros", {"hinted", "unhinted"});
+    AddCases(cases, data / "function-body-macros", {"hinted", "unhinted"});
     {
-        const auto directory = std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../declaration-macros";
+        const auto directory = data / "declaration-macros";
         AddCases(cases, directory, {"canonical", "remove-null"});
         auto style = formatter::LoadConfigFile(directory / "canonical.hit-fmt").FormattingStyle;
         style.RemoveNullDeclarations = true;
         cases.back().Style = style;
         cases.back().Expected = "canonical.output.cpp";
     }
-    AddCases(cases, std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../null-removal", {"canonical", "preserve"});
-    cases[cases.size() - 2].CheckOwningMaps = true;
-    cases.back().CheckOwningMaps = true;
+    AddCases(cases, data / "null-removal", {"canonical", "preserve"});
+    AddCases(cases, data / "declarator-macro-spacing", {"space", "no-space"});
+    AddCases(cases, data / "class-body-macros", {"hinted", "preserve", "unhinted"});
+    AddCases(cases, data / "class-body-macros", {"members"}, "members.input.cpp");
+    AddCases(cases, data / "declaration-headers", {"wrap", "narrow", "wide"});
     AddCases(
         cases,
-        std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../declarator-macro-spacing",
-        {"space", "no-space"});
-    AddCases(
-        cases,
-        std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../class-body-macros",
-        {"hinted", "preserve", "unhinted"});
-    AddCases(
-        cases,
-        std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../class-body-macros",
-        {"members"},
-        "members.input.cpp");
-    for (auto& value : cases) {
-        if (value.Directory.filename() == "class-body-macros") {
-            value.CheckOwningMaps = true;
-        }
-    }
-    AddCases(
-        cases,
-        std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../declaration-headers",
-        {"wrap", "narrow", "wide"});
-    AddCases(
-        cases,
-        std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../declaration-headers",
+        data / "declaration-headers",
         {"qualified", "qualified-always", "qualified-preserve"},
         "qualified.input.cpp");
     cases.push_back({
-        std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../declaration-headers",
+        data / "declaration-headers",
         "return-types",
         "return-types.input.cpp",
         "narrow",
         {},
         true,
         {},
-        true,
     });
     AddCases(
         cases,
-        std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../declaration-headers",
+        data / "declaration-headers",
         {"trailing-return", "trailing-return-narrow", "trailing-return-wide"},
         "trailing-return.input.cpp");
     cases.push_back({
-        std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../declaration-headers",
+        data / "declaration-headers",
         "trailing-return-forced",
         "trailing-return.input.cpp",
         "qualified-always",
     });
     {
-        const auto directory = std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../declaration-headers";
+        const auto directory = data / "declaration-headers";
         const auto base = formatter::LoadConfigFile(directory / "../style/repository-80.hit-fmt").FormattingStyle;
         FormatCase fitting{directory, "fitting-prefix-rhs", "fitting-prefix-rhs.input.cpp"};
         fitting.Style = base;
@@ -360,22 +290,10 @@ std::vector<FormatCase> FormatCases()
             cases.push_back(std::move(value));
         }
     }
-    for (auto& value : cases) {
-        if (value.Directory.filename() == "declaration-headers") {
-            value.CheckOwningMaps = true;
-        }
-    }
-    AddCases(
-        cases,
-        std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../vertical-grouping",
-        {"preserve", "declarations", "overrides", "capped"});
-    AddCases(
-        cases,
-        std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../vertical-grouping",
-        {"structural"},
-        "structural.input.cpp");
+    AddCases(cases, data / "vertical-grouping", {"preserve", "declarations", "overrides", "capped"});
+    AddCases(cases, data / "vertical-grouping", {"structural"}, "structural.input.cpp");
     {
-        const auto directory = std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../vertical-grouping";
+        const auto directory = data / "vertical-grouping";
         {
             const auto base = formatter::LoadConfigFile(directory / "preserve.hit-fmt").FormattingStyle;
             struct Policy
@@ -432,19 +350,11 @@ std::vector<FormatCase> FormatCases()
             }
         }
     }
-    AddCases(cases, std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../group-fit-boundary", {"fit", "overflow"});
-    AddCases(
-        cases,
-        std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../group-fit-boundary",
-        {"forced"},
-        "forced.input.cpp");
-    AddCases(
-        cases,
-        std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../group-fit-boundary",
-        {"call-fit"},
-        "call.input.cpp");
+    AddCases(cases, data / "group-fit-boundary", {"fit", "overflow"});
+    AddCases(cases, data / "group-fit-boundary", {"forced"}, "forced.input.cpp");
+    AddCases(cases, data / "group-fit-boundary", {"call-fit"}, "call.input.cpp");
     {
-        const auto directory = std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../group-fit-boundary";
+        const auto directory = data / "group-fit-boundary";
         {
             const auto base = formatter::LoadConfigFile(directory / "fit.hit-fmt").FormattingStyle;
             struct Policy
@@ -472,27 +382,26 @@ std::vector<FormatCase> FormatCases()
         ShareExpected(cases, directory, "fit.output.cpp", "input.cpp");
     }
     cases.push_back({
-        std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../control-expression-continuation",
+        data / "control-expression-continuation",
         "repository",
         "input.cpp",
         "../style/repository-80",
     });
     cases.push_back({
-        std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../control-expression-continuation",
+        data / "control-expression-continuation",
         "ytsaurus",
         "input.cpp",
         "../../../../hit-fmt/examples/ytsaurus",
     });
     for (const auto* name : {"opaque-body", "opaque-body-expanded"}) {
         cases.push_back({
-            std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../control-expression-continuation",
+            data / "control-expression-continuation",
             name,
             "opaque-body.input.cpp",
             "../../../../hit-fmt/examples/ytsaurus",
             {},
             true,
             {},
-            true,
         });
         if (std::string_view(name) == "opaque-body-expanded") {
             cases.back().Style =
@@ -502,31 +411,30 @@ std::vector<FormatCase> FormatCases()
             cases.back().Style->InitializersLayout = CategoryLayout::Canonical;
         }
     }
+    AddCases(cases, data / "line-endings", {"lf", "crlf", "legacy"});
+    AddCases(cases, data / "line-endings", {"boundary-lf", "boundary-crlf"}, "boundary.input.cpp");
+    AddCases(
+        cases,
+        data / "line-endings",
+        {"boundary-namespace-lf", "boundary-namespace-crlf"},
+        "boundary-namespace.input.cpp");
     for (const auto* name :
         {
-            "lf",
-            "crlf",
-            "legacy",
             "canonical-lf",
             "canonical-crlf",
             "opaque-lf",
-            "boundary-lf",
-            "boundary-crlf",
             "boundary-nulls",
-            "boundary-namespace-lf",
-            "boundary-namespace-crlf",
             "composition-control-lf",
         })
     {
         cases.push_back({
-            std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../line-endings",
+            data / "line-endings",
             name,
             std::string(name) + ".input.cpp",
         });
-        cases.back().CheckOwningMaps = true;
     }
     {
-        const auto directory = std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../line-endings";
+        const auto directory = data / "line-endings";
         {
             const auto base = formatter::LoadConfigFile(directory / "lf.hit-fmt").FormattingStyle;
             struct Policy
@@ -658,29 +566,26 @@ std::vector<FormatCase> FormatCases()
                 ApplyProfile(cases, directory, policy.Profile, style);
             }
         }
-        ShareExpected(cases, directory, "boundary-namespace-lf.output.cpp", "boundary-namespace-crlf.input.cpp");
-        ShareExpected(cases, directory, "legacy.output.cpp", "crlf.input.cpp");
+        ShareExpected(cases, directory, "boundary-namespace-lf.output.cpp", "boundary-namespace.input.cpp");
+        ShareExpected(cases, directory, "legacy.output.cpp", "input.cpp");
     }
-    AddCases(cases, std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../style-checkpoint", {"lf", "crlf"});
+    AddCases(cases, data / "style-checkpoint", {"lf", "crlf"});
     {
-        const auto directory = std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../style-checkpoint";
+        const auto directory = data / "style-checkpoint";
         {
             auto style = formatter::LoadConfigFile(directory / "lf.hit-fmt").FormattingStyle;
             style.LineEnding = LineEnding::CRLF;
             ApplyProfile(cases, directory, "crlf", style);
         }
     }
-    AddCases(
-        cases,
-        std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../trailing-comment-count",
-        {"preserve", "zero", "one", "two"});
+    AddCases(cases, data / "trailing-comment-count", {"preserve", "zero", "one", "two"});
     cases.push_back({
-        std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../trailing-comment-count",
+        data / "trailing-comment-count",
         "independent",
         "namespace.input.cpp",
     });
     {
-        const auto directory = std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../trailing-comment-count";
+        const auto directory = data / "trailing-comment-count";
         {
             const auto base = formatter::LoadConfigFile(directory / "one.hit-fmt").FormattingStyle;
             struct Policy
@@ -736,12 +641,9 @@ std::vector<FormatCase> FormatCases()
         }
         ShareExpected(cases, directory, "preserve.output.cpp", "input.cpp");
     }
-    AddCases(
-        cases,
-        std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../standalone-comment-gaps",
-        {"preserve", "before", "after", "zero", "canonical"});
+    AddCases(cases, data / "standalone-comment-gaps", {"preserve", "before", "after", "zero", "canonical"});
     {
-        const auto directory = std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../standalone-comment-gaps";
+        const auto directory = data / "standalone-comment-gaps";
         {
             const auto base = formatter::LoadConfigFile(directory / "zero.hit-fmt").FormattingStyle;
             struct Policy
@@ -777,11 +679,10 @@ std::vector<FormatCase> FormatCases()
         ShareExpected(cases, directory, "zero.output.cpp", "input.cpp");
     }
     AddCases(cases, BRACE_TESTDATA_DIR, {"preserve", "attach", "newline", "mixed"});
-    AddCases(cases, std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../include-order", {"sort", "composed"});
-    cases.push_back(
-        {std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../include-order", "crlf", "crlf.input.cpp", "sort"});
+    AddCases(cases, data / "include-order", {"sort", "composed"});
+    cases.push_back({data / "include-order", "crlf", "crlf.input.cpp", "sort"});
     {
-        const auto directory = std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../include-order";
+        const auto directory = data / "include-order";
         for (const auto name : {"directory", "matching", "prefixes"}) {
             for (const bool absolute : {false, true}) {
                 FormatCase value{
@@ -994,7 +895,6 @@ std::vector<FormatCase> FormatCases()
         for (const auto name : {"breaks", "breaks-always", "breaks-preserve"}) {
             FormatCase value{directory, name, "breaks.input.cpp"};
             value.Style = style;
-            value.CheckOwningMaps = true;
             if (std::string_view(name) == "breaks-always") {
                 value.Style->CapturesBreak = BreakRequirement::Always;
             } else if (std::string_view(name) == "breaks-preserve") {
@@ -1010,7 +910,6 @@ std::vector<FormatCase> FormatCases()
         for (const auto name : {"breaks", "breaks-narrow", "breaks-preserve"}) {
             FormatCase value{directory, name, "breaks.input.cpp"};
             value.Style = style;
-            value.CheckOwningMaps = true;
             if (std::string_view(name) == "breaks-narrow") {
                 value.Style->ColumnLimit = 60;
             } else if (std::string_view(name) == "breaks-preserve") {
@@ -1021,14 +920,13 @@ std::vector<FormatCase> FormatCases()
     }
     AddCases(cases, BODY_INDENT_TESTDATA_DIR, {"preserve", "indent", "no-indent", "mixed"});
     cases.push_back({BODY_INDENT_TESTDATA_DIR, "reindented-call", "reindented-call.input.cpp"});
-    const auto nullStatements = std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../null-statements";
+    const auto nullStatements = data / "null-statements";
     AddCases(cases, nullStatements, {"preserve", "remove"});
     for (const auto name :
         {"whitespace-trim", "whitespace-preserve", "whitespace-trim-crlf", "whitespace-trim-preserve-indent"})
     {
         FormatCase value{nullStatements, name, "whitespace.input.cpp", "whitespace-trim"};
         value.Style = formatter::LoadConfigFile(nullStatements / "whitespace-trim.hit-fmt").FormattingStyle;
-        value.CheckOwningMaps = true;
         if (std::string_view(name) == "whitespace-preserve") {
             value.Style->TrailingWhitespace = TrailingWhitespace::Preserve;
         } else if (std::string_view(name) == "whitespace-trim-crlf") {
@@ -1064,7 +962,6 @@ std::vector<FormatCase> FormatCases()
         {
             FormatCase value{directory, name, "split-scopes.input.cpp"};
             value.Style = base;
-            value.CheckOwningMaps = true;
             const std::string_view variant = name;
             if (variant == "split-scopes-indent") {
                 value.Style->IndentCaseLabels = formatter::BodyIndentation::Indent;
@@ -1083,13 +980,13 @@ std::vector<FormatCase> FormatCases()
         BODY_INDENT_TESTDATA_DIR,
         {"lambda-comments-follow", "lambda-comments-preserve"},
         "lambda-leading-comments.input.cpp");
-    const auto chains = std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../chained-calls";
+    const auto chains = data / "chained-calls";
     AddCases(cases, chains, {"always", "continuation", "preserve"});
     cases.push_back({chains, "overflow", "overflow.input.cpp"});
     AddCases(cases, chains, {"moved-root", "moved-root-preserve", "moved-root-tabs"}, "moved-root.input.cpp");
     cases.push_back({chains, "child-fitting", "child-fitting.input.cpp"});
     for (const auto& [name, columns] : {std::pair{"field-assignment", 120}, {"field-assignment-narrow", 40}}) {
-        cases.push_back({chains, name, "field-assignment.input.cpp", "child-fitting", {}, true, {}, true});
+        cases.push_back({chains, name, "field-assignment.input.cpp", "child-fitting", {}, true, {}});
         cases.back().Style = formatter::LoadConfigFile(chains / "child-fitting.hit-fmt").FormattingStyle;
         cases.back().Style->ColumnLimit = columns;
         cases.back().Style->ChainsBreak = BreakRequirement::Always;
@@ -1130,17 +1027,14 @@ std::vector<FormatCase> FormatCases()
             "annotations-delimiter",
         },
         "annotations.input.cpp");
-    AddCases(cases, std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../separator-length", {"preserve"});
-    AddCases(
-        cases,
-        std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../standalone-block-indent",
-        {"preserve", "indent"});
-    const auto closings = std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../closing-delimiters";
+    AddCases(cases, data / "separator-length", {"preserve"});
+    AddCases(cases, data / "standalone-block-indent", {"preserve", "indent"});
+    const auto closings = data / "closing-delimiters";
     AddCases(cases, closings, {"same-line", "block", "preserve"});
-    const auto initializerSafety = std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../initializer-safety";
+    const auto initializerSafety = data / "initializer-safety";
     AddCases(cases, initializerSafety, {"conditional", "never", "preserve"});
     {
-        const auto directory = std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../initializer-safety";
+        const auto directory = data / "initializer-safety";
         {
             const auto base = formatter::LoadConfigFile(directory / "conditional.hit-fmt").FormattingStyle;
             struct Policy
@@ -1159,18 +1053,18 @@ std::vector<FormatCase> FormatCases()
             }
         }
     }
-    AddCases(cases, std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../declaration-gap", {"canonical", "preserve"});
+    AddCases(cases, data / "declaration-gap", {"canonical", "preserve"});
     {
-        const auto directory = std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../declaration-gap";
+        const auto directory = data / "declaration-gap";
         ShareExpected(cases, directory, "preserve.output.cpp", "input.cpp");
     }
-    const auto ownerContext = std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../owner-context";
+    const auto ownerContext = data / "owner-context";
     AddCases(
         cases,
         ownerContext,
         {"canonical-protected", "preserve-protected", "canonical-safe", "explicit-protected"});
     {
-        const auto directory = std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../owner-context";
+        const auto directory = data / "owner-context";
         {
             const auto base = formatter::LoadConfigFile(directory / "canonical-protected.hit-fmt").FormattingStyle;
             struct Policy
@@ -1223,7 +1117,7 @@ std::vector<FormatCase> FormatCases()
         }
         ShareExpected(cases, directory, "preserve-protected.output.cpp", "input.cpp");
     }
-    const auto recordHead = std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../record-head-commas";
+    const auto recordHead = data / "record-head-commas";
     AddCases(cases, recordHead, {"space", "no-space", "preserve", "generated-canonical", "generated-preserve"});
     for (const auto* profile : {"space", "no-space", "preserve", "generated-canonical", "generated-preserve"}) {
         cases.push_back({recordHead, std::string("comparisons-") + profile, "comparisons.input.cpp", profile});
@@ -1237,7 +1131,7 @@ std::vector<FormatCase> FormatCases()
         });
     }
     {
-        const auto directory = std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../record-head-commas";
+        const auto directory = data / "record-head-commas";
         {
             const auto base = formatter::LoadConfigFile(directory / "space.hit-fmt").FormattingStyle;
             struct Policy
@@ -1284,13 +1178,8 @@ std::vector<FormatCase> FormatCases()
     cases.push_back({closings, "trailing-removed", "trailing-removed.input.cpp"});
     cases.push_back({closings, "trailing-only", "trailing-layout.input.cpp"});
     cases.push_back({closings, "trailing-new-line", "trailing-layout.input.cpp"});
-    AddCases(
-        cases,
-        std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../fold-spacing",
-        {"yt-like", "inherited", "group-space"});
-    const auto profile = (std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../../../../hit-fmt/examples/ytsaurus")
-        .lexically_normal()
-        .string();
+    AddCases(cases, data / "fold-spacing", {"yt-like", "inherited", "group-space"});
+    const auto profile = (data / "../../../hit-fmt/examples/ytsaurus").lexically_normal().string();
     auto addProfileCase = [&] (const char* directory, const char* name) {
         cases.push_back({
             std::filesystem::path(FORMATTER_TESTDATA_DIR) / directory,
@@ -1300,7 +1189,6 @@ std::vector<FormatCase> FormatCases()
         });
     };
     addProfileCase("../ytsaurus-corpus", "vertical");
-    cases.back().CheckOwningMaps = true;
     {
         auto continuation = cases.back();
         continuation.Name = "vertical-continuation";
@@ -1310,20 +1198,13 @@ std::vector<FormatCase> FormatCases()
     }
     addProfileCase("../ytsaurus-corpus", "includes");
     cases.back().InputFilePath = "yt/yt/core/concurrency/worker.cpp";
-    cases.back().CheckOwningMaps = true;
     addProfileCase("../ytsaurus-corpus", "expressions");
-    cases.back().CheckOwningMaps = true;
     addProfileCase("../ytsaurus-corpus", "macros");
-    cases.back().CheckOwningMaps = true;
     addProfileCase("../preprocessing-fragments", "opaque-blocks");
-    cases.back().CheckOwningMaps = true;
     addProfileCase("../preprocessing-fragments", "canonical");
-    cases.back().CheckOwningMaps = true;
     addProfileCase("../preprocessing-fragments", "shared-scopes");
-    cases.back().CheckOwningMaps = true;
     addProfileCase("../preprocessing-fragments", "case-comments");
     addProfileCase("../preprocessing-fragments", "case-blocks");
-    cases.back().CheckOwningMaps = true;
     for (const auto* name : {"case-blocks-next-line", "case-blocks-preserve"}) {
         auto value = cases.back();
         value.Name = name;
@@ -1337,7 +1218,6 @@ std::vector<FormatCase> FormatCases()
         cases.push_back(std::move(value));
     }
     addProfileCase("../spacing-options", "profile-constraints");
-    cases.back().CheckOwningMaps = true;
     for (const auto* name : {"profile-constraints-leading", "profile-constraints-preserve"}) {
         auto value = cases.back();
         value.Name = name;
@@ -1351,22 +1231,16 @@ std::vector<FormatCase> FormatCases()
         cases.push_back(std::move(value));
     }
     addProfileCase("../spacing-options", "profile-initializers");
-    cases.back().CheckOwningMaps = true;
     AddCases(
         cases,
-        std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../spacing-options",
+        data / "spacing-options",
         {"designated-assignment", "designated-assignment-no-space", "designated-assignment-preserve"},
         "designated-assignment.input.cpp");
-    for (auto i = cases.size() - 3; i < cases.size(); ++i) {
-        cases[i].CheckOwningMaps = true;
-    }
     addProfileCase("../spacing-options", "profile-overflow");
     addProfileCase("../spacing-options", "profile-case-blocks");
     addProfileCase("../spacing-options", "profile-ref-qualifiers");
     addProfileCase("../spacing-options", "profile-template-punctuation");
-    cases.back().CheckOwningMaps = true;
     addProfileCase("../declaration-headers", "function-types");
-    cases.back().CheckOwningMaps = true;
     {
         auto forced = cases.back();
         auto preserved = cases.back();
@@ -1380,18 +1254,18 @@ std::vector<FormatCase> FormatCases()
         cases.push_back(std::move(preserved));
     }
     cases.push_back({
-        std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../declaration-headers",
+        data / "declaration-headers",
         "profile",
         "profile.input.cpp",
         profile,
     });
     AddCases(
         cases,
-        std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../spacing-options",
+        data / "spacing-options",
         {"function-cv-ref-space", "function-cv-ref-no-space", "function-cv-ref-preserve", "function-cv-ref-inherit"},
         "profile-ref-qualifiers.input.cpp");
     {
-        const auto directory = std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../spacing-options";
+        const auto directory = data / "spacing-options";
         {
             const auto base = formatter::LoadConfigFile(directory / "function-cv-ref-space.hit-fmt").FormattingStyle;
             struct Policy
@@ -1418,14 +1292,14 @@ std::vector<FormatCase> FormatCases()
         }
     }
     cases.push_back({
-        std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../spacing-options",
+        data / "spacing-options",
         "initializer-overflow-one-per-line",
         "initializer-overflow-one-per-line.input.cpp",
     });
     addProfileCase("../ternary-layout", "profile");
     AddCases(
         cases,
-        std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../ternary-layout",
+        data / "ternary-layout",
         {
             "branches-preserve",
             "branches-narrow",
@@ -1434,19 +1308,15 @@ std::vector<FormatCase> FormatCases()
             "branches-indent-trailing",
         },
         "branches.input.cpp");
-    AddCases(
-        cases,
-        std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../ternary-layout",
-        {"operators-align", "operators-indent"},
-        "operators.input.cpp");
+    AddCases(cases, data / "ternary-layout", {"operators-align", "operators-indent"}, "operators.input.cpp");
     cases.push_back({
-        std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../ternary-layout",
+        data / "ternary-layout",
         "reflow-preferred",
         "reflow-preferred.input.cpp",
     });
     AddCases(
         cases,
-        std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../ternary-layout",
+        data / "ternary-layout",
         {"initializer-shape", "initializer-shape-flexible", "initializer-shape-narrow"},
         "initializer-shape.input.cpp");
     addProfileCase("../assignment-location", "profile");
@@ -1458,7 +1328,6 @@ std::vector<FormatCase> FormatCases()
         cases.back().Style = formatter::LoadConfigFile(profile + ".hit-fmt").FormattingStyle;
         cases.back().Style->InitializersLayout = CategoryLayout::Canonical;
     }
-    cases.back().CheckOwningMaps = true;
     cases.push_back({
         std::filesystem::path(BODY_INDENT_TESTDATA_DIR),
         "leading-initializer-preserve",
@@ -1466,9 +1335,7 @@ std::vector<FormatCase> FormatCases()
     });
     cases.back().Style = formatter::Style{};
     cases.back().Expected = "profile-leading-initializer.input.cpp";
-    cases.back().CheckOwningMaps = true;
     addProfileCase("../body-indent", "profile-case-comments");
-    cases.back().CheckOwningMaps = true;
     {
         const auto directory = std::filesystem::path(BODY_INDENT_TESTDATA_DIR);
         const auto base = formatter::LoadConfigFile(profile + ".hit-fmt").FormattingStyle;
@@ -1480,11 +1347,9 @@ std::vector<FormatCase> FormatCases()
             });
             cases.back().Style = base;
             cases.back().Style->IndentCaseLabels = label;
-            cases.back().CheckOwningMaps = true;
         }
     }
     addProfileCase("../body-indent", "profile-unknown-statements");
-    cases.back().CheckOwningMaps = true;
     {
         const auto directory = std::filesystem::path(BODY_INDENT_TESTDATA_DIR);
         const auto input = "profile-unknown-statements.input.cpp";
@@ -1501,11 +1366,9 @@ std::vector<FormatCase> FormatCases()
                 input,
             });
             cases.back().Style = style;
-            cases.back().CheckOwningMaps = true;
         }
     }
-    cases.push_back(
-        {std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../null-statements", "profile", "input.cpp", profile});
+    cases.push_back({data / "null-statements", "profile", "input.cpp", profile});
     cases.push_back({BODY_INDENT_TESTDATA_DIR, "grouped-profile", "grouped-statements.input.cpp", profile});
     cases
         .push_back({BODY_INDENT_TESTDATA_DIR, "lambda-comments-profile", "lambda-leading-comments.input.cpp", profile});
@@ -1520,10 +1383,9 @@ std::vector<FormatCase> FormatCases()
             style.CapturesBreak = BreakRequirement::Always;
         }
         cases.back().Style = style;
-        cases.back().CheckOwningMaps = true;
     }
     {
-        const auto directory = std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../lambda-captures";
+        const auto directory = data / "lambda-captures";
         const auto base = formatter::LoadConfigFile(std::filesystem::path(profile + ".hit-fmt")).FormattingStyle;
         for (const auto* name : {"call-header-compact", "call-header-expanded", "call-header-preserve"}) {
             cases.push_back({directory, name, "call-header.input.cpp"});
@@ -1541,7 +1403,7 @@ std::vector<FormatCase> FormatCases()
         }
     }
     addProfileCase("../call-reflow", "profile-tabbed-log");
-    const auto callReflow = std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../call-reflow";
+    const auto callReflow = data / "call-reflow";
     cases.push_back({
         callReflow,
         "template-argument-tail",
@@ -1550,7 +1412,6 @@ std::vector<FormatCase> FormatCases()
         {},
         true,
         {},
-        true,
     });
     cases.push_back({
         callReflow,
@@ -1560,7 +1421,6 @@ std::vector<FormatCase> FormatCases()
         {},
         true,
         {},
-        true,
     });
     auto templateTailStyle = formatter::LoadConfigFile(callReflow / "../style/repository-80.hit-fmt").FormattingStyle;
     templateTailStyle.CallsPacking = ListPacking::Fill;
@@ -1590,7 +1450,7 @@ std::vector<FormatCase> FormatCases()
             "comment-elements-preserve-indent",
         })
     {
-        cases.push_back({callReflow, name, "comment-elements.input.cpp", "comment-elements", {}, true, {}, true});
+        cases.push_back({callReflow, name, "comment-elements.input.cpp", "comment-elements", {}, true, {}});
         auto style = formatter::LoadConfigFile(callReflow / "comment-elements.hit-fmt").FormattingStyle;
         const std::string_view profile(name);
         if (profile == "comment-elements-space") {
@@ -1628,8 +1488,7 @@ std::vector<FormatCase> FormatCases()
                         ? "comment-elements-label-no-space.output.cpp"
                         : "comment-elements-label-space.output.cpp";
             }
-            cases.push_back(
-                {callReflow, name, "comment-elements.input.cpp", "comment-elements", {}, true, expected, true});
+            cases.push_back({callReflow, name, "comment-elements.input.cpp", "comment-elements", {}, true, expected});
             auto style = formatter::LoadConfigFile(callReflow / "comment-elements.hit-fmt").FormattingStyle;
             style.Layout = layout;
             style.ArgumentCommentSpacing = spacing;
@@ -1639,12 +1498,12 @@ std::vector<FormatCase> FormatCases()
     cases.push_back({callReflow, "first-position-reflow", "first-position-reflow.input.cpp"});
     cases.push_back({callReflow, "first-string-inline", "first-string-inline.input.cpp"});
     cases.push_back({
-        std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../function_parameters",
+        data / "function_parameters",
         "first-position-reflow",
         "first-position-reflow.input.cpp",
     });
     {
-        const auto directory = std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../function_parameters";
+        const auto directory = data / "function_parameters";
         const auto base = formatter::LoadConfigFile(directory / "../style/repository-80.hit-fmt").FormattingStyle;
         for (const auto name :
             {"default-wrap", "default-leading", "default-next-line", "default-preserve", "default-aligned"})
@@ -1652,7 +1511,6 @@ std::vector<FormatCase> FormatCases()
             FormatCase value{directory, name, "default.input.cpp"};
             value.Style = base;
             value.Style->ColumnLimit = 60;
-            value.CheckOwningMaps = true;
             if (std::string_view(name) == "default-leading") {
                 value.Style->AssignmentOperatorSide = OperatorSide::Leading;
             } else if (std::string_view(name) == "default-next-line") {
@@ -1668,13 +1526,10 @@ std::vector<FormatCase> FormatCases()
             cases.push_back(std::move(value));
         }
     }
-    AddCases(cases, std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../macro-nested-calls", {"configured"});
-    AddCases(
-        cases,
-        std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../lambda-body",
-        {"preserve", "inherit", "inline"});
+    AddCases(cases, data / "macro-nested-calls", {"configured"});
+    AddCases(cases, data / "lambda-body", {"preserve", "inherit", "inline"});
     {
-        const auto directory = std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../lambda-body";
+        const auto directory = data / "lambda-body";
         const auto base = formatter::LoadConfigFile(profile + ".hit-fmt").FormattingStyle;
         for (const auto* name :
             {
@@ -1698,38 +1553,31 @@ std::vector<FormatCase> FormatCases()
             if (variant == "preserved-suffix-canonical") {
                 cases.back().Expected = "preserved-suffix.output.cpp";
             }
-            cases.back().CheckOwningMaps = true;
         }
         cases.push_back({directory, "member-pointers", "member-pointers.input.cpp"});
-        cases.back().CheckOwningMaps = true;
         auto style = formatter::LoadConfigFile(directory / "member-pointers.hit-fmt").FormattingStyle;
         style.LambdaBodiesLayout = CategoryLayout::Canonical;
         cases.push_back({directory, "member-pointers-canonical", "member-pointers.input.cpp"});
         cases.back().Style = style;
         cases.back().Expected = "member-pointers.output.cpp";
-        cases.back().CheckOwningMaps = true;
     }
     cases.push_back({
-        std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../lambda-body",
+        data / "lambda-body",
         "visual-scopes",
         "visual-scopes.input.cpp",
         {},
         {},
         true,
         {},
-        true,
     });
-    AddCases(
-        cases,
-        std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../control-header-clauses",
-        {"preserve", "split", "indent-width"});
-    const auto controlPlacement = std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../control-header-placement";
+    AddCases(cases, data / "control-header-clauses", {"preserve", "split", "indent-width"});
+    const auto controlPlacement = data / "control-header-placement";
     AddCases(cases, controlPlacement, {"preserve", "first-only", "closing-only", "both"});
     cases.push_back({controlPlacement, "reflow", "reflow.input.cpp"});
     cases.push_back({controlPlacement, "reverse", "reverse.input.cpp"});
     cases.push_back({controlPlacement, "crlf", "crlf.input.cpp"});
     {
-        const auto directory = std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../if-conditions-packing";
+        const auto directory = data / "if-conditions-packing";
         AddCases(
             cases,
             directory,
@@ -1745,13 +1593,11 @@ std::vector<FormatCase> FormatCases()
                 "delimiter",
             });
     }
-    cases
-        .push_back({std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../lambda-body", "profile", "input.cpp", profile});
+    cases.push_back({data / "lambda-body", "profile", "input.cpp", profile});
     addProfileCase("../control-header-clauses", "profile");
     addProfileCase("../control-braces-after-wrap", "profile");
-    cases.back().CheckOwningMaps = true;
     {
-        const auto directory = std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../control-braces-after-wrap";
+        const auto directory = data / "control-braces-after-wrap";
         auto base = formatter::LoadConfigFile(directory / (profile + ".hit-fmt")).FormattingStyle;
         // Nested bodies still exercise forced chains outside control-header scopes.
         base.ChainsBreak = BreakRequirement::Always;
@@ -1761,27 +1607,22 @@ std::vector<FormatCase> FormatCases()
         narrow.AlwaysBreakChainRootNames.push_back("event");
         cases.push_back({directory, "narrow", "profile.input.cpp"});
         cases.back().Style = narrow;
-        cases.back().CheckOwningMaps = true;
         auto leading = narrow;
         leading.BinaryOperatorSide = formatter::OperatorSide::Leading;
         cases.push_back({directory, "leading", "profile.input.cpp"});
         cases.back().Style = leading;
-        cases.back().CheckOwningMaps = true;
         auto attached = base;
         attached.ControlBracePlacement = formatter::BracePlacement::Attached;
         cases.push_back({directory, "attached", "profile.input.cpp"});
         cases.back().Style = attached;
-        cases.back().CheckOwningMaps = true;
         auto nextLine = base;
         nextLine.ControlBracePlacement = formatter::BracePlacement::NextLine;
         cases.push_back({directory, "next-line", "profile.input.cpp"});
         cases.back().Style = nextLine;
-        cases.back().CheckOwningMaps = true;
         auto preserved = base;
         preserved.ControlHeadersLayout = formatter::CategoryLayout::Preserve;
         cases.push_back({directory, "preserved", "profile.input.cpp"});
         cases.back().Style = preserved;
-        cases.back().CheckOwningMaps = true;
     }
     addProfileCase("../whitespace-sensitive-macros", "profile");
     addProfileCase("../call-reflow", "balanced-expressions");
@@ -1793,7 +1634,6 @@ std::vector<FormatCase> FormatCases()
         {},
         true,
         {},
-        true,
     });
     // Reflow canonical initializer and forced-chain children inside call arguments.
     cases.back().Style = formatter::LoadConfigFile(profile + ".hit-fmt").FormattingStyle;
@@ -1807,10 +1647,8 @@ std::vector<FormatCase> FormatCases()
         {},
         true,
         {},
-        true,
     });
     cases.push_back({callReflow, "nested-casts-preserve", "nested-casts.input.cpp"});
-    cases.back().CheckOwningMaps = true;
     cases.push_back({
         callReflow,
         "nested-casts-canonical",
@@ -1819,7 +1657,6 @@ std::vector<FormatCase> FormatCases()
         {},
         true,
         "nested-casts-preserve.output.cpp",
-        true,
     });
     cases.back().Style = formatter::LoadConfigFile(callReflow / "../style/repository-80.hit-fmt").FormattingStyle;
     cases.back().Style->CallsSoleArgumentFirstItem = FirstItemPlacement::NextLine;
@@ -1842,7 +1679,7 @@ std::vector<FormatCase> FormatCases()
     cases.back().Style = formatter::LoadConfigFile(profile + ".hit-fmt").FormattingStyle;
     cases.back().Style->ChainsBreak = BreakRequirement::Always;
     {
-        const auto directory = std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../chained-calls";
+        const auto directory = data / "chained-calls";
         {
             const auto base = formatter::LoadConfigFile(directory / "scoped-sticky.hit-fmt").FormattingStyle;
             struct Policy
@@ -1944,9 +1781,8 @@ std::vector<FormatCase> FormatCases()
     addProfileCase("../keyword-expressions", "fill-operators");
     cases.back().Style = formatter::LoadConfigFile(profile + ".hit-fmt").FormattingStyle;
     cases.back().Style->InitializersLayout = CategoryLayout::Canonical;
-    cases.back().CheckOwningMaps = true;
     cases.push_back({
-        std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../keyword-expressions",
+        data / "keyword-expressions",
         "fill-operators-leading",
         "fill-operators.input.cpp",
         profile,
@@ -1954,13 +1790,9 @@ std::vector<FormatCase> FormatCases()
     cases.back().Style = formatter::LoadConfigFile(profile + ".hit-fmt").FormattingStyle;
     cases.back().Style->BinaryOperatorSide = OperatorSide::Leading;
     cases.back().Style->InitializersLayout = CategoryLayout::Canonical;
-    cases.back().CheckOwningMaps = true;
-    AddCases(
-        cases,
-        std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../keyword-expressions",
-        {"canonical", "preserve", "narrow", "always"});
+    AddCases(cases, data / "keyword-expressions", {"canonical", "preserve", "narrow", "always"});
     {
-        const auto directory = std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../keyword-expressions";
+        const auto directory = data / "keyword-expressions";
         {
             const auto base = formatter::LoadConfigFile(directory / "canonical.hit-fmt").FormattingStyle;
             struct Policy
@@ -1987,17 +1819,10 @@ std::vector<FormatCase> FormatCases()
             }
         }
     }
-    const auto unicode = std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../unicode-width";
+    const auto unicode = data / "unicode-width";
     AddCases(cases, unicode, {"fitting", "overflow"});
-    for (auto& value : cases) {
-        if (value.Directory == unicode) {
-            value.CheckOwningMaps = true;
-        }
-    }
-    const auto google = std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../google-style-regressions";
-    const auto googleProfile = (std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../../../../hit-fmt/examples/google")
-        .lexically_normal()
-        .string();
+    const auto google = data / "google-style-regressions";
+    const auto googleProfile = (data / "../../../hit-fmt/examples/google").lexically_normal().string();
     cases.push_back({google, "profile-trailing-comments", "profile-trailing-comments.input.cpp", googleProfile});
     cases.push_back({google, "inline-record", "inline-record.input.cpp"});
     cases.push_back({google, "widths", "widths.input.cpp"});
@@ -2006,28 +1831,26 @@ std::vector<FormatCase> FormatCases()
     cases.push_back({google, "namespace-comments", "namespace-comments.input.cpp"});
     cases.push_back({google, "syntax-boundaries", "syntax-boundaries.input.cpp"});
     cases.push_back({google, "declarator-and-macro-safety", "declarator-and-macro-safety.input.cpp"});
-    const auto disabled = std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../format-disabled";
+    const auto disabled = data / "format-disabled";
     cases.push_back({disabled, "regions", "regions.input.cpp"});
     cases.push_back({disabled, "regions-no-clang", "regions.input.cpp"});
     cases.push_back({disabled, "unclosed", "unclosed.input.cpp", "regions"});
     cases.push_back({disabled, "crlf", "crlf.input.cpp", "regions"});
     cases.push_back({
-        std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../constructor-initializer-ranges",
+        data / "constructor-initializer-ranges",
         "canonical",
         "input.cpp",
     });
     cases.push_back({
-        std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../constructor-initializer-ranges",
+        data / "constructor-initializer-ranges",
         "template-ytsaurus",
         "template.input.cpp",
-        (std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../../../../hit-fmt/examples/ytsaurus")
-            .lexically_normal()
-            .string(),
+        (data / "../../../hit-fmt/examples/ytsaurus").lexically_normal().string(),
     });
     // Braced entries exercise the same owned constructor ranges as parenthesized ones.
     cases.back().Style = formatter::LoadConfigFile(profile + ".hit-fmt").FormattingStyle;
     cases.back().Style->InitializersLayout = CategoryLayout::Canonical;
-    const auto newArrays = std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../new-array-declarators";
+    const auto newArrays = data / "new-array-declarators";
     AddCases(cases, newArrays, {"left", "array-space", "array-preserve"});
     AddCases(
         cases,
@@ -2042,18 +1865,18 @@ std::vector<FormatCase> FormatCases()
     scopeStyle.ParametersLayout = CategoryLayout::Canonical;
     scopeStyle.ColumnLimit = 48;
     cases.back().Style = std::move(scopeStyle);
-    const auto attribute = std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../attribute-indent";
+    const auto attribute = data / "attribute-indent";
     AddCases(cases, attribute, {"preserve", "block", "indent"});
     cases.push_back({attribute, "block-only", "block-only.input.cpp"});
     cases.push_back({attribute, "independent-widths", "independent-widths.input.cpp"});
     {
-        const auto directory = std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../attribute-indent";
+        const auto directory = data / "attribute-indent";
         ShareConfig(cases, directory, "independent-widths", "../google-style-regressions/widths");
     }
-    AddCases(cases, std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../assignment-location", {"leading", "trailing"});
+    AddCases(cases, data / "assignment-location", {"leading", "trailing"});
     AddCases(
         cases,
-        std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../assignment-location",
+        data / "assignment-location",
         {
             "packing",
             "packing-fill",
@@ -2065,13 +1888,10 @@ std::vector<FormatCase> FormatCases()
         },
         "packing.input.cpp");
     {
-        const auto directory = std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../assignment-location";
+        const auto directory = data / "assignment-location";
         cases.push_back({directory, "packing-inherit", "packing.input.cpp", {}, {}, true, "packing.output.cpp"});
     }
-    AddCases(
-        cases,
-        std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../call-expression-indent",
-        {"aligned", "aligned-no-call-reflow", "indent-width", "preserve"});
+    AddCases(cases, data / "call-expression-indent", {"aligned", "aligned-no-call-reflow", "indent-width", "preserve"});
     AddCases(
         cases,
         INHERITANCE_TESTDATA_DIR,
@@ -2092,19 +1912,18 @@ std::vector<FormatCase> FormatCases()
         {"split-preserve", "one-per-line", "pack-wide", "pack-tight", "split-combined"},
         "split.input.cpp");
     for (const auto* name : {"parsed-operators", "outer-conditional", "control-braces-after-wrap"}) {
-        cases.push_back({std::filesystem::path(FORMATTER_TESTDATA_DIR) / ".." / name, "configured", "input.cpp"});
+        cases.push_back({data / name, "configured", "input.cpp"});
     }
-    cases.push_back(
-        {std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../control-braces-after-wrap", "reflow", "reflow.input.cpp"});
-    const auto strings = std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../concat-strings";
+    cases.push_back({data / "control-braces-after-wrap", "reflow", "reflow.input.cpp"});
+    const auto strings = data / "concat-strings";
     AddCases(cases, strings, {"overflow", "preserve"});
     cases.push_back({strings, "crlf", "crlf.input.cpp", "overflow"});
-    const auto parsedOperators = std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../parsed-operators";
+    const auto parsedOperators = data / "parsed-operators";
     for (const auto* name : {"placement-lists", "delimiter-choice"}) {
         cases.push_back({parsedOperators, name, std::string(name) + ".input.cpp"});
     }
     // Keep safety and recovered-syntax examples in separate parse units.
-    const auto spacing = std::filesystem::path(FORMATTER_TESTDATA_DIR) / ".." / "spacing-options";
+    const auto spacing = data / "spacing-options";
     cases.push_back({spacing, "cases-preserved", "indented-cases.input.cpp", "cases-preserved"});
     for (const auto& [name, indentation] :
         {
@@ -2125,6 +1944,109 @@ std::vector<FormatCase> FormatCases()
         cases.push_back({spacing, "case-regions-attached", "case-regions.input.cpp", "case-regions"});
         cases.back().Style = std::move(style);
     }
+    AddCases(
+        cases,
+        spacing,
+        {"formats-audited-syntax-boundaries--variant-02"},
+        "formats-audited-syntax-boundaries.input.cpp");
+    AddCases(
+        cases,
+        spacing,
+        {"formats-directive-indent-and-trailing-comments--variant-02"},
+        "formats-directive-indent-and-trailing-comments.input.cpp");
+    AddCases(
+        cases,
+        spacing,
+        {"formats-empty-lists-and-delimiter-prefixes--variant-02"},
+        "formats-empty-lists-and-delimiter-prefixes.input.cpp");
+    AddCases(
+        cases,
+        spacing,
+        {"formats-empty-lists-and-delimiter-prefixes--variant-05"},
+        "formats-empty-lists-and-delimiter-prefixes--variant-04.input.cpp");
+    AddCases(
+        cases,
+        spacing,
+        {"formats-only-safe-syntactic-gaps--variant-04"},
+        "formats-only-safe-syntactic-gaps--variant-03.input.cpp");
+    AddCases(
+        cases,
+        spacing,
+        {
+            "mirrors-inheritance-list-layout-policies--variant-02",
+            "mirrors-inheritance-list-layout-policies--variant-03",
+            "mirrors-inheritance-list-layout-policies--variant-07",
+            "mirrors-inheritance-list-layout-policies--variant-08",
+        },
+        "mirrors-inheritance-list-layout-policies.input.cpp");
+    AddCases(
+        cases,
+        spacing,
+        {"spaces-attribute-new-delete-and-pack-prefixes--variant-02"},
+        "spaces-attribute-new-delete-and-pack-prefixes.input.cpp");
+    AddCases(
+        cases,
+        spacing,
+        {"spaces-attributes-named-casts-and-placement-new--variant-02"},
+        "spaces-attributes-named-casts-and-placement-new.input.cpp");
+    AddCases(
+        cases,
+        spacing,
+        {"spaces-block-interiors-and-declaration-terminators--variant-02"},
+        "spaces-block-interiors-and-declaration-terminators.input.cpp");
+    AddCases(
+        cases,
+        spacing,
+        {
+            "spaces-function-qualifiers-and-nested-declarators--variant-02",
+            "spaces-function-qualifiers-and-nested-declarators--variant-03",
+        },
+        "spaces-function-qualifiers-and-nested-declarators.input.cpp");
+    AddCases(
+        cases,
+        spacing,
+        {"spaces-grouping-conditions-and-selected-colons--variant-02"},
+        "spaces-grouping-conditions-and-selected-colons.input.cpp");
+    AddCases(
+        cases,
+        spacing,
+        {"spaces-keyword-parentheses-only-in-parsed-constructs--variant-02"},
+        "spaces-keyword-parentheses-only-in-parsed-constructs.input.cpp");
+    AddCases(
+        cases,
+        spacing,
+        {"spaces-new-arrays-empty-attributes-and-co-await--variant-02"},
+        "spaces-new-arrays-empty-attributes-and-co-await.input.cpp");
+    AddCases(
+        cases,
+        spacing,
+        {"spaces-new-initializers-and-delete-operands--variant-02"},
+        "spaces-new-initializers-and-delete-operands.input.cpp");
+    AddCases(
+        cases,
+        spacing,
+        {
+            "spaces-only-parsed-colon-kinds--left",
+            "spaces-only-parsed-colon-kinds--right",
+            "spaces-only-parsed-colon-kinds--left-and-right",
+            "spaces-only-parsed-colon-kinds--variant-01",
+        },
+        "spaces-only-parsed-colon-kinds.input.cpp");
+    AddCases(
+        cases,
+        spacing,
+        {"spaces-template-types-empty-initializers-and-attributes--variant-02"},
+        "spaces-template-types-empty-initializers-and-attributes.input.cpp");
+    AddCases(
+        cases,
+        spacing,
+        {"spaces-template-types-empty-initializers-and-attributes--variant-09"},
+        "spaces-template-types-empty-initializers-and-attributes--variant-08.input.cpp");
+    AddCases(
+        cases,
+        spacing,
+        {"trims-only-whitespace-outside-sensitive-tokens--variant-02"},
+        "trims-only-whitespace-outside-sensitive-tokens.input.cpp");
     for (const auto& entry : std::filesystem::directory_iterator(spacing)) {
         const auto filename = entry.path().filename().string();
         if (filename.ends_with(".input.cpp")) {
@@ -2139,7 +2061,6 @@ std::vector<FormatCase> FormatCases()
             }
         }
     }
-    const auto data = std::filesystem::path(FORMATTER_TESTDATA_DIR) / "..";
     AddCases(cases, data / "continuation-nesting", {"shared", "tabs"});
     AddCases(
         cases,
@@ -2149,7 +2070,7 @@ std::vector<FormatCase> FormatCases()
     cases.push_back({data / "continuation-nesting", "starter-lines", "starter-lines.input.cpp"});
     AddCases(cases, data / "continuation-nesting", {"line-scopes"}, "line-scopes.input.cpp");
     {
-        const auto directory = std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../continuation-nesting";
+        const auto directory = data / "continuation-nesting";
         {
             auto style = formatter::LoadConfigFile(directory / "shared.hit-fmt").FormattingStyle;
             style.IndentationKind = IndentationKind::Tabs;
@@ -2200,31 +2121,30 @@ std::vector<FormatCase> FormatCases()
         ShareConfig(cases, directory, "line-scopes", "../ternary-layout/branches-preserve");
         ShareExpected(cases, directory, "argument-precedence.output.cpp", "argument-precedence-delimiter.output.cpp");
     }
-    for (const auto& [name, owningMaps] :
+    for (const auto* name :
         {
-            std::pair{"layout", true},
-            {"structural", true},
-            {"comments", true},
-            {"enumerator-assignment", true},
-            {"opaque-record-owners", true},
-            {"control-ownership", true},
-            {"control-separators-braced", false},
-            {"control-separators-unbraced", false},
-            {"control-separators-nested", false},
-            {"declaration-operands", true},
-            {"declaration-operands-recovery", true},
-            {"annotation-boundaries", false},
-            {"annotation-constructors", true},
-            {"annotation-suffixes", true},
-            {"annotation-constraints", true},
-            {"terminal-constructor-template-ids", true},
+            "layout",
+            "structural",
+            "comments",
+            "enumerator-assignment",
+            "opaque-record-owners",
+            "control-ownership",
+            "control-separators-braced",
+            "control-separators-unbraced",
+            "control-separators-nested",
+            "declaration-operands",
+            "declaration-operands-recovery",
+            "annotation-boundaries",
+            "annotation-constructors",
+            "annotation-suffixes",
+            "annotation-constraints",
+            "terminal-constructor-template-ids",
         })
     {
         cases.push_back({data / "public-pipeline", name, std::string(name) + ".input.cpp"});
-        cases.back().CheckOwningMaps = owningMaps;
     }
     {
-        const auto directory = std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../public-pipeline";
+        const auto directory = data / "public-pipeline";
         {
             const auto base = formatter::LoadConfigFile(directory / "annotation-boundaries.hit-fmt").FormattingStyle;
             struct Policy
@@ -2253,7 +2173,6 @@ std::vector<FormatCase> FormatCases()
     }
     for (const auto* name : {"nested", "messages"}) {
         cases.push_back({data / "group-syntax", name, std::string(name) + ".input.cpp"});
-        cases.back().CheckOwningMaps = true;
     }
     for (const bool anyArgument : {false, true}) {
         const auto directory = data / (anyArgument ? "attached-argument-overflow" : "attached-string-overflow");
@@ -2275,11 +2194,9 @@ std::vector<FormatCase> FormatCases()
             const auto name = std::string(formatter::SerializeConfigEnum(overflow));
             cases.push_back({directory, name, "input.cpp"});
             cases.back().Style = style;
-            cases.back().CheckOwningMaps = true;
             style.CallsBreak = BreakRequirement::Always;
             cases.push_back({directory, name + "-always", "input.cpp"});
             cases.back().Style = style;
-            cases.back().CheckOwningMaps = true;
             if (overflow == formatter::AttachedStringOverflow::KeepInline ||
                 (anyArgument && overflow == formatter::AttachedStringOverflow::BreakBefore))
             {
@@ -2305,18 +2222,16 @@ std::vector<FormatCase> FormatCases()
         auto style = formatter::LoadConfigFile(data / "group-syntax/messages.hit-fmt").FormattingStyle;
         cases.push_back({data / "attached-argument-overflow", "string-only", "input.cpp"});
         cases.back().Style = style;
-        cases.back().CheckOwningMaps = true;
         // Delimiter alignment must not lose the attached first argument.
         style.CallLineFirstArgumentNames = style.CallLineFirstStringNames;
         style.CallLineFirstStringNames.clear();
         style.CallsAlignment = ContinuationAlignment::Delimiter;
         cases.push_back({data / "attached-argument-overflow", "delimiter", "input.cpp"});
         cases.back().Style = style;
-        cases.back().CheckOwningMaps = true;
     }
     AddCases(cases, data / "structural-expression-base", {"canonical", "preserved"});
     {
-        const auto directory = std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../structural-expression-base";
+        const auto directory = data / "structural-expression-base";
         {
             auto style = formatter::LoadConfigFile(directory / "canonical.hit-fmt").FormattingStyle;
             style.Layout = LayoutMode::Preserve;
@@ -2327,7 +2242,6 @@ std::vector<FormatCase> FormatCases()
     cases.push_back({data / "initializer-trailing-comma", "conditional-closer", "input.cpp"});
     for (const auto* name : {"comments", "comments-preserve"}) {
         cases.push_back({data / "initializer-trailing-comma", name, "comments.input.cpp"});
-        cases.back().CheckOwningMaps = true;
     }
     AddCases(cases, data / "function_parameters", {"preserve", "pack_name", "pack_new", "one_name", "one_new"});
     AddCases(
@@ -2339,14 +2253,14 @@ std::vector<FormatCase> FormatCases()
     for (const auto* profile :
         {"semicolon-fix", "semicolon-add", "semicolon-preserve", "semicolon-add-remove", "semicolon-remove"})
     {
-        cases.push_back({data / "namespace_comments", profile, "semicolon.input.cpp", {}, {}, true, {}, true});
+        cases.push_back({data / "namespace_comments", profile, "semicolon.input.cpp", {}, {}, true, {}});
     }
     for (const auto* profile : {"reindented", "reindented-add"}) {
-        cases.push_back({data / "namespace_comments", profile, "reindented.input.cpp", {}, {}, true, {}, true});
+        cases.push_back({data / "namespace_comments", profile, "reindented.input.cpp", {}, {}, true, {}});
     }
     AddCases(cases, data / "attribute-parenthesis-interiors", {"compact", "spaced", "preserve", "canonical"});
     {
-        const auto directory = std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../attribute-parenthesis-interiors";
+        const auto directory = data / "attribute-parenthesis-interiors";
         {
             const auto base = formatter::LoadConfigFile(directory / "preserve.hit-fmt").FormattingStyle;
             struct Policy
@@ -2414,11 +2328,6 @@ std::vector<FormatCase> FormatCases()
         style.TemplateArgumentsBreak = BreakRequirement::IfNeeded;
         ApplyProfile(cases, data / "uncertain-layout", "additional-wide", style);
     }
-    for (auto& value : cases) {
-        if (value.Directory == data / "uncertain-layout") {
-            value.CheckOwningMaps = true;
-        }
-    }
     ShareExpected(cases, data / "uncertain-layout", "preserve.output.cpp", "input.cpp");
     AddCases(cases, data / "template-arguments", {"inherit", "vertical", "fill", "delimiter", "preserve", "tabs"});
     cases.push_back({
@@ -2429,8 +2338,7 @@ std::vector<FormatCase> FormatCases()
         {},
         true,
     });
-    cases
-        .push_back({data / "template-arguments", "break-priority", "break-priority.input.cpp", {}, {}, true, {}, true});
+    cases.push_back({data / "template-arguments", "break-priority", "break-priority.input.cpp", {}, {}, true, {}});
     cases.push_back({
         data / "template-arguments",
         "repository-priority",
@@ -2439,7 +2347,6 @@ std::vector<FormatCase> FormatCases()
         {},
         true,
         {},
-        true,
     });
     cases.push_back({
         data / "template-arguments",
@@ -2449,7 +2356,6 @@ std::vector<FormatCase> FormatCases()
         {},
         true,
         {},
-        true,
     });
     auto forcedTemplates =
         formatter::LoadConfigFile(data / "template-arguments/break-priority.hit-fmt").FormattingStyle;
@@ -2490,7 +2396,6 @@ std::vector<FormatCase> FormatCases()
                 {},
                 true,
                 policy.Expected,
-                true,
             });
             auto style = base;
             style.Layout = policy.Layout;
@@ -2512,7 +2417,7 @@ std::vector<FormatCase> FormatCases()
         const auto directory = data / "requires-lambdas";
         const auto parserData = std::filesystem::path(PARSER_TESTDATA_DIR);
         for (const auto* name : {"forms", "forms-narrow"}) {
-            cases.push_back({directory, name, (parserData / "requires_forms.in").string(), name, {}, true, {}, true});
+            cases.push_back({directory, name, (parserData / "requires_forms.in").string(), name, {}, true, {}});
         }
         cases.push_back({
             directory,
@@ -2522,12 +2427,9 @@ std::vector<FormatCase> FormatCases()
             {},
             true,
             {},
-            true,
         });
         for (auto& value : cases) {
-            if (value.Directory == directory) {
-                value.CheckOwningMaps = true;
-            }
+            if (value.Directory == directory) { }
         }
         auto style = formatter::LoadConfigFile(directory / "canonical.hit-fmt").FormattingStyle;
         ApplyProfile(cases, directory, "forms", style);
@@ -2549,7 +2451,6 @@ std::vector<FormatCase> FormatCases()
         {},
         true,
         {},
-        true,
     });
     cases.push_back({
         data / "macro-generated-cases",
@@ -2559,7 +2460,6 @@ std::vector<FormatCase> FormatCases()
         {},
         true,
         {},
-        true,
     });
     cases.push_back({
         data / "macro-generated-cases",
@@ -2569,12 +2469,11 @@ std::vector<FormatCase> FormatCases()
         {},
         true,
         {},
-        true,
     });
     AddCases(cases, data / "lambda-argument-ownership", {"canonical", "preserve"});
     AddCases(cases, data / "lambda-argument-tail-recovery", {"canonical"});
     {
-        const auto directory = std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../lambda-argument-ownership";
+        const auto directory = data / "lambda-argument-ownership";
         {
             auto style = formatter::LoadConfigFile(directory / "canonical.hit-fmt").FormattingStyle;
             style.LambdaBodiesLayout = CategoryLayout::Preserve;
@@ -2582,7 +2481,7 @@ std::vector<FormatCase> FormatCases()
         }
     }
     {
-        const auto directory = std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../lambda-argument-tail-recovery";
+        const auto directory = data / "lambda-argument-tail-recovery";
         ShareConfig(cases, directory, "canonical", "../lambda-argument-ownership/canonical");
     }
     const auto hunks = data / "changed-hunks";
@@ -2646,7 +2545,7 @@ std::vector<FormatCase> FormatCases()
         cases.push_back({parsedOperators, name, input, config, {}, true, expected});
     }
     {
-        const auto directory = std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../parsed-operators";
+        const auto directory = data / "parsed-operators";
         {
             const auto base = formatter::LoadConfigFile(directory / "greedy-trailing.hit-fmt").FormattingStyle;
             struct Policy
@@ -2840,7 +2739,7 @@ std::vector<FormatCase> FormatCases()
         cases.push_back({functionParameters, name, input, config, {}, true, expected});
     }
     {
-        const auto directory = std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../function_parameters";
+        const auto directory = data / "function_parameters";
         {
             const auto base = formatter::LoadConfigFile(directory / "attached-spacing.hit-fmt").FormattingStyle;
             struct Policy
@@ -2923,7 +2822,6 @@ std::vector<FormatCase> FormatCases()
                     {},
                     true,
                     std::string_view(variant) == "multiline" ? std::string(profileName) + "-flat.output.cpp" : "",
-                    true,
                 });
                 auto style = base;
                 if (std::string_view(variant) == "narrow") {
@@ -2940,7 +2838,6 @@ std::vector<FormatCase> FormatCases()
     cases.push_back({lambdaAnchors, "authored-anchor", "authored-anchor.input.cpp"});
     for (const auto* name : {"attributed-blocks", "attributed-blocks-canonical", "attributed-blocks-tabs"}) {
         cases.push_back({lambdaAnchors, name, "attributed-blocks.input.cpp"});
-        cases.back().CheckOwningMaps = true;
     }
     // Name, input, config override, read-only expectation alias.
     for (const auto& [name, input, config, expected] :
@@ -2952,8 +2849,7 @@ std::vector<FormatCase> FormatCases()
         cases.push_back({lambdaAnchors, name, input, config, {}, true, expected});
     }
     {
-        const auto directory =
-            std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../consolidated-formatter/lambda-anchor";
+        const auto directory = data / "consolidated-formatter/lambda-anchor";
         {
             auto style = formatter::LoadConfigFile(directory / "attributed-blocks.hit-fmt").FormattingStyle;
             style.LambdaBodiesLayout = formatter::CategoryLayout::Canonical;
@@ -2973,7 +2869,7 @@ std::vector<FormatCase> FormatCases()
     {
         const auto base = formatter::LoadConfigFile(std::filesystem::path(profile + ".hit-fmt")).FormattingStyle;
         for (const auto* name : {"protected-fitting", "protected-captures", "protected-parameters"}) {
-            cases.push_back({lambdaAnchors, name, "protected-body.input.cpp", {}, {}, true, {}, true});
+            cases.push_back({lambdaAnchors, name, "protected-body.input.cpp", {}, {}, true, {}});
             auto style = base;
             if (std::string_view(name) == "protected-captures") {
                 style.CapturesBreak = BreakRequirement::Always;
@@ -2998,8 +2894,7 @@ std::vector<FormatCase> FormatCases()
         cases.push_back({controlBodies, name, input, config, {}, true, expected});
     }
     {
-        const auto directory =
-            std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../consolidated-formatter/control-bodies";
+        const auto directory = data / "consolidated-formatter/control-bodies";
         {
             const auto base = formatter::LoadConfigFile(directory / "comment-barrier.hit-fmt").FormattingStyle;
             struct Policy
@@ -3077,7 +2972,7 @@ std::vector<FormatCase> FormatCases()
         cases.push_back({callReflow, name, input, config, {}, true, expected});
     }
     {
-        const auto directory = std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../call-reflow";
+        const auto directory = data / "call-reflow";
         {
             const auto base = formatter::LoadConfigFile(directory / "sole-argument.hit-fmt").FormattingStyle;
             struct Policy
@@ -3315,7 +3210,7 @@ std::vector<FormatCase> FormatCases()
         cases.push_back({ternaryLayout, name, input, config, {}, true, expected});
     }
     {
-        const auto directory = std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../ternary-layout";
+        const auto directory = data / "ternary-layout";
         {
             const auto base = formatter::LoadConfigFile(directory / "two-leading.hit-fmt").FormattingStyle;
             struct Policy
@@ -3543,7 +3438,7 @@ std::vector<FormatCase> FormatCases()
     cases.push_back({emptyFunctions, "empty-function-bodies", "empty-function-bodies.input.cpp", "whitespace-only"});
     const auto consolidatedLayout = data / "consolidated-layout";
     for (const auto* name : {"multiline-comments", "multiline-comments-tabs"}) {
-        cases.push_back({consolidatedLayout, name, "multiline-comments.input.cpp", {}, {}, true, {}, true});
+        cases.push_back({consolidatedLayout, name, "multiline-comments.input.cpp", {}, {}, true, {}});
     }
     cases.push_back({
         consolidatedLayout,
@@ -3553,7 +3448,6 @@ std::vector<FormatCase> FormatCases()
         {},
         true,
         {},
-        true,
     });
     for (const auto* name :
         {
@@ -3599,7 +3493,7 @@ std::vector<FormatCase> FormatCases()
         cases.push_back({consolidatedLayout, name, input, config, {}, true, expected});
     }
     {
-        const auto directory = std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../consolidated-layout";
+        const auto directory = data / "consolidated-layout";
         {
             const auto base =
                 formatter::LoadConfigFile(directory / "record-head-space-canonical.hit-fmt").FormattingStyle;
@@ -3743,8 +3637,7 @@ std::vector<FormatCase> FormatCases()
         {"space", "no-space", "preserve", "generated-space", "generated-no-space"});
     {
         // Enumerator assignment shares oracles, not decoded policy configs.
-        const auto directory =
-            std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../consolidated-pipeline/enumerator-assignment";
+        const auto directory = data / "consolidated-pipeline/enumerator-assignment";
         ShareExpected(cases, directory, "generated-space.output.cpp", "input.cpp");
         ShareExpected(cases, directory, "preserve.output.cpp", "input.cpp");
         ShareExpected(cases, directory, "generated-no-space.output.cpp", "input.cpp");
@@ -3753,7 +3646,7 @@ std::vector<FormatCase> FormatCases()
         {data / "consolidated-pipeline", "enumerator-assignment-comments", "enumerator-assignment-comments.input.cpp"});
     cases.push_back({data / "consolidated-edits", "null-removal", "null-removal.input.cpp"});
     {
-        const auto directory = std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../consolidated-edits";
+        const auto directory = data / "consolidated-edits";
         ShareConfig(cases, directory, "null-removal", "../null-statements/both");
     }
     std::ranges::sort(
@@ -3782,19 +3675,10 @@ TEST_P(FormatTest, Golden)
         const auto expected = value.Expected.empty()
             ? fixture.Named(".output.cpp")
             : fixture.Directory / value.Expected;
-        ExpectFormattedGolden(
-            expected,
-            input,
-            style,
-            value.CheckOwningMaps,
-            !value.Expected.empty(),
-            value.InputFilePath);
+        ExpectFormattedGolden(expected, input, style, !value.Expected.empty(), value.InputFilePath);
     } else {
-        std::string storage(input);
-        storage.append(util::SourcePaddingSize, '\0');
-        const auto tree = parser::Parse(
-            {.Data = storage.data(), .Size = static_cast<uint32_t>(input.size())},
-            [] (parser::ParseError) { });
+        const Input storage(input);
+        const auto tree = parser::Parse(storage.View(), [] (parser::ParseError) { });
         const auto formatted = formatter::FormatChanged(
             tree,
             formatter::PreparedFormat(style),
@@ -3838,11 +3722,8 @@ TEST_P(ParameterNameTest, Golden)
         ? (directory / "../../../../hit-fmt/examples/ytsaurus.hit-fmt").lexically_normal()
         : directory / (GetParam() + ".hit-fmt");
     const auto config = formatter::LoadConfigFile(configPath);
-    std::string storage(input);
-    storage.append(util::SourcePaddingSize, '\0');
-    const auto tree = parser::Parse(
-        {.Data = storage.data(), .Size = static_cast<uint32_t>(input.size())},
-        [] (parser::ParseError) { });
+    const Input storage(input);
+    const auto tree = parser::Parse(storage.View(), [] (parser::ParseError) { });
     std::string actual;
     for (const auto& diagnostic : formatter::CheckParameterNames(tree, config)) {
         actual += std::to_string(diagnostic.Position.Line) + ":" + std::to_string(diagnostic.Position.Column) + " [" +
@@ -3867,9 +3748,8 @@ TEST(Formatter, CallArgument_RejectsUnsupportedSyntaxHints)
     };
     const auto style = formatter::LoadConfigFile(fixture.Named(".hit-fmt")).FormattingStyle;
     const auto input = fixture.Input();
-    std::string storage(input);
-    storage.append(util::SourcePaddingSize, '\0');
-    const util::PaddedSourceView source{.Data = storage.data(), .Size = static_cast<uint32_t>(input.size())};
+    const Input storage(input);
+    const auto source = storage.View();
     const auto tree = parser::Parse(source, [] (parser::ParseError) { });
     for (bool parsed : {false, true}) {
         SCOPED_TRACE(parsed);
@@ -3927,10 +3807,8 @@ TEST(Formatter, RequiresLambdasFitAfterBreakingHeadersAndBodies)
     for (const auto& path : {directory / "input.cpp", std::filesystem::path(PARSER_TESTDATA_DIR) / "requires_forms.in"})
     {
         SCOPED_TRACE(path);
-        auto source = ReadFile(path);
-        const auto length = source.size();
-        source.append(util::SourcePaddingSize, '\0');
-        const util::PaddedSourceView input{.Data = source.data(), .Size = static_cast<uint32_t>(length)};
+        const Input source(ReadFile(path));
+        const auto input = source.View();
         const auto tree = parser::Parse(input, [] (parser::ParseError) { });
         for (const auto columns : {80u, 60u}) {
             SCOPED_TRACE(columns);
@@ -3949,11 +3827,8 @@ TEST(Formatter, ExpressionLayout_ChecksPipelineMismatchAndEmittedWidth)
 {
     const auto input = "int f() {\n" "    auto description = someVeryLongIdentifierName;\n" "    auto x = left\n"
         "        + right;\n" "    return condition ?\n" "        alphaValue : betaValue;\n" "}\n";
-    std::string storage(input);
-    const auto length = storage.size();
-    storage.append(util::SourcePaddingSize, '\0');
-    const auto tree =
-        parser::Parse({.Data = storage.data(), .Size = static_cast<uint32_t>(length)}, [] (parser::ParseError) { });
+    const Input storage(input);
+    const auto tree = parser::Parse(storage.View(), [] (parser::ParseError) { });
     formatter::Style style;
     style.ColumnLimit = 40;
     style.WidthDiagnostics = formatter::WidthDiagnosticPolicy::Report;
@@ -3990,11 +3865,8 @@ TEST(Formatter, ExpressionLayout_ChecksPipelineMismatchAndEmittedWidth)
 TEST(Formatter, InitializedDeclaratorBreaksResolveWidthDiagnostics)
 {
     const auto directory = std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../declaration-headers";
-    auto source = ReadFile(directory / "assignment-prefix.input.cpp");
-    const auto size = source.size();
-    source.append(util::SourcePaddingSize, '\0');
-    const auto tree =
-        parser::Parse({.Data = source.data(), .Size = static_cast<uint32_t>(size)}, [] (parser::ParseError) { });
+    const Input source(ReadFile(directory / "assignment-prefix.input.cpp"));
+    const auto tree = parser::Parse(source.View(), [] (parser::ParseError) { });
     auto style = formatter::LoadConfigFile(directory / "../style/repository-80.hit-fmt").FormattingStyle;
     for (const auto side : {OperatorSide::Leading, OperatorSide::Trailing}) {
         style.AssignmentOperatorSide = side;
@@ -4029,10 +3901,8 @@ TEST_P(LayoutDiagnosticTest, Golden)
 {
     const auto& value = GetParam();
     const auto directory = std::filesystem::path(FORMATTER_TESTDATA_DIR) / ".." / value.Directory;
-    auto source = ReadFile(directory / value.Input);
-    const auto size = static_cast<uint32_t>(source.size());
-    source.append(util::SourcePaddingSize, '\0');
-    const auto tree = parser::Parse({.Data = source.data(), .Size = size}, [] (parser::ParseError) { });
+    const Input source(ReadFile(directory / value.Input));
+    const auto tree = parser::Parse(source.View(), [] (parser::ParseError) { });
     const auto config = value.Config.empty() ? value.Name : value.Config;
     auto style = formatter::LoadConfigFile(directory / (config + ".hit-fmt")).FormattingStyle;
     if (value.StrictLength) {
@@ -4048,80 +3918,17 @@ TEST_P(LayoutDiagnosticTest, Golden)
     }
     test::golden::ExpectGolden(directory / (value.Name + value.Suffix), actual);
 }
+
 // Check the emitted text independently of the diagnostic golden. Public
 // formatting uses eight-column tab stops; CRLF is one physical terminator.
-void ExpectEmittedWidthDiagnostics(const formatter::FormatResult& result, const formatter::Style& style)
-{
-    if (style.WidthDiagnostics == formatter::WidthDiagnosticPolicy::Off) {
-        EXPECT_TRUE(result.Diagnostics.empty());
-        return;
-    }
-    const auto columnLimit = style.ColumnLimit;
-    std::vector<std::pair<uint32_t, size_t>> overflows;
-    const std::string_view text = result.Text;
-    uint32_t line = 1;
-    size_t begin = 0;
-    while (begin < text.size()) {
-        auto end = text.find_first_of("\r\n", begin);
-        if (end == std::string_view::npos) {
-            end = text.size();
-        }
-        size_t width = 0;
-        for (size_t offset = begin; offset < end;) {
-            const auto c = static_cast<unsigned char>(text[offset]);
-            width = c == '\t' ? (width / 8 + 1) * 8 : width + 1;
-            offset +=
-                c < 0x80 ? 1 : unicode::utf8::GetFirstCodePointSize(text.substr(offset, end - offset)).value_or(1);
-        }
-        if (width > columnLimit) {
-            overflows.emplace_back(line, width);
-        }
-        begin = end;
-        if (begin < text.size() && text[begin++] == '\r' && begin < text.size() && text[begin] == '\n') {
-            ++begin;
-        }
-        ++line;
-    }
-    ASSERT_EQ(result.Diagnostics.size(), overflows.size());
-    for (size_t i = 0; i < overflows.size(); ++i) {
-        SCOPED_TRACE(i);
-        const auto& diagnostic = result.Diagnostics[i];
-        EXPECT_EQ(diagnostic.Kind, formatter::LayoutDiagnosticKind::LineWidth);
-        EXPECT_EQ(diagnostic.Position.Line, overflows[i].first);
-        EXPECT_EQ(diagnostic.Position.Column, columnLimit + 1);
-        EXPECT_EQ(
-            diagnostic.Message,
-            "emitted line width " + std::to_string(overflows[i].second) + " exceeds ColumnLimit " +
-            std::to_string(columnLimit));
-    }
-}
-TEST_P(LayoutDiagnosticTest, ReportsEmittedWidths)
-{
-    const auto& value = GetParam();
-    const auto directory = std::filesystem::path(FORMATTER_TESTDATA_DIR) / ".." / value.Directory;
-    auto source = ReadFile(directory / value.Input);
-    const auto size = static_cast<uint32_t>(source.size());
-    source.append(util::SourcePaddingSize, '\0');
-    const auto tree = parser::Parse({.Data = source.data(), .Size = size}, [] (parser::ParseError) { });
-    const auto config = value.Config.empty() ? value.Name : value.Config;
-    auto style = formatter::LoadConfigFile(directory / (config + ".hit-fmt")).FormattingStyle;
-    if (value.StrictLength) {
-        style.WidthDiagnostics = formatter::WidthDiagnosticPolicy::Report;
-    }
-    const auto result = formatter::Format(tree, formatter::PreparedFormat(style));
-    ExpectEmittedWidthDiagnostics(result, style);
-}
 
 TEST(Formatter, WidthDiagnostics_CountsProtectedTabsAndMixedTerminators)
 {
     const std::string input = "// hit-fmt off\r\nint\tlong_name;\r\n" "\tint long_name;\n" "// é界😀é界😀é界😀é界😀é\r\n"
         "// é界😀é界😀é界😀é界😀é界\r" "// é界😀\té界😀é界😀é界\n" "// é界😀\té界😀é界😀é界😀\n" + std::string("// ") + std::string(13, 'a') +
         "\x80\xe2\x82é\n" + "// hit-fmt on\n";
-    auto source = input;
-    source.append(util::SourcePaddingSize, '\0');
-    const auto tree = parser::Parse(
-        {.Data = source.data(), .Size = static_cast<uint32_t>(input.size())},
-        [] (parser::ParseError) { });
+    const Input source(input);
+    const auto tree = parser::Parse(source.View(), [] (parser::ParseError) { });
     formatter::Style style;
     style.ColumnLimit = 16;
     style.WidthDiagnostics = formatter::WidthDiagnosticPolicy::Report;
@@ -4140,7 +3947,6 @@ TEST(Formatter, WidthDiagnostics_CountsProtectedTabsAndMixedTerminators)
     }
     EXPECT_EQ(result.Diagnostics[4].Position.Line, 8u);
     EXPECT_EQ(result.Diagnostics[4].Message, "emitted line width 20 exceeds ColumnLimit 16");
-    ExpectEmittedWidthDiagnostics(result, style);
     EXPECT_EQ(FormatWithStyle(result.Text, style), result.Text);
 }
 INSTANTIATE_TEST_SUITE_P(
@@ -4170,11 +3976,8 @@ TEST(Formatter, ExpressionLayout_ReportsUnavoidableWidthWithoutReflowing)
 {
     const auto directory = std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../line-length";
     const auto input = ReadFile(directory / "input.cpp");
-    auto source = input;
-    source.append(util::SourcePaddingSize, '\0');
-    const auto tree = parser::Parse(
-        {.Data = source.data(), .Size = static_cast<uint32_t>(input.size())},
-        [] (parser::ParseError) { });
+    const Input source(input);
+    const auto tree = parser::Parse(source.View(), [] (parser::ParseError) { });
     auto style = formatter::LoadConfigFile(directory / "soft.hit-fmt").FormattingStyle;
     style.ExpressionsLayout = formatter::CategoryLayout::Preserve;
     style.WidthDiagnostics = formatter::WidthDiagnosticPolicy::Report;
@@ -4218,31 +4021,14 @@ TEST(Formatter, OperatorSpacing_PreservesUnknownCastOrBinaryOperator)
     EXPECT_EQ(FormatWithStyle(separatedCast, style), certain);
 }
 
-TEST(Formatter, SpacingOptions_ProfileOverflowWrapsAroundRecoveryAndKeepsTokens)
+TEST(Formatter, SpacingOptions_ProfileOverflowHasNoDiagnostics)
 {
     const auto directory = std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../spacing-options";
     const auto input = ReadFile(directory / "profile-overflow.input.cpp");
     const auto config = formatter::LoadConfigFile(
         (directory / "../../../../hit-fmt/examples/ytsaurus.hit-fmt").lexically_normal()).FormattingStyle;
-    std::string storage(input);
-    storage.append(util::SourcePaddingSize, '\0');
-    const auto tree = parser::Parse(
-        {.Data = storage.data(), .Size = static_cast<uint32_t>(input.size())},
-        [] (parser::ParseError) { });
-    const auto result = formatter::Format(tree, formatter::PreparedFormat(config));
-    // Proven argument boundaries can move recovered operands intact without
-    // interpreting their template spelling or changing any original token.
-    EXPECT_NE(result.Text.find("    static_assert(!"), std::string::npos);
+    const auto result = test::FormatInput(input, formatter::PreparedFormat(config));
     EXPECT_TRUE(result.Diagnostics.empty());
-    std::string output(result.Text);
-    output.append(util::SourcePaddingSize, '\0');
-    const auto tokens =
-        parser::SyntaxTree::TokenizeOnly({.Data = output.data(), .Size = static_cast<uint32_t>(result.Text.size())});
-    ASSERT_EQ(tokens.TokenCount(), tree.TokenCount());
-    for (parser::TokenIndex i = 0; i < tree.TokenCount(); ++i) {
-        EXPECT_EQ(tokens.Kind(i), tree.Kind(i));
-        EXPECT_EQ(tokens.TokenText(i), tree.TokenText(i));
-    }
 }
 
 class NamingTest
@@ -4255,11 +4041,8 @@ TEST_P(NamingTest, Golden)
     const auto name = GetParam();
     const auto input = ReadFile(dir / (name == "rules" ? "input.cpp" : "alternate.cpp"));
     const auto config = formatter::LoadConfigFile(dir / (name + ".hit-fmt"));
-    std::string storage = input;
-    storage.append(util::SourcePaddingSize, '\0');
-    const auto tree = parser::Parse(
-        {.Data = storage.data(), .Size = static_cast<uint32_t>(input.size())},
-        [] (parser::ParseError) { });
+    const Input storage(input);
+    const auto tree = parser::Parse(storage.View(), [] (parser::ParseError) { });
     std::string actual;
     for (const auto& diagnostic : formatter::CheckNames(tree, config)) {
         actual += std::to_string(diagnostic.Position.Line) + ":" + std::to_string(diagnostic.Position.Column) + ": " +

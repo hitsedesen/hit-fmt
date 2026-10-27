@@ -7,6 +7,7 @@
 #include <gtest/gtest.h>
 
 #include <tests/golden.hpp>
+#include <tests/input.hpp>
 
 #include <unicode/code_point.hpp>
 #include <unicode/utf8.hpp>
@@ -40,10 +41,9 @@ std::ostream& operator<<(std::ostream& os, const GoldenCase& testCase)
 std::pair<std::string, std::vector<std::string>> TokenizeAndSerialize(const std::string& input)
 {
     std::vector<std::string> errors;
-    auto paddedInput = input;
-    paddedInput.append(util::SourcePaddingSize, '\0');
+    const test::Input paddedInput(input);
     Tokenizer tokenizer(
-        {.Data = paddedInput.data(), .Size = static_cast<uint32_t>(input.size())},
+        paddedInput.View(),
         [&] (TokenizationError error) {
             errors.push_back(
                 std::format("{} error: {}", error.ErrorPosition, GetTokenizationErrorDescription(error.Kind)));
@@ -58,10 +58,9 @@ std::pair<std::string, std::vector<std::string>> TokenizeAndSerialize(const std:
 std::vector<TokenizationErrorKind> TokenizeErrors(std::string_view input)
 {
     std::vector<TokenizationErrorKind> errors;
-    std::string paddedInput(input);
-    paddedInput.append(util::SourcePaddingSize, '\0');
+    const test::Input paddedInput(input);
     Tokenizer tokenizer(
-        {.Data = paddedInput.data(), .Size = static_cast<uint32_t>(input.size())},
+        paddedInput.View(),
         [&] (TokenizationError error) {
             errors.push_back(error.Kind);
         });
@@ -218,11 +217,10 @@ TEST(Tokenizer, KeepsEofStableAfterAsciiUnicodeAndInvalidUtf8)
     constexpr std::array<std::string_view, 4> Inputs{"", "ascii", "α", std::string_view("\x80", 1)};
     for (auto input : Inputs) {
         SCOPED_TRACE(input);
-        std::string storage(input);
-        storage.append(util::SourcePaddingSize, '\0');
+        const test::Input storage(input);
         size_t errors = 0;
         Tokenizer tokenizer(
-            {.Data = storage.data(), .Size = static_cast<uint32_t>(input.size())},
+            storage.View(),
             [&] (TokenizationError error) {
                 ++errors;
                 EXPECT_EQ(error.Kind, TokenizationErrorKind::InvalidUtf8CodePoint);

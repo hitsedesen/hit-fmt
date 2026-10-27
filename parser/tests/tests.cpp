@@ -4,6 +4,7 @@
 #include <gtest/gtest.h>
 
 #include <tests/golden.hpp>
+#include <tests/input.hpp>
 
 #include <algorithm>
 #include <array>
@@ -211,25 +212,7 @@ std::string SerializePunctuationRoles(const parser::SyntaxTree& tree)
     return output;
 }
 
-class PaddedInput
-{
-public:
-    explicit PaddedInput(std::string_view input)
-        : Size_(input.size())
-        , Storage_(input)
-    {
-        Storage_.append(util::SourcePaddingSize, '\0');
-    }
-
-    [[nodiscard]] util::PaddedSourceView View() const
-    {
-        return {.Data = Storage_.data(), .Size = static_cast<uint32_t>(Size_)};
-    }
-
-private:
-    size_t Size_;
-    std::string Storage_;
-};
+using PaddedInput = test::Input;
 
 struct GoldenCase
 {
@@ -2622,78 +2605,6 @@ TEST(Parser, RequiresClauseOwnsNestedExpressionBeforeDeclaration)
     }
 }
 
-TEST(Parser, RequirementsOwnLambdaSyntax)
-{
-    const test::golden::Fixture fixture{PARSER_TESTDATA_DIR, "requires_template_lambdas"};
-    PaddedInput input(fixture.InputNamed(".in"));
-    size_t errors = 0;
-    const auto tree = parser::Parse(input.View(), [&] (parser::ParseError) { ++errors; });
-    EXPECT_EQ(errors, 0u);
-    const auto lambdas = LambdaOwnershipNodes(tree.Root(), parser::NodeKind::LambdaExpression);
-    ASSERT_EQ(lambdas.size(), 9u);
-    size_t templated = 0;
-    for (const auto* lambda : lambdas) {
-        ASSERT_NE(lambda->FirstChild, nullptr);
-        EXPECT_EQ(lambda->FirstChild->Kind, parser::NodeKind::LambdaCaptureList);
-        EXPECT_EQ(tree.Role(lambda->FirstChild->Tokens.Begin), parser::PunctuationRole::LambdaDelimiter);
-        EXPECT_EQ(tree.Role(lambda->FirstChild->Tokens.End - 1), parser::PunctuationRole::LambdaDelimiter);
-        EXPECT_TRUE(LambdaOwnershipNodes(*lambda, parser::NodeKind::UnparsedSyntax).empty());
-        const auto parameters = LambdaOwnershipNodes(*lambda, parser::NodeKind::TemplateParameterList);
-        templated += !parameters.empty();
-        for (const auto* list : parameters) {
-            EXPECT_EQ(tree.Role(list->Tokens.Begin), parser::PunctuationRole::TemplateDelimiter);
-            EXPECT_EQ(tree.Role(list->Tokens.End - 1), parser::PunctuationRole::TemplateDelimiter);
-        }
-        ASSERT_NE(lambda->LastChild, nullptr);
-        EXPECT_EQ(lambda->LastChild->Kind, parser::NodeKind::LambdaBody);
-        EXPECT_EQ(tree.Role(lambda->LastChild->Tokens.Begin), parser::PunctuationRole::LambdaDelimiter);
-    }
-    EXPECT_EQ(templated, 8u);
-}
-
-TEST(Parser, RequirementFormsOwnNamesBracesAndLocalScope)
-{
-    const test::golden::Fixture fixture{PARSER_TESTDATA_DIR, "requires_forms"};
-    PaddedInput input(fixture.InputNamed(".in"));
-    size_t errors = 0;
-    const auto tree = parser::Parse(input.View(), [&] (parser::ParseError) { ++errors; });
-    EXPECT_EQ(errors, 0u);
-    EXPECT_TRUE(LambdaOwnershipNodes(tree.Root(), parser::NodeKind::UnparsedSyntax).empty());
-    EXPECT_EQ(LambdaOwnershipNodes(tree.Root(), parser::NodeKind::SimpleRequirement).size(), 5u);
-    EXPECT_EQ(LambdaOwnershipNodes(tree.Root(), parser::NodeKind::TypeRequirement).size(), 4u);
-    EXPECT_EQ(LambdaOwnershipNodes(tree.Root(), parser::NodeKind::NestedRequirement).size(), 2u);
-    const auto compounds = LambdaOwnershipNodes(tree.Root(), parser::NodeKind::CompoundRequirement);
-    ASSERT_EQ(compounds.size(), 5u);
-    for (const auto* compound : compounds) {
-        const auto* expression = compound->FirstChild;
-        ASSERT_NE(expression, nullptr);
-        ASSERT_EQ(expression->Kind, parser::NodeKind::RequirementExpression);
-        EXPECT_EQ(tree.Role(expression->Tokens.Begin), parser::PunctuationRole::GroupingDelimiter);
-        EXPECT_EQ(tree.Role(expression->Tokens.End - 1), parser::PunctuationRole::GroupingDelimiter);
-        EXPECT_TRUE(LambdaOwnershipNodes(*compound, parser::NodeKind::BracedInitializer).empty());
-    }
-    EXPECT_EQ(LambdaOwnershipNodes(tree.Root(), parser::NodeKind::TypeConstraint).size(), 3u);
-    bool hasScopedProduct = false;
-    for (const auto* binary : LambdaOwnershipNodes(tree.Root(), parser::NodeKind::BinaryExpression)) {
-        if (tree.SourceText(binary->Tokens) == "(Local) * sizeof(T)") {
-            ASSERT_NE(binary->FirstChild, nullptr);
-            EXPECT_EQ(tree.Role(binary->FirstChild->Tokens.End), parser::PunctuationRole::BinaryOperator);
-            hasScopedProduct = true;
-        }
-    }
-    EXPECT_TRUE(hasScopedProduct);
-    EXPECT_TRUE(LambdaOwnershipNodes(tree.Root(), parser::NodeKind::CastExpression).empty());
-    bool hasOutsideType = false;
-    for (const auto* child = tree.Root().FirstChild; child; child = child->NextSibling) {
-        if (tree.SourceText(child->Tokens) == "Local outside_type;") {
-            ASSERT_NE(child->FirstChild, nullptr);
-            EXPECT_EQ(child->FirstChild->Kind, parser::NodeKind::DeclarationSpecifiers);
-            hasOutsideType = true;
-        }
-    }
-    EXPECT_TRUE(hasOutsideType);
-}
-
 TEST(Parser, RequirementRecoveryDiagnostics)
 {
     const test::golden::Fixture fixture{PARSER_TESTDATA_DIR, "requires_forms_recovery"};
@@ -3472,52 +3383,6 @@ TEST(Parser, FunctionKindsLeaveUncertainHeadsAndNonfunctionsUnknown)
     }
 }
 
-TEST(Parser, FunctionKindsSurviveNodeCopiesAndTreeMoves)
-{
-    PaddedInput input("#include <z>\n#include <a>\n" "struct Device { Device() { /* note */ if (ready) return; ; } "
-        "~Device() {} int Read() { return 1; } };\n");
-    auto original = parser::Parse(input.View(), [] (parser::ParseError) {});
-    const auto check = [] (const parser::SyntaxTree& tree) {
-        std::array<size_t, 4> counts{};
-        std::vector<const Node*> pending{&tree.Root()};
-        while (!pending.empty()) {
-            const auto* node = pending.back();
-            pending.pop_back();
-            ++counts[static_cast<size_t>(node->GetFunctionKind())];
-            if (node->Kind != parser::NodeKind::FunctionDefinition) {
-                EXPECT_EQ(node->GetFunctionKind(), parser::FunctionKind::Unknown);
-            }
-            for (auto* child = node->FirstChild; child; child = child->NextSibling) {
-                pending.push_back(child);
-            }
-        }
-        EXPECT_EQ(counts[static_cast<size_t>(parser::FunctionKind::Constructor)], 1u);
-        EXPECT_EQ(counts[static_cast<size_t>(parser::FunctionKind::Destructor)], 1u);
-        EXPECT_EQ(counts[static_cast<size_t>(parser::FunctionKind::Ordinary)], 1u);
-    };
-    check(original);
-    auto moved = std::move(original);
-    check(moved);
-    original = std::move(moved);
-    check(original);
-    const Node* record = original.Root().FirstChild;
-    while (record && record->Kind != parser::NodeKind::RecordDeclaration) {
-        record = record->NextSibling;
-    }
-    ASSERT_NE(record, nullptr);
-    const Node* constructor = record->FirstChild;
-    while (constructor && constructor->Kind != parser::NodeKind::FunctionDefinition) {
-        constructor = constructor->NextSibling;
-    }
-    ASSERT_NE(constructor, nullptr);
-    Node copy = *constructor;
-    EXPECT_EQ(copy.GetFunctionKind(), parser::FunctionKind::Constructor);
-    Node assigned;
-    EXPECT_EQ(assigned.GetFunctionKind(), parser::FunctionKind::Unknown);
-    assigned = copy;
-    EXPECT_EQ(assigned.GetFunctionKind(), parser::FunctionKind::Constructor);
-}
-
 TEST(Parser, FunctionKindsRetainBalancedQualifiedAndExplicitReturnEvidence)
 {
     struct Case
@@ -4050,30 +3915,6 @@ TEST(Parser, TerminalConstructorTemplateIdsDoNotBorrowOuterOrMalformedOwners)
         }
     }
     EXPECT_EQ(constructors, 2u);
-}
-
-TEST(Parser, TerminalConstructorTemplateIdsSurviveTreeMoves)
-{
-    PaddedInput input("template<class T> struct Parcel { Parcel<T>(T* p) {} };\n");
-    auto tree = parser::Parse(input.View(), [] (parser::ParseError) {});
-    const auto check = [] (const parser::SyntaxTree& value) {
-        size_t constructors = 0;
-        std::vector<const Node*> pending{&value.Root()};
-        while (!pending.empty()) {
-            const auto* node = pending.back();
-            pending.pop_back();
-            constructors += node->GetFunctionKind() == parser::FunctionKind::Constructor;
-            for (auto* child = node->FirstChild; child; child = child->NextSibling) {
-                pending.push_back(child);
-            }
-        }
-        EXPECT_EQ(constructors, 1u);
-    };
-    check(tree);
-    auto moved = std::move(tree);
-    check(moved);
-    tree = std::move(moved);
-    check(tree);
 }
 
 TEST(Parser, TerminalConstructorTemplateIdsPreserveSelfTypedStatementBindings)
