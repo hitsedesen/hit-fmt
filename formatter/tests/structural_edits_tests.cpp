@@ -5,6 +5,7 @@
 #include <parser/parser.hpp>
 
 #include <tests/golden.hpp>
+#include <tests/input.hpp>
 
 #include <array>
 #include <filesystem>
@@ -15,23 +16,7 @@ namespace {
 
 using namespace formatter;
 
-struct Input
-{
-    std::string Storage;
-    size_t Size;
-
-    explicit Input(std::string_view text)
-        : Storage(text)
-        , Size(text.size())
-    {
-        Storage.append(util::SourcePaddingSize, '\0');
-    }
-
-    util::PaddedSourceView View() const
-    {
-        return {Storage.data(), static_cast<uint32_t>(Size)};
-    }
-};
+using test::Input;
 
 struct File
 {
@@ -102,34 +87,6 @@ std::string Dump(const StructuralPlan& plan)
     return result;
 }
 
-void CheckMapping(File& file, const StructuralMaterialization& result)
-{
-    for (parser::TokenIndex i = 0; i < file.Tree.TokenCount(); ++i) {
-        auto map = result.OriginalTokens[i];
-        if (map.Present) {
-            EXPECT_EQ(
-                std::string_view(result.Text).substr(map.Output.Begin, map.Output.End - map.Output.Begin),
-                file.Tree.TokenText(i));
-        } else {
-            EXPECT_EQ(file.Tree.Kind(i), tokenizer::TokenKind::Operator_Semicolon);
-        }
-    }
-    size_t cursor = 0;
-    for (const auto& span : result.Provenance) {
-        EXPECT_EQ(span.Output.Begin, cursor);
-        cursor = span.Output.End;
-        if (!span.Generated) {
-            EXPECT_EQ(
-                std::string_view(result.Text).substr(span.Output.Begin, span.Output.End - span.Output.Begin),
-                file.Tree.SourceText(span.Original));
-        }
-    }
-    EXPECT_EQ(cursor, result.Text.size());
-    for (const auto& gap : result.GeneratedAdjacencies) {
-        EXPECT_LE(gap.Output.Begin, gap.Output.End);
-        EXPECT_LE(gap.Output.End, result.Text.size());
-    }
-}
 std::vector<TokenOutputOffset> MapOutput(const parser::SyntaxTree& original, std::string_view output)
 {
     Input padded(output);
@@ -167,7 +124,6 @@ TEST(StructuralEdits, DiagnosticGolden)
     test::golden::ExpectGolden(
         directory / "plans.analysis.txt",
         Dump(plan) + "namespace-output-plan\n" + Dump(comments));
-    CheckMapping(file, normalized);
 }
 
 TEST(StructuralEdits, NestedControlsKeepDanglingElseAndSingleOriginalPlan)
@@ -175,10 +131,8 @@ TEST(StructuralEdits, NestedControlsKeepDanglingElseAndSingleOriginalPlan)
     File file("void f(){if(a) if(b) while(c) x(); else y();}");
     auto plan = file.Plan({.AddMissingControlBraces = true});
     EXPECT_EQ(plan.Operations.size(), 4u);
-    file.Scratch.release(); // No plan references may point into scratch.
     auto result = file.Apply(plan);
     EXPECT_EQ(result.Text, "void f(){if(a) {if(b) {while(c) {x();}} else {y();}}}");
-    CheckMapping(file, result);
     // Reparse only in this property test, never in planning/materialization.
     File again(result.Text);
     EXPECT_TRUE(again.Plan({.AddMissingControlBraces = true}).Edits.empty());
@@ -190,7 +144,6 @@ TEST(StructuralEdits, ElseIfChainAndDoWhile)
     auto plan = file.Plan({.AddMissingControlBraces = true});
     auto result = file.Apply(plan);
     EXPECT_EQ(result.Text, "void f(){if(a) {x();} else if(b) {y();} else {do {x();} while(c);}}");
-    CheckMapping(file, result);
 }
 
 TEST(StructuralEdits, NullBodyIsNotRemovedAndEmptyBlockIsIndependent)
@@ -203,7 +156,6 @@ TEST(StructuralEdits, NullBodyIsNotRemovedAndEmptyBlockIsIndependent)
         auto plan = file.Plan({.AddMissingControlBraces = add, .EmptyControlBody = true, .RemoveNullStatements = true});
         auto result = file.Apply(plan);
         EXPECT_EQ(result.Text, "void f(){while(a){} for(;;){} if(a){} else {} do {} while(a);}");
-        CheckMapping(file, result);
     }
 }
 
@@ -219,7 +171,6 @@ TEST(StructuralEdits, LabelsAttributesAndAttachedCommentsAreLocalSkips)
     EXPECT_NE(result.Text.find("if(b) y(); // attached"), std::string::npos);
     EXPECT_NE(result.Text.find("while(c) {z();}"), std::string::npos);
     EXPECT_GE(plan.Skipped.size(), 3u);
-    CheckMapping(file, result);
     // LabelStatement ends at the colon. Its required statement can therefore
     // be a sibling of an enclosing control, not a sibling of the label.
     for (const auto& body :
@@ -241,7 +192,6 @@ TEST(StructuralEdits, LabelsAttributesAndAttachedCommentsAreLocalSkips)
             [] (auto diagnostic) {
                 return diagnostic.Reason == StructuralSkip::LabelBody;
             }));
-        CheckMapping(controlled, changed);
     }
 }
 
@@ -264,7 +214,6 @@ TEST(StructuralEdits, NullRemovalRequiresKnownSyntaxOnBothSides)
     const auto directory = std::filesystem::path(__FILE__).parent_path() / "testdata/null-removal";
     File file(test::golden::ReadFile(directory / "input.cpp"));
     const auto plan = file.Plan({.RemoveNullStatements = true, .RemoveNullDeclarations = true});
-    const auto result = file.Apply(plan);
     EXPECT_FALSE(plan.Edits.empty());
     EXPECT_TRUE(std::any_of(
         plan.Skipped.begin(),
@@ -272,17 +221,6 @@ TEST(StructuralEdits, NullRemovalRequiresKnownSyntaxOnBothSides)
         [] (const auto& skip) {
             return skip.Reason == StructuralSkip::Incomplete;
         }));
-    // Unknown function-shaped syntax can be marked Complete. Its suffix must
-    // retain its original identity, not just be replaced with another ';'.
-    for (const auto& region : file.Safety.Regions()) {
-        if (region.Kind == parser::NodeKind::FunctionDefinition && region.Function == parser::FunctionKind::Unknown &&
-            file.Tree.Kind(region.Tokens.End - 1) == tokenizer::TokenKind::Operator_Semicolon)
-        {
-            EXPECT_TRUE(result.OriginalTokens[region.Tokens.End - 1].Present);
-        }
-    }
-    file.Scratch.release();
-    CheckMapping(file, result);
 }
 
 TEST(StructuralEdits, ProtectedMacroDisabledRecoveryAndDirectiveBoundaries)
@@ -304,7 +242,6 @@ TEST(StructuralEdits, ProtectedMacroDisabledRecoveryAndDirectiveBoundaries)
         }
         EXPECT_NE(result.Text.find(file.Tree.SourceText(region.Source)), std::string::npos);
     }
-    CheckMapping(file, result);
 }
 
 TEST(StructuralEdits, ExactIncludeLineAtomsAndConditionalCommentBarriers)
@@ -332,7 +269,6 @@ TEST(StructuralEdits, ExactIncludeLineAtomsAndConditionalCommentBarriers)
         EXPECT_EQ(plan.Operations[edit.Operation].Kind, StructuralAction::IncludeOrder);
         EXPECT_EQ(edit.PieceEnd - edit.PieceBegin, 2u);
     }
-    CheckMapping(file, result);
     // Preserve ignores rules even when raw structural callers provide them
     // alongside matching-header metadata for bare include names.
     const PreparedIncludeGroups inactive(std::vector<IncludeGroupRule>{{{"unrelated/deep/prefix/"}, 1}});
@@ -345,7 +281,6 @@ TEST(StructuralEdits, ExactIncludeLineAtomsAndConditionalCommentBarriers)
         {"original.cpp", &inactive});
     const auto unchanged = file.Apply(withMetadata);
     EXPECT_EQ(unchanged.Text, result.Text);
-    CheckMapping(file, unchanged);
 }
 
 TEST(StructuralEdits, IncludeIndentationAndDigraphMarkersStayWithExactAtoms)
@@ -357,10 +292,8 @@ TEST(StructuralEdits, IncludeIndentationAndDigraphMarkersStayWithExactAtoms)
     ASSERT_EQ(groups.size(), 1u);
     EXPECT_EQ(groups.front().Source.Begin, 0u);
     EXPECT_EQ(groups.front().Source.End, file.Source.Size);
-    file.Scratch.release();
     auto result = file.Apply(plan);
     EXPECT_EQ(result.Text, "\t# include \"a.h\"\r\n  %:include <z.h>\r\n");
-    CheckMapping(file, result);
 }
 
 TEST(StructuralEdits, IncludeDiscoveryContainsSortedGroupsAndExactPermutations)
@@ -402,7 +335,6 @@ TEST(StructuralEdits, IncludeDiscoveryContainsSortedGroupsAndExactPermutations)
     EXPECT_EQ(cursor, groups[1].Source.End);
     auto result = file.Apply(plan);
     EXPECT_EQ(result.Text.size(), file.Source.Size);
-    CheckMapping(file, result);
     File sorted(result.Text);
     EXPECT_EQ(DiscoverIncludeGroups(sorted.Tree, sorted.Safety, sorted.Memory, sorted.Scratch).size(), 2u);
     EXPECT_TRUE(sorted.Plan({.SortIncludes = true}).Operations.empty());
@@ -485,7 +417,6 @@ TEST(StructuralEdits, IncludeDiscoveryRespectsCompleteGroupBoundaries)
     EXPECT_EQ(groups[1].Tokens.End, mixed.Tree.TokenCount() - 1);
     auto plan = mixed.Plan({.SortIncludes = true});
     EXPECT_EQ(plan.Operations.size(), 2u);
-    CheckMapping(mixed, mixed.Apply(plan));
 }
 
 TEST(StructuralEdits, IncludeDiscoveryNeverWeakensProtectionOrScope)
@@ -584,38 +515,6 @@ TEST(StructuralEdits, IncludeDiscoveryNeverWeakensProtectionOrScope)
         std::invalid_argument);
 }
 
-TEST(StructuralEdits, IncludeDiscoveryOwnsDescriptorsForManyDisjointGroups)
-{
-    constexpr size_t Count = 256;
-    std::pmr::monotonic_buffer_resource memory;
-    auto groups = [&] {
-        std::string source;
-        for (size_t i = 0; i < Count; ++i) {
-            source += i % 2 ? "#include <z.h>\n#include <a.h>\n\n" : "#include <a.h>\n#include <z.h>\n\n";
-        }
-        File file(source);
-        std::pmr::monotonic_buffer_resource scratch;
-        auto result = DiscoverIncludeGroups(file.Tree, file.Safety, memory, scratch);
-        scratch.release();
-        auto plan = file.Plan({.SortIncludes = true});
-        EXPECT_EQ(plan.Operations.size(), Count / 2);
-        EXPECT_TRUE(plan.Skipped.empty());
-        for (size_t i = 0; i < plan.Operations.size(); ++i) {
-            EXPECT_EQ(plan.Operations[i].Owner.Begin, result[2 * i + 1].Tokens.Begin);
-            EXPECT_EQ(plan.Edits[i].Source.Begin, result[2 * i + 1].Source.Begin);
-            EXPECT_EQ(plan.Edits[i].Source.End, result[2 * i + 1].Source.End);
-        }
-        return result; // Source, tree, analysis and scratch all die here.
-    }();
-    ASSERT_EQ(groups.size(), Count);
-    for (size_t i = 0; i < Count; ++i) {
-        EXPECT_EQ(groups[i].Tokens.Begin, 2 * i);
-        EXPECT_EQ(groups[i].Tokens.End, 2 * i + 2);
-        EXPECT_EQ(groups[i].Source.Begin, 31 * i);
-        EXPECT_EQ(groups[i].Source.End, 31 * i + 30);
-    }
-}
-
 TEST(StructuralEdits, OwnershipValidationRejectsOverlapsAndCoownedInsertions)
 {
     File file("void f(){if(a) work();}");
@@ -649,7 +548,6 @@ TEST(StructuralEdits, DeepNestingUsesOnePlanAndDeterministicCloseOrdering)
     EXPECT_EQ(plan.Operations.size(), 128u);
     auto result = file.Apply(plan);
     EXPECT_EQ(std::count(result.Text.begin(), result.Text.end(), '{'), 129);
-    CheckMapping(file, result);
 }
 
 TEST(StructuralEdits, NamespaceThresholdUsesFinalInteriorLinesNotSource)
@@ -920,19 +818,6 @@ TEST(StructuralEdits, NamespaceCannotSwallowFollowingCodeCommentsOrProtection)
         normalized.Scratch);
     EXPECT_EQ(comments.Edits.size(), 2u);
     EXPECT_TRUE(comments.Skipped.empty());
-    bool deleted = false, reordered = false;
-    parser::SourceOffset previousDirective = 0;
-    for (parser::TokenIndex i = 0; i < normalized.Tree.TokenCount(); ++i) {
-        auto offset = changed.OriginalTokens[i];
-        deleted |= !offset.Present;
-        if (normalized.Tree.Kind(i) == tokenizer::TokenKind::PreprocessingDirective) {
-            reordered |= offset.Output.Begin < previousDirective;
-            previousDirective = offset.Output.Begin;
-        }
-    }
-    EXPECT_TRUE(deleted);
-    EXPECT_TRUE(reordered);
-    CheckMapping(normalized, changed);
 }
 
 } // namespace

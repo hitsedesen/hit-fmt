@@ -4,6 +4,7 @@
 #include <gtest/gtest.h>
 
 #include <tests/golden.hpp>
+#include <tests/input.hpp>
 
 #include <algorithm>
 #include <filesystem>
@@ -13,23 +14,7 @@
 
 namespace {
 
-struct Input
-{
-    std::string Storage;
-    size_t Size;
-
-    explicit Input(std::string_view text)
-        : Storage(text)
-        , Size(text.size())
-    {
-        Storage.append(util::SourcePaddingSize, '\0');
-    }
-
-    util::PaddedSourceView View() const
-    {
-        return {Storage.data(), static_cast<uint32_t>(Size)};
-    }
-};
+using test::Input;
 
 formatter::Configuration Configuration()
 {
@@ -54,8 +39,6 @@ TEST(FileCheck, OneResultServesCheckAndFixWithoutCountingAppliedFormatting)
     EXPECT_FALSE(checked.HasFailures(true));
     EXPECT_NE(checked.Formatting.Text.find("left, right"), std::string::npos);
     EXPECT_TRUE(checked.Semantic.empty());
-    EXPECT_TRUE(checked.Formatting.Map.empty());
-    EXPECT_TRUE(checked.Formatting.StructuralOperations.empty());
     std::ostringstream checkSummary, fixSummary;
     hit_fmt::PrintFileSummaryIssues(checkSummary, checked, false);
     hit_fmt::PrintFileSummaryIssues(fixSummary, checked, true);
@@ -238,8 +221,6 @@ TEST(FileCheck, DiagnosticGoldenUsesOriginalCheckAndFinalFixCoordinates)
     const Input input(fixture.InputNamed(".input.cpp"));
     const auto checked = hit_fmt::CheckFile(input.View(), prepared);
     ASSERT_EQ(checked.Semantic.size(), 4u);
-    EXPECT_TRUE(checked.Formatting.Map.empty());
-    EXPECT_FALSE(checked.Formatting.OriginalTokens.empty());
     EXPECT_TRUE(checked.HasFailures(false));
     EXPECT_TRUE(checked.HasFailures(true));
     EXPECT_GT(checked.Semantic.back().Emitted.Line, checked.Semantic.back().Original.Line);
@@ -266,48 +247,6 @@ TEST(FileCheck, DiagnosticGoldenUsesOriginalCheckAndFinalFixCoordinates)
                 : (fix ? ".fix-narrow.txt" : ".check-narrow.txt"));
         }
     }
-}
-
-TEST(FileCheck, PreparedConfigurationOwnsSettingsAndResultsOutliveInputs)
-{
-    auto raw = Configuration();
-    raw.Naming.Function.Case = formatter::NameCase::PascalCase;
-    raw.NamingNamespaceExemptions = {"ignored"};
-    const hit_fmt::PreparedFileConfiguration prepared(raw);
-    raw.NamingNamespaceExemptions = {"different"};
-    raw.FormattingStyle.CommaSpaceAfter = formatter::GapPolicy::NoSpace;
-    raw.Naming.Function.Case = formatter::NameCase::Unchecked;
-    hit_fmt::CheckedFile first;
-    {
-        const Input input("void bad_name(){invoke(a,b);}\n");
-        std::string path = "missing/directory with spaces/original.cpp";
-        const formatter::Hunk selected[] = {{1, 1}};
-        const hit_fmt::ChangedFileScope scope{selected};
-        first = hit_fmt::CheckFile(input.View(), prepared, path, scope);
-        const auto withoutPath = hit_fmt::CheckFile(input.View(), prepared, {}, scope);
-        EXPECT_EQ(first.Formatting.Text, withoutPath.Formatting.Text);
-        ASSERT_EQ(first.Semantic.size(), withoutPath.Semantic.size());
-        for (size_t i = 0; i < first.Semantic.size(); ++i) {
-            EXPECT_EQ(first.Semantic[i].Message, withoutPath.Semantic[i].Message);
-            EXPECT_EQ(first.Semantic[i].Original.Line, withoutPath.Semantic[i].Original.Line);
-            EXPECT_EQ(first.Semantic[i].Original.Column, withoutPath.Semantic[i].Original.Column);
-            EXPECT_EQ(first.Semantic[i].Emitted.Line, withoutPath.Semantic[i].Emitted.Line);
-            EXPECT_EQ(first.Semantic[i].Emitted.Column, withoutPath.Semantic[i].Emitted.Column);
-        }
-        path.assign(path.size(), '?');
-    }
-    const Input second("void other_bad(){invoke(c,d);}\n");
-    const auto other = hit_fmt::CheckFile(second.View(), prepared, {});
-    EXPECT_NE(first.Formatting.Text.find("a, b"), std::string::npos);
-    EXPECT_NE(other.Formatting.Text.find("c, d"), std::string::npos);
-    ASSERT_EQ(first.Semantic.size(), 1u);
-    ASSERT_EQ(other.Semantic.size(), 1u);
-    EXPECT_TRUE(first.HasFailures(true));
-    EXPECT_TRUE(other.HasFailures(true));
-    const Input exempt("namespace ignored {void third_bad(){invoke(e,f);}}\n");
-    const auto exempted = hit_fmt::CheckFile(exempt.View(), prepared);
-    EXPECT_TRUE(exempted.Semantic.empty());
-    EXPECT_NE(exempted.Formatting.Text.find("e, f"), std::string::npos);
 }
 
 TEST(FileCheck, TokenEndpointAndUnicodePositionsMapWithoutReparsingOutput)

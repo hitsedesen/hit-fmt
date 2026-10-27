@@ -5,6 +5,7 @@
 #include <parser/parser.hpp>
 
 #include <tests/golden.hpp>
+#include <tests/input.hpp>
 
 #include <array>
 #include <filesystem>
@@ -22,23 +23,7 @@ using F = SpacingField;
 
 using C = SpacingOwner;
 
-struct Input
-{
-    std::string Storage;
-    size_t Size;
-
-    explicit Input(std::string_view text)
-        : Storage(text)
-        , Size(text.size())
-    {
-        Storage.append(util::SourcePaddingSize, '\0');
-    }
-
-    util::PaddedSourceView View() const
-    {
-        return {Storage.data(), static_cast<uint32_t>(Size)};
-    }
-};
+using test::Input;
 
 struct Analysis
 {

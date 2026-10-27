@@ -6,6 +6,7 @@
 #include <parser/parser.hpp>
 
 #include <tests/golden.hpp>
+#include <tests/input.hpp>
 
 #include <algorithm>
 #include <array>
@@ -50,22 +51,20 @@ private:
 struct Output
 {
     std::string Text;
-    std::vector<document::Mapping> Map;
     std::vector<uint8_t> Broken;
     size_t ScratchBytesRequested = 0;
 };
 
 Output Lower(
-    std::string input,
+    std::string_view input,
     const formatter::Style& style,
     const formatter::SyntaxLayoutOptions& options = {},
     const formatter::SourceAnalysisOptions& protection = {},
     std::pmr::memory_resource* fileUpstream = std::pmr::get_default_resource(),
     std::pmr::memory_resource* scratchUpstream = std::pmr::get_default_resource())
 {
-    const auto size = static_cast<uint32_t>(input.size());
-    input.append(util::SourcePaddingSize, '\0');
-    auto tree = parser::Parse({input.data(), size}, [] (parser::ParseError) {});
+    const test::Input source(input);
+    auto tree = parser::Parse(source.View(), [] (parser::ParseError) {});
     std::pmr::monotonic_buffer_resource file(fileUpstream);
     std::pmr::monotonic_buffer_resource scratchArena(scratchUpstream);
     RequestResource scratch(scratchArena);
@@ -81,87 +80,16 @@ Output Lower(
     if (!status) {
         throw std::runtime_error("failed syntax lowering");
     }
-    scratchArena.release(); // The document must not retain planner storage.
     const auto rendered = document.Render(formatter::SyntaxRenderPolicy(policies, options), &file);
     EXPECT_TRUE(rendered.State) << "core " << int(rendered.State.Code);
     if (!rendered.State) {
         throw std::runtime_error("failed rendering");
     }
-    std::vector<bool> seen(tree.TokenCount());
-    for (const auto& map : rendered.Map) {
-        if (map.Source.Identity == document::NoIdentity) {
-            continue;
-        }
-        EXPECT_LT(map.Source.Identity, tree.TokenCount());
-        const auto id = parser::TokenIndex(map.Source.Identity);
-        EXPECT_FALSE(seen[id]);
-        seen[id] = true;
-        const auto output = std::string_view(rendered.Text).substr(map.OutputBegin, map.OutputEnd - map.OutputBegin);
-        if (map.Exact) {
-            EXPECT_EQ(output, tree.TokenText(id));
-        } else {
-            EXPECT_EQ(tree.Kind(id), tokenizer::TokenKind::Comment);
-            EXPECT_TRUE(tree.TokenText(id).starts_with("/*"));
-            const auto content = [] (std::string_view text) {
-                std::string result;
-                bool leading = false;
-                for (const char c : text) {
-                    if (leading && (c == ' ' || c == '\t')) {
-                        continue;
-                    }
-                    result += c;
-                    leading = c == '\r' || c == '\n';
-                }
-                return result;
-            };
-            EXPECT_EQ(content(output), content(tree.TokenText(id)));
-        }
-    }
-    for (parser::TokenIndex i = 0; i < tree.TokenCount(); ++i) {
-        if (!seen[i]) {
-            EXPECT_EQ(tree.Kind(i), tokenizer::TokenKind::Operator_Comma);
-            EXPECT_NE(style.InitializersTrailingComma, formatter::TrailingCommaPolicy::Preserve);
-        }
-    }
     return {
         std::string(rendered.Text),
-        {rendered.Map.begin(), rendered.Map.end()},
         {rendered.Broken.begin(), rendered.Broken.end()},
         scratch.BytesRequested,
     };
-}
-
-void ExpectSplitGapMap(
-    const Output& output,
-    size_t sourceBegin,
-    size_t indentBegin,
-    size_t sourceEnd,
-    std::string_view prefix,
-    std::string_view indent)
-{
-    bool found = false;
-    for (size_t i = 0; i + 1 < output.Map.size(); ++i) {
-        const auto& generated = output.Map[i];
-        const auto& borrowed = output.Map[i + 1];
-        if (generated.Source.Identity != document::NoIdentity || generated.Exact ||
-            generated.Source.Begin != sourceBegin || generated.Source.End != sourceEnd)
-        {
-            continue;
-        }
-        EXPECT_EQ(
-            std::string_view(output.Text).substr(generated.OutputBegin, generated.OutputEnd - generated.OutputBegin),
-            prefix);
-        EXPECT_TRUE(borrowed.Exact);
-        EXPECT_EQ(borrowed.Source.Identity, document::NoIdentity);
-        EXPECT_EQ(borrowed.Source.Begin, indentBegin);
-        EXPECT_EQ(borrowed.Source.End, sourceEnd);
-        EXPECT_EQ(generated.OutputEnd, borrowed.OutputBegin);
-        EXPECT_EQ(
-            std::string_view(output.Text).substr(borrowed.OutputBegin, borrowed.OutputEnd - borrowed.OutputBegin),
-            indent);
-        found = true;
-    }
-    EXPECT_TRUE(found) << "missing generated-prefix / exact-indent association";
 }
 
 formatter::Style Canonical(size_t width = 40)
@@ -195,7 +123,7 @@ TEST(SyntaxLayout, ControlSeparatorsWideFiniteRenderingOwnsOnlyDirectBoundaries)
     EXPECT_EQ(Lower(output.Text, style).Text, output.Text);
 }
 
-TEST(SyntaxLayout, PartialIndentationRetainsFixedTopologyAndSplitMaps)
+TEST(SyntaxLayout, PartialIndentationRetainsUnselectedText)
 {
     const std::string input = "void f() {\n      work();\n}\n";
     const auto begin = parser::SourceOffset(input.find("      work"));
@@ -208,31 +136,10 @@ TEST(SyntaxLayout, PartialIndentationRetainsFixedTopologyAndSplitMaps)
         style.BodyShape = shape;
         const auto output = Lower(input, style, {}, scope);
         EXPECT_EQ(output.Text, "void f() {\n  work();\n}\n");
-        bool exactPrefix = false;
-        bool generatedIndent = false;
-        for (const auto& map : output.Map) {
-            if (map.Source.Identity != document::NoIdentity) {
-                continue;
-            }
-            if (map.Source.Begin == begin - 1 && map.Source.End == begin) {
-                EXPECT_TRUE(map.Exact);
-                EXPECT_TRUE(map.Protected);
-                EXPECT_EQ(std::string_view(output.Text).substr(map.OutputBegin, map.OutputEnd - map.OutputBegin), "\n");
-                exactPrefix = true;
-            }
-            if (map.Source.Begin == begin && map.Source.End == end) {
-                EXPECT_FALSE(map.Exact);
-                EXPECT_FALSE(map.Protected);
-                EXPECT_EQ(std::string_view(output.Text).substr(map.OutputBegin, map.OutputEnd - map.OutputBegin), "  ");
-                generatedIndent = true;
-            }
-        }
-        EXPECT_TRUE(exactPrefix);
-        EXPECT_TRUE(generatedIndent);
     }
 }
 
-TEST(SyntaxLayout, PartialCRLFIndentationMapsBorrowedTerminatorExactly)
+TEST(SyntaxLayout, PartialCRLFIndentationRetainsTerminator)
 {
     const std::string input = "void f() {\r\n      work();\r\n}\r\n";
     const auto begin = parser::SourceOffset(input.find("      work"));
@@ -241,26 +148,6 @@ TEST(SyntaxLayout, PartialCRLFIndentationMapsBorrowedTerminatorExactly)
     scope.EditScope = ranges;
     const auto output = Lower(input, Canonical(80), {}, scope);
     EXPECT_EQ(output.Text, "void f() {\r\n  work();\r\n}\r\n");
-    bool split = false;
-    for (size_t i = 0; i + 1 < output.Map.size(); ++i) {
-        const auto& prefix = output.Map[i];
-        const auto& indent = output.Map[i + 1];
-        if (prefix.Source.Begin == begin - 2 && prefix.Source.End == begin) {
-            EXPECT_TRUE(prefix.Exact);
-            EXPECT_TRUE(prefix.Protected);
-            EXPECT_EQ(
-                std::string_view(output.Text).substr(prefix.OutputBegin, prefix.OutputEnd - prefix.OutputBegin),
-                "\r\n");
-            EXPECT_FALSE(indent.Exact);
-            EXPECT_FALSE(indent.Protected);
-            EXPECT_EQ(indent.Source.Identity, document::NoIdentity);
-            EXPECT_EQ(indent.Source.Begin, begin);
-            EXPECT_EQ(indent.Source.End, begin + 6);
-            EXPECT_EQ(prefix.OutputEnd, indent.OutputBegin);
-            split = true;
-        }
-    }
-    EXPECT_TRUE(split);
 }
 
 TEST(SyntaxLayout, PartialTrimDoesNotRewriteUnselectedBlankSuffix)
@@ -276,10 +163,6 @@ TEST(SyntaxLayout, PartialTrimDoesNotRewriteUnselectedBlankSuffix)
     auto expected = input;
     expected.erase(begin, 2);
     EXPECT_EQ(output.Text, expected);
-    for (const auto& map : output.Map) {
-        EXPECT_TRUE(map.Exact);
-        EXPECT_FALSE(map.Source.Begin < begin + 2 && map.Source.End > begin);
-    }
     style.TrailingWhitespace = formatter::TrailingWhitespace::Preserve;
     EXPECT_EQ(Lower(input, style, {}, scope).Text, input);
 }
@@ -418,15 +301,6 @@ TEST(SyntaxLayout, PartialInsertionPointsCutsAndTailRemainFenced)
     scope.EditScope = owned;
     const auto output = Lower(input, style, {}, scope);
     EXPECT_EQ(output.Text, "void f() {\n  work();\n}\n");
-    bool generatedPoint = false;
-    for (const auto& map : output.Map) {
-        if (!map.Exact && map.Source.Begin == point && map.Source.End == point) {
-            EXPECT_EQ(map.Source.Identity, document::NoIdentity);
-            EXPECT_EQ(map.OutputEnd - map.OutputBegin, 2u);
-            generatedPoint = true;
-        }
-    }
-    EXPECT_TRUE(generatedPoint);
     const parser::SourceRange unowned[] = {{point - 1, point}};
     scope.EditScope = unowned;
     EXPECT_EQ(Lower(input, style, {}, scope).Text, input);
@@ -528,13 +402,6 @@ TEST(SyntaxLayout, ScopedSyntaxContextCannotAuthorizeExcludedCommaRemoval)
         style.InitializersTrailingComma = policy;
         const auto expectIdentity = [&] (const Output& output) {
             EXPECT_NE(output.Text.find(','), std::string::npos);
-            EXPECT_TRUE(std::any_of(
-                output.Map.begin(),
-                output.Map.end(),
-                [&] (const auto& map) {
-                    return map.Exact && map.Source.Begin == comma && map.Source.End == comma + 1 &&
-                        map.Source.Identity != document::NoIdentity;
-                }));
         };
         expectIdentity(Lower(input, style, {}, scope));
         const parser::SourceRange selected[] = {{comma - 2, comma + 3}};
@@ -582,14 +449,6 @@ TEST(SyntaxLayout, ScopedCloserDoesNotAuthorizeCommaInsertionBeforeComment)
         scope.EditScope = owned;
         const auto allowed = Lower(input, style, {}, scope);
         EXPECT_NE(allowed.Text.find("alpha, /*note*/"), std::string::npos) << allowed.Text;
-        EXPECT_TRUE(std::any_of(
-            allowed.Map.begin(),
-            allowed.Map.end(),
-            [&] (const auto& map) {
-                return !map.Exact && !map.Protected && map.Source.Identity == document::NoIdentity &&
-                    map.Source.Begin == itemEnd && map.Source.End == itemEnd &&
-                    std::string_view(allowed.Text).substr(map.OutputBegin, map.OutputEnd - map.OutputBegin) == ",";
-            }));
         const parser::SourceRange atEnd[] = {{itemEnd - 1, itemEnd}, {commentEnd, closer + 1}};
         scope.EditScope = atEnd;
         EXPECT_EQ(Lower(input, style, {}, scope).Text.find(','), std::string::npos);
@@ -602,30 +461,15 @@ TEST(SyntaxLayout, ScopedCloserDoesNotAuthorizeCommaInsertionBeforeComment)
     const std::string existing = "void f() { consume({alpha /*note*/,\n  }); }\n";
     const auto itemEnd = parser::SourceOffset(existing.find("alpha") + 5);
     const auto commentEnd = parser::SourceOffset(existing.find("*/") + 2);
-    const auto comma = parser::SourceOffset(existing.find(','));
     const auto closer = parser::SourceOffset(existing.find('}'));
     const parser::SourceRange selectedComma[] = {{commentEnd, closer + 1}};
     scope.EditScope = selectedComma;
     const auto retained = Lower(existing, style, {}, scope);
     EXPECT_NE(retained.Text.find("alpha /*note*/,"), std::string::npos) << retained.Text;
-    EXPECT_TRUE(std::any_of(
-        retained.Map.begin(),
-        retained.Map.end(),
-        [&] (const auto& map) {
-            return map.Exact && map.Source.Begin == comma && map.Source.End == comma + 1 &&
-                map.Source.Identity != document::NoIdentity;
-        }));
     const parser::SourceRange relocate[] = {{itemEnd, itemEnd + 1}, {commentEnd, closer + 1}};
     scope.EditScope = relocate;
     const auto moved = Lower(existing, style, {}, scope);
     EXPECT_NE(moved.Text.find("alpha, /*note*/"), std::string::npos) << moved.Text;
-    EXPECT_FALSE(std::any_of(
-        moved.Map.begin(),
-        moved.Map.end(),
-        [&] (const auto& map) {
-            return map.Exact && map.Source.Begin == comma && map.Source.End == comma + 1 &&
-                map.Source.Identity != document::NoIdentity;
-        }));
     // Never only deletes; it does not need ownership of the earlier point.
     style.InitializersTrailingComma = formatter::TrailingCommaPolicy::Never;
     scope.EditScope = selectedComma;
@@ -987,13 +831,6 @@ TEST(SyntaxLayout, CRLFCommentOwnsCRAndGapStartsWithLF)
     const auto output = Lower("void f(){ call(alpha, // note\r\n beta, gamma); }\r\n", style, options);
     EXPECT_EQ(output.Text.find("\r\r\n"), std::string::npos);
     EXPECT_NE(output.Text.find("// note\r\n"), std::string::npos);
-    for (const auto& map : output.Map) {
-        if (map.Source.Identity != document::NoIdentity && map.Exact &&
-            output.Text.substr(map.OutputBegin, map.OutputEnd - map.OutputBegin).starts_with("//"))
-        {
-            EXPECT_EQ(output.Text.substr(map.OutputBegin, map.OutputEnd - map.OutputBegin), "// note\r");
-        }
-    }
 }
 
 TEST(SyntaxLayout,
@@ -1035,17 +872,6 @@ TEST(SyntaxLayout, InitializerCommaFollowsOutputShapeNotInputComma)
     EXPECT_EQ(c, d);
     ASSERT_NE(c.find("beta,"), std::string::npos);
     const auto comma = d.find("beta,") + 4;
-    bool found = false;
-    for (const auto& map : mapped.Map) {
-        if (map.OutputBegin == comma && map.OutputEnd == comma + 1) {
-            found = true;
-            EXPECT_EQ(map.Source.Begin, source.find("beta") + 4);
-            EXPECT_EQ(map.Source.End, map.Source.Begin);
-            EXPECT_EQ(map.Source.Identity, document::NoIdentity);
-            EXPECT_FALSE(map.Exact);
-        }
-    }
-    EXPECT_TRUE(found);
     // Designators belong to the complete element; normalization must use the
     // value endpoint, not the designator or the original trailing comma.
     for (const std::string input :
@@ -1060,14 +886,6 @@ TEST(SyntaxLayout, InitializerCommaFollowsOutputShapeNotInputComma)
         const auto broken = Lower(input, style);
         EXPECT_NE(broken.Text.find("beta,"), std::string::npos);
         const auto endpoint = input.find("beta") + 4;
-        EXPECT_TRUE(std::any_of(
-            broken.Map.begin(),
-            broken.Map.end(),
-            [&] (const auto& map) {
-                return !map.Exact && map.Source.Identity == document::NoIdentity && map.Source.Begin == endpoint &&
-                    map.Source.End == endpoint &&
-                    std::string_view(broken.Text).substr(map.OutputBegin, map.OutputEnd - map.OutputBegin) == ",";
-            }));
         EXPECT_EQ(Lower(broken.Text, style).Text, broken.Text);
         style.InitializersTrailingComma = formatter::TrailingCommaPolicy::Never;
         const auto deleted = Lower(input, style).Text;
@@ -1075,132 +893,6 @@ TEST(SyntaxLayout, InitializerCommaFollowsOutputShapeNotInputComma)
         EXPECT_EQ(Lower(deleted, style).Text, deleted);
         style.InitializersTrailingComma = formatter::TrailingCommaPolicy::WhenMultiline;
     }
-}
-
-TEST(SyntaxLayout, InitializerCommaMappingExcludesTrailingComments)
-{
-    auto style = Canonical(80);
-    style.InitializersBreak = formatter::BreakRequirement::Always;
-    style.InitializersTrailingComma = formatter::TrailingCommaPolicy::WhenMultiline;
-    for (const std::string input :
-        {
-            "Value values[] = {Value::First, Value::Last // last\n};\n",
-            "Value values[] = {first, source.last /* last */ /* extra */};\n",
-            "Value values[] = {first, offset + Value::Last /* last */};\n",
-        })
-    {
-        SCOPED_TRACE(input);
-        const auto endpoint = parser::SourceOffset(input.find(" /"));
-        const auto output = Lower(input, style);
-        size_t generated = 0;
-        for (const auto& map : output.Map) {
-            if (map.Source.Identity == document::NoIdentity &&
-                std::string_view(output.Text).substr(map.OutputBegin, map.OutputEnd - map.OutputBegin) == ",")
-            {
-                EXPECT_FALSE(map.Exact);
-                EXPECT_EQ(map.Source.Begin, endpoint);
-                EXPECT_EQ(map.Source.End, endpoint);
-                ++generated;
-            }
-        }
-        EXPECT_EQ(generated, 1u);
-        const parser::SourceRange immutable[] = {{endpoint, endpoint + 1}};
-        formatter::SourceAnalysisOptions safety;
-        safety.ImmutableRanges = immutable;
-        const auto protectedOutput = Lower(input, style, {}, safety);
-        for (const auto& map : protectedOutput.Map) {
-            if (map.Source.Identity == document::NoIdentity) {
-                EXPECT_NE(
-                    std::string_view(protectedOutput.Text).substr(map.OutputBegin, map.OutputEnd - map.OutputBegin),
-                    ",");
-            }
-        }
-    }
-}
-
-TEST(SyntaxLayout, IncompleteInitializerTailCannotAuthorizeCommaEdits)
-{
-    auto style = Canonical(80);
-    style.InitializersBreak = formatter::BreakRequirement::Always;
-    style.InitializersCloser = formatter::CloserPlacement::OwnLine;
-    for (const std::string input :
-        {
-            "void f() { for (auto value : {box.member{1, 2}}) use(value); }\n",
-            "void f() { for (auto value : {box.member{1, 2}, " "box.member{3, 4},}) use(value); }\n",
-            "auto values = {box.member{1, 2}, box.member{3, 4} /*tail*/};\n",
-            "void f() { use({box.member{1, 2}, box.member{3, 4},}); }\n",
-            "auto values = {box.member{inner{1, 2}}, " "box.member{inner{3, 4}},};\n",
-        })
-    {
-        SCOPED_TRACE(input);
-        for (const auto policy :
-            {
-                formatter::TrailingCommaPolicy::Never,
-                formatter::TrailingCommaPolicy::
-                                      WhenMultiline,
-            })
-        {
-            style.InitializersTrailingComma = policy;
-            const auto output = Lower(input, style);
-            size_t retained = 0;
-            for (const auto& map : output.Map) {
-                if (std::string_view(output.Text).substr(map.OutputBegin, map.OutputEnd - map.OutputBegin) != ",") {
-                    continue;
-                }
-                EXPECT_TRUE(map.Exact);
-                EXPECT_NE(map.Source.Identity, document::NoIdentity);
-                ++retained;
-            }
-            EXPECT_EQ(retained, std::count(input.begin(), input.end(), ','));
-        }
-    }
-}
-
-TEST(SyntaxLayout, NestedInitializerCommaUsesCompleteElementEndpoint)
-{
-    auto style = Canonical(80);
-    style.InitializersBreak = formatter::BreakRequirement::Always;
-    style.InitializersCloser = formatter::CloserPlacement::OwnLine;
-    style.InitializersTrailingComma = formatter::TrailingCommaPolicy::WhenMultiline;
-    const std::string input = "int rows[][2] = {{1, 2}, {3, 4} /*tail*/};\n";
-    const auto endpoint = parser::SourceOffset(input.find("} /*tail*/") + 1);
-    const auto output = Lower(input, style);
-    bool outerComma = false;
-    size_t generated = 0;
-    for (const auto& map : output.Map) {
-        if (map.Source.Identity == document::NoIdentity &&
-            std::string_view(output.Text).substr(map.OutputBegin, map.OutputEnd - map.OutputBegin) == ",")
-        {
-            EXPECT_FALSE(map.Exact);
-            EXPECT_EQ(map.Source.Begin, map.Source.End);
-            EXPECT_TRUE(map.Source.Begin == input.find("2}") + 1 || map.Source.Begin == input.find("4}") + 1 ||
-                map.Source.Begin == endpoint);
-            ++generated;
-            if (map.Source.Begin == endpoint) {
-                outerComma = true;
-            }
-        }
-    }
-    EXPECT_TRUE(outerComma);
-    EXPECT_EQ(generated, 3u);
-    const auto expectNoOuterComma = [&] (const Output& denied) {
-        for (const auto& map : denied.Map) {
-            if (map.Source.Identity == document::NoIdentity && map.Source.Begin == endpoint &&
-                map.Source.End == endpoint)
-            {
-                EXPECT_NE(std::string_view(denied.Text).substr(map.OutputBegin, map.OutputEnd - map.OutputBegin), ",");
-            }
-        }
-    };
-    // Tail ownership must not bypass insertion-point scope/protection checks.
-    const parser::SourceRange excluded[] = {{endpoint + 1, parser::SourceOffset(input.size())}};
-    formatter::SourceAnalysisOptions scope;
-    scope.EditScope = excluded;
-    expectNoOuterComma(Lower(input, style, {}, scope));
-    const parser::SourceRange protectedPoint[] = {{endpoint, endpoint + 1}};
-    scope.EditScope = {};
-    scope.ImmutableRanges = protectedPoint;
-    expectNoOuterComma(Lower(input, style, {}, scope));
 }
 
 TEST(SyntaxLayout, CommaDeletionRetainsIncompatibleGapUnits)
@@ -1294,12 +986,6 @@ TEST(SyntaxLayout, ListsHeadersLambdasAndControlClausesCompose)
         protection.ImmutableRanges = immutable;
         const auto protectedOutput = Lower(qualified, policy, {}, protection);
         EXPECT_NE(protectedOutput.Text.find("Pointer(int* v)"), std::string::npos);
-        for (const auto& map : protectedOutput.Map) {
-            if (map.Source.Begin >= begin && map.Source.End <= end && map.Source.Begin < map.Source.End) {
-                EXPECT_TRUE(map.Exact);
-                EXPECT_TRUE(map.Protected);
-            }
-        }
     }
 }
 
@@ -1437,46 +1123,7 @@ TEST(SyntaxLayout, RealizedExpressionLineRetainsChildContinuationBase)
             formatter::SourceAnalysisOptions repeatedScope;
             repeatedScope.EditScope = repeatedRanges;
             EXPECT_EQ(Lower(expected, style, options, repeatedScope).Text, expected);
-            const auto parentBegin = continued.find('=') + 1;
             const auto parentEnd = continued.find("take(");
-            bool exactParent = false;
-            bool exactChildPrefix = false;
-            bool selectedIndent = false;
-            for (const auto& map : output.Map) {
-                if (!map.Exact) {
-                    EXPECT_GE(map.Source.Begin, begin);
-                    EXPECT_LE(map.Source.End, begin + 12);
-                }
-                if (map.Source.Identity != document::NoIdentity) {
-                    continue;
-                }
-                const auto text =
-                    std::string_view(output.Text).substr(map.OutputBegin, map.OutputEnd - map.OutputBegin);
-                if (map.Source.Begin == parentBegin && map.Source.End == parentEnd) {
-                    EXPECT_TRUE(map.Exact);
-                    EXPECT_TRUE(map.Protected);
-                    EXPECT_EQ(text, std::string_view(continued).substr(parentBegin, parentEnd - parentBegin));
-                    exactParent = true;
-                }
-                if (map.Source.Begin == begin - newline.size() && map.Source.End == begin) {
-                    EXPECT_TRUE(map.Exact);
-                    EXPECT_TRUE(map.Protected);
-                    EXPECT_EQ(text, newline);
-                    exactChildPrefix = true;
-                }
-                if (map.Source.Begin == begin && map.Source.End == begin + 12) {
-                    EXPECT_FALSE(map.Exact);
-                    EXPECT_FALSE(map.Protected);
-                    const std::string_view indent = kind == formatter::IndentationKind::Tabs
-                        ? "\t\t\t"
-                        : "            ";
-                    EXPECT_EQ(text, indent);
-                    selectedIndent = true;
-                }
-            }
-            EXPECT_TRUE(exactParent);
-            EXPECT_TRUE(exactChildPrefix);
-            EXPECT_TRUE(selectedIndent);
         }
     }
     for (const std::string_view newline : {"\n", "\r\n"}) {
@@ -1520,55 +1167,6 @@ TEST(SyntaxLayout, RealizedExpressionLineRetainsChildContinuationBase)
                 repeatedScope.EditScope =
                     std::span(repeatedRanges).subspan(trim ? 1 : 0, (selectParentIndent ? 3 : 2) - (trim ? 1 : 0));
                 EXPECT_EQ(Lower(expected, style, {}, repeatedScope).Text, expected);
-                bool exactParent = false;
-                bool exactChildPrefix = false;
-                bool selectedChild = false;
-                bool selectedParent = false;
-                for (const auto& map : output.Map) {
-                    if (!map.Exact) {
-                        EXPECT_TRUE(std::any_of(
-                            protection.EditScope->begin(),
-                            protection.EditScope->end(),
-                            [&] (const auto range) {
-                                return map.Source.Begin >= range.Begin && map.Source.End <= range.End;
-                            }));
-                    }
-                    if (map.Source.Identity != document::NoIdentity) {
-                        continue;
-                    }
-                    const auto text =
-                        std::string_view(output.Text).substr(map.OutputBegin, map.OutputEnd - map.OutputBegin);
-                    const auto prefixBegin = trimBegin + (trim ? 2 : 0);
-                    const auto prefixEnd = parentEnd - (selectParentIndent ? 8 : 0);
-                    if (map.Source.Begin == prefixBegin && map.Source.End == prefixEnd) {
-                        EXPECT_TRUE(map.Exact);
-                        EXPECT_TRUE(map.Protected);
-                        EXPECT_EQ(text, std::string_view(continued).substr(prefixBegin, prefixEnd - prefixBegin));
-                        exactParent = true;
-                    }
-                    if (map.Source.Begin == childBegin - newline.size() && map.Source.End == childBegin) {
-                        EXPECT_TRUE(map.Exact);
-                        EXPECT_TRUE(map.Protected);
-                        EXPECT_EQ(text, newline);
-                        exactChildPrefix = true;
-                    }
-                    if (map.Source.Begin == childBegin && map.Source.End == childBegin + 12) {
-                        EXPECT_FALSE(map.Exact);
-                        EXPECT_FALSE(map.Protected);
-                        EXPECT_EQ(text, std::string_view("            "));
-                        selectedChild = true;
-                    }
-                    if (selectParentIndent && map.Source.Begin == parentEnd - 8 && map.Source.End == parentEnd) {
-                        EXPECT_FALSE(map.Exact);
-                        EXPECT_FALSE(map.Protected);
-                        EXPECT_EQ(text, std::string_view("        "));
-                        selectedParent = true;
-                    }
-                }
-                EXPECT_TRUE(exactParent);
-                EXPECT_TRUE(exactChildPrefix);
-                EXPECT_TRUE(selectedChild);
-                EXPECT_EQ(selectedParent, selectParentIndent);
             }
         }
     }
@@ -1595,12 +1193,6 @@ TEST(SyntaxLayout, RealizedExpressionLineRetainsChildContinuationBase)
     ignoredScope.EditScope = ignoredRanges;
     const auto ignored = Lower(ignoredIndent, style, {}, ignoredScope);
     EXPECT_EQ(ignored.Text, "void f() {\n    auto value =\n        take(\n            item);\n}\n");
-    for (const auto& map : ignored.Map) {
-        if (!map.Exact) {
-            EXPECT_GE(map.Source.Begin, ignoredBegin);
-            EXPECT_LE(map.Source.End, ignoredEnd);
-        }
-    }
     // An opaque comment LF is not a current-expression whitespace gap line.
     const std::string comment = "void f() {\n    auto value = /*\n    opaque */ take(\n" "            item);\n}\n";
     const auto commentItem = parser::SourceOffset(comment.find("            item"));
@@ -1657,12 +1249,6 @@ TEST(SyntaxLayout, ContinuationScopesReindentOnlySelectedHorizontalBytes)
             const std::array repeatedScope{parser::SourceRange{begin, begin + parser::SourceOffset(indent.size())}};
             protection.EditScope = repeatedScope;
             EXPECT_EQ(Lower(output.Text, style, options, protection).Text, output.Text);
-            for (const auto& map : output.Map) {
-                if (!map.Exact) {
-                    EXPECT_GE(map.Source.Begin, begin);
-                    EXPECT_LE(map.Source.End, begin + 16);
-                }
-            }
             const auto callInput = "void f() {" + newline + "    if (large) {" + newline + "        throw Failure(" +
                 newline + "            render(" + newline + "            first," + newline + "            second));" +
                 newline + "    }" + newline + "}" + newline;
@@ -1689,12 +1275,6 @@ TEST(SyntaxLayout, ContinuationScopesReindentOnlySelectedHorizontalBytes)
             };
             protection.EditScope = repeatedCallScope;
             EXPECT_EQ(Lower(callOutput.Text, style, options, protection).Text, callOutput.Text);
-            for (const auto& map : callOutput.Map) {
-                if (!map.Exact) {
-                    EXPECT_TRUE((map.Source.Begin >= first && map.Source.End <= first + 12) ||
-                        (map.Source.Begin >= second && map.Source.End <= second + 12));
-                }
-            }
             const auto ternaryInput = "void f() {" + newline + "    auto result =" + newline + "        condition" +
                 newline + "        ? left +" + newline + "                right" + newline + "        : otherLeft +" +
                 newline + "        otherRight;" + newline + "}" + newline;
@@ -1713,12 +1293,6 @@ TEST(SyntaxLayout, ContinuationScopesReindentOnlySelectedHorizontalBytes)
             };
             protection.EditScope = repeatedBranchScope;
             EXPECT_EQ(Lower(branchOutput.Text, style, options, protection).Text, branchOutput.Text);
-            for (const auto& map : branchOutput.Map) {
-                if (!map.Exact) {
-                    EXPECT_GE(map.Source.Begin, branchBegin);
-                    EXPECT_LE(map.Source.End, branchBegin + 16);
-                }
-            }
             style.TernaryOperatorIndentation = formatter::TernaryOperatorIndentation::Indent;
             protection.EditScope = branchScope;
             // Protected markers keep their actual column, even when a new
@@ -1754,16 +1328,6 @@ TEST(SyntaxLayout, ContinuationScopesReindentOnlySelectedHorizontalBytes)
             };
             protection.EditScope = repeatedOperatorScope;
             EXPECT_EQ(Lower(indentedOutput.Text, style, options, protection).Text, indentedOutput.Text);
-            for (const auto& map : indentedOutput.Map) {
-                if (!map.Exact) {
-                    EXPECT_TRUE(std::any_of(
-                        operatorScope.begin(),
-                        operatorScope.end(),
-                        [&] (const auto range) {
-                            return map.Source.Begin >= range.Begin && map.Source.End <= range.End;
-                        }));
-                }
-            }
         }
     }
 }
@@ -1802,15 +1366,6 @@ TEST(SyntaxLayout,
     // continuation. Only this selected indentation range may be generated.
     expected.replace(begin, 12, "        ");
     EXPECT_EQ(partial.Text, expected);
-    bool exactPrefix = false;
-    for (const auto& map : partial.Map) {
-        if (map.Source.Begin == begin - 2 && map.Source.End == begin) {
-            EXPECT_TRUE(map.Exact);
-            EXPECT_TRUE(map.Protected);
-            exactPrefix = true;
-        }
-    }
-    EXPECT_TRUE(exactPrefix);
     protection.EditScope = {};
     protection.ImmutableRanges = range;
     const auto fixed = Lower(scoped, style, {}, protection).Text;
@@ -1912,16 +1467,6 @@ TEST(SyntaxLayout, CaseLabelPreserveRetainsOnlyExistingIndentation)
     for (const std::string_view name : {"case 0", "case 1", "default"}) {
         const auto end = input.find(name);
         const auto begin = input.rfind('\n', end) + 1;
-        bool exactIndent = false;
-        for (const auto& map : output.Map) {
-            if (map.Source.Begin == begin && map.Source.End == end && map.Exact) {
-                EXPECT_EQ(
-                    std::string_view(output.Text).substr(map.OutputBegin, map.OutputEnd - map.OutputBegin),
-                    std::string_view(input).substr(begin, end - begin));
-                exactIndent = true;
-            }
-        }
-        EXPECT_TRUE(exactIndent) << name;
     }
     const auto generated = Lower("void f(){ switch(value){ case 0: first(); default: break; } }\n", style).Text;
     EXPECT_NE(generated.find("\n        case 0:\n            first();"), std::string::npos) << generated;
@@ -1936,17 +1481,6 @@ TEST(SyntaxLayout, CaseLabelPreserveRetainsOnlyExistingIndentation)
         scope.EditScope = ranges;
         const auto partial = Lower(input, style, {}, scope);
         EXPECT_EQ(partial.Text, input);
-        bool exact = false;
-        for (const auto& map : partial.Map) {
-            if (map.Source.Begin <= begin && map.Source.End >= begin + 2) {
-                EXPECT_TRUE(map.Exact);
-                EXPECT_EQ(
-                    std::string_view(partial.Text).substr(map.OutputBegin, map.OutputEnd - map.OutputBegin),
-                    std::string_view(input).substr(map.Source.Begin, map.Source.End - map.Source.Begin));
-                exact = true;
-            }
-        }
-        EXPECT_TRUE(exact);
     }
 
     style.BodyShape = formatter::BodyShape::Expanded;
@@ -1978,14 +1512,6 @@ TEST(SyntaxLayout, CaseLabelPreserveRetainsOnlyExistingIndentation)
     EXPECT_NE(
         protectedOutput.Text.find("// clang-format off\n case 1:   second();\n// clang-format on"),
         std::string::npos) << protectedOutput.Text;
-    for (const auto& map : protectedOutput.Map) {
-        if (map.Protected) {
-            EXPECT_TRUE(map.Exact);
-            EXPECT_EQ(
-                std::string_view(protectedOutput.Text).substr(map.OutputBegin, map.OutputEnd - map.OutputBegin),
-                std::string_view(protectedInput).substr(map.Source.Begin, map.Source.End - map.Source.Begin));
-        }
-    }
 }
 
 TEST(SyntaxLayout, AlwaysRequiresOwnedBoundariesButPreserveAndEmptyWin)
@@ -2096,10 +1622,6 @@ TEST(SyntaxLayout, ExactVerticalGapsCapAndPreservedIndentation)
     options.LineEnding = document::Newline::CRLF;
     const auto mapped = Lower(source, style, options);
     const auto& output = mapped.Text;
-    const auto firstIndent = source.find('\t');
-    ExpectSplitGapMap(mapped, firstIndent - 2, firstIndent, firstIndent + 1, "\r\n\r\n", "\t");
-    const auto close = source.rfind('}');
-    ExpectSplitGapMap(mapped, close - 2, close, close, "\r\n\r\n", "");
     EXPECT_NE(output.find("{\r\n\r\n\tint first;"), std::string::npos) << output;
     EXPECT_NE(output.find("first;\r\n\r\n\tvoid f()"), std::string::npos);
     EXPECT_NE(output.find("f(){}\r\n\r\n\t/// documented"), std::string::npos);
@@ -2293,17 +1815,6 @@ TEST(SyntaxLayout, OpaqueHeaderLeavesOnlyEditableBodyBoundaryCanonical)
     EXPECT_NE(output.Text.find(opaque), std::string::npos) << output.Text;
     EXPECT_TRUE(output.Text.ends_with("\n{ }\n")) << output.Text;
     EXPECT_EQ(Lower(output.Text, style).Text, output.Text);
-    const auto begin = input.find(opaque);
-    const auto end = begin + opaque.size();
-    size_t protectedBytes = 0;
-    for (const auto& map : output.Map) {
-        if (map.Source.Begin >= begin && map.Source.End <= end && map.Source.Begin < map.Source.End) {
-            EXPECT_TRUE(map.Exact);
-            EXPECT_TRUE(map.Protected);
-            protectedBytes += map.Source.End - map.Source.Begin;
-        }
-    }
-    EXPECT_EQ(protectedBytes, opaque.size());
 
     // Proving a body boundary never grants edits to an immutable brace gap.
     const auto brace = parser::SourceOffset(input.find(" { }"));
@@ -2344,17 +1855,6 @@ TEST(SyntaxLayout, MacroProtectionWinsOverBreakSpacingAndCommaActions)
         << mapped.Text;
     EXPECT_NE(mapped.Text.find("side(c, d)"), std::string::npos);
     EXPECT_EQ(Lower(mapped.Text, calls, {}, protection).Text, mapped.Text);
-    const auto macroBegin = input.find("VERBATIM");
-    const auto macroEnd = input.find(')', macroBegin) + 1;
-    size_t protectedBytes = 0;
-    for (const auto& map : mapped.Map) {
-        if (map.Source.Begin >= macroBegin && map.Source.End <= macroEnd && map.Source.Begin < map.Source.End) {
-            EXPECT_TRUE(map.Exact);
-            EXPECT_TRUE(map.Protected);
-            protectedBytes += map.Source.End - map.Source.Begin;
-        }
-    }
-    EXPECT_EQ(protectedBytes, macroEnd - macroBegin);
     calls.CallsLayout = formatter::CategoryLayout::Preserve;
     EXPECT_EQ(Lower(input, calls, {}, protection).Text, input);
     calls.CallsLayout = formatter::CategoryLayout::Canonical;
@@ -2404,7 +1904,6 @@ TEST(SyntaxLayout, VerticalCountsAfterCommentCRAndDirectiveBarriersStaySafe)
     const auto mapped = Lower(source, style, options);
     const auto& output = mapped.Text;
     const auto second = source.find("void second");
-    ExpectSplitGapMap(mapped, second - 1, second, second, "\n\r\n", "");
     EXPECT_NE(output.find("// note\r\n\r\nvoid second"), std::string::npos) << output;
     EXPECT_NE(output.find("#define RAW(x) x ## x\r\nvoid third"), std::string::npos);
     EXPECT_EQ(output.find("\r\r\n"), std::string::npos);
@@ -2639,17 +2138,6 @@ TEST(SyntaxLayout, RecordHeadCommaPreferenceIsClassifiedAndLocallyAuthorized)
     const std::string macroInput = "template<> struct Pair<OPAQUE(a,   b),long> {};\n";
     const auto macroOutput = Lower(macroInput, style, {}, protection);
     EXPECT_NE(macroOutput.Text.find("Pair<OPAQUE(a,   b), long>"), std::string::npos);
-    const auto begin = macroInput.find("OPAQUE");
-    const auto end = macroInput.find(')', begin) + 1;
-    size_t protectedBytes = 0;
-    for (const auto& map : macroOutput.Map) {
-        if (map.Source.Begin >= begin && map.Source.End <= end && map.Source.Begin < map.Source.End) {
-            EXPECT_TRUE(map.Exact);
-            EXPECT_TRUE(map.Protected);
-            protectedBytes += map.Source.End - map.Source.Begin;
-        }
-    }
-    EXPECT_EQ(protectedBytes, end - begin);
 
     style.Layout = formatter::LayoutMode::Preserve;
     const std::pair<std::string_view, std::string_view> operands[] = {

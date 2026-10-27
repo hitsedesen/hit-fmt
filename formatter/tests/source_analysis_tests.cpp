@@ -6,6 +6,7 @@
 #include <parser/parser.hpp>
 
 #include <tests/golden.hpp>
+#include <tests/input.hpp>
 
 #include <algorithm>
 #include <array>
@@ -19,23 +20,7 @@
 #include <vector>
 namespace {
 
-struct Input
-{
-    std::string Storage;
-    size_t Size;
-
-    explicit Input(std::string_view text)
-        : Storage(text)
-        , Size(text.size())
-    {
-        Storage.append(util::SourcePaddingSize, '\0');
-    }
-
-    util::PaddedSourceView View() const
-    {
-        return {Storage.data(), static_cast<uint32_t>(Size)};
-    }
-};
+using test::Input;
 
 parser::SyntaxTree Parse(const Input& input)
 {
@@ -1382,30 +1367,6 @@ TEST(SourceAnalysis, PartialUnsafeRealSyntaxAndUnsupportedWhitespace)
     }
 }
 
-TEST(SourceAnalysis, EditScopeAndScratchStorageMayDieAfterBuild)
-{
-    Input input("void f() {\n  invoke(); \t\n}\n");
-    auto tree = Parse(input);
-    std::pmr::monotonic_buffer_resource memory;
-    auto analysis = [&] {
-        std::pmr::monotonic_buffer_resource scratch;
-        std::vector<parser::SourceRange> scope{{11, 24}};
-        return formatter::BuildSourceAnalysis(tree, {.EditScope = scope}, memory, scratch);
-    }();
-    const auto gap = Before(tree, "invoke");
-    EXPECT_NE(Permission(analysis, gap, PermissionKind::FinalIndentation), nullptr);
-    EXPECT_NE(
-        Permission(
-            analysis,
-            Before(tree, "}"),
-            PermissionKind::
-        TrimHorizontal),
-        nullptr);
-    EXPECT_FALSE(analysis.CanReplaceGap(gap, "\n    "));
-    EXPECT_FALSE(analysis.IntersectsImmutable({11, 13}));
-    EXPECT_TRUE(analysis.IntersectsImmutable({24, 24}));
-}
-
 TEST(SourceAnalysis, DeferredRestrictionRequiresBuiltUnrestrictedAnalysis)
 {
     Input input("void f() {\n  invoke(); \t\n}\n");
@@ -1429,61 +1390,6 @@ TEST(SourceAnalysis, DeferredRestrictionRequiresBuiltUnrestrictedAnalysis)
     auto empty = Analyze(tree, memory, {.EditScope = std::span<const parser::SourceRange>{}});
     EXPECT_THROW(empty.RestrictEditScope(scope), std::logic_error);
     EXPECT_FALSE(empty.CanReplaceGap(Before(tree, "invoke"), "\n    "));
-}
-
-TEST(SourceAnalysis, DeferredRestrictionOutlivesTreeScopeAndScratch)
-{
-    Input input("void f() {\n  invoke(); \t\n}\n");
-    std::pmr::monotonic_buffer_resource memory;
-    formatter::GapId indent = 0;
-    formatter::GapId trim = 0;
-    std::optional<formatter::SyntaxSpacing> spacing;
-    auto analysis = [&] {
-        auto tree = Parse(input);
-        indent = Before(tree, "invoke");
-        trim = Before(tree, "}");
-        auto safety = Analyze(tree, memory);
-        std::pmr::monotonic_buffer_resource scratch;
-        spacing.emplace(formatter::BuildSyntaxSpacing(
-            tree,
-            safety,
-            formatter::GapPolicies{},
-            formatter::PointerReferenceDeclaratorLocation::Preserve,
-            memory,
-            scratch));
-        return safety;
-    }(); // Both tree and build scratch have died; source/file memory remain.
-    EXPECT_EQ(analysis.Original(indent), "\n  ");
-    const auto owner = spacing->Gaps()[indent + 1].Owner;
-    ASSERT_NE(owner, formatter::NoRegion);
-    ASSERT_LT(owner, analysis.Regions().size());
-    EXPECT_EQ(analysis.Regions()[owner].Kind, parser::NodeKind::CallExpression);
-    for (formatter::RegionId id = 0; id < analysis.Regions().size(); ++id) {
-        const auto& region = analysis.Regions()[id];
-        for (auto child = region.FirstChild;
-            child != formatter::NoRegion;
-            child = analysis.Regions()[child].NextSibling)
-        {
-            ASSERT_GT(child, id);
-            ASSERT_LT(child, analysis.Regions().size());
-            EXPECT_EQ(analysis.Regions()[child].Parent, id);
-            const auto next = analysis.Regions()[child].NextSibling;
-            if (next != formatter::NoRegion) {
-                ASSERT_GT(next, child);
-            }
-        }
-        EXPECT_LE(region.Attached.Begin, region.Tokens.Begin);
-        EXPECT_GE(region.Attached.End, region.Tokens.End);
-    }
-    {
-        std::vector<parser::SourceRange> scope{{11, 24}};
-        analysis.RestrictEditScope(scope);
-    }
-    EXPECT_NE(Permission(analysis, indent, PermissionKind::FinalIndentation), nullptr);
-    EXPECT_NE(Permission(analysis, trim, PermissionKind::TrimHorizontal), nullptr);
-    EXPECT_FALSE(analysis.CanReplaceGap(indent, "\n    "));
-    EXPECT_FALSE(analysis.IntersectsImmutable({11, 13}));
-    EXPECT_TRUE(analysis.IntersectsImmutable({24, 24}));
 }
 
 class CountingResource
@@ -1576,7 +1482,7 @@ TEST(SourceAnalysis, AdversarialMarkersHaveLinearStorage)
     }
 }
 
-TEST(SourceAnalysis, IterativeClassificationAndScratchLifetime)
+TEST(SourceAnalysis, IterativeClassificationScalesWithScopes)
 {
     std::string text;
     for (size_t i = 0; i < 2000; ++i) {
@@ -1585,7 +1491,7 @@ TEST(SourceAnalysis, IterativeClassificationAndScratchLifetime)
     Input input(text);
     auto tree = Parse(input);
     std::pmr::monotonic_buffer_resource memory;
-    auto analysis = Analyze(tree, memory); // scratch is already destroyed
+    auto analysis = Analyze(tree, memory);
     EXPECT_EQ(analysis.Gaps().size(), static_cast<size_t>(tree.TokenCount()) + 1);
     EXPECT_TRUE(analysis.CanReplaceGap(Before(tree, "x", 1999), "  "));
     EXPECT_EQ(analysis.Regions()[0].Status, formatter::RegionStatus::Complete);

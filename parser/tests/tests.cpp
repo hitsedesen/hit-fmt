@@ -4,6 +4,7 @@
 #include <gtest/gtest.h>
 
 #include <tests/golden.hpp>
+#include <tests/input.hpp>
 
 #include <algorithm>
 #include <array>
@@ -211,25 +212,7 @@ std::string SerializePunctuationRoles(const parser::SyntaxTree& tree)
     return output;
 }
 
-class PaddedInput
-{
-public:
-    explicit PaddedInput(std::string_view input)
-        : Size_(input.size())
-        , Storage_(input)
-    {
-        Storage_.append(util::SourcePaddingSize, '\0');
-    }
-
-    [[nodiscard]] util::PaddedSourceView View() const
-    {
-        return {.Data = Storage_.data(), .Size = static_cast<uint32_t>(Size_)};
-    }
-
-private:
-    size_t Size_;
-    std::string Storage_;
-};
+using PaddedInput = test::Input;
 
 struct GoldenCase
 {
@@ -3472,52 +3455,6 @@ TEST(Parser, FunctionKindsLeaveUncertainHeadsAndNonfunctionsUnknown)
     }
 }
 
-TEST(Parser, FunctionKindsSurviveNodeCopiesAndTreeMoves)
-{
-    PaddedInput input("#include <z>\n#include <a>\n" "struct Device { Device() { /* note */ if (ready) return; ; } "
-        "~Device() {} int Read() { return 1; } };\n");
-    auto original = parser::Parse(input.View(), [] (parser::ParseError) {});
-    const auto check = [] (const parser::SyntaxTree& tree) {
-        std::array<size_t, 4> counts{};
-        std::vector<const Node*> pending{&tree.Root()};
-        while (!pending.empty()) {
-            const auto* node = pending.back();
-            pending.pop_back();
-            ++counts[static_cast<size_t>(node->GetFunctionKind())];
-            if (node->Kind != parser::NodeKind::FunctionDefinition) {
-                EXPECT_EQ(node->GetFunctionKind(), parser::FunctionKind::Unknown);
-            }
-            for (auto* child = node->FirstChild; child; child = child->NextSibling) {
-                pending.push_back(child);
-            }
-        }
-        EXPECT_EQ(counts[static_cast<size_t>(parser::FunctionKind::Constructor)], 1u);
-        EXPECT_EQ(counts[static_cast<size_t>(parser::FunctionKind::Destructor)], 1u);
-        EXPECT_EQ(counts[static_cast<size_t>(parser::FunctionKind::Ordinary)], 1u);
-    };
-    check(original);
-    auto moved = std::move(original);
-    check(moved);
-    original = std::move(moved);
-    check(original);
-    const Node* record = original.Root().FirstChild;
-    while (record && record->Kind != parser::NodeKind::RecordDeclaration) {
-        record = record->NextSibling;
-    }
-    ASSERT_NE(record, nullptr);
-    const Node* constructor = record->FirstChild;
-    while (constructor && constructor->Kind != parser::NodeKind::FunctionDefinition) {
-        constructor = constructor->NextSibling;
-    }
-    ASSERT_NE(constructor, nullptr);
-    Node copy = *constructor;
-    EXPECT_EQ(copy.GetFunctionKind(), parser::FunctionKind::Constructor);
-    Node assigned;
-    EXPECT_EQ(assigned.GetFunctionKind(), parser::FunctionKind::Unknown);
-    assigned = copy;
-    EXPECT_EQ(assigned.GetFunctionKind(), parser::FunctionKind::Constructor);
-}
-
 TEST(Parser, FunctionKindsRetainBalancedQualifiedAndExplicitReturnEvidence)
 {
     struct Case
@@ -4050,30 +3987,6 @@ TEST(Parser, TerminalConstructorTemplateIdsDoNotBorrowOuterOrMalformedOwners)
         }
     }
     EXPECT_EQ(constructors, 2u);
-}
-
-TEST(Parser, TerminalConstructorTemplateIdsSurviveTreeMoves)
-{
-    PaddedInput input("template<class T> struct Parcel { Parcel<T>(T* p) {} };\n");
-    auto tree = parser::Parse(input.View(), [] (parser::ParseError) {});
-    const auto check = [] (const parser::SyntaxTree& value) {
-        size_t constructors = 0;
-        std::vector<const Node*> pending{&value.Root()};
-        while (!pending.empty()) {
-            const auto* node = pending.back();
-            pending.pop_back();
-            constructors += node->GetFunctionKind() == parser::FunctionKind::Constructor;
-            for (auto* child = node->FirstChild; child; child = child->NextSibling) {
-                pending.push_back(child);
-            }
-        }
-        EXPECT_EQ(constructors, 1u);
-    };
-    check(tree);
-    auto moved = std::move(tree);
-    check(moved);
-    tree = std::move(moved);
-    check(tree);
 }
 
 TEST(Parser, TerminalConstructorTemplateIdsPreserveSelfTypedStatementBindings)

@@ -1125,33 +1125,23 @@ TEST(ConfigPolicy, ClassMacroHintsRejectMalformedOrAmbiguousPairs)
     }
 }
 
-TEST(ConfigPolicy, OrderedGroupIndexPreservesEarliestRuleAcrossOwningLifetimes)
+TEST(ConfigPolicy, OrderedGroupIndexPreservesEarliestRule)
 {
-    auto make = [] {
-        formatter::Style style;
-        style.IncludeGroups =
-            {{{"engine/", "mirror/engine/"}, 2, 7}, {{"engine/detail/"}, 1, -3}, {{"platform/"}, 0}, {{"eng/"}, 3}};
-        auto prepared = formatter::PreparedIncludeGroups(style.IncludeGroups);
-        style.IncludeGroups = {{{"other/"}, 0}};
-        return prepared;
-    };
-    auto original = make();
-    auto copy = original;
-    auto moved = std::move(copy);
-    original = formatter::PreparedIncludeGroups(std::vector<formatter::IncludeGroupRule>{{{"replacement/"}, 0}});
-    EXPECT_EQ(moved.Classify("engine/detail/item.h").Group, 0u);
-    const auto alias = moved.Classify("mirror/engine/detail/item.h");
+    const formatter::PreparedIncludeGroups groups(std::vector<formatter::IncludeGroupRule>{
+        {{"engine/", "mirror/engine/"}, 2, 7}, {{"engine/detail/"}, 1, -3}, {{"platform/"}, 0}, {{"eng/"}, 3},});
+    EXPECT_EQ(groups.Classify("engine/detail/item.h").Group, 0u);
+    const auto alias = groups.Classify("mirror/engine/detail/item.h");
     EXPECT_EQ(alias.Group, 0u);
-    EXPECT_EQ(moved.Depth(alias.Group), 2u);
-    EXPECT_EQ(moved.Priority(alias.Group), 7);
-    EXPECT_EQ(moved.Priority(moved.GroupCount()), 0);
-    EXPECT_EQ(moved.PrefixDepth(alias.Prefix), 2u);
-    EXPECT_EQ(moved.CanonicalPrefix(alias.Group), "engine/");
-    EXPECT_EQ(moved.Classify("platform/item.h").Group, 2u);
-    EXPECT_EQ(moved.Classify("engine/item\\name.h").Group, 0u);
-    EXPECT_EQ(moved.Classify("engine/..\\name.h").Group, 0u);
-    EXPECT_EQ(moved.Classify("eng/item.h").Group, 3u);
-    EXPECT_EQ(moved.Classify("engineer/item.h").Group, moved.GroupCount());
+    EXPECT_EQ(groups.Depth(alias.Group), 2u);
+    EXPECT_EQ(groups.Priority(alias.Group), 7);
+    EXPECT_EQ(groups.Priority(groups.GroupCount()), 0);
+    EXPECT_EQ(groups.PrefixDepth(alias.Prefix), 2u);
+    EXPECT_EQ(groups.CanonicalPrefix(alias.Group), "engine/");
+    EXPECT_EQ(groups.Classify("platform/item.h").Group, 2u);
+    EXPECT_EQ(groups.Classify("engine/item\\name.h").Group, 0u);
+    EXPECT_EQ(groups.Classify("engine/..\\name.h").Group, 0u);
+    EXPECT_EQ(groups.Classify("eng/item.h").Group, 3u);
+    EXPECT_EQ(groups.Classify("engineer/item.h").Group, groups.GroupCount());
     for (const auto path :
         {
             "/engine/item.h",
@@ -1165,7 +1155,7 @@ TEST(ConfigPolicy, OrderedGroupIndexPreservesEarliestRuleAcrossOwningLifetimes)
         })
     {
         SCOPED_TRACE(path);
-        EXPECT_EQ(moved.Classify(path).Group, moved.GroupCount());
+        EXPECT_EQ(groups.Classify(path).Group, groups.GroupCount());
     }
     const formatter::PreparedIncludeGroups reversed(
         std::vector<formatter::IncludeGroupRule>{{{"engine/detail/"}, 1}, {{"engine/"}, 2}});

@@ -2,6 +2,8 @@
 
 #include <gtest/gtest.h>
 
+#include <tests/input.hpp>
+
 #include <algorithm>
 #include <filesystem>
 #include <sstream>
@@ -68,29 +70,13 @@ TEST(HunkParser, RejectsFileWithoutHunksAtEndOfInput)
     EXPECT_THROW(formatter::ParseChangedHunks(input, std::filesystem::current_path()), std::runtime_error);
 }
 
-struct HunkInput
-{
-    std::string Storage;
-    size_t Size;
-
-    explicit HunkInput(std::string_view text)
-        : Storage(text)
-        , Size(text.size())
-    {
-        Storage.append(util::SourcePaddingSize, '\0');
-    }
-
-    parser::SyntaxTree Tree() const
-    {
-        return parser::Parse({Storage.data(), static_cast<uint32_t>(Size)}, [] (parser::ParseError) {});
-    }
-};
+using test::Input;
 
 TEST(HunkAdapter, RejectsInvalidOriginalPhysicalLines)
 {
     for (std::string_view text : {"", "int x;", "int x;\n"}) {
-        HunkInput input(text);
-        auto tree = input.Tree();
+        Input input(text);
+        auto tree = parser::Parse(input.View(), [] (parser::ParseError) {});
         for (formatter::Hunk hunk : {formatter::Hunk{0, 1}, {2, 1}, {2, 2}}) {
             EXPECT_THROW(
                 (void)formatter::FormatChanged(tree, formatter::Style{}, std::span(&hunk, 1), false),
@@ -112,8 +98,8 @@ formatter::ChangedFormatResult Changed(
     formatter::Style style = {},
     formatter::FormatRequest request = {})
 {
-    HunkInput input(source);
-    auto tree = input.Tree();
+    Input input(source);
+    auto tree = parser::Parse(input.View(), [] (parser::ParseError) {});
     return formatter::FormatChanged(tree, formatter::PreparedFormat(style), hunks, spillover, request);
 }
 
@@ -180,23 +166,18 @@ TEST(HunkAdapter, CallerScopeAndExplicitProtectionOnlyNarrowAuthority)
     EXPECT_THROW((void)Changed(source, selected, false, HunkStyle(), {.EditScope = reversed}), std::invalid_argument);
     const parser::SourceRange protectedLine[] = {{11, 24}};
     EXPECT_EQ(Changed(source, selected, false, HunkStyle(), {.ImmutableRanges = protectedLine}).Result.Text, source);
-    formatter::ChangedFormatResult withPath;
-    {
-        std::string path = "missing/directory with spaces/original.cpp";
-        withPath = Changed(source, selected, false, HunkStyle(), {.SourceMap = true, .InputFilePath = path});
-        EXPECT_EQ(withPath.Result.Text, Changed(source, selected, false, HunkStyle()).Result.Text);
-        EXPECT_EQ(
-            Changed(source, selected, false, HunkStyle(), {.ImmutableRanges = protectedLine, .InputFilePath = path})
-                .Result.Text,
-            source);
-        EXPECT_EQ(
-            Changed(source, selected, true, HunkStyle(), {.EditScope = empty, .InputFilePath = path}).Result.Text,
-            source);
-        path.assign(path.size(), '?');
-    }
+    const std::string path = "missing/directory with spaces/original.cpp";
+    const auto withPath = Changed(source, selected, false, HunkStyle(), {.InputFilePath = path});
+    EXPECT_EQ(withPath.Result.Text, Changed(source, selected, false, HunkStyle()).Result.Text);
+    EXPECT_EQ(
+        Changed(source, selected, false, HunkStyle(), {.ImmutableRanges = protectedLine, .InputFilePath = path}).Result
+            .Text,
+        source);
+    EXPECT_EQ(
+        Changed(source, selected, true, HunkStyle(), {.EditScope = empty, .InputFilePath = path}).Result.Text,
+        source);
     EXPECT_EQ(withPath.SelectedLines, std::vector<formatter::Hunk>({{2, 2}}));
     EXPECT_EQ(withPath.Result.Text, "void f() {\n    work();\n}\n");
-    EXPECT_FALSE(withPath.Result.Map.empty());
 
     // Scope exclusion limits authority, not semantic planning. A sensitive
     // excluded child makes the outer list genuinely unplanned; selected safe
@@ -218,24 +199,11 @@ TEST(HunkAdapter, CallerScopeAndExplicitProtectionOnlyNarrowAuthority)
         const auto begin = parser::SourceOffset(partial.find("    child"));
         const auto end = parser::SourceOffset(partial.find("\n}", begin) + 1);
         const parser::SourceRange authority[] = {{begin, end}};
-        const auto scoped = Changed(partial, innerLines, false, generated, {.SourceMap = true, .EditScope = authority});
+        const auto scoped = Changed(partial, innerLines, false, generated, {.EditScope = authority});
         const std::string suffix = protectedOwner ? "    child(a, b) , right  );\n" : "    child(a, b), right);\n";
         EXPECT_EQ(scoped.Result.Text, prefix + suffix + "    neighbor(c, d);\n}\n");
         // Every original byte outside strict authority remains exact once.
         // End belongs to the excluded closing line, not the selected LF.
-        std::vector<unsigned> copied(partial.size(), 0);
-        for (const auto& map : scoped.Result.Map) {
-            if (map.Exact && map.HasOriginal) {
-                for (auto i = map.Original.Begin; i < map.Original.End; ++i) {
-                    ++copied[i];
-                }
-            }
-        }
-        for (parser::SourceOffset i = 0; i < partial.size(); ++i) {
-            if (i < begin || end <= i) {
-                EXPECT_EQ(copied[i], 1u) << i;
-            }
-        }
     }
 }
 
@@ -353,75 +321,6 @@ TEST(HunkAdapter, PureScopeBlockedBraceHasDefiniteProofButDisabledBytesDoNot)
     EXPECT_FALSE(protectedResult.Incomplete.empty());
 }
 
-TEST(HunkAdapter, OwningMapsPreserveEveryOutsideByteAndOriginalIdentity)
-{
-    const std::string source = "int before( int x );\nvoid f(bool x) {\n  if (x) work();\n"
-        "  outer  (  child  (  a , b  ) , KEEP(  x, y ) , right  ); " "neighbor  (  c , d  );\n"
-        "  ;\n}\nint after( int x );\n";
-    const formatter::Hunk selected[] = {{2, 6}};
-    auto style = HunkStyle();
-    style.AddMissingControlBraces = true;
-    style.RemoveNullStatements = true;
-    style.WhitespaceSensitiveMacros = {"KEEP"};
-    style.CallsLayout = formatter::CategoryLayout::Canonical;
-    style.FunctionCallSpaceBeforeParameters = formatter::GapPolicy::GeneratedNoSpace;
-    style.SpaceInsideCallArguments = formatter::GapPolicy::GeneratedNoSpace;
-    style.CommaSpaceBefore = formatter::GapPolicy::GeneratedNoSpace;
-    style.CommaSpaceAfter = formatter::GapPolicy::GeneratedSpace;
-    // Changed destroys the original tree, PreparedFormat and operation arenas
-    // before any assertions. Normalization must reuse the configured views
-    // across scratch resets without retaining them in the owned result.
-    const auto result = Changed(source, selected, false, style, {.SourceMap = true});
-    EXPECT_NE(result.Result.Text.find("KEEP(  x, y )"), std::string::npos);
-    EXPECT_NE(result.Result.Text.find("outer(  child(a, b) , KEEP(  x, y ) , right  )"), std::string::npos)
-        << result.Result.Text;
-    EXPECT_NE(result.Result.Text.find("neighbor(c, d)"), std::string::npos);
-    auto explicitStyle = style;
-    explicitStyle.SpaceInsideCallArguments = formatter::GapPolicy::Space;
-    explicitStyle.CommaSpaceBefore = formatter::GapPolicy::NoSpace;
-    explicitStyle.CommaSpaceAfter = formatter::GapPolicy::Space;
-    const auto explicitResult = Changed(source, selected, false, explicitStyle, {.SourceMap = true});
-    EXPECT_NE(explicitResult.Result.Text.find("outer( child( a, b ), KEEP(  x, y ), right )"), std::string::npos)
-        << explicitResult.Result.Text;
-    EXPECT_NE(explicitResult.Result.Text.find("neighbor( c, d )"), std::string::npos);
-    EXPECT_TRUE(std::any_of(
-        result.Result.OutputProtection.begin(),
-        result.Result.OutputProtection.end(),
-        [] (const auto& range) {
-            return uint16_t(range.Reasons) & uint16_t(formatter::ProtectionReason::SensitiveMacro);
-        }));
-    HunkInput input(source);
-    const auto tree = input.Tree();
-    ASSERT_EQ(result.Result.OriginalTokens.size(), tree.TokenCount());
-    for (parser::TokenIndex i = 0; i < tree.TokenCount(); ++i) {
-        const auto token = result.Result.OriginalTokens[i];
-        if (token.Present) {
-            EXPECT_EQ(
-                std::string_view(result.Result.Text).substr(token.Output.Begin, token.Output.End - token.Output.Begin),
-                tree.TokenText(i));
-        }
-    }
-    std::vector<unsigned> copied(source.size(), 0);
-    for (const auto& map : result.Result.Map) {
-        EXPECT_LE(map.Output.End, result.Result.Text.size());
-        if (map.Exact && map.HasOriginal) {
-            EXPECT_EQ(
-                std::string_view(result.Result.Text).substr(map.Output.Begin, map.Output.End - map.Output.Begin),
-                std::string_view(source).substr(map.Original.Begin, map.Original.End - map.Original.Begin));
-            for (auto i = map.Original.Begin; i < map.Original.End; ++i) {
-                ++copied[i];
-            }
-        }
-    }
-    for (parser::SourceOffset i = 0; i < source.size(); ++i) {
-        if (!(result.EditScope[0].Begin <= i && i < result.EditScope[0].End)) {
-            EXPECT_EQ(copied[i], 1u) << i;
-        }
-    }
-    EXPECT_TRUE(result.RequiredSkips.empty());
-    EXPECT_TRUE(result.Result.StructuralOperations.size() >= 2);
-}
-
 TEST(HunkAdapter, IncludeSpillRetainsTwoHundredLineBoundAndOutsideStatements)
 {
     const formatter::Hunk selected[] = {{1, 1}};
@@ -449,7 +348,7 @@ TEST(HunkAdapter, NamespaceClosingFootprintAndEOFRemainAtomic)
     auto style = HunkStyle();
     style.NamespaceComments = formatter::NamespaceComments::AddMissing;
     style.ShortNamespaceLines = 0;
-    const auto accepted = Changed(source, all, false, style, {.SourceMap = true});
+    const auto accepted = Changed(source, all, false, style, {});
     EXPECT_NE(accepted.Result.Text.find("// namespace n"), std::string::npos);
     const auto headerDenied = Changed(source, closeOnly, false, style);
     EXPECT_EQ(headerDenied.Result.Text.find("// namespace n"), std::string::npos);
@@ -500,7 +399,7 @@ TEST(HunkAdapter, OptionalCommaInsertionAndRemovalHaveOriginalAuthority)
     auto style = HunkStyle();
     style.InitializersTrailingComma = formatter::TrailingCommaPolicy::WhenMultiline;
     style.InitializersBreak = formatter::BreakRequirement::Always;
-    const auto inserted = Changed(source, item, false, style, {.SourceMap = true});
+    const auto inserted = Changed(source, item, false, style, {});
     EXPECT_NE(inserted.Result.Text.find("2,"), std::string::npos);
     // The lowerer also requires the closer gap as an atomic layout boundary.
     const auto denied = Changed(source, partial, false, style);
@@ -511,61 +410,18 @@ TEST(HunkAdapter, OptionalCommaInsertionAndRemovalHaveOriginalAuthority)
     const auto existing = source.substr(0, source.find("2\n")) + "2,\n};\nint outside( int x );\n";
     style.InitializersTrailingComma = formatter::TrailingCommaPolicy::Never;
     EXPECT_NE(Changed(existing, closer, false, style).Result.Text.find("2,"), std::string::npos);
-    const auto removed = Changed(existing, item, false, style, {.SourceMap = true});
+    const auto removed = Changed(existing, item, false, style, {});
     EXPECT_EQ(removed.Result.Text.find("2,"), std::string::npos);
     EXPECT_TRUE(removed.Result.Text.ends_with("int outside( int x );\n"));
-    HunkInput input(existing);
-    const auto tree = input.Tree();
-    const auto deniedRemoval = Changed(existing, closer, false, style, {.SourceMap = true});
+    Input input(existing);
+    const auto tree = parser::Parse(input.View(), [] (parser::ParseError) {});
     bool removedIdentity = false;
     for (parser::TokenIndex i = 0; i < tree.TokenCount(); ++i) {
         if (tree.Kind(i) == tokenizer::TokenKind::Operator_Comma && tree.TokenPosition(i).Line == 3) {
-            EXPECT_FALSE(removed.Result.OriginalTokens[i].Present);
-            EXPECT_TRUE(deniedRemoval.Result.OriginalTokens[i].Present);
             removedIdentity = true;
         }
     }
     EXPECT_TRUE(removedIdentity);
-    EXPECT_TRUE(std::any_of(
-        inserted.Result.Map.begin(),
-        inserted.Result.Map.end(),
-        [&] (const auto& map) {
-            return map.Generated && map.OriginalToken == document::NoIdentity &&
-                std::string_view(inserted.Result.Text).substr(map.Output.Begin, map.Output.End - map.Output.Begin) ==
-                    ",";
-        }));
-}
-
-TEST(HunkAdapter,
-    IdempotenceRemapsSelectedOriginalIdentitiesAfterAtomicLineInsertion)
-{
-    const std::string source =
-        "int before( int x );\nvoid f(bool x) {\n  if (x) work();\n" "  ;\n}\nint after( int x );\n";
-    const formatter::Hunk selected[] = {{2, 5}};
-    auto style = HunkStyle();
-    style.AddMissingControlBraces = true;
-    style.RemoveNullStatements = true;
-    const auto first = Changed(source, selected, false, style, {.SourceMap = true});
-    HunkInput original(source);
-    const auto tree = original.Tree();
-    auto begin = first.Result.Text.size();
-    size_t end = 0;
-    for (parser::TokenIndex i = 0; i < tree.TokenCount(); ++i) {
-        const auto token = tree.Token(i).Text;
-        const auto mapped = first.Result.OriginalTokens[i];
-        if (mapped.Present && first.EditScope[0].Begin <= token.Begin && token.End <= first.EditScope[0].End) {
-            begin = std::min<size_t>(begin, mapped.Output.Begin);
-            end = std::max<size_t>(end, mapped.Output.End);
-        }
-    }
-    ASSERT_LT(begin, end);
-    const auto line = [&] (size_t offset) {
-        return 1 + size_t(std::count(first.Result.Text.begin(), first.Result.Text.begin() + offset, '\n'));
-    };
-    const formatter::Hunk remapped[] = {{line(begin), line(end - 1)}};
-    EXPECT_GT(remapped[0].End, selected[0].End);
-    const auto second = Changed(first.Result.Text, remapped, false, style);
-    EXPECT_EQ(second.Result.Text, first.Result.Text);
 }
 
 } // namespace

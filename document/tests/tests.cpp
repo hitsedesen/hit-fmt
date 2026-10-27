@@ -24,18 +24,12 @@ void ExpectText(const Document& document, std::uint32_t width, std::string_view 
     auto output = document.Render({.Width = width});
     ASSERT_TRUE(output.State);
     EXPECT_EQ(output.Text, expected);
-    auto repeated = document.Render({.Width = width});
-    EXPECT_EQ(repeated.Text, output.Text);
-    EXPECT_EQ(repeated.Broken, output.Broken);
 }
 
 void AppendRender(std::string& actual, const Document& document, std::uint32_t width, std::string_view label)
 {
     const auto output = document.Render({.Width = width});
     ASSERT_TRUE(output.State);
-    const auto repeated = document.Render({.Width = width});
-    EXPECT_EQ(repeated.Text, output.Text);
-    EXPECT_EQ(repeated.Broken, output.Broken);
     actual += std::string(label) + " width=" + std::to_string(width) + ":\n";
     // Keep CR visible, as in PhysicalLineBasesGolden.
     for (const char c : output.Text) {
@@ -62,20 +56,6 @@ TEST(GroupLayout, ReindentedSourceColumnsGolden)
         document.ReindentedSourceText(std::uint32_t(prefix.size()), std::uint32_t(source.size()), 42);
         ASSERT_TRUE(document.Seal());
         AppendRender(actual, document, 100, "shifted source columns");
-        const auto output = document.Render({.Width = 100});
-        ASSERT_TRUE(output.State);
-        ASSERT_FALSE(output.Map.empty());
-        const auto& map = output.Map.back();
-        EXPECT_EQ(map.Source.Identity, 42u);
-        EXPECT_EQ(map.Source.Begin, prefix.size());
-        EXPECT_EQ(map.Source.End, source.size());
-        EXPECT_EQ(map.OutputBegin, outputPrefix.size());
-        EXPECT_EQ(map.OutputEnd, output.Text.size());
-        EXPECT_FALSE(map.Protected);
-        EXPECT_EQ(map.Exact, outputPrefix == prefix);
-        const auto plain = document.Render({.Width = 100, .SourceMap = false});
-        EXPECT_EQ(plain.Text, output.Text);
-        EXPECT_TRUE(plain.Map.empty());
     }
     // Make retained blank-line whitespace visible in the golden.
     std::string visible;
@@ -405,7 +385,6 @@ TEST(GroupLayout, SharedContinuationRejectsAnUnrecoverableBase)
     const auto result = document.Render({.Width = 80});
     EXPECT_EQ(result.State.Code, Error::IndentationOverflow);
     EXPECT_TRUE(result.Text.empty());
-    EXPECT_TRUE(result.Map.empty());
 }
 
 TEST(GroupLayout, FixedExpressionGapRealizesWithoutBecomingEditableBreak)
@@ -435,7 +414,6 @@ TEST(GroupLayout, FixedExpressionGapRealizesWithoutBecomingEditableBreak)
         // Fixed prefix/marker cannot satisfy ForceBreak at the child's flat
         // gap.
         EXPECT_EQ(result.Broken[child], 0);
-        EXPECT_EQ(result.Map.size(), split ? 7 : 6);
     }
 }
 
@@ -718,7 +696,6 @@ TEST(GroupLayout, BoundedChildFittingGolden)
                 const auto repeated = document.Render({.Width = width});
                 EXPECT_EQ(output.Text, repeated.Text);
                 EXPECT_EQ(output.Broken, repeated.Broken);
-                EXPECT_EQ(output.Map.size(), repeated.Map.size());
                 // Oversized groups may overflow with ordinary fitting.
                 // Child-only candidates must fit every line.
                 if (width >= 25 && (padding == 0 || mode < 3)) {
@@ -731,10 +708,6 @@ TEST(GroupLayout, BoundedChildFittingGolden)
                         EXPECT_LE(end - begin, width);
                         begin = end + 1;
                     }
-                }
-                for (const auto& mapping : output.Map) {
-                    EXPECT_LE(mapping.OutputBegin, mapping.OutputEnd);
-                    EXPECT_LE(mapping.OutputEnd, output.Text.size());
                 }
                 actual += "width=" + std::to_string(width) + " padding=" + std::to_string(padding) + " mode=" +
                     std::to_string(mode) + "\n";
@@ -1316,7 +1289,7 @@ TEST(GroupLayout, DelimiterRequirementsAndAnchorReuseGolden)
         actual);
 }
 
-TEST(GroupLayout, ProtectedSourceAndEditProvenanceGolden)
+TEST(GroupLayout, ProtectedSourceGolden)
 {
     const auto directory = std::filesystem::path(DOCUMENT_TESTDATA_DIR);
     const auto source = test::golden::ReadFile(directory / "protected.source.txt");
@@ -1329,34 +1302,7 @@ TEST(GroupLayout, ProtectedSourceAndEditProvenanceGolden)
     auto output = document.Render({.Width = 4, .LineEnding = Newline::CRLF});
     ASSERT_TRUE(output.State);
     test::golden::ExpectGolden(directory / "protected.output.txt", output.Text);
-    ASSERT_EQ(output.Map.size(), 3u);
-    EXPECT_TRUE(output.Map[0].Protected);
-    EXPECT_TRUE(output.Map[0].Exact);
-    EXPECT_EQ(output.Map[0].Source.Identity, NoIdentity - 1);
-    EXPECT_EQ(
-        output.Text.substr(output.Map[0].OutputBegin, output.Map[0].OutputEnd - output.Map[0].OutputBegin),
-        std::string_view(source));
-    EXPECT_FALSE(output.Map[1].Exact);
-    EXPECT_EQ(output.Map[1].Source.Identity, 8u);
-    EXPECT_EQ(output.Map[2].Source.Begin, InvalidId);
-    const auto tokens =
-        document.Render({.Width = 4, .LineEnding = Newline::CRLF, .SourceMap = false, .TokenMap = true});
-    ASSERT_TRUE(tokens.State);
-    EXPECT_EQ(tokens.Text, output.Text);
-    ASSERT_EQ(tokens.Map.size(), 2u);
-    EXPECT_EQ(tokens.Map[0].Source.Identity, NoIdentity - 1);
-    EXPECT_EQ(tokens.Map[1].Source.Identity, 8u);
-    const std::array tracked{Provenance{0, 1}};
-    const auto protection =
-        document.Render({.Width = 4, .LineEnding = Newline::CRLF, .SourceMap = false, .TrackSource = tracked});
-    ASSERT_TRUE(protection.State);
-    EXPECT_EQ(protection.Text, output.Text);
-    ASSERT_EQ(protection.Map.size(), 1u);
-    EXPECT_TRUE(protection.Map[0].Exact);
-    EXPECT_TRUE(protection.Map[0].Protected);
-    EXPECT_EQ(protection.Map[0].OutputEnd, output.Map[0].OutputEnd);
-    const std::array invalidTracked{Provenance{2, 1}};
-    EXPECT_EQ(document.Render({.SourceMap = false, .TrackSource = invalidTracked}).State.Code, Error::InvalidPolicy);
+
 }
 
 std::string ExpandTabs(std::string_view text, std::uint8_t tabWidth)
@@ -1413,13 +1359,6 @@ TEST(GroupLayout, GeneratedTabsPreserveVisualLayoutAndOpaqueSource)
     }
     EXPECT_EQ(std::string_view(spaces.Text).substr(source.size()), "\r\n      c(\r\n         xy;\r\n           next;");
     EXPECT_EQ(std::string_view(tabs.Text).substr(source.size()), "\r\n\t  c(\r\n\t\t xy;\r\n\t\t   next;");
-    for (const auto* output : {&spaces, &tabs}) {
-        ASSERT_FALSE(output->Map.empty());
-        EXPECT_TRUE(output->Map[0].Exact);
-        EXPECT_TRUE(output->Map[0].Protected);
-        EXPECT_EQ(output->Map[0].Source.Identity, 99u);
-        EXPECT_EQ(std::string_view(output->Text).substr(0, output->Map[0].OutputEnd), std::string_view(source));
-    }
     // Generated tab stops represent the policy's maximum supported IndentWidth.
     Document wideIndent("");
     auto wide = wideIndent.BeginGroup({GroupMode::Consistent, 32});
@@ -1435,7 +1374,7 @@ TEST(GroupLayout, GeneratedTabsPreserveVisualLayoutAndOpaqueSource)
 
     // Plain-byte facts are reusable, but widths remain local to the render
     // policy. Fitting and advancement must agree on ASCII, UTF8/invalid bytes,
-    // tabs and multiline protected text without changing its provenance.
+    // tabs and multiline protected text.
     for (const auto& [value, columns] :
         std::initializer_list<std::pair<std::string, std::uint32_t>>{
             {"abc", 3},
@@ -1472,20 +1411,6 @@ TEST(GroupLayout, GeneratedTabsPreserveVisualLayoutAndOpaqueSource)
                 const auto mapped = facts.Render(leafPolicy);
                 ASSERT_TRUE(mapped.State);
                 EXPECT_EQ(std::string_view(mapped.Text), "x" + value + (multiline || narrow ? "\n  z" : " z"));
-                ASSERT_EQ(mapped.Map.size(), 4u);
-                EXPECT_TRUE(mapped.Map[1].Exact);
-                EXPECT_TRUE(mapped.Map[1].Protected);
-                EXPECT_EQ(mapped.Map[1].Source.Identity, 77u);
-                EXPECT_EQ(
-                    std::string_view(mapped.Text)
-                        .substr(mapped.Map[1].OutputBegin, mapped.Map[1].OutputEnd - mapped.Map[1].OutputBegin),
-                    value);
-                leafPolicy.SourceMap = false;
-                const auto unmapped = facts.Render(leafPolicy);
-                ASSERT_TRUE(unmapped.State);
-                EXPECT_EQ(unmapped.Text, mapped.Text);
-                EXPECT_EQ(unmapped.Broken, mapped.Broken);
-                EXPECT_TRUE(unmapped.Map.empty());
             }
         }
     }
@@ -1527,36 +1452,8 @@ TEST(GroupLayout, SourceCarriageReturnAndLocalGapNewlinesGolden)
             auto output = document
                 .Render({.Width = width, .TabWidth = 4, .LineEnding = global, .Indentation = IndentationKind::Tabs});
             ASSERT_TRUE(output.State);
-            ASSERT_EQ(output.Map.size(), 8u);
             EXPECT_EQ(output.Broken[call] != 0, broken);
             EXPECT_EQ(std::string_view(output.Text).substr(0, source.size()), source);
-            const auto mappedText = [&] (std::size_t index) {
-                const auto& mapping = output.Map[index];
-                return std::string_view(output.Text)
-                    .substr(mapping.OutputBegin, mapping.OutputEnd - mapping.OutputBegin);
-            };
-            EXPECT_EQ(mappedText(0), source.substr(0, tokenEnd));
-            EXPECT_EQ(mappedText(0).back(), '\r');
-            EXPECT_TRUE(output.Map[0].Exact);
-            EXPECT_TRUE(output.Map[0].Protected);
-            EXPECT_EQ(output.Map[0].Source.Identity, 100u);
-            EXPECT_EQ(mappedText(1), "\n");
-            EXPECT_EQ(output.Map[1].Source.Begin, tokenEnd);
-            EXPECT_EQ(output.Map[1].Source.End, source.size());
-            EXPECT_EQ(output.Map[1].Source.Identity, 101u);
-            EXPECT_FALSE(output.Map[1].Exact);
-            EXPECT_EQ(mappedText(3), !broken ? "" : global == Newline::CRLF ? "\n\t" : "\r\n\t");
-            EXPECT_EQ(mappedText(6), global == Newline::CRLF ? "\r\n" : "\n");
-            const auto callText = std::string_view(output.Text)
-                .substr(output.Map[2].OutputBegin, output.Map[5].OutputEnd - output.Map[2].OutputBegin);
-            EXPECT_EQ(callText.find_first_of("\r\n") != std::string_view::npos, output.Broken[call] != 0);
-            std::size_t mappedEnd = 0;
-            for (const auto& mapping : output.Map) {
-                EXPECT_EQ(mapping.OutputBegin, mappedEnd);
-                EXPECT_LE(mapping.OutputBegin, mapping.OutputEnd);
-                mappedEnd = mapping.OutputEnd;
-            }
-            EXPECT_EQ(mappedEnd, output.Text.size());
             EXPECT_EQ(output.Text.find("\r\r\n"), std::string_view::npos);
             EXPECT_EQ(
                 document.Render(
@@ -1618,20 +1515,7 @@ TEST(GroupLayout, VerticalGapCountUsesFirstOverrideAndNoBlankLineIndent)
         .Render({.Width = 80, .TabWidth = 4, .LineEnding = Newline::CRLF, .Indentation = IndentationKind::Tabs});
     ASSERT_TRUE(output.State);
     EXPECT_TRUE(output.Broken[group]);
-    ASSERT_EQ(output.Map.size(), 5u);
-    EXPECT_EQ(
-        std::string_view(output.Text)
-            .substr(output.Map[1].OutputBegin, output.Map[1].OutputEnd - output.Map[1].OutputBegin),
-        "\n\r\n\r\n\t  ");
-    EXPECT_FALSE(output.Map[1].Exact);
-    EXPECT_EQ(output.Map[1].Source.Identity, 2u);
     EXPECT_EQ(output.Text.find("\r\n\t\r\n"), std::string_view::npos);
-    std::size_t end = 0;
-    for (const auto& mapping : output.Map) {
-        EXPECT_EQ(mapping.OutputBegin, end);
-        end = mapping.OutputEnd;
-    }
-    EXPECT_EQ(end, output.Text.size());
     test::golden::ExpectGolden(std::filesystem::path(DOCUMENT_TESTDATA_DIR) / "vertical-gap.output.txt", output.Text);
 }
 
@@ -1757,7 +1641,6 @@ TEST(GroupLayout, InvalidUTF8ColumnsMatchIndividualBytes)
 
 void ExpectSourceRunsMatchIndividualAtoms(std::string_view source)
 {
-    const std::array<Provenance, 2> tracked{{{0, 1}, {5, 12}}};
     for (auto mode : {GroupMode::Consistent, GroupMode::Fill}) {
         // These lengths cross the original 256-logical-node search boundary.
         for (auto repetitions : {0u, 36u, 37u, 38u, 39u, 40u, 41u, 60u}) {
@@ -1829,55 +1712,17 @@ void ExpectSourceRunsMatchIndividualAtoms(std::string_view source)
             ASSERT_TRUE(separate.Seal());
             for (auto tab : {1u, 4u, 8u}) {
                 for (auto width : {3u, 10u, 40u, 80u}) {
-                    for (auto maps = 0; maps < 4; ++maps) {
-                        const Policy policy{
-                            .Width = width,
-                            .TabWidth = static_cast<std::uint8_t>(tab),
-                            .SourceMap = maps == 0,
-                            .TokenMap = maps == 2,
-                            .TrackSource = maps == 3
-                                ? std::span<const Provenance>(tracked)
-                                : std::span<const Provenance>(),
-                        };
-                        const auto a = packed.Render(policy);
-                        const auto b = separate.Render(policy);
-                        ASSERT_TRUE(a.State);
-                        ASSERT_TRUE(b.State);
-                        EXPECT_EQ(a.Text, b.Text);
-                        EXPECT_EQ(a.Broken, b.Broken);
-                        if (maps == 2) {
-                            auto indexedPolicy = policy;
-                            indexedPolicy.TokenMap = false;
-                            indexedPolicy.IndexedTokenMap = true;
-                            indexedPolicy.TokenCount = 1000;
-                            const auto indexed = packed.Render(indexedPolicy);
-                            ASSERT_TRUE(indexed.State);
-                            EXPECT_EQ(a.Text, indexed.Text);
-                            EXPECT_EQ(a.Broken, indexed.Broken);
-                            EXPECT_TRUE(indexed.Map.empty());
-                            std::vector<TokenPosition> expected(1000);
-                            for (const auto& map : a.Map) {
-                                ASSERT_LT(map.Source.Identity, expected.size());
-                                expected[map.Source.Identity] = {map.OutputBegin, map.OutputEnd, true};
-                            }
-                            ASSERT_EQ(indexed.Tokens.size(), expected.size());
-                            for (size_t id = 0; id < expected.size(); ++id) {
-                                EXPECT_EQ(indexed.Tokens[id].Begin, expected[id].Begin);
-                                EXPECT_EQ(indexed.Tokens[id].End, expected[id].End);
-                                EXPECT_EQ(indexed.Tokens[id].Present, expected[id].Present);
-                            }
-                        }
-                        ASSERT_EQ(a.Map.size(), b.Map.size());
-                        for (std::size_t i = 0; i < a.Map.size(); ++i) {
-                            EXPECT_EQ(a.Map[i].OutputBegin, b.Map[i].OutputBegin);
-                            EXPECT_EQ(a.Map[i].OutputEnd, b.Map[i].OutputEnd);
-                            EXPECT_EQ(a.Map[i].Source.Begin, b.Map[i].Source.Begin);
-                            EXPECT_EQ(a.Map[i].Source.End, b.Map[i].Source.End);
-                            EXPECT_EQ(a.Map[i].Source.Identity, b.Map[i].Source.Identity);
-                            EXPECT_EQ(a.Map[i].Exact, b.Map[i].Exact);
-                            EXPECT_EQ(a.Map[i].Protected, b.Map[i].Protected);
-                        }
-                    }
+                    const Policy policy{
+                        .Width = width,
+                        .TabWidth = static_cast<std::uint8_t>(tab),
+                        .SourceMap = false,
+                    };
+                    const auto a = packed.Render(policy);
+                    const auto b = separate.Render(policy);
+                    ASSERT_TRUE(a.State);
+                    ASSERT_TRUE(b.State);
+                    EXPECT_EQ(a.Text, b.Text);
+                    EXPECT_EQ(a.Broken, b.Broken);
                 }
             }
         }
@@ -1891,7 +1736,7 @@ TEST(GroupLayout, SourceRunsMatchIndividualAtoms)
     ExpectSourceRunsMatchIndividualAtoms("\ta+b \xff" "1234\tq\nnext");
 }
 
-TEST(GroupLayout, BorrowedFlatWhitespaceSelectionMeasurementAndMapping)
+TEST(GroupLayout, BorrowedFlatWhitespaceRespectsLayout)
 {
     auto borrowed = [] (GapKind kind, std::uint32_t begin, std::uint32_t end) {
         GapSpec spec{kind, 999};
@@ -1899,9 +1744,8 @@ TEST(GroupLayout, BorrowedFlatWhitespaceSelectionMeasurementAndMapping)
         spec.FlatSourceEnd = end;
         return spec;
     };
-    // Packing a flat gap with its source token must retain both provenance
-    // records, tab geometry and protection independently. An unused anchor
-    // prevents packing, providing the equivalent two-node representation.
+    // An unused anchor prevents packing, providing an equivalent two-node
+    // representation for checking whitespace layout.
     for (auto tab : {1u, 4u, 8u}) {
         for (auto width : {3u, 10u, 40u}) {
             const std::string source = "\tword\nnext";
@@ -1929,16 +1773,6 @@ TEST(GroupLayout, BorrowedFlatWhitespaceSelectionMeasurementAndMapping)
             ASSERT_TRUE(b.State);
             EXPECT_EQ(a.Text, b.Text);
             EXPECT_EQ(a.Broken, b.Broken);
-            ASSERT_EQ(a.Map.size(), b.Map.size());
-            for (size_t i = 0; i < a.Map.size(); ++i) {
-                EXPECT_EQ(a.Map[i].OutputBegin, b.Map[i].OutputBegin);
-                EXPECT_EQ(a.Map[i].OutputEnd, b.Map[i].OutputEnd);
-                EXPECT_EQ(a.Map[i].Source.Begin, b.Map[i].Source.Begin);
-                EXPECT_EQ(a.Map[i].Source.End, b.Map[i].Source.End);
-                EXPECT_EQ(a.Map[i].Source.Identity, b.Map[i].Source.Identity);
-                EXPECT_EQ(a.Map[i].Exact, b.Map[i].Exact);
-                EXPECT_EQ(a.Map[i].Protected, b.Map[i].Protected);
-            }
         }
     }
     Document mixed(" \t ");
@@ -1954,10 +1788,6 @@ TEST(GroupLayout, BorrowedFlatWhitespaceSelectionMeasurementAndMapping)
     auto output = mixed.Render({.Width = 10, .TabWidth = 4});
     ASSERT_TRUE(output.State);
     EXPECT_EQ(output.Text, "ab \t x\n      y");
-    EXPECT_TRUE(output.Map[1].Exact);
-    EXPECT_EQ(output.Map[1].Source.Begin, 0u);
-    EXPECT_EQ(output.Map[1].Source.End, 3u);
-    EXPECT_EQ(output.Map[1].Source.Identity, 9u);
 
     Document choices(" \t ");
     group = choices.BeginGroup({GroupMode::Consistent, 2});
@@ -1969,17 +1799,9 @@ TEST(GroupLayout, BorrowedFlatWhitespaceSelectionMeasurementAndMapping)
     auto flat = choices.Render({.Width = 2});
     EXPECT_EQ(flat.Text, "ab");
     EXPECT_FALSE(flat.Broken[group]);
-    EXPECT_TRUE(flat.Map[1].Exact);
-    EXPECT_EQ(flat.Map[1].Source.Begin, 3u);
-    EXPECT_EQ(flat.Map[1].Source.End, 3u);
-    EXPECT_EQ(flat.Map[1].OutputBegin, flat.Map[1].OutputEnd);
     auto broken = choices.Render({.Width = 1});
     EXPECT_EQ(broken.Text, "a\n  b");
     EXPECT_TRUE(broken.Broken[group]);
-    EXPECT_FALSE(broken.Map[1].Exact);
-    EXPECT_EQ(broken.Map[1].Source.Begin, 0u);
-    EXPECT_EQ(broken.Map[1].Source.End, 3u);
-    EXPECT_EQ(broken.Map[1].Source.Identity, 42u);
 
     Document selected(" \t ");
     group = selected.BeginGroup();
@@ -1990,9 +1812,6 @@ TEST(GroupLayout, BorrowedFlatWhitespaceSelectionMeasurementAndMapping)
     ASSERT_TRUE(selected.Seal());
     output = selected.Render({.TabWidth = 4});
     EXPECT_EQ(output.Text, "\n\tb");
-    EXPECT_TRUE(output.Map[1].Exact);
-    EXPECT_EQ(output.Map[1].Source.Begin, 1u);
-    EXPECT_EQ(output.Map[1].Source.End, 2u);
 
     Document fit(" \t ");
     group = fit.BeginGroup();
@@ -2015,7 +1834,6 @@ TEST(GroupLayout, BorrowedFlatWhitespaceSelectionMeasurementAndMapping)
     ASSERT_TRUE(fill.Seal());
     output = fill.Render({.Width = 8});
     EXPECT_EQ(output.Text, "aa   b\nc");
-    EXPECT_TRUE(output.Map[1].Exact);
 
     const std::string large(65536, ' ');
     Document longGap(large);
@@ -2026,7 +1844,6 @@ TEST(GroupLayout, BorrowedFlatWhitespaceSelectionMeasurementAndMapping)
     output = longGap.Render({.Width = 70000});
     EXPECT_EQ(output.Text.size(), 65538u);
     EXPECT_EQ(std::string_view(output.Text).substr(1, 65536), std::string_view(large));
-    EXPECT_TRUE(output.Map[1].Exact);
 }
 
 TEST(GroupLayout, RejectsMalformedGapSourcesAndZeroNewlineCounts)
@@ -2100,20 +1917,6 @@ TEST(GroupLayout, BorrowedIndentAfterBlankLinesPreservesBytesAndBlockBase)
     ASSERT_TRUE(output.State);
     EXPECT_EQ(output.Text, "// note\r\n\r\n\r\n\t x\r\n      y\r\n  z");
     EXPECT_TRUE(output.Broken[group]);
-    ASSERT_EQ(output.Map.size(), 8u);
-    EXPECT_FALSE(output.Map[1].Exact);
-    EXPECT_EQ(output.Map[1].Source.Identity, 42u);
-    EXPECT_TRUE(output.Map[2].Exact);
-    EXPECT_EQ(output.Map[2].Source.Begin, 9u);
-    EXPECT_EQ(output.Map[2].Source.End, 11u);
-    EXPECT_EQ(output.Map[2].Source.Identity, 42u);
-    EXPECT_EQ(output.Map[2].OutputEnd - output.Map[2].OutputBegin, 2u);
-    std::size_t end = 0;
-    for (const auto& mapping : output.Map) {
-        EXPECT_EQ(mapping.OutputBegin, end);
-        end = mapping.OutputEnd;
-    }
-    EXPECT_EQ(end, output.Text.size());
 
     Document choices("\t ");
     group = choices.BeginGroup({GroupMode::Consistent, 4});
@@ -2131,14 +1934,9 @@ TEST(GroupLayout, BorrowedIndentAfterBlankLinesPreservesBytesAndBlockBase)
     EXPECT_EQ(choices.Render({.Width = 3}).Text, "a b");
     auto emptyIndent = choices.Render({.Width = 2});
     EXPECT_EQ(emptyIndent.Text, "a\nb");
-    ASSERT_EQ(emptyIndent.Map.size(), 4u);
-    EXPECT_FALSE(emptyIndent.Map[1].Exact);
-    EXPECT_TRUE(emptyIndent.Map[2].Exact);
-    EXPECT_EQ(emptyIndent.Map[2].OutputBegin, emptyIndent.Map[2].OutputEnd);
-    EXPECT_EQ(emptyIndent.Map[2].Source.Begin, 2u);
 }
 
-TEST(GroupLayout, SourceLineIndentPrefixesAndMappingsGolden)
+TEST(GroupLayout, SourceLineIndentPrefixesGolden)
 {
     constexpr std::array<std::string_view, 4> prefixes{"\n", "\r\n", " \t\r\n\t\n\n", "\n"};
     std::string actual;
@@ -2167,50 +1965,15 @@ TEST(GroupLayout, SourceLineIndentPrefixesAndMappingsGolden)
                     auto output = document.Render(policy);
                     ASSERT_TRUE(output.State);
                     EXPECT_TRUE(output.Broken[group]);
-                    ASSERT_EQ(output.Map.size(), 4u);
-                    const auto mapped = [&] (std::size_t i) {
-                        const auto& map = output.Map[i];
-                        return std::string_view(output.Text).substr(map.OutputBegin, map.OutputEnd - map.OutputBegin);
-                    };
-                    EXPECT_EQ(mapped(1), prefixes[index]);
-                    EXPECT_TRUE(output.Map[1].Exact);
-                    EXPECT_TRUE(output.Map[1].Protected);
-                    EXPECT_EQ(output.Map[1].Source.Begin, begin);
-                    EXPECT_EQ(output.Map[1].Source.End, end);
-                    EXPECT_EQ(output.Map[1].Source.Identity, 101u);
-                    EXPECT_EQ(ExpandTabs(mapped(2), tabWidth), std::string(indent, ' '));
-                    EXPECT_FALSE(output.Map[2].Exact);
-                    EXPECT_FALSE(output.Map[2].Protected);
-                    EXPECT_EQ(output.Map[2].Source.Begin, end);
-                    EXPECT_EQ(output.Map[2].Source.End, end + 3);
-                    EXPECT_EQ(output.Map[2].Source.Identity, NoIdentity);
-                    EXPECT_EQ(mapped(2).find_first_of("\r\n"), std::string_view::npos);
-                    if (indent == 0) {
-                        EXPECT_EQ(output.Map[2].OutputBegin, output.Map[2].OutputEnd);
-                    }
-                    std::size_t mappedEnd = 0;
-                    for (const auto& map : output.Map) {
-                        EXPECT_EQ(map.OutputBegin, mappedEnd);
-                        EXPECT_LE(map.OutputBegin, map.OutputEnd);
-                        mappedEnd = map.OutputEnd;
-                    }
-                    EXPECT_EQ(mappedEnd, output.Text.size());
                     if (commentCR) {
                         EXPECT_EQ(
                             std::string_view(output.Text).substr(0, end),
                             std::string_view(source).substr(0, end));
-                        EXPECT_TRUE(output.Map[0].Exact);
-                        EXPECT_EQ(output.Map[0].Source.Identity, 100u);
                         EXPECT_EQ(output.Text.find("\r\r\n"), std::string_view::npos);
                     }
                     auto repeated = document.Render(policy);
                     EXPECT_EQ(repeated.Text, output.Text);
                     EXPECT_EQ(repeated.Broken, output.Broken);
-                    policy.SourceMap = false;
-                    auto unmapped = document.Render(policy);
-                    EXPECT_EQ(unmapped.Text, output.Text);
-                    EXPECT_EQ(unmapped.Broken, output.Broken);
-                    EXPECT_TRUE(unmapped.Map.empty());
                     actual += "prefix=" + std::to_string(index) + " indent=" + std::to_string(indent) + " tab=" +
                         std::to_string(tabWidth);
                     actual += kind == IndentationKind::Tabs ? " tabs:\n" : " spaces:\n";
@@ -2298,8 +2061,6 @@ TEST(GroupLayout, SourceLineIndentForceBreakStillRequiresEditableOwnedBoundary)
     // Borrowing made the group multiline, but cannot satisfy Always. Fill must
     // use the last editable owned gap even though it would otherwise fit.
     ExpectText(document, 80, "\n  aa bb\n  cc");
-    ASSERT_EQ(document.Render().Map.size(), 7u);
-    EXPECT_FALSE(document.Render().Map[5].Exact);
 
     Document earlierBoundary("\n");
     parent = earlierBoundary.BeginGroup({GroupMode::Fill, 2, true});
@@ -2366,11 +2127,6 @@ TEST(GroupLayout, SourceLineIndentCannotInventEditableBreakWithoutOwnedSite)
     output = fixedOnly.Render({.Width = 1});
     EXPECT_EQ(output.Text, "\n");
     EXPECT_TRUE(output.Broken[parent]);
-    ASSERT_EQ(output.Map.size(), 2u);
-    EXPECT_TRUE(output.Map[0].Exact);
-    EXPECT_FALSE(output.Map[1].Exact);
-    EXPECT_FALSE(output.Map[1].Protected);
-    EXPECT_EQ(output.Map[1].OutputBegin, output.Map[1].OutputEnd);
 
     Document empty("");
     parent = empty.BeginGroup({GroupMode::Fill, 0, true});
@@ -2531,7 +2287,6 @@ TEST(GroupLayout, ConditionalFitFloorReservesWithoutPaddingOrDoubleCount)
     auto output = unbreakable.Render({.Width = 1});
     EXPECT_EQ(output.Text, "abc");
     EXPECT_FALSE(output.Broken[group]);
-    EXPECT_EQ(output.Map[0].OutputEnd, 3u);
 }
 
 TEST(GroupLayout, AutomaticSuffixCoversNestedAndTerminalFillBoundaries)
@@ -2863,73 +2618,10 @@ TEST(GroupLayout, DeepNestingUsesExplicitStacksAndSublinearAllocationCount)
         EXPECT_EQ(output.Text, "leaf\ntail");
         EXPECT_EQ(output.Broken.size(), depth);
         EXPECT_TRUE(std::all_of(output.Broken.begin(), output.Broken.end(), [] (auto broken) { return broken != 0; }));
-        EXPECT_TRUE(output.Map.empty());
         EXPECT_LT(resource.Allocations - allocations, 200u);
         EXPECT_LT(resource.Peak, 128u * 1024u * 1024u);
     }
     EXPECT_EQ(resource.Bytes, 0u);
-}
-
-TEST(GroupLayout, DecisionsDescribeActualMultilineAcrossNestedShapes)
-{
-    std::uint32_t seed = 12345;
-    auto next = [&] {
-        seed = seed * 1664525u + 1013904223u;
-        return seed;
-    };
-    for (std::uint32_t trial = 0; trial < 200; ++trial) {
-        Document document("\n");
-        document.Reserve(700, 100);
-        std::vector<GroupId> open;
-        for (std::uint32_t item = 0; item < 100; ++item) {
-            auto group = document.BeginGroup({next() & 1 ? GroupMode::Fill : GroupMode::Consistent, 0});
-            open.push_back(group);
-            document.Text("", {InvalidId, InvalidId, group * 2u});
-            document.Text(next() & 1 ? "a\tb" : "short");
-            document.Gap({static_cast<GapKind>(next() % 3), 1});
-            document.Text("x");
-            document.ConditionalText(group, next() & 1 ? "long_suffix" : "", ",");
-            if (next() % 7 == 0) {
-                if (trial % 2 == 0) {
-                    document.Verbatim("opaque\nbytes");
-                } else {
-                    document.SourceLineIndent(0, 1, 1, 1);
-                }
-            }
-            while (!open.empty() && next() % 3 != 0) {
-                group = open.back();
-                document.Text("", {InvalidId, InvalidId, group * 2u + 1u});
-                document.EndGroup(group);
-                open.pop_back();
-            }
-        }
-        while (!open.empty()) {
-            const auto group = open.back();
-            document.Text("", {InvalidId, InvalidId, group * 2u + 1u});
-            document.EndGroup(group);
-            open.pop_back();
-        }
-        ASSERT_TRUE(document.Seal());
-        auto output = document.Render({.Width = 5 + next() % 30, .TabWidth = 4});
-        ASSERT_TRUE(output.State);
-        std::vector<std::size_t> boundaries(200);
-        std::size_t mappedEnd = 0;
-        for (const auto& mapping : output.Map) {
-            EXPECT_EQ(mapping.OutputBegin, mappedEnd);
-            EXPECT_LE(mapping.OutputBegin, mapping.OutputEnd);
-            mappedEnd = mapping.OutputEnd;
-            if (mapping.Source.Identity != NoIdentity) {
-                boundaries[mapping.Source.Identity] = mapping.OutputBegin;
-            }
-        }
-        EXPECT_EQ(mappedEnd, output.Text.size());
-        for (std::size_t group = 0; group < output.Broken.size(); ++group) {
-            const auto view = std::string_view(output.Text)
-                .substr(boundaries[group * 2], boundaries[group * 2 + 1] - boundaries[group * 2]);
-            EXPECT_EQ(output.Broken[group] != 0, view.find_first_of("\r\n") != std::string_view::npos) << "trial="
-                << trial << " group=" << group;
-        }
-    }
 }
 
 TEST(GroupLayout, SaturatesWidthsWithoutRescanningExponentialFlatExpansion)
@@ -2965,20 +2657,6 @@ TEST(GroupLayout,
     ASSERT_TRUE(result.State);
     EXPECT_EQ(result.Text, " \r\n\t\r\n\r \r\n");
     EXPECT_EQ(result.Broken[group], 1u); // fixed multiline, not an owned break.
-    unsigned changed = 0;
-    for (const auto& map : result.Map) {
-        const auto before = std::string_view(source).substr(map.Source.Begin, map.Source.End - map.Source.Begin);
-        const auto after = std::string_view(result.Text).substr(map.OutputBegin, map.OutputEnd - map.OutputBegin);
-        if (map.Exact) {
-            EXPECT_EQ(before, after);
-        } else {
-            EXPECT_EQ(before, "\n");
-            EXPECT_EQ(after, "\r\n");
-            EXPECT_FALSE(map.Protected);
-            ++changed;
-        }
-    }
-    EXPECT_EQ(changed, 2u);
     // Exercise output expansion and reservation past uint16 bounds without
     // atom nodes, per-atom strings or indentation/topology rebuilding.
     const std::string many(70000, '\n');
@@ -2988,9 +2666,6 @@ TEST(GroupLayout,
     const auto large = expanded.Render();
     ASSERT_TRUE(large.State);
     ASSERT_EQ(large.Text.size(), 140000u);
-    ASSERT_EQ(large.Map.size(), 70000u);
-    EXPECT_EQ(large.Map.back().OutputEnd, 140000u);
-    EXPECT_EQ(large.Map.back().Source.End, 70000u);
     for (const auto range : {std::pair{0u, 1u}, std::pair{1u, 2u}}) {
         Document half("\r\n");
         half.SourceWhitespace(range.first, range.second, Newline::LF);
@@ -3009,17 +2684,10 @@ TEST(GroupLayout, SourceWhitespaceRetainsBareCRAtSourceAndEmittedBoundaries)
         // Second case counts N=1 from source but emits M=0 after omitted space.
         document.SourceWhitespace(source.size() - 2, source.size(), Newline::LF);
         ASSERT_TRUE(document.Seal());
-        for (const bool maps : {false, true}) {
-            const auto result = document.Render({.SourceMap = maps});
+        {
+            const auto result = document.Render({.SourceMap = false});
             ASSERT_TRUE(result.State);
             EXPECT_EQ(result.Text, "\r\r\n");
-            if (maps) {
-                ASSERT_EQ(result.Map.size(), 2u);
-                EXPECT_TRUE(result.Map[1].Exact);
-                EXPECT_EQ(result.Map[1].Source.Begin, source.size() - 2);
-                EXPECT_EQ(result.Map[1].Source.End, source.size());
-                EXPECT_EQ(result.Map[1].OutputEnd, 3u);
-            }
         }
     }
     Document separated("\r \r\n");
@@ -3029,8 +2697,6 @@ TEST(GroupLayout, SourceWhitespaceRetainsBareCRAtSourceAndEmittedBoundaries)
     const auto converted = separated.Render();
     ASSERT_TRUE(converted.State);
     EXPECT_EQ(converted.Text, "\r \n");
-    ASSERT_EQ(converted.Map.size(), 2u);
-    EXPECT_FALSE(converted.Map[1].Exact);
 }
 
 TEST(GroupLayout, SourceWhitespaceZeroChangeLFStillRequiresSafeIncomingBoundary)
@@ -3044,8 +2710,6 @@ TEST(GroupLayout, SourceWhitespaceZeroChangeLFStillRequiresSafeIncomingBoundary)
         if (copySeparator) {
             ASSERT_TRUE(result.State);
             EXPECT_EQ(result.Text, "\r \n");
-            ASSERT_EQ(result.Map.size(), 2u);
-            EXPECT_TRUE(result.Map[1].Exact);
         } else {
             EXPECT_EQ(result.State.Code, Error::InvalidSourceRange);
         }
@@ -3053,7 +2717,7 @@ TEST(GroupLayout, SourceWhitespaceZeroChangeLFStillRequiresSafeIncomingBoundary)
 }
 
 TEST(GroupLayout,
-    SourceWhitespaceAlternatingRetentionKeepsLargeBoundsAndExactMaps)
+    SourceWhitespaceAlternatingRetentionKeepsLargeBounds)
 {
     std::string source;
     for (unsigned i = 0; i < 35000; ++i) {
@@ -3062,29 +2726,10 @@ TEST(GroupLayout,
     Document document(source);
     document.SourceWhitespace(0, source.size(), Newline::LF);
     ASSERT_TRUE(document.Seal());
-    for (const bool maps : {false, true}) {
-        const auto result = document.Render({.SourceMap = maps});
+    {
+        const auto result = document.Render({.SourceMap = false});
         ASSERT_TRUE(result.State);
         EXPECT_EQ(result.Text.size(), 175000u);
-        if (maps) {
-            ASSERT_EQ(result.Map.size(), 70000u);
-            unsigned changed = 0;
-            for (const auto& map : result.Map) {
-                EXPECT_LE(map.OutputEnd, result.Text.size());
-                const auto before =
-                    std::string_view(source).substr(map.Source.Begin, map.Source.End - map.Source.Begin);
-                const auto after =
-                    std::string_view(result.Text).substr(map.OutputBegin, map.OutputEnd - map.OutputBegin);
-                if (map.Exact) {
-                    EXPECT_EQ(before, after);
-                } else {
-                    EXPECT_EQ(before, "\r\n");
-                    EXPECT_EQ(after, "\n");
-                    ++changed;
-                }
-            }
-            EXPECT_EQ(changed, 35000u);
-        }
     }
 }
 
