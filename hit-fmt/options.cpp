@@ -2,7 +2,6 @@
 
 #include <algorithm>
 #include <charconv>
-#include <stdexcept>
 #include <string_view>
 #include <thread>
 
@@ -40,19 +39,19 @@ Options ParseOptions(int argc, const char* const argv[])
             argument == "--changed-ranges" || argument.starts_with("--changed-ranges="))
         {
             if (options.HunkInput) {
-                throw std::runtime_error("--changed-hunks requires one input file or -");
+                throw UsageError("--changed-hunks requires one input file or -");
             }
             const auto equal = argument.find('=');
             if (equal == argument.npos) {
                 if (++index == argc) {
-                    throw std::runtime_error("--changed-hunks requires one input file or -");
+                    throw UsageError("--changed-hunks requires one input file or -");
                 }
                 options.HunkInput = argv[index];
             } else {
                 options.HunkInput = argument.substr(equal + 1);
             }
             if (options.HunkInput->empty()) {
-                throw std::runtime_error("--changed-hunks requires one input file or -");
+                throw UsageError("--changed-hunks requires one input file or -");
             }
         } else if (argument == "-j" || argument == "--threads" || argument.starts_with("--threads=") ||
             (argument.starts_with("-j") && argument.size() > 2))
@@ -78,7 +77,7 @@ Options ParseOptions(int argc, const char* const argv[])
                 }
             } else if (argument == "--threads") {
                 if (++index == argc) {
-                    throw std::runtime_error("--threads requires a positive integer");
+                    throw UsageError("--threads requires a positive integer");
                 }
                 value = argv[index];
             } else {
@@ -87,12 +86,12 @@ Options ParseOptions(int argc, const char* const argv[])
             size_t threads = 0;
             auto [end, error] = std::from_chars(value.data(), value.data() + value.size(), threads);
             if (error != std::errc{} || end != value.data() + value.size() || threads == 0) {
-                throw std::runtime_error("--threads requires a positive integer");
+                throw UsageError("--threads requires a positive integer");
             }
             options.Threads = threads;
         } else if (argument == "--config") {
             if (++index == argc) {
-                throw std::runtime_error("--config requires a file path");
+                throw UsageError("--config requires a file path");
             }
             options.ConfigPath = argv[index];
         } else if (argument.starts_with("--config=")) {
@@ -101,32 +100,32 @@ Options ParseOptions(int argc, const char* const argv[])
             std::string pattern;
             if (argument == "--exclude") {
                 if (++index == argc) {
-                    throw std::runtime_error("--exclude requires a regex");
+                    throw UsageError("--exclude requires a regex");
                 }
                 pattern = argv[index];
             } else {
                 pattern = argument.substr(10);
             }
             if (pattern.empty()) {
-                throw std::runtime_error("--exclude requires a regex");
+                throw UsageError("--exclude requires a regex");
             }
             try {
                 options.Exclusions.emplace_back(pattern);
             } catch (const std::regex_error& error) {
-                throw std::runtime_error("invalid --exclude regex: " + pattern + ": " + error.what());
+                throw UsageError("invalid --exclude regex: " + pattern + ": " + error.what());
             }
         } else {
-            throw std::runtime_error("unknown option: " + std::string(argument));
+            throw UsageError("unknown option: " + std::string(argument));
         }
     }
     if (options.DisableConfig && options.ConfigPath) {
-        throw std::runtime_error("--config and --no-config cannot be combined");
+        throw UsageError("--config and --no-config cannot be combined");
     }
     if (options.HunkInput && !options.Paths.empty()) {
-        throw std::runtime_error("--changed-hunks cannot be combined with input paths");
+        throw UsageError("--changed-hunks cannot be combined with input paths");
     }
     if (!options.Spillover && !options.HunkInput) {
-        throw std::runtime_error("--no-spillover requires --changed-hunks");
+        throw UsageError("--no-spillover requires --changed-hunks");
     }
     return options;
 }

@@ -1,0 +1,4 @@
+plain:
+unknown option: --unknown
+colored:
+[1;31munknown option: --unknown[0m

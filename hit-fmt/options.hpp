@@ -4,10 +4,18 @@
 #include <filesystem>
 #include <optional>
 #include <regex>
+#include <stdexcept>
 #include <string>
 #include <vector>
 
 namespace hit_fmt {
+
+class UsageError
+    : public std::runtime_error
+{
+public:
+    using std::runtime_error::runtime_error;
+};
 
 struct Options
 {

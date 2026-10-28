@@ -1,5 +1,6 @@
 #include <hit-fmt/file_check.hpp>
 #include <hit-fmt/options.hpp>
+#include <hit-fmt/terminal.hpp>
 
 #include <gtest/gtest.h>
 
@@ -373,14 +374,37 @@ TEST(FileCheck, ChangedHunkOptionsSupportAliasesAndRejectMixedInputs)
             {"hit-fmt", "--changed-hunks=-", "source.cpp"},
             {"hit-fmt", "--changed-hunks=-", "--changed-ranges=-"},
             {"hit-fmt", "--no-spillover", "source.cpp"},
+            {"hit-fmt", "--unknown"},
+            {"hit-fmt", "--threads=0"},
+            {"hit-fmt", "--config"},
+            {"hit-fmt", "--config=style", "--no-config"},
+            {"hit-fmt", "--exclude"},
+            {"hit-fmt", "--exclude=["},
         })
     {
-        EXPECT_THROW(hit_fmt::ParseOptions(argv.size(), argv.data()), std::runtime_error);
+        EXPECT_THROW((void)hit_fmt::ParseOptions(argv.size(), argv.data()), hit_fmt::UsageError);
     }
     const char* positional[] = {"hit-fmt", "--", "--changed-hunks", "--no-spillover"};
     const auto parsed = hit_fmt::ParseOptions(std::size(positional), positional);
     EXPECT_FALSE(parsed.HunkInput);
     EXPECT_EQ(parsed.Paths.size(), 2u);
+}
+
+TEST(FileCheck, UsageErrorDiagnosticGolden)
+{
+    const char* argv[] = {"hit-fmt", "--unknown"};
+    try {
+        (void)hit_fmt::ParseOptions(std::size(argv), argv);
+        FAIL() << "Expected a usage error";
+    }
+    catch (const hit_fmt::UsageError& error) {
+        std::ostringstream output;
+        output << "plain:\n";
+        hit_fmt::PrintError(output, error.what(), hit_fmt::TerminalColors());
+        output << "colored:\n";
+        hit_fmt::PrintError(output, error.what(), hit_fmt::TerminalColors(true));
+        test::golden::ExpectGolden(std::filesystem::path(HIT_FMT_TESTDATA_DIR) / "usage_error.out", output.str());
+    }
 }
 
 TEST(FileCheck, EmptyHunkScopeNeverFallsBackToWholeFile)

@@ -2,6 +2,7 @@
 
 #include <cstddef>
 #include <cstdio>
+#include <iosfwd>
 #include <string_view>
 
 namespace hit_fmt {
@@ -33,6 +34,8 @@ struct TerminalColors
 };
 
 TerminalColors GetTerminalColors(FILE* stream = stdout);
+
+void PrintError(std::ostream& output, std::string_view message, const TerminalColors& colors);
 
 size_t TerminalWidth();
 

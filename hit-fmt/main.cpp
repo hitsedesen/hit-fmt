@@ -1,4 +1,6 @@
+#include "options.hpp"
 #include "run.hpp"
+#include "terminal.hpp"
 
 #include <exception>
 #include <iostream>
@@ -7,6 +9,10 @@ int main(int argc, char* argv[])
 {
     try {
         return hit_fmt::Run(argc, argv);
+    }
+    catch (const hit_fmt::UsageError& error) {
+        hit_fmt::PrintError(std::cerr, error.what(), hit_fmt::GetTerminalColors(stderr));
+        return 1;
     }
     catch (const std::exception& error) {
         std::cerr << error.what() << '\n';

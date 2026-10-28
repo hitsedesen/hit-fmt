@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <charconv>
 #include <cstdlib>
+#include <ostream>
 
 #ifdef _WIN32
 #include <io.h>
@@ -36,6 +37,11 @@ bool UseTerminalColors(FILE* stream)
 TerminalColors GetTerminalColors(FILE* stream)
 {
     return TerminalColors(UseTerminalColors(stream));
+}
+
+void PrintError(std::ostream& output, std::string_view message, const TerminalColors& colors)
+{
+    output << colors.BoldRed << message << colors.Reset << '\n';
 }
 
 size_t TerminalWidth()
