@@ -17,6 +17,7 @@ embed_text(examples/llvm.hit-fmt llvm_config_data.hpp LLVMConfigText)
 add_library(lib-file-check STATIC
     file_check.cpp
     config_help.cpp
+    flags.cpp
     options.cpp
     source_excerpt.cpp
     formatting_diagnostics.cpp

@@ -1,24 +1,17 @@
 #pragma once
 
 #include "config_template.hpp"
+#include "flags.hpp"
 
 #include <cstddef>
 #include <filesystem>
 #include <optional>
 #include <regex>
 #include <span>
-#include <stdexcept>
 #include <string>
 #include <vector>
 
 namespace hit_fmt {
-
-class UsageError
-    : public std::runtime_error
-{
-public:
-    using std::runtime_error::runtime_error;
-};
 
 struct Options
 {
