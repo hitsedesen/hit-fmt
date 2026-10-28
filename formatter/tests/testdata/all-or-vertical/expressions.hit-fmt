@@ -1,0 +1,2 @@
+include = "../assignment-location/packing.hit-fmt"
+ExpressionsPacking = AllOrVertical
