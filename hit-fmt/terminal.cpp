@@ -46,7 +46,7 @@ void PrintError(std::ostream& output, std::string_view message, const TerminalCo
 
 size_t TerminalWidth()
 {
-    #ifndef _WIN32
+#ifndef _WIN32
     if (winsize size{}; isatty(fileno(stdout)) && ioctl(fileno(stdout), TIOCGWINSZ, &size) == 0 && size.ws_col > 0) {
         return std::max<size_t>(24, size.ws_col);
     }
