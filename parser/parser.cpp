@@ -2292,6 +2292,13 @@ private:
     Node* ParseEnumDeclaration()
     {
         auto start = Cursor_;
+        // An enum-key can instead introduce the type of a variable or function.
+        const auto declarator = FindDeclarationSpecifiersEnd(start, ParseLimit_);
+        if (declarator < ParseLimit_ && Kind(declarator) != TK::Operator_OpenBrace &&
+            Kind(declarator) != TK::Operator_Colon && Kind(declarator) != TK::Operator_Semicolon)
+        {
+            return ParseGeneralDeclaration();
+        }
         auto typeName = FindDeclaredTypeName(start, true);
         if (typeName < Tree_.Tokens_.Size()) {
             AddName(Text(typeName), NameKind::Type);

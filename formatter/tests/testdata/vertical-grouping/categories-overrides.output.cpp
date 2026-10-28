@@ -12,8 +12,27 @@ struct Record {};
 
 
 enum Kind { First };
+enum Kind kind;
+
+int afterEnum;
+
+enum Kind *kindPointer;
+
+enum Api::Kind qualified;
+
+enum Kind braced{First};
+
+enum Kind copy = First;
+enum Kind GetKind();
+
+void ReadKind();
+enum class State : unsigned;
 
 
+enum class State : unsigned { Idle };
+enum State state;
+
+int afterState;
 typedef int Count;
 
 using Size = unsigned;

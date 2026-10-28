@@ -70,3 +70,15 @@ struct Exported Comma {
 };
 struct Exported Destructible { ~Destructible() {} };
 template<int N> struct Derived : Base<N == 1> { int value; };
+enum Kind { First };
+enum Kind value;
+int afterEnum;
+enum Kind *enumPointer;
+enum Kind braced{First};
+enum Kind copy = First;
+enum Kind makeKind();
+namespace Api { enum class State : unsigned { Idle }; }
+enum Api::State qualified;
+enum class Forward : unsigned;
+enum class Forward : unsigned { Default };
+enum Forward scoped;
