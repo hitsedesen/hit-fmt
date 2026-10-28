@@ -44,6 +44,14 @@ CallsAlignment = Block
 # Let a sole argument start inline if it fits.
 CallsSoleArgumentFirstItem = InlineIfFits
 )"},
+    {"Keep a complete argument row or split every argument:", R"(ColumnLimit = 32
+CallsPacking = AllOrVertical
+CallsFirstItem = NextLine
+CallsCloser = OwnLine
+# ProcessPendingTasks(
+#     first, second
+# );
+)"},
     {"Wrap template lists independently:", R"(TemplateParametersBreak = IfNeeded
 TemplateParametersPacking = VerticalWhenBroken
 TemplateParametersFirstItem = NextLine
@@ -86,6 +94,11 @@ AssignmentRhsPlacement = InlineIfFits
 ChainsBreak = IfNeeded
 ChainsPacking = Fill
 ChainsAlignment = Block
+)"},
+    {"Keep a compact tail after a wrapped receiver:", R"(ColumnLimit = 40
+ChainsPacking = AllOrVertical
+# auto client = MakeServiceClient()
+#     .Configure(mode).Start();
 )"},
 };
 constexpr HelpExample ShapeExamples[] = {
@@ -257,7 +270,9 @@ constexpr HelpSection HelpSections[] = {
         "  default to Inherit. Closer excludes BaseLists and "
         "ConstructorLists.\n"
         "- Packing: Fill packs items; VerticalWhenBroken separates them once\n"
-        "  the list wraps. FirstItem: InlineIfFits or NextLine. "
+        "  the list wraps. AllOrVertical keeps all items in one row or splits\n"
+        "  every separator; opener/closer breaks are independent.\n"
+        "  FirstItem: InlineIfFits or NextLine. "
         "Closer: SameLine\n"
         "  or OwnLine. First-item and closer placement apply to broken lists.\n"
         "- Alignment: Delimiter aligns after the opener; Block uses the block\n"
@@ -291,11 +306,13 @@ constexpr HelpSection HelpSections[] = {
     {"Expressions and chains",
         "- ExpressionsBreak and ChainsBreak default "
         "independently to IfNeeded.\n"
-        "  Packing uses Fill or VerticalWhenBroken; expression "
-        "wrapping respects\n"
-        "  operator precedence. BinaryOperatorSide, ShiftOperatorSide,\n"
-        "  AssignmentOperatorSide and TernaryOperatorSide use "
-        "Leading/Trailing.\n"
+        "  Packing uses Fill, VerticalWhenBroken or AllOrVertical. The latter\n"
+        "  keeps a complete chain tail together after a receiver break, or\n"
+        "  separates all tail links if it cannot fit. For expressions and\n"
+        "  IfConditionsPacking it behaves like VerticalWhenBroken. Expression\n"
+        "  wrapping respects operator precedence. BinaryOperatorSide,\n"
+        "  ShiftOperatorSide, AssignmentOperatorSide and TernaryOperatorSide\n"
+        "  use Leading/Trailing.\n"
         "- ExpressionsAlignment = Operand aligns to the first "
         "operand, falling\n"
         "  back when it cannot fit; Block uses continuation indentation.\n"

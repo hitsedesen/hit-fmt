@@ -1,0 +1,2 @@
+include = "../chained-calls/scoped-sticky.hit-fmt"
+ChainsPacking = AllOrVertical

@@ -221,6 +221,14 @@ std::vector<FormatCase> FormatCases()
 {
     std::vector<FormatCase> cases;
     const auto data = std::filesystem::path(FORMATTER_TESTDATA_DIR).parent_path();
+    const auto packing = data / "all-or-vertical";
+    AddCases(cases, packing, {"canonical", "inline", "delimiter", "always", "preserve", "unlimited"});
+    AddCases(cases, packing, {"annotations"}, "../chained-calls/annotations.input.cpp");
+    AddCases(cases, packing, {"chain"}, "chain.input.cpp");
+    AddCases(cases, packing, {"conditions"}, "../if-conditions-packing/input.cpp");
+    ShareExpected(cases, packing, "conditions.output.cpp", "../if-conditions-packing/leading.output.cpp");
+    AddCases(cases, packing, {"expressions"}, "../assignment-location/packing.input.cpp");
+    ShareExpected(cases, packing, "expressions.output.cpp", "../assignment-location/packing.output.cpp");
     const auto newOptions = data / "new-options";
     AddCases(cases, newOptions, {"syntax", "unlimited", "preserve", "always"});
     AddCases(cases, newOptions, {"text", "sorted-text"}, "text.input.cpp");

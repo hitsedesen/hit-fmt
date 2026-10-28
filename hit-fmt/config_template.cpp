@@ -140,6 +140,24 @@ void PrintOption(std::ostream& output, std::string_view name, const T& value)
                 "# = Always still require assignment breaks. Example:\n" "# ExpressionsPacking = VerticalWhenBroken\n"
                 "# AssignmentsPacking = Fill\n" "# auto ready = firstCheck() ||\n" "#     secondCheck();\n";
     }
+    if (name == "ListPacking") {
+        output
+            << "# AllOrVertical keeps all items in one row when they fit,\n"
+                "# otherwise splits every separator. FirstItem and Closer\n"
+                "# still control the independent delimiter boundaries.\n"
+                "# Example: CallsPacking = AllOrVertical, ColumnLimit = 32,\n"
+                "# CallsFirstItem = NextLine, CallsCloser = OwnLine:\n" "# ProcessPendingTasks(\n"
+                "#     first, second\n" "# );\n";
+    }
+    if (name == "ChainsPacking") {
+        output
+            << "# AllOrVertical keeps the complete tail after the receiver\n"
+                "# on one continuation line, or splits every tail link.\n" "# Example with ColumnLimit = 40:\n"
+                "# auto client = MakeServiceClient()\n" "#     .Configure(mode).Start();\n";
+    }
+    if (name == "ExpressionsPacking" || name == "AssignmentsPacking" || name == "IfConditionsPacking") {
+        output << "# AllOrVertical behaves like VerticalWhenBroken here.\n";
+    }
     if (name == "IfConditionsPacking") {
         output
             << "# Fill keeps ordinary expression packing (default).\n"

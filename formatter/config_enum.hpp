@@ -35,7 +35,7 @@ DEFINE_CONFIG_ENUM(CategoryLayout, CATEGORY_LAYOUT_VALUES);
     X(Preserve) X(Space) X(NoSpace) X(GeneratedSpace) X(GeneratedNoSpace)
 DEFINE_CONFIG_ENUM(GapPolicy, GAP_VALUES);
 #undef GAP_VALUES
-#define LIST_PACKING_VALUES(X) X(Fill) X(VerticalWhenBroken)
+#define LIST_PACKING_VALUES(X) X(Fill) X(VerticalWhenBroken) X(AllOrVertical)
 DEFINE_CONFIG_ENUM(ListPacking, LIST_PACKING_VALUES);
 #undef LIST_PACKING_VALUES
 #define BREAK_REQUIREMENT_VALUES(X) X(IfNeeded) X(Always)
