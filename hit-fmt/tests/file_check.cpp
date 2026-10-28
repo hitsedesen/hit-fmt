@@ -351,7 +351,7 @@ TEST(FileCheck, ActualProtectedOverflowRemainsFailureInFixMode)
 TEST(FileCheck, ChangedHunkOptionsSupportAliasesAndRejectMixedInputs)
 {
     for (const auto option : {"--changed-hunks", "--changed-ranges"}) {
-        const char* argv[] = {"hit-fmt", "--fix", option, "-", "--no-spillover", "--threads=2", "--summary"};
+        const char* argv[] = {"hit-fmt", "--fix", "--check", option, "-", "--no-spillover", "--threads=2", "--summary"};
         const auto parsed = hit_fmt::ParseOptions(argv);
         ASSERT_TRUE(parsed.HunkInput);
         EXPECT_EQ(*parsed.HunkInput, "-");
@@ -376,8 +376,14 @@ TEST(FileCheck, ChangedHunkOptionsSupportAliasesAndRejectMixedInputs)
             {"hit-fmt", "--changed-hunks=-", "--changed-ranges=-"},
             {"hit-fmt", "--no-spillover", "source.cpp"},
             {"hit-fmt", "--unknown"},
+            {"hit-fmt", "--help=1"},
+            {"hit-fmt", "--threads"},
+            {"hit-fmt", "--threads="},
             {"hit-fmt", "--threads=0"},
+            {"hit-fmt", "-j=2"},
+            {"hit-fmt", "-j2x"},
             {"hit-fmt", "--config"},
+            {"hit-fmt", "--config-extra=style"},
             {"hit-fmt", "--config=style", "--no-config"},
             {"hit-fmt", "--exclude"},
             {"hit-fmt", "--exclude=["},
@@ -389,6 +395,35 @@ TEST(FileCheck, ChangedHunkOptionsSupportAliasesAndRejectMixedInputs)
     const auto parsed = hit_fmt::ParseOptions(positional);
     EXPECT_FALSE(parsed.HunkInput);
     EXPECT_EQ(parsed.Paths.size(), 2u);
+}
+
+TEST(FileCheck, ValueFlagsSupportAttachedAndSeparatedArguments)
+{
+    for (const auto& args :
+        std::vector<std::vector<const char*>>{
+            {"hit-fmt", "-j3", "--config=style.hit-fmt", "--exclude=generated", "source.cpp"},
+            {"hit-fmt", "--threads", "3", "--config", "style.hit-fmt", "--exclude", "generated", "source.cpp"},
+            {"hit-fmt", "-j", "3", "--config=style.hit-fmt", "--exclude", "generated", "source.cpp"},
+        })
+    {
+        const auto parsed = hit_fmt::ParseOptions(args);
+        EXPECT_EQ(parsed.Threads, 3u);
+        ASSERT_TRUE(parsed.ConfigPath);
+        EXPECT_EQ(*parsed.ConfigPath, "style.hit-fmt");
+        ASSERT_EQ(parsed.Exclusions.size(), 1u);
+        EXPECT_TRUE(std::regex_search("generated.cpp", parsed.Exclusions.front()));
+        EXPECT_FALSE(std::regex_search("source.cpp", parsed.Exclusions.front()));
+        EXPECT_EQ(parsed.Paths, std::vector<std::filesystem::path>{"source.cpp"});
+    }
+}
+
+TEST(FileCheck, OptionalThreadCountLeavesPathsAndFlagsUnconsumed)
+{
+    const char* args[] = {"hit-fmt", "-j", "source.cpp", "--summary", "-j"};
+    const auto parsed = hit_fmt::ParseOptions(args);
+    EXPECT_GT(parsed.Threads, 0u);
+    EXPECT_TRUE(parsed.SummaryOnly);
+    EXPECT_EQ(parsed.Paths, std::vector<std::filesystem::path>{"source.cpp"});
 }
 
 TEST(FileCheck, UsageErrorDiagnosticGolden)
