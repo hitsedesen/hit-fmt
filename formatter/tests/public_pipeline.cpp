@@ -191,7 +191,13 @@ TEST(PublicPipeline, ControlSeparatorsRespectIndependentBodyAndHeaderPolicies)
 {
     for (auto headers : {formatter::CategoryLayout::Preserve, formatter::CategoryLayout::Canonical}) {
         for (auto bodies : {formatter::CategoryLayout::Preserve, formatter::CategoryLayout::Canonical}) {
-            for (auto shape : {formatter::BodyShape::Expanded, formatter::BodyShape::CompactIfFits}) {
+            for (auto shape :
+                {
+                    formatter::BodyShape::Expanded,
+                    formatter::BodyShape::CompactIfFits,
+                    formatter::BodyShape::CompactSingleStatementIfFits,
+                })
+            {
                 auto style = Canonical();
                 style.IndentWidth = 2;
                 style.ControlHeadersLayout = headers;
@@ -216,8 +222,12 @@ TEST(PublicPipeline, ControlSeparatorsRespectIndependentBodyAndHeaderPolicies)
                 const std::string unbraced = "void f() {\n  if (a)left();else right();\n" "  do tick();while (a);\n}\n";
                 const auto arms = FormatInput(unbraced, prepared);
                 if (headers == formatter::CategoryLayout::Canonical && bodies == formatter::CategoryLayout::Canonical) {
-                    const auto separator = shape == formatter::BodyShape::Expanded ? "left();\n  else" : "left(); else";
-                    const auto suffix = shape == formatter::BodyShape::Expanded ? "tick();\n  while" : "tick(); while";
+                    const auto separator = shape == formatter::BodyShape::CompactIfFits
+                        ? "left(); else"
+                        : "left();\n  else";
+                    const auto suffix = shape == formatter::BodyShape::CompactIfFits
+                        ? "tick(); while"
+                        : "tick();\n  while";
                     EXPECT_NE(arms.Text.find(separator), std::string::npos);
                     EXPECT_NE(arms.Text.find(suffix), std::string::npos);
                 } else {

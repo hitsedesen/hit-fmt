@@ -146,6 +146,7 @@ struct Group
     uint32_t LogicalIndent = 0;
     bool SaturatedIndent = false;
     Index PreviousContinuation = None;
+    Index IndentGroup = None;
     bool NeedsBlock = false;
 };
 
@@ -829,6 +830,16 @@ private:
         return id;
     }
 
+    Index PackingGroup(Index parent, Position begin, Position end)
+    {
+        const auto group = GroupAt(begin, end, document::GroupMode::Consistent);
+        if (group != None) {
+            Groups_[group].IndentGroup = parent;
+            Groups_[group].Spec.BreakPenalty = Groups_[parent].Spec.BreakPenalty;
+        }
+        return group;
+    }
+
     void Own(
         Index gap,
         Index owner,
@@ -1213,8 +1224,7 @@ private:
         }
         if (canonical && node.Kind == NodeKind::Condition && node.Parent != None &&
             Region(Syntax_[node.Parent]).Kind == NodeKind::IfStatement &&
-            Policies_.Expressions.Layout == LayoutMode::Canonical &&
-            Policies_.IfConditionsPacking == ListPacking::VerticalWhenBroken)
+            Policies_.Expressions.Layout == LayoutMode::Canonical && Policies_.IfConditionsPacking != ListPacking::Fill)
         {
             Syntax_[id].IfConditionGroup = group;
         }
@@ -1353,6 +1363,11 @@ private:
                 Boundary::Conditional,
                 header->Colon == OperatorSide::Trailing ? firstKindFor(policy) : document::GapKind::Flat);
         }
+        // Delimiter edges can break independently of the items. Consistent
+        // item gaps keep the complete row together or split every separator.
+        const auto items = canonical && !empty && policy.Packing == ListPacking::AllOrVertical
+            ? PackingGroup(group, TokenPosition(begin + 1), GapPosition(closer))
+            : group;
         Index lastItem = None;
         Index lastSeparator = None;
         for (auto child = Region(Syntax_[id]).FirstChild; child != None; child = Region(Syntax_[child]).NextSibling) {
@@ -1398,7 +1413,7 @@ private:
                 if (split < closer) {
                     Own(
                         split,
-                        group,
+                        items,
                         Boundary::Conditional,
                         policy.Packing == ListPacking::VerticalWhenBroken
                         ? document::GapKind::Hard
@@ -1413,7 +1428,7 @@ private:
                 }
                 Reindent(t, group);
             }
-            OwnCommentLinks(t + 1, group, closer);
+            OwnCommentLinks(t + 1, items, closer);
         }
         // Control headers can represent their semicolons as direct punctuation,
         // not ListSeparator children. Walk only disjoint direct-token spans.
@@ -1426,7 +1441,7 @@ private:
                             Own(t, group, Boundary::Flat);
                             Own(
                                 t + 1,
-                                group,
+                                items,
                                 Boundary::Conditional,
                                 policy.Packing == ListPacking::VerticalWhenBroken
                                 ? document::GapKind::Hard
@@ -1434,7 +1449,7 @@ private:
                         } else {
                             Reindent(t + 1, group);
                         }
-                        OwnCommentLinks(t + 1, group, closer);
+                        OwnCommentLinks(t + 1, items, closer);
                     }
                 });
         }
@@ -1485,6 +1500,16 @@ private:
                 Gaps_[lastSeparator].Shape = Boundary::Flat;
             }
             if (Policies_.InitializersTrailingComma == TrailingCommaPolicy::WhenMultiline) {
+                if (items != group) {
+                    // The comma follows the complete list's multiline shape,
+                    // including delimiter-only breaks, rather than the row's.
+                    Groups_[items].End = GapPosition(after);
+                    for (auto gap = after; gap < closer; ++gap) {
+                        if (Gaps_[gap].Owner == items) {
+                            Gaps_[gap].Owner = group;
+                        }
+                    }
+                }
                 Commas_[after] = {group, existing ? lastSeparator : None};
             }
         }
@@ -1792,9 +1817,7 @@ private:
         const auto packing = declarationAssignment || kind == NodeKind::AssignmentExpression
             ? policy.AssignmentPacking
             : policy.Packing;
-        const auto boundary = packing == ListPacking::VerticalWhenBroken && !threePart
-            ? Boundary::Conditional
-            : Boundary::Soft;
+        const auto boundary = packing != ListPacking::Fill && !threePart ? Boundary::Conditional : Boundary::Soft;
         auto segment = id;
         const auto planToken = [&] (Index t) {
             const auto role = declarationAssignment && Tree_.Kind(t) == TokenKind::Operator_Assign
@@ -2226,6 +2249,36 @@ private:
         }
     }
 
+    bool SimpleStatement(Index id) const
+    {
+        if (id == None || !Syntax_[id].Safe) {
+            return false;
+        }
+        while (Region(Syntax_[id]).Kind == NodeKind::AttributedStatement) {
+            id = LastChild_[id];
+            if (id == None) {
+                return false;
+            }
+        }
+        switch (Region(Syntax_[id]).Kind) {
+            case NodeKind::DeclarationStatement:
+            case NodeKind::UsingDeclaration:
+            case NodeKind::TypedefDeclaration:
+            case NodeKind::StaticAssertDeclaration:
+            case NodeKind::AsmDeclaration:
+            case NodeKind::ExpressionStatement:
+            case NodeKind::ReturnStatement:
+            case NodeKind::BreakStatement:
+            case NodeKind::ContinueStatement:
+            case NodeKind::GotoStatement:
+            case NodeKind::ThrowStatement:
+            case NodeKind::CoYieldStatement:
+                return true;
+            default:
+                return false;
+        }
+    }
+
     void PlanControlledArms(Index id, BracePlacement brace)
     {
         const auto& node = Region(Syntax_[id]);
@@ -2295,7 +2348,7 @@ private:
                     if (precedingBraced) {
                         boundary = Boundary::Flat;
                     } else if (Policies_.Bodies.Layout == LayoutMode::Canonical) {
-                        boundary = Policies_.Bodies.Shape == BodyShape::Expanded ? Boundary::Hard : Boundary::Soft;
+                        boundary = Policies_.Bodies.Shape == BodyShape::CompactIfFits ? Boundary::Soft : Boundary::Hard;
                     }
                 }
                 Index prefix;
@@ -2369,7 +2422,11 @@ private:
                     Own(
                         opening,
                         group,
-                        Policies_.Bodies.Shape == BodyShape::Expanded ? Boundary::Hard : Boundary::Soft);
+                        Policies_.Bodies.Shape == BodyShape::Expanded ||
+                            (Policies_.Bodies.Shape == BodyShape::CompactSingleStatementIfFits &&
+                                !SimpleStatement(child))
+                        ? Boundary::Hard
+                        : Boundary::Soft);
                 } else {
                     Reindent(opening, group);
                 }
@@ -2708,7 +2765,18 @@ private:
         }
         // Macro delimiters must remain separate invocations, not collapse
         // together under a compact/empty brace-body policy.
-        const auto shape = macroRecord ? BodyShape::Expanded : opening + 1 == close ? policy.EmptyShape : policy.Shape;
+        auto shape = macroRecord ? BodyShape::Expanded : opening + 1 == close ? policy.EmptyShape : policy.Shape;
+        if (shape == BodyShape::CompactSingleStatementIfFits) {
+            const auto& body = Region(Syntax_[id]);
+            const auto child = body.FirstChild;
+            // A complete direct statement excludes sibling comments, directives
+            // and additional statements without counting nested semicolons.
+            const bool single =
+                (body.Kind == NodeKind::CompoundStatement || body.Kind == NodeKind::LambdaBody) && child != None &&
+                    Region(Syntax_[child]).NextSibling == None && Region(Syntax_[child]).Tokens.Begin == opening + 1 &&
+                    Region(Syntax_[child]).Tokens.End == close && SimpleStatement(child);
+            shape = single ? BodyShape::CompactIfFits : BodyShape::Expanded;
+        }
         const bool independentIndent = record
             ? Policies_.Indentation.Members.Mode != BodyIndentation::Preserve
             : namespaced && Policies_.Indentation.Namespaces.Mode != BodyIndentation::Preserve;
@@ -3043,7 +3111,13 @@ private:
                 const auto base = GroupAt(begin, end, document::GroupMode::Fill);
                 Groups_[base].Spec.StructuralBase = true;
                 Groups_[base].Spec.Continuation = true;
-                const auto scope = GroupAt(begin, end, document::GroupMode::Fill, int32_t(Policies_.IndentWidth));
+                const auto scope = GroupAt(
+                    begin,
+                    end,
+                    Policies_.Chains.Packing == ListPacking::AllOrVertical
+                    ? document::GroupMode::Consistent
+                    : document::GroupMode::Fill,
+                    int32_t(Policies_.IndentWidth));
                 Groups_[scope].Spec.ForceBreak = Groups_[group].Spec.ForceBreak;
                 Groups_[scope].Spec.BreakPenalty = 2;
                 // The opening call stays at the enclosing level.
@@ -3073,6 +3147,23 @@ private:
                 ChainLinks_[j].Sticky = true;
             }
             i = last;
+        }
+        if (Policies_.Chains.Packing == ListPacking::AllOrVertical) {
+            Index first = None;
+            Index tail = group;
+            for (auto& link : ChainLinks_) {
+                if (link.RootReceiver || link.Sticky || link.Owner != group) {
+                    continue;
+                }
+                if (first == None) {
+                    // A sticky receiver prefix is indivisible. Start the
+                    // independent tail only after that complete prefix.
+                    first = link.Gap;
+                    tail = PackingGroup(group, TokenPosition(first), Groups_[group].End);
+                } else {
+                    link.Owner = tail;
+                }
+            }
         }
         for (const auto& link : ChainLinks_) {
             if (link.RootReceiver) {
@@ -3300,6 +3391,7 @@ private:
         }
         Index links = 0;
         Index calls = 0;
+        Index firstLink = None;
         for (Index spine = id; spine != entry.Root;) {
             const auto callee = Region(Syntax_[spine]).FirstChild;
             if (callee == None) {
@@ -3307,6 +3399,7 @@ private:
             }
             if (IsChainLink(spine)) {
                 ++links;
+                firstLink = Region(Syntax_[callee]).Tokens.End;
                 const auto parent = Region(Syntax_[spine]).Parent;
                 // Count suffix calls across the complete safe spine, including
                 // mixed '.', '->' and repeated invocation links. Field paths
@@ -3351,6 +3444,11 @@ private:
         if (PlanAnnotatedChain(id, group, packingCalls)) {
             return;
         }
+        // The receiver-to-tail break is independent of the tail's coupled
+        // member boundaries, just like a list opener and its item row.
+        const auto tail = policy.Packing == ListPacking::AllOrVertical && links > 1
+            ? PackingGroup(group, TokenPosition(firstLink), GapPosition(Region(entry).Tokens.End))
+            : group;
         for (Index spine = id; spine != entry.Root;) {
             const auto callee = Region(Syntax_[spine]).FirstChild;
             if (callee == None) {
@@ -3360,7 +3458,7 @@ private:
             if (IsChainLink(spine)) {
                 OwnContinuationBoundary(
                     t,
-                    group,
+                    t == firstLink ? group : tail,
                     policy.Packing == ListPacking::VerticalWhenBroken && packingCalls > 1
                     ? document::GapKind::Hard
                     : document::GapKind::Soft);
@@ -4921,6 +5019,11 @@ private:
                         group.Spec.LineBase,
                         group.Spec.FixedBase,
                     });
+                }
+                if (group.IndentGroup != None) {
+                    // Packing adds a shape choice, not a continuation level.
+                    // Reuse delimiter alignment and its width fallback too.
+                    group.Anchor = Groups_[group.IndentGroup].Anchor;
                 }
                 // Children share the prospective level, not the arm's
                 // physical-line anchor used for its own preserved gaps.

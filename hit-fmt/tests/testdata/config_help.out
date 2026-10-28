@@ -44,7 +44,9 @@ Lists and alignment
   ContinuationOffset and AlignmentFallbackOffset. Optional overrides
   default to Inherit. Closer excludes BaseLists and ConstructorLists.
 - Packing: Fill packs items; VerticalWhenBroken separates them once
-  the list wraps. FirstItem: InlineIfFits or NextLine. Closer: SameLine
+  the list wraps. AllOrVertical keeps all items in one row or splits
+  every separator; opener/closer breaks are independent.
+  FirstItem: InlineIfFits or NextLine. Closer: SameLine
   or OwnLine. First-item and closer placement apply to broken lists.
 - Alignment: Delimiter aligns after the opener; Block uses the block
   indentation plus an offset. Zero offsets use IndentWidth. Delimiter
@@ -84,6 +86,15 @@ Put call arguments on separate lines:
     # Let a sole argument start inline if it fits.
     CallsSoleArgumentFirstItem = InlineIfFits
 
+Keep a complete argument row or split every argument:
+    ColumnLimit = 32
+    CallsPacking = AllOrVertical
+    CallsFirstItem = NextLine
+    CallsCloser = OwnLine
+    # ProcessPendingTasks(
+    #     first, second
+    # );
+
 Wrap template lists independently:
     TemplateParametersBreak = IfNeeded
     TemplateParametersPacking = VerticalWhenBroken
@@ -104,9 +115,13 @@ Separate conditions in a wrapped if header:
 
 Expressions and chains
 - ExpressionsBreak and ChainsBreak default independently to IfNeeded.
-  Packing uses Fill or VerticalWhenBroken; expression wrapping respects
-  operator precedence. BinaryOperatorSide, ShiftOperatorSide,
-  AssignmentOperatorSide and TernaryOperatorSide use Leading/Trailing.
+  Packing uses Fill, VerticalWhenBroken or AllOrVertical. The latter
+  keeps a complete chain tail together after a receiver break, or
+  separates all tail links if it cannot fit. For expressions and
+  IfConditionsPacking it behaves like VerticalWhenBroken. Expression
+  wrapping respects operator precedence. BinaryOperatorSide,
+  ShiftOperatorSide, AssignmentOperatorSide and TernaryOperatorSide
+  use Leading/Trailing.
 - ExpressionsAlignment = Operand aligns to the first operand, falling
   back when it cannot fit; Block uses continuation indentation.
 - AssignmentsPacking: Inherit (default) follows ExpressionsPacking.
@@ -156,6 +171,12 @@ Wrap call chains:
     ChainsPacking = Fill
     ChainsAlignment = Block
 
+Keep a compact tail after a wrapped receiver:
+    ColumnLimit = 40
+    ChainsPacking = AllOrVertical
+    # auto client = MakeServiceClient()
+    #     .Configure(mode).Start();
+
 Output shape
 - Brace placements: Attached, NextLine or NextLineIfHeaderBroken.
   ConstructorBracePlacement and DestructorBracePlacement may Inherit
@@ -164,6 +185,11 @@ Output shape
 - DeclarationHeadersLayout controls headers; BodiesLayout and
   LambdaBodiesLayout control bodies. BodyShape and EmptyBodyShape
   default to Expanded; CompactIfFits allows compact bodies.
+  CompactSingleStatementIfFits allows only one simple statement
+  (including a local declaration), within ColumnLimit. Nested
+  control statements, blocks, records and namespaces stay expanded.
+  Sibling comments/directives prevent compaction; empty bodies use
+  EmptyBodyShape. This single-statement mode expands empty bodies.
   LambdaBodyShape and LambdaEmptyBodyShape inherit independently.
   Comment-only bodies are not empty. Enum, list and requirement
   bodies are not controlled by these body shapes.
@@ -188,6 +214,13 @@ Choose braces and body shapes:
     LambdaBodiesLayout = Inherit
     LambdaBodyShape = CompactIfFits
     LambdaEmptyBodyShape = Inherit
+
+Compact only bodies with one simple statement:
+    BodiesLayout = Canonical
+    BodyShape = CompactSingleStatementIfFits
+    FunctionBracePlacement = Attached
+    # int Next(int x) { return x + 1; }
+    # void Reset() { Clear(); Notify(); } stays expanded.
 
 Set namespace, enum and initializer layout:
     IndentNamespaces = NoIndent
