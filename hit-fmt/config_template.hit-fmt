@@ -1,0 +1,1291 @@
+# Preserve source break topology by default. Set Layout = Canonical
+# to normalize groups. Category Inherit values resolve once.
+# Generated* applies to properties rebuilt by their owning canonical
+# combinator (also inserted gaps), not unrelated nested edits.
+# Break = Always requires a legal owned break; Preserve/protection win.
+# EmptyBodyShape is independent of nonempty BodyShape.
+# Blank counts measure empty lines; zero retains boundary topology.
+# Exact counts above an explicit MaxEmptyLines cap are invalid.
+# IncludeOrder = Sort enables the following include policies.
+# IncludeMatchingHeader = First selects quoted same-stem headers
+# (.h/.hh/.hpp/.hxx/.h++) in the input file's directory.
+# Pairing is disabled for header inputs or missing filenames.
+# IncludeGrouping = Preserve retains existing blank boundaries;
+# Regroup groups by IncludeGroups rules; Directory additionally
+# subdivides each rule by its directory suffix and Depth.
+# Example: IncludeGroups = [{Prefix = "library/", Depth = 1}]
+# Each rule has Prefix or Prefixes, optional Depth and Priority.
+# Depth defaults to 127; Priority defaults to 0.
+# Priority is an integer from -128 to 127.
+# Lower values sort first within each quote/angle category.
+# Unmatched headers have priority zero.
+# Priority never changes first-match selection; equal priorities
+# use IncludeGroupOrder and the usual directory/header ordering.
+# Depth 0 keeps the entire rule together within quote/angle groups;
+# 127 uses the full remaining directory, not the filename.
+# Values 1..126 cap components after the matched prefix.
+# Depth must be an integer from 0 to 127; negatives are invalid.
+# With prefix library/, 1 groups library/core/a.hpp and
+# library/core/detail/b.hpp together; 2 separates them.
+# Prefixes = ["yt/yt/", "yt/yt_proto/yt/"] merges corresponding
+# suffix groups; the first prefix represents their ordering path.
+# First matching rule/prefix wins. IncludeGroupOrder = Directory
+# (default) orders equal-priority groups together by directory.
+# Configured uses list order within each priority tier, then
+# IncludeDirectoryOrder for subgroups within each rule.
+# Unmatched paths follow configured rules in the same tier.
+# Prefixes within one rule are aliases, not separate priorities.
+# Example: IncludeGroupOrder = Configured with IncludeGroups =
+# [{Prefix = "library/", Depth = 1}, {Prefix = "util/", Depth = 1}]
+# puts library/ first, then util/, with nearest subgroups and
+# alphabetical include paths inside each subgroup by default.
+# Unmatched paths use full-directory groups under Directory.
+# Prefix = "" is an explicit fallback for any include spelling;
+# its Depth counts from the start of the resolved directory.
+# Example: nearest project groups, then library/, then util/:
+# IncludeGroupOrder = Directory
+# IncludePathBase = ProjectRoot
+# IncludeGroups = [
+#     {Prefix = "library/", Priority = 1},
+#     {Prefix = "util/", Priority = 2},
+#     {Prefix = "", Depth = 3}
+# ]
+# Specific rules precede the fallback for matching, not output.
+# Preserve ignores rules, priorities and IncludeGroupOrder.
+# Regroup ignores Depth; unmatched headers follow configured
+# groups in the same priority tier. Paired/standard groups stay
+# separate. Include paths are never rewritten by group aliases.
+# Regroup/Directory span blank lines and insert one empty line
+# between groups; both conflict with MaxEmptyLines = 0.
+# IncludeDirectoryOrder = NearestFirst uses parent + child steps
+# from the input directory; ties sort by directory spelling.
+# Alphabetical omits distance. Quoted groups precede angled ones.
+# IncludeInGroupOrder = Alphabetical retains in-group ordering.
+# NearestFirst uses full resolved containing-directory distance,
+# then alphabetical include spelling, without changing groups.
+# Depth and aliases affect group keys, not in-group distance.
+# This also works within adjacent blocks under Preserve.
+# Paired and final standard-header groups remain alphabetical.
+# IncludePathBase = SourceDirectory resolves source-relative paths.
+# ProjectRoot uses the working directory as the input path root.
+# Absolute input filenames beneath it are rebased to that root.
+# Bare quoted names and quoted ./ or ../ paths stay source-relative.
+# Paths normalize lexically only; no file lookup or spelling edit.
+# IncludeStandardHeaders = Last uses a lexical heuristic: angled
+# names containing neither / nor .h go in a final alphabetical group.
+# It is case-sensitive, not ISO detection: extensionless vendor
+# names qualify; quoted names and stdio.h do not. Preserve keeps
+# ordinary sorting. The final group follows even unmatched headers.
+# Check mode reports one include-order failure per file, not per header.
+# Other formatting, naming and width failures remain independent.
+# Rules are validated even when inactive; prefixes must be unique.
+# Comments, macros, conditionals, protection and mixed line endings
+# stop blocks. Hunk edits require authority over the entire block.
+# LineEnding Preserve uses the first newline for generated endings
+# and retains copied gap bytes, not uniform per-edge preservation.
+# LF/CRLF spell only authorized whole whitespace newline atoms;
+# no final newline insertion, token/directive conversion or cleanup.
+# Protected regions remain byte-exact. Directive whitespace is opt-in.
+# Option guidance: --help-config
+
+# Formatting options
+
+# Values: Preserve | Canonical
+Layout = Preserve
+
+# Values: 1..32
+IndentWidth = 4
+
+# Values: 0 (unlimited) or 1..10000
+ColumnLimit = 120
+
+# Values: Off | Report
+WidthDiagnostics = Off
+
+# Values: false | true
+HonorClangFormatDirectives = true
+
+# Values: Preserve | Spaces | Tabs
+IndentationKind = Preserve
+
+# Values: Preserve | LF | CRLF
+LineEnding = Preserve
+
+# Values: Preserve | Trim
+TrailingWhitespace = Preserve
+
+# Values: IfNeeded | Always
+ListBreak = IfNeeded
+
+# AllOrVertical keeps all items in one row when they fit,
+# otherwise splits every separator. FirstItem and Closer
+# still control the independent delimiter boundaries.
+# Example: CallsPacking = AllOrVertical, ColumnLimit = 32,
+# CallsFirstItem = NextLine, CallsCloser = OwnLine:
+# ProcessPendingTasks(
+#     first, second
+# );
+# Block comments after a separator move with the next item.
+# Line comments and mixed comment prefixes stay in place.
+# In a broken call: consume(alpha,
+#     /* next argument */ beta);
+# Values: Fill | VerticalWhenBroken | AllOrVertical
+ListPacking = Fill
+
+# Values: InlineIfFits | NextLine
+ListFirstItem = InlineIfFits
+
+# Values: SameLine | OwnLine
+ListCloser = SameLine
+
+# Values: Block | Delimiter
+ListAlignment = Block
+
+# Values: 0 (use IndentWidth) or 1..32
+ContinuationOffset = 0
+
+# Values: 0 (use IndentWidth) or 1..32
+AlignmentFallbackOffset = 0
+
+# Values: Inherit | Preserve | Canonical
+CallsLayout = Inherit
+
+# Values: Inherit | IfNeeded | Always
+CallsBreak = Inherit
+
+# Values: Inherit | Fill | VerticalWhenBroken | AllOrVertical
+CallsPacking = Inherit
+
+# Values: Inherit | InlineIfFits | NextLine
+CallsFirstItem = Inherit
+
+# Values: Inherit | Block | Delimiter
+CallsAlignment = Inherit
+
+# Values: Inherit | 0 (use IndentWidth) or 1..32
+CallsContinuationOffset = Inherit
+
+# Values: Inherit | 0 (use IndentWidth) or 1..32
+CallsAlignmentFallbackOffset = Inherit
+
+# Values: Inherit | SameLine | OwnLine
+CallsCloser = Inherit
+
+# Values: Inherit | InlineIfFits | NextLine
+CallsSoleArgumentFirstItem = Inherit
+
+# Values: Inherit | Preserve | Canonical
+ParametersLayout = Inherit
+
+# Values: Inherit | IfNeeded | Always
+ParametersBreak = Inherit
+
+# Values: Inherit | Fill | VerticalWhenBroken | AllOrVertical
+ParametersPacking = Inherit
+
+# Values: Inherit | InlineIfFits | NextLine
+ParametersFirstItem = Inherit
+
+# Values: Inherit | Block | Delimiter
+ParametersAlignment = Inherit
+
+# Values: Inherit | 0 (use IndentWidth) or 1..32
+ParametersContinuationOffset = Inherit
+
+# Values: Inherit | 0 (use IndentWidth) or 1..32
+ParametersAlignmentFallbackOffset = Inherit
+
+# Values: Inherit | SameLine | OwnLine
+ParametersCloser = Inherit
+
+# Values: Inherit | Preserve | Canonical
+TemplateParametersLayout = Inherit
+
+# Values: Inherit | IfNeeded | Always
+TemplateParametersBreak = Inherit
+
+# Values: Inherit | Fill | VerticalWhenBroken | AllOrVertical
+TemplateParametersPacking = Inherit
+
+# Values: Inherit | InlineIfFits | NextLine
+TemplateParametersFirstItem = Inherit
+
+# Values: Inherit | Block | Delimiter
+TemplateParametersAlignment = Inherit
+
+# Values: Inherit | 0 (use IndentWidth) or 1..32
+TemplateParametersContinuationOffset = Inherit
+
+# Values: Inherit | 0 (use IndentWidth) or 1..32
+TemplateParametersAlignmentFallbackOffset = Inherit
+
+# Values: Inherit | SameLine | OwnLine
+TemplateParametersCloser = Inherit
+
+# Values: Inherit | Preserve | Canonical
+TemplateArgumentsLayout = Inherit
+
+# Values: Inherit | IfNeeded | Always
+TemplateArgumentsBreak = Inherit
+
+# Values: Inherit | Fill | VerticalWhenBroken | AllOrVertical
+TemplateArgumentsPacking = Inherit
+
+# Values: Inherit | InlineIfFits | NextLine
+TemplateArgumentsFirstItem = Inherit
+
+# Values: Inherit | Block | Delimiter
+TemplateArgumentsAlignment = Inherit
+
+# Values: Inherit | 0 (use IndentWidth) or 1..32
+TemplateArgumentsContinuationOffset = Inherit
+
+# Values: Inherit | 0 (use IndentWidth) or 1..32
+TemplateArgumentsAlignmentFallbackOffset = Inherit
+
+# Values: Inherit | SameLine | OwnLine
+TemplateArgumentsCloser = Inherit
+
+# Values: Inherit | Preserve | Canonical
+InitializersLayout = Inherit
+
+# Values: Inherit | IfNeeded | Always
+InitializersBreak = Inherit
+
+# Values: Inherit | Fill | VerticalWhenBroken | AllOrVertical
+InitializersPacking = Inherit
+
+# Values: Inherit | InlineIfFits | NextLine
+InitializersFirstItem = Inherit
+
+# Values: Inherit | Block | Delimiter
+InitializersAlignment = Inherit
+
+# Values: Inherit | 0 (use IndentWidth) or 1..32
+InitializersContinuationOffset = Inherit
+
+# Values: Inherit | 0 (use IndentWidth) or 1..32
+InitializersAlignmentFallbackOffset = Inherit
+
+# Values: Inherit | SameLine | OwnLine
+InitializersCloser = Inherit
+
+# Values: Inherit | Preserve | Canonical
+CapturesLayout = Inherit
+
+# Values: Inherit | IfNeeded | Always
+CapturesBreak = Inherit
+
+# Values: Inherit | Fill | VerticalWhenBroken | AllOrVertical
+CapturesPacking = Inherit
+
+# Values: Inherit | InlineIfFits | NextLine
+CapturesFirstItem = Inherit
+
+# Values: Inherit | Block | Delimiter
+CapturesAlignment = Inherit
+
+# Values: Inherit | 0 (use IndentWidth) or 1..32
+CapturesContinuationOffset = Inherit
+
+# Values: Inherit | 0 (use IndentWidth) or 1..32
+CapturesAlignmentFallbackOffset = Inherit
+
+# Values: Inherit | SameLine | OwnLine
+CapturesCloser = Inherit
+
+# Values: Inherit | Preserve | Canonical
+ControlHeadersLayout = Inherit
+
+# Values: Inherit | IfNeeded | Always
+ControlHeadersBreak = Inherit
+
+# Values: Inherit | Fill | VerticalWhenBroken | AllOrVertical
+ControlHeadersPacking = Inherit
+
+# In broken headers: InlineIfFits keeps the first condition
+# beside the opener if it fits; NextLine moves it below.
+# Values: Inherit | InlineIfFits | NextLine
+ControlHeadersFirstItem = Inherit
+
+# Values: Inherit | Block | Delimiter
+ControlHeadersAlignment = Inherit
+
+# Values: Inherit | 0 (use IndentWidth) or 1..32
+ControlHeadersContinuationOffset = Inherit
+
+# Values: Inherit | 0 (use IndentWidth) or 1..32
+ControlHeadersAlignmentFallbackOffset = Inherit
+
+# Values: Inherit | SameLine | OwnLine
+ControlHeadersCloser = Inherit
+
+# AllOrVertical behaves like VerticalWhenBroken here.
+# Fill keeps ordinary expression packing (default).
+# VerticalWhenBroken splits all top-level &&/|| operands
+# when an if header wraps, including nested call breaks.
+# Parentheses, init-statements and other controls keep
+# their own policies. Canonical header/expression layout
+# is required; fitting headers stay flat unless forced.
+# Comment attachments and protected gaps take precedence.
+# BinaryOperatorSide selects leading/trailing operators.
+# ControlHeadersFirstItem selects InlineIfFits/NextLine.
+# Example with Leading: if (ready
+#     && (left || right)
+#     && enabled)
+# Values: Fill | VerticalWhenBroken | AllOrVertical
+IfConditionsPacking = Fill
+
+# Values: Inherit | Preserve | Canonical
+EnumeratorsLayout = Inherit
+
+# Values: Inherit | IfNeeded | Always
+EnumeratorsBreak = Inherit
+
+# Values: Inherit | Fill | VerticalWhenBroken | AllOrVertical
+EnumeratorsPacking = Inherit
+
+# Values: Inherit | InlineIfFits | NextLine
+EnumeratorsFirstItem = Inherit
+
+# Values: Inherit | Block | Delimiter
+EnumeratorsAlignment = Inherit
+
+# Values: Inherit | 0 (use IndentWidth) or 1..32
+EnumeratorsContinuationOffset = Inherit
+
+# Values: Inherit | 0 (use IndentWidth) or 1..32
+EnumeratorsAlignmentFallbackOffset = Inherit
+
+# Values: Inherit | SameLine | OwnLine
+EnumeratorsCloser = Inherit
+
+# Values: Inherit | Preserve | Canonical
+BaseListsLayout = Inherit
+
+# Values: Inherit | IfNeeded | Always
+BaseListsBreak = Inherit
+
+# Values: Inherit | Fill | VerticalWhenBroken | AllOrVertical
+BaseListsPacking = Inherit
+
+# Values: Inherit | InlineIfFits | NextLine
+BaseListsFirstItem = Inherit
+
+# Values: Inherit | Block | Delimiter
+BaseListsAlignment = Inherit
+
+# Values: Inherit | 0 (use IndentWidth) or 1..32
+BaseListsContinuationOffset = Inherit
+
+# Values: Inherit | 0 (use IndentWidth) or 1..32
+BaseListsAlignmentFallbackOffset = Inherit
+
+# Values: Inherit | Preserve | Canonical
+ConstructorListsLayout = Inherit
+
+# Values: Inherit | IfNeeded | Always
+ConstructorListsBreak = Inherit
+
+# Values: Inherit | Fill | VerticalWhenBroken | AllOrVertical
+ConstructorListsPacking = Inherit
+
+# Values: Inherit | InlineIfFits | NextLine
+ConstructorListsFirstItem = Inherit
+
+# Values: Inherit | Block | Delimiter
+ConstructorListsAlignment = Inherit
+
+# Values: Inherit | 0 (use IndentWidth) or 1..32
+ConstructorListsContinuationOffset = Inherit
+
+# Values: Inherit | 0 (use IndentWidth) or 1..32
+ConstructorListsAlignmentFallbackOffset = Inherit
+
+# Values: IfNeeded | Always
+ExpressionsBreak = IfNeeded
+
+# AllOrVertical behaves like VerticalWhenBroken here.
+# Values: Fill | VerticalWhenBroken | AllOrVertical
+ExpressionsPacking = Fill
+
+# Inherit (default) follows ExpressionsPacking.
+# Applies to assignment operators and = initializers,
+# including parameter defaults and enumerator values.
+# Fill can keep the RHS prefix beside the assignment
+# while nested expressions wrap independently.
+# VerticalWhenBroken splits every assignment boundary
+# in a broken assignment sequence.
+# AssignmentRhsPlacement = NextLine and ExpressionsBreak
+# = Always still require assignment breaks. Example:
+# ExpressionsPacking = VerticalWhenBroken
+# AssignmentsPacking = Fill
+# auto ready = firstCheck() ||
+#     secondCheck();
+# AllOrVertical behaves like VerticalWhenBroken here.
+# Values: Inherit | Fill | VerticalWhenBroken | AllOrVertical
+AssignmentsPacking = Inherit
+
+# Values: Block | Operand
+ExpressionsAlignment = Block
+
+# Values: Inherit | Preserve | Canonical
+ExpressionsLayout = Inherit
+
+# Values: Leading | Trailing
+BinaryOperatorSide = Trailing
+
+# Values: Leading | Trailing
+AssignmentOperatorSide = Trailing
+
+# Values: Leading | Trailing
+ShiftOperatorSide = Trailing
+
+# Values: Leading | Trailing
+TernaryOperatorSide = Leading
+
+# Values: Flexible | ThreePart
+TernaryLayout = Flexible
+
+# Values: Align | Indent
+TernaryOperatorIndentation = Align
+
+# Values: Inherit | Preserve | Canonical
+ChainsLayout = Inherit
+
+# In control headers, chains break only when needed.
+# Even with Always, prefer non-chain breaks.
+# Lambda bodies and explicit AlwaysBreakChainRootNames keep
+# their ordinary chain policy.
+# Values: IfNeeded | Always
+ChainsBreak = IfNeeded
+
+# AllOrVertical keeps the complete tail after the receiver
+# on one continuation line, or splits every tail link.
+# Example with ColumnLimit = 40:
+# auto client = MakeServiceClient()
+#     .Configure(mode).Start();
+# Values: Fill | VerticalWhenBroken | AllOrVertical
+ChainsPacking = Fill
+
+# Values: Block | Delimiter
+ChainsAlignment = Block
+
+# Values: Inherit | Preserve | Canonical
+DeclarationHeadersLayout = Inherit
+
+# Values: false | true
+BreakAfterTemplateHeader = false
+
+# Values: InlineIfFits | NextLine
+AssignmentRhsPlacement = InlineIfFits
+
+# Values: Inherit | Preserve | Canonical
+BodiesLayout = Inherit
+
+# CompactSingleStatementIfFits: one simple statement, including
+# a local declaration, only when it fits ColumnLimit.
+# Nested controls/blocks, records, namespaces and sibling
+# comments/directives remain expanded. Canonical bodies only.
+# Empty bodies use the independent empty-body shape.
+# Example: int Next(int x) { return x + 1; }
+# Clear(); Notify(); in one body remains multiline.
+# Values: Expanded | CompactIfFits | CompactSingleStatementIfFits
+BodyShape = Expanded
+
+# CompactSingleStatementIfFits expands empty bodies.
+# Values: Expanded | CompactIfFits | CompactSingleStatementIfFits
+EmptyBodyShape = Expanded
+
+# Values: Inherit | Preserve | Canonical
+LambdaBodiesLayout = Inherit
+
+# CompactSingleStatementIfFits: one simple statement, including
+# a local declaration, only when it fits ColumnLimit.
+# Nested controls/blocks, records, namespaces and sibling
+# comments/directives remain expanded. Canonical bodies only.
+# Empty bodies use the independent empty-body shape.
+# Example: int Next(int x) { return x + 1; }
+# Clear(); Notify(); in one body remains multiline.
+# Values: Inherit | Expanded | CompactIfFits | CompactSingleStatementIfFits
+LambdaBodyShape = Inherit
+
+# CompactSingleStatementIfFits expands empty bodies.
+# Values: Inherit | Expanded | CompactIfFits | CompactSingleStatementIfFits
+LambdaEmptyBodyShape = Inherit
+
+# Values: Attached | NextLine | NextLineIfHeaderBroken | NextLineIfHeaderIndented
+ClassBracePlacement = Attached
+
+# Values: Attached | NextLine | NextLineIfHeaderBroken | NextLineIfHeaderIndented
+StructBracePlacement = Attached
+
+# Values: Attached | NextLine | NextLineIfHeaderBroken | NextLineIfHeaderIndented
+UnionBracePlacement = Attached
+
+# For all brace placements, NextLineIfHeaderIndented uses
+# the last output header line in canonical header layout.
+# Break before { at or beyond body indentation; otherwise
+# attach it, including after a closing ) at brace indentation.
+# Example: void Process(
+#     Request request
+# ) {
+# ConstructorBracePlacement = Inherit follows this rule:
+# Worker::Worker() :
+#     Cache_(CreateCache())
+# {
+# Values: Attached | NextLine | NextLineIfHeaderBroken | NextLineIfHeaderIndented
+FunctionBracePlacement = Attached
+
+# Values: Inherit | Attached | NextLine | NextLineIfHeaderBroken | NextLineIfHeaderIndented
+ConstructorBracePlacement = Inherit
+
+# Values: Inherit | Attached | NextLine | NextLineIfHeaderBroken | NextLineIfHeaderIndented
+DestructorBracePlacement = Inherit
+
+# Values: Attached | NextLine | NextLineIfHeaderBroken | NextLineIfHeaderIndented
+LambdaBracePlacement = Attached
+
+# Values: Attached | NextLine | NextLineIfHeaderBroken | NextLineIfHeaderIndented
+NamespaceBracePlacement = Attached
+
+# Values: Attached | NextLine | NextLineIfHeaderBroken | NextLineIfHeaderIndented
+ControlBracePlacement = Attached
+
+# Values: Attached | NextLine | NextLineIfHeaderBroken | NextLineIfHeaderIndented
+EnumBracePlacement = Attached
+
+# Applies when a case contains only one compound block.
+# Mixed cases align all statements and standalone blocks.
+# Example: case 1: { work(); break; } uses this placement;
+# In case 2: { work(); } break;, braces align with break.
+# Values: Attached | NextLine | NextLineIfHeaderBroken | NextLineIfHeaderIndented
+CaseBlockBracePlacement = Attached
+
+# Values: Leading | Trailing
+BaseListsColonSide = Leading
+
+# Values: Leading | Trailing
+BaseListsCommaSide = Leading
+
+# Values: Leading | Trailing
+ConstructorListsColonSide = Leading
+
+# Values: Leading | Trailing
+ConstructorListsCommaSide = Leading
+
+# Values: Preserve | Never | WhenMultiline
+InitializersTrailingComma = Preserve
+
+# Values: Preserve | Left | Middle | Right
+PointerReferenceDeclaratorLocation = Preserve
+
+# Values: Preserve | Indent | NoIndent
+IndentAccessModifiers = Preserve
+
+# Values: 0 (use IndentWidth) or 1..32
+AccessModifierIndentWidth = 0
+
+# Values: Preserve | Indent | NoIndent
+IndentMembers = Preserve
+
+# Values: 0 (use IndentWidth) or 1..32
+MemberIndentWidth = 0
+
+# Values: Preserve | Indent | NoIndent
+IndentCaseLabels = Preserve
+
+# Values: 0 (use IndentWidth) or 1..32
+CaseLabelIndentWidth = 0
+
+# Values: 0 (use IndentWidth) or 1..32
+BlockBodyIndentWidth = 0
+
+# Values: Preserve | Indent | NoIndent
+IndentNamespaces = Preserve
+
+# Values: 0 (use IndentWidth) or 1..32
+NamespaceIndentWidth = 0
+
+# Values: Preserve | Indent
+StandaloneBlockBraceIndentation = Preserve
+
+# Values: Preserve | Block | Indent
+StatementAttributeIndent = Preserve
+
+# Values: 0 (use IndentWidth) or 1..32
+StatementAttributeIndentWidth = 0
+
+# Values: Preserve | 0..10000
+NamespaceBlankLinesAfterOpen = Preserve
+
+# Values: Preserve | 0..10000
+NamespaceBlankLinesBeforeClose = Preserve
+
+# Inside nonempty extern linkage blocks, outside attached comments.
+# Example: set both LinkageBlankLinesAfterOpen and
+# LinkageBlankLinesBeforeClose to 1 for a blank line at each edge.
+# Values: Preserve | 0..10000
+LinkageBlankLinesAfterOpen = Preserve
+
+# Inside nonempty extern linkage blocks, outside attached comments.
+# Example: set both LinkageBlankLinesAfterOpen and
+# LinkageBlankLinesBeforeClose to 1 for a blank line at each edge.
+# Values: Preserve | 0..10000
+LinkageBlankLinesBeforeClose = Preserve
+
+# Values: Preserve | 0..10000
+AccessSectionBlankLinesBefore = Preserve
+
+# Values: Preserve | 0..10000
+AccessSectionBlankLinesAfterLabel = Preserve
+
+# Values: Preserve | 0..10000
+DeclarationBlankLines = Preserve
+
+# Between different entity kinds: types, functions, variables.
+# Overrides declaration/definition counts, including members.
+# Types: records, enums, typedefs and using aliases.
+# Templates and single exports follow their declared entity.
+# Other declarations, directives and unattached comments stop grouping.
+# Example: DeclarationBlankLines = 0 with this set to 1
+# keeps like declarations together and separates categories.
+# Values: Preserve | 0..10000
+DeclarationCategoryBlankLines = Preserve
+
+# Values: Inherit | Preserve | 0..10000
+MemberDeclarationBlankLines = Inherit
+
+# Values: Preserve | 0..10000
+DefinitionBlankLines = Preserve
+
+# Values: Inherit | Preserve | 0..10000
+MemberDefinitionBlankLines = Inherit
+
+# Values: Preserve | 0..10000
+StandaloneCommentBlankLinesBefore = Preserve
+
+# Values: Preserve | 0..10000
+StandaloneCommentBlankLinesAfter = Preserve
+
+# Values: Preserve | 0..10000
+MaxEmptyLines = Preserve
+
+# Exact names (including member calls), empty by default.
+# Unqualified identifiers, not patterns.
+# Keep any first argument beside the opener when it fits.
+# Overrides CallLineFirstStringNames for shared names.
+# Example: CallLineFirstArgumentNames = ["dispatch"]
+# dispatch(value + offset, alpha, beta) can keep value
+# beside '(' while later arguments move below.
+# Values: [] or ["name", ...]
+CallLineFirstArgumentNames = []
+
+# Applies to CallLineFirstArgumentNames only.
+# Wrap (default): ordinary wrapping within the argument.
+# BreakBefore: move below the opener if the complete
+# argument and its same-line punctuation do not fit.
+# KeepInline: attach the opening piece, even over the limit.
+# Nested expressions, initializers and lambdas may wrap.
+# Always and protection win; preserved calls stay as-is.
+# Values: Wrap | BreakBefore | KeepInline
+CallLineFirstArgumentOverflow = Wrap
+
+# Values: [] or ["name", ...]
+CallLineFirstStringNames = []
+
+# Complete string first arguments of configured names.
+# Applies to CallLineFirstStringNames only.
+# Wrap (default): ordinary wrapping between literal pieces.
+# BreakBefore: move below the opener if the whole string
+# sequence and its same-line punctuation do not fit.
+# KeepInline: keep the first piece beside the opener, even
+# over ColumnLimit; later concatenated pieces may wrap.
+# Never splits literal contents. Always and protection win.
+# Preserved call layout is unchanged. Example:
+# CallLineFirstStringNames = ["message"]
+# BreakBefore moves the string in
+# message("first " "second", value) below the opener
+# if the complete first argument will not fit beside it.
+# Values: Wrap | BreakBefore | KeepInline
+CallLineFirstStringOverflow = Wrap
+
+# Exact qualified roots; only unambiguous templates match.
+# ns::Builder<T>::Make<U> matches ns::Builder::Make.
+# Omit the template disambiguator from configured names.
+# Values: [] or ["qualified::name", ...]
+ChainedCallRootNames = []
+
+# Exact qualified roots; only unambiguous templates match.
+# ns::Builder<T>::Make<U> matches ns::Builder::Make.
+# Omit the template disambiguator from configured names.
+# Values: [] or ["qualified::name", ...]
+AlwaysBreakChainRootNames = []
+
+# Case and ordinary labels delimit independent sections.
+# Only complete pairs inside one section affect indentation.
+# Uncertain unlabeled scopes retain line-start regions.
+# Inline endpoints do not prevent body expansion.
+# Values: [] or ["Begin:End", ...]
+IndentedCallScopePairs = []
+
+# Values: false | true
+GenerateCallScopeIndentation = false
+
+# Values: [] or ["Begin:End", ...]
+IndentedChainScopePairs = []
+
+# Values: [] or ["First:Second", ...]
+StickyChainCallPairs = []
+
+# Values: [] or ["name", ...]
+CallLikeMacroNames = []
+
+# Values: [] or ["name", ...]
+FunctionBodyMacroNames = []
+
+# Begin:End pairs of unqualified function-like macro names.
+# Endpoints must be distinct and unique across pairs.
+# Nested classes close with their configured matching end.
+# Arguments stay intact; no expanded types are inferred.
+# Example: ClassMacroNames = ["BEGIN_SETTER:END_SETTER"]
+# Values: [] or ["Begin:End", ...]
+ClassMacroNames = []
+
+# Values: [] or ["name", ...]
+WhitespaceSensitiveMacros = []
+
+# Indent the whole directive (including # or %:) by nesting
+# depth using IndentWidth spaces; remove spaces after the marker.
+# Example with IndentWidth = 4: a nested #if becomes "    #if".
+# else/elif/endif align with their if.
+# Values: false | true
+IndentPreprocessingDirectives = false
+
+# Values: false | true
+AlignMacroBackslashes = false
+
+# Values: 0 (preserve) or 3..10000
+RulerLength = 0
+
+# Values: Preserve | 0..10000
+RulerBlankLinesBefore = Preserve
+
+# Values: Preserve | 0..10000
+RulerBlankLinesAfter = Preserve
+
+# Values: Preserve | Sort
+IncludeOrder = Preserve
+
+# Values: Off | First
+IncludeMatchingHeader = Off
+
+# Values: Preserve | Regroup | Directory
+IncludeGrouping = Preserve
+
+# Values: [] or [{Prefix = "directory/", Depth = 127, Priority = 0}, ...]
+IncludeGroups = []
+
+# Values: Directory | Configured
+IncludeGroupOrder = Directory
+
+# Values: NearestFirst | Alphabetical
+IncludeDirectoryOrder = NearestFirst
+
+# Values: Alphabetical | NearestFirst
+IncludeInGroupOrder = Alphabetical
+
+# Values: SourceDirectory | ProjectRoot
+IncludePathBase = SourceDirectory
+
+# Values: Preserve | Last
+IncludeStandardHeaders = Preserve
+
+# Values: false | true
+AddMissingControlBraces = false
+
+# Remove only beside known syntax or sequence boundaries.
+# Unknown syntax and macro bodies retain semicolons.
+# Example: struct CLASS_NAME(Example) {}; keeps its ';'.
+# Values: false | true
+RemoveNullStatements = false
+
+# Remove only beside known syntax or sequence boundaries.
+# Unknown syntax and macro bodies retain semicolons.
+# Example: struct CLASS_NAME(Example) {}; keeps its ';'.
+# Remove redundant null declarations.
+# Required semicolons stay intact.
+# Same-line namespace suffixes are removed beside comments:
+# namespace N {}; // note becomes namespace N {} // note.
+# Standalone commented placeholders stay intact.
+# Values: false | true
+RemoveNullDeclarations = false
+
+# Values: Preserve | EmptyBlock
+EmptyControlBody = Preserve
+
+# Values: Preserve | Remove | AddMissing | Fix
+NamespaceComments = Preserve
+
+# Values: Preserve | 0..10000 (omitted: TrailingCommentSpacing)
+# TrailingCommentSpaces = Preserve
+
+# Values: 1..32
+NamespaceCommentSpaces = 1
+
+# Values: 0 (no exemption) or 1..10000
+ShortNamespaceLines = 0
+
+# Values: Preserve | Space | NoSpace | GeneratedSpace | GeneratedNoSpace
+TrailingCommentSpacing = Preserve
+
+# Between a call argument or braced initializer element and
+# its leading/trailing block comments, for any value kind.
+# After the last leading and before the first trailing one,
+# and between consecutive block comments in attached runs.
+# Space: consume(/* first */ /* second */ value /* note */);
+# NoSpace: consume(/* first *//* second */value/* note */);
+# Default: Preserve, keeping original horizontal spelling.
+# Choose Space explicitly to normalize horizontal gaps.
+# Generated* applies when the owning list is rebuilt.
+# Only block-to-block and block-to-argument gaps qualify.
+# Newlines, line comments, interiors, separator-facing gaps
+# and protections stay put.
+# Values: Preserve | Space | NoSpace | GeneratedSpace | GeneratedNoSpace
+ArgumentCommentSpacing = Preserve
+
+# Values: Preserve | Space | NoSpace | GeneratedSpace | GeneratedNoSpace
+NamedCastSpaceBeforeOperandParentheses = Preserve
+
+# Values: Preserve | Space | NoSpace | GeneratedSpace | GeneratedNoSpace
+ReturnSpaceBeforeParentheses = Preserve
+
+# Values: Preserve | Space | NoSpace | GeneratedSpace | GeneratedNoSpace
+ThrowSpaceBeforeParentheses = Preserve
+
+# Values: Preserve | Space | NoSpace | GeneratedSpace | GeneratedNoSpace
+CoReturnSpaceBeforeParentheses = Preserve
+
+# Values: Preserve | Space | NoSpace | GeneratedSpace | GeneratedNoSpace
+FunctionSuffixSpecifierSpacing = Preserve
+
+# Values: Preserve | Space | NoSpace | GeneratedSpace | GeneratedNoSpace
+RecordBodyInteriorSpacing = Preserve
+
+# Values: Preserve | Space | NoSpace | GeneratedSpace | GeneratedNoSpace
+NamespaceBodyInteriorSpacing = Preserve
+
+# Values: Preserve | Space | NoSpace | GeneratedSpace | GeneratedNoSpace
+EnumBodyInteriorSpacing = Preserve
+
+# Values: Preserve | Space | NoSpace | GeneratedSpace | GeneratedNoSpace
+RequirementBodyInteriorSpacing = Preserve
+
+# Values: Preserve | Space | NoSpace | GeneratedSpace | GeneratedNoSpace
+TemplateKeywordSpacing = Preserve
+
+# NoSpace may join confirmed template closers as >>.
+# Values: Preserve | Space | NoSpace | GeneratedSpace | GeneratedNoSpace
+TemplateTypeArgumentInteriorSpacing = Preserve
+
+# Values: Preserve | Space | NoSpace | GeneratedSpace | GeneratedNoSpace
+TemplateTypeArgumentSpacing = Preserve
+
+# Values: Preserve | Space | NoSpace | GeneratedSpace | GeneratedNoSpace
+EmptyBraceInitializerInteriorSpacing = Preserve
+
+# C++ [[...]] bracket interiors, not extension payloads.
+# Values: Preserve | Space | NoSpace | GeneratedSpace | GeneratedNoSpace
+AttributeInteriorSpacing = Preserve
+
+# Outside [[...]], GNU __attribute__ and MS __declspec.
+# Interiors and punctuation retain their own policies.
+# Values: Preserve | Space | NoSpace | GeneratedSpace | GeneratedNoSpace
+AttributeSpaceAfterSpecifier = Preserve
+
+# Values: Preserve | Space | NoSpace | GeneratedSpace | GeneratedNoSpace
+NamedCastSpaceBeforeTypeArguments = Preserve
+
+# Values: Preserve | Space | NoSpace | GeneratedSpace | GeneratedNoSpace
+PlacementNewSpaceBeforeArguments = Preserve
+
+# Outside [[...]], GNU __attribute__ and MS __declspec.
+# Interiors and punctuation retain their own policies.
+# Values: Preserve | Space | NoSpace | GeneratedSpace | GeneratedNoSpace
+AttributeSpaceBeforeSpecifier = Preserve
+
+# Values: Preserve | Space | NoSpace | GeneratedSpace | GeneratedNoSpace
+NewInitializerSpaceBeforeParentheses = Preserve
+
+# Values: Preserve | Space | NoSpace | GeneratedSpace | GeneratedNoSpace
+DeleteArraySpaceBeforeBrackets = Preserve
+
+# Values: Preserve | Space | NoSpace | GeneratedSpace | GeneratedNoSpace
+SizeofPackSpaceBeforeParentheses = Preserve
+
+# Values: Preserve | Space | NoSpace | GeneratedSpace | GeneratedNoSpace
+NewInitializerSpaceBeforeBraces = Preserve
+
+# Values: Preserve | Space | NoSpace | GeneratedSpace | GeneratedNoSpace
+NewInitializerParenthesisInteriorSpacing = Preserve
+
+# Values: Preserve | Space | NoSpace | GeneratedSpace | GeneratedNoSpace
+DeleteArraySpaceAfterBrackets = Preserve
+
+# Values: Preserve | Space | NoSpace | GeneratedSpace | GeneratedNoSpace
+PlacementNewSpaceAfterArguments = Preserve
+
+# Values: Preserve | Space | NoSpace | GeneratedSpace | GeneratedNoSpace
+NewArraySpaceBeforeBrackets = Preserve
+
+# Values: Preserve | Space | NoSpace | GeneratedSpace | GeneratedNoSpace
+NewArrayInteriorSpacing = Preserve
+
+# C++ [[...]] bracket interiors, not extension payloads.
+# Values: Preserve | Space | NoSpace | GeneratedSpace | GeneratedNoSpace
+EmptyAttributeInteriorSpacing = Preserve
+
+# Values: Preserve | Space | NoSpace | GeneratedSpace | GeneratedNoSpace
+CoAwaitSpaceBeforeParentheses = Preserve
+
+# Values: Preserve | Space | NoSpace | GeneratedSpace | GeneratedNoSpace
+NewInitializerBraceInteriorSpacing = Preserve
+
+# Values: Preserve | Space | NoSpace | GeneratedSpace | GeneratedNoSpace
+PlacementNewArgumentInteriorSpacing = Preserve
+
+# Values: Preserve | Space | NoSpace | GeneratedSpace | GeneratedNoSpace
+EmptyArrayDeclarationInteriorSpacing = Preserve
+
+# Values: Preserve | Space | NoSpace | GeneratedSpace | GeneratedNoSpace
+EmptyNewArrayInteriorSpacing = Preserve
+
+# Values: Preserve | Space | NoSpace | GeneratedSpace | GeneratedNoSpace
+NoexceptSpaceBeforeSpecifier = Preserve
+
+# Values: Preserve | Space | NoSpace | GeneratedSpace | GeneratedNoSpace
+FunctionQualifierSpacing = Preserve
+
+# Values: Preserve | Space | NoSpace | GeneratedSpace | GeneratedNoSpace
+FunctionRefQualifierSpacing = Preserve
+
+# Values: Inherit | Preserve | Space | NoSpace | GeneratedSpace | GeneratedNoSpace
+FunctionCvRefQualifierSpacing = Inherit
+
+# Values: Preserve | Space | NoSpace | GeneratedSpace | GeneratedNoSpace
+NestedDeclaratorInteriorSpacing = Preserve
+
+# Values: Preserve | Space | NoSpace | GeneratedSpace | GeneratedNoSpace
+NestedDeclaratorPointerSpacing = Preserve
+
+# Values: Preserve | Space | NoSpace | GeneratedSpace | GeneratedNoSpace
+MemberPointerDeclaratorSpacing = Preserve
+
+# Values: Preserve | Space | NoSpace | GeneratedSpace | GeneratedNoSpace
+NoexceptSpaceBeforeParentheses = Preserve
+
+# Values: Preserve | Space | NoSpace | GeneratedSpace | GeneratedNoSpace
+AlignasSpaceBeforeParentheses = Preserve
+
+# Values: Preserve | Space | NoSpace | GeneratedSpace | GeneratedNoSpace
+AlignofSpaceBeforeParentheses = Preserve
+
+# Values: Preserve | Space | NoSpace | GeneratedSpace | GeneratedNoSpace
+SizeofSpaceBeforeParentheses = Preserve
+
+# Values: Preserve | Space | NoSpace | GeneratedSpace | GeneratedNoSpace
+DecltypeSpaceBeforeParentheses = Preserve
+
+# Values: Preserve | Space | NoSpace | GeneratedSpace | GeneratedNoSpace
+TypeidSpaceBeforeParentheses = Preserve
+
+# Values: Preserve | Space | NoSpace | GeneratedSpace | GeneratedNoSpace
+RequiresSpaceBeforeParentheses = Preserve
+
+# Values: Preserve | Space | NoSpace | GeneratedSpace | GeneratedNoSpace
+StaticAssertSpaceBeforeParentheses = Preserve
+
+# Values: Preserve | Space | NoSpace | GeneratedSpace | GeneratedNoSpace
+StatementSemicolonSpacing = Preserve
+
+# Values: Preserve | Space | NoSpace | GeneratedSpace | GeneratedNoSpace
+MemberAccessOperatorsSpacing = Preserve
+
+# Qualified :: edges, not the gap before leading global ::.
+# Values: Preserve | Space | NoSpace | GeneratedSpace | GeneratedNoSpace
+ScopeResolutionSpacing = Preserve
+
+# Values: Preserve | Space | NoSpace | GeneratedSpace | GeneratedNoSpace
+InitializerBracesSpacing = GeneratedNoSpace
+
+# Values: Preserve | Space | NoSpace | GeneratedSpace | GeneratedNoSpace
+CastArgumentSpacing = Preserve
+
+# Values: Preserve | Space | NoSpace | GeneratedSpace | GeneratedNoSpace
+GroupingInteriorSpacing = Preserve
+
+# Values: Preserve | Space | NoSpace | GeneratedSpace | GeneratedNoSpace
+ControlBlockConditionSpacing = Preserve
+
+# Values: Preserve | Space | NoSpace | GeneratedSpace | GeneratedNoSpace
+AccessModifierColonSpacing = Preserve
+
+# Values: Preserve | Space | NoSpace | GeneratedSpace | GeneratedNoSpace
+RangeBasedForColonSpacing = Preserve
+
+# Values: Preserve | Space | NoSpace | GeneratedSpace | GeneratedNoSpace
+BlockInteriorSpacing = Preserve
+
+# Values: Preserve | Space | NoSpace | GeneratedSpace | GeneratedNoSpace
+EmptyBlockInteriorSpacing = GeneratedNoSpace
+
+# Values: Preserve | Space | NoSpace | GeneratedSpace | GeneratedNoSpace
+EmptyLambdaBodySpacing = Preserve
+
+# Values: Preserve | Space | NoSpace | GeneratedSpace | GeneratedNoSpace
+ControlBlockSpaceBeforeBrace = GeneratedSpace
+
+# Values: Preserve | Space | NoSpace | GeneratedSpace | GeneratedNoSpace
+DeclarationSemicolonSpacing = Preserve
+
+# Values: Preserve | Space | NoSpace | GeneratedSpace | GeneratedNoSpace
+UnaryOperatorSpacing = Preserve
+
+# Values: Preserve | Space | NoSpace | GeneratedSpace | GeneratedNoSpace
+PostfixOperatorSpacing = Preserve
+
+# Values: Preserve | Space | NoSpace | GeneratedSpace | GeneratedNoSpace
+TernaryOperatorSpacing = Preserve
+
+# Values: Preserve | Space | NoSpace | GeneratedSpace | GeneratedNoSpace
+BinaryOperatorSpacing = Preserve
+
+# Values: Preserve | Space | NoSpace | GeneratedSpace | GeneratedNoSpace
+AssignmentOperatorSpacing = Preserve
+
+# Values: Preserve | Space | NoSpace | GeneratedSpace | GeneratedNoSpace
+CastSpacing = Preserve
+
+# Values: Preserve | Space | NoSpace | GeneratedSpace | GeneratedNoSpace
+LoopSemicolonSpacing = Preserve
+
+# Values: Preserve | Space | NoSpace | GeneratedSpace | GeneratedNoSpace
+ConditionInitSemicolonSpacing = Preserve
+
+# Values: Preserve | Space | NoSpace | GeneratedSpace | GeneratedNoSpace
+SubscriptOperatorInteriorSpacing = Preserve
+
+# Values: Preserve | Space | NoSpace | GeneratedSpace | GeneratedNoSpace
+SubscriptOperatorSpacing = Preserve
+
+# Values: Preserve | Space | NoSpace | GeneratedSpace | GeneratedNoSpace
+ArrayDeclarationInteriorSpacing = Preserve
+
+# Values: Preserve | Space | NoSpace | GeneratedSpace | GeneratedNoSpace
+ArrayDeclarationSpacing = Preserve
+
+# Gap before an initializer's {, except after a comment.
+# ArgumentCommentSpacing controls comment-to-value gaps.
+# Values: Preserve | Space | NoSpace | GeneratedSpace | GeneratedNoSpace
+BraceInitializerSpacing = Preserve
+
+# Values: Preserve | Space | NoSpace | GeneratedSpace | GeneratedNoSpace
+EmptyFunctionCallArgumentsSpacing = Preserve
+
+# Values: Preserve | Space | NoSpace | GeneratedSpace | GeneratedNoSpace
+EmptyFunctionParametersSpacing = Preserve
+
+# Values: Preserve | Space | NoSpace | GeneratedSpace | GeneratedNoSpace
+EmptyLambdaParametersSpacing = Preserve
+
+# Values: Preserve | Space | NoSpace | GeneratedSpace | GeneratedNoSpace
+EmptyLambdaCaptureSpacing = Preserve
+
+# Values: Preserve | Space | NoSpace | GeneratedSpace | GeneratedNoSpace
+StructuredBindingBracketSpacing = Preserve
+
+# Values: Preserve | Space | NoSpace | GeneratedSpace | GeneratedNoSpace
+AmbiguousTemplateDeclarationSpacing = Preserve
+
+# Values: Preserve | Space | NoSpace | GeneratedSpace | GeneratedNoSpace
+ControlBlockKeywordSpacing = Preserve
+
+# Values: Preserve | Space | NoSpace | GeneratedSpace | GeneratedNoSpace
+ClassBraceSpacing = GeneratedSpace
+
+# Values: Preserve | Space | NoSpace | GeneratedSpace | GeneratedNoSpace
+LambdaBraceSpacing = GeneratedSpace
+
+# Values: Preserve | Space | NoSpace | GeneratedSpace | GeneratedNoSpace
+LambdaSpaceBeforeParameters = Preserve
+
+# Values: Preserve | Space | NoSpace | GeneratedSpace | GeneratedNoSpace
+SpaceAroundCaptureList = Preserve
+
+# Values: Preserve | Space | NoSpace | GeneratedSpace | GeneratedNoSpace
+SpaceAroundCaptureAssignment = Preserve
+
+# Values: Preserve | Space | NoSpace | GeneratedSpace | GeneratedNoSpace
+FunctionSpaceBeforeParameters = Preserve
+
+# Values: Preserve | Space | NoSpace | GeneratedSpace | GeneratedNoSpace
+FunctionCallSpaceBeforeParameters = Preserve
+
+# Values: Preserve | Space | NoSpace | GeneratedSpace | GeneratedNoSpace
+LambdaCallSpaceBeforeArguments = Preserve
+
+# Values: Preserve | Space | NoSpace | GeneratedSpace | GeneratedNoSpace
+SpaceInsideFunctionParameters = GeneratedNoSpace
+
+# Values: Preserve | Space | NoSpace | GeneratedSpace | GeneratedNoSpace
+SpaceInsideLambdaParameters = Preserve
+
+# Values: Preserve | Space | NoSpace | GeneratedSpace | GeneratedNoSpace
+SpaceInsideCallArguments = GeneratedNoSpace
+
+# Values: Preserve | Space | NoSpace | GeneratedSpace | GeneratedNoSpace
+StructBraceSpacing = GeneratedSpace
+
+# Values: Preserve | Space | NoSpace | GeneratedSpace | GeneratedNoSpace
+EnumBraceSpacing = Preserve
+
+# Values: Preserve | Space | NoSpace | GeneratedSpace | GeneratedNoSpace
+UnionBraceSpacing = GeneratedSpace
+
+# Values: Preserve | Space | NoSpace | GeneratedSpace | GeneratedNoSpace
+FunctionBraceSpacing = GeneratedSpace
+
+# Values: Preserve | Space | NoSpace | GeneratedSpace | GeneratedNoSpace
+NamespaceBraceSpacing = GeneratedSpace
+
+# Values: Preserve | Space | NoSpace | GeneratedSpace | GeneratedNoSpace
+CommaSpaceBefore = GeneratedNoSpace
+
+# Values: Preserve | Space | NoSpace | GeneratedSpace | GeneratedNoSpace
+CommaSpaceAfter = GeneratedSpace
+
+# Values: Preserve | Space | NoSpace | GeneratedSpace | GeneratedNoSpace
+BitFieldColonSpaceBefore = Preserve
+
+# Values: Preserve | Space | NoSpace | GeneratedSpace | GeneratedNoSpace
+BitFieldColonSpaceAfter = Preserve
+
+# Values: Preserve | Space | NoSpace | GeneratedSpace | GeneratedNoSpace
+EnumUnderlyingTypeColonSpaceBefore = Preserve
+
+# Values: Preserve | Space | NoSpace | GeneratedSpace | GeneratedNoSpace
+EnumUnderlyingTypeColonSpaceAfter = Preserve
+
+# Values: Preserve | Space | NoSpace | GeneratedSpace | GeneratedNoSpace
+LabelColonSpaceBefore = Preserve
+
+# Values: Preserve | Space | NoSpace | GeneratedSpace | GeneratedNoSpace
+LabelColonSpaceAfter = Preserve
+
+# Values: Preserve | Space | NoSpace | GeneratedSpace | GeneratedNoSpace
+ReturnArrowSpaceBefore = Preserve
+
+# Values: Preserve | Space | NoSpace | GeneratedSpace | GeneratedNoSpace
+ReturnArrowSpaceAfter = Preserve
+
+# Values: Preserve | Space | NoSpace | GeneratedSpace | GeneratedNoSpace
+OperatorOverloadOperatorSpaceBefore = Preserve
+
+# Values: Preserve | Space | NoSpace | GeneratedSpace | GeneratedNoSpace
+OperatorOverloadOperatorSpaceAfter = Preserve
+
+# Values: Preserve | Space | NoSpace | GeneratedSpace | GeneratedNoSpace
+BaseListsColonSpaceBefore = GeneratedNoSpace
+
+# Values: Preserve | Space | NoSpace | GeneratedSpace | GeneratedNoSpace
+BaseListsColonSpaceAfter = GeneratedSpace
+
+# Values: Preserve | Space | NoSpace | GeneratedSpace | GeneratedNoSpace
+ConstructorListsColonSpaceBefore = GeneratedNoSpace
+
+# Values: Preserve | Space | NoSpace | GeneratedSpace | GeneratedNoSpace
+ConstructorListsColonSpaceAfter = GeneratedSpace
+
+# Naming checks
+
+# Values: Unchecked | camelCase | PascalCase | snake_case | SCREAMING_SNAKE_CASE
+ClassNameCase = Unchecked
+
+# Values: [] (disabled) or ["prefix", ...]
+# [""] explicitly allows names without a prefix.
+ClassNamePrefixes = []
+
+# Values: Unchecked | camelCase | PascalCase | snake_case | SCREAMING_SNAKE_CASE
+EnumNameCase = Unchecked
+
+# Values: [] (disabled) or ["prefix", ...]
+# [""] explicitly allows names without a prefix.
+EnumNamePrefixes = []
+
+# Values: Unchecked | camelCase | PascalCase | snake_case | SCREAMING_SNAKE_CASE
+UnionNameCase = Unchecked
+
+# Values: [] (disabled) or ["prefix", ...]
+# [""] explicitly allows names without a prefix.
+UnionNamePrefixes = []
+
+# Values: Unchecked | camelCase | PascalCase | snake_case | SCREAMING_SNAKE_CASE
+StructNameCase = Unchecked
+
+# Values: [] (disabled) or ["prefix", ...]
+# [""] explicitly allows names without a prefix.
+StructNamePrefixes = []
+
+# Values: Unchecked | camelCase | PascalCase | snake_case | SCREAMING_SNAKE_CASE
+FunctionNameCase = Unchecked
+
+# Values: [] (disabled) or ["prefix", ...]
+# [""] explicitly allows names without a prefix.
+FunctionNamePrefixes = []
+
+# Values: Unchecked | camelCase | PascalCase | snake_case | SCREAMING_SNAKE_CASE
+ConceptNameCase = Unchecked
+
+# Values: [] (disabled) or ["prefix", ...]
+# [""] explicitly allows names without a prefix.
+ConceptNamePrefixes = []
+
+# Values: Unchecked | camelCase | PascalCase | snake_case | SCREAMING_SNAKE_CASE
+VariableNameCase = Unchecked
+
+# Values: [] (disabled) or ["prefix", ...]
+# [""] explicitly allows names without a prefix.
+VariableNamePrefixes = []
+
+# Values: Unchecked | camelCase | PascalCase | snake_case | SCREAMING_SNAKE_CASE
+NamespaceNameCase = Unchecked
+
+# Values: [] (disabled) or ["prefix", ...]
+# [""] explicitly allows names without a prefix.
+NamespaceNamePrefixes = []
+
+# Configuration inheritance (optional)
+# Relative paths start here; absolute filesystem paths work too.
+# @/ starts at the nearest ancestor with a .git or .arc marker
+# (file or directory, including worktrees).
+# Local settings override the base regardless of include position.
+# Lists replace inherited lists; [] clears them.
+# Validation uses merged settings. Nested includes: 64 files max.
+# Cycles, missing files and duplicate includes are errors.
+# include = "base.hit-fmt"
+# include = "@/configs/base.hit-fmt"
+
+# Other configuration options
+
+# Values: [] or ["qualified::name", ...]
+NamingNamespaceExemptions = ["std"]
+
+# Values: Unchecked | Required
+FunctionDeclarationParameterNames = Unchecked
+
+# Values: Unchecked | NameRequired | NameOrCommentedNameRequired
+FunctionDefinitionParameterNames = Unchecked
+
+# Values: [] or ["path regex", ...]
+Exclude = []
+

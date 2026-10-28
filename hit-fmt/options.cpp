@@ -7,6 +7,24 @@
 
 namespace hit_fmt {
 
+namespace {
+
+ConfigPreset ParseConfigPreset(std::string_view name)
+{
+    if (name == "ytsaurus") {
+        return ConfigPreset::YTsaurus;
+    }
+    if (name == "google") {
+        return ConfigPreset::Google;
+    }
+    if (name == "llvm") {
+        return ConfigPreset::LLVM;
+    }
+    throw UsageError("unknown config preset: " + std::string(name) + " (expected ytsaurus, google or llvm)");
+}
+
+} // namespace
+
 Options ParseOptions(int argc, const char* const argv[])
 {
     Options options;
@@ -23,8 +41,13 @@ Options ParseOptions(int argc, const char* const argv[])
             options.ShowVersion = true;
         } else if (argument == "--help-config") {
             options.ShowConfigHelp = true;
-        } else if (argument == "--generate-config") {
-            options.GenerateConfig = true;
+        } else if (argument == "--generate-config" || argument.starts_with("--generate-config=")) {
+            options.GenerateConfig = ConfigPreset::Default;
+            if (argument != "--generate-config") {
+                options.GenerateConfig = ParseConfigPreset(argument.substr(18));
+            } else if (index + 1 < argc && !std::string_view(argv[index + 1]).starts_with('-')) {
+                options.GenerateConfig = ParseConfigPreset(argv[++index]);
+            }
         } else if (argument == "--fix") {
             options.Fix = true;
         } else if (argument == "--check") {
@@ -126,6 +149,9 @@ Options ParseOptions(int argc, const char* const argv[])
     }
     if (!options.Spillover && !options.HunkInput) {
         throw UsageError("--no-spillover requires --changed-hunks");
+    }
+    if (options.GenerateConfig && !options.Paths.empty()) {
+        throw UsageError("--generate-config cannot be combined with input paths");
     }
     return options;
 }

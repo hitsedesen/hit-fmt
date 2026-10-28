@@ -1,0 +1,578 @@
+# Configuration options
+Use Key = Value, # comments and ["quoted", "strings"] lists.
+Defaults keep line breaks; Layout = Canonical reflows code.
+Unknown names and invalid values are errors.
+Use --generate-config for all options, values and defaults.
+
+# Configuration inheritance
+Load a base file with include = "base.hit-fmt".
+- Paths start beside this config; absolute paths work too.
+- @/ starts at the nearest ancestor with a .git or .arc marker.
+- Local values win, regardless of include position.
+- Lists replace inherited lists; [] clears them.
+- Validate after merging. Nested includes: 64 files max.
+- Cycles, missing files and duplicate includes are errors.
+
+```config
+include = "@/configs/base.hit-fmt"
+ColumnLimit = 100
+```
+
+# Layout and width
+- Layout = Preserve (default) keeps source line breaks.
+  Canonical reflows syntax to fit; category Layout overrides may use
+  Inherit, Preserve or Canonical. Protection always takes precedence.
+- Break = IfNeeded allows fitting syntax to flatten. Always requests
+  a break even when it fits, but cannot split empty, indivisible or
+  protected syntax. A nested break alone may not satisfy Always.
+- ColumnLimit: 0 (unlimited) or 1..10000. Zero disables width wrapping
+  and diagnostics, not required breaks.
+- WidthDiagnostics: Off or Report. Widths count Unicode code points,
+  not display cells; invalid UTF-8 bytes count individually. Report
+  checks output line widths and expands tabs to tab stops.
+
+## Enable canonical layout:
+```config
+Layout = Canonical
+IndentWidth = 2
+ColumnLimit = 80
+WidthDiagnostics = Report
+BaseListsLayout = Preserve
+```
+
+# Lists and alignment
+- Categories: Calls, Parameters, TemplateParameters, TemplateArguments,
+  Initializers, Captures, ControlHeaders, BaseLists, ConstructorLists,
+  Enumerators. Use category prefixes for per-category overrides.
+- Each supports Layout, Break, Packing, FirstItem, Alignment,
+  ContinuationOffset and AlignmentFallbackOffset. Optional overrides
+  default to Inherit. Closer excludes BaseLists and ConstructorLists.
+- Packing: Fill packs items; VerticalWhenBroken separates them once
+  the list wraps. AllOrVertical keeps all items in one row or splits
+  every separator; opener/closer breaks are independent.
+  FirstItem: InlineIfFits or NextLine. Closer: SameLine
+  or OwnLine. First-item and closer placement apply to broken lists.
+- Alignment: Delimiter aligns after the opener; Block uses the block
+  indentation plus an offset. Zero offsets use IndentWidth. Delimiter
+  alignment falls back when the next item and suffix cannot fit.
+  Openers on one line share a continuation level; lists starting on
+  continued lines add a level. Bodies establish a fresh base.
+- Parameters controls function parameters. TemplateParameters controls
+  template and generic-lambda headers; TemplateArguments also controls
+  named-cast type brackets. Shared >> closers stay together.
+- CallsSoleArgumentFirstItem overrides CallsFirstItem for one argument
+  of any kind; Inherit follows CallsFirstItem. Other calls are unchanged.
+- ControlHeadersFirstItem places the first wrapped condition. With
+  canonical control-header and expression layout, IfConditionsPacking
+  = VerticalWhenBroken separates top-level &&/|| operands in wrapped
+  if headers. Fill is the default; parenthesized subexpressions and
+  other control kinds keep their own rules. BinaryOperatorSide sets
+  the operator side. Fitting headers stay flat unless Always applies.
+- Block comments after separators move with the next item. Other
+  comment attachments and protected gaps take precedence. Lambda bodies
+  indent from their opening line, independently of later arguments.
+
+## Set shared list defaults:
+```config
+ListBreak = IfNeeded
+ListPacking = Fill
+ListFirstItem = InlineIfFits
+ListCloser = SameLine
+ListAlignment = Delimiter
+ContinuationOffset = 4
+AlignmentFallbackOffset = 4
+```
+
+## Put call arguments on separate lines:
+```config
+CallsBreak = Always
+CallsPacking = VerticalWhenBroken
+CallsFirstItem = NextLine
+CallsCloser = OwnLine
+CallsAlignment = Block
+# Let a sole argument start inline if it fits.
+CallsSoleArgumentFirstItem = InlineIfFits
+```
+
+## Keep a complete argument row or split every argument:
+```config
+ColumnLimit = 32
+CallsPacking = AllOrVertical
+CallsFirstItem = NextLine
+CallsCloser = OwnLine
+# ProcessPendingTasks(
+#     first, second
+# );
+```
+
+## Wrap template lists independently:
+```config
+TemplateParametersBreak = IfNeeded
+TemplateParametersPacking = VerticalWhenBroken
+TemplateParametersFirstItem = NextLine
+TemplateParametersCloser = SameLine
+TemplateParametersAlignment = Block
+TemplateArgumentsBreak = IfNeeded
+TemplateArgumentsPacking = VerticalWhenBroken
+TemplateArgumentsFirstItem = NextLine
+TemplateArgumentsCloser = SameLine
+TemplateArgumentsAlignment = Block
+```
+
+## Separate conditions in a wrapped if header:
+```config
+Layout = Canonical
+IfConditionsPacking = VerticalWhenBroken
+ControlHeadersFirstItem = InlineIfFits
+BinaryOperatorSide = Leading
+```
+
+# Expressions and chains
+- ExpressionsBreak and ChainsBreak default independently to IfNeeded.
+  Packing uses Fill, VerticalWhenBroken or AllOrVertical. The latter
+  keeps a complete chain tail together after a receiver break, or
+  separates all tail links if it cannot fit. For expressions and
+  IfConditionsPacking it behaves like VerticalWhenBroken. Expression
+  wrapping respects operator precedence. BinaryOperatorSide,
+  ShiftOperatorSide, AssignmentOperatorSide and TernaryOperatorSide
+  use Leading/Trailing.
+- ExpressionsAlignment = Operand aligns to the first operand, falling
+  back when it cannot fit; Block uses continuation indentation.
+- AssignmentsPacking: Inherit (default) follows ExpressionsPacking.
+  Fill can keep the RHS prefix beside the assignment while nested
+  expressions wrap. VerticalWhenBroken splits all assignment
+  boundaries in a broken sequence. Includes = initializers,
+  parameter defaults and enumerator values. ExpressionsBreak
+  = Always and AssignmentRhsPlacement = NextLine still force breaks.
+- AssignmentRhsPlacement: InlineIfFits or NextLine. NextLine moves
+  assignment and declaration initializers below the operator in
+  canonical expressions, regardless of AssignmentOperatorSide.
+- TernaryLayout: Flexible or ThreePart. ThreePart breaks both ? and :
+  together when wrapping; it does not force a fitting ternary to wrap.
+  TernaryOperatorIndentation: Align (default) shares the continuation;
+  Indent adds a level when the condition starts on a continued line.
+- Chains include . and -> calls and repeated calls: factory()(arg).
+  Nested argument calls are not chain links. ChainsBreak = Always
+  requires multiple calls after the receiver; field paths and single
+  calls wrap only as needed. In control headers, ordinary chains still
+  wrap only as needed, preferring operator, clause or argument breaks.
+  Nested lambda bodies keep the ordinary chain policy.
+
+## Wrap expressions and ternaries:
+```config
+ExpressionsLayout = Canonical
+ExpressionsBreak = IfNeeded
+ExpressionsPacking = Fill
+ExpressionsAlignment = Block
+BinaryOperatorSide = Trailing
+ShiftOperatorSide = Leading
+AssignmentOperatorSide = Trailing
+AssignmentRhsPlacement = InlineIfFits
+TernaryOperatorSide = Leading
+TernaryLayout = ThreePart
+TernaryOperatorIndentation = Align
+```
+
+## Keep assignment prefixes beside wrapped expressions:
+```config
+ExpressionsPacking = VerticalWhenBroken
+AssignmentsPacking = Fill
+AssignmentRhsPlacement = InlineIfFits
+# When the RHS wraps:
+# auto ready = firstCheck() ||
+#     secondCheck();
+```
+
+## Wrap call chains:
+```config
+ChainsLayout = Canonical
+ChainsBreak = IfNeeded
+ChainsPacking = Fill
+ChainsAlignment = Block
+```
+
+## Keep a compact tail after a wrapped receiver:
+```config
+ColumnLimit = 40
+ChainsPacking = AllOrVertical
+# auto client = MakeServiceClient()
+#     .Configure(mode).Start();
+```
+
+# Output shape
+- Brace placements: Attached, NextLine, NextLineIfHeaderBroken or
+  NextLineIfHeaderIndented. The latter starts a new line when the
+  last output header line is indented at least as far as the body;
+  a closing delimiter at the brace indentation stays attached.
+  ConstructorBracePlacement and DestructorBracePlacement may Inherit
+  FunctionBracePlacement. CaseBlockBracePlacement applies to a case
+  containing only one block, not mixed statements and blocks.
+- DeclarationHeadersLayout controls headers; BodiesLayout and
+  LambdaBodiesLayout control bodies. BodyShape and EmptyBodyShape
+  default to Expanded; CompactIfFits allows compact bodies.
+  CompactSingleStatementIfFits allows only one simple statement
+  (including a local declaration), within ColumnLimit. Nested
+  control statements, blocks, records and namespaces stay expanded.
+  Sibling comments/directives prevent compaction; empty bodies use
+  EmptyBodyShape. This single-statement mode expands empty bodies.
+  LambdaBodyShape and LambdaEmptyBodyShape inherit independently.
+  Comment-only bodies are not empty. Enum, list and requirement
+  bodies are not controlled by these body shapes.
+- IndentNamespaces: Preserve, Indent or NoIndent. NamespaceIndentWidth
+  = 0 uses IndentWidth; NoIndent uses the enclosing indentation.
+- EnumBracePlacement follows the enum header, not its enumerators.
+  Enumerators uses list policies and preserves existing enum commas.
+- Base and constructor lists use ColonSide and CommaSide with
+  Leading/Trailing values. InitializersTrailingComma uses Preserve,
+  Never or WhenMultiline at legal initializer sites only. Trailing
+  commas and closer placement are independent.
+
+## Choose braces and body shapes:
+```config
+FunctionBracePlacement = NextLine
+ConstructorBracePlacement = Inherit
+DestructorBracePlacement = Inherit
+ControlBracePlacement = NextLineIfHeaderBroken
+CaseBlockBracePlacement = Attached
+BodiesLayout = Canonical
+BodyShape = Expanded
+EmptyBodyShape = CompactIfFits
+LambdaBodiesLayout = Inherit
+LambdaBodyShape = CompactIfFits
+LambdaEmptyBodyShape = Inherit
+```
+
+## Place braces using the last header line's indentation:
+```config
+FunctionBracePlacement = NextLineIfHeaderIndented
+ConstructorBracePlacement = Inherit
+# With canonical headers, keep ) { at the function indentation:
+# void Process(
+#     Request request
+# ) {
+# Move { below a header ending at or beyond the body indentation:
+# Worker::Worker() :
+#     Cache_(CreateCache())
+# {
+```
+
+## Compact only bodies with one simple statement:
+```config
+BodiesLayout = Canonical
+BodyShape = CompactSingleStatementIfFits
+FunctionBracePlacement = Attached
+# int Next(int x) { return x + 1; }
+# void Reset() { Clear(); Notify(); } stays expanded.
+```
+
+## Set namespace, enum and initializer layout:
+```config
+IndentNamespaces = NoIndent
+NamespaceIndentWidth = 0
+EnumBracePlacement = NextLineIfHeaderBroken
+EnumeratorsLayout = Canonical
+EnumeratorsBreak = Always
+EnumeratorsPacking = VerticalWhenBroken
+EnumeratorsCloser = OwnLine
+InitializersCloser = OwnLine
+InitializersTrailingComma = WhenMultiline
+```
+
+# Blank lines
+- Exact counts and MaxEmptyLines accept Preserve or 0..10000.
+  Existing blank lines between items/bodies remain unless overridden.
+  Positive counts force a boundary break; zero does not split a line.
+- NamespaceBlankLinesAfterOpen/BeforeClose apply to nonempty content,
+  outside attached comments. AccessSectionBlankLinesBefore skips the
+  first section at the opening; AfterLabel needs following content.
+- LinkageBlankLinesAfterOpen/BeforeClose apply inside nonempty
+  extern linkage blocks, outside attached comments.
+- DeclarationBlankLines separates declarations, including variables
+  and prototypes. DefinitionBlankLines takes precedence when either
+  neighbor is a function, record or enum definition, not a lambda,
+  namespace or access label.
+- DeclarationCategoryBlankLines overrides declaration/definition
+  counts between different entity kinds: types, functions and
+  variables. Types include records, enums, typedefs and using aliases.
+  Templates and single export declarations follow their entity kind.
+  Applies at file scope and in namespaces, records, linkage and
+  export blocks. Other declarations stop category grouping.
+- MemberDeclarationBlankLines and MemberDefinitionBlankLines replace
+  the corresponding general counts; Inherit follows those counts.
+- MaxEmptyLines caps editable blank lines, not inline gaps or text
+  inside tokens. Exact counts above an explicit cap are rejected,
+  including inherited counts after overrides. Comments stay attached;
+  directives, protection and unattached comments stop these changes.
+
+## Set blank lines at structural boundaries:
+```config
+NamespaceBlankLinesAfterOpen = 1
+NamespaceBlankLinesBeforeClose = 1
+LinkageBlankLinesAfterOpen = 1
+LinkageBlankLinesBeforeClose = 1
+AccessSectionBlankLinesBefore = 1
+AccessSectionBlankLinesAfterLabel = 1
+DeclarationBlankLines = 0
+DeclarationCategoryBlankLines = 1
+MemberDeclarationBlankLines = Preserve
+DefinitionBlankLines = 1
+MemberDefinitionBlankLines = 0
+MaxEmptyLines = 1
+```
+
+# Syntax spacing
+- Values: Preserve, Space, NoSpace, GeneratedSpace, GeneratedNoSpace.
+  Generated* changes spacing only where canonical layout rebuilds
+  the containing syntax, including existing gaps. Nested edits alone
+  do not activate it. Preserve keeps source spacing where possible;
+  reflowed gaps use syntax-safe spacing. Safety always wins.
+- Before/After options independently control each side of colons,
+  arrows and operator-overload boundaries. Use --generate-config for
+  all indentation, declarator, keyword and delimiter options/defaults.
+- TemplateTypeArgumentInteriorSpacing = NoSpace permits nested >>.
+  ScopeResolutionSpacing controls qualified ::, not a leading ::.
+  BraceInitializerSpacing controls the gap before { except after
+  comments; comparison and shift operators remain safely separated.
+- ArgumentCommentSpacing (default Preserve) controls gaps around
+  attached block comments in call arguments and initializer elements,
+  including consecutive comments. Space/NoSpace forces one/no space.
+  Newlines, comment contents, separator-facing gaps and line comments
+  are unchanged. Generated* requires canonical layout of that list.
+- FunctionCvRefQualifierSpacing controls const/volatile to &/&& in
+  function qualifiers, not type references. Inherit (default) follows
+  FunctionRefQualifierSpacing; Preserve does not inherit.
+- AttributeSpaceBeforeSpecifier/AfterSpecifier covers [[...]],
+  __attribute__ and __declspec boundaries; extension contents stay
+  unchanged. AttributeInteriorSpacing only covers C++ [[...]].
+
+## Set common spacing:
+```config
+FunctionSpaceBeforeParameters = NoSpace
+ControlBlockKeywordSpacing = Space
+CommaSpaceBefore = NoSpace
+CommaSpaceAfter = Space
+EmptyBlockInteriorSpacing = GeneratedNoSpace
+ScopeResolutionSpacing = NoSpace
+TemplateTypeArgumentInteriorSpacing = NoSpace
+```
+
+## Space comments, attributes and function qualifiers:
+```config
+ArgumentCommentSpacing = Space
+# Example: consume(/* first */ /* second */ value /* note */);
+AttributeSpaceBeforeSpecifier = Space
+AttributeSpaceAfterSpecifier = Space
+FunctionRefQualifierSpacing = Space
+FunctionCvRefQualifierSpacing = NoSpace
+```
+
+# Library layout annotations
+- CallLineFirstArgumentNames prefers the first argument beside the
+  opener of exact named calls, including members.
+  CallLineFirstStringNames does so only for string-literal arguments.
+  Both lists default to empty; the general argument list wins overlaps.
+- CallLineFirstArgumentOverflow and CallLineFirstStringOverflow:
+  Wrap (default) wraps normally; BreakBefore moves the argument below
+  the opener if it cannot fit in full; KeepInline keeps its opening
+  piece inline even beyond ColumnLimit. Nested syntax may still wrap.
+  Concatenated literals may break between pieces, never inside them.
+  Preserve and required Always breaks take precedence over pinning.
+- ChainedCallRootNames: empty selects all safe chains; otherwise only
+  listed roots. AlwaysBreakChainRootNames requests breaks even with
+  one following call. Both obey ChainsLayout, root selection and
+  protection. All calls use the global ColumnLimit.
+  Only unambiguously parsed template arguments are ignored.
+  ns::Builder<T>::Make<U> matches ns::Builder::Make, not Make.
+  Omit template arguments and template from configured names.
+- IndentedCallScopePairs preserves an existing extra indentation level
+  between matched calls in the same context and label section.
+  GenerateCallScopeIndentation creates the level even from flat input;
+  it requires IndentationKind other than Preserve. Uncertain, unmatched
+  or directive-crossing source-line regions remain unchanged.
+- IndentedChainScopePairs adds IndentWidth inside nested matched chain
+  calls. StickyChainCallPairs keeps consecutive named calls together
+  if they fit; its first name may also name a root receiver/factory.
+  Both obey ChainsLayout and ChainedCallRootNames.
+- Pairs use First:Second exact identifiers. Scope endpoints must be
+  distinct and unambiguous; sticky pairs may share names. These are
+  exact names, not patterns. Macro safety hints are separate.
+
+## Keep selected first arguments beside the opener:
+```config
+CallLineFirstArgumentNames = ["dispatch"]
+CallLineFirstArgumentOverflow = Wrap
+CallLineFirstStringNames = ["WRITE_MESSAGE"]
+CallLineFirstStringOverflow = BreakBefore
+```
+
+## Select chain roots and preferred breaks:
+```config
+ChainedCallRootNames = ["factory", "pipeline::Builder"]
+AlwaysBreakChainRootNames = ["WRITE_EVENT", "logging::Event"]
+# Root names omit template arguments: factory<T> matches factory.
+```
+
+## Indent paired calls and keep related chain calls together:
+```config
+IndentedCallScopePairs = ["OpenItems:CloseItems"]
+GenerateCallScopeIndentation = true
+IndentedChainScopePairs = ["BeginMap:EndMap", "BeginList:EndList"]
+StickyChainCallPairs = ["Item:Value", "registrar:Parameter"]
+```
+
+# Include sorting
+- IncludeOrder: Preserve (default) disables transforms; Sort sorts
+  safe blocks, quoted before angled. Duplicate paths stay stable.
+- IncludeMatchingHeader: Off or First. First pairs a source file with
+  its same-directory, same-stem .h/.hh/.hpp/.hxx/.h++ header. Header
+  inputs or missing input filenames disable pairing.
+- IncludeGrouping: Preserve sorts adjacent blocks without changing
+  blank lines and ignores group rules; Regroup combines blocks across
+  blank lines by rule; Directory groups by containing directory.
+  Regroup/Directory insert one blank line between groups and conflict
+  with MaxEmptyLines = 0. Paired headers form a separate group.
+- IncludeGroups rules use Prefix or Prefixes, Depth (default 127)
+  and Priority (default 0). First matching rule/prefix wins.
+  Depth: 0 keeps a rule together; 1..126 caps suffix directory depth;
+  127 uses the full directory. Regroup ignores Depth. No rules means
+  full directories; unmatched paths also keep full-directory groups.
+  Prefixes aliases merge corresponding suffix groups without changing
+  include spelling; the first prefix supplies the group path.
+- Prefixes must be unique relative directories ending in /, with no
+  backslashes, empty components, '.' or '..'. A sole empty Prefix is a
+  fallback; its Depth counts from the resolved directory's start.
+  Matching uses literal normalized spelling; ./, ../ and absolute
+  paths only match the fallback. Rules are validated even if inactive.
+- Priority: -128..127, lower first within quoted/angled categories;
+  unmatched paths use 0. IncludeGroupOrder: Directory (default) or
+  Configured (rule order, unmatched last within the priority tier).
+  Priority changes output order, not rule matching.
+- IncludeDirectoryOrder: NearestFirst (default) or Alphabetical.
+  NearestFirst counts parent/child steps from the input directory;
+  ties are alphabetical. With Configured, it orders rule subgroups.
+- IncludeInGroupOrder: Alphabetical (default) or NearestFirst. The
+  latter uses full containing directories, not Depth or aliases;
+  ties use include spelling. Also works with Preserve grouping.
+  Paired and final standard-header groups remain alphabetical.
+- IncludePathBase: SourceDirectory (default) or ProjectRoot. With
+  ProjectRoot, input filenames use the working-directory root;
+  absolute input filenames beneath it are rebased to it. Bare
+  quoted names and quoted ./ or ../ paths remain source-relative;
+  absolute paths stay absolute. No filesystem/header-path lookup.
+- IncludeStandardHeaders: Preserve (default) or Last. Last makes a
+  final alphabetical group of angled names with neither / nor .h.
+  This heuristic includes extensionless third-party names, not stdio.h.
+- Comments, macros, conditionals, protection and mixed line endings
+  stop sorting blocks. Attached-comment blocks stay exact. Selected
+  hunks must cover a whole block. Check mode reports one include-sort
+  failure per file; other checks remain independent.
+
+## Sort headers in configured directory groups:
+```config
+IncludeOrder = Sort
+IncludeMatchingHeader = First
+IncludeGrouping = Directory
+IncludeGroupOrder = Configured
+IncludeDirectoryOrder = NearestFirst
+IncludeInGroupOrder = Alphabetical
+IncludePathBase = SourceDirectory
+IncludeStandardHeaders = Last
+IncludeGroups = [
+    { Prefix = "library/", Depth = 1 },
+    { Prefix = "util/", Depth = 1 }
+]
+# library/core/a.hpp and library/core/detail/b.hpp share a group.
+```
+
+## Put project headers before third-party groups:
+```config
+IncludeOrder = Sort
+IncludeGrouping = Directory
+IncludeGroupOrder = Directory
+IncludeDirectoryOrder = NearestFirst
+IncludeInGroupOrder = NearestFirst
+IncludePathBase = ProjectRoot
+IncludeGroups = [
+    { Prefix = "library/", Priority = 1 },
+    { Prefix = "util/", Priority = 2 },
+    { Prefix = "", Depth = 3, Priority = 0 }
+]
+# ProjectRoot uses the working directory for input filenames.
+```
+
+# Template headers, comments and rulers
+- BreakAfterTemplateHeader breaks after template declaration headers
+  when DeclarationHeadersLayout is canonical.
+- StandaloneCommentBlankLinesBefore/After accepts Preserve or 0..10000,
+  subject to MaxEmptyLines.
+- RulerLength sets the slash count in standalone all-slash comments
+  containing at least three slashes; 0 preserves spelling.
+  RulerBlankLinesBefore/After overrides standalone-comment counts
+  at rulers, with the same count range and cap.
+
+## Control template headers, comments and rulers:
+```config
+DeclarationHeadersLayout = Canonical
+BreakAfterTemplateHeader = true
+StandaloneCommentBlankLinesBefore = Preserve
+StandaloneCommentBlankLinesAfter = Preserve
+RulerLength = 0
+RulerBlankLinesBefore = Preserve
+RulerBlankLinesAfter = Preserve
+```
+
+# Safety, transforms and checks
+- Protected text is never rewritten. hit-fmt off/on always applies;
+  HonorClangFormatDirectives defaults to true for clang-format off/on.
+- Macro hints describe syntax, not style: CallLikeMacroNames marks
+  call-like syntax; FunctionBodyMacroNames marks balanced invocations
+  followed by a function-like brace body. Headers stay unchanged.
+  WhitespaceSensitiveMacros protects whitespace-sensitive invocations.
+- ClassMacroNames uses Begin:End unqualified identifier pairs for
+  function-like macros enclosing class members. Endpoints must be
+  distinct and unique; nested pairs must close with the matching end.
+  Arguments stay exact; no expanded class/type names are inferred.
+- AddMissingControlBraces, RemoveNullStatements, RemoveNullDeclarations
+  and namespace-comment changes are opt-in. Required semicolons,
+  uncertain macro syntax and commented standalone placeholders stay.
+  No transform crosses protection. NamespaceComments controls namespace
+  closing comments; Exclude contains path exclusion patterns.
+- IndentPreprocessingDirectives indents whole directives by conditional
+  depth using IndentWidth spaces, including # or %:. It removes space
+  after the marker; else/elif/endif align with their if.
+- AlignMacroBackslashes aligns existing whitespace-separated macro
+  continuations one column after the longest prefix (tab stops: 8).
+  Tokens and spliced identifiers, literals and comments stay intact.
+- Parameter-name and naming checks report issues; they never rename
+  code. Use name-case/prefix options and NamingNamespaceExemptions to
+  tune checks. Profiles approximate styles, not clang-format parity.
+
+## Describe macro syntax and protection:
+```config
+HonorClangFormatDirectives = true
+CallLikeMacroNames = ["REGISTER_NODE"]
+FunctionBodyMacroNames = ["DEFINE_CASE", "DEFINE_METHOD"]
+ClassMacroNames = ["BEGIN_SETTER:END_SETTER"]
+WhitespaceSensitiveMacros = ["STRINGIZE_TEXT"]
+```
+
+## Choose transforms explicitly (disabled here):
+```config
+AddMissingControlBraces = false
+RemoveNullStatements = false
+RemoveNullDeclarations = false
+IncludeOrder = Preserve
+NamespaceComments = Preserve
+IndentPreprocessingDirectives = false
+AlignMacroBackslashes = false
+```
+
+## Check naming and exclude generated paths:
+```config
+FunctionDeclarationParameterNames = Required
+FunctionDefinitionParameterNames = NameOrCommentedNameRequired
+ClassNameCase = PascalCase
+ClassNamePrefixes = []
+NamingNamespaceExemptions = ["std"]
+Exclude = ["(^|/)generated(/|$)"]
+```

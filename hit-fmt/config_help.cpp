@@ -2,6 +2,7 @@
 
 #include "config_help_data.hpp"
 
+#include <array>
 #include <ostream>
 #include <string_view>
 
@@ -9,10 +10,85 @@ namespace hit_fmt {
 
 namespace {
 
-void PrintHeading(std::ostream& output, std::string_view title, const TerminalColors& colors)
+enum class HelpBlockKind
 {
-    output << colors.BoldCyan << title << colors.Reset << '\n';
+    Text,
+    Heading,
+    Example,
+    Code
+};
+
+struct HelpBlock
+{
+    HelpBlockKind Kind;
+    std::string_view Text;
+};
+
+template <typename Emit>
+constexpr void VisitHelpBlocks(std::string_view text, Emit emit)
+{
+    bool code = false;
+    size_t blockStart = 0;
+    const auto size = text.size();
+    const auto* data = text.data();
+    const auto flush = [&] (size_t end) {
+        if (blockStart < end) {
+            emit(
+                HelpBlock{code ? HelpBlockKind::Code : HelpBlockKind::Text, text.substr(blockStart, end - blockStart)});
+        }
+    };
+    // Keep scans within compiler constexpr step limits without library calls per byte.
+    for (size_t start = 0; start < size;) {
+        auto end = start;
+        while (end < size && data[end] != '\n') {
+            ++end;
+        }
+        const auto next = end < size ? end + 1 : end;
+        const auto first = start < end ? data[start] : '\0';
+        if (first == '`' && text.substr(start, end - start).starts_with("```")) {
+            const auto line = text.substr(start, end - start);
+            flush(start);
+            if ((!code && line != "```config") || (code && line != "```")) {
+                throw "invalid config help code fence";
+            }
+            code = !code;
+            blockStart = next;
+        } else if (!code && first == '#') {
+            const auto line = text.substr(start, end - start);
+            const bool heading = line.starts_with("# ");
+            if (heading || line.starts_with("## ")) {
+                flush(start);
+                const auto title = line.substr(heading ? 2 : 3);
+                if (title.empty()) {
+                    throw "empty config help heading";
+                }
+                emit(HelpBlock{heading ? HelpBlockKind::Heading : HelpBlockKind::Example, title});
+                blockStart = next;
+            }
+        }
+        start = next;
+    }
+    if (code) {
+        throw "unclosed config help code fence";
+    }
+    flush(text.size());
 }
+
+constexpr auto HelpBlockCount = [] {
+    size_t result = 0;
+    VisitHelpBlocks(ConfigHelpText, [&] (HelpBlock) { ++result; });
+    return result;
+}();
+
+consteval auto ParseConfigHelp()
+{
+    std::array<HelpBlock, HelpBlockCount> blocks{};
+    size_t index = 0;
+    VisitHelpBlocks(ConfigHelpText, [&] (HelpBlock block) { blocks[index++] = block; });
+    return blocks;
+}
+
+constexpr auto HelpBlocks = ParseConfigHelp();
 
 void PrintCode(std::ostream& output, std::string_view code, const TerminalColors& colors)
 {
@@ -34,33 +110,20 @@ void PrintCode(std::ostream& output, std::string_view code, const TerminalColors
 
 void PrintConfigHelp(std::ostream& output, const TerminalColors& colors)
 {
-    PrintHeading(output, "Configuration options", colors);
-    output
-        << "Use Key = Value, # comments and [\"quoted\", \"strings\"] lists.\n"
-            "Defaults keep line breaks; Layout = Canonical reflows code.\n"
-            "Unknown names and invalid values are errors.\n"
-            "Use --generate-config for all options, values and defaults.\n\n";
-    PrintHeading(output, "Configuration inheritance", colors);
-    output
-        << "Load a base file with include = \"base.hit-fmt\".\n"
-            "- Paths start beside this config; absolute paths work too.\n"
-            "- @/ starts at the nearest ancestor with a .git or .arc marker.\n"
-            "- Local values win, regardless of include position.\n" "- Lists replace inherited lists; [] clears them.\n"
-            "- Validate after merging. Nested includes: 64 files max.\n"
-            "- Cycles, missing files and duplicate includes are errors.\n\n";
-    PrintCode(output, "include = \"@/configs/base.hit-fmt\"\nColumnLimit = 100\n", colors);
-    output << '\n';
-    bool firstSection = true;
-    for (const auto& section : HelpSections) {
-        if (!firstSection) {
-            output << '\n';
-        }
-        firstSection = false;
-        PrintHeading(output, section.Title, colors);
-        output << section.Description;
-        for (const auto& example : section.Examples) {
-            output << '\n' << colors.BoldYellow << example.Title << colors.Reset << '\n';
-            PrintCode(output, example.Code, colors);
+    for (const auto& block : HelpBlocks) {
+        switch (block.Kind) {
+            case HelpBlockKind::Text:
+                output << block.Text;
+                break;
+            case HelpBlockKind::Heading:
+                output << colors.BoldCyan << block.Text << colors.Reset << '\n';
+                break;
+            case HelpBlockKind::Example:
+                output << colors.BoldYellow << block.Text << colors.Reset << '\n';
+                break;
+            case HelpBlockKind::Code:
+                PrintCode(output, block.Text, colors);
+                break;
         }
     }
 }

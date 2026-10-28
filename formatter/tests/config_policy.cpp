@@ -16,6 +16,7 @@
 #include <string_view>
 #include <type_traits>
 #include <utility>
+#include <vector>
 
 namespace {
 
@@ -537,10 +538,10 @@ TEST(ConfigPolicy, CapConflictsUseFinalOverridesAndReportSettingLocations)
 #undef OFFSET_KEYS
 }
 
-TEST(ConfigPolicy, PreserveTemplateRoundTripsEveryRegisteredStyleDefault)
+TEST(ConfigPolicy, PreserveTemplateRoundTripsEveryRegisteredDefault)
 {
     std::ostringstream output;
-    hit_fmt::PrintPreserveConfig(output);
+    hit_fmt::PrintConfig(output, hit_fmt::ConfigPreset::Default);
     const auto text = output.str();
     const TemporaryConfig generated(text);
     const auto parsed = formatter::LoadConfigFile(generated.Path);
@@ -553,6 +554,26 @@ TEST(ConfigPolicy, PreserveTemplateRoundTripsEveryRegisteredStyleDefault)
     }
     FORMATTER_STYLE_OPTIONS(CHECK_DEFAULT)
 #undef CHECK_DEFAULT
+    const formatter::Configuration configDefaults;
+    const auto checkConfigDefault = [&] <typename T> (std::string_view name, const T& actual, const T& expected) {
+        SCOPED_TRACE(name);
+        EXPECT_NE(text.find("\n" + std::string(name) + " = "), std::string::npos);
+        if constexpr (std::is_same_v<T, std::vector<std::regex>>) {
+            EXPECT_EQ(actual.size(), expected.size());
+        } else {
+            EXPECT_EQ(actual, expected);
+        }
+    };
+#define CHECK_CONFIG_DEFAULT(type, name, initial) \
+    checkConfigDefault(#name, parsed.name, configDefaults.name);
+    FORMATTER_CONFIGURATION_OPTIONS(CHECK_CONFIG_DEFAULT)
+#undef CHECK_CONFIG_DEFAULT
+#define CHECK_NAMING_DEFAULT(category) \
+    checkConfigDefault(#category "NameCase", parsed.Naming.category.Case, configDefaults.Naming.category.Case); \
+    EXPECT_NE(text.find("\n" #category "NamePrefixes = "), std::string::npos); \
+    EXPECT_TRUE(!parsed.Naming.category.Prefixes || parsed.Naming.category.Prefixes->empty()) << #category;
+    FORMATTER_NAMING_CATEGORIES(CHECK_NAMING_DEFAULT)
+#undef CHECK_NAMING_DEFAULT
     for (const auto expected : {
         "Preserve | 0..10000\nMaxEmptyLines = Preserve",
         "FunctionCvRefQualifierSpacing = Inherit\n",

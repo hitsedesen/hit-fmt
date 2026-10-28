@@ -12,6 +12,7 @@
 #include <sstream>
 #include <stdexcept>
 #include <string>
+#include <utility>
 
 namespace {
 
@@ -392,18 +393,55 @@ TEST(FileCheck, ChangedHunkOptionsSupportAliasesAndRejectMixedInputs)
 
 TEST(FileCheck, UsageErrorDiagnosticGolden)
 {
-    const char* argv[] = {"hit-fmt", "--unknown"};
-    try {
-        (void)hit_fmt::ParseOptions(std::size(argv), argv);
-        FAIL() << "Expected a usage error";
+    std::ostringstream output;
+    for (const char* argument : {"--unknown", "--generate-config=missing"}) {
+        const char* argv[] = {"hit-fmt", argument};
+        try {
+            (void)hit_fmt::ParseOptions(std::size(argv), argv);
+            FAIL() << "Expected a usage error";
+        }
+        catch (const hit_fmt::UsageError& error) {
+            output << "plain:\n";
+            hit_fmt::PrintError(output, error.what(), hit_fmt::TerminalColors());
+            output << "colored:\n";
+            hit_fmt::PrintError(output, error.what(), hit_fmt::TerminalColors(true));
+        }
     }
-    catch (const hit_fmt::UsageError& error) {
-        std::ostringstream output;
-        output << "plain:\n";
-        hit_fmt::PrintError(output, error.what(), hit_fmt::TerminalColors());
-        output << "colored:\n";
-        hit_fmt::PrintError(output, error.what(), hit_fmt::TerminalColors(true));
-        test::golden::ExpectGolden(std::filesystem::path(HIT_FMT_TESTDATA_DIR) / "usage_error.out", output.str());
+    test::golden::ExpectGolden(std::filesystem::path(HIT_FMT_TESTDATA_DIR) / "usage_error.out", output.str());
+}
+
+TEST(FileCheck, GenerateConfigOptionsSelectOptionalPresets)
+{
+    using hit_fmt::ConfigPreset;
+    const char* defaultArgs[] = {"hit-fmt", "--generate-config", "--summary"};
+    const auto defaults = hit_fmt::ParseOptions(std::size(defaultArgs), defaultArgs);
+    EXPECT_EQ(defaults.GenerateConfig, ConfigPreset::Default);
+    EXPECT_TRUE(defaults.SummaryOnly);
+    for (const auto& [name, preset] :
+        {
+            std::pair{"ytsaurus", ConfigPreset::YTsaurus},
+            std::pair{"google", ConfigPreset::Google},
+            std::pair{"llvm", ConfigPreset::LLVM},
+        })
+    {
+        SCOPED_TRACE(name);
+        const char* separated[] = {"hit-fmt", "--generate-config", name};
+        const auto parsed = hit_fmt::ParseOptions(std::size(separated), separated);
+        EXPECT_EQ(parsed.GenerateConfig, preset);
+        EXPECT_TRUE(parsed.Paths.empty());
+        const auto option = "--generate-config=" + std::string(name);
+        const char* attached[] = {"hit-fmt", option.c_str()};
+        EXPECT_EQ(hit_fmt::ParseOptions(std::size(attached), attached).GenerateConfig, preset);
+    }
+    for (const auto& args :
+        std::vector<std::vector<const char*>>{
+            {"hit-fmt", "--generate-config", "missing"},
+            {"hit-fmt", "--generate-config="},
+            {"hit-fmt", "--generate-config", "google", "source.cpp"},
+            {"hit-fmt", "source.cpp", "--generate-config"},
+        })
+    {
+        EXPECT_THROW((void)hit_fmt::ParseOptions(args.size(), args.data()), hit_fmt::UsageError);
     }
 }
 

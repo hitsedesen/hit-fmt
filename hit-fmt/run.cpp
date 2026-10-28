@@ -228,7 +228,9 @@ void PrintHelp(std::ostream& output, std::string_view executable, const Terminal
     option("-h, --help", "       Show this help.");
     option("-V, --version", "    Show the build version.");
     option("--help-config", "    Show configuration options and examples.");
-    option("--generate-config", " Print a preserving config to stdout.");
+    option("--generate-config [preset]", " Print a config to stdout.");
+    output << "    Presets: ytsaurus, google, llvm; omit for a preserving config.\n"
+        << "    Both --generate-config google and --generate-config=google work.\n";
     output << "\n"
         << "Without --config or --no-config, each source file uses the "
             "nearest .hit-fmt file in its directory or a parent directory.\n"
@@ -253,6 +255,7 @@ void PrintHelp(std::ostream& output, std::string_view executable, const Terminal
             " --summary src/ include/",
             " --fix --exclude '(^|/)generated(/|$)' src/",
             " --fix --changed-hunks - < hunks.txt",
+            " --generate-config ytsaurus > .hit-fmt",
         })
     {
         output << "  ";
@@ -416,7 +419,7 @@ int Run(int argc, const char* const argv[])
         return 0;
     }
     if (options.GenerateConfig) {
-        PrintPreserveConfig(std::cout);
+        PrintConfig(std::cout, *options.GenerateConfig);
         return 0;
     }
     formatter::ChangedHunkFiles changed;

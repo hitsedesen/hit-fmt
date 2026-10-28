@@ -1,5 +1,7 @@
 #pragma once
 
+#include "config_template.hpp"
+
 #include <cstddef>
 #include <filesystem>
 #include <optional>
@@ -26,7 +28,7 @@ struct Options
     bool ShowHelp = false;
     bool ShowVersion = false;
     bool ShowConfigHelp = false;
-    bool GenerateConfig = false;
+    std::optional<ConfigPreset> GenerateConfig;
     size_t Threads = 1;
     std::optional<std::filesystem::path> ConfigPath;
     std::optional<std::string> HunkInput;

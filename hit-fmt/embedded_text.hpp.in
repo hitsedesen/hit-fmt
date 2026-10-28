@@ -1,0 +1,10 @@
+#pragma once
+
+#include <string_view>
+
+namespace hit_fmt {
+
+constexpr char @symbol@Data[] = R"text(@text_literals@)text";
+constexpr std::string_view @symbol@{@symbol@Data, sizeof(@symbol@Data) - 1};
+
+} // namespace hit_fmt
