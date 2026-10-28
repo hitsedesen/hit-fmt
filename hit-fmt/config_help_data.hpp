@@ -101,6 +101,12 @@ LambdaBodiesLayout = Inherit
 LambdaBodyShape = CompactIfFits
 LambdaEmptyBodyShape = Inherit
 )"},
+    {"Compact only bodies with one simple statement:", R"(BodiesLayout = Canonical
+BodyShape = CompactSingleStatementIfFits
+FunctionBracePlacement = Attached
+# int Next(int x) { return x + 1; }
+# void Reset() { Clear(); Notify(); } stays expanded.
+)"},
     {"Set namespace, enum and initializer layout:",
         R"(IndentNamespaces = NoIndent
 NamespaceIndentWidth = 0
@@ -332,6 +338,11 @@ constexpr HelpSection HelpSections[] = {
         "- DeclarationHeadersLayout controls headers; BodiesLayout and\n"
         "  LambdaBodiesLayout control bodies. BodyShape and EmptyBodyShape\n"
         "  default to Expanded; CompactIfFits allows compact bodies.\n"
+        "  CompactSingleStatementIfFits allows only one simple statement\n"
+        "  (including a local declaration), within ColumnLimit. Nested\n"
+        "  control statements, blocks, records and namespaces stay expanded.\n"
+        "  Sibling comments/directives prevent compaction; empty bodies use\n"
+        "  EmptyBodyShape. This single-statement mode expands empty bodies.\n"
         "  LambdaBodyShape and LambdaEmptyBodyShape inherit independently.\n"
         "  Comment-only bodies are not empty. Enum, list and requirement\n"
         "  bodies are not controlled by these body shapes.\n"

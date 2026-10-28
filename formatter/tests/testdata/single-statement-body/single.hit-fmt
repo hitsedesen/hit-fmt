@@ -1,0 +1,14 @@
+Layout = Canonical
+IndentationKind = Spaces
+IndentWidth = 4
+ColumnLimit = 64
+FunctionBracePlacement = Attached
+ControlBracePlacement = Attached
+StructBracePlacement = Attached
+NamespaceBracePlacement = Attached
+BlockInteriorSpacing = Space
+PointerReferenceDeclaratorLocation = Left
+EmptyBlockInteriorSpacing = NoSpace
+EmptyLambdaBodySpacing = NoSpace
+BodyShape = CompactSingleStatementIfFits
+EmptyBodyShape = CompactIfFits
