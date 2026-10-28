@@ -382,6 +382,9 @@ TEST(FileCheck, ChangedHunkOptionsSupportAliasesAndRejectMixedInputs)
             {"hit-fmt", "--threads=0"},
             {"hit-fmt", "-j=2"},
             {"hit-fmt", "-j2x"},
+            {"hit-fmt", "-j", "source.cpp"},
+            {"hit-fmt", "-j", ""},
+            {"hit-fmt", "-j", "-"},
             {"hit-fmt", "--config"},
             {"hit-fmt", "--config-extra=style"},
             {"hit-fmt", "--config=style", "--no-config"},
@@ -417,22 +420,33 @@ TEST(FileCheck, ValueFlagsSupportAttachedAndSeparatedArguments)
     }
 }
 
-TEST(FileCheck, OptionalThreadCountLeavesPathsAndFlagsUnconsumed)
+TEST(FileCheck, OptionalThreadCountStopsAtFlags)
 {
-    const char* args[] = {"hit-fmt", "-j", "source.cpp", "--summary", "-j"};
-    const auto parsed = hit_fmt::ParseOptions(args);
-    EXPECT_GT(parsed.Threads, 0u);
-    EXPECT_TRUE(parsed.SummaryOnly);
-    EXPECT_EQ(parsed.Paths, std::vector<std::filesystem::path>{"source.cpp"});
+    for (const auto& args :
+        std::vector<std::vector<const char*>>{
+            {"hit-fmt", "-j", "--summary", "source.cpp", "-j"},
+            {"hit-fmt", "--summary", "-j", "--", "source.cpp"},
+        })
+    {
+        const auto parsed = hit_fmt::ParseOptions(args);
+        EXPECT_GT(parsed.Threads, 0u);
+        EXPECT_TRUE(parsed.SummaryOnly);
+        EXPECT_EQ(parsed.Paths, std::vector<std::filesystem::path>{"source.cpp"});
+    }
 }
 
 TEST(FileCheck, UsageErrorDiagnosticGolden)
 {
     std::ostringstream output;
-    for (const char* argument : {"--unknown", "--generate-config=missing"}) {
-        const char* argv[] = {"hit-fmt", argument};
+    for (const auto& args :
+        std::vector<std::vector<const char*>>{
+            {"hit-fmt", "--unknown"},
+            {"hit-fmt", "--generate-config=missing"},
+            {"hit-fmt", "-j", "aboba", "--other-flag"},
+        })
+    {
         try {
-            (void)hit_fmt::ParseOptions(argv);
+            (void)hit_fmt::ParseOptions(args);
             FAIL() << "Expected a usage error";
         }
         catch (const hit_fmt::UsageError& error) {

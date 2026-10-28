@@ -220,6 +220,7 @@ void PrintHelp(std::ostream& output, std::string_view executable, const Terminal
     option("--no-spillover", "   Restrict changes to selected hunk lines.");
     option("--summary", "        Print only file status lines.");
     option("-j [n]", "         Use n threads, or all cores without n.");
+    output << "    -j consumes the next non-flag argument as n; use -j -- <path> for all cores.\n";
     option("--threads <n>", "  Use n threads (default 1).");
     option("--config <file>", "  Use one configuration file for every input.");
     option("--no-config", "      Do not search parent directories for .hit-fmt.");

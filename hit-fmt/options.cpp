@@ -10,64 +10,34 @@ namespace hit_fmt {
 
 namespace {
 
-struct FlagValue
+enum class ValueMode
 {
-    std::optional<std::string_view> Attached;
-    std::span<const char* const>& Remaining;
-
-    std::string_view Require(std::string_view error)
-    {
-        if (Attached) {
-            return *Attached;
-        }
-        if (Remaining.empty()) {
-            throw UsageError(std::string(error));
-        }
-        const std::string_view value(Remaining.front());
-        Remaining = Remaining.subspan(1);
-        return value;
-    }
-
-    template <typename Predicate>
-    std::optional<std::string_view> TakeIf(Predicate accept)
-    {
-        if (Attached) {
-            return Attached;
-        }
-        if (Remaining.empty() || !accept(std::string_view(Remaining.front()))) {
-            return std::nullopt;
-        }
-        const std::string_view value(Remaining.front());
-        Remaining = Remaining.subspan(1);
-        return value;
-    }
+    None,
+    Required,
+    Optional,
 };
+
+bool IsFlag(std::string_view argument)
+{
+    return argument.starts_with('-') && argument != "-";
+}
 
 struct Flag
 {
     std::string_view Name;
-    bool TakesValue;
-    std::function<void(FlagValue&)> Apply;
+    ValueMode Mode;
+    std::string_view MissingValueError;
+    std::function<void(std::optional<std::string_view>)> Apply;
 
-    bool TryParse(std::string_view argument, std::span<const char* const>& remaining) const
+    bool Matches(std::string_view argument) const
     {
-        std::optional<std::string_view> attached;
-        if (argument != Name) {
-            if (!TakesValue || !argument.starts_with(Name)) {
-                return false;
-            }
-            auto suffix = argument.substr(Name.size());
-            if (Name.starts_with("--")) {
-                if (!suffix.starts_with('=')) {
-                    return false;
-                }
-                suffix.remove_prefix(1);
-            }
-            attached = suffix;
+        if (argument == Name) {
+            return true;
         }
-        FlagValue value{attached, remaining};
-        Apply(value);
-        return true;
+        if (Mode == ValueMode::None || !argument.starts_with(Name)) {
+            return false;
+        }
+        return !Name.starts_with("--") || argument.substr(Name.size()).starts_with('=');
     }
 };
 
@@ -76,21 +46,34 @@ class Flags
 public:
     void Bool(std::string_view name, bool* target, bool value = true)
     {
-        const auto apply = [target, value] (FlagValue&) {
+        const auto apply = [target, value] (std::optional<std::string_view>) {
             if (target) {
                 *target = value;
             }
         };
-        Registered_.push_back({name, false, apply});
+        Registered_.push_back({name, ValueMode::None, {}, apply});
     }
 
     template <typename T>
-    void Value(std::string_view name, T* target, void (*parse)(T&, FlagValue&))
+    void Value(
+        std::string_view name,
+        T* target,
+        void (*parse)(T&, std::string_view),
+        std::string_view missingValueError)
     {
-        const auto apply = [target, parse] (FlagValue& value) {
+        const auto apply = [target, parse] (std::optional<std::string_view> value) {
+            parse(*target, *value);
+        };
+        Registered_.push_back({name, ValueMode::Required, missingValueError, apply});
+    }
+
+    template <typename T>
+    void OptionalValue(std::string_view name, T* target, void (*parse)(T&, std::optional<std::string_view>))
+    {
+        const auto apply = [target, parse] (std::optional<std::string_view> value) {
             parse(*target, value);
         };
-        Registered_.push_back({name, true, apply});
+        Registered_.push_back({name, ValueMode::Optional, {}, apply});
     }
 
     void Positionals(std::vector<std::filesystem::path>* target)
@@ -107,21 +90,36 @@ public:
         while (!args.empty()) {
             const std::string_view argument(args.front());
             args = args.subspan(1);
-            if (positionalOnly || !argument.starts_with('-') || argument == "-") {
+            if (positionalOnly || !IsFlag(argument)) {
                 if (!Positionals_) {
                     throw UsageError("unexpected argument: " + std::string(argument));
                 }
                 Positionals_->emplace_back(argument);
+                continue;
             } else if (argument == "--") {
                 positionalOnly = true;
-            } else if (!std::ranges::any_of(
+                continue;
+            }
+            const auto flag = std::ranges::find_if(
                 Registered_,
-                [&] (const Flag& flag) {
-                    return flag.TryParse(argument, args);
-                }))
-            {
+                [&] (const Flag& candidate) {
+                    return candidate.Matches(argument);
+                });
+            if (flag == Registered_.end()) {
                 throw UsageError("unknown option: " + std::string(argument));
             }
+            std::optional<std::string_view> value;
+            if (argument != flag->Name) {
+                value = argument.substr(flag->Name.size() + (flag->Name.starts_with("--") ? 1 : 0));
+            } else if (flag->Mode != ValueMode::None && !args.empty() &&
+                (flag->Mode == ValueMode::Required || !IsFlag(args.front())))
+            {
+                value = args.front();
+                args = args.subspan(1);
+            } else if (flag->Mode == ValueMode::Required) {
+                throw UsageError(std::string(flag->MissingValueError));
+            }
+            flag->Apply(value);
         }
     }
 
@@ -144,24 +142,21 @@ ConfigPreset ParseConfigPreset(std::string_view name)
     throw UsageError("unknown config preset: " + std::string(name) + " (expected ytsaurus, google or llvm)");
 }
 
-void ParseGenerateConfig(std::optional<ConfigPreset>& target, FlagValue& value)
+constexpr auto ChangedHunkError = "--changed-hunks requires one input file or -";
+constexpr auto ThreadsError = "--threads requires a positive integer";
+constexpr auto ExclusionError = "--exclude requires a regex";
+
+void ParseGenerateConfig(std::optional<ConfigPreset>& target, std::optional<std::string_view> preset)
 {
-    const auto preset = value.TakeIf([] (std::string_view next) {
-        return !next.starts_with('-');
-    });
     target = preset ? ParseConfigPreset(*preset) : ConfigPreset::Default;
 }
 
-void ParseChangedHunks(std::optional<std::string>& hunkInput, FlagValue& value)
+void ParseChangedHunks(std::optional<std::string>& hunkInput, std::string_view value)
 {
-    constexpr auto error = "--changed-hunks requires one input file or -";
-    if (hunkInput) {
-        throw UsageError(error);
+    if (hunkInput || value.empty()) {
+        throw UsageError(ChangedHunkError);
     }
-    hunkInput = value.Require(error);
-    if (hunkInput->empty()) {
-        throw UsageError(error);
-    }
+    hunkInput = value;
 }
 
 size_t ParseThreadCount(std::string_view value)
@@ -169,39 +164,31 @@ size_t ParseThreadCount(std::string_view value)
     size_t threads = 0;
     const auto [end, error] = std::from_chars(value.data(), value.data() + value.size(), threads);
     if (error != std::errc{} || end != value.data() + value.size() || threads == 0) {
-        throw UsageError("--threads requires a positive integer");
+        throw UsageError(ThreadsError);
     }
     return threads;
 }
 
-void ParseThreads(size_t& threads, FlagValue& value)
+void ParseThreads(size_t& threads, std::string_view value)
 {
-    threads = ParseThreadCount(value.Require("--threads requires a positive integer"));
+    threads = ParseThreadCount(value);
 }
 
-void ParseAutoThreads(size_t& threads, FlagValue& value)
+void ParseAutoThreads(size_t& threads, std::optional<std::string_view> count)
 {
-    const auto count = value.TakeIf([] (std::string_view next) {
-        // A nonnumeric argument after -j remains a path or another option.
-        return !next.empty() && std::ranges::all_of(
-            next,
-            [] (char c) {
-                return c >= '0' && c <= '9';
-            });
-    });
     threads = count ? ParseThreadCount(*count) : std::max(1u, std::thread::hardware_concurrency());
 }
 
-void ParseConfigPath(std::optional<std::filesystem::path>& path, FlagValue& value)
+void ParseConfigPath(std::optional<std::filesystem::path>& path, std::string_view value)
 {
-    path = value.Require("--config requires a file path");
+    path = value;
 }
 
-void ParseExclusion(std::vector<std::regex>& exclusions, FlagValue& value)
+void ParseExclusion(std::vector<std::regex>& exclusions, std::string_view value)
 {
-    const std::string pattern(value.Require("--exclude requires a regex"));
+    const std::string pattern(value);
     if (pattern.empty()) {
-        throw UsageError("--exclude requires a regex");
+        throw UsageError(ExclusionError);
     }
     try {
         exclusions.emplace_back(pattern);
@@ -244,13 +231,13 @@ Options ParseOptions(std::span<const char* const> args)
     flags.Bool("--no-spillover", &options.Spillover, false);
     flags.Bool("--summary", &options.SummaryOnly);
     flags.Bool("--no-config", &options.DisableConfig);
-    flags.Value("--generate-config", &options.GenerateConfig, ParseGenerateConfig);
-    flags.Value("--changed-hunks", &options.HunkInput, ParseChangedHunks);
-    flags.Value("--changed-ranges", &options.HunkInput, ParseChangedHunks);
-    flags.Value("-j", &options.Threads, ParseAutoThreads);
-    flags.Value("--threads", &options.Threads, ParseThreads);
-    flags.Value("--config", &options.ConfigPath, ParseConfigPath);
-    flags.Value("--exclude", &options.Exclusions, ParseExclusion);
+    flags.OptionalValue("--generate-config", &options.GenerateConfig, ParseGenerateConfig);
+    flags.Value("--changed-hunks", &options.HunkInput, ParseChangedHunks, ChangedHunkError);
+    flags.Value("--changed-ranges", &options.HunkInput, ParseChangedHunks, ChangedHunkError);
+    flags.OptionalValue("-j", &options.Threads, ParseAutoThreads);
+    flags.Value("--threads", &options.Threads, ParseThreads, ThreadsError);
+    flags.Value("--config", &options.ConfigPath, ParseConfigPath, "--config requires a file path");
+    flags.Value("--exclude", &options.Exclusions, ParseExclusion, ExclusionError);
     flags.Positionals(&options.Paths);
     flags.Parse(args);
     ValidateOptions(options);
