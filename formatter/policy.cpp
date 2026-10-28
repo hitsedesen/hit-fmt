@@ -143,9 +143,12 @@ void ValidatePolicyStyle(const Style& style)
     CheckOffset(style.StatementAttributeIndentWidth, "StatementAttributeIndentWidth");
     CheckBlankSetting(style.NamespaceBlankLinesAfterOpen, "NamespaceBlankLinesAfterOpen");
     CheckBlankSetting(style.NamespaceBlankLinesBeforeClose, "NamespaceBlankLinesBeforeClose");
+    CheckBlankSetting(style.LinkageBlankLinesAfterOpen, "LinkageBlankLinesAfterOpen");
+    CheckBlankSetting(style.LinkageBlankLinesBeforeClose, "LinkageBlankLinesBeforeClose");
     CheckBlankSetting(style.AccessSectionBlankLinesBefore, "AccessSectionBlankLinesBefore");
     CheckBlankSetting(style.AccessSectionBlankLinesAfterLabel, "AccessSectionBlankLinesAfterLabel");
     CheckBlankSetting(style.DeclarationBlankLines, "DeclarationBlankLines");
+    CheckBlankSetting(style.DeclarationCategoryBlankLines, "DeclarationCategoryBlankLines");
     CheckBlankSetting(style.MemberDeclarationBlankLines, "MemberDeclarationBlankLines", true);
     CheckBlankSetting(style.DefinitionBlankLines, "DefinitionBlankLines");
     CheckBlankSetting(style.MemberDefinitionBlankLines, "MemberDefinitionBlankLines", true);
@@ -156,9 +159,12 @@ void ValidatePolicyStyle(const Style& style)
     }
     CheckBlankCap(style.NamespaceBlankLinesAfterOpen, style.MaxEmptyLines, "NamespaceBlankLinesAfterOpen");
     CheckBlankCap(style.NamespaceBlankLinesBeforeClose, style.MaxEmptyLines, "NamespaceBlankLinesBeforeClose");
+    CheckBlankCap(style.LinkageBlankLinesAfterOpen, style.MaxEmptyLines, "LinkageBlankLinesAfterOpen");
+    CheckBlankCap(style.LinkageBlankLinesBeforeClose, style.MaxEmptyLines, "LinkageBlankLinesBeforeClose");
     CheckBlankCap(style.AccessSectionBlankLinesBefore, style.MaxEmptyLines, "AccessSectionBlankLinesBefore");
     CheckBlankCap(style.AccessSectionBlankLinesAfterLabel, style.MaxEmptyLines, "AccessSectionBlankLinesAfterLabel");
     CheckBlankCap(style.DeclarationBlankLines, style.MaxEmptyLines, "DeclarationBlankLines");
+    CheckBlankCap(style.DeclarationCategoryBlankLines, style.MaxEmptyLines, "DeclarationCategoryBlankLines");
     CheckBlankCap(
         ResolveMemberDeclarationBlankLines(style),
         style.MaxEmptyLines,
@@ -363,9 +369,12 @@ CompiledPolicies CompilePolicies(const Style& style)
         .VerticalGaps = {
             CompileBlankLines(style.NamespaceBlankLinesAfterOpen),
             CompileBlankLines(style.NamespaceBlankLinesBeforeClose),
+            CompileBlankLines(style.LinkageBlankLinesAfterOpen),
+            CompileBlankLines(style.LinkageBlankLinesBeforeClose),
             CompileBlankLines(style.AccessSectionBlankLinesBefore),
             CompileBlankLines(style.AccessSectionBlankLinesAfterLabel),
             CompileBlankLines(style.DeclarationBlankLines),
+            CompileBlankLines(style.DeclarationCategoryBlankLines),
             CompileBlankLines(ResolveMemberDeclarationBlankLines(style)),
             CompileBlankLines(style.DefinitionBlankLines),
             CompileBlankLines(ResolveMemberBlankLines(style)),

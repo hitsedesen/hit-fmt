@@ -52,9 +52,12 @@ struct VerticalGapPolicies
 {
     VerticalGapPolicy NamespaceBlankLinesAfterOpen;
     VerticalGapPolicy NamespaceBlankLinesBeforeClose;
+    VerticalGapPolicy LinkageBlankLinesAfterOpen;
+    VerticalGapPolicy LinkageBlankLinesBeforeClose;
     VerticalGapPolicy AccessSectionBlankLinesBefore;
     VerticalGapPolicy AccessSectionBlankLinesAfterLabel;
     VerticalGapPolicy DeclarationBlankLines;
+    VerticalGapPolicy DeclarationCategoryBlankLines;
     VerticalGapPolicy MemberDeclarationBlankLines;
     VerticalGapPolicy DefinitionBlankLines;
     VerticalGapPolicy MemberDefinitionBlankLines;

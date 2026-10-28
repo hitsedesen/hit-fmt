@@ -169,6 +169,14 @@ static_assert(AccumulateIndent(AccumulateIndent({UINT32_MAX - 2, false}, 3), -32
 
 static_assert(!AccumulateIndent({UINT32_MAX - 2, false}, 1).Saturated);
 
+enum class DeclarationCategory : uint8_t
+{
+    None,
+    Type,
+    Function,
+    Variable
+};
+
 struct Syntax
 {
     RegionId Region = NoRegion;
@@ -184,6 +192,7 @@ struct Syntax
     bool OpaqueSafe = true;
     bool String = false;
     bool Definition = false;
+    DeclarationCategory Category = DeclarationCategory::None;
     bool ItemSequence : 1 = false;
     bool ControlHeader : 1 = false;
     bool NamespaceSuffix : 1 = false;
@@ -770,6 +779,9 @@ private:
                 for (auto child = Region(entry).FirstChild; child != None; child = Region(Syntax_[child]).NextSibling) {
                     entry.Definition = entry.Definition || Syntax_[child].Definition;
                 }
+            }
+            if (Policies_.VerticalGaps.DeclarationCategoryBlankLines.Mode == VerticalGapMode::Exact) {
+                entry.Category = ClassifyDeclaration(i);
             }
             entry.Root = i;
             if (IsSpine(node.Kind) && Region(entry).FirstChild != None) {
@@ -3710,6 +3722,99 @@ private:
         }
     }
 
+    DeclarationCategory ClassifyDeclaration(Index id) const
+    {
+        const auto& entry = Syntax_[id];
+        const auto& node = Region(entry);
+        switch (node.Kind) {
+            case NodeKind::RecordDeclaration:
+            case NodeKind::MacroRecordDeclaration:
+            case NodeKind::EnumDeclaration:
+            case NodeKind::TypedefDeclaration:
+                return DeclarationCategory::Type;
+            case NodeKind::FunctionDefinition:
+            case NodeKind::MacroFunctionDefinition:
+            case NodeKind::FunctionTryBlock:
+                return DeclarationCategory::Function;
+            case NodeKind::Declaration:
+            case NodeKind::FunctionDeclaration:
+            case NodeKind::UsingDeclaration:
+                for (auto child = node.FirstChild; child != None; child = Region(Syntax_[child]).NextSibling) {
+                    const auto kind = Region(Syntax_[child]).Kind;
+                    if (kind == NodeKind::InitDeclaratorList) {
+                        return Syntax_[child].Category;
+                    }
+                    if (node.Kind == NodeKind::UsingDeclaration && kind == NodeKind::TypeId) {
+                        return DeclarationCategory::Type;
+                    }
+                }
+                break;
+            case NodeKind::Declarator:
+            case NodeKind::NestedDeclarator: {
+                bool pointer = false;
+                auto suffix = DeclarationCategory::None;
+                for (auto child = node.FirstChild; child != None; child = Region(Syntax_[child]).NextSibling) {
+                    const auto& part = Syntax_[child];
+                    const auto kind = Region(part).Kind;
+                    // The operator nearest the name determines the entity.
+                    // A nested pointer binds before an outer function suffix.
+                    if (kind == NodeKind::NestedDeclarator && part.Category != DeclarationCategory::None) {
+                        return part.Category;
+                    }
+                    pointer |= kind == NodeKind::PointerOperator || kind == NodeKind::MemberPointerOperator;
+                    if (suffix == DeclarationCategory::None) {
+                        if (kind == NodeKind::FunctionDeclarator) {
+                            suffix = DeclarationCategory::Function;
+                        } else if (kind == NodeKind::ArrayDeclarator) {
+                            suffix = DeclarationCategory::Variable;
+                        }
+                    }
+                }
+                return suffix != DeclarationCategory::None
+                    ? suffix
+                    : pointer ? DeclarationCategory::Variable : DeclarationCategory::None;
+            }
+            case NodeKind::InitDeclarator:
+                for (auto child = node.FirstChild; child != None; child = Region(Syntax_[child]).NextSibling) {
+                    if (Region(Syntax_[child]).Kind == NodeKind::Declarator) {
+                        const auto category = Syntax_[child].Category;
+                        return category == DeclarationCategory::None ? DeclarationCategory::Variable : category;
+                    }
+                }
+                break;
+            case NodeKind::InitDeclaratorList: {
+                auto category = DeclarationCategory::None;
+                for (auto child = node.FirstChild; child != None; child = Region(Syntax_[child]).NextSibling) {
+                    if (Region(Syntax_[child]).Kind != NodeKind::InitDeclarator) {
+                        continue;
+                    }
+                    const auto next = Syntax_[child].Category;
+                    if (next == DeclarationCategory::None ||
+                        (category != DeclarationCategory::None && category != next))
+                    {
+                        return DeclarationCategory::None;
+                    }
+                    category = next;
+                }
+                return category;
+            }
+            case NodeKind::TemplateDeclaration:
+            case NodeKind::ExportDeclaration:
+                // Wrappers inherit the declared entity, never a braced sequence.
+                if (!entry.ItemSequence) {
+                    for (auto child = node.FirstChild; child != None; child = Region(Syntax_[child]).NextSibling) {
+                        if (DeclarationItem(Region(Syntax_[child]).Kind)) {
+                            return Syntax_[child].Category;
+                        }
+                    }
+                }
+                break;
+            default:
+                break;
+        }
+        return DeclarationCategory::None;
+    }
+
     static bool DeclarationItem(NodeKind kind)
     {
         switch (kind) {
@@ -3845,14 +3950,18 @@ private:
         const auto& policy = Policies_.VerticalGaps;
         const bool commentRules = policy.StandaloneCommentBlankLinesBefore.Mode == VerticalGapMode::Exact ||
             policy.StandaloneCommentBlankLinesAfter.Mode == VerticalGapMode::Exact;
-        const bool sequenceRules = commentRules || policy.DeclarationBlankLines.Mode == VerticalGapMode::Exact ||
-            policy.MemberDeclarationBlankLines.Mode == VerticalGapMode::Exact ||
-            policy.DefinitionBlankLines.Mode == VerticalGapMode::Exact ||
-            policy.MemberDefinitionBlankLines.Mode == VerticalGapMode::Exact ||
-            policy.NamespaceBlankLinesAfterOpen.Mode == VerticalGapMode::Exact ||
-            policy.NamespaceBlankLinesBeforeClose.Mode == VerticalGapMode::Exact ||
-            policy.AccessSectionBlankLinesBefore.Mode == VerticalGapMode::Exact ||
-            policy.AccessSectionBlankLinesAfterLabel.Mode == VerticalGapMode::Exact;
+        const bool sequenceRules =
+            commentRules || policy.DeclarationBlankLines.Mode == VerticalGapMode::Exact ||
+                policy.DeclarationCategoryBlankLines.Mode == VerticalGapMode::Exact ||
+                policy.MemberDeclarationBlankLines.Mode == VerticalGapMode::Exact ||
+                policy.DefinitionBlankLines.Mode == VerticalGapMode::Exact ||
+                policy.MemberDefinitionBlankLines.Mode == VerticalGapMode::Exact ||
+                policy.NamespaceBlankLinesAfterOpen.Mode == VerticalGapMode::Exact ||
+                policy.NamespaceBlankLinesBeforeClose.Mode == VerticalGapMode::Exact ||
+                policy.LinkageBlankLinesAfterOpen.Mode == VerticalGapMode::Exact ||
+                policy.LinkageBlankLinesBeforeClose.Mode == VerticalGapMode::Exact ||
+                policy.AccessSectionBlankLinesBefore.Mode == VerticalGapMode::Exact ||
+                policy.AccessSectionBlankLinesAfterLabel.Mode == VerticalGapMode::Exact;
         if (sequenceRules) {
             std::pmr::vector<Index> children(Syntax_.get_allocator().resource());
             std::pmr::vector<Index> following(Syntax_.get_allocator().resource());
@@ -3872,7 +3981,9 @@ private:
                     PlanStandaloneCommentGaps(id);
                 }
                 if (node.Kind != NodeKind::TranslationUnit && node.Kind != NodeKind::NamespaceDeclaration &&
-                    node.Kind != NodeKind::RecordDeclaration && node.Kind != NodeKind::MacroRecordDeclaration)
+                    node.Kind != NodeKind::RecordDeclaration && node.Kind != NodeKind::MacroRecordDeclaration &&
+                    node.Kind != NodeKind::LinkageSpecification &&
+                    !(node.Kind == NodeKind::ExportDeclaration && Syntax_[id].ItemSequence))
                 {
                     continue;
                 }
@@ -3891,9 +4002,11 @@ private:
                         nextItem = DeclarationItem(Region(Syntax_[children[p]]).Kind) ? children[p] : None;
                     }
                 }
-                const auto body = BlockOf_[id];
-                const auto opening = body == None ? None : Index(Groups_[body].Begin / 2) - 1;
-                const auto close = body == None ? None : Index(Groups_[body].End / 2) - 1;
+                // Sequence edges exist even when layout preserves the body
+                // without creating a document group (for example, linkage).
+                const bool body = node.Kind != NodeKind::TranslationUnit && Syntax_[id].ItemSequence;
+                const auto opening = body ? Syntax_[id].SequenceBody.Begin - 1 : None;
+                const auto close = body ? Syntax_[id].SequenceBody.End : None;
                 Index previous = None;
                 Index access = None;
                 bool seenAccess = false;
@@ -3902,11 +4015,14 @@ private:
                     const auto child = children[p];
                     const auto& entry = Syntax_[child];
                     const auto& part = Region(entry);
-                    if (body != None && (part.Tokens.Begin <= opening || part.Tokens.End > close)) {
+                    if (body && (part.Tokens.Begin <= opening || part.Tokens.End > close)) {
                         continue;
                     }
                     if (!content && node.Kind == NodeKind::NamespaceDeclaration && !part.Tokens.Empty()) {
                         ExactVertical(Region(entry).Attached.Begin, policy.NamespaceBlankLinesAfterOpen);
+                    }
+                    if (!content && node.Kind == NodeKind::LinkageSpecification && !part.Tokens.Empty()) {
+                        ExactVertical(Region(entry).Attached.Begin, policy.LinkageBlankLinesAfterOpen);
                     }
                     content = content || !part.Tokens.Empty();
                     const bool macroDefinition = part.Kind == NodeKind::MacroFunctionDefinition ||
@@ -3966,11 +4082,20 @@ private:
                                 Region(entry).Attached.Begin,
                                 member ? policy.MemberDefinitionBlankLines : policy.DefinitionBlankLines);
                         }
+                        if (entry.Category != DeclarationCategory::None &&
+                            Syntax_[previous].Category != DeclarationCategory::None &&
+                            entry.Category != Syntax_[previous].Category)
+                        {
+                            ExactVertical(Region(entry).Attached.Begin, policy.DeclarationCategoryBlankLines);
+                        }
                     }
                     previous = child;
                 }
                 if (content && node.Kind == NodeKind::NamespaceDeclaration && close != None) {
                     ExactVertical(close, policy.NamespaceBlankLinesBeforeClose);
+                }
+                if (content && node.Kind == NodeKind::LinkageSpecification && close != None) {
+                    ExactVertical(close, policy.LinkageBlankLinesBeforeClose);
                 }
             }
         }

@@ -207,10 +207,18 @@ Blank lines
 - NamespaceBlankLinesAfterOpen/BeforeClose apply to nonempty content,
   outside attached comments. AccessSectionBlankLinesBefore skips the
   first section at the opening; AfterLabel needs following content.
+- LinkageBlankLinesAfterOpen/BeforeClose apply inside nonempty
+  extern linkage blocks, outside attached comments.
 - DeclarationBlankLines separates declarations, including variables
   and prototypes. DefinitionBlankLines takes precedence when either
   neighbor is a function, record or enum definition, not a lambda,
   namespace or access label.
+- DeclarationCategoryBlankLines overrides declaration/definition
+  counts between different entity kinds: types, functions and
+  variables. Types include records, enums, typedefs and using aliases.
+  Templates and single export declarations follow their entity kind.
+  Applies at file scope and in namespaces, records, linkage and
+  export blocks. Other declarations stop category grouping.
 - MemberDeclarationBlankLines and MemberDefinitionBlankLines replace
   the corresponding general counts; Inherit follows those counts.
 - MaxEmptyLines caps editable blank lines, not inline gaps or text
@@ -221,9 +229,12 @@ Blank lines
 Set blank lines at structural boundaries:
     NamespaceBlankLinesAfterOpen = 1
     NamespaceBlankLinesBeforeClose = 1
+    LinkageBlankLinesAfterOpen = 1
+    LinkageBlankLinesBeforeClose = 1
     AccessSectionBlankLinesBefore = 1
     AccessSectionBlankLinesAfterLabel = 1
-    DeclarationBlankLines = 1
+    DeclarationBlankLines = 0
+    DeclarationCategoryBlankLines = 1
     MemberDeclarationBlankLines = Preserve
     DefinitionBlankLines = 1
     MemberDefinitionBlankLines = 0

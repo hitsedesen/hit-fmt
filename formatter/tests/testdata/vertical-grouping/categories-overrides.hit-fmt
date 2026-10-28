@@ -1,0 +1,11 @@
+Layout = Preserve
+IndentWidth = 4
+ColumnLimit = 100
+IndentNamespaces = NoIndent
+DeclarationBlankLines = 0
+DefinitionBlankLines = 0
+DeclarationBlankLines = 1
+DefinitionBlankLines = 2
+MemberDeclarationBlankLines = 1
+MemberDefinitionBlankLines = 2
+DeclarationCategoryBlankLines = 0

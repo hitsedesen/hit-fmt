@@ -1,0 +1,9 @@
+Layout = Canonical
+IndentWidth = 4
+ColumnLimit = 100
+EmptyBodyShape = CompactIfFits
+LinkageBlankLinesAfterOpen = 1
+LinkageBlankLinesBeforeClose = 2
+DeclarationBlankLines = 0
+DeclarationCategoryBlankLines = 1
+MaxEmptyLines = 2
