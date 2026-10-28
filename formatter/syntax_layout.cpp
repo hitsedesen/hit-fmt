@@ -57,6 +57,7 @@ struct Gap
     Boundary Shape = Boundary::Preserve;
     document::GapKind Broken = document::GapKind::Flat;
     bool Closing = false;
+    uint8_t BraceIndentOffset = 0;
     bool Generated = false;
     bool Reindent = false;
     // Style-owned indentation demand survives a scope fence on topology.
@@ -2341,6 +2342,9 @@ private:
                         : brace == BracePlacement::Attached ? Boundary::Flat : Boundary::Conditional,
                     document::GapKind::Hard,
                     true);
+                if (canonicalBrace && brace == BracePlacement::NextLineIfHeaderIndented) {
+                    Gaps_[opening].BraceIndentOffset = std::max<uint8_t>(1, Policies_.Bodies.IndentWidth);
+                }
                 if (!canonicalBrace) {
                     Reindent(opening, header, true);
                 }
@@ -2577,6 +2581,9 @@ private:
                 : *brace == BracePlacement::Attached && fixedBase == None ? Boundary::Flat : Boundary::Conditional,
             document::GapKind::Hard,
             true);
+        if (canonicalBrace && *brace == BracePlacement::NextLineIfHeaderIndented) {
+            Gaps_[opening].BraceIndentOffset = uint8_t(std::max<int32_t>(1, bodyWidth));
+        }
         if (canonical && !macroFunction) {
             ProjectHeaderGaps(id, node.Tokens.Begin, opening, group);
         }
@@ -4698,7 +4705,13 @@ private:
                 Fail(SyntaxLayoutError::ConflictingGapOwners, i);
                 return;
             }
-            Document_.ConditionalGap(Groups_[gap.Owner].Id, flat, Spec(i, gap.Broken), anchor, GapOrigin(i));
+            Document_.ConditionalGap(
+                Groups_[gap.Owner].Id,
+                flat,
+                Spec(i, gap.Broken),
+                anchor,
+                GapOrigin(i),
+                gap.BraceIndentOffset ? gap.BraceIndentOffset : document::InvalidId);
         } else {
             Document_.Gap(
                 Spec(i, gap.Shape == Boundary::Hard ? document::GapKind::Hard : document::GapKind::Soft),

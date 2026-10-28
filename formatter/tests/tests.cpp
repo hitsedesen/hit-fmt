@@ -679,6 +679,30 @@ std::vector<FormatCase> FormatCases()
         ShareExpected(cases, directory, "zero.output.cpp", "input.cpp");
     }
     AddCases(cases, BRACE_TESTDATA_DIR, {"preserve", "attach", "newline", "mixed"});
+    AddCases(cases, BRACE_TESTDATA_DIR, {"last-line-indent"}, "last-line-indent.input.cpp");
+    {
+        const auto directory = std::filesystem::path(BRACE_TESTDATA_DIR);
+        auto style = formatter::LoadConfigFile(directory / "last-line-indent.hit-fmt").FormattingStyle;
+        style.ConstructorBracePlacement.reset();
+        style.ParametersCloser = CloserPlacement::SameLine;
+        style.ControlHeadersCloser = CloserPlacement::SameLine;
+        style.IndentWidth = 2;
+        style.ContinuationOffset = 4;
+        style.IndentationKind = IndentationKind::Tabs;
+        cases.push_back({directory, "last-line-indent-tabs", "last-line-indent.input.cpp"});
+        cases.back().Style = style;
+        style.IndentWidth = 8;
+        style.IndentationKind = IndentationKind::Spaces;
+        cases.push_back({directory, "last-line-indent-wide-body", "last-line-indent.input.cpp"});
+        cases.back().Style = std::move(style);
+        style = formatter::LoadConfigFile(directory / "last-line-indent.hit-fmt").FormattingStyle;
+        style.ColumnLimit = 35;
+        style.ParametersBreak = BreakRequirement::IfNeeded;
+        style.ConstructorListsBreak = BreakRequirement::IfNeeded;
+        style.ControlHeadersBreak = BreakRequirement::IfNeeded;
+        cases.push_back({directory, "last-line-indent-reflow", "last-line-indent.input.cpp"});
+        cases.back().Style = std::move(style);
+    }
     AddCases(cases, data / "include-order", {"sort", "composed"});
     cases.push_back({data / "include-order", "crlf", "crlf.input.cpp", "sort"});
     {

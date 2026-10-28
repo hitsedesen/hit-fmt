@@ -229,9 +229,8 @@ void ValidatePolicyStyle(const Style& style)
     {
         throw std::invalid_argument("IncludeStandardHeaders has invalid value");
     }
-    if (style.ConstructorBracePlacement && *style.ConstructorBracePlacement != BracePlacement::Attached &&
-        *style.ConstructorBracePlacement != BracePlacement::NextLine &&
-        *style.ConstructorBracePlacement != BracePlacement::NextLineIfHeaderBroken)
+    if (style.ConstructorBracePlacement &&
+        static_cast<std::size_t>(*style.ConstructorBracePlacement) >= ConfigEnumNames<BracePlacement>::Values.size())
     {
         throw std::invalid_argument("ConstructorBracePlacement has invalid value");
     }

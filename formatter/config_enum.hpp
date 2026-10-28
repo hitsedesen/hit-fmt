@@ -77,7 +77,7 @@ DEFINE_CONFIG_ENUM(IncludePathBase, INCLUDE_PATH_BASE_VALUES);
 #define INCLUDE_STANDARD_HEADERS_VALUES(X) X(Preserve) X(Last)
 DEFINE_CONFIG_ENUM(IncludeStandardHeaders, INCLUDE_STANDARD_HEADERS_VALUES);
 #undef INCLUDE_STANDARD_HEADERS_VALUES
-#define BRACE_VALUES(X) X(Attached) X(NextLine) X(NextLineIfHeaderBroken)
+#define BRACE_VALUES(X) X(Attached) X(NextLine) X(NextLineIfHeaderBroken) X(NextLineIfHeaderIndented)
 DEFINE_CONFIG_ENUM(BracePlacement, BRACE_VALUES);
 #undef BRACE_VALUES
 #define TRAILING_COMMA_VALUES(X) X(Preserve) X(Never) X(WhenMultiline)

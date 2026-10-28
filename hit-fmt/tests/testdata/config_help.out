@@ -157,7 +157,10 @@ Wrap call chains:
     ChainsAlignment = Block
 
 Output shape
-- Brace placements: Attached, NextLine or NextLineIfHeaderBroken.
+- Brace placements: Attached, NextLine, NextLineIfHeaderBroken or
+  NextLineIfHeaderIndented. The latter starts a new line when the
+  last output header line is indented at least as far as the body;
+  a closing delimiter at the brace indentation stays attached.
   ConstructorBracePlacement and DestructorBracePlacement may Inherit
   FunctionBracePlacement. CaseBlockBracePlacement applies to a case
   containing only one block, not mixed statements and blocks.
@@ -188,6 +191,18 @@ Choose braces and body shapes:
     LambdaBodiesLayout = Inherit
     LambdaBodyShape = CompactIfFits
     LambdaEmptyBodyShape = Inherit
+
+Place braces using the last header line's indentation:
+    FunctionBracePlacement = NextLineIfHeaderIndented
+    ConstructorBracePlacement = Inherit
+    # With canonical headers, keep ) { at the function indentation:
+    # void Process(
+    #     Request request
+    # ) {
+    # Move { below a header ending at or beyond the body indentation:
+    # Worker::Worker() :
+    #     Cache_(CreateCache())
+    # {
 
 Set namespace, enum and initializer layout:
     IndentNamespaces = NoIndent

@@ -873,7 +873,13 @@ void Document::ConditionalText(
     Add(node);
 }
 
-void Document::ConditionalGap(GroupId reference, GapSpec flat, GapSpec broken, AnchorId anchor, Provenance origin)
+void Document::ConditionalGap(
+    GroupId reference,
+    GapSpec flat,
+    GapSpec broken,
+    AnchorId anchor,
+    Provenance origin,
+    std::uint32_t minLineIndentOffset)
 {
     if (flat.Kind != GapKind::Flat) {
         Fail(Error::InvalidConditionalGap);
@@ -890,6 +896,7 @@ void Document::ConditionalGap(GroupId reference, GapSpec flat, GapSpec broken, A
         return;
     }
     Node node(Kind::ConditionalGap);
+    node.Gaps.MinLineIndentOffset = minLineIndentOffset;
     node.Gaps.Flat = flat;
     node.Gaps.Broken = broken;
     node.Gaps.Anchor = anchor;
@@ -1849,10 +1856,15 @@ Result Document::Render(Policy policy, std::pmr::memory_resource* resource) cons
             // Do not set frame.OwnedLine: only editable gaps satisfy
             // ForceOwned.
         } else {
-            const auto gap = GapFor(node, node.Type == Kind::ConditionalGap && ownerBroken);
             const auto anchor = GapAnchor(node);
+            bool broken = ownerBroken;
+            if (node.Type == Kind::ConditionalGap && GapPayloads_[node.Payload].MinLineIndentOffset != InvalidId) {
+                broken =
+                    lineIndent >= AddWidth(resolveIndent(anchor, 0), GapPayloads_[node.Payload].MinLineIndentOffset);
+            }
+            const auto gap = GapFor(node, node.Type == Kind::ConditionalGap && broken);
             const auto& gapEntry = gapCache[entry.Gap];
-            if (frame.OwnedFlat && ownerBroken && node.Type == Kind::ConditionalGap && gap.Kind == GapKind::Hard) {
+            if (frame.OwnedFlat && broken && node.Type == Kind::ConditionalGap && gap.Kind == GapKind::Hard) {
                 // Conditional topology belongs to the owner's broken shape;
                 // it cannot be suppressed by a child-only alternative.
                 return false;
