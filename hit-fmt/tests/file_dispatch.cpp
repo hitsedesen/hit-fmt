@@ -8,7 +8,6 @@
 #include <chrono>
 #include <filesystem>
 #include <future>
-#include <sstream>
 #include <stdexcept>
 #include <string>
 #include <thread>
@@ -73,46 +72,75 @@ TEST(FileDispatch, FileFailuresDoNotHideLaterResults)
             EXPECT_EQ(result.Output, std::to_string(printed++));
             return result.Failed;
         };
-        std::ostringstream errors;
         int resolver = 0;
         const bool success = threads == 1
-            ? hit_fmt::RunSerialFiles(discover, resolver, process, print, errors)
-            : hit_fmt::RunParallelFiles(threads, discover, [] { return 0; }, process, print, errors);
+            ? hit_fmt::RunSerialFiles(discover, resolver, process, print)
+            : hit_fmt::RunParallelFiles(threads, discover, [] { return 0; }, process, print);
         EXPECT_FALSE(success);
         EXPECT_EQ(processed.load(), count);
         EXPECT_EQ(printed, count);
-        EXPECT_TRUE(errors.str().empty());
     }
 }
 
 TEST(FileDispatch, DiscoveryErrorsDrainDispatchedFiles)
 {
-    std::promise<void> firstStarted;
-    auto started = firstStarted.get_future();
-    std::vector<std::string> printed;
-    std::ostringstream errors;
-    const bool success = hit_fmt::RunParallelFiles(
-        2,
-        [&] (auto visit) -> bool {
+    for (const size_t threads : {1u, 2u}) {
+        SCOPED_TRACE(threads);
+        std::promise<void> firstStarted;
+        auto started = firstStarted.get_future();
+        std::vector<std::string> printed;
+        auto discover = [&] (auto visit) -> bool {
             visit(std::filesystem::path("first.cpp"));
             if (started.wait_for(std::chrono::seconds(5)) != std::future_status::ready) {
                 throw std::runtime_error("worker did not start");
             }
             throw std::runtime_error("discovery failed");
-        },
-        [] { return 0; },
-        [&] (const auto& path, int&) {
+        };
+        auto process = [&] (const auto& path, int&) {
             firstStarted.set_value();
             return hit_fmt::FileResult{.Output = path.string()};
-        },
-        [&] (const auto& result) {
+        };
+        auto print = [&] (const auto& result) {
             printed.push_back(result.Output);
             return result.Failed;
-        },
-        errors);
-    EXPECT_FALSE(success);
-    EXPECT_EQ(printed, (std::vector<std::string>{"first.cpp"}));
-    EXPECT_EQ(errors.str(), "discovery failed\n");
+        };
+        auto run = [&] {
+            int resolver = 0;
+            return threads == 1
+                ? hit_fmt::RunSerialFiles(discover, resolver, process, print)
+                : hit_fmt::RunParallelFiles(threads, discover, [] { return 0; }, process, print);
+        };
+        EXPECT_THROW(run(), std::runtime_error);
+        EXPECT_EQ(printed, (std::vector<std::string>{"first.cpp"}));
+    }
+}
+
+TEST(FileDispatch, DispatchFailuresStopWorkersAndDiscovery)
+{
+    for (const bool failResolver : {true, false}) {
+        SCOPED_TRACE(failResolver ? "resolver failure" : "output failure");
+        auto run = [&] {
+            return hit_fmt::RunParallelFiles(
+                2,
+                [] (auto visit) {
+                    for (size_t index = 0; index < 140; ++index) {
+                        if (!visit(std::filesystem::path("input.cpp"))) {
+                            return false;
+                        }
+                    }
+                    return true;
+                },
+                [&] {
+                    if (failResolver) {
+                        throw std::runtime_error("resolver failed");
+                    }
+                    return 0;
+                },
+                [] (const auto&, int&) { return hit_fmt::FileResult{}; },
+                [] (const auto&) -> bool { throw std::runtime_error("output failed"); });
+        };
+        EXPECT_THROW(run(), std::runtime_error);
+    }
 }
 
 TEST(FileDispatch, ProcessesDuringDiscoveryAndPrintsInOrder)
@@ -142,7 +170,6 @@ TEST(FileDispatch, ProcessesDuringDiscoveryAndPrintsInOrder)
         return hit_fmt::FileResult{.Output = path.string()};
     };
     std::vector<std::string> printed;
-    std::ostringstream errors;
     bool completed = hit_fmt::RunParallelFiles(
         2,
         discover,
@@ -151,9 +178,8 @@ TEST(FileDispatch, ProcessesDuringDiscoveryAndPrintsInOrder)
         [&] (const auto& result) {
             printed.push_back(result.Output);
             return false;
-        },
-        errors);
-    EXPECT_TRUE(completed) << errors.str();
+        });
+    EXPECT_TRUE(completed);
     EXPECT_TRUE(secondProcessed.load());
     EXPECT_EQ(printed, (std::vector<std::string>{"first.cpp", "second.cpp"}));
 }

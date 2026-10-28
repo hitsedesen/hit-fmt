@@ -2,11 +2,14 @@ add_library(lib-file-check STATIC
     file_check.cpp
     options.cpp
     source_excerpt.cpp
+    formatting_diagnostics.cpp
+    terminal.cpp
     config_template.cpp)
 target_link_libraries(lib-file-check PUBLIC lib-formatter)
 
 add_executable(hit-fmt
     main.cpp
+    run.cpp
     config_help.cpp
     version.cpp)
 target_link_libraries(hit-fmt

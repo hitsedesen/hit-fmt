@@ -9,29 +9,12 @@ namespace hit_fmt {
 
 namespace {
 
-constexpr std::string_view Reset = "\033[0m";
-
-constexpr std::string_view Heading = "\033[1;36m";
-
-constexpr std::string_view Setting = "\033[1;33m";
-
-constexpr std::string_view Example = "\033[36m";
-
-constexpr std::string_view Comment = "\033[2m";
-
-void PrintHeading(std::ostream& output, std::string_view title, bool color)
+void PrintHeading(std::ostream& output, std::string_view title, const TerminalColors& colors)
 {
-    if (color) {
-        output << Heading;
-    }
-    output << title;
-    if (color) {
-        output << Reset;
-    }
-    output << '\n';
+    output << colors.BoldCyan << title << colors.Reset << '\n';
 }
 
-void PrintCode(std::ostream& output, std::string_view code, bool color)
+void PrintCode(std::ostream& output, std::string_view code, const TerminalColors& colors)
 {
     size_t start = 0;
     while (start < code.size()) {
@@ -42,28 +25,22 @@ void PrintCode(std::ostream& output, std::string_view code, bool color)
             output << '\n';
             continue;
         }
-        if (color) {
-            output << (line.starts_with("//") || line.starts_with("#") ? Comment : Example);
-        }
-        output << "    " << line;
-        if (color) {
-            output << Reset;
-        }
-        output << '\n';
+        output << (line.starts_with("//") || line.starts_with("#") ? colors.Dim : colors.Cyan) << "    " << line
+            << colors.Reset << '\n';
     }
 }
 
 } // namespace
 
-void PrintConfigHelp(std::ostream& output, bool useColor)
+void PrintConfigHelp(std::ostream& output, const TerminalColors& colors)
 {
-    PrintHeading(output, "Configuration options", useColor);
+    PrintHeading(output, "Configuration options", colors);
     output
         << "Use Key = Value, # comments and [\"quoted\", \"strings\"] lists.\n"
             "Defaults keep line breaks; Layout = Canonical reflows code.\n"
             "Unknown names and invalid values are errors.\n"
             "Use --generate-config for all options, values and defaults.\n\n";
-    PrintHeading(output, "Configuration inheritance", useColor);
+    PrintHeading(output, "Configuration inheritance", colors);
     output
         << "Load a base file with include = \"base.hit-fmt\".\n"
             "- Paths start beside this config; absolute paths work too.\n"
@@ -71,7 +48,7 @@ void PrintConfigHelp(std::ostream& output, bool useColor)
             "- Local values win, regardless of include position.\n" "- Lists replace inherited lists; [] clears them.\n"
             "- Validate after merging. Nested includes: 64 files max.\n"
             "- Cycles, missing files and duplicate includes are errors.\n\n";
-    PrintCode(output, "include = \"@/configs/base.hit-fmt\"\nColumnLimit = 100\n", useColor);
+    PrintCode(output, "include = \"@/configs/base.hit-fmt\"\nColumnLimit = 100\n", colors);
     output << '\n';
     bool firstSection = true;
     for (const auto& section : HelpSections) {
@@ -79,19 +56,11 @@ void PrintConfigHelp(std::ostream& output, bool useColor)
             output << '\n';
         }
         firstSection = false;
-        PrintHeading(output, section.Title, useColor);
+        PrintHeading(output, section.Title, colors);
         output << section.Description;
         for (const auto& example : section.Examples) {
-            output << '\n';
-            if (useColor) {
-                output << Setting;
-            }
-            output << example.Title;
-            if (useColor) {
-                output << Reset;
-            }
-            output << '\n';
-            PrintCode(output, example.Code, useColor);
+            output << '\n' << colors.BoldYellow << example.Title << colors.Reset << '\n';
+            PrintCode(output, example.Code, colors);
         }
     }
 }
