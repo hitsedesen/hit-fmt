@@ -703,6 +703,14 @@ std::vector<FormatCase> FormatCases()
         cases.push_back({directory, "last-line-indent-reflow", "last-line-indent.input.cpp"});
         cases.back().Style = std::move(style);
     }
+    AddCases(cases, BRACE_TESTDATA_DIR, {"namespace-indent"}, "namespace-indent.input.cpp");
+    {
+        const auto directory = std::filesystem::path(BRACE_TESTDATA_DIR);
+        auto style = formatter::LoadConfigFile(directory / "namespace-indent.hit-fmt").FormattingStyle;
+        style.IndentNamespaces = formatter::BodyIndentation::Preserve;
+        cases.push_back({directory, "namespace-indent-preserve", "namespace-indent.input.cpp"});
+        cases.back().Style = std::move(style);
+    }
     AddCases(cases, data / "include-order", {"sort", "composed"});
     cases.push_back({data / "include-order", "crlf", "crlf.input.cpp", "sort"});
     {
