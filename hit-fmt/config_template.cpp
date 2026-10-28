@@ -94,6 +94,19 @@ void PrintOption(std::ostream& output, std::string_view name, const T& value)
                 "# Unknown syntax and macro bodies retain semicolons.\n"
                 "# Example: struct CLASS_NAME(Example) {}; keeps its ';'.\n";
     }
+    if (name == "BodyShape" || name == "LambdaBodyShape") {
+        output
+            << "# CompactSingleStatementIfFits: one simple statement, including\n"
+                "# a local declaration, only when it fits ColumnLimit.\n"
+                "# Nested controls/blocks, records, namespaces and sibling\n"
+                "# comments/directives remain expanded. Canonical bodies only.\n"
+                "# Empty bodies use the independent empty-body shape.\n"
+                "# Example: int Next(int x) { return x + 1; }\n"
+                "# Clear(); Notify(); in one body remains multiline.\n";
+    }
+    if (name == "EmptyBodyShape" || name == "LambdaEmptyBodyShape") {
+        output << "# CompactSingleStatementIfFits expands empty bodies.\n";
+    }
     if (name == "CallLineFirstArgumentNames") {
         output
             << "# Exact names (including member calls), empty by default.\n"
@@ -139,6 +152,24 @@ void PrintOption(std::ostream& output, std::string_view name, const T& value)
                 "# AssignmentRhsPlacement = NextLine and ExpressionsBreak\n"
                 "# = Always still require assignment breaks. Example:\n" "# ExpressionsPacking = VerticalWhenBroken\n"
                 "# AssignmentsPacking = Fill\n" "# auto ready = firstCheck() ||\n" "#     secondCheck();\n";
+    }
+    if (name == "ListPacking") {
+        output
+            << "# AllOrVertical keeps all items in one row when they fit,\n"
+                "# otherwise splits every separator. FirstItem and Closer\n"
+                "# still control the independent delimiter boundaries.\n"
+                "# Example: CallsPacking = AllOrVertical, ColumnLimit = 32,\n"
+                "# CallsFirstItem = NextLine, CallsCloser = OwnLine:\n" "# ProcessPendingTasks(\n"
+                "#     first, second\n" "# );\n";
+    }
+    if (name == "ChainsPacking") {
+        output
+            << "# AllOrVertical keeps the complete tail after the receiver\n"
+                "# on one continuation line, or splits every tail link.\n" "# Example with ColumnLimit = 40:\n"
+                "# auto client = MakeServiceClient()\n" "#     .Configure(mode).Start();\n";
+    }
+    if (name == "ExpressionsPacking" || name == "AssignmentsPacking" || name == "IfConditionsPacking") {
+        output << "# AllOrVertical behaves like VerticalWhenBroken here.\n";
     }
     if (name == "IfConditionsPacking") {
         output

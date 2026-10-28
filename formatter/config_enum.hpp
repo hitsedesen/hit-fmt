@@ -35,7 +35,7 @@ DEFINE_CONFIG_ENUM(CategoryLayout, CATEGORY_LAYOUT_VALUES);
     X(Preserve) X(Space) X(NoSpace) X(GeneratedSpace) X(GeneratedNoSpace)
 DEFINE_CONFIG_ENUM(GapPolicy, GAP_VALUES);
 #undef GAP_VALUES
-#define LIST_PACKING_VALUES(X) X(Fill) X(VerticalWhenBroken)
+#define LIST_PACKING_VALUES(X) X(Fill) X(VerticalWhenBroken) X(AllOrVertical)
 DEFINE_CONFIG_ENUM(ListPacking, LIST_PACKING_VALUES);
 #undef LIST_PACKING_VALUES
 #define BREAK_REQUIREMENT_VALUES(X) X(IfNeeded) X(Always)
@@ -95,7 +95,7 @@ DEFINE_CONFIG_ENUM(TernaryOperatorIndentation, TERNARY_INDENTATION_VALUES);
 #define WIDTH_DIAGNOSTICS_VALUES(X) X(Off) X(Report)
 DEFINE_CONFIG_ENUM(WidthDiagnosticPolicy, WIDTH_DIAGNOSTICS_VALUES);
 #undef WIDTH_DIAGNOSTICS_VALUES
-#define BODY_SHAPE_VALUES(X) X(Expanded) X(CompactIfFits)
+#define BODY_SHAPE_VALUES(X) X(Expanded) X(CompactIfFits) X(CompactSingleStatementIfFits)
 DEFINE_CONFIG_ENUM(BodyShape, BODY_SHAPE_VALUES);
 #undef BODY_SHAPE_VALUES
 #define NAMESPACE_COMMENTS_VALUES(X) X(Preserve) X(Remove) X(AddMissing) X(Fix)

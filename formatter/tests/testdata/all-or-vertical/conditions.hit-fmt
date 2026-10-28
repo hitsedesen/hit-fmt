@@ -1,0 +1,2 @@
+include = "../if-conditions-packing/leading.hit-fmt"
+IfConditionsPacking = AllOrVertical
