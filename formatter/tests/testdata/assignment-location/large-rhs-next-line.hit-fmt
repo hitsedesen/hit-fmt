@@ -1,0 +1,2 @@
+include = "large-rhs.hit-fmt"
+AssignmentRhsPlacement = NextLine

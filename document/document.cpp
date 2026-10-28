@@ -236,6 +236,7 @@ inline Document::Atom Document::Pack(const Node& node)
             atom.GapType = gap.Kind;
             atom.LineEnding = gap.LineEnding;
             atom.FitNextSegment = gap.FitNextSegment;
+            atom.FitNextSegmentIfOverflow = gap.FitNextSegmentIfOverflow;
             atom.FitFlatTail = gap.FitFlatTail;
             atom.Gap = {gap.RequiredWidth, node.Gaps.Anchor, gap.Spaces, gap.NewlineCount};
         }
@@ -258,6 +259,7 @@ inline GapSpec Document::GapFor(const Atom& atom, bool broken) const
     gap.RequiredWidth = atom.Gap.RequiredWidth;
     gap.LineEnding = atom.LineEnding;
     gap.FitNextSegment = atom.FitNextSegment;
+    gap.FitNextSegmentIfOverflow = atom.FitNextSegmentIfOverflow;
     gap.FitFlatTail = atom.FitFlatTail;
     gap.NewlineCount = atom.Gap.NewlineCount;
     return gap;
@@ -1875,9 +1877,13 @@ Result Document::Render(Policy policy, std::pmr::memory_resource* resource) cons
                 if (Group(Nodes_[Groups_[node.Owner]]).Mode == GroupMode::Consistent) {
                     line = true;
                 } else {
-                    line = !fits(AddWidth(
-                        gapEntry.ExpandedWidth,
-                        gap.FitNextSegment ? gap.RequiredWidth : tailWidth(gapEntry.FitTail))) ||
+                    const auto tail = tailWidth(gapEntry.FitTail);
+                    bool segment = gap.FitNextSegment;
+                    if (!segment && gap.FitNextSegmentIfOverflow && !probing && !layoutSelected) {
+                        const auto indent = resolveIndent(anchor, gap.RequiredWidth);
+                        segment = indent >= policy.Width || tail > policy.Width - indent;
+                    }
+                    line = !fits(AddWidth(gapEntry.ExpandedWidth, segment ? gap.RequiredWidth : tail)) ||
                         (frame.Mandatory == i && (frame.ForceOwned ? !frame.OwnedLine : lines == frame.StartLine));
                 }
             }

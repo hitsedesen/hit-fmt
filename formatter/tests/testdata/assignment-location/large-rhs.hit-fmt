@@ -1,0 +1,4 @@
+include = "../style/repository-80.hit-fmt"
+ColumnLimit = 120
+AssignmentsPacking = Fill
+AssignmentRhsPlacement = InlineIfFits
