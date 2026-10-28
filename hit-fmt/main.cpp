@@ -8,7 +8,7 @@
 int main(int argc, char* argv[])
 {
     try {
-        return hit_fmt::Run(argc, argv);
+        return hit_fmt::Run({argv, static_cast<size_t>(argc)});
     }
     catch (const hit_fmt::UsageError& error) {
         hit_fmt::PrintError(std::cerr, error.what(), hit_fmt::GetTerminalColors(stderr));

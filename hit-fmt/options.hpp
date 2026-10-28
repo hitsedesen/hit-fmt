@@ -6,6 +6,7 @@
 #include <filesystem>
 #include <optional>
 #include <regex>
+#include <span>
 #include <stdexcept>
 #include <string>
 #include <vector>
@@ -36,6 +37,6 @@ struct Options
     std::vector<std::filesystem::path> Paths;
 };
 
-[[nodiscard]] Options ParseOptions(int argc, const char* const argv[]);
+[[nodiscard]] Options ParseOptions(std::span<const char* const> args);
 
 } // namespace hit_fmt

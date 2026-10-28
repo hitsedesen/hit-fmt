@@ -352,7 +352,7 @@ TEST(FileCheck, ChangedHunkOptionsSupportAliasesAndRejectMixedInputs)
 {
     for (const auto option : {"--changed-hunks", "--changed-ranges"}) {
         const char* argv[] = {"hit-fmt", "--fix", option, "-", "--no-spillover", "--threads=2", "--summary"};
-        const auto parsed = hit_fmt::ParseOptions(std::size(argv), argv);
+        const auto parsed = hit_fmt::ParseOptions(argv);
         ASSERT_TRUE(parsed.HunkInput);
         EXPECT_EQ(*parsed.HunkInput, "-");
         EXPECT_TRUE(parsed.Paths.empty());
@@ -363,7 +363,7 @@ TEST(FileCheck, ChangedHunkOptionsSupportAliasesAndRejectMixedInputs)
     }
     for (const auto option : {"--changed-hunks=ranges.txt", "--changed-ranges=ranges.txt"}) {
         const char* argv[] = {"hit-fmt", option};
-        const auto parsed = hit_fmt::ParseOptions(std::size(argv), argv);
+        const auto parsed = hit_fmt::ParseOptions(argv);
         ASSERT_TRUE(parsed.HunkInput);
         EXPECT_EQ(*parsed.HunkInput, "ranges.txt");
         EXPECT_TRUE(parsed.Spillover);
@@ -383,10 +383,10 @@ TEST(FileCheck, ChangedHunkOptionsSupportAliasesAndRejectMixedInputs)
             {"hit-fmt", "--exclude=["},
         })
     {
-        EXPECT_THROW((void)hit_fmt::ParseOptions(argv.size(), argv.data()), hit_fmt::UsageError);
+        EXPECT_THROW((void)hit_fmt::ParseOptions(argv), hit_fmt::UsageError);
     }
     const char* positional[] = {"hit-fmt", "--", "--changed-hunks", "--no-spillover"};
-    const auto parsed = hit_fmt::ParseOptions(std::size(positional), positional);
+    const auto parsed = hit_fmt::ParseOptions(positional);
     EXPECT_FALSE(parsed.HunkInput);
     EXPECT_EQ(parsed.Paths.size(), 2u);
 }
@@ -397,7 +397,7 @@ TEST(FileCheck, UsageErrorDiagnosticGolden)
     for (const char* argument : {"--unknown", "--generate-config=missing"}) {
         const char* argv[] = {"hit-fmt", argument};
         try {
-            (void)hit_fmt::ParseOptions(std::size(argv), argv);
+            (void)hit_fmt::ParseOptions(argv);
             FAIL() << "Expected a usage error";
         }
         catch (const hit_fmt::UsageError& error) {
@@ -414,7 +414,7 @@ TEST(FileCheck, GenerateConfigOptionsSelectOptionalPresets)
 {
     using hit_fmt::ConfigPreset;
     const char* defaultArgs[] = {"hit-fmt", "--generate-config", "--summary"};
-    const auto defaults = hit_fmt::ParseOptions(std::size(defaultArgs), defaultArgs);
+    const auto defaults = hit_fmt::ParseOptions(defaultArgs);
     EXPECT_EQ(defaults.GenerateConfig, ConfigPreset::Default);
     EXPECT_TRUE(defaults.SummaryOnly);
     for (const auto& [name, preset] :
@@ -426,12 +426,12 @@ TEST(FileCheck, GenerateConfigOptionsSelectOptionalPresets)
     {
         SCOPED_TRACE(name);
         const char* separated[] = {"hit-fmt", "--generate-config", name};
-        const auto parsed = hit_fmt::ParseOptions(std::size(separated), separated);
+        const auto parsed = hit_fmt::ParseOptions(separated);
         EXPECT_EQ(parsed.GenerateConfig, preset);
         EXPECT_TRUE(parsed.Paths.empty());
         const auto option = "--generate-config=" + std::string(name);
         const char* attached[] = {"hit-fmt", option.c_str()};
-        EXPECT_EQ(hit_fmt::ParseOptions(std::size(attached), attached).GenerateConfig, preset);
+        EXPECT_EQ(hit_fmt::ParseOptions(attached).GenerateConfig, preset);
     }
     for (const auto& args :
         std::vector<std::vector<const char*>>{
@@ -441,7 +441,7 @@ TEST(FileCheck, GenerateConfigOptionsSelectOptionalPresets)
             {"hit-fmt", "source.cpp", "--generate-config"},
         })
     {
-        EXPECT_THROW((void)hit_fmt::ParseOptions(args.size(), args.data()), hit_fmt::UsageError);
+        EXPECT_THROW((void)hit_fmt::ParseOptions(args), hit_fmt::UsageError);
     }
 }
 

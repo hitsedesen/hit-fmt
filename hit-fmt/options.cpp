@@ -25,12 +25,12 @@ ConfigPreset ParseConfigPreset(std::string_view name)
 
 } // namespace
 
-Options ParseOptions(int argc, const char* const argv[])
+Options ParseOptions(std::span<const char* const> args)
 {
     Options options;
     bool positionalOnly = false;
-    for (int index = 1; index < argc; ++index) {
-        std::string_view argument(argv[index]);
+    for (size_t index = 1; index < args.size(); ++index) {
+        std::string_view argument(args[index]);
         if (positionalOnly || !argument.starts_with('-') || argument == "-") {
             options.Paths.emplace_back(argument);
         } else if (argument == "--") {
@@ -45,8 +45,8 @@ Options ParseOptions(int argc, const char* const argv[])
             options.GenerateConfig = ConfigPreset::Default;
             if (argument != "--generate-config") {
                 options.GenerateConfig = ParseConfigPreset(argument.substr(18));
-            } else if (index + 1 < argc && !std::string_view(argv[index + 1]).starts_with('-')) {
-                options.GenerateConfig = ParseConfigPreset(argv[++index]);
+            } else if (index + 1 < args.size() && !std::string_view(args[index + 1]).starts_with('-')) {
+                options.GenerateConfig = ParseConfigPreset(args[++index]);
             }
         } else if (argument == "--fix") {
             options.Fix = true;
@@ -66,10 +66,10 @@ Options ParseOptions(int argc, const char* const argv[])
             }
             const auto equal = argument.find('=');
             if (equal == argument.npos) {
-                if (++index == argc) {
+                if (++index == args.size()) {
                     throw UsageError("--changed-hunks requires one input file or -");
                 }
-                options.HunkInput = argv[index];
+                options.HunkInput = args[index];
             } else {
                 options.HunkInput = argument.substr(equal + 1);
             }
@@ -83,15 +83,15 @@ Options ParseOptions(int argc, const char* const argv[])
             if (argument == "-j") {
                 // Only consume the next token if it is a thread count;
                 // otherwise it remains an input path or another option.
-                if (index + 1 < argc) {
-                    std::string_view next(argv[index + 1]);
+                if (index + 1 < args.size()) {
+                    std::string_view next(args[index + 1]);
                     if (!next.empty() && std::ranges::all_of(
                         next,
                         [] (char c) {
                             return c >= '0' && c <= '9';
                         }))
                     {
-                        value = argv[++index];
+                        value = args[++index];
                     }
                 }
                 if (value.empty()) {
@@ -99,10 +99,10 @@ Options ParseOptions(int argc, const char* const argv[])
                     continue;
                 }
             } else if (argument == "--threads") {
-                if (++index == argc) {
+                if (++index == args.size()) {
                     throw UsageError("--threads requires a positive integer");
                 }
-                value = argv[index];
+                value = args[index];
             } else {
                 value = argument.substr(argument.starts_with("-j") ? 2 : 10);
             }
@@ -113,19 +113,19 @@ Options ParseOptions(int argc, const char* const argv[])
             }
             options.Threads = threads;
         } else if (argument == "--config") {
-            if (++index == argc) {
+            if (++index == args.size()) {
                 throw UsageError("--config requires a file path");
             }
-            options.ConfigPath = argv[index];
+            options.ConfigPath = args[index];
         } else if (argument.starts_with("--config=")) {
             options.ConfigPath = std::string(argument.substr(9));
         } else if (argument == "--exclude" || argument.starts_with("--exclude=")) {
             std::string pattern;
             if (argument == "--exclude") {
-                if (++index == argc) {
+                if (++index == args.size()) {
                     throw UsageError("--exclude requires a regex");
                 }
-                pattern = argv[index];
+                pattern = args[index];
             } else {
                 pattern = argument.substr(10);
             }

@@ -402,12 +402,12 @@ int RunFiles(const Options& options, const formatter::ChangedHunkFiles& changed,
 
 } // namespace
 
-int Run(int argc, const char* const argv[])
+int Run(std::span<const char* const> args)
 {
-    auto options = ParseOptions(argc, argv);
+    auto options = ParseOptions(args);
     const auto colors = GetTerminalColors();
     if (options.ShowHelp) {
-        PrintHelp(std::cout, argv[0], colors);
+        PrintHelp(std::cout, args[0], colors);
         return 0;
     }
     if (options.ShowVersion) {
@@ -427,7 +427,7 @@ int Run(int argc, const char* const argv[])
         changed = ReadChangedHunks(*options.HunkInput);
         options.Paths = std::move(changed.Paths);
     } else if (options.Paths.empty()) {
-        PrintHelp(std::cerr, argv[0], GetTerminalColors(stderr));
+        PrintHelp(std::cerr, args[0], GetTerminalColors(stderr));
         return 1;
     }
     return RunFiles(options, changed, colors);
