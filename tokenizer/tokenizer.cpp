@@ -10,6 +10,7 @@
 #include <bit>
 #include <cstdint>
 #include <cstring>
+#include <iostream>
 #include <string_view>
 #include <type_traits>
 #include <utility>
@@ -1017,251 +1018,93 @@ Token Tokenizer::ReadComplexToken()
 
 Token Tokenizer::ParseAsciiOperator(unsigned char byte)
 {
-    unicode::CodePoint cur = byte;
-    switch (byte) {
-        case '#': {
-            if (!IsNewLine_) {
-                ConsumeAsciiByte(byte);
-                OnError(TokenizationErrorKind::UnexpectedToken);
-                return FinishToken(TokenKind::Invalid);
-            }
+    if (byte == '#') {
+        if (IsNewLine_) {
             return ParsePreprocessingDirective();
         }
-        case ':': {
-            ConsumeAsciiByte(byte);
-            cur = CurrentCodePoint();
-            switch (cur) {
-                case ':':
-                    ConsumeCodePoint();
-                    return FinishToken(TokenKind::Operator_ScopeResolution);
-                case '>':
-                    ConsumeCodePoint();
-                    return FinishToken(TokenKind::Operator_CloseBracket);
-                default:
-                    return FinishToken(TokenKind::Operator_Colon);
-            }
-        }
-        case '.': {
-            if (IsDigit(PeekByte(1))) [[unlikely]] {
-                return ParseNumber();
-            }
-            ConsumeAsciiByte(byte);
-            cur = CurrentCodePoint();
-            switch (cur) {
-                case '.': {
-                    ConsumeCodePoint();
-                    cur = CurrentCodePoint();
-                    if (cur == '.') {
-                        ConsumeCodePoint();
-                        return FinishToken(TokenKind::Operator_Ellipsis);
-                    }
-                    OnError(TokenizationErrorKind::UnfinishedEllipsis);
-                    return FinishToken(TokenKind::Invalid);
-                }
-                case '*':
-                    ConsumeCodePoint();
-                    return FinishToken(TokenKind::Operator_PointerToMemberDereference);
-                default:
-                    return FinishToken(TokenKind::Operator_ClassMemberAccess);
-            }
-        }
-        case '-': {
-            ConsumeAsciiByte(byte);
-            cur = CurrentCodePoint();
-            switch (cur) {
-                case '>':
-                    ConsumeCodePoint();
-                    cur = CurrentCodePoint();
-                    if (cur == '*') {
-                        ConsumeCodePoint();
-                        using Kind = TokenKind;
-                        auto kind = Kind::Operator_IndirectPointerToMemberDereference;
-                        return FinishToken(kind);
-                    }
-                    return FinishToken(TokenKind::Operator_IndirectClassMemberAccess);
-                case '=':
-                    ConsumeCodePoint();
-                    return FinishToken(TokenKind::Operator_MinusAssign);
-                case '-':
-                    ConsumeCodePoint();
-                    return FinishToken(TokenKind::Operator_Decrement);
-                default:
-                    return FinishToken(TokenKind::Operator_Minus);
-            }
-        }
-        case '!': {
-            ConsumeAsciiByte(byte);
-            cur = CurrentCodePoint();
-            if (cur == '=') {
-                ConsumeCodePoint();
-                return FinishToken(TokenKind::Operator_NotEquals);
-            }
-            return FinishToken(TokenKind::Operator_Not);
-        }
-        case '+': {
-            ConsumeAsciiByte(byte);
-            cur = CurrentCodePoint();
-            if (cur == '=') {
-                ConsumeCodePoint();
-                return FinishToken(TokenKind::Operator_PlusAssign);
-            }
-            if (cur == '+') {
-                ConsumeCodePoint();
-                return FinishToken(TokenKind::Operator_Increment);
-            }
-            return FinishToken(TokenKind::Operator_Plus);
-        }
-        case '*': {
-            ConsumeAsciiByte(byte);
-            cur = CurrentCodePoint();
-            if (cur == '=') {
-                ConsumeCodePoint();
-                return FinishToken(TokenKind::Operator_MultiplyAssign);
-            }
-            return FinishToken(TokenKind::Operator_Star);
-        }
-        case '/': {
-            ConsumeAsciiByte(byte);
-            cur = CurrentCodePoint();
-            switch (cur) {
-                case '=':
-                    ConsumeCodePoint();
-                    return FinishToken(TokenKind::Operator_DivideAssign);
-                case '/':
-                    return ParseInlineComment();
-                case '*':
-                    return ParseMultilineComment();
-                default:
-                    return FinishToken(TokenKind::Operator_Divide);
-            }
-        }
-        case '%': {
-            const bool startsLine = IsNewLine_;
-            ConsumeAsciiByte(byte);
-            cur = CurrentCodePoint();
-            if (cur == '=') {
-                ConsumeCodePoint();
-                return FinishToken(TokenKind::Operator_RemainderAssign);
-            }
-            if (startsLine) {
-                if (cur == ':') {
-                    ConsumeCodePoint();
-                    return ParsePreprocessingDirective();
-                }
-            }
-            return FinishToken(TokenKind::Operator_Remainder);
-        }
-        case '^': {
-            ConsumeAsciiByte(byte);
-            cur = CurrentCodePoint();
-            if (cur == '=') {
-                ConsumeCodePoint();
-                return FinishToken(TokenKind::Operator_XorAssign);
-            }
-            return FinishToken(TokenKind::Operator_Xor);
-        }
-        case '&': {
-            ConsumeAsciiByte(byte);
-            cur = CurrentCodePoint();
-            switch (cur) {
-                case '=':
-                    ConsumeCodePoint();
-                    return FinishToken(TokenKind::Operator_BitAndAssign);
-                case '&':
-                    ConsumeCodePoint();
-                    return FinishToken(TokenKind::Operator_And);
-                default:
-                    return FinishToken(TokenKind::Operator_Ampersand);
-            }
-        }
-        case '|': {
-            ConsumeAsciiByte(byte);
-            cur = CurrentCodePoint();
-            switch (cur) {
-                case '=':
-                    ConsumeCodePoint();
-                    return FinishToken(TokenKind::Operator_BitOrAssign);
-                case '|':
-                    ConsumeCodePoint();
-                    return FinishToken(TokenKind::Operator_Or);
-                default:
-                    return FinishToken(TokenKind::Operator_BitOr);
-            }
-        }
-        case '=': {
-            ConsumeAsciiByte(byte);
-            cur = CurrentCodePoint();
-            if (cur == '=') {
-                ConsumeCodePoint();
-                return FinishToken(TokenKind::Operator_Equals);
-            }
-            return FinishToken(TokenKind::Operator_Assign);
-        }
-        case '<': {
-            ConsumeAsciiByte(byte);
-            cur = CurrentCodePoint();
-            switch (cur) {
-                case ':':
-                    // [lex.pptoken] has a special maximal-munch exception for
-                    // <:: when the following character is neither ':' nor '>'.
-                    // In that case this is '<' followed by '::', not the '<:'
-                    // digraph followed by ':'.
-                    if (PeekByte() == ':' && PeekByte(1) == ':' && PeekByte(2) != ':' && PeekByte(2) != '>') {
-                        return FinishToken(TokenKind::Operator_Less);
-                    }
-                    ConsumeCodePoint();
-                    return FinishToken(TokenKind::Operator_OpenBracket);
-                case '%':
-                    ConsumeCodePoint();
-                    return FinishToken(TokenKind::Operator_OpenBrace);
-                case '=': {
-                    ConsumeCodePoint();
-                    cur = CurrentCodePoint();
-                    if (cur == '>') {
-                        ConsumeCodePoint();
-                        return FinishToken(TokenKind::Operator_Spaceship);
-                    }
-                    return FinishToken(TokenKind::Operator_LessEquals);
-                }
-                case '<': {
-                    ConsumeCodePoint();
-                    cur = CurrentCodePoint();
-                    if (cur == '=') {
-                        ConsumeCodePoint();
-                        return FinishToken(TokenKind::Operator_LeftShiftAssign);
-                    }
-                    return FinishToken(TokenKind::Operator_LeftShift);
-                }
-                default:
-                    return FinishToken(TokenKind::Operator_Less);
-            }
-            break;
-        }
-        case '>': {
-            ConsumeAsciiByte(byte);
-            cur = CurrentCodePoint();
-            switch (cur) {
-                case '=':
-                    ConsumeCodePoint();
-                    return FinishToken(TokenKind::Operator_GreaterEquals);
-                case '>': {
-                    ConsumeCodePoint();
-                    cur = CurrentCodePoint();
-                    if (cur == '=') {
-                        ConsumeCodePoint();
-                        return FinishToken(TokenKind::Operator_RightShiftAssign);
-                    }
-                    return FinishToken(TokenKind::Operator_RightShift);
-                }
-                default:
-                    return FinishToken(TokenKind::Operator_Greater);
-            }
-        }
-        default:
-            ConsumeAsciiByte(byte);
-            OnError(TokenizationErrorKind::UnexpectedToken);
-            return FinishToken(TokenKind::Invalid);
+        ConsumeAsciiByte(byte);
+        OnError(TokenizationErrorKind::UnexpectedToken);
+        return FinishToken(TokenKind::Invalid);
     }
+
+    const auto next = PeekByte(1);
+    if (byte == '.' && IsDigit(next)) [[unlikely]] {
+        return ParseNumber();
+    }
+    if (byte == '/' && (next == '/' || next == '*')) {
+        ConsumeAsciiByte(byte);
+        return next == '/' ? ParseInlineComment() : ParseMultilineComment();
+    }
+
+    auto kind = SingleOperators[byte];
+    unsigned length = 1;
+    unsigned lookahead = kind == TokenKind::Invalid ? 0 : 1;
+    if (byte == '%' && next == ':' && IsNewLine_) {
+        kind = TokenKind::PreprocessingDirective;
+        length = 2;
+    } else if (byte == '.' && next == '.') {
+        lookahead = 2;
+        length = PeekByte(2) == '.' ? 3 : 2;
+        kind = length == 3 ? TokenKind::Operator_Ellipsis : TokenKind::Invalid;
+    } else if (kind != TokenKind::Invalid) {
+        const auto pair = ClassifyOperator(CurrentByteAddress(), 2);
+        if (pair != TokenKind::Invalid) {
+            kind = pair;
+            length = 2;
+            switch (pair) {
+                case TokenKind::Operator_IndirectClassMemberAccess:
+                    lookahead = 2;
+                    if (PeekByte(2) == '*') {
+                        kind = TokenKind::Operator_IndirectPointerToMemberDereference;
+                        length = 3;
+                    }
+                    break;
+                case TokenKind::Operator_LessEquals:
+                    lookahead = 2;
+                    if (PeekByte(2) == '>') {
+                        kind = TokenKind::Operator_Spaceship;
+                        length = 3;
+                    }
+                    break;
+                case TokenKind::Operator_LeftShift:
+                case TokenKind::Operator_RightShift:
+                    lookahead = 2;
+                    if (PeekByte(2) == '=') {
+                        kind = pair == TokenKind::Operator_LeftShift
+                            ? TokenKind::Operator_LeftShiftAssign
+                            : TokenKind::Operator_RightShiftAssign;
+                        length = 3;
+                    }
+                    break;
+                case TokenKind::Operator_OpenBracket:
+                    // [lex.pptoken] excludes '<:' from maximal munch in <::
+                    // unless the following character is ':' or '>'.
+                    if (PeekByte(2) == ':' && PeekByte(3) != ':' && PeekByte(3) != '>') {
+                        kind = TokenKind::Operator_Less;
+                        length = 1;
+                    }
+                    break;
+                default:
+                    break;
+            }
+        }
+    }
+
+    CurrentCodePointOffset_ += length;
+    CurrentCodePointPosition_.Column += length;
+    CurrentTokenSize_ += length;
+    IsNewLine_ = false;
+    if (kind == TokenKind::PreprocessingDirective) {
+        return ParsePreprocessingDirective();
+    }
+    // Preserve diagnostics for non-ASCII lookahead without consuming it.
+    if (length == lookahead && PeekByte() >= AsciiLimit) {
+        LoadCurrentUnicodeCodePoint();
+    }
+    if (kind == TokenKind::Invalid) {
+        OnError(byte == '.' ? TokenizationErrorKind::UnfinishedEllipsis : TokenizationErrorKind::UnexpectedToken);
+    }
+    return FinishToken(kind);
 }
 
 bool Tokenizer::IsFileStart() const noexcept

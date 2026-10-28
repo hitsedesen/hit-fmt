@@ -5,7 +5,6 @@
 #include <util/input.hpp>
 
 #include <cstddef>
-#include <format>
 #include <optional>
 #include <string_view>
 
