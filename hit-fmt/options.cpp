@@ -5,6 +5,7 @@
 #include <functional>
 #include <string_view>
 #include <thread>
+#include <utility>
 
 namespace hit_fmt {
 
@@ -76,9 +77,9 @@ public:
         Registered_.push_back({name, ValueMode::Optional, {}, apply});
     }
 
-    void Positionals(std::vector<std::filesystem::path>* target)
+    void Positionals(std::function<void(std::string_view)> apply)
     {
-        Positionals_ = target;
+        Positionals_ = std::move(apply);
     }
 
     void Parse(std::span<const char* const> args) const
@@ -94,7 +95,7 @@ public:
                 if (!Positionals_) {
                     throw UsageError("unexpected argument: " + std::string(argument));
                 }
-                Positionals_->emplace_back(argument);
+                Positionals_(argument);
                 continue;
             } else if (argument == "--") {
                 positionalOnly = true;
@@ -125,7 +126,7 @@ public:
 
 private:
     std::vector<Flag> Registered_;
-    std::vector<std::filesystem::path>* Positionals_ = nullptr;
+    std::function<void(std::string_view)> Positionals_;
 };
 
 ConfigPreset ParseConfigPreset(std::string_view name)
@@ -238,7 +239,9 @@ Options ParseOptions(std::span<const char* const> args)
     flags.Value("--threads", &options.Threads, ParseThreads, ThreadsError);
     flags.Value("--config", &options.ConfigPath, ParseConfigPath, "--config requires a file path");
     flags.Value("--exclude", &options.Exclusions, ParseExclusion, ExclusionError);
-    flags.Positionals(&options.Paths);
+    flags.Positionals([&options] (std::string_view argument) {
+        options.Paths.emplace_back(argument);
+    });
     flags.Parse(args);
     ValidateOptions(options);
     return options;
