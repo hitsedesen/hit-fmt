@@ -302,6 +302,12 @@ std::vector<FormatCase> FormatCases()
     }
     AddCases(cases, data / "vertical-grouping", {"preserve", "declarations", "overrides", "capped"});
     AddCases(cases, data / "vertical-grouping", {"structural"}, "structural.input.cpp");
+    AddCases(
+        cases,
+        data / "vertical-grouping",
+        {"categories", "categories-preserve", "categories-overrides"},
+        "categories.input.cpp");
+    AddCases(cases, data / "vertical-grouping", {"linkage", "linkage-zero", "linkage-preserve"}, "linkage.input.cpp");
     {
         const auto directory = data / "vertical-grouping";
         {

@@ -1335,4 +1335,149 @@
       "}" ";"
     )
   )
+  (enum-declaration
+    "enum" "Kind"
+    (enumerator-list
+      "{"
+      (enumerator
+        (enumerator-name "First")
+      )
+      "}"
+    )
+    ";"
+  )
+  (declaration
+    (declaration-specifiers "enum" "Kind")
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (declarator-name "value")
+        )
+      )
+    )
+    ";"
+  )
+  (declaration
+    (declaration-specifiers "int")
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (declarator-name "afterEnum")
+        )
+      )
+    )
+    ";"
+  )
+  (declaration
+    (declaration-specifiers "enum" "Kind")
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (pointer-operator "*")
+          (declarator-name "enumPointer")
+        )
+      )
+    )
+    ";"
+  )
+  (declaration
+    (declaration-specifiers "enum" "Kind")
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (declarator-name "braced")
+        )
+        (initializer
+          (braced-initializer
+            (initializer-list
+              "{"
+              (initializer-element
+                (identifier-expression "First")
+              )
+              "}"
+            )
+          )
+        )
+      )
+    )
+    ";"
+  )
+  (declaration
+    (declaration-specifiers "enum" "Kind")
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (declarator-name "copy")
+        )
+        (initializer
+          "="
+          (identifier-expression "First")
+        )
+      )
+    )
+    ";"
+  )
+  (function-declaration
+    (declaration-specifiers "enum" "Kind")
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (declarator-name "makeKind")
+          (function-declarator
+            (parameter-list "(" ")")
+          )
+        )
+      )
+    )
+    ";"
+  )
+  (namespace-declaration
+    "namespace" "Api" "{"
+    (enum-declaration
+      "enum" "class" "State" ":" "unsigned"
+      (enumerator-list
+        "{"
+        (enumerator
+          (enumerator-name "Idle")
+        )
+        "}"
+      )
+      ";"
+    )
+    "}"
+  )
+  (declaration
+    (declaration-specifiers "enum" "Api" "::" "State")
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (declarator-name "qualified")
+        )
+      )
+    )
+    ";"
+  )
+  (enum-declaration "enum" "class" "Forward" ":" "unsigned" ";")
+  (enum-declaration
+    "enum" "class" "Forward" ":" "unsigned"
+    (enumerator-list
+      "{"
+      (enumerator
+        (enumerator-name "Default")
+      )
+      "}"
+    )
+    ";"
+  )
+  (declaration
+    (declaration-specifiers "enum" "Forward")
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (declarator-name "scoped")
+        )
+      )
+    )
+    ";"
+  )
 )

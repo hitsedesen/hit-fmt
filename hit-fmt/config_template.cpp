@@ -94,6 +94,22 @@ void PrintOption(std::ostream& output, std::string_view name, const T& value)
                 "# Unknown syntax and macro bodies retain semicolons.\n"
                 "# Example: struct CLASS_NAME(Example) {}; keeps its ';'.\n";
     }
+    if (name == "DeclarationCategoryBlankLines") {
+        output
+            << "# Between different entity kinds: types, functions, variables.\n"
+                "# Overrides declaration/definition counts, including members.\n"
+                "# Types: records, enums, typedefs and using aliases.\n"
+                "# Templates and single exports follow their declared entity.\n"
+                "# Other declarations, directives and unattached comments stop grouping.\n"
+                "# Example: DeclarationBlankLines = 0 with this set to 1\n"
+                "# keeps like declarations together and separates categories.\n";
+    }
+    if (name == "LinkageBlankLinesAfterOpen" || name == "LinkageBlankLinesBeforeClose") {
+        output
+            << "# Inside nonempty extern linkage blocks, outside attached comments.\n"
+                "# Example: set both LinkageBlankLinesAfterOpen and\n"
+                "# LinkageBlankLinesBeforeClose to 1 for a blank line at each edge.\n";
+    }
     if (name == "BodyShape" || name == "LambdaBodyShape") {
         output
             << "# CompactSingleStatementIfFits: one simple statement, including\n"

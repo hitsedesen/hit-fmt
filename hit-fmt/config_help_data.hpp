@@ -136,9 +136,12 @@ constexpr HelpExample VerticalExamples[] = {
     {"Set blank lines at structural boundaries:",
         R"(NamespaceBlankLinesAfterOpen = 1
 NamespaceBlankLinesBeforeClose = 1
+LinkageBlankLinesAfterOpen = 1
+LinkageBlankLinesBeforeClose = 1
 AccessSectionBlankLinesBefore = 1
 AccessSectionBlankLinesAfterLabel = 1
-DeclarationBlankLines = 1
+DeclarationBlankLines = 0
+DeclarationCategoryBlankLines = 1
 MemberDeclarationBlankLines = Preserve
 DefinitionBlankLines = 1
 MemberDefinitionBlankLines = 0
@@ -383,10 +386,18 @@ constexpr HelpSection HelpSections[] = {
         "nonempty content,\n"
         "  outside attached comments. AccessSectionBlankLinesBefore skips the\n"
         "  first section at the opening; AfterLabel needs following content.\n"
+        "- LinkageBlankLinesAfterOpen/BeforeClose apply inside nonempty\n"
+        "  extern linkage blocks, outside attached comments.\n"
         "- DeclarationBlankLines separates declarations, including variables\n"
         "  and prototypes. DefinitionBlankLines takes precedence when either\n"
         "  neighbor is a function, record or enum definition, not a lambda,\n"
         "  namespace or access label.\n"
+        "- DeclarationCategoryBlankLines overrides declaration/definition\n"
+        "  counts between different entity kinds: types, functions and\n"
+        "  variables. Types include records, enums, typedefs and using aliases.\n"
+        "  Templates and single export declarations follow their entity kind.\n"
+        "  Applies at file scope and in namespaces, records, linkage and\n"
+        "  export blocks. Other declarations stop category grouping.\n"
         "- MemberDeclarationBlankLines and MemberDefinitionBlankLines replace\n"
         "  the corresponding general counts; Inherit follows those counts.\n"
         "- MaxEmptyLines caps editable blank lines, not inline gaps or text\n"

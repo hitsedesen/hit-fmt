@@ -406,10 +406,13 @@
     OPT(std::size_t, StatementAttributeIndentWidth, 0)                        \
     OPT(formatter::BlankLineSetting, NamespaceBlankLinesAfterOpen, {})        \
     OPT(formatter::BlankLineSetting, NamespaceBlankLinesBeforeClose, {})       \
+    OPT(formatter::BlankLineSetting, LinkageBlankLinesAfterOpen, {})           \
+    OPT(formatter::BlankLineSetting, LinkageBlankLinesBeforeClose, {})         \
     OPT(formatter::BlankLineSetting, AccessSectionBlankLinesBefore, {})        \
     OPT(formatter::BlankLineSetting, AccessSectionBlankLinesAfterLabel, \
         {}) \
     OPT(formatter::BlankLineSetting, DeclarationBlankLines, {})               \
+    OPT(formatter::BlankLineSetting, DeclarationCategoryBlankLines, {})       \
     OPT(formatter::BlankLineSetting, MemberDeclarationBlankLines,            \
         formatter::BlankLineSetting::Inherited())                            \
     OPT(formatter::BlankLineSetting, DefinitionBlankLines, {})                 \
