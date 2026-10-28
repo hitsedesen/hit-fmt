@@ -114,6 +114,18 @@ LambdaBodiesLayout = Inherit
 LambdaBodyShape = CompactIfFits
 LambdaEmptyBodyShape = Inherit
 )"},
+    {"Place braces using the last header line's indentation:",
+        R"(FunctionBracePlacement = NextLineIfHeaderIndented
+ConstructorBracePlacement = Inherit
+# With canonical headers, keep ) { at the function indentation:
+# void Process(
+#     Request request
+# ) {
+# Move { below a header ending at or beyond the body indentation:
+# Worker::Worker() :
+#     Cache_(CreateCache())
+# {
+)"},
     {"Compact only bodies with one simple statement:", R"(BodiesLayout = Canonical
 BodyShape = CompactSingleStatementIfFits
 FunctionBracePlacement = Attached
@@ -351,7 +363,10 @@ constexpr HelpSection HelpSections[] = {
         "  Nested lambda bodies keep the ordinary chain policy.\n",
         ExpressionExamples},
     {"Output shape",
-        "- Brace placements: Attached, NextLine or NextLineIfHeaderBroken.\n"
+        "- Brace placements: Attached, NextLine, NextLineIfHeaderBroken or\n"
+        "  NextLineIfHeaderIndented. The latter starts a new line when the\n"
+        "  last output header line is indented at least as far as the body;\n"
+        "  a closing delimiter at the brace indentation stays attached.\n"
         "  ConstructorBracePlacement and DestructorBracePlacement may Inherit\n"
         "  FunctionBracePlacement. CaseBlockBracePlacement applies to a case\n"
         "  containing only one block, not mixed statements and blocks.\n"

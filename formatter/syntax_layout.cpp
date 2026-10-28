@@ -54,6 +54,7 @@ enum class Boundary : uint8_t
 struct Gap
 {
     Index Owner = None;
+    Index BraceIndentOffset = None;
     Boundary Shape = Boundary::Preserve;
     document::GapKind Broken = document::GapKind::Flat;
     bool Closing = false;
@@ -2406,6 +2407,9 @@ private:
                         : brace == BracePlacement::Attached ? Boundary::Flat : Boundary::Conditional,
                     document::GapKind::Hard,
                     true);
+                if (canonicalBrace && brace == BracePlacement::NextLineIfHeaderIndented) {
+                    Gaps_[opening].BraceIndentOffset = std::max<uint8_t>(1, Policies_.Bodies.IndentWidth);
+                }
                 if (!canonicalBrace) {
                     Reindent(opening, header, true);
                 }
@@ -2617,11 +2621,11 @@ private:
             (control ? Policies_.ControlHeaders.Layout : Policies_.DeclarationHeaders) == LayoutMode::Canonical;
         const auto contentIndent =
             PreservedBodyIndent(bodyChild == None ? id : bodyChild, opening, Tree_.MatchingDelimiter(opening));
-        const auto bodyWidth = node.Kind == NodeKind::LambdaExpression
-            ? int32_t(Policies_.LambdaBodies.IndentWidth)
-            : node.Kind == NodeKind::RecordDeclaration
-                ? BodyOffset(Policies_.Indentation.Members, int32_t(Policies_.Bodies.IndentWidth))
-                : int32_t(Policies_.Bodies.IndentWidth);
+        const auto bodyWidth = BodyIndentWidth(
+            id,
+            opening,
+            node.Kind == NodeKind::LambdaExpression ? Policies_.LambdaBodies : Policies_.Bodies,
+            node.Kind == NodeKind::RecordDeclaration);
         const auto fixedBase = contentIndent == None ? None : contentIndent - std::min(contentIndent, Index(bodyWidth));
         const auto group =
             GroupAt(TokenPosition(node.Tokens.Begin), GapPosition(opening + 1), document::GroupMode::Fill);
@@ -2646,6 +2650,9 @@ private:
                 : *brace == BracePlacement::Attached && fixedBase == None ? Boundary::Flat : Boundary::Conditional,
             document::GapKind::Hard,
             true);
+        if (canonicalBrace && *brace == BracePlacement::NextLineIfHeaderIndented) {
+            Gaps_[opening].BraceIndentOffset = std::max<Index>(1, std::min(contentIndent, Index(bodyWidth)));
+        }
         if (canonical && !macroFunction) {
             ProjectHeaderGaps(id, node.Tokens.Begin, opening, group);
         }
@@ -2669,6 +2676,25 @@ private:
             return control.Offset;
         }
         return fallback;
+    }
+
+    int32_t BodyIndentWidth(Index id, Index opening, const BodyPolicy& policy, bool record) const
+    {
+        if (Region(Syntax_[id]).Kind == NodeKind::NamespaceDeclaration) {
+            const auto& control = Policies_.Indentation.Namespaces;
+            if (control.Mode == BodyIndentation::Preserve) {
+                const auto outer = SourceIndent(Region(Syntax_[id]).Tokens.Begin);
+                const auto inner = SourceIndent(opening + 1);
+                const auto base = outer == None ? 0 : outer;
+                if (inner != None && inner >= base && inner - base <= uint32_t(INT32_MAX)) {
+                    return int32_t(inner - base);
+                }
+            }
+            return BodyOffset(control, 0);
+        }
+        return record
+            ? BodyOffset(Policies_.Indentation.Members, int32_t(policy.IndentWidth))
+            : int32_t(policy.IndentWidth);
     }
 
     bool PreprocessingSequence(Index id) const
@@ -2739,21 +2765,7 @@ private:
         }
         const bool canonical = policy.Layout == LayoutMode::Canonical;
         const bool namespaced = Region(Syntax_[id]).Kind == NodeKind::NamespaceDeclaration;
-        int32_t offset = record
-            ? BodyOffset(Policies_.Indentation.Members, int32_t(policy.IndentWidth))
-            : int32_t(policy.IndentWidth);
-        if (namespaced) {
-            offset = BodyOffset(Policies_.Indentation.Namespaces, 0);
-            if (Policies_.Indentation.Namespaces.Mode == BodyIndentation::Preserve) {
-                const auto outer = SourceIndent(Region(Syntax_[id]).Tokens.Begin);
-                const auto inner = SourceIndent(opening + 1);
-                if (inner != None && inner >= (outer == None ? 0 : outer) &&
-                    inner - (outer == None ? 0 : outer) <= uint32_t(INT32_MAX))
-                {
-                    offset = int32_t(inner - (outer == None ? 0 : outer));
-                }
-            }
-        }
+        int32_t offset = BodyIndentWidth(id, opening, policy, record);
         const auto contentIndent = PreservedBodyIndent(id, opening, close);
         if (contentIndent != None) {
             offset = std::min(offset, int32_t(contentIndent));
@@ -4921,7 +4933,13 @@ private:
                 Fail(SyntaxLayoutError::ConflictingGapOwners, i);
                 return;
             }
-            Document_.ConditionalGap(Groups_[gap.Owner].Id, flat, Spec(i, gap.Broken), anchor, GapOrigin(i));
+            Document_.ConditionalGap(
+                Groups_[gap.Owner].Id,
+                flat,
+                Spec(i, gap.Broken),
+                anchor,
+                GapOrigin(i),
+                gap.BraceIndentOffset);
         } else {
             Document_.Gap(
                 Spec(i, gap.Shape == Boundary::Hard ? document::GapKind::Hard : document::GapKind::Soft),

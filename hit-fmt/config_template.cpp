@@ -223,6 +223,16 @@ void PrintOption(std::ostream& output, std::string_view name, const T& value)
                 "# Example: case 1: { work(); break; } uses this placement;\n"
                 "# In case 2: { work(); } break;, braces align with break.\n";
     }
+    if (name == "FunctionBracePlacement") {
+        output
+            << "# For all brace placements, NextLineIfHeaderIndented uses\n"
+                "# the last output header line in canonical header layout.\n"
+                "# Break before { at or beyond body indentation; otherwise\n"
+                "# attach it, including after a closing ) at brace indentation.\n"
+                "# Example: void Process(\n#     Request request\n# ) {\n"
+                "# ConstructorBracePlacement = Inherit follows this rule:\n"
+                "# Worker::Worker() :\n#     Cache_(CreateCache())\n# {\n";
+    }
     if (name == "IndentPreprocessingDirectives") {
         output
             << "# Indent the whole directive " "(including # or %:) by nesting\n" "# depth using IndentWidth spaces; "

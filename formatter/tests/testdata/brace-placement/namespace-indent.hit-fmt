@@ -1,0 +1,7 @@
+Layout = Canonical
+IndentationKind = Spaces
+IndentWidth = 4
+ColumnLimit = 0
+IndentNamespaces = Indent
+NamespaceIndentWidth = 2
+NamespaceBracePlacement = NextLineIfHeaderIndented

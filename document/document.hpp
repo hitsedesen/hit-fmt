@@ -320,12 +320,15 @@ public:
         std::string_view broken,
         Provenance origin = {},
         std::uint32_t fitWidthFloor = 0);
+    // minLineIndentOffset selects by the last output line's indentation
+    // relative to anchor; InvalidId selects by the owning group's shape.
     void ConditionalGap(
         GroupId reference,
         GapSpec flat,
         GapSpec broken,
         AnchorId anchor = InvalidId,
-        Provenance origin = {});
+        Provenance origin = {},
+        std::uint32_t minLineIndentOffset = InvalidId);
     Status Seal();
     Result Render(Policy policy = {}, std::pmr::memory_resource* resource = std::pmr::get_default_resource()) const;
 
@@ -401,6 +404,7 @@ private:
         GapSpec Flat;
         GapSpec Broken;
         AnchorId Anchor = InvalidId;
+        std::uint32_t MinLineIndentOffset = InvalidId;
     };
 
     struct GroupData
