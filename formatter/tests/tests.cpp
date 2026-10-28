@@ -234,6 +234,8 @@ std::vector<FormatCase> FormatCases()
     AddCases(cases, newOptions, {"text", "sorted-text"}, "text.input.cpp");
     AddCases(cases, newOptions, {"crlf"}, "crlf.input.cpp");
     AddCases(cases, data / "function-body-macros", {"hinted", "unhinted"});
+    AddCases(cases, data / "single-statement-body", {"single"});
+    AddCases(cases, data / "single-statement-body", {"compact", "preserve", "lambda-override"}, "lambdas.input.cpp");
     {
         const auto directory = data / "declaration-macros";
         AddCases(cases, directory, {"canonical", "remove-null"});

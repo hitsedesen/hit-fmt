@@ -185,6 +185,11 @@ Output shape
 - DeclarationHeadersLayout controls headers; BodiesLayout and
   LambdaBodiesLayout control bodies. BodyShape and EmptyBodyShape
   default to Expanded; CompactIfFits allows compact bodies.
+  CompactSingleStatementIfFits allows only one simple statement
+  (including a local declaration), within ColumnLimit. Nested
+  control statements, blocks, records and namespaces stay expanded.
+  Sibling comments/directives prevent compaction; empty bodies use
+  EmptyBodyShape. This single-statement mode expands empty bodies.
   LambdaBodyShape and LambdaEmptyBodyShape inherit independently.
   Comment-only bodies are not empty. Enum, list and requirement
   bodies are not controlled by these body shapes.
@@ -209,6 +214,13 @@ Choose braces and body shapes:
     LambdaBodiesLayout = Inherit
     LambdaBodyShape = CompactIfFits
     LambdaEmptyBodyShape = Inherit
+
+Compact only bodies with one simple statement:
+    BodiesLayout = Canonical
+    BodyShape = CompactSingleStatementIfFits
+    FunctionBracePlacement = Attached
+    # int Next(int x) { return x + 1; }
+    # void Reset() { Clear(); Notify(); } stays expanded.
 
 Set namespace, enum and initializer layout:
     IndentNamespaces = NoIndent

@@ -1,0 +1,3 @@
+include = "single.hit-fmt"
+LambdaBodyShape = CompactIfFits
+LambdaEmptyBodyShape = CompactSingleStatementIfFits

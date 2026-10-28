@@ -94,6 +94,19 @@ void PrintOption(std::ostream& output, std::string_view name, const T& value)
                 "# Unknown syntax and macro bodies retain semicolons.\n"
                 "# Example: struct CLASS_NAME(Example) {}; keeps its ';'.\n";
     }
+    if (name == "BodyShape" || name == "LambdaBodyShape") {
+        output
+            << "# CompactSingleStatementIfFits: one simple statement, including\n"
+                "# a local declaration, only when it fits ColumnLimit.\n"
+                "# Nested controls/blocks, records, namespaces and sibling\n"
+                "# comments/directives remain expanded. Canonical bodies only.\n"
+                "# Empty bodies use the independent empty-body shape.\n"
+                "# Example: int Next(int x) { return x + 1; }\n"
+                "# Clear(); Notify(); in one body remains multiline.\n";
+    }
+    if (name == "EmptyBodyShape" || name == "LambdaEmptyBodyShape") {
+        output << "# CompactSingleStatementIfFits expands empty bodies.\n";
+    }
     if (name == "CallLineFirstArgumentNames") {
         output
             << "# Exact names (including member calls), empty by default.\n"

@@ -95,7 +95,7 @@ DEFINE_CONFIG_ENUM(TernaryOperatorIndentation, TERNARY_INDENTATION_VALUES);
 #define WIDTH_DIAGNOSTICS_VALUES(X) X(Off) X(Report)
 DEFINE_CONFIG_ENUM(WidthDiagnosticPolicy, WIDTH_DIAGNOSTICS_VALUES);
 #undef WIDTH_DIAGNOSTICS_VALUES
-#define BODY_SHAPE_VALUES(X) X(Expanded) X(CompactIfFits)
+#define BODY_SHAPE_VALUES(X) X(Expanded) X(CompactIfFits) X(CompactSingleStatementIfFits)
 DEFINE_CONFIG_ENUM(BodyShape, BODY_SHAPE_VALUES);
 #undef BODY_SHAPE_VALUES
 #define NAMESPACE_COMMENTS_VALUES(X) X(Preserve) X(Remove) X(AddMissing) X(Fix)

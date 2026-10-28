@@ -2237,6 +2237,36 @@ private:
         }
     }
 
+    bool SimpleStatement(Index id) const
+    {
+        if (id == None || !Syntax_[id].Safe) {
+            return false;
+        }
+        while (Region(Syntax_[id]).Kind == NodeKind::AttributedStatement) {
+            id = LastChild_[id];
+            if (id == None) {
+                return false;
+            }
+        }
+        switch (Region(Syntax_[id]).Kind) {
+            case NodeKind::DeclarationStatement:
+            case NodeKind::UsingDeclaration:
+            case NodeKind::TypedefDeclaration:
+            case NodeKind::StaticAssertDeclaration:
+            case NodeKind::AsmDeclaration:
+            case NodeKind::ExpressionStatement:
+            case NodeKind::ReturnStatement:
+            case NodeKind::BreakStatement:
+            case NodeKind::ContinueStatement:
+            case NodeKind::GotoStatement:
+            case NodeKind::ThrowStatement:
+            case NodeKind::CoYieldStatement:
+                return true;
+            default:
+                return false;
+        }
+    }
+
     void PlanControlledArms(Index id, BracePlacement brace)
     {
         const auto& node = Region(Syntax_[id]);
@@ -2306,7 +2336,7 @@ private:
                     if (precedingBraced) {
                         boundary = Boundary::Flat;
                     } else if (Policies_.Bodies.Layout == LayoutMode::Canonical) {
-                        boundary = Policies_.Bodies.Shape == BodyShape::Expanded ? Boundary::Hard : Boundary::Soft;
+                        boundary = Policies_.Bodies.Shape == BodyShape::CompactIfFits ? Boundary::Soft : Boundary::Hard;
                     }
                 }
                 Index prefix;
@@ -2380,7 +2410,11 @@ private:
                     Own(
                         opening,
                         group,
-                        Policies_.Bodies.Shape == BodyShape::Expanded ? Boundary::Hard : Boundary::Soft);
+                        Policies_.Bodies.Shape == BodyShape::Expanded ||
+                            (Policies_.Bodies.Shape == BodyShape::CompactSingleStatementIfFits &&
+                                !SimpleStatement(child))
+                        ? Boundary::Hard
+                        : Boundary::Soft);
                 } else {
                     Reindent(opening, group);
                 }
@@ -2719,7 +2753,18 @@ private:
         }
         // Macro delimiters must remain separate invocations, not collapse
         // together under a compact/empty brace-body policy.
-        const auto shape = macroRecord ? BodyShape::Expanded : opening + 1 == close ? policy.EmptyShape : policy.Shape;
+        auto shape = macroRecord ? BodyShape::Expanded : opening + 1 == close ? policy.EmptyShape : policy.Shape;
+        if (shape == BodyShape::CompactSingleStatementIfFits) {
+            const auto& body = Region(Syntax_[id]);
+            const auto child = body.FirstChild;
+            // A complete direct statement excludes sibling comments, directives
+            // and additional statements without counting nested semicolons.
+            const bool single =
+                (body.Kind == NodeKind::CompoundStatement || body.Kind == NodeKind::LambdaBody) && child != None &&
+                    Region(Syntax_[child]).NextSibling == None && Region(Syntax_[child]).Tokens.Begin == opening + 1 &&
+                    Region(Syntax_[child]).Tokens.End == close && SimpleStatement(child);
+            shape = single ? BodyShape::CompactIfFits : BodyShape::Expanded;
+        }
         const bool independentIndent = record
             ? Policies_.Indentation.Members.Mode != BodyIndentation::Preserve
             : namespaced && Policies_.Indentation.Namespaces.Mode != BodyIndentation::Preserve;
