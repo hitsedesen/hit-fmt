@@ -45,14 +45,15 @@ struct FlagValue
 struct Flag
 {
     std::string_view Name;
-    bool TakesValue;
-    void (*Apply)(Options&, FlagValue&);
+    bool* BoolTarget;
+    bool BoolValue;
+    void (*ApplyValue)(Options&, FlagValue&);
 
     bool TryParse(std::string_view argument, std::span<const char* const>& remaining, Options& options) const
     {
         std::optional<std::string_view> attached;
         if (argument != Name) {
-            if (!TakesValue || !argument.starts_with(Name)) {
+            if (!ApplyValue || !argument.starts_with(Name)) {
                 return false;
             }
             auto suffix = argument.substr(Name.size());
@@ -64,27 +65,24 @@ struct Flag
             }
             attached = suffix;
         }
-        FlagValue value{attached, remaining};
-        Apply(options, value);
+        if (ApplyValue) {
+            FlagValue value{attached, remaining};
+            ApplyValue(options, value);
+        } else if (BoolTarget) {
+            *BoolTarget = BoolValue;
+        }
         return true;
     }
 };
 
-template <bool Options::* Field, bool Value = true>
-constexpr Flag BoolFlag(std::string_view name)
+Flag BoolFlag(std::string_view name, bool* target, bool value = true)
 {
-    return {
-        name,
-        false,
-        [] (Options& options, FlagValue&) {
-            options.*Field = Value;
-        },
-    };
+    return {name, target, value, nullptr};
 }
 
-constexpr Flag ValueFlag(std::string_view name, void (*apply)(Options&, FlagValue&))
+Flag ValueFlag(std::string_view name, void (*apply)(Options&, FlagValue&))
 {
-    return {name, true, apply};
+    return {name, nullptr, true, apply};
 }
 
 ConfigPreset ParseConfigPreset(std::string_view name)
@@ -168,27 +166,6 @@ void ParseExclusion(Options& options, FlagValue& value)
     }
 }
 
-constexpr Flag Flags[] = {
-    BoolFlag<&Options::ShowHelp>("-h"),
-    BoolFlag<&Options::ShowHelp>("--help"),
-    BoolFlag<&Options::ShowVersion>("-V"),
-    BoolFlag<&Options::ShowVersion>("--version"),
-    BoolFlag<&Options::ShowConfigHelp>("--help-config"),
-    BoolFlag<&Options::Fix>("--fix"),
-    // Check mode is the default, so this flag needs no state change.
-    {"--check", false, [] (Options&, FlagValue&) {}},
-    BoolFlag<&Options::Spillover, false>("--no-spillover"),
-    BoolFlag<&Options::SummaryOnly>("--summary"),
-    BoolFlag<&Options::DisableConfig>("--no-config"),
-    ValueFlag("--generate-config", ParseGenerateConfig),
-    ValueFlag("--changed-hunks", ParseChangedHunks),
-    ValueFlag("--changed-ranges", ParseChangedHunks),
-    ValueFlag("-j", ParseAutoThreads),
-    ValueFlag("--threads", ParseThreads),
-    ValueFlag("--config", ParseConfigPath),
-    ValueFlag("--exclude", ParseExclusion),
-};
-
 void ValidateOptions(const Options& options)
 {
     if (options.DisableConfig && options.ConfigPath) {
@@ -210,6 +187,26 @@ void ValidateOptions(const Options& options)
 Options ParseOptions(std::span<const char* const> args)
 {
     Options options;
+    const Flag flags[] = {
+        BoolFlag("-h", &options.ShowHelp),
+        BoolFlag("--help", &options.ShowHelp),
+        BoolFlag("-V", &options.ShowVersion),
+        BoolFlag("--version", &options.ShowVersion),
+        BoolFlag("--help-config", &options.ShowConfigHelp),
+        BoolFlag("--fix", &options.Fix),
+        // Check mode is the default, so this flag needs no state change.
+        BoolFlag("--check", nullptr),
+        BoolFlag("--no-spillover", &options.Spillover, false),
+        BoolFlag("--summary", &options.SummaryOnly),
+        BoolFlag("--no-config", &options.DisableConfig),
+        ValueFlag("--generate-config", ParseGenerateConfig),
+        ValueFlag("--changed-hunks", ParseChangedHunks),
+        ValueFlag("--changed-ranges", ParseChangedHunks),
+        ValueFlag("-j", ParseAutoThreads),
+        ValueFlag("--threads", ParseThreads),
+        ValueFlag("--config", ParseConfigPath),
+        ValueFlag("--exclude", ParseExclusion),
+    };
     if (!args.empty()) {
         args = args.subspan(1);
     }
@@ -222,7 +219,7 @@ Options ParseOptions(std::span<const char* const> args)
         } else if (argument == "--") {
             positionalOnly = true;
         } else if (!std::ranges::any_of(
-            Flags,
+            flags,
             [&] (const Flag& flag) {
                 return flag.TryParse(argument, args, options);
             }))
