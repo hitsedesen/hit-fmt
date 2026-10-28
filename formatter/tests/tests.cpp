@@ -1939,6 +1939,11 @@ std::vector<FormatCase> FormatCases()
         const auto directory = data / "assignment-location";
         cases.push_back({directory, "packing-inherit", "packing.input.cpp", {}, {}, true, "packing.output.cpp"});
     }
+    AddCases(
+        cases,
+        data / "assignment-location",
+        {"large-rhs", "large-rhs-leading", "large-rhs-next-line"},
+        "large-rhs.input.cpp");
     AddCases(cases, data / "call-expression-indent", {"aligned", "aligned-no-call-reflow", "indent-width", "preserve"});
     AddCases(
         cases,

@@ -80,6 +80,9 @@ struct GapSpec
     // Fill may keep independently breakable children on this line. Fit the
     // supplied segment instead of charging their complete flat alternatives.
     bool FitNextSegment : 1 = false;
+    // Ordinary fitting may use the segment when moving the whole suffix to
+    // a new line would still overflow. Bounded probes compare both layouts.
+    bool FitNextSegmentIfOverflow : 1 = false;
     // Fit the flat suffix instead of a prefix shortened by child breaks.
     // Unconditional lines still terminate that suffix demand.
     bool FitFlatTail : 1 = false;
@@ -501,6 +504,7 @@ private:
         bool Compact : 1 = false;
         bool ComplexGap : 1 = false;
         bool FitNextSegment : 1 = false;
+        bool FitNextSegmentIfOverflow : 1 = false;
         bool FitFlatTail : 1 = false;
         bool Plain : 1 = false;
 

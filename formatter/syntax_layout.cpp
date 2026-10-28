@@ -83,6 +83,7 @@ struct Gap
     bool CanonicalFlat = false;
     bool ControlSeparator = false;
     bool FitNextSegment = false;
+    bool FitNextSegmentIfOverflow = false;
     bool FitFlatTail = false;
     bool KeepFlatSpacing = false;
     bool KeywordPrefix = false;
@@ -1855,6 +1856,19 @@ private:
                     }
                     const auto split = side == OperatorSide::Leading ? t : t + 1;
                     Own(split, group, boundary, document::GapKind::Hard);
+                    if (role == PunctuationRole::AssignmentOperator && boundary == Boundary::Soft &&
+                        LastChild_[segment] != None)
+                    {
+                        const auto& rhs = Region(Syntax_[LastChild_[segment]]);
+                        if (rhs.Kind == NodeKind::BracedInitializer ||
+                            (rhs.Kind == NodeKind::TypeConstructionExpression &&
+                                Tree_.Kind(rhs.Tokens.End - 1) == TokenKind::Operator_CloseBrace))
+                        {
+                            // Moving a braced RHS that cannot fit intact adds
+                            // a parent break without avoiding its list breaks.
+                            Gaps_[split].FitNextSegmentIfOverflow = true;
+                        }
+                    }
                     if (kind == NodeKind::BinaryExpression && !comparison && boundary == Boundary::Soft &&
                         Policies_.ColumnLimit != 0 && LastChild_[segment] != None &&
                         Region(Syntax_[LastChild_[segment]]).Tokens.Size() > 1)
@@ -4558,6 +4572,7 @@ private:
         spec.Spaces = uint16_t(std::min<Index>(FlatWidth(i), UINT16_MAX));
         spec.RequiredWidth = Facts_[i].RequiredWidth;
         spec.FitNextSegment = Gaps_[i].FitNextSegment;
+        spec.FitNextSegmentIfOverflow = Gaps_[i].FitNextSegmentIfOverflow;
         spec.FitFlatTail = Gaps_[i].FitFlatTail;
         spec.NewlineCount = Gaps_[i].NewlineCount;
         if (Gaps_[i].PreserveIndent && !Gaps_[i].Reindent) {
