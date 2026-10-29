@@ -1,5 +1,7 @@
 #include "document.hpp"
 
+#include "export/job.hpp"
+
 #include <desktop/preview.hpp>
 #include <desktop/task.hpp>
 
@@ -82,7 +84,7 @@ void TSession::RevealSource(std::size_t blockId)
 
 void TSession::ExportTo(std::string_view path, EExportMode mode)
 {
-    const auto result = TConverter{Options_}.Convert(Document_, mode);
+    const auto result = TExportJob{Document_, Options_}.Run(mode);
     if (result.Markdown.empty()) {
         Desktop_.Toast("Select at least one visible block before exporting.");
         return;

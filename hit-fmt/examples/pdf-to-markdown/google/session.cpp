@@ -1,4 +1,5 @@
 #include "document.hpp"
+#include "export/job.hpp"
 #include <desktop/preview.hpp>
 #include <desktop/task.hpp>
 
@@ -62,7 +63,7 @@ void Session::RevealSource(std::size_t block_id) {
 }
 
 void Session::ExportTo(std::string_view path, ExportMode mode) {
-  const auto result = Converter{options_}.Convert(document_, mode);
+  const auto result = ExportJob{document_, options_}.Run(mode);
   if (result.markdown
       .empty()) {
     desktop_.Toast("Select at least one visible block before exporting.");
