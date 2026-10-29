@@ -736,7 +736,8 @@ FormatResult detail::FormatWithAnalysis(
     options.ReassembledGaps = {};
     scratch.release();
     const bool needNamespaceAnchors = !namespacePlan.Namespaces.empty();
-    const bool sourceMap = request.SourceMap || (request.Changes && prepared.Structural.SortIncludes);
+    const bool changeMetadata = request.Changes || request.ChangeSummary;
+    const bool sourceMap = request.SourceMap || (changeMetadata && prepared.Structural.SortIncludes);
     const bool needMaps = sourceMap || request.TokenMap || request.Changes || needNamespaceAnchors;
     auto renderPolicy = SyntaxRenderPolicy(prepared.Policies, options);
     renderPolicy.SourceMap = sourceMap;
@@ -847,8 +848,8 @@ FormatResult detail::FormatWithAnalysis(
         (void)CheckedSourceAnalysisSize(result.Text.size());
     }
     WidthDiagnostics(result, prepared.Policies, options.TabWidth);
-    if (request.Changes) {
-        detail::BuildFormatChanges(original, result, scratch);
+    if (changeMetadata) {
+        detail::BuildChangeMetadata(original, result, request.Changes, scratch);
         scratch.release();
     }
     if (!request.SourceMap) {

@@ -124,7 +124,7 @@ TEST(FileCheck, IncludeOrderIsIndependentOfInputPathFormAndHunks)
                 name,
                 hunks ? std::optional(hit_fmt::ChangedFileScope{selected}) : std::nullopt);
             EXPECT_FALSE(checked.FormattingMismatch) << name;
-            EXPECT_TRUE(checked.IncludeOrderChanges.empty()) << name;
+            EXPECT_TRUE(checked.Formatting.Summary->IncludeOrderChanges.empty()) << name;
         }
     }
 }
@@ -152,17 +152,22 @@ TEST(FileCheck, IncludeOrderDiagnosticGoldenIsOneErrorForTheFile)
             const auto checked = hit_fmt::FormatAndCheckFile(input.View(), prepared, "project/sample.cpp");
             const auto detailed =
                 hit_fmt::FormatAndCheckFile(input.View(), prepared, "project/sample.cpp", std::nullopt, true);
-            ASSERT_EQ(checked.IncludeOrderChanges.size(), 2u);
-            EXPECT_EQ(detailed.IncludeOrderChanges.size(), checked.IncludeOrderChanges.size());
-            EXPECT_EQ(detailed.OtherFormattingMismatch, checked.OtherFormattingMismatch);
-            EXPECT_EQ(checked.OtherFormattingMismatch, mixed);
+            EXPECT_FALSE(checked.Formatting.Changes);
+            EXPECT_TRUE(checked.Formatting.Map.empty());
+            EXPECT_TRUE(checked.Formatting.StructuralOperations.empty());
+            ASSERT_EQ(checked.Formatting.Summary->IncludeOrderChanges.size(), 2u);
+            EXPECT_EQ(
+                detailed.Formatting.Summary->IncludeOrderChanges.size(),
+                checked.Formatting.Summary->IncludeOrderChanges.size());
+            EXPECT_EQ(detailed.Formatting.Summary->OtherChanges, checked.Formatting.Summary->OtherChanges);
+            EXPECT_EQ(checked.Formatting.Summary->OtherChanges, mixed);
             EXPECT_TRUE(checked.HasFailures(false));
             EXPECT_FALSE(checked.HasFailures(true));
-            for (const auto& change : checked.IncludeOrderChanges) {
+            for (const auto& change : checked.Formatting.Summary->IncludeOrderChanges) {
                 const auto before =
                     input.View().View().substr(change.Original.Begin, change.Original.End - change.Original.Begin);
                 const auto after = std::string_view(checked.Formatting.Text)
-                    .substr(change.Emitted.Begin, change.Emitted.End - change.Emitted.Begin);
+                    .substr(change.Output.Begin, change.Output.End - change.Output.Begin);
                 EXPECT_TRUE(before.ends_with('\n'));
                 EXPECT_TRUE(after.ends_with('\n'));
                 EXPECT_EQ(before.find("int "), std::string_view::npos);
@@ -192,14 +197,14 @@ TEST(FileCheck, IncludeOrderDiagnosticGoldenIsOneErrorForTheFile)
             const Input applied(checked.Formatting.Text);
             const auto clean = hit_fmt::FormatAndCheckFile(applied.View(), prepared, "project/sample.cpp");
             EXPECT_FALSE(clean.FormattingMismatch);
-            EXPECT_TRUE(clean.IncludeOrderChanges.empty());
+            EXPECT_TRUE(clean.Formatting.Summary->IncludeOrderChanges.empty());
             const formatter::Hunk selected[] = {{1, 1}};
             const auto strict = hit_fmt::FormatAndCheckFile(
                 input.View(),
                 prepared,
                 "project/sample.cpp",
                 hit_fmt::ChangedFileScope{selected, false});
-            EXPECT_TRUE(strict.IncludeOrderChanges.empty());
+            EXPECT_TRUE(strict.Formatting.Summary->IncludeOrderChanges.empty());
             EXPECT_FALSE(strict.HasFailures(false));
             EXPECT_FALSE(strict.Incomplete.empty());
         }

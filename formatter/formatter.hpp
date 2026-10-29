@@ -89,8 +89,10 @@ struct FormatRequest
     // No full Map, StructuralOperations or OutputProtection is returned.
     bool TokenMap = false;
     // Collect actual replacements and owning line indexes for final Text.
-    // Full maps are not retained unless SourceMap is also requested.
+    // Includes the summary; full maps require SourceMap.
     bool Changes = false;
+    // Collect include blocks and whether other formatting changes remain.
+    bool ChangeSummary = false;
 };
 
 struct FormatMapping
@@ -130,6 +132,7 @@ struct FormatResult
     std::vector<StructuralOperation> StructuralOperations;
     std::vector<TokenOutputOffset> OriginalTokens;
     std::vector<ProtectedSourceRange> OutputProtection;
+    std::optional<FormatChangeSummary> Summary;
     std::optional<FormatChanges> Changes;
 };
 

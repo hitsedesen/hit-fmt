@@ -30,14 +30,6 @@ struct SemanticDiagnostic
     std::string Message;
 };
 
-struct IncludeOrderChange
-{
-    // Whole-line ranges, including generated separators.
-    parser::SourceRange Original;
-    parser::SourceRange Emitted;
-    util::Position Position;
-};
-
 struct CheckedFile
 {
     formatter::FormatResult Formatting;
@@ -50,9 +42,6 @@ struct CheckedFile
     std::vector<util::Position> OriginalWidthPositions;
     std::uint16_t ColumnLimit = 0;
     bool FormattingMismatch = false;
-    bool OtherFormattingMismatch = false;
-    // Sorted by original source position.
-    std::vector<IncludeOrderChange> IncludeOrderChanges;
 
     // Fix mode ignores applied formatting changes.
     [[nodiscard]] bool HasFailures(bool fix) const;

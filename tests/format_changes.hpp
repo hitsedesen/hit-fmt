@@ -9,9 +9,12 @@ namespace test {
 inline void ExpectFormatChanges(std::string_view source, const formatter::FormatResult& result)
 {
     ASSERT_TRUE(result.Changes);
+    ASSERT_TRUE(result.Summary);
     const auto& changes = *result.Changes;
     std::string reconstructed;
     size_t original = 0, output = 0;
+    size_t includes = 0;
+    bool other = false;
     for (const auto& edit : changes.Edits) {
         ASSERT_LE(original, edit.Original.Begin);
         ASSERT_LE(edit.Original.Begin, edit.Original.End);
@@ -19,6 +22,18 @@ inline void ExpectFormatChanges(std::string_view source, const formatter::Format
         ASSERT_LE(output, edit.Output.Begin);
         ASSERT_LE(edit.Output.Begin, edit.Output.End);
         ASSERT_LE(edit.Output.End, result.Text.size());
+        if (edit.Kind == formatter::FormatChangeKind::IncludeOrder) {
+            ASSERT_LT(includes, result.Summary->IncludeOrderChanges.size());
+            const auto& block = result.Summary->IncludeOrderChanges[includes++];
+            EXPECT_EQ(block.Original.Begin, edit.Original.Begin);
+            EXPECT_EQ(block.Original.End, edit.Original.End);
+            EXPECT_EQ(block.Output.Begin, edit.Output.Begin);
+            EXPECT_EQ(block.Output.End, edit.Output.End);
+            EXPECT_EQ(block.Position.Line, changes.OriginalLines.LineAt(edit.Original.Begin));
+            EXPECT_EQ(block.Position.Column, 1u);
+        } else {
+            other = true;
+        }
         const auto unchanged = source.substr(original, edit.Original.Begin - original);
         EXPECT_EQ(unchanged, std::string_view(result.Text).substr(output, edit.Output.Begin - output));
         reconstructed += unchanged;
@@ -30,6 +45,8 @@ inline void ExpectFormatChanges(std::string_view source, const formatter::Format
     reconstructed += source.substr(original);
     EXPECT_EQ(reconstructed, result.Text);
     EXPECT_EQ(changes.Edits.empty(), source == result.Text);
+    EXPECT_EQ(includes, result.Summary->IncludeOrderChanges.size());
+    EXPECT_EQ(other, result.Summary->OtherChanges);
 
     const auto checkLines = [] (const formatter::SourceLines& lines, std::string_view text) {
         size_t cursor = 0;
@@ -48,6 +65,25 @@ inline void ExpectFormatChanges(std::string_view source, const formatter::Format
     };
     checkLines(changes.OriginalLines, source);
     checkLines(changes.OutputLines, result.Text);
+}
+
+inline void ExpectChangeSummary(const formatter::FormatResult& summary, const formatter::FormatResult& detailed)
+{
+    ASSERT_TRUE(summary.Summary);
+    ASSERT_TRUE(detailed.Summary);
+    EXPECT_EQ(summary.Text, detailed.Text);
+    EXPECT_EQ(summary.Summary->OtherChanges, detailed.Summary->OtherChanges);
+    const auto& blocks = summary.Summary->IncludeOrderChanges;
+    const auto& expected = detailed.Summary->IncludeOrderChanges;
+    ASSERT_EQ(blocks.size(), expected.size());
+    for (size_t i = 0; i < blocks.size(); ++i) {
+        EXPECT_EQ(blocks[i].Original.Begin, expected[i].Original.Begin);
+        EXPECT_EQ(blocks[i].Original.End, expected[i].Original.End);
+        EXPECT_EQ(blocks[i].Output.Begin, expected[i].Output.Begin);
+        EXPECT_EQ(blocks[i].Output.End, expected[i].Output.End);
+        EXPECT_EQ(blocks[i].Position.Line, expected[i].Position.Line);
+        EXPECT_EQ(blocks[i].Position.Column, expected[i].Position.Column);
+    }
 }
 
 } // namespace test

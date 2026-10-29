@@ -6,9 +6,10 @@
 
 namespace formatter::detail {
 
-void BuildFormatChanges(
+void BuildChangeMetadata(
     const parser::SyntaxTree& tree,
     FormatResult& result,
+    bool detailed,
     std::pmr::memory_resource& scratch,
     std::span<const parser::SourceOffset> originalLines = {},
     bool originalBareCR = false);

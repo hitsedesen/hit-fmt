@@ -623,8 +623,8 @@ inline FormatResult ProjectHunkFormat(
         }
         result.Diagnostics.push_back(std::move(diagnostic));
     }
-    if (request.Changes) {
-        BuildFormatChanges(tree, result, memory, originalLines, originalBareCR);
+    if (request.Changes || request.ChangeSummary) {
+        BuildChangeMetadata(tree, result, request.Changes, memory, originalLines, originalBareCR);
     }
     if (!request.SourceMap) {
         decltype(result.Map){}.swap(result.Map);

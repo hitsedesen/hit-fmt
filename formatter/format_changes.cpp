@@ -115,10 +115,15 @@ bool Whitespace(std::string_view text)
 class ChangeBuilder
 {
 public:
-    ChangeBuilder(std::string_view source, std::string_view output, std::vector<FormatChange>& edits)
+    ChangeBuilder(
+        std::string_view source,
+        std::string_view output,
+        std::vector<FormatChange>& edits,
+        bool& otherChanges)
         : Source_(source)
         , Output_(output)
         , Edits_(edits)
+        , OtherChanges_(otherChanges)
     { }
 
     void Gap(Range before, Range after)
@@ -156,6 +161,7 @@ public:
     void Add(Range before, Range after, FormatChangeKind kind)
     {
         if (View(Source_, before) != View(Output_, after)) {
+            OtherChanges_ |= kind != FormatChangeKind::IncludeOrder;
             Edits_.push_back({before, after, kind, kind == FormatChangeKind::IncludeOrder
                     ? std::optional{StructuralAction::IncludeOrder}
                     : std::nullopt,});
@@ -197,12 +203,14 @@ private:
     std::string_view Source_;
     std::string_view Output_;
     std::vector<FormatChange>& Edits_;
+    bool& OtherChanges_;
 };
 
 std::pmr::vector<FormatChange> IncludeBlocks(
     const parser::SyntaxTree& tree,
     const FormatResult& result,
-    const FormatChanges& changes,
+    const SourceLines& originalLines,
+    const SourceLines& outputLines,
     std::pmr::memory_resource& scratch)
 {
     std::pmr::vector<FormatChange> blocks(&scratch);
@@ -241,8 +249,8 @@ std::pmr::vector<FormatChange> IncludeBlocks(
         if (block.Output.Begin == missing) {
             throw std::runtime_error("include sorting has no final output mapping");
         }
-        block.Original = changes.OriginalLines.Cover(block.Original);
-        block.Output = changes.OutputLines.Cover(block.Output);
+        block.Original = originalLines.Cover(block.Original);
+        block.Output = outputLines.Cover(block.Output);
     }
     std::sort(
         blocks.begin(),
@@ -250,27 +258,24 @@ std::pmr::vector<FormatChange> IncludeBlocks(
         [] (const auto& a, const auto& b) {
             return a.Original.Begin < b.Original.Begin;
         });
+    for (size_t i = 1; i < blocks.size(); ++i) {
+        if (blocks[i].Original.Begin < blocks[i - 1].Original.End || blocks[i].Output.Begin < blocks[i - 1].Output.End)
+        {
+            throw std::runtime_error("overlapping include diagnostic blocks");
+        }
+    }
     return blocks;
 }
 
-} // namespace
-
-void detail::BuildFormatChanges(
+void BuildDetailedChanges(
     const parser::SyntaxTree& tree,
     FormatResult& result,
-    std::pmr::memory_resource& scratch,
-    std::span<const parser::SourceOffset> originalLines,
-    bool originalBareCR)
+    std::span<const FormatChange> blocks,
+    FormatChanges& changes,
+    bool& otherChanges)
 {
-    auto& changes = result.Changes.emplace();
     const auto source = tree.Source();
     const auto output = std::string_view(result.Text);
-    changes.OriginalLines = originalLines.empty() ? SourceLines(source) : SourceLines(originalLines, originalBareCR);
-    if (source == output) {
-        changes.OutputLines = changes.OriginalLines;
-        return;
-    }
-    changes.OutputLines = SourceLines(output);
     if (result.OriginalTokens.size() != tree.TokenCount()) {
         throw std::runtime_error("formatting changes require final token identities");
     }
@@ -299,7 +304,7 @@ void detail::BuildFormatChanges(
             }
         }
     }
-    ChangeBuilder builder(source, output, changes.Edits);
+    ChangeBuilder builder(source, output, changes.Edits, otherChanges);
     Offset original = 0, emitted = 0;
     const auto anchor = [&] (parser::TokenIndex token) {
         const auto& mapped = result.OriginalTokens[token];
@@ -314,7 +319,7 @@ void detail::BuildFormatChanges(
         emitted = mapped.Output.End;
     };
     parser::TokenIndex token = 0;
-    for (const auto& block : IncludeBlocks(tree, result, changes, scratch)) {
+    for (const auto& block : blocks) {
         while (token < tree.TokenCount() && tree.Token(token).Text.End <= block.Original.Begin) {
             anchor(token++);
         }
@@ -349,6 +354,71 @@ void detail::BuildFormatChanges(
             }
         }
     }
+}
+
+} // namespace
+
+void detail::BuildChangeMetadata(
+    const parser::SyntaxTree& tree,
+    FormatResult& result,
+    bool detailed,
+    std::pmr::memory_resource& scratch,
+    std::span<const parser::SourceOffset> originalLines,
+    bool originalBareCR)
+{
+    auto& summary = result.Summary.emplace();
+    const auto source = tree.Source();
+    const auto output = std::string_view(result.Text);
+    const bool unchanged = source == output;
+    auto* changes = detailed ? &result.Changes.emplace() : nullptr;
+    if (changes) {
+        changes->OriginalLines =
+            originalLines.empty() ? SourceLines(source) : SourceLines(originalLines, originalBareCR);
+        changes->OutputLines = unchanged ? changes->OriginalLines : SourceLines(output);
+    }
+    if (unchanged) {
+        return;
+    }
+    const bool includes = std::ranges::any_of(
+        result.StructuralOperations,
+        [] (const auto& operation) {
+            return operation.Kind == StructuralAction::IncludeOrder;
+        });
+    if (!changes && !includes) {
+        summary.OtherChanges = true;
+        return;
+    }
+    SourceLines sourceLines, outputLines;
+    if (includes && !changes) {
+        sourceLines = originalLines.empty() ? SourceLines(source) : SourceLines(originalLines, originalBareCR);
+        outputLines = SourceLines(output);
+    }
+    std::pmr::vector<FormatChange> blocks(&scratch);
+    if (includes) {
+        const auto& original = changes ? changes->OriginalLines : sourceLines;
+        blocks = IncludeBlocks(tree, result, original, changes ? changes->OutputLines : outputLines, scratch);
+        summary.IncludeOrderChanges.reserve(blocks.size());
+        for (const auto& block : blocks) {
+            if (View(source, block.Original) != View(output, block.Output)) {
+                summary.IncludeOrderChanges.push_back({block.Original, block.Output,
+                    {static_cast<uint32_t>(original.LineAt(block.Original.Begin)), 1},});
+            }
+        }
+    }
+    if (!changes) {
+        Offset original = 0, emitted = 0;
+        for (const auto& block : blocks) {
+            if (View(source, {original, block.Original.Begin}) != View(output, {emitted, block.Output.Begin})) {
+                summary.OtherChanges = true;
+                return;
+            }
+            original = block.Original.End;
+            emitted = block.Output.End;
+        }
+        summary.OtherChanges = source.substr(original) != output.substr(emitted);
+        return;
+    }
+    BuildDetailedChanges(tree, result, blocks, *changes, summary.OtherChanges);
 }
 
 } // namespace formatter

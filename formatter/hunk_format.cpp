@@ -260,6 +260,7 @@ ChangedFormatResult FormatChanged(
     canonicalRequest.EditScope.reset();
     canonicalRequest.SourceMap = true;
     canonicalRequest.Changes = false;
+    canonicalRequest.ChangeSummary = false;
     const auto canonical =
         detail::FormatWithAnalysis(tree, prepared, safety, sensitive, canonicalRequest, file, scratch);
     safety.RestrictEditScope(scope);

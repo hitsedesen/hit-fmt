@@ -16,101 +16,6 @@ namespace hit_fmt {
 
 namespace {
 
-parser::SourceRange WholeLines(std::string_view text, parser::SourceRange range)
-{
-    const auto before = range.Begin ? text.rfind('\n', range.Begin - 1) : std::string_view::npos;
-    range.Begin = before == std::string_view::npos ? 0 : before + 1;
-    const auto after = range.End && text[range.End - 1] == '\n' ? range.End - 1 : text.find('\n', range.End);
-    range.End = after == std::string_view::npos ? text.size() : after + 1;
-    return range;
-}
-
-std::vector<IncludeOrderChange> IncludeChanges(
-    const parser::SyntaxTree& tree,
-    const formatter::FormatResult& formatting)
-{
-    const auto count = std::count_if(
-        formatting.StructuralOperations.begin(),
-        formatting.StructuralOperations.end(),
-        [] (const auto& operation) {
-            return operation.Kind == formatter::StructuralAction::IncludeOrder;
-        });
-    if (!count) {
-        return {};
-    }
-    std::vector<IncludeOrderChange> changes;
-    changes.reserve(count);
-    std::vector<uint32_t> indices(formatting.StructuralOperations.size(),
-        formatter::NoStructuralAction);
-    for (std::size_t i = 0; i < indices.size(); ++i) {
-        const auto& operation = formatting.StructuralOperations[i];
-        if (operation.Kind != formatter::StructuralAction::IncludeOrder) {
-            continue;
-        }
-        indices[i] = changes.size();
-        auto position = tree.TokenPosition(operation.Owner.Begin);
-        position.Column = 1;
-        changes.push_back({
-            {tree.Token(operation.Owner.Begin).Text.Begin, tree.Token(operation.Owner.End - 1).Text.End},
-            {UINT32_MAX, 0},
-            position,
-        });
-    }
-    // Use admitted operation provenance, not textual include guesses. Restrict
-    // associations to directive interiors, excluding neighboring layout gaps.
-    for (const auto& map : formatting.Map) {
-        if (map.Action == formatter::NoStructuralAction || !map.HasOriginal ||
-            indices.at(map.Action) == formatter::NoStructuralAction)
-        {
-            continue;
-        }
-        auto& change = changes[indices[map.Action]];
-        const auto original = change.Original;
-        const bool intersects = map.Original.Empty()
-            ? original.Begin <= map.Original.Begin && map.Original.Begin < original.End
-            : map.Original.Begin < original.End && original.Begin < map.Original.End;
-        if (intersects && !map.Output.Empty()) {
-            change.Emitted.Begin = std::min(change.Emitted.Begin, map.Output.Begin);
-            change.Emitted.End = std::max(change.Emitted.End, map.Output.End);
-        }
-    }
-    for (auto& change : changes) {
-        if (change.Emitted.Begin == UINT32_MAX) {
-            throw std::runtime_error("include sorting has no output mapping");
-        }
-        change.Original = WholeLines(tree.Source(), change.Original);
-        change.Emitted = WholeLines(formatting.Text, change.Emitted);
-    }
-    std::ranges::sort(
-        changes,
-        {},
-        [] (const auto& change) {
-            return change.Original.Begin;
-        });
-    return changes;
-}
-
-bool OtherFormattingChanged(
-    std::string_view original,
-    const formatter::FormatResult& formatting,
-    std::span<const IncludeOrderChange> changes)
-{
-    std::size_t source = 0, emitted = 0;
-    for (const auto& change : changes) {
-        if (change.Original.Begin < source || change.Emitted.Begin < emitted) {
-            throw std::runtime_error("overlapping include diagnostic blocks");
-        }
-        if (original.substr(source, change.Original.Begin - source) !=
-            std::string_view(formatting.Text).substr(emitted, change.Emitted.Begin - emitted))
-        {
-            return true;
-        }
-        source = change.Original.End;
-        emitted = change.Emitted.End;
-    }
-    return original.substr(source) != std::string_view(formatting.Text).substr(emitted);
-}
-
 // Convert code-point widths with tab stops to tokenizer columns.
 size_t WidthCaretColumn(std::string_view text, size_t target)
 {
@@ -400,16 +305,14 @@ CheckedFile FormatAndCheckFile(
         }
         checked.Semantic.push_back({diagnostic.Position, {}, std::move(message)});
     }
-    // Hunk edit authority and include-order diagnostics require full source
-    // associations. Other whole-file diagnostics need only token identities.
-    const bool tokenMap = !checked.Semantic.empty() ||
+    const bool tokenMap = changed.has_value() || !checked.Semantic.empty() ||
         configuration.Formatting.Policies.WidthDiagnostics == formatter::WidthDiagnosticPolicy::Report;
     std::vector<formatter::Hunk> selected, permitted;
     const formatter::FormatRequest request{
-        .SourceMap = changed.has_value() || configuration.Formatting.Structural.SortIncludes,
         .InputFilePath = inputFilePath,
         .TokenMap = tokenMap,
         .Changes = detailedDiagnostics,
+        .ChangeSummary = true,
     };
     if (changed) {
         auto result =
@@ -430,26 +333,8 @@ CheckedFile FormatAndCheckFile(
     } else {
         checked.Formatting = formatter::Format(tree, configuration.Formatting, request);
     }
-    checked.FormattingMismatch = checked.Formatting.Changes
-        ? !checked.Formatting.Changes->Edits.empty()
-        : checked.Formatting.Text != tree.Source();
-    if (checked.FormattingMismatch) {
-        if (checked.Formatting.Changes) {
-            const auto& changes = *checked.Formatting.Changes;
-            for (const auto& edit : changes.Edits) {
-                if (edit.Kind == formatter::FormatChangeKind::IncludeOrder) {
-                    checked.IncludeOrderChanges.push_back({edit.Original, edit.Output,
-                        changes.OriginalLines.Position(tree.Source(), edit.Original.Begin),});
-                } else {
-                    checked.OtherFormattingMismatch = true;
-                }
-            }
-        } else {
-            checked.IncludeOrderChanges = IncludeChanges(tree, checked.Formatting);
-            checked.OtherFormattingMismatch = checked.IncludeOrderChanges.empty() ||
-                OtherFormattingChanged(tree.Source(), checked.Formatting, checked.IncludeOrderChanges);
-        }
-    }
+    const auto& summary = *checked.Formatting.Summary;
+    checked.FormattingMismatch = summary.OtherChanges || !summary.IncludeOrderChanges.empty();
     MapSemanticPositions(tree, checked.Formatting, checked.Semantic);
     MapSemanticPositions(tree, checked.Formatting, checked.RequiredChanges);
     MapWidthPositions(tree, checked);
@@ -477,8 +362,8 @@ void PrintFileIssues(
     bool fix,
     const Terminal& terminal)
 {
-    if (!fix && !checked.IncludeOrderChanges.empty()) {
-        const auto position = checked.IncludeOrderChanges.front().Position;
+    if (!fix && !checked.Formatting.Summary->IncludeOrderChanges.empty()) {
+        const auto position = checked.Formatting.Summary->IncludeOrderChanges.front().Position;
         output << "fail: includes are not sorted\n  --> " << path << ':' << position.Line << ':' << position.Column
             << " [original source]\n";
     }
@@ -546,11 +431,10 @@ void PrintFileSummaryIssues(std::ostream& output, const CheckedFile& checked, bo
         output << message;
         separated = true;
     };
-    if (!fix && checked.FormattingMismatch && (checked.IncludeOrderChanges.empty() || checked.OtherFormattingMismatch))
-    {
+    if (!fix && checked.Formatting.Summary->OtherChanges) {
         issue("formatting mismatch");
     }
-    if (!fix && !checked.IncludeOrderChanges.empty()) {
+    if (!fix && !checked.Formatting.Summary->IncludeOrderChanges.empty()) {
         issue("includes are not sorted", true);
     }
     if (!checked.Semantic.empty()) {

@@ -43,6 +43,20 @@ enum class FormatChangeKind : uint8_t
     IncludeOrder,
 };
 
+struct IncludeOrderChange
+{
+    // Whole-line ranges in original source order.
+    parser::SourceRange Original;
+    parser::SourceRange Output;
+    util::Position Position;
+};
+
+struct FormatChangeSummary
+{
+    std::vector<IncludeOrderChange> IncludeOrderChanges;
+    bool OtherChanges = false;
+};
+
 struct FormatChange
 {
     parser::SourceRange Original;
