@@ -1,0 +1,12 @@
+plain:
+unknown option: --unknown
+colored:
+[1;31munknown option: --unknown[0m
+plain:
+unknown config preset: missing (expected ytsaurus, google or llvm)
+colored:
+[1;31munknown config preset: missing (expected ytsaurus, google or llvm)[0m
+plain:
+--threads requires a positive integer
+colored:
+[1;31m--threads requires a positive integer[0m

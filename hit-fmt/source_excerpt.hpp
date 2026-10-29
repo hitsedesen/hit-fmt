@@ -12,10 +12,18 @@ namespace hit_fmt {
 struct RenderedLine
 {
     std::vector<std::string_view> Cells;
-    size_t Caret = 0;
+    struct Adjustment
+    {
+        size_t Column;
+        size_t Cell;
+    };
+    std::vector<Adjustment> Adjustments;
+    size_t CodePoints = 0;
+
+    [[nodiscard]] size_t Caret(size_t column) const;
 };
 
-[[nodiscard]] RenderedLine RenderLine(std::string_view text, size_t column, size_t prefixWidth);
+[[nodiscard]] RenderedLine RenderLine(std::string_view text, size_t prefixWidth);
 
 void PrintCells(std::ostream& output, std::span<const std::string_view> cells, size_t begin, size_t end);
 
@@ -25,10 +33,10 @@ struct Excerpt
     bool CaretVisible;
 };
 
-// Columns count Unicode code points, as in original-source diagnostics.
+// CodePoints count Unicode code points, as in original-source diagnostics.
 [[nodiscard]] Excerpt PrintSourceExcerpt(
     std::ostream& output,
-    std::string_view text,
+    const RenderedLine& rendered,
     size_t column,
     size_t prefixWidth,
     size_t terminalWidth,

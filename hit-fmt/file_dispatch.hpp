@@ -11,7 +11,6 @@
 #include <filesystem>
 #include <mutex>
 #include <optional>
-#include <ostream>
 #include <string>
 #include <system_error>
 #include <thread>
@@ -31,19 +30,14 @@ struct FileResult
 
 // A file failure affects the aggregate status, not discovery of later files.
 template <typename Discover, typename Resolver, typename Process, typename Print>
-bool RunSerialFiles(Discover&& discover, Resolver& resolver, Process&& process, Print&& print, std::ostream& errors)
+bool RunSerialFiles(Discover&& discover, Resolver& resolver, Process&& process, Print&& print)
 {
     bool failed = false;
-    try {
-        const bool discovered = discover([&] (const auto& path) {
-            failed |= print(process(path, resolver));
-            return true;
-        });
-        return discovered && !failed;
-    } catch (const std::exception& error) {
-        errors << error.what() << '\n';
-        return false;
-    }
+    const bool discovered = discover([&] (const auto& path) {
+        failed |= print(process(path, resolver));
+        return true;
+    });
+    return discovered && !failed;
 }
 
 // Discovery yields file paths through visit(path). Each worker owns a
@@ -54,8 +48,7 @@ bool RunParallelFiles(
     Discover&& discover,
     MakeResolver&& makeResolver,
     Process&& process,
-    Print&& print,
-    std::ostream& errors)
+    Print&& print)
 {
     constexpr size_t BufferedOutputLimit = 16 * 1024 * 1024;
     constexpr size_t BatchFileLimit = 4;
@@ -76,7 +69,7 @@ bool RunParallelFiles(
     size_t printed = 0;
     bool discoveryDone = false;
     bool stop = false;
-    std::optional<std::string> discoveryError;
+    std::exception_ptr discoveryError;
     bool failed = false;
     {
         std::vector<std::jthread> workers;
@@ -173,9 +166,9 @@ bool RunParallelFiles(
                     {
                         flush();
                     }
-                } catch (const std::exception& error) {
+                } catch (...) {
                     std::lock_guard lock(mutex);
-                    discoveryError = error.what();
+                    discoveryError = std::current_exception();
                 }
                 {
                     std::lock_guard lock(mutex);
@@ -183,55 +176,48 @@ bool RunParallelFiles(
                 }
                 ready.notify_all();
             });
-        } catch (const std::exception& error) {
-            stop = true; // No worker has been launched yet.
-            errors << error.what() << '\n';
-            return false;
-        }
-        auto canLaunch = [&] {
-            return !pending.empty() && bufferedBytes < BufferedOutputLimit && workers.size() < threadCount &&
-                workers.size() < pending.size() + processing;
-        };
-        for (;;) {
-            FileResult result;
-            {
-                std::unique_lock lock(mutex);
-                ready.wait(
-                    lock,
-                    [&] {
-                        return (!results.empty() && results.front().has_value()) ||
-                            (discoveryDone && results.empty()) || canLaunch();
-                    });
-                if (canLaunch()) {
-                    lock.unlock();
-                    try {
+            auto canLaunch = [&] {
+                return !pending.empty() && bufferedBytes < BufferedOutputLimit && workers.size() < threadCount &&
+                    workers.size() < pending.size() + processing;
+            };
+            for (;;) {
+                FileResult result;
+                {
+                    std::unique_lock lock(mutex);
+                    ready.wait(
+                        lock,
+                        [&] {
+                            return (!results.empty() && results.front().has_value()) ||
+                                (discoveryDone && results.empty()) || canLaunch();
+                        });
+                    if (canLaunch()) {
+                        lock.unlock();
                         launchWorker();
-                    } catch (const std::exception& error) {
-                        {
-                            std::lock_guard guard(mutex);
-                            stop = true;
-                        }
-                        ready.notify_all();
-                        errors << error.what() << '\n';
-                        return false;
+                        continue;
                     }
-                    continue;
+                    if (results.empty()) {
+                        break;
+                    }
+                    bufferedBytes -= results.front()->Output.size() + results.front()->Error.size();
+                    result = std::move(*results.front());
+                    results.pop_front();
+                    ++printed;
                 }
-                if (results.empty()) {
-                    break;
-                }
-                bufferedBytes -= results.front()->Output.size() + results.front()->Error.size();
-                result = std::move(*results.front());
-                results.pop_front();
-                ++printed;
+                ready.notify_all();
+                failed |= print(result);
+            }
+        } catch (...) {
+            // Wake blocked producers and workers before jthread joins on unwind.
+            {
+                std::lock_guard lock(mutex);
+                stop = true;
             }
             ready.notify_all();
-            failed |= print(result);
+            throw;
         }
     } // Join discovery and workers before returning.
     if (discoveryError) {
-        errors << *discoveryError << '\n';
-        failed = true;
+        std::rethrow_exception(discoveryError);
     }
     return !failed;
 }

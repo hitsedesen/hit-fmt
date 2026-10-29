@@ -198,7 +198,8 @@ public:
             auto issue = !prefixOK && !caseOK ? "prefix and case" : !prefixOK ? "prefix" : "case";
             message += issue;
             Results.push_back(
-                {Tree.TokenPosition(index), std::move(message), issue, ExpectedName(rule, prefixOK, caseOK)});
+                {Tree.TokenPosition(index), std::move(message), issue, ExpectedName(rule, prefixOK, caseOK),
+                    {index, Tree.Token(index).Text.Begin},});
         }
     }
 

@@ -1,5 +1,7 @@
 #include "parameter_names.hpp"
 
+#include "diagnostic_locations.hpp"
+
 #include <tokenizer/token.hpp>
 
 #include <algorithm>
@@ -82,32 +84,28 @@ const Node* FunctionName(const Node& node)
     return nullptr;
 }
 
-util::Position AfterToken(const parser::SyntaxTree& tree, parser::TokenIndex index)
+TokenAnchor AfterToken(const parser::SyntaxTree& tree, parser::TokenIndex index)
 {
-    auto position = tree.TokenPosition(index);
-    for (unsigned char c : tree.TokenText(index)) {
-        if (c == '\n') {
-            ++position.Line;
-            position.Column = 1;
-        } else if ((c & 0xc0) != 0x80) {
-            ++position.Column;
-        }
+    const auto offset = tree.Token(index).Text.End;
+    if (index + 1 < tree.TokenCount() && tree.Token(index + 1).Text.Begin == offset) {
+        ++index;
     }
-    return position;
+    return {index, offset};
 }
 
-util::Position NamePosition(const parser::SyntaxTree& tree, const Node& parameter, const Node& specifiers)
+TokenAnchor NameAnchor(const parser::SyntaxTree& tree, const Node& parameter, const Node& specifiers)
 {
     if (auto* declarators = Child(parameter, NK::InitDeclaratorList)) {
         if (auto* init = Child(*declarators, NK::InitDeclarator)) {
             if (auto* abstract = Child(*init, NK::AbstractDeclarator)) {
                 if (auto* nested = Child(*abstract, NK::NestedDeclarator)) {
                     // In a function pointer, the name goes inside (*...).
-                    return tree.TokenPosition(nested->Tokens.End - 1);
+                    const auto token = nested->Tokens.End - 1;
+                    return {token, tree.Token(token).Text.Begin};
                 }
                 for (auto* child = abstract->Child(); child; child = child->NextSibling) {
                     if (child->Kind == NK::ArrayDeclarator || child->Kind == NK::FunctionDeclarator) {
-                        return tree.TokenPosition(child->Tokens.Begin);
+                        return {child->Tokens.Begin, tree.Token(child->Tokens.Begin).Text.Begin};
                     }
                 }
                 if (!abstract->Tokens.Empty()) {
@@ -249,8 +247,9 @@ void CheckFunction(
                     continue;
                 }
             }
+            const auto anchor = NameAnchor(tree, *parameter, *specifiers);
             diagnostics.push_back({
-                .Position = NamePosition(tree, *parameter, *specifiers),
+                .Position = detail::OriginalPosition(tree, anchor),
                 .Signature = signatureRange,
                 .SignatureBeginLine = beginLine,
                 .SignatureEndLine = endLine,
@@ -259,6 +258,7 @@ void CheckFunction(
                 .AllowCommentedName = function.Kind == NK::FunctionDefinition &&
                     definitionPolicy == FunctionDefinitionParameterNames::
                         NameOrCommentedNameRequired,
+                .Anchor = anchor,
             });
         }
     }

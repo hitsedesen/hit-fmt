@@ -4,7 +4,15 @@
 
 namespace hit_fmt {
 
-// Print a complete, parseable configuration with formatting rules disabled.
-void PrintPreserveConfig(std::ostream& output);
+enum class ConfigPreset
+{
+    Default,
+    YTsaurus,
+    Google,
+    LLVM
+};
+
+// Print the preserving default template or a built-in example configuration.
+void PrintConfig(std::ostream& output, ConfigPreset preset = ConfigPreset::Default);
 
 } // namespace hit_fmt

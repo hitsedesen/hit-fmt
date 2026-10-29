@@ -1,5 +1,7 @@
 #include "formatter.hpp"
 
+#include "diagnostic_locations.hpp"
+#include "format_changes_internal.hpp"
 #include "format_pipeline.hpp"
 #include "syntax_layout.hpp"
 #include "text_policies.hpp"
@@ -516,6 +518,7 @@ void ApplyComments(
     result.Map = std::move(maps);
 }
 
+template <bool locations>
 void WidthDiagnostics(FormatResult& result, const CompiledPolicies& policies, uint8_t tabWidth)
 {
     if (policies.ColumnLimit == 0 || policies.WidthDiagnostics != WidthDiagnosticPolicy::Report) {
@@ -523,12 +526,17 @@ void WidthDiagnostics(FormatResult& result, const CompiledPolicies& policies, ui
     }
     uint32_t line = 1;
     size_t width = 0;
+    uint32_t codePointColumn = 1;
+    std::optional<parser::SourceOffset> overflow;
+    uint32_t caretColumn = 1;
     auto report = [&] {
         if (width > policies.ColumnLimit) {
             result.Diagnostics.push_back({
                 {line, uint32_t(policies.ColumnLimit + 1)},
                 std::format("emitted line width {} exceeds ColumnLimit {}", width, policies.ColumnLimit),
                 LayoutDiagnosticKind::LineWidth,
+                locations ? *overflow : 0,
+                locations ? caretColumn : 1,
             });
         }
     };
@@ -538,13 +546,22 @@ void WidthDiagnostics(FormatResult& result, const CompiledPolicies& policies, ui
             report();
             ++line;
             width = 0;
+            if constexpr (locations) {
+                codePointColumn = 1;
+                overflow.reset();
+            }
             if (c == '\r' && i + 1 < result.Text.size() && result.Text[i + 1] == '\n') {
                 ++i;
             }
-        } else if (c == '\t') {
-            width += tabWidth - width % tabWidth;
         } else {
-            ++width;
+            width += c == '\t' ? tabWidth - width % tabWidth : 1;
+            if constexpr (locations) {
+                if (!overflow && width > policies.ColumnLimit) {
+                    overflow = CheckedSourceAnalysisSize(i);
+                    caretColumn = codePointColumn;
+                }
+                ++codePointColumn;
+            }
             // One column per code point; invalid UTF8 bytes each occupy one.
             if (static_cast<unsigned char>(c) >= 0x80) {
                 i += unicode::utf8::GetFirstCodePointSize(std::string_view(result.Text).substr(i)).value_or(1) - 1;
@@ -735,17 +752,42 @@ FormatResult detail::FormatWithAnalysis(
     options.ReassembledGaps = {};
     scratch.release();
     const bool needNamespaceAnchors = !namespacePlan.Namespaces.empty();
-    const bool needMaps = request.SourceMap || request.TokenMap || needNamespaceAnchors;
+    const bool changeMetadata = request.Changes || request.ChangeSummary;
+    const bool sourceMap = request.SourceMap || (changeMetadata && prepared.Structural.SortIncludes);
+    const bool needMaps =
+        sourceMap || request.TokenMap || request.Changes || request.DiagnosticLocations || needNamespaceAnchors;
     auto renderPolicy = SyntaxRenderPolicy(prepared.Policies, options);
-    renderPolicy.SourceMap = request.SourceMap;
+    renderPolicy.SourceMap = sourceMap;
     auto rendered = [&] {
         std::pmr::vector<document::Provenance> tracked(&scratch);
-        renderPolicy.IndexedTokenMap = !request.SourceMap && needMaps;
+        renderPolicy.IndexedTokenMap = !sourceMap && needMaps;
         renderPolicy.TokenCount = tree->TokenCount();
-        if (needNamespaceAnchors && !request.SourceMap) {
+        if (!sourceMap && (needNamespaceAnchors || request.Changes)) {
             tracked.reserve(currentSafety->Protection().size());
             for (const auto& range : currentSafety->Protection()) {
                 tracked.push_back({range.Source.Begin, range.Source.End});
+            }
+            if (request.Changes) {
+                for (const auto& piece : provenance) {
+                    if (piece.Generated && !piece.Output.Empty()) {
+                        tracked.push_back({piece.Output.Begin, piece.Output.End});
+                    }
+                }
+                std::sort(
+                    tracked.begin(),
+                    tracked.end(),
+                    [] (const auto& a, const auto& b) {
+                        return a.Begin < b.Begin;
+                    });
+                size_t count = 0;
+                for (const auto range : tracked) {
+                    if (count && range.Begin <= tracked[count - 1].End) {
+                        tracked[count - 1].End = std::max(tracked[count - 1].End, range.End);
+                    } else {
+                        tracked[count++] = range;
+                    }
+                }
+                tracked.resize(count);
             }
             renderPolicy.TrackSource = tracked;
         }
@@ -762,12 +804,12 @@ FormatResult detail::FormatWithAnalysis(
         (void)CheckedSourceAnalysisSize(result.Text.size());
     }
     if (needMaps) {
-        if (request.SourceMap) {
+        if (sourceMap || request.Changes) {
             result.StructuralOperations.assign(plan.Operations.begin(), plan.Operations.end());
         }
         result.OriginalTokens.resize(original.TokenCount());
         auto identities = OriginalIdentities(*tree, normalized ? &*normalized : nullptr, scratch);
-        if (request.SourceMap) {
+        if (sourceMap) {
             ComposeMaps(result, rendered, *currentSafety, identities, provenance);
         } else {
             for (parser::TokenIndex id = 0; id < rendered.Tokens.size(); ++id) {
@@ -779,7 +821,11 @@ FormatResult detail::FormatWithAnalysis(
             }
             // Remaining mappings are precisely the tracked exact copies used
             // for protection validation, not a full per-token map vector.
-            ComposeNamespaceAnchors(result, rendered, *currentSafety, identities);
+            if (request.Changes) {
+                ComposeMaps(result, rendered, *currentSafety, identities, provenance);
+            } else {
+                ComposeNamespaceAnchors(result, rendered, *currentSafety, identities);
+            }
         }
         scratch.release();
         std::pmr::vector<Range> outputProtection(&scratch);
@@ -804,9 +850,11 @@ FormatResult detail::FormatWithAnalysis(
         scratch.release();
         if (!comments.Edits.empty()) {
             auto text = MaterializeNamespaceComments(result.Text, comments, file);
-            if (request.SourceMap || request.TokenMap || !result.OutputProtection.empty()) {
+            if (sourceMap || request.TokenMap || request.Changes || request.DiagnosticLocations ||
+                !result.OutputProtection.empty())
+            {
                 // Validate protected copies even without output maps.
-                ApplyComments(result, comments, original, namespacePlan, request.SourceMap, scratch);
+                ApplyComments(result, comments, original, namespacePlan, sourceMap || request.Changes, scratch);
                 scratch.release();
             }
             result.Text.assign(text);
@@ -818,7 +866,19 @@ FormatResult detail::FormatWithAnalysis(
     if (prepared.Policies.LineEnding != LineEnding::Preserve) {
         (void)CheckedSourceAnalysisSize(result.Text.size());
     }
-    WidthDiagnostics(result, prepared.Policies, options.TabWidth);
+    if (request.SourceMap || request.DiagnosticLocations) {
+        WidthDiagnostics<true>(result, prepared.Policies, options.TabWidth);
+    } else {
+        WidthDiagnostics<false>(result, prepared.Policies, options.TabWidth);
+    }
+    if (changeMetadata) {
+        detail::BuildChangeMetadata(original, result, request.Changes, scratch);
+        scratch.release();
+    }
+    if (request.DiagnosticLocations) {
+        detail::MapWidthLocations(original, result, scratch);
+        scratch.release();
+    }
     if (!request.SourceMap) {
         result.Map = std::vector<FormatMapping>{};
         result.StructuralOperations = std::vector<StructuralOperation>{};

@@ -3,6 +3,7 @@
 #include "config_annotations.hpp"
 #include "config_enum.hpp"
 #include "config_options.hpp"
+#include "format_changes.hpp"
 #include "policy.hpp"
 #include "structural_edits.hpp"
 
@@ -39,6 +40,10 @@ struct LayoutDiagnostic
     util::Position Position;
     std::string Message;
     LayoutDiagnosticKind Kind;
+    // Collected with SourceMap or DiagnosticLocations.
+    parser::SourceOffset Offset = 0;
+    uint32_t CodePointColumn = 1;
+    std::optional<util::Position> Original;
 };
 
 // Immutable, owning configuration snapshot. Preparation throws invalid_argument
@@ -87,6 +92,13 @@ struct FormatRequest
     // composing full source associations. SourceMap includes these offsets.
     // No full Map, StructuralOperations or OutputProtection is returned.
     bool TokenMap = false;
+    // Collect actual replacements and owning line indexes for final Text.
+    // Includes the summary; full maps require SourceMap.
+    bool Changes = false;
+    // Collect include blocks and whether other formatting changes remain.
+    bool ChangeSummary = false;
+    // Resolve width diagnostics to original token locations.
+    bool DiagnosticLocations = false;
 };
 
 struct FormatMapping
@@ -126,6 +138,8 @@ struct FormatResult
     std::vector<StructuralOperation> StructuralOperations;
     std::vector<TokenOutputOffset> OriginalTokens;
     std::vector<ProtectedSourceRange> OutputProtection;
+    std::optional<FormatChangeSummary> Summary;
+    std::optional<FormatChanges> Changes;
 };
 
 // Normalize, lower and render once; failures throw without returning source.

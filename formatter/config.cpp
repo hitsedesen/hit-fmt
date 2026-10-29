@@ -1031,22 +1031,30 @@ Configuration LoadConfigFile(const std::filesystem::path& path)
     return config;
 }
 
-std::optional<std::filesystem::path> FindStyleFile(std::filesystem::path startDirectory, std::string_view fileName)
+std::optional<std::filesystem::path> FindStyleFile(
+    std::filesystem::path startDirectory,
+    std::string_view fileName,
+    const std::function<void(const std::filesystem::path&, const std::error_code&)>& onError)
 {
     std::error_code error;
-    if (startDirectory.empty()) {
-        startDirectory = std::filesystem::current_path(error);
-    } else {
-        startDirectory = std::filesystem::absolute(startDirectory, error);
-    }
+    auto directory = startDirectory.empty()
+        ? std::filesystem::current_path(error)
+        : std::filesystem::absolute(startDirectory, error);
     if (error) {
+        if (onError) {
+            onError(startDirectory.empty() ? std::filesystem::path(".") : startDirectory, error);
+        }
         return std::nullopt;
     }
+    startDirectory = std::move(directory);
 
     while (!startDirectory.empty()) {
         auto candidate = startDirectory / fileName;
         if (std::filesystem::is_regular_file(candidate, error) && !error) {
             return candidate;
+        }
+        if (error && error != std::errc::no_such_file_or_directory && onError) {
+            onError(candidate, error);
         }
         error.clear();
         auto parent = startDirectory.parent_path();

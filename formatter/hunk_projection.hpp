@@ -1,5 +1,7 @@
 #pragma once
 
+#include "diagnostic_locations.hpp"
+#include "format_changes_internal.hpp"
 #include "hunk_scope.hpp"
 
 #include <unicode/utf8.hpp>
@@ -22,7 +24,9 @@ inline FormatResult ProjectHunkFormat(
     const PreparedFormat& prepared,
     std::span<const parser::SourceRange> scope,
     const FormatRequest& request,
-    std::pmr::memory_resource& memory)
+    std::pmr::memory_resource& memory,
+    std::span<const parser::SourceOffset> originalLines,
+    bool originalBareCR)
 {
     using Range = parser::SourceRange;
     using Offset = parser::SourceOffset;
@@ -534,8 +538,9 @@ inline FormatResult ProjectHunkFormat(
     };
     std::pmr::vector<DiagnosticPoint> diagnosticPoints(&memory);
     // Public formatting uses the default eight-cell tab stops. Match its
-    // code-point accounting, including standalone CR and CRLF, in both sweeps.
-    const auto advance = [] (std::string_view text, Offset& offset, util::Position& position) {
+    // code-point accounting, including standalone CR and CRLF.
+    uint32_t codePointColumn = 1;
+    const auto advance = [&] (std::string_view text, Offset& offset, util::Position& position) {
         const auto c = static_cast<unsigned char>(text[offset]);
         if (c == '\r' || c == '\n') {
             ++offset;
@@ -544,27 +549,16 @@ inline FormatResult ProjectHunkFormat(
             }
             ++position.Line;
             position.Column = 1;
+            codePointColumn = 1;
         } else {
             offset += c < 0x80 ? 1 : unicode::utf8::GetFirstCodePointSize(text.substr(offset)).value_or(1);
             position.Column += c == '\t' ? 8 - (position.Column - 1) % 8 : 1;
+            ++codePointColumn;
         }
     };
-    Offset offset = 0;
-    util::Position position{1, 1};
     for (size_t i = 0; i < canonical.Diagnostics.size(); ++i) {
-        const auto target = canonical.Diagnostics[i].Position;
-        while (offset < canonicalSize &&
-            (position.Line < target.Line || (position.Line == target.Line && position.Column < target.Column)))
-        {
-            // An overflow inside a tab refers to that tab's byte, not its end.
-            if (position.Line == target.Line && output[offset] == '\t' &&
-                position.Column + 8 - (position.Column - 1) % 8 > target.Column)
-            {
-                break;
-            }
-            advance(output, offset, position);
-        }
-        if (offset == canonicalSize || position.Line != target.Line) {
+        const auto offset = canonical.Diagnostics[i].Offset;
+        if (offset >= canonicalSize) {
             continue;
         }
         auto token = std::upper_bound(
@@ -599,14 +593,16 @@ inline FormatResult ProjectHunkFormat(
         [] (const auto& a, const auto& b) {
             return a.Output != b.Output ? a.Output < b.Output : a.Diagnostic < b.Diagnostic;
         });
-    offset = 0;
-    position = {1, 1};
+    Offset offset = 0;
+    util::Position position{1, 1};
     for (const auto point : diagnosticPoints) {
         while (offset < point.Output) {
             advance(result.Text, offset, position);
         }
         auto diagnostic = canonical.Diagnostics[point.Diagnostic];
         diagnostic.Position = position;
+        diagnostic.Offset = point.Output;
+        diagnostic.CodePointColumn = codePointColumn;
         // The measured width belongs to the canonical layout, not necessarily
         // the projected line whose token now carries the caret.
         if (diagnostic.Message.starts_with("emitted line width ")) {
@@ -619,6 +615,12 @@ inline FormatResult ProjectHunkFormat(
             continue;
         }
         result.Diagnostics.push_back(std::move(diagnostic));
+    }
+    if (request.Changes || request.ChangeSummary) {
+        BuildChangeMetadata(tree, result, request.Changes, memory, originalLines, originalBareCR);
+    }
+    if (request.DiagnosticLocations) {
+        MapWidthLocations(tree, result, memory);
     }
     if (!request.SourceMap) {
         decltype(result.Map){}.swap(result.Map);

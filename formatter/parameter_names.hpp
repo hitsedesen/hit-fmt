@@ -1,6 +1,7 @@
 #pragma once
 
 #include "config.hpp"
+#include "diagnostics.hpp"
 
 #include <parser/syntax_tree.hpp>
 
@@ -22,6 +23,7 @@ struct ParameterNameDiagnostic
     std::string Function;
     size_t ParameterNumber;
     bool AllowCommentedName = false;
+    TokenAnchor Anchor;
 };
 
 [[nodiscard]] std::vector<ParameterNameDiagnostic> CheckParameterNames(

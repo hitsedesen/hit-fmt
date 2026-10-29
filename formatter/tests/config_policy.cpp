@@ -16,6 +16,7 @@
 #include <string_view>
 #include <type_traits>
 #include <utility>
+#include <vector>
 
 namespace {
 
@@ -85,6 +86,50 @@ struct TemporaryConfigTree
         std::filesystem::remove_all(Path, error);
     }
 };
+
+TEST(ConfigPolicy, FindStyleFileIgnoresMissingCandidatesAndPrefersNearestFile)
+{
+    TemporaryConfigTree tree;
+    tree.Write("nested/placeholder", "");
+    const auto name = tree.Path.filename().string() + ".hit-fmt";
+    std::vector<std::filesystem::path> errors;
+    const auto onError = [&] (const std::filesystem::path& path, const std::error_code&) {
+        errors.push_back(path);
+    };
+
+    EXPECT_FALSE(formatter::FindStyleFile(tree.Path / "nested", name, onError));
+    tree.Write(name, "");
+    EXPECT_EQ(formatter::FindStyleFile(tree.Path / "nested", name, onError), tree.Path / name);
+    tree.Write(std::filesystem::path("nested") / name, "");
+    EXPECT_EQ(formatter::FindStyleFile(tree.Path / "nested", name, onError), tree.Path / "nested" / name);
+    EXPECT_TRUE(errors.empty());
+}
+
+TEST(ConfigPolicy, FindStyleFileReportsErrorsAndContinuesWithParentDirectories)
+{
+    TemporaryConfigTree tree;
+    tree.Write(".hit-fmt", "");
+    tree.Write("nested/deeper/placeholder", "");
+    const auto broken = tree.Path / "nested/.hit-fmt";
+    std::error_code error;
+    std::filesystem::create_symlink(".hit-fmt", broken, error);
+    if (error) {
+        GTEST_SKIP() << "Cannot create a symbolic link: " << error.message();
+    }
+
+    std::vector<std::pair<std::filesystem::path, std::error_code>> errors;
+    const auto found = formatter::FindStyleFile(
+        tree.Path / "nested/deeper",
+        formatter::DefaultConfigFileName,
+        [&] (const std::filesystem::path& path, const std::error_code& failure) {
+            errors.emplace_back(path, failure);
+        });
+    EXPECT_EQ(found, tree.Path / ".hit-fmt");
+    ASSERT_EQ(errors.size(), 1u);
+    EXPECT_EQ(errors.front().first, broken);
+    EXPECT_TRUE(errors.front().second);
+    EXPECT_NE(errors.front().second, std::errc::no_such_file_or_directory);
+}
 
 TEST(ConfigPolicy, IncludesMergeBeforeLocalSettingsAndValidateFinalValues)
 {
@@ -537,10 +582,10 @@ TEST(ConfigPolicy, CapConflictsUseFinalOverridesAndReportSettingLocations)
 #undef OFFSET_KEYS
 }
 
-TEST(ConfigPolicy, PreserveTemplateRoundTripsEveryRegisteredStyleDefault)
+TEST(ConfigPolicy, PreserveTemplateRoundTripsEveryRegisteredDefault)
 {
     std::ostringstream output;
-    hit_fmt::PrintPreserveConfig(output);
+    hit_fmt::PrintConfig(output, hit_fmt::ConfigPreset::Default);
     const auto text = output.str();
     const TemporaryConfig generated(text);
     const auto parsed = formatter::LoadConfigFile(generated.Path);
@@ -553,6 +598,26 @@ TEST(ConfigPolicy, PreserveTemplateRoundTripsEveryRegisteredStyleDefault)
     }
     FORMATTER_STYLE_OPTIONS(CHECK_DEFAULT)
 #undef CHECK_DEFAULT
+    const formatter::Configuration configDefaults;
+    const auto checkConfigDefault = [&] <typename T> (std::string_view name, const T& actual, const T& expected) {
+        SCOPED_TRACE(name);
+        EXPECT_NE(text.find("\n" + std::string(name) + " = "), std::string::npos);
+        if constexpr (std::is_same_v<T, std::vector<std::regex>>) {
+            EXPECT_EQ(actual.size(), expected.size());
+        } else {
+            EXPECT_EQ(actual, expected);
+        }
+    };
+#define CHECK_CONFIG_DEFAULT(type, name, initial) \
+    checkConfigDefault(#name, parsed.name, configDefaults.name);
+    FORMATTER_CONFIGURATION_OPTIONS(CHECK_CONFIG_DEFAULT)
+#undef CHECK_CONFIG_DEFAULT
+#define CHECK_NAMING_DEFAULT(category) \
+    checkConfigDefault(#category "NameCase", parsed.Naming.category.Case, configDefaults.Naming.category.Case); \
+    EXPECT_NE(text.find("\n" #category "NamePrefixes = "), std::string::npos); \
+    EXPECT_TRUE(!parsed.Naming.category.Prefixes || parsed.Naming.category.Prefixes->empty()) << #category;
+    FORMATTER_NAMING_CATEGORIES(CHECK_NAMING_DEFAULT)
+#undef CHECK_NAMING_DEFAULT
     for (const auto expected : {
         "Preserve | 0..10000\nMaxEmptyLines = Preserve",
         "FunctionCvRefQualifierSpacing = Inherit\n",
