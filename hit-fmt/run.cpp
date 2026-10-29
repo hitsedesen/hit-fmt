@@ -25,6 +25,7 @@
 #include <stdexcept>
 #include <string>
 #include <string_view>
+#include <syncstream>
 #include <unordered_map>
 #include <unordered_set>
 #include <utility>
@@ -168,6 +169,9 @@ private:
         directory =
             directory.empty() ? std::filesystem::current_path(error) : std::filesystem::absolute(directory, error);
         if (error) {
+            std::osyncstream(std::cerr) << "warning: " << sourcePath.string()
+                << ": cannot determine configuration search directory: " << error.message()
+                << "; using default configuration\n";
             return DefaultConfig();
         }
         auto directoryKey = directory.lexically_normal().string();
@@ -382,7 +386,9 @@ int RunFiles(const Options& options, const formatter::ChangedHunkFiles& changed,
     const auto print = [&] (const FileResult& result) {
         std::cout << result.Output;
         std::cout.flush();
-        std::cerr << result.Error;
+        if (!result.Error.empty()) {
+            std::osyncstream(std::cerr) << result.Error;
+        }
         mismatchCount += result.Mismatches;
         return result.Failed;
     };
