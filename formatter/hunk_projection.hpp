@@ -452,8 +452,16 @@ inline FormatResult ProjectHunkFormat(
                 }
             }
         } else {
-            result.Map.push_back(
-                {piece.Output, piece.Input, document::NoIdentity, NoStructuralAction, true, true, false, false});
+            result.Map.push_back({
+                piece.Output,
+                piece.Input,
+                document::NoIdentity,
+                NoStructuralAction,
+                true,
+                true,
+                false,
+                false,
+            });
             const auto protections = safety.Protection();
             auto protection = std::lower_bound(
                 protections.begin(),

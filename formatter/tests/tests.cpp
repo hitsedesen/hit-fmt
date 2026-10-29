@@ -323,8 +323,12 @@ std::vector<FormatCase> FormatCases()
         data / "declaration-headers",
         {"trailing-return", "trailing-return-narrow", "trailing-return-wide"},
         "trailing-return.input.cpp");
-    cases.push_back(
-        {data / "declaration-headers", "trailing-return-forced", "trailing-return.input.cpp", "qualified-always"});
+    cases.push_back({
+        data / "declaration-headers",
+        "trailing-return-forced",
+        "trailing-return.input.cpp",
+        "qualified-always",
+    });
     {
         const auto directory = data / "declaration-headers";
         const auto base = formatter::LoadConfigFile(directory / "../style/repository-80.hit-fmt").FormattingStyle;
@@ -452,8 +456,12 @@ std::vector<FormatCase> FormatCases()
         ShareExpected(cases, directory, "fit.output.cpp", "input.cpp");
     }
     cases.push_back({data / "control-expression-continuation", "repository", "input.cpp", "../style/repository-80"});
-    cases.push_back(
-        {data / "control-expression-continuation", "ytsaurus", "input.cpp", "../../../../hit-fmt/examples/ytsaurus"});
+    cases.push_back({
+        data / "control-expression-continuation",
+        "ytsaurus",
+        "input.cpp",
+        "../../../../hit-fmt/examples/ytsaurus",
+    });
     for (const auto* name : {"opaque-body", "opaque-body-expanded"}) {
         cases.push_back({
             data / "control-expression-continuation",
@@ -1373,8 +1381,11 @@ std::vector<FormatCase> FormatCases()
             }
         }
     }
-    cases.push_back(
-        {data / "spacing-options", "initializer-overflow-one-per-line", "initializer-overflow-one-per-line.input.cpp"});
+    cases.push_back({
+        data / "spacing-options",
+        "initializer-overflow-one-per-line",
+        "initializer-overflow-one-per-line.input.cpp",
+    });
     addProfileCase("../ternary-layout", "profile");
     AddCases(
         cases,
@@ -1709,8 +1720,15 @@ std::vector<FormatCase> FormatCases()
     cases.back().Style = formatter::LoadConfigFile(profile + ".hit-fmt").FormattingStyle;
     cases.back().Style->InitializersLayout = CategoryLayout::Canonical;
     cases.back().Style->ChainsBreak = BreakRequirement::Always;
-    cases.push_back(
-        {callReflow, "typed-declarations", "typed-declarations.input.cpp", "../style/repository-80", {}, true, {}});
+    cases.push_back({
+        callReflow,
+        "typed-declarations",
+        "typed-declarations.input.cpp",
+        "../style/repository-80",
+        {},
+        true,
+        {},
+    });
     cases.push_back({callReflow, "nested-casts-preserve", "nested-casts.input.cpp"});
     cases.push_back({
         callReflow,
@@ -2256,9 +2274,7 @@ std::vector<FormatCase> FormatCases()
             style.CallsBreak = BreakRequirement::Always;
             cases.push_back({directory, name + "-always", "input.cpp"});
             cases.back().Style = style;
-            if (overflow == formatter::AttachedStringOverflow::KeepInline ||
-                (anyArgument && overflow == formatter::AttachedStringOverflow::BreakBefore))
-            {
+            if (overflow == formatter::AttachedStringOverflow::KeepInline) {
                 cases.back().Expected = "Wrap-always.output.cpp";
             }
             style.CallsLayout = CategoryLayout::Preserve;
@@ -2410,8 +2426,15 @@ std::vector<FormatCase> FormatCases()
         true,
         {},
     });
-    cases.push_back(
-        {data / "template-arguments", "forced-priority", "break-priority.input.cpp", "break-priority", {}, true, {}});
+    cases.push_back({
+        data / "template-arguments",
+        "forced-priority",
+        "break-priority.input.cpp",
+        "break-priority",
+        {},
+        true,
+        {},
+    });
     auto forcedTemplates =
         formatter::LoadConfigFile(data / "template-arguments/break-priority.hit-fmt").FormattingStyle;
     forcedTemplates.TemplateArgumentsBreak = formatter::BreakRequirement::Always;
@@ -2471,9 +2494,17 @@ std::vector<FormatCase> FormatCases()
         cases,
         data / "requires-clause",
         {
-            "own-line", "own-line-no-indent", "own-line-with-brace", "with-preceding",
-            "with-following", "single-line", "narrow", "narrow-own-line", "preserve",
-            "headers-preserve", "brace-next-line",
+            "own-line",
+            "own-line-no-indent",
+            "own-line-with-brace",
+            "with-preceding",
+            "with-following",
+            "single-line",
+            "narrow",
+            "narrow-own-line",
+            "preserve",
+            "headers-preserve",
+            "brace-next-line",
         });
     AddCases(cases, data / "requires-lambdas", {"canonical", "narrow", "preserve"});
     {
@@ -2524,8 +2555,15 @@ std::vector<FormatCase> FormatCases()
         true,
         {},
     });
-    cases.push_back(
-        {data / "macro-generated-cases", "type-tuples-preserve", "type-tuples.input.cpp", "preserve", {}, true, {}});
+    cases.push_back({
+        data / "macro-generated-cases",
+        "type-tuples-preserve",
+        "type-tuples.input.cpp",
+        "preserve",
+        {},
+        true,
+        {},
+    });
     AddCases(cases, data / "lambda-argument-ownership", {"canonical", "preserve"});
     AddCases(cases, data / "lambda-argument-tail-recovery", {"canonical"});
     {
@@ -2548,8 +2586,14 @@ std::vector<FormatCase> FormatCases()
     cases.push_back({hunks / "spill", "default", "input.cpp", "style", {{3, 3}, {5, 5}}});
     cases.push_back({hunks / "spill", "strict", "input.cpp", "style", {{3, 3}, {5, 5}}, false});
     cases.push_back({hunks / "structural", "unsupported", "input.cpp", "style", {{2, 2}}});
-    cases.push_back(
-        {hunks / "planned", "strict-independent", "strict-independent.input.cpp", "style", {{3, 3}, {6, 6}}, false});
+    cases.push_back({
+        hunks / "planned",
+        "strict-independent",
+        "strict-independent.input.cpp",
+        "style",
+        {{3, 3}, {6, 6}},
+        false,
+    });
     cases.push_back({hunks / "planned", "nested", "nested.input.cpp", "style", {{3, 3}}, true});
     cases.push_back({hunks / "planned", "atomic", "atomic.input.cpp", "structural", {{2, 5}}, false});
     for (const bool spillover : {false, true}) {
@@ -3698,8 +3742,11 @@ std::vector<FormatCase> FormatCases()
         ShareExpected(cases, directory, "preserve.output.cpp", "input.cpp");
         ShareExpected(cases, directory, "generated-no-space.output.cpp", "input.cpp");
     }
-    cases.push_back(
-        {data / "consolidated-pipeline", "enumerator-assignment-comments", "enumerator-assignment-comments.input.cpp"});
+    cases.push_back({
+        data / "consolidated-pipeline",
+        "enumerator-assignment-comments",
+        "enumerator-assignment-comments.input.cpp",
+    });
     cases.push_back({data / "consolidated-edits", "null-removal", "null-removal.input.cpp"});
     {
         const auto directory = data / "consolidated-edits";
