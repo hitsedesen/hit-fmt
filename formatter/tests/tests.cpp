@@ -164,7 +164,8 @@ struct FormatCase
     std::string Expected;
     std::optional<formatter::Style> Style;
     std::string InputFilePath;
-
+    std::filesystem::path GoldenPath;
+    std::string TestName;
 };
 
 void PrintTo(const FormatCase& value, std::ostream* output)
@@ -234,6 +235,47 @@ std::vector<FormatCase> FormatCases()
 {
     std::vector<FormatCase> cases;
     const auto data = std::filesystem::path(FORMATTER_TESTDATA_DIR).parent_path();
+    const auto examples = (data / "../../../hit-fmt/examples").lexically_normal();
+    const auto corpus = examples / "pdf-to-markdown";
+    for (const auto& profileEntry : std::filesystem::directory_iterator(examples)) {
+        if (!profileEntry.is_regular_file() || profileEntry.path().extension() != ".hit-fmt") {
+            continue;
+        }
+        const auto profile = profileEntry.path().stem().string();
+        const auto directory = corpus / profile;
+        for (const auto& entry : std::filesystem::recursive_directory_iterator(directory)) {
+            const auto extension = entry.path().extension();
+            if (!entry.is_regular_file() ||
+                (extension != ".cpp" && extension != ".hpp" && extension != ".cc" && extension != ".h" &&
+                    extension != ".cxx" && extension != ".hxx"))
+            {
+                continue;
+            }
+            const auto relative = entry.path().lexically_relative(directory);
+            FormatCase value;
+            value.Directory = directory;
+            value.Name = relative.generic_string();
+            value.Input = relative.string();
+            value.Config = (examples / profile).string();
+            value.InputFilePath = relative.generic_string();
+            value.GoldenPath = entry.path();
+            value.TestName = "pdf_to_markdown_" + profile + "_" + relative.generic_string();
+            for (auto& character : value.TestName) {
+                if (character == '/' || character == '.' || character == '-') {
+                    character = '_';
+                }
+            }
+            cases.push_back(std::move(value));
+        }
+    }
+    for (const auto* profile : {"google", "llvm", "ytsaurus"}) {
+        cases.push_back({
+            data / "inheritance",
+            std::string("profile-") + profile,
+            "profiles.input.cpp",
+            (examples / profile).string(),
+        });
+    }
     const auto packing = data / "all-or-vertical";
     AddCases(cases, packing, {"canonical", "inline", "delimiter", "always", "preserve", "unlimited"});
     AddCases(cases, packing, {"annotations"}, "../chained-calls/annotations.input.cpp");
@@ -273,26 +315,14 @@ std::vector<FormatCase> FormatCases()
         data / "declaration-headers",
         {"qualified", "qualified-always", "qualified-preserve"},
         "qualified.input.cpp");
-    cases.push_back({
-        data / "declaration-headers",
-        "return-types",
-        "return-types.input.cpp",
-        "narrow",
-        {},
-        true,
-        {},
-    });
+    cases.push_back({data / "declaration-headers", "return-types", "return-types.input.cpp", "narrow", {}, true, {}});
     AddCases(
         cases,
         data / "declaration-headers",
         {"trailing-return", "trailing-return-narrow", "trailing-return-wide"},
         "trailing-return.input.cpp");
-    cases.push_back({
-        data / "declaration-headers",
-        "trailing-return-forced",
-        "trailing-return.input.cpp",
-        "qualified-always",
-    });
+    cases.push_back(
+        {data / "declaration-headers", "trailing-return-forced", "trailing-return.input.cpp", "qualified-always"});
     {
         const auto directory = data / "declaration-headers";
         const auto base = formatter::LoadConfigFile(directory / "../style/repository-80.hit-fmt").FormattingStyle;
@@ -419,18 +449,9 @@ std::vector<FormatCase> FormatCases()
         ShareExpected(cases, directory, "call-fit.output.cpp", "call.input.cpp");
         ShareExpected(cases, directory, "fit.output.cpp", "input.cpp");
     }
-    cases.push_back({
-        data / "control-expression-continuation",
-        "repository",
-        "input.cpp",
-        "../style/repository-80",
-    });
-    cases.push_back({
-        data / "control-expression-continuation",
-        "ytsaurus",
-        "input.cpp",
-        "../../../../hit-fmt/examples/ytsaurus",
-    });
+    cases.push_back({data / "control-expression-continuation", "repository", "input.cpp", "../style/repository-80"});
+    cases.push_back(
+        {data / "control-expression-continuation", "ytsaurus", "input.cpp", "../../../../hit-fmt/examples/ytsaurus"});
     for (const auto* name : {"opaque-body", "opaque-body-expanded"}) {
         cases.push_back({
             data / "control-expression-continuation",
@@ -441,10 +462,12 @@ std::vector<FormatCase> FormatCases()
             true,
             {},
         });
+        cases.back().Style =
+            formatter::LoadConfigFile(cases.back().Directory / (cases.back().Config + ".hit-fmt")).FormattingStyle;
+        cases.back().Style->LambdaBodiesLayout = CategoryLayout::Preserve;
         if (std::string_view(name) == "opaque-body-expanded") {
-            cases.back().Style =
-                formatter::LoadConfigFile(cases.back().Directory / (cases.back().Config + ".hit-fmt")).FormattingStyle;
             cases.back().Style->LambdaBodiesLayout = CategoryLayout::Canonical;
+            cases.back().Style->LambdaBodyShape = BodyShape::Expanded;
             // Exercise list reflow beside protected macros and expanded lambda bodies.
             cases.back().Style->InitializersLayout = CategoryLayout::Canonical;
         }
@@ -456,20 +479,9 @@ std::vector<FormatCase> FormatCases()
         data / "line-endings",
         {"boundary-namespace-lf", "boundary-namespace-crlf"},
         "boundary-namespace.input.cpp");
-    for (const auto* name :
-        {
-            "canonical-lf",
-            "canonical-crlf",
-            "opaque-lf",
-            "boundary-nulls",
-            "composition-control-lf",
-        })
+    for (const auto* name : {"canonical-lf", "canonical-crlf", "opaque-lf", "boundary-nulls", "composition-control-lf"})
     {
-        cases.push_back({
-            data / "line-endings",
-            name,
-            std::string(name) + ".input.cpp",
-        });
+        cases.push_back({data / "line-endings", name, std::string(name) + ".input.cpp"});
     }
     {
         const auto directory = data / "line-endings";
@@ -617,11 +629,7 @@ std::vector<FormatCase> FormatCases()
         }
     }
     AddCases(cases, data / "trailing-comment-count", {"preserve", "zero", "one", "two"});
-    cases.push_back({
-        data / "trailing-comment-count",
-        "independent",
-        "namespace.input.cpp",
-    });
+    cases.push_back({data / "trailing-comment-count", "independent", "namespace.input.cpp"});
     {
         const auto directory = data / "trailing-comment-count";
         {
@@ -1330,12 +1338,7 @@ std::vector<FormatCase> FormatCases()
         preserved.Expected = preserved.Input;
         cases.push_back(std::move(preserved));
     }
-    cases.push_back({
-        data / "declaration-headers",
-        "profile",
-        "profile.input.cpp",
-        profile,
-    });
+    cases.push_back({data / "declaration-headers", "profile", "profile.input.cpp", profile});
     AddCases(
         cases,
         data / "spacing-options",
@@ -1368,11 +1371,8 @@ std::vector<FormatCase> FormatCases()
             }
         }
     }
-    cases.push_back({
-        data / "spacing-options",
-        "initializer-overflow-one-per-line",
-        "initializer-overflow-one-per-line.input.cpp",
-    });
+    cases.push_back(
+        {data / "spacing-options", "initializer-overflow-one-per-line", "initializer-overflow-one-per-line.input.cpp"});
     addProfileCase("../ternary-layout", "profile");
     AddCases(
         cases,
@@ -1386,11 +1386,7 @@ std::vector<FormatCase> FormatCases()
         },
         "branches.input.cpp");
     AddCases(cases, data / "ternary-layout", {"operators-align", "operators-indent"}, "operators.input.cpp");
-    cases.push_back({
-        data / "ternary-layout",
-        "reflow-preferred",
-        "reflow-preferred.input.cpp",
-    });
+    cases.push_back({data / "ternary-layout", "reflow-preferred", "reflow-preferred.input.cpp"});
     AddCases(
         cases,
         data / "ternary-layout",
@@ -1470,6 +1466,7 @@ std::vector<FormatCase> FormatCases()
             style.ColumnLimit = 80;
             style.CapturesCloser = CloserPlacement::SameLine;
             style.LambdaBodiesLayout = CategoryLayout::Canonical;
+            style.LambdaBodyShape.reset();
             style.BodyShape = BodyShape::CompactIfFits;
             if (std::string_view(name) == "call-header-expanded") {
                 style.BodyShape = BodyShape::Expanded;
@@ -1574,11 +1571,7 @@ std::vector<FormatCase> FormatCases()
     }
     cases.push_back({callReflow, "first-position-reflow", "first-position-reflow.input.cpp"});
     cases.push_back({callReflow, "first-string-inline", "first-string-inline.input.cpp"});
-    cases.push_back({
-        data / "function_parameters",
-        "first-position-reflow",
-        "first-position-reflow.input.cpp",
-    });
+    cases.push_back({data / "function_parameters", "first-position-reflow", "first-position-reflow.input.cpp"});
     {
         const auto directory = data / "function_parameters";
         const auto base = formatter::LoadConfigFile(directory / "../style/repository-80.hit-fmt").FormattingStyle;
@@ -1618,6 +1611,8 @@ std::vector<FormatCase> FormatCases()
         {
             auto style = base;
             const std::string_view variant(name);
+            style.LambdaBodiesLayout = CategoryLayout::Preserve;
+            style.LambdaBodyShape.reset();
             if (variant == "preserved-suffix-canonical") {
                 style.LambdaBodiesLayout = CategoryLayout::Canonical;
             } else if (variant == "preserved-suffix-tabs") {
@@ -1638,15 +1633,7 @@ std::vector<FormatCase> FormatCases()
         cases.back().Style = style;
         cases.back().Expected = "member-pointers.output.cpp";
     }
-    cases.push_back({
-        data / "lambda-body",
-        "visual-scopes",
-        "visual-scopes.input.cpp",
-        {},
-        {},
-        true,
-        {},
-    });
+    cases.push_back({data / "lambda-body", "visual-scopes", "visual-scopes.input.cpp", {}, {}, true, {}});
     AddCases(cases, data / "control-header-clauses", {"preserve", "split", "indent-width"});
     const auto controlPlacement = data / "control-header-placement";
     AddCases(cases, controlPlacement, {"preserve", "first-only", "closing-only", "both"});
@@ -1716,15 +1703,8 @@ std::vector<FormatCase> FormatCases()
     cases.back().Style = formatter::LoadConfigFile(profile + ".hit-fmt").FormattingStyle;
     cases.back().Style->InitializersLayout = CategoryLayout::Canonical;
     cases.back().Style->ChainsBreak = BreakRequirement::Always;
-    cases.push_back({
-        callReflow,
-        "typed-declarations",
-        "typed-declarations.input.cpp",
-        "../style/repository-80",
-        {},
-        true,
-        {},
-    });
+    cases.push_back(
+        {callReflow, "typed-declarations", "typed-declarations.input.cpp", "../style/repository-80", {}, true, {}});
     cases.push_back({callReflow, "nested-casts-preserve", "nested-casts.input.cpp"});
     cases.push_back({
         callReflow,
@@ -1858,12 +1838,7 @@ std::vector<FormatCase> FormatCases()
     addProfileCase("../keyword-expressions", "fill-operators");
     cases.back().Style = formatter::LoadConfigFile(profile + ".hit-fmt").FormattingStyle;
     cases.back().Style->InitializersLayout = CategoryLayout::Canonical;
-    cases.push_back({
-        data / "keyword-expressions",
-        "fill-operators-leading",
-        "fill-operators.input.cpp",
-        profile,
-    });
+    cases.push_back({data / "keyword-expressions", "fill-operators-leading", "fill-operators.input.cpp", profile});
     cases.back().Style = formatter::LoadConfigFile(profile + ".hit-fmt").FormattingStyle;
     cases.back().Style->BinaryOperatorSide = OperatorSide::Leading;
     cases.back().Style->InitializersLayout = CategoryLayout::Canonical;
@@ -1913,11 +1888,7 @@ std::vector<FormatCase> FormatCases()
     cases.push_back({disabled, "regions-no-clang", "regions.input.cpp"});
     cases.push_back({disabled, "unclosed", "unclosed.input.cpp", "regions"});
     cases.push_back({disabled, "crlf", "crlf.input.cpp", "regions"});
-    cases.push_back({
-        data / "constructor-initializer-ranges",
-        "canonical",
-        "input.cpp",
-    });
+    cases.push_back({data / "constructor-initializer-ranges", "canonical", "input.cpp"});
     cases.push_back({
         data / "constructor-initializer-ranges",
         "template-ytsaurus",
@@ -2433,15 +2404,8 @@ std::vector<FormatCase> FormatCases()
         true,
         {},
     });
-    cases.push_back({
-        data / "template-arguments",
-        "forced-priority",
-        "break-priority.input.cpp",
-        "break-priority",
-        {},
-        true,
-        {},
-    });
+    cases.push_back(
+        {data / "template-arguments", "forced-priority", "break-priority.input.cpp", "break-priority", {}, true, {}});
     auto forcedTemplates =
         formatter::LoadConfigFile(data / "template-arguments/break-priority.hit-fmt").FormattingStyle;
     forcedTemplates.TemplateArgumentsBreak = formatter::BreakRequirement::Always;
@@ -2546,15 +2510,8 @@ std::vector<FormatCase> FormatCases()
         true,
         {},
     });
-    cases.push_back({
-        data / "macro-generated-cases",
-        "type-tuples-preserve",
-        "type-tuples.input.cpp",
-        "preserve",
-        {},
-        true,
-        {},
-    });
+    cases.push_back(
+        {data / "macro-generated-cases", "type-tuples-preserve", "type-tuples.input.cpp", "preserve", {}, true, {}});
     AddCases(cases, data / "lambda-argument-ownership", {"canonical", "preserve"});
     AddCases(cases, data / "lambda-argument-tail-recovery", {"canonical"});
     {
@@ -3757,9 +3714,9 @@ TEST_P(FormatTest, Golden)
         : formatter::LoadConfigFile(fixture.Directory / (config + ".hit-fmt")).FormattingStyle;
     const auto input = fixture.Input(value.Input);
     if (value.Hunks.empty()) {
-        const auto expected = value.Expected.empty()
-            ? fixture.Named(".output.cpp")
-            : fixture.Directory / value.Expected;
+        const auto expected = !value.GoldenPath.empty()
+            ? value.GoldenPath
+            : value.Expected.empty() ? fixture.Named(".output.cpp") : fixture.Directory / value.Expected;
         ExpectFormattedGolden(expected, input, style, !value.Expected.empty(), value.InputFilePath);
     } else {
         const Input storage(input);
@@ -3797,6 +3754,9 @@ INSTANTIATE_TEST_SUITE_P(
     FormatTest,
     testing::ValuesIn(FormatCases()),
     [] (const auto& info) {
+        if (!info.param.TestName.empty()) {
+            return info.param.TestName;
+        }
         const auto root = (std::filesystem::path(FORMATTER_TESTDATA_DIR) / "..").lexically_normal();
         auto name =
             (info.param.Directory.lexically_normal().lexically_relative(root) / info.param.Name).generic_string();

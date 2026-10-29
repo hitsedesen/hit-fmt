@@ -7,14 +7,14 @@
 # Message pins and paired visual scopes remain explicit library annotations.
 # Chains use general AllSafe selection, including . / -> and repeated invocation.
 # Approximation: no namespace rulers or naming-role enforcement;
-# protected macro bytes and preserved lambda bodies are not style conformance.
+# protected macro bytes are not style conformance.
 Layout = Canonical
 IndentWidth = 4
 ColumnLimit = 120
 WidthDiagnostics = Report
 IndentationKind = Spaces
-# The guide mandates neither newline spelling nor an ordinary comment-space count.
-LineEnding = Preserve
+# Use LF for editable whitespace; protected regions keep their original bytes.
+LineEnding = LF
 # TrailingCommentSpaces stays omitted: retain existing ordinary comment gaps.
 TrailingWhitespace = Trim
 ListBreak = IfNeeded
@@ -65,9 +65,8 @@ ControlHeadersCloser = SameLine
 ChainsBreak = IfNeeded
 ChainsPacking = VerticalWhenBroken
 ChainsAlignment = Block
-# Tables group numeric values into rows; designated fields stay one per line.
-# Preserve these distinct initializer topologies without changing other lists.
-InitializersLayout = Preserve
+# Reflow nested initializers; fitting lists stay compact.
+InitializersLayout = Canonical
 InitializersCloser = OwnLine
 InitializersTrailingComma = WhenMultiline
 # Every broken initializer owns its closer, independently of trailing commas.
@@ -82,18 +81,17 @@ ControlBracePlacement = NextLineIfHeaderBroken
 CaseBlockBracePlacement = Attached
 BodyShape = Expanded
 EmptyBodyShape = CompactIfFits
-# Empty and single-statement lambdas vary; preserve body topology explicitly.
-LambdaBodiesLayout = Preserve
+LambdaBodiesLayout = Canonical
+LambdaBodyShape = Expanded
+LambdaEmptyBodyShape = CompactIfFits
 PointerReferenceDeclaratorLocation = Left
 IndentAccessModifiers = NoIndent
 IndentMembers = Indent
 IndentNamespaces = NoIndent
-# Wrapper namespaces may touch; retain their authored vertical gaps.
-NamespaceBlankLinesAfterOpen = Preserve
-NamespaceBlankLinesBeforeClose = Preserve
-# Members may separate fields and methods with an extra blank line.
+NamespaceBlankLinesAfterOpen = 1
+NamespaceBlankLinesBeforeClose = 1
 DefinitionBlankLines = 1
-MemberDefinitionBlankLines = Preserve
+MemberDefinitionBlankLines = 1
 IndentCaseLabels = Indent
 StatementAttributeIndent = Block
 NamespaceComments = Fix
@@ -169,7 +167,7 @@ SpaceAroundCaptureList = NoSpace
 SpaceAroundCaptureAssignment = Space
 EmptyLambdaCaptureSpacing = NoSpace
 EmptyLambdaParametersSpacing = NoSpace
-EmptyLambdaBodySpacing = Preserve
+EmptyLambdaBodySpacing = Space
 FunctionCallSpaceBeforeParameters = NoSpace
 SpaceInsideCallArguments = NoSpace
 EmptyFunctionCallArgumentsSpacing = NoSpace
@@ -183,7 +181,7 @@ EmptyBlockInteriorSpacing = Space
 BlockInteriorSpacing = Space
 StatementSemicolonSpacing = NoSpace
 DeclarationSemicolonSpacing = NoSpace
-InitializerBracesSpacing = Preserve
+InitializerBracesSpacing = NoSpace
 BraceInitializerSpacing = NoSpace
 NewArraySpaceBeforeBrackets = NoSpace
 

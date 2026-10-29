@@ -92,7 +92,9 @@ void MapWidthLocations(const parser::SyntaxTree& tree, FormatResult& result, std
             tokens.begin(),
             tokens.end(),
             offset,
-            [&] (auto point, auto id) { return point < mapped[id].Output.Begin; });
+            [&] (auto point, auto id) {
+                return point < mapped[id].Output.Begin;
+            });
         if (token != tokens.begin()) {
             --token;
         }

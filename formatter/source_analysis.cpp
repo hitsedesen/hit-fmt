@@ -294,7 +294,9 @@ bool SourceAnalysis::CanRewriteDirective(parser::SourceRange source) const
         DirectiveFences_.begin(),
         DirectiveFences_.end(),
         source.Begin,
-        [] (const auto& range, Offset begin) { return range.Source.End <= begin; });
+        [] (const auto& range, Offset begin) {
+            return range.Source.End <= begin;
+        });
     return first == DirectiveFences_.end() || first->Source.Begin >= source.End;
 }
 
@@ -906,20 +908,21 @@ SourceAnalysis BuildSourceAnalysis(
                     recovery ? ProtectionReason::Recovery : ProtectionReason::Ambiguous;
             }
         }
-        stack.push_back({
-            node.Child(),
-            id,
-            node.Kind == parser::NodeKind::PreprocessingConditional ||
-                node.Kind == parser::NodeKind::PreprocessingBranch
-                ? boundaryParent
-                : id,
-            result.Regions_[id].StatementBoundary
-                ? id
-                : node.Kind == parser::NodeKind::CompoundStatement || node.Kind == parser::NodeKind::LambdaBody ||
-                    node.Kind == parser::NodeKind::RequirementBody
-                    ? NoRegion
-                    : enclosingStatement,
-        });
+        stack
+            .push_back({
+                node.Child(),
+                id,
+                node.Kind == parser::NodeKind::PreprocessingConditional ||
+                    node.Kind == parser::NodeKind::PreprocessingBranch
+                    ? boundaryParent
+                    : id,
+                result.Regions_[id].StatementBoundary
+                    ? id
+                    : node.Kind == parser::NodeKind::CompoundStatement || node.Kind == parser::NodeKind::LambdaBody ||
+                        node.Kind == parser::NodeKind::RequirementBody
+                        ? NoRegion
+                        : enclosingStatement,
+            });
     };
     visit(tree.Root(), NoRegion);
     while (!stack.empty()) {

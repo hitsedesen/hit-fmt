@@ -12,26 +12,32 @@ struct ValueHolder
     int&& TakeVolatile() const volatile &&;
     int& WithComment() const /* cv qualification */ &;
     void Set(const int& value, const int&& temporary);
+
     std::pair<int, int> operator*() const
     {
         return {};
     }
+
     int Tight() const &
     {
         return value;
     }
+
     int Loose() const &
     {
         return value;
     }
+
     int Volatile() const volatile &&
     {
         return value;
     }
+
     int RefOnly() &
     {
         return value;
     }
+
     operator bool() const;
 };
 

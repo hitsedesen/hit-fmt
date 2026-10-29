@@ -30,7 +30,11 @@ void OpaqueBlocks()
     }
     };
     Consume(Value{1, 2});
-    Consume(Value{[] { Consume(); }});
+    Consume(Value{
+        [] {
+            Consume();
+        },
+    });
 // hit-fmt off
 DEFER {
 Consume();

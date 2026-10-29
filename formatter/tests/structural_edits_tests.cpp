@@ -28,7 +28,7 @@ struct File
 
     explicit File(std::string_view source, SourceAnalysisOptions options = {})
         : Source(source)
-        , Tree(parser::Parse(Source.View(), [] (parser::ParseError) {}))
+        , Tree(parser::Parse(Source.View(), [] (parser::ParseError) { }))
         , Safety(BuildSourceAnalysis(Tree, options, Memory, Scratch))
     { }
 
@@ -90,7 +90,7 @@ std::string Dump(const StructuralPlan& plan)
 std::vector<TokenOutputOffset> MapOutput(const parser::SyntaxTree& original, std::string_view output)
 {
     Input padded(output);
-    auto tokens = parser::Parse(padded.View(), [] (parser::ParseError) {});
+    auto tokens = parser::Parse(padded.View(), [] (parser::ParseError) { });
     EXPECT_EQ(tokens.TokenCount(), original.TokenCount());
     std::vector<TokenOutputOffset> map(original.TokenCount());
     for (parser::TokenIndex i = 0; i < std::min(tokens.TokenCount(), original.TokenCount()); ++i) {

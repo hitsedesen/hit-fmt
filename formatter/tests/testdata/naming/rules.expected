@@ -15,3 +15,6 @@
 41:25: variable name 'BadVariable' has invalid prefix and case
 53:11: namespace name 'standard' has invalid prefix and case
 53:28: class name 'ExternalClass' has invalid prefix and case
+58:28: variable name 'badParameter' has invalid prefix and case
+61:9: function name 'BadMethod' has invalid prefix and case
+62:20: function name 'BadFactory' has invalid prefix and case

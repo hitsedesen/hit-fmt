@@ -193,7 +193,9 @@ void PlanTextPolicyEdits(
     std::sort(
         moved.begin(),
         moved.end(),
-        [] (const auto& a, const auto& b) { return a.Source.Begin < b.Source.Begin; });
+        [] (const auto& a, const auto& b) {
+            return a.Source.Begin < b.Source.Begin;
+        });
     size_t depth = 0;
     std::pmr::string replacement(&scratchMemory);
     std::pmr::string line(&scratchMemory);

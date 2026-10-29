@@ -64,7 +64,7 @@ TEST(PublicPipeline, ChainStructuralBaseHonorsGapScopeAndProtection)
     const auto preserved = FormatInput(source, preserveIndent, request);
     EXPECT_EQ(preserved.Text, source);
     Input input(source);
-    const auto tree = parser::Parse(input.View(), [] (parser::ParseError) {});
+    const auto tree = parser::Parse(input.View(), [] (parser::ParseError) { });
     std::pmr::monotonic_buffer_resource file;
     std::pmr::monotonic_buffer_resource scratch;
     formatter::SourceAnalysisOptions options;
@@ -531,7 +531,7 @@ TEST(PublicPipeline, StandaloneCommentCountsRespectScopedEdges)
     EXPECT_NE(result.Text.find("x;\n\n// end\n\n}"), std::string::npos);
     EXPECT_EQ(FormatInput(result.Text, prepared).Text, result.Text);
     Input input(source);
-    auto tree = parser::Parse(input.View(), [] (parser::ParseError) {});
+    auto tree = parser::Parse(input.View(), [] (parser::ParseError) { });
     EXPECT_EQ(formatter::Format(tree, prepared).Text, result.Text);
 
     const auto comment = parser::SourceOffset(source.find("// note"));
@@ -1021,7 +1021,7 @@ TEST(PublicPipeline, IncludeRegroupingOwnsBlankLinesAndPreservesMovedIdentities)
                 : groups ? "library/unit/widget.cpp" : "/project/engine/widget.cpp";
             owned = FormatInput(source, prepared, {.InputFilePath = path});
             Input input(source);
-            auto tree = parser::Parse(input.View(), [] (parser::ParseError) {});
+            auto tree = parser::Parse(input.View(), [] (parser::ParseError) { });
             EXPECT_EQ(owned.Text, formatter::Format(tree, prepared, {.InputFilePath = path}).Text);
             EXPECT_NE(owned.Text, source);
             const auto repeated = FormatInput(owned.Text, prepared, {.InputFilePath = path});
@@ -1268,7 +1268,7 @@ TEST(PublicPipeline, NamelessBodyRecoveryPreservesCandidateAndIndependentEdits)
         const auto start = parser::SourceOffset(prefix.size());
         const auto end = start + parser::SourceOffset(std::string_view(candidate).size());
         Input input(source);
-        const auto tree = parser::Parse(input.View(), [] (parser::ParseError) {});
+        const auto tree = parser::Parse(input.View(), [] (parser::ParseError) { });
         const auto result = formatter::Format(tree, prepared, {});
         const auto limited = formatter::Format(tree, prepared, {.EditScope = std::span<const parser::SourceRange>{}});
         EXPECT_EQ(limited.Text, source);
@@ -1808,8 +1808,8 @@ TEST(PublicPipeline, TrailingCommentSpacesRetainTokens)
         EXPECT_EQ(FormatInput(result.Text, prepared).Text, result.Text);
     }
     Input before(source), after(result.Text);
-    auto original = parser::Parse(before.View(), [] (parser::ParseError) {});
-    auto rendered = parser::Parse(after.View(), [] (parser::ParseError) {});
+    auto original = parser::Parse(before.View(), [] (parser::ParseError) { });
+    auto rendered = parser::Parse(after.View(), [] (parser::ParseError) { });
     ASSERT_EQ(original.TokenCount(), rendered.TokenCount());
     for (parser::TokenIndex i = 0; i < original.TokenCount(); ++i) {
         EXPECT_EQ(original.Kind(i), rendered.Kind(i)) << i;
@@ -2044,7 +2044,7 @@ TEST(PublicPipeline, FunctionBodyMacroHintsCannotOverrideProtection)
     for (const auto malformed : {"DEFINE_CASE(Suite, [bad)) {left+right;}\n", "DEFINE_CASE(Suite, Bad) {left+right;\n"})
     {
         Input input(malformed);
-        auto tree = parser::Parse(input.View(), [] (auto) {}, prepared.ParsingOptions());
+        auto tree = parser::Parse(input.View(), [] (auto) { }, prepared.ParsingOptions());
         ASSERT_NE(tree.Root().FirstChild, nullptr);
         EXPECT_NE(tree.Root().FirstChild->Kind, parser::NodeKind::MacroFunctionDefinition);
         EXPECT_EQ(FormatInput(malformed, prepared).Text, malformed);

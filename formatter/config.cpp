@@ -460,9 +460,12 @@ void AssignStyle(Configuration& config, std::string_view value, const std::files
             decltype(config.FormattingStyle.*Member)>,
             std::optional<TrailingCommentSpaceSetting>>)
     {
-        config.FormattingStyle.*Member = TrailingCommentSpaceSetting{
-            value == "Preserve" ? std::nullopt : std::optional<std::size_t>{ParseNonnegativeInteger(value, path, line)},
-        };
+        config.FormattingStyle.*Member =
+            TrailingCommentSpaceSetting{
+                value == "Preserve"
+                    ? std::nullopt
+                    : std::optional<std::size_t>{ParseNonnegativeInteger(value, path, line)},
+            };
     } else if constexpr (std::is_same_v<std::remove_cvref_t<
             decltype(config.FormattingStyle.*Member)>, BlankLineSetting>)
     {
@@ -828,7 +831,9 @@ const MessagePinAnnotation* LibraryAnnotations::FindMessagePin(std::string_view 
         MessagePins_.begin(),
         MessagePins_.end(),
         name,
-        [] (const auto& value, auto key) { return value.Name < key; });
+        [] (const auto& value, auto key) {
+            return value.Name < key;
+        });
     return found != MessagePins_.end() && found->Name == name ? &*found : nullptr;
 }
 
@@ -868,7 +873,9 @@ const VisualScopeAnnotation* LibraryAnnotations::FindScopeBegin(std::string_view
         VisualScopes_.begin(),
         VisualScopes_.end(),
         name,
-        [] (const auto& value, auto key) { return value.Begin < key; });
+        [] (const auto& value, auto key) {
+            return value.Begin < key;
+        });
     return found != VisualScopes_.end() && found->Begin == name ? &*found : nullptr;
 }
 
@@ -878,7 +885,9 @@ const VisualScopeAnnotation* LibraryAnnotations::FindScopeEnd(std::string_view n
         ScopeEndOrder_.begin(),
         ScopeEndOrder_.end(),
         name,
-        [&] (auto index, auto key) { return VisualScopes_[index].End < key; });
+        [&] (auto index, auto key) {
+            return VisualScopes_[index].End < key;
+        });
     return found != ScopeEndOrder_.end() && VisualScopes_[*found].End == name ? &VisualScopes_[*found] : nullptr;
 }
 

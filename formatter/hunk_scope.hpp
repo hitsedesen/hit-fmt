@@ -99,7 +99,9 @@ inline bool HunkScopeContains(std::span<const parser::SourceRange> scope, parser
         scope.begin(),
         scope.end(),
         source.Begin,
-        [] (auto begin, const auto range) { return begin < range.Begin; });
+        [] (auto begin, const auto range) {
+            return begin < range.Begin;
+        });
     if (it == scope.begin()) {
         return false;
     }
@@ -116,7 +118,9 @@ inline bool HunkScopeIntersects(std::span<const parser::SourceRange> scope, pars
         scope.begin(),
         scope.end(),
         source.Begin,
-        [] (const auto range, auto begin) { return range.End <= begin; });
+        [] (const auto range, auto begin) {
+            return range.End <= begin;
+        });
     return it != scope.end() && it->Begin < source.End;
 }
 

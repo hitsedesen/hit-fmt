@@ -811,8 +811,13 @@ TI FirstBeginningAt(const parser::SyntaxTree& tree, parser::SourceOffset offset)
 
 bool Intersects(std::span<const SR> ranges, SR query)
 {
-    auto it =
-        std::lower_bound(ranges.begin(), ranges.end(), query.Begin, [] (SR r, auto offset) { return r.End <= offset; });
+    auto it = std::lower_bound(
+        ranges.begin(),
+        ranges.end(),
+        query.Begin,
+        [] (SR r, auto offset) {
+            return r.End <= offset;
+        });
     return it != ranges.end() && (query.Empty() ? it->Begin <= query.Begin : it->Begin < query.End);
 }
 
@@ -854,7 +859,7 @@ std::pmr::vector<IncludeGroup> DiscoverIncludeGroups(
         [&] (IncludeGroup group, std::span<Include>) {
             result.push_back(group);
         },
-        [] (parser::TokenRange, StructuralSkip) {});
+        [] (parser::TokenRange, StructuralSkip) { });
     return result;
 }
 
@@ -1117,12 +1122,7 @@ StructuralMaterialization MaterializeStructuralEdits(
             .push_back({{begin, static_cast<parser::SourceOffset>(result.Text.size())}, edit.Operation});
         cursor = edit.Source.End;
     }
-    copy(
-        {
-            cursor,
-            static_cast<parser::SourceOffset>(tree.Source().size()),
-        },
-        NoStructuralAction);
+    copy({cursor, static_cast<parser::SourceOffset>(tree.Source().size())}, NoStructuralAction);
     // Linear nearest-survivor tables bound chains of neighboring deletions.
     std::pmr::vector<TI> before(
         tree.TokenCount() + 1, tree.TokenCount(), &scratchMemory);

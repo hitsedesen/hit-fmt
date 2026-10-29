@@ -6,18 +6,15 @@ struct Record
 void Example()
 {
     writer.Field = {55, 34};
-    record.Names = { "alpha", "beta" };
+    record.Names = {"alpha", "beta"};
     record.Codes = {10, 20};
     record.Handler = {};
     record.Other = Record{55};
-    record.Groups = {{ "red", "blue" }, {"green", "yellow"}};
+    record.Groups = {{"red", "blue"}, {"green", "yellow"}};
     record.Options = {.Node = {.Identifier = "identifier", .Inputs = {1}}, .Name = "Example"};
     int frames[][4] = {
-        {
-            WrapCode(11), WrapCode(12), WrapCode(13), WrapCode(14),
-        }, {
-            WrapCode(21), WrapCode(22), WrapCode(23), WrapCode(24),
-        },
+        {WrapCode(11), WrapCode(12), WrapCode(13), WrapCode(14)},
+        {WrapCode(21), WrapCode(22), WrapCode(23), WrapCode(24)},
     };
 }
 

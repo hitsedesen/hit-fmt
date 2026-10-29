@@ -78,7 +78,9 @@ std::pmr::vector<ProtectedSourceRange> ProjectProtection(
             original.begin(),
             original.end(),
             piece.Original.Begin,
-            [] (const auto& range, Offset begin) { return range.Source.End <= begin; });
+            [] (const auto& range, Offset begin) {
+                return range.Source.End <= begin;
+            });
         for (; it != original.end() && it->Source.Begin < piece.Original.End; ++it) {
             const auto begin = std::max(it->Source.Begin, piece.Original.Begin);
             const auto end = std::min(it->Source.End, piece.Original.End);
@@ -127,7 +129,9 @@ std::pmr::vector<Range> ProjectEditScope(
             original.begin(),
             original.end(),
             piece.Original.Begin,
-            [] (Range range, Offset begin) { return range.End <= begin; });
+            [] (Range range, Offset begin) {
+                return range.End <= begin;
+            });
         for (; it != original.end() && it->Begin < piece.Original.End; ++it) {
             const auto begin = std::max(it->Begin, piece.Original.Begin);
             const auto end = std::min(it->End, piece.Original.End);
@@ -135,7 +139,12 @@ std::pmr::vector<Range> ProjectEditScope(
                 {piece.Output.Begin + begin - piece.Original.Begin, piece.Output.Begin + end - piece.Original.Begin});
         }
     }
-    std::sort(result.begin(), result.end(), [] (Range a, Range b) { return a.Begin < b.Begin; });
+    std::sort(
+        result.begin(),
+        result.end(),
+        [] (Range a, Range b) {
+            return a.Begin < b.Begin;
+        });
     size_t count = 0;
     for (const auto range : result) {
         if (count && range.Begin <= result[count - 1].End) {
@@ -159,7 +168,12 @@ std::pmr::vector<GapId> GeneratedGaps(
     for (const auto& a : adjacency) {
         ranges.push_back(a.Output);
     }
-    std::sort(ranges.begin(), ranges.end(), [] (Range a, Range b) { return a.Begin < b.Begin; });
+    std::sort(
+        ranges.begin(),
+        ranges.end(),
+        [] (Range a, Range b) {
+            return a.Begin < b.Begin;
+        });
     size_t merged = 0;
     for (const auto range : ranges) {
         if (merged && range.Begin <= ranges[merged - 1].End) {
@@ -228,7 +242,9 @@ std::pmr::vector<document::Identity> OriginalIdentities(
     std::sort(
         surviving.begin(),
         surviving.end(),
-        [] (const auto& a, const auto& b) { return a.Source.Begin < b.Source.Begin; });
+        [] (const auto& a, const auto& b) {
+            return a.Source.Begin < b.Source.Begin;
+        });
     size_t next = 0;
     for (parser::TokenIndex i = 0; i < tree.TokenCount() && next < surviving.size(); ++i) {
         const auto range = tree.Token(i).Text;
@@ -249,7 +265,9 @@ void MergeProtection(std::vector<ProtectedSourceRange>& ranges)
     std::sort(
         ranges.begin(),
         ranges.end(),
-        [] (const auto& a, const auto& b) { return a.Source.Begin < b.Source.Begin; });
+        [] (const auto& a, const auto& b) {
+            return a.Source.Begin < b.Source.Begin;
+        });
     size_t count = 0;
     for (const auto& range : ranges) {
         if (count && range.Source.Begin <= ranges[count - 1].Source.End) {
@@ -399,7 +417,9 @@ void ApplyComments(
     std::sort(
         namespaces.begin(),
         namespaces.end(),
-        [] (const auto& a, const auto& b) { return a.Owner.Begin < b.Owner.Begin; });
+        [] (const auto& a, const auto& b) {
+            return a.Owner.Begin < b.Owner.Begin;
+        });
     struct Copy
     {
         Range Before;
@@ -426,7 +446,9 @@ void ApplyComments(
                 namespaces.begin(),
                 namespaces.end(),
                 owner.Begin,
-                [] (const auto& ns, parser::TokenIndex token) { return ns.Owner.Begin < token; });
+                [] (const auto& ns, parser::TokenIndex token) {
+                    return ns.Owner.Begin < token;
+                });
             if (identity == namespaces.end() || identity->Owner.Begin != owner.Begin) {
                 throw std::runtime_error("missing namespace action identity");
             }
@@ -453,7 +475,9 @@ void ApplyComments(
             copies.begin(),
             copies.end(),
             range.Begin,
-            [] (const auto& copy, Offset begin) { return copy.Before.End <= begin; });
+            [] (const auto& copy, Offset begin) {
+                return copy.Before.End <= begin;
+            });
         if (it != copies.end() && it->Before.Begin <= range.Begin && range.End <= it->Before.End) {
             return &*it;
         }
@@ -492,7 +516,9 @@ void ApplyComments(
             copies.begin(),
             copies.end(),
             map.Output.Begin,
-            [] (const auto& copy, Offset begin) { return copy.Before.End <= begin; });
+            [] (const auto& copy, Offset begin) {
+                return copy.Before.End <= begin;
+            });
         for (; it != copies.end() && it->Before.Begin < map.Output.End; ++it) {
             const auto begin = std::max(map.Output.Begin, it->Before.Begin);
             const auto end = std::min(map.Output.End, it->Before.End);
@@ -514,7 +540,9 @@ void ApplyComments(
     std::stable_sort(
         maps.begin(),
         maps.end(),
-        [] (const auto& a, const auto& b) { return a.Output.Begin < b.Output.Begin; });
+        [] (const auto& a, const auto& b) {
+            return a.Output.Begin < b.Output.Begin;
+        });
     result.Map = std::move(maps);
 }
 
@@ -672,7 +700,7 @@ FormatResult detail::FormatWithAnalysis(
         normalized->Text.append(util::SourcePaddingSize, '\0');
         normalizedTree.emplace(parser::Parse(
             {normalized->Text.data(), static_cast<uint32_t>(size)},
-            [] (parser::ParseError) {},
+            [] (parser::ParseError) { },
             prepared.ParsingOptions()));
         tree = &*normalizedTree;
         auto inherited = ProjectProtection(safety.Protection(), normalized->Provenance, scratch);
@@ -696,14 +724,8 @@ FormatResult detail::FormatWithAnalysis(
         provenance = normalized->Provenance;
     } else {
         unchanged.push_back({
-            {
-                0,
-                CheckedSourceAnalysisSize(original.Source().size()),
-            },
-            {
-                0,
-                CheckedSourceAnalysisSize(original.Source().size()),
-            },
+            {0, CheckedSourceAnalysisSize(original.Source().size())},
+            {0, CheckedSourceAnalysisSize(original.Source().size())},
             NoStructuralAction,
             false,
         });
@@ -893,7 +915,7 @@ FormatResult detail::FormatWithAnalysis(
 
 FormatResult Format(util::PaddedSourceView source, const PreparedFormat& prepared, const FormatRequest& request)
 {
-    auto tree = parser::Parse(source, [] (parser::ParseError) {}, prepared.ParsingOptions());
+    auto tree = parser::Parse(source, [] (parser::ParseError) { }, prepared.ParsingOptions());
     return Format(tree, prepared, request);
 }
 

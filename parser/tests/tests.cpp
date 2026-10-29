@@ -302,7 +302,7 @@ TEST(Parser, ConditionalFragmentsKeepRolesAndBodies)
 {
     const test::golden::Fixture fixture{PARSER_TESTDATA_DIR, "preprocessing_fragments"};
     PaddedInput input(fixture.InputNamed(".in"));
-    auto tree = parser::Parse(input.View(), [] (parser::ParseError) {});
+    auto tree = parser::Parse(input.View(), [] (parser::ParseError) { });
     const auto expressions = LambdaOwnershipNodes(tree.Root(), parser::NodeKind::Expression);
     for (const auto* expression : expressions) {
         EXPECT_NE(tree.Kind(expression->Tokens.Begin), tokenizer::TokenKind::PreprocessingDirective);
@@ -329,7 +329,7 @@ TEST(Parser, ConditionalSharedScopesKeepEnclosingDelimiters)
 {
     const test::golden::Fixture fixture{PARSER_TESTDATA_DIR, "preprocessing"};
     PaddedInput input(fixture.InputNamed(".in"));
-    const auto tree = parser::Parse(input.View(), [] (parser::ParseError) {});
+    const auto tree = parser::Parse(input.View(), [] (parser::ParseError) { });
     const auto functions = LambdaOwnershipNodes(tree.Root(), parser::NodeKind::FunctionDefinition);
     ASSERT_EQ(functions.size(), 8u);
     size_t destructorCount = 0;
@@ -385,7 +385,7 @@ TEST(Parser, ConditionalFragmentProofIsBounded)
         }
         source += "*this); auto following=left*right;}\n";
         PaddedInput input(source);
-        auto tree = parser::Parse(input.View(), [] (parser::ParseError) {});
+        auto tree = parser::Parse(input.View(), [] (parser::ParseError) { });
         EXPECT_FALSE(LambdaOwnershipNodes(tree.Root(), parser::NodeKind::UnparsedSyntax).empty());
         bool following = false;
         for (parser::TokenIndex t = 0; t + 1 < tree.TokenCount(); ++t) {
@@ -411,7 +411,7 @@ TEST(Parser, MacroShapedControlHeaderRetainsRecoveryAndIndependentBody)
     {
         SCOPED_TRACE(candidate);
         PaddedInput input("void sample() { " + std::string(candidate) + " }\nint following;");
-        auto tree = parser::Parse(input.View(), [] (parser::ParseError) {});
+        auto tree = parser::Parse(input.View(), [] (parser::ParseError) { });
         const auto controls = LambdaOwnershipNodes(tree.Root(), kind);
         ASSERT_EQ(controls.size(), 1u);
         const auto* control = controls[0];
@@ -426,7 +426,7 @@ TEST(Parser, MacroShapedControlHeaderRetainsRecoveryAndIndependentBody)
         EXPECT_EQ(tree.SourceText(tree.Root().LastChild->Tokens), "int following;");
     }
     PaddedInput input("void sample() { if (n) { use(); } }\nint following;");
-    auto tree = parser::Parse(input.View(), [] (parser::ParseError) {});
+    auto tree = parser::Parse(input.View(), [] (parser::ParseError) { });
     const auto conditions = LambdaOwnershipNodes(tree.Root(), Condition);
     ASSERT_EQ(conditions.size(), 1u);
     EXPECT_EQ(tree.SourceText(conditions[0]->Tokens), "(n)");
@@ -441,7 +441,7 @@ TEST(Parser, IfElseLookaheadLeavesFollowingStatementAttributesInSequence)
     {
         SCOPED_TRACE(candidate);
         PaddedInput input("void sample() { " + std::string(candidate) + " }");
-        auto tree = parser::Parse(input.View(), [] (parser::ParseError) {});
+        auto tree = parser::Parse(input.View(), [] (parser::ParseError) { });
         const auto controls = LambdaOwnershipNodes(tree.Root(), IfStatement);
         EXPECT_EQ(controls.size(), std::string_view(candidate).starts_with("if (outer)") ? 2u : 1u);
         for (const auto* control : controls) {
@@ -469,7 +469,7 @@ TEST(Parser, IfElseLookaheadLeavesFollowingStatementAttributesInSequence)
     {
         SCOPED_TRACE(candidate);
         PaddedInput input("void sample() { " + std::string(candidate) + " }");
-        auto tree = parser::Parse(input.View(), [] (parser::ParseError) {});
+        auto tree = parser::Parse(input.View(), [] (parser::ParseError) { });
         const auto controls = LambdaOwnershipNodes(tree.Root(), IfStatement);
         ASSERT_EQ(controls.size(), 1u);
         EXPECT_EQ(tree.SourceText(controls[0]->Tokens), candidate);
@@ -488,7 +488,7 @@ TEST(Parser, NewAndDeleteMissingOperandsDoNotInventCompleteExpressions)
     {
         SCOPED_TRACE(candidate);
         PaddedInput input("void use() { " + std::string(candidate) + "; }\nint following;");
-        auto tree = parser::Parse(input.View(), [] (parser::ParseError) {});
+        auto tree = parser::Parse(input.View(), [] (parser::ParseError) { });
         const auto expressions = LambdaOwnershipNodes(tree.Root(), NewExpression);
         ASSERT_EQ(expressions.size(), 1u);
         EXPECT_EQ(tree.SourceText(expressions[0]->Tokens), candidate);
@@ -504,7 +504,7 @@ TEST(Parser, NewAndDeleteMissingOperandsDoNotInventCompleteExpressions)
     for (const auto candidate : {"delete []", "delete"}) {
         SCOPED_TRACE(candidate);
         PaddedInput input("void use() { " + std::string(candidate) + "; }\nint following;");
-        auto tree = parser::Parse(input.View(), [] (parser::ParseError) {});
+        auto tree = parser::Parse(input.View(), [] (parser::ParseError) { });
         const auto expressions = LambdaOwnershipNodes(tree.Root(), DeleteExpression);
         ASSERT_EQ(expressions.size(), 1u);
         EXPECT_EQ(tree.SourceText(expressions[0]->Tokens), candidate);
@@ -520,7 +520,7 @@ TEST(Parser, NewAndDeleteMissingOperandsDoNotInventCompleteExpressions)
         EXPECT_EQ(tree.SourceText(tree.Root().LastChild->Tokens), "int following;");
     }
     PaddedInput extraSuffix("void use() { new (1)(2)(3); }");
-    auto extraTree = parser::Parse(extraSuffix.View(), [] (parser::ParseError) {});
+    auto extraTree = parser::Parse(extraSuffix.View(), [] (parser::ParseError) { });
     const auto calls = LambdaOwnershipNodes(extraTree.Root(), CallExpression);
     ASSERT_EQ(calls.size(), 1u);
     EXPECT_EQ(extraTree.SourceText(calls[0]->Tokens), "new (1)(2)(3)");
@@ -530,7 +530,7 @@ TEST(Parser, NewAndDeleteMissingOperandsDoNotInventCompleteExpressions)
     EXPECT_EQ(LambdaOwnershipNodes(*calls[0], UnparsedSyntax).size(), 1u);
     EXPECT_TRUE(LambdaOwnershipNodes(*calls[0], NewInitializer).empty());
     PaddedInput input("void use() { new int(1); new (arena) int(1); " "delete [] pointer; delete pointer; }");
-    auto tree = parser::Parse(input.View(), [] (parser::ParseError) {});
+    auto tree = parser::Parse(input.View(), [] (parser::ParseError) { });
     EXPECT_EQ(LambdaOwnershipNodes(tree.Root(), NewInitializer).size(), 2u);
     EXPECT_EQ(LambdaOwnershipNodes(tree.Root(), NewTypeId).size(), 2u);
     EXPECT_EQ(LambdaOwnershipNodes(tree.Root(), NewPlacement).size(), 1u);
@@ -547,7 +547,7 @@ TEST(Parser, SizeofPackOwnsOneNameWithoutFabricatedCallOrList)
     {
         SCOPED_TRACE(candidate);
         PaddedInput input("void use() { " + std::string(candidate) + "; }\nint following;");
-        auto tree = parser::Parse(input.View(), [] (parser::ParseError) {});
+        auto tree = parser::Parse(input.View(), [] (parser::ParseError) { });
         const auto expressions = LambdaOwnershipNodes(tree.Root(), UnaryExpression);
         ASSERT_EQ(expressions.size(), 1u);
         EXPECT_EQ(tree.SourceText(expressions[0]->Tokens), candidate);
@@ -590,7 +590,11 @@ TEST(Parser, DirectLambdaArgumentsHaveOneExpressionOwner)
         SCOPED_TRACE(candidate);
         PaddedInput input(std::string(candidate) + "\nint following;\n");
         size_t errors = 0;
-        auto tree = parser::Parse(input.View(), [&] (parser::ParseError) { ++errors; });
+        auto tree = parser::Parse(
+            input.View(),
+            [&] (parser::ParseError) {
+                ++errors;
+            });
         EXPECT_EQ(errors, 0u);
         const auto* owner = tree.Root().FirstChild;
         ASSERT_NE(owner, nullptr);
@@ -641,7 +645,11 @@ TEST(Parser, DirectLambdaArgumentsHaveOneExpressionOwner)
         SCOPED_TRACE(operand);
         PaddedInput input("void use() { consume(" + std::string(operand) + ", [] { return 2; }); }\nint following;");
         size_t errors = 0;
-        auto tree = parser::Parse(input.View(), [&] (parser::ParseError) { ++errors; });
+        auto tree = parser::Parse(
+            input.View(),
+            [&] (parser::ParseError) {
+                ++errors;
+            });
         EXPECT_EQ(errors, 0u);
         const auto lists = LambdaOwnershipNodes(tree.Root(), ArgumentList);
         ASSERT_EQ(lists.size(), 1u);
@@ -677,7 +685,7 @@ TEST(Parser, DirectLambdaArgumentsHaveOneExpressionOwner)
     for (const auto operand : {"flag ? first, second", "flag ? other ? first, second : third"}) {
         SCOPED_TRACE(operand);
         PaddedInput input("void use() { consume(" + std::string(operand) + ", [] { return 2; }); }\nint following;");
-        auto tree = parser::Parse(input.View(), [] (parser::ParseError) {});
+        auto tree = parser::Parse(input.View(), [] (parser::ParseError) { });
         EXPECT_FALSE(LambdaOwnershipNodes(tree.Root(), UnparsedSyntax).empty());
         EXPECT_TRUE(LambdaOwnershipNodes(tree.Root(), LambdaBody).empty());
         EXPECT_EQ(tree.SourceText(tree.Root().LastChild->Tokens), "int following;");
@@ -696,7 +704,7 @@ TEST(Parser, TypedLambdaDirectInitializersRetainNamedDeclarations)
     {
         SCOPED_TRACE(candidate);
         PaddedInput input("struct Registry {};\n" + std::string(candidate) + "\nint following;\n");
-        auto tree = parser::Parse(input.View(), [] (parser::ParseError) {});
+        auto tree = parser::Parse(input.View(), [] (parser::ParseError) { });
         const auto* owner = tree.Root().FirstChild->NextSibling;
         ASSERT_NE(owner, nullptr);
         EXPECT_EQ(owner->Kind, Declaration);
@@ -761,7 +769,7 @@ TEST(Parser, NestedTemplateLambdaCommasDoNotRetireDeclarations)
         SCOPED_TRACE(candidate);
         PaddedInput input("template<class, auto, class> struct Box {};\n" "template<class, auto, class> int make();\n" +
             std::string(candidate) + "\nint following;\n");
-        auto tree = parser::Parse(input.View(), [] (parser::ParseError) {});
+        auto tree = parser::Parse(input.View(), [] (parser::ParseError) { });
         const auto* owner = tree.Root().LastChild;
         ASSERT_NE(owner, nullptr);
         EXPECT_EQ(tree.SourceText(owner->Tokens), "int following;");
@@ -781,7 +789,7 @@ TEST(Parser, LambdaSuffixOperandsAreNotBodiesAndParametersRestore)
     PaddedInput input(
         "struct Item {}; using Type = int;\n" "APPLY([](int Type) noexcept(noexcept(Item{})) -> decltype(Item{}) "
         "{ Type * item; return Item{}; });\n" "Type following;\n");
-    auto tree = parser::Parse(input.View(), [] (parser::ParseError) {});
+    auto tree = parser::Parse(input.View(), [] (parser::ParseError) { });
     const auto bodies = LambdaOwnershipNodes(tree.Root(), LambdaBody);
     ASSERT_EQ(bodies.size(), 1u);
     EXPECT_EQ(tree.SourceText(bodies[0]->Tokens), "{ Type * item; return Item{}; }");
@@ -796,7 +804,7 @@ TEST(Parser, LambdaSuffixOperandsAreNotBodiesAndParametersRestore)
         const std::string source = "APPLY([]<class T, class U>(T value) requires " + std::string(constraint) +
             " { return value; });\nint following;";
         PaddedInput constrained(source);
-        auto parsed = parser::Parse(constrained.View(), [] (parser::ParseError) {});
+        auto parsed = parser::Parse(constrained.View(), [] (parser::ParseError) { });
         const auto actualBodies = LambdaOwnershipNodes(parsed.Root(), LambdaBody);
         EXPECT_EQ(actualBodies.size(), 1u);
         if (actualBodies.size() != 1) {
@@ -813,7 +821,7 @@ TEST(Parser, LambdaSuffixOperandsAreNotBodiesAndParametersRestore)
         SCOPED_TRACE(constraint);
         PaddedInput uncertain("APPLY([]<class T, class U>(T value) requires " + std::string(constraint) +
             " { return value; });\nint following;");
-        auto parsed = parser::Parse(uncertain.View(), [] (parser::ParseError) {});
+        auto parsed = parser::Parse(uncertain.View(), [] (parser::ParseError) { });
         EXPECT_TRUE(LambdaOwnershipNodes(parsed.Root(), LambdaBody).empty());
         EXPECT_FALSE(LambdaOwnershipNodes(parsed.Root(), UnparsedSyntax).empty());
         EXPECT_EQ(parsed.SourceText(parsed.Root().LastChild->Tokens), "int following;");
@@ -835,7 +843,11 @@ TEST(Parser, UncertainLambdaSuffixCannotDiscoverDownstreamBody)
         SCOPED_TRACE(candidate);
         PaddedInput input(std::string(candidate) + "\nint following;\n");
         size_t errors = 0;
-        auto tree = parser::Parse(input.View(), [&] (parser::ParseError) { ++errors; });
+        auto tree = parser::Parse(
+            input.View(),
+            [&] (parser::ParseError) {
+                ++errors;
+            });
         const auto* owner = tree.Root().FirstChild;
         ASSERT_NE(owner, nullptr);
         EXPECT_EQ(owner->Kind, ExpressionStatement);
@@ -857,14 +869,18 @@ TEST(Parser, LeadingGlobalArgumentsRetainMalformedLocalTails)
         SCOPED_TRACE(operand);
         const std::string source = "APPLY(" + std::string(operand) + ", [] { return 2; });\nint following;";
         PaddedInput input(source);
-        auto tree = parser::Parse(input.View(), [] (parser::ParseError) {});
+        auto tree = parser::Parse(input.View(), [] (parser::ParseError) { });
         const auto* owner = tree.Root().FirstChild;
         ASSERT_NE(owner, nullptr);
         EXPECT_EQ(owner->Kind, ExpressionStatement);
         EXPECT_EQ(LambdaOwnershipNodes(*owner, LambdaBody).size(), 1u);
         const auto lists = LambdaOwnershipNodes(*owner, ArgumentList);
         ASSERT_FALSE(lists.empty());
-        const auto outer = std::ranges::find_if(lists, [] (const Node* list) { return list->Tokens.Begin == 1; });
+        const auto outer = std::ranges::find_if(
+            lists,
+            [] (const Node* list) {
+                return list->Tokens.Begin == 1;
+            });
         ASSERT_NE(outer, lists.end());
         unsigned directArguments = 0;
         for (auto* child = (*outer)->FirstChild; child; child = child->NextSibling) {
@@ -886,7 +902,7 @@ TEST(Parser, TypedInitializerProofExhaustionCannotRetireDefaultParameters)
         }
         source += "[]() -> int { return 1; }, int>());\nint following;";
         PaddedInput input(source);
-        auto tree = parser::Parse(input.View(), [] (parser::ParseError) {});
+        auto tree = parser::Parse(input.View(), [] (parser::ParseError) { });
         const auto* owner = tree.Root().FirstChild;
         ASSERT_NE(owner, nullptr);
         EXPECT_EQ(owner->Kind, FunctionDeclaration);
@@ -906,7 +922,7 @@ TEST(Parser, ArgumentRecoveryOwnsConsumedSemanticTailsAndKeepsLaterLambda)
         SCOPED_TRACE(operand);
         const std::string source = "APPLY(" + std::string(operand) + ", [] { return 2; });\nint following;";
         PaddedInput input(source);
-        auto tree = parser::Parse(input.View(), [] (parser::ParseError) {});
+        auto tree = parser::Parse(input.View(), [] (parser::ParseError) { });
         const auto* owner = tree.Root().FirstChild;
         ASSERT_NE(owner, nullptr);
         ASSERT_EQ(owner->Kind, ExpressionStatement);
@@ -942,7 +958,7 @@ TEST(Parser, CompleteArgumentRangesExcludeOnlyTrailingCommentTrivia)
 {
     using enum parser::NodeKind;
     PaddedInput input("APPLY(\"head\" /* join */ \"tail\" /* trailing */, " "[] { return 2; });\nint following;");
-    auto tree = parser::Parse(input.View(), [] (parser::ParseError) {});
+    auto tree = parser::Parse(input.View(), [] (parser::ParseError) { });
     const auto lists = LambdaOwnershipNodes(*tree.Root().FirstChild, ArgumentList);
     ASSERT_EQ(lists.size(), 1u);
     const auto* first = lists[0]->FirstChild;
@@ -961,7 +977,7 @@ TEST(Parser, LambdaArgumentFactsStayWithinConditionalAndMalformedLimits)
     using enum parser::NodeKind;
     PaddedInput branches("#if CHOICE\nAPPLY([](int value) -> int { return value; });\n"
         "#else\nvoid declared(int value = [] { return 1; }());\n" "#endif\nint following;");
-    auto branchTree = parser::Parse(branches.View(), [] (parser::ParseError) {});
+    auto branchTree = parser::Parse(branches.View(), [] (parser::ParseError) { });
     EXPECT_EQ(LambdaOwnershipNodes(branchTree.Root(), LambdaBody).size(), 2u);
     EXPECT_EQ(LambdaOwnershipNodes(branchTree.Root(), ExpressionStatement).size(), 1u);
     EXPECT_EQ(LambdaOwnershipNodes(branchTree.Root(), FunctionDeclaration).size(), 1u);
@@ -975,7 +991,11 @@ TEST(Parser, LambdaArgumentFactsStayWithinConditionalAndMalformedLimits)
         SCOPED_TRACE(source);
         PaddedInput input(source);
         size_t errors = 0;
-        auto tree = parser::Parse(input.View(), [&] (parser::ParseError) { ++errors; });
+        auto tree = parser::Parse(
+            input.View(),
+            [&] (parser::ParseError) {
+                ++errors;
+            });
         if (!std::string_view(source).starts_with("#if")) {
             EXPECT_GT(errors, 0u);
         }
@@ -998,7 +1018,11 @@ TEST(Parser, RecoveredLambdaParametersNeverBindOutsideTheLambda)
     using enum parser::NodeKind;
     PaddedInput input("using Type = int; APPLY([](int Type) marker { Type * hidden; }); " "Type following;");
     size_t errors = 0;
-    auto tree = parser::Parse(input.View(), [&] (parser::ParseError) { ++errors; });
+    auto tree = parser::Parse(
+        input.View(),
+        [&] (parser::ParseError) {
+            ++errors;
+        });
     EXPECT_GT(errors, 0u);
     EXPECT_TRUE(LambdaOwnershipNodes(tree.Root(), LambdaBody).empty());
     EXPECT_EQ(LambdaOwnershipNodes(tree.Root(), ParameterDeclaration).size(), 1u);
@@ -1017,12 +1041,16 @@ TEST(Parser, ExplicitTemplateLambdaDefaultsKeepNonfinalOuterParameters)
         })
     {
         PaddedInput input("void declared(int value = " + std::string(expression) + ", int other = 0);\nint following;");
-        auto tree = parser::Parse(input.View(), [] (parser::ParseError) {});
+        auto tree = parser::Parse(input.View(), [] (parser::ParseError) { });
         const auto* owner = tree.Root().FirstChild;
         ASSERT_NE(owner, nullptr);
         EXPECT_EQ(owner->Kind, FunctionDeclaration);
         const auto lists = LambdaOwnershipNodes(*owner, ParameterList);
-        const auto outer = std::ranges::find_if(lists, [] (const Node* list) { return list->Tokens.Begin == 2; });
+        const auto outer = std::ranges::find_if(
+            lists,
+            [] (const Node* list) {
+                return list->Tokens.Begin == 2;
+            });
         ASSERT_NE(outer, lists.end());
         unsigned parameters = 0;
         for (auto* child = (*outer)->FirstChild; child; child = child->NextSibling) {
@@ -1053,7 +1081,7 @@ TEST(Parser, MalformedExplicitTemplatePrefixesStayLocallyUncertain)
     {
         SCOPED_TRACE(operand);
         PaddedInput input("void use() { APPLY(" + std::string(operand) + ", [] { return 2; }); }\nint following;");
-        auto tree = parser::Parse(input.View(), [] (parser::ParseError) {});
+        auto tree = parser::Parse(input.View(), [] (parser::ParseError) { });
         EXPECT_GT(LambdaOwnershipNodes(tree.Root(), UnparsedSyntax).size(), 0u);
         EXPECT_EQ(tree.SourceText(tree.Root().LastChild->Tokens), "int following;");
     }
@@ -1067,7 +1095,7 @@ TEST(Parser, LambdaBodyBindingsUseOnlyDirectParametersNotRequiresLocals)
         PaddedInput input("using Type = int; using Other = int; APPLY([]<class T>" + signature +
             " requires requires(int Other) { Other + 1; } " "{ Type * item; Other * local; });\n"
                 "Type following; Other followingOther;");
-        auto tree = parser::Parse(input.View(), [] (parser::ParseError) {});
+        auto tree = parser::Parse(input.View(), [] (parser::ParseError) { });
         const auto lambdas = LambdaOwnershipNodes(tree.Root(), LambdaExpression);
         ASSERT_EQ(lambdas.size(), 1u);
         const auto bodies = LambdaOwnershipNodes(*lambdas[0], LambdaBody);
@@ -1140,7 +1168,7 @@ TEST(Parser, ExplicitOperatorTemplateNamesPreserveArgumentAndDefaultBoundaries)
         SCOPED_TRACE(operand);
         PaddedInput input(
             "void declared(int value = " + std::string(operand) + ", int other = [] { return 1; }());\nint following;");
-        auto tree = parser::Parse(input.View(), [] (parser::ParseError) {});
+        auto tree = parser::Parse(input.View(), [] (parser::ParseError) { });
         EXPECT_EQ(tree.Root().FirstChild->Kind, FunctionDeclaration);
         checkOuterParameters(tree, operand);
     }
@@ -1150,7 +1178,7 @@ TEST(Parser, ExplicitOperatorTemplateNamesPreserveArgumentAndDefaultBoundaries)
         SCOPED_TRACE(spelling);
         const std::string call = "object.template operator " + std::string(spelling) + " <int, short>(value)";
         PaddedInput input("APPLY(7, " + call + ", [] { return 2; });\nint following;");
-        auto tree = parser::Parse(input.View(), [] (parser::ParseError) {});
+        auto tree = parser::Parse(input.View(), [] (parser::ParseError) { });
         const auto* owner = tree.Root().FirstChild;
         ASSERT_NE(owner, nullptr);
         ASSERT_EQ(owner->Kind, ExpressionStatement);
@@ -1185,7 +1213,7 @@ TEST(Parser, ExplicitOperatorTemplateNamesPreserveArgumentAndDefaultBoundaries)
 
         PaddedInput declaration(
             "void declared(int value = " + call + ", int other = [] { return 1; }());\nint following;");
-        auto declared = parser::Parse(declaration.View(), [] (parser::ParseError) {});
+        auto declared = parser::Parse(declaration.View(), [] (parser::ParseError) { });
         EXPECT_EQ(declared.Root().FirstChild->Kind, FunctionDeclaration);
         checkOuterParameters(declared, call);
         EXPECT_EQ(LambdaOwnershipNodes(*declared.Root().FirstChild, LambdaBody).size(), 1u);
@@ -1197,14 +1225,14 @@ TEST(Parser, ExplicitOperatorTemplateNamesPreserveArgumentAndDefaultBoundaries)
         const std::string call =
             "make<Box<object.template operator " + std::string(spelling) + " <int>(value), int>, int>()";
         PaddedInput input("APPLY(" + call + ", [] { return 2; });\nint following;");
-        auto tree = parser::Parse(input.View(), [] (parser::ParseError) {});
+        auto tree = parser::Parse(input.View(), [] (parser::ParseError) { });
         EXPECT_EQ(tree.Root().FirstChild->Kind, ExpressionStatement);
         EXPECT_EQ(LambdaOwnershipNodes(*tree.Root().FirstChild, LambdaBody).size(), 1u);
         EXPECT_TRUE(LambdaOwnershipNodes(*tree.Root().FirstChild, StructuredBinding).empty());
         EXPECT_EQ(tree.SourceText(tree.Root().LastChild->Tokens), "int following;");
         PaddedInput declaration(
             "void declared(int value = " + call + ", int other = [] { return 1; }());\nint following;");
-        auto declared = parser::Parse(declaration.View(), [] (parser::ParseError) {});
+        auto declared = parser::Parse(declaration.View(), [] (parser::ParseError) { });
         EXPECT_EQ(declared.Root().FirstChild->Kind, FunctionDeclaration);
         checkOuterParameters(declared, call);
         EXPECT_EQ(LambdaOwnershipNodes(*declared.Root().FirstChild, LambdaBody).size(), 1u);
@@ -1213,7 +1241,7 @@ TEST(Parser, ExplicitOperatorTemplateNamesPreserveArgumentAndDefaultBoundaries)
     {
         PaddedInput input("void use() { APPLY(make<Box<object.template operator ? "
             "<int>(value), int>, int>(), [] { return 2; }); }\n" "int following;");
-        auto tree = parser::Parse(input.View(), [] (parser::ParseError) {});
+        auto tree = parser::Parse(input.View(), [] (parser::ParseError) { });
         EXPECT_FALSE(LambdaOwnershipNodes(tree.Root(), UnparsedSyntax).empty());
         EXPECT_TRUE(LambdaOwnershipNodes(tree.Root(), StructuredBinding).empty());
         EXPECT_LE(LambdaOwnershipNodes(tree.Root(), LambdaBody).size(), 1u);
@@ -1223,7 +1251,7 @@ TEST(Parser, ExplicitOperatorTemplateNamesPreserveArgumentAndDefaultBoundaries)
         SCOPED_TRACE(spelling);
         PaddedInput input("void use() { APPLY(object.template operator " + std::string(spelling) +
             " <int>(value), [] { return 2; }); }\nint following;");
-        auto tree = parser::Parse(input.View(), [] (parser::ParseError) {});
+        auto tree = parser::Parse(input.View(), [] (parser::ParseError) { });
         EXPECT_GT(LambdaOwnershipNodes(tree.Root(), UnparsedSyntax).size(), 0u);
         const auto bodies = LambdaOwnershipNodes(tree.Root(), LambdaBody);
         EXPECT_LE(bodies.size(), 1u);
@@ -1250,7 +1278,11 @@ TEST(Parser, NamelessDirectBodyIsBoundedRecoveryWithoutInventedScope)
         SCOPED_TRACE(source);
         PaddedInput input(source);
         size_t errors = 0;
-        const auto tree = parser::Parse(input.View(), [&] (parser::ParseError) { ++errors; });
+        const auto tree = parser::Parse(
+            input.View(),
+            [&] (parser::ParseError) {
+                ++errors;
+            });
         EXPECT_EQ(errors, 0u);
         const auto* owner = tree.Root().FirstChild->NextSibling;
         ASSERT_NE(owner, nullptr);
@@ -1278,7 +1310,7 @@ TEST(Parser, NamelessDirectBodyIsBoundedRecoveryWithoutInventedScope)
     }
 
     PaddedInput separated("HEADER_BLOCK(Tag) {}\n// separate\n;\n#define FLAG 1\n" "int following;\n");
-    const auto separatedTree = parser::Parse(separated.View(), [] (parser::ParseError) {});
+    const auto separatedTree = parser::Parse(separated.View(), [] (parser::ParseError) { });
     const auto* owner = separatedTree.Root().FirstChild;
     ASSERT_NE(owner, nullptr);
     EXPECT_EQ(separatedTree.SourceText(owner->Tokens), "HEADER_BLOCK(Tag) {}");
@@ -1290,7 +1322,11 @@ TEST(Parser, NamelessDirectBodyIsBoundedRecoveryWithoutInventedScope)
 
     PaddedInput malformed("HEADER_BLOCK(Tag) { int value;\n");
     size_t errors = 0;
-    const auto tree = parser::Parse(malformed.View(), [&] (parser::ParseError) { ++errors; });
+    const auto tree = parser::Parse(
+        malformed.View(),
+        [&] (parser::ParseError) {
+            ++errors;
+        });
     EXPECT_GT(errors, 0u);
     ASSERT_NE(tree.Root().FirstChild, nullptr);
     EXPECT_EQ(tree.Root().FirstChild->Kind, parser::NodeKind::Declaration);
@@ -1306,7 +1342,11 @@ TEST(Parser, GenuineNamedBodiesRetainDeclaratorsAndScopes)
         "void defaults(int value=[]{return 1;}()){}\n";
     PaddedInput input(source);
     size_t errors = 0;
-    const auto tree = parser::Parse(input.View(), [&] (parser::ParseError) { ++errors; });
+    const auto tree = parser::Parse(
+        input.View(),
+        [&] (parser::ParseError) {
+            ++errors;
+        });
     EXPECT_EQ(errors, 0u);
     size_t functions = 0;
     size_t lambdas = 0;
@@ -1449,7 +1489,11 @@ TEST(Parser, RecoveredConstructorInitializersKeepWholeCandidateOpaque)
                 SCOPED_TRACE(source);
                 PaddedInput input(source);
                 size_t errors = 0;
-                auto tree = parser::Parse(input.View(), [&] (auto) { ++errors; });
+                auto tree = parser::Parse(
+                    input.View(),
+                    [&] (auto) {
+                        ++errors;
+                    });
                 EXPECT_EQ(errors, 0u);
                 const auto* record = tree.Root().FirstChild->NextSibling;
                 ASSERT_NE(record, nullptr);
@@ -1718,7 +1762,7 @@ TEST(Parser, RecoveredRequiresPairCannotAdvanceAcrossConditionalParseLimit)
 {
     PaddedInput input(
         "#if PICK\nVec NOTE(0) run() requires Ready<int> && " "requires(int x) { x;\n#else\n}\n#endif\nint tail;\n");
-    auto tree = parser::Parse(input.View(), [] (auto) {});
+    auto tree = parser::Parse(input.View(), [] (auto) { });
     std::vector<const Node*> pending{&tree.Root()};
     while (!pending.empty()) {
         const auto* parent = pending.back();
@@ -1798,7 +1842,7 @@ TEST(Parser, BracedInitializerRangesStopAtMatchingCloser)
 {
     const test::golden::Fixture fixture{PARSER_TESTDATA_DIR, "expressions"};
     PaddedInput input(fixture.InputNamed(".in"));
-    auto tree = parser::Parse(input.View(), [] (parser::ParseError) {});
+    auto tree = parser::Parse(input.View(), [] (parser::ParseError) { });
     size_t initializers = 0;
     std::vector<const Node*> pending{&tree.Root()};
     while (!pending.empty()) {
@@ -2112,7 +2156,7 @@ TEST(Parser, HandlesDeepExpressionNesting)
 TEST(Parser, RecordHeadTemplateArgumentsOwnTheirSeparators)
 {
     PaddedInput input("template<class A, class B> struct Pair;\n" "template<class A, class B> struct Pair<A,B> {};\n");
-    const auto tree = parser::Parse(input.View(), [] (parser::ParseError) {});
+    const auto tree = parser::Parse(input.View(), [] (parser::ParseError) { });
     const auto* declaration = tree.Root().FirstChild->NextSibling->FirstChild;
     ASSERT_EQ(declaration->Kind, parser::NodeKind::TemplateParameterList);
     const auto* record = declaration->NextSibling;
@@ -2159,8 +2203,11 @@ TEST(Parser, RecordHeadTemplateArgumentsOwnTheirSeparators)
         SCOPED_TRACE(source);
         PaddedInput padded(source);
         std::vector<parser::ParseError> errors;
-        const auto parsed =
-            parser::Parse(padded.View(), [&] (parser::ParseError error) { errors.push_back(std::move(error)); });
+        const auto parsed = parser::Parse(
+            padded.View(),
+            [&] (parser::ParseError error) {
+                errors.push_back(std::move(error));
+            });
         EXPECT_TRUE(errors.empty());
         const auto* record = parsed.Root().LastChild->FirstChild->NextSibling;
         ASSERT_EQ(record->Kind, parser::NodeKind::RecordDeclaration);
@@ -2200,8 +2247,11 @@ TEST(Parser, RecordHeadTemplateArgumentsOwnTheirSeparators)
         const auto separators = LambdaOwnershipNodes(*list, parser::NodeKind::ListSeparator);
         for (auto i = list->Tokens.Begin; i < list->Tokens.End; ++i) {
             if (parsed.Kind(i) == tokenizer::TokenKind::Operator_Comma) {
-                const auto owned =
-                    std::ranges::any_of(separators, [i] (const auto* item) { return item->Tokens.Begin == i; });
+                const auto owned = std::ranges::any_of(
+                    separators,
+                    [i] (const auto* item) {
+                        return item->Tokens.Begin == i;
+                    });
                 EXPECT_EQ(
                     parsed.Role(i),
                     owned ? parser::PunctuationRole::ListSeparator : parser::PunctuationRole::Generic);
@@ -2218,7 +2268,11 @@ TEST(Parser, RecordHeadTemplateArgumentsOwnTheirSeparators)
         "formatter/tests/testdata/record-head-commas/" "constructor-composition.input.cpp");
     PaddedInput composedInput(source);
     unsigned errors = 0;
-    const auto composed = parser::Parse(composedInput.View(), [&] (parser::ParseError) { ++errors; });
+    const auto composed = parser::Parse(
+        composedInput.View(),
+        [&] (parser::ParseError) {
+            ++errors;
+        });
     EXPECT_EQ(errors, 0u);
     const Node* specialization = nullptr;
     const Node* constructor = nullptr;
@@ -2334,7 +2388,7 @@ TEST(Parser, RecordHeadTemplateArgumentsOwnTheirSeparators)
     // A registered type would trip the no-export assertion above: this is
     // deliberately a declaration, unlike the conservative unknown-global case.
     PaddedInput registeredType("struct Pair {}; void known_type() { Pair*marker; }\n");
-    const auto control = parser::Parse(registeredType.View(), [] (parser::ParseError) {});
+    const auto control = parser::Parse(registeredType.View(), [] (parser::ParseError) { });
     pending = {&control.Root()};
     size_t declarations = 0;
     while (!pending.empty()) {
@@ -2363,7 +2417,11 @@ TEST(Parser, RecordHeadTemplateArgumentsOwnTheirSeparators)
         SCOPED_TRACE(source);
         PaddedInput input(source);
         unsigned errors = 0;
-        const auto linked = parser::Parse(input.View(), [&] (parser::ParseError) { ++errors; });
+        const auto linked = parser::Parse(
+            input.View(),
+            [&] (parser::ParseError) {
+                ++errors;
+            });
         EXPECT_EQ(errors, 0u);
         size_t typedParameters = 0;
         size_t outsideExpressions = 0;
@@ -2424,7 +2482,7 @@ TEST(Parser, RecordHeadChildrenAreBoundedWithoutGuessingOperands)
     for (const auto& [source, expectedLists] : cases) {
         SCOPED_TRACE(source);
         PaddedInput input(source);
-        const auto tree = parser::Parse(input.View(), [] (parser::ParseError) {});
+        const auto tree = parser::Parse(input.View(), [] (parser::ParseError) { });
         size_t lists = 0;
         size_t calls = 0;
         std::vector<const Node *> pending{&tree.Root()};
@@ -2459,7 +2517,7 @@ TEST(Parser, RecordHeadChildrenAreBoundedWithoutGuessingOperands)
     // forward declarations or the declaration following them.
     PaddedInput input(
         "template<class A, class B> struct Pair;\n" "template<> struct Pair<int,long>;\n" "Pair<int,long> value;\n");
-    const auto tree = parser::Parse(input.View(), [] (parser::ParseError) {});
+    const auto tree = parser::Parse(input.View(), [] (parser::ParseError) { });
     const auto* last = tree.Root().LastChild;
     ASSERT_EQ(last->Kind, parser::NodeKind::Declaration);
     ASSERT_NE(last->FirstChild, nullptr);
@@ -2470,8 +2528,11 @@ TEST(Parser, RecordHeadChildrenAreBoundedWithoutGuessingOperands)
         "void use(){ sink((1<2),0); int items[]={(1<2),0}; }\n" "enum Values { first=(1<2), second=0 };\n";
     PaddedInput ordinaryInput(ordinary);
     std::vector<parser::ParseError> errors;
-    const auto ordinaryTree =
-        parser::Parse(ordinaryInput.View(), [&] (parser::ParseError error) { errors.push_back(std::move(error)); });
+    const auto ordinaryTree = parser::Parse(
+        ordinaryInput.View(),
+        [&] (parser::ParseError error) {
+            errors.push_back(std::move(error));
+        });
     EXPECT_TRUE(errors.empty());
     const std::pair<parser::NodeKind, std::string_view> expected[] = {
         {parser::NodeKind::ParameterList, "int first=(1<2)"},
@@ -2534,8 +2595,11 @@ TEST(Parser, RequiresClauseOwnsNestedExpressionBeforeDeclaration)
             SCOPED_TRACE(source);
             PaddedInput input(source);
             std::vector<parser::ParseError> errors;
-            const auto tree =
-                parser::Parse(input.View(), [&] (parser::ParseError error) { errors.push_back(std::move(error)); });
+            const auto tree = parser::Parse(
+                input.View(),
+                [&] (parser::ParseError error) {
+                    errors.push_back(std::move(error));
+                });
             EXPECT_TRUE(errors.empty());
             const auto* owner = tree.Root().FirstChild;
             ASSERT_NE(owner, nullptr);
@@ -2614,8 +2678,11 @@ TEST(Parser, RequirementRecoveryDiagnostics)
     const test::golden::Fixture fixture{PARSER_TESTDATA_DIR, "requires_forms_recovery"};
     PaddedInput input(fixture.InputNamed(".in"));
     std::vector<parser::ParseError> errors;
-    const auto tree =
-        parser::Parse(input.View(), [&] (parser::ParseError error) { errors.push_back(std::move(error)); });
+    const auto tree = parser::Parse(
+        input.View(),
+        [&] (parser::ParseError error) {
+            errors.push_back(std::move(error));
+        });
     ASSERT_FALSE(errors.empty());
     std::string diagnostics;
     for (const auto& error : errors) {
@@ -2690,7 +2757,11 @@ TEST(Parser, RequiresClauseOwnsDependentFunctionReturnPrefix)
             SCOPED_TRACE(source);
             PaddedInput input(source);
             size_t errors = 0;
-            const auto tree = parser::Parse(input.View(), [&] (parser::ParseError) { ++errors; });
+            const auto tree = parser::Parse(
+                input.View(),
+                [&] (parser::ParseError) {
+                    ++errors;
+                });
             EXPECT_EQ(errors, 0u);
             const auto* owner = tree.Root().FirstChild;
             ASSERT_NE(owner, nullptr);
@@ -2775,7 +2846,11 @@ TEST(Parser, RequiresClauseOwnsOrdinaryTemplateAndQualifiedReturnPrefix)
             SCOPED_TRACE(source);
             PaddedInput input(source);
             size_t errors = 0;
-            const auto tree = parser::Parse(input.View(), [&] (parser::ParseError) { ++errors; });
+            const auto tree = parser::Parse(
+                input.View(),
+                [&] (parser::ParseError) {
+                    ++errors;
+                });
             EXPECT_EQ(errors, 0u);
             const auto* owner = tree.Root().FirstChild;
             ASSERT_NE(owner, nullptr);
@@ -2824,7 +2899,11 @@ TEST(Parser, RequiresClauseDoesNotSplitQualifiedConstraintOperands)
         SCOPED_TRACE(source);
         PaddedInput input(source);
         size_t errors = 0;
-        const auto tree = parser::Parse(input.View(), [&] (parser::ParseError) { ++errors; });
+        const auto tree = parser::Parse(
+            input.View(),
+            [&] (parser::ParseError) {
+                ++errors;
+            });
         EXPECT_EQ(errors, 0u);
         const auto* clause = tree.Root().FirstChild->FirstChild;
         while (clause && clause->Kind != parser::NodeKind::RequiresClause) {
@@ -2847,7 +2926,7 @@ TEST(Parser, RequiresClauseDoesNotCertifyMalformedTemplateReturnPrefix)
             "template<class T> requires Ready<T>\n" + std::string(prefix) + " inspect(T value) { return {}; }\n";
         SCOPED_TRACE(source);
         PaddedInput input(source);
-        const auto tree = parser::Parse(input.View(), [] (parser::ParseError) {});
+        const auto tree = parser::Parse(input.View(), [] (parser::ParseError) { });
         const auto* clause = tree.Root().FirstChild->FirstChild;
         while (clause && clause->Kind != parser::NodeKind::RequiresClause) {
             clause = clause->NextSibling;
@@ -2881,8 +2960,11 @@ TEST(Parser, RequiresClausePreservesOperatorAndUnknownConstraints)
         SCOPED_TRACE(source);
         PaddedInput input(source);
         std::vector<parser::ParseError> errors;
-        const auto tree =
-            parser::Parse(input.View(), [&] (parser::ParseError error) { errors.push_back(std::move(error)); });
+        const auto tree = parser::Parse(
+            input.View(),
+            [&] (parser::ParseError error) {
+                errors.push_back(std::move(error));
+            });
         if (constraint.Invalid) {
             ASSERT_EQ(errors.size(), 1u);
             EXPECT_EQ(errors.front().Message, "Unexpected token");
@@ -2970,8 +3052,11 @@ TEST(Parser, RequiresClauseKeepsBoundaryCommentsAndTerminalRecovery)
             SCOPED_TRACE(source);
             PaddedInput input(source);
             std::vector<parser::ParseError> errors;
-            const auto tree =
-                parser::Parse(input.View(), [&] (parser::ParseError error) { errors.push_back(std::move(error)); });
+            const auto tree = parser::Parse(
+                input.View(),
+                [&] (parser::ParseError error) {
+                    errors.push_back(std::move(error));
+                });
             const auto invalidOffset = source.find('@');
             if (invalidOffset != std::string::npos) {
                 ASSERT_EQ(errors.size(), 1u);
@@ -3057,8 +3142,11 @@ TEST(Parser, RequiresClauseKeepsUnparsedSuffixAndDiagnosesMissingBody)
         SCOPED_TRACE(source);
         PaddedInput input(source);
         std::vector<parser::ParseError> errors;
-        const auto tree =
-            parser::Parse(input.View(), [&] (parser::ParseError error) { errors.push_back(std::move(error)); });
+        const auto tree = parser::Parse(
+            input.View(),
+            [&] (parser::ParseError error) {
+                errors.push_back(std::move(error));
+            });
         if (missingBody) {
             ASSERT_FALSE(errors.empty());
             EXPECT_EQ(errors.front().Message, "expected complete requirement body");
@@ -3092,7 +3180,11 @@ TEST(Parser, RequiresClauseRetainsDirectiveInsideRequirementBody)
     PaddedInput input("template<class T> requires requires(T value) {\n" "#define REQUIREMENT_VALUE 1\n"
         "value.touch();\n}\nstruct Container {};\n");
     size_t errors = 0;
-    const auto tree = parser::Parse(input.View(), [&] (parser::ParseError) { ++errors; });
+    const auto tree = parser::Parse(
+        input.View(),
+        [&] (parser::ParseError) {
+            ++errors;
+        });
     EXPECT_EQ(errors, 0u);
     const auto* owner = tree.Root().FirstChild;
     ASSERT_NE(owner, nullptr);
@@ -3142,8 +3234,11 @@ TEST(Parser, ParameterDefaultsKeepDelimitedComparisonBoundaries)
         SCOPED_TRACE(firstText);
         PaddedInput input(source);
         std::vector<parser::ParseError> errors;
-        const auto tree =
-            parser::Parse(input.View(), [&] (parser::ParseError error) { errors.push_back(std::move(error)); });
+        const auto tree = parser::Parse(
+            input.View(),
+            [&] (parser::ParseError error) {
+                errors.push_back(std::move(error));
+            });
         EXPECT_TRUE(errors.empty());
         const Node* parameters = nullptr;
         std::vector<const Node *> pending{&tree.Root()};
@@ -3210,7 +3305,11 @@ TEST(Parser, QualifiedConstructorHeadsKeepTerminalDeclaratorNames)
     const auto source = fixture.InputNamed(".cpp");
     PaddedInput input(source);
     size_t errors = 0;
-    const auto tree = parser::Parse(input.View(), [&] (parser::ParseError) { ++errors; });
+    const auto tree = parser::Parse(
+        input.View(),
+        [&] (parser::ParseError) {
+            ++errors;
+        });
     EXPECT_EQ(errors, 0);
     const std::array<std::pair<std::string_view, std::string_view>, 9> cases{
         {
@@ -3271,7 +3370,11 @@ TEST(Parser, FunctionKindsClassifyOnlyActualFunctionOwners)
     const auto source = fixture.InputNamed(".cpp");
     PaddedInput input(source);
     size_t errors = 0;
-    auto tree = parser::Parse(input.View(), [&] (parser::ParseError) { ++errors; });
+    auto tree = parser::Parse(
+        input.View(),
+        [&] (parser::ParseError) {
+            ++errors;
+        });
     EXPECT_EQ(errors, 0);
     std::array<size_t, 4> counts{};
     size_t tryBlocks = 0;
@@ -3374,7 +3477,7 @@ TEST(Parser, FunctionKindsLeaveUncertainHeadsAndNonfunctionsUnknown)
     for (auto source : cases) {
         SCOPED_TRACE(source);
         PaddedInput input(source);
-        auto tree = parser::Parse(input.View(), [] (parser::ParseError) {});
+        auto tree = parser::Parse(input.View(), [] (parser::ParseError) { });
         std::vector<const Node*> pending{&tree.Root()};
         while (!pending.empty()) {
             const auto* node = pending.back();
@@ -3456,7 +3559,7 @@ TEST(Parser, FunctionKindsRetainBalancedQualifiedAndExplicitReturnEvidence)
     const auto check = [] (const Case& item) {
         SCOPED_TRACE(item.Source);
         PaddedInput input(item.Source);
-        auto tree = parser::Parse(input.View(), [] (parser::ParseError) {});
+        auto tree = parser::Parse(input.View(), [] (parser::ParseError) { });
         const auto* function = tree.Root().LastChild;
         ASSERT_NE(function, nullptr);
         while (function->Kind == parser::NodeKind::TemplateDeclaration) {
@@ -3556,7 +3659,7 @@ TEST(Parser, OpaqueRecordHeadsHaveOnlyLocalConstructorOwners)
                     "void outside() { Parcel*marker; }";
             SCOPED_TRACE(source);
             PaddedInput input(source);
-            const auto tree = parser::Parse(input.View(), [] (parser::ParseError) {});
+            const auto tree = parser::Parse(input.View(), [] (parser::ParseError) { });
             size_t headsRecovered = 0;
             size_t constructors = 0;
             size_t names = 0;
@@ -3612,7 +3715,7 @@ TEST(Parser, OpaqueRecordHeadsHaveOnlyLocalConstructorOwners)
     for (const auto head : {"Parcel", "[[nodiscard]] Parcel"}) {
         PaddedInput input("template<class T> struct " + std::string(head) +
             " { Parcel(Item *p) {} }; void outside() { Parcel<int>*marker; }");
-        const auto tree = parser::Parse(input.View(), [] (parser::ParseError) {});
+        const auto tree = parser::Parse(input.View(), [] (parser::ParseError) { });
         size_t declarations = 0;
         std::vector<const Node*> pending{&tree.Root()};
         while (!pending.empty()) {
@@ -3638,7 +3741,7 @@ TEST(Parser, MalformedRecordOwnersRecoverOnlyConstructorInitializerHeaders)
             " { Parcel(Item &p) : Base(p) { invoke(a,b); } " "void (*callback)(int); int (*factory())(double); };";
         SCOPED_TRACE(source);
         PaddedInput input(source);
-        const auto tree = parser::Parse(input.View(), [] (parser::ParseError) {});
+        const auto tree = parser::Parse(input.View(), [] (parser::ParseError) { });
         size_t recovered = 0, bodies = 0, fakeLists = 0;
         std::vector<const Node*> pending{&tree.Root()};
         while (!pending.empty()) {
@@ -3673,7 +3776,7 @@ TEST(Parser, OpaqueRecordOwnersPreserveGroupedMemberDeclarators)
     for (const auto head : {"Plain", "API Parcel", "API Parcel + broken"}) {
         SCOPED_TRACE(head);
         PaddedInput input("struct " + std::string(head) + " { " + std::string(members) + " };");
-        const auto tree = parser::Parse(input.View(), [] (parser::ParseError) {});
+        const auto tree = parser::Parse(input.View(), [] (parser::ParseError) { });
         const auto* record = tree.Root().FirstChild;
         ASSERT_NE(record, nullptr);
         ASSERT_EQ(record->Kind, parser::NodeKind::RecordDeclaration);
@@ -3719,7 +3822,11 @@ TEST(Parser, ConstructorInitializerCapturesAreNotOuterArrayDeclarators)
         SCOPED_TRACE(source);
         PaddedInput input(source);
         size_t errors = 0;
-        const auto tree = parser::Parse(input.View(), [&] (parser::ParseError) { ++errors; });
+        const auto tree = parser::Parse(
+            input.View(),
+            [&] (parser::ParseError) {
+                ++errors;
+            });
         EXPECT_EQ(errors, 0u);
         const Node* function = nullptr;
         const Node* initializers = nullptr;
@@ -3821,7 +3928,11 @@ TEST(Parser, TerminalConstructorTemplateIdsHaveLocalNamesAndSeparateParameters)
         SCOPED_TRACE(item.Source);
         PaddedInput input(item.Source);
         size_t errors = 0;
-        const auto tree = parser::Parse(input.View(), [&] (parser::ParseError) { ++errors; });
+        const auto tree = parser::Parse(
+            input.View(),
+            [&] (parser::ParseError) {
+                ++errors;
+            });
         EXPECT_EQ(errors, 0u);
         size_t constructors = 0;
         std::vector<const Node*> pending{&tree.Root()};
@@ -3895,7 +4006,7 @@ TEST(Parser, TerminalConstructorTemplateIdsDoNotBorrowOuterOrMalformedOwners)
     for (auto source : rejected) {
         SCOPED_TRACE(source);
         PaddedInput input(source);
-        const auto tree = parser::Parse(input.View(), [] (parser::ParseError) {});
+        const auto tree = parser::Parse(input.View(), [] (parser::ParseError) { });
         std::vector<const Node*> pending{&tree.Root()};
         while (!pending.empty()) {
             const auto* node = pending.back();
@@ -3907,7 +4018,7 @@ TEST(Parser, TerminalConstructorTemplateIdsDoNotBorrowOuterOrMalformedOwners)
         }
     }
     PaddedInput nested("template<class T> struct Outer { struct Inner { Inner<T>(T* p) {} }; " "Outer<T>(T* p) {} };");
-    const auto tree = parser::Parse(nested.View(), [] (parser::ParseError) {});
+    const auto tree = parser::Parse(nested.View(), [] (parser::ParseError) { });
     size_t constructors = 0;
     std::vector<const Node*> pending{&tree.Root()};
     while (!pending.empty()) {
@@ -3936,7 +4047,11 @@ TEST(Parser, TerminalConstructorTemplateIdsPreserveSelfTypedStatementBindings)
         SCOPED_TRACE(source);
         PaddedInput input(source);
         size_t errors = 0;
-        const auto tree = parser::Parse(input.View(), [&] (parser::ParseError) { ++errors; });
+        const auto tree = parser::Parse(
+            input.View(),
+            [&] (parser::ParseError) {
+                ++errors;
+            });
         EXPECT_EQ(errors, 0u);
         size_t pointers = 0;
         size_t parenthesizedNames = 0;
@@ -3984,7 +4099,11 @@ TEST(Parser, TerminalConstructorTemplateIdsPreserveGroupedSelfTypeDeclarators)
     PaddedInput input("template<class T> struct Owner { " "Owner<T> (*callback)(int); Owner<T> (*factory())(int); "
         "Owner<T>* plain; Owner<T>(T* value) {} };");
     size_t errors = 0;
-    const auto tree = parser::Parse(input.View(), [&] (parser::ParseError) { ++errors; });
+    const auto tree = parser::Parse(
+        input.View(),
+        [&] (parser::ParseError) {
+            ++errors;
+        });
     EXPECT_EQ(errors, 0u);
     size_t callbacks = 0, factories = 0, pointers = 0, constructors = 0,
         selfTypes = 0;
@@ -4071,7 +4190,7 @@ TEST(Parser, TerminalConstructorBoundariesRejectGroupedAndUnownedContinuations)
         const auto source = "template<class T> struct Owner { " + std::string(head) + " };";
         SCOPED_TRACE(source);
         PaddedInput input(source);
-        const auto tree = parser::Parse(input.View(), [] (parser::ParseError) {});
+        const auto tree = parser::Parse(input.View(), [] (parser::ParseError) { });
         size_t functionOwners = 0;
         std::vector<const Node*> pending{&tree.Root()};
         while (!pending.empty()) {
@@ -4098,7 +4217,7 @@ TEST(Parser, TerminalConstructorBoundariesRejectGroupedAndUnownedContinuations)
     // EOF must not complete the default/delete reservation.
     for (auto tail : {"default", "delete"}) {
         PaddedInput input("template<class T> struct Owner { Owner<T>(T* p) = " + std::string(tail));
-        const auto tree = parser::Parse(input.View(), [] (parser::ParseError) {});
+        const auto tree = parser::Parse(input.View(), [] (parser::ParseError) { });
         std::vector<const Node*> pending{&tree.Root()};
         while (!pending.empty()) {
             const auto* node = pending.back();
@@ -4132,7 +4251,7 @@ TEST(Parser,
         const auto source = "template<class T> struct chest { " + std::string(head) + " };";
         SCOPED_TRACE(source);
         PaddedInput input(source);
-        const auto tree = parser::Parse(input.View(), [] (parser::ParseError) {});
+        const auto tree = parser::Parse(input.View(), [] (parser::ParseError) { });
         size_t constructors = 0;
         std::vector<const Node*> pending{&tree.Root()};
         while (!pending.empty()) {
@@ -4162,7 +4281,7 @@ TEST(Parser, TerminalConstructorBoundariesResetAndRequireValidCachedEvidence)
     for (auto source : sources) {
         SCOPED_TRACE(source);
         PaddedInput input(source);
-        const auto tree = parser::Parse(input.View(), [] (parser::ParseError) {});
+        const auto tree = parser::Parse(input.View(), [] (parser::ParseError) { });
         size_t constructors = 0;
         std::vector<const Node*> pending{&tree.Root()};
         while (!pending.empty()) {
@@ -4186,7 +4305,11 @@ TEST(Parser, TerminalConstructorBoundariesResetAndRequireValidCachedEvidence)
         SCOPED_TRACE(source);
         PaddedInput input(source);
         size_t errors = 0;
-        const auto tree = parser::Parse(input.View(), [&] (parser::ParseError) { ++errors; });
+        const auto tree = parser::Parse(
+            input.View(),
+            [&] (parser::ParseError) {
+                ++errors;
+            });
         EXPECT_GT(errors, 0u);
         std::vector<const Node*> pending{&tree.Root()};
         while (!pending.empty()) {

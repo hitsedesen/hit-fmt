@@ -75,7 +75,14 @@ TEST(FileDispatch, FileFailuresDoNotHideLaterResults)
         int resolver = 0;
         const bool success = threads == 1
             ? hit_fmt::RunSerialFiles(discover, resolver, process, print)
-            : hit_fmt::RunParallelFiles(threads, discover, [] { return 0; }, process, print);
+            : hit_fmt::RunParallelFiles(
+                threads,
+                discover,
+                [] {
+                    return 0;
+                },
+                process,
+                print);
         EXPECT_FALSE(success);
         EXPECT_EQ(processed.load(), count);
         EXPECT_EQ(printed, count);
@@ -108,7 +115,14 @@ TEST(FileDispatch, DiscoveryErrorsDrainDispatchedFiles)
             int resolver = 0;
             return threads == 1
                 ? hit_fmt::RunSerialFiles(discover, resolver, process, print)
-                : hit_fmt::RunParallelFiles(threads, discover, [] { return 0; }, process, print);
+                : hit_fmt::RunParallelFiles(
+                    threads,
+                    discover,
+                    [] {
+                        return 0;
+                    },
+                    process,
+                    print);
         };
         EXPECT_THROW(run(), std::runtime_error);
         EXPECT_EQ(printed, (std::vector<std::string>{"first.cpp"}));
@@ -136,8 +150,12 @@ TEST(FileDispatch, DispatchFailuresStopWorkersAndDiscovery)
                     }
                     return 0;
                 },
-                [] (const auto&, int&) { return hit_fmt::FileResult{}; },
-                [] (const auto&) -> bool { throw std::runtime_error("output failed"); });
+                [] (const auto&, int&) {
+                    return hit_fmt::FileResult{};
+                },
+                [] (const auto&) -> bool {
+                    throw std::runtime_error("output failed");
+                });
         };
         EXPECT_THROW(run(), std::runtime_error);
     }
@@ -173,7 +191,9 @@ TEST(FileDispatch, ProcessesDuringDiscoveryAndPrintsInOrder)
     bool completed = hit_fmt::RunParallelFiles(
         2,
         discover,
-        [] { return 0; },
+        [] {
+            return 0;
+        },
         process,
         [&] (const auto& result) {
             printed.push_back(result.Output);

@@ -39,7 +39,7 @@ struct Analysis
         PointerReferenceDeclaratorLocation binding = PointerReferenceDeclaratorLocation::Preserve,
         SourceAnalysisOptions options = {})
         : Source(text)
-        , Tree(parser::Parse(Source.View(), [] (parser::ParseError) {}))
+        , Tree(parser::Parse(Source.View(), [] (parser::ParseError) { }))
         , Safety(Analyze(options))
         , Spacing(Classify(policies, binding))
     { }
@@ -670,7 +670,7 @@ TEST(SyntaxSpacing, JointPreferencesRetainExactTokenKindsAndSpellings)
             }
         }
         Input changed(edited);
-        auto after = parser::Parse(changed.View(), [] (parser::ParseError) {});
+        auto after = parser::Parse(changed.View(), [] (parser::ParseError) { });
         ASSERT_EQ(analysis.Tree.TokenCount(), after.TokenCount());
         for (GapId i = 0; i < after.TokenCount(); ++i) {
             EXPECT_EQ(analysis.Tree.Kind(i), after.Kind(i));
@@ -1164,13 +1164,7 @@ TEST(SyntaxSpacing, CompleteDirectSequenceBoundariesHaveFlatSpaceFallback)
             parser::NodeKind::ExportDeclaration,
             C::Bodies,
         },
-        {
-            "void f(){first(); /* note */ second();}",
-            "/* note */",
-            0,
-            parser::NodeKind::CompoundStatement,
-            C::Bodies,
-        },
+        {"void f(){first(); /* note */ second();}", "/* note */", 0, parser::NodeKind::CompoundStatement, C::Bodies},
         {"void f(){first(); /* note */ second();}", "second", 0, parser::NodeKind::CompoundStatement, C::Bodies},
     };
     for (const auto& item : cases) {

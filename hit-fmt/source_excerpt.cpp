@@ -19,7 +19,9 @@ size_t RenderedLine::Caret(size_t column) const
         Adjustments.begin(),
         Adjustments.end(),
         column,
-        [] (auto point, const auto& item) { return point < item.Column; });
+        [] (auto point, const auto& item) {
+            return point < item.Column;
+        });
     if (adjustment == Adjustments.begin()) {
         return column - 1;
     }
