@@ -183,12 +183,18 @@ ChainsPacking = AllOrVertical
   BodyShape and EmptyBodyShape default to Expanded. CompactIfFits allows
   inline bodies; CompactSingleStatementIfFits allows one simple statement
   within ColumnLimit, including a local declaration. Canonical bodies only.
+- FunctionBodyShape and ControlBodyShape override nonempty function and
+  control bodies independently; Inherit (default) uses BodyShape.
+  Functions include constructors, destructors and configured body macros.
+  Controls include braced/unbraced arms, try/catch and case blocks.
+  Standalone blocks, records and namespaces keep BodyShape.
 - Nested controls/blocks, records, namespaces and sibling comments or
   directives prevent single-statement compaction. Comment-only bodies
   are not empty; empty bodies use EmptyBodyShape. The single-statement
   mode expands empty bodies. Enums, lists and requirements use their own rules.
 - LambdaBodiesLayout, LambdaBodyShape and LambdaEmptyBodyShape can
-  override body policies independently.
+  override body policies independently. LambdaBodyShape inherits BodyShape,
+  independently of FunctionBodyShape and ControlBodyShape.
 - IndentNamespaces: Preserve, Indent or NoIndent (enclosing indent).
   NamespaceIndentWidth = 0 uses IndentWidth.
 - Enumerators uses list policies; EnumBracePlacement follows the header.
@@ -205,6 +211,8 @@ ControlBracePlacement = NextLineIfHeaderBroken
 CaseBlockBracePlacement = Attached
 BodiesLayout = Canonical
 BodyShape = Expanded
+FunctionBodyShape = CompactSingleStatementIfFits
+ControlBodyShape = Expanded
 EmptyBodyShape = CompactIfFits
 LambdaBodiesLayout = Inherit
 LambdaBodyShape = CompactIfFits
@@ -228,7 +236,8 @@ ConstructorBracePlacement = Inherit
 ## Compact one-statement bodies
 ```config
 BodiesLayout = Canonical
-BodyShape = CompactSingleStatementIfFits
+FunctionBodyShape = CompactSingleStatementIfFits
+ControlBodyShape = Expanded
 FunctionBracePlacement = Attached
 # int Next(int x) { return x + 1; }
 # void Reset() { Clear(); Notify(); } stays expanded.

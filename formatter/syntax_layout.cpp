@@ -2306,6 +2306,7 @@ private:
     void PlanControlledArms(Index id, BracePlacement brace)
     {
         const auto& node = Region(Syntax_[id]);
+        const auto& policy = Policies_.ControlBodies;
         Index previousEnd = node.Tokens.Begin;
         Index previousBody = None;
         bool first = true;
@@ -2371,8 +2372,8 @@ private:
                 if (canonical && adjacent) {
                     if (precedingBraced) {
                         boundary = Boundary::Flat;
-                    } else if (Policies_.Bodies.Layout == LayoutMode::Canonical) {
-                        boundary = Policies_.Bodies.Shape == BodyShape::CompactIfFits ? Boundary::Soft : Boundary::Hard;
+                    } else if (policy.Layout == LayoutMode::Canonical) {
+                        boundary = policy.Shape == BodyShape::CompactIfFits ? Boundary::Soft : Boundary::Hard;
                     }
                 }
                 Index prefix;
@@ -2431,7 +2432,7 @@ private:
                     document::GapKind::Hard,
                     true);
                 if (canonicalBrace && brace == BracePlacement::NextLineIfHeaderIndented) {
-                    Gaps_[opening].BraceIndentOffset = std::max<uint8_t>(1, Policies_.Bodies.IndentWidth);
+                    Gaps_[opening].BraceIndentOffset = std::max<uint8_t>(1, policy.IndentWidth);
                 }
                 if (!canonicalBrace) {
                     Reindent(opening, header, true);
@@ -2443,15 +2444,14 @@ private:
                     GapPosition(opening),
                     GapPosition(body.Tokens.End),
                     document::GroupMode::Consistent,
-                    int32_t(Policies_.Bodies.IndentWidth));
+                    int32_t(policy.IndentWidth));
                 Groups_[group].Spec.StructuralBase = true;
-                if (Policies_.Bodies.Layout == LayoutMode::Canonical) {
+                if (policy.Layout == LayoutMode::Canonical) {
                     Own(
                         opening,
                         group,
-                        Policies_.Bodies.Shape == BodyShape::Expanded ||
-                            (Policies_.Bodies.Shape == BodyShape::CompactSingleStatementIfFits &&
-                                !SimpleStatement(child))
+                        policy.Shape == BodyShape::Expanded ||
+                            (policy.Shape == BodyShape::CompactSingleStatementIfFits && !SimpleStatement(child))
                         ? Boundary::Hard
                         : Boundary::Soft);
                 } else {
@@ -2502,6 +2502,36 @@ private:
         return None;
     }
 
+    const BodyPolicy& PolicyForBody(Index id) const
+    {
+        auto kind = Region(Syntax_[id]).Kind;
+        if (kind == NodeKind::LambdaBody || kind == NodeKind::LambdaExpression) {
+            return Policies_.LambdaBodies;
+        }
+        if (kind == NodeKind::CompoundStatement) {
+            if (IsSoleCaseBlock(id)) {
+                return Policies_.ControlBodies;
+            }
+            auto parent = Region(Syntax_[id]).Parent;
+            while (parent != None && Region(Syntax_[parent]).Kind == NodeKind::AttributedStatement) {
+                parent = Region(Syntax_[parent]).Parent;
+            }
+            kind = parent == None ? kind : Region(Syntax_[parent]).Kind;
+        }
+        switch (kind) {
+            case NodeKind::FunctionDefinition:
+            case NodeKind::MacroFunctionDefinition:
+            case NodeKind::FunctionTryBlock:
+                return Policies_.FunctionBodies;
+            case NodeKind::LambdaExpression:
+                return Policies_.LambdaBodies;
+            case NodeKind::TryStatement:
+                return Policies_.ControlBodies;
+            default:
+                return IsControl(kind) ? Policies_.ControlBodies : Policies_.Bodies;
+        }
+    }
+
     void PlanHeaderAndBody(Index id)
     {
         const auto& node = Region(Syntax_[id]);
@@ -2546,12 +2576,7 @@ private:
                 gap.Owner = scope;
                 gap.Reindent = true;
             }
-            PlanBody(
-                id,
-                node.Tokens.Begin,
-                node.Tokens.End - 1,
-                lambda ? Policies_.LambdaBodies : Policies_.Bodies,
-                false);
+            PlanBody(id, node.Tokens.Begin, node.Tokens.End - 1, PolicyForBody(id), false);
             return;
         }
         // The parser stores a function-try body in a separate child. Its
@@ -2644,11 +2669,8 @@ private:
             (control ? Policies_.ControlHeaders.Layout : Policies_.DeclarationHeaders) == LayoutMode::Canonical;
         const auto contentIndent =
             PreservedBodyIndent(bodyChild == None ? id : bodyChild, opening, Tree_.MatchingDelimiter(opening));
-        const auto bodyWidth = BodyIndentWidth(
-            id,
-            opening,
-            node.Kind == NodeKind::LambdaExpression ? Policies_.LambdaBodies : Policies_.Bodies,
-            node.Kind == NodeKind::RecordDeclaration);
+        const auto bodyWidth =
+            BodyIndentWidth(id, opening, PolicyForBody(id), node.Kind == NodeKind::RecordDeclaration);
         const auto fixedBase = contentIndent == None ? None : contentIndent - std::min(contentIndent, Index(bodyWidth));
         const auto group =
             GroupAt(TokenPosition(node.Tokens.Begin), GapPosition(opening + 1), document::GroupMode::Fill);
@@ -2685,7 +2707,7 @@ private:
         if (bodyChild == None) {
             const auto close = Tree_.MatchingDelimiter(opening);
             if (close != None && close < node.Tokens.End) {
-                PlanBody(id, opening, close, Policies_.Bodies, node.Kind == NodeKind::RecordDeclaration);
+                PlanBody(id, opening, close, PolicyForBody(id), node.Kind == NodeKind::RecordDeclaration);
             }
         }
     }

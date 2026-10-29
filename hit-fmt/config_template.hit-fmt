@@ -493,6 +493,17 @@ BodiesLayout = Inherit
 # Values: Expanded | CompactIfFits | CompactSingleStatementIfFits
 BodyShape = Expanded
 
+# Nonempty function bodies, including constructors, destructors and
+# configured function-body macros. Inherit uses BodyShape.
+# Values: Inherit | Expanded | CompactIfFits | CompactSingleStatementIfFits
+FunctionBodyShape = Inherit
+
+# Nonempty control bodies, braced or unbraced, including try/catch
+# and case blocks. Standalone blocks keep BodyShape.
+# Inherit uses BodyShape; independent of FunctionBodyShape.
+# Values: Inherit | Expanded | CompactIfFits | CompactSingleStatementIfFits
+ControlBodyShape = Inherit
+
 # CompactSingleStatementIfFits expands empty bodies.
 # Values: Expanded | CompactIfFits | CompactSingleStatementIfFits
 EmptyBodyShape = Expanded
@@ -500,6 +511,8 @@ EmptyBodyShape = Expanded
 # Values: Inherit | Preserve | Canonical
 LambdaBodiesLayout = Inherit
 
+# Inherit uses BodyShape, independently of FunctionBodyShape and
+# ControlBodyShape.
 # CompactSingleStatementIfFits: one simple statement, including
 # a local declaration, only when it fits ColumnLimit.
 # Nested controls/blocks, records, namespaces and sibling

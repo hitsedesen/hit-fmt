@@ -1,0 +1,6 @@
+include = "single.hit-fmt"
+BodyShape = CompactIfFits
+FunctionBodyShape = CompactSingleStatementIfFits
+ControlBodyShape = Expanded
+EmptyBodyShape = Expanded
+FunctionBodyMacroNames = ["DEFINE_TASK"]

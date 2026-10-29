@@ -1,0 +1,5 @@
+include = "compact-categories.hit-fmt"
+BodyShape = CompactSingleStatementIfFits
+FunctionBodyShape = Inherit
+ControlBodyShape = Inherit
+LambdaBodyShape = Expanded

@@ -249,6 +249,12 @@ std::vector<FormatCase> FormatCases()
     AddCases(cases, data / "function-body-macros", {"hinted", "unhinted"});
     AddCases(cases, data / "single-statement-body", {"single"});
     AddCases(cases, data / "single-statement-body", {"compact", "preserve", "lambda-override"}, "lambdas.input.cpp");
+    AddCases(
+        cases,
+        data / "single-statement-body",
+        {"functions", "controls", "compact-categories", "inherited", "categories-preserve"},
+        "categories.input.cpp");
+    ShareExpected(cases, data / "single-statement-body", "categories-preserve.output.cpp", "categories.input.cpp");
     {
         const auto directory = data / "declaration-macros";
         AddCases(cases, directory, {"canonical", "remove-null"});

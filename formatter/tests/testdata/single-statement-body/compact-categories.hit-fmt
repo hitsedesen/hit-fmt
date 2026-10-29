@@ -1,0 +1,3 @@
+include = "controls.hit-fmt"
+FunctionBodyShape = CompactIfFits
+ControlBodyShape = CompactIfFits
