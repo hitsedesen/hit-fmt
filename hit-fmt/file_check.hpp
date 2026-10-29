@@ -66,7 +66,7 @@ struct CheckedFile
 // One-based inclusive original physical lines. Spill authorizes only bounded
 // safe lists/include groups, not whole functions. An engaged empty selection
 // selects nothing; absent scope checks the whole file. Borrowed only during
-// CheckFile.
+// FormatAndCheckFile.
 struct ChangedFileScope
 {
     std::span<const formatter::Hunk> Hunks;
@@ -78,7 +78,7 @@ struct ChangedFileScope
 // Result owns all data; no references into input/path/configuration/parser
 // arenas.
 // detailedDiagnostics requests change metadata for PrintFormattingDiagnostics.
-[[nodiscard]] CheckedFile CheckFile(
+[[nodiscard]] CheckedFile FormatAndCheckFile(
     util::PaddedSourceView source,
     const PreparedFileConfiguration& configuration,
     std::string_view inputFilePath = {},

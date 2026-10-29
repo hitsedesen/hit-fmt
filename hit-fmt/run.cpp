@@ -329,7 +329,7 @@ FileResult ProcessFile(
             const auto absolute = std::filesystem::absolute(path).lexically_normal();
             scope = ChangedFileScope{changed.Hunks.at(absolute.string()), options.Spillover};
         }
-        const auto checked = CheckFile(source, config, inputFilePath, scope, !options.SummaryOnly);
+        const auto checked = FormatAndCheckFile(source, config, inputFilePath, scope, !options.SummaryOnly);
         if (options.Fix && checked.FormattingMismatch) {
             util::WriteEntireFile(filePath, checked.Formatting.Text);
         }

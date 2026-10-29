@@ -379,7 +379,7 @@ bool CheckedFile::HasFailures(bool fix) const
         !Formatting.Diagnostics.empty();
 }
 
-CheckedFile CheckFile(
+CheckedFile FormatAndCheckFile(
     util::PaddedSourceView source,
     const PreparedFileConfiguration& configuration,
     std::string_view inputFilePath,

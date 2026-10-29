@@ -36,7 +36,7 @@ TEST(FileCheck, OneResultServesCheckAndFixWithoutCountingAppliedFormatting)
 {
     const hit_fmt::PreparedFileConfiguration configuration(Configuration());
     Input input("void Good(int value){invoke(left,right);}\n");
-    const auto checked = hit_fmt::CheckFile(input.View(), configuration);
+    const auto checked = hit_fmt::FormatAndCheckFile(input.View(), configuration);
     ASSERT_TRUE(checked.FormattingMismatch);
     EXPECT_TRUE(checked.HasFailures(false));
     EXPECT_FALSE(checked.HasFailures(true));
@@ -48,7 +48,7 @@ TEST(FileCheck, OneResultServesCheckAndFixWithoutCountingAppliedFormatting)
     EXPECT_EQ(checkSummary.str(), "formatting mismatch");
     EXPECT_TRUE(fixSummary.str().empty());
     const Input applied(checked.Formatting.Text);
-    const auto clean = hit_fmt::CheckFile(applied.View(), configuration);
+    const auto clean = hit_fmt::FormatAndCheckFile(applied.View(), configuration);
     EXPECT_EQ(clean.Formatting.Text, checked.Formatting.Text);
     EXPECT_FALSE(clean.HasFailures(false));
     EXPECT_FALSE(clean.HasFailures(true));
@@ -78,16 +78,17 @@ TEST(FileCheck, PartialSelectionNeverChangesCanonicalFormatting)
         })
     {
         const Input input(source);
-        const auto full = hit_fmt::CheckFile(input.View(), configuration);
+        const auto full = hit_fmt::FormatAndCheckFile(input.View(), configuration);
         const Input canonical(full.Formatting.Text);
-        ASSERT_FALSE(hit_fmt::CheckFile(canonical.View(), configuration).FormattingMismatch) << full.Formatting.Text;
+        ASSERT_FALSE(hit_fmt::FormatAndCheckFile(canonical.View(), configuration).FormattingMismatch)
+            << full.Formatting.Text;
         const auto count = std::count(full.Formatting.Text.begin(), full.Formatting.Text.end(), '\n');
         for (const std::string_view outside : {"", "void outside(){work(a,b);}\n"}) {
             const Input partial(full.Formatting.Text + std::string(outside));
             for (size_t line = 1; line <= count; ++line) {
                 const formatter::Hunk selected[] = {{line, line}};
                 for (const bool spillover : {false, true}) {
-                    const auto checked = hit_fmt::CheckFile(
+                    const auto checked = hit_fmt::FormatAndCheckFile(
                         partial.View(),
                         configuration,
                         {},
@@ -117,7 +118,7 @@ TEST(FileCheck, IncludeOrderIsIndependentOfInputPathFormAndHunks)
     for (const auto& path : {relative, std::filesystem::absolute(relative)}) {
         const auto name = path.generic_string();
         for (const bool hunks : {false, true}) {
-            const auto checked = hit_fmt::CheckFile(
+            const auto checked = hit_fmt::FormatAndCheckFile(
                 input.View(),
                 prepared,
                 name,
@@ -148,8 +149,9 @@ TEST(FileCheck, IncludeOrderDiagnosticGoldenIsOneErrorForTheFile)
                 style.SpaceInsideFunctionParameters = formatter::GapPolicy::NoSpace;
             }
             const hit_fmt::PreparedFileConfiguration prepared(std::move(raw));
-            const auto checked = hit_fmt::CheckFile(input.View(), prepared, "project/sample.cpp");
-            const auto detailed = hit_fmt::CheckFile(input.View(), prepared, "project/sample.cpp", std::nullopt, true);
+            const auto checked = hit_fmt::FormatAndCheckFile(input.View(), prepared, "project/sample.cpp");
+            const auto detailed =
+                hit_fmt::FormatAndCheckFile(input.View(), prepared, "project/sample.cpp", std::nullopt, true);
             ASSERT_EQ(checked.IncludeOrderChanges.size(), 2u);
             EXPECT_EQ(detailed.IncludeOrderChanges.size(), checked.IncludeOrderChanges.size());
             EXPECT_EQ(detailed.OtherFormattingMismatch, checked.OtherFormattingMismatch);
@@ -188,11 +190,11 @@ TEST(FileCheck, IncludeOrderDiagnosticGoldenIsOneErrorForTheFile)
                 }
             }
             const Input applied(checked.Formatting.Text);
-            const auto clean = hit_fmt::CheckFile(applied.View(), prepared, "project/sample.cpp");
+            const auto clean = hit_fmt::FormatAndCheckFile(applied.View(), prepared, "project/sample.cpp");
             EXPECT_FALSE(clean.FormattingMismatch);
             EXPECT_TRUE(clean.IncludeOrderChanges.empty());
             const formatter::Hunk selected[] = {{1, 1}};
-            const auto strict = hit_fmt::CheckFile(
+            const auto strict = hit_fmt::FormatAndCheckFile(
                 input.View(),
                 prepared,
                 "project/sample.cpp",
@@ -213,12 +215,12 @@ TEST(FileCheck, FunctionBodyMacroHintsApplyToTheInitialParse)
     raw.FunctionDefinitionParameterNames = formatter::FunctionDefinitionParameterNames::NameRequired;
     const hit_fmt::PreparedFileConfiguration configuration(std::move(raw));
     const Input input("define_case(Suite, Case) {auto sum=left+right; Use(sum);}\n");
-    const auto checked = hit_fmt::CheckFile(input.View(), configuration);
+    const auto checked = hit_fmt::FormatAndCheckFile(input.View(), configuration);
     EXPECT_TRUE(checked.FormattingMismatch);
     EXPECT_TRUE(checked.Semantic.empty());
     EXPECT_NE(checked.Formatting.Text.find("left + right"), std::string::npos);
     const Input applied(checked.Formatting.Text);
-    EXPECT_FALSE(hit_fmt::CheckFile(applied.View(), configuration).FormattingMismatch);
+    EXPECT_FALSE(hit_fmt::FormatAndCheckFile(applied.View(), configuration).FormattingMismatch);
 }
 
 TEST(FileCheck, DiagnosticGoldenUsesOriginalCheckAndFinalFixCoordinates)
@@ -238,7 +240,7 @@ TEST(FileCheck, DiagnosticGoldenUsesOriginalCheckAndFinalFixCoordinates)
     configuration.FunctionDefinitionParameterNames = formatter::FunctionDefinitionParameterNames::NameRequired;
     const hit_fmt::PreparedFileConfiguration prepared(std::move(configuration));
     const Input input(fixture.InputNamed(".input.cpp"));
-    const auto checked = hit_fmt::CheckFile(input.View(), prepared, {}, std::nullopt, true);
+    const auto checked = hit_fmt::FormatAndCheckFile(input.View(), prepared, {}, std::nullopt, true);
     for (const auto action :
         {formatter::StructuralAction::AddMissingControlBraces, formatter::StructuralAction::NamespaceComments})
     {
@@ -331,7 +333,7 @@ TEST(FileCheck, TokenEndpointAndUnicodePositionsMapWithoutReparsingOutput)
     const std::string source =
         "const char* text=\"é\"; void bad_name(int  , " "void (*)(int)){}\nvoid GoodProto(int);\n";
     const Input input(source);
-    const auto checked = hit_fmt::CheckFile(input.View(), prepared);
+    const auto checked = hit_fmt::FormatAndCheckFile(input.View(), prepared);
     ASSERT_EQ(checked.Semantic.size(), 4u);
     EXPECT_NE(checked.Semantic.back().Message.find("function declaration"), std::string::npos);
     EXPECT_EQ(
@@ -357,7 +359,7 @@ TEST(FileCheck, TokenEndpointAndUnicodePositionsMapWithoutReparsingOutput)
     // Invalid UTF8 in a protected literal must not shift later name locations.
     const std::string malformed = std::string("const char* text=\"") + '\x80' + "\";\tvoid another_bad(){}\n";
     const Input recovery(malformed);
-    const auto recovered = hit_fmt::CheckFile(recovery.View(), prepared);
+    const auto recovered = hit_fmt::FormatAndCheckFile(recovery.View(), prepared);
     ASSERT_EQ(recovered.Semantic.size(), 1u);
     EXPECT_EQ(recovered.Semantic[0].Original.Column, malformed.find("another_bad") + 1);
     const auto recoveredName = recovered.Formatting.Text.find("another_bad");
@@ -378,7 +380,7 @@ TEST(FileCheck, UnicodeWidthDiagnosticGoldenMapsCodePointsAndTabs)
     raw.FormattingStyle.WidthDiagnostics = formatter::WidthDiagnosticPolicy::Report;
     const hit_fmt::PreparedFileConfiguration prepared(raw);
     const Input input(fixture.InputNamed(".input.cpp"));
-    const auto checked = hit_fmt::CheckFile(input.View(), prepared);
+    const auto checked = hit_fmt::FormatAndCheckFile(input.View(), prepared);
     EXPECT_FALSE(checked.FormattingMismatch);
     ASSERT_EQ(checked.Formatting.Diagnostics.size(), 2u);
     ASSERT_EQ(checked.OriginalWidthPositions.size(), 2u);
@@ -396,7 +398,7 @@ TEST(FileCheck, UnicodeWidthDiagnosticGoldenMapsCodePointsAndTabs)
     raw.FormattingStyle.ColumnLimit = 6;
     const hit_fmt::PreparedFileConfiguration narrow(raw);
     const Input tab("// é界😀\t\n");
-    const auto tabbed = hit_fmt::CheckFile(tab.View(), narrow);
+    const auto tabbed = hit_fmt::FormatAndCheckFile(tab.View(), narrow);
     ASSERT_EQ(tabbed.Formatting.Diagnostics.size(), 1u);
     ASSERT_EQ(tabbed.OriginalWidthPositions.size(), 1u);
     EXPECT_EQ(tabbed.OriginalWidthPositions[0].Column, 7u);
@@ -409,7 +411,7 @@ TEST(FileCheck, ActualProtectedOverflowRemainsFailureInFixMode)
     raw.FormattingStyle.WidthDiagnostics = formatter::WidthDiagnosticPolicy::Report;
     const hit_fmt::PreparedFileConfiguration prepared(raw);
     const Input input("// hit-fmt off\r\nint " "unavoidable_long_name;\r\n// hit-fmt on\r\n");
-    const auto checked = hit_fmt::CheckFile(input.View(), prepared);
+    const auto checked = hit_fmt::FormatAndCheckFile(input.View(), prepared);
     EXPECT_EQ(checked.Formatting.Text, input.View().View());
     EXPECT_FALSE(checked.FormattingMismatch);
     EXPECT_TRUE(checked.HasFailures(false));
@@ -573,15 +575,15 @@ TEST(FileCheck, EmptyHunkScopeNeverFallsBackToWholeFile)
     raw.FormattingStyle.WidthDiagnostics = formatter::WidthDiagnosticPolicy::Report;
     const hit_fmt::PreparedFileConfiguration prepared(raw);
     const Input input("void bad_name(int);\n");
-    const auto empty = hit_fmt::CheckFile(input.View(), prepared, {}, hit_fmt::ChangedFileScope{});
+    const auto empty = hit_fmt::FormatAndCheckFile(input.View(), prepared, {}, hit_fmt::ChangedFileScope{});
     EXPECT_EQ(empty.Formatting.Text, input.View().View());
     EXPECT_FALSE(empty.HasFailures(false));
     EXPECT_FALSE(empty.HasFailures(true));
     EXPECT_TRUE(empty.Incomplete.empty());
-    EXPECT_TRUE(hit_fmt::CheckFile(input.View(), prepared).HasFailures(true));
+    EXPECT_TRUE(hit_fmt::FormatAndCheckFile(input.View(), prepared).HasFailures(true));
     const formatter::Hunk invalid[] = {{2, 2}};
     EXPECT_THROW(
-        hit_fmt::CheckFile(input.View(), prepared, {}, hit_fmt::ChangedFileScope{invalid}),
+        hit_fmt::FormatAndCheckFile(input.View(), prepared, {}, hit_fmt::ChangedFileScope{invalid}),
         std::invalid_argument);
 }
 
@@ -600,8 +602,11 @@ TEST(FileCheck, HunkDiagnosticGoldenUsesOriginalSelectionAndMappedOutput)
     const Input input(fixture.InputNamed(".input.cpp"));
     const formatter::Hunk selected[] = {{13, 13}, {11, 11}, {9, 9}, {4, 5}, {1, 1}, {5, 5}};
     for (const bool spillover : {false, true}) {
-        const auto checked =
-            hit_fmt::CheckFile(input.View(), prepared, "sample.cpp", hit_fmt::ChangedFileScope{selected, spillover});
+        const auto checked = hit_fmt::FormatAndCheckFile(
+            input.View(),
+            prepared,
+            "sample.cpp",
+            hit_fmt::ChangedFileScope{selected, spillover});
         ASSERT_EQ(checked.Semantic.size(), 4u);
         for (const auto& diagnostic : checked.Semantic) {
             EXPECT_NE(diagnostic.Original.Line, 3u);
@@ -655,7 +660,8 @@ TEST(FileCheck, IncompleteHunkCoverageAndRequiredChangesStayDistinct)
     const hit_fmt::PreparedFileConfiguration prepared(raw);
     const Input input("void Good() {\n    call(1,\n        2);\n}\n");
     const formatter::Hunk selected[] = {{3, 3}};
-    const auto checked = hit_fmt::CheckFile(input.View(), prepared, {}, hit_fmt::ChangedFileScope{selected, false});
+    const auto checked =
+        hit_fmt::FormatAndCheckFile(input.View(), prepared, {}, hit_fmt::ChangedFileScope{selected, false});
     EXPECT_FALSE(checked.FormattingMismatch);
     EXPECT_FALSE(checked.HasFailures(false));
     EXPECT_FALSE(checked.HasFailures(true));
@@ -671,7 +677,8 @@ TEST(FileCheck, IncompleteHunkCoverageAndRequiredChangesStayDistinct)
     raw.FormattingStyle.AddMissingControlBraces = true;
     const hit_fmt::PreparedFileConfiguration braces(raw);
     const Input blocked("void Good(bool ready) {\n  if (ready)\n" "    consume(\n      ready);\n}\n");
-    const auto required = hit_fmt::CheckFile(blocked.View(), braces, {}, hit_fmt::ChangedFileScope{selected, false});
+    const auto required =
+        hit_fmt::FormatAndCheckFile(blocked.View(), braces, {}, hit_fmt::ChangedFileScope{selected, false});
     ASSERT_EQ(required.RequiredChanges.size(), 1u);
     EXPECT_TRUE(required.Semantic.empty());
     EXPECT_TRUE(required.Formatting.Diagnostics.empty());
