@@ -89,15 +89,14 @@ auto compactValues =
 auto commentedValues = {
                         first,
     second, /* trailing */};
-auto capture =
-    [
-        first,
-        second,
-        third,
-        fourth
-    ] {
-        Use(first, second);
-    };
+auto capture = [
+                first,
+                second,
+                third,
+                fourth
+] {
+    Use(first, second);
+};
 struct Item
     : First, Second, Third {
     Item()

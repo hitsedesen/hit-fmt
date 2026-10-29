@@ -34,12 +34,11 @@ template <class Item, class Tag> void PublishDescriptor(
     Tag tag,
     LongDescriptor& descriptor);
 
-auto generic =
-    [] <class FirstParameter, class SecondParameter>(
-        FirstParameter first,
-        SecondParameter second) {
-            return first;
-        };
+auto generic = [] <class FirstParameter, class SecondParameter>(
+    FirstParameter first,
+    SecondParameter second) {
+        return first;
+    };
 auto value =
     ConvertRecord<int, long>(
         firstLongInputDescription,

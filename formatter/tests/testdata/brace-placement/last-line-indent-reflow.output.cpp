@@ -55,14 +55,13 @@ struct Derived :
             Prepare();
             Execute();
         }
-        auto callback =
-            [](
-                Request request,
-                Settings settings
-            ) {
-                Prepare();
-                Execute();
-            };
+        auto callback = [](
+            Request request,
+            Settings settings
+        ) {
+            Prepare();
+            Execute();
+        };
     }
 };
 void WithComment(

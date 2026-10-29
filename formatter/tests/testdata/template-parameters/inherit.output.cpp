@@ -32,13 +32,11 @@ template <class FirstLongParameterName,
 void Invoke(FirstLongParameterName first,
     SecondLongParameterName second);
 
-auto generic =
-    [] <class FirstLongParameterName,
-        class SecondLongParameterName>(
-        FirstLongParameterName first,
-        SecondLongParameterName second) {
-            return first;
-        };
+auto generic = [] <class FirstLongParameterName,
+    class SecondLongParameterName>(FirstLongParameterName first,
+    SecondLongParameterName second) {
+        return first;
+    };
 
 // hit-fmt off
 template< class FirstLongParameterName ,  class SecondLongParameterName > struct Disabled {};

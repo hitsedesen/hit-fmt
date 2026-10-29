@@ -1746,15 +1746,14 @@ private:
             }
             auto next = NextSignificant(Cursor_ + 1);
             const bool boundaryEligible = constraintMayEnd || recoveredBoundary;
-            bool startsDeclaration =
-                angleDepth == 0 &&
-                    ((boundaryEligible &&
-                        (IsTypeKeyword(kind) || kind == TK::Keyword_class || kind == TK::Keyword_struct ||
-                            kind == TK::Keyword_union || kind == TK::Keyword_enum || kind == TK::Keyword_using ||
-                            kind == TK::Keyword_concept)) ||
-                        (constraintMayEnd && kind == TK::Identifier &&
-                            (Kind(next) == TK::Identifier || Kind(next) == TK::Keyword_operator ||
-                                Kind(next) == TK::Operator_OpenParenthesis)));
+            bool startsDeclaration = angleDepth == 0 &&
+                ((boundaryEligible &&
+                    (IsTypeKeyword(kind) || kind == TK::Keyword_class || kind == TK::Keyword_struct ||
+                        kind == TK::Keyword_union || kind == TK::Keyword_enum || kind == TK::Keyword_using ||
+                        kind == TK::Keyword_concept)) ||
+                    (constraintMayEnd && kind == TK::Identifier &&
+                        (Kind(next) == TK::Identifier || Kind(next) == TK::Keyword_operator ||
+                            Kind(next) == TK::Operator_OpenParenthesis)));
             // An adjacent return-type prefix follows a finished constraint,
             // never an operator awaiting its operand. Recovery alone retains
             // the stronger pointer/reference requirement.

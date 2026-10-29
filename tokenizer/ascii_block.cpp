@@ -206,16 +206,14 @@ void ClassifyAsciiBlock(const unsigned char* source, AsciiBlock& result) noexcep
 #endif
     result.Punctuation |= colon | dot | minus | bang | plus | percent | caret | ampersand | pipe | equals | less |
         greater | result.Stars | result.Slashes;
-    result.Pairs =
-        (colon & ((colon | greater) >> 1)) | (dot & (result.Stars >> 1)) | (minus & ((minus | greater) >> 1)) |
-            (plus & (plus >> 1)) | (ampersand & (ampersand >> 1)) | (pipe & (pipe >> 1)) |
-            (less & ((colon | percent | less) >> 1)) | (greater & (greater >> 1)) |
-            ((bang | plus | minus | result.Stars | result.Slashes | percent | caret | ampersand | pipe | equals | less |
-                greater) & (equals >> 1));
-    result.Triples =
-        (dot & (dot >> 1) & (dot >> 2)) | (minus & (greater >> 1) & (result.Stars >> 2)) |
-            (less & (less >> 1) & (equals >> 2)) | (greater & (greater >> 1) & (equals >> 2)) |
-            (less & (equals >> 1) & (greater >> 2));
+    result.Pairs = (colon & ((colon | greater) >> 1)) | (dot & (result.Stars >> 1)) |
+        (minus & ((minus | greater) >> 1)) | (plus & (plus >> 1)) | (ampersand & (ampersand >> 1)) |
+        (pipe & (pipe >> 1)) | (less & ((colon | percent | less) >> 1)) | (greater & (greater >> 1)) |
+        ((bang | plus | minus | result.Stars | result.Slashes | percent | caret | ampersand | pipe | equals | less |
+            greater) & (equals >> 1));
+    result.Triples = (dot & (dot >> 1) & (dot >> 2)) | (minus & (greater >> 1) & (result.Stars >> 2)) |
+        (less & (less >> 1) & (equals >> 2)) | (greater & (greater >> 1) & (equals >> 2)) |
+        (less & (equals >> 1) & (greater >> 2));
 
 }
 
