@@ -1386,6 +1386,24 @@ private:
             const auto t = part.Tokens.Begin;
             const bool separator = part.Kind == NodeKind::ListSeparator || part.Kind == NodeKind::RangeForSeparator;
             if (!separator) {
+                if (canonical && part.Kind == NodeKind::InitializerElement && Syntax_[child].Safe) {
+                    // Designator assignments belong to the list, while the
+                    // value's nested expression plans its own breaks.
+                    DirectTokens(
+                        child,
+                        [&] (Index token) {
+                            if (Tree_.Kind(token) != TokenKind::Operator_Assign) {
+                                return;
+                            }
+                            for (auto gap : {token, token + 1}) {
+                                if (Tree_.Kind(gap - 1) != TokenKind::Comment && Tree_.Kind(gap) != TokenKind::Comment)
+                                {
+                                    Own(gap, group, Boundary::Flat);
+                                    Gaps_[gap].SpaceFallback = Safety_.Gaps()[gap].HasLineFeed;
+                                }
+                            }
+                        });
+                }
                 if (canonical && part.Kind == NodeKind::ParameterDeclaration && Syntax_[child].Safe &&
                     part.FirstChild != None && Region(Syntax_[part.FirstChild]).Kind == NodeKind::DeclarationSpecifiers)
                 {

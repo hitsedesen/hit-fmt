@@ -1983,6 +1983,12 @@ std::vector<FormatCase> FormatCases()
     }
     // Keep safety and recovered-syntax examples in separate parse units.
     const auto spacing = data / "spacing-options";
+    AddCases(
+        cases,
+        spacing,
+        {"initializer-designators-preserve", "initializer-designators-delimiter"},
+        "initializer-designators.input.cpp");
+    ShareExpected(cases, spacing, "initializer-designators-preserve.output.cpp", "initializer-designators.input.cpp");
     cases.push_back({spacing, "cases-preserved", "indented-cases.input.cpp", "cases-preserved"});
     for (const auto& [name, indentation] :
         {
@@ -2471,9 +2477,17 @@ std::vector<FormatCase> FormatCases()
         cases,
         data / "requires-clause",
         {
-            "own-line", "own-line-no-indent", "own-line-with-brace", "with-preceding",
-            "with-following", "single-line", "narrow", "narrow-own-line", "preserve",
-            "headers-preserve", "brace-next-line",
+            "own-line",
+            "own-line-no-indent",
+            "own-line-with-brace",
+            "with-preceding",
+            "with-following",
+            "single-line",
+            "narrow",
+            "narrow-own-line",
+            "preserve",
+            "headers-preserve",
+            "brace-next-line",
         });
     AddCases(cases, data / "requires-lambdas", {"canonical", "narrow", "preserve"});
     {
