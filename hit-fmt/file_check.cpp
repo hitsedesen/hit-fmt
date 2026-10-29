@@ -459,7 +459,7 @@ void PrintFileIssues(
     std::string_view originalSource,
     const CheckedFile& checked,
     bool fix,
-    size_t terminalWidth)
+    const Terminal& terminal)
 {
     if (!fix && !checked.IncludeOrderChanges.empty()) {
         const auto position = checked.IncludeOrderChanges.front().Position;
@@ -516,7 +516,7 @@ void PrintFileIssues(
         const auto text = lines.at(position.Line - 1);
         const auto column = fix ? WidthCaretColumn(text, position.Column) : position.Column;
         output << gutter.substr(0, gutter.size() - 1) << '\n' << prefix;
-        const auto excerpt = PrintSourceExcerpt(output, text, column, prefix.size(), terminalWidth);
+        const auto excerpt = PrintSourceExcerpt(output, text, column, prefix.size(), terminal.Width);
         if (excerpt.CaretVisible) {
             output << gutter << std::string(excerpt.CaretOffset, ' ') << "^\n";
         }

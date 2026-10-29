@@ -90,7 +90,7 @@ consteval auto ParseConfigHelp()
 
 constexpr auto HelpBlocks = ParseConfigHelp();
 
-void PrintCode(std::ostream& output, std::string_view code, const TerminalColors& colors)
+void PrintCode(std::ostream& output, std::string_view code, const Terminal& terminal)
 {
     size_t start = 0;
     while (start < code.size()) {
@@ -101,14 +101,14 @@ void PrintCode(std::ostream& output, std::string_view code, const TerminalColors
             output << '\n';
             continue;
         }
-        output << (line.starts_with("//") || line.starts_with("#") ? colors.Dim : colors.Cyan) << "    " << line
-            << colors.Reset << '\n';
+        output << (line.starts_with("//") || line.starts_with("#") ? terminal.Dim : terminal.Cyan) << "    " << line
+            << terminal.Reset << '\n';
     }
 }
 
 } // namespace
 
-void PrintConfigHelp(std::ostream& output, const TerminalColors& colors)
+void PrintConfigHelp(std::ostream& output, const Terminal& terminal)
 {
     for (const auto& block : HelpBlocks) {
         switch (block.Kind) {
@@ -116,13 +116,13 @@ void PrintConfigHelp(std::ostream& output, const TerminalColors& colors)
                 output << block.Text;
                 break;
             case HelpBlockKind::Heading:
-                output << colors.BoldCyan << block.Text << colors.Reset << '\n';
+                output << terminal.BoldCyan << block.Text << terminal.Reset << '\n';
                 break;
             case HelpBlockKind::Example:
-                output << colors.BoldYellow << block.Text << colors.Reset << '\n';
+                output << terminal.BoldYellow << block.Text << terminal.Reset << '\n';
                 break;
             case HelpBlockKind::Code:
-                PrintCode(output, block.Text, colors);
+                PrintCode(output, block.Text, terminal);
                 break;
         }
     }

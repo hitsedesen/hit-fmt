@@ -6,6 +6,6 @@
 
 namespace hit_fmt {
 
-void PrintConfigHelp(std::ostream& output, const TerminalColors& colors);
+void PrintConfigHelp(std::ostream& output, const Terminal& terminal);
 
 } // namespace hit_fmt

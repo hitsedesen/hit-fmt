@@ -15,8 +15,7 @@ void PrintFormattingDiagnostics(
     std::string_view path,
     std::string_view source,
     std::string_view formatted,
-    const TerminalColors& colors,
-    size_t terminalWidth,
+    const Terminal& terminal,
     bool fixed = false,
     std::span<const IncludeOrderChange> includeChanges = {});
 

@@ -1,4 +1,5 @@
 #include <hit-fmt/file_check.hpp>
+#include <hit-fmt/formatting_diagnostics.hpp>
 #include <hit-fmt/options.hpp>
 #include <hit-fmt/terminal.hpp>
 
@@ -237,8 +238,9 @@ TEST(FileCheck, DiagnosticGoldenUsesOriginalCheckAndFinalFixCoordinates)
         for (const auto fix : {false, true}) {
             SCOPED_TRACE(fix ? "fix" : "check");
             SCOPED_TRACE(terminalWidth);
+            const hit_fmt::Terminal terminal(false, terminalWidth);
             std::ostringstream output;
-            hit_fmt::PrintFileIssues(output, "sample.cpp", input.View().View(), checked, fix, terminalWidth);
+            hit_fmt::PrintFileIssues(output, "sample.cpp", input.View().View(), checked, fix, terminal);
             output << "summary: ";
             hit_fmt::PrintFileSummaryIssues(output, checked, fix);
             output << '\n';
@@ -247,6 +249,34 @@ TEST(FileCheck, DiagnosticGoldenUsesOriginalCheckAndFinalFixCoordinates)
                 terminalWidth == 80
                 ? (fix ? ".fix.txt" : ".check.txt")
                 : (fix ? ".fix-narrow.txt" : ".check-narrow.txt"));
+
+        }
+    }
+}
+
+TEST(FileCheck, FormattingDiagnosticsUseTerminalWidth)
+{
+    const test::golden::Fixture fixture{
+        std::filesystem::path(__FILE__).parent_path() / "testdata/file-check",
+        "terminal",
+    };
+    const std::string_view source = "void Good() { invoke(first_argument,second_value,third_argument); }\n";
+    const std::string_view formatted = "void Good() { invoke(first_argument, second_value, third_argument); }\n";
+    for (const auto width : {size_t(80), size_t(32)}) {
+        for (const bool fixed : {false, true}) {
+            SCOPED_TRACE(width);
+            SCOPED_TRACE(fixed);
+            std::ostringstream output;
+            hit_fmt::PrintFormattingDiagnostics(
+                output,
+                "sample.cpp",
+                source,
+                formatted,
+                hit_fmt::Terminal(false, width),
+                fixed);
+            fixture.Expect(
+                output.str(),
+                width == 80 ? (fixed ? ".fix.txt" : ".check.txt") : (fixed ? ".fix-narrow.txt" : ".check-narrow.txt"));
         }
     }
 }
@@ -318,7 +348,7 @@ TEST(FileCheck, UnicodeWidthDiagnosticGoldenMapsCodePointsAndTabs)
     EXPECT_EQ(checked.OriginalWidthPositions[1].Column, 12u);
     for (const bool fix : {false, true}) {
         std::ostringstream output;
-        hit_fmt::PrintFileIssues(output, "unicode.cpp", input.View().View(), checked, fix, 80);
+        hit_fmt::PrintFileIssues(output, "unicode.cpp", input.View().View(), checked, fix);
         fixture.Expect(output.str(), fix ? ".fix.txt" : ".check.txt");
     }
 
@@ -451,9 +481,9 @@ TEST(FileCheck, UsageErrorDiagnosticGolden)
         }
         catch (const hit_fmt::UsageError& error) {
             output << "plain:\n";
-            hit_fmt::PrintError(output, error.what(), hit_fmt::TerminalColors());
+            hit_fmt::PrintError(output, error.what(), hit_fmt::Terminal());
             output << "colored:\n";
-            hit_fmt::PrintError(output, error.what(), hit_fmt::TerminalColors(true));
+            hit_fmt::PrintError(output, error.what(), hit_fmt::Terminal(true));
         }
     }
     test::golden::ExpectGolden(std::filesystem::path(HIT_FMT_TESTDATA_DIR) / "usage_error.out", output.str());

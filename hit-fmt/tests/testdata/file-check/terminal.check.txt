@@ -1,0 +1,11 @@
+fail: 2 violations
+  --> sample.cpp:1:37
+  |
+1 | void Good() { invoke(first_argument,second_value,third_argument); }
+  |                                     ^
+  |   expected one space before 'second_value', found no whitespace
+1 | void Good() { invoke(first_argument,second_value,third_argument); }
+  |                                                  ^
+  |   expected one space before 'third_argument', found no whitespace
+  suggested formatting:
+  + void Good() { invoke(first_argument, second_value, third_argument); }

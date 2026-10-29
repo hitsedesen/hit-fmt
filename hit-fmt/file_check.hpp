@@ -1,5 +1,7 @@
 #pragma once
 
+#include "terminal.hpp"
+
 #include <formatter/config.hpp>
 #include <formatter/formatter.hpp>
 #include <formatter/hunks.hpp>
@@ -91,7 +93,7 @@ void PrintFileIssues(
     std::string_view originalSource,
     const CheckedFile& checked,
     bool fix,
-    size_t terminalWidth = 80);
+    const Terminal& terminal = Terminal{});
 
 // Summary preserves all failure categories, not only the first one.
 void PrintFileSummaryIssues(std::ostream& output, const CheckedFile& checked, bool fix);

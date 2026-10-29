@@ -21,7 +21,7 @@ namespace hit_fmt {
 
 namespace {
 
-bool UseTerminalColors(FILE* stream)
+bool UseColors(FILE* stream)
 {
     if (std::getenv("NO_COLOR") != nullptr) {
         return false;
@@ -36,30 +36,22 @@ bool UseTerminalColors(FILE* stream)
 #endif
 }
 
-} // namespace
-
-TerminalColors GetTerminalColors(FILE* stream)
-{
-    return TerminalColors(UseTerminalColors(stream));
-}
-
-void PrintError(std::ostream& output, std::string_view message, const TerminalColors& colors)
-{
-    output << colors.BoldRed << message << colors.Reset << '\n';
-}
-
-size_t TerminalWidth()
+size_t QueryTerminalWidth(FILE* stream)
 {
 #ifdef _WIN32
-    CONSOLE_SCREEN_BUFFER_INFO info{};
-    if (GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &info)) {
-        const auto width = info.srWindow.Right - info.srWindow.Left + 1;
-        if (width > 0) {
-            return std::max<size_t>(24, width);
+    if (const auto descriptor = _fileno(stream); descriptor >= 0) {
+        const auto handle = reinterpret_cast<HANDLE>(_get_osfhandle(descriptor));
+        CONSOLE_SCREEN_BUFFER_INFO info{};
+        if (GetConsoleScreenBufferInfo(handle, &info)) {
+            const auto width = info.srWindow.Right - info.srWindow.Left + 1;
+            if (width > 0) {
+                return std::max<size_t>(24, width);
+            }
         }
     }
 #else
-    if (winsize size{}; isatty(fileno(stdout)) && ioctl(fileno(stdout), TIOCGWINSZ, &size) == 0 && size.ws_col > 0) {
+    const auto descriptor = fileno(stream);
+    if (winsize size{}; isatty(descriptor) && ioctl(descriptor, TIOCGWINSZ, &size) == 0 && size.ws_col > 0) {
         return std::max<size_t>(24, size.ws_col);
     }
 #endif
@@ -72,6 +64,18 @@ size_t TerminalWidth()
         }
     }
     return 80;
+}
+
+} // namespace
+
+Terminal GetTerminal(FILE* stream)
+{
+    return Terminal(UseColors(stream), QueryTerminalWidth(stream));
+}
+
+void PrintError(std::ostream& output, std::string_view message, const Terminal& terminal)
+{
+    output << terminal.BoldRed << message << terminal.Reset << '\n';
 }
 
 } // namespace hit_fmt

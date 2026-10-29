@@ -70,17 +70,12 @@ void PrintWrappedMessage(std::ostream& output, std::string_view message, std::st
     }
 }
 
-void PrintSuggestedLine(
-    std::ostream& output,
-    std::string_view text,
-    size_t terminalWidth,
-    size_t gutterWidth,
-    const TerminalColors& colors)
+void PrintSuggestedLine(std::ostream& output, std::string_view text, size_t gutterWidth, const Terminal& terminal)
 {
     auto cells = RenderLine(text, 0, gutterWidth).Cells;
-    auto available = terminalWidth > gutterWidth + 1 ? terminalWidth - gutterWidth - 1 : size_t{16};
+    auto available = terminal.Width > gutterWidth + 1 ? terminal.Width - gutterWidth - 1 : size_t{16};
     for (size_t begin = 0;;) {
-        output << colors.Green;
+        output << terminal.Green;
         if (begin) {
             output << std::string(gutterWidth, ' ');
         } else {
@@ -88,7 +83,7 @@ void PrintSuggestedLine(
         }
         auto end = std::min(cells.size(), begin + available);
         PrintCells(output, cells, begin, end);
-        output << colors.Reset;
+        output << terminal.Reset;
         output << '\n';
         if (end == cells.size()) {
             break;
@@ -653,8 +648,7 @@ void PrintFormattingDiagnostics(
     std::string_view path,
     std::string_view source,
     std::string_view formatted,
-    const TerminalColors& colors,
-    size_t terminalWidth,
+    const Terminal& terminal,
     bool fixed,
     std::span<const hit_fmt::IncludeOrderChange> includeChanges)
 {
@@ -667,19 +661,19 @@ void PrintFormattingDiagnostics(
                 return a.Line < b.Line || (a.Line == b.Line && a.Column < b.Column);
             });
         const auto& first = chunk.Violations.front();
-        output << (fixed ? colors.BoldGreen : colors.BoldRed);
+        output << (fixed ? terminal.BoldGreen : terminal.BoldRed);
         output << (fixed ? "fixed: " : "fail: ") << chunk.Violations.size() << " violation"
             << (chunk.Violations.size() == 1 ? "" : "s");
-        output << colors.Reset;
+        output << terminal.Reset;
         auto location = std::string(path) + ':' + std::to_string(first.Line) + ':' + std::to_string(first.Column);
         if (fixed) {
             location += " [original source; before formatting]";
         }
-        if (location.size() + 6 <= terminalWidth) {
+        if (location.size() + 6 <= terminal.Width) {
             output << "\n  --> " << location << '\n';
         } else {
             output << "\n  -->\n    ";
-            PrintWrappedMessage(output, location, "    ", terminalWidth);
+            PrintWrappedMessage(output, location, "    ", terminal.Width);
         }
         const auto width = std::to_string(chunk.End - 1).size();
         const auto gutter = std::string(width + 1, ' ') + "| ";
@@ -694,7 +688,7 @@ void PrintFormattingDiagnostics(
                 std::string(width - std::to_string(lineNumber).size(), ' ') + std::to_string(lineNumber) + " | ";
             auto printLine = [&] (size_t column, bool fromStart = false) {
                 output << prefix;
-                return PrintSourceExcerpt(output, text, column, prefix.size(), terminalWidth, fromStart);
+                return PrintSourceExcerpt(output, text, column, prefix.size(), terminal.Width, fromStart);
             };
             if (violationIndex == chunk.Violations.size() || chunk.Violations[violationIndex].Line != lineNumber) {
                 printLine(0);
@@ -706,15 +700,15 @@ void PrintFormattingDiagnostics(
                 if (!excerpt.CaretVisible) {
                     // Do not imply that the cropped end of a long line is
                     // the exact token at ColumnLimit + 1.
-                    PrintWrappedMessage(output, violation.Message, gutter, terminalWidth);
+                    PrintWrappedMessage(output, violation.Message, gutter, terminal.Width);
                     continue;
                 }
                 output << std::string(excerpt.CaretOffset, ' ') << '^';
-                if (gutter.size() + excerpt.CaretOffset + 2 + violation.Message.size() < terminalWidth) {
+                if (gutter.size() + excerpt.CaretOffset + 2 + violation.Message.size() < terminal.Width) {
                     output << ' ' << violation.Message << '\n';
                 } else {
                     output << '\n' << gutter;
-                    PrintWrappedMessage(output, violation.Message, gutter, terminalWidth);
+                    PrintWrappedMessage(output, violation.Message, gutter, terminal.Width);
                 }
             }
         }
@@ -722,7 +716,7 @@ void PrintFormattingDiagnostics(
             output << (fixed ? "  applied formatting:\n" : "  suggested formatting:\n");
             const auto& fix = chunk.Fix;
             for (const auto& line : fix) {
-                PrintSuggestedLine(output, line.Text, terminalWidth, gutter.size(), colors);
+                PrintSuggestedLine(output, line.Text, gutter.size(), terminal);
                 if (!line.HasNewline) {
                     output << std::string(gutter.size(), ' ') << "\\ No newline at end of file\n";
                 }

@@ -10,14 +10,14 @@
 TEST(ConfigHelp, Golden)
 {
     std::ostringstream output;
-    hit_fmt::PrintConfigHelp(output, hit_fmt::TerminalColors());
+    hit_fmt::PrintConfigHelp(output, hit_fmt::Terminal());
     test::golden::ExpectGolden(std::filesystem::path(HIT_FMT_TESTDATA_DIR) / "config_help.out", output.str());
 }
 
 TEST(ConfigHelp, ReadableLinesAndColorParity)
 {
     std::ostringstream plain;
-    hit_fmt::PrintConfigHelp(plain, hit_fmt::TerminalColors());
+    hit_fmt::PrintConfigHelp(plain, hit_fmt::Terminal());
     std::istringstream lines(plain.str());
     std::string line;
     while (std::getline(lines, line)) {
@@ -25,7 +25,7 @@ TEST(ConfigHelp, ReadableLinesAndColorParity)
     }
 
     std::ostringstream colored;
-    hit_fmt::PrintConfigHelp(colored, hit_fmt::TerminalColors(true));
+    hit_fmt::PrintConfigHelp(colored, hit_fmt::Terminal(true));
     const auto text = colored.str();
     EXPECT_NE(text.find("\033["), std::string::npos);
     std::string stripped;

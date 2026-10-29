@@ -201,20 +201,20 @@ bool DiscoverFiles(const Options& options, StyleResolver& resolver, Visit visit)
     return true;
 }
 
-void PrintHelp(std::ostream& output, std::string_view executable, const TerminalColors& colors)
+void PrintHelp(std::ostream& output, std::string_view executable, const Terminal& terminal)
 {
     auto highlight = [&] (std::string_view text, std::string_view color) {
-        output << color << text << colors.Reset;
+        output << color << text << terminal.Reset;
     };
     auto option = [&] (std::string_view name, std::string_view description) {
         output << "  ";
-        highlight(name, colors.BoldYellow);
+        highlight(name, terminal.BoldYellow);
         output << description << '\n';
     };
-    highlight("Usage:", colors.BoldCyan);
+    highlight("Usage:", terminal.BoldCyan);
     output << "\n  " << executable << " [options] <path>...\n" << "  " << executable
         << " --fix [options] <path>...\n\n";
-    highlight("Options:", colors.BoldCyan);
+    highlight("Options:", terminal.BoldCyan);
     output << '\n';
     option("--fix", "            Fix what can be fixed; check the result.");
     option("--check", "          Check without editing (default; optional).");
@@ -248,7 +248,7 @@ void PrintHelp(std::ostream& output, std::string_view executable, const Terminal
         << "Nonempty CallLikeMacroNames are currently unsupported.\n"
         << "Configure ClassMacroNames with Begin:End pairs for " "class-generating macros; see --help-config.\n"
         << "Output is colorized when written to a terminal; set " "NO_COLOR to disable it.\n\n";
-    highlight("Examples:", colors.BoldCyan);
+    highlight("Examples:", terminal.BoldCyan);
     output << '\n';
     for (auto example :
         {
@@ -261,7 +261,7 @@ void PrintHelp(std::ostream& output, std::string_view executable, const Terminal
         })
     {
         output << "  ";
-        highlight(executable, colors.BoldGreen);
+        highlight(executable, terminal.BoldGreen);
         output << example << '\n';
     }
 }
@@ -284,34 +284,32 @@ void PrintCheckResult(
     std::string_view source,
     const CheckedFile& checked,
     const Options& options,
-    const TerminalColors& colors)
+    const Terminal& terminal)
 {
     if (options.SummaryOnly) {
         if (options.Fix && checked.FormattingMismatch) {
-            output << colors.BoldGreen << path << ": fixed formatting" << colors.Reset << '\n';
+            output << terminal.BoldGreen << path << ": fixed formatting" << terminal.Reset << '\n';
         }
         if (checked.HasFailures(options.Fix)) {
-            output << colors.BoldRed << path << ": ";
+            output << terminal.BoldRed << path << ": ";
             PrintFileSummaryIssues(output, checked, options.Fix);
-            output << colors.Reset << '\n';
+            output << terminal.Reset << '\n';
         }
         return;
     }
-    const auto terminalWidth = TerminalWidth();
     if (checked.FormattingMismatch && options.Fix) {
-        PrintFormattingDiagnostics(output, path, source, checked.Formatting.Text, colors, terminalWidth, true);
+        PrintFormattingDiagnostics(output, path, source, checked.Formatting.Text, terminal, true);
     } else if (checked.FormattingMismatch) {
         PrintFormattingDiagnostics(
             output,
             path,
             source,
             checked.Formatting.Text,
-            colors,
-            terminalWidth,
+            terminal,
             false,
             checked.IncludeOrderChanges);
     }
-    PrintFileIssues(output, path, source, checked, options.Fix, terminalWidth);
+    PrintFileIssues(output, path, source, checked, options.Fix, terminal);
 }
 
 FileResult ProcessFile(
@@ -319,7 +317,7 @@ FileResult ProcessFile(
     StyleResolver& resolver,
     const Options& options,
     const formatter::ChangedHunkFiles& changed,
-    const TerminalColors& colors)
+    const Terminal& terminal)
 {
     FileResult result;
     std::ostringstream output;
@@ -342,7 +340,7 @@ FileResult ProcessFile(
         if (options.Fix && checked.FormattingMismatch) {
             util::WriteEntireFile(filePath, checked.Formatting.Text);
         }
-        PrintCheckResult(output, filePath, source.View(), checked, options, colors);
+        PrintCheckResult(output, filePath, source.View(), checked, options, terminal);
         result.Mismatches = checked.HasFailures(options.Fix);
     }
     catch (const util::FileTooLargeError& error) {
@@ -360,7 +358,7 @@ template <typename Print>
 bool DispatchFiles(
     const Options& options,
     const formatter::ChangedHunkFiles& changed,
-    const TerminalColors& colors,
+    const Terminal& terminal,
     Print&& print)
 {
     StyleResolver discoveryResolver(options);
@@ -368,7 +366,7 @@ bool DispatchFiles(
         return DiscoverFiles(options, discoveryResolver, visit);
     };
     const auto process = [&] (const auto& path, StyleResolver& resolver) {
-        return ProcessFile(path, resolver, options, changed, colors);
+        return ProcessFile(path, resolver, options, changed, terminal);
     };
     if (options.Threads == 1) {
         return RunSerialFiles(discover, discoveryResolver, process, print);
@@ -390,31 +388,31 @@ bool PrintFileResult(const FileResult& result, size_t& mismatchCount)
     return result.Failed;
 }
 
-void PrintSummary(size_t mismatchCount, bool changedHunks, const TerminalColors& colors)
+void PrintSummary(size_t mismatchCount, bool changedHunks, const Terminal& terminal)
 {
-    if (colors.Reset.empty()) {
+    if (terminal.Reset.empty()) {
         return;
     }
     if (mismatchCount == 0) {
-        std::cout << colors.BoldGreen
+        std::cout << terminal.BoldGreen
             << (changedHunks ? "No hunk or spillover violations found." : "All checked files are formatted.")
-            << colors.Reset << '\n';
+            << terminal.Reset << '\n';
     } else {
-        std::cout << colors.BoldRed << mismatchCount << " file" << (mismatchCount == 1 ? "" : "s")
-            << " require formatting, naming or parameter names." << colors.Reset << '\n';
+        std::cout << terminal.BoldRed << mismatchCount << " file" << (mismatchCount == 1 ? "" : "s")
+            << " require formatting, naming or parameter names." << terminal.Reset << '\n';
     }
 }
 
-int RunFiles(const Options& options, const formatter::ChangedHunkFiles& changed, const TerminalColors& colors)
+int RunFiles(const Options& options, const formatter::ChangedHunkFiles& changed, const Terminal& terminal)
 {
     size_t mismatchCount = 0;
     const auto print = [&mismatchCount] (const FileResult& result) {
         return PrintFileResult(result, mismatchCount);
     };
-    if (!DispatchFiles(options, changed, colors, print)) {
+    if (!DispatchFiles(options, changed, terminal, print)) {
         return 1;
     }
-    PrintSummary(mismatchCount, options.HunkInput.has_value(), colors);
+    PrintSummary(mismatchCount, options.HunkInput.has_value(), terminal);
     return mismatchCount != 0 ? 1 : 0;
 }
 
@@ -423,9 +421,9 @@ int RunFiles(const Options& options, const formatter::ChangedHunkFiles& changed,
 int Run(std::span<const char* const> args)
 {
     auto options = ParseOptions(args);
-    const auto colors = GetTerminalColors();
+    const auto terminal = GetTerminal();
     if (options.ShowHelp) {
-        PrintHelp(std::cout, args[0], colors);
+        PrintHelp(std::cout, args[0], terminal);
         return 0;
     }
     if (options.ShowVersion) {
@@ -433,7 +431,7 @@ int Run(std::span<const char* const> args)
         return 0;
     }
     if (options.ShowConfigHelp) {
-        PrintConfigHelp(std::cout, colors);
+        PrintConfigHelp(std::cout, terminal);
         return 0;
     }
     if (options.GenerateConfig) {
@@ -445,10 +443,10 @@ int Run(std::span<const char* const> args)
         changed = ReadChangedHunks(*options.HunkInput);
         options.Paths = std::move(changed.Paths);
     } else if (options.Paths.empty()) {
-        PrintHelp(std::cerr, args[0], GetTerminalColors(stderr));
+        PrintHelp(std::cerr, args[0], GetTerminal(stderr));
         return 1;
     }
-    return RunFiles(options, changed, colors);
+    return RunFiles(options, changed, terminal);
 }
 
 } // namespace hit_fmt

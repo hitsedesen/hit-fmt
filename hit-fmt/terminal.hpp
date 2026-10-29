@@ -7,9 +7,10 @@
 
 namespace hit_fmt {
 
-struct TerminalColors
+struct Terminal
 {
-    explicit TerminalColors(bool enabled = false)
+    explicit Terminal(bool enabled = false, size_t width = 80)
+        : Width(width)
     {
         if (enabled) {
             Reset = "\033[0m";
@@ -23,6 +24,7 @@ struct TerminalColors
         }
     }
 
+    size_t Width;
     std::string_view Reset;
     std::string_view BoldRed;
     std::string_view BoldGreen;
@@ -33,10 +35,8 @@ struct TerminalColors
     std::string_view Dim;
 };
 
-TerminalColors GetTerminalColors(FILE* stream = stdout);
+Terminal GetTerminal(FILE* stream = stdout);
 
-void PrintError(std::ostream& output, std::string_view message, const TerminalColors& colors);
-
-size_t TerminalWidth();
+void PrintError(std::ostream& output, std::string_view message, const Terminal& terminal);
 
 } // namespace hit_fmt
