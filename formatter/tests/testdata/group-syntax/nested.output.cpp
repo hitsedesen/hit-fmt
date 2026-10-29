@@ -20,15 +20,14 @@ struct Derived: Base {
       ++index
     )
     {
-      auto callback =
-        [first, second](
-          int extra
-        )
-        {
-          return first
-            ? second + extra
-            : 0;
-        };
+      auto callback = [
+        first,
+        second
+      ](int extra)
+      {
+        return first
+          ? second + extra : 0;
+      };
       consume(
         first,
         callback(second),

@@ -20,10 +20,9 @@ Pair<
 template<class T> void UseArguments(T value) {
     Invoke<T, types::Box<FirstLongTemplateArgument>, SecondLongTemplateArgument>(
         value);
-    auto result =
-        object
-            .template Convert<FirstLongTemplateArgument, SecondLongTemplateArgument>(
-                value);
+    auto result = object
+        .template Convert<FirstLongTemplateArgument, SecondLongTemplateArgument>(
+            value);
     auto cast =
         static_cast<types::Pair<FirstLongTemplateArgument, SecondLongTemplateArgument>>(value);
     auto qualified =

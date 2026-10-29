@@ -1870,18 +1870,10 @@ private:
                     }
                     const auto split = side == OperatorSide::Leading ? t : t + 1;
                     Own(split, group, boundary, document::GapKind::Hard);
-                    if (role == PunctuationRole::AssignmentOperator && boundary == Boundary::Soft &&
-                        LastChild_[segment] != None)
-                    {
-                        const auto& rhs = Region(Syntax_[LastChild_[segment]]);
-                        if (rhs.Kind == NodeKind::BracedInitializer ||
-                            (rhs.Kind == NodeKind::TypeConstructionExpression &&
-                                Tree_.Kind(rhs.Tokens.End - 1) == TokenKind::Operator_CloseBrace))
-                        {
-                            // Moving a braced RHS that cannot fit intact adds
-                            // a parent break without avoiding its list breaks.
-                            Gaps_[split].FitNextSegmentIfOverflow = true;
-                        }
+                    if (role == PunctuationRole::AssignmentOperator && boundary == Boundary::Soft) {
+                        // Moving an RHS that cannot fit intact adds a parent
+                        // break without avoiding its independent child breaks.
+                        Gaps_[split].FitNextSegmentIfOverflow = true;
                     }
                     if (kind == NodeKind::BinaryExpression && !comparison && boundary == Boundary::Soft &&
                         Policies_.ColumnLimit != 0 && LastChild_[segment] != None &&
@@ -4091,18 +4083,17 @@ private:
         const auto& policy = Policies_.VerticalGaps;
         const bool commentRules = policy.StandaloneCommentBlankLinesBefore.Mode == VerticalGapMode::Exact ||
             policy.StandaloneCommentBlankLinesAfter.Mode == VerticalGapMode::Exact;
-        const bool sequenceRules =
-            commentRules || policy.DeclarationBlankLines.Mode == VerticalGapMode::Exact ||
-                policy.DeclarationCategoryBlankLines.Mode == VerticalGapMode::Exact ||
-                policy.MemberDeclarationBlankLines.Mode == VerticalGapMode::Exact ||
-                policy.DefinitionBlankLines.Mode == VerticalGapMode::Exact ||
-                policy.MemberDefinitionBlankLines.Mode == VerticalGapMode::Exact ||
-                policy.NamespaceBlankLinesAfterOpen.Mode == VerticalGapMode::Exact ||
-                policy.NamespaceBlankLinesBeforeClose.Mode == VerticalGapMode::Exact ||
-                policy.LinkageBlankLinesAfterOpen.Mode == VerticalGapMode::Exact ||
-                policy.LinkageBlankLinesBeforeClose.Mode == VerticalGapMode::Exact ||
-                policy.AccessSectionBlankLinesBefore.Mode == VerticalGapMode::Exact ||
-                policy.AccessSectionBlankLinesAfterLabel.Mode == VerticalGapMode::Exact;
+        const bool sequenceRules = commentRules || policy.DeclarationBlankLines.Mode == VerticalGapMode::Exact ||
+            policy.DeclarationCategoryBlankLines.Mode == VerticalGapMode::Exact ||
+            policy.MemberDeclarationBlankLines.Mode == VerticalGapMode::Exact ||
+            policy.DefinitionBlankLines.Mode == VerticalGapMode::Exact ||
+            policy.MemberDefinitionBlankLines.Mode == VerticalGapMode::Exact ||
+            policy.NamespaceBlankLinesAfterOpen.Mode == VerticalGapMode::Exact ||
+            policy.NamespaceBlankLinesBeforeClose.Mode == VerticalGapMode::Exact ||
+            policy.LinkageBlankLinesAfterOpen.Mode == VerticalGapMode::Exact ||
+            policy.LinkageBlankLinesBeforeClose.Mode == VerticalGapMode::Exact ||
+            policy.AccessSectionBlankLinesBefore.Mode == VerticalGapMode::Exact ||
+            policy.AccessSectionBlankLinesAfterLabel.Mode == VerticalGapMode::Exact;
         if (sequenceRules) {
             std::pmr::vector<Index> children(Syntax_.get_allocator().resource());
             std::pmr::vector<Index> following(Syntax_.get_allocator().resource());

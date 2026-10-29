@@ -46,14 +46,13 @@ void Visit()
         bool trailingLabel) {
             VisitNode(node, parent, previous, trailingLabel);
         };
-    auto empty =
-        [] (
-            const Node* node,
-            NodeKind parent,
-            NodeKind previous,
-            bool trailingLabel) {
-                VisitNode(node, parent, previous, trailingLabel);
-            };
+    auto empty = [] (
+        const Node* node,
+        NodeKind parent,
+        NodeKind previous,
+        bool trailingLabel) {
+            VisitNode(node, parent, previous, trailingLabel);
+        };
     auto wide = [
         firstLabel = MakeFirstLabel(),
         secondLabel = MakeSecondLabel(),
