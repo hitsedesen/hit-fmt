@@ -435,7 +435,9 @@ inline FormatResult ProjectHunkFormat(
                 canonical.OutputProtection.begin(),
                 canonical.OutputProtection.end(),
                 piece.Input.Begin,
-                [] (const auto& range, auto begin) { return range.Source.End <= begin; });
+                [] (const auto& range, auto begin) {
+                    return range.Source.End <= begin;
+                });
             for (;
                 protection != canonical.OutputProtection.end() && protection->Source.Begin < piece.Input.End;
                 ++protection)
@@ -457,7 +459,9 @@ inline FormatResult ProjectHunkFormat(
                 protections.begin(),
                 protections.end(),
                 piece.Input.Begin,
-                [] (const auto& range, auto begin) { return range.Source.End <= begin; });
+                [] (const auto& range, auto begin) {
+                    return range.Source.End <= begin;
+                });
             for (; protection != protections.end() && protection->Source.Begin < piece.Input.End; ++protection) {
                 const auto& protectedRange = *protection;
                 const Range part{
@@ -481,7 +485,9 @@ inline FormatResult ProjectHunkFormat(
             patches.begin(),
             patches.end(),
             owner.Begin,
-            [] (const auto& candidate, auto begin) { return candidate.Original.End <= begin; });
+            [] (const auto& candidate, auto begin) {
+                return candidate.Original.End <= begin;
+            });
         if (patch != patches.end() && patch->Original.Begin <= owner.Begin && owner.End <= patch->Original.End) {
             (void)action(id);
         }
@@ -530,7 +536,9 @@ inline FormatResult ProjectHunkFormat(
     std::sort(
         diagnosticTokens.begin(),
         diagnosticTokens.end(),
-        [] (const auto& a, const auto& b) { return a.Canonical.Begin < b.Canonical.Begin; });
+        [] (const auto& a, const auto& b) {
+            return a.Canonical.Begin < b.Canonical.Begin;
+        });
     struct DiagnosticPoint
     {
         Offset Output;
@@ -565,7 +573,9 @@ inline FormatResult ProjectHunkFormat(
             diagnosticTokens.begin(),
             diagnosticTokens.end(),
             offset,
-            [] (auto point, const auto& candidate) { return point < candidate.Canonical.Begin; });
+            [] (auto point, const auto& candidate) {
+                return point < candidate.Canonical.Begin;
+            });
         if (token != diagnosticTokens.begin()) {
             --token;
             if (offset < token->Canonical.End) {
@@ -579,7 +589,9 @@ inline FormatResult ProjectHunkFormat(
             canonicalPieces.begin(),
             canonicalPieces.end(),
             offset,
-            [] (auto point, const auto& candidate) { return point < candidate.Input.Begin; });
+            [] (auto point, const auto& candidate) {
+                return point < candidate.Input.Begin;
+            });
         if (piece != canonicalPieces.begin()) {
             --piece;
             if (offset < piece->Input.End) {

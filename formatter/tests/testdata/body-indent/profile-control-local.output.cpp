@@ -3,7 +3,10 @@ void Dispatch()
     if (Ready()) [[likely]] {
         Act();
     }
-    if ([] { return true; }()) {
+    if ([] {
+        return true;
+    }())
+    {
         Act();
     }
     while (DrainQueue()) { }
@@ -17,8 +20,10 @@ void Dispatch()
         {
             return false;
         }
+
         void Empty()
         { }
+
         void Run()
         {
             Check();

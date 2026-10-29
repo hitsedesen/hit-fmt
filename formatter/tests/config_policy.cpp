@@ -1163,7 +1163,11 @@ TEST(ConfigPolicy, ClassMacroHintsRejectMalformedOrAmbiguousPairs)
 TEST(ConfigPolicy, OrderedGroupIndexPreservesEarliestRule)
 {
     const formatter::PreparedIncludeGroups groups(std::vector<formatter::IncludeGroupRule>{
-        {{"engine/", "mirror/engine/"}, 2, 7}, {{"engine/detail/"}, 1, -3}, {{"platform/"}, 0}, {{"eng/"}, 3},});
+        {{"engine/", "mirror/engine/"}, 2, 7},
+        {{"engine/detail/"}, 1, -3},
+        {{"platform/"}, 0},
+        {{"eng/"}, 3},
+    });
     EXPECT_EQ(groups.Classify("engine/detail/item.h").Group, 0u);
     const auto alias = groups.Classify("mirror/engine/detail/item.h");
     EXPECT_EQ(alias.Group, 0u);

@@ -6,15 +6,9 @@ struct TOptions
     int RetryCount;
 };
 
-const int BucketSizes[] = {
-    3, 6, 12, 24,
-    48, 96, 192, 384,
-};
+const int BucketSizes[] = {3, 6, 12, 24, 48, 96, 192, 384};
 
-const TOptions DefaultOptions{
-    .Capacity = 16,
-    .RetryCount = 3,
-};
+const TOptions DefaultOptions{.Capacity = 16, .RetryCount = 3};
 
 const TOptions CompactOptions{8, 1};
 

@@ -64,7 +64,7 @@ Output Lower(
     std::pmr::memory_resource* scratchUpstream = std::pmr::get_default_resource())
 {
     const test::Input source(input);
-    auto tree = parser::Parse(source.View(), [] (parser::ParseError) {});
+    auto tree = parser::Parse(source.View(), [] (parser::ParseError) { });
     std::pmr::monotonic_buffer_resource file(fileUpstream);
     std::pmr::monotonic_buffer_resource scratchArena(scratchUpstream);
     RequestResource scratch(scratchArena);
@@ -85,11 +85,7 @@ Output Lower(
     if (!rendered.State) {
         throw std::runtime_error("failed rendering");
     }
-    return {
-        std::string(rendered.Text),
-        {rendered.Broken.begin(), rendered.Broken.end()},
-        scratch.BytesRequested,
-    };
+    return {std::string(rendered.Text), {rendered.Broken.begin(), rendered.Broken.end()}, scratch.BytesRequested};
 }
 
 formatter::Style Canonical(size_t width = 40)
@@ -340,7 +336,12 @@ TEST(SyntaxLayout, PartialFixedLinesCannotSatisfyAlwaysOwnedBreak)
     style.CallsBreak = formatter::BreakRequirement::Always;
     const auto output = Lower(input, style, {}, scope);
     EXPECT_NE(output.Text.find("call(\n    alpha,\n    beta);"), std::string::npos) << output.Text;
-    EXPECT_TRUE(std::any_of(output.Broken.begin(), output.Broken.end(), [] (uint8_t value) { return value != 0; }));
+    EXPECT_TRUE(std::any_of(
+        output.Broken.begin(),
+        output.Broken.end(),
+        [] (uint8_t value) {
+            return value != 0;
+        }));
     scope.EditScope = std::span(ranges).first(1);
     EXPECT_EQ(Lower(input, style, {}, scope).Text, "void f() {\n  call(\n    alpha, beta);\n}\n");
 }
@@ -629,8 +630,11 @@ TEST(SyntaxLayout, DanglingElseRemainsOwnedByNearestIf)
     std::string storage = source;
     storage.append(util::SourcePaddingSize, '\0');
     size_t errors = 0;
-    const auto tree =
-        parser::Parse({storage.data(), static_cast<uint32_t>(source.size())}, [&] (parser::ParseError) { ++errors; });
+    const auto tree = parser::Parse(
+        {storage.data(), static_cast<uint32_t>(source.size())},
+        [&] (parser::ParseError) {
+            ++errors;
+        });
     EXPECT_EQ(errors, 0u);
     const parser::Node* outer = nullptr;
     const parser::Node* inner = nullptr;
@@ -2076,7 +2080,8 @@ TEST(SyntaxLayout, RecordHeadCommaPreferenceIsClassifiedAndLocallyAuthorized)
     const std::string source = "template<> struct Pair<int,long> {};\n";
     std::string storage(source);
     storage.append(util::SourcePaddingSize, '\0');
-    const auto tree = parser::Parse({storage.data(), static_cast<uint32_t>(source.size())}, [] (parser::ParseError) {});
+    const auto tree =
+        parser::Parse({storage.data(), static_cast<uint32_t>(source.size())}, [] (parser::ParseError) { });
     auto style = Canonical(200);
     style.CommaSpaceAfter = formatter::GapPolicy::Space;
     std::pmr::monotonic_buffer_resource file;

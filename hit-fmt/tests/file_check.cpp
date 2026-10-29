@@ -373,7 +373,9 @@ TEST(FileCheck, TokenEndpointAndUnicodePositionsMapWithoutReparsingOutput)
         std::count_if(
             checked.Formatting.Text.begin() + begin,
             checked.Formatting.Text.begin() + emitted,
-            [] (unsigned char c) { return (c & 0xc0) != 0x80; }));
+            [] (unsigned char c) {
+                return (c & 0xc0) != 0x80;
+            }));
     const auto& insertion = checked.Semantic[1];
     EXPECT_EQ(insertion.Emitted.Line, checked.Semantic[0].Emitted.Line);
     EXPECT_EQ(insertion.Emitted.Column, checked.Semantic[0].Emitted.Column + std::string_view("bad_name(int").size());

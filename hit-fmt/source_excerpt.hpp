@@ -12,11 +12,13 @@ namespace hit_fmt {
 struct RenderedLine
 {
     std::vector<std::string_view> Cells;
+
     struct Adjustment
     {
         size_t Column;
         size_t Cell;
     };
+
     std::vector<Adjustment> Adjustments;
     size_t CodePoints = 0;
 

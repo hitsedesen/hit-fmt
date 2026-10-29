@@ -80,8 +80,13 @@ private:
 
 bool InLines(size_t line, std::span<const formatter::Hunk> hunks)
 {
-    const auto it =
-        std::lower_bound(hunks.begin(), hunks.end(), line, [] (auto hunk, auto target) { return hunk.End < target; });
+    const auto it = std::lower_bound(
+        hunks.begin(),
+        hunks.end(),
+        line,
+        [] (auto hunk, auto target) {
+            return hunk.End < target;
+        });
     return it != hunks.end() && it->Begin <= line;
 }
 
@@ -133,7 +138,12 @@ void MapSemanticPositions(
             points.push_back({mapped.Output.Begin + anchor.Offset - range.Begin, &diagnostic.Emitted});
         }
     }
-    std::sort(points.begin(), points.end(), [] (const auto& a, const auto& b) { return a.Offset < b.Offset; });
+    std::sort(
+        points.begin(),
+        points.end(),
+        [] (const auto& a, const auto& b) {
+            return a.Offset < b.Offset;
+        });
     PositionSweep emitted(formatting.Text, formatting.Changes ? &formatting.Changes->OutputLines : nullptr);
     for (const auto& point : points) {
         *point.Position = emitted.Position(point.Offset);
@@ -160,7 +170,7 @@ CheckedFile FormatAndCheckFile(
     std::optional<ChangedFileScope> changed,
     DiagnosticDetail diagnostics)
 {
-    auto tree = parser::Parse(source, [] (parser::ParseError) {}, configuration.Formatting.ParsingOptions());
+    auto tree = parser::Parse(source, [] (parser::ParseError) { }, configuration.Formatting.ParsingOptions());
     CheckedFile checked;
     const bool locations = diagnostics != DiagnosticDetail::Summary;
     checked.ColumnLimit = configuration.Formatting.Policies.ColumnLimit;
@@ -194,9 +204,12 @@ CheckedFile FormatAndCheckFile(
         permitted = std::move(result.PermittedLines);
         checked.Incomplete = std::move(result.Incomplete);
         for (const auto& skip : result.RequiredSkips) {
-            checked.RequiredChanges.push_back(
-                {tree.TokenPosition(skip.Tokens.Begin), {}, std::string(RequiredChangeMessage(skip.Action)),
-                    {skip.Tokens.Begin, tree.Token(skip.Tokens.Begin).Text.Begin},});
+            checked.RequiredChanges.push_back({
+                tree.TokenPosition(skip.Tokens.Begin),
+                {},
+                std::string(RequiredChangeMessage(skip.Action)),
+                {skip.Tokens.Begin, tree.Token(skip.Tokens.Begin).Text.Begin},
+            });
         }
         checked.Formatting = std::move(result.Result);
         std::erase_if(
@@ -213,7 +226,9 @@ CheckedFile FormatAndCheckFile(
         std::sort(
             items->begin(),
             items->end(),
-            [] (const auto& a, const auto& b) { return Before(a.Original, b.Original); });
+            [] (const auto& a, const auto& b) {
+                return Before(a.Original, b.Original);
+            });
     }
     if (locations) {
         MapSemanticPositions(tree, checked.Formatting, checked.Semantic, checked.RequiredChanges);

@@ -162,9 +162,12 @@ public:
     {
         if (View(Source_, before) != View(Output_, after)) {
             OtherChanges_ |= kind != FormatChangeKind::IncludeOrder;
-            Edits_.push_back({before, after, kind, kind == FormatChangeKind::IncludeOrder
-                    ? std::optional{StructuralAction::IncludeOrder}
-                    : std::nullopt,});
+            Edits_.push_back({
+                before,
+                after,
+                kind,
+                kind == FormatChangeKind::IncludeOrder ? std::optional{StructuralAction::IncludeOrder} : std::nullopt,
+            });
         }
     }
 
@@ -225,7 +228,8 @@ std::pmr::vector<FormatChange> IncludeBlocks(
             indices[i] = blocks.size();
             blocks.push_back({
                 {tree.Token(operation.Owner.Begin).Text.Begin, tree.Token(operation.Owner.End - 1).Text.End},
-                {missing, 0}, FormatChangeKind::IncludeOrder,
+                {missing, 0},
+                FormatChangeKind::IncludeOrder,
             });
         }
     }
@@ -299,8 +303,13 @@ void BuildDetailedChanges(
         for (auto id = begin; id < tree.TokenCount() && tree.Token(id).Text.End <= map.Original.End; ++id) {
             if (!result.OriginalTokens[id].Present) {
                 const auto range = tree.Token(id).Text;
-                result.OriginalTokens[id] = {{map.Output.Begin + range.Begin - map.Original.Begin,
-                        map.Output.Begin + range.End - map.Original.Begin,}, true,};
+                result.OriginalTokens[id] = {
+                    {
+                        map.Output.Begin + range.Begin - map.Original.Begin,
+                        map.Output.Begin + range.End - map.Original.Begin,
+                    },
+                    true,
+                };
             }
         }
     }
@@ -347,7 +356,9 @@ void BuildDetailedChanges(
             changes.Edits.begin(),
             changes.Edits.end(),
             map.Output.Begin,
-            [] (const auto& change, Offset offset) { return change.Output.End <= offset; });
+            [] (const auto& change, Offset offset) {
+                return change.Output.End <= offset;
+            });
         for (; edit != changes.Edits.end() && edit->Output.Begin < map.Output.End; ++edit) {
             if (edit->Kind == FormatChangeKind::Content && !edit->Action) {
                 edit->Action = result.StructuralOperations.at(map.Action).Kind;
@@ -400,8 +411,8 @@ void detail::BuildChangeMetadata(
         summary.IncludeOrderChanges.reserve(blocks.size());
         for (const auto& block : blocks) {
             if (View(source, block.Original) != View(output, block.Output)) {
-                summary.IncludeOrderChanges.push_back({block.Original, block.Output,
-                    {static_cast<uint32_t>(original.LineAt(block.Original.Begin)), 1},});
+                summary.IncludeOrderChanges.push_back(
+                    {block.Original, block.Output, {static_cast<uint32_t>(original.LineAt(block.Original.Begin)), 1}});
             }
         }
     }

@@ -51,3 +51,13 @@ class ExternalClass {};
 void ExternalFunction(int badParameter) {}
 }
 namespace standard { class ExternalClass {}; }
+
+class CReader {
+public:
+    explicit CReader(int s_limit = 0) {}
+    constexpr CReader(bool badParameter) {}
+    virtual ~CReader() {}
+    explicit operator bool() const { return true; }
+    int BadMethod() { return 0; }
+    static CReader BadFactory() { return CReader(); }
+};

@@ -76,7 +76,11 @@ constexpr void VisitHelpBlocks(std::string_view text, Emit emit)
 
 constexpr auto HelpBlockCount = [] {
     size_t result = 0;
-    VisitHelpBlocks(ConfigHelpText, [&] (HelpBlock) { ++result; });
+    VisitHelpBlocks(
+        ConfigHelpText,
+        [&] (HelpBlock) {
+            ++result;
+        });
     return result;
 }();
 
@@ -84,7 +88,11 @@ consteval auto ParseConfigHelp()
 {
     std::array<HelpBlock, HelpBlockCount> blocks{};
     size_t index = 0;
-    VisitHelpBlocks(ConfigHelpText, [&] (HelpBlock block) { blocks[index++] = block; });
+    VisitHelpBlocks(
+        ConfigHelpText,
+        [&] (HelpBlock block) {
+            blocks[index++] = block;
+        });
     return blocks;
 }
 

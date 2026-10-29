@@ -23,7 +23,12 @@ void Drain()
         case 0:
             break;
     }
-    if (UpdateState([] { Touch(); return 1; }); HasRemainingCapacity() && IsDeliveryOptionAvailable()) {
+    if (UpdateState([] {
+        Touch();
+        return 1;
+    });
+        HasRemainingCapacity() && IsDeliveryOptionAvailable())
+    {
         Use(1);
     }
     if (HasPreviousRoute()) {

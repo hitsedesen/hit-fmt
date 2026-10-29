@@ -76,7 +76,7 @@ TEST(HunkAdapter, RejectsInvalidOriginalPhysicalLines)
 {
     for (std::string_view text : {"", "int x;", "int x;\n"}) {
         Input input(text);
-        auto tree = parser::Parse(input.View(), [] (parser::ParseError) {});
+        auto tree = parser::Parse(input.View(), [] (parser::ParseError) { });
         for (formatter::Hunk hunk : {formatter::Hunk{0, 1}, {2, 1}, {2, 2}}) {
             EXPECT_THROW(
                 (void)formatter::FormatChanged(tree, formatter::Style{}, std::span(&hunk, 1), false),
@@ -99,7 +99,7 @@ formatter::ChangedFormatResult Changed(
     formatter::FormatRequest request = {})
 {
     Input input(source);
-    auto tree = parser::Parse(input.View(), [] (parser::ParseError) {});
+    auto tree = parser::Parse(input.View(), [] (parser::ParseError) { });
     return formatter::FormatChanged(tree, formatter::PreparedFormat(style), hunks, spillover, request);
 }
 
@@ -414,7 +414,7 @@ TEST(HunkAdapter, OptionalCommaInsertionAndRemovalHaveOriginalAuthority)
     EXPECT_EQ(removed.Result.Text.find("2,"), std::string::npos);
     EXPECT_TRUE(removed.Result.Text.ends_with("int outside( int x );\n"));
     Input input(existing);
-    const auto tree = parser::Parse(input.View(), [] (parser::ParseError) {});
+    const auto tree = parser::Parse(input.View(), [] (parser::ParseError) { });
     bool removedIdentity = false;
     for (parser::TokenIndex i = 0; i < tree.TokenCount(); ++i) {
         if (tree.Kind(i) == tokenizer::TokenKind::Operator_Comma && tree.TokenPosition(i).Line == 3) {

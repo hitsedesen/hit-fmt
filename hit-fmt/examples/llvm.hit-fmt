@@ -37,9 +37,19 @@ TemplateArgumentsCloser = SameLine
 TemplateArgumentsAlignment = Delimiter
 TemplateArgumentsContinuationOffset = 4
 TemplateArgumentsAlignmentFallbackOffset = 4
-# Context-dependent header lists remain source-owned explicitly.
-BaseListsLayout = Preserve
-ConstructorListsLayout = Preserve
+# Fitting header lists stay inline; wrapped lists use trailing commas.
+BaseListsLayout = Canonical
+BaseListsFirstItem = NextLine
+BaseListsColonSide = Leading
+BaseListsCommaSide = Trailing
+BaseListsColonSpaceBefore = Space
+BaseListsColonSpaceAfter = Space
+ConstructorListsLayout = Canonical
+ConstructorListsFirstItem = NextLine
+ConstructorListsColonSide = Leading
+ConstructorListsCommaSide = Trailing
+ConstructorListsColonSpaceBefore = Space
+ConstructorListsColonSpaceAfter = Space
 BodyShape = CompactIfFits
 EmptyBodyShape = CompactIfFits
 PointerReferenceDeclaratorLocation = Right

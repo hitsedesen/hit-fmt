@@ -197,9 +197,13 @@ public:
             message += "' has invalid ";
             auto issue = !prefixOK && !caseOK ? "prefix and case" : !prefixOK ? "prefix" : "case";
             message += issue;
-            Results.push_back(
-                {Tree.TokenPosition(index), std::move(message), issue, ExpectedName(rule, prefixOK, caseOK),
-                    {index, Tree.Token(index).Text.Begin},});
+            Results.push_back({
+                Tree.TokenPosition(index),
+                std::move(message),
+                issue,
+                ExpectedName(rule, prefixOK, caseOK),
+                {index, Tree.Token(index).Text.Begin},
+            });
         }
     }
 
@@ -215,10 +219,12 @@ private:
     // A nested declarator may be a function pointer, not a function.
     void CheckDeclarators(const parser::Node& node, bool function)
     {
-        // Constructors, destructors and conversion functions have no return
-        // type. Their spelling follows the type/operator rather than the
-        // ordinary function naming policy.
-        if (function && !Child(node, NK::DeclarationSpecifiers)) {
+        // Constructors can have declaration specifiers such as explicit or
+        // constexpr, but their name still belongs to the type.
+        if (function &&
+            (node.GetFunctionKind() == parser::FunctionKind::Constructor ||
+                node.GetFunctionKind() == parser::FunctionKind::Destructor || !Child(node, NK::DeclarationSpecifiers)))
+        {
             return;
         }
         auto* list = Child(node, NK::InitDeclaratorList);

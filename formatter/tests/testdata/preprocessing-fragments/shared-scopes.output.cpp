@@ -1,4 +1,5 @@
 namespace detail {
+
 class Guard
 {
 public:
@@ -18,6 +19,7 @@ public:
     {
         Work();
     }
+
     void Stop()
     {
         Done();
@@ -48,4 +50,5 @@ struct Worker
         Done();
     }
 };
+
 }

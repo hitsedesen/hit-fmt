@@ -664,13 +664,14 @@ TEST(GroupLayout, BoundedChildFittingGolden)
                 document.ConditionalGap(chain, {GapKind::Flat, 0}, {GapKind::Soft, 0});
                 document.Text(".slice({");
                 const auto anchor = mode == 2
-                    ? document.MarkAnchor({
-                        .Kind = document::AnchorKind::DelimiterColumn,
-                        .Fallback = 4,
-                        .Minimum = 4,
-                        .StructuralBase = true,
-                        .Continuation = true,
-                    })
+                    ? document.MarkAnchor(
+                        {
+                            .Kind = document::AnchorKind::DelimiterColumn,
+                            .Fallback = 4,
+                            .Minimum = 4,
+                            .StructuralBase = true,
+                            .Continuation = true,
+                        })
                     : document::InvalidId;
                 const auto arguments = document
                     .BeginGroup({.Mode = GroupMode::Fill, .Indent = 4, .StructuralBase = true, .Continuation = true});
@@ -1709,11 +1710,7 @@ void ExpectSourceRunsMatchIndividualAtoms(std::string_view source)
             ASSERT_TRUE(separate.Seal());
             for (auto tab : {1u, 4u, 8u}) {
                 for (auto width : {3u, 10u, 40u, 80u}) {
-                    const Policy policy{
-                        .Width = width,
-                        .TabWidth = static_cast<std::uint8_t>(tab),
-                        .SourceMap = false,
-                    };
+                    const Policy policy{.Width = width, .TabWidth = static_cast<std::uint8_t>(tab), .SourceMap = false};
                     const auto a = packed.Render(policy);
                     const auto b = separate.Render(policy);
                     ASSERT_TRUE(a.State);
@@ -2611,7 +2608,12 @@ TEST(GroupLayout, DeepNestingUsesExplicitStacksAndSublinearAllocationCount)
         ASSERT_TRUE(output.State);
         EXPECT_EQ(output.Text, "leaf\ntail");
         EXPECT_EQ(output.Broken.size(), depth);
-        EXPECT_TRUE(std::all_of(output.Broken.begin(), output.Broken.end(), [] (auto broken) { return broken != 0; }));
+        EXPECT_TRUE(std::all_of(
+            output.Broken.begin(),
+            output.Broken.end(),
+            [] (auto broken) {
+                return broken != 0;
+            }));
         EXPECT_LT(resource.Allocations - allocations, 200u);
         EXPECT_LT(resource.Peak, 128u * 1024u * 1024u);
     }

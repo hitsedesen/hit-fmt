@@ -36,6 +36,8 @@ unsigned Combine(unsigned value)
     CheckState(responseCount != std::ssize(pendingItems) ||
         std::ranges::all_of(
             results,
-            [] (const auto& item) { return item.has_value(); }));
+            [] (const auto& item) {
+                return item.has_value();
+            }));
     return 0;
 }

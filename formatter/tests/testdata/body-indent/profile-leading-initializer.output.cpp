@@ -12,7 +12,9 @@ constexpr std::string_view Colors[2][3]{
 static const Name Extra[2]{"white", "black"};
 
 namespace Palette {
+
 constexpr Name Names[2]{"light", "dark"};
+
 } // namespace Palette
 
 struct Theme

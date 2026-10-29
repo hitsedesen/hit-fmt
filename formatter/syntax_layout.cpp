@@ -397,7 +397,9 @@ public:
         std::sort(
             ChainScopeNames_.begin(),
             ChainScopeNames_.end(),
-            [] (const auto& a, const auto& b) { return a.Name < b.Name; });
+            [] (const auto& a, const auto& b) {
+                return a.Name < b.Name;
+            });
         for (Index i = 0; i < Syntax_.size(); ++i) {
             auto& entry = Syntax_[i];
             const auto& node = Region(entry);
@@ -600,7 +602,9 @@ private:
             protection.begin(),
             protection.end(),
             source.Begin,
-            [] (const ProtectedSourceRange& range, parser::SourceOffset point) { return range.Source.End <= point; });
+            [] (const ProtectedSourceRange& range, parser::SourceOffset point) {
+                return range.Source.End <= point;
+            });
         for (; first != protection.end() && first->Source.Begin < source.End; ++first) {
             if ((uint16_t(first->Reasons) & ~uint16_t(ProtectionReason::OutsideEditScope)) != 0) {
                 return true;
@@ -3246,7 +3250,9 @@ private:
                 ChainScopeNames_.begin(),
                 ChainScopeNames_.end(),
                 name,
-                [] (const auto& value, auto key) { return value.Name < key; });
+                [] (const auto& value, auto key) {
+                    return value.Name < key;
+                });
             if (endpoint == ChainScopeNames_.end() || endpoint->Name != name) {
                 continue;
             }
@@ -3707,7 +3713,9 @@ private:
                     ScopeNames_.begin(),
                     ScopeNames_.end(),
                     spelling,
-                    [] (const ScopeName& item, std::string_view key) { return item.Name < key; });
+                    [] (const ScopeName& item, std::string_view key) {
+                        return item.Name < key;
+                    });
                 if (found != ScopeNames_.end() && found->Name == spelling) {
                     if (result.Kind != Discovery::None) {
                         return {Discovery::Ambiguous, {}};
@@ -3782,7 +3790,9 @@ private:
         std::sort(
             ScopeNames_.begin(),
             ScopeNames_.end(),
-            [] (const ScopeName& a, const ScopeName& b) { return a.Name < b.Name; });
+            [] (const ScopeName& a, const ScopeName& b) {
+                return a.Name < b.Name;
+            });
         std::pmr::vector<Endpoint> pairs(Syntax_.get_allocator().resource());
         std::pmr::vector<int64_t> frozen(Tree_.TokenCount() + size_t(2), 0,
                                          Syntax_.get_allocator().resource());
@@ -4681,7 +4691,12 @@ private:
                 Order_.push_back(id);
             }
         }
-        std::sort(Order_.begin(), Order_.end(), [&] (Index a, Index b) { return BeforeGroup(a, b); });
+        std::sort(
+            Order_.begin(),
+            Order_.end(),
+            [&] (Index a, Index b) {
+                return BeforeGroup(a, b);
+            });
         Stack_.clear();
         size_t special = 0;
         Index syntax = 0;
@@ -5191,21 +5206,23 @@ private:
                         .SharedWith = Groups_[continuation].ContinuationAnchor,
                     });
                 } else if (group.HasAnchor) {
-                    group.Anchor = Document_.MarkAnchor({
-                        group.Indent.Alignment == ContinuationAlignment::Delimiter
-                            ? document::AnchorKind::DelimiterColumn
-                            : document::AnchorKind::BlockRelative,
-                        group.Indent.Alignment == ContinuationAlignment::Delimiter
-                            ? 0
-                            : int32_t(group.Indent.ContinuationOffset),
-                        int32_t(group.Indent.FallbackOffset),
-                        uint32_t(group.Indent.ContinuationOffset),
-                        group.Spec.StructuralBase,
-                        group.Spec.Continuation,
-                        sharedAnchor ? Groups_[continuation].ContinuationAnchor : document::InvalidId,
-                        group.Spec.LineBase,
-                        group.Spec.FixedBase,
-                    });
+                    group.Anchor = Document_
+                        .MarkAnchor(
+                            {
+                                group.Indent.Alignment == ContinuationAlignment::Delimiter
+                                    ? document::AnchorKind::DelimiterColumn
+                                    : document::AnchorKind::BlockRelative,
+                                group.Indent.Alignment == ContinuationAlignment::Delimiter
+                                    ? 0
+                                    : int32_t(group.Indent.ContinuationOffset),
+                                int32_t(group.Indent.FallbackOffset),
+                                uint32_t(group.Indent.ContinuationOffset),
+                                group.Spec.StructuralBase,
+                                group.Spec.Continuation,
+                                sharedAnchor ? Groups_[continuation].ContinuationAnchor : document::InvalidId,
+                                group.Spec.LineBase,
+                                group.Spec.FixedBase,
+                            });
                 }
                 if (group.IndentGroup != None) {
                     // Packing adds a shape choice, not a continuation level.
