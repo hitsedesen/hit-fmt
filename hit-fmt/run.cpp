@@ -71,7 +71,7 @@ public:
         }
     }
 
-    const hit_fmt::PreparedFileConfiguration& Resolve(const std::filesystem::path& sourcePath)
+    const hit_fmt::PreparedConfiguration& Resolve(const std::filesystem::path& sourcePath)
     {
         return *FindConfig(sourcePath).Settings;
     }
@@ -93,14 +93,13 @@ private:
     struct ConfigEntry
     {
         std::filesystem::path Directory;
-        std::unique_ptr<const hit_fmt::PreparedFileConfiguration> Settings;
+        std::unique_ptr<const hit_fmt::PreparedConfiguration> Settings;
     };
 
-    static std::unique_ptr<const hit_fmt::PreparedFileConfiguration> LoadPreparedConfig(
-        const std::filesystem::path& path)
+    static std::unique_ptr<const hit_fmt::PreparedConfiguration> LoadPreparedConfig(const std::filesystem::path& path)
     {
         try {
-            return std::make_unique<const hit_fmt::PreparedFileConfiguration>(formatter::LoadConfigFile(path));
+            return std::make_unique<const hit_fmt::PreparedConfiguration>(formatter::LoadConfigFile(path));
         }
         catch (const std::exception& error) {
             throw std::runtime_error(path.string() + ": " + error.what());
@@ -111,7 +110,7 @@ private:
     {
         if (!DefaultConfig_.Settings)
             DefaultConfig_.Settings =
-                std::make_unique<const hit_fmt::PreparedFileConfiguration>(formatter::Configuration{});
+                std::make_unique<const hit_fmt::PreparedConfiguration>(formatter::Configuration{});
         return DefaultConfig_;
     }
 

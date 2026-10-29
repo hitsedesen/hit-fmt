@@ -34,7 +34,7 @@ formatter::Configuration Configuration()
 
 TEST(FileCheck, OneResultServesCheckAndFixWithoutCountingAppliedFormatting)
 {
-    const hit_fmt::PreparedFileConfiguration configuration(Configuration());
+    const hit_fmt::PreparedConfiguration configuration(Configuration());
     Input input("void Good(int value){invoke(left,right);}\n");
     const auto checked = hit_fmt::FormatAndCheckFile(input.View(), configuration);
     ASSERT_TRUE(checked.FormattingMismatch);
@@ -59,7 +59,7 @@ TEST(FileCheck, PartialSelectionNeverChangesCanonicalFormatting)
     auto raw = Configuration();
     raw.FormattingStyle.ColumnLimit = 40;
     raw.FormattingStyle.CallsLayout = formatter::CategoryLayout::Canonical;
-    const hit_fmt::PreparedFileConfiguration configuration(raw);
+    const hit_fmt::PreparedConfiguration configuration(raw);
     for (const std::string_view source :
         {
             "void f() { outer(first, child(left, right), last); }\n",
@@ -110,7 +110,7 @@ TEST(FileCheck, IncludeOrderIsIndependentOfInputPathFormAndHunks)
     style.IncludeMatchingHeader = formatter::IncludeMatchingHeader::First;
     style.IncludeGrouping = formatter::IncludeGrouping::Directory;
     style.IncludePathBase = formatter::IncludePathBase::ProjectRoot;
-    const hit_fmt::PreparedFileConfiguration prepared(raw);
+    const hit_fmt::PreparedConfiguration prepared(raw);
     const Input input("#include \"project/engine/widget.h\"\n\n" "#include \"project/engine/detail.h\"\n\n"
         "#include \"project/base.h\"\n");
     const formatter::Hunk selected[] = {{1, 5}};
@@ -148,7 +148,7 @@ TEST(FileCheck, IncludeOrderDiagnosticGoldenIsOneErrorForTheFile)
             if (mixed) {
                 style.SpaceInsideFunctionParameters = formatter::GapPolicy::NoSpace;
             }
-            const hit_fmt::PreparedFileConfiguration prepared(std::move(raw));
+            const hit_fmt::PreparedConfiguration prepared(std::move(raw));
             const auto checked = hit_fmt::FormatAndCheckFile(input.View(), prepared, "project/sample.cpp");
             const auto detailed =
                 hit_fmt::FormatAndCheckFile(input.View(), prepared, "project/sample.cpp", std::nullopt, true);
@@ -213,7 +213,7 @@ TEST(FileCheck, FunctionBodyMacroHintsApplyToTheInitialParse)
     raw.FormattingStyle.BinaryOperatorSpacing = formatter::GapPolicy::Space;
     raw.Naming.Function.Case = formatter::NameCase::PascalCase;
     raw.FunctionDefinitionParameterNames = formatter::FunctionDefinitionParameterNames::NameRequired;
-    const hit_fmt::PreparedFileConfiguration configuration(std::move(raw));
+    const hit_fmt::PreparedConfiguration configuration(std::move(raw));
     const Input input("define_case(Suite, Case) {auto sum=left+right; Use(sum);}\n");
     const auto checked = hit_fmt::FormatAndCheckFile(input.View(), configuration);
     EXPECT_TRUE(checked.FormattingMismatch);
@@ -238,7 +238,7 @@ TEST(FileCheck, DiagnosticGoldenUsesOriginalCheckAndFinalFixCoordinates)
     configuration.Naming.Function.Case = formatter::NameCase::PascalCase;
     configuration.FunctionDeclarationParameterNames = formatter::FunctionDeclarationParameterNames::Required;
     configuration.FunctionDefinitionParameterNames = formatter::FunctionDefinitionParameterNames::NameRequired;
-    const hit_fmt::PreparedFileConfiguration prepared(std::move(configuration));
+    const hit_fmt::PreparedConfiguration prepared(std::move(configuration));
     const Input input(fixture.InputNamed(".input.cpp"));
     const auto checked = hit_fmt::FormatAndCheckFile(input.View(), prepared, {}, std::nullopt, true);
     for (const auto action :
@@ -329,7 +329,7 @@ TEST(FileCheck, TokenEndpointAndUnicodePositionsMapWithoutReparsingOutput)
     raw.Naming.Function.Case = formatter::NameCase::PascalCase;
     raw.FunctionDeclarationParameterNames = formatter::FunctionDeclarationParameterNames::Required;
     raw.FunctionDefinitionParameterNames = formatter::FunctionDefinitionParameterNames::NameRequired;
-    const hit_fmt::PreparedFileConfiguration prepared(raw);
+    const hit_fmt::PreparedConfiguration prepared(raw);
     const std::string source =
         "const char* text=\"é\"; void bad_name(int  , " "void (*)(int)){}\nvoid GoodProto(int);\n";
     const Input input(source);
@@ -378,7 +378,7 @@ TEST(FileCheck, UnicodeWidthDiagnosticGoldenMapsCodePointsAndTabs)
     formatter::Configuration raw;
     raw.FormattingStyle.ColumnLimit = 12;
     raw.FormattingStyle.WidthDiagnostics = formatter::WidthDiagnosticPolicy::Report;
-    const hit_fmt::PreparedFileConfiguration prepared(raw);
+    const hit_fmt::PreparedConfiguration prepared(raw);
     const Input input(fixture.InputNamed(".input.cpp"));
     const auto checked = hit_fmt::FormatAndCheckFile(input.View(), prepared);
     EXPECT_FALSE(checked.FormattingMismatch);
@@ -396,7 +396,7 @@ TEST(FileCheck, UnicodeWidthDiagnosticGoldenMapsCodePointsAndTabs)
 
     // A tab itself can contain the first column exceeding the limit.
     raw.FormattingStyle.ColumnLimit = 6;
-    const hit_fmt::PreparedFileConfiguration narrow(raw);
+    const hit_fmt::PreparedConfiguration narrow(raw);
     const Input tab("// é界😀\t\n");
     const auto tabbed = hit_fmt::FormatAndCheckFile(tab.View(), narrow);
     ASSERT_EQ(tabbed.Formatting.Diagnostics.size(), 1u);
@@ -409,7 +409,7 @@ TEST(FileCheck, ActualProtectedOverflowRemainsFailureInFixMode)
     auto raw = Configuration();
     raw.FormattingStyle.ColumnLimit = 10;
     raw.FormattingStyle.WidthDiagnostics = formatter::WidthDiagnosticPolicy::Report;
-    const hit_fmt::PreparedFileConfiguration prepared(raw);
+    const hit_fmt::PreparedConfiguration prepared(raw);
     const Input input("// hit-fmt off\r\nint " "unavoidable_long_name;\r\n// hit-fmt on\r\n");
     const auto checked = hit_fmt::FormatAndCheckFile(input.View(), prepared);
     EXPECT_EQ(checked.Formatting.Text, input.View().View());
@@ -573,7 +573,7 @@ TEST(FileCheck, EmptyHunkScopeNeverFallsBackToWholeFile)
     raw.FunctionDeclarationParameterNames = formatter::FunctionDeclarationParameterNames::Required;
     raw.FormattingStyle.ColumnLimit = 10;
     raw.FormattingStyle.WidthDiagnostics = formatter::WidthDiagnosticPolicy::Report;
-    const hit_fmt::PreparedFileConfiguration prepared(raw);
+    const hit_fmt::PreparedConfiguration prepared(raw);
     const Input input("void bad_name(int);\n");
     const auto empty = hit_fmt::FormatAndCheckFile(input.View(), prepared, {}, hit_fmt::ChangedFileScope{});
     EXPECT_EQ(empty.Formatting.Text, input.View().View());
@@ -598,7 +598,7 @@ TEST(FileCheck, HunkDiagnosticGoldenUsesOriginalSelectionAndMappedOutput)
     raw.FormattingStyle.AddMissingControlBraces = true;
     raw.FormattingStyle.ColumnLimit = 40;
     raw.FormattingStyle.WidthDiagnostics = formatter::WidthDiagnosticPolicy::Report;
-    const hit_fmt::PreparedFileConfiguration prepared(raw);
+    const hit_fmt::PreparedConfiguration prepared(raw);
     const Input input(fixture.InputNamed(".input.cpp"));
     const formatter::Hunk selected[] = {{13, 13}, {11, 11}, {9, 9}, {4, 5}, {1, 1}, {5, 5}};
     for (const bool spillover : {false, true}) {
@@ -657,7 +657,7 @@ TEST(FileCheck, IncompleteHunkCoverageAndRequiredChangesStayDistinct)
 {
     auto raw = Configuration();
     raw.FormattingStyle.CallsLayout = formatter::CategoryLayout::Preserve;
-    const hit_fmt::PreparedFileConfiguration prepared(raw);
+    const hit_fmt::PreparedConfiguration prepared(raw);
     const Input input("void Good() {\n    call(1,\n        2);\n}\n");
     const formatter::Hunk selected[] = {{3, 3}};
     const auto checked =
@@ -675,7 +675,7 @@ TEST(FileCheck, IncompleteHunkCoverageAndRequiredChangesStayDistinct)
     }
 
     raw.FormattingStyle.AddMissingControlBraces = true;
-    const hit_fmt::PreparedFileConfiguration braces(raw);
+    const hit_fmt::PreparedConfiguration braces(raw);
     const Input blocked("void Good(bool ready) {\n  if (ready)\n" "    consume(\n      ready);\n}\n");
     const auto required =
         hit_fmt::FormatAndCheckFile(blocked.View(), braces, {}, hit_fmt::ChangedFileScope{selected, false});
@@ -700,10 +700,10 @@ TEST(FileCheck, UnsupportedPreparationFailsClosed)
 {
     auto raw = Configuration();
     raw.FormattingStyle.CallLikeMacroNames = {"CALL_HINT"};
-    EXPECT_THROW(hit_fmt::PreparedFileConfiguration{raw}, std::invalid_argument);
+    EXPECT_THROW(hit_fmt::PreparedConfiguration{raw}, std::invalid_argument);
     raw.FormattingStyle.CallLikeMacroNames.clear();
     raw.FormattingStyle.AmbiguousTemplateDeclarationSpacing = formatter::GapPolicy::Space;
-    EXPECT_THROW(hit_fmt::PreparedFileConfiguration{raw}, std::invalid_argument);
+    EXPECT_THROW(hit_fmt::PreparedConfiguration{raw}, std::invalid_argument);
 }
 
 } // namespace

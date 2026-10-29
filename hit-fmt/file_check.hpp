@@ -16,9 +16,9 @@
 
 namespace hit_fmt {
 
-struct PreparedFileConfiguration
+struct PreparedConfiguration
 {
-    explicit PreparedFileConfiguration(formatter::Configuration configuration);
+    explicit PreparedConfiguration(formatter::Configuration configuration);
     const formatter::Configuration Settings;
     const formatter::PreparedFormat Formatting;
 };
@@ -70,7 +70,7 @@ struct ChangedFileScope
 // detailedDiagnostics includes change metadata for diagnostic rendering.
 [[nodiscard]] CheckedFile FormatAndCheckFile(
     util::PaddedSourceView source,
-    const PreparedFileConfiguration& configuration,
+    const PreparedConfiguration& configuration,
     std::string_view inputFilePath = {},
     std::optional<ChangedFileScope> changed = std::nullopt,
     bool detailedDiagnostics = false);

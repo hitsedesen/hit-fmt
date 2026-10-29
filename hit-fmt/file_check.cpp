@@ -368,7 +368,7 @@ void MapWidthPositions(const parser::SyntaxTree& tree, CheckedFile& checked)
 
 } // namespace
 
-PreparedFileConfiguration::PreparedFileConfiguration(formatter::Configuration configuration)
+PreparedConfiguration::PreparedConfiguration(formatter::Configuration configuration)
     : Settings(std::move(configuration))
     , Formatting(Settings.FormattingStyle)
 { }
@@ -381,7 +381,7 @@ bool CheckedFile::HasFailures(bool fix) const
 
 CheckedFile FormatAndCheckFile(
     util::PaddedSourceView source,
-    const PreparedFileConfiguration& configuration,
+    const PreparedConfiguration& configuration,
     std::string_view inputFilePath,
     std::optional<ChangedFileScope> changed,
     bool detailedDiagnostics)
