@@ -2471,9 +2471,17 @@ std::vector<FormatCase> FormatCases()
         cases,
         data / "requires-clause",
         {
-            "own-line", "own-line-no-indent", "own-line-with-brace", "with-preceding",
-            "with-following", "single-line", "narrow", "narrow-own-line", "preserve",
-            "headers-preserve", "brace-next-line",
+            "own-line",
+            "own-line-no-indent",
+            "own-line-with-brace",
+            "with-preceding",
+            "with-following",
+            "single-line",
+            "narrow",
+            "narrow-own-line",
+            "preserve",
+            "headers-preserve",
+            "brace-next-line",
         });
     AddCases(cases, data / "requires-lambdas", {"canonical", "narrow", "preserve"});
     {
