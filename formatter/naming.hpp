@@ -1,6 +1,7 @@
 #pragma once
 
 #include "config.hpp"
+#include "diagnostics.hpp"
 
 #include <parser/syntax_tree.hpp>
 
@@ -15,6 +16,7 @@ struct NameDiagnostic
     std::string Message;
     std::string Issue;
     std::string Expected;
+    TokenAnchor Anchor;
 };
 
 // Reports only names whose declaration kind is established by the syntax tree.

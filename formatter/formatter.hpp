@@ -40,6 +40,10 @@ struct LayoutDiagnostic
     util::Position Position;
     std::string Message;
     LayoutDiagnosticKind Kind;
+    // Collected with SourceMap or DiagnosticLocations.
+    parser::SourceOffset Offset = 0;
+    uint32_t CodePointColumn = 1;
+    std::optional<util::Position> Original;
 };
 
 // Immutable, owning configuration snapshot. Preparation throws invalid_argument
@@ -93,6 +97,8 @@ struct FormatRequest
     bool Changes = false;
     // Collect include blocks and whether other formatting changes remain.
     bool ChangeSummary = false;
+    // Resolve width diagnostics to original token locations.
+    bool DiagnosticLocations = false;
 };
 
 struct FormatMapping

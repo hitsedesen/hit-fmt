@@ -1,6 +1,7 @@
 #include <hit-fmt/file_check.hpp>
 #include <hit-fmt/formatting_diagnostics.hpp>
 #include <hit-fmt/options.hpp>
+#include <hit-fmt/source_excerpt.hpp>
 #include <hit-fmt/terminal.hpp>
 
 #include <gtest/gtest.h>
@@ -9,6 +10,7 @@
 #include <tests/input.hpp>
 
 #include <algorithm>
+#include <array>
 #include <filesystem>
 #include <sstream>
 #include <stdexcept>
@@ -150,8 +152,12 @@ TEST(FileCheck, IncludeOrderDiagnosticGoldenIsOneErrorForTheFile)
             }
             const hit_fmt::PreparedConfiguration prepared(std::move(raw));
             const auto checked = hit_fmt::FormatAndCheckFile(input.View(), prepared, "project/sample.cpp");
-            const auto detailed =
-                hit_fmt::FormatAndCheckFile(input.View(), prepared, "project/sample.cpp", std::nullopt, true);
+            const auto detailed = hit_fmt::FormatAndCheckFile(
+                input.View(),
+                prepared,
+                "project/sample.cpp",
+                std::nullopt,
+                hit_fmt::DiagnosticDetail::Full);
             EXPECT_FALSE(checked.Formatting.Changes);
             EXPECT_TRUE(checked.Formatting.Map.empty());
             EXPECT_TRUE(checked.Formatting.StructuralOperations.empty());
@@ -245,7 +251,8 @@ TEST(FileCheck, DiagnosticGoldenUsesOriginalCheckAndFinalFixCoordinates)
     configuration.FunctionDefinitionParameterNames = formatter::FunctionDefinitionParameterNames::NameRequired;
     const hit_fmt::PreparedConfiguration prepared(std::move(configuration));
     const Input input(fixture.InputNamed(".input.cpp"));
-    const auto checked = hit_fmt::FormatAndCheckFile(input.View(), prepared, {}, std::nullopt, true);
+    const auto checked =
+        hit_fmt::FormatAndCheckFile(input.View(), prepared, {}, std::nullopt, hit_fmt::DiagnosticDetail::Full);
     for (const auto action :
         {formatter::StructuralAction::AddMissingControlBraces, formatter::StructuralAction::NamespaceComments})
     {
@@ -339,7 +346,20 @@ TEST(FileCheck, TokenEndpointAndUnicodePositionsMapWithoutReparsingOutput)
         "const char* text=\"é\"; void bad_name(int  , " "void (*)(int)){}\nvoid GoodProto(int);\n";
     const Input input(source);
     const auto checked = hit_fmt::FormatAndCheckFile(input.View(), prepared);
+    const auto summary =
+        hit_fmt::FormatAndCheckFile(input.View(), prepared, {}, std::nullopt, hit_fmt::DiagnosticDetail::Summary);
+    EXPECT_EQ(summary.Semantic.size(), checked.Semantic.size());
+    EXPECT_TRUE(summary.Formatting.OriginalTokens.empty());
+    for (const bool fix : {false, true}) {
+        std::ostringstream fullOutput, summaryOutput;
+        hit_fmt::PrintFileSummaryIssues(fullOutput, checked, fix);
+        hit_fmt::PrintFileSummaryIssues(summaryOutput, summary, fix);
+        EXPECT_EQ(summaryOutput.str(), fullOutput.str());
+    }
     ASSERT_EQ(checked.Semantic.size(), 4u);
+    EXPECT_EQ(checked.Semantic[0].Anchor.Offset, source.find("bad_name"));
+    EXPECT_EQ(checked.Semantic[1].Anchor.Offset, source.find("int  ,") + 3);
+    EXPECT_EQ(checked.Semantic[2].Anchor.Offset, source.find("(*)") + 2);
     EXPECT_NE(checked.Semantic.back().Message.find("function declaration"), std::string::npos);
     EXPECT_EQ(
         checked.Semantic[0].Original.Column,
@@ -388,11 +408,30 @@ TEST(FileCheck, UnicodeWidthDiagnosticGoldenMapsCodePointsAndTabs)
     const auto checked = hit_fmt::FormatAndCheckFile(input.View(), prepared);
     EXPECT_FALSE(checked.FormattingMismatch);
     ASSERT_EQ(checked.Formatting.Diagnostics.size(), 2u);
-    ASSERT_EQ(checked.OriginalWidthPositions.size(), 2u);
     EXPECT_EQ(checked.Formatting.Diagnostics[0].Position.Line, 2u);
     EXPECT_EQ(checked.Formatting.Diagnostics[1].Position.Line, 4u);
-    EXPECT_EQ(checked.OriginalWidthPositions[0].Column, 13u);
-    EXPECT_EQ(checked.OriginalWidthPositions[1].Column, 12u);
+    EXPECT_EQ(checked.Formatting.Diagnostics[0].Original->Column, 13u);
+    EXPECT_EQ(checked.Formatting.Diagnostics[1].Original->Column, 12u);
+    const formatter::Hunk selected[] = {{2, 2}, {4, 4}};
+    const auto scoped =
+        hit_fmt::FormatAndCheckFile(input.View(), prepared, {}, hit_fmt::ChangedFileScope{selected, false});
+    ASSERT_EQ(scoped.Formatting.Diagnostics.size(), checked.Formatting.Diagnostics.size());
+    for (size_t i = 0; i < checked.Formatting.Diagnostics.size(); ++i) {
+        EXPECT_EQ(scoped.Formatting.Diagnostics[i].Offset, checked.Formatting.Diagnostics[i].Offset);
+        EXPECT_EQ(scoped.Formatting.Diagnostics[i].CodePointColumn, checked.Formatting.Diagnostics[i].CodePointColumn);
+        EXPECT_EQ(
+            scoped.Formatting.Diagnostics[i].Original->Column,
+            checked.Formatting.Diagnostics[i].Original->Column);
+    }
+    const auto summary =
+        hit_fmt::FormatAndCheckFile(input.View(), prepared, {}, std::nullopt, hit_fmt::DiagnosticDetail::Summary);
+    ASSERT_EQ(summary.Formatting.Diagnostics.size(), checked.Formatting.Diagnostics.size());
+    EXPECT_TRUE(summary.Formatting.OriginalTokens.empty());
+    for (const auto& diagnostic : summary.Formatting.Diagnostics) {
+        EXPECT_FALSE(diagnostic.Original);
+    }
+    EXPECT_EQ(summary.HasFailures(false), checked.HasFailures(false));
+    EXPECT_EQ(summary.HasFailures(true), checked.HasFailures(true));
     for (const bool fix : {false, true}) {
         std::ostringstream output;
         hit_fmt::PrintFileIssues(output, "unicode.cpp", input.View().View(), checked, fix);
@@ -405,8 +444,18 @@ TEST(FileCheck, UnicodeWidthDiagnosticGoldenMapsCodePointsAndTabs)
     const Input tab("// é界😀\t\n");
     const auto tabbed = hit_fmt::FormatAndCheckFile(tab.View(), narrow);
     ASSERT_EQ(tabbed.Formatting.Diagnostics.size(), 1u);
-    ASSERT_EQ(tabbed.OriginalWidthPositions.size(), 1u);
-    EXPECT_EQ(tabbed.OriginalWidthPositions[0].Column, 7u);
+    EXPECT_EQ(tabbed.Formatting.Diagnostics[0].Original->Column, 7u);
+    EXPECT_EQ(tabbed.Formatting.Diagnostics[0].Offset, tab.View().View().find('\t'));
+    EXPECT_EQ(tabbed.Formatting.Diagnostics[0].CodePointColumn, 7u);
+}
+
+TEST(SourceExcerpt, ReusesCellsForUnicodeTabsAndCarriageReturns)
+{
+    const auto rendered = hit_fmt::RenderLine("\té界\rx\tz", 3);
+    const std::array<size_t, 9> carets{0, 0, 5, 6, 7, 7, 8, 13, 14};
+    for (size_t column = 0; column < carets.size(); ++column) {
+        EXPECT_EQ(rendered.Caret(column), carets[column]) << column;
+    }
 }
 
 TEST(FileCheck, ActualProtectedOverflowRemainsFailureInFixMode)
@@ -612,22 +661,42 @@ TEST(FileCheck, HunkDiagnosticGoldenUsesOriginalSelectionAndMappedOutput)
             prepared,
             "sample.cpp",
             hit_fmt::ChangedFileScope{selected, spillover});
+        const auto summary = hit_fmt::FormatAndCheckFile(
+            input.View(),
+            prepared,
+            "sample.cpp",
+            hit_fmt::ChangedFileScope{selected, spillover},
+            hit_fmt::DiagnosticDetail::Summary);
+        ASSERT_EQ(summary.Formatting.Diagnostics.size(), checked.Formatting.Diagnostics.size());
+        for (size_t i = 0; i < checked.Formatting.Diagnostics.size(); ++i) {
+            ASSERT_TRUE(summary.Formatting.Diagnostics[i].Original);
+            EXPECT_EQ(
+                summary.Formatting.Diagnostics[i].Original->Line,
+                checked.Formatting.Diagnostics[i].Original->Line);
+        }
+        for (const bool fix : {false, true}) {
+            std::ostringstream fullOutput, summaryOutput;
+            hit_fmt::PrintFileSummaryIssues(fullOutput, checked, fix);
+            hit_fmt::PrintFileSummaryIssues(summaryOutput, summary, fix);
+            EXPECT_EQ(summaryOutput.str(), fullOutput.str());
+        }
         ASSERT_EQ(checked.Semantic.size(), 4u);
         for (const auto& diagnostic : checked.Semantic) {
             EXPECT_NE(diagnostic.Original.Line, 3u);
             EXPECT_NE(diagnostic.Original.Line, 6u);
         }
         ASSERT_FALSE(checked.Formatting.Diagnostics.empty());
-        for (const auto position : checked.OriginalWidthPositions) {
+        for (const auto& diagnostic : checked.Formatting.Diagnostics) {
+            const auto position = *diagnostic.Original;
             EXPECT_NE(position.Line, 3u);
             EXPECT_NE(position.Line, 14u);
         }
         EXPECT_EQ(
             std::any_of(
-                checked.OriginalWidthPositions.begin(),
-                checked.OriginalWidthPositions.end(),
-                [] (auto position) {
-                    return position.Line == 10;
+                checked.Formatting.Diagnostics.begin(),
+                checked.Formatting.Diagnostics.end(),
+                [] (const auto& diagnostic) {
+                    return diagnostic.Original->Line == 10;
                 }),
             spillover);
         EXPECT_TRUE(checked.FormattingMismatch);

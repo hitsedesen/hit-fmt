@@ -3,6 +3,7 @@
 #include "terminal.hpp"
 
 #include <formatter/config.hpp>
+#include <formatter/diagnostics.hpp>
 #include <formatter/formatter.hpp>
 #include <formatter/hunks.hpp>
 
@@ -28,6 +29,7 @@ struct SemanticDiagnostic
     util::Position Original;
     util::Position Emitted;
     std::string Message;
+    formatter::TokenAnchor Anchor;
 };
 
 struct CheckedFile
@@ -38,8 +40,6 @@ struct CheckedFile
     std::vector<SemanticDiagnostic> RequiredChanges;
     // Original byte ranges that were not fully checked.
     std::vector<formatter::HunkCoverage> Incomplete;
-    // Original token positions, indexed like Formatting.Diagnostics.
-    std::vector<util::Position> OriginalWidthPositions;
     std::uint16_t ColumnLimit = 0;
     bool FormattingMismatch = false;
 
@@ -55,14 +55,22 @@ struct ChangedFileScope
     bool Spillover = true;
 };
 
+enum class DiagnosticDetail
+{
+    // Keep failure categories; hunk filtering still needs original locations.
+    Summary,
+    Locations,
+    Full,
+};
+
 // Absent scope covers the whole file; an empty scope selects nothing.
-// detailedDiagnostics includes change metadata for diagnostic rendering.
+// Full includes formatting replacements for diagnostic rendering.
 [[nodiscard]] CheckedFile FormatAndCheckFile(
     util::PaddedSourceView source,
     const PreparedConfiguration& configuration,
     std::string_view inputFilePath = {},
     std::optional<ChangedFileScope> changed = std::nullopt,
-    bool detailedDiagnostics = false);
+    DiagnosticDetail diagnostics = DiagnosticDetail::Locations);
 
 // Check uses original coordinates; fix uses formatted coordinates.
 void PrintFileIssues(

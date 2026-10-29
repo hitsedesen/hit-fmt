@@ -1,5 +1,6 @@
 #include "formatter.hpp"
 
+#include "diagnostic_locations.hpp"
 #include "format_changes_internal.hpp"
 #include "format_pipeline.hpp"
 #include "syntax_layout.hpp"
@@ -517,6 +518,7 @@ void ApplyComments(
     result.Map = std::move(maps);
 }
 
+template <bool locations>
 void WidthDiagnostics(FormatResult& result, const CompiledPolicies& policies, uint8_t tabWidth)
 {
     if (policies.ColumnLimit == 0 || policies.WidthDiagnostics != WidthDiagnosticPolicy::Report) {
@@ -524,12 +526,17 @@ void WidthDiagnostics(FormatResult& result, const CompiledPolicies& policies, ui
     }
     uint32_t line = 1;
     size_t width = 0;
+    uint32_t codePointColumn = 1;
+    std::optional<parser::SourceOffset> overflow;
+    uint32_t caretColumn = 1;
     auto report = [&] {
         if (width > policies.ColumnLimit) {
             result.Diagnostics.push_back({
                 {line, uint32_t(policies.ColumnLimit + 1)},
                 std::format("emitted line width {} exceeds ColumnLimit {}", width, policies.ColumnLimit),
                 LayoutDiagnosticKind::LineWidth,
+                locations ? *overflow : 0,
+                locations ? caretColumn : 1,
             });
         }
     };
@@ -539,13 +546,22 @@ void WidthDiagnostics(FormatResult& result, const CompiledPolicies& policies, ui
             report();
             ++line;
             width = 0;
+            if constexpr (locations) {
+                codePointColumn = 1;
+                overflow.reset();
+            }
             if (c == '\r' && i + 1 < result.Text.size() && result.Text[i + 1] == '\n') {
                 ++i;
             }
-        } else if (c == '\t') {
-            width += tabWidth - width % tabWidth;
         } else {
-            ++width;
+            width += c == '\t' ? tabWidth - width % tabWidth : 1;
+            if constexpr (locations) {
+                if (!overflow && width > policies.ColumnLimit) {
+                    overflow = CheckedSourceAnalysisSize(i);
+                    caretColumn = codePointColumn;
+                }
+                ++codePointColumn;
+            }
             // One column per code point; invalid UTF8 bytes each occupy one.
             if (static_cast<unsigned char>(c) >= 0x80) {
                 i += unicode::utf8::GetFirstCodePointSize(std::string_view(result.Text).substr(i)).value_or(1) - 1;
@@ -738,7 +754,8 @@ FormatResult detail::FormatWithAnalysis(
     const bool needNamespaceAnchors = !namespacePlan.Namespaces.empty();
     const bool changeMetadata = request.Changes || request.ChangeSummary;
     const bool sourceMap = request.SourceMap || (changeMetadata && prepared.Structural.SortIncludes);
-    const bool needMaps = sourceMap || request.TokenMap || request.Changes || needNamespaceAnchors;
+    const bool needMaps =
+        sourceMap || request.TokenMap || request.Changes || request.DiagnosticLocations || needNamespaceAnchors;
     auto renderPolicy = SyntaxRenderPolicy(prepared.Policies, options);
     renderPolicy.SourceMap = sourceMap;
     auto rendered = [&] {
@@ -833,7 +850,9 @@ FormatResult detail::FormatWithAnalysis(
         scratch.release();
         if (!comments.Edits.empty()) {
             auto text = MaterializeNamespaceComments(result.Text, comments, file);
-            if (sourceMap || request.TokenMap || request.Changes || !result.OutputProtection.empty()) {
+            if (sourceMap || request.TokenMap || request.Changes || request.DiagnosticLocations ||
+                !result.OutputProtection.empty())
+            {
                 // Validate protected copies even without output maps.
                 ApplyComments(result, comments, original, namespacePlan, sourceMap || request.Changes, scratch);
                 scratch.release();
@@ -847,9 +866,17 @@ FormatResult detail::FormatWithAnalysis(
     if (prepared.Policies.LineEnding != LineEnding::Preserve) {
         (void)CheckedSourceAnalysisSize(result.Text.size());
     }
-    WidthDiagnostics(result, prepared.Policies, options.TabWidth);
+    if (request.SourceMap || request.DiagnosticLocations) {
+        WidthDiagnostics<true>(result, prepared.Policies, options.TabWidth);
+    } else {
+        WidthDiagnostics<false>(result, prepared.Policies, options.TabWidth);
+    }
     if (changeMetadata) {
         detail::BuildChangeMetadata(original, result, request.Changes, scratch);
+        scratch.release();
+    }
+    if (request.DiagnosticLocations) {
+        detail::MapWidthLocations(original, result, scratch);
         scratch.release();
     }
     if (!request.SourceMap) {

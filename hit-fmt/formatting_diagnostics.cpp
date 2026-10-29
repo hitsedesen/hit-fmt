@@ -43,7 +43,7 @@ void PrintWrappedMessage(std::ostream& output, std::string_view message, std::st
 
 void PrintSuggestedLine(std::ostream& output, std::string_view text, size_t gutterWidth, const Terminal& terminal)
 {
-    auto cells = RenderLine(text, 0, gutterWidth).Cells;
+    auto cells = RenderLine(text, gutterWidth).Cells;
     auto available = terminal.Width > gutterWidth + 1 ? terminal.Width - gutterWidth - 1 : size_t{16};
     for (size_t begin = 0;;) {
         output << terminal.Green;
@@ -303,12 +303,6 @@ void PrintFormattingDiagnostics(
         if (chunk.Violations.empty()) {
             continue;
         }
-        std::ranges::stable_sort(
-            chunk.Violations,
-            [] (const Violation& a, const Violation& b) {
-                return a.Position.Line < b.Position.Line ||
-                    (a.Position.Line == b.Position.Line && a.Position.Column < b.Position.Column);
-            });
         const auto first = chunk.Violations.front().Position;
         output << (fixed ? terminal.BoldGreen : terminal.BoldRed);
         output << (fixed ? "fixed: " : "fail: ") << chunk.Violations.size() << " violation"
@@ -334,9 +328,10 @@ void PrintFormattingDiagnostics(
             }
             const auto prefix =
                 std::string(width - std::to_string(lineNumber).size(), ' ') + std::to_string(lineNumber) + " | ";
+            const auto rendered = RenderLine(text, prefix.size());
             const auto printLine = [&] (size_t column) {
                 output << prefix;
-                return PrintSourceExcerpt(output, text, column, prefix.size(), terminal.Width);
+                return PrintSourceExcerpt(output, rendered, column, prefix.size(), terminal.Width);
             };
             if (violationIndex == chunk.Violations.size() ||
                 chunk.Violations[violationIndex].Position.Line != lineNumber)
