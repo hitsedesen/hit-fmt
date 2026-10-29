@@ -33,8 +33,10 @@ constexpr void VisitHelpBlocks(std::string_view text, Emit emit)
     const auto* data = text.data();
     const auto flush = [&] (size_t end) {
         if (blockStart < end) {
-            emit(
-                HelpBlock{code ? HelpBlockKind::Code : HelpBlockKind::Text, text.substr(blockStart, end - blockStart)});
+            emit(HelpBlock{
+                code ? HelpBlockKind::Code : HelpBlockKind::Text,
+                text.substr(blockStart, end - blockStart),
+            });
         }
     };
     // Keep scans within compiler constexpr step limits without library calls per byte.

@@ -65,15 +65,16 @@ Result ExportJob::run(ExportMode Mode) const {
     if (
         ProgressCallbackValue) {
       ProgressCallbackValue({.Kind = ProgressKind::Page, .Value = {
-              .Page = SourceDocument.Pages[PageIndex]
-                  .Number}}, ProgressCallbackContext);
+              .Page = SourceDocument.Pages[PageIndex].Number}},
+                            ProgressCallbackContext);
     }
   }
   auto ExportResult = Converter{Settings}.convert(SourceDocument, Mode);
   if (
       ProgressCallbackValue) {
-    ProgressCallbackValue({.Kind = ProgressKind::Fraction, .Value = {
-            .Fraction = 1.0}}, ProgressCallbackContext);
+    ProgressCallbackValue({.Kind = ProgressKind::Fraction,
+                           .Value = {.Fraction = 1.0}},
+                          ProgressCallbackContext);
   }
   return ExportResult;
 }

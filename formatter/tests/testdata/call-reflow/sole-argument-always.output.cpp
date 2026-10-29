@@ -36,4 +36,28 @@ void Example() {
         [state] {
             state->Pause();
         });
+    Consume(
+        {.Kind = AnchorKind::DelimiterColumn, .Fallback = 4, .Minimum = 4,
+            .StructuralBase = true, .Continuation = true});
+    Consume(
+        /* options */ Options{.Kind = AnchorKind::DelimiterColumn,
+            .Fallback = 4, .Minimum = 4, .StructuralBase = true,
+            .Continuation = true});
+    Prepare(
+        Consume(
+            {.Kind = AnchorKind::DelimiterColumn, .Fallback = 4, .Minimum = 4,
+                .StructuralBase = true, .Continuation = true}));
+    CallWithANameThatLeavesNoRoomForTheCompleteArgumentHeaderOnThisLine(
+        OptionsWithAHeaderThatDoesNotFitAfterTheCallOpeningDelimiter{
+            firstLengthyValue, secondLengthyValue});
+    Consume(
+        Options<FirstLengthyDocumentSettings, SecondLengthyDocumentSetting>{
+            first, second});
+    Consume(
+        Options<FirstLengthyDocumentSettings, SecondLengthyDocumentSettings>{
+            first, second});
+    Consume(
+        {1, 2});
+    Consume(
+        {});
 }

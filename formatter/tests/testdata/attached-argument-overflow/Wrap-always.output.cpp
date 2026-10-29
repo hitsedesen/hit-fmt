@@ -53,10 +53,9 @@ void Report() {
     alpha,
     beta,
     gamma);
-  message(
-    {leftArgument,
-      middleArgument,
-      rightArgument},
+  message({leftArgument,
+    middleArgument,
+    rightArgument},
     alpha,
     beta);
   message([](int value) {

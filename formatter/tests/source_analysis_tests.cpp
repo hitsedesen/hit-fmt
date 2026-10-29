@@ -1072,13 +1072,7 @@ TEST(SourceAnalysis,
     const std::array<formatter::ProtectedSourceRange, 1> headerPrefix{
         {{prefix[0], formatter::ProtectionReason::HeaderName}},
     };
-    auto foldedContext = Analyze(
-        tree,
-        memory,
-        {
-            .InheritedProtection =
-        headerPrefix,
-        });
+    auto foldedContext = Analyze(tree, memory, {.InheritedProtection = headerPrefix});
     ASSERT_TRUE(foldedContext.Gaps()[indentGap].ContextSensitive);
     foldedContext.RestrictEditScope(scope);
     EXPECT_NE(Permission(foldedContext, indentGap, PermissionKind::FinalIndentation), nullptr);
@@ -1101,14 +1095,7 @@ TEST(SourceAnalysis,
         })
     {
         const std::array<formatter::ProtectedSourceRange, 1> protection{{{{indent, trim + 2}, reason}}};
-        auto blocked = Analyze(
-            tree,
-            memory,
-            {
-                .InheritedProtection =
-            protection,
-                .EditScope = scope,
-            });
+        auto blocked = Analyze(tree, memory, {.InheritedProtection = protection, .EditScope = scope});
         EXPECT_TRUE(blocked.PartialGapPermissions().empty());
         EXPECT_FALSE(blocked.CanReplaceGap(indentGap, "\n    "));
         EXPECT_TRUE(Has(blocked.Gaps()[indentGap].Reasons, reason));
@@ -1229,14 +1216,7 @@ TEST(SourceAnalysis, PartialUnsafeRealSyntaxAndUnsupportedWhitespace)
         }
         const std::array names{std::string_view("KEEP")};
         std::pmr::monotonic_buffer_resource memory;
-        auto analysis = Analyze(
-            tree,
-            memory,
-            {
-                .WhitespaceSensitiveMacros =
-            names,
-                .EditScope = scope,
-            });
+        auto analysis = Analyze(tree, memory, {.WhitespaceSensitiveMacros = names, .EditScope = scope});
         // Some independent gaps can still be safe, but every emitted permission
         // must remain outside actual protection and whole-gap semantic fences.
         auto base = Analyze(tree, memory, {.WhitespaceSensitiveMacros = names});

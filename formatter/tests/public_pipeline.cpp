@@ -981,14 +981,7 @@ TEST(PublicPipeline, EditScopeProjectsPermutationGeneratedBytesAndReasonUnions)
     const auto sensitive = uint32_t(source.find("KEEP("));
     const std::array<parser::SourceRange, 1> scope{{{0, tail}}};
     const std::array<parser::SourceRange, 1> immutable{{{sensitive, sensitive + 13}}};
-    const auto result = FormatInput(
-        source,
-        prepared,
-        {
-            .ImmutableRanges = immutable,
-            .EditScope =
-            scope,
-        });
+    const auto result = FormatInput(source, prepared, {.ImmutableRanges = immutable, .EditScope = scope});
     EXPECT_TRUE(result.Text.starts_with("#include \"a.h\"\n#include \"zzzz.h\"\n"));
     EXPECT_TRUE(result.Text.ends_with(source.substr(tail)));
     EXPECT_NE(result.Text.find("KEEP(  x,y )"), std::string::npos);

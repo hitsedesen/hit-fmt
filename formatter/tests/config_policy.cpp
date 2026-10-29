@@ -1196,12 +1196,16 @@ TEST(ConfigPolicy, OrderedGroupIndexPreservesEarliestRule)
         SCOPED_TRACE(path);
         EXPECT_EQ(groups.Classify(path).Group, groups.GroupCount());
     }
-    const formatter::PreparedIncludeGroups reversed(
-        std::vector<formatter::IncludeGroupRule>{{{"engine/detail/"}, 1}, {{"engine/"}, 2}});
+    const formatter::PreparedIncludeGroups reversed(std::vector<formatter::IncludeGroupRule>{
+        {{"engine/detail/"}, 1},
+        {{"engine/"}, 2},
+    });
     EXPECT_EQ(reversed.Classify("engine/detail/item.h").Group, 0u);
     EXPECT_EQ(reversed.Classify("engine/item.h").Group, 1u);
-    const formatter::PreparedIncludeGroups fallback(
-        std::vector<formatter::IncludeGroupRule>{{{"engine/"}, 2}, {{""}, 1}});
+    const formatter::PreparedIncludeGroups fallback(std::vector<formatter::IncludeGroupRule>{
+        {{"engine/"}, 2},
+        {{""}, 1},
+    });
     EXPECT_EQ(fallback.Classify("engine/item.h").Group, 0u);
     EXPECT_EQ(fallback.Classify("../engine/item.h").Group, 1u);
     EXPECT_EQ(fallback.Classify("/engine/item.h").Group, 1u);

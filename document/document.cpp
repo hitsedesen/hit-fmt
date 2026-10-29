@@ -1702,8 +1702,13 @@ Result Document::Render(Policy policy, std::pmr::memory_resource* resource) cons
                 return false;
             }
             if (mappingRequested && !probing) {
-                recordMapping(
-                    {outputBegin, static_cast<std::uint32_t>(result.Text.size()), prefixOrigin, prefixExact, false});
+                recordMapping({
+                    outputBegin,
+                    static_cast<std::uint32_t>(result.Text.size()),
+                    prefixOrigin,
+                    prefixExact,
+                    false,
+                });
             }
             outputBegin = static_cast<std::uint32_t>(result.Text.size());
         }
@@ -1910,8 +1915,13 @@ Result Document::Render(Policy policy, std::pmr::memory_resource* resource) cons
                 }
                 if (gap.IndentSourceBegin != InvalidId) {
                     if (mappingRequested && !probing) {
-                        recordMapping(
-                            {outputBegin, static_cast<std::uint32_t>(result.Text.size()), node.Origin, false, false});
+                        recordMapping({
+                            outputBegin,
+                            static_cast<std::uint32_t>(result.Text.size()),
+                            node.Origin,
+                            false,
+                            false,
+                        });
                     }
                     outputBegin = static_cast<std::uint32_t>(result.Text.size());
                     auto text = Source_.substr(gap.IndentSourceBegin, gap.IndentSourceEnd - gap.IndentSourceBegin);

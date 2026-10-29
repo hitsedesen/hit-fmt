@@ -411,8 +411,11 @@ void detail::BuildChangeMetadata(
         summary.IncludeOrderChanges.reserve(blocks.size());
         for (const auto& block : blocks) {
             if (View(source, block.Original) != View(output, block.Output)) {
-                summary.IncludeOrderChanges.push_back(
-                    {block.Original, block.Output, {static_cast<uint32_t>(original.LineAt(block.Original.Begin)), 1}});
+                summary.IncludeOrderChanges.push_back({
+                    block.Original,
+                    block.Output,
+                    {static_cast<uint32_t>(original.LineAt(block.Original.Begin)), 1},
+                });
             }
         }
     }

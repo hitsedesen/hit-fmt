@@ -206,8 +206,10 @@ ChangedFormatResult FormatChanged(
                 if (tree.Kind(i) == tokenizer::TokenKind::Operator_OpenBrace) {
                     const auto close = tree.MatchingDelimiter(i);
                     if (close < region.Tokens.End) {
-                        namespaces.push_back(
-                            {region.Tokens.Begin, {tree.Token(close).Text.Begin, tree.Token(close).Text.End}});
+                        namespaces.push_back({
+                            region.Tokens.Begin,
+                            {tree.Token(close).Text.Begin, tree.Token(close).Text.End},
+                        });
                     }
                     break;
                 }

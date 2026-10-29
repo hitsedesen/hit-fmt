@@ -65,8 +65,9 @@ Result ExportJob::Run(ExportMode mode) const {
        ++page_index) {
     if (
         callback_) {
-      callback_({.kind = ProgressKind::kPage, .value = {.page = document_
-                  .pages[page_index].number}}, context_);
+      callback_({.kind = ProgressKind::kPage,
+                 .value = {.page = document_.pages[page_index].number}},
+                context_);
     }
   }
   auto result = Converter{options_}.Convert(document_, mode);
