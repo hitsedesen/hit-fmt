@@ -343,6 +343,8 @@
     OPT(formatter::CategoryLayout, BodiesLayout, \
         formatter::CategoryLayout::Inherit) \
     OPT(formatter::BodyShape, BodyShape, formatter::BodyShape::Expanded)       \
+    OPT(std::optional<formatter::BodyShape>, FunctionBodyShape, std::nullopt) \
+    OPT(std::optional<formatter::BodyShape>, ControlBodyShape, std::nullopt) \
     OPT(formatter::BodyShape, EmptyBodyShape, formatter::BodyShape::Expanded)  \
     OPT(formatter::CategoryLayout, LambdaBodiesLayout, \
         formatter::CategoryLayout::Inherit) \

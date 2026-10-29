@@ -230,6 +230,8 @@ struct CompiledPolicies
     const ChainPolicy Chains;
     const LayoutMode DeclarationHeaders;
     const BodyPolicy Bodies;
+    const BodyPolicy FunctionBodies;
+    const BodyPolicy ControlBodies;
     const BodyPolicy LambdaBodies;
     const BracePolicy Braces;
     // Applied only to grammar-approved trailing-comma sites after selecting
