@@ -1,0 +1,5 @@
+Layout = Preserve
+InitializersTrailingComma = WhenMultiline
+CommaSpaceAfter = Space
+ArgumentCommentSpacing = NoSpace
+TrailingCommentSpacing = Space

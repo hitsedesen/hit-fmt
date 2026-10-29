@@ -57,6 +57,7 @@ struct Gap
     Index BraceIndentOffset = None;
     Boundary Shape = Boundary::Preserve;
     document::GapKind Broken = document::GapKind::Flat;
+    GapAdjacency BrokenAdjacency = GapAdjacency::Source;
     bool Closing = false;
     bool Generated = false;
     bool Reindent = false;
@@ -1513,6 +1514,19 @@ private:
                     }
                 }
                 Commas_[after] = {group, existing ? lastSeparator : None};
+                const auto context = ContextFor(after);
+                if (Safety_.Gaps()[after].Horizontal && GapMutable(after) &&
+                    Spacing_.SpacePreference(after, context, Safety_, GapAdjacency::AfterComma) !=
+                        SpacePreference(after, context))
+                {
+                    auto& gap = Gaps_[after];
+                    gap.Owner = group;
+                    gap.Shape = Boundary::Conditional;
+                    gap.Broken = document::GapKind::Flat;
+                    gap.BrokenAdjacency = GapAdjacency::AfterComma;
+                    gap.Context = context;
+                    gap.ContextKnown = true;
+                }
             }
         }
     }
@@ -4308,7 +4322,7 @@ private:
                 gap.Shape = Boundary::Preserve;
             } else if (!flat) {
                 gap.Shape = Boundary::Hard;
-            } else if (!line) {
+            } else if (!line && !(gap.Shape == Boundary::Conditional && gap.Broken == document::GapKind::Flat)) {
                 gap.Shape = Boundary::Flat;
             }
         }
@@ -4412,8 +4426,14 @@ private:
             (gap.Shape == Boundary::Conditional && gap.Broken != document::GapKind::Flat);
     }
 
-    std::optional<bool> SpacePreference(Index i, GapContext context) const
+    std::optional<bool> SpacePreference(
+        Index i,
+        GapContext context,
+        GapAdjacency adjacency = GapAdjacency::Source) const
     {
+        if (adjacency != GapAdjacency::Source) {
+            return Spacing_.SpacePreference(i, context, Safety_, adjacency);
+        }
         auto& facts = Facts_[i];
         auto cached = context == GapContext::Preserved ? facts.PreservedPreference : facts.RebuiltPreference;
         if (cached == 0) {
@@ -4438,8 +4458,11 @@ private:
         return cached == UINT16_MAX - 1 ? std::nullopt : std::optional<uint16_t>{cached};
     }
 
-    Index FlatWidth(Index i) const
+    Index FlatWidth(Index i, GapAdjacency adjacency = GapAdjacency::Source) const
     {
+        if (adjacency != GapAdjacency::Source) {
+            return ComputeFlatWidth(i, adjacency);
+        }
         auto& gap = Facts_[i];
         if (!GapCacheReady_) {
             return ComputeFlatWidth(i);
@@ -4451,7 +4474,7 @@ private:
         return gap.CachedWidth;
     }
 
-    Index ComputeFlatWidth(Index i) const
+    Index ComputeFlatWidth(Index i, GapAdjacency adjacency = GapAdjacency::Source) const
     {
         if (Removed_.size() > i && Removed_[i]) {
             return 0;
@@ -4465,7 +4488,7 @@ private:
         if (const auto count = TrailingCommentCount(i)) {
             return *count;
         }
-        const auto preference = SpacePreference(i, ContextFor(i));
+        const auto preference = SpacePreference(i, ContextFor(i), adjacency);
         if (preference) {
             return *preference ? 1 : 0;
         }
@@ -4568,11 +4591,15 @@ private:
         Stack_.clear();
     }
 
-    document::GapSpec Spec(Index i, document::GapKind kind, bool sourceHorizontal = true) const
+    document::GapSpec Spec(
+        Index i,
+        document::GapKind kind,
+        bool sourceHorizontal = true,
+        GapAdjacency adjacency = GapAdjacency::Source) const
     {
         document::GapSpec spec;
         spec.Kind = kind;
-        spec.Spaces = uint16_t(std::min<Index>(FlatWidth(i), UINT16_MAX));
+        spec.Spaces = uint16_t(std::min<Index>(FlatWidth(i, adjacency), UINT16_MAX));
         spec.RequiredWidth = Facts_[i].RequiredWidth;
         spec.FitNextSegment = Gaps_[i].FitNextSegment;
         spec.FitNextSegmentIfOverflow = Gaps_[i].FitNextSegmentIfOverflow;
@@ -4593,7 +4620,7 @@ private:
         }
         const auto context = ContextFor(i);
         if (sourceHorizontal && (!RebuildsTopology(i) || Gaps_[i].KeepFlatSpacing) && Safety_.Gaps()[i].Horizontal &&
-            !TrailingCommentCount(i) && !SpacePreference(i, context))
+            !TrailingCommentCount(i) && !SpacePreference(i, context, adjacency))
         {
             spec.FlatSourceBegin = Safety_.Gaps()[i].Source.Begin;
             spec.FlatSourceEnd = Safety_.Gaps()[i].Source.End;
@@ -4944,9 +4971,7 @@ private:
         // This is not byte-diff activation and never weakens topology barriers.
         if (!flatOK) {
             Document_.Gap(Spec(i, document::GapKind::Hard), anchor, GapOrigin(i));
-        } else if (!lineOK || gap.Shape == Boundary::Flat) {
-            Document_.Gap(flat, anchor, GapOrigin(i));
-        } else if (gap.Shape == Boundary::Conditional) {
+        } else if (gap.Shape == Boundary::Conditional && (lineOK || gap.Broken == document::GapKind::Flat)) {
             if (Stack_.empty() || Stack_.back() != gap.Owner) {
                 Fail(SyntaxLayoutError::ConflictingGapOwners, i);
                 return;
@@ -4954,10 +4979,12 @@ private:
             Document_.ConditionalGap(
                 Groups_[gap.Owner].Id,
                 flat,
-                Spec(i, gap.Broken),
+                Spec(i, gap.Broken, true, gap.BrokenAdjacency),
                 anchor,
                 GapOrigin(i),
                 gap.BraceIndentOffset);
+        } else if (!lineOK || gap.Shape == Boundary::Flat) {
+            Document_.Gap(flat, anchor, GapOrigin(i));
         } else {
             Document_.Gap(
                 Spec(i, gap.Shape == Boundary::Hard ? document::GapKind::Hard : document::GapKind::Soft),
