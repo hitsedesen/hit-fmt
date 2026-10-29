@@ -58,50 +58,6 @@ bool IsExcluded(const std::filesystem::path& relativePath, const std::vector<std
         });
 }
 
-template <typename ConfigExcludes, typename Visit>
-bool ForEachFile(
-    const std::vector<std::filesystem::path>& paths,
-    const std::vector<std::regex>& exclusions,
-    ConfigExcludes configExcludes,
-    Visit visit)
-{
-    std::unordered_set<std::filesystem::path> seen;
-    auto emit = [&] (const std::filesystem::path& path) {
-        return !seen.insert(path).second || visit(path);
-    };
-    for (const auto& path : paths) {
-        if (std::filesystem::is_regular_file(path)) {
-            if (!IsExcluded(path.filename(), exclusions) && !configExcludes(path, false) && !emit(path)) {
-                return false;
-            }
-            continue;
-        }
-        if (!std::filesystem::is_directory(path)) {
-            throw std::runtime_error(path.string() + ": path does not exist");
-        }
-        if (configExcludes(path, true)) {
-            continue;
-        }
-        auto iterator = std::filesystem::recursive_directory_iterator(path);
-        for (const auto end = std::filesystem::recursive_directory_iterator(); iterator != end; ++iterator) {
-            const auto& entry = *iterator;
-            bool directory = entry.is_directory();
-            if (IsExcluded(entry.path().lexically_relative(path), exclusions) ||
-                configExcludes(entry.path(), directory))
-            {
-                if (directory) {
-                    iterator.disable_recursion_pending();
-                }
-                continue;
-            }
-            if (!entry.is_symlink() && entry.is_regular_file() && IsCppSource(entry.path()) && !emit(entry.path())) {
-                return false;
-            }
-        }
-    }
-    return true;
-}
-
 class StyleResolver
 {
 public:
@@ -204,6 +160,46 @@ private:
         ConfigPaths_;
     std::unordered_map<std::string, ConfigEntry> Configs_;
 };
+
+template <typename Visit>
+bool DiscoverFiles(const Options& options, StyleResolver& resolver, Visit visit)
+{
+    std::unordered_set<std::filesystem::path> seen;
+    auto emit = [&] (const std::filesystem::path& path) {
+        return !seen.insert(path).second || visit(path);
+    };
+    for (const auto& path : options.Paths) {
+        if (std::filesystem::is_regular_file(path)) {
+            if (!IsExcluded(path.filename(), options.Exclusions) && !resolver.IsExcluded(path, false) && !emit(path)) {
+                return false;
+            }
+            continue;
+        }
+        if (!std::filesystem::is_directory(path)) {
+            throw std::runtime_error(path.string() + ": path does not exist");
+        }
+        if (resolver.IsExcluded(path, true)) {
+            continue;
+        }
+        auto iterator = std::filesystem::recursive_directory_iterator(path);
+        for (const auto end = std::filesystem::recursive_directory_iterator(); iterator != end; ++iterator) {
+            const auto& entry = *iterator;
+            bool directory = entry.is_directory();
+            if (IsExcluded(entry.path().lexically_relative(path), options.Exclusions) ||
+                resolver.IsExcluded(entry.path(), directory))
+            {
+                if (directory) {
+                    iterator.disable_recursion_pending();
+                }
+                continue;
+            }
+            if (!entry.is_symlink() && entry.is_regular_file() && IsCppSource(entry.path()) && !emit(entry.path())) {
+                return false;
+            }
+        }
+    }
+    return true;
+}
 
 void PrintHelp(std::ostream& output, std::string_view executable, const TerminalColors& colors)
 {
@@ -360,6 +356,40 @@ FileResult ProcessFile(
     return result;
 }
 
+template <typename Print>
+bool DispatchFiles(
+    const Options& options,
+    const formatter::ChangedHunkFiles& changed,
+    const TerminalColors& colors,
+    Print&& print)
+{
+    StyleResolver discoveryResolver(options);
+    const auto discover = [&] (auto visit) {
+        return DiscoverFiles(options, discoveryResolver, visit);
+    };
+    const auto process = [&] (const auto& path, StyleResolver& resolver) {
+        return ProcessFile(path, resolver, options, changed, colors);
+    };
+    if (options.Threads == 1) {
+        return RunSerialFiles(discover, discoveryResolver, process, print);
+    }
+    const auto makeWorkerResolver = [&options] {
+        return StyleResolver(options);
+    };
+    return RunParallelFiles(options.Threads, discover, makeWorkerResolver, process, print);
+}
+
+bool PrintFileResult(const FileResult& result, size_t& mismatchCount)
+{
+    std::cout << result.Output;
+    std::cout.flush();
+    if (!result.Error.empty()) {
+        std::osyncstream(std::cerr) << result.Error;
+    }
+    mismatchCount += result.Mismatches;
+    return result.Failed;
+}
+
 void PrintSummary(size_t mismatchCount, bool changedHunks, const TerminalColors& colors)
 {
     if (colors.Reset.empty()) {
@@ -377,31 +407,11 @@ void PrintSummary(size_t mismatchCount, bool changedHunks, const TerminalColors&
 
 int RunFiles(const Options& options, const formatter::ChangedHunkFiles& changed, const TerminalColors& colors)
 {
-    StyleResolver styleResolver(options);
-    const auto discover = [&] (auto visit) {
-        return ForEachFile(
-            options.Paths,
-            options.Exclusions,
-            [&] (const auto& path, bool directory) { return styleResolver.IsExcluded(path, directory); },
-            visit);
-    };
-    const auto process = [&] (const auto& path, StyleResolver& resolver) {
-        return ProcessFile(path, resolver, options, changed, colors);
-    };
     size_t mismatchCount = 0;
-    const auto print = [&] (const FileResult& result) {
-        std::cout << result.Output;
-        std::cout.flush();
-        if (!result.Error.empty()) {
-            std::osyncstream(std::cerr) << result.Error;
-        }
-        mismatchCount += result.Mismatches;
-        return result.Failed;
+    const auto print = [&mismatchCount] (const FileResult& result) {
+        return PrintFileResult(result, mismatchCount);
     };
-    const bool success = options.Threads == 1
-        ? RunSerialFiles(discover, styleResolver, process, print)
-        : RunParallelFiles(options.Threads, discover, [&] { return StyleResolver(options); }, process, print);
-    if (!success) {
+    if (!DispatchFiles(options, changed, colors, print)) {
         return 1;
     }
     PrintSummary(mismatchCount, options.HunkInput.has_value(), colors);
