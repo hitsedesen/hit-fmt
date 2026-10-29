@@ -743,10 +743,17 @@ std::vector<FormatCase> FormatCases()
         cases.push_back({directory, "namespace-indent-preserve", "namespace-indent.input.cpp"});
         cases.back().Style = std::move(style);
     }
-    AddCases(cases, data / "include-order", {"sort", "composed"});
+    AddCases(cases, data / "include-order", {"sort", "composed", "angled-first"});
     cases.push_back({data / "include-order", "crlf", "crlf.input.cpp", "sort"});
     {
         const auto directory = data / "include-order";
+        for (const auto profile : {"groups-regroup", "groups-depth-one"}) {
+            FormatCase value{directory, "angled-first-" + std::string(profile), "groups.input.cpp", profile};
+            value.Style = formatter::LoadConfigFile(directory / (std::string(profile) + ".hit-fmt")).FormattingStyle;
+            value.Style->IncludeCategoryOrder = formatter::IncludeCategoryOrder::AngledFirst;
+            value.InputFilePath = "library/unit/widget.cpp";
+            cases.push_back(std::move(value));
+        }
         for (const auto name : {"directory", "matching", "prefixes"}) {
             for (const bool absolute : {false, true}) {
                 FormatCase value{

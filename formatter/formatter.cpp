@@ -590,6 +590,7 @@ PreparedFormat::PreparedFormat(const Style& style)
         style.AlignMacroBackslashes,
         style.RulerLength,
         static_cast<std::uint8_t>(style.IndentWidth),
+        style.IncludeCategoryOrder,
         style.IncludeMatchingHeader,
         style.IncludeGrouping,
         style.IncludeGroupOrder,

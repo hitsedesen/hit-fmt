@@ -364,10 +364,13 @@ StickyChainCallPairs = ["Item:Value", "registrar:Parameter"]
 ```
 
 # Include sorting
-- IncludeOrder = Sort sorts safe blocks, quoted before angled;
+- IncludeOrder = Sort sorts safe blocks;
   Preserve disables sorting. IncludeMatchingHeader = First pairs a
   source with a same-directory, same-stem .h/.hh/.hpp/.hxx/.h++ header.
   Header inputs or missing source filenames disable pairing.
+- IncludeCategoryOrder: QuotedFirst (default) or AngledFirst orders quoted
+  and angled headers in every grouping mode. Matching headers stay first
+  and IncludeStandardHeaders = Last keeps standard headers last.
 - IncludeGrouping: Preserve keeps adjacent blocks and blank lines;
   Regroup merges across blanks by rule; Directory groups by directory.
   Regroup/Directory insert one blank line, conflicting with MaxEmptyLines
@@ -397,6 +400,7 @@ StickyChainCallPairs = ["Item:Value", "registrar:Parameter"]
 ## Group headers by directory
 ```config
 IncludeOrder = Sort
+IncludeCategoryOrder = AngledFirst
 IncludeMatchingHeader = First
 IncludeGrouping = Directory
 IncludeGroupOrder = Configured
