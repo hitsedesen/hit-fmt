@@ -7,6 +7,9 @@
 # Blank counts measure empty lines; zero retains boundary topology.
 # Exact counts above an explicit MaxEmptyLines cap are invalid.
 # IncludeOrder = Sort enables the following include policies.
+# IncludeCategoryOrder = QuotedFirst (default) puts quoted before angled;
+# AngledFirst reverses them. IncludeMatchingHeader = First and
+# IncludeStandardHeaders = Last retain their first/final positions.
 # IncludeMatchingHeader = First selects quoted same-stem headers
 # (.h/.hh/.hpp/.hxx/.h++) in the input file's directory.
 # Pairing is disabled for header inputs or missing filenames.
@@ -59,7 +62,7 @@
 # between groups; both conflict with MaxEmptyLines = 0.
 # IncludeDirectoryOrder = NearestFirst uses parent + child steps
 # from the input directory; ties sort by directory spelling.
-# Alphabetical omits distance. Quoted groups precede angled ones.
+# Alphabetical omits distance. IncludeCategoryOrder orders quote/angle groups.
 # IncludeInGroupOrder = Alphabetical retains in-group ordering.
 # NearestFirst uses full resolved containing-directory distance,
 # then alphabetical include spelling, without changing groups.
@@ -776,6 +779,9 @@ RulerBlankLinesAfter = Preserve
 
 # Values: Preserve | Sort
 IncludeOrder = Preserve
+
+# Values: QuotedFirst | AngledFirst
+IncludeCategoryOrder = QuotedFirst
 
 # Values: Off | First
 IncludeMatchingHeader = Off

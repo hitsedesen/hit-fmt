@@ -651,7 +651,7 @@ void Includes(
                     return !standard(a);
                 }
                 if (a.Angled != b.Angled) {
-                    return !a.Angled;
+                    return options.CategoryOrder == IncludeCategoryOrder::AngledFirst ? a.Angled : !a.Angled;
                 }
                 if (options.Grouping != IncludeGrouping::Preserve && !matching(a) && !standard(a)) {
                     if (key(a).Priority != key(b).Priority) {

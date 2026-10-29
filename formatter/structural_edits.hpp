@@ -61,6 +61,7 @@ struct StructuralOptions
     bool AlignMacroBackslashes = false;
     std::size_t RulerLength = 0;
     std::uint8_t IndentWidth = 4;
+    IncludeCategoryOrder CategoryOrder = IncludeCategoryOrder::QuotedFirst;
     IncludeMatchingHeader MatchingHeader = IncludeMatchingHeader::Off;
     IncludeGrouping Grouping = IncludeGrouping::Preserve;
     IncludeGroupOrder GroupOrder = IncludeGroupOrder::Directory;

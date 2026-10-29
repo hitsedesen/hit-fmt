@@ -200,6 +200,11 @@ void ValidatePolicyStyle(const Style& style)
     {
         throw std::invalid_argument("TernaryOperatorIndentation has invalid value");
     }
+    if (static_cast<std::size_t>(style.IncludeCategoryOrder) >=
+        ConfigEnumNames<IncludeCategoryOrder>::Values.size())
+    {
+        throw std::invalid_argument("IncludeCategoryOrder has invalid value");
+    }
     if (style.IncludeMatchingHeader != IncludeMatchingHeader::Off &&
         style.IncludeMatchingHeader != IncludeMatchingHeader::First)
     {
@@ -385,7 +390,7 @@ CompiledPolicies CompilePolicies(const Style& style)
         .GenerateCallScopeIndentation = style.GenerateCallScopeIndentation,
         .RulerBlankLinesBefore = CompileBlankLines(style.RulerBlankLinesBefore),
         .RulerBlankLinesAfter = CompileBlankLines(style.RulerBlankLinesAfter),
-        .Includes = {style.IncludeMatchingHeader, style.IncludeGrouping,
+        .Includes = {style.IncludeCategoryOrder, style.IncludeMatchingHeader, style.IncludeGrouping,
             style.IncludeGroupOrder, style.IncludeDirectoryOrder,
             style.IncludeInGroupOrder, style.IncludePathBase,
             style.IncludeStandardHeaders},

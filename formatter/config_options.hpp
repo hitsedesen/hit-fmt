@@ -445,6 +445,8 @@
     OPT(formatter::BlankLineSetting, RulerBlankLinesAfter, {}) \
     OPT(formatter::IncludeOrder, IncludeOrder, \
         formatter::IncludeOrder::Preserve) \
+    OPT(formatter::IncludeCategoryOrder, IncludeCategoryOrder, \
+        formatter::IncludeCategoryOrder::QuotedFirst) \
     OPT(formatter::IncludeMatchingHeader, IncludeMatchingHeader, \
         formatter::IncludeMatchingHeader::Off) \
     OPT(formatter::IncludeGrouping, IncludeGrouping, \
