@@ -223,7 +223,6 @@ void PrintHelp(std::ostream& output, std::string_view executable, const Terminal
     output << "    -j consumes the next non-flag argument as n; use -j -- <path> for all cores.\n";
     option("--threads <n>", "  Use n threads (default 1).");
     option("--config <file>", "  Use one configuration file for every input.");
-    option("--no-config", "      Do not search parent directories for .hit-fmt.");
     option("--changed-hunks <file|->", "  Read changed file/line records (alias --changed-ranges).");
     option("--exclude <regex>", " Skip matching files or directories (repeatable).");
     option("-h, --help", "       Show this help.");
@@ -233,7 +232,7 @@ void PrintHelp(std::ostream& output, std::string_view executable, const Terminal
     output << "    Presets: ytsaurus, google, llvm; omit for a preserving config.\n"
         << "    Both --generate-config google and --generate-config=google work.\n";
     output << "\n"
-        << "Without --config or --no-config, each source file uses the "
+        << "Without --config, each source file uses the "
             "nearest .hit-fmt file in its directory or a parent directory.\n"
         << "Input paths may be files or directories.\n"
         << "Directories are searched recursively for C and C++ source " "files.\n"
