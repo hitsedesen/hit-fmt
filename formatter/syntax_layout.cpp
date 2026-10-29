@@ -2045,10 +2045,13 @@ private:
         const auto initializer = LastChild_[id];
         const auto list = node.Parent;
         const auto declaration = list == None ? None : Region(Syntax_[list]).Parent;
+        // Without a type prefix, the leading gap belongs to the enclosing
+        // statement sequence, not a declarator continuation.
         if (initializer == None || Region(Syntax_[initializer]).Kind != NodeKind::Initializer || declaration == None ||
             node.Tokens.Begin != Region(Syntax_[list]).Tokens.Begin ||
             (Region(Syntax_[declaration]).Kind != NodeKind::Declaration &&
                 Region(Syntax_[declaration]).Kind != NodeKind::DeclarationStatement) ||
+            node.Tokens.Begin == Region(Syntax_[declaration]).Tokens.Begin ||
             Policies_.DeclarationHeaders != LayoutMode::Canonical ||
             PrefixProtection_[node.Tokens.Begin] != PrefixProtection_[node.Tokens.End])
         {

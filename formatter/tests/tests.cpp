@@ -277,6 +277,9 @@ std::vector<FormatCase> FormatCases()
     {
         const auto directory = data / "declaration-headers";
         const auto base = formatter::LoadConfigFile(directory / "../style/repository-80.hit-fmt").FormattingStyle;
+        FormatCase selfType{directory, "self-type-statements", "self-type-statements.input.cpp"};
+        selfType.Style = base;
+        cases.push_back(std::move(selfType));
         FormatCase fitting{directory, "fitting-prefix-rhs", "fitting-prefix-rhs.input.cpp"};
         fitting.Style = base;
         cases.push_back(std::move(fitting));
