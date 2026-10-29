@@ -16,8 +16,6 @@
 
 namespace hit_fmt {
 
-// Configuration-lifetime owning snapshot, prepared after final settings.
-// Each resolver/worker owns its snapshots; callers reuse them read-only.
 struct PreparedFileConfiguration
 {
     explicit PreparedFileConfiguration(formatter::Configuration configuration);
@@ -34,7 +32,7 @@ struct SemanticDiagnostic
 
 struct IncludeOrderChange
 {
-    // Complete original/emitted line blocks, including generated separators.
+    // Whole-line ranges, including generated separators.
     parser::SourceRange Original;
     parser::SourceRange Emitted;
     util::Position Position;
@@ -44,40 +42,32 @@ struct CheckedFile
 {
     formatter::FormatResult Formatting;
     std::vector<SemanticDiagnostic> Semantic;
-    // Definite required edits blocked by the original hunk boundary.
+    // Required edits blocked by hunk boundaries.
     std::vector<SemanticDiagnostic> RequiredChanges;
     // Original byte ranges that were not fully checked.
     std::vector<formatter::HunkCoverage> Incomplete;
-    // Original token anchors, indexed like Formatting.Diagnostics.
+    // Original token positions, indexed like Formatting.Diagnostics.
     std::vector<util::Position> OriginalWidthPositions;
     std::uint16_t ColumnLimit = 0;
     bool FormattingMismatch = false;
     bool OtherFormattingMismatch = false;
-    // Accepted include-sort operations in original source order. Detailed
-    // line diffs omit these blocks; check mode reports one include-order
-    // failure for the file, not one failure for every moved directive.
+    // Sorted by original source position.
     std::vector<IncludeOrderChange> IncludeOrderChanges;
 
-    // Applied formatting is not a failure in fix mode. Remaining semantic,
-    // structural and width violations are failures in both modes.
+    // Fix mode ignores applied formatting changes.
     [[nodiscard]] bool HasFailures(bool fix) const;
 };
 
-// One-based inclusive original physical lines. Spill authorizes only bounded
-// safe lists/include groups, not whole functions. An engaged empty selection
-// selects nothing; absent scope checks the whole file. Borrowed only during
-// FormatAndCheckFile.
+// One-based inclusive lines in the original source.
 struct ChangedFileScope
 {
     std::span<const formatter::Hunk> Hunks;
+    // Allow bounded spillover into enclosing lists and include groups.
     bool Spillover = true;
 };
 
-// One original parse and one public pipeline invocation, mode-independent.
-// Original slash-separated inputFilePath is borrowed only during this call.
-// Result owns all data; no references into input/path/configuration/parser
-// arenas.
-// detailedDiagnostics requests change metadata for PrintFormattingDiagnostics.
+// Absent scope covers the whole file; an empty scope selects nothing.
+// detailedDiagnostics includes change metadata for diagnostic rendering.
 [[nodiscard]] CheckedFile FormatAndCheckFile(
     util::PaddedSourceView source,
     const PreparedFileConfiguration& configuration,
@@ -85,10 +75,7 @@ struct ChangedFileScope
     std::optional<ChangedFileScope> changed = std::nullopt,
     bool detailedDiagnostics = false);
 
-// Check diagnostics use original coordinates; fix diagnostics use emitted
-// coordinates. originalSource is borrowed only while printing; fix excerpts
-// use Formatting.Text.
-// Printing does not parse or run the formatter.
+// Check uses original coordinates; fix uses formatted coordinates.
 void PrintFileIssues(
     std::ostream& output,
     std::string_view path,
@@ -97,7 +84,6 @@ void PrintFileIssues(
     bool fix,
     const Terminal& terminal = Terminal{});
 
-// Summary preserves all failure categories, not only the first one.
 void PrintFileSummaryIssues(std::ostream& output, const CheckedFile& checked, bool fix);
 
 } // namespace hit_fmt
