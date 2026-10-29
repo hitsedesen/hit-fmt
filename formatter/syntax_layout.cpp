@@ -1299,26 +1299,40 @@ private:
                 Gaps_[begin + 1].FitNextSegment = true;
                 Gaps_[begin + 1].FitThrough = Region(Syntax_[first]).Tokens.End;
             }
-            if (node.Kind == NodeKind::ArgumentList && firstKind == document::GapKind::Soft) {
+            if (node.Kind == NodeKind::ArgumentList && firstKind == document::GapKind::Soft &&
+                !(pin && pin->Overflow == AttachedStringOverflow::BreakBefore))
+            {
                 for (auto child = node.FirstChild; child != None; child = Region(Syntax_[child]).NextSibling) {
                     if (Region(Syntax_[child]).Kind != NodeKind::Argument) {
                         continue;
                     }
                     const auto expression = Region(Syntax_[child]).FirstChild;
-                    if (expression != None && Region(Syntax_[expression]).Kind == NodeKind::LambdaExpression) {
-                        // Fit through the opening brace, not the optional
-                        // compact body. Authored body newlines must not change
-                        // the call's first-argument fitting obligation.
-                        Gaps_[begin + 1].FitNextSegment = true;
-                        for (auto part = Region(Syntax_[expression]).FirstChild;
-                            part != None;
-                            part = Region(Syntax_[part]).NextSibling)
-                        {
-                            if (Region(Syntax_[part]).Kind == NodeKind::LambdaBody) {
-                                Gaps_[begin + 1].FitThrough = Region(Syntax_[part]).Tokens.Begin;
-                                break;
+                    auto body = None;
+                    if (expression != None) {
+                        const auto kind = Region(Syntax_[expression]).Kind;
+                        if (kind == NodeKind::BracedInitializer) {
+                            body = expression;
+                        } else if (kind == NodeKind::LambdaExpression || kind == NodeKind::TypeConstructionExpression) {
+                            const auto bodyKind = kind == NodeKind::LambdaExpression
+                                ? NodeKind::LambdaBody
+                                : NodeKind::BracedInitializer;
+                            for (auto part = Region(Syntax_[expression]).FirstChild;
+                                part != None;
+                                part = Region(Syntax_[part]).NextSibling)
+                            {
+                                if (Region(Syntax_[part]).Kind == bodyKind) {
+                                    body = part;
+                                    break;
+                                }
                             }
                         }
+                    }
+                    if (body != None) {
+                        // Fit through the opening brace. Optional breaks in
+                        // the body must not push a fitting argument header
+                        // onto the next line or hide an overflowing header.
+                        Gaps_[begin + 1].FitNextSegment = true;
+                        Gaps_[begin + 1].FitThrough = Region(Syntax_[body]).Tokens.Begin;
                         Groups_[group].Spec.ChildBreaks = false;
                     }
                     break;
@@ -1494,9 +1508,10 @@ private:
                 (Policies_.InitializersTrailingComma == TrailingCommaPolicy::WhenMultiline &&
                     Safety_.IntersectsImmutable({insertion, insertion})) ||
                 (existing &&
-                    (Safety_.IntersectsImmutable(
-                        {Tree_.Token(lastSeparator).Text.Begin, Tree_.Token(lastSeparator).Text.End}) ||
-                        !GapMutable(lastSeparator) || !Safety_.CanReplaceGap(lastSeparator, "") ||
+                    (Safety_.IntersectsImmutable({
+                        Tree_.Token(lastSeparator).Text.Begin,
+                        Tree_.Token(lastSeparator).Text.End,
+                    }) || !GapMutable(lastSeparator) || !Safety_.CanReplaceGap(lastSeparator, "") ||
                         (!canonical && Safety_.Gaps()[lastSeparator].HasLineFeed))))
             {
                 // Removing the comma also removes its preceding gap. Keep it
@@ -4930,8 +4945,11 @@ private:
                     return;
                 }
                 const auto indentBegin = source.Source.Begin + Index(lf + 1);
-                const auto anchor = Document_.MarkAnchor(
-                    {.Kind = document::AnchorKind::BlockRelative, .Offset = plan.ExtraIndent, .StructuralBase = true});
+                const auto anchor = Document_.MarkAnchor({
+                    .Kind = document::AnchorKind::BlockRelative,
+                    .Offset = plan.ExtraIndent,
+                    .StructuralBase = true,
+                });
                 Document_.SourceLineIndent(
                     source.Source.Begin,
                     indentBegin,
@@ -5207,22 +5225,21 @@ private:
                     });
                 } else if (group.HasAnchor) {
                     group.Anchor = Document_
-                        .MarkAnchor(
-                            {
-                                group.Indent.Alignment == ContinuationAlignment::Delimiter
-                                    ? document::AnchorKind::DelimiterColumn
-                                    : document::AnchorKind::BlockRelative,
-                                group.Indent.Alignment == ContinuationAlignment::Delimiter
-                                    ? 0
-                                    : int32_t(group.Indent.ContinuationOffset),
-                                int32_t(group.Indent.FallbackOffset),
-                                uint32_t(group.Indent.ContinuationOffset),
-                                group.Spec.StructuralBase,
-                                group.Spec.Continuation,
-                                sharedAnchor ? Groups_[continuation].ContinuationAnchor : document::InvalidId,
-                                group.Spec.LineBase,
-                                group.Spec.FixedBase,
-                            });
+                        .MarkAnchor({
+                            group.Indent.Alignment == ContinuationAlignment::Delimiter
+                                ? document::AnchorKind::DelimiterColumn
+                                : document::AnchorKind::BlockRelative,
+                            group.Indent.Alignment == ContinuationAlignment::Delimiter
+                                ? 0
+                                : int32_t(group.Indent.ContinuationOffset),
+                            int32_t(group.Indent.FallbackOffset),
+                            uint32_t(group.Indent.ContinuationOffset),
+                            group.Spec.StructuralBase,
+                            group.Spec.Continuation,
+                            sharedAnchor ? Groups_[continuation].ContinuationAnchor : document::InvalidId,
+                            group.Spec.LineBase,
+                            group.Spec.FixedBase,
+                        });
                 }
                 if (group.IndentGroup != None) {
                     // Packing adds a shape choice, not a continuation level.

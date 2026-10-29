@@ -4,14 +4,13 @@ void Sample()
         if (ready) {
             if (active) {
                 const auto anchor = mode == 2
-                    ? document.MarkAnchor(
-                        {
-                            .Kind = AnchorKind::DelimiterColumn,
-                            .Fallback = 4,
-                            .Minimum = 4,
-                            .StructuralBase = true,
-                            .Continuation = true,
-                        })
+                    ? document.MarkAnchor({
+                        .Kind = AnchorKind::DelimiterColumn,
+                        .Fallback = 4,
+                        .Minimum = 4,
+                        .StructuralBase = true,
+                        .Continuation = true,
+                    })
                     : InvalidId;
                 const auto text = std::string_view(output.Text).substr(
                     map.Output.Begin,

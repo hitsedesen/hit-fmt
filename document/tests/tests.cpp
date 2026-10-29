@@ -219,8 +219,13 @@ TEST(GroupLayout, ContinuationStarterLineGolden)
             const auto expression = document.BeginGroup({GroupMode::Fill, 4, false, true});
             document.Gap({rhsLine ? GapKind::Hard : GapKind::Flat, 1});
             document.Text("f(");
-            const auto anchor = document.MarkAnchor(
-                {delimiter ? AnchorKind::DelimiterColumn : AnchorKind::BlockRelative, delimiter ? 0 : 4, 4, 4, true});
+            const auto anchor = document.MarkAnchor({
+                delimiter ? AnchorKind::DelimiterColumn : AnchorKind::BlockRelative,
+                delimiter ? 0 : 4,
+                4,
+                4,
+                true,
+            });
             const auto call = document.BeginGroup({GroupMode::Fill, 4, true, false, true});
             document.Gap({GapKind::Soft, 0, 5}, anchor);
             document.Text("item)");
@@ -664,14 +669,13 @@ TEST(GroupLayout, BoundedChildFittingGolden)
                 document.ConditionalGap(chain, {GapKind::Flat, 0}, {GapKind::Soft, 0});
                 document.Text(".slice({");
                 const auto anchor = mode == 2
-                    ? document.MarkAnchor(
-                        {
-                            .Kind = document::AnchorKind::DelimiterColumn,
-                            .Fallback = 4,
-                            .Minimum = 4,
-                            .StructuralBase = true,
-                            .Continuation = true,
-                        })
+                    ? document.MarkAnchor({
+                        .Kind = document::AnchorKind::DelimiterColumn,
+                        .Fallback = 4,
+                        .Minimum = 4,
+                        .StructuralBase = true,
+                        .Continuation = true,
+                    })
                     : document::InvalidId;
                 const auto arguments = document
                     .BeginGroup({.Mode = GroupMode::Fill, .Indent = 4, .StructuralBase = true, .Continuation = true});
@@ -1347,8 +1351,12 @@ TEST(GroupLayout, GeneratedTabsPreserveVisualLayoutAndOpaqueSource)
     EXPECT_EQ(spaces.Broken, tabs.Broken);
     for (std::uint8_t width : {1, 8, 32}) {
         auto otherSpaces = document.Render({.Width = 20, .TabWidth = width, .LineEnding = Newline::CRLF});
-        auto otherTabs = document.Render(
-            {.Width = 20, .TabWidth = width, .LineEnding = Newline::CRLF, .Indentation = IndentationKind::Tabs});
+        auto otherTabs = document.Render({
+            .Width = 20,
+            .TabWidth = width,
+            .LineEnding = Newline::CRLF,
+            .Indentation = IndentationKind::Tabs,
+        });
         ASSERT_TRUE(otherSpaces.State);
         ASSERT_TRUE(otherTabs.State);
         EXPECT_EQ(ExpandTabs(otherTabs.Text, width), ExpandTabs(otherSpaces.Text, width));
@@ -1454,8 +1462,9 @@ TEST(GroupLayout, SourceCarriageReturnAndLocalGapNewlinesGolden)
             EXPECT_EQ(std::string_view(output.Text).substr(0, source.size()), source);
             EXPECT_EQ(output.Text.find("\r\r\n"), std::string_view::npos);
             EXPECT_EQ(
-                document.Render(
-                    {.Width = width, .TabWidth = 4, .LineEnding = global, .Indentation = IndentationKind::Tabs}).Text,
+                document
+                    .Render({.Width = width, .TabWidth = 4, .LineEnding = global, .Indentation = IndentationKind::Tabs})
+                    .Text,
                 output.Text);
             actual += global == Newline::CRLF ? "global CRLF " : "global LF ";
             actual += broken ? "broken:\n" : "flat:\n";

@@ -135,8 +135,10 @@ std::pmr::vector<Range> ProjectEditScope(
         for (; it != original.end() && it->Begin < piece.Original.End; ++it) {
             const auto begin = std::max(it->Begin, piece.Original.Begin);
             const auto end = std::min(it->End, piece.Original.End);
-            result.push_back(
-                {piece.Output.Begin + begin - piece.Original.Begin, piece.Output.Begin + end - piece.Original.Begin});
+            result.push_back({
+                piece.Output.Begin + begin - piece.Original.Begin,
+                piece.Output.Begin + end - piece.Original.Begin,
+            });
         }
     }
     std::sort(

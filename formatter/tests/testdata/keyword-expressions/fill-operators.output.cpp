@@ -33,6 +33,9 @@ bool NestedInitializer()
 
 bool Compare()
 {
-    return std::max(
-        {first_value_with_an_extended_name, second_value_with_an_extended_name, third_value_with_an_extended_name}) > 1;
+    return std::max({
+        first_value_with_an_extended_name,
+        second_value_with_an_extended_name,
+        third_value_with_an_extended_name,
+    }) > 1;
 }
