@@ -81,9 +81,6 @@ void ParseExclusion(std::vector<std::regex>& exclusions, std::string_view value)
 
 void ValidateOptions(const Options& options)
 {
-    if (options.DisableConfig && options.ConfigPath) {
-        throw UsageError("--config and --no-config cannot be combined");
-    }
     if (options.HunkInput && !options.Paths.empty()) {
         throw UsageError("--changed-hunks cannot be combined with input paths");
     }
@@ -111,7 +108,6 @@ Options ParseOptions(std::span<const char* const> args)
     flags.Bool("--check", nullptr);
     flags.Bool("--no-spillover", &options.Spillover, false);
     flags.Bool("--summary", &options.SummaryOnly);
-    flags.Bool("--no-config", &options.DisableConfig);
     flags.OptionalValue("--generate-config", &options.GenerateConfig, ParseGenerateConfig);
     flags.Value("--changed-hunks", &options.HunkInput, ParseChangedHunks, ChangedHunkError);
     flags.Value("--changed-ranges", &options.HunkInput, ParseChangedHunks, ChangedHunkError);

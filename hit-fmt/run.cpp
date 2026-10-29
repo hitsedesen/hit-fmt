@@ -105,7 +105,6 @@ class StyleResolver
 {
 public:
     explicit StyleResolver(const Options& options)
-        : Disabled_(options.DisableConfig)
     {
         if (options.ConfigPath) {
             ExplicitConfig_ = ConfigEntry{
@@ -164,9 +163,6 @@ private:
         if (ExplicitConfig_) {
             return *ExplicitConfig_;
         }
-        if (Disabled_) {
-            return DefaultConfig();
-        }
         auto directory = sourcePath.parent_path();
         std::error_code error;
         directory =
@@ -192,7 +188,6 @@ private:
         return iterator->second;
     }
 
-    bool Disabled_;
     ConfigEntry DefaultConfig_;
     std::optional<ConfigEntry> ExplicitConfig_;
     std::unordered_map<std::string, std::optional<std::filesystem::path>>
