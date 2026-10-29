@@ -453,6 +453,11 @@ TEST(SyntaxSpacing, GeneratedPoliciesObserveOwnerNotDescendantEdits)
     EXPECT_EQ(suffix.Category, label.Category);
     EXPECT_FALSE(analysis.Spacing.SpacePreference(suffixBefore, GapContext::Preserved, analysis.Safety));
     EXPECT_EQ(analysis.Spacing.SpacePreference(suffixBefore, GapContext::Rebuilt, analysis.Safety), false);
+    EXPECT_EQ(
+        analysis.Spacing.SpacePreference(suffixBefore, GapContext::Rebuilt, analysis.Safety, GapAdjacency::AfterComma),
+        true);
+    EXPECT_FALSE(analysis.Spacing
+        .SpacePreference(suffixBefore, GapContext::Preserved, analysis.Safety, GapAdjacency::AfterComma));
     EXPECT_FALSE(analysis.Spacing.SpacePreference(labelAfter, GapContext::Preserved, analysis.Safety));
     EXPECT_EQ(analysis.Spacing.SpacePreference(labelAfter, GapContext::Rebuilt, analysis.Safety), false);
 }

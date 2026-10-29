@@ -84,6 +84,12 @@ static_assert(sizeof(SyntaxGapPreference) <= 8);
 
 [[nodiscard]] GapContext SpacingOwnerContext(SpacingOwner owner, const CompiledPolicies& policies);
 
+enum class GapAdjacency : uint8_t
+{
+    Source,
+    AfterComma,
+};
+
 // File-arena storage; gap i precedes token i, including the tail. No source,
 // policy or scratch references are retained; Owner indexes source regions.
 class SyntaxSpacing
@@ -102,11 +108,13 @@ public:
     // boundaries use safe flat fallback before fitting; preserved and flat-only
     // gaps retain source bytes. Safety and lexical separation override policy,
     // except unchanged empty gaps remain valid. This does not remove newlines;
-    // replacements must pass SourceAnalysis::CanReplaceGap.
+    // replacements must pass SourceAnalysis::CanReplaceGap. Adjacency selects
+    // the rule after punctuation edits without changing source safety.
     [[nodiscard]] std::optional<bool> SpacePreference(
         GapId gap,
         GapContext ownerContext,
-        const SourceAnalysis& safety) const;
+        const SourceAnalysis& safety,
+        GapAdjacency adjacency = GapAdjacency::Source) const;
 
     // Scalar demand only for ordinary trailing horizontal // gaps. Safety
     // resolves count zero to one where changing adjacency needs separation.
@@ -114,6 +122,7 @@ public:
 
 private:
     std::pmr::vector<SyntaxGapPreference> Gaps_;
+    GapPolicy CommaSpaceAfter_ = GapPolicy::Preserve;
     std::optional<TrailingCommentSpaceSetting> TrailingCommentSpaces_;
     friend SyntaxSpacing BuildSyntaxSpacing(
         const parser::SyntaxTree& tree,

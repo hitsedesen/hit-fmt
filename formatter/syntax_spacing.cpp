@@ -1531,7 +1531,8 @@ SyntaxSpacing::SyntaxSpacing(std::pmr::memory_resource& fileMemory)
 std::optional<bool> SyntaxSpacing::SpacePreference(
     GapId gap,
     GapContext ownerContext,
-    const SourceAnalysis& safety) const
+    const SourceAnalysis& safety,
+    GapAdjacency adjacency) const
 {
     if (gap >= Gaps_.size() || gap >= safety.Gaps().size()) {
         return std::nullopt;
@@ -1548,7 +1549,12 @@ std::optional<bool> SyntaxSpacing::SpacePreference(
     if (TrailingCommentSpaces_ && Gaps_[gap].Field == F::TrailingCommentSpacing) {
         return std::nullopt;
     }
-    auto preference = GapUsesSpace(Gaps_[gap].Policy, ownerContext);
+    // Inserting a separator makes an attached argument comment face the
+    // separator. Closer edges and trailing line comments keep their own rules.
+    const auto policy = adjacency == GapAdjacency::AfterComma && Gaps_[gap].Field == F::ArgumentCommentSpacing
+        ? CommaSpaceAfter_
+        : Gaps_[gap].Policy;
+    auto preference = GapUsesSpace(policy, ownerContext);
     if (preference && source.Separation == GapSeparation::Required && !safety.Original(source).empty()) {
         return true;
     }
@@ -1599,6 +1605,7 @@ SyntaxSpacing BuildSyntaxSpacing(
             "AmbiguousTemplateDeclarationSpacing is unsupported: " "ambiguous syntax is preserved");
     }
     SyntaxSpacing result(fileMemory);
+    result.CommaSpaceAfter_ = spacing.CommaSpaceAfter;
     result.TrailingCommentSpaces_ = trailingCommentSpaces;
     result.Gaps_.resize(safety.Gaps().size());
     const auto regions = safety.Regions();

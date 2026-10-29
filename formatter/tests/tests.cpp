@@ -2299,6 +2299,9 @@ std::vector<FormatCase> FormatCases()
     for (const auto* name : {"comments", "comments-preserve"}) {
         cases.push_back({data / "initializer-trailing-comma", name, "comments.input.cpp"});
     }
+    for (const auto* name : {"spacing", "spacing-preserve", "spacing-compact", "spacing-layout-preserve"}) {
+        cases.push_back({data / "initializer-trailing-comma", name, "spacing.input.cpp"});
+    }
     AddCases(cases, data / "function_parameters", {"preserve", "pack_name", "pack_new", "one_name", "one_new"});
     AddCases(
         cases,
