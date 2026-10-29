@@ -1,5 +1,6 @@
 #pragma once
 
+#include "format_changes_internal.hpp"
 #include "hunk_scope.hpp"
 
 #include <unicode/utf8.hpp>
@@ -22,7 +23,9 @@ inline FormatResult ProjectHunkFormat(
     const PreparedFormat& prepared,
     std::span<const parser::SourceRange> scope,
     const FormatRequest& request,
-    std::pmr::memory_resource& memory)
+    std::pmr::memory_resource& memory,
+    std::span<const parser::SourceOffset> originalLines,
+    bool originalBareCR)
 {
     using Range = parser::SourceRange;
     using Offset = parser::SourceOffset;
@@ -619,6 +622,9 @@ inline FormatResult ProjectHunkFormat(
             continue;
         }
         result.Diagnostics.push_back(std::move(diagnostic));
+    }
+    if (request.Changes) {
+        BuildFormatChanges(tree, result, memory, originalLines, originalBareCR);
     }
     if (!request.SourceMap) {
         decltype(result.Map){}.swap(result.Map);

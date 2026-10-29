@@ -149,7 +149,10 @@ TEST(FileCheck, IncludeOrderDiagnosticGoldenIsOneErrorForTheFile)
             }
             const hit_fmt::PreparedFileConfiguration prepared(std::move(raw));
             const auto checked = hit_fmt::CheckFile(input.View(), prepared, "project/sample.cpp");
+            const auto detailed = hit_fmt::CheckFile(input.View(), prepared, "project/sample.cpp", std::nullopt, true);
             ASSERT_EQ(checked.IncludeOrderChanges.size(), 2u);
+            EXPECT_EQ(detailed.IncludeOrderChanges.size(), checked.IncludeOrderChanges.size());
+            EXPECT_EQ(detailed.OtherFormattingMismatch, checked.OtherFormattingMismatch);
             EXPECT_EQ(checked.OtherFormattingMismatch, mixed);
             EXPECT_TRUE(checked.HasFailures(false));
             EXPECT_FALSE(checked.HasFailures(true));
@@ -170,6 +173,19 @@ TEST(FileCheck, IncludeOrderDiagnosticGoldenIsOneErrorForTheFile)
                 hit_fmt::PrintFileSummaryIssues(output, checked, fix);
                 output << '\n';
                 fixture.Expect(output.str(), fix ? ".fix.txt" : mixed ? ".mixed-check.txt" : ".check.txt");
+                std::ostringstream formatting;
+                hit_fmt::PrintFormattingDiagnostics(
+                    formatting,
+                    "sample.cpp",
+                    input.View().View(),
+                    detailed.Formatting,
+                    hit_fmt::Terminal{},
+                    fix);
+                if (mixed) {
+                    fixture.Expect(formatting.str(), fix ? ".format-fix.txt" : ".format-check.txt");
+                } else {
+                    EXPECT_TRUE(formatting.str().empty());
+                }
             }
             const Input applied(checked.Formatting.Text);
             const auto clean = hit_fmt::CheckFile(applied.View(), prepared, "project/sample.cpp");
@@ -222,7 +238,16 @@ TEST(FileCheck, DiagnosticGoldenUsesOriginalCheckAndFinalFixCoordinates)
     configuration.FunctionDefinitionParameterNames = formatter::FunctionDefinitionParameterNames::NameRequired;
     const hit_fmt::PreparedFileConfiguration prepared(std::move(configuration));
     const Input input(fixture.InputNamed(".input.cpp"));
-    const auto checked = hit_fmt::CheckFile(input.View(), prepared);
+    const auto checked = hit_fmt::CheckFile(input.View(), prepared, {}, std::nullopt, true);
+    for (const auto action :
+        {formatter::StructuralAction::AddMissingControlBraces, formatter::StructuralAction::NamespaceComments})
+    {
+        EXPECT_TRUE(std::ranges::any_of(
+            checked.Formatting.Changes->Edits,
+            [action] (const auto& change) {
+                return change.Action == action;
+            }));
+    }
     ASSERT_EQ(checked.Semantic.size(), 4u);
     EXPECT_TRUE(checked.HasFailures(false));
     EXPECT_TRUE(checked.HasFailures(true));
@@ -249,7 +274,19 @@ TEST(FileCheck, DiagnosticGoldenUsesOriginalCheckAndFinalFixCoordinates)
                 terminalWidth == 80
                 ? (fix ? ".fix.txt" : ".check.txt")
                 : (fix ? ".fix-narrow.txt" : ".check-narrow.txt"));
-
+            std::ostringstream formatting;
+            hit_fmt::PrintFormattingDiagnostics(
+                formatting,
+                "sample.cpp",
+                input.View().View(),
+                checked.Formatting,
+                terminal,
+                fix);
+            fixture.Expect(
+                formatting.str(),
+                terminalWidth == 80
+                ? (fix ? ".format-fix.txt" : ".format-check.txt")
+                : (fix ? ".format-fix-narrow.txt" : ".format-check-narrow.txt"));
         }
     }
 }
@@ -261,7 +298,10 @@ TEST(FileCheck, FormattingDiagnosticsUseTerminalWidth)
         "terminal",
     };
     const std::string_view source = "void Good() { invoke(first_argument,second_value,third_argument); }\n";
-    const std::string_view formatted = "void Good() { invoke(first_argument, second_value, third_argument); }\n";
+    formatter::Style style;
+    style.CommaSpaceAfter = formatter::GapPolicy::Space;
+    const Input input(source);
+    const auto formatted = formatter::Format(input.View(), formatter::PreparedFormat(style), {.Changes = true});
     for (const auto width : {size_t(80), size_t(32)}) {
         for (const bool fixed : {false, true}) {
             SCOPED_TRACE(width);

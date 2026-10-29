@@ -1,5 +1,6 @@
 #include "formatter.hpp"
 
+#include "format_changes_internal.hpp"
 #include "format_pipeline.hpp"
 #include "syntax_layout.hpp"
 #include "text_policies.hpp"
@@ -735,17 +736,40 @@ FormatResult detail::FormatWithAnalysis(
     options.ReassembledGaps = {};
     scratch.release();
     const bool needNamespaceAnchors = !namespacePlan.Namespaces.empty();
-    const bool needMaps = request.SourceMap || request.TokenMap || needNamespaceAnchors;
+    const bool sourceMap = request.SourceMap || (request.Changes && prepared.Structural.SortIncludes);
+    const bool needMaps = sourceMap || request.TokenMap || request.Changes || needNamespaceAnchors;
     auto renderPolicy = SyntaxRenderPolicy(prepared.Policies, options);
-    renderPolicy.SourceMap = request.SourceMap;
+    renderPolicy.SourceMap = sourceMap;
     auto rendered = [&] {
         std::pmr::vector<document::Provenance> tracked(&scratch);
-        renderPolicy.IndexedTokenMap = !request.SourceMap && needMaps;
+        renderPolicy.IndexedTokenMap = !sourceMap && needMaps;
         renderPolicy.TokenCount = tree->TokenCount();
-        if (needNamespaceAnchors && !request.SourceMap) {
+        if (!sourceMap && (needNamespaceAnchors || request.Changes)) {
             tracked.reserve(currentSafety->Protection().size());
             for (const auto& range : currentSafety->Protection()) {
                 tracked.push_back({range.Source.Begin, range.Source.End});
+            }
+            if (request.Changes) {
+                for (const auto& piece : provenance) {
+                    if (piece.Generated && !piece.Output.Empty()) {
+                        tracked.push_back({piece.Output.Begin, piece.Output.End});
+                    }
+                }
+                std::sort(
+                    tracked.begin(),
+                    tracked.end(),
+                    [] (const auto& a, const auto& b) {
+                        return a.Begin < b.Begin;
+                    });
+                size_t count = 0;
+                for (const auto range : tracked) {
+                    if (count && range.Begin <= tracked[count - 1].End) {
+                        tracked[count - 1].End = std::max(tracked[count - 1].End, range.End);
+                    } else {
+                        tracked[count++] = range;
+                    }
+                }
+                tracked.resize(count);
             }
             renderPolicy.TrackSource = tracked;
         }
@@ -762,12 +786,12 @@ FormatResult detail::FormatWithAnalysis(
         (void)CheckedSourceAnalysisSize(result.Text.size());
     }
     if (needMaps) {
-        if (request.SourceMap) {
+        if (sourceMap || request.Changes) {
             result.StructuralOperations.assign(plan.Operations.begin(), plan.Operations.end());
         }
         result.OriginalTokens.resize(original.TokenCount());
         auto identities = OriginalIdentities(*tree, normalized ? &*normalized : nullptr, scratch);
-        if (request.SourceMap) {
+        if (sourceMap) {
             ComposeMaps(result, rendered, *currentSafety, identities, provenance);
         } else {
             for (parser::TokenIndex id = 0; id < rendered.Tokens.size(); ++id) {
@@ -779,7 +803,11 @@ FormatResult detail::FormatWithAnalysis(
             }
             // Remaining mappings are precisely the tracked exact copies used
             // for protection validation, not a full per-token map vector.
-            ComposeNamespaceAnchors(result, rendered, *currentSafety, identities);
+            if (request.Changes) {
+                ComposeMaps(result, rendered, *currentSafety, identities, provenance);
+            } else {
+                ComposeNamespaceAnchors(result, rendered, *currentSafety, identities);
+            }
         }
         scratch.release();
         std::pmr::vector<Range> outputProtection(&scratch);
@@ -804,9 +832,9 @@ FormatResult detail::FormatWithAnalysis(
         scratch.release();
         if (!comments.Edits.empty()) {
             auto text = MaterializeNamespaceComments(result.Text, comments, file);
-            if (request.SourceMap || request.TokenMap || !result.OutputProtection.empty()) {
+            if (sourceMap || request.TokenMap || request.Changes || !result.OutputProtection.empty()) {
                 // Validate protected copies even without output maps.
-                ApplyComments(result, comments, original, namespacePlan, request.SourceMap, scratch);
+                ApplyComments(result, comments, original, namespacePlan, sourceMap || request.Changes, scratch);
                 scratch.release();
             }
             result.Text.assign(text);
@@ -819,6 +847,10 @@ FormatResult detail::FormatWithAnalysis(
         (void)CheckedSourceAnalysisSize(result.Text.size());
     }
     WidthDiagnostics(result, prepared.Policies, options.TabWidth);
+    if (request.Changes) {
+        detail::BuildFormatChanges(original, result, scratch);
+        scratch.release();
+    }
     if (!request.SourceMap) {
         result.Map = std::vector<FormatMapping>{};
         result.StructuralOperations = std::vector<StructuralOperation>{};

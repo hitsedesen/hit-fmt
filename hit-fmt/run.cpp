@@ -298,16 +298,9 @@ void PrintCheckResult(
         return;
     }
     if (checked.FormattingMismatch && options.Fix) {
-        PrintFormattingDiagnostics(output, path, source, checked.Formatting.Text, terminal, true);
+        PrintFormattingDiagnostics(output, path, source, checked.Formatting, terminal, true);
     } else if (checked.FormattingMismatch) {
-        PrintFormattingDiagnostics(
-            output,
-            path,
-            source,
-            checked.Formatting.Text,
-            terminal,
-            false,
-            checked.IncludeOrderChanges);
+        PrintFormattingDiagnostics(output, path, source, checked.Formatting, terminal, false);
     }
     PrintFileIssues(output, path, source, checked, options.Fix, terminal);
 }
@@ -336,7 +329,7 @@ FileResult ProcessFile(
             const auto absolute = std::filesystem::absolute(path).lexically_normal();
             scope = ChangedFileScope{changed.Hunks.at(absolute.string()), options.Spillover};
         }
-        const auto checked = CheckFile(source, config, inputFilePath, scope);
+        const auto checked = CheckFile(source, config, inputFilePath, scope, !options.SummaryOnly);
         if (options.Fix && checked.FormattingMismatch) {
             util::WriteEntireFile(filePath, checked.Formatting.Text);
         }

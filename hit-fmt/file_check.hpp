@@ -77,11 +77,13 @@ struct ChangedFileScope
 // Original slash-separated inputFilePath is borrowed only during this call.
 // Result owns all data; no references into input/path/configuration/parser
 // arenas.
+// detailedDiagnostics requests change metadata for PrintFormattingDiagnostics.
 [[nodiscard]] CheckedFile CheckFile(
     util::PaddedSourceView source,
     const PreparedFileConfiguration& configuration,
     std::string_view inputFilePath = {},
-    std::optional<ChangedFileScope> changed = std::nullopt);
+    std::optional<ChangedFileScope> changed = std::nullopt,
+    bool detailedDiagnostics = false);
 
 // Check diagnostics use original coordinates; fix diagnostics use emitted
 // coordinates. originalSource is borrowed only while printing; fix excerpts

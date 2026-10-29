@@ -1,5 +1,6 @@
 add_library(lib-formatter STATIC
     config.cpp
+    format_changes.cpp
     formatter.cpp
     hunk_format.cpp
     hunks.cpp

@@ -1,0 +1,46 @@
+fail: 12 violations
+  --> sample.cpp:1:20
+  |
+1 | const char* text = "αβγ     abcdefghijklmnopqrstuvwxyz";
+  |                    ^ insert a line break before '"' and indent by 4 spaces
+2 | namespace test { void bad_name(int){if(ok)invoke(a,b);} }
+  |                  ^ insert a line break before 'void'
+2 | namespace test { void bad_name(int){if(ok)invoke(a,b);} }
+  |                                    ^
+  |   expected one space before '{', found no whitespace
+2 | namespace test { void bad_name(int){if(ok)invoke(a,b);} }
+  |                                     ^
+  |   insert a line break before 'if' and indent by 4 spaces
+2 | namespace test { void bad_name(int){if(ok)invoke(a,b);} }
+  |                                       ^
+  |   expected one space before '(', found no whitespace
+2 | namespace test { void bad_name(int){if(ok)invoke(a,b);} }
+  |                                           ^ insert " {\n        " here
+2 | namespace test { void bad_name(int){if(ok)invoke(a,b);} }
+  |                                                    ^
+  |   expected one space before 'b', found no whitespace
+2 | namespace test { void bad_name(int){if(ok)invoke(a,b);} }
+  |                                                       ^
+  |   insert "\n    }\n" here
+2 | namespace test { void bad_name(int){if(ok)invoke(a,b);} }
+  |                                                         ^
+  |   insert a line break before '}'
+2 | namespace test { void bad_name(int){if(ok)invoke(a,b);} }
+  |                                                          ^
+  |   insert "       // namespace test" here
+3 | void later_bad(int){}
+  |                    ^ expected one space before '{', found no whitespace
+3 | void later_bad(int){}
+  |                     ^ insert a line break before '}'
+  suggested formatting:
+  + const char* text =
+  +     "αβγ    abcdefghijklmnopqrstuvwxyz";
+  + namespace test {
+  + void bad_name(int) {
+  +     if (ok) {
+  +         invoke(a, b);
+  +     }
+  + }
+  + }       // namespace test
+  + void later_bad(int) {
+  + }

@@ -1,22 +1,23 @@
 #pragma once
 
-#include "file_check.hpp"
 #include "terminal.hpp"
+
+#include <formatter/formatter.hpp>
 
 #include <cstddef>
 #include <iosfwd>
-#include <span>
 #include <string_view>
 
 namespace hit_fmt {
 
+// Requires final change metadata collected with FormatRequest::Changes.
+// Borrows the original source only for the duration of printing.
 void PrintFormattingDiagnostics(
     std::ostream& output,
     std::string_view path,
     std::string_view source,
-    std::string_view formatted,
+    const formatter::FormatResult& result,
     const Terminal& terminal,
-    bool fixed = false,
-    std::span<const IncludeOrderChange> includeChanges = {});
+    bool fixed = false);
 
 } // namespace hit_fmt

@@ -259,6 +259,7 @@ ChangedFormatResult FormatChanged(
     FormatRequest canonicalRequest = request;
     canonicalRequest.EditScope.reset();
     canonicalRequest.SourceMap = true;
+    canonicalRequest.Changes = false;
     const auto canonical =
         detail::FormatWithAnalysis(tree, prepared, safety, sensitive, canonicalRequest, file, scratch);
     safety.RestrictEditScope(scope);
@@ -341,7 +342,17 @@ ChangedFormatResult FormatChanged(
         scratch);
     eligible.Skipped.insert(eligible.Skipped.end(), comments.Skipped.begin(), comments.Skipped.end());
     scratch.release();
-    result.Result = detail::ProjectHunkFormat(tree, safety, canonical, eligible, prepared, scope, request, file);
+    result.Result = detail::ProjectHunkFormat(
+        tree,
+        safety,
+        canonical,
+        eligible,
+        prepared,
+        scope,
+        request,
+        file,
+        lines.Boundaries(),
+        lines.ContainsBareCR());
     for (const auto& diagnostic : eligible.Skipped) {
         if (diagnostic.Tokens.Empty()) {
             continue;

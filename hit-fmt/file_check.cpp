@@ -383,7 +383,8 @@ CheckedFile CheckFile(
     util::PaddedSourceView source,
     const PreparedFileConfiguration& configuration,
     std::string_view inputFilePath,
-    std::optional<ChangedFileScope> changed)
+    std::optional<ChangedFileScope> changed,
+    bool detailedDiagnostics)
 {
     auto tree = parser::Parse(source, [] (parser::ParseError) {}, configuration.Formatting.ParsingOptions());
     CheckedFile checked;
@@ -408,6 +409,7 @@ CheckedFile CheckFile(
         .SourceMap = changed.has_value() || configuration.Formatting.Structural.SortIncludes,
         .InputFilePath = inputFilePath,
         .TokenMap = tokenMap,
+        .Changes = detailedDiagnostics,
     };
     if (changed) {
         auto result =
@@ -428,11 +430,25 @@ CheckedFile CheckFile(
     } else {
         checked.Formatting = formatter::Format(tree, configuration.Formatting, request);
     }
-    checked.FormattingMismatch = checked.Formatting.Text != tree.Source();
+    checked.FormattingMismatch = checked.Formatting.Changes
+        ? !checked.Formatting.Changes->Edits.empty()
+        : checked.Formatting.Text != tree.Source();
     if (checked.FormattingMismatch) {
-        checked.IncludeOrderChanges = IncludeChanges(tree, checked.Formatting);
-        checked.OtherFormattingMismatch = checked.IncludeOrderChanges.empty() ||
-            OtherFormattingChanged(tree.Source(), checked.Formatting, checked.IncludeOrderChanges);
+        if (checked.Formatting.Changes) {
+            const auto& changes = *checked.Formatting.Changes;
+            for (const auto& edit : changes.Edits) {
+                if (edit.Kind == formatter::FormatChangeKind::IncludeOrder) {
+                    checked.IncludeOrderChanges.push_back({edit.Original, edit.Output,
+                        changes.OriginalLines.Position(tree.Source(), edit.Original.Begin),});
+                } else {
+                    checked.OtherFormattingMismatch = true;
+                }
+            }
+        } else {
+            checked.IncludeOrderChanges = IncludeChanges(tree, checked.Formatting);
+            checked.OtherFormattingMismatch = checked.IncludeOrderChanges.empty() ||
+                OtherFormattingChanged(tree.Source(), checked.Formatting, checked.IncludeOrderChanges);
+        }
     }
     MapSemanticPositions(tree, checked.Formatting, checked.Semantic);
     MapSemanticPositions(tree, checked.Formatting, checked.RequiredChanges);
@@ -484,24 +500,15 @@ void PrintFileIssues(
         return;
     }
     const std::string_view source = fix ? checked.Formatting.Text : originalSource;
-    // One scan indexes borrowed line views, regardless of diagnostic order.
-    std::vector<std::string_view> lines;
-    lines.reserve(std::count(source.begin(), source.end(), '\n') + 1);
-    for (size_t begin = 0; begin <= source.size();) {
-        const auto newline = fix ? source.find_first_of("\r\n", begin) : source.find('\n', begin);
-        const auto end = newline == source.npos ? source.size() : newline;
-        auto text = source.substr(begin, end - begin);
-        if (text.ends_with('\r')) {
-            text.remove_suffix(1);
-        }
-        lines.push_back(text);
-        if (newline == source.npos) {
-            break;
-        }
-        begin = end + 1;
-        if (fix && source[end] == '\r' && begin < source.size() && source[begin] == '\n') {
-            ++begin;
-        }
+    const auto* lines = checked.Formatting.Changes
+        ? (fix ? &checked.Formatting.Changes->OutputLines : &checked.Formatting.Changes->OriginalLines)
+        : nullptr;
+    std::optional<formatter::SourceLines> ownedLines;
+    // Width diagnostics treat bare CR as an emitted newline, while source
+    // coordinates and hunk authority use physical LF-delimited lines.
+    if (!lines || (fix && lines->ContainsBareCR())) {
+        ownedLines.emplace(source, fix);
+        lines = &*ownedLines;
     }
     for (size_t i = 0; i < checked.Formatting.Diagnostics.size(); ++i) {
         const auto& diagnostic = checked.Formatting.Diagnostics[i];
@@ -513,7 +520,10 @@ void PrintFileIssues(
         const auto number = std::to_string(position.Line);
         const auto gutter = std::string(number.size() + 1, ' ') + "| ";
         const auto prefix = number + " | ";
-        const auto text = lines.at(position.Line - 1);
+        auto text = lines->Text(source, position.Line);
+        if (text.ends_with('\r')) {
+            text.remove_suffix(1);
+        }
         const auto column = fix ? WidthCaretColumn(text, position.Column) : position.Column;
         output << gutter.substr(0, gutter.size() - 1) << '\n' << prefix;
         const auto excerpt = PrintSourceExcerpt(output, text, column, prefix.size(), terminal.Width);

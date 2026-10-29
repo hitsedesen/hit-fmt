@@ -19,6 +19,7 @@ public:
         const auto size = CheckedSourceAnalysisSize(source.size());
         Boundaries_.push_back(0);
         for (parser::SourceOffset i = 0; i < size; ++i) {
+            BareCR_ |= source[i] == '\r' && (i + 1 == size || source[i + 1] != '\n');
             if (source[i] == '\n') {
                 Boundaries_.push_back(i + 1);
             }
@@ -56,6 +57,16 @@ public:
         return {Boundaries_[hunk.Begin - 1], Boundaries_[hunk.End]};
     }
 
+    std::span<const parser::SourceOffset> Boundaries() const
+    {
+        return Boundaries_;
+    }
+
+    bool ContainsBareCR() const
+    {
+        return BareCR_;
+    }
+
     // A nonempty parsed unit's physical line envelope. End is exclusive, so a
     // token/atom ending just after LF still belongs to the preceding line.
     Hunk Cover(parser::SourceRange source) const
@@ -77,6 +88,7 @@ private:
     }
 
     std::pmr::vector<parser::SourceOffset> Boundaries_;
+    bool BareCR_ = false;
 };
 // Queries require sorted/coalesced nonempty ranges. A zero-width insertion
 // owns [Begin,End), never End (including EOF); a map anchor grants no

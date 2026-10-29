@@ -3,6 +3,7 @@
 #include "config_annotations.hpp"
 #include "config_enum.hpp"
 #include "config_options.hpp"
+#include "format_changes.hpp"
 #include "policy.hpp"
 #include "structural_edits.hpp"
 
@@ -87,6 +88,9 @@ struct FormatRequest
     // composing full source associations. SourceMap includes these offsets.
     // No full Map, StructuralOperations or OutputProtection is returned.
     bool TokenMap = false;
+    // Collect actual replacements and owning line indexes for final Text.
+    // Full maps are not retained unless SourceMap is also requested.
+    bool Changes = false;
 };
 
 struct FormatMapping
@@ -126,6 +130,7 @@ struct FormatResult
     std::vector<StructuralOperation> StructuralOperations;
     std::vector<TokenOutputOffset> OriginalTokens;
     std::vector<ProtectedSourceRange> OutputProtection;
+    std::optional<FormatChanges> Changes;
 };
 
 // Normalize, lower and render once; failures throw without returning source.

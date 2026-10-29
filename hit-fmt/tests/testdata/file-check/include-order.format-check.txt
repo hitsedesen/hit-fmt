@@ -1,0 +1,9 @@
+fail: 2 violations
+  --> sample.cpp:9:11
+  |
+9 | int Good( int value );
+  |           ^ expected no whitespace before 'int', found one space
+9 | int Good( int value );
+  |                     ^ expected no whitespace before ')', found one space
+  suggested formatting:
+  + int Good(int value);

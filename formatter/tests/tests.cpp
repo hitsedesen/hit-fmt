@@ -6,6 +6,7 @@
 
 #include <gtest/gtest.h>
 
+#include <tests/format_changes.hpp>
 #include <tests/formatting.hpp>
 #include <tests/golden.hpp>
 
@@ -138,6 +139,13 @@ void ExpectFormattedGolden(
         test::golden::ExpectGolden(path, actual);
     }
     EXPECT_EQ(FormatWithStyle(actual, style, inputFilePath), actual);
+    const Input storage(input);
+    const auto detailed = formatter::Format(
+        storage.View(),
+        formatter::PreparedFormat(style),
+        {.InputFilePath = inputFilePath, .Changes = true});
+    EXPECT_EQ(detailed.Text, actual);
+    test::ExpectFormatChanges(input, detailed);
 }
 
 struct FormatCase
@@ -3743,6 +3751,14 @@ TEST_P(FormatTest, Golden)
         } else {
             EXPECT_EQ(formatted, ReadFile(fixture.Directory / value.Expected));
         }
+        const auto detailed = formatter::FormatChanged(
+            tree,
+            formatter::PreparedFormat(style),
+            value.Hunks,
+            value.Spillover,
+            {.InputFilePath = value.InputFilePath, .Changes = true}).Result;
+        EXPECT_EQ(detailed.Text, formatted);
+        test::ExpectFormatChanges(input, detailed);
     }
 }
 INSTANTIATE_TEST_SUITE_P(
