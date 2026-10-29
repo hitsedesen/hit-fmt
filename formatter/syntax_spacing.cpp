@@ -1,5 +1,7 @@
 #include "syntax_spacing.hpp"
 
+#include <unicode/utf8.hpp>
+
 #include <algorithm>
 #include <stdexcept>
 
@@ -20,6 +22,36 @@ using F = SpacingField;
 using C = SpacingOwner;
 
 constexpr TI NoToken = UINT32_MAX;
+
+bool IsArgumentNameComment(std::string_view text)
+{
+    if (!text.starts_with("/*") || !text.ends_with("*/")) {
+        return false;
+    }
+    text = text.substr(2, text.size() - 4);
+    const auto first = text.find_first_not_of(" \t");
+    if (first == std::string_view::npos) {
+        return false;
+    }
+    text.remove_prefix(first);
+    text = text.substr(0, text.find_last_not_of(" \t") + 1);
+    if (!text.ends_with('=')) {
+        return false;
+    }
+    text.remove_suffix(1);
+    text = text.substr(0, text.find_last_not_of(" \t") + 1);
+    bool start = true;
+    while (!text.empty()) {
+        const auto cp = unicode::utf8::GetFirstCodePoint(text);
+        if (!cp || (cp->Value != '_' && !(start ? unicode::IsXIDStart(cp->Value) : unicode::IsXIDContinue(cp->Value))))
+        {
+            return false;
+        }
+        text.remove_prefix(cp->Size);
+        start = false;
+    }
+    return !start;
+}
 
 GapPolicy PolicyFor(const GapPolicies& policies, F field)
 {
@@ -1197,7 +1229,10 @@ private:
         if (prefix < begin && (prefix == list.Tokens.Begin + 1 || separator(prefix - 1))) {
             markRun(prefix, begin);
             if (Tree_.TokenText(begin - 1).starts_with("/*")) {
-                Mark(begin, F::ArgumentCommentSpacing, list, category, 4);
+                const auto field = IsArgumentNameComment(Tree_.TokenText(begin - 1))
+                    ? F::ArgumentNameCommentSpacing
+                    : F::ArgumentCommentSpacing;
+                Mark(begin, field, list, category, 4);
             }
         }
         const auto end = node.Tokens.End;
@@ -1551,7 +1586,8 @@ std::optional<bool> SyntaxSpacing::SpacePreference(
     }
     // Inserting a separator makes an attached argument comment face the
     // separator. Closer edges and trailing line comments keep their own rules.
-    const auto policy = adjacency == GapAdjacency::AfterComma && Gaps_[gap].Field == F::ArgumentCommentSpacing
+    const auto policy = adjacency == GapAdjacency::AfterComma &&
+        (Gaps_[gap].Field == F::ArgumentCommentSpacing || Gaps_[gap].Field == F::ArgumentNameCommentSpacing)
         ? CommaSpaceAfter_
         : Gaps_[gap].Policy;
     auto preference = GapUsesSpace(policy, ownerContext);

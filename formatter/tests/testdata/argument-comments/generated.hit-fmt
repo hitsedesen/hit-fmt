@@ -1,0 +1,4 @@
+Layout = Canonical
+CallsLayout = Canonical
+ArgumentCommentSpacing = GeneratedSpace
+ArgumentNameCommentSpacing = GeneratedNoSpace

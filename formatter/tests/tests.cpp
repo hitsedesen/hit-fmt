@@ -1481,6 +1481,10 @@ std::vector<FormatCase> FormatCases()
     }
     addProfileCase("../call-reflow", "profile-tabbed-log");
     const auto callReflow = data / "call-reflow";
+    AddCases(
+        cases,
+        data / "argument-comments",
+        {"compact-labels", "spaced-labels", "preserve-labels", "generated", "generated-preserve"});
     cases.push_back({
         callReflow,
         "template-argument-tail",

@@ -297,8 +297,12 @@ MaxEmptyLines = 1
   ScopeResolutionSpacing excludes leading ::. BraceInitializerSpacing
   controls the gap before {, except after comments.
 - ArgumentCommentSpacing controls attached block comments in arguments
-  and initializers. Newlines, contents, separator-facing gaps and line
-  comments stay intact. Generated* needs canonical layout of that list.
+  and initializers. ArgumentNameCommentSpacing separately controls the
+  gap after a leading /*name=*/ label (also /* name = */), where name
+  is an identifier. Gaps between comments and before trailing comments
+  use ArgumentCommentSpacing. Both default to Preserve. Newlines,
+  contents, separator-facing gaps and line comments stay intact.
+  Generated* needs canonical layout of that list.
 - FunctionCvRefQualifierSpacing controls const/volatile to &/&& in
   function qualifiers. Inherit follows FunctionRefQualifierSpacing;
   Preserve keeps source spacing.
@@ -320,7 +324,8 @@ TemplateTypeArgumentInteriorSpacing = NoSpace
 ## Comments, attributes and qualifiers
 ```config
 ArgumentCommentSpacing = Space
-# Example: consume(/* first */ /* second */ value /* note */);
+ArgumentNameCommentSpacing = NoSpace
+# Example: consume(/* note */ value, /*count=*/size /* suffix */);
 AttributeSpaceBeforeSpecifier = Space
 AttributeSpaceAfterSpecifier = Space
 FunctionRefQualifierSpacing = Space
