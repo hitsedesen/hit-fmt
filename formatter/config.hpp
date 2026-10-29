@@ -5,10 +5,12 @@
 #include "policy.hpp"
 
 #include <filesystem>
+#include <functional>
 #include <optional>
 #include <regex>
 #include <string>
 #include <string_view>
+#include <system_error>
 #include <vector>
 
 namespace formatter {
@@ -45,8 +47,10 @@ struct Configuration
 [[nodiscard]] Configuration LoadConfigFile(const std::filesystem::path& path);
 
 // Finds the nearest fileName in startDirectory or one of its parents.
+// Reports filesystem errors through onError; missing candidates are ignored.
 [[nodiscard]] std::optional<std::filesystem::path> FindStyleFile(
     std::filesystem::path startDirectory,
-    std::string_view fileName = DefaultConfigFileName);
+    std::string_view fileName = DefaultConfigFileName,
+    const std::function<void(const std::filesystem::path&, const std::error_code&)>& onError = {});
 
 } // namespace formatter

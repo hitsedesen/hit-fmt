@@ -177,7 +177,13 @@ private:
         auto directoryKey = directory.lexically_normal().string();
         auto [configIterator, configInserted] = ConfigPaths_.try_emplace(directoryKey);
         if (configInserted) {
-            configIterator->second = formatter::FindStyleFile(directory);
+            configIterator->second = formatter::FindStyleFile(
+                directory,
+                formatter::DefaultConfigFileName,
+                [] (const std::filesystem::path& path, const std::error_code& error) {
+                    std::osyncstream(std::cerr) << "warning: " << path.string() << ": configuration search: "
+                        << error.message() << '\n';
+                });
         }
         const auto& config = configIterator->second;
         if (!config) {

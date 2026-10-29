@@ -87,6 +87,50 @@ struct TemporaryConfigTree
     }
 };
 
+TEST(ConfigPolicy, FindStyleFileIgnoresMissingCandidatesAndPrefersNearestFile)
+{
+    TemporaryConfigTree tree;
+    tree.Write("nested/placeholder", "");
+    const auto name = tree.Path.filename().string() + ".hit-fmt";
+    std::vector<std::filesystem::path> errors;
+    const auto onError = [&] (const std::filesystem::path& path, const std::error_code&) {
+        errors.push_back(path);
+    };
+
+    EXPECT_FALSE(formatter::FindStyleFile(tree.Path / "nested", name, onError));
+    tree.Write(name, "");
+    EXPECT_EQ(formatter::FindStyleFile(tree.Path / "nested", name, onError), tree.Path / name);
+    tree.Write(std::filesystem::path("nested") / name, "");
+    EXPECT_EQ(formatter::FindStyleFile(tree.Path / "nested", name, onError), tree.Path / "nested" / name);
+    EXPECT_TRUE(errors.empty());
+}
+
+TEST(ConfigPolicy, FindStyleFileReportsErrorsAndContinuesWithParentDirectories)
+{
+    TemporaryConfigTree tree;
+    tree.Write(".hit-fmt", "");
+    tree.Write("nested/deeper/placeholder", "");
+    const auto broken = tree.Path / "nested/.hit-fmt";
+    std::error_code error;
+    std::filesystem::create_symlink(".hit-fmt", broken, error);
+    if (error) {
+        GTEST_SKIP() << "Cannot create a symbolic link: " << error.message();
+    }
+
+    std::vector<std::pair<std::filesystem::path, std::error_code>> errors;
+    const auto found = formatter::FindStyleFile(
+        tree.Path / "nested/deeper",
+        formatter::DefaultConfigFileName,
+        [&] (const std::filesystem::path& path, const std::error_code& failure) {
+            errors.emplace_back(path, failure);
+        });
+    EXPECT_EQ(found, tree.Path / ".hit-fmt");
+    ASSERT_EQ(errors.size(), 1u);
+    EXPECT_EQ(errors.front().first, broken);
+    EXPECT_TRUE(errors.front().second);
+    EXPECT_NE(errors.front().second, std::errc::no_such_file_or_directory);
+}
+
 TEST(ConfigPolicy, IncludesMergeBeforeLocalSettingsAndValidateFinalValues)
 {
     TemporaryConfigTree tree;
