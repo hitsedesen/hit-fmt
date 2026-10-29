@@ -245,6 +245,8 @@ struct CompiledPolicies
     // Syntax-owned exact counts/cap, not a post-layout cleanup stage.
     const VerticalGapPolicies VerticalGaps;
     const bool BreakAfterTemplateHeader;
+    const formatter::RequiresClausePosition RequiresClausePosition;
+    const bool IndentRequiresClause;
     const bool GenerateCallScopeIndentation;
     const VerticalGapPolicy RulerBlankLinesBefore;
     const VerticalGapPolicy RulerBlankLinesAfter;

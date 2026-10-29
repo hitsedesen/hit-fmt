@@ -947,6 +947,11 @@ TEST(ConfigPolicy, InvalidEnumValuesAndOffsetsAreRejected)
     style.IfConditionsPacking = formatter::ListPacking::Fill;
     style.AssignmentsPacking = static_cast<formatter::ListPacking>(255);
     EXPECT_THROW((void)formatter::CompilePolicies(style), std::invalid_argument);
+    style.AssignmentsPacking.reset();
+    style.RequiresClausePosition = static_cast<formatter::RequiresClausePosition>(255);
+    EXPECT_THROW((void)formatter::CompilePolicies(style), std::invalid_argument);
+    const TemporaryConfig requiresPosition("RequiresClausePosition = Unknown\n");
+    EXPECT_THROW((void)formatter::LoadConfigFile(requiresPosition.Path), std::runtime_error);
 }
 
 TEST(ConfigPolicy, StagedOptionsResolveFinalInheritance)

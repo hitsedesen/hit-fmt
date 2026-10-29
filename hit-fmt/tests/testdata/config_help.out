@@ -396,6 +396,18 @@ Order project groups first
 
 Templates and comments
 - BreakAfterTemplateHeader requires canonical DeclarationHeadersLayout.
+- RequiresClausePosition also requires canonical DeclarationHeadersLayout.
+  Preserve (default) keeps placement. OwnLine separates the clause;
+  OwnLineWithBrace allows an attached function brace. WithPreceding prefers
+  the preceding header; WithFollowing prefers the following declaration or
+  brace. SingleLine prefers both sides inline, wrapping when necessary.
+  Explicit brace placement and protected/comment boundaries take precedence.
+  A prefix clause's position overrides BreakAfterTemplateHeader. SingleLine
+  also joins the template header of a function with a trailing clause.
+- IndentRequiresClause (default true) adds IndentWidth for OwnLine,
+  OwnLineWithBrace and WithFollowing. Other explicit positions use the
+  ordinary continuation offset when wrapped. Requires-expressions and
+  nested requirements are unaffected.
 - StandaloneCommentBlankLinesBefore/After uses blank-line counts and caps.
 - RulerLength: 0 preserves standalone all-slash comments; 3..10000 sets
   the slash count. RulerBlankLinesBefore/After overrides surrounding blanks.
@@ -408,6 +420,15 @@ Template headers and comments
     RulerLength = 0
     RulerBlankLinesBefore = Preserve
     RulerBlankLinesAfter = Preserve
+
+Put constraints on an indented line
+    DeclarationHeadersLayout = Canonical
+    RequiresClausePosition = OwnLine
+    IndentRequiresClause = true
+    # Result:
+    # template<class T>
+    #     requires Ready<T>
+    # void process(T value);
 
 Safety and checks
 - hit-fmt off/on always protects text. HonorClangFormatDirectives

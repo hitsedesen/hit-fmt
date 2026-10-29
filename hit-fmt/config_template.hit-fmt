@@ -480,6 +480,18 @@ DeclarationHeadersLayout = Inherit
 # Values: false | true
 BreakAfterTemplateHeader = false
 
+# Canonical DeclarationHeadersLayout only. Preserve keeps clause placement.
+# OwnLine separates both sides; OwnLineWithBrace may attach a function brace.
+# WithPreceding/WithFollowing prefer the adjacent header; SingleLine prefers both.
+# Explicit brace placement and protected/comment boundaries take precedence.
+# Values: Preserve | OwnLine | OwnLineWithBrace | WithPreceding | WithFollowing | SingleLine
+RequiresClausePosition = Preserve
+
+# Adds IndentWidth for OwnLine, OwnLineWithBrace and WithFollowing.
+# Other explicit positions use the ordinary continuation offset when wrapped.
+# Values: false | true
+IndentRequiresClause = true
+
 # Values: InlineIfFits | NextLine
 AssignmentRhsPlacement = InlineIfFits
 

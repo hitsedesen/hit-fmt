@@ -1224,26 +1224,36 @@ TEST(PublicPipeline, EditScopeInvalidRangesAndProtectionRemainStronger)
 
 TEST(PublicPipeline, RequiresOrdinaryReturnBoundaryRespectsScope)
 {
-    const formatter::PreparedFormat prepared(Canonical());
-    for (const auto declaration :
+    for (const auto position :
         {
-            "Envelope<T> inspect(T value){return {};}",
-            "library::Envelope<T> inspect(T value){return {};}",
-            "Envelope<Envelope<T>> Owner::inspect(T value){return {};}",
-            "Envelope<T> Owner::operator()(T value){return {};}",
+            formatter::RequiresClausePosition::Preserve,
+            formatter::RequiresClausePosition::OwnLine,
+            formatter::RequiresClausePosition::SingleLine,
         })
     {
-        const auto source =
-            "template<class T> requires (requires(T v) { v.touch(); })\n" + std::string(declaration) + "\n";
-        SCOPED_TRACE(source);
-        const auto function = uint32_t(source.find(declaration));
-        const std::array<parser::SourceRange, 1> selected{{{function, uint32_t(source.size())}}};
-        const auto result = FormatInput(source, prepared, {.EditScope = selected});
-        EXPECT_EQ(result.Text.substr(0, function), source.substr(0, function));
-        const std::array<parser::SourceRange, 1> selectedOutput{{{function, uint32_t(result.Text.size())}}};
-        EXPECT_EQ(FormatInput(result.Text, prepared, {.EditScope = selectedOutput}).Text, result.Text);
-        const auto unrestricted = FormatInput(source, prepared);
-        EXPECT_EQ(FormatInput(unrestricted.Text, prepared).Text, unrestricted.Text);
+        auto style = Canonical();
+        style.RequiresClausePosition = position;
+        const formatter::PreparedFormat prepared(style);
+        for (const auto declaration :
+            {
+                "Envelope<T> inspect(T value){return {};}",
+                "library::Envelope<T> inspect(T value){return {};}",
+                "Envelope<Envelope<T>> Owner::inspect(T value){return {};}",
+                "Envelope<T> Owner::operator()(T value){return {};}",
+            })
+        {
+            const auto source =
+                "template<class T> requires (requires(T v) { v.touch(); })\n" + std::string(declaration) + "\n";
+            SCOPED_TRACE(source);
+            const auto function = uint32_t(source.find(declaration));
+            const std::array<parser::SourceRange, 1> selected{{{function, uint32_t(source.size())}}};
+            const auto result = FormatInput(source, prepared, {.EditScope = selected});
+            EXPECT_EQ(result.Text.substr(0, function), source.substr(0, function));
+            const std::array<parser::SourceRange, 1> selectedOutput{{{function, uint32_t(result.Text.size())}}};
+            EXPECT_EQ(FormatInput(result.Text, prepared, {.EditScope = selectedOutput}).Text, result.Text);
+            const auto unrestricted = FormatInput(source, prepared);
+            EXPECT_EQ(FormatInput(unrestricted.Text, prepared).Text, unrestricted.Text);
+        }
     }
 }
 

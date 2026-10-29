@@ -1,0 +1,10 @@
+Layout = Canonical
+IndentationKind = Spaces
+IndentWidth = 4
+ContinuationOffset = 6
+ColumnLimit = 120
+BreakAfterTemplateHeader = true
+BinaryOperatorSpacing = Space
+CommaSpaceAfter = Space
+RequiresClausePosition = OwnLine
+IndentRequiresClause = false

@@ -338,6 +338,9 @@
     OPT(formatter::CategoryLayout, DeclarationHeadersLayout, \
         formatter::CategoryLayout::Inherit) \
     OPT(bool, BreakAfterTemplateHeader, false) \
+    OPT(formatter::RequiresClausePosition, RequiresClausePosition, \
+        formatter::RequiresClausePosition::Preserve) \
+    OPT(bool, IndentRequiresClause, true) \
     OPT(formatter::FirstItemPlacement, AssignmentRhsPlacement, \
         formatter::FirstItemPlacement::InlineIfFits) \
     OPT(formatter::CategoryLayout, BodiesLayout, \

@@ -2497,6 +2497,14 @@ std::vector<FormatCase> FormatCases()
             (data / "../../../hit-fmt/examples" / profile).lexically_normal().string(),
         });
     }
+    AddCases(
+        cases,
+        data / "requires-clause",
+        {
+            "own-line", "own-line-no-indent", "own-line-with-brace", "with-preceding",
+            "with-following", "single-line", "narrow", "narrow-own-line", "preserve",
+            "headers-preserve", "brace-next-line",
+        });
     AddCases(cases, data / "requires-lambdas", {"canonical", "narrow", "preserve"});
     {
         const auto directory = data / "requires-lambdas";
