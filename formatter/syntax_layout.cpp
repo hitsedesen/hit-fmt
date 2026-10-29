@@ -87,7 +87,7 @@ struct Gap
     bool FitNextSegmentIfOverflow = false;
     bool FitFlatTail = false;
     bool KeepFlatSpacing = false;
-    bool KeywordPrefix = false;
+    bool SpaceFallback = false;
 };
 
 // Compact, densely accessed finalized facts, separate from planning metadata.
@@ -1191,13 +1191,17 @@ private:
             Groups_[group].Spec.BreakPenalty = 3;
         }
         if (node.Kind == NodeKind::ParameterList && node.Parent != None &&
-            Region(Syntax_[node.Parent]).Kind == NodeKind::FunctionDeclarator &&
-            Policies_.DeclarationHeaders == LayoutMode::Canonical)
+            (Region(Syntax_[node.Parent]).Kind == NodeKind::FunctionDeclarator ||
+                (Region(Syntax_[node.Parent]).Kind == NodeKind::LambdaExpression &&
+                    HasPositionedConstraint(node.Parent))) && Policies_.DeclarationHeaders == LayoutMode::Canonical)
         {
             const auto& parent = Region(Syntax_[node.Parent]);
             for (auto child = parent.FirstChild; child != None; child = Region(Syntax_[child]).NextSibling) {
-                if (Region(Syntax_[child]).Kind == NodeKind::TrailingReturnType) {
-                    // Prefer moving a trailing return type over splitting an
+                if (Region(Syntax_[child]).Kind == NodeKind::TrailingReturnType ||
+                    (Region(Syntax_[child]).Kind == NodeKind::RequiresClause &&
+                        Policies_.RequiresClausePosition != RequiresClausePosition::Preserve))
+                {
+                    // Prefer moving a trailing header part over splitting an
                     // otherwise fitting parameter list.
                     Groups_[group].Spec.BreakPenalty = 1;
                     break;
@@ -1600,6 +1604,9 @@ private:
             const auto next = NextNonComment(gap);
             const bool constraint =
                 next < Region(Syntax_[id]).Tokens.End && Tree_.Kind(next) == TokenKind::Keyword_requires;
+            if (constraint && Policies_.RequiresClausePosition != RequiresClausePosition::Preserve) {
+                continue;
+            }
             // A prefix constraint continues the declaration header; the
             // declaration following that constraint still starts at its base.
             const auto offset = constraint ? Policies_.Parameters.Indent.ContinuationOffset : 0;
@@ -1619,11 +1626,93 @@ private:
     void PlanConstraintHeader(Index id)
     {
         const auto& node = Region(Syntax_[id]);
+        const auto position = Policies_.RequiresClausePosition;
+        const bool canonical =
+            Policies_.DeclarationHeaders == LayoutMode::Canonical && position != RequiresClausePosition::Preserve;
+        if (canonical) {
+            const bool prefix =
+                node.Parent != None && Region(Syntax_[node.Parent]).Kind == NodeKind::TemplateDeclaration;
+            const bool ownLine =
+                position == RequiresClausePosition::OwnLine || position == RequiresClausePosition::OwnLineWithBrace ||
+                    position == RequiresClausePosition::WithFollowing;
+            const auto offset = ownLine
+                ? (Policies_.IndentRequiresClause ? Policies_.IndentWidth : 0)
+                : Policies_.Parameters.Indent.ContinuationOffset;
+            const auto begin = node.Tokens.Begin;
+            const auto leading =
+                GroupAt(GapPosition(begin), TokenPosition(begin), document::GroupMode::Fill, int32_t(offset));
+            Groups_[leading].Spec.StructuralBase = true;
+            Own(begin, leading, ownLine ? Boundary::Hard : Boundary::Soft);
+            Gaps_[begin].SpaceFallback = true;
+            Gaps_[begin].FitThrough = node.Tokens.End;
+            Gaps_[begin].FitNextSegment = true;
+
+            if (!prefix && position == RequiresClausePosition::SingleLine) {
+                auto parent = node.Parent;
+                while (parent != None && !Syntax_[parent].ItemSequence &&
+                    Region(Syntax_[parent]).Kind != NodeKind::LambdaExpression &&
+                    Region(Syntax_[parent]).Kind != NodeKind::TemplateDeclaration)
+                {
+                    parent = Region(Syntax_[parent]).Parent;
+                }
+                if (parent != None && Region(Syntax_[parent]).Kind == NodeKind::TemplateDeclaration) {
+                    const auto header = Region(Syntax_[parent]).FirstChild;
+                    if (header != None && Region(Syntax_[header]).Kind == NodeKind::TemplateParameterList &&
+                        Syntax_[header].Safe)
+                    {
+                        const auto gap = Region(Syntax_[header]).Tokens.End;
+                        if (Gaps_[gap].Owner == None) {
+                            const auto owner = GroupAt(
+                                GapPosition(gap),
+                                TokenPosition(NextNonComment(gap)),
+                                document::GroupMode::Fill);
+                            Groups_[owner].Spec.StructuralBase = true;
+                            Own(gap, owner, Boundary::Soft);
+                            Gaps_[gap].SpaceFallback = true;
+                            OwnCommentLinks(gap, owner, NextNonComment(gap) + 1);
+                        } else {
+                            Gaps_[gap].Shape = Boundary::Soft;
+                            Gaps_[gap].SpaceFallback = true;
+                        }
+                    }
+                }
+            }
+            const auto end = node.Tokens.End;
+            const auto next = NextNonComment(end);
+            if (next < Tree_.TokenCount() && Tree_.Kind(next) != TokenKind::Operator_Semicolon) {
+                if (prefix) {
+                    const auto following = GroupAt(GapPosition(end), TokenPosition(next), document::GroupMode::Fill);
+                    Groups_[following].Spec.StructuralBase = true;
+                    const bool separate = position == RequiresClausePosition::OwnLine ||
+                        position == RequiresClausePosition::OwnLineWithBrace ||
+                        position == RequiresClausePosition::WithPreceding;
+                    Own(end, following, separate ? Boundary::Hard : Boundary::Soft);
+                    Gaps_[end].SpaceFallback = true;
+                    OwnCommentLinks(end, following, next + 1);
+                } else if (Tree_.Kind(next) == TokenKind::Operator_OpenBrace) {
+                    // The enclosing function owns its brace and base indentation.
+                    // Only its shape changes; explicit brace policies still win.
+                    auto parent = node.Parent;
+                    while (parent != None && !BraceFor(parent)) {
+                        parent = Region(Syntax_[parent]).Parent;
+                    }
+                    auto& gap = Gaps_[next];
+                    if (parent != None && gap.Owner != None && BraceFor(parent) == BracePlacement::Attached) {
+                        gap.Shape = position == RequiresClausePosition::OwnLine ||
+                            position == RequiresClausePosition::WithPreceding
+                            ? Boundary::Hard
+                            : Boundary::Flat;
+                    }
+                }
+            }
+        }
         const auto group =
             GroupAt(TokenPosition(node.Tokens.Begin), GapPosition(node.Tokens.End), document::GroupMode::Fill);
-        // A requires-clause can start on its own indented line without an
-        // enclosing list or expression continuation. Its operands continue
-        // from that header line, not the enclosing declaration's block.
+        if (canonical) {
+            Groups_[group].Spec.BreakPenalty = 2;
+        }
+        // Constraint operands continue from the clause's line, including when
+        // that line has its own indentation independent of the declaration.
         Groups_[group].Spec.StructuralBase = true;
         Groups_[group].Spec.LineBase = true;
     }
@@ -1646,7 +1735,7 @@ private:
         Groups_[group].Spec.Continuation = true;
         Groups_[group].Spec.BreakPenalty = 2;
         OwnContinuationBoundary(node.Tokens.Begin + 1, group, document::GapKind::Soft);
-        Gaps_[node.Tokens.Begin + 1].KeywordPrefix = true;
+        Gaps_[node.Tokens.Begin + 1].SpaceFallback = true;
         // Keep the keyword beside a fitting first segment even when later
         // operators or a nested call need independent breaks.
         Gaps_[node.Tokens.Begin + 1].FitNextSegment = true;
@@ -2532,6 +2621,21 @@ private:
         }
     }
 
+    bool HasPositionedConstraint(Index id) const
+    {
+        if (Policies_.DeclarationHeaders != LayoutMode::Canonical ||
+            Policies_.RequiresClausePosition == RequiresClausePosition::Preserve)
+        {
+            return false;
+        }
+        for (auto child = Region(Syntax_[id]).FirstChild; child != None; child = Region(Syntax_[child]).NextSibling) {
+            if (Region(Syntax_[child]).Kind == NodeKind::RequiresClause && Syntax_[child].Safe) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     void PlanHeaderAndBody(Index id)
     {
         const auto& node = Region(Syntax_[id]);
@@ -2672,8 +2776,13 @@ private:
         const auto bodyWidth =
             BodyIndentWidth(id, opening, PolicyForBody(id), node.Kind == NodeKind::RecordDeclaration);
         const auto fixedBase = contentIndent == None ? None : contentIndent - std::min(contentIndent, Index(bodyWidth));
-        const auto group =
-            GroupAt(TokenPosition(node.Tokens.Begin), GapPosition(opening + 1), document::GroupMode::Fill);
+        // A positioned constraint can move the brace to an indented header
+        // line. Keep the lambda's original base alive through its body.
+        const bool constrainedLambda = node.Kind == NodeKind::LambdaExpression && HasPositionedConstraint(id);
+        const auto group = GroupAt(
+            TokenPosition(node.Tokens.Begin),
+            GapPosition(constrainedLambda ? node.Tokens.End : opening + 1),
+            document::GroupMode::Fill);
         Groups_[group].Spec.StructuralBase = true;
         Groups_[group].Spec.FixedBase = fixedBase;
         Groups_[group].Spec.LineBase = fixedBase == None && node.Kind == NodeKind::LambdaExpression;
@@ -2850,6 +2959,8 @@ private:
         const auto parent = Region(Syntax_[id]).Parent;
         Groups_[group].Spec.FixedBase = contentIndent == None ? None : contentIndent - uint32_t(offset);
         Groups_[group].Spec.LineBase = contentIndent == None &&
+            !(parent != None && Region(Syntax_[parent]).Kind == NodeKind::LambdaExpression &&
+                HasPositionedConstraint(parent)) &&
             (Region(Syntax_[id]).Kind == NodeKind::LambdaBody ||
                 Region(Syntax_[id]).Kind == NodeKind::RequirementBody ||
                 (parent != None && Region(Syntax_[parent]).Kind == NodeKind::LambdaExpression));
@@ -4505,7 +4616,7 @@ private:
         if (preference) {
             return *preference ? 1 : 0;
         }
-        if (Gaps_[i].KeywordPrefix) {
+        if (Gaps_[i].SpaceFallback) {
             return 1;
         }
         const auto& source = Safety_.Gaps()[i];

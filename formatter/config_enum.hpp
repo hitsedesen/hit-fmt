@@ -83,6 +83,10 @@ DEFINE_CONFIG_ENUM(IncludeStandardHeaders, INCLUDE_STANDARD_HEADERS_VALUES);
 #define BRACE_VALUES(X) X(Attached) X(NextLine) X(NextLineIfHeaderBroken) X(NextLineIfHeaderIndented)
 DEFINE_CONFIG_ENUM(BracePlacement, BRACE_VALUES);
 #undef BRACE_VALUES
+#define REQUIRES_POSITION_VALUES(X) \
+    X(Preserve) X(OwnLine) X(OwnLineWithBrace) X(WithPreceding) X(WithFollowing) X(SingleLine)
+DEFINE_CONFIG_ENUM(RequiresClausePosition, REQUIRES_POSITION_VALUES);
+#undef REQUIRES_POSITION_VALUES
 #define TRAILING_COMMA_VALUES(X) X(Preserve) X(Never) X(WhenMultiline)
 DEFINE_CONFIG_ENUM(TrailingCommaPolicy, TRAILING_COMMA_VALUES);
 #undef TRAILING_COMMA_VALUES

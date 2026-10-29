@@ -119,6 +119,11 @@ void ValidatePolicyStyle(const Style& style)
     {
         throw std::invalid_argument("DestructorBracePlacement has invalid value");
     }
+    if (static_cast<std::size_t>(style.RequiresClausePosition) >=
+        ConfigEnumNames<RequiresClausePosition>::Values.size())
+    {
+        throw std::invalid_argument("RequiresClausePosition has invalid value");
+    }
     CheckOffset(style.ContinuationOffset, "ContinuationOffset");
     CheckOffset(style.AlignmentFallbackOffset, "AlignmentFallbackOffset");
 #define CHECK_LIST_OFFSETS(category)                                        \
@@ -395,6 +400,8 @@ CompiledPolicies CompilePolicies(const Style& style)
             CompileBlankLines(style.StandaloneCommentBlankLinesBefore),
             CompileBlankLines(style.StandaloneCommentBlankLinesAfter)},
         .BreakAfterTemplateHeader = style.BreakAfterTemplateHeader,
+        .RequiresClausePosition = style.RequiresClausePosition,
+        .IndentRequiresClause = style.IndentRequiresClause,
         .GenerateCallScopeIndentation = style.GenerateCallScopeIndentation,
         .RulerBlankLinesBefore = CompileBlankLines(style.RulerBlankLinesBefore),
         .RulerBlankLinesAfter = CompileBlankLines(style.RulerBlankLinesAfter),
