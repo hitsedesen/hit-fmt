@@ -6,6 +6,8 @@
         formatter::GapPolicy::Preserve) \
     OPT(formatter::GapPolicy, ArgumentCommentSpacing, \
         formatter::GapPolicy::Preserve) \
+    OPT(formatter::GapPolicy, ArgumentNameCommentSpacing, \
+        formatter::GapPolicy::Preserve) \
     OPT(formatter::GapPolicy, NamedCastSpaceBeforeOperandParentheses, \
         formatter::GapPolicy::Preserve) \
     OPT(formatter::GapPolicy, ReturnSpaceBeforeParentheses, \
