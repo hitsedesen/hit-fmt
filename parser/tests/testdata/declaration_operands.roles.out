@@ -264,7 +264,7 @@
 474: , list-separator
 476: > template-delimiter
 477: ; generic
-480: = generic
+480: = assignment-operator
 482: ( declaration-delimiter
 483: * pointer-declarator
 484: ) declaration-delimiter
@@ -272,7 +272,7 @@
 487: , list-separator
 489: ) declaration-delimiter
 490: ; generic
-493: = generic
+493: = assignment-operator
 495: ( declaration-delimiter
 496: & reference-declarator
 497: ) declaration-delimiter

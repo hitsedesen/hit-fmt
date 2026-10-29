@@ -307,6 +307,8 @@ std::vector<FormatCase> FormatCases()
     }
     AddCases(cases, data / "null-removal", {"canonical", "preserve"});
     AddCases(cases, data / "declarator-macro-spacing", {"space", "no-space"});
+    AddCases(cases, data / "alias-assignment", {"space", "no-space", "preserve"});
+    ShareExpected(cases, data / "alias-assignment", "preserve.output.cpp", "input.cpp");
     AddCases(cases, data / "class-body-macros", {"hinted", "preserve", "unhinted"});
     AddCases(cases, data / "class-body-macros", {"members"}, "members.input.cpp");
     AddCases(cases, data / "declaration-headers", {"wrap", "narrow", "wide"});

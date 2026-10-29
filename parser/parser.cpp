@@ -1564,6 +1564,7 @@ private:
         if (Kind(name) != TK::Identifier || Kind(assign) != TK::Operator_Assign) {
             return;
         }
+        Tree_.Tokens_.SetRole(assign, PunctuationRole::AssignmentOperator);
         const auto typeBegin = NextSignificant(assign + 1);
         if (end > typeBegin && Kind(end - 1) == TK::Operator_Semicolon) {
             --end;
