@@ -794,8 +794,7 @@ TEST(GroupLayout, ChildFittingCostGolden)
                 .Mode = GroupMode::Consistent,
                 .Indent = 4,
                 .Continuation = true,
-                .FlatInBrokenParentPenalty =
-                    static_cast<std::uint8_t>(penalty),
+                .FlatInBrokenParentPenalty = static_cast<std::uint8_t>(penalty),
             });
             document.Text("cond");
             document.Gap();

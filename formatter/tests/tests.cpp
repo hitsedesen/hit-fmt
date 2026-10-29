@@ -2001,6 +2001,12 @@ std::vector<FormatCase> FormatCases()
     }
     // Keep safety and recovered-syntax examples in separate parse units.
     const auto spacing = data / "spacing-options";
+    AddCases(
+        cases,
+        spacing,
+        {"initializer-designators-preserve", "initializer-designators-delimiter"},
+        "initializer-designators.input.cpp");
+    ShareExpected(cases, spacing, "initializer-designators-preserve.output.cpp", "initializer-designators.input.cpp");
     cases.push_back({spacing, "cases-preserved", "indented-cases.input.cpp", "cases-preserved"});
     for (const auto& [name, indentation] :
         {
