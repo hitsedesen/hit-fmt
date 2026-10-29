@@ -3,7 +3,7 @@
 7: > template-delimiter
 10: ; generic
 13: { record-delimiter
-16: = generic
+16: = assignment-operator
 18: ; generic
 22: ( declaration-delimiter
 24: ) declaration-delimiter
@@ -185,7 +185,7 @@
 337: ) declaration-delimiter
 338: > template-delimiter
 340: ; generic
-343: = generic
+343: = assignment-operator
 345: ( declaration-delimiter
 347: * pointer-declarator
 349: , list-separator

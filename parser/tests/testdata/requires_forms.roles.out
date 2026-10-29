@@ -110,7 +110,7 @@
 182: } block-delimiter
 183: ; generic
 186: ; generic
-189: = generic
+189: = assignment-operator
 191: ; generic
 193: < template-delimiter
 196: > template-delimiter
