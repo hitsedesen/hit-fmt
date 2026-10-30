@@ -1,0 +1,4 @@
+Layout = Canonical
+IndentationKind = Spaces
+IndentNamespaces = Indent
+IndentWidth = 4

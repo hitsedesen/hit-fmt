@@ -1,0 +1,3 @@
+IndentationKind = Spaces
+IndentNamespaces = Indent
+IndentWidth = 4

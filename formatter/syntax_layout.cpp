@@ -439,6 +439,16 @@ public:
                 case NodeKind::AttributedStatement:
                     PlanAttributedStatement(i);
                     break;
+                case NodeKind::LinkageSpecification:
+                    if (entry.ItemSequence) {
+                        // Linkage keeps its authored body shape and relative
+                        // indent while following the surrounding scope.
+                        auto policy = Policies_.Bodies;
+                        policy.Layout = LayoutMode::Preserve;
+                        PlanBody(i, entry.SequenceBody.Begin - 1, entry.SequenceBody.End, policy, false);
+                        PlanPreservedIndentation(i, node.Tokens.Begin);
+                    }
+                    break;
                 case NodeKind::FunctionDeclaration:
                 case NodeKind::FunctionDefinition:
                 case NodeKind::MacroFunctionDefinition:
@@ -2879,17 +2889,20 @@ private:
 
     int32_t BodyIndentWidth(Index id, Index opening, const BodyPolicy& policy, bool record) const
     {
-        if (Region(Syntax_[id]).Kind == NodeKind::NamespaceDeclaration) {
+        const auto kind = Region(Syntax_[id]).Kind;
+        if (kind == NodeKind::NamespaceDeclaration || kind == NodeKind::LinkageSpecification) {
             const auto& control = Policies_.Indentation.Namespaces;
-            if (control.Mode == BodyIndentation::Preserve) {
-                const auto outer = SourceIndent(Region(Syntax_[id]).Tokens.Begin);
+            const bool linkage = kind == NodeKind::LinkageSpecification;
+            if (linkage || control.Mode == BodyIndentation::Preserve) {
+                const auto start = Region(Syntax_[id]).Tokens.Begin;
+                const auto outer = linkage ? SourceLineIndent(start) : SourceIndent(start);
                 const auto inner = SourceIndent(opening + 1);
                 const auto base = outer == None ? 0 : outer;
                 if (inner != None && inner >= base && inner - base <= uint32_t(INT32_MAX)) {
                     return int32_t(inner - base);
                 }
             }
-            return BodyOffset(control, 0);
+            return linkage ? 0 : BodyOffset(control, 0);
         }
         return record
             ? BodyOffset(Policies_.Indentation.Members, int32_t(policy.IndentWidth))
@@ -3006,7 +3019,8 @@ private:
         Groups_[group].Spec.LineBase = contentIndent == None &&
             !(parent != None && Region(Syntax_[parent]).Kind == NodeKind::LambdaExpression &&
                 HasPositionedConstraint(parent)) &&
-            (Region(Syntax_[id]).Kind == NodeKind::LambdaBody ||
+            (Region(Syntax_[id]).Kind == NodeKind::LinkageSpecification ||
+                Region(Syntax_[id]).Kind == NodeKind::LambdaBody ||
                 Region(Syntax_[id]).Kind == NodeKind::RequirementBody ||
                 (parent != None && Region(Syntax_[parent]).Kind == NodeKind::LambdaExpression));
         BlockOf_[id] = group;
