@@ -189,7 +189,7 @@ struct Syntax
     Index Root = None;
     Index PreviousSibling = None;
     Index Operator = None;
-    Index IfConditionGroup = None;
+    Index ListGroup = None;
     Index PreservedIndentGroup = None;
     bool Safe = true;
     bool IndentSafe = true;
@@ -430,7 +430,7 @@ public:
                 (Tree_.Kind(entry.Operator) == TokenKind::Operator_And ||
                     Tree_.Kind(entry.Operator) == TokenKind::Operator_Or))
             {
-                entry.IfConditionGroup = Syntax_[node.Parent].IfConditionGroup;
+                entry.ListGroup = Syntax_[node.Parent].ListGroup;
             }
             switch (node.Kind) {
                 case NodeKind::TranslationUnit:
@@ -1256,7 +1256,7 @@ private:
             Region(Syntax_[node.Parent]).Kind == NodeKind::IfStatement &&
             Policies_.Expressions.Layout == LayoutMode::Canonical && Policies_.IfConditionsPacking != ListPacking::Fill)
         {
-            Syntax_[id].IfConditionGroup = group;
+            Syntax_[id].ListGroup = group;
         }
         const bool empty = !prefixed && node.Tokens.Size() == 2;
         Groups_[group].Spec.ForceBreak = canonical && !empty && policy.Break == BreakRequirement::Always;
@@ -1272,22 +1272,33 @@ private:
             if (node.Kind == NodeKind::ArgumentList && Policies_.CallsSoleArgumentFirstItem != firstItem) {
                 // Count syntax arguments, not commas inside their expressions
                 // or trivia. Stop as soon as the sole-argument override cannot
-                // apply; no expression-kind or callee-name exceptions.
+                // apply. A string's multiple fragments keep the ordinary
+                // first-item placement without changing semantic arity.
                 unsigned argumentCount = 0;
+                bool stringSequence = false;
                 for (auto child = Region(Syntax_[id]).FirstChild;
                     child != None;
                     child = Region(Syntax_[child]).NextSibling)
                 {
-                    if (Region(Syntax_[child]).Kind == NodeKind::Argument && ++argumentCount == 2) {
-                        break;
+                    if (Region(Syntax_[child]).Kind == NodeKind::Argument) {
+                        if (++argumentCount == 2) {
+                            break;
+                        }
+                        const auto expression = Region(Syntax_[child]).FirstChild;
+                        stringSequence = Policies_.StringLiteralFragmentsAsArguments && expression != None &&
+                            Syntax_[expression].String && Region(Syntax_[expression]).Tokens.Size() > 1;
                     }
                 }
-                if (argumentCount == 1) {
+                if (argumentCount == 1 && !stringSequence) {
                     firstItem = Policies_.CallsSoleArgumentFirstItem;
                 }
             }
             const auto* pin = PinFirst(id);
-            auto firstKind = firstItem == FirstItemPlacement::NextLine && !pin
+            const auto pinnedExpression = pin ? Region(Syntax_[node.FirstChild]).FirstChild : None;
+            const bool forcePinnedFragments = Policies_.StringLiteralFragmentsAsArguments && pinnedExpression != None &&
+                Syntax_[pinnedExpression].String && Region(Syntax_[pinnedExpression]).Tokens.Size() > 1 &&
+                policy.Break == BreakRequirement::Always;
+            auto firstKind = forcePinnedFragments || (firstItem == FirstItemPlacement::NextLine && !pin)
                 ? document::GapKind::Hard
                 : document::GapKind::Soft;
             if (pin && pin->Overflow == AttachedStringOverflow::KeepInline && policy.Break != BreakRequirement::Always)
@@ -1412,6 +1423,9 @@ private:
         const auto items = canonical && !empty && policy.Packing == ListPacking::AllOrVertical
             ? PackingGroup(group, TokenPosition(begin + 1), GapPosition(closer))
             : group;
+        if (node.Kind == NodeKind::ArgumentList) {
+            Syntax_[id].ListGroup = items;
+        }
         Index lastItem = None;
         Index lastSeparator = None;
         for (auto child = Region(Syntax_[id]).FirstChild; child != None; child = Region(Syntax_[child]).NextSibling) {
@@ -1834,6 +1848,79 @@ private:
             child == (outer.RightAssociative ? LastChild_[parent] : Region(a).FirstChild);
     }
 
+    void PlanStringSequence(Index id)
+    {
+        const auto& node = Region(Syntax_[id]);
+        const auto& policy = Policies_.Calls;
+        const bool canonical = policy.Layout == LayoutMode::Canonical;
+        const auto parent = node.Parent;
+        const bool argument = parent != None && Region(Syntax_[parent]).Kind == NodeKind::Argument;
+        const bool initializer = parent != None && Region(Syntax_[parent]).Kind == NodeKind::Initializer;
+        const auto enclosing = argument && Region(Syntax_[parent]).Parent != None
+            ? Syntax_[Region(Syntax_[parent]).Parent].ListGroup
+            : initializer ? Gaps_[node.Tokens.Begin].Owner : None;
+        if (enclosing != None && (canonical || argument)) {
+            if (initializer) {
+                // The initializer owns the assignment boundary, but its string
+                // fragments continue with the Calls indentation policy.
+                Groups_[enclosing].Spec.Indent = int32_t(policy.Indent.ContinuationOffset);
+                Groups_[enclosing].Indent = policy.Indent;
+                Groups_[enclosing].Spec.ForceBreak |= policy.Break == BreakRequirement::Always;
+                if (Gaps_[node.Tokens.Begin].Shape != Boundary::Hard) {
+                    Own(node.Tokens.Begin, enclosing, Boundary::Conditional, document::GapKind::Hard);
+                }
+            }
+            DirectTokens(
+                id,
+                [&] (Index token) {
+                    if (token > node.Tokens.Begin && Tree_.Kind(token) == TokenKind::Literal_String) {
+                        if (canonical) {
+                            Own(
+                                token,
+                                enclosing,
+                                policy.Packing == ListPacking::Fill ? Boundary::Soft : Boundary::Conditional,
+                                document::GapKind::Hard);
+                        } else {
+                            Own(token, enclosing, Boundary::Preserve);
+                            Reindent(token, enclosing);
+                        }
+                    }
+                });
+            return;
+        }
+        const auto group = GroupAt(
+            TokenPosition(node.Tokens.Begin),
+            GapPosition(node.Tokens.End),
+            canonical && policy.Packing == ListPacking::AllOrVertical
+            ? document::GroupMode::Consistent
+            : document::GroupMode::Fill,
+            int32_t(policy.Indent.ContinuationOffset),
+            policy.Indent);
+        // Like call arguments, fragments continue from their opening line
+        // independently of the enclosing expression's continuation offset.
+        Groups_[group].Spec.StructuralBase = true;
+        Groups_[group].Spec.LineBase = true;
+        Groups_[group].Spec.Continuation = true;
+        Groups_[group].Spec.ForceBreak = canonical && policy.Break == BreakRequirement::Always;
+        DirectTokens(
+            id,
+            [&] (Index token) {
+                if (token == node.Tokens.Begin || Tree_.Kind(token) != TokenKind::Literal_String) {
+                    return;
+                }
+                if (canonical) {
+                    Own(
+                        token,
+                        group,
+                        policy.Packing == ListPacking::Fill ? Boundary::Soft : Boundary::Conditional,
+                        document::GapKind::Hard);
+                } else {
+                    Own(token, group, Boundary::Preserve);
+                    Reindent(token, group);
+                }
+            });
+    }
+
     void PlanExpression(Index id)
     {
         const auto& node = Region(Syntax_[id]);
@@ -1870,7 +1957,11 @@ private:
         if (node.Tokens.Size() < 2) {
             return;
         }
-        if (const auto group = Syntax_[id].IfConditionGroup; group != None) {
+        if (Syntax_[id].String && Policies_.StringLiteralFragmentsAsArguments) {
+            PlanStringSequence(id);
+            return;
+        }
+        if (const auto group = Syntax_[id].ListGroup; group != None) {
             Groups_[group].Spec.ForceBreak |= Policies_.Expressions.Break == BreakRequirement::Always;
             // The header owns these boundaries, not independent precedence
             // groups. Any header break therefore splits all logical operands,

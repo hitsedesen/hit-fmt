@@ -150,6 +150,12 @@ ContinuationOffset = 0
 # Values: 0 (use IndentWidth) or 1..32
 AlignmentFallbackOffset = 0
 
+# Format adjacent string fragments with Calls rules as one expression.
+# Uses CallsFirstItem for sole fragmented strings and breaks initializers
+# below the assignment operator when their fragment group breaks.
+# false preserves the existing Expressions formatting rules.
+StringLiteralFragmentsAsArguments = false
+
 # Values: Inherit | Preserve | Canonical
 CallsLayout = Inherit
 

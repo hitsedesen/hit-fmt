@@ -1,0 +1,3 @@
+include = "fragments-vertical.hit-fmt"
+ContinuationOffset = 8
+CallsContinuationOffset = 2

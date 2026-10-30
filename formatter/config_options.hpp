@@ -294,6 +294,7 @@
     /* Zero resolves to IndentWidth, including category overrides. */         \
     OPT(std::size_t, ContinuationOffset, 0)                                   \
     OPT(std::size_t, AlignmentFallbackOffset, 0)                              \
+    OPT(bool, StringLiteralFragmentsAsArguments, false)                     \
     FORMATTER_DELIMITED_LIST_CATEGORY_OPTIONS(OPT, Calls)                     \
     OPT(std::optional<formatter::FirstItemPlacement>,                        \
         CallsSoleArgumentFirstItem, std::nullopt)                            \

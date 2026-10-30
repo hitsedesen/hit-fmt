@@ -2012,6 +2012,22 @@ std::vector<FormatCase> FormatCases()
     cases.push_back({data / "control-braces-after-wrap", "reflow", "reflow.input.cpp"});
     const auto strings = data / "concat-strings";
     AddCases(cases, strings, {"overflow", "preserve"});
+    AddCases(
+        cases,
+        strings,
+        {
+            "fragments-vertical",
+            "fragments-fill",
+            "fragments-all-or-vertical",
+            "fragments-preserve",
+            "fragments-always",
+            "fragments-disabled",
+            "fragments-offsets",
+            "fragments-preserve-offsets",
+            "fragments-next-line",
+            "fragments-next-line-always",
+        },
+        "fragments.input.cpp");
     cases.push_back({strings, "crlf", "crlf.input.cpp", "overflow"});
     const auto parsedOperators = data / "parsed-operators";
     for (const auto* name : {"placement-lists", "delimiter-choice"}) {
